@@ -1,3 +1,181 @@
+2018-05-02  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: save summary to file
+        https://bugs.webkit.org/show_bug.cgi?id=185200
+
+        Reviewed by Michael Saboff.
+
+        * .gitignore:
+
+2018-05-01  Leo Balter  <leonardo.balter@gmail.com>
+
+        Auto save the results for Test262
+        https://bugs.webkit.org/show_bug.cgi?id=184926
+
+        Reviewed by Michael Saboff.
+
+2018-05-01  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        WebAssembly: add support for stream APIs - JavaScript API
+        https://bugs.webkit.org/show_bug.cgi?id=183442
+
+        Reviewed by Yusuke Suzuki and JF Bastien.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-04-30  JF Bastien  <jfbastien@apple.com>
+
+        Use some C++17 features
+        https://bugs.webkit.org/show_bug.cgi?id=185135
+
+        Reviewed by Alex Christensen.
+
+        As discussed here [0] let's move WebKit to a subset of C++17. We
+        now require GCC 6 [1] which means that, according to [2] we can
+        use the following C++17 language features (I removed some
+        uninteresting ones):
+
+         - New auto rules for direct-list-initialization
+         - static_assert with no message
+         - typename in a template template parameter
+         - Nested namespace definition
+         - Attributes for namespaces and enumerators
+         - u8 character literals
+         - Allow constant evaluation for all non-type template arguments
+         - Fold Expressions
+         - Unary fold expressions and empty parameter packs
+         - __has_include in preprocessor conditional
+         - Differing begin and end types in range-based for
+         - Improving std::pair and std::tuple
+
+        Consult the Tony Tables [3] to see before / after examples.
+
+        Of course we can use any library feature if we're willing to
+        import them to WTF (and they don't require language support).
+
+
+          [0]: https://lists.webkit.org/pipermail/webkit-dev/2018-March/029922.html
+          [1]: https://trac.webkit.org/changeset/231152/webkit
+          [2]: https://en.cppreference.com/w/cpp/compiler_support
+          [3]: https://github.com/tvaneerd/cpp17_in_TTs/blob/master/ALL_IN_ONE.md
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
+2018-04-29  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Require GCC 6
+        https://bugs.webkit.org/show_bug.cgi?id=184985
+
+        Reviewed by Alex Christensen.
+
+        Require it.
+
+        * CMakeLists.txt:
+
+2018-04-26  Daniel Bates  <dabates@apple.com>
+
+        ASSERTION FAILED: ASSERT(!containsImage || MIMETypeRegistry::isSupportedImageResourceMIMEType([resource MIMEType])) in -[NSPasteboard(WebExtras) _web_writePromisedRTFDFromArchive:containsImage:]
+        https://bugs.webkit.org/show_bug.cgi?id=184161
+        <rdar://problem/39051645>
+
+        Reviewed by Dan Bernstein.
+
+        * ManualTests/DragInlinePDFImageDocument.html: Added.
+        * ManualTests/resources/simple.pdf: Added.
+
+2018-04-26  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Intl.PluralRules
+        https://bugs.webkit.org/show_bug.cgi?id=184312
+
+        Reviewed by JF Bastien.
+
+        Added Intl.PluralRules feature flag.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-04-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WPE] Initial ASYNC_SCROLLING support
+        https://bugs.webkit.org/show_bug.cgi?id=184961
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake: Enable ASYNC_SCROLLING as a private option.
+        * Source/cmake/OptionsWPE.cmake: Ditto.
+
+2018-04-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Build and link against latest WPEBackend and WPEBackend-fdo
+        https://bugs.webkit.org/show_bug.cgi?id=184643
+
+        Reviewed by Žan Doberšek.
+
+        Update find modules to include the API versions.
+
+        * Source/cmake/FindWPEBackend-fdo.cmake:
+        * Source/cmake/FindWPEBackend.cmake:
+
+2018-04-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Some options should be marked as advanced
+        https://bugs.webkit.org/show_bug.cgi?id=184972
+
+        Reviewed by Konstantin Tokarev.
+
+        * Source/cmake/FindLibGcrypt.cmake:
+        * Source/cmake/FindWebP.cmake:
+
+2018-04-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Miscellaneous build cleanups
+        https://bugs.webkit.org/show_bug.cgi?id=184399
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2018-04-24  Leo Balter  <leonardo.balter@gmail.com>
+
+        Land test262 test results associated with Test262 runner
+        https://bugs.webkit.org/show_bug.cgi?id=184667
+
+        Reviewed by Michael Saboff.
+
+        * .gitignore: Ignore test262 results file.
+
+2018-04-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Remove libgbm dependency
+        https://bugs.webkit.org/show_bug.cgi?id=184906
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove the libgbm CMake search module. It's not necessary anymore
+        after r230562.
+
+        * Source/cmake/FindLibGBM.cmake: Removed.
+
+2018-04-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] check target looks broken
+        https://bugs.webkit.org/show_bug.cgi?id=184407
+
+        Reviewed by Carlos Garcia Campos.
+
+        It's pretty clear that nobody has been using check for a long time.
+
+        We got rid of check-for-webkitdom-api-breaks a long time ago, when we stopped autogenerating
+        the DOM API, but it's still used in the check target. Fix this.
+
+        Also, the check target for some reason runs itself from the Source subdirectory of the
+        builddir, but the test script expects to be run from the toplevel build directory. Fix this
+        too.
+
+        Add VERBATIM for good measure.
+
+        * Source/PlatformGTK.cmake:
+
 2018-04-20  Daniel Bates  <dabates@apple.com>
 
         Unreviewed, rolling out r230117.

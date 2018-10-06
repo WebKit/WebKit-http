@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Sony Interactive Entertainment Inc.
+ * Copyright (C) 2018 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,6 +39,7 @@ public:
 
         copy.url = url.isolatedCopy();
         copy.statusCode = statusCode;
+        copy.httpConnectCode = httpConnectCode;
         copy.expectedContentLength = expectedContentLength;
 
         for (const auto& header : headers)
@@ -53,6 +54,7 @@ public:
 
     URL url;
     long statusCode { 0 };
+    long httpConnectCode { 0 };
     long long expectedContentLength { 0 };
     Vector<String> headers;
 

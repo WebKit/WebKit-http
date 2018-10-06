@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -80,7 +80,7 @@ void generateToAir(Procedure& procedure)
     
     if (shouldValidateIR())
         validate(procedure);
-
+    
     if (procedure.optLevel() >= 2) {
         reduceDoubleToFloat(procedure);
         reduceStrength(procedure);
@@ -88,9 +88,6 @@ void generateToAir(Procedure& procedure)
         if (eliminateCommonSubexpressions(procedure))
             eliminateCommonSubexpressions(procedure);
         inferSwitches(procedure);
-        duplicateTails(procedure);
-        fixSSA(procedure);
-        foldPathConstants(procedure);
         
         // FIXME: Add more optimizations here.
         // https://bugs.webkit.org/show_bug.cgi?id=150507
@@ -103,6 +100,11 @@ void generateToAir(Procedure& procedure)
     lowerMacros(procedure);
 
     if (procedure.optLevel() >= 2) {
+        reduceStrength(procedure);
+        if (Options::useB3TailDup())
+            duplicateTails(procedure);
+        fixSSA(procedure);
+        foldPathConstants(procedure);
         reduceStrength(procedure);
 
         // FIXME: Add more optimizations here.

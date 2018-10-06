@@ -1,3 +1,391 @@
+2018-05-02  Jonathan Bedard  <jbedard@apple.com>
+
+        Follow-up build fix for r231223
+        https://bugs.webkit.org/show_bug.cgi?id=185159
+        <rdar://problem/39891074>
+
+        Unreviewed build fix.
+
+        We should be consistent about when we include <optional> vs define our own.
+
+        * wtf/Optional.h:
+
+2018-05-02  Jer Noble  <jer.noble@apple.com>
+
+        Enable HAVE_AVKIT for the MINIMAL_SIMULATOR
+        https://bugs.webkit.org/show_bug.cgi?id=185183
+
+        Reviewed by Daniel Bates.
+
+        * wtf/Platform.h:
+
+2018-05-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use default std::optional if it is provided
+        https://bugs.webkit.org/show_bug.cgi?id=185159
+
+        Reviewed by JF Bastien.
+
+        Now C++17 flag is enabled. It means that any standard libraries can use <optional> internally.
+        If we define std::optional regardless of the existence of the standard library's <optional>,
+        it causes compile errors. For example, in GCC 7 (specifically GCC 7.3.0) environment,
+        <optional> is included in <unordered_map>.
+        We do not define std::optional in WebKit side if <optional> is offered.
+
+        And we also remove std::optional<T&> use since this is not accepted in C++17. Use
+        std::optional<std::reference_wrapper<T>> instead.
+
+        * wtf/Expected.h:
+        constexpr does not mean const in C++17.
+
+        * wtf/Optional.h:
+        Do not define std::optional if <optional> is provided.
+
+        (WTF::valueOrCompute):
+
+2018-05-01  Robin Morisset  <rmorisset@apple.com>
+
+        Correctly detect string overflow when using the 'Function' constructor
+        https://bugs.webkit.org/show_bug.cgi?id=184883
+        <rdar://problem/36320331>
+
+        Reviewed by Filip Pizlo.
+
+        I added new tryAppend methods alongside the old append methods in StringBuilder, that return a boolean (true means success, false means an overflow happened).
+        I made new methods instead of just adapting the existing ones (and reverted such a change on appendQuotedJSONString) so that callers that rely on the old behaviour (a hard CRASH() on overflow) don't silently start failing.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::allocateBufferUpConvert):
+        (WTF::StringBuilder::tryAllocateBufferUpConvert):
+        (WTF::StringBuilder::appendUninitialized):
+        (WTF::StringBuilder::append):
+        (WTF::StringBuilder::tryAppend):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::tryAppend):
+        (WTF::StringBuilder::append):
+        (WTF::StringBuilder::tryAppendLiteral):
+        * wtf/text/StringBuilderJSON.cpp:
+        (WTF::StringBuilder::appendQuotedJSONString):
+        (WTF::StringBuilder::tryAppendQuotedJSONString):
+
+2018-04-30  Mark Lam  <mark.lam@apple.com>
+
+        Apply PtrTags to the MetaAllocator and friends.
+        https://bugs.webkit.org/show_bug.cgi?id=185110
+        <rdar://problem/39533895>
+
+        Reviewed by Saam Barati.
+
+        1. Introduce a MetaAllocatorPtr smart pointer to do pointer tagging.
+        2. Use MetaAllocatorPtr in MetaAllocator and MetaAllocatorHandle.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::release):
+        (WTF::MetaAllocatorHandle::MetaAllocatorHandle):
+        (WTF::MetaAllocatorHandle::shrink):
+        (WTF::MetaAllocatorHandle::dump const):
+        (WTF::MetaAllocator::allocate):
+        (WTF::MetaAllocator::findAndRemoveFreeSpace):
+        (WTF::MetaAllocator::addFreeSpaceFromReleasedHandle):
+        (WTF::MetaAllocator::addFreshFreeSpace):
+        (WTF::MetaAllocator::debugFreeSpaceSize):
+        (WTF::MetaAllocator::addFreeSpace):
+        (WTF::MetaAllocator::allocFreeSpaceNode):
+        * wtf/MetaAllocator.h:
+        (WTF::MetaAllocatorTracker::find):
+        (WTF::MetaAllocator::FreeSpaceNode::FreeSpaceNode):
+        (WTF::MetaAllocator::FreeSpaceNode::sizeInBytes):
+        (WTF::MetaAllocator::FreeSpaceNode::key):
+        * wtf/MetaAllocatorHandle.h:
+        (WTF::MetaAllocatorHandle::start const):
+        (WTF::MetaAllocatorHandle::end const):
+        (WTF::MetaAllocatorHandle::startAsInteger const):
+        (WTF::MetaAllocatorHandle::endAsInteger const):
+        (WTF::MetaAllocatorHandle::sizeInBytes const):
+        (WTF::MetaAllocatorHandle::containsIntegerAddress const):
+        (WTF::MetaAllocatorHandle::key):
+        * wtf/MetaAllocatorPtr.h: Added.
+        (WTF::MetaAllocatorPtr::MetaAllocatorPtr):
+        (WTF::MetaAllocatorPtr:: const):
+        (WTF::MetaAllocatorPtr::operator bool const):
+        (WTF::MetaAllocatorPtr::operator! const):
+        (WTF::MetaAllocatorPtr::operator== const):
+        (WTF::MetaAllocatorPtr::operator!= const):
+        (WTF::MetaAllocatorPtr::operator+ const):
+        (WTF::MetaAllocatorPtr::operator- const):
+        (WTF::MetaAllocatorPtr::operator+=):
+        (WTF::MetaAllocatorPtr::operator-=):
+        (WTF::MetaAllocatorPtr::isEmptyValue const):
+        (WTF::MetaAllocatorPtr::isDeletedValue const):
+        (WTF::MetaAllocatorPtr::hash const):
+        (WTF::MetaAllocatorPtr::emptyValue):
+        (WTF::MetaAllocatorPtr::deletedValue):
+        (WTF::MetaAllocatorPtrHash::hash):
+        (WTF::MetaAllocatorPtrHash::equal):
+        * wtf/PtrTag.h:
+
+2018-04-30  JF Bastien  <jfbastien@apple.com>
+
+        Use some C++17 features
+        https://bugs.webkit.org/show_bug.cgi?id=185135
+
+        Reviewed by Alex Christensen.
+
+        * wtf/StdLibExtras.h: libstdc++ doesn't say it's C++17 when it
+        defines std::conjunction. Use the feature test macro instead.
+
+2018-04-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use WordLock instead of std::mutex for Threading
+        https://bugs.webkit.org/show_bug.cgi?id=185121
+
+        Reviewed by Geoffrey Garen.
+
+        Before r231151, WordLock depends on ThreadSpecific. It means that our Threading implementation
+        cannot use this lock since Threading primitives could touch these locks after ThreadSpecific
+        for that WordLock is destroyed.
+
+        Now WordLock is changed not to use ThreadSpecific. So it does not depend on our Threading
+        mechanism and our Threading can start using WordLock internally.
+
+        This patch changes WTF::Thread and WTF::ThreadGroup to use WordLock instead of std::mutex.
+
+        And add constexpr to explicitly describe that Lock, Condition, and WordLock constructors are constexpr.
+
+        * wtf/Condition.h:
+        * wtf/Lock.h:
+        * wtf/ThreadGroup.h:
+        (WTF::ThreadGroup::getLock):
+        * wtf/Threading.cpp:
+        (WTF::Thread::didExit):
+        (WTF::Thread::addToThreadGroup):
+        (WTF::Thread::removeFromThreadGroup):
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::changePriority):
+        (WTF::Thread::waitForCompletion):
+        (WTF::Thread::detach):
+        (WTF::Thread::signal):
+        (WTF::Thread::establishPlatformSpecificHandle):
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::changePriority):
+        (WTF::Thread::waitForCompletion):
+        (WTF::Thread::detach):
+        (WTF::Thread::establishPlatformSpecificHandle):
+        (WTF::Thread::initializeTLSKey):
+        (WTF::Thread::currentDying):
+        (WTF::Thread::get):
+        (WTF::Thread::initializeTLS):
+        (WTF::Thread::destructTLS):
+        (WTF::threadMapMutex): Deleted.
+        * wtf/WordLock.h:
+
+2018-04-29  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Require GCC 6
+        https://bugs.webkit.org/show_bug.cgi?id=184985
+
+        Reviewed by Alex Christensen.
+
+        Stop enforcing GCC version in Compiler.h. It's better to do this in the build system. And I
+        don't like having the same check in two different places.
+
+        * wtf/Compiler.h:
+
+2018-04-29  Geoffrey Garen  <ggaren@apple.com>
+
+        WordLock doesn't need per-thread data
+        https://bugs.webkit.org/show_bug.cgi?id=185119
+
+        Reviewed by Yusuke Suzuki.
+
+        The stack is per-thread data, so we can stack-allocate our ThreadData.
+
+        This eliminates malloc() and high-level WTF threading primitives from
+        WordLock, making WordLock more portable to non-WTF code, including
+        bmalloc.
+
+        (NOTE: This patch makes the bug fixed in r231148 100% reproducible.)
+
+        * wtf/WordLock.cpp:
+        (WTF::WordLock::lockSlow): Allocate ThreadData on the stack.
+
+2018-04-28  Geoffrey Garen  <ggaren@apple.com>
+
+        Fixed a very unlikely race condition in WTF::WordLock
+        https://bugs.webkit.org/show_bug.cgi?id=185117
+
+        Reviewed by Saam Barati.
+
+        The race goes like this:
+
+        Thread L is in lockSlowCase() and thread U is in unlockSlowCase();
+
+        - U acquires queueHead->parkingLock.
+        - U sets queueHead->shouldPark = false
+        - U releases queueHead->parkingLock.
+        - L spuriously wakes up from queueHead->parkingLock.wait()
+        - L acquires queueHead->parkingLock.
+        - L notices that queueHead->shouldPark = false, and acquires the WordLock
+        - L finishes all its work and exits, freeing queueHead
+        - U notifies queueHead->parkingLock (after free) and crashes or deadlocks
+
+        These conditions are currently so unlikely that I don't know how to test
+        them. I noticed this race because I changed WordLock's allocation pattern
+        to allow queueHead to be freed more often, and I crashed / deadlocked 100%.
+
+        Shout out to <http://en.cppreference.com/w/cpp/thread/condition_variable/notify_one>
+        for explaining this.
+
+        * benchmarks/ToyLocks.h: Fixed build.
+
+        * wtf/WordLock.cpp:
+        (WTF::WordLock::unlockSlow): Hold the lock a little longer to avoid
+        this race.
+
+2018-04-27  David Kilzer  <ddkilzer@apple.com>
+
+        Add logging when SpringBoard enables WebThread
+        <https://webkit.org/b/185100>
+        <rdar://problem/39746542>
+
+        Reviewed by Daniel Bates.
+
+        * wtf/Assertions.h:
+        (RELEASE_LOG_FAULT): Add macro to call os_log_fault().
+        * wtf/Platform.h: Drive-by fix to enable USE(OS_LOG) on
+        public iOS SDKs since <rdar://problem/27758343> was
+        fixed in iOS 11.0.
+
+2018-04-26  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: Speculative build fix for Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=184976
+        <rdar://problem/39723901>
+
+        Not reviewed.
+
+        * wtf/PtrTag.h:
+        (WTF::makePtrTagHash): Undo last speculative build fix that did not work for 64-bit.
+
+2018-04-26  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Intl.PluralRules
+        https://bugs.webkit.org/show_bug.cgi?id=184312
+
+        Reviewed by JF Bastien.
+
+        Added Intl.PluralRules feature flag.
+
+        * wtf/FeatureDefines.h:
+
+2018-04-25  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: Speculative build fix for Windows 32-bit to compensate for MSVC's lack of smarts.
+        https://bugs.webkit.org/show_bug.cgi?id=184976
+        <rdar://problem/39723901>
+
+        Not reviewed.
+
+        According to https://stackoverflow.com/questions/37658794/integer-constant-overflow-warning-in-constexpr,
+        disabling the warning around the definition of the function will not disable it
+        for all clients of the function.
+
+        * wtf/PtrTag.h:
+        (WTF::makePtrTagHash):
+
+2018-04-25  Mark Lam  <mark.lam@apple.com>
+
+        Push the definition of PtrTag down to the WTF layer.
+        https://bugs.webkit.org/show_bug.cgi?id=184976
+        <rdar://problem/39723901>
+
+        Reviewed by Saam Barati.
+
+        This is in preparation for doing pointer profiling at the WTF layer as well.
+        Also deleted an unused ptrTag() function.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PtrTag.h: Copied from Source/JavaScriptCore/runtime/PtrTag.h.
+        (WTF::makePtrTagHash):
+        (JSC::ptrTagName): Deleted.
+        (JSC::tagForPtr): Deleted.
+        (JSC::ptrTag): Deleted.
+        (JSC::tagCodePtr): Deleted.
+        (JSC::untagCodePtr): Deleted.
+        (JSC::retagCodePtr): Deleted.
+        (JSC::removeCodePtrTag): Deleted.
+        (JSC::tagCFunctionPtr): Deleted.
+        (JSC::untagCFunctionPtr): Deleted.
+        (JSC::assertIsCFunctionPtr): Deleted.
+        (JSC::assertIsNullOrCFunctionPtr): Deleted.
+        (JSC::assertIsNotTagged): Deleted.
+        (JSC::assertIsTagged): Deleted.
+        (JSC::assertIsNullOrTagged): Deleted.
+        (JSC::assertIsTaggedWith): Deleted.
+        (JSC::assertIsNullOrTaggedWith): Deleted.
+
+2018-04-25  Dean Jackson  <dino@apple.com>
+
+        Make a better flag for system preview, and disable it where necessary
+        https://bugs.webkit.org/show_bug.cgi?id=184968
+        <rdar://problem/39686506>
+
+        Reviewed by Eric Carlson.
+
+        Add a new USE(SYSTEM_PREVIEW).
+
+        * wtf/Platform.h:
+
+2018-04-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r230971.
+        https://bugs.webkit.org/show_bug.cgi?id=184939
+
+        This fix was not appropriate (Requested by n_wang on #webkit).
+
+        Reverted changeset:
+
+        "AX: soft link libAccessibility.dylb"
+        https://bugs.webkit.org/show_bug.cgi?id=184919
+        https://trac.webkit.org/changeset/230971
+
+2018-04-24  Nan Wang  <n_wang@apple.com>
+
+        AX: soft link libAccessibility.dylb
+        https://bugs.webkit.org/show_bug.cgi?id=184919
+
+        Reviewed by Chris Fleizach.
+
+        * wtf/cocoa/SoftLinking.h:
+
+2018-04-23  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutFormattingContext] Initial commit.
+        https://bugs.webkit.org/show_bug.cgi?id=184896
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/FeatureDefines.h:
+
+2018-04-23  Per Arne Vollan  <pvollan@apple.com>
+
+        Deactivate the WindowServer connection for the WebContent process.
+        https://bugs.webkit.org/show_bug.cgi?id=184451
+        <rdar://problem/38313938>
+
+        Reviewed by Brent Fulgham.
+
+        Defining ENABLE_WEBPROCESS_WINDOWSERVER_BLOCKING as 1 will deactivate the WindowServer connection
+        for the WebContent process by enabling the call to 'CGSSetDenyWindowServerConnections(true)' on
+        process startup. After calling this function, every attempt to establish a connection to the
+        WindowServer from the WebContent process will fail, except for CA render server connections.
+
+        * wtf/FeatureDefines.h:
+
 2018-04-20  JF Bastien  <jfbastien@apple.com>
 
         Handle more JSON stringify OOM

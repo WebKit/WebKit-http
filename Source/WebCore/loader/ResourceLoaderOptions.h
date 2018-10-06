@@ -30,6 +30,7 @@
 
 #pragma once
 
+#include "ContentSecurityPolicyResponseHeaders.h"
 #include "FetchOptions.h"
 #include "HTTPHeaderNames.h"
 #include "ServiceWorkerTypes.h"
@@ -111,6 +112,12 @@ enum class ContentEncodingSniffingPolicy {
     DoNotSniff,
 };
 
+enum class PreflightPolicy {
+    Consider,
+    Force,
+    Prevent
+};
+
 struct ResourceLoaderOptions : public FetchOptions {
     ResourceLoaderOptions() { }
 
@@ -148,16 +155,16 @@ struct ResourceLoaderOptions : public FetchOptions {
     ApplicationCacheMode applicationCacheMode { ApplicationCacheMode::Use };
 #if ENABLE(SERVICE_WORKER)
     std::optional<ServiceWorkerRegistrationIdentifier> serviceWorkerRegistrationIdentifier;
-    // WebKit loading code is adding some HTTP headers between the application and the time service worker intercepts the fetch.
-    // We keep a list of these headers so that we only remove the ones that are set by the loading code and not by the application.
-    // FIXME: Remove this when service worker fetch interception happens before the setting of these headers in the loading code.
-    HashSet<HTTPHeaderName, WTF::IntHash<HTTPHeaderName>, WTF::StrongEnumHashTraits<HTTPHeaderName>> httpHeadersToKeep;
 #endif
+    HashSet<HTTPHeaderName, WTF::IntHash<HTTPHeaderName>, WTF::StrongEnumHashTraits<HTTPHeaderName>> httpHeadersToKeep;
 
     ClientCredentialPolicy clientCredentialPolicy { ClientCredentialPolicy::CannotAskClientForCredentials };
     unsigned maxRedirectCount { 20 };
 
     Vector<String> derivedCachedDataTypesToRetrieve;
+
+    PreflightPolicy preflightPolicy { PreflightPolicy::Consider };
+    std::optional<ContentSecurityPolicyResponseHeaders> cspResponseHeaders;
 };
 
 } // namespace WebCore

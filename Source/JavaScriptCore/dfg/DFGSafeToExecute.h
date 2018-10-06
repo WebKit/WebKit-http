@@ -172,6 +172,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ToThis:
     case CreateThis:
     case GetCallee:
+    case SetCallee:
     case GetArgumentCountIncludingThis:
     case SetArgumentCountIncludingThis:
     case GetRestLength:
@@ -278,6 +279,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CompareEq:
     case CompareStrictEq:
     case CompareEqPtr:
+    case SameValue:
     case Call:
     case DirectCall:
     case TailCallInlinedCaller:

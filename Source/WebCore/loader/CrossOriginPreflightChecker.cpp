@@ -60,14 +60,17 @@ CrossOriginPreflightChecker::~CrossOriginPreflightChecker()
 
 void CrossOriginPreflightChecker::validatePreflightResponse(DocumentThreadableLoader& loader, ResourceRequest&& request, unsigned long identifier, const ResourceResponse& response)
 {
+    auto* frame = loader.document().frame();
+    ASSERT(frame);
+
     String errorDescription;
     if (!WebCore::validatePreflightResponse(request, response, loader.options().storedCredentialsPolicy, loader.securityOrigin(), errorDescription)) {
+        if (auto* document = frame->document())
+            document->addConsoleMessage(MessageSource::Security, MessageLevel::Error, errorDescription);
+
         loader.preflightFailure(identifier, ResourceError(errorDomainWebKitInternal, 0, request.url(), errorDescription, ResourceError::Type::AccessControl));
         return;
     }
-
-    Frame* frame = loader.document().frame();
-    ASSERT(frame);
 
     // FIXME: <https://webkit.org/b/164889> Web Inspector: Show Preflight Request information in inspector
     // This is only showing success preflight requests and responses but we should show network events
@@ -89,6 +92,8 @@ void CrossOriginPreflightChecker::notifyFinished(CachedResource& resource)
         if (preflightError.isNull() || preflightError.isCancellation() || preflightError.isGeneral())
             preflightError.setType(ResourceError::Type::AccessControl);
 
+        if (!preflightError.isTimeout())
+            m_loader.document().addConsoleMessage(MessageSource::Security, MessageLevel::Error, ASCIILiteral("CORS-preflight request was blocked"));
         m_loader.preflightFailure(m_resource->identifier(), preflightError);
         return;
     }
@@ -137,6 +142,10 @@ void CrossOriginPreflightChecker::doPreflight(DocumentThreadableLoader& loader, 
         // FIXME:: According fetch, we should just pass the error to the layer above. But this may impact some clients like XHR or EventSource.
         if (error.isCancellation() || error.isGeneral())
             error.setType(ResourceError::Type::AccessControl);
+
+        if (!error.isTimeout())
+            loader.document().addConsoleMessage(MessageSource::Security, MessageLevel::Error, ASCIILiteral("CORS-preflight request was blocked"));
+
         loader.preflightFailure(identifier, error);
         return;
     }
@@ -144,7 +153,10 @@ void CrossOriginPreflightChecker::doPreflight(DocumentThreadableLoader& loader, 
     // FIXME: Ideally, we should ask platformLoadResourceSynchronously to set ResourceResponse isRedirected and use it here.
     bool isRedirect = preflightRequest.url().strippedForUseAsReferrer() != response.url().strippedForUseAsReferrer();
     if (isRedirect || !response.isSuccessful()) {
-        loader.preflightFailure(identifier, ResourceError(errorDomainWebKitInternal, 0, request.url(), ASCIILiteral("Preflight response is not successful"), ResourceError::Type::AccessControl));
+        auto errorMessage = ASCIILiteral("Preflight response is not successful");
+        loader.document().addConsoleMessage(MessageSource::Security, MessageLevel::Error, errorMessage);
+
+        loader.preflightFailure(identifier, ResourceError { errorDomainWebKitInternal, 0, request.url(), errorMessage, ResourceError::Type::AccessControl });
         return;
     }
 

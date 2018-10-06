@@ -607,22 +607,21 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
     CFRelease(pixelFormat);
     pixelFormat = nullptr;
   }
-  CFMutableDictionaryRef encoder_specs = nullptr;
+  CFDictionaryRef encoderSpecs = nullptr;
 #if defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)
+  auto useHardwareEncoder = webrtc::isH264HardwareEncoderAllowed() ? kCFBooleanTrue : kCFBooleanFalse;
   // Currently hw accl is supported above 360p on mac, below 360p
   // the compression session will be created with hw accl disabled.
-  encoder_specs = CFDictionaryCreateMutable(
-      nullptr, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-  CFDictionarySetValue(encoder_specs,
-                       kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder,
-                       webrtc::isH264HardwareEncoderAllowed() ? kCFBooleanTrue : kCFBooleanFalse);
+  CFTypeRef sessionKeys[] = { kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder, kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder, kVTCompressionPropertyKey_RealTime };
+  CFTypeRef sessionValues[] = { useHardwareEncoder, useHardwareEncoder, kCFBooleanTrue };
+  encoderSpecs = CFDictionaryCreate(kCFAllocatorDefault, sessionKeys, sessionValues, 3, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 #endif
   OSStatus status =
       CompressionSessionCreate(nullptr,  // use default allocator
                                  _width,
                                  _height,
                                  kCodecTypeH264,
-                                 encoder_specs,  // use hardware accelerated encoder if available
+                                 encoderSpecs,  // use hardware accelerated encoder if available
                                  sourceAttributes,
                                  nullptr,  // use default compressed data allocator
                                  compressionOutputCallback,
@@ -632,20 +631,25 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
     CFRelease(sourceAttributes);
     sourceAttributes = nullptr;
   }
-  if (encoder_specs) {
-    CFRelease(encoder_specs);
-    encoder_specs = nullptr;
+  if (encoderSpecs) {
+    CFRelease(encoderSpecs);
+    encoderSpecs = nullptr;
   }
+
+#if ENABLE_VCP_ENCODER || defined(WEBRTC_IOS)
   if (status != noErr) {
     RTC_LOG(LS_ERROR) << "Failed to create compression session: " << status;
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
+#endif
 #if defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)
   CFBooleanRef hwaccl_enabled = nullptr;
-  status = VTSessionCopyProperty(_compressionSession,
+  if (status == noErr) {
+    status = VTSessionCopyProperty(_compressionSession,
                                  kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder,
                                  nullptr,
                                  &hwaccl_enabled);
+  }
   if (status == noErr && (CFBooleanGetValue(hwaccl_enabled))) {
     RTC_LOG(LS_INFO) << "Compression session created with hw accl enabled";
   } else {
@@ -714,9 +718,9 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
       CFRelease(sourceAttributes);
       sourceAttributes = nullptr;
     }
-    if (encoder_specs) {
-      CFRelease(encoder_specs);
-      encoder_specs = nullptr;
+    if (encoderSpecs) {
+      CFRelease(encoderSpecs);
+      encoderSpecs = nullptr;
     }
     if (status != noErr) {
       return WEBRTC_VIDEO_CODEC_ERROR;
@@ -734,7 +738,8 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
   SetVTSessionProperty(_compressionSession, kVTCompressionPropertyKey_ProfileLevel, _profile);
   SetVTSessionProperty(_compressionSession, kVTCompressionPropertyKey_AllowFrameReordering, false);
 #if ENABLE_VCP_ENCODER
-  SetVTSessionProperty(_compressionSession, (__bridge CFStringRef)getkVTVideoEncoderSpecification_Usage(), 1);
+  if (auto key = getkVTVideoEncoderSpecification_Usage())
+      SetVTSessionProperty(_compressionSession, (__bridge CFStringRef)key, 1);
 #endif
   [self setEncoderBitrateBps:_targetBitrateBps];
   // TODO(tkchin): Look at entropy mode and colorspace matrices.
@@ -783,7 +788,7 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
         CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt64Type, &oneSecondValue);
     const void *nums[2] = {bytesPerSecond, oneSecond};
     CFArrayRef dataRateLimits = CFArrayCreate(nullptr, nums, 2, &kCFTypeArrayCallBacks);
-    OSStatus status = VTSessionSetProperty(
+    OSStatus status = CompressionSessionSetProperty(
         _compressionSession, kVTCompressionPropertyKey_DataRateLimits, dataRateLimits);
     if (bytesPerSecond) {
       CFRelease(bytesPerSecond);
@@ -812,7 +817,7 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
               timestamp:(uint32_t)timestamp
                rotation:(RTCVideoRotation)rotation {
   if (status != noErr) {
-    RTC_LOG(LS_ERROR) << "H264 encode failed.";
+    RTC_LOG(LS_ERROR) << "H264 encode failed: " << status;
     return;
   }
   if (infoFlags & kVTEncodeInfo_FrameDropped) {

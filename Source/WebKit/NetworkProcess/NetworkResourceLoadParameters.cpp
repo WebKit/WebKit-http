@@ -82,6 +82,7 @@ void NetworkResourceLoadParameters::encode(IPC::Encoder& encoder) const
     encoder << shouldClearReferrerOnHTTPSToHTTPRedirect;
     encoder << defersLoading;
     encoder << needsCertificateInfo;
+    encoder << isMainFrameNavigation;
     encoder << maximumBufferingTime;
     encoder << derivedCachedDataTypesToRetrieve;
 
@@ -92,12 +93,18 @@ void NetworkResourceLoadParameters::encode(IPC::Encoder& encoder) const
     encoder << cspResponseHeaders;
     encoder << originalRequestHeaders;
 
+    encoder << shouldRestrictHTTPResponseAccess;
+
+    encoder.encodeEnum(preflightPolicy);
+
+    encoder << shouldEnableFromOriginResponseHeader;
+    if (shouldEnableFromOriginResponseHeader)
+        encoder << frameAncestorOrigins;
+
 #if ENABLE(CONTENT_EXTENSIONS)
     encoder << mainDocumentURL;
     encoder << userContentControllerIdentifier;
 #endif
-
-    encoder << shouldRestrictHTTPResponseAccess;
 }
 
 bool NetworkResourceLoadParameters::decode(IPC::Decoder& decoder, NetworkResourceLoadParameters& result)
@@ -162,6 +169,8 @@ bool NetworkResourceLoadParameters::decode(IPC::Decoder& decoder, NetworkResourc
         return false;
     if (!decoder.decode(result.needsCertificateInfo))
         return false;
+    if (!decoder.decode(result.isMainFrameNavigation))
+        return false;
     if (!decoder.decode(result.maximumBufferingTime))
         return false;
     if (!decoder.decode(result.derivedCachedDataTypesToRetrieve))
@@ -187,6 +196,25 @@ bool NetworkResourceLoadParameters::decode(IPC::Decoder& decoder, NetworkResourc
     if (!decoder.decode(result.originalRequestHeaders))
         return false;
 
+    std::optional<bool> shouldRestrictHTTPResponseAccess;
+    decoder >> shouldRestrictHTTPResponseAccess;
+    if (!shouldRestrictHTTPResponseAccess)
+        return false;
+    result.shouldRestrictHTTPResponseAccess = *shouldRestrictHTTPResponseAccess;
+
+    if (!decoder.decodeEnum(result.preflightPolicy))
+        return false;
+
+    std::optional<bool> shouldEnableFromOriginResponseHeader;
+    decoder >> shouldEnableFromOriginResponseHeader;
+    if (!shouldEnableFromOriginResponseHeader)
+        return false;
+    result.shouldEnableFromOriginResponseHeader = *shouldEnableFromOriginResponseHeader;
+    if (result.shouldEnableFromOriginResponseHeader) {
+        if (!decoder.decode(result.frameAncestorOrigins))
+            return false;
+    }
+    
 #if ENABLE(CONTENT_EXTENSIONS)
     if (!decoder.decode(result.mainDocumentURL))
         return false;
@@ -197,12 +225,6 @@ bool NetworkResourceLoadParameters::decode(IPC::Decoder& decoder, NetworkResourc
         return false;
     result.userContentControllerIdentifier = *userContentControllerIdentifier;
 #endif
-
-    std::optional<bool> shouldRestrictHTTPResponseAccess;
-    decoder >> shouldRestrictHTTPResponseAccess;
-    if (!shouldRestrictHTTPResponseAccess)
-        return false;
-    result.shouldRestrictHTTPResponseAccess = *shouldRestrictHTTPResponseAccess;
 
     return true;
 }

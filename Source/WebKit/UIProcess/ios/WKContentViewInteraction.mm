@@ -1334,6 +1334,11 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer*)otherGestureRecognizer
 {
+#if USE(APPLE_INTERNAL_SDK)
+    if ([self _internalGestureRecognizer:gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:otherGestureRecognizer])
+        return YES;
+#endif
+
     if (isSamePair(gestureRecognizer, otherGestureRecognizer, _highlightLongPressGestureRecognizer.get(), _longPressGestureRecognizer.get()))
         return YES;
 
@@ -1451,16 +1456,16 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (!connection)
         return NO;
 
-    if ([self _hasValidOutstandingPositionInformationRequest:request]) {
-        return connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidReceivePositionInformation>(_page->pageID(), Seconds::infinity(), IPC::WaitForOption::InterruptWaitingIfSyncMessageArrives);
-    }
+    if ([self _hasValidOutstandingPositionInformationRequest:request])
+        return connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidReceivePositionInformation>(_page->pageID(), 1_s, IPC::WaitForOption::InterruptWaitingIfSyncMessageArrives);
 
-    _page->process().sendSync(Messages::WebPage::GetPositionInformation(request), Messages::WebPage::GetPositionInformation::Reply(_positionInformation), _page->pageID());
+    _hasValidPositionInformation = _page->process().sendSync(Messages::WebPage::GetPositionInformation(request), Messages::WebPage::GetPositionInformation::Reply(_positionInformation), _page->pageID(), 1_s);
+    
+    // FIXME: We need to clean up these handlers in the event that we are not able to collect data, or if the WebProcess crashes.
+    if (_hasValidPositionInformation)
+        [self _invokeAndRemovePendingHandlersValidForCurrentPositionInformation];
 
-    _hasValidPositionInformation = YES;
-    [self _invokeAndRemovePendingHandlersValidForCurrentPositionInformation];
-
-    return YES;
+    return _hasValidPositionInformation;
 }
 
 - (void)requestAsynchronousPositionInformationUpdate:(WebKit::InteractionInformationRequest)request
@@ -1932,9 +1937,6 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
         // Reset the gesture recognizers in case editibility has changed.
         [_textSelectionAssistant setGestureRecognizers];
     }
-
-    if (self.isFirstResponder && !self.suppressAssistantSelectionView)
-        [_textSelectionAssistant activateSelection];
 }
 
 - (void)clearSelection
@@ -3970,6 +3972,9 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 - (void)_startAssistingKeyboard
 {
     [self useSelectionAssistantWithGranularity:WKSelectionGranularityCharacter];
+    
+    if (self.isFirstResponder && !self.suppressAssistantSelectionView)
+        [_textSelectionAssistant activateSelection];
 
 #if !ENABLE(EXTRA_ZOOM_MODE)
     [self reloadInputViews];
@@ -3979,6 +3984,8 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 - (void)_stopAssistingKeyboard
 {
     [self useSelectionAssistantWithGranularity:_webView._selectionGranularity];
+    
+    [_textSelectionAssistant deactivateSelection];
 }
 
 - (const AssistedNodeInformation&)assistedNodeInformation
@@ -4569,13 +4576,13 @@ static bool isAssistableInputType(InputType type)
         [_textSelectionAssistant activateSelection];
 }
 
-- (void)_showPlaybackTargetPicker:(BOOL)hasVideo fromRect:(const IntRect&)elementRect
+- (void)_showPlaybackTargetPicker:(BOOL)hasVideo fromRect:(const IntRect&)elementRect routeSharingPolicy:(WebCore::RouteSharingPolicy)routeSharingPolicy routingContextUID:(NSString *)routingContextUID
 {
 #if ENABLE(AIRPLAY_PICKER)
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000 && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
     if (!_airPlayRoutePicker)
         _airPlayRoutePicker = adoptNS([[WKAirPlayRoutePicker alloc] init]);
-    [_airPlayRoutePicker showFromView:self];
+    [_airPlayRoutePicker showFromView:self routeSharingPolicy:routeSharingPolicy routingContextUID:routingContextUID];
 #else
     if (!_airPlayRoutePicker)
         _airPlayRoutePicker = adoptNS([[WKAirPlayRoutePicker alloc] initWithView:self]);
@@ -5516,6 +5523,23 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
         return nil;
 
     return [(WKFormSelectControl *)_inputPeripheral selectFormPopoverTitle];
+}
+
+- (NSString *)formInputLabel
+{
+#if ENABLE(EXTRA_ZOOM_MODE)
+    if (_presentedFullScreenInputViewController)
+        return [self inputLabelTextForViewController:(id)_presentedFullScreenInputViewController.get()];
+#endif
+    return nil;
+}
+
+- (void)setTimePickerValueToHour:(NSInteger)hour minute:(NSInteger)minute
+{
+#if ENABLE(EXTRA_ZOOM_MODE)
+    if ([_presentedFullScreenInputViewController isKindOfClass:[WKTimePickerViewController class]])
+        [(WKTimePickerViewController *)_presentedFullScreenInputViewController.get() setHour:hour minute:minute];
+#endif
 }
 
 - (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem

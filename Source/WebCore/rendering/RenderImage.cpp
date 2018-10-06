@@ -439,7 +439,7 @@ void RenderImage::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
 
             if (!m_altText.isEmpty()) {
                 String text = document().displayStringModifiedByEncoding(m_altText);
-                context.setFillColor(style().visitedDependentColor(CSSPropertyColor));
+                context.setFillColor(style().visitedDependentColorWithColorFilter(CSSPropertyColor));
                 const FontCascade& font = style().fontCascade();
                 const FontMetrics& fontMetrics = font.fontMetrics();
                 LayoutUnit ascent = fontMetrics.ascent();
@@ -548,7 +548,7 @@ void RenderImage::paintAreaElementFocusRing(PaintInfo& paintInfo, const LayoutPo
     if (needsRepaint)
         page().focusController().setFocusedElementNeedsRepaint();
 #else
-    paintInfo.context().drawFocusRing(path, outlineWidth, areaElementStyle->outlineOffset(), areaElementStyle->visitedDependentColor(CSSPropertyOutlineColor));
+    paintInfo.context().drawFocusRing(path, outlineWidth, areaElementStyle->outlineOffset(), areaElementStyle->visitedDependentColorWithColorFilter(CSSPropertyOutlineColor));
 #endif
 #endif
 }
@@ -593,8 +593,10 @@ ImageDrawResult RenderImage::paintIntoRect(PaintInfo& paintInfo, const FloatRect
     if (drawResult == ImageDrawResult::DidRequestDecoding)
         imageResource().cachedImage()->addPendingImageDrawingClient(*this);
 
+#if USE(SYSTEM_PREVIEW)
     if (imageElement && imageElement->isSystemPreviewImage())
         theme().paintSystemPreviewBadge(*img, paintInfo, rect);
+#endif
 
     return drawResult;
 }

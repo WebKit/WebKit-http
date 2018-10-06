@@ -159,11 +159,20 @@ void UIScriptController::dismissFormAccessoryView()
 {
 }
 
+void UIScriptController::setTimePickerValue(long, long)
+{
+}
+
 void UIScriptController::selectFormAccessoryPickerRow(long rowIndex)
 {
 }
 
 JSRetainPtr<JSStringRef> UIScriptController::selectFormPopoverTitle() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::formInputLabel() const
 {
     return nullptr;
 }

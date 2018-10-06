@@ -42,9 +42,9 @@ class NetworkCORSPreflightChecker;
 
 class NetworkLoadChecker : public RefCounted<NetworkLoadChecker> {
 public:
-    static Ref<NetworkLoadChecker> create(WebCore::FetchOptions&& options, PAL::SessionID sessionID, WebCore::HTTPHeaderMap&& originalHeaders, WebCore::URL&& url, RefPtr<WebCore::SecurityOrigin>&& sourceOrigin)
+    static Ref<NetworkLoadChecker> create(WebCore::FetchOptions&& options, PAL::SessionID sessionID, WebCore::HTTPHeaderMap&& originalHeaders, WebCore::URL&& url, RefPtr<WebCore::SecurityOrigin>&& sourceOrigin, WebCore::PreflightPolicy preflightPolicy)
     {
-        return adoptRef(*new NetworkLoadChecker { WTFMove(options), sessionID, WTFMove(originalHeaders), WTFMove(url), WTFMove(sourceOrigin) });
+        return adoptRef(*new NetworkLoadChecker { WTFMove(options), sessionID, WTFMove(originalHeaders), WTFMove(url), WTFMove(sourceOrigin), preflightPolicy });
     }
     ~NetworkLoadChecker();
 
@@ -52,6 +52,7 @@ public:
     using ValidationHandler = CompletionHandler<void(RequestOrError&&)>;
     void check(WebCore::ResourceRequest&&, ValidationHandler&&);
     void checkRedirection(WebCore::ResourceResponse&, WebCore::ResourceRequest&&, ValidationHandler&&);
+    void prepareRedirectedRequest(WebCore::ResourceRequest&);
 
     WebCore::ResourceError validateResponse(WebCore::ResourceResponse&);
 
@@ -68,7 +69,7 @@ public:
     WebCore::StoredCredentialsPolicy storedCredentialsPolicy() const { return m_storedCredentialsPolicy; }
 
 private:
-    NetworkLoadChecker(WebCore::FetchOptions&&, PAL::SessionID, WebCore::HTTPHeaderMap&&, WebCore::URL&&, RefPtr<WebCore::SecurityOrigin>&&);
+    NetworkLoadChecker(WebCore::FetchOptions&&, PAL::SessionID, WebCore::HTTPHeaderMap&&, WebCore::URL&&, RefPtr<WebCore::SecurityOrigin>&&, WebCore::PreflightPolicy);
 
     WebCore::ContentSecurityPolicy* contentSecurityPolicy() const;
     bool isChecking() const { return !!m_corsPreflightChecker; }
@@ -83,7 +84,7 @@ private:
     void checkCORSRedirectedRequest(WebCore::ResourceRequest&&, ValidationHandler&&);
     void checkCORSRequestWithPreflight(WebCore::ResourceRequest&&, ValidationHandler&&);
 
-    RequestOrError returnError(String&& error);
+    RequestOrError accessControlErrorForValidationHandler(String&&);
 
 #if ENABLE(CONTENT_EXTENSIONS)
     void processContentExtensionRulesForLoad(WebCore::ResourceRequest&&, CompletionHandler<void(WebCore::ResourceRequest&&, const WebCore::ContentExtensions::BlockedStatus&)>&&);
@@ -108,6 +109,8 @@ private:
     mutable std::unique_ptr<WebCore::ContentSecurityPolicy> m_contentSecurityPolicy;
     size_t m_redirectCount { 0 };
     WebCore::URL m_previousURL;
+    WebCore::PreflightPolicy m_preflightPolicy;
+    String m_dntHeaderValue;
 };
 
 }

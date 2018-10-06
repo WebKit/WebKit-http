@@ -60,6 +60,9 @@ public:
     std::optional<WebCore::ContentSecurityPolicyResponseHeaders> cspResponseHeaders;
     WebCore::HTTPHeaderMap originalRequestHeaders;
     bool shouldRestrictHTTPResponseAccess { false };
+    WebCore::PreflightPolicy preflightPolicy { WebCore::PreflightPolicy::Consider };
+    bool shouldEnableFromOriginResponseHeader { false };
+    Vector<RefPtr<WebCore::SecurityOrigin>> frameAncestorOrigins;
 
 #if ENABLE(CONTENT_EXTENSIONS)
     WebCore::URL mainDocumentURL;

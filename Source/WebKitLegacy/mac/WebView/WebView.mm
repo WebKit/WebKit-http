@@ -110,7 +110,6 @@
 #import "WebTextIterator.h"
 #import "WebUIDelegate.h"
 #import "WebUIDelegatePrivate.h"
-#import "WebUserMediaClient.h"
 #import "WebValidationMessageClient.h"
 #import "WebViewGroup.h"
 #import "WebVisitedLinkStore.h"
@@ -1471,9 +1470,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #if !PLATFORM(IOS)
     WebCore::provideDeviceOrientationTo(_private->page, new WebDeviceOrientationClient(self));
 #endif
-#endif
-#if ENABLE(MEDIA_STREAM)
-    WebCore::provideUserMediaTo(_private->page, new WebUserMediaClient(self));
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -3038,10 +3034,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    DeprecatedGlobalSettings::setMockCaptureDevicesEnabled([preferences mockCaptureDevicesEnabled]);
-    DeprecatedGlobalSettings::setMediaCaptureRequiresSecureConnection([preferences mediaCaptureRequiresSecureConnection]);
-    RuntimeEnabledFeatures::sharedFeatures().setMediaStreamEnabled([preferences mediaStreamEnabled]);
-    RuntimeEnabledFeatures::sharedFeatures().setMediaDevicesEnabled([preferences mediaDevicesEnabled]);
+    DeprecatedGlobalSettings::setMockCaptureDevicesEnabled(false);
+    DeprecatedGlobalSettings::setMediaCaptureRequiresSecureConnection(true);
+    RuntimeEnabledFeatures::sharedFeatures().setMediaStreamEnabled(false);
+    RuntimeEnabledFeatures::sharedFeatures().setMediaDevicesEnabled(false);
 #endif
 
 #if ENABLE(WEB_RTC)
@@ -3065,6 +3061,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setViewportFitEnabled([preferences viewportFitEnabled]);
     settings.setConstantPropertiesEnabled([preferences constantPropertiesEnabled]);
+    settings.setColorFilterEnabled([preferences colorFilterEnabled]);
 
 #if ENABLE(GAMEPAD)
     RuntimeEnabledFeatures::sharedFeatures().setGamepadsEnabled([preferences gamepadsEnabled]);
@@ -9921,8 +9918,9 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
                 } else
                     [_private->_textTouchBarItemController setTextIsUnderlined:(style->textDecorationsInEffect() & TextDecorationUnderline)];
 
-                if (style->visitedDependentColor(CSSPropertyColor).isValid())
-                    [_private->_textTouchBarItemController setTextColor:nsColor(style->visitedDependentColor(CSSPropertyColor))];
+                Color textColor = style->visitedDependentColor(CSSPropertyColor);
+                if (textColor.isValid())
+                    [_private->_textTouchBarItemController setTextColor:nsColor(textColor)];
 
                 [_private->_textTouchBarItemController setCurrentTextAlignment:nsTextAlignmentFromRenderStyle(style)];
 
@@ -10076,24 +10074,6 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
 }
 
 @end
-
-#if ENABLE(MEDIA_STREAM)
-@implementation WebView (WebViewUserMedia)
-
-- (void)_setUserMediaClient:(id<WebUserMediaClient>)userMediaClient
-{
-    if (_private)
-        _private->m_userMediaClient = userMediaClient;
-}
-
-- (id<WebUserMediaClient>)_userMediaClient
-{
-    if (_private)
-        return _private->m_userMediaClient;
-    return nil;
-}
-@end
-#endif
 
 @implementation WebView (WebViewGeolocation)
 

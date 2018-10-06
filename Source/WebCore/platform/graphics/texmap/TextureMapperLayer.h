@@ -87,8 +87,7 @@ public:
     void setRepaintCount(int);
     void setContentsLayer(TextureMapperPlatformLayer*);
     void setAnimations(const TextureMapperAnimations&);
-    void setFixedToViewport(bool);
-    bool fixedToViewport() const { return m_fixedToViewport; }
+    const TextureMapperAnimations& animations() const { return m_animations; }
     void setBackingStore(TextureMapperBackingStore*);
 
     bool applyAnimationsRecursively(MonotonicTime);
@@ -96,8 +95,6 @@ public:
     bool descendantsOrSelfHaveRunningAnimations() const;
 
     void paint();
-
-    void setScrollPositionDeltaIfNeeded(const FloatSize&);
 
     void addChild(TextureMapperLayer*);
 
@@ -114,8 +111,6 @@ private:
 
     static void sortByZOrder(Vector<TextureMapperLayer* >& array);
 
-    FloatPoint adjustedPosition() const { return m_state.pos + m_scrollPositionDelta; }
-    bool isAncestorFixedToViewport() const;
     TransformationMatrix replicaTransform();
     void removeFromParent();
     void removeAllChildren();
@@ -182,7 +177,8 @@ private:
         bool showRepaintCounter : 1;
 
         State()
-            : opacity(1)
+            : anchorPoint(0.5, 0.5, 0)
+            , opacity(1)
             , maskLayer(0)
             , replicaLayer(0)
             , debugBorderWidth(0)
@@ -203,8 +199,6 @@ private:
     State m_state;
     TextureMapper* m_textureMapper { nullptr };
     TextureMapperAnimations m_animations;
-    FloatSize m_scrollPositionDelta;
-    bool m_fixedToViewport { false };
     uint32_t m_id { 0 };
 
     struct {

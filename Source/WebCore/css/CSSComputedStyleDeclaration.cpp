@@ -143,6 +143,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyClear,
     CSSPropertyClip,
     CSSPropertyColor,
+    CSSPropertyColorFilter,
     CSSPropertyCounterIncrement,
     CSSPropertyCounterReset,
     CSSPropertyContent,
@@ -397,7 +398,6 @@ static const CSSPropertyID computedProperties[] = {
 #if PLATFORM(IOS)
     CSSPropertyWebkitTouchCallout,
 #endif
-    CSSPropertyShapeOutside,
 #if ENABLE(TOUCH_EVENTS)
     CSSPropertyWebkitTapHighlightColor,
 #endif
@@ -430,7 +430,6 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyCy,
     CSSPropertyMask,
     CSSPropertyMaskType,
-    CSSPropertyFilter,
     CSSPropertyFloodColor,
     CSSPropertyFloodOpacity,
     CSSPropertyLightingColor,
@@ -3846,6 +3845,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::valueForPropertyinStyle(const RenderSty
             return shapePropertyValue(style, style.shapeOutside());
         case CSSPropertyFilter:
             return valueForFilter(style, style.filter());
+        case CSSPropertyColorFilter:
+            return valueForFilter(style, style.colorFilter());
 #if ENABLE(FILTERS_LEVEL_2)
         case CSSPropertyWebkitBackdropFilter:
             return valueForFilter(style, style.backdropFilter());

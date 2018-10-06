@@ -104,6 +104,7 @@ void UIDelegate::setDelegate(id <WKUIDelegate> delegate)
     m_delegateMethods.webViewRunJavaScriptTextInputPanelWithPromptDefaultTextInitiatedByFrameCompletionHandler = [delegate respondsToSelector:@selector(webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:)];
     m_delegateMethods.webViewRunBeforeUnloadConfirmPanelWithMessageInitiatedByFrameCompletionHandler = [delegate respondsToSelector:@selector(_webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler:)];
     m_delegateMethods.webViewRequestGeolocationPermissionForFrameDecisionHandler = [delegate respondsToSelector:@selector(_webView:requestGeolocationPermissionForFrame:decisionHandler:)];
+    m_delegateMethods.webViewDidResignInputElementStrongPasswordAppearanceWithUserInfo = [delegate respondsToSelector:@selector(_webView:didResignInputElementStrongPasswordAppearanceWithUserInfo:)];
 
 #if PLATFORM(MAC)
     m_delegateMethods.showWebView = [delegate respondsToSelector:@selector(_showWebView:)];
@@ -120,7 +121,6 @@ void UIDelegate::setDelegate(id <WKUIDelegate> delegate)
     m_delegateMethods.webViewUnavailablePlugInButtonClicked = [delegate respondsToSelector:@selector(_webView:unavailablePlugInButtonClickedWithReason:plugInInfo:)];
     m_delegateMethods.webViewHandleAutoplayEventWithFlags = [delegate respondsToSelector:@selector(_webView:handleAutoplayEvent:withFlags:)];
     m_delegateMethods.webViewDidClickAutoFillButtonWithUserInfo = [delegate respondsToSelector:@selector(_webView:didClickAutoFillButtonWithUserInfo:)];
-    m_delegateMethods.webViewDidResignInputElementStrongPasswordAppearanceWithUserInfo = [delegate respondsToSelector:@selector(_webView:didResignInputElementStrongPasswordAppearanceWithUserInfo:)];
     m_delegateMethods.webViewDrawHeaderInRectForPageWithTitleURL = [delegate respondsToSelector:@selector(_webView:drawHeaderInRect:forPageWithTitle:URL:)];
     m_delegateMethods.webViewDrawFooterInRectForPageWithTitleURL = [delegate respondsToSelector:@selector(_webView:drawFooterInRect:forPageWithTitle:URL:)];
     m_delegateMethods.webViewHeaderHeight = [delegate respondsToSelector:@selector(_webViewHeaderHeight:)];
@@ -160,6 +160,7 @@ void UIDelegate::setDelegate(id <WKUIDelegate> delegate)
 #if ENABLE(CONTEXT_MENUS)
     m_delegateMethods.webViewContextMenuForElement = [delegate respondsToSelector:@selector(_webView:contextMenu:forElement:)];
     m_delegateMethods.webViewContextMenuForElementUserInfo = [delegate respondsToSelector:@selector(_webView:contextMenu:forElement:userInfo:)];
+    m_delegateMethods.webViewGetContextMenuFromProposedMenuForElementUserInfoCompletionHandler = [delegate respondsToSelector:@selector(_webView:getContextMenuFromProposedMenu:forElement:userInfo:completionHandler:)];
 #endif
     
     m_delegateMethods.webViewHasVideoInPictureInPictureDidChange = [delegate respondsToSelector:@selector(_webView:hasVideoInPictureInPictureDidChange:)];
@@ -175,21 +176,34 @@ UIDelegate::ContextMenuClient::~ContextMenuClient()
 {
 }
 
-RetainPtr<NSMenu> UIDelegate::ContextMenuClient::menuFromProposedMenu(WebPageProxy&, NSMenu *menu, const WebHitTestResultData&, API::Object* userInfo)
+void UIDelegate::ContextMenuClient::menuFromProposedMenu(WebPageProxy&, NSMenu *menu, const WebHitTestResultData&, API::Object* userInfo, CompletionHandler<void(RetainPtr<NSMenu>&&)>&& completionHandler)
 {
-    if (!m_uiDelegate.m_delegateMethods.webViewContextMenuForElement && !m_uiDelegate.m_delegateMethods.webViewContextMenuForElementUserInfo)
-        return menu;
+    if (!m_uiDelegate.m_delegateMethods.webViewContextMenuForElement
+        && !m_uiDelegate.m_delegateMethods.webViewContextMenuForElementUserInfo
+        && !m_uiDelegate.m_delegateMethods.webViewGetContextMenuFromProposedMenuForElementUserInfoCompletionHandler)
+        return completionHandler(menu);
 
     auto delegate = m_uiDelegate.m_delegate.get();
     if (!delegate)
-        return menu;
+        return completionHandler(menu);
 
     auto contextMenuElementInfo = adoptNS([[_WKContextMenuElementInfo alloc] init]);
 
+    if (m_uiDelegate.m_delegateMethods.webViewGetContextMenuFromProposedMenuForElementUserInfoCompletionHandler) {
+        auto checker = CompletionHandlerCallChecker::create(delegate.get(), @selector(_webView:getContextMenuFromProposedMenu:forElement:userInfo:completionHandler:));
+        [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView getContextMenuFromProposedMenu:menu forElement:contextMenuElementInfo.get() userInfo:userInfo ? static_cast<id <NSSecureCoding>>(userInfo->wrapper()) : nil completionHandler:BlockPtr<void(NSMenu *)>::fromCallable([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)] (NSMenu *menu) {
+            if (checker->completionHandlerHasBeenCalled())
+                return;
+            checker->didCallCompletionHandler();
+            completionHandler(menu);
+        }).get()];
+        return;
+    }
+    
     if (m_uiDelegate.m_delegateMethods.webViewContextMenuForElement)
-        return [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView contextMenu:menu forElement:contextMenuElementInfo.get()];
+        return completionHandler([(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView contextMenu:menu forElement:contextMenuElementInfo.get()]);
 
-    return [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView contextMenu:menu forElement:contextMenuElementInfo.get() userInfo:userInfo ? static_cast<id <NSSecureCoding>>(userInfo->wrapper()) : nil];
+    completionHandler([(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView contextMenu:menu forElement:contextMenuElementInfo.get() userInfo:userInfo ? static_cast<id <NSSecureCoding>>(userInfo->wrapper()) : nil]);
 }
 #endif
 
@@ -330,6 +344,18 @@ void UIDelegate::UIClient::decidePolicyForGeolocationPermissionRequest(WebKit::W
         checker->didCallCompletionHandler();
         completionHandler(result);
     }).get()];
+}
+
+void UIDelegate::UIClient::didResignInputElementStrongPasswordAppearance(WebPageProxy&, API::Object* userInfo)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewDidResignInputElementStrongPasswordAppearanceWithUserInfo)
+        return;
+
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+
+    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView didResignInputElementStrongPasswordAppearanceWithUserInfo:userInfo ? static_cast<id <NSSecureCoding>>(userInfo->wrapper()) : nil];
 }
 
 bool UIDelegate::UIClient::canRunBeforeUnloadConfirmPanel() const
@@ -696,18 +722,6 @@ void UIDelegate::UIClient::didClickAutoFillButton(WebPageProxy&, API::Object* us
         return;
     
     [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView didClickAutoFillButtonWithUserInfo:userInfo ? static_cast<id <NSSecureCoding>>(userInfo->wrapper()) : nil];
-}
-
-void UIDelegate::UIClient::didResignInputElementStrongPasswordAppearance(WebPageProxy&, API::Object* userInfo)
-{
-    if (!m_uiDelegate.m_delegateMethods.webViewDidResignInputElementStrongPasswordAppearanceWithUserInfo)
-        return;
-
-    auto delegate = m_uiDelegate.m_delegate.get();
-    if (!delegate)
-        return;
-
-    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView didResignInputElementStrongPasswordAppearanceWithUserInfo:userInfo ? static_cast<id <NSSecureCoding>>(userInfo->wrapper()) : nil];
 }
 
 void UIDelegate::UIClient::handleAutoplayEvent(WebPageProxy&, WebCore::AutoplayEvent event, OptionSet<WebCore::AutoplayEventFlags> flags)

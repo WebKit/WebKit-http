@@ -26,9 +26,7 @@
 #include "config.h"
 #include "WordLock.h"
 
-#include "ThreadSpecific.h"
 #include "Threading.h"
-#include "ThreadingPrimitives.h"
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -59,20 +57,6 @@ struct ThreadData {
     // The queue itself.
     ThreadData* queueTail { nullptr };
 };
-
-ThreadSpecific<ThreadData, CanBeGCThread::True>* threadData;
-
-ThreadData* myThreadData()
-{
-    static std::once_flag initializeOnce;
-    std::call_once(
-        initializeOnce,
-        [] {
-            threadData = new ThreadSpecific<ThreadData, CanBeGCThread::True>();
-        });
-
-    return *threadData;
-}
 
 } // anonymous namespace
 
@@ -106,12 +90,8 @@ NEVER_INLINE void WordLock::lockSlow()
 
         // Need to put ourselves on the queue. Create the queue if one does not exist. This requries
         // owning the queue for a little bit. The lock that controls the queue is itself a spinlock.
-        // But before we acquire the queue spinlock, we make sure that we have a ThreadData for this
-        // thread.
-        ThreadData* me = myThreadData();
-        ASSERT(!me->shouldPark);
-        ASSERT(!me->nextInQueue);
-        ASSERT(!me->queueTail);
+
+        ThreadData me;
 
         // Reload the current word value, since some time may have passed.
         currentWordValue = m_word.load();
@@ -125,15 +105,15 @@ NEVER_INLINE void WordLock::lockSlow()
             continue;
         }
         
-        me->shouldPark = true;
+        me.shouldPark = true;
 
         // We own the queue. Nobody can enqueue or dequeue until we're done. Also, it's not possible
         // to release the WordLock while we hold the queue lock.
         ThreadData* queueHead = bitwise_cast<ThreadData*>(currentWordValue & ~queueHeadMask);
         if (queueHead) {
             // Put this thread at the end of the queue.
-            queueHead->queueTail->nextInQueue = me;
-            queueHead->queueTail = me;
+            queueHead->queueTail->nextInQueue = &me;
+            queueHead->queueTail = &me;
 
             // Release the queue lock.
             currentWordValue = m_word.load();
@@ -143,8 +123,8 @@ NEVER_INLINE void WordLock::lockSlow()
             m_word.store(currentWordValue & ~isQueueLockedBit);
         } else {
             // Make this thread be the queue-head.
-            queueHead = me;
-            me->queueTail = me;
+            queueHead = &me;
+            me.queueTail = &me;
 
             // Release the queue lock and install ourselves as the head. No need for a CAS loop, since
             // we own the queue lock.
@@ -164,14 +144,14 @@ NEVER_INLINE void WordLock::lockSlow()
         // releasing thread holds me's parkingLock.
 
         {
-            std::unique_lock<std::mutex> locker(me->parkingLock);
-            while (me->shouldPark)
-                me->parkingCondition.wait(locker);
+            std::unique_lock<std::mutex> locker(me.parkingLock);
+            while (me.shouldPark)
+                me.parkingCondition.wait(locker);
         }
 
-        ASSERT(!me->shouldPark);
-        ASSERT(!me->nextInQueue);
-        ASSERT(!me->queueTail);
+        ASSERT(!me.shouldPark);
+        ASSERT(!me.nextInQueue);
+        ASSERT(!me.queueTail);
         
         // Now we can loop around and try to acquire the lock again.
     }
@@ -254,12 +234,15 @@ NEVER_INLINE void WordLock::unlockSlow()
     // We do this carefully because this may run either before or during the parkingLock critical
     // section in lockSlow().
     {
+        // Be sure to hold the lock across our call to notify_one() because a spurious wakeup could
+        // cause the thread at the head of the queue to exit and delete queueHead.
         std::lock_guard<std::mutex> locker(queueHead->parkingLock);
         queueHead->shouldPark = false;
+
+        // Doesn't matter if we notify_all() or notify_one() here since the only thread that could be
+        // waiting is queueHead.
+        queueHead->parkingCondition.notify_one();
     }
-    // Doesn't matter if we notify_all() or notify_one() here since the only thread that could be
-    // waiting is queueHead.
-    queueHead->parkingCondition.notify_one();
 
     // The old queue head can now contend for the lock again. We're done!
 }

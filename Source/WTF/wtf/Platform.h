@@ -1070,6 +1070,10 @@
 #endif
 #endif
 
+#if PLATFORM(IOS) && USE(QUICK_LOOK)
+#define USE_SYSTEM_PREVIEW 1
+#endif
+
 #if PLATFORM(COCOA)
 
 #define USE_AVFOUNDATION 1
@@ -1080,7 +1084,7 @@
 #define HAVE_PARENTAL_CONTROLS 1
 #endif
 
-#if !PLATFORM(APPLETV) && !ENABLE(MINIMAL_SIMULATOR)
+#if !PLATFORM(APPLETV)
 #define HAVE_AVKIT 1
 #endif
 
@@ -1292,8 +1296,7 @@
 #define USE_MEDIATOOLBOX 1
 #endif
 
-/* FIXME: Enable USE_OS_LOG when building with the public iOS 10 SDK once we fix <rdar://problem/27758343>. */
-#if PLATFORM(MAC) || (PLATFORM(IOS) && USE(APPLE_INTERNAL_SDK))
+#if PLATFORM(MAC) || PLATFORM(IOS)
 #define USE_OS_LOG 1
 #if USE(APPLE_INTERNAL_SDK)
 #define USE_OS_STATE 1

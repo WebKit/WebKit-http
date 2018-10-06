@@ -4280,6 +4280,13 @@ void Document::takeDOMWindowFrom(Document* document)
     ASSERT(m_domWindow->frame() == m_frame);
 }
 
+WindowProxy* Document::windowProxy() const
+{
+    if (!m_frame)
+        return nullptr;
+    return &m_frame->windowProxy();
+}
+
 Document& Document::contextDocument() const
 {
     if (m_contextDocument)
@@ -5315,8 +5322,8 @@ void Document::addSVGUseElement(SVGUseElement& element)
 
 void Document::removeSVGUseElement(SVGUseElement& element)
 {
-    bool didRemove = m_svgUseElements.remove(&element);
-    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(didRemove);
+    m_svgUseElements.remove(&element);
+    // FIXME: Assert that element was in m_svgUseElements once re-entrancy to update style and layout have been removed.
 }
 
 bool Document::hasSVGRootNode() const
@@ -7182,7 +7189,7 @@ void Document::removePlaybackTargetPickerClient(MediaPlaybackTargetClient& clien
     page->removePlaybackTargetPickerClient(clientId);
 }
 
-void Document::showPlaybackTargetPicker(MediaPlaybackTargetClient& client, bool isVideo)
+void Document::showPlaybackTargetPicker(MediaPlaybackTargetClient& client, bool isVideo, RouteSharingPolicy routeSharingPolicy, const String& routingContextUID)
 {
     Page* page = this->page();
     if (!page)
@@ -7192,7 +7199,7 @@ void Document::showPlaybackTargetPicker(MediaPlaybackTargetClient& client, bool 
     if (it == m_clientToIDMap.end())
         return;
 
-    page->showPlaybackTargetPicker(it->value, view()->lastKnownMousePosition(), isVideo);
+    page->showPlaybackTargetPicker(it->value, view()->lastKnownMousePosition(), isVideo, routeSharingPolicy, routingContextUID);
 }
 
 void Document::playbackTargetPickerClientStateDidChange(MediaPlaybackTargetClient& client, MediaProducer::MediaStateFlags state)
@@ -7794,5 +7801,13 @@ void Document::setServiceWorkerConnection(SWClientConnection* serviceWorkerConne
     m_serviceWorkerConnection->registerServiceWorkerClient(topOrigin(), ServiceWorkerClientData::from(*this, *serviceWorkerConnection), controllingServiceWorkerRegistrationIdentifier);
 }
 #endif
+
+String Document::signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String& challengeString, const URL& url)
+{
+    Page* page = this->page();
+    if (!page)
+        return emptyString();
+    return page->chrome().client().signedPublicKeyAndChallengeString(keySizeIndex, challengeString, url);
+}
 
 } // namespace WebCore

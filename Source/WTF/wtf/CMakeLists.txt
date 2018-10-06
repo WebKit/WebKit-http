@@ -129,6 +129,7 @@ set(WTF_PUBLIC_HEADERS
     MessageQueue.h
     MetaAllocator.h
     MetaAllocatorHandle.h
+    MetaAllocatorPtr.h
     MonotonicTime.h
     NakedPtr.h
     NaturalLoops.h
@@ -167,6 +168,7 @@ set(WTF_PUBLIC_HEADERS
     PriorityQueue.h
     ProcessID.h
     ProcessPrivilege.h
+    PtrTag.h
     RAMSize.h
     RandomDevice.h
     RandomNumber.h

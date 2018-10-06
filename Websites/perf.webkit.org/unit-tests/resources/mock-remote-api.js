@@ -1,3 +1,4 @@
+
 var MockRemoteAPI = {
     url: function (path)
     {
@@ -57,18 +58,26 @@ var MockRemoteAPI = {
         }
         return this._waitingPromise;
     },
-    inject: function (urlPrefix)
+    inject: function (urlPrefix, privilegedAPI)
     {
-        var originalRemoteAPI = global.RemoteAPI;
+        let originalRemoteAPI;
+        let originalPrivilegedAPI;
 
-        beforeEach(function () {
+        beforeEach(() => {
             MockRemoteAPI.reset(urlPrefix);
             originalRemoteAPI = global.RemoteAPI;
             global.RemoteAPI = MockRemoteAPI;
+            originalPrivilegedAPI = global.PrivilegedAPI;
+            global.PrivilegedAPI = privilegedAPI;
+            if (privilegedAPI._token)
+                privilegedAPI._token = null;
         });
 
-        afterEach(function () {        
+        afterEach(() => {
             global.RemoteAPI = originalRemoteAPI;
+            global.PrivilegedAPI = originalPrivilegedAPI;
+            if (privilegedAPI._token)
+                privilegedAPI._token = null;
         });
 
         return MockRemoteAPI.requests;

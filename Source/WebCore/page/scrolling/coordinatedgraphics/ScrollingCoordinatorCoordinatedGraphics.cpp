@@ -1,24 +1,26 @@
 /*
- * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
+ * Copyright (C) 2018 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above
+ *    copyright notice, this list of conditions and the following
+ *    disclaimer in the documentation and/or other materials provided
+ *    with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
@@ -28,83 +30,65 @@
 
 #if USE(COORDINATED_GRAPHICS)
 
-#include "CoordinatedGraphicsLayer.h"
-#include "FrameView.h"
-#include "HostWindow.h"
-#include "Page.h"
-#include "RenderLayer.h"
-#include "RenderLayerBacking.h"
-#include "ScrollingConstraints.h"
-#include "ScrollingStateFixedNode.h"
-#include "ScrollingStateScrollingNode.h"
-#include "ScrollingStateStickyNode.h"
-#include "ScrollingStateTree.h"
+#include "ScrollingThread.h"
+#include "ScrollingTreeCoordinatedGraphics.h"
 
 namespace WebCore {
 
+Ref<ScrollingCoordinator> ScrollingCoordinator::create(Page* page)
+{
+    return adoptRef(*new ScrollingCoordinatorCoordinatedGraphics(page));
+}
+
 ScrollingCoordinatorCoordinatedGraphics::ScrollingCoordinatorCoordinatedGraphics(Page* page)
-    : ScrollingCoordinator(page)
-    , m_scrollingStateTree(std::make_unique<ScrollingStateTree>())
+    : AsyncScrollingCoordinator(page)
+    , m_scrollingStateTreeCommitterTimer(RunLoop::main(), this, &ScrollingCoordinatorCoordinatedGraphics::commitTreeState)
 {
+    setScrollingTree(ScrollingTreeCoordinatedGraphics::create(*this));
 }
 
-ScrollingCoordinatorCoordinatedGraphics::~ScrollingCoordinatorCoordinatedGraphics() = default;
-
-ScrollingNodeID ScrollingCoordinatorCoordinatedGraphics::attachToStateTree(ScrollingNodeType nodeType, ScrollingNodeID newNodeID, ScrollingNodeID parentID)
+ScrollingCoordinatorCoordinatedGraphics::~ScrollingCoordinatorCoordinatedGraphics()
 {
-    return m_scrollingStateTree->attachNode(nodeType, newNodeID, parentID);
+    ASSERT(!scrollingTree());
 }
 
-void ScrollingCoordinatorCoordinatedGraphics::detachFromStateTree(ScrollingNodeID nodeID)
+void ScrollingCoordinatorCoordinatedGraphics::pageDestroyed()
 {
-    auto* node = m_scrollingStateTree->stateNodeForID(nodeID);
-    if (node && node->nodeType() == FixedNode)
-        downcast<CoordinatedGraphicsLayer>(*static_cast<GraphicsLayer*>(node->layer())).setFixedToViewport(false);
+    AsyncScrollingCoordinator::pageDestroyed();
 
-    m_scrollingStateTree->detachNode(nodeID);
+    m_scrollingStateTreeCommitterTimer.stop();
+
+    releaseScrollingTree();
 }
 
-void ScrollingCoordinatorCoordinatedGraphics::clearStateTree()
+void ScrollingCoordinatorCoordinatedGraphics::commitTreeStateIfNeeded()
 {
-    m_scrollingStateTree->clear();
+    commitTreeState();
+    m_scrollingStateTreeCommitterTimer.stop();
 }
 
-void ScrollingCoordinatorCoordinatedGraphics::updateNodeLayer(ScrollingNodeID nodeID, GraphicsLayer* graphicsLayer)
+bool ScrollingCoordinatorCoordinatedGraphics::handleWheelEvent(FrameView&, const PlatformWheelEvent&)
 {
-    auto* node = m_scrollingStateTree->stateNodeForID(nodeID);
-    if (!node)
+    return false;
+}
+
+void ScrollingCoordinatorCoordinatedGraphics::scheduleTreeStateCommit()
+{
+    if (!m_scrollingStateTreeCommitterTimer.isActive())
+        m_scrollingStateTreeCommitterTimer.startOneShot(0_s);
+}
+
+void ScrollingCoordinatorCoordinatedGraphics::commitTreeState()
+{
+    if (!scrollingStateTree()->hasChangedProperties())
         return;
 
-    node->setLayer(graphicsLayer);
-}
+    RefPtr<ThreadedScrollingTree> threadedScrollingTree = downcast<ThreadedScrollingTree>(scrollingTree());
 
-void ScrollingCoordinatorCoordinatedGraphics::updateNodeViewportConstraints(ScrollingNodeID nodeID, const ViewportConstraints& constraints)
-{
-    auto* node = m_scrollingStateTree->stateNodeForID(nodeID);
-    if (!node)
-        return;
-
-    switch (constraints.constraintType()) {
-    case ViewportConstraints::FixedPositionConstraint: {
-        auto& layer = node->layer();
-        if (layer.representsGraphicsLayer())
-            downcast<CoordinatedGraphicsLayer>(static_cast<GraphicsLayer*>(layer))->setFixedToViewport(true);
-        break;
-    }
-    case ViewportConstraints::StickyPositionConstraint:
-        break; // FIXME : Support sticky elements.
-    default:
-        ASSERT_NOT_REACHED();
-    }
-}
-
-bool ScrollingCoordinatorCoordinatedGraphics::requestScrollPositionUpdate(FrameView& frameView, const IntPoint& scrollPosition)
-{
-    if (!frameView.delegatesScrolling())
-        return false;
-
-    frameView.hostWindow()->delegatedScrollRequested(scrollPosition);
-    return true;
+    auto treeState = scrollingStateTree()->commit(LayerRepresentation::PlatformLayerRepresentation);
+    ScrollingThread::dispatch([threadedScrollingTree, treeState = WTFMove(treeState)]() mutable {
+        threadedScrollingTree->commitTreeState(WTFMove(treeState));
+    });
 }
 
 } // namespace WebCore

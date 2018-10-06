@@ -1053,7 +1053,7 @@ void RenderTheme::paintSliderTicks(const RenderObject& o, const PaintInfo& paint
     }
     Ref<HTMLCollection> options = dataList->options();
     GraphicsContextStateSaver stateSaver(paintInfo.context());
-    paintInfo.context().setFillColor(o.style().visitedDependentColor(CSSPropertyColor));
+    paintInfo.context().setFillColor(o.style().visitedDependentColorWithColorFilter(CSSPropertyColor));
     for (unsigned i = 0; Node* node = options->item(i); i++) {
         ASSERT(is<HTMLOptionElement>(*node));
         HTMLOptionElement& optionElement = downcast<HTMLOptionElement>(*node);
@@ -1357,6 +1357,7 @@ String RenderTheme::fileListNameForWidth(const FileList* fileList, const FontCas
     return StringTruncator::centerTruncate(string, width, font);
 }
 
+#if USE(SYSTEM_PREVIEW)
 void RenderTheme::paintSystemPreviewBadge(Image& image, const PaintInfo& paintInfo, const FloatRect& rect)
 {
     // The default implementation paints a small marker
@@ -1375,6 +1376,7 @@ void RenderTheme::paintSystemPreviewBadge(Image& image, const PaintInfo& paintIn
     auto color = Color { 255, 0, 0 };
     context.fillRoundedRect(roundedMarkerRect, color);
 }
+#endif
 
 #if ENABLE(TOUCH_EVENTS)
 

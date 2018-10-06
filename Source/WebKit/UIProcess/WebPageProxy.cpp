@@ -138,6 +138,7 @@
 #include <WebCore/PerformanceLoggingClient.h>
 #include <WebCore/PublicSuffix.h>
 #include <WebCore/RenderEmbeddedObject.h>
+#include <WebCore/SSLKeyGenerator.h>
 #include <WebCore/SerializedCryptoKeyWrap.h>
 #include <WebCore/SharedBuffer.h>
 #include <WebCore/TextCheckerClient.h>
@@ -155,7 +156,7 @@
 #include "APIApplicationManifest.h"
 #endif
 
-#if ENABLE(ASYNC_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING) && PLATFORM(COCOA)
 #include "RemoteScrollingCoordinatorProxy.h"
 #endif
 
@@ -506,6 +507,11 @@ bool WebPageProxy::isValid() const
     return m_isValid;
 }
 
+void WebPageProxy::notifyProcessPoolToPrewarm()
+{
+    m_process->processPool().didReachGoodTimeToPrewarm();
+}
+
 void WebPageProxy::setPreferences(WebPreferences& preferences)
 {
     if (&preferences == m_preferences.ptr())
@@ -681,7 +687,7 @@ SuspendedPageProxy* WebPageProxy::maybeCreateSuspendedPage(WebProcessProxy& proc
     return m_suspendedPage.get();
 }
 
-void WebPageProxy::suspendedPageProcessClosed(SuspendedPageProxy& page)
+void WebPageProxy::suspendedPageClosed(SuspendedPageProxy& page)
 {
     ASSERT_UNUSED(page, &page == m_suspendedPage.get());
     m_suspendedPage = nullptr;
@@ -798,7 +804,7 @@ void WebPageProxy::initializeWebPage()
     m_drawingArea = m_pageClient.createDrawingAreaProxy();
     ASSERT(m_drawingArea);
 
-#if ENABLE(ASYNC_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING) && PLATFORM(COCOA)
     if (m_drawingArea->type() == DrawingAreaTypeRemoteLayerTree) {
         m_scrollingCoordinatorProxy = std::make_unique<RemoteScrollingCoordinatorProxy>(*this);
 #if PLATFORM(IOS)
@@ -2010,7 +2016,7 @@ static WebWheelEvent coalescedWheelEvent(Deque<NativeWebWheelEvent>& queue, Vect
 
 void WebPageProxy::handleWheelEvent(const NativeWebWheelEvent& event)
 {
-#if ENABLE(ASYNC_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING) && PLATFORM(COCOA)
     if (m_scrollingCoordinatorProxy && m_scrollingCoordinatorProxy->handleWheelEvent(platform(event)))
         return;
 #endif
@@ -2184,7 +2190,7 @@ static TrackingType mergeTrackingTypes(TrackingType a, TrackingType b)
 
 void WebPageProxy::updateTouchEventTracking(const WebTouchEvent& touchStartEvent)
 {
-#if ENABLE(ASYNC_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING) && PLATFORM(COCOA)
     const EventNames& names = eventNames();
     for (auto& touchPoint : touchStartEvent.touchPoints()) {
         IntPoint location = touchPoint.location();
@@ -3845,8 +3851,10 @@ void WebPageProxy::didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, cons
 
     m_loaderClient->didFirstVisuallyNonEmptyLayoutForFrame(*this, *frame, m_process->transformHandlesToObjects(userData.object()).get());
 
-    if (frame->isMainFrame())
+    if (frame->isMainFrame()) {
         m_pageClient.didFirstVisuallyNonEmptyLayoutForMainFrame();
+        notifyProcessPoolToPrewarm();
+    }
 }
 
 void WebPageProxy::didLayoutForCustomContentProvider()
@@ -3949,6 +3957,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
     navigation->setShouldForceDownload(!navigationActionData.downloadAttribute.isNull());
     navigation->setCurrentRequest(ResourceRequest(request), m_process->coreProcessIdentifier());
     navigation->setCurrentRequestIsRedirect(navigationActionData.isRedirect);
+    navigation->setTreatAsSameOriginNavigation(navigationActionData.treatAsSameOriginNavigation);
     navigation->setIsCrossOriginWindowOpenNavigation(navigationActionData.isCrossOriginWindowOpenNavigation);
     navigation->setOpener(navigationActionData.opener);
 
@@ -6023,7 +6032,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.mediaVolume = m_mediaVolume;
     parameters.muted = m_mutedState;
     parameters.mayStartMediaWhenInWindow = m_mayStartMediaWhenInWindow;
-    parameters.minimumLayoutSize = m_minimumLayoutSize;
+    parameters.viewLayoutSize = m_viewLayoutSize;
     parameters.autoSizingShouldExpandToViewHeight = m_autoSizingShouldExpandToViewHeight;
     parameters.viewportSizeForCSSViewportUnits = m_viewportSizeForCSSViewportUnits;
     parameters.scrollPinningBehavior = m_scrollPinningBehavior;
@@ -6050,8 +6059,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.textAutosizingWidth = textAutosizingWidth();
     parameters.mimeTypesWithCustomContentProviders = m_pageClient.mimeTypesWithCustomContentProviders();
     parameters.ignoresViewportScaleLimits = m_forceAlwaysUserScalable;
-    parameters.viewportConfigurationMinimumLayoutSize = m_viewportConfigurationMinimumLayoutSize;
-    parameters.viewportConfigurationViewSize = m_viewportConfigurationViewSize;
+    parameters.viewportConfigurationViewLayoutSize = m_viewportConfigurationViewLayoutSize;
     parameters.maximumUnobscuredSize = m_maximumUnobscuredSize;
 #endif
 
@@ -6541,21 +6549,21 @@ void WebPageProxy::savePDFToFileInDownloadsFolder(String&& suggestedFilename, UR
         API::Data::create(dataReference.data(), dataReference.size()).get());
 }
 
-void WebPageProxy::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
+void WebPageProxy::setViewLayoutSize(const IntSize& viewLayoutSize)
 {
-    if (m_minimumLayoutSize == minimumLayoutSize)
+    if (m_viewLayoutSize == viewLayoutSize)
         return;
 
-    m_minimumLayoutSize = minimumLayoutSize;
+    m_viewLayoutSize = viewLayoutSize;
 
     if (!isValid())
         return;
 
-    m_process->send(Messages::WebPage::SetMinimumLayoutSize(minimumLayoutSize), m_pageID);
-    m_drawingArea->minimumLayoutSizeDidChange();
+    m_process->send(Messages::WebPage::SetViewLayoutSize(viewLayoutSize), m_pageID);
+    m_drawingArea->viewLayoutSizeDidChange();
 
 #if USE(APPKIT)
-    if (m_minimumLayoutSize.width() <= 0)
+    if (m_viewLayoutSize.width() <= 0)
         intrinsicContentSizeDidChange(IntSize(-1, -1));
 #endif
 }
@@ -6780,6 +6788,18 @@ void WebPageProxy::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, bool& succ
     succeeded = unwrapSerializedCryptoKey(masterKey, wrappedKey, key);
 }
 #endif
+
+void WebPageProxy::signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String& challengeString, const WebCore::URL& url, String& result)
+{
+    PageClientProtector protector(m_pageClient);
+
+    if (m_navigationClient) {
+        if (auto apiString = m_navigationClient->signedPublicKeyAndChallengeString(*this, keySizeIndex, API::String::create(challengeString), url))
+            result = apiString->string();
+        return;
+    }
+    result = WebCore::signedPublicKeyAndChallengeString(keySizeIndex, challengeString, url);
+}
 
 void WebPageProxy::addMIMETypeWithCustomContentProvider(const String& mimeType)
 {

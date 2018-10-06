@@ -87,9 +87,12 @@ void ResourceRequest::doUpdateResourceRequest()
     m_timeoutInterval = [m_nsRequest.get() timeoutInterval];
     m_firstPartyForCookies = [m_nsRequest.get() mainDocumentURL];
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
     URL siteForCookies { [m_nsRequest.get() _propertyForKey:@"_kCFHTTPCookiePolicyPropertySiteForCookies"] };
     m_sameSiteDisposition = siteForCookies.isNull() ? SameSiteDisposition::Unspecified : (registrableDomainsAreEqual(siteForCookies, m_url) ? SameSiteDisposition::SameSite : SameSiteDisposition::CrossSite);
+
     m_isTopSite = static_cast<NSNumber*>([m_nsRequest.get() _propertyForKey:@"_kCFHTTPCookiePolicyPropertyIsTopLevelNavigation"]).boolValue;
+#endif
 
     if (NSString* method = [m_nsRequest.get() HTTPMethod])
         m_httpMethod = method;
@@ -133,6 +136,7 @@ void ResourceRequest::doUpdateResourceHTTPBody()
     }
 }
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
 static NSURL *siteForCookies(ResourceRequest::SameSiteDisposition disposition, NSURL *url)
 {
     switch (disposition) {
@@ -141,9 +145,11 @@ static NSURL *siteForCookies(ResourceRequest::SameSiteDisposition disposition, N
     case ResourceRequest::SameSiteDisposition::SameSite:
         return url;
     case ResourceRequest::SameSiteDisposition::CrossSite:
-        return [NSURL URLWithString:@""];
+        static NSURL *emptyURL = [[NSURL alloc] initWithString:@""];
+        return emptyURL;
     }
 }
+#endif
 
 void ResourceRequest::doUpdatePlatformRequest()
 {
@@ -178,8 +184,10 @@ void ResourceRequest::doUpdatePlatformRequest()
         [nsRequest setHTTPMethod:httpMethod()];
     [nsRequest setHTTPShouldHandleCookies:allowCookies()];
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
     [nsRequest _setProperty:siteForCookies(m_sameSiteDisposition, nsRequest.URL) forKey:@"_kCFHTTPCookiePolicyPropertySiteForCookies"];
     [nsRequest _setProperty:[NSNumber numberWithBool:m_isTopSite] forKey:@"_kCFHTTPCookiePolicyPropertyIsTopLevelNavigation"];
+#endif
 
     // Cannot just use setAllHTTPHeaderFields here, because it does not remove headers.
     for (NSString *oldHeaderName in [nsRequest allHTTPHeaderFields])

@@ -347,7 +347,7 @@ public:
     NSArray *dataDetectionResults() { return m_dataDetectionResults.get(); }
 #endif
         
-#if ENABLE(ASYNC_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING) && PLATFORM(COCOA)
     RemoteScrollingCoordinatorProxy* scrollingCoordinatorProxy() const { return m_scrollingCoordinatorProxy.get(); }
 #endif
 
@@ -361,6 +361,9 @@ public:
     void didExitFullscreen();
 
     WebInspectorProxy* inspector() const;
+
+    void didChangeInspectorFrontendCount(unsigned count) { m_inspectorFrontendCount = count; }
+    unsigned inspectorFrontendCount() const { return m_inspectorFrontendCount; }
 
     bool isControlledByAutomation() const { return m_controlledByAutomation; }
     void setControlledByAutomation(bool);
@@ -545,10 +548,10 @@ public:
     void overflowScrollWillStartScroll();
     void overflowScrollDidEndScroll();
 
-    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& viewSize, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& unobscuredSafeAreaInsets, double targetScale, int32_t deviceOrientation);
+    void dynamicViewportSizeUpdate(const WebCore::FloatSize& viewLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& unobscuredSafeAreaInsets, double targetScale, int32_t deviceOrientation);
     void synchronizeDynamicViewportUpdate();
 
-    void setViewportConfigurationMinimumLayoutSize(const WebCore::FloatSize&, const WebCore::FloatSize& viewSize);
+    void setViewportConfigurationViewLayoutSize(const WebCore::FloatSize&);
     void setMaximumUnobscuredSize(const WebCore::FloatSize&);
     void setDeviceOrientation(int32_t);
     int32_t deviceOrientation() const { return m_deviceOrientation; }
@@ -1076,8 +1079,8 @@ public:
     void endColorPicker();
 #endif
 
-    WebCore::IntSize minimumLayoutSize() const { return m_minimumLayoutSize; }
-    void setMinimumLayoutSize(const WebCore::IntSize&);
+    WebCore::IntSize viewLayoutSize() const { return m_viewLayoutSize; }
+    void setViewLayoutSize(const WebCore::IntSize&);
 
     bool autoSizingShouldExpandToViewHeight() const { return m_autoSizingShouldExpandToViewHeight; }
     void setAutoSizingShouldExpandToViewHeight(bool);
@@ -1118,6 +1121,8 @@ public:
     void wrapCryptoKey(const Vector<uint8_t>&, bool& succeeded, Vector<uint8_t>&);
     void unwrapCryptoKey(const Vector<uint8_t>&, bool& succeeded, Vector<uint8_t>&);
 #endif
+
+    void signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String& challengeString, const WebCore::URL&, String& result);
 
     void takeSnapshot(WebCore::IntRect, WebCore::IntSize bitmapSize, SnapshotOptions, WTF::Function<void (const ShareableBitmap::Handle&, CallbackBase::Error)>&&);
 
@@ -1296,11 +1301,14 @@ public:
     WebPreferencesStore preferencesStore() const;
 
     SuspendedPageProxy* maybeCreateSuspendedPage(WebProcessProxy&, API::Navigation&);
-    void suspendedPageProcessClosed(SuspendedPageProxy&);
+    SuspendedPageProxy* suspendedPage() const { return m_suspendedPage.get(); }
+    void suspendedPageClosed(SuspendedPageProxy&);
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
     void platformInitialize();
+
+    void notifyProcessPoolToPrewarm();
 
     RefPtr<API::Navigation> goToBackForwardItem(WebBackForwardListItem&, WebCore::FrameLoadType);
 
@@ -1592,7 +1600,7 @@ private:
     void autocorrectionContextCallback(const String& beforeText, const String& markedText, const String& selectedText, const String& afterText, uint64_t location, uint64_t length, CallbackID);
     void selectionContextCallback(const String& selectedText, const String& beforeText, const String& afterText, CallbackID);
     void interpretKeyEvent(const EditorState&, bool isCharEvent, bool& handled);
-    void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect);
+    void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect, WebCore::RouteSharingPolicy, const String&);
     void selectionRectsCallback(const Vector<WebCore::SelectionRect>&, CallbackID);
 #endif
 #if PLATFORM(GTK)
@@ -1776,7 +1784,7 @@ private:
     bool m_isLoadingAlternateHTMLStringForFailingProvisionalLoad { false };
 
     std::unique_ptr<DrawingAreaProxy> m_drawingArea;
-#if ENABLE(ASYNC_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING) && PLATFORM(COCOA)
     std::unique_ptr<RemoteScrollingCoordinatorProxy> m_scrollingCoordinatorProxy;
 #endif
 
@@ -2004,6 +2012,7 @@ private:
     bool m_allowsRemoteInspection { true };
     String m_remoteInspectionNameOverride;
 #endif
+    unsigned m_inspectorFrontendCount { 0 };
 
 #if PLATFORM(COCOA)
     bool m_isSmartInsertDeleteEnabled { false };
@@ -2070,7 +2079,7 @@ private:
 
     bool m_suppressVisibilityUpdates { false };
     bool m_autoSizingShouldExpandToViewHeight { false };
-    WebCore::IntSize m_minimumLayoutSize;
+    WebCore::IntSize m_viewLayoutSize;
     std::optional<WebCore::IntSize> m_viewportSizeForCSSViewportUnits;
 
     // Visual viewports
@@ -2129,8 +2138,7 @@ private:
 #if PLATFORM(IOS)
     std::unique_ptr<NodeAssistanceArguments> m_deferredNodeAssistanceArguments;
     bool m_forceAlwaysUserScalable { false };
-    WebCore::FloatSize m_viewportConfigurationMinimumLayoutSize;
-    WebCore::FloatSize m_viewportConfigurationViewSize;
+    WebCore::FloatSize m_viewportConfigurationViewLayoutSize;
     WebCore::FloatSize m_maximumUnobscuredSize;
 #endif
 

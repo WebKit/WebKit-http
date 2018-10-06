@@ -135,6 +135,7 @@ fast/mediastream
 imported/w3c/web-platform-tests/mediacapture-streams
 http/tests/media/media-stream
 http/tests/ssl/media-stream
+fast/events/constructors/media-stream-event-constructor.html
 
 # WK1 does not filter response headers.
 http/wpt/loading/redirect-headers.html [ Skip ]
@@ -453,6 +454,9 @@ webkit.org/b/182571 media/modern-media-controls/tracks-support/tracks-support-sh
 
 webkit.org/b/173432 [ Debug ] imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html [ Pass Crash ]
 
+# Requires WK2 loading support
+http/wpt/fetch/dnt-header-after-redirection.html [ Skip ]
+
 # requires wk2 speculative tiling
 fast/images/low-memory-decode.html [ Skip ]
 
@@ -543,3 +547,5 @@ webkit.org/b/184456 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 webkit.org/b/184569 [ Debug ] animations/missing-from-to.html [ Skip ]
 
 webkit.org/b/184457 media/video-aspect-ratio.html [ Pass Failure ]
+
+webkit.org/b/184458 media/remote-control-command-is-user-gesture.html [ Pass Timeout ]

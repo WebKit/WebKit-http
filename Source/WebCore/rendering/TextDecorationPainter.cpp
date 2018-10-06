@@ -325,7 +325,11 @@ void TextDecorationPainter::paintTextDecoration(const TextRun& textRun, const Fl
             }
             int shadowX = m_isHorizontal ? shadow->x() : shadow->y();
             int shadowY = m_isHorizontal ? shadow->y() : -shadow->x();
-            m_context.setShadow(FloatSize(shadowX, shadowY - extraOffset), shadow->radius(), shadow->color());
+            
+            Color shadowColor = shadow->color();
+            if (m_shadowColorFilter)
+                m_shadowColorFilter->transformColor(shadowColor);
+            m_context.setShadow(FloatSize(shadowX, shadowY - extraOffset), shadow->radius(), shadowColor);
             shadow = shadow->next();
         }
 
@@ -359,7 +363,7 @@ void TextDecorationPainter::paintTextDecoration(const TextRun& textRun, const Fl
 static Color decorationColor(const RenderStyle& style)
 {
     // Check for text decoration color first.
-    Color result = style.visitedDependentColor(CSSPropertyWebkitTextDecorationColor);
+    Color result = style.visitedDependentColorWithColorFilter(CSSPropertyWebkitTextDecorationColor);
     if (result.isValid())
         return result;
     if (style.hasPositiveStrokeWidth()) {
@@ -369,7 +373,7 @@ static Color decorationColor(const RenderStyle& style)
             return result;
     }
     
-    return style.visitedDependentColor(CSSPropertyWebkitTextFillColor);
+    return style.visitedDependentColorWithColorFilter(CSSPropertyWebkitTextFillColor);
 }
 
 static void collectStylesForRenderer(TextDecorationPainter::Styles& result, const RenderObject& renderer, OptionSet<TextDecoration> remainingDecorations, bool firstLineStyle, PseudoId pseudoId)

@@ -1,3 +1,286 @@
+2018-05-02  Robin Morisset  <rmorisset@apple.com>
+
+        emitCodeToGetArgumentsArrayLength should not crash on PhantomNewArrayWithSpread
+        https://bugs.webkit.org/show_bug.cgi?id=183172
+
+        Reviewed by Filip Pizlo.
+
+        * stress/length-of-new-array-with-spread.js: Added.
+        (foo):
+        (bar):
+        (baz):
+
+2018-05-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add SameValue DFG node
+        https://bugs.webkit.org/show_bug.cgi?id=185065
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/object-is.js: Added.
+        (incognito):
+        (sameValue):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        (test6):
+        * stress/object-is.js: Added.
+        (shouldBe):
+        (is1):
+        (is2):
+        (is3):
+        (is4):
+        (is5):
+        (is6):
+        (is7):
+        (is8):
+        (is9):
+        (is10):
+        (is11):
+        (is12):
+        (is13):
+        (is14):
+        (is15):
+
+2018-05-01  Robin Morisset  <rmorisset@apple.com>
+
+        Correctly detect string overflow when using the 'Function' constructor
+        https://bugs.webkit.org/show_bug.cgi?id=184883
+        <rdar://problem/36320331>
+
+        Reviewed by Filip Pizlo.
+
+        I put this regression test in the 'slowMicrobenchmarks' directory because it takes nearly 30s to run, and I am not sure where else to put it.
+
+        * slowMicrobenchmarks/function-constructor-with-huge-strings.js: Added.
+        (catch):
+
+2018-05-01  Robin Morisset  <rmorisset@apple.com>
+
+        IntlObject.cpp::removeUnicodeLocaleExtension() should not touch locales that end in '-u'
+        https://bugs.webkit.org/show_bug.cgi?id=185162
+
+        Reviewed by Filip Pizlo.
+
+        * stress/incomplete-unicode-locale.js: Added.
+        (catch):
+
+2018-05-01  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Add SetCallee as DFG-Operation
+        https://bugs.webkit.org/show_bug.cgi?id=184582
+
+        Reviewed by Filip Pizlo.
+
+        Added test that runs into infinite loop without updating the callee and
+        therefore emitting SetCallee in DFG for recursive tail calls.
+
+        * stress/closure-recursive-tail-call-infinite-loop.js: Added.
+        (Foo):
+        (second):
+        (first):
+        (return.closure):
+        (createClosure):
+
+2018-04-30  Saam Barati  <sbarati@apple.com>
+
+        ToString constant folds without preserving checks, causing us to break assumptions that the code would OSR exit
+        https://bugs.webkit.org/show_bug.cgi?id=185149
+        <rdar://problem/39455917>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/keep-checks-when-converting-to-lazy-js-constant-in-strength-reduction.js: Added.
+
+2018-04-29  Filip Pizlo  <fpizlo@apple.com>
+
+        LICM shouldn't hoist nodes if hoisted nodes exited in that code block
+        https://bugs.webkit.org/show_bug.cgi?id=185126
+
+        Reviewed by Saam Barati.
+        
+        I found this bug by accident when I was writing this test for something else.
+        
+        This change also speeds up other benchmarks of this case that we already had. They are all called
+        the licm-dragons tests.
+
+        * microbenchmarks/licm-dragons-two-structures.js: Added.
+        (foo):
+
+2018-04-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r231137.
+        https://bugs.webkit.org/show_bug.cgi?id=185118
+
+        It is breaking Test262 language/expressions/multiplication
+        /order-of-evaluation.js (Requested by caiolima on #webkit).
+
+        Reverted changeset:
+
+        "[ESNext][BigInt] Implement support for "*" operation"
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+        https://trac.webkit.org/changeset/231137
+
+2018-04-28  Saam Barati  <sbarati@apple.com>
+
+        We don't model regexp effects properly
+        https://bugs.webkit.org/show_bug.cgi?id=185059
+        <rdar://problem/39736150>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regexp-exec-test-effectful-last-index.js: Added.
+        (assert):
+        (foo):
+        (i.regexLastIndex.toString):
+        (bar):
+
+2018-04-28  Rick Waldron  <waldron.rick@gmail.com>
+
+        Token misspelled "tocken" in error message string
+        https://bugs.webkit.org/show_bug.cgi?id=185030
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore/test/Basics/IdsWithEscapes.baseline-jsc: Fix typo "tocken" => "token"
+        * stress/destructuring-assignment-syntax.js: Fix typo "tocken" => "token"
+        * stress/error-messages-for-in-operator-should-not-crash.js: Fix typo "tocken" => "token"
+        * stress/reserved-word-with-escape.js: Fix typo "tocken" => "token"
+        (testSyntaxError.String.raw.v):
+        (String.raw.SyntaxError.Cannot.use.the.keyword.string_appeared_here.as.a.name):
+        (testSyntaxError.String.raw.a):
+
+2018-04-28  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for "*" operation
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+
+        Reviewed by Saam Barati.
+
+        * bigIntTests.yaml:
+        * stress/big-int-mul-jit.js: Added.
+        * stress/big-int-mul-to-primitive-precedence.js: Added.
+        * stress/big-int-mul-to-primitive.js: Added.
+        * stress/big-int-mul-type-error.js: Added.
+        * stress/big-int-mul-wrapped-value.js: Added.
+        * stress/big-int-multiplication.js: Added.
+        * stress/big-int-multiply-memory-stress.js: Added.
+
+2018-04-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r231131.
+        https://bugs.webkit.org/show_bug.cgi?id=185112
+
+        It is breaking Debug build due to unchecked exception
+        (Requested by caiolima on #webkit).
+
+        Reverted changeset:
+
+        "[ESNext][BigInt] Implement support for "*" operation"
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+        https://trac.webkit.org/changeset/231131
+
+2018-04-27  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for "*" operation
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+
+        Reviewed by Saam Barati.
+
+        * bigIntTests.yaml:
+        * stress/big-int-mul-jit.js: Added.
+        * stress/big-int-mul-to-primitive-precedence.js: Added.
+        * stress/big-int-mul-to-primitive.js: Added.
+        * stress/big-int-mul-type-error.js: Added.
+        * stress/big-int-mul-wrapped-value.js: Added.
+        * stress/big-int-multiplication.js: Added.
+        * stress/big-int-multiply-memory-stress.js: Added.
+
+2018-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r231086.
+
+        Caused JSC test failures due to an unchecked exception.
+
+        Reverted changeset:
+
+        "[ESNext][BigInt] Implement support for "*" operation"
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+        https://trac.webkit.org/changeset/231086
+
+2018-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, update expectations for test262/intl402/PluralRules tests after r231047.
+
+        * test262.yaml: Mark tests as passing.
+
+2018-04-26  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for "*" operation
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+
+        Reviewed by Saam Barati.
+
+        * bigIntTests.yaml:
+        * stress/big-int-mul-jit.js: Added.
+        * stress/big-int-mul-to-primitive-precedence.js: Added.
+        * stress/big-int-mul-to-primitive.js: Added.
+        * stress/big-int-mul-type-error.js: Added.
+        * stress/big-int-mul-wrapped-value.js: Added.
+        * stress/big-int-multiplication.js: Added.
+        * stress/big-int-multiply-memory-stress.js: Added.
+
+2018-04-25  Robin Morisset  <rmorisset@apple.com>
+
+        In FTLLowerDFGToB3.cpp::compileCreateRest, always use a contiguous array as the indexing type when under isWatchingHavingABadTimeWatchpoint
+        https://bugs.webkit.org/show_bug.cgi?id=184773
+        <rdar://problem/37773612>
+
+        Reviewed by Filip Pizlo.
+
+        This bug requires a race between the thread doing FTL compilation and the main thread, but it triggers in 100% of cases (before the fix) on my machine
+        so I decided to add it to the stress tests nonetheless.
+
+        * stress/create-rest-while-having-a-bad-time.js: Added.
+        (f):
+        (g):
+        (h):
+
+2018-04-25  Keith Miller  <keith_miller@apple.com>
+
+        Add missing scope release to functionProtoFuncToString
+        https://bugs.webkit.org/show_bug.cgi?id=184995
+
+        Reviewed by Saam Barati.
+
+        * stress/function-toString-arrow.js: Added.
+        (async):
+
+2018-04-24  Keith Miller  <keith_miller@apple.com>
+
+        fromCharCode is missing some exception checks
+        https://bugs.webkit.org/show_bug.cgi?id=184952
+
+        Reviewed by Saam Barati.
+
+        * stress/fromCharCode-exception-check.js: Added.
+        (get catch):
+
+2018-04-24  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: test fix after r230863.
+        https://bugs.webkit.org/show_bug.cgi?id=184846
+        <rdar://problem/39390672>
+
+        Not reviewed.
+
+        * stress/json-stringified-overflow-2.js:
+        (catch):
+        * stress/json-stringified-overflow.js:
+        (catch):
+
 2018-04-20  JF Bastien  <jfbastien@apple.com>
 
         Handle more JSON stringify OOM

@@ -924,6 +924,9 @@ private:
         case GetCallee:
             compileGetCallee();
             break;
+        case SetCallee:
+            compileSetCallee();
+            break;
         case GetArgumentCountIncludingThis:
             compileGetArgumentCountIncludingThis();
             break;
@@ -983,6 +986,9 @@ private:
             break;
         case CompareEqPtr:
             compileCompareEqPtr();
+            break;
+        case SameValue:
+            compileSameValue();
             break;
         case LogicalNot:
             compileLogicalNot();
@@ -5281,7 +5287,7 @@ private:
             LValue arrayLength = lowInt32(m_node->child1());
             LBasicBlock loopStart = m_out.newBlock();
             JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
-            RegisteredStructure structure = m_graph.registerStructure(globalObject->restParameterStructure());
+            RegisteredStructure structure = m_graph.registerStructure(globalObject->originalRestParameterStructure());
             ArrayValues arrayValues = allocateUninitializedContiguousJSArray(arrayLength, structure);
             LValue array = arrayValues.array;
             LValue butterfly = arrayValues.butterfly;
@@ -6165,16 +6171,16 @@ private:
             m_out.storePtr(kids[i], result, m_heaps.JSRopeString_fibers[i]);
         for (unsigned i = numKids; i < JSRopeString::s_maxInternalRopeLength; ++i)
             m_out.storePtr(m_out.intPtrZero, result, m_heaps.JSRopeString_fibers[i]);
-        LValue flags = m_out.load32(kids[0], m_heaps.JSString_flags);
+        LValue flags = m_out.load16ZeroExt32(kids[0], m_heaps.JSString_flags);
         LValue length = m_out.load32(kids[0], m_heaps.JSString_length);
         for (unsigned i = 1; i < numKids; ++i) {
-            flags = m_out.bitAnd(flags, m_out.load32(kids[i], m_heaps.JSString_flags));
+            flags = m_out.bitAnd(flags, m_out.load16ZeroExt32(kids[i], m_heaps.JSString_flags));
             CheckValue* lengthCheck = m_out.speculateAdd(
                 length, m_out.load32(kids[i], m_heaps.JSString_length));
             blessSpeculation(lengthCheck, Uncountable, noValue(), nullptr, m_origin);
             length = lengthCheck;
         }
-        m_out.store32(
+        m_out.store32As16(
             m_out.bitAnd(m_out.constInt32(JSString::Is8Bit), flags),
             result, m_heaps.JSString_flags);
         m_out.store32(length, result, m_heaps.JSString_length);
@@ -6438,14 +6444,6 @@ private:
         
         MultiGetByOffsetData& data = m_node->multiGetByOffsetData();
 
-        if (data.cases.isEmpty()) {
-            // Protect against creating a Phi function with zero inputs. LLVM didn't like that.
-            // It's not clear if this is needed anymore.
-            // FIXME: https://bugs.webkit.org/show_bug.cgi?id=154382
-            terminate(BadCache);
-            return;
-        }
-        
         Vector<LBasicBlock, 2> blocks(data.cases.size());
         for (unsigned i = data.cases.size(); i--;)
             blocks[i] = m_out.newBlock();
@@ -6462,8 +6460,8 @@ private:
                 cases.append(SwitchCase(weakStructureID(structure), blocks[i], Weight(1)));
             }
         }
-        m_out.switchInstruction(
-            m_out.load32(base, m_heaps.JSCell_structureID), cases, exit, Weight(0));
+        bool structuresChecked = m_interpreter.forNode(m_node->child1()).m_structure.isSubsetOf(baseSet);
+        emitSwitchForMultiByOffset(base, structuresChecked, cases, exit);
         
         LBasicBlock lastNext = m_out.m_nextBlock;
         
@@ -6504,7 +6502,7 @@ private:
         }
         
         m_out.appendTo(exit, continuation);
-        if (!m_interpreter.forNode(m_node->child1()).m_structure.isSubsetOf(baseSet))
+        if (!structuresChecked)
             speculate(BadCache, noValue(), nullptr, m_out.booleanTrue);
         m_out.unreachable();
         
@@ -6544,8 +6542,8 @@ private:
                 cases.append(SwitchCase(weakStructureID(structure), blocks[i], Weight(1)));
             }
         }
-        m_out.switchInstruction(
-            m_out.load32(base, m_heaps.JSCell_structureID), cases, exit, Weight(0));
+        bool structuresChecked = m_interpreter.forNode(m_node->child1()).m_structure.isSubsetOf(baseSet);
+        emitSwitchForMultiByOffset(base, structuresChecked, cases, exit);
         
         LBasicBlock lastNext = m_out.m_nextBlock;
         
@@ -6587,7 +6585,7 @@ private:
         }
         
         m_out.appendTo(exit, continuation);
-        if (!m_interpreter.forNode(m_node->child1()).m_structure.isSubsetOf(baseSet))
+        if (!structuresChecked)
             speculate(BadCache, noValue(), nullptr, m_out.booleanTrue);
         m_out.unreachable();
         
@@ -6633,6 +6631,12 @@ private:
     void compileGetCallee()
     {
         setJSValue(m_out.loadPtr(addressFor(CallFrameSlot::callee)));
+    }
+
+    void compileSetCallee()
+    {
+        auto callee = lowCell(m_node->child1());
+        m_out.storePtr(callee, payloadFor(CallFrameSlot::callee));
     }
     
     void compileGetArgumentCountIncludingThis()
@@ -7070,6 +7074,45 @@ private:
     void compileCompareBelowEq()
     {
         setBoolean(m_out.belowOrEqual(lowInt32(m_node->child1()), lowInt32(m_node->child2())));
+    }
+
+    void compileSameValue()
+    {
+        if (m_node->isBinaryUseKind(DoubleRepUse)) {
+            LValue arg1 = lowDouble(m_node->child1());
+            LValue arg2 = lowDouble(m_node->child2());
+
+            LBasicBlock numberCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+
+            PatchpointValue* patchpoint = m_out.patchpoint(Int32);
+            patchpoint->append(arg1, ValueRep::SomeRegister);
+            patchpoint->append(arg2, ValueRep::SomeRegister);
+            patchpoint->numGPScratchRegisters = 1;
+            patchpoint->setGenerator(
+                [] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                    GPRReg scratchGPR = params.gpScratch(0);
+                    jit.moveDoubleTo64(params[1].fpr(), scratchGPR);
+                    jit.moveDoubleTo64(params[2].fpr(), params[0].gpr());
+                    jit.compare64(CCallHelpers::Equal, scratchGPR, params[0].gpr(), params[0].gpr());
+                });
+            patchpoint->effects = Effects::none();
+            ValueFromBlock compareResult = m_out.anchor(patchpoint);
+            m_out.branch(patchpoint, unsure(continuation), unsure(numberCase));
+
+            LBasicBlock lastNext = m_out.appendTo(numberCase, continuation);
+            LValue isArg1NaN = m_out.doubleNotEqualOrUnordered(arg1, arg1);
+            LValue isArg2NaN = m_out.doubleNotEqualOrUnordered(arg2, arg2);
+            ValueFromBlock nanResult = m_out.anchor(m_out.bitAnd(isArg1NaN, isArg2NaN));
+            m_out.jump(continuation);
+
+            m_out.appendTo(continuation, lastNext);
+            setBoolean(m_out.phi(Int32, compareResult, nanResult));
+            return;
+        }
+
+        ASSERT(m_node->isBinaryUseKind(UntypedUse));
+        setBoolean(vmCall(Int32, m_out.operation(operationSameValue), m_callFrame, lowJSValue(m_node->child1()), lowJSValue(m_node->child2())));
     }
     
     void compileLogicalNot()
@@ -12028,6 +12071,29 @@ private:
             });
         patchpoint->effects = Effects::forCall();
         setJSValue(patchpoint);
+    }
+    
+    void emitSwitchForMultiByOffset(LValue base, bool structuresChecked, Vector<SwitchCase, 2>& cases, LBasicBlock exit)
+    {
+        if (cases.isEmpty()) {
+            m_out.jump(exit);
+            return;
+        }
+        
+        if (structuresChecked) {
+            std::sort(
+                cases.begin(), cases.end(),
+                [&] (const SwitchCase& a, const SwitchCase& b) -> bool {
+                    return a.value()->asInt() < b.value()->asInt();
+                });
+            SwitchCase last = cases.takeLast();
+            m_out.switchInstruction(
+                m_out.load32(base, m_heaps.JSCell_structureID), cases, last.target(), Weight(0));
+            return;
+        }
+        
+        m_out.switchInstruction(
+            m_out.load32(base, m_heaps.JSCell_structureID), cases, exit, Weight(0));
     }
     
     void compareEqObjectOrOtherToObject(Edge leftChild, Edge rightChild)

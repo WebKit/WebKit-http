@@ -55,7 +55,7 @@
                 output += 'FAIL: failed to deselect word after a drag. Incorrect Selection: ' + document.getSelection().toString();
             output += '<br>';
 
-            await(touchAndDragFromPointToPoint(dragX2, dragY, dragX, dragY);
+            await touchAndDragFromPointToPoint(dragX2, dragY, dragX, dragY);
             if (document.getSelection().toString() == "magna")
                 output += 'PASS: Correct Selection';
             else

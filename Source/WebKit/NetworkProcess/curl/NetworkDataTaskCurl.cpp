@@ -34,13 +34,14 @@
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceError.h>
+#include <WebCore/SameSiteInfo.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-NetworkDataTaskCurl::NetworkDataTaskCurl(NetworkSession& session, NetworkDataTaskClient& client, const ResourceRequest& requestWithCredentials, StoredCredentialsPolicy storedCredentialsPolicy, ContentSniffingPolicy shouldContentSniff, ContentEncodingSniffingPolicy, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
-    : NetworkDataTask(session, client, requestWithCredentials, storedCredentialsPolicy, shouldClearReferrerOnHTTPSToHTTPRedirect)
+NetworkDataTaskCurl::NetworkDataTaskCurl(NetworkSession& session, NetworkDataTaskClient& client, const ResourceRequest& requestWithCredentials, StoredCredentialsPolicy storedCredentialsPolicy, ContentSniffingPolicy shouldContentSniff, ContentEncodingSniffingPolicy, bool shouldClearReferrerOnHTTPSToHTTPRedirect, bool dataTaskIsForMainFrameNavigation)
+    : NetworkDataTask(session, client, requestWithCredentials, storedCredentialsPolicy, shouldClearReferrerOnHTTPSToHTTPRedirect, dataTaskIsForMainFrameNavigation)
 {
     if (m_scheduledFailureType != NoFailure)
         return;
@@ -379,7 +380,7 @@ void NetworkDataTaskCurl::appendCookieHeader(WebCore::ResourceRequest& request)
     const auto& storageSession = m_session->networkStorageSession();
     const auto& cookieJar = storageSession.cookieStorage();
     auto includeSecureCookies = request.url().protocolIs("https") ? IncludeSecureCookies::Yes : IncludeSecureCookies::No;
-    auto cookieHeaderField = cookieJar.cookieRequestHeaderFieldValue(storageSession, request.firstPartyForCookies(), request.url(), std::nullopt, std::nullopt, includeSecureCookies).first;
+    auto cookieHeaderField = cookieJar.cookieRequestHeaderFieldValue(storageSession, request.firstPartyForCookies(), WebCore::SameSiteInfo::create(request), request.url(), std::nullopt, std::nullopt, includeSecureCookies).first;
     if (!cookieHeaderField.isEmpty())
         request.addHTTPHeaderField(HTTPHeaderName::Cookie, cookieHeaderField);
 }

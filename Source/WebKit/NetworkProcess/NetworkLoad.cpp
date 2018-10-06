@@ -239,6 +239,7 @@ void NetworkLoad::willPerformHTTPRedirection(ResourceResponse&& redirectResponse
     ASSERT(RunLoop::isMain());
     ASSERT(!m_redirectCompletionHandler);
 
+    redirectResponse.setSource(ResourceResponse::Source::Network);
     m_redirectCompletionHandler = WTFMove(completionHandler);
 
 #if ENABLE(NETWORK_CAPTURE)
@@ -247,6 +248,8 @@ void NetworkLoad::willPerformHTTPRedirection(ResourceResponse&& redirectResponse
 #endif
 
     auto oldRequest = WTFMove(m_currentRequest);
+    request.setRequester(oldRequest.requester());
+
     m_currentRequest = request;
     m_client.get().willSendRedirectedRequest(WTFMove(oldRequest), WTFMove(request), WTFMove(redirectResponse));
 }
@@ -391,6 +394,14 @@ void NetworkLoad::wasBlocked()
 void NetworkLoad::cannotShowURL()
 {
     m_client.get().didFailLoading(cannotShowURLError(m_currentRequest));
+}
+
+
+String NetworkLoad::description() const
+{
+    if (m_task.get())
+        return m_task->description();
+    return emptyString();
 }
 
 } // namespace WebKit

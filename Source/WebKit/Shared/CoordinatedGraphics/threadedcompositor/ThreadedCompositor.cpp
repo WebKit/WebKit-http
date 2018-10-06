@@ -106,6 +106,8 @@ void ThreadedCompositor::invalidate()
     m_displayRefreshMonitor->invalidate();
 #endif
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
+        if (!m_context || !m_context->makeContextCurrent())
+            return;
         m_scene->purgeGLResources();
         m_context = nullptr;
         m_client.didDestroyGLContext();
@@ -240,7 +242,7 @@ void ThreadedCompositor::renderLayerTree()
 
     m_scene->applyStateChanges(states);
     m_scene->paintToCurrentGLContext(viewportTransform, 1, FloatRect { FloatPoint { }, viewportSize },
-        Color::transparent, !drawsBackground, scrollPosition, m_paintFlags);
+        Color::transparent, !drawsBackground, m_paintFlags);
 
     m_context->swapBuffers();
 

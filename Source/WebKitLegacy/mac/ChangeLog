@@ -1,3 +1,201 @@
+2018-05-01  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] remove WK1 support
+        https://bugs.webkit.org/show_bug.cgi?id=185136
+
+        Reviewed by Youenn Fablet.
+
+        * WebCoreSupport/WebUserMediaClient.h: Removed.
+        * WebCoreSupport/WebUserMediaClient.mm: Removed.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _preferencesChanged:]):
+        (-[WebView _setUserMediaClient:]): Deleted.
+        (-[WebView _userMediaClient]): Deleted.
+        * WebView/WebViewData.h:
+        * WebView/WebViewPrivate.h:
+
+2018-05-01  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        WebAssembly: add support for stream APIs - JavaScript API
+        https://bugs.webkit.org/show_bug.cgi?id=183442
+
+        Reviewed by Yusuke Suzuki and JF Bastien.
+
+        Add WEBASSEMBLY_STREAMINNG_API feature flag
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-04-30  JF Bastien  <jfbastien@apple.com>
+
+        Use some C++17 features
+        https://bugs.webkit.org/show_bug.cgi?id=185135
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2018-04-27  Chris Dumez  <cdumez@apple.com>
+
+        Use WindowProxy instead of DOMWindow in our IDL
+        https://bugs.webkit.org/show_bug.cgi?id=185022
+
+        Reviewed by Sam Weinig.
+
+        * DOM/DOMAbstractView.mm:
+        (kit):
+        (toWindowProxy):
+        * DOM/DOMAbstractViewInternal.h:
+        * DOM/DOMDocument.mm:
+        (-[DOMDocument defaultView]):
+        (-[DOMDocument getComputedStyle:pseudoElement:]):
+        (-[DOMDocument getMatchedCSSRules:pseudoElement:authorOnly:]):
+        * DOM/DOMHTMLFrameElement.mm:
+        (-[DOMHTMLFrameElement contentWindow]):
+        * DOM/DOMHTMLIFrameElement.mm:
+        (-[DOMHTMLIFrameElement contentWindow]):
+        * DOM/DOMKeyboardEvent.mm:
+        (-[DOMKeyboardEvent initKeyboardEvent:canBubble:cancelable:view:keyIdentifier:location:ctrlKey:altKey:shiftKey:metaKey:altGraphKey:]):
+        (-[DOMKeyboardEvent initKeyboardEvent:canBubble:cancelable:view:keyIdentifier:location:ctrlKey:altKey:shiftKey:metaKey:]):
+        (-[DOMKeyboardEvent initKeyboardEvent:canBubble:cancelable:view:keyIdentifier:keyLocation:ctrlKey:altKey:shiftKey:metaKey:altGraphKey:]):
+        (-[DOMKeyboardEvent initKeyboardEvent:canBubble:cancelable:view:keyIdentifier:keyLocation:ctrlKey:altKey:shiftKey:metaKey:]):
+        * DOM/DOMMouseEvent.mm:
+        (-[DOMMouseEvent initMouseEvent:canBubble:cancelable:view:detail:screenX:screenY:clientX:clientY:ctrlKey:altKey:shiftKey:metaKey:button:relatedTarget:]):
+        * DOM/DOMTextEvent.mm:
+        (-[DOMTextEvent initTextEvent:canBubbleArg:cancelableArg:viewArg:dataArg:]):
+        * DOM/DOMUIEvent.mm:
+        (-[DOMUIEvent view]):
+        (-[DOMUIEvent initUIEvent:canBubble:cancelable:view:detail:]):
+        * DOM/DOMWheelEvent.mm:
+        (-[DOMWheelEvent initWheelEvent:wheelDeltaY:view:screenX:screenY:clientX:clientY:ctrlKey:altKey:shiftKey:metaKey:]):
+
+2018-04-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement rendering support for the color-filter CSS property
+        https://bugs.webkit.org/show_bug.cgi?id=185047
+        rdar://problem/39664967
+
+        Reviewed by Tim Horton.
+        
+        The body background should reflect the filtered color.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _bodyBackgroundColor]):
+        * WebView/WebView.mm:
+        (-[WebView updateTextTouchBar]): No logic change, just cleanup.
+
+2018-04-26  Jer Noble  <jer.noble@apple.com>
+
+        WK_COCOA_TOUCH all the things.
+        https://bugs.webkit.org/show_bug.cgi?id=185006
+
+        Reviewed by Tim Horton.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2018-04-26  Daniel Bates  <dabates@apple.com>
+
+        ASSERTION FAILED: ASSERT(!containsImage || MIMETypeRegistry::isSupportedImageResourceMIMEType([resource MIMEType])) in -[NSPasteboard(WebExtras) _web_writePromisedRTFDFromArchive:containsImage:]
+        https://bugs.webkit.org/show_bug.cgi?id=184161
+        <rdar://problem/39051645>
+
+        Reviewed by Dan Bernstein.
+
+        Fixes an assertion failure when quitting an app that uses a Legacy WebKit web view after dragging-and-
+        dropping a PDF embedded using an HTML image element into the same web view.
+
+        When performing a drag-and-drop of a PDF document image (WebCore::PDFDocumentImage) we create a WebArchive
+        from the main frame's WebHTMLView and promise AppKit that we will provide a Rich Text Format (RTF) document
+        from this archive if needed. For some reason, on app termination AppKit requests that the WebHTMLView
+        fulfill its RTF document promise for the WebArchive created at the start of the drag operation. To do this,
+        we need to extract the image resource from the Web Archive. Currently we query MIMETypeRegistry::isSupportedImageResourceMIMEType()
+        to see if the contained image is one that we can handle. However MIMETypeRegistry::isSupportedImageResourceMIMEType()
+        only returns true if WebKit supports creating an image document for the specified MIME type. Disregarding
+        the iOS motivated setting Settings::useImageDocumentForSubframePDF, PDFs and PostScripts do not create an
+        image document when navigated to directly. Since we can support dragging PDF document images we need to
+        query if MIMETypeRegistry::isPDFOrPostScriptMIMEType() in addition to querying MIMETypeRegistry::isSupportedImageResourceMIMEType().
+        We need to do both such queries before falling back to using the main resource of the Web Archive as
+        the image. Otherwise, we will cause an assertion failure if the main resource of the Web Archive is
+        not an image document.
+
+        * Misc/WebNSPasteboardExtras.mm:
+        (-[NSPasteboard _web_writePromisedRTFDFromArchive:containsImage:]):
+
+2018-04-26  Per Arne Vollan  <pvollan@apple.com>
+
+        Disable content filtering in minimal simulator mode
+        https://bugs.webkit.org/show_bug.cgi?id=185027
+        <rdar://problem/39736091>
+
+        Reviewed by Jer Noble.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-04-26  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Intl.PluralRules
+        https://bugs.webkit.org/show_bug.cgi?id=184312
+
+        Reviewed by JF Bastien.
+
+        Added Intl.PluralRules feature flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-04-25  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Remove access to keychain from the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=184428
+        <rdar://problem/13150903>
+
+        Reviewed by Brent Fulgham.
+
+        This patch does the followings:
+        1. Added necessary support to move HTMLKeygenElement's operation from WebCore space to Client space.
+        2. Craft new SPI signedPublicKeyAndChallengeStringForWebView to supply HTMLKeygenElement with dummy data
+        such that DumpRenderTree tests will not modify the underlying key store (e.g., the macOS Keychain).
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::signedPublicKeyAndChallengeString const):
+        * WebView/WebUIDelegatePrivate.h:
+
+2018-04-24  Jer Noble  <jer.noble@apple.com>
+
+        Don't add system framework paths to FRAMEWORK_SEARCH_PATHS
+        https://bugs.webkit.org/show_bug.cgi?id=184786
+
+        Reviewed by Tim Horton.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        * MigrateHeaders.make:
+
+2018-04-23  Daniel Bates  <dabates@apple.com>
+
+        Implement Same-Site cookies
+        https://bugs.webkit.org/show_bug.cgi?id=159464
+        <rdar://problem/27196358>
+
+        Reviewed by Brent Fulgham.
+
+        Pass the Same-Site info through the strategy.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::cookiesForDOM):
+        (WebPlatformStrategies::setCookiesFromDOM):
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue):
+        (WebPlatformStrategies::getRawCookies):
+
+2018-04-23  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutFormattingContext] Initial commit.
+        https://bugs.webkit.org/show_bug.cgi?id=184896
+
+        Reviewed by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2018-04-23  Daniel Bates  <dabates@apple.com>
 
         Implement Same-Site cookies

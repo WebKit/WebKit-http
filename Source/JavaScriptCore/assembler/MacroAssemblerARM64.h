@@ -372,6 +372,12 @@ public:
         and32(dataTempRegister, dest);
     }
 
+    void and16(Address src, RegisterID dest)
+    {
+        load16(src, getCachedDataTempRegisterIDAndInvalidate());
+        and32(dataTempRegister, dest);
+    }
+
     void and64(RegisterID src1, RegisterID src2, RegisterID dest)
     {
         m_assembler.and_<64>(dest, src1, src2);
@@ -4459,6 +4465,10 @@ protected:
         else
             Assembler::linkCall(code, call.m_label, function.template retaggedExecutableAddress<NoPtrTag>());
     }
+
+    JS_EXPORT_PRIVATE static void collectCPUFeatures();
+
+    JS_EXPORT_PRIVATE static CPUIDCheckState s_jscvtCheckState;
 
     CachedTempRegister m_dataMemoryTempRegister;
     CachedTempRegister m_cachedMemoryTempRegister;

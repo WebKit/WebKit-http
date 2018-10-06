@@ -124,6 +124,7 @@ JavaScriptCore_BUILTINS_SOURCES = \
     $(JavaScriptCore)/builtins/StringPrototype.js \
     $(JavaScriptCore)/builtins/TypedArrayConstructor.js \
     $(JavaScriptCore)/builtins/TypedArrayPrototype.js \
+    $(JavaScriptCore)/builtins/WebAssemblyPrototype.js \
 #
 
 # The combined output file depends on the contents of builtins and generator scripts, so
@@ -155,6 +156,8 @@ OBJECT_LUT_HEADERS = \
     IntlDateTimeFormatPrototype.lut.h \
     IntlNumberFormatConstructor.lut.h \
     IntlNumberFormatPrototype.lut.h \
+    IntlPluralRulesConstructor.lut.h \
+    IntlPluralRulesPrototype.lut.h \
     JSDataViewPrototype.lut.h \
     JSGlobalObject.lut.h \
     JSInternalPromiseConstructor.lut.h \

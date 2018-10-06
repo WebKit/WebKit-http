@@ -1011,8 +1011,11 @@ void InlineTextBox::paintMarkedTextForeground(PaintInfo& paintInfo, const FloatR
     textPainter.setFont(font);
     textPainter.setStyle(markedText.style.textStyles);
     textPainter.setIsHorizontal(isHorizontal());
-    if (markedText.style.textShadow)
+    if (markedText.style.textShadow) {
         textPainter.setShadow(&markedText.style.textShadow.value());
+        if (lineStyle.hasColorFilter())
+            textPainter.setShadowColorFilter(&lineStyle.colorFilter());
+    }
     textPainter.setEmphasisMark(emphasisMark, emphasisMarkOffset, combinedText());
 
     TextRun textRun = createTextRun();
@@ -1064,8 +1067,11 @@ void InlineTextBox::paintMarkedTextDecoration(PaintInfo& paintInfo, const FloatR
     decorationPainter.setWidth(snappedSelectionRect.width());
     decorationPainter.setBaseline(lineStyle().fontMetrics().ascent());
     decorationPainter.setIsHorizontal(isHorizontal());
-    if (markedText.style.textShadow)
-        decorationPainter.addTextShadow(&markedText.style.textShadow.value());
+    if (markedText.style.textShadow) {
+        decorationPainter.setTextShadow(&markedText.style.textShadow.value());
+        if (lineStyle().hasColorFilter())
+            decorationPainter.setShadowColorFilter(&lineStyle().colorFilter());
+    }
 
     {
         GraphicsContextStateSaver stateSaver { context, false };
@@ -1158,7 +1164,7 @@ void InlineTextBox::paintCompositionUnderline(PaintInfo& paintInfo, const FloatP
     width -= 2;
 
     GraphicsContext& context = paintInfo.context();
-    context.setStrokeColor(underline.compositionUnderlineColor == CompositionUnderlineColor::TextColor ? renderer().style().visitedDependentColor(CSSPropertyWebkitTextFillColor) : underline.color);
+    context.setStrokeColor(underline.compositionUnderlineColor == CompositionUnderlineColor::TextColor ? renderer().style().visitedDependentColorWithColorFilter(CSSPropertyWebkitTextFillColor) : underline.color);
     context.setStrokeThickness(lineThickness);
     context.drawLineForText(FloatPoint(boxOrigin.x() + start, boxOrigin.y() + logicalHeight() - lineThickness), width, renderer().document().printing());
 }

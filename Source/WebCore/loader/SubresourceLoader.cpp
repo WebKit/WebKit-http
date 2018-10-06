@@ -530,7 +530,8 @@ bool SubresourceLoader::checkResponseCrossOriginAccessControl(const ResourceResp
 #endif
 
     ASSERT(m_origin);
-    return passesAccessControlCheck(response, options().storedCredentialsPolicy, *m_origin, errorDescription);
+
+    return passesAccessControlCheck(response, options().credentials == FetchOptions::Credentials::Include ? StoredCredentialsPolicy::Use : StoredCredentialsPolicy::DoNotUse, *m_origin, errorDescription);
 }
 
 bool SubresourceLoader::checkRedirectionCrossOriginAccessControl(const ResourceRequest& previousRequest, const ResourceResponse& redirectResponse, ResourceRequest& newRequest, String& errorMessage)
@@ -571,7 +572,7 @@ bool SubresourceLoader::checkRedirectionCrossOriginAccessControl(const ResourceR
     updateReferrerPolicy(redirectResponse.httpHeaderField(HTTPHeaderName::ReferrerPolicy));
     
     if (redirectingToNewOrigin) {
-        cleanHTTPRequestHeadersForAccessControl(newRequest);
+        cleanHTTPRequestHeadersForAccessControl(newRequest, options().httpHeadersToKeep);
         updateRequestForAccessControl(newRequest, *m_origin, options().storedCredentialsPolicy);
     }
     
@@ -650,6 +651,9 @@ void SubresourceLoader::didFinishLoading(const NetworkLoadMetrics& networkLoadMe
 
 void SubresourceLoader::didFail(const ResourceError& error)
 {
+    if (m_frame && m_frame->document() && error.isAccessControl())
+        m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, error.localizedDescription());
+
 #if USE(QUICK_LOOK)
     if (auto previewLoader = m_previewLoader.get())
         previewLoader->didFail();
@@ -782,6 +786,11 @@ void SubresourceLoader::reportResourceTiming(const NetworkLoadMetrics& networkLo
 
     ASSERT(options().initiatorContext == InitiatorContext::Document);
     m_documentLoader->cachedResourceLoader().resourceTimingInformation().addResourceTiming(*m_resource, *document, WTFMove(resourceTiming));
+}
+
+const HTTPHeaderMap* SubresourceLoader::originalHeaders() const
+{
+    return (m_resource  && m_resource->originalRequest()) ? &m_resource->originalRequest()->httpHeaderFields() : nullptr;
 }
 
 }

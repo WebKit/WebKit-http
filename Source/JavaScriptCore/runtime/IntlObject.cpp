@@ -41,10 +41,14 @@
 #include "IntlNumberFormat.h"
 #include "IntlNumberFormatConstructor.h"
 #include "IntlNumberFormatPrototype.h"
+#include "IntlPluralRules.h"
+#include "IntlPluralRulesConstructor.h"
+#include "IntlPluralRulesPrototype.h"
 #include "JSCInlines.h"
 #include "JSCJSValueInlines.h"
 #include "Lookup.h"
 #include "ObjectPrototype.h"
+#include "Options.h"
 #include <unicode/uloc.h>
 #include <unicode/unumsys.h>
 #include <wtf/Assertions.h>
@@ -102,11 +106,18 @@ void IntlObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
     Structure* dateTimeFormatStructure = IntlDateTimeFormat::createStructure(vm, globalObject, dateTimeFormatPrototype);
     IntlDateTimeFormatConstructor* dateTimeFormatConstructor = IntlDateTimeFormatConstructor::create(vm, IntlDateTimeFormatConstructor::createStructure(vm, globalObject, globalObject->functionPrototype()), dateTimeFormatPrototype, dateTimeFormatStructure);
 
+    // Set up PluralRules.
+    IntlPluralRulesPrototype* pluralRulesPrototype = IntlPluralRulesPrototype::create(vm, globalObject, IntlPluralRulesPrototype::createStructure(vm, globalObject, globalObject->objectPrototype()));
+    Structure* pluralRulesStructure = IntlPluralRules::createStructure(vm, globalObject, pluralRulesPrototype);
+    IntlPluralRulesConstructor* pluralRulesConstructor = IntlPluralRulesConstructor::create(vm, IntlPluralRulesConstructor::createStructure(vm, globalObject, globalObject->functionPrototype()), pluralRulesPrototype, pluralRulesStructure);
+
     // Constructor Properties of the Intl Object
     // https://tc39.github.io/ecma402/#sec-constructor-properties-of-the-intl-object
     putDirectWithoutTransition(vm, vm.propertyNames->Collator, collatorConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
     putDirectWithoutTransition(vm, vm.propertyNames->NumberFormat, numberFormatConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
     putDirectWithoutTransition(vm, vm.propertyNames->DateTimeFormat, dateTimeFormatConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    if (Options::useIntlPluralRules())
+        putDirectWithoutTransition(vm, vm.propertyNames->PluralRules, pluralRulesConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
 
     // Function Properties of the Intl Object
     // https://tc39.github.io/ecma402/#sec-function-properties-of-the-intl-object
@@ -603,7 +614,7 @@ String removeUnicodeLocaleExtension(const String& locale)
     if (partsSize > 0)
         builder.append(parts[0]);
     for (size_t p = 1; p < partsSize; ++p) {
-        if (parts[p] == "u") {
+        if (parts[p] == "u" && p + 1 < partsSize) {
             // Skip the u- and anything that follows until another singleton.
             // While the next part is part of the unicode extension, skip it.
             while (p + 1 < partsSize && parts[p + 1].length() > 1)

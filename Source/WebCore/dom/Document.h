@@ -196,6 +196,8 @@ template<typename> class ExceptionOr;
 enum CollectionType;
 enum class ShouldOpenExternalURLsPolicy;
 
+enum class RouteSharingPolicy;
+
 using PlatformDisplayID = uint32_t;
 
 #if ENABLE(XSLT)
@@ -799,7 +801,7 @@ public:
 
     DOMWindow* domWindow() const { return m_domWindow.get(); }
     // In DOM Level 2, the Document's DOMWindow is called the defaultView.
-    DOMWindow* defaultView() const { return domWindow(); } 
+    WEBCORE_EXPORT WindowProxy* windowProxy() const;
 
     Document& contextDocument() const;
     void setContextDocument(Document& document) { m_contextDocument = document.createWeakPtr(); }
@@ -1317,7 +1319,7 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void addPlaybackTargetPickerClient(MediaPlaybackTargetClient&);
     void removePlaybackTargetPickerClient(MediaPlaybackTargetClient&);
-    void showPlaybackTargetPicker(MediaPlaybackTargetClient&, bool);
+    void showPlaybackTargetPicker(MediaPlaybackTargetClient&, bool, RouteSharingPolicy, const String&);
     void playbackTargetPickerClientStateDidChange(MediaPlaybackTargetClient&, MediaProducer::MediaStateFlags);
 
     void setPlaybackTarget(uint64_t, Ref<MediaPlaybackTarget>&&);
@@ -1428,6 +1430,8 @@ public:
     bool hasRequestedPageSpecificStorageAccessWithUserInteraction(const String& primaryDomain);
     void setHasRequestedPageSpecificStorageAccessWithUserInteraction(const String& primaryDomain);
 #endif
+
+    String signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String& challengeString, const URL&);
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };

@@ -97,11 +97,15 @@ void NetworkCORSPreflightChecker::didReceiveData(Ref<WebCore::SharedBuffer>&&)
     RELEASE_LOG_IF_ALLOWED("didReceiveData");
 }
 
-void NetworkCORSPreflightChecker::didCompleteWithError(const WebCore::ResourceError& error, const WebCore::NetworkLoadMetrics&)
+void NetworkCORSPreflightChecker::didCompleteWithError(const WebCore::ResourceError& preflightError, const WebCore::NetworkLoadMetrics&)
 {
-    if (!error.isNull()) {
+    if (!preflightError.isNull()) {
         RELEASE_LOG_IF_ALLOWED("didCompleteWithError");
-        m_completionCallback(ResourceError { errorDomainWebKitInternal, 0, m_parameters.originalRequest.url(), ASCIILiteral("Preflight response is not successful"), ResourceError::Type::AccessControl });
+        auto error = preflightError;
+        if (error.isNull() || error.isGeneral())
+            error.setType(ResourceError::Type::AccessControl);
+
+        m_completionCallback(WTFMove(error));
         return;
     }
 
@@ -123,7 +127,7 @@ void NetworkCORSPreflightChecker::didSendData(uint64_t totalBytesSent, uint64_t 
 void NetworkCORSPreflightChecker::wasBlocked()
 {
     RELEASE_LOG_IF_ALLOWED("wasBlocked");
-    m_completionCallback(ResourceError { errorDomainWebKitInternal, 0, m_parameters.originalRequest.url(), ASCIILiteral("Preflight request was blocked"), ResourceError::Type::AccessControl });
+    m_completionCallback(ResourceError { errorDomainWebKitInternal, 0, m_parameters.originalRequest.url(), ASCIILiteral("CORS-preflight request was blocked"), ResourceError::Type::AccessControl });
 }
 
 void NetworkCORSPreflightChecker::cannotShowURL()

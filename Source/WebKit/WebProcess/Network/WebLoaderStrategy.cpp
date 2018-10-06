@@ -274,21 +274,47 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
     loadParameters.maximumBufferingTime = maximumBufferingTime;
     loadParameters.derivedCachedDataTypesToRetrieve = resourceLoader.options().derivedCachedDataTypesToRetrieve;
     loadParameters.options = resourceLoader.options();
+    loadParameters.preflightPolicy = resourceLoader.options().preflightPolicy;
+
+    auto* document = resourceLoader.frame() ? resourceLoader.frame()->document() : nullptr;
+    if (resourceLoader.options().cspResponseHeaders)
+        loadParameters.cspResponseHeaders = resourceLoader.options().cspResponseHeaders;
+    else if (document && !document->shouldBypassMainWorldContentSecurityPolicy()) {
+        if (auto* contentSecurityPolicy = document->contentSecurityPolicy())
+            loadParameters.cspResponseHeaders = contentSecurityPolicy->responseHeaders();
+    }
+
+    if (resourceLoader.isSubresourceLoader()) {
+        if (auto* headers = static_cast<SubresourceLoader&>(resourceLoader).originalHeaders())
+            loadParameters.originalRequestHeaders = *headers;
+    }
+
+#if ENABLE(CONTENT_EXTENSIONS)
+    if (document) {
+        loadParameters.mainDocumentURL = document->topDocument().url();
+        // FIXME: Instead of passing userContentControllerIdentifier, the NetworkProcess should be able to get it using webPageId.
+        auto* webFrameLoaderClient = toWebFrameLoaderClient(resourceLoader.frame()->loader().client());
+        auto* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : nullptr;
+        auto* webPage = webFrame ? webFrame->page() : nullptr;
+        if (webPage)
+            loadParameters.userContentControllerIdentifier = webPage->userContentControllerIdentifier();
+    }
+#endif
+
+    // FIXME: All loaders should provide their origin if navigation mode is cors/no-cors/same-origin.
+    // As a temporary approach, we use the document origin if available or the HTTP Origin header otherwise.
+    if (resourceLoader.isSubresourceLoader())
+        loadParameters.sourceOrigin = static_cast<SubresourceLoader&>(resourceLoader).origin();
+
+    if (!loadParameters.sourceOrigin && document)
+        loadParameters.sourceOrigin = &document->securityOrigin();
+    if (!loadParameters.sourceOrigin) {
+        auto origin = request.httpOrigin();
+        if (!origin.isNull())
+            loadParameters.sourceOrigin = SecurityOrigin::createFromString(origin);
+    }
 
     if (loadParameters.options.mode != FetchOptions::Mode::Navigate) {
-        // FIXME: All loaders should provide their origin if navigation mode is cors/no-cors/same-origin.
-        // As a temporary approach, we use the document origin if available or the HTTP Origin header otherwise.
-        if (resourceLoader.isSubresourceLoader())
-            loadParameters.sourceOrigin = static_cast<SubresourceLoader&>(resourceLoader).origin();
-
-        auto* document = resourceLoader.frame() ? resourceLoader.frame()->document() : nullptr;
-        if (!loadParameters.sourceOrigin && document)
-            loadParameters.sourceOrigin = &document->securityOrigin();
-        if (!loadParameters.sourceOrigin) {
-            auto origin = request.httpOrigin();
-            if (!origin.isNull())
-                loadParameters.sourceOrigin = SecurityOrigin::createFromString(origin);
-        }
         ASSERT(loadParameters.sourceOrigin);
         if (!loadParameters.sourceOrigin) {
             scheduleInternallyFailedLoad(resourceLoader);
@@ -296,8 +322,21 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
         }
     }
 
-    // FIXME: We should also sanitize redirect response for navigations.
-    loadParameters.shouldRestrictHTTPResponseAccess = RuntimeEnabledFeatures::sharedFeatures().restrictedHTTPResponseAccess() && resourceLoader.options().mode != FetchOptions::Mode::Navigate;
+    loadParameters.shouldRestrictHTTPResponseAccess = RuntimeEnabledFeatures::sharedFeatures().restrictedHTTPResponseAccess();
+
+    loadParameters.isMainFrameNavigation = resourceLoader.frame() && resourceLoader.frame()->isMainFrame() && resourceLoader.options().mode == FetchOptions::Mode::Navigate;
+
+    loadParameters.shouldEnableFromOriginResponseHeader = RuntimeEnabledFeatures::sharedFeatures().fromOriginResponseHeaderEnabled() && !loadParameters.isMainFrameNavigation;
+    if (loadParameters.shouldEnableFromOriginResponseHeader) {
+        Vector<RefPtr<WebCore::SecurityOrigin>> frameAncestorOrigins;
+        for (auto* frame = resourceLoader.frame(); frame; frame = frame->tree().parent()) {
+            if (frame->document())
+                frameAncestorOrigins.append(makeRefPtr(frame->document()->securityOrigin()));
+            if (frame->isMainFrame())
+                break;
+        }
+        loadParameters.frameAncestorOrigins = WTFMove(frameAncestorOrigins);
+    }
 
     ASSERT((loadParameters.webPageID && loadParameters.webFrameID) || loadParameters.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials);
 
@@ -612,15 +651,20 @@ void WebLoaderStrategy::setCaptureExtraNetworkLoadMetricsEnabled(bool enabled)
 ResourceResponse WebLoaderStrategy::responseFromResourceLoadIdentifier(uint64_t resourceLoadIdentifier)
 {
     ResourceResponse response;
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::TakeNetworkLoadInformationResponse { resourceLoadIdentifier }, Messages::NetworkConnectionToWebProcess::TakeNetworkLoadInformationResponse::Reply { response }, 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::TakeNetworkLoadInformationResponse { resourceLoadIdentifier }, Messages::NetworkConnectionToWebProcess::TakeNetworkLoadInformationResponse::Reply { response }, 0, Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply);
     return response;
 }
 
 NetworkLoadMetrics WebLoaderStrategy::networkMetricsFromResourceLoadIdentifier(uint64_t resourceLoadIdentifier)
 {
     NetworkLoadMetrics networkMetrics;
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::TakeNetworkLoadInformationMetrics { resourceLoadIdentifier }, Messages::NetworkConnectionToWebProcess::TakeNetworkLoadInformationMetrics::Reply { networkMetrics }, 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::TakeNetworkLoadInformationMetrics { resourceLoadIdentifier }, Messages::NetworkConnectionToWebProcess::TakeNetworkLoadInformationMetrics::Reply { networkMetrics }, 0, Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply);
     return networkMetrics;
+}
+
+bool WebLoaderStrategy::isDoingLoadingSecurityChecks() const
+{
+    return RuntimeEnabledFeatures::sharedFeatures().restrictedHTTPResponseAccess();
 }
 
 } // namespace WebKit

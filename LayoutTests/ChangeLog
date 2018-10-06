@@ -1,3 +1,1290 @@
+2018-05-02  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Unreviewed gardening. Add missing Skip for http/wpt.
+
+        * platform/wincairo/TestExpectations:
+
+2018-05-02  Dirk Schulze  <dschulze@chromium.org>
+
+        getCharNumAtPosition should take DOMPointInit as argument
+        https://bugs.webkit.org/show_bug.cgi?id=184695
+
+        Reviewed by Antti Koivisto.
+
+        * svg/text/lengthAdjust-text-metrics.html: Run tests with dictionary.
+
+2018-05-02  Youenn Fablet  <youenn@apple.com>
+
+        Use NetworkLoadChecker for navigation loads
+        https://bugs.webkit.org/show_bug.cgi?id=184892
+        <rdar://problem/39652686>
+
+        Reviewed by Chris Dumez.
+
+        Updated header-filtering.https.html to expect full headers except cookie-related for same origin loads.
+        Updated expected.txt files accordingly.
+
+        * http/wpt/service-workers/header-filtering.https-expected.txt:
+        * http/wpt/service-workers/header-filtering.https.html:
+        * platform/mac/http/tests/webarchive/test-preload-resources-expected.txt:
+
+2018-05-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Collection fragment identifiers don't use PostScript names
+        https://bugs.webkit.org/show_bug.cgi?id=184624
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/font-collection-expected.html:
+        * fast/text/font-collection.html:
+        * fast/text/resources/collection.ttc: I generated this font collection by hand. The "Ahemerator" font inside it is missing the
+        "A" glyph.
+
+2018-05-02  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test http/wpt/service-workers/header-filtering.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=184469
+        <rdar://problem/39428226>
+
+        Reviewed by Chris Dumez.
+
+        Ensure that the message posted for the loading of the initial iframe is actually received before doing further tests.
+
+        * http/wpt/service-workers/header-filtering.https.html:
+        * platform/mac-wk2/TestExpectations:
+
+2018-05-02  Chris Dumez  <cdumez@apple.com>
+
+        document.open() event listener removal is not immediate
+        https://bugs.webkit.org/show_bug.cgi?id=185191
+
+        Reviewed by Darin Adler.
+
+        Add layout test coverage.
+
+        * fast/dom/Document/document-open-removes-all-listeners-expected.txt: Added.
+        * fast/dom/Document/document-open-removes-all-listeners.html: Added.
+
+2018-05-01  Brent Fulgham  <bfulgham@apple.com>
+
+        Prevent assertion when changing forms
+        https://bugs.webkit.org/show_bug.cgi?id=185173
+        <rdar://problem/39738669>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/forms/form-submission-crash-3-expected.txt: Added.
+        * fast/forms/form-submission-crash-3.html: Added.
+
+2018-05-02  Youenn Fablet  <youenn@apple.com>
+
+        CacheStorage::Engine should keep a list of initialization callback
+        https://bugs.webkit.org/show_bug.cgi?id=185184
+        <rdar://problem/38875651>
+
+        Reviewed by Antti Koivisto.
+
+        * http/wpt/cache-storage/a-cache-open.https-expected.txt: Added.
+        * http/wpt/cache-storage/a-cache-open.https.html: Added.
+
+2018-05-02  Ms2ger  <Ms2ger@igalia.com>
+
+        Update document-create-touch.html expectations for r231114
+        https://bugs.webkit.org/show_bug.cgi?id=185193
+
+        Unreviewed test gardening.
+
+        * fast/events/touch/document-create-touch-expected.txt:
+        * fast/events/touch/document-create-touch.html:
+
+2018-05-01  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas tab: determine hasVisibleEffect for all actions immediately after recording is added
+        https://bugs.webkit.org/show_bug.cgi?id=182995
+
+        Reviewed by Matt Baker.
+
+        * inspector/canvas/resources/recording-utilities.js:
+
+2018-05-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, correct a typo in the iOS TestExpectation file.
+
+        * platform/ios/TestExpectations:
+
+2018-05-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline tests after r231165.
+        https://bugs.webkit.org/show_bug.cgi?id=185166
+
+        Unreviewed test gardening.
+
+        * animations/font-variations/font-variation-settings-expected.txt:
+        * animations/font-variations/font-variation-settings-order-expected.txt:
+        * animations/font-variations/font-variation-settings-order.html:
+        * animations/font-variations/font-variation-settings.html:
+        * legacy-animation-engine/animations/font-variations/font-variation-settings-expected.txt:
+        * legacy-animation-engine/animations/font-variations/font-variation-settings-order-expected.txt:
+        * legacy-animation-engine/animations/font-variations/font-variation-settings-order.html:
+        * legacy-animation-engine/animations/font-variations/font-variation-settings.html:
+        * platform/ios/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt: Added.
+        * platform/ios/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt: Added.
+        * platform/ios/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt: Added.
+
+2018-05-01  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        WebAssembly: add support for stream APIs - JavaScript API
+        https://bugs.webkit.org/show_bug.cgi?id=183442
+
+        Reviewed by Yusuke Suzuki and JF Bastien.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/win/TestExpectations:
+
+2018-04-30  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed test gardening
+
+        Update test expectations since the crash reported on Bug 177828 is no longer reproducible.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-04-30  Megan Gardner  <megan_gardner@apple.com>
+
+        Add tests for selection in content editable
+        https://bugs.webkit.org/show_bug.cgi?id=185144
+
+        Reviewed by Wenson Hsieh.
+        
+        Tests that should cover selection in content editable, both with and without a keyboard present. Also fixing two tests that had errors.
+
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-down-to-change-selected-text-expected.txt: Added.
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-down-to-change-selected-text.html: Added.
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-left-to-change-selected-text-expected.txt: Added.
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-left-to-change-selected-text.html: Added.
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-up-to-change-selected-text-expected.txt: Added.
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-up-to-change-selected-text.html: Added.
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-down-to-change-selected-text-expected.txt: Added.
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-down-to-change-selected-text.html: Added.
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-left-to-change-selected-text-expected.txt: Added.
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-left-to-change-selected-text.html: Added.
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-right-to-change-selected-text-expected.txt: Added.
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-right-to-change-selected-text.html: Added.
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-up-to-change-selected-text-expected.txt: Added.
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-up-to-change-selected-text.html: Added.
+        * fast/events/touch/ios/long-press-then-drag-right-to-change-selected-text.html:
+        * fast/events/touch/ios/long-press-then-drag-up-to-change-selected-text.html:
+
+2018-04-30  Jer Noble  <jer.noble@apple.com>
+
+        <img src=mp4> does not display on ios despite Accept: video/* advertisement
+        https://bugs.webkit.org/show_bug.cgi?id=185029
+        <rdar://problem/39771989>
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios/TestExpectations:
+
+2018-04-30  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r230914) Selecting text on this apple.com page makes it vanish
+        https://bugs.webkit.org/show_bug.cgi?id=185142
+        <rdar://problem/39821446>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/simple-line-layout-selection-with-overflow-expected.html: Added.
+        * fast/text/simple-line-layout-selection-with-overflow.html: Added.
+
+2018-04-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Respect the existing shrink-to-fit attribute instead of using min-device-width
+        https://bugs.webkit.org/show_bug.cgi?id=185132
+        <rdar://problem/39834562>
+
+        Reviewed by Tim Horton.
+
+        Modifies an existing layout test to try out different values of `shrink-to-fit` instead of using the
+        `min-device-width` attribute. This test now begins with the default viewport configuration, then explicitly
+        disables `shrink-to-fit` by setting the attribute to a few different values (which should all achieve the same
+        effect), and lastly explicitly re-enables `shrink-to-fit` by setting the attribute value to several values that
+        should behave the same as `shrink-to-fit=yes`.
+
+        * fast/viewport/extrazoom/viewport-change-min-device-width.html:
+
+2018-04-30  Chris Nardi  <cnardi@chromium.org>
+
+        Serialize font-variation-settings with double-quotes per spec
+        https://bugs.webkit.org/show_bug.cgi?id=182542
+
+        Reviewed by Myles C. Maxfield.
+
+        Updated test to verify double-quotes are used.
+
+        * fast/text/variations/getComputedStyle-expected.txt:
+        * fast/text/variations/getComputedStyle.html:
+
+2018-04-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Make color-filter affect caret-color
+        https://bugs.webkit.org/show_bug.cgi?id=185129
+        rdar://problem/39829066
+
+        Reviewed by Tim Horton.
+
+        * css3/color-filters/color-filter-caret-color-expected.html: Added.
+        * css3/color-filters/color-filter-caret-color.html: Added.
+
+2018-04-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix color-filter to apply to SVG colors
+        https://bugs.webkit.org/show_bug.cgi?id=185113
+        rdar://problem/39665082
+
+        Reviewed by Dean Jackson.
+
+        * css3/color-filters/svg/color-filter-inline-svg-expected.html: Added.
+        * css3/color-filters/svg/color-filter-inline-svg.html: Added.
+
+2018-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening for iOS and macOS.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-04-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up color-filter tests.
+        
+        Detab the files.
+        
+        Remove calls to internals.settings.setColorFilterEnabled() which aren't needed, since
+        WebKitTestRunner and DumpRenderTree turn the feature on by default.
+
+        * css3/color-filters/color-filter-backgrounds-borders-expected.html:
+        * css3/color-filters/color-filter-backgrounds-borders.html:
+        * css3/color-filters/color-filter-box-shadow-expected.html:
+        * css3/color-filters/color-filter-box-shadow.html:
+        * css3/color-filters/color-filter-brightness-expected.html:
+        * css3/color-filters/color-filter-brightness.html:
+        * css3/color-filters/color-filter-color-property-expected.html:
+        * css3/color-filters/color-filter-color-property-list-item-expected.html:
+        * css3/color-filters/color-filter-color-property-list-item.html:
+        * css3/color-filters/color-filter-color-property.html:
+        * css3/color-filters/color-filter-color-text-decorations-expected.html:
+        * css3/color-filters/color-filter-color-text-decorations.html:
+        * css3/color-filters/color-filter-column-rule-expected.html:
+        * css3/color-filters/color-filter-column-rule.html:
+        * css3/color-filters/color-filter-contrast-expected.html:
+        * css3/color-filters/color-filter-contrast.html:
+        * css3/color-filters/color-filter-current-color-expected.html:
+        * css3/color-filters/color-filter-current-color.html:
+        * css3/color-filters/color-filter-filter-list-expected.html:
+        * css3/color-filters/color-filter-filter-list.html:
+        * css3/color-filters/color-filter-gradients-expected.html:
+        * css3/color-filters/color-filter-gradients.html:
+        * css3/color-filters/color-filter-grayscale-expected.html:
+        * css3/color-filters/color-filter-grayscale.html:
+        * css3/color-filters/color-filter-hue-rotate-expected.html:
+        * css3/color-filters/color-filter-hue-rotate.html:
+        * css3/color-filters/color-filter-inherits-expected.html:
+        * css3/color-filters/color-filter-inherits.html:
+        * css3/color-filters/color-filter-invert-expected.html:
+        * css3/color-filters/color-filter-invert.html:
+        * css3/color-filters/color-filter-opacity-expected.html:
+        * css3/color-filters/color-filter-opacity.html:
+        * css3/color-filters/color-filter-outline-expected.html:
+        * css3/color-filters/color-filter-outline.html:
+        * css3/color-filters/color-filter-parsing.html:
+        * css3/color-filters/color-filter-saturate-expected.html:
+        * css3/color-filters/color-filter-saturate.html:
+        * css3/color-filters/color-filter-sepia-expected.html:
+        * css3/color-filters/color-filter-sepia.html:
+        * css3/color-filters/color-filter-text-decoration-shadow-expected.html:
+        * css3/color-filters/color-filter-text-decoration-shadow.html:
+        * css3/color-filters/color-filter-text-emphasis-expected.html:
+        * css3/color-filters/color-filter-text-emphasis.html:
+        * css3/color-filters/color-filter-text-shadow-expected.html:
+        * css3/color-filters/color-filter-text-shadow.html:
+        * css3/color-filters/color-filter-text-stroke.html:
+
+2018-04-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement color-filter for text stroke
+        https://bugs.webkit.org/show_bug.cgi?id=185098
+
+        Reviewed by Alan Bujtas.
+
+        * css3/color-filters/color-filter-text-stroke-expected.html: Added.
+        * css3/color-filters/color-filter-text-stroke.html: Added.
+
+2018-04-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement animation for color-filter
+        https://bugs.webkit.org/show_bug.cgi?id=185092
+        rdar://problem/39773810
+
+        Reviewed by Tim Horton.
+        
+        Fix the testing to recognize unprefixed filter, and color-filter.
+        
+        Add a color-filter animation test.
+
+        * animations/resources/animation-test-helpers.js:
+        (getPropertyValue):
+        (comparePropertyValue):
+        * css3/color-filters/color-filter-animation-expected.txt: Added.
+        * css3/color-filters/color-filter-animation.html: Added.
+
+2018-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for fast/loader/submit-form-while-parsing-2.html.
+        https://bugs.webkit.org/show_bug.cgi?id=184051
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/wpt/resource-timing/rt-resources-per-worker.html as flaky on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=180260
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-04-27  Nan Wang  <n_wang@apple.com>
+
+        AX: Accessibility needs to know which part of the content view is visible on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=185085
+        <rdar://problem/39801363>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ios-simulator/unobscured-content-rect-expected.txt: Added.
+        * accessibility/ios-simulator/unobscured-content-rect.html: Added.
+        * platform/ios-wk1/TestExpectations:
+
+2018-04-27  Christopher Reid  <chris.reid@sony.com>
+
+        URL::appendEncodedHostName is using the deprecated uidna_IDNToASCII function
+        https://bugs.webkit.org/show_bug.cgi?id=184836
+
+        Reviewed by Alex Christensen.
+
+        Verify that setting the host or hostname of URL objects will use IDNA2008.
+
+        * fast/url/url-hostname-encoding-expected.txt: Added.
+        * fast/url/url-hostname-encoding.html: Added.
+
+2018-04-27  Youenn Fablet  <youenn@apple.com>
+
+        Use NetworkLoadChecker for XHR/fetch loads
+        https://bugs.webkit.org/show_bug.cgi?id=184741
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-redirect-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/connect-src-eventsource-redirect-to-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-redirect-to-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/worker-csp-blocks-xhr-redirect-cross-origin-expected.txt:
+        * http/tests/xmlhttprequest/access-control-and-redirects-async-expected.txt:
+        * http/tests/xmlhttprequest/access-control-and-redirects-expected.txt:
+        * platform/mac-wk1/http/tests/security/contentSecurityPolicy/connect-src-eventsource-redirect-to-blocked-expected.txt: Added.
+        * platform/mac-wk1/http/tests/security/contentSecurityPolicy/worker-csp-blocks-xhr-redirect-cross-origin-expected.txt: Added.
+        * platform/mac-wk1/http/tests/xmlhttprequest/access-control-and-redirects-async-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/XMLHttpRequest/late-upload-events-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-basic-cors-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/XMLHttpRequest/send-network-error-async-events.sub-expected.txt: Added.
+        * platform/win/http/tests/security/contentSecurityPolicy/connect-src-eventsource-redirect-to-blocked-expected.txt: Added.
+        * platform/win/http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-redirect-to-blocked-expected.txt: Added.
+        * platform/win/http/tests/security/contentSecurityPolicy/worker-csp-blocks-xhr-redirect-cross-origin-expected.txt: Added.
+        * platform/win/http/tests/xmlhttprequest/access-control-and-redirects-async-expected.txt: Added.
+        * platform/win/imported/w3c/web-platform-tests/XMLHttpRequest/late-upload-events-expected.txt: Added.
+        * platform/win/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-basic-cors-expected.txt: Added.
+        * platform/win/imported/w3c/web-platform-tests/XMLHttpRequest/send-network-error-async-events.sub-expected.txt: Added.
+
+2018-04-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Make color-filter transform gradient colors
+        https://bugs.webkit.org/show_bug.cgi?id=185080
+
+        Reviewed by Zalan Bujtas.
+
+        * css3/color-filters/color-filter-gradients-expected.html: Added.
+        * css3/color-filters/color-filter-gradients.html: Added.
+
+2018-04-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Disable color-filter tests on Windows for now
+        https://bugs.webkit.org/show_bug.cgi?id=185076
+
+        The experimental feature for color-filter is off by default, and Windows WebKit API
+        would have to change to enable it, so just skip the tests for now.
+
+        * platform/win/TestExpectations:
+
+2018-04-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix color-filter to apply to text decorations
+        https://bugs.webkit.org/show_bug.cgi?id=185068
+        <rdar://problem/39782136>
+
+        Reviewed by Alan Bujtas.
+
+        * css3/color-filters/color-filter-text-decoration-shadow-expected.html: Added.
+        * css3/color-filters/color-filter-text-decoration-shadow.html: Added.
+        * css3/color-filters/color-filter-text-shadow-expected.html: Added.
+        * css3/color-filters/color-filter-text-shadow.html: Added.
+
+2018-04-27  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark CSS color filters tests as failing on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=185075
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-04-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Add a mechanism to override default viewport behaviors in extra zoom mode
+        https://bugs.webkit.org/show_bug.cgi?id=185050
+        <rdar://problem/39624038>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test to check that:
+        • By default (with no `min-device-width` override), shrink-to-fit and expanded minimum layout sizes takes effect.
+        • `min-device-width` can be used to bail out of shrink-to-fit and viewport behaviors.
+        • A large `min-device-width` can be used to make extra zoom mode viewport heuristics even more aggressive.
+
+        * TestExpectations:
+        * fast/viewport/extrazoom/viewport-change-min-device-width.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.zoomScale):
+        (window.UIHelper):
+
+2018-04-27  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Mark a few new test failures
+
+        Unreviewed gardening.
+        * platform/gtk/TestExpectations: Related to r230817
+
+2018-04-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement rendering support for the color-filter CSS property
+        https://bugs.webkit.org/show_bug.cgi?id=185047
+        rdar://problem/39664967
+
+        Reviewed by Tim Horton.
+        
+        Tests for color-filter rendering.
+
+        * css3/color-filters/color-filter-backgrounds-borders-expected.html: Added.
+        * css3/color-filters/color-filter-backgrounds-borders.html: Added.
+        * css3/color-filters/color-filter-box-shadow-expected.html: Added.
+        * css3/color-filters/color-filter-box-shadow.html: Added.
+        * css3/color-filters/color-filter-brightness-expected.html: Added.
+        * css3/color-filters/color-filter-brightness.html: Added.
+        * css3/color-filters/color-filter-color-property-expected.html: Added.
+        * css3/color-filters/color-filter-color-property-list-item-expected.html: Added.
+        * css3/color-filters/color-filter-color-property-list-item.html: Added.
+        * css3/color-filters/color-filter-color-property.html: Added.
+        * css3/color-filters/color-filter-color-text-decorations-expected.html: Added.
+        * css3/color-filters/color-filter-color-text-decorations.html: Added.
+        * css3/color-filters/color-filter-column-rule-expected.html: Added.
+        * css3/color-filters/color-filter-column-rule.html: Added.
+        * css3/color-filters/color-filter-contrast-expected.html: Added.
+        * css3/color-filters/color-filter-contrast.html: Added.
+        * css3/color-filters/color-filter-current-color-expected.html: Added.
+        * css3/color-filters/color-filter-current-color.html: Added.
+        * css3/color-filters/color-filter-filter-list-expected.html: Added.
+        * css3/color-filters/color-filter-filter-list.html: Added.
+        * css3/color-filters/color-filter-grayscale-expected.html: Added.
+        * css3/color-filters/color-filter-grayscale.html: Added.
+        * css3/color-filters/color-filter-hue-rotate-expected.html: Added.
+        * css3/color-filters/color-filter-hue-rotate.html: Added.
+        * css3/color-filters/color-filter-inherits-expected.html: Added.
+        * css3/color-filters/color-filter-inherits.html: Added.
+        * css3/color-filters/color-filter-invert-expected.html: Added.
+        * css3/color-filters/color-filter-invert.html: Added.
+        * css3/color-filters/color-filter-opacity-expected.html: Added.
+        * css3/color-filters/color-filter-opacity.html: Added.
+        * css3/color-filters/color-filter-outline-expected.html: Added.
+        * css3/color-filters/color-filter-outline.html: Added.
+        * css3/color-filters/color-filter-saturate-expected.html: Added.
+        * css3/color-filters/color-filter-saturate.html: Added.
+        * css3/color-filters/color-filter-sepia-expected.html: Added.
+        * css3/color-filters/color-filter-sepia.html: Added.
+        * css3/color-filters/color-filter-text-emphasis-expected.html: Added.
+        * css3/color-filters/color-filter-text-emphasis.html: Added.
+
+2018-04-26  Brent Fulgham  <bfulgham@apple.com>
+
+        Show punycode if URL contains Latin small letter o with dot below character
+        https://bugs.webkit.org/show_bug.cgi?id=185051
+        <rdar://problem/39459297>
+
+        Reviewed by David Kilzer.
+
+        * fast/url/host-expected.txt:
+        * fast/url/host.html:
+
+2018-04-26  Sihui Liu  <sihui_liu@apple.com>
+
+        [iOS] LayoutTest http/tests/quicklook/hide-referer-on-navigation.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=184825
+        <rdar://problem/38924997>
+
+        Reviewed by Geoffrey Garen.
+
+        Policy decisions are made asynchronously now, so we need to set the async flag of this test. 
+
+        * http/tests/quicklook/hide-referer-on-navigation.html:
+
+2018-04-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/workers/worker-importScripts-banned-mimetype.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=184800
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-04-26  Youenn Fablet  <youenn@apple.com>
+
+        CORS preflight checker should add a console message when preflight load is blocked
+        https://bugs.webkit.org/show_bug.cgi?id=185021
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations: Skipping console JS logging for some WPT tests to keep them consistent between WK1 and WK2.
+        * http/tests/xmlhttprequest/redirect-cross-origin-post-expected.txt:
+        * http/tests/xmlhttprequest/simple-cross-origin-denied-events-post-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-basic-setrequestheader-expected.txt: Removed.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-setrequestheader-no-cred-expected.txt: Removed.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/cors/request-headers-expected.txt: Removed.
+        * platform/win/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-basic-setrequestheader-expected.txt: Removed.
+        * platform/win/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-setrequestheader-no-cred-expected.txt: Removed.
+        * platform/win/imported/w3c/web-platform-tests/cors/request-headers-expected.txt: Removed.
+
+2018-04-26  Youenn Fablet  <youenn@apple.com>
+
+        Make cross origin redirection error messages consistent between SubresourceLoader and NetworkLoadChecker
+        https://bugs.webkit.org/show_bug.cgi?id=185023
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect-expected.txt:
+        * http/tests/security/shape-image-cors-redirect-error-message-logging-1-expected.txt:
+        * http/tests/security/shape-image-cors-redirect-error-message-logging-2-expected.txt:
+        * platform/mac-wk1/http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect-expected.txt: Removed.
+        * platform/mac-wk1/http/tests/security/shape-image-cors-redirect-error-message-logging-1-expected.txt: Removed.
+        * platform/mac-wk1/http/tests/security/shape-image-cors-redirect-error-message-logging-2-expected.txt: Removed.
+        * platform/win/http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect-expected.txt: Removed.
+        * platform/win/http/tests/security/shape-image-cors-redirect-error-message-logging-1-expected.txt: Removed.
+        * platform/win/http/tests/security/shape-image-cors-redirect-error-message-logging-2-expected.txt: Removed.
+
+2018-04-25  Megan Gardner  <megan_gardner@apple.com>
+
+        Activate selection when interacting with editable content
+        https://bugs.webkit.org/show_bug.cgi?id=185017
+
+        Reviewed by Tim Horton.
+        
+        Fixed double-tap-on-editable-and-noneditable test, as it was not actually written correctly.
+        Should actually double tap on correct content and check for the correct output now.
+        Added two more tests to make sure that selections really are happening in editable content. 
+
+        * fast/events/touch/ios/double-tap-on-editable-and-noneditable.html:
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-expected.txt: Added.
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-right-to-change-selected-text-expected.txt: Added.
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-right-to-change-selected-text.html: Added.
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection.html: Added.
+        
+2018-04-25  Brent Fulgham  <bfulgham@apple.com>
+
+        Add port 548 (afpovertcp) to port blacklist
+        https://bugs.webkit.org/show_bug.cgi?id=185000
+        <rdar://problem/39540481>
+
+        Reviewed by David Kilzer.
+
+        Update test and expectations for new port.
+
+        * platform/gtk/security/block-test-expected.txt:
+        * platform/mac/security/block-test-expected.txt:
+        * platform/wpe/security/block-test-expected.txt:
+        * security/block-test-expected.txt:
+        * security/block-test.html:
+
+2018-04-26  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE] Gardening of tests for the WPE Debug bot.
+
+        Mark tests timing out.
+        An attempt to make the new WPE debug bot not abort early.
+
+        * platform/gtk/TestExpectations: workers/bomb.html for debug was skipped in the root expectations file,
+          but we were overriding it to simply "slow" here because we missed the tag for release.
+          Let's put both expectations together to make this clearer.
+        * platform/wpe/TestExpectations: Ditto.
+
+2018-04-26  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Intl.PluralRules
+        https://bugs.webkit.org/show_bug.cgi?id=184312
+
+        Reviewed by JF Bastien.
+
+        * js/intl-pluralrules-expected.txt: Added.
+        * js/intl-pluralrules.html: Added.
+        * js/script-tests/intl-pluralrules.js: Added.
+        * platform/win/TestExpectations: Disabled Intl.PluralRules tests on win.
+
+2018-04-25  Youenn Fablet  <youenn@apple.com>
+
+        Use NetworkLoadChecker for all subresource loads except fetch/XHR
+        https://bugs.webkit.org/show_bug.cgi?id=184870
+        <rdar://problem/39370034>
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-redirect-blocked-expected.txt:
+        * http/tests/security/cross-origin-xsl-BLOCKED-expected.txt:
+        * http/tests/security/cross-origin-xsl-redirect-BLOCKED-expected.txt:
+        * http/tests/security/isolatedWorld/bypass-main-world-csp-worker-redirect-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect-expected.txt:
+        * http/tests/security/shape-image-cors-redirect-error-message-logging-1-expected.txt:
+        * http/tests/security/shape-image-cors-redirect-error-message-logging-2-expected.txt:
+        * http/tests/security/worker-cross-origin-expected.txt:
+        * http/tests/security/xss-DENIED-xml-external-entity-expected.txt:
+        * http/tests/security/xss-DENIED-xsl-document-expected.txt:
+        * http/tests/security/xss-DENIED-xsl-external-entity-expected.txt:
+        * http/tests/workers/worker-redirect-expected.txt:
+        * http/tests/xmlhttprequest/access-control-and-redirects-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cross-origin-post-sync-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cross-origin-sync-expected.txt:
+        * http/tests/xmlhttprequest/xmlhttprequest-unsafe-redirect-expected.txt:
+        * platform/mac-wk1/http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect-expected.txt: Added.
+        * platform/mac-wk1/http/tests/security/shape-image-cors-redirect-error-message-logging-1-expected.txt: Added.
+        * platform/mac-wk1/http/tests/security/shape-image-cors-redirect-error-message-logging-2-expected.txt: Added.
+        * platform/mac-wk1/http/tests/workers/worker-redirect-expected.txt: Added.
+        * platform/mac-wk1/http/tests/security/contentSecurityPolicy/1.1/child-src/worker-redirect-blocked-expected.txt: Added.
+        * platform/mac-wk1/http/tests/security/isolatedWorld/bypass-main-world-csp-worker-redirect-expected.txt: Added.
+        * platform/mac-wk1/http/tests/security/worker-cross-origin-expected.txt: Added.
+        * platform/mac-wk2/TestExpectations:
+        * platform/win/http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect-expected.txt: Added.
+        * platform/win/http/tests/security/shape-image-cors-redirect-error-message-logging-1-expected.txt: Added.
+        * platform/win/http/tests/security/shape-image-cors-redirect-error-message-logging-2-expected.txt: Added.
+        * platform/win/http/tests/workers/worker-redirect-expected.txt: Added.
+        * platform/win/http/tests/security/contentSecurityPolicy/1.1/child-src/worker-redirect-blocked-expected.txt: Added.
+        * platform/win/http/tests/security/isolatedWorld/bypass-main-world-csp-worker-redirect-expected.txt: Added.
+        * platform/win/http/tests/security/worker-cross-origin-expected.txt: Added.
+
+
+2018-04-25  Chris Dumez  <cdumez@apple.com>
+
+        window.postMessage() / focus() / blur() throw a TypeError when called on a RemoteDOMWindow
+        https://bugs.webkit.org/show_bug.cgi?id=184981
+
+        Reviewed by Sam Weinig.
+
+        Add layout test coverage.
+
+        * http/tests/navigation/process-swap-window-open-expected.txt:
+        * http/tests/navigation/process-swap-window-open.html:
+
+2018-04-25  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed test gardening
+
+        Mark http/tests/misc/submit-post-keygen.html as 'Skip' in Win because of lacking corresponding
+        implementations.
+
+        * platform/win/TestExpectations:
+
+2018-04-25  Simon Fraser  <simon.fraser@apple.com>
+
+        brightness() filter should default to 1, and not allow negative values
+        https://bugs.webkit.org/show_bug.cgi?id=184937
+
+        Reviewed by Dean Jackson.
+        
+        Added negative value tests to filter-property-parsing.html and backdropfilter-property-parsing.html,
+        and made these tests more similar.
+        
+        Fixed expected computed value for brightness() to be brightness(1) in the tests.
+        
+        The effect-brightness* test results failed because elements with invalid brightness values now
+        no longer create a RenderLayer.
+
+        * css3/color-filters/color-filter-parsing-expected.txt:
+        * css3/color-filters/color-filter-parsing.html:
+        * css3/filters/backdrop/backdropfilter-property-computed-style-expected.txt:
+        * css3/filters/backdrop/backdropfilter-property-computed-style.html:
+        * css3/filters/backdrop/backdropfilter-property-parsing-expected.txt:
+        * css3/filters/backdrop/backdropfilter-property-parsing.html:
+        * css3/filters/effect-brightness-expected.txt:
+        * css3/filters/filter-property-computed-style-expected.txt:
+        * css3/filters/filter-property-computed-style.html:
+        * css3/filters/filter-property-parsing-expected.txt:
+        * css3/filters/filter-property-parsing.html:
+        * css3/filters/unprefixed-expected.txt:
+        * css3/filters/unprefixed.html:
+        * fast/filter-image/parse-filter-image-expected.txt:
+        * fast/filter-image/parse-filter-image.html:
+        * platform/mac/css3/filters/effect-brightness-clamping-expected.txt:
+
+2018-04-25  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE][Debug] Test gardening of EME related tests.
+
+        Report and mark the tests crashing on the Debug build.
+
+        * platform/wpe/TestExpectations:
+
+2018-04-25  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Remove access to keychain from the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=184428
+        <rdar://problem/13150903>
+
+        Reviewed by Brent Fulgham.
+
+        Alter the layout test to match dummy data supplied by the test runners.
+        Modify expectations as well.
+
+        * http/tests/misc/resources/check-keygen-post.php:
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-04-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] The search field on www.bing.com is missing label text
+        https://bugs.webkit.org/show_bug.cgi?id=184975
+        <rdar://problem/39723081>
+
+        Reviewed by Tim Horton.
+
+        Adds a layout test to check that the label text of the focused form control in the input view can be sourced
+        from (1) the "placeholder" attribute, (2) the "title" attribute, (3) the "aria-label" attribute, or (4) an
+        associated label element.
+
+        * fast/forms/extrazoom/form-control-label-text-expected.txt: Added.
+        * fast/forms/extrazoom/form-control-label-text.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.formInputLabel):
+        (window.UIHelper):
+
+2018-04-25  Megan Gardner  <megan_gardner@apple.com>
+
+        Don't activate Selection Assistant unless it is actually needed.
+        https://bugs.webkit.org/show_bug.cgi?id=184944
+        <rdar://problem/39469671>
+
+        Reviewed by Tim Horton.
+        
+        Turning on previously flakey tests that are fixed with this change.
+
+        * platform/ios-wk2/TestExpectations:
+
+2018-04-25  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Fix js/regexp-unicode.html crash.
+        https://bugs.webkit.org/show_bug.cgi?id=184891
+
+        Reviewed by Yusuke Suzuki.
+
+        * platform/wincairo/TestExpectations:
+
+2018-04-25  Brent Fulgham  <bfulgham@apple.com>
+
+        Don't Block First Party Cookies on Redirects
+        https://bugs.webkit.org/show_bug.cgi?id=184948
+        <rdar://problem/39534099>
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect.html: Added.
+
+2018-04-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, rebaseline tests for iOS.
+
+        * platform/ios/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/ios/media/modern-media-controls/compact-media-controls/compact-media-controls-constructor-expected.txt: Added.
+        * platform/ios/media/modern-media-controls/compact-media-controls/compact-media-controls-layout-expected.txt: Added.
+
+2018-04-25  Youenn Fablet  <youenn@apple.com>
+
+        CachedRawResource is not handling incremental data computation correctly
+        https://bugs.webkit.org/show_bug.cgi?id=184936
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/workers/service/resources/service-worker-fetch-worker.js:
+        (stringToBuffer):
+        (event.event.request.url.endsWith):
+        * http/tests/workers/service/resources/service-worker-fetch.js:
+        (async.test):
+        * http/tests/workers/service/service-worker-fetch.https-expected.txt:
+
+2018-04-25  Youenn Fablet  <youenn@apple.com>
+
+        Ensure DNT is set for redirections handled in NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=184890
+
+        Reviewed by Ryosuke Niwa.
+
+        * http/wpt/fetch/dnt-header-after-redirection-expected.txt: Added.
+        * http/wpt/fetch/dnt-header-after-redirection.html: Added.
+        * http/wpt/fetch/resources/dnt-status.py: Added.
+        * http/wpt/fetch/resources/redirect.py: Added.
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2018-04-25  Youenn Fablet  <youenn@apple.com>
+
+        Make DocumentThreadableLoader error logging more consistent
+        https://bugs.webkit.org/show_bug.cgi?id=184853
+
+        Reviewed by Chris Dumez.
+
+        Removing JS console log output for some tests.
+        Updating tests according modified error logging.
+
+        * TestExpectations:
+        * http/tests/security/bypassing-cors-checks-for-extension-urls-expected.txt:
+        * http/tests/security/contentSecurityPolicy/connect-src-eventsource-redirect-to-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-redirect-to-blocked-expected.txt:
+        * http/tests/security/cross-origin-cached-images-expected.txt:
+        * http/tests/security/cross-origin-cached-images-parallel-expected.txt:
+        * http/tests/security/img-with-failed-cors-check-fails-to-load-expected.txt:
+        * http/tests/security/load-image-after-redirection-2-expected.txt:
+        * http/tests/security/load-image-after-redirection-expected.txt:
+        * http/tests/security/mixedContent/insecure-xhr-in-main-frame-expected.txt:
+        * http/tests/security/video-poster-cross-origin-crash-expected.txt:
+        * http/tests/security/video-poster-cross-origin-crash2-expected.txt:
+        * http/tests/xmlhttprequest/access-control-and-redirects-async-expected.txt:
+        * http/tests/xmlhttprequest/access-control-and-redirects-expected.txt:
+        * http/tests/xmlhttprequest/access-control-basic-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-basic-denied-preflight-cache-expected.txt:
+        * http/tests/xmlhttprequest/access-control-basic-get-fail-non-simple-expected.txt:
+        * http/tests/xmlhttprequest/access-control-basic-non-simple-deny-cached-expected.txt:
+        * http/tests/xmlhttprequest/access-control-basic-post-fail-non-simple-content-type-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-async-header-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-async-method-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-async-not-supported-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-not-successful-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-sync-header-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-sync-method-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-preflight-sync-not-supported-expected.txt:
+        * http/tests/xmlhttprequest/access-control-sandboxed-iframe-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-sandboxed-iframe-denied-without-wildcard-expected.txt:
+        * http/tests/xmlhttprequest/cors-non-standard-safelisted-headers-should-trigger-preflight-expected.txt:
+        * http/tests/xmlhttprequest/cross-origin-no-authorization-expected.txt:
+        * http/tests/xmlhttprequest/cross-site-denied-response-sync-2-expected.txt:
+        * http/tests/xmlhttprequest/cross-site-denied-response-sync-expected.txt:
+        * http/tests/xmlhttprequest/origin-exact-matching-expected.txt:
+        * http/tests/xmlhttprequest/origin-whitelisting-https-expected.txt:
+        * http/tests/xmlhttprequest/origin-whitelisting-ip-addresses-with-subdomains-expected.txt:
+        * http/tests/xmlhttprequest/origin-whitelisting-removal-expected.txt:
+        * http/tests/xmlhttprequest/post-blob-content-type-sync-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cross-origin-post-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cross-origin-post-sync-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cross-origin-sync-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cross-origin-tripmine-expected.txt:
+        * http/tests/xmlhttprequest/simple-cross-origin-denied-events-post-expected.txt:
+        * http/tests/xmlhttprequest/simple-cross-origin-denied-events-post-sync-expected.txt:
+        * http/tests/xmlhttprequest/simple-cross-origin-denied-events-sync-expected.txt:
+        * http/tests/xmlhttprequest/simple-cross-origin-progress-events-expected.txt:
+        * http/tests/xmlhttprequest/upload-request-error-event-order-expected.txt:
+        * http/tests/xmlhttprequest/workers/access-control-basic-get-fail-non-simple-expected.txt:
+        * http/tests/xmlhttprequest/xmlhttprequest-sync-no-progress-events-expected.txt:
+        * http/tests/xmlhttprequest/xmlhttprequest-unsafe-redirect-expected.txt:
+        * platform/mac-wk1/http/tests/xmlhttprequest/access-control-and-redirects-expected.txt:
+        * platform/mac-wk1/http/tests/xmlhttprequest/access-control-preflight-not-successful-expected.txt:
+        * platform/mac-wk1/http/tests/xmlhttprequest/cross-origin-no-authorization-expected.txt:
+        * platform/mac-wk1/http/tests/xmlhttprequest/redirect-cross-origin-tripmine-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-and-redirects-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-asynchronous-in-main-frame-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-asynchronous-in-iframe-expected.txt:
+        * platform/win/http/tests/xmlhttprequest/access-control-and-redirects-expected.txt:
+        * platform/win/http/tests/xmlhttprequest/access-control-preflight-not-successful-expected.txt:
+        * platform/win/http/tests/xmlhttprequest/cross-origin-no-authorization-expected.txt:
+        * platform/win/http/tests/xmlhttprequest/redirect-cross-origin-tripmine-expected.txt:
+
+2018-04-25  Dean Jackson  <dino@apple.com>
+
+        Make a better flag for system preview, and disable it where necessary
+        https://bugs.webkit.org/show_bug.cgi?id=184968
+        <rdar://problem/39686506>
+
+        Reviewed by Eric Carlson.
+
+        These tests have platform-specific results for the moment.
+
+        * TestExpectations:
+        * system-preview/badge-expected.html: Removed.
+        * system-preview/detection-expected.txt: Removed.
+
+2018-04-25  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK] fast/repaint/fixed-scale.html failing since r230479 "[TexMap] TextureMapperLayer unnecessarily duplicates state in GraphicsLayerTransform"
+        https://bugs.webkit.org/show_bug.cgi?id=184780
+
+        Reviewed by Žan Doberšek.
+
+        * platform/gtk/TestExpectations:
+
+2018-04-25  Ms2ger  <Ms2ger@igalia.com>
+
+        imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-* LayoutTests are flaky failures
+        https://bugs.webkit.org/show_bug.cgi?id=182833
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * TestExpectations: enable tests
+        * platform/gtk/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub-expected.txt: update expectations
+        * platform/ios/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub-expected.txt: update expectations
+        * platform/wpe/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub-expected.txt: update expectations
+
+2018-04-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a new "color-filter" CSS property as an experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=184940
+
+        Reviewed by Jon Lee.
+
+        * css3/color-filters/color-filter-parsing-expected.txt: Added.
+        * css3/color-filters/color-filter-parsing.html: Added.
+
+2018-04-24  Simon Fraser  <simon.fraser@apple.com>
+
+        shape-outside and filter styles occur twice in the result of getComputedStyle
+        https://bugs.webkit.org/show_bug.cgi?id=184931
+
+        Reviewed by Antti Koivisto.
+
+        CSSPropertyShapeOutside and CSSPropertyFilter were duplicated in the list of computedProperties[]
+        used by getComputedStyle. Remove the duplication.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/ios/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/ios/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/mac-sierra/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/mac-sierra/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/mac-sierra/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/mac/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/mac/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/mac/svg/css/getComputedStyle-basic-expected.txt:
+        * svg/css/getComputedStyle-basic-expected.txt:
+
+2018-04-24  Youenn Fablet  <youenn@apple.com>
+
+        Throw in case of PeerConnection created for detached documents
+        https://bugs.webkit.org/show_bug.cgi?id=184921
+        <rdar://problem/39629216>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/pc-detached-document-expected.txt: Added.
+        * webrtc/pc-detached-document.html: Added.
+
+2018-04-24  John Wilander  <wilander@apple.com>
+
+        From-Origin: Support for 'same' and 'same-site' response header, nested frame origin check
+        https://bugs.webkit.org/show_bug.cgi?id=184560
+        <rdar://problem/38901344>
+
+        Reviewed by Youenn Fablet and Daniel Bates.
+
+        This patch implements significant parts of https://github.com/whatwg/fetch/issues/687.
+        We consume the From-Origin response header and only load the resource if:
+        - The header is non-existent, empty, or invalid.
+        - The header specifies 'same' and the resource's origin matches the originating
+          document's origin and the origins up the frame tree.
+        - The header specifies 'same-site' and the resource's eTLD+1 matches the originating
+          document's eTLD+1 and the eTLD+1 of the documents up the frame tree.
+
+        This feature is experimental and off by default.
+
+        * TestExpectations:
+            The http/tests/from-origin/ directory marked as [ Skip ].
+            Suppressed console output for imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-redirect.https.html.
+        * http/tests/from-origin: Added.
+        * http/tests/from-origin/document-from-origin-same-accepted-expected.txt: Added.
+        * http/tests/from-origin/document-from-origin-same-accepted.html: Added.
+        * http/tests/from-origin/document-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/document-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/document-from-origin-same-site-accepted-expected.txt: Added.
+        * http/tests/from-origin/document-from-origin-same-site-accepted.html: Added.
+        * http/tests/from-origin/document-from-origin-same-site-blocked-expected.txt: Added.
+        * http/tests/from-origin/document-from-origin-same-site-blocked.html: Added.
+        * http/tests/from-origin/document-nested-from-origin-same-accepted-expected.txt: Added.
+        * http/tests/from-origin/document-nested-from-origin-same-accepted.html: Added.
+        * http/tests/from-origin/document-nested-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/document-nested-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/fetch-data-iframe-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/fetch-data-iframe-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/fetch-from-origin-same-accepted-expected.txt: Added.
+        * http/tests/from-origin/fetch-from-origin-same-accepted.html: Added.
+        * http/tests/from-origin/fetch-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/fetch-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/fetch-from-origin-same-site-accepted-expected.txt: Added.
+        * http/tests/from-origin/fetch-from-origin-same-site-accepted.html: Added.
+        * http/tests/from-origin/fetch-from-origin-same-site-blocked-expected.txt: Added.
+        * http/tests/from-origin/fetch-from-origin-same-site-blocked.html: Added.
+        * http/tests/from-origin/fetch-iframe-from-origin-same-accepted-expected.txt: Added.
+        * http/tests/from-origin/fetch-iframe-from-origin-same-accepted.html: Added.
+        * http/tests/from-origin/fetch-iframe-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/fetch-iframe-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/image-about-blank-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/image-about-blank-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/image-from-origin-same-accepted-expected.txt: Added.
+        * http/tests/from-origin/image-from-origin-same-accepted.html: Added.
+        * http/tests/from-origin/image-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/image-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/image-from-origin-same-site-accepted-expected.txt: Added.
+        * http/tests/from-origin/image-from-origin-same-site-accepted.html: Added.
+        * http/tests/from-origin/image-from-origin-same-site-blocked-expected.txt: Added.
+        * http/tests/from-origin/image-from-origin-same-site-blocked.html: Added.
+        * http/tests/from-origin/redirect-document-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/redirect-document-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/redirect-fetch-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/redirect-fetch-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/redirect-image-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/redirect-image-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/redirect-script-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/redirect-script-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/redirect-xhr-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/redirect-xhr-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/resources: Added.
+        * http/tests/from-origin/resources/fetch.php: Added.
+        * http/tests/from-origin/resources/iframe.php: Added.
+        * http/tests/from-origin/resources/iframeIPAddressFetch.html: Added.
+        * http/tests/from-origin/resources/iframeLocalhostFetch.html: Added.
+        * http/tests/from-origin/resources/image.php: Added.
+        * http/tests/from-origin/resources/nestedIPAddressIframe.html: Added.
+        * http/tests/from-origin/resources/nestedLocalhostIframe.html: Added.
+        * http/tests/from-origin/resources/redirect.php: Added.
+        * http/tests/from-origin/resources/script.php: Added.
+        * http/tests/from-origin/resources/xhr.php: Added.
+        * http/tests/from-origin/sandboxed-sub-frame-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/sandboxed-sub-frame-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/sandboxed-sub-frame-nested-cross-origin-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/sandboxed-sub-frame-nested-cross-origin-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/sandboxed-sub-frame-nested-same-origin-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/sandboxed-sub-frame-nested-same-origin-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/script-from-origin-same-accepted-expected.txt: Added.
+        * http/tests/from-origin/script-from-origin-same-accepted.html: Added.
+        * http/tests/from-origin/script-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/script-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/script-from-origin-same-site-accepted-expected.txt: Added.
+        * http/tests/from-origin/script-from-origin-same-site-accepted.html: Added.
+        * http/tests/from-origin/script-from-origin-same-site-blocked-expected.txt: Added.
+        * http/tests/from-origin/script-from-origin-same-site-blocked.html: Added.
+        * http/tests/from-origin/top-frame-document-from-origin-same-accepted-expected.txt: Added.
+        * http/tests/from-origin/top-frame-document-from-origin-same-accepted.php: Added.
+        * http/tests/from-origin/xhr-from-origin-same-accepted-expected.txt: Added.
+        * http/tests/from-origin/xhr-from-origin-same-accepted.html: Added.
+        * http/tests/from-origin/xhr-from-origin-same-blocked-expected.txt: Added.
+        * http/tests/from-origin/xhr-from-origin-same-blocked.html: Added.
+        * http/tests/from-origin/xhr-from-origin-same-site-accepted-expected.txt: Added.
+        * http/tests/from-origin/xhr-from-origin-same-site-accepted.html: Added.
+        * http/tests/from-origin/xhr-from-origin-same-site-blocked-expected.txt: Added.
+        * http/tests/from-origin/xhr-from-origin-same-site-blocked.html: Added.
+        * platform/mac-wk2/TestExpectations:
+            Suppressed console output for imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-redirect.https.html.
+        * platform/wk2/TestExpectations:
+            The http/tests/from-origin/ directory marked as [ Pass ].
+
+2018-04-24  Tadeu Zagallo  <tzagallo@apple.com>
+
+        REGRESSION(r221839): Fix requests with FormData containing empty files
+        https://bugs.webkit.org/show_bug.cgi?id=184490
+        <rdar://problem/39385169>
+
+        Reviewed by Geoffrey Garen.
+
+        Verify that the final boundary is present in the request body when submitting FormData containing an empty file.
+
+        * http/tests/local/formdata/send-form-data-with-empty-file-expected.txt: Added.
+        * http/tests/local/formdata/send-form-data-with-empty-file.html: Added.
+
+2018-04-23  Daniel Bates  <dabates@apple.com>
+
+        Implement Same-Site cookies
+        https://bugs.webkit.org/show_bug.cgi?id=159464
+        <rdar://problem/27196358>
+
+        Reviewed by Brent Fulgham.
+
+        Add tests. These tests are skipped on all ports for now, including Mac and iOS. We will
+        look to subsequently enable the tests for Mac and iOS once we have CFNetwork support for
+        Same-Site cookies.
+
+        The following tests and utilities were taken in whole or in part from Blink:
+            http/tests/cookies/resources/echo-json.php
+            http/tests/cookies/resources/post-cookies-onmessage.php
+            http/tests/cookies/resources/post-cookies-to-opener.php
+            http/tests/cookies/resources/testharness-helpers.js
+            http/tests/cookies/same-site/popup-cross-site-post.html
+            http/tests/cookies/same-site/popup-cross-site.html
+            http/tests/cookies/same-site/popup-same-site-post.html
+            http/tests/cookies/same-site/popup-same-site.html
+
+        The following files were derived from tests taken from Blink:
+            http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect.html
+            http/tests/cookies/same-site/popup-same-site-via-same-site-redirect.html
+
+        * TestExpectations: Skip on all ports for now.
+        * http/tests/cookies/resources/cookie-utilities.js: Added.
+        (createCookie):
+        (setBaseDocumentWhenFetchingDOMCookies):
+        (setDOMCookie):
+        * http/tests/cookies/resources/cookie-utility.php:
+        * http/tests/cookies/resources/echo-json.php: Added.
+        * http/tests/cookies/resources/post-cookies-onmessage.php: Added.
+        * http/tests/cookies/resources/post-cookies-to-opener.php: Added.
+        * http/tests/cookies/resources/testharness-helpers.js: Added.
+        (clearKnownCookies):
+        * http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page.html: Added.
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page.html: Added.
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page.html: Added.
+        * http/tests/cookies/same-site/fetch-cookies-set-in-about-blank-iframe-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-cookies-set-in-about-blank-iframe.html: Added.
+        * http/tests/cookies/same-site/fetch-in-about-blank-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-about-blank-page.html: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-iframe-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-iframe.html: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-page.html: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-service-worker.html: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-worker-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-worker.html: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-page.html: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-service-worker-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-service-worker.html: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-srcdoc-iframe-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-srcdoc-iframe.html: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-worker-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-worker.html: Added.
+        * http/tests/cookies/same-site/popup-cross-site-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-cross-site-post-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-cross-site-post.html: Added.
+        * http/tests/cookies/same-site/popup-cross-site.html: Added.
+        * http/tests/cookies/same-site/popup-same-site-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-same-site-post-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-same-site-post.html: Added.
+        * http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect.html: Added.
+        * http/tests/cookies/same-site/popup-same-site-via-same-site-redirect-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-same-site-via-same-site-redirect.html: Added.
+        * http/tests/cookies/same-site/popup-same-site.html: Added.
+        * http/tests/cookies/same-site/resources/click-hyperlink.php: Added.
+        * http/tests/cookies/same-site/resources/echo-iframe-src.php: Added.
+        * http/tests/cookies/same-site/resources/fetch-after-navigating-iframe-in-cross-origin-page.php: Added.
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-navigation-from-cross-origin-page.php: Added.
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page.php: Added.
+        * http/tests/cookies/same-site/resources/fetch-in-cross-origin-iframe.html: Added.
+        * http/tests/cookies/same-site/resources/fetch-in-cross-origin-service-worker.html: Added.
+        * http/tests/cookies/same-site/resources/fetch-in-cross-origin-worker.js: Added.
+        (async.checkResult):
+        * http/tests/cookies/same-site/resources/fetch-in-same-origin-service-worker.php: Added.
+        * http/tests/cookies/same-site/resources/fetch-in-same-origin-worker.js: Added.
+        (async.checkResult):
+        * http/tests/cookies/same-site/resources/passthrough-service-worker.js: Added.
+        * platform/mac-wk1/TestExpectations: Skip the Service Worker tests as they are not supported in LegacyWebKit.
+
+2018-04-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] REGRESSION(230860) Unable to change time input values using UI
+        https://bugs.webkit.org/show_bug.cgi?id=184901
+        <rdar://problem/39664797>
+
+        Reviewed by Tim Horton.
+
+        Adds a basic test to verify that tapping on an input of type `time` and choosing a time actually changes the
+        value of the input. Also adds a new UIHelper function to set the value of the currently focused input of type
+        time to the given hours and minutes.
+
+        * fast/forms/extrazoom/time-picker-value-change-expected.txt: Added.
+        * fast/forms/extrazoom/time-picker-value-change.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.setTimePickerValue):
+        (window.UIHelper):
+
+2018-04-23  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix a few tests that became flaky after r230919.
+
+        * fast/events/beforeunload-alert-handled-keydown.html:
+        * fast/events/beforeunload-alert-no-user-interaction.html:
+        * fast/events/beforeunload-alert-user-interaction.html:
+
+2018-04-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r230921, r230923, r230924, r230932,
+        and r230934.
+        https://bugs.webkit.org/show_bug.cgi?id=184903
+
+        Builds still broken (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Implement Same-Site cookies"
+        https://bugs.webkit.org/show_bug.cgi?id=159464
+        https://trac.webkit.org/changeset/230921
+
+        "Attempt to fix the build after r230921"
+        https://bugs.webkit.org/show_bug.cgi?id=159464
+        https://trac.webkit.org/changeset/230923
+
+        "Attempt to fix the Mac and iOS build after r230921"
+        https://bugs.webkit.org/show_bug.cgi?id=159464
+        https://trac.webkit.org/changeset/230924
+
+        "Another attempt to fix the Windows build following r230921"
+        https://bugs.webkit.org/show_bug.cgi?id=159464
+        https://trac.webkit.org/changeset/230932
+
+        "Attempt to fix the Apple Internal build following r230921"
+        https://bugs.webkit.org/show_bug.cgi?id=159464
+        https://trac.webkit.org/changeset/230934
+
+2018-04-23  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r220112): reCAPTCHA images render off screen on Twitch.tv app Log In or Sign Up
+        https://bugs.webkit.org/show_bug.cgi?id=182859
+        <rdar://problem/37595065>
+
+        Reviewed by Zalan Bujtas
+
+        * fast/frames/flattening/media-query-growing-content-expected.txt: Removed.
+        * fast/frames/flattening/media-query-growing-content.html: Removed.
+        * fast/frames/flattening/resources/media-query-min-height-with-flattening.html: Removed.
+
 2018-04-23  Daniel Bates  <dabates@apple.com>
 
         Implement Same-Site cookies

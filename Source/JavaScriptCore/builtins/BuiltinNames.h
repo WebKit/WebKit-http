@@ -132,6 +132,7 @@ namespace JSC {
     macro(Collator) \
     macro(DateTimeFormat) \
     macro(NumberFormat) \
+    macro(PluralRules) \
     macro(intlSubstituteValue) \
     macro(thisTimeValue) \
     macro(thisNumberValue) \
@@ -189,6 +190,8 @@ namespace JSC {
     macro(LinkError) \
     macro(RuntimeError) \
     macro(meta) \
+    macro(webAssemblyCompileStreamingInternal) \
+    macro(webAssemblyInstantiateStreamingInternal) \
 
 namespace Symbols {
 #define DECLARE_BUILTIN_STATIC_SYMBOLS(name) extern SymbolImpl::StaticSymbolImpl name##Symbol;

@@ -60,7 +60,6 @@ void NetworkStorageSession::setCookies(const Vector<Cookie>& cookies, const URL&
 void NetworkStorageSession::deleteCookie(const Cookie& cookie)
 {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
-
     [nsCookieStorage() deleteCookie:(NSHTTPCookie *)cookie];
 }
 

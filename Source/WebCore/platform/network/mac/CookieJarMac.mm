@@ -44,6 +44,13 @@
 - (CFURLRef)_cfurl;
 @end
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+@interface NSHTTPCookieStorage (Staging)
+- (void)_getCookiesForURL:(NSURL *)url mainDocumentURL:(NSURL *)mainDocumentURL partition:(NSString *)partition policyProperties:(NSDictionary*)props completionHandler:(void (^)(NSArray *))completionHandler;
+- (void)_setCookies:(NSArray *)cookies forURL:(NSURL *)URL mainDocumentURL:(NSURL *)mainDocumentURL policyProperties:(NSDictionary*) props;
+@end
+#endif
+
 namespace WebCore {
 
 static NSArray *httpCookies(CFHTTPCookieStorageRef cookieStorage)
@@ -67,26 +74,32 @@ static void deleteHTTPCookie(CFHTTPCookieStorageRef cookieStorage, NSHTTPCookie 
     CFHTTPCookieStorageDeleteCookie(cookieStorage, [cookie _GetInternalCFHTTPCookie]);
 }
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+static RetainPtr<NSDictionary> policyProperties(const SameSiteInfo& sameSiteInfo, NSURL *url)
+{
+    static NSURL *emptyURL = [[NSURL alloc] initWithString:@""];
+    NSDictionary *policyProperties = @{
+        @"_kCFHTTPCookiePolicyPropertySiteForCookies": sameSiteInfo.isSameSite ? url : emptyURL,
+        @"_kCFHTTPCookiePolicyPropertyIsTopLevelNavigation": [NSNumber numberWithBool:sameSiteInfo.isTopSite],
+    };
+    return policyProperties;
+}
+#endif
+
 static NSArray *cookiesForURL(NSHTTPCookieStorage *storage, NSURL *url, NSURL *mainDocumentURL, const std::optional<SameSiteInfo>& sameSiteInfo, NSString *partition = nullptr)
 {
     // The _getCookiesForURL: method calls the completionHandler synchronously. We use std::optional<> to ensure this invariant.
     std::optional<RetainPtr<NSArray *>> cookiesPtr;
     auto completionHandler = [&cookiesPtr] (NSArray *cookies) { cookiesPtr = retainPtr(cookies); };
-    NSDictionary *policyProperties;
-    if (!sameSiteInfo)
-        policyProperties = nullptr;
-    else {
-        static NSURL *emptyURL = [[NSURL alloc] initWithString:@""];
-        policyProperties = @{
-            @"_kCFHTTPCookiePolicyPropertySiteForCookies": sameSiteInfo->isSameSite ? url : emptyURL,
-            @"_kCFHTTPCookiePolicyPropertyIsTopLevelNavigation": [NSNumber numberWithBool:sameSiteInfo->isTopSite],
-        };
-    }
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
     if ([storage respondsToSelector:@selector(_getCookiesForURL:mainDocumentURL:partition:policyProperties:completionHandler:)])
-        [storage _getCookiesForURL:url mainDocumentURL:mainDocumentURL partition:partition policyProperties:policyProperties completionHandler:completionHandler];
+        [storage _getCookiesForURL:url mainDocumentURL:mainDocumentURL partition:partition policyProperties:sameSiteInfo ? policyProperties(sameSiteInfo.value(), url).get() : nullptr completionHandler:completionHandler];
     else
         [storage _getCookiesForURL:url mainDocumentURL:mainDocumentURL partition:partition completionHandler:completionHandler];
+#else
+    [storage _getCookiesForURL:url mainDocumentURL:mainDocumentURL partition:partition completionHandler:completionHandler];
     UNUSED_PARAM(sameSiteInfo);
+#endif
     ASSERT(!!cookiesPtr);
     return cookiesPtr->autorelease();
 }
@@ -94,29 +107,30 @@ static NSArray *cookiesForURL(NSHTTPCookieStorage *storage, NSURL *url, NSURL *m
 static void setHTTPCookiesForURL(CFHTTPCookieStorageRef cookieStorage, NSArray *cookies, NSURL *url, NSURL *mainDocumentURL, const SameSiteInfo& sameSiteInfo)
 {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
-    // FIXME: We should not allocate the empty URL. Instead use CFSTR() and convert to NSString. Even better define this constant
-    // somewhere it can be shared.
-    static NSURL *emptyURL = [[NSURL alloc] initWithString:@""];
-    NSDictionary *policyProperties = @{
-        @"_kCFHTTPCookiePolicyPropertySiteForCookies": sameSiteInfo.isSameSite ? url : emptyURL,
-        @"_kCFHTTPCookiePolicyPropertyIsTopLevelNavigation": [NSNumber numberWithBool:sameSiteInfo.isTopSite],
-    };
     if (!cookieStorage) {
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
         if ([NSHTTPCookieStorage instancesRespondToSelector:@selector(_setCookies:forURL:mainDocumentURL:policyProperties:)])
-            [[NSHTTPCookieStorage sharedHTTPCookieStorage] _setCookies:cookies forURL:url mainDocumentURL:mainDocumentURL policyProperties:policyProperties];
+            [[NSHTTPCookieStorage sharedHTTPCookieStorage] _setCookies:cookies forURL:url mainDocumentURL:mainDocumentURL policyProperties:policyProperties(sameSiteInfo, url).get()];
         else
+#endif
             [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookies:cookies forURL:url mainDocumentURL:mainDocumentURL];
         return;
     }
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
     if ([NSHTTPCookieStorage instancesRespondToSelector:@selector(_setCookies:forURL:mainDocumentURL:policyProperties:)]) {
         // FIXME: Stop creating a new NSHTTPCookieStorage object each time we want to query the cookie jar.
         // NetworkStorageSession could instead keep a NSHTTPCookieStorage object for us.
         RetainPtr<NSHTTPCookieStorage> nsCookieStorage = adoptNS([[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:cookieStorage]);
-        [nsCookieStorage _setCookies:cookies forURL:url mainDocumentURL:mainDocumentURL policyProperties:policyProperties];
+        [nsCookieStorage _setCookies:cookies forURL:url mainDocumentURL:mainDocumentURL policyProperties:policyProperties(sameSiteInfo, url).get()];
     } else {
+#endif
         auto cfCookies = adoptCF([NSHTTPCookie _ns2cfCookies:cookies]);
         CFHTTPCookieStorageSetCookies(cookieStorage, cfCookies.get(), [url _cfurl], [mainDocumentURL _cfurl]);
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
     }
+#else
+    UNUSED_PARAM(sameSiteInfo);
+#endif
 }
 
 static NSArray *httpCookiesForURL(CFHTTPCookieStorageRef cookieStorage, NSURL *firstParty, const std::optional<SameSiteInfo>& sameSiteInfo, NSURL *url)

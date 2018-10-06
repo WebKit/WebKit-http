@@ -753,6 +753,10 @@ public:
     bool hasFilter() const { return !m_rareNonInheritedData->filter->operations.operations().isEmpty(); }
     bool hasReferenceFilterOnly() const;
 
+    FilterOperations& mutableColorFilter() { return m_rareInheritedData.access().colorFilter.access().operations; }
+    const FilterOperations& colorFilter() const { return m_rareInheritedData->colorFilter->operations; }
+    bool hasColorFilter() const { return !m_rareInheritedData->colorFilter->operations.operations().isEmpty(); }
+
 #if ENABLE(FILTERS_LEVEL_2)
     FilterOperations& mutableBackdropFilter() { return m_rareNonInheritedData.access().backdropFilter.access().operations; }
     const FilterOperations& backdropFilter() const { return m_rareNonInheritedData->backdropFilter->operations; }
@@ -1157,6 +1161,7 @@ public:
     void setRubyPosition(RubyPosition position) { SET_VAR(m_rareInheritedData, rubyPosition, position); }
 
     void setFilter(const FilterOperations& ops) { SET_NESTED_VAR(m_rareNonInheritedData, filter, operations, ops); }
+    void setColorFilter(const FilterOperations& ops) { SET_NESTED_VAR(m_rareInheritedData, colorFilter, operations, ops); }
 
 #if ENABLE(FILTERS_LEVEL_2)
     void setBackdropFilter(const FilterOperations& ops) { SET_NESTED_VAR(m_rareNonInheritedData, backdropFilter, operations, ops); }
@@ -1408,7 +1413,11 @@ public:
     bool lastChildState() const { return m_nonInheritedFlags.lastChildState; }
     void setLastChildState() { setUnique(); m_nonInheritedFlags.lastChildState = true; }
 
-    WEBCORE_EXPORT Color visitedDependentColor(int colorProperty) const;
+    WEBCORE_EXPORT Color visitedDependentColor(CSSPropertyID) const;
+    WEBCORE_EXPORT Color visitedDependentColorWithColorFilter(CSSPropertyID) const;
+
+    WEBCORE_EXPORT Color colorByApplyingColorFilter(const Color&) const;
+
     bool backgroundColorEqualsToColorIgnoringVisited(const Color& color) const { return color == backgroundColor(); }
 
     void setHasExplicitlyInheritedProperties() { m_nonInheritedFlags.hasExplicitlyInheritedProperties = true; }
@@ -1658,6 +1667,7 @@ public:
 #endif
 
     static const FilterOperations& initialFilter() { static NeverDestroyed<FilterOperations> ops; return ops; }
+    static const FilterOperations& initialColorFilter() { static NeverDestroyed<FilterOperations> ops; return ops; }
 
 #if ENABLE(FILTERS_LEVEL_2)
     static const FilterOperations& initialBackdropFilter() { static NeverDestroyed<FilterOperations> ops; return ops; }
@@ -1821,7 +1831,7 @@ private:
     static bool isDisplayGridBox(EDisplay);
     static bool isDisplayFlexibleOrGridBox(EDisplay);
 
-    Color colorIncludingFallback(int colorProperty, bool visitedLink) const;
+    Color colorIncludingFallback(CSSPropertyID colorProperty, bool visitedLink) const;
 
     bool changeAffectsVisualOverflow(const RenderStyle&) const;
     bool changeRequiresLayout(const RenderStyle&, unsigned& changedContextSensitiveProperties) const;

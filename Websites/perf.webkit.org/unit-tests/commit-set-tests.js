@@ -2,6 +2,7 @@
 
 const assert = require('assert');
 require('../tools/js/v3-models.js');
+const BrowserPrivilegedAPI = require('../public/v3/privileged-api.js').PrivilegedAPI;
 const MockModels = require('./resources/mock-v3-models.js').MockModels;
 const MockRemoteAPI = require('../unit-tests/resources/mock-remote-api.js').MockRemoteAPI;
 
@@ -161,7 +162,7 @@ function anotherCommitWithGitRevision()
 }
 
 describe('CommitSet', () => {
-    MockRemoteAPI.inject();
+    MockRemoteAPI.inject(null, BrowserPrivilegedAPI);
     MockModels.inject();
 
     function oneCommitSet()
@@ -387,10 +388,19 @@ describe('CommitSet', () => {
             assert.equal(CommitSet.diff(oneCommitSet(), commitSetWithAnotherCommitPatchAndRoot()), 'WebKit: webkit-commit-0 with none - webkit-commit-1 with patch.dat Roots: none - root.dat, root.dat (2)');
         });
     });
+
+    describe('revisionSetsFromCommitSets', () => {
+        it('should create revision sets from commit sets', () => {
+            assert.deepEqual(CommitSet.revisionSetsFromCommitSets([oneCommitSet(), commitSetWithRoot(), commitSetWithTwoRoots()]),
+                [{'11': { revision: 'webkit-commit-0', ownerRevision: null, patch: null}},
+                    {'11': { revision: 'webkit-commit-0', ownerRevision: null, patch: null}, customRoots: [456]},
+                    {'11': { revision: 'webkit-commit-0', ownerRevision: null, patch: null}, customRoots: [456, 458]}]);
+        });
+    });
 });
 
 describe('IntermediateCommitSet', () => {
-    MockRemoteAPI.inject();
+    MockRemoteAPI.inject(null, BrowserPrivilegedAPI);
     MockModels.inject();
 
     describe('setCommitForRepository', () => {

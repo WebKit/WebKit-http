@@ -58,6 +58,7 @@ BEGIN {
 }
 
 use YAML qw(Load LoadFile Dump DumpFile Bless);
+use JSON;
 use Parallel::ForkManager;
 use Getopt::Long qw(GetOptions);
 use Pod::Usage;
@@ -75,13 +76,17 @@ my $ignoreConfig;
 my $config;
 my %configSkipHash;
 my $expect;
-my $saveCurrentResults;
+my $saveExpectations;
 my $failingOnly;
 my $latestImport;
+my $runningAllTests;
+my @results;
 
-my $expectationsFile = abs_path("$Bin/test262-expectations.yaml");
-my $configFile = abs_path("$Bin/test262-config.yaml");
-my $resultsFile = abs_path("$Bin/test262-results.yaml");
+my $expectationsFile = abs_path("$Bin/expectations.yaml");
+my $configFile = abs_path("$Bin/config.yaml");
+my $resultsFile = abs_path("$Bin/results.yaml");
+my $summaryTxtFile = abs_path("$Bin/results-summary.txt");
+my $summaryFile = abs_path("$Bin/results-summary.yaml");
 
 processCLI();
 
@@ -124,7 +129,7 @@ sub processCLI {
         'f|features=s@' => \@features,
         'c|config=s' => \$configFile,
         'i|ignore-config' => \$ignoreConfig,
-        's|save' => \$saveCurrentResults,
+        's|save' => \$saveExpectations,
         'x|ignore-expectations' => \$ignoreExpectations,
         'failing-files' => \$failingOnly,
         'l|latest-import' => \$latestImport,
@@ -136,7 +141,6 @@ sub processCLI {
     }
 
     if ($stats) {
-        print "Summarizing results...\n\n";
         summarizeResults();
         exit;
     }
@@ -228,6 +232,7 @@ sub main {
         # If we only want to re-run failure, only run tests in expectation file
         @files = map { qq($test262Dir/$_) } keys %{$expect};
     } else {
+        $runningAllTests = 1;
         # Otherwise, get all files from directory
         foreach my $testsDir (@cliTestDirs) {
             find(
@@ -254,10 +259,10 @@ sub main {
     close $deffh;
 
     seek($resfh, 0, 0);
-    my @res = LoadFile($resfh);
+    @results = LoadFile($resfh);
     close $resfh;
 
-    @res = sort { "$a->{path} . $a->{mode}" cmp "$b->{path} . $b->{mode}" } @res;
+    @results = sort { "$a->{path} . $a->{mode}" cmp "$b->{path} . $b->{mode}" } @results;
 
     my %failed;
     my $failcount = 0;
@@ -266,7 +271,7 @@ sub main {
     my $skipfilecount = 0;
 
     # Create expectation file and calculate results
-    foreach my $test (@res) {
+    foreach my $test (@results) {
 
         my $expectedFailure = 0;
         if ($expect && $expect->{$test->{path}}) {
@@ -299,33 +304,37 @@ sub main {
         }
     }
 
-    if ($saveCurrentResults) {
-        DumpFile($resultsFile, \@res);
+    if ($saveExpectations) {
         DumpFile($expectationsFile, \%failed);
+        print "\nSaved results in: $expectationsFile\n";
+    } else {
+        print "\nRun with --save to save a new expectations file\n";
     }
 
-    my $endTime = time();
-    my $totalTime = $endTime - $startTime;
-    my $total = scalar @res - $skipfilecount;
+    if ($runningAllTests) {
+        DumpFile($resultsFile, \@results);
+        print "Saved all the results in $resultsFile\n";
+        summarizeResults();
+    }
+
+    my $total = scalar @results - $skipfilecount;
     print "\n" . $total . " tests ran\n";
 
     if ( !$expect ) {
         print $failcount . " tests failed\n";
-    }
-    else {
+    } else {
         print $failcount . " expected tests failed\n";
         print $newfailcount . " tests newly fail\n";
         print $newpasscount . " tests newly pass\n";
     }
 
     print $skipfilecount . " test files skipped\n";
+
+    my $endTime = time();
+    my $totalTime = $endTime - $startTime;
     print "Done in $totalTime seconds!\n";
-    if ($saveCurrentResults) {
-        print "\nSaved results in:\n$expectationsFile\n$resultsFile\n";
-    }
-    else {
-        print "\nRun with --save to saved new test262-expectation.yaml and test262-results.yaml files\n";
-    }
+
+    exit $newfailcount ? 1 : 0;
 }
 
 sub loadImportFile {
@@ -368,8 +377,7 @@ sub parseError {
 
     if ($error =~ /^Exception: ([\w\d]+: .*)/m) {
         return $1;
-    }
-    else {
+    } else {
         # Unusual error format. Save the first line instead.
         my @errors = split("\n", $error);
         return $errors[0];
@@ -580,16 +588,14 @@ sub processResult {
 
         $resultdata{result} = 'FAIL';
         $resultdata{error} = $currentfailure;
-    }
-    elsif ($scenario ne 'skip' && !$currentfailure) {
+    } elsif ($scenario ne 'skip' && !$currentfailure) {
         if ($expectedfailure) {
             print "NEW PASS $file ($scenario)\n";
             print "\n" if $verbose;
         }
 
         $resultdata{result} = 'PASS';
-    }
-    else {
+    } else {
         $resultdata{result} = 'SKIP';
     }
 
@@ -650,15 +656,17 @@ sub getHarness {
     return $content;
 }
 
-
 sub summarizeResults {
-    my @rawresults = LoadFile($resultsFile) or die $!;
+    print "Summarizing results...\n";
 
+    if (not @results) {
+        my @rawresults = LoadFile($resultsFile) or die $!;
+        @results = @{$rawresults[0]};
+    }
     my %byfeature;
     my %bypath;
 
-    foreach my $test (@{$rawresults[0]}) {
-
+    foreach my $test (@results) {
         my $result = $test->{result};
 
         if ($test->{features}) {
@@ -701,12 +709,10 @@ sub summarizeResults {
 
     }
 
+    open(my $sfh, '>', $summaryTxtFile) or die $!;
 
-    print sprintf("%-6s %-6s %-6s %-6s %s\n", '% PASS', 'PASS', 'FAIL', 'SKIP', 'FOLDER');
+    print $sfh sprintf("%-6s %-6s %-6s %-6s %s\n", '%PASS', 'PASS', 'FAIL', 'SKIP', 'FOLDER');
     foreach my $key (sort keys %bypath) {
-        my $c = 'black';
-        $c = 'red' if $bypath{$key}->[1];
-
         my $per = ($bypath{$key}->[0] / (
             $bypath{$key}->[0]
             + $bypath{$key}->[1]
@@ -714,19 +720,16 @@ sub summarizeResults {
 
         $per = sprintf("%.0f", $per) . "%";
 
-        print colored([$c], sprintf("%-6s %-6d %-6d %-6d %s \n", $per,
-                      $bypath{$key}->[0],
-                      $bypath{$key}->[1],
-                      $bypath{$key}->[2], $key,));
+        print $sfh sprintf("%-6s %-6d %-6d %-6d %s \n", $per,
+                           $bypath{$key}->[0],
+                           $bypath{$key}->[1],
+                           $bypath{$key}->[2], $key,);
     }
 
-    print "\n\n";
-    print sprintf("%-6s %-6s %-6s %-6s %s\n", '% PASS', 'PASS', 'FAIL', 'SKIP', 'FEATURE');
+    print $sfh "\n\n";
+    print $sfh sprintf("%-6s %-6s %-6s %-6s %s\n", '%PASS', 'PASS', 'FAIL', 'SKIP', 'FEATURE');
 
     foreach my $key (sort keys %byfeature) {
-        my $c = 'black';
-        $c = 'red' if $byfeature{$key}->[1];
-
         my $per = ($byfeature{$key}->[0] / (
             $byfeature{$key}->[0]
             + $byfeature{$key}->[1]
@@ -734,13 +737,22 @@ sub summarizeResults {
 
         $per = sprintf("%.0f", $per) . "%";
 
-        print colored([$c], sprintf("%-6s %-6d %-6d %-6d %s\n", $per,
-                      $byfeature{$key}->[0],
-                      $byfeature{$key}->[1],
-                      $byfeature{$key}->[2], $key));
+        print $sfh sprintf("%-6s %-6d %-6d %-6d %s\n", $per,
+                           $byfeature{$key}->[0],
+                           $byfeature{$key}->[1],
+                           $byfeature{$key}->[2], $key);
     }
 
+    close($sfh);
 
+    my %resultsyaml = (
+        byFolder => \%bypath,
+        byFeature => \%byfeature,
+    );
+
+    DumpFile($summaryFile, \%resultsyaml);
+
+    print "See summarized results in $summaryTxtFile\n";
 }
 
 __END__
@@ -829,7 +841,7 @@ Runs the test files listed in the last import (./JSTests/test262/latest-changes-
 
 =item B<--stats>
 
-Calculate conformance statistics from test262-results.yaml file.
+Calculate conformance statistics from JSTests/test262-results.yaml file. Saves results in JSTests/test262/results-summary.txt and JSTests/test262/results-summary.yaml.
 
 =back
 

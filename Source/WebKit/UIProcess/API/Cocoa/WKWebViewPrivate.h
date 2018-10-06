@@ -204,8 +204,6 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 @property (nonatomic, setter=_setInterfaceOrientationOverride:) UIInterfaceOrientation _interfaceOrientationOverride;
 
 @property (nonatomic, setter=_setAllowsViewportShrinkToFit:) BOOL _allowsViewportShrinkToFit;
-@property (nonatomic, setter=_setForceHorizontalViewportShrinkToFit:) BOOL _forceHorizontalViewportShrinkToFit WK_API_AVAILABLE(ios(WK_IOS_TBA));
-@property (nonatomic, setter=_setMinimumAllowedLayoutWidth:) CGFloat _minimumAllowedLayoutWidth WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 // FIXME: Remove these three properties once we expose WKWebViewContentProvider as API.
 @property (nonatomic, readonly, getter=_isDisplayingPDF) BOOL _displayingPDF;
@@ -226,10 +224,6 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 - (void)_resizeWhileHidingContentWithUpdates:(void (^)(void))updateBlock;
 
 - (void)_snapshotRect:(CGRect)rectInViewCoordinates intoImageOfWidth:(CGFloat)imageWidth completionHandler:(void(^)(CGImageRef))completionHandler;
-
-// Deprecated: Use [_overrideLayoutParametersWithMinimumLayoutSize:maximumUnobscuredSizeOverride:] instead.
-// This function is kept for binary compatibility with iOS 8.0, it can be removed after the bincompat window.
-- (void)_overrideLayoutParametersWithMinimumLayoutSize:(CGSize)minimumLayoutSize minimumLayoutSizeForMinimalUI:(CGSize)minimumLayoutSizeForMinimalUI maximumUnobscuredSizeOverride:(CGSize)maximumUnobscuredSizeOverride WK_API_DEPRECATED_WITH_REPLACEMENT("-_overrideLayoutParametersWithMinimumLayoutSize:maximumUnobscuredSizeOverride:", ios(8.0, 9.0));
 
 - (void)_overrideLayoutParametersWithMinimumLayoutSize:(CGSize)minimumLayoutSize maximumUnobscuredSizeOverride:(CGSize)maximumUnobscuredSizeOverride WK_API_AVAILABLE(ios(9_0));
 
@@ -382,6 +376,8 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 - (void)dismissFormAccessoryView WK_API_AVAILABLE(ios(10.3));
 - (void)selectFormAccessoryPickerRow:(int)rowIndex WK_API_AVAILABLE(ios(10.3));
 @property (nonatomic, readonly) NSString *selectFormPopoverTitle WK_API_AVAILABLE(ios(WK_IOS_TBA));
+@property (nonatomic, readonly) NSString *formInputLabel WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)setTimePickerValueToHour:(NSInteger)hour minute:(NSInteger)minute WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 - (void)applyAutocorrection:(NSString *)newString toString:(NSString *)oldString withCompletionHandler:(void (^)(void))completionHandler WK_API_AVAILABLE(ios(11.0));
 

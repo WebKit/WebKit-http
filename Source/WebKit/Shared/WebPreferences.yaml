@@ -667,6 +667,9 @@ MenuItemElementEnabled:
 EncryptedMediaAPIEnabled:
   type: bool
   defaultValue: false
+  humanReadableName: "Modern Encrypted Media API"
+  humanReadableDescription: "Modern Encrypted Media API"
+  category: experimental
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(ENCRYPTED_MEDIA)
 
@@ -781,7 +784,7 @@ DataTransferItemsEnabled:
 CustomPasteboardDataEnabled:
   type: bool
   defaultValue: defaultCustomPasteboardDataEnabled()
-  humanReadableName: "Custom pateboard data"
+  humanReadableName: "Custom pasteboard data"
   humanReadableDescription: "Enable custom clipboard types and better security model for clipboard API."
   webcoreBinding: RuntimeEnabledFeatures
 
@@ -1080,11 +1083,18 @@ CacheAPIEnabled:
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
 
+ColorFilterEnabled:
+  type: bool
+  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  humanReadableName: "Color Filter"
+  humanReadableDescription: "Enable CSS Color Filter property"
+  category: experimental
+
 ConstantPropertiesEnabled:
   type: bool
   defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
   humanReadableName: "Constant Properties"
-  humanReadableDescription: "Enable CSS constant() properties"
+  humanReadableDescription: "Enable CSS constant() values"
   category: experimental
 
 SpringTimingFunctionEnabled:
@@ -1231,5 +1241,13 @@ RestrictedHTTPResponseAccess:
     defaultValue: true
     humanReadableName: "Restricted HTTP Response Access to Web Process"
     humanReadableDescription: "Restricted HTTP Response Access to Web Process"
+    category: experimental
+    webcoreBinding: RuntimeEnabledFeatures
+
+FromOriginResponseHeaderEnabled:
+    type: bool
+    defaultValue: false
+    humanReadableName: "From-Origin Response Header"
+    humanReadableDescription: "Support for the From-Origin Response Header"
     category: experimental
     webcoreBinding: RuntimeEnabledFeatures

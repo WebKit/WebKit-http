@@ -42,7 +42,7 @@ PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, WTF::CompletionHa
     : m_parameters(WTFMove(parameters))
     , m_completionHandler(WTFMove(completionHandler))
     , m_timeoutTimer(*this, &PingLoad::timeoutTimerFired)
-    , m_networkLoadChecker(NetworkLoadChecker::create(FetchOptions { m_parameters.options}, m_parameters.sessionID, WTFMove(m_parameters.originalRequestHeaders), URL { m_parameters.request.url() }, m_parameters.sourceOrigin.copyRef()))
+    , m_networkLoadChecker(NetworkLoadChecker::create(FetchOptions { m_parameters.options}, m_parameters.sessionID, WTFMove(m_parameters.originalRequestHeaders), URL { m_parameters.request.url() }, m_parameters.sourceOrigin.copyRef(), m_parameters.preflightPolicy))
 {
 
     if (m_parameters.cspResponseHeaders)
@@ -99,7 +99,15 @@ void PingLoad::willPerformHTTPRedirection(ResourceResponse&& redirectResponse, R
             this->didFinish(result.error());
             return;
         }
-        completionHandler(WTFMove(result.value()));
+        auto request = WTFMove(result.value());
+        m_networkLoadChecker->prepareRedirectedRequest(request);
+
+        if (!result.value().url().protocolIsInHTTPFamily()) {
+            this->didFinish(ResourceError { String { }, 0, result.value().url(), ASCIILiteral("Redirection to URL with a scheme that is not HTTP(S)"), ResourceError::Type::AccessControl });
+            return;
+        }
+
+        completionHandler(WTFMove(request));
     });
 }
 

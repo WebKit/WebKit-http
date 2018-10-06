@@ -23,29 +23,10 @@ class BuildBotConfigLoader(object):
         scripts_dir = os.path.join(webkit_tools_dir, 'Scripts')
         sys.path.append(scripts_dir)
 
-    def _mock_open(self, filename):
-        if filename == 'passwords.json':
-            return StringIO.StringIO(json.dumps(make_passwords_json.create_mock_slave_passwords_dict()))
-        return __builtins__.open(filename)
-
-    def _add_dependant_modules_to_sys_modules(self):
+    def _add_dependent_modules_to_sys_modules(self):
+        self._add_webkitpy_to_sys_path()
         from webkitpy.thirdparty.autoinstalled import buildbot
         sys.modules['buildbot'] = buildbot
-
-    def load_config(self, master_cfg_path):
-        # Before we can use webkitpy.thirdparty, we need to fix our path to include webkitpy.
-        # FIXME: If we're ever run by test-webkitpy we won't need this step.
-        self._add_webkitpy_to_sys_path()
-        # master.cfg expects the buildbot module to be in sys.path.
-        self._add_dependant_modules_to_sys_modules()
-
-        # master.cfg expects a passwords.json file which is not checked in.  Fake it by mocking open().
-        globals()['open'] = self._mock_open
-        # Because the master_cfg_path may have '.' in its name, we can't just use import, we have to use execfile.
-        # We pass globals() as both the globals and locals to mimic exectuting in the global scope, so
-        # that globals defined in master.cfg will be global to this file too.
-        execfile(master_cfg_path, globals(), globals())
-        globals()['open'] = __builtins__.open  # Stop mocking open().
 
 
 class RunWebKitTestsTest(unittest.TestCase):
@@ -247,111 +228,176 @@ class RunUnitTestsTest(unittest.TestCase):
         self.assertEqual(expected_text, actual_text)
 
     def test_no_failures_or_timeouts(self):
-        self.assertFailures(0, """Note: Google Test filter = WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[==========] Running 1 test from 1 test case.
-[----------] Global test environment set-up.
-[----------] 1 test from WebViewDestructionWithHostWindow
-[ RUN      ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[       OK ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose (127 ms)
-[----------] 1 test from WebViewDestructionWithHostWindow (127 ms total)
+        self.assertFailures(0, """...
+worker/0 TestWTF.WTF_Variant.OperatorAmpersand Passed
+worker/0 TestWTF.WTF_Variant.Ref Passed
+worker/0 TestWTF.WTF_Variant.RefPtr Passed
+worker/0 TestWTF.WTF_Variant.RetainPtr Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingMakeVisitor Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingSwitchOn Passed
+worker/0 exiting
+Ran 1888 tests of 1888 with 1888 successful
+------------------------------
+All tests successfully passed!
+""")
 
-[----------] Global test environment tear-down
-[==========] 1 test from 1 test case ran. (127 ms total)
-[  PASSED  ] 1 test.
+    def test_no_failures_or_timeouts_with_disabled(self):
+        self.assertFailures(0, """...
+worker/0 TestWTF.WTF_Variant.OperatorAmpersand Passed
+worker/0 TestWTF.WTF_Variant.Ref Passed
+worker/0 TestWTF.WTF_Variant.RefPtr Passed
+worker/0 TestWTF.WTF_Variant.RetainPtr Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingMakeVisitor Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingSwitchOn Passed
+worker/0 exiting
+Ran 1881 tests of 1888 with 1881 successful
+------------------------------
+All tests successfully passed!
 """)
 
     def test_one_failure(self):
-        self.assertFailures(1, """Note: Google Test filter = WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[==========] Running 1 test from 1 test case.
-[----------] Global test environment set-up.
-[----------] 1 test from WebViewDestructionWithHostWindow
-[ RUN      ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[       OK ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose (127 ms)
-[----------] 1 test from WebViewDestructionWithHostWindow (127 ms total)
+        self.assertFailures(1, """...
+worker/0 TestWTF.WTF_Variant.OperatorAmpersand Passed
+worker/0 TestWTF.WTF_Variant.Ref Passed
+worker/0 TestWTF.WTF_Variant.RefPtr Passed
+worker/0 TestWTF.WTF_Variant.RetainPtr Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingMakeVisitor Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingSwitchOn Passed
+worker/0 exiting
+Ran 1888 tests of 1888 with 1887 successful
+------------------------------
+Test suite failed
 
-[----------] Global test environment tear-down
-[==========] 1 test from 1 test case ran. (127 ms total)
-[  PASSED  ] 1 test.
-Tests that failed:
-  WebKit2.WebKit2.CanHandleRequest
+Crashed
+
+    TestWTF.WTF.StringConcatenate_Unsigned
+        **FAIL** WTF.StringConcatenate_Unsigned
+
+        C:\\cygwin\\home\\buildbot\\slave\\win-release\\build\\Tools\\TestWebKitAPI\\Tests\\WTF\\StringConcatenate.cpp:84
+        Value of: makeString("hello ", static_cast<unsigned short>(42) , " world")
+          Actual: hello 42 world
+        Expected: "hello * world"
+        Which is: 74B00C9C
+
+Testing completed, Exit status: 3
 """)
 
     def test_multiple_failures(self):
-        self.assertFailures(4, """Note: Google Test filter = WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[==========] Running 1 test from 1 test case.
-[----------] Global test environment set-up.
-[----------] 1 test from WebViewDestructionWithHostWindow
-[ RUN      ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[       OK ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose (127 ms)
-[----------] 1 test from WebViewDestructionWithHostWindow (127 ms total)
+        self.assertFailures(2, """...
+worker/0 TestWTF.WTF_Variant.OperatorAmpersand Passed
+worker/0 TestWTF.WTF_Variant.Ref Passed
+worker/0 TestWTF.WTF_Variant.RefPtr Passed
+worker/0 TestWTF.WTF_Variant.RetainPtr Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingMakeVisitor Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingSwitchOn Passed
+worker/0 exiting
+Ran 1888 tests of 1888 with 1886 successful
+------------------------------
+Test suite failed
 
-[----------] Global test environment tear-down
-[==========] 1 test from 1 test case ran. (127 ms total)
-[  PASSED  ] 1 test.
-Tests that failed:
-  WebKit2.WebKit2.CanHandleRequest
-  WebKit2.WebKit2.DocumentStartUserScriptAlertCrashTest
-  WebKit2.WebKit2.HitTestResultNodeHandle
-  WebKit2.WebKit2.InjectedBundleBasic
+Crashed
+
+    TestWTF.WTF.StringConcatenate_Unsigned
+        **FAIL** WTF.StringConcatenate_Unsigned
+
+        C:\\cygwin\\home\\buildbot\\slave\\win-release\\build\\Tools\\TestWebKitAPI\\Tests\\WTF\\StringConcatenate.cpp:84
+        Value of: makeString("hello ", static_cast<unsigned short>(42) , " world")
+          Actual: hello 42 world
+        Expected: "hello * world"
+        Which is: 74B00C9C
+
+    TestWTF.WTF_Expected.Unexpected
+        **FAIL** WTF_Expected.Unexpected
+
+        C:\cygwin\home\buildbot\slave\win-release\build\Tools\TestWebKitAPI\Tests\WTF\Expected.cpp:96
+        Value of: s1
+          Actual: oops
+        Expected: s0
+        Which is: oops
+
+Testing completed, Exit status: 3
 """)
 
     def test_one_timeout(self):
-        self.assertFailures(1, """Note: Google Test filter = WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[==========] Running 1 test from 1 test case.
-[----------] Global test environment set-up.
-[----------] 1 test from WebViewDestructionWithHostWindow
-[ RUN      ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[       OK ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose (127 ms)
-[----------] 1 test from WebViewDestructionWithHostWindow (127 ms total)
+        self.assertFailures(1, """...
+worker/0 TestWTF.WTF_Variant.OperatorAmpersand Passed
+worker/0 TestWTF.WTF_Variant.Ref Passed
+worker/0 TestWTF.WTF_Variant.RefPtr Passed
+worker/0 TestWTF.WTF_Variant.RetainPtr Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingMakeVisitor Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingSwitchOn Passed
+worker/0 exiting
+Ran 1888 tests of 1888 with 1887 successful
+------------------------------
+Test suite failed
 
-[----------] Global test environment tear-down
-[==========] 1 test from 1 test case ran. (127 ms total)
-[  PASSED  ] 1 test.
-Tests that timed out:
-  WebKit2.WebKit2.CanHandleRequest
+Timeout
+
+     TestWTF.WTF_PoisonedUniquePtrForTriviallyDestructibleArrays.Assignment
+
+Testing completed, Exit status: 3
 """)
 
     def test_multiple_timeouts(self):
-        self.assertFailures(4, """Note: Google Test filter = WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[==========] Running 1 test from 1 test case.
-[----------] Global test environment set-up.
-[----------] 1 test from WebViewDestructionWithHostWindow
-[ RUN      ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[       OK ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose (127 ms)
-[----------] 1 test from WebViewDestructionWithHostWindow (127 ms total)
+        self.assertFailures(2, """...
+worker/0 TestWTF.WTF_Variant.OperatorAmpersand Passed
+worker/0 TestWTF.WTF_Variant.Ref Passed
+worker/0 TestWTF.WTF_Variant.RefPtr Passed
+worker/0 TestWTF.WTF_Variant.RetainPtr Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingMakeVisitor Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingSwitchOn Passed
+worker/0 exiting
+Ran 1888 tests of 1888 with 1886 successful
+------------------------------
+Test suite failed
 
-[----------] Global test environment tear-down
-[==========] 1 test from 1 test case ran. (127 ms total)
-[  PASSED  ] 1 test.
-Tests that timed out:
-  WebKit2.WebKit2.CanHandleRequest
-  WebKit2.WebKit2.DocumentStartUserScriptAlertCrashTest
-  WebKit2.WebKit2.HitTestResultNodeHandle
-  WebKit2.WebKit2.InjectedBundleBasic
+Timeout
+
+    TestWTF.WTF_PoisonedUniquePtrForTriviallyDestructibleArrays.Assignment
+    TestWTF.WTF_Lock.ContendedShortSection
+
+Testing completed, Exit status: 3
 """)
 
     def test_multiple_failures_and_timeouts(self):
-        self.assertFailures(8, """Note: Google Test filter = WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[==========] Running 1 test from 1 test case.
-[----------] Global test environment set-up.
-[----------] 1 test from WebViewDestructionWithHostWindow
-[ RUN      ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose
-[       OK ] WebViewDestructionWithHostWindow.DestroyViewWindowWithoutClose (127 ms)
-[----------] 1 test from WebViewDestructionWithHostWindow (127 ms total)
+        self.assertFailures(4, """...
+worker/0 TestWTF.WTF_Variant.OperatorAmpersand Passed
+worker/0 TestWTF.WTF_Variant.Ref Passed
+worker/0 TestWTF.WTF_Variant.RefPtr Passed
+worker/0 TestWTF.WTF_Variant.RetainPtr Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingMakeVisitor Passed
+worker/0 TestWTF.WTF_Variant.VisitorUsingSwitchOn Passed
+worker/0 exiting
+Ran 1888 tests of 1888 with 1884 successful
+------------------------------
+Test suite failed
 
-[----------] Global test environment tear-down
-[==========] 1 test from 1 test case ran. (127 ms total)
-[  PASSED  ] 1 test.
-Tests that failed:
-  WebKit2.WebKit2.CanHandleRequest
-  WebKit2.WebKit2.DocumentStartUserScriptAlertCrashTest
-  WebKit2.WebKit2.HitTestResultNodeHandle
-Tests that timed out:
-  WebKit2.WebKit2.InjectedBundleBasic
-  WebKit2.WebKit2.LoadCanceledNoServerRedirectCallback
-  WebKit2.WebKit2.MouseMoveAfterCrash
-  WebKit2.WebKit2.ResponsivenessTimerDoesntFireEarly
-  WebKit2.WebKit2.WebArchive
+Crashed
+
+    TestWTF.WTF.StringConcatenate_Unsigned
+        **FAIL** WTF.StringConcatenate_Unsigned
+
+        C:\\cygwin\\home\\buildbot\\slave\\win-release\\build\\Tools\\TestWebKitAPI\\Tests\\WTF\\StringConcatenate.cpp:84
+        Value of: makeString("hello ", static_cast<unsigned short>(42) , " world")
+          Actual: hello 42 world
+        Expected: "hello * world"
+        Which is: 74B00C9C
+
+    TestWTF.WTF_Expected.Unexpected
+        **FAIL** WTF_Expected.Unexpected
+
+        C:\cygwin\home\buildbot\slave\win-release\build\Tools\TestWebKitAPI\Tests\WTF\Expected.cpp:96
+        Value of: s1
+          Actual: oops
+        Expected: s0
+        Which is: oops
+
+Timeout
+
+    TestWTF.WTF_PoisonedUniquePtrForTriviallyDestructibleArrays.Assignment
+    TestWTF.WTF_Lock.ContendedShortSection
+
+Testing completed, Exit status: 3
 """)
 
 
@@ -448,10 +494,10 @@ expected_build_steps = {
     'JSCOnly Linux AArch64 Release': ['configure build', 'svn', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'jscore-test'],
     'JSCOnly Linux MIPS32el Release': ['configure build', 'svn', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'jscore-test'],
 
-    'GTK Linux 32-bit Release': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'jscore-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'API tests', 'webdriver-test'],
+    'GTK Linux 32-bit Release': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'jscore-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'generate-jsc-bundle', 'API tests', 'webdriver-test'],
     'GTK Linux 64-bit Debug (Build)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'archive-built-product', 'upload', 'transfer-to-s3', 'trigger'],
     'GTK Linux 64-bit Debug (Tests)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand', 'API tests', 'webdriver-test'],
-    'GTK Linux 64-bit Release (Build)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'archive-built-product', 'upload', 'transfer-to-s3', 'trigger'],
+    'GTK Linux 64-bit Release (Build)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'archive-built-product', 'upload', 'generate-jsc-bundle', 'transfer-to-s3', 'trigger'],
     'GTK Linux 64-bit Release (Perf)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'perf-test', 'benchmark-test'],
     'GTK Linux 64-bit Release (Tests)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand', 'API tests', 'webdriver-test'],
     'GTK Linux 64-bit Release Wayland (Tests)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand', 'API tests', 'webdriver-test'],
@@ -551,7 +597,10 @@ class RunBenchmarkTest(unittest.TestCase):
 # 'build.webkit.org-config' is not a valid module name (due to '.' and '-')
 # so for now this is a stand-alone test harness.
 if __name__ == '__main__':
-    BuildBotConfigLoader().load_config('master.cfg')
+    BuildBotConfigLoader()._add_dependent_modules_to_sys_modules()
+    from loadConfig import *
+    c = {}
+    loadBuilderConfig(c, test_mode_is_enabled=True)
     BuildStepsConstructorTest.generateTests()
     BuildStepsTest.generateTests()
     unittest.main()

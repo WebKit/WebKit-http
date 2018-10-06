@@ -1,3 +1,853 @@
+2018-05-02  Aditya Keerthi  <akeerthi@apple.com>
+
+        Can't copy and paste URLs that have no title into Mail (macOS)
+        https://bugs.webkit.org/show_bug.cgi?id=185205
+        <rdar://problem/36352406>
+
+        Reviewed by Tim Horton.
+
+        Added test to verify behavior when copying and pasting a URL without a title.
+
+        * TestWebKitAPI/Tests/mac/ContextMenuCanCopyURL.html:
+        * TestWebKitAPI/Tests/mac/ContextMenuCanCopyURL.mm:
+        (TestWebKitAPI::TEST):
+
+2018-05-02  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Generate a JSC bundle on the 64 and 32 bit release bots and upload it to webkitgtk.org (follow-up fix)
+        https://bugs.webkit.org/show_bug.cgi?id=184699
+
+        Unreviewed follow-up fix after r231230.
+
+        * Scripts/generate-jsc-bundle:
+        (generate_wrapper_script): Quote the arguments passed to jsc.
+
+2018-05-02  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: opt out of process swap on navigation if a Web Inspector frontend is connected
+        https://bugs.webkit.org/show_bug.cgi?id=184861
+        <rdar://problem/39153768>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new test that checks whether a new process is used for navigation when
+        an Inspector is shown. Also check that the behavior reverts to normal after
+        the Inspector has been closed.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-05-02  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: save summary to file
+        https://bugs.webkit.org/show_bug.cgi?id=185200
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+        (main):
+        (summarizeResults):
+
+2018-05-02  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Generate a JSC bundle on the 64 and 32 bit release bots and upload it to webkitgtk.org
+        https://bugs.webkit.org/show_bug.cgi?id=184699
+
+        Reviewed by Gustavo Noronha Silva.
+
+        This adds a new step for the GTK 64-bit release build bot and the
+        GTK 32-bit release build&test bot.
+
+        This step will be run as one of the lasts ones (after the product
+        is built) and will execute the script generate-jsc-bundle.
+        This script will take care of creating a JSC bundle and uploading
+        it to a server defined on a configuration file that has to be
+        deployed on the bots with the required server data and credentials
+        for this upload.
+
+        In this case, the built products should then be accessible at
+        <https://webkitgtk.org/jsc-built-products>. But the implementation
+        is not tied to any specific server. All the details about where
+        to upload the file is done in configuration file that is kept
+        private on each bot outside of the WebKit source tree.
+
+        The script also supports generating a JSC bundle locally and not
+        uploading it anywhere. This is the default mode of running.
+        The remote upload will only be activated if a --remote-config-file
+        parameter is passed (which is done from the buildbot config)
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/factories.py:
+        (BuildFactory):
+        (BuildFactory.__init__):
+        (TestFactory):
+        (TestFactory.__init__):
+        (BuildAndGenerateJSCBundleFactory):
+        (BuildAndNonLayoutTestAndGenerateJSCBundleFactory):
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (GenerateJSCBundle):
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py:
+        * Scripts/generate-jsc-bundle: Added.
+        (ldd_get_libs_and_interpreter):
+        (generate_readme):
+        (generate_wrapper_script):
+        (copy_and_remove_rpath):
+        (createJSCBundle):
+        (sha256sum):
+        (uploadJSCBundle):
+        (main):
+
+2018-05-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        PSON: Make WebKitTestRunner work with process swap on navigation turned on
+        https://bugs.webkit.org/show_bug.cgi?id=185111
+
+        Reviewed by Chris Dumez.
+
+        Add the basic support for running layout tests with process-swap-on-navigation turned on.
+
+        First, move m_whatToDump, m_dumpPixels, m_waitToDump, and m_dumpFrameLoadCallbacks from WebContent process
+        to UI process so that calls to waitUntilDone, dumpAsText, etc... persist across process swaps.
+
+        In addition, initialize the injected bundle inside a new WebContent process when the first page is created.
+        This instantiates objects such as TestRunner, GCController, etc... in the new process. The initialization
+        can't be done in InjectedBundle::beginTesting because some steps in InjectedBundle::initialize require
+        the current PageGroup and Page objects. We avoid clearing databases and app cache in this case.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didCreatePage): Send "Initialization" message to UI process. This message returns
+        all the dictionary values usually present in "BeginTest" message from UI process as well as "ResumeTesting"
+        boolean which is set when this process was created as a result of a process swap on navgation. Invoke
+        beginTesting with BegingTestingMode::Resume when this boolean is set.
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        (WTR::InjectedBundle::beginTesting): Don't clear database, app cache, etc... when initializing an injected
+        bundle after a process swap on navigation.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::dump):
+        (WTR::InjectedBundlePage::frameDidChangeLocation):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::TestRunner):
+        (WTR::TestRunner::shouldDumpPixels const): Added.
+        (WTR::TestRunner::setDumpPixels): Added.
+        (WTR::TestRunner::dumpAsText):
+        (WTR::TestRunner::whatToDump const): Added.
+        (WTR::TestRunner::setWhatToDump): Added.
+        (WTR::TestRunner::waitUntilDone):
+        (WTR::TestRunner::setWaitUntilDone): Added.
+        (WTR::TestRunner::shouldWaitUntilDone): Added.
+        (WTR::TestRunner::notifyDone):
+        (WTR::TestRunner::forceImmediateCompletion):
+        (WTR::TestRunner::setShouldDumpFrameLoadCallbacks): Added.
+        (WTR::TestRunner::shouldDumpFrameLoadCallbacks): Added.
+        (WTR::TestRunner::setAudioResult):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::dumpChildFramesAsText):
+        (WTR::TestRunner::dumpDOMAsWebArchive):
+        (WTR::TestRunner::setShouldDumpFrameLoadCallbacks): Moved to cpp.
+        (WTR::TestRunner::whatToDump const): Moved to cpp.
+        (WTR::TestRunner::shouldDumpMainFrameScrollPosition const):
+        (WTR::TestRunner::shouldDumpPixels const): Moved to cpp.
+        (WTR::TestRunner::shouldDumpFrameLoadCallbacks const): Moved to cpp.
+        (WTR::TestRunner::waitToDump const): Renamed to shouldWaitUntilDone and moved to cpp.
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::TestInvocation): Initialize m_dumpFrameLoadCallbacks here.
+        (WTR::TestInvocation::shouldLogFrameLoadDelegates const): Deleted.
+        (WTR::TestInvocation::createTestSettingsDictionary): Extracted from invoke().
+        (WTR::TestInvocation::invoke): Sets m_startedTesting to true immediately afte sending "BeginTest" message.
+        m_startedTesting is later used in didReceiveSynchronousMessageFromInjectedBundle to detect whether a given
+        "Initialization" message is sent from a regular WebContent process (m_startedTesting is false) or the one
+        started as a result of a process swap on navigation (m_startedTesting is true).
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle): Added a bunch of new messgaes to
+        support initializing the injected bundle in a process swapped after navigation and set/get messages for
+        the states which must persist across process swaps within a test.
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * Tools/WebKitTestRunner/WhatToDump.h:
+        (WTR::WhatToDump): Added.
+
+2018-05-01  Leo Balter  <leonardo.balter@gmail.com>
+
+        Auto save the results for Test262
+        https://bugs.webkit.org/show_bug.cgi?id=184926
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+        (main):
+        (parseError):
+        (processResult):
+        (summarizeResults):
+        * Scripts/test262/config.yaml: Renamed from Tools/Scripts/test262/test262-config.yaml.
+
+2018-05-01  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: SIGKILL right after SIGTERM causes orphaned processes with 'xcrun simctl spawn'
+        https://bugs.webkit.org/show_bug.cgi?id=185164
+
+        Reviewed by David Kilzer.
+
+        * Scripts/webkitpy/common/system/executive.py:
+        (Executive.kill_process): First attempt will always send a SIGTERM, all subsequent attempts will
+        send a SIGKILL. A SIGKILL with not be sent if the process is not running to avoid orphaning childen.
+
+2018-05-01  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r230919): API test WebKit.AutoLayoutIntegration is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=184918
+        <rdar://problem/39705516>
+
+        Reviewed by Wenson Hsieh.
+
+        Make sure provisional load has started before calling beginLayoutAtMinimumWidth
+        on the AutoLayoutWKWebView to restore pre-r230919 behavior. The load now starts
+        asynchronously because we ask the client if it is OK to do the load and the policy
+        delegates are asynchronous nowadays.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/AutoLayoutIntegration.mm:
+        (-[AutoLayoutWKWebView load:withWidth:expectingContentSize:resettingWidth:]):
+        * TestWebKitAPI/cocoa/TestNavigationDelegate.h:
+        * TestWebKitAPI/cocoa/TestNavigationDelegate.mm:
+        (-[TestNavigationDelegate webView:didStartProvisionalNavigation:]):
+        (-[TestNavigationDelegate waitForDidStartProvisionalNavigation]):
+        (-[WKWebView _test_waitForDidStartProvisionalNavigation]):
+
+2018-05-01  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Align buildbot test stages with AppleWin.
+        https://bugs.webkit.org/show_bug.cgi?id=185094
+
+        Reviewed by Brent Fulgham.
+
+        * BuildSlaveSupport/build.webkit.org-config/factories.py:
+        (TestFactory.__init__):
+        Do run API tests, don't run dashboard tests.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunUnitTests):
+        Call run-api-tests with Python, not Perl (bugfix for r230998).
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.environment_for_api_tests):
+        Retrieve necessary Windows environment variables.
+
+2018-05-01  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] remove WK1 support
+        https://bugs.webkit.org/show_bug.cgi?id=185136
+
+        Reviewed by Youenn Fablet.
+
+        * DumpRenderTree/mac/UIDelegate.mm:
+        (-[UIDelegate webView:decidePolicyForUserMediaRequestFromOrigin:listener:]): Deleted.
+
+2018-05-01  Chris Dumez  <cdumez@apple.com>
+
+        [WKTR] Move navigation policy for response decision from InjectedBundle to UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=185157
+
+        Reviewed by Geoffrey Garen.
+
+        Move navigation policy for response decision from InjectedBundle to UIProcess. This is a more
+        common configuration and should therefore be the configuration we test by default.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::decidePolicyForResponse):
+
+2018-05-01  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        WebAssembly: add support for stream APIs - JavaScript API
+        https://bugs.webkit.org/show_bug.cgi?id=183442
+
+        Reviewed by Yusuke Suzuki and JF Bastien.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-04-30  Mark Lam  <mark.lam@apple.com>
+
+        Apply PtrTags to the MetaAllocator and friends.
+        https://bugs.webkit.org/show_bug.cgi?id=185110
+        <rdar://problem/39533895>
+
+        Reviewed by Saam Barati.
+
+        Update the test to match MetaAllocator changes in WTF.
+
+        * TestWebKitAPI/Tests/WTF/MetaAllocator.cpp:
+        (TestWebKitAPI::TEST_F):
+        (WTF::tagForPtr):
+        (WTF::ptrTagName):
+
+2018-04-30  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKUIDelegatePrivate equivalent of WKPageContextMenuClient getContextMenuFromProposedMenuAsync
+        https://bugs.webkit.org/show_bug.cgi?id=180955
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKit/mac/ContextMenuImgWithVideo.mm:
+        (-[ContextMenuImgWithVideoDelegate _webView:contextMenu:forElement:]):
+        (-[ContextMenuImgWithVideoDelegate _webView:getContextMenuFromProposedMenu:forElement:userInfo:completionHandler:]):
+
+2018-04-30  JF Bastien  <jfbastien@apple.com>
+
+        Use some C++17 features
+        https://bugs.webkit.org/show_bug.cgi?id=185135
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/PlatformMac.cmake:
+        * gtk/ycm_extra_conf.py:
+        (FlagsForFile):
+
+2018-04-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use WordLock instead of std::mutex for Threading
+        https://bugs.webkit.org/show_bug.cgi?id=185121
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WTF/Signals.cpp:
+        (TEST):
+
+2018-04-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Webkit should spoof as Safari on a Mac when on Chase.com
+        https://bugs.webkit.org/show_bug.cgi?id=185103
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-04-28  Sihui Liu  <sihui_liu@apple.com>
+
+        [Cocoa] Set HTTPOnly flag when converting Cookie to NSHTTPCookie
+        https://bugs.webkit.org/show_bug.cgi?id=185052
+
+        Reviewed by Geoffrey Garen.
+
+        Modified API test to provide correct test cases for HTTPOnly flag.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKHTTPCookieStore.mm:
+        (TEST):
+
+2018-04-28  Rick Waldron  <waldron.rick@gmail.com>
+
+        Token misspelled "tocken" in error message string
+        https://bugs.webkit.org/show_bug.cgi?id=185030
+
+        Reviewed by Saam Barati.
+
+        * Scripts/test262/test262-expectations.yaml: Fix typo "tocken" => "token"
+
+2018-04-27  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [WinCairo] Support --no-copy for jsc tests in wincairo tests, add copying of dlls for copy case
+        https://bugs.webkit.org/show_bug.cgi?id=185049
+
+        Reviewed by Keith Miller.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+        * Scripts/run-jsc-stress-tests:
+
+2018-04-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        PSON: Triggering a navigation to an invalid URL creates a new WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=185066
+
+        Reviewed by Youenn Fablet.
+
+        Added a new test case (ProcessSwap.NavigateToInvalidURL) for navigating to an invalid URL.
+        WebKit should not swap WebContent process in this case.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        (-[PSONNavigationDelegate webView:didFailProvisionalNavigation:withError:]):
+        (-[PSONUIDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+
+2018-04-27  Nan Wang  <n_wang@apple.com>
+
+        AX: Accessibility needs to know which part of the content view is visible on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=185085
+        <rdar://problem/39801363>
+
+        Reviewed by Chris Fleizach.
+
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::stringAttributeValue):
+
+2018-04-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Add a mechanism to override default viewport behaviors in extra zoom mode
+        https://bugs.webkit.org/show_bug.cgi?id=185050
+        <rdar://problem/39624038>
+
+        Reviewed by Tim Horton.
+
+        Remove a test that's no longer useful, now that the SPI it was testing is gone. This functionality is now
+        tested by the layout test added in this patch.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/ios/ViewportSizingTests.mm: Removed.
+
+2018-04-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION (r231039): RunUnitTests step reports disabled tests as failures
+        https://bugs.webkit.org/show_bug.cgi?id=185061
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunUnitTests.countFailures): Return the difference between the total number of tests run and the number that passed.
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py: Add a test.
+
+2018-04-26  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Add release bots for WinCairo.
+        https://bugs.webkit.org/show_bug.cgi?id=185042
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        Add a release build bot and two test bots, replacing the outdated WinCairo release bots.
+
+2018-04-26  Sihui Liu  <sihui_liu@apple.com>
+
+        -[WKHTTPCookieStore deleteCookie:completionHandler:] doesn't delete cookies
+        https://bugs.webkit.org/show_bug.cgi?id=184938
+        <rdar://problem/34737395>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKHTTPCookieStore.mm:
+        (TEST):
+
+2018-04-26  Ross Kirsling  <ross.kirsling@sony.com>
+
+        WinCairo test bots should run JSC tests with options for Windows command prompt.
+        https://bugs.webkit.org/show_bug.cgi?id=185019
+
+        Reviewed by Per Arne Vollan.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunJavaScriptCoreTests.start):
+
+2018-04-26  Ross Kirsling  <ross.kirsling@sony.com>
+
+        WinCairo WKL Debug Test bot is not using DRT.
+        https://bugs.webkit.org/show_bug.cgi?id=185009
+
+        Reviewed by Per Arne Vollan.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2018-04-26  Per Arne Vollan  <pvollan@apple.com>
+
+        Disable content filtering in minimal simulator mode
+        https://bugs.webkit.org/show_bug.cgi?id=185027
+        <rdar://problem/39736091>
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-04-26  Brady Eidson  <beidson@apple.com>
+
+        Add a setting for keeping around all processes and always reusing them per-origin.
+        <rdar://problem/39695798> and https://bugs.webkit.org/show_bug.cgi?id=185020
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-04-26  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Intl.PluralRules
+        https://bugs.webkit.org/show_bug.cgi?id=184312
+
+        Reviewed by JF Bastien.
+
+        Added Intl.PluralRules feature flag.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-04-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Build and link against latest WPEBackend and WPEBackend-fdo
+        https://bugs.webkit.org/show_bug.cgi?id=184643
+
+        Reviewed by Žan Doberšek.
+
+        Add missing INCLUDE_DIRS in many places.
+
+        Adapt to single-header WPE includes.
+
+        Null-initialize padding to silence -Wmissing-field-initializers. (Yuck.)
+
+        * TestWebKitAPI/PlatformWPE.cmake:
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitWebView.cpp:
+        (testWebViewWebBackend):
+        * TestWebKitAPI/glib/PlatformWPE.cmake:
+        * WebKitTestRunner/EventSenderProxy.h:
+        * WebKitTestRunner/PlatformWPE.cmake:
+        * WebKitTestRunner/wpe/EventSenderProxyWPE.cpp:
+        * wpe/HeadlessViewBackend/CMakeLists.txt:
+        * wpe/HeadlessViewBackend/HeadlessViewBackend.cpp:
+        * wpe/HeadlessViewBackend/HeadlessViewBackend.h:
+        * wpe/jhbuild.modules:
+
+2018-04-25  Jonathan Bedard  <jbedard@apple.com>
+
+        REGRESSION (r230998): Bot watcher's dashboard doesn't display number of API test failures
+        https://bugs.webkit.org/show_bug.cgi?id=184982
+
+        Rubber-stamped by Aakash Jain.
+
+        Correctly count the number of API test failures.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunUnitTests.countFailures): Count the number of test failures for the new run-api-tests.
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py:
+        * Scripts/webkitpy/api_tests/manager.py:
+        (Manager.run): Disabled tests are not run.
+
+2018-04-25  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Remove access to keychain from the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=184428
+        <rdar://problem/13150903>
+
+        Reviewed by Brent Fulgham.
+
+        This patch does the followings:
+        1. Added an API test for this patch.
+        2. Instrument DumpRenderTree and WebKitTestRunner to take advantages of new SPIs.
+
+        * DumpRenderTree/mac/UIDelegate.mm:
+        (-[UIDelegate signedPublicKeyAndChallengeStringForWebView:]):
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/SSLKeyGenerator.mm: Added.
+        (TestWebKitAPI::SSLKeyGeneratorTest::SetUp):
+        (TestWebKitAPI::SSLKeyGeneratorTest::TearDown):
+        (TestWebKitAPI::TEST_F):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::copySignedPublicKeyAndChallengeString):
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::createWebViewWithOptions):
+
+2018-04-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] The search field on www.bing.com is missing label text
+        https://bugs.webkit.org/show_bug.cgi?id=184975
+        <rdar://problem/39723081>
+
+        Reviewed by Tim Horton.
+
+        Adds UIScriptController.formInputLabel, which asynchronously requests the input label text for the currently
+        focused element in extra zoom mode.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::formInputLabel const):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::formInputLabel const):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::formInputLabel const):
+
+2018-04-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Should load injected bundle from builddir in developer builds
+        https://bugs.webkit.org/show_bug.cgi?id=184983
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Set WEBKIT_INJECTED_BUNDLE_PATH when running WPE MiniBrowser.
+
+        * Scripts/run-minibrowser:
+
+2018-04-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] libgstggtk.so broken in jhbuild environment
+        https://bugs.webkit.org/show_bug.cgi?id=184984
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Don't pass --enable-glx=no when building libepoxy, to ensure it's compatible with
+        gst-plugins-good.
+
+        * wpe/jhbuild.modules:
+
+2018-04-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        PSON: Don't create a new process when navigating to a blob URL, data URL, and about:blank
+        https://bugs.webkit.org/show_bug.cgi?id=184962
+
+        Reviewed by Youenn Fablet.
+
+        Added four test cases for navigating to a blob URL, data URL, and about:blank with process-swap-on-navigation turned on.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        (ProcessSwap.SameOriginBlobNavigation): Added.
+        (ProcessSwap.CrossOriginBlobNavigation): Added.
+        (ProcessSwap.NavigateToAboutBlank): Added.
+        (ProcessSwap.NavigateToDataURL): Added.
+
+2018-04-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Remove deprecated functions and properties from the API
+        https://bugs.webkit.org/show_bug.cgi?id=179295
+
+        Reviewed by Žan Doberšek.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestAuthentication.cpp:
+        (testWebViewAuthenticationStorage): Disable this test for now. It will require some effort
+        to rewrite LoadTrackingTest to not require the web view at construction time.
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitSettings.cpp:
+        (testWebKitSettings): Don't test private browsing setting, which is gone.
+        * TestWebKitAPI/glib/CMakeLists.txt: Disable TestCookieManager for now.
+
+2018-04-25  Andy Estes  <aestes@apple.com>
+
+        [Mac] Number of drop items is always 0 when performing a DHTML drag
+        https://bugs.webkit.org/show_bug.cgi?id=184943
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/DragAndDropPasteboardTests.mm:
+        (-[DragInfo numberOfValidItemsForDrop]):
+        (-[DragInfo setNumberOfValidItemsForDrop:]):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/mac/full-page-dropzone.html: Added.
+
+2018-04-25  Jonathan Bedard  <jbedard@apple.com>
+
+        API test harness should be Python
+        https://bugs.webkit.org/show_bug.cgi?id=181043
+        <rdar://problem/36164410>
+
+        Reviewed by David Kilzer.
+
+        Run API tests from a Python script rather than Perl. The Python API tests have
+        the same structure as the layout tests.
+
+        * Scripts/run-api-tests: Changed from Perl to Python.
+        * Scripts/webkitpy/api_tests: Added.
+        * Scripts/webkitpy/api_tests/__init__.py: Added.
+        * Scripts/webkitpy/api_tests/manager.py: Added.
+        (Manager):
+        (Manager.__init__):
+        (Manager._test_list_from_output): Construct a list of tests from the output of
+        TestWTF and TestWebKitAPI.
+        (Manager._find_test_subset): Given a list of all possible tests and command line
+        arguments, return a list of tests which match the provided arguments.
+        (Manager._collect_tests): Run TestWTF and TestWebKitAPI with --gtest_list_tests
+        to determine which tests will be run.
+        (Manager._print_test_result): Formatted print of a test with it's output.
+        (Manager._print_tests_result_with_status): Print all tests and output for tests
+        which ran with a specified exit status.
+        (Manager.run): Collect all tests, run them and then print results from the run.
+        * Scripts/webkitpy/api_tests/run_api_tests.py: Added.
+        (main): Parse arguments, construct a port, early exit for illegal ports and
+        then run tests.
+        (run): Setup logging and printing before using the Manager to run tests.
+        (parse_args): Use argparse to define all options used by run-api-tests.
+        * Scripts/webkitpy/api_tests/runner.py: Added.
+        (Runner):
+        (Runner.__init__):
+        (Runner._shard_tests): Split tests so that each suite runs together.
+        (Runner.command_for_port): Run a command on the device specified by the given
+        port object. Once <https://bugs.webkit.org/show_bug.cgi?id=175204> is completed,
+        this function would be entirely replaced by the server_process factory owned
+        by the port object.
+        (Runner.run): Run all shards in the message_pool.
+        (Runner.handle): Handle reports from child processes.
+        (Runner.result_map_by_status): Return a mapping of tests to output for tests
+        which exit with a specific status.
+        (_Worker):
+        (_Worker.__init__):
+        (_Worker._filter_noisy_output): Filter out objc warnings since these polite the log.
+        (_Worker._run_single_test): Runs a single test in a single child process.
+        (_Worker._run_shard_with_binary): Attempts to run a group of tests in the same
+        child process. If this technique fails, the remaining tests are run singly.
+        (_Worker.handle): Run the specified shard.
+        * Scripts/webkitpy/port/base.py:
+        (Port):
+        (Port.check_api_test_build): Check if TestWTF and TestWebKitAPI are built.
+        (Port.environment_for_api_tests): Return the environment needed to run
+        the TestWebKitAPI binary.
+        (Port. path_to_api_test_binaries): Return a list of the path to all binaries
+        used when running API tests.
+        (Port._build_api_tests): Build TestWTF and TestWebKitAPI if required.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.environment_for_api_tests): Enable GuardMalloc for API tests.
+        * Scripts/webkitpy/port/server_process.py: 
+        (ServerProcess.pop_all_buffered_stdout):
+
+2018-04-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Incorrect number of WebDriver test failures shown in the bots
+        https://bugs.webkit.org/show_bug.cgi?id=184959
+
+        Reviewed by Michael Catanzaro.
+
+        The regular expression we are using to get the number of failures from the log is matching a particular test
+        error output. Improve the regular expression to avoid matching other strings in the log. Ensure that only
+        matches at the beginning of lines and add spaces after Unexpected and before the (<failures>).
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunWebDriverTests.commandComplete):
+
+2018-04-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Implement MouseEvent.buttons
+        https://bugs.webkit.org/show_bug.cgi?id=184913
+
+        Reviewed by Žan Doberšek.
+
+        Include the mouse buttons state in WTR synthesized events.
+
+        * WebKitTestRunner/EventSenderProxy.h:
+        * WebKitTestRunner/gtk/EventSenderProxyGtk.cpp:
+        (WTR::EventSenderProxy::EventSenderProxy):
+        (WTR::EventSenderProxy::createMouseButtonEvent):
+        (WTR::EventSenderProxy::mouseDown):
+        (WTR::EventSenderProxy::mouseUp):
+        (WTR::EventSenderProxy::mouseMoveTo):
+
+2018-04-24  Pablo Saavedra  <psaavedra@igalia.com>
+
+        [GTK][WPE] Fix triggered bot name on the WPE Debug Build bot
+        https://bugs.webkit.org/show_bug.cgi?id=184954
+
+        Reviewed by Michael Catanzaro.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2018-04-24  Saam Barati  <sbarati@apple.com>
+
+        Keep around a pre-warmed process when doing process swap on navigation
+        https://bugs.webkit.org/show_bug.cgi?id=184765
+        <rdar://problem/39685099>
+
+        Reviewed by Ryosuke Niwa and Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-04-24  Aakash Jain  <aakash_jain@apple.com>
+
+        [build.webkit.org] unit-tests fail when passwords.json is missing
+        https://bugs.webkit.org/show_bug.cgi?id=180390
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * BuildSlaveSupport/build.webkit.org-config/loadConfig.py:
+        (loadBuilderConfig): Add support for test_mode. Load mock passwords in test_mode.
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py:
+        (BuildBotConfigLoader._add_dependant_modules_to_sys_modules): Call _add_webkitpy_to_sys_path as well.
+        (BuildBotConfigLoader._mock_open): Deleted.
+        (BuildBotConfigLoader.load_config): Deleted.
+
+2018-04-24  John Wilander  <wilander@apple.com>
+
+        From-Origin: Support for 'same' and 'same-site' response header, nested frame origin check
+        https://bugs.webkit.org/show_bug.cgi?id=184560
+        <rdar://problem/38901344>
+
+        Reviewed by Youenn Fablet and Daniel Bates.
+
+        This patch implements significant parts of https://github.com/whatwg/fetch/issues/687.
+        We consume the From-Origin response header and only load the resource if:
+        - The header is non-existent, empty, or invalid.
+        - The header specifies 'same' and the resource's origin matches the originating
+          document's origin and the origins up the frame tree.
+        - The header specifies 'same-site' and the resource's eTLD+1 matches the originating
+          document's eTLD+1 and the eTLD+1 of the documents up the frame tree.
+
+        This feature is experimental and off by default.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/HTTPParsers.cpp: Added.
+        (TestWebKitAPI::TEST):
+            Tests for From-Origin header parsing.
+
+2018-04-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update W3C WebDriver imported tests.
+
+        * Scripts/webkitpy/webdriver_tests/webdriver_w3c_executor.py:
+        (WebDriverW3CExecutor.__init__):
+
+2018-04-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Remove libgbm dependency
+        https://bugs.webkit.org/show_bug.cgi?id=184906
+
+        Reviewed by Carlos Garcia Campos.
+
+        Stop searching for libgbm, using its compiler flags for the
+        HeadlessViewBackend compilation and linking against the .so object.
+        This is not necessary anymore after r230562 switched to a different
+        backend implementation for testing.
+
+        * wpe/HeadlessViewBackend/CMakeLists.txt:
+        * wpe/install-dependencies:
+
+2018-04-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Make it possible to use a different timeout for slow test cases in GLib tests
+        https://bugs.webkit.org/show_bug.cgi?id=184816
+
+        Reviewed by Michael Catanzaro.
+
+        Pass a function from api test runner to glib test runner to check if a test is slow and use the given slow
+        timeout.
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+        * glib/api_test_runner.py:
+        (TestRunner._run_test_glib.is_slow_test):
+        (TestRunner._run_test_glib):
+        * glib/glib_test_runner.py:
+        (GLibTestRunner.__init__):
+        (GLibTestRunner._stop_timeout):
+        (GLibTestRunner._subtest_start):
+        (GLibTestRunner._subtest_end):
+
+2018-04-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] REGRESSION(230860) Unable to change time input values using UI
+        https://bugs.webkit.org/show_bug.cgi?id=184901
+        <rdar://problem/39664797>
+
+        Reviewed by Tim Horton.
+
+        Introduce a new UIScriptController method to set the value of a currently focused input of type time, by
+        interacting with the UI. See WebKit ChangeLogs for more detail.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setTimePickerValue):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setTimePickerValue):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setTimePickerValue):
+
+2018-04-23  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutFormattingContext] Initial commit.
+        https://bugs.webkit.org/show_bug.cgi?id=184896
+
+        Reviewed by Antti Koivisto.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
 2018-04-23  Chris Dumez  <cdumez@apple.com>
 
         [WKTR] Move navigation policy decision from the injected bundle to the UIProcess

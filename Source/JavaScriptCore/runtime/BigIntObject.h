@@ -35,12 +35,7 @@ class BigIntObject final : public JSWrapperObject {
 public:
     using Base = JSWrapperObject;
 
-    static BigIntObject* create(VM& vm, JSGlobalObject* globalObject, JSBigInt* bigInt)
-    {
-        BigIntObject* object = new (NotNull, allocateCell<BigIntObject>(vm.heap)) BigIntObject(vm, globalObject->bigIntObjectStructure());
-        object->finishCreation(vm, bigInt);
-        return object;
-    }
+    static BigIntObject* create(VM&, JSGlobalObject*, JSBigInt*);
 
     DECLARE_EXPORT_INFO;
 

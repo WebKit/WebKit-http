@@ -28,20 +28,24 @@
 
 #if ENABLE(WKPDFVIEW)
 
+#import "APIUIClient.h"
 #import "FindClient.h"
+#import "WKActionSheetAssistant.h"
 #import "WKWebViewInternal.h"
 #import "WeakObjCPtr.h"
 #import "WebPageProxy.h"
 #import "_WKWebViewPrintFormatterInternal.h"
 #import <PDFKit/PDFHostViewController.h>
+#import <WebCore/WebCoreNSURLExtras.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/MainThread.h>
 #import <wtf/RetainPtr.h>
 
-@interface WKPDFView () <PDFHostViewControllerDelegate>
+@interface WKPDFView () <PDFHostViewControllerDelegate, WKActionSheetAssistantDelegate>
 @end
 
 @implementation WKPDFView {
+    RetainPtr<WKActionSheetAssistant> _actionSheetAssistant;
     RetainPtr<NSData> _data;
     BlockPtr<void()> _findCompletion;
     RetainPtr<NSString> _findString;
@@ -53,12 +57,15 @@
     RetainPtr<PDFHostViewController> _hostViewController;
     CGSize _overlaidAccessoryViewsInset;
     RetainPtr<UIView> _pageNumberIndicator;
+    RetainPtr<NSString> _password;
+    WebKit::InteractionInformationAtPosition _positionInformation;
     RetainPtr<NSString> _suggestedFilename;
     WebKit::WeakObjCPtr<WKWebView> _webView;
 }
 
 - (void)dealloc
 {
+    [_actionSheetAssistant cleanupSheet];
     [[_hostViewController view] removeFromSuperview];
     [_pageNumberIndicator removeFromSuperview];
     [super dealloc];
@@ -106,6 +113,9 @@
         UIScrollView *scrollView = webView.scrollView;
         [self removeFromSuperview];
         [scrollView addSubview:hostView];
+
+        _actionSheetAssistant = adoptNS([[WKActionSheetAssistant alloc] initWithView:hostView]);
+        [_actionSheetAssistant setDelegate:self];
 
         _pageNumberIndicator = hostViewController.pageNumberIndicator;
         [_fixedOverlayView addSubview:_pageNumberIndicator.get()];
@@ -350,6 +360,11 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
     [self _scrollToURLFragment:[_webView URL].fragment];
 }
 
+- (void)pdfHostViewController:(PDFHostViewController *)controller documentDidUnlockWithPassword:(NSString *)password
+{
+    _password = adoptNS([password copy]);
+}
+
 - (void)pdfHostViewController:(PDFHostViewController *)controller findStringUpdate:(NSUInteger)numFound done:(BOOL)done
 {
     // FIXME: We should stop searching once numFound exceeds _findStringMaxCount, but PDFKit doesn't
@@ -362,27 +377,109 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
         findCompletion();
 }
 
-- (void)pdfHostViewController:(PDFHostViewController *)controller goToURL:(NSURL *)url
+- (NSURL *)_URLWithPageIndex:(NSInteger)pageIndex
 {
-    WKWebView *webView = _webView.getAutoreleased();
-    if (!webView)
+    return [NSURL URLWithString:[NSString stringWithFormat:@"#page%ld", (long)pageIndex + 1] relativeToURL:[_webView URL]];
+}
+
+- (void)_goToURL:(NSURL *)url atLocation:(CGPoint)location
+{
+    auto page = [_webView _page];
+    if (!page)
         return;
 
+    UIView *hostView = [_hostViewController view];
+    CGPoint locationInScreen = [hostView.window convertPoint:[hostView convertPoint:location toView:nil] toWindow:nil];
+    page->navigateToPDFLinkWithSimulatedClick(url.absoluteString, WebCore::roundedIntPoint(location), WebCore::roundedIntPoint(locationInScreen));
+}
+
+- (void)pdfHostViewController:(PDFHostViewController *)controller goToURL:(NSURL *)url
+{
     // FIXME: We'd use the real tap location if we knew it.
-    WebCore::IntPoint point;
-    webView->_page->navigateToPDFLinkWithSimulatedClick(url.absoluteString, point, point);
+    [self _goToURL:url atLocation:CGPointMake(0, 0)];
 }
 
 - (void)pdfHostViewController:(PDFHostViewController *)controller goToPageIndex:(NSInteger)pageIndex withViewFrustum:(CGRect)documentViewRect
 {
+    [self _goToURL:[self _URLWithPageIndex:pageIndex] atLocation:documentViewRect.origin];
+}
+
+- (void)_showActionSheetForURL:(NSURL *)url atLocation:(CGPoint)location
+{
     WKWebView *webView = _webView.getAutoreleased();
     if (!webView)
         return;
 
-    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"#page%ld", (long)pageIndex + 1] relativeToURL:webView.URL];
-    CGPoint documentPoint = documentViewRect.origin;
-    CGPoint screenPoint = [self.window convertPoint:[self convertPoint:documentPoint toView:nil] toWindow:nil];
-    webView->_page->navigateToPDFLinkWithSimulatedClick(url.absoluteString, WebCore::roundedIntPoint(documentPoint), WebCore::roundedIntPoint(screenPoint));
+    CGPoint locationInHostView = [webView.scrollView convertPoint:location toView:[_hostViewController view]];
+
+    WebKit::InteractionInformationAtPosition positionInformation;
+    positionInformation.bounds = WebCore::roundedIntRect(CGRect { locationInHostView, CGSizeMake(0, 0) });
+    positionInformation.request.point = WebCore::roundedIntPoint(locationInHostView);
+    positionInformation.url = url;
+
+    _positionInformation = WTFMove(positionInformation);
+    [_actionSheetAssistant showLinkSheet];
+}
+
+- (void)pdfHostViewController:(PDFHostViewController *)controller didLongPressURL:(NSURL *)url atLocation:(CGPoint)location
+{
+    [self _showActionSheetForURL:url atLocation:location];
+}
+
+- (void)pdfHostViewController:(PDFHostViewController *)controller didLongPressPageIndex:(NSInteger)pageIndex atLocation:(CGPoint)location
+{
+    [self _showActionSheetForURL:[self _URLWithPageIndex:pageIndex] atLocation:location];
+}
+
+#pragma mark WKActionSheetAssistantDelegate
+
+- (std::optional<WebKit::InteractionInformationAtPosition>)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant
+{
+    return _positionInformation;
+}
+
+- (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant performAction:(WebKit::SheetAction)action
+{
+    if (action != WebKit::SheetAction::Copy)
+        return;
+
+    NSDictionary *representations = @{
+        (NSString *)kUTTypeUTF8PlainText : (NSString *)_positionInformation.url,
+        (NSString *)kUTTypeURL : (NSURL *)_positionInformation.url,
+    };
+
+    [UIPasteboard generalPasteboard].items = @[ representations ];
+}
+
+- (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant openElementAtLocation:(CGPoint)location
+{
+    [self _goToURL:_positionInformation.url atLocation:location];
+}
+
+- (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant shareElementWithURL:(NSURL *)url rect:(CGRect)boundingRect
+{
+    auto selectionAssistant = adoptNS([[UIWKSelectionAssistant alloc] initWithView:[_hostViewController view]]);
+    [selectionAssistant showShareSheetFor:WebCore::userVisibleString(url) fromRect:boundingRect];
+}
+
+#if HAVE(APP_LINKS)
+- (BOOL)actionSheetAssistant:(WKActionSheetAssistant *)assistant shouldIncludeAppLinkActionsForElement:(_WKActivatedElementInfo *)element
+{
+    auto page = [_webView _page];
+    if (!page)
+        return NO;
+
+    return page->uiClient().shouldIncludeAppLinkActionsForElement(element);
+}
+#endif
+
+- (RetainPtr<NSArray>)actionSheetAssistant:(WKActionSheetAssistant *)assistant decideActionsForElement:(_WKActivatedElementInfo *)element defaultActions:(RetainPtr<NSArray>)defaultActions
+{
+    auto page = [_webView _page];
+    if (!page)
+        return nil;
+
+    return page->uiClient().actionsForElement(element, WTFMove(defaultActions));
 }
 
 @end
@@ -407,7 +504,10 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
 - (CGPDFDocumentRef)_wk_printedDocument
 {
     auto dataProvider = adoptCF(CGDataProviderCreateWithCFData((CFDataRef)_data.get()));
-    return adoptCF(CGPDFDocumentCreateWithProvider(dataProvider.get())).autorelease();
+    auto pdfDocument = adoptCF(CGPDFDocumentCreateWithProvider(dataProvider.get()));
+    if (!CGPDFDocumentIsUnlocked(pdfDocument.get()))
+        CGPDFDocumentUnlockWithPassword(pdfDocument.get(), [_password UTF8String]);
+    return pdfDocument.autorelease();
 }
 
 @end

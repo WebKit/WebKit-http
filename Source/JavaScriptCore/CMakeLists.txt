@@ -72,6 +72,8 @@ set(JavaScriptCore_OBJECT_LUT_SOURCES
     runtime/IntlDateTimeFormatPrototype.cpp
     runtime/IntlNumberFormatConstructor.cpp
     runtime/IntlNumberFormatPrototype.cpp
+    runtime/IntlPluralRulesConstructor.cpp
+    runtime/IntlPluralRulesPrototype.cpp
     runtime/JSDataViewPrototype.cpp
     runtime/JSGlobalObject.cpp
     runtime/JSInternalPromiseConstructor.cpp
@@ -770,6 +772,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/JSCJSValue.h
     runtime/JSCJSValueInlines.h
     runtime/JSCPoison.h
+    runtime/JSCPtrTag.h
     runtime/JSCallee.h
     runtime/JSCast.h
     runtime/JSCell.h
@@ -838,7 +841,6 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/Operations.h
     runtime/Options.h
     runtime/ParseInt.h
-    runtime/PtrTag.h
     runtime/PrivateName.h
     runtime/ProgramExecutable.h
     runtime/PromiseDeferredTimer.h
@@ -927,6 +929,8 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     wasm/WasmTierUpCount.h
 
     wasm/js/JSWebAssemblyModule.h
+    wasm/js/WebAssemblyPrototype.h
+
 
     yarr/RegularExpression.h
     yarr/Yarr.h
@@ -1119,6 +1123,7 @@ set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/StringPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/TypedArrayConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/TypedArrayPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/WebAssemblyPrototype.js
 )
 
 add_custom_command(

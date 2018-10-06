@@ -101,6 +101,8 @@ struct GraphicsDeviceAdapter;
 struct ViewportArguments;
 struct WindowFeatures;
 
+enum class RouteSharingPolicy;
+
 class WEBCORE_EXPORT ChromeClient {
 public:
     virtual void chromeDestroyed() = 0;
@@ -163,10 +165,6 @@ public:
     virtual void invalidateContentsAndRootView(const IntRect&) = 0;
     virtual void invalidateContentsForSlowScroll(const IntRect&) = 0;
     virtual void scroll(const IntSize&, const IntRect&, const IntRect&) = 0;
-
-#if USE(COORDINATED_GRAPHICS)
-    virtual void delegatedScrollRequested(const IntPoint&) = 0;
-#endif
 
     virtual IntPoint screenToRootView(const IntPoint&) const = 0;
     virtual IntRect rootViewToScreen(const IntRect&) const = 0;
@@ -264,7 +262,7 @@ public:
     virtual void removeScrollingLayer(Node*, PlatformLayer* scrollingLayer, PlatformLayer* contentsLayer) = 0;
 
     virtual void webAppOrientationsUpdated() = 0;
-    virtual void showPlaybackTargetPicker(bool hasVideo) = 0;
+    virtual void showPlaybackTargetPicker(bool hasVideo, RouteSharingPolicy, const String&) = 0;
 #endif
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -478,6 +476,8 @@ public:
     virtual void didRemoveMenuItemElement(HTMLMenuItemElement&) { }
 
     virtual void testIncomingSyncIPCMessageWhileWaitingForSyncReply() { }
+
+    virtual String signedPublicKeyAndChallengeString(unsigned, const String&, const URL&) const { return emptyString(); }
 
 protected:
     virtual ~ChromeClient() = default;

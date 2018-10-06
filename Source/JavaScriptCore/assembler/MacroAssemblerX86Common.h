@@ -290,6 +290,16 @@ public:
         m_assembler.andl_mr(src.offset, src.base, src.index, src.scale, dest);
     }
 
+    void and16(Address src, RegisterID dest)
+    {
+        m_assembler.andw_mr(src.offset, src.base, dest);
+    }
+
+    void and16(BaseIndex src, RegisterID dest)
+    {
+        m_assembler.andw_mr(src.offset, src.base, src.index, src.scale, dest);
+    }
+
     void and32(TrustedImm32 imm, Address address)
     {
         m_assembler.andl_im(imm.m_value, address.offset, address.base);
@@ -2002,6 +2012,48 @@ public:
         else
             m_assembler.ucomiss_rr(right, left);
         return jumpAfterFloatingPointCompare(cond, left, right);
+    }
+
+    void compareDouble(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID dest)
+    {
+        if (cond & DoubleConditionBitSpecial) {
+            ASSERT(!(cond & DoubleConditionBitInvert));
+            if (cond == DoubleEqual) {
+                if (left == right) {
+                    m_assembler.ucomisd_rr(right, left);
+                    set32(X86Assembler::ConditionNP, dest);
+                    return;
+                }
+
+                move(TrustedImm32(0), dest);
+                m_assembler.ucomisd_rr(right, left);
+                Jump isUnordered = m_assembler.jp();
+                set32(X86Assembler::ConditionE, dest);
+                isUnordered.link(this);
+                return;
+            }
+            if (cond == DoubleNotEqualOrUnordered) {
+                if (left == right) {
+                    m_assembler.ucomisd_rr(right, left);
+                    set32(X86Assembler::ConditionP, dest);
+                    return;
+                }
+
+                move(TrustedImm32(1), dest);
+                m_assembler.ucomisd_rr(right, left);
+                Jump isUnordered = m_assembler.jp();
+                set32(X86Assembler::ConditionNE, dest);
+                isUnordered.link(this);
+                return;
+            }
+            return;
+        }
+
+        if (cond & DoubleConditionBitInvert)
+            m_assembler.ucomisd_rr(left, right);
+        else
+            m_assembler.ucomisd_rr(right, left);
+        set32(static_cast<X86Assembler::Condition>(cond & ~DoubleConditionBits), dest);
     }
 
     // Truncates 'src' to an integer, and places the resulting 'dest'.
@@ -4188,11 +4240,6 @@ private:
     static CPUID getCPUIDEx(unsigned level, unsigned count);
     JS_EXPORT_PRIVATE static void collectCPUFeatures();
 
-    enum class CPUIDCheckState {
-        NotChecked,
-        Clear,
-        Set
-    };
     JS_EXPORT_PRIVATE static CPUIDCheckState s_sse2CheckState;
     JS_EXPORT_PRIVATE static CPUIDCheckState s_sse4_1CheckState;
     JS_EXPORT_PRIVATE static CPUIDCheckState s_sse4_2CheckState;

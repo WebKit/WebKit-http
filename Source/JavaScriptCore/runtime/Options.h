@@ -112,6 +112,18 @@ constexpr bool enableAsyncIteration = true;
 constexpr bool enableAsyncIteration = false;
 #endif
 
+#if ENABLE(INTL_PLURAL_RULES)
+constexpr bool enableIntlPluralRules = true;
+#else
+constexpr bool enableIntlPluralRules = false;
+#endif
+
+#if ENABLE(WEBASSEMBLY_STREAMING_API)
+constexpr bool enableWebAssemblyStreamingApi = true;
+#else
+constexpr bool enableWebAssemblyStreamingApi = false;
+#endif
+
 #define JSC_OPTIONS(v) \
     v(bool, validateOptions, false, Normal, "crashes if mis-typed JSC options were passed to the VM") \
     v(unsigned, dumpOptions, 0, Normal, "dumps JSC options (0 = None, 1 = Overridden only, 2 = All, 3 = Verbose)") \
@@ -431,6 +443,7 @@ constexpr bool enableAsyncIteration = false;
     v(bool, airRandomizeRegs, false, Normal, nullptr) \
     v(bool, coalesceSpillSlots, true, Normal, nullptr) \
     v(bool, logAirRegisterPressure, false, Normal, nullptr) \
+    v(bool, useB3TailDup, true, Normal, nullptr) \
     v(unsigned, maxB3TailDupBlockSize, 3, Normal, nullptr) \
     v(unsigned, maxB3TailDupBlockSuccessors, 3, Normal, nullptr) \
     \
@@ -484,10 +497,12 @@ constexpr bool enableAsyncIteration = false;
     v(bool, crashIfWebAssemblyCantFastMemory, false, Normal, "If true, we will crash if we can't obtain fast memory for wasm.") \
     v(unsigned, maxNumWebAssemblyFastMemories, 4, Normal, nullptr) \
     v(bool, useFastTLSForWasmContext, true, Normal, "If true, we will store context in fast TLS. If false, we will pin it to a register.") \
+    v(bool, useWebAssemblyStreamingApi, enableWebAssemblyStreamingApi, Normal, "Allow to run WebAssembly's Streaming API") \
     v(bool, useCallICsForWebAssemblyToJSCalls, true, Normal, "If true, we will use CallLinkInfo to inline cache Wasm to JS calls.") \
     v(bool, useEagerWebAssemblyModuleHashing, false, Normal, "Unnamed WebAssembly modules are identified in backtraces through their hash, if available.") \
     v(bool, useObjectRestSpread, true, Normal, "If true, we will enable Object Rest/Spread feature.") \
     v(bool, useBigInt, false, Normal, "If true, we will enable BigInt support.") \
+    v(bool, useIntlPluralRules, enableIntlPluralRules, Normal, "If true, we will enable Intl.PluralRules.") \
     v(bool, useArrayAllocationProfiling, true, Normal, "If true, we will use our normal array allocation profiling. If false, the allocation profile will always claim to be undecided.")\
     v(bool, forcePolyProto, false, Normal, "If true, create_this will always create an object with a poly proto structure.")
 

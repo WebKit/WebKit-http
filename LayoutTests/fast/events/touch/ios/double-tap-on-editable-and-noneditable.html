@@ -27,13 +27,13 @@
                 output += 'FAIL: Has selection even though we should not. Incorrect Selection: ' + document.getSelection().toString();
             output += '<br>';
 
-            var editableTargetRect = document.getElementById('noneditableTapPoint').getBoundingClientRect();
+            var editableTargetRect = document.getElementById('editable').getBoundingClientRect();
 
             var editableTapPointX = editableTargetRect.x + editableTargetRect.width / 2;
             var editableTapPointY = editableTargetRect.y + editableTargetRect.height / 2;
 
-            await doubleTapAtPoint(noneditableTapPointX, noneditableTapPointY);
-            if (document.getSelection().type == "None")
+            await doubleTapAtPoint(editableTapPointX, editableTapPointY);
+            if (document.getSelection().type != "None")
                 output += 'PASS: Has Selection';
             else
                 output += 'FAIL: No selection even though we should have one.';
@@ -75,7 +75,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-
     <div id="noneditable">
         <p>Lorem ipsum dolor sit amet, <span id="noneditableTapPoint">consectetur</span> adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
     </div>

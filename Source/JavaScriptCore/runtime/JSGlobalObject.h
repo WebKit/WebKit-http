@@ -32,6 +32,7 @@
 #include "JSCPoison.h"
 #include "JSClassRef.h"
 #include "JSGlobalLexicalEnvironment.h"
+#include "JSPromiseDeferred.h"
 #include "JSSegmentedVariableObject.h"
 #include "JSWeakObjectMapRefInternal.h"
 #include "LazyProperty.h"
@@ -217,6 +218,12 @@ struct GlobalObjectMethodTable {
 
     typedef String (*DefaultLanguageFunctionPtr)();
     DefaultLanguageFunctionPtr defaultLanguage;
+
+    typedef void (*CompileStreamingPtr)(JSGlobalObject*, ExecState*, JSPromiseDeferred*, JSValue);
+    CompileStreamingPtr compileStreaming;
+
+    typedef void (*InstantiateStreamingPtr)(JSGlobalObject*, ExecState*, JSPromiseDeferred*, JSValue, JSObject*);
+    InstantiateStreamingPtr instantiateStreaming;
 };
 
 class JSGlobalObject : public JSSegmentedVariableObject {
@@ -417,6 +424,7 @@ public:
     HashSet<String> m_intlCollatorAvailableLocales;
     HashSet<String> m_intlDateTimeFormatAvailableLocales;
     HashSet<String> m_intlNumberFormatAvailableLocales;
+    HashSet<String> m_intlPluralRulesAvailableLocales;
 #endif // ENABLE(INTL)
 
     RefPtr<WatchpointSet> m_masqueradesAsUndefinedWatchpoint;
@@ -676,6 +684,7 @@ public:
     Structure* callableProxyObjectStructure() const { return m_callableProxyObjectStructure.get(); }
     Structure* proxyRevokeStructure() const { return m_proxyRevokeStructure.get(); }
     Structure* restParameterStructure() const { return arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous); }
+    Structure* originalRestParameterStructure() const { return originalArrayStructureForIndexingType(ArrayWithContiguous); }
 #if ENABLE(WEBASSEMBLY)
     Structure* webAssemblyModuleRecordStructure() const { return m_webAssemblyModuleRecordStructure.get(); }
     Structure* webAssemblyFunctionStructure() const { return m_webAssemblyFunctionStructure.get(); }
@@ -695,6 +704,7 @@ public:
     const HashSet<String>& intlCollatorAvailableLocales();
     const HashSet<String>& intlDateTimeFormatAvailableLocales();
     const HashSet<String>& intlNumberFormatAvailableLocales();
+    const HashSet<String>& intlPluralRulesAvailableLocales();
 #endif // ENABLE(INTL)
 
     void setConsoleClient(ConsoleClient* consoleClient) { m_consoleClient = consoleClient; }

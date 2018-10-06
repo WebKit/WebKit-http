@@ -33,6 +33,7 @@
 #include "config.h"
 #include "EventSource.h"
 
+#include "CachedResourceRequestInitiators.h"
 #include "ContentSecurityPolicy.h"
 #include "EventNames.h"
 #include "MessageEvent.h"
@@ -100,11 +101,12 @@ void EventSource::connect()
     ThreadableLoaderOptions options;
     options.sendLoadCallbacks = SendCallbacks;
     options.credentials = m_withCredentials ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
-    options.preflightPolicy = PreventPreflight;
+    options.preflightPolicy = PreflightPolicy::Prevent;
     options.mode = FetchOptions::Mode::Cors;
     options.cache = FetchOptions::Cache::NoStore;
     options.dataBufferingPolicy = DoNotBufferData;
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
+    options.initiator = cachedResourceRequestInitiators().eventsource;
 
     ASSERT(scriptExecutionContext());
     m_loader = ThreadableLoader::create(*scriptExecutionContext(), *this, WTFMove(request), options);
@@ -236,9 +238,6 @@ void EventSource::didFail(const ResourceError& error)
     ASSERT(m_state != CLOSED);
 
     if (error.isAccessControl()) {
-        String message = makeString("EventSource cannot load ", error.failingURL().string(), ". ", error.localizedDescription());
-        scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, message);
-
         abortConnectionAttempt();
         return;
     }

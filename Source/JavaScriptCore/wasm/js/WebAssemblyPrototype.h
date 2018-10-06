@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2018 Oleksandr Skachkov <gskachkov@gmail.com>.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,17 +40,22 @@ public:
 
     static WebAssemblyPrototype* create(VM&, JSGlobalObject*, Structure*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
+    JS_EXPORT_PRIVATE static void webAssemblyModuleValidateAsync(ExecState*, JSPromiseDeferred*, Vector<uint8_t>&&);
+    JS_EXPORT_PRIVATE static void webAssemblyModuleInstantinateAsync(ExecState*, JSPromiseDeferred*, Vector<uint8_t>&&, JSObject*);
 
     DECLARE_INFO;
 
     static JSValue instantiate(ExecState*, JSPromiseDeferred*, const Identifier&, JSValue);
 
 protected:
-    void finishCreation(VM&);
+    void finishCreation(VM&, JSGlobalObject*);
 
 private:
     WebAssemblyPrototype(VM&, Structure*);
 };
+
+EncodedJSValue JSC_HOST_CALL webAssemblyCompileStreamingInternal(ExecState*);
+EncodedJSValue JSC_HOST_CALL webAssemblyInstantiateStreamingInternal(ExecState*);
 
 } // namespace JSC
 

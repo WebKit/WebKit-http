@@ -1,3 +1,1224 @@
+2018-05-01  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should be able to cache custom setter calls on the prototype chain
+        https://bugs.webkit.org/show_bug.cgi?id=185174
+
+        Reviewed by Saam Barati.
+
+        We broke custom-setter-on-the-prototype-chain caching when we fixed a bug involving the conditionSet.isEmpty()
+        condition being used to determine if we have an alternateBase. The fix in r222671 incorrectly tried to add
+        impossible-to-validate conditions to the conditionSet by calling generateConditionsForPrototypePropertyHit() instead
+        of generateConditionsForPrototypePropertyHitCustom(). The problem is that the former function will always fail for
+        custom accessors because it won't find the custom property in the structure.
+
+        The fix is to add a virtual hasAlternateBase() function and use that instead of conditionSet.isEmpty().
+
+        This is a 4x speed-up on assign-custom-setter.js.
+
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::hasAlternateBase const):
+        (JSC::AccessCase::alternateBase const):
+        (JSC::AccessCase::generateImpl):
+        * bytecode/AccessCase.h:
+        (JSC::AccessCase::alternateBase const): Deleted.
+        * bytecode/GetterSetterAccessCase.cpp:
+        (JSC::GetterSetterAccessCase::hasAlternateBase const):
+        (JSC::GetterSetterAccessCase::alternateBase const):
+        * bytecode/GetterSetterAccessCase.h:
+        * bytecode/ObjectPropertyConditionSet.cpp:
+        (JSC::generateConditionsForPrototypePropertyHitCustom):
+        * bytecode/ObjectPropertyConditionSet.h:
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        (JSC::tryCachePutByID):
+
+2018-05-02  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [MIPS] Implement and16 and store16 for MacroAssemblerMIPS
+        https://bugs.webkit.org/show_bug.cgi?id=185195
+
+        Reviewed by Mark Lam.
+
+        This implements the given function for MIPS, such that it builds again.
+
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::and16):
+        (JSC::MacroAssemblerMIPS::store16):
+
+2018-05-02  Rick Waldron  <waldron.rick@gmail.com>
+
+        Expose "$262.agent.monotonicNow()" for use in testing Atomic operation timeouts
+        https://bugs.webkit.org/show_bug.cgi?id=185043
+
+        Reviewed by Filip Pizlo.
+
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionDollarAgentMonotonicNow):
+
+2018-05-02  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [ARM] Implement and16 and store16 for MacroAssemblerARMv7
+        https://bugs.webkit.org/show_bug.cgi?id=185196
+
+        Reviewed by Mark Lam.
+
+        This implements and16 and store16 for MacroAssemblerARMv7 such that JSC builds again.
+
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::and16):
+        (JSC::MacroAssemblerARMv7::store16):
+
+2018-05-02  Robin Morisset  <rmorisset@apple.com>
+
+        emitCodeToGetArgumentsArrayLength should not crash on PhantomNewArrayWithSpread
+        https://bugs.webkit.org/show_bug.cgi?id=183172
+
+        Reviewed by Filip Pizlo.
+
+        DFGArgumentsEliminationPhase.cpp currently believes that allocations of NewArrayWithSpread can be deleted if they are only used by GetArrayLength,
+        but when it then calls emitCodeToGetArgumentsArrayLength, the latter has no idea what to do with GetArrayLength.
+
+        I fix the problem by teaching emitCodeToGetArgumentsArrayLength how to deal with GetArrayLength.
+        Because this requires emitting an Add that can overflow and thus exit, we also tell DFGArgumentsEliminationPhase to give up on eliminating
+        a NewArrayWithSpread when it is used by a GetArrayLength that is not allowed to exit.
+
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGArgumentsUtilities.cpp:
+        (JSC::DFG::emitCodeToGetArgumentsArrayLength):
+
+2018-05-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, stackPointer signature is different from declaration
+        https://bugs.webkit.org/show_bug.cgi?id=184790
+
+        * runtime/MachineContext.h:
+        (JSC::MachineContext::stackPointer):
+
+2018-05-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add SameValue DFG node
+        https://bugs.webkit.org/show_bug.cgi?id=185065
+
+        Reviewed by Saam Barati.
+
+        This patch adds Object.is handling in DFG and FTL. Object.is is converted to SameValue DFG node.
+        And DFG fixup phase attempts to convert SameValue node to CompareStrictEq with type filter edges
+        if possible. Since SameValue(Untyped, Untyped) and SameValue(Double, Double) have different semantics
+        from CompareStrictEq, we do not convert SameValue to CompareStrictEq for them. DFG and FTL have
+        implementations for these SameValue nodes.
+
+        This old MacroAssemblerX86Common::compareDouble was dead code since the derived class, "MacroAssembler"
+        has a generalized compareDouble, which just uses branchDouble. Since this was not used, this function
+        was broken. This patch fixes issues and move compareDouble to MacroAssemblerX86Common, and remove a
+        generalized compareDouble for x86 arch to use this specialized efficient version instead. The fixes are
+        correctly using set32 to zero-extending the result, and setting the initial value of `dest` register
+        correctly for DoubleEqual and DoubleNotEqualOrUnordered cases.
+
+        Added microbenchmark shows performance improvement.
+
+            object-is           651.0053+-38.8204    ^    241.3467+-15.8753       ^ definitely 2.6974x faster
+
+        * assembler/MacroAssembler.h:
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::compareDouble):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::compareDouble): Deleted.
+        * assembler/testmasm.cpp:
+        (JSC::doubleOperands):
+        (JSC::testCompareDouble):
+        (JSC::run):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::fixupCompareStrictEqAndSameValue):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileSameValue):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGValidate.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileSameValue):
+        * runtime/Intrinsic.cpp:
+        (JSC::intrinsicName):
+        * runtime/Intrinsic.h:
+        * runtime/ObjectConstructor.cpp:
+
+2018-04-30  Filip Pizlo  <fpizlo@apple.com>
+
+        B3::demoteValues should be able to handle patchpoint terminals
+        https://bugs.webkit.org/show_bug.cgi?id=185151
+
+        Reviewed by Saam Barati.
+        
+        If we try to demote a patchpoint terminal then prior to this change we would append a Set to
+        the basic block that the patchpoint terminated. That's wrong because then the terminal is no
+        longer the last thing in the block.
+        
+        Air encounters this problem in spilling and solves it by doing a fixup afterwards. We can't
+        really do that because demotion happens as a prerequisite to other transformations.
+        
+        One solution might have been to make demoteValues insert a basic block whenever it encounters
+        this problem. But that would break clients that do CFG analysis before demoteValues and use
+        the results of the CFG analysis after demoteValues. Taildup does this. Fortunately, taildup
+        also runs breakCriticalEdges. Probably anyone using demoteValues will use breakCriticalEdges,
+        so it's not bad to introduce that requirement.
+        
+        So, this patch solves the problem by ensuring that breakCriticalEdges treats any patchpoint
+        terminal as if it had multiple successors. This means that a patchpoint terminal's successors
+        will only have it as their predecessor. Then, demoteValues just prepends the Set to the
+        successors of the patchpoint terminal.
+        
+        This was probably asymptomatic. It's hard to write a JS test that triggers this, so I added
+        a unit test in testb3.
+
+        * b3/B3BreakCriticalEdges.cpp:
+        (JSC::B3::breakCriticalEdges):
+        * b3/B3BreakCriticalEdges.h:
+        * b3/B3FixSSA.cpp:
+        (JSC::B3::demoteValues):
+        (JSC::B3::fixSSA):
+        * b3/B3FixSSA.h:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::foldIdentity const):
+        (JSC::B3::Value::performSubstitution):
+        * b3/B3Value.h:
+        * b3/testb3.cpp:
+        (JSC::B3::testDemotePatchpointTerminal):
+        (JSC::B3::run):
+
+2018-05-01  Robin Morisset  <rmorisset@apple.com>
+
+        Use CheckedArithmetic for length computation in JSArray::unshiftCountWithAnyIndexingType
+        https://bugs.webkit.org/show_bug.cgi?id=184772
+        <rdar://problem/39146327>
+
+        Reviewed by Filip Pizlo.
+
+        Related to https://bugs.webkit.org/show_bug.cgi?id=183657 (<rdar://problem/38464399), where a check was missing.
+        This patch now makes sure that the check correctly detects if there is an integer overflow.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::unshiftCountWithAnyIndexingType):
+
+2018-05-01  Robin Morisset  <rmorisset@apple.com>
+
+        Correctly detect string overflow when using the 'Function' constructor
+        https://bugs.webkit.org/show_bug.cgi?id=184883
+        <rdar://problem/36320331>
+
+        Reviewed by Filip Pizlo.
+
+        The 'Function' constructor creates a string containing the source code of the new function through repeated string concatenation.
+        Because there was no way for the string concatenation routines in WTF to return an error, they just crashed in that case.
+
+        I added new tryAppend methods alongside the old append methods, that return a boolean (true means success, false means an overflow happened).
+        In this way, it becomes possible for the Function constructor to just throw a proper JS exception when asked to create a string > 4GB.
+        I made new methods instead of just adapting the existing ones (and reverted such a change on appendQuotedJSONString) so that callers that rely on the old behaviour (a hard CRASH() on overflow) don't silently start failing.
+
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::appendStringifiedValue):
+
+2018-05-01  Robin Morisset  <rmorisset@apple.com>
+
+        IntlObject.cpp::removeUnicodeLocaleExtension() should not touch locales that end in '-u'
+        https://bugs.webkit.org/show_bug.cgi?id=185162
+
+        Reviewed by Filip Pizlo.
+
+        * runtime/IntlObject.cpp:
+        (JSC::removeUnicodeLocaleExtension):
+
+2018-05-01  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Add SetCallee as DFG-Operation
+        https://bugs.webkit.org/show_bug.cgi?id=184582
+
+        Reviewed by Filip Pizlo.
+
+        For recursive tail calls not only the argument count can change but also the
+        callee. Add SetCallee to DFG that sets the callee slot in the current call frame.
+        Also update the callee when optimizing a recursive tail call.
+        Enable recursive tail call optimization also for closures.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleRecursiveTailCall):
+        (JSC::DFG::ByteCodeParser::handleCallVariant):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGMayExit.cpp:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileSetCallee):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileSetCallee):
+
+2018-05-01  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        WebAssembly: add support for stream APIs - JavaScript API
+        https://bugs.webkit.org/show_bug.cgi?id=183442
+
+        Reviewed by Yusuke Suzuki and JF Bastien.
+
+        Add WebAssembly stream API. Current patch only add functions
+        WebAssembly.compileStreaming and WebAssembly.instantiateStreaming but,
+        does not add streaming way of the implementation. So in current version it
+        only wait for load whole module, than start to parse.
+
+        * CMakeLists.txt:
+        * Configurations/FeatureDefines.xcconfig:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/BuiltinNames.h:
+        * builtins/WebAssemblyPrototype.js: Copied from Source/JavaScriptCore/wasm/js/WebAssemblyPrototype.h.
+        (compileStreaming):
+        (instantiateStreaming):
+        * jsc.cpp:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        * runtime/Options.h:
+        * runtime/PromiseDeferredTimer.cpp:
+        (JSC::PromiseDeferredTimer::hasPendingPromise):
+        (JSC::PromiseDeferredTimer::hasDependancyInPendingPromise):
+        * runtime/PromiseDeferredTimer.h:
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::webAssemblyModuleValidateAsyncInternal):
+        (JSC::webAssemblyCompileFunc):
+        (JSC::WebAssemblyPrototype::webAssemblyModuleValidateAsync):
+        (JSC::webAssemblyModuleInstantinateAsyncInternal):
+        (JSC::WebAssemblyPrototype::webAssemblyModuleInstantinateAsync):
+        (JSC::webAssemblyCompileStreamingInternal):
+        (JSC::webAssemblyInstantiateStreamingInternal):
+        (JSC::WebAssemblyPrototype::create):
+        (JSC::WebAssemblyPrototype::finishCreation):
+        * wasm/js/WebAssemblyPrototype.h:
+
+2018-04-30  Saam Barati  <sbarati@apple.com>
+
+        ToString constant folds without preserving checks, causing us to break assumptions that the code would OSR exit
+        https://bugs.webkit.org/show_bug.cgi?id=185149
+        <rdar://problem/39455917>
+
+        Reviewed by Filip Pizlo.
+
+        The bug was that we were deleting checks that we shouldn't have deleted.
+        This patch makes a helper inside strength reduction that converts to
+        a LazyJSConstant while maintaining checks, and switches users of the
+        node API inside strength reduction to instead call the helper function.
+        
+        This patch also fixes a potential bug where StringReplace and
+        StringReplaceRegExp may not preserve all their checks.
+
+
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        (JSC::DFG::StrengthReductionPhase::convertToLazyJSValue):
+
+2018-04-29  Filip Pizlo  <fpizlo@apple.com>
+
+        LICM shouldn't hoist nodes if hoisted nodes exited in that code block
+        https://bugs.webkit.org/show_bug.cgi?id=185126
+
+        Reviewed by Saam Barati.
+        
+        This change is just restoring functionality that we've already had for a while. It had been
+        accidentally broken due to an unrelated CodeBlock refactoring.
+
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::attemptHoist):
+
+2018-04-30  Mark Lam  <mark.lam@apple.com>
+
+        Apply PtrTags to the MetaAllocator and friends.
+        https://bugs.webkit.org/show_bug.cgi?id=185110
+        <rdar://problem/39533895>
+
+        Reviewed by Saam Barati.
+
+        1. LinkBuffer now takes a MacroAssemblerCodePtr instead of a void* pointer.
+        2. Apply pointer tagging to the boundary pointers of the FixedExecutableMemoryPool,
+           and add a sanity check to verify that allocated code buffers are within those
+           bounds.
+
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::finalizeCodeWithoutDisassemblyImpl):
+        (JSC::LinkBuffer::copyCompactAndLinkCode):
+        (JSC::LinkBuffer::linkCode):
+        (JSC::LinkBuffer::allocate):
+        * assembler/LinkBuffer.h:
+        (JSC::LinkBuffer::LinkBuffer):
+        (JSC::LinkBuffer::debugAddress):
+        (JSC::LinkBuffer::code):
+        * assembler/MacroAssemblerCodeRef.h:
+        (JSC::MacroAssemblerCodeRef::MacroAssemblerCodeRef):
+        * bytecode/InlineAccess.cpp:
+        (JSC::linkCodeInline):
+        (JSC::InlineAccess::rewireStubAsJump):
+        * dfg/DFGJITCode.cpp:
+        (JSC::DFG::JITCode::findPC):
+        * ftl/FTLJITCode.cpp:
+        (JSC::FTL::JITCode::findPC):
+        * jit/ExecutableAllocator.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator):
+        (JSC::FixedVMPoolExecutableAllocator::jitWriteThunkGenerator):
+        (JSC::ExecutableAllocator::allocate):
+        * jit/ExecutableAllocator.h:
+        (JSC::isJITPC):
+        (JSC::performJITMemcpy):
+        * jit/JIT.cpp:
+        (JSC::JIT::link):
+        * jit/JITMathIC.h:
+        (JSC::isProfileEmpty):
+        * runtime/JSCPtrTag.h:
+        * wasm/WasmCallee.cpp:
+        (JSC::Wasm::Callee::Callee):
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+
+2018-04-30  Keith Miller  <keith_miller@apple.com>
+
+        Move the MayBePrototype JSCell header bit to InlineTypeFlags
+        https://bugs.webkit.org/show_bug.cgi?id=185143
+
+        Reviewed by Mark Lam.
+
+        * runtime/IndexingType.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::setStructure):
+        (JSC::JSCell::mayBePrototype const):
+        (JSC::JSCell::didBecomePrototype):
+        * runtime/JSTypeInfo.h:
+        (JSC::TypeInfo::mayBePrototype):
+        (JSC::TypeInfo::mergeInlineTypeFlags):
+
+2018-04-30  Keith Miller  <keith_miller@apple.com>
+
+        Remove unneeded exception check from String.fromCharCode
+        https://bugs.webkit.org/show_bug.cgi?id=185083
+
+        Reviewed by Mark Lam.
+
+        * runtime/StringConstructor.cpp:
+        (JSC::stringFromCharCode):
+
+2018-04-30  Keith Miller  <keith_miller@apple.com>
+
+        Move StructureIsImmortal to out of line flags.
+        https://bugs.webkit.org/show_bug.cgi?id=185101
+
+        Reviewed by Saam Barati.
+
+        This will free up a bit in the inline flags where we can move the
+        isPrototype bit to. This will, in turn, free a bit for use in
+        implementing copy on write butterflies.
+
+        Also, this patch removes an assertion from Structure::typeInfo()
+        that inadvertently makes the function invalid to call while
+        cleaning up the vm.
+
+        * heap/HeapCellType.cpp:
+        (JSC::DefaultDestroyFunc::operator() const):
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::callDestructor): Deleted.
+        * runtime/JSTypeInfo.h:
+        (JSC::TypeInfo::hasStaticPropertyTable):
+        (JSC::TypeInfo::structureIsImmortal const):
+        * runtime/Structure.h:
+
+2018-04-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Remove arity fixup check if the number of parameters is 1
+        https://bugs.webkit.org/show_bug.cgi?id=183984
+
+        Reviewed by Mark Lam.
+
+        If the number of parameters is one (|this|), we never hit arity fixup check.
+        We do not need to emit arity fixup check code.
+
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::compileFunction):
+        * dfg/DFGJITCompiler.h:
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link):
+        * jit/JIT.cpp:
+        (JSC::JIT::compileWithoutLinking):
+
+2018-04-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use WordLock instead of std::mutex for Threading
+        https://bugs.webkit.org/show_bug.cgi?id=185121
+
+        Reviewed by Geoffrey Garen.
+
+        ThreadGroup starts using WordLock.
+
+        * heap/MachineStackMarker.h:
+        (JSC::MachineThreads::getLock):
+
+2018-04-29  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should run tail duplication at the bitter end
+        https://bugs.webkit.org/show_bug.cgi?id=185123
+
+        Reviewed by Geoffrey Garen.
+        
+        Also added an option to disable taildup. This appears to be a 1% AsmBench speed-up. It's neutral
+        everywhere else.
+        
+        The goal of this change is to allow us to run path specialization after switch lowering but
+        before tail duplication.
+
+        * b3/B3Generate.cpp:
+        (JSC::B3::generateToAir):
+        * runtime/Options.h:
+
+2018-04-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r231137.
+        https://bugs.webkit.org/show_bug.cgi?id=185118
+
+        It is breaking Test262 language/expressions/multiplication
+        /order-of-evaluation.js (Requested by caiolima on #webkit).
+
+        Reverted changeset:
+
+        "[ESNext][BigInt] Implement support for "*" operation"
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+        https://trac.webkit.org/changeset/231137
+
+2018-04-28  Saam Barati  <sbarati@apple.com>
+
+        We don't model regexp effects properly
+        https://bugs.webkit.org/show_bug.cgi?id=185059
+        <rdar://problem/39736150>
+
+        Reviewed by Filip Pizlo.
+
+        RegExp exec/test can do arbitrary effects when toNumbering the lastIndex if
+        the regexp is global.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+
+2018-04-28  Rick Waldron  <waldron.rick@gmail.com>
+
+        Token misspelled "tocken" in error message string
+        https://bugs.webkit.org/show_bug.cgi?id=185030
+
+        Reviewed by Saam Barati.
+
+        * parser/Parser.cpp: Fix typo "tocken" => "token" in SyntaxError message string
+        (JSC::Parser<LexerType>::Parser):
+        (JSC::Parser<LexerType>::didFinishParsing):
+        (JSC::Parser<LexerType>::parseSourceElements):
+        (JSC::Parser<LexerType>::parseAsyncGeneratorFunctionSourceElements):
+        (JSC::Parser<LexerType>::parseVariableDeclaration):
+        (JSC::Parser<LexerType>::parseWhileStatement):
+        (JSC::Parser<LexerType>::parseVariableDeclarationList):
+        (JSC::Parser<LexerType>::createBindingPattern):
+        (JSC::Parser<LexerType>::parseArrowFunctionSingleExpressionBodySourceElements):
+        (JSC::Parser<LexerType>::parseObjectRestElement):
+        (JSC::Parser<LexerType>::parseDestructuringPattern):
+        (JSC::Parser<LexerType>::parseForStatement):
+        (JSC::Parser<LexerType>::parseBreakStatement):
+        (JSC::Parser<LexerType>::parseContinueStatement):
+        (JSC::Parser<LexerType>::parseThrowStatement):
+        (JSC::Parser<LexerType>::parseWithStatement):
+        (JSC::Parser<LexerType>::parseSwitchStatement):
+        (JSC::Parser<LexerType>::parseSwitchClauses):
+        (JSC::Parser<LexerType>::parseTryStatement):
+        (JSC::Parser<LexerType>::parseBlockStatement):
+        (JSC::Parser<LexerType>::parseFormalParameters):
+        (JSC::Parser<LexerType>::parseFunctionParameters):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseExpressionOrLabelStatement):
+        (JSC::Parser<LexerType>::parseExpressionStatement):
+        (JSC::Parser<LexerType>::parseIfStatement):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::parseConditionalExpression):
+        (JSC::Parser<LexerType>::parseBinaryExpression):
+        (JSC::Parser<LexerType>::parseObjectLiteral):
+        (JSC::Parser<LexerType>::parseStrictObjectLiteral):
+        (JSC::Parser<LexerType>::parseArrayLiteral):
+        (JSC::Parser<LexerType>::parseArguments):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        (JSC::operatorString):
+        (JSC::Parser<LexerType>::parseUnaryExpression):
+        (JSC::Parser<LexerType>::printUnexpectedTokenText):
+
+2018-04-28  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for "*" operation
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+
+        Reviewed by Saam Barati.
+
+        Added BigInt support into times binary operator into LLInt and on
+        JITOperations profiledMul and unprofiledMul. We are also replacing all
+        uses of int to unsigned when there is no negative values for
+        variables.
+
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * jit/JITOperations.cpp:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::JSBigInt):
+        (JSC::JSBigInt::allocationSize):
+        (JSC::JSBigInt::createWithLength):
+        (JSC::JSBigInt::toString):
+        (JSC::JSBigInt::multiply):
+        (JSC::JSBigInt::digitDiv):
+        (JSC::JSBigInt::internalMultiplyAdd):
+        (JSC::JSBigInt::multiplyAccumulate):
+        (JSC::JSBigInt::equals):
+        (JSC::JSBigInt::absoluteDivSmall):
+        (JSC::JSBigInt::calculateMaximumCharactersRequired):
+        (JSC::JSBigInt::toStringGeneric):
+        (JSC::JSBigInt::rightTrim):
+        (JSC::JSBigInt::allocateFor):
+        (JSC::JSBigInt::parseInt):
+        (JSC::JSBigInt::digit):
+        (JSC::JSBigInt::setDigit):
+        * runtime/JSBigInt.h:
+        * runtime/Operations.h:
+        (JSC::jsMul):
+
+2018-04-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r231131.
+        https://bugs.webkit.org/show_bug.cgi?id=185112
+
+        It is breaking Debug build due to unchecked exception
+        (Requested by caiolima on #webkit).
+
+        Reverted changeset:
+
+        "[ESNext][BigInt] Implement support for "*" operation"
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+        https://trac.webkit.org/changeset/231131
+
+2018-04-27  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for "*" operation
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+
+        Reviewed by Saam Barati.
+
+        Added BigInt support into times binary operator into LLInt and on
+        JITOperations profiledMul and unprofiledMul. We are also replacing all
+        uses of int to unsigned when there is no negative values for
+        variables.
+
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * jit/JITOperations.cpp:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::JSBigInt):
+        (JSC::JSBigInt::allocationSize):
+        (JSC::JSBigInt::createWithLength):
+        (JSC::JSBigInt::toString):
+        (JSC::JSBigInt::multiply):
+        (JSC::JSBigInt::digitDiv):
+        (JSC::JSBigInt::internalMultiplyAdd):
+        (JSC::JSBigInt::multiplyAccumulate):
+        (JSC::JSBigInt::equals):
+        (JSC::JSBigInt::absoluteDivSmall):
+        (JSC::JSBigInt::calculateMaximumCharactersRequired):
+        (JSC::JSBigInt::toStringGeneric):
+        (JSC::JSBigInt::rightTrim):
+        (JSC::JSBigInt::allocateFor):
+        (JSC::JSBigInt::parseInt):
+        (JSC::JSBigInt::digit):
+        (JSC::JSBigInt::setDigit):
+        * runtime/JSBigInt.h:
+        * runtime/Operations.h:
+        (JSC::jsMul):
+
+2018-04-27  JF Bastien  <jfbastien@apple.com>
+
+        Make the first 64 bits of JSString look like a double JSValue
+        https://bugs.webkit.org/show_bug.cgi?id=185081
+
+        Reviewed by Filip Pizlo.
+
+        We can be clever about how we lay out JSString so that, were it
+        reinterpreted as a JSValue, it would look like a double.
+
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::and16):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::andw_mr):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileMakeRope):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileMakeRope):
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::store32As8):
+        (JSC::FTL::Output::store32As16):
+        * runtime/JSString.h:
+        (JSC::JSString::JSString):
+
+2018-04-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][ARM64][Linux] Add collectCPUFeatures using auxiliary vector
+        https://bugs.webkit.org/show_bug.cgi?id=185055
+
+        Reviewed by JF Bastien.
+
+        This patch is paving the way to emitting jscvt instruction if possible.
+        To do that, we need to determine jscvt instruction is supported in the
+        given CPU.
+
+        We add a function collectCPUFeatures, which is responsible to collect
+        CPU features if necessary. In Linux, we can use auxiliary vector to get
+        the information without parsing /proc/cpuinfo.
+
+        Currently, nobody calls this function. It is later called when we emit
+        jscvt instruction. To make it possible, we also need to add disassembler
+        support too.
+
+        * assembler/AbstractMacroAssembler.h:
+        * assembler/MacroAssemblerARM64.cpp:
+        (JSC::MacroAssemblerARM64::collectCPUFeatures):
+        * assembler/MacroAssemblerARM64.h:
+        * assembler/MacroAssemblerX86Common.h:
+
+2018-04-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Also run foldPathConstants before mussing up SSA
+        https://bugs.webkit.org/show_bug.cgi?id=185069
+
+        Reviewed by Saam Barati.
+        
+        This isn't needed now, but will be once I implement the phase in bug 185060.
+        
+        This could be a speed-up, or a slow-down, independent of that phase. Most likely it's neutral.
+        Local testing seems to suggest that it's neutral. Anyway, whatever it ends up being, I want it to
+        be landed separately and measured separately from that phase.
+        
+        It's probably nice for sanity to have this and reduceStrength run before tail duplication and
+        another round of reduceStrength, since that make for something that is closer to a fixpoint. But
+        it will increase FTL compile times. So, there's no way to guess if this change is good, bad, or
+        neutral. It all depends on what programs typically look like.
+
+        * b3/B3Generate.cpp:
+        (JSC::B3::generateToAir):
+
+2018-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r231086.
+
+        Caused JSC test failures due to an unchecked exception.
+
+        Reverted changeset:
+
+        "[ESNext][BigInt] Implement support for "*" operation"
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+        https://trac.webkit.org/changeset/231086
+
+2018-04-26  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for "*" operation
+        https://bugs.webkit.org/show_bug.cgi?id=183721
+
+        Reviewed by Saam Barati.
+
+        Added BigInt support into times binary operator into LLInt and on
+        JITOperations profiledMul and unprofiledMul. We are also replacing all
+        uses of int to unsigned when there is no negative values for
+        variables.
+
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * jit/JITOperations.cpp:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::JSBigInt):
+        (JSC::JSBigInt::allocationSize):
+        (JSC::JSBigInt::createWithLength):
+        (JSC::JSBigInt::toString):
+        (JSC::JSBigInt::multiply):
+        (JSC::JSBigInt::digitDiv):
+        (JSC::JSBigInt::internalMultiplyAdd):
+        (JSC::JSBigInt::multiplyAccumulate):
+        (JSC::JSBigInt::equals):
+        (JSC::JSBigInt::absoluteDivSmall):
+        (JSC::JSBigInt::calculateMaximumCharactersRequired):
+        (JSC::JSBigInt::toStringGeneric):
+        (JSC::JSBigInt::rightTrim):
+        (JSC::JSBigInt::allocateFor):
+        (JSC::JSBigInt::parseInt):
+        (JSC::JSBigInt::digit):
+        (JSC::JSBigInt::setDigit):
+        * runtime/JSBigInt.h:
+        * runtime/Operations.h:
+        (JSC::jsMul):
+
+2018-04-26  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: Speculative build fix for Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=184976
+        <rdar://problem/39723901>
+
+        Not reviewed.
+
+        * runtime/JSCPtrTag.h:
+
+2018-04-26  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: Windows build fix.
+
+        Not reviewed.
+
+        * runtime/Options.cpp:
+
+2018-04-26  Jer Noble  <jer.noble@apple.com>
+
+        WK_COCOA_TOUCH all the things.
+        https://bugs.webkit.org/show_bug.cgi?id=185006
+        <rdar://problem/39736025>
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2018-04-26  Per Arne Vollan  <pvollan@apple.com>
+
+        Disable content filtering in minimal simulator mode
+        https://bugs.webkit.org/show_bug.cgi?id=185027
+        <rdar://problem/39736091>
+
+        Reviewed by Jer Noble.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-04-26  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Intl.PluralRules
+        https://bugs.webkit.org/show_bug.cgi?id=184312
+
+        Reviewed by JF Bastien.
+
+        Use UNumberFormat to enforce formatting, and then UPluralRules to find
+        the correct plural rule for the given number. Relies on ICU v59+ for
+        resolvedOptions().pluralCategories and trailing 0 detection.
+        Behind the useIntlPluralRules option and INTL_PLURAL_RULES flag.
+
+        * CMakeLists.txt:
+        * Configurations/FeatureDefines.xcconfig:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * builtins/BuiltinNames.h:
+        * runtime/BigIntObject.cpp:
+        (JSC::BigIntObject::create): Moved to ensure complete JSGlobalObject definition.
+        * runtime/BigIntObject.h:
+        * runtime/CommonIdentifiers.h:
+        * runtime/IntlObject.cpp:
+        (JSC::IntlObject::finishCreation):
+        * runtime/IntlObject.h:
+        * runtime/IntlPluralRules.cpp: Added.
+        (JSC::IntlPluralRules::UPluralRulesDeleter::operator() const):
+        (JSC::IntlPluralRules::UNumberFormatDeleter::operator() const):
+        (JSC::UEnumerationDeleter::operator() const):
+        (JSC::IntlPluralRules::create):
+        (JSC::IntlPluralRules::createStructure):
+        (JSC::IntlPluralRules::IntlPluralRules):
+        (JSC::IntlPluralRules::finishCreation):
+        (JSC::IntlPluralRules::destroy):
+        (JSC::IntlPluralRules::visitChildren):
+        (JSC::IntlPRInternal::localeData):
+        (JSC::IntlPluralRules::initializePluralRules):
+        (JSC::IntlPluralRules::resolvedOptions):
+        (JSC::IntlPluralRules::select):
+        * runtime/IntlPluralRules.h: Added.
+        * runtime/IntlPluralRulesConstructor.cpp: Added.
+        (JSC::IntlPluralRulesConstructor::create):
+        (JSC::IntlPluralRulesConstructor::createStructure):
+        (JSC::IntlPluralRulesConstructor::IntlPluralRulesConstructor):
+        (JSC::IntlPluralRulesConstructor::finishCreation):
+        (JSC::constructIntlPluralRules):
+        (JSC::callIntlPluralRules):
+        (JSC::IntlPluralRulesConstructorFuncSupportedLocalesOf):
+        (JSC::IntlPluralRulesConstructor::visitChildren):
+        * runtime/IntlPluralRulesConstructor.h: Added.
+        * runtime/IntlPluralRulesPrototype.cpp: Added.
+        (JSC::IntlPluralRulesPrototype::create):
+        (JSC::IntlPluralRulesPrototype::createStructure):
+        (JSC::IntlPluralRulesPrototype::IntlPluralRulesPrototype):
+        (JSC::IntlPluralRulesPrototype::finishCreation):
+        (JSC::IntlPluralRulesPrototypeFuncSelect):
+        (JSC::IntlPluralRulesPrototypeFuncResolvedOptions):
+        * runtime/IntlPluralRulesPrototype.h: Added.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::intlPluralRulesAvailableLocales):
+        * runtime/JSGlobalObject.h:
+        * runtime/Options.h:
+        * runtime/RegExpPrototype.cpp: Added inlines header.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2018-04-26  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [MIPS] Fix branch offsets in branchNeg32
+        https://bugs.webkit.org/show_bug.cgi?id=185025
+
+        Reviewed by Yusuke Suzuki.
+
+        Two nops were removed in branch(Not)Equal in #183130 but the offset wasn't adjusted.
+
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::branchNeg32):
+
+2018-04-25  Robin Morisset  <rmorisset@apple.com>
+
+        In FTLLowerDFGToB3.cpp::compileCreateRest, always use a contiguous array as the indexing type when under isWatchingHavingABadTimeWatchpoint
+        https://bugs.webkit.org/show_bug.cgi?id=184773
+        <rdar://problem/37773612>
+
+        Reviewed by Filip Pizlo.
+
+        We were calling restParameterStructure(), which returns arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous).
+        arrayStructureForIndexingTypeDuringAllocation uses m_arrayStructureForIndexingShapeDuringAllocation, which is set to SlowPutArrayStorage when we are 'having a bad time'.
+        This is problematic, because the structure is then passed to allocateUninitializedContiguousJSArray, which ASSERTs that the indexing type is contiguous (or int32).
+        We solve the problem by using originalArrayStructureForIndexingType which always returns a structure with the right indexing type (contiguous), even if we are having a bad time.
+        This is safe, as we are under isWatchingHavingABadTimeWatchpoint, so if we have a bad time, the code we generate will never be installed.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCreateRest):
+
+2018-04-25  Mark Lam  <mark.lam@apple.com>
+
+        Push the definition of PtrTag down to the WTF layer.
+        https://bugs.webkit.org/show_bug.cgi?id=184976
+        <rdar://problem/39723901>
+
+        Reviewed by Saam Barati.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/ARM64Assembler.h:
+        * assembler/AbstractMacroAssembler.h:
+        * assembler/MacroAssemblerCodeRef.cpp:
+        * assembler/MacroAssemblerCodeRef.h:
+        * b3/B3MathExtras.cpp:
+        * bytecode/LLIntCallLinkInfo.h:
+        * disassembler/Disassembler.h:
+        * ftl/FTLJITCode.cpp:
+        * interpreter/InterpreterInlines.h:
+        * jit/ExecutableAllocator.h:
+        * jit/JITOperations.cpp:
+        * jit/ThunkGenerator.h:
+        * jit/ThunkGenerators.h:
+        * llint/LLIntOffsetsExtractor.cpp:
+        * llint/LLIntPCRanges.h:
+        * runtime/JSCPtrTag.h: Added.
+        * runtime/NativeFunction.h:
+        * runtime/PtrTag.h: Removed.
+        * runtime/VMTraps.cpp:
+
+2018-04-25  Keith Miller  <keith_miller@apple.com>
+
+        getUnlinkedGlobalFunctionExecutable should only save things to the code cache if the option is set
+        https://bugs.webkit.org/show_bug.cgi?id=184998
+
+        Reviewed by Saam Barati.
+
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getUnlinkedGlobalFunctionExecutable):
+
+2018-04-25  Keith Miller  <keith_miller@apple.com>
+
+        Add missing scope release to functionProtoFuncToString
+        https://bugs.webkit.org/show_bug.cgi?id=184995
+
+        Reviewed by Saam Barati.
+
+        * runtime/FunctionPrototype.cpp:
+        (JSC::functionProtoFuncToString):
+
+2018-04-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION(r230748) [GTK][ARM] no matching function for call to 'JSC::CCallHelpers::swap(JSC::ARMRegisters::FPRegisterID&, JSC::ARMRegisters::FPRegisterID&)'
+        https://bugs.webkit.org/show_bug.cgi?id=184730
+
+        Reviewed by Mark Lam.
+
+        Add swap(FPRegisterID, FPRegisterID) implementation using ARMRegisters::SD0 (temporary register in MacroAssemblerARM).
+        And we now use dataTempRegister, addressTempRegister, and fpTempRegister instead of using S0, S1, and SD0.
+
+        We also change swap(RegisterID, RegisterID) implementation to use moves and temporaries simply. This is aligned to
+        ARMv7 implementation.
+
+        * assembler/ARMAssembler.h:
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::add32):
+        (JSC::MacroAssemblerARM::and32):
+        (JSC::MacroAssemblerARM::lshift32):
+        (JSC::MacroAssemblerARM::mul32):
+        (JSC::MacroAssemblerARM::or32):
+        (JSC::MacroAssemblerARM::rshift32):
+        (JSC::MacroAssemblerARM::urshift32):
+        (JSC::MacroAssemblerARM::sub32):
+        (JSC::MacroAssemblerARM::xor32):
+        (JSC::MacroAssemblerARM::load8):
+        (JSC::MacroAssemblerARM::abortWithReason):
+        (JSC::MacroAssemblerARM::load32WithAddressOffsetPatch):
+        (JSC::MacroAssemblerARM::store32WithAddressOffsetPatch):
+        (JSC::MacroAssemblerARM::store8):
+        (JSC::MacroAssemblerARM::store32):
+        (JSC::MacroAssemblerARM::push):
+        (JSC::MacroAssemblerARM::swap):
+        (JSC::MacroAssemblerARM::branch8):
+        (JSC::MacroAssemblerARM::branchPtr):
+        (JSC::MacroAssemblerARM::branch32):
+        (JSC::MacroAssemblerARM::branch32WithUnalignedHalfWords):
+        (JSC::MacroAssemblerARM::branchTest8):
+        (JSC::MacroAssemblerARM::branchTest32):
+        (JSC::MacroAssemblerARM::jump):
+        (JSC::MacroAssemblerARM::branchAdd32):
+        (JSC::MacroAssemblerARM::mull32):
+        (JSC::MacroAssemblerARM::branchMul32):
+        (JSC::MacroAssemblerARM::patchableBranch32):
+        (JSC::MacroAssemblerARM::nearCall):
+        (JSC::MacroAssemblerARM::compare32):
+        (JSC::MacroAssemblerARM::compare8):
+        (JSC::MacroAssemblerARM::test32):
+        (JSC::MacroAssemblerARM::test8):
+        (JSC::MacroAssemblerARM::add64):
+        (JSC::MacroAssemblerARM::load32):
+        (JSC::MacroAssemblerARM::call):
+        (JSC::MacroAssemblerARM::branchPtrWithPatch):
+        (JSC::MacroAssemblerARM::branch32WithPatch):
+        (JSC::MacroAssemblerARM::storePtrWithPatch):
+        (JSC::MacroAssemblerARM::loadDouble):
+        (JSC::MacroAssemblerARM::storeDouble):
+        (JSC::MacroAssemblerARM::addDouble):
+        (JSC::MacroAssemblerARM::divDouble):
+        (JSC::MacroAssemblerARM::subDouble):
+        (JSC::MacroAssemblerARM::mulDouble):
+        (JSC::MacroAssemblerARM::convertInt32ToDouble):
+        (JSC::MacroAssemblerARM::branchDouble):
+        (JSC::MacroAssemblerARM::branchTruncateDoubleToInt32):
+        (JSC::MacroAssemblerARM::truncateDoubleToInt32):
+        (JSC::MacroAssemblerARM::truncateDoubleToUint32):
+        (JSC::MacroAssemblerARM::branchConvertDoubleToInt32):
+        (JSC::MacroAssemblerARM::branchDoubleNonZero):
+        (JSC::MacroAssemblerARM::branchDoubleZeroOrNaN):
+        (JSC::MacroAssemblerARM::call32):
+        (JSC::MacroAssemblerARM::internalCompare32):
+
+2018-04-25  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Fix js/regexp-unicode.html crash.
+        https://bugs.webkit.org/show_bug.cgi?id=184891
+
+        Reviewed by Yusuke Suzuki.
+
+        On Win64, register RDI is "considered nonvolatile and must be saved and restored by a function that uses [it]".
+        RDI is being used as a scratch register for JIT_UNICODE_EXPRESSIONS, not just YARR_JIT_ALL_PARENS_EXPRESSIONS.
+
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::generateEnter):
+        (JSC::Yarr::YarrGenerator::generateReturn):
+        Unconditionally save and restore RDI on 64-bit Windows.
+
+2018-04-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Miscellaneous build cleanups
+        https://bugs.webkit.org/show_bug.cgi?id=184399
+
+        Reviewed by Žan Doberšek.
+
+        * PlatformGTK.cmake:
+
+2018-04-24  Keith Miller  <keith_miller@apple.com>
+
+        fromCharCode is missing some exception checks
+        https://bugs.webkit.org/show_bug.cgi?id=184952
+
+        Reviewed by Saam Barati.
+
+        I also removed the pointless slow path function and moved it into the
+        main function.
+
+        * runtime/StringConstructor.cpp:
+        (JSC::stringFromCharCode):
+        (JSC::stringFromCharCodeSlowCase): Deleted.
+
+2018-04-24  Filip Pizlo  <fpizlo@apple.com>
+
+        MultiByOffset should emit one fewer branches in the case that the set of structures is proved already
+        https://bugs.webkit.org/show_bug.cgi?id=184923
+
+        Reviewed by Saam Barati.
+        
+        If we have a MultiGetByOffset or MultiPutByOffset over a structure set that we've already proved
+        (i.e. we know that the object has one of those structures), then previously we would still emit a
+        switch with a case per structure along with a default case. That would mean one extra redundant
+        branch to check that whatever structure we wound up with belongs to the set. In that case, we
+        were already making the default case be an Oops.
+        
+        One possible solution would be to say that the default case being Oops means that B3 doesn't need
+        to emit the extra branch. But that would require having B3 exploit the fact that Oops is known to
+        be unreachable. Although B3 IR semantics (webkit.org/docs/b3/intermediate-representation.html)
+        seem to allow this, I don't particularly like that style of optimization. I like Oops to mean
+        trap.
+        
+        So, this patch makes FTL lowering turn one of the cases into the default, explicitly removing the
+        extra branch.
+        
+        This is not a speed-up. But it makes the B3 IR for MultiByOffset a lot simpler, which should make
+        it easier to implement B3-level optimizations for MultiByOffset. It also makes the IR easier to
+        read.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileMultiGetByOffset):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMultiPutByOffset):
+        (JSC::FTL::DFG::LowerDFGToB3::emitSwitchForMultiByOffset):
+
+2018-04-24  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG CSE should know how to decay a MultiGetByOffset
+        https://bugs.webkit.org/show_bug.cgi?id=159859
+
+        Reviewed by Keith Miller.
+        
+        This teaches Node::remove() how to decay a MultiGetByOffset to a CheckStructure, so that
+        clobberize() can report a def() for MultiGetByOffset.
+        
+        This is a slight improvement to codegen in splay because splay is a heavy user of
+        MultiGetByOffset. It uses it redundantly in one of its hot functions (the function called
+        "splay_"). I don't see a net speed-up in the benchmark. However, this is just a first step to
+        removing MultiXByOffset-related redundancies, which by my estimates account for 16% of
+        splay's time.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::remove):
+        (JSC::DFG::Node::removeWithoutChecks):
+        (JSC::DFG::Node::replaceWith):
+        (JSC::DFG::Node::replaceWithWithoutChecks):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToMultiGetByOffset):
+        (JSC::DFG::Node::replaceWith): Deleted.
+        * dfg/DFGNodeType.h:
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2018-04-24  Keith Miller  <keith_miller@apple.com>
+
+        Update API docs with information on which run loop the VM will use
+        https://bugs.webkit.org/show_bug.cgi?id=184900
+        <rdar://problem/39166054>
+
+        Reviewed by Mark Lam.
+
+        * API/JSContextRef.h:
+        * API/JSVirtualMachine.h:
+
+2018-04-24  Filip Pizlo  <fpizlo@apple.com>
+
+        $vm.totalGCTime() should be a thing
+        https://bugs.webkit.org/show_bug.cgi?id=184916
+
+        Reviewed by Sam Weinig.
+        
+        When debugging regressions in tests that are GC heavy, it's nice to be able to query the total
+        time spent in GC to determine if the regression is because the GC got slower.
+        
+        This adds $vm.totalGCTime(), which tells you the total time spent in GC, in seconds.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::runEndPhase):
+        * heap/Heap.h:
+        (JSC::Heap::totalGCTime const):
+        * tools/JSDollarVM.cpp:
+        (JSC::functionTotalGCTime):
+        (JSC::JSDollarVM::finishCreation):
+
+2018-04-23  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutFormattingContext] Initial commit.
+        https://bugs.webkit.org/show_bug.cgi?id=184896
+
+        Reviewed by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-04-23  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, revert accidental change to verbose flag.
+
+        * dfg/DFGByteCodeParser.cpp:
+
+2018-04-23  Filip Pizlo  <fpizlo@apple.com>
+
+        Roll out r226655 because it broke OSR entry when the pre-header is inadequately profiled.
+
+        Rubber stamped by Saam Barati.
+        
+        This is a >2x speed-up in SunSpider/bitops-bitwise-and. We don't really care about SunSpider
+        anymore, but r226655 didn't result in any benchmark wins and just regressed this test by a lot.
+        Seems sensible to just roll it out.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::addToGraph):
+        (JSC::DFG::ByteCodeParser::parse):
+
 2018-04-22  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [JSC] Remove ModuleLoaderPrototype

@@ -27,7 +27,7 @@
 #include "AdjustViewSizeOrNot.h"
 #include "Color.h"
 #include "ContainerNode.h"
-#include "LayoutContext.h"
+#include "FrameViewLayoutContext.h"
 #include "LayoutMilestones.h"
 #include "LayoutRect.h"
 #include "Pagination.h"
@@ -73,7 +73,7 @@ class FrameView final : public ScrollView {
 public:
     friend class RenderView;
     friend class Internals;
-    friend class LayoutContext;
+    friend class FrameViewLayoutContext;
 
     WEBCORE_EXPORT static Ref<FrameView> create(Frame&);
     static Ref<FrameView> create(Frame&, const IntSize& initialSize);
@@ -109,8 +109,8 @@ public:
     void setContentsSize(const IntSize&) final;
     void updateContentsSize() final;
 
-    const LayoutContext& layoutContext() const { return m_layoutContext; }
-    LayoutContext& layoutContext() { return m_layoutContext; }
+    const FrameViewLayoutContext& layoutContext() const { return m_layoutContext; }
+    FrameViewLayoutContext& layoutContext() { return m_layoutContext; }
 
     WEBCORE_EXPORT bool didFirstLayout() const;
     void queuePostLayoutCallback(WTF::Function<void ()>&&);
@@ -209,7 +209,6 @@ public:
     bool shouldUpdate() const;
 
     WEBCORE_EXPORT void adjustViewSize();
-    IntSize layoutSizeForMediaQuery() const;
 
     WEBCORE_EXPORT void setViewportSizeForCSSViewportUnits(IntSize);
     IntSize viewportSizeForCSSViewportUnits() const;
@@ -779,8 +778,6 @@ private:
     void removeFromAXObjectCache();
     void notifyWidgets(WidgetNotification);
 
-    void setFrameFlatteningViewSizeForMediaQuery() { m_frameFlatteningViewSizeForMediaQuery = layoutSize(); }
-    bool frameFlatteningViewSizeForMediaQueryIsSet() const { return m_frameFlatteningViewSizeForMediaQuery.has_value(); }
     RenderElement* viewportRenderer() const;
     
     void willDoLayout(WeakPtr<RenderElement> layoutRoot);
@@ -888,8 +885,6 @@ private:
     int m_autoSizeFixedMinimumHeight;
     // The intrinsic content size decided by autosizing.
     IntSize m_autoSizeContentSize;
-    // Report the first computed frame view size to media queries.
-    std::optional<IntSize> m_frameFlatteningViewSizeForMediaQuery;
 
     std::unique_ptr<ScrollableAreaSet> m_scrollableAreas;
     std::unique_ptr<ViewportConstrainedObjectSet> m_viewportConstrainedObjects;
@@ -917,7 +912,7 @@ private:
     IntRect* m_cachedWindowClipRect { nullptr };
     Vector<WTF::Function<void ()>> m_postLayoutCallbackQueue;
 
-    LayoutContext m_layoutContext;
+    FrameViewLayoutContext m_layoutContext;
 };
 
 inline void FrameView::incrementVisuallyNonEmptyCharacterCount(unsigned count)

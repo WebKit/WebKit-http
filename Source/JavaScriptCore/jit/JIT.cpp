@@ -720,7 +720,9 @@ void JIT::compileWithoutLinking(JITCompilationEffort effort)
         addPtr(TrustedImm32(-maxFrameExtentForSlowPathCall), stackPointerRegister);
     callOperationWithCallFrameRollbackOnException(operationThrowStackOverflowError, m_codeBlock);
 
-    if (m_codeBlock->codeType() == FunctionCode) {
+    // If the number of parameters is 1, we never require arity fixup.
+    bool requiresArityFixup = m_codeBlock->m_numParameters != 1;
+    if (m_codeBlock->codeType() == FunctionCode && requiresArityFixup) {
         m_arityCheck = label();
         store8(TrustedImm32(0), &m_codeBlock->m_shouldAlwaysBeInlined);
         emitFunctionPrologue();
@@ -746,7 +748,7 @@ void JIT::compileWithoutLinking(JITCompilationEffort effort)
 
         jump(beginLabel);
     } else
-        m_arityCheck = entryLabel; // Not a function.
+        m_arityCheck = entryLabel; // Never require arity fixup.
 
     ASSERT(m_jmpTable.isEmpty());
     
@@ -901,7 +903,7 @@ CompilationResult JIT::link()
         adoptRef(*new DirectJITCode(result, withArityCheck, JITCode::BaselineJIT)));
 
     if (JITInternal::verbose)
-        dataLogF("JIT generated code for %p at [%p, %p).\n", m_codeBlock, result.executableMemory()->start(), result.executableMemory()->end());
+        dataLogF("JIT generated code for %p at [%p, %p).\n", m_codeBlock, result.executableMemory()->start().untaggedPtr(), result.executableMemory()->end().untaggedPtr());
 
     return CompilationSuccessful;
 }

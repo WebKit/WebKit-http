@@ -312,6 +312,7 @@ size_t CurlRequest::didReceiveHeader(String&& header)
 
     m_response.url = m_request.url();
     m_response.statusCode = statusCode;
+    m_response.httpConnectCode = httpConnectCode;
 
     if (auto length = m_curlHandle->getContentLength())
         m_response.expectedContentLength = *length;
@@ -489,8 +490,8 @@ void CurlRequest::setupPOST(ResourceRequest& request)
     // Do not stream for simple POST data
     if (elementSize == 1) {
         auto postData = m_formDataStream.getPostData();
-        if (postData && postData->size())
-            m_curlHandle->setPostFields(postData->data(), postData->size());
+        if (postData && postData->get().size())
+            m_curlHandle->setPostFields(postData->get().data(), postData->get().size());
     } else
         setupSendData(false);
 }

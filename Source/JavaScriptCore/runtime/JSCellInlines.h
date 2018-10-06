@@ -230,7 +230,7 @@ ALWAYS_INLINE void JSCell::setStructure(VM& vm, Structure* structure)
         || this->structure()->transitionWatchpointSetHasBeenInvalidated()
         || Heap::heap(this)->structureIDTable().get(structure->id()) == structure);
     m_structureID = structure->id();
-    m_flags = structure->typeInfo().inlineTypeFlags();
+    m_flags = TypeInfo::mergeInlineTypeFlags(structure->typeInfo().inlineTypeFlags(), m_flags);
     m_type = structure->typeInfo().type();
     IndexingType newIndexingType = structure->indexingTypeIncludingHistory();
     if (m_indexingTypeAndMisc != newIndexingType) {
@@ -314,21 +314,6 @@ inline TriState JSCell::pureToBoolean() const
     return MixedTriState;
 }
 
-inline void JSCell::callDestructor(VM& vm)
-{
-    if (isZapped())
-        return;
-    ASSERT(structureID());
-    if (inlineTypeFlags() & StructureIsImmortal) {
-        Structure* structure = this->structure(vm);
-        const ClassInfo* classInfo = structure->classInfo();
-        MethodTable::DestroyFunctionPtr destroy = classInfo->methodTable.destroy;
-        destroy(this);
-    } else
-        static_cast<JSDestructibleObject*>(this)->classInfo()->methodTable.destroy(this);
-    zap();
-}
-
 inline void JSCellLock::lock()
 {
     Atomic<IndexingType>* lock = bitwise_cast<Atomic<IndexingType>*>(&m_indexingTypeAndMisc);
@@ -357,14 +342,14 @@ inline bool JSCellLock::isLocked() const
 
 inline bool JSCell::mayBePrototype() const
 {
-    return m_indexingTypeAndMisc & IndexingTypeMayBePrototype;
+    return TypeInfo::mayBePrototype(inlineTypeFlags());
 }
 
 inline void JSCell::didBecomePrototype()
 {
     if (mayBePrototype())
         return;
-    WTF::atomicExchangeOr(&m_indexingTypeAndMisc, IndexingTypeMayBePrototype);
+    m_flags |= static_cast<TypeInfo::InlineTypeFlags>(TypeInfoMayBePrototype);
 }
 
 inline JSObject* JSCell::toObject(ExecState* exec, JSGlobalObject* globalObject) const

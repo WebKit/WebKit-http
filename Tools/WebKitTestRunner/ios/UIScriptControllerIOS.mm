@@ -431,10 +431,22 @@ JSRetainPtr<JSStringRef> UIScriptController::selectFormPopoverTitle() const
     return JSStringCreateWithCFString((CFStringRef)webView.selectFormPopoverTitle);
 }
 
+JSRetainPtr<JSStringRef> UIScriptController::formInputLabel() const
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    return JSStringCreateWithCFString((CFStringRef)webView.formInputLabel);
+}
+
 void UIScriptController::selectFormAccessoryPickerRow(long rowIndex)
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     [webView selectFormAccessoryPickerRow:rowIndex];
+}
+
+void UIScriptController::setTimePickerValue(long hour, long minute)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    [webView setTimePickerValueToHour:hour minute:minute];
 }
     
 JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const

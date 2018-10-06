@@ -2039,7 +2039,8 @@ Bug(GTK) http/tests/misc/large-js-program.php [ Pass Slow ]
 [ Debug ] editing/selection/move-by-word-visually-multi-line.html [ Pass Timeout ]
 [ Debug ] editing/selection/move-by-word-visually-multi-space.html [ Failure Timeout ]
 
-webkit.org/b/159754 workers/bomb.html [ Slow ]
+webkit.org/b/159754 [ Release ] workers/bomb.html [ Slow ]
+webkit.org/b/159754 [ Debug ] workers/bomb.html [ Skip ]
 
 imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/async_007.htm [ Slow ]
 imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/async_010.htm [ Slow ]
@@ -2530,9 +2531,6 @@ webkit.org/b/100238 fast/history/window-open.html [ Failure ]
 # These failures appear to be bugs in the EventSender
 webkit.org/b/53964 fast/forms/listbox-onchange.html [ Failure ]
 webkit.org/b/53964 fast/forms/option-mouseevents.html [ Failure ]
-
-# keygen element rendering is broken
-webkit.org/b/54136 http/tests/misc/submit-post-keygen.html [ Failure ]
 
 webkit.org/b/122021 media/video-controls-captions-trackmenu.html [ Failure ]
 webkit.org/b/123097 media/track/track-user-preferences.html [ Skip ]
@@ -3369,7 +3367,9 @@ webkit.org/b/184778 inspector/canvas/setShaderProgramHighlighted.html [ Failure 
 webkit.org/b/184779 transitions/clip-path-path-transitions.html [ Failure ]
 webkit.org/b/184779 transitions/clip-path-transitions.html [ Failure ]
 
-webkit.org/b/184780 fast/repaint/fixed-scale.html [ ImageOnlyFailure ]
+webkit.org/b/185072 fast/events/mouse-click-events.html [ Failure ]
+webkit.org/b/185072 fast/events/context-activated-by-key-event.html [ Failure ]
+webkit.org/b/185072 fast/events/mouse-cursor-change.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

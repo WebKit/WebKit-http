@@ -398,6 +398,7 @@ DragController::DragHandlingMethod DragController::tryDocumentDrag(const DragDat
 
     if (isHandlingDrag) {
         clearDragCaret();
+        m_numberOfItemsToBeAccepted = dragData.numberOfFiles();
         return DragHandlingMethod::NonDefault;
     }
 
@@ -508,7 +509,7 @@ bool DragController::dispatchTextInputEventFor(Frame* innerFrame, const DragData
     String text = m_page.dragCaretController().isContentRichlyEditable() ? emptyString() : dragData.asPlainText();
     Element* target = innerFrame->editor().findEventTargetFrom(m_page.dragCaretController().caretPosition());
     // FIXME: What guarantees target is not null?
-    auto event = TextEvent::createForDrop(innerFrame->document()->domWindow(), text);
+    auto event = TextEvent::createForDrop(&innerFrame->windowProxy(), text);
     target->dispatchEvent(event);
     return !event->defaultPrevented();
 }

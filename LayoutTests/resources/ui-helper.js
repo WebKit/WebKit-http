@@ -193,4 +193,28 @@ window.UIHelper = class UIHelper {
         const enterTextScript = `(() => uiController.enterText(\`${escapedText}\`))()`;
         return new Promise(resolve => testRunner.runUIScript(enterTextScript, resolve));
     }
+
+    static setTimePickerValue(hours, minutes)
+    {
+        const setValueScript = `(() => uiController.setTimePickerValue(${hours}, ${minutes}))()`;
+        return new Promise(resolve => testRunner.runUIScript(setValueScript, resolve));
+    }
+
+    static formInputLabel()
+    {
+        return new Promise(resolve => {
+            testRunner.runUIScript(`(() => {
+                uiController.uiScriptComplete(uiController.formInputLabel);
+            })()`, resolve);
+        });
+    }
+
+    static zoomScale()
+    {
+        return new Promise(resolve => {
+            testRunner.runUIScript(`(() => {
+                uiController.uiScriptComplete(uiController.zoomScale);
+            })()`, resolve);
+        });
+    }
 }

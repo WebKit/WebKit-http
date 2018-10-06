@@ -1,3 +1,196 @@
+2018-05-01  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Write a script that detects chart changes by using v3 API.
+        https://bugs.webkit.org/show_bug.cgi?id=184419
+
+        Reviewed by Ryosuke Niwa.
+
+        Added a script that detects chart changes and schedule confirming analysis task.
+
+        * browser-tests/async-task-tests.js: Added a unit test for 'AsyncTask'.
+        * browser-tests/index.html: Added import for 'AsyncTask' for testing.
+        * public/shared/statistics.js: Make 'findRangesForChangeDetectionsWithWelchsTTest' defaults to 0.99 one sided possibility.
+        (Statistics.new.this.findRangesForChangeDetectionsWithWelchsTTest):
+        * public/v3/async-task.js:
+        (AsyncTask.isAvailable): Helper function to determine whether AsyncTask is available or not as 'Worker' is
+        not available in nodejs.
+        (AsyncTask):
+        * public/v3/models/bug.js: Export as a module.
+        * public/v3/models/measurement-set.js:
+        (MeasurementSet.prototype._invokeSegmentationAlgorithm): Added a check to avoid using AsyncTask when running in NodeJs.
+        (MeasurementSet):
+        * server-tests/resources/common-operations.js: Added a helper function to assert certain exception is thrown.
+        (async.assertThrows):
+        * tools/js/measurement-set-analyzer.js: Added 'MeasurementSetAnalyzer' module for analyzing measurement set.
+        (MeasurementSetAnalyzer):
+        (MeasurementSetAnalyzer.prototype.async.analyzeOnce):
+        (MeasurementSetAnalyzer.measurementSetListForAnalysis):
+        (MeasurementSetAnalyzer.prototype.async._analyzeMeasurementSet):
+        * tools/js/v3-models.js: Added import for 'Bug' object.
+        * tools/run-analysis.js: Added this script to detect measurement set changes.
+        (main):
+        (async.analysisLoop):
+        * unit-tests/measurement-set-analyzer-tests.js: Added unit tests for 'MeasurementSetAnalyzer'.
+        * unit-tests/resources/mock-v3-models.js: Reset 'MeasurementSet._set' every time.
+        Update mock platform to include lastModifiedByMetric information.
+        (MockModels.inject):
+
+2018-04-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Creating a custom analysis task after fetching all analysis tasks fail
+        https://bugs.webkit.org/show_bug.cgi?id=184641
+
+        Reviewed by Saam Barati.
+
+        The bug was caused by AnalysisTask._fetchSubset not fetching the analysis task when all analysis tasks
+        had previously been fetched (AnlaysisTask._fetchAllPromise is set) even when noCache is set to true.
+        Fixed it by ignornig _fetchAllPromise when noCache is set to true.
+
+        This patch also adds noCache argument to AnalysisTask.fetchById and reverts the inadvertent change in
+        r226836 to always set noCache to true in this function.
+
+        * public/v3/models/analysis-task.js:
+        (AnalysisTask.fetchById): Added noCache argument instead of always specifying true, and modernized the code.
+        (AnalysisTask._fetchSubset): Fixed the bug. See above description.
+        * public/v3/models/test-group.js:
+        (TestGroup.createWithTask): Set noCache to true when calling AnalysisTask.fetchById here.
+        * unit-tests/analysis-task-tests.js: Added test cases for AnalysisTask.fetchById, including a test
+        to make sure it doesn't fetch the specified analysis task when noCache is set to false and all analysis
+        tasks had previously been fetched for the aforementioned revert of the inadvertent change in r226836.
+        (sampleAnalysisTasks): Renamed from sampleAnalysisTasks as the result contains multiple analysis tasks.
+        * unit-tests/test-groups-tests.js: Added a test case for TestGroup.createWithTask
+
+2018-04-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r230960): Browser tests under TimeSeriesChart fetchMeasurementSets all fail
+        https://bugs.webkit.org/show_bug.cgi?id=185125
+
+        Reviewed by Saam Barati.
+
+        The bug was caused by mock-remote-api.js always loading PrivilegedAPI using require, which doesn't work in a browser.
+        Fixed the bug by explicitly requiring the right kind of PrivilegedAPI in each unit test instead.
+
+        * unit-tests/analysis-task-tests.js:
+        * unit-tests/buildbot-syncer-tests.js:
+        * unit-tests/commit-log-tests.js:
+        * unit-tests/commit-set-range-bisector-tests.js:
+        * unit-tests/commit-set-tests.js:
+        * unit-tests/measurement-set-tests.js:
+        * unit-tests/privileged-api-tests.js:
+        * unit-tests/resources/mock-remote-api.js:
+        (MockRemoteAPI.inject): Take PrivilegedAPI instead of the type string. Also fixed a bug that _token wasn't unset
+        after each unit test, and superfluous initializations of originalRemoteAPI and originalPrivilegedAPI.
+        * unit-tests/test-groups-tests.js:
+
+2018-04-30  Dewei Zhu  <dewei_zhu@apple.com>
+
+        MeasurementSet._constructUrl should construct absolute url.
+        https://bugs.webkit.org/show_bug.cgi?id=185137
+
+        Reviewed by Ryosuke Niwa.
+
+        MeasurementSet._constructUrl should not construct an url with relative path.
+
+        * public/v3/models/measurement-set.js: Should use '/api/measurement-set...' and '/data/measurement-set-...'
+        for uncached and cached fetching.
+        * unit-tests/measurement-set-tests.js: Updated unit tests.
+        (const.set MeasurementSet):
+
+2018-04-26  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Extend create-analysis-test API to be able to create with confirming test group.
+        https://bugs.webkit.org/show_bug.cgi?id=184958
+
+        Reviewed by Ryosuke Niwa.
+
+        Extend create-analysis-test API to be able to create an analysis task with confirming test group.
+        Update create analysis task UI in chart pane to adapt this new API.
+        Refactored '/privileged-api/create-test-group' API to share some creating test group logic with '/privileged-api/create-analysis-task' API.
+        Moved the shared logic to commit-sets-helpers.php.
+
+        * public/api/analysis-tasks.php: Use 'require_once' instead of 'require'.
+        * public/include/commit-sets-helpers.php: Added.
+        (create_test_group_and_build_requests): A helper function that creates test group and build requests for a analysis
+        task. In long term, this should be a class to avoid passing long argument list around.
+        (insert_commit_sets_and_construct_configuration_list): Based on commit sets returns build and test configurations.
+        (insert_build_request_for_configuration): Insert build requests based on configuration.
+        (commit_sets_from_revision_sets): Returns commit sets from given revision set list.
+        * public/privileged-api/create-analysis-task.php: Added the ability to create analysis task with confirming test
+        groups when repetition count is specified.
+        * public/privileged-api/create-test-group.php: Moved shared function to commit-sets-helpers.php.
+        * public/v3/models/analysis-task.js:
+        (AnalysisTask.create): Instead of accepting run ids, it now accepts points and test group name and confirming iterations.
+        It will conditionally add test group information into parameter when confirming iterations is a positive number.
+        (AnalysisTask):
+        * public/v3/models/commit-set.js:
+        (CommitSet.revisionSetsFromCommitSets): Move 'TestGroup._revisionSetsFromCommitSets' since CommitSet class is more
+        appropriate place and it will be shared by both TestGroup and AnalysisTask
+        (CommitSet):
+        * public/v3/models/test-group.js:
+        (TestGroup.createWithTask): Adapt 'CommitSet.revisionSetsFromCommitSets'.
+        (TestGroup.createWithCustomConfiguration): Adapt 'CommitSet.revisionSetsFromCommitSets'.
+        (TestGroup.createAndRefetchTestGroups): Adapt 'CommitSet.revisionSetsFromCommitSets'.
+        (TestGroup._revisionSetsFromCommitSets): Deleted and moved to 'CommitSet.revisionSetsFromCommitSets'.
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype.didConstructShadowTree): Added the logic to disable options when checkbox for creating confirming
+        test group is unchecked.
+        (ChartPane.prototype._analyzeRange): Conditionally create confirming test group from UI.
+        (ChartPane.cssTemplate):
+        * server-tests/privileged-api-create-analysis-task-tests.js: Added unit tests. Added a unit test for 'NodePrivilegedAPI'.
+        * unit-tests/analysis-task-tests.js: Added unit tests.
+        * unit-tests/commit-set-tests.js: Added unit test for 'CommitSet.revisionSetsFromCommitSets'.
+        * unit-tests/resources/mock-remote-api.js: Reset csrf token when BrowserPrivilegedAPI is used.
+        (MockRemoteAPI.inject):
+
+2018-04-23  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Tool scripts should not use PrivilegedAPI from 'public/v3/privileged-api.js'.
+        https://bugs.webkit.org/show_bug.cgi?id=184766
+
+        Reviewed by Ryosuke Niwa.
+
+        For tools, we should not use PrivilegedAPI for tools as current PrivilegedAPI
+        is used by UI and it is unnecessary to generate CSRF token for tools.
+        Will post a followup patch that creates a PrivilegedAPI used by tools.
+        Make a change on TestServer.inject and MockRemoteAPI.inject to allow specifying
+        BrowserPrivilegedAPI or NodePrivilegedAPI in the test. Currently defaults to
+        BrowserPrivilegedAPI as this is the test behavior before this change.
+
+        * server-tests/resources/common-operations.js: Allow passing type of privileged api
+        information to TestServer.inject.
+        * server-tests/resources/test-server.js: Conditionally inject PrivilegedAPI based on
+        type of privileged api.
+        (TestServer.prototype.inject):
+        (TestServer):
+        * server-tests/tools-buildbot-triggerable-tests.js: Updated 'prepareServerTest' invocation.
+        * server-tests/tools-os-build-fetcher-tests.js: Updated 'prepareServerTest' invocation.
+        * server-tests/tools-sync-buildbot-integration-tests.js: Temporarily injecting
+        BrowserPrivilegedAPI for mocking UploadedFile. The actual script does not rely on
+        BrowserPrivilegedAPI at all.
+        (async.createTestGroupWihPatch):
+        (beforeEach):
+        * tools/js/privileged-api.js: Added NodePrivilegedAPI
+        (NodePrivilegedAPI.prototype.sendRequest):
+        (NodePrivilegedAPI.configure): Configure the slave name and password.
+        (NodePrivilegedAPI):
+        * tools/js/v3-models.js: Removed the import of PrivilegedAPI.
+        * unit-tests/privileged-api-tests.js:. Added unit tests for NodePrivilegedAPI.
+        * unit-tests/resources/mock-remote-api.js: Conditionally inject PrivilegedAPI based on
+        the type of privileged api.
+        (MockRemoteAPI.inject):
+
+2018-04-23  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Revision information returned by querying measurement set api with analysis task id should contain commit order.
+        https://bugs.webkit.org/show_bug.cgi?id=184902
+
+        Reviewed by Ryosuke Niwa.
+
+        This is a bug fix for r230719 which does not cover the case while querying `measurement-set.php?analysisTask=$task_id`
+
+        * public/api/measurement-set.php: AnalysisResultsFetcher.fetch_commits results should contains commit order.
+        * server-tests/api-measurement-set-tests.js: Added unit test for this change.
+
 2018-04-19  Dewei Zhu  <dewei_zhu@apple.com>
 
         Add a bisect button to automatically schedule bisecting A/B tasks.

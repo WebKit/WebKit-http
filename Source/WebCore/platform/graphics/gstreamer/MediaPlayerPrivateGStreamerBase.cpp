@@ -92,7 +92,6 @@
 
 #if PLATFORM(WAYLAND)
 #include "PlatformDisplayWayland.h"
-#include <gst/gl/wayland/gstgldisplay_wayland.h>
 #elif PLATFORM(WPE)
 #include "PlatformDisplayWPE.h"
 #endif
@@ -1242,6 +1241,13 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
         gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
     m_needToResendCredentials = m_handledProtectionEvents.size() > 0;
     GST_TRACE("emitted decryption cipher key on pipeline, event handled %s, need to resend credentials %s", boolForPrinting(eventHandled), boolForPrinting(m_needToResendCredentials));
+}
+
+void MediaPlayerPrivateGStreamerBase::dispatchCDMInstance()
+{
+    // This function dispatches the CDMInstance in GStreamer playback pipeline.
+    if (m_cdmInstance)
+        m_player->attemptToDecryptWithInstance(const_cast<CDMInstance&>(*m_cdmInstance.get()));
 }
 
 void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)

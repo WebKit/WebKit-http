@@ -45,11 +45,20 @@ static bool constraintsAreAllRelative(const ViewportConfiguration::Parameters& c
 }
 #endif
 
+static float platformDeviceWidthOverride()
+{
+#if ENABLE(EXTRA_ZOOM_MODE)
+    return 320;
+#else
+    return 0;
+#endif
+}
+
 ViewportConfiguration::ViewportConfiguration()
     : m_minimumLayoutSize(1024, 768)
+    , m_viewLayoutSize(1024, 768)
     , m_canIgnoreScalingConstraints(false)
     , m_forceAlwaysUserScalable(false)
-    , m_forceHorizontalShrinkToFit(false)
 {
     // Setup a reasonable default configuration to avoid computing infinite scale/sizes.
     // Those are the original iPhone configuration.
@@ -83,14 +92,14 @@ bool ViewportConfiguration::setContentsSize(const IntSize& contentSize)
     return true;
 }
 
-bool ViewportConfiguration::setMinimumLayoutSize(const FloatSize& minimumLayoutSize, const FloatSize& viewSize)
+bool ViewportConfiguration::setViewLayoutSize(const FloatSize& viewLayoutSize)
 {
-    if (m_minimumLayoutSize == minimumLayoutSize && m_viewSize == viewSize)
+    if (m_viewLayoutSize == viewLayoutSize)
         return false;
 
-    m_minimumLayoutSize = minimumLayoutSize;
-    m_viewSize = viewSize;
+    m_viewLayoutSize = viewLayoutSize;
 
+    updateMinimumLayoutSize();
     updateConfiguration();
     return true;
 }
@@ -102,16 +111,9 @@ bool ViewportConfiguration::setViewportArguments(const ViewportArguments& viewpo
 
     LOG_WITH_STREAM(Viewports, stream << "ViewportConfiguration::setViewportArguments " << viewportArguments);
     m_viewportArguments = viewportArguments;
+
+    updateMinimumLayoutSize();
     updateConfiguration();
-    return true;
-}
-
-bool ViewportConfiguration::setForceHorizontalShrinkToFit(bool forceHorizontalShrinkToFit)
-{
-    if (m_forceHorizontalShrinkToFit == forceHorizontalShrinkToFit)
-        return false;
-
-    m_forceHorizontalShrinkToFit = forceHorizontalShrinkToFit;
     return true;
 }
 
@@ -130,12 +132,18 @@ IntSize ViewportConfiguration::layoutSize() const
     return IntSize(layoutWidth(), layoutHeight());
 }
 
+bool ViewportConfiguration::shouldOverrideDeviceWidthAndShrinkToFit() const
+{
+    auto viewWidth = m_viewLayoutSize.width();
+    return m_viewportArguments.shrinkToFit != 0. && 0 < viewWidth && viewWidth < platformDeviceWidthOverride();
+}
+
 bool ViewportConfiguration::shouldIgnoreHorizontalScalingConstraints() const
 {
     if (!m_canIgnoreScalingConstraints)
         return false;
 
-    if (m_forceHorizontalShrinkToFit)
+    if (shouldOverrideDeviceWidthAndShrinkToFit())
         return true;
 
     if (!m_configuration.allowsShrinkToFit)
@@ -173,7 +181,7 @@ bool ViewportConfiguration::shouldIgnoreScalingConstraints() const
 
 bool ViewportConfiguration::shouldIgnoreScalingConstraintsRegardlessOfContentSize() const
 {
-    return m_canIgnoreScalingConstraints && m_forceHorizontalShrinkToFit;
+    return m_canIgnoreScalingConstraints && shouldOverrideDeviceWidthAndShrinkToFit();
 }
 
 double ViewportConfiguration::initialScaleFromSize(double width, double height, bool shouldIgnoreScalingConstraints) const
@@ -189,11 +197,11 @@ double ViewportConfiguration::initialScaleFromSize(double width, double height, 
     // We want a scale small enough to fit the document width-wise.
     double initialScale = 0;
     if (width > 0 && !shouldIgnoreVerticalScalingConstraints())
-        initialScale = m_viewSize.width() / width;
+        initialScale = m_viewLayoutSize.width() / width;
 
     // Prevent the initial scale from shrinking to a height smaller than our view's minimum height.
-    if (height > 0 && height * initialScale < m_viewSize.height() && !shouldIgnoreHorizontalScalingConstraints())
-        initialScale = m_viewSize.height() / height;
+    if (height > 0 && height * initialScale < m_viewLayoutSize.height() && !shouldIgnoreHorizontalScalingConstraints())
+        initialScale = m_viewLayoutSize.height() / height;
 
     return std::min(std::max(initialScale, shouldIgnoreScalingConstraints ? m_defaultConfiguration.minimumScale : m_configuration.minimumScale), m_configuration.maximumScale);
 }
@@ -221,12 +229,12 @@ double ViewportConfiguration::minimumScale() const
         minimumScale = std::min(minimumScale, forceAlwaysUserScalableMinimumScale);
 
     double contentWidth = m_contentSize.width();
-    if (contentWidth > 0 && contentWidth * minimumScale < m_viewSize.width() && !shouldIgnoreVerticalScalingConstraints())
-        minimumScale = m_viewSize.width() / contentWidth;
+    if (contentWidth > 0 && contentWidth * minimumScale < m_viewLayoutSize.width() && !shouldIgnoreVerticalScalingConstraints())
+        minimumScale = m_viewLayoutSize.width() / contentWidth;
 
     double contentHeight = m_contentSize.height();
-    if (contentHeight > 0 && contentHeight * minimumScale < m_viewSize.height() && !shouldIgnoreHorizontalScalingConstraints())
-        minimumScale = m_viewSize.height() / contentHeight;
+    if (contentHeight > 0 && contentHeight * minimumScale < m_viewLayoutSize.height() && !shouldIgnoreHorizontalScalingConstraints())
+        minimumScale = m_viewLayoutSize.height() / contentHeight;
 
     minimumScale = std::min(std::max(minimumScale, m_configuration.minimumScale), m_configuration.maximumScale);
 
@@ -366,6 +374,17 @@ void ViewportConfiguration::updateConfiguration()
     m_configuration.avoidsUnsafeArea = m_viewportArguments.viewportFit != ViewportFit::Cover;
 
     LOG_WITH_STREAM(Viewports, stream << "ViewportConfiguration " << this << " updateConfiguration " << *this << " gives initial scale " << initialScale() << " based on contentSize " << m_contentSize << " and layout size " << layoutWidth() << "x" << layoutHeight());
+}
+
+void ViewportConfiguration::updateMinimumLayoutSize()
+{
+    if (!shouldOverrideDeviceWidthAndShrinkToFit()) {
+        m_minimumLayoutSize = m_viewLayoutSize;
+        return;
+    }
+
+    float minDeviceWidth = platformDeviceWidthOverride();
+    m_minimumLayoutSize = FloatSize(minDeviceWidth, std::roundf(m_viewLayoutSize.height() * (minDeviceWidth / m_viewLayoutSize.width())));
 }
 
 double ViewportConfiguration::viewportArgumentsLength(double length) const
@@ -509,7 +528,6 @@ String ViewportConfiguration::description() const
     ts.dumpProperty("ignoring horizontal scaling constraints", shouldIgnoreHorizontalScalingConstraints() ? "true" : "false");
     ts.dumpProperty("ignoring vertical scaling constraints", shouldIgnoreVerticalScalingConstraints() ? "true" : "false");
     ts.dumpProperty("avoids unsafe area", avoidsUnsafeArea() ? "true" : "false");
-    ts.dumpProperty("force horizontal shrink to fit", m_forceHorizontalShrinkToFit ? "true" : "false");
     
     ts.endGroup();
 

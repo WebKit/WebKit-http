@@ -165,6 +165,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case GetGlobalObject:
     case StringCharCodeAt:
     case CompareStrictEq:
+    case SameValue:
     case IsEmpty:
     case IsUndefined:
     case IsBoolean:
@@ -695,6 +696,10 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(AbstractHeap(Stack, CallFrameSlot::callee));
         def(HeapLocation(StackLoc, AbstractHeap(Stack, CallFrameSlot::callee)), LazyNode(node));
         return;
+
+    case SetCallee:
+        write(AbstractHeap(Stack, CallFrameSlot::callee));
+        return;
         
     case GetArgumentCountIncludingThis: {
         auto heap = AbstractHeap(Stack, remapOperand(node->argumentsInlineCallFrame(), VirtualRegister(CallFrameSlot::argumentCount)));
@@ -1188,9 +1193,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(JSObject_butterflyMask);
         AbstractHeap heap(NamedProperties, node->multiGetByOffsetData().identifierNumber);
         read(heap);
-        // FIXME: We cannot def() for MultiGetByOffset because CSE is not smart enough to decay it
-        // to a CheckStructure.
-        // https://bugs.webkit.org/show_bug.cgi?id=159859
+        def(HeapLocation(NamedPropertyLoc, heap, node->child1()), LazyNode(node));
         return;
     }
         
@@ -1515,17 +1518,17 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
 
     case RegExpExec:
     case RegExpTest:
-    case RegExpMatchFast:
-        if (node->child2().useKind() == RegExpObjectUse
-            && node->child3().useKind() == StringUse) {
-            read(RegExpState);
-            read(RegExpObject_lastIndex);
-            write(RegExpState);
-            write(RegExpObject_lastIndex);
-            return;
-        }
+        // Even if we've proven known input types as RegExpObject and String,
+        // accessing lastIndex is effectful if it's a global regexp.
         read(World);
         write(Heap);
+        return;
+
+    case RegExpMatchFast:
+        read(RegExpState);
+        read(RegExpObject_lastIndex);
+        write(RegExpState);
+        write(RegExpObject_lastIndex);
         return;
 
     case RegExpExecNonGlobalOrSticky:

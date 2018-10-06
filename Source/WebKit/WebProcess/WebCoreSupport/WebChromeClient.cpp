@@ -549,13 +549,6 @@ void WebChromeClient::scroll(const IntSize& scrollDelta, const IntRect& scrollRe
     m_page.drawingArea()->scroll(intersection(scrollRect, clipRect), scrollDelta);
 }
 
-#if USE(COORDINATED_GRAPHICS)
-void WebChromeClient::delegatedScrollRequested(const IntPoint& scrollOffset)
-{
-    m_page.pageDidRequestScroll(scrollOffset);
-}
-#endif
-
 IntPoint WebChromeClient::screenToRootView(const IntPoint& point) const
 {
     return m_page.screenToRootView(point);
@@ -935,9 +928,13 @@ bool WebChromeClient::layerTreeStateIsFrozen() const
 RefPtr<ScrollingCoordinator> WebChromeClient::createScrollingCoordinator(Page& page) const
 {
     ASSERT_UNUSED(page, m_page.corePage() == &page);
+#if PLATFORM(COCOA)
     if (m_page.drawingArea()->type() != DrawingAreaTypeRemoteLayerTree)
         return nullptr;
     return RemoteScrollingCoordinator::create(&m_page);
+#else
+    return nullptr;
+#endif
 }
 
 #endif
@@ -1170,6 +1167,14 @@ bool WebChromeClient::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<
 }
 
 #endif
+
+String WebChromeClient::signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String& challengeString, const WebCore::URL& url) const
+{
+    String result;
+    if (!WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPageProxy::SignedPublicKeyAndChallengeString(keySizeIndex, challengeString, url), Messages::WebPageProxy::SignedPublicKeyAndChallengeString::Reply(result), m_page.pageID()))
+        return emptyString();
+    return result;
+}
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(MAC)
 

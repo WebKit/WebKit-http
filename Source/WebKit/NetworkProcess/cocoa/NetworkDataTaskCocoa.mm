@@ -48,6 +48,13 @@
 #import <WebKitAdditions/NetworkDataTaskCocoaAdditions.mm>
 #endif
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+@interface NSURLSessionTask (Staging)
+@property (nullable, readwrite, retain) NSURL *_siteForCookies;
+@property (readwrite) BOOL _isTopLevelNavigation;
+@end
+#endif
+
 namespace WebKit {
 
 #if USE(CREDENTIAL_STORAGE_WITH_NETWORK_SESSION)
@@ -85,7 +92,10 @@ void NetworkDataTaskCocoa::applySniffingPoliciesAndBindRequestToInferfaceIfNeede
     shouldContentEncodingSniff = true;
 #endif
     auto& cocoaSession = static_cast<NetworkSessionCocoa&>(m_session.get());
-    if (shouldContentSniff && shouldContentEncodingSniff && cocoaSession.m_boundInterfaceIdentifier.isNull())
+    if (shouldContentSniff
+        && shouldContentEncodingSniff
+        && cocoaSession.m_boundInterfaceIdentifier.isNull()
+        && !cocoaSession.m_proxyConfiguration)
         return;
 
     auto mutableRequest = adoptNS([nsRequest mutableCopy]);
@@ -100,6 +110,9 @@ void NetworkDataTaskCocoa::applySniffingPoliciesAndBindRequestToInferfaceIfNeede
 
     if (!cocoaSession.m_boundInterfaceIdentifier.isNull())
         [mutableRequest setBoundInterfaceIdentifier:cocoaSession.m_boundInterfaceIdentifier];
+
+    if (cocoaSession.m_proxyConfiguration)
+        CFURLRequestSetProxySettings([mutableRequest _CFURLRequest], cocoaSession.m_proxyConfiguration.get());
 
     nsRequest = mutableRequest.autorelease();
 }
@@ -157,15 +170,19 @@ static void updateTaskWithFirstPartyForSameSiteCookies(NSURLSessionDataTask* tas
 {
     if (request.isSameSiteUnspecified())
         return;
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
     static NSURL *emptyURL = [[NSURL alloc] initWithString:@""];
     if ([task respondsToSelector:@selector(set_siteForCookies:)])
         task._siteForCookies = request.isSameSite() ? task.currentRequest.URL : emptyURL;
     if ([task respondsToSelector:@selector(set_isTopLevelNavigation:)])
         task._isTopLevelNavigation = request.isTopSite();
+#else
+    UNUSED_PARAM(task);
+#endif
 }
 
-NetworkDataTaskCocoa::NetworkDataTaskCocoa(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& requestWithCredentials, uint64_t frameID, uint64_t pageID, WebCore::StoredCredentialsPolicy storedCredentialsPolicy, WebCore::ContentSniffingPolicy shouldContentSniff, WebCore::ContentEncodingSniffingPolicy shouldContentEncodingSniff, bool shouldClearReferrerOnHTTPSToHTTPRedirect, PreconnectOnly shouldPreconnectOnly)
-    : NetworkDataTask(session, client, requestWithCredentials, storedCredentialsPolicy, shouldClearReferrerOnHTTPSToHTTPRedirect)
+NetworkDataTaskCocoa::NetworkDataTaskCocoa(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& requestWithCredentials, uint64_t frameID, uint64_t pageID, WebCore::StoredCredentialsPolicy storedCredentialsPolicy, WebCore::ContentSniffingPolicy shouldContentSniff, WebCore::ContentEncodingSniffingPolicy shouldContentEncodingSniff, bool shouldClearReferrerOnHTTPSToHTTPRedirect, PreconnectOnly shouldPreconnectOnly, bool dataTaskIsForMainFrameNavigation)
+    : NetworkDataTask(session, client, requestWithCredentials, storedCredentialsPolicy, shouldClearReferrerOnHTTPSToHTTPRedirect, dataTaskIsForMainFrameNavigation)
     , m_frameID(frameID)
     , m_pageID(pageID)
 {
@@ -348,6 +365,9 @@ void NetworkDataTaskCocoa::willPerformHTTPRedirection(WebCore::ResourceResponse&
 #endif
     }
 
+    if (isTopLevelNavigation())
+        request.setFirstPartyForCookies(request.url());
+
     bool shouldBlockCookies = false;
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     shouldBlockCookies = m_session->networkStorageSession().shouldBlockCookies(request);
@@ -507,6 +527,11 @@ bool NetworkDataTaskCocoa::isAlwaysOnLoggingAllowed() const
         return true;
 
     return m_session->sessionID().isAlwaysOnLoggingAllowed();
+}
+
+String NetworkDataTaskCocoa::description() const
+{
+    return String([m_task description]);
 }
 
 }

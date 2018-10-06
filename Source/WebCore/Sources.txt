@@ -1213,6 +1213,24 @@ inspector/agents/worker/WorkerDebuggerAgent.cpp
 inspector/agents/worker/WorkerNetworkAgent.cpp
 inspector/agents/worker/WorkerRuntimeAgent.cpp
 
+layout/FloatingContext.cpp
+layout/FloatingState.cpp
+layout/FormattingContext.cpp
+layout/FormattingState.cpp
+layout/LayoutContext.cpp
+layout/blockformatting/BlockFormattingContext.cpp
+layout/blockformatting/BlockFormattingState.cpp
+layout/blockformatting/BlockMarginCollapse.cpp
+layout/displaytree/DisplayBox.cpp
+layout/inlineformatting/InlineFormattingContext.cpp
+layout/inlineformatting/InlineFormattingState.cpp
+layout/layouttree/LayoutBlockContainer.cpp
+layout/layouttree/LayoutBox.cpp
+layout/layouttree/LayoutContainer.cpp
+layout/layouttree/LayoutInlineBox.cpp
+layout/layouttree/LayoutInlineContainer.cpp
+layout/layouttree/LayoutTreeBuilder.cpp
+
 loader/ContentFilter.cpp
 loader/CookieJar.cpp
 loader/CrossOriginAccessControl.cpp
@@ -1344,10 +1362,10 @@ page/FrameDestructionObserver.cpp
 page/FrameSnapshotting.cpp
 page/FrameTree.cpp
 page/FrameView.cpp
+page/FrameViewLayoutContext.cpp
 page/History.cpp
 page/IntersectionObserver.cpp
 page/IntersectionObserverEntry.cpp
-page/LayoutContext.cpp
 page/Location.cpp
 page/MemoryRelease.cpp
 page/MouseEventWithHitTestResults.cpp
@@ -1419,6 +1437,7 @@ page/csp/ContentSecurityPolicySource.cpp
 page/csp/ContentSecurityPolicySourceList.cpp
 page/csp/ContentSecurityPolicySourceListDirective.cpp
 
+page/scrolling/AsyncScrollingCoordinator.cpp
 page/scrolling/AxisScrollSnapOffsets.cpp
 page/scrolling/ScrollLatchingState.cpp
 page/scrolling/ScrollingConstraints.cpp

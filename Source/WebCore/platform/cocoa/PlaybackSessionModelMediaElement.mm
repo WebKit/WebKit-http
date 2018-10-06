@@ -181,8 +181,10 @@ void PlaybackSessionModelMediaElement::updateForEventName(const WTF::AtomicStrin
 
     if (all
         || eventName == eventNames().volumechangeEvent) {
-        for (auto client : m_clients)
+        for (auto client : m_clients) {
             client->mutedChanged(isMuted());
+            client->volumeChanged(volume());
+        }
     }
 }
 void PlaybackSessionModelMediaElement::addClient(PlaybackSessionModelClient& client)
@@ -297,6 +299,12 @@ void PlaybackSessionModelMediaElement::setMuted(bool muted)
 {
     if (m_mediaElement)
         m_mediaElement->setMuted(muted);
+}
+
+void PlaybackSessionModelMediaElement::setVolume(double volume)
+{
+    if (m_mediaElement)
+        m_mediaElement->setVolume(volume);
 }
 
 void PlaybackSessionModelMediaElement::updateMediaSelectionOptions()
@@ -530,12 +538,17 @@ String PlaybackSessionModelMediaElement::externalPlaybackLocalizedDeviceName() c
 
 bool PlaybackSessionModelMediaElement::wirelessVideoPlaybackDisabled() const
 {
-    return m_mediaElement && m_mediaElement->mediaSession().wirelessVideoPlaybackDisabled(*m_mediaElement);
+    return m_mediaElement && m_mediaElement->mediaSession().wirelessVideoPlaybackDisabled();
 }
 
 bool PlaybackSessionModelMediaElement::isMuted() const
 {
     return m_mediaElement ? m_mediaElement->muted() : false;
+}
+
+double PlaybackSessionModelMediaElement::volume() const
+{
+    return m_mediaElement ? m_mediaElement->volume() : 0;
 }
 
 bool PlaybackSessionModelMediaElement::isPictureInPictureActive() const

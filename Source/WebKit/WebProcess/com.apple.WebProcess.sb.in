@@ -25,7 +25,7 @@
 (deny default (with partial-symbolication))
 (allow system-audit file-read-metadata)
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
 (import "system.sb")
 #else
 ;;;
@@ -182,7 +182,7 @@
 (deny iokit-get-properties)
 (allow iokit-get-properties
     (iokit-property "AGCInfo")
-    (iokit-property "AccelCaps")
+    (iokit-property-regex #"^Accel(Caps|NativeDMARowByteAlignment)")
     (iokit-property-regex #"^(Accurate|Extended)MaxDigitizerPressureValue")
     (iokit-property-regex #"^(Activation|Animation)Thresholds")
     (iokit-property "ActuationSupported")
@@ -190,7 +190,7 @@
     (iokit-property "AlwaysNeedsVelocityCalculated")
     (iokit-property-regex #"Apple(GVAKeyDoesNotExist|IntelMEVABundleName)")
     (iokit-property-regex #"^AAPL,(DisplayPipe|OpenCLdisabled|IOGraphics_LER(|_RegTag_1|_RegTag_0|_Busy_2)|alias-policy|boot-display|display-alias|mux-switch-state|ndrv-dev|primary-display|slot-name)")
-    (iokit-property-regex #"^ATY,fb_(linebytes|offset|size)")
+    (iokit-property-regex #"^ATY,(cbits|fb_(linebytes|offset|size)|intrev)")
     (iokit-property "BacklightHandle")
     (iokit-property "BlockSize")
     (iokit-property-regex #"^CEA(ModeID|PixelRepetition)")
@@ -207,6 +207,8 @@
     (iokit-property "Family ID")
     (iokit-property "ForceSupported")
     (iokit-property "Formats")
+    (iokit-property "GPUConfigurationVariable")
+    (iokit-property "GpuDebugPolicy")
     (iokit-property "HIDPointerAccelerationType")
     (iokit-property-regex #"^IOAccel(DisplayPipeCapabilities|Index|Types|Revision)")
     (iokit-property-regex #"^IO(Class|MatchCategory|NameMatch)")
@@ -239,20 +241,21 @@
     (iokit-property "IOFramebufferOpenGLIndex")
     (iokit-property "IOGeneralInterest")
     (iokit-property "IOGLBundleName")
+    (iokit-property-regex #"^IOGVA(BGRAEnc|Codec|EncoderRestricted|Scaler|VTCapabilities)")
+    (iokit-property-regex #"^IOGVA(.*)(De|En)code$")
     (iokit-property "IOHibernateState")
     (iokit-property "IOI2CTransactionTypes")
     (iokit-property-regex #"^IOInterrupt(Controllers|Specifiers)")
-    (iokit-property "IOGVAVTCapabilities")
-    (iokit-property-regex #"^IOGVA(BGRAEnc|Codec|EncoderRestricted|Scaler)")
-    (iokit-property-regex #"^IOGVA(.*)(De|En)code$")
+    (iokit-property "IOKitDebug")
     (iokit-property "IOMatchCategory")
     (iokit-property "IONDRVFramebufferGeneration")
     (iokit-property "IONVRAMProperty")
     (iokit-property-regex #"^IOName(|Match(|ed))")
+    (iokit-property "IOOCDBundleName")
     (iokit-property "IOPCITunnelled")
     (iokit-property "IOPMStrictTreeOrder")
     (iokit-property "IOParentMatch")
-    (iokit-property-regex #"^IOPCI(ClassMatch|Express(Capabilities|Link(Status|Capabilities))|PrimaryMatch|MSIMode|Resourced|Tunnelled)")
+    (iokit-property-regex #"^IOPCI((Class|Primary|Property|)Match|Express(Capabilities|Link(Status|Capabilities))|MSIMode|Resourced|Tunnelled)")
     (iokit-property "IOPMIsPowerManaged")
     (iokit-property-regex #"^IOPlatform(SerialNumber|UUID)")
     (iokit-property "IOPowerManagement")
@@ -310,11 +313,13 @@
     (iokit-property-regex #"^(board|device|revision|subsystem|vendor)-id")
     (iokit-property "boot-gamma-restored")
     (iokit-property "built-in")
+    (iokit-property "cail_properties")
     (iokit-property "class-code")
     (iokit-property "compatible")
     (iokit-property "connector-type")
     (iokit-property-regex #"^(device|revision|subsystem-vendor|touch-size)-id")
     (iokit-property "device_type")
+    (iokit-property "dpm")
     (iokit-property "graphic-options")
     (iokit-property "hda-gfx")
     (iokit-property-regex #"^id(Product|Vendor)")
@@ -332,7 +337,7 @@
     (iokit-property "saved-config")
     (iokit-property "startup-timing")
     (iokit-property "touch-size-id")
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     (iokit-property "ATY,cbits")
     (iokit-property "ATY,intrev")
     (iokit-property "AccelNativeDMARowByteAlignment")
@@ -353,7 +358,7 @@
 #endif
 )
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 (deny mach-lookup (xpc-service-name-prefix ""))
 (allow mach-lookup
     (xpc-service-name "com.apple.PerformanceAnalysis.animationperfd")
@@ -365,7 +370,6 @@
     (xpc-service-name "com.apple.hiservices-xpcservice")
     (xpc-service-name "com.apple.ist.ds.appleconnect2.HelperService")
     (xpc-service-name "com.apple.print.normalizerd")
-    (xpc-service-name "com.apple.securityd.xpc")
     (xpc-service-name "com.apple.signpost.signpost-notificationd")
 )
 #endif
@@ -469,9 +473,6 @@
         "com.apple.driver.AppleHIDMouse"
         "com.apple.lookup.shared"
         "com.apple.networkConnect"
-        "com.apple.security"
-        "com.apple.security.common"
-        "com.apple.security.revocation"
         "com.apple.speech.voice.prefs"
         "com.apple.systemsound"
         "com.apple.universalaccess"
@@ -556,7 +557,7 @@
        (global-name "com.apple.SystemConfiguration.configd")
        (global-name "com.apple.SystemConfiguration.PPPController")
        (global-name "com.apple.audio.SystemSoundServer-OSX")
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
        (global-name "com.apple.analyticsd")
        (global-name "com.apple.audio.AudioComponentRegistrar")
 #endif
@@ -600,40 +601,11 @@
        (global-name "com.apple.xpcd")
 )
 
-;; Security framework
-(allow mach-lookup
-       (global-name "com.apple.ctkd.token-client")
-       (global-name "com.apple.ocspd")
-       (global-name "com.apple.securityd.xpc") 
-       (global-name "com.apple.CoreAuthentication.agent.libxpc")
-       (global-name "com.apple.SecurityServer"))
-
-;; FIXME: This should be removed when <rdar://problem/10479685> is fixed.
-;; Restrict AppSandboxed processes from creating /Library/Keychains, but allow access to the contents of /Library/Keychains:
-(allow file-read-data file-read-metadata file-write*
-    (subpath "/Library/Keychains"))
-
-;; Do permit creating per-user keychains
-(allow file-read* file-write*
-    (home-subpath "/Library/Keychains"))
-
-;; Except deny access to new-style iOS Keychain folders which are UUIDs.
-(deny file-read* file-write*
-    (regex (string-append "/Library/Keychains/" (uuid-regex-string) "(/|$)"))
-    (home-regex (string-append "/Library/Keychains/" (uuid-regex-string) "(/|$)")))
-
 (allow file-read* file-write* (subpath "/private/var/db/mds/system")) ;; FIXME: This should be removed when <rdar://problem/9538414> is fixed.
 
 (allow file-read*
        (subpath "/private/var/db/mds")
-       (literal "/private/var/db/DetachedSignatures")
-       ; The following are needed until <rdar://problem/11134688> is resolved.
-       (literal "/Library/Preferences/com.apple.security.plist")
-       (literal "/Library/Preferences/com.apple.security.common.plist")
-       (literal "/Library/Preferences/com.apple.security.revocation.plist")
-       (home-literal "/Library/Application Support/SyncServices/Local/ClientsWithChanges/com.apple.Keychain")
-       (home-literal "/Library/Preferences/com.apple.security.plist")
-       (home-literal "/Library/Preferences/com.apple.security.revocation.plist"))
+       (literal "/private/var/db/DetachedSignatures"))
 
 (allow ipc-posix-shm-read* ipc-posix-shm-write-data
        (ipc-posix-name "com.apple.AppleDatabaseChanged"))
@@ -652,7 +624,7 @@
 (system-graphics)
 
 ;; Networking
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
 (system-network)
 #endif
 (allow network-outbound
@@ -662,7 +634,7 @@
        (literal "/private/var/run/mDNSResponder")
        (remote tcp))
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 ;; CFNetwork
 (allow file-read-data (path "/private/var/db/nsurlstoraged/dafsaData.bin"))
 #endif
@@ -673,7 +645,7 @@
        (global-name "com.apple.GSSCred")
        (global-name "com.apple.system.logger")
        (global-name "com.apple.system.notification_center"))
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
 (allow network-outbound
        (remote udp))
 #endif
@@ -739,6 +711,7 @@
 ;; Data Detectors
 (allow file-read* (subpath "/private/var/db/datadetectors/sys"))
 
+#if PLATFORM(MAC)
 ;; Media capture, utilities
 (if (not (defined? 'sbpl-filter?))
   (define (sbpl-filter? x)
@@ -819,3 +792,4 @@
         (iokit-user-client-class "IOUSBDeviceUserClientV2")
         (iokit-user-client-class "IOUSBInterfaceUserClientV2"))
     (allow device-camera))
+#endif // PLATFORM(MAC)

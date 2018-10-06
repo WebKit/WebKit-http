@@ -29,18 +29,17 @@
 
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
 
 #if PLATFORM(GTK)
 #include <WebCore/GUniquePtrGtk.h>
 #include <gdk/gdk.h>
-#include <wtf/HashSet.h>
 #endif
 
 #if PLATFORM(WPE)
-#include <wpe/input.h>
-#include <wtf/HashSet.h>
+#include <wpe/wpe.h>
 #endif
 
 #if PLATFORM(COCOA)
@@ -136,7 +135,7 @@ private:
     int eventNumber;
 #elif PLATFORM(GTK)
     Deque<WTREventQueueItem> m_eventQueue;
-    unsigned m_mouseButtonCurrentlyDown;
+    unsigned m_mouseButtonsCurrentlyDown { 0 };
     Vector<GUniquePtr<GdkEvent>> m_touchEvents;
     HashSet<int> m_updatedTouchEvents;
 #elif PLATFORM(WPE)

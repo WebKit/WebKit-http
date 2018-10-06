@@ -182,6 +182,7 @@ inline CapabilityLevel canCompile(Node* node)
     case GetExecutable:
     case GetScope:
     case GetCallee:
+    case SetCallee:
     case GetArgumentCountIncludingThis:
     case SetArgumentCountIncludingThis:
     case ToNumber:
@@ -313,6 +314,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CompareBelow:
     case CompareBelowEq:
     case CompareStrictEq:
+    case SameValue:
     case DefineDataProperty:
     case DefineAccessorProperty:
     case StringSlice:

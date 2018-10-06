@@ -109,10 +109,6 @@ private:
     void invalidateContentsForSlowScroll(const WebCore::IntRect&) final;
     void scroll(const WebCore::IntSize& scrollDelta, const WebCore::IntRect& scrollRect, const WebCore::IntRect& clipRect) final;
 
-#if USE(COORDINATED_GRAPHICS)
-    void delegatedScrollRequested(const WebCore::IntPoint& scrollOffset) final;
-#endif
-
     WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) const final;
     WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) const final;
 
@@ -177,7 +173,7 @@ private:
     void removeScrollingLayer(WebCore::Node*, PlatformLayer* scrollingLayer, PlatformLayer* contentsLayer) final;
 
     void webAppOrientationsUpdated() final;
-    void showPlaybackTargetPicker(bool hasVideo) final;
+    void showPlaybackTargetPicker(bool hasVideo, WebCore::RouteSharingPolicy, const String&) final;
 
     Seconds eventThrottlingDelay() final;
 #endif
@@ -318,6 +314,8 @@ private:
     bool wrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const final;
     bool unwrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const final;
 #endif
+
+    String signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String& challengeString, const WebCore::URL&) const final;
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(MAC)
     void handleTelephoneNumberClick(const String& number, const WebCore::IntPoint&) final;

@@ -51,6 +51,7 @@ bool doesGC(Graph& graph, Node* node)
     case Identity:
     case IdentityWithProfile:
     case GetCallee:
+    case SetCallee:
     case GetArgumentCountIncludingThis:
     case SetArgumentCountIncludingThis:
     case GetRestLength:
@@ -153,6 +154,7 @@ bool doesGC(Graph& graph, Node* node)
     case CompareEq:
     case CompareStrictEq:
     case CompareEqPtr:
+    case SameValue:
     case Call:
     case DirectCall:
     case TailCallInlinedCaller:

@@ -1263,6 +1263,8 @@ public:
     void compileStringIdentCompare(Node*, MacroAssembler::RelationalCondition);
     
     bool compileStrictEq(Node*);
+
+    void compileSameValue(Node*);
     
     void compileAllocatePropertyStorage(Node*);
     void compileReallocatePropertyStorage(Node*);
@@ -1459,6 +1461,7 @@ public:
     void compileGetGetter(Node*);
     void compileGetSetter(Node*);
     void compileGetCallee(Node*);
+    void compileSetCallee(Node*);
     void compileGetArgumentCountIncludingThis(Node*);
     void compileSetArgumentCountIncludingThis(Node*);
     void compileStrCat(Node*);

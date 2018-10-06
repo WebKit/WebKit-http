@@ -67,7 +67,7 @@ private:
 
     private:
         // API::ContextMenuClient
-        RetainPtr<NSMenu> menuFromProposedMenu(WebPageProxy&, NSMenu *, const WebHitTestResultData&, API::Object*) override;
+        void menuFromProposedMenu(WebPageProxy&, NSMenu *, const WebHitTestResultData&, API::Object*, CompletionHandler<void(RetainPtr<NSMenu>&&)>&&) override;
 
         UIDelegate& m_uiDelegate;
     };
@@ -93,6 +93,7 @@ private:
         void runBeforeUnloadConfirmPanel(WebPageProxy*, const WTF::String&, WebFrameProxy*, const WebCore::SecurityOriginData&, Function<void(bool)>&& completionHandler) final;
         void exceededDatabaseQuota(WebPageProxy*, WebFrameProxy*, API::SecurityOrigin*, const WTF::String& databaseName, const WTF::String& displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentUsage, unsigned long long expectedUsage, Function<void(unsigned long long)>&& completionHandler) final;
         void reachedApplicationCacheOriginQuota(WebPageProxy*, const WebCore::SecurityOrigin&, uint64_t currentQuota, uint64_t totalBytesNeeded, Function<void(unsigned long long)>&& completionHandler) final;
+        void didResignInputElementStrongPasswordAppearance(WebPageProxy&, API::Object*) final;
 #if PLATFORM(MAC)
         void showPage(WebPageProxy*) final;
         void takeFocus(WebPageProxy*, WKFocusDirection) final;
@@ -114,7 +115,6 @@ private:
         void unavailablePluginButtonClicked(WebPageProxy&, WKPluginUnavailabilityReason, API::Dictionary&) final;
         void mouseDidMoveOverElement(WebPageProxy&, const WebHitTestResultData&, WebEvent::Modifiers, API::Object*);
         void didClickAutoFillButton(WebPageProxy&, API::Object*) final;
-        void didResignInputElementStrongPasswordAppearance(WebPageProxy&, API::Object*) final;
         void toolbarsAreVisible(WebPageProxy&, Function<void(bool)>&&) final;
         bool runOpenPanel(WebPageProxy*, WebFrameProxy*, const WebCore::SecurityOriginData&, API::OpenPanelParameters*, WebOpenPanelResultListenerProxy*) final;
         void didExceedBackgroundResourceLimitWhileInForeground(WebPageProxy&, WKResourceLimit) final;
@@ -158,6 +158,7 @@ private:
         bool webViewRunJavaScriptTextInputPanelWithPromptDefaultTextInitiatedByFrameCompletionHandler : 1;
         bool webViewRunBeforeUnloadConfirmPanelWithMessageInitiatedByFrameCompletionHandler : 1;
         bool webViewRequestGeolocationPermissionForFrameDecisionHandler : 1;
+        bool webViewDidResignInputElementStrongPasswordAppearanceWithUserInfo : 1;
 #if PLATFORM(MAC)
         bool showWebView : 1;
         bool focusWebView : 1;
@@ -173,7 +174,6 @@ private:
         bool webViewHandleAutoplayEventWithFlags : 1;
         bool webViewUnavailablePlugInButtonClicked : 1;
         bool webViewDidClickAutoFillButtonWithUserInfo : 1;
-        bool webViewDidResignInputElementStrongPasswordAppearanceWithUserInfo : 1;
         bool webViewDrawHeaderInRectForPageWithTitleURL : 1;
         bool webViewDrawFooterInRectForPageWithTitleURL : 1;
         bool webViewGetWindowFrameWithCompletionHandler : 1;
@@ -212,6 +212,7 @@ private:
 #if ENABLE(CONTEXT_MENUS)
         bool webViewContextMenuForElement : 1;
         bool webViewContextMenuForElementUserInfo : 1;
+        bool webViewGetContextMenuFromProposedMenuForElementUserInfoCompletionHandler : 1;
 #endif
         bool webViewHasVideoInPictureInPictureDidChange : 1;
     } m_delegateMethods;

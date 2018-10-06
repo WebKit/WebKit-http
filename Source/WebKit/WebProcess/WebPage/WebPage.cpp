@@ -510,7 +510,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 
     updateIsInWindow(true);
 
-    setMinimumLayoutSize(parameters.minimumLayoutSize);
+    setViewLayoutSize(parameters.viewLayoutSize);
     setAutoSizingShouldExpandToViewHeight(parameters.autoSizingShouldExpandToViewHeight);
     setViewportSizeForCSSViewportUnits(parameters.viewportSizeForCSSViewportUnits);
     
@@ -527,7 +527,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     m_userAgent = parameters.userAgent;
     
     if (!parameters.itemStates.isEmpty())
-        restoreSessionInternal(parameters.itemStates, WasRestoredByAPIRequest::No, WebBackForwardListProxy::OverwriteExistingItem::No);
+        restoreSessionInternal(parameters.itemStates, WasRestoredByAPIRequest::No, WebBackForwardListProxy::OverwriteExistingItem::Yes);
 
     if (parameters.sessionID.isValid())
         setSessionID(parameters.sessionID);
@@ -612,7 +612,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #endif
 
 #if PLATFORM(IOS)
-    setViewportConfigurationMinimumLayoutSize(parameters.viewportConfigurationMinimumLayoutSize, parameters.viewportConfigurationViewSize);
+    setViewportConfigurationViewLayoutSize(parameters.viewportConfigurationViewLayoutSize);
     setMaximumUnobscuredSize(parameters.maximumUnobscuredSize);
 #endif
 }
@@ -1753,26 +1753,11 @@ void WebPage::setUseFixedLayout(bool fixed)
 #if !PLATFORM(IOS)
     m_page->settings().setFixedElementsLayoutRelativeToFrame(fixed);
 #endif
-#if USE(COORDINATED_GRAPHICS)
-    m_page->settings().setAcceleratedCompositingForFixedPositionEnabled(fixed);
-    m_page->settings().setDelegatesPageScaling(fixed);
-    m_page->settings().setScrollingCoordinatorEnabled(fixed);
-#endif
-
-#if USE(COORDINATED_GRAPHICS) && ENABLE(SMOOTH_SCROLLING)
-    // Delegated scrolling will be enabled when the FrameView is created if fixed layout is enabled.
-    // Ensure we don't do animated scrolling in the WebProcess in that case.
-    m_page->settings().setScrollAnimatorEnabled(!fixed);
-#endif
 
     FrameView* view = mainFrameView();
     if (!view)
         return;
 
-#if USE(COORDINATED_GRAPHICS)
-    view->setDelegatesScrolling(fixed);
-    view->setPaintsEntireContents(fixed);
-#endif
     view->setUseFixedLayout(fixed);
     if (!fixed)
         setFixedLayoutSize(IntSize());
@@ -2170,15 +2155,6 @@ void WebPage::pageStoppedScrolling()
     if (Frame* frame = m_mainFrame->coreFrame())
         frame->loader().history().saveScrollPositionAndViewStateToItem(frame->loader().history().currentItem());
 }
-
-#if USE(COORDINATED_GRAPHICS)
-void WebPage::pageDidRequestScroll(const IntPoint& point)
-{
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    drawingArea()->scroll(IntRect(point, IntSize()), IntSize());
-#endif
-}
-#endif
 
 #if ENABLE(CONTEXT_MENUS)
 WebContextMenu* WebPage::contextMenu()
@@ -2729,7 +2705,7 @@ void WebPage::setInitialFocus(bool forward, bool isKeyboardEventValid, const Web
     if (isKeyboardEventValid && event.type() == WebEvent::KeyDown) {
         PlatformKeyboardEvent platformEvent(platform(event));
         platformEvent.disambiguateKeyDownEvent(PlatformEvent::RawKeyDown);
-        m_page->focusController().setInitialFocus(forward ? FocusDirectionForward : FocusDirectionBackward, &KeyboardEvent::create(platformEvent, frame.document()->defaultView()).get());
+        m_page->focusController().setInitialFocus(forward ? FocusDirectionForward : FocusDirectionBackward, &KeyboardEvent::create(platformEvent, &frame.windowProxy()).get());
 
         send(Messages::WebPageProxy::VoidCallback(callbackID));
         return;
@@ -3287,6 +3263,11 @@ RemoteWebInspectorUI* WebPage::remoteInspectorUI()
     if (!m_remoteInspectorUI)
         m_remoteInspectorUI = RemoteWebInspectorUI::create(*this);
     return m_remoteInspectorUI.get();
+}
+
+void WebPage::inspectorFrontendCountChanged(unsigned count)
+{
+    send(Messages::WebPageProxy::DidChangeInspectorFrontendCount(count));
 }
 
 #if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
@@ -4608,12 +4589,19 @@ bool WebPage::shouldUseCustomContentProviderForResponse(const ResourceResponse& 
 void WebPage::setTextAsync(const String& text)
 {
     auto frame = makeRef(m_page->focusController().focusedOrMainFrame());
-    if (!frame->selection().selection().isContentEditable())
+    if (frame->selection().selection().isContentEditable()) {
+        UserTypingGestureIndicator indicator(frame.get());
+        frame->selection().selectAll();
+        frame->editor().insertText(text, nullptr, TextEventInputKeyboard);
         return;
+    }
 
-    UserTypingGestureIndicator indicator(frame.get());
-    frame->selection().selectAll();
-    frame->editor().insertText(text, nullptr, TextEventInputKeyboard);
+    if (is<HTMLInputElement>(m_assistedNode.get())) {
+        downcast<HTMLInputElement>(*m_assistedNode).setValueForUser(text);
+        return;
+    }
+
+    ASSERT_NOT_REACHED();
 }
 
 void WebPage::insertTextAsync(const String& text, const EditingRange& replacementEditingRange, bool registerUndoGroup, uint32_t editingRangeIsRelativeTo, bool suppressSelectionUpdate)
@@ -5014,23 +5002,23 @@ void WebPage::setAlwaysShowsVerticalScroller(bool alwaysShowsVerticalScroller)
     view->setVerticalScrollbarMode(alwaysShowsVerticalScroller ? ScrollbarAlwaysOn : m_mainFrameIsScrollable ? ScrollbarAuto : ScrollbarAlwaysOff, alwaysShowsVerticalScroller || !m_mainFrameIsScrollable);
 }
 
-void WebPage::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
+void WebPage::setViewLayoutSize(const IntSize& viewLayoutSize)
 {
-    if (m_minimumLayoutSize == minimumLayoutSize)
+    if (m_viewLayoutSize == viewLayoutSize)
         return;
 
-    m_minimumLayoutSize = minimumLayoutSize;
-    if (minimumLayoutSize.width() <= 0) {
+    m_viewLayoutSize = viewLayoutSize;
+    if (viewLayoutSize.width() <= 0) {
         corePage()->mainFrame().view()->enableAutoSizeMode(false, IntSize(), IntSize());
         return;
     }
 
-    int minimumLayoutWidth = minimumLayoutSize.width();
-    int minimumLayoutHeight = std::max(minimumLayoutSize.height(), 1);
+    int viewLayoutWidth = viewLayoutSize.width();
+    int viewLayoutHeight = std::max(viewLayoutSize.height(), 1);
 
     int maximumSize = std::numeric_limits<int>::max();
 
-    corePage()->mainFrame().view()->enableAutoSizeMode(true, IntSize(minimumLayoutWidth, minimumLayoutHeight), IntSize(maximumSize, maximumSize));
+    corePage()->mainFrame().view()->enableAutoSizeMode(true, IntSize(viewLayoutWidth, viewLayoutHeight), IntSize(maximumSize, maximumSize));
 }
 
 void WebPage::setAutoSizingShouldExpandToViewHeight(bool shouldExpand)

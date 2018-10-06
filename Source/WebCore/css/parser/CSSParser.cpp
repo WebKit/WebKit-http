@@ -89,6 +89,7 @@ CSSParserContext::CSSParserContext(Document& document, const URL& sheetBaseURL, 
     springTimingFunctionEnabled = document.settings().springTimingFunctionEnabled();
     constantPropertiesEnabled = document.settings().constantPropertiesEnabled();
     conicGradientsEnabled = document.settings().conicGradientsEnabled();
+    colorFilterEnabled = document.settings().colorFilterEnabled();
     deferredCSSParserEnabled = document.settings().deferredCSSParserEnabled();
     allowNewLinesClamp = document.settings().appleMailLinesClampEnabled();
     useSystemAppearance = document.page() ? document.page()->useSystemAppearance() : false;
@@ -113,6 +114,7 @@ bool operator==(const CSSParserContext& a, const CSSParserContext& b)
         && a.springTimingFunctionEnabled == b.springTimingFunctionEnabled
         && a.constantPropertiesEnabled == b.constantPropertiesEnabled
         && a.conicGradientsEnabled == b.conicGradientsEnabled
+        && a.colorFilterEnabled == b.colorFilterEnabled
         && a.deferredCSSParserEnabled == b.deferredCSSParserEnabled
         && a.hasDocumentSecurityOrigin == b.hasDocumentSecurityOrigin
         && a.useSystemAppearance == b.useSystemAppearance;
@@ -176,14 +178,14 @@ Color CSSParser::parseColor(const String& string, bool strict)
     return primitiveValue.color();
 }
 
-Color CSSParser::parseSystemColor(const String& string, std::optional<const CSSParserContext&> context)
+Color CSSParser::parseSystemColor(const String& string, std::optional<std::reference_wrapper<const CSSParserContext>> context)
 {
     CSSValueID id = cssValueKeywordID(string);
     if (!StyleColor::isSystemColor(id))
         return Color();
 
     OptionSet<StyleColor::Options> options;
-    if (context && context.value().useSystemAppearance)
+    if (context && context->get().useSystemAppearance)
         options |= StyleColor::Options::UseSystemAppearance;
     return RenderTheme::singleton().systemColor(id, options);
 }
