@@ -347,6 +347,7 @@ static EncodedJSValue JSC_HOST_CALL functionHeapCapacity(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionFlashHeapAccess(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDisableRichSourceInfo(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionMallocInALoop(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionTotalCompileTime(ExecState*);
 
 struct Script {
     enum class StrictMode {
@@ -606,6 +607,7 @@ protected:
 
         addFunction(vm, "disableRichSourceInfo", functionDisableRichSourceInfo, 0);
         addFunction(vm, "mallocInALoop", functionMallocInALoop, 0);
+        addFunction(vm, "totalCompileTime", functionTotalCompileTime, 0);
     }
     
     void addFunction(VM& vm, JSObject* object, const char* name, NativeFunction function, unsigned arguments)
@@ -1809,6 +1811,15 @@ EncodedJSValue JSC_HOST_CALL functionMallocInALoop(ExecState*)
     return JSValue::encode(jsUndefined());
 }
 
+EncodedJSValue JSC_HOST_CALL functionTotalCompileTime(ExecState*)
+{
+#if ENABLE(JIT)
+    return JSValue::encode(jsNumber(JIT::totalCompileTime().milliseconds()));
+#else
+    return JSValue::encode(jsNumber(0));
+#endif
+}
+
 template<typename ValueType>
 typename std::enable_if<!std::is_fundamental<ValueType>::value>::type addOption(VM&, JSObject*, Identifier, ValueType) { }
 
@@ -2037,7 +2048,7 @@ EncodedJSValue JSC_HOST_CALL functionEnsureArrayStorage(ExecState* exec)
 {
     VM& vm = exec->vm();
     for (unsigned i = 0; i < exec->argumentCount(); ++i) {
-        if (JSObject* object = jsDynamicCast<JSObject*>(vm, exec->argument(0)))
+        if (JSObject* object = jsDynamicCast<JSObject*>(vm, exec->argument(i)))
             object->ensureArrayStorage(vm);
     }
     return JSValue::encode(jsUndefined());

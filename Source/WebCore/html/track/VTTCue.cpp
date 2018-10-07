@@ -1182,19 +1182,25 @@ const VTTCue* toVTTCue(const TextTrackCue* cue)
 String VTTCue::toJSONString() const
 {
     auto object = JSON::Object::create();
-
-    TextTrackCue::toJSON(object.get());
-
-    object->setString(ASCIILiteral("vertical"), vertical());
-    object->setBoolean(ASCIILiteral("snapToLines"), snapToLines());
-    object->setDouble(ASCIILiteral("line"), m_linePosition);
-    object->setDouble(ASCIILiteral("position"), position());
-    object->setInteger(ASCIILiteral("size"), m_cueSize);
-    object->setString(ASCIILiteral("align"), align());
-    object->setString(ASCIILiteral("text"), text());
-    object->setString(ASCIILiteral("regionId"), regionId());
+    toJSON(object.get());
 
     return object->toJSONString();
+}
+
+void VTTCue::toJSON(JSON::Object& object) const
+{
+    TextTrackCue::toJSON(object);
+
+#if !LOG_DISABLED
+    object.setString(ASCIILiteral("text"), text());
+#endif
+    object.setString(ASCIILiteral("vertical"), vertical());
+    object.setBoolean(ASCIILiteral("snapToLines"), snapToLines());
+    object.setDouble(ASCIILiteral("line"), m_linePosition);
+    object.setDouble(ASCIILiteral("position"), position());
+    object.setInteger(ASCIILiteral("size"), m_cueSize);
+    object.setString(ASCIILiteral("align"), align());
+    object.setString(ASCIILiteral("regionId"), regionId());
 }
 
 } // namespace WebCore

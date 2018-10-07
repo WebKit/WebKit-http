@@ -92,6 +92,9 @@ public:
     void processReadyToSuspend();
 
     void setIsHoldingLockedFiles(bool);
+    
+    void syncAllCookies();
+    void didSyncAllCookies();
 
     ProcessThrottler& throttler() { return m_throttler; }
     WebProcessPool& processPool() { return m_processPool; }
@@ -128,7 +131,7 @@ private:
     // Message handlers
     void didReceiveNetworkProcessProxyMessage(IPC::Connection&, IPC::Decoder&);
     void didCreateNetworkConnectionToWebProcess(const IPC::Attachment&);
-    void didReceiveAuthenticationChallenge(uint64_t pageID, uint64_t frameID, const WebCore::AuthenticationChallenge&, uint64_t challengeID);
+    void didReceiveAuthenticationChallenge(uint64_t pageID, uint64_t frameID, WebCore::AuthenticationChallenge&&, uint64_t challengeID);
     void didFetchWebsiteData(uint64_t callbackID, const WebsiteData&);
     void didDeleteWebsiteData(uint64_t callbackID);
     void didDeleteWebsiteDataForOrigins(uint64_t callbackID);
@@ -167,6 +170,9 @@ private:
 #endif
     ProcessThrottler m_throttler;
     ProcessThrottler::BackgroundActivityToken m_tokenForHoldingLockedFiles;
+    ProcessThrottler::BackgroundActivityToken m_syncAllCookiesToken;
+    
+    unsigned m_syncAllCookiesCounter { 0 };
 
     HashMap<uint64_t, CompletionHandler<void(bool success)>> m_writeBlobToFilePathCallbackMap;
     HashMap<uint64_t, WTF::CompletionHandler<void(bool wasGranted)>> m_storageAccessResponseCallbackMap;

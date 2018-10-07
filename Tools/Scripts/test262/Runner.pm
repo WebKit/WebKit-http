@@ -36,14 +36,19 @@ use File::Find;
 use File::Temp qw(tempfile tempdir);
 use File::Spec::Functions qw(abs2rel);
 use File::Basename qw(dirname);
+use File::Path qw(mkpath);
 use Cwd qw(abs_path);
 use FindBin;
 use Env qw(DYLD_FRAMEWORK_PATH);
-my $Bin;
-
 use Config;
-use Encode;
 
+my $podIsAvailable;
+if  (eval {require Pod::Usage; 1;}) {
+    Pod::Usage->import();
+    $podIsAvailable = 1;
+}
+
+my $Bin;
 BEGIN {
     $ENV{DBIC_OVERWRITE_HELPER_METHODS_OK} = 1;
 
@@ -58,14 +63,11 @@ BEGIN {
 }
 
 use YAML qw(Load LoadFile Dump DumpFile Bless);
-use JSON;
 use Parallel::ForkManager;
 use Getopt::Long qw(GetOptions);
-use Pod::Usage;
-use Term::ANSIColor;
 
-# Commandline args
-my $cliProcesses;
+# Commandline settings
+my $max_process;
 my @cliTestDirs;
 my $verbose;
 my $JSC;
@@ -80,30 +82,26 @@ my $saveExpectations;
 my $failingOnly;
 my $latestImport;
 my $runningAllTests;
+
+my $expectationsFile = abs_path("$Bin/../../../JSTests/test262/expectations.yaml");
+my $configFile = abs_path("$Bin/../../../JSTests/test262/config.yaml");
+
+my $resultsDir = `pwd`;
+chomp $resultsDir;
+$resultsDir = $resultsDir . "/test262-results";
+mkpath($resultsDir);
+
+my $resultsFile = abs_path("$resultsDir/results.yaml");
+my $summaryTxtFile = abs_path("$resultsDir/summary.txt");
+my $summaryFile = abs_path("$resultsDir/summary.yaml");
+
 my @results;
-
-my $expectationsFile = abs_path("$Bin/expectations.yaml");
-my $configFile = abs_path("$Bin/config.yaml");
-my $resultsFile = abs_path("$Bin/results.yaml");
-my $summaryTxtFile = abs_path("$Bin/results-summary.txt");
-my $summaryFile = abs_path("$Bin/results-summary.yaml");
-
-processCLI();
+my @files;
 
 my $tempdir = tempdir();
-
-my @default_harnesses = (
-    "$harnessDir/sta.js",
-    "$harnessDir/assert.js",
-    "$harnessDir/doneprintHandle.js",
-    "$Bin/agent.js"
-);
-
-my @files;
-my ($resfh, $resfilename) = getTempFile();
-
 my ($deffh, $deffile) = getTempFile();
-print $deffh getHarness(<@default_harnesses>);
+
+my @default_harnesses;
 
 my $startTime = time();
 
@@ -115,6 +113,7 @@ sub processCLI {
     my $ignoreExpectations;
     my @features;
     my $stats;
+    my $specifiedResultsFile;
 
     # If adding a new commandline argument, you must update the POD
     # documentation at the end of the file.
@@ -122,7 +121,7 @@ sub processCLI {
         'j|jsc=s' => \$JSC,
         't|t262=s' => \$test262Dir,
         'o|test-only=s@' => \@cliTestDirs,
-        'p|child-processes=i' => \$cliProcesses,
+        'p|child-processes=i' => \$max_process,
         'h|help' => \$help,
         'd|debug' => \$debug,
         'v|verbose' => \$verbose,
@@ -134,13 +133,34 @@ sub processCLI {
         'failing-files' => \$failingOnly,
         'l|latest-import' => \$latestImport,
         'stats' => \$stats,
+        'r|results=s' => \$specifiedResultsFile,
     );
 
     if ($help) {
-        pod2usage(-exitstatus => 0, -verbose => 2, -input => __FILE__);
+        if ($podIsAvailable) {
+            pod2usage(-exitstatus => 0, -verbose => 2, -input => __FILE__);
+        } else {
+            print "Pod::Usage is not available to print the help options\n";
+            exit;
+        }
+    }
+
+    if ($specifiedResultsFile) {
+        if (!$stats) {
+            print "Waring: supplied results file not used for this command.\n";
+        }
+        elsif (-e $specifiedResultsFile) {
+            $resultsFile = $specifiedResultsFile;
+        }
+        else {
+            die "Error: results file $specifiedResultsFile does not exist.";
+        }
     }
 
     if ($stats) {
+        if (! -e $resultsFile) {
+            die "Error: cannot find results file, please specify with --results.";
+        }
         summarizeResults();
         exit;
     }
@@ -158,8 +178,6 @@ sub processCLI {
         }
     } else {
         $JSC = getBuildPath($debug);
-
-        print("Using the following jsc path: $JSC\n");
     }
 
     if ($latestImport) {
@@ -178,7 +196,6 @@ sub processCLI {
         if ($configFile and not -e $configFile) {
             die "Config file $configFile does not exist!";
         }
-
         $config = LoadFile($configFile) or die $!;
         if ($config->{skip} && $config->{skip}->{files}) {
             %configSkipHash = map { $_ => 1 } @{$config->{skip}->{files}};
@@ -189,7 +206,7 @@ sub processCLI {
         # If expectations file doesn't exist yet, just run tests, UNLESS
         # --failures-only option supplied.
         if ( $failingOnly && ! -e $expectationsFile ) {
-            print "Error: Cannot run failing tests if test262-expectation.yaml file does not exist.\n";
+            print "Error: Cannot run failing tests if expectation.yaml file does not exist.\n";
             die;
         } elsif (-e $expectationsFile) {
             $expect = LoadFile($expectationsFile) or die $!;
@@ -200,13 +217,13 @@ sub processCLI {
         %filterFeatures = map { $_ => 1 } @features;
     }
 
-    $cliProcesses ||= getProcesses();
+    $max_process ||= getProcesses();
 
     print "\n-------------------------Settings------------------------\n"
         . "Test262 Dir: $test262Dir\n"
         . "JSC: $JSC\n"
         . "DYLD_FRAMEWORK_PATH: $DYLD_FRAMEWORK_PATH\n"
-        . "Child Processes: $cliProcesses\n";
+        . "Child Processes: $max_process\n";
 
     print "Features to include: " . join(', ', @features) . "\n" if @features;
     print "Paths:  " . join(', ', @cliTestDirs) . "\n" if @cliTestDirs;
@@ -221,10 +238,18 @@ sub processCLI {
 }
 
 sub main {
-    push(@cliTestDirs, 'test') if not @cliTestDirs;
+    processCLI();
 
-    my $max_process = $cliProcesses;
-    my $pm = Parallel::ForkManager->new($max_process);
+    @default_harnesses = (
+        "$harnessDir/sta.js",
+        "$harnessDir/assert.js",
+        "$harnessDir/doneprintHandle.js",
+        "$Bin/agent.js"
+    );
+    print $deffh getHarness(<@default_harnesses>);
+
+    # If not commandline test path supplied, use the root directory of all tests.
+    push(@cliTestDirs, 'test') if not @cliTestDirs;
 
     if ($latestImport) {
         @files = loadImportFile();
@@ -245,22 +270,56 @@ sub main {
         }
     }
 
-    FILES:
-    foreach my $file (@files) {
-        $pm->start and next FILES; # do the fork
-        srand(time ^ $$); # Creates a new seed for each fork
-        processFile($file);
 
-        $pm->finish; # do the exit in the child process
-    };
+    # If we are processing many files, fork process
+    if (scalar @files > $max_process * 5) {
 
-    $pm->wait_all_children;
+        # Make temporary files to record results
+        my @resultsfhs;
+        for (my $i = 0; $i <= $max_process-1; $i++) {
+            my ($fh, $filename) = getTempFile();
+            $resultsfhs[$i] = $fh;
+        }
+
+        my $pm = Parallel::ForkManager->new($max_process);
+        my $filesperprocess = int(scalar @files / $max_process);
+
+        FILES:
+        for (my $i = 0; $i <= $max_process-1; $i++) {
+            $pm->start and next FILES; # do the fork
+            srand(time ^ $$); # Creates a new seed for each fork
+
+            my $first = $filesperprocess * $i;
+            my $last = $i == $max_process-1 ? scalar @files : $filesperprocess * ($i+1);
+
+            for (my $j = $first; $j < $last; $j++) {
+                processFile($files[$j], $resultsfhs[$i]);
+            };
+
+            $pm->finish; # do the exit in the child process
+        };
+
+        $pm->wait_all_children;
+
+        # Read results from file into @results and close
+        for (my $i = 0; $i <= $max_process-1; $i++) {
+            seek($resultsfhs[$i], 0, 0);
+            push @results, LoadFile($resultsfhs[$i]);
+            close $resultsfhs[$i];
+        }
+    }
+    # Otherwising, running sequentially is fine
+    else {
+        my ($resfh, $resfilename) = getTempFile();
+        foreach my $file (@files) {
+            processFile($file, $resfh);
+        };
+        seek($resfh, 0, 0);
+        @results = LoadFile($resfh);
+        close $resfh;
+    }
 
     close $deffh;
-
-    seek($resfh, 0, 0);
-    @results = LoadFile($resfh);
-    close $resfh;
 
     @results = sort { "$a->{path} . $a->{mode}" cmp "$b->{path} . $b->{mode}" } @results;
 
@@ -369,7 +428,12 @@ sub getProcesses {
         $cores = 1;
     }
 
-    return $cores * 8;
+    if ($cores <= 8) {
+        return $cores * 4;
+    }
+    else {
+        return $cores * 2;
+    }
 }
 
 sub parseError {
@@ -418,14 +482,16 @@ sub getBuildPath {
 }
 
 sub processFile {
-    my $filename = shift;
+    my ($filename, $resultsfh) = @_;
     my $contents = getContents($filename);
     my $data = parseData($contents, $filename);
+    my $resultsdata;
 
     # Check test against filters in config file
     my $file = abs2rel( $filename, $test262Dir );
     if (shouldSkip($file, $data)) {
-        processResult($filename, $data, "skip");
+        $resultsdata = processResult($filename, $data, "skip");
+        DumpFile($resultsfh, $resultsdata);
         return;
     }
 
@@ -439,7 +505,8 @@ sub processFile {
     foreach my $scenario (@scenarios) {
         my $result = runTest($includesfile, $filename, $scenario, $data);
 
-        processResult($filename, $data, $scenario, $result);
+        $resultsdata = processResult($filename, $data, $scenario, $result);
+        DumpFile($resultsfh, $resultsdata);
     }
 
     close $includesfh if defined $includesfh;
@@ -546,7 +613,7 @@ sub runTest {
     my $defaultHarness = '';
     $defaultHarness = $deffile if $scenario ne 'raw';
 
-    my $result = qx/$JSC $args $defaultHarness $includesfile $prefixFile$filename/;
+    my $result = qx/$JSC $args $defaultHarness $includesfile '$prefixFile$filename'/;
 
     chomp $result;
 
@@ -601,7 +668,7 @@ sub processResult {
 
     $resultdata{features} = $data->{features} if $data->{features};
 
-    DumpFile($resfh, \%resultdata);
+    return \%resultdata;
 }
 
 sub getTempFile {
@@ -825,7 +892,7 @@ Specify one or more specific test262 directory of test to run, relative to the r
 
 =item B<--save, -s>
 
-Overwrites the test262-expectations.yaml and test262-results.yaml file with the current list of test262 files and test results.
+Overwrites the test262-expectations.yaml file with the current list of test262 files and test results.
 
 =item B<--ignore-expectations, -x>
 
@@ -841,7 +908,11 @@ Runs the test files listed in the last import (./JSTests/test262/latest-changes-
 
 =item B<--stats>
 
-Calculate conformance statistics from JSTests/test262-results.yaml file. Saves results in JSTests/test262/results-summary.txt and JSTests/test262/results-summary.yaml.
+Calculate conformance statistics from results/results.yaml file or a supplied results file (--results). Saves results in results/summary.txt and results/summary.yaml.
+
+=item B<--results, -r>
+
+Specifies a results file the --stats option.
 
 =back
 

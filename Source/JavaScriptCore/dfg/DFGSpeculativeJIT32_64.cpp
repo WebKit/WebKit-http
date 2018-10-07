@@ -1222,49 +1222,6 @@ GPRReg SpeculativeJIT::fillSpeculateBoolean(Edge edge)
     }
 }
 
-void SpeculativeJIT::compileObjectEquality(Node* node)
-{
-    SpeculateCellOperand op1(this, node->child1());
-    SpeculateCellOperand op2(this, node->child2());
-    GPRReg op1GPR = op1.gpr();
-    GPRReg op2GPR = op2.gpr();
-    
-    if (masqueradesAsUndefinedWatchpointIsStillValid()) {
-        DFG_TYPE_CHECK(
-            JSValueSource::unboxedCell(op1GPR), node->child1(), SpecObject, m_jit.branchIfNotObject(op1GPR));
-        DFG_TYPE_CHECK(
-            JSValueSource::unboxedCell(op2GPR), node->child2(), SpecObject, m_jit.branchIfNotObject(op2GPR));
-    } else {
-        DFG_TYPE_CHECK(
-            JSValueSource::unboxedCell(op1GPR), node->child1(), SpecObject, m_jit.branchIfNotObject(op1GPR));
-        speculationCheck(BadType, JSValueSource::unboxedCell(op1GPR), node->child1(),
-            m_jit.branchTest8(
-                MacroAssembler::NonZero, 
-                MacroAssembler::Address(op1GPR, JSCell::typeInfoFlagsOffset()),
-                MacroAssembler::TrustedImm32(MasqueradesAsUndefined)));
-
-        DFG_TYPE_CHECK(
-            JSValueSource::unboxedCell(op2GPR), node->child2(), SpecObject, m_jit.branchIfNotObject(op2GPR));
-        speculationCheck(BadType, JSValueSource::unboxedCell(op2GPR), node->child2(),
-            m_jit.branchTest8(
-                MacroAssembler::NonZero,
-                MacroAssembler::Address(op2GPR, JSCell::typeInfoFlagsOffset()),
-                MacroAssembler::TrustedImm32(MasqueradesAsUndefined)));
-    }
-    
-    GPRTemporary resultPayload(this, Reuse, op2);
-    GPRReg resultPayloadGPR = resultPayload.gpr();
-    
-    MacroAssembler::Jump falseCase = m_jit.branchPtr(MacroAssembler::NotEqual, op1GPR, op2GPR);
-    m_jit.move(TrustedImm32(1), resultPayloadGPR);
-    MacroAssembler::Jump done = m_jit.jump();
-    falseCase.link(&m_jit);
-    m_jit.move(TrustedImm32(0), resultPayloadGPR);
-    done.link(&m_jit);
-
-    booleanResult(resultPayloadGPR, node);
-}
-
 void SpeculativeJIT::compileObjectStrictEquality(Edge objectChild, Edge otherChild)
 {
     SpeculateCellOperand op1(this, objectChild);
@@ -1492,32 +1449,6 @@ void SpeculativeJIT::compileSymbolUntypedEquality(Node* node, Edge symbolEdge, E
 
     untypedNotCellJump.link(&m_jit);
     booleanResult(resultPayloadGPR, node);
-}
-
-void SpeculativeJIT::compileInt32Compare(Node* node, MacroAssembler::RelationalCondition condition)
-{
-    SpeculateInt32Operand op1(this, node->child1());
-    SpeculateInt32Operand op2(this, node->child2());
-    GPRTemporary resultPayload(this);
-    
-    m_jit.compare32(condition, op1.gpr(), op2.gpr(), resultPayload.gpr());
-    
-    // If we add a DataFormatBool, we should use it here.
-    booleanResult(resultPayload.gpr(), node);
-}
-
-void SpeculativeJIT::compileDoubleCompare(Node* node, MacroAssembler::DoubleCondition condition)
-{
-    SpeculateDoubleOperand op1(this, node->child1());
-    SpeculateDoubleOperand op2(this, node->child2());
-    GPRTemporary resultPayload(this);
-    
-    m_jit.move(TrustedImm32(1), resultPayload.gpr());
-    MacroAssembler::Jump trueCase = m_jit.branchDouble(condition, op1.fpr(), op2.fpr());
-    m_jit.move(TrustedImm32(0), resultPayload.gpr());
-    trueCase.link(&m_jit);
-    
-    booleanResult(resultPayload.gpr(), node);
 }
 
 void SpeculativeJIT::compileObjectOrOtherLogicalNot(Edge nodeUse)
@@ -1891,7 +1822,7 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case GetLocal: {
-        AbstractValue& value = m_state.variables().operand(node->local());
+        AbstractValue& value = m_state.operand(node->local());
 
         // If the CFA is tracking this variable and it found that the variable
         // cannot have been assigned, then don't attempt to proceed.
@@ -2754,48 +2685,6 @@ void SpeculativeJIT::compile(Node* node)
 
             m_jit.poke(basePayload, index++);
             m_jit.poke(baseTag, index++);
-
-            m_jit.poke(thisValuePayload, index++);
-            m_jit.poke(thisValueTag, index++);
-
-            m_jit.poke(propertyPayload, index++);
-            m_jit.poke(propertyTag, index++);
-
-            flushRegisters();
-        }
-
-        JSValueOperand value(this, m_jit.graph().varArgChild(node, 3));
-        GPRReg valueTag = value.tagGPR();
-        GPRReg valuePayload = value.payloadGPR();
-        m_jit.poke(valuePayload, index++);
-        m_jit.poke(valueTag, index++);
-
-        flushRegisters();
-        appendCall(m_jit.isStrictModeFor(node->origin.semantic) ? operationPutByValWithThisStrict : operationPutByValWithThis);
-        m_jit.exceptionCheck();
-#elif CPU(MIPS)
-        // We don't have enough registers on MIPS either but the ABI is a little different.
-        unsigned index = 4;
-        m_jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
-        {
-            JSValueOperand base(this, m_jit.graph().varArgChild(node, 0));
-            GPRReg baseTag = base.tagGPR();
-            GPRReg basePayload = base.payloadGPR();
-
-            JSValueOperand thisValue(this, m_jit.graph().varArgChild(node, 1));
-            GPRReg thisValueTag = thisValue.tagGPR();
-            GPRReg thisValuePayload = thisValue.payloadGPR();
-
-            JSValueOperand property(this, m_jit.graph().varArgChild(node, 2));
-            GPRReg propertyTag = property.tagGPR();
-            GPRReg propertyPayload = property.payloadGPR();
-
-            // for operationPutByValWithThis[Strict](), base is a 64 bits
-            // argument, so it should be double word aligned on the stack.
-            // This requirement still applies when it's in argument registers
-            // instead of on the stack.
-            m_jit.move(basePayload, GPRInfo::argumentGPR2);
-            m_jit.move(baseTag, GPRInfo::argumentGPR3);
 
             m_jit.poke(thisValuePayload, index++);
             m_jit.poke(thisValueTag, index++);
@@ -3873,7 +3762,7 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case HasOwnProperty: {
-#if CPU(X86) || CPU(MIPS)
+#if CPU(X86)
         ASSERT(node->child2().useKind() == UntypedUse);
         SpeculateCellOperand object(this, node->child1());
         JSValueOperand key(this, node->child2());

@@ -2349,7 +2349,6 @@ webkit.org/b/157179 editing/pasteboard/drag-selected-image-to-contenteditable.ht
 webkit.org/b/157179 editing/pasteboard/drop-file-svg.html [ Failure ]
 webkit.org/b/157179 editing/pasteboard/drop-inputtext-acquires-style.html [ Failure ]
 webkit.org/b/157179 editing/pasteboard/drop-link.html [ Failure ]
-webkit.org/b/157179 editing/pasteboard/drag-link-with-data-transfer-adds-trusted-link-to-pasteboard.html [ Failure ]
 webkit.org/b/157179 editing/pasteboard/drop-text-without-selection.html [ Failure ]
 webkit.org/b/157179 editing/pasteboard/get-data-text-plain-drop.html [ Failure ]
 webkit.org/b/157179 editing/pasteboard/smart-drag-drop.html [ Failure ]
@@ -2370,7 +2369,6 @@ webkit.org/b/157179 fast/events/drag-and-drop.html [ Failure Timeout ]
 webkit.org/b/157179 fast/events/drag-and-drop-subframe-dataTransfer.html [ Failure Timeout ]
 webkit.org/b/42194 fast/events/drag-and-drop-link.html [ Failure ]
 webkit.org/b/157179 fast/events/drag-and-drop-link-into-focused-contenteditable.html [ Failure ]
-webkit.org/b/157179 fast/events/drag-selects-image.html [ Failure ]
 webkit.org/b/157179 fast/events/draggable-div-customdata.html [ Failure ]
 webkit.org/b/157179 fast/events/draggable-div-nodata.html [ Failure ]
 webkit.org/b/157179 fast/events/dropzone-001.html [ Failure Timeout ]
@@ -2603,8 +2601,6 @@ webkit.org/b/58845 fast/dom/title-directionality-removeChild.html [ Failure ]
 # HTTP 204 (No Content) should be ignored
 webkit.org/b/60206 http/tests/navigation/response204.html [ Failure ]
 
-webkit.org/b/61630 fast/events/dropzone-005.html [ Failure ]
-
 webkit.org/b/68278 http/tests/history/back-with-fragment-change.php [ Pass Failure ]
 
 webkit.org/b/68512 accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
@@ -2689,9 +2685,6 @@ webkit.org/b/111606 fast/borders/border-fit-2.html [ Failure ]
 webkit.org/b/112228 svg/custom/resources-css-scaled.html [ ImageOnlyFailure ]
 
 webkit.org/b/99893 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ ImageOnlyFailure Pass ]
-
-webkit.org/b/115025 fast/events/constructors/mouse-event-constructor.html [ Failure ]
-webkit.org/b/115025 fast/events/constructors/wheel-event-constructor.html [ Failure ]
 
 webkit.org/b/115437 fast/text/complex-initial-advance.html [ ImageOnlyFailure ]
 
@@ -3079,8 +3072,6 @@ webkit.org/b/163972 fast/canvas/canvas-gradient-addStop-error.html [ Failure ]
 
 webkit.org/b/163974 fast/canvas/drawImage-with-negative-source-destination.html [ Failure ]
 
-webkit.org/b/163976 fast/css/user-drag-none.html [ Failure ]
-
 webkit.org/b/163977 fast/css/will-change/will-change-creates-stacking-context-inline.html [ ImageOnlyFailure ]
 webkit.org/b/163979 fast/css/will-change/will-change-creates-stacking-context.html [ ImageOnlyFailure ]
 
@@ -3367,9 +3358,19 @@ webkit.org/b/184778 inspector/canvas/setShaderProgramHighlighted.html [ Failure 
 webkit.org/b/184779 transitions/clip-path-path-transitions.html [ Failure ]
 webkit.org/b/184779 transitions/clip-path-transitions.html [ Failure ]
 
-webkit.org/b/185072 fast/events/mouse-click-events.html [ Failure ]
-webkit.org/b/185072 fast/events/context-activated-by-key-event.html [ Failure ]
-webkit.org/b/185072 fast/events/mouse-cursor-change.html [ Failure ]
+webkit.org/b/185252 http/tests/media/hls/hls-audio-tracks.html [ Failure ]
+
+webkit.org/b/185254 http/tests/cache/disk-cache/redirect-chain-limits.html [ Failure ]
+webkit.org/b/185254 http/tests/xmlhttprequest/onloadend-event-after-error.html [ Failure ]
+webkit.org/b/185254 http/tests/xmlhttprequest/response-access-on-error.html [ Failure ]
+webkit.org/b/185254 http/tests/xmlhttprequest/state-after-network-error.html [ Failure ]
+webkit.org/b/185254 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-infinite.htm [ Failure ]
+webkit.org/b/185254 imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-network-error.htm [ Failure ]
+webkit.org/b/185254 http/tests/cache/network-error-during-revalidation.html [ Failure ]
+webkit.org/b/185254 http/tests/xmlhttprequest/XMLHttpRequestException.html [ Failure ]
+webkit.org/b/185254 http/tests/xmlhttprequest/onloadend-event-after-sync-requests.html [ Failure ]
+webkit.org/b/185254 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-infinite-sync.htm [ Failure ]
+webkit.org/b/185254 imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-network-error-sync.htm [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

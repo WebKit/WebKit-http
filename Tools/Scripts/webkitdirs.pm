@@ -2473,6 +2473,14 @@ sub waitUntilIOSSimulatorDeviceIsInState($$)
     }
 }
 
+sub waitUntilProcessNotRunning($)
+{
+    my ($process) = @_;
+    while (system("/bin/ps -eo pid,comm | /usr/bin/grep '$process\$'") == 0) {
+        usleep(500 * 1000);
+    }
+}
+
 sub shutDownIOSSimulatorDevice($)
 {
     my ($simulatorDevice) = @_;
@@ -2498,6 +2506,7 @@ sub relaunchIOSSimulator($)
     system("open", "-a", $iosSimulatorPath, "--args", "-CurrentDeviceUDID", $simulatedDevice->{UDID}) == 0 or die "Failed to open $iosSimulatorPath: $!"; 
 
     waitUntilIOSSimulatorDeviceIsInState($simulatedDevice->{UDID}, SIMULATOR_DEVICE_STATE_BOOTED);
+    waitUntilProcessNotRunning("com.apple.datamigrator");
 }
 
 sub quitIOSSimulator(;$)

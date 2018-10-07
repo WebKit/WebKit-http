@@ -1701,9 +1701,10 @@ webkit.org/b/181479 http/tests/misc/slow-loading-animated-image.html [ Pass Imag
 
 webkit.org/b/181494 accessibility/mac/aria-multiple-liveregions-notification.html [ Pass Failure ]
 
-# A lot of GPU hardware simply crashes with this test, since it allocates a lot of memory.
-# It is enabled on systems that instead return GL_OUT_OF_MEMORY.
+# A lot of GPU hardware simply crashes with these tests, since they allocate a lot of memory.
+# They are enabled on systems that instead return GL_OUT_OF_MEMORY.
 [ ElCapitan Sierra ] fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies.html [ Skip ]
+[ ElCapitan Sierra ] fast/canvas/webgl/index-validation-with-subsequent-draws.html [ Skip ]
 
 webkit.org/b/181100 inspector/worker/worker-recover-if-inspector-close.html [ Pass Failure ]
 
@@ -1729,8 +1730,6 @@ webkit.org/b/181831 [ HighSierra+ ] fast/forms/searchfield-heights.html [ Pass F
 webkit.org/b/182589 fast/dom/adopt-node-crash-2.html [ Pass Failure ]
 
 webkit.org/b/181612 [ Debug ] webanimations/animation-opacity-animation-crash.html [ Pass Failure ]
-
-webkit.org/b/172241 http/tests/appcache/404-resource-with-slow-main-resource.php [ Pass Failure ]
 
 webkit.org/b/173946 [ Debug ] media/modern-media-controls/fullscreen-support/fullscreen-support-press.html [ Pass Failure ]
 
@@ -1758,3 +1757,9 @@ webkit.org/b/184612 [ Debug ] media/audio-concurrent-supported.html [ Pass Failu
 
 # Font collections are not supported on every OS.
 webkit.org/b/184624 [ Sierra ] fast/text/font-collection.html [ ImageOnlyFailure ]
+
+webkit.org/b/184457 media/video-aspect-ratio.html [ Pass Failure ]
+
+webkit.org/b/184609 platform/mac/media/audio-session-category-video-track-change.html [ Pass Failure ]
+
+webkit.org/b/170830 inspector/sampling-profiler/named-function-expression.html [ Pass Failure ]

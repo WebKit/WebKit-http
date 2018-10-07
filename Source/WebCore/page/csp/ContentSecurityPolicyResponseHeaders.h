@@ -43,7 +43,7 @@ enum class ContentSecurityPolicyHeaderType {
 class ContentSecurityPolicyResponseHeaders {
 public:
     ContentSecurityPolicyResponseHeaders() = default;
-    explicit ContentSecurityPolicyResponseHeaders(const ResourceResponse&);
+    WEBCORE_EXPORT explicit ContentSecurityPolicyResponseHeaders(const ResourceResponse&);
 
     ContentSecurityPolicyResponseHeaders isolatedCopy() const;
 
@@ -54,6 +54,7 @@ private:
     friend class ContentSecurityPolicy;
 
     Vector<std::pair<String, ContentSecurityPolicyHeaderType>> m_headers;
+    int m_httpStatusCode { 0 };
 };
 
 template <class Encoder>
@@ -64,6 +65,7 @@ void ContentSecurityPolicyResponseHeaders::encode(Encoder& encoder) const
         encoder << pair.first;
         encoder.encodeEnum(pair.second);
     }
+    encoder << m_httpStatusCode;
 }
 
 template <class Decoder>
@@ -82,6 +84,9 @@ bool ContentSecurityPolicyResponseHeaders::decode(Decoder& decoder, ContentSecur
             return false;
         headers.m_headers.append(std::make_pair(header, headerType));
     }
+
+    if (!decoder.decode(headers.m_httpStatusCode))
+        return false;
 
     return true;
 }

@@ -48,13 +48,14 @@ static inline bool isSameOrigin(const URL& url, const SecurityOrigin* origin)
     return url.protocolIsData() || url.protocolIsBlob() || !origin || origin->canRequest(url);
 }
 
-NetworkLoadChecker::NetworkLoadChecker(FetchOptions&& options, PAL::SessionID sessionID, HTTPHeaderMap&& originalRequestHeaders, URL&& url, RefPtr<SecurityOrigin>&& sourceOrigin, PreflightPolicy preflightPolicy)
+NetworkLoadChecker::NetworkLoadChecker(FetchOptions&& options, PAL::SessionID sessionID, HTTPHeaderMap&& originalRequestHeaders, URL&& url, RefPtr<SecurityOrigin>&& sourceOrigin, PreflightPolicy preflightPolicy, String&& referrer)
     : m_options(WTFMove(options))
     , m_sessionID(sessionID)
     , m_originalRequestHeaders(WTFMove(originalRequestHeaders))
     , m_url(WTFMove(url))
     , m_origin(WTFMove(sourceOrigin))
     , m_preflightPolicy(preflightPolicy)
+    , m_referrer(WTFMove(referrer))
 {
     m_isSameOriginRequest = isSameOrigin(m_url, m_origin.get());
     switch (options.credentials) {
@@ -310,11 +311,12 @@ bool NetworkLoadChecker::doesNotNeedCORSCheck(const URL& url) const
     return m_isSameOriginRequest;
 }
 
-ContentSecurityPolicy* NetworkLoadChecker::contentSecurityPolicy() const
+ContentSecurityPolicy* NetworkLoadChecker::contentSecurityPolicy()
 {
     if (!m_contentSecurityPolicy && m_cspResponseHeaders) {
-        m_contentSecurityPolicy = std::make_unique<ContentSecurityPolicy>(*m_origin);
-        m_contentSecurityPolicy->didReceiveHeaders(*m_cspResponseHeaders, ContentSecurityPolicy::ReportParsingErrors::No);
+        // FIXME: Pass the URL of the protected resource instead of its origin.
+        m_contentSecurityPolicy = std::make_unique<ContentSecurityPolicy>(URL { URL { }, m_origin->toString() });
+        m_contentSecurityPolicy->didReceiveHeaders(*m_cspResponseHeaders, String { m_referrer }, ContentSecurityPolicy::ReportParsingErrors::No);
     }
     return m_contentSecurityPolicy.get();
 }

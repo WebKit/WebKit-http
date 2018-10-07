@@ -29,6 +29,8 @@ messages -> NetworkProcessProxy LegacyReceiver {
     DidDeleteWebsiteData(uint64_t callbackID)
     DidDeleteWebsiteDataForOrigins(uint64_t callbackID)
 
+    DidSyncAllCookies()
+
     DidWriteBlobToFilePath(bool success, uint64_t callbackID)
 
     GrantSandboxExtensionsToStorageProcessForBlobs(uint64_t requestID, Vector<String> paths)
@@ -47,7 +49,7 @@ messages -> NetworkProcessProxy LegacyReceiver {
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     StorageAccessRequestResult(bool wasGranted, uint64_t contextId)
     AllStorageAccessEntriesResult(Vector<String> domains, uint64_t contextId)
-
+#endif
 #if ENABLE(CONTENT_EXTENSIONS)
     ContentExtensionRules(WebKit::UserContentControllerIdentifier identifier)
 #endif

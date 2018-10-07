@@ -190,12 +190,6 @@ void NetworkProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::Dec
     didReceiveSyncNetworkProcessMessage(connection, decoder, replyEncoder);
 }
 
-void NetworkProcess::didClose(IPC::Connection&)
-{
-    // The UIProcess just exited.
-    stopRunLoop();
-}
-
 void NetworkProcess::didCreateDownload()
 {
     disableTermination();
@@ -297,6 +291,8 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 
     for (auto& scheme : parameters.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest)
         registerURLSchemeAsCanDisplayOnlyIfCanRequest(scheme);
+
+    m_trackNetworkActivity = parameters.trackNetworkActivity;
 
     RELEASE_LOG(Process, "%p - NetworkProcess::initializeNetworkProcess: Presenting process = %d", this, WebCore::presentingApplicationPID());
 }
@@ -926,6 +922,11 @@ void NetworkProcess::registerURLSchemeAsCORSEnabled(const String& scheme) const
 void NetworkProcess::registerURLSchemeAsCanDisplayOnlyIfCanRequest(const String& scheme) const
 {
     SchemeRegistry::registerAsCanDisplayOnlyIfCanRequest(scheme);
+}
+
+void NetworkProcess::didSyncAllCookies()
+{
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidSyncAllCookies(), 0);
 }
 
 #if !PLATFORM(COCOA)

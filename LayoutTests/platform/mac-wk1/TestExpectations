@@ -417,8 +417,6 @@ webkit.org/b/167857 pageoverlay/overlay-remove-reinsert-view.html [ Skip ]
 # There is not NetworkProcess in WK1, so it can't crash.
 http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
 
-webkit.org/b/170830 inspector/sampling-profiler/named-function-expression.html [ Pass Failure ]
-
 # auto-sizing produces inconsistent image results
 css3/viewport-percentage-lengths/vh-auto-size.html [ Skip ]
 
@@ -546,6 +544,6 @@ webkit.org/b/184456 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 
 webkit.org/b/184569 [ Debug ] animations/missing-from-to.html [ Skip ]
 
-webkit.org/b/184457 media/video-aspect-ratio.html [ Pass Failure ]
-
 webkit.org/b/184458 media/remote-control-command-is-user-gesture.html [ Pass Timeout ]
+
+webkit.org/b/185404 http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-main-frame.html [ Pass Failure ]

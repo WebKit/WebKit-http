@@ -34,6 +34,10 @@
 
 namespace WebCore {
 
+namespace Display {
+class Box;
+}
+
 namespace Layout {
 
 class Box;
@@ -44,31 +48,36 @@ class LayoutContext;
 class FormattingContext {
     WTF_MAKE_ISO_ALLOCATED(FormattingContext);
 public:
-    FormattingContext(const Box& formattingContextRoot, LayoutContext&);
+    FormattingContext(const Box& formattingContextRoot);
     virtual ~FormattingContext();
 
     virtual void layout(LayoutContext&, FormattingState&) const = 0;
     virtual std::unique_ptr<FormattingState> createFormattingState(Ref<FloatingState>&&) const = 0;
-    virtual Ref<FloatingState> createOrFindFloatingState() const = 0;
+    virtual Ref<FloatingState> createOrFindFloatingState(LayoutContext&) const = 0;
 
 protected:
+    struct LayoutPair {
+        const Box& layoutBox;
+        Display::Box& displayBox;
+    };
+    using LayoutQueue = Vector<std::unique_ptr<LayoutPair>>;
+
     const Box& root() const { return *m_root; }
-    const LayoutContext& layoutContext() const { return m_layoutContext; }
 
-    virtual void computeStaticPosition(const Box&) const;
-    virtual void computeInFlowPositionedPosition(const Box&) const;
-    virtual void computeOutOfFlowPosition(const Box&) const;
+    virtual void computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const;
+    virtual void computeInFlowPositionedPosition(const Box&, Display::Box&) const;
+    virtual void computeOutOfFlowPosition(const Box&, Display::Box&) const;
 
-    virtual void computeWidth(const Box&) const;
-    virtual void computeHeight(const Box&) const;
+    virtual void computeWidth(const Box&, Display::Box&) const;
+    virtual void computeHeight(const Box&, Display::Box&) const;
 
-    virtual void computeOutOfFlowWidth(const Box&) const;
-    virtual void computeFloatingWidth(const Box&) const;
-    virtual void computeInFlowWidth(const Box&) const = 0;
+    virtual void computeOutOfFlowWidth(const Box&, Display::Box&) const;
+    virtual void computeFloatingWidth(const Box&, Display::Box&) const;
+    virtual void computeInFlowWidth(const Box&, Display::Box&) const = 0;
 
-    virtual void computeOutOfFlowHeight(const Box&) const;
-    virtual void computeFloatingHeight(const Box&) const;
-    virtual void computeInFlowHeight(const Box&) const = 0;
+    virtual void computeOutOfFlowHeight(const Box&, Display::Box&) const;
+    virtual void computeFloatingHeight(const Box&, Display::Box&) const;
+    virtual void computeInFlowHeight(const Box&, Display::Box&) const = 0;
 
     virtual LayoutUnit marginTop(const Box&) const;
     virtual LayoutUnit marginLeft(const Box&) const;
@@ -76,11 +85,10 @@ protected:
     virtual LayoutUnit marginRight(const Box&) const;
 
     void placeInFlowPositionedChildren(const Container&) const;
-    void layoutOutOfFlowDescendants() const;
+    void layoutOutOfFlowDescendants(LayoutContext&s) const;
 
 private:
     WeakPtr<Box> m_root;
-    LayoutContext& m_layoutContext;
 };
 
 }

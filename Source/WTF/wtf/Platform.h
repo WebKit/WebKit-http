@@ -780,28 +780,15 @@
 /* If possible, try to enable a disassembler. This is optional. We proceed in two
    steps: first we try to find some disassembler that we can use, and then we
    decide if the high-level disassembler API can be enabled. */
-#if !defined(USE_UDIS86) && ENABLE(JIT) && ((OS(DARWIN) && !PLATFORM(GTK)) || (OS(LINUX) && PLATFORM(GTK)) || PLATFORM(HAIKU)) \
-    && (CPU(X86) || CPU(X86_64))
+#if !defined(USE_UDIS86) && ENABLE(JIT) && (CPU(X86) || CPU(X86_64)) && !USE(CAPSTONE)
 #define USE_UDIS86 1
 #endif
 
-#if !defined(ENABLE_DISASSEMBLER) && USE(UDIS86)
-#define ENABLE_DISASSEMBLER 1
-#endif
-
-#if !defined(USE_ARM64_DISASSEMBLER) && ENABLE(JIT) && CPU(ARM64)
+#if !defined(USE_ARM64_DISASSEMBLER) && ENABLE(JIT) && CPU(ARM64) && !USE(CAPSTONE)
 #define USE_ARM64_DISASSEMBLER 1
 #endif
 
-#if !defined(USE_ARMV7_DISASSEMBLER) && ENABLE(JIT) && CPU(ARM_THUMB2)
-#define USE_ARMV7_DISASSEMBLER 1
-#endif
-
-#if !defined(USE_ARM_LLVM_DISASSEMBLER) && ENABLE(JIT) && CPU(ARM_TRADITIONAL) && HAVE(LLVM)
-#define USE_ARM_LLVM_DISASSEMBLER 1
-#endif
-
-#if !defined(ENABLE_DISASSEMBLER) && (USE(UDIS86) || USE(ARMV7_DISASSEMBLER) || USE(ARM64_DISASSEMBLER) || USE(ARM_LLVM_DISASSEMBLER))
+#if !defined(ENABLE_DISASSEMBLER) && (USE(UDIS86) || USE(ARM64_DISASSEMBLER) || (ENABLE(JIT) && USE(CAPSTONE)))
 #define ENABLE_DISASSEMBLER 1
 #endif
 
@@ -810,8 +797,8 @@
 #if (CPU(X86) || CPU(X86_64)) && (OS(DARWIN) || OS(LINUX) || OS(FREEBSD) || OS(HAIKU) || OS(HURD) || OS(WINDOWS))
 #define ENABLE_DFG_JIT 1
 #endif
-/* Enable the DFG JIT on ARMv7.  Only tested on iOS and GTK+/WPE Linux. */
-#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(WPE))
+/* Enable the DFG JIT on ARMv7.  Only tested on iOS, Linux, and FreeBSD. */
+#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || OS(LINUX) || OS(FREEBSD))
 #define ENABLE_DFG_JIT 1
 #endif
 /* Enable the DFG JIT on ARM. */
@@ -1070,7 +1057,7 @@
 #endif
 #endif
 
-#if PLATFORM(IOS) && USE(QUICK_LOOK)
+#if PLATFORM(IOS) && USE(QUICK_LOOK) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
 #define USE_SYSTEM_PREVIEW 1
 #endif
 
@@ -1355,6 +1342,10 @@
 
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || USE(GCRYPT)
 #define HAVE_RSA_PSS 1
+#endif
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+#define HAVE_URL_FORMATTING 1
 #endif
 
 #if !OS(WINDOWS)

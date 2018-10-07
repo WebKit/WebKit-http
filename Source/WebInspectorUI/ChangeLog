@@ -1,3 +1,157 @@
+2018-05-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Console drawer resizing is broken when console prompt has >1 line of code
+        https://bugs.webkit.org/show_bug.cgi?id=185369
+        <rdar://problem/40013202>
+
+        Reviewed by Devin Rousso.
+
+        Mouse offset calculation should account for the height of the quick console.
+        The only reason resizing worked with the single-line quick console is that
+        the offset calculation included the resizer height, which is very close
+        to that of the single-line quick console (27px and 30px respectively).
+
+        * UserInterface/Views/ConsoleDrawer.js:
+
+2018-05-04  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: simplify the WI.Collection interface
+        https://bugs.webkit.org/show_bug.cgi?id=185187
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/Collection.js:
+        (WI.Collection.prototype.get size): Added.
+        (WI.Collection.prototype.has): Added.
+        (WI.Collection.prototype.toJSON):
+        (WI.Collection.prototype.[Symbol.iterator]): Added.
+        (WI.Collection.prototype.get items): Deleted.
+        (WI.Collection.prototype.toArray): Deleted.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype._removeCanvas):
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WebInspector.DOMDebuggerManager.prototype.get domBreakpoints):
+        * UserInterface/Models/Frame.js:
+        (WI.Frame.prototype.removeAllChildFrames):
+        (WI.Frame.prototype.resourceForURL):
+        (WI.Frame.prototype.removeAllResources):
+        * UserInterface/Models/Script.js:
+        (WI.Script):
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView.prototype.initialLayout):
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView.prototype._updateNavigationItems):
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype._recordingRemoved):
+        (WI.CanvasSidebarPanel.prototype._canvasChanged):
+        (WI.CanvasSidebarPanel.prototype._updateRecordingScopeBar):
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView.prototype.attached):
+        (WI.CanvasTabContentView.prototype._addCanvas):
+        (WI.CanvasTabContentView.prototype._removeCanvas):
+        * UserInterface/Views/CanvasTreeElement.js:
+        (WI.CanvasTreeElement.prototype.onpopulate):
+        * UserInterface/Views/CollectionContentView.js:
+        (WI.CollectionContentView.prototype.initialLayout):
+        (WI.CollectionContentView.prototype.attached):
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WI.CookieStorageContentView.prototype._filterCookies):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._addResourcesRecursivelyForFrame):
+        * UserInterface/Views/FolderizedTreeElement.js:
+        (WI.FolderizedTreeElement.prototype.updateParentStatus):
+        (WI.FolderizedTreeElement.prototype._shouldGroupIntoFolders):
+        * UserInterface/Views/FrameTreeElement.js:
+        (WI.FrameTreeElement.prototype.onpopulate):
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WI.NavigationSidebarPanel.prototype.get contentTreeOutlines):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateWithInitialResourcesIfNeeded):
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WI.OpenResourceDialog.prototype._addResourcesForFrame):
+        (WI.OpenResourceDialog.prototype._addResourcesForTarget):
+        * UserInterface/Views/TreeOutlineGroup.js:
+        (WI.TreeOutlineGroup.prototype.get selectedTreeElement):
+        (WI.TreeOutlineGroup.prototype._removeConflictingTreeSelections):
+        * UserInterface/Views/WorkerTreeElement.js:
+        (WI.WorkerTreeElement.prototype.onpopulate):
+
+2018-05-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Newly added unsupported properties sometimes don't have warnings
+        https://bugs.webkit.org/show_bug.cgi?id=183097
+        <rdar://problem/37843816>
+
+        Reviewed by Matt Baker.
+
+        Update status of properties warnings every time focus moves.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyFocusMoved):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._propertiesChanged):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._updatePropertiesStatus):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidBlur):
+
+2018-05-04  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Styles Redesign: ensure that tabbing through the last section wraps back to the first
+        https://bugs.webkit.org/show_bug.cgi?id=181973
+
+        Reviewed by Matt Baker.
+
+        Unified delegate functions to start editing previous/next rules into a single function for
+        simplicity.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetCSSStyleDeclarationEditorFocusMoved):
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.startEditingRuleSelector):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetSelectorFieldDidChange):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetCSSStyleDeclarationEditorStartEditingAdjacentRule):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.cssStyleDeclarationEditorStartEditingAdjacentRule): Deleted.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.focusFirstSection):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.focusLastSection):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.spreadsheetCSSStyleDeclarationSectionStartEditingAdjacentRule):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionStartEditingNextRule): Deleted.
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionStartEditingPreviousRule): Deleted.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js:
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.styleDetailsPanelFocusLastPseudoClassCheckbox):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.styleDetailsPanelFocusFilterBar):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.initialLayout):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._handleForcedPseudoClassCheckboxKeydown):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._forcedPseudoClassCheckboxChanged):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._handleFilterBarInputFieldKeyDown):
+
+        Drive-by fix: provide tabbing support for the Computed styles panel.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WI.CSSStyleDeclarationTextEditor.prototype._handleShiftTabKey.switchRule):
+        (WI.CSSStyleDeclarationTextEditor.prototype._handleTabKey.switchRule):
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WI.ComputedStyleDetailsPanel.prototype.focusFirstSection):
+        (WI.ComputedStyleDetailsPanel.prototype.focusLastSection):
+        (WI.ComputedStyleDetailsPanel.prototype.cssStyleDeclarationTextEditorStartEditingAdjacentRule):
+
+2018-05-04  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas tab: Determine isFunction by looking at the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=184990
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction.isFunctionForType):
+        (WI.RecordingAction._prototypeForType):
+        (WI.RecordingAction.prototype.async.swizzle):
+
 2018-05-01  Devin Rousso  <webkit@devinrousso.com>
 
         Web Inspector: Canvas tab: determine hasVisibleEffect for all actions immediately after recording is added

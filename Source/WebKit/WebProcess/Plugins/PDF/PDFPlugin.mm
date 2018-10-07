@@ -31,6 +31,7 @@
 #import "ArgumentCoders.h"
 #import "DataReference.h"
 #import "PDFAnnotationTextWidgetDetails.h"
+#import "PDFContextMenu.h"
 #import "PDFLayerControllerSPI.h"
 #import "PDFPluginAnnotation.h"
 #import "PDFPluginPasswordField.h"
@@ -73,6 +74,7 @@
 #import <WebCore/PDFDocumentImage.h>
 #import <WebCore/Page.h>
 #import <WebCore/Pasteboard.h>
+#import <WebCore/PlatformScreen.h>
 #import <WebCore/PluginData.h>
 #import <WebCore/PluginDocument.h>
 #import <WebCore/RenderBoxModelObject.h>
@@ -631,6 +633,12 @@ inline PDFPlugin::PDFPlugin(WebFrame& frame)
 
     [m_containerLayer addSublayer:m_contentLayer.get()];
     [m_containerLayer addSublayer:m_scrollCornerLayer.get()];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    if ([m_pdfLayerController respondsToSelector:@selector(setDeviceColorSpace:)]) {
+        auto view = webFrame()->coreFrame()->view();
+        [m_pdfLayerController setDeviceColorSpace:screenColorSpace(view)];
+    }
+#endif
 }
 
 PDFPlugin::~PDFPlugin()
@@ -1572,9 +1580,27 @@ bool PDFPlugin::handleContextMenuEvent(const WebMouseEvent& event)
 {
     FrameView* frameView = webFrame()->coreFrame()->view();
     IntPoint point = frameView->contentsToScreen(IntRect(frameView->windowToContents(event.position()), IntSize())).location();
-    
+
     if (NSMenu *nsMenu = [m_pdfLayerController menuForEvent:nsEventForWebMouseEvent(event)]) {
-        _NSPopUpCarbonMenu3(nsMenu, nil, nil, point, -1, nil, 0, nil, NSPopUpMenuTypeContext, nil);
+        Vector<PDFContextMenuItem> items;
+        auto itemCount = [nsMenu numberOfItems];
+        for (int i = 0; i < itemCount; i++) {
+            auto item = [nsMenu itemAtIndex:i];
+            if ([item submenu])
+                continue;
+            PDFContextMenuItem menuItem { String([item title]), !![item isEnabled], !![item isSeparatorItem], static_cast<int>([item state]), [item action], i };
+            items.append(WTFMove(menuItem));
+        }
+        PDFContextMenu contextMenu { point, WTFMove(items) };
+
+        if (!webFrame()->page())
+            return false;
+
+        int selectedIndex = -1;
+        webFrame()->page()->sendSync(Messages::WebPageProxy::ShowPDFContextMenu(contextMenu), Messages::WebPageProxy::ShowPDFContextMenu::Reply(selectedIndex));
+        if (selectedIndex >= 0 && selectedIndex < itemCount)
+            [nsMenu performActionForItemAtIndex:selectedIndex];
+
         return true;
     }
     

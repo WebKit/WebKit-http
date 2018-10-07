@@ -729,7 +729,6 @@ dom/Document.cpp
 dom/DocumentEventQueue.cpp
 dom/DocumentFragment.cpp
 dom/DocumentMarkerController.cpp
-dom/DocumentOrderedMap.cpp
 dom/DocumentParser.cpp
 dom/DocumentSharedObjectPool.cpp
 dom/DocumentTouch.cpp @no-unify
@@ -826,6 +825,7 @@ dom/TransformSourceLibxslt.cpp
 dom/TransitionEvent.cpp
 dom/Traversal.cpp
 dom/TreeScope.cpp
+dom/TreeScopeOrderedMap.cpp
 dom/TreeWalker.cpp
 dom/UIEvent.cpp
 dom/UIEventWithKeyState.cpp
@@ -1221,9 +1221,11 @@ layout/LayoutContext.cpp
 layout/blockformatting/BlockFormattingContext.cpp
 layout/blockformatting/BlockFormattingState.cpp
 layout/blockformatting/BlockMarginCollapse.cpp
+layout/blockformatting/BlockInvalidation.cpp
 layout/displaytree/DisplayBox.cpp
 layout/inlineformatting/InlineFormattingContext.cpp
 layout/inlineformatting/InlineFormattingState.cpp
+layout/inlineformatting/InlineInvalidation.cpp
 layout/layouttree/LayoutBlockContainer.cpp
 layout/layouttree/LayoutBox.cpp
 layout/layouttree/LayoutContainer.cpp
@@ -1428,6 +1430,7 @@ page/animation/ImplicitAnimation.cpp
 page/animation/KeyframeAnimation.cpp
 
 page/csp/ContentSecurityPolicy.cpp
+page/csp/ContentSecurityPolicyClient.cpp
 page/csp/ContentSecurityPolicyDirective.cpp
 page/csp/ContentSecurityPolicyDirectiveList.cpp
 page/csp/ContentSecurityPolicyDirectiveNames.cpp

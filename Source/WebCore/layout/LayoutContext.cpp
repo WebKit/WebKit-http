@@ -30,8 +30,12 @@
 
 #include "BlockFormattingContext.h"
 #include "BlockFormattingState.h"
+#include "BlockInvalidation.h"
+#include "DisplayBox.h"
 #include "InlineFormattingContext.h"
 #include "InlineFormattingState.h"
+#include "InlineInvalidation.h"
+#include "Invalidation.h"
 #include "LayoutBox.h"
 #include "LayoutContainer.h"
 #include <wtf/IsoMallocInlines.h>
@@ -48,9 +52,40 @@ LayoutContext::LayoutContext(const Box& root)
 
 void LayoutContext::updateLayout()
 {
-    auto context = formattingContext(*m_root);
-    auto& state = establishedFormattingState(*m_root, *context);
-    context->layout(*this, state);
+    ASSERT(!m_formattingContextRootListForLayout.isEmpty());
+    for (auto* layoutRoot : m_formattingContextRootListForLayout) {
+        RELEASE_ASSERT(layoutRoot->establishesFormattingContext());
+        auto context = formattingContext(*layoutRoot);
+        auto& state = establishedFormattingState(*layoutRoot, *context);
+        context->layout(*this, state);
+    }
+    m_formattingContextRootListForLayout.clear();
+}
+
+Display::Box& LayoutContext::createDisplayBox(const Box& layoutBox)
+{
+    std::unique_ptr<Display::Box> displayBox(new Display::Box());
+    auto* displayBoxPtr = displayBox.get();
+    m_layoutToDisplayBox.add(&layoutBox, WTFMove(displayBox));
+    return *displayBoxPtr;
+}
+
+void LayoutContext::styleChanged(const Box& layoutBox, StyleDiff styleDiff)
+{
+    auto& formattingState = formattingStateForBox(layoutBox);
+    const Container* invalidationRoot = nullptr;
+    if (is<BlockFormattingState>(formattingState))
+        invalidationRoot = BlockInvalidation::invalidate(layoutBox, styleDiff, *this, downcast<BlockFormattingState>(formattingState)).root;
+    else if (is<InlineFormattingState>(formattingState))
+        invalidationRoot = InlineInvalidation::invalidate(layoutBox, styleDiff, *this, downcast<InlineFormattingState>(formattingState)).root;
+    else
+        ASSERT_NOT_REACHED();
+    ASSERT(invalidationRoot);
+    m_formattingContextRootListForLayout.addVoid(invalidationRoot);
+}
+
+void LayoutContext::markNeedsUpdate(const Box&, OptionSet<UpdateType>)
+{
 }
 
 FormattingState& LayoutContext::formattingStateForBox(const Box& layoutBox) const
@@ -63,17 +98,17 @@ FormattingState& LayoutContext::formattingStateForBox(const Box& layoutBox) cons
 FormattingState& LayoutContext::establishedFormattingState(const Box& formattingContextRoot, const FormattingContext& context)
 {
     return *m_formattingStates.ensure(&formattingContextRoot, [this, &context] {
-        return context.createFormattingState(context.createOrFindFloatingState());
+        return context.createFormattingState(context.createOrFindFloatingState(*this));
     }).iterator->value;
 }
 
 std::unique_ptr<FormattingContext> LayoutContext::formattingContext(const Box& formattingContextRoot)
 {
     if (formattingContextRoot.establishesBlockFormattingContext())
-        return std::make_unique<BlockFormattingContext>(formattingContextRoot, *this);
+        return std::make_unique<BlockFormattingContext>(formattingContextRoot);
 
     if (formattingContextRoot.establishesInlineFormattingContext())
-        return std::make_unique<InlineFormattingContext>(formattingContextRoot, *this);
+        return std::make_unique<InlineFormattingContext>(formattingContextRoot);
 
     ASSERT_NOT_REACHED();
     return nullptr;

@@ -88,6 +88,30 @@ StringView RunResolver::Run::text() const
     return StringView(segment.text).substring(segment.toSegmentPosition(run.start), run.end - run.start);
 }
 
+const RenderObject& RunResolver::Run::renderer() const
+{
+    auto& run = m_iterator.simpleRun();
+    // FlowContents cannot differentiate empty runs.
+    ASSERT(run.start != run.end);
+    return m_iterator.resolver().m_flowContents.segmentForRun(run.start, run.end).renderer;
+}
+
+unsigned RunResolver::Run::localStart() const
+{
+    auto& run = m_iterator.simpleRun();
+    // FlowContents cannot differentiate empty runs.
+    ASSERT(run.start != run.end);
+    return m_iterator.resolver().m_flowContents.segmentForRun(run.start, run.end).toSegmentPosition(run.start);
+}
+
+unsigned RunResolver::Run::localEnd() const
+{
+    auto& run = m_iterator.simpleRun();
+    // FlowContents cannot differentiate empty runs.
+    ASSERT(run.start != run.end);
+    return m_iterator.resolver().m_flowContents.segmentForRun(run.start, run.end).toSegmentPosition(run.end);
+}
+
 RunResolver::Iterator::Iterator(const RunResolver& resolver, unsigned runIndex, unsigned lineIndex)
     : m_resolver(resolver)
     , m_runIndex(runIndex)
@@ -313,8 +337,8 @@ const RenderObject& LineResolver::Iterator::renderer() const
     return m_runIterator.resolver().flowContents().segmentForRun(run.start(), run.end()).renderer;
 }
 
-LineResolver::LineResolver(const RenderBlockFlow& flow, const Layout& layout)
-    : m_runResolver(flow, layout)
+LineResolver::LineResolver(const RunResolver& runResolver)
+    : m_runResolver(runResolver)
 {
 }
 

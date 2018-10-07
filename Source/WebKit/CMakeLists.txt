@@ -104,14 +104,7 @@ set(WebKit_SYSTEM_INCLUDE_DIRECTORIES
 )
 
 set(WebKit_SOURCES
-    NetworkProcess/Cookies/WebCookieManager.cpp
-
-    NetworkProcess/Downloads/Download.cpp
-    NetworkProcess/Downloads/DownloadManager.cpp
-    NetworkProcess/Downloads/PendingDownload.cpp
-
-    NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
-
+    NetworkProcess/NetworkActivityTracker.cpp
     NetworkProcess/NetworkCORSPreflightChecker.cpp
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkContentRuleListManager.cpp
@@ -128,6 +121,14 @@ set(WebKit_SOURCES
     NetworkProcess/NetworkSocketStream.cpp
     NetworkProcess/PingLoad.cpp
     NetworkProcess/PreconnectTask.cpp
+
+    NetworkProcess/Cookies/WebCookieManager.cpp
+
+    NetworkProcess/Downloads/Download.cpp
+    NetworkProcess/Downloads/DownloadManager.cpp
+    NetworkProcess/Downloads/PendingDownload.cpp
+
+    NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
 
     NetworkProcess/cache/CacheStorageEngine.cpp
     NetworkProcess/cache/CacheStorageEngineCache.cpp

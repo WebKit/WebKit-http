@@ -1251,3 +1251,19 @@ FromOriginResponseHeaderEnabled:
     humanReadableDescription: "Support for the From-Origin Response Header"
     category: experimental
     webcoreBinding: RuntimeEnabledFeatures
+
+WebGLCompressedTextureASTCSupportEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "ASTC Texture Support"
+  humanReadableDescription: "Support for ASTC compressed texture formats in WebGL"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
+
+StorageAccessPromptsEnabled:
+    type: bool
+    defaultValue: false
+    humanReadableName: "Prompt for Storage Access API Requests"
+    humanReadableDescription: "Prompt the user when Storage Access API calls are made"
+    category: experimental
+    webcoreBinding: RuntimeEnabledFeatures

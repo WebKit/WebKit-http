@@ -42,9 +42,9 @@ class NetworkCORSPreflightChecker;
 
 class NetworkLoadChecker : public RefCounted<NetworkLoadChecker> {
 public:
-    static Ref<NetworkLoadChecker> create(WebCore::FetchOptions&& options, PAL::SessionID sessionID, WebCore::HTTPHeaderMap&& originalHeaders, WebCore::URL&& url, RefPtr<WebCore::SecurityOrigin>&& sourceOrigin, WebCore::PreflightPolicy preflightPolicy)
+    static Ref<NetworkLoadChecker> create(WebCore::FetchOptions&& options, PAL::SessionID sessionID, WebCore::HTTPHeaderMap&& originalHeaders, WebCore::URL&& url, RefPtr<WebCore::SecurityOrigin>&& sourceOrigin, WebCore::PreflightPolicy preflightPolicy, String&& referrer)
     {
-        return adoptRef(*new NetworkLoadChecker { WTFMove(options), sessionID, WTFMove(originalHeaders), WTFMove(url), WTFMove(sourceOrigin), preflightPolicy });
+        return adoptRef(*new NetworkLoadChecker { WTFMove(options), sessionID, WTFMove(originalHeaders), WTFMove(url), WTFMove(sourceOrigin), preflightPolicy, WTFMove(referrer) });
     }
     ~NetworkLoadChecker();
 
@@ -69,9 +69,9 @@ public:
     WebCore::StoredCredentialsPolicy storedCredentialsPolicy() const { return m_storedCredentialsPolicy; }
 
 private:
-    NetworkLoadChecker(WebCore::FetchOptions&&, PAL::SessionID, WebCore::HTTPHeaderMap&&, WebCore::URL&&, RefPtr<WebCore::SecurityOrigin>&&, WebCore::PreflightPolicy);
+    NetworkLoadChecker(WebCore::FetchOptions&&, PAL::SessionID, WebCore::HTTPHeaderMap&&, WebCore::URL&&, RefPtr<WebCore::SecurityOrigin>&&, WebCore::PreflightPolicy, String&& referrer);
 
-    WebCore::ContentSecurityPolicy* contentSecurityPolicy() const;
+    WebCore::ContentSecurityPolicy* contentSecurityPolicy();
     bool isChecking() const { return !!m_corsPreflightChecker; }
     bool isRedirected() const { return m_redirectCount; }
 
@@ -106,11 +106,12 @@ private:
     std::unique_ptr<NetworkCORSPreflightChecker> m_corsPreflightChecker;
     bool m_isSameOriginRequest { true };
     bool m_isSimpleRequest { true };
-    mutable std::unique_ptr<WebCore::ContentSecurityPolicy> m_contentSecurityPolicy;
+    std::unique_ptr<WebCore::ContentSecurityPolicy> m_contentSecurityPolicy;
     size_t m_redirectCount { 0 };
     WebCore::URL m_previousURL;
     WebCore::PreflightPolicy m_preflightPolicy;
     String m_dntHeaderValue;
+    String m_referrer;
 };
 
 }

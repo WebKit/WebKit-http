@@ -1,3 +1,98 @@
+2018-05-08  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: move input files to JSTests/test262
+        https://bugs.webkit.org/show_bug.cgi?id=185389
+
+        Reviewed by Michael Saboff.
+
+        * test262/config.yaml: Renamed from Tools/Scripts/test262/config.yaml.
+        * test262/expectations.yaml: Renamed from Tools/Scripts/test262/expectations.yaml.
+
+2018-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG AI should have O(1) clobbering
+        https://bugs.webkit.org/show_bug.cgi?id=185287
+
+        Reviewed by Saam Barati.
+
+        * stress/simple-ai-effect.js: Added.
+        (bar):
+        (foo):
+
+2018-05-04  Keith Miller  <keith_miller@apple.com>
+
+        isCacheableArrayLength should return true for undecided arrays
+        https://bugs.webkit.org/show_bug.cgi?id=185309
+
+        Reviewed by Michael Saboff.
+
+        * stress/get-array-length-undecided.js: Added.
+        (test):
+
+2018-05-04  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Disable tests on systems with limited memory
+        https://bugs.webkit.org/show_bug.cgi?id=185296
+
+        Reviewed by Saam Barati.
+
+        Test doesn't work with a limited amount of memory. I tried to reduce memory usage
+        but then it was hard to reproduce the failure the test was originally made to test.
+
+        * stress/array-reverse-doesnt-clobber.js:
+
+2018-05-03  Saam Barati  <sbarati@apple.com>
+
+        Don't prevent CreateThis being folded to NewObject when the structure is poly proto
+        https://bugs.webkit.org/show_bug.cgi?id=185177
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/construct-poly-proto-object.js: Added.
+        (foo.A):
+        (foo):
+        * stress/allocation-sinking-new-object-with-poly-proto.js: Added.
+        (foo.A):
+        (foo):
+        (makePolyProto):
+        (bar):
+        (baz):
+
+2018-05-03  Michael Saboff  <msaboff@apple.com>
+
+        OSR entry pruning of Program Bytecodes doesn't take into account try/catch
+        https://bugs.webkit.org/show_bug.cgi?id=185281
+
+        Reviewed by Saam Barati.
+
+        New regression test.
+
+        * stress/baseline-osrentry-catch-is-reachable.js: Added.
+        (i.j.catch):
+
+2018-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r231197.
+
+        The test added with this change crashes on the 32-bit JSC bot.
+
+        Reverted changeset:
+
+        "Correctly detect string overflow when using the 'Function'
+        constructor"
+        https://bugs.webkit.org/show_bug.cgi?id=184883
+        https://trac.webkit.org/changeset/231197
+
+2018-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should know how to cache custom getter accesses on the prototype chain
+        https://bugs.webkit.org/show_bug.cgi?id=185213
+
+        Reviewed by Keith Miller.
+
+        * microbenchmarks/get-custom-getter.js: Added.
+        (test):
+
 2018-05-02  Robin Morisset  <rmorisset@apple.com>
 
         emitCodeToGetArgumentsArrayLength should not crash on PhantomNewArrayWithSpread

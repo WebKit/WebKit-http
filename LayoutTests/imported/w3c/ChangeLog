@@ -1,3 +1,64 @@
+2018-05-07  Chris Dumez  <cdumez@apple.com>
+
+        ASSERT(!childItemWithTarget(child->target())) is hit in HistoryItem::addChildItem()
+        https://bugs.webkit.org/show_bug.cgi?id=185322
+
+        Reviewed by Geoff Garen.
+
+        Rebaseline layout tests due to frame name changes.
+
+        * web-platform-tests/html/browsers/browsing-the-web/navigating-across-documents/001-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/navigating-across-documents/003-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/navigating-across-documents/navigation_unload_data_url-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/navigating-across-documents/navigation_unload_same_origin-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/unloading-documents/001-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/unloading-documents/002-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/unloading-documents/003-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/unloading-documents/004-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/unloading-documents/005-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/unloading-documents/unload/003-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/unloading-documents/unload/004-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/unloading-documents/unload/007-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/unloading-documents/unload/009-expected.txt:
+
+2018-05-07  Ms2ger  <Ms2ger@igalia.com>
+
+        Support negative sw/sh values in createImageBitmap().
+        https://bugs.webkit.org/show_bug.cgi?id=184449
+
+        Reviewed by Dean Jackson.
+
+        Update expectations.
+
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage-expected.txt:
+
+2018-05-04  Chris Nardi  <cnardi@chromium.org>
+
+        Serialize all URLs with double-quotes per CSSOM spec
+        https://bugs.webkit.org/show_bug.cgi?id=184935
+
+        Reviewed by Antti Koivisto.
+
+        Update expectations for using double quotes when serializing URLs.
+
+        * web-platform-tests/cssom/serialize-values-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+
+2018-05-03  Chris Nardi  <cnardi@chromium.org>
+
+        Remove [NoInterfaceObject] from DOMRectList
+        https://bugs.webkit.org/show_bug.cgi?id=185255
+
+        Reviewed by Chris Dumez.
+
+        Update Geometry IDL test from upstream and update expectations.
+
+        * web-platform-tests/css/geometry/interfaces-expected.txt:
+        * web-platform-tests/css/geometry/interfaces.worker-expected.txt:
+        * web-platform-tests/interfaces/geometry.idl:
+
 2018-05-02  Youenn Fablet  <youenn@apple.com>
 
         Rebase imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-redirect.https.html expectation

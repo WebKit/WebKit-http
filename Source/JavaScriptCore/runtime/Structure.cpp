@@ -46,9 +46,6 @@
 
 #define DUMP_STRUCTURE_ID_STATISTICS 0
 
-using namespace std;
-using namespace WTF;
-
 namespace JSC {
 
 #if DUMP_STRUCTURE_ID_STATISTICS
@@ -306,7 +303,7 @@ Structure* Structure::create(PolyProtoTag, VM& vm, JSGlobalObject* globalObject,
 
     unsigned oldOutOfLineCapacity = result->outOfLineCapacity();
     result->addPropertyWithoutTransition(
-        vm, vm.propertyNames->builtinNames().underscoreProtoPrivateName(), static_cast<unsigned>(PropertyAttribute::DontEnum),
+        vm, vm.propertyNames->builtinNames().polyProtoName(), static_cast<unsigned>(PropertyAttribute::DontEnum),
         [&] (const GCSafeConcurrentJSLocker&, PropertyOffset offset, PropertyOffset newLastOffset) {
             RELEASE_ASSERT(Structure::outOfLineCapacity(newLastOffset) == oldOutOfLineCapacity);
             RELEASE_ASSERT(offset == knownPolyProtoOffset);
@@ -1035,22 +1032,20 @@ void StructureFireDetail::dump(PrintStream& out) const
     out.print("Structure transition from ", *m_structure);
 }
 
-DeferredStructureTransitionWatchpointFire::DeferredStructureTransitionWatchpointFire()
-    : m_structure(nullptr)
+DeferredStructureTransitionWatchpointFire::DeferredStructureTransitionWatchpointFire(VM& vm, Structure* structure)
+    : DeferredWatchpointFire(vm)
+    , m_structure(structure)
 {
 }
 
 DeferredStructureTransitionWatchpointFire::~DeferredStructureTransitionWatchpointFire()
 {
-    if (m_structure)
-        m_structure->transitionWatchpointSet().fireAll(*m_structure->vm(), StructureFireDetail(m_structure));
+    fireAll();
 }
 
-void DeferredStructureTransitionWatchpointFire::add(const Structure* structure)
+void DeferredStructureTransitionWatchpointFire::dump(PrintStream& out) const
 {
-    RELEASE_ASSERT(!m_structure);
-    RELEASE_ASSERT(structure);
-    m_structure = structure;
+    out.print("Structure transition from ", *m_structure);
 }
 
 void Structure::didTransitionFromThisStructure(DeferredStructureTransitionWatchpointFire* deferred) const
@@ -1060,10 +1055,11 @@ void Structure::didTransitionFromThisStructure(DeferredStructureTransitionWatchp
     // unwise to watch it.
     if (m_transitionWatchpointSet.isBeingWatched())
         const_cast<Structure*>(this)->setTransitionWatchpointIsLikelyToBeFired(true);
-    
-    if (deferred)
-        deferred->add(this);
-    else
+
+    if (deferred) {
+        ASSERT(deferred->structure() == this);
+        m_transitionWatchpointSet.fireAll(*vm(), deferred);
+    } else
         m_transitionWatchpointSet.fireAll(*vm(), StructureFireDetail(this));
 }
 

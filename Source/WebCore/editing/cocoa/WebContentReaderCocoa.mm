@@ -38,7 +38,9 @@
 #import "Frame.h"
 #import "FrameLoader.h"
 #import "FrameLoaderClient.h"
+#import "HTMLAnchorElement.h"
 #import "HTMLAttachmentElement.h"
+#import "HTMLBRElement.h"
 #import "HTMLBodyElement.h"
 #import "HTMLIFrameElement.h"
 #import "HTMLImageElement.h"
@@ -650,6 +652,37 @@ bool WebContentReader::readFilePaths(const Vector<String>& paths)
     }
 #endif
 
+    return true;
+}
+
+bool WebContentReader::readURL(const URL& url, const String& title)
+{
+    if (url.isEmpty())
+        return false;
+
+#if PLATFORM(IOS)
+    // FIXME: This code shouldn't be accessing selection and changing the behavior.
+    if (!frame.editor().client()->hasRichlyEditableSelection()) {
+        if (readPlainText([(NSURL *)url absoluteString]))
+            return true;
+    }
+
+    if ([(NSURL *)url isFileURL])
+        return false;
+#endif // PLATFORM(IOS)
+
+    auto document = makeRef(*frame.document());
+    auto anchor = HTMLAnchorElement::create(document.get());
+    anchor->setAttributeWithoutSynchronization(HTMLNames::hrefAttr, url.string());
+
+    NSString *linkText = title.isEmpty() ? [(NSURL *)url absoluteString] : (NSString *)title;
+    anchor->appendChild(document->createTextNode([linkText precomposedStringWithCanonicalMapping]));
+
+    auto newFragment = document->createDocumentFragment();
+    if (fragment)
+        newFragment->appendChild(HTMLBRElement::create(document.get()));
+    newFragment->appendChild(anchor);
+    addFragment(WTFMove(newFragment));
     return true;
 }
 

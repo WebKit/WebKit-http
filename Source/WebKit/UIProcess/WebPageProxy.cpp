@@ -204,6 +204,10 @@
 #include "WebCredentialsMessengerProxy.h"
 #endif
 
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#include "WebResourceLoadStatisticsStore.h"
+#endif
+
 // This controls what strategy we use for mouse wheel coalescing.
 #define MERGE_WHEEL_EVENTS 1
 
@@ -1924,8 +1928,16 @@ void WebPageProxy::handleMouseEvent(const NativeWebMouseEvent& event)
     if (!isValid())
         return;
 
-    LOG(MouseHandling, "UIProcess: enqueued mouse event %s (queue size %zu)", webMouseEventTypeString(event.type()), m_mouseEventQueue.size());
-    m_mouseEventQueue.append(event);
+    // If we receive multiple mousemove events and the most recent mousemove event has not been
+    // sent to WebProcess for processing, replace the pending mousemove event with a new one.
+    if (event.type() == WebEvent::MouseMove && m_mouseEventQueue.size() > 1 && m_mouseEventQueue.last().type() == WebEvent::MouseMove) {
+        LOG(MouseHandling, "UIProcess: updated pending mousemove event (queue size %zu)", m_mouseEventQueue.size());
+        m_mouseEventQueue.removeLast();
+        m_mouseEventQueue.append(event);
+    } else {
+        LOG(MouseHandling, "UIProcess: enqueued mouse event %s (queue size %zu)", webMouseEventTypeString(event.type()), m_mouseEventQueue.size());
+        m_mouseEventQueue.append(event);
+    }
     if (m_mouseEventQueue.size() == 1) // Otherwise, called from DidReceiveEvent message handler.
         processNextQueuedMouseEvent();
 }
@@ -2297,7 +2309,10 @@ void WebPageProxy::handleTouchEventSynchronously(NativeWebTouchEvent& event)
 
     m_process->responsivenessTimer().start();
     bool handled = false;
-    m_process->sendSync(Messages::WebPage::TouchEventSync(event), Messages::WebPage::TouchEventSync::Reply(handled), m_pageID);
+    bool replyReceived = m_process->sendSync(Messages::WebPage::TouchEventSync(event), Messages::WebPage::TouchEventSync::Reply(handled), m_pageID, 1_s);
+    // If the sync request has timed out, we should consider the event handled. The Web Process is too busy to answer any questions, so the default action is also likely to have issues.
+    if (!replyReceived)
+        handled = true;
     didReceiveEvent(event.type(), handled);
     m_pageClient.doneWithTouchEvent(event, handled);
     m_process->responsivenessTimer().stop();
@@ -3954,7 +3969,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
 
     uint64_t newNavigationID = navigation->navigationID();
     navigation->setWasUserInitiated(!!navigationActionData.userGestureTokenIdentifier);
-    navigation->setShouldForceDownload(!navigationActionData.downloadAttribute.isNull());
+    navigation->setShouldForceDownload(!navigationActionData.downloadAttribute.isNull() || request.isSystemPreview());
     navigation->setCurrentRequest(ResourceRequest(request), m_process->coreProcessIdentifier());
     navigation->setCurrentRequestIsRedirect(navigationActionData.isRedirect);
     navigation->setTreatAsSameOriginNavigation(navigationActionData.treatAsSameOriginNavigation);
@@ -7469,18 +7484,37 @@ void WebPageProxy::stopURLSchemeTask(uint64_t handlerIdentifier, uint64_t taskId
 }
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-void WebPageProxy::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, uint64_t webProcessContextId)
+void WebPageProxy::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t webProcessContextId)
 {
-    m_websiteDataStore->hasStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, pageID, [this, webProcessContextId] (bool hasAccess) {
+    m_websiteDataStore->hasStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, m_pageID, [this, webProcessContextId] (bool hasAccess) {
         m_process->send(Messages::WebPage::StorageAccessResponse(hasAccess, webProcessContextId), m_pageID);
     });
 }
 
-void WebPageProxy::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, uint64_t webProcessContextId)
+void WebPageProxy::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t webProcessContextId, bool promptEnabled)
 {
-    ASSERT(pageID == m_pageID);
-    m_websiteDataStore->requestStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, pageID, [this, webProcessContextId] (bool wasGranted) {
-        m_process->send(Messages::WebPage::StorageAccessResponse(wasGranted, webProcessContextId), m_pageID);
+    CompletionHandler<void(bool)> completionHandler = [this, protectedThis = makeRef(*this), webProcessContextId] (bool access) {
+        m_process->send(Messages::WebPage::StorageAccessResponse(access, webProcessContextId), m_pageID);
+    };
+
+    m_websiteDataStore->requestStorageAccess(String(subFrameHost), String(topFrameHost), frameID, m_pageID, promptEnabled, [this, protectedThis = makeRef(*this), subFrameHost, topFrameHost, promptEnabled, frameID, completionHandler = WTFMove(completionHandler)] (StorageAccessStatus status) mutable {
+        switch (status) {
+        case StorageAccessStatus::CannotRequestAccess:
+            completionHandler(false);
+            return;
+        case StorageAccessStatus::RequiresUserPrompt:
+            ASSERT_UNUSED(promptEnabled, promptEnabled);
+            m_uiClient->requestStorageAccessConfirm(*this, m_process->webFrame(frameID), String(subFrameHost), String(topFrameHost), [this, protectedThis = makeRef(*this), subFrameHost, topFrameHost, frameID, completionHandler = WTFMove(completionHandler)] (bool userDidGrantAccess) mutable {
+                if (userDidGrantAccess)
+                    m_websiteDataStore->grantStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, m_pageID, userDidGrantAccess, WTFMove(completionHandler));
+                else
+                    completionHandler(false);
+            });
+            return;
+        case StorageAccessStatus::HasAccess:
+            completionHandler(true);
+            return;
+        }
     });
 }
 #endif

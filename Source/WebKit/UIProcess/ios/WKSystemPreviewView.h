@@ -23,14 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS) && USE(QUICK_LOOK)
+#if USE(SYSTEM_PREVIEW)
 
 #import "WKWebViewContentProvider.h"
 #import <QuickLook/QuickLook.h>
 #import <UIKit/UIKit.h>
 #import <pal/spi/ios/QuickLookSPI.h>
 
-@interface WKSystemPreviewView : UIView <WKWebViewContentProvider, QLPreviewControllerDataSource, QLPreviewControllerDelegate, QLPreviewItemDataProvider>
+@interface WKSystemPreviewView : UIView <WKWebViewContentProvider, QLPreviewItemDataProvider>
 
 @end
 

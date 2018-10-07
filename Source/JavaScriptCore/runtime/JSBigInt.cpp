@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2017 Caio Lima <ticaiolima@gmail.com>
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,7 +53,6 @@
 #include "MathCommon.h"
 #include "ParseInt.h"
 #include <algorithm>
-#include <wtf/text/StringVector.h>
 
 #define STATIC_ASSERT(cond) static_assert(cond, "JSBigInt assumes " #cond)
 
@@ -231,14 +230,14 @@ String JSBigInt::toString(ExecState& state, int radix)
     return toStringGeneric(state, this, radix);
 }
 
-bool JSBigInt::isZero()
+inline bool JSBigInt::isZero()
 {
     ASSERT(length() || !sign());
     return length() == 0;
 }
 
 // Multiplies {this} with {factor} and adds {summand} to the result.
-void JSBigInt::inplaceMultiplyAdd(uintptr_t factor, uintptr_t summand)
+inline void JSBigInt::inplaceMultiplyAdd(uintptr_t factor, uintptr_t summand)
 {
     STATIC_ASSERT(sizeof(factor) == sizeof(Digit));
     STATIC_ASSERT(sizeof(summand) == sizeof(Digit));
@@ -258,43 +257,24 @@ typedef __uint128_t TwoDigit;
 
 // {carry} must point to an initialized Digit and will either be incremented
 // by one or left alone.
-JSBigInt::Digit JSBigInt::digitAdd(Digit a, Digit b, Digit& carry)
+inline JSBigInt::Digit JSBigInt::digitAdd(Digit a, Digit b, Digit& carry)
 {
-#if HAVE_TWO_DIGIT
-    TwoDigit result = static_cast<TwoDigit>(a) + static_cast<TwoDigit>(b);
-    carry += result >> digitBits;
-
-    return static_cast<Digit>(result);
-#else
     Digit result = a + b;
-
-    if (result < a)
-        carry += 1;
-    
+    carry += static_cast<bool>(result < a);
     return result;
-#endif
 }
 
 // {borrow} must point to an initialized Digit and will either be incremented
 // by one or left alone.
-JSBigInt::Digit JSBigInt::digitSub(Digit a, Digit b, Digit& borrow)
+inline JSBigInt::Digit JSBigInt::digitSub(Digit a, Digit b, Digit& borrow)
 {
-#if HAVE_TWO_DIGIT
-    TwoDigit result = static_cast<TwoDigit>(a) - static_cast<TwoDigit>(b);
-    borrow += (result >> digitBits) & 1;
-    
-    return static_cast<Digit>(result);
-#else
     Digit result = a - b;
-    if (result > a)
-        borrow += 1;
-    
-    return static_cast<Digit>(result);
-#endif
+    borrow += static_cast<bool>(result > a);
+    return result;
 }
 
 // Returns the low half of the result. High half is in {high}.
-JSBigInt::Digit JSBigInt::digitMul(Digit a, Digit b, Digit& high)
+inline JSBigInt::Digit JSBigInt::digitMul(Digit a, Digit b, Digit& high)
 {
 #if HAVE_TWO_DIGIT
     TwoDigit result = static_cast<TwoDigit>(a) * static_cast<TwoDigit>(b);
@@ -333,7 +313,7 @@ JSBigInt::Digit JSBigInt::digitMul(Digit a, Digit b, Digit& high)
 }
 
 // Raises {base} to the power of {exponent}. Does not check for overflow.
-JSBigInt::Digit JSBigInt::digitPow(Digit base, Digit exponent)
+inline JSBigInt::Digit JSBigInt::digitPow(Digit base, Digit exponent)
 {
     Digit result = 1ull;
     while (exponent > 0) {
@@ -349,7 +329,7 @@ JSBigInt::Digit JSBigInt::digitPow(Digit base, Digit exponent)
 
 // Returns the quotient.
 // quotient = (high << digitBits + low - remainder) / divisor
-JSBigInt::Digit JSBigInt::digitDiv(Digit high, Digit low, Digit divisor, Digit& remainder)
+inline JSBigInt::Digit JSBigInt::digitDiv(Digit high, Digit low, Digit divisor, Digit& remainder)
 {
     ASSERT(high < divisor);
 #if CPU(X86_64) && COMPILER(GCC_OR_CLANG)
@@ -558,9 +538,9 @@ uint64_t JSBigInt::calculateMaximumCharactersRequired(int length, int radix, Dig
 
 String JSBigInt::toStringGeneric(ExecState& state, JSBigInt* x, int radix)
 {
-    // FIXME: [JSC] Revisit usage of StringVector into JSBigInt::toString
+    // FIXME: [JSC] Revisit usage of Vector into JSBigInt::toString
     // https://bugs.webkit.org/show_bug.cgi?id=18067
-    StringVector<LChar> resultString;
+    Vector<LChar> resultString;
 
     ASSERT(radix >= 2 && radix <= 36);
     ASSERT(!x->isZero());
@@ -713,7 +693,7 @@ bool JSBigInt::getPrimitiveNumber(ExecState* state, double& number, JSValue& res
     return true;
 }
 
-size_t JSBigInt::offsetOfData()
+inline size_t JSBigInt::offsetOfData()
 {
     return WTF::roundUpToMultipleOf<sizeof(Digit)>(sizeof(JSBigInt));
 }
@@ -817,18 +797,18 @@ JSBigInt* JSBigInt::parseInt(ExecState* state, VM& vm, CharType* data, int lengt
     return nullptr;
 }
 
-JSBigInt::Digit* JSBigInt::dataStorage()
+inline JSBigInt::Digit* JSBigInt::dataStorage()
 {
     return reinterpret_cast<Digit*>(reinterpret_cast<char*>(this) + offsetOfData());
 }
 
-JSBigInt::Digit JSBigInt::digit(int n)
+inline JSBigInt::Digit JSBigInt::digit(int n)
 {
     ASSERT(n >= 0 && n < length());
     return dataStorage()[n];
 }
 
-void JSBigInt::setDigit(int n, Digit value)
+inline void JSBigInt::setDigit(int n, Digit value)
 {
     ASSERT(n >= 0 && n < length());
     dataStorage()[n] = value;

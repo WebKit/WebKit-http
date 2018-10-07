@@ -64,6 +64,7 @@
 #include "MemoryCache.h"
 #include "NetworkLoadMetrics.h"
 #include "Page.h"
+#include "PingLoader.h"
 #include "PolicyChecker.h"
 #include "ProgressTracker.h"
 #include "ResourceHandle.h"
@@ -72,6 +73,7 @@
 #include "SchemeRegistry.h"
 #include "ScriptableDocumentParser.h"
 #include "SecurityPolicy.h"
+#include "SecurityPolicyViolationEvent.h"
 #include "ServiceWorker.h"
 #include "ServiceWorkerProvider.h"
 #include "Settings.h"
@@ -764,25 +766,26 @@ void DocumentLoader::responseReceived(const ResourceResponse& response, Completi
     ASSERT(m_identifierForLoadWithoutResourceLoader || m_mainResource);
     unsigned long identifier = m_identifierForLoadWithoutResourceLoader ? m_identifierForLoadWithoutResourceLoader : m_mainResource->identifier();
     ASSERT(identifier);
-    
-    auto url = response.url();
 
-    ContentSecurityPolicy contentSecurityPolicy(SecurityOrigin::create(url), m_frame);
-    contentSecurityPolicy.didReceiveHeaders(ContentSecurityPolicyResponseHeaders(response));
-    if (!contentSecurityPolicy.allowFrameAncestors(*m_frame, url)) {
-        stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(identifier, response);
-        return;
-    }
-
-    const auto& commonHeaders = response.httpHeaderFields().commonHeaders();
-    auto it = commonHeaders.find(HTTPHeaderName::XFrameOptions);
-    if (it != commonHeaders.end()) {
-        String content = it->value;
-        if (frameLoader()->shouldInterruptLoadForXFrameOptions(content, url, identifier)) {
-            String message = "Refused to display '" + url.stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
-            m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
+    if (!m_frame->settings().networkProcessCSPFrameAncestorsCheckingEnabled() || !RuntimeEnabledFeatures::sharedFeatures().restrictedHTTPResponseAccess()) {
+        auto url = response.url();
+        ContentSecurityPolicy contentSecurityPolicy(URL { url }, this);
+        contentSecurityPolicy.didReceiveHeaders(ContentSecurityPolicyResponseHeaders { response }, m_request.httpReferrer());
+        if (!contentSecurityPolicy.allowFrameAncestors(*m_frame, url)) {
             stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(identifier, response);
             return;
+        }
+
+        const auto& commonHeaders = response.httpHeaderFields().commonHeaders();
+        auto it = commonHeaders.find(HTTPHeaderName::XFrameOptions);
+        if (it != commonHeaders.end()) {
+            String content = it->value;
+            if (frameLoader()->shouldInterruptLoadForXFrameOptions(content, url, identifier)) {
+                String message = "Refused to display '" + url.stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
+                m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
+                stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(identifier, response);
+                return;
+            }
         }
     }
 
@@ -2008,5 +2011,20 @@ PreviewConverter* DocumentLoader::previewConverter() const
 }
 
 #endif
+
+void DocumentLoader::addConsoleMessage(MessageSource messageSource, MessageLevel messageLevel, const String& message, unsigned long requestIdentifier)
+{
+    static_cast<ScriptExecutionContext*>(m_frame->document())->addConsoleMessage(messageSource, messageLevel, message, requestIdentifier);
+}
+
+void DocumentLoader::sendCSPViolationReport(URL&& reportURL, Ref<FormData>&& report)
+{
+    PingLoader::sendViolationReport(*m_frame, WTFMove(reportURL), WTFMove(report), ViolationReportType::ContentSecurityPolicy);
+}
+
+void DocumentLoader::dispatchSecurityPolicyViolationEvent(Ref<SecurityPolicyViolationEvent>&& violationEvent)
+{
+    m_frame->document()->enqueueDocumentEvent(WTFMove(violationEvent));
+}
 
 } // namespace WebCore

@@ -327,16 +327,11 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
     loadParameters.isMainFrameNavigation = resourceLoader.frame() && resourceLoader.frame()->isMainFrame() && resourceLoader.options().mode == FetchOptions::Mode::Navigate;
 
     loadParameters.shouldEnableFromOriginResponseHeader = RuntimeEnabledFeatures::sharedFeatures().fromOriginResponseHeaderEnabled() && !loadParameters.isMainFrameNavigation;
-    if (loadParameters.shouldEnableFromOriginResponseHeader) {
-        Vector<RefPtr<WebCore::SecurityOrigin>> frameAncestorOrigins;
-        for (auto* frame = resourceLoader.frame(); frame; frame = frame->tree().parent()) {
-            if (frame->document())
-                frameAncestorOrigins.append(makeRefPtr(frame->document()->securityOrigin()));
-            if (frame->isMainFrame())
-                break;
-        }
-        loadParameters.frameAncestorOrigins = WTFMove(frameAncestorOrigins);
-    }
+
+    Vector<RefPtr<SecurityOrigin>> frameAncestorOrigins;
+    for (auto* frame = resourceLoader.frame(); frame; frame = frame->tree().parent())
+        frameAncestorOrigins.append(makeRefPtr(frame->document()->securityOrigin()));
+    loadParameters.frameAncestorOrigins = WTFMove(frameAncestorOrigins);
 
     ASSERT((loadParameters.webPageID && loadParameters.webFrameID) || loadParameters.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials);
 
@@ -519,6 +514,11 @@ void WebLoaderStrategy::loadResourceSynchronously(FrameLoader& frameLoader, unsi
         response = ResourceResponse();
         error = internalError(request.url());
     }
+}
+
+void WebLoaderStrategy::pageLoadCompleted(uint64_t webPageID)
+{
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::PageLoadCompleted(webPageID), 0);
 }
 
 static uint64_t generateLoadIdentifier()

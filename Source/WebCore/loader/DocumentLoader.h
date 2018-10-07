@@ -31,6 +31,7 @@
 
 #include "CachedRawResourceClient.h"
 #include "CachedResourceHandle.h"
+#include "ContentSecurityPolicyClient.h"
 #include "DocumentWriter.h"
 #include "FrameDestructionObserver.h"
 #include "LinkIcon.h"
@@ -107,7 +108,11 @@ enum class PopUpPolicy {
     Block,
 };
 
-class DocumentLoader : public RefCounted<DocumentLoader>, public FrameDestructionObserver, private CachedRawResourceClient {
+class DocumentLoader
+    : public RefCounted<DocumentLoader>
+    , public FrameDestructionObserver
+    , public ContentSecurityPolicyClient
+    , private CachedRawResourceClient {
     WTF_MAKE_FAST_ALLOCATED;
     friend class ContentFilter;
 public:
@@ -248,6 +253,7 @@ public:
 
     void stopLoadingPlugIns();
     void stopLoadingSubresources();
+    WEBCORE_EXPORT void stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(unsigned long identifier, const ResourceResponse&);
 
     bool userContentExtensionsEnabled() const { return m_userContentExtensionsEnabled; }
     void setUserContentExtensionsEnabled(bool enabled) { m_userContentExtensionsEnabled = enabled; }
@@ -379,8 +385,6 @@ private:
     void stopLoadingForPolicyChange();
     ResourceError interruptedForPolicyChangeError() const;
 
-    void stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(unsigned long identifier, const ResourceResponse&);
-
 #if HAVE(RUNLOOP_TIMER)
     typedef RunLoopTimer<DocumentLoader> DocumentLoaderTimer;
 #else
@@ -403,6 +407,11 @@ private:
 #if ENABLE(APPLICATION_MANIFEST)
     void notifyFinishedLoadingApplicationManifest(uint64_t callbackIdentifier, std::optional<ApplicationManifest>);
 #endif
+
+    // ContentSecurityPolicyClient
+    WEBCORE_EXPORT void addConsoleMessage(MessageSource, MessageLevel, const String&, unsigned long requestIdentifier) final;
+    WEBCORE_EXPORT void sendCSPViolationReport(URL&&, Ref<FormData>&&) final;
+    WEBCORE_EXPORT void dispatchSecurityPolicyViolationEvent(Ref<SecurityPolicyViolationEvent>&&) final;
 
     Ref<CachedResourceLoader> m_cachedResourceLoader;
 

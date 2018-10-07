@@ -252,6 +252,9 @@ public:
         ASSERT(m_frame.page());
         m_inProgress = false;
         m_frame.page()->progress().progressCompleted(m_frame);
+
+        if (auto pageID = m_frame.loader().client().pageID())
+            platformStrategies()->loaderStrategy()->pageLoadCompleted(pageID.value());
     }
 
 private:
@@ -367,13 +370,13 @@ void FrameLoader::changeLocation(FrameLoadRequest&& request)
     urlSelected(WTFMove(request), nullptr);
 }
 
-void FrameLoader::urlSelected(const URL& url, const String& passedTarget, Event* triggeringEvent, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, std::optional<NewFrameOpenerPolicy> openerPolicy, const AtomicString& downloadAttribute)
+void FrameLoader::urlSelected(const URL& url, const String& passedTarget, Event* triggeringEvent, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, std::optional<NewFrameOpenerPolicy> openerPolicy, const AtomicString& downloadAttribute, bool isSystemPreview)
 {
     auto* frame = lexicalFrameFromCommonVM();
     auto initiatedByMainFrame = frame && frame->isMainFrame() ? InitiatedByMainFrame::Yes : InitiatedByMainFrame::Unknown;
 
     NewFrameOpenerPolicy newFrameOpenerPolicy = openerPolicy.value_or(shouldSendReferrer == NeverSendReferrer ? NewFrameOpenerPolicy::Suppress : NewFrameOpenerPolicy::Allow);
-    urlSelected(FrameLoadRequest(*m_frame.document(), m_frame.document()->securityOrigin(), { url }, passedTarget, lockHistory, lockBackForwardList, shouldSendReferrer, AllowNavigationToInvalidURL::Yes, newFrameOpenerPolicy, shouldOpenExternalURLsPolicy, initiatedByMainFrame, DoNotReplaceDocumentIfJavaScriptURL, downloadAttribute), triggeringEvent);
+    urlSelected(FrameLoadRequest(*m_frame.document(), m_frame.document()->securityOrigin(), { url }, passedTarget, lockHistory, lockBackForwardList, shouldSendReferrer, AllowNavigationToInvalidURL::Yes, newFrameOpenerPolicy, shouldOpenExternalURLsPolicy, initiatedByMainFrame, DoNotReplaceDocumentIfJavaScriptURL, downloadAttribute, isSystemPreview), triggeringEvent);
 }
 
 void FrameLoader::urlSelected(FrameLoadRequest&& frameRequest, Event* triggeringEvent)
@@ -729,7 +732,7 @@ void FrameLoader::didBeginDocument(bool dispatch)
         if (!dnsPrefetchControl.isEmpty())
             m_frame.document()->parseDNSPrefetchControlHeader(dnsPrefetchControl);
 
-        m_frame.document()->contentSecurityPolicy()->didReceiveHeaders(ContentSecurityPolicyResponseHeaders(m_documentLoader->response()), ContentSecurityPolicy::ReportParsingErrors::No);
+        m_frame.document()->contentSecurityPolicy()->didReceiveHeaders(ContentSecurityPolicyResponseHeaders(m_documentLoader->response()), referrer(), ContentSecurityPolicy::ReportParsingErrors::No);
 
         String headerContentLanguage = m_documentLoader->response().httpHeaderField(HTTPHeaderName::ContentLanguage);
         if (!headerContentLanguage.isEmpty()) {
@@ -802,6 +805,13 @@ void FrameLoader::checkCompleted()
     // Have we completed before?
     if (m_isComplete)
         return;
+    
+    // FIXME: Remove this code once https://webkit.org/b/185284 is fixed.
+    if (HTMLMediaElement::isRunningDestructor()) {
+        ASSERT_NOT_REACHED();
+        scheduleCheckCompleted();
+        return;
+    }
 
     // FIXME: It would be better if resource loads were kicked off after render tree update (or didn't complete synchronously).
     //        https://bugs.webkit.org/show_bug.cgi?id=171729
@@ -1344,8 +1354,9 @@ void FrameLoader::loadURL(FrameLoadRequest&& frameLoadRequest, const String& ref
         return;
     }
 
-    // must grab this now, since this load may stop the previous load and clear this flag
+    // Must grab this now, since this load may stop the previous load and clear this flag.
     bool isRedirect = m_quickRedirectComing;
+    request.setSystemPreview(frameLoadRequest.isSystemPreview());
     loadWithNavigationAction(request, action, lockHistory, newLoadType, formState, allowNavigationToInvalidURL, [this, isRedirect, sameURL, newLoadType, protectedFrame = makeRef(m_frame), completionHandler = completionHandlerCaller.release()] {
         if (isRedirect) {
             m_quickRedirectComing = false;
@@ -1690,9 +1701,9 @@ void FrameLoader::reload(OptionSet<ReloadOption> options)
     loader->setOverrideEncoding(m_documentLoader->overrideEncoding());
 
     auto frameLoadTypeForReloadOptions = [] (auto options) {
-        if (options.contains(ReloadOption::FromOrigin))
+        if (options & ReloadOption::FromOrigin)
             return FrameLoadType::ReloadFromOrigin;
-        if (options.contains(ReloadOption::ExpiredOnly))
+        if (options & ReloadOption::ExpiredOnly)
             return FrameLoadType::ReloadExpiredOnly;
         return FrameLoadType::Reload;
     };

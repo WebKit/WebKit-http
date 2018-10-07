@@ -29,8 +29,9 @@
 
 #include "FormattingContext.h"
 #include "FormattingState.h"
-#include "LayoutBox.h"
+#include <wtf/HashSet.h>
 #include <wtf/IsoMalloc.h>
+#include <wtf/OptionSet.h>
 
 namespace WebCore {
 
@@ -40,12 +41,15 @@ class Box;
 
 namespace Layout {
 
-class StyleDiff;
+enum class StyleDiff;
+class Box;
+class Container;
 
 // LayoutContext is the entry point for layout. It takes a (formatting root)container which acts as the root of the layout context.
 // LayoutContext::layout() generates the display tree for the root container's subtree (it does not run layout on the root though).
 // Note, while the root container is suppposed to be the entry point for the initial layout, it does not necessarily need to be the entry point of any
-// subsequent layouts (subtree layout).
+// subsequent layouts (subtree layout). A non-initial, subtree layout could be initiated on multiple formatting contexts.
+// Each formatting context has an entry point for layout, which potenitally means multiple entry points per layout frame.
 // LayoutContext also holds the formatting states. They cache formatting context specific data to enable performant incremental layouts.
 class LayoutContext {
     WTF_MAKE_ISO_ALLOCATED(LayoutContext);
@@ -54,11 +58,19 @@ public:
 
     void updateLayout();
 
-    void addDisplayBox(const Box&, Display::Box&);
-    Display::Box* displayBox(const Box&) const;
+    Display::Box& createDisplayBox(const Box&);
+    Display::Box* displayBoxForLayoutBox(const Box& layoutBox) const { return m_layoutToDisplayBox.get(&layoutBox); }
 
-    void markNeedsLayout(const Box&, StyleDiff);
-    bool needsLayout(const Box&) const;
+    void styleChanged(const Box&, StyleDiff);
+
+    enum class UpdateType {
+        Overflow = 1 << 0,
+        Position = 1 << 1,
+        Size     = 1 << 2,
+        All      = Overflow | Position | Size
+    };
+    void markNeedsUpdate(const Box&, OptionSet<UpdateType>);
+    bool needsUpdate(const Box&) const;
 
     FormattingState& formattingStateForBox(const Box&) const;
     FormattingState& establishedFormattingState(const Box& formattingContextRoot, const FormattingContext&);
@@ -66,7 +78,9 @@ public:
 
 private:
     WeakPtr<Box> m_root;
+    HashSet<const Container*> m_formattingContextRootListForLayout;
     HashMap<const Box*, std::unique_ptr<FormattingState>> m_formattingStates;
+    HashMap<const Box*, std::unique_ptr<Display::Box>> m_layoutToDisplayBox;
 };
 
 }

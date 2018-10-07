@@ -162,6 +162,8 @@ public:
     NetworkContentRuleListManager& networkContentRuleListManager() { return m_NetworkContentRuleListManager; }
 #endif
 
+    bool trackNetworkActivity() const { return m_trackNetworkActivity; }
+
 private:
     NetworkProcess();
     ~NetworkProcess();
@@ -186,7 +188,6 @@ private:
     // IPC::Connection::Client
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
     void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
-    void didClose(IPC::Connection&) override;
 
     // DownloadManager::Client
     void didCreateDownload() override;
@@ -226,7 +227,9 @@ private:
     void getNetworkProcessStatistics(uint64_t callbackID);
     void clearCacheForAllOrigins(uint32_t cachesToClear);
     void setAllowsAnySSLCertificateForWebSocket(bool);
+    
     void syncAllCookies();
+    void didSyncAllCookies();
 
     void didGrantSandboxExtensionsToStorageProcessForBlobs(uint64_t requestID);
 
@@ -300,6 +303,8 @@ private:
 #if ENABLE(CONTENT_EXTENSIONS)
     NetworkContentRuleListManager m_NetworkContentRuleListManager;
 #endif
+
+    bool m_trackNetworkActivity { false };
 };
 
 } // namespace WebKit

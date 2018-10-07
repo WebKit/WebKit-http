@@ -27,6 +27,7 @@
 
 #include "LayoutRect.h"
 #include "RenderBlockFlow.h"
+#include "SimpleLineLayout.h"
 #include "SimpleLineLayoutFlowContents.h"
 #include <wtf/IteratorRange.h>
 #include <wtf/text/WTFString.h>
@@ -43,8 +44,13 @@ public:
     public:
         explicit Run(const Iterator&);
 
+        // Position relative to the enclosing flow block.
         unsigned start() const;
         unsigned end() const;
+        // Position relative to the actual renderer.
+        unsigned localStart() const;
+        unsigned localEnd() const;
+
         float logicalLeft() const;
         float logicalRight() const;
 
@@ -54,6 +60,7 @@ public:
         int baselinePosition() const;
         StringView text() const;
         String textWithHyphen() const;
+        const RenderObject& renderer() const;
         bool isEndOfLine() const;
         bool hasHyphen() const { return m_iterator.simpleRun().hasHyphen; }
         const SimpleLineLayout::Run& simpleRun() const { return m_iterator.simpleRun(); }
@@ -143,7 +150,7 @@ public:
         RunResolver::Iterator m_runIterator;
     };
 
-    LineResolver(const RenderBlockFlow&, const Layout&);
+    LineResolver(const RunResolver&);
 
     Iterator begin() const;
     Iterator end() const;
@@ -151,11 +158,11 @@ public:
     WTF::IteratorRange<Iterator> rangeForRect(const LayoutRect&) const;
 
 private:
-    RunResolver m_runResolver;
+    const RunResolver& m_runResolver;
 };
 
 RunResolver runResolver(const RenderBlockFlow&, const Layout&);
-LineResolver lineResolver(const RenderBlockFlow&, const Layout&);
+LineResolver lineResolver(const RunResolver&);
 
 inline unsigned RunResolver::Run::start() const
 {
@@ -297,9 +304,9 @@ inline RunResolver runResolver(const RenderBlockFlow& flow, const Layout& layout
     return RunResolver(flow, layout);
 }
 
-inline LineResolver lineResolver(const RenderBlockFlow& flow, const Layout& layout)
+inline LineResolver lineResolver(const RunResolver& runResolver)
 {
-    return LineResolver(flow, layout);
+    return LineResolver(runResolver);
 }
 
 }

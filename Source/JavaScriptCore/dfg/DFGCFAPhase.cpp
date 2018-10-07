@@ -171,7 +171,7 @@ private:
                 if (!safeToExecute(m_state, m_graph, node))
                     dataLog("(UNSAFE) ");
                 
-                dataLog(m_state.variables(), " ", m_interpreter);
+                dataLog(m_state.variablesForDebugging(), " ", m_interpreter);
                 
                 dataLogF("\n");
             }
@@ -181,7 +181,8 @@ private:
                 break;
             }
             
-            if (m_state.didClobberOrFolded() != writesOverlap(m_graph, node, JSCell_structureID))
+            if (!ASSERT_DISABLED
+                && m_state.didClobberOrFolded() != writesOverlap(m_graph, node, JSCell_structureID))
                 DFG_CRASH(m_graph, node, toCString("AI-clobberize disagreement; AI says ", m_state.clobberState(), " while clobberize says ", writeSet(m_graph, node)).data());
         }
         if (m_verbose) {

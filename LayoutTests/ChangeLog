@@ -1,3 +1,1306 @@
+2018-05-09  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test http/tests/security/webaudio-render-remote-audio-allowed-crossorigin.html is timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=185471
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-05-09  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [ARM] Disable test on Linux due to lack of executable memory
+        https://bugs.webkit.org/show_bug.cgi?id=185466
+
+        Reviewed by Yusuke Suzuki.
+
+        Do not run tests with LLInt disabled, otherwise test runs out of executable memory.
+
+        * js/script-tests/dfg-uint32array-overflow-values.js:
+        * js/script-tests/dfg-uint8clampedarray.js:
+
+2018-05-09  Ms2ger  <Ms2ger@igalia.com>
+
+        Update fast/events/constructors/(mouse|wheel)-event-constructor.html and expectations.
+        https://bugs.webkit.org/show_bug.cgi?id=115025
+
+        Reviewed by Michael Catanzaro.
+
+        clientX/Y values are clamped to a signed 26 bit-integer by using LayoutPoint.
+        I updated the test to expect that. (Alternatively, we could keep the
+        current expectations in the test and leave FAIL lines in the test
+        expectation file.)
+
+        Expectation files are updated or removed to match the test change, as
+        well as a number of code changes since the last time they were accurate.
+
+        * fast/events/constructors/mouse-event-constructor-expected.txt:
+        * fast/events/constructors/mouse-event-constructor.html:
+        * fast/events/constructors/wheel-event-constructor-expected.txt:
+        * fast/events/constructors/wheel-event-constructor.html:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/events/constructors/mouse-event-constructor-expected.txt: Removed.
+        * platform/gtk/fast/events/constructors/wheel-event-constructor-expected.txt: Removed.
+        * platform/mac/fast/events/constructors/mouse-event-constructor-expected.txt: Removed.
+        * platform/mac/fast/events/constructors/wheel-event-constructor-expected.txt: Removed.
+        * platform/wpe/TestExpectations:
+
+2018-05-08  Daniel Bates  <dabates@apple.com>
+
+        Do not apply X-Frame-Options and CSP frame-ancestors to Quick Look-applicable responses in NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=185442
+        <rdar://problem/40067209>
+
+        Reviewed by Andy Estes.
+
+        Remove test http/tests/quicklook/csp-header-ignored.html from TestExpectations now that it passes.
+
+        * platform/ios/TestExpectations:
+
+2018-05-08  Daniel Bates  <dabates@apple.com>
+
+        Add tests to ensure that the Strong Password appearance is removed on form reset
+        https://bugs.webkit.org/show_bug.cgi?id=185440
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/forms/auto-fill-button/hide-auto-fill-strong-password-button-when-form-is-reset-expected.html: Added.
+        * fast/forms/auto-fill-button/hide-auto-fill-strong-password-button-when-form-is-reset.html: Added.
+
+2018-05-08  Daniel Bates  <dabates@apple.com>
+
+        Resign Strong Password appearance when text field value changes
+        https://bugs.webkit.org/show_bug.cgi?id=185433
+        <rdar://problem/39958508>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a test to ensure we remove the Strong Password appearance when the value of the text field value changes.
+
+        * fast/forms/auto-fill-button/auto-fill-strong-password-button-when-maxlength-changes-expected.html: Added.
+        * fast/forms/auto-fill-button/auto-fill-strong-password-button-when-maxlength-changes.html: Added.
+        * fast/forms/auto-fill-button/auto-fill-strong-password-button-when-minlength-changes-expected.html: Added.
+        * fast/forms/auto-fill-button/auto-fill-strong-password-button-when-minlength-changes.html: Added.
+        * fast/forms/auto-fill-button/hide-auto-fill-strong-password-button-when-value-changes-expected.html: Added.
+        * fast/forms/auto-fill-button/hide-auto-fill-strong-password-button-when-value-changes.html: Added.
+        * fast/forms/auto-fill-button/resources/process-auto-fill-button-type-and-invoke-runTest.js: Add support for
+        setting the autofilled state of a field.
+        (window.onload):
+
+2018-05-08  Eric Carlson  <eric.carlson@apple.com>
+
+        Consecutive messages logged as JSON are coalesced
+        https://bugs.webkit.org/show_bug.cgi?id=185432
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/console/webcore-logging-expected.txt:
+        * inspector/console/webcore-logging.html:
+
+2018-05-08  Jer Noble  <jer.noble@apple.com>
+
+        Mute MediaElementSourceNode when tainted.
+        https://bugs.webkit.org/show_bug.cgi?id=184866
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/media/resources/1000Hz-sin.wav: Added.
+        * http/tests/security/webaudio-render-remote-audio-allowed-crossorigin-expected.txt: Added.
+        * http/tests/security/webaudio-render-remote-audio-allowed-crossorigin.html: Added.
+        * http/tests/security/webaudio-render-remote-audio-blocked-no-crossorigin-expected.txt: Added.
+        * http/tests/security/webaudio-render-remote-audio-blocked-no-crossorigin.html: Added.
+
+2018-05-08  Daniel Bates  <dabates@apple.com>
+
+        Skip test http/tests/appcache/x-frame-options-prevents-framing.php for now in WebKit2.
+
+        Will address in <https://bugs.webkit.org/show_bug.cgi?id=185443>.
+
+        * platform/wk2/TestExpectations:
+
+2018-05-08  Daniel Bates  <dabates@apple.com>
+
+        Mark test http/tests/quicklook/csp-header-ignored.html as Failure.
+
+        Will fix in <https://bugs.webkit.org/show_bug.cgi?id=185442>.
+
+        * platform/ios/TestExpectations:
+
+2018-05-08  Youenn Fablet  <youenn@apple.com>
+
+        Some appcache crash tests are flaky due to console messages
+        https://bugs.webkit.org/show_bug.cgi?id=185431
+
+        Reviewed by Geoffrey Garen.
+
+        Mark 3 tests that were written to test crashes as DumpJSConsoleLogInStdErr.
+        It is better to mark them as such than to changing them since they might no longer cover the crash reasons.
+        Rebase two other tests that might need further work to stop being flaky.
+
+        * TestExpectations:
+        * http/tests/appcache/404-resource-with-slow-main-resource-expected.txt:
+        * http/tests/appcache/abort-cache-onchecking-manifest-404-expected.txt:
+        * http/tests/appcache/deferred-events-expected.txt:
+        * http/tests/appcache/fail-on-update-2-expected.txt:
+        * http/tests/appcache/fail-on-update-expected.txt:
+        * platform/mac/TestExpectations:
+
+2018-05-08  Youenn Fablet  <youenn@apple.com>
+
+        Skip http/tests/appcache/load-from-appcache-defer-resume-crash.html for iOS sim WK2
+        https://bugs.webkit.org/show_bug.cgi?id=185430
+
+        Unreviewed.
+
+        Skip the test as it is using WK1-only test runner API.
+        * platform/ios-wk2/TestExpectations:
+
+2018-05-08  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        feTurbulence is not rendered correctly on Retina display
+        https://bugs.webkit.org/show_bug.cgi?id=183798
+
+        Reviewed by Simon Fraser.
+
+        * fast/hidpi/filters-turbulence-expected.html: Added.
+        * fast/hidpi/filters-turbulence.html: Added.
+
+2018-05-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, add frame name in form-iframe-target-before-load-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=185408
+
+        The test started causing flakiness after r231456 because it would submit
+        the form in the main frame instead of the test frame.
+
+        * fast/events/form-iframe-target-before-load-crash.html:
+
+2018-05-07  Simon Fraser  <simon.fraser@apple.com>
+
+        CSS filters which reference SVG filters fail to respect the "color-interpolation-filters" of the filter
+        https://bugs.webkit.org/show_bug.cgi?id=185343
+
+        Reviewed by Dean Jackson.
+
+        * css3/filters/color-interpolation-filters-expected.html: Added.
+        * css3/filters/color-interpolation-filters.html: Added.
+
+2018-05-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for imported/w3c/web-platform-tests/html/dom/interfaces.worker.html.
+        https://bugs.webkit.org/show_bug.cgi?id=185407
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-05-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/security/contentTypeOptions/nosniff-importScript-blocked.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=184802
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-05-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-main-frame.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=185404
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-05-07  Daniel Bates  <dabates@apple.com>
+
+        CSP status-code incorrect for document blocked due to violation of its frame-ancestors directive
+        https://bugs.webkit.org/show_bug.cgi?id=185366
+        <rdar://problem/40035116>
+
+        Reviewed by Brent Fulgham.
+
+        Update existing test results now that we send the HTTP status code for the correct document.
+
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/report-frame-ancestors-cross-origin-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/report-frame-ancestors-same-origin-expected.txt:
+
+2018-05-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for inspector/sampling-profiler/named-function-expression.html.
+        https://bugs.webkit.org/show_bug.cgi?id=170830
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-05-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark platform/mac/media/audio-session-category-video-track-change.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=184609
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-05-07  Daniel Bates  <dabates@apple.com>
+
+        CSP referrer incorrect for document blocked due to violation of its frame-ancestors directive
+        https://bugs.webkit.org/show_bug.cgi?id=185380
+
+        Reviewed by Brent Fulgham.
+
+        Update existing test results now that we send the referrer for the correct document.
+
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/report-frame-ancestors-cross-origin-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/report-frame-ancestors-cross-origin-https-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/report-frame-ancestors-same-origin-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/report-frame-ancestors-same-origin-https-expected.txt:
+
+2018-05-07  Chris Dumez  <cdumez@apple.com>
+
+        Stop using an iframe's id as fallback if its name attribute is not set
+        https://bugs.webkit.org/show_bug.cgi?id=11388
+
+        Reviewed by Geoff Garen.
+
+        * fast/dom/Window/named-getter-frame-id-expected.txt: Added.
+        * fast/dom/Window/named-getter-frame-id.html: Added.
+        Add layout test coverage.
+
+        * fast/dom/Geolocation/srcdoc-getCurrentPosition-expected.txt:
+        * fast/dom/Geolocation/srcdoc-watchPosition-expected.txt:
+        * fast/dom/HTMLAnchorElement/anchor-in-noscroll-iframe-crash.html:
+        * fast/dom/Window/window-special-properties-expected.txt:
+        * fast/frames/iframe-no-name-expected.txt:
+        * fast/frames/iframe-no-name.html:
+        * fast/layers/prevent-hit-test-during-layout.html:
+        * fast/xmlhttprequest/xmlhttprequest-no-file-access-expected.txt:
+        * http/tests/security/clipboard/copy-paste-html-cross-origin-iframe-across-origin.html:
+        * http/tests/security/contentSecurityPolicy/iframe-blank-url-programmatically-add-external-script-expected.txt:
+        * http/tests/security/cross-origin-reified-window-property-access.html:
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-and-try-access-from-right-frame-expected.txt:
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-but-try-access-from-wrong-frame-expected.txt:
+        * http/tests/webrtc/filtering-ice-candidate-same-origin-frame.html:
+        * http/wpt/beacon/keepalive-after-navigation-expected.txt:
+        * http/wpt/cache-storage/cache-remove-twice.html:
+        Update some layout tests that relied on our old (non-standard) behavior.
+
+2018-05-07  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test webrtc/addICECandidate-closed.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=185384
+
+        Reviewed by Eric Carlson.
+
+        Given that we are calling addIceCandidate and close the peer connection,
+        addIceCandidate might throw an error sometimes.
+        Catch the exception to make the test output stable.
+
+        * webrtc/addICECandidate-closed.html:
+
+2018-05-07  Chris Dumez  <cdumez@apple.com>
+
+        ASSERT(!childItemWithTarget(child->target())) is hit in HistoryItem::addChildItem()
+        https://bugs.webkit.org/show_bug.cgi?id=185322
+
+        Reviewed by Geoff Garen.
+
+        Rebaseline layout tests due to frame name changes.
+
+        * applicationmanifest/display-mode-subframe-expected.txt:
+        * contentfiltering/allow-after-add-data-expected.txt:
+        * contentfiltering/allow-after-finished-adding-data-expected.txt:
+        * contentfiltering/allow-after-response-expected.txt:
+        * contentfiltering/allow-after-will-send-request-expected.txt:
+        * contentfiltering/allow-never-expected.txt:
+        * contentfiltering/block-after-add-data-expected.txt:
+        * contentfiltering/block-after-add-data-then-allow-unblock-expected.txt:
+        * contentfiltering/block-after-add-data-then-deny-unblock-expected.txt:
+        * contentfiltering/block-after-finished-adding-data-expected.txt:
+        * contentfiltering/block-after-finished-adding-data-then-allow-unblock-expected.txt:
+        * contentfiltering/block-after-finished-adding-data-then-deny-unblock-expected.txt:
+        * contentfiltering/block-after-response-expected.txt:
+        * contentfiltering/block-after-response-then-allow-unblock-expected.txt:
+        * contentfiltering/block-after-response-then-deny-unblock-expected.txt:
+        * contentfiltering/block-after-will-send-request-expected.txt:
+        * contentfiltering/block-after-will-send-request-then-allow-unblock-expected.txt:
+        * contentfiltering/block-after-will-send-request-then-deny-unblock-expected.txt:
+        * contentfiltering/block-never-expected.txt:
+        * fast/dom/Geolocation/callback-to-deleted-context-expected.txt:
+        * fast/dom/Geolocation/disconnected-frame-expected.txt:
+        * fast/dom/Geolocation/disconnected-frame-permission-denied-expected.txt:
+        * fast/dom/Window/messageevent-source-postmessage-expected.txt:
+        * fast/dom/Window/messageevent-source-postmessage-reified-expected.txt:
+        * fast/dom/javascript-url-crash-function-expected.txt:
+        * fast/encoding/meta-overrules-auto-expected.txt:
+        * fast/events/before-unload-forbidden-navigation-expected.txt:
+        * fast/events/before-unload-in-subframe-expected.txt:
+        * fast/events/before-unload-with-subframes-expected.txt:
+        * fast/events/focusingUnloadedFrame-expected.txt:
+        * fast/events/onloadFrameCrash-expected.txt:
+        * fast/events/onunload-not-on-body-expected.txt:
+        * fast/events/pageshow-pagehide-expected.txt:
+        * fast/events/stop-load-in-unload-handler-using-document-write-expected.txt:
+        * fast/events/stop-load-in-unload-handler-using-window-stop-expected.txt:
+        * fast/forms/form-and-frame-interaction-retains-values-expected.txt:
+        * fast/frames/crash-when-child-iframe-forces-layout-during-unload-and-sibling-frame-has-mediaquery-expected.txt:
+        * fast/frames/frame-element-name-expected.txt:
+        * fast/frames/frame-src-attribute-expected.txt:
+        * fast/frames/frame-unload-crash-expected.txt:
+        * fast/frames/iframe-reparenting-unique-name-expected.txt:
+        * fast/frames/iframe-set-inner-html-expected.txt:
+        * fast/frames/layout-after-destruction-expected.txt:
+        * fast/frames/long-names-in-nested-subframes-expected.txt:
+        * fast/frames/page-unload-document-open-expected.txt:
+        * fast/frames/reparent-in-unload-contentdocument-expected.txt:
+        * fast/frames/sandboxed-iframe-noscript-expected.txt:
+        * fast/frames/sandboxed-iframe-storage-expected.txt:
+        * fast/frames/srcdoc/setting-src-does-nothing-expected.txt:
+        * fast/frames/srcdoc/srcdoc-can-navigate-expected.txt:
+        * fast/frames/srcdoc/srcdoc-loads-content-expected.txt:
+        * fast/history/back-from-page-with-focused-iframe-expected.txt:
+        * fast/history/history-back-initial-vs-final-url-expected.txt:
+        * fast/history/redirect-via-iframe-expected.txt:
+        * fast/loader/child-frame-add-after-back-forward-expected.txt:
+        * fast/loader/dynamic-iframe-extra-back-forward-item-expected.txt:
+        * fast/loader/fragment-navigation-base-blank-expected.txt:
+        * fast/loader/frame-location-change-not-added-to-history-expected.txt:
+        * fast/loader/frame-src-change-added-to-history-expected.txt:
+        * fast/loader/frame-src-change-not-added-to-history-expected.txt:
+        * fast/loader/frames-with-unload-handlers-in-page-cache-expected.txt:
+        * fast/loader/grandparent-completion-starts-redirect-expected.txt:
+        * fast/loader/iframe-meta-refresh-base-blank-expected.txt:
+        * fast/loader/iframe-set-location-base-blank-expected.txt:
+        * fast/loader/inner-iframe-loads-data-url-into-parent-on-unload-crash-async-delegate-expected.txt:
+        * fast/loader/inner-iframe-loads-data-url-into-parent-on-unload-crash-expected.txt:
+        * fast/loader/page-dismissal-modal-dialogs-expected.txt:
+        * fast/loader/ping-error-expected.txt:
+        * fast/loader/plain-text-document-expected.txt:
+        * fast/loader/refresh-iframe-base-blank-expected.txt:
+        * fast/loader/stateobjects/pushstate-frequency-iframe-expected.txt:
+        * fast/loader/stateobjects/pushstate-in-iframe-expected.txt:
+        * fast/loader/stateobjects/replacestate-frequency-iframe-expected.txt:
+        * fast/loader/stateobjects/replacestate-in-iframe-expected.txt:
+        * fast/loader/stop-provisional-loads-expected.txt:
+        * fast/loader/subframe-removes-itself-expected.txt:
+        * fast/loader/subframe-self-close-expected.txt:
+        * fast/loader/unload-hyperlink-targeted-expected.txt:
+        * fast/parser/double-write-from-closed-iframe-expected.txt:
+        * fast/parser/iframe-sets-parent-to-javascript-url-expected.txt:
+        * fast/parser/javascript-url-compat-mode-expected.txt:
+        * fast/parser/move-during-parsing-expected.txt:
+        * fast/parser/noscript-with-javascript-disabled-expected.txt:
+        * fast/parser/pre-html5-parser-quirks-expected.txt:
+        * fast/preloader/iframe-srcdoc-expected.txt:
+        * fast/tokenizer/text-plain-expected.txt:
+        * fast/xmlhttprequest/xmlhttprequest-no-file-access-expected.txt:
+        * fast/xsl/xslt-text-expected.txt:
+        * http/tests/appcache/x-frame-options-prevents-framing-expected.txt:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-expected.txt:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always-expected.txt:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-default-expected.txt:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-never-expected.txt:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer-expected.txt:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer-when-downgrade-expected.txt:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-origin-expected.txt:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url-expected.txt:
+        * http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt:
+        * http/tests/cookies/same-site/fetch-in-cross-origin-iframe-expected.txt:
+        * http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt:
+        * http/tests/cookies/same-site/fetch-in-same-origin-service-worker-expected.txt:
+        * http/tests/from-origin/document-from-origin-same-accepted-expected.txt:
+        * http/tests/from-origin/document-from-origin-same-blocked-expected.txt:
+        * http/tests/from-origin/document-from-origin-same-site-accepted-expected.txt:
+        * http/tests/from-origin/document-from-origin-same-site-blocked-expected.txt:
+        * http/tests/from-origin/document-nested-from-origin-same-accepted-expected.txt:
+        * http/tests/from-origin/document-nested-from-origin-same-blocked-expected.txt:
+        * http/tests/from-origin/fetch-data-iframe-from-origin-same-blocked-expected.txt:
+        * http/tests/from-origin/fetch-iframe-from-origin-same-accepted-expected.txt:
+        * http/tests/from-origin/fetch-iframe-from-origin-same-blocked-expected.txt:
+        * http/tests/from-origin/redirect-document-from-origin-same-blocked-expected.txt:
+        * http/tests/from-origin/sandboxed-sub-frame-from-origin-same-blocked-expected.txt:
+        * http/tests/from-origin/sandboxed-sub-frame-nested-cross-origin-from-origin-same-blocked-expected.txt:
+        * http/tests/from-origin/sandboxed-sub-frame-nested-same-origin-from-origin-same-blocked-expected.txt:
+        * http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt:
+        * http/tests/loading/basic-auth-remove-credentials-expected.txt:
+        * http/tests/loading/basic-auth-resend-wrong-credentials-expected.txt:
+        * http/tests/loading/basic-credentials-sent-automatically-expected.txt:
+        * http/tests/loading/pdf-commit-load-callbacks-expected.txt:
+        * http/tests/loading/redirect-with-no-location-crash-expected.txt:
+        * http/tests/loading/server-redirect-for-provisional-load-caching-expected.txt:
+        * http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin-expected.txt:
+        * http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin-expected.txt:
+        * http/tests/misc/authentication-redirect-3/authentication-sent-to-redirect-same-origin-with-location-credentials-expected.txt:
+        * http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url-expected.txt:
+        * http/tests/misc/last-modified-parsing-expected.txt:
+        * http/tests/misc/policy-delegate-called-twice-expected.txt:
+        * http/tests/misc/redirect-to-external-url-expected.txt:
+        * http/tests/misc/webtiming-origins-expected.txt: Removed.
+        * http/tests/navigation/back-to-slow-frame-expected.txt:
+        * http/tests/navigation/forward-and-cancel-expected.txt:
+        * http/tests/navigation/image-load-in-subframe-unload-handler-expected.txt:
+        * http/tests/navigation/lockedhistory-iframe-expected.txt:
+        * http/tests/navigation/post-frames-expected.txt:
+        * http/tests/navigation/reload-subframe-frame-expected.txt:
+        * http/tests/navigation/reload-subframe-iframe-expected.txt:
+        * http/tests/navigation/reload-subframe-object-expected.txt:
+        * http/tests/preload/download_resources_from_header_iframe-expected.txt:
+        * http/tests/preload/download_resources_from_invalid_headers-expected.txt:
+        * http/tests/quicklook/at-import-stylesheet-blocked-expected.txt:
+        * http/tests/quicklook/cross-origin-iframe-blocked-expected.txt:
+        * http/tests/quicklook/document-domain-is-empty-string-expected.txt:
+        * http/tests/quicklook/external-stylesheet-blocked-expected.txt:
+        * http/tests/quicklook/hide-referer-on-navigation-expected.txt:
+        * http/tests/quicklook/rtf-document-domain-is-empty-string-expected.txt:
+        * http/tests/quicklook/same-origin-xmlhttprequest-allowed-expected.txt:
+        * http/tests/quicklook/top-navigation-blocked-expected.txt:
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context-expected.txt:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion-expected.txt:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout-expected.txt:
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction-expected.txt:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects-expected.txt:
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests-expected.txt:
+        * http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-allowall-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-deny-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-in-body-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-allow-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-deny-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-invalid-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-multiple-headers-conflict-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-allow-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny-expected.txt:
+        * http/tests/security/aboutBlank/xss-DENIED-navigate-opener-document-write-expected.txt:
+        * http/tests/security/aboutBlank/xss-DENIED-navigate-opener-javascript-url-expected.txt:
+        * http/tests/security/aboutBlank/xss-DENIED-set-opener-expected.txt:
+        * http/tests/security/appcache-in-private-browsing-expected.txt:
+        * http/tests/security/appcache-switching-private-browsing-expected.txt:
+        * http/tests/security/canvas-cors-with-two-hosts-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-in-meta-element-ignored-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-in-report-only-ignored-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-allow-same-origin-sandboxed-cross-url-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-none-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-self-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-star-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-url-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-url-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-none-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-self-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-star-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-url-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-url-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-sandboxed-cross-url-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-none-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-self-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-star-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-url-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-url-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-none-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-self-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-star-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-url-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-url-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-none-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-protocolless-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-self-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-self-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-star-allow-crossorigin-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-star-allow-sameorigin-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-url-allow-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-url-block-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-in-enforced-policy-and-not-in-report-only-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-in-one-enforced-policy-neither-in-another-enforced-policy-nor-report-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-invalidnonce-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-invalid-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-01-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-url-02-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-allowed-by-enforced-policy-and-blocked-by-report-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-allowed-by-enforced-policy-and-blocked-by-report-policy2-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-allowed-by-legacy-enforced-policy-and-blocked-by-report-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-allowed-by-legacy-enforced-policy-and-blocked-by-report-policy2-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-blocked-by-enforced-policy-and-allowed-by-report-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-blocked-by-legacy-enforced-policy-and-allowed-by-report-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-blocked-by-legacy-enforced-policy-and-blocked-by-report-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-blocked-by-legacy-enforced-policy-and-blocked-by-report-policy2-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-in-enforced-policy-and-not-in-report-only-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-in-one-enforced-policy-neither-in-another-enforced-policy-nor-report-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-blocked-by-enforced-policy-and-allowed-by-report-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-blocked-by-legacy-enforced-policy-and-allowed-by-report-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-blocked-by-legacy-enforced-policy-and-blocked-by-report-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-blocked-by-legacy-enforced-policy-and-blocked-by-report-policy2-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-in-enforced-policy-and-not-in-report-only-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-in-one-enforced-policy-neither-in-another-enforced-policy-nor-report-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-invalidnonce-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-https-expected.txt:
+        * http/tests/security/contentSecurityPolicy/WebAssembly-blocked-in-subframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/data-url-iframe-in-main-frame-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-iframe-report-only-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-main-frame-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-with-enforced-and-report-policies-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-with-inherited-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-javascript-url-iframe-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-xslt-document-in-iframe-with-inherited-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-iframe-with-inherited-policy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-asynchronous-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-synchronous-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/secure-image-after-upgrade-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/secure-image-after-upgrade-redirect-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/directive-parsing-01-expected.txt:
+        * http/tests/security/contentSecurityPolicy/directive-parsing-02-expected.txt:
+        * http/tests/security/contentSecurityPolicy/directive-parsing-03-expected.txt:
+        * http/tests/security/contentSecurityPolicy/directive-parsing-04-expected.txt:
+        * http/tests/security/contentSecurityPolicy/directive-parsing-05-expected.txt:
+        * http/tests/security/contentSecurityPolicy/directive-parsing-multiple-headers-expected.txt:
+        * http/tests/security/contentSecurityPolicy/eval-blocked-in-subframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/object-src-none-allowed-expected.txt:
+        * http/tests/security/contentSecurityPolicy/object-src-none-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-status-code-zero-when-using-https-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-child-frame-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-loads-with-img-src-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-none-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-none-inline-event-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-parsing-implicit-and-explicit-port-number-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-redirect-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-self-blocked-01-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-self-blocked-02-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-self-blocked-03-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-self-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-star-cross-scheme-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-01-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-02-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-03-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-04-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-05-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-06-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-07-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-08-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-09-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-10-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-deprecated-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-no-semicolon-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-nonascii-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-none-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-paths-01-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-paths-02-expected.txt:
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-nested-upgrades-expected.txt:
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-css-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-http-to-https-script-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-https-to-http-script-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/xsl-redirect-allowed-expected.txt:
+        * http/tests/security/contentSecurityPolicy/xsl-redirect-allowed2-expected.txt:
+        * http/tests/security/cookies/first-party-cookie-allow-xslt-expected.txt:
+        * http/tests/security/cookies/third-party-cookie-blocking-redirect-expected.txt:
+        * http/tests/security/cookies/third-party-cookie-blocking-xslt-expected.txt:
+        * http/tests/security/cross-frame-access-callback-explicit-domain-DENY-expected.txt:
+        * http/tests/security/cross-frame-access-delete-expected.txt:
+        * http/tests/security/cross-frame-access-frameelement-expected.txt:
+        * http/tests/security/cross-frame-access-history-put-expected.txt: Removed.
+        * http/tests/security/cross-frame-access-location-put-expected.txt:
+        * http/tests/security/cross-frame-access-private-browsing-expected.txt:
+        * http/tests/security/cross-origin-appcache-allowed-expected.txt:
+        * http/tests/security/cross-origin-appcache-expected.txt:
+        * http/tests/security/cross-origin-css-primitive-expected.txt:
+        * http/tests/security/cross-origin-indexeddb-allowed-expected.txt:
+        * http/tests/security/cross-origin-indexeddb-expected.txt:
+        * http/tests/security/cross-origin-plugin-allowed-expected.txt:
+        * http/tests/security/cross-origin-plugin-expected.txt:
+        * http/tests/security/cross-origin-plugin-private-browsing-toggled-allowed-expected.txt:
+        * http/tests/security/cross-origin-plugin-private-browsing-toggled-expected.txt:
+        * http/tests/security/cross-origin-session-storage-allowed-expected.txt:
+        * http/tests/security/cross-origin-session-storage-third-party-blocked-expected.txt:
+        * http/tests/security/cross-origin-websql-allowed-expected.txt:
+        * http/tests/security/cross-origin-websql-expected.txt:
+        * http/tests/security/cross-origin-worker-indexeddb-allowed-expected.txt:
+        * http/tests/security/cross-origin-worker-indexeddb-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-from-data-url-sub-frame-2-level-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-subframe-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-subframe-location-change-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-to-data-url-sub-frame-2-level-expected.txt:
+        * http/tests/security/frameNavigation/xss-ALLOWED-targeted-subframe-navigation-change-expected.txt:
+        * http/tests/security/frameNavigation/xss-DENIED-plugin-navigation-expected.txt:
+        * http/tests/security/frameNavigation/xss-DENIED-targeted-link-navigation-expected.txt:
+        * http/tests/security/history-pushState-replaceState-from-sandboxed-iframe-expected.txt:
+        * http/tests/security/http-0.9/default-port-plugin-blocked-expected.txt:
+        * http/tests/security/http-0.9/default-port-script-blocked-expected.txt:
+        * http/tests/security/http-0.9/iframe-blocked-expected.txt:
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-default-port-page-allowed-expected.txt:
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-page-blocked-expected.txt:
+        * http/tests/security/http-0.9/sandbox-should-not-persist-on-navigation-expected.txt:
+        * http/tests/security/javascriptURL/xss-ALLOWED-from-javascript-url-sub-frame-2-level-expected.txt:
+        * http/tests/security/javascriptURL/xss-ALLOWED-from-javascript-url-to-javscript-url-expected.txt:
+        * http/tests/security/javascriptURL/xss-ALLOWED-to-javascript-url-from-javscript-url-expected.txt:
+        * http/tests/security/javascriptURL/xss-ALLOWED-to-javascript-url-sub-frame-2-level-expected.txt:
+        * http/tests/security/javascriptURL/xss-DENIED-from-javascript-url-in-foreign-domain-subframe-expected.txt:
+        * http/tests/security/javascriptURL/xss-DENIED-to-javascript-url-in-foreign-domain-subframe-expected.txt:
+        * http/tests/security/mixedContent/about-blank-iframe-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/blob-url-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/data-url-iframe-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/data-url-script-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/empty-url-plugin-in-frame-expected.txt:
+        * http/tests/security/mixedContent/insecure-css-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/insecure-form-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/insecure-iframe-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/insecure-iframe-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/insecure-image-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/redirect-http-to-https-script-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame-expected.txt:
+        * http/tests/security/mixedContent/redirect-https-to-http-script-in-iframe-expected.txt:
+        * http/tests/security/private-browsing-http-auth-expected.txt:
+        * http/tests/security/referrer-policy-always-expected.txt:
+        * http/tests/security/referrer-policy-default-expected.txt:
+        * http/tests/security/referrer-policy-https-always-expected.txt:
+        * http/tests/security/referrer-policy-https-default-expected.txt:
+        * http/tests/security/referrer-policy-https-never-expected.txt:
+        * http/tests/security/referrer-policy-https-no-referrer-expected.txt:
+        * http/tests/security/referrer-policy-https-no-referrer-when-downgrade-expected.txt:
+        * http/tests/security/referrer-policy-https-origin-expected.txt:
+        * http/tests/security/referrer-policy-https-unsafe-url-expected.txt:
+        * http/tests/security/referrer-policy-invalid-expected.txt:
+        * http/tests/security/referrer-policy-never-expected.txt:
+        * http/tests/security/referrer-policy-no-referrer-expected.txt:
+        * http/tests/security/referrer-policy-no-referrer-when-downgrade-expected.txt:
+        * http/tests/security/referrer-policy-origin-expected.txt:
+        * http/tests/security/referrer-policy-redirect-expected.txt:
+        * http/tests/security/referrer-policy-rel-noreferrer-expected.txt:
+        * http/tests/security/same-origin-appcache-blocked-expected.txt:
+        * http/tests/security/same-origin-document-domain-storage-allowed-expected.txt:
+        * http/tests/security/same-origin-storage-blocked-expected.txt:
+        * http/tests/security/same-origin-websql-blocked-expected.txt:
+        * http/tests/security/sandboxed-iframe-document-cookie-expected.txt:
+        * http/tests/security/sandboxed-iframe-geolocation-getCurrentPosition-expected.txt:
+        * http/tests/security/sandboxed-iframe-geolocation-watchPosition-expected.txt:
+        * http/tests/security/srcdoc-inherits-referrer-expected.txt:
+        * http/tests/security/srcdoc-inherits-referrer-for-forms-expected.txt:
+        * http/tests/security/storage-blocking-loosened-local-storage-expected.txt:
+        * http/tests/security/storage-blocking-loosened-plugin-expected.txt:
+        * http/tests/security/storage-blocking-loosened-private-browsing-plugin-expected.txt:
+        * http/tests/security/storage-blocking-loosened-websql-expected.txt:
+        * http/tests/security/storage-blocking-strengthened-local-storage-expected.txt:
+        * http/tests/security/storage-blocking-strengthened-plugin-expected.txt:
+        * http/tests/security/storage-blocking-strengthened-private-browsing-plugin-expected.txt:
+        * http/tests/security/storage-blocking-strengthened-websql-expected.txt:
+        * http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode-expected.txt:
+        * http/tests/security/strip-referrer-to-origin-for-third-party-requests-in-private-mode-expected.txt:
+        * http/tests/security/window-properties-clear-domain-expected.txt:
+        * http/tests/security/window-properties-clear-port-expected.txt:
+        * http/tests/security/window-properties-pass-expected.txt:
+        * http/tests/security/xss-DENIED-assign-location-href-javascript-expected.txt:
+        * http/tests/security/xss-DENIED-defineProperty-expected.txt:
+        * http/tests/security/xssAuditor/faux-script1-expected.txt:
+        * http/tests/security/xssAuditor/faux-script2-expected.txt:
+        * http/tests/security/xssAuditor/faux-script3-expected.txt:
+        * http/tests/security/xssAuditor/malformed-HTML-expected.txt:
+        * http/tests/security/xssAuditor/non-block-javascript-url-frame-expected.txt:
+        * http/tests/security/xssAuditor/reflection-in-path-expected.txt:
+        * http/tests/security/xssAuditor/script-tag-with-callbacks-expected.txt:
+        * http/tests/security/xssAuditor/svg-animate-expected.txt:
+        * http/tests/ssl/media-stream/get-user-media-different-host-expected.txt:
+        * http/tests/ssl/media-stream/get-user-media-nested-expected.txt:
+        * http/tests/ssl/media-stream/get-user-media-secure-connection-expected.txt:
+        * http/tests/ssl/ping-with-unsafe-redirect-expected.txt:
+        * http/tests/storageAccess/deny-storage-access-under-opener-expected.txt:
+        * http/tests/storageAccess/grant-storage-access-under-opener-expected.txt:
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-and-try-access-from-right-frame-expected.txt:
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-but-try-access-from-wrong-frame-expected.txt:
+        * http/tests/xmlhttprequest/access-control-sandboxed-iframe-allow-expected.txt:
+        * http/tests/xmlhttprequest/access-control-sandboxed-iframe-allow-origin-null-expected.txt:
+        * http/tests/xmlhttprequest/access-control-sandboxed-iframe-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-sandboxed-iframe-denied-without-wildcard-expected.txt:
+        * http/tests/xmlhttprequest/frame-load-cancelled-abort-expected.txt:
+        * http/tests/xmlhttprequest/frame-unload-abort-crash-expected.txt:
+        * http/tests/xmlhttprequest/origin-exact-matching-expected.txt:
+        * http/tests/xmlhttprequest/uri-resolution-opera-open-004-expected.txt:
+        * http/tests/xmlhttprequest/uri-resolution-opera-open-005-expected.txt:
+        * http/tests/xmlhttprequest/uri-resolution-opera-open-006-expected.txt:
+        * http/tests/xmlhttprequest/uri-resolution-opera-open-007-expected.txt:
+        * http/tests/xmlhttprequest/uri-resolution-opera-open-008-expected.txt:
+        * http/tests/xmlhttprequest/uri-resolution-opera-open-009-expected.txt:
+        * http/tests/xmlhttprequest/uri-resolution-opera-open-010-expected.txt:
+        * http/tests/xsl/xslt-transform-with-javascript-disabled-expected.txt:
+        * imported/blink/fast/plugins/empty-url-object-expected.txt:
+        * loader/stateobjects/pushstate-size-iframe-expected.txt:
+        * loader/stateobjects/replacestate-size-iframe-expected.txt:
+        * media/auto-play-in-sandbox-with-allow-scripts-expected.txt:
+        * platform/ios-wk1/http/tests/quicklook/top-navigation-blocked-expected.txt:
+        * platform/ios-wk1/imported/w3c/web-platform-tests/html/browsers/browsing-the-web/unloading-documents/001-expected.txt:
+        * platform/ios/http/tests/quicklook/at-import-stylesheet-blocked-expected.txt:
+        * platform/ios/http/tests/quicklook/cross-origin-iframe-blocked-expected.txt:
+        * platform/ios/http/tests/quicklook/document-domain-is-empty-string-expected.txt:
+        * platform/ios/http/tests/quicklook/external-stylesheet-blocked-expected.txt:
+        * platform/ios/http/tests/quicklook/hide-referer-on-navigation-expected.txt:
+        * platform/ios/http/tests/quicklook/top-navigation-blocked-expected.txt:
+        * platform/ios/quicklook/excel-expected.txt:
+        * platform/ios/quicklook/excel-legacy-expected.txt:
+        * platform/ios/quicklook/excel-macro-enabled-expected.txt:
+        * platform/ios/quicklook/powerpoint-expected.txt:
+        * platform/ios/quicklook/powerpoint-legacy-expected.txt:
+        * platform/ios/quicklook/word-expected.txt:
+        * platform/ios/quicklook/word-legacy-expected.txt:
+        * platform/ios/webarchive/loading/cache-expired-subresource-expected.txt:
+        * platform/mac-wk2/http/tests/security/cross-origin-plugin-expected.txt:
+        * platform/mac-wk2/http/tests/security/cross-origin-plugin-private-browsing-toggled-expected.txt:
+        * platform/mac-wk2/http/tests/security/storage-blocking-strengthened-plugin-expected.txt:
+        * platform/mac-wk2/http/tests/security/storage-blocking-strengthened-private-browsing-plugin-expected.txt:
+        * platform/mac-wk2/plugins/resize-from-plugin-expected.txt:
+        * platform/mac/fast/loader/webarchive-encoding-respected-expected.txt:
+        * platform/mac/webarchive/adopt-attribute-styled-body-webarchive-expected.txt:
+        * platform/mac/webarchive/loading/cache-expired-subresource-expected.txt:
+        * platform/mac/webarchive/test-duplicate-resources-expected.txt:
+        * platform/win/plugins/resize-from-plugin-expected.txt:
+        * platform/win/webarchive/loading/cache-expired-subresource-expected.txt:
+        * platform/wk2/fast/loader/fragment-navigation-base-blank-expected.txt:
+        * platform/wk2/fast/loader/iframe-meta-refresh-base-blank-expected.txt:
+        * platform/wk2/fast/loader/iframe-set-location-base-blank-expected.txt:
+        * platform/wk2/fast/loader/refresh-iframe-base-blank-expected.txt:
+        * platform/wk2/fast/loader/subframe-removes-itself-expected.txt:
+        * platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt:
+        * platform/wk2/http/tests/loading/basic-auth-resend-wrong-credentials-expected.txt:
+        * platform/wk2/http/tests/loading/basic-credentials-sent-automatically-expected.txt:
+        * platform/wk2/http/tests/loading/redirect-with-no-location-crash-expected.txt:
+        * platform/wk2/http/tests/loading/server-redirect-for-provisional-load-caching-expected.txt:
+        * platform/wk2/http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin-expected.txt:
+        * platform/wk2/http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin-expected.txt:
+        * platform/wk2/http/tests/misc/authentication-redirect-3/authentication-sent-to-redirect-same-origin-with-location-credentials-expected.txt:
+        * platform/wk2/http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-allowall-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-deny-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-in-body-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-allow-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-deny-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-invalid-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-conflict-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-allow-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/data-url-iframe-in-main-frame-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-iframe-report-only-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-main-frame-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-with-enforced-and-report-policies-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-with-inherited-policy-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-javascript-url-iframe-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-xslt-document-in-iframe-with-inherited-policy-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-iframe-with-inherited-policy-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-asynchronous-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-synchronous-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/secure-image-after-upgrade-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/secure-image-after-upgrade-redirect-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-nested-upgrades-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-css-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-http-to-https-script-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-https-to-http-script-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/http-0.9/iframe-blocked-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/about-blank-iframe-in-main-frame-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/data-url-iframe-in-main-frame-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/data-url-script-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/empty-url-plugin-in-frame-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/insecure-css-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/insecure-form-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/insecure-iframe-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/insecure-iframe-in-main-frame-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/insecure-image-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/redirect-http-to-https-script-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame-expected.txt:
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-script-in-iframe-expected.txt:
+        * platform/wk2/http/tests/security/xssAuditor/script-tag-with-callbacks-expected.txt:
+        * platform/wk2/webarchive/loading/javascript-url-iframe-crash-expected.txt:
+        * platform/wk2/webarchive/loading/mainresource-null-mimetype-crash-expected.txt:
+        * platform/wk2/webarchive/loading/missing-data-expected.txt:
+        * platform/wk2/webarchive/loading/object-expected.txt:
+        * platform/wk2/webarchive/loading/test-loading-archive-expected.txt:
+        * platform/wk2/webarchive/loading/test-loading-archive-subresource-null-mimetype-expected.txt:
+        * platform/wk2/webarchive/loading/video-in-webarchive-expected.txt:
+        * plugins/resize-from-plugin-expected.txt:
+        * quicklook/excel-expected.txt:
+        * quicklook/excel-legacy-expected.txt:
+        * quicklook/excel-macro-enabled-expected.txt:
+        * quicklook/keynote-09-expected.txt:
+        * quicklook/multi-sheet-numbers-09-expected.txt:
+        * quicklook/numbers-09-expected.txt:
+        * quicklook/pages-09-expected.txt:
+        * quicklook/powerpoint-expected.txt:
+        * quicklook/powerpoint-legacy-expected.txt:
+        * quicklook/word-expected.txt:
+        * quicklook/word-legacy-expected.txt:
+        * userscripts/user-script-all-frames-expected.txt:
+        * userscripts/user-script-top-frame-only-expected.txt:
+        * userscripts/user-style-all-frames-expected.txt:
+        * userscripts/user-style-top-frame-only-expected.txt:
+        * webarchive/loading/javascript-url-iframe-crash-expected.txt:
+        * webarchive/loading/mainresource-null-mimetype-crash-expected.txt:
+        * webarchive/loading/missing-data-expected.txt:
+        * webarchive/loading/object-expected.txt:
+        * webarchive/loading/test-loading-archive-expected.txt:
+        * webarchive/loading/test-loading-archive-subresource-null-mimetype-expected.txt:
+        * webarchive/loading/video-in-webarchive-expected.txt:
+
+2018-05-07  Daniel Bates  <dabates@apple.com>
+
+        Add tests to ensure Same-Site cookies are included when performing a top-level redirect
+        https://bugs.webkit.org/show_bug.cgi?id=185235
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-after-top-level-cross-origin-redirect.html: Added.
+        * http/tests/cookies/same-site/fetch-after-top-level-same-origin-redirect-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-after-top-level-same-origin-redirect.html: Added.
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-cross-origin-redirect.php: Added.
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-same-origin-redirect.php: Added.
+
+2018-05-06  Dean Jackson  <dino@apple.com>
+
+        WebGL: Reset simulated values after validation fails
+        https://bugs.webkit.org/show_bug.cgi?id=185363
+        <rdar://problem/39733417>
+
+        Reviewed by Anders Carlsson.
+
+        * fast/canvas/webgl/index-validation-with-subsequent-draws-expected.txt: Added.
+        * fast/canvas/webgl/index-validation-with-subsequent-draws.html: Added.
+
+2018-05-07  Ms2ger  <Ms2ger@igalia.com>
+
+        Support negative sw/sh values in createImageBitmap().
+        https://bugs.webkit.org/show_bug.cgi?id=184449
+
+        Reviewed by Dean Jackson.
+
+        * http/wpt/2dcontext/imagebitmap/createImageBitmap-expected.txt: update test name
+        * http/wpt/2dcontext/imagebitmap/createImageBitmap.html: update expected result
+
+2018-05-04  Youenn Fablet  <youenn@apple.com>
+
+        webrtc/addICECandidate-closed.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=185336
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/addICECandidate-closed.html:
+
+2018-05-04  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: simplify the WI.Collection interface
+        https://bugs.webkit.org/show_bug.cgi?id=185187
+
+        Reviewed by Brian Burg.
+
+        * http/tests/inspector/dom/cross-domain-inspected-node-access.html:
+        * http/tests/inspector/dom/disconnect-dom-tree-after-main-frame-navigation.html:
+        * http/tests/inspector/network/har/har-page.html:
+        * http/tests/inspector/network/har/har-page-expected.txt:
+        * http/tests/inspector/network/resource-response-source-memory-cache-revalidate-expired-only.html:
+        * http/tests/inspector/network/resource-response-source-memory-cache.html:
+        * http/tests/inspector/network/resource-sizes-memory-cache.html:
+        * http/tests/inspector/network/set-resource-caching-disabled-memory-cache.html:
+        * http/tests/inspector/worker/blob-script-with-cross-domain-imported-scripts.html:
+        * http/tests/websocket/tests/hybi/inspector/before-load.html:
+        * inspector/canvas/resources/recording-utilities.js:
+        * inspector/css/manager-preferredInspectorStyleSheetForFrame.html:
+        * inspector/debugger/resources/log-pause-location.js:
+        (TestPage.registerInitializer.window.findScript):
+        * inspector/dom/highlightFrame.html:
+        * inspector/dom/highlightNode.html:
+        * inspector/dom/highlightNodeList.html:
+        * inspector/dom/highlightSelector.html:
+        * inspector/model/frame-extra-scripts.html:
+        * inspector/page/empty-or-missing-resources.html:
+        * inspector/unit-tests/resource-collection.html:
+        * inspector/worker/resources-in-worker.html:
+
+2018-05-04  Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION (r230326?): Layout Test http/tests/contentextensions/make-https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=184476
+        <rdar://problem/39384226>
+
+        Reviewed by Ryosuke Niwa.
+
+        Removed flakiness expectation.
+        Updated test to no longer log load callbacks.
+        Instead, we rely on the fact that the four content extension upgrades
+        are also logged as console log messages.
+
+        * http/tests/contentextensions/make-https-expected.txt:
+        * http/tests/contentextensions/make-https.html:
+        * platform/mac-sierra-wk2/http/tests/contentextensions/make-https-expected.txt: Removed.
+        * platform/mac-wk2/TestExpectations:
+
+2018-05-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark animations/duplicate-keys.html as flaky on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=185332
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-05-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline tests for iOS after r231359.
+
+        Unreviewed test gardening.
+
+        * platform/ios/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+
+2018-05-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline tests after r231359.
+
+        Unreviewed test gardening.
+
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+
+2018-05-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for media/video-aspect-ratio.html.
+        https://bugs.webkit.org/show_bug.cgi?id=184457
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-05-04  Zalan Bujtas  <zalan@apple.com>
+
+        Use the containing block to compute the pagination gap when the container is inline.
+        https://bugs.webkit.org/show_bug.cgi?id=184724
+        <rdar://problem/39521800>
+
+        Reviewed by Simon Fraser.
+
+        * fast/overflow/page-overflow-with-inline-body-crash-expected.txt: Added.
+        * fast/overflow/page-overflow-with-inline-body-crash.html: Added.
+
+2018-05-04  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas tab: Determine isFunction by looking at the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=184990
+
+        Reviewed by Brian Burg.
+
+        * inspector/canvas/recording-2d-expected.txt:
+
+2018-05-04  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r231331.
+
+        Caused a few tests to assert
+
+        Reverted changeset:
+
+        "Stop using an iframe's id as fallback if its name attribute
+        is not set"
+        https://bugs.webkit.org/show_bug.cgi?id=11388
+        https://trac.webkit.org/changeset/231331
+
+2018-05-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/contentextensions/make-https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=184476
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-05-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/navigate-with-pip-should-not-crash.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=173119
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-05-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Text shaping in the simple path is flipped in the y direction
+        https://bugs.webkit.org/show_bug.cgi?id=185062
+        <rdar://problem/39778678>
+
+        Reviewed by Simon Fraser.
+
+        This test renders a font which uses our fast text codepath but also includes vertical
+        displacements inside its liga feature. The test makes sure that the vertical displacement
+        occurs in the correct direction.
+
+        The test fonts were created by Ulrike Rausch of LiebeFonts specifically for the purpose
+        of testing. Huge thanks to her!! Figuring out this bug would not have been possible if
+        not for her huge help!
+
+        * fast/text/resources/LiebeTest-calt.woff: Added.
+        * fast/text/resources/LiebeTest-dlig.woff: Added.
+        * fast/text/resources/LiebeTest-liga.woff: Added.
+        * fast/text/resources/LiebeTest-swsh.woff: Added.
+        * fast/text/vertical-displacement-simple-codepath-expected.html: Added.
+        * fast/text/vertical-displacement-simple-codepath.html: Added.
+
+2018-05-04  Chris Nardi  <cnardi@chromium.org>
+
+        Serialize all URLs with double-quotes per CSSOM spec
+        https://bugs.webkit.org/show_bug.cgi?id=184935
+
+        Reviewed by Antti Koivisto.
+
+        Update tests to use double quotes when serializing URLs, and fixes for using double quotes in the test.
+
+        * css3/calc/cross-fade-calc.html:
+        * css3/filters/backdrop/backdropfilter-property-computed-style-expected.txt:
+        * css3/filters/backdrop/backdropfilter-property-computed-style.html:
+        * css3/filters/backdrop/backdropfilter-property-parsing-expected.txt:
+        * css3/filters/backdrop/backdropfilter-property-parsing.html:
+        * css3/filters/filter-property-computed-style-expected.txt:
+        * css3/filters/filter-property-computed-style.html:
+        * css3/filters/filter-property-expected.txt:
+        * css3/filters/filter-property-parsing-expected.txt:
+        * css3/filters/filter-property-parsing.html:
+        * css3/filters/filter-property.html:
+        * css3/filters/unprefixed-expected.txt:
+        * css3/filters/unprefixed.html:
+        * fast/backgrounds/background-shorthand-after-set-backgroundSize-expected.txt:
+        * fast/backgrounds/background-shorthand-after-set-backgroundSize.html:
+        * fast/backgrounds/background-shorthand-with-backgroundSize-style-expected.txt:
+        * fast/backgrounds/background-shorthand-with-backgroundSize-style.html:
+        * fast/backgrounds/multiple-backgrounds-computed-style-expected.txt:
+        * fast/backgrounds/multiple-backgrounds-computed-style.html:
+        * fast/css/background-position-serialize-expected.txt:
+        * fast/css/cursor-parsing-expected.txt:
+        * fast/css/cursor-parsing-image-set-expected.txt:
+        * fast/css/cursor-parsing-image-set.html:
+        * fast/css/cursor-parsing.html:
+        * fast/css/getComputedStyle/computed-style-border-image-expected.txt:
+        * fast/css/getComputedStyle/computed-style-border-image.html:
+        * fast/css/getComputedStyle/computed-style-cross-fade-expected.txt:
+        * fast/css/getComputedStyle/computed-style-cross-fade.html:
+        * fast/css/getComputedStyle/computed-style-properties-expected.txt:
+        * fast/css/getComputedStyle/computed-style-properties.html:
+        * fast/css/getComputedStyle/getComputedStyle-background-shorthand-expected.txt:
+        * fast/css/getComputedStyle/getComputedStyle-background-shorthand.html:
+        * fast/css/getComputedStyle/getComputedStyle-list-style-shorthand-expected.txt:
+        * fast/css/getComputedStyle/getComputedStyle-list-style-shorthand.html:
+        * fast/css/image-set-parsing.html:
+        * fast/css/image-set-setting-expected.txt:
+        * fast/css/image-set-setting.html:
+        * fast/css/image-set-unprefixed-expected.txt:
+        * fast/css/image-set-unprefixed.html:
+        * fast/css/invalid-cursor-property-crash.html:
+        * fast/css/parse-border-image-repeat-null-crash-expected.txt:
+        * fast/css/uri-token-parsing-expected.txt:
+        * fast/css/uri-token-parsing.html:
+        * fast/css/url-with-multi-byte-unicode-escape-expected.txt:
+        * fast/css/url-with-multi-byte-unicode-escape.html:
+        * fast/filter-image/parse-filter-image-expected.txt:
+        * fast/filter-image/parse-filter-image.html:
+        * fast/innerHTML/innerHTML-uri-resolution.html:
+        * fast/inspector-support/cssURLQuotes-expected.txt:
+        * fast/inspector-support/cssURLQuotes.html:
+        * fast/masking/parsing-clip-path-iri-expected.txt:
+        * fast/masking/parsing-clip-path-iri.html:
+        * fast/masking/parsing-mask-expected.txt:
+        * fast/masking/parsing-mask.html:
+        * fast/shapes/parsing/parsing-shape-outside-expected.txt:
+        * fast/shapes/parsing/parsing-shape-outside.html:
+        * fast/shapes/parsing/parsing-test-utils.js:
+        (removeBaseURL):
+        * platform/gtk/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+        * platform/ios/fast/css/image-set-unprefixed-expected.txt: Removed.
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+        * platform/win/fast/css/parse-border-image-repeat-null-crash-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+        * resources/image-preload-helper.js:
+        (preloadImagesFromStyle):
+        * svg/css/svg-attribute-parser-mode-expected.txt:
+        * svg/css/svg-attribute-parser-mode.html:
+        * svg/custom/marker-getPropertyValue-expected.txt:
+        * svg/custom/marker-getPropertyValue.svg:
+
+2018-05-04  Antoine Quint  <graouts@apple.com>
+
+        Improve test at media/modern-media-controls/airplay-button/airplay-button-on.html to not hardcode the -apple-wireless-playback-target-active color
+        https://bugs.webkit.org/show_bug.cgi?id=185297
+        <rdar://problem/39737716>
+
+        Reviewed by Dean Jackson.
+
+        Create an element and set its "color" property to "-apple-wireless-playback-target-active" so we can use
+        getComputedStyle() to query the applied value instead of hard-coding the expected color.
+
+        * media/modern-media-controls/airplay-button/airplay-button-on.html:
+
+2018-05-04  Youenn Fablet  <youenn@apple.com>
+
+        PeerConnection should have its connectionState closed even if doing gathering
+        https://bugs.webkit.org/show_bug.cgi?id=185267
+
+        Reviewed by Darin Adler.
+
+        * webrtc/addICECandidate-closed-expected.txt: Added.
+        * webrtc/addICECandidate-closed.html: Added.
+
+2018-05-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Some event tests failing after r230817
+        https://bugs.webkit.org/show_bug.cgi?id=185072
+
+        Reviewed by Michael Catanzaro.
+
+        Remove expectations for tests that are passing now.
+
+        * platform/gtk/TestExpectations:
+
+2018-05-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Revert the unitended changes in r231329.
+
+        * http/tests/media/video-play-stall.html: Replaced with LayoutTests/http/tests/media/video-play-stall.html.
+        * platform/mac/TestExpectations:
+
+2018-05-03  Chris Dumez  <cdumez@apple.com>
+
+        Stop using an iframe's id as fallback if its name attribute is not set
+        https://bugs.webkit.org/show_bug.cgi?id=11388
+
+        Reviewed by Geoff Garen.
+
+        * fast/dom/Window/named-getter-frame-id-expected.txt: Added.
+        * fast/dom/Window/named-getter-frame-id.html: Added.
+        Add layout test coverage.
+
+        * fast/dom/Geolocation/srcdoc-getCurrentPosition-expected.txt:
+        * fast/dom/Geolocation/srcdoc-watchPosition-expected.txt:
+        * fast/dom/HTMLAnchorElement/anchor-in-noscroll-iframe-crash.html:
+        * fast/dom/Window/window-special-properties-expected.txt:
+        * fast/frames/iframe-no-name-expected.txt:
+        * fast/frames/iframe-no-name.html:
+        * fast/layers/prevent-hit-test-during-layout.html:
+        * fast/xmlhttprequest/xmlhttprequest-no-file-access-expected.txt:
+        * http/tests/security/clipboard/copy-paste-html-cross-origin-iframe-across-origin.html:
+        * http/tests/security/contentSecurityPolicy/iframe-blank-url-programmatically-add-external-script-expected.txt:
+        * http/tests/security/cross-origin-reified-window-property-access.html:
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-and-try-access-from-right-frame-expected.txt:
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-but-try-access-from-wrong-frame-expected.txt:
+        * http/tests/webrtc/filtering-ice-candidate-same-origin-frame.html:
+        * http/wpt/beacon/keepalive-after-navigation-expected.txt:
+        * http/wpt/cache-storage/cache-remove-twice.html:
+        Update some layout tests that relied on our old (non-standard) behavior.
+
+2018-05-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Using image map inside a shadow tree results hits a release assert in DocumentOrderedMap::add
+        https://bugs.webkit.org/show_bug.cgi?id=185238
+
+        Reviewed by Antti Koivisto.
+
+        * fast/images/imagemap-in-nested-shadow-tree-expected.txt: Added.
+        * fast/images/imagemap-in-nested-shadow-tree.html: Added.
+        * fast/images/imagemap-in-shadow-tree-expected.txt: Added.
+        * fast/images/imagemap-in-shadow-tree.html: Added.
+
+2018-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/controls/pip-placeholder-without-video-controls.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170620
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-05-03  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION: Layout Test http/tests/security/location-cross-origin.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=185259
+
+        Unreviewed, stop relying on a setImeout(100) and epect the frame navigation to have completed. Instead,
+        use a setInterval() to poll until the cross-origin frame has navigated.
+
+        * http/tests/security/location-cross-origin.html:
+
+2018-05-03  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r231300.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/compositing/layer-creation/overlap-animation-expected.txt: Removed.
+        * platform/gtk/editing/selection/select-all-004-expected.png:
+        * platform/gtk/editing/selection/select-all-004-expected.txt: Added.
+
+2018-05-03  Youenn Fablet  <youenn@apple.com>
+
+        A MediaStream being played should allow removing some of its tracks
+        https://bugs.webkit.org/show_bug.cgi?id=185233
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/change-tracks-media-stream-being-played-expected.txt: Added.
+        * fast/mediastream/change-tracks-media-stream-being-played.html: Added.
+
+2018-05-02  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Hiding then showing an <object> of type image makes the underlaying image disappear
+        https://bugs.webkit.org/show_bug.cgi?id=185216
+        <rdar://problem/39055630>
+
+        Reviewed by Youenn Fablet.
+
+        * fast/images/object-image-hide-show-expected.html: Added.
+        * fast/images/object-image-hide-show.html: Added.
+
+2018-05-02  Brent Fulgham  <bfulgham@apple.com>
+
+        Use RetainPtr for form input type
+        https://bugs.webkit.org/show_bug.cgi?id=185210
+        <rdar://problem/39734040>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/forms/access-key-mutation-2-expected.txt: Added.
+        * fast/forms/access-key-mutation-2.html: Added.
+
+2018-05-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip transitions/opacity-transition-zindex.html.
+        https://bugs.webkit.org/show_bug.cgi?id=184947
+
+        Unreviewed test gardening.
+
+        * TestExpectations: Remove old expectation that is no longer applicable.
+        * platform/mac-wk2/TestExpectations:
+
 2018-05-02  Ross Kirsling  <ross.kirsling@sony.com>
 
         [WinCairo] Unreviewed gardening. Add missing Skip for http/wpt.

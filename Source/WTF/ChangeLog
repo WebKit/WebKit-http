@@ -1,3 +1,395 @@
+2018-05-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ARMv7] Drop ARMv7 disassembler in favor of capstone
+        https://bugs.webkit.org/show_bug.cgi?id=185423
+
+        Reviewed by Michael Catanzaro.
+
+        Remove USE_ARMV7_DISASSEMBLER. Just use Capstone.
+
+        * wtf/Platform.h:
+
+2018-05-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][GTK][JSCONLY] Use capstone disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=185283
+
+        Reviewed by Michael Catanzaro.
+
+        Add USE_CAPSTONE used for MIPS and ARM.
+
+        * wtf/Platform.h:
+
+2018-05-09  Antti Koivisto  <antti@apple.com>
+
+        Add OptionSet::operator& and operator bool
+        https://bugs.webkit.org/show_bug.cgi?id=185306
+
+        Reviewed by Anders Carlsson.
+
+        This is primarily to allow writing
+
+            if (options & Option:A)
+
+        instead of
+
+            if (options.contains(Option:A))
+
+        This is consistent with other OptionSet operators.
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::operator bool):
+        (WTF::OptionSet::operator&):
+
+        Also remove T versions of operator| and operator-, they are not needed due to
+        implicit conversion from T to OptionSet<T>.
+
+2018-05-06  Filip Pizlo  <fpizlo@apple.com>
+
+        InPlaceAbstractState::beginBasicBlock shouldn't have to clear any abstract values
+        https://bugs.webkit.org/show_bug.cgi?id=185365
+
+        Reviewed by Saam Barati.
+        
+        Fix some inlining goof-ups.
+        
+        Rolling back in after fixing cloop build.
+
+        * wtf/TinyPtrSet.h:
+        (WTF::TinyPtrSet::add):
+        (WTF::TinyPtrSet::merge):
+        (WTF::TinyPtrSet::addOutOfLine):
+        (WTF::TinyPtrSet::mergeOtherOutOfLine):
+
+2018-05-08  Dean Jackson  <dino@apple.com>
+
+        Use thumbnails in System Previews
+        https://bugs.webkit.org/show_bug.cgi?id=185397
+        <rdar://problem/40039376>
+
+        Reviewed by Jon Lee.
+
+        SYSTEM_PREVIEW is only available on some platforms.
+
+        * wtf/Platform.h:
+
+2018-05-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r231468.
+
+        Broke the CLoop build
+
+        Reverted changeset:
+
+        "InPlaceAbstractState::beginBasicBlock shouldn't have to clear
+        any abstract values"
+        https://bugs.webkit.org/show_bug.cgi?id=185365
+        https://trac.webkit.org/changeset/231468
+
+2018-05-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSCONLY] Enable ARMv7 DFG
+        https://bugs.webkit.org/show_bug.cgi?id=185415
+
+        Reviewed by Mark Lam.
+
+        Enable ARMv7 DFG JIT by default on Linux and FreeBSD.
+
+        * wtf/Platform.h:
+
+2018-05-06  Filip Pizlo  <fpizlo@apple.com>
+
+        InPlaceAbstractState::beginBasicBlock shouldn't have to clear any abstract values
+        https://bugs.webkit.org/show_bug.cgi?id=185365
+
+        Reviewed by Saam Barati.
+        
+        Fix some inlining goof-ups.
+
+        * wtf/TinyPtrSet.h:
+        (WTF::TinyPtrSet::add):
+        (WTF::TinyPtrSet::merge):
+        (WTF::TinyPtrSet::addOutOfLine):
+        (WTF::TinyPtrSet::mergeOtherOutOfLine):
+
+2018-05-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Embed default atomic string table in Thread
+        https://bugs.webkit.org/show_bug.cgi?id=185349
+
+        Reviewed by Darin Adler.
+
+        Do not need to allocate AtomicStringTable separate from Thread
+        since the table's lifetime is completely the same as Thread.
+
+        This patch just embeds it as a data member of Thread.
+
+        * wtf/Threading.cpp:
+        (WTF::Thread::initializeInThread):
+        (WTF::Thread::didExit):
+        * wtf/Threading.h:
+        * wtf/text/AtomicStringTable.cpp:
+        (WTF::AtomicStringTable::create): Deleted.
+        (WTF::AtomicStringTable::destroy): Deleted.
+        * wtf/text/AtomicStringTable.h:
+
+2018-05-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use static initializers for WTF::Mutex and WTF::ThreadCondition
+        https://bugs.webkit.org/show_bug.cgi?id=185361
+
+        Reviewed by Sam Weinig.
+
+        Use static initializers for WTF::Mutex and WTF::ThreadCondition to make
+        constructors of them simple and constexpr.
+
+        * wtf/ThreadingPrimitives.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Mutex::Mutex): Deleted.
+        (WTF::ThreadCondition::ThreadCondition): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Mutex::Mutex): Deleted.
+        (WTF::ThreadCondition::ThreadCondition): Deleted.
+
+2018-05-04  Tim Horton  <timothy_horton@apple.com>
+
+        Shift to a lower-level framework for simplifying URLs
+        https://bugs.webkit.org/show_bug.cgi?id=185334
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Platform.h:
+
+2018-05-04  Eric Carlson  <eric.carlson@apple.com>
+
+        Log media time range as JSON
+        https://bugs.webkit.org/show_bug.cgi?id=185321
+        <rdar://problem/39986746>
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/MediaTime.cpp:
+        (WTF::toJSONStringInternal): Extract guts of MediaTime::toJSONString to this static function
+        so it can be used by MediaTimeRange::toJSONString as well.
+        (WTF::MediaTime::toJSONString const):
+        (WTF::MediaTimeRange::toJSONString const):
+        * wtf/MediaTime.h:
+
+2018-05-04  Antti Koivisto  <antti@apple.com>
+
+        OptionsSet initializer list constructor should be constexpr
+        https://bugs.webkit.org/show_bug.cgi?id=185298
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::OptionSet):
+
+2018-05-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use default std::optional if it is provided
+        https://bugs.webkit.org/show_bug.cgi?id=185159
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Expected.h:
+        * wtf/Optional.h:
+        Do not use <optional> for clang currently.
+        (WTF::valueOrCompute):
+
+2018-05-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Strings should not be allocated in a gigacage
+        https://bugs.webkit.org/show_bug.cgi?id=185218
+
+        Reviewed by Saam Barati.
+        
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Deque.h:
+        * wtf/Forward.h:
+        * wtf/Gigacage.h:
+        (Gigacage::name):
+        (Gigacage::basePtr):
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+        (WTF::VectorBufferBase::deallocateBuffer):
+        (WTF::minCapacity>::Vector):
+        (WTF::=):
+        (WTF::minCapacity>::contains const):
+        (WTF::minCapacity>::findMatching const):
+        (WTF::minCapacity>::find const):
+        (WTF::minCapacity>::reverseFind const):
+        (WTF::minCapacity>::appendIfNotContains):
+        (WTF::minCapacity>::fill):
+        (WTF::minCapacity>::appendRange):
+        (WTF::minCapacity>::expandCapacity):
+        (WTF::minCapacity>::tryExpandCapacity):
+        (WTF::minCapacity>::resize):
+        (WTF::minCapacity>::resizeToFit):
+        (WTF::minCapacity>::shrink):
+        (WTF::minCapacity>::grow):
+        (WTF::minCapacity>::asanSetInitialBufferSizeTo):
+        (WTF::minCapacity>::asanSetBufferSizeToFullCapacity):
+        (WTF::minCapacity>::asanBufferSizeWillChangeTo):
+        (WTF::minCapacity>::reserveCapacity):
+        (WTF::minCapacity>::tryReserveCapacity):
+        (WTF::minCapacity>::reserveInitialCapacity):
+        (WTF::minCapacity>::shrinkCapacity):
+        (WTF::minCapacity>::append):
+        (WTF::minCapacity>::tryAppend):
+        (WTF::minCapacity>::constructAndAppend):
+        (WTF::minCapacity>::tryConstructAndAppend):
+        (WTF::minCapacity>::appendSlowCase):
+        (WTF::minCapacity>::constructAndAppendSlowCase):
+        (WTF::minCapacity>::tryConstructAndAppendSlowCase):
+        (WTF::minCapacity>::uncheckedAppend):
+        (WTF::minCapacity>::appendVector):
+        (WTF::minCapacity>::insert):
+        (WTF::minCapacity>::insertVector):
+        (WTF::minCapacity>::remove):
+        (WTF::minCapacity>::removeFirst):
+        (WTF::minCapacity>::removeFirstMatching):
+        (WTF::minCapacity>::removeAll):
+        (WTF::minCapacity>::removeAllMatching):
+        (WTF::minCapacity>::reverse):
+        (WTF::minCapacity>::map const):
+        (WTF::minCapacity>::releaseBuffer):
+        (WTF::minCapacity>::checkConsistency):
+        (WTF::swap):
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::removeRepeatedElements):
+        (WTF::Malloc>::Vector): Deleted.
+        (WTF::Malloc>::contains const): Deleted.
+        (WTF::Malloc>::findMatching const): Deleted.
+        (WTF::Malloc>::find const): Deleted.
+        (WTF::Malloc>::reverseFind const): Deleted.
+        (WTF::Malloc>::appendIfNotContains): Deleted.
+        (WTF::Malloc>::fill): Deleted.
+        (WTF::Malloc>::appendRange): Deleted.
+        (WTF::Malloc>::expandCapacity): Deleted.
+        (WTF::Malloc>::tryExpandCapacity): Deleted.
+        (WTF::Malloc>::resize): Deleted.
+        (WTF::Malloc>::resizeToFit): Deleted.
+        (WTF::Malloc>::shrink): Deleted.
+        (WTF::Malloc>::grow): Deleted.
+        (WTF::Malloc>::asanSetInitialBufferSizeTo): Deleted.
+        (WTF::Malloc>::asanSetBufferSizeToFullCapacity): Deleted.
+        (WTF::Malloc>::asanBufferSizeWillChangeTo): Deleted.
+        (WTF::Malloc>::reserveCapacity): Deleted.
+        (WTF::Malloc>::tryReserveCapacity): Deleted.
+        (WTF::Malloc>::reserveInitialCapacity): Deleted.
+        (WTF::Malloc>::shrinkCapacity): Deleted.
+        (WTF::Malloc>::append): Deleted.
+        (WTF::Malloc>::tryAppend): Deleted.
+        (WTF::Malloc>::constructAndAppend): Deleted.
+        (WTF::Malloc>::tryConstructAndAppend): Deleted.
+        (WTF::Malloc>::appendSlowCase): Deleted.
+        (WTF::Malloc>::constructAndAppendSlowCase): Deleted.
+        (WTF::Malloc>::tryConstructAndAppendSlowCase): Deleted.
+        (WTF::Malloc>::uncheckedAppend): Deleted.
+        (WTF::Malloc>::appendVector): Deleted.
+        (WTF::Malloc>::insert): Deleted.
+        (WTF::Malloc>::insertVector): Deleted.
+        (WTF::Malloc>::remove): Deleted.
+        (WTF::Malloc>::removeFirst): Deleted.
+        (WTF::Malloc>::removeFirstMatching): Deleted.
+        (WTF::Malloc>::removeAll): Deleted.
+        (WTF::Malloc>::removeAllMatching): Deleted.
+        (WTF::Malloc>::reverse): Deleted.
+        (WTF::Malloc>::map const): Deleted.
+        (WTF::Malloc>::releaseBuffer): Deleted.
+        (WTF::Malloc>::checkConsistency): Deleted.
+        * wtf/text/AtomicStringImpl.h:
+        * wtf/text/CString.cpp:
+        (WTF::CStringBuffer::createUninitialized):
+        * wtf/text/CString.h:
+        * wtf/text/StringBuffer.h:
+        (WTF::StringBuffer::StringBuffer):
+        (WTF::StringBuffer::~StringBuffer):
+        (WTF::StringBuffer::resize):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        (WTF::StringImpl::destroy):
+        (WTF::StringImpl::createUninitializedInternalNonEmpty):
+        (WTF::StringImpl::reallocateInternal):
+        (WTF::StringImpl::releaseAssertCaged const): Deleted.
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::createSubstringSharingImpl):
+        (WTF::StringImpl::tryCreateUninitialized):
+        (WTF::StringImpl::adopt):
+        (WTF::StringImpl::assertCaged const): Deleted.
+        * wtf/text/StringMalloc.cpp: Removed.
+        * wtf/text/StringMalloc.h: Removed.
+        * wtf/text/StringVector.h: Removed.
+        * wtf/text/SymbolImpl.h:
+        * wtf/text/UniquedStringImpl.h:
+        * wtf/text/WTFString.h:
+        (WTF::String::adopt):
+        (WTF::String::assertCaged const): Deleted.
+        (WTF::String::releaseAssertCaged const): Deleted.
+
+2018-05-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Ads in NYTimes app are shifted downwards by the scroll view's top content inset
+        https://bugs.webkit.org/show_bug.cgi?id=185251
+        <rdar://problem/39062357>
+
+        Reviewed by Tim Horton.
+
+        Add a new DYLD_IOS_VERSION macro definition for previous or non-internal SDKs.
+
+        * wtf/spi/darwin/dyldSPI.h:
+
+2018-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r231197.
+
+        The test added with this change crashes on the 32-bit JSC bot.
+
+        Reverted changeset:
+
+        "Correctly detect string overflow when using the 'Function'
+        constructor"
+        https://bugs.webkit.org/show_bug.cgi?id=184883
+        https://trac.webkit.org/changeset/231197
+
+2018-05-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r231223 and r231288.
+        https://bugs.webkit.org/show_bug.cgi?id=185256
+
+        The change in r231223 breaks internal builds, and r231288 is a
+        dependent change. (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Use default std::optional if it is provided"
+        https://bugs.webkit.org/show_bug.cgi?id=185159
+        https://trac.webkit.org/changeset/231223
+
+        "Use pointer instead of
+        std::optional<std::reference_wrapper<>>"
+        https://bugs.webkit.org/show_bug.cgi?id=185186
+        https://trac.webkit.org/changeset/231288
+
+2018-05-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r231251.
+        https://bugs.webkit.org/show_bug.cgi?id=185229
+
+        __cpp_lib_optional should be used after including <optional>
+        since it is defined in <optional> (Requested by yusukesuzuki
+        on #webkit).
+
+        Reverted changeset:
+
+        "Follow-up build fix for r231223"
+        https://bugs.webkit.org/show_bug.cgi?id=185159
+        https://trac.webkit.org/changeset/231251
+
 2018-05-02  Jonathan Bedard  <jbedard@apple.com>
 
         Follow-up build fix for r231223

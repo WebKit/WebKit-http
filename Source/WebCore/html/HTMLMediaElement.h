@@ -158,6 +158,8 @@ public:
 
     static HTMLMediaElement* bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose);
 
+    static bool isRunningDestructor();
+
     WEBCORE_EXPORT void rewind(double timeDelta);
     WEBCORE_EXPORT void returnToRealtime() override;
 
@@ -413,6 +415,7 @@ public:
     using HTMLElement::scriptExecutionContext;
 
     bool hasSingleSecurityOrigin() const { return !m_player || m_player->hasSingleSecurityOrigin(); }
+    bool didPassCORSAccessCheck() const { return m_player && m_player->didPassCORSAccessCheck(); }
     
     WEBCORE_EXPORT bool isFullscreen() const override;
     bool isStandardFullscreen() const;

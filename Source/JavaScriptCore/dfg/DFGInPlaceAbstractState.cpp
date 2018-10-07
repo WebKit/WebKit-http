@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@
 #include "JSCInlines.h"
 #include "PutByIdStatus.h"
 #include "StringObject.h"
+#include "SuperSampler.h"
 
 namespace JSC { namespace DFG {
 
@@ -53,27 +54,37 @@ InPlaceAbstractState::~InPlaceAbstractState() { }
 
 void InPlaceAbstractState::beginBasicBlock(BasicBlock* basicBlock)
 {
+    // This function is ~1.6-2% of execution time.
+    
     ASSERT(!m_block);
     
     ASSERT(basicBlock->variablesAtHead.numberOfLocals() == basicBlock->valuesAtHead.numberOfLocals());
     ASSERT(basicBlock->variablesAtTail.numberOfLocals() == basicBlock->valuesAtTail.numberOfLocals());
     ASSERT(basicBlock->variablesAtHead.numberOfLocals() == basicBlock->variablesAtTail.numberOfLocals());
 
-    m_abstractValues.resize();
-    
-    for (size_t i = 0; i < basicBlock->size(); i++) {
-        NodeFlowProjection::forEach(
-            basicBlock->at(i), [&] (NodeFlowProjection nodeProjection) {
-                forNode(nodeProjection).clear();
-            });
-    }
+    m_abstractValues.resize(); // This part is ~0.1-0.4% of execution time.
 
-    m_variables = basicBlock->valuesAtHead;
+    AbstractValueClobberEpoch epoch = AbstractValueClobberEpoch::first(basicBlock->cfaStructureClobberStateAtHead);
+    m_effectEpoch = epoch;
+
+    // This loop is 0.9-1.2% of execution time.
+    // FIXME: Lazily populate m_variables when GetLocal/SetLocal happens. Apply the same idea to
+    // merging. Alternatively, we could just use liveness here.
+    // https://bugs.webkit.org/show_bug.cgi?id=185452
+    for (size_t i = m_variables.size(); i--;) {
+        AbstractValue& value = m_variables[i];
+        value = basicBlock->valuesAtHead[i];
+        value.m_effectEpoch = epoch;
+    }
     
     if (m_graph.m_form == SSA) {
+        // This loop is 0.05-0.17% of execution time.
         for (NodeAbstractValuePair& entry : basicBlock->ssa->valuesAtHead) {
-            if (entry.node.isStillValid())
-                forNode(entry.node) = entry.value;
+            if (entry.node.isStillValid()) {
+                AbstractValue& value = m_abstractValues.at(entry.node);
+                value = entry.value;
+                value.m_effectEpoch = epoch;
+            }
         }
     }
     basicBlock->cfaShouldRevisit = false;
@@ -123,10 +134,10 @@ void InPlaceAbstractState::initialize()
 
                 switch (format) {
                 case FlushedInt32:
-                    entrypoint->valuesAtHead.argument(i).setType(SpecInt32Only);
+                    entrypoint->valuesAtHead.argument(i).setNonCellType(SpecInt32Only);
                     break;
                 case FlushedBoolean:
-                    entrypoint->valuesAtHead.argument(i).setType(SpecBoolean);
+                    entrypoint->valuesAtHead.argument(i).setNonCellType(SpecBoolean);
                     break;
                 case FlushedCell:
                     entrypoint->valuesAtHead.argument(i).setType(m_graph, SpecCellCheck);
@@ -201,25 +212,22 @@ bool InPlaceAbstractState::endBasicBlock()
     case ThreadedCPS: {
         for (size_t argument = 0; argument < block->variablesAtTail.numberOfArguments(); ++argument) {
             AbstractValue& destination = block->valuesAtTail.argument(argument);
-            mergeStateAtTail(destination, m_variables.argument(argument), block->variablesAtTail.argument(argument));
+            mergeStateAtTail(destination, this->argument(argument), block->variablesAtTail.argument(argument));
         }
 
         for (size_t local = 0; local < block->variablesAtTail.numberOfLocals(); ++local) {
             AbstractValue& destination = block->valuesAtTail.local(local);
-            mergeStateAtTail(destination, m_variables.local(local), block->variablesAtTail.local(local));
+            mergeStateAtTail(destination, this->local(local), block->variablesAtTail.local(local));
         }
         break;
     }
 
     case SSA: {
         for (size_t i = 0; i < block->valuesAtTail.size(); ++i)
-            block->valuesAtTail[i].merge(m_variables[i]);
+            block->valuesAtTail[i] = variableAt(i);
 
-        for (NodeAbstractValuePair& valueAtTail : block->ssa->valuesAtTail) {
-            AbstractValue& valueAtNode = forNode(valueAtTail.node);
-            valueAtTail.value.merge(valueAtNode);
-            valueAtNode = valueAtTail.value;
-        }
+        for (NodeAbstractValuePair& valueAtTail : block->ssa->valuesAtTail)
+            valueAtTail.value = forNode(valueAtTail.node);
         break;
     }
 

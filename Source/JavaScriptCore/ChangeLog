@@ -1,3 +1,1021 @@
+2018-05-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ARMv7] Drop ARMv7 disassembler in favor of capstone
+        https://bugs.webkit.org/show_bug.cgi?id=185423
+
+        Reviewed by Michael Catanzaro.
+
+        This patch removes ARMv7Disassembler in our tree.
+        We already adopted Capstone, and it is already used in ARMv7 JIT environments.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * disassembler/ARMv7/ARMv7DOpcode.cpp: Removed.
+        * disassembler/ARMv7/ARMv7DOpcode.h: Removed.
+        * disassembler/ARMv7Disassembler.cpp: Removed.
+
+2018-05-09  Srdjan Lazarevic  <srdjan.lazarevic@rt-rk.com>
+
+        [MIPS] Optimize generated JIT code using r2
+        https://bugs.webkit.org/show_bug.cgi?id=184584
+
+        Reviewed by Yusuke Suzuki.
+
+        EXT and MFHC1 instructions from MIPSR2 implemented and used where it is possible.
+        Also, done some code size optimizations that were discovered in meantime.
+
+        * assembler/MIPSAssembler.h:
+        (JSC::MIPSAssembler::ext):
+        (JSC::MIPSAssembler::mfhc1):
+        * assembler/MacroAssemblerMIPS.cpp:
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::isPowerOf2):
+        (JSC::MacroAssemblerMIPS::bitPosition):
+        (JSC::MacroAssemblerMIPS::loadAddress):
+        (JSC::MacroAssemblerMIPS::getEffectiveAddress):
+        (JSC::MacroAssemblerMIPS::load8):
+        (JSC::MacroAssemblerMIPS::load8SignedExtendTo32):
+        (JSC::MacroAssemblerMIPS::load32):
+        (JSC::MacroAssemblerMIPS::load16Unaligned):
+        (JSC::MacroAssemblerMIPS::load32WithUnalignedHalfWords):
+        (JSC::MacroAssemblerMIPS::load16):
+        (JSC::MacroAssemblerMIPS::load16SignedExtendTo32):
+        (JSC::MacroAssemblerMIPS::store8):
+        (JSC::MacroAssemblerMIPS::store16):
+        (JSC::MacroAssemblerMIPS::store32):
+        (JSC::MacroAssemblerMIPS::branchTest32):
+        (JSC::MacroAssemblerMIPS::loadFloat):
+        (JSC::MacroAssemblerMIPS::loadDouble):
+        (JSC::MacroAssemblerMIPS::storeFloat):
+        (JSC::MacroAssemblerMIPS::storeDouble):
+
+2018-05-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][GTK][JSCONLY] Use capstone disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=185283
+
+        Reviewed by Michael Catanzaro.
+
+        Instead of adding MIPS disassembler baked by ourselves, we import capstone disassembler.
+        And use capstone disassembler for MIPS, ARM, and ARMv7 in GTK, WPE, WinCairo and JSCOnly ports.
+
+        And we remove ARM LLVM disassembler.
+
+        Capstone is licensed under 3-clause BSD, which is acceptable in WebKit tree.
+
+        * CMakeLists.txt:
+        * Sources.txt:
+        * disassembler/ARMLLVMDisassembler.cpp: Removed.
+        * disassembler/CapstoneDisassembler.cpp: Added.
+        (JSC::tryToDisassemble):
+
+2018-05-09  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [MIPS] Use mfhc1 and mthc1 to fix assembler error
+        https://bugs.webkit.org/show_bug.cgi?id=185464
+
+        Reviewed by Yusuke Suzuki.
+
+        The binutils-assembler started to report failures for copying words between
+        GP and FP registers for odd FP register indices. Use mfhc1 and mthc1 instead
+        of mfc1 and mtc1 for conversion.
+
+        * offlineasm/mips.rb:
+
+2018-05-08  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [MIPS] Collect callee-saved register using inline assembly
+        https://bugs.webkit.org/show_bug.cgi?id=185428
+
+        Reviewed by Yusuke Suzuki.
+
+        MIPS used setjmp instead of collecting registers with inline assembly like
+        other architectures.
+
+        * heap/RegisterState.h:
+
+2018-05-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [BigInt] Simplifying JSBigInt by using bool addition
+        https://bugs.webkit.org/show_bug.cgi?id=185374
+
+        Reviewed by Alex Christensen.
+
+        Since using TWO_DIGIT does not produce good code, we remove this part from digitAdd and digitSub.
+        Just adding overflow flag to carry/borrow produces setb + add in x86.
+
+        Also we annotate small helper functions and accessors with `inline` not to call these functions
+        inside internalMultiplyAdd loop.
+
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::isZero):
+        (JSC::JSBigInt::inplaceMultiplyAdd):
+        (JSC::JSBigInt::digitAdd):
+        (JSC::JSBigInt::digitSub):
+        (JSC::JSBigInt::digitMul):
+        (JSC::JSBigInt::digitPow):
+        (JSC::JSBigInt::digitDiv):
+        (JSC::JSBigInt::offsetOfData):
+        (JSC::JSBigInt::dataStorage):
+        (JSC::JSBigInt::digit):
+        (JSC::JSBigInt::setDigit):
+
+2018-05-08  Michael Saboff  <msaboff@apple.com>
+
+        Replace multiple Watchpoint Set fireAll() methods with templates
+        https://bugs.webkit.org/show_bug.cgi?id=185456
+
+        Reviewed by Saam Barati.
+
+        Refactored to minimize duplicate code.
+
+        * bytecode/Watchpoint.h:
+        (JSC::WatchpointSet::fireAll):
+        (JSC::InlineWatchpointSet::fireAll):
+
+2018-05-08  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::FlowMap::resize() shouldn't resize the shadow map unless we're in SSA
+        https://bugs.webkit.org/show_bug.cgi?id=185453
+
+        Reviewed by Michael Saboff.
+        
+        Tiny improvement for compile times.
+
+        * dfg/DFGFlowMap.h:
+        (JSC::DFG::FlowMap::resize): Remove one Vector::resize() when we're not in SSA.
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::beginBasicBlock): Record some data about how long we spend in different parts of this and add a FIXME linking bug 185452.
+
+2018-05-08  Michael Saboff  <msaboff@apple.com>
+
+        Deferred firing of structure transition watchpoints is racy
+        https://bugs.webkit.org/show_bug.cgi?id=185438
+
+        Reviewed by Saam Barati.
+
+        Changed DeferredStructureTransitionWatchpointFire to take the watchpoints to fire
+        and fire them in the destructor.  When the watchpoints are taken from the
+        original WatchpointSet, that WatchpointSet if marked invalid.
+
+        * bytecode/Watchpoint.cpp:
+        (JSC::WatchpointSet::fireAllSlow):
+        (JSC::WatchpointSet::take):
+        (JSC::DeferredWatchpointFire::DeferredWatchpointFire):
+        (JSC::DeferredWatchpointFire::~DeferredWatchpointFire):
+        (JSC::DeferredWatchpointFire::fireAll):
+        (JSC::DeferredWatchpointFire::takeWatchpointsToFire):
+        * bytecode/Watchpoint.h:
+        (JSC::WatchpointSet::fireAll):
+        (JSC::InlineWatchpointSet::fireAll):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::setPrototypeDirect):
+        (JSC::JSObject::convertToDictionary):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::putDirectInternal):
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        (JSC::DeferredStructureTransitionWatchpointFire::DeferredStructureTransitionWatchpointFire):
+        (JSC::DeferredStructureTransitionWatchpointFire::~DeferredStructureTransitionWatchpointFire):
+        (JSC::DeferredStructureTransitionWatchpointFire::dump const):
+        (JSC::Structure::didTransitionFromThisStructure const):
+        (JSC::DeferredStructureTransitionWatchpointFire::add): Deleted.
+        * runtime/Structure.h:
+        (JSC::DeferredStructureTransitionWatchpointFire::structure const):
+
+2018-05-08  Eric Carlson  <eric.carlson@apple.com>
+
+        Consecutive messages logged as JSON are coalesced
+        https://bugs.webkit.org/show_bug.cgi?id=185432
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::ConsoleMessage::isEqual const): Messages with JSON arguments are not equal.
+
+2018-05-06  Filip Pizlo  <fpizlo@apple.com>
+
+        InPlaceAbstractState::beginBasicBlock shouldn't have to clear any abstract values
+        https://bugs.webkit.org/show_bug.cgi?id=185365
+
+        Reviewed by Saam Barati.
+        
+        This patch does three things to improve compile times:
+        
+        - Fixes some inlining goofs.
+        
+        - Adds the ability to measure compile times with run-jsc-benchmarks.
+        
+        - Dramatically improves the performance of InPlaceAbstractState::beginBasicBlock by removing the
+          code that clears abstract values. It turns out that on constant folding "needed" this, in the
+          sense that this was the only thing protecting it from loading the abstract value of a no-result
+          node and then concluding that because it had a non-empty m_value, it could be constant-folded.
+          Any node that produces a result will explicitly set its abstract value, so this problem can
+          also be guarded by just having constant folding check if the node it wants to fold returns any
+          result.
+        
+        Solid 0.96% compile time speed-up across SunSpider-CompileTime and V8Spider-CompileTime.
+        
+        Rolling back in after fixing cloop build.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::set):
+        * dfg/DFGAbstractValue.h:
+        (JSC::DFG::AbstractValue::merge):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::doToChildrenWithNode):
+        (JSC::DFG::Graph::doToChildren):
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::beginBasicBlock):
+        * jit/JIT.cpp:
+        (JSC::JIT::totalCompileTime):
+        * jit/JIT.h:
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionTotalCompileTime):
+
+2018-05-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r231468.
+
+        Broke the CLoop build
+
+        Reverted changeset:
+
+        "InPlaceAbstractState::beginBasicBlock shouldn't have to clear
+        any abstract values"
+        https://bugs.webkit.org/show_bug.cgi?id=185365
+        https://trac.webkit.org/changeset/231468
+
+2018-05-07  Daniel Bates  <dabates@apple.com>
+
+        Check X-Frame-Options and CSP frame-ancestors in network process
+        https://bugs.webkit.org/show_bug.cgi?id=185410
+        <rdar://problem/37733934>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add enum traits for MessageSource and MessageLevel so that we can encode and decode them for IPC.
+
+        * runtime/ConsoleTypes.h:
+
+2018-05-07  Saam Barati  <sbarati@apple.com>
+
+        Make a compact version of VariableEnvironment that UnlinkedFunctionExecutable stores and hash-cons these compact environments as we make them
+        https://bugs.webkit.org/show_bug.cgi?id=185329
+        <rdar://problem/39961536>
+
+        Reviewed by Michael Saboff.
+
+        I was made aware of a memory goof inside of JSC where we would inefficiently
+        use space to represent an UnlinkedFunctionExecutable's parent TDZ variables.
+        
+        We did two things badly:
+        1. We used a HashMap instead of a Vector to represent the environment. Having
+        a HashMap is useful when looking things up when generating bytecode, but it's
+        space inefficient. Because UnlinkedFunctionExecutables live a long time because
+        of the code cache, we should have them store this information efficiently
+        inside of a Vector.
+        
+        2. We didn't hash-cons these environments together. If you think about how
+        some programs are structured, hash-consing these together is hugely profitable.
+        Consider some code like this:
+        ```
+        const/let V_1 = ...;
+        const/let V_2 = ...;
+        ...
+        const/let V_n = ...;
+        
+        function f_1() { ... };
+        function f_2() { ... };
+        ...
+        function f_n() { ... };
+        ```
+        
+        Each f_i would store an identical hash map for its parent TDZ variables
+        consisting of {V_1, ..., V_n}. This was incredibly dumb. With hash-consing,
+        each f_i just holds onto a reference to the environment.
+        
+        I benchmarked this change against an app that made heavy use of the
+        above code pattern and it reduced its peak memory footprint from ~220MB
+        to ~160MB.
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::generateUnlinkedFunctionCodeBlock):
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * parser/VariableEnvironment.cpp:
+        (JSC::CompactVariableEnvironment::CompactVariableEnvironment):
+        (JSC::CompactVariableEnvironment::operator== const):
+        (JSC::CompactVariableEnvironment::toVariableEnvironment const):
+        (JSC::CompactVariableMap::get):
+        (JSC::CompactVariableMap::Handle::~Handle):
+        * parser/VariableEnvironment.h:
+        (JSC::VariableEnvironmentEntry::bits const):
+        (JSC::VariableEnvironmentEntry::operator== const):
+        (JSC::VariableEnvironment::isEverythingCaptured const):
+        (JSC::CompactVariableEnvironment::hash const):
+        (JSC::CompactVariableMapKey::CompactVariableMapKey):
+        (JSC::CompactVariableMapKey::hash):
+        (JSC::CompactVariableMapKey::equal):
+        (JSC::CompactVariableMapKey::makeDeletedValue):
+        (JSC::CompactVariableMapKey::isHashTableDeletedValue const):
+        (JSC::CompactVariableMapKey::isHashTableEmptyValue const):
+        (JSC::CompactVariableMapKey::environment):
+        (WTF::HashTraits<JSC::CompactVariableMapKey>::emptyValue):
+        (WTF::HashTraits<JSC::CompactVariableMapKey>::isEmptyValue):
+        (WTF::HashTraits<JSC::CompactVariableMapKey>::constructDeletedValue):
+        (WTF::HashTraits<JSC::CompactVariableMapKey>::isDeletedValue):
+        (JSC::CompactVariableMap::Handle::Handle):
+        (JSC::CompactVariableMap::Handle::environment const):
+        (JSC::VariableEnvironment::VariableEnvironment): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2018-05-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][MIPS] Simplify DFG code by increasing MIPS temporary registers
+        https://bugs.webkit.org/show_bug.cgi?id=185371
+
+        Reviewed by Mark Lam.
+
+        Since MIPS GPRInfo claims it has only 7 registers, some of DFG code exhausts registers.
+        As a result, we need to maintain separated code for MIPS. This increases DFG maintenance burden,
+        but actually MIPS have much more registers.
+
+        This patch adds $a0 - $a3 to temporary registers. This is OK since our temporary registers can be overlapped with
+        argument registers (see ARM, X86 implementations). These registers are caller-save ones, so we do not need to
+        have extra mechanism.
+
+        Then, we remove several unnecessary MIPS code in our JIT infrastructure.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * jit/CCallHelpers.h:
+        * jit/GPRInfo.h:
+        (JSC::GPRInfo::toRegister):
+        (JSC::GPRInfo::toIndex):
+        * offlineasm/mips.rb:
+
+2018-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG AI should have O(1) clobbering
+        https://bugs.webkit.org/show_bug.cgi?id=185287
+
+        Reviewed by Saam Barati.
+        
+        This fixes an old scalability probem in AI. Previously, if we did clobberWorld(), then we
+        would traverse all of the state available to the AI at that time and clobber it.
+        
+        This changes clobberWorld() to be O(1). It just does some math to a clobber epoch.
+        
+        This is a ~1% speed-up for compile times.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * dfg/DFGAbstractInterpreter.h:
+        (JSC::DFG::AbstractInterpreter::forNode):
+        (JSC::DFG::AbstractInterpreter::setForNode):
+        (JSC::DFG::AbstractInterpreter::clearForNode):
+        (JSC::DFG::AbstractInterpreter::variables): Deleted.
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::clobberWorld):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::forAllValues):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::clobberStructures):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeDoubleUnaryOpEffects):
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::fastForwardToSlow):
+        * dfg/DFGAbstractValue.h:
+        (JSC::DFG::AbstractValue::fastForwardTo):
+        (JSC::DFG::AbstractValue::clobberStructuresFor): Deleted.
+        (JSC::DFG::AbstractValue::observeInvalidationPoint): Deleted.
+        (JSC::DFG::AbstractValue::observeInvalidationPointFor): Deleted.
+        * dfg/DFGAbstractValueClobberEpoch.cpp: Added.
+        (JSC::DFG::AbstractValueClobberEpoch::dump const):
+        * dfg/DFGAbstractValueClobberEpoch.h: Added.
+        (JSC::DFG::AbstractValueClobberEpoch::AbstractValueClobberEpoch):
+        (JSC::DFG::AbstractValueClobberEpoch::first):
+        (JSC::DFG::AbstractValueClobberEpoch::clobber):
+        (JSC::DFG::AbstractValueClobberEpoch::observeInvalidationPoint):
+        (JSC::DFG::AbstractValueClobberEpoch::operator== const):
+        (JSC::DFG::AbstractValueClobberEpoch::operator!= const):
+        (JSC::DFG::AbstractValueClobberEpoch::structureClobberState const):
+        (JSC::DFG::AbstractValueClobberEpoch::clobberEpoch const):
+        * dfg/DFGAtTailAbstractState.h:
+        (JSC::DFG::AtTailAbstractState::setForNode):
+        (JSC::DFG::AtTailAbstractState::clearForNode):
+        (JSC::DFG::AtTailAbstractState::numberOfArguments const):
+        (JSC::DFG::AtTailAbstractState::numberOfLocals const):
+        (JSC::DFG::AtTailAbstractState::operand):
+        (JSC::DFG::AtTailAbstractState::local):
+        (JSC::DFG::AtTailAbstractState::argument):
+        (JSC::DFG::AtTailAbstractState::clobberStructures):
+        (JSC::DFG::AtTailAbstractState::observeInvalidationPoint):
+        (JSC::DFG::AtTailAbstractState::variables): Deleted.
+        * dfg/DFGCFAPhase.cpp:
+        (JSC::DFG::CFAPhase::performBlockCFA):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGFlowMap.h:
+        (JSC::DFG::FlowMap::at):
+        (JSC::DFG::FlowMap::atShadow):
+        (JSC::DFG::FlowMap::at const):
+        (JSC::DFG::FlowMap::atShadow const):
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::beginBasicBlock):
+        (JSC::DFG::InPlaceAbstractState::endBasicBlock):
+        * dfg/DFGInPlaceAbstractState.h:
+        (JSC::DFG::InPlaceAbstractState::forNode):
+        (JSC::DFG::InPlaceAbstractState::setForNode):
+        (JSC::DFG::InPlaceAbstractState::clearForNode):
+        (JSC::DFG::InPlaceAbstractState::variablesForDebugging):
+        (JSC::DFG::InPlaceAbstractState::numberOfArguments const):
+        (JSC::DFG::InPlaceAbstractState::numberOfLocals const):
+        (JSC::DFG::InPlaceAbstractState::operand):
+        (JSC::DFG::InPlaceAbstractState::local):
+        (JSC::DFG::InPlaceAbstractState::argument):
+        (JSC::DFG::InPlaceAbstractState::variableAt):
+        (JSC::DFG::InPlaceAbstractState::clobberStructures):
+        (JSC::DFG::InPlaceAbstractState::observeInvalidationPoint):
+        (JSC::DFG::InPlaceAbstractState::fastForward):
+        (JSC::DFG::InPlaceAbstractState::variables): Deleted.
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetStack):
+
+2018-05-06  Filip Pizlo  <fpizlo@apple.com>
+
+        InPlaceAbstractState::beginBasicBlock shouldn't have to clear any abstract values
+        https://bugs.webkit.org/show_bug.cgi?id=185365
+
+        Reviewed by Saam Barati.
+        
+        This patch does three things to improve compile times:
+        
+        - Fixes some inlining goofs.
+        
+        - Adds the ability to measure compile times with run-jsc-benchmarks.
+        
+        - Dramatically improves the performance of InPlaceAbstractState::beginBasicBlock by removing the
+          code that clears abstract values. It turns out that on constant folding "needed" this, in the
+          sense that this was the only thing protecting it from loading the abstract value of a no-result
+          node and then concluding that because it had a non-empty m_value, it could be constant-folded.
+          Any node that produces a result will explicitly set its abstract value, so this problem can
+          also be guarded by just having constant folding check if the node it wants to fold returns any
+          result.
+        
+        Solid 0.96% compile time speed-up across SunSpider-CompileTime and V8Spider-CompileTime.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::set):
+        * dfg/DFGAbstractValue.h:
+        (JSC::DFG::AbstractValue::merge):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::doToChildrenWithNode):
+        (JSC::DFG::Graph::doToChildren):
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::beginBasicBlock):
+        * jit/JIT.cpp:
+        (JSC::JIT::totalCompileTime):
+        * jit/JIT.h:
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionTotalCompileTime):
+
+2018-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG AI doesn't need to merge valuesAtTail - it can just assign them
+        https://bugs.webkit.org/show_bug.cgi?id=185355
+
+        Reviewed by Mark Lam.
+        
+        This is a further attempt to improve compile times. Assigning AbstractValue ought to always
+        be faster than merging. There's no need to merge valuesAtTail. In most cases, assigning and
+        merging will get the same answer because the value computed this time will be either the same
+        as or more general than the value computed last time. If the value does change for some
+        reason, then valuesAtHead are already merged, which ensures monotonicity. Also, if the value
+        changes, then we have no reason to believe that this new value is less right than the last
+        one we computed. Finally, the one client of valuesAtTail (AtTailAbstractState) doesn't care
+        if it's getting the merged valuesAtTail or just some correct answer for valuesAtTail.
+
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::endBasicBlock):
+
+2018-05-07  Andy VanWagoner  <andy@vanwagoner.family>
+
+        Remove defunct email address
+        https://bugs.webkit.org/show_bug.cgi?id=185396
+
+        Reviewed by Mark Lam.
+
+        The email address thetalecrafter@gmail.com is no longer valid, as the
+        associated google account has been closed. This updates the email
+        address so questions about these Intl contributions go to the right
+        place.
+
+        * builtins/DatePrototype.js:
+        * builtins/NumberPrototype.js:
+        * builtins/StringPrototype.js:
+        * runtime/IntlCollator.cpp:
+        * runtime/IntlCollator.h:
+        * runtime/IntlCollatorConstructor.cpp:
+        * runtime/IntlCollatorConstructor.h:
+        * runtime/IntlCollatorPrototype.cpp:
+        * runtime/IntlCollatorPrototype.h:
+        * runtime/IntlDateTimeFormat.cpp:
+        * runtime/IntlDateTimeFormat.h:
+        * runtime/IntlDateTimeFormatConstructor.cpp:
+        * runtime/IntlDateTimeFormatConstructor.h:
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        * runtime/IntlDateTimeFormatPrototype.h:
+        * runtime/IntlNumberFormat.cpp:
+        * runtime/IntlNumberFormat.h:
+        * runtime/IntlNumberFormatConstructor.cpp:
+        * runtime/IntlNumberFormatConstructor.h:
+        * runtime/IntlNumberFormatPrototype.cpp:
+        * runtime/IntlNumberFormatPrototype.h:
+        * runtime/IntlObject.cpp:
+        * runtime/IntlObject.h:
+        * runtime/IntlPluralRules.cpp:
+        * runtime/IntlPluralRules.h:
+        * runtime/IntlPluralRulesConstructor.cpp:
+        * runtime/IntlPluralRulesConstructor.h:
+        * runtime/IntlPluralRulesPrototype.cpp:
+        * runtime/IntlPluralRulesPrototype.h:
+
+2018-05-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Remove "using namespace std;" from JSC, bmalloc, WTF
+        https://bugs.webkit.org/show_bug.cgi?id=185362
+
+        Reviewed by Sam Weinig.
+
+        "namespace std" may include many names. It can conflict with names defined by our code,
+        and the other platform provided headers. For example, std::byte conflicts with Windows'
+        ::byte.
+        This patch removes "using namespace std;" from JSC and bmalloc.
+
+        * API/JSClassRef.cpp:
+        (OpaqueJSClass::create):
+        * bytecode/Opcode.cpp:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::newRegister):
+        * heap/Heap.cpp:
+        (JSC::Heap::updateAllocationLimits):
+        * interpreter/Interpreter.cpp:
+        * jit/JIT.cpp:
+        * parser/Parser.cpp:
+        * runtime/JSArray.cpp:
+        * runtime/JSLexicalEnvironment.cpp:
+        * runtime/JSModuleEnvironment.cpp:
+        * runtime/Structure.cpp:
+        * shell/DLLLauncherMain.cpp:
+        (getStringValue):
+        (applePathFromRegistry):
+        (appleApplicationSupportDirectory):
+        (copyEnvironmentVariable):
+        (prependPath):
+        (fatalError):
+        (directoryExists):
+        (modifyPath):
+        (getLastErrorString):
+        (wWinMain):
+
+2018-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG CFA phase should only do clobber asserts in debug
+        https://bugs.webkit.org/show_bug.cgi?id=185354
+
+        Reviewed by Saam Barati.
+        
+        Clobber asserts are responsible for 1% of compile time. That's too much. This disables them
+        unless asserts are enabled.
+
+        * dfg/DFGCFAPhase.cpp:
+        (JSC::DFG::CFAPhase::performBlockCFA):
+
+2018-05-04  Keith Miller  <keith_miller@apple.com>
+
+        isCacheableArrayLength should return true for undecided arrays
+        https://bugs.webkit.org/show_bug.cgi?id=185309
+
+        Reviewed by Michael Saboff.
+
+        Undecided arrays have butterflies so there is no reason why we
+        should not be able to cache their length.
+
+        * bytecode/InlineAccess.cpp:
+        (JSC::InlineAccess::isCacheableArrayLength):
+
+2018-05-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove std::random_shuffle
+        https://bugs.webkit.org/show_bug.cgi?id=185292
+
+        Reviewed by Darin Adler.
+
+        std::random_shuffle is deprecated in C++14 and removed in C++17,
+        since std::random_shuffle relies on rand and srand.
+        Use std::shuffle instead.
+
+        * jit/BinarySwitch.cpp:
+        (JSC::RandomNumberGenerator::RandomNumberGenerator):
+        (JSC::RandomNumberGenerator::operator()):
+        (JSC::RandomNumberGenerator::min):
+        (JSC::RandomNumberGenerator::max):
+        (JSC::BinarySwitch::build):
+
+2018-05-03  Saam Barati  <sbarati@apple.com>
+
+        Don't prevent CreateThis being folded to NewObject when the structure is poly proto
+        https://bugs.webkit.org/show_bug.cgi?id=185177
+
+        Reviewed by Filip Pizlo.
+
+        This patch teaches the DFG/FTL how to constant fold CreateThis with
+        a known poly proto Structure to NewObject. We do it by emitting a NewObject
+        followed by a PutByOffset for the prototype value.
+        
+        We make it so that ObjectAllocationProfile holds the prototype value.
+        This is sound because JSFunction clears that profile when its 'prototype'
+        field changes.
+        
+        This patch also renames underscoreProtoPrivateName to polyProtoName since
+        that name was nonsensical: it was only used for poly proto.
+        
+        This is a 2x speedup on the get_callee_polymorphic microbenchmark. I had
+        regressed that benchmark when I first introduced poly proto.
+
+        * builtins/BuiltinNames.cpp:
+        * builtins/BuiltinNames.h:
+        (JSC::BuiltinNames::BuiltinNames):
+        (JSC::BuiltinNames::polyProtoName const):
+        (JSC::BuiltinNames::underscoreProtoPrivateName const): Deleted.
+        * bytecode/ObjectAllocationProfile.h:
+        (JSC::ObjectAllocationProfile::prototype):
+        (JSC::ObjectAllocationProfile::clear):
+        (JSC::ObjectAllocationProfile::visitAggregate):
+        * bytecode/ObjectAllocationProfileInlines.h:
+        (JSC::ObjectAllocationProfile::initializeProfile):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGOperations.cpp:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/FunctionRareData.h:
+        * runtime/Structure.cpp:
+        (JSC::Structure::create):
+
+2018-05-03  Michael Saboff  <msaboff@apple.com>
+
+        OSR entry pruning of Program Bytecodes doesn't take into account try/catch
+        https://bugs.webkit.org/show_bug.cgi?id=185281
+
+        Reviewed by Saam Barati.
+
+        When we compute bytecode block reachability, we need to take into account blocks
+        containing try/catch.
+
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+
+2018-05-03  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        ARM: Wrong offset for operand rt in disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=184083
+
+        Reviewed by Yusuke Suzuki.
+
+        * disassembler/ARMv7/ARMv7DOpcode.h:
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVMOVDoublePrecision::rt):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVMOVSinglePrecision::rt):
+
+2018-05-03  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        ARM: Support vstr in disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=184084
+
+        Reviewed by Yusuke Suzuki.
+
+        * disassembler/ARMv7/ARMv7DOpcode.cpp:
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDRSTR::format):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::format): Deleted.
+        * disassembler/ARMv7/ARMv7DOpcode.h:
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDRSTR::opName):
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::condition): Deleted.
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::uBit): Deleted.
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::rn): Deleted.
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::vd): Deleted.
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::doubleReg): Deleted.
+        (JSC::ARMv7Disassembler::ARMv7DOpcodeVLDR::immediate8): Deleted.
+
+2018-05-03  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Invoke ensureArrayStorage for all arguments
+        https://bugs.webkit.org/show_bug.cgi?id=185247
+
+        Reviewed by Yusuke Suzuki.
+
+        ensureArrayStorage was only invoked for first argument in each loop iteration.
+
+        * jsc.cpp:
+        (functionEnsureArrayStorage):
+
+2018-05-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it easy to log compile times for all optimizing tiers
+        https://bugs.webkit.org/show_bug.cgi?id=185270
+
+        Reviewed by Keith Miller.
+        
+        This makes --logPhaseTimes=true enable logging of phase times for DFG and B3 using a common
+        helper class, CompilerTimingScope. This used to be called B3::TimingScope and only B3 used
+        it.
+        
+        This should help us reduce compile times by telling us where to look. So, far, it looks like
+        CFA is the worst.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * b3/B3Common.cpp:
+        (JSC::B3::shouldMeasurePhaseTiming): Deleted.
+        * b3/B3Common.h:
+        * b3/B3TimingScope.cpp: Removed.
+        * b3/B3TimingScope.h:
+        (JSC::B3::TimingScope::TimingScope):
+        * dfg/DFGPhase.h:
+        (JSC::DFG::runAndLog):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThread):
+        * tools/CompilerTimingScope.cpp: Added.
+        (JSC::CompilerTimingScope::CompilerTimingScope):
+        (JSC::CompilerTimingScope::~CompilerTimingScope):
+        * tools/CompilerTimingScope.h: Added.
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+
+2018-05-03  Filip Pizlo  <fpizlo@apple.com>
+
+        Strings should not be allocated in a gigacage
+        https://bugs.webkit.org/show_bug.cgi?id=185218
+
+        Reviewed by Saam Barati.
+
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::toStringGeneric):
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::resolveRopeToAtomicString const):
+        (JSC::JSRopeString::resolveRope const):
+        * runtime/JSString.h:
+        (JSC::JSString::create):
+        (JSC::JSString::createHasOtherOwner):
+        * runtime/VM.h:
+        (JSC::VM::gigacageAuxiliarySpace):
+
+2018-05-03  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix 32-bit profile offset for change in bytecode
+        length of the get_by_id and get_array_length opcodes.
+
+        * llint/LowLevelInterpreter32_64.asm:
+
+2018-05-03  Michael Saboff  <msaboff@apple.com>
+
+        WebContent crash loading page on seas.upenn.edu @ JavaScriptCore: vmEntryToJavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=185231
+
+        Reviewed by Saam Barati.
+
+        We weren't clearing the scratch register cache when switching back and forth between 
+        allowing scratch register usage.  We disallow scratch register usage when we are in
+        code that will freely allocate and use any register.  Such usage can change the
+        contents of scratch registers.  For ARM64, where we cache the contents of scratch
+        registers to reuse some or all of the contained values, we need to invalidate these
+        caches.  We do this when re-enabling scratch register usage, that is when we transition
+        from disallow to allow scratch register usage.
+
+        Added a new Air regression test.
+
+        * assembler/AllowMacroScratchRegisterUsage.h:
+        (JSC::AllowMacroScratchRegisterUsage::AllowMacroScratchRegisterUsage):
+        * assembler/AllowMacroScratchRegisterUsageIf.h:
+        (JSC::AllowMacroScratchRegisterUsageIf::AllowMacroScratchRegisterUsageIf):
+        * assembler/DisallowMacroScratchRegisterUsage.h:
+        (JSC::DisallowMacroScratchRegisterUsage::~DisallowMacroScratchRegisterUsage):
+        * b3/air/testair.cpp:
+
+2018-05-03  Keith Miller  <keith_miller@apple.com>
+
+        Remove the prototype caching for get_by_id in the LLInt
+        https://bugs.webkit.org/show_bug.cgi?id=185226
+
+        Reviewed by Michael Saboff.
+
+        There is no evidence that this is actually a speedup and we keep
+        getting bugs with it. At this point it seems like we should just
+        remove this code.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::printGetByIdOp):
+        (JSC::BytecodeDumper<Block>::printGetByIdCacheStatus):
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finalizeLLIntInlineCaches):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::llintGetByIdWatchpointMap): Deleted.
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFromLLInt):
+        * bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp: Removed.
+        * bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.h: Removed.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitGetById):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompileSlowCases):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        (JSC::LLInt::setupGetByIdPrototypeCache): Deleted.
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/Options.h:
+
+2018-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r231197.
+
+        The test added with this change crashes on the 32-bit JSC bot.
+
+        Reverted changeset:
+
+        "Correctly detect string overflow when using the 'Function'
+        constructor"
+        https://bugs.webkit.org/show_bug.cgi?id=184883
+        https://trac.webkit.org/changeset/231197
+
+2018-05-03  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Disable usage of fused multiply-add instructions for JSC with compiler flag
+        https://bugs.webkit.org/show_bug.cgi?id=184909
+
+        Reviewed by Yusuke Suzuki.
+
+        Adds -ffp-contract as compiler flag for building JSC. This ensures that functions
+        like parseInt() do not return slightly different results depending on whether the
+        compiler was able to use fused multiply-add instructions or not.
+
+        * CMakeLists.txt:
+
+2018-05-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, fix build failure in ARM, ARMv7 and MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=185192
+
+        compareDouble relies on MacroAssembler::invert function.
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::compareDouble):
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::compareDouble): Deleted.
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::compareDouble): Deleted.
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::compareDouble): Deleted.
+
+2018-05-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add MacroAssembler::and16 and store16
+        https://bugs.webkit.org/show_bug.cgi?id=185188
+
+        Reviewed by Mark Lam.
+
+        r231129 requires and16(ImplicitAddress, RegisterID) and store16(RegisterID, ImplicitAddress) implementations.
+        This patch adds these methods for ARM.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::and16):
+        (JSC::MacroAssemblerARM::store16):
+
+2018-05-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Unify compare related code in 32bit and 64bit
+        https://bugs.webkit.org/show_bug.cgi?id=185189
+
+        Reviewed by Mark Lam.
+
+        This patch unifies some part of compare related code in 32bit and 64bit
+        to reduce the size of 32bit specific DFG code.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileInt32Compare):
+        (JSC::DFG::SpeculativeJIT::compileDoubleCompare):
+        (JSC::DFG::SpeculativeJIT::compileObjectEquality):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileObjectEquality): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileInt32Compare): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileDoubleCompare): Deleted.
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileObjectEquality): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileInt32Compare): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileDoubleCompare): Deleted.
+
+2018-05-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add compareDouble and compareFloat for ARM64, X86, and X86_64
+        https://bugs.webkit.org/show_bug.cgi?id=185192
+
+        Reviewed by Mark Lam.
+
+        Now Object.is starts using compareDouble. So we would like to have
+        efficient implementation for compareDouble and compareFloat for
+        major architectures, ARM64, X86, and X86_64.
+
+        This patch adds compareDouble and compareFloat implementations for
+        these architectures. And generic implementation is moved to each
+        architecture's MacroAssembler implementation.
+
+        We also add tests for them in testmasm. To implement this test
+        easily, we also add loadFloat(TrustedImmPtr, FPRegisterID) for the
+        major architectures.
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::compareDouble): Deleted.
+        (JSC::MacroAssembler::compareFloat): Deleted.
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::compareDouble):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::compareDouble):
+        (JSC::MacroAssemblerARM64::compareFloat):
+        (JSC::MacroAssemblerARM64::loadFloat):
+        (JSC::MacroAssemblerARM64::floatingPointCompare):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::compareDouble):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::compareDouble):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::loadFloat):
+        (JSC::MacroAssemblerX86Common::compareDouble):
+        (JSC::MacroAssemblerX86Common::compareFloat):
+        (JSC::MacroAssemblerX86Common::floatingPointCompare):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::movss_mr):
+        (JSC::X86Assembler::movss_rm):
+        * assembler/testmasm.cpp:
+        (JSC::floatOperands):
+        (JSC::testCompareFloat):
+        (JSC::run):
+
+2018-05-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, fix 32bit DFG code
+        https://bugs.webkit.org/show_bug.cgi?id=185065
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileSameValue):
+
+2018-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should know how to cache custom getter accesses on the prototype chain
+        https://bugs.webkit.org/show_bug.cgi?id=185213
+
+        Reviewed by Keith Miller.
+
+        This was a simple fix after the work I did for bug 185174. >4x speed-up on the new get-custom-getter.js test.
+
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+
 2018-05-01  Filip Pizlo  <fpizlo@apple.com>
 
         JSC should be able to cache custom setter calls on the prototype chain

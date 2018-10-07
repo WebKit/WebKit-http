@@ -743,21 +743,6 @@ void Document::invalidateAccessKeyMap()
     m_elementsByAccessKey.clear();
 }
 
-void Document::addImageElementByUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
-{
-    return m_imagesByUsemap.add(name, element, *this);
-}
-
-void Document::removeImageElementByUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
-{
-    return m_imagesByUsemap.remove(name, element);
-}
-
-HTMLImageElement* Document::imageElementByUsemap(const AtomicStringImpl& name) const
-{
-    return m_imagesByUsemap.getElementByUsemap(name, *this);
-}
-
 ExceptionOr<SelectorQuery&> Document::selectorQueryForString(const String& selectorString)
 {
     if (selectorString.isEmpty())
@@ -3332,6 +3317,8 @@ void Document::processHttpEquiv(const String& equiv, const String& content, bool
     }
 
     Frame* frame = this->frame();
+    auto* documentLoader = frame ? frame->loader().documentLoader() : nullptr;
+    auto httpStatusCode = documentLoader ? documentLoader->response().httpStatusCode() : 0;
 
     HTTPHeaderName headerName;
     if (!findHTTPHeaderName(equiv, headerName))
@@ -3399,12 +3386,12 @@ void Document::processHttpEquiv(const String& equiv, const String& content, bool
 
     case HTTPHeaderName::ContentSecurityPolicy:
         if (isInDocumentHead)
-            contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::Enforce, ContentSecurityPolicy::PolicyFrom::HTTPEquivMeta);
+            contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::Enforce, ContentSecurityPolicy::PolicyFrom::HTTPEquivMeta, referrer(), httpStatusCode);
         break;
 
     case HTTPHeaderName::XWebKitCSP:
         if (isInDocumentHead)
-            contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::PrefixedEnforce, ContentSecurityPolicy::PolicyFrom::HTTPEquivMeta);
+            contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::PrefixedEnforce, ContentSecurityPolicy::PolicyFrom::HTTPEquivMeta, referrer(), httpStatusCode);
         break;
 
     default:
@@ -5513,7 +5500,7 @@ void Document::initSecurityContext()
         // This can occur via document.implementation.createDocument().
         setCookieURL(URL(ParsedURLString, emptyString()));
         setSecurityOriginPolicy(SecurityOriginPolicy::create(SecurityOrigin::createUnique()));
-        setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(*this));
+        setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(URL { ParsedURLString, emptyString() }, *this));
         return;
     }
 
@@ -5526,18 +5513,17 @@ void Document::initSecurityContext()
     if (shouldEnforceContentDispositionAttachmentSandbox())
         applyContentDispositionAttachmentSandbox();
 
+    auto* documentLoader = m_frame->loader().documentLoader();
     bool isSecurityOriginUnique = isSandboxed(SandboxOrigin);
-    if (!isSecurityOriginUnique) {
-        auto* loader = m_frame->loader().documentLoader();
-        isSecurityOriginUnique = loader && loader->response().tainting() == ResourceResponse::Tainting::Opaque;
-    }
+    if (!isSecurityOriginUnique)
+        isSecurityOriginUnique = documentLoader && documentLoader->response().tainting() == ResourceResponse::Tainting::Opaque;
 
     setSecurityOriginPolicy(SecurityOriginPolicy::create(isSecurityOriginUnique ? SecurityOrigin::createUnique() : SecurityOrigin::create(m_url)));
-    setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(*this));
+    setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(URL { m_url }, *this));
 
     String overrideContentSecurityPolicy = m_frame->loader().client().overrideContentSecurityPolicy();
     if (!overrideContentSecurityPolicy.isNull())
-        contentSecurityPolicy()->didReceiveHeader(overrideContentSecurityPolicy, ContentSecurityPolicyHeaderType::Enforce, ContentSecurityPolicy::PolicyFrom::API);
+        contentSecurityPolicy()->didReceiveHeader(overrideContentSecurityPolicy, ContentSecurityPolicyHeaderType::Enforce, ContentSecurityPolicy::PolicyFrom::API, referrer(), documentLoader ? documentLoader->response().httpStatusCode() : 0);
 
 #if USE(QUICK_LOOK)
     if (shouldEnforceQuickLookSandbox())
@@ -7048,11 +7034,21 @@ bool Document::useSystemAppearance() const
     return useSystemAppearance;
 }
 
+bool Document::useDefaultAppearance() const
+{
+    bool useDefaultAppearance = true;
+    if (Page* documentPage = page())
+        useDefaultAppearance = documentPage->defaultAppearance();
+    return useDefaultAppearance;
+}
+
 OptionSet<StyleColor::Options> Document::styleColorOptions() const
 {
     OptionSet<StyleColor::Options> options;
     if (useSystemAppearance())
         options |= StyleColor::Options::UseSystemAppearance;
+    if (useDefaultAppearance())
+        options |= StyleColor::Options::UseDefaultAppearance;
     return options;
 }
 
@@ -7292,7 +7288,7 @@ void Document::applyQuickLookSandbox()
     static NeverDestroyed<String> quickLookCSP = makeString("default-src ", QLPreviewProtocol(), ": 'unsafe-inline'; base-uri 'none'; sandbox allow-same-origin allow-scripts");
     RELEASE_ASSERT(contentSecurityPolicy());
     // The sandbox directive is only allowed if the policy is from an HTTP header.
-    contentSecurityPolicy()->didReceiveHeader(quickLookCSP, ContentSecurityPolicyHeaderType::Enforce, ContentSecurityPolicy::PolicyFrom::HTTPHeader);
+    contentSecurityPolicy()->didReceiveHeader(quickLookCSP, ContentSecurityPolicyHeaderType::Enforce, ContentSecurityPolicy::PolicyFrom::HTTPHeader, referrer());
 
     disableSandboxFlags(SandboxNavigation);
 

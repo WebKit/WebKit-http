@@ -31,6 +31,7 @@
 #include "ArithProfile.h"
 #include "ArrayConstructor.h"
 #include "BasicBlockLocation.h"
+#include "BuiltinNames.h"
 #include "BytecodeStructs.h"
 #include "CallLinkStatus.h"
 #include "CodeBlock.h"
@@ -2199,7 +2200,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         
     case ArrayPushIntrinsic: {
 #if USE(JSVALUE32_64)
-        if (isX86() || isMIPS()) {
+        if (isX86()) {
             if (argumentCountIncludingThis > 2)
                 return false;
         }
@@ -2234,7 +2235,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
 
     case ArraySliceIntrinsic: {
 #if USE(JSVALUE32_64)
-        if (isX86() || isMIPS()) {
+        if (isX86()) {
             // There aren't enough registers for this to be done easily.
             return false;
         }
@@ -4485,15 +4486,29 @@ void ByteCodeParser::parseBlock(unsigned limit)
             bool alreadyEmitted = false;
             if (function) {
                 if (FunctionRareData* rareData = function->rareData()) {
-                    if (Structure* structure = rareData->objectAllocationStructure()) {
-                        // FIXME: we should be able to allocate a poly proto object here:
-                        // https://bugs.webkit.org/show_bug.cgi?id=177517
-                        if (structure->hasMonoProto()) {
+                    if (rareData->allocationProfileWatchpointSet().isStillValid()) {
+                        Structure* structure = rareData->objectAllocationStructure();
+                        JSObject* prototype = rareData->objectAllocationPrototype();
+                        if (structure
+                            && (structure->hasMonoProto() || prototype)
+                            && rareData->allocationProfileWatchpointSet().isStillValid()) {
+
                             m_graph.freeze(rareData);
                             m_graph.watchpoints().addLazily(rareData->allocationProfileWatchpointSet());
                             // The callee is still live up to this point.
                             addToGraph(Phantom, callee);
-                            set(VirtualRegister(bytecode.dst()), addToGraph(NewObject, OpInfo(m_graph.registerStructure(structure))));
+                            Node* object = addToGraph(NewObject, OpInfo(m_graph.registerStructure(structure)));
+                            if (structure->hasPolyProto()) {
+                                StorageAccessData* data = m_graph.m_storageAccessData.add();
+                                data->offset = knownPolyProtoOffset;
+                                data->identifierNumber = m_graph.identifiers().ensure(m_graph.m_vm.propertyNames->builtinNames().polyProtoName().impl());
+                                InferredType::Descriptor inferredType = InferredType::Top;
+                                data->inferredType = inferredType;
+                                m_graph.registerInferredType(inferredType);
+                                ASSERT(isInlineOffset(knownPolyProtoOffset));
+                                addToGraph(PutByOffset, OpInfo(data), object, object, weakJSConstant(prototype));
+                            }
+                            set(VirtualRegister(bytecode.dst()), object);
                             alreadyEmitted = true;
                         }
                     }
@@ -5138,8 +5153,6 @@ void ByteCodeParser::parseBlock(unsigned limit)
         case op_get_by_id_direct:
         case op_try_get_by_id:
         case op_get_by_id:
-        case op_get_by_id_proto_load:
-        case op_get_by_id_unset:
         case op_get_array_length: {
             SpeculatedType prediction = getPrediction();
             

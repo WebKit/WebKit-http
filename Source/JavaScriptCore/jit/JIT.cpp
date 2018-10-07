@@ -30,6 +30,7 @@
 #include "JIT.h"
 
 #include "BytecodeGraph.h"
+#include "BytecodeLivenessAnalysis.h"
 #include "CodeBlock.h"
 #include "CodeBlockWithJITType.h"
 #include "DFGCapabilities.h"
@@ -53,8 +54,6 @@
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/GraphNodeWorklist.h>
 #include <wtf/SimpleStats.h>
-
-using namespace std;
 
 namespace JSC {
 namespace JITInternal {
@@ -219,9 +218,22 @@ void JIT::privateCompileMainPass()
             GraphNodeWorklist<BytecodeBasicBlock*> worklist;
             startBytecodeOffset = UINT_MAX;
             worklist.push(block);
+
             while (BytecodeBasicBlock* block = worklist.pop()) {
                 startBytecodeOffset = std::min(startBytecodeOffset, block->leaderOffset());
                 worklist.pushAll(block->successors());
+
+                // Also add catch blocks for bytecodes that throw.
+                if (m_codeBlock->numberOfExceptionHandlers()) {
+                    for (unsigned bytecodeOffset = block->leaderOffset(); bytecodeOffset < block->leaderOffset() + block->totalLength();) {
+                        OpcodeID opcodeID = Interpreter::getOpcodeID(instructionsBegin[bytecodeOffset].u.opcode);
+                        if (auto* handler = m_codeBlock->handlerForBytecodeOffset(bytecodeOffset))
+                            worklist.push(graph.findBasicBlockWithLeaderOffset(handler->target));
+
+                        unsigned opcodeLength = opcodeLengths[opcodeID];
+                        bytecodeOffset += opcodeLength;
+                    }
+                }
             }
         }
     }
@@ -330,8 +342,6 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_beloweq)
         DEFINE_OP(op_try_get_by_id)
         case op_get_array_length:
-        case op_get_by_id_proto_load:
-        case op_get_by_id_unset:
         DEFINE_OP(op_get_by_id)
         DEFINE_OP(op_get_by_id_with_this)
         DEFINE_OP(op_get_by_id_direct)
@@ -509,8 +519,6 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_eq)
         DEFINE_SLOWCASE_OP(op_try_get_by_id)
         case op_get_array_length:
-        case op_get_by_id_proto_load:
-        case op_get_by_id_unset:
         DEFINE_SLOWCASE_OP(op_get_by_id)
         DEFINE_SLOWCASE_OP(op_get_by_id_with_this)
         DEFINE_SLOWCASE_OP(op_get_by_id_direct)
@@ -1001,6 +1009,11 @@ HashMap<CString, Seconds> JIT::compileTimeStats()
 #endif // ENABLE(DFG_JIT)
     }
     return result;
+}
+
+Seconds JIT::totalCompileTime()
+{
+    return totalBaselineCompileTime + totalDFGCompileTime + totalFTLCompileTime;
 }
 
 } // namespace JSC

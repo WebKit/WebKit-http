@@ -694,8 +694,9 @@ static void validate(WKWebViewConfiguration *configuration)
 #endif
 
 #if ENABLE(ACCESSIBILITY_EVENTS)
-    const auto* notificationPtr = &kAXSWebAccessibilityEventsEnabledNotification;
-    if (notificationPtr)
+    // Check _AXSWebAccessibilityEventsEnabled here to avoid compiler optimizing
+    // out the null check of kAXSWebAccessibilityEventsEnabledNotification.
+    if (!isNullFunctionPointer(_AXSWebAccessibilityEventsEnabled))
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)(self), accessibilityEventsEnabledChangedCallback, kAXSWebAccessibilityEventsEnabledNotification, 0, CFNotificationSuspensionBehaviorDeliverImmediately);
     [self _updateAccessibilityEventsEnabled];
 #endif
@@ -1616,6 +1617,12 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 
 - (UIEdgeInsets)_computedObscuredInset
 {
+    if (!linkedOnOrAfter(WebKit::SDKVersion::FirstWhereScrollViewContentInsetsAreNotObscuringInsets)) {
+        // For binary compability with third party apps, treat scroll view content insets as obscuring insets when the app is compiled
+        // against a WebKit version without the fix in r229641.
+        return [self _computedContentInset];
+    }
+
     if (_haveSetObscuredInsets)
         return _obscuredInsets;
 

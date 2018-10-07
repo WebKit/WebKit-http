@@ -159,7 +159,6 @@ b3/B3StackmapValue.cpp
 b3/B3StackSlot.cpp
 b3/B3SwitchCase.cpp
 b3/B3SwitchValue.cpp
-b3/B3TimingScope.cpp
 b3/B3Type.cpp
 b3/B3UpsilonValue.cpp
 b3/B3UseCounts.cpp
@@ -225,7 +224,6 @@ bytecode/InlineCallFrame.cpp
 bytecode/InlineCallFrameSet.cpp
 bytecode/IntrinsicGetterAccessCase.cpp
 bytecode/JumpTable.cpp
-bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp
 bytecode/LazyOperandValueProfile.cpp
 bytecode/MethodOfGettingAValueProfile.cpp
 bytecode/ModuleNamespaceAccessCase.cpp
@@ -276,6 +274,7 @@ debugger/DebuggerScope.cpp
 dfg/DFGAbstractHeap.cpp
 dfg/DFGAbstractInterpreterClobberState.cpp
 dfg/DFGAbstractValue.cpp
+dfg/DFGAbstractValueClobberEpoch.cpp
 dfg/DFGAdaptiveInferredPropertyValueWatchpoint.cpp
 dfg/DFGAdaptiveStructureWatchpoint.cpp
 dfg/DFGArgumentsEliminationPhase.cpp
@@ -412,15 +411,12 @@ dfg/DFGWatchpointCollectionPhase.cpp
 dfg/DFGWorklist.cpp
 
 disassembler/ARM64Disassembler.cpp
-disassembler/ARMLLVMDisassembler.cpp
-disassembler/ARMv7Disassembler.cpp
+disassembler/CapstoneDisassembler.cpp
 disassembler/Disassembler.cpp
 disassembler/UDis86Disassembler.cpp
 disassembler/X86Disassembler.cpp
 
 disassembler/ARM64/A64DOpcode.cpp
-
-disassembler/ARMv7/ARMv7DOpcode.cpp
 
 disassembler/udis86/udis86.c
 disassembler/udis86/udis86_decode.c
@@ -709,6 +705,7 @@ runtime/CommonIdentifiers.cpp
 runtime/CommonSlowPaths.cpp
 runtime/CommonSlowPathsExceptions.cpp
 runtime/CompilationResult.cpp
+tools/CompilerTimingScope.cpp
 runtime/Completion.cpp
 runtime/ConfigFile.cpp
 runtime/ConsoleClient.cpp

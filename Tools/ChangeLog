@@ -1,3 +1,491 @@
+2018-05-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][GTK][JSCONLY] Use capstone disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=185283
+
+        Reviewed by Michael Catanzaro.
+
+        * gtk/manifest.txt.in:
+        * wpe/manifest.txt.in:
+
+2018-05-09  Antti Koivisto  <antti@apple.com>
+
+        Add OptionSet::operator& and operator bool
+        https://bugs.webkit.org/show_bug.cgi?id=185306
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WTF/OptionSet.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-05-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Consolidate WebContentReaderIOS and WebContentReaderMac into WebContentReaderCocoa
+        https://bugs.webkit.org/show_bug.cgi?id=185340
+
+        Reviewed by Tim Horton.
+
+        Adds a new API test to verify that URLs written using -[NSPasteboard writeObjects:] are pasted as anchors with
+        non-empty text in a contenteditable.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PasteMixedContent.mm:
+        (TestWebKitAPI::TEST):
+
+2018-05-08  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: create results dir for results of test262 run
+        https://bugs.webkit.org/show_bug.cgi?id=185392
+
+        Reviewed by Michael Saboff.
+
+        New directory test262-results created from where ever script is
+        called.
+
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+
+2018-05-08  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: lower number of processes per core
+        https://bugs.webkit.org/show_bug.cgi?id=185426
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/Runner.pm:
+        (getProcesses):
+
+2018-05-08  Leo Balter  <leonardo.balter@gmail.com>
+
+        Test262-Runner: Add base Perl UnicodeData
+        https://bugs.webkit.org/show_bug.cgi?id=185444
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/local/lib/perl5/unicore/lib/gc_sc/SpacePer.pl: Added.
+        * Scripts/test262/local/lib/perl5/unicore/lib/gc_sc/Word.pl: Added.
+
+2018-05-08  Daniel Bates  <dabates@apple.com>
+
+        Add tests to ensure that the Strong Password appearance is removed on form reset
+        https://bugs.webkit.org/show_bug.cgi?id=185440
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/DidResignInputElementStrongPasswordAppearance.mm:
+        (-[DidResignInputElementStrongPasswordAppearance webProcessPlugIn:didCreateBrowserContextController:]):
+        * TestWebKitAPI/Tests/WebKitCocoa/UIDelegate.mm:
+        (TEST):
+
+2018-05-08  Daniel Bates  <dabates@apple.com>
+
+        Resign Strong Password appearance when text field value changes
+        https://bugs.webkit.org/show_bug.cgi?id=185433
+        <rdar://problem/39958508>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a unit test to ensure the injected bundle API and WebKit UI delegate SPI is invoked
+        when the field has the Strong Password button and its value changes.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/UIDelegate.mm:
+        (testDidResignInputElementStrongPasswordAppearanceAfterEvaluatingJavaScript):
+        (TEST):
+
+2018-05-06  Filip Pizlo  <fpizlo@apple.com>
+
+        InPlaceAbstractState::beginBasicBlock shouldn't have to clear any abstract values
+        https://bugs.webkit.org/show_bug.cgi?id=185365
+
+        Reviewed by Saam Barati.
+        
+        Make it possible to measure compile times.
+        
+        Rolling back in after fixing cloop builds.
+
+        * Scripts/run-jsc-benchmarks:
+
+2018-05-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] WKAttachmentTestsIOS.InsertDroppedItemProvidersInOrder fails after r231396
+        https://bugs.webkit.org/show_bug.cgi?id=185414
+
+        Reviewed by Tim Horton.
+
+        Adjust a test expectation to check that the resulting DOM contains an attachment element,
+        anchor element, and another attachment element in that order. This ensures that the test
+        still passes, even after the anchor element is followed by a line break.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (TestWebKitAPI::TEST):
+
+2018-05-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r231491.
+        https://bugs.webkit.org/show_bug.cgi?id=185434
+
+        Setting the Created key on a cookie does not work yet, due a
+        bug in CFNetwork (Requested by ggaren on #webkit).
+
+        Reverted changeset:
+
+        "[WKHTTPCookieStore getAllCookies] returns inconsistent
+        creation time"
+        https://bugs.webkit.org/show_bug.cgi?id=185041
+        https://trac.webkit.org/changeset/231491
+
+2018-05-08  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: move input files to JSTests/test262
+        https://bugs.webkit.org/show_bug.cgi?id=185389
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+
+2018-05-08  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, simplify Speedometer fixes landed in r231489, r231483 & r231474.
+
+        * Scripts/webkitpy/performance_tests/perftest.py:
+        (PerfTest):
+
+2018-05-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r231468.
+
+        Broke the CLoop build
+
+        Reverted changeset:
+
+        "InPlaceAbstractState::beginBasicBlock shouldn't have to clear
+        any abstract values"
+        https://bugs.webkit.org/show_bug.cgi?id=185365
+        https://trac.webkit.org/changeset/231468
+
+2018-05-08  Sihui Liu  <sihui_liu@apple.com>
+
+        [WKHTTPCookieStore getAllCookies] returns inconsistent creation time
+        https://bugs.webkit.org/show_bug.cgi?id=185041
+        <rdar://problem/34684214>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test Coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKHTTPCookieStore.mm:
+        (TEST):
+
+2018-05-08  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix issue with running Speedometer PerfTest after r231450.
+
+        * Scripts/webkitpy/performance_tests/perftest.py:
+        (PerfTest):
+
+2018-05-08  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix issue with running Speedometer PerfTest after r231450.
+
+        * Scripts/webkitpy/performance_tests/perftest.py:
+        (PerfTest):
+
+2018-05-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix issue with running Speedometer PerfTest after r231450.
+
+        * Scripts/webkitpy/performance_tests/perftest.py:
+        (PerfTest):
+
+2018-05-06  Filip Pizlo  <fpizlo@apple.com>
+
+        InPlaceAbstractState::beginBasicBlock shouldn't have to clear any abstract values
+        https://bugs.webkit.org/show_bug.cgi?id=185365
+
+        Reviewed by Saam Barati.
+        
+        Make it possible to measure compile times.
+
+        * Scripts/run-jsc-benchmarks:
+
+2018-05-07  Leo Balter  <leonardo.balter@gmail.com>
+
+        Test262-Runner: Add base module to the local deps - unicore/Exact.pl
+        https://bugs.webkit.org/show_bug.cgi?id=185390
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/local/lib/perl5/unicore/Exact.pl: Added.
+
+2018-05-07  Jonathan Bedard  <jbedard@apple.com>
+
+        Check for com.apple.datamigrator before declaring simulators booted
+        https://bugs.webkit.org/show_bug.cgi?id=185315
+        <rdar://problem/39986261>
+
+        Reviewed by David Kilzer.
+
+        * Scripts/webkitdirs.pm:
+        (waitUntilProcessNotRunning): Wait until a process is not found.
+        (relaunchIOSSimulator): Wait until com.apple.datamigrator stops running to declare
+        a simulator booted.
+        * Scripts/webkitpy/common/system/executive_mock.py:
+        (MockExecutive2.__init__): Define _running_pids.
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDeviceManager.initialize_devices): Call wait_until_data_migration_is_done before
+        declaring that devices have been booted, increase the timeout since data migration will frequently
+        take longer than 60 seconds, especially with multiple simulators booting.
+        (SimulatedDeviceManager.swap): Ditto.
+        (SimulatedDeviceManager):
+        (SimulatedDeviceManager.wait_until_data_migration_is_done): Wait until there are no com.apple.datamigrator
+        processes running.
+
+2018-05-07  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r229955): run-webkit-tests runs tests in skipped directories and subdirectories of directory given on command line
+        https://bugs.webkit.org/show_bug.cgi?id=185054
+        <rdar://problem/39773209>
+
+        Reviewed by Ryosuke Niwa.
+
+        Fallback to MacPort.CURRENT_VERSION if we are not using a known named macOS and do not have Apple Additions.
+
+        Darwin-based ports have OS version-specific test expectations and are certified to support running tests using
+        the currently shipping OS by way of a hardcoded class variable CURRENT_VERSION. The run-webkit-tests script
+        depends on the OS version to find the applicable TestExpectations files to parse to compute the list of skipped
+        tests for the port.
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.__init__): Fall back to MacPort.CURRENT_VERSION if we are not using a known named macOS and do not
+        have Apple Additions.
+        * Scripts/webkitpy/port/mac_unittest.py:
+        (MacTest.test_factory_with_future_version): Added.
+        (MacTest.test_factory_with_future_version_and_apple_additions): Renamed from MacTest.test_factory_with_future_version()
+        and added code to use the mock Apple Additions so that running this code with- and without- the real Apple Additions
+        produces consistent results now that the Mac port's OS version falls back to MacPort.CURRENT_VERSION when Apple Additions
+        is absent.
+
+2018-05-07  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: opt out of process swap on navigation if a Web Inspector frontend is connected
+        https://bugs.webkit.org/show_bug.cgi?id=184861
+        <rdar://problem/39153768>
+
+        Reviewed by Timothy Hatcher.
+
+        Add a new test that checks whether a new process is used for navigation when
+        an Inspector is shown. Also check that the behavior reverts to normal after
+        the Inspector has been closed.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-05-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Multiple links in Mail are dropped in a single line, and are difficult to tell apart
+        https://bugs.webkit.org/show_bug.cgi?id=185289
+        <rdar://problem/35756912>
+
+        Reviewed by Tim Horton and Darin Adler.
+
+        Augment and rebaseline some iOS drag-and-drop API tests that handle dropping URLs as a part of multi-item drop
+        sessions.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2018-05-04  Timothy Hatcher  <timothy@apple.com>
+
+        Deprecate legacy WebView and friends
+        https://bugs.webkit.org/show_bug.cgi?id=185279
+        rdar://problem/33268700
+
+        Reviewed by Tim Horton.
+
+        * MiniBrowser/Configurations/Base.xcconfig: Added GCC_PREPROCESSOR_DEFINITIONS
+        to define DISABLE_LEGACY_WEBKIT_DEPRECATIONS.
+
+2018-05-04  Leo Balter  <leonardo.balter@gmail.com>
+
+        Test262-Runner: Add base module to the local deps - unicore/PVA.pl
+        https://bugs.webkit.org/show_bug.cgi?id=185314
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/local/lib/perl5/unicore/PVA.pl: Added.
+
+2018-05-04  Wenson Hsieh  <whsieh@berkeley.edu>
+
+        REGRESSION: [ios-simulator] 3 WKWebViewAutofillTests API test failures seen with 11.3 SDK
+        https://bugs.webkit.org/show_bug.cgi?id=184196
+        <rdar://problem/39054481>
+
+        Reviewed by Tim Horton.
+
+        Removes some unnecessary workarounds to enable running app autofill tests against iOS versions
+        earlier than 11.3. Also re-enables these tests.
+
+        * TestWebKitAPI/Tests/ios/WKWebViewAutofillTests.mm:
+        (TestWebKitAPI::TEST):
+        (-[UITextAutofillSuggestion initWithUsername:password:]): Deleted.
+        (+[UITextAutofillSuggestion autofillSuggestionWithUsername:password:]): Deleted.
+
+2018-05-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Text shaping in the simple path is flipped in the y direction
+        https://bugs.webkit.org/show_bug.cgi?id=185062
+        <rdar://problem/39778678>
+
+        Reviewed by Simon Fraser.
+
+        Huge thanks to Ulrike Rausch of LiebeFonts for contributing the test fonts!!!
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-05-04  Leo Balter  <leonardo.balter@gmail.com>
+
+        Test262-Runner: place the processCLI inside the main call
+        https://bugs.webkit.org/show_bug.cgi?id=185304
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/Runner.pm:
+        (main):
+
+2018-05-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Epiphany (GNOME Web) says "Error downloading: Service Unavailable." when trying to download an image from discogs.com
+        https://bugs.webkit.org/show_bug.cgi?id=174730
+
+        Reviewed by Michael Catanzaro.
+
+        Update unit tests to check that User-Agent header is included in HTTP download requests.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestDownloads.cpp:
+        (testDownloadRemoteFile):
+        (testWebViewDownloadURI):
+        (testPolicyResponseDownload):
+        (testPolicyResponseDownloadCancel):
+        (testDownloadMIMEType):
+        (testContextMenuDownloadActions):
+
+2018-05-03  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Test archive must use Python zipfile, just like build product.
+        https://bugs.webkit.org/show_bug.cgi?id=185265
+
+        Reviewed by Per Arne Vollan.
+
+        * BuildSlaveSupport/test-result-archive:
+        (archive_test_results):
+        Copy over Win32-oriented archiving logic from built-product-archive.
+
+2018-05-03  Leo Balter  <leonardo.balter@gmail.com>
+
+        cleanup modules usage for the Test262-Runner
+        https://bugs.webkit.org/show_bug.cgi?id=185263
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262-runner:
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+
+2018-05-03  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: minor fixes
+        https://bugs.webkit.org/show_bug.cgi?id=185250
+
+        Reviewed by Michael Saboff.
+
+        Add comments, change output and fix bug: unintended interpolation
+        of filename when running jsc.
+
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+        (main):
+        (runTest):
+
+2018-05-03  Chris Dumez  <cdumez@apple.com>
+
+        Load hangs if the WebProcess fails to launch
+        https://bugs.webkit.org/show_bug.cgi?id=185225
+        <rdar://problem/38249058>
+
+        Reviewed by Geoff Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WebContentProcessDidTerminate.mm: Added.
+        (-[CrashOnStartNavigationDelegate _webView:webContentProcessDidTerminateWithReason:]):
+        (-[CrashOnStartNavigationDelegate webView:didFinishNavigation:]):
+        (-[CrashRecoveryScriptMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TEST):
+
+2018-05-03  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Add JSC test bots
+        https://bugs.webkit.org/show_bug.cgi?id=185234
+
+        Reviewed by Per Arne Vollan.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunJavaScriptCoreTests.start):
+
+2018-05-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        WebKit should send fake macOS user agent to docs.google.com
+        https://bugs.webkit.org/show_bug.cgi?id=185165
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-05-03  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: performance improvements
+        https://bugs.webkit.org/show_bug.cgi?id=185202
+
+        Reviewed by Michael Saboff.
+
+        Batch the tests by the number of processes, and give each process
+        a file to save results to to avoid threading. Do not parallelize
+        when running small sets of tests.
+
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+        (main):
+        (processFile):
+        (processResult):
+
+2018-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r231253.
+
+        The API test added with this change is crashing on the bots.
+
+        Reverted changeset:
+
+        "Web Inspector: opt out of process swap on navigation if a Web
+        Inspector frontend is connected"
+        https://bugs.webkit.org/show_bug.cgi?id=184861
+        https://trac.webkit.org/changeset/231253
+
+2018-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r222772): [GTK][WPE] WebProcess from WebKitGtk+ 2.19.9x SIGSEVs in WebKit::WebProcess::ensureNetworkProcessConnection() at Source/WebKit/WebProcess/WebProcess.cpp:1127
+        https://bugs.webkit.org/show_bug.cgi?id=183348
+
+        Reviewed by Michael Catanzaro.
+
+        Add a test case to reproduce the crash.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitWebView.cpp:
+        (testWebViewCloseQuickly):
+        (beforeAll):
+
 2018-05-02  Aditya Keerthi  <akeerthi@apple.com>
 
         Can't copy and paste URLs that have no title into Mail (macOS)

@@ -1076,6 +1076,8 @@ TEST(ProcessSwap, DisableForInspector)
 
     auto webViewConfiguration = adoptNS([[WKWebViewConfiguration alloc] init]);
     [webViewConfiguration setProcessPool:processPool.get()];
+    webViewConfiguration.get().preferences._developerExtrasEnabled = YES;
+    
     RetainPtr<PSONScheme> handler = adoptNS([[PSONScheme alloc] init]);
     [webViewConfiguration setURLSchemeHandler:handler.get() forURLScheme:@"PSON1"];
     [webViewConfiguration setURLSchemeHandler:handler.get() forURLScheme:@"PSON2"];
@@ -1093,10 +1095,8 @@ TEST(ProcessSwap, DisableForInspector)
     auto pid1 = [webView _webProcessIdentifier];
 
     // FIXME: use ObjC equivalent for WKInspectorRef when available.
-    WKRetainPtr<WKPageRef> page = adoptWK([webView _pageRefForTransitionToWKWebView]);
-    WKRetainPtr<WKInspectorRef> inspector = adoptWK(WKPageGetInspector(page.get()));
-    WKInspectorShow(inspector.get());
-    
+    WKInspectorShow(WKPageGetInspector([webView _pageRefForTransitionToWKWebView]));
+
     request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson2://host/main2.html"]];
     [webView loadRequest:request];
 
@@ -1105,7 +1105,7 @@ TEST(ProcessSwap, DisableForInspector)
 
     auto pid2 = [webView _webProcessIdentifier];
 
-    WKInspectorClose(inspector.get());
+    WKInspectorClose(WKPageGetInspector([webView _pageRefForTransitionToWKWebView]));
 
     request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson1://host/main2.html"]];
     [webView loadRequest:request];

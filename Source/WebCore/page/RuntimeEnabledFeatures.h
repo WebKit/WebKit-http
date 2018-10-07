@@ -252,6 +252,12 @@ public:
 
     void setFromOriginResponseHeaderEnabled(bool isEnabled) { m_fromOriginResponseHeaderEnabled = isEnabled; }
     bool fromOriginResponseHeaderEnabled() const { return m_fromOriginResponseHeaderEnabled; }
+    
+    void setWebGLCompressedTextureASTCSupportEnabled(bool isEnabled) { m_isWebGLCompressedTextureASTCSupportEnabled = isEnabled; }
+    bool webGLCompressedTextureASTCSupportEnabled() const { return m_isWebGLCompressedTextureASTCSupportEnabled; }
+
+    void setStorageAccessPromptsEnabled(bool isEnabled)  { m_promptForStorageAccessAPIEnabled = isEnabled; }
+    bool storageAccessPromptsEnabled() const { return m_promptForStorageAccessAPIEnabled; }
 
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
@@ -388,6 +394,10 @@ private:
     bool m_isRestrictedHTTPResponseAccess { true };
 
     bool m_fromOriginResponseHeaderEnabled { false };
+    
+    bool m_isWebGLCompressedTextureASTCSupportEnabled { false };
+
+    bool m_promptForStorageAccessAPIEnabled { false };
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };

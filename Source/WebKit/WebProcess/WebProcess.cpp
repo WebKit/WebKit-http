@@ -224,23 +224,6 @@ void WebProcess::initializeProcess(const ChildProcessInitializationParameters& p
 
     MessagePortChannelProvider::setSharedProvider(WebMessagePortChannelProvider::singleton());
     
-#if PLATFORM(MAC)
-#if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-    // Deny the WebContent process access to the WindowServer.
-    // We cannot call setApplicationIsDaemon here, since Activity Monitor will not show the
-    // url of the WebContent process, then.
-    // This call will not succeed if there are open WindowServer connections at this point.
-    CGError error = CGSSetDenyWindowServerConnections(true);
-    ASSERT(error == kCGErrorSuccess);
-    if (error != kCGErrorSuccess)
-        WTFLogAlways("Failed to deny WindowServer connections, error = %d", error);
-#endif
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-    // This call is needed when the WebProcess is not running the NSApplication event loop.
-    // Otherwise, calling enableSandboxStyleFileQuarantine() will fail.
-    launchServicesCheckIn();
-#endif
-#endif
     platformInitializeProcess(parameters);
 }
 
@@ -687,29 +670,6 @@ void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& de
     LOG_ERROR("Unhandled web process message '%s:%s'", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data());
 }
 
-void WebProcess::didClose(IPC::Connection&)
-{
-#if !defined(NDEBUG) || PLATFORM(GTK) || PLATFORM(WPE)
-    for (auto& page : copyToVector(m_pageMap.values()))
-        page->close();
-#endif
-
-#ifndef NDEBUG
-    GCController::singleton().garbageCollectSoon();
-    FontCache::singleton().invalidate();
-    MemoryCache::singleton().setDisabled(true);
-#endif
-
-#if ENABLE(VIDEO)
-    // FIXME(146657): This explicit media stop command should not be necessary
-    if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
-        platformMediaSessionManager->stopAllMediaPlaybackForProcess();
-#endif
-
-    // The UI process closed this connection, shut down.
-    stopRunLoop();
-}
-
 WebFrame* WebProcess::webFrame(uint64_t frameID) const
 {
     return m_frameMap.get(frameID);
@@ -797,7 +757,7 @@ void WebProcess::clearResourceCaches(ResourceCachesToClear resourceCachesToClear
     MemoryCache::singleton().evictResources();
 
     // Empty the cross-origin preflight cache.
-    CrossOriginPreflightResultCache::singleton().empty();
+    CrossOriginPreflightResultCache::singleton().clear();
 }
 
 static inline void addCaseFoldedCharacters(StringHasher& hasher, const String& string)
@@ -1148,8 +1108,18 @@ NetworkProcessConnection& WebProcess::ensureNetworkProcessConnection()
     if (!m_networkProcessConnection) {
         IPC::Attachment encodedConnectionIdentifier;
 
-        if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(), Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(encodedConnectionIdentifier), 0, Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply))
+        if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(), Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(encodedConnectionIdentifier), 0, Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply)) {
+#if PLATFORM(GTK) || PLATFORM(WPE)
+            // GTK+ and WPE ports don't exit on send sync message failure.
+            // In this particular case, the network process can be terminated by the UI process while the
+            // Web process is still initializing, so we always want to exit instead of crashing. This can
+            // happen when the WebView is created and then destroyed quickly.
+            // See https://bugs.webkit.org/show_bug.cgi?id=183348.
+            exit(0);
+#else
             CRASH();
+#endif
+        }
 
 #if USE(UNIX_DOMAIN_SOCKETS)
         IPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
@@ -1222,8 +1192,17 @@ WebToStorageProcessConnection& WebProcess::ensureWebToStorageProcessConnection(P
     if (!m_webToStorageProcessConnection) {
         IPC::Attachment encodedConnectionIdentifier;
 
-        if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetStorageProcessConnection(initialSessionID), Messages::WebProcessProxy::GetStorageProcessConnection::Reply(encodedConnectionIdentifier), 0))
+        if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetStorageProcessConnection(initialSessionID), Messages::WebProcessProxy::GetStorageProcessConnection::Reply(encodedConnectionIdentifier), 0)) {
+#if PLATFORM(GTK) || PLATFORM(WPE)
+            // GTK+ and WPE ports don't exit on send sync message failure.
+            // In this particular case, the storage process can be terminated by the UI process while the
+            // connection is being done, so we always want to exit instead of crashing.
+            // See https://bugs.webkit.org/show_bug.cgi?id=183348.
+            exit(0);
+#else
             CRASH();
+#endif
+        }
 
 #if USE(UNIX_DOMAIN_SOCKETS)
         IPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
@@ -1310,7 +1289,7 @@ void WebProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDa
         PageCache::singleton().pruneToSizeNow(0, PruningReason::None);
         MemoryCache::singleton().evictResources(sessionID);
 
-        CrossOriginPreflightResultCache::singleton().empty();
+        CrossOriginPreflightResultCache::singleton().clear();
     }
 
     if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
