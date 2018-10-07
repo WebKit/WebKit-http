@@ -1,3 +1,89 @@
+2018-05-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r232052.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Use more C++17"
+        https://bugs.webkit.org/show_bug.cgi?id=185176
+        https://trac.webkit.org/changeset/232052
+
+2018-05-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use more C++17
+        https://bugs.webkit.org/show_bug.cgi?id=185176
+
+        Reviewed by JF Bastien.
+
+        * Configurations/Base.xcconfig:
+
+2018-05-18  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas: put `hasVisualEffect` behind an experimental setting
+        https://bugs.webkit.org/show_bug.cgi?id=185758
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Base/Setting.js:
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction.prototype.process):
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement.prototype.onattach):
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+2018-05-16  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: create a navigation item for toggling the overlay rulers/guides
+        https://bugs.webkit.org/show_bug.cgi?id=185644
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        (WI.DOMTreeContentView.prototype.get navigationItems):
+        (WI.DOMTreeContentView.prototype.closed):
+        (WI.DOMTreeContentView.prototype._showRulersChanged): Added.
+        (WI.DOMTreeContentView.prototype._toggleShowRulers): Added.
+
+2018-05-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Canvas: Remove unused --value-visual-highlight CSS variable
+        https://bugs.webkit.org/show_bug.cgi?id=185636
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+
+2018-05-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas tab: don't automatically select a recording when viewing a canvas
+        https://bugs.webkit.org/show_bug.cgi?id=182950
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel):
+        (WI.CanvasSidebarPanel.prototype._currentRepresentedObjectsDidChange):
+        (WI.CanvasSidebarPanel.prototype._treeOutlineSelectionDidChange):
+        (WI.CanvasSidebarPanel.prototype._canvasChanged):
+        (WI.CanvasSidebarPanel.prototype._recordingChanged):
+        (WI.CanvasSidebarPanel.prototype._updateRecordingScopeBar):
+        Add a "dummy" ScopeBarItem to the recording ScopeBar that is selected whenever a TreeElement
+        that doesn't correspond to a Recording is selected. This way, the Recording ScopeBar will
+        become deselected, and the list of actions will disappear. Clicking on the Recording ScopeBar
+        will show the previously selected Recording.
+
 2018-05-08  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Console drawer resizing is broken when console prompt has >1 line of code

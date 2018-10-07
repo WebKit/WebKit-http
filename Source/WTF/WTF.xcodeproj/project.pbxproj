@@ -239,6 +239,7 @@
 		0FB14E18180FA218009B6B4D /* Bag.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Bag.h; sourceTree = "<group>"; };
 		0FB14E1A1810E1DA009B6B4D /* BagToHashMap.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BagToHashMap.h; sourceTree = "<group>"; };
 		0FB317C31C488001007E395A /* SystemTracing.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SystemTracing.h; sourceTree = "<group>"; };
+		0FB399B820AF5A580017E213 /* BooleanLattice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BooleanLattice.h; sourceTree = "<group>"; };
 		0FB467821FDE282B003FCB09 /* ConcurrentBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ConcurrentBuffer.h; sourceTree = "<group>"; };
 		0FB467831FDE282C003FCB09 /* ConcurrentVector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ConcurrentVector.h; sourceTree = "<group>"; };
 		0FC4488216FE9FE100844BE9 /* ProcessID.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ProcessID.h; sourceTree = "<group>"; };
@@ -395,6 +396,7 @@
 		8134013615B092FD001FF0B8 /* Base64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Base64.cpp; sourceTree = "<group>"; };
 		8134013715B092FD001FF0B8 /* Base64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Base64.h; sourceTree = "<group>"; };
 		83A8AC3D1FABBE94002064AC /* ObjectIdentifier.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ObjectIdentifier.h; sourceTree = "<group>"; };
+		83ABB3C020B3823200BA3306 /* WeakObjCPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WeakObjCPtr.h; sourceTree = "<group>"; };
 		83F2BADE1CF9524E003E99C3 /* Function.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Function.h; sourceTree = "<group>"; };
 		83FBA93119DF459700F30ADB /* TypeCasts.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TypeCasts.h; sourceTree = "<group>"; };
 		86F46F5F1A2840EE00CCBF22 /* RefCounter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RefCounter.h; sourceTree = "<group>"; };
@@ -639,6 +641,7 @@
 		FEB6B035201BE0B600B958C1 /* PointerPreparations.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PointerPreparations.h; sourceTree = "<group>"; };
 		FEDACD3B1630F83F00C69634 /* StackStats.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = StackStats.cpp; sourceTree = "<group>"; };
 		FEDACD3C1630F83F00C69634 /* StackStats.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StackStats.h; sourceTree = "<group>"; };
+		FEF295BF20B49DCB00CF283A /* UTF8ConversionError.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UTF8ConversionError.h; sourceTree = "<group>"; };
 		FF0A436588954F3CB07DBECA /* StdList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StdList.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -813,6 +816,7 @@
 				1A944F461C3D8814005BD28C /* BlockPtr.h */,
 				A8A47264151A825A004123FF /* BlockStack.h */,
 				A8A47265151A825A004123FF /* BloomFilter.h */,
+				0FB399B820AF5A580017E213 /* BooleanLattice.h */,
 				0F93274A1C17F4B700CF6564 /* Box.h */,
 				7C3F72391D78811900674E26 /* Brigand.h */,
 				0F4570441BE834410062A629 /* BubbleSort.h */,
@@ -1115,6 +1119,7 @@
 				A8A47372151A825B004123FF /* VMTags.h */,
 				0F66B2881DC97BAB004A1D3F /* WallTime.cpp */,
 				0F66B2891DC97BAB004A1D3F /* WallTime.h */,
+				83ABB3C020B3823200BA3306 /* WeakObjCPtr.h */,
 				974CFC8D16A4F327006D5404 /* WeakPtr.h */,
 				0F3501631BB258C800F0A2A3 /* WeakRandom.h */,
 				0FE4479A1B7AAA03009498EB /* WordLock.cpp */,
@@ -1214,6 +1219,7 @@
 				A8A4732C151A825B004123FF /* TextPosition.h */,
 				A3E4DD911F3A803400DED0B4 /* TextStream.cpp */,
 				A3E4DD921F3A803400DED0B4 /* TextStream.h */,
+				FEF295BF20B49DCB00CF283A /* UTF8ConversionError.h */,
 				70ECA60C1B02426800449739 /* UniquedStringImpl.h */,
 				A3AB6E6A1F3E1AD6009C14B1 /* ValueToString.h */,
 				A8A4732D151A825B004123FF /* WTFString.cpp */,

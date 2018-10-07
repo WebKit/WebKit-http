@@ -66,11 +66,11 @@ Ref<FloatingState> InlineFormattingContext::createOrFindFloatingState(LayoutCont
     return formattingState.floatingState();
 }
 
-void InlineFormattingContext::computeInFlowWidth(const Box&, Display::Box&) const
+void InlineFormattingContext::computeInFlowWidth(LayoutContext&, const Box&, Display::Box&) const
 {
 }
 
-void InlineFormattingContext::computeInFlowHeight(const Box&, Display::Box&) const
+void InlineFormattingContext::computeInFlowHeight(LayoutContext&, const Box&, Display::Box&) const
 {
 }
 

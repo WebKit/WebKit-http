@@ -28,11 +28,13 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "FloatingState.h"
-#include "LayoutUnit.h"
 #include <wtf/IsoMalloc.h>
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
+
+class LayoutPoint;
+class LayoutUnit;
 
 namespace Display {
 class Box;
@@ -66,18 +68,18 @@ protected:
 
     virtual void computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const;
     virtual void computeInFlowPositionedPosition(const Box&, Display::Box&) const;
-    virtual void computeOutOfFlowPosition(const Box&, Display::Box&) const;
+    virtual void computeOutOfFlowPosition(LayoutContext&, const Box&, Display::Box&) const;
 
-    virtual void computeWidth(const Box&, Display::Box&) const;
-    virtual void computeHeight(const Box&, Display::Box&) const;
+    virtual void computeWidth(LayoutContext&, const Box&, Display::Box&) const;
+    virtual void computeHeight(LayoutContext&, const Box&, Display::Box&) const;
 
-    virtual void computeOutOfFlowWidth(const Box&, Display::Box&) const;
-    virtual void computeFloatingWidth(const Box&, Display::Box&) const;
-    virtual void computeInFlowWidth(const Box&, Display::Box&) const = 0;
+    virtual void computeOutOfFlowWidth(LayoutContext&, const Box&, Display::Box&) const;
+    virtual void computeFloatingWidth(LayoutContext&, const Box&, Display::Box&) const;
+    virtual void computeInFlowWidth(LayoutContext&, const Box&, Display::Box&) const = 0;
 
-    virtual void computeOutOfFlowHeight(const Box&, Display::Box&) const;
-    virtual void computeFloatingHeight(const Box&, Display::Box&) const;
-    virtual void computeInFlowHeight(const Box&, Display::Box&) const = 0;
+    virtual void computeOutOfFlowHeight(LayoutContext&, const Box&, Display::Box&) const;
+    virtual void computeFloatingHeight(LayoutContext&, const Box&, Display::Box&) const;
+    virtual void computeInFlowHeight(LayoutContext&, const Box&, Display::Box&) const = 0;
 
     virtual LayoutUnit marginTop(const Box&) const;
     virtual LayoutUnit marginLeft(const Box&) const;
@@ -86,6 +88,32 @@ protected:
 
     void placeInFlowPositionedChildren(const Container&) const;
     void layoutOutOfFlowDescendants(LayoutContext&s) const;
+
+#ifndef NDEBUG
+    virtual void validateGeometryConstraintsAfterLayout(const LayoutContext&) const;
+#endif
+
+    // This class implements generic positioning and sizing.
+    class Geometry {
+    public:
+        static LayoutUnit outOfFlowNonReplacedHeight(LayoutContext&, const Box&);
+        static LayoutUnit outOfFlowNonReplacedWidth(LayoutContext&, const Box&);
+
+        static LayoutUnit outOfFlowReplacedHeight(LayoutContext&, const Box&);
+        static LayoutUnit outOfFlowReplacedWidth(LayoutContext&, const Box&);
+
+        static LayoutUnit floatingNonReplacedHeight(LayoutContext&, const Box&);
+        static LayoutUnit floatingNonReplacedWidth(LayoutContext&, const Box&);
+
+        static LayoutUnit floatingReplacedHeight(LayoutContext&, const Box&);
+        static LayoutUnit floatingReplacedWidth(LayoutContext&, const Box&);
+
+        static LayoutPoint outOfFlowNonReplacedPosition(LayoutContext&, const Box&);
+        static LayoutPoint outOfFlowReplacedPosition(LayoutContext&, const Box&);
+
+        static LayoutUnit replacedHeight(LayoutContext&, const Box&);
+        static LayoutUnit replacedWidth(LayoutContext&, const Box&);
+    };
 
 private:
     WeakPtr<Box> m_root;

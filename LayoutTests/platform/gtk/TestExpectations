@@ -1005,6 +1005,8 @@ webkit.org/b/167579 fast/forms/validation-message-minimum-font-size.html [ Skip 
 # Tests failing with GStreamer 1.6.3
 webkit.org/b/154390 http/tests/media/video-throttled-load-metadata.html [ Pass Failure ]
 webkit.org/b/154390 http/tests/media/video-redirect.html [ Timeout Pass ]
+webkit.org/b/154390 [ Release ] http/tests/media/hls/video-controller-getStartDate.html [ Timeout Failure ]
+webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-audio-tracks-locale-selection.html [ Timeout Failure ]
 webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-video-resize.html [ Timeout Failure ]
 webkit.org/b/154390 http/tests/security/local-video-source-from-remote.html [ Timeout Pass ]
 
@@ -1185,6 +1187,10 @@ webkit.org/b/180062 fast/text/user-installed-fonts [ Skip ]
 
 webkit.org/b/184295 http/wpt/loading/redirect-headers.html [ Skip ]
 
+# NowPlaying is macOS and iOS only.
+http/tests/media/now-playing-info-private-browsing.html [ Skip ]
+http/tests/media/now-playing-info.html [ Skip ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures.
 #
@@ -1246,11 +1252,6 @@ webkit.org/b/129050 fast/sub-pixel/compositing-layers-on-subpixel-position.html 
 
 webkit.org/b/152043 [ Debug ] http/tests/media/hls [ Timeout Crash ]
 
-# Tests crashing since addition of playbin3 usage
-webkit.org/b/184581 http/tests/media/hls/hls-audio-tracks-locale-selection.html [ Timeout Failure Crash ]
-webkit.org/b/184581 http/tests/media/hls/hls-progress.html [ Crash ]
-webkit.org/b/184581 http/tests/media/hls/video-controller-getStartDate.html [ Timeout Failure Crash ]
-
 webkit.org/b/152642 http/tests/misc/detached-frame-console.html [ Crash Pass Timeout Failure ]
 
 webkit.org/b/153692 imported/blink/fast/css/first-letter-float-block.html [ Crash Pass ]
@@ -1301,6 +1302,10 @@ webkit.org/b/183215 imported/w3c/web-platform-tests/encoding/legacy-mb-korean/eu
 webkit.org/b/183401 fast/animation/request-animation-frame-during-modal.html [ Crash Pass ]
 
 webkit.org/b/184781 [ Release ] plugins/unavailable-plugin-indicator-obscurity.html [ Crash ]
+
+webkit.org/b/185546 media/video-playbackrate.html [ Crash Pass ]
+
+webkit.org/b/185910 media/video-duration-known-after-eos.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -1443,7 +1448,6 @@ webkit.org/b/103443 fast/parser/parser-yield-timing.html [ Failure Pass ]
 webkit.org/b/105191 media/video-playing-and-pause.html [ Failure Pass ]
 
 webkit.org/b/118460 media/media-element-play-after-eos.html [ Timeout Pass ]
-webkit.org/b/118460 media/video-duration-known-after-eos.html [ Timeout Pass ]
 
 webkit.org/b/119009 http/tests/cache/subresource-failover-to-network.html [ Failure Pass ]
 
@@ -3358,8 +3362,6 @@ webkit.org/b/184778 inspector/canvas/setShaderProgramHighlighted.html [ Failure 
 webkit.org/b/184779 transitions/clip-path-path-transitions.html [ Failure ]
 webkit.org/b/184779 transitions/clip-path-transitions.html [ Failure ]
 
-webkit.org/b/185252 http/tests/media/hls/hls-audio-tracks.html [ Failure ]
-
 webkit.org/b/185254 http/tests/cache/disk-cache/redirect-chain-limits.html [ Failure ]
 webkit.org/b/185254 http/tests/xmlhttprequest/onloadend-event-after-error.html [ Failure ]
 webkit.org/b/185254 http/tests/xmlhttprequest/response-access-on-error.html [ Failure ]
@@ -3371,6 +3373,25 @@ webkit.org/b/185254 http/tests/xmlhttprequest/XMLHttpRequestException.html [ Fai
 webkit.org/b/185254 http/tests/xmlhttprequest/onloadend-event-after-sync-requests.html [ Failure ]
 webkit.org/b/185254 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-infinite-sync.htm [ Failure ]
 webkit.org/b/185254 imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-network-error-sync.htm [ Failure ]
+
+webkit.org/b/185548 accessibility/scroll-to-make-visible-iframe-offscreen.html [ Failure ]
+
+webkit.org/b/185714 js/intl-numberformat-format-to-parts.html [ Failure ]
+webkit.org/b/185714 js/intl-pluralrules.html [ Failure ]
+
+# Imported css-text test suite from WPT
+webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/letter-spacing/letter-spacing-control-chars-001.html [ ImageOnlyFailure ]
+webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/overflow-wrap/overflow-wrap-break-word-002.html [ ImageOnlyFailure ]
+webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/overflow-wrap/overflow-wrap-break-word-003.html [ ImageOnlyFailure ]
+webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-005.html [ ImageOnlyFailure ]
+webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-007.html [ ImageOnlyFailure ]
+webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-normal-bo-000.html [ ImageOnlyFailure ]
+webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-normal-lo-000.html [ ImageOnlyFailure ]
+
+# Fails consistently on Release, times out consistently in Debug
+webkit.org/b/185912 fast/canvas/webgl/index-validation-with-subsequent-draws.html [ Failure Timeout ]
+
+webkit.org/b/185913 fast/dom/HTMLAnchorElement/anchor-file-blob-download-then-revoke.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

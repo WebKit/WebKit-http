@@ -237,7 +237,7 @@ void NetworkStorageSession::getCredentialFromPersistentStorage(const ProtectionS
             }
 
             GRefPtr<SecretItem> secretItem = static_cast<SecretItem*>(elements->data);
-            g_list_foreach(elements.get(), reinterpret_cast<GFunc>(g_object_unref), nullptr);
+            g_list_foreach(elements.get(), reinterpret_cast<GFunc>(reinterpret_cast<GCallback>(g_object_unref)), nullptr);
             GRefPtr<GHashTable> attributes = adoptGRef(secret_item_get_attributes(secretItem.get()));
             String user = String::fromUTF8(static_cast<const char*>(g_hash_table_lookup(attributes.get(), "user")));
             if (user.isEmpty()) {
@@ -318,6 +318,9 @@ Vector<Cookie> NetworkStorageSession::getCookies(const URL& url)
 {
     Vector<Cookie> cookies;
     GUniquePtr<SoupURI> uri = url.createSoupURI();
+    if (!uri)
+        return cookies;
+
     GUniquePtr<GSList> cookiesList(soup_cookie_jar_get_cookie_list(cookieStorage(), uri.get(), TRUE));
     for (GSList* item = cookiesList.get(); item; item = g_slist_next(item)) {
         GUniquePtr<SoupCookie> soupCookie(static_cast<SoupCookie*>(item->data));

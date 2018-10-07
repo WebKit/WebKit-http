@@ -129,6 +129,7 @@ void WebSWContextManagerConnection::updatePreferencesStore(const WebPreferencesS
     RuntimeEnabledFeatures::sharedFeatures().setResourceTimingEnabled(store.getBoolValueForKey(WebPreferencesKey::resourceTimingEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setFetchAPIKeepAliveEnabled(store.getBoolValueForKey(WebPreferencesKey::fetchAPIKeepAliveEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setRestrictedHTTPResponseAccess(store.getBoolValueForKey(WebPreferencesKey::restrictedHTTPResponseAccessKey()));
+    RuntimeEnabledFeatures::sharedFeatures().setServerTimingEnabled(store.getBoolValueForKey(WebPreferencesKey::serverTimingEnabledKey()));
 
     m_storageBlockingPolicy = static_cast<SecurityOrigin::StorageBlockingPolicy>(store.getUInt32ValueForKey(WebPreferencesKey::storageBlockingPolicyKey()));
 }
@@ -198,11 +199,17 @@ static inline bool isValidFetch(const ResourceRequest& request, const FetchOptio
     return protocolHostAndPortAreEqual(url, serviceWorkerURL);
 }
 
-void WebSWContextManagerConnection::startFetch(SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, ResourceRequest&& request, FetchOptions&& options, IPC::FormDataReference&& formData, String&& referrer)
+void WebSWContextManagerConnection::cancelFetch(SWServerConnectionIdentifier serverConnectionIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, FetchIdentifier fetchIdentifier)
+{
+    if (auto* serviceWorkerThreadProxy = SWContextManager::singleton().serviceWorkerThreadProxy(serviceWorkerIdentifier))
+        serviceWorkerThreadProxy->cancelFetch(serverConnectionIdentifier, fetchIdentifier);
+}
+
+void WebSWContextManagerConnection::startFetch(SWServerConnectionIdentifier serverConnectionIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, FetchIdentifier fetchIdentifier, ResourceRequest&& request, FetchOptions&& options, IPC::FormDataReference&& formData, String&& referrer)
 {
     auto* serviceWorkerThreadProxy = SWContextManager::singleton().serviceWorkerThreadProxy(serviceWorkerIdentifier);
     if (!serviceWorkerThreadProxy) {
-        m_connectionToStorageProcess->send(Messages::StorageProcess::DidNotHandleFetch(serverConnectionIdentifier, fetchIdentifier), 0);
+        m_connectionToStorageProcess->send(Messages::StorageProcess::DidNotHandleFetch { serverConnectionIdentifier, fetchIdentifier }, 0);
         return;
     }
 
@@ -214,7 +221,7 @@ void WebSWContextManagerConnection::startFetch(SWServerConnectionIdentifier serv
         clientId = ServiceWorkerClientIdentifier { serverConnectionIdentifier, options.clientIdentifier.value() };
 
     request.setHTTPBody(formData.takeData());
-    serviceWorkerThreadProxy->thread().postFetchTask(WTFMove(client), WTFMove(clientId), WTFMove(request), WTFMove(referrer), WTFMove(options));
+    serviceWorkerThreadProxy->startFetch(serverConnectionIdentifier, fetchIdentifier, WTFMove(client), WTFMove(clientId), WTFMove(request), WTFMove(referrer), WTFMove(options));
 }
 
 void WebSWContextManagerConnection::postMessageToServiceWorker(ServiceWorkerIdentifier destinationIdentifier, MessageWithMessagePorts&& message, ServiceWorkerOrClientData&& sourceData)
@@ -237,11 +244,9 @@ void WebSWContextManagerConnection::terminateWorker(ServiceWorkerIdentifier iden
     SWContextManager::singleton().terminateWorker(identifier, asyncWorkerTerminationTimeout, nullptr);
 }
 
-void WebSWContextManagerConnection::syncTerminateWorker(ServiceWorkerIdentifier identifier, Ref<Messages::WebSWContextManagerConnection::SyncTerminateWorker::DelayedReply>&& reply)
+void WebSWContextManagerConnection::syncTerminateWorker(ServiceWorkerIdentifier identifier, Messages::WebSWContextManagerConnection::SyncTerminateWorker::DelayedReply&& reply)
 {
-    SWContextManager::singleton().terminateWorker(identifier, syncWorkerTerminationTimeout, [reply = WTFMove(reply)] {
-        reply->send();
-    });
+    SWContextManager::singleton().terminateWorker(identifier, syncWorkerTerminationTimeout, WTFMove(reply));
 }
 
 void WebSWContextManagerConnection::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, MessageWithMessagePorts&& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)

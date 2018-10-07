@@ -249,6 +249,7 @@ void WebPreferences::initializeDefaultSettings()
     CFDictionaryAddValue(defaults, CFSTR(WebKitShouldDisplaySubtitlesPreferenceKey), kCFBooleanFalse);
     CFDictionaryAddValue(defaults, CFSTR(WebKitShouldDisplayCaptionsPreferenceKey), kCFBooleanFalse);
     CFDictionaryAddValue(defaults, CFSTR(WebKitShouldDisplayTextDescriptionsPreferenceKey), kCFBooleanFalse);
+    CFDictionaryAddValue(defaults, CFSTR(WebKitCrossOriginOptionsSupportEnabledPreferenceKey), kCFBooleanFalse);
 
     RetainPtr<CFStringRef> linkBehaviorStringRef = adoptCF(CFStringCreateWithFormat(0, 0, CFSTR("%d"), WebKitEditableLinkDefaultBehavior));
     CFDictionaryAddValue(defaults, CFSTR(WebKitEditableLinkBehaviorPreferenceKey), linkBehaviorStringRef.get());
@@ -309,6 +310,8 @@ void WebPreferences::initializeDefaultSettings()
     CFDictionaryAddValue(defaults, CFSTR(WebKitCustomElementsEnabledPreferenceKey), kCFBooleanFalse);
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitWebAnimationsEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey), kCFBooleanFalse);
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitUserTimingEnabledPreferenceKey), kCFBooleanFalse);
 
@@ -575,6 +578,8 @@ HRESULT WebPreferences::QueryInterface(_In_ REFIID riid, _COM_Outptr_ void** ppv
         *ppvObject = static_cast<IWebPreferencesPrivate5*>(this);
     else if (IsEqualGUID(riid, IID_IWebPreferencesPrivate6))
         *ppvObject = static_cast<IWebPreferencesPrivate6*>(this);
+    else if (IsEqualGUID(riid, IID_IWebPreferencesPrivate7))
+        *ppvObject = static_cast<IWebPreferencesPrivate7*>(this);
     else if (IsEqualGUID(riid, CLSID_WebPreferences))
         *ppvObject = this;
     else
@@ -2029,6 +2034,20 @@ HRESULT WebPreferences::setMenuItemElementEnabled(BOOL enabled)
     return S_OK;
 }
 
+HRESULT WebPreferences::crossOriginOptionsSupportEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitCrossOriginOptionsSupportEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setCrossOriginOptionsSupportEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitCrossOriginOptionsSupportEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
 HRESULT WebPreferences::setModernMediaControlsEnabled(BOOL enabled)
 {
     setBoolValue(WebKitModernMediaControlsEnabledPreferenceKey, enabled);
@@ -2043,17 +2062,17 @@ HRESULT WebPreferences::modernMediaControlsEnabled(_Out_ BOOL* enabled)
     return S_OK;
 }
 
-HRESULT WebPreferences::cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled(_Out_ BOOL* enabled)
+HRESULT WebPreferences::webAnimationsCSSIntegrationEnabled(_Out_ BOOL* enabled)
 {
     if (!enabled)
         return E_POINTER;
-    *enabled = boolValueForKey(WebKitCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabledPreferenceKey);
+    *enabled = boolValueForKey(WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey);
     return S_OK;
 }
 
-HRESULT WebPreferences::setCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled(BOOL enabled)
+HRESULT WebPreferences::setWebAnimationsCSSIntegrationEnabled(BOOL enabled)
 {
-    setBoolValue(WebKitCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabledPreferenceKey, enabled);
+    setBoolValue(WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey, enabled);
     return S_OK;
 }
 
@@ -2212,5 +2231,19 @@ HRESULT WebPreferences::resourceTimingEnabled(_Out_ BOOL* enabled)
     if (!enabled)
         return E_POINTER;
     *enabled = boolValueForKey(WebKitResourceTimingEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::serverTimingEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitServerTimingEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setServerTimingEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitServerTimingEnabledPreferenceKey, enabled);
     return S_OK;
 }

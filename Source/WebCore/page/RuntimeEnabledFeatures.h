@@ -173,8 +173,8 @@ public:
     void setWebAnimationsEnabled(bool areEnabled) { m_areWebAnimationsEnabled = areEnabled; }
     bool webAnimationsEnabled() const { return m_areWebAnimationsEnabled; }
 
-    void setCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled(bool areEnabled) { m_areCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled = areEnabled; }
-    bool cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled() const { return m_areCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled; }
+    void setWebAnimationsCSSIntegrationEnabled(bool isEnabled) { m_isWebAnimationsCSSIntegrationEnabled = isEnabled; }
+    bool webAnimationsCSSIntegrationEnabled() const { return m_areWebAnimationsEnabled && m_isWebAnimationsCSSIntegrationEnabled; }
 
 #if ENABLE(WEBGL2)
     void setWebGL2Enabled(bool isEnabled) { m_isWebGL2Enabled = isEnabled; }
@@ -258,6 +258,12 @@ public:
 
     void setStorageAccessPromptsEnabled(bool isEnabled)  { m_promptForStorageAccessAPIEnabled = isEnabled; }
     bool storageAccessPromptsEnabled() const { return m_promptForStorageAccessAPIEnabled; }
+
+    void setServerTimingEnabled(bool isEnabled) { m_isServerTimingEnabled = isEnabled; }
+    bool serverTimingEnabled() const { return m_isServerTimingEnabled; }
+
+    void setDisabledAdaptationsMetaTagEnabled(bool isEnabled) { m_disabledAdaptationsMetaTagEnabled = isEnabled; }
+    bool disabledAdaptationsMetaTagEnabled() const { return m_disabledAdaptationsMetaTagEnabled; }
 
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
@@ -346,7 +352,7 @@ private:
 #endif
 
     bool m_areWebAnimationsEnabled { true };
-    bool m_areCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled { false };
+    bool m_isWebAnimationsCSSIntegrationEnabled { false };
 
 #if ENABLE(WEBGL2)
     bool m_isWebGL2Enabled { false };
@@ -394,10 +400,14 @@ private:
     bool m_isRestrictedHTTPResponseAccess { true };
 
     bool m_fromOriginResponseHeaderEnabled { false };
-    
+
     bool m_isWebGLCompressedTextureASTCSupportEnabled { false };
 
     bool m_promptForStorageAccessAPIEnabled { false };
+
+    bool m_isServerTimingEnabled { false };
+
+    bool m_disabledAdaptationsMetaTagEnabled { false };
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };

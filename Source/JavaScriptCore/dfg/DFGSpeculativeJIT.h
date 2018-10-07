@@ -735,7 +735,8 @@ public:
     void compilePushWithScope(Node*);
     void compileGetById(Node*, AccessType);
     void compileGetByIdFlush(Node*, AccessType);
-    void compileIn(Node*);
+    void compileInById(Node*);
+    void compileInByVal(Node*);
     
     void nonSpeculativeNonPeepholeCompareNullOrUndefined(Edge operand);
     void nonSpeculativePeepholeBranchNullOrUndefined(Edge operand, Node* branchNode);
@@ -747,7 +748,7 @@ public:
     void nonSpeculativeNonPeepholeStrictEq(Node*, bool invert = false);
     bool nonSpeculativeStrictEq(Node*, bool invert = false);
     
-    void compileInstanceOfForObject(Node*, GPRReg valueReg, GPRReg prototypeReg, GPRReg scratchAndResultReg, GPRReg scratch2Reg, GPRReg scratch3Reg);
+    void compileInstanceOfForCells(Node*, JSValueRegs valueGPR, JSValueRegs prototypeGPR, GPRReg resultGPT, GPRReg scratchGPR, GPRReg scratch2GPR, JITCompiler::Jump slowCase = JITCompiler::Jump());
     void compileInstanceOf(Node*);
     void compileInstanceOfCustom(Node*);
     void compileOverridesHasInstance(Node*);
@@ -1375,6 +1376,7 @@ public:
     void compileGetByValWithThis(Node*);
     void compileGetByOffset(Node*);
     void compilePutByOffset(Node*);
+    void compileMatchStructure(Node*);
     // If this returns false it means that we terminated speculative execution.
     bool getIntTypedArrayStoreOperand(
         GPRTemporary& value,

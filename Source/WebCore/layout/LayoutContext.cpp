@@ -64,7 +64,7 @@ void LayoutContext::updateLayout()
 
 Display::Box& LayoutContext::createDisplayBox(const Box& layoutBox)
 {
-    std::unique_ptr<Display::Box> displayBox(new Display::Box());
+    std::unique_ptr<Display::Box> displayBox(new Display::Box(layoutBox.style()));
     auto* displayBoxPtr = displayBox.get();
     m_layoutToDisplayBox.add(&layoutBox, WTFMove(displayBox));
     return *displayBoxPtr;
@@ -79,7 +79,7 @@ void LayoutContext::styleChanged(const Box& layoutBox, StyleDiff styleDiff)
     else if (is<InlineFormattingState>(formattingState))
         invalidationRoot = InlineInvalidation::invalidate(layoutBox, styleDiff, *this, downcast<InlineFormattingState>(formattingState)).root;
     else
-        ASSERT_NOT_REACHED();
+        ASSERT_NOT_IMPLEMENTED_YET();
     ASSERT(invalidationRoot);
     m_formattingContextRootListForLayout.addVoid(invalidationRoot);
 }
@@ -110,7 +110,7 @@ std::unique_ptr<FormattingContext> LayoutContext::formattingContext(const Box& f
     if (formattingContextRoot.establishesInlineFormattingContext())
         return std::make_unique<InlineFormattingContext>(formattingContextRoot);
 
-    ASSERT_NOT_REACHED();
+    ASSERT_NOT_IMPLEMENTED_YET();
     return nullptr;
 }
 

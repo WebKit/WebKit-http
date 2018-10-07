@@ -773,7 +773,7 @@ static bool shouldEnableDeveloperExtras(const char* pathOrURL)
 
 static void enableExperimentalFeatures(IWebPreferences* preferences)
 {
-    COMPtr<IWebPreferencesPrivate6> prefsPrivate { Query, preferences };
+    COMPtr<IWebPreferencesPrivate7> prefsPrivate { Query, preferences };
 
     prefsPrivate->setFetchAPIKeepAliveEnabled(TRUE);
     // FIXME: CSSGridLayout
@@ -786,8 +786,10 @@ static void enableExperimentalFeatures(IWebPreferences* preferences)
     // FIXME: SubtleCrypto
     prefsPrivate->setVisualViewportAPIEnabled(TRUE);
     prefsPrivate->setWebAnimationsEnabled(TRUE);
+    prefsPrivate->setServerTimingEnabled(TRUE);
     // FIXME: WebGL2
     // FIXME: WebRTC
+    prefsPrivate->setCrossOriginOptionsSupportEnabled(TRUE);
 }
 
 static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)

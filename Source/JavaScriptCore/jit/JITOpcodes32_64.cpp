@@ -151,34 +151,16 @@ void JIT::emit_op_instanceof(Instruction* currentInstruction)
     emitJumpSlowCaseIfNotJSCell(value);
     emitJumpSlowCaseIfNotJSCell(proto);
     
-    // Check that prototype is an object
-    addSlowCase(emitJumpIfCellNotObject(regT1));
-
-    // Optimistically load the result true, and start looping.
-    // Initially, regT1 still contains proto and regT2 still contains value.
-    // As we loop regT2 will be updated with its prototype, recursively walking the prototype chain.
-    move(TrustedImm32(1), regT0);
-    Label loop(this);
-
-    addSlowCase(branch8(Equal, Address(regT2, JSCell::typeInfoTypeOffset()), TrustedImm32(ProxyObjectType)));
-
-    // Load the prototype of the cell in regT2.  If this is equal to regT1 - WIN!
-    // Otherwise, check if we've hit null - if we have then drop out of the loop, if not go again.
-    loadPtr(Address(regT2, JSCell::structureIDOffset()), regT4);
-    load32(Address(regT4, Structure::prototypeOffset() + TagOffset), regT3);
-    load32(Address(regT4, Structure::prototypeOffset() + PayloadOffset), regT4);
-    auto hasMonoProto = branch32(NotEqual, regT3, TrustedImm32(JSValue::EmptyValueTag));
-    load32(Address(regT2, offsetRelativeToBase(knownPolyProtoOffset) + PayloadOffset), regT4);
-    hasMonoProto.link(this);
-    move(regT4, regT2);
-    Jump isInstance = branchPtr(Equal, regT2, regT1);
-    branchTest32(NonZero, regT2).linkTo(loop, this);
-
-    // We get here either by dropping out of the loop, or if value was not an Object.  Result is false.
-    move(TrustedImm32(0), regT0);
-
-    // isInstance jumps right down to here, to skip setting the result to false (it has already set true).
-    isInstance.link(this);
+    JITInstanceOfGenerator gen(
+        m_codeBlock, CodeOrigin(m_bytecodeOffset), CallSiteIndex(m_bytecodeOffset),
+        RegisterSet::stubUnavailableRegisters(),
+        regT0, // result
+        regT2, // value
+        regT1, // proto
+        regT3, regT4); // scratch
+    gen.generateFastPath(*this);
+    m_instanceOfs.append(gen);
+    
     emitStoreBool(dst, regT0);
 }
 
@@ -191,15 +173,19 @@ void JIT::emit_op_instanceof_custom(Instruction*)
 void JIT::emitSlow_op_instanceof(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
-
+    
     auto& bytecode = *reinterpret_cast<OpInstanceof*>(currentInstruction);
     int dst = bytecode.dst();
     int value = bytecode.value();
     int proto = bytecode.prototype();
-
-    emitLoad(value, regT1, regT0);
-    emitLoad(proto, regT3, regT2);
-    callOperation(operationInstanceOf, dst, JSValueRegs(regT1, regT0), JSValueRegs(regT3, regT2));
+    
+    JITInstanceOfGenerator& gen = m_instanceOfs[m_instanceOfIndex++];
+    
+    Label coldPathBegin = label();
+    emitLoadTag(value, regT0);
+    emitLoadTag(proto, regT3);
+    Call call = callOperation(operationInstanceOfOptimize, dst, gen.stubInfo(), JSValueRegs(regT0, regT2), JSValueRegs(regT3, regT1));
+    gen.reportSlowPathCall(coldPathBegin, call);
 }
 
 void JIT::emitSlow_op_instanceof_custom(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
@@ -236,7 +222,7 @@ void JIT::emit_op_is_undefined(Instruction* currentInstruction)
     int value = currentInstruction[2].u.operand;
     
     emitLoad(value, regT1, regT0);
-    Jump isCell = branch32(Equal, regT1, TrustedImm32(JSValue::CellTag));
+    Jump isCell = branchIfCell(regT1);
 
     compare32(Equal, regT1, TrustedImm32(JSValue::UndefinedTag), regT0);
     Jump done = jump();
@@ -285,7 +271,7 @@ void JIT::emit_op_is_cell_with_type(Instruction* currentInstruction)
     int type = currentInstruction[3].u.operand;
 
     emitLoad(value, regT1, regT0);
-    Jump isNotCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
+    Jump isNotCell = branchIfNotCell(regT1);
 
     compare8(Equal, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(type), regT0);
     Jump done = jump();
@@ -303,7 +289,7 @@ void JIT::emit_op_is_object(Instruction* currentInstruction)
     int value = currentInstruction[2].u.operand;
 
     emitLoad(value, regT1, regT0);
-    Jump isNotCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
+    Jump isNotCell = branchIfNotCell(regT1);
 
     compare8(AboveOrEqual, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(ObjectType), regT0);
     Jump done = jump();
@@ -322,8 +308,8 @@ void JIT::emit_op_to_primitive(Instruction* currentInstruction)
 
     emitLoad(src, regT1, regT0);
 
-    Jump isImm = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
-    addSlowCase(emitJumpIfCellObject(regT0));
+    Jump isImm = branchIfNotCell(regT1);
+    addSlowCase(branchIfObject(regT0));
     isImm.link(this);
 
     if (dst != src)
@@ -347,7 +333,7 @@ void JIT::emit_op_not(Instruction* currentInstruction)
     emitLoadTag(src, regT0);
 
     emitLoad(src, regT1, regT0);
-    addSlowCase(branch32(NotEqual, regT1, TrustedImm32(JSValue::BooleanTag)));
+    addSlowCase(branchIfNotBoolean(regT1, InvalidGPRReg));
     xor32(TrustedImm32(1), regT0);
 
     emitStoreBool(dst, regT0, (dst == src));
@@ -391,7 +377,7 @@ void JIT::emit_op_jeq_null(Instruction* currentInstruction)
 
     emitLoad(src, regT1, regT0);
 
-    Jump isImmediate = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
+    Jump isImmediate = branchIfNotCell(regT1);
 
     Jump isNotMasqueradesAsUndefined = branchTest8(Zero, Address(regT0, JSCell::typeInfoFlagsOffset()), TrustedImm32(MasqueradesAsUndefined));
     loadPtr(Address(regT0, JSCell::structureIDOffset()), regT2);
@@ -401,9 +387,9 @@ void JIT::emit_op_jeq_null(Instruction* currentInstruction)
 
     // Now handle the immediate cases - undefined & null
     isImmediate.link(this);
-    ASSERT((JSValue::UndefinedTag + 1 == JSValue::NullTag) && (JSValue::NullTag & 0x1));
+    static_assert((JSValue::UndefinedTag + 1 == JSValue::NullTag) && (JSValue::NullTag & 0x1), "");
     or32(TrustedImm32(1), regT1);
-    addJump(branch32(Equal, regT1, TrustedImm32(JSValue::NullTag)), target);
+    addJump(branchIfNull(regT1), target);
 
     isNotMasqueradesAsUndefined.link(this);
     masqueradesGlobalObjectIsForeign.link(this);
@@ -416,7 +402,7 @@ void JIT::emit_op_jneq_null(Instruction* currentInstruction)
 
     emitLoad(src, regT1, regT0);
 
-    Jump isImmediate = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
+    Jump isImmediate = branchIfNotCell(regT1);
 
     addJump(branchTest8(Zero, Address(regT0, JSCell::typeInfoFlagsOffset()), TrustedImm32(MasqueradesAsUndefined)), target);
     loadPtr(Address(regT0, JSCell::structureIDOffset()), regT2);
@@ -427,9 +413,9 @@ void JIT::emit_op_jneq_null(Instruction* currentInstruction)
     // Now handle the immediate cases - undefined & null
     isImmediate.link(this);
 
-    ASSERT((JSValue::UndefinedTag + 1 == JSValue::NullTag) && (JSValue::NullTag & 0x1));
+    static_assert((JSValue::UndefinedTag + 1 == JSValue::NullTag) && (JSValue::NullTag & 0x1), "");
     or32(TrustedImm32(1), regT1);
-    addJump(branch32(NotEqual, regT1, TrustedImm32(JSValue::NullTag)), target);
+    addJump(branchIfNotNull(regT1), target);
 
     wasNotImmediate.link(this);
 }
@@ -441,8 +427,8 @@ void JIT::emit_op_jneq_ptr(Instruction* currentInstruction)
     unsigned target = currentInstruction[3].u.operand;
 
     emitLoad(src, regT1, regT0);
-    CCallHelpers::Jump notCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
-    CCallHelpers::Jump equal = branchPtr(Equal, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr)));
+    Jump notCell = branchIfNotCell(regT1);
+    Jump equal = branchPtr(Equal, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr)));
     notCell.link(this);
     store32(TrustedImm32(1), &currentInstruction[4].u.operand);
     addJump(jump(), target);
@@ -457,7 +443,7 @@ void JIT::emit_op_eq(Instruction* currentInstruction)
 
     emitLoad2(src1, regT1, regT0, src2, regT3, regT2);
     addSlowCase(branch32(NotEqual, regT1, regT3));
-    addSlowCase(branch32(Equal, regT1, TrustedImm32(JSValue::CellTag)));
+    addSlowCase(branchIfCell(regT1));
     addSlowCase(branch32(Below, regT1, TrustedImm32(JSValue::LowestTag)));
 
     compare32(Equal, regT0, regT2, regT0);
@@ -475,8 +461,8 @@ void JIT::emitSlow_op_eq(Instruction* currentInstruction, Vector<SlowCaseEntry>:
     genericCase.append(getSlowCase(iter)); // tags not equal
 
     linkSlowCase(iter); // tags equal and JSCell
-    genericCase.append(branchPtr(NotEqual, Address(regT0, JSCell::structureIDOffset()), TrustedImmPtr(m_vm->stringStructure.get())));
-    genericCase.append(branchPtr(NotEqual, Address(regT2, JSCell::structureIDOffset()), TrustedImmPtr(m_vm->stringStructure.get())));
+    genericCase.append(branchIfNotString(regT0));
+    genericCase.append(branchIfNotString(regT2));
 
     // String case.
     callOperation(operationCompareStringEq, regT0, regT2);
@@ -499,7 +485,7 @@ void JIT::emit_op_jeq(Instruction* currentInstruction)
 
     emitLoad2(src1, regT1, regT0, src2, regT3, regT2);
     addSlowCase(branch32(NotEqual, regT1, regT3));
-    addSlowCase(branch32(Equal, regT1, TrustedImm32(JSValue::CellTag)));
+    addSlowCase(branchIfCell(regT1));
     addSlowCase(branch32(Below, regT1, TrustedImm32(JSValue::LowestTag)));
 
     addJump(branch32(Equal, regT0, regT2), target);
@@ -513,8 +499,8 @@ void JIT::compileOpEqJumpSlow(Vector<SlowCaseEntry>::iterator& iter, CompileOpEq
     genericCase.append(getSlowCase(iter)); // tags not equal
 
     linkSlowCase(iter); // tags equal and JSCell
-    genericCase.append(branchPtr(NotEqual, Address(regT0, JSCell::structureIDOffset()), TrustedImmPtr(m_vm->stringStructure.get())));
-    genericCase.append(branchPtr(NotEqual, Address(regT2, JSCell::structureIDOffset()), TrustedImmPtr(m_vm->stringStructure.get())));
+    genericCase.append(branchIfNotString(regT0));
+    genericCase.append(branchIfNotString(regT2));
 
     // String case.
     callOperation(operationCompareStringEq, regT0, regT2);
@@ -543,7 +529,7 @@ void JIT::emit_op_neq(Instruction* currentInstruction)
 
     emitLoad2(src1, regT1, regT0, src2, regT3, regT2);
     addSlowCase(branch32(NotEqual, regT1, regT3));
-    addSlowCase(branch32(Equal, regT1, TrustedImm32(JSValue::CellTag)));
+    addSlowCase(branchIfCell(regT1));
     addSlowCase(branch32(Below, regT1, TrustedImm32(JSValue::LowestTag)));
 
     compare32(NotEqual, regT0, regT2, regT0);
@@ -561,8 +547,8 @@ void JIT::emitSlow_op_neq(Instruction* currentInstruction, Vector<SlowCaseEntry>
     genericCase.append(getSlowCase(iter)); // tags not equal
 
     linkSlowCase(iter); // tags equal and JSCell
-    genericCase.append(branchPtr(NotEqual, Address(regT0, JSCell::structureIDOffset()), TrustedImmPtr(m_vm->stringStructure.get())));
-    genericCase.append(branchPtr(NotEqual, Address(regT2, JSCell::structureIDOffset()), TrustedImmPtr(m_vm->stringStructure.get())));
+    genericCase.append(branchIfNotString(regT0));
+    genericCase.append(branchIfNotString(regT2));
 
     // String case.
     callOperation(operationCompareStringEq, regT0, regT2);
@@ -586,7 +572,7 @@ void JIT::emit_op_jneq(Instruction* currentInstruction)
 
     emitLoad2(src1, regT1, regT0, src2, regT3, regT2);
     addSlowCase(branch32(NotEqual, regT1, regT3));
-    addSlowCase(branch32(Equal, regT1, TrustedImm32(JSValue::CellTag)));
+    addSlowCase(branchIfCell(regT1));
     addSlowCase(branch32(Below, regT1, TrustedImm32(JSValue::LowestTag)));
 
     addJump(branch32(NotEqual, regT0, regT2), target);
@@ -610,9 +596,9 @@ void JIT::compileOpStrictEq(Instruction* currentInstruction, CompileOpStrictEqTy
     addSlowCase(branch32(Below, regT1, TrustedImm32(JSValue::LowestTag)));
 
     // Jump to a slow case if both are strings or symbols (non object).
-    Jump notCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
-    Jump firstIsObject = emitJumpIfCellObject(regT0);
-    addSlowCase(emitJumpIfCellNotObject(regT2));
+    Jump notCell = branchIfNotCell(regT1);
+    Jump firstIsObject = branchIfObject(regT0);
+    addSlowCase(branchIfNotObject(regT2));
     notCell.link(this);
     firstIsObject.link(this);
 
@@ -648,9 +634,9 @@ void JIT::compileOpStrictEqJump(Instruction* currentInstruction, CompileOpStrict
     addSlowCase(branch32(Below, regT1, TrustedImm32(JSValue::LowestTag)));
 
     // Jump to a slow case if both are strings or symbols (non object).
-    Jump notCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
-    Jump firstIsObject = emitJumpIfCellObject(regT0);
-    addSlowCase(emitJumpIfCellNotObject(regT2));
+    Jump notCell = branchIfNotCell(regT1);
+    Jump firstIsObject = branchIfObject(regT0);
+    addSlowCase(branchIfNotObject(regT2));
     notCell.link(this);
     firstIsObject.link(this);
 
@@ -695,7 +681,7 @@ void JIT::emit_op_eq_null(Instruction* currentInstruction)
     int src = currentInstruction[2].u.operand;
 
     emitLoad(src, regT1, regT0);
-    Jump isImmediate = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
+    Jump isImmediate = branchIfNotCell(regT1);
 
     Jump isMasqueradesAsUndefined = branchTest8(NonZero, Address(regT0, JSCell::typeInfoFlagsOffset()), TrustedImm32(MasqueradesAsUndefined));
     move(TrustedImm32(0), regT1);
@@ -726,7 +712,7 @@ void JIT::emit_op_neq_null(Instruction* currentInstruction)
     int src = currentInstruction[2].u.operand;
 
     emitLoad(src, regT1, regT0);
-    Jump isImmediate = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
+    Jump isImmediate = branchIfNotCell(regT1);
 
     Jump isMasqueradesAsUndefined = branchTest8(NonZero, Address(regT0, JSCell::typeInfoFlagsOffset()), TrustedImm32(MasqueradesAsUndefined));
     move(TrustedImm32(1), regT1);
@@ -767,7 +753,7 @@ void JIT::emit_op_to_number(Instruction* currentInstruction)
 
     emitLoad(src, regT1, regT0);
 
-    Jump isInt32 = branch32(Equal, regT1, TrustedImm32(JSValue::Int32Tag));
+    Jump isInt32 = branchIfInt32(regT1);
     addSlowCase(branch32(AboveOrEqual, regT1, TrustedImm32(JSValue::LowestTag)));
     isInt32.link(this);
 
@@ -783,8 +769,8 @@ void JIT::emit_op_to_string(Instruction* currentInstruction)
 
     emitLoad(src, regT1, regT0);
 
-    addSlowCase(branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag)));
-    addSlowCase(branch8(NotEqual, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
+    addSlowCase(branchIfNotCell(regT1));
+    addSlowCase(branchIfNotString(regT0));
 
     if (src != dst)
         emitStore(dst, regT1, regT0);
@@ -797,8 +783,8 @@ void JIT::emit_op_to_object(Instruction* currentInstruction)
 
     emitLoad(src, regT1, regT0);
 
-    addSlowCase(branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag)));
-    addSlowCase(branch8(Below, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(ObjectType)));
+    addSlowCase(branchIfNotCell(regT1));
+    addSlowCase(branchIfNotObject(regT0));
 
     emitValueProfilingSite();
     if (src != dst)
@@ -966,12 +952,11 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
     RegisterID scratchReg = regT3;
 
     emitLoadPayload(callee, calleeReg);
-    addSlowCase(branch8(NotEqual, Address(calleeReg, JSCell::typeInfoTypeOffset()), TrustedImm32(JSFunctionType)));
+    addSlowCase(branchIfNotFunction(calleeReg));
     loadPtr(Address(calleeReg, JSFunction::offsetOfRareData()), rareDataReg);
     addSlowCase(branchTestPtr(Zero, rareDataReg));
     load32(Address(rareDataReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfile::offsetOfAllocator()), allocatorReg);
     loadPtr(Address(rareDataReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfile::offsetOfStructure()), structureReg);
-    addSlowCase(branch32(Equal, allocatorReg, TrustedImm32(Allocator().offset())));
 
     loadPtr(cachedFunction, cachedFunctionReg);
     Jump hasSeenMultipleCallees = branchPtr(Equal, cachedFunctionReg, TrustedImmPtr(JSCell::seenMultipleCalleeObjects()));
@@ -992,8 +977,8 @@ void JIT::emit_op_to_this(Instruction* currentInstruction)
 
     emitLoad(thisRegister, regT3, regT2);
 
-    addSlowCase(branch32(NotEqual, regT3, TrustedImm32(JSValue::CellTag)));
-    addSlowCase(branch8(NotEqual, Address(regT2, JSCell::typeInfoTypeOffset()), TrustedImm32(FinalObjectType)));
+    addSlowCase(branchIfNotCell(regT3));
+    addSlowCase(branchIfNotType(regT2, FinalObjectType));
     loadPtr(Address(regT2, JSCell::structureIDOffset()), regT0);
     loadPtr(cachedStructure, regT2);
     addSlowCase(branchPtr(NotEqual, regT0, regT2));
@@ -1002,7 +987,7 @@ void JIT::emit_op_to_this(Instruction* currentInstruction)
 void JIT::emit_op_check_tdz(Instruction* currentInstruction)
 {
     emitLoadTag(currentInstruction[1].u.operand, regT0);
-    addSlowCase(branch32(Equal, regT0, TrustedImm32(JSValue::EmptyValueTag)));
+    addSlowCase(branchIfEmpty(regT0));
 }
 
 void JIT::emit_op_has_structure_property(Instruction* currentInstruction)
@@ -1213,24 +1198,23 @@ void JIT::emit_op_profile_type(Instruction* currentInstruction)
 
     JumpList jumpToEnd;
 
-    jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::EmptyValueTag)));
+    jumpToEnd.append(branchIfEmpty(regT3));
 
     // Compile in a predictive type check, if possible, to see if we can skip writing to the log.
     // These typechecks are inlined to match those of the 32-bit JSValue type checks.
     if (cachedTypeLocation->m_lastSeenType == TypeUndefined)
-        jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::UndefinedTag)));
+        jumpToEnd.append(branchIfUndefined(regT3));
     else if (cachedTypeLocation->m_lastSeenType == TypeNull)
-        jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::NullTag)));
+        jumpToEnd.append(branchIfNull(regT3));
     else if (cachedTypeLocation->m_lastSeenType == TypeBoolean)
-        jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::BooleanTag)));
+        jumpToEnd.append(branchIfBoolean(regT3, InvalidGPRReg));
     else if (cachedTypeLocation->m_lastSeenType == TypeAnyInt)
-        jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::Int32Tag)));
+        jumpToEnd.append(branchIfInt32(regT3));
     else if (cachedTypeLocation->m_lastSeenType == TypeNumber) {
-        jumpToEnd.append(branch32(Below, regT3, TrustedImm32(JSValue::LowestTag)));
-        jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::Int32Tag)));
+        jumpToEnd.append(branchIfNumber(JSValueRegs(regT3, regT0), regT1));
     } else if (cachedTypeLocation->m_lastSeenType == TypeString) {
-        Jump isNotCell = branch32(NotEqual, regT3, TrustedImm32(JSValue::CellTag));
-        jumpToEnd.append(branch8(Equal, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
+        Jump isNotCell = branchIfNotCell(regT3);
+        jumpToEnd.append(branchIfString(regT0));
         isNotCell.link(this);
     }
 
@@ -1246,7 +1230,7 @@ void JIT::emit_op_profile_type(Instruction* currentInstruction)
     store32(regT3, Address(regT1, TypeProfilerLog::LogEntry::valueOffset() + OBJECT_OFFSETOF(JSValue, u.asBits.tag)));
 
     // Store the structureID of the cell if argument is a cell, otherwise, store 0 on the log entry.
-    Jump notCell = branch32(NotEqual, regT3, TrustedImm32(JSValue::CellTag));
+    Jump notCell = branchIfNotCell(regT3);
     load32(Address(regT0, JSCell::structureIDOffset()), regT0);
     store32(regT0, Address(regT1, TypeProfilerLog::LogEntry::structureIDOffset()));
     Jump skipNotCell = jump();

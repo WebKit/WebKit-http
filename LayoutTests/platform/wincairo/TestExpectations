@@ -66,6 +66,7 @@ fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote.html [
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
+fast/dom/HTMLAnchorElement/anchor-file-blob-download-then-revoke.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Skip ]
 
 # ENABLE_INPUT_TYPE_* are disabled.
@@ -643,6 +644,7 @@ ietestcenter/css3/multicolumn/column-width-applies-to-013.htm [ ImageOnlyFailure
 ietestcenter/css3/multicolumn/column-width-applies-to-014.htm [ ImageOnlyFailure ]
 imported/blink/fast/css/case-sensitive-003.xhtml [ ImageOnlyFailure ]
 imported/blink/fast/css/text-overflow-ellipsis-button.html [ ImageOnlyFailure ]
+editing/caret/caret-in-empty-cell.html [ ImageOnlyFailure ]
 
 css3/background/background-repeat-space-border.html [ ImageOnlyFailure ]
 css3/background/background-repeat-space-content.html [ ImageOnlyFailure ]
@@ -655,6 +657,7 @@ css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
 
 css3/flexbox/overflow-auto-resizes-correctly.html [ Failure ]
 css3/shapes/shape-outside/values/shape-margin-001.html [ Failure ]
+[ Debug ] css3/shapes/shape-outside/values/shape-outside-circle-001.html [ Pass Failure ]
 [ Release ] css3/shapes/shape-outside/values/shape-outside-circle-004.html [ Failure ]
 [ Debug ] css3/shapes/shape-outside/values/shape-outside-circle-004.html [ Skip ]
 css3/shapes/shape-outside/values/shape-outside-circle-005.html [ Failure ]
@@ -668,7 +671,7 @@ fast/css/absolute-child-with-percent-height-inside-relative-parent.html [ Failur
 fast/css/background-image-with-baseurl.html [ Failure ]
 fast/css/draggable-region-parser.html [ Failure ]
 fast/css/empty-generated-content.html [ Failure ]
-fast/css/first-letter-block-form-controls-crash.html [ Failure ]
+fast/css/first-letter-block-form-controls-crash.html [ Pass Failure ]
 fast/css/font-calculated-value.html [ Failure ]
 fast/css/font-face-default-font.html [ Failure ]
 fast/css/font-face-in-media-rule.html [ Failure ]
@@ -689,18 +692,27 @@ fast/css/max-height-none.html [ Failure ]
 fast/css/min-width-with-spanned-cell-fixed.html [ Failure ]
 fast/css/outline-auto-empty-rects.html [ Failure ]
 fast/css/parse-border-image-repeat-null-crash.html [ Failure ]
-fast/css/relative-position-replaced-in-table-display-crash.html [ Failure ]
+fast/css/relative-position-replaced-in-table-display-crash.html [ Pass Failure ]
 fast/css/vertical-align-lengths.html [ Failure ]
 fast/css/visibility-hit-test.html [ Failure ]
 
-fast/dom/boolean-attribute-reflection.html [ Failure ]
-fast/dom/reflect-unsigned-long.html [ Failure ]
-fast/dom/beforeload/remove-video-in-beforeload-listener.html [ Failure ]
-fast/dom/beforeload/remove-video-poster-in-beforeload-listener.html [ Failure ]
+fast/doctypes/xhtml-with-xhtmlmp-doctype.xhtml [ Pass Failure ]
+fast/doctypes/xhtml-with-xhtmlmp12-doctype.xhtml [ Pass Failure ]
+
+fast/dom/boolean-attribute-reflection.html [ Pass Failure ]
+fast/dom/reflect-unsigned-long.html [ Pass Failure ]
+fast/dom/javascript-url-crash-function.html [ Pass Failure ]
+fast/dom/URL-attribute-reflection.html [ Pass Failure ]
+[ Release ] fast/dom/beforeload/remove-video-in-beforeload-listener.html [ Pass Failure ]
+[ Debug ] fast/dom/beforeload/remove-video-in-beforeload-listener.html [ Skip ]
+fast/dom/beforeload/remove-video-poster-in-beforeload-listener.html [ Pass Failure ]
 fast/dom/HTMLLinkElement/preconnect-support.html [ Failure ]
 fast/dom/Range/surround-contents-font-face-crash.svg [ Failure ]
-fast/dom/URL-attribute-reflection.html [ Failure ]
-fast/dom/Window/mozilla-focus-blur.html [ Failure ]
+fast/dom/Window/messageevent-source-postmessage-reified.html [ Pass Failure ]
+fast/dom/Window/messageevent-source-postmessage.html [ Pass Failure ]
+fast/dom/Window/mozilla-focus-blur.html [ Pass Failure ]
+fast/dom/Window/named-getter-frame-id.html [ Pass Failure ]
+fast/dom/Window/window-special-properties.html [ Pass Failure ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # Following tests are labeled "Skip" because not working well and causes crash or timeout
@@ -794,6 +806,7 @@ fast/picture/viewport-resize.html [ Timeout ]
 [ Debug ] css3/selectors3/xml/css3-modsel-170b.xml [ Pass Timeout ]
 [ Debug ] css3/selectors3/xml/css3-modsel-170c.xml [ Pass Timeout ]
 [ Debug ] css3/selectors3/xml/css3-modsel-170d.xml [ Pass Timeout ]
+[ Debug ] fast/css/first-letter-removed-added.html [ Pass Timeout ]
 [ Debug ] fast/css/html-attr-case-sensitivity.html [ Pass Timeout ]
 [ Debug ] fast/css/large-list-of-rules-crash.html [ Pass Timeout ]
 [ Debug ] fast/css/parsing-css-matches-2.html [ Pass Timeout ]
@@ -818,17 +831,17 @@ fast/picture/viewport-resize.html [ Timeout ]
 [ Debug ] fast/dom/SelectorAPI/resig-SelectorsAPI-test.xhtml [ Pass Timeout ]
 [ Debug ] fast/dom/Window/window-postmessage-clone-really-deep-array.html [ Pass Timeout ]
 
-fast/css/font-size-nan.svg [ Timeout ]
+fast/css/font-size-nan.svg [ Skip ]
 fast/css/large-font-size-crash.html [ Skip ]
 
 # entire directory fails
 dom/svg/level3/xpath [ Skip ]
 
-fast/dom/beforeload/clear-video-poster-in-beforeload-listener.html [ Timeout ]
-fast/dom/beforeload/video-before-load.html [ Timeout ]
-fast/dom/focus-shift-crash.html [ Timeout ]
+fast/dom/beforeload/clear-video-poster-in-beforeload-listener.html [ Pass Timeout ]
+fast/dom/beforeload/video-before-load.html [ Pass Timeout ]
+fast/dom/focus-shift-crash.html [ Pass Timeout ]
 fast/dom/Range/detach-range-during-deletecontents.html [ Timeout ]
-imported/blink/fast/dom/Window/open-window-features-fuzz.html [ Timeout ]
+imported/blink/fast/dom/Window/open-window-features-fuzz.html [ Pass Timeout ]
 
 #///////////////////////////////////////////////////////////////////////////////
 # Issue categories below are shared with other platforms (primarily AppleWin)
@@ -979,6 +992,7 @@ accessibility/scroll-to-global-point-main-window.html [ Skip ]
 accessibility/scroll-to-global-point-nested.html [ Skip ]
 accessibility/scroll-to-make-visible-div-overflow.html [ Skip ]
 accessibility/scroll-to-make-visible-iframe.html [ Skip ]
+accessibility/scroll-to-make-visible-iframe-offscreen.html [ Skip ]
 accessibility/scroll-to-make-visible-nested-2.html [ Skip ]
 accessibility/scroll-to-make-visible-nested.html [ Skip ]
 accessibility/scroll-to-make-visible-with-subfocus.html [ Skip ]
@@ -1135,7 +1149,7 @@ animations/font-variations/font-variation-settings.html [ Failure ]
 legacy-animation-engine/animations/font-variations/font-variation-settings.html [ Failure ]
 
 # Unexpected timeouts tracked in webkit.org/b/172437.
-animations/font-variations/font-stretch.html [ Timeout ]
+animations/font-variations/font-stretch.html [ Skip ]
 legacy-animation-engine/animations/font-variations/font-stretch.html [ Timeout ]
 animations/font-variations/font-style.html [ Timeout ]
 legacy-animation-engine/animations/font-variations/font-style.html [ Timeout ]
@@ -1145,6 +1159,10 @@ webkit.org/b/53675 fast/animation/request-animation-frame-during-modal.html [ Sk
 
 webkit.org/b/176998 fast/animation/css-animation-resuming-when-visible-with-style-change2.html [ Failure ]
 webkit.org/b/176998 legacy-animation-engine/fast/animation/css-animation-resuming-when-visible-with-style-change2.html [ Failure ]
+
+webkit.org/b/185678 animations/keyframes-dynamic.html [ Failure ]
+webkit.org/b/185678 animations/missing-from-to-transforms.html [ Failure ]
+webkit.org/b/185678 animations/missing-from-to.html [ Failure ]
 
 ################################################################################
 ##################       End Animation Issues             ######################
@@ -1214,6 +1232,7 @@ fast/css/resize-corner-tracking.html [ Failure ]
 webkit.org/b/117322 css2.1/20110323/word-spacing-remove-space-003.htm [ ImageOnlyFailure ]
 webkit.org/b/117322 css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFailure ]
 
+css3/filters/color-interpolation-filters.html [ Pass ImageOnlyFailure ]
 css3/filters/filtered-compositing-descendant.html [ Failure ]
 
 # Don't run these time-outs for now
@@ -1274,12 +1293,11 @@ fast/css-generated-content/initial-letter-pagination-sunken.html [ ImageOnlyFail
 
 webkit.org/b/179296 fast/css/object-fit/object-fit-embed.html [ ImageOnlyFailure ]
 webkit.org/b/179296 fast/css/object-fit/object-fit-object.html [ ImageOnlyFailure ]
-fast/css/object-fit/object-fit-video-poster.html [ ImageOnlyFailure ]
 webkit.org/b/179296 fast/css/object-position/object-position-embed.html [ ImageOnlyFailure ]
 webkit.org/b/179296 fast/css/object-position/object-position-object.html [ ImageOnlyFailure ]
-fast/css/object-position/object-position-video-poster.html [ ImageOnlyFailure ]
 
-fast/css/will-change/will-change-creates-stacking-context.html [ ImageOnlyFailure ]
+[ Release ] fast/css/will-change/will-change-creates-stacking-context.html [ ImageOnlyFailure ]
+[ Debug ] fast/css/will-change/will-change-creates-stacking-context.html [ Skip ]
 fast/css/will-change/will-change-creates-stacking-context-inline.html [ ImageOnlyFailure ]
 
 # TODO CSS3_TEXT is disabled on Windows
@@ -1288,6 +1306,9 @@ fast/css3-text/ [ Skip ]
 imported/blink/fast/css/tab-size-complex-path.html [ ImageOnlyFailure ]
 imported/blink/fast/css/text-decoration-propagate.html [ ImageOnlyFailure ]
 webkit.org/b/150949 imported/blink/fast/css/transformed-overflow-hidden-clips-fixed.html [ ImageOnlyFailure ]
+
+# color-filters are off by default
+webkit.org/b/185076 css3/color-filters [ Skip ]
 
 ################################################################################
 #################            End CSS Issues              #######################
@@ -1304,7 +1325,7 @@ webkit.org/b/141756 fast/dom/Range/getClientRects.html [ Pass Failure ]
 
 fast/dom/Window/window-postmessage-clone-deep-array.html [ Failure ]
 
-webkit.org/b/182694 fast/dom/crash-moving-subtree-between-documents.html [ Failure ]
+webkit.org/b/182694 fast/dom/crash-moving-subtree-between-documents.html [ Pass Failure ]
 
 webkit.org/b/182694 fast/dom/event-handler-attributes.html [ Pass Timeout ]
 
@@ -1339,6 +1360,8 @@ fast/dom/Window/open-window-min-size.html [ Failure ]
 fast/dom/Window/window-property-invalid-characters-ignored.html [ Failure ]
 webkit.org/b/116564 fast/dom/Window/window-onFocus.html [ Pass Failure ]
 webkit.org/b/151759 fast/dom/Window/property-access-on-cached-window-after-frame-removed.html [ Skip ]
+
+webkit.org/b/185678 fast/css-generated-content/pseudo-animation.html [ Failure ]
 
 [ Release ] fast/dom/HTMLDocument/hasFocus.html [ Failure ]
 [ Debug ] fast/dom/HTMLDocument/hasFocus.html [ Skip ]
@@ -1486,6 +1509,7 @@ fast/forms [ Skip ]
 fast/frames [ Skip ]
 fast/harness/snapshot-captures-compositing.html [ Skip ]
 fast/hidpi [ Skip ]
+fast/history [ Skip ]
 fast/html/details-comment-crash.html [ Skip ]
 fast/images [ Skip ]
 fast/inline-block/hidpi-margin-top-with-subpixel-value-and-overflow-hidden.html [ Skip ]
@@ -1512,6 +1536,7 @@ fast/shrink-wrap/rect-shrink-wrap.html [ Skip ]
 fast/sub-pixel [ Skip ]
 fast/table [ Skip ]
 fast/text [ Skip ]
+fast/tokenizer [ Skip ]
 fast/transforms [ Skip ]
 fast/visual-viewport [ Skip ]
 fast/writing-mode [ Skip ]
@@ -1521,17 +1546,24 @@ fast/xsl [ Skip ]
 fonts/use-typo-metrics-1.html [ Skip ]
 fullscreen [ Skip ]
 html5lib [ Skip ]
+http/tests [ Skip ]
 http/wpt [ Skip ]
 imported/blink [ Skip ]
 imported/mozilla [ Skip ]
 imported/w3c [ Skip ]
 inspector [ Skip ]
 js/dom [ Skip ]
+js/intl-numberformat.html [ Skip ]
+js/intl-numberformat-format-to-parts.html [ Skip ]
+js/intl-pluralrules.html [ Skip ]
 legacy-animation-engine/media [ Skip ]
 legacy-animation-engine/transitions [ Skip ]
 legacy-animation-engine/fast/layers [ Skip ]
 legacy-animation-engine/fast/shadow-dom [ Skip ]
 legacy-animation-engine/fullscreen [ Skip ]
+loader/reload-subresource-when-type-changes.html [ Skip ]
+loader/stateobjects/pushstate-size-iframe.html [ Skip ]
+loader/stateobjects/pushstate-size.html [ Skip ]
 mathml [ Skip ]
 media [ Skip ]
 pageoverlay [ Skip ]
@@ -1582,4 +1614,4 @@ workers/bomb.html [ Skip ]
 [ Debug ] js/stack-overflow-regexp.html [ Skip ]
 [ Debug ] js/promises-tests [ Skip ]
 [ Debug ] js/slow-stress [ Skip ]
-[ Debug ] loader [ Skip ]
+[ Debug ] legacy-animation-engine/imported/blink/transitions/unprefixed-transform.html [ Skip ]

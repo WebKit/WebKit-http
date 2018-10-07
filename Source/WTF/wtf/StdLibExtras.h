@@ -142,7 +142,7 @@ inline ToType bitwise_cast(FromType from)
     static_assert(__is_trivially_copyable(FromType), "bitwise_cast of non-trivially-copyable type!");
 #endif
     typename std::remove_const<ToType>::type to { };
-    std::memcpy(&to, &from, sizeof(to));
+    std::memcpy(static_cast<void*>(&to), static_cast<void*>(&from), sizeof(to));
     return to;
 }
 
@@ -543,7 +543,9 @@ template<class B0, class B1, class B2, class... Bn> struct wtf_conjunction_impl<
 template<class... _Args> struct conjunction : wtf_conjunction_impl<_Args...> { };
 #endif
 
-#if __cplusplus < 201703L
+// Provide in_place_t when not building with -std=c++17, or when building with libstdc++ 6
+// (which doesn't define the _GLIBCXX_RELEASE macro that's been introduced in libstdc++ 7).
+#if (__cplusplus < 201703L || (defined(__GLIBCXX__) && !defined(_GLIBCXX_RELEASE))) && (!defined(_MSC_FULL_VER) || _MSC_FULL_VER < 190023918)
 
 // These are inline variable for C++17 and later.
 #define __IN_PLACE_INLINE_VARIABLE static const

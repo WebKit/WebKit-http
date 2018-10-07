@@ -23,6 +23,7 @@
 #include "config.h"
 #include "SVGGeometryElement.h"
 
+#include "DOMPoint.h"
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
 #include "SVGDocumentExtensions.h"
@@ -49,6 +50,54 @@ SVGGeometryElement::SVGGeometryElement(const QualifiedName& tagName, Document& d
     : SVGGraphicsElement(tagName, document)
 {
     registerAnimatedPropertiesForSVGGeometryElement();
+}
+
+float SVGGeometryElement::getTotalLength() const
+{
+    document().updateLayoutIgnorePendingStylesheets();
+
+    auto* renderer = downcast<RenderSVGShape>(this->renderer());
+    if (!renderer)
+        return 0;
+
+    return renderer->getTotalLength();
+}
+
+Ref<SVGPoint> SVGGeometryElement::getPointAtLength(float distance) const
+{
+    FloatPoint point { };
+
+    document().updateLayoutIgnorePendingStylesheets();
+
+    auto* renderer = downcast<RenderSVGShape>(this->renderer());
+    if (renderer)
+        renderer->getPointAtLength(point, distance);
+
+    return SVGPoint::create(point);
+}
+
+bool SVGGeometryElement::isPointInFill(DOMPointInit&& pointInit)
+{
+    document().updateLayoutIgnorePendingStylesheets();
+
+    auto* renderer = downcast<RenderSVGShape>(this->renderer());
+    if (!renderer)
+        return false;
+
+    FloatPoint point {static_cast<float>(pointInit.x), static_cast<float>(pointInit.y)};
+    return renderer->isPointInFill(point);
+}
+
+bool SVGGeometryElement::isPointInStroke(DOMPointInit&& pointInit)
+{
+    document().updateLayoutIgnorePendingStylesheets();
+
+    auto* renderer = downcast<RenderSVGShape>(this->renderer());
+    if (!renderer)
+        return false;
+
+    FloatPoint point {static_cast<float>(pointInit.x), static_cast<float>(pointInit.y)};
+    return renderer->isPointInStroke(point);
 }
 
 bool SVGGeometryElement::isSupportedAttribute(const QualifiedName& attrName)
@@ -85,11 +134,6 @@ void SVGGeometryElement::svgAttributeChanged(const QualifiedName& attrName)
     InstanceInvalidationGuard guard(*this);
 
     ASSERT_NOT_REACHED();
-}
-
-RenderPtr<RenderElement> SVGGeometryElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
-{
-    return createRenderer<RenderSVGPath>(*this, WTFMove(style));
 }
 
 }

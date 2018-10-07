@@ -84,6 +84,19 @@ enum EventThrottlingBehavior {
 
 [
     ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
+    Conditional=VIDEO,
+    JSGenerateToJSObject,
+] dictionary NowPlayingState {
+    boolean hasActiveSession;
+    boolean registeredAsNowPlayingApplication;
+    DOMString title;
+    unrestricted double duration;
+    unrestricted double elapsedTime;
+    unsigned long long uniqueIdentifier;
+};
+
+[
+    ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
     NoInterfaceObject,
 ] interface Internals {
     DOMString address(Node node);
@@ -147,6 +160,9 @@ enum EventThrottlingBehavior {
     // CSS Transition testing.
     [MayThrowException] boolean pauseTransitionAtTimeOnElement(DOMString propertyName, unrestricted double pauseTime, Element element);
     [MayThrowException] boolean pauseTransitionAtTimeOnPseudoElement(DOMString property, unrestricted double pauseTime, Element element, DOMString pseudoId);
+
+    // For animations testing, we need a way to get at pseudo elements.
+    [MayThrowException] Element? pseudoElement(Element element, DOMString pseudoId);
 
     DOMString visiblePlaceholder(Element element);
     void selectColorInColorChooser(HTMLInputElement element, DOMString colorValue);
@@ -426,6 +442,8 @@ enum EventThrottlingBehavior {
     [Conditional=VIDEO] void beginSimulatedHDCPError(HTMLMediaElement media);
     [Conditional=VIDEO] void endSimulatedHDCPError(HTMLMediaElement media);
 
+    [Conditional=VIDEO] boolean elementShouldBufferData(HTMLMediaElement media);
+
     [Conditional=LEGACY_ENCRYPTED_MEDIA] void initializeMockCDM();
     [Conditional=ENCRYPTED_MEDIA] MockCDMFactory registerMockCDM();
 
@@ -593,5 +611,9 @@ enum EventThrottlingBehavior {
     boolean isSystemPreviewLink(Element element);
     boolean isSystemPreviewImage(Element element);
 
+    DOMString extraZoomModeAdaptationName();
+
     boolean usingAppleInternalSDK();
+
+    [Conditional=VIDEO, MayThrowException] readonly attribute NowPlayingState nowPlayingState;
 };

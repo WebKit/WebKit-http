@@ -27,10 +27,13 @@
 
 #include "NetworkContentRuleListManager.h"
 #include "NetworkResourceLoadParameters.h"
+#include <WebCore/ContentSecurityPolicyClient.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceResponse.h>
+#include <WebCore/SecurityPolicyViolationEvent.h>
 #include <wtf/CompletionHandler.h>
 #include <wtf/Expected.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 class ContentSecurityPolicy;
@@ -38,14 +41,12 @@ class ContentSecurityPolicy;
 
 namespace WebKit {
 
+class NetworkConnectionToWebProcess;
 class NetworkCORSPreflightChecker;
 
-class NetworkLoadChecker : public RefCounted<NetworkLoadChecker> {
+class NetworkLoadChecker : public WebCore::ContentSecurityPolicyClient {
 public:
-    static Ref<NetworkLoadChecker> create(WebCore::FetchOptions&& options, PAL::SessionID sessionID, WebCore::HTTPHeaderMap&& originalHeaders, WebCore::URL&& url, RefPtr<WebCore::SecurityOrigin>&& sourceOrigin, WebCore::PreflightPolicy preflightPolicy, String&& referrer)
-    {
-        return adoptRef(*new NetworkLoadChecker { WTFMove(options), sessionID, WTFMove(originalHeaders), WTFMove(url), WTFMove(sourceOrigin), preflightPolicy, WTFMove(referrer) });
-    }
+    NetworkLoadChecker(NetworkConnectionToWebProcess&, uint64_t webPageID, uint64_t webFrameID, ResourceLoadIdentifier, WebCore::FetchOptions&&, PAL::SessionID, WebCore::HTTPHeaderMap&&, WebCore::URL&&, RefPtr<WebCore::SecurityOrigin>&&, WebCore::PreflightPolicy, String&& referrer);
     ~NetworkLoadChecker();
 
     using RequestOrError = Expected<WebCore::ResourceRequest, WebCore::ResourceError>;
@@ -68,14 +69,16 @@ public:
     const WebCore::URL& url() const { return m_url; }
     WebCore::StoredCredentialsPolicy storedCredentialsPolicy() const { return m_storedCredentialsPolicy; }
 
-private:
-    NetworkLoadChecker(WebCore::FetchOptions&&, PAL::SessionID, WebCore::HTTPHeaderMap&&, WebCore::URL&&, RefPtr<WebCore::SecurityOrigin>&&, WebCore::PreflightPolicy, String&& referrer);
+    WeakPtrFactory<NetworkLoadChecker>& weakPtrFactory() { return m_weakFactory; }
 
+private:
     WebCore::ContentSecurityPolicy* contentSecurityPolicy();
     bool isChecking() const { return !!m_corsPreflightChecker; }
     bool isRedirected() const { return m_redirectCount; }
 
     void checkRequest(WebCore::ResourceRequest&&, ValidationHandler&&);
+
+    bool isAllowedByContentSecurityPolicy(const WebCore::ResourceRequest&);
 
     void continueCheckingRequest(WebCore::ResourceRequest&&, ValidationHandler&&);
 
@@ -87,8 +90,25 @@ private:
     RequestOrError accessControlErrorForValidationHandler(String&&);
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    void processContentExtensionRulesForLoad(WebCore::ResourceRequest&&, CompletionHandler<void(WebCore::ResourceRequest&&, const WebCore::ContentExtensions::BlockedStatus&)>&&);
+    struct ContentExtensionResult {
+        WebCore::ResourceRequest request;
+        const WebCore::ContentExtensions::BlockedStatus& status;
+    };
+    using ContentExtensionResultOrError = Expected<ContentExtensionResult, WebCore::ResourceError>;
+    using ContentExtensionCallback = CompletionHandler<void(ContentExtensionResultOrError)>;
+    void processContentExtensionRulesForLoad(WebCore::ResourceRequest&&, ContentExtensionCallback&&);
 #endif
+
+    // ContentSecurityPolicyClient
+    void addConsoleMessage(MessageSource, MessageLevel, const String&, unsigned long) final;
+    void sendCSPViolationReport(WebCore::URL&&, Ref<WebCore::FormData>&&) final;
+    void enqueueSecurityPolicyViolationEvent(WebCore::SecurityPolicyViolationEvent::Init&&) final;
+
+    // The connection, web page ID, web frame ID and load identifier are used for CSP reporting.
+    Ref<NetworkConnectionToWebProcess> m_connection;
+    uint64_t m_webPageID;
+    uint64_t m_webFrameID;
+    ResourceLoadIdentifier m_loadIdentifier;
 
     WebCore::FetchOptions m_options;
     WebCore::StoredCredentialsPolicy m_storedCredentialsPolicy;
@@ -112,6 +132,7 @@ private:
     WebCore::PreflightPolicy m_preflightPolicy;
     String m_dntHeaderValue;
     String m_referrer;
+    WeakPtrFactory<NetworkLoadChecker> m_weakFactory;
 };
 
 }

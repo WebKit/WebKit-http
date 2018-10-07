@@ -9,6 +9,7 @@ editing/input/focus-change-with-marked-text.html [ Pass ]
 
 # No service worker implementation for WK1
 imported/w3c/web-platform-tests/service-workers [ Skip ]
+imported/w3c/web-platform-tests/server-timing/service_worker_idl.html [ Skip ]
 http/wpt/service-workers [ Skip ]
 http/wpt/cache-storage [ Skip ]
 http/tests/cache-storage [ Skip ]
@@ -1366,6 +1367,7 @@ webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-include
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-then-revoke.html [ Skip ]
 webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]

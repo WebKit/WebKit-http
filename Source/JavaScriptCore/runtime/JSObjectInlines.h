@@ -48,7 +48,7 @@ void createListFromArrayLike(ExecState* exec, JSValue arrayLikeValue, RuntimeTyp
         JSValue next = arrayLikeValue.get(exec, index);
         RETURN_IF_EXCEPTION(scope, void());
         
-        RuntimeType type = runtimeTypeForValue(next);
+        RuntimeType type = runtimeTypeForValue(vm, next);
         if (!(type & legalTypesFilter)) {
             throwTypeError(exec, scope, errorMessage);
             return;
@@ -60,11 +60,8 @@ void createListFromArrayLike(ExecState* exec, JSValue arrayLikeValue, RuntimeTyp
     }
 }
 
-ALWAYS_INLINE bool JSObject::canPerformFastPutInline(VM& vm, PropertyName propertyName)
+ALWAYS_INLINE bool JSObject::canPerformFastPutInlineExcludingProto(VM& vm)
 {
-    if (UNLIKELY(propertyName == vm.propertyNames->underscoreProto))
-        return false;
-
     // Check if there are any setters or getters in the prototype chain
     JSValue prototype;
     JSObject* obj = this;
@@ -81,6 +78,13 @@ ALWAYS_INLINE bool JSObject::canPerformFastPutInline(VM& vm, PropertyName proper
     }
 
     ASSERT_NOT_REACHED();
+}
+
+ALWAYS_INLINE bool JSObject::canPerformFastPutInline(VM& vm, PropertyName propertyName)
+{
+    if (UNLIKELY(propertyName == vm.propertyNames->underscoreProto))
+        return false;
+    return canPerformFastPutInlineExcludingProto(vm);
 }
 
 template<typename CallbackWhenNoException>
@@ -268,15 +272,10 @@ ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(this));
     ASSERT(!parseIndex(propertyName));
 
-    switch (methodTable(vm)->reifyPropertyNameIfNeeded(this, globalObject(vm)->globalExec(), propertyName)) {
-    case PropertyReificationResult::Nothing: break;
-    case PropertyReificationResult::Something: break;
-    case PropertyReificationResult::TriedButFailed: RELEASE_ASSERT_NOT_REACHED();
-    }
-
     StructureID structureID = this->structureID();
     Structure* structure = vm.heap.structureIDTable().get(structureID);
     if (structure->isDictionary()) {
+        ASSERT(!isCopyOnWrite(indexingMode()));
         ASSERT(!structure->hasInferredTypes());
         
         unsigned currentAttributes;

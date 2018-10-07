@@ -129,6 +129,18 @@
     _processPoolConfiguration->setAdditionalReadAccessAllowedPaths(WTFMove(paths));
 }
 
+#if ENABLE(WIFI_ASSERTIONS)
+- (NSUInteger)wirelessContextIdentifier
+{
+    return _processPoolConfiguration->wirelessContextIdentifier();
+}
+
+- (void)setWirelessContextIdentifier:(NSUInteger)identifier
+{
+    _processPoolConfiguration->setWirelessContextIdentifier(identifier);
+}
+#endif
+
 - (NSArray *)cachePartitionedURLSchemes
 {
     auto schemes = _processPoolConfiguration->cachePartitionedURLSchemes();
@@ -257,14 +269,27 @@
     return _processPoolConfiguration->processSwapsOnWindowOpenWithOpener();
 }
 
-- (BOOL)trackNetworkActivity
+- (BOOL)tracksResourceLoadMilestones
 {
-    return _processPoolConfiguration->trackNetworkActivity();
+    return _processPoolConfiguration->tracksResourceLoadMilestones();
 }
 
-- (void)setTrackNetworkActivity:(BOOL)track
+- (void)setTracksResourceLoadMilestones:(BOOL)track
 {
-    _processPoolConfiguration->setTrackNetworkActivity(track);
+    _processPoolConfiguration->setTracksResourceLoadMilestones(track);
+}
+
+- (BOOL)pageCacheEnabled
+{
+    return _processPoolConfiguration->cacheModel() != WebKit::CacheModelDocumentViewer;
+}
+
+- (void)setPageCacheEnabled:(BOOL)enabled
+{
+    if (!enabled)
+        _processPoolConfiguration->setCacheModel(WebKit::CacheModelDocumentViewer);
+    else if (![self pageCacheEnabled])
+        _processPoolConfiguration->setCacheModel(WebKit::CacheModelPrimaryWebBrowser);
 }
 
 #if PLATFORM(IOS)

@@ -261,8 +261,6 @@ public:
     };
     static Statistics& statistics();    
 
-    void setCookieStorageDirectory(const String& dir) { m_overrideCookieStorageDirectory = dir; }
-
     void useTestingNetworkSession();
     bool isUsingTestingNetworkSession() const { return m_shouldUseTestingNetworkSession; }
 
@@ -326,14 +324,14 @@ public:
     // Network Process Management
     NetworkProcessProxy& ensureNetworkProcess(WebsiteDataStore* withWebsiteDataStore = nullptr);
     NetworkProcessProxy* networkProcess() { return m_networkProcess.get(); }
-    void networkProcessCrashed(NetworkProcessProxy&, Vector<Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>>&&);
+    void networkProcessCrashed(NetworkProcessProxy&, Vector<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&&);
     void networkProcessFailedToLaunch(NetworkProcessProxy&);
 
-    void getNetworkProcessConnection(Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&&);
+    void getNetworkProcessConnection(Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&&);
 
     void ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore* relevantDataStore);
     StorageProcessProxy* storageProcess() { return m_storageProcess.get(); }
-    void getStorageProcessConnection(WebProcessProxy&, PAL::SessionID initialSessionID, Ref<Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply>&&);
+    void getStorageProcessConnection(WebProcessProxy&, PAL::SessionID initialSessionID, Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply&&);
     void storageProcessCrashed(StorageProcessProxy*);
 #if ENABLE(SERVICE_WORKER)
     void establishWorkerContextConnectionToStorageProcess(StorageProcessProxy&, WebCore::SecurityOriginData&&, std::optional<PAL::SessionID>);
@@ -452,6 +450,8 @@ public:
     void registerSuspendedPageProxy(SuspendedPageProxy&);
     void unregisterSuspendedPageProxy(SuspendedPageProxy&);
     void didReachGoodTimeToPrewarm();
+
+    void screenPropertiesStateChanged();
 
 private:
     void platformInitialize();
@@ -603,6 +603,7 @@ private:
     RetainPtr<NSObject> m_automaticSpellingCorrectionNotificationObserver;
     RetainPtr<NSObject> m_automaticQuoteSubstitutionNotificationObserver;
     RetainPtr<NSObject> m_automaticDashSubstitutionNotificationObserver;
+    RetainPtr<NSObject> m_accessibilityDisplayOptionsNotificationObserver;
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     RetainPtr<NSObject> m_scrollerStyleNotificationObserver;
 #endif
@@ -610,8 +611,6 @@ private:
     std::unique_ptr<HighPerformanceGraphicsUsageSampler> m_highPerformanceGraphicsUsageSampler;
     std::unique_ptr<PerActivityStateCPUUsageSampler> m_perActivityStateCPUUsageSampler;
 #endif
-
-    String m_overrideCookieStorageDirectory;
 
     bool m_shouldUseTestingNetworkSession { false };
 

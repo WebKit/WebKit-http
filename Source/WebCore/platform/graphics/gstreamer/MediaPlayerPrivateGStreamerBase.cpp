@@ -69,7 +69,17 @@
 #if USE(LIBEPOXY)
 // Include the <epoxy/gl.h> header before <gst/gl/gl.h>.
 #include <epoxy/gl.h>
+
+// Workaround build issue with RPi userland GLESv2 headers and libepoxy <https://webkit.org/b/185639>
+#if !GST_CHECK_VERSION(1, 14, 0)
+#include <gst/gl/gstglconfig.h>
+#if defined(GST_GL_HAVE_WINDOW_DISPMANX) && GST_GL_HAVE_WINDOW_DISPMANX
+#define __gl2_h_
+#undef GST_GL_HAVE_GLSYNC
+#define GST_GL_HAVE_GLSYNC 1
 #endif
+#endif // !GST_CHECK_VERSION(1, 14, 0)
+#endif // USE(LIBEPOXY)
 
 #define GST_USE_UNSTABLE_API
 #include <gst/gl/gl.h>
@@ -615,7 +625,9 @@ void MediaPlayerPrivateGStreamerBase::volumeChangedCallback(MediaPlayerPrivateGS
     // This is called when m_volumeElement receives the notify::volume signal.
     GST_DEBUG_OBJECT(player->pipeline(), "Volume changed to: %f", player->volume());
 
-    player->m_notifier->notify(MainThreadNotification::VolumeChanged, [player] { player->notifyPlayerOfVolumeChange(); });
+    player->m_notifier->notify(MainThreadNotification::VolumeChanged, [player] {
+        player->notifyPlayerOfVolumeChange();
+    });
 }
 
 MediaPlayer::NetworkState MediaPlayerPrivateGStreamerBase::networkState() const
@@ -670,7 +682,9 @@ void MediaPlayerPrivateGStreamerBase::notifyPlayerOfMute()
 void MediaPlayerPrivateGStreamerBase::muteChangedCallback(MediaPlayerPrivateGStreamerBase* player)
 {
     // This is called when m_volumeElement receives the notify::mute signal.
-    player->m_notifier->notify(MainThreadNotification::MuteChanged, [player] { player->notifyPlayerOfMute(); });
+    player->m_notifier->notify(MainThreadNotification::MuteChanged, [player] {
+        player->notifyPlayerOfMute();
+    });
 }
 
 void MediaPlayerPrivateGStreamerBase::acceleratedRenderingStateChanged()
@@ -793,7 +807,9 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 
     if (triggerResize) {
         GST_DEBUG_OBJECT(pipeline(), "First sample reached the sink, triggering video dimensions update");
-        m_notifier->notify(MainThreadNotification::SizeChanged, [this] { m_player->sizeChanged(); });
+        m_notifier->notify(MainThreadNotification::SizeChanged, [this] {
+            m_player->sizeChanged();
+        });
     }
 
     if (!m_renderingCanBeAccelerated) {
@@ -1204,6 +1220,43 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayerPrivateGStreamerBase::initializationDataEncountered(GstEvent* event)
+{
+    // FIXME: Inform that we are waiting for a key.
+    const char* eventKeySystemUUID = nullptr;
+    GstBuffer* data = nullptr;
+    gst_event_parse_protection(event, &eventKeySystemUUID, &data, nullptr);
+
+    // Check if the system key of the protection event is the same of the CDM instance.
+    // For example: we can receive a new Widevine protection event but the CDM instance initialized with
+    // Playready, so we ignore this event.
+    if (m_cdmInstance && g_strcmp0(GStreamerEMEUtilities::keySystemToUuid(m_cdmInstance->keySystem()), eventKeySystemUUID)) {
+        GST_DEBUG("The protection event with UUID %s is ignored because it isn't supported by the CDM %s", eventKeySystemUUID, m_cdmInstance->keySystem().utf8().data());
+        return;
+    }
+
+    GstMapInfo mapInfo;
+    if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
+        GST_WARNING("cannot map %s protection data", eventKeySystemUUID);
+        return;
+    }
+
+    GST_TRACE("init data encountered for %s of size %" G_GSIZE_FORMAT, eventKeySystemUUID, mapInfo.size);
+    GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
+    InitData initData(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
+    gst_buffer_unmap(data, &mapInfo);
+
+    String eventKeySystemUUIDString = eventKeySystemUUID;
+    RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), eventKeySystemUUID = eventKeySystemUUIDString, initData] {
+        if (!weakThis)
+            return;
+
+        GST_DEBUG("scheduling initializationDataEncountered event for %s with init data size of %" G_GSIZE_FORMAT, eventKeySystemUUID.utf8().data(), initData.sizeInBytes());
+        GST_MEMDUMP("init datas", reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes());
+        weakThis->m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes()));
+    });
+}
+
 void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(CDMInstance& instance)
 {
     if (m_cdmInstance != &instance) {
@@ -1256,18 +1309,9 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 {
     if (m_handledProtectionEvents.contains(GST_EVENT_SEQNUM(event))) {
         GST_DEBUG_OBJECT(pipeline(), "event %u already handled", GST_EVENT_SEQNUM(event));
-        m_handledProtectionEvents.remove(GST_EVENT_SEQNUM(event));
-        if (m_needToResendCredentials) {
-            GST_DEBUG_OBJECT(pipeline(), "resending credentials");
-            attemptToDecryptWithLocalInstance();
-        }
         return;
     }
-
-    const gchar* eventKeySystemId = nullptr;
-    gst_event_parse_protection(event, &eventKeySystemId, nullptr, nullptr);
-    GST_WARNING("FIXME: unhandled protection event for %s", eventKeySystemId);
-    ASSERT_NOT_REACHED();
+    initializationDataEncountered(event);
 }
 #endif
 

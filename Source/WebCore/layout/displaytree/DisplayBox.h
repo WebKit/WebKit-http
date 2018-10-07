@@ -30,13 +30,17 @@
 #include "LayoutPoint.h"
 #include "LayoutRect.h"
 #include "LayoutUnit.h"
+#include "RenderStyleConstants.h"
 #include <wtf/IsoMalloc.h>
 
 namespace WebCore {
 
+class RenderStyle;
+
 namespace Layout {
-class LayoutContext;
 class BlockFormattingContext;
+class FormattingContext;
+class LayoutContext;
 }
 
 namespace Display {
@@ -44,8 +48,9 @@ namespace Display {
 class Box {
     WTF_MAKE_ISO_ALLOCATED(Box);
 public:
-    friend class Layout::LayoutContext;
     friend class Layout::BlockFormattingContext;
+    friend class Layout::FormattingContext;
+    friend class Layout::LayoutContext;
 
     ~Box();
 
@@ -68,13 +73,29 @@ public:
     LayoutUnit marginBottom() const;
     LayoutUnit marginRight() const;
 
+    LayoutUnit borderTop() const;
+    LayoutUnit borderLeft() const;
+    LayoutUnit borderBottom() const;
+    LayoutUnit borderRight() const;
+
+    LayoutUnit paddingTop() const;
+    LayoutUnit paddingLeft() const;
+    LayoutUnit paddingBottom() const;
+    LayoutUnit paddingRight() const;
+
     LayoutRect marginBox() const;
     LayoutRect borderBox() const;
     LayoutRect paddingBox() const;
     LayoutRect contentBox() const;
 
 private:
-    Box();
+    Box(const RenderStyle&);
+
+    struct Style {
+        Style(const RenderStyle&);
+
+        BoxSizing boxSizing { BoxSizing::ContentBox };
+    };
 
     void setRect(const LayoutRect&);
     void setTopLeft(const LayoutPoint&);
@@ -111,6 +132,8 @@ private:
     void setHasValidBorder();
     void setHasValidPadding();
 #endif
+
+    const Style m_style;
 
     LayoutRect m_rect;
 
@@ -343,6 +366,54 @@ inline LayoutUnit Box::marginRight() const
 {
     ASSERT(m_hasValidMargin);
     return m_marginRight;
+}
+
+inline LayoutUnit Box::paddingTop() const
+{
+    ASSERT(m_hasValidPadding);
+    return m_paddingTop;
+}
+
+inline LayoutUnit Box::paddingLeft() const
+{
+    ASSERT(m_hasValidPadding);
+    return m_paddingLeft;
+}
+
+inline LayoutUnit Box::paddingBottom() const
+{
+    ASSERT(m_hasValidPadding);
+    return m_paddingBottom;
+}
+
+inline LayoutUnit Box::paddingRight() const
+{
+    ASSERT(m_hasValidPadding);
+    return m_paddingRight;
+}
+
+inline LayoutUnit Box::borderTop() const
+{
+    ASSERT(m_hasValidBorder);
+    return m_borderTop;
+}
+
+inline LayoutUnit Box::borderLeft() const
+{
+    ASSERT(m_hasValidBorder);
+    return m_borderLeft;
+}
+
+inline LayoutUnit Box::borderBottom() const
+{
+    ASSERT(m_hasValidBorder);
+    return m_borderBottom;
+}
+
+inline LayoutUnit Box::borderRight() const
+{
+    ASSERT(m_hasValidBorder);
+    return m_borderRight;
 }
 
 }

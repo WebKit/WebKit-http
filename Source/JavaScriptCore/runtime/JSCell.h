@@ -57,12 +57,6 @@ enum class GCDeferralContextArgPresense {
     DoesNotHaveArg
 };
 
-enum class PropertyReificationResult {
-    Nothing,
-    Something,
-    TriedButFailed, // Sometimes the property name already exists but has special behavior and can't be reified, e.g. Array.length.
-};
-
 template<typename T> void* allocateCell(Heap&, size_t = sizeof(T));
 template<typename T> void* tryAllocateCell(Heap&, size_t = sizeof(T));
 template<typename T> void* allocateCell(Heap&, GCDeferralContext*, size_t = sizeof(T));
@@ -115,6 +109,8 @@ public:
     bool isGetterSetter() const;
     bool isCustomGetterSetter() const;
     bool isProxy() const;
+    bool isFunction(VM&);
+    bool isCallable(VM&, CallType&, CallData&);
     bool inherits(VM&, const ClassInfo*) const;
     template<typename Target> bool inherits(VM&) const;
     bool isAPIValueWrapper() const;
@@ -130,6 +126,7 @@ public:
     
     JSType type() const;
     IndexingType indexingTypeAndMisc() const;
+    IndexingType indexingMode() const;
     IndexingType indexingType() const;
     StructureID structureID() const { return m_structureID; }
     Structure* structure() const;
@@ -153,7 +150,7 @@ public:
         
     // Returns information about how to call/construct this cell as a function/constructor. May tell
     // you that the cell is not callable or constructor (default is that it's not either). If it
-    // says that the function is callable, and the TypeOfShouldCallGetCallData type flag is set, and
+    // says that the function is callable, and the OverridesGetCallData type flag is set, and
     // this is an object, then typeof will return "function" instead of "object". These methods
     // cannot change their minds and must be thread-safe. They are sometimes called from compiler
     // threads.
@@ -176,8 +173,6 @@ public:
 
     static void visitChildren(JSCell*, SlotVisitor&);
     static void visitOutputConstraints(JSCell*, SlotVisitor&);
-
-    JS_EXPORT_PRIVATE static PropertyReificationResult reifyPropertyNameIfNeeded(JSCell*, ExecState*, PropertyName&);
 
     JS_EXPORT_PRIVATE static void heapSnapshot(JSCell*, HeapSnapshotBuilder&);
 

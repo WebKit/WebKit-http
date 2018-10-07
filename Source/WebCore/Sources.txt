@@ -1216,9 +1216,11 @@ inspector/agents/worker/WorkerRuntimeAgent.cpp
 layout/FloatingContext.cpp
 layout/FloatingState.cpp
 layout/FormattingContext.cpp
+layout/FormattingContextGeometry.cpp
 layout/FormattingState.cpp
 layout/LayoutContext.cpp
 layout/blockformatting/BlockFormattingContext.cpp
+layout/blockformatting/BlockFormattingContextGeometry.cpp
 layout/blockformatting/BlockFormattingState.cpp
 layout/blockformatting/BlockMarginCollapse.cpp
 layout/blockformatting/BlockInvalidation.cpp
@@ -1231,6 +1233,7 @@ layout/layouttree/LayoutBox.cpp
 layout/layouttree/LayoutContainer.cpp
 layout/layouttree/LayoutInlineBox.cpp
 layout/layouttree/LayoutInlineContainer.cpp
+layout/layouttree/LayoutReplaced.cpp
 layout/layouttree/LayoutTreeBuilder.cpp
 
 loader/ContentFilter.cpp
@@ -1242,13 +1245,14 @@ loader/DocumentLoader.cpp
 loader/DocumentThreadableLoader.cpp
 loader/DocumentWriter.cpp
 loader/EmptyClients.cpp
+loader/FetchIdioms.cpp
 loader/FTPDirectoryParser.cpp
 loader/FormState.cpp
 loader/FormSubmission.cpp
 loader/FrameLoadRequest.cpp
 loader/FrameLoader.cpp
 loader/FrameLoaderStateMachine.cpp
-loader/FetchIdioms.cpp
+loader/HeaderFieldTokenizer.cpp
 loader/HTTPHeaderField.cpp
 loader/HistoryController.cpp
 loader/ImageLoader.cpp
@@ -1262,6 +1266,7 @@ loader/MixedContentChecker.cpp
 loader/NavigationAction.cpp
 loader/NavigationScheduler.cpp
 loader/NetscapePlugInStreamLoader.cpp
+loader/ServerTimingParser.cpp
 loader/PingLoader.cpp
 loader/PolicyChecker.cpp
 loader/ProgressTracker.cpp
@@ -1272,6 +1277,7 @@ loader/ResourceLoadStatistics.cpp
 loader/ResourceLoader.cpp
 loader/ResourceTiming.cpp
 loader/ResourceTimingInformation.cpp
+loader/ServerTiming.cpp
 loader/SinkDocument.cpp
 loader/SubframeLoader.cpp
 loader/SubresourceIntegrity.cpp
@@ -1355,6 +1361,7 @@ page/DebugPageOverlays.cpp
 page/DeprecatedGlobalSettings.cpp
 page/DeviceController.cpp
 page/DiagnosticLoggingKeys.cpp
+page/DisabledAdaptations.cpp
 page/DragController.cpp
 page/EventHandler.cpp
 page/EventSource.cpp
@@ -1392,6 +1399,7 @@ page/PerformanceNavigation.cpp
 page/PerformanceObserver.cpp
 page/PerformanceObserverEntryList.cpp
 page/PerformanceResourceTiming.cpp
+page/PerformanceServerTiming.cpp
 page/PerformanceTiming.cpp
 page/PerformanceUserTiming.cpp
 page/PointerLockController.cpp
@@ -2809,6 +2817,7 @@ JSPerformanceObserver.cpp
 JSPerformanceObserverCallback.cpp
 JSPerformanceObserverEntryList.cpp
 JSPerformanceResourceTiming.cpp
+JSPerformanceServerTiming.cpp
 JSPerformanceTiming.cpp
 JSPeriodicWave.cpp
 JSPlaybackDirection.cpp
@@ -3194,6 +3203,7 @@ JSOESVertexArrayObject.cpp
 JSWebGL2RenderingContext.cpp
 JSWebGLActiveInfo.cpp
 JSWebGLBuffer.cpp
+JSWebGLCompressedTextureASTC.cpp
 JSWebGLCompressedTextureATC.cpp
 JSWebGLCompressedTexturePVRTC.cpp
 JSWebGLCompressedTextureS3TC.cpp

@@ -862,6 +862,8 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setAccessibilityObjectModelEnabled:YES];
     [preferences setVisualViewportAPIEnabled:YES];
     [preferences setColorFilterEnabled:YES];
+    [preferences setCrossOriginOptionsSupportEnabled:YES];
+    [preferences setServerTimingEnabled:YES];
 }
 
 // Called before each test.
@@ -998,7 +1000,7 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     preferences.isSecureContextAttributeEnabled = options.enableIsSecureContextAttribute;
     preferences.inspectorAdditionsEnabled = options.enableInspectorAdditions;
     preferences.allowCrossOriginSubresourcesToAskForCredentials = options.allowCrossOriginSubresourcesToAskForCredentials;
-    preferences.CSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled = options.enableCSSAnimationsAndCSSTransitionsBackedByWebAnimations;
+    preferences.webAnimationsCSSIntegrationEnabled = options.enableWebAnimationsCSSIntegration;
 }
 
 // Called once on DumpRenderTree startup.

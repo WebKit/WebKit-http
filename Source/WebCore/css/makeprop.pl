@@ -252,9 +252,11 @@ print GPERF << "EOF";
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored \"-Wunknown-pragmas\"
-#pragma clang diagnostic ignored \"-Wdeprecated-register\"
 #pragma clang diagnostic ignored \"-Wimplicit-fallthrough\"
 #endif
+
+// Older versions of gperf like to use the `register` keyword.
+#define register
 
 namespace WebCore {
 
@@ -574,8 +576,8 @@ sub getLayersAccessorFunction {
 sub getFillLayerType {
 my $name = shift;
 
-  return "BackgroundFillLayer" if $name =~ /background-/;
-  return "MaskFillLayer" if $name =~ /mask-/;
+  return "FillLayerType::Background" if $name =~ /background-/;
+  return "FillLayerType::Mask" if $name =~ /mask-/;
 }
 
 sub getFillLayerMapfunction {

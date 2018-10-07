@@ -1,3 +1,146 @@
+2018-05-22  Alberto Garcia  <berto@igalia.com>
+
+        [CMake] Properly detect compiler flags, needed libs, and fallbacks for usage of 64-bit atomic operations
+        https://bugs.webkit.org/show_bug.cgi?id=182622
+        <rdar://problem/40292317>
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+        Move the test to detect whether we need to link against libatomic
+        to a common CMake file so it can be used from both JavaScriptCore
+        and WebKit.
+
+2018-05-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r231843.
+
+        Broke cross build
+
+        Reverted changeset:
+
+        "[CMake] Properly detect compiler flags, needed libs, and
+        fallbacks for usage of 64-bit atomic operations"
+        https://bugs.webkit.org/show_bug.cgi?id=182622
+        https://trac.webkit.org/changeset/231843
+
+2018-05-21  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Enable WebKit build by default
+        https://bugs.webkit.org/show_bug.cgi?id=185141
+
+        Reviewed by Per Arne Vollan.
+
+        * Source/cmake/OptionsWin.cmake: Disable
+        ENABLE_NETSCAPE_PLUGIN_API unconditionally for WinCairo port
+        because it builds both WK1 and WK2.
+        * Source/cmake/OptionsWinCairo.cmake: Turn ENABLE_WEBKIT on by default.
+        Remove BUILDING_WIN_CAIRO_WEBKIT macro.
+
+2018-05-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.21.2 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-05-17  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE] Implement and enable FULLSCREEN_API
+        https://bugs.webkit.org/show_bug.cgi?id=185676
+
+        Reviewed by Žan Doberšek.
+
+        Remove the CMake option to disable this option for WPE.
+        This feature gets enabled now via Source/cmake/WebKitFeatures.cmake
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-05-16  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Update WinCairoRequirements
+        https://bugs.webkit.org/show_bug.cgi?id=185700
+
+        Reviewed by Per Arne Vollan.
+
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2018-05-16  Andy VanWagoner  <andy@vanwagoner.family>
+
+        Add support for Intl NumberFormat formatToParts
+        https://bugs.webkit.org/show_bug.cgi?id=185375
+
+        Reviewed by Yusuke Suzuki.
+
+        Add flag for NumberFormat formatToParts.
+
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-05-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Win] Use C++17 in MSVC
+        https://bugs.webkit.org/show_bug.cgi?id=185232
+
+        Reviewed by Alex Christensen.
+
+        Use /std:c++17 option.
+
+        * Source/cmake/OptionsMSVC.cmake:
+
+2018-05-16  Alberto Garcia  <berto@igalia.com>
+
+        [CMake] Properly detect compiler flags, needed libs, and fallbacks for usage of 64-bit atomic operations
+        https://bugs.webkit.org/show_bug.cgi?id=182622
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        Enable THREADS_PREFER_PTHREAD_FLAG. This uses -pthread instead of
+        -lpthread, fixing the 64-bit RISC-V build of the GTK+ port due to
+        missing atomic primitives.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+        Move the test to detect whether we need to link against libatomic
+        to a common CMake file so it can be used from both JavaScriptCore
+        and WebKit.
+
+2018-05-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] REGRESSION(r231170) Build broken with Clang 5.0
+        https://bugs.webkit.org/show_bug.cgi?id=185198
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitCompilerFlags.cmake: Fall back to the -std=c++1z
+        compiler flag if -std=c++17 is not supported. If that flag is not
+        supported either, bail with an error message.
+
+2018-05-09  Jan Alexander Steffens  <jan.steffens@gmail.com>
+
+        [GTK] gtk-doc installation subdir duplicated
+        https://bugs.webkit.org/show_bug.cgi?id=185468
+
+        Reviewed by Carlos Garcia Campos.
+
+        The GTK docs are installed into a duplicated subdir,
+        e.g. /usr/share/doc/gtk-doc/html/webkit2gtk-4.0/webkit2gtk-4.0.
+
+        * Source/PlatformGTK.cmake:
+
+2018-05-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed. Bump WPE soname for good measure.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-05-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for 2.21.1 release.
+
+        * Source/cmake/OptionsWPE.cmake: Bump version numbers.
+
 2018-05-06  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [JSC][GTK][JSCONLY] Use capstone disassembler

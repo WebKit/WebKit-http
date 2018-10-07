@@ -783,7 +783,7 @@ void Frame::clearTimers(FrameView *view, Document *document)
 {
     if (view) {
         view->layoutContext().unscheduleLayout();
-        if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+        if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
             document->timeline().suspendAnimations();
         else
             view->frame().animation().suspendAnimationsForDocument(document);
@@ -883,7 +883,7 @@ RefPtr<Range> Frame::rangeForPoint(const IntPoint& framePoint)
 
     Position deepPosition = position.deepEquivalent();
     Text* containerText = deepPosition.containerText();
-    if (!containerText || !containerText->renderer() || containerText->renderer()->style().userSelect() == SELECT_NONE)
+    if (!containerText || !containerText->renderer() || containerText->renderer()->style().userSelect() == UserSelect::None)
         return nullptr;
 
     VisiblePosition previous = position.previous();

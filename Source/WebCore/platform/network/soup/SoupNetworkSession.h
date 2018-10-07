@@ -43,6 +43,7 @@ namespace WebCore {
 
 class CertificateInfo;
 class ResourceError;
+class URL;
 struct SoupNetworkProxySettings;
 
 class SoupNetworkSession {

@@ -54,6 +54,7 @@
 #include "JSGlobalObject.h"
 #include "JumpTable.h"
 #include "LLIntCallLinkInfo.h"
+#include "LLIntPrototypeLoadAdaptiveStructureWatchpoint.h"
 #include "LazyOperandValueProfile.h"
 #include "ModuleProgramExecutable.h"
 #include "ObjectAllocationProfile.h"
@@ -62,7 +63,6 @@
 #include "ProfilerJettisonReason.h"
 #include "ProgramExecutable.h"
 #include "PutPropertySlot.h"
-#include "UnconditionalFinalizer.h"
 #include "ValueProfile.h"
 #include "VirtualRegister.h"
 #include "Watchpoint.h"
@@ -417,11 +417,12 @@ public:
     unsigned numberOfArgumentValueProfiles()
     {
         ASSERT(m_numParameters >= 0);
-        ASSERT(m_argumentValueProfiles.size() == static_cast<unsigned>(m_numParameters));
+        ASSERT(m_argumentValueProfiles.size() == static_cast<unsigned>(m_numParameters) || !vm()->canUseJIT());
         return m_argumentValueProfiles.size();
     }
     ValueProfile& valueProfileForArgument(unsigned argumentIndex)
     {
+        ASSERT(vm()->canUseJIT()); // This is only called from the various JIT compilers or places that first check numberOfArgumentValueProfiles before calling this.
         ValueProfile& result = m_argumentValueProfiles[argumentIndex];
         ASSERT(result.m_bytecodeOffset == -1);
         return result;
@@ -625,6 +626,9 @@ public:
     {
         return m_llintExecuteCounter;
     }
+
+    typedef HashMap<Structure*, Bag<LLIntPrototypeLoadAdaptiveStructureWatchpoint>> StructureWatchpointMap;
+    StructureWatchpointMap& llintGetByIdWatchpointMap() { return m_llintGetByIdWatchpointMap; }
 
     // Functions for controlling when tiered compilation kicks in. This
     // controls both when the optimizing compiler is invoked and when OSR
@@ -970,6 +974,7 @@ private:
 
     RefCountedArray<LLIntCallLinkInfo> m_llintCallLinkInfos;
     SentinelLinkedList<LLIntCallLinkInfo, BasicRawSentinelNode<LLIntCallLinkInfo>> m_incomingLLIntCalls;
+    StructureWatchpointMap m_llintGetByIdWatchpointMap;
     PoisonedRefPtr<CodeBlockPoison, JITCode> m_jitCode;
 #if ENABLE(JIT)
     std::unique_ptr<RegisterAtOffsetList> m_calleeSaveRegisters;

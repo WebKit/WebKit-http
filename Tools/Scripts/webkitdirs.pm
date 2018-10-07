@@ -231,7 +231,7 @@ sub determineXcodeVersion
 {
     return if defined $xcodeVersion;
     my $xcodebuildVersionOutput = `xcodebuild -version`;
-    $xcodeVersion = ($xcodebuildVersionOutput =~ /Xcode ([0-9](\.[0-9]+)*)/) ? $1 : "3.0";
+    $xcodeVersion = ($xcodebuildVersionOutput =~ /Xcode ([0-9]+(\.[0-9]+)*)/) ? $1 : "3.0";
 }
 
 sub readXcodeUserDefault($)
@@ -994,7 +994,7 @@ sub setArchitecture
 # Locate Safari.
 sub safariPath
 {
-    die "Safari path is only relevant on Apple Mac platform\n" unless isAppleCocoaWebKit();
+    die "Safari path is only relevant on Apple Mac platform\n" unless isAppleMacWebKit();
 
     my $safariPath;
 
@@ -1391,14 +1391,39 @@ sub isCrossCompilation()
     return 0;
 }
 
+sub isIOSWebKit()
+{
+    return portName() eq iOS;
+}
+
+sub isTVOSWebKit()
+{
+    return portName() eq tvOS;
+}
+
+sub isWatchOSWebKit()
+{
+    return portName() eq watchOS;
+}
+
+sub isEmbeddedWebKit()
+{
+    return isIOSWebKit() || isTVOSWebKit() || isWatchOSWebKit();
+}
+
 sub isAppleWebKit()
 {
     return isAppleCocoaWebKit() || isAppleWinWebKit();
 }
 
+sub isAppleMacWebKit()
+{
+    return portName() eq Mac;
+}
+
 sub isAppleCocoaWebKit()
 {
-    return (portName() eq Mac) || isIOSWebKit() || isTVOSWebKit() || isWatchOSWebKit();
+    return isAppleMacWebKit() || isEmbeddedWebKit();
 }
 
 sub isAppleWinWebKit()
@@ -1482,26 +1507,6 @@ sub willUseWatchDeviceSDK()
 sub willUseWatchSimulatorSDK()
 {
     return xcodeSDKPlatformName() eq "watchsimulator";
-}
-
-sub isIOSWebKit()
-{
-    return portName() eq iOS;
-}
-
-sub isTVOSWebKit()
-{
-    return portName() eq tvOS;
-}
-
-sub isWatchOSWebKit()
-{
-    return portName() eq watchOS;
-}
-
-sub isEmbeddedWebKit()
-{
-    return isIOSWebKit() || isTVOSWebKit() || isWatchOSWebKit();
 }
 
 sub determineNmPath()
@@ -1665,7 +1670,7 @@ sub launcherName()
 {
     if (isGtk()) {
         return "MiniBrowser";
-    } elsif (isAppleCocoaWebKit()) {
+    } elsif (isAppleMacWebKit()) {
         return "Safari";
     } elsif (isAppleWinWebKit()) {
         return "MiniBrowser";
@@ -2432,7 +2437,7 @@ sub mobileSafariBundle()
     determineConfigurationProductDir();
 
     # Use MobileSafari.app in product directory if present.
-    if (isAppleCocoaWebKit() && -d "$configurationProductDir/MobileSafari.app") {
+    if (isIOSWebKit() && -d "$configurationProductDir/MobileSafari.app") {
         return "$configurationProductDir/MobileSafari.app";
     }
     return installedMobileSafariBundle();
@@ -2745,7 +2750,7 @@ sub execMacWebKitAppForDebugging($)
 
 sub debugSafari
 {
-    if (isAppleCocoaWebKit()) {
+    if (isAppleMacWebKit()) {
         checkFrameworks();
         execMacWebKitAppForDebugging(safariPath());
     }
@@ -2759,7 +2764,7 @@ sub runSafari
         return runIOSWebKitApp(mobileSafariBundle());
     }
 
-    if (isAppleCocoaWebKit()) {
+    if (isAppleMacWebKit()) {
         return runMacWebKitApp(safariPath());
     }
 
@@ -2774,20 +2779,19 @@ sub runSafari
 
 sub runMiniBrowser
 {
-    if (isAppleCocoaWebKit()) {
+    if (isAppleMacWebKit()) {
         return runMacWebKitApp(File::Spec->catfile(productDir(), "MiniBrowser.app", "Contents", "MacOS", "MiniBrowser"));
-    } elsif (isAppleWinWebKit()) {
-        my $result;
+    }
+    if (isAppleWinWebKit()) {
         my $webKitLauncherPath = File::Spec->catfile(executableProductDir(), "MiniBrowser.exe");
         return system { $webKitLauncherPath } $webKitLauncherPath, @ARGV;
     }
-
     return 1;
 }
 
 sub debugMiniBrowser
 {
-    if (isAppleCocoaWebKit()) {
+    if (isAppleMacWebKit()) {
         execMacWebKitAppForDebugging(File::Spec->catfile(productDir(), "MiniBrowser.app", "Contents", "MacOS", "MiniBrowser"));
     }
     
@@ -2796,7 +2800,7 @@ sub debugMiniBrowser
 
 sub runWebKitTestRunner
 {
-    if (isAppleCocoaWebKit()) {
+    if (isAppleMacWebKit()) {
         return runMacWebKitApp(File::Spec->catfile(productDir(), "WebKitTestRunner"));
     }
 
@@ -2805,7 +2809,7 @@ sub runWebKitTestRunner
 
 sub debugWebKitTestRunner
 {
-    if (isAppleCocoaWebKit()) {
+    if (isAppleMacWebKit()) {
         execMacWebKitAppForDebugging(File::Spec->catfile(productDir(), "WebKitTestRunner"));
     }
 

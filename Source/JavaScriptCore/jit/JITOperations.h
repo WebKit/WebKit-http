@@ -174,6 +174,7 @@ typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EReoJss)(ExecState*, RegEx
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_ESS)(ExecState*, size_t, size_t);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_ESsiCI)(ExecState*, StructureStubInfo*, JSCell*, UniquedStringImpl*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_ESsiJI)(ExecState*, StructureStubInfo*, EncodedJSValue, UniquedStringImpl*);
+typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_ESsiJJ)(ExecState*, StructureStubInfo*, EncodedJSValue, EncodedJSValue);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_ESsiJJI)(ExecState*, StructureStubInfo*, EncodedJSValue, EncodedJSValue, UniquedStringImpl*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EZ)(ExecState*, int32_t);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EZIcfZ)(ExecState*, int32_t, InlineCallFrame*, int32_t);
@@ -370,9 +371,12 @@ EncodedJSValue JIT_OPERATION operationGetByIdWithThisOptimize(ExecState*, Struct
 EncodedJSValue JIT_OPERATION operationGetByIdDirect(ExecState*, StructureStubInfo*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByIdDirectGeneric(ExecState*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByIdDirectOptimize(ExecState*, StructureStubInfo*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationInById(ExecState*, StructureStubInfo*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationInByIdGeneric(ExecState*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationInByIdOptimize(ExecState*, StructureStubInfo*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationInOptimize(ExecState*, StructureStubInfo*, JSCell*, UniquedStringImpl*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationIn(ExecState*, StructureStubInfo*, JSCell*, UniquedStringImpl*) WTF_INTERNAL;
-EncodedJSValue JIT_OPERATION operationGenericIn(ExecState*, JSCell*, EncodedJSValue) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationInByVal(ExecState*, JSCell*, EncodedJSValue) WTF_INTERNAL;
 void JIT_OPERATION operationPutByIdStrict(ExecState*, StructureStubInfo*, EncodedJSValue encodedValue, EncodedJSValue encodedBase, UniquedStringImpl*) WTF_INTERNAL;
 void JIT_OPERATION operationPutByIdNonStrict(ExecState*, StructureStubInfo*, EncodedJSValue encodedValue, EncodedJSValue encodedBase, UniquedStringImpl*) WTF_INTERNAL;
 void JIT_OPERATION operationPutByIdDirectStrict(ExecState*, StructureStubInfo*, EncodedJSValue encodedValue, EncodedJSValue encodedBase, UniquedStringImpl*) WTF_INTERNAL;
@@ -451,7 +455,9 @@ size_t JIT_OPERATION operationDeleteByVal(ExecState*, EncodedJSValue base, Encod
 JSCell* JIT_OPERATION operationPushWithScope(ExecState*, JSCell* currentScopeCell, EncodedJSValue object) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationPushWithScopeObject(ExecState* exec, JSCell* currentScopeCell, JSObject* object) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationGetPNames(ExecState*, JSObject*) WTF_INTERNAL;
-EncodedJSValue JIT_OPERATION operationInstanceOf(ExecState*, EncodedJSValue, EncodedJSValue proto) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationInstanceOf(ExecState*, EncodedJSValue value, EncodedJSValue proto) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationInstanceOfGeneric(ExecState*, StructureStubInfo*, EncodedJSValue value, EncodedJSValue proto) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationInstanceOfOptimize(ExecState*, StructureStubInfo*, EncodedJSValue value, EncodedJSValue proto) WTF_INTERNAL;
 int32_t JIT_OPERATION operationSizeFrameForForwardArguments(ExecState*, EncodedJSValue arguments, int32_t numUsedStackSlots, int32_t firstVarArgOffset) WTF_INTERNAL;
 int32_t JIT_OPERATION operationSizeFrameForVarargs(ExecState*, EncodedJSValue arguments, int32_t numUsedStackSlots, int32_t firstVarArgOffset) WTF_INTERNAL;
 CallFrame* JIT_OPERATION operationSetupForwardArgumentsFrame(ExecState*, CallFrame*, EncodedJSValue, int32_t, int32_t length) WTF_INTERNAL;

@@ -44,6 +44,10 @@
 #import <wtf/CallbackAggregator.h>
 #import <wtf/ProcessPrivilege.h>
 
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/NetworkProcessCocoaAdditions.mm>
+#endif
+
 namespace WebKit {
 
 static void initializeNetworkSettings()
@@ -91,7 +95,7 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
 
     initializeNetworkSettings();
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     setSharedHTTPCookieStorage(parameters.uiProcessCookieStorageIdentifier);
 #endif
 
@@ -110,6 +114,10 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
         m_cacheStoragePerOriginQuota = parameters.cacheStoragePerOriginQuota;
         SandboxExtension::consumePermanently(parameters.cacheStorageDirectoryExtensionHandle);
     }
+
+#if ENABLE(WIFI_ASSERTIONS)
+    initializeWiFiAssertions(parameters);
+#endif
 
     if (!m_diskCacheDirectory.isNull()) {
         SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
@@ -207,7 +215,7 @@ void NetworkProcess::clearDiskCache(WallTime modifiedSince, Function<void ()>&& 
     clearNSURLCache(m_clearCacheDispatchGroup, modifiedSince, WTFMove(completionHandler));
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
 void NetworkProcess::setSharedHTTPCookieStorage(const Vector<uint8_t>& identifier)
 {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
@@ -244,6 +252,20 @@ void NetworkProcess::syncAllCookies()
 #endif
 
 #pragma clang diagnostic pop
+}
+
+void NetworkProcess::platformPrepareToSuspend()
+{
+#if ENABLE(WIFI_ASSERTIONS)
+    suspendWiFiAssertions();
+#endif
+}
+
+void NetworkProcess::platformProcessDidResume()
+{
+#if ENABLE(WIFI_ASSERTIONS)
+    resumeWiFiAssertions();
+#endif
 }
 
 }

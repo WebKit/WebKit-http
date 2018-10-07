@@ -68,17 +68,13 @@ public:
     static Ref<NetworkProcessProxy> create(WebProcessPool&);
     ~NetworkProcessProxy();
 
-    void getNetworkProcessConnection(Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&&);
+    void getNetworkProcessConnection(Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&&);
 
     DownloadProxy* createDownloadProxy(const WebCore::ResourceRequest&);
 
     void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, WTF::Function<void(WebsiteData)>&& completionHandler);
     void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, WallTime modifiedSince, WTF::Function<void()>&& completionHandler);
     void deleteWebsiteDataForOrigins(PAL::SessionID, OptionSet<WebKit::WebsiteDataType>, const Vector<WebCore::SecurityOriginData>& origins, const Vector<String>& cookieHostNames, WTF::Function<void()>&& completionHandler);
-
-#if PLATFORM(COCOA)
-    void setProcessSuppressionEnabled(bool);
-#endif
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     void hasStorageAccessForFrame(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&& callback);
@@ -158,11 +154,11 @@ private:
     WebProcessPool& m_processPool;
     
     unsigned m_numPendingConnectionRequests;
-    Deque<Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>> m_pendingConnectionReplies;
+    Deque<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> m_pendingConnectionReplies;
 
-    HashMap<uint64_t, WTF::Function<void (WebsiteData)>> m_pendingFetchWebsiteDataCallbacks;
-    HashMap<uint64_t, WTF::Function<void ()>> m_pendingDeleteWebsiteDataCallbacks;
-    HashMap<uint64_t, WTF::Function<void ()>> m_pendingDeleteWebsiteDataForOriginsCallbacks;
+    HashMap<uint64_t, Function<void(WebsiteData)>> m_pendingFetchWebsiteDataCallbacks;
+    HashMap<uint64_t, Function<void()>> m_pendingDeleteWebsiteDataCallbacks;
+    HashMap<uint64_t, Function<void()>> m_pendingDeleteWebsiteDataForOriginsCallbacks;
 
     std::unique_ptr<DownloadProxyMap> m_downloadProxyMap;
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)

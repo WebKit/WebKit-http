@@ -471,8 +471,6 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     WebCore::provideUserMediaTo(m_page.get(), new WebUserMediaClient(*this));
 #endif
 
-    m_page->settings().setNetworkProcessCSPFrameAncestorsCheckingEnabled(true);
-
     m_page->setControlledByAutomation(parameters.controlledByAutomation);
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -1788,6 +1786,16 @@ IntSize WebPage::fixedLayoutSize() const
     if (!view)
         return IntSize();
     return view->fixedLayoutSize();
+}
+
+void WebPage::disabledAdaptationsDidChange(const OptionSet<DisabledAdaptations>& disabledAdaptations)
+{
+#if PLATFORM(IOS)
+    if (m_viewportConfiguration.setDisabledAdaptations(disabledAdaptations))
+        viewportConfigurationChanged();
+#else
+    UNUSED_PARAM(disabledAdaptations);
+#endif
 }
 
 void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArguments)
@@ -3321,6 +3329,18 @@ void WebPage::sendCSPViolationReport(uint64_t frameID, const WebCore::URL& repor
         PingLoader::sendViolationReport(*frame->coreFrame(), reportURL, report.releaseNonNull(), ViolationReportType::ContentSecurityPolicy);
 }
 
+void WebPage::enqueueSecurityPolicyViolationEvent(uint64_t frameID, SecurityPolicyViolationEvent::Init&& eventInit)
+{
+    auto* frame = WebProcess::singleton().webFrame(frameID);
+    if (!frame)
+        return;
+    auto* coreFrame = frame->coreFrame();
+    if (!coreFrame)
+        return;
+    if (auto* document = coreFrame->document())
+        document->enqueueSecurityPolicyViolationEvent(WTFMove(eventInit));
+}
+
 NotificationPermissionRequestManager* WebPage::notificationPermissionRequestManager()
 {
     if (m_notificationPermissionRequestManager)
@@ -4611,7 +4631,10 @@ void WebPage::setTextAsync(const String& text)
     if (frame->selection().selection().isContentEditable()) {
         UserTypingGestureIndicator indicator(frame.get());
         frame->selection().selectAll();
-        frame->editor().insertText(text, nullptr, TextEventInputKeyboard);
+        if (text.isEmpty())
+            frame->editor().deleteSelectionWithSmartDelete(false);
+        else
+            frame->editor().insertText(text, nullptr, TextEventInputKeyboard);
         return;
     }
 
@@ -5905,9 +5928,14 @@ void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remote
     if (frame->page() != this)
         return;
 
+    auto* coreFrame = frame->coreFrame();
+    auto* previousWindow = coreFrame->window();
+    if (!previousWindow)
+        return;
+
     auto remoteFrame = RemoteFrame::create(WTFMove(remoteFrameIdentifier));
     auto remoteWindow = RemoteDOMWindow::create(remoteFrame.copyRef(), WTFMove(remoteWindowIdentifier));
-    UNUSED_PARAM(remoteWindow);
+    remoteWindow->setCrossOriginOptions(previousWindow->crossOriginOptions());
 
     remoteFrame->setOpener(frame->coreFrame()->loader().opener());
 
@@ -5915,7 +5943,6 @@ void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remote
     remoteFrame->windowProxy().setJSWindowProxies(WTFMove(jsWindowProxies));
     remoteFrame->windowProxy().setDOMWindow(remoteWindow.ptr());
 
-    auto* coreFrame = frame->coreFrame();
     coreFrame->setView(nullptr);
     coreFrame->willDetachPage();
     coreFrame->detachFromPage();

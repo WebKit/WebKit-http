@@ -63,6 +63,7 @@
 #include "FrameLoaderClient.h"
 #include "FrameTree.h"
 #include "FrameView.h"
+#include "HTTPParsers.h"
 #include "History.h"
 #include "InspectorInstrumentation.h"
 #include "JSDOMWindowBase.h"

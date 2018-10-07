@@ -342,7 +342,7 @@ void HTMLImageElement::removedFromAncestor(RemovalType removalType, ContainerNod
         m_form->removeImgElement(this);
 
     if (removalType.disconnectedFromDocument && !m_parsedUsemap.isNull())
-        treeScope().removeImageElementByUsemap(*m_parsedUsemap.impl(), *this);
+        oldParentOfRemovedTree.treeScope().removeImageElementByUsemap(*m_parsedUsemap.impl(), *this);
 
     if (is<HTMLPictureElement>(parentNode()))
         setPictureElement(nullptr);
@@ -687,9 +687,11 @@ bool HTMLImageElement::willRespondToMouseClickEvents()
 bool HTMLImageElement::isSystemPreviewImage() const
 {
     const auto* parent = parentElement();
-    if (!is<HTMLAnchorElement>(parent))
-        return false;
-    return downcast<HTMLAnchorElement>(parent)->isSystemPreviewLink();
+    if (is<HTMLAnchorElement>(parent))
+        return downcast<HTMLAnchorElement>(parent)->isSystemPreviewLink();
+    if (is<HTMLPictureElement>(parent))
+        return downcast<HTMLPictureElement>(parent)->isSystemPreviewImage();
+    return false;
 }
 #endif
 

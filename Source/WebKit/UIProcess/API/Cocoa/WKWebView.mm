@@ -47,6 +47,7 @@
 #import "RemoteObjectRegistryMessages.h"
 #import "SandboxUtilities.h"
 #import "UIDelegate.h"
+#import "UserMediaProcessManager.h"
 #import "VersionChecks.h"
 #import "ViewGestureController.h"
 #import "ViewSnapshotStore.h"
@@ -265,7 +266,7 @@ static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOve
 
     _WKRenderingProgressEvents _observedRenderingProgressEvents;
 
-    WebKit::WeakObjCPtr<id <_WKInputDelegate>> _inputDelegate;
+    WeakObjCPtr<id <_WKInputDelegate>> _inputDelegate;
 
 #if PLATFORM(IOS)
     RetainPtr<_WKRemoteObjectRegistry> _remoteObjectRegistry;
@@ -1457,7 +1458,7 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
 
         Class representationClass = [[_configuration _contentProviderRegistry] providerForMIMEType:mimeType];
         ASSERT(representationClass);
-        _customContentView = adoptNS([[representationClass alloc] web_initWithFrame:self.bounds webView:self]);
+        _customContentView = adoptNS([[representationClass alloc] web_initWithFrame:self.bounds webView:self mimeType:mimeType]);
         _customContentFixedOverlayView = adoptNS([[UIView alloc] initWithFrame:self.bounds]);
         [_customContentFixedOverlayView layer].name = @"CustomContentFixedOverlay";
         [_customContentFixedOverlayView setUserInteractionEnabled:NO];
@@ -5147,6 +5148,8 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
     if (![self usesStandardContentView] || !_hasCommittedLoadForMainFrame || CGRectIsEmpty(oldBounds) || oldUnobscuredContentRect.isEmpty()) {
         updateBlock();
+        if ([_customContentView respondsToSelector:@selector(web_beginAnimatedResize)])
+            [_customContentView web_beginAnimatedResize];
         return;
     }
 
@@ -5261,6 +5264,9 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (void)_endAnimatedResize
 {
     LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView " << _page->pageID() << " _endAnimatedResize:] " << " _dynamicViewportUpdateMode " << (int)_dynamicViewportUpdateMode);
+
+    if ([_customContentView respondsToSelector:@selector(web_endAnimatedResize)])
+        [_customContentView web_endAnimatedResize];
 
     if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::NotResizing)
         return;
@@ -6375,6 +6381,15 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 #endif
 }
 
+- (void)_setDefersLoadingForTesting:(BOOL)defersLoading
+{
+    _page->setDefersLoadingForTesting(defersLoading);
+}
+
+- (void)_denyNextUserMediaRequest
+{
+    WebKit::UserMediaProcessManager::singleton().denyNextUserMediaRequest();
+}
 @end
 
 

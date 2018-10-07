@@ -142,7 +142,7 @@ set(WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${ICU_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
-    ${SQLITE_INCLUDE_DIRS}
+    ${SQLITE_INCLUDE_DIR}
     ${ZLIB_INCLUDE_DIRS}
 )
 
@@ -826,6 +826,7 @@ set(WebCore_NON_SVG_IDL_FILES
     page/PerformanceObserverEntryList.idl
     page/PerformanceNavigation.idl
     page/PerformanceResourceTiming.idl
+    page/PerformanceServerTiming.idl
     page/PerformanceTiming.idl
     page/RemoteDOMWindow.idl
     page/Screen.idl
@@ -1176,6 +1177,7 @@ if (ENABLE_WEBGL)
         html/canvas/OESVertexArrayObject.cpp
         html/canvas/WebGL2RenderingContext.cpp
         html/canvas/WebGLBuffer.cpp
+        html/canvas/WebGLCompressedTextureASTC.cpp
         html/canvas/WebGLCompressedTextureATC.cpp
         html/canvas/WebGLCompressedTexturePVRTC.cpp
         html/canvas/WebGLCompressedTextureS3TC.cpp
@@ -1224,6 +1226,7 @@ if (ENABLE_WEBGL)
         html/canvas/WebGL2RenderingContext.idl
         html/canvas/WebGLActiveInfo.idl
         html/canvas/WebGLBuffer.idl
+        html/canvas/WebGLCompressedTextureASTC.idl
         html/canvas/WebGLCompressedTextureATC.idl
         html/canvas/WebGLCompressedTexturePVRTC.idl
         html/canvas/WebGLCompressedTextureS3TC.idl
@@ -1989,6 +1992,7 @@ endif ()
 # paths of WebCore.
 add_library(WebCoreHeaderInterface INTERFACE)
 target_include_directories(WebCoreHeaderInterface INTERFACE ${WebCore_INCLUDE_DIRECTORIES})
+target_include_directories(WebCoreHeaderInterface SYSTEM INTERFACE ${WebCore_SYSTEM_INCLUDE_DIRECTORIES})
 target_link_libraries(WebCoreHeaderInterface INTERFACE ${WebCore_LIBRARIES})
 
 if (MSVC)

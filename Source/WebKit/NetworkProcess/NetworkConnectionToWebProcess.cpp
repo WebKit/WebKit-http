@@ -249,7 +249,7 @@ void NetworkConnectionToWebProcess::scheduleResourceLoad(NetworkResourceLoadPara
     loader->start();
 }
 
-void NetworkConnectionToWebProcess::performSynchronousLoad(NetworkResourceLoadParameters&& loadParameters, Ref<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&& reply)
+void NetworkConnectionToWebProcess::performSynchronousLoad(NetworkResourceLoadParameters&& loadParameters, Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&& reply)
 {
     auto identifier = loadParameters.identifier;
     ASSERT(!m_networkResourceLoaders.contains(identifier));
@@ -266,7 +266,7 @@ void NetworkConnectionToWebProcess::loadPing(NetworkResourceLoadParameters&& loa
     };
 
     // PingLoad manages its own lifetime, deleting itself when its purpose has been fulfilled.
-    new PingLoad(WTFMove(loadParameters), WTFMove(completionHandler));
+    new PingLoad(WTFMove(loadParameters), *this, WTFMove(completionHandler));
 }
 
 void NetworkConnectionToWebProcess::didFinishPingLoad(uint64_t pingLoadIdentifier, const ResourceError& error, const ResourceResponse& response)
@@ -548,7 +548,7 @@ void NetworkConnectionToWebProcess::resetOriginAccessWhitelists()
 
 static bool networkActivityTrackingEnabled()
 {
-    return NetworkProcess::singleton().trackNetworkActivity();
+    return NetworkProcess::singleton().tracksResourceLoadMilestones();
 }
 
 std::optional<NetworkActivityTracker> NetworkConnectionToWebProcess::startTrackingResourceLoad(uint64_t pageID, ResourceLoadIdentifier resourceID, bool isMainResource)

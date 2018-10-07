@@ -30,6 +30,7 @@
 
 #include "FormData.h"
 #include "HTTPHeaderMap.h"
+#include "IntRect.h"
 #include "URL.h"
 #include "ResourceLoadPriority.h"
 
@@ -163,7 +164,7 @@ public:
     bool hiddenFromInspector() const { return m_hiddenFromInspector; }
     void setHiddenFromInspector(bool hiddenFromInspector) { m_hiddenFromInspector = hiddenFromInspector; }
 
-    enum class Requester { Unspecified, Main, XHR, Fetch, Media };
+    enum class Requester { Unspecified, Main, XHR, Fetch, Media, ImportScripts };
     Requester requester() const { return m_requester; }
     void setRequester(Requester requester) { m_requester = requester; }
 
@@ -171,8 +172,13 @@ public:
     String initiatorIdentifier() const { return m_initiatorIdentifier; }
     void setInitiatorIdentifier(const String& identifier) { m_initiatorIdentifier = identifier; }
 
+#if USE(SYSTEM_PREVIEW)
     WEBCORE_EXPORT bool isSystemPreview() const;
     WEBCORE_EXPORT void setSystemPreview(bool);
+
+    WEBCORE_EXPORT const IntRect& systemPreviewRect() const;
+    WEBCORE_EXPORT void setSystemPreviewRect(const IntRect&);
+#endif
 
 #if !PLATFORM(COCOA)
     bool encodingRequiresPlatformData() const { return true; }
@@ -233,7 +239,10 @@ protected:
     Requester m_requester { Requester::Unspecified };
     String m_initiatorIdentifier;
     String m_cachePartition { emptyString() };
+#if USE(SYSTEM_PREVIEW)
     bool m_isSystemPreview { false };
+    IntRect m_systemPreviewRect;
+#endif
 
 private:
     const ResourceRequest& asResourceRequest() const;

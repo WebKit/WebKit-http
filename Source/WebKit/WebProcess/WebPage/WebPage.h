@@ -50,6 +50,7 @@
 #include "WebUserContentController.h"
 #include <WebCore/ActivityState.h>
 #include <WebCore/DictionaryPopupInfo.h>
+#include <WebCore/DisabledAdaptations.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/HTMLMenuElement.h>
 #include <WebCore/HTMLMenuItemElement.h>
@@ -58,6 +59,7 @@
 #include <WebCore/Page.h>
 #include <WebCore/PageOverlay.h>
 #include <WebCore/PluginData.h>
+#include <WebCore/SecurityPolicyViolationEvent.h>
 #include <WebCore/UserActivity.h>
 #include <WebCore/UserContentTypes.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
@@ -309,6 +311,7 @@ public:
 
     void addConsoleMessage(uint64_t frameID, MessageSource, MessageLevel, const String&, uint64_t requestID = 0);
     void sendCSPViolationReport(uint64_t frameID, const WebCore::URL& reportURL, IPC::FormDataReference&&);
+    void enqueueSecurityPolicyViolationEvent(uint64_t frameID, WebCore::SecurityPolicyViolationEvent::Init&&);
 
     // -- Called by the DrawingArea.
     // FIXME: We could genericize these into a DrawingArea client interface. Would that be beneficial?
@@ -558,6 +561,7 @@ public:
     void elementDidBlur(WebCore::Node*);
     void resetAssistedNodeForFrame(WebFrame*);
 
+    void disabledAdaptationsDidChange(const OptionSet<WebCore::DisabledAdaptations>&);
     void viewportPropertiesDidChange(const WebCore::ViewportArguments&);
     void executeEditCommandWithCallback(const String&, const String& argument, CallbackID);
 
@@ -812,7 +816,7 @@ public:
 #endif
 
 #if PLATFORM(IOS)
-    void computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintInfo&, CallbackID, Ref<Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply>&&);
+    void computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintInfo&, CallbackID, Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply&&);
 #endif
 
 #if PLATFORM(GTK)

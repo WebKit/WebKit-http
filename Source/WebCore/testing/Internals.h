@@ -195,6 +195,9 @@ public:
     ExceptionOr<bool> pauseTransitionAtTimeOnElement(const String& propertyName, double pauseTime, Element&);
     ExceptionOr<bool> pauseTransitionAtTimeOnPseudoElement(const String& property, double pauseTime, Element&, const String& pseudoId);
 
+    // For animations testing, we need a way to get at pseudo elements.
+    ExceptionOr<RefPtr<Element>> pseudoElement(Element&, const String&);
+
     Node* treeScopeRootNode(Node&);
     Node* parentTreeScope(Node&);
 
@@ -470,6 +473,8 @@ public:
     ExceptionOr<bool> mediaElementHasCharacteristic(HTMLMediaElement&, const String&);
     void beginSimulatedHDCPError(HTMLMediaElement&);
     void endSimulatedHDCPError(HTMLMediaElement&);
+
+    bool elementShouldBufferData(HTMLMediaElement&);
 #endif
 
     bool isSelectPopupVisible(HTMLSelectElement&);
@@ -661,7 +666,19 @@ public:
     bool isSystemPreviewLink(Element&) const;
     bool isSystemPreviewImage(Element&) const;
 
+    String extraZoomModeAdaptationName() const;
+
     bool usingAppleInternalSDK() const;
+
+    struct NowPlayingState {
+        String title;
+        double duration;
+        double elapsedTime;
+        uint64_t uniqueIdentifier;
+        bool hasActiveSession;
+        bool registeredAsNowPlayingApplication;
+    };
+    ExceptionOr<NowPlayingState> nowPlayingState() const;
 
 private:
     explicit Internals(Document&);

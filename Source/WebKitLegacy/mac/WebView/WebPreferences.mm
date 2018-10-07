@@ -625,7 +625,7 @@ public:
         [NSNumber numberWithBool:YES], WebKitDataTransferItemsEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitCustomPasteboardDataEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitModernMediaControlsEnabledPreferenceKey,
-        [NSNumber numberWithBool:NO], WebKitCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey,
 
 #if ENABLE(WEBGL2)
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
@@ -634,6 +634,7 @@ public:
         [NSNumber numberWithBool:NO], WebKitWebGPUEnabledPreferenceKey,
 #endif
         [NSNumber numberWithBool:NO], WebKitCacheAPIEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitCrossOriginOptionsSupportEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitFetchAPIEnabledPreferenceKey,
 
 #if ENABLE(STREAMS_API)
@@ -683,6 +684,7 @@ public:
         @NO, WebKitAccessibilityObjectModelEnabledPreferenceKey,
         @NO, WebKitMediaCapabilitiesEnabledPreferenceKey,
         @NO, WebKitFetchAPIKeepAliveEnabledPreferenceKey,
+        @NO, WebKitServerTimingEnabledPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS)
@@ -3009,6 +3011,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitCacheAPIEnabledPreferenceKey];
 }
 
+- (BOOL)crossOriginOptionsSupportEnabled
+{
+    return [self _boolValueForKey:WebKitCrossOriginOptionsSupportEnabledPreferenceKey];
+}
+
+- (void)setCrossOriginOptionsSupportEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCrossOriginOptionsSupportEnabledPreferenceKey];
+}
+
 - (BOOL)fetchAPIEnabled
 {
     return [self _boolValueForKey:WebKitFetchAPIEnabledPreferenceKey];
@@ -3109,14 +3121,14 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitModernMediaControlsEnabledPreferenceKey];
 }
 
-- (BOOL)cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled
+- (BOOL)webAnimationsCSSIntegrationEnabled
 {
-    return [self _boolValueForKey:WebKitCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabledPreferenceKey];
+    return [self _boolValueForKey:WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey];
 }
 
-- (void)setCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled:(BOOL)flag
+- (void)setWebAnimationsCSSIntegrationEnabled:(BOOL)flag
 {
-    [self _setBoolValue:flag forKey:WebKitCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabledPreferenceKey];
+    [self _setBoolValue:flag forKey:WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey];
 }
 
 - (BOOL)intersectionObserverEnabled
@@ -3309,6 +3321,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setMediaCapabilitiesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitMediaCapabilitiesEnabledPreferenceKey];
+}
+
+- (BOOL)serverTimingEnabled
+{
+    return [self _boolValueForKey:WebKitServerTimingEnabledPreferenceKey];
+}
+
+- (void)setServerTimingEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitServerTimingEnabledPreferenceKey];
 }
 
 @end

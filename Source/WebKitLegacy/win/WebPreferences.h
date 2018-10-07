@@ -30,7 +30,7 @@
 #include <WebCore/BString.h>
 #include <wtf/RetainPtr.h>
 
-class WebPreferences : public IWebPreferences, public IWebPreferencesPrivate6 {
+class WebPreferences : public IWebPreferences, public IWebPreferencesPrivate7 {
 public:
     static WebPreferences* createInstance();
 protected:
@@ -240,8 +240,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setCustomElementsEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE modernMediaControlsEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setModernMediaControlsEnabled(BOOL);
-    virtual HRESULT STDMETHODCALLTYPE cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled(_Out_ BOOL*);
-    virtual HRESULT STDMETHODCALLTYPE setCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE webAnimationsCSSIntegrationEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setWebAnimationsCSSIntegrationEnabled(BOOL);
     
     // IWebPreferencesPrivate4
     virtual HRESULT STDMETHODCALLTYPE setApplicationId(BSTR);
@@ -275,6 +275,12 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setSpatialNavigationEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE menuItemElementEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setMenuItemElementEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE serverTimingEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setServerTimingEnabled(BOOL);
+
+    // IWebPreferencesPrivate7
+    virtual HRESULT STDMETHODCALLTYPE crossOriginOptionsSupportEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setCrossOriginOptionsSupportEnabled(BOOL);
 
     // WebPreferences
 

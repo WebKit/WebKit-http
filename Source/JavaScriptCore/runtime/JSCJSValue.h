@@ -39,6 +39,7 @@
 namespace JSC {
 
 class AssemblyHelpers;
+class JSBigInt;
 class ExecState;
 class JSCell;
 class JSValueSource;
@@ -217,9 +218,8 @@ public:
 
     // Querying the type.
     bool isEmpty() const;
-    bool isFunction() const;
-    bool isFunction(CallType&, CallData&) const;
-    bool isCallable(CallType&, CallData&) const;
+    bool isFunction(VM&) const;
+    bool isCallable(VM&, CallType&, CallData&) const;
     bool isConstructor() const;
     bool isConstructor(ConstructType&, ConstructData&) const;
     bool isUndefined() const;
@@ -257,6 +257,8 @@ public:
     // toNumber conversion is expected to be side effect free if an exception has
     // been set in the ExecState already.
     double toNumber(ExecState*) const;
+    
+    Variant<JSBigInt*, double> toNumeric(ExecState*) const;
 
     // toNumber conversion if it can be done without side effects.
     std::optional<double> toNumberFromPrimitive() const;

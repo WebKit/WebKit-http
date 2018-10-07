@@ -85,6 +85,7 @@
 #include "JSFixedArray.h"
 #include "JSFunction.h"
 #include "JSGlobalObjectFunctions.h"
+#include "JSImmutableButterfly.h"
 #include "JSInternalPromiseDeferred.h"
 #include "JSLock.h"
 #include "JSMap.h"
@@ -137,7 +138,6 @@
 #include "StrongInlines.h"
 #include "StructureInlines.h"
 #include "TestRunnerUtils.h"
-#include "ThreadLocalCacheInlines.h"
 #include "ThunkGenerators.h"
 #include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
@@ -354,9 +354,6 @@ VM::VM(VMType vmType, HeapType heapType)
     updateSoftReservedZoneSize(Options::softReservedZoneSize());
     setLastStackTop(stack.origin());
 
-    defaultThreadLocalCache = ThreadLocalCache::create(heap);
-    defaultThreadLocalCache->install(*this);
-
     // Need to be careful to keep everything consistent here
     JSLockHolder lock(this);
     AtomicStringTable* existingEntryAtomicStringTable = Thread::current().setCurrentAtomicStringTable(m_atomicStringTable);
@@ -382,6 +379,11 @@ VM::VM(VMType vmType, HeapType heapType)
     symbolStructure.set(*this, Symbol::createStructure(*this, 0, jsNull()));
     symbolTableStructure.set(*this, SymbolTable::createStructure(*this, 0, jsNull()));
     fixedArrayStructure.set(*this, JSFixedArray::createStructure(*this, 0, jsNull()));
+
+    immutableButterflyStructures[arrayIndexFromIndexingType(CopyOnWriteArrayWithInt32) - NumberOfIndexingShapes].set(*this, JSImmutableButterfly::createStructure(*this, 0, jsNull(), CopyOnWriteArrayWithInt32));
+    immutableButterflyStructures[arrayIndexFromIndexingType(CopyOnWriteArrayWithDouble) - NumberOfIndexingShapes].set(*this, JSImmutableButterfly::createStructure(*this, 0, jsNull(), CopyOnWriteArrayWithDouble));
+    immutableButterflyStructures[arrayIndexFromIndexingType(CopyOnWriteArrayWithContiguous) - NumberOfIndexingShapes].set(*this, JSImmutableButterfly::createStructure(*this, 0, jsNull(), CopyOnWriteArrayWithContiguous));
+
     sourceCodeStructure.set(*this, JSSourceCode::createStructure(*this, 0, jsNull()));
     scriptFetcherStructure.set(*this, JSScriptFetcher::createStructure(*this, 0, jsNull()));
     scriptFetchParametersStructure.set(*this, JSScriptFetchParameters::createStructure(*this, 0, jsNull()));
@@ -490,6 +492,9 @@ VM::VM(VMType vmType, HeapType heapType)
     }
 #endif
 
+    if (!canUseJIT())
+        noJITValueProfileSingleton = std::make_unique<ValueProfile>(0);
+
     VMInspector::instance().add(this);
 }
 
@@ -550,10 +555,6 @@ VM::~VM()
     m_apiLock->willDestroyVM(this);
     heap.lastChanceToFinalize();
     
-#if !USE(FAST_TLS_FOR_TLC)
-    ThreadLocalCache::destructor(threadLocalCacheData);
-#endif
-
     delete interpreter;
 #ifndef NDEBUG
     interpreter = reinterpret_cast<Interpreter*>(0xbbadbeef);
@@ -769,6 +770,16 @@ void VM::deleteAllCode(DeleteAllCodeEffort effort)
         heap.deleteAllUnlinkedCodeBlocks(effort);
         heap.reportAbandonedObjectGraph();
     });
+}
+
+void VM::shrinkFootprint()
+{
+    sanitizeStackForVM(this);
+    deleteAllCode(DeleteAllCodeIfNotCollecting);
+    heap.collectNow(Synchronousness::Sync);
+    WTF::releaseFastMallocFreeMemory();
+    // FIXME: Consider stopping various automatic threads here.
+    // https://bugs.webkit.org/show_bug.cgi?id=185447
 }
 
 SourceProviderCache* VM::addSourceProviderCache(SourceProvider* sourceProvider)
@@ -1030,7 +1041,7 @@ bool VM::enableTypeProfiler()
 {
     auto enableTypeProfiler = [this] () {
         this->m_typeProfiler = std::make_unique<TypeProfiler>();
-        this->m_typeProfilerLog = std::make_unique<TypeProfilerLog>();
+        this->m_typeProfilerLog = std::make_unique<TypeProfilerLog>(*this);
     };
 
     return enableProfilerWithRespectToCount(m_typeProfilerEnabledCount, enableTypeProfiler);

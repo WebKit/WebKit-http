@@ -41,7 +41,7 @@
 #include "Operations.h"
 #include "PutByIdStatus.h"
 #include "StringObject.h"
-
+#include <wtf/BooleanLattice.h>
 #include <wtf/CheckedArithmetic.h>
 
 namespace JSC { namespace DFG {
@@ -102,13 +102,27 @@ void AbstractInterpreter<AbstractStateType>::startExecuting()
 }
 
 template<typename AbstractStateType>
+class AbstractInterpreterExecuteEdgesFunc {
+public:
+    AbstractInterpreterExecuteEdgesFunc(AbstractInterpreter<AbstractStateType>& interpreter)
+        : m_interpreter(interpreter)
+    {
+    }
+    
+    // This func is manually written out so that we can put ALWAYS_INLINE on it.
+    ALWAYS_INLINE void operator()(Edge& edge) const
+    {
+        m_interpreter.filterEdgeByUse(edge);
+    }
+    
+private:
+    AbstractInterpreter<AbstractStateType>& m_interpreter;
+};
+
+template<typename AbstractStateType>
 void AbstractInterpreter<AbstractStateType>::executeEdges(Node* node)
 {
-    m_graph.doToChildren(
-        node,
-        [&] (Edge& edge) {
-            filterEdgeByUse(edge);
-        });
+    m_graph.doToChildren(node, AbstractInterpreterExecuteEdgesFunc<AbstractStateType>(*this));
 }
 
 template<typename AbstractStateType>
@@ -130,9 +144,21 @@ void AbstractInterpreter<AbstractStateType>::executeKnownEdgeTypes(Node* node)
 }
 
 template<typename AbstractStateType>
+ALWAYS_INLINE void AbstractInterpreter<AbstractStateType>::filterByType(Edge& edge, SpeculatedType type)
+{
+    AbstractValue& value = m_state.forNodeWithoutFastForward(edge);
+    if (value.isType(type)) {
+        m_state.setProofStatus(edge, IsProved);
+        return;
+    }
+    m_state.setProofStatus(edge, NeedsCheck);
+    m_state.fastForwardAndFilterUnproven(value, type);
+}
+
+template<typename AbstractStateType>
 void AbstractInterpreter<AbstractStateType>::verifyEdge(Node* node, Edge edge)
 {
-    if (!(forNode(edge).m_type & ~typeFilterFor(edge.useKind())))
+    if (!(m_state.forNodeWithoutFastForward(edge).m_type & ~typeFilterFor(edge.useKind())))
         return;
     
     DFG_CRASH(m_graph, node, toCString("Edge verification error: ", node, "->", edge, " was expected to have type ", SpeculationDump(typeFilterFor(edge.useKind())), " but has type ", SpeculationDump(forNode(edge).m_type), " (", forNode(edge).m_type, ")").data(), AbstractInterpreterInvalidType, node->op(), edge->op(), edge.useKind(), forNode(edge).m_type);
@@ -999,7 +1025,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         default:
             DFG_ASSERT(m_graph, node, node->child1().useKind() == UntypedUse, node->child1().useKind());
             clobberWorld();
-            setNonCellTypeForNode(node, SpecFullNumber);
+            setNonCellTypeForNode(node, SpecBytecodeNumber);
             break;
         }
         break;
@@ -1079,7 +1105,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         } else {
             DFG_ASSERT(m_graph, node, node->child1().useKind() == UntypedUse, node->child1().useKind());
             clobberWorld();
-            setNonCellTypeForNode(node, SpecFullNumber);
+            setNonCellTypeForNode(node, SpecBytecodeNumber);
         }
         break;
     }
@@ -1234,7 +1260,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     JSObject* object = asObject(child.value());
                     if (object->type() == JSFunctionType)
                         setConstant(node, jsBoolean(false));
-                    else if (!(object->inlineTypeFlags() & TypeOfShouldCallGetCallData))
+                    else if (!(object->inlineTypeFlags() & OverridesGetCallData))
                         setConstant(node, jsBoolean(!child.value().asCell()->structure()->masqueradesAsUndefined(m_codeBlock->globalObjectFor(node->origin.semantic))));
                     else {
                         // FIXME: This could just call getCallData.
@@ -1249,7 +1275,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     JSObject* object = asObject(child.value());
                     if (object->type() == JSFunctionType)
                         setConstant(node, jsBoolean(true));
-                    else if (!(object->inlineTypeFlags() & TypeOfShouldCallGetCallData))
+                    else if (!(object->inlineTypeFlags() & OverridesGetCallData))
                         setConstant(node, jsBoolean(false));
                     else {
                         // FIXME: This could just call getCallData.
@@ -2210,7 +2236,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
             
     case NewArray:
-        setForNode(node, 
+        ASSERT(node->indexingMode() == node->indexingType()); // Copy on write arrays should only be created by NewArrayBuffer.
+        setForNode(node,
             m_graph.globalObjectFor(node->origin.semantic)->arrayStructureForIndexingTypeDuringAllocation(node->indexingType()));
         break;
 
@@ -2246,8 +2273,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
         
     case NewArrayBuffer:
-        setForNode(node, 
-            m_graph.globalObjectFor(node->origin.semantic)->arrayStructureForIndexingTypeDuringAllocation(node->indexingType()));
+        setForNode(node,
+            m_graph.globalObjectFor(node->origin.semantic)->arrayStructureForIndexingTypeDuringAllocation(node->indexingMode()));
         break;
 
     case NewArrayWithSize:
@@ -3233,10 +3260,30 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         clobberWorld();
         break;
         
-    case In: {
+    case InById: {
         // FIXME: We can determine when the property definitely exists based on abstract
         // value information.
         clobberWorld();
+        filter(node->child1(), SpecObject);
+        setNonCellTypeForNode(node, SpecBoolean);
+        break;
+    }
+
+    case InByVal: {
+        AbstractValue& property = forNode(node->child2());
+        if (JSValue constant = property.value()) {
+            if (constant.isString()) {
+                JSString* string = asString(constant);
+                const StringImpl* impl = string->tryGetValueImpl();
+                if (impl && impl->isAtomic())
+                    m_state.setFoundConstants(true);
+            }
+        }
+
+        // FIXME: We can determine when the property definitely exists based on abstract
+        // value information.
+        clobberWorld();
+        filter(node->child1(), SpecObject);
         setNonCellTypeForNode(node, SpecBoolean);
         break;
     }
@@ -3337,7 +3384,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
             
     case InstanceOf:
-        // Sadly, we don't propagate the fact that we've done InstanceOf
+        clobberWorld();
         setNonCellTypeForNode(node, SpecBoolean);
         break;
 
@@ -3345,6 +3392,40 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         clobberWorld();
         setNonCellTypeForNode(node, SpecBoolean);
         break;
+        
+    case MatchStructure: {
+        AbstractValue base = forNode(node->child1());
+        RegisteredStructureSet baseSet;
+        
+        BooleanLattice result = BooleanLattice::Bottom;
+        for (MatchStructureVariant& variant : node->matchStructureData().variants) {
+            RegisteredStructure structure = variant.structure;
+            if (!base.contains(structure)) {
+                m_state.setFoundConstants(true);
+                continue;
+            }
+            
+            baseSet.add(structure);
+            result = leastUpperBoundOfBooleanLattices(
+                result, variant.result ? BooleanLattice::True : BooleanLattice::False);
+        }
+        
+        if (forNode(node->child1()).changeStructure(m_graph, baseSet) == Contradiction)
+            m_state.setIsValid(false);
+        
+        switch (result) {
+        case BooleanLattice::False:
+            setConstant(node, jsBoolean(false));
+            break;
+        case BooleanLattice::True:
+            setConstant(node, jsBoolean(true));
+            break;
+        default:
+            setNonCellTypeForNode(node, SpecBoolean);
+            break;
+        }
+        break;
+    }
             
     case Phi:
         RELEASE_ASSERT(m_graph.m_form == SSA);
@@ -3411,7 +3492,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case CountExecution:
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
-    case CheckTypeInfoFlags:
     case SuperSamplerBegin:
     case SuperSamplerEnd:
     case CheckTierUpAndOSREnter:
@@ -3419,6 +3499,43 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case ZombieHint:
     case ExitOK:
         break;
+
+    case CheckTypeInfoFlags: {
+        const AbstractValue& abstractValue = forNode(node->child1());
+        unsigned bits = node->typeInfoOperand();
+        ASSERT(bits);
+        if (bits == ImplementsDefaultHasInstance) {
+            if (abstractValue.m_type == SpecFunctionWithDefaultHasInstance) {
+                m_state.setFoundConstants(true);
+                break;
+            }
+        }
+
+        if (JSValue value = abstractValue.value()) {
+            if (value.isCell()) {
+                // This works because if we see a cell here, we know it's fully constructed
+                // and we can read its inline type info flags. These flags don't change over the
+                // object's lifetime.
+                if ((value.asCell()->inlineTypeFlags() & bits) == bits) {
+                    m_state.setFoundConstants(true);
+                    break;
+                }
+            }
+        }
+
+        if (abstractValue.m_structure.isFinite()) {
+            bool ok = true;
+            abstractValue.m_structure.forEach([&] (RegisteredStructure structure) {
+                ok &= (structure->typeInfo().inlineTypeFlags() & bits) == bits;
+            });
+            if (ok) {
+                m_state.setFoundConstants(true);
+                break;
+            }
+        }
+
+        break;
+    }
 
     case ParseInt: {
         AbstractValue value = forNode(node->child1());
@@ -3712,11 +3829,13 @@ void AbstractInterpreter<AbstractStateType>::executeDoubleUnaryOpEffects(Node* n
         setConstant(node, jsDoubleNumber(equivalentFunction(*number)));
         return;
     }
-    SpeculatedType type = SpecFullNumber;
+    SpeculatedType type;
     if (node->child1().useKind() == DoubleRepUse)
         type = typeOfDoubleUnaryOp(forNode(node->child1()).m_type);
-    else
+    else {
         clobberWorld();
+        type = SpecBytecodeNumber;
+    }
     setNonCellTypeForNode(node, type);
 }
 

@@ -122,6 +122,7 @@
 #include "MediaQueryList.h"
 #include "MediaQueryMatcher.h"
 #include "MessageEvent.h"
+#include "Microtasks.h"
 #include "MouseEventWithHitTestResults.h"
 #include "MutationEvent.h"
 #include "NameNodeList.h"
@@ -2228,6 +2229,7 @@ void Document::didBecomeCurrentDocumentInFrame()
     if (!hasLivingRenderTree())
         createRenderTree();
 
+    dispatchDisabledAdaptationsDidChangeForMainFrame();
     updateViewportArguments();
 
     // FIXME: Doing this only for the main frame is insufficient.
@@ -2244,14 +2246,14 @@ void Document::didBecomeCurrentDocumentInFrame()
     // be out of sync if the DOM suspension state changed while the document was not in the frame (possibly in the
     // page cache, or simply newly created).
     if (m_frame->activeDOMObjectsAndAnimationsSuspended()) {
-        if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+        if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
             timeline().suspendAnimations();
         else
             m_frame->animation().suspendAnimationsForDocument(this);
         suspendScheduledTasks(ActiveDOMObject::PageWillBeSuspended);
     } else {
         resumeScheduledTasks(ActiveDOMObject::PageWillBeSuspended);
-        if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+        if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
             timeline().resumeAnimations();
         else
             m_frame->animation().resumeAnimationsForDocument(this);
@@ -3172,6 +3174,17 @@ bool Document::canNavigate(Frame* targetFrame)
     if (!targetFrame)
         return true;
 
+    if (m_frame != targetFrame) {
+        auto sourceCrossOriginOptions = m_frame->window() ? m_frame->window()->crossOriginOptions() : CrossOriginOptions::Allow;
+        auto destinationCrossOriginOptions = targetFrame->window() ? targetFrame->window()->crossOriginOptions() : CrossOriginOptions::Allow;
+        if (sourceCrossOriginOptions != CrossOriginOptions::Allow || destinationCrossOriginOptions != CrossOriginOptions::Allow) {
+            if (m_frame->document() && targetFrame->document() && !m_frame->document()->securityOrigin().canAccess(targetFrame->document()->securityOrigin())) {
+                printNavigationErrorMessage(targetFrame, url(), ASCIILiteral("Navigation was not allowed due to Cross-Origin-Options header."));
+                return false;
+            }
+        }
+    }
+
     // Cases (i), (ii) and (iii) pass the tests from the specifications but might not pass the "security origin" tests.
 
     // i. A frame can navigate its top ancestor when its 'allow-top-navigation' flag is set (sometimes known as 'frame-busting').
@@ -3251,23 +3264,6 @@ bool Document::canNavigate(Frame* targetFrame)
     return false;
 }
 
-Frame* Document::findUnsafeParentScrollPropagationBoundary()
-{
-    Frame* currentFrame = m_frame;
-    if (!currentFrame)
-        return nullptr;
-
-    Frame* ancestorFrame = currentFrame->tree().parent();
-
-    while (ancestorFrame) {
-        if (!ancestorFrame->document()->securityOrigin().canAccess(securityOrigin()))
-            return currentFrame;
-        currentFrame = ancestorFrame;
-        ancestorFrame = ancestorFrame->tree().parent();
-    }
-    return nullptr;
-}
-
 void Document::didRemoveAllPendingStylesheet()
 {
     if (auto* parser = scriptableDocumentParser())
@@ -3332,7 +3328,6 @@ void Document::processHttpEquiv(const String& equiv, const String& content, bool
         // For more info, see the test at:
         // http://www.hixie.ch/tests/evil/css/import/main/preferred.html
         // -dwh
-        styleScope().setSelectedStylesheetSetName(content);
         styleScope().setPreferredStylesheetSetName(content);
         break;
 
@@ -3397,6 +3392,27 @@ void Document::processHttpEquiv(const String& equiv, const String& content, bool
     default:
         break;
     }
+}
+
+void Document::processDisabledAdaptations(const String& disabledAdaptationsString)
+{
+    auto disabledAdaptations = parseDisabledAdaptations(disabledAdaptationsString);
+    if (m_disabledAdaptations == disabledAdaptations)
+        return;
+
+    m_disabledAdaptations = disabledAdaptations;
+    dispatchDisabledAdaptationsDidChangeForMainFrame();
+}
+
+void Document::dispatchDisabledAdaptationsDidChangeForMainFrame()
+{
+    if (!frame()->isMainFrame())
+        return;
+
+    if (!page())
+        return;
+
+    page()->chrome().dispatchDisabledAdaptationsDidChange(m_disabledAdaptations);
 }
 
 void Document::processViewport(const String& features, ViewportArguments::Type origin)
@@ -3623,21 +3639,6 @@ StyleSheetList& Document::styleSheets()
     if (!m_styleSheetList)
         m_styleSheetList = StyleSheetList::create(this);
     return *m_styleSheetList;
-}
-
-String Document::preferredStylesheetSet() const
-{
-    return styleScope().preferredStylesheetSetName();
-}
-
-String Document::selectedStylesheetSet() const
-{
-    return styleScope().selectedStylesheetSetName();
-}
-
-void Document::setSelectedStylesheetSet(const String& aString)
-{
-    styleScope().setSelectedStylesheetSetName(aString);
 }
 
 void Document::evaluateMediaQueryList()
@@ -4932,7 +4933,7 @@ void Document::resume(ActiveDOMObject::ReasonForSuspension reason)
     ASSERT(m_frame);
     m_frame->loader().client().dispatchDidBecomeFrameset(isFrameSet());
 
-    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
         timeline().resumeAnimations();
     else
         m_frame->animation().resumeAnimationsForDocument(this);
@@ -5922,6 +5923,11 @@ void Document::dispatchPageshowEvent(PageshowEventPersistence persisted)
 {
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=36334 Pageshow event needs to fire asynchronously.
     dispatchWindowEvent(PageTransitionEvent::create(eventNames().pageshowEvent, persisted), this);
+}
+
+void Document::enqueueSecurityPolicyViolationEvent(SecurityPolicyViolationEvent::Init&& eventInit)
+{
+    enqueueDocumentEvent(SecurityPolicyViolationEvent::create(eventNames().securitypolicyviolationEvent, WTFMove(eventInit), Event::IsTrusted::Yes));
 }
 
 void Document::enqueueHashchangeEvent(const String& oldURL, const String& newURL)
@@ -7279,13 +7285,13 @@ bool Document::shouldEnforceQuickLookSandbox() const
 void Document::applyQuickLookSandbox()
 {
     const URL& responseURL = m_frame->loader().activeDocumentLoader()->responseURL();
-    ASSERT(responseURL.protocolIs(QLPreviewProtocol()));
+    ASSERT(responseURL.protocolIs(QLPreviewProtocol));
 
     auto securityOrigin = SecurityOrigin::create(responseURL);
     securityOrigin->setStorageBlockingPolicy(SecurityOrigin::BlockAllStorage);
     setSecurityOriginPolicy(SecurityOriginPolicy::create(WTFMove(securityOrigin)));
 
-    static NeverDestroyed<String> quickLookCSP = makeString("default-src ", QLPreviewProtocol(), ": 'unsafe-inline'; base-uri 'none'; sandbox allow-same-origin allow-scripts");
+    static NeverDestroyed<String> quickLookCSP = makeString("default-src ", QLPreviewProtocol, ": 'unsafe-inline'; base-uri 'none'; sandbox allow-same-origin allow-scripts");
     RELEASE_ASSERT(contentSecurityPolicy());
     // The sandbox directive is only allowed if the policy is from an HTTP header.
     contentSecurityPolicy()->didReceiveHeader(quickLookCSP, ContentSecurityPolicyHeaderType::Enforce, ContentSecurityPolicy::PolicyFrom::HTTPHeader, referrer());
@@ -7613,20 +7619,38 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& promise)
         return;
     }
 
-    page->chrome().client().requestStorageAccess(WTFMove(iframeHost), WTFMove(topHost), frameID.value(), pageID.value(), [documentReference = m_weakFactory.createWeakPtr(*this), promise = WTFMove(promise)] (bool wasGranted) {
+    page->chrome().client().requestStorageAccess(WTFMove(iframeHost), WTFMove(topHost), frameID.value(), pageID.value(), [documentReference = m_weakFactory.createWeakPtr(*this), promise = WTFMove(promise)] (bool wasGranted) mutable {
         Document* document = documentReference.get();
         if (!document)
             return;
         
         if (wasGranted) {
             document->setHasFrameSpecificStorageAccess(true);
+            MicrotaskQueue::mainThreadQueue().append(std::make_unique<VoidMicrotask>([documentReference = document->m_weakFactory.createWeakPtr(*document)] () {
+                if (auto* document = documentReference.get())
+                    document->enableTemporaryTimeUserGesture();
+            }));
             promise->resolve();
+            MicrotaskQueue::mainThreadQueue().append(std::make_unique<VoidMicrotask>([documentReference = WTFMove(documentReference)] () {
+                if (auto* document = documentReference.get())
+                    document->consumeTemporaryTimeUserGesture();
+            }));
         } else
             promise->reject();
     });
 #else
     promise->reject();
 #endif
+}
+
+void Document::enableTemporaryTimeUserGesture()
+{
+    m_temporaryUserGesture = std::make_unique<UserGestureIndicator>(ProcessingUserGesture, this);
+}
+
+void Document::consumeTemporaryTimeUserGesture()
+{
+    m_temporaryUserGesture = nullptr;
 }
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)

@@ -51,6 +51,7 @@
 #include "JSCJSValue.h"
 #include "JSFixedArray.h"
 #include "JSGlobalObjectFunctions.h"
+#include "JSImmutableButterfly.h"
 #include "JSLexicalEnvironment.h"
 #include "JSPropertyNameEnumerator.h"
 #include "JSString.h"
@@ -65,6 +66,7 @@
 #include "ThunkGenerators.h"
 #include "TypeProfilerLog.h"
 #include <wtf/StringPrintStream.h>
+#include <wtf/Variant.h>
 
 namespace JSC {
 
@@ -95,6 +97,7 @@ namespace JSC {
 #define OP_C(index) (exec->r(pc[index].u.operand))
 
 #define GET(operand) (exec->uncheckedR(operand))
+#define GET_C(operand) (exec->r(operand))
 
 #define RETURN_TWO(first, second) do {       \
         return encodeResult(first, second);        \
@@ -488,11 +491,8 @@ SLOW_PATH_DECL(slow_path_mul)
     BEGIN();
     JSValue left = OP_C(2).jsValue();
     JSValue right = OP_C(3).jsValue();
-    double a = left.toNumber(exec);
-    if (UNLIKELY(throwScope.exception()))
-        RETURN(JSValue());
-    double b = right.toNumber(exec);
-    JSValue result = jsNumber(a * b);
+    JSValue result = jsMul(exec, left, right);
+    CHECK_EXCEPTION();
     RETURN_WITH_PROFILING(result, {
         updateArithProfileForBinaryArithOp(exec, pc, result, left, right);
     });
@@ -518,12 +518,25 @@ SLOW_PATH_DECL(slow_path_div)
     BEGIN();
     JSValue left = OP_C(2).jsValue();
     JSValue right = OP_C(3).jsValue();
-    double a = left.toNumber(exec);
-    if (UNLIKELY(throwScope.exception()))
-        RETURN(JSValue());
-    double b = right.toNumber(exec);
-    if (UNLIKELY(throwScope.exception()))
-        RETURN(JSValue());
+    auto leftNumeric = left.toNumeric(exec);
+    CHECK_EXCEPTION();
+    auto rightNumeric = right.toNumeric(exec);
+    CHECK_EXCEPTION();
+
+    if (WTF::holds_alternative<JSBigInt*>(leftNumeric) || WTF::holds_alternative<JSBigInt*>(rightNumeric)) {
+        if (WTF::holds_alternative<JSBigInt*>(leftNumeric) && WTF::holds_alternative<JSBigInt*>(rightNumeric)) {
+            JSValue result(JSBigInt::divide(exec, WTF::get<JSBigInt*>(leftNumeric), WTF::get<JSBigInt*>(rightNumeric)));
+            CHECK_EXCEPTION();
+            RETURN_WITH_PROFILING(result, {
+                updateArithProfileForBinaryArithOp(exec, pc, result, left, right);
+            });
+        }
+
+        THROW(createTypeError(exec, "Invalid mix of BigInt and other type in division."));
+    }
+
+    double a = WTF::get<double>(leftNumeric);
+    double b = WTF::get<double>(rightNumeric);
     JSValue result = jsNumber(a / b);
     RETURN_WITH_PROFILING(result, {
         updateArithProfileForBinaryArithOp(exec, pc, result, left, right);
@@ -637,10 +650,21 @@ SLOW_PATH_DECL(slow_path_is_function)
     RETURN(jsBoolean(jsIsFunctionType(OP_C(2).jsValue())));
 }
 
-SLOW_PATH_DECL(slow_path_in)
+SLOW_PATH_DECL(slow_path_in_by_val)
 {
     BEGIN();
-    RETURN(jsBoolean(CommonSlowPaths::opIn(exec, OP_C(2).jsValue(), OP_C(3).jsValue(), pc[4].u.arrayProfile)));
+    RETURN(jsBoolean(CommonSlowPaths::opInByVal(exec, OP_C(2).jsValue(), OP_C(3).jsValue(), pc[4].u.arrayProfile)));
+}
+
+SLOW_PATH_DECL(slow_path_in_by_id)
+{
+    BEGIN();
+
+    JSValue baseValue = OP_C(2).jsValue();
+    if (!baseValue.isObject())
+        THROW(createInvalidInParameterError(exec, baseValue));
+
+    RETURN(jsBoolean(asObject(baseValue)->hasProperty(exec, exec->codeBlock()->identifier(pc[3].u.operand))));
 }
 
 SLOW_PATH_DECL(slow_path_del_by_val)
@@ -1071,8 +1095,34 @@ SLOW_PATH_DECL(slow_path_new_array_with_spread)
 SLOW_PATH_DECL(slow_path_new_array_buffer)
 {
     BEGIN();
-    auto* fixedArray = jsCast<JSFixedArray*>(OP_C(2).jsValue());
-    RETURN(constructArray(exec, pc[3].u.arrayAllocationProfile, fixedArray->values(), fixedArray->length()));
+    auto* newArrayBuffer = bitwise_cast<OpNewArrayBuffer*>(pc);
+    ASSERT(exec->codeBlock()->isConstantRegisterIndex(newArrayBuffer->immutableButterfly()));
+    JSImmutableButterfly* immutableButterfly = bitwise_cast<JSImmutableButterfly*>(GET_C(newArrayBuffer->immutableButterfly()).jsValue().asCell());
+    auto* profile = newArrayBuffer->profile();
+
+    IndexingType indexingMode = profile->selectIndexingType();
+    Structure* structure = exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(indexingMode);
+    ASSERT(isCopyOnWrite(indexingMode));
+    ASSERT(!structure->outOfLineCapacity());
+
+    if (UNLIKELY(immutableButterfly->indexingMode() != indexingMode)) {
+        auto* newButterfly = JSImmutableButterfly::create(vm, indexingMode, immutableButterfly->length());
+        for (unsigned i = 0; i < immutableButterfly->length(); ++i)
+            newButterfly->setIndex(vm, i, immutableButterfly->get(i));
+        immutableButterfly = newButterfly;
+        CodeBlock* codeBlock = exec->codeBlock();
+
+        // FIXME: This is kinda gross and only works because we can't inline new_array_bufffer in the baseline.
+        // We also cannot allocate a new butterfly from compilation threads since it's invalid to allocate cells from
+        // a compilation thread.
+        WTF::storeStoreFence();
+        codeBlock->constantRegister(newArrayBuffer->immutableButterfly()).set(vm, codeBlock, immutableButterfly);
+        WTF::storeStoreFence();
+    }
+
+    JSArray* result = CommonSlowPaths::allocateNewArrayBuffer(vm, structure, immutableButterfly);
+    ASSERT(isCopyOnWrite(result->indexingMode()) || exec->lexicalGlobalObject()->isHavingABadTime());
+    RETURN(result);
 }
 
 SLOW_PATH_DECL(slow_path_spread)

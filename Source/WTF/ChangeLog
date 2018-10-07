@@ -1,3 +1,284 @@
+2018-05-23  Michael Saboff  <msaboff@apple.com>
+
+        Date.parse() doesn't properly handle input outside of ES Spec limits
+        https://bugs.webkit.org/show_bug.cgi?id=185868
+
+        Reviewed by Mark Lam.
+
+        Clamped date creation to +/-100,000,000 days relative to midnight at the beginning
+        of 01 January, 1970 UTC as per ecma262/#sec-time-values-and-time-range and
+        ecma262/#sec-date-time-string-format.
+
+        * wtf/DateMath.cpp:
+        (WTF::ymdhmsToSeconds):
+        (WTF::parseES5DateFromNullTerminatedCharacters):
+
+2018-05-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Prohibit shrinking the FastBitVector
+        https://bugs.webkit.org/show_bug.cgi?id=181020
+
+        Reviewed by Oliver Hunt.
+
+        Prohibit shrinking the FastBitVector. It's not prepared for this and the current usage does
+        not require it.
+
+        * wtf/FastBitVector.cpp:
+        (WTF::FastBitVectorWordOwner::resizeSlow):
+
+2018-05-22  Mark Lam  <mark.lam@apple.com>
+
+        StringImpl utf8 conversion should not fail silently.
+        https://bugs.webkit.org/show_bug.cgi?id=185888
+        <rdar://problem/40464506>
+
+        Reviewed by Filip Pizlo.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PrintStream.cpp:
+        (WTF::printExpectedCStringHelper):
+        (WTF::printInternal):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::utf8Impl):
+        (WTF::StringImpl::utf8ForCharacters):
+        (WTF::StringImpl::tryUtf8ForRange const):
+        (WTF::StringImpl::tryUtf8 const):
+        (WTF::StringImpl::utf8 const):
+        (WTF::StringImpl::utf8ForRange const): Deleted.
+        * wtf/text/StringImpl.h:
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::tryUtf8 const):
+        (WTF::StringView::utf8 const):
+        * wtf/text/StringView.h:
+        * wtf/text/UTF8ConversionError.h: Added.
+        * wtf/text/WTFString.cpp:
+        (WTF::String::tryUtf8 const):
+        (WTF::String::utf8 const):
+        * wtf/text/WTFString.h:
+
+2018-05-22  Chris Dumez  <cdumez@apple.com>
+
+        Regression(AsyncPolicyDelegates): Box.app login Window is blank
+        https://bugs.webkit.org/show_bug.cgi?id=185832
+        <rdar://problem/40307871>
+
+        Reviewed by Geoffrey Garen.
+
+        Moved WeakObjCPtr.h from WebKit2 to WTF with RetainPtr.h, so that it can be used
+        in WebKitLegacy code.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/WeakObjCPtr.h: Renamed from Source/WebKit/Shared/mac/WeakObjCPtr.h.
+
+2018-05-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Get rid of TLCs
+        https://bugs.webkit.org/show_bug.cgi?id=185846
+
+        Rubber stamped by Geoffrey Garen.
+
+        * wtf/Platform.h:
+
+2018-05-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r232052.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Use more C++17"
+        https://bugs.webkit.org/show_bug.cgi?id=185176
+        https://trac.webkit.org/changeset/232052
+
+2018-05-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use more C++17
+        https://bugs.webkit.org/show_bug.cgi?id=185176
+
+        Reviewed by JF Bastien.
+
+        * Configurations/Base.xcconfig:
+        * wtf/StdLibExtras.h:
+
+2018-05-18  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should inline InstanceOf ICs
+        https://bugs.webkit.org/show_bug.cgi?id=185695
+
+        Reviewed by Yusuke Suzuki.
+        
+        I found myself needing a way to represent bottom/false/true/top, so I created it.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BooleanLattice.h: Added.
+        (WTF::lubBooleanLattice):
+        (WTF::printInternal):
+        * wtf/CMakeLists.txt:
+
+2018-05-17  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Convert CertificateInfo into Credential in UI Process instead of Networking Process
+        https://bugs.webkit.org/show_bug.cgi?id=185662
+        <rdar://problem/40275561>
+
+        Reviewed by Alex Christensen.
+
+        Remove marco HAVE_SEC_IDENTITY since it is no longer useful.
+
+        * wtf/Platform.h:
+
+2018-05-17  Zalan Bujtas  <zalan@apple.com>
+
+        Add ASSERT_NOT_IMPLEMENTED_YET() macro
+        https://bugs.webkit.org/show_bug.cgi?id=185713
+
+        Reviewed by Antti Koivisto.
+
+        To mark unimplemented code paths.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2018-05-16  Andy VanWagoner  <andy@vanwagoner.family>
+
+        Add support for Intl NumberFormat formatToParts
+        https://bugs.webkit.org/show_bug.cgi?id=185375
+
+        Reviewed by Yusuke Suzuki.
+
+        Add flag for NumberFormat formatToParts.
+
+        * wtf/FeatureDefines.h:
+
+2018-05-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, follow-up after r231762
+        https://bugs.webkit.org/show_bug.cgi?id=185589
+
+        Addresses darin's suggestions to improve timeClip.
+
+        * wtf/DateMath.cpp:
+        (WTF::timeClip):
+
+2018-05-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Win] Use C++17 in MSVC
+        https://bugs.webkit.org/show_bug.cgi?id=185232
+
+        Reviewed by Alex Christensen.
+
+        Disable some WebKit defined C++17 features for MSVC.
+
+        * wtf/StdLibExtras.h:
+
+2018-05-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] timeClip(-0) should produce +0
+        https://bugs.webkit.org/show_bug.cgi?id=185589
+
+        Reviewed by Saam Barati.
+
+        According to the spec[1], timeClip(-0) should produce +0.
+        We achieve this by adding 0.0 to the result of trunc(t).
+
+        [1]: https://tc39.github.io/ecma262/#sec-timeclip
+
+        * wtf/DateMath.cpp:
+        (WTF::timeClip):
+
+2018-05-13  Geoffrey Garen  <ggaren@apple.com>
+
+        Simplified Mach exception handling
+        https://bugs.webkit.org/show_bug.cgi?id=185595
+
+        Reviewed by Keith Miller.
+
+        * wtf/threads/Signals.cpp:
+        (WTF::startMachExceptionHandlerThread): Use mach_msg_server_once instead
+        of duplicating its functionality. Separate error handling logic from
+        program logic to help program logic stand out. Use
+        DISPATCH_TARGET_QUEUE_* instead of explicitly fetching a queue.
+
+        Also, we don't need the high priority queue. The kernel donates a
+        priority voucher from the exception thread to the receiver thread, and
+        mach_msg_server_once takes care to forward that voucher.
+
+2018-05-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] REGRESSION(r231170) Build broken with Clang 5.0
+        https://bugs.webkit.org/show_bug.cgi?id=185198
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Compiler.h:
+        * wtf/Forward.h: Delete the std::optional forward declaration that is
+        potentially incompatible with definition provided by the standard library.
+        * wtf/Hasher.h:
+        * wtf/StdLibExtras.h: In addition to the remaining C++14 configurations,
+        also use custom std::in_place_t implementation when compiling with
+        libstdc++ 6.x, which doesn't provide its own.
+
+2018-05-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Disable pointer poisoning
+        https://bugs.webkit.org/show_bug.cgi?id=185586
+
+        Reviewed by Yusuke Suzuki.
+        
+        This seems like a 0.3% speed-up on microbenchmarks. It seems like it may be a small speed-up on
+        other tests, too.
+
+        * wtf/Platform.h:
+
+2018-05-11  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (async policy delegate): Revoking an object URL immediately after triggering download breaks file download
+        https://bugs.webkit.org/show_bug.cgi?id=185531
+        <rdar://problem/39909589>
+
+        Reviewed by Geoffrey Garen.
+
+        Add a default constructor for CompletionHandlerCallingScope, for convenience.
+
+        * wtf/CompletionHandler.h:
+
+2018-05-11  Saam Barati  <sbarati@apple.com>
+
+        Don't allocate value profiles when the JIT is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=185525
+
+        Reviewed by Michael Saboff.
+
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::RefCountedArray):
+
+2018-05-10  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build after r231393
+        https://bugs.webkit.org/show_bug.cgi?id=185519
+        <rdar://problem/40131741>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/Platform.h:
+
+2018-05-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Build cleanly with GCC 8 and ICU 60
+        https://bugs.webkit.org/show_bug.cgi?id=185462
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * wtf/HashTable.h:
+        (WTF::HashTableBucketInitializer<true>::initialize): Since -Wclass-memaccess warning. This
+        is probably safe enough, since it's for an empty bucket.
+        * wtf/StdLibExtras.h:
+        (WTF::bitwise_cast): Silence -Wclass-memaccess as we use type traits to ensure safety here.
+        * wtf/Vector.h: Ditto, all uses are safe.
+        * wtf/glib/WTFGType.h: Silence -Wcast-function-type.
+
 2018-05-09  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [ARMv7] Drop ARMv7 disassembler in favor of capstone

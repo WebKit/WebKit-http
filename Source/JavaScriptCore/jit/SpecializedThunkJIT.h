@@ -65,12 +65,10 @@ namespace JSC {
             m_failures.append(emitLoadJSCell(src, dst));
         }
         
-        void loadJSStringArgument(VM& vm, int argument, RegisterID dst)
+        void loadJSStringArgument(int argument, RegisterID dst)
         {
             loadCellArgument(argument, dst);
-            m_failures.append(branchStructure(NotEqual, 
-                Address(dst, JSCell::structureIDOffset()), 
-                vm.stringStructure.get()));
+            m_failures.append(branchIfNotString(dst));
         }
         
         void loadArgumentWithSpecificClass(const ClassInfo* classInfo, int argument, RegisterID dst, RegisterID scratch)
@@ -135,7 +133,7 @@ namespace JSC {
             Jump lowNonZero = branchTestPtr(NonZero, regT1);
             Jump highNonZero = branchTestPtr(NonZero, regT0);
             move(TrustedImm32(0), regT0);
-            move(TrustedImm32(Int32Tag), regT1);
+            move(TrustedImm32(JSValue::Int32Tag), regT1);
             lowNonZero.link(this);
             highNonZero.link(this);
 #endif

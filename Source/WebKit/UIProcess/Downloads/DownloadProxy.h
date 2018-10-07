@@ -41,6 +41,7 @@ class Data;
 
 namespace WebCore {
 class AuthenticationChallenge;
+class IntRect;
 class ProtectionSpace;
 class ResourceError;
 class ResourceResponse;
@@ -80,6 +81,20 @@ public:
     void setWasUserInitiated(bool value) { m_wasUserInitiated = value; }
     bool wasUserInitiated() const { return m_wasUserInitiated; }
 
+    String destinationFilename() const { return m_destinationFilename; }
+    void setDestinationFilename(const String& d) { m_destinationFilename = d; }
+
+    uint64_t expectedContentLength() const { return m_expectedContentLength; }
+    void setExpectedContentLength(uint64_t expectedContentLength) { m_expectedContentLength = expectedContentLength; }
+
+    uint64_t bytesLoaded() const { return m_bytesLoaded; }
+    void setBytesLoaded(uint64_t bytesLoaded) { m_bytesLoaded = bytesLoaded; }
+
+#if USE(SYSTEM_PREVIEW)
+    bool isSystemPreviewDownload() const { return request().isSystemPreview(); }
+    const WebCore::IntRect& systemPreviewDownloadRect() const { return request().systemPreviewRect(); }
+#endif
+
 private:
     explicit DownloadProxy(DownloadProxyMap&, WebProcessPool&, const WebCore::ResourceRequest&);
 
@@ -106,6 +121,9 @@ private:
     RefPtr<API::Data> m_resumeData;
     WebCore::ResourceRequest m_request;
     String m_suggestedFilename;
+    String m_destinationFilename;
+    uint64_t m_expectedContentLength { 0 };
+    uint64_t m_bytesLoaded { 0 };
 
     WeakPtr<WebPageProxy> m_originatingPage;
     Vector<WebCore::URL> m_redirectChain;

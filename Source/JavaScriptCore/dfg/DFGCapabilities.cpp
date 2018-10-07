@@ -164,6 +164,8 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_put_by_val_direct:
     case op_try_get_by_id:
     case op_get_by_id:
+    case op_get_by_id_proto_load:
+    case op_get_by_id_unset:
     case op_get_by_id_with_this:
     case op_get_by_id_direct:
     case op_get_by_val_with_this:
@@ -234,7 +236,8 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_to_object:
     case op_switch_imm:
     case op_switch_char:
-    case op_in:
+    case op_in_by_val:
+    case op_in_by_id:
     case op_get_scope:
     case op_get_from_scope:
     case op_get_enumerable_length:

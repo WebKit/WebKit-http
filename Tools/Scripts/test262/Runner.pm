@@ -41,12 +41,7 @@ use Cwd qw(abs_path);
 use FindBin;
 use Env qw(DYLD_FRAMEWORK_PATH);
 use Config;
-
-my $podIsAvailable;
-if  (eval {require Pod::Usage; 1;}) {
-    Pod::Usage->import();
-    $podIsAvailable = 1;
-}
+use Time::HiRes qw(time);
 
 my $Bin;
 BEGIN {
@@ -58,6 +53,7 @@ BEGIN {
     unshift @INC, "$Bin/lib";
     unshift @INC, "$Bin/local/lib/perl5";
     unshift @INC, "$Bin/local/lib/perl5/$Config{archname}";
+    unshift @INC, "$Bin/..";
 
     $ENV{LOAD_ROUTES} = 1;
 }
@@ -65,6 +61,17 @@ BEGIN {
 use YAML qw(Load LoadFile Dump DumpFile Bless);
 use Parallel::ForkManager;
 use Getopt::Long qw(GetOptions);
+
+my $webkitdirIsAvailable;
+if (eval {require webkitdirs; 1;}) {
+    webkitdirs->import(qw(executableProductDir setConfiguration));
+    $webkitdirIsAvailable = 1;
+}
+my $podIsAvailable;
+if (eval {require Pod::Usage; 1;}) {
+    Pod::Usage->import();
+    $podIsAvailable = 1;
+}
 
 # Commandline settings
 my $max_process;
@@ -82,13 +89,12 @@ my $saveExpectations;
 my $failingOnly;
 my $latestImport;
 my $runningAllTests;
+my $timeout;
 
 my $expectationsFile = abs_path("$Bin/../../../JSTests/test262/expectations.yaml");
 my $configFile = abs_path("$Bin/../../../JSTests/test262/config.yaml");
 
-my $resultsDir = `pwd`;
-chomp $resultsDir;
-$resultsDir = $resultsDir . "/test262-results";
+my $resultsDir = $ENV{PWD} . "/test262-results";
 mkpath($resultsDir);
 
 my $resultsFile = abs_path("$resultsDir/results.yaml");
@@ -109,11 +115,12 @@ main();
 
 sub processCLI {
     my $help = 0;
-    my $debug;
+    my $release;
     my $ignoreExpectations;
     my @features;
     my $stats;
     my $specifiedResultsFile;
+    my $specifiedExpectationsFile;
 
     # If adding a new commandline argument, you must update the POD
     # documentation at the end of the file.
@@ -123,17 +130,19 @@ sub processCLI {
         'o|test-only=s@' => \@cliTestDirs,
         'p|child-processes=i' => \$max_process,
         'h|help' => \$help,
-        'd|debug' => \$debug,
+        'release' => \$release,
         'v|verbose' => \$verbose,
         'f|features=s@' => \@features,
         'c|config=s' => \$configFile,
         'i|ignore-config' => \$ignoreConfig,
         's|save' => \$saveExpectations,
+        'e|expectations=s' => \$specifiedExpectationsFile,
         'x|ignore-expectations' => \$ignoreExpectations,
-        'failing-files' => \$failingOnly,
+        'F|failing-files' => \$failingOnly,
         'l|latest-import' => \$latestImport,
         'stats' => \$stats,
         'r|results=s' => \$specifiedResultsFile,
+        'timeout=i' => \$timeout,
     );
 
     if ($help) {
@@ -146,7 +155,7 @@ sub processCLI {
     }
 
     if ($specifiedResultsFile) {
-        if (!$stats) {
+        if (!$stats && !$failingOnly) {
             print "Waring: supplied results file not used for this command.\n";
         }
         elsif (-e $specifiedResultsFile) {
@@ -159,7 +168,8 @@ sub processCLI {
 
     if ($stats) {
         if (! -e $resultsFile) {
-            die "Error: cannot find results file, please specify with --results.";
+            die "Error: cannot find results file to summarize," .
+                "please specify with --results.";
         }
         summarizeResults();
         exit;
@@ -172,12 +182,11 @@ sub processCLI {
             die "Error: --jsc path does not exist.";
         }
 
-        # For custom JSC paths, Sets only if not yet defined
         if (not defined $DYLD_FRAMEWORK_PATH) {
             $DYLD_FRAMEWORK_PATH = dirname($JSC);
         }
     } else {
-        $JSC = getBuildPath($debug);
+        $JSC = getBuildPath($release);
     }
 
     if ($latestImport) {
@@ -193,8 +202,9 @@ sub processCLI {
     $harnessDir = "$test262Dir/harness";
 
     if (! $ignoreConfig) {
-        if ($configFile and not -e $configFile) {
-            die "Config file $configFile does not exist!";
+        if ($configFile && ! -e $configFile) {
+            die "Error: Config file $configFile does not exist!\n" .
+                "Run without config file with -i or supply with --config.\n"
         }
         $config = LoadFile($configFile) or die $!;
         if ($config->{skip} && $config->{skip}->{files}) {
@@ -202,15 +212,22 @@ sub processCLI {
         }
     }
 
-    if (! $ignoreExpectations) {
-        # If expectations file doesn't exist yet, just run tests, UNLESS
-        # --failures-only option supplied.
-        if ( $failingOnly && ! -e $expectationsFile ) {
-            print "Error: Cannot run failing tests if expectation.yaml file does not exist.\n";
-            die;
-        } elsif (-e $expectationsFile) {
-            $expect = LoadFile($expectationsFile) or die $!;
+    if ( $failingOnly && ! -e $resultsFile ) {
+        die "Error: cannot find results file to run failing tests," .
+            " please specify with --results.";
+    }
+
+    if ($specifiedExpectationsFile) {
+        $expectationsFile = abs_path($specifiedExpectationsFile);
+        if (! -e $expectationsFile && ! $ignoreExpectations) {
+            print("Warning: Supplied expectations file $expectationsFile does"
+                  . " not exist. Running tests without expectation file.\n");
         }
+    }
+
+    # If the expectation file doesn't exist and is not specified, run all tests.
+    if (! $ignoreExpectations && -e $expectationsFile) {
+        $expect = LoadFile($expectationsFile) or die $!;
     }
 
     if (@features) {
@@ -222,13 +239,15 @@ sub processCLI {
     print "\n-------------------------Settings------------------------\n"
         . "Test262 Dir: $test262Dir\n"
         . "JSC: $JSC\n"
-        . "DYLD_FRAMEWORK_PATH: $DYLD_FRAMEWORK_PATH\n"
         . "Child Processes: $max_process\n";
 
+    print "Test timeout: $timeout\n" if $timeout;
+    print "DYLD_FRAMEWORK_PATH: $DYLD_FRAMEWORK_PATH\n" if $DYLD_FRAMEWORK_PATH;
     print "Features to include: " . join(', ', @features) . "\n" if @features;
-    print "Paths:  " . join(', ', @cliTestDirs) . "\n" if @cliTestDirs;
+    print "Paths: " . join(', ', @cliTestDirs) . "\n" if @cliTestDirs;
     print "Config file: $configFile\n" if $config;
     print "Expectations file: $expectationsFile\n" if $expect;
+    print "Results file: $resultsFile\n" if $stats || $failingOnly;
 
     print "Running only the latest imported files\n" if $latestImport;
 
@@ -254,8 +273,8 @@ sub main {
     if ($latestImport) {
         @files = loadImportFile();
     } elsif ($failingOnly) {
-        # If we only want to re-run failure, only run tests in expectation file
-        @files = map { qq($test262Dir/$_) } keys %{$expect};
+        # If we only want to re-run failure, only run tests in results file
+        findAllFailing();
     } else {
         $runningAllTests = 1;
         # Otherwise, get all files from directory
@@ -269,7 +288,6 @@ sub main {
             }
         }
     }
-
 
     # If we are processing many files, fork process
     if (scalar @files > $max_process * 5) {
@@ -382,23 +400,22 @@ sub main {
     if ( !$expect ) {
         print $failcount . " tests failed\n";
     } else {
-        print $failcount . " expected tests failed\n";
+        print $failcount . " tests failed in total\n";
         print $newfailcount . " tests newly fail\n";
         print $newpasscount . " tests newly pass\n";
     }
 
     print $skipfilecount . " test files skipped\n";
 
-    my $endTime = time();
-    my $totalTime = $endTime - $startTime;
-    print "Done in $totalTime seconds!\n";
+    printf("Done in %.2f seconds!\n", time() - $startTime);
 
-    exit $newfailcount ? 1 : 0;
+    my $totalfailures = $expect ? $newfailcount : $failcount;
+    exit ($totalfailures ? 1 : 0);
 }
 
 sub loadImportFile {
     my $importFile = abs_path("$Bin/../../../JSTests/test262/latest-changes-summary.txt");
-    die "Import file not found at $importFile.\n" if ! -e $importFile;
+    die "Error: Import file not found at $importFile.\n" if ! -e $importFile;
 
     open(my $fh, "<", $importFile) or die $!;
 
@@ -449,34 +466,32 @@ sub parseError {
 }
 
 sub getBuildPath {
-    my $debug = shift;
-
-    # Try to find JSC for user, if not supplied
-    my $cmd = abs_path("$Bin/../webkit-build-directory");
-    if (! -e $cmd) {
-        die 'Error: cannot find webkit-build-directory, specify with JSC with --jsc <path>.';
-    }
-
-    if ($debug) {
-        $cmd .= ' --debug';
-    } else {
-        $cmd .= ' --release';
-    }
-    $cmd .= ' --executablePath';
-    my $jscDir = qx($cmd);
-    chomp $jscDir;
+    my ($release) = @_;
 
     my $jsc;
-    $jsc = $jscDir . '/jsc';
 
-    $jsc = $jscDir . '/JavaScriptCore.framework/Resources/jsc' if (! -e $jsc);
-    $jsc = $jscDir . '/bin/jsc' if (! -e $jsc);
-    if (! -e $jsc) {
-        die 'Error: cannot find jsc, specify with --jsc <path>.';
+    if ($webkitdirIsAvailable) {
+        my $config = $release ? 'Release' : 'Debug';
+        setConfiguration($config);
+        my $jscDir = executableProductDir();
+
+        $jsc = $jscDir . '/jsc';
+        $jsc = $jscDir . '/JavaScriptCore.framework/Resources/jsc' if (! -e $jsc);
+        $jsc = $jscDir . '/bin/jsc' if (! -e $jsc);
+
+        # Sets the Env DYLD_FRAMEWORK_PATH
+        $DYLD_FRAMEWORK_PATH = dirname($jsc) if (-e $jsc);
     }
 
-    # Sets the Env DYLD_FRAMEWORK_PATH
-    $DYLD_FRAMEWORK_PATH = dirname($jsc);
+    if (! $jsc || ! -e $jsc) {
+        # If we cannot find jsc using webkitdirs, look in path
+        $jsc = qx(which jsc);
+        chomp $jsc;
+
+        if (! $jsc ) {
+            die("Cannot find jsc, try with --release or specify with --jsc <path>.\n\n");
+        }
+    }
 
     return $jsc;
 }
@@ -503,9 +518,9 @@ sub processFile {
     ($includesfh, $includesfile) = compileTest($includes) if defined $includes;
 
     foreach my $scenario (@scenarios) {
-        my $result = runTest($includesfile, $filename, $scenario, $data);
+        my ($result, $execTime) = runTest($includesfile, $filename, $scenario, $data);
 
-        $resultsdata = processResult($filename, $data, $scenario, $result);
+        $resultsdata = processResult($filename, $data, $scenario, $result, $execTime);
         DumpFile($resultsfh, $resultsdata);
     }
 
@@ -589,6 +604,10 @@ sub runTest {
 
     my $args = '';
 
+    if ($timeout) {
+        $args .= " --watchdog=$timeout ";
+    }
+
     if (exists $data->{negative}) {
         my $type = $data->{negative}->{type};
         $args .=  " --exception=$type ";
@@ -613,21 +632,30 @@ sub runTest {
     my $defaultHarness = '';
     $defaultHarness = $deffile if $scenario ne 'raw';
 
-    my $result = qx/$JSC $args $defaultHarness $includesfile '$prefixFile$filename'/;
+    my $prefix = $DYLD_FRAMEWORK_PATH ? qq(DYLD_FRAMEWORK_PATH=$DYLD_FRAMEWORK_PATH) : "";
+    my $execTimeStart = time();
+
+    my $result = qx($prefix $JSC $args $defaultHarness $includesfile '$prefixFile$filename');
+    my $execTime = time() - $execTimeStart;
 
     chomp $result;
 
-    return $result if ($?);
+    if ($?) {
+        return ($result, $execTime);
+    } else {
+        return (0, $execTime);
+    }
 }
 
 sub processResult {
-    my ($path, $data, $scenario, $result) = @_;
+    my ($path, $data, $scenario, $result, $execTime) = @_;
 
     # Report a relative path
     my $file = abs2rel( $path, $test262Dir );
     my %resultdata;
     $resultdata{path} = $file;
     $resultdata{mode} = $scenario;
+    $resultdata{time} = $execTime;
 
     my $currentfailure = parseError($result) if $result;
     my $expectedfailure = $expect
@@ -643,15 +671,22 @@ sub processResult {
 
         # Print the failure if we haven't loaded an expectation file
         # or the failure is new.
-        my $printfailure = !$expect || $isnewfailure;
+        my $printFailure = !$expect || $isnewfailure;
 
-        print "! NEW " if $isnewfailure;
-        print "FAIL $file ($scenario)\n" if $printfailure;
+        my $newFail = '';
+        $newFail = '! NEW ' if $isnewfailure;
+        my $failMsg = '';
+        $failMsg = "FAIL $file ($scenario)\n" if ($printFailure or $verbose);
+
+        my $suffixMsg = '';
+
         if ($verbose) {
-            print $result;
-            print "\nFeatures: " . join(', ', @{ $data->{features} }) if $data->{features};
-            print "\n\n";
+            my $featuresList = '';
+            $featuresList = "\nFeatures: " . join(', ', @{ $data->{features} }) if $data->{features};
+            $suffixMsg = "$result$featuresList\n\n";
         }
+
+        print "$newFail$failMsg$suffixMsg";
 
         $resultdata{result} = 'FAIL';
         $resultdata{error} = $currentfailure;
@@ -692,7 +727,7 @@ sub parseData {
 
     my $parsed;
     my $found = '';
-    if ($contents =~ /\/\*(---\n[\S\s]*)\n---\*\//m) {
+    if ($contents =~ /\/\*(---[\r\n]+[\S\s]*)[\r\n]+---\*\//m) {
         $found = $1;
     };
 
@@ -703,6 +738,7 @@ sub parseData {
         print "\nError parsing YAML data on file $filename.\n";
         print "$@\n";
     };
+
     return $parsed;
 }
 
@@ -822,6 +858,20 @@ sub summarizeResults {
     print "See summarized results in $summaryTxtFile\n";
 }
 
+sub findAllFailing {
+    my @allresults = LoadFile($resultsFile) or die $!;
+     @allresults = @{$allresults[0]};
+
+    my %filedictionary;
+    foreach my $test (@allresults) {
+        if ($test->{result} eq 'FAIL') {
+            $filedictionary{$test->{path}} = 1;
+        }
+    }
+
+    @files = map { qq($test262Dir/$_) } keys %filedictionary;
+}
+
 __END__
 
 =head1 DESCRIPTION
@@ -866,9 +916,9 @@ Specify root test262 directory.
 
 Specify JSC location. If not provided, script will attempt to look up JSC.
 
-=item B<--debug, -d>
+=item B<--release>
 
-Use debug build of JSC. Can only use if --jsc <path> is not provided. Release build of JSC is used by default.
+Use the Release build of JSC. Can only use if --jsc <path> is not provided. The Debug build of JSC is used by default.
 
 =item B<--verbose, -v>
 
@@ -876,7 +926,7 @@ Verbose output for test results. Includes error message for test.
 
 =item B<--config, -c>
 
-Specify a config file. If not provided, script will load local test262-config.yaml
+Specify a config file. If not provided, script will load local JSTests/test262/config.yaml
 
 =item B<--ignore-config, -i>
 
@@ -894,13 +944,17 @@ Specify one or more specific test262 directory of test to run, relative to the r
 
 Overwrites the test262-expectations.yaml file with the current list of test262 files and test results.
 
+=item B<--expectations, -e>
+
+Specify a expectations file for loading and saving.  If not provided, script will load and save to JSTests/test262/expectations.yaml.
+
 =item B<--ignore-expectations, -x>
 
 Ignores the test262-expectations.yaml file and outputs all failures, instead of only unexpected failures.
 
-=item B<--failing-files>
+=item B<--failing-files, -F>
 
-Runs all test files that expect to fail according to the expectation file. This option will run the rests in both strict and non-strict modes, even if the test only fails in one of the two modes.
+Runs all test files that failed in a given results file (specifc with --results). This option will run the rests in both strict and non-strict modes, even if the test only fails in one of the two modes.
 
 =item B<--latest-import, -l>
 
@@ -912,7 +966,11 @@ Calculate conformance statistics from results/results.yaml file or a supplied re
 
 =item B<--results, -r>
 
-Specifies a results file the --stats option.
+Specifies a results file for the --stats or --failing-files options.
+
+=item B<--timeout>
+
+Specifies a timeout execution in ms for each test. Defers the value to the jsc --watchdog argument. Disabled by default.
 
 =back
 

@@ -97,3 +97,44 @@
 - path: stress/big-int-to-string.js
   cmd: runBigIntEnabled
 
+- path: stress/big-int-mul-jit.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-mul-to-primitive-precedence.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-mul-to-primitive.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-mul-type-error.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-mul-wrapped-value.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-multiplication.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-multiply-memory-stress.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-div-jit.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-div-memory-stress.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-div-to-primitive.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-div-type-error.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-div-wrapped-value.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-division.js
+  cmd: runBigIntEnabled
+
+- path: stress/big-int-no-conversion-to-number.js
+  cmd: runBigIntEnabled

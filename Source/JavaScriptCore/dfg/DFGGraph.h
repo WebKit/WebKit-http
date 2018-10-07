@@ -716,11 +716,24 @@ public:
     template<typename ChildFunctor>
     ALWAYS_INLINE void doToChildren(Node* node, const ChildFunctor& functor)
     {
-        doToChildrenWithNode(
-            node,
-            [&functor] (Node*, Edge& edge) {
-                functor(edge);
-            });
+        class ForwardingFunc {
+        public:
+            ForwardingFunc(const ChildFunctor& functor)
+                : m_functor(functor)
+            {
+            }
+            
+            // This is a manually written func because we want ALWAYS_INLINE.
+            ALWAYS_INLINE void operator()(Node*, Edge& edge) const
+            {
+                m_functor(edge);
+            }
+        
+        private:
+            const ChildFunctor& m_functor;
+        };
+    
+        doToChildrenWithNode(node, ForwardingFunc(functor));
     }
     
     bool uses(Node* node, Node* child)
@@ -1039,6 +1052,7 @@ public:
     Bag<SwitchData> m_switchData;
     Bag<MultiGetByOffsetData> m_multiGetByOffsetData;
     Bag<MultiPutByOffsetData> m_multiPutByOffsetData;
+    Bag<MatchStructureData> m_matchStructureData;
     Bag<ObjectMaterializationData> m_objectMaterializationData;
     Bag<CallVarargsData> m_callVarargsData;
     Bag<LoadVarargsData> m_loadVarargsData;

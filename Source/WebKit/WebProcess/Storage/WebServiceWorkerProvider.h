@@ -42,8 +42,8 @@ public:
     static WebServiceWorkerProvider& singleton();
 
     void handleFetch(WebCore::ResourceLoader&, WebCore::CachedResource*, PAL::SessionID, bool shouldClearReferrerOnHTTPSToHTTPRedirect, ServiceWorkerClientFetch::Callback&&);
-    bool cancelFetch(uint64_t fetchIdentifier);
-    void fetchFinished(uint64_t fetchIdentifier);
+    bool cancelFetch(WebCore::FetchIdentifier);
+    void fetchFinished(WebCore::FetchIdentifier);
 
     void didReceiveServiceWorkerClientFetchMessage(IPC::Connection&, IPC::Decoder&);
     void didReceiveServiceWorkerClientRegistrationMatch(IPC::Connection&, IPC::Decoder&);
@@ -55,7 +55,7 @@ private:
     WebCore::SWClientConnection* existingServiceWorkerConnectionForSession(PAL::SessionID) final;
     WebCore::SWClientConnection& serviceWorkerConnectionForSession(PAL::SessionID) final;
 
-    HashMap<uint64_t, Ref<ServiceWorkerClientFetch>> m_ongoingFetchTasks;
+    HashMap<WebCore::FetchIdentifier, Ref<ServiceWorkerClientFetch>> m_ongoingFetchTasks;
 }; // class WebServiceWorkerProvider
 
 } // namespace WebKit

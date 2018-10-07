@@ -30,10 +30,12 @@
 
 #import "APIUIClient.h"
 #import "WebPageProxy.h"
-
+#import <MobileCoreServices/MobileCoreServices.h>
 #import <QuickLook/QuickLook.h>
 #import <UIKit/UIViewController.h>
+#import <pal/spi/ios/QuickLookSPI.h>
 #import <wtf/SoftLinking.h>
+#import <wtf/WeakObjCPtr.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/SystemPreviewTypes.cpp>
@@ -41,22 +43,27 @@
 
 SOFT_LINK_FRAMEWORK(QuickLook)
 SOFT_LINK_CLASS(QuickLook, QLPreviewController);
+SOFT_LINK_CLASS(QuickLook, QLItem);
 
 @interface _WKPreviewControllerDataSource : NSObject <QLPreviewControllerDataSource> {
+    RetainPtr<NSItemProvider> _itemProvider;
+    RetainPtr<QLItem> _item;
 };
 
-@property (nonatomic) WebCore::URL url;
+@property (strong) NSItemProviderCompletionHandler completionHandler;
+@property (retain) NSString *mimeType;
 
 @end
 
 @implementation _WKPreviewControllerDataSource
 
-- (id)initWithURL:(const WebCore::URL&)url
+- (id)initWithMIMEType:(NSString*)mimeType
 {
     if (!(self = [super init]))
         return nil;
 
-    self.url = url;
+    self.mimeType = mimeType;
+
     return self;
 }
 
@@ -67,69 +74,157 @@ SOFT_LINK_CLASS(QuickLook, QLPreviewController);
 
 - (id<QLPreviewItem>)previewController:(QLPreviewController *)controller previewItemAtIndex:(NSInteger)index
 {
-    return (NSURL*)self.url;
+    if (_item)
+        return _item.get();
+
+    _itemProvider = adoptNS([[NSItemProvider alloc] init]);
+    NSString *contentType = @"public.content";
+#if USE(APPLE_INTERNAL_SDK)
+    // FIXME: We are launching the preview controller before getting a response from the resource, which
+    // means we don't actually know the real MIME type yet. Assume it is one of those that we registered.
+    contentType = WebKit::getUTIForMIMEType(*WebKit::getSystemPreviewMIMETypes().begin());
+#endif
+    _item = adoptNS([allocQLItemInstance() initWithPreviewItemProvider:_itemProvider.get() contentType:contentType previewTitle:@"Preview" fileSize:@(0)]);
+    [_item setUseLoadingTimeout:NO];
+
+    WeakObjCPtr<_WKPreviewControllerDataSource> weakSelf { self };
+    [_itemProvider registerItemForTypeIdentifier:contentType loadHandler:[weakSelf = WTFMove(weakSelf)] (NSItemProviderCompletionHandler completionHandler, Class expectedValueClass, NSDictionary * options) {
+        if (auto strongSelf = weakSelf.get())
+            [strongSelf setCompletionHandler:completionHandler];
+    }];
+    return _item.get();
+}
+
+- (void)setProgress:(float)progress
+{
+    if (_item)
+        [_item setPreviewItemProviderProgress:@(progress)];
+}
+
+- (void)finish:(WebCore::URL)url
+{
+    if (self.completionHandler)
+        self.completionHandler((NSURL*)url, nil);
 }
 
 @end
 
 @interface _WKPreviewControllerDelegate : NSObject <QLPreviewControllerDelegate> {
     WebKit::SystemPreviewController* _previewController;
+    WebCore::IntRect _linkRect;
 };
 @end
 
 @implementation _WKPreviewControllerDelegate
 
-- (id)initWithSystemPreviewController:(WebKit::SystemPreviewController*)previewController
+- (id)initWithSystemPreviewController:(WebKit::SystemPreviewController*)previewController fromRect:(WebCore::IntRect)rect
 {
     if (!(self = [super init]))
         return nil;
 
     _previewController = previewController;
+    _linkRect = rect;
     return self;
 }
 
-- (void)previewControllerWillDismiss:(QLPreviewController *)controller
+- (void)previewControllerDidDismiss:(QLPreviewController *)controller
 {
     if (_previewController)
-        _previewController->sendPageBack();
+        _previewController->cancel();
 }
+
+- (UIViewController *)presentingViewController
+{
+    if (!_previewController)
+        return nil;
+
+    return _previewController->page().uiClient().presentingViewController();
+}
+
+- (CGRect)previewController:(QLPreviewController *)controller frameForPreviewItem:(id <QLPreviewItem>)item inSourceView:(UIView * *)view
+{
+    UIViewController *presentingViewController = [self presentingViewController];
+
+    if (!presentingViewController)
+        return CGRectZero;
+
+    *view = presentingViewController.view;
+
+    if (_linkRect.isEmpty()) {
+        CGRect frame;
+        frame.size.width = presentingViewController.view.frame.size.width / 2.0;
+        frame.size.height = presentingViewController.view.frame.size.height / 2.0;
+        frame.origin.x = (presentingViewController.view.frame.size.width - frame.size.width) / 2.0;
+        frame.origin.y = (presentingViewController.view.frame.size.height - frame.size.height) / 2.0;
+        return frame;
+    }
+
+    return _previewController->page().syncRootViewToScreen(_linkRect);
+}
+
+- (UIImage *)previewController:(QLPreviewController *)controller transitionImageForPreviewItem:(id <QLPreviewItem>)item contentRect:(CGRect *)contentRect
+{
+    *contentRect = CGRectZero;
+
+    UIViewController *presentingViewController = [self presentingViewController];
+    if (presentingViewController) {
+        if (_linkRect.isEmpty())
+            *contentRect = {CGPointZero, {presentingViewController.view.frame.size.width / 2.0, presentingViewController.view.frame.size.height / 2.0}};
+        else {
+            WebCore::IntRect screenRect = _previewController->page().syncRootViewToScreen(_linkRect);
+            *contentRect = { CGPointZero, { static_cast<CGFloat>(screenRect.width()), static_cast<CGFloat>(screenRect.height()) } };
+        }
+    }
+
+    return [UIImage new];
+}
+
 @end
 
 namespace WebKit {
 
-bool SystemPreviewController::canPreview(const String& mimeType) const
+void SystemPreviewController::start(const String& mimeType, const WebCore::IntRect& fromRect)
 {
-#if USE(APPLE_INTERNAL_SDK)
-    return canShowSystemPreviewForMIMEType(mimeType);
-#else
-    UNUSED_PARAM(mimeType);
-    return false;
-#endif
-}
-
-void SystemPreviewController::showPreview(const WebCore::URL& url)
-{
-    // FIXME: Make sure you can't show a preview if we're already previewing.
+    ASSERT(!m_qlPreviewController);
+    if (m_qlPreviewController)
+        return;
 
     UIViewController *presentingViewController = m_webPageProxy.uiClient().presentingViewController();
 
     if (!presentingViewController)
         return;
 
-    if (!m_qlPreviewController) {
-        m_qlPreviewController = adoptNS([allocQLPreviewControllerInstance() init]);
+    m_qlPreviewController = adoptNS([allocQLPreviewControllerInstance() init]);
 
-        m_qlPreviewControllerDelegate = adoptNS([[_WKPreviewControllerDelegate alloc] initWithSystemPreviewController:this]);
-        [m_qlPreviewController setDelegate:m_qlPreviewControllerDelegate.get()];
+    m_qlPreviewControllerDelegate = adoptNS([[_WKPreviewControllerDelegate alloc] initWithSystemPreviewController:this fromRect:fromRect]);
+    [m_qlPreviewController setDelegate:m_qlPreviewControllerDelegate.get()];
 
-        m_qlPreviewControllerDataSource = adoptNS([[_WKPreviewControllerDataSource alloc] initWithURL:url]);
-        [m_qlPreviewController setDataSource:m_qlPreviewControllerDataSource.get()];
-    } else
-        m_qlPreviewControllerDataSource.get().url = url;
-
-    [m_qlPreviewController reloadData];
+    m_qlPreviewControllerDataSource = adoptNS([[_WKPreviewControllerDataSource alloc] initWithMIMEType:mimeType]);
+    [m_qlPreviewController setDataSource:m_qlPreviewControllerDataSource.get()];
 
     [presentingViewController presentViewController:m_qlPreviewController.get() animated:YES completion:nullptr];
+}
+
+void SystemPreviewController::updateProgress(float progress)
+{
+    if (m_qlPreviewControllerDataSource)
+        [m_qlPreviewControllerDataSource setProgress:progress];
+}
+
+void SystemPreviewController::finish(WebCore::URL url)
+{
+    if (m_qlPreviewControllerDataSource)
+        [m_qlPreviewControllerDataSource finish:url];
+}
+
+void SystemPreviewController::cancel()
+{
+    if (m_qlPreviewController)
+        [m_qlPreviewController.get() dismissViewControllerAnimated:YES completion:nullptr];
+
+    m_qlPreviewControllerDelegate = nullptr;
+    m_qlPreviewControllerDataSource = nullptr;
+    m_qlPreviewController = nullptr;
 }
 
 }

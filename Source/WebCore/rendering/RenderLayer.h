@@ -52,6 +52,7 @@
 #include "RenderPtr.h"
 #include "ScrollableArea.h"
 #include <memory>
+#include <wtf/WeakPtr.h>
 
 namespace WTF {
 class TextStream;
@@ -217,7 +218,7 @@ public:
     void availableContentSizeChanged(AvailableSizeChangeReason) override;
 
     // "absoluteRect" is in scaled document coordinates.
-    void scrollRectToVisible(SelectionRevealMode, const LayoutRect& absoluteRect, bool insideFixed, const ScrollAlignment& alignX, const ScrollAlignment& alignY);
+    void scrollRectToVisible(SelectionRevealMode, const LayoutRect& absoluteRect, bool insideFixed, const ScrollAlignment& alignX, const ScrollAlignment& alignY, ShouldAllowCrossOriginScrolling);
 
     bool scrollsOverflow() const;
     bool hasScrollbars() const { return m_hBar || m_vBar; }
@@ -324,7 +325,7 @@ public:
     {
         if (mode == ExcludeCompositedPaginatedLayers && hasCompositedLayerInEnclosingPaginationChain())
             return nullptr;
-        return m_enclosingPaginationLayer;
+        return m_enclosingPaginationLayer.get();
     }
 
     void updateTransform();
@@ -442,7 +443,7 @@ public:
 
     // Gets the nearest enclosing positioned ancestor layer (also includes
     // the <html> layer and the root layer).
-    RenderLayer* enclosingAncestorForPosition(EPosition) const;
+    RenderLayer* enclosingAncestorForPosition(PositionType) const;
 
     // Returns the nearest enclosing layer that is scrollable.
     RenderLayer* enclosingScrollableLayer() const;
@@ -610,7 +611,7 @@ public:
     // Note that this transform has the perspective-origin baked in.
     TransformationMatrix perspectiveTransform() const;
     FloatPoint perspectiveOrigin() const;
-    bool preserves3D() const { return renderer().style().transformStyle3D() == TransformStyle3DPreserve3D; }
+    bool preserves3D() const { return renderer().style().transformStyle3D() == TransformStyle3D::Preserve3D; }
     bool has3DTransform() const { return m_transform && !m_transform->isAffine(); }
 
     void filterNeedsRepaint();
@@ -1163,7 +1164,7 @@ private:
     RenderPtr<RenderScrollbarPart> m_resizer;
 
     // Pointer to the enclosing RenderLayer that caused us to be paginated. It is 0 if we are not paginated.
-    RenderLayer* m_enclosingPaginationLayer;
+    WeakPtr<RenderLayer> m_enclosingPaginationLayer;
 
     IntRect m_blockSelectionGapsBounds;
 

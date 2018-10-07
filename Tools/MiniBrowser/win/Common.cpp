@@ -26,11 +26,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "AccessibilityDelegate.h"
 #include "DOMDefaultImpl.h"
-#include "PrintWebUIDelegate.h"
-#include "ResourceLoadDelegate.h"
-#include "WebDownloadDelegate.h"
 #include "MiniBrowser.h"
 #include "MiniBrowserReplace.h"
 #include <WebKitLegacy/WebKitCOMAPI.h>
@@ -113,10 +109,7 @@ float deviceScaleFactorForWindow(HWND);
 
 static void resizeSubViews()
 {
-    if (gMiniBrowser->usesLayeredWebView() || !gViewWindow)
-        return;
-
-    float scaleFactor = WebCore::deviceScaleFactorForWindow(gViewWindow);
+    float scaleFactor = WebCore::deviceScaleFactorForWindow(hMainWnd);
 
     RECT rcClient;
     GetClientRect(hMainWnd, &rcClient);
@@ -127,21 +120,12 @@ static void resizeSubViews()
     MoveWindow(hBackButtonWnd, 0, 0, width, height, TRUE);
     MoveWindow(hForwardButtonWnd, width, 0, width, height, TRUE);
     MoveWindow(hURLBarWnd, width * 2, 0, rcClient.right, height, TRUE);
-    MoveWindow(gViewWindow, 0, height, rcClient.right, rcClient.bottom - height, TRUE);
 
     ::SendMessage(hURLBarWnd, static_cast<UINT>(WM_SETFONT), reinterpret_cast<WPARAM>(gMiniBrowser->urlBarFont()), TRUE);
-}
 
-static void subclassForLayeredWindow()
-{
-    hMainWnd = gViewWindow;
-#if defined _M_AMD64 || defined _WIN64
-    DefWebKitProc = reinterpret_cast<WNDPROC>(::GetWindowLongPtr(hMainWnd, GWLP_WNDPROC));
-    ::SetWindowLongPtr(hMainWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WndProc));
-#else
-    DefWebKitProc = reinterpret_cast<WNDPROC>(::GetWindowLong(hMainWnd, GWL_WNDPROC));
-    ::SetWindowLong(hMainWnd, GWL_WNDPROC, reinterpret_cast<LONG_PTR>(WndProc));
-#endif
+    if (gMiniBrowser->usesLayeredWebView() || !gViewWindow)
+        return;
+    MoveWindow(gViewWindow, 0, height, rcClient.right, rcClient.bottom - height, TRUE);
 }
 
 static void computeFullDesktopFrame()
@@ -166,7 +150,7 @@ BOOL WINAPI DllMain(HINSTANCE dllInstance, DWORD reason, LPVOID)
     return TRUE;
 }
 
-static bool getAppDataFolder(_bstr_t& directory)
+bool getAppDataFolder(_bstr_t& directory)
 {
     wchar_t appDataDirectory[MAX_PATH];
     if (FAILED(SHGetFolderPathW(0, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, 0, 0, appDataDirectory)))
@@ -179,22 +163,6 @@ static bool getAppDataFolder(_bstr_t& directory)
     ::PathRemoveExtensionW(executablePath);
 
     directory = _bstr_t(appDataDirectory) + L"\\" + ::PathFindFileNameW(executablePath);
-
-    return true;
-}
-
-static bool setCacheFolder()
-{
-    IWebCachePtr webCache = gMiniBrowser->webCache();
-    if (!webCache)
-        return false;
-
-    _bstr_t appDataFolder;
-    if (!getAppDataFolder(appDataFolder))
-        return false;
-
-    appDataFolder += L"\\cache";
-    webCache->setCacheFolder(appDataFolder);
 
     return true;
 }
@@ -435,26 +403,7 @@ static const int dragBarHeight = 30;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    WNDPROC parentProc = (gMiniBrowser) ? (gMiniBrowser->usesLayeredWebView() ? DefWebKitProc : DefWindowProc) : DefWindowProc;
-
     switch (message) {
-    case WM_NCHITTEST:
-        if (gMiniBrowser && gMiniBrowser->usesLayeredWebView()) {
-            RECT window;
-            ::GetWindowRect(hWnd, &window);
-            // For testing our transparent window, we need a region to use as a handle for
-            // dragging. The right way to do this would be to query the web view to see what's
-            // under the mouse. However, for testing purposes we just use an arbitrary
-            // 30 logical pixel band at the top of the view as an arbitrary gripping location.
-            //
-            // When we are within this bad, return HT_CAPTION to tell Windows we want to
-            // treat this region as if it were the title bar on a normal window.
-            int y = HIWORD(lParam);
-            float scaledDragBarHeightFactor = dragBarHeight * gMiniBrowser->deviceScaleFactor();
-            if ((y > window.top) && (y < window.top + scaledDragBarHeightFactor))
-                return HTCAPTION;
-        }
-        return CallWindowProc(parentProc, hWnd, message, wParam, lParam);
     case WM_COMMAND: {
         int wmId = LOWORD(wParam);
         int wmEvent = HIWORD(wParam);
@@ -513,7 +462,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         default:
             if (!ToggleMenuItem(hWnd, wmId))
-                return CallWindowProc(parentProc, hWnd, message, wParam, lParam);
+                return DefWindowProc(hWnd, message, wParam, lParam);
         }
         }
         break;
@@ -524,17 +473,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         PostQuitMessage(0);
         break;
     case WM_SIZE:
-        if (!gMiniBrowser || !gMiniBrowser->hasWebView() || gMiniBrowser->usesLayeredWebView())
-            return CallWindowProc(parentProc, hWnd, message, wParam, lParam);
+        if (!gMiniBrowser || !gMiniBrowser->hasWebView())
+            return DefWindowProc(hWnd, message, wParam, lParam);
 
         resizeSubViews();
         break;
     case WM_DPICHANGED:
         if (gMiniBrowser)
             gMiniBrowser->updateDeviceScaleFactor();
-        return CallWindowProc(parentProc, hWnd, message, wParam, lParam);
+        return DefWindowProc(hWnd, message, wParam, lParam);
     default:
-        return CallWindowProc(parentProc, hWnd, message, wParam, lParam);
+        return DefWindowProc(hWnd, message, wParam, lParam);
     }
 
     return 0;

@@ -182,8 +182,11 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_to_primitive:
     case op_try_get_by_id:
     case op_get_by_id:
+    case op_get_by_id_proto_load:
+    case op_get_by_id_unset:
     case op_get_by_id_direct:
     case op_get_array_length:
+    case op_in_by_id:
     case op_typeof:
     case op_is_empty:
     case op_is_undefined:
@@ -224,7 +227,7 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_enumerator_structure_pname:
     case op_enumerator_generic_pname:
     case op_get_by_val:
-    case op_in:
+    case op_in_by_val:
     case op_overrides_has_instance:
     case op_instanceof:
     case op_add:
@@ -432,6 +435,8 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_construct:
     case op_try_get_by_id:
     case op_get_by_id:
+    case op_get_by_id_proto_load:
+    case op_get_by_id_unset:
     case op_get_by_id_direct:
     case op_get_by_id_with_this:
     case op_get_by_val_with_this:
@@ -450,7 +455,8 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_is_object_or_null:
     case op_is_cell_with_type:
     case op_is_function:
-    case op_in:
+    case op_in_by_id:
+    case op_in_by_val:
     case op_to_number:
     case op_to_string:
     case op_to_object:

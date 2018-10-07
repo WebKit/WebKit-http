@@ -69,7 +69,7 @@ public:
     }
     
     typedef JSCallee Base;
-    const static unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames;
+    const static unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames | OverridesGetCallData;
 
     static size_t allocationSize(Checked<size_t> inlineCapacity)
     {
@@ -156,6 +156,13 @@ public:
     bool canUseAllocationProfile();
     bool canUseAllocationProfileNonInline();
 
+    enum class PropertyStatus {
+        Eager,
+        Lazy,
+        Reified,
+    };
+    PropertyStatus reifyLazyPropertyIfNeeded(VM&, ExecState*, PropertyName);
+
 protected:
     JS_EXPORT_PRIVATE JSFunction(VM&, JSGlobalObject*, Structure*);
     JSFunction(VM&, FunctionExecutable*, JSScope*, Structure*);
@@ -172,8 +179,6 @@ protected:
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
 
     static void visitChildren(JSCell*, SlotVisitor&);
-
-    static PropertyReificationResult reifyPropertyNameIfNeeded(JSCell*, ExecState*, PropertyName&);
 
 private:
     static JSFunction* createImpl(VM& vm, FunctionExecutable* executable, JSScope* scope, Structure* structure)
@@ -194,19 +199,19 @@ private:
     void reifyName(VM&, ExecState*);
     void reifyName(VM&, ExecState*, String name);
 
-    enum class PropertyStatus {
-        Eager,
-        Lazy,
-        Reified,
-    };
     static bool isLazy(PropertyStatus property) { return property == PropertyStatus::Lazy || property == PropertyStatus::Reified; }
     static bool isReified(PropertyStatus property) { return property == PropertyStatus::Reified; }
 
-    PropertyStatus reifyLazyPropertyIfNeeded(VM&, ExecState*, PropertyName);
     PropertyStatus reifyLazyPropertyForHostOrBuiltinIfNeeded(VM&, ExecState*, PropertyName);
     PropertyStatus reifyLazyLengthIfNeeded(VM&, ExecState*, PropertyName);
     PropertyStatus reifyLazyNameIfNeeded(VM&, ExecState*, PropertyName);
     PropertyStatus reifyLazyBoundNameIfNeeded(VM&, ExecState*, PropertyName);
+
+#if ASSERT_DISABLED
+    void assertTypeInfoFlagInvariants() { }
+#else
+    void assertTypeInfoFlagInvariants();
+#endif
 
     friend class LLIntOffsetsExtractor;
 

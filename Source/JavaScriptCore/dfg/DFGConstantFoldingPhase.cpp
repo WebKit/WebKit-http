@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -148,14 +148,14 @@ private:
                     JSValue child2Constant = m_state.forNode(node->child2().node()).value();
 
                     // FIXME: Revisit this condition when introducing BigInt to JSC.
-                    auto isNonStringCellConstant = [] (JSValue value) {
-                        return value && value.isCell() && !value.isString();
+                    auto isNonStringOrBigIntCellConstant = [] (JSValue value) {
+                        return value && value.isCell() && !value.isString() && !value.isBigInt();
                     };
 
-                    if (isNonStringCellConstant(child1Constant)) {
+                    if (isNonStringOrBigIntCellConstant(child1Constant)) {
                         node->convertToCompareEqPtr(m_graph.freezeStrong(child1Constant.asCell()), node->child2());
                         changed = true;
-                    } else if (isNonStringCellConstant(child2Constant)) {
+                    } else if (isNonStringOrBigIntCellConstant(child2Constant)) {
                         node->convertToCompareEqPtr(m_graph.freezeStrong(child2Constant.asCell()), node->child1());
                         changed = true;
                     }
@@ -175,8 +175,10 @@ private:
             case ArrayifyToStructure: {
                 AbstractValue& value = m_state.forNode(node->child1());
                 RegisteredStructureSet set;
-                if (node->op() == ArrayifyToStructure)
+                if (node->op() == ArrayifyToStructure) {
                     set = node->structure();
+                    ASSERT(!isCopyOnWrite(node->structure()->indexingMode()));
+                }
                 else {
                     set = node->structureSet();
                     if ((SpecCellCheck & SpecEmpty) && node->child1().useKind() == CellUse && m_state.forNode(node->child1()).m_type & SpecEmpty) {
@@ -489,6 +491,41 @@ private:
                 changed = true;
                 break;
             }
+                
+            case MatchStructure: {
+                Edge baseEdge = node->child1();
+                Node* base = baseEdge.node();
+                MatchStructureData& data = node->matchStructureData();
+                
+                AbstractValue baseValue = m_state.forNode(base);
+
+                m_interpreter.execute(indexInBlock); // Push CFA over this node after we get the state before.
+                alreadyHandled = true; // Don't allow the default constant folder to do things to this.
+                
+                BooleanLattice result = BooleanLattice::Bottom;
+                for (unsigned i = 0; i < data.variants.size(); ++i) {
+                    if (!baseValue.contains(data.variants[i].structure)) {
+                        data.variants[i--] = data.variants.last();
+                        data.variants.removeLast();
+                        changed = true;
+                        continue;
+                    }
+                    result = leastUpperBoundOfBooleanLattices(
+                        result,
+                        data.variants[i].result ? BooleanLattice::True : BooleanLattice::False);
+                }
+                
+                if (result == BooleanLattice::False || result == BooleanLattice::True) {
+                    RegisteredStructureSet structureSet;
+                    for (MatchStructureVariant& variant : data.variants)
+                        structureSet.add(variant.structure);
+                    addBaseCheck(indexInBlock, node, baseValue, structureSet);
+                    m_graph.convertToConstant(
+                        node, m_graph.freeze(jsBoolean(result == BooleanLattice::True)));
+                    changed = true;
+                }
+                break;
+            }
         
             case GetByIdDirect:
             case GetByIdDirectFlush:
@@ -613,6 +650,23 @@ private:
                 data->variants = status.variants();
                 data->identifierNumber = identifierNumber;
                 node->convertToMultiPutByOffset(data);
+                break;
+            }
+
+            case InByVal: {
+                AbstractValue& property = m_state.forNode(node->child2());
+                if (JSValue constant = property.value()) {
+                    if (constant.isString()) {
+                        JSString* string = asString(constant);
+                        const StringImpl* impl = string->tryGetValueImpl();
+                        if (impl && impl->isAtomic()) {
+                            unsigned identifierNumber = m_graph.identifiers().ensure(const_cast<UniquedStringImpl*>(static_cast<const UniquedStringImpl*>(impl)));
+                            node->convertToInById(identifierNumber);
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
                 break;
             }
 
@@ -804,6 +858,46 @@ private:
                     node->convertToIdentity();
                     changed = true;
                 }
+                break;
+            }
+
+            case CheckTypeInfoFlags: {
+                const AbstractValue& abstractValue = m_state.forNode(node->child1());
+                unsigned bits = node->typeInfoOperand();
+                ASSERT(bits);
+                if (bits == ImplementsDefaultHasInstance) {
+                    if (abstractValue.m_type == SpecFunctionWithDefaultHasInstance) {
+                        eliminated = true;
+                        node->remove(m_graph);
+                        break;
+                    }
+                }
+
+                if (JSValue value = abstractValue.value()) {
+                    if (value.isCell()) {
+                        // This works because if we see a cell here, we know it's fully constructed
+                        // and we can read its inline type info flags. These flags don't change over the
+                        // object's lifetime.
+                        if ((value.asCell()->inlineTypeFlags() & bits) == bits) {
+                            eliminated = true;
+                            node->remove(m_graph);
+                            break;
+                        }
+                    }
+                }
+
+                if (abstractValue.m_structure.isFinite()) {
+                    bool ok = true;
+                    abstractValue.m_structure.forEach([&] (RegisteredStructure structure) {
+                        ok &= (structure->typeInfo().inlineTypeFlags() & bits) == bits;
+                    });
+                    if (ok) {
+                        eliminated = true;
+                        node->remove(m_graph);
+                        break;
+                    }
+                }
+
                 break;
             }
                 

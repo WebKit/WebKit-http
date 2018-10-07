@@ -121,6 +121,7 @@ WI.settings = {
     showImageGrid: new WI.Setting("show-image-grid", false),
     showCanvasPath: new WI.Setting("show-canvas-path", false),
     selectedNetworkDetailContentViewIdentifier: new WI.Setting("network-detail-content-view-identifier", "preview"),
+    showRulers: new WI.Setting("show-rulers", false),
 
     // Experimental
     experimentalEnableLayersTab: new WI.Setting("experimental-enable-layers-tab", false),
@@ -129,4 +130,5 @@ WI.settings = {
     experimentalLegacyVisualSidebar: new WI.Setting("experimental-legacy-visual-sidebar", false),
     experimentalEnableNewTabBar: new WI.Setting("experimental-enable-new-tab-bar", false),
     experimentalEnableAccessibilityAuditTab: new WI.Setting("experimental-enable-accessibility-audit-tab", false),
+    experimentalRecordingHasVisualEffect: new WI.Setting("experimental-recording-has-visual-effect", false),
 };

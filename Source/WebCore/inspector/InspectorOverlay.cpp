@@ -268,7 +268,7 @@ void InspectorOverlay::setIndicating(bool indicating)
 
 bool InspectorOverlay::shouldShowOverlay() const
 {
-    return m_highlightNode || m_highlightNodeList || m_highlightQuad || m_indicating || m_showingPaintRects || !m_pausedInDebuggerMessage.isNull();
+    return m_highlightNode || m_highlightNodeList || m_highlightQuad || m_indicating || m_showingPaintRects || m_showRulers || !m_pausedInDebuggerMessage.isNull();
 }
 
 void InspectorOverlay::update()
@@ -283,20 +283,22 @@ void InspectorOverlay::update()
         return;
 
     FrameView* overlayView = overlayPage()->mainFrame().view();
-    IntSize viewportSize = view->sizeForVisibleContent();
     IntSize frameViewFullSize = view->sizeForVisibleContent(ScrollableArea::IncludeScrollbars);
     overlayView->resize(frameViewFullSize);
 
     // Clear canvas and paint things.
-    // FIXME: Remove extra parameter?
-    reset(viewportSize, IntSize());
+    IntSize viewportSize = view->sizeForVisibleContent();
+    IntPoint scrollOffset = view->scrollPosition();
+    reset(viewportSize, scrollOffset);
 
     // Include scrollbars to avoid masking them by the gutter.
-    drawGutter();
     drawNodeHighlight();
     drawQuadHighlight();
     drawPausedInDebuggerMessage();
     drawPaintRects();
+
+    if (m_showRulers)
+        drawRulers();
 
     // Position DOM elements.
     overlayPage()->mainFrame().document()->resolveStyle(Document::ResolveStyleType::Rebuild);
@@ -393,6 +395,16 @@ void InspectorOverlay::showPaintRect(const FloatRect& rect)
     forcePaint();
 }
 
+void InspectorOverlay::setShowRulers(bool showRulers)
+{
+    if (m_showRulers == showRulers)
+        return;
+
+    m_showRulers = showRulers;
+
+    update();
+}
+
 void InspectorOverlay::updatePaintRectsTimerFired()
 {
     MonotonicTime now = MonotonicTime::now();
@@ -420,9 +432,9 @@ void InspectorOverlay::drawPaintRects()
     evaluateInOverlay(ASCIILiteral("updatePaintRects"), WTFMove(arrayOfRects));
 }
 
-void InspectorOverlay::drawGutter()
+void InspectorOverlay::drawRulers()
 {
-    evaluateInOverlay(ASCIILiteral("drawGutter"));
+    evaluateInOverlay(ASCIILiteral("drawRulers"));
 }
 
 static RefPtr<JSON::ArrayOf<Inspector::Protocol::OverlayTypes::FragmentHighlightData>> buildArrayForRendererFragments(RenderObject* renderer, const HighlightConfig& config)
@@ -739,12 +751,16 @@ void InspectorOverlay::forcePaint()
     m_client->highlight();
 }
 
-void InspectorOverlay::reset(const IntSize& viewportSize, const IntSize& frameViewFullSize)
+void InspectorOverlay::reset(const IntSize& viewportSize, const IntPoint& scrollOffset)
 {
     auto configObject = Inspector::Protocol::OverlayTypes::OverlayConfiguration::create()
         .setDeviceScaleFactor(m_page.deviceScaleFactor())
         .setViewportSize(buildObjectForSize(viewportSize))
-        .setFrameViewFullSize(buildObjectForSize(frameViewFullSize))
+        .setPageScaleFactor(m_page.pageScaleFactor())
+        .setPageZoomFactor(m_page.mainFrame().pageZoomFactor())
+        .setScrollOffset(buildObjectForPoint(scrollOffset))
+        .setContentInset(buildObjectForSize(IntSize(0, m_page.mainFrame().view()->topContentInset(ScrollView::TopContentInsetType::WebCoreOrPlatformContentInset))))
+        .setShowRulers(m_showRulers)
         .release();
     evaluateInOverlay("reset", WTFMove(configObject));
 }

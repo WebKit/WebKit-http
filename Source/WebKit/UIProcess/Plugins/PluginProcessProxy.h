@@ -76,18 +76,13 @@ public:
 
     // Asks the plug-in process to create a new connection to a web process. The connection identifier will be
     // encoded in the given argument encoder and sent back to the connection of the given web process.
-    void getPluginProcessConnection(Ref<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>&&);
+    void getPluginProcessConnection(Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply&&);
 
     void fetchWebsiteData(WTF::Function<void (Vector<String>)>&& completionHandler);
     void deleteWebsiteData(WallTime modifiedSince, WTF::Function<void ()>&& completionHandler);
     void deleteWebsiteDataForHostNames(const Vector<String>& hostNames, WTF::Function<void ()>&& completionHandler);
 
     bool isValid() const { return m_connection; }
-
-#if PLATFORM(COCOA)
-    void setProcessSuppressionEnabled(bool);
-
-#endif
 
 #if PLUGIN_ARCHITECTURE(UNIX)
     static bool scanPlugin(const String& pluginPath, RawPluginMetaData& result);
@@ -149,7 +144,7 @@ private:
     // The connection to the plug-in host process.
     RefPtr<IPC::Connection> m_connection;
 
-    Deque<RefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>> m_pendingConnectionReplies;
+    Deque<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> m_pendingConnectionReplies;
 
     Vector<uint64_t> m_pendingFetchWebsiteDataRequests;
     HashMap<uint64_t, WTF::Function<void (Vector<String>)>> m_pendingFetchWebsiteDataCallbacks;

@@ -76,12 +76,13 @@ private:
     // IPC messages.
     void serviceWorkerStartedWithMessage(std::optional<WebCore::ServiceWorkerJobDataIdentifier>, WebCore::ServiceWorkerIdentifier, const String& exceptionMessage) final;
     void installServiceWorker(const WebCore::ServiceWorkerContextData&, PAL::SessionID);
-    void startFetch(WebCore::SWServerConnectionIdentifier, uint64_t fetchIdentifier, WebCore::ServiceWorkerIdentifier, WebCore::ResourceRequest&&, WebCore::FetchOptions&&, IPC::FormDataReference&&, String&& referrer);
+    void startFetch(WebCore::SWServerConnectionIdentifier, WebCore::ServiceWorkerIdentifier, WebCore::FetchIdentifier, WebCore::ResourceRequest&&, WebCore::FetchOptions&&, IPC::FormDataReference&&, String&& referrer);
+    void cancelFetch(WebCore::SWServerConnectionIdentifier, WebCore::ServiceWorkerIdentifier, WebCore::FetchIdentifier);
     void postMessageToServiceWorker(WebCore::ServiceWorkerIdentifier destinationIdentifier, WebCore::MessageWithMessagePorts&&, WebCore::ServiceWorkerOrClientData&& sourceData);
     void fireInstallEvent(WebCore::ServiceWorkerIdentifier);
     void fireActivateEvent(WebCore::ServiceWorkerIdentifier);
     void terminateWorker(WebCore::ServiceWorkerIdentifier);
-    void syncTerminateWorker(WebCore::ServiceWorkerIdentifier, Ref<Messages::WebSWContextManagerConnection::SyncTerminateWorker::DelayedReply>&&);
+    void syncTerminateWorker(WebCore::ServiceWorkerIdentifier, Messages::WebSWContextManagerConnection::SyncTerminateWorker::DelayedReply&&);
     void findClientByIdentifierCompleted(uint64_t requestIdentifier, std::optional<WebCore::ServiceWorkerClientData>&&, bool hasSecurityError);
     void matchAllCompleted(uint64_t matchAllRequestIdentifier, Vector<WebCore::ServiceWorkerClientData>&&);
     void claimCompleted(uint64_t claimRequestIdentifier);

@@ -581,7 +581,6 @@
 
 #define USE_APPKIT 1
 #define HAVE_RUNLOOP_TIMER 1
-#define HAVE_SEC_IDENTITY 1
 #define HAVE_SEC_KEYCHAIN 1
 
 #if CPU(X86_64)
@@ -827,11 +826,6 @@
 #define ENABLE_FAST_TLS_JIT 1
 #endif
 
-/* This feature is currently disabled because WebCore will context switch VMs without telling JSC.
-   FIXME: Re-enable this feature.
-   https://bugs.webkit.org/show_bug.cgi?id=182173 */
-#define USE_FAST_TLS_FOR_TLC 0
-
 #if CPU(X86) || CPU(X86_64) || CPU(ARM_THUMB2) || CPU(ARM64) || CPU(ARM_TRADITIONAL) || CPU(MIPS)
 #define ENABLE_MASM_PROBE 1
 #else
@@ -1024,12 +1018,7 @@
 #define ENABLE_SIGNAL_BASED_VM_TRAPS 1
 #endif
 
-#define ENABLE_POISON 1
-/* Not currently supported for 32-bit or OS(WINDOWS) builds (because of missing llint support). Make sure it's disabled. */
-#if USE(JSVALUE32_64) || OS(WINDOWS)
-#undef ENABLE_POISON
 #define ENABLE_POISON 0
-#endif
 
 #if !defined(USE_POINTER_PROFILING) || USE(JSVALUE32_64) || !ENABLE(JIT)
 #undef USE_POINTER_PROFILING
@@ -1344,7 +1333,7 @@
 #define HAVE_RSA_PSS 1
 #endif
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000 && !PLATFORM(APPLETV))
 #define HAVE_URL_FORMATTING 1
 #endif
 

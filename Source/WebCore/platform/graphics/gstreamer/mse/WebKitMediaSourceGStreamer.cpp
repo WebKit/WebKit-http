@@ -478,14 +478,6 @@ void webKitMediaSrcLinkStreamToSrcPad(GstPad* sourcePad, Stream* stream)
 
     gst_pad_set_active(ghostpad, TRUE);
     gst_element_add_pad(GST_ELEMENT(stream->parent), ghostpad);
-
-    if (stream->decodebinSinkPad) {
-        GST_DEBUG_OBJECT(stream->parent, "A decodebin was previously used for this source, trying to reuse it.");
-        // FIXME: error checking here. Not sure what to do if linking
-        // fails though, because decodebin is out of this source
-        // element's scope, in theory.
-        gst_pad_link(ghostpad, stream->decodebinSinkPad);
-    }
 }
 
 void webKitMediaSrcLinkParser(GstPad* sourcePad, GstCaps* caps, Stream* stream)
@@ -513,15 +505,6 @@ void webKitMediaSrcFreeStream(WebKitMediaSrc* source, Stream* stream)
         // Don't trigger callbacks from this appsrc to avoid using the stream anymore.
         gst_app_src_set_callbacks(GST_APP_SRC(stream->appsrc), &disabledAppsrcCallbacks, nullptr, nullptr);
         gst_app_src_end_of_stream(GST_APP_SRC(stream->appsrc));
-        gst_element_set_state(stream->appsrc, GST_STATE_NULL);
-        gst_bin_remove(GST_BIN(source), stream->appsrc);
-        stream->appsrc = nullptr;
-    }
-
-    if (stream->parser) {
-        gst_element_set_state(stream->parser, GST_STATE_NULL);
-        gst_bin_remove(GST_BIN(source), stream->parser);
-        stream->parser = nullptr;
     }
 
     GST_OBJECT_LOCK(source);

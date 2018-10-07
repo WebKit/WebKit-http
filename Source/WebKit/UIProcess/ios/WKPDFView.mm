@@ -32,7 +32,6 @@
 #import "FindClient.h"
 #import "WKActionSheetAssistant.h"
 #import "WKWebViewInternal.h"
-#import "WeakObjCPtr.h"
 #import "WebPageProxy.h"
 #import "_WKWebViewPrintFormatterInternal.h"
 #import <PDFKit/PDFHostViewController.h>
@@ -40,6 +39,7 @@
 #import <wtf/BlockPtr.h>
 #import <wtf/MainThread.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/WeakObjCPtr.h>
 
 @interface WKPDFView () <PDFHostViewControllerDelegate, WKActionSheetAssistantDelegate>
 @end
@@ -61,7 +61,7 @@
     RetainPtr<NSString> _password;
     WebKit::InteractionInformationAtPosition _positionInformation;
     RetainPtr<NSString> _suggestedFilename;
-    WebKit::WeakObjCPtr<WKWebView> _webView;
+    WeakObjCPtr<WKWebView> _webView;
 }
 
 - (void)dealloc
@@ -79,7 +79,7 @@
 
 #pragma mark WKWebViewContentProvider
 
-- (instancetype)web_initWithFrame:(CGRect)frame webView:(WKWebView *)webView
+- (instancetype)web_initWithFrame:(CGRect)frame webView:(WKWebView *)webView mimeType:(NSString *)mimeType
 {
     if (!(self = [super initWithFrame:frame webView:webView]))
         return nil;
@@ -96,7 +96,7 @@
     _data = adoptNS([data copy]);
     _suggestedFilename = adoptNS([filename copy]);
 
-    WebKit::WeakObjCPtr<WKPDFView> weakSelf = self;
+    WeakObjCPtr<WKPDFView> weakSelf = self;
     [PDFHostViewController createHostView:[self, weakSelf = WTFMove(weakSelf)](PDFHostViewController * _Nullable hostViewController) {
         ASSERT(isMainThread());
 
@@ -344,6 +344,16 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
     [_hostViewController updatePDFViewLayout];
 }
 
+- (void)web_beginAnimatedResize
+{
+    [_hostViewController beginPDFViewRotation];
+}
+
+- (void)web_endAnimatedResize
+{
+    [_hostViewController endPDFViewRotation];
+}
+
 - (NSData *)web_dataRepresentation
 {
     return _data.get();
@@ -410,31 +420,29 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
     [self _goToURL:[self _URLWithPageIndex:pageIndex] atLocation:documentViewRect.origin];
 }
 
-- (void)_showActionSheetForURL:(NSURL *)url atLocation:(CGPoint)location
+- (void)_showActionSheetForURL:(NSURL *)url atLocation:(CGPoint)location withAnnotationRect:(CGRect)annotationRect
 {
     WKWebView *webView = _webView.getAutoreleased();
     if (!webView)
         return;
 
-    CGPoint locationInHostView = [webView.scrollView convertPoint:location toView:[_hostViewController view]];
-
     WebKit::InteractionInformationAtPosition positionInformation;
-    positionInformation.bounds = WebCore::roundedIntRect(CGRect { locationInHostView, CGSizeMake(0, 0) });
-    positionInformation.request.point = WebCore::roundedIntPoint(locationInHostView);
+    positionInformation.bounds = WebCore::roundedIntRect(annotationRect);
+    positionInformation.request.point = WebCore::roundedIntPoint(location);
     positionInformation.url = url;
 
     _positionInformation = WTFMove(positionInformation);
     [_actionSheetAssistant showLinkSheet];
 }
 
-- (void)pdfHostViewController:(PDFHostViewController *)controller didLongPressURL:(NSURL *)url atLocation:(CGPoint)location
+- (void)pdfHostViewController:(PDFHostViewController *)controller didLongPressURL:(NSURL *)url atLocation:(CGPoint)location withAnnotationRect:(CGRect)annotationRect
 {
-    [self _showActionSheetForURL:url atLocation:location];
+    [self _showActionSheetForURL:url atLocation:location withAnnotationRect:annotationRect];
 }
 
-- (void)pdfHostViewController:(PDFHostViewController *)controller didLongPressPageIndex:(NSInteger)pageIndex atLocation:(CGPoint)location
+- (void)pdfHostViewController:(PDFHostViewController *)controller didLongPressPageIndex:(NSInteger)pageIndex atLocation:(CGPoint)location withAnnotationRect:(CGRect)annotationRect
 {
-    [self _showActionSheetForURL:[self _URLWithPageIndex:pageIndex] atLocation:location];
+    [self _showActionSheetForURL:[self _URLWithPageIndex:pageIndex] atLocation:location withAnnotationRect:annotationRect];
 }
 
 #pragma mark WKActionSheetAssistantDelegate

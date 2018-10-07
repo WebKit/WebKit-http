@@ -74,7 +74,7 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
             auto& layoutBox = layoutPair.layoutBox;
             auto& displayBox = layoutPair.displayBox;
             
-            computeWidth(layoutBox, displayBox);
+            computeWidth(layoutContext, layoutBox, displayBox);
             computeStaticPosition(layoutContext, layoutBox, layoutPair.displayBox);
             if (layoutBox.establishesFormattingContext()) {
                 auto formattingContext = layoutContext.formattingContext(layoutBox);
@@ -94,7 +94,7 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
             auto& layoutBox = layoutPair->layoutBox;
             auto& displayBox = layoutPair->displayBox;
 
-            computeHeight(layoutBox, displayBox);
+            computeHeight(layoutContext, layoutBox, displayBox);
             // Adjust position now that we have all the previous floats placed in this context -if needed.
             floatingContext.computePosition(layoutBox, displayBox);
             if (!is<Container>(layoutBox))
@@ -112,6 +112,9 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
     placeInFlowPositionedChildren(formattingRoot);
     // And take care of out-of-flow boxes as the final step.
     layoutOutOfFlowDescendants(layoutContext);
+#ifndef NDEBUG
+    validateGeometryConstraintsAfterLayout(layoutContext);
+#endif
 }
 
 std::unique_ptr<FormattingState> BlockFormattingContext::createFormattingState(Ref<FloatingState>&& floatingState) const
@@ -127,28 +130,36 @@ Ref<FloatingState> BlockFormattingContext::createOrFindFloatingState(LayoutConte
 
 void BlockFormattingContext::computeStaticPosition(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    // https://www.w3.org/TR/CSS22/visuren.html#block-formatting
-    // In a block formatting context, boxes are laid out one after the other, vertically, beginning at the top of a containing block.
-    // The vertical distance between two sibling boxes is determined by the 'margin' properties.
-    // Vertical margins between adjacent block-level boxes in a block formatting context collapse.
-    // In a block formatting context, each box's left outer edge touches the left edge of the containing block (for right-to-left formatting, right edges touch).
-    auto containingBlockContentBox = layoutContext.displayBoxForLayoutBox(*layoutBox.containingBlock())->contentBox();
-    // Start from the top of the container's content box.
-    auto top = containingBlockContentBox.y();
-    auto left = containingBlockContentBox.x();
-    if (auto* previousInFlowSibling = layoutBox.previousInFlowSibling())
-        top = layoutContext.displayBoxForLayoutBox(*previousInFlowSibling)->bottom() + marginBottom(*previousInFlowSibling);
-    LayoutPoint topLeft = { top, left };
-    topLeft.moveBy({ marginLeft(layoutBox), marginTop(layoutBox) });
+    auto topLeft = Geometry::staticPosition(layoutContext, layoutBox);
     displayBox.setTopLeft(topLeft);
 }
 
-void BlockFormattingContext::computeInFlowWidth(const Box&, Display::Box&) const
+void BlockFormattingContext::computeInFlowHeight(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
+    LayoutUnit computedHeight;
+
+    if (layoutBox.replaced()) {
+        // 10.6.2 Inline replaced elements, block-level replaced elements in normal flow, 'inline-block'
+        // replaced elements in normal flow and floating replaced elements
+        computedHeight = FormattingContext::Geometry::replacedHeight(layoutContext, layoutBox);
+    } else
+        computedHeight = Geometry::inFlowNonReplacedHeight(layoutContext, layoutBox);
+
+    displayBox.setHeight(computedHeight);
 }
 
-void BlockFormattingContext::computeInFlowHeight(const Box&, Display::Box&) const
+void BlockFormattingContext::computeInFlowWidth(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
+    LayoutUnit computedWidth;
+
+    if (layoutBox.replaced()) {
+        // 10.3.4 Block-level, replaced elements in normal flow
+        // The used value of 'width' is determined as for inline replaced elements
+        computedWidth = FormattingContext::Geometry::replacedWidth(layoutContext, layoutBox);
+    } else
+        computedWidth = Geometry::inFlowNonReplacedWidth(layoutContext, layoutBox);
+
+    displayBox.setWidth(computedWidth);
 }
 
 LayoutUnit BlockFormattingContext::marginTop(const Box& layoutBox) const

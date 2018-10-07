@@ -67,7 +67,7 @@ struct NetworkProcessCreationParameters {
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     bool shouldEnableNetworkCacheSpeculativeRevalidation { false };
 #endif
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     Vector<uint8_t> uiProcessCookieStorageIdentifier;
 #endif
 #if PLATFORM(IOS)
@@ -133,7 +133,11 @@ struct NetworkProcessCreationParameters {
     Vector<String> urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest;
     Vector<String> urlSchemesRegisteredAsCORSEnabled;
 
-    bool trackNetworkActivity { false };
+    bool tracksResourceLoadMilestones { false };
+    
+#if ENABLE(WIFI_ASSERTIONS)
+    unsigned wirelessContextIdentifier { 0 };
+#endif
 };
 
 } // namespace WebKit

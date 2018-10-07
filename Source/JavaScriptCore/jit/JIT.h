@@ -323,8 +323,6 @@ namespace JSC {
         
         void emitLoadDouble(int index, FPRegisterID value);
         void emitLoadInt32ToDouble(int index, FPRegisterID value);
-        Jump emitJumpIfCellObject(RegisterID cellReg);
-        Jump emitJumpIfCellNotObject(RegisterID cellReg);
 
         enum WriteBarrierMode { UnconditionalWriteBarrier, ShouldFilterBase, ShouldFilterValue, ShouldFilterBaseAndValue };
         // value register in write barrier is used before any scratch registers
@@ -441,20 +439,15 @@ namespace JSC {
             emitPutVirtualRegister(dst, payload);
         }
 
-        Jump emitJumpIfJSCell(RegisterID);
         Jump emitJumpIfBothJSCells(RegisterID, RegisterID, RegisterID);
         void emitJumpSlowCaseIfJSCell(RegisterID);
         void emitJumpSlowCaseIfNotJSCell(RegisterID);
         void emitJumpSlowCaseIfNotJSCell(RegisterID, int VReg);
-        Jump emitJumpIfInt(RegisterID);
-        Jump emitJumpIfNotInt(RegisterID);
         Jump emitJumpIfNotInt(RegisterID, RegisterID, RegisterID scratch);
         PatchableJump emitPatchableJumpIfNotInt(RegisterID);
         void emitJumpSlowCaseIfNotInt(RegisterID);
         void emitJumpSlowCaseIfNotNumber(RegisterID);
         void emitJumpSlowCaseIfNotInt(RegisterID, RegisterID, RegisterID scratch);
-
-        void emitTagBool(RegisterID);
 
         void compileGetByIdHotPath(int baseVReg, const Identifier*);
 
@@ -505,6 +498,7 @@ namespace JSC {
         void emit_op_get_arguments_length(Instruction*);
         void emit_op_get_by_val(Instruction*);
         void emit_op_get_argument_by_val(Instruction*);
+        void emit_op_in_by_id(Instruction*);
         void emit_op_init_lazy_reg(Instruction*);
         void emit_op_overrides_has_instance(Instruction*);
         void emit_op_instanceof(Instruction*);
@@ -616,6 +610,7 @@ namespace JSC {
         void emitSlow_op_get_arguments_length(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_get_by_val(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_get_argument_by_val(Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_in_by_id(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_instanceof(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_instanceof_custom(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jless(Instruction*, Vector<SlowCaseEntry>::iterator&);
@@ -802,8 +797,6 @@ namespace JSC {
 
         void emitRightShiftFastPath(Instruction* currentInstruction, OpcodeID);
 
-        Jump checkStructure(RegisterID reg, Structure* structure);
-
         void updateTopCallFrame();
 
         Call emitNakedCall(CodePtr<NoPtrTag> function = CodePtr<NoPtrTag>());
@@ -870,6 +863,8 @@ namespace JSC {
         Vector<JITGetByIdGenerator> m_getByIds;
         Vector<JITGetByIdWithThisGenerator> m_getByIdsWithThis;
         Vector<JITPutByIdGenerator> m_putByIds;
+        Vector<JITInByIdGenerator> m_inByIds;
+        Vector<JITInstanceOfGenerator> m_instanceOfs;
         Vector<ByValCompilationInfo> m_byValCompilationInfo;
         Vector<CallCompilationInfo> m_callCompilationInfo;
         Vector<JumpTable> m_jmpTable;
@@ -882,18 +877,19 @@ namespace JSC {
         JumpList m_exceptionChecksWithCallFrameRollback;
         Label m_exceptionHandler;
 
-        unsigned m_getByIdIndex;
-        unsigned m_getByIdWithThisIndex;
-        unsigned m_putByIdIndex;
-        unsigned m_byValInstructionIndex;
-        unsigned m_callLinkInfoIndex;
+        unsigned m_getByIdIndex { UINT_MAX };
+        unsigned m_getByIdWithThisIndex { UINT_MAX };
+        unsigned m_putByIdIndex { UINT_MAX };
+        unsigned m_inByIdIndex { UINT_MAX };
+        unsigned m_instanceOfIndex { UINT_MAX };
+        unsigned m_byValInstructionIndex { UINT_MAX };
+        unsigned m_callLinkInfoIndex { UINT_MAX };
         
         Label m_arityCheck;
         std::unique_ptr<LinkBuffer> m_linkBuffer;
 
         std::unique_ptr<JITDisassembler> m_disassembler;
         RefPtr<Profiler::Compilation> m_compilation;
-        static CodeRef<JITThunkPtrTag> stringGetByValStubGenerator(VM*);
 
         PCToCodeOriginMapBuilder m_pcToCodeOriginMapBuilder;
 

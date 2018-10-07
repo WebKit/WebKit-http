@@ -293,6 +293,10 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         for (unsigned i = 0; i < data.variants.size(); ++i)
             out.print(comma, inContext(data.variants[i], context));
     }
+    if (node->hasMatchStructureData()) {
+        for (MatchStructureVariant& variant : node->matchStructureData().variants)
+            out.print(comma, inContext(*variant.structure.get(), context), "=>", variant.result);
+    }
     ASSERT(node->hasVariableAccessData(*this) == node->accessesStack(*this));
     if (node->hasVariableAccessData(*this)) {
         VariableAccessData* variableAccessData = node->tryGetVariableAccessData();
@@ -318,7 +322,7 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
     if (node->hasLazyJSValue())
         out.print(comma, node->lazyJSValue());
     if (node->hasIndexingType())
-        out.print(comma, IndexingTypeDump(node->indexingType()));
+        out.print(comma, IndexingTypeDump(node->indexingMode()));
     if (node->hasTypedArrayType())
         out.print(comma, node->typedArrayType());
     if (node->hasPhi())

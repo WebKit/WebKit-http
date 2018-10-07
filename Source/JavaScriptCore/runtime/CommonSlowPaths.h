@@ -30,6 +30,7 @@
 #include "DirectArguments.h"
 #include "ExceptionHelpers.h"
 #include "FunctionCodeBlock.h"
+#include "JSImmutableButterfly.h"
 #include "ScopedArguments.h"
 #include "SlowPathReturnType.h"
 #include "StackAlignment.h"
@@ -85,7 +86,7 @@ ALWAYS_INLINE int arityCheckFor(ExecState* exec, VM& vm, CodeSpecializationKind 
     return padding;
 }
 
-inline bool opIn(ExecState* exec, JSValue baseVal, JSValue propName, ArrayProfile* arrayProfile = nullptr)
+inline bool opInByVal(ExecState* exec, JSValue baseVal, JSValue propName, ArrayProfile* arrayProfile = nullptr)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
@@ -100,6 +101,8 @@ inline bool opIn(ExecState* exec, JSValue baseVal, JSValue propName, ArrayProfil
 
     uint32_t i;
     if (propName.getUInt32(i)) {
+        if (arrayProfile)
+            arrayProfile->observeIndexedRead(vm, baseObj, i);
         scope.release();
         return baseObj->hasProperty(exec, i);
     }
@@ -225,6 +228,53 @@ inline bool canAccessArgumentIndexQuickly(JSObject& object, uint32_t index)
     return false;
 }
 
+static ALWAYS_INLINE void putDirectWithReify(VM& vm, ExecState* exec, JSObject* baseObject, PropertyName propertyName, JSValue value, PutPropertySlot& slot, Structure** result = nullptr)
+{
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    if (baseObject->inherits<JSFunction>(vm)) {
+        jsCast<JSFunction*>(baseObject)->reifyLazyPropertyIfNeeded(vm, exec, propertyName);
+        RETURN_IF_EXCEPTION(scope, void());
+    }
+    if (result)
+        *result = baseObject->structure(vm);
+    scope.release();
+    baseObject->putDirect(vm, propertyName, value, slot);
+}
+
+static ALWAYS_INLINE void putDirectAccessorWithReify(VM& vm, ExecState* exec, JSObject* baseObject, PropertyName propertyName, GetterSetter* accessor, unsigned attribute)
+{
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    if (baseObject->inherits<JSFunction>(vm)) {
+        jsCast<JSFunction*>(baseObject)->reifyLazyPropertyIfNeeded(vm, exec, propertyName);
+        RETURN_IF_EXCEPTION(scope, void());
+    }
+    scope.release();
+    baseObject->putDirectAccessor(exec, propertyName, accessor, attribute);
+}
+
+inline JSArray* allocateNewArrayBuffer(VM& vm, Structure* structure, JSImmutableButterfly* immutableButterfly)
+{
+    JSGlobalObject* globalObject = structure->globalObject();
+    Structure* originalStructure = globalObject->originalArrayStructureForIndexingType(immutableButterfly->indexingMode());
+    ASSERT(originalStructure->indexingMode() == immutableButterfly->indexingMode());
+    ASSERT(isCopyOnWrite(immutableButterfly->indexingMode()));
+    ASSERT(!structure->outOfLineCapacity());
+
+    JSArray* result = JSArray::createWithButterfly(vm, nullptr, originalStructure, immutableButterfly->toButterfly());
+    // FIXME: This works but it's slow. If we cared enough about the perf when having a bad time then we could fix it.
+    if (UNLIKELY(originalStructure != structure)) {
+        ASSERT(hasSlowPutArrayStorage(structure->indexingMode()));
+        ASSERT(globalObject->isHavingABadTime());
+
+        result->switchToSlowPutArrayStorage(vm);
+        ASSERT(result->butterfly() != immutableButterfly->toButterfly());
+        ASSERT(!result->butterfly()->arrayStorage()->m_sparseMap.get());
+        ASSERT(result->structureID() == structure->id());
+    }
+
+    return result;
+}
+
 } // namespace CommonSlowPaths
 
 class ExecState;
@@ -282,7 +332,8 @@ SLOW_PATH_HIDDEN_DECL(slow_path_typeof);
 SLOW_PATH_HIDDEN_DECL(slow_path_is_object);
 SLOW_PATH_HIDDEN_DECL(slow_path_is_object_or_null);
 SLOW_PATH_HIDDEN_DECL(slow_path_is_function);
-SLOW_PATH_HIDDEN_DECL(slow_path_in);
+SLOW_PATH_HIDDEN_DECL(slow_path_in_by_id);
+SLOW_PATH_HIDDEN_DECL(slow_path_in_by_val);
 SLOW_PATH_HIDDEN_DECL(slow_path_del_by_val);
 SLOW_PATH_HIDDEN_DECL(slow_path_strcat);
 SLOW_PATH_HIDDEN_DECL(slow_path_to_primitive);

@@ -28,9 +28,11 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "DisplayBox.h"
 #include "LayoutBox.h"
 #include "LayoutContainer.h"
 #include "LayoutContext.h"
+#include "LayoutDescendantIterator.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -55,42 +57,82 @@ void FormattingContext::computeInFlowPositionedPosition(const Box&, Display::Box
 {
 }
 
-void FormattingContext::computeOutOfFlowPosition(const Box&, Display::Box&) const
+void FormattingContext::computeOutOfFlowPosition(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
+    LayoutPoint computedTopLeft;
+
+    if (layoutBox.replaced())
+        computedTopLeft = Geometry::outOfFlowReplacedPosition(layoutContext, layoutBox);
+    else
+        computedTopLeft = Geometry::outOfFlowNonReplacedPosition(layoutContext, layoutBox);
+
+    displayBox.setTopLeft(computedTopLeft);
 }
 
-void FormattingContext::computeWidth(const Box& layoutBox, Display::Box& displayBox) const
+void FormattingContext::computeWidth(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
     if (layoutBox.isOutOfFlowPositioned())
-        return computeOutOfFlowWidth(layoutBox, displayBox);
+        return computeOutOfFlowWidth(layoutContext, layoutBox, displayBox);
     if (layoutBox.isFloatingPositioned())
-        return computeFloatingWidth(layoutBox, displayBox);
-    return computeInFlowWidth(layoutBox, displayBox);
+        return computeFloatingWidth(layoutContext, layoutBox, displayBox);
+    return computeInFlowWidth(layoutContext, layoutBox, displayBox);
 }
 
-void FormattingContext::computeHeight(const Box& layoutBox, Display::Box& displayBox) const
+void FormattingContext::computeHeight(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
     if (layoutBox.isOutOfFlowPositioned())
-        return computeOutOfFlowHeight(layoutBox, displayBox);
+        return computeOutOfFlowHeight(layoutContext, layoutBox, displayBox);
     if (layoutBox.isFloatingPositioned())
-        return computeFloatingHeight(layoutBox, displayBox);
-    return computeInFlowHeight(layoutBox, displayBox);
+        return computeFloatingHeight(layoutContext, layoutBox, displayBox);
+    return computeInFlowHeight(layoutContext, layoutBox, displayBox);
 }
 
-void FormattingContext::computeOutOfFlowWidth(const Box&, Display::Box&) const
+void FormattingContext::computeOutOfFlowWidth(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
+    LayoutUnit computedWidth;
+
+    if (layoutBox.replaced())
+        computedWidth = Geometry::outOfFlowReplacedWidth(layoutContext, layoutBox);
+    else 
+        computedWidth = Geometry::outOfFlowNonReplacedWidth(layoutContext, layoutBox);
+
+    displayBox.setWidth(computedWidth);
 }
 
-void FormattingContext::computeFloatingWidth(const Box&, Display::Box&) const
+void FormattingContext::computeFloatingWidth(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
+    LayoutUnit computedWidth;
+
+    if (layoutBox.replaced())
+        computedWidth = Geometry::floatingReplacedWidth(layoutContext, layoutBox);
+    else
+        computedWidth = Geometry::floatingNonReplacedWidth(layoutContext, layoutBox);
+
+    displayBox.setWidth(computedWidth);
 }
 
-void FormattingContext::computeOutOfFlowHeight(const Box&, Display::Box&) const
+void FormattingContext::computeOutOfFlowHeight(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
+    LayoutUnit computedHeight;
+
+    if (layoutBox.replaced())
+        computedHeight = Geometry::outOfFlowReplacedHeight(layoutContext, layoutBox);
+    else
+        computedHeight = Geometry::outOfFlowNonReplacedHeight(layoutContext, layoutBox);
+
+    displayBox.setHeight(computedHeight);
 }
 
-void FormattingContext::computeFloatingHeight(const Box&, Display::Box&) const
+void FormattingContext::computeFloatingHeight(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
+    LayoutUnit computedHeight;
+
+    if (layoutBox.replaced())
+        computedHeight = Geometry::floatingReplacedHeight(layoutContext, layoutBox);
+    else
+        computedHeight = Geometry::floatingNonReplacedHeight(layoutContext, layoutBox);
+
+    displayBox.setHeight(computedHeight);
 }
 
 LayoutUnit FormattingContext::marginTop(const Box&) const
@@ -125,16 +167,55 @@ void FormattingContext::layoutOutOfFlowDescendants(LayoutContext& layoutContext)
         auto& layoutBox = *outOfFlowBox;
         auto& displayBox = layoutContext.createDisplayBox(layoutBox);
 
-        computeOutOfFlowPosition(layoutBox, displayBox);
-        computeOutOfFlowWidth(layoutBox, displayBox);
+        // The term "static position" (of an element) refers, roughly, to the position an element would have had in the normal flow.
+        // More precisely, the static position for 'top' is the distance from the top edge of the containing block to the top margin edge
+        // of a hypothetical box that would have been the first box of the element if its specified 'position' value had been 'static' and
+        // its specified 'float' had been 'none' and its specified 'clear' had been 'none'.
+        computeStaticPosition(layoutContext, layoutBox, displayBox);
+        computeOutOfFlowWidth(layoutContext, layoutBox, displayBox);
 
         ASSERT(layoutBox.establishesFormattingContext());
         auto formattingContext = layoutContext.formattingContext(layoutBox);
         formattingContext->layout(layoutContext, layoutContext.establishedFormattingState(layoutBox, *formattingContext));
 
-        computeOutOfFlowHeight(layoutBox, displayBox);
+        computeOutOfFlowHeight(layoutContext, layoutBox, displayBox);
+        computeOutOfFlowPosition(layoutContext, layoutBox, displayBox);
     }
 }
+
+#ifndef NDEBUG
+void FormattingContext::validateGeometryConstraintsAfterLayout(const LayoutContext& layoutContext) const
+{
+    if (!is<Container>(root()))
+        return;
+    auto& formattingContextRoot = downcast<Container>(root());
+    // FIXME: add a descendantsOfType<> flavor that stops at nested formatting contexts
+    for (auto& layoutBox : descendantsOfType<Box>(formattingContextRoot)) {
+        if (&layoutBox.formattingContextRoot() != &formattingContextRoot)
+            continue;
+        auto* containingBlock = layoutBox.containingBlock();
+        ASSERT(containingBlock);
+        auto containingBlockSize = layoutContext.displayBoxForLayoutBox(*containingBlock)->size();
+        auto* displayBox = layoutContext.displayBoxForLayoutBox(layoutBox);
+        ASSERT(displayBox);
+
+        // 10.3.3 Block-level, non-replaced elements in normal flow
+        // 10.3.7 Absolutely positioned, non-replaced elements
+        if ((layoutBox.isBlockLevelBox() || layoutBox.isOutOfFlowPositioned()) && !layoutBox.replaced()) {
+            // margin-left + border-left-width + padding-left + width + padding-right + border-right-width + margin-right = width of containing block
+            ASSERT(displayBox->marginLeft() + displayBox->borderLeft() + displayBox->paddingLeft() + displayBox->width()
+                + displayBox->paddingRight() + displayBox->borderRight() + displayBox->marginRight() == containingBlockSize.width());
+        }
+
+        // 10.6.4 Absolutely positioned, non-replaced elements
+        if (layoutBox.isOutOfFlowPositioned() && !layoutBox.replaced()) {
+            // top + margin-top + border-top-width + padding-top + height + padding-bottom + border-bottom-width + margin-bottom + bottom = height of containing block
+            ASSERT(displayBox->top() + displayBox->marginTop() + displayBox->borderTop() + displayBox->paddingTop()
+                + displayBox->paddingBottom() + displayBox->borderBottom() + displayBox->marginBottom() == containingBlockSize.height());
+        }
+    }
+}
+#endif
 
 }
 }

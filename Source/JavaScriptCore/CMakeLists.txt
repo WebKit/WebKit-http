@@ -124,14 +124,8 @@ if (USE_CAPSTONE)
     list(APPEND JavaScriptCore_LIBRARIES capstone)
 endif ()
 
-# Since r228149, on MIPS we need to link with -latomic, because
-# __atomic_fetch_add_8 is not available as a compiler intrinsic. It is
-# available on other platforms (including 32-bit Arm), so the link with
-# libatomic is only neede on MIPS.
-if (WTF_CPU_MIPS)
-    list(APPEND JavaScriptCore_LIBRARIES
-        -latomic
-    )
+if (ATOMIC_INT64_REQUIRES_LIBATOMIC)
+    list(APPEND JavaScriptCore_LIBRARIES atomic)
 endif ()
 
 set(JavaScriptCore_SCRIPTS_SOURCES_DIR "${JAVASCRIPTCORE_DIR}/Scripts")
@@ -454,6 +448,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     bytecode/InternalFunctionAllocationProfile.h
     bytecode/JumpTable.h
     bytecode/LLIntCallLinkInfo.h
+    bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.h
     bytecode/LazyOperandValueProfile.h
     bytecode/ObjectAllocationProfile.h
     bytecode/ObjectPropertyCondition.h
@@ -561,9 +556,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     heap/Subspace.h
     heap/SubspaceInlines.h
     heap/Synchronousness.h
-    heap/ThreadLocalCache.h
     heap/TinyBloomFilter.h
-    heap/UnconditionalFinalizer.h
     heap/VisitRaceKey.h
     heap/Weak.h
     heap/WeakBlock.h
@@ -1188,6 +1181,9 @@ if (COMPILER_IS_GCC_OR_CLANG)
     # Avoid using fused multiply-add instructions since this could give different results
     # for e.g. parseInt depending on the platform and compilation flags.
     WEBKIT_ADD_TARGET_CXX_FLAGS(JavaScriptCore -ffp-contract=off)
+
+    # Avoid "variable tracking size limit exceeded"
+    set_source_files_properties(builtins/BuiltinNames.cpp PROPERTIES COMPILE_FLAGS -fno-var-tracking-assignments)
 endif ()
 
 WEBKIT_MAKE_FORWARDING_HEADERS(JavaScriptCore

@@ -72,6 +72,7 @@
 #include "PageGroup.h"
 #include "PlatformMediaSessionManager.h"
 #include "ProgressTracker.h"
+#include "PublicSuffix.h"
 #include "RenderLayerCompositor.h"
 #include "RenderTheme.h"
 #include "RenderVideo.h"
@@ -477,6 +478,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_completelyLoaded(false)
     , m_havePreparedToPlay(false)
     , m_parsingInProgress(createdByParser)
+    , m_shouldBufferData(true)
     , m_elementIsHidden(document.hidden())
     , m_creatingControls(false)
     , m_receivedLayoutSizeChanged(false)
@@ -877,6 +879,9 @@ void HTMLMediaElement::parseAttribute(const QualifiedName& name, const AtomicStr
     else if (name == autoplayAttr) {
         if (processingUserGestureForMedia())
             removeBehaviorsRestrictionsAfterFirstUserGesture();
+    } else if (name == titleAttr) {
+        if (m_mediaSession)
+            m_mediaSession->clientCharacteristicsChanged();
     }
     else
         HTMLElement::parseAttribute(name, value);
@@ -926,7 +931,7 @@ Node::InsertedIntoAncestorResult HTMLMediaElement::insertedIntoAncestor(Insertio
 
     HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
     if (insertionType.connectedToDocument)
-        m_inActiveDocument = true;
+        setInActiveDocument(true);
 
     return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
 }
@@ -978,7 +983,7 @@ void HTMLMediaElement::removedFromAncestor(RemovalType removalType, ContainerNod
 {
     INFO_LOG(LOGIDENTIFIER);
 
-    m_inActiveDocument = false;
+    setInActiveDocument(false);
     if (removalType.disconnectedFromDocument) {
         // Pause asynchronously to let the operation that removed us finish, in case we get inserted back into a document.
         m_pauseAfterDetachedTaskQueue.enqueueTask(std::bind(&HTMLMediaElement::pauseAfterDetachedTask, this));
@@ -3080,6 +3085,9 @@ void HTMLMediaElement::finishSeek()
     // 17 - Queue a task to fire a simple event named seeked at the element.
     scheduleEvent(eventNames().seekedEvent);
 
+    if (m_mediaSession)
+        m_mediaSession->clientCharacteristicsChanged();
+
 #if ENABLE(MEDIA_SOURCE)
     if (m_mediaSource)
         m_mediaSource->monitorSourceBuffers();
@@ -3467,7 +3475,7 @@ void HTMLMediaElement::playInternal()
         ALWAYS_LOG(LOGIDENTIFIER, "  returning because of interruption");
         return;
     }
-
+    
     // 4.8.10.9. Playing the media resource
     if (!m_player || m_networkState == NETWORK_EMPTY)
         selectMediaResource();
@@ -5520,7 +5528,7 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
     setPreparedToReturnVideoLayerToInline(true);
 
     updatePlaybackControlsManager();
-    m_inActiveDocument = false;
+    setInActiveDocument(false);
 
     // Stop the playback without generating events
     setPlaying(false);
@@ -5600,7 +5608,7 @@ void HTMLMediaElement::resume()
 {
     INFO_LOG(LOGIDENTIFIER);
 
-    m_inActiveDocument = true;
+    setInActiveDocument(true);
 
     m_asyncEventQueue.resume();
 
@@ -5638,8 +5646,13 @@ void HTMLMediaElement::mediaVolumeDidChange()
 
 void HTMLMediaElement::visibilityStateChanged()
 {
-    m_elementIsHidden = document().hidden() && m_videoFullscreenMode != VideoFullscreenModePictureInPicture;
+    bool elementIsHidden = document().hidden() && m_videoFullscreenMode != VideoFullscreenModePictureInPicture;
+    if (elementIsHidden == m_elementIsHidden)
+        return;
+
+    m_elementIsHidden = elementIsHidden;
     INFO_LOG(LOGIDENTIFIER, "visible = ", !m_elementIsHidden);
+
     updateSleepDisabling();
     m_mediaSession->visibilityChanged();
     if (m_player)
@@ -6499,6 +6512,7 @@ void HTMLMediaElement::createMediaPlayer()
     forgetResourceSpecificTracks();
 #endif
     m_player = MediaPlayer::create(*this);
+    m_player->setShouldBufferData(m_shouldBufferData);
     scheduleUpdatePlaybackControlsManager();
 
 #if ENABLE(WEB_AUDIO)
@@ -7083,7 +7097,7 @@ bool HTMLMediaElement::ensureMediaControlsInjectedScript()
     JSC::ExecState* exec = globalObject->globalExec();
 
     JSC::JSValue functionValue = globalObject->get(exec, JSC::Identifier::fromString(exec, "createControls"));
-    if (functionValue.isFunction())
+    if (functionValue.isFunction(vm))
         return true;
 
 #ifndef NDEBUG
@@ -7436,10 +7450,37 @@ void HTMLMediaElement::mayResumePlayback(bool shouldResume)
 
 String HTMLMediaElement::mediaSessionTitle() const
 {
-    if (hasAttributeWithoutSynchronization(titleAttr))
-        return attributeWithoutSynchronization(titleAttr);
+    if (!document().page() || document().page()->usesEphemeralSession())
+        return emptyString();
 
-    return m_currentSrc;
+    auto title = String(attributeWithoutSynchronization(titleAttr)).stripWhiteSpace().simplifyWhiteSpace();
+    if (!title.isEmpty())
+        return title;
+
+    title = document().title().stripWhiteSpace().simplifyWhiteSpace();
+    if (!title.isEmpty())
+        return title;
+
+    title = m_currentSrc.host();
+#if PLATFORM(MAC) || PLATFORM(IOS)
+    if (!title.isEmpty())
+        title = decodeHostName(title);
+#endif
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    if (!title.isEmpty()) {
+        auto domain = topPrivatelyControlledDomain(title);
+        if (!domain.isEmpty())
+            title = domain;
+    }
+#endif
+
+    return title;
+}
+
+uint64_t HTMLMediaElement::mediaSessionUniqueIdentifier() const
+{
+    auto& url = m_currentSrc.string();
+    return url.impl() ? url.impl()->hash() : 0;
 }
 
 void HTMLMediaElement::didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType command, const PlatformMediaSession::RemoteCommandArgument* argument)
@@ -7660,6 +7701,10 @@ bool HTMLMediaElement::doesHaveAttribute(const AtomicString& attribute, AtomicSt
 
 void HTMLMediaElement::setShouldBufferData(bool shouldBuffer)
 {
+    if (shouldBuffer == m_shouldBufferData)
+        return;
+
+    m_shouldBufferData = shouldBuffer;
     if (m_player)
         m_player->setShouldBufferData(shouldBuffer);
 }
@@ -7667,7 +7712,7 @@ void HTMLMediaElement::setShouldBufferData(bool shouldBuffer)
 void HTMLMediaElement::purgeBufferedDataIfPossible()
 {
 #if PLATFORM(IOS)
-    if (!MemoryPressureHandler::singleton().isUnderMemoryPressure() && PlatformMediaSessionManager::sharedManager().sessionCanLoadMedia(*m_mediaSession))
+    if (!MemoryPressureHandler::singleton().isUnderMemoryPressure() && m_mediaSession->dataBufferingPermitted())
         return;
 
     if (m_isPlayingToWirelessTarget) {
@@ -7775,6 +7820,7 @@ bool HTMLMediaElement::isVideoTooSmallForInlinePlayback()
 void HTMLMediaElement::isVisibleInViewportChanged()
 {
     m_visibilityChangeTaskQueue.enqueueTask([this] {
+        m_mediaSession->isVisibleInViewportChanged();
         updateShouldAutoplay();
         scheduleUpdatePlaybackControlsManager();
     });
@@ -7874,7 +7920,6 @@ void HTMLMediaElement::fullscreenModeChanged(VideoFullscreenMode mode)
 
     m_videoFullscreenMode = mode;
     visibilityStateChanged();
-    m_mediaSession->scheduleClientDataBufferingCheck();
     scheduleUpdatePlaybackControlsManager();
 }
 
@@ -7905,6 +7950,15 @@ void HTMLMediaElement::applicationDidBecomeActive()
 {
     if (m_player)
         m_player->applicationDidBecomeActive();
+}
+
+void HTMLMediaElement::setInActiveDocument(bool inActiveDocument)
+{
+    if (inActiveDocument == m_inActiveDocument)
+        return;
+
+    m_inActiveDocument = inActiveDocument;
+    m_mediaSession->inActiveDocumentChanged();
 }
 
 }

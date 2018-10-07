@@ -1053,7 +1053,7 @@ RefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point, con
         return nullptr;
 
     RenderObject* renderer = bestChoice->renderer();
-    if (!renderer || renderer->style().userSelect() == SELECT_NONE)
+    if (!renderer || renderer->style().userSelect() == UserSelect::None)
         return nullptr;
 
     if (renderer->childrenInline() && (is<RenderBlock>(*renderer) && !downcast<RenderBlock>(*renderer).inlineContinuation()) && !renderer->isTable()) {
@@ -2165,7 +2165,7 @@ void WebPage::getPositionInformation(const InteractionInformationRequest& reques
                 if (attachment.file())
                     info.url = URL::fileURLWithFileSystemPath(downcast<HTMLAttachmentElement>(*hitNode).file()->path());
             } else {
-                info.isSelectable = renderer->style().userSelect() != SELECT_NONE;
+                info.isSelectable = renderer->style().userSelect() != UserSelect::None;
                 if (info.isSelectable && !hitNode->isTextNode())
                     info.isSelectable = !isAssistableElement(*downcast<Element>(hitNode)) && !rectIsTooBigForSelection(info.bounds, *result.innerNodeFrame());
             }
@@ -2727,7 +2727,7 @@ void WebPage::viewportConfigurationChanged()
     FrameView& frameView = *mainFrameView();
     IntPoint scrollPosition = frameView.scrollPosition();
     if (!m_hasReceivedVisibleContentRectsAfterDidCommitLoad) {
-        FloatSize minimumLayoutSizeInScrollViewCoordinates = m_viewportConfiguration.minimumLayoutSize();
+        FloatSize minimumLayoutSizeInScrollViewCoordinates = m_viewportConfiguration.viewLayoutSize();
         minimumLayoutSizeInScrollViewCoordinates.scale(1 / scale);
         IntSize minimumLayoutSizeInDocumentCoordinates = roundedIntSize(minimumLayoutSizeInScrollViewCoordinates);
         frameView.setUnobscuredContentSize(minimumLayoutSizeInDocumentCoordinates);
@@ -2749,13 +2749,13 @@ void WebPage::viewportConfigurationChanged()
 
 void WebPage::updateViewportSizeForCSSViewportUnits()
 {
-    FloatSize largestUnobscuredRect = m_maximumUnobscuredSize;
-    if (largestUnobscuredRect.isEmpty())
-        largestUnobscuredRect = m_viewportConfiguration.minimumLayoutSize();
+    FloatSize largestUnobscuredSize = m_maximumUnobscuredSize;
+    if (largestUnobscuredSize.isEmpty())
+        largestUnobscuredSize = m_viewportConfiguration.viewLayoutSize();
 
     FrameView& frameView = *mainFrameView();
-    largestUnobscuredRect.scale(1 / m_viewportConfiguration.initialScaleIgnoringContentSize());
-    frameView.setViewportSizeForCSSViewportUnits(roundedIntSize(largestUnobscuredRect));
+    largestUnobscuredSize.scale(1 / m_viewportConfiguration.initialScaleIgnoringContentSize());
+    frameView.setViewportSizeForCSSViewportUnits(roundedIntSize(largestUnobscuredSize));
 }
 
 void WebPage::applicationWillResignActive()
@@ -2990,10 +2990,10 @@ void WebPage::dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& qu
 }
 #endif
 
-void WebPage::computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintInfo& printInfo, CallbackID callbackID, Ref<Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply>&& reply)
+void WebPage::computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintInfo& printInfo, CallbackID callbackID, Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply&& reply)
 {
     if (printInfo.snapshotFirstPage) {
-        reply->send(1);
+        reply(1);
         IntSize snapshotSize { FloatSize { printInfo.availablePaperWidth, printInfo.availablePaperHeight } };
         IntRect snapshotRect { {0, 0}, snapshotSize };
         auto pdfData = pdfSnapshotAtSize(snapshotRect, snapshotSize, 0);
@@ -3008,7 +3008,7 @@ void WebPage::computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintI
     ASSERT(pageRects.size() >= 1);
     std::size_t pageCount = pageRects.size();
     ASSERT(pageCount <= std::numeric_limits<uint32_t>::max());
-    reply->send(pageCount);
+    reply(pageCount);
 
     RetainPtr<CFMutableDataRef> pdfPageData;
     drawPagesToPDFImpl(frameID, printInfo, 0, pageCount, pdfPageData);

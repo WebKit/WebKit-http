@@ -96,11 +96,20 @@ struct MultiPutByOffsetData {
     bool reallocatesStorage() const;
 };
 
+struct MatchStructureVariant {
+    RegisteredStructure structure;
+    bool result;
+};
+
+struct MatchStructureData {
+    Vector<MatchStructureVariant, 2> variants;
+};
+
 struct NewArrayBufferData {
     union {
         struct {
             unsigned vectorLengthHint;
-            unsigned indexingType;
+            unsigned indexingMode;
         };
         uint64_t asQuadWord;
     };
@@ -743,6 +752,15 @@ public:
         setOp(SetRegExpObjectLastIndex);
         m_opInfo = false;
     }
+
+    void convertToInById(unsigned identifierNumber)
+    {
+        ASSERT(m_op == InByVal);
+        setOpAndDefaultFlags(InById);
+        children.setChild2(Edge());
+        m_opInfo = identifierNumber;
+        m_opInfo2 = OpInfoWrapper();
+    }
     
     JSValue asJSValue()
     {
@@ -1010,6 +1028,7 @@ public:
         case PutSetterById:
         case PutGetterSetterById:
         case DeleteById:
+        case InById:
         case GetDynamicVar:
         case PutDynamicVar:
         case ResolveScopeForHoistingFuncDeclInEval:
@@ -1170,7 +1189,15 @@ public:
     {
         ASSERT(hasIndexingType());
         if (op() == NewArrayBuffer || op() == PhantomNewArrayBuffer)
-            return static_cast<IndexingType>(newArrayBufferData().indexingType);
+            return static_cast<IndexingType>(newArrayBufferData().indexingMode) & IndexingTypeMask;
+        return static_cast<IndexingType>(m_opInfo.as<uint32_t>());
+    }
+
+    IndexingType indexingMode()
+    {
+        ASSERT(hasIndexingType());
+        if (op() == NewArrayBuffer || op() == PhantomNewArrayBuffer)
+            return static_cast<IndexingType>(newArrayBufferData().indexingMode);
         return static_cast<IndexingType>(m_opInfo.as<uint32_t>());
     }
     
@@ -1853,6 +1880,17 @@ public:
         return *m_opInfo.as<MultiPutByOffsetData*>();
     }
     
+    bool hasMatchStructureData()
+    {
+        return op() == MatchStructure;
+    }
+    
+    MatchStructureData& matchStructureData()
+    {
+        ASSERT(hasMatchStructureData());
+        return *m_opInfo.as<MatchStructureData*>();
+    }
+    
     bool hasObjectMaterializationData()
     {
         switch (op()) {
@@ -1967,7 +2005,7 @@ public:
         case GetIndexedPropertyStorage:
         case GetArrayLength:
         case GetVectorLength:
-        case In:
+        case InByVal:
         case PutByValDirect:
         case PutByVal:
         case PutByValAlias:

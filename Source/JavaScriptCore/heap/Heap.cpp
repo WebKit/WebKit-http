@@ -68,7 +68,6 @@
 #include "StopIfNecessaryTimer.h"
 #include "SweepingScope.h"
 #include "SynchronousStopTheWorldMutatorScheduler.h"
-#include "ThreadLocalCacheLayout.h"
 #include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
 #include "UnlinkedCodeBlock.h"
@@ -314,7 +313,6 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_helperClient(&heapHelperPool())
     , m_threadLock(Box<Lock>::create())
     , m_threadCondition(AutomaticThreadCondition::create())
-    , m_threadLocalCacheLayout(std::make_unique<ThreadLocalCacheLayout>())
 {
     m_worldState.store(0);
 
@@ -593,11 +591,10 @@ void Heap::finalizeUnconditionalFinalizers()
     finalizeMarkedUnconditionalFinalizers<ExecutableToCodeBlockEdge>(vm()->executableToCodeBlockEdgesWithFinalizers);
     finalizeMarkedUnconditionalFinalizers<JSWeakSet>(vm()->weakSetSpace);
     finalizeMarkedUnconditionalFinalizers<JSWeakMap>(vm()->weakMapSpace);
-    
-    while (m_unconditionalFinalizers.hasNext()) {
-        UnconditionalFinalizer* finalizer = m_unconditionalFinalizers.removeNext();
-        finalizer->finalizeUnconditionally();
-    }
+
+#if ENABLE(WEBASSEMBLY)
+    finalizeMarkedUnconditionalFinalizers<JSWebAssemblyCodeBlock>(vm()->webAssemblyCodeBlockSpace);
+#endif
 }
 
 void Heap::willStartIterating()
@@ -1457,6 +1454,9 @@ NEVER_INLINE bool Heap::runEndPhase(GCConductor conn)
         
     if (vm()->typeProfiler())
         vm()->typeProfiler()->invalidateTypeSetCache();
+
+    if (ValueProfile* profile = vm()->noJITValueProfileSingleton.get())
+        *profile = ValueProfile(0);
         
     reapWeakHandles();
     pruneStaleEntriesFromWeakGCMaps();

@@ -37,6 +37,7 @@
 #include "DOMJITSignature.h"
 #include "InlineCallFrame.h"
 #include "JSFixedArray.h"
+#include "JSImmutableButterfly.h"
 
 namespace JSC { namespace DFG {
 
@@ -545,13 +546,16 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(MiscFields);
         def(HeapLocation(IsFunctionLoc, MiscFields, node->child1()), LazyNode(node));
         return;
+        
+    case MatchStructure:
+        read(JSCell_structureID);
+        return;
 
     case ArraySlice:
         read(MiscFields);
         read(JSCell_indexingType);
         read(JSCell_structureID);
         read(JSObject_butterfly);
-        read(JSObject_butterflyMask);
         read(Butterfly_publicLength);
         read(IndexedDoubleProperties);
         read(IndexedInt32Properties);
@@ -567,7 +571,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(JSCell_indexingType);
         read(JSCell_structureID);
         read(JSObject_butterfly);
-        read(JSObject_butterflyMask);
         read(Butterfly_publicLength);
         switch (node->arrayMode().type()) {
         case Array::Double:
@@ -621,7 +624,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ConstructVarargs:
     case ConstructForwardVarargs:
     case ToPrimitive:
-    case In:
+    case InByVal:
+    case InById:
     case HasOwnProperty:
     case ValueAdd:
     case SetFunctionName:
@@ -638,6 +642,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ToNumber:
     case NumberToStringWithRadix:
     case CreateThis:
+    case InstanceOf:
         read(World);
         write(Heap);
         return;
@@ -1044,11 +1049,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(OverridesHasInstanceLoc, JSCell_typeInfoFlags, node->child1()), LazyNode(node));
         return;
 
-    case InstanceOf:
-        read(JSCell_structureID);
-        def(HeapLocation(InstanceOfLoc, JSCell_structureID, node->child1(), node->child2()), LazyNode(node));
-        return;
-
     case PutStructure:
         read(JSObject_butterfly);
         write(JSCell_structureID);
@@ -1138,7 +1138,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(JSCell_structureID);
         write(JSCell_indexingType);
         write(JSObject_butterfly);
-        write(JSObject_butterflyMask);
         write(Watchpoint_fire);
         return;
         
@@ -1190,7 +1189,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case MultiGetByOffset: {
         read(JSCell_structureID);
         read(JSObject_butterfly);
-        read(JSObject_butterflyMask);
         AbstractHeap heap(NamedProperties, node->multiGetByOffsetData().identifierNumber);
         read(heap);
         def(HeapLocation(NamedPropertyLoc, heap, node->child1()), LazyNode(node));
@@ -1428,7 +1426,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(HeapObjectCount);
         write(HeapObjectCount);
 
-        JSFixedArray* array = node->castOperand<JSFixedArray*>();
+        auto* array = node->castOperand<JSImmutableButterfly*>();
         unsigned numElements = array->length();
         def(HeapLocation(ArrayLengthLoc, Butterfly_publicLength, node),
             LazyNode(graph.freeze(jsNumber(numElements))));

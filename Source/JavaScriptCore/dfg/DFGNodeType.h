@@ -344,8 +344,9 @@ namespace JSC { namespace DFG {
     \
     /* Nodes for misc operations. */\
     macro(OverridesHasInstance, NodeMustGenerate | NodeResultBoolean) \
-    macro(InstanceOf, NodeResultBoolean) \
+    macro(InstanceOf, NodeMustGenerate | NodeResultBoolean) \
     macro(InstanceOfCustom, NodeMustGenerate | NodeResultBoolean) \
+    macro(MatchStructure, NodeMustGenerate | NodeResultBoolean) \
     \
     macro(IsCellWithType, NodeResultBoolean) \
     macro(IsEmpty, NodeResultBoolean) \
@@ -369,7 +370,8 @@ namespace JSC { namespace DFG {
     macro(NumberToStringWithValidRadixConstant, NodeResultJS) \
     macro(NewStringObject, NodeResultJS) \
     macro(MakeRope, NodeResultJS) \
-    macro(In, NodeResultBoolean | NodeMustGenerate) \
+    macro(InByVal, NodeResultBoolean | NodeMustGenerate) \
+    macro(InById, NodeResultBoolean | NodeMustGenerate) \
     macro(ProfileType, NodeMustGenerate) \
     macro(ProfileControlFlow, NodeMustGenerate) \
     macro(SetFunctionName, NodeMustGenerate) \

@@ -72,27 +72,27 @@ bool Box::establishesBlockFormattingContext() const
 
 bool Box::isRelativelyPositioned() const
 {
-    return m_style.position() == RelativePosition;
+    return m_style.position() == PositionType::Relative;
 }
 
 bool Box::isStickyPositioned() const
 {
-    return m_style.position() == StickyPosition;
+    return m_style.position() == PositionType::Sticky;
 }
 
 bool Box::isAbsolutelyPositioned() const
 {
-    return m_style.position() == AbsolutePosition;
+    return m_style.position() == PositionType::Absolute;
 }
 
 bool Box::isFixedPositioned() const
 {
-    return m_style.position() == FixedPosition;
+    return m_style.position() == PositionType::Fixed;
 }
 
 bool Box::isFloatingPositioned() const
 {
-    return m_style.floating() != NoFloat;
+    return m_style.floating() != Float::No;
 }
 
 const Container* Box::containingBlock() const
@@ -142,10 +142,12 @@ const Container& Box::formattingContextRoot() const
 }
 
 bool Box::isDescendantOf(Container& container) const
-{
-    auto* ancestor = parent();
-    for (; ancestor && ancestor != &container; ancestor = ancestor->parent()) { }
-    return ancestor;
+{ 
+    for (auto* ancestor = containingBlock(); ancestor; ancestor = ancestor->containingBlock()) {
+        if (ancestor == &container)
+            return true;
+    }
+    return false;
 }
 
 bool Box::isInlineBlockBox() const
@@ -221,7 +223,7 @@ const Box* Box::previousInFlowOrFloatingSibling() const
 
 bool Box::isOverflowVisible() const
 {
-    return m_style.overflowX() == OVISIBLE || m_style.overflowY() == OVISIBLE;
+    return m_style.overflowX() == Overflow::Visible || m_style.overflowY() == Overflow::Visible;
 }
 
 }

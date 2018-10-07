@@ -149,6 +149,7 @@ imported/w3c/web-platform-tests/streams/readable-byte-streams/detached-buffers.s
 http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
 http/tests/cookies/same-site/fetch-in-cross-origin-service-worker.html [ Skip ]
 http/tests/cookies/same-site/fetch-in-same-origin-service-worker.html [ Skip ]
+imported/w3c/web-platform-tests/server-timing/service_worker_idl.html [ Skip ]
 
 # Skip WebRTC for now in WK1
 imported/w3c/web-platform-tests/webrtc [ Skip ]
@@ -300,6 +301,7 @@ webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-include
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-then-revoke.html [ Skip ]
 webkit.org/b/156069 http/tests/download/anchor-download-attribute-content-disposition.html [ Skip ]
 webkit.org/b/156069 http/tests/download/anchor-download-no-extension.html [ Skip ]
 webkit.org/b/156069 http/tests/download/anchor-download-redirect.html [ Skip ]
@@ -430,6 +432,9 @@ http/tests/inspector/network/beacon-type.html [ Skip ]
 http/wpt/beacon/ [ Skip ]
 imported/blink/fast/beacon/ [ Skip ]
 imported/w3c/web-platform-tests/beacon/ [ Skip ]
+http/tests/security/contentSecurityPolicy/connect-src-beacon-allowed.html [ Skip ]
+http/tests/security/contentSecurityPolicy/connect-src-beacon-blocked.html [ Skip ]
+http/tests/security/contentSecurityPolicy/report-only-connect-src-beacon-redirect-blocked.php [ Skip ]
 
 # This was a WK2-only fix.
 http/tests/css/filters-on-iframes.html [ Skip ]
@@ -511,6 +516,9 @@ webkit.org/b/183352 accessibility/ios-simulator/AOM-dismiss-event.html [ Skip ]
 webkit.org/b/184742 accessibility/mac/async-increment-decrement-action.html [ Skip ]
 
 webkit.org/b/182752 accessibility/mac/accessibility-make-first-responder.html [ Skip ]
+
+# This test tests the rootElement on WK2.
+webkit.org/b/185742 accessibility/mac/primary-screen-height.html [ Skip ]
 
 # User-installed fonts test infrastructure is not present in WK1
 webkit.org/b/180062 fast/text/user-installed-fonts [ ImageOnlyFailure ]

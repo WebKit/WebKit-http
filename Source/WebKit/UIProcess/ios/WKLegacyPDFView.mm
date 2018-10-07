@@ -37,7 +37,6 @@
 #import "WKPDFPageNumberIndicator.h"
 #import "WKPasswordView.h"
 #import "WKWebViewInternal.h"
-#import "WeakObjCPtr.h"
 #import "WebPageProxy.h"
 #import "_WKFindDelegate.h"
 #import "_WKWebViewPrintFormatterInternal.h"
@@ -48,6 +47,7 @@
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Vector.h>
+#import <wtf/WeakObjCPtr.h>
 
 // All of UIPDFPage* are deprecated, so just ignore deprecated declarations
 // in this file until we switch off them.
@@ -119,7 +119,7 @@ typedef struct {
     CGFloat _lastLayoutWidth;
 }
 
-- (instancetype)web_initWithFrame:(CGRect)frame webView:(WKWebView *)webView
+- (instancetype)web_initWithFrame:(CGRect)frame webView:(WKWebView *)webView  mimeType:(NSString *)mimeType
 {
     if (!(self = [super initWithFrame:frame webView:webView]))
         return nil;

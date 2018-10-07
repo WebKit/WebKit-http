@@ -99,11 +99,6 @@ CSSAnimationTriggersEnabled:
   webcoreName: animationTriggersEnabled
   condition: ENABLE(CSS_ANIMATIONS_LEVEL_2)
 
-CSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled:
-  type: bool
-  defaultValue: false
-  webcoreBinding: RuntimeEnabledFeatures
-
 ForceFTPDirectoryListings:
   type: bool
   defaultValue: false
@@ -666,10 +661,9 @@ MenuItemElementEnabled:
 
 EncryptedMediaAPIEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   humanReadableName: "Modern Encrypted Media API"
   humanReadableDescription: "Modern Encrypted Media API"
-  category: experimental
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(ENCRYPTED_MEDIA)
 
@@ -1097,6 +1091,13 @@ ConstantPropertiesEnabled:
   humanReadableDescription: "Enable CSS constant() values"
   category: experimental
 
+CrossOriginOptionsSupportEnabled:
+  type: bool
+  defaultValue: true
+  humanReadableName: "Cross-Origin-Options HTTP Header"
+  humanReadableDescription: "Enable support for Cross-Origin-Options HTTP Header"
+  category: experimental
+
 SpringTimingFunctionEnabled:
   type: bool
   defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
@@ -1193,6 +1194,14 @@ WebAnimationsEnabled:
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
 
+WebAnimationsCSSIntegrationEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Web Animations and CSS Integration"
+  humanReadableDescription: "Expose CSS Animations and CSS Transitions through getAnimations()"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
+
 WebGL2Enabled:
   type: bool
   defaultValue: false
@@ -1262,8 +1271,25 @@ WebGLCompressedTextureASTCSupportEnabled:
 
 StorageAccessPromptsEnabled:
     type: bool
-    defaultValue: false
+    defaultValue: true
     humanReadableName: "Prompt for Storage Access API Requests"
     humanReadableDescription: "Prompt the user when Storage Access API calls are made"
+    category: experimental
+    webcoreBinding: RuntimeEnabledFeatures
+
+ServerTimingEnabled:
+    type: bool
+    defaultValue: false
+    humanReadableName: "Server Timing"
+    humanReadableDescription: "Enable Server Timing API"
+    category: experimental
+    webcoreBinding: RuntimeEnabledFeatures
+    webcoreName: serverTimingEnabled
+
+DisabledAdaptationsMetaTagEnabled:
+    type: bool
+    defaultValue: DISABLED_ADAPTATIONS_META_TAG_ENABLED
+    humanReadableName: "disabled-adaptations"
+    humanReadableDescription: "Enable the 'disabled-adaptations' meta tag"
     category: experimental
     webcoreBinding: RuntimeEnabledFeatures

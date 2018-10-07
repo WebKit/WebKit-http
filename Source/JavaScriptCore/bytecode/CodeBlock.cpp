@@ -35,6 +35,7 @@
 #include "BytecodeDumper.h"
 #include "BytecodeGenerator.h"
 #include "BytecodeLivenessAnalysis.h"
+#include "BytecodeStructs.h"
 #include "BytecodeUseDef.h"
 #include "CallLinkStatus.h"
 #include "CodeBlockSet.h"
@@ -65,6 +66,7 @@
 #include "JSTemplateObjectDescriptor.h"
 #include "LLIntData.h"
 #include "LLIntEntrypoint.h"
+#include "LLIntPrototypeLoadAdaptiveStructureWatchpoint.h"
 #include "LowLevelInterpreter.h"
 #include "ModuleProgramCodeBlock.h"
 #include "ObjectAllocationProfileInlines.h"
@@ -506,6 +508,8 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         m_arrayAllocationProfiles = RefCountedArray<ArrayAllocationProfile>(size);
     if (size_t size = unlinkedCodeBlock->numberOfValueProfiles())
         m_valueProfiles = RefCountedArray<ValueProfile>(size);
+    if (!vm.canUseJIT())
+        RELEASE_ASSERT(!m_valueProfiles.size());
     if (size_t size = unlinkedCodeBlock->numberOfObjectAllocationProfiles())
         m_objectAllocationProfiles = RefCountedArray<ObjectAllocationProfile>(size);
 
@@ -524,6 +528,12 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
 
     unsigned valueProfileCount = 0;
     auto linkValueProfile = [&](unsigned bytecodeOffset, unsigned opLength) {
+        if (!vm.canUseJIT()) {
+            ASSERT(vm.noJITValueProfileSingleton);
+            instructions[bytecodeOffset + opLength - 1] = vm.noJITValueProfileSingleton.get();
+            return;
+        }
+
         unsigned valueProfileIndex = valueProfileCount++;
         ValueProfile* profile = &m_valueProfiles[valueProfileIndex];
         ASSERT(profile->m_bytecodeOffset == -1);
@@ -580,7 +590,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             break;
         }
 
-        case op_in:
+        case op_in_by_val:
         case op_put_by_val:
         case op_put_by_val_direct: {
             int arrayProfileIndex = pc[opLength - 1].u.operand;
@@ -590,12 +600,19 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         }
 
         case op_new_array:
-        case op_new_array_buffer:
-        case op_new_array_with_size: {
-            int arrayAllocationProfileIndex = pc[opLength - 1].u.operand;
-            instructions[i + opLength - 1] = &m_arrayAllocationProfiles[arrayAllocationProfileIndex];
+        case op_new_array_with_size:
+        case op_new_array_buffer: {
+            unsigned arrayAllocationProfileIndex;
+            IndexingType recommendedIndexingType;
+            std::tie(arrayAllocationProfileIndex, recommendedIndexingType) = UnlinkedCodeBlock::decompressArrayAllocationProfile(pc[opLength - 1].u.operand);
+
+            ArrayAllocationProfile* profile = &m_arrayAllocationProfiles[arrayAllocationProfileIndex];
+            if (pc[0].u.opcode == op_new_array_buffer)
+                profile->initializeIndexingMode(recommendedIndexingType);
+            instructions[i + opLength - 1] = profile;
             break;
         }
+
         case op_new_object: {
             int objectAllocationProfileIndex = pc[opLength - 1].u.operand;
             ObjectAllocationProfile* objectAllocationProfile = &m_objectAllocationProfiles[objectAllocationProfileIndex];
@@ -967,7 +984,7 @@ void CodeBlock::setNumParameters(int newValue)
 {
     m_numParameters = newValue;
 
-    m_argumentValueProfiles = RefCountedArray<ValueProfile>(newValue);
+    m_argumentValueProfiles = RefCountedArray<ValueProfile>(vm()->canUseJIT() ? newValue : 0);
 }
 
 CodeBlock* CodeBlock::specialOSREntryBlockOrNull()
@@ -1242,7 +1259,9 @@ void CodeBlock::finalizeLLIntInlineCaches()
     for (size_t size = propertyAccessInstructions.size(), i = 0; i < size; ++i) {
         Instruction* curInstruction = &instructions()[propertyAccessInstructions[i]];
         switch (Interpreter::getOpcodeID(curInstruction[0])) {
-        case op_get_by_id: {
+        case op_get_by_id:
+        case op_get_by_id_proto_load:
+        case op_get_by_id_unset: {
             StructureID oldStructureID = curInstruction[4].u.structureID;
             if (!oldStructureID || Heap::isMarked(vm.heap.structureIDTable().get(oldStructureID)))
                 break;
@@ -1335,6 +1354,12 @@ void CodeBlock::finalizeLLIntInlineCaches()
             ASSERT_WITH_MESSAGE_UNUSED(opcodeID, false, "Unhandled opcode in CodeBlock::finalizeUnconditionally, %s(%d) at bc %u", opcodeNames[opcodeID], opcodeID, propertyAccessInstructions[i]);
         }
     }
+
+    // We can't just remove all the sets when we clear the caches since we might have created a watchpoint set
+    // then cleared the cache without GCing in between.
+    m_llintGetByIdWatchpointMap.removeIf([](const StructureWatchpointMap::KeyValuePairType& pair) -> bool {
+        return !Heap::isMarked(pair.key);
+    });
 
     for (unsigned i = 0; i < m_llintCallLinkInfos.size(); ++i) {
         if (m_llintCallLinkInfos[i].isLinked() && !Heap::isMarked(m_llintCallLinkInfos[i].callee.get())) {

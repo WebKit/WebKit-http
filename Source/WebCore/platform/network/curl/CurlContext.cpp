@@ -197,6 +197,9 @@ Lock* CurlShareHandle::mutexFor(curl_lock_data data)
 CurlMultiHandle::CurlMultiHandle()
 {
     m_multiHandle = curl_multi_init();
+
+    if (CurlContext::singleton().isHttp2Enabled())
+        curl_multi_setopt(m_multiHandle, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
 }
 
 CurlMultiHandle::~CurlMultiHandle()
@@ -480,6 +483,11 @@ void CurlHandle::setSslCertType(const char* type)
 void CurlHandle::setSslKeyPassword(const char* password)
 {
     curl_easy_setopt(m_handle, CURLOPT_KEYPASSWD, password);
+}
+
+void CurlHandle::setSslCipherList(const char* cipherList)
+{
+    curl_easy_setopt(m_handle, CURLOPT_SSL_CIPHER_LIST, cipherList);
 }
 
 void CurlHandle::enableProxyIfExists()

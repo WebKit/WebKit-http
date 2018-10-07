@@ -55,12 +55,16 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstPar
 {
     UNUSED_PARAM(frameID);
     UNUSED_PARAM(pageID);
-    SoupCookieJar* jar = session.cookieStorage();
-
     GUniquePtr<SoupURI> origin = url.createSoupURI();
+    if (!origin)
+        return;
+
     GUniquePtr<SoupURI> firstPartyURI = firstParty.createSoupURI();
+    if (!firstPartyURI)
+        return;
 
     // Get existing cookies for this origin.
+    SoupCookieJar* jar = session.cookieStorage();
     GSList* existingCookies = soup_cookie_jar_get_cookie_list(jar, origin.get(), TRUE);
 
     Vector<String> cookies;
@@ -88,6 +92,9 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstPar
 static std::pair<String, bool> cookiesForSession(const NetworkStorageSession& session, const URL& url, bool forHTTPHeader, IncludeSecureCookies includeSecureCookies)
 {
     GUniquePtr<SoupURI> uri = url.createSoupURI();
+    if (!uri)
+        return { { }, false };
+
     GSList* cookies = soup_cookie_jar_get_cookie_list(session.cookieStorage(), uri.get(), forHTTPHeader);
     bool didAccessSecureCookies = false;
 
@@ -154,16 +161,27 @@ bool getRawCookies(const NetworkStorageSession& session, const URL& firstParty, 
     UNUSED_PARAM(pageID);
     rawCookies.clear();
     GUniquePtr<SoupURI> uri = url.createSoupURI();
+    if (!uri)
+        return false;
+
     GUniquePtr<GSList> cookies(soup_cookie_jar_get_cookie_list(session.cookieStorage(), uri.get(), TRUE));
     if (!cookies)
         return false;
 
     for (GSList* iter = cookies.get(); iter; iter = g_slist_next(iter)) {
-        SoupCookie* cookie = static_cast<SoupCookie*>(iter->data);
-        rawCookies.append(Cookie(String::fromUTF8(cookie->name), String::fromUTF8(cookie->value), String::fromUTF8(cookie->domain),
-            String::fromUTF8(cookie->path), 0, cookie->expires ? static_cast<double>(soup_date_to_time_t(cookie->expires)) * 1000 : 0,
-            cookie->http_only, cookie->secure, !cookie->expires, String(), URL(), Vector<uint16_t>{ }));
-        soup_cookie_free(cookie);
+        SoupCookie* soupCookie = static_cast<SoupCookie*>(iter->data);
+        Cookie cookie;
+        cookie.name = String::fromUTF8(soupCookie->name);
+        cookie.value = String::fromUTF8(soupCookie->value);
+        cookie.domain = String::fromUTF8(soupCookie->domain);
+        cookie.path = String::fromUTF8(soupCookie->path);
+        cookie.created = 0;
+        cookie.expires = soupCookie->expires ? static_cast<double>(soup_date_to_time_t(soupCookie->expires)) * 1000 : 0;
+        cookie.httpOnly = soupCookie->http_only;
+        cookie.secure = soupCookie->secure;
+        cookie.session = !soupCookie->expires;
+        rawCookies.append(WTFMove(cookie));
+        soup_cookie_free(soupCookie);
     }
 
     return true;
@@ -171,9 +189,11 @@ bool getRawCookies(const NetworkStorageSession& session, const URL& firstParty, 
 
 void deleteCookie(const NetworkStorageSession& session, const URL& url, const String& name)
 {
-    SoupCookieJar* jar = session.cookieStorage();
-
     GUniquePtr<SoupURI> uri = url.createSoupURI();
+    if (!uri)
+        return;
+
+    SoupCookieJar* jar = session.cookieStorage();
     GUniquePtr<GSList> cookies(soup_cookie_jar_get_cookie_list(jar, uri.get(), TRUE));
     if (!cookies)
         return;

@@ -40,11 +40,12 @@ class URL;
 
 namespace WebKit {
 
+class NetworkConnectionToWebProcess;
 class NetworkLoadChecker;
 
 class PingLoad final : private NetworkDataTaskClient {
 public:
-    PingLoad(NetworkResourceLoadParameters&&, WTF::CompletionHandler<void(const WebCore::ResourceError&, const WebCore::ResourceResponse&)>&&);
+    PingLoad(NetworkResourceLoadParameters&&, NetworkConnectionToWebProcess&, WTF::CompletionHandler<void(const WebCore::ResourceError&, const WebCore::ResourceResponse&)>&&);
     
 private:
     ~PingLoad();
@@ -70,7 +71,7 @@ private:
     WTF::CompletionHandler<void(const WebCore::ResourceError&, const WebCore::ResourceResponse&)> m_completionHandler;
     RefPtr<NetworkDataTask> m_task;
     WebCore::Timer m_timeoutTimer;
-    Ref<NetworkLoadChecker> m_networkLoadChecker;
+    UniqueRef<NetworkLoadChecker> m_networkLoadChecker;
     std::optional<WebCore::ResourceRequest> m_lastRedirectionRequest;
 };
 

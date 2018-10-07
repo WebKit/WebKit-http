@@ -57,7 +57,7 @@ struct GenericSequenceConverter {
                 return;
             result.append(WTFMove(convertedValue));
         });
-        return result;
+        return WTFMove(result);
     }
 
     static ReturnType convert(JSC::ExecState& state, JSC::JSObject* object, JSC::JSValue method)
@@ -75,7 +75,7 @@ struct GenericSequenceConverter {
                 return;
             result.append(WTFMove(convertedValue));
         });
-        return result;
+        return WTFMove(result);
     }
 };
 
@@ -92,19 +92,19 @@ struct NumericSequenceConverter {
     {
         if (indexingType == JSC::Int32Shape) {
             for (unsigned i = 0; i < length; i++) {
-                auto indexValue = array->butterfly()->contiguousInt32().at(i).get();
+                auto indexValue = array->butterfly()->contiguousInt32().at(array, i).get();
                 ASSERT(!indexValue || indexValue.isInt32());
                 if (!indexValue)
                     result.uncheckedAppend(0);
                 else
                     result.uncheckedAppend(indexValue.asInt32());
             }
-            return result;
+            return WTFMove(result);
         }
 
         ASSERT(indexingType == JSC::DoubleShape);
         for (unsigned i = 0; i < length; i++) {
-            auto doubleValue = array->butterfly()->contiguousDouble().at(i);
+            double doubleValue = array->butterfly()->contiguousDouble().at(array, i);
             if (std::isnan(doubleValue))
                 result.uncheckedAppend(0);
             else {
@@ -114,7 +114,7 @@ struct NumericSequenceConverter {
                 result.uncheckedAppend(convertedValue);
             }
         }
-        return result;
+        return WTFMove(result);
     }
 
     static ReturnType convert(JSC::ExecState& state, JSC::JSValue value)
@@ -210,7 +210,7 @@ struct SequenceConverter {
 
         if (indexingType == JSC::ContiguousShape) {
             for (unsigned i = 0; i < length; i++) {
-                auto indexValue = array->butterfly()->contiguous().at(i).get();
+                auto indexValue = array->butterfly()->contiguous().at(array, i).get();
                 if (!indexValue)
                     indexValue = JSC::jsUndefined();
 

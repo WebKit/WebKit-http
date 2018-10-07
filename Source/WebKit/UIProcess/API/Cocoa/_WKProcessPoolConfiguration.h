@@ -40,6 +40,10 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 
 @property (nonatomic, copy) NSArray<NSURL *> *additionalReadAccessAllowedURLs WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
+#if TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
+@property (nonatomic) NSUInteger wirelessContextIdentifier;
+#endif
+
 // Network Process properties
 // FIXME: These should be be per-session/data store when we support multiple non-persistent sessions/data stores.
 
@@ -60,7 +64,8 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @property (nonatomic) BOOL processSwapsOnNavigation WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 @property (nonatomic) BOOL alwaysKeepAndReuseSwappedProcesses WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 @property (nonatomic) BOOL processSwapsOnWindowOpenWithOpener WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
-@property (nonatomic) BOOL trackNetworkActivity WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic) BOOL tracksResourceLoadMilestones WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic) BOOL pageCacheEnabled WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @end
 

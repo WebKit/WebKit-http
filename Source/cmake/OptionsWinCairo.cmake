@@ -2,21 +2,16 @@ set(WTF_PLATFORM_WIN_CAIRO 1)
 
 include(OptionsWin)
 
-if (ENABLE_WIN_CAIRO_WEBKIT)
-    set(ENABLE_WEBKIT ON)
-    add_definitions(-DBUILDING_WIN_CAIRO_WEBKIT=1)
-endif ()
-
-find_package(Cairo 1.14.10 REQUIRED)
-find_package(CURL 7.56.1 REQUIRED)
+find_package(Cairo 1.15.12 REQUIRED)
+find_package(CURL 7.60.0 REQUIRED)
 find_package(JPEG 1.5.2 REQUIRED)
 find_package(LibXml2 2.9.7 REQUIRED)
 find_package(OpenSSL 2.0.0 REQUIRED)
 find_package(PNG 1.6.34 REQUIRED)
-find_package(Sqlite 3.21.0 REQUIRED)
+find_package(Sqlite 3.23.1 REQUIRED)
 find_package(ZLIB 1.2.11 REQUIRED)
 
-find_package(WebP 0.6.0)
+find_package(WebP 1.0.0)
 
 if (WEBP_FOUND)
     SET_AND_EXPOSE_TO_BUILD(USE_WEBP ON)
@@ -34,6 +29,7 @@ SET_AND_EXPOSE_TO_BUILD(USE_TEXTURE_MAPPER_GL ON)
 SET_AND_EXPOSE_TO_BUILD(USE_MEDIA_FOUNDATION ON)
 
 set(ENABLE_GRAPHICS_CONTEXT_3D ON)
+set(ENABLE_WEBKIT ON)
 
 set(COREFOUNDATION_LIBRARY CFlite)
 

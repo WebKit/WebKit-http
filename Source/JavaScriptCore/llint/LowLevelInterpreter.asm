@@ -376,6 +376,7 @@ const DoubleShape              = constexpr DoubleShape
 const ContiguousShape          = constexpr ContiguousShape
 const ArrayStorageShape        = constexpr ArrayStorageShape
 const SlowPutArrayStorageShape = constexpr SlowPutArrayStorageShape
+const CopyOnWrite              = constexpr CopyOnWrite
 
 # Type constants.
 const StringType = constexpr StringType
@@ -542,22 +543,24 @@ else
 end
 
 macro checkStackPointerAlignment(tempReg, location)
-    if ARM64 or ARM64E or C_LOOP
-        # ARM64 and ARM64E will check for us!
-        # C_LOOP does not need the alignment, and can use a little perf
-        # improvement from avoiding useless work.
-    else
-        if ARM or ARMv7 or ARMv7_TRADITIONAL
-            # ARM can't do logical ops with the sp as a source
-            move sp, tempReg
-            andp StackAlignmentMask, tempReg
+    if ASSERT_ENABLED
+        if ARM64 or ARM64E or C_LOOP
+            # ARM64 and ARM64E will check for us!
+            # C_LOOP does not need the alignment, and can use a little perf
+            # improvement from avoiding useless work.
         else
-            andp sp, StackAlignmentMask, tempReg
+            if ARM or ARMv7 or ARMv7_TRADITIONAL
+                # ARM can't do logical ops with the sp as a source
+                move sp, tempReg
+                andp StackAlignmentMask, tempReg
+            else
+                andp sp, StackAlignmentMask, tempReg
+            end
+            btpz tempReg, .stackPointerOkay
+            move location, tempReg
+            break
+        .stackPointerOkay:
         end
-        btpz tempReg, .stackPointerOkay
-        move location, tempReg
-        break
-    .stackPointerOkay:
     end
 end
 
@@ -1119,6 +1122,7 @@ macro functionInitialization(profileArgSkip)
     assert(macro (ok) bpgteq t0, 0, ok end)
     btpz t0, .argumentProfileDone
     loadp CodeBlock::m_argumentValueProfiles + VectorBufferOffset[t1], t3
+    btpz t3, .argumentProfileDone # When we can't JIT, we don't allocate any argument value profiles.
     mulp sizeof ValueProfile, t0, t2 # Aaaaahhhh! Need strength reduction!
     lshiftp 3, t0
     addp t2, t3
@@ -1504,10 +1508,16 @@ _llint_op_is_function:
     dispatch(constexpr op_is_function_length)
 
 
-_llint_op_in:
+_llint_op_in_by_id:
     traceExecution()
-    callSlowPath(_slow_path_in)
-    dispatch(constexpr op_in_length)
+    callSlowPath(_slow_path_in_by_id)
+    dispatch(constexpr op_in_by_id_length)
+
+
+_llint_op_in_by_val:
+    traceExecution()
+    callSlowPath(_slow_path_in_by_val)
+    dispatch(constexpr op_in_by_val_length)
 
 
 _llint_op_try_get_by_id:

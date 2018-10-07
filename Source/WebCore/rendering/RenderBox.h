@@ -302,23 +302,23 @@ public:
     // the border-box height/width like the regular height/width accessors on RenderBox.
     // Right now, these are different than contentHeight/contentWidth because they still
     // include the scrollbar height/width.
-    LayoutUnit overrideLogicalContentWidth() const;
-    LayoutUnit overrideLogicalContentHeight() const;
-    bool hasOverrideLogicalContentHeight() const;
-    bool hasOverrideLogicalContentWidth() const;
-    void setOverrideLogicalContentHeight(LayoutUnit);
-    void setOverrideLogicalContentWidth(LayoutUnit);
-    void clearOverrideSize();
-    void clearOverrideLogicalContentHeight();
-    void clearOverrideLogicalContentWidth();
+    LayoutUnit overrideContentLogicalWidth() const;
+    LayoutUnit overrideContentLogicalHeight() const;
+    bool hasOverrideContentLogicalHeight() const;
+    bool hasOverrideContentLogicalWidth() const;
+    void setOverrideContentLogicalHeight(LayoutUnit);
+    void setOverrideContentLogicalWidth(LayoutUnit);
+    void clearOverrideContentSize();
+    void clearOverrideContentLogicalHeight();
+    void clearOverrideContentLogicalWidth();
 
     std::optional<LayoutUnit> overrideContainingBlockContentLogicalWidth() const;
     std::optional<LayoutUnit> overrideContainingBlockContentLogicalHeight() const;
-    bool hasOverrideContainingBlockLogicalWidth() const;
-    bool hasOverrideContainingBlockLogicalHeight() const;
+    bool hasOverrideContainingBlockContentLogicalWidth() const;
+    bool hasOverrideContainingBlockContentLogicalHeight() const;
     void setOverrideContainingBlockContentLogicalWidth(std::optional<LayoutUnit>);
     void setOverrideContainingBlockContentLogicalHeight(std::optional<LayoutUnit>);
-    void clearContainingBlockOverrideSize();
+    void clearOverrideContainingBlockContentSize();
     void clearOverrideContainingBlockContentLogicalHeight();
 
     LayoutSize offsetFromContainer(RenderElement&, const LayoutPoint&, bool* offsetDependsOnPoint = nullptr) const override;
@@ -459,8 +459,8 @@ public:
     bool hasHorizontalScrollbarWithAutoBehavior() const;
 
     bool scrollsOverflow() const { return scrollsOverflowX() || scrollsOverflowY(); }
-    bool scrollsOverflowX() const { return hasOverflowClip() && (style().overflowX() == OSCROLL || hasHorizontalScrollbarWithAutoBehavior()); }
-    bool scrollsOverflowY() const { return hasOverflowClip() && (style().overflowY() == OSCROLL || hasVerticalScrollbarWithAutoBehavior()); }
+    bool scrollsOverflowX() const { return hasOverflowClip() && (style().overflowX() == Overflow::Scroll || hasHorizontalScrollbarWithAutoBehavior()); }
+    bool scrollsOverflowY() const { return hasOverflowClip() && (style().overflowY() == Overflow::Scroll || hasVerticalScrollbarWithAutoBehavior()); }
 
     bool hasHorizontalOverflow() const { return scrollWidth() != roundToInt(clientWidth()); }
     bool hasVerticalOverflow() const { return scrollHeight() != roundToInt(clientHeight()); }
@@ -633,7 +633,7 @@ protected:
 
     bool createsNewFormattingContext() const;
 
-    virtual ItemPosition selfAlignmentNormalBehavior(const RenderBox* = nullptr) const { return ItemPositionStretch; }
+    virtual ItemPosition selfAlignmentNormalBehavior(const RenderBox* = nullptr) const { return ItemPosition::Stretch; }
 
     // Returns false if it could not cheaply compute the extent (e.g. fixed background), in which case the returned rect may be incorrect.
     bool getBackgroundPaintedExtent(const LayoutPoint& paintOffset, LayoutRect&) const;

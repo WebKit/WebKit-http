@@ -30,14 +30,18 @@
 
 namespace WebCore {
 
+struct DOMPointInit;
 class SVGPoint;
 
 class SVGGeometryElement : public SVGGraphicsElement {
     WTF_MAKE_ISO_ALLOCATED(SVGGeometryElement);
 public:
     
-    virtual float getTotalLength() const = 0;
-    virtual Ref<SVGPoint> getPointAtLength(float distance) const = 0;
+    virtual float getTotalLength() const;
+    virtual Ref<SVGPoint> getPointAtLength(float distance) const;
+
+    bool isPointInFill(DOMPointInit&&);
+    bool isPointInStroke(DOMPointInit&&);
 
 protected:
     SVGGeometryElement(const QualifiedName&, Document&);
@@ -49,8 +53,6 @@ protected:
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGGeometryElement)
         DECLARE_ANIMATED_NUMBER(PathLength, pathLength)
     END_DECLARE_ANIMATED_PROPERTIES
-
-    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 };
 
 } // namespace WebCore

@@ -76,23 +76,6 @@ struct CallLinkRecord {
     FunctionPtr<OperationPtrTag> m_function;
 };
 
-struct InRecord {
-    InRecord(
-        MacroAssembler::PatchableJump jump, MacroAssembler::Label done,
-        SlowPathGenerator* slowPathGenerator, StructureStubInfo* stubInfo)
-        : m_jump(jump)
-        , m_done(done)
-        , m_slowPathGenerator(slowPathGenerator)
-        , m_stubInfo(stubInfo)
-    {
-    }
-    
-    MacroAssembler::PatchableJump m_jump;
-    MacroAssembler::Label m_done;
-    SlowPathGenerator* m_slowPathGenerator;
-    StructureStubInfo* m_stubInfo;
-};
-
 // === JITCompiler ===
 //
 // DFG::JITCompiler is responsible for generating JIT code from the dataflow graph.
@@ -203,12 +186,17 @@ public:
     {
         m_putByIds.append(InlineCacheWrapper<JITPutByIdGenerator>(gen, slowPath));
     }
-
-    void addIn(const InRecord& record)
-    {
-        m_ins.append(record);
-    }
     
+    void addInstanceOf(const JITInstanceOfGenerator& gen, SlowPathGenerator* slowPath)
+    {
+        m_instanceOfs.append(InlineCacheWrapper<JITInstanceOfGenerator>(gen, slowPath));
+    }
+
+    void addInById(const JITInByIdGenerator& gen, SlowPathGenerator* slowPath)
+    {
+        m_inByIds.append(InlineCacheWrapper<JITInByIdGenerator>(gen, slowPath));
+    }
+
     void addJSCall(Call fastCall, Call slowCall, DataLabelPtr targetToCheck, CallLinkInfo* info)
     {
         m_jsCalls.append(JSCallRecord(fastCall, slowCall, targetToCheck, info));
@@ -354,7 +342,8 @@ private:
     Vector<InlineCacheWrapper<JITGetByIdGenerator>, 4> m_getByIds;
     Vector<InlineCacheWrapper<JITGetByIdWithThisGenerator>, 4> m_getByIdsWithThis;
     Vector<InlineCacheWrapper<JITPutByIdGenerator>, 4> m_putByIds;
-    Vector<InRecord, 4> m_ins;
+    Vector<InlineCacheWrapper<JITInByIdGenerator>, 4> m_inByIds;
+    Vector<InlineCacheWrapper<JITInstanceOfGenerator>, 4> m_instanceOfs;
     Vector<JSCallRecord, 4> m_jsCalls;
     Vector<JSDirectCallRecord, 4> m_jsDirectCalls;
     Vector<JSDirectTailCallRecord, 4> m_jsDirectTailCalls;

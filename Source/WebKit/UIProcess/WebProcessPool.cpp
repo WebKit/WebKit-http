@@ -59,6 +59,8 @@
 #include "UIGamepadProvider.h"
 #include "WKContextPrivate.h"
 #include "WebAutomationSession.h"
+#include "WebBackForwardList.h"
+#include "WebBackForwardListItem.h"
 #include "WebCertificateInfo.h"
 #include "WebContextSupplement.h"
 #include "WebCookieManagerProxy.h"
@@ -416,11 +418,21 @@ void WebProcessPool::textCheckerStateChanged()
     sendToAllProcesses(Messages::WebProcess::SetTextCheckerState(TextChecker::state()));
 }
 
+void WebProcessPool::screenPropertiesStateChanged()
+{
+#if PLATFORM(MAC)
+    auto screenProperties = WebCore::getScreenProperties();
+    sendToAllProcesses(Messages::WebProcess::SetScreenProperties(screenProperties.first, screenProperties.second));
+#endif
+}
+
 NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* withWebsiteDataStore)
 {
     if (m_networkProcess) {
-        if (withWebsiteDataStore)
+        if (withWebsiteDataStore) {
             m_networkProcess->send(Messages::NetworkProcess::AddWebsiteDataStore(withWebsiteDataStore->parameters()), 0);
+            withWebsiteDataStore->clearPendingCookies();
+        }
         return *m_networkProcess;
     }
 
@@ -494,7 +506,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     parameters.urlSchemesRegisteredAsCORSEnabled = copyToVector(m_schemesToRegisterAsCORSEnabled);
     parameters.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest = copyToVector(m_schemesToRegisterAsCanDisplayOnlyIfCanRequest);
 
-    parameters.trackNetworkActivity = m_configuration->trackNetworkActivity();
+    parameters.tracksResourceLoadMilestones = m_configuration->tracksResourceLoadMilestones();
 
     // Add any platform specific parameters
     platformInitializeNetworkProcess(parameters);
@@ -513,13 +525,20 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
             m_websiteDataStore->websiteDataStore().networkProcessDidCrash();
     }
 
-    if (withWebsiteDataStore)
+    if (m_websiteDataStore) {
+        m_networkProcess->send(Messages::NetworkProcess::AddWebsiteDataStore(m_websiteDataStore->websiteDataStore().parameters()), 0);
+        m_websiteDataStore->websiteDataStore().clearPendingCookies();
+    }
+    
+    if (withWebsiteDataStore) {
         m_networkProcess->send(Messages::NetworkProcess::AddWebsiteDataStore(withWebsiteDataStore->parameters()), 0);
+        withWebsiteDataStore->clearPendingCookies();
+    }
 
     return *m_networkProcess;
 }
 
-void WebProcessPool::networkProcessCrashed(NetworkProcessProxy& networkProcessProxy, Vector<Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>>&& pendingReplies)
+void WebProcessPool::networkProcessCrashed(NetworkProcessProxy& networkProcessProxy, Vector<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&& pendingReplies)
 {
     networkProcessFailedToLaunch(networkProcessProxy);
     ASSERT(!m_networkProcess);
@@ -541,11 +560,14 @@ void WebProcessPool::networkProcessFailedToLaunch(NetworkProcessProxy& networkPr
 
     m_client.networkProcessDidCrash(this);
 
+    if (m_automationSession)
+        m_automationSession->terminate();
+
     // Leave the process proxy around during client call, so that the client could query the process identifier.
     m_networkProcess = nullptr;
 }
 
-void WebProcessPool::getNetworkProcessConnection(Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&& reply)
+void WebProcessPool::getNetworkProcessConnection(Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&& reply)
 {
     ensureNetworkProcess();
     ASSERT(m_networkProcess);
@@ -592,7 +614,7 @@ void WebProcessPool::ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore* r
     m_storageProcess->send(Messages::StorageProcess::InitializeWebsiteDataStore(relevantDataStore->storageProcessParameters()), 0);
 }
 
-void WebProcessPool::getStorageProcessConnection(WebProcessProxy& webProcessProxy, PAL::SessionID initialSessionID, Ref<Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply>&& reply)
+void WebProcessPool::getStorageProcessConnection(WebProcessProxy& webProcessProxy, PAL::SessionID initialSessionID, Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply&& reply)
 {
     ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore::existingNonDefaultDataStoreForSessionID(initialSessionID));
 
@@ -608,6 +630,10 @@ void WebProcessPool::storageProcessCrashed(StorageProcessProxy* storageProcessPr
         supplement->processDidClose(storageProcessProxy);
 
     m_client.storageProcessDidCrash(this);
+
+    if (m_automationSession)
+        m_automationSession->terminate();
+
     m_storageProcess = nullptr;
 }
 
@@ -1158,9 +1184,11 @@ void WebProcessPool::pageBeginUsingWebsiteDataStore(WebPageProxy& page)
         ASSERT(page.websiteDataStore().parameters().networkSessionParameters.sessionID == sessionID);
         sendToNetworkingProcess(Messages::NetworkProcess::AddWebsiteDataStore(page.websiteDataStore().parameters()));
         page.process().send(Messages::WebProcess::AddWebsiteDataStore(WebsiteDataStoreParameters::privateSessionParameters(sessionID)), 0);
+        page.websiteDataStore().clearPendingCookies();
     } else if (sessionID != PAL::SessionID::defaultSessionID()) {
         sendToNetworkingProcess(Messages::NetworkProcess::AddWebsiteDataStore(page.websiteDataStore().parameters()));
         page.process().send(Messages::WebProcess::AddWebsiteDataStore(page.websiteDataStore().parameters()), 0);
+        page.websiteDataStore().clearPendingCookies();
 
 #if ENABLE(INDEXED_DATABASE)
         if (!page.websiteDataStore().resolvedIndexedDatabaseDirectory().isEmpty())
@@ -2097,6 +2125,13 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
             ASSERT(suspendedPage->process());
             action = PolicyAction::Suspend;
             return *suspendedPage->process();
+        }
+
+        // If the target back/forward item and the current back/forward item originated
+        // in the same WebProcess then we should reuse the current WebProcess.
+        if (auto* currentItem = page.backForwardList().currentItem()) {
+            if (currentItem->itemID().processIdentifier == backForwardListItem->itemID().processIdentifier)
+                return page.process();
         }
     }
 

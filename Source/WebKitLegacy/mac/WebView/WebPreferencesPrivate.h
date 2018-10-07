@@ -543,6 +543,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 - (BOOL)cacheAPIEnabled;
 - (void)setCacheAPIEnabled:(BOOL)enabled;
 
+- (BOOL)crossOriginOptionsSupportEnabled;
+- (void)setCrossOriginOptionsSupportEnabled:(BOOL)enabled;
+
 - (void)setFetchAPIEnabled:(BOOL)flag;
 - (BOOL)fetchAPIEnabled;
 
@@ -567,14 +570,17 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 - (void)setModernMediaControlsEnabled:(BOOL)flag;
 - (BOOL)modernMediaControlsEnabled;
 
-- (void)setCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled:(BOOL)flag;
-- (BOOL)cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled;
+- (void)setWebAnimationsCSSIntegrationEnabled:(BOOL)flag;
+- (BOOL)webAnimationsCSSIntegrationEnabled;
 
 - (void)setWebAuthenticationEnabled:(BOOL)flag;
 - (BOOL)webAuthenticationEnabled;
 
 - (void)setIsSecureContextAttributeEnabled:(BOOL)flag;
 - (BOOL)isSecureContextAttributeEnabled;
+
+- (void)setServerTimingEnabled:(BOOL)flag;
+- (BOOL)serverTimingEnabled;
 
 @property (nonatomic) BOOL visualViewportEnabled;
 @property (nonatomic) BOOL visualViewportAPIEnabled;

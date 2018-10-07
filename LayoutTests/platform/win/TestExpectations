@@ -446,6 +446,7 @@ fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote.html [
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
+fast/dom/HTMLAnchorElement/anchor-file-blob-download-then-revoke.html [ Skip ]
 http/tests/download/anchor-download-attribute-content-disposition.html [ Skip ]
 http/tests/download/anchor-download-no-extension.html [ Skip ]
 http/tests/download/area-download.html [ Skip ]
@@ -1574,6 +1575,7 @@ accessibility/scroll-to-make-visible-iframe.html [ Skip ]
 accessibility/scroll-to-make-visible-nested-2.html [ Skip ]
 accessibility/scroll-to-make-visible-nested.html [ Skip ]
 accessibility/scroll-to-make-visible-with-subfocus.html [ Skip ]
+accessibility/scroll-to-make-visible-iframe-offscreen.html [ Skip ]
 
 # Apparently missing support for roleDescription on Windows.
 accessibility/aria-roledescription.html [ Failure ]
@@ -2473,6 +2475,7 @@ js/date-toLocaleString.html [ Skip ]
 js/intl-collator.html [ Skip ]
 js/intl-datetimeformat.html [ Skip ]
 js/intl-numberformat.html [ Skip ]
+js/intl-numberformat-format-to-parts.html [ Skip ]
 js/intl-pluralrules.html [ Skip ]
 js/intl.html [ Skip ]
 js/number-toLocaleString.html [ Skip ]
@@ -3772,6 +3775,9 @@ http/tests/inspector/network/beacon-type.html [ Skip ]
 http/wpt/beacon/ [ Skip ]
 imported/blink/fast/beacon/ [ Skip ]
 imported/w3c/web-platform-tests/beacon/ [ Skip ]
+http/tests/security/contentSecurityPolicy/connect-src-beacon-allowed.html [ Skip ]
+http/tests/security/contentSecurityPolicy/connect-src-beacon-blocked.html [ Skip ]
+http/tests/security/contentSecurityPolicy/report-only-connect-src-beacon-redirect-blocked.php [ Skip ]
 
 # Async image tests are currently failing on Windows.
 webkit.org/b/174653 fast/images/async-image-background-image-repeated.html [ Timeout ]
@@ -3796,6 +3802,7 @@ imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-service-worke
 imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-service-worker.https.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https.html [ Skip ]
 imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/server-timing/service_worker_idl.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers [ Skip ]
 http/tests/cache-storage [ Skip ]
 http/wpt/cache-storage [ Skip ]
@@ -4079,3 +4086,11 @@ webkit.org/b/185075 css3/color-filters/color-filter-text-emphasis.html [ ImageOn
 
 webkit.org/b/185471 http/tests/security/webaudio-render-remote-audio-allowed-crossorigin.html [ Skip ]
 webkit.org/b/185471 http/tests/security/webaudio-render-remote-audio-blocked-no-crossorigin.html [ Skip ]
+
+webkit.org/b/185678 animations/keyframes-dynamic.html [ Failure ]
+webkit.org/b/185678 animations/missing-from-to-transforms.html [ Failure ]
+webkit.org/b/185678 animations/missing-from-to.html [ Failure ]
+
+webkit.org/b/185765 fast/images/animated-image-mp4-crash.html [ Skip ]
+
+webkit.org/b/185678 fast/css-generated-content/pseudo-animation.html [ Failure ]

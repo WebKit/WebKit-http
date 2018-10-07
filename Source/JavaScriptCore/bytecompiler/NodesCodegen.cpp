@@ -36,6 +36,7 @@
 #include "JSFunction.h"
 #include "JSGeneratorFunction.h"
 #include "JSGlobalObject.h"
+#include "JSImmutableButterfly.h"
 #include "LabelScope.h"
 #include "Lexer.h"
 #include "Parser.h"
@@ -388,26 +389,32 @@ RegisterID* ArrayNode::emitBytecode(BytecodeGenerator& generator, RegisterID* ds
 {
     bool hadVariableExpression = false;
     unsigned length = 0;
+
+    IndexingType recommendedIndexingType = ArrayWithUndecided;
     ElementNode* firstPutElement;
     for (firstPutElement = m_element; firstPutElement; firstPutElement = firstPutElement->next()) {
         if (firstPutElement->elision() || firstPutElement->value()->isSpreadExpression())
             break;
         if (!firstPutElement->value()->isConstant())
             hadVariableExpression = true;
+        else
+            recommendedIndexingType = leastUpperBoundOfIndexingTypeAndValue(recommendedIndexingType, static_cast<ConstantNode*>(firstPutElement->value())->jsValue(generator));
+
         ++length;
     }
 
-    auto newArray = [&generator] (RegisterID* dst, ElementNode* elements, unsigned length, bool hadVariableExpression) {
+    auto newArray = [&] (RegisterID* dst, ElementNode* elements, unsigned length, bool hadVariableExpression) {
         if (length && !hadVariableExpression) {
-            auto* array = JSFixedArray::create(*generator.vm(), length);
+            recommendedIndexingType |= CopyOnWrite;
+            auto* array = JSImmutableButterfly::create(*generator.vm(), recommendedIndexingType, length);
             unsigned index = 0;
             for (ElementNode* element = elements; index < length; element = element->next()) {
                 ASSERT(element->value()->isConstant());
-                array->set(*generator.vm(), index++, static_cast<ConstantNode*>(element->value())->jsValue(generator));
+                array->setIndex(*generator.vm(), index++, static_cast<ConstantNode*>(element->value())->jsValue(generator));
             }
-            return generator.emitNewArrayBuffer(dst, array);
+            return generator.emitNewArrayBuffer(dst, array, recommendedIndexingType);
         }
-        return generator.emitNewArray(dst, elements, length);
+        return generator.emitNewArray(dst, elements, length, recommendedIndexingType);
     };
 
     if (!firstPutElement && !m_elision)
@@ -2280,10 +2287,16 @@ RegisterID* InstanceOfNode::emitBytecode(BytecodeGenerator& generator, RegisterI
 
 RegisterID* InNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
+    if (isNonIndexStringElement(*m_expr1)) {
+        RefPtr<RegisterID> base = generator.emitNode(m_expr2);
+        generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
+        return generator.emitInById(generator.finalDestination(dst, base.get()), base.get(), static_cast<StringNode*>(m_expr1)->value());
+    }
+
     RefPtr<RegisterID> key = generator.emitNodeForLeftHandSide(m_expr1, m_rightHasAssignments, m_expr2->isPure(generator));
     RefPtr<RegisterID> base = generator.emitNode(m_expr2);
     generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
-    return generator.emitIn(generator.finalDestination(dst, key.get()), key.get(), base.get());
+    return generator.emitInByVal(generator.finalDestination(dst, key.get()), key.get(), base.get());
 }
 
 
@@ -4151,7 +4164,7 @@ void ArrayPatternNode::bindValue(BytecodeGenerator& generator, RegisterID* rhs) 
         }
 
         case BindingType::RestElement: {
-            RefPtr<RegisterID> array = generator.emitNewArray(generator.newTemporary(), nullptr, 0);
+            RefPtr<RegisterID> array = generator.emitNewArray(generator.newTemporary(), nullptr, 0, ArrayWithUndecided);
 
             Ref<Label> iterationDone = generator.newLabel();
             if (!done)
@@ -4203,7 +4216,7 @@ RegisterID* ArrayPatternNode::emitDirectBinding(BytecodeGenerator& generator, Re
 
     RefPtr<RegisterID> resultRegister;
     if (dst && dst != generator.ignoredResult())
-        resultRegister = generator.emitNewArray(generator.newTemporary(), nullptr, 0);
+        resultRegister = generator.emitNewArray(generator.newTemporary(), nullptr, 0, ArrayWithUndecided);
     if (m_targetPatterns.size() != elements.size())
         return nullptr;
     Vector<RefPtr<RegisterID>> registers;

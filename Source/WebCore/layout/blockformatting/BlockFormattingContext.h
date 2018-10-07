@@ -28,10 +28,11 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "FormattingContext.h"
-#include "LayoutUnit.h"
 #include <wtf/IsoMalloc.h>
 
 namespace WebCore {
+
+class LayoutUnit;
 
 namespace Layout {
 
@@ -49,16 +50,24 @@ public:
     std::unique_ptr<FormattingState> createFormattingState(Ref<FloatingState>&&) const override;
     Ref<FloatingState> createOrFindFloatingState(LayoutContext&) const override;
 
-protected:
+private:
     void computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const override;
-    void computeInFlowWidth(const Box&, Display::Box&) const override;
-    void computeInFlowHeight(const Box&, Display::Box&) const override;
+    void computeInFlowWidth(LayoutContext&, const Box&, Display::Box&) const override;
+    void computeInFlowHeight(LayoutContext&, const Box&, Display::Box&) const override;
 
     LayoutUnit marginTop(const Box&) const override;
     LayoutUnit marginBottom(const Box&) const override;
+    
+    // This class implements positioning and sizing for boxes participating in a block formatting context.
+    class Geometry {
+    public:
+        static LayoutUnit inFlowNonReplacedHeight(LayoutContext&, const Box&);
+        static LayoutUnit inFlowNonReplacedWidth(LayoutContext&, const Box&);
+
+        static LayoutPoint staticPosition(LayoutContext&, const Box&);
+    };
 };
 
 }
 }
 #endif
-

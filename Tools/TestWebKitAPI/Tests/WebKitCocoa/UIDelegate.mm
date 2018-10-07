@@ -627,6 +627,30 @@ TEST(WebKit, AutoFillAvailable)
     TestWebKitAPI::Util::run(&done);
 }
 
+@interface InjectedBundleNodeHandleIsTextFieldDelegate : NSObject <WKUIDelegatePrivate>
+@end
+
+@implementation InjectedBundleNodeHandleIsTextFieldDelegate
+
+- (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)())completionHandler
+{
+    completionHandler();
+    ASSERT_STREQ(message.UTF8String, "isTextField success");
+    done = true;
+}
+
+@end
+
+TEST(WebKit, InjectedBundleNodeHandleIsTextField)
+{
+    WKWebViewConfiguration *configuration = [WKWebViewConfiguration _test_configurationWithTestPlugInClassName:@"InjectedBundleNodeHandleIsTextField"];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 800, 600) configuration:configuration]);
+    auto delegate = adoptNS([[InjectedBundleNodeHandleIsTextFieldDelegate alloc] init]);
+    [webView setUIDelegate:delegate.get()];
+    TestWebKitAPI::Util::run(&done);
+}
+
 @interface PinnedStateObserver : NSObject
 @end
 
@@ -636,7 +660,7 @@ TEST(WebKit, AutoFillAvailable)
 {
     EXPECT_TRUE([keyPath isEqualToString:NSStringFromSelector(@selector(_pinnedState))]);
     EXPECT_TRUE([[object class] isEqual:[TestWKWebView class]]);
-    EXPECT_EQ([[change objectForKey:NSKeyValueChangeOldKey] integerValue], _WKRectEdgeAll);
+    EXPECT_EQ([[change objectForKey:NSKeyValueChangeOldKey] unsignedIntegerValue], _WKRectEdgeAll);
     EXPECT_EQ([[change objectForKey:NSKeyValueChangeNewKey] unsignedIntegerValue], _WKRectEdgeLeft | _WKRectEdgeRight);
     EXPECT_TRUE(context == nullptr);
     done = true;

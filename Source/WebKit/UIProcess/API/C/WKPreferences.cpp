@@ -525,14 +525,14 @@ bool WKPreferencesGetWebAnimationsEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->webAnimationsEnabled();
 }
 
-void WKPreferencesSetCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled(WKPreferencesRef preferencesRef, bool flag)
+void WKPreferencesSetWebAnimationsCSSIntegrationEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
-    toImpl(preferencesRef)->setCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled(flag);
+    toImpl(preferencesRef)->setWebAnimationsCSSIntegrationEnabled(flag);
 }
 
-bool WKPreferencesGetCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled(WKPreferencesRef preferencesRef)
+bool WKPreferencesGetWebAnimationsCSSIntegrationEnabled(WKPreferencesRef preferencesRef)
 {
-    return toImpl(preferencesRef)->cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled();
+    return toImpl(preferencesRef)->webAnimationsCSSIntegrationEnabled();
 }
 
 void WKPreferencesSetNeedsSiteSpecificQuirks(WKPreferencesRef preferencesRef, bool flag)
@@ -1992,4 +1992,14 @@ void WKPreferencesSetRestrictedHTTPResponseAccess(WKPreferencesRef preferencesRe
 bool WKPreferencesGetRestrictedHTTPResponseAccess(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->restrictedHTTPResponseAccess();
+}
+
+void WKPreferencesSetServerTimingEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setServerTimingEnabled(flag);
+}
+
+bool WKPreferencesGetServerTimingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->serverTimingEnabled();
 }

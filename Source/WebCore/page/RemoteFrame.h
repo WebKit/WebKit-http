@@ -28,6 +28,7 @@
 #include "AbstractFrame.h"
 #include "GlobalFrameIdentifier.h"
 #include <wtf/Ref.h>
+#include <wtf/RefPtr.h>
 #include <wtf/TypeCasts.h>
 
 namespace WebCore {

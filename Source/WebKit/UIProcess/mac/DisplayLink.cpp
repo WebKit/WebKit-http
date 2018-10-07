@@ -37,7 +37,7 @@ namespace WebKit {
     
 DisplayLink::DisplayLink(WebCore::PlatformDisplayID displayID, WebPageProxy& webPageProxy)
 {
-    RELEASE_ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
+    ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
     CVReturn error = CVDisplayLinkCreateWithCGDisplay(displayID, &m_displayLink);
     if (error) {
         WTFLogAlways("Could not create a display link: %d", error);
@@ -57,7 +57,7 @@ DisplayLink::DisplayLink(WebCore::PlatformDisplayID displayID, WebPageProxy& web
 
 DisplayLink::~DisplayLink()
 {
-    RELEASE_ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
+    ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
     ASSERT(m_displayLink);
     if (!m_displayLink)
         return;
@@ -79,6 +79,20 @@ void DisplayLink::removeObserver(unsigned observerID)
 bool DisplayLink::hasObservers() const
 {
     return !m_observers.isEmpty();
+}
+
+void DisplayLink::pause()
+{
+    if (!CVDisplayLinkIsRunning(m_displayLink))
+        return;
+    CVDisplayLinkStop(m_displayLink);
+}
+
+void DisplayLink::resume()
+{
+    if (CVDisplayLinkIsRunning(m_displayLink))
+        return;
+    CVDisplayLinkStart(m_displayLink);
 }
 
 CVReturn DisplayLink::displayLinkCallback(CVDisplayLinkRef displayLinkRef, const CVTimeStamp*, const CVTimeStamp*, CVOptionFlags, CVOptionFlags*, void* data)

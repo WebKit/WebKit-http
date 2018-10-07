@@ -32,7 +32,6 @@
 #include "PlatformMediaSession.h"
 #include "SuccessOr.h"
 #include "Timer.h"
-#include <wtf/LoggerHelper.h>
 #include <wtf/TypeCasts.h>
 
 namespace WebCore {
@@ -53,9 +52,6 @@ class HTMLMediaElement;
 class SourceBuffer;
 
 class MediaElementSession final : public PlatformMediaSession
-#if !RELEASE_LOG_DISABLED
-    , private LoggerHelper
-#endif
 {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -65,9 +61,18 @@ public:
     void registerWithDocument(Document&);
     void unregisterWithDocument(Document&);
 
+    void clientWillBeginAutoplaying() final;
+    bool clientWillBeginPlayback() final;
+    bool clientWillPausePlayback() final;
+
+    void visibilityChanged();
+    void isVisibleInViewportChanged();
+    void inActiveDocumentChanged();
+
     SuccessOr<MediaPlaybackDenialReason> playbackPermitted() const;
     bool autoplayPermitted() const;
     bool dataLoadingPermitted() const;
+    bool dataBufferingPermitted() const;
     bool fullscreenPermitted() const;
     bool pageAllowsDataLoading() const;
     bool pageAllowsPlaybackAfterResuming() const;
@@ -149,12 +154,9 @@ public:
     }
 
 #if !RELEASE_LOG_DISABLED
-    const Logger& logger() const final;
-    const void* logIdentifier() const final;
+    const void* logIdentifier() const final { return m_logIdentifier; }
     const char* logClassName() const final { return "MediaElementSession"; }
-    WTFLogChannel& logChannel() const final;
 #endif
-    bool willLog(WTFLogLevel) const;
 
 private:
 
@@ -172,8 +174,15 @@ private:
     bool updateIsMainContent() const;
     void mainContentCheckTimerFired();
 
+    void scheduleClientDataBufferingCheck();
+    void clientDataBufferingTimerFired();
+    void updateClientDataBuffering();
+
     HTMLMediaElement& m_element;
     BehaviorRestrictions m_restrictions;
+
+    bool m_elementIsHiddenUntilVisibleInViewport { false };
+    bool m_elementIsHiddenBecauseItWasRemovedFromDOM { false };
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     mutable Timer m_targetAvailabilityChangedTimer;
@@ -189,6 +198,11 @@ private:
 
     mutable bool m_isMainContent { false };
     Timer m_mainContentCheckTimer;
+    Timer m_clientDataBufferingTimer;
+
+#if !RELEASE_LOG_DISABLED
+    const void* m_logIdentifier;
+#endif
 };
 
 } // namespace WebCore

@@ -107,6 +107,11 @@
     ;; CVMS
     (allow mach-lookup
         (global-name "com.apple.cvmsServ"))
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    ;; Needed by <rdar://problem/40093461>, remove when <rdar://problem/39402555> is fixed.
+    (allow file-read* file-write-unlink
+        (prefix "/private/tmp/cvmsCodeSignObj"))
+#endif
     ;; OpenCL
     (allow iokit-open
         (iokit-connection "IOAccelerator")
@@ -480,6 +485,10 @@
         "pbs" ;; Needed for NSAttributedString <rdar://problem/10844321>
 ))
 
+; (Temporary) backward compatibility with non-CFPreferences readers.
+(allow file-read*
+    (literal "/Library/Preferences/com.apple.ViewBridge.plist"))
+
 ;; On-disk WebKit2 framework location, to account for debug installations outside of /System/Library/Frameworks,
 ;; and to allow issuing extensions.
 (allow-read-directory-and-issue-read-extensions (param "WEBKIT2_FRAMEWORK_DIR"))
@@ -601,6 +610,10 @@
        (global-name "com.apple.xpcd")
 )
 
+;; Needed to support encrypted media playback <rdar://problem/40038478>
+(allow mach-lookup
+    (global-name "com.apple.SecurityServer"))
+
 (allow file-read* file-write* (subpath "/private/var/db/mds/system")) ;; FIXME: This should be removed when <rdar://problem/9538414> is fixed.
 
 (allow file-read*
@@ -632,6 +645,8 @@
        ;; Note: This is needed for some media playback features. <rdar://problem/38191574>
        ;; Remove this permission when <rdar://problem/38240572> is fixed.
        (literal "/private/var/run/mDNSResponder")
+       ;; ObjC map_images needs to send logging data to syslog. <rdar://problem/39778918>
+       (literal "/private/var/run/syslog")
        (remote tcp))
 
 #if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
@@ -641,7 +656,8 @@
 
 ;; Network Extensions / VPN helper.
 (allow mach-lookup
-    (global-name "com.apple.nehelper"))
+    (global-name "com.apple.nehelper")
+    (global-name "com.apple.nesessionmanager"))
 
 #if PLATFORM(MAC)
 ;; FIXME should be removed when <rdar://problem/9347205> + related radar in Safari is fixed

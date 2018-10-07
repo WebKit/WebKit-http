@@ -153,6 +153,12 @@ static bool ignoreWatchdogForDebugging = false;
     self.fullscreenInterface->didStopPictureInPicture();
 }
 
+- (BOOL)playerViewControllerShouldAutomaticallyDismissAtPictureInPictureStart:(AVPlayerViewController *)playerViewController
+{
+    UNUSED_PARAM(playerViewController);
+    return NO;
+}
+
 static VideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullScreenReason(AVPlayerViewControllerExitFullScreenReason reason)
 {
     switch (reason) {
@@ -1282,15 +1288,6 @@ bool VideoFullscreenInterfaceAVKit::shouldExitFullscreenWithReason(VideoFullscre
 void VideoFullscreenInterfaceAVKit::applicationDidBecomeActive()
 {
     LOG(Fullscreen, "VideoFullscreenInterfaceAVKit::applicationDidBecomeActive(%p)", this);
-
-    // If we are both in PiP and in Fullscreen (i.e., via auto-PiP), and we did not stop fullscreen upon returning, it must be
-    // because the originating view is not visible, so hide the fullscreen window.
-    if (m_currentMode.hasFullscreen() && m_currentMode.hasPictureInPicture()) {
-        [[m_playerViewController view] layoutIfNeeded];
-        [m_playerViewController exitFullScreenAnimated:NO completionHandler:[protectedThis = makeRefPtr(this), this] (BOOL success, NSError *error) {
-            exitFullscreenHandler(success, error);
-        }];
-    }
 }
 
 void VideoFullscreenInterfaceAVKit::setupFullscreen(UIView& videoView, const IntRect& initialRect, UIView* parentView, HTMLMediaElementEnums::VideoFullscreenMode mode, bool allowsPictureInPicturePlayback, bool standby)
@@ -1442,12 +1439,11 @@ void VideoFullscreenInterfaceAVKit::didStartPictureInPicture()
     [m_playerViewController setShowsPlaybackControls:YES];
 
     if (m_currentMode.hasFullscreen()) {
-        if (![m_playerViewController pictureInPictureWasStartedWhenEnteringBackground]) {
-            [[m_playerViewController view] layoutIfNeeded];
-            [m_playerViewController exitFullScreenAnimated:YES completionHandler:[protectedThis = makeRefPtr(this), this] (BOOL success, NSError *error) {
-                exitFullscreenHandler(success, error);
-            }];
-        }
+        m_shouldReturnToFullscreenWhenStoppingPiP = YES;
+        [[m_playerViewController view] layoutIfNeeded];
+        [m_playerViewController exitFullScreenAnimated:YES completionHandler:[protectedThis = makeRefPtr(this), this] (BOOL success, NSError *error) {
+            exitFullscreenHandler(success, error);
+        }];
     } else {
         [m_window setHidden:YES];
         [[m_playerViewController view] setHidden:YES];
@@ -1545,15 +1541,8 @@ bool VideoFullscreenInterfaceAVKit::shouldExitFullscreenWithReason(VideoFullscre
     if (!m_videoFullscreenModel)
         return true;
 
-    if (reason == ExitFullScreenReason::PictureInPictureStarted) {
-        m_shouldReturnToFullscreenWhenStoppingPiP = m_currentMode.hasMode(HTMLMediaElementEnums::VideoFullscreenModeStandard);
-        dispatch_async(dispatch_get_main_queue(), [protectedThis = makeRefPtr(this), this] () mutable {
-            [m_playerViewController exitFullScreenAnimated:NO completionHandler:[protectedThis = WTFMove(protectedThis), this] (BOOL success, NSError *error) {
-                exitFullscreenHandler(success, error);
-            }];
-        });
+    if (reason == ExitFullScreenReason::PictureInPictureStarted)
         return false;
-    }
 
     if (playbackSessionModel() && (reason == ExitFullScreenReason::DoneButtonTapped || reason == ExitFullScreenReason::RemoteControlStopEventReceived))
         playbackSessionModel()->pause();

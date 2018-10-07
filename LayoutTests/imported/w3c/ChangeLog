@@ -1,3 +1,688 @@
+2018-05-23  Youenn Fablet  <youenn@apple.com>
+
+        NetworkLoadChecker should check cached redirections
+        https://bugs.webkit.org/show_bug.cgi?id=185849
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/redirected-response.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-security-error.https-expected.txt:
+
+2018-05-22  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-text] Import WPT test suite
+        https://bugs.webkit.org/show_bug.cgi?id=183258
+
+        Reviewed by Youenn Fablet.
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/css/css-text/: Added.
+
+2018-05-21  Chris Dumez  <cdumez@apple.com>
+
+        File's structured serialization should serialize lastModified attribute
+        https://bugs.webkit.org/show_bug.cgi?id=185773
+
+        Reviewed by Youenn Fablet.
+
+        Re-sync workers/semantics/structured-clone WPT tests after:
+        https://github.com/w3c/web-platform-tests/pull/9218
+
+        * web-platform-tests/html/webappapis/structured-clone/structured-clone-battery-of-tests-harness.js: Added.
+        (runStructuredCloneBatteryOfTests):
+        * web-platform-tests/html/webappapis/structured-clone/structured-clone-battery-of-tests-with-transferables.js: Added.
+        (structuredCloneBatteryOfTests.push.async.f):
+        * web-platform-tests/html/webappapis/structured-clone/structured-clone-battery-of-tests.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/workers/semantics/structured-clone/common.js.
+        (async.compare_Blob):
+        (get_canvas_1x1_transparent_black):
+        (get_canvas_1x1_non_transparent_non_black):
+        (compare_ImageBitmap):
+        (structuredCloneBatteryOfTests.push.async.f):
+        * web-platform-tests/html/webappapis/structured-clone/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/workers/semantics/structured-clone/w3c-import.log.
+        * web-platform-tests/workers/semantics/structured-clone/dedicated-expected.txt:
+        * web-platform-tests/workers/semantics/structured-clone/dedicated.html:
+        * web-platform-tests/workers/semantics/structured-clone/dedicated.js: Removed.
+        * web-platform-tests/workers/semantics/structured-clone/shared-expected.txt:
+        * web-platform-tests/workers/semantics/structured-clone/shared.html:
+        * web-platform-tests/workers/semantics/structured-clone/shared.js: Removed.
+        * web-platform-tests/workers/semantics/structured-clone/w3c-import.log:
+        * web-platform-tests/workers/semantics/structured-clone/worker-common.js: Removed.
+
+2018-05-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r232030.
+        https://bugs.webkit.org/show_bug.cgi?id=185850
+
+        "Caused
+        TestWebKitAPI.IndexedDB.StructuredCloneBackwardCompatibility
+        API test to fail" (Requested by cdumez on #webkit).
+
+        Reverted changeset:
+
+        "File's structured serialization should serialize lastModified
+        attribute"
+        https://bugs.webkit.org/show_bug.cgi?id=185773
+        https://trac.webkit.org/changeset/232030
+
+2018-05-21  Chris Dumez  <cdumez@apple.com>
+
+        File's structured serialization should serialize lastModified attribute
+        https://bugs.webkit.org/show_bug.cgi?id=185773
+
+        Reviewed by Youenn Fablet.
+
+        Re-sync workers/semantics/structured-clone WPT tests after:
+        https://github.com/w3c/web-platform-tests/pull/9218
+
+        * web-platform-tests/html/webappapis/structured-clone/structured-clone-battery-of-tests-harness.js: Added.
+        (runStructuredCloneBatteryOfTests):
+        * web-platform-tests/html/webappapis/structured-clone/structured-clone-battery-of-tests-with-transferables.js: Added.
+        (structuredCloneBatteryOfTests.push.async.f):
+        * web-platform-tests/html/webappapis/structured-clone/structured-clone-battery-of-tests.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/workers/semantics/structured-clone/common.js.
+        (async.compare_Blob):
+        (get_canvas_1x1_transparent_black):
+        (get_canvas_1x1_non_transparent_non_black):
+        (compare_ImageBitmap):
+        (structuredCloneBatteryOfTests.push.async.f):
+        * web-platform-tests/html/webappapis/structured-clone/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/workers/semantics/structured-clone/w3c-import.log.
+        * web-platform-tests/workers/semantics/structured-clone/dedicated-expected.txt:
+        * web-platform-tests/workers/semantics/structured-clone/dedicated.html:
+        * web-platform-tests/workers/semantics/structured-clone/dedicated.js: Removed.
+        * web-platform-tests/workers/semantics/structured-clone/shared-expected.txt:
+        * web-platform-tests/workers/semantics/structured-clone/shared.html:
+        * web-platform-tests/workers/semantics/structured-clone/shared.js: Removed.
+        * web-platform-tests/workers/semantics/structured-clone/w3c-import.log:
+        * web-platform-tests/workers/semantics/structured-clone/worker-common.js: Removed.
+
+2018-05-21  David Fenton  <david_fenton@apple.com>
+
+        Add expected results for imported/w3c/web-platform-tests/css/cssom/interfaces.html
+        https://bugs.webkit.org/show_bug.cgi?id=185834
+
+        Unreviewed test gardening.
+
+        This test was added as part of r232005 but it didn't have an expected results file.
+
+        * web-platform-tests/css/cssom/interfaces-expected.txt: Added.
+
+2018-05-20  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Update CSSOM WPT tests.
+        https://bugs.webkit.org/show_bug.cgi?id=185805
+
+        They've been moved under the css/ directory.
+
+        This has been done with:
+
+          ./Tools/Scripts/import-w3c-tests web-platform-tests/css/cssom
+          rm -rf LayoutTests/imported/w3c/web-platform-tests/cssom
+          ./Tools/Scripts/run-webkit-tests -t Debug LayoutTests/imported/w3c/web-platform-tests/css/cssom/ --reset-results
+
+        And ensuring that the same run without --reset-results also succeeded.
+
+        I manually removed entries in import-expectations.json which no longer
+        correspond to an upstream directory.
+
+        Reviewed by Frédéric Wang.
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/css/cssom/CSS-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSS-expected.txt.
+        * web-platform-tests/css/cssom/CSS.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSS.html.
+        * web-platform-tests/css/cssom/CSSKeyframeRule-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSKeyframeRule-expected.txt.
+        * web-platform-tests/css/cssom/CSSKeyframeRule.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSKeyframeRule.html.
+        * web-platform-tests/css/cssom/CSSKeyframesRule-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSKeyframesRule-expected.txt.
+        * web-platform-tests/css/cssom/CSSKeyframesRule.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSKeyframesRule.html.
+        * web-platform-tests/css/cssom/CSSNamespaceRule-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSNamespaceRule-expected.txt.
+        * web-platform-tests/css/cssom/CSSNamespaceRule.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSNamespaceRule.html.
+        * web-platform-tests/css/cssom/CSSRuleList-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSRuleList-expected.txt.
+        * web-platform-tests/css/cssom/CSSRuleList.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSRuleList.html.
+        * web-platform-tests/css/cssom/CSSStyleRule-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSStyleRule-expected.txt.
+        * web-platform-tests/css/cssom/CSSStyleRule-set-selectorText-expected.txt: Added.
+        * web-platform-tests/css/cssom/CSSStyleRule-set-selectorText-namespace-expected.txt: Added.
+        * web-platform-tests/css/cssom/CSSStyleRule-set-selectorText-namespace.html: Added.
+        * web-platform-tests/css/cssom/CSSStyleRule-set-selectorText.html: Added.
+        * web-platform-tests/css/cssom/CSSStyleRule.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSStyleRule.html.
+        * web-platform-tests/css/cssom/CSSStyleSheet-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSStyleSheet-expected.txt.
+        * web-platform-tests/css/cssom/CSSStyleSheet.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/CSSStyleSheet.html.
+        * web-platform-tests/css/cssom/MediaList-expected.txt: Added.
+        * web-platform-tests/css/cssom/MediaList.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/MediaList.html.
+        * web-platform-tests/css/cssom/MediaList2-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/MediaList2-expected.txt.
+        * web-platform-tests/css/cssom/MediaList2.xhtml: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/MediaList2.xhtml.
+        * web-platform-tests/css/cssom/OWNERS: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/OWNERS.
+        * web-platform-tests/css/cssom/StyleSheetList-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/StyleSheetList-expected.txt.
+        * web-platform-tests/css/cssom/StyleSheetList.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/StyleSheetList.html.
+        * web-platform-tests/css/cssom/computed-style-001-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/computed-style-001-expected.txt.
+        * web-platform-tests/css/cssom/computed-style-001.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/computed-style-001.html.
+        * web-platform-tests/css/cssom/computed-style-002-expected.txt: Added.
+        * web-platform-tests/css/cssom/computed-style-002.html: Added.
+        * web-platform-tests/css/cssom/computed-style-003-expected.txt: Added.
+        * web-platform-tests/css/cssom/computed-style-003.html: Added.
+        * web-platform-tests/css/cssom/computed-style-004-expected.txt: Added.
+        * web-platform-tests/css/cssom/computed-style-004.html: Added.
+        * web-platform-tests/css/cssom/css-style-attr-decl-block-expected.txt: Added.
+        * web-platform-tests/css/cssom/css-style-attr-decl-block.html: Added.
+        * web-platform-tests/css/cssom/css-style-attribute-modifications-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/css-style-attribute-modifications-expected.txt.
+        * web-platform-tests/css/cssom/css-style-attribute-modifications.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/css-style-attribute-modifications.html.
+        * web-platform-tests/css/cssom/css-style-declaration-modifications-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/css-style-declaration-modifications-expected.txt.
+        * web-platform-tests/css/cssom/css-style-declaration-modifications.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/css-style-declaration-modifications.html.
+        * web-platform-tests/css/cssom/css-style-reparse-expected.txt: Added.
+        * web-platform-tests/css/cssom/css-style-reparse.html: Added.
+        * web-platform-tests/css/cssom/cssimportrule-expected.txt: Added.
+        * web-platform-tests/css/cssom/cssimportrule.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssimportrule.html.
+        * web-platform-tests/css/cssom/cssom-cssText-serialize-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssom-cssText-serialize-expected.txt.
+        * web-platform-tests/css/cssom/cssom-cssText-serialize.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssom-cssText-serialize.html.
+        * web-platform-tests/css/cssom/cssom-cssstyledeclaration-set-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssom-cssstyledeclaration-set-expected.txt.
+        * web-platform-tests/css/cssom/cssom-cssstyledeclaration-set.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssom-cssstyledeclaration-set.html.
+        * web-platform-tests/css/cssom/cssom-fontfacerule-constructors-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssom-fontfacerule-constructors-expected.txt.
+        * web-platform-tests/css/cssom/cssom-fontfacerule-constructors.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssom-fontfacerule-constructors.html.
+        * web-platform-tests/css/cssom/cssom-fontfacerule-expected.txt: Added.
+        * web-platform-tests/css/cssom/cssom-fontfacerule.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssom-fontfacerule.html.
+        * web-platform-tests/css/cssom/cssom-ruleTypeAndOrder-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssom-ruleTypeAndOrder-expected.txt.
+        * web-platform-tests/css/cssom/cssom-ruleTypeAndOrder.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssom-ruleTypeAndOrder.html.
+        * web-platform-tests/css/cssom/cssom-setProperty-shorthand-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssom-setProperty-shorthand-expected.txt.
+        * web-platform-tests/css/cssom/cssom-setProperty-shorthand.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssom-setProperty-shorthand.html.
+        * web-platform-tests/css/cssom/cssstyledeclaration-csstext-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssstyledeclaration-csstext-expected.txt.
+        * web-platform-tests/css/cssom/cssstyledeclaration-csstext-final-delimiter-expected.txt: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-csstext-final-delimiter.html: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-csstext-important-expected.txt: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-csstext-important.html: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-csstext.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssstyledeclaration-csstext.html.
+        * web-platform-tests/css/cssom/cssstyledeclaration-mutability-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssstyledeclaration-mutability-expected.txt.
+        * web-platform-tests/css/cssom/cssstyledeclaration-mutability.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/cssstyledeclaration-mutability.html.
+        * web-platform-tests/css/cssom/cssstyledeclaration-mutationrecord-001-expected.txt: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-mutationrecord-001.html: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-mutationrecord-002-expected.txt: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-mutationrecord-002.html: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-mutationrecord-003-expected.txt: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-mutationrecord-003.html: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-mutationrecord-004-expected.txt: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-mutationrecord-004.html: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-setter-order-expected.txt: Added.
+        * web-platform-tests/css/cssom/cssstyledeclaration-setter-order.html: Added.
+        * web-platform-tests/css/cssom/escape-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/escape-expected.txt.
+        * web-platform-tests/css/cssom/escape.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/escape.html.
+        * web-platform-tests/css/cssom/font-shorthand-serialization-expected.txt: Added.
+        * web-platform-tests/css/cssom/font-shorthand-serialization.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-detached-subtree-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-detached-subtree.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-dynamic-subdoc-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-dynamic-subdoc.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-pseudo-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/getComputedStyle-pseudo-expected.txt.
+        * web-platform-tests/css/cssom/getComputedStyle-pseudo.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/getComputedStyle-pseudo.html.
+        * web-platform-tests/css/cssom/historical-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/historical-expected.txt.
+        * web-platform-tests/css/cssom/historical.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/historical.html.
+        * web-platform-tests/css/cssom/inline-style-001-expected.txt: Added.
+        * web-platform-tests/css/cssom/inline-style-001.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/inline-style-001.html.
+        * web-platform-tests/css/cssom/insertRule-charset-no-index-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/insertRule-charset-no-index-expected.txt.
+        * web-platform-tests/css/cssom/insertRule-charset-no-index.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/insertRule-charset-no-index.html.
+        * web-platform-tests/css/cssom/insertRule-import-no-index-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/insertRule-import-no-index-expected.txt.
+        * web-platform-tests/css/cssom/insertRule-import-no-index.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/insertRule-import-no-index.html.
+        * web-platform-tests/css/cssom/insertRule-namespace-no-index-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/insertRule-namespace-no-index-expected.txt.
+        * web-platform-tests/css/cssom/insertRule-namespace-no-index.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/insertRule-namespace-no-index.html.
+        * web-platform-tests/css/cssom/insertRule-no-index-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/insertRule-no-index-expected.txt.
+        * web-platform-tests/css/cssom/insertRule-no-index.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/insertRule-no-index.html.
+        * web-platform-tests/css/cssom/insertRule-syntax-error-01-expected.txt: Added.
+        * web-platform-tests/css/cssom/insertRule-syntax-error-01.html: Added.
+        * web-platform-tests/css/cssom/interfaces-expected.txt: Added.
+        * web-platform-tests/css/cssom/interfaces.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/interfaces.html.
+        * web-platform-tests/css/cssom/medialist-dynamic-001-expected.html: Added.
+        * web-platform-tests/css/cssom/medialist-dynamic-001.html: Added.
+        * web-platform-tests/css/cssom/medialist-interfaces-001-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/medialist-interfaces-001-expected.txt.
+        * web-platform-tests/css/cssom/medialist-interfaces-001.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/medialist-interfaces-001.html.
+        * web-platform-tests/css/cssom/medialist-interfaces-002-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/medialist-interfaces-002-expected.txt.
+        * web-platform-tests/css/cssom/medialist-interfaces-002.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/medialist-interfaces-002.html.
+        * web-platform-tests/css/cssom/medialist-interfaces-003-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/medialist-interfaces-003-expected.txt.
+        * web-platform-tests/css/cssom/medialist-interfaces-003.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/medialist-interfaces-003.html.
+        * web-platform-tests/css/cssom/medialist-interfaces-004-expected.txt: Added.
+        * web-platform-tests/css/cssom/medialist-interfaces-004.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/medialist-interfaces-004.html.
+        * web-platform-tests/css/cssom/overflow-serialization-expected.txt: Added.
+        * web-platform-tests/css/cssom/overflow-serialization.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/overflow-serialization.html.
+        * web-platform-tests/css/cssom/preferred-stylesheet-order-expected.txt: Added.
+        * web-platform-tests/css/cssom/preferred-stylesheet-order.html: Added.
+        * web-platform-tests/css/cssom/preferred-stylesheet-reversed-order-expected.txt: Added.
+        * web-platform-tests/css/cssom/preferred-stylesheet-reversed-order.html: Added.
+        * web-platform-tests/css/cssom/selectorSerialize-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/selectorSerialize-expected.txt.
+        * web-platform-tests/css/cssom/selectorSerialize.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/selectorSerialize.html.
+        * web-platform-tests/css/cssom/selectorText-modification-restyle-001-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/selectorText-modification-restyle-001-expected.html.
+        * web-platform-tests/css/cssom/selectorText-modification-restyle-001.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/selectorText-modification-restyle-001.html.
+        * web-platform-tests/css/cssom/selectorText-modification-restyle-002-expected.txt: Added.
+        * web-platform-tests/css/cssom/selectorText-modification-restyle-002.html: Added.
+        * web-platform-tests/css/cssom/serialization-CSSDeclaration-with-important-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/serialization-CSSDeclaration-with-important-expected.txt.
+        * web-platform-tests/css/cssom/serialization-CSSDeclaration-with-important.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/serialization-CSSDeclaration-with-important.html.
+        * web-platform-tests/css/cssom/serialize-namespaced-type-selectors-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/serialize-namespaced-type-selectors-expected.txt.
+        * web-platform-tests/css/cssom/serialize-namespaced-type-selectors.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/serialize-namespaced-type-selectors.html.
+        * web-platform-tests/css/cssom/serialize-values-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/serialize-values-expected.txt.
+        * web-platform-tests/css/cssom/serialize-values.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/serialize-values.html.
+        * web-platform-tests/css/cssom/serialize-variable-reference-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/serialize-variable-reference-expected.txt.
+        * web-platform-tests/css/cssom/serialize-variable-reference.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/serialize-variable-reference.html.
+        * web-platform-tests/css/cssom/setproperty-null-undefined-expected.txt: Added.
+        * web-platform-tests/css/cssom/setproperty-null-undefined.html: Added.
+        * web-platform-tests/css/cssom/shorthand-serialization-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/shorthand-serialization-expected.txt.
+        * web-platform-tests/css/cssom/shorthand-serialization.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/shorthand-serialization.html.
+        * web-platform-tests/css/cssom/shorthand-values-expected.txt: Added.
+        * web-platform-tests/css/cssom/shorthand-values.html: Added.
+        * web-platform-tests/css/cssom/style-sheet-interfaces-001-expected.txt: Added.
+        * web-platform-tests/css/cssom/style-sheet-interfaces-001.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/style-sheet-interfaces-001.html.
+        * web-platform-tests/css/cssom/style-sheet-interfaces-002-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/style-sheet-interfaces-002-expected.txt.
+        * web-platform-tests/css/cssom/style-sheet-interfaces-002.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/style-sheet-interfaces-002.html.
+        * web-platform-tests/css/cssom/stylesheet-replacedata-dynamic-expected.html: Added.
+        * web-platform-tests/css/cssom/stylesheet-replacedata-dynamic.html: Added.
+        * web-platform-tests/css/cssom/stylesheet-same-origin.css: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/stylesheet-same-origin.css.
+        * web-platform-tests/css/cssom/stylesheet-same-origin.sub-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/stylesheet-same-origin.sub-expected.txt.
+        * web-platform-tests/css/cssom/stylesheet-same-origin.sub.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/stylesheet-same-origin.sub.html.
+        * web-platform-tests/css/cssom/stylesheet-title-expected.txt: Added.
+        * web-platform-tests/css/cssom/stylesheet-title.html: Added.
+        * web-platform-tests/css/cssom/support/1x1-green.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/1x1-green.png.
+        * web-platform-tests/css/cssom/support/1x1-lime.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/1x1-lime.png.
+        * web-platform-tests/css/cssom/support/1x1-maroon.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/1x1-maroon.png.
+        * web-platform-tests/css/cssom/support/1x1-navy.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/1x1-navy.png.
+        * web-platform-tests/css/cssom/support/1x1-red.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/1x1-red.png.
+        * web-platform-tests/css/cssom/support/1x1-white.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/1x1-white.png.
+        * web-platform-tests/css/cssom/support/60x60-gg-rr.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/60x60-gg-rr.png.
+        * web-platform-tests/css/cssom/support/60x60-green.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/60x60-green.png.
+        * web-platform-tests/css/cssom/support/60x60-red.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/60x60-red.png.
+        * web-platform-tests/css/cssom/support/README: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/README.
+        * web-platform-tests/css/cssom/support/a-green.css: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/a-green.css.
+        * web-platform-tests/css/cssom/support/b-green.css: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/b-green.css.
+        * web-platform-tests/css/cssom/support/c-red.css: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/c-red.css.
+        * web-platform-tests/css/cssom/support/cat.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/cat.png.
+        * web-platform-tests/css/cssom/support/import-charset.css: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/import-charset.css.
+        * web-platform-tests/css/cssom/support/import-green.css: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/import-green.css.
+        * web-platform-tests/css/cssom/support/import-red.css: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/import-red.css.
+        * web-platform-tests/css/cssom/support/pattern-grg-rgr-grg.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/pattern-grg-rgr-grg.png.
+        * web-platform-tests/css/cssom/support/pattern-grg-rrg-rgg.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/pattern-grg-rrg-rgg.png.
+        * web-platform-tests/css/cssom/support/pattern-rgr-grg-rgr.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/pattern-rgr-grg-rgr.png.
+        * web-platform-tests/css/cssom/support/pattern-tr.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/pattern-tr.png.
+        * web-platform-tests/css/cssom/support/ruler-h-50%.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/ruler-h-50%.png.
+        * web-platform-tests/css/cssom/support/ruler-h-50px.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/ruler-h-50px.png.
+        * web-platform-tests/css/cssom/support/ruler-v-100px.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/ruler-v-100px.png.
+        * web-platform-tests/css/cssom/support/ruler-v-50px.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/ruler-v-50px.png.
+        * web-platform-tests/css/cssom/support/square-purple.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/square-purple.png.
+        * web-platform-tests/css/cssom/support/square-teal.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/square-teal.png.
+        * web-platform-tests/css/cssom/support/square-white.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/square-white.png.
+        * web-platform-tests/css/cssom/support/support/README: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/support/README.
+        * web-platform-tests/css/cssom/support/support/swatch-green.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/support/swatch-green.png.
+        * web-platform-tests/css/cssom/support/support/swatch-red.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/support/swatch-red.png.
+        * web-platform-tests/css/cssom/support/support/w3c-import.log: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/support/w3c-import.log.
+        * web-platform-tests/css/cssom/support/swatch-blue.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/swatch-blue.png.
+        * web-platform-tests/css/cssom/support/swatch-green.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/swatch-green.png.
+        * web-platform-tests/css/cssom/support/swatch-lime.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/swatch-lime.png.
+        * web-platform-tests/css/cssom/support/swatch-orange.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/swatch-orange.png.
+        * web-platform-tests/css/cssom/support/swatch-red.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/swatch-red.png.
+        * web-platform-tests/css/cssom/support/swatch-teal.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/swatch-teal.png.
+        * web-platform-tests/css/cssom/support/swatch-white.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/swatch-white.png.
+        * web-platform-tests/css/cssom/support/swatch-yellow.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/swatch-yellow.png.
+        * web-platform-tests/css/cssom/support/test-bl.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/test-bl.png.
+        * web-platform-tests/css/cssom/support/test-br.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/test-br.png.
+        * web-platform-tests/css/cssom/support/test-inner-half-size.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/test-inner-half-size.png.
+        * web-platform-tests/css/cssom/support/test-outer.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/test-outer.png.
+        * web-platform-tests/css/cssom/support/test-tl.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/test-tl.png.
+        * web-platform-tests/css/cssom/support/test-tr.png: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/test-tr.png.
+        * web-platform-tests/css/cssom/support/w3c-import.log: Added.
+        * web-platform-tests/css/cssom/support/xmlss-pi.xhtml: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/support/xmlss-pi.xhtml.
+        * web-platform-tests/css/cssom/ttwf-cssom-doc-ext-load-count-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/ttwf-cssom-doc-ext-load-count-expected.txt.
+        * web-platform-tests/css/cssom/ttwf-cssom-doc-ext-load-count.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/ttwf-cssom-doc-ext-load-count.html.
+        * web-platform-tests/css/cssom/ttwf-cssom-doc-ext-load-tree-order-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/ttwf-cssom-doc-ext-load-tree-order-expected.txt.
+        * web-platform-tests/css/cssom/ttwf-cssom-doc-ext-load-tree-order.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/ttwf-cssom-doc-ext-load-tree-order.html.
+        * web-platform-tests/css/cssom/ttwf-cssom-document-extension-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/ttwf-cssom-document-extension-expected.txt.
+        * web-platform-tests/css/cssom/ttwf-cssom-document-extension.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/ttwf-cssom-document-extension.html.
+        * web-platform-tests/css/cssom/variable-names-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/variable-names-expected.txt.
+        * web-platform-tests/css/cssom/variable-names.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/cssom/variable-names.html.
+        * web-platform-tests/css/cssom/w3c-import.log: Added.
+        * web-platform-tests/cssom/GetBoundingRect-expected.txt: Removed.
+        * web-platform-tests/cssom/GetBoundingRect.html: Removed.
+        * web-platform-tests/cssom/MediaList-expected.txt: Removed.
+        * web-platform-tests/cssom/cssimportrule-expected.txt: Removed.
+        * web-platform-tests/cssom/cssom-fontfacerule-expected.txt: Removed.
+        * web-platform-tests/cssom/index-001-expected.txt: Removed.
+        * web-platform-tests/cssom/index-001.html: Removed.
+        * web-platform-tests/cssom/index-002-expected.txt: Removed.
+        * web-platform-tests/cssom/index-002.html: Removed.
+        * web-platform-tests/cssom/inline-style-001-expected.txt: Removed.
+        * web-platform-tests/cssom/interfaces-expected.txt: Removed.
+        * web-platform-tests/cssom/medialist-interfaces-004-expected.txt: Removed.
+        * web-platform-tests/cssom/overflow-serialization-expected.txt: Removed.
+        * web-platform-tests/cssom/style-sheet-interfaces-001-expected.txt: Removed.
+        * web-platform-tests/cssom/support/w3c-import.log: Removed.
+        * web-platform-tests/cssom/w3c-import.log: Removed.
+
+2018-05-18  Rob Buis  <rbuis@igalia.com>
+
+        Cannot unset transition with important
+        https://bugs.webkit.org/show_bug.cgi?id=177684
+
+        Reviewed by Chris Dumez.
+
+        Import manually the updated test and result.
+
+        * web-platform-tests/cssom/cssom-setProperty-shorthand-expected.txt:
+        * web-platform-tests/cssom/cssom-setProperty-shorthand.html:
+
+2018-05-18  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Turn Web Animations with CSS integration on for test runners
+        https://bugs.webkit.org/show_bug.cgi?id=184819
+        <rdar://problem/39597337>
+
+        Unreviewed. Rolling out the patch for this bug, it caused some flaky timeouts for animation suspension tests.
+
+        * web-platform-tests/css-timing-1/frames-timing-functions-output.html:
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/ready.html:
+        * web-platform-tests/web-animations/timing-model/animations/playing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation.html:
+
+2018-05-18  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Turn Web Animations with CSS integration on for test runners
+        https://bugs.webkit.org/show_bug.cgi?id=184819
+        <rdar://problem/39597337>
+
+        Reviewed by Jon Lee.
+
+        Since Web Animations with CSS integration is on by default on test runners, we no longer need
+        the special HTML comment to turn the flag on for select tests.
+
+        * web-platform-tests/css-timing-1/frames-timing-functions-output.html:
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/ready.html:
+        * web-platform-tests/web-animations/timing-model/animations/playing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation.html:
+
+2018-05-16  Chris Nardi  <cnardi@chromium.org>
+
+        Remove Document#selectedStylesheetSet/preferredStylesheetSet
+        https://bugs.webkit.org/show_bug.cgi?id=185381
+
+        Reviewed by Darin Adler.
+
+        Refresh historical CSSOM test from upstream to test this change.
+
+        * web-platform-tests/cssom/historical-expected.txt:
+        * web-platform-tests/cssom/historical.html:
+
+2018-05-15  Charles Vazac  <cvazac@gmail.com>
+
+        Add the PerformanceServerTiming Interface which makes Server-Timing header timing values available to JavaScript running in the browser.
+        https://bugs.webkit.org/show_bug.cgi?id=175569
+
+        Reviewed by Youenn Fablet.
+
+        Tests were imported from web-platform-tests: WebKit/LayoutTests/imported/w3c/web-platform-tests/server-timing/*
+
+        * web-platform-tests/server-timing/cross_origin.html: Added.
+        * web-platform-tests/server-timing/navigation_timing_idl.html: Added.
+        * web-platform-tests/server-timing/navigation_timing_idl.https.html: Added.
+        * web-platform-tests/server-timing/resources/blue.png: Added.
+        * web-platform-tests/server-timing/resources/blue.png.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/blue_tao.png: Added.
+        * web-platform-tests/server-timing/resources/blue_tao.png.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/green.png: Added.
+        * web-platform-tests/server-timing/resources/green.png.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/0.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/0.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/1.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/1.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/10.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/10.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/11.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/11.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/12.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/12.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/13.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/13.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/14.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/14.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/15.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/15.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/16.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/16.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/17.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/17.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/18.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/18.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/19.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/19.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/2.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/2.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/20.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/20.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/21.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/21.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/22.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/22.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/23.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/23.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/24.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/24.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/25.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/25.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/26.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/26.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/27.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/27.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/28.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/28.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/29.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/29.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/3.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/3.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/30.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/30.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/31.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/31.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/32.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/32.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/33.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/33.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/34.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/34.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/35.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/35.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/36.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/36.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/37.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/37.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/38.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/38.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/39.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/39.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/4.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/4.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/40.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/40.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/41.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/41.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/42.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/42.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/43.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/43.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/44.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/44.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/45.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/45.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/46.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/46.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/47.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/47.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/48.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/48.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/49.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/49.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/5.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/5.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/50.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/50.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/51.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/51.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/52.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/52.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/53.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/53.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/54.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/54.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/55.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/55.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/56.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/56.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/57.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/57.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/58.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/58.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/59.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/59.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/6.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/6.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/60.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/60.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/61.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/61.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/62.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/62.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/63.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/63.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/64.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/64.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/65.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/65.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/66.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/66.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/67.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/67.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/68.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/68.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/69.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/69.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/7.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/7.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/70.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/70.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/71.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/71.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/72.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/72.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/73.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/73.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/74.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/74.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/75.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/75.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/76.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/76.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/77.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/77.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/78.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/78.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/79.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/79.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/8.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/8.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/80.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/80.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/81.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/81.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/82.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/82.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/83.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/83.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/9.js: Added.
+        * web-platform-tests/server-timing/resources/parsing/9.js.sub.headers: Added.
+        * web-platform-tests/server-timing/resources/parsing/w3c-import.log: Added.
+        * web-platform-tests/server-timing/resources/w3c-import.log: Added.
+        * web-platform-tests/server-timing/resource_timing_idl.html: Added.
+        * web-platform-tests/server-timing/resource_timing_idl.https.html: Added.
+        * web-platform-tests/server-timing/server_timing_header-parsing.html: Added.
+        * web-platform-tests/server-timing/server_timing_header-parsing.https.html: Added.
+        * web-platform-tests/server-timing/test_server_timing.html: Added.
+        * web-platform-tests/server-timing/test_server_timing.html.sub.headers: Added.
+        * web-platform-tests/server-timing/test_server_timing.https.html: Added.
+        * web-platform-tests/server-timing/test_server_timing.https.html.sub.headers: Added.
+        * web-platform-tests/server-timing/w3c-import.log: Added.
+
+2018-05-15  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Expose Web Animations CSS integration as an experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=185647
+
+        Reviewed by Dean Jackson.
+
+        Change the name of the Web Animations CSS integration flag so that tests can opt into this feature.
+
+        * web-platform-tests/css-timing-1/frames-timing-functions-output.html:
+        * web-platform-tests/web-animations/interfaces/Animation/ready.html:
+        * web-platform-tests/web-animations/timing-model/animations/playing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation.html:
+
+2018-05-14  Youenn Fablet  <youenn@apple.com>
+
+        readableStreamDefaultControllerError should return early if stream is not readable
+        https://bugs.webkit.org/show_bug.cgi?id=185602
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/streams/readable-streams/bad-underlying-sources-expected.txt:
+        * web-platform-tests/streams/readable-streams/bad-underlying-sources.dedicatedworker-expected.txt:
+        * web-platform-tests/streams/readable-streams/bad-underlying-sources.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/garbage-collection-expected.txt:
+        * web-platform-tests/streams/readable-streams/garbage-collection.dedicatedworker-expected.txt:
+        * web-platform-tests/streams/readable-streams/garbage-collection.serviceworker.https-expected.txt:
+        * web-platform-tests/streams/readable-streams/tee-expected.txt:
+
+2018-05-14  Youenn Fablet  <youenn@apple.com>
+
+        imported/w3c/web-platform-tests/fetch/api/response/response-stream-disturbed-6.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=185549
+
+        Reviewed by Chris Dumez.
+
+        Catch any potential rejected promise.
+
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-6.html:
+
+2018-05-14  Youenn Fablet  <youenn@apple.com>
+
+        Enable service-worker/navigation-redirect-body.https.html and service-worker/postmessage.https.html
+        https://bugs.webkit.org/show_bug.cgi?id=185605
+
+        Unreviewed.
+
+        * web-platform-tests/service-workers/service-worker/postmessage.https-expected.txt:
+
+2018-05-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Tapping after CSS-based table casues an infinite loop in wordRangeFromPosition
+        https://bugs.webkit.org/show_bug.cgi?id=185465
+        <rdar://problem/35263057>
+
+        Reviewed by Antti Koivisto.
+
+        Rebaselined the tests. h2
+
+        * web-platform-tests/dom/nodes/getElementsByClassName-30-expected.txt: table is generating a new line as expected.
+        * web-platform-tests/html/syntax/parsing/html5lib_menuitem-element-expected.txt: h2 is generating an extra line
+        to emulate its margin as expected.
+        * web-platform-tests/html/syntax/parsing/html5lib_tests11-expected.txt: Ditto.
+        * web-platform-tests/html/syntax/parsing/html5lib_tests21-expected.txt: Ditto.
+        * web-platform-tests/html/syntax/parsing/html5lib_tests25-expected.txt: Ditto.
+        * web-platform-tests/html/syntax/parsing/html5lib_webkit02-expected.txt: Ditto.
+
+2018-05-11  Youenn Fablet  <youenn@apple.com>
+
+        Rebase some fetch API tests
+        https://bugs.webkit.org/show_bug.cgi?id=185544
+
+        Unreviewed.
+
+        * web-platform-tests/fetch/api/basic/integrity-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-count-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-count-worker-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-location-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-location-worker-expected.txt:
+        * web-platform-tests/fetch/api/request/request-cache-only-if-cached-expected.txt:
+        * web-platform-tests/fetch/http-cache/partial-expected.txt:
+
 2018-05-07  Chris Dumez  <cdumez@apple.com>
 
         ASSERT(!childItemWithTarget(child->target())) is hit in HistoryItem::addChildItem()

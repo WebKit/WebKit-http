@@ -56,7 +56,7 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     encoder << shouldEnableNetworkCacheSpeculativeRevalidation;
 #endif
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     encoder << uiProcessCookieStorageIdentifier;
 #endif
 #if PLATFORM(IOS)
@@ -116,7 +116,11 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << urlSchemesRegisteredAsCORSEnabled;
     encoder << urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest;
 
-    encoder << trackNetworkActivity;
+    encoder << tracksResourceLoadMilestones;
+    
+#if ENABLE(WIFI_ASSERTIONS)
+    encoder << wirelessContextIdentifier;
+#endif
 }
 
 bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProcessCreationParameters& result)
@@ -163,7 +167,7 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!decoder.decode(result.shouldEnableNetworkCacheSpeculativeRevalidation))
         return false;
 #endif
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     if (!decoder.decode(result.uiProcessCookieStorageIdentifier))
         return false;
 #endif
@@ -277,8 +281,13 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!decoder.decode(result.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest))
         return false;
 
-    if (!decoder.decode(result.trackNetworkActivity))
+    if (!decoder.decode(result.tracksResourceLoadMilestones))
         return false;
+
+#if ENABLE(WIFI_ASSERTIONS)
+    if (!decoder.decode(result.wirelessContextIdentifier))
+        return false;
+#endif
 
     return true;
 }

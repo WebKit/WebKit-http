@@ -55,8 +55,6 @@ static const char* dumpAppendState(AppendPipeline::AppendState appendState)
         return "NotStarted";
     case AppendPipeline::AppendState::Ongoing:
         return "Ongoing";
-    case AppendPipeline::AppendState::KeyNegotiation:
-        return "KeyNegotiation";
     case AppendPipeline::AppendState::DataStarve:
         return "DataStarve";
     case AppendPipeline::AppendState::Sampling:
@@ -78,9 +76,16 @@ static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInf
 #if !LOG_DISABLED
 static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadProbeInfo*, struct PadProbeInformation*);
 #endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+static GstPadProbeReturn appendPipelineAppsinkPadEventProbe(GstPad*, GstPadProbeInfo*, struct PadProbeInformation*);
+#endif
+
 static GstPadProbeReturn appendPipelineDemuxerBlackHolePadProbe(GstPad*, GstPadProbeInfo*, gpointer);
 static GstFlowReturn appendPipelineAppsinkNewSample(GstElement*, AppendPipeline*);
 static void appendPipelineAppsinkEOS(GstElement*, AppendPipeline*);
+
+static GstPadProbeReturn matroskademuxForceSegmentStartToEqualZero(GstPad*, GstPadProbeInfo*, void*);
 
 static void appendPipelineNeedContextMessageCallback(GstBus*, GstMessage* message, AppendPipeline* appendPipeline)
 {
@@ -92,13 +97,6 @@ static void appendPipelineApplicationMessageCallback(GstBus*, GstMessage* messag
 {
     appendPipeline->handleApplicationMessage(message);
 }
-
-#if ENABLE(ENCRYPTED_MEDIA)
-static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, AppendPipeline* appendPipeline)
-{
-    appendPipeline->handleElementMessage(message);
-}
-#endif
 
 static void appendPipelineStateChangeMessageCallback(GstBus*, GstMessage* message, AppendPipeline* appendPipeline)
 {
@@ -131,9 +129,6 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
 
     g_signal_connect(m_bus.get(), "sync-message::need-context", G_CALLBACK(appendPipelineNeedContextMessageCallback), this);
     g_signal_connect(m_bus.get(), "message::application", G_CALLBACK(appendPipelineApplicationMessageCallback), this);
-#if ENABLE(ENCRYPTED_MEDIA)
-    g_signal_connect(m_bus.get(), "message::element", G_CALLBACK(appendPipelineElementMessageCallback), this);
-#endif
     g_signal_connect(m_bus.get(), "message::state-changed", G_CALLBACK(appendPipelineStateChangeMessageCallback), this);
 
     // We assign the created instances here instead of adoptRef() because gst_bin_add_many()
@@ -166,6 +161,12 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
     m_appsinkDataEnteringPadProbeInformation.appendPipeline = this;
     m_appsinkDataEnteringPadProbeInformation.description = "appsink data entering";
     m_appsinkDataEnteringPadProbeInformation.probeId = gst_pad_add_probe(appsinkPad.get(), GST_PAD_PROBE_TYPE_BUFFER, reinterpret_cast<GstPadProbeCallback>(appendPipelinePadProbeDebugInformation), &m_appsinkDataEnteringPadProbeInformation, nullptr);
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    m_appsinkPadEventProbeInformation.appendPipeline = this;
+    m_appsinkPadEventProbeInformation.description = "appsink event probe";
+    m_appsinkPadEventProbeInformation.probeId = gst_pad_add_probe(appsinkPad.get(), GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, reinterpret_cast<GstPadProbeCallback>(appendPipelineAppsinkPadEventProbe), &m_appsinkPadEventProbeInformation, nullptr);
 #endif
 
     // These signals won't be connected outside of the lifetime of "this".
@@ -236,6 +237,9 @@ AppendPipeline::~AppendPipeline()
         gst_pad_remove_probe(appsinkPad.get(), m_appsinkDataEnteringPadProbeInformation.probeId);
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+        gst_pad_remove_probe(appsinkPad.get(), m_appsinkPadEventProbeInformation.probeId);
+#endif
         m_appsink = nullptr;
     }
 
@@ -275,9 +279,6 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
     const gchar* contextType = nullptr;
     gst_message_parse_context_type(message, &contextType);
     GST_TRACE("context type: %s", contextType);
-    if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id")
-        && m_appendState != AppendPipeline::AppendState::KeyNegotiation)
-        setAppendState(AppendPipeline::AppendState::KeyNegotiation);
 
     // MediaPlayerPrivateGStreamerBase will take care of setting up encryption.
     if (m_playerPrivate)
@@ -329,25 +330,6 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
     ASSERT_NOT_REACHED();
 }
 
-#if ENABLE(ENCRYPTED_MEDIA)
-void AppendPipeline::handleElementMessage(GstMessage* message)
-{
-    ASSERT(WTF::isMainThread());
-
-    const GstStructure* structure = gst_message_get_structure(message);
-    GST_TRACE("%s message from %s", gst_structure_get_name(structure), GST_MESSAGE_SRC_NAME(message));
-    if (m_playerPrivate && gst_structure_has_name(structure, "drm-key-needed")) {
-        if (m_appendState != AppendPipeline::AppendState::KeyNegotiation)
-            setAppendState(AppendPipeline::AppendState::KeyNegotiation);
-
-        GST_DEBUG("sending drm-key-needed message from %s to the player", GST_MESSAGE_SRC_NAME(message));
-        GRefPtr<GstEvent> event;
-        gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
-        m_playerPrivate->handleProtectionEvent(event.get());
-    }
-}
-#endif
-
 void AppendPipeline::handleStateChangeMessage(GstMessage* message)
 {
     ASSERT(WTF::isMainThread());
@@ -373,7 +355,7 @@ void AppendPipeline::handleAppsrcNeedDataReceived()
         return;
     }
 
-    ASSERT(m_appendState == AppendState::KeyNegotiation || m_appendState == AppendState::Ongoing || m_appendState == AppendState::Sampling);
+    ASSERT(m_appendState == AppendState::Ongoing || m_appendState == AppendState::Sampling);
     ASSERT(!m_appsrcNeedDataReceived);
 
     GST_TRACE("received need-data from appsrc");
@@ -431,8 +413,7 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
     // NotStarted-->Ongoing-->DataStarve-->NotStarted
     //           |         |            `->Aborting-->NotStarted
     //           |         `->Sampling-···->Sampling-->LastSample-->NotStarted
-    //           |         |                                     `->Aborting-->NotStarted
-    //           |         `->KeyNegotiation-->Ongoing-->[...]
+    //           |                                               `->Aborting-->NotStarted
     //           `->Aborting-->NotStarted
     AppendState oldAppendState = m_appendState;
     AppendState nextAppendState = AppendState::Invalid;
@@ -468,19 +449,8 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
             break;
         }
         break;
-    case AppendState::KeyNegotiation:
-        switch (newAppendState) {
-        case AppendState::Ongoing:
-        case AppendState::Invalid:
-            ok = true;
-            break;
-        default:
-            break;
-        }
-        break;
     case AppendState::Ongoing:
         switch (newAppendState) {
-        case AppendState::KeyNegotiation:
         case AppendState::Sampling:
         case AppendState::Invalid:
             ok = true;
@@ -582,18 +552,7 @@ void AppendPipeline::parseDemuxerSrcPadCaps(GstCaps* demuxerSrcPadCaps)
 
     m_demuxerSrcPadCaps = adoptGRef(demuxerSrcPadCaps);
     m_streamType = WebCore::MediaSourceStreamTypeGStreamer::Unknown;
-#if ENABLE(ENCRYPTED_MEDIA)
-    if (areEncryptedCaps(m_demuxerSrcPadCaps.get())) {
-        // Any previous decryptor should have been removed from the pipeline by disconnectFromAppSinkFromStreamingThread()
-        ASSERT(!m_decryptor);
-        GstStructure* structure = gst_caps_get_structure(m_demuxerSrcPadCaps.get(), 0);
-        m_decryptor = GStreamerEMEUtilities::createDecryptor(gst_structure_get_string(structure, "protection-system"));
-        if (!m_decryptor) {
-            GST_ERROR("decryptor not found for caps: %" GST_PTR_FORMAT, m_demuxerSrcPadCaps.get());
-            return;
-        }
-    }
-#endif
+
     const char* originalMediaType = capsMediaType(m_demuxerSrcPadCaps.get());
     if (!MediaPlayerPrivateGStreamerMSE::supportsCodec(originalMediaType)) {
             m_presentationSize = WebCore::FloatSize();
@@ -672,10 +631,6 @@ void AppendPipeline::appsinkNewSample(GstSample* sample)
 
     {
         LockHolder locker(m_newSampleLock);
-
-        // If we were in KeyNegotiation but samples are coming, assume we're already OnGoing
-        if (m_appendState == AppendState::KeyNegotiation)
-            setAppendState(AppendState::Ongoing);
 
         // Ignore samples if we're not expecting them. Refuse processing if we're in Invalid state.
         if (m_appendState != AppendState::Ongoing && m_appendState != AppendState::Sampling) {
@@ -1009,28 +964,10 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
             currentSrcPad = parserSrcPad;
         }
 
-#if ENABLE(ENCRYPTED_MEDIA)
-        if (m_decryptor) {
-            gst_object_ref(m_decryptor.get());
-            gst_bin_add(GST_BIN(m_pipeline.get()), m_decryptor.get());
-            gst_element_sync_state_with_parent(m_decryptor.get());
-
-            GRefPtr<GstPad> decryptorSinkPad = adoptGRef(gst_element_get_static_pad(m_decryptor.get(), "sink"));
-            GRefPtr<GstPad> decryptorSrcPad = adoptGRef(gst_element_get_static_pad(m_decryptor.get(), "src"));
-
-            gst_pad_link(currentSrcPad.get(), decryptorSinkPad.get());
-            currentSrcPad = decryptorSrcPad;
-        }
-#endif
-
         gst_pad_link(currentSrcPad.get(), appsinkSinkPad.get());
 
         gst_element_sync_state_with_parent(m_appsink.get());
 
-#if ENABLE(ENCRYPTED_MEDIA)
-        if (m_pendingDecryptionStructure)
-            dispatchPendingDecryptionStructure();
-#endif
         gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
         gst_element_sync_state_with_parent(m_appsink.get());
 
@@ -1042,6 +979,10 @@ void AppendPipeline::connectDemuxerSrcPadToAppsink(GstPad* demuxerSrcPad)
 {
     ASSERT(WTF::isMainThread());
     GST_DEBUG("Connecting to appsink");
+
+    const String& type = m_sourceBufferPrivate->type().containerType();
+    if (type.endsWith("webm"))
+        gst_pad_add_probe(demuxerSrcPad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, matroskademuxForceSegmentStartToEqualZero, nullptr, nullptr);
 
     LockHolder locker(m_padAddRemoveLock);
     GRefPtr<GstPad> sinkSinkPad = adoptGRef(gst_element_get_static_pad(m_appsink.get(), "sink"));
@@ -1109,14 +1050,6 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread(GstPad*)
 
     GST_DEBUG("Disconnecting appsink");
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    if (m_decryptor) {
-        gst_element_set_state(m_decryptor.get(), GST_STATE_NULL);
-        gst_bin_remove(GST_BIN(m_pipeline.get()), m_decryptor.get());
-        m_decryptor = nullptr;
-    }
-#endif
-
     if (m_parser) {
         gst_element_set_state(m_parser.get(), GST_STATE_NULL);
         gst_bin_remove(GST_BIN(m_pipeline.get()), m_parser.get());
@@ -1125,35 +1058,6 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread(GstPad*)
 
     GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(m_pipeline.get()), GST_DEBUG_GRAPH_SHOW_ALL, "pad-removed-after");
 }
-
-#if ENABLE(ENCRYPTED_MEDIA)
-void AppendPipeline::dispatchPendingDecryptionStructure()
-{
-    ASSERT(m_decryptor);
-    ASSERT(m_pendingDecryptionStructure);
-    ASSERT(m_appendState == AppendState::KeyNegotiation);
-    GST_TRACE("dispatching key to append pipeline %p", this);
-
-    // Release the m_pendingDecryptionStructure object since
-    // gst_event_new_custom() takes over ownership of it.
-    gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
-
-    setAppendState(AppendState::Ongoing);
-}
-
-void AppendPipeline::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& structure)
-{
-    if (m_appendState == AppendState::KeyNegotiation) {
-        GST_TRACE("append pipeline %p in key negotiation", this);
-        m_pendingDecryptionStructure = WTFMove(structure);
-        if (m_decryptor)
-            dispatchPendingDecryptionStructure();
-        else
-            GST_TRACE("no decryptor yet, waiting for it");
-    } else
-        GST_TRACE("append pipeline %p not in key negotiation", this);
-}
-#endif
 
 static void appendPipelineAppsinkCapsChanged(GObject* appsinkPad, GParamSpec*, AppendPipeline* appendPipeline)
 {
@@ -1183,6 +1087,27 @@ static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadP
     ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER);
     GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     GST_TRACE("%s: buffer of size %" G_GSIZE_FORMAT " going thru", padProbeInformation->description, gst_buffer_get_size(buffer));
+    return GST_PAD_PROBE_OK;
+}
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+static GstPadProbeReturn appendPipelineAppsinkPadEventProbe(GstPad*, GstPadProbeInfo* info, struct PadProbeInformation *padProbeInformation)
+{
+    ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM);
+    GstEvent* event = gst_pad_probe_info_get_event(info);
+    GST_DEBUG("Handling event %s on append pipeline appsinkPad", GST_EVENT_TYPE_NAME(event));
+    WebCore::AppendPipeline* appendPipeline = padProbeInformation->appendPipeline;
+
+    switch (GST_EVENT_TYPE(event)) {
+    case GST_EVENT_PROTECTION:
+        if (appendPipeline && appendPipeline->playerPrivate())
+            appendPipeline->playerPrivate()->handleProtectionEvent(event);
+        return GST_PAD_PROBE_DROP;
+    default:
+        break;
+    }
+
     return GST_PAD_PROBE_OK;
 }
 #endif
@@ -1229,7 +1154,35 @@ static void appendPipelineAppsinkEOS(GstElement*, AppendPipeline* appendPipeline
     GST_DEBUG("%s main thread", (WTF::isMainThread()) ? "Is" : "Not");
 }
 
+static GstPadProbeReturn matroskademuxForceSegmentStartToEqualZero(GstPad*, GstPadProbeInfo* info, void*)
+{
+    // matroskademux sets GstSegment.start to the PTS of the first frame.
+    //
+    // This way in the unlikely case a user made a .mkv or .webm file where a certain portion of the movie is skipped
+    // (e.g. by concatenating a MSE initialization segment with any MSE media segment other than the first) and opened
+    // it with a regular player, playback would start immediately. GstSegment.duration is not modified in any case.
+    //
+    // Leaving the usefulness of that feature aside, the fact that it uses GstSegment.start is problematic for MSE.
+    // In MSE is not unusual to process unordered MSE media segments. In this case, a frame may have
+    // PTS <<< GstSegment.start and be discarded by downstream. This happens for instance in elements derived from
+    // audiobasefilter, such as opusparse.
+    //
+    // This probe remedies the problem by setting GstSegment.start to 0 in all cases, not only when the PTS of the first
+    // frame is zero.
 
+    ASSERT(info->type & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM);
+    GstEvent* event = static_cast<GstEvent*>(info->data);
+    if (event->type == GST_EVENT_SEGMENT) {
+        GstSegment segment;
+        gst_event_copy_segment(event, &segment);
+
+        segment.start = 0;
+
+        GRefPtr<GstEvent> newEvent = adoptGRef(gst_event_new_segment(&segment));
+        gst_event_replace(reinterpret_cast<GstEvent**>(&info->data), newEvent.get());
+    }
+    return GST_PAD_PROBE_OK;
+}
 
 } // namespace WebCore.
 

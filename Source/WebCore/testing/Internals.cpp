@@ -53,6 +53,7 @@
 #include "DOMStringList.h"
 #include "DOMWindow.h"
 #include "DeprecatedGlobalSettings.h"
+#include "DisabledAdaptations.h"
 #include "DisplayList.h"
 #include "Document.h"
 #include "DocumentLoader.h"
@@ -923,7 +924,7 @@ ExceptionOr<unsigned> Internals::lastSpatialNavigationCandidateCount() const
 
 unsigned Internals::numberOfActiveAnimations() const
 {
-    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
         return frame()->document()->timeline().numberOfActiveAnimationsForTesting();
     return frame()->animation().numberOfActiveAnimations(frame()->document());
 }
@@ -934,7 +935,7 @@ ExceptionOr<bool> Internals::animationsAreSuspended() const
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
 
-    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
         return document->timeline().animationsAreSuspended();
     return document->frame()->animation().animationsAreSuspendedForDocument(document);
 }
@@ -945,7 +946,7 @@ double Internals::animationsInterval() const
     if (!document)
         return INFINITY;
 
-    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled()) {
+    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
         if (auto timeline = document->existingTimeline())
             return timeline->animationInterval().seconds();
         return INFINITY;
@@ -962,7 +963,7 @@ ExceptionOr<void> Internals::suspendAnimations() const
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
 
-    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled()) {
+    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
         document->timeline().suspendAnimations();
         for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
             if (Document* document = frame->document())
@@ -986,7 +987,7 @@ ExceptionOr<void> Internals::resumeAnimations() const
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
 
-    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled()) {
+    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
         document->timeline().resumeAnimations();
         for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
             if (Document* document = frame->document())
@@ -1046,6 +1047,14 @@ ExceptionOr<bool> Internals::pauseTransitionAtTimeOnPseudoElement(const String& 
         return Exception { InvalidAccessError };
 
     return frame()->animation().pauseTransitionAtTime(*pseudoElement, property, pauseTime);
+}
+
+ExceptionOr<RefPtr<Element>> Internals::pseudoElement(Element& element, const String& pseudoId)
+{
+    if (pseudoId != "before" && pseudoId != "after")
+        return Exception { InvalidAccessError };
+
+    return pseudoId == "before" ? element.beforePseudoElement() : element.afterPseudoElement();
 }
 
 ExceptionOr<String> Internals::elementRenderTreeAsText(Element& element)
@@ -2041,7 +2050,7 @@ String Internals::parserMetaData(JSC::JSValue code)
         exec->iterate(iter);
         CodeBlock* codeBlock = iter.codeBlock();
         executable = codeBlock->ownerScriptExecutable();
-    } else if (code.isFunction()) {
+    } else if (code.isFunction(vm)) {
         JSFunction* funcObj = JSC::jsCast<JSFunction*>(code.toObject(exec));
         executable = funcObj->jsExecutable();
     } else
@@ -3223,6 +3232,11 @@ void Internals::endSimulatedHDCPError(HTMLMediaElement& element)
         player->endSimulatedHDCPError();
 }
 
+bool Internals::elementShouldBufferData(HTMLMediaElement& element)
+{
+    return element.shouldBufferData();
+}
+
 #endif
 
 bool Internals::isSelectPopupVisible(HTMLSelectElement& element)
@@ -3678,6 +3692,21 @@ void Internals::simulateSystemWake() const
 #endif
 }
 
+ExceptionOr<Internals::NowPlayingState> Internals::nowPlayingState() const
+{
+#if ENABLE(VIDEO)
+    return { { PlatformMediaSessionManager::sharedManager().lastUpdatedNowPlayingTitle(),
+        PlatformMediaSessionManager::sharedManager().lastUpdatedNowPlayingDuration(),
+        PlatformMediaSessionManager::sharedManager().lastUpdatedNowPlayingElapsedTime(),
+        PlatformMediaSessionManager::sharedManager().lastUpdatedNowPlayingInfoUniqueIdentifier(),
+        PlatformMediaSessionManager::sharedManager().hasActiveNowPlayingSession(),
+        PlatformMediaSessionManager::sharedManager().registeredAsNowPlayingApplication()
+    } };
+#else
+    return Exception { InvalidAccessError };
+#endif
+}
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 
 void Internals::setMockMediaPlaybackTargetPickerEnabled(bool enabled)
@@ -4012,7 +4041,7 @@ JSValue Internals::cloneArrayBuffer(JSC::ExecState& state, JSValue buffer, JSVal
     PropertySlot propertySlot(value, PropertySlot::InternalMethodType::Get);
     globalObject->methodTable(vm)->getOwnPropertySlot(globalObject, &state, privateName, propertySlot);
     value = propertySlot.getValue(&state, privateName);
-    ASSERT(value.isFunction());
+    ASSERT(value.isFunction(vm));
 
     JSObject* function = value.getObject();
     CallData callData;
@@ -4503,6 +4532,11 @@ bool Internals::isSystemPreviewImage(Element& element) const
     UNUSED_PARAM(element);
     return false;
 #endif
+}
+
+String Internals::extraZoomModeAdaptationName() const
+{
+    return WebCore::extraZoomModeAdaptationName();
 }
 
 bool Internals::usingAppleInternalSDK() const

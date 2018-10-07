@@ -29,9 +29,15 @@
 #include "stdafx.h"
 #include "MiniBrowser.h"
 
+#include "AccessibilityDelegate.h"
+#include "Common.h"
 #include "DOMDefaultImpl.h"
 #include "MiniBrowserLibResource.h"
 #include "MiniBrowserReplace.h"
+#include "MiniBrowserWebHost.h"
+#include "PrintWebUIDelegate.h"
+#include "ResourceLoadDelegate.h"
+#include "WebDownloadDelegate.h"
 #include <WebKitLegacy/WebKitCOMAPI.h>
 #include <wtf/ExportMacros.h>
 #include <wtf/Platform.h>
@@ -63,7 +69,7 @@ MiniBrowser::MiniBrowser(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView, b
 {
 }
 
-HRESULT MiniBrowser::init()
+HRESULT MiniBrowser::init(_bstr_t& requestedURL)
 {
     updateDeviceScaleFactor();
 
@@ -84,11 +90,74 @@ HRESULT MiniBrowser::init()
         return hr;
 
     hr = WebKitCreateInstance(CLSID_WebCache, 0, __uuidof(m_webCache), reinterpret_cast<void**>(&m_webCache.GetInterfacePtr()));
+    if (FAILED(hr))
+        return hr;
+
+    if (!seedInitialDefaultPreferences())
+        return E_FAIL;
+
+    if (!setToDefaultPreferences())
+        return E_FAIL;
+
+    if (!setCacheFolder())
+        return E_FAIL;
+
+    auto webHost = new MiniBrowserWebHost(this, m_hURLBarWnd);
+
+    hr = setFrameLoadDelegate(webHost);
+    if (FAILED(hr))
+        return hr;
+
+    hr = setFrameLoadDelegatePrivate(webHost);
+    if (FAILED(hr))
+        return hr;
+
+    hr = setUIDelegate(new PrintWebUIDelegate());
+    if (FAILED (hr))
+        return hr;
+
+    hr = setAccessibilityDelegate(new AccessibilityDelegate());
+    if (FAILED (hr))
+        return hr;
+
+    hr = setResourceLoadDelegate(new ResourceLoadDelegate(this));
+    if (FAILED(hr))
+        return hr;
+
+    IWebDownloadDelegatePtr downloadDelegate;
+    downloadDelegate.Attach(new WebDownloadDelegate());
+    hr = setDownloadDelegate(downloadDelegate);
+    if (FAILED(hr))
+        return hr;
+
+    RECT clientRect;
+    ::GetClientRect(m_hMainWnd, &clientRect);
+    if (usesLayeredWebView())
+        clientRect = { s_windowPosition.x, s_windowPosition.y, s_windowPosition.x + s_windowSize.cx, s_windowPosition.y + s_windowSize.cy };
+
+    hr = prepareViews(m_hMainWnd, clientRect, requestedURL.GetBSTR());
+    if (FAILED(hr))
+        return hr;
+
+    if (usesLayeredWebView())
+        subclassForLayeredWindow();
 
     return hr;
 }
 
-HRESULT MiniBrowser::prepareViews(HWND mainWnd, const RECT& clientRect, const BSTR& requestedURL, HWND& viewHwnd)
+bool MiniBrowser::setCacheFolder()
+{
+    _bstr_t appDataFolder;
+    if (!getAppDataFolder(appDataFolder))
+        return false;
+
+    appDataFolder += L"\\cache";
+    webCache()->setCacheFolder(appDataFolder);
+
+    return true;
+}
+
+HRESULT MiniBrowser::prepareViews(HWND mainWnd, const RECT& clientRect, const BSTR& requestedURL)
 {
     if (!m_webView)
         return E_FAIL;
@@ -118,9 +187,44 @@ HRESULT MiniBrowser::prepareViews(HWND mainWnd, const RECT& clientRect, const BS
     if (FAILED(hr))
         return hr;
 
-    hr = m_webViewPrivate->viewWindow(&viewHwnd);
+    hr = m_webViewPrivate->viewWindow(&m_viewWnd);
 
     return hr;
+}
+
+static WNDPROC gDefWebKitProc;
+
+static LRESULT CALLBACK viewWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message) {
+    case WM_NCHITTEST:
+        constexpr int dragBarHeight = 30;
+        RECT window;
+        ::GetWindowRect(hWnd, &window);
+        // For testing our transparent window, we need a region to use as a handle for
+        // dragging. The right way to do this would be to query the web view to see what's
+        // under the mouse. However, for testing purposes we just use an arbitrary
+        // 30 logical pixel band at the top of the view as an arbitrary gripping location.
+        //
+        // When we are within this bad, return HT_CAPTION to tell Windows we want to
+        // treat this region as if it were the title bar on a normal window.
+        int y = HIWORD(lParam);
+        float scaledDragBarHeightFactor = dragBarHeight * WebCore::deviceScaleFactorForWindow(hWnd);
+        if ((y > window.top) && (y < window.top + scaledDragBarHeightFactor))
+            return HTCAPTION;
+    }
+    return CallWindowProc(gDefWebKitProc, hWnd, message, wParam, lParam);
+}
+
+void MiniBrowser::subclassForLayeredWindow()
+{
+#if defined _M_AMD64 || defined _WIN64
+    gDefWebKitProc = reinterpret_cast<WNDPROC>(::GetWindowLongPtr(m_viewWnd, GWLP_WNDPROC));
+    ::SetWindowLongPtr(m_viewWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(viewWndProc));
+#else
+    gDefWebKitProc = reinterpret_cast<WNDPROC>(::GetWindowLong(m_viewWnd, GWL_WNDPROC));
+    ::SetWindowLong(m_viewWnd, GWL_WNDPROC, reinterpret_cast<LONG_PTR>(viewWndProc));
+#endif
 }
 
 HRESULT MiniBrowser::setFrameLoadDelegate(IWebFrameLoadDelegate* frameLoadDelegate)

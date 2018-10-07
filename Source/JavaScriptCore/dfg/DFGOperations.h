@@ -169,7 +169,7 @@ JSCell* JIT_OPERATION operationCreateScopedArguments(ExecState*, Structure*, Reg
 JSCell* JIT_OPERATION operationCreateClonedArgumentsDuringExit(ExecState*, InlineCallFrame*, JSFunction*, uint32_t argumentCount);
 JSCell* JIT_OPERATION operationCreateClonedArguments(ExecState*, Structure*, Register* argumentStart, uint32_t length, JSFunction* callee);
 JSCell* JIT_OPERATION operationCreateRest(ExecState*, Register* argumentStart, unsigned numberOfArgumentsToSkip, unsigned arraySize);
-JSCell* JIT_OPERATION operationNewArrayBuffer(ExecState*, Structure*, JSCell*, size_t) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationNewArrayBuffer(ExecState*, Structure*, JSCell*) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationSetAdd(ExecState*, JSCell*, EncodedJSValue, int32_t) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationMapSet(ExecState*, JSCell*, EncodedJSValue, EncodedJSValue, int32_t) WTF_INTERNAL;
 void JIT_OPERATION operationWeakSetAdd(ExecState*, JSCell*, JSCell*, int32_t) WTF_INTERNAL;
@@ -266,7 +266,7 @@ JSCell* JIT_OPERATION operationNewObjectWithButterflyWithIndexingHeaderAndVector
 
 void JIT_OPERATION operationProcessTypeProfilerLogDFG(ExecState*) WTF_INTERNAL;
 
-void JIT_OPERATION triggerReoptimizationNow(CodeBlock*, OSRExitBase*) WTF_INTERNAL;
+void JIT_OPERATION triggerReoptimizationNow(CodeBlock* baselineCodeBlock, CodeBlock* optiimzedCodeBlock, OSRExitBase*) WTF_INTERNAL;
 
 #if USE(JSVALUE32_64)
 double JIT_OPERATION operationRandom(JSGlobalObject*);

@@ -28,11 +28,14 @@
 #import "CurrentThisInsideBlockGetterTest.h"
 #import "DateTests.h"
 #import "JSExportTests.h"
+#import "JSVirtualMachinePrivate.h"
 #import "Regress141275.h"
 #import "Regress141809.h"
 
 #import <pthread.h>
 #import <vector>
+#import <wtf/MemoryFootprint.h>
+#import <wtf/Optional.h>
 
 extern "C" void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 extern "C" void JSSynchronousEdenCollectForDebugging(JSContextRef);

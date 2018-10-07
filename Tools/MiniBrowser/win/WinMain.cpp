@@ -30,7 +30,6 @@
 
 #include "stdafx.h"
 #include "MiniBrowserLibResource.h"
-#include "MiniBrowserWebHost.h"
 #include "Common.cpp"
 
 namespace WebCore {
@@ -75,25 +74,18 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
     float scaleFactor = WebCore::deviceScaleFactorForWindow(nullptr);
 
-    if (usesLayeredWebView) {
-        hURLBarWnd = CreateWindow(L"EDIT", L"Type URL Here",
-            WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOVSCROLL, 
-            scaleFactor * s_windowPosition.x, scaleFactor * (s_windowPosition.y + s_windowSize.cy), scaleFactor * s_windowSize.cx, scaleFactor * URLBAR_HEIGHT,
-            0, 0, hInst, 0);
-    } else {
-        hMainWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-            CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, 0, 0, hInst, 0);
+    hMainWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, 0, 0, hInst, 0);
 
-        if (!hMainWnd)
-            return FALSE;
+    if (!hMainWnd)
+        return FALSE;
 
-        hBackButtonWnd = CreateWindow(L"BUTTON", L"<", WS_CHILD | WS_VISIBLE  | BS_TEXT, 0, 0, 0, 0, hMainWnd, 0, hInst, 0);
-        hForwardButtonWnd = CreateWindow(L"BUTTON", L">", WS_CHILD | WS_VISIBLE | BS_TEXT, scaleFactor * CONTROLBUTTON_WIDTH, 0, 0, 0, hMainWnd, 0, hInst, 0);
-        hURLBarWnd = CreateWindow(L"EDIT", 0, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOVSCROLL, scaleFactor * CONTROLBUTTON_WIDTH * 2, 0, 0, 0, hMainWnd, 0, hInst, 0);
+    hBackButtonWnd = CreateWindow(L"BUTTON", L"<", WS_CHILD | WS_VISIBLE  | BS_TEXT, 0, 0, 0, 0, hMainWnd, 0, hInst, 0);
+    hForwardButtonWnd = CreateWindow(L"BUTTON", L">", WS_CHILD | WS_VISIBLE | BS_TEXT, scaleFactor * CONTROLBUTTON_WIDTH, 0, 0, 0, hMainWnd, 0, hInst, 0);
+    hURLBarWnd = CreateWindow(L"EDIT", 0, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOVSCROLL, scaleFactor * CONTROLBUTTON_WIDTH * 2, 0, 0, 0, hMainWnd, 0, hInst, 0);
 
-        ShowWindow(hMainWnd, nCmdShow);
-        UpdateWindow(hMainWnd);
-    }
+    ShowWindow(hMainWnd, nCmdShow);
+    UpdateWindow(hMainWnd);
 
     DefEditProc = reinterpret_cast<WNDPROC>(GetWindowLongPtr(hURLBarWnd, GWLP_WNDPROC));
     DefButtonProc = reinterpret_cast<WNDPROC>(GetWindowLongPtr(hBackButtonWnd, GWLP_WNDPROC));
@@ -103,66 +95,14 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
     SetFocus(hURLBarWnd);
 
-    RECT clientRect;
-    ::GetClientRect(hMainWnd, &clientRect);
-
-    if (usesLayeredWebView)
-        clientRect = { s_windowPosition.x, s_windowPosition.y, s_windowPosition.x + s_windowSize.cx, s_windowPosition.y + s_windowSize.cy };
-
-    MiniBrowserWebHost* webHost = nullptr;
-
-    IWebDownloadDelegatePtr downloadDelegate;
-    downloadDelegate.Attach(new WebDownloadDelegate());
-
     gMiniBrowser = new MiniBrowser(hMainWnd, hURLBarWnd, usesLayeredWebView, pageLoadTesting);
     if (!gMiniBrowser)
         goto exit;
-
-    if (!gMiniBrowser->seedInitialDefaultPreferences())
-        goto exit;
-
-    if (!gMiniBrowser->setToDefaultPreferences())
-        goto exit;
-
-    HRESULT hr = gMiniBrowser->init();
+    HRESULT hr = gMiniBrowser->init(requestedURL);
     if (FAILED(hr))
         goto exit;
 
-    if (!setCacheFolder())
-        goto exit;
-
-    webHost = new MiniBrowserWebHost(gMiniBrowser, hURLBarWnd);
-
-    hr = gMiniBrowser->setFrameLoadDelegate(webHost);
-    if (FAILED(hr))
-        goto exit;
-
-    hr = gMiniBrowser->setFrameLoadDelegatePrivate(webHost);
-    if (FAILED(hr))
-        goto exit;
-
-    hr = gMiniBrowser->setUIDelegate(new PrintWebUIDelegate());
-    if (FAILED (hr))
-        goto exit;
-
-    hr = gMiniBrowser->setAccessibilityDelegate(new AccessibilityDelegate());
-    if (FAILED (hr))
-        goto exit;
-
-    hr = gMiniBrowser->setResourceLoadDelegate(new ResourceLoadDelegate(gMiniBrowser));
-    if (FAILED(hr))
-        goto exit;
-
-    hr = gMiniBrowser->setDownloadDelegate(downloadDelegate);
-    if (FAILED(hr))
-        goto exit;
-
-    hr = gMiniBrowser->prepareViews(hMainWnd, clientRect, requestedURL.GetBSTR(), gViewWindow);
-    if (FAILED(hr) || !gViewWindow)
-        goto exit;
-
-    if (gMiniBrowser->usesLayeredWebView())
-        subclassForLayeredWindow();
+    gViewWindow = gMiniBrowser->hwnd();
 
     resizeSubViews();
 

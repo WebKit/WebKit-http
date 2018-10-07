@@ -354,6 +354,7 @@ bool AccessibilityObject::accessibleNameDerivesFromContent() const
     // Now check for generically derived elements now that we know the element does not match a specific ARIA role.
     switch (roleValue()) {
     case AccessibilityRole::Slider:
+    case AccessibilityRole::ListBox:
         return false;
     default:
         break;
@@ -730,9 +731,9 @@ static RefPtr<Range> rangeClosestToRange(Range* referenceRange, RefPtr<Range>&& 
     if (!afterRange && !beforeRange)
         return nullptr;
     if (afterRange && !beforeRange)
-        return afterRange;
+        return WTFMove(afterRange);
     if (!afterRange && beforeRange)
-        return beforeRange;
+        return WTFMove(beforeRange);
     
     unsigned positionsToAfterRange = Position::positionCountBetweenPositions(afterRange->startPosition(), referenceRange->endPosition());
     unsigned positionsToBeforeRange = Position::positionCountBetweenPositions(beforeRange->endPosition(), referenceRange->startPosition());
@@ -905,7 +906,7 @@ bool AccessibilityObject::isARIAInput(AccessibilityRole ariaRole)
     
 bool AccessibilityObject::isARIAControl(AccessibilityRole ariaRole)
 {
-    return isARIAInput(ariaRole) || ariaRole == AccessibilityRole::TextArea || ariaRole == AccessibilityRole::Button || ariaRole == AccessibilityRole::ComboBox || ariaRole == AccessibilityRole::Slider;
+    return isARIAInput(ariaRole) || ariaRole == AccessibilityRole::TextArea || ariaRole == AccessibilityRole::Button || ariaRole == AccessibilityRole::ComboBox || ariaRole == AccessibilityRole::Slider || ariaRole == AccessibilityRole::ListBox;
 }
     
 bool AccessibilityObject::isRangeControl() const
@@ -2088,19 +2089,16 @@ String AccessibilityObject::currentValue() const
 
 bool AccessibilityObject::isModalDescendant(Node* modalNode) const
 {
-    if (!modalNode || !this->element())
+    Node* node = this->node();
+    if (!modalNode || !node)
         return false;
     
-    if (this->element() == modalNode)
+    if (node == modalNode)
         return true;
     
     // ARIA 1.1 aria-modal, indicates whether an element is modal when displayed.
     // For the decendants of the modal object, they should also be considered as aria-modal=true.
-    for (auto& ancestor : elementAncestors(this->element())) {
-        if (&ancestor == modalNode)
-            return true;
-    }
-    return false;
+    return node->isDescendantOf(*modalNode);
 }
 
 bool AccessibilityObject::isModalNode() const
@@ -2981,9 +2979,12 @@ void AccessibilityObject::scrollToMakeVisible() const
 {
     if (dispatchAccessibilityEventWithType(AccessibilityEventType::ScrollIntoView))
         return;
-    IntRect objectRect = snappedIntRect(boundingBoxRect());
-    objectRect.setLocation(IntPoint());
-    scrollToMakeVisibleWithSubFocus(objectRect);
+    
+    if (isScrollView() && parentObject())
+        parentObject()->scrollToMakeVisible();
+
+    if (auto* renderer = this->renderer())
+        renderer->scrollRectToVisible(SelectionRevealMode::Reveal, boundingBoxRect(), false, ScrollAlignment::alignCenterIfNotVisible, ScrollAlignment::alignCenterIfNotVisible, ShouldAllowCrossOriginScrolling::Yes);
 }
 
 void AccessibilityObject::scrollToMakeVisibleWithSubFocus(const IntRect& subfocus) const

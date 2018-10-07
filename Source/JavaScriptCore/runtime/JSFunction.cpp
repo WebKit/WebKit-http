@@ -100,6 +100,7 @@ JSFunction::JSFunction(VM& vm, JSGlobalObject* globalObject, Structure* structur
     : Base(vm, globalObject, structure)
     , m_executable()
 {
+    assertTypeInfoFlagInvariants();
 }
 
 
@@ -231,13 +232,6 @@ void JSFunction::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     visitor.append(thisObject->m_executable);
     visitor.append(thisObject->m_rareData);
-}
-
-PropertyReificationResult JSFunction::reifyPropertyNameIfNeeded(JSCell* cell, ExecState* exec, PropertyName& propertyName)
-{
-    JSFunction* thisObject = jsCast<JSFunction*>(cell);
-    PropertyStatus propertyType = thisObject->reifyLazyPropertyIfNeeded(exec->vm(), exec, propertyName);
-    return isReified(propertyType) ? PropertyReificationResult::Something : PropertyReificationResult::Nothing;
 }
 
 CallType JSFunction::getCallData(JSCell* cell, CallData& callData)
@@ -788,5 +782,17 @@ JSFunction::PropertyStatus JSFunction::reifyLazyBoundNameIfNeeded(VM& vm, ExecSt
     }
     return PropertyStatus::Reified;
 }
+
+#if !ASSERT_DISABLED
+void JSFunction::assertTypeInfoFlagInvariants()
+{
+    // If you change this, you'll need to update speculationFromClassInfo.
+    const ClassInfo* info = classInfo(*vm());
+    if (!(inlineTypeFlags() & ImplementsDefaultHasInstance))
+        RELEASE_ASSERT(info == JSBoundFunction::info());
+    else
+        RELEASE_ASSERT(info != JSBoundFunction::info());
+}
+#endif
 
 } // namespace JSC

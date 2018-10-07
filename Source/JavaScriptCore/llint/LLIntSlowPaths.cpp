@@ -641,6 +641,63 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id_direct)
     LLINT_RETURN_PROFILED(op_get_by_id_direct, result);
 }
 
+
+static void setupGetByIdPrototypeCache(ExecState* exec, VM& vm, Instruction* pc, JSCell* baseCell, PropertySlot& slot, const Identifier& ident)
+{
+    CodeBlock* codeBlock = exec->codeBlock();
+    Structure* structure = baseCell->structure();
+
+    if (structure->typeInfo().prohibitsPropertyCaching())
+        return;
+    
+    if (structure->needImpurePropertyWatchpoint())
+        return;
+
+    if (structure->isDictionary()) {
+        if (structure->hasBeenFlattenedBefore())
+            return;
+        structure->flattenDictionaryStructure(vm, jsCast<JSObject*>(baseCell));
+    }
+
+    ObjectPropertyConditionSet conditions;
+    if (slot.isUnset())
+        conditions = generateConditionsForPropertyMiss(vm, codeBlock, exec, structure, ident.impl());
+    else
+        conditions = generateConditionsForPrototypePropertyHit(vm, codeBlock, exec, structure, slot.slotBase(), ident.impl());
+
+    if (!conditions.isValid())
+        return;
+
+    PropertyOffset offset = invalidOffset;
+    CodeBlock::StructureWatchpointMap& watchpointMap = codeBlock->llintGetByIdWatchpointMap();
+    auto result = watchpointMap.add(structure, Bag<LLIntPrototypeLoadAdaptiveStructureWatchpoint>());
+    for (ObjectPropertyCondition condition : conditions) {
+        if (!condition.isWatchable())
+            return;
+        if (condition.condition().kind() == PropertyCondition::Presence)
+            offset = condition.condition().offset();
+        result.iterator->value.add(condition, pc)->install();
+    }
+    ASSERT((offset == invalidOffset) == slot.isUnset());
+
+    ConcurrentJSLocker locker(codeBlock->m_lock);
+
+    if (slot.isUnset()) {
+        pc[0].u.opcode = LLInt::getOpcode(op_get_by_id_unset);
+        pc[4].u.structureID = structure->id();
+        return;
+    }
+    ASSERT(slot.isValue());
+
+    pc[0].u.opcode = LLInt::getOpcode(op_get_by_id_proto_load);
+    pc[4].u.structureID = structure->id();
+    pc[5].u.operand = offset;
+    // We know that this pointer will remain valid because it will be cleared by either a watchpoint fire or
+    // during GC when we clear the LLInt caches.
+    pc[6].u.pointer = slot.slotBase();
+}
+
+
 LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
 {
     LLINT_BEGIN();
@@ -661,7 +718,9 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
             StructureID oldStructureID = pc[4].u.structureID;
             if (oldStructureID) {
                 auto opcode = Interpreter::getOpcodeID(pc[0]);
-                if (opcode == op_get_by_id) {
+                if (opcode == op_get_by_id
+                    || opcode == op_get_by_id_unset
+                    || opcode == op_get_by_id_proto_load) {
                     Structure* a = vm.heap.structureIDTable().get(oldStructureID);
                     Structure* b = baseValue.asCell()->structure(vm);
 
@@ -680,6 +739,9 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
             pc[0].u.opcode = LLInt::getOpcode(op_get_by_id);
             pc[4].u.pointer = nullptr; // old structure
             pc[5].u.pointer = nullptr; // offset
+
+            // Prevent the prototype cache from ever happening.
+            pc[7].u.operand = 0;
         
             if (structure->propertyAccessesAreCacheable()
                 && !structure->needImpurePropertyWatchpoint()) {
@@ -690,6 +752,11 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
                 pc[4].u.structureID = structure->id();
                 pc[5].u.operand = slot.cachedOffset();
             }
+        } else if (UNLIKELY(pc[7].u.operand && (slot.isValue() || slot.isUnset()))) {
+            ASSERT(slot.slotBase() != baseValue);
+
+            if (!(--pc[7].u.operand))
+                setupGetByIdPrototypeCache(exec, vm, pc, baseCell, slot, ident);
         }
     } else if (!LLINT_ALWAYS_ACCESS_SLOW
         && isJSArray(baseValue)
@@ -698,6 +765,9 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
         ArrayProfile* arrayProfile = codeBlock->getOrAddArrayProfile(codeBlock->bytecodeOffset(pc));
         arrayProfile->observeStructure(baseValue.asCell()->structure());
         pc[4].u.arrayProfile = arrayProfile;
+
+        // Prevent the prototype cache from ever happening.
+        pc[7].u.operand = 0;
     }
 
     pc[OPCODE_LENGTH(op_get_by_id) - 1].u.profile->m_buckets[0] = JSValue::encode(result);
@@ -723,7 +793,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_id)
     JSValue baseValue = LLINT_OP_C(1).jsValue();
     PutPropertySlot slot(baseValue, codeBlock->isStrictMode(), codeBlock->putByIdContext());
     if (pc[8].u.putByIdFlags & PutByIdIsDirect)
-        asObject(baseValue)->putDirect(vm, ident, LLINT_OP_C(3).jsValue(), slot);
+        CommonSlowPaths::putDirectWithReify(vm, exec, asObject(baseValue), ident, LLINT_OP_C(3).jsValue(), slot);
     else
         baseValue.putInline(exec, ident, LLINT_OP_C(3).jsValue(), slot);
     LLINT_CHECK_EXCEPTION();
@@ -940,7 +1010,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_val_direct)
         baseObject->putDirectIndex(exec, index.value(), value, 0, isStrictMode ? PutDirectIndexShouldThrow : PutDirectIndexShouldNotThrow);
     else {
         PutPropertySlot slot(baseObject, isStrictMode);
-        baseObject->putDirect(vm, property, value, slot);
+        CommonSlowPaths::putDirectWithReify(vm, exec, baseObject, property, value, slot);
     }
     LLINT_END();
 }
@@ -1007,7 +1077,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_getter_setter_by_id)
 {
     LLINT_BEGIN();
     ASSERT(LLINT_OP(1).jsValue().isObject());
-    JSObject* baseObj = asObject(LLINT_OP(1).jsValue());
+    JSObject* baseObject = asObject(LLINT_OP(1).jsValue());
     
     GetterSetter* accessor = GetterSetter::create(vm, exec->lexicalGlobalObject());
     LLINT_CHECK_EXCEPTION();
@@ -1022,10 +1092,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_getter_setter_by_id)
         accessor->setGetter(vm, exec->lexicalGlobalObject(), asObject(getter));
     if (!setter.isUndefined())
         accessor->setSetter(vm, exec->lexicalGlobalObject(), asObject(setter));
-    baseObj->putDirectAccessor(
-        exec,
-        exec->codeBlock()->identifier(pc[2].u.operand),
-        accessor, pc[3].u.operand);
+    CommonSlowPaths::putDirectAccessorWithReify(vm, exec, baseObject, exec->codeBlock()->identifier(pc[2].u.operand), accessor, pc[3].u.operand);
     LLINT_END();
 }
 
