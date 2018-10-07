@@ -30,6 +30,7 @@
 #include "ActiveDOMObject.h"
 #include "ApplicationStateChangeListener.h"
 #include "AutoplayEvent.h"
+#include "Blob.h"
 #include "GenericEventQueue.h"
 #include "GenericTaskQueue.h"
 #include "HTMLElement.h"

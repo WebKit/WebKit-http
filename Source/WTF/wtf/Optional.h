@@ -47,6 +47,10 @@
 # include <wtf/Compiler.h>
 # include <wtf/StdLibExtras.h>
 
+#if OS(HAIKU)
+	#define __cpp_lib_optional 201603
+#endif
+
 #if !COMPILER(MSVC) && defined(__cpp_lib_optional) && __cpp_lib_optional >= 201603
 
 # include <optional>
