@@ -46,8 +46,10 @@ using InitData = String;
 class GStreamerEMEUtilities {
 
 public:
-    static char const* s_ClearKeyUUID;
-    static char const* s_ClearKeyKeySystem;
+    static const char* s_ClearKeyUUID;
+    static const char* s_ClearKeyKeySystem;
+    static const char* s_UnspecifiedUUID;
+    static const char* s_UnspecifiedKeySystem;
 
 #if USE(OPENCDM)
     static const char* s_PlayReadyUUID;
@@ -62,6 +64,11 @@ public:
     static bool isClearKeyKeySystem(const String& keySystem)
     {
         return equalIgnoringASCIICase(keySystem, s_ClearKeyKeySystem);
+    }
+
+    static bool isUnspecifiedKeySystem(const String& keySystem)
+    {
+        return equalIgnoringASCIICase(keySystem, s_UnspecifiedKeySystem);
     }
 
 #if USE(OPENCDM)
@@ -82,6 +89,9 @@ public:
         if (isClearKeyKeySystem(keySystem))
             return s_ClearKeyUUID;
 
+        if (isUnspecifiedKeySystem(keySystem))
+            return s_UnspecifiedUUID;
+
 #if USE(OPENCDM)
         if (isPlayReadyKeySystem(keySystem))
             return s_PlayReadyUUID;
@@ -98,6 +108,9 @@ public:
     {
         if (uuid == s_ClearKeyUUID)
             return s_ClearKeyKeySystem;
+
+        if (uuid == s_UnspecifiedUUID)
+            return s_UnspecifiedKeySystem;
 
 #if USE(OPENCDM)
         if (uuid == s_PlayReadyUUID)

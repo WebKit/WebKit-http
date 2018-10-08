@@ -151,7 +151,7 @@ public:
     void attemptToDecryptWithInstance(CDMInstance&) override;
     void handleProtectionStructure(const GstStructure*);
     void handleProtectionEvents(const Vector<GstEvent*>&);
-    void initializationDataEncountered(const InitData&);
+    void initializationDataEncountered(const String&, const InitData&);
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);

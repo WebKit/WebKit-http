@@ -140,7 +140,10 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
                 const gchar* fieldName = gst_structure_nth_field_name(incomingStructure, j);
 
                 if (g_str_has_prefix(fieldName, "protection-system")
-                    || g_str_has_prefix(fieldName, "original-media-type"))
+                    || g_str_has_prefix(fieldName, "original-media-type")
+                    || g_str_has_prefix(fieldName, "encryption-algorithm")
+                    || g_str_has_prefix(fieldName, "encoding-scope")
+                    || g_str_has_prefix(fieldName, "cipher-mode"))
                     gst_structure_remove_field(outgoingStructure.get(), fieldName);
             }
         } else {
@@ -166,11 +169,12 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
                 }
             }
 
-            gst_structure_set(outgoingStructure.get(), "original-media-type", G_TYPE_STRING, gst_structure_get_name(incomingStructure), nullptr);
-            gst_structure_set_name(outgoingStructure.get(), "application/x-cenc");
-
             WebKitMediaCommonEncryptionDecryptPrivate* priv = self->priv;
             LockHolder locker(priv->m_mutex);
+
+            gst_structure_set(outgoingStructure.get(), "original-media-type", G_TYPE_STRING, gst_structure_get_name(incomingStructure), nullptr);
+            gst_structure_set_name(outgoingStructure.get(),
+                WebCore::GStreamerEMEUtilities::isUnspecifiedKeySystem(priv->m_cdmInstance->keySystem()) ? "application/x-webm-enc" : "application/x-cenc");
             if (webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self))
                 gst_structure_set(outgoingStructure.get(),
                     "protection-system", G_TYPE_STRING, WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()), nullptr);
