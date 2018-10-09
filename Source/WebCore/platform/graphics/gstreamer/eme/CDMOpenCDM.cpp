@@ -296,7 +296,7 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
 
     // FIXME: Why do we have this weirdness here? It looks like this is a way to reference count on the OpenCDM object.
     media::OpenCdm openCDM(m_openCDM);
-    std::string sessionId = openCDM.CreateSession(m_mimeType, reinterpret_cast<const uint8_t*>(rawInitData->data()), rawInitData->size(), openCDMLicenseType(licenseType));
+    std::string sessionId = openCDM.CreateSession(m_mimeType, reinterpret_cast<const uint8_t*>(rawInitData->data()), rawInitData->size(), nullptr, 0, openCDMLicenseType(licenseType));
 
     if (sessionId.empty()) {
         GST_ERROR("could not create session id");
