@@ -71,6 +71,10 @@ static void releaseNoncriticalMemory()
     MemoryCache::singleton().pruneDeadResourcesToSize(0);
 
     InlineStyleSheetOwner::clearCache();
+
+#if PLATFORM(WPE)
+    GCController::singleton().garbageCollectSoon();
+#endif
 }
 
 static void releaseCriticalMemory(Synchronous synchronous)
@@ -102,7 +106,7 @@ static void releaseCriticalMemory(Synchronous synchronous)
     if (synchronous == Synchronous::Yes) {
         GCController::singleton().garbageCollectNow();
     } else {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || PLATFORM(WPE)
         GCController::singleton().garbageCollectNowIfNotDoneRecently();
 #else
         GCController::singleton().garbageCollectSoon();

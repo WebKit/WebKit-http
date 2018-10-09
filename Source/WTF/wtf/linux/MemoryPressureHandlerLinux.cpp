@@ -316,7 +316,7 @@ void MemoryPressureHandler::pollMemoryPressure()
 
     MemoryPressureHandler::singleton().setUnderMemoryPressure(critical);
     callOnMainThread([critical] {
-        MemoryPressureHandler::singleton().respondToMemoryPressure(critical ? Critical::Yes : Critical::No);
+        MemoryPressureHandler::singleton().respondToMemoryPressure(critical ? Critical::Yes : Critical::No, critical ? Synchronous::Yes : Synchronous::No);
     });
 }
 
@@ -397,9 +397,9 @@ void MemoryPressureHandler::install()
 
         setUnderMemoryPressure(critical);
         if (isMainThread())
-            respondToMemoryPressure(critical ? Critical::Yes : Critical::No);
+            respondToMemoryPressure(critical ? Critical::Yes : Critical::No, critical ? Synchronous::Yes : Synchronous::No);
         else
-            RunLoop::main().dispatch([this, critical] { respondToMemoryPressure(critical ? Critical::Yes : Critical::No); });
+            RunLoop::main().dispatch([this, critical] { respondToMemoryPressure(critical ? Critical::Yes : Critical::No, critical ? Synchronous::Yes : Synchronous::No); });
     });
 
     if (ReliefLogger::loggingEnabled() && isUnderMemoryPressure())
