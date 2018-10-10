@@ -92,6 +92,7 @@ protected:
 
     virtual void suspendPainting();
     virtual void resumePainting();
+    virtual void handleIsInWindowChanged();
 
     virtual void sendDidUpdateBackingStoreState();
     virtual void didUpdateBackingStoreState() { }

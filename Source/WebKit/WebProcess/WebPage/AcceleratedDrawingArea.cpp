@@ -341,6 +341,34 @@ void AcceleratedDrawingArea::resumePainting()
     m_webPage.corePage()->resumeScriptedAnimations();
 }
 
+void AcceleratedDrawingArea::handleIsInWindowChanged()
+{
+    // At this point WebPage has already set the IsInWindow flag to its corePage, so we can get the value
+    // from there (here we only know which flags have changed).
+    // We don't use suspendPainting() to suspend cause that will disable layer flushes, and we need one
+    // flush more to tell the ThreadedCompositor to render the transparent background. The change in the
+    // IsInWindow flag will deattach the GraphicsLayer tree from the root layer and request a layer
+    // flush, which will cause the ThreadedCompositor to render an empty content. By setting
+    // forceBackgroundTransparency we tell the LayerTreeHost to set drawsBackground to false, so
+    // besides the empty content we have a transparent background.
+
+    if (!m_webPage.corePage()->isInWindow()) {
+        if (m_layerTreeHost)
+            m_layerTreeHost->forceBackgroundTransparency();
+
+        m_webPage.corePage()->suspendActiveDOMObjectsAndAnimations();
+        m_webPage.corePage()->suspendScriptedAnimations();
+        return;
+    }
+
+    if (m_layerTreeHost)
+        m_layerTreeHost->restoreBackgroundTransparency();
+
+    setNeedsDisplay();
+    m_webPage.corePage()->resumeActiveDOMObjectsAndAnimations();
+    m_webPage.corePage()->resumeScriptedAnimations();
+}
+
 void AcceleratedDrawingArea::enterAcceleratedCompositingMode(GraphicsLayer* graphicsLayer)
 {
     m_discardPreviousLayerTreeHostTimer.stop();
@@ -458,6 +486,9 @@ void AcceleratedDrawingArea::deviceOrPageScaleFactorChanged()
 
 void AcceleratedDrawingArea::activityStateDidChange(ActivityState::Flags changed, bool, const Vector<CallbackID>&)
 {
+    if (changed & ActivityState::IsInWindow)
+        handleIsInWindowChanged();
+
     if (changed & ActivityState::IsVisible) {
         if (m_webPage.isVisible())
             resumePainting();

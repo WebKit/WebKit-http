@@ -1069,6 +1069,7 @@ private:
 #endif
 
     bool m_isScrubbingRemotely : 1;
+    bool m_shouldUnpauseInternalOnResume : 1;
 
 #if ENABLE(VIDEO_TRACK)
     bool m_tracksAreReady : 1;

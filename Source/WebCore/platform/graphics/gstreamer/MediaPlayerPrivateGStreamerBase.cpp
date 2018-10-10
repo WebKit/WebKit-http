@@ -882,7 +882,7 @@ void MediaPlayerPrivateGStreamerBase::setPosition(const IntPoint& position)
 }
 
 #if USE(HOLE_PUNCH_GSTREAMER)
-void MediaPlayerPrivateGStreamerBase::updateVideoRectangle()
+void MediaPlayerPrivateGStreamerBase::updateVideoRectangle(bool makeInvisible)
 {
     if (!m_pipeline)
         return;
@@ -894,7 +894,13 @@ void MediaPlayerPrivateGStreamerBase::updateVideoRectangle()
 
     GST_INFO("Setting video sink size and position to x:%d y:%d, width=%d, height=%d", m_position.x(), m_position.y(), m_size.width(), m_size.height());
 
-    GUniquePtr<gchar> rectString(g_strdup_printf("%d,%d,%d,%d", m_position.x(), m_position.y(), m_size.width(),m_size.height()));
+    IntRect r;
+    if (!makeInvisible) {
+        r.setSize({ m_size.width(), m_size.height() });
+        r.setLocation({ m_position.x(), m_position.y() });
+    }
+
+    GUniquePtr<gchar> rectString(g_strdup_printf("%d,%d,%d,%d", r.x(), r.y(), r.width(), r.height()));
     g_object_set(sinkElement.get(), "rectangle", rectString.get(), nullptr);
 }
 #endif
@@ -1374,6 +1380,20 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerBase::extendedSupportsType(
     UNUSED_PARAM(parameters);
 #endif
     return result;
+}
+
+void MediaPlayerPrivateGStreamerBase::platformSuspend()
+{
+#if USE(HOLE_PUNCH_GSTREAMER)
+    updateVideoRectangle(true);
+#endif
+}
+
+void MediaPlayerPrivateGStreamerBase::platformResume()
+{
+#if USE(HOLE_PUNCH_GSTREAMER)
+    updateVideoRectangle();
+#endif
 }
 
 }

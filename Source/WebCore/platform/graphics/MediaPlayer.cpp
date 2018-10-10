@@ -1530,6 +1530,16 @@ bool MediaPlayer::shouldCheckHardwareSupport() const
     return client().mediaPlayerShouldCheckHardwareSupport();
 }
 
+void MediaPlayer::platformSuspend()
+{
+    m_private->platformSuspend();
+}
+
+void MediaPlayer::platformResume()
+{
+    m_private->platformResume();
+}
+
 #if !RELEASE_LOG_DISABLED
 const PAL::Logger& MediaPlayer::mediaPlayerLogger()
 {

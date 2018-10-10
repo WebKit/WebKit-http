@@ -451,6 +451,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_haveSetUpCaptionContainer(false)
 #endif
     , m_isScrubbingRemotely(false)
+    , m_shouldUnpauseInternalOnResume(false)
 #if ENABLE(VIDEO_TRACK)
     , m_tracksAreReady(true)
     , m_haveVisibleTextTrack(false)
@@ -5552,8 +5553,17 @@ void HTMLMediaElement::suspend(ReasonForSuspension why)
             setShouldBufferData(false);
             m_mediaSession->addBehaviorRestriction(MediaElementSession::RequirePageConsentToResumeMedia);
             break;
+        case ReasonForSuspension::PageWillBeSuspended:
+            if (!m_pausedInternal) {
+                m_shouldUnpauseInternalOnResume = true;
+                setPausedInternal(true);
+            }
+            if (m_player) {
+                // Give the player a chance to perform any platform dependant operations for suspension.
+                m_player->platformSuspend();
+            }
+            break;
         case JavaScriptDebuggerPaused:
-        case PageWillBeSuspended:
         case WillDeferLoading:
             // Do nothing, we don't pause media playback in these cases.
             break;
@@ -5567,6 +5577,15 @@ void HTMLMediaElement::resume()
     m_inActiveDocument = true;
 
     m_asyncEventQueue.resume();
+
+    if (m_shouldUnpauseInternalOnResume) {
+        m_shouldUnpauseInternalOnResume = false;
+        setPausedInternal(false);
+    }
+    if (m_player) {
+        // Give the player a chance to perform any platform dependant operations for resuming.
+        m_player->platformResume();
+    }
 
     setShouldBufferData(true);
 

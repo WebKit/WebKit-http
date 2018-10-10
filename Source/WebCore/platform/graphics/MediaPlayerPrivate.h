@@ -281,6 +281,9 @@ public:
     virtual void notifyActiveSourceBuffersChanged() { }
 
     virtual void setShouldDisableSleep(bool) { }
+
+    virtual void platformSuspend() { }
+    virtual void platformResume() { }
 };
 
 }
