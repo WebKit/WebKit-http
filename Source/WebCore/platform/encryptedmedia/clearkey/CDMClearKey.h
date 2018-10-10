@@ -85,7 +85,7 @@ public:
     SuccessValue setPersistentStateAllowed(bool) override;
     SuccessValue setServerCertificate(Ref<SharedBuffer>&&) override;
 
-    void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback) override;
+    void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, Ref<SharedBuffer>&& customData, LicenseCallback) override;
     void updateLicense(const String&, LicenseType, const SharedBuffer&, LicenseUpdateCallback) override;
     void loadSession(LicenseType, const String&, const String&, LoadSessionCallback) override;
     void closeSession(const String&, CloseSessionCallback) override;

@@ -76,7 +76,7 @@ public:
     SuccessValue setServerCertificate(Ref<SharedBuffer>&&) final;
 
     // Request License will automagically create a Session. The session is later on referred to with its session id.
-    void requestLicense(LicenseType, const AtomicString&, Ref<SharedBuffer>&&, LicenseCallback) final;
+    void requestLicense(LicenseType, const AtomicString&, Ref<SharedBuffer>&&, Ref<SharedBuffer>&&, LicenseCallback) final;
 
     // Operations on the DRM system -> Session.
     void updateLicense(const String&, LicenseType, const SharedBuffer&, LicenseUpdateCallback) final;

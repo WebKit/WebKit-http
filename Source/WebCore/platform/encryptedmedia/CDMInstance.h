@@ -73,7 +73,7 @@ public:
     virtual SuccessValue setServerCertificate(Ref<SharedBuffer>&&) = 0;
 
     using LicenseCallback = Function<void(Ref<SharedBuffer>&& message, const String& sessionId, bool needsIndividualization, SuccessValue succeeded)>;
-    virtual void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback) = 0;
+    virtual void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, Ref<SharedBuffer>&& customData, LicenseCallback) = 0;
 
     using KeyStatusVector = Vector<std::pair<Ref<SharedBuffer>, KeyStatus>>;
     using Message = std::pair<MessageType, Ref<SharedBuffer>>;

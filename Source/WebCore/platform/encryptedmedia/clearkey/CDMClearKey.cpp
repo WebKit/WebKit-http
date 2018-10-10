@@ -334,7 +334,7 @@ CDMInstance::SuccessValue CDMInstanceClearKey::setServerCertificate(Ref<SharedBu
     return Failed;
 }
 
-void CDMInstanceClearKey::requestLicense(LicenseType, const AtomicString&, Ref<SharedBuffer>&& initData, LicenseCallback callback)
+void CDMInstanceClearKey::requestLicense(LicenseType, const AtomicString&, Ref<SharedBuffer>&& initData, Ref<SharedBuffer>&& customData, LicenseCallback callback)
 {
     static uint32_t s_sessionIdValue = 0;
     ++s_sessionIdValue;
