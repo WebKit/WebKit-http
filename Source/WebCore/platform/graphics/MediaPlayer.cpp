@@ -1545,6 +1545,16 @@ AVPlayer* MediaPlayer::objCAVFoundationAVPlayer() const
 
 #endif
 
+void MediaPlayer::platformSuspend()
+{
+    m_private->platformSuspend();
+}
+
+void MediaPlayer::platformResume()
+{
+    m_private->platformResume();
+}
+
 #if !RELEASE_LOG_DISABLED
 const Logger& MediaPlayer::mediaPlayerLogger()
 {

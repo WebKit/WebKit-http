@@ -227,6 +227,9 @@ protected:
     virtual void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&);
 #endif
 
+    void platformSuspend() override;
+    void platformResume() override;
+
     enum MainThreadNotification {
         VideoChanged = 1 << 0,
         VideoCapsChanged = 1 << 1,
@@ -287,7 +290,7 @@ protected:
     ImageOrientation m_videoSourceOrientation;
 
 #if USE(HOLE_PUNCH_GSTREAMER)
-    void updateVideoRectangle();
+    void updateVideoRectangle(bool makeInvisible = false);
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)

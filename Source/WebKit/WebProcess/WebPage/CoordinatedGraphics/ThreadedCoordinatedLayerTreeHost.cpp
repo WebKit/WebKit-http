@@ -195,6 +195,18 @@ void ThreadedCoordinatedLayerTreeHost::pageBackgroundTransparencyChanged()
     m_compositor->setDrawsBackground(m_webPage.drawsBackground());
 }
 
+void ThreadedCoordinatedLayerTreeHost::forceBackgroundTransparency()
+{
+    CoordinatedLayerTreeHost::forceBackgroundTransparency();
+    m_compositor->setDrawsBackground(false);
+}
+
+void ThreadedCoordinatedLayerTreeHost::restoreBackgroundTransparency()
+{
+    CoordinatedLayerTreeHost::restoreBackgroundTransparency();
+    m_compositor->setDrawsBackground(m_webPage.drawsBackground());
+}
+
 void ThreadedCoordinatedLayerTreeHost::sizeDidChange(const IntSize& size)
 {
     if (m_isDiscardable) {

@@ -5706,6 +5706,10 @@ void HTMLMediaElement::suspend(ReasonForSuspension reason)
             m_shouldUnpauseInternalOnResume = true;
             setPausedInternal(true);
         }
+        if (m_player) {
+            // Give the player a chance to perform any platform dependant operations for suspension.
+            m_player->platformSuspend();
+        }
         break;
     case ReasonForSuspension::JavaScriptDebuggerPaused:
     case ReasonForSuspension::WillDeferLoading:
@@ -5725,6 +5729,10 @@ void HTMLMediaElement::resume()
     if (m_shouldUnpauseInternalOnResume) {
         m_shouldUnpauseInternalOnResume = false;
         setPausedInternal(false);
+    }
+    if (m_player) {
+        // Give the player a chance to perform any platform dependant operations for resuming.
+        m_player->platformResume();
     }
 
     setShouldBufferData(true);

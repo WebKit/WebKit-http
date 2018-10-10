@@ -561,6 +561,9 @@ public:
     const Vector<ContentType>& mediaContentTypesRequiringHardwareSupport() const;
     bool shouldCheckHardwareSupport() const;
 
+    void platformSuspend();
+    void platformResume();
+
 #if !RELEASE_LOG_DISABLED
     const Logger& mediaPlayerLogger();
     const void* mediaPlayerLogIdentifier() { return client().mediaPlayerLogIdentifier(); }
