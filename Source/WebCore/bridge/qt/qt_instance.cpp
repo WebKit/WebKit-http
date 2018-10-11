@@ -148,11 +148,11 @@ bool QtInstance::put(JSObject* object, ExecState* exec, PropertyName propertyNam
     return JSObject::put(object, exec, propertyName, value, slot);
 }
 
-QtInstance* QtInstance::getInstance(JSObject* object)
+QtInstance* QtInstance::getInstance(ExecState* exec, JSObject* object)
 {
     if (!object)
         return 0;
-    if (!object->inherits(QtRuntimeObject::info()))
+    if (!object->inherits(exec->vm(), QtRuntimeObject::info()))
         return 0;
     return static_cast<QtInstance*>(static_cast<RuntimeObject*>(object)->getInternalInstance());
 }

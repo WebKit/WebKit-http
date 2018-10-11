@@ -228,7 +228,7 @@ QVariant QtPixmapRuntime::toQt(JSContextRef context, JSObjectRef obj, QMetaType:
     if (!jsObject->inherits(vm, JSHTMLImageElement::info()))
         return emptyVariantForHint(hint);
 
-    HTMLImageElement* imageElement = JSHTMLImageElement::toWrapped(jsObject);
+    HTMLImageElement* imageElement = JSHTMLImageElement::toWrapped(vm, jsObject);
 
     if (!imageElement)
         return emptyVariantForHint(hint);

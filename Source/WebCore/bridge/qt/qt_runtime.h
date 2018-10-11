@@ -67,7 +67,7 @@ public:
         {}
 
     JSValue valueFromInstance(ExecState*, const Instance*) const final;
-    void setValueToInstance(ExecState*, const Instance*, JSValue) const final;
+    bool setValueToInstance(ExecState*, const Instance*, JSValue) const final;
     QByteArray name() const;
     QtFieldType fieldType() const {return m_type;}
 private:

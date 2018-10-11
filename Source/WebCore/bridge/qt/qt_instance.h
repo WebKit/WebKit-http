@@ -91,7 +91,7 @@ public:
     bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&) final;
     bool put(JSObject*, ExecState*, PropertyName, JSValue, PutPropertySlot&) final;
 
-    static QtInstance* getInstance(JSObject*);
+    static QtInstance* getInstance(ExecState*, JSObject*);
 
 private:
     static RefPtr<QtInstance> create(QObject *instance, Ref<RootObject>&& rootObject, ValueOwnership ownership)

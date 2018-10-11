@@ -579,7 +579,7 @@ QVariant convertValueToQVariant(JSContextRef context, JSValueRef value, QMetaTyp
 
         case QMetaType::QObjectStar:
             if (type == QObj) {
-                QtInstance* qtinst = QtInstance::getInstance(toJS(object));
+                QtInstance* qtinst = QtInstance::getInstance(toJS(context), toJS(object));
                 if (qtinst) {
                     if (qtinst->getObject()) {
                         qConvDebug() << "found instance, with object:" << (void*) qtinst->getObject();
@@ -603,7 +603,7 @@ QVariant convertValueToQVariant(JSContextRef context, JSValueRef value, QMetaTyp
 
         case QMetaType::VoidStar:
             if (type == QObj) {
-                QtInstance* qtinst = QtInstance::getInstance(toJS(object));
+                QtInstance* qtinst = QtInstance::getInstance(toJS(context), toJS(object));
                 if (qtinst) {
                     if (qtinst->getObject()) {
                         qConvDebug() << "found instance, with object:" << (void*) qtinst->getObject();
