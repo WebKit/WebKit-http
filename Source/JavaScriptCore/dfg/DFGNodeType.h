@@ -465,6 +465,7 @@ namespace JSC { namespace DFG {
     macro(WeakMapSet, NodeMustGenerate | NodeHasVarArgs) \
     macro(ExtractValueFromWeakMapGet, NodeResultJS) \
     \
+    macro(StringValueOf, NodeMustGenerate | NodeResultJS) \
     macro(StringSlice, NodeResultJS) \
     macro(ToLowerCase, NodeResultJS) \
     /* Nodes for DOM JIT */\
@@ -483,6 +484,10 @@ namespace JSC { namespace DFG {
     macro(FilterGetByIdStatus, NodeMustGenerate) \
     macro(FilterInByIdStatus, NodeMustGenerate) \
     macro(FilterPutByIdStatus, NodeMustGenerate) \
+    /* Data view access */ \
+    macro(DataViewGetInt, NodeMustGenerate | NodeResultJS) /* The gets are must generate for now because they do bounds checks */ \
+    macro(DataViewGetFloat, NodeMustGenerate | NodeResultDouble) \
+    macro(DataViewSet, NodeMustGenerate | NodeMustGenerate | NodeHasVarArgs) \
 
 
 // This enum generates a monotonically increasing id for all Node types,

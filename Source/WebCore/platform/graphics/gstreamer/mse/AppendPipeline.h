@@ -27,8 +27,11 @@
 #include "MediaSourceClientGStreamerMSE.h"
 #include "SourceBufferPrivateGStreamer.h"
 
+#include <atomic>
 #include <gst/gst.h>
+#include <mutex>
 #include <wtf/Condition.h>
+#include <wtf/Threading.h>
 
 namespace WebCore {
 
@@ -61,8 +64,9 @@ public:
     // Takes ownership of caps.
     void parseDemuxerSrcPadCaps(GstCaps*);
     void appsinkCapsChanged();
-    void appsinkNewSample(GstSample*);
+    void appsinkNewSample(GRefPtr<GstSample>&&);
     void appsinkEOS();
+    void handleEndOfAppend();
     void didReceiveInitializationSegment();
     AtomicString trackId();
     void abort();
@@ -104,6 +108,20 @@ private:
     void demuxerNoMorePads();
     void consumeAppSinkAvailableSamples();
 
+    void consumeAppsinkAvailableSamples();
+
+    GstPadProbeReturn appsrcEndOfAppendCheckerProbe(GstPadProbeInfo*);
+
+    static void staticInitialization();
+
+    static std::once_flag s_staticInitializationFlag;
+    static GType s_endOfAppendMetaType;
+    static const GstMetaInfo* s_webKitEndOfAppendMetaInfo;
+
+    // Used only for asserting that there is only one streaming thread.
+    // Only the pointers are compared.
+    WTF::Thread* m_streamingThread;
+
     Ref<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     Ref<SourceBufferPrivateGStreamer> m_sourceBufferPrivate;
     MediaPlayerPrivateGStreamerMSE* m_playerPrivate;
@@ -122,12 +140,11 @@ private:
     GRefPtr<GstElement> m_appsink;
 
     // Used to avoid unnecessary notifications per sample.
-    // It is read and write from the streaming thread and wrote from the main thread.
+    // It is read and written from the streaming thread and written from the main thread.
     // The main thread must set it to false before actually pulling samples.
     // This strategy ensures that at any time, there are at most two notifications in the bus
     // queue, instead of it growing unbounded.
-    // Used intentionally without locks.
-    bool m_busAlreadyNotifiedOfAvailablesamples;
+    std::atomic_flag m_wasBusAlreadyNotifiedOfAvailableSamples;
 
     Lock m_padAddRemoveLock;
     Condition m_padAddRemoveCondition;
@@ -138,10 +155,6 @@ private:
     GRefPtr<GstCaps> m_demuxerSrcPadCaps;
     FloatSize m_presentationSize;
 
-    bool m_appsrcAtLeastABufferLeft;
-    bool m_appsrcNeedDataReceived;
-
-    gulong m_appsrcDataLeavingProbeId;
 #if !LOG_DISABLED
     struct PadProbeInformation m_demuxerDataEnteringPadProbeInformation;
     struct PadProbeInformation m_appsinkDataEnteringPadProbeInformation;

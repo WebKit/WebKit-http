@@ -1790,6 +1790,7 @@
 		FE5932A8183C5A2600A1ECCC /* VMEntryScope.h in Headers */ = {isa = PBXBuildFile; fileRef = FE5932A6183C5A2600A1ECCC /* VMEntryScope.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE6029D91D6E1E4F0030204D /* ExceptionEventLocation.h in Headers */ = {isa = PBXBuildFile; fileRef = FE6029D81D6E1E330030204D /* ExceptionEventLocation.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE63DD541EA9B61E00103A69 /* Printer.h in Headers */ = {isa = PBXBuildFile; fileRef = FE63DD531EA9B60E00103A69 /* Printer.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		FE64872E2141D04800AB0D3E /* OpcodeInlines.h in Headers */ = {isa = PBXBuildFile; fileRef = FE64872D2141D04800AB0D3E /* OpcodeInlines.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE6491371D78F01D00A694D4 /* ExceptionScope.h in Headers */ = {isa = PBXBuildFile; fileRef = FE6491361D78F01300A694D4 /* ExceptionScope.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE68C6371B90DE040042BCB3 /* MacroAssemblerPrinter.h in Headers */ = {isa = PBXBuildFile; fileRef = FE68C6361B90DDD90042BCB3 /* MacroAssemblerPrinter.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE6F56DE1E64EAD600D17801 /* VMTraps.h in Headers */ = {isa = PBXBuildFile; fileRef = FE6F56DD1E64E92000D17801 /* VMTraps.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1800,6 +1801,7 @@
 		FEA08620182B7A0400F6D851 /* Breakpoint.h in Headers */ = {isa = PBXBuildFile; fileRef = FEA0861E182B7A0400F6D851 /* Breakpoint.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FEA08621182B7A0400F6D851 /* DebuggerPrimitives.h in Headers */ = {isa = PBXBuildFile; fileRef = FEA0861F182B7A0400F6D851 /* DebuggerPrimitives.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FEA0C4031CDD7D1D00481991 /* FunctionWhitelist.h in Headers */ = {isa = PBXBuildFile; fileRef = FEA0C4011CDD7D0E00481991 /* FunctionWhitelist.h */; };
+		FEA3BBAC212C97CB00E93AD1 /* DFGCFG.h in Headers */ = {isa = PBXBuildFile; fileRef = FEA3BBAB212C97CB00E93AD1 /* DFGCFG.h */; };
 		FEB51F6C1A97B688001F921C /* Regress141809.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEB51F6B1A97B688001F921C /* Regress141809.mm */; };
 		FEB58C15187B8B160098EF0B /* ErrorHandlingScope.h in Headers */ = {isa = PBXBuildFile; fileRef = FEB58C13187B8B160098EF0B /* ErrorHandlingScope.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FECB8B271D25BB85006F2463 /* FunctionOverridesTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FECB8B251D25BB6E006F2463 /* FunctionOverridesTest.cpp */; };
@@ -4747,6 +4749,7 @@
 		FE6029D81D6E1E330030204D /* ExceptionEventLocation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ExceptionEventLocation.h; sourceTree = "<group>"; };
 		FE63DD531EA9B60E00103A69 /* Printer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Printer.h; sourceTree = "<group>"; };
 		FE63DD551EA9BC5D00103A69 /* Printer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Printer.cpp; sourceTree = "<group>"; };
+		FE64872D2141D04800AB0D3E /* OpcodeInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OpcodeInlines.h; sourceTree = "<group>"; };
 		FE6491361D78F01300A694D4 /* ExceptionScope.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ExceptionScope.h; sourceTree = "<group>"; };
 		FE6491381D78F3A300A694D4 /* ExceptionScope.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ExceptionScope.cpp; sourceTree = "<group>"; };
 		FE68C6351B90DDD90042BCB3 /* MacroAssemblerPrinter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MacroAssemblerPrinter.cpp; sourceTree = "<group>"; };
@@ -4765,6 +4768,7 @@
 		FEA0861F182B7A0400F6D851 /* DebuggerPrimitives.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DebuggerPrimitives.h; sourceTree = "<group>"; };
 		FEA0C4001CDD7D0E00481991 /* FunctionWhitelist.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FunctionWhitelist.cpp; sourceTree = "<group>"; };
 		FEA0C4011CDD7D0E00481991 /* FunctionWhitelist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FunctionWhitelist.h; sourceTree = "<group>"; };
+		FEA3BBAB212C97CB00E93AD1 /* DFGCFG.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGCFG.h; path = dfg/DFGCFG.h; sourceTree = "<group>"; };
 		FEB137561BB11EEE00CD5100 /* MacroAssemblerARM64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MacroAssemblerARM64.cpp; sourceTree = "<group>"; };
 		FEB41CCB1F73284200C5481E /* ProbeFrame.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ProbeFrame.h; sourceTree = "<group>"; };
 		FEB51F6A1A97B688001F921C /* Regress141809.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Regress141809.h; path = API/tests/Regress141809.h; sourceTree = "<group>"; };
@@ -7198,6 +7202,7 @@
 				0FD82E1F14172C2F00179C94 /* DFGCapabilities.h */,
 				0FFFC94B14EF909500C72532 /* DFGCFAPhase.cpp */,
 				0FFFC94C14EF909500C72532 /* DFGCFAPhase.h */,
+				FEA3BBAB212C97CB00E93AD1 /* DFGCFG.h */,
 				0F3B3A241544C991003ED0FF /* DFGCFGSimplificationPhase.cpp */,
 				0F3B3A251544C991003ED0FF /* DFGCFGSimplificationPhase.h */,
 				0F9D36921AE9CC33000D4DFB /* DFGCleanUpPhase.cpp */,
@@ -7705,6 +7710,7 @@
 				0FD3E4061B618B6600C80E1E /* ObjectPropertyConditionSet.h */,
 				969A07940ED1D3AE00F1F681 /* Opcode.cpp */,
 				969A07950ED1D3AE00F1F681 /* Opcode.h */,
+				FE64872D2141D04800AB0D3E /* OpcodeInlines.h */,
 				0F2BDC2B151FDE8B00CD8910 /* Operands.h */,
 				A70447E917A0BD4600F5898E /* OperandsInlines.h */,
 				E34E657420668E8E00FB81AC /* ParseHash.cpp */,
@@ -8445,6 +8451,7 @@
 				C2FCAE1317A9C24E0034C735 /* BytecodeLivenessAnalysis.h in Headers */,
 				0F666EC0183566F900D017F1 /* BytecodeLivenessAnalysisInlines.h in Headers */,
 				E328DAEB1D38D005001A2529 /* BytecodeRewriter.h in Headers */,
+				FEA3BBAC212C97CB00E93AD1 /* DFGCFG.h in Headers */,
 				6514F21918B3E1670098FF8B /* Bytecodes.h in Headers */,
 				0F885E111849A3BE00F1E3FA /* BytecodeUseDef.h in Headers */,
 				0F8023EA1613832B00A0BA45 /* ByValInfo.h in Headers */,
@@ -9461,6 +9468,7 @@
 				E49DC16C12EF294E00184A1F /* SourceProviderCache.h in Headers */,
 				E49DC16D12EF295300184A1F /* SourceProviderCacheItem.h in Headers */,
 				0FDE87FC1DFE6E510064C390 /* SpaceTimeMutatorScheduler.h in Headers */,
+				FE64872E2141D04800AB0D3E /* OpcodeInlines.h in Headers */,
 				0FB7F39E15ED8E4600F167B2 /* SparseArrayValueMap.h in Headers */,
 				A7386554118697B400540279 /* SpecializedThunkJIT.h in Headers */,
 				0F5541B21613C1FB00CE3E25 /* SpecialPointer.h in Headers */,

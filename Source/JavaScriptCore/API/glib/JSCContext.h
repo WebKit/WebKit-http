@@ -98,6 +98,22 @@ jsc_context_throw                    (JSCContext         *context,
                                       const char         *error_message);
 
 JSC_API void
+jsc_context_throw_printf             (JSCContext         *context,
+                                      const char         *format,
+                                      ...) G_GNUC_PRINTF (2, 3);
+
+JSC_API void
+jsc_context_throw_with_name          (JSCContext         *context,
+                                      const char         *error_name,
+                                      const char         *error_message);
+
+JSC_API void
+jsc_context_throw_with_name_printf   (JSCContext         *context,
+                                      const char         *error_name,
+                                      const char         *format,
+                                      ...) G_GNUC_PRINTF (3, 4);
+
+JSC_API void
 jsc_context_throw_exception          (JSCContext         *context,
                                       JSCException       *exception);
 
@@ -119,14 +135,14 @@ jsc_context_get_current              (void);
 JSC_API JSCValue *
 jsc_context_evaluate                 (JSCContext         *context,
                                       const char         *code,
-                                      gssize              length);
+                                      gssize              length) G_GNUC_WARN_UNUSED_RESULT;
 
 JSC_API JSCValue *
 jsc_context_evaluate_with_source_uri (JSCContext         *context,
                                       const char         *code,
                                       gssize              length,
                                       const char         *uri,
-                                      guint               line_number);
+                                      guint               line_number) G_GNUC_WARN_UNUSED_RESULT;
 
 JSC_API JSCValue *
 jsc_context_evaluate_in_object       (JSCContext         *context,
@@ -136,7 +152,7 @@ jsc_context_evaluate_in_object       (JSCContext         *context,
                                       JSCClass           *object_class,
                                       const char         *uri,
                                       guint               line_number,
-                                      JSCValue          **object);
+                                      JSCValue          **object) G_GNUC_WARN_UNUSED_RESULT;
 
 JSC_API JSCCheckSyntaxResult
 jsc_context_check_syntax             (JSCContext         *context,

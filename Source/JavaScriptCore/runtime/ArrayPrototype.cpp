@@ -855,6 +855,8 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncReverse(ExecState* exec)
     unsigned length = toLength(exec, thisObject);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
+    thisObject->ensureWritable(vm);
+
     switch (thisObject->indexingType()) {
     case ALL_CONTIGUOUS_INDEXING_TYPES:
     case ALL_INT32_INDEXING_TYPES: {
@@ -1213,9 +1215,10 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncLastIndexOf(ExecState* exec)
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
         if (!e)
             continue;
-        if (JSValue::strictEqual(exec, searchElement, e))
-            return JSValue::encode(jsNumber(index));
+        bool isEqual = JSValue::strictEqual(exec, searchElement, e);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
+        if (isEqual)
+            return JSValue::encode(jsNumber(index));
     } while (index--);
 
     return JSValue::encode(jsNumber(-1));

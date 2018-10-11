@@ -36,6 +36,7 @@
 #include <JavaScriptCore/Strong.h>
 #include <wtf/Function.h>
 #include <wtf/Scope.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -56,7 +57,7 @@ class IDBConnectionProxy;
 class IDBConnectionToServer;
 }
 
-class IDBRequest : public EventTargetWithInlineData, public IDBActiveDOMObject, public RefCounted<IDBRequest> {
+class IDBRequest : public EventTargetWithInlineData, public IDBActiveDOMObject, public RefCounted<IDBRequest>, public CanMakeWeakPtr<IDBRequest> {
 public:
     static Ref<IDBRequest> create(ScriptExecutionContext&, IDBObjectStore&, IDBTransaction&);
     static Ref<IDBRequest> create(ScriptExecutionContext&, IDBCursor&, IDBTransaction&);
@@ -172,8 +173,6 @@ private:
     IndexedDB::IndexRecordType m_requestedIndexRecordType { IndexedDB::IndexRecordType::Key };
 
     RefPtr<IDBCursor> m_pendingCursor;
-
-    std::unique_ptr<WTF::ScopeExit<WTF::Function<void()>>> m_cursorRequestNotifier;
 
     Ref<IDBClient::IDBConnectionProxy> m_connectionProxy;
 };

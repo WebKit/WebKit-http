@@ -673,7 +673,7 @@ static const NSUInteger orderedListSegment = 2;
     return [self itemForIdentifier:identifier];
 }
 
-- (nullable NSTouchBarItem *)itemForIdentifier:(NSString *)identifier
+- (NSTouchBarItem *)itemForIdentifier:(NSString *)identifier
 {
     NSTouchBarItem *item = [super itemForIdentifier:identifier];
     BOOL isTextFormatItem = [identifier isEqualToString:NSTouchBarItemIdentifierTextFormat];
@@ -1892,13 +1892,13 @@ float WebViewImpl::intrinsicDeviceScaleFactor() const
 void WebViewImpl::windowDidOrderOffScreen()
 {
     LOG(ActivityState, "WebViewImpl %p (page %llu) windowDidOrderOffScreen", this, m_page->pageID());
-    m_page->activityStateDidChange(WebCore::ActivityState::IsVisible | WebCore::ActivityState::WindowIsActive);
+    m_page->activityStateDidChange({ WebCore::ActivityState::IsVisible, WebCore::ActivityState::WindowIsActive });
 }
 
 void WebViewImpl::windowDidOrderOnScreen()
 {
     LOG(ActivityState, "WebViewImpl %p (page %llu) windowDidOrderOnScreen", this, m_page->pageID());
-    m_page->activityStateDidChange(WebCore::ActivityState::IsVisible | WebCore::ActivityState::WindowIsActive);
+    m_page->activityStateDidChange({ WebCore::ActivityState::IsVisible, WebCore::ActivityState::WindowIsActive });
 }
 
 void WebViewImpl::windowDidBecomeKey(NSWindow *keyWindow)
@@ -2064,7 +2064,7 @@ void WebViewImpl::viewDidMoveToWindow()
     if (window) {
         windowDidChangeScreen();
 
-        WebCore::ActivityState::Flags activityStateChanges = WebCore::ActivityState::WindowIsActive | WebCore::ActivityState::IsVisible;
+        OptionSet<WebCore::ActivityState::Flag> activityStateChanges { WebCore::ActivityState::WindowIsActive, WebCore::ActivityState::IsVisible };
         if (m_shouldDeferViewInWindowChanges)
             m_viewInWindowChangeWasDeferred = true;
         else
@@ -2090,7 +2090,7 @@ void WebViewImpl::viewDidMoveToWindow()
         if (m_immediateActionGestureRecognizer && ![[m_view gestureRecognizers] containsObject:m_immediateActionGestureRecognizer.get()] && !m_ignoresNonWheelEvents && m_allowsLinkPreview)
             [m_view addGestureRecognizer:m_immediateActionGestureRecognizer.get()];
     } else {
-        WebCore::ActivityState::Flags activityStateChanges = WebCore::ActivityState::WindowIsActive | WebCore::ActivityState::IsVisible;
+        OptionSet<WebCore::ActivityState::Flag> activityStateChanges { WebCore::ActivityState::WindowIsActive, WebCore::ActivityState::IsVisible };
         if (m_shouldDeferViewInWindowChanges)
             m_viewInWindowChangeWasDeferred = true;
         else
@@ -3090,31 +3090,29 @@ void WebViewImpl::handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NS
 #endif
 }
 
+static constexpr WebCore::TextCheckingType coreTextCheckingType(NSTextCheckingType type)
+{
+    switch (type) {
+    case NSTextCheckingTypeCorrection:
+        return WebCore::TextCheckingType::Correction;
+    case NSTextCheckingTypeReplacement:
+        return WebCore::TextCheckingType::Replacement;
+    case NSTextCheckingTypeSpelling:
+        return WebCore::TextCheckingType::Spelling;
+    default:
+        return WebCore::TextCheckingType::None;
+    }
+}
+
 static WebCore::TextCheckingResult textCheckingResultFromNSTextCheckingResult(NSTextCheckingResult *nsResult)
 {
-    WebCore::TextCheckingResult result;
-
-    // FIXME: Right now we only request candidates for spelling, replacement, and correction, but we plan to
-    // support more types, and we will have to update this at that time.
-    switch ([nsResult resultType]) {
-    case NSTextCheckingTypeSpelling:
-        result.type = WebCore::TextCheckingTypeSpelling;
-        break;
-    case NSTextCheckingTypeReplacement:
-        result.type = WebCore::TextCheckingTypeReplacement;
-        break;
-    case NSTextCheckingTypeCorrection:
-        result.type = WebCore::TextCheckingTypeCorrection;
-        break;
-    default:
-        result.type = WebCore::TextCheckingTypeNone;
-    }
-
     NSRange resultRange = [nsResult range];
+
+    WebCore::TextCheckingResult result;
+    result.type = coreTextCheckingType(nsResult.resultType);
     result.location = resultRange.location;
     result.length = resultRange.length;
-    result.replacement = [nsResult replacementString];
-
+    result.replacement = nsResult.replacementString;
     return result;
 }
 
@@ -3785,12 +3783,12 @@ bool WebViewImpl::performDragOperation(id <NSDraggingInfo> draggingInfo)
         Vector<String> *fileNames = new Vector<String>;
         NSURL *dropDestination = [NSURL fileURLWithPath:dropDestinationPath isDirectory:YES];
         String pasteboardName = draggingInfo.draggingPasteboard.name;
-        [draggingInfo enumerateDraggingItemsWithOptions:0 forView:m_view.getAutoreleased() classes:@[[NSFilePromiseReceiver class]] searchOptions:@{ } usingBlock:^(NSDraggingItem * __nonnull draggingItem, NSInteger idx, BOOL * __nonnull stop) {
+        [draggingInfo enumerateDraggingItemsWithOptions:0 forView:m_view.getAutoreleased() classes:@[[NSFilePromiseReceiver class]] searchOptions:@{ } usingBlock:^(NSDraggingItem *draggingItem, NSInteger idx, BOOL *stop) {
             NSFilePromiseReceiver *item = draggingItem.item;
             NSDictionary *options = @{ };
 
             RetainPtr<NSOperationQueue> queue = adoptNS([NSOperationQueue new]);
-            [item receivePromisedFilesAtDestination:dropDestination options:options operationQueue:queue.get() reader:^(NSURL * _Nonnull fileURL, NSError * _Nullable errorOrNil) {
+            [item receivePromisedFilesAtDestination:dropDestination options:options operationQueue:queue.get() reader:^(NSURL *fileURL, NSError *errorOrNil) {
                 if (errorOrNil)
                     return;
 

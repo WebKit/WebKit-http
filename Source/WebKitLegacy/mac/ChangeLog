@@ -1,3 +1,77 @@
+2018-08-31  Chris Dumez  <cdumez@apple.com>
+
+        Assertion hit in ~CompletionHandler() from ~WebFrame()
+        https://bugs.webkit.org/show_bug.cgi?id=189199
+        <rdar://problem/42657233>
+
+        Reviewed by Youenn Fablet.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchWillSubmitForm):
+
+2018-08-23  Mark Lam  <mark.lam@apple.com>
+
+        Move vmEntryGlobalObject() to VM from CallFrame.
+        https://bugs.webkit.org/show_bug.cgi?id=188900
+        <rdar://problem/43655753>
+
+        Reviewed by Michael Saboff.
+
+        * WebView/WebScriptDebugger.mm:
+        (WebScriptDebugger::sourceParsed):
+
+2018-08-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace booleans for modifier keys in UIEventWithKeyState with OptionSet<Modifier>
+        https://bugs.webkit.org/show_bug.cgi?id=188777
+
+        Reviewed by Simon Fraser.
+
+        Create MouseEvent::create with IsSimulated set to Yes; correspoding to the last argument
+        being "true" before the code change.
+
+        Use modifiersForEvent to convert [nsEvent modifierFlags] to OptionSet<Modifier>.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2018-08-21  Daniel Bates  <dabates@apple.com>
+
+        Replace TextCheckingTypeMask with OptionSet
+        https://bugs.webkit.org/show_bug.cgi?id=188678
+
+        Reviewed by Antti Koivisto.
+
+        Currently we have code in WebEditorClient::checkTextOfParagraph() that incorrectly assumes
+        that the enumerators of TextCheckingType have a one-to-one correspondence with NSTextCheckingType.
+        (This is not the case because there is not corresponding NSTextCheckingType for TextCheckingTypeShowCorrectionPanel).
+        We now explicitly convert from OptionSet<TextCheckingType> to NSTextCheckingTypes.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::checkTextOfParagraph):
+        (WebEditorClient::shouldEraseMarkersAfterChangeSelection const):
+        (core): Fix up code style nits; compare resultType on the right-hand side instead of the
+        left as this is more readable and unncessary now that modern compilers like Clang have
+        diagnostics to catch accidental assignments when equality was intended.
+        (WebEditorClient::didCheckSucceed):
+        * WebView/WebView.mm:
+        (coreTextCheckingType):
+        (textCheckingResultFromNSTextCheckingResult):
+
+2018-08-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace canBubble and cancelable booleans in Event by enum classes
+        https://bugs.webkit.org/show_bug.cgi?id=188692
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+        * WebView/WebView.mm:
+        (-[WebView _dispatchUnloadEvent]):
+
 2018-08-15  Tim Horton  <timothy_horton@apple.com>
 
         Crashes in Quip under _dictionaryPopupInfoForRange, in setObject:forKey:

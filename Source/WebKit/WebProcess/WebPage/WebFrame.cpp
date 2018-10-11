@@ -90,10 +90,9 @@
 #include <wtf/RefCountedLeakCounter.h>
 #endif
 
+namespace WebKit {
 using namespace JSC;
 using namespace WebCore;
-
-namespace WebKit {
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, webFrameCounter, ("WebFrame"));
 
@@ -164,6 +163,10 @@ WebFrame::~WebFrame()
 {
     ASSERT(!m_coreFrame);
 
+    auto willSubmitFormCompletionHandlers = WTFMove(m_willSubmitFormCompletionHandlers);
+    for (auto& completionHandler : willSubmitFormCompletionHandlers.values())
+        completionHandler();
+
 #ifndef NDEBUG
     webFrameCounter.decrement();
 #endif
@@ -220,7 +223,7 @@ uint64_t WebFrame::setUpPolicyListener(WebCore::FramePolicyFunction&& policyFunc
     return m_policyListenerID;
 }
 
-uint64_t WebFrame::setUpWillSubmitFormListener(WTF::Function<void(void)>&& completionHandler)
+uint64_t WebFrame::setUpWillSubmitFormListener(CompletionHandler<void()>&& completionHandler)
 {
     uint64_t identifier = generateListenerID();
     invalidatePolicyListener();
@@ -245,9 +248,10 @@ void WebFrame::invalidatePolicyListener()
     if (auto function = std::exchange(m_policyFunction, nullptr))
         function(PolicyAction::Ignore);
     m_policyFunctionForNavigationAction = ForNavigationAction::No;
-    for (auto& function : m_willSubmitFormCompletionHandlers.values())
-        function();
-    m_willSubmitFormCompletionHandlers.clear();
+
+    auto willSubmitFormCompletionHandlers = WTFMove(m_willSubmitFormCompletionHandlers);
+    for (auto& completionHandler : willSubmitFormCompletionHandlers.values())
+        completionHandler();
 }
 
 void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action, uint64_t navigationID, DownloadID downloadID, std::optional<WebsitePoliciesData>&& websitePolicies)

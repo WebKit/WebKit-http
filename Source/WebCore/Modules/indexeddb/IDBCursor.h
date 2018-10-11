@@ -27,12 +27,12 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "ActiveDOMObject.h"
 #include "ExceptionOr.h"
 #include "IDBCursorDirection.h"
 #include "IDBCursorInfo.h"
 #include <JavaScriptCore/Strong.h>
 #include <wtf/Variant.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -41,10 +41,10 @@ class IDBIndex;
 class IDBObjectStore;
 class IDBTransaction;
 
-class IDBCursor : public ScriptWrappable, public RefCounted<IDBCursor>, public ActiveDOMObject {
+class IDBCursor : public ScriptWrappable, public RefCounted<IDBCursor> {
 public:
-    static Ref<IDBCursor> create(IDBTransaction&, IDBObjectStore&, const IDBCursorInfo&);
-    static Ref<IDBCursor> create(IDBTransaction&, IDBIndex&, const IDBCursorInfo&);
+    static Ref<IDBCursor> create(IDBObjectStore&, const IDBCursorInfo&);
+    static Ref<IDBCursor> create(IDBIndex&, const IDBCursorInfo&);
     
     virtual ~IDBCursor();
 
@@ -66,26 +66,19 @@ public:
 
     const IDBCursorInfo& info() const { return m_info; }
 
-    void setRequest(IDBRequest& request) { m_request = &request; }
-    void clearRequest() { m_request = nullptr; }
-    IDBRequest* request() { return m_request; }
+    void setRequest(IDBRequest& request) { m_request = makeWeakPtr(&request); }
+    void clearRequest() { m_request.clear(); }
+    IDBRequest* request() { return m_request.get(); }
 
     void setGetResult(IDBRequest&, const IDBGetResult&);
 
     virtual bool isKeyCursorWithValue() const { return false; }
 
-    void decrementOutstandingRequestCount();
-
-    bool hasPendingActivity() const final;
-
 protected:
-    IDBCursor(IDBTransaction&, IDBObjectStore&, const IDBCursorInfo&);
-    IDBCursor(IDBTransaction&, IDBIndex&, const IDBCursorInfo&);
+    IDBCursor(IDBObjectStore&, const IDBCursorInfo&);
+    IDBCursor(IDBIndex&, const IDBCursorInfo&);
 
 private:
-    const char* activeDOMObjectName() const final;
-    bool canSuspendForDocumentSuspension() const final;
-
     bool sourcesDeleted() const;
     IDBObjectStore& effectiveObjectStore() const;
     IDBTransaction& transaction() const;
@@ -93,12 +86,9 @@ private:
     void uncheckedIterateCursor(const IDBKeyData&, unsigned count);
     void uncheckedIterateCursor(const IDBKeyData&, const IDBKeyData&);
 
-    // Cursors are created with an outstanding iteration request.
-    unsigned m_outstandingRequestCount { 1 };
-
     IDBCursorInfo m_info;
     Source m_source;
-    IDBRequest* m_request { nullptr };
+    WeakPtr<IDBRequest> m_request;
 
     bool m_gotValue { false };
 

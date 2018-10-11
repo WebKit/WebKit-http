@@ -86,15 +86,23 @@ void TreeBuilder::createSubTree(const RenderElement& rootRenderer, Container& ro
 
         if (is<RenderElement>(child)) {
             auto& renderer = downcast<RenderElement>(child);
-            if (is<RenderBlock>(renderer))
+            auto display = renderer.style().display();
+            if (display == DisplayType::Block)
                 box = new BlockContainer(elementAttributes(renderer), RenderStyle::clone(renderer.style()));
-            else if (is<RenderInline>(renderer))
+            else if (display == DisplayType::Inline)
                 box = new InlineContainer(elementAttributes(renderer), RenderStyle::clone(renderer.style()));
+            else {
+                ASSERT_NOT_IMPLEMENTED_YET();
+                continue;
+            }
+
         } else if (is<RenderText>(child)) {
             box = new InlineBox( { }, RenderStyle::createAnonymousStyleWithDisplay(rootRenderer.style(), DisplayType::Inline));
             downcast<InlineBox>(*box).setTextContent(downcast<RenderText>(child).originalText());
-        } else
+        } else {
             ASSERT_NOT_IMPLEMENTED_YET();
+            continue;
+        }
 
         if (!rootContainer.hasChild()) {
             rootContainer.setFirstChild(*box);
@@ -105,6 +113,7 @@ void TreeBuilder::createSubTree(const RenderElement& rootRenderer, Container& ro
             lastChild->setNextSibling(*box);
             rootContainer.setLastChild(*box);
         }
+
         box->setParent(rootContainer);
 
         if (box->isOutOfFlowPositioned()) {
@@ -143,21 +152,28 @@ static void outputLayoutBox(TextStream& stream, const Box& layoutBox, const Disp
     stream.nextLine();
 }
 
-static void outputLayoutTree(const LayoutContext& layoutContext, TextStream& stream, const Container& rootContainer, unsigned depth)
+static void outputLayoutTree(const LayoutContext* layoutContext, TextStream& stream, const Container& rootContainer, unsigned depth)
 {
     for (auto& child : childrenOfType<Box>(rootContainer)) {
-        outputLayoutBox(stream, child, layoutContext.displayBoxForLayoutBox(child), depth);
+        outputLayoutBox(stream, child, layoutContext ? layoutContext->displayBoxForLayoutBox(child) : nullptr, depth);
         if (is<Container>(child))
             outputLayoutTree(layoutContext, stream, downcast<Container>(child), depth + 1);
     }
 }
 
-void TreeBuilder::showLayoutTree(const LayoutContext& layoutContext, const Container& layoutBox)
+void showLayoutTree(const Box& layoutBox, const LayoutContext* layoutContext)
 {
     TextStream stream(TextStream::LineMode::MultipleLine, TextStream::Formatting::SVGStyleRect);
-    outputLayoutBox(stream, layoutBox, layoutContext.displayBoxForLayoutBox(layoutBox), 0);
-    outputLayoutTree(layoutContext, stream, layoutBox, 1);
+
+    auto& initialContainingBlock = layoutBox.initialContainingBlock();
+    outputLayoutBox(stream, initialContainingBlock, layoutContext ? layoutContext->displayBoxForLayoutBox(initialContainingBlock) : nullptr, 0);
+    outputLayoutTree(layoutContext, stream, initialContainingBlock, 1);
     WTFLogAlways("%s", stream.release().utf8().data());
+}
+
+void showLayoutTree(const Box& layoutBox)
+{
+    showLayoutTree(layoutBox, nullptr);
 }
 
 void printLayoutTreeForLiveDocuments()

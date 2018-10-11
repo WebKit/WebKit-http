@@ -164,7 +164,7 @@ public:
     virtual void dispatchDidCancelClientRedirect() = 0;
     virtual void dispatchWillPerformClientRedirect(const URL&, double interval, WallTime fireDate) = 0;
     virtual void dispatchDidChangeMainDocument() { }
-    virtual void dispatchWillChangeDocument() { }
+    virtual void dispatchWillChangeDocument(const URL&, const URL&) { }
     virtual void dispatchDidNavigateWithinPage() { }
     virtual void dispatchDidChangeLocationWithinPage() = 0;
     virtual void dispatchDidPushStateWithinPage() = 0;
@@ -197,7 +197,7 @@ public:
     virtual void dispatchUnableToImplementPolicy(const ResourceError&) = 0;
 
     virtual void dispatchWillSendSubmitEvent(Ref<FormState>&&) = 0;
-    virtual void dispatchWillSubmitForm(FormState&, WTF::Function<void(void)>&&) = 0;
+    virtual void dispatchWillSubmitForm(FormState&, CompletionHandler<void()>&&) = 0;
 
     virtual void revertToProvisionalState(DocumentLoader*) = 0;
     virtual void setMainDocumentError(DocumentLoader*, const ResourceError&) = 0;

@@ -61,7 +61,6 @@
 #include "WebPageInjectedBundleClient.h"
 #include "WebPaymentCoordinatorProxy.h"
 #include "WebPreferences.h"
-#include <WebCore/AlternativeTextClient.h> // FIXME: Needed by WebPageProxyMessages.h for DICTATION_ALTERNATIVES.
 #include "WebPageProxyMessages.h"
 #include "WebPopupMenuProxy.h"
 #include "WebProcessLifetimeTracker.h"
@@ -159,6 +158,7 @@ class Connection;
 
 namespace WebCore {
 class AuthenticationChallenge;
+class CertificateInfo;
 class Cursor;
 class DragData;
 class FloatRect;
@@ -220,7 +220,6 @@ typedef HWND PlatformWidget;
 #endif
 
 namespace WebKit {
-class CertificateInfo;
 class DrawingAreaProxy;
 class NativeWebGestureEvent;
 class NativeWebKeyboardEvent;
@@ -460,10 +459,8 @@ public:
     void addPlatformLoadParameters(LoadParameters&);
     RefPtr<API::Navigation> loadRequest(WebCore::ResourceRequest&&, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadFile(const String& fileURL, const String& resourceDirectoryURL, API::Object* userData = nullptr);
-    RefPtr<API::Navigation> loadData(API::Data*, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
-    RefPtr<API::Navigation> loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData = nullptr);
-    void loadAlternateHTMLString(const String& htmlString, const WebCore::URL& baseURL, const WebCore::URL& unreachableURL, API::Object* userData = nullptr);
-    void loadPlainTextString(const String&, API::Object* userData = nullptr);
+    RefPtr<API::Navigation> loadData(const IPC::DataReference&, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
+    void loadAlternateHTML(const IPC::DataReference&, const String& encoding, const WebCore::URL& baseURL, const WebCore::URL& unreachableURL, API::Object* userData = nullptr);
     void loadWebArchiveData(API::Data*, API::Object* userData = nullptr);
     void navigateToPDFLinkWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
 
@@ -519,17 +516,17 @@ public:
     bool delegatesScrolling() const { return m_delegatesScrolling; }
 
     enum class ActivityStateChangeDispatchMode { Deferrable, Immediate };
-    void activityStateDidChange(WebCore::ActivityState::Flags mayHaveChanged, bool wantsSynchronousReply = false, ActivityStateChangeDispatchMode = ActivityStateChangeDispatchMode::Deferrable);
-    bool isInWindow() const { return m_activityState & WebCore::ActivityState::IsInWindow; }
+    void activityStateDidChange(OptionSet<WebCore::ActivityState::Flag> mayHaveChanged, bool wantsSynchronousReply = false, ActivityStateChangeDispatchMode = ActivityStateChangeDispatchMode::Deferrable);
+    bool isInWindow() const { return m_activityState.contains(WebCore::ActivityState::IsInWindow); }
     void waitForDidUpdateActivityState(ActivityStateChangeID);
     void didUpdateActivityState() { m_waitingForDidUpdateActivityState = false; }
 
     void layerHostingModeDidChange();
 
     WebCore::IntSize viewSize() const;
-    bool isViewVisible() const { return m_activityState & WebCore::ActivityState::IsVisible; }
-    bool isViewFocused() const { return m_activityState & WebCore::ActivityState::IsFocused; }
-    bool isViewWindowActive() const { return m_activityState & WebCore::ActivityState::WindowIsActive; }
+    bool isViewVisible() const { return m_activityState.contains(WebCore::ActivityState::IsVisible); }
+    bool isViewFocused() const { return m_activityState.contains(WebCore::ActivityState::IsFocused); }
+    bool isViewWindowActive() const { return m_activityState.contains(WebCore::ActivityState::WindowIsActive); }
 
     void addMIMETypeWithCustomContentProvider(const String& mimeType);
 
@@ -1226,7 +1223,7 @@ public:
 #endif
 
 #if USE(UNIFIED_TEXT_CHECKING)
-    void checkTextOfParagraph(const String& text, uint64_t checkingTypes, int32_t insertionPoint, Vector<WebCore::TextCheckingResult>& results);
+    void checkTextOfParagraph(const String& text, OptionSet<WebCore::TextCheckingType> checkingTypes, int32_t insertionPoint, Vector<WebCore::TextCheckingResult>& results);
 #endif
     void getGuessesForWord(const String& word, const String& context, int32_t insertionPoint, Vector<String>& guesses);
 
@@ -1297,8 +1294,6 @@ public:
 
     bool isAlwaysOnLoggingAllowed() const;
 
-    void canAuthenticateAgainstProtectionSpace(uint64_t loaderID, uint64_t frameID, const WebCore::ProtectionSpace&);
-
     void cookiesDidChange();
 
 #if ENABLE(GAMEPAD)
@@ -1367,7 +1362,7 @@ private:
 
     RefPtr<API::Navigation> goToBackForwardItem(WebBackForwardListItem&, WebCore::FrameLoadType);
 
-    void updateActivityState(WebCore::ActivityState::Flags flagsToUpdate = WebCore::ActivityState::AllFlags);
+    void updateActivityState(OptionSet<WebCore::ActivityState::Flag> flagsToUpdate = WebCore::ActivityState::allFlags());
     void updateThrottleState();
     void updateHiddenPageThrottlingAutoIncreases();
 
@@ -1950,7 +1945,7 @@ private:
     std::unique_ptr<UserMediaPermissionRequestManagerProxy> m_userMediaPermissionRequestManager;
 #endif
 
-    WebCore::ActivityState::Flags m_activityState { WebCore::ActivityState::NoFlags };
+    OptionSet<WebCore::ActivityState::Flag> m_activityState;
     bool m_viewWasEverInWindow { false };
 #if PLATFORM(IOS)
     bool m_allowsMediaDocumentInlinePlayback { false };
@@ -2187,7 +2182,7 @@ private:
     ActivityStateChangeID m_currentActivityStateChangeID { ActivityStateChangeAsynchronous };
 
     WebPreferencesStore::ValueMap m_configurationPreferenceValues;
-    WebCore::ActivityState::Flags m_potentiallyChangedActivityStateFlags { WebCore::ActivityState::NoFlags };
+    OptionSet<WebCore::ActivityState::Flag> m_potentiallyChangedActivityStateFlags;
     bool m_activityStateChangeWantsSynchronousReply { false };
     Vector<CallbackID> m_nextActivityStateChangeCallbacks;
 

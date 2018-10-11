@@ -34,9 +34,8 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RunLoop.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 NetworkBlobRegistry& NetworkBlobRegistry::singleton()
 {
@@ -123,7 +122,6 @@ void NetworkBlobRegistry::unregisterBlobURL(NetworkConnectionToWebProcess* conne
 
     blobRegistry().unregisterBlobURL(url);
 
-    ASSERT(mapIterator->value.contains(url));
     mapIterator->value.remove(url);
 }
 

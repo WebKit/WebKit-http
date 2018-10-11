@@ -1,3 +1,453 @@
+2018-10-01  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][GStreamer] Reset running time in PlaybackPipeline::flush()
+        https://bugs.webkit.org/show_bug.cgi?id=190076
+
+        Reviewed by Philippe Normand.
+
+        A test where a seek is followed by a redundant append is added. This
+        test timed out in the GStreamer MSE implementation before the
+        accompanying patch fixed it.
+
+        The MIME type declared in test-48khz-manifest.json has also been
+        changed, from non-standard `audio/x-m4a` to `audio/mp4;
+        codecs="mp4a.40.2"`, as implied by the MSE specs. This should not
+        affect other tests because no other tests were reading this type
+        string before.
+
+        * media/media-source/content/test-48khz-manifest.json:
+        * media/media-source/media-source-seek-redundant-append-expected.txt: Added.
+        * media/media-source/media-source-seek-redundant-append.html: Added.
+        * media/video-test.js:
+
+2018-10-01  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE] Use tolerance when growing the coded frame group
+        https://bugs.webkit.org/show_bug.cgi?id=190085
+
+        A test simulating unordered appends with imprecise timestamps,
+        overlapping <1ms (replicating a typical WebM 30fps video file) is
+        added.
+
+        * media/media-source/media-source-append-acb-tolerance.html: Added.
+
+2018-09-27  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE] Fix unwanted sample erase from the decode queue
+        https://bugs.webkit.org/show_bug.cgi?id=180643
+
+        Reviewed by Jer Noble.
+
+        Added a test case for the fixed bug.
+
+        * media/media-source/media-source-append-acb-no-frame-lost.html: Added.
+
+2018-09-15  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest::createResponseBlob() should create a Blob with type for empty response
+        https://bugs.webkit.org/show_bug.cgi?id=189627
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/files/xhr-response-blob-expected.txt:
+        * fast/files/xhr-response-blob.html:
+
+2018-09-10  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Several media related tests timing out around the same revision
+        https://bugs.webkit.org/show_bug.cgi?id=189349
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Unflag Timeout from now-unaffected tests.
+
+2018-09-10  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest: overrideMimeType should not update the response's "Content-Type" header
+        https://bugs.webkit.org/show_bug.cgi?id=189465
+
+        Reviewed by Frédéric Wang.
+
+        Change existing test to reflect new behavior.
+
+        * http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-content-type-header-expected.txt:
+        * http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-content-type-header.html:
+
+2018-09-10  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Interrupting an accelerated CSS transition on a composited element in flight fails
+        https://bugs.webkit.org/show_bug.cgi?id=189405
+        <rdar://problem/43342639>
+
+        Reviewed by Simon Fraser.
+
+        Add a new test that checks that interrupting a CSS transition targeting an accelerated property for an element
+        that is composited outside the duration of the transition correctly interrupts the animation and jumps straight
+        to the target value.
+
+        * platform/win/TestExpectations:
+        * webanimations/accelerated-transition-interrupted-on-composited-element-expected.html: Added.
+        * webanimations/accelerated-transition-interrupted-on-composited-element.html: Added.
+
+2018-09-05  Brent Fulgham  <bfulgham@apple.com>
+
+        The width of a nullptr TextRun should be zero
+        https://bugs.webkit.org/show_bug.cgi?id=189154
+        <rdar://problem/43685926>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/null-string-textrun-expected.txt: Added.
+        * fast/text/null-string-textrun.html: Added.
+
+2018-09-04  Daniel Bates  <dabates@apple.com>
+
+        Remove redundant inline text boxes for empty combined text
+        https://bugs.webkit.org/show_bug.cgi?id=189119
+
+        Reviewed by Zalan Bujtas.
+
+        Update expected result now that we do not create an inline text box associated with combined text
+        when we do not have any combined text to render.
+
+        * fast/text/text-combine-surroundContents-crash-expected.txt:
+
+2018-09-03  Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION: Layout Test http/tests/security/bypassing-cors-checks-for-extension-urls.html is Flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187658
+        <rdar://problem/42306442>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-09-02  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r191336): RenderFlexibleBox::adjustChildSizeForMinAndMax crashes in std::optional<>::value()
+        https://bugs.webkit.org/show_bug.cgi?id=189232
+        <rdar://problem/43886373>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/flexbox/crash-when-min-max-content-is-not-computed-expected.txt: Added.
+        * fast/flexbox/crash-when-min-max-content-is-not-computed.html: Added.
+
+2018-08-31  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Maintain access through same-site navigations
+        https://bugs.webkit.org/show_bug.cgi?id=188564
+        <rdar://problem/43445160>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-and-access-from-right-frame-expected.txt:
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-and-access-from-right-frame.html:
+            Added both a same-site and a cross-site navigation to the sub frame to test maintained and cleared access.
+        * http/tests/storageAccess/request-and-grant-access-then-navigate-cross-site-should-not-have-access-expected.txt: Copied from LayoutTests/http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-then-navigate-cross-site-should-not-have-access.html: Copied from LayoutTests/http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access.html.
+        * http/tests/storageAccess/request-and-grant-access-then-navigate-same-site-should-have-access-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-then-navigate-same-site-should-have-access.html: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access.html.
+        * http/tests/storageAccess/resources/get-cookies.php:
+            Support for the new test scenarios.
+        * http/tests/storageAccess/resources/self-navigating-frame-after-granted-access.html:
+            Support for the new test scenarios.
+        * platform/mac-wk2/TestExpectations:
+            Marked the new and the renamed tests as [ Pass ].
+
+2018-08-30  Zalan Bujtas  <zalan@apple.com>
+
+        CounterMaps should hold a unique_ptr of CounterMap.
+        https://bugs.webkit.org/show_bug.cgi?id=189174
+        <rdar://problem/43686458>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/css/counters/crash-when-cloning-body-expected.txt: Added.
+        * fast/css/counters/crash-when-cloning-body.html: Added.
+
+2018-08-29  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r226138): WebCore::subdivide() may return an empty vector; Web process can crash when performing find in Epiphany
+        https://bugs.webkit.org/show_bug.cgi?id=184390
+        <rdar://problem/41804994>
+        And
+        <rdar://problem/39771867>
+
+        Reviewed by Simon Fraser.
+
+        Add a test to ensure that we do not crash when painting an empty inline text box associated
+        with combined text.
+
+        * fast/text/text-combine-surroundContents-crash-expected.txt: Added.
+        * fast/text/text-combine-surroundContents-crash.html: Added.
+
+2018-08-28  Don Olmstead  <don.olmstead@sony.com>
+
+        Check for null renderer in canBeScrolledIntoView
+        https://bugs.webkit.org/show_bug.cgi?id=188935
+
+        Reviewed by Simon Fraser.
+
+        * fast/spatial-navigation/snav-display-contents-crash-expected.txt: Added.
+        * fast/spatial-navigation/snav-display-contents-crash.html: Added.
+
+2018-08-28  Youenn Fablet  <youenn@apple.com>
+
+        MediaDevices should be collectable as soon as its document is stopped
+        https://bugs.webkit.org/show_bug.cgi?id=189021
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/media/media-stream/collect-media-devices.https-expected.txt: Added.
+        * http/tests/media/media-stream/collect-media-devices.https.html: Added.
+        * http/tests/media/media-stream/resources/mymediadevicesframe.htm: Added.
+
+2018-08-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Null pointer deref in WidthIterator
+        https://bugs.webkit.org/show_bug.cgi?id=188993
+
+        Reviewed by Brent Fulgham.
+
+        * fast/text/rtl-justification-expected.html: Added.
+        * fast/text/rtl-justification.html: Added.
+
+2018-08-27  Youenn Fablet  <youenn@apple.com>
+
+        Various IndexDB tests abandon documents
+        https://bugs.webkit.org/show_bug.cgi?id=188728
+        <rdar://problem/43651095>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/IndexedDB/collect-IDB-objects.https-expected.txt: Added.
+        * http/tests/IndexedDB/collect-IDB-objects.https.html: Added.
+        * http/tests/IndexedDB/resources/myidbframe.htm: Added.
+        * http/tests/IndexedDB/resources/support.js: Added.
+
+2018-08-27  Rob Buis  <rbuis@igalia.com>
+
+        XMLHTTPRequest.send for Document should have same Content-Type processing rules as String
+        https://bugs.webkit.org/show_bug.cgi?id=188953
+
+        Reviewed by Darin Adler.
+
+        * platform/gtk/imported/w3c/web-platform-tests/xhr/setrequestheader-content-type-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/xhr/setrequestheader-content-type-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/xhr/setrequestheader-content-type-expected.txt:
+
+2018-08-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add getModifierState to MouseEvent
+        https://bugs.webkit.org/show_bug.cgi?id=188913
+        <rdar://problem/43668772>
+
+        Reviewed by Simon Fraser.
+
+        Added two tests for getModifierState: one manually setting modifier key states in MouseEvent's constructor,
+        and another one for dblclick inheriting modifier key states from the click event.
+
+        Also improved the test coverage for KeyboardEvent's getModifierState.
+
+        * fast/events/constructors/keyboard-event-getModifierState-expected.txt:
+        * fast/events/constructors/keyboard-event-getModifierState.html: Added more test cases.
+        * fast/events/constructors/mouse-event-getModifierState-expected.txt: Added.
+        * fast/events/constructors/mouse-event-getModifierState.html: Added.
+        * fast/events/dblclick-event-getModifierState-expected.txt: Added.
+        * fast/events/dblclick-event-getModifierState.html: Added.
+        * fast/events/init-event-clears-capslock-expected.txt:
+        * fast/events/init-event-clears-capslock.html: Added tests for MouseEvent. Note that initMouseEvent doesn't
+        take altGraphKey boolean unlike initKeyboardEvent.
+        * platform/ios/TestExpectations: Skip the dblclick test in iOS since click event isn't supported on iOS.
+
+2018-08-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        initKeyboardEvent doesn't clear CapsLock state
+        https://bugs.webkit.org/show_bug.cgi?id=188909
+
+        Reviewed by Wenson Hsieh.
+
+        Added a regression test. Note that altGraph is only supported in WebKit
+        so Chrome and Firefox would fail to reset it via initKeyboardEvent.
+
+        * fast/events/init-event-clears-capslock-expected.txt: Added.
+        * fast/events/init-event-clears-capslock.html: Added.
+
+2018-08-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Assert in NetworkBlobRegistry::unregisterBlobURL after network process had terminated
+        https://bugs.webkit.org/show_bug.cgi?id=188880
+
+        Reviewed by Saam Barati.
+
+        Added a layout test which demonstrates this debug assertion.
+
+        * TestExpectations:
+        * fast/files/blob-network-process-crash-expected.txt: Added.
+        * fast/files/blob-network-process-crash.html: Added.
+        * platform/wk2/TestExpectations:
+
+2018-08-22  Rob Buis  <rbuis@igalia.com>
+
+        Fetch: Stop checking Request.integrity's value in no-cors mode
+        https://bugs.webkit.org/show_bug.cgi?id=188802
+
+        Reviewed by Frédéric Wang.
+
+        Unskip fetch/api/basic/integrity.html and adjust sri-fetch.js.
+
+        * TestExpectations:
+        * http/tests/subresource-integrity/sri-fetch.js:
+
+2018-08-21  Daniel Bates  <dabates@apple.com>
+
+        Disallow navigations when page cache updates the current document of the frame
+        https://bugs.webkit.org/show_bug.cgi?id=188422
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a test case that ensures that we do not hit the assertion ASSERT(ownerFrame || m_frame.isMainFrame())
+        in FrameLoader::addExtraFieldsToRequest() when navigating back to a page that loads a nested
+        page, whose URL contains a fragment, via an HTML object element. This assertion fails if
+        navigations are allowed when restoring a page from the page cache.
+
+        This change does not prevent navigations initiated from a pageshow event handler.
+
+        * fast/history/go-back-to-object-subframe-expected.txt: Added.
+        * fast/history/go-back-to-object-subframe.html: Added.
+
+2018-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: allow breakpoints to be set for specific event listeners
+        https://bugs.webkit.org/show_bug.cgi?id=183138
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/dom/breakpoint-for-event-listener-expected.txt: Added.
+        * inspector/dom/breakpoint-for-event-listener.html: Added.
+
+2018-08-20  Rob Buis  <rbuis@igalia.com>
+
+        Throw an exception if window.open() gets passed a URL that cannot be parsed
+        https://bugs.webkit.org/show_bug.cgi?id=171656
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/Window/open-invalid-url-expected.txt:
+        * fast/dom/Window/open-invalid-url.html:
+
+2018-08-20  Ms2ger  <Ms2ger@igalia.com>
+
+        [SOUP] Check length before calling soup_message_body_append_buffer.
+        https://bugs.webkit.org/show_bug.cgi?id=176803
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Enable test.
+
+2018-08-20  Rob Buis  <rbuis@igalia.com>
+
+        Relax Request constructor around referrers
+        https://bugs.webkit.org/show_bug.cgi?id=168649
+
+        Reviewed by Darin Adler.
+
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/request/request-init-001.sub-expected.txt:
+
+2018-08-18  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Fire an initial dummy notification
+        https://bugs.webkit.org/show_bug.cgi?id=188670
+
+        Reviewed by Simon Fraser.
+
+        * intersection-observer/root-element-deleted.html: Add additional assertions.
+        * intersection-observer/root-element-moved-expected.txt: Added.
+        * intersection-observer/root-element-moved.html: Added.
+
+2018-08-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: support breakpoints for arbitrary event names
+        https://bugs.webkit.org/show_bug.cgi?id=183118
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/dom-debugger/event-breakpoints-expected.txt: Added.
+        * inspector/dom-debugger/event-breakpoints.html: Added.
+
+        * inspector/dom-debugger/event-breakpoints-with-navigation-expected.txt: Added.
+        * inspector/dom-debugger/event-breakpoints-with-navigation.html: Added.
+
+2018-08-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Custom element doesn't invalidate its style when :defined rule starts to apply
+        https://bugs.webkit.org/show_bug.cgi?id=188637
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test.
+
+        * fast/custom-elements/defined-update-style-expected.html: Added.
+        * fast/custom-elements/defined-update-style.html: Added.
+
+2018-08-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        LayoutTest inspector/worker/debugger-pause.html sometimes times out
+        https://bugs.webkit.org/show_bug.cgi?id=188580
+
+        Reviewed by Matt Baker.
+
+        * inspector/worker/debugger-pause.html:
+        * inspector/worker/resources/worker-utilities.js: Added.
+        (TestPage.registerInitializer.window.awaitTargetMainResource):
+        (TestPage.registerInitializer):
+        Use a more deterministic wait for the main resource.
+
+2018-08-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perform a microtask checkpoint before creating a custom element
+        https://bugs.webkit.org/show_bug.cgi?id=188189
+        <rdar://problem/42843022>
+
+        Reviewed by Geoffrey Garen.
+
+        Added a W3C style testharness.js test for perfoming microtask checkpoint before constructing
+        a custom element synchronously.
+
+        * fast/custom-elements/perform-microtask-checkpoint-before-construction-expected.txt: Added.
+        * fast/custom-elements/perform-microtask-checkpoint-before-construction.html: Added.
+        * fast/dom/MutationObserver/parser-mutations.html: Fixed the test per new behavior in Document::finishParsing.
+        Because iframe loads synchronously and fires DOMContentLoaded, mutation records are now delivered twice after
+        iframe element is encountered in this test and before script element executes. Concatenate the mutation records
+        arrays to account for this behavioral change. New WebKit behavior matches that of Chrome; namely this test
+        fails both on Chrome Canary 70 and trunk WebKit with this patch without this fix.
+
+2018-08-16  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening. Enable a few subdirectories under fast/ and
+        provide platform-specific baselines as well as failure expectations
+        where required.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/fast/box-shadow: Added 10 baselines.
+        * platform/wpe/fast/box-sizing: Added 4 baselines.
+        * platform/wpe/fast/clip: Added 23 baselines.
+        * platform/wpe/fast/compact: Added 3 baselines.
+        * platform/wpe/fast/css-generated-content: Added 43 baselines.
+        * platform/wpe/fast/doctypes: Added 4 baselines.
+        * platform/wpe/fast/flexbox: Added 26 baselines.
+        * platform/wpe/fast/inline: Added 32 baselines.
+        * platform/wpe/fast/inline-block: Added 9 baselines.
+        * platform/wpe/fast/invalid: Added 29 baselines.
+        * platform/wpe/fast/line-grid: Added 8 baselines.
+        * platform/wpe/fast/lists: Added 27 baselines.
+        * platform/wpe/fast/loader: Added 1 baseline.
+        * platform/wpe/fast/preloader: Added 2 baselines.
+        * platform/wpe/fast/replaced: Added 57 baselines.
+        * platform/wpe/fast/ruby: Added 26 baselines.
+        * platform/wpe/fast/writing-mode: Added 37 baselines.
+
 2018-08-15  Ansh Shukla  <ansh_shukla@apple.com>
 
         NSURLAuthenticationMethodOAuth challenges are surfaced to clients in -didReceiveAuthenticationChallenge as NSURLAuthenticationMethodDefault

@@ -1,3 +1,52 @@
+=================
+WebKitGTK+ 2.22.2
+=================
+
+What's new in WebKitGTK+ 2.22.2?
+
+  - Several fixes for video playback with media source extensions (MSE).
+    This allows using WebM support for YouTube, which no longer works through
+    regular video source. Note that MSE is still disabled by default and
+    webkit_settings_set_enable_mediasource() has to be used to enable the
+    feature.
+  - Fix the build when only Wayland support is enabled and X11 headers are
+    not available.
+
+=================
+WebKitGTK+ 2.22.1
+=================
+
+What's new in WebKitGTK+ 2.22.1?
+
+  - Fix printing in landscape.
+  - Fix the build in several platforms: s390x, ppc64le, armv7hl.
+  - Fix the build with a11y disabled.
+  - Fix the build with video disabled.
+  - Fix several crashes and rendering issues.
+
+==================
+WebKitGTK+ 2.22.0
+==================
+
+What's new in WebKitGTK+ 2.22.0?
+
+  - Add warn_unused_result attribute to some JavaScriptCore GLib APIs.
+  - Make pinch to zoom scale the page without changing the layout.
+  - Fix the build in mips64.
+
+==================
+WebKitGTK+ 2.21.92
+==================
+
+What's new in WebKitGTK+ 2.21.92?
+
+  - Add new API to inject/register user content in isolated worlds.
+  - Add more API to JSCException to handle column number, convert exception to string, get the exception backtrace,
+    create exceptions with a custom error name and report exception message with full details.
+  - Fix excessive CPU usage when getting the process memory footprint.
+  - Fix several crashes and rendering issues.
+  - Translation updates: Polish
+
 ==================
 WebKitGTK+ 2.21.91
 ==================
@@ -10,6 +59,7 @@ What's new in WebKitGTK+ 2.21.91?
   - Fix several crashes and rendering issues.
   - Translation updates: Brazilian Portuguese.
 
+=================
 WebKitGTK+ 2.21.5
 =================
 

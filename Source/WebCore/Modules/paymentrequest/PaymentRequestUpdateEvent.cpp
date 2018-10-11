@@ -28,6 +28,7 @@
 
 #if ENABLE(PAYMENT_REQUEST)
 
+#include "EventNames.h"
 #include "PaymentRequest.h"
 
 namespace WebCore {
@@ -38,7 +39,7 @@ PaymentRequestUpdateEvent::PaymentRequestUpdateEvent(const AtomicString& type, P
 }
 
 PaymentRequestUpdateEvent::PaymentRequestUpdateEvent(const AtomicString& type, PaymentRequest& paymentRequest)
-    : Event { type, false, false }
+    : Event { type, CanBubble::No, IsCancelable::No }
     , m_paymentRequest { &paymentRequest }
 {
 }

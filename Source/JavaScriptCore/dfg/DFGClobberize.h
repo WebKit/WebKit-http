@@ -471,11 +471,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
 
     case CheckTraps:
-        if (Options::usePollingTraps()) {
-            read(InternalState);
-            write(InternalState);
-        } else
-            write(Watchpoint_fire);
+        read(InternalState);
+        write(InternalState);
         return;
 
     case InvalidationPoint:
@@ -655,6 +652,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case NumberToStringWithRadix:
     case CreateThis:
     case InstanceOf:
+    case StringValueOf:
         read(World);
         write(Heap);
         return;
@@ -1758,7 +1756,24 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case NumberToStringWithValidRadixConstant:
         def(PureValue(node, node->validRadixConstant()));
         return;
-        
+
+    case DataViewGetFloat:
+    case DataViewGetInt: {
+        read(MiscFields);
+        read(TypedArrayProperties);
+        LocationKind indexedPropertyLoc = indexedPropertyLocForResultType(node->result());
+        def(HeapLocation(indexedPropertyLoc, AbstractHeap(TypedArrayProperties, node->dataViewData().asQuadWord),
+            node->child1(), node->child2(), node->child3()), LazyNode(node));
+        return;
+    }
+
+    case DataViewSet: {
+        read(MiscFields);
+        read(TypedArrayProperties);
+        write(TypedArrayProperties);
+        return;
+    }
+
     case LastNodeType:
         RELEASE_ASSERT_NOT_REACHED();
         return;

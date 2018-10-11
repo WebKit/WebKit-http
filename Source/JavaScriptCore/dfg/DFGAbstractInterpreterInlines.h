@@ -1175,6 +1175,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
+    case StringValueOf: {
+        clobberWorld();
+        setTypeForNode(node, SpecString);
+        break;
+    }
+
     case StringSlice: {
         setTypeForNode(node, SpecString);
         break;
@@ -2217,12 +2223,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
 
     case RegExpMatchFast:
         ASSERT(node->child2().useKind() == RegExpObjectUse);
-        ASSERT(node->child3().useKind() == StringUse);
+        ASSERT(node->child3().useKind() == StringUse || node->child3().useKind() == KnownStringUse);
         setTypeForNode(node, SpecOther | SpecArray);
         break;
 
     case RegExpMatchFastGlobal:
-        ASSERT(node->child2().useKind() == StringUse);
+        ASSERT(node->child2().useKind() == StringUse || node->child2().useKind() == KnownStringUse);
         setTypeForNode(node, SpecOther | SpecArray);
         break;
             
@@ -3293,11 +3299,16 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
         }
         
-        observeTransitions(clobberLimit, transitions);
-        if (forNode(node->child1()).changeStructure(m_graph, newSet) == Contradiction)
-            m_state.setIsValid(false);
+        // We need to order AI executing these effects in the same order as they're executed
+        // at runtime. This is critical when you have JS code like `o.f = o;`. We first
+        // filter types on o, then transition o. Not the other way around. If we got
+        // this ordering wrong, we could end up with the wrong type representing o.
         setForNode(node->child2(), resultingValue);
         if (!!originalValue && !resultingValue)
+            m_state.setIsValid(false);
+
+        observeTransitions(clobberLimit, transitions);
+        if (forNode(node->child1()).changeStructure(m_graph, newSet) == Contradiction)
             m_state.setIsValid(false);
         break;
     }
@@ -3770,9 +3781,30 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         filter(node->child1(), SpecCell);
         break;
     }
-        
-        break;
 
+    case DataViewGetInt: {
+        DataViewData data = node->dataViewData();
+        if (data.byteSize < 4)
+            setNonCellTypeForNode(node, SpecInt32Only);
+        else {
+            ASSERT(data.byteSize == 4);
+            if (data.isSigned)
+                setNonCellTypeForNode(node, SpecInt32Only);
+            else
+                setNonCellTypeForNode(node, SpecAnyInt);
+        }
+        break;
+    }
+
+    case DataViewGetFloat: {
+        setNonCellTypeForNode(node, SpecFullDouble);
+        break;
+    }
+
+    case DataViewSet: {
+        break;
+    }
+        
     case Unreachable:
         // It may be that during a previous run of AI we proved that something was unreachable, but
         // during this run of AI we forget that it's unreachable. AI's proofs don't have to get

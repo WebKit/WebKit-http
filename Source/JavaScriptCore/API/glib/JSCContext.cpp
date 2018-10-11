@@ -644,6 +644,62 @@ void jsc_context_throw(JSCContext* context, const char* errorMessage)
 }
 
 /**
+ * jsc_context_throw_printf:
+ * @context: a #JSCContext
+ * @format: the string format
+ * @...: the parameters to insert into the format string
+ *
+ * Throw an exception to @context using the given formatted string as error message.
+ * The created #JSCException can be retrieved with jsc_context_get_exception().
+ */
+void jsc_context_throw_printf(JSCContext* context, const char* format, ...)
+{
+    g_return_if_fail(JSC_IS_CONTEXT(context));
+
+    va_list args;
+    va_start(args, format);
+    context->priv->exception = adoptGRef(jsc_exception_new_vprintf(context, format, args));
+    va_end(args);
+}
+
+/**
+ * jsc_context_throw_with_name:
+ * @context: a #JSCContext
+ * @error_name: the error name
+ * @error_message: an error message
+ *
+ * Throw an exception to @context using the given error name and message. The created #JSCException
+ * can be retrieved with jsc_context_get_exception().
+ */
+void jsc_context_throw_with_name(JSCContext* context, const char* errorName, const char* errorMessage)
+{
+    g_return_if_fail(JSC_IS_CONTEXT(context));
+    g_return_if_fail(errorName);
+
+    context->priv->exception = adoptGRef(jsc_exception_new_with_name(context, errorName, errorMessage));
+}
+
+/**
+ * jsc_context_throw_with_name_printf:
+ * @context: a #JSCContext
+ * @error_name: the error name
+ * @format: the string format
+ * @...: the parameters to insert into the format string
+ *
+ * Throw an exception to @context using the given error name and the formatted string as error message.
+ * The created #JSCException can be retrieved with jsc_context_get_exception().
+ */
+void jsc_context_throw_with_name_printf(JSCContext* context, const char* errorName, const char* format, ...)
+{
+    g_return_if_fail(JSC_IS_CONTEXT(context));
+
+    va_list args;
+    va_start(args, format);
+    context->priv->exception = adoptGRef(jsc_exception_new_with_name_vprintf(context, errorName, format, args));
+    va_end(args);
+}
+
+/**
  * jsc_context_throw_exception:
  * @context: a #JSCContext
  * @exception: a #JSCException
@@ -824,8 +880,9 @@ JSCValue* jsc_context_evaluate_in_object(JSCContext* context, const char* code, 
     JSRetainPtr<JSGlobalContextRef> objectContext(Adopt,
         instance ? jscClassCreateContextWithJSWrapper(objectClass, instance) : JSGlobalContextCreateInGroup(jscVirtualMachineGetContextGroup(context->priv->vm.get()), nullptr));
     JSC::ExecState* exec = toJS(objectContext.get());
-    auto* jsObject = exec->vmEntryGlobalObject();
-    jsObject->setGlobalScopeExtension(JSC::JSWithScope::create(exec->vm(), jsObject, jsObject->globalScope(), toJS(JSContextGetGlobalObject(context->priv->jsContext.get()))));
+    JSC::VM& vm = exec->vm();
+    auto* jsObject = vm.vmEntryGlobalObject(exec);
+    jsObject->setGlobalScopeExtension(JSC::JSWithScope::create(vm, jsObject, jsObject->globalScope(), toJS(JSContextGetGlobalObject(context->priv->jsContext.get()))));
     JSValueRef exception = nullptr;
     JSValueRef result = evaluateScriptInContext(objectContext.get(), String::fromUTF8(code, length < 0 ? strlen(code) : length), uri, lineNumber, &exception);
     if (jscContextHandleExceptionIfNeeded(context, exception))

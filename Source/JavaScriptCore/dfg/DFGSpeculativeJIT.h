@@ -1248,7 +1248,7 @@ public:
     void emitSwitchString(Node*, SwitchData*);
     void emitSwitch(Node*);
     
-    void compileToStringOrCallStringConstructor(Node*);
+    void compileToStringOrCallStringConstructorOrStringValueOf(Node*);
     void compileNumberToStringWithRadix(Node*);
     void compileNumberToStringWithValidRadixConstant(Node*);
     void compileNumberToStringWithValidRadixConstant(Node*, int32_t radix);
@@ -1610,6 +1610,8 @@ public:
     void speculateWeakMapObject(Edge, GPRReg cell);
     void speculateWeakSetObject(Edge);
     void speculateWeakSetObject(Edge, GPRReg cell);
+    void speculateDataViewObject(Edge);
+    void speculateDataViewObject(Edge, GPRReg cell);
     void speculateObjectOrOther(Edge);
     void speculateString(Edge edge, GPRReg cell);
     void speculateStringIdentAndLoadStorage(Edge edge, GPRReg string, GPRReg storage);

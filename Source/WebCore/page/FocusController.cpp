@@ -278,7 +278,7 @@ static inline void dispatchEventsOnWindowAndFocusedElement(Document* document, b
 
     if (!focused && document->focusedElement())
         document->focusedElement()->dispatchBlurEvent(nullptr);
-    document->dispatchWindowEvent(Event::create(focused ? eventNames().focusEvent : eventNames().blurEvent, false, false));
+    document->dispatchWindowEvent(Event::create(focused ? eventNames().focusEvent : eventNames().blurEvent, Event::CanBubble::No, Event::IsCancelable::No));
     if (focused && document->focusedElement())
         document->focusedElement()->dispatchFocusEvent(nullptr, FocusDirectionNone);
 }
@@ -307,7 +307,7 @@ static inline int shadowAdjustedTabIndex(Element& element, KeyboardEvent* event)
     return element.tabIndex();
 }
 
-FocusController::FocusController(Page& page, ActivityState::Flags activityState)
+FocusController::FocusController(Page& page, OptionSet<ActivityState::Flag> activityState)
     : m_page(page)
     , m_isChangingFocusedFrame(false)
     , m_activityState(activityState)
@@ -331,12 +331,12 @@ void FocusController::setFocusedFrame(Frame* frame)
     // Now that the frame is updated, fire events and update the selection focused states of both frames.
     if (oldFrame && oldFrame->view()) {
         oldFrame->selection().setFocused(false);
-        oldFrame->document()->dispatchWindowEvent(Event::create(eventNames().blurEvent, false, false));
+        oldFrame->document()->dispatchWindowEvent(Event::create(eventNames().blurEvent, Event::CanBubble::No, Event::IsCancelable::No));
     }
 
     if (newFrame && newFrame->view() && isFocused()) {
         newFrame->selection().setFocused(true);
-        newFrame->document()->dispatchWindowEvent(Event::create(eventNames().focusEvent, false, false));
+        newFrame->document()->dispatchWindowEvent(Event::create(eventNames().focusEvent, Event::CanBubble::No, Event::IsCancelable::No));
     }
 
     m_page.chrome().focusedFrameChanged(newFrame.get());
@@ -353,7 +353,7 @@ Frame& FocusController::focusedOrMainFrame() const
 
 void FocusController::setFocused(bool focused)
 {
-    m_page.setActivityState(focused ? m_activityState | ActivityState::IsFocused : m_activityState & ~ActivityState::IsFocused);
+    m_page.setActivityState(focused ? m_activityState | ActivityState::IsFocused : m_activityState - ActivityState::IsFocused);
 }
 
 void FocusController::setFocusedInternal(bool focused)
@@ -841,23 +841,23 @@ bool FocusController::setFocusedElement(Element* element, Frame& newFocusedFrame
     return true;
 }
 
-void FocusController::setActivityState(ActivityState::Flags activityState)
+void FocusController::setActivityState(OptionSet<ActivityState::Flag> activityState)
 {
-    ActivityState::Flags changed = m_activityState ^ activityState;
+    auto changed = m_activityState ^ activityState;
     m_activityState = activityState;
 
     if (changed & ActivityState::IsFocused)
-        setFocusedInternal(activityState & ActivityState::IsFocused);
+        setFocusedInternal(activityState.contains(ActivityState::IsFocused));
     if (changed & ActivityState::WindowIsActive) {
-        setActiveInternal(activityState & ActivityState::WindowIsActive);
+        setActiveInternal(activityState.contains(ActivityState::WindowIsActive));
         if (changed & ActivityState::IsVisible)
-            setIsVisibleAndActiveInternal(activityState & ActivityState::WindowIsActive);
+            setIsVisibleAndActiveInternal(activityState.contains(ActivityState::WindowIsActive));
     }
 }
 
 void FocusController::setActive(bool active)
 {
-    m_page.setActivityState(active ? m_activityState | ActivityState::WindowIsActive : m_activityState & ~ActivityState::WindowIsActive);
+    m_page.setActivityState(active ? m_activityState | ActivityState::WindowIsActive : m_activityState - ActivityState::WindowIsActive);
 }
 
 void FocusController::setActiveInternal(bool active)

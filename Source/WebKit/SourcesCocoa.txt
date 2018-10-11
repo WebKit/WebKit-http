@@ -1,0 +1,552 @@
+// Copyright (C) 2018 Apple Inc. All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+// THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+// BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+
+NetworkProcess/cache/NetworkCacheCodersCocoa.cpp
+NetworkProcess/cache/NetworkCacheDataCocoa.mm
+NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm
+
+NetworkProcess/cocoa/NetworkActivityTrackerCocoa.mm
+NetworkProcess/cocoa/NetworkDataTaskCocoa.mm
+NetworkProcess/cocoa/NetworkProcessCocoa.mm
+NetworkProcess/cocoa/NetworkSessionCocoa.mm
+
+NetworkProcess/Cookies/mac/WebCookieManagerMac.mm
+
+NetworkProcess/CustomProtocols/Cocoa/LegacyCustomProtocolManagerCocoa.mm
+NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.cpp
+
+NetworkProcess/Downloads/cocoa/DownloadCocoa.mm
+
+NetworkProcess/EntryPoint/mac/XPCService/NetworkServiceEntryPoint.mm
+
+NetworkProcess/ios/NetworkProcessIOS.mm
+
+NetworkProcess/mac/NetworkProcessMac.mm
+NetworkProcess/mac/RemoteNetworkingContext.mm
+
+NetworkProcess/watchos/NetworkProximityAssertion.mm
+NetworkProcess/watchos/NetworkProximityManager.mm
+
+NetworkProcess/webrtc/LibWebRTCSocketClient.cpp
+NetworkProcess/webrtc/NetworkRTCMonitor.cpp
+NetworkProcess/webrtc/NetworkRTCProvider.cpp
+NetworkProcess/webrtc/NetworkRTCResolver.cpp
+NetworkProcess/webrtc/NetworkRTCResolverCocoa.cpp
+NetworkProcess/webrtc/NetworkRTCSocket.cpp
+
+Platform/cf/ModuleCF.cpp
+
+Platform/cg/CGUtilities.cpp
+
+Platform/classifier/cocoa/ResourceLoadStatisticsClassifierCocoa.cpp
+Platform/classifier/ResourceLoadStatisticsClassifier.cpp
+
+Platform/cocoa/SharedMemoryCocoa.cpp
+Platform/cocoa/WKCrashReporter.mm
+
+Platform/foundation/LoggingFoundation.mm
+
+Platform/ios/AccessibilityIOS.mm
+
+Platform/IPC/mac/ConnectionMac.mm
+Platform/IPC/mac/MachMessage.cpp
+
+Platform/mac/LayerHostingContext.mm
+Platform/mac/MachUtilities.cpp
+Platform/mac/MenuUtilities.mm
+Platform/mac/StringUtilities.mm
+
+Platform/unix/EnvironmentUtilities.cpp
+
+PluginProcess/EntryPoint/mac/XPCService/PluginServiceEntryPoint.mm @no-unify
+
+PluginProcess/mac/PluginControllerProxyMac.mm @no-unify
+PluginProcess/mac/PluginProcessMac.mm @no-unify
+
+Shared/API/c/cf/WKErrorCF.cpp @no-unify
+Shared/API/c/cf/WKStringCF.mm @no-unify
+Shared/API/c/cf/WKURLCF.mm @no-unify
+
+Shared/API/c/cg/WKImageCG.cpp @no-unify
+
+Shared/API/c/mac/WKCertificateInfoMac.mm @no-unify
+Shared/API/c/mac/WKObjCTypeWrapperRef.mm @no-unify
+Shared/API/c/mac/WKURLRequestNS.mm @no-unify
+Shared/API/c/mac/WKURLResponseNS.mm @no-unify
+Shared/API/c/mac/WKWebArchive.cpp @no-unify
+Shared/API/c/mac/WKWebArchiveResource.cpp @no-unify
+
+Shared/API/Cocoa/_WKFrameHandle.mm @no-unify
+Shared/API/Cocoa/_WKHitTestResult.mm @no-unify
+Shared/API/Cocoa/_WKNSFileManagerExtras.mm @no-unify
+Shared/API/Cocoa/_WKNSWindowExtras.mm @no-unify
+Shared/API/Cocoa/_WKRemoteObjectInterface.mm @no-unify
+Shared/API/Cocoa/_WKRemoteObjectRegistry.mm @no-unify
+Shared/API/Cocoa/RemoteObjectInvocation.mm @no-unify
+Shared/API/Cocoa/RemoteObjectRegistry.mm @no-unify
+Shared/API/Cocoa/WKBrowsingContextHandle.mm @no-unify
+Shared/API/Cocoa/WKRemoteObject.mm @no-unify
+Shared/API/Cocoa/WKRemoteObjectCoder.mm @no-unify
+
+Shared/APIWebArchive.mm
+Shared/APIWebArchiveResource.mm
+Shared/AssistedNodeInformation.cpp
+Shared/VisibleContentRectUpdateInfo.cpp
+Shared/WebSQLiteDatabaseTracker.cpp
+
+Shared/cf/ArgumentCodersCF.cpp @no-unify
+Shared/cf/CookieStorageUtilsCF.mm
+
+Shared/cg/ShareableBitmapCG.cpp
+
+Shared/Authentication/cocoa/AuthenticationManagerCocoa.mm
+
+Shared/Cocoa/APIDataCocoa.mm
+Shared/Cocoa/APIObject.mm
+Shared/Cocoa/ChildProcessCocoa.mm
+Shared/Cocoa/CompletionHandlerCallChecker.mm
+Shared/Cocoa/DataDetectionResult.mm
+Shared/Cocoa/LoadParametersCocoa.mm
+Shared/Cocoa/SharedRingBufferStorage.cpp
+Shared/Cocoa/WebCoreArgumentCodersCocoa.mm
+Shared/Cocoa/WebErrorsCocoa.mm
+Shared/Cocoa/WebKit2InitializeCocoa.mm
+Shared/Cocoa/WKNSArray.mm
+Shared/Cocoa/WKNSData.mm
+Shared/Cocoa/WKNSDictionary.mm
+Shared/Cocoa/WKNSError.mm
+Shared/Cocoa/WKNSNumber.mm
+Shared/Cocoa/WKNSString.mm
+Shared/Cocoa/WKNSURL.mm
+Shared/Cocoa/WKNSURLExtras.mm
+Shared/Cocoa/WKNSURLRequest.mm
+Shared/Cocoa/WKObject.mm
+
+Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.mm
+Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.mm
+
+Shared/ios/ChildProcessIOS.mm
+Shared/ios/InteractionInformationAtPosition.mm
+Shared/ios/InteractionInformationRequest.cpp
+Shared/ios/NativeWebKeyboardEventIOS.mm
+Shared/ios/NativeWebMouseEventIOS.mm
+Shared/ios/NativeWebTouchEventIOS.mm
+Shared/ios/QuickLookDocumentData.cpp
+Shared/ios/WebIconUtilities.mm
+Shared/ios/WebIOSEventFactory.mm
+Shared/ios/WebPlatformTouchPointIOS.cpp
+Shared/ios/WebTouchEventIOS.cpp
+
+Shared/mac/ArgumentCodersMac.mm
+Shared/mac/AttributedString.mm
+Shared/mac/ChildProcessMac.mm
+Shared/mac/CodeSigning.mm
+Shared/mac/ColorSpaceData.mm
+Shared/mac/HangDetectionDisablerMac.mm
+Shared/mac/NativeWebGestureEventMac.mm
+Shared/mac/NativeWebKeyboardEventMac.mm
+Shared/mac/NativeWebMouseEventMac.mm
+Shared/mac/NativeWebWheelEventMac.mm
+Shared/mac/ObjCObjectGraph.mm
+Shared/mac/PasteboardTypes.mm
+Shared/mac/PDFKitImports.mm
+Shared/mac/PrintInfoMac.mm
+Shared/mac/SandboxExtensionMac.mm
+Shared/mac/SandboxInitialiationParametersMac.mm
+Shared/mac/SandboxUtilities.mm
+Shared/mac/SecItemRequestData.cpp
+Shared/mac/SecItemResponseData.cpp
+Shared/mac/SecItemShim.cpp
+Shared/mac/WebCoreArgumentCodersMac.mm
+Shared/mac/WebEventFactory.mm
+Shared/mac/WebGestureEvent.cpp
+Shared/mac/WebHitTestResultData.mm
+Shared/mac/WebMemorySampler.mac.mm
+
+Shared/Plugins/mac/PluginSandboxProfile.mm
+
+Shared/Plugins/Netscape/mac/NetscapePluginModuleMac.mm
+Shared/Plugins/Netscape/mac/PluginInformationMac.mm
+
+Shared/RemoteLayerTree/RemoteLayerBackingStore.mm
+Shared/RemoteLayerTree/RemoteLayerBackingStoreCollection.mm
+Shared/RemoteLayerTree/RemoteLayerTreePropertyApplier.mm
+Shared/RemoteLayerTree/RemoteLayerTreeTransaction.mm
+Shared/RemoteLayerTree/RemoteScrollingCoordinatorTransaction.cpp
+
+StorageProcess/EntryPoint/mac/XPCService/StorageServiceEntryPoint.mm @no-unify
+
+StorageProcess/ios/StorageProcessIOS.mm @no-unify
+
+StorageProcess/mac/StorageProcessMac.mm @no-unify
+
+UIProcess/_WKWebViewPrintFormatter.mm
+UIProcess/ApplicationStateTracker.mm
+UIProcess/HighPerformanceGraphicsUsageSampler.cpp
+UIProcess/PerActivityStateCPUUsageSampler.cpp
+UIProcess/WebDataListSuggestionsDropdown.cpp
+UIProcess/WebMediaSessionFocusManager.cpp
+UIProcess/WebMediaSessionFocusManagerClient.cpp
+UIProcess/WebResourceLoadStatisticsStore.cpp
+UIProcess/WebResourceLoadStatisticsTelemetry.cpp
+UIProcess/WKImagePreviewViewController.mm
+UIProcess/WKInspectorHighlightView.mm
+
+UIProcess/ApplePay/WebPaymentCoordinatorProxy.cpp
+
+UIProcess/API/APIAttachment.cpp @no-unify
+UIProcess/API/APIWebsiteDataRecord.cpp @no-unify
+
+UIProcess/API/C/WKContextMenuListener.cpp @no-unify
+UIProcess/API/C/WKMediaSessionFocusManager.cpp @no-unify
+UIProcess/API/C/WKTestingSupport.cpp @no-unify
+UIProcess/API/C/WKUserContentExtensionStoreRef.cpp @no-unify
+UIProcess/API/C/WKUserScriptRef.cpp @no-unify
+
+UIProcess/API/C/cg/WKIconDatabaseCG.cpp @no-unify
+
+UIProcess/API/C/mac/WKContextPrivateMac.mm @no-unify
+UIProcess/API/C/mac/WKPagePrivateMac.mm @no-unify
+UIProcess/API/C/mac/WKProtectionSpaceNS.mm @no-unify
+
+UIProcess/API/Cocoa/_WKActivatedElementInfo.mm @no-unify
+UIProcess/API/Cocoa/_WKApplicationManifest.mm @no-unify
+UIProcess/API/Cocoa/_WKAttachment.mm @no-unify
+UIProcess/API/Cocoa/_WKAutomationSession.mm @no-unify
+UIProcess/API/Cocoa/_WKAutomationSessionConfiguration.mm @no-unify
+UIProcess/API/Cocoa/_WKContextMenuElementInfo.mm @no-unify
+UIProcess/API/Cocoa/_WKDownload.mm @no-unify
+UIProcess/API/Cocoa/_WKElementAction.mm @no-unify
+UIProcess/API/Cocoa/_WKErrorRecoveryAttempting.mm @no-unify
+UIProcess/API/Cocoa/_WKExperimentalFeature.mm @no-unify
+UIProcess/API/Cocoa/_WKGeolocationPosition.mm @no-unify
+UIProcess/API/Cocoa/_WKLinkIconParameters.mm @no-unify
+UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm @no-unify
+UIProcess/API/Cocoa/_WKRemoteWebInspectorViewController.mm @no-unify
+UIProcess/API/Cocoa/_WKSessionState.mm @no-unify
+UIProcess/API/Cocoa/_WKThumbnailView.mm @no-unify
+UIProcess/API/Cocoa/_WKUserContentExtensionStore.mm @no-unify
+UIProcess/API/Cocoa/_WKUserContentFilter.mm @no-unify
+UIProcess/API/Cocoa/_WKUserContentWorld.mm @no-unify
+UIProcess/API/Cocoa/_WKUserInitiatedAction.mm @no-unify
+UIProcess/API/Cocoa/_WKUserStyleSheet.mm @no-unify
+UIProcess/API/Cocoa/_WKVisitedLinkStore.mm @no-unify
+UIProcess/API/Cocoa/_WKWebsiteDataSize.mm @no-unify
+UIProcess/API/Cocoa/_WKWebsiteDataStore.mm @no-unify
+UIProcess/API/Cocoa/_WKWebsiteDataStoreConfiguration.mm @no-unify
+UIProcess/API/Cocoa/_WKWebsitePolicies.mm @no-unify
+UIProcess/API/Cocoa/APIContentRuleListStoreCocoa.mm @no-unify
+UIProcess/API/Cocoa/APISerializedScriptValueCocoa.mm @no-unify
+UIProcess/API/Cocoa/APIWebsiteDataStoreCocoa.mm @no-unify
+UIProcess/API/Cocoa/LegacyBundleForClass.mm @no-unify
+UIProcess/API/Cocoa/WKBackForwardList.mm @no-unify
+UIProcess/API/Cocoa/WKBackForwardListItem.mm @no-unify
+UIProcess/API/Cocoa/WKBrowsingContextController.mm @no-unify
+UIProcess/API/Cocoa/WKBrowsingContextGroup.mm @no-unify
+UIProcess/API/Cocoa/WKConnection.mm @no-unify
+UIProcess/API/Cocoa/WKContentRuleList.mm @no-unify
+UIProcess/API/Cocoa/WKContentRuleListStore.mm @no-unify
+UIProcess/API/Cocoa/WKError.mm @no-unify
+UIProcess/API/Cocoa/WKFrameInfo.mm @no-unify
+UIProcess/API/Cocoa/WKHTTPCookieStore.mm @no-unify
+UIProcess/API/Cocoa/WKMenuItemIdentifiers.mm @no-unify
+UIProcess/API/Cocoa/WKNavigation.mm @no-unify
+UIProcess/API/Cocoa/WKNavigationAction.mm @no-unify
+UIProcess/API/Cocoa/WKNavigationData.mm @no-unify
+UIProcess/API/Cocoa/WKNavigationResponse.mm @no-unify
+UIProcess/API/Cocoa/WKNSURLAuthenticationChallenge.mm @no-unify
+UIProcess/API/Cocoa/WKOpenPanelParameters.mm @no-unify
+UIProcess/API/Cocoa/WKPreferences.mm @no-unify
+UIProcess/API/Cocoa/WKPreviewActionItem.mm @no-unify
+UIProcess/API/Cocoa/WKPreviewActionItemIdentifiers.mm @no-unify
+UIProcess/API/Cocoa/WKPreviewElementInfo.mm @no-unify
+UIProcess/API/Cocoa/WKProcessGroup.mm @no-unify
+UIProcess/API/Cocoa/WKProcessPool.mm @no-unify
+UIProcess/API/Cocoa/WKScriptMessage.mm @no-unify
+UIProcess/API/Cocoa/WKSecurityOrigin.mm @no-unify
+UIProcess/API/Cocoa/WKSnapshotConfiguration.mm @no-unify
+UIProcess/API/Cocoa/WKTypeRefWrapper.mm @no-unify
+UIProcess/API/Cocoa/WKURLSchemeTask.mm @no-unify
+UIProcess/API/Cocoa/WKUserContentController.mm @no-unify
+UIProcess/API/Cocoa/WKUserScript.mm @no-unify
+UIProcess/API/Cocoa/WKWebsiteDataRecord.mm @no-unify
+UIProcess/API/Cocoa/WKWebsiteDataStore.mm @no-unify
+UIProcess/API/Cocoa/WKWebView.mm @no-unify
+UIProcess/API/Cocoa/WKWebViewConfiguration.mm @no-unify
+UIProcess/API/Cocoa/WKWindowFeatures.mm @no-unify
+
+UIProcess/API/mac/WKView.mm @no-unify
+
+UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm
+
+UIProcess/ApplePay/ios/WebPaymentCoordinatorProxyIOS.mm @no-unify
+
+UIProcess/ApplePay/mac/WebPaymentCoordinatorProxyMac.mm @no-unify
+
+UIProcess/Authentication/cocoa/AuthenticationChallengeProxyCocoa.mm
+UIProcess/Authentication/cocoa/SecKeyProxyStore.mm
+
+UIProcess/Authentication/mac/WebCredentialMac.mm
+
+UIProcess/Automation/cocoa/WebAutomationSessionCocoa.mm
+
+UIProcess/Automation/ios/WebAutomationSessionIOS.mm
+
+UIProcess/Automation/mac/WebAutomationSessionMac.mm
+
+UIProcess/Cocoa/AutomationClient.mm
+UIProcess/Cocoa/AutomationSessionClient.mm
+UIProcess/Cocoa/DiagnosticLoggingClient.mm
+UIProcess/Cocoa/DownloadClient.mm
+UIProcess/Cocoa/FindClient.mm
+UIProcess/Cocoa/FullscreenClient.mm
+UIProcess/Cocoa/IconLoadingDelegate.mm
+UIProcess/Cocoa/LegacyCustomProtocolManagerClient.mm
+UIProcess/Cocoa/NavigationState.mm
+UIProcess/Cocoa/PageClientImplCocoa.mm
+UIProcess/Cocoa/PlaybackSessionManagerProxy.mm
+UIProcess/Cocoa/ResourceLoadStatisticsMemoryStoreCocoa.mm
+UIProcess/Cocoa/SafeBrowsingResultCocoa.mm
+UIProcess/Cocoa/SessionStateCoding.mm
+UIProcess/Cocoa/SystemPreviewControllerCocoa.mm
+UIProcess/Cocoa/UIDelegate.mm
+UIProcess/Cocoa/UserMediaCaptureManagerProxy.cpp
+UIProcess/Cocoa/VersionChecks.mm
+UIProcess/Cocoa/VideoFullscreenManagerProxy.mm
+UIProcess/Cocoa/ViewGestureController.cpp
+UIProcess/Cocoa/WebPageProxyCocoa.mm
+UIProcess/Cocoa/WebPasteboardProxyCocoa.mm
+UIProcess/Cocoa/WebProcessPoolCocoa.mm
+UIProcess/Cocoa/WebProcessProxyCocoa.mm
+UIProcess/Cocoa/WebURLSchemeHandlerCocoa.mm
+UIProcess/Cocoa/WebViewImpl.mm
+UIProcess/Cocoa/WKReloadFrameErrorRecoveryAttempter.mm
+UIProcess/Cocoa/WKWebViewContentProviderRegistry.mm
+
+UIProcess/CredentialManagement/WebCredentialsMessengerProxy.cpp
+
+UIProcess/Gamepad/cocoa/UIGamepadProviderCocoa.mm
+UIProcess/Gamepad/ios/UIGamepadProviderIOS.mm
+UIProcess/Gamepad/mac/UIGamepadProviderMac.mm
+
+UIProcess/ios/DragDropInteractionState.mm
+
+UIProcess/ios/forms/WKAirPlayRoutePicker.mm
+UIProcess/ios/forms/WKDatePickerViewController.mm
+UIProcess/ios/forms/WKFileUploadPanel.mm
+UIProcess/ios/forms/WKFocusedFormControlView.mm
+UIProcess/ios/forms/WKFormColorControl.mm
+UIProcess/ios/forms/WKFormColorPicker.mm
+UIProcess/ios/forms/WKFormInputControl.mm
+UIProcess/ios/forms/WKFormPopover.mm
+UIProcess/ios/forms/WKFormSelectControl.mm
+UIProcess/ios/forms/WKFormSelectPicker.mm
+UIProcess/ios/forms/WKFormSelectPopover.mm
+UIProcess/ios/forms/WKNumberPadView.mm
+UIProcess/ios/forms/WKNumberPadViewController.mm
+UIProcess/ios/forms/WKQuickboardListViewController.mm
+UIProcess/ios/forms/WKSelectMenuListViewController.mm
+UIProcess/ios/forms/WKTextInputListViewController.mm
+UIProcess/ios/forms/WKTimePickerViewController.mm
+
+UIProcess/ios/fullscreen/FullscreenTouchSecheuristic.cpp
+UIProcess/ios/fullscreen/WKFullscreenStackView.mm
+UIProcess/ios/fullscreen/WKFullScreenViewController.mm
+UIProcess/ios/fullscreen/WKFullScreenWindowControllerIOS.mm
+
+UIProcess/ios/InputViewUpdateDeferrer.mm
+UIProcess/ios/LayerRepresentation.mm
+UIProcess/ios/PageClientImplIOS.mm
+UIProcess/ios/ProcessAssertionIOS.mm
+UIProcess/ios/ResourceLoadStatisticsPersistentStorageIOS.mm
+UIProcess/ios/SmartMagnificationController.mm
+UIProcess/ios/TextCheckerIOS.mm
+UIProcess/ios/ViewGestureControllerIOS.mm
+UIProcess/ios/WebMemoryPressureHandlerIOS.mm
+UIProcess/ios/WebPageProxyIOS.mm
+UIProcess/ios/WebProcessProxyIOS.mm
+UIProcess/ios/WKActionSheet.mm
+UIProcess/ios/WKActionSheetAssistant.mm
+UIProcess/ios/WKApplicationStateTrackingView.mm
+UIProcess/ios/WKContentView.mm @no-unify
+UIProcess/ios/WKContentViewInteraction.mm @no-unify
+UIProcess/ios/WKGeolocationProviderIOS.mm
+UIProcess/ios/WKGeolocationProviderIOSObjCSecurityOrigin.mm
+UIProcess/ios/WKInspectorNodeSearchGestureRecognizer.mm
+UIProcess/ios/WKKeyboardScrollingAnimator.mm
+UIProcess/ios/WKLegacyPDFView.mm
+UIProcess/ios/WKPasswordView.mm
+UIProcess/ios/WKPDFPageNumberIndicator.mm
+UIProcess/ios/WKPDFView.mm
+UIProcess/ios/WKScrollView.mm
+UIProcess/ios/WKSyntheticClickTapGestureRecognizer.m
+UIProcess/ios/WKSystemPreviewView.mm
+
+UIProcess/Launcher/mac/ProcessLauncherMac.mm
+
+UIProcess/mac/CorrectionPanel.mm
+UIProcess/mac/DisplayLink.cpp
+UIProcess/mac/LegacySessionStateCoding.cpp
+UIProcess/mac/PageClientImplMac.mm
+UIProcess/mac/RemoteWebInspectorProxyMac.mm
+UIProcess/mac/SecItemShimProxy.cpp
+UIProcess/mac/ServicesController.mm
+UIProcess/mac/TextCheckerMac.mm
+UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.mm
+UIProcess/mac/ViewGestureControllerMac.mm
+UIProcess/mac/ViewSnapshotStore.mm
+UIProcess/mac/WebColorPickerMac.mm
+UIProcess/mac/WebContextMenuProxyMac.mm
+UIProcess/mac/WebCookieManagerProxyMac.mm
+UIProcess/mac/WebDataListSuggestionsDropdownMac.mm
+UIProcess/mac/WebInspectorProxyMac.mm
+UIProcess/mac/WebPageProxyMac.mm
+UIProcess/mac/WebPopupMenuProxyMac.mm
+UIProcess/mac/WebPreferencesMac.mm
+UIProcess/mac/WebProcessProxyMac.mm
+UIProcess/mac/WindowServerConnection.mm
+UIProcess/mac/WKFullKeyboardAccessWatcher.mm
+UIProcess/mac/WKFullScreenWindowController.mm
+UIProcess/mac/WKImmediateActionController.mm
+UIProcess/mac/WKInspectorViewController.mm
+UIProcess/mac/WKInspectorWindow.mm
+UIProcess/mac/WKInspectorWKWebView.mm
+UIProcess/mac/WKPrintingView.mm
+UIProcess/mac/WKSharingServicePickerDelegate.mm
+UIProcess/mac/WKTextFinderClient.mm
+UIProcess/mac/WKTextInputWindowController.mm
+UIProcess/mac/WKViewLayoutStrategy.mm
+
+UIProcess/Network/CustomProtocols/LegacyCustomProtocolManagerProxy.cpp
+
+UIProcess/Plugins/mac/PluginInfoStoreMac.mm
+UIProcess/Plugins/mac/PluginProcessManagerMac.mm
+UIProcess/Plugins/mac/PluginProcessProxyMac.mm
+
+UIProcess/RemoteLayerTree/ios/RemoteLayerTreeHostIOS.mm
+UIProcess/RemoteLayerTree/ios/RemoteScrollingCoordinatorProxyIOS.mm
+UIProcess/RemoteLayerTree/ios/ScrollingTreeOverflowScrollingNodeIOS.mm
+UIProcess/RemoteLayerTree/ios/ScrollingTreeScrollingNodeDelegateIOS.mm
+
+UIProcess/RemoteLayerTree/RemoteLayerTreeDrawingAreaProxy.mm
+UIProcess/RemoteLayerTree/RemoteLayerTreeHost.mm
+UIProcess/RemoteLayerTree/RemoteLayerTreeScrollingPerformanceData.mm
+UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.cpp
+UIProcess/RemoteLayerTree/RemoteScrollingTree.cpp
+
+UIProcess/WebsiteData/Cocoa/WebsiteDataStoreCocoa.mm
+
+UIProcess/WebStorage/StorageManager.cpp
+
+UIProcess/WebStorage/ios/LocalStorageDatabaseTrackerIOS.mm
+
+WebProcess/ApplePay/WebPaymentCoordinator.cpp
+
+WebProcess/CredentialManagement/WebCredentialsMessenger.cpp
+
+WebProcess/cocoa/PlaybackSessionManager.mm
+WebProcess/cocoa/UserMediaCaptureManager.cpp
+WebProcess/cocoa/VideoFullscreenManager.mm
+WebProcess/cocoa/WebProcessCocoa.mm
+
+WebProcess/EntryPoint/mac/XPCService/WebContentServiceEntryPoint.mm
+
+WebProcess/InjectedBundle/API/c/WKBundleFileHandleRef.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundlePageBanner.cpp @no-unify
+
+WebProcess/InjectedBundle/API/c/mac/WKBundleMac.mm @no-unify
+WebProcess/InjectedBundle/API/c/mac/WKBundlePageBannerMac.mm @no-unify
+
+WebProcess/InjectedBundle/API/Cocoa/WKWebProcessBundleParameters.mm @no-unify
+WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.mm @no-unify
+WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInHitTestResult.mm @no-unify
+WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.mm @no-unify
+WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInPageGroup.mm @no-unify
+WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInRangeHandle.mm @no-unify
+WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInScriptWorld.mm @no-unify
+
+WebProcess/InjectedBundle/API/mac/WKDOMDocument.mm @no-unify
+WebProcess/InjectedBundle/API/mac/WKDOMElement.mm @no-unify
+WebProcess/InjectedBundle/API/mac/WKDOMInternals.mm @no-unify
+WebProcess/InjectedBundle/API/mac/WKDOMNode.mm @no-unify
+WebProcess/InjectedBundle/API/mac/WKDOMRange.mm @no-unify
+WebProcess/InjectedBundle/API/mac/WKDOMText.mm @no-unify
+WebProcess/InjectedBundle/API/mac/WKDOMTextIterator.mm @no-unify
+WebProcess/InjectedBundle/API/mac/WKWebProcessPlugIn.mm @no-unify
+WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm @no-unify
+
+WebProcess/InjectedBundle/mac/InjectedBundleMac.mm
+
+WebProcess/MediaCache/WebMediaKeyStorageManager.cpp
+
+WebProcess/Plugins/Netscape/mac/NetscapePluginMac.mm
+WebProcess/Plugins/Netscape/mac/PluginProxyMac.mm
+
+WebProcess/Plugins/PDF/PDFPlugin.mm
+WebProcess/Plugins/PDF/PDFPluginAnnotation.mm
+WebProcess/Plugins/PDF/PDFPluginChoiceAnnotation.mm
+WebProcess/Plugins/PDF/PDFPluginPasswordField.mm
+WebProcess/Plugins/PDF/PDFPluginTextAnnotation.mm
+
+WebProcess/WebCoreSupport/WebDataListSuggestionPicker.cpp
+WebProcess/WebCoreSupport/WebPasteboardOverrides.cpp
+WebProcess/WebCoreSupport/WebValidationMessageClient.cpp
+
+WebProcess/WebCoreSupport/ios/WebChromeClientIOS.mm
+WebProcess/WebCoreSupport/ios/WebEditorClientIOS.mm
+WebProcess/WebCoreSupport/ios/WebFrameLoaderClientIOS.mm
+WebProcess/WebCoreSupport/ios/WebPreviewLoaderClient.cpp
+
+WebProcess/WebCoreSupport/mac/WebAlternativeTextClient.cpp
+WebProcess/WebCoreSupport/mac/WebContextMenuClientMac.mm
+WebProcess/WebCoreSupport/mac/WebDragClientMac.mm
+WebProcess/WebCoreSupport/mac/WebEditorClientMac.mm
+WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.mm
+WebProcess/WebCoreSupport/mac/WebPopupMenuMac.mm
+
+WebProcess/WebPage/ViewGestureGeometryCollector.cpp
+WebProcess/WebPage/ViewUpdateDispatcher.cpp
+WebProcess/WebPage/WKAccessibilityWebPageObjectIOS.mm
+
+WebProcess/WebPage/Cocoa/WebPageCocoa.mm
+
+WebProcess/WebPage/ios/FindControllerIOS.mm
+WebProcess/WebPage/ios/WebPageIOS.mm
+
+WebProcess/WebPage/mac/DrawingAreaMac.cpp
+WebProcess/WebPage/mac/PageBannerMac.mm
+WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm
+WebProcess/WebPage/mac/WebInspectorUIMac.mm
+WebProcess/WebPage/mac/WebPageMac.mm
+WebProcess/WebPage/mac/WKAccessibilityWebPageObjectBase.mm
+WebProcess/WebPage/mac/WKAccessibilityWebPageObjectMac.mm
+
+WebProcess/WebPage/RemoteLayerTree/GraphicsLayerCARemote.cpp
+WebProcess/WebPage/RemoteLayerTree/PlatformCAAnimationRemote.mm
+WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemote.cpp
+WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemoteCustom.mm
+WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemoteTiledBacking.cpp
+WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeContext.mm
+WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDisplayRefreshMonitor.mm
+WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDrawingArea.mm @no-unify
+WebProcess/WebPage/RemoteLayerTree/RemoteScrollingCoordinator.mm

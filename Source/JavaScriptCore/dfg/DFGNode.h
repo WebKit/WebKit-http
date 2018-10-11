@@ -117,6 +117,19 @@ struct NewArrayBufferData {
 static_assert(sizeof(IndexingType) <= sizeof(unsigned), "");
 static_assert(sizeof(NewArrayBufferData) == sizeof(uint64_t), "");
 
+struct DataViewData {
+    union {
+        struct {
+            uint8_t byteSize;
+            bool isSigned;
+            bool isFloatingPoint; // Used for the DataViewSet node.
+            TriState isLittleEndian;
+        };
+        uint64_t asQuadWord;
+    };
+};
+static_assert(sizeof(DataViewData) == sizeof(uint64_t), "");
+
 struct BranchTarget {
     BranchTarget()
         : block(0)
@@ -448,6 +461,15 @@ public:
         m_opInfo = set;
     }
 
+    void convertToCheckStructureOrEmpty(RegisteredStructureSet* set)
+    {
+        if (SpecCellCheck & SpecEmpty)
+            setOpAndDefaultFlags(CheckStructureOrEmpty);
+        else
+            setOpAndDefaultFlags(CheckStructure);
+        m_opInfo = set;
+    }
+
     void convertCheckStructureOrEmptyToCheckStructure()
     {
         ASSERT(op() == CheckStructureOrEmpty);
@@ -681,7 +703,7 @@ public:
     
     void convertToToString()
     {
-        ASSERT(m_op == ToPrimitive);
+        ASSERT(m_op == ToPrimitive || m_op == StringValueOf);
         m_op = ToString;
     }
 
@@ -744,8 +766,8 @@ public:
 
     void convertToCallDOM(Graph&);
 
-    void convertToRegExpExecNonGlobalOrSticky(FrozenValue* regExp);
-    void convertToRegExpMatchFastGlobal(FrozenValue* regExp);
+    void convertToRegExpExecNonGlobalOrStickyWithoutChecks(FrozenValue* regExp);
+    void convertToRegExpMatchFastGlobalWithoutChecks(FrozenValue* regExp);
 
     void convertToSetRegExpObjectLastIndex()
     {
@@ -1659,6 +1681,8 @@ public:
         case GetDynamicVar:
         case ExtractValueFromWeakMapGet:
         case ToThis:
+        case DataViewGetInt:
+        case DataViewGetFloat:
             return true;
         default:
             return false;
@@ -2141,6 +2165,12 @@ public:
     {
         ASSERT(op() == InitializeEntrypointArguments);
         return m_opInfo.as<unsigned>();
+    }
+
+    DataViewData dataViewData()
+    {
+        ASSERT(op() == DataViewGetInt || op() == DataViewGetFloat || op() == DataViewSet);
+        return bitwise_cast<DataViewData>(m_opInfo.as<uint64_t>());
     }
 
     bool shouldGenerate()

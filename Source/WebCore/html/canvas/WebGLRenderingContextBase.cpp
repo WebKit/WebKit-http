@@ -540,7 +540,8 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(Can
         // The FrameLoaderClient might block creation of a new WebGL context despite the page settings; in
         // particular, if WebGL contexts were lost one or more times via the GL_ARB_robustness extension.
         if (!frame->loader().client().allowWebGL(frame->settings().webGLEnabled())) {
-            canvasElement->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextcreationerrorEvent, false, true, "Web page was not allowed to create a WebGL context."));
+            canvasElement->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextcreationerrorEvent,
+                Event::CanBubble::No, Event::IsCancelable::Yes, "Web page was not allowed to create a WebGL context."));
             return nullptr;
         }
 
@@ -606,8 +607,10 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(Can
 
     auto context = GraphicsContext3D::create(attributes, hostWindow, renderStyle);
     if (!context || !context->makeContextCurrent()) {
-        if (canvasElement)
-            canvasElement->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextcreationerrorEvent, false, true, "Could not create a WebGL context."));
+        if (canvasElement) {
+            canvasElement->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextcreationerrorEvent,
+                Event::CanBubble::No, Event::IsCancelable::Yes, "Could not create a WebGL context."));
+        }
         return nullptr;
     }
 
@@ -6078,7 +6081,7 @@ void WebGLRenderingContextBase::dispatchContextLostEvent()
     if (!canvas)
         return;
 
-    Ref<WebGLContextEvent> event = WebGLContextEvent::create(eventNames().webglcontextlostEvent, false, true, emptyString());
+    Ref<WebGLContextEvent> event = WebGLContextEvent::create(eventNames().webglcontextlostEvent, Event::CanBubble::No, Event::IsCancelable::Yes, emptyString());
     canvas->dispatchEvent(event);
     m_restoreAllowed = event->defaultPrevented();
     if (m_contextLostMode == RealLostContext && m_restoreAllowed)
@@ -6165,7 +6168,7 @@ void WebGLRenderingContextBase::maybeRestoreContext()
     setupFlags();
     initializeNewContext();
     initializeVertexArrayObjects();
-    canvas->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextrestoredEvent, false, true, emptyString()));
+    canvas->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextrestoredEvent, Event::CanBubble::No, Event::IsCancelable::Yes, emptyString()));
 }
 
 void WebGLRenderingContextBase::dispatchContextChangedEvent()
@@ -6174,7 +6177,7 @@ void WebGLRenderingContextBase::dispatchContextChangedEvent()
     if (!canvas)
         return;
 
-    canvas->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextchangedEvent, false, true, emptyString()));
+    canvas->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextchangedEvent, Event::CanBubble::No, Event::IsCancelable::Yes, emptyString()));
 }
 
 void WebGLRenderingContextBase::simulateContextChanged()
@@ -6433,16 +6436,15 @@ bool WebGLRenderingContextBase::enableSupportedExtension(ASCIILiteral extensionN
     return true;
 }
 
-void WebGLRenderingContextBase::activityStateDidChange(ActivityState::Flags oldActivityState, ActivityState::Flags newActivityState)
+void WebGLRenderingContextBase::activityStateDidChange(OptionSet<ActivityState::Flag> oldActivityState, OptionSet<ActivityState::Flag> newActivityState)
 {
     if (!m_context)
         return;
 
-    ActivityState::Flags changed = oldActivityState ^ newActivityState;
+    auto changed = oldActivityState ^ newActivityState;
     if (isHighPerformanceContext(m_context)) {
-        if (changed & ActivityState::IsVisible) {
-            m_context->setContextVisibility(newActivityState & ActivityState::IsVisible);
-        }
+        if (changed & ActivityState::IsVisible)
+            m_context->setContextVisibility(newActivityState.contains(ActivityState::IsVisible));
     }
 
     auto* canvas = htmlCanvas();

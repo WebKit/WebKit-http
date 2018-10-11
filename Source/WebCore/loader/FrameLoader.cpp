@@ -2270,8 +2270,15 @@ void FrameLoader::open(CachedFrameBase& cachedFrame)
     // Use the previous ScrollView's frame rect.
     if (previousViewFrameRect)
         view->setFrameRect(previousViewFrameRect.value());
-    
-    m_frame.setDocument(document);
+
+    {
+        // Setting the document builds the render tree and runs post style resolution callbacks that can do anything,
+        // including loading a child frame before its been re-attached to the frame tree as part of this restore.
+        // For example, the HTML object element may load its content into a frame in a post style resolution callback.
+        NavigationDisabler disableNavigation { &m_frame };
+        m_frame.setDocument(document);
+    }
+
     document->domWindow()->resumeFromDocumentSuspension();
 
     updateFirstPartyForCookies();
@@ -3155,7 +3162,7 @@ void FrameLoader::dispatchUnloadEvents(UnloadEventPolicy unloadEventPolicy)
             // https://bugs.webkit.org/show_bug.cgi?id=116770
 
             if (m_frame.document()->pageCacheState() == Document::NotInPageCache) {
-                Ref<Event> unloadEvent(Event::create(eventNames().unloadEvent, false, false));
+                Ref<Event> unloadEvent(Event::create(eventNames().unloadEvent, Event::CanBubble::No, Event::IsCancelable::No));
                 // The DocumentLoader (and thus its LoadTiming) might get destroyed
                 // while dispatching the event, so protect it to prevent writing the end
                 // time into freed memory.
@@ -3330,7 +3337,7 @@ void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest& reque
         diagnosticLoggingClient.logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageCacheKey(), DiagnosticLoggingKeys::retrievalKey(), DiagnosticLoggingResultFail, ShouldSample::Yes);
     }
 
-    CompletionHandler<void(void)> completionHandler = [this, shouldContinue] {
+    CompletionHandler<void()> completionHandler = [this, shouldContinue] {
         if (!m_provisionalDocumentLoader)
             return;
         

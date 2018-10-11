@@ -415,18 +415,18 @@ public:
 #endif
 
     // Notifications when the Page starts and stops being presented via a native window.
-    WEBCORE_EXPORT void setActivityState(ActivityState::Flags);
-    ActivityState::Flags activityState() const { return m_activityState; }
+    WEBCORE_EXPORT void setActivityState(OptionSet<ActivityState::Flag>);
+    OptionSet<ActivityState::Flag> activityState() const { return m_activityState; }
 
     bool isWindowActive() const;
     bool isVisibleAndActive() const;
     WEBCORE_EXPORT void setIsVisible(bool);
     WEBCORE_EXPORT void setIsPrerender();
-    bool isVisible() const { return m_activityState & ActivityState::IsVisible; }
+    bool isVisible() const { return m_activityState.contains(ActivityState::IsVisible); }
 
     // Notification that this Page was moved into or out of a native window.
     WEBCORE_EXPORT void setIsInWindow(bool);
-    bool isInWindow() const { return m_activityState & ActivityState::IsInWindow; }
+    bool isInWindow() const { return m_activityState.contains(ActivityState::IsInWindow); }
 
     void setIsClosing() { m_isClosing = true; }
     bool isClosing() const { return m_isClosing; }
@@ -452,9 +452,6 @@ public:
 #if ENABLE(RESOURCE_USAGE)
     void setResourceUsageOverlayVisible(bool);
 #endif
-
-    void setAsRunningUserScripts() { m_isRunningUserScripts = true; }
-    bool isRunningUserScripts() const { return m_isRunningUserScripts; }
 
     void setDebugger(JSC::Debugger*);
     JSC::Debugger* debugger() const { return m_debugger; }
@@ -689,7 +686,9 @@ private:
 
     std::optional<std::pair<MediaCanStartListener&, Document&>> takeAnyMediaCanStartListener();
 
+#if ENABLE(VIDEO)
     void playbackControlsManagerUpdateTimerFired();
+#endif
 
     Vector<Ref<PluginViewBase>> pluginViews();
 
@@ -811,7 +810,7 @@ private:
 
     bool m_isEditable { false };
     bool m_isPrerender { false };
-    ActivityState::Flags m_activityState;
+    OptionSet<ActivityState::Flag> m_activityState;
 
     LayoutMilestones m_requestedLayoutMilestones { 0 };
 
@@ -868,7 +867,9 @@ private:
 
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
 
+#if ENABLE(VIDEO)
     Timer m_playbackControlsManagerUpdateTimer;
+#endif
 
     bool m_allowsMediaDocumentInlinePlayback { false };
     bool m_allowsPlaybackControlsForAutoplayingAudio { false };
@@ -908,7 +909,6 @@ private:
     std::optional<ApplicationManifest> m_applicationManifest;
 #endif
 
-    bool m_isRunningUserScripts { false };
     bool m_shouldEnableICECandidateFilteringByDefault { true };
 };
 

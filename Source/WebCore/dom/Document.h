@@ -235,6 +235,10 @@ class MediaSession;
 class HTMLAttachmentElement;
 #endif
 
+#if ENABLE(INTERSECTION_OBSERVER)
+class IntersectionObserver;
+#endif
+
 namespace Style {
 class Scope;
 };
@@ -637,7 +641,7 @@ public:
     
     WEBCORE_EXPORT DocumentLoader* loader() const;
 
-    WEBCORE_EXPORT ExceptionOr<RefPtr<WindowProxy>> openForBindings(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url, const AtomicString& name, const String& features);
+    WEBCORE_EXPORT ExceptionOr<RefPtr<WindowProxy>> openForBindings(DOMWindow& activeWindow, DOMWindow& firstDOMWindow, const String& url, const AtomicString& name, const String& features);
     WEBCORE_EXPORT ExceptionOr<Document&> openForBindings(Document* responsibleDocument, const String& type, const String& replace);
 
     // FIXME: We should rename this at some point and give back the name 'open' to the HTML specified ones.
@@ -1359,6 +1363,13 @@ public:
     void addViewportDependentPicture(HTMLPictureElement&);
     void removeViewportDependentPicture(HTMLPictureElement&);
 
+#if ENABLE(INTERSECTION_OBSERVER)
+    void addIntersectionObserver(RefPtr<IntersectionObserver>&&);
+    RefPtr<IntersectionObserver> removeIntersectionObserver(IntersectionObserver&);
+    unsigned numberOfIntersectionObservers() const { return m_intersectionObservers.size(); }
+    void updateIntersectionObservations();
+#endif
+
 #if ENABLE(MEDIA_STREAM)
     void setHasCaptureMediaStreamTrack() { m_hasHadCaptureMediaStreamTrack = true; }
     bool hasHadCaptureMediaStreamTrack() const { return m_hasHadCaptureMediaStreamTrack; }
@@ -1469,6 +1480,9 @@ public:
     void updateMainArticleElementAfterLayout();
     bool hasMainArticleElement() const { return !!m_mainArticleElement; }
 
+    void setAsRunningUserScripts() { m_isRunningUserScripts = true; }
+    bool isRunningUserScripts() const { return m_isRunningUserScripts; }
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1574,6 +1588,10 @@ private:
     void didLoadResourceSynchronously() final;
 
     void checkViewportDependentPictures();
+
+#if ENABLE(INTERSECTION_OBSERVER)
+    void notifyIntersectionObserversTimerFired();
+#endif
 
 #if USE(QUICK_LOOK)
     bool shouldEnforceQuickLookSandbox() const;
@@ -1756,6 +1774,12 @@ private:
 #endif
 
     HashSet<HTMLPictureElement*> m_viewportDependentPictures;
+
+#if ENABLE(INTERSECTION_OBSERVER)
+    Vector<RefPtr<IntersectionObserver>> m_intersectionObservers;
+    Vector<WeakPtr<IntersectionObserver>> m_intersectionObserversWithPendingNotifications;
+    Timer m_intersectionObserversNotifyTimer;
+#endif
 
     Timer m_loadEventDelayTimer;
 
@@ -1958,7 +1982,6 @@ private:
 
     static bool hasEverCreatedAnAXObjectCache;
 
-    bool m_hasFrameSpecificStorageAccess { false };
     bool m_grantStorageAccessOverride { false };
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
@@ -1978,6 +2001,8 @@ private:
 #endif
     
     std::unique_ptr<UserGestureIndicator> m_temporaryUserGesture;
+
+    bool m_isRunningUserScripts { false };
 };
 
 Element* eventTargetElementForDocument(Document*);

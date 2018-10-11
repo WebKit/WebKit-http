@@ -228,8 +228,6 @@
 
 #define RELEASE_LOG_IF_ALLOWED(channel, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), channel, __VA_ARGS__)
 
-using namespace WebCore;
-
 // Represents the number of wheel events we can hold in the queue before we start pushing them preemptively.
 static const unsigned wheelEventQueueSizeThreshold = 10;
 
@@ -237,6 +235,7 @@ static const Seconds resetRecentCrashCountDelay = 30_s;
 static unsigned maximumWebProcessRelaunchAttempts = 1;
 
 namespace WebKit {
+using namespace WebCore;
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, webPageProxyCounter, ("WebPageProxy"));
 
@@ -879,8 +878,7 @@ void WebPageProxy::close()
 
     m_isClosed = true;
 
-    if (m_pageLoadStart)
-        reportPageLoadResult(ResourceError { ResourceError::Type::Cancellation });
+    reportPageLoadResult(ResourceError { ResourceError::Type::Cancellation });
 
     if (m_activePopupMenu)
         m_activePopupMenu->cancelTracking();
@@ -1056,7 +1054,7 @@ RefPtr<API::Navigation> WebPageProxy::loadFile(const String& fileURLString, cons
     return WTFMove(navigation);
 }
 
-RefPtr<API::Navigation> WebPageProxy::loadData(API::Data* data, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData)
+RefPtr<API::Navigation> WebPageProxy::loadData(const IPC::DataReference& data, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData)
 {
     if (m_isClosed)
         return nullptr;
@@ -1072,7 +1070,7 @@ RefPtr<API::Navigation> WebPageProxy::loadData(API::Data* data, const String& MI
 
     LoadParameters loadParameters;
     loadParameters.navigationID = navigation->navigationID();
-    loadParameters.data = data->dataReference();
+    loadParameters.data = data;
     loadParameters.MIMEType = MIMEType;
     loadParameters.encodingName = encoding;
     loadParameters.baseURLString = baseURL;
@@ -1086,37 +1084,7 @@ RefPtr<API::Navigation> WebPageProxy::loadData(API::Data* data, const String& MI
     return WTFMove(navigation);
 }
 
-// FIXME: Get rid of loadHTMLString and just use loadData instead.
-RefPtr<API::Navigation> WebPageProxy::loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData)
-{
-    if (m_isClosed)
-        return nullptr;
-
-    auto navigation = m_navigationState->createLoadDataNavigation();
-
-    auto transaction = m_pageLoadState.transaction();
-
-    m_pageLoadState.setPendingAPIRequestURL(transaction, !baseURL.isEmpty() ? baseURL : blankURL().string());
-
-    if (!isValid())
-        reattachToWebProcess();
-
-    LoadParameters loadParameters;
-    loadParameters.navigationID = navigation->navigationID();
-    loadParameters.string = htmlString;
-    loadParameters.MIMEType = "text/html"_s;
-    loadParameters.baseURLString = baseURL;
-    loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
-    addPlatformLoadParameters(loadParameters);
-
-    m_process->assumeReadAccessToBaseURL(baseURL);
-    m_process->send(Messages::WebPage::LoadString(loadParameters), m_pageID);
-    m_process->responsivenessTimer().start();
-
-    return WTFMove(navigation);
-}
-
-void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const WebCore::URL& baseURL, const WebCore::URL& unreachableURL, API::Object* userData)
+void WebPageProxy::loadAlternateHTML(const IPC::DataReference& htmlData, const String& encoding, const WebCore::URL& baseURL, const WebCore::URL& unreachableURL, API::Object* userData)
 {
     // When the UIProcess is in the process of handling a failing provisional load, do not attempt to
     // start a second alternative HTML load as this will prevent the page load state from being
@@ -1140,7 +1108,9 @@ void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const WebCo
 
     LoadParameters loadParameters;
     loadParameters.navigationID = 0;
-    loadParameters.string = htmlString;
+    loadParameters.data = htmlData;
+    loadParameters.MIMEType = "text/html"_s;
+    loadParameters.encodingName = encoding;
     loadParameters.baseURLString = baseURL;
     loadParameters.unreachableURLString = unreachableURL;
     loadParameters.provisionalLoadErrorURLString = m_failingProvisionalLoadURL;
@@ -1149,29 +1119,7 @@ void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const WebCo
 
     m_process->assumeReadAccessToBaseURL(baseURL);
     m_process->assumeReadAccessToBaseURL(unreachableURL);
-    m_process->send(Messages::WebPage::LoadAlternateHTMLString(loadParameters), m_pageID);
-    m_process->responsivenessTimer().start();
-}
-
-void WebPageProxy::loadPlainTextString(const String& string, API::Object* userData)
-{
-    if (m_isClosed)
-        return;
-
-    if (!isValid())
-        reattachToWebProcess();
-
-    auto transaction = m_pageLoadState.transaction();
-    m_pageLoadState.setPendingAPIRequestURL(transaction, blankURL().string());
-
-    LoadParameters loadParameters;
-    loadParameters.navigationID = 0;
-    loadParameters.string = string;
-    loadParameters.MIMEType = "text/plain"_s;
-    loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
-    addPlatformLoadParameters(loadParameters);
-
-    m_process->send(Messages::WebPage::LoadString(loadParameters), m_pageID);
+    m_process->send(Messages::WebPage::LoadAlternateHTML(loadParameters), m_pageID);
     m_process->responsivenessTimer().start();
 }
 
@@ -1499,9 +1447,9 @@ void WebPageProxy::setSuppressVisibilityUpdates(bool flag)
     }
 }
 
-void WebPageProxy::updateActivityState(ActivityState::Flags flagsToUpdate)
+void WebPageProxy::updateActivityState(OptionSet<ActivityState::Flag> flagsToUpdate)
 {
-    m_activityState &= ~flagsToUpdate;
+    m_activityState = m_activityState - flagsToUpdate;
     if (flagsToUpdate & ActivityState::IsFocused && m_pageClient.isViewFocused())
         m_activityState |= ActivityState::IsFocused;
     if (flagsToUpdate & ActivityState::WindowIsActive && m_pageClient.isViewWindowActive())
@@ -1522,9 +1470,9 @@ void WebPageProxy::updateActivityState(ActivityState::Flags flagsToUpdate)
         m_activityState |= ActivityState::IsCapturingMedia;
 }
 
-void WebPageProxy::activityStateDidChange(ActivityState::Flags mayHaveChanged, bool wantsSynchronousReply, ActivityStateChangeDispatchMode dispatchMode)
+void WebPageProxy::activityStateDidChange(OptionSet<ActivityState::Flag> mayHaveChanged, bool wantsSynchronousReply, ActivityStateChangeDispatchMode dispatchMode)
 {
-    LOG_WITH_STREAM(ActivityState, stream << "WebPageProxy " << pageID() << " activityStateDidChange - mayHaveChanged " <<  activityStateFlagsToString(mayHaveChanged));
+    LOG_WITH_STREAM(ActivityState, stream << "WebPageProxy " << pageID() << " activityStateDidChange - mayHaveChanged " << mayHaveChanged);
 
     m_potentiallyChangedActivityStateFlags |= mayHaveChanged;
     m_activityStateChangeWantsSynchronousReply = m_activityStateChangeWantsSynchronousReply || wantsSynchronousReply;
@@ -1573,20 +1521,20 @@ void WebPageProxy::dispatchActivityStateChange()
     if (!isValid())
         return;
 
-    LOG_WITH_STREAM(ActivityState, stream << "WebPageProxy " << pageID() << " dispatchActivityStateChange - potentiallyChangedActivityStateFlags " << activityStateFlagsToString(m_potentiallyChangedActivityStateFlags));
+    LOG_WITH_STREAM(ActivityState, stream << "WebPageProxy " << pageID() << " dispatchActivityStateChange - potentiallyChangedActivityStateFlags " << m_potentiallyChangedActivityStateFlags);
 
     // If the visibility state may have changed, then so may the visually idle & occluded agnostic state.
     if (m_potentiallyChangedActivityStateFlags & ActivityState::IsVisible)
-        m_potentiallyChangedActivityStateFlags |= ActivityState::IsVisibleOrOccluded | ActivityState::IsVisuallyIdle;
+        m_potentiallyChangedActivityStateFlags |= { ActivityState::IsVisibleOrOccluded, ActivityState::IsVisuallyIdle };
 
     // Record the prior view state, update the flags that may have changed,
     // and check which flags have actually changed.
-    ActivityState::Flags previousActivityState = m_activityState;
+    auto previousActivityState = m_activityState;
     updateActivityState(m_potentiallyChangedActivityStateFlags);
-    ActivityState::Flags changed = m_activityState ^ previousActivityState;
+    auto changed = m_activityState ^ previousActivityState;
 
     if (changed)
-        LOG_WITH_STREAM(ActivityState, stream << "WebPageProxy " << pageID() << " dispatchActivityStateChange: state changed from " << activityStateFlagsToString(previousActivityState) << " to " << activityStateFlagsToString(m_activityState));
+        LOG_WITH_STREAM(ActivityState, stream << "WebPageProxy " << pageID() << " dispatchActivityStateChange: state changed from " << previousActivityState << " to " << m_activityState);
 
     if ((m_potentiallyChangedActivityStateFlags & ActivityState::IsVisible) && isViewVisible())
         viewIsBecomingVisible();
@@ -1644,7 +1592,7 @@ void WebPageProxy::dispatchActivityStateChange()
     if (activityStateChangeID != ActivityStateChangeAsynchronous)
         waitForDidUpdateActivityState(activityStateChangeID);
 
-    m_potentiallyChangedActivityStateFlags = ActivityState::NoFlags;
+    m_potentiallyChangedActivityStateFlags = { };
     m_activityStateChangeWantsSynchronousReply = false;
     m_viewWasEverInWindow |= isNowInWindow;
 }
@@ -1670,8 +1618,8 @@ void WebPageProxy::updateThrottleState()
         m_pageIsUserObservableCount = m_process->processPool().userObservablePageCount();
 
 #if PLATFORM(IOS)
-    bool isCapturingMedia = m_activityState & ActivityState::IsCapturingMedia;
-    bool isAudible = m_activityState & ActivityState::IsAudible;
+    bool isCapturingMedia = m_activityState.contains(ActivityState::IsCapturingMedia);
+    bool isAudible = m_activityState.contains(ActivityState::IsAudible);
     if (!isViewVisible() && !m_alwaysRunsAtForegroundPriority && !isCapturingMedia && !isAudible) {
         if (m_activityToken) {
             RELEASE_LOG_IF_ALLOWED(ProcessSuspension, "%p - UIProcess is releasing a foreground assertion because the view is no longer visible", this);
@@ -3509,8 +3457,7 @@ void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t na
     m_pageLoadState.clearPendingAPIRequestURL(transaction);
 
     if (frame->isMainFrame()) {
-        if (m_pageLoadStart)
-            reportPageLoadResult(ResourceError { ResourceError::Type::Cancellation });
+        reportPageLoadResult(ResourceError { ResourceError::Type::Cancellation });
         m_pageLoadStart = MonotonicTime::now();
         m_pageLoadState.didStartProvisionalLoad(transaction, url, unreachableURL);
         m_pageClient.didStartProvisionalLoadForMainFrame();
@@ -4731,7 +4678,7 @@ void WebPageProxy::setMuted(WebCore::MediaProducer::MutedStateFlags state)
 #endif
 
     m_process->send(Messages::WebPage::SetMuted(state), m_pageID);
-    activityStateDidChange(ActivityState::IsAudible | ActivityState::IsCapturingMedia);
+    activityStateDidChange({ ActivityState::IsAudible, ActivityState::IsCapturingMedia });
 }
 
 void WebPageProxy::setMediaCaptureEnabled(bool enabled)
@@ -5411,7 +5358,7 @@ int64_t WebPageProxy::spellDocumentTag()
 }
 
 #if USE(UNIFIED_TEXT_CHECKING)
-void WebPageProxy::checkTextOfParagraph(const String& text, uint64_t checkingTypes, int32_t insertionPoint, Vector<TextCheckingResult>& results)
+void WebPageProxy::checkTextOfParagraph(const String& text, OptionSet<TextCheckingType> checkingTypes, int32_t insertionPoint, Vector<TextCheckingResult>& results)
 {
     results = TextChecker::checkTextOfParagraph(spellDocumentTag(), text, insertionPoint, checkingTypes, m_initialCapitalizationEnabled);
 }
@@ -6419,24 +6366,6 @@ void WebPageProxy::gamepadActivity(const Vector<GamepadData>& gamepadDatas, bool
 
 #endif
 
-void WebPageProxy::canAuthenticateAgainstProtectionSpace(uint64_t loaderID, uint64_t frameID, const ProtectionSpace& coreProtectionSpace)
-{
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    WebFrameProxy* frame = m_process->webFrame(frameID);
-    MESSAGE_CHECK(frame);
-
-    RefPtr<WebProtectionSpace> protectionSpace = WebProtectionSpace::create(coreProtectionSpace);
-
-    bool canAuthenticate;
-    if (m_navigationClient)
-        canAuthenticate = m_navigationClient->canAuthenticateAgainstProtectionSpace(*this, protectionSpace.get());
-    else
-        canAuthenticate = m_loaderClient->canAuthenticateAgainstProtectionSpaceInFrame(*this, *frame, protectionSpace.get());
-
-    m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::ContinueCanAuthenticateAgainstProtectionSpace(loaderID, canAuthenticate));
-#endif
-}
-
 void WebPageProxy::didReceiveAuthenticationChallengeProxy(uint64_t frameID, Ref<AuthenticationChallengeProxy>&& authenticationChallenge)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
@@ -7299,7 +7228,7 @@ void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags newSta
     }
 #endif
 
-    activityStateDidChange(ActivityState::IsAudible | ActivityState::IsCapturingMedia);
+    activityStateDidChange({ ActivityState::IsAudible, ActivityState::IsCapturingMedia });
 
     playingMediaMask |= WebCore::MediaProducer::MediaCaptureMask;
     if ((oldState & playingMediaMask) != (m_mediaState & playingMediaMask))
@@ -7956,7 +7885,8 @@ void WebPageProxy::reportPageLoadResult(const ResourceError& error)
         { CompletionCondition::Timeout, Seconds::infinity(), DiagnosticLoggingKeys::timedOutKey() }
         });
 
-    ASSERT(m_pageLoadStart);
+    if (!m_pageLoadStart)
+        return;
 
     auto pageLoadTime = MonotonicTime::now() - *m_pageLoadStart;
     m_pageLoadStart = std::nullopt;
@@ -7989,3 +7919,8 @@ void WebPageProxy::getIsViewVisible(bool& result)
 }
 
 } // namespace WebKit
+
+#undef MERGE_WHEEL_EVENTS
+#undef MESSAGE_CHECK
+#undef MESSAGE_CHECK_URL
+#undef RELEASE_LOG_IF_ALLOWED

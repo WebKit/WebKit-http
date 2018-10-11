@@ -437,7 +437,7 @@ bool AccessibilityObject::hasMisspelling() const
 
     if (unifiedTextCheckerEnabled(frame)) {
         Vector<TextCheckingResult> results;
-        checkTextOfParagraph(*textChecker, stringValue(), TextCheckingTypeSpelling, results, frame->selection().selection());
+        checkTextOfParagraph(*textChecker, stringValue(), TextCheckingType::Spelling, results, frame->selection().selection());
         if (!results.isEmpty())
             isMisspelled = true;
         return isMisspelled;
@@ -2216,7 +2216,7 @@ bool AccessibilityObject::dispatchAccessibilityEventWithType(AccessibilityEventT
         return false;
     }
     
-    auto event = Event::create(eventName, true, true);
+    auto event = Event::create(eventName, Event::CanBubble::Yes, Event::IsCancelable::Yes);
     return dispatchAccessibilityEvent(event);
 }
 

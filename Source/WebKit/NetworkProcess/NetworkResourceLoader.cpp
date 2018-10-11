@@ -65,12 +65,11 @@
 #include <WebCore/PreviewLoader.h>
 #endif
 
-using namespace WebCore;
-
 #define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), Network, "%p - NetworkResourceLoader::" fmt, this, ##__VA_ARGS__)
 #define RELEASE_LOG_ERROR_IF_ALLOWED(fmt, ...) RELEASE_LOG_ERROR_IF(isAlwaysOnLoggingAllowed(), Network, "%p - NetworkResourceLoader::" fmt, this, ##__VA_ARGS__)
 
 namespace WebKit {
+using namespace WebCore;
 
 struct NetworkResourceLoader::SynchronousLoadData {
     SynchronousLoadData(Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&& reply)
@@ -935,16 +934,6 @@ void NetworkResourceLoader::invalidateSandboxExtensions()
     m_fileReferences.clear();
 }
 
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-void NetworkResourceLoader::canAuthenticateAgainstProtectionSpaceAsync(const ProtectionSpace& protectionSpace)
-{
-    NetworkProcess::singleton().canAuthenticateAgainstProtectionSpace(protectionSpace, pageID(), frameID(), [this, protectedThis = makeRef(*this)] (bool result) {
-        if (m_networkLoad)
-            m_networkLoad->continueCanAuthenticateAgainstProtectionSpace(result);
-    });
-}
-#endif
-
 bool NetworkResourceLoader::isAlwaysOnLoggingAllowed() const
 {
     if (NetworkProcess::singleton().sessionIsControlledByAutomation(sessionID()))
@@ -1133,3 +1122,6 @@ void NetworkResourceLoader::logSlowCacheRetrieveIfNeeded(const NetworkCache::Cac
 }
 
 } // namespace WebKit
+
+#undef RELEASE_LOG_IF_ALLOWED
+#undef RELEASE_LOG_ERROR_IF_ALLOWED

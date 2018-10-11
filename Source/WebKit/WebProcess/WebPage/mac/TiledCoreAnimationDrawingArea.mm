@@ -69,9 +69,8 @@
 + (void)synchronize;
 @end
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea(WebPage& webPage, const WebPageCreationParameters& parameters)
     : DrawingArea(DrawingAreaTypeTiledCoreAnimation, webPage)
@@ -468,7 +467,7 @@ bool TiledCoreAnimationDrawingArea::flushLayers()
     }
 }
 
-void TiledCoreAnimationDrawingArea::activityStateDidChange(ActivityState::Flags changed, ActivityStateChangeID activityStateChangeID, const Vector<CallbackID>& nextActivityStateChangeCallbackIDs)
+void TiledCoreAnimationDrawingArea::activityStateDidChange(OptionSet<WebCore::ActivityState::Flag> changed, ActivityStateChangeID activityStateChangeID, const Vector<CallbackID>& nextActivityStateChangeCallbackIDs)
 {
     m_nextActivityStateChangeCallbackIDs.appendVector(nextActivityStateChangeCallbackIDs);
     m_activityStateChangeID = std::max(m_activityStateChangeID, activityStateChangeID);

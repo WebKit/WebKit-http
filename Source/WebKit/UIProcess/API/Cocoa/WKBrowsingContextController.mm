@@ -153,12 +153,14 @@ static HashMap<WebPageProxy*, WKBrowsingContextController *>& browsingContextCon
     if (userData)
         wkUserData = ObjCObjectGraph::create(userData);
 
-    _page->loadHTMLString(HTMLString, [baseURL _web_originalDataAsWTFString], wkUserData.get());
+    NSData *data = [HTMLString dataUsingEncoding:NSUTF8StringEncoding];
+    _page->loadData({ static_cast<const uint8_t*>(data.bytes), data.length }, "text/html"_s, "UTF-8"_s, [baseURL _web_originalDataAsWTFString], wkUserData.get());
 }
 
 - (void)loadAlternateHTMLString:(NSString *)string baseURL:(NSURL *)baseURL forUnreachableURL:(NSURL *)unreachableURL
 {
-    _page->loadAlternateHTMLString(string, baseURL, unreachableURL);
+    NSData *data = [string dataUsingEncoding:NSUTF8StringEncoding];
+    _page->loadAlternateHTML({ static_cast<const uint8_t*>(data.bytes), data.length }, "UTF-8"_s, baseURL, unreachableURL);
 }
 
 - (void)loadData:(NSData *)data MIMEType:(NSString *)MIMEType textEncodingName:(NSString *)encodingName baseURL:(NSURL *)baseURL
@@ -168,17 +170,11 @@ static HashMap<WebPageProxy*, WKBrowsingContextController *>& browsingContextCon
 
 - (void)loadData:(NSData *)data MIMEType:(NSString *)MIMEType textEncodingName:(NSString *)encodingName baseURL:(NSURL *)baseURL userData:(id)userData
 {
-    RefPtr<API::Data> apiData;
-    if (data) {
-        // FIXME: This should copy the data.
-        apiData = API::Data::createWithoutCopying(data);
-    }
-
     RefPtr<ObjCObjectGraph> wkUserData;
     if (userData)
         wkUserData = ObjCObjectGraph::create(userData);
 
-    _page->loadData(apiData.get(), MIMEType, encodingName, [baseURL _web_originalDataAsWTFString], wkUserData.get());
+    _page->loadData({ static_cast<const uint8_t*>(data.bytes), data.length }, MIMEType, encodingName, [baseURL _web_originalDataAsWTFString], wkUserData.get());
 }
 
 - (void)stopLoading

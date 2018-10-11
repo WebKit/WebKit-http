@@ -124,10 +124,6 @@ public:
 
     void findPendingDownloadLocation(NetworkDataTask&, ResponseCompletionHandler&&, const WebCore::ResourceResponse&);
 
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    void canAuthenticateAgainstProtectionSpace(const WebCore::ProtectionSpace&, uint64_t pageID, uint64_t frameID, CompletionHandler<void(bool)>&&);
-#endif
-
     void prefetchDNS(const String&);
 
     void addWebsiteDataStore(WebsiteDataStoreParameters&&);
@@ -223,9 +219,6 @@ private:
     void downloadRequest(PAL::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedFilename);
     void resumeDownload(PAL::SessionID, DownloadID, const IPC::DataReference& resumeData, const String& path, SandboxExtension::Handle&&);
     void cancelDownload(DownloadID);
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    void continueCanAuthenticateAgainstProtectionSpace(uint64_t completionHandlerID, bool canAuthenticate);
-#endif
     void continueWillSendRequest(DownloadID, WebCore::ResourceRequest&&);
     void continueDecidePendingDownloadDestination(DownloadID, String destination, SandboxExtension::Handle&&, bool allowOverwrite);
 
@@ -285,9 +278,6 @@ private:
     NetworkProcessSupplementMap m_supplements;
 
     HashMap<uint64_t, Function<void()>> m_sandboxExtensionForBlobsCompletionHandlers;
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    HashMap<uint64_t, CompletionHandler<void(bool)>> m_canAuthenticateAgainstProtectionSpaceCompletionHandlers;
-#endif
     HashSet<PAL::SessionID> m_sessionsControlledByAutomation;
 
     HashMap<PAL::SessionID, Vector<CacheStorageParametersCallback>> m_cacheStorageParametersCallbacks;

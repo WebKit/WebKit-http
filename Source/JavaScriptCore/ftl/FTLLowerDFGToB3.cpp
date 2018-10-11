@@ -891,7 +891,8 @@ private:
             break;
         case ToString:
         case CallStringConstructor:
-            compileToStringOrCallStringConstructor();
+        case StringValueOf:
+            compileToStringOrCallStringConstructorOrStringValueOf();
             break;
         case ToPrimitive:
             compileToPrimitive();
@@ -1216,8 +1217,7 @@ private:
             compileMaterializeCreateActivation();
             break;
         case CheckTraps:
-            if (Options::usePollingTraps())
-                compileCheckTraps();
+            compileCheckTraps();
             break;
         case CreateRest:
             compileCreateRest();
@@ -1306,6 +1306,13 @@ private:
         case FilterPutByIdStatus:
         case FilterInByIdStatus:
             compileFilterICStatus();
+            break;
+        case DataViewGetInt:
+        case DataViewGetFloat:
+            compileDataViewGet();
+            break;
+        case DataViewSet:
+            compileDataViewSet();
             break;
 
         case PhantomLocal:
@@ -5985,7 +5992,6 @@ private:
             LValue size = lowInt32(m_node->child1());
 
             LBasicBlock smallEnoughCase = m_out.newBlock();
-            LBasicBlock nonZeroCase = m_out.newBlock();
             LBasicBlock slowCase = m_out.newBlock();
             LBasicBlock continuation = m_out.newBlock();
             
@@ -5995,11 +6001,7 @@ private:
                 m_out.above(size, m_out.constInt32(JSArrayBufferView::fastSizeLimit)),
                 rarely(slowCase), usually(smallEnoughCase));
 
-            LBasicBlock lastNext = m_out.appendTo(smallEnoughCase, nonZeroCase);
-
-            m_out.branch(m_out.notZero32(size), usually(nonZeroCase), rarely(slowCase));
-
-            m_out.appendTo(nonZeroCase, slowCase);
+            LBasicBlock lastNext = m_out.appendTo(smallEnoughCase, slowCase);
 
             LValue byteSize =
                 m_out.shl(m_out.zeroExtPtr(size), m_out.constInt32(logElementSize(typedArrayType)));
@@ -6118,8 +6120,9 @@ private:
         }
     }
     
-    void compileToStringOrCallStringConstructor()
+    void compileToStringOrCallStringConstructorOrStringValueOf()
     {
+        ASSERT(m_node->op() != StringValueOf || m_node->child1().useKind() == UntypedUse);
         switch (m_node->child1().useKind()) {
         case StringObjectUse: {
             LValue cell = lowCell(m_node->child1());
@@ -6190,10 +6193,14 @@ private:
             
             m_out.appendTo(notString, continuation);
             LValue operation;
-            if (m_node->child1().useKind() == CellUse)
+            if (m_node->child1().useKind() == CellUse) {
+                ASSERT(m_node->op() != StringValueOf);
                 operation = m_out.operation(m_node->op() == ToString ? operationToStringOnCell : operationCallStringConstructorOnCell);
-            else
-                operation = m_out.operation(m_node->op() == ToString ? operationToString : operationCallStringConstructor);
+            } else {
+                operation = m_out.operation(m_node->op() == ToString
+                    ? operationToString : m_node->op() == StringValueOf
+                    ? operationStringValueOf : operationCallStringConstructor);
+            }
             ValueFromBlock convertedResult = m_out.anchor(vmCall(Int64, operation, m_callFrame, value));
             m_out.jump(continuation);
             
@@ -12238,6 +12245,357 @@ private:
     {
         m_interpreter.filterICStatus(m_node);
     }
+
+    LValue byteSwap32(LValue value)
+    {
+        // FIXME: teach B3 byteswap
+        // https://bugs.webkit.org/show_bug.cgi?id=188759
+
+        RELEASE_ASSERT(value->type() == Int32);
+        PatchpointValue* patchpoint = m_out.patchpoint(Int32);
+        patchpoint->appendSomeRegister(value);
+        patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            jit.move(params[1].gpr(), params[0].gpr());
+            jit.byteSwap32(params[0].gpr());
+        });
+        patchpoint->effects = Effects::none();
+        return patchpoint;
+    }
+
+    LValue byteSwap64(LValue value)
+    {
+        // FIXME: teach B3 byteswap
+        // https://bugs.webkit.org/show_bug.cgi?id=188759
+
+        RELEASE_ASSERT(value->type() == Int64);
+        PatchpointValue* patchpoint = m_out.patchpoint(Int64);
+        patchpoint->appendSomeRegister(value);
+        patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            jit.move(params[1].gpr(), params[0].gpr());
+            jit.byteSwap64(params[0].gpr());
+        });
+        patchpoint->effects = Effects::none();
+        return patchpoint;
+    }
+
+    template <typename F1, typename F2>
+    LValue emitCodeBasedOnEndiannessBranch(LValue isLittleEndian, const F1& emitLittleEndianCode, const F2& emitBigEndianCode)
+    {
+        LType type;
+
+        LBasicBlock bigEndianCase = m_out.newBlock();
+        LBasicBlock littleEndianCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        m_out.branch(m_out.testIsZero32(isLittleEndian, m_out.constInt32(1)),
+            unsure(bigEndianCase), unsure(littleEndianCase));
+
+        LBasicBlock lastNext = m_out.appendTo(bigEndianCase, littleEndianCase);
+        LValue bigEndianValue = emitBigEndianCode();
+        type = bigEndianValue ? bigEndianValue->type() : Void;
+        ValueFromBlock bigEndianResult = bigEndianValue ? m_out.anchor(bigEndianValue) : ValueFromBlock();
+        m_out.jump(continuation);
+
+        m_out.appendTo(littleEndianCase, continuation);
+        LValue littleEndianValue = emitLittleEndianCode();
+        ValueFromBlock littleEndianResult = littleEndianValue ? m_out.anchor(littleEndianValue) : ValueFromBlock();
+        RELEASE_ASSERT((!littleEndianValue && !bigEndianValue) || type == littleEndianValue->type());
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        RELEASE_ASSERT(!!bigEndianResult == !!littleEndianResult);
+        if (bigEndianResult)
+            return m_out.phi(type, bigEndianResult, littleEndianResult);
+        return nullptr;
+    }
+
+    void compileDataViewGet()
+    {
+        LValue dataView = lowDataViewObject(m_node->child1());
+        LValue index = lowInt32(m_node->child2());
+        LValue isLittleEndian = nullptr;
+        if (m_node->child3())
+            isLittleEndian = lowBoolean(m_node->child3());
+
+        DataViewData data = m_node->dataViewData();
+
+        LValue length = m_out.zeroExtPtr(m_out.load32NonNegative(dataView, m_heaps.JSArrayBufferView_length));
+        LValue indexToCheck = m_out.zeroExtPtr(index);
+        if (data.byteSize > 1)
+            indexToCheck = m_out.add(indexToCheck, m_out.constInt64(data.byteSize - 1));
+        speculate(OutOfBounds, noValue(), nullptr, m_out.aboveOrEqual(indexToCheck, length));
+
+        LValue vector = caged(Gigacage::Primitive, m_out.loadPtr(dataView, m_heaps.JSArrayBufferView_vector));
+
+        TypedPointer pointer(m_heaps.typedArrayProperties, m_out.add(vector, m_out.zeroExtPtr(index)));
+
+        if (m_node->op() == DataViewGetInt) {
+            switch (data.byteSize) {
+            case 1:
+                if (data.isSigned)
+                    setInt32(m_out.load8SignExt32(pointer));
+                else
+                    setInt32(m_out.load8ZeroExt32(pointer));
+                break;
+            case 2: {
+                auto emitLittleEndianLoad = [&] {
+                    if (data.isSigned)
+                        return m_out.load16SignExt32(pointer);
+                    return m_out.load16ZeroExt32(pointer);
+                };
+
+                auto emitBigEndianLoad = [&] {
+                    LValue val = m_out.load16ZeroExt32(pointer);
+
+                    PatchpointValue* patchpoint = m_out.patchpoint(Int32);
+                    patchpoint->appendSomeRegister(val);
+                    patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                        jit.move(params[1].gpr(), params[0].gpr());
+                        jit.byteSwap16(params[0].gpr());
+                        if (data.isSigned)
+                            jit.signExtend16To32(params[0].gpr(), params[0].gpr());
+                    });
+                    patchpoint->effects = Effects::none();
+
+                    return patchpoint;
+                };
+
+                if (data.isLittleEndian == FalseTriState)
+                    setInt32(emitBigEndianLoad());
+                else if (data.isLittleEndian == TrueTriState)
+                    setInt32(emitLittleEndianLoad());
+                else
+                    setInt32(emitCodeBasedOnEndiannessBranch(isLittleEndian, emitLittleEndianLoad, emitBigEndianLoad));
+
+                break;
+            }
+            case 4: {
+                LValue loadedValue = m_out.load32(pointer);
+
+                if (data.isLittleEndian == FalseTriState)
+                    loadedValue = byteSwap32(loadedValue);
+                else if (data.isLittleEndian == MixedTriState) {
+                    auto emitLittleEndianCode = [&] {
+                        return loadedValue;
+                    };
+                    auto emitBigEndianCode = [&] {
+                        return byteSwap32(loadedValue);
+                    };
+
+                    loadedValue = emitCodeBasedOnEndiannessBranch(isLittleEndian, emitLittleEndianCode, emitBigEndianCode);
+                }
+
+                if (data.isSigned)
+                    setInt32(loadedValue);
+                else
+                    setStrictInt52(m_out.zeroExt(loadedValue, Int64));
+
+                break;
+            }
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+            }
+        } else {
+            switch (data.byteSize) {
+            case 4: {
+                auto emitLittleEndianCode = [&] {
+                    return m_out.floatToDouble(m_out.loadFloat(pointer));
+                };
+
+                auto emitBigEndianCode = [&] {
+                    LValue loadedValue = m_out.load32(pointer);
+                    PatchpointValue* patchpoint = m_out.patchpoint(Double);
+                    patchpoint->appendSomeRegister(loadedValue);
+                    patchpoint->numGPScratchRegisters = 1;
+                    patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                        jit.move(params[1].gpr(), params.gpScratch(0));
+                        jit.byteSwap32(params.gpScratch(0));
+                        jit.move32ToFloat(params.gpScratch(0), params[0].fpr());
+                        jit.convertFloatToDouble(params[0].fpr(), params[0].fpr());
+                    });
+                    patchpoint->effects = Effects::none();
+                    return patchpoint;
+                };
+
+                if (data.isLittleEndian == TrueTriState)
+                    setDouble(emitLittleEndianCode());
+                else if (data.isLittleEndian == FalseTriState)
+                    setDouble(emitBigEndianCode());
+                else
+                    setDouble(emitCodeBasedOnEndiannessBranch(isLittleEndian, emitLittleEndianCode, emitBigEndianCode));
+
+                break;
+            }
+            case 8: {
+                auto emitLittleEndianCode = [&] {
+                    return m_out.loadDouble(pointer);
+                };
+
+                auto emitBigEndianCode = [&] {
+                    LValue loadedValue = m_out.load64(pointer);
+                    loadedValue = byteSwap64(loadedValue);
+                    return m_out.bitCast(loadedValue, Double);
+                };
+
+                if (data.isLittleEndian == TrueTriState)
+                    setDouble(emitLittleEndianCode());
+                else if (data.isLittleEndian == FalseTriState)
+                    setDouble(emitBigEndianCode());
+                else
+                    setDouble(emitCodeBasedOnEndiannessBranch(isLittleEndian, emitLittleEndianCode, emitBigEndianCode));
+
+                break;
+            }
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+            }
+        }
+    }
+
+    void compileDataViewSet()
+    {
+        LValue dataView = lowDataViewObject(m_graph.varArgChild(m_node, 0));
+        LValue index = lowInt32(m_graph.varArgChild(m_node, 1));
+        LValue isLittleEndian = nullptr;
+        if (m_graph.varArgChild(m_node, 3))
+            isLittleEndian = lowBoolean(m_graph.varArgChild(m_node, 3));
+
+        DataViewData data = m_node->dataViewData();
+
+        LValue length = m_out.zeroExtPtr(m_out.load32NonNegative(dataView, m_heaps.JSArrayBufferView_length));
+        LValue indexToCheck = m_out.zeroExtPtr(index);
+        if (data.byteSize > 1)
+            indexToCheck = m_out.add(indexToCheck, m_out.constInt64(data.byteSize - 1));
+        speculate(OutOfBounds, noValue(), nullptr, m_out.aboveOrEqual(indexToCheck, length));
+
+        Edge& valueEdge = m_graph.varArgChild(m_node, 2);
+        LValue valueToStore;
+        switch (valueEdge.useKind()) {
+        case Int32Use:
+            valueToStore = lowInt32(valueEdge);
+            break;
+        case DoubleRepUse:
+            valueToStore = lowDouble(valueEdge);
+            break;
+        case Int52RepUse:
+            valueToStore = lowStrictInt52(valueEdge);
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+
+        LValue vector = caged(Gigacage::Primitive, m_out.loadPtr(dataView, m_heaps.JSArrayBufferView_vector));
+        TypedPointer pointer(m_heaps.typedArrayProperties, m_out.add(vector, m_out.zeroExtPtr(index)));
+
+        if (data.isFloatingPoint) {
+            if (data.byteSize == 4) {
+                valueToStore = m_out.doubleToFloat(valueToStore);
+
+                auto emitLittleEndianCode = [&] () -> LValue {
+                    m_out.storeFloat(valueToStore, pointer);
+                    return nullptr;
+                };
+
+                auto emitBigEndianCode = [&] () -> LValue {
+                    PatchpointValue* patchpoint = m_out.patchpoint(Int32);
+                    patchpoint->appendSomeRegister(valueToStore);
+                    patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                        jit.moveFloatTo32(params[1].fpr(), params[0].gpr());
+                        jit.byteSwap32(params[0].gpr());
+                    });
+                    patchpoint->effects = Effects::none();
+                    m_out.store32(patchpoint, pointer);
+                    return nullptr;
+                };
+
+                if (data.isLittleEndian == FalseTriState)
+                    emitBigEndianCode();
+                else if (data.isLittleEndian == TrueTriState)
+                    emitLittleEndianCode();
+                else
+                    emitCodeBasedOnEndiannessBranch(isLittleEndian, emitLittleEndianCode, emitBigEndianCode);
+
+            } else {
+                RELEASE_ASSERT(data.byteSize == 8);
+                auto emitLittleEndianCode = [&] () -> LValue {
+                    m_out.storeDouble(valueToStore, pointer);
+                    return nullptr;
+                };
+                auto emitBigEndianCode = [&] () -> LValue {
+                    m_out.store64(byteSwap64(m_out.bitCast(valueToStore, Int64)), pointer);
+                    return nullptr;
+                };
+
+                if (data.isLittleEndian == FalseTriState)
+                    emitBigEndianCode();
+                else if (data.isLittleEndian == TrueTriState)
+                    emitLittleEndianCode();
+                else
+                    emitCodeBasedOnEndiannessBranch(isLittleEndian, emitLittleEndianCode, emitBigEndianCode);
+            }
+        } else {
+            switch (data.byteSize) {
+            case 1:
+                RELEASE_ASSERT(valueEdge.useKind() == Int32Use);
+                m_out.store32As8(valueToStore, pointer);
+                break;
+            case 2: {
+                RELEASE_ASSERT(valueEdge.useKind() == Int32Use);
+
+                auto emitLittleEndianCode = [&] () -> LValue {
+                    m_out.store32As16(valueToStore, pointer);
+                    return nullptr;
+                };
+                auto emitBigEndianCode = [&] () -> LValue {
+                    PatchpointValue* patchpoint = m_out.patchpoint(Int32);
+                    patchpoint->appendSomeRegister(valueToStore);
+                    patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                        jit.move(params[1].gpr(), params[0].gpr());
+                        jit.byteSwap16(params[0].gpr());
+                    });
+                    patchpoint->effects = Effects::none();
+
+                    m_out.store32As16(patchpoint, pointer);
+                    return nullptr;
+                };
+
+                if (data.isLittleEndian == FalseTriState)
+                    emitBigEndianCode();
+                else if (data.isLittleEndian == TrueTriState)
+                    emitLittleEndianCode();
+                else
+                    emitCodeBasedOnEndiannessBranch(isLittleEndian, emitLittleEndianCode, emitBigEndianCode);
+                break;
+            }
+            case 4: {
+                RELEASE_ASSERT(valueEdge.useKind() == Int32Use || valueEdge.useKind() == Int52RepUse);
+
+                if (valueEdge.useKind() == Int52RepUse)
+                    valueToStore = m_out.castToInt32(valueToStore);
+
+                auto emitLittleEndianCode = [&] () -> LValue {
+                    m_out.store32(valueToStore, pointer);
+                    return nullptr;
+                };
+                auto emitBigEndianCode = [&] () -> LValue {
+                    m_out.store32(byteSwap32(valueToStore), pointer);
+                    return nullptr;
+                };
+
+                if (data.isLittleEndian == FalseTriState)
+                    emitBigEndianCode();
+                else if (data.isLittleEndian == TrueTriState)
+                    emitLittleEndianCode();
+                else
+                    emitCodeBasedOnEndiannessBranch(isLittleEndian, emitLittleEndianCode, emitBigEndianCode);
+
+                break;
+            }
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+            }
+        }
+    }
     
     void emitSwitchForMultiByOffset(LValue base, bool structuresChecked, Vector<SwitchCase, 2>& cases, LBasicBlock exit)
     {
@@ -12793,7 +13151,7 @@ private:
         if (subspace->hasIntPtr() && size->hasIntPtr()) {
             CompleteSubspace* actualSubspace = bitwise_cast<CompleteSubspace*>(subspace->asIntPtr());
             size_t actualSize = size->asIntPtr();
-            
+
             Allocator actualAllocator = actualSubspace->allocatorForNonVirtual(actualSize, AllocatorForMode::AllocatorIfExists);
             if (!actualAllocator) {
                 LBasicBlock continuation = m_out.newBlock();
@@ -12802,7 +13160,7 @@ private:
                 m_out.appendTo(continuation, lastNext);
                 return m_out.intPtrZero;
             }
-            
+
             return m_out.constIntPtr(actualAllocator.localAllocator());
         }
         
@@ -12825,7 +13183,7 @@ private:
         return m_out.loadPtr(
             m_out.baseIndex(
                 m_heaps.CompleteSubspace_allocatorForSizeStep,
-                subspace, m_out.sub(sizeClassIndex, m_out.intPtrOne)));
+                subspace, sizeClassIndex));
     }
     
     LValue allocatorForSize(CompleteSubspace& subspace, LValue size, LBasicBlock slowPath)
@@ -14468,6 +14826,13 @@ private:
         speculateWeakSetObject(edge, result);
         return result;
     }
+
+    LValue lowDataViewObject(Edge edge)
+    {
+        LValue result = lowCell(edge);
+        speculateDataViewObject(edge, result);
+        return result;
+    }
     
     LValue lowString(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
     {
@@ -14942,6 +15307,9 @@ private:
             break;
         case WeakSetObjectUse:
             speculateWeakSetObject(edge);
+            break;
+        case DataViewObjectUse:
+            speculateDataViewObject(edge);
             break;
         case StringUse:
             speculateString(edge);
@@ -15436,6 +15804,17 @@ private:
     void speculateWeakSetObject(Edge edge)
     {
         speculateWeakSetObject(edge, lowCell(edge));
+    }
+
+    void speculateDataViewObject(Edge edge, LValue cell)
+    {
+        FTL_TYPE_CHECK(
+            jsValueValue(cell), edge, SpecDataViewObject, isNotType(cell, DataViewType));
+    }
+
+    void speculateDataViewObject(Edge edge)
+    {
+        speculateDataViewObject(edge, lowCell(edge));
     }
     
     void speculateString(Edge edge, LValue cell)

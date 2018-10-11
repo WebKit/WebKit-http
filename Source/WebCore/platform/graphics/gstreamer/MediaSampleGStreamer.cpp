@@ -23,6 +23,8 @@
 
 #include "GStreamerCommon.h"
 
+#include <algorithm>
+
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
 namespace WebCore {
@@ -34,10 +36,10 @@ MediaSampleGStreamer::MediaSampleGStreamer(GRefPtr<GstSample>&& sample, const Fl
     , m_trackId(trackId)
     , m_presentationSize(presentationSize)
 {
+    const GstClockTime minimumDuration = 1000; // 1 us
     ASSERT(sample);
     GstBuffer* buffer = gst_sample_get_buffer(sample.get());
-    if (!buffer)
-        return;
+    RELEASE_ASSERT(buffer);
 
     auto createMediaTime =
         [](GstClockTime time) -> MediaTime {
@@ -48,8 +50,21 @@ MediaSampleGStreamer::MediaSampleGStreamer(GRefPtr<GstSample>&& sample, const Fl
         m_pts = createMediaTime(GST_BUFFER_PTS(buffer));
     if (GST_BUFFER_DTS_IS_VALID(buffer) || GST_BUFFER_PTS_IS_VALID(buffer))
         m_dts = createMediaTime(GST_BUFFER_DTS_OR_PTS(buffer));
-    if (GST_BUFFER_DURATION_IS_VALID(buffer))
-        m_duration = createMediaTime(GST_BUFFER_DURATION(buffer));
+    if (GST_BUFFER_DURATION_IS_VALID(buffer)) {
+        // Sometimes (albeit rarely, so far seen only at the end of a track)
+        // frames have very small durations, so small that may be under the
+        // precision we are working with and be truncated to zero.
+        // SourceBuffer algorithms are not expecting frames with zero-duration,
+        // so let's use something very small instead in those fringe cases.
+        m_duration = createMediaTime(std::max(GST_BUFFER_DURATION(buffer), minimumDuration));
+    } else {
+        // Unfortunately, sometimes samples don't provide a duration. This can never happen in MP4 because of the way
+        // the format is laid out, but it's pretty common in WebM.
+        // The good part is that durations don't matter for playback, just for buffered ranges and coded frame deletion.
+        // We want to pick something small enough to not cause unwanted frame deletion, but big enough to never be
+        // mistaken for a rounding artifact.
+        m_duration = createMediaTime(16666667); // 1/60 seconds
+    }
 
     m_size = gst_buffer_get_size(buffer);
     m_sample = sample;

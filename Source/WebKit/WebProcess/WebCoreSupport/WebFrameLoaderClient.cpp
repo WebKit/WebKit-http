@@ -83,6 +83,7 @@
 #include <WebCore/PolicyChecker.h>
 #include <WebCore/ProgressTracker.h>
 #include <WebCore/ResourceError.h>
+#include <WebCore/ResourceRequest.h>
 #include <WebCore/ScriptController.h>
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/Settings.h>
@@ -94,9 +95,8 @@
 #include <wtf/ProcessID.h>
 #include <wtf/ProcessPrivilege.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 WebFrameLoaderClient::WebFrameLoaderClient()
     : m_frame(0)
@@ -384,7 +384,7 @@ void WebFrameLoaderClient::dispatchDidChangeMainDocument()
     webPage->send(Messages::WebPageProxy::DidChangeMainDocument(m_frame->frameID()));
 }
 
-void WebFrameLoaderClient::dispatchWillChangeDocument()
+void WebFrameLoaderClient::dispatchWillChangeDocument(const URL& currentUrl, const URL& newUrl)
 {
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     if (m_frame->isMainFrame())
@@ -394,7 +394,7 @@ void WebFrameLoaderClient::dispatchWillChangeDocument()
     if (!webPage)
         return;
 
-    if (m_hasFrameSpecificStorageAccess) {
+    if (m_hasFrameSpecificStorageAccess && !WebCore::registrableDomainsAreEqual(currentUrl, newUrl)) {
         WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RemoveStorageAccessForFrame(sessionID(), frameID().value(), pageID().value()), 0);
         m_hasFrameSpecificStorageAccess = false;
     }
@@ -941,11 +941,13 @@ void WebFrameLoaderClient::dispatchWillSendSubmitEvent(Ref<FormState>&& formStat
     webPage->injectedBundleFormClient().willSendSubmitEvent(webPage, &form, m_frame, sourceFrame, formState->textFieldValues());
 }
 
-void WebFrameLoaderClient::dispatchWillSubmitForm(FormState& formState, WTF::Function<void(void)>&& function)
+void WebFrameLoaderClient::dispatchWillSubmitForm(FormState& formState, CompletionHandler<void()>&& completionHandler)
 {
     WebPage* webPage = m_frame->page();
-    if (!webPage)
+    if (!webPage) {
+        completionHandler();
         return;
+    }
 
     auto& form = formState.form();
 
@@ -959,7 +961,7 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(FormState& formState, WTF::Fun
     RefPtr<API::Object> userData;
     webPage->injectedBundleFormClient().willSubmitForm(webPage, &form, m_frame, sourceFrame, values, userData);
 
-    uint64_t listenerID = m_frame->setUpWillSubmitFormListener(WTFMove(function));
+    uint64_t listenerID = m_frame->setUpWillSubmitFormListener(WTFMove(completionHandler));
 
     webPage->send(Messages::WebPageProxy::WillSubmitForm(m_frame->frameID(), sourceFrame->frameID(), values, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }

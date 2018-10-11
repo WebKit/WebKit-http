@@ -32,9 +32,8 @@
 #include "NetworkProcess.h"
 #include "WebCoreArgumentCoders.h"
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 PendingDownload::PendingDownload(NetworkLoadParameters&& parameters, DownloadID downloadID, NetworkSession& networkSession, const String& suggestedName)
     : m_networkLoad(std::make_unique<NetworkLoad>(*this, WTFMove(parameters), networkSession))
@@ -75,13 +74,6 @@ void PendingDownload::cancel()
     m_networkLoad->cancel();
     send(Messages::DownloadProxy::DidCancel({ }));
 }
-
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-void PendingDownload::canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace& protectionSpace)
-{
-    m_networkLoad->continueCanAuthenticateAgainstProtectionSpace(true);
-}
-#endif
 
 void PendingDownload::didFailLoading(const WebCore::ResourceError& error)
 {

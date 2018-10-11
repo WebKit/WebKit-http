@@ -97,7 +97,7 @@ private:
     void dispatchDidFinishDataDetection(NSArray *detectionResults) final;
 #endif
     void dispatchDidChangeMainDocument() final;
-    void dispatchWillChangeDocument() final;
+    void dispatchWillChangeDocument(const WebCore::URL& currentUrl, const WebCore::URL& newUrl) final;
 
     void dispatchDidDispatchOnloadEvents() final;
     void dispatchDidReceiveServerRedirectForProvisionalLoad() final;
@@ -131,7 +131,7 @@ private:
     void dispatchUnableToImplementPolicy(const WebCore::ResourceError&) final;
     
     void dispatchWillSendSubmitEvent(Ref<WebCore::FormState>&&) final;
-    void dispatchWillSubmitForm(WebCore::FormState&, WTF::Function<void(void)>&&) final;
+    void dispatchWillSubmitForm(WebCore::FormState&, CompletionHandler<void()>&&) final;
     
     void revertToProvisionalState(WebCore::DocumentLoader*) final;
     void setMainDocumentError(WebCore::DocumentLoader*, const WebCore::ResourceError&) final;

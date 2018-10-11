@@ -551,7 +551,7 @@ void IDBTransaction::notifyDidAbort(const IDBError& error)
     m_idbError = error;
     fireOnAbort();
 
-    if (isVersionChange()) {
+    if (isVersionChange() && !m_contextStopped) {
         ASSERT(m_openDBRequest);
         m_openDBRequest->fireErrorAfterVersionChangeCompletion();
     }
@@ -591,14 +591,14 @@ void IDBTransaction::fireOnComplete()
 {
     LOG(IndexedDB, "IDBTransaction::fireOnComplete");
     ASSERT(&m_database->originThread() == &Thread::current());
-    enqueueEvent(Event::create(eventNames().completeEvent, false, false));
+    enqueueEvent(Event::create(eventNames().completeEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 void IDBTransaction::fireOnAbort()
 {
     LOG(IndexedDB, "IDBTransaction::fireOnAbort");
     ASSERT(&m_database->originThread() == &Thread::current());
-    enqueueEvent(Event::create(eventNames().abortEvent, true, false));
+    enqueueEvent(Event::create(eventNames().abortEvent, Event::CanBubble::Yes, Event::IsCancelable::No));
 }
 
 void IDBTransaction::enqueueEvent(Ref<Event>&& event)
@@ -800,9 +800,9 @@ Ref<IDBRequest> IDBTransaction::requestOpenCursor(ExecState& state, IDBObjectSto
     ASSERT(&m_database->originThread() == &Thread::current());
 
     if (info.cursorType() == IndexedDB::CursorType::KeyOnly)
-        return doRequestOpenCursor(state, IDBCursor::create(*this, objectStore, info));
+        return doRequestOpenCursor(state, IDBCursor::create(objectStore, info));
 
-    return doRequestOpenCursor(state, IDBCursorWithValue::create(*this, objectStore, info));
+    return doRequestOpenCursor(state, IDBCursorWithValue::create(objectStore, info));
 }
 
 Ref<IDBRequest> IDBTransaction::requestOpenCursor(ExecState& state, IDBIndex& index, const IDBCursorInfo& info)
@@ -811,9 +811,9 @@ Ref<IDBRequest> IDBTransaction::requestOpenCursor(ExecState& state, IDBIndex& in
     ASSERT(&m_database->originThread() == &Thread::current());
 
     if (info.cursorType() == IndexedDB::CursorType::KeyOnly)
-        return doRequestOpenCursor(state, IDBCursor::create(*this, index, info));
+        return doRequestOpenCursor(state, IDBCursor::create(index, info));
 
-    return doRequestOpenCursor(state, IDBCursorWithValue::create(*this, index, info));
+    return doRequestOpenCursor(state, IDBCursorWithValue::create(index, info));
 }
 
 Ref<IDBRequest> IDBTransaction::doRequestOpenCursor(ExecState& state, Ref<IDBCursor>&& cursor)

@@ -51,9 +51,8 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 PageClientImpl::PageClientImpl(GtkWidget* viewWidget)
     : m_viewWidget(viewWidget)
@@ -473,15 +472,5 @@ bool PageClientImpl::decidePolicyForInstallMissingMediaPluginsPermissionRequest(
     return true;
 }
 #endif
-
-void PageClientImpl::zoom(double zoomLevel)
-{
-    if (WEBKIT_IS_WEB_VIEW(m_viewWidget)) {
-        webkit_web_view_set_zoom_level(WEBKIT_WEB_VIEW(m_viewWidget), zoomLevel);
-        return;
-    }
-
-    webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(m_viewWidget))->setPageZoomFactor(zoomLevel);
-}
 
 } // namespace WebKit

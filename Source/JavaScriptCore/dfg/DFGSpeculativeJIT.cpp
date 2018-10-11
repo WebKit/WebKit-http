@@ -2028,7 +2028,7 @@ void SpeculativeJIT::linkOSREntries(LinkBuffer& linkBuffer)
     }
 }
     
-void SpeculativeJIT::compileCheckTraps(Node*)
+void SpeculativeJIT::compileCheckTraps(Node* node)
 {
     ASSERT(Options::usePollingTraps());
     GPRTemporary unused(this);
@@ -2038,6 +2038,7 @@ void SpeculativeJIT::compileCheckTraps(Node*)
         JITCompiler::AbsoluteAddress(m_jit.vm()->needTrapHandlingAddress()));
 
     addSlowPathGenerator(slowPathCall(needTrapHandling, this, operationHandleTraps, unusedGPR));
+    noResult(node);
 }
 
 void SpeculativeJIT::compileDoublePutByVal(Node* node, SpeculateCellOperand& base, SpeculateStrictInt32Operand& property)
@@ -9232,8 +9233,9 @@ GPRReg SpeculativeJIT::temporaryRegisterForPutByVal(GPRTemporary& temporary, Arr
     return temporary.gpr();
 }
 
-void SpeculativeJIT::compileToStringOrCallStringConstructor(Node* node)
+void SpeculativeJIT::compileToStringOrCallStringConstructorOrStringValueOf(Node* node)
 {
+    ASSERT(node->op() != StringValueOf || node->child1().useKind() == UntypedUse);
     switch (node->child1().useKind()) {
     case NotCellUse: {
         JSValueOperand op1(this, node->child1(), ManualOperandSpeculation);
@@ -9278,6 +9280,8 @@ void SpeculativeJIT::compileToStringOrCallStringConstructor(Node* node)
         }
         if (node->op() == ToString)
             callOperation(operationToString, resultGPR, op1Regs);
+        else if (node->op() == StringValueOf)
+            callOperation(operationStringValueOf, resultGPR, op1Regs);
         else {
             ASSERT(node->op() == CallStringConstructor);
             callOperation(operationCallStringConstructor, resultGPR, op1Regs);
@@ -9532,7 +9536,6 @@ void SpeculativeJIT::compileNewTypedArrayWithSize(Node* node)
 
     slowCases.append(m_jit.branch32(
         MacroAssembler::Above, sizeGPR, TrustedImm32(JSArrayBufferView::fastSizeLimit)));
-    slowCases.append(m_jit.branchTest32(MacroAssembler::Zero, sizeGPR));
     
     m_jit.move(sizeGPR, scratchGPR);
     m_jit.lshift32(TrustedImm32(logElementSize(typedArrayType)), scratchGPR);
@@ -9903,6 +9906,20 @@ void SpeculativeJIT::speculateWeakSetObject(Edge edge)
     speculateWeakSetObject(edge, operand.gpr());
 }
 
+void SpeculativeJIT::speculateDataViewObject(Edge edge, GPRReg cell)
+{
+    speculateCellType(edge, cell, SpecDataViewObject, DataViewType);
+}
+
+void SpeculativeJIT::speculateDataViewObject(Edge edge)
+{
+    if (!needsTypeCheck(edge, SpecDataViewObject))
+        return;
+
+    SpeculateCellOperand operand(this, edge);
+    speculateDataViewObject(edge, operand.gpr());
+}
+
 void SpeculativeJIT::speculateObjectOrOther(Edge edge)
 {
     if (!needsTypeCheck(edge, SpecObject | SpecOther))
@@ -10270,6 +10287,9 @@ void SpeculativeJIT::speculate(Node*, Edge edge)
         break;
     case WeakSetObjectUse:
         speculateWeakSetObject(edge);
+        break;
+    case DataViewObjectUse:
+        speculateDataViewObject(edge);
         break;
     case ObjectOrOtherUse:
         speculateObjectOrOther(edge);

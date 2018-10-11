@@ -51,9 +51,8 @@
 #include "WebInspectorServer.h"
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 const unsigned WebInspectorProxy::minimumWindowWidth = 500;
 const unsigned WebInspectorProxy::minimumWindowHeight = 400;

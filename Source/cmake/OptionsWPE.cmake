@@ -1,10 +1,10 @@
 include(GNUInstallDirs)
 include(VersioningUtils)
 
-SET_PROJECT_VERSION(2 21 2)
+SET_PROJECT_VERSION(2 22 0)
 set(WPE_API_VERSION 0.1)
 
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 3 0 1)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 4 1 2)
 
 # These are shared variables, but we special case their definition so that we can use the
 # CMAKE_INSTALL_* variables that are populated by the GNUInstallDirs macro.
@@ -96,7 +96,7 @@ if (WEBP_FOUND)
     SET_AND_EXPOSE_TO_BUILD(USE_WEBP TRUE)
 endif ()
 
-find_package(WPEBackend REQUIRED)
+find_package(WPE REQUIRED)
 find_package(ZLIB REQUIRED)
 
 if (USE_WOFF2)

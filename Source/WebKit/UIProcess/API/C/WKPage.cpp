@@ -196,42 +196,63 @@ void WKPageLoadFileWithUserData(WKPageRef pageRef, WKURLRef fileURL, WKURLRef re
 
 void WKPageLoadData(WKPageRef pageRef, WKDataRef dataRef, WKStringRef MIMETypeRef, WKStringRef encodingRef, WKURLRef baseURLRef)
 {
-    toImpl(pageRef)->loadData(toImpl(dataRef), toWTFString(MIMETypeRef), toWTFString(encodingRef), toWTFString(baseURLRef));
+    toImpl(pageRef)->loadData(toImpl(dataRef)->dataReference(), toWTFString(MIMETypeRef), toWTFString(encodingRef), toWTFString(baseURLRef));
 }
 
 void WKPageLoadDataWithUserData(WKPageRef pageRef, WKDataRef dataRef, WKStringRef MIMETypeRef, WKStringRef encodingRef, WKURLRef baseURLRef, WKTypeRef userDataRef)
 {
-    toImpl(pageRef)->loadData(toImpl(dataRef), toWTFString(MIMETypeRef), toWTFString(encodingRef), toWTFString(baseURLRef), toImpl(userDataRef));
+    toImpl(pageRef)->loadData(toImpl(dataRef)->dataReference(), toWTFString(MIMETypeRef), toWTFString(encodingRef), toWTFString(baseURLRef), toImpl(userDataRef));
+}
+
+static String encodingOf(const String& string)
+{
+    if (string.isNull() || !string.is8Bit())
+        "utf-16"_s;
+    return "latin1"_s;
+}
+
+static IPC::DataReference dataFrom(const String& string)
+{
+    if (string.isNull() || !string.is8Bit())
+        return { reinterpret_cast<const uint8_t*>(string.characters16()), string.length() * sizeof(UChar) };
+    return { reinterpret_cast<const uint8_t*>(string.characters8()), string.length() * sizeof(LChar) };
+}
+
+static void loadString(WKPageRef pageRef, WKStringRef stringRef, const String& mimeType, const String& baseURL, WKTypeRef userDataRef)
+{
+    String string = toWTFString(stringRef);
+    toImpl(pageRef)->loadData(dataFrom(string), mimeType, encodingOf(string), baseURL, toImpl(userDataRef));
 }
 
 void WKPageLoadHTMLString(WKPageRef pageRef, WKStringRef htmlStringRef, WKURLRef baseURLRef)
 {
-    toImpl(pageRef)->loadHTMLString(toWTFString(htmlStringRef), toWTFString(baseURLRef));
+    WKPageLoadHTMLStringWithUserData(pageRef, htmlStringRef, baseURLRef, nullptr);
 }
 
 void WKPageLoadHTMLStringWithUserData(WKPageRef pageRef, WKStringRef htmlStringRef, WKURLRef baseURLRef, WKTypeRef userDataRef)
 {
-    toImpl(pageRef)->loadHTMLString(toWTFString(htmlStringRef), toWTFString(baseURLRef), toImpl(userDataRef));
+    loadString(pageRef, htmlStringRef, "text/html"_s, toWTFString(baseURLRef), userDataRef);
 }
 
 void WKPageLoadAlternateHTMLString(WKPageRef pageRef, WKStringRef htmlStringRef, WKURLRef baseURLRef, WKURLRef unreachableURLRef)
 {
-    toImpl(pageRef)->loadAlternateHTMLString(toWTFString(htmlStringRef), URL(URL(), toWTFString(baseURLRef)), URL(URL(), toWTFString(unreachableURLRef)));
+    WKPageLoadAlternateHTMLStringWithUserData(pageRef, htmlStringRef, baseURLRef, unreachableURLRef, nullptr);
 }
 
 void WKPageLoadAlternateHTMLStringWithUserData(WKPageRef pageRef, WKStringRef htmlStringRef, WKURLRef baseURLRef, WKURLRef unreachableURLRef, WKTypeRef userDataRef)
 {
-    toImpl(pageRef)->loadAlternateHTMLString(toWTFString(htmlStringRef), URL(URL(), toWTFString(baseURLRef)), URL(URL(), toWTFString(unreachableURLRef)), toImpl(userDataRef));
+    String string = toWTFString(htmlStringRef);
+    toImpl(pageRef)->loadAlternateHTML(dataFrom(string), encodingOf(string), URL(URL(), toWTFString(baseURLRef)), URL(URL(), toWTFString(unreachableURLRef)), toImpl(userDataRef));
 }
 
 void WKPageLoadPlainTextString(WKPageRef pageRef, WKStringRef plainTextStringRef)
 {
-    toImpl(pageRef)->loadPlainTextString(toWTFString(plainTextStringRef));
+    WKPageLoadPlainTextStringWithUserData(pageRef, plainTextStringRef, nullptr);
 }
 
 void WKPageLoadPlainTextStringWithUserData(WKPageRef pageRef, WKStringRef plainTextStringRef, WKTypeRef userDataRef)
 {
-    toImpl(pageRef)->loadPlainTextString(toWTFString(plainTextStringRef), toImpl(userDataRef));
+    loadString(pageRef, plainTextStringRef, "text/plain"_s, blankURL().string(), userDataRef);
 }
 
 void WKPageLoadWebArchiveData(WKPageRef pageRef, WKDataRef webArchiveDataRef)
@@ -2344,8 +2365,10 @@ void WKPageSetPageNavigationClient(WKPageRef pageRef, const WKPageNavigationClie
         
         void didReceiveAuthenticationChallenge(WebPageProxy& page, AuthenticationChallengeProxy& authenticationChallenge) override
         {
+            if (m_client.canAuthenticateAgainstProtectionSpace && !m_client.canAuthenticateAgainstProtectionSpace(toAPI(&page), toAPI(authenticationChallenge.protectionSpace()), m_client.base.clientInfo))
+                return authenticationChallenge.rejectProtectionSpaceAndContinue();
             if (!m_client.didReceiveAuthenticationChallenge)
-                return;
+                return authenticationChallenge.rejectProtectionSpaceAndContinue();
             m_client.didReceiveAuthenticationChallenge(toAPI(&page), toAPI(&authenticationChallenge), m_client.base.clientInfo);
         }
 

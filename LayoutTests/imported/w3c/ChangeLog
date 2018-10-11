@@ -1,3 +1,138 @@
+2018-09-15  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest::createResponseBlob() should create a Blob with type for empty response
+        https://bugs.webkit.org/show_bug.cgi?id=189627
+
+        Reviewed by Alexey Proskuryakov.
+
+        * web-platform-tests/xhr/overridemimetype-blob-expected.txt:
+
+2018-09-10  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest: overrideMimeType should not update the response's "Content-Type" header
+        https://bugs.webkit.org/show_bug.cgi?id=189465
+
+        Reviewed by Frédéric Wang.
+
+        * web-platform-tests/xhr/overridemimetype-invalid-mime-type-expected.txt:
+
+2018-09-12  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline imported/w3c/web-platform-tests/url/failure.html after r235808.
+
+        New checks are passing.
+
+        * web-platform-tests/url/failure-expected.txt:
+
+2018-09-07  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest: open() does not throw a SYNTAX_ERR exception if method is empty or url cannot be resolved
+        https://bugs.webkit.org/show_bug.cgi?id=46008
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/xhr/open-url-bogus-expected.txt:
+        * web-platform-tests/xhr/open-url-multi-window-6-expected.txt:
+
+2018-08-27  Rob Buis  <rbuis@igalia.com>
+
+        XMLHTTPRequest.send for Document should have same Content-Type processing rules as String
+        https://bugs.webkit.org/show_bug.cgi?id=188953
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/xhr/setrequestheader-content-type-expected.txt:
+
+2018-08-22  Rob Buis  <rbuis@igalia.com>
+
+        Fetch: Stop checking Request.integrity's value in no-cors mode
+        https://bugs.webkit.org/show_bug.cgi?id=188802
+
+        Reviewed by Frédéric Wang.
+
+        Update integrity.html expected result.
+
+        * web-platform-tests/fetch/api/basic/integrity-expected.txt:
+
+2018-08-20  Rob Buis  <rbuis@igalia.com>
+
+        Throw an exception if window.open() gets passed a URL that cannot be parsed
+        https://bugs.webkit.org/show_bug.cgi?id=171656
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/url/failure-expected.txt:
+
+2018-08-20  Rob Buis  <rbuis@igalia.com>
+
+        Relax Request constructor around referrers
+        https://bugs.webkit.org/show_bug.cgi?id=168649
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/fetch/api/policies/referrer-origin-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-worker-expected.txt:
+        * web-platform-tests/fetch/api/request/request-init-001.sub-expected.txt:
+
+2018-08-18  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Fire an initial dummy notification
+        https://bugs.webkit.org/show_bug.cgi?id=188670
+
+        Reviewed by Simon Fraser.
+
+        Rebaseline tests now that an initial notification is fired.
+
+        * web-platform-tests/intersection-observer/bounding-box-expected.txt:
+        * web-platform-tests/intersection-observer/client-rect-expected.txt:
+        * web-platform-tests/intersection-observer/containing-block-expected.txt:
+        * web-platform-tests/intersection-observer/cross-origin-iframe-expected.txt:
+        * web-platform-tests/intersection-observer/disconnect-expected.txt:
+        * web-platform-tests/intersection-observer/display-none-expected.txt:
+        * web-platform-tests/intersection-observer/edge-inclusive-intersection-expected.txt:
+        * web-platform-tests/intersection-observer/iframe-no-root-expected.txt:
+        * web-platform-tests/intersection-observer/inline-client-rect-expected.txt:
+        * web-platform-tests/intersection-observer/isIntersecting-change-events-expected.txt:
+        * web-platform-tests/intersection-observer/multiple-targets-expected.txt:
+        * web-platform-tests/intersection-observer/multiple-thresholds-expected.txt:
+        * web-platform-tests/intersection-observer/observer-without-js-reference-expected.txt:
+        * web-platform-tests/intersection-observer/remove-element-expected.txt:
+        * web-platform-tests/intersection-observer/root-margin-expected.txt:
+        * web-platform-tests/intersection-observer/same-document-no-root-expected.txt:
+        * web-platform-tests/intersection-observer/same-document-root-expected.txt:
+        * web-platform-tests/intersection-observer/same-document-zero-size-target-expected.txt:
+        * web-platform-tests/intersection-observer/shadow-content-expected.txt:
+        * web-platform-tests/intersection-observer/text-target-expected.txt:
+        * web-platform-tests/intersection-observer/timestamp-expected.txt:
+        * web-platform-tests/intersection-observer/unclipped-root-expected.txt:
+        * web-platform-tests/intersection-observer/zero-area-element-hidden-expected.txt:
+        * web-platform-tests/intersection-observer/zero-area-element-visible-expected.txt:
+
+2018-08-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Custom element constructor doesn't use HTMLElement in new.target's realm
+        https://bugs.webkit.org/show_bug.cgi?id=188634
+
+        Reviewed by Keith Miller.
+
+        Rebaselined the test now that all relevant test cases pass. All remaining test failures are
+        for customized builtin, which we do not and shall not implement.
+
+        * web-platform-tests/custom-elements/htmlconstructor/newtarget-expected.txt:
+
+2018-08-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Custom element doesn't invalidate its style when :defined rule starts to apply
+        https://bugs.webkit.org/show_bug.cgi?id=188637
+
+        Reviewed by Antti Koivisto.
+
+        Rebaselined the test now that all relevant test cases pass. The only remaining test failures
+        are for customized builtins which we do not and shall not implement.
+
+        * web-platform-tests/custom-elements/pseudo-class-defined-expected.txt:
+
 2018-08-14  Ryosuke Niwa  <rniwa@webkit.org>
 
         connectedCallback is invoked by the HTML parser after child nodes had been inserted

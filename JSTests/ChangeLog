@@ -1,3 +1,409 @@
+2018-09-19  Saam barati  <sbarati@apple.com>
+
+        AI rule for MultiPutByOffset executes its effects in the wrong order
+        https://bugs.webkit.org/show_bug.cgi?id=189757
+        <rdar://problem/43535257>
+
+        Reviewed by Michael Saboff.
+
+        * stress/multi-put-by-offset-must-filter-value-before-filtering-base.js: Added.
+        (foo):
+        (Foo):
+        (g):
+
+2018-09-17  Saam barati  <sbarati@apple.com>
+
+        We must convert ProfileType to CheckStructureOrEmpty instead of CheckStructure
+        https://bugs.webkit.org/show_bug.cgi?id=189676
+        <rdar://problem/39682897>
+
+        Reviewed by Michael Saboff.
+
+        * typeProfiler/check-structure-or-empty-in-fixup.js: Added.
+        (A):
+        (K):
+        (i.catch):
+
+2018-09-14  Saam barati  <sbarati@apple.com>
+
+        Don't dump OSRAvailabilityData in Graph::dump because a stale Availability may point to a Node that is already freed
+        https://bugs.webkit.org/show_bug.cgi?id=189628
+        <rdar://problem/39481690>
+
+        Reviewed by Mark Lam.
+
+        * stress/verbose-failure-dont-graph-dump-availability-already-freed.js: Added.
+        (foo):
+
+2018-09-07  Mark Lam  <mark.lam@apple.com>
+
+        Ensure that handleIntrinsicCall() is only applied on op_call shaped instructions.
+        https://bugs.webkit.org/show_bug.cgi?id=189317
+        <rdar://problem/44152198>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regress-189317.js: Added.
+        (testGetter):
+        (testSetter):
+
+2018-09-06  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [DFG] DFG should handle String#toString
+        https://bugs.webkit.org/show_bug.cgi?id=189151
+
+        Reviewed by Saam Barati.
+
+        The error message in String#toString and String#valueOf is poor, which will be
+        handled in a separate bug[1].
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=189357
+
+        * microbenchmarks/string-object-to-string.js: Added.
+        (test):
+        * microbenchmarks/string-object-value-of.js: Added.
+        (test):
+        * stress/string-to-string-error.js: Added.
+        (shouldThrow):
+        (test):
+        * stress/string-to-string.js: Added.
+        (shouldBe):
+        (test1):
+        (test2):
+        (test3):
+        * stress/string-value-of-error.js: Added.
+        (shouldThrow):
+        (test):
+        * stress/string-value-of.js: Added.
+        (shouldBe):
+        (test1):
+        (test2):
+        (test3):
+
+2018-09-06  Michael Saboff  <msaboff@apple.com>
+
+        Improper speculation type for Math.pow(NaN, 0) in Abstract Interpreter
+        https://bugs.webkit.org/show_bug.cgi?id=189380
+
+        Reviewed by Saam Barati.
+
+        New test.
+
+        * stress/math-pow-nan-to-zero-spec-type.js: Added.
+        (func):
+        (test):
+
+2018-09-05  Mark Lam  <mark.lam@apple.com>
+
+        JSPropertyNameEnumerator::visitChildren() needs to visit its m_cachedStructureID.
+        https://bugs.webkit.org/show_bug.cgi?id=189124
+        <rdar://problem/43863605>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regress-189124.js: Added.
+
+2018-09-05  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [ESNext] Symbol.prototype.description
+        https://bugs.webkit.org/show_bug.cgi?id=186686
+
+        Reviewed by Keith Miller.
+
+        * stress/symbol-description.js:
+        Add tests for empty and null symbol cases.
+
+        * test262/config.yaml:
+        Enable Symbol.prototype.description tests.
+
+2018-09-05  Mark Lam  <mark.lam@apple.com>
+
+        isAsyncGeneratorMethodParseMode() should check for SourceParseMode::AsyncGeneratorWrapperMethodMode.
+        https://bugs.webkit.org/show_bug.cgi?id=189292
+        <rdar://problem/38907433>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-189292.js: Added.
+
+2018-09-03  Mark Lam  <mark.lam@apple.com>
+
+        The watchdog sometimes fails to terminate a script.
+        https://bugs.webkit.org/show_bug.cgi?id=189227
+        <rdar://problem/39932857>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-189227-watchdog-on-infinite-loop.js: Added.
+
+2018-08-24  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Function object should convert params to string before throw a parsing error
+        https://bugs.webkit.org/show_bug.cgi?id=188874
+
+        Reviewed by Darin Adler.
+
+        * stress/function-body-to-string-before-parameter-syntax-check.js: Added.
+        (shouldThrow):
+
+2018-08-31  Mark Lam  <mark.lam@apple.com>
+
+        Fix exception check accounting in constructJSWebAssemblyCompileError().
+        https://bugs.webkit.org/show_bug.cgi?id=189185
+        <rdar://problem/39786007>
+
+        Reviewed by Michael Saboff.
+
+        * stress/regress-189185.js: Added.
+        (new.WebAssembly.CompileError.valueOf):
+
+2018-08-31  Mark Lam  <mark.lam@apple.com>
+
+        Fix exception check accounting in JSDataView::defineOwnProperty().
+        https://bugs.webkit.org/show_bug.cgi?id=189186
+        <rdar://problem/39786049>
+
+        Reviewed by Michael Saboff.
+
+        * stress/regress-189186.js: Added.
+
+2018-08-31  Mark Lam  <mark.lam@apple.com>
+
+        Add missing exception check in arrayProtoFuncLastIndexOf().
+        https://bugs.webkit.org/show_bug.cgi?id=189184
+        <rdar://problem/39785959>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/regress-189184.js: Added.
+
+2018-08-31  Saam barati  <sbarati@apple.com>
+
+        convertToRegExpMatchFastGlobal must use KnownString as the child use kind
+        https://bugs.webkit.org/show_bug.cgi?id=189173
+        <rdar://problem/43501645>
+
+        Reviewed by Michael Saboff.
+
+        * stress/may-exit-should-be-false-regexp-constant-folding.js: Added.
+        (foo):
+        (bar):
+
+2018-08-30  Saam barati  <sbarati@apple.com>
+
+        CSE DataViewGet* DFG nodes
+        https://bugs.webkit.org/show_bug.cgi?id=188768
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/dataview-cse.js: Added.
+        (assert):
+        (test):
+        * stress/dataview-get-cse.js: Added.
+        (assert):
+        (test1.foo):
+        (test1):
+        (test2.foo):
+        (test2):
+        (test3.foo):
+        (test3):
+        (test4.foo):
+        (test4):
+        (test5.foo):
+        (test5):
+        (test6.foo):
+        (test6):
+
+2018-08-30  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        output of toString() of Generator is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=188952
+
+        Reviewed by Saam Barati.
+
+        * stress/function-to-string.js: Added.
+        (shouldBe):
+        (shouldBe.test):
+        (test):
+        (shouldBe.async.test):
+        (async.test):
+        (shouldBe.async):
+        (async):
+        * test262/expectations.yaml:
+
+2018-08-29  Mark Lam  <mark.lam@apple.com>
+
+        Add some missing exception checks in JSRopeString::resolveRopeToAtomicString().
+        https://bugs.webkit.org/show_bug.cgi?id=189132
+        <rdar://problem/42513068>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-189132.js: Added.
+
+2018-08-24  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Array.prototype.reverse modifies JSImmutableButterfly
+        https://bugs.webkit.org/show_bug.cgi?id=188794
+
+        Reviewed by Saam Barati.
+
+        * stress/reverse-with-immutable-butterfly.js: Added.
+        (shouldBe):
+        (reverseInt):
+        (reverseDouble):
+        (reverseContiguous):
+
+2018-08-22  Mark Lam  <mark.lam@apple.com>
+
+        The DFG CFGSimplification phase shouldn’t jettison a block when it’s the target of both branch directions.
+        https://bugs.webkit.org/show_bug.cgi?id=188298
+        <rdar://problem/42888427>
+
+        Reviewed by Saam Barati.
+
+        * stress/bug-188298.js: Added.
+
+2018-08-20  Saam barati  <sbarati@apple.com>
+
+        Inline DataView accesses into DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=188573
+        <rdar://problem/43286746>
+
+        Reviewed by Michael Saboff.
+
+        * microbenchmarks/data-view-accesses-2.js: Added.
+        (assert):
+        (let.p.of.Object.keys.let.str):
+        (let.p.of.Object.keys):
+        (test):
+        * microbenchmarks/data-view-accesses.js: Added.
+        (assert):
+        (let.p.of.Object.keys.let.str):
+        (let.p.of.Object.keys):
+        * stress/dataview-jit-bounds-checks.js: Added.
+        (assert):
+        (let.p.of.Object.keys.let.str):
+        (let.p.of.Object.keys):
+        * stress/dataview-jit-get.js: Added.
+        (assert):
+        (test1.bigEndian):
+        (test1.littleEndian):
+        (test1.biEndian):
+        (test1):
+        (test2.bigEndian):
+        (test2.littleEndian):
+        (test2.biEndian):
+        (test2):
+        (test3.bigEndian):
+        (test3.littleEndian):
+        (test3.biEndian):
+        (test3):
+        (test4.bigEndian):
+        (test4.littleEndian):
+        (test4.biEndian):
+        (test4):
+        (test5.bigEndian):
+        (test5.littleEndian):
+        (test5.biEndian):
+        (test5):
+        (test6.bigEndian):
+        (test6.littleEndian):
+        (test6.biEndian):
+        (test6):
+        (test7.load):
+        (test7):
+        (test8.load):
+        (test8):
+        * stress/dataview-jit-neuter.js: Added.
+        (assert):
+        (test.load):
+        (test):
+        (test2.load):
+        (test2):
+        * stress/dataview-jit-set.js: Added.
+        (assert):
+        (isLittleEndian):
+        (readByte):
+        (readHex):
+        (test.storeLittleEndian):
+        (test.storeBigEndian):
+        (test.store):
+        (test):
+        (test2.storeLittleEndian):
+        (test2.storeBigEndian):
+        (test2.store):
+        (test2):
+        (test3.storeLittleEndian):
+        (test3.storeBigEndian):
+        (test3.store):
+        (test3):
+        (test4.storeLittleEndian):
+        (test4.storeBigEndian):
+        (test4.store):
+        (test4):
+        (test5.storeLittleEndian):
+        (test5.storeBigEndian):
+        (test5.store):
+        (test5):
+        (test6.storeLittleEndian):
+        (test6.storeBigEndian):
+        (test6.store):
+        (test6):
+        (test7.store):
+        (test7):
+        (test8.store):
+        (test8):
+        * stress/dataview-jit-unaligned-accesses.js: Added.
+        (assert):
+        (let.p.of.Object.keys.let.str):
+        (let.p.of.Object.keys):
+
+2018-08-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [YARR] Extend size of fixed characters bulk matching in 64bit platform
+        https://bugs.webkit.org/show_bug.cgi?id=181989
+
+        Reviewed by Michael Saboff.
+
+        * stress/characters-regexp-ignore-case.js: Added.
+        (shouldBe):
+        (testH):
+        (testHe):
+        (testHel):
+        (testHell):
+        (testHello):
+        (testHelloW):
+        (testHelloWo):
+        (testHelloWor):
+        (testHelloWorl):
+        (testHelloWorld):
+        * stress/characters-regexp.js: Added.
+        (shouldBe):
+        (testH):
+        (testHe):
+        (testHel):
+        (testHell):
+        (testHello):
+        (testHelloW):
+        (testHelloWo):
+        (testHelloWor):
+        (testHelloWorl):
+        (testHelloWorld):
+
+2018-08-17  Saam barati  <sbarati@apple.com>
+
+        intersectionOfPastValuesAtHead must filter values after they've observed an invalidation point
+        https://bugs.webkit.org/show_bug.cgi?id=188707
+        <rdar://problem/43015442>
+
+        Reviewed by Mark Lam.
+
+        * stress/cfa-expected-values-must-set-clobbered-to-false.js: Added.
+        (foo):
+        (let.comp.valueOf):
+        (result):
+
 2018-08-10  Keith Miller  <keith_miller@apple.com>
 
         Slicing an ArrayBuffer with a long number returns an ArrayBuffer with byteLength zero

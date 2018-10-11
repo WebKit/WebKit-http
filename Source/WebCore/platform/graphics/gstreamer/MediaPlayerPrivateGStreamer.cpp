@@ -49,6 +49,7 @@
 #include <wtf/MediaTime.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StringPrintStream.h>
+#include <wtf/WallTime.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/glib/RunLoopSourcePriority.h>
 #include <wtf/text/CString.h>
@@ -404,6 +405,14 @@ MediaTime MediaPlayerPrivateGStreamer::playbackPosition() const
 
     m_lastQuery = now;
 
+    // This constant should remain lower than HTMLMediaElement's maxTimeupdateEventFrequency.
+    static const Seconds positionCacheThreshold = 200_ms;
+    Seconds now = WTF::WallTime::now().secondsSinceEpoch();
+    if (m_lastQueryTime && (now - m_lastQueryTime.value()) < positionCacheThreshold && m_cachedPosition.isValid())
+        return m_cachedPosition;
+
+    m_lastQueryTime = now;
+
     // Position is only available if no async state change is going on and the state is either paused or playing.
     gint64 position = GST_CLOCK_TIME_NONE;
     GstElement* videoDec = nullptr;
@@ -419,7 +428,7 @@ MediaTime MediaPlayerPrivateGStreamer::playbackPosition() const
         gst_query_parse_position(query, 0, &position);
     gst_query_unref(query);
 
-    GST_LOG("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
+    GST_TRACE_OBJECT(pipeline(), "Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
 
     MediaTime playbackPosition = MediaTime::zeroTime();
     GstClockTime gstreamerPosition = static_cast<GstClockTime>(position);
@@ -785,10 +794,10 @@ FloatSize MediaPlayerPrivateGStreamer::naturalSize() const
         RefPtr<VideoTrackPrivateGStreamer> videoTrack = m_videoTracks.get(m_currentVideoStreamId);
 
         if (videoTrack) {
-            auto tags = gst_stream_get_tags(videoTrack->stream());
+            auto tags = adoptGRef(gst_stream_get_tags(videoTrack->stream()));
             gint width, height;
 
-            if (gst_tag_list_get_int(tags, WEBKIT_MEDIA_TRACK_TAG_WIDTH, &width) && gst_tag_list_get_int(tags, WEBKIT_MEDIA_TRACK_TAG_HEIGHT, &height))
+            if (tags && gst_tag_list_get_int(tags.get(), WEBKIT_MEDIA_TRACK_TAG_WIDTH, &width) && gst_tag_list_get_int(tags.get(), WEBKIT_MEDIA_TRACK_TAG_HEIGHT, &height))
                 return FloatSize(width, height);
         }
     }
@@ -838,18 +847,18 @@ void MediaPlayerPrivateGStreamer::updateTracks()
     if (m_hasVideo)
         m_player->sizeChanged();
 
-    if (useMediaSource) {
-        GST_DEBUG("Tracks managed by source element. Bailing out now.");
-        m_player->client().mediaPlayerEngineUpdated(m_player);
-        return;
-    }
-
     m_player->client().mediaPlayerEngineUpdated(m_player);
 }
 #endif // GST_CHECK_VERSION(1, 10, 0)
 
 void MediaPlayerPrivateGStreamer::enableTrack(TrackPrivateBaseGStreamer::TrackType trackType, unsigned index)
 {
+    // FIXME: Remove isMediaSource() test below when fixing https://bugs.webkit.org/show_bug.cgi?id=182531.
+    if (isMediaSource()) {
+        GST_FIXME_OBJECT(m_pipeline.get(), "Audio/Video/Text track switching is not yet supported by the MSE backend.");
+        return;
+    }
+
     const char* propertyName;
     const char* trackTypeAsString;
     Vector<String> selectedStreams;
@@ -915,11 +924,8 @@ void MediaPlayerPrivateGStreamer::enableTrack(TrackPrivateBaseGStreamer::TrackTy
     }
 
     GST_INFO("Enabling %s track with index: %u", trackTypeAsString, index);
-    // FIXME: Remove isMediaSource() test below when fixing https://bugs.webkit.org/show_bug.cgi?id=182531
-    if (m_isLegacyPlaybin || isMediaSource()) {
-        GstElement* element = isMediaSource() ? m_source.get() : m_pipeline.get();
-        g_object_set(element, propertyName, index, nullptr);
-    }
+    if (m_isLegacyPlaybin)
+        g_object_set(m_pipeline.get(), propertyName, index, nullptr);
 #if GST_CHECK_VERSION(1, 10, 0)
     else {
         GList* selectedStreamsList = nullptr;
@@ -1242,8 +1248,9 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateGStreamer::buffered() cons
     for (guint index = 0; index < numBufferingRanges; index++) {
         gint64 rangeStart = 0, rangeStop = 0;
         if (gst_query_parse_nth_buffering_range(query, index, &rangeStart, &rangeStop)) {
-            timeRanges->add(MediaTime(rangeStart * toGstUnsigned64Time(mediaDuration) / GST_FORMAT_PERCENT_MAX, GST_SECOND),
-                MediaTime(rangeStop * toGstUnsigned64Time(mediaDuration) / GST_FORMAT_PERCENT_MAX, GST_SECOND));
+            uint64_t startTime = gst_util_uint64_scale_int_round(toGstUnsigned64Time(mediaDuration), rangeStart, GST_FORMAT_PERCENT_MAX);
+            uint64_t stopTime = gst_util_uint64_scale_int_round(toGstUnsigned64Time(mediaDuration), rangeStop, GST_FORMAT_PERCENT_MAX);
+            timeRanges->add(MediaTime(startTime, GST_SECOND), MediaTime(stopTime, GST_SECOND));
         }
     }
 
@@ -2326,6 +2333,7 @@ void MediaPlayerPrivateGStreamer::didEnd()
     // Synchronize position and duration values to not confuse the
     // HTMLMediaElement. In some cases like reverse playback the
     // position is not always reported as 0 for instance.
+    m_cachedPosition = MediaTime::invalidTime();
     MediaTime now = currentMediaTime();
     if (now > MediaTime { } && now <= durationMediaTime())
         m_player->durationChanged();

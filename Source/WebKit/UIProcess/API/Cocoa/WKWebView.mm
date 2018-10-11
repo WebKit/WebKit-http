@@ -903,7 +903,7 @@ static void validate(WKWebViewConfiguration *configuration)
 
 - (WKNavigation *)loadData:(NSData *)data MIMEType:(NSString *)MIMEType characterEncodingName:(NSString *)characterEncodingName baseURL:(NSURL *)baseURL
 {
-    auto navigation = _page->loadData(API::Data::createWithoutCopying(data).ptr(), MIMEType, characterEncodingName, baseURL.absoluteString);
+    auto navigation = _page->loadData({ static_cast<const uint8_t*>(data.bytes), data.length }, MIMEType, characterEncodingName, baseURL.absoluteString);
     if (!navigation)
         return nil;
 
@@ -2313,7 +2313,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (void)didMoveToWindow
 {
-    _page->activityStateDidChange(WebCore::ActivityState::AllFlags);
+    _page->activityStateDidChange(WebCore::ActivityState::allFlags());
 }
 
 - (void)setOpaque:(BOOL)opaque
@@ -4232,12 +4232,13 @@ WEBCORE_COMMAND(yankAndSelect)
 
 - (void)_loadAlternateHTMLString:(NSString *)string baseURL:(NSURL *)baseURL forUnreachableURL:(NSURL *)unreachableURL
 {
-    _page->loadAlternateHTMLString(string, baseURL, unreachableURL);
+    NSData *data = [string dataUsingEncoding:NSUTF8StringEncoding];
+    _page->loadAlternateHTML({ static_cast<const uint8_t*>(data.bytes), data.length }, "UTF-8"_s, baseURL, unreachableURL);
 }
 
 - (WKNavigation *)_loadData:(NSData *)data MIMEType:(NSString *)MIMEType characterEncodingName:(NSString *)characterEncodingName baseURL:(NSURL *)baseURL userData:(id)userData
 {
-    auto navigation = _page->loadData(API::Data::createWithoutCopying(data).ptr(), MIMEType, characterEncodingName, baseURL.absoluteString, WebKit::ObjCObjectGraph::create(userData).ptr());
+    auto navigation = _page->loadData({ static_cast<const uint8_t*>(data.bytes), data.length }, MIMEType, characterEncodingName, baseURL.absoluteString, WebKit::ObjCObjectGraph::create(userData).ptr());
     if (!navigation)
         return nil;
 
@@ -6634,3 +6635,5 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 @end
 
 #endif // WK_API_ENABLED
+
+#undef RELEASE_LOG_IF_ALLOWED

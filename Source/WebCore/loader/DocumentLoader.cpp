@@ -600,7 +600,7 @@ void DocumentLoader::willSendRequest(ResourceRequest&& newRequest, const Resourc
     FrameLoader::addSameSiteInfoToRequestIfNeeded(newRequest, m_frame->document());
 
     if (!didReceiveRedirectResponse)
-        frameLoader()->client().dispatchWillChangeDocument();
+        frameLoader()->client().dispatchWillChangeDocument(m_frame->document()->url(), newRequest.url());
 
     // If we're fielding a redirect in response to a POST, force a load from origin, since
     // this is a common site technique to return to a page viewing some data that the POST
@@ -731,7 +731,7 @@ void DocumentLoader::stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(
     InspectorInstrumentation::continueAfterXFrameOptionsDenied(*m_frame, identifier, *this, response);
     m_frame->document()->enforceSandboxFlags(SandboxOrigin);
     if (HTMLFrameOwnerElement* ownerElement = m_frame->ownerElement())
-        ownerElement->dispatchEvent(Event::create(eventNames().loadEvent, false, false));
+        ownerElement->dispatchEvent(Event::create(eventNames().loadEvent, Event::CanBubble::No, Event::IsCancelable::No));
 
     // The load event might have detached this frame. In that case, the load will already have been cancelled during detach.
     if (FrameLoader* frameLoader = this->frameLoader())

@@ -61,7 +61,8 @@ enum class CacheType : int8_t {
     PutByIdReplace,
     InByIdSelf,
     Stub,
-    ArrayLength
+    ArrayLength,
+    StringLength
 };
 
 class StructureStubInfo {
@@ -73,6 +74,7 @@ public:
 
     void initGetByIdSelf(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
     void initArrayLength();
+    void initStringLength();
     void initPutByIdReplace(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
     void initInByIdSelf(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
 
@@ -189,15 +191,20 @@ public:
         int32_t deltaFromStartToSlowPathCallLocation;
         int32_t deltaFromStartToSlowPathStart;
 
-        int8_t baseGPR;
-        int8_t valueGPR;
-        int8_t thisGPR;
+        GPRReg baseGPR;
+        GPRReg valueGPR;
+        GPRReg thisGPR;
 #if USE(JSVALUE32_64)
-        int8_t valueTagGPR;
-        int8_t baseTagGPR;
-        int8_t thisTagGPR;
+        GPRReg valueTagGPR;
+        GPRReg baseTagGPR;
+        GPRReg thisTagGPR;
 #endif
     } patch;
+
+    GPRReg baseGPR() const
+    {
+        return patch.baseGPR;
+    }
 
     CodeLocationCall<JSInternalPtrTag> slowPathCallLocation() { return patch.start.callAtOffset<JSInternalPtrTag>(patch.deltaFromStartToSlowPathCallLocation); }
     CodeLocationLabel<JSInternalPtrTag> doneLocation() { return patch.start.labelAtOffset<JSInternalPtrTag>(patch.inlineSize); }
@@ -212,9 +219,9 @@ public:
     {
         return JSValueRegs(
 #if USE(JSVALUE32_64)
-            static_cast<GPRReg>(patch.valueTagGPR),
+            patch.valueTagGPR,
 #endif
-            static_cast<GPRReg>(patch.valueGPR));
+            patch.valueGPR);
     }
 
 

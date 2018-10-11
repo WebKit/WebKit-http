@@ -520,7 +520,7 @@ bool SourceBuffer::isRemoved() const
 
 void SourceBuffer::scheduleEvent(const AtomicString& eventName)
 {
-    auto event = Event::create(eventName, false, false);
+    auto event = Event::create(eventName, Event::CanBubble::No, Event::IsCancelable::No);
     event->setTarget(this);
 
     m_asyncEventQueue.enqueueEvent(WTFMove(event));
@@ -1720,6 +1720,14 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
                 erasedSamples.addRange(iter_pair.first, iter_pair.second);
         }
 
+        // There are many files out there where the frame times are not perfectly contiguous and may have small overlaps
+        // between the beginning of a frame and the end of the previous one; therefore a tolerance is needed whenever
+        // durations are considered.
+        // For instance, most WebM files are muxed rounded to the millisecond (the default TimecodeScale of the format)
+        // but their durations use a finer timescale (causing a sub-millisecond overlap). More rarely, there are also
+        // MP4 files with slightly off tfdt boxes, presenting a similar problem at the beginning of each fragment.
+        const MediaTime contiguousFrameTolerance = MediaTime(1, 1000);
+
         // If highest presentation timestamp for track buffer is set and less than or equal to presentation timestamp
         if (trackBuffer.highestPresentationTimestamp.isValid() && trackBuffer.highestPresentationTimestamp <= presentationTimestamp) {
             // Remove all coded frames from track buffer that have a presentation timestamp greater than highest
@@ -1733,14 +1741,16 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
                     break;
 
                 MediaTime highestBufferedTime = trackBuffer.buffered.maximumBufferedTime();
+                MediaTime eraseBeginTime = trackBuffer.highestPresentationTimestamp;
+                MediaTime eraseEndTime = frameEndTimestamp - contiguousFrameTolerance;
 
                 PresentationOrderSampleMap::iterator_range range;
                 if (highestBufferedTime - trackBuffer.highestPresentationTimestamp < trackBuffer.lastFrameDuration)
                     // If the new frame is at the end of the buffered ranges, perform a sequential scan from end (O(1)).
-                    range = trackBuffer.samples.presentationOrder().findSamplesBetweenPresentationTimesFromEnd(trackBuffer.highestPresentationTimestamp, frameEndTimestamp);
+                    range = trackBuffer.samples.presentationOrder().findSamplesBetweenPresentationTimesFromEnd(eraseBeginTime, eraseEndTime);
                 else
                     // In any other case, perform a binary search (O(log(n)).
-                    range = trackBuffer.samples.presentationOrder().findSamplesBetweenPresentationTimes(trackBuffer.highestPresentationTimestamp, frameEndTimestamp);
+                    range = trackBuffer.samples.presentationOrder().findSamplesBetweenPresentationTimes(eraseBeginTime, eraseEndTime);
 
                 if (range.first != trackBuffer.samples.presentationOrder().end())
                     erasedSamples.addRange(range.first, range.second);
@@ -1791,7 +1801,13 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
         // Add the coded frame with the presentation timestamp, decode timestamp, and frame duration to the track buffer.
         trackBuffer.samples.addSample(sample);
 
-        if (trackBuffer.lastEnqueuedDecodeEndTime.isInvalid() || decodeTimestamp >= trackBuffer.lastEnqueuedDecodeEndTime) {
+        // Note: The terminology here is confusing: "enqueuing" means providing a frame to the inner media framework.
+        // First, frames are inserted in the decode queue; later, at the end of the append all the frames in the decode
+        // queue are "enqueued" (sent to the inner media framework) in `provideMediaData()`.
+        //
+        // In order to check whether a frame should be added to the decode queue we check whether it starts after the
+        // lastEnqueuedDecodeEndTime or even a bit before that to accomodate files with imprecise timing information.
+        if (trackBuffer.lastEnqueuedDecodeEndTime.isInvalid() || decodeTimestamp >= (trackBuffer.lastEnqueuedDecodeEndTime - contiguousFrameTolerance)) {
             DecodeOrderSampleMap::KeyType decodeKey(sample.decodeTime(), sample.presentationTime());
             trackBuffer.decodeQueue.insert(DecodeOrderSampleMap::MapType::value_type(decodeKey, &sample));
         }
@@ -1800,7 +1816,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
         // to the decoded duration. When comparing deltas between decode timestamps, the decode duration, not the presentation.
         if (trackBuffer.lastDecodeTimestamp.isValid()) {
             MediaTime lastDecodeDuration = decodeTimestamp - trackBuffer.lastDecodeTimestamp;
-            if (lastDecodeDuration > trackBuffer.greatestDecodeDuration)
+            if (!trackBuffer.greatestDecodeDuration.isValid() || lastDecodeDuration > trackBuffer.greatestDecodeDuration)
                 trackBuffer.greatestDecodeDuration = lastDecodeDuration;
         }
 
@@ -2045,7 +2061,6 @@ void SourceBuffer::provideMediaData(TrackBuffer& trackBuffer, const AtomicString
         // against re-entrancy introduces a small inefficency when removing appended samples from the decode queue one at a time
         // rather than when all samples have been enqueued.
         auto sample = trackBuffer.decodeQueue.begin()->second;
-        trackBuffer.decodeQueue.erase(trackBuffer.decodeQueue.begin());
 
         // Do not enqueue samples spanning a significant unbuffered gap.
         // NOTE: one second is somewhat arbitrary. MediaSource::monitorSourceBuffers() is run
@@ -2057,6 +2072,9 @@ void SourceBuffer::provideMediaData(TrackBuffer& trackBuffer, const AtomicString
         MediaTime oneSecond(1, 1);
         if (trackBuffer.lastEnqueuedDecodeEndTime.isValid() && sample->decodeTime() - trackBuffer.lastEnqueuedDecodeEndTime > oneSecond)
             break;
+
+        // Remove the sample from the decode queue now.
+        trackBuffer.decodeQueue.erase(trackBuffer.decodeQueue.begin());
 
         trackBuffer.lastEnqueuedPresentationTime = sample->presentationTime();
         trackBuffer.lastEnqueuedDecodeEndTime = sample->decodeTime() + sample->duration();

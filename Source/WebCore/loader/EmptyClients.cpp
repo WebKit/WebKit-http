@@ -264,7 +264,7 @@ private:
         void checkGrammarOfString(StringView, Vector<GrammarDetail>&, int*, int*) final { }
 
 #if USE(UNIFIED_TEXT_CHECKING)
-        Vector<TextCheckingResult> checkTextOfParagraph(StringView, TextCheckingTypeMask, const VisibleSelection&) final { return Vector<TextCheckingResult>(); }
+        Vector<TextCheckingResult> checkTextOfParagraph(StringView, OptionSet<TextCheckingType>, const VisibleSelection&) final { return Vector<TextCheckingResult>(); }
 #endif
 
         void getGuessesForWord(const String&, const String&, const VisibleSelection&, Vector<String>&) final { }
@@ -454,8 +454,9 @@ void EmptyFrameLoaderClient::dispatchWillSendSubmitEvent(Ref<FormState>&&)
 {
 }
 
-void EmptyFrameLoaderClient::dispatchWillSubmitForm(FormState&, WTF::Function<void(void)>&&)
+void EmptyFrameLoaderClient::dispatchWillSubmitForm(FormState&, CompletionHandler<void()>&& completionHandler)
 {
+    completionHandler();
 }
 
 Ref<DocumentLoader> EmptyFrameLoaderClient::createDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)

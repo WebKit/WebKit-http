@@ -57,6 +57,7 @@
 #include "JSModuleNamespaceObject.h"
 #include "NumberConstructor.h"
 #include "ObjectConstructor.h"
+#include "OpcodeInlines.h"
 #include "PreciseJumpTargets.h"
 #include "PutByIdFlags.h"
 #include "PutByIdStatus.h"
@@ -2098,7 +2099,10 @@ template<typename ChecksFunctor>
 bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrinsic intrinsic, int registerOffset, int argumentCountIncludingThis, SpeculatedType prediction, const ChecksFunctor& insertChecks)
 {
     VERBOSE_LOG("       The intrinsic is ", intrinsic, "\n");
-    
+
+    if (!isOpcodeShape<OpCallShape>(m_currentInstruction))
+        return false;
+
     // It so happens that the code below doesn't handle the invalid result case. We could fix that, but
     // it would only benefit intrinsics called as setters, like if you do:
     //
@@ -2210,8 +2214,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
 
         if (static_cast<unsigned>(argumentCountIncludingThis) >= MIN_SPARSE_ARRAY_INDEX)
             return false;
-        
-        ArrayMode arrayMode = getArrayMode(m_currentInstruction[OPCODE_LENGTH(op_call) - 2].u.arrayProfile, Array::Write);
+        ArrayMode arrayMode = getArrayMode(arrayProfileFor<OpCallShape>(m_currentInstruction), Array::Write);
         if (!arrayMode.isJSArray())
             return false;
         switch (arrayMode.type()) {
@@ -2248,8 +2251,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadConstantCache)
             || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCache))
             return false;
-
-        ArrayMode arrayMode = getArrayMode(m_currentInstruction[OPCODE_LENGTH(op_call) - 2].u.arrayProfile, Array::Read);
+        ArrayMode arrayMode = getArrayMode(arrayProfileFor<OpCallShape>(m_currentInstruction), Array::Read);
         if (!arrayMode.isJSArray())
             return false;
 
@@ -2338,7 +2340,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
             || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
             return false;
 
-        ArrayMode arrayMode = getArrayMode(m_currentInstruction[OPCODE_LENGTH(op_call) - 2].u.arrayProfile, Array::Read);
+        ArrayMode arrayMode = getArrayMode(arrayProfileFor<OpCallShape>(m_currentInstruction), Array::Read);
         if (!arrayMode.isJSArray())
             return false;
 
@@ -2397,8 +2399,7 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
     case ArrayPopIntrinsic: {
         if (argumentCountIncludingThis != 1)
             return false;
-        
-        ArrayMode arrayMode = getArrayMode(m_currentInstruction[OPCODE_LENGTH(op_call) - 2].u.arrayProfile, Array::Write);
+        ArrayMode arrayMode = getArrayMode(arrayProfileFor<OpCallShape>(m_currentInstruction), Array::Write);
         if (!arrayMode.isJSArray())
             return false;
         switch (arrayMode.type()) {
@@ -2688,6 +2689,13 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
 
         insertChecks();
         set(VirtualRegister(resultOperand), addToGraph(IsTypedArrayView, OpInfo(prediction), get(virtualRegisterForArgument(1, registerOffset))));
+        return true;
+    }
+
+    case StringPrototypeValueOfIntrinsic: {
+        insertChecks();
+        Node* value = get(virtualRegisterForArgument(0, registerOffset));
+        set(VirtualRegister(resultOperand), addToGraph(StringValueOf, value));
         return true;
     }
 
@@ -3076,6 +3084,180 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         addVarArgChild(Edge(hash, Int32Use));
         addToGraph(Node::VarArg, WeakMapSet, OpInfo(0), OpInfo(0));
         set(VirtualRegister(resultOperand), base);
+        return true;
+    }
+
+    case DataViewGetInt8:
+    case DataViewGetUint8:
+    case DataViewGetInt16:
+    case DataViewGetUint16:
+    case DataViewGetInt32:
+    case DataViewGetUint32:
+    case DataViewGetFloat32:
+    case DataViewGetFloat64: {
+        if (!is64Bit())
+            return false;
+
+        // To inline data view accesses, we assume the architecture we're running on:
+        // - Is little endian.
+        // - Allows unaligned loads/stores without crashing. 
+
+        if (argumentCountIncludingThis < 2)
+            return false;
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+            return false;
+
+        insertChecks();
+
+        uint8_t byteSize;
+        NodeType op = DataViewGetInt;
+        bool isSigned = false;
+        switch (intrinsic) {
+        case DataViewGetInt8:
+            isSigned = true;
+            FALLTHROUGH;
+        case DataViewGetUint8:
+            byteSize = 1;
+            break;
+
+        case DataViewGetInt16:
+            isSigned = true;
+            FALLTHROUGH;
+        case DataViewGetUint16:
+            byteSize = 2;
+            break;
+
+        case DataViewGetInt32:
+            isSigned = true;
+            FALLTHROUGH;
+        case DataViewGetUint32:
+            byteSize = 4;
+            break;
+
+        case DataViewGetFloat32:
+            byteSize = 4;
+            op = DataViewGetFloat;
+            break;
+        case DataViewGetFloat64:
+            byteSize = 8;
+            op = DataViewGetFloat;
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+
+        TriState isLittleEndian = MixedTriState;
+        Node* littleEndianChild = nullptr;
+        if (byteSize > 1) {
+            if (argumentCountIncludingThis < 3)
+                isLittleEndian = FalseTriState;
+            else {
+                littleEndianChild = get(virtualRegisterForArgument(2, registerOffset));
+                if (littleEndianChild->hasConstant()) {
+                    JSValue constant = littleEndianChild->constant()->value();
+                    isLittleEndian = constant.pureToBoolean();
+                    if (isLittleEndian != MixedTriState)
+                        littleEndianChild = nullptr;
+                } else
+                    isLittleEndian = MixedTriState;
+            }
+        }
+
+        DataViewData data { };
+        data.isLittleEndian = isLittleEndian;
+        data.isSigned = isSigned;
+        data.byteSize = byteSize;
+
+        set(VirtualRegister(resultOperand),
+            addToGraph(op, OpInfo(data.asQuadWord), OpInfo(prediction), get(virtualRegisterForArgument(0, registerOffset)), get(virtualRegisterForArgument(1, registerOffset)), littleEndianChild));
+        return true;
+    }
+
+    case DataViewSetInt8:
+    case DataViewSetUint8:
+    case DataViewSetInt16:
+    case DataViewSetUint16:
+    case DataViewSetInt32:
+    case DataViewSetUint32:
+    case DataViewSetFloat32:
+    case DataViewSetFloat64: {
+        if (!is64Bit())
+            return false;
+
+        if (argumentCountIncludingThis < 3)
+            return false;
+
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+            return false;
+
+        insertChecks();
+
+        uint8_t byteSize;
+        bool isFloatingPoint = false;
+        bool isSigned = false;
+        switch (intrinsic) {
+        case DataViewSetInt8:
+            isSigned = true;
+            FALLTHROUGH;
+        case DataViewSetUint8:
+            byteSize = 1;
+            break;
+
+        case DataViewSetInt16:
+            isSigned = true;
+            FALLTHROUGH;
+        case DataViewSetUint16:
+            byteSize = 2;
+            break;
+
+        case DataViewSetInt32:
+            isSigned = true;
+            FALLTHROUGH;
+        case DataViewSetUint32:
+            byteSize = 4;
+            break;
+
+        case DataViewSetFloat32:
+            isFloatingPoint = true;
+            byteSize = 4;
+            break;
+        case DataViewSetFloat64:
+            isFloatingPoint = true;
+            byteSize = 8;
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+
+        TriState isLittleEndian = MixedTriState;
+        Node* littleEndianChild = nullptr;
+        if (byteSize > 1) {
+            if (argumentCountIncludingThis < 4)
+                isLittleEndian = FalseTriState;
+            else {
+                littleEndianChild = get(virtualRegisterForArgument(3, registerOffset));
+                if (littleEndianChild->hasConstant()) {
+                    JSValue constant = littleEndianChild->constant()->value();
+                    isLittleEndian = constant.pureToBoolean();
+                    if (isLittleEndian != MixedTriState)
+                        littleEndianChild = nullptr;
+                } else
+                    isLittleEndian = MixedTriState;
+            }
+        }
+
+        DataViewData data { };
+        data.isLittleEndian = isLittleEndian;
+        data.isSigned = isSigned;
+        data.byteSize = byteSize;
+        data.isFloatingPoint = isFloatingPoint;
+
+        addVarArgChild(get(virtualRegisterForArgument(0, registerOffset)));
+        addVarArgChild(get(virtualRegisterForArgument(1, registerOffset)));
+        addVarArgChild(get(virtualRegisterForArgument(2, registerOffset)));
+        addVarArgChild(littleEndianChild);
+
+        addToGraph(Node::VarArg, DataViewSet, OpInfo(data.asQuadWord), OpInfo());
         return true;
     }
 
@@ -5099,7 +5281,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
             if (compiledAsGetById)
                 handleGetById(currentInstruction[1].u.operand, prediction, base, identifierNumber, getByIdStatus, AccessType::Get, OPCODE_LENGTH(op_get_by_val));
             else {
-                ArrayMode arrayMode = getArrayMode(currentInstruction[4].u.arrayProfile, Array::Read);
+                ArrayMode arrayMode = getArrayMode(arrayProfileFor<OpGetByValShape>(currentInstruction), Array::Read);
                 // FIXME: We could consider making this not vararg, since it only uses three child
                 // slots.
                 // https://bugs.webkit.org/show_bug.cgi?id=184192
@@ -5171,7 +5353,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
             }
 
             if (!compiledAsPutById) {
-                ArrayMode arrayMode = getArrayMode(currentInstruction[4].u.arrayProfile, Array::Write);
+                ArrayMode arrayMode = getArrayMode(arrayProfileFor<OpPutByValShape>(currentInstruction), Array::Write);
 
                 addVarArgChild(base);
                 addVarArgChild(property);
@@ -6231,7 +6413,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
         }
         
         case op_check_traps: {
-            addToGraph(CheckTraps);
+            addToGraph(Options::usePollingTraps() ? CheckTraps : InvalidationPoint);
             NEXT_OPCODE(op_check_traps);
         }
 
@@ -6461,7 +6643,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_in_by_val: {
-            ArrayMode arrayMode = getArrayMode(currentInstruction[OPCODE_LENGTH(op_in_by_val) - 1].u.arrayProfile, Array::Read);
+            ArrayMode arrayMode = getArrayMode(arrayProfileFor<OpInByValShape>(currentInstruction), Array::Read);
             set(VirtualRegister(currentInstruction[1].u.operand),
                 addToGraph(InByVal, OpInfo(arrayMode.asWord()), get(VirtualRegister(currentInstruction[2].u.operand)), get(VirtualRegister(currentInstruction[3].u.operand))));
             NEXT_OPCODE(op_in_by_val);
@@ -6530,7 +6712,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
 
         case op_has_indexed_property: {
             Node* base = get(VirtualRegister(currentInstruction[2].u.operand));
-            ArrayMode arrayMode = getArrayMode(currentInstruction[4].u.arrayProfile, Array::Read);
+            ArrayMode arrayMode = getArrayMode(arrayProfileFor<OpHasIndexedPropertyShape>(currentInstruction), Array::Read);
             Node* property = get(VirtualRegister(currentInstruction[3].u.operand));
             Node* hasIterableProperty = addToGraph(HasIndexedProperty, OpInfo(arrayMode.asWord()), OpInfo(static_cast<uint32_t>(PropertySlot::InternalMethodType::GetOwnProperty)), base, property);
             set(VirtualRegister(currentInstruction[1].u.operand), hasIterableProperty);
@@ -6778,7 +6960,7 @@ void ByteCodeParser::parseCodeBlock()
     if (UNLIKELY(Options::dumpSourceAtDFGTime())) {
         Vector<DeferredSourceDump>& deferredSourceDump = m_graph.m_plan.callback()->ensureDeferredSourceDump();
         if (inlineCallFrame()) {
-            DeferredSourceDump dump(codeBlock->baselineVersion(), m_codeBlock, JITCode::DFGJIT, inlineCallFrame()->directCaller);
+            DeferredSourceDump dump(codeBlock->baselineVersion(), m_codeBlock, JITCode::DFGJIT, inlineCallFrame()->directCaller.bytecodeIndex);
             deferredSourceDump.append(dump);
         } else
             deferredSourceDump.append(DeferredSourceDump(codeBlock->baselineVersion()));
