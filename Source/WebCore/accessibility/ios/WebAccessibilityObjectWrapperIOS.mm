@@ -1823,6 +1823,14 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
     return m_object->canSetValueAttribute();
 }
 
+- (NSString *)accessibilityLinkRelationshipType
+{
+    if (![self _prepareAccessibilityCall])
+        return nil;
+    
+    return m_object->linkRelValue();
+}
+
 - (BOOL)accessibilityRequired
 {
     if (![self _prepareAccessibilityCall])
@@ -2265,8 +2273,8 @@ static void AXAttributeStringSetStyle(NSMutableAttributedString* attrString, Ren
     // set basic font info
     AXAttributeStringSetFont(attrString, style.fontCascade().primaryFont().getCTFont(), range);
                 
-    int decor = style.textDecorationsInEffect();
-    if (decor & TextDecorationUnderline)
+    auto decor = style.textDecorationsInEffect();
+    if (decor & TextDecoration::Underline)
         AXAttributeStringSetNumber(attrString, UIAccessibilityTokenUnderline, @YES, range);
 }
 

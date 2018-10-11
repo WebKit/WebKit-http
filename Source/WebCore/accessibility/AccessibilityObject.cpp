@@ -2527,6 +2527,11 @@ const AtomicString& AccessibilityObject::datetimeAttributeValue() const
     return getAttribute(datetimeAttr);
 }
     
+const AtomicString& AccessibilityObject::linkRelValue() const
+{
+    return getAttribute(relAttr);
+}
+    
 const String AccessibilityObject::keyShortcutsValue() const
 {
     return getAttribute(aria_keyshortcutsAttr);
@@ -2797,7 +2802,7 @@ bool AccessibilityObject::isExpanded() const
     // Summary element should use its details parent's expanded status.
     if (isSummary()) {
         if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*this, false, [] (const AccessibilityObject& object) {
-            return object.roleValue() == AccessibilityRole::Details;
+            return is<HTMLDetailsElement>(object.node());
         }))
             return parent->isExpanded();
     }
@@ -3275,7 +3280,7 @@ bool AccessibilityObject::isDOMHidden() const
         return true;
     
     const RenderStyle& style = renderer->style();
-    return style.display() == NONE || style.visibility() != VISIBLE;
+    return style.display() == DisplayType::None || style.visibility() != Visibility::Visible;
 }
 
 bool AccessibilityObject::isShowingValidationMessage() const

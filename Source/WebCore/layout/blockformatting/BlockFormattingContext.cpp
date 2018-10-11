@@ -29,7 +29,6 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "BlockFormattingState.h"
-#include "BlockMarginCollapse.h"
 #include "DisplayBox.h"
 #include "FloatingContext.h"
 #include "FloatingState.h"
@@ -74,8 +73,10 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
             auto& layoutBox = layoutPair.layoutBox;
             auto& displayBox = layoutPair.displayBox;
             
+            computeMargin(layoutContext, layoutBox, displayBox);
+            computeBorderAndPadding(layoutContext, layoutBox, displayBox);
+            computeStaticPosition(layoutContext, layoutBox, displayBox);
             computeWidth(layoutContext, layoutBox, displayBox);
-            computeStaticPosition(layoutContext, layoutBox, layoutPair.displayBox);
             if (layoutBox.establishesFormattingContext()) {
                 auto formattingContext = layoutContext.formattingContext(layoutBox);
                 formattingContext->layout(layoutContext, layoutContext.establishedFormattingState(layoutBox, *formattingContext));
@@ -101,7 +102,7 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
                 continue;
             auto& container = downcast<Container>(layoutBox);
             // Move in-flow positioned children to their final position.
-            placeInFlowPositionedChildren(container);
+            placeInFlowPositionedChildren(layoutContext, container);
             if (auto* nextSibling = container.nextInFlowOrFloatingSibling()) {
                 layoutQueue.append(std::make_unique<LayoutPair>(LayoutPair {*nextSibling, layoutContext.createDisplayBox(*nextSibling)}));
                 break;
@@ -109,7 +110,7 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
         }
     }
     // Place the inflow positioned children.
-    placeInFlowPositionedChildren(formattingRoot);
+    placeInFlowPositionedChildren(layoutContext, formattingRoot);
     // And take care of out-of-flow boxes as the final step.
     layoutOutOfFlowDescendants(layoutContext);
 #ifndef NDEBUG
@@ -131,6 +132,12 @@ Ref<FloatingState> BlockFormattingContext::createOrFindFloatingState(LayoutConte
 void BlockFormattingContext::computeStaticPosition(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
     auto topLeft = Geometry::staticPosition(layoutContext, layoutBox);
+    displayBox.setTopLeft(topLeft);
+}
+
+void BlockFormattingContext::computeInFlowPositionedPosition(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
+{
+    auto topLeft = Geometry::inFlowPositionedPosition(layoutContext, layoutBox);
     displayBox.setTopLeft(topLeft);
 }
 
@@ -162,14 +169,9 @@ void BlockFormattingContext::computeInFlowWidth(LayoutContext& layoutContext, co
     displayBox.setWidth(computedWidth);
 }
 
-LayoutUnit BlockFormattingContext::marginTop(const Box& layoutBox) const
+void BlockFormattingContext::computeMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    return BlockMarginCollapse::marginTop(layoutBox);
-}
-
-LayoutUnit BlockFormattingContext::marginBottom(const Box& layoutBox) const
-{
-    return BlockMarginCollapse::marginBottom(layoutBox);
+    displayBox.setMargin(Geometry::computedMargin(layoutContext, layoutBox));
 }
 
 }

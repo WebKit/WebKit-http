@@ -91,8 +91,8 @@ void RenderSVGInlineText::styleDidChange(StyleDifference diff, const RenderStyle
     RenderText::styleDidChange(diff, oldStyle);
     updateScaledFont();
 
-    bool newPreserves = style().whiteSpace() == PRE;
-    bool oldPreserves = oldStyle ? oldStyle->whiteSpace() == PRE : false;
+    bool newPreserves = style().whiteSpace() == WhiteSpace::Pre;
+    bool oldPreserves = oldStyle ? oldStyle->whiteSpace() == WhiteSpace::Pre : false;
     if (oldPreserves && !newPreserves) {
         setText(applySVGWhitespaceRules(originalText(), false), true);
         return;
@@ -247,7 +247,7 @@ void RenderSVGInlineText::computeNewScaledFontForStyle(const RenderObject& rende
     if (fontDescription.orientation() != FontOrientation::Horizontal)
         fontDescription.setOrientation(FontOrientation::Horizontal);
 
-    scaledFont = FontCascade(fontDescription, 0, 0);
+    scaledFont = FontCascade(WTFMove(fontDescription), 0, 0);
     scaledFont.update(&renderer.document().fontSelector());
 }
 

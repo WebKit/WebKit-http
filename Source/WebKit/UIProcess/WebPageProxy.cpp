@@ -110,6 +110,7 @@
 #include "WebPopupItem.h"
 #include "WebPopupMenuProxy.h"
 #include "WebPreferences.h"
+#include "WebPreferencesKeys.h"
 #include "WebProcessMessages.h"
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
@@ -119,6 +120,7 @@
 #include "WebsiteDataStore.h"
 #include <WebCore/AttachmentTypes.h>
 #include <WebCore/BitmapImage.h>
+#include <WebCore/DeprecatedGlobalSettings.h>
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/DiagnosticLoggingKeys.h>
 #include <WebCore/DragController.h>
@@ -206,6 +208,10 @@
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
 #include "WebResourceLoadStatisticsStore.h"
+#endif
+
+#if HAVE(SEC_KEY_PROXY)
+#include "SecKeyProxyStore.h"
 #endif
 
 // This controls what strategy we use for mouse wheel coalescing.
@@ -447,6 +453,10 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 #endif
 
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
+
+#if PLATFORM(IOS)
+    DeprecatedGlobalSettings::setDisableScreenSizeOverride(preferencesStore().getBoolValueForKey(WebPreferencesKey::disableScreenSizeOverrideKey()));
+#endif
 
 #if PLATFORM(COCOA)
     m_activityStateChangeDispatcher = std::make_unique<RunLoopObserver>(static_cast<CFIndex>(RunLoopObserver::WellKnownRunLoopOrders::ActivityStateChange), [this] {
@@ -5795,7 +5805,7 @@ void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
 
 #if PLATFORM(IOS)
     if (m_process->isUnderMemoryPressure()) {
-        String domain = WebCore::topPrivatelyControlledDomain(WebCore::URL(WebCore::ParsedURLString, currentURL()).host());
+        String domain = WebCore::topPrivatelyControlledDomain(WebCore::URL(WebCore::ParsedURLString, currentURL()).host().toString());
         if (!domain.isEmpty())
             logDiagnosticMessageWithEnhancedPrivacy(WebCore::DiagnosticLoggingKeys::domainCausingJetsamKey(), domain, WebCore::ShouldSample::No);
     }
@@ -6196,6 +6206,15 @@ void WebPageProxy::didReceiveAuthenticationChallengeProxy(uint64_t frameID, Ref<
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
+
+#if HAVE(SEC_KEY_PROXY)
+    ASSERT(authenticationChallenge->protectionSpace());
+    if (authenticationChallenge->protectionSpace()->authenticationScheme() == ProtectionSpaceAuthenticationSchemeClientCertificateRequested) {
+        auto secKeyProxyStore = SecKeyProxyStore::create();
+        authenticationChallenge->setSecKeyProxyStore(secKeyProxyStore);
+        m_websiteDataStore->addSecKeyProxyStore(WTFMove(secKeyProxyStore));
+    }
+#endif
 
     if (m_navigationClient)
         m_navigationClient->didReceiveAuthenticationChallenge(*this, authenticationChallenge.get());

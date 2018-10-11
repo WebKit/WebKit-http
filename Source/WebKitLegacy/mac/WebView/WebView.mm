@@ -660,6 +660,18 @@ private:
 @synthesize contentImage=_contentImage;
 @synthesize estimatedBackgroundColor=_estimatedBackgroundColor;
 
+- (void)dealloc
+{
+    [_dataInteractionImage release];
+    [_textRectsInBoundingRectCoordinates release];
+    [_contentImageWithHighlight release];
+    [_contentImageWithoutSelection release];
+    [_contentImage release];
+    [_estimatedBackgroundColor release];
+
+    [super dealloc];
+}
+
 @end
 
 @implementation WebUITextIndicatorData (WebUITextIndicatorInternal)
@@ -705,18 +717,6 @@ private:
     _dataInteractionImage = [allocUIImageInstance() initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
     
     return self;
-}
-
-- (void)dealloc
-{
-    [_dataInteractionImage release];
-    [_textRectsInBoundingRectCoordinates release];
-    [_contentImageWithHighlight release];
-    [_contentImageWithoutSelection release];
-    [_contentImage release];
-    [_estimatedBackgroundColor release];
-    
-    [super dealloc];
 }
 
 @end
@@ -9799,25 +9799,25 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
 {
     NSTextAlignment textAlignment;
     switch (style->textAlign()) {
-    case RIGHT:
-    case WEBKIT_RIGHT:
+    case TextAlignMode::Right:
+    case TextAlignMode::WebKitRight:
         textAlignment = NSTextAlignmentRight;
         break;
-    case LEFT:
-    case WEBKIT_LEFT:
+    case TextAlignMode::Left:
+    case TextAlignMode::WebKitLeft:
         textAlignment = NSTextAlignmentLeft;
         break;
-    case CENTER:
-    case WEBKIT_CENTER:
+    case TextAlignMode::Center:
+    case TextAlignMode::WebKitCenter:
         textAlignment = NSTextAlignmentCenter;
         break;
-    case JUSTIFY:
+    case TextAlignMode::Justify:
         textAlignment = NSTextAlignmentJustified;
         break;
-    case TASTART:
+    case TextAlignMode::Start:
         textAlignment = style->isLeftToRightDirection() ? NSTextAlignmentLeft : NSTextAlignmentRight;
         break;
-    case TAEND:
+    case TextAlignMode::End:
         textAlignment = style->isLeftToRightDirection() ? NSTextAlignmentRight : NSTextAlignmentLeft;
         break;
     default:
@@ -9920,7 +9920,7 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
                     String value = typingStyle->style()->getPropertyValue(CSSPropertyWebkitTextDecorationsInEffect);
                     [_private->_textTouchBarItemController setTextIsUnderlined:value.contains("underline")];
                 } else
-                    [_private->_textTouchBarItemController setTextIsUnderlined:(style->textDecorationsInEffect() & TextDecorationUnderline)];
+                    [_private->_textTouchBarItemController setTextIsUnderlined:style->textDecorationsInEffect().contains(TextDecoration::Underline)];
 
                 Color textColor = style->visitedDependentColor(CSSPropertyColor);
                 if (textColor.isValid())

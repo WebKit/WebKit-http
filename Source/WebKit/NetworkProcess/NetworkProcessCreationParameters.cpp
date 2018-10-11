@@ -51,7 +51,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << cacheStorageDirectoryExtensionHandle;
     encoder << diskCacheDirectory;
     encoder << diskCacheDirectoryExtensionHandle;
-    encoder << shouldEnableNetworkCache;
     encoder << shouldEnableNetworkCacheEfficacyLogging;
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     encoder << shouldEnableNetworkCacheSpeculativeRevalidation;
@@ -72,8 +71,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if PLATFORM(COCOA)
     encoder << parentProcessName;
     encoder << uiProcessBundleIdentifier;
-    encoder << nsURLCacheMemoryCapacity;
-    encoder << nsURLCacheDiskCapacity;
     encoder << sourceApplicationBundleIdentifier;
     encoder << sourceApplicationSecondaryIdentifier;
 #if PLATFORM(IOS)
@@ -81,11 +78,10 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #endif
     encoder << httpProxy;
     encoder << httpsProxy;
-#if PLATFORM(COCOA)
     IPC::encode(encoder, networkATSContext.get());
-#endif
     encoder << cookieStoragePartitioningEnabled;
     encoder << storageAccessAPIEnabled;
+    encoder << suppressesConnectionTerminationOnSystemChange;
 #endif
 #if USE(SOUP)
     encoder << cookiePersistentStoragePath;
@@ -99,9 +95,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #endif
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
     encoder << logCookieInformation;
-#endif
-#if OS(LINUX)
-    encoder << memoryPressureMonitorHandle;
 #endif
 #if ENABLE(NETWORK_CAPTURE)
     encoder << recordReplayMode;
@@ -159,8 +152,6 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
     result.diskCacheDirectoryExtensionHandle = WTFMove(*diskCacheDirectoryExtensionHandle);
 
-    if (!decoder.decode(result.shouldEnableNetworkCache))
-        return false;
     if (!decoder.decode(result.shouldEnableNetworkCacheEfficacyLogging))
         return false;
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
@@ -205,10 +196,6 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
     if (!decoder.decode(result.uiProcessBundleIdentifier))
         return false;
-    if (!decoder.decode(result.nsURLCacheMemoryCapacity))
-        return false;
-    if (!decoder.decode(result.nsURLCacheDiskCapacity))
-        return false;
     if (!decoder.decode(result.sourceApplicationBundleIdentifier))
         return false;
     if (!decoder.decode(result.sourceApplicationSecondaryIdentifier))
@@ -221,13 +208,13 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
     if (!decoder.decode(result.httpsProxy))
         return false;
-#if PLATFORM(COCOA)
     if (!IPC::decode(decoder, result.networkATSContext))
         return false;
-#endif
     if (!decoder.decode(result.cookieStoragePartitioningEnabled))
         return false;
     if (!decoder.decode(result.storageAccessAPIEnabled))
+        return false;
+    if (!decoder.decode(result.suppressesConnectionTerminationOnSystemChange))
         return false;
 #endif
 
@@ -251,11 +238,6 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
     if (!decoder.decode(result.logCookieInformation))
-        return false;
-#endif
-
-#if OS(LINUX)
-    if (!decoder.decode(result.memoryPressureMonitorHandle))
         return false;
 #endif
 

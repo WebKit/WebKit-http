@@ -280,14 +280,16 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
     parameters.shouldLogUserInteraction = [defaults boolForKey:WebKitLogCookieInformationDefaultsKey];
 #endif
+    
+#if PLATFORM(MAC)
+    auto screenProperties = WebCore::getScreenProperties();
+    parameters.primaryDisplayID = screenProperties.first;
+    parameters.screenPropertiesMap = WTFMove(screenProperties.second);
+#endif
 }
 
 void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationParameters& parameters)
 {
-    NSURLCache *urlCache = [NSURLCache sharedURLCache];
-    parameters.nsURLCacheMemoryCapacity = [urlCache memoryCapacity];
-    parameters.nsURLCacheDiskCapacity = [urlCache diskCapacity];
-
     parameters.parentProcessName = [[NSProcessInfo processInfo] processName];
     parameters.uiProcessBundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
 
@@ -297,7 +299,6 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
     parameters.httpsProxy = [defaults stringForKey:WebKit2HTTPSProxyDefaultsKey];
     parameters.networkATSContext = adoptCF(_CFNetworkCopyATSContext());
 
-    parameters.shouldEnableNetworkCache = isNetworkCacheEnabled();
     parameters.shouldEnableNetworkCacheEfficacyLogging = [defaults boolForKey:WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey];
 
     parameters.sourceApplicationBundleIdentifier = m_configuration->sourceApplicationBundleIdentifier();
@@ -317,6 +318,7 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 
     parameters.cookieStoragePartitioningEnabled = cookieStoragePartitioningEnabled();
     parameters.storageAccessAPIEnabled = storageAccessAPIEnabled();
+    parameters.suppressesConnectionTerminationOnSystemChange = m_configuration->suppressesConnectionTerminationOnSystemChange();
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
     parameters.logCookieInformation = [defaults boolForKey:WebKitLogCookieInformationDefaultsKey];
@@ -482,8 +484,7 @@ String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
     if (!cachePath)
         cachePath = @"~/Library/Caches/com.apple.WebKit.WebProcess";
 
-    if (isNetworkCacheEnabled())
-        cachePath = [cachePath stringByAppendingPathComponent:@"WebKitCache"];
+    cachePath = [cachePath stringByAppendingPathComponent:@"WebKitCache"];
 
     return stringByResolvingSymlinksInPath([cachePath stringByStandardizingPath]);
 }
@@ -514,17 +515,6 @@ void WebProcessPool::setJavaScriptConfigurationFileEnabledFromDefaults()
     setJavaScriptConfigurationFileEnabled([defaults boolForKey:@"WebKitJavaScriptCoreUseConfigFile"]);
 }
 #endif
-
-bool WebProcessPool::isNetworkCacheEnabled()
-{
-    registerUserDefaultsIfNeeded();
-
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-
-    bool networkCacheEnabledByDefaults = [defaults boolForKey:WebKitNetworkCacheEnabledDefaultsKey];
-
-    return networkCacheEnabledByDefaults && linkedOnOrAfter(SDKVersion::FirstWithNetworkCache);
-}
 
 bool WebProcessPool::omitPDFSupport()
 {

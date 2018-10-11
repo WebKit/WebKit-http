@@ -298,6 +298,7 @@ public:
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     PlaybackSessionManager& playbackSessionManager();
     VideoFullscreenManager& videoFullscreenManager();
+    void videoControlsManagerDidChange();
 #endif
 
 #if PLATFORM(IOS)
@@ -672,9 +673,6 @@ public:
 #endif
 
     bool hasLocalDataForURL(const WebCore::URL&);
-    String cachedResponseMIMETypeForURL(const WebCore::URL&);
-    String cachedSuggestedFilenameForURL(const WebCore::URL&);
-    RefPtr<WebCore::SharedBuffer> cachedResponseDataForURL(const WebCore::URL&);
 
     static bool canHandleRequest(const WebCore::ResourceRequest&);
 
@@ -762,10 +760,6 @@ public:
     void setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length, bool suppressUnderline);
     bool hasCompositionForTesting();
     void confirmCompositionForTesting(const String& compositionString);
-
-    // FIXME: This a dummy message, to avoid breaking the build for platforms that don't require
-    // any synchronous messages, and should be removed when <rdar://problem/8775115> is fixed.
-    void dummy(bool&);
 
 #if PLATFORM(COCOA)
     bool isSpeaking();
@@ -1154,8 +1148,6 @@ private:
     void loadDataImpl(uint64_t navigationID, Ref<WebCore::SharedBuffer>&&, const String& MIMEType, const String& encodingName, const WebCore::URL& baseURL, const WebCore::URL& failingURL, const UserData&);
     void loadStringImpl(uint64_t navigationID, const String&, const String& MIMEType, const WebCore::URL& baseURL, const WebCore::URL& failingURL, const UserData&);
 
-    bool platformHasLocalDataForURL(const WebCore::URL&);
-
     // Actions
     void tryClose();
     void platformDidReceiveLoadParameters(const LoadParameters&);
@@ -1542,6 +1534,7 @@ private:
 
 #if PLATFORM(IOS)
     bool m_allowsMediaDocumentInlinePlayback { false };
+    RefPtr<WebCore::Range> m_startingGestureRange;
 #endif
 
 #if ENABLE(FULLSCREEN_API)

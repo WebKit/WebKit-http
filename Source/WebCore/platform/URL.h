@@ -108,7 +108,7 @@ public:
     WEBCORE_EXPORT String stringCenterEllipsizedToLength(unsigned length = 1024) const;
 
     WEBCORE_EXPORT StringView protocol() const;
-    WEBCORE_EXPORT String host() const;
+    WEBCORE_EXPORT StringView host() const;
     WEBCORE_EXPORT std::optional<uint16_t> port() const;
     WEBCORE_EXPORT String hostAndPort() const;
     WEBCORE_EXPORT String protocolHostAndPort() const;
@@ -124,6 +124,7 @@ public:
     bool hasPassword() const;
     bool hasQuery() const;
     bool hasFragment() const;
+    bool hasPath() const;
 
     // Unlike user() and pass(), these functions don't decode escape sequences.
     // This is necessary for accurate round-tripping, because encoding doesn't encode '%' characters.
@@ -180,7 +181,7 @@ public:
     unsigned hostStart() const;
     unsigned hostEnd() const;
 
-    WEBCORE_EXPORT static bool hostIsIPAddress(const String&);
+    WEBCORE_EXPORT static bool hostIsIPAddress(StringView);
 
     unsigned pathStart() const;
     unsigned pathEnd() const;
@@ -225,8 +226,6 @@ private:
     static bool protocolIs(const String&, const char*);
     void init(const URL&, const String&, const TextEncoding&);
     void copyToBuffer(Vector<char, 512>& buffer) const;
-
-    bool hasPath() const;
 
     String m_string;
     bool m_isValid : 1;

@@ -156,7 +156,7 @@ private:
 
     template <CSSPropertyID id>
     static void applyTextOrBoxShadowValue(StyleResolver&, CSSValue&);
-    static bool isValidDisplayValue(StyleResolver&, EDisplay);
+    static bool isValidDisplayValue(StyleResolver&, DisplayType);
 
     enum CounterBehavior {Increment = 0, Reset};
     template <CounterBehavior counterBehavior>
@@ -394,9 +394,9 @@ inline void StyleBuilderCustom::applyValueImageResolution(StyleResolver& styleRe
     for (auto& item : downcast<CSSValueList>(value)) {
         CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(item.get());
         if (primitiveValue.valueID() == CSSValueFromImage)
-            source = ImageResolutionFromImage;
+            source = ImageResolutionSource::FromImage;
         else if (primitiveValue.valueID() == CSSValueSnap)
-            snap = ImageResolutionSnapPixels;
+            snap = ImageResolutionSnap::Pixels;
         else
             resolution = primitiveValue.doubleValue(CSSPrimitiveValue::CSS_DPPX);
     }
@@ -656,7 +656,7 @@ static inline float computeBaseSpecifiedFontSize(const Document& document, const
 {
     float result = style.specifiedFontSize();
     auto* frame = document.frame();
-    if (frame && style.textZoom() != TextZoomReset)
+    if (frame && style.textZoom() != TextZoom::Reset)
         result *= frame->textZoomFactor();
     result *= style.effectiveZoom();
     if (percentageAutosizingEnabled)
@@ -782,7 +782,7 @@ inline void StyleBuilderCustom::applyValueWebkitLocale(StyleResolver& styleResol
         fontDescription.setLocale(nullAtom());
     else
         fontDescription.setLocale(primitiveValue.stringValue());
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyValueWritingMode(StyleResolver& styleResolver, CSSValue& value)
@@ -815,9 +815,9 @@ inline void StyleBuilderCustom::applyValueWebkitTextZoom(StyleResolver& styleRes
 {
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
     if (primitiveValue.valueID() == CSSValueNormal)
-        styleResolver.style()->setTextZoom(TextZoomNormal);
+        styleResolver.style()->setTextZoom(TextZoom::Normal);
     else if (primitiveValue.valueID() == CSSValueReset)
-        styleResolver.style()->setTextZoom(TextZoomReset);
+        styleResolver.style()->setTextZoom(TextZoom::Reset);
     styleResolver.state().setFontDirty(true);
 }
 
@@ -914,7 +914,7 @@ inline void StyleBuilderCustom::applyInitialFontFamily(StyleResolver& styleResol
     if (!initialDesc.firstFamily().isEmpty())
         fontDescription.setFamilies(initialDesc.families());
 
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyInheritFontFamily(StyleResolver& styleResolver)
@@ -924,7 +924,7 @@ inline void StyleBuilderCustom::applyInheritFontFamily(StyleResolver& styleResol
 
     fontDescription.setFamilies(parentFontDescription.families());
     fontDescription.setIsSpecifiedFont(parentFontDescription.isSpecifiedFont());
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyValueFontFamily(StyleResolver& styleResolver, CSSValue& value)
@@ -1001,26 +1001,26 @@ inline void StyleBuilderCustom::applyValueFontFamily(StyleResolver& styleResolve
             styleResolver.setFontSize(fontDescription, Style::fontSizeForKeyword(sizeIdentifier, !oldFamilyUsedFixedDefaultSize, styleResolver.document()));
     }
 
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
-inline bool StyleBuilderCustom::isValidDisplayValue(StyleResolver& styleResolver, EDisplay display)
+inline bool StyleBuilderCustom::isValidDisplayValue(StyleResolver& styleResolver, DisplayType display)
 {
-    if (is<SVGElement>(styleResolver.element()) && styleResolver.style()->styleType() == NOPSEUDO)
-        return display == INLINE || display == BLOCK || display == NONE;
+    if (is<SVGElement>(styleResolver.element()) && styleResolver.style()->styleType() == PseudoId::None)
+        return display == DisplayType::Inline || display == DisplayType::Block || display == DisplayType::None;
     return true;
 }
 
 inline void StyleBuilderCustom::applyInheritDisplay(StyleResolver& styleResolver)
 {
-    EDisplay display = styleResolver.parentStyle()->display();
+    DisplayType display = styleResolver.parentStyle()->display();
     if (isValidDisplayValue(styleResolver, display))
         styleResolver.style()->setDisplay(display);
 }
 
 inline void StyleBuilderCustom::applyValueDisplay(StyleResolver& styleResolver, CSSValue& value)
 {
-    EDisplay display = downcast<CSSPrimitiveValue>(value);
+    DisplayType display = downcast<CSSPrimitiveValue>(value);
     if (isValidDisplayValue(styleResolver, display))
         styleResolver.style()->setDisplay(display);
 }
@@ -1032,19 +1032,19 @@ inline void StyleBuilderCustom::applyValueBaselineShift(StyleResolver& styleReso
     if (primitiveValue.isValueID()) {
         switch (primitiveValue.valueID()) {
         case CSSValueBaseline:
-            svgStyle.setBaselineShift(BS_BASELINE);
+            svgStyle.setBaselineShift(BaselineShift::Baseline);
             break;
         case CSSValueSub:
-            svgStyle.setBaselineShift(BS_SUB);
+            svgStyle.setBaselineShift(BaselineShift::Sub);
             break;
         case CSSValueSuper:
-            svgStyle.setBaselineShift(BS_SUPER);
+            svgStyle.setBaselineShift(BaselineShift::Super);
             break;
         default:
             break;
         }
     } else {
-        svgStyle.setBaselineShift(BS_LENGTH);
+        svgStyle.setBaselineShift(BaselineShift::Length);
         svgStyle.setBaselineShiftValue(SVGLengthValue::fromCSSPrimitiveValue(primitiveValue));
     }
 }
@@ -1118,8 +1118,8 @@ inline void StyleBuilderCustom::applyValueWebkitTextEmphasisStyle(StyleResolver&
 
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
     if (primitiveValue.isString()) {
-        styleResolver.style()->setTextEmphasisFill(TextEmphasisFillFilled);
-        styleResolver.style()->setTextEmphasisMark(TextEmphasisMarkCustom);
+        styleResolver.style()->setTextEmphasisFill(TextEmphasisFill::Filled);
+        styleResolver.style()->setTextEmphasisMark(TextEmphasisMark::Custom);
         styleResolver.style()->setTextEmphasisCustomMark(primitiveValue.stringValue());
         return;
     }
@@ -1128,9 +1128,9 @@ inline void StyleBuilderCustom::applyValueWebkitTextEmphasisStyle(StyleResolver&
 
     if (primitiveValue.valueID() == CSSValueFilled || primitiveValue.valueID() == CSSValueOpen) {
         styleResolver.style()->setTextEmphasisFill(primitiveValue);
-        styleResolver.style()->setTextEmphasisMark(TextEmphasisMarkAuto);
+        styleResolver.style()->setTextEmphasisMark(TextEmphasisMark::Auto);
     } else {
-        styleResolver.style()->setTextEmphasisFill(TextEmphasisFillFilled);
+        styleResolver.style()->setTextEmphasisFill(TextEmphasisFill::Filled);
         styleResolver.style()->setTextEmphasisMark(primitiveValue);
     }
 }
@@ -1219,13 +1219,13 @@ inline void StyleBuilderCustom::applyValueCursor(StyleResolver& styleResolver, C
 {
     styleResolver.style()->clearCursorList();
     if (is<CSSPrimitiveValue>(value)) {
-        ECursor cursor = downcast<CSSPrimitiveValue>(value);
+        CursorType cursor = downcast<CSSPrimitiveValue>(value);
         if (styleResolver.style()->cursor() != cursor)
             styleResolver.style()->setCursor(cursor);
         return;
     }
 
-    styleResolver.style()->setCursor(CursorAuto);
+    styleResolver.style()->setCursor(CursorType::Auto);
     auto& list = downcast<CSSValueList>(value);
     for (auto& item : list) {
         if (is<CSSCursorImageValue>(item)) {
@@ -1269,18 +1269,18 @@ inline void StyleBuilderCustom::applyValueFill(StyleResolver& styleResolver, CSS
         return;
 
     Color color;
-    auto paintType = SVG_PAINTTYPE_RGBCOLOR;
+    auto paintType = SVGPaintType::RGBColor;
     if (localValue->isURI()) {
-        paintType = SVG_PAINTTYPE_URI;
+        paintType = SVGPaintType::URI;
         url = localValue->stringValue();
     } else if (localValue->isValueID() && localValue->valueID() == CSSValueNone)
-        paintType = url.isEmpty() ? SVG_PAINTTYPE_NONE : SVG_PAINTTYPE_URI_NONE;
+        paintType = url.isEmpty() ? SVGPaintType::None : SVGPaintType::URINone;
     else if (localValue->isValueID() && localValue->valueID() == CSSValueCurrentcolor) {
         color = styleResolver.style()->color();
-        paintType = url.isEmpty() ? SVG_PAINTTYPE_CURRENTCOLOR : SVG_PAINTTYPE_URI_CURRENTCOLOR;
+        paintType = url.isEmpty() ? SVGPaintType::CurrentColor : SVGPaintType::URICurrentColor;
     } else {
         color = styleResolver.colorFromPrimitiveValue(*localValue);
-        paintType = url.isEmpty() ? SVG_PAINTTYPE_RGBCOLOR : SVG_PAINTTYPE_URI_RGBCOLOR;
+        paintType = url.isEmpty() ? SVGPaintType::RGBColor : SVGPaintType::URIRGBColor;
     }
     svgStyle.setFillPaint(paintType, color, url, styleResolver.applyPropertyToRegularStyle(), styleResolver.applyPropertyToVisitedLinkStyle());
 }
@@ -1313,18 +1313,18 @@ inline void StyleBuilderCustom::applyValueStroke(StyleResolver& styleResolver, C
         return;
 
     Color color;
-    auto paintType = SVG_PAINTTYPE_RGBCOLOR;
+    auto paintType = SVGPaintType::RGBColor;
     if (localValue->isURI()) {
-        paintType = SVG_PAINTTYPE_URI;
+        paintType = SVGPaintType::URI;
         url = downcast<CSSPrimitiveValue>(localValue)->stringValue();
     } else if (localValue->isValueID() && localValue->valueID() == CSSValueNone)
-        paintType = url.isEmpty() ? SVG_PAINTTYPE_NONE : SVG_PAINTTYPE_URI_NONE;
+        paintType = url.isEmpty() ? SVGPaintType::None : SVGPaintType::URINone;
     else if (localValue->isValueID() && localValue->valueID() == CSSValueCurrentcolor) {
         color = styleResolver.style()->color();
-        paintType = url.isEmpty() ? SVG_PAINTTYPE_CURRENTCOLOR : SVG_PAINTTYPE_URI_CURRENTCOLOR;
+        paintType = url.isEmpty() ? SVGPaintType::CurrentColor : SVGPaintType::URICurrentColor;
     } else {
         color = styleResolver.colorFromPrimitiveValue(*localValue);
-        paintType = url.isEmpty() ? SVG_PAINTTYPE_RGBCOLOR : SVG_PAINTTYPE_URI_RGBCOLOR;
+        paintType = url.isEmpty() ? SVGPaintType::RGBColor : SVGPaintType::URIRGBColor;
     }
     svgStyle.setStrokePaint(paintType, color, url, styleResolver.applyPropertyToRegularStyle(), styleResolver.applyPropertyToVisitedLinkStyle());
 }
@@ -1414,7 +1414,7 @@ inline void StyleBuilderCustom::applyValueContent(StyleResolver& styleResolver, 
             didSet = true;
         } else if (contentValue.isAttr()) {
             // FIXME: Can a namespace be specified for an attr(foo)?
-            if (styleResolver.style()->styleType() == NOPSEUDO)
+            if (styleResolver.style()->styleType() == PseudoId::None)
                 styleResolver.style()->setHasAttrContent();
             else
                 const_cast<RenderStyle*>(styleResolver.parentStyle())->setHasAttrContent();
@@ -1426,10 +1426,10 @@ inline void StyleBuilderCustom::applyValueContent(StyleResolver& styleResolver, 
             styleResolver.ruleSets().mutableFeatures().registerContentAttribute(attr.localName());
         } else if (contentValue.isCounter()) {
             auto* counterValue = contentValue.counterValue();
-            EListStyleType listStyleType = NoneListStyle;
+            ListStyleType listStyleType = ListStyleType::None;
             CSSValueID listStyleIdent = counterValue->listStyleIdent();
             if (listStyleIdent != CSSValueNone)
-                listStyleType = static_cast<EListStyleType>(listStyleIdent - CSSValueDisc);
+                listStyleType = static_cast<ListStyleType>(listStyleIdent - CSSValueDisc);
             auto counter = std::make_unique<CounterContent>(counterValue->identifier(), listStyleType, counterValue->separator());
             styleResolver.style()->setContent(WTFMove(counter), didSet);
             didSet = true;
@@ -1468,7 +1468,7 @@ inline void StyleBuilderCustom::applyInheritFontVariantLigatures(StyleResolver& 
     fontDescription.setVariantDiscretionaryLigatures(styleResolver.parentFontDescription().variantDiscretionaryLigatures());
     fontDescription.setVariantHistoricalLigatures(styleResolver.parentFontDescription().variantHistoricalLigatures());
     fontDescription.setVariantContextualAlternates(styleResolver.parentFontDescription().variantContextualAlternates());
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyInitialFontVariantLigatures(StyleResolver& styleResolver)
@@ -1478,7 +1478,7 @@ inline void StyleBuilderCustom::applyInitialFontVariantLigatures(StyleResolver& 
     fontDescription.setVariantDiscretionaryLigatures(FontVariantLigatures::Normal);
     fontDescription.setVariantHistoricalLigatures(FontVariantLigatures::Normal);
     fontDescription.setVariantContextualAlternates(FontVariantLigatures::Normal);
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyValueFontVariantLigatures(StyleResolver& styleResolver, CSSValue& value)
@@ -1489,7 +1489,7 @@ inline void StyleBuilderCustom::applyValueFontVariantLigatures(StyleResolver& st
     fontDescription.setVariantDiscretionaryLigatures(variantLigatures.discretionaryLigatures);
     fontDescription.setVariantHistoricalLigatures(variantLigatures.historicalLigatures);
     fontDescription.setVariantContextualAlternates(variantLigatures.contextualAlternates);
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyInheritFontVariantNumeric(StyleResolver& styleResolver)
@@ -1500,7 +1500,7 @@ inline void StyleBuilderCustom::applyInheritFontVariantNumeric(StyleResolver& st
     fontDescription.setVariantNumericFraction(styleResolver.parentFontDescription().variantNumericFraction());
     fontDescription.setVariantNumericOrdinal(styleResolver.parentFontDescription().variantNumericOrdinal());
     fontDescription.setVariantNumericSlashedZero(styleResolver.parentFontDescription().variantNumericSlashedZero());
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyInitialFontVariantNumeric(StyleResolver& styleResolver)
@@ -1511,7 +1511,7 @@ inline void StyleBuilderCustom::applyInitialFontVariantNumeric(StyleResolver& st
     fontDescription.setVariantNumericFraction(FontVariantNumericFraction::Normal);
     fontDescription.setVariantNumericOrdinal(FontVariantNumericOrdinal::Normal);
     fontDescription.setVariantNumericSlashedZero(FontVariantNumericSlashedZero::Normal);
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyValueFontVariantNumeric(StyleResolver& styleResolver, CSSValue& value)
@@ -1523,7 +1523,7 @@ inline void StyleBuilderCustom::applyValueFontVariantNumeric(StyleResolver& styl
     fontDescription.setVariantNumericFraction(variantNumeric.fraction);
     fontDescription.setVariantNumericOrdinal(variantNumeric.ordinal);
     fontDescription.setVariantNumericSlashedZero(variantNumeric.slashedZero);
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyInheritFontVariantEastAsian(StyleResolver& styleResolver)
@@ -1532,7 +1532,7 @@ inline void StyleBuilderCustom::applyInheritFontVariantEastAsian(StyleResolver& 
     fontDescription.setVariantEastAsianVariant(styleResolver.parentFontDescription().variantEastAsianVariant());
     fontDescription.setVariantEastAsianWidth(styleResolver.parentFontDescription().variantEastAsianWidth());
     fontDescription.setVariantEastAsianRuby(styleResolver.parentFontDescription().variantEastAsianRuby());
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyInitialFontVariantEastAsian(StyleResolver& styleResolver)
@@ -1541,7 +1541,7 @@ inline void StyleBuilderCustom::applyInitialFontVariantEastAsian(StyleResolver& 
     fontDescription.setVariantEastAsianVariant(FontVariantEastAsianVariant::Normal);
     fontDescription.setVariantEastAsianWidth(FontVariantEastAsianWidth::Normal);
     fontDescription.setVariantEastAsianRuby(FontVariantEastAsianRuby::Normal);
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyValueFontVariantEastAsian(StyleResolver& styleResolver, CSSValue& value)
@@ -1551,7 +1551,7 @@ inline void StyleBuilderCustom::applyValueFontVariantEastAsian(StyleResolver& st
     fontDescription.setVariantEastAsianVariant(variantEastAsian.variant);
     fontDescription.setVariantEastAsianWidth(variantEastAsian.width);
     fontDescription.setVariantEastAsianRuby(variantEastAsian.ruby);
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyInitialFontSize(StyleResolver& styleResolver)
@@ -1564,7 +1564,7 @@ inline void StyleBuilderCustom::applyInitialFontSize(StyleResolver& styleResolve
 
     fontDescription.setKeywordSizeFromIdentifier(CSSValueMedium);
     styleResolver.setFontSize(fontDescription, size);
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyInheritFontSize(StyleResolver& styleResolver)
@@ -1578,7 +1578,7 @@ inline void StyleBuilderCustom::applyInheritFontSize(StyleResolver& styleResolve
     auto fontDescription = styleResolver.style()->fontDescription();
     fontDescription.setKeywordSize(parentFontDescription.keywordSize());
     styleResolver.setFontSize(fontDescription, size);
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 // When the CSS keyword "larger" is used, this function will attempt to match within the keyword
@@ -1600,7 +1600,7 @@ inline float StyleBuilderCustom::smallerFontSize(float size)
 
 inline float StyleBuilderCustom::determineRubyTextSizeMultiplier(StyleResolver& styleResolver)
 {
-    if (styleResolver.style()->rubyPosition() != RubyPositionInterCharacter)
+    if (styleResolver.style()->rubyPosition() != RubyPosition::InterCharacter)
         return 0.5f;
 
     // FIXME: This hack is to ensure tone marks are the same size as
@@ -1620,7 +1620,7 @@ inline void StyleBuilderCustom::applyInitialFontStyle(StyleResolver& styleResolv
     auto fontDescription = styleResolver.fontDescription();
     fontDescription.setItalic(FontCascadeDescription::initialItalic());
     fontDescription.setFontStyleAxis(FontCascadeDescription::initialFontStyleAxis());
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyInheritFontStyle(StyleResolver& styleResolver)
@@ -1628,7 +1628,7 @@ inline void StyleBuilderCustom::applyInheritFontStyle(StyleResolver& styleResolv
     auto fontDescription = styleResolver.fontDescription();
     fontDescription.setItalic(styleResolver.parentFontDescription().italic());
     fontDescription.setFontStyleAxis(styleResolver.parentFontDescription().fontStyleAxis());
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyValueFontStyle(StyleResolver& styleResolver, CSSValue& value)
@@ -1637,7 +1637,7 @@ inline void StyleBuilderCustom::applyValueFontStyle(StyleResolver& styleResolver
     auto fontDescription = styleResolver.fontDescription();
     fontDescription.setItalic(StyleBuilderConverter::convertFontStyleFromValue(fontStyleValue));
     fontDescription.setFontStyleAxis(fontStyleValue.fontStyleValue->valueID() == CSSValueItalic ? FontStyleAxis::ital : FontStyleAxis::slnt);
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyValueFontSize(StyleResolver& styleResolver, CSSValue& value)
@@ -1701,7 +1701,7 @@ inline void StyleBuilderCustom::applyValueFontSize(StyleResolver& styleResolver,
         return;
 
     styleResolver.setFontSize(fontDescription, std::min(maximumAllowedFontSize, size));
-    styleResolver.setFontDescription(fontDescription);
+    styleResolver.setFontDescription(WTFMove(fontDescription));
 }
 
 inline void StyleBuilderCustom::applyInitialGridTemplateAreas(StyleResolver& styleResolver)
@@ -1810,7 +1810,7 @@ void StyleBuilderCustom::applyValueAlt(StyleResolver& styleResolver, CSSValue& v
         styleResolver.style()->setContentAltText(primitiveValue.stringValue());
     else if (primitiveValue.isAttr()) {
         // FIXME: Can a namespace be specified for an attr(foo)?
-        if (styleResolver.style()->styleType() == NOPSEUDO)
+        if (styleResolver.style()->styleType() == PseudoId::None)
             styleResolver.style()->setUnique();
         else
             const_cast<RenderStyle*>(styleResolver.parentStyle())->setUnique();

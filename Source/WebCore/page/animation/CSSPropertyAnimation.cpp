@@ -247,16 +247,16 @@ static inline RefPtr<StyleImage> blendFilter(const CSSPropertyBlendingClient* an
     return StyleGeneratedImage::create(WTFMove(result));
 }
 
-static inline EVisibility blendFunc(const CSSPropertyBlendingClient* anim, EVisibility from, EVisibility to, double progress)
+static inline Visibility blendFunc(const CSSPropertyBlendingClient* anim, Visibility from, Visibility to, double progress)
 {
     // Any non-zero result means we consider the object to be visible. Only at 0 do we consider the object to be
-    // invisible. The invisible value we use (HIDDEN vs. COLLAPSE) depends on the specified from/to values.
-    double fromVal = from == VISIBLE ? 1. : 0.;
-    double toVal = to == VISIBLE ? 1. : 0.;
+    // invisible. The invisible value we use (Visibility::Hidden vs. Visibility::Collapse) depends on the specified from/to values.
+    double fromVal = from == Visibility::Visible ? 1. : 0.;
+    double toVal = to == Visibility::Visible ? 1. : 0.;
     if (fromVal == toVal)
         return to;
     double result = blendFunc(anim, fromVal, toVal, progress);
-    return result > 0. ? VISIBLE : (to != VISIBLE ? to : from);
+    return result > 0. ? Visibility::Visible : (to != Visibility::Visible ? to : from);
 }
 
 static inline LengthBox blendFunc(const CSSPropertyBlendingClient* anim, const LengthBox& from, const LengthBox& to, double progress)
@@ -1344,7 +1344,7 @@ public:
 class PropertyWrapperSVGPaint : public AnimationPropertyWrapperBase {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    PropertyWrapperSVGPaint(CSSPropertyID prop, const SVGPaintType& (RenderStyle::*paintTypeGetter)() const, Color (RenderStyle::*getter)() const, void (RenderStyle::*setter)(const Color&))
+    PropertyWrapperSVGPaint(CSSPropertyID prop, SVGPaintType (RenderStyle::*paintTypeGetter)() const, Color (RenderStyle::*getter)() const, void (RenderStyle::*setter)(const Color&))
         : AnimationPropertyWrapperBase(prop)
         , m_paintTypeGetter(paintTypeGetter)
         , m_getter(getter)
@@ -1365,7 +1365,7 @@ public:
         // We only support animations between SVGPaints that are pure Color values.
         // For everything else we must return true for this method, otherwise
         // we will try to animate between values forever.
-        if ((a->*m_paintTypeGetter)() == SVG_PAINTTYPE_RGBCOLOR) {
+        if ((a->*m_paintTypeGetter)() == SVGPaintType::RGBColor) {
             Color fromColor = (a->*m_getter)();
             Color toColor = (b->*m_getter)();
 
@@ -1384,8 +1384,8 @@ public:
 
     void blend(const CSSPropertyBlendingClient* anim, RenderStyle* dst, const RenderStyle* a, const RenderStyle* b, double progress) const override
     {
-        if ((a->*m_paintTypeGetter)() != SVG_PAINTTYPE_RGBCOLOR
-            || (b->*m_paintTypeGetter)() != SVG_PAINTTYPE_RGBCOLOR)
+        if ((a->*m_paintTypeGetter)() != SVGPaintType::RGBColor
+            || (b->*m_paintTypeGetter)() != SVGPaintType::RGBColor)
             return;
 
         Color fromColor = (a->*m_getter)();
@@ -1410,7 +1410,7 @@ public:
 #endif
 
 private:
-    const SVGPaintType& (RenderStyle::*m_paintTypeGetter)() const;
+    SVGPaintType (RenderStyle::*m_paintTypeGetter)() const;
     Color (RenderStyle::*m_getter)() const;
     void (RenderStyle::*m_setter)(const Color&);
 };
@@ -1552,7 +1552,7 @@ CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap()
         new LengthPropertyWrapper<LengthSize>(CSSPropertyBorderTopRightRadius, &RenderStyle::borderTopRightRadius, &RenderStyle::setBorderTopRightRadius),
         new LengthPropertyWrapper<LengthSize>(CSSPropertyBorderBottomLeftRadius, &RenderStyle::borderBottomLeftRadius, &RenderStyle::setBorderBottomLeftRadius),
         new LengthPropertyWrapper<LengthSize>(CSSPropertyBorderBottomRightRadius, &RenderStyle::borderBottomRightRadius, &RenderStyle::setBorderBottomRightRadius),
-        new PropertyWrapper<EVisibility>(CSSPropertyVisibility, &RenderStyle::visibility, &RenderStyle::setVisibility),
+        new PropertyWrapper<Visibility>(CSSPropertyVisibility, &RenderStyle::visibility, &RenderStyle::setVisibility),
         new PropertyWrapper<float>(CSSPropertyZoom, &RenderStyle::zoom, &RenderStyle::setZoomWithoutReturnValue),
 
         new LengthPropertyWrapper<LengthBox>(CSSPropertyClip, &RenderStyle::clip, &RenderStyle::setClip),

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  * Copyright (C) 2012 Igalia, S.L.
  *
@@ -1026,7 +1026,7 @@ namespace JSC {
         void allocateCalleeSaveSpace();
         void allocateAndEmitScope();
 
-        using BigIntMapEntry = std::pair<UniquedStringImpl*, uint8_t>;
+        using BigIntMapEntry = std::tuple<UniquedStringImpl*, uint8_t, bool>;
 
         using NumberMap = HashMap<double, JSValue>;
         using IdentifierStringMap = HashMap<UniquedStringImpl*, JSString*, IdentifierRepHash>;
@@ -1113,14 +1113,30 @@ namespace JSC {
         void initializeArrowFunctionContextScopeIfNeeded(SymbolTable* functionSymbolTable = nullptr, bool canReuseLexicalEnvironment = false);
         bool needsDerivedConstructorInArrowFunctionLexicalEnvironment();
 
+        enum class TDZNecessityLevel {
+            NotNeeded,
+            Optimize,
+            DoNotOptimize
+        };
+        typedef HashMap<RefPtr<UniquedStringImpl>, TDZNecessityLevel, IdentifierRepHash> TDZMap;
+
     public:
         JSString* addStringConstant(const Identifier&);
-        JSValue addBigIntConstant(const Identifier&, uint8_t radix);
+        JSValue addBigIntConstant(const Identifier&, uint8_t radix, bool sign);
         RegisterID* addTemplateObjectConstant(Ref<TemplateObjectDescriptor>&&);
 
         Vector<UnlinkedInstruction, 0, UnsafeVectorOverflow>& instructions() { return m_instructions; }
 
         RegisterID* emitThrowExpressionTooDeepException();
+
+        class PreservedTDZStack {
+        private:
+            Vector<TDZMap> m_preservedTDZStack;
+            friend class BytecodeGenerator;
+        };
+
+        void preserveTDZStack(PreservedTDZStack&);
+        void restoreTDZStack(const PreservedTDZStack&);
 
     private:
         Vector<UnlinkedInstruction, 0, UnsafeVectorOverflow> m_instructions;
@@ -1134,12 +1150,7 @@ namespace JSC {
             int m_symbolTableConstantIndex;
         };
         Vector<LexicalScopeStackEntry> m_lexicalScopeStack;
-        enum class TDZNecessityLevel {
-            NotNeeded,
-            Optimize,
-            DoNotOptimize
-        };
-        typedef HashMap<RefPtr<UniquedStringImpl>, TDZNecessityLevel, IdentifierRepHash> TDZMap;
+
         Vector<TDZMap> m_TDZStack;
         std::optional<size_t> m_varScopeLexicalScopeStackIndex;
         void pushTDZVariables(const VariableEnvironment&, TDZCheckOptimization, TDZRequirement);

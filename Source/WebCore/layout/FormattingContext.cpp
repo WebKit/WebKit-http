@@ -53,7 +53,7 @@ void FormattingContext::computeStaticPosition(LayoutContext&, const Box&, Displa
 {
 }
 
-void FormattingContext::computeInFlowPositionedPosition(const Box&, Display::Box&) const
+void FormattingContext::computeInFlowPositionedPosition(LayoutContext&, const Box&, Display::Box&) const
 {
 }
 
@@ -135,28 +135,29 @@ void FormattingContext::computeFloatingHeight(LayoutContext& layoutContext, cons
     displayBox.setHeight(computedHeight);
 }
 
-LayoutUnit FormattingContext::marginTop(const Box&) const
+void FormattingContext::computeMargin(LayoutContext&, const Box&, Display::Box& displayBox) const
 {
-    return 0;
+    displayBox.setMargin({ 0, 0, 0, 0 });
 }
 
-LayoutUnit FormattingContext::marginLeft(const Box&) const
+void FormattingContext::computeBorderAndPadding(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    return 0;
+    displayBox.setBorder(Geometry::computedBorder(layoutContext, layoutBox));
+    if (auto padding = Geometry::computedPadding(layoutContext, layoutBox))
+        displayBox.setPadding(*padding);
 }
 
-LayoutUnit FormattingContext::marginBottom(const Box&) const
+void FormattingContext::placeInFlowPositionedChildren(LayoutContext& layoutContext, const Container& container) const
 {
-    return 0;
-}
+    // If this container also establishes a formatting context, then positioning already has happend in that the formatting context.
+    if (container.establishesFormattingContext() && &container != &root())
+        return;
 
-LayoutUnit FormattingContext::marginRight(const Box&) const
-{
-    return 0;
-}
-
-void FormattingContext::placeInFlowPositionedChildren(const Container&) const
-{
+    for (auto& layoutBox : childrenOfType<Box>(container)) {
+        if (!layoutBox.isInFlowPositioned())
+            continue;
+        computeInFlowPositionedPosition(layoutContext, layoutBox, *layoutContext.displayBoxForLayoutBox(layoutBox));
+    }
 }
 
 void FormattingContext::layoutOutOfFlowDescendants(LayoutContext& layoutContext) const

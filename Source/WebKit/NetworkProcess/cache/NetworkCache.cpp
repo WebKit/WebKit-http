@@ -276,7 +276,7 @@ static StoreDecision makeStoreDecision(const WebCore::ResourceRequest& originalR
     }
 
     bool isMainResource = originalRequest.requester() == WebCore::ResourceRequest::Requester::Main;
-    bool storeUnconditionallyForHistoryNavigation = isMainResource || originalRequest.priority() == WebCore::ResourceLoadPriority::VeryHigh;
+    bool storeUnconditionallyForHistoryNavigation = isMainResource || originalRequest.priority() >= WebCore::ResourceLoadPriority::High;
     if (!storeUnconditionallyForHistoryNavigation) {
         auto now = WallTime::now();
         bool hasNonZeroLifetime = !response.cacheControlContainsNoCache() && WebCore::computeFreshnessLifetimeForHTTPFamily(response, now) > 0_ms;
@@ -321,7 +321,7 @@ void Cache::retrieve(const WebCore::ResourceRequest& request, const GlobalFrameI
     Key storageKey = makeCacheKey(request);
 
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-    bool canUseSpeculativeRevalidation = m_speculativeLoadManager && !request.isConditional();
+    bool canUseSpeculativeRevalidation = m_speculativeLoadManager && !request.isConditional() && !cachePolicyAllowsExpired(request.cachePolicy());
     if (canUseSpeculativeRevalidation)
         m_speculativeLoadManager->registerLoad(frameID, request, storageKey);
 #endif

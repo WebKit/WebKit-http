@@ -57,6 +57,10 @@ using namespace WebKit;
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
 @interface NSURLSessionConfiguration (WKStaging)
 @property (nullable, copy) NSSet *_suppressedAutoAddedHTTPHeaders;
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+// FIXME: Remove this once rdar://problem/40650244 is in a build.
+@property (copy) NSDictionary *_socketStreamProperties;
+#endif
 @end
 #endif
 
@@ -573,8 +577,6 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
 @end
 
 namespace WebKit {
-    
-static bool usesNetworkCache { false };
 
 #if !ASSERT_DISABLED
 static bool sessionsCreated = false;
@@ -634,11 +636,6 @@ void NetworkSessionCocoa::setSourceApplicationSecondaryIdentifier(const String& 
     globalSourceApplicationSecondaryIdentifier() = identifier;
 }
 
-void NetworkSessionCocoa::setUsesNetworkCache(bool value)
-{
-    usesNetworkCache = value;
-}
-
 #if PLATFORM(IOS)
 void NetworkSessionCocoa::setCTDataConnectionServiceType(const String& type)
 {
@@ -676,8 +673,8 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkSessionCreationParameters&& para
     if (parameters.allowsCellularAccess == AllowsCellularAccess::No)
         configuration.allowsCellularAccess = NO;
 
-    if (usesNetworkCache)
-        configuration.URLCache = nil;
+    // The WebKit network cache was already queried.
+    configuration.URLCache = nil;
 
     if (auto& data = globalSourceApplicationAuditTokenData())
         configuration._sourceApplicationAuditTokenData = (NSData *)data.get();
@@ -706,6 +703,12 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkSessionCreationParameters&& para
     configuration._timingDataOptions = _TimingDataOptionsEnableW3CNavigationTiming;
 #else
     setCollectsTimingData();
+#endif
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+    // FIXME: Replace @"kCFStreamPropertyAutoErrorOnSystemChange" with a constant from the SDK once rdar://problem/40650244 is in a build.
+    if (NetworkProcess::singleton().suppressesConnectionTerminationOnSystemChange())
+        configuration._socketStreamProperties = @{ @"kCFStreamPropertyAutoErrorOnSystemChange" : @(NO) };
 #endif
 
     auto* storageSession = WebCore::NetworkStorageSession::storageSession(parameters.sessionID);

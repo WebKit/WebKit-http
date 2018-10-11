@@ -758,6 +758,16 @@ void Document::clearSelectorQueryCache()
     m_selectorQueryCache = nullptr;
 }
 
+void Document::setReferrerPolicy(ReferrerPolicy referrerPolicy)
+{
+    // Do not override existing referrer policy with the "empty string" one as the "empty string" means we should use
+    // the policy defined elsewhere.
+    if (m_referrerPolicy && referrerPolicy == ReferrerPolicy::EmptyString)
+        return;
+
+    m_referrerPolicy = referrerPolicy;
+}
+
 MediaQueryMatcher& Document::mediaQueryMatcher()
 {
     if (!m_mediaQueryMatcher)
@@ -2006,8 +2016,8 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
 std::unique_ptr<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element& element, const RenderStyle* parentStyle, PseudoId pseudoElementSpecifier)
 {
     ASSERT(&element.document() == this);
-    ASSERT(!element.isPseudoElement() || !pseudoElementSpecifier);
-    ASSERT(!pseudoElementSpecifier || parentStyle);
+    ASSERT(!element.isPseudoElement() || pseudoElementSpecifier == PseudoId::None);
+    ASSERT(pseudoElementSpecifier == PseudoId::None || parentStyle);
 
     // On iOS request delegates called during styleForElement may result in re-entering WebKit and killing the style resolver.
     Style::PostResolutionCallbackDisabler disabler(*this);
@@ -2015,7 +2025,7 @@ std::unique_ptr<RenderStyle> Document::styleForElementIgnoringPendingStylesheets
     SetForScope<bool> change(m_ignorePendingStylesheets, true);
     auto& resolver = element.styleResolver();
 
-    if (pseudoElementSpecifier)
+    if (pseudoElementSpecifier != PseudoId::None)
         return resolver.pseudoStyleForElement(element, PseudoStyleRequest(pseudoElementSpecifier), *parentStyle);
 
     auto elementStyle = resolver.styleForElement(element, parentStyle);
@@ -2133,7 +2143,7 @@ bool Document::isPageBoxVisible(int pageIndex)
 {
     updateStyleIfNeeded();
     std::unique_ptr<RenderStyle> pageStyle(styleScope().resolver().styleForPage(pageIndex));
-    return pageStyle->visibility() != HIDDEN; // display property doesn't apply to @page.
+    return pageStyle->visibility() != Visibility::Hidden; // display property doesn't apply to @page.
 }
 
 void Document::pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int& marginTop, int& marginRight, int& marginBottom, int& marginLeft)
@@ -2336,11 +2346,6 @@ void Document::prepareForDestruction()
     if (m_hasPreparedForDestruction)
         return;
 
-    if (m_timeline) {
-        m_timeline->detachFromDocument();
-        m_timeline = nullptr;
-    }
-
     if (m_frame)
         m_frame->animation().detachFromDocument(this);
 
@@ -2432,6 +2437,11 @@ void Document::prepareForDestruction()
     }
 
     detachFromFrame();
+
+    if (m_timeline) {
+        m_timeline->detachFromDocument();
+        m_timeline = nullptr;
+    }
 
     m_hasPreparedForDestruction = true;
 
@@ -2566,7 +2576,7 @@ void Document::setVisuallyOrdered()
 {
     m_visuallyOrdered = true;
     if (renderView())
-        renderView()->mutableStyle().setRTLOrdering(VisualOrder);
+        renderView()->mutableStyle().setRTLOrdering(Order::Visual);
 }
 
 Ref<DocumentParser> Document::createParser()
@@ -3465,7 +3475,7 @@ void Document::processWebAppOrientations()
 
 #endif
 
-void Document::processReferrerPolicy(const String& policy)
+void Document::processReferrerPolicy(const String& policy, ReferrerPolicySource source)
 {
     ASSERT(!policy.isNull());
 
@@ -3479,10 +3489,10 @@ void Document::processReferrerPolicy(const String& policy)
         return;
 #endif
     
-    auto referrerPolicy = parseReferrerPolicy(policy, ShouldParseLegacyKeywords::Yes);
+    auto referrerPolicy = parseReferrerPolicy(policy, source);
     if (!referrerPolicy) {
-        addConsoleMessage(MessageSource::Rendering, MessageLevel::Error, "Failed to set referrer policy: The value '" + policy + "' is not one of 'no-referrer', 'no-referrer-when-downgrade', 'same-origin', 'origin', 'strict-origin', 'origin-when-cross-origin', 'strict-origin-when-cross-origin' or 'unsafe-url'. Defaulting to 'no-referrer'.");
-        setReferrerPolicy(ReferrerPolicy::NoReferrer);
+        // Unknown policy values are ignored (https://w3c.github.io/webappsec-referrer-policy/#unknown-policy-values).
+        addConsoleMessage(MessageSource::Rendering, MessageLevel::Error, "Failed to set referrer policy: The value '" + policy + "' is not one of 'no-referrer', 'no-referrer-when-downgrade', 'same-origin', 'origin', 'strict-origin', 'origin-when-cross-origin', 'strict-origin-when-cross-origin' or 'unsafe-url'.");
         return;
     }
     setReferrerPolicy(referrerPolicy.value());
@@ -7304,15 +7314,15 @@ void Document::applyQuickLookSandbox()
 
 bool Document::shouldEnforceContentDispositionAttachmentSandbox() const
 {
+    if (!settings().contentDispositionAttachmentSandboxEnabled())
+        return false;
+
     if (m_isSynthesized)
         return false;
 
-    bool contentDispositionAttachmentSandboxEnabled = settings().contentDispositionAttachmentSandboxEnabled();
-    bool responseIsAttachment = false;
-    if (DocumentLoader* documentLoader = m_frame ? m_frame->loader().activeDocumentLoader() : nullptr)
-        responseIsAttachment = documentLoader->response().isAttachment();
-
-    return contentDispositionAttachmentSandboxEnabled && responseIsAttachment;
+    if (auto* documentLoader = m_frame ? m_frame->loader().activeDocumentLoader() : nullptr)
+        return documentLoader->response().isAttachment();
+    return false;
 }
 
 void Document::applyContentDispositionAttachmentSandbox()

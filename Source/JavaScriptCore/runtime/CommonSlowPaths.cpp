@@ -369,26 +369,29 @@ static void updateArithProfileForUnaryArithOp(Instruction* pc, JSValue result, J
 {
     ArithProfile& profile = *bitwise_cast<ArithProfile*>(&pc[3].u.operand);
     profile.observeLHS(operand);
-    ASSERT(result.isNumber());
-    if (!result.isInt32()) {
-        if (operand.isInt32())
-            profile.setObservedInt32Overflow();
-
-        double doubleVal = result.asNumber();
-        if (!doubleVal && std::signbit(doubleVal))
-            profile.setObservedNegZeroDouble();
-        else {
-            profile.setObservedNonNegZeroDouble();
-
-            // The Int52 overflow check here intentionally omits 1ll << 51 as a valid negative Int52 value.
-            // Therefore, we will get a false positive if the result is that value. This is intentionally
-            // done to simplify the checking algorithm.
-            static const int64_t int52OverflowPoint = (1ll << 51);
-            int64_t int64Val = static_cast<int64_t>(std::abs(doubleVal));
-            if (int64Val >= int52OverflowPoint)
-                profile.setObservedInt52Overflow();
+    ASSERT(result.isNumber() || result.isBigInt());
+    if (result.isNumber()) {
+        if (!result.isInt32()) {
+            if (operand.isInt32())
+                profile.setObservedInt32Overflow();
+            
+            double doubleVal = result.asNumber();
+            if (!doubleVal && std::signbit(doubleVal))
+                profile.setObservedNegZeroDouble();
+            else {
+                profile.setObservedNonNegZeroDouble();
+                
+                // The Int52 overflow check here intentionally omits 1ll << 51 as a valid negative Int52 value.
+                // Therefore, we will get a false positive if the result is that value. This is intentionally
+                // done to simplify the checking algorithm.
+                static const int64_t int52OverflowPoint = (1ll << 51);
+                int64_t int64Val = static_cast<int64_t>(std::abs(doubleVal));
+                if (int64Val >= int52OverflowPoint)
+                    profile.setObservedInt52Overflow();
+            }
         }
-    }
+    } else
+        profile.setObservedNonNumber();
 }
 #else
 static void updateArithProfileForUnaryArithOp(Instruction*, JSValue, JSValue) { }
@@ -398,7 +401,18 @@ SLOW_PATH_DECL(slow_path_negate)
 {
     BEGIN();
     JSValue operand = OP_C(2).jsValue();
-    JSValue result = jsNumber(-operand.toNumber(exec));
+    JSValue primValue = operand.toPrimitive(exec, PreferNumber);
+    CHECK_EXCEPTION();
+
+    if (primValue.isBigInt()) {
+        JSBigInt* result = JSBigInt::unaryMinus(exec->vm(), asBigInt(primValue));
+        RETURN_WITH_PROFILING(result, {
+            updateArithProfileForUnaryArithOp(pc, result, operand);
+        });
+    }
+    
+    JSValue result = jsNumber(-primValue.toNumber(exec));
+    CHECK_EXCEPTION();
     RETURN_WITH_PROFILING(result, {
         updateArithProfileForUnaryArithOp(pc, result, operand);
     });
@@ -546,10 +560,25 @@ SLOW_PATH_DECL(slow_path_div)
 SLOW_PATH_DECL(slow_path_mod)
 {
     BEGIN();
-    double a = OP_C(2).jsValue().toNumber(exec);
-    if (UNLIKELY(throwScope.exception()))
-        RETURN(JSValue());
-    double b = OP_C(3).jsValue().toNumber(exec);
+    JSValue left = OP_C(2).jsValue();
+    JSValue right = OP_C(3).jsValue();
+    auto leftNumeric = left.toNumeric(exec);
+    CHECK_EXCEPTION();
+    auto rightNumeric = right.toNumeric(exec);
+    CHECK_EXCEPTION();
+    
+    if (WTF::holds_alternative<JSBigInt*>(leftNumeric) || WTF::holds_alternative<JSBigInt*>(rightNumeric)) {
+        if (WTF::holds_alternative<JSBigInt*>(leftNumeric) && WTF::holds_alternative<JSBigInt*>(rightNumeric)) {
+            JSBigInt* result = JSBigInt::remainder(exec, WTF::get<JSBigInt*>(leftNumeric), WTF::get<JSBigInt*>(rightNumeric));
+            CHECK_EXCEPTION();
+            RETURN(result);
+        }
+
+        THROW(createTypeError(exec, "Invalid mix of BigInt and other type in remainder operation."));
+    }
+    
+    double a = WTF::get<double>(leftNumeric);
+    double b = WTF::get<double>(rightNumeric);
     RETURN(jsNumber(jsMod(a, b)));
 }
 
@@ -647,7 +676,7 @@ SLOW_PATH_DECL(slow_path_is_object_or_null)
 SLOW_PATH_DECL(slow_path_is_function)
 {
     BEGIN();
-    RETURN(jsBoolean(jsIsFunctionType(OP_C(2).jsValue())));
+    RETURN(jsBoolean(OP_C(2).jsValue().isFunction(vm)));
 }
 
 SLOW_PATH_DECL(slow_path_in_by_val)
@@ -1147,7 +1176,7 @@ SLOW_PATH_DECL(slow_path_spread)
     {
         JSFunction* iterationFunction = globalObject->iteratorProtocolFunction();
         CallData callData;
-        CallType callType = JSC::getCallData(iterationFunction, callData);
+        CallType callType = JSC::getCallData(vm, iterationFunction, callData);
         ASSERT(callType != CallType::None);
 
         MarkedArgumentBuffer arguments;

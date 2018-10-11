@@ -41,6 +41,11 @@
 #include <wtf/MachSendRight.h>
 #endif
 
+#if PLATFORM(MAC)
+#include <WebCore/PlatformScreen.h>
+#include <WebCore/ScreenProperties.h>
+#endif
+
 #if USE(SOUP)
 #include "HTTPCookieAcceptPolicy.h"
 #include <WebCore/SoupNetworkProxySettings.h>
@@ -173,10 +178,6 @@ struct WebProcessCreationParameters {
     RetainPtr<CFDataRef> networkATSContext;
 #endif
 
-#if OS(LINUX)
-    IPC::Attachment memoryPressureMonitorHandle;
-#endif
-
 #if PLATFORM(WAYLAND)
     String waylandCompositorDisplayName;
 #endif
@@ -185,8 +186,17 @@ struct WebProcessCreationParameters {
     WebCore::SoupNetworkProxySettings proxySettings;
 #endif
 
+#if PLATFORM(COCOA)
+    Vector<String> mediaMIMETypes;
+#endif
+
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
     bool shouldLogUserInteraction { false };
+#endif
+
+#if PLATFORM(MAC)
+    WebCore::PlatformDisplayID primaryDisplayID { 0 };
+    WebCore::ScreenPropertiesMap screenPropertiesMap;
 #endif
 };
 

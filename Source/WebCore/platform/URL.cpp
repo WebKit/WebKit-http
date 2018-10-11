@@ -39,6 +39,7 @@
 #include <wtf/UUID.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/TextStream.h>
 
@@ -155,10 +156,10 @@ StringView URL::protocol() const
     return StringView(m_string).substring(0, m_schemeEnd);
 }
 
-String URL::host() const
+StringView URL::host() const
 {
     unsigned start = hostStart();
-    return m_string.substring(start, m_hostEnd - start);
+    return StringView(m_string).substring(start, m_hostEnd - start);
 }
 
 std::optional<uint16_t> URL::port() const
@@ -180,8 +181,8 @@ std::optional<uint16_t> URL::port() const
 String URL::hostAndPort() const
 {
     if (auto port = this->port())
-        return host() + ':' + String::number(port.value());
-    return host();
+        return makeString(host(), ':', static_cast<unsigned>(port.value()));
+    return host().toString();
 }
 
 String URL::protocolHostAndPort() const
@@ -796,7 +797,7 @@ bool URL::isMatchingDomain(const String& domain) const
     if (!host.endsWith(domain))
         return false;
 
-    return host.length() == domain.length() || host.characterAt(host.length() - domain.length() - 1) == '.';
+    return host.length() == domain.length() || host[host.length() - domain.length() - 1] == '.';
 }
 
 String encodeWithURLEscapeSequences(const String& input)
@@ -1060,7 +1061,7 @@ TextStream& operator<<(TextStream& ts, const URL& url)
 }
 
 #if !PLATFORM(COCOA) && !USE(SOUP)
-bool URL::hostIsIPAddress(const String& host)
+bool URL::hostIsIPAddress(StringView host)
 {
     // Assume that any host that ends with a digit is trying to be an IP address.
     return !host.isEmpty() && isASCIIDigit(host[host.length() - 1]);

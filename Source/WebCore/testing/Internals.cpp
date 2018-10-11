@@ -3707,6 +3707,13 @@ ExceptionOr<Internals::NowPlayingState> Internals::nowPlayingState() const
 #endif
 }
 
+#if ENABLE(VIDEO)
+HTMLMediaElement* Internals::bestMediaElementForShowingPlaybackControlsManager(Internals::PlaybackControlsPurpose purpose)
+{
+    return HTMLMediaElement::bestMediaElementForShowingPlaybackControlsManager(purpose);
+}
+#endif
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 
 void Internals::setMockMediaPlaybackTargetPickerEnabled(bool enabled)
@@ -4045,7 +4052,7 @@ JSValue Internals::cloneArrayBuffer(JSC::ExecState& state, JSValue buffer, JSVal
 
     JSObject* function = value.getObject();
     CallData callData;
-    CallType callType = JSC::getCallData(function, callData);
+    CallType callType = JSC::getCallData(vm, function, callData);
     ASSERT(callType != JSC::CallType::None);
     MarkedArgumentBuffer arguments;
     arguments.append(buffer);

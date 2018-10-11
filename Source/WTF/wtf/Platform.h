@@ -74,6 +74,7 @@
 #define WTF_MIPS_ISA_AT_LEAST(v) (defined WTF_MIPS_ARCH && WTF_MIPS_ARCH >= v)
 #define WTF_MIPS_ARCH_REV __mips_isa_rev
 #define WTF_MIPS_ISA_REV(v) (defined WTF_MIPS_ARCH_REV && WTF_MIPS_ARCH_REV == v)
+#define WTF_MIPS_ISA_REV_AT_LEAST(v) (defined WTF_MIPS_ARCH_REV && WTF_MIPS_ARCH_REV >= v)
 #define WTF_MIPS_DOUBLE_FLOAT (defined __mips_hard_float && !defined __mips_single_float)
 #define WTF_MIPS_FP64 (defined __mips_fpr && __mips_fpr == 64)
 /* MIPS requires allocators to use aligned memory */
@@ -1060,7 +1061,7 @@
 #define HAVE_PARENTAL_CONTROLS 1
 #endif
 
-#if !PLATFORM(APPLETV)
+#if !PLATFORM(APPLETV) && (!ENABLE(MINIMAL_SIMULATOR) || __IPHONE_OS_VERSION_MIN_REQUIRED < 130000)
 #define HAVE_AVKIT 1
 #endif
 
@@ -1347,6 +1348,7 @@
 
 #if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400)
 #define ENABLE_ACCESSIBILITY_EVENTS 1
+#define HAVE_SEC_KEY_PROXY 1
 #endif
 
 #endif /* WTF_Platform_h */

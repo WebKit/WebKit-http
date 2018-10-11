@@ -586,9 +586,9 @@ static RefPtr<Inspector::Protocol::OverlayTypes::ElementData> buildObjectForElem
     }
 
     if (node->isPseudoElement()) {
-        if (node->pseudoId() == BEFORE)
+        if (node->pseudoId() == PseudoId::Before)
             elementData->setPseudoElement("before");
-        else if (node->pseudoId() == AFTER)
+        else if (node->pseudoId() == PseudoId::After)
             elementData->setPseudoElement("after");
     }
 
@@ -729,10 +729,11 @@ Page* InspectorOverlay::overlayPage()
     frame.view()->setCanHaveScrollbars(false);
     frame.view()->setTransparent(true);
     ASSERT(loader.activeDocumentLoader());
-    loader.activeDocumentLoader()->writer().setMIMEType("text/html");
-    loader.activeDocumentLoader()->writer().begin();
-    loader.activeDocumentLoader()->writer().addData(reinterpret_cast<const char*>(InspectorOverlayPage_html), sizeof(InspectorOverlayPage_html));
-    loader.activeDocumentLoader()->writer().end();
+    auto& writer = loader.activeDocumentLoader()->writer();
+    writer.setMIMEType("text/html");
+    writer.begin();
+    writer.insertDataSynchronously(String(reinterpret_cast<const char*>(InspectorOverlayPage_html), sizeof(InspectorOverlayPage_html)));
+    writer.end();
 
 #if OS(WINDOWS)
     evaluateInOverlay("setPlatform", "windows");

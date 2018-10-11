@@ -160,7 +160,7 @@ private:
 
 std::unique_ptr<Vector<StackFrame>> getStackTrace(ExecState* exec, VM& vm, JSObject* obj, bool useCurrentFrame)
 {
-    JSGlobalObject* globalObject = obj->globalObject();
+    JSGlobalObject* globalObject = obj->globalObject(vm);
     ErrorConstructor* errorConstructor = globalObject->errorConstructor();
     if (!errorConstructor->stackTraceLimit())
         return nullptr;
@@ -209,7 +209,7 @@ bool addErrorInfo(VM& vm, Vector<StackFrame>* stackTrace, JSObject* obj)
 {
     if (!stackTrace)
         return false;
-    
+
     if (!stackTrace->isEmpty()) {
         unsigned line;
         unsigned column;
@@ -220,7 +220,7 @@ bool addErrorInfo(VM& vm, Vector<StackFrame>* stackTrace, JSObject* obj)
         if (!sourceURL.isEmpty())
             obj->putDirect(vm, vm.propertyNames->sourceURL, jsString(&vm, sourceURL));
 
-        obj->putDirect(vm, vm.propertyNames->stack, Interpreter::stackTraceAsString(vm, *stackTrace), static_cast<unsigned>(PropertyAttribute::DontEnum));
+        obj->putDirect(vm, vm.propertyNames->stack, jsString(&vm, Interpreter::stackTraceAsString(vm, *stackTrace)), static_cast<unsigned>(PropertyAttribute::DontEnum));
 
         return true;
     }

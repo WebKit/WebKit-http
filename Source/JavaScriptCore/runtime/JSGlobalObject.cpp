@@ -394,7 +394,7 @@ void JSGlobalObject::init(VM& vm)
     ASSERT(vm.currentThreadIsHoldingAPILock());
     auto catchScope = DECLARE_CATCH_SCOPE(vm);
 
-    Base::setStructure(vm, Structure::toCacheableDictionaryTransition(vm, structure()));
+    Base::setStructure(vm, Structure::toCacheableDictionaryTransition(vm, structure(vm)));
 
     m_debugger = 0;
 
@@ -466,33 +466,28 @@ void JSGlobalObject::init(VM& vm)
     m_throwTypeErrorGetterSetter.initLater(
         [] (const Initializer<GetterSetter>& init) {
             JSFunction* thrower = init.owner->throwTypeErrorFunction();
-            GetterSetter* getterSetter = GetterSetter::create(init.vm, init.owner);
-            getterSetter->setGetter(init.vm, init.owner, thrower);
-            getterSetter->setSetter(init.vm, init.owner, thrower);
+            GetterSetter* getterSetter = GetterSetter::create(init.vm, init.owner, thrower, thrower);
             init.set(getterSetter);
         });
 
     m_nullGetterFunction.set(vm, this, NullGetterFunction::create(vm, NullGetterFunction::createStructure(vm, this, m_functionPrototype.get())));
     m_nullSetterFunction.set(vm, this, NullSetterFunction::create(vm, NullSetterFunction::createStructure(vm, this, m_functionPrototype.get())));
     m_objectPrototype.set(vm, this, ObjectPrototype::create(vm, this, ObjectPrototype::createStructure(vm, this, jsNull())));
-    GetterSetter* protoAccessor = GetterSetter::create(vm, this);
-    protoAccessor->setGetter(vm, this, JSFunction::create(vm, this, 0, makeString("get ", vm.propertyNames->underscoreProto.string()), globalFuncProtoGetter, UnderscoreProtoIntrinsic));
-    protoAccessor->setSetter(vm, this, JSFunction::create(vm, this, 0, makeString("set ", vm.propertyNames->underscoreProto.string()), globalFuncProtoSetter));
+    GetterSetter* protoAccessor = GetterSetter::create(vm, this,
+        JSFunction::create(vm, this, 0, makeString("get ", vm.propertyNames->underscoreProto.string()), globalFuncProtoGetter, UnderscoreProtoIntrinsic),
+        JSFunction::create(vm, this, 0, makeString("set ", vm.propertyNames->underscoreProto.string()), globalFuncProtoSetter));
     m_objectPrototype->putDirectNonIndexAccessor(vm, vm.propertyNames->underscoreProto, protoAccessor, PropertyAttribute::Accessor | PropertyAttribute::DontEnum);
-    m_functionPrototype->structure()->setPrototypeWithoutTransition(vm, m_objectPrototype.get());
+    m_functionPrototype->structure(vm)->setPrototypeWithoutTransition(vm, m_objectPrototype.get());
     m_objectStructureForObjectConstructor.set(vm, this, vm.structureCache.emptyObjectStructureForPrototype(this, m_objectPrototype.get(), JSFinalObject::defaultInlineCapacity()));
     m_objectProtoValueOfFunction.set(vm, this, jsCast<JSFunction*>(objectPrototype()->getDirect(vm, vm.propertyNames->valueOf)));
     
     JSFunction* thrower = JSFunction::create(vm, this, 0, String(), globalFuncThrowTypeErrorArgumentsCalleeAndCaller);
-    GetterSetter* getterSetter = GetterSetter::create(vm, this);
-    getterSetter->setGetter(vm, this, thrower);
-    getterSetter->setSetter(vm, this, thrower);
+    GetterSetter* getterSetter = GetterSetter::create(vm, this, thrower, thrower);
     m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter.set(vm, this, getterSetter);
     
     m_functionPrototype->initRestrictedProperties(exec, this);
 
-    m_speciesGetterSetter.set(vm, this, GetterSetter::create(vm, this));
-    m_speciesGetterSetter->setGetter(vm, this, JSFunction::create(vm, globalOperationsSpeciesGetterCodeGenerator(vm), this));
+    m_speciesGetterSetter.set(vm, this, GetterSetter::create(vm, this, JSFunction::create(vm, globalOperationsSpeciesGetterCodeGenerator(vm), this), nullptr));
 
     m_typedArrayProto.initLater(
         [] (const Initializer<JSTypedArrayViewPrototype>& init) {
@@ -964,17 +959,8 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
 
     m_linkTimeConstants[static_cast<unsigned>(LinkTimeConstant::ThrowTypeErrorFunction)] = m_throwTypeErrorFunction.get();
 
-    if (UNLIKELY(Options::useDollarVM())) {
-        m_dollarVMStructure.set(vm, this, JSDollarVM::createStructure(vm, this, m_objectPrototype.get()));
-        JSDollarVM* dollarVM = JSDollarVM::create(vm, m_dollarVMStructure.get());
-
-        GlobalPropertyInfo extraStaticGlobals[] = {
-            GlobalPropertyInfo(vm.propertyNames->builtinNames().dollarVMPrivateName(), dollarVM, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        };
-        addStaticGlobals(extraStaticGlobals, WTF_ARRAY_LENGTH(extraStaticGlobals));
-
-        putDirectWithoutTransition(vm, Identifier::fromString(exec, "$vm"), dollarVM, static_cast<unsigned>(PropertyAttribute::DontEnum));
-    }
+    if (UNLIKELY(Options::useDollarVM()))
+        exposeDollarVM(vm);
 
 #if ENABLE(WEBASSEMBLY)
     if (Options::useWebAssembly()) {
@@ -1217,7 +1203,7 @@ inline void ObjectsWithBrokenIndexingFinder::visit(JSCell* cell)
     // a different global object that have prototypes from our global object.
     auto isInEffectedGlobalObject = [&] (JSObject* object) {
         for (JSObject* current = object; ;) {
-            if (current->globalObject() == m_globalObject)
+            if (current->globalObject(vm) == m_globalObject)
                 return true;
             
             JSValue prototypeValue = current->getPrototypeDirect(vm);
@@ -1429,7 +1415,6 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(thisObject->m_regExpMatchesArrayWithGroupsStructure);
     visitor.append(thisObject->m_moduleRecordStructure);
     visitor.append(thisObject->m_moduleNamespaceObjectStructure);
-    visitor.append(thisObject->m_dollarVMStructure);
     visitor.append(thisObject->m_proxyObjectStructure);
     visitor.append(thisObject->m_callableProxyObjectStructure);
     visitor.append(thisObject->m_proxyRevokeStructure);
@@ -1480,6 +1465,21 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 ExecState* JSGlobalObject::globalExec()
 {
     return CallFrame::create(m_globalCallFrame);
+}
+
+void JSGlobalObject::exposeDollarVM(VM& vm)
+{
+    if (hasOwnProperty(globalExec(), vm.propertyNames->builtinNames().dollarVMPrivateName()))
+        return;
+
+    JSDollarVM* dollarVM = JSDollarVM::create(vm, JSDollarVM::createStructure(vm, this, m_objectPrototype.get()));
+
+    GlobalPropertyInfo extraStaticGlobals[] = {
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().dollarVMPrivateName(), dollarVM, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+    };
+    addStaticGlobals(extraStaticGlobals, WTF_ARRAY_LENGTH(extraStaticGlobals));
+
+    putDirect(vm, Identifier::fromString(globalExec(), "$vm"), dollarVM, static_cast<unsigned>(PropertyAttribute::DontEnum));
 }
 
 void JSGlobalObject::addStaticGlobals(GlobalPropertyInfo* globals, int count)
@@ -1635,7 +1635,7 @@ JSGlobalObject* JSGlobalObject::create(VM& vm, Structure* structure)
 void JSGlobalObject::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    structure()->setGlobalObject(vm, this);
+    structure(vm)->setGlobalObject(vm, this);
     m_runtimeFlags = m_globalObjectMethodTable->javaScriptRuntimeFlags(this);
     init(vm);
     setGlobalThis(vm, JSProxy::create(vm, JSProxy::createStructure(vm, this, getPrototypeDirect(vm), PureForwardingProxyType), this));
@@ -1645,7 +1645,7 @@ void JSGlobalObject::finishCreation(VM& vm)
 void JSGlobalObject::finishCreation(VM& vm, JSObject* thisValue)
 {
     Base::finishCreation(vm);
-    structure()->setGlobalObject(vm, this);
+    structure(vm)->setGlobalObject(vm, this);
     m_runtimeFlags = m_globalObjectMethodTable->javaScriptRuntimeFlags(this);
     init(vm);
     setGlobalThis(vm, thisValue);

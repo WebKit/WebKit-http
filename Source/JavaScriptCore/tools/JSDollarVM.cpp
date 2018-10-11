@@ -1687,11 +1687,16 @@ static EncodedJSValue JSC_HOST_CALL functionEnableExceptionFuzz(ExecState*)
     return JSValue::encode(jsUndefined());
 }
 
+static EncodedJSValue JSC_HOST_CALL functionGlobalObjectCount(ExecState* exec)
+{
+    return JSValue::encode(jsNumber(exec->vm().heap.globalObjectCount()));
+}
+
 static EncodedJSValue JSC_HOST_CALL functionGlobalObjectForObject(ExecState* exec)
 {
     JSValue value = exec->argument(0);
     RELEASE_ASSERT(value.isObject());
-    JSGlobalObject* globalObject = jsCast<JSObject*>(value)->globalObject();
+    JSGlobalObject* globalObject = jsCast<JSObject*>(value)->globalObject(exec->vm());
     RELEASE_ASSERT(globalObject);
     return JSValue::encode(globalObject);
 }
@@ -1767,7 +1772,7 @@ void JSDollarVM::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
 
-    JSGlobalObject* globalObject = structure(vm)->globalObject();
+    JSGlobalObject* globalObject = this->globalObject(vm);
 
     auto addFunction = [&] (VM& vm, const char* name, NativeFunction function, unsigned arguments) {
         JSDollarVM::addFunction(vm, globalObject, name, function, arguments);
@@ -1843,6 +1848,7 @@ void JSDollarVM::finishCreation(VM& vm)
 
     addFunction(vm, "enableExceptionFuzz", functionEnableExceptionFuzz, 0);
 
+    addFunction(vm, "globalObjectCount", functionGlobalObjectCount, 0);
     addFunction(vm, "globalObjectForObject", functionGlobalObjectForObject, 1);
 
     addFunction(vm, "getGetterSetter", functionGetGetterSetter, 2);

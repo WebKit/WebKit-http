@@ -384,6 +384,7 @@ public:
     IsoSubspace structureSpace;
     IsoSubspace weakSetSpace;
     IsoSubspace weakMapSpace;
+    IsoSubspace errorInstanceSpace;
 #if ENABLE(WEBASSEMBLY)
     IsoSubspace webAssemblyCodeBlockSpace;
     IsoSubspace webAssemblyFunctionSpace;
@@ -558,6 +559,7 @@ public:
     static JS_EXPORT_PRIVATE bool canUseAssembler();
     static JS_EXPORT_PRIVATE bool canUseJIT();
     static JS_EXPORT_PRIVATE bool canUseRegExpJIT();
+    static JS_EXPORT_PRIVATE bool isInMiniMode();
 
     SourceProviderCache* addSourceProviderCache(SourceProvider*);
     void clearSourceProviderCaches();
@@ -744,7 +746,7 @@ public:
     JS_EXPORT_PRIVATE void deleteAllCode(DeleteAllCodeEffort);
     JS_EXPORT_PRIVATE void deleteAllLinkedCode(DeleteAllCodeEffort);
 
-    void shrinkFootprint();
+    void shrinkFootprintWhenIdle();
 
     WatchpointSet* ensureWatchpointSetForImpureProperty(const Identifier&);
     void registerWatchpointForImpureProperty(const Identifier&, Watchpoint*);
@@ -950,7 +952,7 @@ inline Heap* WeakSet::heap() const
 extern "C" void sanitizeStackForVMImpl(VM*);
 #endif
 
-void sanitizeStackForVM(VM*);
+JS_EXPORT_PRIVATE void sanitizeStackForVM(VM*);
 void logSanitizeStack(VM*);
 
 } // namespace JSC

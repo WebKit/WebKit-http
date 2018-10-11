@@ -28,26 +28,25 @@ namespace JSC {
 
 void reifyStaticAccessor(VM& vm, const HashTableValue& value, JSObject& thisObject, PropertyName propertyName)
 {
-    JSGlobalObject* globalObject = thisObject.globalObject();
-    GetterSetter* accessor = GetterSetter::create(vm, globalObject);
+    JSGlobalObject* globalObject = thisObject.globalObject(vm);
+    JSObject* getter = nullptr;
     if (value.accessorGetter()) {
-        JSFunction* function = nullptr;
         if (value.attributes() & PropertyAttribute::Builtin)
-            function = JSFunction::create(vm, value.builtinAccessorGetterGenerator()(vm), globalObject);
+            getter = JSFunction::create(vm, value.builtinAccessorGetterGenerator()(vm), globalObject);
         else {
             String getterName = tryMakeString(ASCIILiteral("get "), String(*propertyName.publicName()));
             if (!getterName)
                 return;
-            function = JSFunction::create(vm, globalObject, 0, getterName, value.accessorGetter());
+            getter = JSFunction::create(vm, globalObject, 0, getterName, value.accessorGetter());
         }
-        accessor->setGetter(vm, globalObject, function);
     }
+    GetterSetter* accessor = GetterSetter::create(vm, globalObject, getter, nullptr);
     thisObject.putDirectNonIndexAccessor(vm, propertyName, accessor, attributesForStructure(value.attributes()));
 }
 
 bool setUpStaticFunctionSlot(VM& vm, const ClassInfo* classInfo, const HashTableValue* entry, JSObject* thisObject, PropertyName propertyName, PropertySlot& slot)
 {
-    ASSERT(thisObject->globalObject());
+    ASSERT(thisObject->globalObject(vm));
     ASSERT(entry->attributes() & PropertyAttribute::BuiltinOrFunctionOrAccessorOrLazyProperty);
     unsigned attributes;
     bool isAccessor = entry->attributes() & PropertyAttribute::Accessor;
@@ -56,7 +55,7 @@ bool setUpStaticFunctionSlot(VM& vm, const ClassInfo* classInfo, const HashTable
     if (!isValidOffset(offset)) {
         // If a property is ever deleted from an object with a static table, then we reify
         // all static functions at that time - after this we shouldn't be re-adding anything.
-        if (thisObject->staticPropertiesReified())
+        if (thisObject->staticPropertiesReified(vm))
             return false;
 
         reifyStaticProperty(vm, classInfo, propertyName, *entry, *thisObject);

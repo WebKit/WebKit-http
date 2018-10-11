@@ -114,9 +114,6 @@ NetworkProcess::NetworkProcess()
 #if PLATFORM(COCOA)
     , m_clearCacheDispatchGroup(0)
 #endif
-#if PLATFORM(IOS)
-    , m_webSQLiteDatabaseTracker(*this)
-#endif
 {
     NetworkProcessPlatformStrategies::initialize();
 
@@ -220,7 +217,11 @@ void NetworkProcess::lowMemoryHandler(Critical critical)
 
 void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&& parameters)
 {
+#if HAVE(SEC_KEY_PROXY)
+    WTF::setProcessPrivileges({ ProcessPrivilege::CanAccessRawCookies });
+#else
     WTF::setProcessPrivileges({ ProcessPrivilege::CanAccessRawCookies, ProcessPrivilege::CanAccessCredentials });
+#endif
     WebCore::NetworkStorageSession::permitProcessToUseCookieAPI(true);
     WebCore::setPresentingApplicationPID(parameters.presentingApplicationPID);
     platformInitializeNetworkProcess(parameters);
@@ -232,10 +233,6 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     m_loadThrottleLatency = parameters.loadThrottleLatency;
     if (!m_suppressMemoryPressureHandler) {
         auto& memoryPressureHandler = MemoryPressureHandler::singleton();
-#if OS(LINUX)
-        if (parameters.memoryPressureMonitorHandle.fileDescriptor() != -1)
-            memoryPressureHandler.setMemoryPressureMonitorHandle(parameters.memoryPressureMonitorHandle.releaseFileDescriptor());
-#endif
         memoryPressureHandler.setLowMemoryHandler([this] (Critical critical, Synchronous) {
             lowMemoryHandler(critical);
         });
@@ -481,7 +478,7 @@ static void fetchDiskCacheEntries(PAL::SessionID sessionID, OptionSet<WebsiteDat
             }
 
             auto url = traversalEntry->entry.response().url();
-            auto result = originsAndSizes.add({url.protocol().toString(), url.host(), url.port()}, 0);
+            auto result = originsAndSizes.add({url.protocol().toString(), url.host().toString(), url.port()}, 0);
 
             if (fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes))
                 result.iterator->value += traversalEntry->entry.sourceStorageRecord().header.size() + traversalEntry->recordInfo.bodySize;
@@ -728,12 +725,8 @@ void NetworkProcess::setCacheModel(uint32_t cm)
     if (m_diskCacheSizeOverride >= 0)
         urlCacheDiskCapacity = m_diskCacheSizeOverride;
 
-    if (m_cache) {
+    if (m_cache)
         m_cache->setCapacity(urlCacheDiskCapacity);
-        return;
-    }
-
-    platformSetURLCacheSize(urlCacheMemoryCapacity, urlCacheDiskCapacity);
 }
 
 void NetworkProcess::setCanHandleHTTPSServerTrustEvaluation(bool value)

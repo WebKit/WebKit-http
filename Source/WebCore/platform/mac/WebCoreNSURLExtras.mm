@@ -177,8 +177,8 @@ static BOOL isLookalikeCharacter(std::optional<UChar32> previousCodePoint, UChar
         case 0x233F: /* APL FUNCTIONAL SYMBOL SLASH BAR */
         case 0x23AE: /* INTEGRAL EXTENSION */
         case 0x244A: /* OCR DOUBLE BACKSLASH */
-        case 0x2571: /* BOX DRAWINGS LIGHT DIAGONAL UPPER RIGHT TO LOWER LEFT */
-        case 0x2572: /* BOX DRAWINGS LIGHT DIAGONAL UPPER LEFT TO LOWER RIGHT */
+        case 0x2571: /* DisplayType::Box DRAWINGS LIGHT DIAGONAL UPPER RIGHT TO LOWER LEFT */
+        case 0x2572: /* DisplayType::Box DRAWINGS LIGHT DIAGONAL UPPER LEFT TO LOWER RIGHT */
         case 0x29F6: /* SOLIDUS WITH OVERBAR */
         case 0x29F8: /* BIG SOLIDUS */
         case 0x2AFB: /* TRIPLE SOLIDUS BINARY RELATION */
@@ -886,7 +886,7 @@ static NSData *dataWithUserTypedString(NSString *string)
     return [NSData dataWithBytesNoCopy:outBytes length:outLength]; // adopts outBytes
 }
 
-NSURL *URLWithUserTypedString(NSString *string, NSURL *URL)
+NSURL *URLWithUserTypedString(NSString *string, NSURL *nsURL)
 {
     if (!string)
         return nil;
@@ -895,11 +895,18 @@ NSURL *URLWithUserTypedString(NSString *string, NSURL *URL)
     if (!string)
         return nil;
 
+    // Let's check whether the URL is bogus.
+    URL url { URL { nsURL }, string };
+    if (!url.createCFURL())
+        return nil;
+
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=186057
+    // We should be able to use url.createCFURL instead of using directly CFURL parsing routines.
     NSData *data = dataWithUserTypedString(string);
     if (!data)
         return [NSURL URLWithString:@""];
 
-    return URLWithData(data, URL);
+    return URLWithData(data, nsURL);
 }
 
 NSURL *URLWithUserTypedStringDeprecated(NSString *string, NSURL *URL)

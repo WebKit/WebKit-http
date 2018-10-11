@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -640,7 +640,7 @@ void DocumentLoader::willSendRequest(ResourceRequest&& newRequest, const Resourc
     if (!didReceiveRedirectResponse && shouldContinue != ShouldContinue::ForSuspension)
         return completionHandler(WTFMove(newRequest));
 
-    auto navigationPolicyCompletionHandler = [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)] (ResourceRequest&& request, FormState*, ShouldContinue shouldContinue) mutable {
+    auto navigationPolicyCompletionHandler = [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)] (ResourceRequest&& request, WeakPtr<FormState>&&, ShouldContinue shouldContinue) mutable {
         m_waitingForNavigationPolicy = false;
         switch (shouldContinue) {
         case ShouldContinue::ForSuspension:
@@ -1185,6 +1185,13 @@ void DocumentLoader::detachFromFrame()
 
     cancelPolicyCheckIfNeeded();
 
+    // cancelPolicyCheckIfNeeded can clear m_frame if the policy check
+    // is stopped, resulting in a recursive call into this detachFromFrame.
+    // If m_frame is nullptr after cancelPolicyCheckIfNeeded, our work is
+    // already done so just return.
+    if (!m_frame)
+        return;
+
     InspectorInstrumentation::loaderDetachedFromFrame(*m_frame, *this);
 
     observeFrame(nullptr);
@@ -1690,12 +1697,9 @@ void DocumentLoader::startLoadingMainResource(ShouldContinue shouldContinue)
     m_contentFilter = !m_substituteData.isValid() ? ContentFilter::create(*this) : nullptr;
 #endif
 
-    // FIXME: Is there any way the extra fields could have not been added by now?
-    // If not, it would be great to remove this line of code.
-    // Note that currently, some requests may have incorrect extra fields even if this function has been called,
-    // because we pass a wrong loadType (see FIXME in addExtraFieldsToMainResourceRequest()).
-    // If we remove this line of code then ResourceRequestBase does not need to track whether isSameSite
-    // is unspecified.
+    // Make sure we re-apply the user agent to the Document's ResourceRequest upon reload in case the embedding
+    // application has changed it.
+    m_request.clearHTTPUserAgent();
     frameLoader()->addExtraFieldsToMainResourceRequest(m_request);
 
     ASSERT(timing().startTime());

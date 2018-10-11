@@ -72,7 +72,7 @@ static void overrideSystemProxies(const String& httpProxy, const String& httpsPr
     if (!httpProxy.isNull()) {
         URL httpProxyURL(URL(), httpProxy);
         if (httpProxyURL.isValid()) {
-            [proxySettings setObject:nsStringFromWebCoreString(httpProxyURL.host()) forKey:(NSString *)kCFNetworkProxiesHTTPProxy];
+            [proxySettings setObject:nsStringFromWebCoreString(httpProxyURL.host().toString()) forKey:(NSString *)kCFNetworkProxiesHTTPProxy];
             if (httpProxyURL.port()) {
                 NSNumber *port = [NSNumber numberWithInt:httpProxyURL.port().value()];
                 [proxySettings setObject:port forKey:(NSString *)kCFNetworkProxiesHTTPPort];
@@ -86,7 +86,7 @@ static void overrideSystemProxies(const String& httpProxy, const String& httpsPr
         URL httpsProxyURL(URL(), httpsProxy);
         if (httpsProxyURL.isValid()) {
 #if !ENABLE(MINIMAL_SIMULATOR)
-            [proxySettings setObject:nsStringFromWebCoreString(httpsProxyURL.host()) forKey:(NSString *)kCFNetworkProxiesHTTPSProxy];
+            [proxySettings setObject:nsStringFromWebCoreString(httpsProxyURL.host().toString()) forKey:(NSString *)kCFNetworkProxiesHTTPSProxy];
             if (httpsProxyURL.port()) {
                 NSNumber *port = [NSNumber numberWithInt:httpsProxyURL.port().value()];
                 [proxySettings setObject:port forKey:(NSString *)kCFNetworkProxiesHTTPSPort];
@@ -105,6 +105,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
     platformInitializeNetworkProcessCocoa(parameters);
 
 #if ENABLE(SEC_ITEM_SHIM)
+    // SecItemShim is needed for CFNetwork APIs that query Keychains beneath us.
     initializeSecItemShim(*this);
 #endif
 

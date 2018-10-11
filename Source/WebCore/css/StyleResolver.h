@@ -159,7 +159,7 @@ public:
     void addCurrentSVGFontFaceRules();
     static void adjustSVGElementStyle(const SVGElement&, RenderStyle&);
 
-private:
+    void setNewStateWithElement(const Element&);
     std::unique_ptr<RenderStyle> styleForKeyframe(const RenderStyle*, const StyleRuleKeyframe*, KeyframeValue&);
 
 public:
@@ -357,7 +357,7 @@ public:
         const RenderStyle* parentStyle() const { return m_parentStyle; }
         const RenderStyle* rootElementStyle() const { return m_rootElementStyle; }
 
-        EInsideLink elementLinkState() const { return m_elementLinkState; }
+        InsideLink elementLinkState() const { return m_elementLinkState; }
 
         void setApplyPropertyToRegularStyle(bool isApply) { m_applyPropertyToRegularStyle = isApply; }
         void setApplyPropertyToVisitedLinkStyle(bool isApply) { m_applyPropertyToVisitedLinkStyle = isApply; }
@@ -377,7 +377,7 @@ public:
 
         const FontCascadeDescription& fontDescription() { return m_style->fontDescription(); }
         const FontCascadeDescription& parentFontDescription() { return m_parentStyle->fontDescription(); }
-        void setFontDescription(const FontCascadeDescription& fontDescription) { m_fontDirty |= m_style->setFontDescription(fontDescription); }
+        void setFontDescription(FontCascadeDescription&& fontDescription) { m_fontDirty |= m_style->setFontDescription(WTFMove(fontDescription)); }
         void setZoom(float f) { m_fontDirty |= m_style->setZoom(f); }
         void setEffectiveZoom(float f) { m_fontDirty |= m_style->setEffectiveZoom(f); }
         void setWritingMode(WritingMode writingMode) { m_fontDirty |= m_style->setWritingMode(writingMode); }
@@ -409,7 +409,7 @@ public:
         std::unique_ptr<RenderStyle> m_ownedParentStyle;
         const RenderStyle* m_rootElementStyle { nullptr };
 
-        EInsideLink m_elementLinkState { NotInsideLink };
+        InsideLink m_elementLinkState { InsideLink::NotInside };
 
         bool m_applyPropertyToRegularStyle { true };
         bool m_applyPropertyToVisitedLinkStyle { false };
@@ -448,7 +448,7 @@ public:
     InspectorCSSOMWrappers& inspectorCSSOMWrappers() { return m_inspectorCSSOMWrappers; }
     const FontCascadeDescription& fontDescription() { return m_state.fontDescription(); }
     const FontCascadeDescription& parentFontDescription() { return m_state.parentFontDescription(); }
-    void setFontDescription(const FontCascadeDescription& fontDescription) { m_state.setFontDescription(fontDescription); }
+    void setFontDescription(FontCascadeDescription&& fontDescription) { m_state.setFontDescription(WTFMove(fontDescription)); }
     void setZoom(float f) { m_state.setZoom(f); }
     void setEffectiveZoom(float f) { m_state.setEffectiveZoom(f); }
     void setWritingMode(WritingMode writingMode) { m_state.setWritingMode(writingMode); }

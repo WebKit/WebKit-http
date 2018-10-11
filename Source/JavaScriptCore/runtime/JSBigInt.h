@@ -72,20 +72,31 @@ public:
     void setLength(unsigned length) { m_length = length; }
     unsigned length() const { return m_length; }
 
-    enum ErrorParseMode {
+    enum class ErrorParseMode {
         ThrowExceptions,
         IgnoreExceptions
     };
 
-    static JSBigInt* parseInt(ExecState*, VM&, StringView, uint8_t radix, ErrorParseMode = ThrowExceptions);
-    static JSBigInt* parseInt(ExecState*, StringView, ErrorParseMode = ThrowExceptions);
+    enum class ParseIntMode { DisallowEmptyString, AllowEmptyString };
+    enum class ParseIntSign { Unsigned, Signed };
+
+    static JSBigInt* parseInt(ExecState*, VM&, StringView, uint8_t radix, ErrorParseMode = ErrorParseMode::ThrowExceptions, ParseIntSign = ParseIntSign::Unsigned);
+    static JSBigInt* parseInt(ExecState*, StringView, ErrorParseMode = ErrorParseMode::ThrowExceptions);
     static JSBigInt* stringToBigInt(ExecState*, StringView);
 
     std::optional<uint8_t> singleDigitValueForString();
     String toString(ExecState*, unsigned radix);
     
+    enum class ComparisonResult {
+        Equal,
+        Undefined,
+        GreaterThan,
+        LessThan
+    };
+    
     JS_EXPORT_PRIVATE static bool equals(JSBigInt*, JSBigInt*);
     bool equalsToNumber(JSValue);
+    static ComparisonResult compare(JSBigInt* x, JSBigInt* y);
 
     bool getPrimitiveNumber(ExecState*, double& number, JSValue& result) const;
     double toNumber(ExecState*) const;
@@ -94,30 +105,26 @@ public:
 
     static JSBigInt* multiply(ExecState*, JSBigInt* x, JSBigInt* y);
     
+    ComparisonResult static compareToDouble(JSBigInt* x, double y);
+
     static JSBigInt* divide(ExecState*, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* remainder(ExecState*, JSBigInt* x, JSBigInt* y);
     static JSBigInt* unaryMinus(VM&, JSBigInt* x);
     
 private:
 
-    enum class ComparisonResult {
-        Equal,
-        Undefined,
-        GreaterThan,
-        LessThan
-    };
-
     using Digit = uintptr_t;
-    static constexpr const unsigned bitsPerByte = 8;
-    static constexpr const unsigned digitBits = sizeof(Digit) * bitsPerByte;
-    static constexpr const unsigned halfDigitBits = digitBits / 2;
-    static constexpr const Digit halfDigitMask = (1ull << halfDigitBits) - 1;
-    static constexpr const int maxInt = 0x7FFFFFFF;
+    static constexpr unsigned bitsPerByte = 8;
+    static constexpr unsigned digitBits = sizeof(Digit) * bitsPerByte;
+    static constexpr unsigned halfDigitBits = digitBits / 2;
+    static constexpr Digit halfDigitMask = (1ull << halfDigitBits) - 1;
+    static constexpr int maxInt = 0x7FFFFFFF;
     
     // The maximum length that the current implementation supports would be
     // maxInt / digitBits. However, we use a lower limit for now, because
     // raising it later is easier than lowering it.
     // Support up to 1 million bits.
-    static const unsigned maxLength = 1024 * 1024 / (sizeof(void*) * bitsPerByte);
+    static constexpr unsigned maxLength = 1024 * 1024 / (sizeof(void*) * bitsPerByte);
     
     static uint64_t calculateMaximumCharactersRequired(unsigned length, unsigned radix, Digit lastDigit, bool sign);
     
@@ -150,13 +157,11 @@ private:
 
     bool isZero();
 
-    ComparisonResult static compareToDouble(JSBigInt* x, double y);
-
     template <typename CharType>
     static JSBigInt* parseInt(ExecState*, CharType*  data, unsigned length, ErrorParseMode);
 
     template <typename CharType>
-    static JSBigInt* parseInt(ExecState*, VM&, CharType* data, unsigned length, unsigned startIndex, unsigned radix, ErrorParseMode, bool allowEmptyString = true);
+    static JSBigInt* parseInt(ExecState*, VM&, CharType* data, unsigned length, unsigned startIndex, unsigned radix, ErrorParseMode, ParseIntSign = ParseIntSign::Signed, ParseIntMode = ParseIntMode::AllowEmptyString);
 
     static JSBigInt* allocateFor(ExecState*, VM&, unsigned radix, unsigned charcount);
 

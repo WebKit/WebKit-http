@@ -408,6 +408,10 @@ using namespace HTMLNames;
 #define NSAccessibilityHighestEditableAncestorAttribute @"AXHighestEditableAncestor"
 #endif
 
+#ifndef NSAccessibilityLinkRelationshipTypeAttribute
+#define NSAccessibilityLinkRelationshipTypeAttribute @"AXLinkRelationshipType"
+#endif
+
 extern "C" AXUIElementRef NSAccessibilityCreateAXUIElementRef(id element);
 
 @implementation WebAccessibilityObjectWrapper
@@ -845,27 +849,27 @@ static void AXAttributeStringSetStyle(NSMutableAttributedString* attrString, Ren
         [attrString removeAttribute:NSAccessibilityShadowTextAttribute range:range];
     
     // set underline and strikethrough
-    int decor = style.textDecorationsInEffect();
-    if ((decor & TextDecorationUnderline) == 0) {
+    auto decor = style.textDecorationsInEffect();
+    if (!(decor & TextDecoration::Underline)) {
         [attrString removeAttribute:NSAccessibilityUnderlineTextAttribute range:range];
         [attrString removeAttribute:NSAccessibilityUnderlineColorTextAttribute range:range];
     }
     
-    if ((decor & TextDecorationLineThrough) == 0) {
+    if (!(decor & TextDecoration::LineThrough)) {
         [attrString removeAttribute:NSAccessibilityStrikethroughTextAttribute range:range];
         [attrString removeAttribute:NSAccessibilityStrikethroughColorTextAttribute range:range];
     }
-    
-    if ((decor & (TextDecorationUnderline | TextDecorationLineThrough)) != 0) {
+
+    if (decor & TextDecoration::Underline || decor & TextDecoration::LineThrough) {
         // FIXME: Should the underline style be reported here?
         auto decorationStyles = TextDecorationPainter::stylesForRenderer(*renderer, decor);
 
-        if ((decor & TextDecorationUnderline) != 0) {
+        if (decor & TextDecoration::Underline) {
             AXAttributeStringSetNumber(attrString, NSAccessibilityUnderlineTextAttribute, @YES, range);
             AXAttributeStringSetColor(attrString, NSAccessibilityUnderlineColorTextAttribute, nsColor(decorationStyles.underlineColor), range);
         }
         
-        if ((decor & TextDecorationLineThrough) != 0) {
+        if (decor & TextDecoration::LineThrough) {
             AXAttributeStringSetNumber(attrString, NSAccessibilityStrikethroughTextAttribute, @YES, range);
             AXAttributeStringSetColor(attrString, NSAccessibilityStrikethroughColorTextAttribute, nsColor(decorationStyles.linethroughColor), range);
         }
@@ -1329,6 +1333,7 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache* cache, const Visibl
         tempArray = [[NSMutableArray alloc] initWithArray:attributes];
         [tempArray addObject:NSAccessibilityURLAttribute];
         [tempArray addObject:NSAccessibilityAccessKeyAttribute];
+        [tempArray addObject:NSAccessibilityLinkRelationshipTypeAttribute];
         anchorAttrs = [[NSArray alloc] initWithArray:tempArray];
         [tempArray release];
     }
@@ -2735,6 +2740,9 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return nil;
         return accessKey;
     }
+    
+    if ([attributeName isEqualToString:NSAccessibilityLinkRelationshipTypeAttribute])
+        return m_object->linkRelValue();
     
     if ([attributeName isEqualToString:NSAccessibilityTabsAttribute]) {
         if (m_object->isTabList()) {

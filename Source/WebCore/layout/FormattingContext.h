@@ -27,6 +27,7 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "DisplayBox.h"
 #include "FloatingState.h"
 #include <wtf/IsoMalloc.h>
 #include <wtf/WeakPtr.h>
@@ -35,10 +36,6 @@ namespace WebCore {
 
 class LayoutPoint;
 class LayoutUnit;
-
-namespace Display {
-class Box;
-}
 
 namespace Layout {
 
@@ -67,7 +64,7 @@ protected:
     const Box& root() const { return *m_root; }
 
     virtual void computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const;
-    virtual void computeInFlowPositionedPosition(const Box&, Display::Box&) const;
+    virtual void computeInFlowPositionedPosition(LayoutContext&, const Box&, Display::Box&) const;
     virtual void computeOutOfFlowPosition(LayoutContext&, const Box&, Display::Box&) const;
 
     virtual void computeWidth(LayoutContext&, const Box&, Display::Box&) const;
@@ -81,12 +78,10 @@ protected:
     virtual void computeFloatingHeight(LayoutContext&, const Box&, Display::Box&) const;
     virtual void computeInFlowHeight(LayoutContext&, const Box&, Display::Box&) const = 0;
 
-    virtual LayoutUnit marginTop(const Box&) const;
-    virtual LayoutUnit marginLeft(const Box&) const;
-    virtual LayoutUnit marginBottom(const Box&) const;
-    virtual LayoutUnit marginRight(const Box&) const;
+    virtual void computeMargin(LayoutContext&, const Box&, Display::Box&) const;
+    void computeBorderAndPadding(LayoutContext&, const Box&, Display::Box&) const;
 
-    void placeInFlowPositionedChildren(const Container&) const;
+    void placeInFlowPositionedChildren(LayoutContext&, const Container&) const;
     void layoutOutOfFlowDescendants(LayoutContext&s) const;
 
 #ifndef NDEBUG
@@ -113,6 +108,9 @@ protected:
 
         static LayoutUnit replacedHeight(LayoutContext&, const Box&);
         static LayoutUnit replacedWidth(LayoutContext&, const Box&);
+
+        static Display::Box::Edges computedBorder(LayoutContext&, const Box&);
+        static std::optional<Display::Box::Edges> computedPadding(LayoutContext&, const Box&);
     };
 
 private:

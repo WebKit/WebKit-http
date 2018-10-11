@@ -29,12 +29,10 @@
 #pragma warning(disable: 4091)
 
 #include "stdafx.h"
+#include "Common.h"
 #include "MiniBrowserLibResource.h"
-#include "Common.cpp"
-
-namespace WebCore {
-float deviceScaleFactorForWindow(HWND);
-}
+#include "MiniBrowserReplace.h"
+#include <WebKitLegacy/WebKitCOMAPI.h>
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpstrCmdLine, _In_ int nCmdShow)
 {
@@ -59,11 +57,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
     parseCommandLine(usesLayeredWebView, useFullDesktop, pageLoadTesting, requestedURL);
 
-    // Initialize global strings
-    LoadString(hInst, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadString(hInst, IDC_MINIBROWSER, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInst);
-
     if (useFullDesktop)
         computeFullDesktopFrame();
 
@@ -72,47 +65,20 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
     ::SetProcessDPIAware();
 
-    float scaleFactor = WebCore::deviceScaleFactorForWindow(nullptr);
-
-    hMainWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, 0, 0, hInst, 0);
-
-    if (!hMainWnd)
-        return FALSE;
-
-    hBackButtonWnd = CreateWindow(L"BUTTON", L"<", WS_CHILD | WS_VISIBLE  | BS_TEXT, 0, 0, 0, 0, hMainWnd, 0, hInst, 0);
-    hForwardButtonWnd = CreateWindow(L"BUTTON", L">", WS_CHILD | WS_VISIBLE | BS_TEXT, scaleFactor * CONTROLBUTTON_WIDTH, 0, 0, 0, hMainWnd, 0, hInst, 0);
-    hURLBarWnd = CreateWindow(L"EDIT", 0, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOVSCROLL, scaleFactor * CONTROLBUTTON_WIDTH * 2, 0, 0, 0, hMainWnd, 0, hInst, 0);
-
-    ShowWindow(hMainWnd, nCmdShow);
-    UpdateWindow(hMainWnd);
-
-    DefEditProc = reinterpret_cast<WNDPROC>(GetWindowLongPtr(hURLBarWnd, GWLP_WNDPROC));
-    DefButtonProc = reinterpret_cast<WNDPROC>(GetWindowLongPtr(hBackButtonWnd, GWLP_WNDPROC));
-    SetWindowLongPtr(hURLBarWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(EditProc));
-    SetWindowLongPtr(hBackButtonWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(BackButtonProc));
-    SetWindowLongPtr(hForwardButtonWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(ForwardButtonProc));
-
-    SetFocus(hURLBarWnd);
-
-    gMiniBrowser = new MiniBrowser(hMainWnd, hURLBarWnd, usesLayeredWebView, pageLoadTesting);
-    if (!gMiniBrowser)
-        goto exit;
-    HRESULT hr = gMiniBrowser->init(requestedURL);
+    gMainWindow = new MainWindow();
+    HRESULT hr = gMainWindow->init(hInst, usesLayeredWebView, pageLoadTesting);
     if (FAILED(hr))
         goto exit;
 
-    gViewWindow = gMiniBrowser->hwnd();
-
-    resizeSubViews();
-
-    ShowWindow(gViewWindow, nCmdShow);
-    UpdateWindow(gViewWindow);
+    gMiniBrowser = gMainWindow->browserWindow();
+    ShowWindow(gMainWindow->hwnd(), nCmdShow);
 
     hAccelTable = LoadAccelerators(hInst, MAKEINTRESOURCE(IDC_MINIBROWSER));
 
     if (requestedURL.length())
-        loadURL(requestedURL.GetBSTR());
+        gMainWindow->loadURL(requestedURL.GetBSTR());
+    else
+        gMiniBrowser->loadHTMLString(_bstr_t(defaultHTML).GetBSTR());
 
 #pragma warning(disable:4509)
 
@@ -137,28 +103,5 @@ exit:
     // Shut down COM.
     OleUninitialize();
 
-    delete gMiniBrowser;
-    
     return static_cast<int>(msg.wParam);
-}
-
-ATOM MyRegisterClass(HINSTANCE hInstance)
-{
-    WNDCLASSEX wcex;
-
-    wcex.cbSize = sizeof(WNDCLASSEX);
-
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = WndProc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MINIBROWSER));
-    wcex.hCursor        = LoadCursor(0, IDC_ARROW);
-    wcex.hbrBackground  = 0;
-    wcex.lpszMenuName   = MAKEINTRESOURCE(IDC_MINIBROWSER);
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
-
-    return RegisterClassEx(&wcex);
 }

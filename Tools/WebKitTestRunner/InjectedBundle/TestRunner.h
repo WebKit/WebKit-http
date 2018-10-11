@@ -134,6 +134,7 @@ public:
     void setMediaDevicesEnabled(bool);
     void setWebRTCLegacyAPIEnabled(bool);
     void setMDNSICECandidatesEnabled(bool);
+    void setCustomUserAgent(JSStringRef);
 
     // Special DOM functions.
     void clearBackForwardList();

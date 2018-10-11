@@ -384,7 +384,7 @@ String Frame::searchForLabelsAboveCell(const JSC::Yarr::RegularExpression& regEx
         // search within the above cell we found for a match
         size_t lengthSearched = 0;    
         for (Text* textNode = TextNodeTraversal::firstWithin(*aboveCell); textNode; textNode = TextNodeTraversal::next(*textNode, aboveCell)) {
-            if (!textNode->renderer() || textNode->renderer()->style().visibility() != VISIBLE)
+            if (!textNode->renderer() || textNode->renderer()->style().visibility() != Visibility::Visible)
                 continue;
             // For each text chunk, run the regexp
             String nodeString = textNode->data();
@@ -441,7 +441,7 @@ String Frame::searchForLabelsBeforeElement(const Vector<String>& labels, Element
                 return result;
             }
             searchedCellAbove = true;
-        } else if (n->isTextNode() && n->renderer() && n->renderer()->style().visibility() == VISIBLE) {
+        } else if (n->isTextNode() && n->renderer() && n->renderer()->style().visibility() == Visibility::Visible) {
             // For each text chunk, run the regexp
             String nodeString = n->nodeValue();
             // add 100 for slop, to make it more likely that we'll search whole nodes
@@ -935,8 +935,7 @@ void Frame::createView(const IntSize& viewportSize, const Color& backgroundColor
 
     setView(frameView.copyRef());
 
-    if (backgroundColor.isValid())
-        frameView->updateBackgroundRecursively(backgroundColor, transparent);
+    frameView->updateBackgroundRecursively(backgroundColor, transparent);
 
     if (isMainFrame)
         frameView->setParentVisible(true);

@@ -297,7 +297,7 @@ void RenderSVGShape::fillStrokeMarkers(PaintInfo& childPaintInfo)
 void RenderSVGShape::paint(PaintInfo& paintInfo, const LayoutPoint&)
 {
     if (paintInfo.context().paintingDisabled() || paintInfo.phase != PaintPhaseForeground
-        || style().visibility() == HIDDEN || isEmpty())
+        || style().visibility() == Visibility::Hidden || isEmpty())
         return;
     FloatRect boundingBox = repaintRectInLocalCoordinates();
     if (!SVGRenderSupport::paintInfoIntersectsRepaintRect(boundingBox, m_localTransform, paintInfo))
@@ -312,7 +312,7 @@ void RenderSVGShape::paint(PaintInfo& paintInfo, const LayoutPoint&)
 
         if (renderingContext.isRenderingPrepared()) {
             const SVGRenderStyle& svgStyle = style().svgStyle();
-            if (svgStyle.shapeRendering() == SR_CRISPEDGES)
+            if (svgStyle.shapeRendering() == ShapeRendering::CrispEdges)
                 childPaintInfo.context().setShouldAntialias(false);
 
             fillStrokeMarkers(childPaintInfo);
@@ -374,7 +374,7 @@ bool RenderSVGShape::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
         return false;
 
     PointerEventsHitRules hitRules(PointerEventsHitRules::SVG_PATH_HITTESTING, request, style().pointerEvents());
-    bool isVisible = (style().visibility() == VISIBLE);
+    bool isVisible = (style().visibility() == Visibility::Visible);
     if (isVisible || !hitRules.requireVisible) {
         const SVGRenderStyle& svgStyle = style().svgStyle();
         WindRule fillRule = svgStyle.fillRule();

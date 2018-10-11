@@ -139,10 +139,6 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     IPC::encode(encoder, networkATSContext.get());
 #endif
 
-#if OS(LINUX)
-    encoder << memoryPressureMonitorHandle;
-#endif
-
 #if PLATFORM(WAYLAND)
     encoder << waylandCompositorDisplayName;
 #endif
@@ -153,6 +149,15 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
     encoder << shouldLogUserInteraction;
+#endif
+
+#if PLATFORM(COCOA)
+    encoder << mediaMIMETypes;
+#endif
+
+#if PLATFORM(MAC)
+    encoder << primaryDisplayID;
+    encoder << screenPropertiesMap;
 #endif
 }
 
@@ -381,11 +386,6 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
 #endif
 
-#if OS(LINUX)
-    if (!decoder.decode(parameters.memoryPressureMonitorHandle))
-        return false;
-#endif
-
 #if PLATFORM(WAYLAND)
     if (!decoder.decode(parameters.waylandCompositorDisplayName))
         return false;
@@ -399,6 +399,22 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
     if (!decoder.decode(parameters.shouldLogUserInteraction))
         return false;
+#endif
+
+#if PLATFORM(COCOA)
+    if (!decoder.decode(parameters.mediaMIMETypes))
+        return false;
+#endif
+
+#if PLATFORM(MAC)
+    if (!decoder.decode(parameters.primaryDisplayID))
+        return false;
+
+    std::optional<WebCore::ScreenPropertiesMap> screenPropertiesMap;
+    decoder >> screenPropertiesMap;
+    if (!screenPropertiesMap)
+        return false;
+    parameters.screenPropertiesMap = WTFMove(*screenPropertiesMap);
 #endif
 
     return true;

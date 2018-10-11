@@ -287,6 +287,7 @@ webkit.org/b/169916 css3/blending/blend-mode-body-element.html [ ImageOnlyFailur
 webkit.org/b/169916 css3/blending/blend-mode-clip-accelerated-blending-child.html [ ImageOnlyFailure ]
 webkit.org/b/169916 css3/blending/blend-mode-clip-accelerated-blending-double.html [ ImageOnlyFailure ]
 webkit.org/b/169916 css3/blending/blend-mode-clip-accelerated-blending-with-siblings.html [ ImageOnlyFailure ]
+webkit.org/b/169916 css3/blending/blend-mode-clip-accelerated-transformed-blending.html [ ImageOnlyFailure ]
 webkit.org/b/169916 css3/blending/blend-mode-clip-rect-accelerated-blending.html [ ImageOnlyFailure ]
 webkit.org/b/169916 css3/blending/blend-mode-html-element-screen.html [ ImageOnlyFailure ]
 webkit.org/b/169916 css3/blending/blend-mode-isolated-group-1.html [ Missing Failure ]
@@ -558,6 +559,7 @@ Bug(GTK) fast/text/font-weights-zh.html [ WontFix ]
 
 # LAYER_TREE_INCLUDES_VISIBLE_RECTS option to layerTreeAsText is only applicable to Mac.
 Bug(GTK) compositing/visible-rect [ Skip ]
+Bug(GTK) legacy-animation-engine/compositing/visible-rect [ Skip ]
 
 # Pointer Lock is not implemented.
 webkit.org/b/99036 pointer-lock [ Skip ]
@@ -1138,8 +1140,6 @@ webkit.org/b/175419 http/tests/workers/service [ Skip ]
 webkit.org/b/175419 http/wpt/service-workers [ Failure Pass ]
 webkit.org/b/175419 http/tests/inspector/network/resource-response-service-worker.html [ Skip ]
 webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers [ Skip ]
-webkit.org/b/175419 http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
-webkit.org/b/175419 http/tests/appcache/main-resource-redirect.html [ Skip ]
 webkit.org/b/175419 http/wpt/service-workers/navigation-redirect-main-frame.https.html [ Skip ]
 webkit.org/b/175419 http/wpt/service-workers/third-party-registration.html [ Skip ]
 
@@ -1159,6 +1159,7 @@ webkit.org/b/175419 imported/w3c/web-platform-tests/html/webappapis/scripting/pr
 # Loading MP4 as an image is not supported by GTK
 webkit.org/b/180370 fast/images/animated-image-mp4.html [ Skip ]
 webkit.org/b/180370 http/tests/images/image-supports-video.html [ Skip ]
+webkit.org/b/180370 fast/images/animated-image-mp4-crash.html [ Skip ]
 
 # GTK ought to support the new modern pasteboard API
 webkit.org/b/177633 editing/pasteboard/copy-without-selection.html [ Failure ]
@@ -1190,6 +1191,9 @@ webkit.org/b/184295 http/wpt/loading/redirect-headers.html [ Skip ]
 # NowPlaying is macOS and iOS only.
 http/tests/media/now-playing-info-private-browsing.html [ Skip ]
 http/tests/media/now-playing-info.html [ Skip ]
+
+# Font collections
+webkit.org/b/186086 fast/text/font-collection.html [ ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures.
@@ -1372,8 +1376,6 @@ webkit.org/b/83878 media/track/track-mode.html [ Failure Pass ]
 
 webkit.org/b/49179 animations/stop-animation-on-suspend.html [ Failure Pass ]
 webkit.org/b/49179 legacy-animation-engine/animations/stop-animation-on-suspend.html [ Failure Pass ]
-
-webkit.org/b/61121 http/tests/appcache/interrupted-update.html [ Failure Pass ]
 
 webkit.org/b/94119 storage/websql/database-lock-after-reload.html [ Failure Pass ]
 webkit.org/b/132283 storage/websql/read-transactions-running-concurrently.html [ Failure Pass ]
@@ -1819,7 +1821,7 @@ webkit.org/b/160133 css3/masking/mask-svg-no-fragmentId-tiled.html [ ImageOnlyFa
 
 webkit.org/b/160135 http/tests/security/contentSecurityPolicy/video-with-http-url-allowed-by-csp-media-src-star.html [ Failure Pass ]
 webkit.org/b/160136 http/tests/security/cross-origin-plugin-private-browsing-toggled-allowed.html [ Failure Pass ]
-webkit.org/b/142488 http/tests/appcache/404-resource-with-slow-main-resource.php [ Failure Pass ]
+webkit.org/b/142488 http/tests/appcache/404-resource-with-slow-main-resource.php [ DumpJSConsoleLogInStdErr ]
 webkit.org/b/162685 http/tests/cache/disk-cache/disk-cache-204-status-code.html [ Failure Pass ]
 
 webkit.org/b/160137 svg/custom/non-scaling-stroke-update.svg [ ImageOnlyFailure Pass ]
@@ -1942,6 +1944,10 @@ webkit.org/b/183214 compositing/video/poster.html [ Pass ImageOnlyFailure ]
 webkit.org/b/183903 http/tests/media/video-buffered-range-contains-currentTime.html [ Crash Pass ]
 
 webkit.org/b/183904 imported/w3c/web-platform-tests/IndexedDB/idbindex_getAllKeys.html [ Crash Pass ]
+
+webkit.org/b/186136 compositing/animation/layer-for-filling-animation.html [ Failure Pass ]
+
+webkit.org/b/186143 imported/mozilla/css-animations/test_event-dispatch.html [ Timeout Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -2230,8 +2236,6 @@ webkit.org/b/168373 media/media-fullscreen-loop-inline.html [ Timeout ]
 webkit.org/b/168373 media/media-source/media-source-error-crash.html [ Timeout ]
 webkit.org/b/168373 media/media-source/only-bcp47-language-tags-accepted-as-valid.html [ Timeout ]
 
-webkit.org/b/168569 http/tests/appcache/main-resource-fallback-for-network-error-crash.html [ Timeout ]
-
 webkit.org/b/169211 fast/parser/adoption-agency-unload-iframe-4.html [ Timeout ]
 
 webkit.org/b/172284 svg/animations/animated-svg-image-outside-viewport-paused.html [ Timeout ]
@@ -2499,9 +2503,6 @@ Bug(GTK) fast/forms/select/popup-closes-on-blur.html [ Failure ]
 # Shared workers disabled with the Network Process
 webkit.org/b/139357 fast/workers/worker-crash-with-invalid-location.html [ Skip ]
 webkit.org/b/139357 http/tests/media/video-accept-encoding.html [ Failure ]
-
-# Appcache manifest is still downloaded in the WebProcess
-webkit.org/b/138736 http/tests/appcache/auth.html [ Skip ]
 
 # There is no network load scheduling or prioritization with NetworkProcess.
 webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-sheet-in-error.html [ Failure Pass ]
@@ -3373,6 +3374,7 @@ webkit.org/b/185254 http/tests/xmlhttprequest/XMLHttpRequestException.html [ Fai
 webkit.org/b/185254 http/tests/xmlhttprequest/onloadend-event-after-sync-requests.html [ Failure ]
 webkit.org/b/185254 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-infinite-sync.htm [ Failure ]
 webkit.org/b/185254 imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-network-error-sync.htm [ Failure ]
+webkit.org/b/185254 http/tests/xmlhttprequest/connection-error-sync.html [ Failure ]
 
 webkit.org/b/185548 accessibility/scroll-to-make-visible-iframe-offscreen.html [ Failure ]
 
@@ -3388,10 +3390,35 @@ webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-normal-bo-000.html [ ImageOnlyFailure ]
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-normal-lo-000.html [ ImageOnlyFailure ]
 
+webkit.org/b/185939 imported/w3c/web-platform-tests/css/WOFF2 [ Pass ]
+webkit.org/b/185938 imported/w3c/web-platform-tests/css/WOFF2/tabledata-glyf-bbox-001.xht [ ImageOnlyFailure ]
+webkit.org/b/185938 imported/w3c/web-platform-tests/css/WOFF2/tabledata-glyf-origlength-001.xht [ ImageOnlyFailure ]
+webkit.org/b/185938 imported/w3c/web-platform-tests/css/WOFF2/tabledata-glyf-origlength-002.xht [ ImageOnlyFailure ]
+webkit.org/b/185938 imported/w3c/web-platform-tests/css/WOFF2/tabledata-recontruct-loca-001.xht [ ImageOnlyFailure ]
+
 # Fails consistently on Release, times out consistently in Debug
 webkit.org/b/185912 fast/canvas/webgl/index-validation-with-subsequent-draws.html [ Failure Timeout ]
 
 webkit.org/b/185913 fast/dom/HTMLAnchorElement/anchor-file-blob-download-then-revoke.html [ Failure ]
+
+webkit.org/b/186035 transitions/interrupted-transition-hardware.html [ ImageOnlyFailure ]
+webkit.org/b/186099 editing/caret/caret-in-empty-cell.html [ ImageOnlyFailure ]
+webkit.org/b/186100 css3/color-filters/color-filter-color-property-list-item.html [ ImageOnlyFailure ]
+webkit.org/b/186100 css3/color-filters/color-filter-opacity.html [ ImageOnlyFailure ]
+webkit.org/b/186100 fast/hidpi/filters-turbulence.html [ ImageOnlyFailure ]
+
+webkit.org/b/186137 http/tests/inspector/network/har/har-page.html [ Failure ]
+
+webkit.org/b/186138 imported/mozilla/css-transitions/test_event-dispatch.html [ Failure ]
+
+webkit.org/b/186139 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property.html [ Failure ]
+
+webkit.org/b/186141 svg/dom/SVGGeometry-isPointInStroke.xhtml [ Failure ]
+
+webkit.org/b/186142 imported/w3c/web-platform-tests/css/css-text/text-transform/text-transform-upperlower-016.html [ ImageOnlyFailure ]
+
+webkit.org/b/186144 transitions/move-after-transition.html [ Timeout ]
+webkit.org/b/186144 transitions/transition-end-event-rendering.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

@@ -512,8 +512,8 @@ static bool scrollbarHasDisplayNone(Scrollbar* scrollbar)
     if (!scrollbar || !scrollbar->isCustomScrollbar())
         return false;
 
-    std::unique_ptr<RenderStyle> scrollbarStyle = static_cast<RenderScrollbar*>(scrollbar)->getScrollbarPseudoStyle(ScrollbarBGPart, SCROLLBAR);
-    return scrollbarStyle && scrollbarStyle->display() == NONE;
+    std::unique_ptr<RenderStyle> scrollbarStyle = static_cast<RenderScrollbar*>(scrollbar)->getScrollbarPseudoStyle(ScrollbarBGPart, PseudoId::Scrollbar);
+    return scrollbarStyle && scrollbarStyle->display() == DisplayType::None;
 }
 
 // FIXME: Can we make |layer| const RenderLayer&?
@@ -2432,7 +2432,7 @@ bool RenderLayerCompositor::requiresCompositingForPlugin(RenderLayerModelObject&
     m_reevaluateCompositingAfterLayout = true;
     
     auto& pluginRenderer = downcast<RenderWidget>(renderer);
-    if (pluginRenderer.style().visibility() != VISIBLE)
+    if (pluginRenderer.style().visibility() != Visibility::Visible)
         return false;
 
     // If we can't reliably know the size of the plugin yet, don't change compositing state.
@@ -2450,7 +2450,7 @@ bool RenderLayerCompositor::requiresCompositingForFrame(RenderLayerModelObject& 
         return false;
 
     auto& frameRenderer = downcast<RenderWidget>(renderer);
-    if (frameRenderer.style().visibility() != VISIBLE)
+    if (frameRenderer.style().visibility() != Visibility::Visible)
         return false;
 
     if (!frameRenderer.requiresAcceleratedCompositing())
@@ -3084,11 +3084,13 @@ bool RenderLayerCompositor::viewHasTransparentBackground(Color* backgroundColor)
 
     Color documentBackgroundColor = m_renderView.frameView().documentBackgroundColor();
     if (!documentBackgroundColor.isValid())
-        documentBackgroundColor = Color::white;
+        documentBackgroundColor = m_renderView.frameView().baseBackgroundColor();
+
+    ASSERT(documentBackgroundColor.isValid());
 
     if (backgroundColor)
         *backgroundColor = documentBackgroundColor;
-        
+
     return !documentBackgroundColor.isOpaque();
 }
 
@@ -3120,7 +3122,7 @@ void RenderLayerCompositor::rootBackgroundTransparencyChanged()
 
     bool isTransparent = viewHasTransparentBackground();
 
-    LOG(Compositing, "RenderLayerCompositor %p rootBackgroundTransparencyChanged. isTransparent=%d, changed=%d", this, isTransparent, m_viewBackgroundIsTransparent == isTransparent);
+    LOG(Compositing, "RenderLayerCompositor %p rootBackgroundTransparencyChanged. isTransparent=%d, changed=%d", this, isTransparent, m_viewBackgroundIsTransparent != isTransparent);
     if (m_viewBackgroundIsTransparent == isTransparent)
         return;
 

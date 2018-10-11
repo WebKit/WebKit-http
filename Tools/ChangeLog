@@ -1,3 +1,653 @@
+2018-05-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update expected results for BuildStepsConstructorTest
+        https://bugs.webkit.org/show_bug.cgi?id=186119
+
+        Reviewed by Alex Christensen.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py: Add missing entries for 'WinCairo 64-bit' bots.
+
+2018-05-31  Sihui Liu  <sihui_liu@apple.com>
+
+        [iOS] TestWebKitAPI.WebKit.WKHTTPCookieStoreWithoutProcessPool fails because cookies use different files with/without processpool
+        https://bugs.webkit.org/show_bug.cgi?id=185831
+        <rdar://problem/40468716>
+
+        Reviewed by David Kilzer.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKHTTPCookieStore.mm:
+        (-[CookieUIDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (TEST):
+
+2018-05-31  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] API test ScrollViewInsetTests.InnerHeightWithLargeTopContentInset is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=184893
+        <rdar://problem/39747271>
+
+        Reviewed by Wenson Hsieh.
+
+        Update test to wait until the view is the expected height instead of
+        calling waitForNextPresentationUpdate once and expect the view to
+        have the right height. This fixes the flakiness.
+
+        * TestWebKitAPI/Tests/ios/ScrollViewInsetTests.mm:
+        (TestWebKitAPI::waitUntilInnerHeightIs):
+        (TestWebKitAPI::TEST):
+
+2018-05-31  Leo Balter  <leonardo.balter@gmail.com>
+
+        test262-runner should run in verbose mode in automation
+        https://bugs.webkit.org/show_bug.cgi?id=186115
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch toggles the verbose mode in the build bot and reports every test file
+        in order to avoid the '1200 seconds without output' issue.
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunTest262Tests):
+        * Scripts/test262/Runner.pm:
+        (processResult):
+
+2018-05-30  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Move MainWindow related code from Common.cpp to MainWindow.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=186079
+
+        Reviewed by Alex Christensen.
+
+        This is a sub task of Bug 184770.
+
+        This change is partial. I'm going to remove global variables
+        gMainWindow and gMiniBrowser and convert more functions to
+        MainWindow's methods in follow-up patches.
+
+        * MiniBrowser/win/CMakeLists.txt: Added Common.cpp
+        * MiniBrowser/win/Common.cpp:
+        (menuItemIsChecked): Moved to MainWindow.cpp.
+        (turnOffOtherUserAgents): Ditto.
+        (EditProc): Ditto.
+        (BackButtonProc): Ditto.
+        (ForwardButtonProc): Ditto.
+        (About): Ditto.
+        (Caches): Ditto.
+        (CustomUserAgent): Ditto.
+        (AuthDialogProc): Ditto.
+        (DisplayAuthDialog): Converted to MainWindow's method.
+        (ToggleMenuItem): Ditto.
+        (loadURL): Ditto.
+        * MiniBrowser/win/Common.h:
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::init): Call SetFocus at the end of the construction.
+        (MainWindow::WndProc):
+        (menuItemIsChecked): Moved from Common.cpp.
+        (turnOffOtherUserAgents): Ditto.
+        (EditProc): Ditto.
+        (BackButtonProc): Ditto.
+        (ForwardButtonProc): Ditto.
+        (About): Ditto.
+        (Caches): Ditto.
+        (CustomUserAgent): Ditto.
+        (authDialogProc): Ditto.
+        (MainWindow::displayAuthDialog): Converted from a function of Common.cpp.
+        (MainWindow::toggleMenuItem): Ditto.
+        (MainWindow::loadURL): Ditto.
+        * MiniBrowser/win/MainWindow.h: Added method declarations.
+        * MiniBrowser/win/MiniBrowser.h: Added pragma once.
+        * MiniBrowser/win/WinMain.cpp:
+        (wWinMain): Include Common.h instead of Common.cpp.
+
+2018-05-30  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r224684): User-agent seen by page does not change when modified by the develop menu options after reloading.
+        <rdar://problem/34918109> and https://bugs.webkit.org/show_bug.cgi?id=186111
+
+        Reviewed by Andy Estes.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setCustomUserAgent):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2018-05-30  Youenn Fablet  <youenn@apple.com>
+
+        Rename CrossOriginResourcePolicy same to same-origin
+        https://bugs.webkit.org/show_bug.cgi?id=186080
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebCore/HTTPParsers.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-05-30  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=186098
+
+        Unreviewed gardening.
+
+        * TestWebKitAPI/glib/TestExpectations.json: update expectations.
+
+2018-05-29  Youenn Fablet  <youenn@apple.com>
+
+        Add a consistency check between URL and CFURL
+        https://bugs.webkit.org/show_bug.cgi?id=182444
+        <rdar://problem/37164835>
+
+        Reviewed by Geoff Garen.
+
+        DRT code expected a non null URL which is no longer the case now.
+        Updated DRT to remove that assumption.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (TestRunner::redirectionDestinationForURL):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/ResourceLoadDelegate.mm:
+        (-[ResourceLoadDelegate webView:resource:willSendRequest:redirectResponse:fromDataSource:]):
+
+2018-05-29  Brendan McLoughlin  <brendan@bocoup.com>
+
+        Export changes to web-platform-test as part of the webkit-patch upload workflow
+        https://bugs.webkit.org/show_bug.cgi?id=184914
+
+        Reviewed by Youenn Fablet.
+
+        * Scripts/webkitpy/tool/commands/upload.py:
+        (Upload):
+        (CreateBug.execute):
+        (WPTChangeExport):
+        * Scripts/webkitpy/tool/steps/__init__.py:
+        * Scripts/webkitpy/tool/steps/wptchangeexport.py: Added.
+        (WPTChangeExport):
+        (WPTChangeExport.options):
+        (WPTChangeExport.run):
+        * Scripts/webkitpy/w3c/common.py:
+        * Scripts/webkitpy/w3c/test_exporter.py:
+        (WebPlatformTestExporter):
+        (WebPlatformTestExporter.__init__):
+        (WebPlatformTestExporter.username):
+        (WebPlatformTestExporter.token):
+        (WebPlatformTestExporter._github):
+        (WebPlatformTestExporter._wpt_fork_branch_github_url):
+        (WebPlatformTestExporter._wpt_fork_remote):
+        (WebPlatformTestExporter._wpt_fork_push_url):
+        (WebPlatformTestExporter._git):
+        (WebPlatformTestExporter._branch_name):
+        (WebPlatformTestExporter._public_branch_name):
+        (WebPlatformTestExporter._wpt_patch):
+        (WebPlatformTestExporter.has_wpt_changes):
+        (WebPlatformTestExporter._find_filename):
+        (WebPlatformTestExporter._is_ignored_file):
+        (WebPlatformTestExporter._strip_ignored_files_from_diff):
+        (WebPlatformTestExporter.write_git_patch_file):
+        (WebPlatformTestExporter._prompt_for_token):
+        (WebPlatformTestExporter._prompt_for_username):
+        (WebPlatformTestExporter._ensure_username_and_token):
+        (WebPlatformTestExporter._validate_and_save_token):
+        (WebPlatformTestExporter.create_branch_with_patch):
+        (WebPlatformTestExporter.push_to_wpt_fork):
+        (WebPlatformTestExporter.make_pull_request):
+        (WebPlatformTestExporter.delete_local_branch):
+        (WebPlatformTestExporter.create_upload_remote_if_needed):
+        (WebPlatformTestExporter.do_export):
+        (parse_args):
+        (TestExporter): Deleted.
+        (TestExporter.__init__): Deleted.
+        (TestExporter._ensure_wpt_repository): Deleted.
+        (TestExporter._fetch_wpt_repository): Deleted.
+        (TestExporter._ensure_new_branch_name): Deleted.
+        (TestExporter.download_and_commit_patch): Deleted.
+        (TestExporter.clean): Deleted.
+        (TestExporter.create_branch_with_patch): Deleted.
+        (TestExporter.push_to_wpt_fork): Deleted.
+        (TestExporter.make_pull_request): Deleted.
+        (TestExporter.create_wpt_pull_request): Deleted.
+        (TestExporter.delete_local_branch): Deleted.
+        (TestExporter.create_git_patch): Deleted.
+        (TestExporter.create_upload_remote): Deleted.
+        (TestExporter.do_export): Deleted.
+        * Scripts/webkitpy/w3c/test_exporter_unittest.py:
+        (TestExporterTest.MockGit):
+        (TestExporterTest.MockGit.create_patch):
+        (TestExporterTest.test_export):
+        (TestExporterTest.test_export_with_specific_branch):
+        (TestExporterTest):
+        (TestExporterTest.test_export_interactive_mode):
+        (TestExporterTest.test_export_invalid_token):
+        (TestExporterTest.test_export_wrong_token):
+        (TestExporterTest.test_has_wpt_changes):
+        (TestExporterTest.test_has_no_wpt_changes_for_no_diff):
+        (TestExporterTest.test_ignore_changes_to_expected_file):
+
+2018-05-29  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Move WK1 specific code from Common.cpp to MiniBrowser.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=186029
+
+        Reviewed by Alex Christensen.
+
+        This is a sub task of Bug 184770.
+
+        * MiniBrowser/win/Common.cpp:
+        (ToggleMenuItem): Extracted WK1 specific code to MiniBrowser::setPreference.
+        (Caches): Call MiniBrowser::updateStatistics instead of updateStatistics.
+        (AbortProc): Moved to MiniBrowser.cpp.
+        (getPrinterDC): Ditto.
+        (initDocStruct): Ditto.
+        (PrintView): Ditto.
+        (ToggleMenuFlag): Ditto.
+        (setWindowText): Ditto.
+        (updateStatistics): Ditto.
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::WndProc): Call MiniBrowser::print instead of PrintView.
+        * MiniBrowser/win/MiniBrowser.cpp:
+        (AbortProc): Moved from Common.cpp.
+        (getPrinterDC): Moved from Common.cpp.
+        (initDocStruct): Moved from Common.cpp.
+        (setWindowText): Moved from Common.cpp.
+        (MiniBrowser::print): Renamed from PrintView of Common.cpp.
+        (MiniBrowser::updateStatistics): Renamed from updateStatistics of Common.cpp.
+        (MiniBrowser::setPreference): Extracted from ToggleMenuItem of Common.cpp.
+        * MiniBrowser/win/MiniBrowser.h: Add method declarations.
+        * MiniBrowser/win/MiniBrowserWebHost.cpp: Removed duplicated IWebFramePtr typedef.
+
+2018-05-29  Saam Barati  <sbarati@apple.com>
+
+        JSC should put bmalloc's scavenger into mini mode
+        https://bugs.webkit.org/show_bug.cgi?id=185988
+
+        Reviewed by Michael Saboff.
+
+        This patch makes it so that we turn off the JIT when running run-testmem
+        that way we make JSC use its mini mode.
+
+        * Scripts/run-testmem:
+
+2018-05-29  Sihui Liu  <sihui_liu@apple.com>
+
+        Unable to remove IndexedDB Databases with Cocoa API removeDataOfTypes
+        https://bugs.webkit.org/show_bug.cgi?id=185835
+        <rdar://problem/39142257>
+
+        Reviewed by Chris Dumez.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBPersistence.mm:
+        (TEST):
+
+2018-05-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] "Significant area painted" rendering progress event is rarely fired
+        https://bugs.webkit.org/show_bug.cgi?id=186042
+        <rdar://problem/40604182>
+
+        Reviewed by Tim Horton.
+
+        Adds a new API test to check that the "significant area painting" rendering milestone is dispatched when a
+        significant portion of the page has been painted before document load is finished.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/paint-significant-area-milestone.html: Added.
+        * TestWebKitAPI/Tests/ios/RenderingProgressTests.mm: Added.
+        (-[MissingResourceSchemeHandler webView:stopURLSchemeTask:]):
+        (-[MissingResourceSchemeHandler webView:startURLSchemeTask:]):
+        (-[RenderingProgressHandler initWithHandler:]):
+        (-[RenderingProgressHandler _webView:renderingProgressDidChange:]):
+        (TEST):
+
+2018-05-29  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer] Update "qtdemux: Clarify field name about stream-encryption-system" patch
+        https://bugs.webkit.org/show_bug.cgi?id=186040
+
+        The patch we merge contained a type and was merged in upstream GStreamer fixing that
+        (s/avalaible/available/).
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * gstreamer/patches/gst-plugins-good-0003-qtdemux-Clarify-field-name-about-stream-encryption-s.patch:
+
+2018-05-28  Sihui Liu  <sihui_liu@apple.com>
+
+        Add an API test to check process privilege when using Cookie API
+        https://bugs.webkit.org/show_bug.cgi?id=185406
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKHTTPCookieStore.mm:
+        (TEST):
+
+2018-05-28  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer] Handle changes in the "drm-preferred-decryption-system-id" NEED_CONTEXT message.
+        https://bugs.webkit.org/show_bug.cgi?id=185948
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        When the patch introducing gst_protection_filter_systems_by_available_decryptors was merged, we changed sensibly its behaviour
+        concerning the way empty results is represented (now returning NULL instead of an array of 1(NULL) element) and this change was not
+        properly taken into account in the qtdemux patch that uses it and got upstreamed. Those 3 new patches fixe that and change the
+        NEED_CONTEXT field names to clarify the meaning of "stream-encryption-systems".
+
+        * gstreamer/jhbuild.modules:
+        * gstreamer/patches/gst-plugins-good-0001-qtdemux-Do-not-run-the-preferred-decryptor-context-q.patch: Added. Merged upstream as 3e063703b3a51b8aaa7f75f36c4660c583a60e93
+        * gstreamer/patches/gst-plugins-good-0002-qtdemux-Do-not-unref-a-NULL-stream_tags.patch: Added. Merged upstream as 43a540b1cd9f162d3dae5d50e36703dfaf558a3e
+        * gstreamer/patches/gst-plugins-good-0003-qtdemux-Clarify-field-name-about-stream-encryption-s.patch: Added.
+
+2018-05-27  Dan Bernstein  <mitz@apple.com>
+
+        Reverted the changes made for https://webkit.org/b/186016
+
+        They broke the USE(APPLE_INTERNAL_SDK) Sierra build.
+
+2018-05-27  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Avoid importing directly from subumbrella frameworks
+        https://bugs.webkit.org/show_bug.cgi?id=186016
+
+        Reviewed by Sam Weinig.
+
+        * DumpRenderTree/cg/PixelDumpSupportCG.cpp: Include CoreServices.h instead of a
+          LaunchServices header.
+        * DumpRenderTree/mac/Configurations/BaseTarget.xcconfig: Removed -iframework options from
+          OTHER_CFLAGS and OTHER_CPLUSPLUSFLAGS.
+        * DumpRenderTree/mac/LayoutTestHelper.m: Import ApplicationServices.h instead of ColorSync.h
+          when using SDKs earlier than 10.13.
+        * TestWebKitAPI/Configurations/Base.xcconfig: Removed -iframework options from OTHER_CFLAGS
+          and OTHER_CPLUSPLUSFLAGS.
+        * TestWebKitAPI/Tests/mac/MediaPlaybackSleepAssertion.mm: Import Carbon.h instead of an
+          HIToolbox header.
+        * WebKitTestRunner/Configurations/BaseTarget.xcconfig: Removed -iframework options from
+          OTHER_CFLAGS and OTHER_CPLUSPLUSFLAGS.
+        * WebKitTestRunner/cg/TestInvocationCG.cpp: Include CoreServices.h instead of a
+          LaunchServices header.
+
+2018-05-27  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Add MainWindow class
+        https://bugs.webkit.org/show_bug.cgi?id=185814
+
+        Reviewed by Per Arne Vollan.
+
+        This is a sub task of Bug 184770. Added a new class MainWindow to
+        represent the main window which will be shared among WK1 and WK2.
+
+        This change is partial so that it's easy to review this patch.
+        I'll move more functions into MainWindow.cpp, and remove more
+        global variables in forthcoming patches.
+
+        * MiniBrowser/win/CMakeLists.txt: Added MainWindow.cpp.
+        * MiniBrowser/win/Common.cpp: Removed MainWindow related global
+        variables hMainWnd, hURLBarWnd, hBackButtonWnd and
+        hForwardButtonWnd. Added a new global variable gMainWindow.
+        (WndProc): Moved to MainWindow.cpp.
+        (resizeSubViews): Ditto.
+        (ToggleMenuFlag): Removed static to be called from MainWindow.cpp.
+        (ToggleMenuItem): Ditto.
+        (CustomUserAgent): Follow the global variables removal.
+        (DisplayAuthDialog): Ditto.
+        (loadURL): Ditto.
+        (WndProc): Renamed to MainWindow::WndProc.
+        * MiniBrowser/win/MainWindow.cpp: Added.
+        (MainWindow::registerClass): Renamed from MyRegisterClass of WinMain.cpp.
+        (MainWindow::init): Extracted MainWindow initialization code from wWinMain.
+        (MainWindow::resizeSubViews): Moved from Common.cpp.
+        (MainWindow::WndProc): Ditto.
+        * MiniBrowser/win/MainWindow.h: Added.
+        (MainWindow::hwnd):
+        (MainWindow::browserWindow):
+        * MiniBrowser/win/MiniBrowser.cpp:
+        (MiniBrowser::init):
+        (MiniBrowser::prepareViews): Extract some code into MiniBrowser::loadDefaultHTML.
+        (MiniBrowser::loadDefaultHTML): Extracted from MiniBrowser::prepareViews.
+        * MiniBrowser/win/MiniBrowser.h:
+        * MiniBrowser/win/WinMain.cpp:
+        (wWinMain): Extracted MainWindow initialization code into MainWindow::init.
+        (MyRegisterClass): Moved to MainWindow.cpp.
+
+2018-05-27  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Remove URL argument of MiniBrowser::init
+        https://bugs.webkit.org/show_bug.cgi?id=185969
+
+        Reviewed by Alex Christensen.
+
+        MiniBrowser::init takes URL argument, but it's used only for
+        loading default HTML if URL is not given.
+
+        - Add a new method MiniBrowser::loadHTMLString
+        - Remove loadHTMLString process from MiniBrowser::prepareViews
+
+        * MiniBrowser/win/MiniBrowser.cpp:
+        (MiniBrowser::init): Removed `requestedURL` argument.
+        (MiniBrowser::prepareViews): Ditto.
+        (MiniBrowser::loadHTMLString): New.
+        (MiniBrowser::loadURL): Return E_INVALIDARG if passedURL is null instead of calling loadHTMLString.
+        * MiniBrowser/win/MiniBrowser.h: Removed URL argument. Added loadHTMLString.
+        * MiniBrowser/win/WinMain.cpp:
+        (wWinMain): Call MiniBrowser::loadHTMLString if URL is not given.
+
+2018-05-27  David Kilzer  <ddkilzer@apple.com>
+
+        svn-apply fails when a patch has an empty file
+        <https://webkit.org/b/29684>
+
+        Reviewed by Daniel Bates.
+
+        Prior to this change, applying the following patches resulted in:
+        - svn: add empty file     (failure)
+        - svn: delete empty file  (failure)
+        - svn: rename empty file  (failure)
+        - git: add empty file     (false-positive success)
+        - git: delete empty file  (success)
+        - git: rename empty file  (failure)
+
+        * Scripts/VCSUtils.pm:
+        (parseSvnDiffHeader): Handle the case when there is no patch
+        following the header.  If the file exists and is empty, that
+        means it's a deletion.  If the file does not exist, that means
+        it's an addition. Everything else is a fatal error.
+        * Scripts/svn-apply:
+        (patch):
+        - Only apply a patch for deletion if it has one or more text
+          chunks.
+        - Add a case to handle adding an empty file (an addition with no
+          text chunks), and verify the file doesn't exist yet.
+        - Any unhandled patch is a fatal error.
+        * Scripts/webkitperl/VCSUtils_unittest/parseSvnDiffHeader.pl:
+        Add tests for adding an empty file and deleting an empty file.
+        * Scripts/webkitperl/VCSUtils_unittest/resources/empty.txt: Add.
+        Used by parseSvnDiffHeader.pl unit test for "add an empty file"
+        test case.
+
+2018-05-25  Aakash Jain  <aakash_jain@apple.com>
+
+        Display detailed error logs when a script fails in EWS
+        https://bugs.webkit.org/show_bug.cgi?id=175696
+        <rdar://problem/34841885>
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/tool/bot/queueengine.py: Set output_limit to 5000 characters instead of default 500 characters.
+        * Scripts/webkitpy/tool/commands/abstractsequencedcommand.py: Ditto.
+        * Scripts/webkitpy/tool/commands/download.py: Ditto.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py: Ditto.
+        * Scripts/webkitpy/tool/commands/queues.py: Ditto.
+        * Scripts/webkitpy/tool/commands/stepsequence.py: Ditto.
+
+2018-05-25  Daniel Bates  <dabates@apple.com>
+
+        test-webkitpy messages logged using __main__ logger are not displayed
+        https://bugs.webkit.org/show_bug.cgi?id=185823
+
+        Rubber-stamped by Aakash Jain.
+
+        Configure the logger for __main__ so that messages that are logged before it parses its
+        command line arguments are printed to standard error.
+
+        Currently test-webkitpy creates a named logger (__main__) for its logging. However it does
+        not configure a stream to use for printing until after it parses its command line arguments
+        via webkitpy.test.printer.Printer.configure(). Messages logged until then are never written
+        to the console. We explicitly configure the __main__ logger instead of calling webkitpy.test.printer.Printer.configure()
+        earlier because the latter both configures a stream and filters logged messages based on
+        the specified verbosity. Logged messaged from code in __main__ should not be subject to
+        such filtering. So, we explicitly configure the __main__ logger.
+
+        * Scripts/webkitpy/test/main.py:
+        (main):
+
+2018-05-25  Saam Barati  <sbarati@apple.com>
+
+        Make JSC have a mini mode that kicks in when the JIT is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=185931
+
+        Reviewed by Mark Lam.
+
+        This renames a variable for clarity.
+
+        * Scripts/run-testmem:
+
+2018-05-25  Alex Christensen  <achristensen@webkit.org>
+
+        URL::host should return a StringView to reduce allocations
+        https://bugs.webkit.org/show_bug.cgi?id=185986
+
+        Reviewed by Geoff Garen.
+
+        * TestWebKitAPI/Tests/WebCore/URL.cpp:
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::eq):
+        * TestWebKitAPI/Tests/mac/SSLKeyGenerator.mm:
+        (TestWebKitAPI::SSLKeyGeneratorTest::TearDown):
+
+2018-05-25  Ms2ger  <Ms2ger@igalia.com>
+
+        Minor improvements to wpt exporter.
+        https://bugs.webkit.org/show_bug.cgi?id=185978
+
+        Reviewed by Youenn Fablet.
+
+        * Scripts/webkitpy/w3c/test_exporter.py:
+        (TestExporter.push_to_wpt_fork): Update call to create_upload_remote().
+        (TestExporter.make_pull_request): Improve the description of the created PR.
+        (TestExporter.create_upload_remote): Always update the remote to override any obsolete state.
+
+2018-05-25  Saam Barati  <sbarati@apple.com>
+
+        Have a memory test where we can validate JSCs mini memory mode
+        https://bugs.webkit.org/show_bug.cgi?id=185932
+
+        Reviewed by Mark Lam.
+
+        This patch adds the run-testmem script. This runs the new testmem
+        CLI against the contents in the testmem benchmark. The contents of testmem
+        contain tests from ARES-6, Sunspider, Octane, and JetStream.
+        
+        One iteration of the benchmark comprises of running each testmem test for
+        a certain number of iterations. We collect the peak memory usage, the memory
+        usage after running all the iterations, and the time it takes to run all the
+        iterations. We then run the entire benchmark 3 times over. For each test, we
+        compute the arithmetic mean over each iteration for time, peak memory, and
+        end memory. The benchmark then computes a time score and memory score.
+        
+        peak memory score = geomean({peak memory of each individual test})
+        end memory score = geomean({end memory of each individual test})
+        memory score = geomean({peak memory score, end memory score})
+        time score = geomean({time score of each individual test})
+        
+        We want the memory score to weigh improvements to peak memory usage and
+        memory usage at the end equally.
+        
+        We plan to tune this benchmark in JSC's mini mode by improving the memory
+        score while ensuring the time score is not more than 10-15% regressed.
+
+        * Scripts/run-testmem: Added.
+
+2018-05-25  Sihui Liu  <sihui_liu@apple.com>
+
+        [WKHTTPCookieStore getAllCookies] returns inconsistent creation time
+        https://bugs.webkit.org/show_bug.cgi?id=185041
+        <rdar://problem/34684214>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKHTTPCookieStore.mm:
+        (TEST):
+
+2018-05-24  Chris Dumez  <cdumez@apple.com>
+
+        Reduce copying of FontCascadeDescription objects by moving them around
+        https://bugs.webkit.org/show_bug.cgi?id=185963
+
+        Reviewed by Simon Fraser.
+
+        Reduce copying of FontCascadeDescription objects by moving them around when possible.
+
+        * TestWebKitAPI/Tests/WebCore/ComplexTextController.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2018-05-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: implement maximize, minimize and fullscreen window commands
+        https://bugs.webkit.org/show_bug.cgi?id=180398
+
+        Reviewed by Brian Burg.
+
+        * Scripts/webkitpy/port/xvfbdriver.py:
+        (XvfbDriver._setup_environ_for_test): Set UNDER_XVFB environment variable when running under Xvfb.
+
+2018-05-24  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] Save some time disabling some compile options in the dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=185909
+
+        Reviewed by Philippe Normand.
+
+        * gstreamer/jhbuild.modules: Added  --disable-tests to gstreamer
+        and --disable-examples --disable-gtk-doc to gstreamer-vaapi.
+
+2018-05-23  Roy Reapor  <rreapor@apple.com>
+
+        Use Helvetica on build.webkit.org webpages
+        https://bugs.webkit.org/show_bug.cgi?id=185894
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/garden-o-matic.html:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/styles/common.css:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/summary-mock.html:
+
+2018-05-23  Aakash Jain  <aakash_jain@apple.com>
+
+        Add Buildbot configuration for Opensource EWS
+        https://bugs.webkit.org/show_bug.cgi?id=185484
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/ews-build/config.json: Added, config file.
+        * BuildSlaveSupport/ews-build/factories.py: Added, basic template for factories.
+        * BuildSlaveSupport/ews-build/loadConfig.py: Added.
+        (loadBuilderConfig): Loads the configuration.
+        (checkValidWorker): Checks if the worker is valid.
+        (checkValidBuilder): Checks if the builder is valid.
+        (checkWorkersAndBuildersForConsistency): Check if workers and builders are consistent.
+        (checkWorkersAndBuildersForConsistency._find_worker_with_name):
+        (getBlackListedTags): Returns a list of keywords which should not be listed as tags.
+        (getValidTags): Returns a list of valid tags.
+        (getTagsForBuilder): Return a list of tags for given builder.
+        * BuildSlaveSupport/ews-build/loadConfig_unittest.py: unit-tests for loadConfig.py.
+        * BuildSlaveSupport/ews-build/master.cfg: Configuration for buildbot.
+
 2018-05-23  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [GTK] Silence GCC 8 warnings

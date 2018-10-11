@@ -916,7 +916,7 @@ void RenderTableSection::paint(PaintInfo& paintInfo, const LayoutPoint& paintOff
     if (pushedClip)
         popContentsClip(paintInfo, phase, adjustedPaintOffset);
 
-    if ((phase == PaintPhaseOutline || phase == PaintPhaseSelfOutline) && style().visibility() == VISIBLE)
+    if ((phase == PaintPhaseOutline || phase == PaintPhaseSelfOutline) && style().visibility() == Visibility::Visible)
         paintOutline(paintInfo, LayoutRect(adjustedPaintOffset, size()));
 }
 
@@ -1551,7 +1551,7 @@ CollapsedBorderValue RenderTableSection::cachedCollapsedBorder(const RenderTable
 
 RenderPtr<RenderTableSection> RenderTableSection::createTableSectionWithStyle(Document& document, const RenderStyle& style)
 {
-    auto section = createRenderer<RenderTableSection>(document, RenderStyle::createAnonymousStyleWithDisplay(style, TABLE_ROW_GROUP));
+    auto section = createRenderer<RenderTableSection>(document, RenderStyle::createAnonymousStyleWithDisplay(style, DisplayType::TableRowGroup));
     section->initializeStyle();
     return section;
 }

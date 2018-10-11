@@ -937,17 +937,19 @@ private:
                         node->mergeFlags(NodeMayHaveNonNumberResult);
                     break;
                 }
+                case ValueNegate:
                 case ArithNegate: {
-                    // We'd like to assert here that the arith profile for the result of negate never
-                    // sees a non-number, but we can't. It's true that negate never produces a non-number.
-                    // But sometimes we'll end up grabbing the wrong ArithProfile during OSR exit, and
-                    // profiling the wrong value, leading the ArithProfile to think it observed a non-number result.
                     if (arithProfile->lhsObservedType().sawNumber() || arithProfile->didObserveDouble())
                         node->mergeFlags(NodeMayHaveDoubleResult);
                     if (arithProfile->didObserveNegZeroDouble() || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, NegativeZero))
                         node->mergeFlags(NodeMayNegZeroInBaseline);
                     if (arithProfile->didObserveInt32Overflow() || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, Overflow))
                         node->mergeFlags(NodeMayOverflowInt32InBaseline);
+                    if (arithProfile->didObserveNonNumber()) {
+                        // FIXME: We should add support to BigInt into speculation
+                        // https://bugs.webkit.org/show_bug.cgi?id=182470
+                        node->mergeFlags(NodeMayHaveNonNumberResult);
+                    }
                     break;
                 }
                 
@@ -2262,8 +2264,8 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         case Array::Contiguous: {
             JSGlobalObject* globalObject = m_graph.globalObjectFor(currentNodeOrigin().semantic);
 
-            Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure();
-            Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure();
+            Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure(*m_vm);
+            Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure(*m_vm);
 
             // FIXME: We could easily relax the Array/Object.prototype transition as long as we OSR exitted if we saw a hole.
             // https://bugs.webkit.org/show_bug.cgi?id=173171
@@ -2352,8 +2354,8 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         case Array::Contiguous: {
             JSGlobalObject* globalObject = m_graph.globalObjectFor(currentNodeOrigin().semantic);
 
-            Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure();
-            Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure();
+            Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure(*m_vm);
+            Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure(*m_vm);
 
             // FIXME: We could easily relax the Array/Object.prototype transition as long as we OSR exitted if we saw a hole.
             // https://bugs.webkit.org/show_bug.cgi?id=173171
@@ -3386,7 +3388,7 @@ bool ByteCodeParser::handleTypedArrayConstructor(
     if (function->classInfo() != constructorClassInfoForType(type))
         return false;
     
-    if (function->globalObject() != m_inlineStackTop->m_codeBlock->globalObject())
+    if (function->globalObject(*m_vm) != m_inlineStackTop->m_codeBlock->globalObject())
         return false;
     
     // We only have an intrinsic for the case where you say:
@@ -3423,7 +3425,7 @@ bool ByteCodeParser::handleTypedArrayConstructor(
     if (argumentCountIncludingThis != 2)
         return false;
     
-    if (!function->globalObject()->typedArrayStructureConcurrently(type))
+    if (!function->globalObject(*m_vm)->typedArrayStructureConcurrently(type))
         return false;
 
     insertChecks();
@@ -3454,7 +3456,7 @@ bool ByteCodeParser::handleConstantInternalFunction(
     }
 
     if (function->classInfo() == ArrayConstructor::info()) {
-        if (function->globalObject() != m_inlineStackTop->m_codeBlock->globalObject())
+        if (function->globalObject(*m_vm) != m_inlineStackTop->m_codeBlock->globalObject())
             return false;
         
         insertChecks();
@@ -3495,7 +3497,7 @@ bool ByteCodeParser::handleConstantInternalFunction(
             result = addToGraph(CallStringConstructor, get(virtualRegisterForArgument(1, registerOffset)));
         
         if (kind == CodeForConstruct)
-            result = addToGraph(NewStringObject, OpInfo(m_graph.registerStructure(function->globalObject()->stringObjectStructure())), result);
+            result = addToGraph(NewStringObject, OpInfo(m_graph.registerStructure(function->globalObject(*m_vm)->stringObjectStructure())), result);
         
         set(VirtualRegister(resultOperand), result);
         return true;
@@ -3507,9 +3509,9 @@ bool ByteCodeParser::handleConstantInternalFunction(
 
         Node* result;
         if (argumentCountIncludingThis <= 1)
-            result = addToGraph(NewObject, OpInfo(m_graph.registerStructure(function->globalObject()->objectStructureForObjectConstructor())));
+            result = addToGraph(NewObject, OpInfo(m_graph.registerStructure(function->globalObject(*m_vm)->objectStructureForObjectConstructor())));
         else
-            result = addToGraph(CallObjectConstructor, OpInfo(m_graph.freeze(function->globalObject())), OpInfo(prediction), get(virtualRegisterForArgument(1, registerOffset)));
+            result = addToGraph(CallObjectConstructor, OpInfo(m_graph.freeze(function->globalObject(*m_vm))), OpInfo(prediction), get(virtualRegisterForArgument(1, registerOffset)));
         set(VirtualRegister(resultOperand), result);
         return true;
     }
@@ -3575,7 +3577,7 @@ bool ByteCodeParser::check(const ObjectPropertyCondition& condition)
     if (m_graph.watchCondition(condition))
         return true;
     
-    Structure* structure = condition.object()->structure();
+    Structure* structure = condition.object()->structure(*m_vm);
     if (!condition.structureEnsuresValidity(structure))
         return false;
     
@@ -4714,7 +4716,10 @@ void ByteCodeParser::parseBlock(unsigned limit)
 
         case op_negate: {
             Node* op1 = get(VirtualRegister(currentInstruction[2].u.operand));
-            set(VirtualRegister(currentInstruction[1].u.operand), makeSafe(addToGraph(ArithNegate, op1)));
+            if (op1->hasNumberResult())
+                set(VirtualRegister(currentInstruction[1].u.operand), makeSafe(addToGraph(ArithNegate, op1)));
+            else
+                set(VirtualRegister(currentInstruction[1].u.operand), makeSafe(addToGraph(ValueNegate, op1)));
             NEXT_OPCODE(op_negate);
         }
 
@@ -6327,7 +6332,16 @@ void ByteCodeParser::parseBlock(unsigned limit)
             default:
                 op = NewFunction;
             }
-            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
+            Node* scope = get(VirtualRegister(currentInstruction[2].u.operand));
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), scope));
+            // Ideally we wouldn't have to do this Phantom. But:
+            //
+            // For the constant case: we must do it because otherwise we would have no way of knowing
+            // that the scope is live at OSR here.
+            //
+            // For the non-constant case: NewFunction could be DCE'd, but baseline's implementation
+            // won't be able to handle an Undefined scope.
+            addToGraph(Phantom, scope);
             static_assert(OPCODE_LENGTH(op_new_func) == OPCODE_LENGTH(op_new_generator_func), "The length of op_new_func should be equal to one of op_new_generator_func");
             static_assert(OPCODE_LENGTH(op_new_func) == OPCODE_LENGTH(op_new_async_func), "The length of op_new_func should be equal to one of op_new_async_func");
             static_assert(OPCODE_LENGTH(op_new_func) == OPCODE_LENGTH(op_new_async_generator_func), "The length of op_new_func should be equal to one of op_new_async_generator_func");
@@ -6354,8 +6368,16 @@ void ByteCodeParser::parseBlock(unsigned limit)
             default:
                 op = NewFunction;
             }
-            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
-    
+            Node* scope = get(VirtualRegister(currentInstruction[2].u.operand));
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), scope));
+            // Ideally we wouldn't have to do this Phantom. But:
+            //
+            // For the constant case: we must do it because otherwise we would have no way of knowing
+            // that the scope is live at OSR here.
+            //
+            // For the non-constant case: NewFunction could be DCE'd, but baseline's implementation
+            // won't be able to handle an Undefined scope.
+            addToGraph(Phantom, scope);
             static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_generator_func_exp), "The length of op_new_func_exp should be equal to one of op_new_generator_func_exp");
             static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_async_func_exp), "The length of op_new_func_exp should be equal to one of op_new_async_func_exp");
             static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_async_generator_func_exp), "The length of op_new_func_exp should be equal to one of op_new_async_func_exp");

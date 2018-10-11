@@ -245,7 +245,7 @@ void MockRealtimeVideoSource::drawAnimation(GraphicsContext& context)
     m_path.addArc(location, radius, 0, 2 * piFloat, false);
     m_path.closeSubpath();
     context.setFillColor(Color::white);
-    context.setFillRule(RULE_NONZERO);
+    context.setFillRule(WindRule::NonZero);
     context.fillPath(m_path);
 
     float endAngle = piFloat * (((fmod(m_frameNumber, frameRate()) + 0.5) * (2.0 / frameRate())) + 1);
@@ -254,7 +254,7 @@ void MockRealtimeVideoSource::drawAnimation(GraphicsContext& context)
     m_path.addArc(location, radius, 1.5 * piFloat, endAngle, false);
     m_path.closeSubpath();
     context.setFillColor(Color::gray);
-    context.setFillRule(RULE_NONZERO);
+    context.setFillRule(WindRule::NonZero);
     context.fillPath(m_path);
 }
 
@@ -336,17 +336,17 @@ void MockRealtimeVideoSource::drawText(GraphicsContext& context)
 
     fontDescription.setSpecifiedSize(m_baseFontSize);
     fontDescription.setComputedSize(m_baseFontSize);
-    FontCascade timeFont { fontDescription, 0, 0 };
+    FontCascade timeFont { FontCascadeDescription { fontDescription }, 0, 0 };
     timeFont.update(nullptr);
 
     fontDescription.setSpecifiedSize(m_bipBopFontSize);
     fontDescription.setComputedSize(m_bipBopFontSize);
-    FontCascade bipBopFont { fontDescription, 0, 0 };
+    FontCascade bipBopFont { FontCascadeDescription { fontDescription }, 0, 0 };
     bipBopFont.update(nullptr);
 
     fontDescription.setSpecifiedSize(m_statsFontSize);
     fontDescription.setComputedSize(m_statsFontSize);
-    FontCascade statsFont { fontDescription, 0, 0 };
+    FontCascade statsFont { WTFMove(fontDescription), 0, 0 };
     statsFont.update(nullptr);
 
     IntSize size = this->size();

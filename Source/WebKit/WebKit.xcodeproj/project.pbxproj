@@ -1217,6 +1217,9 @@
 		53BA47D01DC2EF5E004DF4AD /* NetworkDataTaskBlob.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 539EB5461DC2EE40009D48CF /* NetworkDataTaskBlob.cpp */; };
 		53BA47D11DC2EF5E004DF4AD /* NetworkDataTaskBlob.h in Headers */ = {isa = PBXBuildFile; fileRef = 539EB5471DC2EE40009D48CF /* NetworkDataTaskBlob.h */; };
 		53DEA3661DDE423100E82648 /* json.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 53DEA3651DDE422E00E82648 /* json.hpp */; };
+		570AB8F320AE3BD700B8BE87 /* SecKeyProxyStore.h in Headers */ = {isa = PBXBuildFile; fileRef = 570AB8F220AE3BD700B8BE87 /* SecKeyProxyStore.h */; };
+		570AB90220B2517400B8BE87 /* AuthenticationChallengeProxyCocoa.mm in Sources */ = {isa = PBXBuildFile; fileRef = 570AB90020B2517400B8BE87 /* AuthenticationChallengeProxyCocoa.mm */; };
+		570AB90420B2541D00B8BE87 /* SecKeyProxyStore.mm in Sources */ = {isa = PBXBuildFile; fileRef = 570AB90320B2541C00B8BE87 /* SecKeyProxyStore.mm */; };
 		575075A820AB8DE100693EA9 /* WebCredentialMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = 575075A720AB763600693EA9 /* WebCredentialMac.mm */; };
 		5760828E2029895E00116678 /* WebCredentialsMessenger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5760828C2029854200116678 /* WebCredentialsMessenger.cpp */; };
 		57608298202BD8BA00116678 /* WebCredentialsMessengerProxy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 57608296202BD8BA00116678 /* WebCredentialsMessengerProxy.cpp */; };
@@ -1224,6 +1227,8 @@
 		5760829D202D2C4000116678 /* WebCredentialsMessengerMessages.h in Headers */ = {isa = PBXBuildFile; fileRef = 5760828F20298FBD00116678 /* WebCredentialsMessengerMessages.h */; };
 		5760829E202D2C4300116678 /* WebCredentialsMessengerProxyMessageReceiver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5760829A202BEE5A00116678 /* WebCredentialsMessengerProxyMessageReceiver.cpp */; };
 		5760829F202D2C4600116678 /* WebCredentialsMessengerProxyMessages.h in Headers */ = {isa = PBXBuildFile; fileRef = 5760829B202BEE5A00116678 /* WebCredentialsMessengerProxyMessages.h */; };
+		57B4B45F20B504AC00D4AD79 /* AuthenticationManagerCocoa.mm in Sources */ = {isa = PBXBuildFile; fileRef = 57B4B45D20B504AB00D4AD79 /* AuthenticationManagerCocoa.mm */; };
+		57B4B46020B504AC00D4AD79 /* ClientCertificateAuthenticationXPCConstants.h in Headers */ = {isa = PBXBuildFile; fileRef = 57B4B45E20B504AB00D4AD79 /* ClientCertificateAuthenticationXPCConstants.h */; };
 		5C0B17781E7C880E00E9123C /* NetworkSocketStreamMessageReceiver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5C0B17741E7C879C00E9123C /* NetworkSocketStreamMessageReceiver.cpp */; };
 		5C0B17791E7C882100E9123C /* WebSocketStreamMessageReceiver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5C0B17761E7C879C00E9123C /* WebSocketStreamMessageReceiver.cpp */; };
 		5C0B177C1E7C885400E9123C /* WebSocketStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5C0B177A1E7C884F00E9123C /* WebSocketStream.cpp */; };
@@ -1316,6 +1321,8 @@
 		7AAD175F1EA6AF99003B0894 /* WebResourceLoadStatisticsStoreCocoa.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7AAD175E1EA6AF37003B0894 /* WebResourceLoadStatisticsStoreCocoa.mm */; };
 		7AB6EA451EEAAE3800037B2B /* APIIconDatabaseClient.h in Headers */ = {isa = PBXBuildFile; fileRef = 7AB6EA441EEAAE2300037B2B /* APIIconDatabaseClient.h */; };
 		7AB6EA471EEAB6B800037B2B /* APIGeolocationProvider.h in Headers */ = {isa = PBXBuildFile; fileRef = 7AB6EA461EEAB6B000037B2B /* APIGeolocationProvider.h */; };
+		7ACFAAD920B88D5000C53203 /* process-webcontent-entitlements.sh in Resources */ = {isa = PBXBuildFile; fileRef = 7ACFAAD820B88D4F00C53203 /* process-webcontent-entitlements.sh */; };
+		7ACFAADA20B88D5000C53203 /* process-webcontent-entitlements.sh in Resources */ = {isa = PBXBuildFile; fileRef = 7ACFAAD820B88D4F00C53203 /* process-webcontent-entitlements.sh */; };
 		7AF236201E79A3E400438A05 /* WebErrors.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7AF2361E1E79A3B400438A05 /* WebErrors.cpp */; };
 		7AF236211E79A40800438A05 /* WebErrors.h in Headers */ = {isa = PBXBuildFile; fileRef = 7AF2361F1E79A3D800438A05 /* WebErrors.h */; };
 		7AF236231E79A44400438A05 /* WebErrorsCocoa.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7AF236221E79A43100438A05 /* WebErrorsCocoa.mm */; };
@@ -1577,7 +1584,7 @@
 		A1C512C9190656E500448914 /* WebPreviewLoaderClient.h in Headers */ = {isa = PBXBuildFile; fileRef = A1C512C7190656E500448914 /* WebPreviewLoaderClient.h */; };
 		A1D420471DB5578500BB6B0D /* WKContextMenuListener.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A1EA02351DABFF7E0096021F /* WKContextMenuListener.cpp */; };
 		A1DAFDDF207E9B16005E8A52 /* WiFiAssertionHolder.h in Headers */ = {isa = PBXBuildFile; fileRef = A1DAFDDD207E9B16005E8A52 /* WiFiAssertionHolder.h */; };
-		A1DAFDE0207E9B16005E8A52 /* WiFiAssertionHolder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A1DAFDDE207E9B16005E8A52 /* WiFiAssertionHolder.cpp */; };
+		A1DAFDE0207E9B16005E8A52 /* WiFiAssertionHolder.mm in Sources */ = {isa = PBXBuildFile; fileRef = A1DAFDDE207E9B16005E8A52 /* WiFiAssertionHolder.mm */; };
 		A1DF631218E0B7C8003A3E2A /* DownloadClient.mm in Sources */ = {isa = PBXBuildFile; fileRef = A1DF631018E0B7C8003A3E2A /* DownloadClient.mm */; };
 		A1DF631318E0B7C8003A3E2A /* DownloadClient.h in Headers */ = {isa = PBXBuildFile; fileRef = A1DF631118E0B7C8003A3E2A /* DownloadClient.h */; };
 		A1E688701F6E2BAB007006A6 /* QuarantineSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = A1E6886F1F6E2BAB007006A6 /* QuarantineSPI.h */; };
@@ -3185,7 +3192,6 @@
 		37183D55182F4E700080C811 /* WKNSURLExtras.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKNSURLExtras.h; sourceTree = "<group>"; };
 		371A193F1824D29300F32A5E /* WKNSDictionary.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKNSDictionary.mm; sourceTree = "<group>"; };
 		371A19401824D29300F32A5E /* WKNSDictionary.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKNSDictionary.h; sourceTree = "<group>"; };
-		37209CAB2079D4BA0009E25B /* WebContent.Development.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WebContent.Development.entitlements; sourceTree = "<group>"; };
 		372CAF091833FD910040AC27 /* WKNSError.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKNSError.h; sourceTree = "<group>"; };
 		372CAF0A1833FD910040AC27 /* WKNSError.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKNSError.mm; sourceTree = "<group>"; };
 		372EBB462017E64300085064 /* com.apple.WebKit.WebContent.Development.xpc */ = {isa = PBXFileReference; explicitFileType = "wrapper.xpc-service"; includeInIndex = 0; path = com.apple.WebKit.WebContent.Development.xpc; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -3244,7 +3250,7 @@
 		37A64E5618F38F4600EB30F1 /* _WKFormInputSession.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = _WKFormInputSession.h; sourceTree = "<group>"; };
 		37A709A61E3EA0FD00CA5969 /* WKDataDetectorTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKDataDetectorTypes.h; sourceTree = "<group>"; };
 		37A709A81E3EA40C00CA5969 /* WKDataDetectorTypesInternal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKDataDetectorTypesInternal.h; sourceTree = "<group>"; };
-		37B418EB1C9624F20031E63B /* WebContent-OSX.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "WebContent-OSX.entitlements"; sourceTree = "<group>"; };
+		37B418EB1C9624F20031E63B /* WebContent-OSX-restricted.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "WebContent-OSX-restricted.entitlements"; sourceTree = "<group>"; };
 		37B47E2C1D64DB76005F4EFF /* objcSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = objcSPI.h; sourceTree = "<group>"; };
 		37B5045119EEF31300CE2CF8 /* WKErrorPrivate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKErrorPrivate.h; sourceTree = "<group>"; };
 		37BEC4DE19491486008B4286 /* CompletionHandlerCallChecker.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CompletionHandlerCallChecker.mm; sourceTree = "<group>"; };
@@ -3656,6 +3662,9 @@
 		539EB5471DC2EE40009D48CF /* NetworkDataTaskBlob.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NetworkDataTaskBlob.h; path = NetworkProcess/NetworkDataTaskBlob.h; sourceTree = "<group>"; };
 		53DEA3651DDE422E00E82648 /* json.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = json.hpp; path = NetworkProcess/capture/json.hpp; sourceTree = "<group>"; };
 		53F3CAA5206C443E0086490E /* NetworkActivityTracker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NetworkActivityTracker.cpp; path = NetworkProcess/NetworkActivityTracker.cpp; sourceTree = "<group>"; };
+		570AB8F220AE3BD700B8BE87 /* SecKeyProxyStore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SecKeyProxyStore.h; sourceTree = "<group>"; };
+		570AB90020B2517400B8BE87 /* AuthenticationChallengeProxyCocoa.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = AuthenticationChallengeProxyCocoa.mm; sourceTree = "<group>"; };
+		570AB90320B2541C00B8BE87 /* SecKeyProxyStore.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SecKeyProxyStore.mm; sourceTree = "<group>"; };
 		575075A720AB763600693EA9 /* WebCredentialMac.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = WebCredentialMac.mm; sourceTree = "<group>"; };
 		5750F32A2032D4E500389347 /* LocalAuthentication.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = LocalAuthentication.framework; path = System/Library/Frameworks/LocalAuthentication.framework; sourceTree = SDKROOT; };
 		5760828B2029854200116678 /* WebCredentialsMessenger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebCredentialsMessenger.h; sourceTree = "<group>"; };
@@ -3668,6 +3677,8 @@
 		57608299202BDAE200116678 /* WebCredentialsMessengerProxy.messages.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebCredentialsMessengerProxy.messages.in; sourceTree = "<group>"; };
 		5760829A202BEE5A00116678 /* WebCredentialsMessengerProxyMessageReceiver.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = WebCredentialsMessengerProxyMessageReceiver.cpp; sourceTree = "<group>"; };
 		5760829B202BEE5A00116678 /* WebCredentialsMessengerProxyMessages.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebCredentialsMessengerProxyMessages.h; sourceTree = "<group>"; };
+		57B4B45D20B504AB00D4AD79 /* AuthenticationManagerCocoa.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AuthenticationManagerCocoa.mm; path = Authentication/cocoa/AuthenticationManagerCocoa.mm; sourceTree = "<group>"; };
+		57B4B45E20B504AB00D4AD79 /* ClientCertificateAuthenticationXPCConstants.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ClientCertificateAuthenticationXPCConstants.h; path = Authentication/cocoa/ClientCertificateAuthenticationXPCConstants.h; sourceTree = "<group>"; };
 		5C0B17741E7C879C00E9123C /* NetworkSocketStreamMessageReceiver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = NetworkSocketStreamMessageReceiver.cpp; sourceTree = "<group>"; };
 		5C0B17751E7C879C00E9123C /* NetworkSocketStreamMessages.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NetworkSocketStreamMessages.h; sourceTree = "<group>"; };
 		5C0B17761E7C879C00E9123C /* WebSocketStreamMessageReceiver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WebSocketStreamMessageReceiver.cpp; sourceTree = "<group>"; };
@@ -3781,9 +3792,11 @@
 		7AAD175E1EA6AF37003B0894 /* WebResourceLoadStatisticsStoreCocoa.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebResourceLoadStatisticsStoreCocoa.mm; sourceTree = "<group>"; };
 		7AB6EA441EEAAE2300037B2B /* APIIconDatabaseClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APIIconDatabaseClient.h; sourceTree = "<group>"; };
 		7AB6EA461EEAB6B000037B2B /* APIGeolocationProvider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APIGeolocationProvider.h; sourceTree = "<group>"; };
+		7ACFAAD820B88D4F00C53203 /* process-webcontent-entitlements.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = "process-webcontent-entitlements.sh"; sourceTree = "<group>"; };
 		7AF2361E1E79A3B400438A05 /* WebErrors.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WebErrors.cpp; sourceTree = "<group>"; };
 		7AF2361F1E79A3D800438A05 /* WebErrors.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebErrors.h; sourceTree = "<group>"; };
 		7AF236221E79A43100438A05 /* WebErrorsCocoa.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebErrorsCocoa.mm; sourceTree = "<group>"; };
+		7AF66E1120C07CB6007828EA /* WebContent-OSX.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "WebContent-OSX.entitlements"; sourceTree = "<group>"; };
 		7C065F291C8CD95F00C2D950 /* WebUserContentControllerDataTypes.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WebUserContentControllerDataTypes.cpp; sourceTree = "<group>"; };
 		7C065F2A1C8CD95F00C2D950 /* WebUserContentControllerDataTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebUserContentControllerDataTypes.h; sourceTree = "<group>"; };
 		7C0BB9A818DCDE890006C086 /* WebContent-iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "WebContent-iOS.entitlements"; sourceTree = "<group>"; };
@@ -4063,7 +4076,7 @@
 		A1C512C6190656E500448914 /* WebPreviewLoaderClient.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = WebPreviewLoaderClient.cpp; path = ios/WebPreviewLoaderClient.cpp; sourceTree = "<group>"; };
 		A1C512C7190656E500448914 /* WebPreviewLoaderClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WebPreviewLoaderClient.h; path = ios/WebPreviewLoaderClient.h; sourceTree = "<group>"; };
 		A1DAFDDD207E9B16005E8A52 /* WiFiAssertionHolder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = WiFiAssertionHolder.h; path = NetworkProcess/cocoa/WiFiAssertionHolder.h; sourceTree = "<group>"; };
-		A1DAFDDE207E9B16005E8A52 /* WiFiAssertionHolder.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = WiFiAssertionHolder.cpp; path = NetworkProcess/cocoa/WiFiAssertionHolder.cpp; sourceTree = "<group>"; };
+		A1DAFDDE207E9B16005E8A52 /* WiFiAssertionHolder.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = WiFiAssertionHolder.mm; path = NetworkProcess/cocoa/WiFiAssertionHolder.mm; sourceTree = "<group>"; };
 		A1DF631018E0B7C8003A3E2A /* DownloadClient.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DownloadClient.mm; sourceTree = "<group>"; };
 		A1DF631118E0B7C8003A3E2A /* DownloadClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DownloadClient.h; sourceTree = "<group>"; };
 		A1E6886F1F6E2BAB007006A6 /* QuarantineSPI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = QuarantineSPI.h; sourceTree = "<group>"; };
@@ -5048,8 +5061,8 @@
 				51A60B29180CCD9000F3BF50 /* StorageService.xcconfig */,
 				1A4F976E100E7B6600637A18 /* Version.xcconfig */,
 				7C0BB9A818DCDE890006C086 /* WebContent-iOS.entitlements */,
-				37B418EB1C9624F20031E63B /* WebContent-OSX.entitlements */,
-				37209CAB2079D4BA0009E25B /* WebContent.Development.entitlements */,
+				37B418EB1C9624F20031E63B /* WebContent-OSX-restricted.entitlements */,
+				7AF66E1120C07CB6007828EA /* WebContent-OSX.entitlements */,
 				372EBB4A2017E76000085064 /* WebContentService.Development.xcconfig */,
 				BCACC40E16B0B8A800B6E092 /* WebContentService.xcconfig */,
 				BCB86F4B116AAACD00CE20B7 /* WebKit.xcconfig */,
@@ -6525,6 +6538,7 @@
 		512F588D12A8836F00629530 /* Authentication */ = {
 			isa = PBXGroup;
 			children = (
+				570AB8F620AE81AB00B8BE87 /* cocoa */,
 				575075A620AB75AB00693EA9 /* mac */,
 				512F588E12A8838800629530 /* AuthenticationChallengeProxy.cpp */,
 				512F588F12A8838800629530 /* AuthenticationChallengeProxy.h */,
@@ -6625,6 +6639,7 @@
 		518E8EF116B208F000E91429 /* Authentication */ = {
 			isa = PBXGroup;
 			children = (
+				57B4B45C20B5048B00D4AD79 /* cocoa */,
 				518E8EF316B2091C00E91429 /* AuthenticationManager.cpp */,
 				518E8EF416B2091C00E91429 /* AuthenticationManager.h */,
 				518E8EF516B2091C00E91429 /* AuthenticationManager.messages.in */,
@@ -6751,6 +6766,16 @@
 			name = capture;
 			sourceTree = "<group>";
 		};
+		570AB8F620AE81AB00B8BE87 /* cocoa */ = {
+			isa = PBXGroup;
+			children = (
+				570AB90020B2517400B8BE87 /* AuthenticationChallengeProxyCocoa.mm */,
+				570AB8F220AE3BD700B8BE87 /* SecKeyProxyStore.h */,
+				570AB90320B2541C00B8BE87 /* SecKeyProxyStore.mm */,
+			);
+			path = cocoa;
+			sourceTree = "<group>";
+		};
 		575075A620AB75AB00693EA9 /* mac */ = {
 			isa = PBXGroup;
 			children = (
@@ -6785,6 +6810,15 @@
 				57608299202BDAE200116678 /* WebCredentialsMessengerProxy.messages.in */,
 			);
 			path = CredentialManagement;
+			sourceTree = "<group>";
+		};
+		57B4B45C20B5048B00D4AD79 /* cocoa */ = {
+			isa = PBXGroup;
+			children = (
+				57B4B45D20B504AB00D4AD79 /* AuthenticationManagerCocoa.mm */,
+				57B4B45E20B504AB00D4AD79 /* ClientCertificateAuthenticationXPCConstants.h */,
+			);
+			name = cocoa;
 			sourceTree = "<group>";
 		};
 		5C1426F11C23F81700D41183 /* Downloads */ = {
@@ -6913,8 +6947,8 @@
 				7EC4F0F918E4A945008056AF /* NetworkProcessCocoa.mm */,
 				532159501DBAE6D70054AA3C /* NetworkSessionCocoa.h */,
 				5C20CB9B1BB0DCD200895BB1 /* NetworkSessionCocoa.mm */,
-				A1DAFDDE207E9B16005E8A52 /* WiFiAssertionHolder.cpp */,
 				A1DAFDDD207E9B16005E8A52 /* WiFiAssertionHolder.h */,
+				A1DAFDDE207E9B16005E8A52 /* WiFiAssertionHolder.mm */,
 			);
 			name = cocoa;
 			sourceTree = "<group>";
@@ -8454,6 +8488,7 @@
 				0FC0856F187CE0A900780D86 /* messages.py */,
 				0FC08570187CE0A900780D86 /* model.py */,
 				0FC08571187CE0A900780D86 /* parser.py */,
+				7ACFAAD820B88D4F00C53203 /* process-webcontent-entitlements.sh */,
 			);
 			path = Scripts;
 			sourceTree = "<group>";
@@ -8874,6 +8909,7 @@
 				51FAEC3A1B0657630009C4E7 /* ChildProcessMessages.h in Headers */,
 				E1513C67166EABB200149FCB /* ChildProcessProxy.h in Headers */,
 				290F4272172A0C7400939FF0 /* ChildProcessSupplement.h in Headers */,
+				57B4B46020B504AC00D4AD79 /* ClientCertificateAuthenticationXPCConstants.h in Headers */,
 				CE11AD521CBC482F00681EE5 /* CodeSigning.h in Headers */,
 				37BEC4E119491486008B4286 /* CompletionHandlerCallChecker.h in Headers */,
 				37C4E9F6131C6E7E0029BD5A /* config.h in Headers */,
@@ -9152,6 +9188,7 @@
 				511F8A7B138B460900A95F44 /* SecItemShimLibrary.h in Headers */,
 				E18E690C169B563F009B6670 /* SecItemShimProxy.h in Headers */,
 				E18E6918169B667B009B6670 /* SecItemShimProxyMessages.h in Headers */,
+				570AB8F320AE3BD700B8BE87 /* SecKeyProxyStore.h in Headers */,
 				514D9F5719119D35000063A7 /* ServicesController.h in Headers */,
 				414DEDD71F9EDDE50047C40D /* ServiceWorkerProcessProxy.h in Headers */,
 				1AFDE65A1954A42B00C48FFA /* SessionState.h in Headers */,
@@ -9814,9 +9851,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 372EBB422017E64300085064 /* Build configuration list for PBXNativeTarget "WebContent.Development" */;
 			buildPhases = (
+				7A35F25120BDB80C003958EC /* Remove stale entitlement file */,
 				372EBB3B2017E64300085064 /* Sources */,
 				372EBB3D2017E64300085064 /* Frameworks */,
 				372EBB402017E64300085064 /* Resources */,
+				7A35F24F20BDAF8B003958EC /* Unlock keychain */,
+				7AFCBD5520B8917D00F55C9C /* Process WebContent entitlements */,
 			);
 			buildRules = (
 			);
@@ -9907,9 +9947,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = BC3DE47615A91764008D26FC /* Build configuration list for PBXNativeTarget "WebContent" */;
 			buildPhases = (
+				7A35F25020BDB7CC003958EC /* Remove stale entitlement file */,
 				BC3DE46215A91763008D26FC /* Sources */,
 				BCDC308D15FDB99A006B6695 /* Frameworks */,
 				BC3DE46415A91763008D26FC /* Resources */,
+				7A35F24E20BDAE40003958EC /* Unlock keychain */,
+				7AFCBD5420B8911D00F55C9C /* Process WebContent entitlements */,
 			);
 			buildRules = (
 			);
@@ -10021,6 +10064,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7ACFAADA20B88D5000C53203 /* process-webcontent-entitlements.sh in Resources */,
 				372EBB412017E64300085064 /* WebContentProcess.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -10050,6 +10094,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7ACFAAD920B88D5000C53203 /* process-webcontent-entitlements.sh in Resources */,
 				E1D26A53175964D90095BFD1 /* WebContentProcess.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -10291,6 +10336,116 @@
 			shellPath = /bin/sh;
 			shellScript = "if [ \"${ACTION}\" = \"installhdrs\" ] || [ \"${ACTION}\" = \"installapi\" ]; then\n    exit 0;\nfi\n\nif [ -f ../../Tools/Scripts/check-for-inappropriate-files-in-framework ]; then\n    ../../Tools/Scripts/check-for-inappropriate-files-in-framework || exit $?\nfi\n";
 		};
+		7A35F24E20BDAE40003958EC /* Unlock keychain */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Unlock keychain";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "UNLOCK_SCRIPT_PATH=\"${SRCROOT}/../../../Internal/Tools/Scripts/unlock-safari-engineering-keychain-if-needed\"\n\n[[ -x \"${UNLOCK_SCRIPT_PATH}\" ]] && exec \"${UNLOCK_SCRIPT_PATH}\"\n\nexit 0\n";
+		};
+		7A35F24F20BDAF8B003958EC /* Unlock keychain */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Unlock keychain";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "UNLOCK_SCRIPT_PATH=\"${SRCROOT}/../../../Internal/Tools/Scripts/unlock-safari-engineering-keychain-if-needed\"\n\n[[ -x \"${UNLOCK_SCRIPT_PATH}\" ]] && exec \"${UNLOCK_SCRIPT_PATH}\"\n\nexit 0\n";
+		};
+		7A35F25020BDB7CC003958EC /* Remove stale entitlement file */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Remove stale entitlement file";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# We autogenerate this file, so don't want to retain an old copy during builds.\nrm -f ${TEMP_FILE_DIR}/${FULL_PRODUCT_NAME}.xcent\n";
+		};
+		7A35F25120BDB80C003958EC /* Remove stale entitlement file */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Remove stale entitlement file";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# We autogenerate this file, so don't want to retain an old copy during builds.\nrm -f ${TEMP_FILE_DIR}/${FULL_PRODUCT_NAME}.xcent\n";
+		};
+		7AFCBD5420B8911D00F55C9C /* Process WebContent entitlements */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TEMP_FILE_DIR)/$(FULL_PRODUCT_NAME).xcent",
+			);
+			name = "Process WebContent entitlements";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "Scripts/process-webcontent-entitlements.sh\n";
+		};
+		7AFCBD5520B8917D00F55C9C /* Process WebContent entitlements */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TEMP_FILE_DIR)/$(FULL_PRODUCT_NAME).xcent",
+			);
+			name = "Process WebContent entitlements";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "Scripts/process-webcontent-entitlements.sh\n";
+		};
 		99CA3862207286DB00BAD578 /* Copy WebDriver Atoms to Framework Private Headers */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -10503,8 +10658,10 @@
 				BCEE966C112FAF57006BCC24 /* Attachment.cpp in Sources */,
 				E1A31735134CEA80007C9A4F /* AttributedString.mm in Sources */,
 				512F589612A8838800629530 /* AuthenticationChallengeProxy.cpp in Sources */,
+				570AB90220B2517400B8BE87 /* AuthenticationChallengeProxyCocoa.mm in Sources */,
 				512F589812A8838800629530 /* AuthenticationDecisionListener.cpp in Sources */,
 				518E8EF816B2091C00E91429 /* AuthenticationManager.cpp in Sources */,
+				57B4B45F20B504AC00D4AD79 /* AuthenticationManagerCocoa.mm in Sources */,
 				512F58A212A883AD00629530 /* AuthenticationManagerMessageReceiver.cpp in Sources */,
 				9955A6F41C7986DC00EB6A93 /* AutomationBackendDispatchers.cpp in Sources */,
 				99C81D591C20E1E5005C4C82 /* AutomationClient.mm in Sources */,
@@ -10829,6 +10986,7 @@
 				E179088D169BAA62006904C7 /* SecItemShim.cpp in Sources */,
 				E18E690B169B563F009B6670 /* SecItemShimProxy.cpp in Sources */,
 				E18E6917169B667B009B6670 /* SecItemShimProxyMessageReceiver.cpp in Sources */,
+				570AB90420B2541D00B8BE87 /* SecKeyProxyStore.mm in Sources */,
 				514D9F5819119D35000063A7 /* ServicesController.mm in Sources */,
 				4131F3D11F96BCCC0059995A /* ServiceWorkerClientFetch.cpp in Sources */,
 				617A52D81F43A9DA00DCDC0A /* ServiceWorkerClientFetchMessageReceiver.cpp in Sources */,
@@ -11177,7 +11335,7 @@
 				83EE575B1DB7D61100C74C50 /* WebValidationMessageClient.cpp in Sources */,
 				2DFC7DBC1BCCC19500C1548C /* WebViewImpl.mm in Sources */,
 				C0337DD1127A2980008FF4F4 /* WebWheelEvent.cpp in Sources */,
-				A1DAFDE0207E9B16005E8A52 /* WiFiAssertionHolder.cpp in Sources */,
+				A1DAFDE0207E9B16005E8A52 /* WiFiAssertionHolder.mm in Sources */,
 				868160D0187645570021E79D /* WindowServerConnection.mm in Sources */,
 				29CD55AB128E294F00133C85 /* WKAccessibilityWebPageObjectBase.mm in Sources */,
 				29232DF818B2A9AE00D0596F /* WKAccessibilityWebPageObjectIOS.mm in Sources */,

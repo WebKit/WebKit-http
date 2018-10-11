@@ -572,7 +572,7 @@ LLINT_SLOW_PATH_DECL(slow_path_instanceof_custom)
     JSValue hasInstanceValue = LLINT_OP_C(4).jsValue();
 
     ASSERT(constructor.isObject());
-    ASSERT(hasInstanceValue != exec->lexicalGlobalObject()->functionProtoHasInstanceSymbolFunction() || !constructor.getObject()->structure()->typeInfo().implementsDefaultHasInstance());
+    ASSERT(hasInstanceValue != exec->lexicalGlobalObject()->functionProtoHasInstanceSymbolFunction() || !constructor.getObject()->structure(vm)->typeInfo().implementsDefaultHasInstance());
 
     JSValue result = jsBoolean(constructor.getObject()->hasInstance(exec, value, hasInstanceValue));
     LLINT_RETURN(result);
@@ -620,7 +620,7 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id_direct)
         }
 
         JSCell* baseCell = baseValue.asCell();
-        Structure* structure = baseCell->structure();
+        Structure* structure = baseCell->structure(vm);
         if (slot.isValue()) {
             // Start out by clearing out the old cache.
             pc[4].u.pointer = nullptr; // old structure
@@ -645,7 +645,7 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id_direct)
 static void setupGetByIdPrototypeCache(ExecState* exec, VM& vm, Instruction* pc, JSCell* baseCell, PropertySlot& slot, const Identifier& ident)
 {
     CodeBlock* codeBlock = exec->codeBlock();
-    Structure* structure = baseCell->structure();
+    Structure* structure = baseCell->structure(vm);
 
     if (structure->typeInfo().prohibitsPropertyCaching())
         return;
@@ -670,15 +670,18 @@ static void setupGetByIdPrototypeCache(ExecState* exec, VM& vm, Instruction* pc,
 
     PropertyOffset offset = invalidOffset;
     CodeBlock::StructureWatchpointMap& watchpointMap = codeBlock->llintGetByIdWatchpointMap();
-    auto result = watchpointMap.add(structure, Bag<LLIntPrototypeLoadAdaptiveStructureWatchpoint>());
+    Bag<LLIntPrototypeLoadAdaptiveStructureWatchpoint> watchpoints;
     for (ObjectPropertyCondition condition : conditions) {
         if (!condition.isWatchable())
             return;
         if (condition.condition().kind() == PropertyCondition::Presence)
             offset = condition.condition().offset();
-        result.iterator->value.add(condition, pc)->install();
+        watchpoints.add(condition, pc)->install();
     }
+
     ASSERT((offset == invalidOffset) == slot.isUnset());
+    auto result = watchpointMap.add(std::make_tuple(structure, pc), WTFMove(watchpoints));
+    ASSERT_UNUSED(result, result.isNewEntry);
 
     ConcurrentJSLocker locker(codeBlock->m_lock);
 
@@ -733,7 +736,7 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
         }
 
         JSCell* baseCell = baseValue.asCell();
-        Structure* structure = baseCell->structure();
+        Structure* structure = baseCell->structure(vm);
         if (slot.isValue() && slot.slotBase() == baseValue) {
             // Start out by clearing out the old cache.
             pc[0].u.opcode = LLInt::getOpcode(op_get_by_id);
@@ -763,7 +766,7 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
         && ident == vm.propertyNames->length) {
         pc[0].u.opcode = LLInt::getOpcode(op_get_array_length);
         ArrayProfile* arrayProfile = codeBlock->getOrAddArrayProfile(codeBlock->bytecodeOffset(pc));
-        arrayProfile->observeStructure(baseValue.asCell()->structure());
+        arrayProfile->observeStructure(baseValue.asCell()->structure(vm));
         pc[4].u.arrayProfile = arrayProfile;
 
         // Prevent the prototype cache from ever happening.
@@ -827,7 +830,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_id)
             static_cast<PutByIdFlags>(pc[8].u.putByIdFlags & PutByIdPersistentFlagsMask);
         
         JSCell* baseCell = baseValue.asCell();
-        Structure* structure = baseCell->structure();
+        Structure* structure = baseCell->structure(vm);
         
         if (!structure->isUncacheableDictionary()
             && !structure->typeInfo().prohibitsPropertyCaching()
@@ -919,8 +922,8 @@ static ALWAYS_INLINE JSValue getByVal(VM& vm, ExecState* exec, Instruction* pc, 
             if (object->indexingType() == ArrayWithContiguous && i < object->butterfly()->publicLength()) {
                 // FIXME: expand this to ArrayStorage, Int32, and maybe Double:
                 // https://bugs.webkit.org/show_bug.cgi?id=182940
-                auto* globalObject = object->globalObject();
-                skipMarkingOutOfBounds = globalObject->isOriginalArrayStructure(object->structure()) && globalObject->arrayPrototypeChainIsSane();
+                auto* globalObject = object->globalObject(vm);
+                skipMarkingOutOfBounds = globalObject->isOriginalArrayStructure(object->structure(vm)) && globalObject->arrayPrototypeChainIsSane();
             }
 
             if (!skipMarkingOutOfBounds && !CommonSlowPaths::canAccessArgumentIndexQuickly(*object, i))
@@ -1078,20 +1081,12 @@ LLINT_SLOW_PATH_DECL(slow_path_put_getter_setter_by_id)
     LLINT_BEGIN();
     ASSERT(LLINT_OP(1).jsValue().isObject());
     JSObject* baseObject = asObject(LLINT_OP(1).jsValue());
-    
-    GetterSetter* accessor = GetterSetter::create(vm, exec->lexicalGlobalObject());
-    LLINT_CHECK_EXCEPTION();
 
     JSValue getter = LLINT_OP(4).jsValue();
     JSValue setter = LLINT_OP(5).jsValue();
-    ASSERT(getter.isObject() || getter.isUndefined());
-    ASSERT(setter.isObject() || setter.isUndefined());
     ASSERT(getter.isObject() || setter.isObject());
-    
-    if (!getter.isUndefined())
-        accessor->setGetter(vm, exec->lexicalGlobalObject(), asObject(getter));
-    if (!setter.isUndefined())
-        accessor->setSetter(vm, exec->lexicalGlobalObject(), asObject(setter));
+    GetterSetter* accessor = GetterSetter::create(vm, exec->lexicalGlobalObject(), getter, setter);
+
     CommonSlowPaths::putDirectAccessorWithReify(vm, exec, baseObject, exec->codeBlock()->identifier(pc[2].u.operand), accessor, pc[3].u.operand);
     LLINT_END();
 }
@@ -1376,7 +1371,7 @@ static SlowPathReturnType handleHostCall(ExecState* execCallee, Instruction* pc,
 
     if (kind == CodeForCall) {
         CallData callData;
-        CallType callType = getCallData(callee, callData);
+        CallType callType = getCallData(vm, callee, callData);
     
         ASSERT(callType != CallType::JS);
     
@@ -1400,7 +1395,7 @@ static SlowPathReturnType handleHostCall(ExecState* execCallee, Instruction* pc,
     ASSERT(kind == CodeForConstruct);
     
     ConstructData constructData;
-    ConstructType constructType = getConstructData(callee, constructData);
+    ConstructType constructType = getConstructData(vm, callee, constructData);
     
     ASSERT(constructType != ConstructType::JS);
     
@@ -1842,7 +1837,7 @@ extern "C" SlowPathReturnType llint_throw_stack_overflow_error(VM* vm, ProtoCall
     auto scope = DECLARE_THROW_SCOPE(*vm);
 
     if (!exec)
-        exec = protoFrame->callee()->globalObject()->globalExec();
+        exec = protoFrame->callee()->globalObject(*vm)->globalExec();
     throwStackOverflowError(exec, scope);
     return encodeResult(0, 0);
 }

@@ -140,7 +140,7 @@ void RenderSVGImage::layout()
 void RenderSVGImage::paint(PaintInfo& paintInfo, const LayoutPoint&)
 {
     if (paintInfo.context().paintingDisabled() || paintInfo.phase != PaintPhaseForeground
-        || style().visibility() == HIDDEN || !imageResource().cachedImage())
+        || style().visibility() == Visibility::Hidden || !imageResource().cachedImage())
         return;
 
     FloatRect boundingBox = repaintRectInLocalCoordinates();
@@ -155,7 +155,7 @@ void RenderSVGImage::paint(PaintInfo& paintInfo, const LayoutPoint&)
         SVGRenderingContext renderingContext(*this, childPaintInfo);
 
         if (renderingContext.isRenderingPrepared()) {
-            if (style().svgStyle().bufferedRendering() == BR_STATIC && renderingContext.bufferForeground(m_bufferedForeground))
+            if (style().svgStyle().bufferedRendering() == BufferedRendering::Static && renderingContext.bufferForeground(m_bufferedForeground))
                 return;
 
             paintForeground(childPaintInfo);
@@ -192,7 +192,7 @@ bool RenderSVGImage::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
         return false;
 
     PointerEventsHitRules hitRules(PointerEventsHitRules::SVG_IMAGE_HITTESTING, request, style().pointerEvents());
-    bool isVisible = (style().visibility() == VISIBLE);
+    bool isVisible = (style().visibility() == Visibility::Visible);
     if (isVisible || !hitRules.requireVisible) {
         FloatPoint localPoint = localToParentTransform().inverse().value_or(AffineTransform()).mapPoint(pointInParent);
             

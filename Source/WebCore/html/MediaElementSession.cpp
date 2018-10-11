@@ -329,7 +329,7 @@ bool MediaElementSession::autoplayPermitted() const
         ALWAYS_LOG(LOGIDENTIFIER, "Returning FALSE because element has no renderer");
         return false;
     }
-    if (renderer->style().visibility() != VISIBLE) {
+    if (renderer->style().visibility() != Visibility::Visible) {
         ALWAYS_LOG(LOGIDENTIFIER, "Returning FALSE because element is not visible");
         return false;
     }
@@ -472,6 +472,15 @@ bool MediaElementSession::canShowControlsManager(PlaybackControlsPurpose purpose
         INFO_LOG(LOGIDENTIFIER, "returning FALSE: hasn't fired playing notification");
         return false;
     }
+
+#if ENABLE(FULLSCREEN_API)
+    // Elements which are not descendents of the current fullscreen element cannot be main content.
+    auto* fullscreenElement = m_element.document().webkitCurrentFullScreenElement();
+    if (fullscreenElement && !m_element.isDescendantOf(*fullscreenElement)) {
+        INFO_LOG(LOGIDENTIFIER, "returning FALSE: outside of full screen");
+        return false;
+    }
+#endif
 
     // Only allow the main content heuristic to forbid videos from showing up if our purpose is the controls manager.
     if (purpose == PlaybackControlsPurpose::ControlsManager && m_element.isVideo()) {
@@ -811,7 +820,7 @@ static bool isMainContentForPurposesOfAutoplay(const HTMLMediaElement& element)
     // Elements which are hidden by style, or have been scrolled out of view, cannot be main content.
     // But elements which have audio & video and are already playing should not stop playing because
     // they are scrolled off the page.
-    if (renderer->style().visibility() != VISIBLE)
+    if (renderer->style().visibility() != Visibility::Visible)
         return false;
     if (renderer->visibleInViewportState() != VisibleInViewportState::Yes && !element.isPlaying())
         return false;

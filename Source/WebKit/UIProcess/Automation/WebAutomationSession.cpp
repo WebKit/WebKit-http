@@ -525,6 +525,22 @@ void WebAutomationSession::loadTimerFired()
     respondToPendingPageNavigationCallbacksWithTimeout(m_pendingEagerNavigationInBrowsingContextCallbacksPerPage);
 }
 
+void WebAutomationSession::maximizeWindowOfBrowsingContext(const String& browsingContextHandle, Ref<MaximizeWindowOfBrowsingContextCallback>&& callback)
+{
+    auto* page = webPageProxyForHandle(browsingContextHandle);
+    if (!page)
+        ASYNC_FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
+
+    exitFullscreenWindowForPage(*page, [this, protectedThis = makeRef(*this), callback = WTFMove(callback), page = makeRefPtr(page)]() mutable {
+        auto& webPage = *page;
+        restoreWindowForPage(webPage, [this, callback = WTFMove(callback), page = WTFMove(page)]() mutable {
+            maximizeWindowForPage(*page, [callback = WTFMove(callback)]() {
+                callback->sendSuccess();
+            });
+        });
+    });
+}
+
 void WebAutomationSession::hideWindowOfBrowsingContext(const String& browsingContextHandle, Ref<HideWindowOfBrowsingContextCallback>&& callback)
 {
     WebPageProxy* page = webPageProxyForHandle(browsingContextHandle);
@@ -566,6 +582,11 @@ void WebAutomationSession::exitFullscreenWindowForPage(WebPageProxy& page, WTF::
 void WebAutomationSession::restoreWindowForPage(WebPageProxy& page, WTF::CompletionHandler<void()>&& completionHandler)
 {
     m_client->requestRestoreWindowOfPage(*this, page, WTFMove(completionHandler));
+}
+
+void WebAutomationSession::maximizeWindowForPage(WebPageProxy& page, WTF::CompletionHandler<void()>&& completionHandler)
+{
+    m_client->requestMaximizeWindowOfPage(*this, page, WTFMove(completionHandler));
 }
 
 void WebAutomationSession::hideWindowForPage(WebPageProxy& page, WTF::CompletionHandler<void()>&& completionHandler)
@@ -1296,7 +1317,7 @@ void WebAutomationSession::addSingleCookie(const String& browsingContextHandle, 
 
     // Inherit the domain/host from the main frame's URL if it is not explicitly set.
     if (domain.isEmpty())
-        domain = activeURL.host();
+        domain = activeURL.host().toString();
 
     cookie.domain = domainByAddingDotPrefixIfNeeded(domain);
 
@@ -1340,7 +1361,7 @@ void WebAutomationSession::deleteAllCookies(ErrorString& errorString, const Stri
     ASSERT(activeURL.isValid());
 
     WebCookieManagerProxy* cookieManager = m_processPool->supplement<WebCookieManagerProxy>();
-    cookieManager->deleteCookiesForHostname(page->websiteDataStore().sessionID(), domainByAddingDotPrefixIfNeeded(activeURL.host()));
+    cookieManager->deleteCookiesForHostname(page->websiteDataStore().sessionID(), domainByAddingDotPrefixIfNeeded(activeURL.host().toString()));
 }
 
 void WebAutomationSession::getSessionPermissions(ErrorString&, RefPtr<JSON::ArrayOf<Inspector::Protocol::Automation::SessionPermissionData>>& out_permissions)

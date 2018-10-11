@@ -181,7 +181,7 @@ void SVGInlineTextBox::paintSelectionBackground(PaintInfo& paintInfo)
     ASSERT(paintInfo.phase == PaintPhaseForeground || paintInfo.phase == PaintPhaseSelection);
     ASSERT(truncation() == cNoTruncation);
 
-    if (renderer().style().visibility() != VISIBLE)
+    if (renderer().style().visibility() != Visibility::Visible)
         return;
 
     auto& parentRenderer = parent()->renderer();
@@ -239,7 +239,7 @@ void SVGInlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffse
     ASSERT(paintInfo.phase == PaintPhaseForeground || paintInfo.phase == PaintPhaseSelection);
     ASSERT(truncation() == cNoTruncation);
 
-    if (renderer().style().visibility() != VISIBLE)
+    if (renderer().style().visibility() != Visibility::Visible)
         return;
 
     // Note: We're explicitely not supporting composition & custom underlines and custom highlighters - unlike InlineTextBox.
@@ -265,7 +265,7 @@ void SVGInlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffse
 
     const RenderStyle* selectionStyle = &style;
     if (hasSelection && shouldPaintSelectionHighlight) {
-        selectionStyle = parentRenderer.getCachedPseudoStyle(SELECTION);
+        selectionStyle = parentRenderer.getCachedPseudoStyle(PseudoId::Selection);
         if (selectionStyle) {
             const SVGRenderStyle& svgSelectionStyle = selectionStyle->svgStyle();
 
@@ -294,11 +294,11 @@ void SVGInlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffse
             paintInfo.context().concatCTM(fragmentTransform);
 
         // Spec: All text decorations except line-through should be drawn before the text is filled and stroked; thus, the text is rendered on top of these decorations.
-        int decorations = style.textDecorationsInEffect();
-        if (decorations & TextDecorationUnderline)
-            paintDecoration(paintInfo.context(), TextDecorationUnderline, fragment);
-        if (decorations & TextDecorationOverline)
-            paintDecoration(paintInfo.context(), TextDecorationOverline, fragment);
+        auto decorations = style.textDecorationsInEffect();
+        if (decorations & TextDecoration::Underline)
+            paintDecoration(paintInfo.context(), TextDecoration::Underline, fragment);
+        if (decorations & TextDecoration::Overline)
+            paintDecoration(paintInfo.context(), TextDecoration::Overline, fragment);
 
         auto paintOrder = RenderStyle::paintTypesForPaintOrder(style.paintOrder());
         for (unsigned i = 0; i < paintOrder.size(); ++i) {
@@ -323,8 +323,8 @@ void SVGInlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffse
         }
 
         // Spec: Line-through should be drawn after the text is filled and stroked; thus, the line-through is rendered on top of the text.
-        if (decorations & TextDecorationLineThrough)
-            paintDecoration(paintInfo.context(), TextDecorationLineThrough, fragment);
+        if (decorations & TextDecoration::LineThrough)
+            paintDecoration(paintInfo.context(), TextDecoration::LineThrough, fragment);
 
         setPaintingResourceMode(RenderSVGResourceMode::ApplyToDefault);
     }
@@ -395,7 +395,7 @@ TextRun SVGInlineTextBox::constructTextRun(const RenderStyle& style, const SVGTe
                 , 0 /* padding, only relevant for justified text, not relevant for SVG */
                 , AllowTrailingExpansion
                 , direction()
-                , dirOverride() || style.rtlOrdering() == VisualOrder /* directionalOverride */);
+                , dirOverride() || style.rtlOrdering() == Order::Visual /* directionalOverride */);
 
     // We handle letter & word spacing ourselves.
     run.disableSpacing();
@@ -432,22 +432,22 @@ bool SVGInlineTextBox::mapStartEndPositionsIntoFragmentCoordinates(const SVGText
     return true;
 }
 
-static inline float positionOffsetForDecoration(TextDecoration decoration, const FontMetrics& fontMetrics, float thickness)
+static inline float positionOffsetForDecoration(OptionSet<TextDecoration> decoration, const FontMetrics& fontMetrics, float thickness)
 {
     // FIXME: For SVG Fonts we need to use the attributes defined in the <font-face> if specified.
     // Compatible with Batik/Opera.
-    if (decoration == TextDecorationUnderline)
+    if (decoration == TextDecoration::Underline)
         return fontMetrics.floatAscent() + thickness * 1.5f;
-    if (decoration == TextDecorationOverline)
+    if (decoration == TextDecoration::Overline)
         return thickness;
-    if (decoration == TextDecorationLineThrough)
+    if (decoration == TextDecoration::LineThrough)
         return fontMetrics.floatAscent() * 5 / 8.0f;
 
     ASSERT_NOT_REACHED();
     return 0.0f;
 }
 
-static inline float thicknessForDecoration(TextDecoration, const FontCascade& font)
+static inline float thicknessForDecoration(OptionSet<TextDecoration>, const FontCascade& font)
 {
     // FIXME: For SVG Fonts we need to use the attributes defined in the <font-face> if specified.
     // Compatible with Batik/Opera
@@ -461,7 +461,7 @@ static inline RenderBoxModelObject& findRendererDefininingTextDecoration(InlineF
     while (parentBox) {
         renderer = &parentBox->renderer();
 
-        if (renderer->style().textDecoration() != TextDecorationNone)
+        if (!renderer->style().textDecoration().isEmpty())
             break;
 
         parentBox = parentBox->parent();
@@ -471,16 +471,16 @@ static inline RenderBoxModelObject& findRendererDefininingTextDecoration(InlineF
     return *renderer;
 }
 
-void SVGInlineTextBox::paintDecoration(GraphicsContext& context, TextDecoration decoration, const SVGTextFragment& fragment)
+void SVGInlineTextBox::paintDecoration(GraphicsContext& context, OptionSet<TextDecoration> decoration, const SVGTextFragment& fragment)
 {
-    if (renderer().style().textDecorationsInEffect() == TextDecorationNone)
+    if (renderer().style().textDecorationsInEffect().isEmpty())
         return;
 
     // Find out which render style defined the text-decoration, as its fill/stroke properties have to be used for drawing instead of ours.
     auto& decorationRenderer = findRendererDefininingTextDecoration(parent());
     const RenderStyle& decorationStyle = decorationRenderer.style();
 
-    if (decorationStyle.visibility() == HIDDEN)
+    if (decorationStyle.visibility() == Visibility::Hidden)
         return;
 
     const SVGRenderStyle& svgDecorationStyle = decorationStyle.svgStyle();
@@ -499,7 +499,7 @@ void SVGInlineTextBox::paintDecoration(GraphicsContext& context, TextDecoration 
     }
 }
 
-void SVGInlineTextBox::paintDecorationWithStyle(GraphicsContext& context, TextDecoration decoration, const SVGTextFragment& fragment, RenderBoxModelObject& decorationRenderer)
+void SVGInlineTextBox::paintDecorationWithStyle(GraphicsContext& context, OptionSet<TextDecoration> decoration, const SVGTextFragment& fragment, RenderBoxModelObject& decorationRenderer)
 {
     ASSERT(!m_paintingResource);
     ASSERT(paintingResourceMode() != RenderSVGResourceMode::ApplyToDefault);
@@ -647,7 +647,7 @@ bool SVGInlineTextBox::nodeAtPoint(const HitTestRequest& request, HitTestResult&
     ASSERT(!isLineBreak());
 
     PointerEventsHitRules hitRules(PointerEventsHitRules::SVG_TEXT_HITTESTING, request, renderer().style().pointerEvents());
-    bool isVisible = renderer().style().visibility() == VISIBLE;
+    bool isVisible = renderer().style().visibility() == Visibility::Visible;
     if (isVisible || !hitRules.requireVisible) {
         if ((hitRules.canHitStroke && (renderer().style().svgStyle().hasStroke() || !hitRules.requireStroke))
             || (hitRules.canHitFill && (renderer().style().svgStyle().hasFill() || !hitRules.requireFill))) {

@@ -53,8 +53,8 @@ static LayoutUnit contentHeightForFormattingContextRoot(LayoutContext& layoutCon
     auto* firstDisplayBox = layoutContext.displayBoxForLayoutBox(*formattingRootContainer.firstInFlowChild());
     auto* lastDisplayBox = layoutContext.displayBoxForLayoutBox(*formattingRootContainer.lastInFlowChild());
 
-    auto top = firstDisplayBox->marginBox().y();
-    auto bottom = lastDisplayBox->marginBox().maxY();
+    auto top = firstDisplayBox->marginBox().top();
+    auto bottom = lastDisplayBox->marginBox().bottom();
     // FIXME: add floating support.
     return bottom - top;
 }
@@ -523,6 +523,32 @@ LayoutUnit FormattingContext::Geometry::replacedWidth(LayoutContext&, const Box&
     }
 
     return computedWidthValue;
+}
+
+Display::Box::Edges FormattingContext::Geometry::computedBorder(LayoutContext&, const Box& layoutBox)
+{
+    auto& style = layoutBox.style();
+    return {
+        style.borderTop().boxModelWidth(),
+        style.borderLeft().boxModelWidth(),
+        style.borderBottom().boxModelWidth(),
+        style.borderRight().boxModelWidth()
+    };
+}
+
+std::optional<Display::Box::Edges> FormattingContext::Geometry::computedPadding(LayoutContext& layoutContext, const Box& layoutBox)
+{
+    if (!layoutBox.isPaddingApplicable())
+        return std::nullopt;
+
+    auto& style = layoutBox.style();
+    auto containingBlockWidth = layoutContext.displayBoxForLayoutBox(*layoutBox.containingBlock())->width();
+    return Display::Box::Edges(
+        valueForLength(style.paddingTop(), containingBlockWidth),
+        valueForLength(style.paddingLeft(), containingBlockWidth),
+        valueForLength(style.paddingBottom(), containingBlockWidth),
+        valueForLength(style.paddingRight(), containingBlockWidth)
+    );
 }
 
 }

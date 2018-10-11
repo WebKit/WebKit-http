@@ -1,3 +1,58 @@
+2018-05-31  David Kilzer  <ddkilzer@apple.com>
+
+        Fix leak of AudioDeviceID array due to an early return in AudioDeviceMac::GetNumberDevices()
+        <https://webkit.org/b/186152>
+        <rdar://problem/40692824>
+
+        Reviewed by Alex Christensen.
+
+        * Source/webrtc/modules/audio_device/mac/audio_device_mac.cc:
+        Use std::make_unique<> so that memory is allocated and
+        deallocated automatically.  Remove manual calls to free().
+        * WebKit/0011-Fix-AudioDeviceID-array-leak.patch: Add.
+
+2018-05-30  David Kilzer  <ddkilzer@apple.com>
+
+        Fix leak of a CVPixelBufferRef due to early rerturn in -[RTCVideoEncoderH264 encode:codecSpecificInfo:frameTypes:]
+        <https://webkit.org/b/186114>
+        <rdar://problem/40668097>
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoToolbox/RTCVideoEncoderH264.mm:
+        (-[RTCVideoEncoderH264 encode:codecSpecificInfo:frameTypes:]):
+        Call CVBufferRelease(pixelBuffer) before early return to free
+        it.
+        * WebKit/0010-Fix-RTCVideoEncoderH264-CVPixelBuffer-leak.patch: Add.
+
+2018-05-27  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Fix warnings about leaks found by clang static analyzer
+        <https://webkit.org/b/186009>
+        <rdar://problem/40574267>
+
+        Reviewed by Daniel Bates.
+
+        * Source/third_party/opus/src/src/opus_compare.c:
+        * Source/third_party/opus/src/src/opus_demo.c:
+        (main):
+        - Free allocated memory on early returns.
+        * Source/third_party/usrsctp/usrsctplib/user_mbuf.c:
+        (clust_constructor_dup):
+        (mb_ctor_clust):
+        - Free allocated memory if `m` is NULL.
+        * Source/third_party/usrsctp/usrsctplib/user_socket.c:
+        (usrsctp_connect): Free `sa` memory if getsockaddr() returns an
+        error, but still allocates memory for `sa`.
+        * WebKit/patch-opus.diff: Add patch for opus changes.
+        * WebKit/patch-usrsctp: Rename empty file to patch-usrsctp.diff.
+        * WebKit/patch-usrsctp.diff: Add patch for usrsctp changes.
+        * libwebrtc.xcodeproj/project.pbxproj: Remove opus_compare.c,
+        opus_demo.c, and repacketizer_demo.c from opus target.  This
+        code is for stand-alone tools, and although it may be removed
+        during dead code linking, we don't need to spend time compiling
+        it.
+
 2018-05-07  Youenn Fablet  <youenn@apple.com>
 
         Activate ARC for libwebrtc Objective C files

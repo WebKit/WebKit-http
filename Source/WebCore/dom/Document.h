@@ -395,8 +395,8 @@ public:
     bool didDispatchViewportPropertiesChanged() const { return m_didDispatchViewportPropertiesChanged; }
 #endif
 
-    void setReferrerPolicy(ReferrerPolicy referrerPolicy) { m_referrerPolicy = referrerPolicy; }
-    ReferrerPolicy referrerPolicy() const { return m_referrerPolicy; }
+    void setReferrerPolicy(ReferrerPolicy);
+    ReferrerPolicy referrerPolicy() const { return m_referrerPolicy.value_or(ReferrerPolicy::NoReferrerWhenDowngrade); }
 
     WEBCORE_EXPORT DocumentType* doctype() const;
 
@@ -579,7 +579,7 @@ public:
     };
     WEBCORE_EXPORT void updateLayoutIgnorePendingStylesheets(RunPostLayoutTasks = RunPostLayoutTasks::Asynchronously);
 
-    std::unique_ptr<RenderStyle> styleForElementIgnoringPendingStylesheets(Element&, const RenderStyle* parentStyle, PseudoId = NOPSEUDO);
+    std::unique_ptr<RenderStyle> styleForElementIgnoringPendingStylesheets(Element&, const RenderStyle* parentStyle, PseudoId = PseudoId::None);
 
     // Returns true if page box (margin boxes and page borders) is visible.
     WEBCORE_EXPORT bool isPageBoxVisible(int pageIndex);
@@ -862,7 +862,7 @@ public:
     void processViewport(const String& features, ViewportArguments::Type origin);
     void processDisabledAdaptations(const String& adaptations);
     void updateViewportArguments();
-    void processReferrerPolicy(const String& policy);
+    void processReferrerPolicy(const String& policy, ReferrerPolicySource);
 
     // Returns the owning element in the parent document.
     // Returns 0 if this is the top level document.
@@ -1826,7 +1826,7 @@ private:
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
     bool m_userHasInteractedWithMediaElement { false };
     PageCacheState m_pageCacheState { NotInPageCache };
-    ReferrerPolicy m_referrerPolicy { ReferrerPolicy::NoReferrerWhenDowngrade };
+    std::optional<ReferrerPolicy> m_referrerPolicy;
     ReadyState m_readyState { Complete };
 
     MutationObserverOptions m_mutationObserverTypes { 0 };

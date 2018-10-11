@@ -117,6 +117,7 @@ http/tests/loading/resourceLoadStatistics/ [ Skip ]
 http/tests/resourceLoadStatistics/ [ Skip ]
 http/tests/storageAccess/ [ Skip ]
 http/tests/navigation/process-swap-window-open.html [ Skip ]
+http/tests/navigation/useragent-reload.php [ Skip ]
 
 # Only Mac and iOS have an implementation of UIScriptController::doAsyncTask().
 fast/harness/uiscriptcontroller [ Skip ]
@@ -369,7 +370,7 @@ http/tests/cache/disk-cache/redirect-chain-limits.html [ DumpJSConsoleLogInStdEr
 http/tests/xmlhttprequest/gzip-content-type-no-content-encoding.html [ Skip ]
 
 # Only supported in WebKit2.
-http/tests/from-origin/ [ Skip ]
+http/wpt/cross-origin-resource-policy/ [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -1666,6 +1667,10 @@ webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-normal-my-000.html [ ImageOnlyFailure ]
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-normal-tdd-000.html [ ImageOnlyFailure ]
 
+webkit.org/b/186045 imported/w3c/web-platform-tests/css/css-animations/animation-delay-008.html [ ImageOnlyFailure Pass ]
+webkit.org/b/186045 imported/w3c/web-platform-tests/css/css-animations/animation-delay-009.html [ ImageOnlyFailure Pass ]
+webkit.org/b/186045 imported/w3c/web-platform-tests/css/css-animations/animation-delay-010.html [ ImageOnlyFailure ]
+
 ########################################
 ### START OF display: contents failures
 
@@ -1844,6 +1849,9 @@ webkit.org/b/3652 fast/dom/HTMLLinkElement/subresource.html [ Skip ]
 webkit.org/b/3652 http/tests/misc/link-rel-prefetch-and-subresource.html [ Skip ]
 webkit.org/b/3652 http/tests/misc/prefetch-purpose.html [ Skip ]
 
+# Disabled WPT tests
+webkit.org/b/185939 imported/w3c/web-platform-tests/css/WOFF2 [ Skip ]
+
 ### END OF -disabled tests
 ########################################
 
@@ -1975,10 +1983,6 @@ webkit.org/b/183390 http/wpt/html/browsers/history/the-location-interface/locati
 http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame.html [ DumpJSConsoleLogInStdErr ]
 
 media/event-queue-crash.html [ DumpJSConsoleLogInStdErr ]
-
-# This is flaky since r229831.
-webkit.org/b/183885 fast/loader/javascript-url-iframe-remove-on-navigate.html [ Pass Failure ]
-webkit.org/b/183885 fast/loader/javascript-url-iframe-remove-on-navigate-async-delegate.html [ Pass Failure ]
 
 webkit.org/b/172243 imported/w3c/web-platform-tests/IndexedDB/idbdatabase-createObjectStore-exception-order.htm [ Pass Failure ]
 

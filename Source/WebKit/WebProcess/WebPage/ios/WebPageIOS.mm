@@ -299,13 +299,15 @@ static FloatPoint relativeCenterAfterContentSizeChange(const FloatRect& original
 
 static inline FloatRect adjustExposedRectForNewScale(const FloatRect& exposedRect, double exposedRectScale, double newScale)
 {
-    double overscaledWidth = exposedRect.width();
-    double missingHorizonalMargin = exposedRect.width() * exposedRectScale / newScale - overscaledWidth;
+    if (exposedRectScale == newScale)
+        return exposedRect;
 
-    double overscaledHeight = exposedRect.height();
-    double missingVerticalMargin = exposedRect.height() * exposedRectScale / newScale - overscaledHeight;
+    float horizontalChange = exposedRect.width() * exposedRectScale / newScale - exposedRect.width();
+    float verticalChange = exposedRect.height() * exposedRectScale / newScale - exposedRect.height();
 
-    return FloatRect(exposedRect.x() - missingHorizonalMargin / 2, exposedRect.y() - missingVerticalMargin / 2, exposedRect.width() + missingHorizonalMargin, exposedRect.height() + missingVerticalMargin);
+    auto adjustedRect = exposedRect;
+    adjustedRect.inflate({ horizontalChange / 2, verticalChange / 2 });
+    return adjustedRect;
 }
 
 void WebPage::restorePageState(const HistoryItem& historyItem)
@@ -485,30 +487,6 @@ WKAccessibilityWebPageObject* WebPage::accessibilityRemoteObject()
 {
     notImplemented();
     return 0;
-}
-
-bool WebPage::platformHasLocalDataForURL(const WebCore::URL&)
-{
-    notImplemented();
-    return false;
-}
-
-String WebPage::cachedSuggestedFilenameForURL(const URL&)
-{
-    notImplemented();
-    return String();
-}
-
-String WebPage::cachedResponseMIMETypeForURL(const URL&)
-{
-    notImplemented();
-    return String();
-}
-
-RefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const URL&)
-{
-    notImplemented();
-    return nullptr;
 }
 
 bool WebPage::platformCanHandleRequest(const WebCore::ResourceRequest&)
@@ -716,7 +694,7 @@ void WebPage::sendTapHighlightForNodeIfNecessary(uint64_t requestID, Node* node)
 
     if (is<Element>(*node)) {
         ASSERT(m_page);
-        m_page->mainFrame().loader().client().prefetchDNS(downcast<Element>(*node).absoluteLinkURL().host());
+        m_page->mainFrame().loader().client().prefetchDNS(downcast<Element>(*node).absoluteLinkURL().host().toString());
     }
 
     if (is<HTMLAreaElement>(node)) {
@@ -1141,7 +1119,31 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
         if (position.rootEditableElement())
             range = Range::create(*frame.document(), position, position);
         else
+#if !ENABLE(MINIMAL_SIMULATOR)
             range = wordRangeFromPosition(position);
+#else
+            switch (wkGestureState) {
+            case GestureRecognizerState::Began:
+                m_startingGestureRange = Range::create(*frame.document(), position, position);
+                break;
+            case GestureRecognizerState::Changed:
+                if (m_startingGestureRange) {
+                    if (m_startingGestureRange->startPosition() < position)
+                        range = Range::create(*frame.document(), m_startingGestureRange->startPosition(), position);
+                    else
+                        range = Range::create(*frame.document(), position, m_startingGestureRange->startPosition());
+                }
+                break;
+            case GestureRecognizerState::Ended:
+            case GestureRecognizerState::Cancelled:
+                m_startingGestureRange = nullptr;
+                break;
+            case GestureRecognizerState::Failed:
+            case GestureRecognizerState::Possible:
+                ASSERT_NOT_REACHED();
+                break;
+            }
+#endif
         break;
 
     case GestureType::TapAndAHalf:
@@ -1291,6 +1293,7 @@ static RefPtr<Range> rangeAtWordBoundaryForPosition(Frame* frame, const VisibleP
 }
 
 void WebPage::clearSelection(){
+    m_startingGestureRange = nullptr;
     m_currentBlockSelection = nullptr;
     m_page->focusController().focusedOrMainFrame().selection().clear();
 }
@@ -2807,14 +2810,6 @@ static inline void adjustVelocityDataForBoundedScale(double& horizontalVelocity,
         scaleChangeRate = 0;
 }
 
-static inline FloatRect adjustExposedRectForBoundedScale(const FloatRect& exposedRect, double exposedRectScale, double newScale)
-{
-    if (exposedRectScale < newScale)
-        return exposedRect;
-
-    return adjustExposedRectForNewScale(exposedRect, exposedRectScale, newScale);
-}
-
 std::optional<float> WebPage::scaleFromUIProcess(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo) const
 {
     auto transactionIDForLastScaleSentToUIProcess = downcast<RemoteLayerTreeDrawingArea>(*m_drawingArea).lastCommittedTransactionID();
@@ -2885,7 +2880,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 
     float scaleToUse = scaleFromUIProcess.value_or(m_page->pageScaleFactor());
     FloatRect exposedContentRect = visibleContentRectUpdateInfo.exposedContentRect();
-    FloatRect adjustedExposedContentRect = adjustExposedRectForBoundedScale(exposedContentRect, visibleContentRectUpdateInfo.scale(), scaleToUse);
+    FloatRect adjustedExposedContentRect = adjustExposedRectForNewScale(exposedContentRect, visibleContentRectUpdateInfo.scale(), scaleToUse);
     m_drawingArea->setExposedContentRect(adjustedExposedContentRect);
 
     IntPoint scrollPosition = roundedIntPoint(visibleContentRectUpdateInfo.unobscuredContentRect().location());

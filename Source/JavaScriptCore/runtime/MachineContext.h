@@ -446,6 +446,8 @@ inline MacroAssemblerCodePtr<CFunctionPtrTag> instructionPointer(const PlatformR
 #else
     void* value = instructionPointerImpl(const_cast<PlatformRegisters&>(regs));
 #endif
+    if (!value)
+        return MacroAssemblerCodePtr<CFunctionPtrTag>(nullptr);
     return MacroAssemblerCodePtr<CFunctionPtrTag>(value);
 }
 

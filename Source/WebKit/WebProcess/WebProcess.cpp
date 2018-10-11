@@ -176,9 +176,6 @@ WebProcess::WebProcess()
     , m_pluginProcessConnectionManager(PluginProcessConnectionManager::create())
 #endif
     , m_nonVisibleProcessCleanupTimer(*this, &WebProcess::nonVisibleProcessCleanupTimerFired)
-#if PLATFORM(IOS)
-    , m_webSQLiteDatabaseTracker(*this)
-#endif
 {
     // Initialize our platform strategies.
     WebPlatformStrategies::initialize();
@@ -270,8 +267,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     WebCore::setPresentingApplicationPID(parameters.presentingApplicationPID);
 
 #if OS(LINUX)
-    if (parameters.memoryPressureMonitorHandle.fileDescriptor() != -1)
-        MemoryPressureHandler::singleton().setMemoryPressureMonitorHandle(parameters.memoryPressureMonitorHandle.releaseFileDescriptor());
     MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
 #endif
 

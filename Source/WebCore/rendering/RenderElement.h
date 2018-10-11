@@ -140,7 +140,7 @@ public:
     bool isTransparent() const { return style().opacity() < 1.0f; }
     float opacity() const { return style().opacity(); }
 
-    bool visibleToHitTesting() const { return style().visibility() == VISIBLE && style().pointerEvents() != PE_NONE; }
+    bool visibleToHitTesting() const { return style().visibility() == Visibility::Visible && style().pointerEvents() != PointerEvents::None; }
 
     bool hasBackground() const { return style().hasBackground(); }
     bool hasMask() const { return style().hasMask(); }
@@ -195,7 +195,7 @@ public:
     bool hasCounterNodeMap() const { return m_hasCounterNodeMap; }
     void setHasCounterNodeMap(bool f) { m_hasCounterNodeMap = f; }
 
-    const RenderElement* enclosingRendererWithTextDecoration(TextDecoration, bool firstLine) const;
+    const RenderElement* enclosingRendererWithTextDecoration(OptionSet<TextDecoration>, bool firstLine) const;
     void drawLineForBoxSide(GraphicsContext&, const FloatRect&, BoxSide, Color, BorderStyle, float adjacentWidth1, float adjacentWidth2, bool antialias = false) const;
 
 #if ENABLE(TEXT_AUTOSIZING)

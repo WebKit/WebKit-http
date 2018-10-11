@@ -976,7 +976,7 @@ static SlowPathReturnType handleHostCall(ExecState* execCallee, JSValue callee, 
 
     if (callLinkInfo->specializationKind() == CodeForCall) {
         CallData callData;
-        CallType callType = getCallData(callee, callData);
+        CallType callType = getCallData(*vm, callee, callData);
     
         ASSERT(callType != CallType::JS);
     
@@ -1005,7 +1005,7 @@ static SlowPathReturnType handleHostCall(ExecState* execCallee, JSValue callee, 
     ASSERT(callLinkInfo->specializationKind() == CodeForConstruct);
     
     ConstructData constructData;
-    ConstructType constructType = getConstructData(callee, constructData);
+    ConstructType constructType = getConstructData(*vm, callee, constructData);
     
     ASSERT(constructType != ConstructType::JS);
     
@@ -1781,23 +1781,15 @@ void JIT_OPERATION operationPutGetterSetter(ExecState* exec, JSCell* object, Uni
     ASSERT(object && object->isObject());
     JSObject* baseObject = asObject(object);
 
-    GetterSetter* accessor = GetterSetter::create(vm, exec->lexicalGlobalObject());
-
     JSValue getter = JSValue::decode(encodedGetterValue);
     JSValue setter = JSValue::decode(encodedSetterValue);
-    ASSERT(getter.isObject() || getter.isUndefined());
-    ASSERT(setter.isObject() || setter.isUndefined());
     ASSERT(getter.isObject() || setter.isObject());
-
-    if (!getter.isUndefined())
-        accessor->setGetter(vm, exec->lexicalGlobalObject(), asObject(getter));
-    if (!setter.isUndefined())
-        accessor->setSetter(vm, exec->lexicalGlobalObject(), asObject(setter));
+    GetterSetter* accessor = GetterSetter::create(vm, exec->lexicalGlobalObject(), getter, setter);
     CommonSlowPaths::putDirectAccessorWithReify(vm, exec, baseObject, uid, accessor, attribute);
 }
 
 #else
-void JIT_OPERATION operationPutGetterSetter(ExecState* exec, JSCell* object, UniquedStringImpl* uid, int32_t attribute, JSCell* getter, JSCell* setter)
+void JIT_OPERATION operationPutGetterSetter(ExecState* exec, JSCell* object, UniquedStringImpl* uid, int32_t attribute, JSCell* getterCell, JSCell* setterCell)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
@@ -1805,16 +1797,10 @@ void JIT_OPERATION operationPutGetterSetter(ExecState* exec, JSCell* object, Uni
     ASSERT(object && object->isObject());
     JSObject* baseObject = asObject(object);
 
-    GetterSetter* accessor = GetterSetter::create(vm, exec->lexicalGlobalObject());
-
-    ASSERT(!getter || getter->isObject());
-    ASSERT(!setter || setter->isObject());
-    ASSERT(getter || setter);
-
-    if (getter)
-        accessor->setGetter(vm, exec->lexicalGlobalObject(), getter->getObject());
-    if (setter)
-        accessor->setSetter(vm, exec->lexicalGlobalObject(), setter->getObject());
+    ASSERT(getterCell || setterCell);
+    JSObject* getter = getterCell ? getterCell->getObject() : nullptr;
+    JSObject* setter = setterCell ? setterCell->getObject() : nullptr;
+    GetterSetter* accessor = GetterSetter::create(vm, exec->lexicalGlobalObject(), getter, setter);
     CommonSlowPaths::putDirectAccessorWithReify(vm, exec, baseObject, uid, accessor, attribute);
 }
 #endif
@@ -1836,7 +1822,7 @@ int32_t JIT_OPERATION operationInstanceOfCustom(ExecState* exec, EncodedJSValue 
     JSValue value = JSValue::decode(encodedValue);
     JSValue hasInstanceValue = JSValue::decode(encodedHasInstance);
 
-    ASSERT(hasInstanceValue != exec->lexicalGlobalObject()->functionProtoHasInstanceSymbolFunction() || !constructor->structure()->typeInfo().implementsDefaultHasInstance());
+    ASSERT(hasInstanceValue != exec->lexicalGlobalObject()->functionProtoHasInstanceSymbolFunction() || !constructor->structure(vm)->typeInfo().implementsDefaultHasInstance());
 
     if (constructor->hasInstance(exec, value, hasInstanceValue))
         return 1;
@@ -1886,8 +1872,8 @@ static JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript, B
             if (object->indexingType() == ArrayWithContiguous && i < object->butterfly()->publicLength()) {
                 // FIXME: expand this to ArrayStorage, Int32, and maybe Double:
                 // https://bugs.webkit.org/show_bug.cgi?id=182940
-                auto* globalObject = object->globalObject();
-                skipMarkingOutOfBounds = globalObject->isOriginalArrayStructure(object->structure()) && globalObject->arrayPrototypeChainIsSane();
+                auto* globalObject = object->globalObject(vm);
+                skipMarkingOutOfBounds = globalObject->isOriginalArrayStructure(object->structure(vm)) && globalObject->arrayPrototypeChainIsSane();
             }
 
             if (!skipMarkingOutOfBounds && !CommonSlowPaths::canAccessArgumentIndexQuickly(*object, i)) {
@@ -2446,7 +2432,7 @@ char* JIT_OPERATION operationReallocateButterflyToHavePropertyStorageWithInitial
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    ASSERT(!object->structure()->outOfLineCapacity());
+    ASSERT(!object->structure(vm)->outOfLineCapacity());
     Butterfly* result = object->allocateMoreOutOfLineStorage(vm, 0, initialOutOfLineCapacity);
     object->nukeStructureAndSetButterfly(vm, object->structureID(), result);
     return reinterpret_cast<char*>(result);
@@ -2457,7 +2443,7 @@ char* JIT_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    Butterfly* result = object->allocateMoreOutOfLineStorage(vm, object->structure()->outOfLineCapacity(), newSize);
+    Butterfly* result = object->allocateMoreOutOfLineStorage(vm, object->structure(vm)->outOfLineCapacity(), newSize);
     object->nukeStructureAndSetButterfly(vm, object->structureID(), result);
     return reinterpret_cast<char*>(result);
 }
@@ -2719,7 +2705,14 @@ ALWAYS_INLINE static EncodedJSValue unprofiledNegate(ExecState* exec, EncodedJSV
     NativeCallFrameTracer tracer(&vm, exec);
     
     JSValue operand = JSValue::decode(encodedOperand);
-    double number = operand.toNumber(exec);
+    
+    JSValue primValue = operand.toPrimitive(exec, PreferNumber);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    
+    if (primValue.isBigInt())
+        return JSValue::encode(JSBigInt::unaryMinus(vm, asBigInt(primValue)));
+    
+    double number = primValue.toNumber(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(jsNumber(-number));
 }
@@ -2732,9 +2725,19 @@ ALWAYS_INLINE static EncodedJSValue profiledNegate(ExecState* exec, EncodedJSVal
 
     JSValue operand = JSValue::decode(encodedOperand);
     arithProfile.observeLHS(operand);
-    double number = operand.toNumber(exec);
+    
+    JSValue primValue = operand.toPrimitive(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    
+    if (primValue.isBigInt()) {
+        JSBigInt* result = JSBigInt::unaryMinus(vm, asBigInt(primValue));
+        arithProfile.observeResult(result);
 
+        return JSValue::encode(result);
+    }
+
+    double number = primValue.toNumber(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     JSValue result = jsNumber(-number);
     arithProfile.observeResult(result);
     return JSValue::encode(result);
@@ -2768,7 +2771,16 @@ EncodedJSValue JIT_OPERATION operationArithNegateProfiledOptimize(ExecState* exe
     exec->codeBlock()->dumpMathICStats();
 #endif
     
-    double number = operand.toNumber(exec);
+    JSValue primValue = operand.toPrimitive(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    
+    if (primValue.isBigInt()) {
+        JSBigInt* result = JSBigInt::unaryMinus(vm, asBigInt(primValue));
+        arithProfile->observeResult(result);
+        return JSValue::encode(result);
+    }
+
+    double number = primValue.toNumber(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     JSValue result = jsNumber(-number);
     arithProfile->observeResult(result);
@@ -2791,7 +2803,15 @@ EncodedJSValue JIT_OPERATION operationArithNegateOptimize(ExecState* exec, Encod
     exec->codeBlock()->dumpMathICStats();
 #endif
 
-    double number = operand.toNumber(exec);
+    JSValue primValue = operand.toPrimitive(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    
+    if (primValue.isBigInt()) {
+        JSBigInt* result = JSBigInt::unaryMinus(vm, asBigInt(primValue));
+        return JSValue::encode(result);
+    }
+
+    double number = primValue.toNumber(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(jsNumber(-number));
 }

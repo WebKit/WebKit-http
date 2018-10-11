@@ -88,7 +88,6 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 #if defined(__OBJC__)
 
 @interface NSURLCache ()
--(instancetype)_initWithMemoryCapacity:(NSUInteger)memoryCapacity diskCapacity:(NSUInteger)diskCapacity relativePath:(NSString *)path;
 - (CFURLCacheRef)_CFURLCache;
 @end
 
@@ -140,6 +139,9 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 #endif
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
 @property (nullable, copy) NSSet *_suppressedAutoAddedHTTPHeaders;
+#endif
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+@property (copy) NSDictionary *_socketStreamProperties;
 #endif
 @end
 

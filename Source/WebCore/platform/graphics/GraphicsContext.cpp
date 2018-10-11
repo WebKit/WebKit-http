@@ -907,7 +907,7 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
     WindRule oldFillRule = fillRule();
     Color oldFillColor = fillColor();
     
-    setFillRule(RULE_EVENODD);
+    setFillRule(WindRule::EvenOdd);
     setFillColor(color);
 
     fillPath(path);

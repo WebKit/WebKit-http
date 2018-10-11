@@ -52,10 +52,6 @@
 #include <wtf/MachSendRight.h>
 #endif
 
-#if PLATFORM(IOS)
-#include "WebSQLiteDatabaseTracker.h"
-#endif
-
 namespace API {
 class Object;
 }
@@ -238,6 +234,10 @@ public:
 
 #if PLATFORM(IOS)
     void accessibilityProcessSuspendedNotification(bool);
+#endif
+
+#if PLATFORM(COCOA)
+    void setMediaMIMETypes(const Vector<String>);
 #endif
 
 private:
@@ -436,10 +436,6 @@ private:
     WebCore::Timer m_nonVisibleProcessCleanupTimer;
 
     RefPtr<WebCore::ApplicationCacheStorage> m_applicationCacheStorage;
-
-#if PLATFORM(IOS)
-    WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
-#endif
 
     enum PageMarkingLayersAsVolatileCounterType { };
     using PageMarkingLayersAsVolatileCounter = RefCounter<PageMarkingLayersAsVolatileCounterType>;

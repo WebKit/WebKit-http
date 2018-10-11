@@ -999,6 +999,12 @@ TiledScrollingIndicatorVisible:
   category: debug
   webcoreName: showTiledScrollingIndicator
 
+DisableScreenSizeOverride:
+    type: bool
+    defaultValue: false
+    category: debug
+    condition: PLATFORM(IOS)
+
 SimpleLineLayoutDebugBordersEnabled:
   type: bool
   defaultValue: false
@@ -1188,7 +1194,7 @@ VisualViewportAPIEnabled:
 
 WebAnimationsEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
   humanReadableName: "Web Animations"
   humanReadableDescription: "Web Animations prototype"
   category: experimental
@@ -1196,7 +1202,7 @@ WebAnimationsEnabled:
 
 WebAnimationsCSSIntegrationEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
   humanReadableName: "Web Animations and CSS Integration"
   humanReadableDescription: "Expose CSS Animations and CSS Transitions through getAnimations()"
   category: experimental
@@ -1253,11 +1259,11 @@ RestrictedHTTPResponseAccess:
     category: experimental
     webcoreBinding: RuntimeEnabledFeatures
 
-FromOriginResponseHeaderEnabled:
+CrossOriginResourcePolicyEnabled:
     type: bool
-    defaultValue: false
-    humanReadableName: "From-Origin Response Header"
-    humanReadableDescription: "Support for the From-Origin Response Header"
+    defaultValue: true
+    humanReadableName: "Cross-Origin-Resource-Policy Response Header"
+    humanReadableDescription: "Support for the Cross-Origin-Resource-Policy Response Header"
     category: experimental
     webcoreBinding: RuntimeEnabledFeatures
 

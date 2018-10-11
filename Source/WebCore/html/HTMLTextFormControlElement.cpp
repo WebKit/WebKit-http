@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2018 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *
  * This library is free software; you can redistribute it and/or
@@ -304,7 +304,7 @@ void HTMLTextFormControlElement::setSelectionRange(int start, int end, TextField
         auto* rendererTextControl = renderer();
 
         if (innerText && rendererTextControl) {
-            if (rendererTextControl->style().visibility() == HIDDEN || !innerText->renderBox() || !innerText->renderBox()->height()) {
+            if (rendererTextControl->style().visibility() == Visibility::Hidden || !innerText->renderBox() || !innerText->renderBox()->height()) {
                 cacheSelection(start, end, direction);
                 return;
             }
@@ -508,9 +508,9 @@ void HTMLTextFormControlElement::disabledStateChanged()
     updateInnerTextElementEditability();
 }
 
-void HTMLTextFormControlElement::readOnlyAttributeChanged()
+void HTMLTextFormControlElement::readOnlyStateChanged()
 {
-    HTMLFormControlElementWithState::disabledAttributeChanged();
+    HTMLFormControlElementWithState::readOnlyStateChanged();
     updateInnerTextElementEditability();
 }
 
@@ -821,19 +821,19 @@ void HTMLTextFormControlElement::adjustInnerTextStyle(const RenderStyle& parentS
         // (which cannot have RTL directionality) will appear to the right of the masked characters. See <rdar://problem/7024375>.
         
         switch (textBlockStyle.textAlign()) {
-        case TASTART:
-        case JUSTIFY:
-            textBlockStyle.setTextAlign(RIGHT);
+        case TextAlignMode::Start:
+        case TextAlignMode::Justify:
+            textBlockStyle.setTextAlign(TextAlignMode::Right);
             break;
-        case TAEND:
-            textBlockStyle.setTextAlign(LEFT);
+        case TextAlignMode::End:
+            textBlockStyle.setTextAlign(TextAlignMode::Left);
             break;
-        case LEFT:
-        case RIGHT:
-        case CENTER:
-        case WEBKIT_LEFT:
-        case WEBKIT_RIGHT:
-        case WEBKIT_CENTER:
+        case TextAlignMode::Left:
+        case TextAlignMode::Right:
+        case TextAlignMode::Center:
+        case TextAlignMode::WebKitLeft:
+        case TextAlignMode::WebKitRight:
+        case TextAlignMode::WebKitCenter:
             break;
         }
 

@@ -32,7 +32,9 @@
 #import <WebKit/WKProcessPoolPrivate.h>
 #import <WebKit/WKWebsiteDataStorePrivate.h>
 #import <WebKit/_WKWebsiteDataStoreConfiguration.h>
+#import <wtf/ProcessPrivilege.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/Seconds.h>
 #import <wtf/text/WTFString.h>
 
 #if WK_API_ENABLED
@@ -193,6 +195,41 @@ TEST(WebKit, WKHTTPCookieStore)
     runTestWithWebsiteDataStore([WKWebsiteDataStore defaultDataStore]);
 }
 
+TEST(WebKit, WKHTTPCookieStoreProcessPrivilege)
+{
+    // Make sure UI process has no privilege at the beginning.
+    WTF::setProcessPrivileges({ });
+
+    [[WKWebsiteDataStore defaultDataStore] removeDataOfTypes:[WKWebsiteDataStore allWebsiteDataTypes] modifiedSince:[NSDate distantPast] completionHandler:[] {
+        gotFlag = true;
+    }];
+    TestWebKitAPI::Util::run(&gotFlag);
+    gotFlag = false;
+
+    globalCookieStore = [[WKWebsiteDataStore defaultDataStore] httpCookieStore];
+
+    RetainPtr<NSHTTPCookie> cookie = [NSHTTPCookie cookieWithProperties:@{
+        NSHTTPCookiePath: @"/",
+        NSHTTPCookieName: @"Cookie",
+        NSHTTPCookieValue: @"Value",
+        NSHTTPCookieDomain: @".www.webkit.org",
+    }];
+
+    [globalCookieStore setCookie:cookie.get() completionHandler:[]() {
+        gotFlag = true;
+    }];
+    TestWebKitAPI::Util::run(&gotFlag);
+    gotFlag = false;
+
+
+    [globalCookieStore getAllCookies:^(NSArray<NSHTTPCookie *>*cookies) {
+        ASSERT_EQ(1u, cookies.count);
+        gotFlag = true;
+    }];
+    TestWebKitAPI::Util::run(&gotFlag);
+    gotFlag = false;
+}
+
 TEST(WebKit, WKHTTPCookieStoreHttpOnly) 
 {
     WKWebsiteDataStore* dataStore = [WKWebsiteDataStore defaultDataStore];
@@ -311,6 +348,60 @@ TEST(WebKit, WKHTTPCookieStoreHttpOnly)
     [cookies release];
 }
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+TEST(WebKit, WKHTTPCookieStoreCreationTime) 
+{   
+    auto dataStore = [WKWebsiteDataStore defaultDataStore];
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    configuration.get().websiteDataStore = dataStore;
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
+
+    [webView loadHTMLString:@"WebKit Test" baseURL:[NSURL URLWithString:@"http://webkit.org"]];
+    [webView _test_waitForDidFinishNavigation];
+
+    [dataStore removeDataOfTypes:[WKWebsiteDataStore allWebsiteDataTypes] modifiedSince:[NSDate distantPast] completionHandler:[] {
+        gotFlag = true;
+    }];
+    TestWebKitAPI::Util::run(&gotFlag);
+    gotFlag = false;
+
+    globalCookieStore = dataStore.httpCookieStore;
+
+    RetainPtr<NSHTTPCookie> cookie = [NSHTTPCookie cookieWithProperties:@{
+        NSHTTPCookiePath: @"/path",
+        NSHTTPCookieName: @"CookieName",
+        NSHTTPCookieValue: @"CookieValue",
+        NSHTTPCookieDomain: @".www.webkit.org",
+    }];
+
+    [globalCookieStore setCookie:cookie.get() completionHandler:[]() {
+        gotFlag = true;
+    }];
+    TestWebKitAPI::Util::run(&gotFlag);
+    gotFlag = false;
+
+    RetainPtr<NSNumber> creationTime = nil;
+    [globalCookieStore getAllCookies:[&](NSArray<NSHTTPCookie *> *cookies) {
+        ASSERT_EQ(1u, cookies.count);
+        creationTime = [cookies objectAtIndex:0].properties[@"Created"];
+        gotFlag = true;
+    }];
+    TestWebKitAPI::Util::run(&gotFlag);
+    gotFlag = false;
+
+    sleep(1_s);
+
+    [globalCookieStore getAllCookies:^(NSArray<NSHTTPCookie *> *cookies) {
+        ASSERT_EQ(1u, cookies.count);
+        NSNumber* creationTime2 = [cookies objectAtIndex:0].properties[@"Created"];
+        EXPECT_TRUE([creationTime.get() isEqual:creationTime2]);
+        gotFlag = true;
+    }];
+    TestWebKitAPI::Util::run(&gotFlag);
+    gotFlag = false;
+}
+#endif // (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+
 // FIXME: This should be removed once <rdar://problem/35344202> is resolved and bots are updated.
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED <= 101301) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED <= 110102)
 TEST(WebKit, WKHTTPCookieStoreNonPersistent)
@@ -377,8 +468,7 @@ static bool finished;
 @implementation CookieUIDelegate
 - (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
 {
-    auto cookies = String(message.UTF8String);
-    EXPECT_TRUE(cookies == "PersistentCookieName=CookieValue; SessionCookieName=CookieValue" || cookies == "SessionCookieName=CookieValue; PersistentCookieName=CookieValue");
+    EXPECT_STREQ("PersistentCookieName=CookieValue; SessionCookieName=CookieValue", message.UTF8String);
     finished = true;
     completionHandler();
 }
@@ -399,7 +489,7 @@ TEST(WebKit, WKHTTPCookieStoreWithoutProcessPool)
         NSHTTPCookieDomain: @"127.0.0.1",
         NSHTTPCookieExpires: [NSDate distantFuture],
     }];
-    NSString *alertCookieHTML = @"<script>alert(document.cookie);</script>";
+    NSString *alertCookieHTML = @"<script>var cookies = document.cookie.split(';'); for (let i = 0; i < cookies.length; i ++) { cookies[i] = cookies[i].trim(); } cookies.sort(); alert(cookies.join('; '));</script>";
 
     // NonPersistentDataStore
     RetainPtr<WKWebsiteDataStore> ephemeralStoreWithCookies = [WKWebsiteDataStore nonPersistentDataStore];

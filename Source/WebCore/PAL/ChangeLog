@@ -1,3 +1,62 @@
+2018-05-30  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add an SPI to suppress connection termination errors from CFNetwork when network interfaces change
+        https://bugs.webkit.org/show_bug.cgi?id=186107
+        <rdar://problem/39338957>
+
+        Reviewed by Brady Eidson.
+
+        * pal/spi/cf/CFNetworkSPI.h: Declared new SPI.
+
+2018-05-27  Dan Bernstein  <mitz@apple.com>
+
+        Reverted the changes made for https://webkit.org/b/186016
+
+        They broke the USE(APPLE_INTERNAL_SDK) Sierra build.
+
+2018-05-25  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for NSURLCache in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=185990
+
+        Reviewed by Geoffrey Garen.
+
+        Drop support for NSURLCache in WebKit2 now that the WebKit network cache is stable.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2018-05-24  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Adopt SecKeyProxy SPI in certificate based challenge response code
+        https://bugs.webkit.org/show_bug.cgi?id=185848
+        <rdar://problem/34586181>
+
+        Reviewed by Alex Christensen.
+
+        Add SPIs to support SecKeyProxy and convert xpc_endpoint_t to NSXPCListenerEndpoint vice versa.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cocoa/NSXPCConnectionSPI.h: Added.
+        * pal/spi/cocoa/SecKeyProxySPI.h: Added.
+
+2018-05-24  Chris Dumez  <cdumez@apple.com>
+
+        Some of the work in initializeLogChannelsIfNecessary() is unnecessary for release builds
+        https://bugs.webkit.org/show_bug.cgi?id=185951
+
+        Reviewed by Geoffrey Garen.
+
+        Some of the work in initializeLogChannelsIfNecessary() is unnecessary for release builds and slows down
+        launch time. In particular, it is unnecessary to read NSDefaults to figure out which logging channels
+        should be enabled.
+
+        * pal/cocoa/LoggingCocoa.mm:
+        (PAL::logLevelString):
+        * pal/unix/LoggingUnix.cpp:
+        (PAL::logLevelString):
+        * pal/win/LoggingWin.cpp:
+        (PAL::logLevelString):
+
 2018-05-22  Simon Fraser  <simon.fraser@apple.com>
 
         Add notifyutil callbacks to dump the memory cache, and the list of live Pages and Documents

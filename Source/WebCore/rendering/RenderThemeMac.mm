@@ -791,7 +791,7 @@ void RenderThemeMac::setFontFromControlSize(StyleResolver&, RenderStyle& style, 
     // Reset line height
     style.setLineHeight(RenderStyle::initialLineHeight());
 
-    if (style.setFontDescription(fontDescription))
+    if (style.setFontDescription(WTFMove(fontDescription)))
         style.fontCascade().update(0);
 }
 
@@ -1324,7 +1324,7 @@ void RenderThemeMac::adjustMenuListStyle(StyleResolver& styleResolver, RenderSty
     style.setHeight(Length(Auto));
 
     // White-space is locked to pre
-    style.setWhiteSpace(PRE);
+    style.setWhiteSpace(WhiteSpace::Pre);
 
     // Set the foreground color to black or gray when we have the aqua look.
     Color c = Color::darkGray;

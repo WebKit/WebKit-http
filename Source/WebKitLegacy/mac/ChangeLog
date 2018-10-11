@@ -1,3 +1,112 @@
+2018-05-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Pass VM& parameter as much as possible
+        https://bugs.webkit.org/show_bug.cgi?id=186085
+
+        Reviewed by Saam Barati.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::invoke):
+
+2018-05-30  Daniel Bates  <dabates@apple.com>
+
+        NavigationAction does not need to hold initiating DOM Event
+        https://bugs.webkit.org/show_bug.cgi?id=185958
+        <rdar://problem/40531539>
+
+        Reviewed by Simon Fraser.
+
+        Write in terms of NavigationAction::{keyStateEventData, mouseEventDataForFirstMouseEvent}().
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::actionDictionary const):
+        (findMouseEvent): Deleted.
+
+2018-05-27  Dan Bernstein  <mitz@apple.com>
+
+        Reverted the changes made for https://webkit.org/b/186016
+
+        They broke the USE(APPLE_INTERNAL_SDK) Sierra build.
+
+
+2018-05-27  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Fix warnings about leaks found by clang static analyzer
+        <https://webkit.org/b/186009>
+        <rdar://problem/40574267>
+
+        Reviewed by Daniel Bates.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView doCommandBySelector:]): Fix use of an
+        uninitialized boolean variable (`eventWasHandled`) that only
+        happened on iOS.
+
+2018-05-27  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Avoid importing directly from subumbrella frameworks
+        https://bugs.webkit.org/show_bug.cgi?id=186016
+
+        Reviewed by Sam Weinig.
+
+        * Carbon/CarbonWindowAdapter.h: Import Carbon.h instead of HIToolbox headers.
+        * Carbon/CarbonWindowAdapter.mm: Ditto.
+        * Carbon/CarbonWindowFrame.m: Ditto.
+        * Carbon/HIViewAdapter.h: Ditto.
+        * Configurations/WebKitLegacy.xcconfig: Removed -iframework options from OTHER_CFLAGS and
+          OTHER_CPLUSPLUSFLAGS.
+        * Plugins/WebNetscapePluginEventHandlerCarbon.mm: Import Carbon.h instead of CarbonEvents.h.
+        * WebView/WebPDFDocumentExtras.mm: Import Quartz.h instead of a PDFKit header.
+        * WebView/WebPDFView.h: Ditto.
+
+2018-05-27  Sam Weinig  <sam@webkit.org>
+
+        Modernize RenderStyleConstants.h - Part 3
+        https://bugs.webkit.org/show_bug.cgi?id=186015
+
+        Reviewed by Yusuke Suzuki.
+
+        * WebView/WebView.mm:
+        (-[WebView updateTextTouchBar]):
+        Update for new enum name.
+
+2018-05-25  Chris Dumez  <cdumez@apple.com>
+
+        Minor ApplicationCacheStorage clean up
+        https://bugs.webkit.org/show_bug.cgi?id=185984
+
+        Reviewed by Youenn Fablet.
+
+        * WebCoreSupport/WebApplicationCache.mm:
+        (+[WebApplicationCache originsWithCache]):
+
+2018-05-25  David Kilzer  <ddkilzer@apple.com>
+
+        Fix issues with -dealloc methods found by clang static analyzer
+        <https://webkit.org/b/185887>
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebView/WebView.mm:
+        (-[WebUITextIndicatorData dealloc]):
+        - Move method implementation from (WebUITextIndicatorInternal)
+          category to the main category since this is public API.  This
+          fixes the false positive warning about a missing -dealloc
+          method.
+
+2018-05-24  Sam Weinig  <sam@webkit.org>
+
+        Modernize RenderStyleConstants.h - Part 2
+        https://bugs.webkit.org/show_bug.cgi?id=185901
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebHTMLRepresentation.mm:
+        (searchForLabelsBeforeElement):
+        * WebView/WebView.mm:
+        (nsTextAlignmentFromRenderStyle):
+        Update for new enum names.
+
 2018-05-22  Chris Dumez  <cdumez@apple.com>
 
         Regression(AsyncPolicyDelegates): Box.app login Window is blank

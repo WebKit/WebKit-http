@@ -7,7 +7,9 @@ set(MiniBrowser_INCLUDE_DIRECTORIES
 
 set(MiniBrowser_SOURCES
     AccessibilityDelegate.cpp
+    Common.cpp
     DOMDefaultImpl.cpp
+    MainWindow.cpp
     PageLoadTestClient.cpp
     PrintWebUIDelegate.cpp
     ResourceLoadDelegate.cpp

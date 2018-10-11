@@ -146,7 +146,45 @@ private:
             }
             break;
         }
+
+        case ValueNegate: {
+            if (node->child1()->shouldSpeculateInt32OrBoolean() && node->canSpeculateInt32(FixupPass)) {
+                node->setOp(ArithNegate);
+                fixIntOrBooleanEdge(node->child1());
+                if (bytecodeCanTruncateInteger(node->arithNodeFlags()))
+                    node->setArithMode(Arith::Unchecked);
+                else if (bytecodeCanIgnoreNegativeZero(node->arithNodeFlags()))
+                    node->setArithMode(Arith::CheckOverflow);
+                else
+                    node->setArithMode(Arith::CheckOverflowAndNegativeZero);
+                node->setResult(NodeResultInt32);
+                node->clearFlags(NodeMustGenerate);
+                break;
+            }
             
+            if (m_graph.unaryArithShouldSpeculateAnyInt(node, FixupPass)) {
+                node->setOp(ArithNegate);
+                fixEdge<Int52RepUse>(node->child1());
+                if (bytecodeCanIgnoreNegativeZero(node->arithNodeFlags()))
+                    node->setArithMode(Arith::CheckOverflow);
+                else
+                    node->setArithMode(Arith::CheckOverflowAndNegativeZero);
+                node->setResult(NodeResultInt52);
+                node->clearFlags(NodeMustGenerate);
+                break;
+            }
+            if (node->child1()->shouldSpeculateNotCell()) {
+                node->setOp(ArithNegate);
+                fixDoubleOrBooleanEdge(node->child1());
+                node->setResult(NodeResultDouble);
+                node->clearFlags(NodeMustGenerate);
+            } else {
+                fixEdge<UntypedUse>(node->child1());
+                node->setResult(NodeResultJS);
+            }
+            break;
+        }
+
         case ValueAdd: {
             if (attemptToMakeIntegerAdd(node)) {
                 node->setOp(ArithAdd);
@@ -257,12 +295,10 @@ private:
                 node->clearFlags(NodeMustGenerate);
                 break;
             }
-            if (node->child1()->shouldSpeculateNotCell()) {
-                fixDoubleOrBooleanEdge(node->child1());
-                node->setResult(NodeResultDouble);
-                node->clearFlags(NodeMustGenerate);
-            } else
-                fixEdge<UntypedUse>(node->child1());
+
+            fixDoubleOrBooleanEdge(node->child1());
+            node->setResult(NodeResultDouble);
+            node->clearFlags(NodeMustGenerate);
             break;
         }
             
@@ -678,8 +714,8 @@ private:
                     
                     if (canDoSaneChain) {
                         JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
-                        Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure();
-                        Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure();
+                        Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure(vm());
+                        Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure(vm());
                         if (arrayPrototypeStructure->transitionWatchpointSetIsStillValid()
                             && objectPrototypeStructure->transitionWatchpointSetIsStillValid()
                             && globalObject->arrayPrototypeChainIsSane()) {
@@ -1148,8 +1184,8 @@ private:
             // When we go down the fast path, we don't consult the prototype chain, so we must prove
             // that it doesn't contain any indexed properties, and that any holes will result in
             // jsUndefined().
-            Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure();
-            Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure();
+            Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure(vm());
+            Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure(vm());
             if (node->child1()->shouldSpeculateArray()
                 && arrayPrototypeStructure->transitionWatchpointSetIsStillValid()
                 && objectPrototypeStructure->transitionWatchpointSetIsStillValid()

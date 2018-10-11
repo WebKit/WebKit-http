@@ -67,10 +67,10 @@ public:
             return;
 
         if (m_interface && m_interface->playbackSessionModel())
-            interface->playbackSessionModel()->removeClient(*this);
+            m_interface->playbackSessionModel()->removeClient(*this);
         m_interface = interface;
         if (m_interface && m_interface->playbackSessionModel())
-            interface->playbackSessionModel()->addClient(*this);
+            m_interface->playbackSessionModel()->addClient(*this);
     }
 
 private:
@@ -147,6 +147,9 @@ private:
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 
     _playbackClient.setInterface(nullptr);
+
+    [_target release];
+    [_location release];
 
     [super dealloc];
 }
@@ -300,6 +303,8 @@ private:
 
     if (auto* manager = self._manager)
         manager->setFullscreenAutoHideDelay(autoHideDelay);
+
+    [super viewWillAppear:animated];
 }
 
 - (void)viewDidLayoutSubviews
@@ -357,7 +362,7 @@ private:
 @dynamic _effectiveFullscreenInsetTop;
 - (CGFloat)_effectiveFullscreenInsetTop
 {
-    if (!self.prefersStatusBarHidden)
+    if (self.prefersStatusBarHidden)
         return 0;
 
     CGRect cancelFrame = _cancelButton.get().frame;

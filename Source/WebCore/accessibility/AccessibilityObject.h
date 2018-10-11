@@ -708,6 +708,7 @@ public:
     virtual bool canvasHasFallbackContent() const { return false; }
     bool supportsRangeValue() const;
     const AtomicString& identifierAttribute() const;
+    const AtomicString& linkRelValue() const;
     void classList(Vector<String>&) const;
     virtual String roleDescription() const;
     AccessibilityCurrentState currentState() const;
@@ -1013,7 +1014,7 @@ public:
     bool supportsARIAAttributes() const;
     
     // CSS3 Speech properties.
-    virtual ESpeakAs speakAsProperty() const { return SpeakNormal; }
+    virtual OptionSet<SpeakAs> speakAsProperty() const { return OptionSet<SpeakAs> { }; }
 
     // Make this object visible by scrolling as many nested scrollable views as needed.
     virtual void scrollToMakeVisible() const;

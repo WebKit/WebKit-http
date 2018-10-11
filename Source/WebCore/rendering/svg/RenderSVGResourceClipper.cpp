@@ -78,7 +78,7 @@ bool RenderSVGResourceClipper::pathOnlyClipping(GraphicsContext& context, const 
     // If the current clip-path gets clipped itself, we have to fallback to masking.
     if (!style().svgStyle().clipperResource().isEmpty())
         return false;
-    WindRule clipRule = RULE_NONZERO;
+    WindRule clipRule = WindRule::NonZero;
     Path clipPath = Path();
 
     // If clip-path only contains one visible shape or path, we can use path-based clipping. Invisible
@@ -97,7 +97,7 @@ bool RenderSVGResourceClipper::pathOnlyClipping(GraphicsContext& context, const 
             continue;
         SVGGraphicsElement& styled = downcast<SVGGraphicsElement>(*childNode);
         const RenderStyle& style = renderer->style();
-        if (style.display() == NONE || style.visibility() != VISIBLE)
+        if (style.display() == DisplayType::None || style.visibility() != Visibility::Visible)
              continue;
         const SVGRenderStyle& svgStyle = style.svgStyle();
         // Current shape in clip-path gets clipped too. Fallback to masking.
@@ -206,7 +206,7 @@ bool RenderSVGResourceClipper::drawContentIntoMaskImage(const ClipperMaskImage& 
             return false;
         }
         const RenderStyle& style = renderer->style();
-        if (style.display() == NONE || style.visibility() != VISIBLE)
+        if (style.display() == DisplayType::None || style.visibility() != Visibility::Visible)
             continue;
 
         WindRule newClipRule = style.svgStyle().clipRule();
@@ -246,7 +246,7 @@ void RenderSVGResourceClipper::calculateClipContentRepaintRect()
         if (!renderer->isSVGShape() && !renderer->isSVGText() && !childNode->hasTagName(SVGNames::useTag))
             continue;
         const RenderStyle& style = renderer->style();
-        if (style.display() == NONE || style.visibility() != VISIBLE)
+        if (style.display() == DisplayType::None || style.visibility() != Visibility::Visible)
              continue;
         m_clipBoundaries.unite(renderer->localToParentTransform().mapRect(renderer->repaintRectInLocalCoordinates()));
     }

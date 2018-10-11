@@ -80,7 +80,7 @@ void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& pai
         return;
 
     auto& style = flow.style();
-    if (style.visibility() != VISIBLE)
+    if (style.visibility() != Visibility::Visible)
         return;
 
     TextPainter textPainter(paintInfo.context());
@@ -94,7 +94,7 @@ void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& pai
     }
 
     std::optional<TextDecorationPainter> textDecorationPainter;
-    if (style.textDecorationsInEffect() != TextDecorationNone) {
+    if (!style.textDecorationsInEffect().isEmpty()) {
         const RenderText* textRenderer = childrenOfType<RenderText>(flow).first();
         if (textRenderer) {
             textDecorationPainter.emplace(paintInfo.context(), style.textDecorationsInEffect(), *textRenderer, false);
@@ -143,7 +143,7 @@ bool hitTestFlow(const RenderBlockFlow& flow, const Layout& layout, const HitTes
         return false;
 
     auto& style = flow.style();
-    if (style.visibility() != VISIBLE || style.pointerEvents() == PE_NONE)
+    if (style.visibility() != Visibility::Visible || style.pointerEvents() == PointerEvents::None)
         return false;
 
     LayoutRect rangeRect = locationInContainer.boundingBox();

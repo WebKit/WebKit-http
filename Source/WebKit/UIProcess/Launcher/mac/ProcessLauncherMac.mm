@@ -212,10 +212,10 @@ void ProcessLauncher::launchProcess()
         if (!processLauncher->isLaunching())
             return;
 
-#ifndef _NDEBUG
+#if !ASSERT_DISABLED
         mach_port_urefs_t sendRightCount = 0;
         mach_port_get_refs(mach_task_self(), listeningPort, MACH_PORT_RIGHT_SEND, &sendRightCount);
-        ASSERT(sendRightCount == 1);
+        ASSERT(sendRightCount >= 1);
 #endif
 
         // We failed to launch. Release the send right.
@@ -249,10 +249,10 @@ void ProcessLauncher::launchProcess()
             ASSERT(xpc_get_type(reply) == XPC_TYPE_DICTIONARY);
             ASSERT(!strcmp(xpc_dictionary_get_string(reply, "message-name"), "process-finished-launching"));
 
-#ifndef _NDEBUG
+#if !ASSERT_DISABLED
             mach_port_urefs_t sendRightCount = 0;
             mach_port_get_refs(mach_task_self(), listeningPort, MACH_PORT_RIGHT_SEND, &sendRightCount);
-            ASSERT(sendRightCount == 1);
+            ASSERT(sendRightCount >= 1);
 #endif
 
             deallocateSendRightSafely(listeningPort);

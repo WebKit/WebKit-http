@@ -69,7 +69,7 @@ bool RenderSVGResourceMasker::applyResource(RenderElement& renderer, const Rende
 
     if (!maskerData->maskImage && !repaintRect.isEmpty()) {
         const SVGRenderStyle& svgStyle = style().svgStyle();
-        ColorSpace colorSpace = svgStyle.colorInterpolation() == CI_LINEARRGB ? ColorSpaceLinearRGB : ColorSpaceSRGB;
+        ColorSpace colorSpace = svgStyle.colorInterpolation() == ColorInterpolation::LinearRGB ? ColorSpaceLinearRGB : ColorSpaceSRGB;
         // FIXME (149470): This image buffer should not be unconditionally unaccelerated. Making it match the context breaks alpha masking, though.
         maskerData->maskImage = SVGRenderingContext::createImageBuffer(repaintRect, absoluteTransform, colorSpace, Unaccelerated);
         if (!maskerData->maskImage)
@@ -107,7 +107,7 @@ bool RenderSVGResourceMasker::drawContentIntoMaskImage(MaskerData* maskerData, C
         if (renderer->needsLayout())
             return false;
         const RenderStyle& style = renderer->style();
-        if (style.display() == NONE || style.visibility() != VISIBLE)
+        if (style.display() == DisplayType::None || style.visibility() != Visibility::Visible)
             continue;
         SVGRenderingContext::renderSubtreeToImageBuffer(maskerData->maskImage.get(), *renderer, maskContentTransformation);
     }
@@ -119,7 +119,7 @@ bool RenderSVGResourceMasker::drawContentIntoMaskImage(MaskerData* maskerData, C
 #endif
 
     // Create the luminance mask.
-    if (style().svgStyle().maskType() == MT_LUMINANCE)
+    if (style().svgStyle().maskType() == MaskType::Luminance)
         maskerData->maskImage->convertToLuminanceMask();
 
     return true;
@@ -132,7 +132,7 @@ void RenderSVGResourceMasker::calculateMaskContentRepaintRect()
         if (!childNode->isSVGElement() || !renderer)
             continue;
         const RenderStyle& style = renderer->style();
-        if (style.display() == NONE || style.visibility() != VISIBLE)
+        if (style.display() == DisplayType::None || style.visibility() != Visibility::Visible)
              continue;
         m_maskContentBoundaries.unite(renderer->localToParentTransform().mapRect(renderer->repaintRectInLocalCoordinates()));
     }

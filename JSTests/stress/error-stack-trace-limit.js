@@ -1,10 +1,6 @@
-function assert(testID, b) {
-    if (!b)
-        throw new Error("FAILED test " + testID);
-}
-
 function assertEquals(testID, a, b) {
-    assert(testID, a == b);
+    if (a != b)
+        throw new Error("FAILED test " + testID + " got: " + a);
 }
 
 var desc = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit");
@@ -24,7 +20,7 @@ function recurse(x) {
 }
 
 function numberOfFrames(str) {
-    if (str == "")
+    if (str === undefined || str === "")
         return 0;
     var lines = str.split(/\r\n|\r|\n/);
     // note: Chrome always prints a header line. So, for Chrome, use lines.length - 1.
@@ -53,7 +49,7 @@ function testLimit(testID, updateLimit, reentryCount, expectedLimit, expectedNum
 
 testLimit(1000, () => { Error.stackTraceLimit = 0 }, 1000, 0, 0);
 // note: Chrome always prints a header line. So, Chrome expects "Error" here.
-assertEquals(1100, exception.stack, "");
+assertEquals(1100, exception.stack, undefined);
 
 testLimit(2000, () => { Error.stackTraceLimit = 10 }, 1000, 10, 10);
 testLimit(3000, () => { Error.stackTraceLimit = 100 }, 1000, 100, 100);

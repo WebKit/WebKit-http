@@ -67,7 +67,7 @@ void DeclarativeAnimation::initialize(const Element& target, const RenderStyle* 
     setTimeline(&target.document().timeline());
     downcast<KeyframeEffectReadOnly>(effect())->computeDeclarativeAnimationBlendingKeyframes(oldStyle, newStyle);
     syncPropertiesWithBackingAnimation();
-    if (backingAnimation().playState() == AnimPlayStatePlaying)
+    if (backingAnimation().playState() == AnimationPlayState::Playing)
         play();
     else
         pause();
@@ -123,7 +123,7 @@ void DeclarativeAnimation::invalidateDOMEvents(Seconds elapsedTime)
     auto* animationEffect = effect();
 
     auto isPending = pending();
-    auto iteration = animationEffect ? animationEffect->currentIteration().value() : 0;
+    auto iteration = animationEffect ? animationEffect->currentIteration().value_or(0) : 0;
     auto currentPhase = animationEffect ? animationEffect->phase() : phaseWithoutEffect();
 
     bool wasActive = m_previousPhase == AnimationEffectReadOnly::Phase::Active;

@@ -2221,8 +2221,8 @@ void SpeculativeJIT::compileGetByValOnString(Node* node)
             // on a stringPrototypeChainIsSane() guaranteeing that the prototypes have no negative
             // indexed properties either.
             // https://bugs.webkit.org/show_bug.cgi?id=144668
-            m_jit.graph().registerAndWatchStructureTransition(globalObject->stringPrototype()->structure());
-            m_jit.graph().registerAndWatchStructureTransition(globalObject->objectPrototype()->structure());
+            m_jit.graph().registerAndWatchStructureTransition(globalObject->stringPrototype()->structure(*m_jit.vm()));
+            m_jit.graph().registerAndWatchStructureTransition(globalObject->objectPrototype()->structure(*m_jit.vm()));
             prototypeChainIsSane = globalObject->stringPrototypeChainIsSane();
         }
         if (prototypeChainIsSane) {
@@ -4478,6 +4478,18 @@ void SpeculativeJIT::compileArithSub(Node* node)
     }
 }
 
+void SpeculativeJIT::compileValueNegate(Node* node)
+{
+    CodeBlock* baselineCodeBlock = m_jit.graph().baselineCodeBlockFor(node->origin.semantic);
+    ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
+    Instruction* instruction = &baselineCodeBlock->instructions()[node->origin.semantic.bytecodeIndex];
+    JITNegIC* negIC = m_jit.codeBlock()->addJITNegIC(arithProfile, instruction);
+    auto repatchingFunction = operationArithNegateOptimize;
+    auto nonRepatchingFunction = operationArithNegate;
+    bool needsScratchGPRReg = true;
+    compileMathIC(node, negIC, needsScratchGPRReg, repatchingFunction, nonRepatchingFunction);
+}
+
 void SpeculativeJIT::compileArithNegate(Node* node)
 {
     switch (node->child1().useKind()) {
@@ -4552,15 +4564,7 @@ void SpeculativeJIT::compileArithNegate(Node* node)
     }
         
     default: {
-        CodeBlock* baselineCodeBlock = m_jit.graph().baselineCodeBlockFor(node->origin.semantic);
-        ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
-        Instruction* instruction = &baselineCodeBlock->instructions()[node->origin.semantic.bytecodeIndex];
-        JITNegIC* negIC = m_jit.codeBlock()->addJITNegIC(arithProfile, instruction);
-        auto repatchingFunction = operationArithNegateOptimize;
-        auto nonRepatchingFunction = operationArithNegate;
-        bool needsScratchGPRReg = true;
-        compileMathIC(node, negIC, needsScratchGPRReg, repatchingFunction, nonRepatchingFunction);
-        return;
+        RELEASE_ASSERT_NOT_REACHED();
     }
     }
 }

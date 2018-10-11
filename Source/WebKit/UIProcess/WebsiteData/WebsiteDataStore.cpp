@@ -55,6 +55,10 @@
 #include "PluginProcessManager.h"
 #endif
 
+#if HAVE(SEC_KEY_PROXY)
+#include "SecKeyProxyStore.h"
+#endif
+
 namespace WebKit {
 
 static bool allowsWebsiteDataRecordsForAllOrigins;
@@ -443,12 +447,11 @@ void WebsiteDataStore::fetchDataAndApply(OptionSet<WebsiteDataType> dataTypes, O
 
             WebsiteData websiteData;
 
-            HashSet<RefPtr<WebCore::SecurityOrigin>> origins;
             // FIXME: getOriginsWithCache should return a collection of SecurityOriginDatas.
-            storage->getOriginsWithCache(origins);
+            auto origins = storage->originsWithCache();
 
             for (auto& origin : origins) {
-                uint64_t size = fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes) ? storage->diskUsageForOrigin(*origin) : 0;
+                uint64_t size = fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes) ? storage->diskUsageForOrigin(origin) : 0;
                 WebsiteData::Entry entry { origin->data(), WebsiteDataType::OfflineWebApplicationCache, size };
 
                 websiteData.entries.append(WTFMove(entry));
@@ -1474,7 +1477,7 @@ void WebsiteDataStore::enableResourceLoadStatisticsAndSetTestingCallback(Functio
     m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(m_configuration.resourceLoadStatisticsDirectory, WTFMove(callback), m_sessionID.isEphemeral());
 #endif
 
-    for (auto& processPool : processPools())
+    for (auto& processPool : processPools(std::numeric_limits<size_t>::max(), false))
         processPool->setResourceLoadStatisticsEnabled(true);
 }
 
@@ -1536,6 +1539,13 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
     WebsiteDataStoreParameters parameters;
     parameters.networkSessionParameters.sessionID = m_sessionID;
     return parameters;
+}
+#endif
+
+#if HAVE(SEC_KEY_PROXY)
+void WebsiteDataStore::addSecKeyProxyStore(Ref<SecKeyProxyStore>&& store)
+{
+    m_secKeyProxyStores.append(WTFMove(store));
 }
 #endif
 

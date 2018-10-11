@@ -547,17 +547,17 @@ Ref<Scrollbar> FrameView::createScrollbar(ScrollbarOrientation orientation)
 
     // Try the <body> element first as a scrollbar source.
     HTMLElement* body = doc ? doc->bodyOrFrameset() : nullptr;
-    if (body && body->renderer() && body->renderer()->style().hasPseudoStyle(SCROLLBAR))
+    if (body && body->renderer() && body->renderer()->style().hasPseudoStyle(PseudoId::Scrollbar))
         return RenderScrollbar::createCustomScrollbar(*this, orientation, body);
     
     // If the <body> didn't have a custom style, then the root element might.
     Element* docElement = doc ? doc->documentElement() : nullptr;
-    if (docElement && docElement->renderer() && docElement->renderer()->style().hasPseudoStyle(SCROLLBAR))
+    if (docElement && docElement->renderer() && docElement->renderer()->style().hasPseudoStyle(PseudoId::Scrollbar))
         return RenderScrollbar::createCustomScrollbar(*this, orientation, docElement);
-        
+
     // If we have an owning iframe/frame element, then it can set the custom scrollbar also.
     RenderWidget* frameRenderer = frame().ownerRenderer();
-    if (frameRenderer && frameRenderer->style().hasPseudoStyle(SCROLLBAR))
+    if (frameRenderer && frameRenderer->style().hasPseudoStyle(PseudoId::Scrollbar))
         return RenderScrollbar::createCustomScrollbar(*this, orientation, nullptr, &frame());
     
     // Nobody set a custom style, so we just use a native scrollbar.
@@ -1379,6 +1379,8 @@ void FrameView::adjustMediaTypeForPrinting(bool printing)
             setMediaType(m_mediaTypeWhenNotPrinting);
         m_mediaTypeWhenNotPrinting = String();
     }
+
+    RenderTheme::singleton().platformColorsDidChange();
 }
 
 bool FrameView::useSlowRepaints(bool considerOverlap) const
@@ -2894,6 +2896,7 @@ void FrameView::setTransparent(bool isTransparent)
         return;
 
     renderView()->compositor().rootBackgroundTransparencyChanged();
+    setNeedsLayout();
 }
 
 bool FrameView::hasOpaqueBackground() const
@@ -2909,7 +2912,7 @@ Color FrameView::baseBackgroundColor() const
 void FrameView::setBaseBackgroundColor(const Color& backgroundColor)
 {
     bool wasOpaque = m_baseBackgroundColor.isOpaque();
-    
+
     if (!backgroundColor.isValid())
         m_baseBackgroundColor = Color::white;
     else
@@ -2919,6 +2922,7 @@ void FrameView::setBaseBackgroundColor(const Color& backgroundColor)
         return;
 
     recalculateScrollbarOverlayStyle();
+    setNeedsLayout();
 
     if (m_baseBackgroundColor.isOpaque() != wasOpaque)
         renderView()->compositor().rootBackgroundTransparencyChanged();
@@ -2930,6 +2934,8 @@ void FrameView::updateBackgroundRecursively(const Color& backgroundColor, bool t
         if (FrameView* view = frame->view()) {
             view->setTransparent(transparent);
             view->setBaseBackgroundColor(backgroundColor);
+            if (view->needsLayout())
+                view->layoutContext().scheduleLayout();
         }
     }
 }
@@ -3619,7 +3625,7 @@ float FrameView::adjustScrollStepForFixedContent(float step, ScrollbarOrientatio
     float bottomObscuredArea = 0;
     for (const auto& positionedObject : *positionedObjects) {
         const RenderStyle& style = positionedObject->style();
-        if (style.position() != PositionType::Fixed || style.visibility() == HIDDEN || !style.opacity())
+        if (style.position() != PositionType::Fixed || style.visibility() == Visibility::Hidden || !style.opacity())
             continue;
 
         FloatQuad contentQuad = positionedObject->absoluteContentQuad();
@@ -3828,7 +3834,7 @@ void FrameView::updateScrollCorner()
         Element* body = doc ? doc->bodyOrFrameset() : nullptr;
         if (body && body->renderer()) {
             renderer = body->renderer();
-            cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(SCROLLBAR_CORNER), &renderer->style());
+            cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(PseudoId::ScrollbarCorner), &renderer->style());
         }
         
         if (!cornerStyle) {
@@ -3836,14 +3842,14 @@ void FrameView::updateScrollCorner()
             Element* docElement = doc ? doc->documentElement() : nullptr;
             if (docElement && docElement->renderer()) {
                 renderer = docElement->renderer();
-                cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(SCROLLBAR_CORNER), &renderer->style());
+                cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(PseudoId::ScrollbarCorner), &renderer->style());
             }
         }
         
         if (!cornerStyle) {
             // If we have an owning iframe/frame element, then it can set the custom scrollbar also.
             if (RenderWidget* renderer = frame().ownerRenderer())
-                cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(SCROLLBAR_CORNER), &renderer->style());
+                cornerStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(PseudoId::ScrollbarCorner), &renderer->style());
         }
     }
 

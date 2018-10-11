@@ -45,9 +45,38 @@ namespace Layout {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(LayoutContext);
 
-LayoutContext::LayoutContext(const Box& root)
-    : m_root(makeWeakPtr(const_cast<Box&>(root)))
+LayoutContext::LayoutContext()
 {
+}
+
+void LayoutContext::initializeRoot(const Container& root, const LayoutSize& containerSize)
+{
+    ASSERT(root.establishesFormattingContext());
+
+    m_root = makeWeakPtr(const_cast<Container&>(root));
+    auto& displayBox = createDisplayBox(root);
+    // Root is always at 0 0 with no margin 
+    displayBox.setTopLeft({ });
+    displayBox.setSize(containerSize);
+    displayBox.setMargin({ });
+
+    auto& style = root.style();
+    // FIXME: m_root could very well be a formatting context root with ancestors and resolvable border and padding (as opposed to the topmost root)
+    displayBox.setBorder({
+        style.borderTop().boxModelWidth(),
+        style.borderLeft().boxModelWidth(),
+        style.borderBottom().boxModelWidth(),
+        style.borderRight().boxModelWidth()
+    });
+
+    displayBox.setPadding({
+        valueForLength(style.paddingTop(), containerSize.width()),
+        valueForLength(style.paddingLeft(), containerSize.width()),
+        valueForLength(style.paddingBottom(), containerSize.width()),
+        valueForLength(style.paddingRight(), containerSize.width())
+    });
+
+    m_formattingContextRootListForLayout.add(&root);
 }
 
 void LayoutContext::updateLayout()

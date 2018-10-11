@@ -1,3 +1,187 @@
+2018-05-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r232212.
+        https://bugs.webkit.org/show_bug.cgi?id=186153
+
+        broke build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "JavaScriptCore: Disable 32-bit JIT on Windows"
+        https://bugs.webkit.org/show_bug.cgi?id=185989
+        https://trac.webkit.org/changeset/232212
+
+2018-05-30  Keith Miller  <keith_miller@apple.com>
+
+        LLInt get_by_id prototype caching doesn't properly handle changes
+        https://bugs.webkit.org/show_bug.cgi?id=186112
+
+        Reviewed by Filip Pizlo.
+
+        Mark some methods const.
+
+        * wtf/Bag.h:
+        (WTF::Bag::begin const):
+        (WTF::Bag::end const):
+        (WTF::Bag::unwrappedHead const):
+        (WTF::Bag::end): Deleted.
+        (WTF::Bag::unwrappedHead): Deleted.
+
+2018-05-30  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce String allocations
+        https://bugs.webkit.org/show_bug.cgi?id=186059
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/StringView.cpp:
+        (WTF::convertASCIICase):
+        (WTF::StringView::convertToASCIILowercase const):
+        (WTF::StringView::convertToASCIIUppercase const):
+        * wtf/text/StringView.h:
+        * wtf/text/cf/StringViewCF.cpp:
+        (WTF::StringView::createCFString const):
+
+2018-05-30  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [MIPS] Fix build on MIPS32r1
+        https://bugs.webkit.org/show_bug.cgi?id=185944
+
+        Reviewed by Yusuke Suzuki.
+
+        Added WTF_MIPS_ISA_REV_AT_LEAST to test for certain release or later.
+
+        * wtf/Platform.h:
+
+2018-05-29  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build
+        https://bugs.webkit.org/show_bug.cgi?id=186078
+
+        Unreviewed build fix.
+
+        * wtf/Platform.h:
+
+2018-05-29  Saam Barati  <sbarati@apple.com>
+
+        JSC should put bmalloc's scavenger into mini mode
+        https://bugs.webkit.org/show_bug.cgi?id=185988
+
+        Reviewed by Michael Saboff.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastEnableMiniMode):
+        * wtf/FastMalloc.h:
+
+2018-05-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, follow-up after r232244
+        https://bugs.webkit.org/show_bug.cgi?id=186023
+
+        _BitScanReverse64 is available only in X86_64 and ARM.
+
+        * wtf/MathExtras.h:
+        (WTF::clz64):
+
+2018-05-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add clz32 / clz64 for MSVC
+        https://bugs.webkit.org/show_bug.cgi?id=186023
+
+        Reviewed by Daniel Bates.
+
+        This patch adds efficient implementations of clz32 and clz64 for MSVC.
+        While MSVC has _lzcnt intrinsic, it is only valid if the CPU has lzcnt instruction.
+        Instead of checking cpuid here, we just use _BitScanReverse and _BitScanReverse64.
+
+        * wtf/MathExtras.h:
+        (WTF::clz32):
+        (WTF::clz64):
+
+2018-05-26  Filip Pizlo  <fpizlo@apple.com>
+
+        testair sometimes crashes due to races in initialization of ARC4RandomNumberGenerator
+        https://bugs.webkit.org/show_bug.cgi?id=186014
+
+        Reviewed by Yusuke Suzuki.
+        
+        testair launches a bunch of threads and the threads do B3 things that use random numbers.
+        Sometimes two threads will initialize the random number generator at the same time, because
+        that's what happens when you use static NeverDestroyed<>.
+        
+        This changes that code to use std::call_once to initialize the shared
+        ARC4RandomNumberGenerator.
+        
+        Also, this adds a diagnostic message to the lock's assertion. This assertion was the symptom
+        of the race, and knowing the state of the lock when the assertion fired gave a darn good clue
+        about what was going on: the lock's value was 0 at time of unlock, implying that another
+        thread reinitialized the lock to zero by rerunning the constructor.
+
+        * wtf/CryptographicallyRandomNumber.cpp:
+        * wtf/LockAlgorithmInlines.h:
+        (WTF::Hooks>::unlockSlow):
+
+2018-05-25  Michael Saboff  <msaboff@apple.com>
+
+        JavaScriptCore: Disable 32-bit JIT on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=185989
+
+        Reviewed by Saam Barati.
+
+        * wtf/Platform.h:
+
+2018-05-24  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] Memory pressure monitor doesn't reliable notify all the subprocesses
+        https://bugs.webkit.org/show_bug.cgi?id=184261
+
+        Reviewed by Carlos Garcia Campos.
+
+        Receive the memory pressure notifications from the UIProcess memory monitor via WebKit IPC.
+
+        * wtf/MemoryPressureHandler.h:
+        * wtf/linux/MemoryPressureHandlerLinux.cpp:
+        (WTF::MemoryPressureHandler::triggerMemoryPressureEvent):
+        (WTF::MemoryPressureHandler::install):
+        (WTF::MemoryPressureHandler::uninstall):
+
+2018-05-24  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Adopt SecKeyProxy SPI in certificate based challenge response code
+        https://bugs.webkit.org/show_bug.cgi?id=185848
+        <rdar://problem/34586181>
+
+        Reviewed by Alex Christensen.
+
+        Add a condition macro to determine if SecKeyProxy SPI exists.
+
+        * wtf/Platform.h:
+
+2018-05-23  Eric Carlson  <eric.carlson@apple.com>
+
+        Avoid loading AVFoundation to check supported MIME types if possible
+        https://bugs.webkit.org/show_bug.cgi?id=185839
+        <rdar://problem/40182010>
+
+        Reviewed by Jer Noble.
+
+        * wtf/cocoa/SoftLinking.h: Add SOFT_LINK_FRAMEWORK_OPTIONAL_PREFLIGHT.
+
+2018-05-23  Filip Pizlo  <fpizlo@apple.com>
+
+        Speed up JetStream/base64
+        https://bugs.webkit.org/show_bug.cgi?id=185914
+
+        Reviewed by Michael Saboff.
+        
+        Make Vector<>::append ALWAYS_INLINE.
+
+        * wtf/Vector.h:
+        (WTF::Vector::append):
+        (WTF::minCapacity>::expandCapacity):
+        (WTF::minCapacity>::append):
+        (WTF::minCapacity>::tryAppend):
+
 2018-05-23  Michael Saboff  <msaboff@apple.com>
 
         Date.parse() doesn't properly handle input outside of ES Spec limits

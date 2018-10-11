@@ -79,13 +79,13 @@ void RenderTheme::adjustStyle(StyleResolver& styleResolver, RenderStyle& style, 
 {
     // Force inline and table display styles to be inline-block (except for table- which is block)
     ControlPart part = style.appearance();
-    if (style.display() == INLINE || style.display() == INLINE_TABLE || style.display() == TABLE_ROW_GROUP
-        || style.display() == TABLE_HEADER_GROUP || style.display() == TABLE_FOOTER_GROUP
-        || style.display() == TABLE_ROW || style.display() == TABLE_COLUMN_GROUP || style.display() == TABLE_COLUMN
-        || style.display() == TABLE_CELL || style.display() == TABLE_CAPTION)
-        style.setDisplay(INLINE_BLOCK);
-    else if (style.display() == COMPACT || style.display() == LIST_ITEM || style.display() == TABLE)
-        style.setDisplay(BLOCK);
+    if (style.display() == DisplayType::Inline || style.display() == DisplayType::InlineTable || style.display() == DisplayType::TableRowGroup
+        || style.display() == DisplayType::TableHeaderGroup || style.display() == DisplayType::TableFooterGroup
+        || style.display() == DisplayType::TableRow || style.display() == DisplayType::TableColumnGroup || style.display() == DisplayType::TableColumn
+        || style.display() == DisplayType::TableCell || style.display() == DisplayType::TableCaption)
+        style.setDisplay(DisplayType::InlineBlock);
+    else if (style.display() == DisplayType::Compact || style.display() == DisplayType::ListItem || style.display() == DisplayType::Table)
+        style.setDisplay(DisplayType::Block);
 
     if (UAHasAppearance && isControlStyled(style, border, background, backgroundColor)) {
         switch (part) {
@@ -154,7 +154,7 @@ void RenderTheme::adjustStyle(StyleResolver& styleResolver, RenderStyle& style, 
 
         // Whitespace
         if (Theme::singleton().controlRequiresPreWhiteSpace(part))
-            style.setWhiteSpace(PRE);
+            style.setWhiteSpace(WhiteSpace::Pre);
 
         // Width / Height
         // The width and height here are affected by the zoom.
@@ -176,7 +176,7 @@ void RenderTheme::adjustStyle(StyleResolver& styleResolver, RenderStyle& style, 
         if (auto themeFont = Theme::singleton().controlFont(part, style.fontCascade(), style.effectiveZoom())) {
             // If overriding the specified font with the theme font, also override the line height with the standard line height.
             style.setLineHeight(RenderStyle::initialLineHeight());
-            if (style.setFontDescription(themeFont.value()))
+            if (style.setFontDescription(WTFMove(themeFont.value())))
                 style.fontCascade().update(nullptr);
         }
 
@@ -1000,9 +1000,11 @@ void RenderTheme::paintSliderTicks(const RenderObject& o, const PaintInfo& paint
         return;
 
     auto& input = downcast<HTMLInputElement>(*o.node());
-    auto* dataList = downcast<HTMLDataListElement>(input.list());
-    if (!dataList)
+
+    if (!input.list())
         return;
+
+    auto& dataList = downcast<HTMLDataListElement>(*input.list());
 
     double min = input.minimum();
     double max = input.maximum();
@@ -1051,7 +1053,7 @@ void RenderTheme::paintSliderTicks(const RenderObject& o, const PaintInfo& paint
         tickRegionSideMargin = trackBounds.y() + (thumbSize.width() - tickSize.width() * zoomFactor) / 2.0;
         tickRegionWidth = trackBounds.height() - thumbSize.width();
     }
-    Ref<HTMLCollection> options = dataList->options();
+    Ref<HTMLCollection> options = dataList.options();
     GraphicsContextStateSaver stateSaver(paintInfo.context());
     paintInfo.context().setFillColor(o.style().visitedDependentColorWithColorFilter(CSSPropertyColor));
     for (unsigned i = 0; Node* node = options->item(i); i++) {

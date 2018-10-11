@@ -761,6 +761,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
+    case ValueNegate: {
+        clobberWorld();
+        setTypeForNode(node, SpecBytecodeNumber | SpecBigInt);
+        break;
+    }
+
     case ArithNegate: {
         JSValue child = forNode(node->child1()).value();
         switch (node->child1().useKind()) {
@@ -808,9 +814,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     forNode(node->child1()).m_type));
             break;
         default:
-            DFG_ASSERT(m_graph, node, node->child1().useKind() == UntypedUse, node->child1().useKind());
-            clobberWorld();
-            setNonCellTypeForNode(node, SpecBytecodeNumber);
+            RELEASE_ASSERT_NOT_REACHED();
             break;
         }
         break;
@@ -1240,7 +1244,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             case IsUndefined:
                 setConstant(node, jsBoolean(
                     child.value().isCell()
-                    ? child.value().asCell()->structure()->masqueradesAsUndefined(m_codeBlock->globalObjectFor(node->origin.semantic))
+                    ? child.value().asCell()->structure(m_vm)->masqueradesAsUndefined(m_codeBlock->globalObjectFor(node->origin.semantic))
                     : child.value().isUndefined()));
                 break;
             case IsBoolean:
@@ -1261,7 +1265,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     if (object->type() == JSFunctionType)
                         setConstant(node, jsBoolean(false));
                     else if (!(object->inlineTypeFlags() & OverridesGetCallData))
-                        setConstant(node, jsBoolean(!child.value().asCell()->structure()->masqueradesAsUndefined(m_codeBlock->globalObjectFor(node->origin.semantic))));
+                        setConstant(node, jsBoolean(!child.value().asCell()->structure(m_vm)->masqueradesAsUndefined(m_codeBlock->globalObjectFor(node->origin.semantic))));
                     else {
                         // FIXME: This could just call getCallData.
                         // https://bugs.webkit.org/show_bug.cgi?id=144457
@@ -1811,8 +1815,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case AtomicsStore:
     case AtomicsSub:
     case AtomicsXor: {
-        if (node->op() != GetByVal)
-            clobberWorld();
+        if (node->op() != GetByVal) {
+            unsigned numExtraArgs = numExtraAtomicsArgs(node->op());
+            Edge storageEdge = m_graph.child(node, 2 + numExtraArgs);
+            if (!storageEdge)
+                clobberWorld();
+        }
         switch (node->arrayMode().type()) {
         case Array::SelectUsingPredictions:
         case Array::Unprofiled:
@@ -2529,7 +2537,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case GetGlobalObject: {
         JSValue child = forNode(node->child1()).value();
         if (child) {
-            setConstant(node, *m_graph.freeze(JSValue(asObject(child)->globalObject())));
+            setConstant(node, *m_graph.freeze(JSValue(asObject(child)->globalObject(m_vm))));
             break;
         }
 
