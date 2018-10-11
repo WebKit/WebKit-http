@@ -34,7 +34,7 @@
 #include "IntRect.h"
 #include "MIMETypeRegistry.h"
 #include "StillImageQt.h"
-#include <runtime/JSCInlines.h>
+#include <JavaScriptCore/JSCInlines.h>
 #include <runtime/TypedArrayInlines.h>
 #include <wtf/text/WTFString.h>
 

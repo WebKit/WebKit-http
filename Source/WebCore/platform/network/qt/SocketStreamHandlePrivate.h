@@ -46,8 +46,8 @@ class SocketStreamHandlePrivate;
 class SocketStreamHandlePrivate final : public QObject {
     Q_OBJECT
 public:
-    SocketStreamHandlePrivate(SocketStreamHandle*, const URL&);
-    SocketStreamHandlePrivate(SocketStreamHandle*, QTcpSocket*);
+    SocketStreamHandlePrivate(SocketStreamHandleImpl*, const URL&);
+    SocketStreamHandlePrivate(SocketStreamHandleImpl*, QTcpSocket*);
     ~SocketStreamHandlePrivate();
 
 public Q_SLOTS:
@@ -66,7 +66,7 @@ public Q_SLOTS:
 public:
     void initConnections();
     QTcpSocket* m_socket;
-    SocketStreamHandle* m_streamHandle;
+    SocketStreamHandleImpl* m_streamHandle;
 };
 
 }

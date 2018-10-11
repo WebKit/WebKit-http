@@ -86,7 +86,7 @@ String MIMETypeRegistry::getMIMETypeForExtension(const String &ext)
 String MIMETypeRegistry::getMIMETypeForPath(const String& path)
 {
     for (auto& entry : extensionMap) {
-        if (path.endsWith(entry.dotExtension, /* caseSensitive */ false))
+        if (path.endsWithIgnoringASCIICase(entry.dotExtension))
             return entry.mimeType;
     }
 

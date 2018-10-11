@@ -37,6 +37,7 @@
 
 #include <wtf/RefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/StreamBuffer.h>
 
 #if !PLATFORM(QT)
 #error This should only be built on Qt
@@ -54,7 +55,7 @@ namespace WebCore {
     class SocketStreamHandleClient;
     class SocketStreamHandlePrivate;
 
-    class SocketStreamHandleImpl final : public RefCounted<SocketStreamHandleImpl>, public SocketStreamHandle {
+    class SocketStreamHandleImpl final : public SocketStreamHandle {
     public:
         static RefPtr<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient* client, NetworkingContext&) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
         static RefPtr<SocketStreamHandleImpl> create(QTcpSocket* socket, SocketStreamHandleClient* client) { return adoptRef(*new SocketStreamHandleImpl(socket, client)); }
@@ -69,14 +70,21 @@ namespace WebCore {
         SocketStreamHandle(const URL&, SocketStreamHandleClient*);
         SocketStreamHandle(QTcpSocket*, SocketStreamHandleClient*);
 
+        bool sendPendingData();
         size_t bufferedAmount() final;
+        std::optional<size_t> platformSendInternal(const uint8_t*, size_t);
 
         // No authentication for streams per se, but proxy may ask for credentials.
         void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
         void receivedCredential(const AuthenticationChallenge&, const Credential&);
         void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&);
         void receivedCancellation(const AuthenticationChallenge&);
+
+        StreamBuffer<uint8_t, 1024 * 1024> m_buffer;
+        static const unsigned maxBufferSize = 100 * 1024 * 1024;
+
         SocketStreamHandlePrivate* m_p;
+
         friend class SocketStreamHandlePrivate;
     };
 

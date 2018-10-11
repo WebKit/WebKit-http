@@ -141,8 +141,8 @@ static JSValueRef assignToHTMLImageElement(JSContextRef context, JSObjectRef /*f
 
     // We now know that we have a valid <img> element as the argument, we can attach the pixmap to it.
     RefPtr<StillImage> stillImage = WebCore::StillImage::create(toPixmap(data));
-    HTMLImageElement* imageElement = JSHTMLImageElement::toWrapped(jsObject);
-    imageElement->setCachedImage(new CachedImage(stillImage.get(), SessionID::defaultSessionID()));
+    HTMLImageElement* imageElement = JSHTMLImageElement::toWrapped(vm, jsObject);
+    imageElement->setCachedImage(new CachedImage(stillImage.get(), PAL::SessionID::defaultSessionID()));
     return JSValueMakeUndefined(context);
 }
 

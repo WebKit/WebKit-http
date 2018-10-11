@@ -59,9 +59,9 @@ SocketStreamHandlePrivate::SocketStreamHandlePrivate(SocketStreamHandle* streamH
 
     initConnections();
 
-    unsigned int port = url.hasPort() ? url.port() : (isSecure ? 443 : 80);
+    unsigned int port = url.port() ? url.port() : (isSecure ? 443 : 80);
 
-    QString host = url.host();
+    QString host = url.host().value();
     if (isSecure) {
 #ifndef QT_NO_SSL
         static_cast<QSslSocket*>(m_socket)->connectToHostEncrypted(host, port);
