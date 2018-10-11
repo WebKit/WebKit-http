@@ -348,7 +348,7 @@ void GraphicsContext::fillPath(const Path& path)
 
     BView* view = m_data->view();
 
-    view->SetFillRule(fillRule() == RULE_NONZERO ? B_NONZERO : B_EVEN_ODD);
+    view->SetFillRule(fillRule() == WindRule::NonZero ? B_NONZERO : B_EVEN_ODD);
     view->MovePenTo(B_ORIGIN);
 
     // TODO: Render the shadow (cf shadowAndFillCurrentCairoPath)
@@ -409,7 +409,7 @@ void GraphicsContext::clipPath(const Path& path, WindRule windRule)
     if (paintingDisabled())
         return;
 
-    m_data->view()->SetFillRule(windRule == RULE_EVENODD ? B_EVEN_ODD : B_NONZERO);
+    m_data->view()->SetFillRule(windRule == WindRule::EvenOdd ? B_EVEN_ODD : B_NONZERO);
     m_data->view()->ClipToShape(path.platformPath());
     // TODO: reset wind rule
 }

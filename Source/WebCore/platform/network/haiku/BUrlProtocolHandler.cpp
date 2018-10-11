@@ -450,8 +450,8 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         port = 443;
     else
         port = 80;
-    ProtectionSpace protectionSpace(url.host(), port, serverType, realm, scheme);
-    ResourceError resourceError(url.host(), 401, url, String());
+    ProtectionSpace protectionSpace(url.host().utf8().data(), port, serverType, realm, scheme);
+    ResourceError resourceError(url.host().utf8().data(), 401, url, String());
 
     m_redirectionTries--;
     if(m_redirectionTries == 0)
@@ -558,7 +558,7 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
         m_redirectionTries--;
 
         if (m_redirectionTries == 0) {
-            ResourceError error(url.host(), 400, url,
+            ResourceError error(url.host().utf8().data(), 400, url,
                 "Redirection limit reached");
             client->didFail(m_resourceHandle, error);
             return;

@@ -50,7 +50,7 @@ URL::operator BUrl() const
     converted.SetProtocol(protocol().utf8().data());
     converted.SetUserName(user());
     converted.SetPassword(pass());
-    converted.SetHost(host());
+    converted.SetHost(host().utf8().data());
     if (port())
         converted.SetPort(*port());
     converted.SetPath(path());
