@@ -51,8 +51,6 @@
 	#define __cpp_lib_optional 201603
 #endif
 
-#if !COMPILER(MSVC) && defined(__cpp_lib_optional) && __cpp_lib_optional >= 201603
-
 #if !COMPILER(MSVC) && !PLATFORM(COCOA) && __has_include(<optional>)
 # include <optional>
 #else

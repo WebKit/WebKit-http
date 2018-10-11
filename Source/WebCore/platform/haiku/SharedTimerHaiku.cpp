@@ -32,7 +32,6 @@
 #include <MessageRunner.h>
 #include <support/Locker.h>
 #include <support/Autolock.h>
-#include <wtf/CurrentTime.h>
 #include <stdio.h>
 
 #define FIRE_MESSAGE 'fire'
