@@ -1,3 +1,90 @@
+2018-06-06  Jon Lee  <jonlee@apple.com>
+
+        Allow the ramp controller to run tests that take less time than the initial ramp-up phase
+        https://bugs.webkit.org/show_bug.cgi?id=186257
+
+        Reviewed by Said Abou-Hallawa.
+
+        * MotionMark/tests/resources/main.js: Extend the desired end timestamp when ramp-up occurs.
+        Previously the controller assumed that the duration of the test was always longer than the
+        time it took to figure out the order of magnitude of particles to render. When that range
+        is determined, the end timestamp is then extended. If the duration is too short, the controller
+        would throw an exception. The fix is to continue extending the timestamp every time the order of
+        magnitude tiers up.
+
+        In general testing with really short durations isn't practical, but sometimes it is
+        desired for debugging.
+
+        To avoid confusion of the private variables, I renamed Benchmark._startTimestamp to
+        Benchmark._benchmarkStartTimestamp, to disambiguate from Controller._startTimestamp.
+        Benchmark._startTimestamp is set once and never changed, after the initial 100ms warm-up.
+        Controller._startTimestamp is initialized to 0 (which means "not initialized"), and then after
+        the warm up is complete, set in Controller.start() to the same wall clock timestamp, and never
+        changed afterwards.
+
+2018-06-06  Jon Lee  <jonlee@apple.com>
+
+        Remove unneeded data processing in MotionMark
+        https://bugs.webkit.org/show_bug.cgi?id=186256
+
+        Reviewed by Said Abou-Hallawa.
+
+        Remove calculation of average frame rate based on multiple samples at a given complexity.
+        It is not used in the calculation of the score, and is just extra work to do at the end
+        of a test.
+
+        * MotionMark/developer.html: Remove options to show average data and regression based on
+        that data.
+        * MotionMark/resources/debug-runner/graph.js: Remove data. Update the time graph that
+        shows the relationship between the break point in the regression against the complexity
+        graph.
+        * MotionMark/resources/debug-runner/motionmark.css: Make the confidence intervals easier
+        to see.
+        * MotionMark/resources/runner/motionmark.js: Simplify score calculation now that we are
+        only calculating regressions on the raw data. We were calculating it based on the averages,
+        but that was just for analysis, and not used in the actual score. Get rid of the
+        |complexitySamples| local variable.
+        * MotionMark/resources/strings.js: Remove unneeded string constant.
+        * MotionMark/tests/resources/main.js:
+        (processSamples): Refactor so that more of it can be shared between Controller and
+        RampController. It also avoids processing the raw samples (controllerSamples) twice for
+        the ramp controller.
+        (_processComplexitySamples): Remove logic to calculate averages based on complexity.
+        (_processMarks): Split this out from the old processSamples.
+        (_processControllerSamples): Split this out from the old processSamples.
+
+2018-06-06  Jon Lee  <jonlee@apple.com>
+
+        Strip out more characters when creating permalinks
+        https://bugs.webkit.org/show_bug.cgi?id=186259
+
+        Reviewed by Said Abou-Hallawa.
+
+        Tests and suites may have names that make permalinks to the tests less readable when
+        shared. Expand the set of characters that are stripped out of the names.
+
+        * MotionMark/resources/debug-runner/motionmark.js: Refactor to call
+        stripUnwantedCharactersForURL. For existing links, decode the suite and test names.
+        * MotionMark/resources/extensions.js:
+        (Utilities.stripUnwantedCharactersForURL): Rename from stripNonASCIICharacters.
+        Remove any non-alphanumeric character.
+
+2018-06-04  Jon Lee  <jonlee@apple.com>
+
+        Remove unnecessary MotionMark controllers
+        https://bugs.webkit.org/show_bug.cgi?id=186255
+
+        Reviewed by Said Abou-Hallawa.
+
+        Get rid of the ramp30 and the fixed-with-a-step controllers, which aren't used for testing
+        or debugging.
+
+        * MotionMark/developer.html: Move the "ramp" option as first, since that is the default
+        controller for the benchmark.
+        * MotionMark/resources/debug-runner/motionmark.js:
+        * MotionMark/resources/runner/motionmark.js: Added missing copyright notice.
+        * MotionMark/tests/resources/main.js:
+
 2018-05-25  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Improve the performance of Font::canRenderCombiningCharacterSequence()

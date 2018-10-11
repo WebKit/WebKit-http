@@ -1,3 +1,846 @@
+2018-06-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add WorkerPool
+        https://bugs.webkit.org/show_bug.cgi?id=174569
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/WorkerPool.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2018-06-07  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Add a new BrowserWindow interface to abstract WK1 and WK2 BrowserWindow
+        https://bugs.webkit.org/show_bug.cgi?id=186421
+
+        Reviewed by Ryosuke Niwa.
+
+        This is the core patch to make MiniBrowser to support WK1 and WK2
+        windows (Bug 184770).
+
+        I will rename MiniBrowser class to WK1BrowserWindow in a follow-up
+        patch (Bug 184770 Comment 12).
+
+        * MiniBrowser/win/BrowserWindow.h: Added.
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::WndProc):
+        * MiniBrowser/win/MainWindow.h:
+        (MainWindow::browserWindow const):
+        * MiniBrowser/win/MiniBrowser.cpp:
+        (MiniBrowser::create):
+        (MiniBrowser::navigateForwardOrBackward): Removed the unsed first argument hWnd.
+        (MiniBrowser::navigateToHistory): Ditto.
+        * MiniBrowser/win/MiniBrowser.h: Inherit BrowserWindow interface.
+        Make all other methods private and make delegates classes friends.
+        * MiniBrowser/win/PrintWebUIDelegate.cpp:
+        (PrintWebUIDelegate::createWebViewWithRequest):
+
+2018-06-07  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] MiniBrowser::updateDeviceScaleFactor should be a MainWindow's method
+        https://bugs.webkit.org/show_bug.cgi?id=186387
+
+        Reviewed by Ryosuke Niwa.
+
+        MiniBrowser::updateDeviceScaleFactor does nothing for MiniBrowser.
+        It should be a MainWindow's method.
+
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::init): Call MainWindow::updateDeviceScaleFactor.
+        (MainWindow::resizeSubViews): Do not set a font every time window size is changed.
+        (MainWindow::WndProc): Call MainWindow::updateDeviceScaleFactor on WM_DPICHANGED.
+        (MainWindow::updateDeviceScaleFactor): Converted from
+        MiniBrowser::updateDeviceScaleFactor and
+        MiniBrowser::generateFontForScaleFactor. Set a URL bar's font if DPI is changed.
+        * MiniBrowser/win/MainWindow.h:
+        * MiniBrowser/win/MiniBrowser.cpp:
+        (MiniBrowser::init):
+        (MiniBrowser::generateFontForScaleFactor): Deleted.
+        (MiniBrowser::updateDeviceScaleFactor): Deleted.
+        * MiniBrowser/win/MiniBrowser.h:
+        (MiniBrowser::deviceScaleFactor): Deleted.
+        (MiniBrowser::urlBarFont): Deleted.
+
+2018-06-07  Jonathan Bedard  <jbedard@apple.com>
+
+        [webkitpy] Treat svn versions as Version objects
+        https://bugs.webkit.org/show_bug.cgi?id=186403
+        <rdar://problem/40904860>
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        * Scripts/webkitpy/common/checkout/scm/svn.py:
+        (SVN.svn_version): Return Version object instead of string.
+        (SVN._status_regexp): Convert version string to Version object.
+        (SVN.add_list): Ditto.
+
+2018-06-07  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Don't try to allocate JIT memory if we don't have the JIT entitlement
+        https://bugs.webkit.org/show_bug.cgi?id=182605
+        <rdar://problem/38271229>
+
+        Reviewed by Mark Lam.
+
+        Add the Security framework to the TestWTF target, since it's required by the new function to check the entitlements.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+2018-06-07  Mark Lam  <mark.lam@apple.com>
+
+        Enhance run-jsc-stress-tests to allow a test to specify test specific options required for it to run.
+        https://bugs.webkit.org/show_bug.cgi?id=186409
+        <rdar://problem/40909007>
+
+        Reviewed by Saam Barati.
+
+        This is needed because some tests are written with specific features in mind, and
+        we may not necessarily want to enable that option for all tests.
+
+        We can now specify something like this at the top of a test file:
+            //@ requireOptions("--useIntlPluralRules=true")
+
+        ... and ensure that that test will be run with the --useIntlPluralRules=true
+        option for all test configurations that run the test.
+
+        * Scripts/run-jsc-stress-tests:
+
+2018-06-07  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r232544): [iOS] TestWebKitAPI.WebKit.OverrideLayoutSizeChangesDuringAnimatedResizeSucceed is failing
+        https://bugs.webkit.org/show_bug.cgi?id=186395
+        <rdar://problem/40902427>
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/AnimatedResize.mm:
+        (TEST):
+        endAnimatedResize no longer synchronizes, so we have to wait for the next presentation update.
+
+2018-06-07  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GTK][WPE] Start implementing MediaStream API
+        https://bugs.webkit.org/show_bug.cgi?id=185787
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/webkitpy/style/checker.py: Apply special formatting rules for new GObject subclasses.
+        * gstreamer/jhbuild.modules: Added a patch for the gst-plugins-base.
+        * gstreamer/patches/gst-plugins-base-0001-parsebin-Post-STREAM_COLLECTION-on-EVENT_STREAM_COLL.patch:
+        Added this fix to gst-plugings-base to fix the decodebin3. Merged as 89d0e9cc92a86aa0227ee87406737b6d31670aea
+
+2018-06-07  Brendan McLoughlin  <brendan@bocoup.com>
+
+        Update web-platform-tests github location in webkitpy.w3c.test_importer
+        https://bugs.webkit.org/show_bug.cgi?id=186392
+
+        Reviewed by Youenn Fablet.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.write_import_log):
+
+2018-06-07  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitperl: Generalize .internal SDK suffix
+        https://bugs.webkit.org/show_bug.cgi?id=186352
+        <rdar://problem/40853947>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/build-webkit:
+        * Scripts/package-root:
+        (usage):
+        * Scripts/webkitdirs.pm:
+        (parseAvailableXcodeSDKS): Parse 'xcodebuild -showsdks' output.
+        (availableXcodeSDKS): Generate a list of all available Xcode SDKs on this machine.
+        (determineXcodeSDK): Always prefer .internal SDKs if available.
+        * Scripts/webkitperl/webkitdirs_unittest/availableXcodeSDKS.pl:
+        
+2018-06-07  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Support multiple windows properly
+        https://bugs.webkit.org/show_bug.cgi?id=186263
+
+        Reviewed by Ryosuke Niwa.
+
+        The current implementation of
+        PrintWebUIDelegate::createWebViewWithRequest is wrong. It is using
+        CreateProcess to open a new window, and doesn't return the new
+        instance of IWebView. As the result, for example, window.close
+        doesn't work as expected.
+
+        In this change, a new MainWindow is created and return the
+        IWebView in PrintWebUIDelegate::createWebViewWithRequest.
+
+        In addition to it, this change unifies the lifetime of MiniBrowser
+        and its delegates AccessibilityDelegate, PrintWebUIDelegate,
+        ResourceLoadDelegate and WebDownloadDelegate in order to keep
+        MiniBrowser alive as long as the delegates live. Because the
+        window of webview keeps references of such delegates and accesses
+        those after MiniBrowser destruction.
+
+        * MiniBrowser/win/MainWindow.h: Added s_numInstances class member
+        to count the number of instance to close the application. Do not
+        use unique_ptr for m_browserWindow because it has ref count now.
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::MainWindow): Increment s_numInstances.
+        (MainWindow::~MainWindow): Decrement s_numInstances.
+        (MainWindow::create):
+        (MainWindow::init):
+        (MainWindow::WndProc): Rename thiz to thisWindow. Keep this
+        instance alive during this function by using RefPtr<MainWindow>.
+        Deref the MainWindow instance on WM_DESTROY. Quit the application
+        when the last MainWindow is closed.
+        (MainWindow::cachesDialogProc): Rename thiz to thisWindow.
+        (MainWindow::customUserAgentDialogProc): Ditto.
+        * MiniBrowser/win/MiniBrowser.h: Added declarations AddRef and Release.
+        * MiniBrowser/win/MiniBrowser.cpp:
+        (MiniBrowser::create):
+        (MiniBrowser::AddRef):
+        (MiniBrowser::Release):
+        (MiniBrowser::init): Passes this to the constructors of delegates.
+        * MiniBrowser/win/AccessibilityDelegate.cpp:
+        (AccessibilityDelegate::AddRef): Delegate to MiniBrowser.
+        (AccessibilityDelegate::Release): Ditto.
+        * MiniBrowser/win/AccessibilityDelegate.h: Removed m_refCount.
+        (AccessibilityDelegate::AccessibilityDelegate):
+        * MiniBrowser/win/MiniBrowserWebHost.cpp:
+        (MiniBrowserWebHost::AddRef): Delegate to MiniBrowser.
+        (MiniBrowserWebHost::Release): Ditto.
+        * MiniBrowser/win/MiniBrowserWebHost.h: Removed m_refCount.
+        * MiniBrowser/win/PrintWebUIDelegate.cpp:
+        (PrintWebUIDelegate::createWebViewWithRequest): Create a new
+        MainWindow and return the IWebView.
+        (PrintWebUIDelegate::AddRef): Delegate to MiniBrowser.
+        (PrintWebUIDelegate::Release): Ditto.
+        * MiniBrowser/win/PrintWebUIDelegate.h: Removed m_refCount.
+        (PrintWebUIDelegate::PrintWebUIDelegate):
+        * MiniBrowser/win/ResourceLoadDelegate.cpp:
+        (ResourceLoadDelegate::AddRef): Delegate to MiniBrowser.
+        (ResourceLoadDelegate::Release): Ditto.
+        * MiniBrowser/win/ResourceLoadDelegate.h: Removed m_refCount.
+        * MiniBrowser/win/WebDownloadDelegate.cpp:
+        (WebDownloadDelegate::WebDownloadDelegate):
+        (WebDownloadDelegate::AddRef): Delegate to MiniBrowser.
+        (WebDownloadDelegate::Release): Ditto.
+        * MiniBrowser/win/WebDownloadDelegate.h: Removed m_refCount.
+
+2018-06-06  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Remove gMainWindow global variable
+        https://bugs.webkit.org/show_bug.cgi?id=186378
+
+        Reviewed by Ryosuke Niwa.
+
+        I'm going to support multiple MainWindow in Bug 186263. It should
+        not be assumed that MainWindow has only one instance. gMainWindow
+        is used only in DisplayAuthDialog.
+
+        * MiniBrowser/win/Common.cpp:
+        (authDialogProc): Use DWLP_USER to store the dialog data.
+        (displayAuthDialog): Moved and renamed from
+        MainWindow::displayAuthDialog. Use DialogBoxParam instead of
+        DialogBox to pass a data pointer. Do not return S_OK if
+        DialogBoxParam returns -1. Take a HWND argument as the parent
+        window.
+        (DisplayAuthDialog): Deleted.
+        * MiniBrowser/win/Common.h:
+        * MiniBrowser/win/MainWindow.cpp:
+        (authDialogProc): Moved to Common.cpp.
+        (MainWindow::displayAuthDialog): Ditto.
+        * MiniBrowser/win/MainWindow.h:
+        * MiniBrowser/win/ResourceLoadDelegate.cpp:
+        (ResourceLoadDelegate::didReceiveAuthenticationChallenge):
+        * MiniBrowser/win/WinMain.cpp:
+        (wWinMain): Added a local variable mainWindow instead of using
+        gMainWindow.
+
+2018-06-06  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Opt out of the New Build System
+        https://bugs.webkit.org/show_bug.cgi?id=186380
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitdirs.pm:
+        (XcodeOptions): Have -UseNewBuildSystem=NO passed to xcodebuild.
+
+2018-06-06  Antoine Quint  <graouts@apple.com>
+
+        Rename color-filter to -apple-color-filter and do not expose it to Web content
+        https://bugs.webkit.org/show_bug.cgi?id=186306
+        <rdar://problem/39874167>
+
+        Reviewed by Simon Fraser.
+
+        Adding an option to turn support for the -apple-color-filter property on via an HTML comment.
+
+        * DumpRenderTree/TestOptions.cpp:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setWebPreferencesForTestOptions):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformCreateWebView):
+
+2018-06-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Adjust compile and runtime flags to match shippable state of features (Part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=186319
+        <rdar://problem/40352045>
+
+        Unreviewed test fix.
+
+        TestWebKitAPI was timing out because 'color' input types are no longer support. I also discovered that the
+        ASSERT_STREQ macro returns on error, which causes tests to time out whenever a 'done = true' call (needed to
+        end the test) is done after ASSERT_STREQ, which might fail and return early, preventing the flag from being
+        set.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/InjectedBundleNodeHandleIsTextField.mm:
+        (-[InjectedBundleNodeHandleIsTextField webProcessPlugIn:didCreateBrowserContextController:]): Make testing of
+        the 'color' input type conditional on the feature being part of the build.
+        * TestWebKitAPI/Tests/WebKitCocoa/UIDelegate.mm:
+        (-[AutoFillDelegate _webView:didClickAutoFillButtonWithUserInfo:]): Set the 'done=true' state before performing
+        string equality assertions, since they do an early return and bypass the end state of the test.
+        (-[DidResignInputElementStrongPasswordAppearanceDelegate _webView:didResignInputElementStrongPasswordAppearanceWithUserInfo:]): Ditto.
+        (-[AutoFillAvailableDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]): Ditto.
+        (-[InjectedBundleNodeHandleIsTextFieldDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]): Ditto.
+
+2018-06-05  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r232082): Websites get loaded inside of Messages App chat transcript
+        https://bugs.webkit.org/show_bug.cgi?id=186331
+        <rdar://problem/40735446>
+
+        Reviewed by Darin Adler.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/mac/NoPolicyDelegateResponse.mm:
+        (-[NoDecidePolicyForNavigationActionDecisionDelegate webView:decidePolicyForNavigationAction:request:frame:decisionListener:]):
+        (-[NoDecidePolicyForNavigationActionDecisionDelegate webView:didStartProvisionalLoadForFrame:]):
+        (TestWebKitAPI::TEST):
+        (-[NoPolicyDelegateDecisionDelegate webView:decidePolicyForNavigationAction:request:frame:decisionListener:]): Deleted.
+        (-[NoPolicyDelegateDecisionDelegate webView:decidePolicyForMIMEType:request:frame:decisionListener:]): Deleted.
+        (-[NoPolicyDelegateDecisionDelegate webView:didFinishLoadForFrame:]): Deleted.
+
+2018-06-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        DataInteractionTests ContentEditableToTextarea and ContentEditableToContentEditable are failing on recent iOS 12
+        https://bugs.webkit.org/show_bug.cgi?id=186325
+        <rdar://problem/40527850>
+
+        Reviewed by Tim Horton.
+
+        Tweak these API tests so that they're robust against changes to how NSAttributedStrings are serialized in item
+        providers ("public.rtf" vs. "com.apple.flat-rtfd"). Across all versions of iOS, just verify that either rich
+        text type is present in the list of dragged type identifiers, and that the rich text type is placed at a higher
+        fidelity than plain text.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (checkRichTextTypePrecedesPlainTextType):
+        (TestWebKitAPI::TEST):
+        (checkTypeIdentifierPrecedesOtherTypeIdentifier): Deleted.
+
+2018-06-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Adjust compile and runtime flags to match shippable state of features
+        https://bugs.webkit.org/show_bug.cgi?id=186319
+        <rdar://problem/40352045>
+
+        Reviewed by Maciej Stachowiak, Jon Lee, and others.
+
+        This patch revises the compile time and runtime state for various features to match their
+        suitability for end-user releases.
+
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig: Update to match WebKit definition of
+        WK_RELOCATABLE_FRAMEWORKS so that ENABLE(EXPERIMENTAL_FEATURES) is defined properly for
+        Cocoa builds.
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Don't build ENABLE_INPUT_TYPE_COLOR
+        or ENABLE_INPUT_TYPE_COLOR_POPOVER.
+
+2018-06-05  Saam Barati  <sbarati@apple.com>
+
+        run-testmem should have a dry run option and an option to parse the stdout of executing the dry run
+        https://bugs.webkit.org/show_bug.cgi?id=186293
+
+        Reviewed by Mark Lam.
+
+        This makes it easier to execute run-testmem on a device that doesn't have ruby
+        on it. run-testmem now has a --dry option that will output commands to execute
+        in bash. To run on a device that doesn't have ruby, just put its output into
+        a bash script, and copy the PerformanceTests/testmem directory onto that device,
+        and execute the bash script. Running that bash script will give you raw output.
+        Make a file with that output and pass it into run-testmem using the --parse option.
+        run-testmem will parse the raw output and compute the benchmark score.
+
+        * Scripts/run-testmem:
+
+2018-06-05  Youenn Fablet  <youenn@apple.com>
+
+        ServiceWorker registration should store any script fetched through importScripts
+        https://bugs.webkit.org/show_bug.cgi?id=182444
+        <rdar://problem/37164835>
+
+        Reviewed by Chris Dumez.
+
+        Add support to crash the storage process from Internals.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::terminateStorageProcess):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::terminateStorageProcess):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
+2018-06-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Revise DEFAULT_EXPERIMENTAL_FEATURES_ENABLED to work properly on Apple builds
+        https://bugs.webkit.org/show_bug.cgi?id=186286
+        <rdar://problem/40782992>
+
+        Reviewed by Dan Bernstein.
+
+        Use the WK_RELOCATABLE_FRAMEWORKS flag (which is always defined for non-production builds)
+        to define ENABLE(EXPERIMENTAL_FEATURES) so that we do not need to manually
+        change this flag when preparing for a production release.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Use WK_RELOCATABLE_FRAMEWORKS to
+        determine whether experimental features should be enabled, and use it to properly define
+        the feature flag.
+
+2018-06-05  Robin Morisset  <rmorisset@apple.com>
+
+        Add a grammar (in antlr4 format) to the WSL spec.
+        https://bugs.webkit.org/show_bug.cgi?id=186310
+
+        Rubberstamped by Filip Pizlo
+
+        It is just the raw rules, without much comments and no typesetting.
+        Compiles to any of Java/JS/C++/etc.. with antlr4 (requires a JDK)
+
+        It does not exactly match the parser of the current js implementation of WSL, it:
+        - Accepts negative literals
+        - Reserves keywords fallthrough/auto
+        - Refuses '_' as a valid identifier
+        - Accepts several capitalizations for Null/True/False
+        - Accepts variable declarations at the top-level
+        - Correctly parses ternary expressions
+        - Forbids empty extension list for protocols
+        - Does not allow a space between '[' and ']' in type suffixes
+        - Correctly parses nested generics
+        - Accepts a 'fallthrough;' statement (for switches)
+        - Refuses chained relational operator (e.g. x < y < z)
+        - Generally a completely different structure for parsing effectful expressions, although it probably accepts about the same language
+        - Currently only accepts literals and identifiers as constexpr (while the js parser accepts way too much, including '(x += 42)')
+        There are probably more differences that I missed. The js parser will probably have to be mostly rewritten to follow the spec more closely (and fix all the bugs).
+        I will try to see if it can be automatically derived from the antlr4 grammar.
+
+        * WebGPUShadingLanguageRI/SpecWork/WSL.g4: Added.
+
+2018-06-04  Frederic Wang  <fwang@igalia.com>
+
+        import-w3c-tests should rely on <meta name="flags"> to detect CSS manual tests
+        https://bugs.webkit.org/show_bug.cgi?id=186261
+
+        Reviewed by Youenn Fablet.
+
+        * Scripts/webkitpy/w3c/test_parser.py:
+        (TestParser.is_wpt_manualtest): Add code to detect whether a file is a manual test
+        from its <meta name="flags"> tags. This is based on SourceFile::content_is_css_manual from
+        the WPT repository.
+        * Scripts/webkitpy/w3c/test_parser_unittest.py: Add a test to verify whether files with
+        <meta name="flags"> are manual or non-manual according to CSS WG rules.
+
+2018-06-04  Dan Bernstein  <mitz@apple.com>
+
+        Fixed building ImageDiff with the default build system in the Xcode 10 developer beta.
+
+        * ImageDiff/cg/Configurations/Base.xcconfig: Use #include? to include
+          HaveInternalSDK.xcconfig, since it may not be preent.
+
+2018-06-04  Dan Bernstein  <mitz@apple.com>
+
+        Fixed building TestWebKitAPI with a shared build directory with XCBuild, which is the
+        default build system in the Xcode 10 developer beta.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Changed the reference to the
+          built libWTF.a to be relative to the built products directory.
+
+2018-06-04  Chris Dumez  <cdumez@apple.com>
+
+        Rename "Cross-Origin-Options" HTTP header to "Cross-Origin-Window-Policy"
+        https://bugs.webkit.org/show_bug.cgi?id=186287
+        <rdar://problem/40783352>
+
+        Reviewed by Youenn Fablet.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (enableExperimentalFeatures):
+
+2018-06-04  Daniel Bates  <dabates@apple.com>
+
+        Typo in MockBugzillaQueries.fetch_attachment_ids_from_review_queue()
+        https://bugs.webkit.org/show_bug.cgi?id=186290
+
+        Reviewed by Aakash Jain.
+
+        Although the usefulness of the code in MockBugzillaQueries.fetch_attachment_ids_from_review_queue() is
+        questionable we should fix a typo when calling this mocked function with argument since.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla_mock.py:
+        (MockBugzillaQueries.fetch_attachment_ids_from_review_queue):
+
+2018-06-04  Dan Bernstein  <mitz@apple.com>
+
+        Fixed building with the macOS Mojave seed SDK.
+
+        * TestWebKitAPI/Tests/mac/MediaPlaybackSleepAssertion.mm:
+
+2018-06-04  Alexey Proskuryakov  <ap@apple.com>
+
+        Add Mojave support to WebKit tools
+        https://bugs.webkit.org/show_bug.cgi?id=186282
+
+        Reviewed by Daniel Bates.
+
+        Nightly build support will be added separately.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Mojave.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Mojave@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        Added dashboard support.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild.py:
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild_unittest.py:
+        Trigger the right build queues on check-in.
+
+        * Scripts/webkitpy/common/version_name_map.py:
+        * Scripts/webkitpy/common/version_name_map_unittest.py:
+        The main version mapping class updated.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        * Scripts/webkitpy/port/mac_unittest.py:
+        Updated for more platforms in unit tests.
+
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+        Added the new platform to flakiness dashboard.
+
+2018-06-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit on watchOS] Remove all uses of the EXTRA_ZOOM_MODE compiler flag
+        https://bugs.webkit.org/show_bug.cgi?id=186279
+
+        Reviewed by Tim Horton.
+
+        Replaces uses of ENABLE(EXTRA_ZOOM_MODE) with PLATFORM(WATCHOS).
+
+        * TestWebKitAPI/Tests/ios/RenderingProgressTests.mm:
+
+2018-06-03  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Remove gMiniBrowser global variable
+        https://bugs.webkit.org/show_bug.cgi?id=186134
+
+        Reviewed by Brent Fulgham.
+
+        It should not be assumed there is only one main window and one browser
+        window to support multiple windows properly. gMainWindow and
+        gMiniBrowser global variables should be removed. This change
+        removes gMiniBrowser.
+
+        * MiniBrowser/win/Common.cpp: Removed gMiniBrowser global variable.
+        * MiniBrowser/win/Common.h: Ditto.
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::init):
+        (MainWindow::WndProc):
+        (EditProc): Post WM_COMMAND if the enter key is pressed in URL bar.
+        (MainWindow::cachesDialogProc): Renamed from Caches.
+        (MainWindow::customUserAgentDialogProc): Renamed from CustomUserAgent.
+        (MainWindow::onURLBarEnter): Extracted from EditProc.
+        (BackButtonProc): Deleted.
+        (ForwardButtonProc): Deleted.
+        (Caches): Renamed to MainWindow::cachesDialogProc.
+        (CustomUserAgent): Renamed to MainWindow::customUserAgentDialogProc.
+        * MiniBrowser/win/MainWindow.h: Convert hCacheWnd global variable to a member variable of MainWindow.
+        * MiniBrowser/win/MiniBrowserLibResource.h:
+        * MiniBrowser/win/WinMain.cpp:
+        (wWinMain):
+
+2018-06-02  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Update some code to be more ARC-compatible to prepare for future ARC adoption
+        https://bugs.webkit.org/show_bug.cgi?id=186227
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/AccessibilityCommonMac.mm:
+        (+[NSString stringWithJSStringRef:]): Use CFBridgingRelease instead of autorelease.
+        (-[NSString createJSStringRef]): Add __bridge to a bridging typecast.
+
+        * DumpRenderTree/mac/AccessibilityControllerMac.mm: Add a missing include.
+
+        * DumpRenderTree/mac/AccessibilityNotificationHandler.mm:
+        (-[NSString createJSStringRef]): Add __bridge to a bridging typecast.
+        * DumpRenderTree/mac/AccessibilityTextMarkerMac.mm:
+        (AccessibilityTextMarker::isEqual): Ditto.
+        (AccessibilityTextMarkerRange::isEqual): Ditto.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (-[DumpRenderTree _waitForWebThread]): Use @autoreleasepool instead of NSAutoreleasePool.
+        (DumpRenderTreeMain): Ditto.
+        (WebThreadLockAfterDelegateCallbacksHaveCompleted): Ditto.
+        (runTest): Ditto.
+
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.mm:
+        (copyFile): Use a std::pair to return both a URL and an error rather than using an
+        out argument for the NSError.
+        (-[DumpRenderTreeFilePromiseReceiver receivePromisedFilesAtDestination:options:operationQueue:reader:]):
+        Updated for the above change.
+
+        * DumpRenderTree/mac/DumpRenderTreeWindow.mm:
+        (-[DumpRenderTreeWindow _addToOpenWindows]): Add __bridge to a bridging typecast.
+        (-[DumpRenderTreeWindow close]): Ditto.
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+        (setDisplayColorProfile): Ditto.
+
+        * DumpRenderTree/mac/PolicyDelegate.mm: Add a missing include.
+
+        * DumpRenderTree/mac/ResourceLoadDelegate.mm:
+        (-[ResourceLoadDelegate webView:resource:willSendRequest:redirectResponse:fromDataSource:]):
+        Add __bridge to a bridging typecast.
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (-[APITestDelegateIPhone initWithTestRunner:utf8Data:baseURL:]): Ditto.
+        (TestRunner::apiTestNewWindowDataLoadBaseURL): Use @autoreleasepool instead of NSAutoreleasePool.
+
+        * DumpRenderTree/mac/TextInputControllerMac.m: Fix a comment.
+
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::replaceTextAtRange): Add __bridge to a bridging typecast.
+        (WTR::UIScriptController::contentsOfUserInterfaceItem const): Ditto.
+        (WTR::UIScriptController::overridePreference): Ditto.
+        * DumpRenderTree/mac/WorkQueueItemMac.mm:
+        (LoadItem::invoke const): Ditto.
+        (LoadHTMLStringItem::invoke const): Ditto.
+        (ScriptItem::invoke const): Ditto.
+
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (+[NSString stringWithJSStringRef:]): Use CFBridgingRelease instead of autorelease.
+        (-[NSString createJSStringRef]): Add __bridge to a bridging typecast.
+
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityCommonMac.mm:
+        (+[NSString stringWithJSStringRef:]): Use CFBridgingRelease instead of autorelease.
+        (-[NSString createJSStringRef]): Add __bridge to a bridging typecast.
+
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityControllerMac.mm:
+        (WTR::AccessibilityController::accessibleElementById): Add __bridge to a bridging typecast.
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityNotificationHandler.mm:
+        (-[NSString createJSStringRef]): Ditto.
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityTextMarkerMac.mm:
+        (WTR::AccessibilityTextMarker::isEqual): Ditto.
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityTextMarkerRangeMac.mm:
+        (WTR::AccessibilityTextMarkerRange::isEqual): Ditto.
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::setSelectedVisibleTextRange): Ditto.
+        (WTR::AccessibilityUIElement::lineTextMarkerRangeForTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::textMarkerRangeLength): Ditto.
+        (WTR::AccessibilityUIElement::previousTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::nextTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::stringForTextMarkerRange): Ditto.
+        (WTR::AccessibilityUIElement::textMarkerRangeForMarkers): Ditto.
+        (WTR::AccessibilityUIElement::startTextMarkerForTextMarkerRange): Ditto.
+        (WTR::AccessibilityUIElement::endTextMarkerForTextMarkerRange): Ditto.
+        (WTR::AccessibilityUIElement::accessibilityElementForTextMarker): Ditto.
+        (WTR::createJSStringRef): Ditto.
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRange): Ditto.
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions): Ditto.
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRangeContainsAttribute): Ditto.
+        (WTR::AccessibilityUIElement::indexForTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::isTextMarkerValid): Ditto.
+        (WTR::AccessibilityUIElement::leftWordTextMarkerRangeForTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::rightWordTextMarkerRangeForTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::previousWordStartTextMarkerForTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::nextWordEndTextMarkerForTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::paragraphTextMarkerRangeForTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::previousParagraphStartTextMarkerForTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::nextParagraphEndTextMarkerForTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::sentenceTextMarkerRangeForTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::previousSentenceStartTextMarkerForTextMarker): Ditto.
+        (WTR::AccessibilityUIElement::nextSentenceEndTextMarkerForTextMarker): Ditto.
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration): Ditto.
+        (WTR::TestController::platformContext): Ditto.
+        (WTR::TestController::platformPreferences): Ditto.
+        (WTR::TestController::platformAdjustContext): Ditto.
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::PlatformWebView): Ditto.
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::initializeInjectedBundlePath): Ditto.
+        (WTR::TestController::initializeTestPluginDirectory): Ditto.
+        (WTR::TestController::platformConfigureViewForTest): Ditto.
+
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::nsString): Use CFBridgingRelease instead of autorelease.
+        (WTR::UIScriptController::platformPlayBackEventStream): Add __bridge to a bridging
+        typecast.
+
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.mm: Add a missing include.
+
+        * WebKitTestRunner/mac/WebKitTestRunnerPasteboard.mm:
+        (-[LocalPasteboard setPropertyList:forType:]): Add _bridge to a bridging typecast.
+        (-[LocalPasteboard setString:forType:]): Ditto.
+
+        * WebKitTestRunner/mac/main.mm:
+        (main): Use @autoreleasepool instead of NSAutoreleasePool.
+
+2018-06-02  Keith Miller  <keith_miller@apple.com>
+
+        run-jsc should pass the option to use dollar vm by default
+        https://bugs.webkit.org/show_bug.cgi?id=186170
+
+        Reviewed by Yusuke Suzuki.
+
+        * Scripts/run-jsc:
+
+2018-06-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r232421.
+        https://bugs.webkit.org/show_bug.cgi?id=186240
+
+        Breaks webkitpy tests (Requested by aakashjain on #webkit).
+
+        Reverted changeset:
+
+        "Add some tests for lldb_webkit.py"
+        https://bugs.webkit.org/show_bug.cgi?id=183744
+        https://trac.webkit.org/changeset/232421
+
+2018-06-01  Daniel Bates  <dabates@apple.com>
+
+        Add some tests for lldb_webkit.py
+        https://bugs.webkit.org/show_bug.cgi?id=183744
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adds some tests to ensure we do not regress LLDB pretty-printing of WTF::StringImpl
+        and WTF::String objects.
+
+        The tests make use of the LLDB Python API (lldb.py) and a simple debug-built test
+        program, lldbWebKitTester, to run. For now, we only support building lldbWebKitTester
+        on Mac.
+
+        * Makefile: Build the simple test tool lldbWebKitTester on Mac.
+        * Scripts/build-lldbwebkittester: Added.
+        (buildProjectOrDie):
+        * Scripts/dump-class-layout: Extract logic to compute the path to the LLDB Python module
+        from here to Scripts/webkitpy/common/system/systemhost.py so that it can used by both
+        this script and lldb/lldb_webkit_unittest.py. Also import the lldb module at the top of
+        the file and take advantage of Python's default error semantics to throw an exception
+        if the import fails instead of handling it ourself. This has the side effect that we
+        now always import the LLDB Python module even if this script is invoked with --help.
+        If this turns out to be a significant annoyance then we can look to dynamically import
+        the module as we did before this change.
+        (webkit_build_dir):
+        (main):
+        (developer_dir): Deleted.
+        (import_lldb): Deleted.
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py: Update FIXME comment to reflect
+        that fact that test-webkitpy does not support class and module fixtures. This is because
+        test-webkitpy currently implements parallelism by breaking down existing test classes
+        into individual test methods itself and having each worker run exactly one test method (via
+        unittest.TestLoader.loadTestsFromName()) at a time. As a result of this reorganization,
+        setUpModule()/setUpClass() are called for each test method as opposed to once per test
+        class/test module.
+        (remove_dir): Ditto.
+        * Scripts/webkitpy/common/system/systemhost.py:
+        (SystemHost):
+        (SystemHost.path_to_lldb_python_directory): Added.
+        * Scripts/webkitpy/test/main.py:
+        (_find_lldb_webkit_tester): Returns whether there exists a Debug or Release-built lldbWebKitTester.
+        (_build_lldb_webkit_tester): Builds lldbWebKitTester. For now, we only support building
+        lldbWebKitTester on Mac.
+        (main): Add Tools/lldb to the test search path if the platform has lldb.py.
+        (Tester.run): Pass a boolean as to whether we will run the lldb_webkit unit tests.
+        (Tester._run_tests): Modified to take a boolean as to whether to run the lldb_webkit unit tests.
+        If we will run these tests then build lldbWebKitTester if it has not already been built as the
+        unit tests depend on this program.
+        * lldb/lldbWebKitTester/Configurations/Base.xcconfig: Added.
+        * lldb/lldbWebKitTester/Configurations/DebugRelease.xcconfig: Added.
+        * lldb/lldbWebKitTester/Configurations/lldbWebKitTester.xcconfig: Added.
+        * lldb/lldbWebKitTester/Makefile: Added.
+        * lldb/lldbWebKitTester/lldbWebKitTester.xcodeproj/project.pbxproj: Added.
+        * lldb/lldbWebKitTester/main.cpp: Added.
+        (breakForTestingSummaryProviders):
+        (utf16String):
+        (testSummaryProviders):
+        (main):
+        * lldb/lldb_webkit_unittest.py: Added.
+        (destroy_cached_debug_session):
+        (LLDBDebugSession):
+        (LLDBDebugSession.setup):
+        (LLDBDebugSession.tearDown):
+        (TestSummaryProviders):
+        (TestSummaryProviders.setUpClass):
+        (TestSummaryProviders._sbFrame):
+        (TestSummaryProviders.serial_test_WTFStringImpl_SummaryProvider_null_string):
+        (TestSummaryProviders.serial_test_WTFStringImpl_SummaryProvider_empty_string):
+        (TestSummaryProviders.serial_test_WTFStringImpl_SummaryProvider_8bit_string):
+        (TestSummaryProviders.serial_test_WTFStringImpl_SummaryProvider_16bit_string):
+        (TestSummaryProviders.serial_test_WTFString_SummaryProvider_null_string):
+        (TestSummaryProviders.serial_test_WTFString_SummaryProvider_empty_string):
+        (TestSummaryProviders.serial_test_WTFString_SummaryProvider_8bit_string):
+        (TestSummaryProviders.serial_test_WTFString_SummaryProvider_16bit_string):
+
+2018-06-01  Frederic Wang  <fwang@igalia.com>
+
+        export-w3c-test-changes cannot apply patches when some w3c-import.log files are changed
+        https://bugs.webkit.org/show_bug.cgi?id=186133
+
+        Reviewed by Youenn Fablet.
+
+        * Scripts/webkitpy/w3c/test_exporter.py: Exclude w3c-import.log from the diff.
+        * Scripts/webkitpy/w3c/test_exporter_unittest.py: Add unit test.
+
+2018-05-31  Frederic Wang  <fwang@igalia.com>
+
+        export-w3c-test-changes should use the new location & name of the WPT repo
+        https://bugs.webkit.org/show_bug.cgi?id=186135
+
+        Reviewed by Youenn Fablet.
+
+        Web platform tests have been moved to GitHub's web-platform-tests/wpt. This patch updates the
+        corresponding variables to use the new organization and repository name. It also refactors a
+        bit the code to reduce the amount of hardcoded strings.
+
+        * Scripts/webkitpy/w3c/common.py: Use org web-platform-tests, repo name wpt. Also removes the
+        final slash to WPT_GH_URL, so it can be used for repo URL too.
+        * Scripts/webkitpy/w3c/test_exporter.py: Import more symbols and define WPT_PR_URL from
+        WPT_GH_URL.
+        (WebPlatformTestExporter._wpt_fork_branch_github_url): Use WPT_GH_REPO_NAME.
+        (WebPlatformTestExporter._wpt_fork_push_url): Use WPT_GH_REPO_NAME.
+        (WebPlatformTestExporter._git): Use  WPT_GH_URL.
+        (WebPlatformTestExporter._ensure_username_and_token): Use WPT_GH_ORG, WPT_GH_REPO_NAME.
+        (WebPlatformTestExporter.make_pull_request): Use WPT_GH_ORG, WPT_GH_REPO_NAME.
+        (parse_args): Use WPT_GH_REPO_NAME, WPT_GH_URL.
+        * Scripts/webkitpy/w3c/test_exporter_unittest.py:
+        (TestExporterTest.test_export): Update organization and repository names for the remote
+        branch and pull request.
+        (TestExporterTest.test_export_with_specific_branch): Update repository name.
+
 2018-05-31  Ryan Haddad  <ryanhaddad@apple.com>
 
         Update expected results for BuildStepsConstructorTest

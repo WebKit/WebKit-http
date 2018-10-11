@@ -1,3 +1,87 @@
+2018-06-07  Chris Dumez  <cdumez@apple.com>
+
+        Add base class to get WeakPtrFactory member and avoid some boilerplate code
+        https://bugs.webkit.org/show_bug.cgi?id=186407
+
+        Reviewed by Brent Fulgham.
+
+        186407_CanMakeWeakPtr
+
+        * pal/system/mac/SystemSleepListenerMac.h:
+        * pal/system/mac/SystemSleepListenerMac.mm:
+        (PAL::SystemSleepListenerMac::SystemSleepListenerMac):
+
+2018-06-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Logging macros are sensitive to pal/Logging.h vs Logging.h include order
+        https://bugs.webkit.org/show_bug.cgi?id=185893
+
+        Reviewed by Zalan Bujtas.
+        
+        Remove unused functionality from pal/Logging code until we need it. Primarily this removes the
+        #define LOG_CHANNEL_PREFIX from pal/Logging.h, which caused include-order problems with unified sources.
+        
+        Future work should move shared logging code up to WTF (or into PAL).
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/CMakeLists.txt:
+        * pal/LogInitialization.h: Removed.
+        * pal/Logging.cpp:
+        (PAL::isLogChannelEnabled): Deleted.
+        (PAL::setLogChannelToAccumulate): Deleted.
+        (PAL::initializeLogChannelsIfNecessary): Deleted.
+        * pal/Logging.h:
+        * pal/cocoa/LoggingCocoa.mm: Removed.
+
+2018-06-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Adjust compile and runtime flags to match shippable state of features
+        https://bugs.webkit.org/show_bug.cgi?id=186319
+        <rdar://problem/40352045>
+
+        Reviewed by Maciej Stachowiak, Jon Lee, and others.
+
+        * Configurations/DebugRelease.xcconfig: Update to match WebKit definition of
+        WK_RELOCATABLE_FRAMEWORKS so that ENABLE(EXPERIMENTAL_FEATURES) is defined properly for
+        Cocoa builds.
+        * Configurations/FeatureDefines.xcconfig: Don't build ENABLE_INPUT_TYPE_COLOR
+        or ENABLE_INPUT_TYPE_COLOR_POPOVER.
+
+2018-06-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Revise DEFAULT_EXPERIMENTAL_FEATURES_ENABLED to work properly on Apple builds
+        https://bugs.webkit.org/show_bug.cgi?id=186286
+        <rdar://problem/40782992>
+
+        Reviewed by Dan Bernstein.
+
+        Use the WK_RELOCATABLE_FRAMEWORKS flag (which is always defined for non-production builds)
+        to define ENABLE(EXPERIMENTAL_FEATURES) so that we do not need to manually
+        change this flag when preparing for a production release.
+
+        * Configurations/FeatureDefines.xcconfig: Use WK_RELOCATABLE_FRAMEWORKS to determine
+        whether experimental features should be enabled, and use it to properly define the
+        feature flag.
+
+2018-06-04  Dan Bernstein  <mitz@apple.com>
+
+        Made PAL build with the macOS Mojave SDK.
+
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+
+2018-06-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit on watchOS] Remove all uses of the EXTRA_ZOOM_MODE compiler flag
+        https://bugs.webkit.org/show_bug.cgi?id=186279
+
+        Reviewed by Tim Horton.
+
+        Replaces uses of ENABLE(EXTRA_ZOOM_MODE) with PLATFORM(WATCHOS).
+
+        * pal/cf/CoreMediaSoftLink.h:
+        * pal/spi/cocoa/AVKitSPI.h:
+
 2018-05-30  Andy Estes  <aestes@apple.com>
 
         [Cocoa] Add an SPI to suppress connection termination errors from CFNetwork when network interfaces change

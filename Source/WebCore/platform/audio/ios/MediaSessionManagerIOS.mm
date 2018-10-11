@@ -51,12 +51,12 @@
 
 SOFT_LINK_FRAMEWORK(AVFoundation)
 SOFT_LINK_CLASS(AVFoundation, AVAudioSession)
-SOFT_LINK_POINTER(AVFoundation, AVAudioSessionInterruptionNotification, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVAudioSessionInterruptionTypeKey, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVAudioSessionInterruptionOptionKey, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVRouteDetectorMultipleRoutesDetectedDidChangeNotification, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVAudioSessionInterruptionNotification, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVAudioSessionInterruptionTypeKey, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVAudioSessionInterruptionOptionKey, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVRouteDetectorMultipleRoutesDetectedDidChangeNotification, NSString *)
 
-#if HAVE(MEDIA_PLAYER) && !ENABLE(EXTRA_ZOOM_MODE)
+#if HAVE(MEDIA_PLAYER) && !PLATFORM(WATCHOS)
 SOFT_LINK_CLASS(AVFoundation, AVRouteDetector)
 #endif
 
@@ -67,10 +67,10 @@ SOFT_LINK_CLASS(AVFoundation, AVRouteDetector)
 
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK_CLASS(UIKit, UIApplication)
-SOFT_LINK_POINTER(UIKit, UIApplicationWillResignActiveNotification, NSString *)
-SOFT_LINK_POINTER(UIKit, UIApplicationWillEnterForegroundNotification, NSString *)
-SOFT_LINK_POINTER(UIKit, UIApplicationDidBecomeActiveNotification, NSString *)
-SOFT_LINK_POINTER(UIKit, UIApplicationDidEnterBackgroundNotification, NSString *)
+SOFT_LINK_CONSTANT(UIKit, UIApplicationWillResignActiveNotification, NSString *)
+SOFT_LINK_CONSTANT(UIKit, UIApplicationWillEnterForegroundNotification, NSString *)
+SOFT_LINK_CONSTANT(UIKit, UIApplicationDidBecomeActiveNotification, NSString *)
+SOFT_LINK_CONSTANT(UIKit, UIApplicationDidEnterBackgroundNotification, NSString *)
 
 #define UIApplication getUIApplicationClass()
 #define UIApplicationWillResignActiveNotification getUIApplicationWillResignActiveNotification()
@@ -81,11 +81,11 @@ SOFT_LINK_POINTER(UIKit, UIApplicationDidEnterBackgroundNotification, NSString *
 #if HAVE(MEDIA_PLAYER)
 SOFT_LINK_FRAMEWORK(MediaPlayer)
 SOFT_LINK_CLASS(MediaPlayer, MPNowPlayingInfoCenter)
-SOFT_LINK_POINTER(MediaPlayer, MPMediaItemPropertyTitle, NSString *)
-SOFT_LINK_POINTER(MediaPlayer, MPMediaItemPropertyPlaybackDuration, NSString *)
-SOFT_LINK_POINTER(MediaPlayer, MPNowPlayingInfoPropertyElapsedPlaybackTime, NSString *)
-SOFT_LINK_POINTER(MediaPlayer, MPNowPlayingInfoPropertyPlaybackRate, NSString *)
-SOFT_LINK_POINTER(MediaPlayer, kMRMediaRemoteNowPlayingInfoUniqueIdentifier, NSString *)
+SOFT_LINK_CONSTANT(MediaPlayer, MPMediaItemPropertyTitle, NSString *)
+SOFT_LINK_CONSTANT(MediaPlayer, MPMediaItemPropertyPlaybackDuration, NSString *)
+SOFT_LINK_CONSTANT(MediaPlayer, MPNowPlayingInfoPropertyElapsedPlaybackTime, NSString *)
+SOFT_LINK_CONSTANT(MediaPlayer, MPNowPlayingInfoPropertyPlaybackRate, NSString *)
+SOFT_LINK_CONSTANT(MediaPlayer, kMRMediaRemoteNowPlayingInfoUniqueIdentifier, NSString *)
 
 #define MPMediaItemPropertyTitle getMPMediaItemPropertyTitle()
 #define MPMediaItemPropertyPlaybackDuration getMPMediaItemPropertyPlaybackDuration()
@@ -104,7 +104,7 @@ using namespace WebCore;
 @interface WebMediaSessionHelper : NSObject {
     MediaSessionManageriOS* _callback;
 
-#if HAVE(MEDIA_PLAYER) && !ENABLE(EXTRA_ZOOM_MODE)
+#if HAVE(MEDIA_PLAYER) && !PLATFORM(WATCHOS)
     RetainPtr<AVRouteDetector> _routeDetector;
 #endif
     bool _monitoringAirPlayRoutes;
@@ -120,7 +120,7 @@ using namespace WebCore;
 - (void)applicationDidEnterBackground:(NSNotification *)notification;
 - (BOOL)hasWirelessTargetsAvailable;
 
-#if HAVE(MEDIA_PLAYER) && !ENABLE(EXTRA_ZOOM_MODE)
+#if HAVE(MEDIA_PLAYER) && !PLATFORM(WATCHOS)
 - (void)startMonitoringAirPlayRoutes;
 - (void)stopMonitoringAirPlayRoutes;
 #endif
@@ -186,7 +186,7 @@ bool MediaSessionManageriOS::hasWirelessTargetsAvailable()
 
 void MediaSessionManageriOS::configureWireLessTargetMonitoring()
 {
-#if HAVE(MEDIA_PLAYER) && !ENABLE(EXTRA_ZOOM_MODE)
+#if HAVE(MEDIA_PLAYER) && !PLATFORM(WATCHOS)
     bool requiresMonitoring = anyOfSessions([] (PlatformMediaSession& session, size_t) {
         return session.requiresPlaybackTargetRouteMonitoring();
     });
@@ -350,7 +350,7 @@ void MediaSessionManageriOS::externalOutputDeviceAvailableDidChange()
 {
     LOG(Media, "-[WebMediaSessionHelper dealloc]");
 
-#if HAVE(MEDIA_PLAYER) && !ENABLE(EXTRA_ZOOM_MODE)
+#if HAVE(MEDIA_PLAYER) && !PLATFORM(WATCHOS)
     if (!pthread_main_np()) {
         dispatch_async(dispatch_get_main_queue(), [routeDetector = WTFMove(_routeDetector)] () mutable {
             LOG(Media, "safelyTearDown - dipatched to UI thread.");
@@ -376,14 +376,14 @@ void MediaSessionManageriOS::externalOutputDeviceAvailableDidChange()
 - (BOOL)hasWirelessTargetsAvailable
 {
     LOG(Media, "-[WebMediaSessionHelper hasWirelessTargetsAvailable]");
-#if HAVE(MEDIA_PLAYER) && !ENABLE(EXTRA_ZOOM_MODE)
+#if HAVE(MEDIA_PLAYER) && !PLATFORM(WATCHOS)
     return _routeDetector.get().multipleRoutesDetected;
 #else
     return NO;
 #endif
 }
 
-#if HAVE(MEDIA_PLAYER) && !ENABLE(EXTRA_ZOOM_MODE)
+#if HAVE(MEDIA_PLAYER) && !PLATFORM(WATCHOS)
 - (void)startMonitoringAirPlayRoutes
 {
     if (_monitoringAirPlayRoutes)
@@ -428,7 +428,7 @@ void MediaSessionManageriOS::externalOutputDeviceAvailableDidChange()
     _monitoringAirPlayRoutes = false;
     _routeDetector.get().routeDetectionEnabled = NO;
 }
-#endif // HAVE(MEDIA_PLAYER) && !ENABLE(EXTRA_ZOOM_MODE)
+#endif // HAVE(MEDIA_PLAYER) && !PLATFORM(WATCHOS)
 
 - (void)interruption:(NSNotification *)notification
 {

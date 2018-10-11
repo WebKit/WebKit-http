@@ -2368,6 +2368,26 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         setForNode(node, node->structure());
         break;
 
+    case ObjectCreate: {
+        if (JSValue base = forNode(node->child1()).m_value) {
+            if (base.isNull()) {
+                JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
+                m_state.setFoundConstants(true);
+                if (node->child1().useKind() == UntypedUse)
+                    didFoldClobberWorld();
+                setForNode(node, globalObject->nullPrototypeObjectStructure());
+                break;
+            }
+            // FIXME: We should get a structure for a constant prototype. We need to allow concurrent
+            // access to StructureCache from compiler threads.
+            // https://bugs.webkit.org/show_bug.cgi?id=186199
+        }
+        if (node->child1().useKind() == UntypedUse)
+            clobberWorld();
+        setTypeForNode(node, SpecFinalObject);
+        break;
+    }
+
     case ToObject:
     case CallObjectConstructor: {
         AbstractValue& source = forNode(node->child1());
@@ -2763,6 +2783,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     clobberLimit, node->transition()->previous, node->transition()->next);
                 forNode(node->child1()).changeStructure(m_graph, node->transition()->next);
             }
+        } else {
+            // We're going to exit before we get here, but for the sake of validation, we've folded our write to StructureID.
+            didFoldClobberStructures();
         }
         break;
     case GetButterfly:
@@ -3506,6 +3529,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case LoopHint:
     case ZombieHint:
     case ExitOK:
+    case ClearCatchLocals:
         break;
 
     case CheckTypeInfoFlags: {

@@ -482,8 +482,9 @@ void Page::goToItem(HistoryItem& item, FrameLoadType type, NavigationPolicyCheck
     // being deref()-ed. Make sure we can still use it with HistoryController::goToItem later.
     Ref<HistoryItem> protector(item);
 
-    if (m_mainFrame->loader().history().shouldStopLoadingForHistoryItem(item))
-        m_mainFrame->loader().stopAllLoaders();
+    auto& frameLoader = m_mainFrame->loader();
+    if (frameLoader.history().shouldStopLoadingForHistoryItem(item))
+        m_mainFrame->loader().stopAllLoadersAndCheckCompleteness();
 
     m_mainFrame->loader().history().goToItem(item, type, navigationPolicyCheck);
 }
@@ -1859,7 +1860,7 @@ static LayoutRect relevantViewRect(RenderView* view)
     LayoutRect viewRect = view->viewRect();
 
     float relevantViewRectWidth = 980;
-#if ENABLE(EXTRA_ZOOM_MODE)
+#if PLATFORM(WATCHOS)
     // FIXME(186051): Consider limiting the relevant rect width to the view width everywhere.
     relevantViewRectWidth = std::min<float>(viewRect.width().toFloat(), relevantViewRectWidth);
 #endif

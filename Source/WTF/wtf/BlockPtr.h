@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -97,10 +97,13 @@ public:
 
         new (&block->f) F { std::move(function) };
 
+#if __has_feature(objc_arc)
+        return BlockPtr { (__bridge_transfer BlockType)block };
+#else
         BlockPtr blockPtr;
         blockPtr.m_block = reinterpret_cast<BlockType>(block);
-
         return blockPtr;
+#endif
     }
 
     BlockPtr()
@@ -109,12 +112,20 @@ public:
     }
 
     BlockPtr(BlockType block)
+#if __has_feature(objc_arc)
+        : m_block(WTFMove(block))
+#else
         : m_block(Block_copy(block))
+#endif
     {
     }
 
     BlockPtr(const BlockPtr& other)
+#if __has_feature(objc_arc)
+        : m_block(other.m_block)
+#else
         : m_block(Block_copy(other.m_block))
+#endif
     {
     }
     
@@ -125,16 +136,22 @@ public:
     
     ~BlockPtr()
     {
+#if !__has_feature(objc_arc)
         Block_release(m_block);
+#endif
     }
 
     BlockPtr& operator=(const BlockPtr& other)
     {
+#if __has_feature(objc_arc)
+        m_block = other.m_block;
+#else
         if (this != &other) {
             Block_release(m_block);
             m_block = Block_copy(other.m_block);
         }
-        
+#endif
+
         return *this;
     }
 
@@ -142,7 +159,9 @@ public:
     {
         ASSERT(this != &other);
 
+#if !__has_feature(objc_arc)
         Block_release(m_block);
+#endif
         m_block = std::exchange(other.m_block, nullptr);
 
         return *this;
@@ -174,4 +193,3 @@ inline BlockPtr<R (Args...)> makeBlockPtr(R (^block)(Args...))
 
 using WTF::BlockPtr;
 using WTF::makeBlockPtr;
-

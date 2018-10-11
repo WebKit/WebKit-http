@@ -1472,6 +1472,7 @@ public:
     void compileNewArrayWithSize(Node*);
     void compileNewTypedArray(Node*);
     void compileToThis(Node*);
+    void compileObjectCreate(Node*);
     void compileCreateThis(Node*);
     void compileNewObject(Node*);
     void compileToPrimitive(Node*);
@@ -1479,6 +1480,7 @@ public:
     void compileLogShadowChickenTail(Node*);
     void compileHasIndexedProperty(Node*);
     void compileExtractCatchLocal(Node*);
+    void compileClearCatchLocals(Node*);
     void compileProfileType(Node*);
 
     void moveTrueTo(GPRReg);

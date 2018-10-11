@@ -245,6 +245,7 @@ void PageClientImpl::decidePolicyForGeolocationPermissionRequest(WebFrameProxy& 
 
 void PageClientImpl::didStartProvisionalLoadForMainFrame()
 {
+    [m_webView _didStartProvisionalLoadForMainFrame];
     [m_webView _hidePasswordView];
 }
 
@@ -512,11 +513,6 @@ void PageClientImpl::didCommitLayerTree(const RemoteLayerTreeTransaction& layerT
 void PageClientImpl::layerTreeCommitComplete()
 {
     [m_contentView _layerTreeCommitComplete];
-}
-
-void PageClientImpl::dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition, uint64_t nextValidLayerTreeTransactionID)
-{
-    [m_webView _dynamicViewportUpdateChangedTargetToScale:newScale position:newScrollPosition nextValidLayerTreeTransactionID:nextValidLayerTreeTransactionID];
 }
 
 void PageClientImpl::couldNotRestorePageState()

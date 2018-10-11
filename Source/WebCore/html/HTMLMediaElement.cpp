@@ -5287,7 +5287,7 @@ void HTMLMediaElement::updatePlayState(UpdateState updateState)
         if (!m_waitingToEnterFullscreen)
             enterFullscreen();
 
-#if ENABLE(EXTRA_ZOOM_MODE)
+#if PLATFORM(WATCHOS)
         // FIXME: Investigate doing this for all builds.
         return;
 #endif
@@ -6021,11 +6021,6 @@ void HTMLMediaElement::willStopBeingFullscreenElement()
 
     if (fullscreenMode() == VideoFullscreenModeStandard)
         fullscreenModeChanged(VideoFullscreenModeNone);
-}
-
-PlatformMedia HTMLMediaElement::platformMedia() const
-{
-    return m_player ? m_player->platformMedia() : NoPlatformMedia;
 }
 
 PlatformLayer* HTMLMediaElement::platformLayer() const
@@ -6915,7 +6910,7 @@ RefPtr<PlatformMediaResourceLoader> HTMLMediaElement::mediaPlayerCreateResourceL
 {
     auto mediaResourceLoader = adoptRef(*new MediaResourceLoader(document(), *this, crossOrigin()));
 
-    m_lastMediaResourceLoaderForTesting = mediaResourceLoader->createWeakPtr();
+    m_lastMediaResourceLoaderForTesting = makeWeakPtr(mediaResourceLoader.get());
 
     return WTFMove(mediaResourceLoader);
 }
@@ -7544,7 +7539,7 @@ bool HTMLMediaElement::shouldOverrideBackgroundPlaybackRestriction(PlatformMedia
 #endif
         if (m_videoFullscreenMode & VideoFullscreenModePictureInPicture)
             return true;
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
         if (((m_videoFullscreenMode == VideoFullscreenModeStandard) || m_videoFullscreenStandby) && supportsPictureInPicture() && isPlaying())
             return true;
 #endif

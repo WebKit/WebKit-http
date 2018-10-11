@@ -60,6 +60,11 @@ static const int maxHistorySize = 10;
 
 typedef _com_ptr_t<_com_IIID<IWebMutableURLRequest, &__uuidof(IWebMutableURLRequest)>> IWebMutableURLRequestPtr;
 
+Ref<BrowserWindow> MiniBrowser::create(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView, bool pageLoadTesting)
+{
+    return adoptRef(*new MiniBrowser(mainWnd, urlBarWnd, useLayeredWebView, pageLoadTesting));
+}
+
 MiniBrowser::MiniBrowser(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView, bool pageLoadTesting)
     : m_hMainWnd(mainWnd)
     , m_hURLBarWnd(urlBarWnd)
@@ -68,10 +73,21 @@ MiniBrowser::MiniBrowser(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView, b
 {
 }
 
+ULONG MiniBrowser::AddRef()
+{
+    ref();
+    return refCount();
+}
+
+ULONG MiniBrowser::Release()
+{
+    auto count = refCount();
+    deref();
+    return --count;
+}
+
 HRESULT MiniBrowser::init()
 {
-    updateDeviceScaleFactor();
-
     HRESULT hr = WebKitCreateInstance(CLSID_WebView, 0, IID_IWebView, reinterpret_cast<void**>(&m_webView.GetInterfacePtr()));
     if (FAILED(hr))
         return hr;
@@ -111,11 +127,11 @@ HRESULT MiniBrowser::init()
     if (FAILED(hr))
         return hr;
 
-    hr = setUIDelegate(new PrintWebUIDelegate());
+    hr = setUIDelegate(new PrintWebUIDelegate(*this));
     if (FAILED (hr))
         return hr;
 
-    hr = setAccessibilityDelegate(new AccessibilityDelegate());
+    hr = setAccessibilityDelegate(new AccessibilityDelegate(*this));
     if (FAILED (hr))
         return hr;
 
@@ -124,7 +140,7 @@ HRESULT MiniBrowser::init()
         return hr;
 
     IWebDownloadDelegatePtr downloadDelegate;
-    downloadDelegate.Attach(new WebDownloadDelegate());
+    downloadDelegate.Attach(new WebDownloadDelegate(*this));
     hr = setDownloadDelegate(downloadDelegate);
     if (FAILED(hr))
         return hr;
@@ -414,7 +430,7 @@ void MiniBrowser::launchInspector()
     m_inspector->show();
 }
 
-void MiniBrowser::navigateForwardOrBackward(HWND hWnd, UINT menuID)
+void MiniBrowser::navigateForwardOrBackward(UINT menuID)
 {
     if (!m_webView)
         return;
@@ -426,7 +442,7 @@ void MiniBrowser::navigateForwardOrBackward(HWND hWnd, UINT menuID)
         m_webView->goBack(&wentBackOrForward);
 }
 
-void MiniBrowser::navigateToHistory(HWND hWnd, UINT menuID)
+void MiniBrowser::navigateToHistory(UINT menuID)
 {
     if (!m_webView)
         return;
@@ -607,22 +623,6 @@ void MiniBrowser::showLayerTree()
     else
         OutputDebugString(layerTreeBstr);
     OutputDebugString(L"\n\n");
-}
-
-void MiniBrowser::generateFontForScaleFactor(float scaleFactor)
-{
-    if (m_hURLBarFont)
-        ::DeleteObject(m_hURLBarFont);
-
-    m_hURLBarFont = ::CreateFont(scaleFactor * 18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-        OUT_TT_ONLY_PRECIS, CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, FF_DONTCARE, L"Times New Roman");
-}
-
-
-void MiniBrowser::updateDeviceScaleFactor()
-{
-    m_deviceScaleFactor = WebCore::deviceScaleFactorForWindow(m_hMainWnd);
-    generateFontForScaleFactor(m_deviceScaleFactor);
 }
 
 static BOOL CALLBACK AbortProc(HDC hDC, int Error)

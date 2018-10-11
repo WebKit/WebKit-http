@@ -51,7 +51,6 @@
 #import <wtf/MainThread.h>
 #import <wtf/MediaTime.h>
 #import <wtf/NeverDestroyed.h>
-#import <wtf/OSObjectPtr.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/Vector.h>
 
@@ -440,14 +439,14 @@ bool ImageDecoderAVFObjC::storeSampleBuffer(CMSampleBufferRef sampleBuffer)
         }
 
         if (!m_rotationPool) {
-            auto pixelAttributes = (CFDictionaryRef)@{
-                (NSString *)kCVPixelBufferWidthKey: @(m_size.value().width()),
-                (NSString *)kCVPixelBufferHeightKey: @(m_size.value().height()),
-                (NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA),
-                (NSString *)kCVPixelBufferCGImageCompatibilityKey: @YES,
+            auto pixelAttributes = @{
+                (__bridge NSString *)kCVPixelBufferWidthKey: @(m_size.value().width()),
+                (__bridge NSString *)kCVPixelBufferHeightKey: @(m_size.value().height()),
+                (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA),
+                (__bridge NSString *)kCVPixelBufferCGImageCompatibilityKey: @YES,
             };
             CVPixelBufferPoolRef rawPool = nullptr;
-            CVPixelBufferPoolCreate(kCFAllocatorDefault, nullptr, pixelAttributes, &rawPool);
+            CVPixelBufferPoolCreate(kCFAllocatorDefault, nullptr, (__bridge CFDictionaryRef)pixelAttributes, &rawPool);
             m_rotationPool = adoptCF(rawPool);
         }
 

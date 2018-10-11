@@ -24,6 +24,7 @@
  */
 
 #pragma once
+#include "BrowserWindow.h"
 #include "PageLoadTestClient.h"
 #include <WebKitLegacy/WebKit.h>
 #include <comip.h>
@@ -47,9 +48,20 @@ typedef _com_ptr_t<_com_IIID<IWebResourceLoadDelegate, &__uuidof(IWebResourceLoa
 typedef _com_ptr_t<_com_IIID<IWebDownloadDelegate, &__uuidof(IWebDownloadDelegate)>> IWebDownloadDelegatePtr;
 typedef _com_ptr_t<_com_IIID<IWebFramePrivate, &__uuidof(IWebFramePrivate)>> IWebFramePrivatePtr;
 
-class MiniBrowser {
+class MiniBrowser : public BrowserWindow {
 public:
-    MiniBrowser(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView = false, bool pageLoadTesting = false);
+    static Ref<BrowserWindow> create(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView = false, bool pageLoadTesting = false);
+
+private:
+    friend class AccessibilityDelegate;
+    friend class MiniBrowserWebHost;
+    friend class PrintWebUIDelegate;
+    friend class WebDownloadDelegate;
+    friend class ResourceLoadDelegate;
+    friend class PageLoadTestClient;
+
+    ULONG AddRef();
+    ULONG Release();
 
     HRESULT init();
     HRESULT prepareViews(HWND mainWnd, const RECT& clientRect);
@@ -59,8 +71,8 @@ public:
 
     void showLastVisitedSites(IWebView&);
     void launchInspector();
-    void navigateForwardOrBackward(HWND hWnd, UINT menuID);
-    void navigateToHistory(HWND hWnd, UINT menuID);
+    void navigateForwardOrBackward(UINT menuID);
+    void navigateToHistory(UINT menuID);
     void exitProgram();
     bool seedInitialDefaultPreferences();
     bool setToDefaultPreferences();
@@ -96,19 +108,14 @@ public:
 
     void showLayerTree();
 
-    float deviceScaleFactor() { return m_deviceScaleFactor; }
-    void updateDeviceScaleFactor();
-
-    HGDIOBJ urlBarFont() { return m_hURLBarFont; }
     HWND hwnd() { return m_viewWnd; }
 
     void print();
     void updateStatistics(HWND dialog);
     void setPreference(UINT menuID, bool enable);
 
-private:
+    MiniBrowser(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView, bool pageLoadTesting);
     void subclassForLayeredWindow();
-    void generateFontForScaleFactor(float);
     bool setCacheFolder();
 
     std::vector<IWebHistoryItemPtr> m_historyItems;
@@ -134,9 +141,7 @@ private:
 
     HWND m_hMainWnd { nullptr };
     HWND m_hURLBarWnd { nullptr };
-    HGDIOBJ m_hURLBarFont { nullptr };
     HWND m_viewWnd { nullptr };
 
-    float m_deviceScaleFactor { 1.0f };
     bool m_useLayeredWebView;
 };

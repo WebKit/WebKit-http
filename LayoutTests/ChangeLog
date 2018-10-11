@@ -1,3 +1,641 @@
+2018-06-07  Mark Lam  <mark.lam@apple.com>
+
+        Enhance run-jsc-stress-tests to allow a test to specify test specific options required for it to run.
+        https://bugs.webkit.org/show_bug.cgi?id=186409
+        <rdar://problem/40909007>
+
+        Reviewed by Saam Barati.
+
+        * js/script-tests/intl-pluralrules.js:
+
+2018-06-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Release assert in Document::updateLayout() in WebPage::determinePrimarySnapshottedPlugIn()
+        https://bugs.webkit.org/show_bug.cgi?id=186383
+        <rdar://problem/40849498>
+
+        Reviewed by Jon Lee.
+
+        Added a regression test.
+
+        * plugins/snapshotting/determine-primary-snapshotted-plugin-crash-expected.txt: Added.
+        * plugins/snapshotting/determine-primary-snapshotted-plugin-crash.html: Added.
+
+2018-06-07  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GTK][WPE] Start implementing MediaStream API
+        https://bugs.webkit.org/show_bug.cgi?id=185787
+
+        Reviewed by Philippe Normand.
+
+        * platform/gtk/TestExpectations: Reactivate MediaStream tests and enable all tests
+        related to the mediaDevice.enumerateDevices and MediaStream (not RTCPeerConnection nor
+        webaudio).
+
+2018-06-07  Brent Fulgham  <bfulgham@apple.com>
+
+        Remove unused debug mode conditions
+        https://bugs.webkit.org/show_bug.cgi?id=186358
+        <rdar://problem/39117121>
+
+        Reviewed by Zalan Bujtas.
+
+        Rebase test expectations after behavior change.
+
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context-expected.txt:
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout-expected.txt:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html:
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction-expected.txt:
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction-expected.txt:
+        * http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html:
+        * http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-recent-user-interaction-expected.txt
+        * http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-recent-user-interaction.html
+
+2018-06-07  Brent Fulgham  <bfulgham@apple.com>
+
+        Handle Storage Access API calls in the absence of an attached frame
+        https://bugs.webkit.org/show_bug.cgi?id=186373
+        <rdar://problem/40028265>
+
+        Reviewed by Daniel Bates.
+
+        * http/tests/storageAccess/has-storage-access-crash-expected.txt: Added.
+        * http/tests/storageAccess/has-storage-access-crash.html: Added.
+        * http/tests/storageAccess/request-storage-access-crash-expected.txt: Added.
+        * http/tests/storageAccess/request-storage-access-crash.html: Added.
+        * platform/mac-wk2/TestExpectations: Add the two new tests for HighSierra+
+
+2018-06-06  Youenn Fablet  <youenn@apple.com>
+
+        HTTP Header values validation is too strict
+        https://bugs.webkit.org/show_bug.cgi?id=167112
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/xmlhttprequest/set-bad-headervalue.html:
+
+2018-06-06  David Fenton  <david_fenton@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html is a flaky failure.
+        https://bugs.webkit.org/show_bug.cgi?id=184060
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-06-06  David Fenton  <david_fenton@apple.com>
+
+        Layout Test http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html is flaky on macOS WK2 [ Release ]
+        https://bugs.webkit.org/show_bug.cgi?id=186362
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-06-06  Antoine Quint  <graouts@apple.com>
+
+        Rename color-filter to -apple-color-filter and do not expose it to Web content
+        https://bugs.webkit.org/show_bug.cgi?id=186306
+        <rdar://problem/39874167>
+
+        Reviewed by Simon Fraser.
+
+        Update tests for color-filter to test -apple-color-filter and explicitly turn the feature on since it's disabled by default.
+        We also update a test to not use the colorFilter accessor and setter on CSSStyleDeclaration because using an -apple- prefix
+        will no longer expose such a getter or setter, using getPropertyValue() and setProperty() instead.
+
+        * animations/resources/animation-test-helpers.js:
+        (getPropertyValue):
+        (comparePropertyValue):
+        * css3/color-filters/color-filter-animation-expected.txt:
+        * css3/color-filters/color-filter-animation.html:
+        * css3/color-filters/color-filter-backgrounds-borders-expected.html:
+        * css3/color-filters/color-filter-backgrounds-borders.html:
+        * css3/color-filters/color-filter-box-shadow-expected.html:
+        * css3/color-filters/color-filter-box-shadow.html:
+        * css3/color-filters/color-filter-brightness-expected.html:
+        * css3/color-filters/color-filter-brightness.html:
+        * css3/color-filters/color-filter-caret-color-expected.html:
+        * css3/color-filters/color-filter-caret-color.html:
+        * css3/color-filters/color-filter-color-property-expected.html:
+        * css3/color-filters/color-filter-color-property-list-item-expected.html:
+        * css3/color-filters/color-filter-color-property-list-item.html:
+        * css3/color-filters/color-filter-color-property.html:
+        * css3/color-filters/color-filter-color-text-decorations-expected.html:
+        * css3/color-filters/color-filter-color-text-decorations.html:
+        * css3/color-filters/color-filter-column-rule-expected.html:
+        * css3/color-filters/color-filter-column-rule.html:
+        * css3/color-filters/color-filter-contrast-expected.html:
+        * css3/color-filters/color-filter-contrast.html:
+        * css3/color-filters/color-filter-current-color-expected.html:
+        * css3/color-filters/color-filter-current-color.html:
+        * css3/color-filters/color-filter-filter-list-expected.html:
+        * css3/color-filters/color-filter-filter-list.html:
+        * css3/color-filters/color-filter-gradients-expected.html:
+        * css3/color-filters/color-filter-gradients.html:
+        * css3/color-filters/color-filter-grayscale-expected.html:
+        * css3/color-filters/color-filter-grayscale.html:
+        * css3/color-filters/color-filter-hue-rotate-expected.html:
+        * css3/color-filters/color-filter-hue-rotate.html:
+        * css3/color-filters/color-filter-inherits-expected.html:
+        * css3/color-filters/color-filter-inherits.html:
+        * css3/color-filters/color-filter-invert-expected.html:
+        * css3/color-filters/color-filter-invert.html:
+        * css3/color-filters/color-filter-opacity-expected.html:
+        * css3/color-filters/color-filter-opacity.html:
+        * css3/color-filters/color-filter-outline-expected.html:
+        * css3/color-filters/color-filter-outline.html:
+        * css3/color-filters/color-filter-parsing-expected.txt:
+        * css3/color-filters/color-filter-parsing.html:
+        * css3/color-filters/color-filter-saturate-expected.html:
+        * css3/color-filters/color-filter-saturate.html:
+        * css3/color-filters/color-filter-sepia-expected.html:
+        * css3/color-filters/color-filter-sepia.html:
+        * css3/color-filters/color-filter-text-decoration-shadow-expected.html:
+        * css3/color-filters/color-filter-text-decoration-shadow.html:
+        * css3/color-filters/color-filter-text-emphasis-expected.html:
+        * css3/color-filters/color-filter-text-emphasis.html:
+        * css3/color-filters/color-filter-text-shadow-expected.html:
+        * css3/color-filters/color-filter-text-shadow.html:
+        * css3/color-filters/color-filter-text-stroke-expected.html:
+        * css3/color-filters/color-filter-text-stroke.html:
+        * css3/color-filters/svg/color-filter-inline-svg-expected.html:
+        * css3/color-filters/svg/color-filter-inline-svg.html:
+
+2018-06-06  David Fenton  <david_fenton@apple.com>
+
+        [macOS WK2 Release] Layout Test media/video-trackmenu-selection.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=186055
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-06-06  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (r231817?): Layout Test media/track/track-delete-during-setup.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=185889
+        <rdar://problem/40583180>
+
+        Reviewed by Eric Carlson.
+
+        Modify the track-delete-during-setup.html test to end on video element suspend in
+        addition to canplaythrough.
+
+        * media/track/track-delete-during-setup.html:
+
+2018-06-06  Jer Noble  <jer.noble@apple.com>
+
+        Regions outside of the fullscreen window are exposed during zoom operations
+        https://bugs.webkit.org/show_bug.cgi?id=186330
+        <rdar://problem/34698009>
+
+        Reviewed by Simon Fraser.
+
+        * fullscreen/full-screen-layer-dump-expected.txt: Added.
+        * fullscreen/full-screen-layer-dump.html: Added.
+
+2018-06-06  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=186342
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-06-05  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (231817): Videos permanently blank out after switching out of a tab and back in
+        https://bugs.webkit.org/show_bug.cgi?id=186326
+        <rdar://problem/40778157>
+
+        Reviewed by Eric Carlson.
+
+        * media/video-buffering-allowed-expected.txt:
+        * media/video-buffering-allowed.html:
+
+2018-06-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Spelling errors in the middle of an inserted paragraph are not displayed
+        https://bugs.webkit.org/show_bug.cgi?id=185584
+        <rdar://problem/38676081>
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds 2 new spellchecking tests, and refactors some existing tests.
+
+        * editing/spelling/grammar-expected.txt:
+        * editing/spelling/grammar.html:
+        * editing/spelling/markers-expected.txt:
+        * editing/spelling/markers.html:
+
+        Tweaked so that these tests pass regardless of whether sentence retro correction is enabled or disabled.
+
+        * editing/spelling/retro-correction-spelling-markers-expected.txt: Added.
+        * editing/spelling/retro-correction-spelling-markers.html: Added.
+
+        Tests that typing at the end of a sentence will mark other parts of the sentence as misspellings, if retro
+        sentence correction is enabled.
+
+        * editing/spelling/spelling-changed-text-expected.txt:
+        * editing/spelling/spelling-changed-text.html:
+
+        Tweaked to correctly wait for the marker range to become the expected value.
+
+        * editing/spelling/spelling-markers-after-pasting-sentence-expected.txt: Added.
+        * editing/spelling/spelling-markers-after-pasting-sentence.html: Added.
+
+        Tests that after pasting a sentence with misspelled words, those misspelled words will be marked as misspellings.
+
+        * platform/ios/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-06-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Adjust compile and runtime flags to match shippable state of features
+        https://bugs.webkit.org/show_bug.cgi?id=186319
+        <rdar://problem/40352045>
+
+        Reviewed by Maciej Stachowiak, Jon Lee, and others.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-badInput-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-willValidate-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/selection-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/type-change-state-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/valueMode-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/readwrite-readonly-expected.txt: Added.
+
+2018-06-05  Youenn Fablet  <youenn@apple.com>
+
+        ServiceWorker registration should store any script fetched through importScripts
+        https://bugs.webkit.org/show_bug.cgi?id=182444
+        <rdar://problem/37164835>
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/service-workers/persistent-importScripts-expected.txt: Added.
+        * http/wpt/service-workers/persistent-importScripts.html: Added.
+        * http/wpt/service-workers/resources/persistent-importScripts-script.py: Added.
+        * http/wpt/service-workers/resources/persistent-importScripts-worker.js: Added.
+        * http/wpt/service-workers/resources/routines.js: Added.
+
+2018-06-05  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for new blockquote, caption, and paragraph ARIA roles
+        https://bugs.webkit.org/show_bug.cgi?id=186274
+
+        Reviewed by Chris Fleizach.
+
+        Add the three ARIA roles to the existing role-exposure tests and update
+        expectations accordingly. Also update several additional GTK tests because
+        the mapping of these ARIA roles results in new object attributes appearing
+        for native HTML blockquote, paragraph, and caption elements.
+
+        * accessibility/gtk/object-attributes-expected.txt:
+        * accessibility/gtk/xml-roles-exposed-expected.txt:
+        * accessibility/gtk/xml-roles-exposed.html:
+        * accessibility/roles-computedRoleString-expected.txt:
+        * accessibility/roles-computedRoleString.html:
+        * accessibility/roles-exposed.html:
+        * inspector/dom/hideHighlight-expected.txt:
+        * platform/gtk/accessibility/roles-computedRoleString-expected.txt:
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/gtk/accessibility/table-one-cell-expected.txt:
+        * platform/mac/accessibility/roles-computedRoleString-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2018-06-04  Chris Dumez  <cdumez@apple.com>
+
+        Rename "Cross-Origin-Options" HTTP header to "Cross-Origin-Window-Policy"
+        https://bugs.webkit.org/show_bug.cgi?id=186287
+        <rdar://problem/40783352>
+
+        Reviewed by Youenn Fablet.
+
+        * http/wpt/cross-origin-options/allow-postmessage-expected.txt: Removed.
+        * http/wpt/cross-origin-options/allow-postmessage-from-deny-expected.txt: Removed.
+        * http/wpt/cross-origin-options/allow-postmessage-from-deny.html.headers: Removed.
+        * http/wpt/cross-origin-options/cross-origin-options-header-expected.txt: Removed.
+        * http/wpt/cross-origin-options/navigation-from-opener-via-open-target-expected.txt: Removed.
+        * http/wpt/cross-origin-options/navigation-from-subframe-via-anchor-target-expected.txt: Removed.
+        * http/wpt/cross-origin-options/resources/cross-origin-options-allow-postmessage-pong.html.headers: Removed.
+        * http/wpt/cross-origin-window-policy/allow-postmessage-expected.txt: Added.
+        * http/wpt/cross-origin-window-policy/allow-postmessage-from-deny-expected.txt: Added.
+        * http/wpt/cross-origin-window-policy/allow-postmessage-from-deny.html: Renamed from LayoutTests/http/wpt/cross-origin-options/allow-postmessage-from-deny.html.
+        * http/wpt/cross-origin-window-policy/allow-postmessage-from-deny.html.headers: Added.
+        * http/wpt/cross-origin-window-policy/allow-postmessage.html: Renamed from LayoutTests/http/wpt/cross-origin-options/allow-postmessage.html.
+        * http/wpt/cross-origin-window-policy/cross-origin-window-policy-header-expected.txt: Added.
+        * http/wpt/cross-origin-window-policy/cross-origin-window-policy-header.html: Renamed from LayoutTests/http/wpt/cross-origin-options/cross-origin-options-header.html.
+        * http/wpt/cross-origin-window-policy/navigation-from-opener-via-open-target-expected.txt: Added.
+        * http/wpt/cross-origin-window-policy/navigation-from-opener-via-open-target.html: Renamed from LayoutTests/http/wpt/cross-origin-options/navigation-from-opener-via-open-target.html.
+        * http/wpt/cross-origin-window-policy/navigation-from-subframe-via-anchor-target-expected.txt: Added.
+        * http/wpt/cross-origin-window-policy/navigation-from-subframe-via-anchor-target.html: Renamed from LayoutTests/http/wpt/cross-origin-options/navigation-from-subframe-via-anchor-target.html.
+        * http/wpt/cross-origin-window-policy/resources/cross-origin-window-policy-allow-postmessage-pong.html: Renamed from LayoutTests/http/wpt/cross-origin-options/resources/cross-origin-options-allow-postmessage-pong.html.
+        * http/wpt/cross-origin-window-policy/resources/cross-origin-window-policy-allow-postmessage-pong.html.headers: Added.
+        * http/wpt/cross-origin-window-policy/resources/destination.html: Renamed from LayoutTests/http/wpt/cross-origin-options/resources/destination.html.
+        * http/wpt/cross-origin-window-policy/resources/navigate-parent-via-anchor.html: Renamed from LayoutTests/http/wpt/cross-origin-options/resources/navigate-parent-via-anchor.html.
+        * http/wpt/cross-origin-window-policy/resources/navigation-from-subframe-frame.py: Renamed from LayoutTests/http/wpt/cross-origin-options/resources/navigation-from-subframe-frame.py.
+        (main):
+        * http/wpt/cross-origin-window-policy/resources/serve-cross-origin-window-policy-header.py: Renamed from LayoutTests/http/wpt/cross-origin-options/resources/serve-cross-origin-options-header.py.
+        (main):
+        * http/wpt/cross-origin-window-policy/resources/utils.js: Renamed from LayoutTests/http/wpt/cross-origin-options/resources/utils.js.
+
+2018-06-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Moved the corresponding expected results for the tests moved in r232430.
+
+        * platform/ios/editing/selection/simple-line-layout-caret-is-gone-expected.txt: Moved from LayoutTests/platform/ios/editing/simple-line-layout-caret-is-gone-expected.txt.
+        * platform/wincairo/editing/selection/simple-line-layout-caret-is-gone-expected.txt: Moved from LayoutTests/platform/wincairo/editing/simple-line-layout-caret-is-gone-expected.txt.
+
+2018-06-04  Dean Jackson  <dino@apple.com>
+
+        AR Badging on transparent thumbnail images makes the glyph look really dark
+        https://bugs.webkit.org/show_bug.cgi?id=186289
+        <rdar://problem/40627111>
+
+        Reviewed by Anders Carlsson.
+
+        Update the test to exercise more background colors. Include the results for the AR badge.
+
+        * system-preview/badge-expected.html: Added.
+        * system-preview/badge.html:
+
+2018-06-04  Chris Dumez  <cdumez@apple.com>
+
+        Update Fetch code to provide more useful exception messages
+        https://bugs.webkit.org/show_bug.cgi?id=186156
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline tests that have different output.
+
+        * http/tests/workers/service/basic-fetch.https-expected.txt:
+
+2018-06-04  Alexey Proskuryakov  <ap@apple.com>
+
+        Add Mojave support to WebKit tools
+        https://bugs.webkit.org/show_bug.cgi?id=186282
+
+        Reviewed by Daniel Bates.
+
+        * platform/mac-mojave: Added an empty directory to avoid breaking scripts.
+
+2018-06-04  Daniel Bates  <dabates@apple.com>
+
+        Update Strong Password appearance
+        https://bugs.webkit.org/show_bug.cgi?id=186239
+        <rdar://problem/38183795>
+
+        Reviewed by Brent Fulgham.
+
+        Update expected results as necessary for the change in appearance.
+
+        * platform/ios/fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button-expected.txt:
+        * platform/ios/fast/forms/auto-fill-button/input-strong-password-auto-fill-button-expected.txt:
+        * platform/mac/fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button-expected.txt:
+        * platform/mac/fast/forms/auto-fill-button/input-strong-password-auto-fill-button-expected.txt:
+
+2018-06-04  Per Arne Vollan  <pvollan@apple.com>
+
+        Rebaseline editing/style/apply-style-iframe-crash.html on Windows.
+
+        Unreviewed test gardening.
+
+        * platform/win/editing/style/apply-style-iframe-crash-expected.txt: Added.
+
+2018-06-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening.
+
+        Adding platform-specific baselines for three http/tests/cache/ tests.
+        Updating baseline for the security/block-test.html test.
+        Adding failure expectations for a few other failures, linking to existing bugs.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/http/tests/cache: Added.
+        * platform/wpe/http/tests/cache/disk-cache: Added.
+        * platform/wpe/http/tests/cache/disk-cache/redirect-chain-limits-expected.txt: Added.
+        * platform/wpe/http/tests/cache/iframe-304-crash-expected.txt: Added.
+        * platform/wpe/http/tests/cache/network-error-during-revalidation-expected.txt: Added.
+        * platform/wpe/security/block-test-expected.txt:
+
+2018-06-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening.
+
+        Manage the W3C test failures by rebaselining what can be rebaselined, and adding
+        failing expectations for the rest of the failures. This mostly addresses the
+        new CSS Text tests that were imported lately, as well as changes in console logging.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/FileAPI/url/sandboxed-iframe-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-cors-safelisted-request-headers-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-get-fail-non-simple-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-post-with-non-cors-safelisted-content-type-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-infinite-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-infinite-sync-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-network-error-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-network-error-sync-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-text: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-text/white-space: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-text/white-space/seg-break-transformation-001-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-text/white-space/seg-break-transformation-004-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-text/white-space/seg-break-transformation-016-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-text/white-space/seg-break-transformation-017-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-text/white-space/white-space-collapse-002-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/basic/scheme-about.any-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/basic/scheme-about.any.worker-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-worker-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/request/request-keepalive-quota-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/security: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/security/embedded-credentials.tentative.sub-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+
+2018-06-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        More unreviewed GTK test gardening
+
+        * platform/gtk/TestExpectations:
+
+2018-06-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed GTK test expectations gardening
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/editing/selection/simple-line-layout-caret-is-gone-expected.txt: Renamed from LayoutTests/platform/gtk/editing/simple-line-layout-caret-is-gone-expected.txt.
+        * platform/gtk/editing/style/apply-style-iframe-crash-expected.txt: Renamed from LayoutTests/platform/gtk/editing/apply-style-iframe-crash-expected.txt.
+
+2018-06-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] The user should always be able to double tap to zoom to a scale of at least 1
+        https://bugs.webkit.org/show_bug.cgi?id=186209
+        <rdar://problem/40529255>
+
+        Reviewed by Tim Horton.
+
+        Add a test to verify that double tapping zooms in on a page where all the text is large enough to be legible at
+        initial scale.
+
+        * fast/events/extrazoom/double-tap-to-zoom-with-large-text-expected.txt: Added.
+        * fast/events/extrazoom/double-tap-to-zoom-with-large-text.html: Added.
+
+2018-06-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Editor can hold references to Documents after you navigate away
+        https://bugs.webkit.org/show_bug.cgi?id=186215
+
+        Reviewed by Simon Fraser.
+
+        Added a regression test.
+
+        * editing/selection/navigation-clears-editor-state-expected.txt: Added.
+        * editing/selection/navigation-clears-editor-state.html: Added.
+
+2018-06-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Move tests in LayoutTests/editing to appropriate subdirectories
+        https://bugs.webkit.org/show_bug.cgi?id=186212
+
+        Rubber-stamped by Wenson Hsieh.
+
+        Moved the following four tests in LayoutTests/editing to its subdirectories.
+
+        * editing/input/composition-underline-color-expected-mismatch.html: Moved from editing/composition-underline-color-expected-mismatch.html.
+        * editing/input/composition-underline-color.html: Move from editing/composition-underline-color.html.
+        * editing/input/marked-text-appearance-expected-mismatch.html: Copied from LayoutTests/editing/marked-text-appearance-expected-mismatch.html.
+        * editing/input/marked-text-appearance.html: Moved from editing/marked-text-appearance.html.
+        * editing/selection/rtl-to-ltr-editing-word-move-spin-expected.txt: Moved from editing/rtl-to-ltr-editing-word-move-spin-expected.txt.
+        * editing/selection/rtl-to-ltr-editing-word-move-spin.html: Moved from editing/rtl-to-ltr-editing-word-move-spin.html.
+        * editing/selection/simple-line-layout-caret-is-gone-expected.txt: Moved from editing/simple-line-layout-caret-is-gone-expected.txt.
+        * editing/selection/simple-line-layout-caret-is-gone.html: Moved from editing/simple-line-layout-caret-is-gone.html.
+        * editing/style/apply-style-iframe-crash-expected.txt: Moved from editing/apply-style-iframe-crash-expected.txt.
+        * editing/style/apply-style-iframe-crash.html: Moved from editing/apply-style-iframe-crash.html.
+
+2018-06-01  David Fenton  <david_fenton@apple.com>
+
+        Skip fetch/api/redirect/redirect-method.html and fetch/api/redirect/redirect-method-worker.html on macOS debug.
+        https://bugs.webkit.org/show_bug.cgi?id=184365
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-06-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ResourceLoader::cancel() shouldn't synchronously fire load event on document
+        https://bugs.webkit.org/show_bug.cgi?id=185284
+        <rdar://problem/39994507>
+
+        Reviewed by Antti Koivisto.
+
+        Fixed the tests as needed, and skipped more drag & drop tests in WebKitTestRunner as drag & drop isn't supported.
+
+        * editing/pasteboard/drag-image-to-contenteditable-in-iframe.html: Fixed the test. Explicitly invoke
+        testRunner.waitUntilDone() to wait until the iframe is loaded. Because "load" event in DOM only fires after
+        all subframes are loaded but the load delegate callback fires as long as subresources in the main frame
+        had finished loading, DumpRenderTree would finish the test prematurely otherwise. The old code happens to
+        work before this patch because we happen to not invoke FrameLoader::checkComplete at the "right" moment.
+        The WebCore change now triggers such a check and prematurely end the test without this fix to the test.
+        * http/tests/xmlhttprequest/reentrant-cancel-expected.txt:
+        * http/tests/xmlhttprequest/reentrant-cancel.html: Canceling XHR inside addElement is no longer
+        firing load event synchronously as expected. Added a code to end the test after the load event.
+        * http/wpt/service-workers/clone-opaque-being-loaded-response.html:
+        * platform/mac-wk2/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2018-05-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Some tests for webkitdirectory API fail when tests are in an APFS file system
+        https://bugs.webkit.org/show_bug.cgi?id=186184
+
+        Reviewed by Chris Dumez.
+
+        On an APFS volume, files may not be listed in the lexicologically order and the size of a directory
+        may defer from that of HFS+. To make the test results consistent on either file systems,
+        sort file entries lexicologically by the name and list two possible directory sizes as the expectation.
+
+        Added a new helper function, shouldBeOneOfValues, which takes an array of values as the expectation.
+
+        * editing/pasteboard/entries-api/datatransfer-items-drop-directoryReader.html:
+        * editing/pasteboard/entries-api/datatransfer-items-drop-getAsEntry-expected.txt:
+        * editing/pasteboard/entries-api/datatransfer-items-drop-getAsEntry.html:
+        * fast/forms/file/entries-api/drag-folder-webkitEntries-expected.txt:
+        * fast/forms/file/entries-api/drag-folder-webkitEntries.html:
+        * fast/forms/file/entries-api/webkitdirectory-drag-folder.html:
+        * resources/js-test.js:
+        (shouldBeOneOfValues): Added.
+
+2018-06-01  Daniel Bates  <dabates@apple.com>
+
+        http/tests/inspector/network/har/har-page.html should actually sort dumped cookies by name
+        https://bugs.webkit.org/show_bug.cgi?id=186137
+
+        Reviewed by Joseph Pecoraro.
+
+        JavaScript does not support comparison of String data types using the minus operator. Instead
+        implement the string comparator using relational operators and the identity operator.
+
+        * http/tests/inspector/network/har/har-page-expected.txt:
+        * http/tests/inspector/network/har/har-page.html:
+        * platform/gtk/TestExpectations: Unskip test.
+
+2018-06-01  Youenn Fablet  <youenn@apple.com>
+
+        http/tests/appcache/deferred-events.html is flaky due to console log messages
+        https://bugs.webkit.org/show_bug.cgi?id=185543
+
+        Reviewed by Chris Dumez.
+
+        Update the test to wait for the onerror callback.
+        At that time, all console logging should be done.
+
+        * http/tests/appcache/deferred-events-expected.txt:
+        * http/tests/appcache/deferred-events.html:
+
+2018-05-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add Symbol.prototype.description getter
+        https://bugs.webkit.org/show_bug.cgi?id=186053
+
+        Reviewed by Keith Miller.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2018-06-01  Brent Fulgham  <bfulgham@apple.com>
+
+        Unskip fast/html/marquee-reparent-check.html on macOS debug.
+        https://bugs.webkit.org/show_bug.cgi?id=178465
+        <rdar://problem/35052953>
+
+        Reviewed by Geoffrey Garen.
+
+        Unskipping test since the debug assertion is no longer reproducible in
+        current sources on shipping software.
+
+        * platform/mac/TestExpectations:
+
+2018-05-31  Per Arne Vollan  <pvollan@apple.com>
+
+        Skip http/tests/security/referrer-policy-header.html on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=186183
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
 2018-05-31  Manuel Rego Casasnovas  <rego@igalia.com>
 
         [css-text] Update test suite

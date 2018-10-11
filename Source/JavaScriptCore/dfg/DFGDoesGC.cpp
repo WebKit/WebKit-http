@@ -224,8 +224,9 @@ bool doesGC(Graph& graph, Node* node)
     case WeakSetAdd:
     case WeakMapSet:
     case Unreachable:
-    case ExtractCatchLocal:
     case ExtractOSREntryLocal:
+    case ExtractCatchLocal:
+    case ClearCatchLocals:
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
@@ -324,6 +325,7 @@ bool doesGC(Graph& graph, Node* node)
     case ToObject:
     case ToThis:
     case CreateThis:
+    case ObjectCreate:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
     case Arrayify:

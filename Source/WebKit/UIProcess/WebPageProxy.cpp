@@ -2778,11 +2778,6 @@ void WebPageProxy::windowScreenDidChange(PlatformDisplayID displayID)
         return;
 
     m_process->send(Messages::WebPage::WindowScreenDidChange(displayID), m_pageID);
-
-#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-    auto currentDisplaymask = CGDisplayIDToOpenGLDisplayMask(displayID);
-    m_process->send(Messages::WebPage::OpenGLDisplayMaskChanged(currentDisplaymask), m_pageID);
-#endif
 }
 
 float WebPageProxy::deviceScaleFactor() const
@@ -4244,6 +4239,19 @@ void WebPageProxy::showPage()
     m_uiClient->showPage(this);
 }
 
+void WebPageProxy::exitFullscreenImmediately()
+{
+#if ENABLE(FULLSCREEN_API)
+    if (fullScreenManager())
+        fullScreenManager()->close();
+#endif
+
+#if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+    if (videoFullscreenManager())
+        videoFullscreenManager()->requestHideAndExitFullscreen();
+#endif
+}
+
 void WebPageProxy::fullscreenMayReturnToInline()
 {
     m_uiClient->fullscreenMayReturnToInline(this);
@@ -4273,6 +4281,10 @@ void WebPageProxy::runJavaScriptAlert(uint64_t frameID, const SecurityOriginData
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
+#if PLATFORM(IOS)
+    exitFullscreenImmediately();
+#endif
+
     // Since runJavaScriptAlert() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer().stop();
 
@@ -4287,6 +4299,10 @@ void WebPageProxy::runJavaScriptConfirm(uint64_t frameID, const SecurityOriginDa
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
+
+#if PLATFORM(IOS)
+    exitFullscreenImmediately();
+#endif
 
     // Since runJavaScriptConfirm() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer().stop();
@@ -4304,6 +4320,9 @@ void WebPageProxy::runJavaScriptPrompt(uint64_t frameID, const SecurityOriginDat
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
+#if PLATFORM(IOS)
+    exitFullscreenImmediately();
+#endif
     // Since runJavaScriptPrompt() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer().stop();
 
@@ -5823,11 +5842,7 @@ void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
         m_webProcessLifetimeTracker.webPageLeavingWebProcess();
     else {
         navigationState().clearAllNavigations();
-
-        if (m_navigationClient)
-            m_navigationClient->processDidTerminate(*this, reason);
-        else if (reason != ProcessTerminationReason::RequestedByClient)
-            m_loaderClient->processDidCrash(*this);
+        dispatchProcessDidTerminate(reason);
     }
 
     if (m_controlledByAutomation) {
@@ -5836,6 +5851,14 @@ void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
     }
 
     stopAllURLSchemeTasks();
+}
+
+void WebPageProxy::dispatchProcessDidTerminate(ProcessTerminationReason reason)
+{
+    if (m_navigationClient)
+        m_navigationClient->processDidTerminate(*this, reason);
+    else if (reason != ProcessTerminationReason::RequestedByClient)
+        m_loaderClient->processDidCrash(*this);
 }
 
 void WebPageProxy::stopAllURLSchemeTasks()
@@ -5944,9 +5967,6 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
 #if PLATFORM(IOS)
     m_firstLayerTreeTransactionIdAfterDidCommitLoad = 0;
     m_lastVisibleContentRectUpdate = VisibleContentRectUpdateInfo();
-    m_dynamicViewportSizeUpdateWaitingForTarget = false;
-    m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = false;
-    m_dynamicViewportSizeUpdateLayerTreeTransactionID = 0;
     m_hasNetworkRequestsOnSuspended = false;
     m_isKeyboardAnimatingIn = false;
     m_isScrollingOrZooming = false;

@@ -108,10 +108,7 @@ void ViewGestureController::didEndGesture()
     
 void ViewGestureController::setAlternateBackForwardListSourcePage(WebPageProxy* page)
 {
-    if (page)
-        m_alternateBackForwardListSourcePage = page->createWeakPtr();
-    else
-        m_alternateBackForwardListSourcePage.clear();
+    m_alternateBackForwardListSourcePage = makeWeakPtr(page);
 }
     
 bool ViewGestureController::canSwipeInDirection(SwipeDirection direction) const
@@ -125,6 +122,12 @@ bool ViewGestureController::canSwipeInDirection(SwipeDirection direction) const
     if (direction == SwipeDirection::Back)
         return !!backForwardList.backItem();
     return !!backForwardList.forwardItem();
+}
+
+void ViewGestureController::didStartProvisionalLoadForMainFrame()
+{
+    if (auto provisionalLoadCallback = WTFMove(m_provisionalLoadCallback))
+        provisionalLoadCallback();
 }
 
 
@@ -155,6 +158,12 @@ void ViewGestureController::didRestoreScrollPosition()
 
 void ViewGestureController::didReachMainFrameLoadTerminalState()
 {
+    if (m_provisionalLoadCallback) {
+        m_provisionalLoadCallback = nullptr;
+        removeSwipeSnapshot();
+        return;
+    }
+
     if (!m_snapshotRemovalTracker.eventOccurred(SnapshotRemovalTracker::MainFrameLoad))
         return;
 
@@ -179,6 +188,12 @@ void ViewGestureController::didReachMainFrameLoadTerminalState()
 
 void ViewGestureController::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType type)
 {
+    if (m_provisionalLoadCallback) {
+        m_provisionalLoadCallback = nullptr;
+        removeSwipeSnapshot();
+        return;
+    }
+
     bool cancelledOutstandingEvent = false;
 
     // Same-document navigations don't have a main frame load or first visually non-empty layout.

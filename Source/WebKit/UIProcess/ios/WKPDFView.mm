@@ -77,6 +77,15 @@
     return [_hostViewController gestureRecognizerShouldBegin:gestureRecognizer];
 }
 
+
+#pragma mark WKApplicationStateTrackingView
+
+- (UIView *)_contentView
+{
+    return _hostViewController ? [_hostViewController view] : self;
+}
+
+
 #pragma mark WKWebViewContentProvider
 
 - (instancetype)web_initWithFrame:(CGRect)frame webView:(WKWebView *)webView mimeType:(NSString *)mimeType
@@ -96,8 +105,7 @@
     _data = adoptNS([data copy]);
     _suggestedFilename = adoptNS([filename copy]);
 
-    WeakObjCPtr<WKPDFView> weakSelf = self;
-    [PDFHostViewController createHostView:[self, weakSelf = WTFMove(weakSelf)](PDFHostViewController * _Nullable hostViewController) {
+    [PDFHostViewController createHostView:[self, weakSelf = WeakObjCPtr<WKPDFView>(self)](PDFHostViewController * _Nullable hostViewController) {
         ASSERT(isMainThread());
 
         WKPDFView *autoreleasedSelf = weakSelf.getAutoreleased();
@@ -321,7 +329,7 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
 
 - (UIView *)web_contentView
 {
-    return _hostViewController ? [_hostViewController view] : self;
+    return self._contentView;
 }
 
 - (void)web_scrollViewDidScroll:(UIScrollView *)scrollView
@@ -368,6 +376,7 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
 {
     return self.isBackground;
 }
+
 
 #pragma mark PDFHostViewControllerDelegate
 
@@ -445,6 +454,16 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
     [self _showActionSheetForURL:[self _URLWithPageIndex:pageIndex] atLocation:location withAnnotationRect:annotationRect];
 }
 
+- (void)pdfHostViewControllerExtensionProcessDidCrash:(PDFHostViewController *)controller
+{
+    // FIXME 40916725: PDFKit should dispatch this message to the main thread like it does for other delegate messages.
+    dispatch_async(dispatch_get_main_queue(), [webView = _webView] {
+        if (auto page = [webView _page])
+            page->dispatchProcessDidTerminate(WebKit::ProcessTerminationReason::Crash);
+    });
+}
+
+
 #pragma mark WKActionSheetAssistantDelegate
 
 - (std::optional<WebKit::InteractionInformationAtPosition>)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant
@@ -497,6 +516,7 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions findOptions)
 }
 
 @end
+
 
 #pragma mark _WKWebViewPrintProvider
 

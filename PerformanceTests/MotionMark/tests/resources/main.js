@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -171,72 +171,31 @@ Controller = Utilities.createClass(
         return this._sampler.processSamples();
     },
 
-    _processComplexitySamples: function(complexitySamples, complexityAverageSamples)
+    _processComplexitySamples: function(complexitySamples)
     {
-        complexityAverageSamples.addField(Strings.json.complexity, 0);
-        complexityAverageSamples.addField(Strings.json.frameLength, 1);
-        complexityAverageSamples.addField(Strings.json.measurements.stdev, 2);
-
         complexitySamples.sort(function(a, b) {
             return complexitySamples.getFieldInDatum(a, Strings.json.complexity) - complexitySamples.getFieldInDatum(b, Strings.json.complexity);
         });
-
-        // Samples averaged based on complexity
-        var currentComplexity = -1;
-        var experimentAtComplexity;
-        function addSample() {
-            var mean = experimentAtComplexity.mean();
-            var stdev = experimentAtComplexity.standardDeviation();
-
-            var averageSample = complexityAverageSamples.createDatum();
-            complexityAverageSamples.push(averageSample);
-            complexityAverageSamples.setFieldInDatum(averageSample, Strings.json.complexity, currentComplexity);
-            complexityAverageSamples.setFieldInDatum(averageSample, Strings.json.frameLength, mean);
-            complexityAverageSamples.setFieldInDatum(averageSample, Strings.json.measurements.stdev, stdev);
-        }
-        complexitySamples.forEach(function(sample) {
-            var sampleComplexity = complexitySamples.getFieldInDatum(sample, Strings.json.complexity);
-            if (sampleComplexity != currentComplexity) {
-                if (currentComplexity > -1)
-                    addSample();
-
-                currentComplexity = sampleComplexity;
-                experimentAtComplexity = new Experiment;
-            }
-            experimentAtComplexity.sample(complexitySamples.getFieldInDatum(sample, Strings.json.frameLength));
-        });
-        // Finish off the last one
-        addSample();
     },
 
-    processSamples: function(results)
+    _processMarks: function()
     {
-        var complexityExperiment = new Experiment;
-        var smoothedFrameLengthExperiment = new Experiment;
-
-        var samples = this._sampler.samples;
-
         for (var markName in this._marks)
             this._marks[markName].time -= this._startTimestamp;
-        results[Strings.json.marks] = this._marks;
-
-        results[Strings.json.samples] = {};
-
+        return this._marks;
+    },
+    _processControllerSamples: function()
+    {
         var controllerSamples = new SampleData;
-        results[Strings.json.samples][Strings.json.controller] = controllerSamples;
-
         controllerSamples.addField(Strings.json.time, 0);
         controllerSamples.addField(Strings.json.complexity, 1);
         controllerSamples.addField(Strings.json.frameLength, 2);
         controllerSamples.addField(Strings.json.smoothedFrameLength, 3);
 
-        var complexitySamples = new SampleData(controllerSamples.fieldMap);
-        results[Strings.json.samples][Strings.json.complexity] = complexitySamples;
-
+        var samples = this._sampler.samples;
         samples[0].forEach(function(timestamp, i) {
             var sample = controllerSamples.createDatum();
             controllerSamples.push(sample);
-            complexitySamples.push(sample);
 
             // Represent time in milliseconds
             controllerSamples.setFieldInDatum(sample, Strings.json.time, timestamp - this._startTimestamp);
@@ -251,9 +210,23 @@ Controller = Utilities.createClass(
                 controllerSamples.setFieldInDatum(sample, Strings.json.smoothedFrameLength, samples[2][i]);
         }, this);
 
-        var complexityAverageSamples = new SampleData;
-        results[Strings.json.samples][Strings.json.complexityAverage] = complexityAverageSamples;
-        this._processComplexitySamples(complexitySamples, complexityAverageSamples);
+        return controllerSamples;
+    },
+
+    processSamples: function(results)
+    {
+        results[Strings.json.marks] = this._processMarks();
+
+        var controllerSamples = this._processControllerSamples();
+        var complexitySamples = new SampleData(controllerSamples.fieldMap);
+
+        results[Strings.json.samples] = {};
+        results[Strings.json.samples][Strings.json.controller] = controllerSamples;
+        results[Strings.json.samples][Strings.json.complexity] = complexitySamples;
+        controllerSamples.forEach(function (sample) {
+            complexitySamples.push(sample);
+        });
+        this._processComplexitySamples(complexitySamples);
     }
 });
 
@@ -265,33 +238,6 @@ FixedController = Utilities.createSubclass(Controller,
         this.intervalSamplingLength = 0;
     }
 );
-
-StepController = Utilities.createSubclass(Controller,
-    function(benchmark, options)
-    {
-        Controller.call(this, benchmark, options);
-        this.initialComplexity = options["complexity"];
-        this.intervalSamplingLength = 0;
-        this._stepped = false;
-        this._stepTime = options["test-interval"] / 2;
-    }, {
-
-    start: function(startTimestamp, stage)
-    {
-        Controller.prototype.start.call(this, startTimestamp, stage);
-        this._stepTime += startTimestamp;
-    },
-
-    tune: function(timestamp, stage)
-    {
-        if (this._stepped || timestamp < this._stepTime)
-            return;
-
-        this.mark(Strings.json.samplingEndTimeOffset, timestamp);
-        this._stepped = true;
-        stage.tune(stage.complexity() * 3);
-    }
-});
 
 AdaptiveController = Utilities.createSubclass(Controller,
     function(benchmark, options)
@@ -368,6 +314,8 @@ RampController = Utilities.createSubclass(Controller,
         this._minimumComplexity = 1;
         this._maximumComplexity = 1;
 
+        this._testLength = options["test-interval"];
+
         // After the tier range is determined, figure out the number of ramp iterations
         var minimumRampLength = 3000;
         var totalRampIterations = Math.max(1, Math.floor(this._endTimestamp / minimumRampLength));
@@ -431,6 +379,7 @@ RampController = Utilities.createSubclass(Controller,
                 this._lastTierFrameLength = currentFrameLength;
 
                 this._tier += .5;
+                this._endTimestamp = timestamp + this._testLength;
                 var nextTierComplexity = Math.round(Math.pow(10, this._tier));
                 stage.tune(nextTierComplexity - currentComplexity);
 
@@ -448,7 +397,7 @@ RampController = Utilities.createSubclass(Controller,
             this.intervalSamplingLength = 120;
 
             // Extend the test length so that the full test length is made of the ramps
-            this._endTimestamp += timestamp;
+            this._endTimestamp = timestamp + this._testLength;
             this.mark(Strings.json.samplingStartTimeOffset, timestamp);
 
             this._minimumComplexity = 1;
@@ -573,16 +522,17 @@ RampController = Utilities.createSubclass(Controller,
 
     processSamples: function(results)
     {
-        Controller.prototype.processSamples.call(this, results);
-
+        results[Strings.json.marks] = this._processMarks();
         // Have samplingTimeOffset represent time 0
         var startTimestamp = this._marks[Strings.json.samplingStartTimeOffset].time;
-
         for (var markName in results[Strings.json.marks]) {
             results[Strings.json.marks][markName].time -= startTimestamp;
         }
 
-        var controllerSamples = results[Strings.json.samples][Strings.json.controller];
+        results[Strings.json.samples] = {};
+
+        var controllerSamples = this._processControllerSamples();
+        results[Strings.json.samples][Strings.json.controller] = controllerSamples;
         controllerSamples.forEach(function(timeSample) {
             controllerSamples.setFieldInDatum(timeSample, Strings.json.time, controllerSamples.getFieldInDatum(timeSample, Strings.json.time) - startTimestamp);
         });
@@ -622,23 +572,8 @@ RampController = Utilities.createSubclass(Controller,
                 complexitySamples.push(controllerSamples.at(j));
         });
 
-        var complexityAverageSamples = new SampleData;
-        results[Strings.json.samples][Strings.json.complexityAverage] = complexityAverageSamples;
-        this._processComplexitySamples(complexitySamples, complexityAverageSamples);
+        this._processComplexitySamples(complexitySamples);
     }
-});
-
-Ramp30Controller = Utilities.createSubclass(RampController,
-    function(benchmark, options)
-    {
-        RampController.call(this, benchmark, options);
-    }, {
-
-    frameLengthDesired: 1000/30,
-    frameLengthDesiredThreshold: 1000/29,
-    frameLengthTierThreshold: 1000/20,
-    frameLengthRampLowerThreshold: 1000/20,
-    frameLengthRampUpperThreshold: 1000/12
 });
 
 Stage = Utilities.createClass(
@@ -875,17 +810,12 @@ Benchmark = Utilities.createClass(
         case "fixed":
             this._controller = new FixedController(this, options);
             break;
-        case "step":
-            this._controller = new StepController(this, options);
-            break;
         case "adaptive":
             this._controller = new AdaptiveController(this, options);
             break;
         case "ramp":
             this._controller = new RampController(this, options);
             break;
-        case "ramp30":
-            this._controller = new Ramp30Controller(this, options);
         }
     }, {
 
@@ -896,7 +826,7 @@ Benchmark = Utilities.createClass(
 
     get timestamp()
     {
-        return this._currentTimestamp - this._startTimestamp;
+        return this._currentTimestamp - this._benchmarkStartTimestamp;
     },
 
     backgroundColor: function()
@@ -940,7 +870,7 @@ Benchmark = Utilities.createClass(
                 this._previousTimestamp = timestamp;
             else if (timestamp - this._previousTimestamp >= 100) {
                 this._didWarmUp = true;
-                this._startTimestamp = timestamp;
+                this._benchmarkStartTimestamp = timestamp;
                 this._controller.start(timestamp, this._stage);
                 this._previousTimestamp = timestamp;
             }

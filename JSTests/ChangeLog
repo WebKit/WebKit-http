@@ -1,3 +1,241 @@
+2018-06-07  Saam Barati  <sbarati@apple.com>
+
+        Make DFG to FTL OSR entry code more sane by removing bad RELEASE_ASSERTS and making it trigger compiles in outer loops before inner ones
+        https://bugs.webkit.org/show_bug.cgi?id=186218
+        <rdar://problem/38449540>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/dont-crash-ftl-osr-entry.js: Added.
+
+2018-06-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Compare operations do not respect negative zeros
+        https://bugs.webkit.org/show_bug.cgi?id=183729
+
+        Reviewed by Saam Barati.
+
+        * stress/comparison-ignore-negative-zero.js: Added.
+        (shouldBe):
+        (zero):
+        (negativeZero):
+        (object.valueOf):
+        (test):
+
+2018-06-06  Saam Barati  <sbarati@apple.com>
+
+        generateConditionsForInstanceOf needs to see if the object has a poly proto structure before assuming it has a constant prototype
+        https://bugs.webkit.org/show_bug.cgi?id=186363
+
+        Rubber-stamped by Filip Pizlo.
+
+        * stress/instance-of-on-poly-proto-opc-should-not-crash.js: Added.
+
+2018-06-05  David Fenton  <david_fenton@apple.com>
+
+        Temporarily Skip JSC stress test failures that are consistently occurring.
+        https://bugs.webkit.org/show_bug.cgi?id=186283
+
+        Unreviewed test gardening.
+
+        * executableAllocationFuzz.yaml:
+        * slowMicrobenchmarks/default-derived-constructor.js:
+        * stress/put-direct-index-broken-2.js:
+        * stress/splay-flash-access.js:
+        * stress/spread-forward-call-varargs-stack-overflow.js:
+
+2018-06-04  Keith Miller  <keith_miller@apple.com>
+
+        Add test for CoW conversions in the DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=186295
+
+        Reviewed by Saam Barati.
+
+        * stress/arrayprofile-should-not-convert-get-by-val-cow.js: Added.
+        (assertEq):
+        (withArrayArgInt32):
+        (withArrayLiteralInt32):
+        (withArrayArgDouble):
+        (withArrayLiteralDouble):
+        (withArrayArgContiguous):
+        (withArrayLiteralContiguous):
+        (test):
+
+2018-06-02  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for addition operations
+        https://bugs.webkit.org/show_bug.cgi?id=179002
+
+        Reviewed by Yusuke Suzuki.
+
+        * bigIntTests.yaml:
+        * stress/addition-order-evaluation.js: Added.
+        * stress/big-int-add-wrapped-value.js: Added.
+        * stress/big-int-addition-basic.js: Added.
+        * stress/big-int-addition-jit.js: Added.
+        * stress/big-int-addition-memory-stress.js: Added.
+        * stress/big-int-addition-string-coercion.js: Added.
+        * stress/big-int-addition-to-primitive-precedence.js: Added.
+        * stress/big-int-addition-to-primitive.js: Added.
+        * stress/big-int-addition-type-error.js: Added.
+        * stress/big-int-no-conversion-to-number.js:
+        * stress/big-int-sub-wrapped-value.js: Added.
+        * stress/big-int-subtraction-basic.js: Added.
+        * stress/big-int-subtraction-jit.js: Added.
+        * stress/big-int-subtraction-type-error.js: Added.
+        * stress/sub-order-evaluation.js: Added.
+
+2018-06-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r232439.
+        https://bugs.webkit.org/show_bug.cgi?id=186238
+
+        It breaks gtk-linux-32-release (Requested by caiolima on
+        #webkit).
+
+        Reverted changeset:
+
+        "[ESNext][BigInt] Implement support for addition operations"
+        https://bugs.webkit.org/show_bug.cgi?id=179002
+        https://trac.webkit.org/changeset/232439
+
+2018-06-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Baseline op_jtrue emits an insane amount of code
+        https://bugs.webkit.org/show_bug.cgi?id=185708
+
+        Reviewed by Filip Pizlo.
+
+        * stress/logical-not-masquerades-as-undefined.js: Added.
+        (shouldBe):
+        (test):
+        * stress/logical-not.js: Added.
+        (shouldBe):
+        (test):
+
+2018-06-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Remove WeakReferenceHarvester
+        https://bugs.webkit.org/show_bug.cgi?id=186102
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/create-many-weak-map.js: Added.
+
+2018-06-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Object.create should have intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=186200
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/object-create-null.js: Added.
+        (test):
+        * microbenchmarks/object-create-unknown-object-prototype.js: Added.
+        (test):
+        * microbenchmarks/object-create-untyped-prototype.js: Added.
+        (test):
+        * stress/get-by-pname-only-prototype-properties.js: Added.
+        (foo):
+        * stress/object-create-define.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-create-null-external.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-create-null.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-create-prototype.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-create-undefined.js: Added.
+        (shouldThrow):
+        (i.shouldThrow):
+
+2018-06-02  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for addition operations
+        https://bugs.webkit.org/show_bug.cgi?id=179002
+
+        Reviewed by Yusuke Suzuki.
+
+        * bigIntTests.yaml:
+        * stress/addition-order-evaluation.js: Added.
+        * stress/big-int-add-wrapped-value.js: Added.
+        * stress/big-int-addition-basic.js: Added.
+        * stress/big-int-addition-jit.js: Added.
+        * stress/big-int-addition-memory-stress.js: Added.
+        * stress/big-int-addition-string-coercion.js: Added.
+        * stress/big-int-addition-to-primitive-precedence.js: Added.
+        * stress/big-int-addition-to-primitive.js: Added.
+        * stress/big-int-addition-type-error.js: Added.
+        * stress/big-int-no-conversion-to-number.js:
+        * stress/big-int-sub-wrapped-value.js: Added.
+        * stress/big-int-subtraction-basic.js: Added.
+        * stress/big-int-subtraction-jit.js: Added.
+        * stress/big-int-subtraction-type-error.js: Added.
+        * stress/sub-order-evaluation.js: Added.
+
+2018-05-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add Symbol.prototype.description getter
+        https://bugs.webkit.org/show_bug.cgi?id=186053
+
+        Reviewed by Keith Miller.
+
+        * stress/symbol-description.js: Added.
+        (shouldBe):
+        (shouldThrow):
+
+2018-05-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] InById should be converted to MatchStructure
+        https://bugs.webkit.org/show_bug.cgi?id=185803
+
+        Reviewed by Keith Miller.
+
+        * microbenchmarks/in-by-id-match.js: Added.
+        (test):
+        * microbenchmarks/in-by-id-removed.js: Added.
+        (test):
+        * stress/in-by-id-constant.js: Added.
+        (shouldBe):
+        (test1):
+        * stress/in-by-id-match-invalid.js: Added.
+        (shouldBe):
+        (test1):
+        * stress/in-by-id-match.js: Added.
+        (shouldBe):
+        (test1):
+
+2018-05-31  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for "=<" and ">=" relational operation
+        https://bugs.webkit.org/show_bug.cgi?id=185929
+
+        Reviewed by Yusuke Suzuki.
+
+        * bigIntTests.yaml:
+        * stress/big-int-greater-than-or-equal-jit.js: Added.
+        * stress/big-int-greater-than-or-equal-order-of-evaluation.js: Added.
+        * stress/big-int-greater-than-or-equal-wrapped-values.js: Added.
+        * stress/big-int-greater-than-or-equal.js: Added.
+        * stress/big-int-less-than-or-equal-general.js: Added.
+        * stress/big-int-less-than-or-equal-jit.js: Added.
+        * stress/big-int-less-than-or-equal-order-of-evaluation.js: Added.
+        * stress/big-int-less-than-or-equal-wrapped-values.js: Added.
+
+2018-05-31  Saam Barati  <sbarati@apple.com>
+
+        Cache toString results for CoW arrays
+        https://bugs.webkit.org/show_bug.cgi?id=186160
+
+        Reviewed by Keith Miller.
+
+        * microbenchmarks/to-string-on-cow-array.js: Added.
+        (foo):
+
 2018-05-31  Keith Miller  <keith_miller@apple.com>
 
         Rebaseline test for change in Error.stack behavior.

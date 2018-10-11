@@ -1286,11 +1286,6 @@ public:
     GC3Denum currentBoundTarget() const { return m_state.currentBoundTarget(); }
     unsigned textureSeed(GC3Duint texture) { return m_state.textureSeedCount.count(texture); }
 
-#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-    WEBCORE_EXPORT static void setOpenGLDisplayMask(CGOpenGLDisplayMask);
-    WEBCORE_EXPORT static CGOpenGLDisplayMask getOpenGLDisplayMask();
-#endif
-
 private:
     GraphicsContext3D(GraphicsContext3DAttributes, HostWindow*, RenderStyle = RenderOffscreen, GraphicsContext3D* sharedContext = nullptr);
 
@@ -1504,10 +1499,6 @@ private:
 
 #if USE(CAIRO)
     Platform3DObject m_vao { 0 };
-#endif
-
-#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-    static std::optional<CGOpenGLDisplayMask> m_displayMask;
 #endif
 };
 

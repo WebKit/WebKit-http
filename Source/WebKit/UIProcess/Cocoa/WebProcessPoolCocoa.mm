@@ -282,9 +282,8 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
 #endif
     
 #if PLATFORM(MAC)
-    auto screenProperties = WebCore::getScreenProperties();
-    parameters.primaryDisplayID = screenProperties.first;
-    parameters.screenPropertiesMap = WTFMove(screenProperties.second);
+    auto screenProperties = WebCore::collectScreenProperties();
+    parameters.screenProperties = WTFMove(screenProperties);
 #endif
 }
 
@@ -480,7 +479,7 @@ String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 
 String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
-    RetainPtr<NSString> cachePath = adoptNS((NSString *)_CFURLCacheCopyCacheDirectory([[NSURLCache sharedURLCache] _CFURLCache]));
+    NSString *cachePath = CFBridgingRelease(_CFURLCacheCopyCacheDirectory([[NSURLCache sharedURLCache] _CFURLCache]));
     if (!cachePath)
         cachePath = @"~/Library/Caches/com.apple.WebKit.WebProcess";
 
@@ -590,8 +589,7 @@ static CFURLStorageSessionRef privateBrowsingSession()
     static dispatch_once_t once;
     dispatch_once(&once, ^{
         NSString *identifier = [NSString stringWithFormat:@"%@.PrivateBrowsing", [[NSBundle mainBundle] bundleIdentifier]];
-
-        session = createPrivateStorageSession((CFStringRef)identifier);
+        session = createPrivateStorageSession((__bridge CFStringRef)identifier);
     });
 
     return session;

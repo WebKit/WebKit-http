@@ -73,10 +73,9 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
             auto& layoutBox = layoutPair.layoutBox;
             auto& displayBox = layoutPair.displayBox;
             
-            computeMargin(layoutContext, layoutBox, displayBox);
             computeBorderAndPadding(layoutContext, layoutBox, displayBox);
+            computeWidthAndMargin(layoutContext, layoutBox, displayBox);
             computeStaticPosition(layoutContext, layoutBox, displayBox);
-            computeWidth(layoutContext, layoutBox, displayBox);
             if (layoutBox.establishesFormattingContext()) {
                 auto formattingContext = layoutContext.formattingContext(layoutBox);
                 formattingContext->layout(layoutContext, layoutContext.establishedFormattingState(layoutBox, *formattingContext));
@@ -95,7 +94,7 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
             auto& layoutBox = layoutPair->layoutBox;
             auto& displayBox = layoutPair->displayBox;
 
-            computeHeight(layoutContext, layoutBox, displayBox);
+            computeHeightAndMargin(layoutContext, layoutBox, displayBox);
             // Adjust position now that we have all the previous floats placed in this context -if needed.
             floatingContext.computePosition(layoutBox, displayBox);
             if (!is<Container>(layoutBox))
@@ -131,47 +130,48 @@ Ref<FloatingState> BlockFormattingContext::createOrFindFloatingState(LayoutConte
 
 void BlockFormattingContext::computeStaticPosition(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    auto topLeft = Geometry::staticPosition(layoutContext, layoutBox);
-    displayBox.setTopLeft(topLeft);
+    displayBox.setTopLeft(Geometry::staticPosition(layoutContext, layoutBox));
 }
 
 void BlockFormattingContext::computeInFlowPositionedPosition(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    auto topLeft = Geometry::inFlowPositionedPosition(layoutContext, layoutBox);
-    displayBox.setTopLeft(topLeft);
+    displayBox.setTopLeft(Geometry::inFlowPositionedPosition(layoutContext, layoutBox));
 }
 
-void BlockFormattingContext::computeInFlowHeight(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
+void BlockFormattingContext::computeWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    LayoutUnit computedHeight;
+    if (layoutBox.isInFlow())
+        return computeInFlowWidthAndMargin(layoutContext, layoutBox, displayBox);
 
-    if (layoutBox.replaced()) {
-        // 10.6.2 Inline replaced elements, block-level replaced elements in normal flow, 'inline-block'
-        // replaced elements in normal flow and floating replaced elements
-        computedHeight = FormattingContext::Geometry::replacedHeight(layoutContext, layoutBox);
-    } else
-        computedHeight = Geometry::inFlowNonReplacedHeight(layoutContext, layoutBox);
+    if (layoutBox.isFloatingPositioned())
+        return computeFloatingWidthAndMargin(layoutContext, layoutBox, displayBox);
 
-    displayBox.setHeight(computedHeight);
+    ASSERT_NOT_REACHED();
 }
 
-void BlockFormattingContext::computeInFlowWidth(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
+void BlockFormattingContext::computeHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    LayoutUnit computedWidth;
+    if (layoutBox.isInFlow())
+        return computeInFlowHeightAndMargin(layoutContext, layoutBox, displayBox);
 
-    if (layoutBox.replaced()) {
-        // 10.3.4 Block-level, replaced elements in normal flow
-        // The used value of 'width' is determined as for inline replaced elements
-        computedWidth = FormattingContext::Geometry::replacedWidth(layoutContext, layoutBox);
-    } else
-        computedWidth = Geometry::inFlowNonReplacedWidth(layoutContext, layoutBox);
+    if (layoutBox.isFloatingPositioned())
+        return computeFloatingHeightAndMargin(layoutContext, layoutBox, displayBox);
 
-    displayBox.setWidth(computedWidth);
+    ASSERT_NOT_REACHED();
 }
 
-void BlockFormattingContext::computeMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
+void BlockFormattingContext::computeInFlowHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    displayBox.setMargin(Geometry::computedMargin(layoutContext, layoutBox));
+    auto heightAndMargin = Geometry::inFlowHeightAndMargin(layoutContext, layoutBox);
+    displayBox.setHeight(heightAndMargin.height);
+    displayBox.setVerticalMargin(heightAndMargin.margin);
+}
+
+void BlockFormattingContext::computeInFlowWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
+{
+    auto widthAndMargin = Geometry::inFlowWidthAndMargin(layoutContext, layoutBox);
+    displayBox.setWidth(widthAndMargin.width);
+    displayBox.setHorizontalMargin(widthAndMargin.margin);
 }
 
 }

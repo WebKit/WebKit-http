@@ -49,95 +49,37 @@ FormattingContext::~FormattingContext()
 {
 }
 
-void FormattingContext::computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const
-{
-}
-
-void FormattingContext::computeInFlowPositionedPosition(LayoutContext&, const Box&, Display::Box&) const
-{
-}
-
 void FormattingContext::computeOutOfFlowPosition(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    LayoutPoint computedTopLeft;
-
-    if (layoutBox.replaced())
-        computedTopLeft = Geometry::outOfFlowReplacedPosition(layoutContext, layoutBox);
-    else
-        computedTopLeft = Geometry::outOfFlowNonReplacedPosition(layoutContext, layoutBox);
-
-    displayBox.setTopLeft(computedTopLeft);
+    displayBox.setTopLeft(Geometry::outOfFlowPosition(layoutContext, layoutBox));
 }
 
-void FormattingContext::computeWidth(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
+void FormattingContext::computeFloatingHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    if (layoutBox.isOutOfFlowPositioned())
-        return computeOutOfFlowWidth(layoutContext, layoutBox, displayBox);
-    if (layoutBox.isFloatingPositioned())
-        return computeFloatingWidth(layoutContext, layoutBox, displayBox);
-    return computeInFlowWidth(layoutContext, layoutBox, displayBox);
+    auto heightAndMargin = Geometry::floatingHeightAndMargin(layoutContext, layoutBox);
+    displayBox.setHeight(heightAndMargin.height);
+    displayBox.setVerticalMargin(heightAndMargin.margin);
 }
 
-void FormattingContext::computeHeight(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
+void FormattingContext::computeFloatingWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    if (layoutBox.isOutOfFlowPositioned())
-        return computeOutOfFlowHeight(layoutContext, layoutBox, displayBox);
-    if (layoutBox.isFloatingPositioned())
-        return computeFloatingHeight(layoutContext, layoutBox, displayBox);
-    return computeInFlowHeight(layoutContext, layoutBox, displayBox);
+    auto widthAndMargin = Geometry::floatingWidthAndMargin(layoutContext, layoutBox);
+    displayBox.setWidth(widthAndMargin.width);
+    displayBox.setHorizontalMargin(widthAndMargin.margin);
 }
 
-void FormattingContext::computeOutOfFlowWidth(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
+void FormattingContext::computeOutOfFlowWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    LayoutUnit computedWidth;
-
-    if (layoutBox.replaced())
-        computedWidth = Geometry::outOfFlowReplacedWidth(layoutContext, layoutBox);
-    else 
-        computedWidth = Geometry::outOfFlowNonReplacedWidth(layoutContext, layoutBox);
-
-    displayBox.setWidth(computedWidth);
-}
-
-void FormattingContext::computeFloatingWidth(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
-{
-    LayoutUnit computedWidth;
-
-    if (layoutBox.replaced())
-        computedWidth = Geometry::floatingReplacedWidth(layoutContext, layoutBox);
-    else
-        computedWidth = Geometry::floatingNonReplacedWidth(layoutContext, layoutBox);
-
-    displayBox.setWidth(computedWidth);
+    auto widthAndMargin = Geometry::outOfFlowWidthAndMargin(layoutContext, layoutBox);
+    displayBox.setWidth(widthAndMargin.width);
+    displayBox.setHorizontalMargin(widthAndMargin.margin);
 }
 
 void FormattingContext::computeOutOfFlowHeight(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    LayoutUnit computedHeight;
-
-    if (layoutBox.replaced())
-        computedHeight = Geometry::outOfFlowReplacedHeight(layoutContext, layoutBox);
-    else
-        computedHeight = Geometry::outOfFlowNonReplacedHeight(layoutContext, layoutBox);
-
-    displayBox.setHeight(computedHeight);
-}
-
-void FormattingContext::computeFloatingHeight(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
-{
-    LayoutUnit computedHeight;
-
-    if (layoutBox.replaced())
-        computedHeight = Geometry::floatingReplacedHeight(layoutContext, layoutBox);
-    else
-        computedHeight = Geometry::floatingNonReplacedHeight(layoutContext, layoutBox);
-
-    displayBox.setHeight(computedHeight);
-}
-
-void FormattingContext::computeMargin(LayoutContext&, const Box&, Display::Box& displayBox) const
-{
-    displayBox.setMargin({ 0, 0, 0, 0 });
+    auto heightAndMargin = Geometry::outOfFlowHeightAndMargin(layoutContext, layoutBox);
+    displayBox.setHeight(heightAndMargin.height);
+    displayBox.setVerticalMargin(heightAndMargin.margin);
 }
 
 void FormattingContext::computeBorderAndPadding(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
@@ -173,7 +115,7 @@ void FormattingContext::layoutOutOfFlowDescendants(LayoutContext& layoutContext)
         // of a hypothetical box that would have been the first box of the element if its specified 'position' value had been 'static' and
         // its specified 'float' had been 'none' and its specified 'clear' had been 'none'.
         computeStaticPosition(layoutContext, layoutBox, displayBox);
-        computeOutOfFlowWidth(layoutContext, layoutBox, displayBox);
+        computeOutOfFlowWidthAndMargin(layoutContext, layoutBox, displayBox);
 
         ASSERT(layoutBox.establishesFormattingContext());
         auto formattingContext = layoutContext.formattingContext(layoutBox);

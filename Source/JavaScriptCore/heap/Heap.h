@@ -32,7 +32,6 @@
 #include "HandleSet.h"
 #include "HeapFinalizerCallback.h"
 #include "HeapObserver.h"
-#include "ListableHandler.h"
 #include "MarkedBlock.h"
 #include "MarkedSpace.h"
 #include "MutatorState.h"
@@ -40,7 +39,6 @@
 #include "StructureIDTable.h"
 #include "Synchronousness.h"
 #include "WeakHandleOwner.h"
-#include "WeakReferenceHarvester.h"
 #include <wtf/AutomaticThread.h>
 #include <wtf/ConcurrentPtrHashSet.h>
 #include <wtf/Deque.h>
@@ -68,6 +66,7 @@ class IncrementalSweeper;
 class JITStubRoutine;
 class JITStubRoutineSet;
 class JSCell;
+class JSImmutableButterfly;
 class JSValue;
 class LLIntOffsetsExtractor;
 class MachineThreads;
@@ -381,6 +380,8 @@ public:
     
     Seconds totalGCTime() const { return m_totalGCTime; }
 
+    HashMap<JSImmutableButterfly*, JSString*> immutableButterflyToStringCache;
+
 private:
     friend class AllocatingScope;
     friend class CodeBlock;
@@ -670,8 +671,6 @@ private:
     ConcurrentPtrHashSet m_opaqueRoots;
 
     static const size_t s_blockFragmentLength = 32;
-
-    ListableHandler<WeakReferenceHarvester>::List m_weakReferenceHarvesters;
 
     ParallelHelperClient m_helperClient;
     RefPtr<SharedTask<void(SlotVisitor&)>> m_bonusVisitorTask;

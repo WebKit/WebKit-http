@@ -115,6 +115,7 @@ inline CapabilityLevel canCompile(Node* node)
     case Upsilon:
     case ExtractOSREntryLocal:
     case ExtractCatchLocal:
+    case ClearCatchLocals:
     case LoopHint:
     case SkipScope:
     case GetGlobalObject:
@@ -191,6 +192,7 @@ inline CapabilityLevel canCompile(Node* node)
     case ToObject:
     case CallObjectConstructor:
     case CallStringConstructor:
+    case ObjectCreate:
     case MakeRope:
     case NewArrayWithSize:
     case TryGetById:

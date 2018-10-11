@@ -63,22 +63,12 @@ protected:
 
     const Box& root() const { return *m_root; }
 
-    virtual void computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const;
-    virtual void computeInFlowPositionedPosition(LayoutContext&, const Box&, Display::Box&) const;
-    virtual void computeOutOfFlowPosition(LayoutContext&, const Box&, Display::Box&) const;
+    virtual void computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const = 0;
+    virtual void computeInFlowPositionedPosition(LayoutContext&, const Box&, Display::Box&) const = 0;
 
-    virtual void computeWidth(LayoutContext&, const Box&, Display::Box&) const;
-    virtual void computeHeight(LayoutContext&, const Box&, Display::Box&) const;
+    void computeFloatingHeightAndMargin(LayoutContext&, const Box&, Display::Box&) const;
+    void computeFloatingWidthAndMargin(LayoutContext&, const Box&, Display::Box&) const;
 
-    virtual void computeOutOfFlowWidth(LayoutContext&, const Box&, Display::Box&) const;
-    virtual void computeFloatingWidth(LayoutContext&, const Box&, Display::Box&) const;
-    virtual void computeInFlowWidth(LayoutContext&, const Box&, Display::Box&) const = 0;
-
-    virtual void computeOutOfFlowHeight(LayoutContext&, const Box&, Display::Box&) const;
-    virtual void computeFloatingHeight(LayoutContext&, const Box&, Display::Box&) const;
-    virtual void computeInFlowHeight(LayoutContext&, const Box&, Display::Box&) const = 0;
-
-    virtual void computeMargin(LayoutContext&, const Box&, Display::Box&) const;
     void computeBorderAndPadding(LayoutContext&, const Box&, Display::Box&) const;
 
     void placeInFlowPositionedChildren(LayoutContext&, const Container&) const;
@@ -91,29 +81,53 @@ protected:
     // This class implements generic positioning and sizing.
     class Geometry {
     public:
-        static LayoutUnit outOfFlowNonReplacedHeight(LayoutContext&, const Box&);
-        static LayoutUnit outOfFlowNonReplacedWidth(LayoutContext&, const Box&);
+        struct WidthAndMargin {
+            LayoutUnit width;
+            Display::Box::HorizontalEdges margin;
+        };
 
-        static LayoutUnit outOfFlowReplacedHeight(LayoutContext&, const Box&);
-        static LayoutUnit outOfFlowReplacedWidth(LayoutContext&, const Box&);
+        struct HeightAndMargin {
+            LayoutUnit height;
+            Display::Box::VerticalEdges margin;
+        };
 
-        static LayoutUnit floatingNonReplacedHeight(LayoutContext&, const Box&);
-        static LayoutUnit floatingNonReplacedWidth(LayoutContext&, const Box&);
+        static HeightAndMargin outOfFlowHeightAndMargin(LayoutContext&, const Box&);
+        static WidthAndMargin outOfFlowWidthAndMargin(LayoutContext&, const Box&);
 
-        static LayoutUnit floatingReplacedHeight(LayoutContext&, const Box&);
-        static LayoutUnit floatingReplacedWidth(LayoutContext&, const Box&);
+        static HeightAndMargin floatingHeightAndMargin(LayoutContext&, const Box&);
+        static WidthAndMargin floatingWidthAndMargin(LayoutContext&, const Box&);
 
-        static LayoutPoint outOfFlowNonReplacedPosition(LayoutContext&, const Box&);
-        static LayoutPoint outOfFlowReplacedPosition(LayoutContext&, const Box&);
+        static LayoutPoint outOfFlowPosition(LayoutContext&, const Box&);
 
-        static LayoutUnit replacedHeight(LayoutContext&, const Box&);
-        static LayoutUnit replacedWidth(LayoutContext&, const Box&);
+        static HeightAndMargin inlineReplacedHeightAndMargin(LayoutContext&, const Box&);
+        static WidthAndMargin inlineReplacedWidthAndMargin(LayoutContext&, const Box&, std::optional<LayoutUnit> precomputedMarginLeft = { },
+            std::optional<LayoutUnit> precomputedMarginRight = { });
 
         static Display::Box::Edges computedBorder(LayoutContext&, const Box&);
         static std::optional<Display::Box::Edges> computedPadding(LayoutContext&, const Box&);
+
+        static Display::Box::HorizontalEdges computedNonCollapsedHorizontalMarginValue(const LayoutContext&, const Box&);
+        static Display::Box::VerticalEdges computedNonCollapsedVerticalMarginValue(const LayoutContext&, const Box&);
+
+    private:
+        static HeightAndMargin outOfFlowReplacedHeightAndMargin(LayoutContext&, const Box&);
+        static WidthAndMargin outOfFlowReplacedWidthAndMargin(LayoutContext&, const Box&);
+
+        static HeightAndMargin outOfFlowNonReplacedHeightAndMargin(LayoutContext&, const Box&);
+        static WidthAndMargin outOfFlowNonReplacedWidthAndMargin(LayoutContext&, const Box&);
+
+        static HeightAndMargin floatingReplacedHeightAndMargin(LayoutContext&, const Box&);
+        static WidthAndMargin floatingReplacedWidthAndMargin(LayoutContext&, const Box&);
+
+        static HeightAndMargin floatingNonReplacedHeightAndMargin(LayoutContext&, const Box&);
+        static WidthAndMargin floatingNonReplacedWidthAndMargin(LayoutContext&, const Box&);
     };
 
 private:
+    void computeOutOfFlowPosition(LayoutContext&, const Box&, Display::Box&) const;
+    void computeOutOfFlowHeight(LayoutContext&, const Box&, Display::Box&) const;
+    void computeOutOfFlowWidthAndMargin(LayoutContext&, const Box&, Display::Box&) const;
+
     WeakPtr<Box> m_root;
 };
 

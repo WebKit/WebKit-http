@@ -121,16 +121,14 @@ RefPtr<ObjcInstance> ObjcInstance::create(id instance, RefPtr<RootObject>&& root
 ObjcInstance::~ObjcInstance() 
 {
     // Both -finalizeForWebScript and -dealloc/-finalize of _instance may require autorelease pools.
-    NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+    @autoreleasepool {
+        ASSERT(_instance);
+        wrapperCache().remove(_instance.get());
 
-    ASSERT(_instance);
-    wrapperCache().remove(_instance.get());
-
-    if ([_instance.get() respondsToSelector:@selector(finalizeForWebScript)])
-        [_instance.get() performSelector:@selector(finalizeForWebScript)];
-    _instance = 0;
-
-    [pool drain];
+        if ([_instance.get() respondsToSelector:@selector(finalizeForWebScript)])
+            [_instance.get() performSelector:@selector(finalizeForWebScript)];
+        _instance = 0;
+    }
 }
 
 void ObjcInstance::virtualBegin()
@@ -243,7 +241,7 @@ JSC::JSValue ObjcInstance::invokeObjcMethod(ExecState* exec, ObjcMethod* method)
 
         // Invoke invokeUndefinedMethodFromWebScript:withArguments:, pass JavaScript function
         // name as first (actually at 2) argument and array of args as second.
-        NSString* jsName = (NSString* )method->javaScriptName();
+        NSString* jsName = (__bridge NSString *)method->javaScriptName();
         [invocation setArgument:&jsName atIndex:2];
 
         NSMutableArray* objcArgs = [NSMutableArray array];

@@ -567,6 +567,9 @@ private:
         case ExtractCatchLocal:
             compileExtractCatchLocal();
             break;
+        case ClearCatchLocals:
+            compileClearCatchLocals();
+            break;
         case GetStack:
             compileGetStack();
             break;
@@ -837,6 +840,9 @@ private:
             break;
         case CreateClonedArguments:
             compileCreateClonedArguments();
+            break;
+        case ObjectCreate:
+            compileObjectCreate();
             break;
         case NewObject:
             compileNewObject();
@@ -1690,6 +1696,13 @@ private:
     {
         EncodedJSValue* buffer = static_cast<EncodedJSValue*>(m_ftlState.jitCode->common.catchOSREntryBuffer->dataBuffer());
         setJSValue(m_out.load64(m_out.absolute(buffer + m_node->catchOSREntryIndex())));
+    }
+
+    void compileClearCatchLocals()
+    {
+        ScratchBuffer* scratchBuffer = m_ftlState.jitCode->common.catchOSREntryBuffer;
+        ASSERT(scratchBuffer);
+        m_out.storePtr(m_out.constIntPtr(0), m_out.absolute(scratchBuffer->addressOfActiveLength()));
     }
     
     void compileGetStack()
@@ -5352,6 +5365,21 @@ private:
         
         m_out.appendTo(continuation, lastNext);
         setInt32(m_out.phi(Int32, zeroLengthResult, nonZeroLengthResult));
+    }
+
+    void compileObjectCreate()
+    {
+        switch (m_node->child1().useKind()) {
+        case ObjectUse:
+            setJSValue(vmCall(Int64, m_out.operation(operationObjectCreateObject), m_callFrame, lowObject(m_node->child1())));
+            break;
+        case UntypedUse:
+            setJSValue(vmCall(Int64, m_out.operation(operationObjectCreate), m_callFrame, lowJSValue(m_node->child1())));
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            break;
+        }
     }
     
     void compileNewObject()
@@ -15045,6 +15073,7 @@ private:
 
             switch (arrayMode.arrayClass()) {
             case Array::OriginalArray:
+            case Array::OriginalCopyOnWriteArray:
                 DFG_CRASH(m_graph, m_node, "Unexpected original array");
                 return nullptr;
 
@@ -15086,6 +15115,7 @@ private:
             LBasicBlock lastNext = m_out.appendTo(checkCase, trueCase);
             switch (arrayMode.arrayClass()) {
             case Array::OriginalArray:
+            case Array::OriginalCopyOnWriteArray:
                 DFG_CRASH(m_graph, m_node, "Unexpected original array");
                 return nullptr;
 

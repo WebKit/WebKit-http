@@ -1,3 +1,130 @@
+2018-06-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add WorkerPool
+        https://bugs.webkit.org/show_bug.cgi?id=174569
+
+        Reviewed by Carlos Garcia Campos.
+
+        This patch adds WorkerPool, which is a thread pool that consists of AutomaticThread.
+        Since it is based on AutomaticThread, this WorkerPool can take `timeout`: once `timeout`
+        passes without any tasks, threads in WorkerPool will be destroyed.
+
+        We add shouldSleep handler to AutomaticThread to make destruction of threads in WorkerPool moderate.
+        Without this, all threads are destroyed at once after `timeout` passes.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThread::AutomaticThread):
+        (WTF::AutomaticThread::start):
+        * wtf/AutomaticThread.h:
+        * wtf/CMakeLists.txt:
+        * wtf/WorkerPool.cpp: Added.
+        (WTF::WorkerPool::WorkerPool):
+        (WTF::WorkerPool::~WorkerPool):
+        (WTF::WorkerPool::shouldSleep):
+        (WTF::WorkerPool::postTask):
+        * wtf/WorkerPool.h: Added.
+        (WTF::WorkerPool::create):
+
+2018-06-07  Chris Dumez  <cdumez@apple.com>
+
+        Add base class to get WeakPtrFactory member and avoid some boilerplate code
+        https://bugs.webkit.org/show_bug.cgi?id=186407
+
+        Reviewed by Brent Fulgham.
+
+        Add CanMakeWeakPtr base class to get WeakPtrFactory member and its getter, in
+        order to avoid some boilerplate code in every class needing a WeakPtrFactory.
+        This also gets rid of old-style createWeakPtr() methods in favor of the newer
+        makeWeakPtr().
+
+        * wtf/WeakPtr.h:
+        (WTF::CanMakeWeakPtr::weakPtrFactory const):
+        (WTF::CanMakeWeakPtr::weakPtrFactory):
+
+2018-06-07  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Don't try to allocate JIT memory if we don't have the JIT entitlement
+        https://bugs.webkit.org/show_bug.cgi?id=182605
+        <rdar://problem/38271229>
+
+        Reviewed by Mark Lam.
+
+        Move processHasEntitlement from Source/WebKit/Shared/mac/SandboxUtilities.h
+        into WTF so JavaScriptCore can also use it.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/PlatformMac.cmake:
+        * wtf/cocoa/Entitlements.cpp:
+        (WTF::processHasEntitlement):
+        * wtf/cocoa/Entitlements.h:
+        * wtf/spi/cocoa/SecuritySPI.h:
+
+2018-06-05  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Retire DispatchPtr, and add more move semantics and simpler #ifs to other smart pointers
+        https://bugs.webkit.org/show_bug.cgi?id=186324
+
+        Reviewed by Anders Carlsson.
+
+        * WTF.xcodeproj/project.pbxproj: Removed DispatchPtr.h.
+        * wtf/BlockPtr.h: Remove unneeded checks for __OBJC__. Added some use
+        of WTFMove.
+        * wtf/CMakeLists.txt: Removed DispatchPtr.h.
+        * wtf/DispatchPtr.h: Removed. We no longer need to support Mavericks.
+        * wtf/OSObjectPtr.h: Remove unneeded checks for __OBJC__. Added some use
+        of WTFMove.
+
+2018-06-05  Darin Adler  <darin@apple.com>
+
+        [Cocoa] More preparation for ARC, focusing on WebKit and smart pointers
+        https://bugs.webkit.org/show_bug.cgi?id=186314
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/BlockPtr.h: Put Block_copy/release calls into #if since they are
+        not needed under ARC.
+
+        * wtf/OSObjectPtr.h: Added constructor and assignment operator so we can
+        work with OS objects without adopting them.
+
+2018-06-05  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Improve some soft linking compatibility with ARC
+        https://bugs.webkit.org/show_bug.cgi?id=186309
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/cocoa/SoftLinking.h: Updated the SOFT_LINK_CONSTANT family of
+        macros to use a const type. This increases the chance that they will
+        work without triggering ARC compilation errors since it's easier to
+        get the type right for read-only access than for read/write.
+
+2018-06-05  Youenn Fablet  <youenn@apple.com>
+
+        ServiceWorker registration should store any script fetched through importScripts
+        https://bugs.webkit.org/show_bug.cgi?id=182444
+        <rdar://problem/37164835>
+
+        Reviewed by Chris Dumez.
+
+        * wtf/persistence/PersistentCoders.h:
+
+2018-06-04  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Improve smart pointer support for ARC (OSObjectPtr/DispatchPtr)
+        https://bugs.webkit.org/show_bug.cgi?id=186300
+
+        Reviewed by Daniel Bates.
+
+        * wtf/DispatchPtr.h: Don't call dispatch_retain or dispatch_release
+        since ARC will automatically do it for us in the same places we are
+        doing it here.
+
+        * wtf/OSObjectPtr.h:
+        (WTF::retainOSObject): Don't call os_retain since ARC will do it.
+        (WTF::releaseOSObject): Don't call os_release since ARC will do it.
+
 2018-05-31  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r232212.

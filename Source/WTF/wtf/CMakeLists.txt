@@ -50,7 +50,6 @@ set(WTF_PUBLIC_HEADERS
     DeprecatedOptional.h
     Deque.h
     DisallowCType.h
-    DispatchPtr.h
     Dominators.h
     DoublyLinkedList.h
     DumbPtrTraits.h
@@ -257,6 +256,7 @@ set(WTF_PUBLIC_HEADERS
     WindowsExtras.h
     WordLock.h
     WorkQueue.h
+    WorkerPool.h
     dtoa.h
 
     dtoa/bignum-dtoa.h
@@ -391,6 +391,7 @@ set(WTF_SOURCES
     WallTime.cpp
     WordLock.cpp
     WorkQueue.cpp
+    WorkerPool.cpp
     dtoa.cpp
 
     dtoa/bignum-dtoa.cc

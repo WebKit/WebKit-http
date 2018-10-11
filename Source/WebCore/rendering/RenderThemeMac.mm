@@ -157,7 +157,7 @@ static const double progressAnimationNumFrames = 256;
 {
     // FIXME: This is a workaround for <rdar://problem/11385461>. When that bug is resolved, we should remove this code.
     CFMutableDictionaryRef coreUIDrawOptions = CFDictionaryCreateMutableCopy(NULL, 0, [super _coreUIDrawOptionsWithFrame:cellFrame inView:controlView includeFocus:includeFocus]);
-    CFDictionarySetValue(coreUIDrawOptions, @"borders only", kCFBooleanTrue);
+    CFDictionarySetValue(coreUIDrawOptions, CFSTR("borders only"), kCFBooleanTrue);
     CFAutorelease(coreUIDrawOptions);
     return coreUIDrawOptions;
 }
@@ -291,29 +291,77 @@ String RenderThemeMac::imageControlsStyleSheet() const
 
 #endif
 
-Color RenderThemeMac::platformActiveSelectionBackgroundColor() const
+Color RenderThemeMac::platformActiveSelectionBackgroundColor(OptionSet<StyleColor::Options> options) const
 {
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
     return colorFromNSColor([NSColor selectedTextBackgroundColor]);
 }
 
-Color RenderThemeMac::platformInactiveSelectionBackgroundColor() const
+Color RenderThemeMac::platformInactiveSelectionBackgroundColor(OptionSet<StyleColor::Options> options) const
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    return colorFromNSColor([NSColor unemphasizedSelectedTextBackgroundColor]);
+#else
+    UNUSED_PARAM(options);
     return colorFromNSColor([NSColor secondarySelectedControlColor]);
+#endif
 }
 
-Color RenderThemeMac::platformActiveListBoxSelectionBackgroundColor() const
+Color RenderThemeMac::platformActiveSelectionForegroundColor(OptionSet<StyleColor::Options> options) const
 {
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    return colorFromNSColor([NSColor selectedTextColor]);
+}
+
+Color RenderThemeMac::platformInactiveSelectionForegroundColor(OptionSet<StyleColor::Options> options) const
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    return colorFromNSColor([NSColor unemphasizedSelectedTextColor]);
+#else
+    UNUSED_PARAM(options);
+    return colorFromNSColor([NSColor textColor]);
+#endif
+}
+
+Color RenderThemeMac::platformActiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options> options) const
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    return colorFromNSColor([NSColor selectedContentBackgroundColor]);
+#else
+    UNUSED_PARAM(options);
     return colorFromNSColor([NSColor alternateSelectedControlColor]);
+#endif
 }
 
-Color RenderThemeMac::platformActiveListBoxSelectionForegroundColor() const
+Color RenderThemeMac::platformInactiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options> options) const
 {
-    return Color::white;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    return colorFromNSColor([NSColor unemphasizedSelectedContentBackgroundColor]);
+#else
+    UNUSED_PARAM(options);
+    return colorFromNSColor([NSColor secondarySelectedControlColor]);
+#endif
 }
 
-Color RenderThemeMac::platformInactiveListBoxSelectionForegroundColor() const
+Color RenderThemeMac::platformActiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options> options) const
 {
-    return Color::black;
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    return colorFromNSColor([NSColor alternateSelectedControlTextColor]);
+}
+
+Color RenderThemeMac::platformInactiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options> options) const
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    return colorFromNSColor([NSColor unemphasizedSelectedTextColor]);
+#else
+    UNUSED_PARAM(options);
+    return colorFromNSColor([NSColor selectedControlTextColor]);
+#endif
 }
 
 Color RenderThemeMac::platformFocusRingColor(OptionSet<StyleColor::Options> options) const
@@ -321,14 +369,6 @@ Color RenderThemeMac::platformFocusRingColor(OptionSet<StyleColor::Options> opti
     if (usesTestModeFocusRingColor())
         return oldAquaFocusRingColor();
     return systemColor(CSSValueWebkitFocusRingColor, options);
-}
-
-Color RenderThemeMac::platformInactiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options> options) const
-{
-    const bool useSystemAppearance = options.contains(StyleColor::Options::UseSystemAppearance);
-    const bool useDefaultAppearance = options.contains(StyleColor::Options::UseDefaultAppearance);
-    LocalDefaultSystemAppearance localAppearance(useSystemAppearance, useDefaultAppearance);
-    return platformInactiveSelectionBackgroundColor();
 }
 
 static FontSelectionValue toFontWeight(NSInteger appKitFontWeight)
@@ -2230,8 +2270,8 @@ void AttachmentLayout::layOutTitle(const RenderAttachment& attachment)
         return;
 
     NSDictionary *textAttributes = @{
-        (id)kCTFontAttributeName: (id)font.get(),
-        (id)kCTForegroundColorAttributeName: (NSColor *)cachedCGColor(titleTextColorForAttachment(attachment))
+        (__bridge id)kCTFontAttributeName: (__bridge id)font.get(),
+        (__bridge id)kCTForegroundColorAttributeName: (__bridge NSColor *)cachedCGColor(titleTextColorForAttachment(attachment))
     };
     RetainPtr<NSAttributedString> attributedTitle = adoptNS([[NSAttributedString alloc] initWithString:title attributes:textAttributes]);
     RetainPtr<CTFramesetterRef> titleFramesetter = adoptCF(CTFramesetterCreateWithAttributedString((CFAttributedStringRef)attributedTitle.get()));
@@ -2288,8 +2328,8 @@ void AttachmentLayout::layOutSubtitle(const RenderAttachment& attachment)
     CFStringRef language = 0; // By not specifying a language we use the system language.
     RetainPtr<CTFontRef> font = adoptCF(CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, attachmentSubtitleFontSize, language));
     NSDictionary *textAttributes = @{
-        (id)kCTFontAttributeName: (id)font.get(),
-        (id)kCTForegroundColorAttributeName: (NSColor *)cachedCGColor(subtitleColor)
+        (__bridge id)kCTFontAttributeName: (__bridge id)font.get(),
+        (__bridge id)kCTForegroundColorAttributeName: (__bridge NSColor *)cachedCGColor(subtitleColor)
     };
     RetainPtr<NSAttributedString> attributedSubtitleText = adoptNS([[NSAttributedString alloc] initWithString:subtitleText attributes:textAttributes]);
     subtitleLine = adoptCF(CTLineCreateWithAttributedString((CFAttributedStringRef)attributedSubtitleText.get()));

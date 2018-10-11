@@ -1,3 +1,176 @@
+2018-06-07  Chris Dumez  <cdumez@apple.com>
+
+        Add base class to get WeakPtrFactory member and avoid some boilerplate code
+        https://bugs.webkit.org/show_bug.cgi?id=186407
+
+        Reviewed by Brent Fulgham.
+
+        Add CanMakeWeakPtr base class to get WeakPtrFactory member and its getter, in
+        order to avoid some boilerplate code in every class needing a WeakPtrFactory.
+        This also gets rid of old-style createWeakPtr() methods in favor of the newer
+        makeWeakPtr().
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::requestCandidatesForSelection):
+
+2018-06-05  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r232082): Websites get loaded inside of Messages App chat transcript
+        https://bugs.webkit.org/show_bug.cgi?id=186331
+        <rdar://problem/40735446>
+
+        Reviewed by Darin Adler.
+
+        r232082 made it so that if the client implements decidePolicyForMIMEType / decidePolicyForNavigationAction
+        but does not call use / ignore on the listener, then we would do "use" by default.
+        The intention was to restore pre-AsyncPolicyDelegates behavior and unbreak Box.app. However,
+        the pre-AsyncPolicyDelegates behavior was only to "use" by default for decidePolicyForMIMEType,
+        not decidePolicyForNavigationAction. Doing "use" by default for decidePolicyForNavigationAction
+        is new behavior and it breaks Messages.app. This patch updates r232082 so that we now do call
+        "use" by default on the listener for decidePolicyForMIMEType and "ignore" by default for other
+        policy decisions. This should restore pre-AsyncPolicyDelegates behavior. This fixes Messages.app
+        and Box.app is still working properly.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        (WebFrameLoaderClient::dispatchWillSubmitForm):
+        (WebFrameLoaderClient::setUpPolicyListener):
+        (-[WebFramePolicyListener initWithFrame:policyFunction:defaultPolicy:]):
+        (-[WebFramePolicyListener initWithFrame:policyFunction:defaultPolicy:appLinkURL:]):
+        (-[WebFramePolicyListener dealloc]):
+        (-[WebFramePolicyListener initWithFrame:policyFunction:]): Deleted.
+        (-[WebFramePolicyListener initWithFrame:policyFunction:appLinkURL:]): Deleted.
+
+2018-06-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Adjust compile and runtime flags to match shippable state of features
+        https://bugs.webkit.org/show_bug.cgi?id=186319
+        <rdar://problem/40352045>
+
+        Reviewed by Maciej Stachowiak, Jon Lee, and others.
+
+        * Configurations/DebugRelease.xcconfig: Don't build ENABLE_INPUT_TYPE_COLOR
+        or ENABLE_INPUT_TYPE_COLOR_POPOVER.
+        * Configurations/FeatureDefines.xcconfig: Update to match WebKit definition of
+        WK_RELOCATABLE_FRAMEWORKS so that ENABLE(EXPERIMENTAL_FEATURES) is defined properly for
+        Cocoa builds.
+
+2018-06-05  Timothy Hatcher  <timothy@apple.com>
+
+        Clean up LocalDefaultSystemAppearance and prefers-dark-interface media query
+
+        https://bugs.webkit.org/show_bug.cgi?id=186323
+        rdar://problem/38382252
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _defaultAppearance]):
+
+2018-06-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Revise DEFAULT_EXPERIMENTAL_FEATURES_ENABLED to work properly on Apple builds
+        https://bugs.webkit.org/show_bug.cgi?id=186286
+        <rdar://problem/40782992>
+
+        Reviewed by Dan Bernstein.
+
+        Use the WK_RELOCATABLE_FRAMEWORKS flag (which is always defined for non-production builds)
+        to define ENABLE(EXPERIMENTAL_FEATURES) so that we do not need to manually
+        change this flag when preparing for a production release.
+
+        * Configurations/FeatureDefines.xcconfig: Use WK_RELOCATABLE_FRAMEWORKS to determine
+        whether experimental features should be enabled, and use it to properly define the
+        feature flag.
+
+2018-06-03  Darin Adler  <darin@apple.com>
+
+        Simplify and remove some unused video element code (helpful for ARC-compatibility)
+        https://bugs.webkit.org/show_bug.cgi?id=186258
+
+        Reviewed by Daniel Bates.
+
+        * WebView/WebVideoFullscreenController.h: Removed some unneeded includes and
+        forward declarations. Removed methods that don't need to be public.
+
+        * WebView/WebVideoFullscreenController.mm: Added additional includes. Removed
+        #if COMPILER(CLANG) since that's all we use on Mac. Moved fields into an
+        unnamed category in here and also replaced the HUDWindowControllerDelegate
+        with the unnamed category. Removed unused NSWindow category defining the
+        isOnActiveSpace, which is not called anywhere in this file at this time.
+        (-[WebVideoFullscreenController setupVideoOverlay:]): Deleted. Moved the code
+        into setVideoElement.
+        (-[WebVideoFullscreenController windowDidLoad]): Slightly rearranged the code
+        and removed unneeded typecast.
+        (-[WebVideoFullscreenController videoElement]): Updated to not rely on a
+        using statement at the top of the file.
+        (-[WebVideoFullscreenController setVideoElement:]): Added a comment about
+        the many side effects and special considerations that this method that sounds
+        like a setter has. Updated code to use the new
+        MediaPlayer::objCAVFoundationAVPlayer function instead of the old
+        HTMLVideoElement::platformMedia function. Also straightened out the logic a
+        bit and added some FIXME comments about small problems noticed but not fixed.
+        (-[WebVideoFullscreenController delegate]): Deleted. Was never called.
+        (-[WebVideoFullscreenController setDelegate:]): Deleted. Was never called.
+        (-[WebVideoFullscreenController windowDidExitFullscreen]): Removed unneeded
+        typecast. Removed call to updatePowerAssertions method.
+        (-[WebVideoFullscreenController windowDidEnterFullscreen]): Removed call to
+        updatePowerAssertions method.
+        (-[WebVideoFullscreenController updatePowerAssertions]): Deleted. This method
+        set _displaySleepEnabler to nullptr, but nothing was ever setting it to anything
+        else, so this was dead code that did nothing.
+        (-[WebVideoFullscreenController rateChanged:]): Removed call to
+        updatePowerAssertions method.
+
+2018-06-04  Chris Dumez  <cdumez@apple.com>
+
+        Rename "Cross-Origin-Options" HTTP header to "Cross-Origin-Window-Policy"
+        https://bugs.webkit.org/show_bug.cgi?id=186287
+        <rdar://problem/40783352>
+
+        Reviewed by Youenn Fablet.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences crossOriginWindowPolicySupportEnabled]):
+        (-[WebPreferences setCrossOriginWindowPolicySupportEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-06-02  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Update some code to be more ARC-compatible to prepare for future ARC adoption
+        https://bugs.webkit.org/show_bug.cgi?id=186227
+
+        Reviewed by Dan Bernstein.
+
+        * Misc/WebKitErrors.m:
+        (+[NSError _registerWebKitErrors]): Use @autoreleasepool instead of NSAutoreleasePool.
+        * Plugins/WebPluginDatabase.mm:
+        (-[WebPluginDatabase refresh]): Ditto.
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::setStatusbarText): Ditto.
+
+2018-06-01  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r231456): Colloquy is broken
+        https://bugs.webkit.org/show_bug.cgi?id=186197
+        <rdar://problem/40722960>
+
+        Reviewed by Timothy Hatcher.
+
+        Restore pre-r231456 behavior for Colloquy app so that it works again.
+
+        * WebView/WebView.mm:
+        (-[WebView _needsFrameNameFallbackToIdQuirk]):
+        (-[WebView _preferencesChanged:]):
+
 2018-05-30  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [JSC] Pass VM& parameter as much as possible

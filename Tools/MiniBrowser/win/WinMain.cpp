@@ -65,20 +65,19 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
     ::SetProcessDPIAware();
 
-    gMainWindow = new MainWindow();
-    HRESULT hr = gMainWindow->init(hInst, usesLayeredWebView, pageLoadTesting);
+    auto& mainWindow = MainWindow::create().leakRef();
+    HRESULT hr = mainWindow.init(hInst, usesLayeredWebView, pageLoadTesting);
     if (FAILED(hr))
         goto exit;
 
-    gMiniBrowser = gMainWindow->browserWindow();
-    ShowWindow(gMainWindow->hwnd(), nCmdShow);
+    ShowWindow(mainWindow.hwnd(), nCmdShow);
 
     hAccelTable = LoadAccelerators(hInst, MAKEINTRESOURCE(IDC_MINIBROWSER));
 
     if (requestedURL.length())
-        gMainWindow->loadURL(requestedURL.GetBSTR());
+        mainWindow.loadURL(requestedURL.GetBSTR());
     else
-        gMiniBrowser->loadHTMLString(_bstr_t(defaultHTML).GetBSTR());
+        mainWindow.browserWindow()->loadHTMLString(_bstr_t(defaultHTML).GetBSTR());
 
 #pragma warning(disable:4509)
 

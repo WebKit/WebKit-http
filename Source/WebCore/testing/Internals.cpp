@@ -493,7 +493,9 @@ void Internals::resetToConsistentState(Page& page)
     printContextForTesting() = nullptr;
 
 #if USE(LIBWEBRTC)
-    WebCore::useRealRTCPeerConnectionFactory(page.libWebRTCProvider());
+    auto& rtcProvider = page.libWebRTCProvider();
+    WebCore::useRealRTCPeerConnectionFactory(rtcProvider);
+    rtcProvider.disableNonLocalhostConnections();
 #endif
 
     page.settings().setStorageAccessAPIEnabled(false);
@@ -2822,6 +2824,14 @@ void Internals::webkitDidExitFullScreenForElement(Element& element)
     if (!document)
         return;
     document->webkitDidExitFullScreenForElement(&element);
+}
+
+bool Internals::isAnimatingFullScreen() const
+{
+    Document* document = contextDocument();
+    if (!document)
+        return false;
+    return document->isAnimatingFullScreen();
 }
 
 #endif

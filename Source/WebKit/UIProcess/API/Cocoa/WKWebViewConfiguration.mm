@@ -164,6 +164,8 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
 
     RetainPtr<NSString> _overrideContentSecurityPolicy;
     RetainPtr<NSString> _mediaContentTypesRequiringHardwareSupport;
+
+    BOOL _colorFilterEnabled;
 }
 
 - (instancetype)init
@@ -174,14 +176,14 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     WebKit::InitializeWebKit2();
 
 #if PLATFORM(IOS)
-#if !ENABLE(EXTRA_ZOOM_MODE)
+#if !PLATFORM(WATCHOS)
     _allowsPictureInPictureMediaPlayback = YES;
 #endif
     _allowsInlineMediaPlayback = WebCore::deviceClass() == MGDeviceClassiPad;
     _inlineMediaPlaybackRequiresPlaysInlineAttribute = !_allowsInlineMediaPlayback;
     _allowsInlineMediaPlaybackAfterFullscreen = !_allowsInlineMediaPlayback;
     _mediaDataLoadsAutomatically = NO;
-#if !ENABLE(EXTRA_ZOOM_MODE)
+#if !PLATFORM(WATCHOS)
     if (WebKit::linkedOnOrAfter(WebKit::SDKVersion::FirstWithMediaTypesRequiringUserActionForPlayback))
         _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeAudio;
     else
@@ -231,7 +233,7 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
 #if PLATFORM(IOS)
     _selectionGranularity = WKSelectionGranularityDynamic;
     _dragLiftDelay = toDragLiftDelay([[NSUserDefaults standardUserDefaults] integerForKey:@"WebKitDebugDragLiftDelay"]);
-#if ENABLE(EXTRA_ZOOM_MODE)
+#if PLATFORM(WATCHOS)
     _textInteractionGesturesEnabled = NO;
     _longPressActionsEnabled = NO;
 #else
@@ -242,6 +244,8 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
 
     _mediaContentTypesRequiringHardwareSupport = Settings::defaultMediaContentTypesRequiringHardwareSupport();
     _allowMediaContentTypesRequiringHardwareSupportAsFallback = YES;
+
+    _colorFilterEnabled = NO;
 
     return self;
 }
@@ -397,6 +401,7 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     configuration->_allowMediaContentTypesRequiringHardwareSupportAsFallback = self->_allowMediaContentTypesRequiringHardwareSupportAsFallback;
 
     configuration->_groupIdentifier = adoptNS([self->_groupIdentifier copyWithZone:zone]);
+    configuration->_colorFilterEnabled = self->_colorFilterEnabled;
 
     return configuration;
 }
@@ -735,6 +740,16 @@ static NSString *defaultApplicationNameForUserAgent()
 - (void)_setAttachmentElementEnabled:(BOOL)attachmentElementEnabled
 {
     _attachmentElementEnabled = attachmentElementEnabled;
+}
+
+- (BOOL)_colorFilterEnabled
+{
+    return _colorFilterEnabled;
+}
+
+- (void)_setColorFilterEnabled:(BOOL)colorFilterEnabled
+{
+    _colorFilterEnabled = colorFilterEnabled;
 }
 
 - (BOOL)_requiresUserActionForVideoPlayback

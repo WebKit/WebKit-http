@@ -258,6 +258,7 @@ enum EventThrottlingBehavior {
 
     void updateEditorUINowIfScheduled();
 
+    readonly attribute boolean sentenceRetroCorrectionEnabled;
     boolean hasSpellingMarker(long from, long length);
     boolean hasGrammarMarker(long from, long length);
     boolean hasAutocorrectedMarker(long from, long length);
@@ -368,6 +369,7 @@ enum EventThrottlingBehavior {
     [Conditional=FULLSCREEN_API] void webkitDidEnterFullScreenForElement(Element element);
     [Conditional=FULLSCREEN_API] void webkitWillExitFullScreenForElement(Element element);
     [Conditional=FULLSCREEN_API] void webkitDidExitFullScreenForElement(Element element);
+    [Conditional=FULLSCREEN_API] readonly attribute boolean isAnimatingFullScreen;
 
     void setFullscreenInsetTop(double inset);
     void setFullscreenAutoHideDelay(double delay);

@@ -1180,6 +1180,13 @@ void WebProcess::webToStorageProcessConnectionClosed(WebToStorageProcessConnecti
     ASSERT(m_webToStorageProcessConnection == connection);
 
     m_webToStorageProcessConnection = nullptr;
+
+#if ENABLE(SERVICE_WORKER)
+    if (SWContextManager::singleton().connection()) {
+        RELEASE_LOG(ServiceWorker, "Service worker process is exiting because its storage process is gone");
+        _exit(EXIT_SUCCESS);
+    }
+#endif
 }
 
 WebToStorageProcessConnection& WebProcess::ensureWebToStorageProcessConnection(PAL::SessionID initialSessionID)
@@ -1678,9 +1685,9 @@ void WebProcess::registerServiceWorkerClients()
 #endif
 
 #if PLATFORM(MAC)
-void WebProcess::setScreenProperties(uint32_t primaryScreenID, const HashMap<uint32_t, WebCore::ScreenProperties>& properties)
+void WebProcess::setScreenProperties(const WebCore::ScreenProperties& properties)
 {
-    WebCore::setScreenProperties(primaryScreenID, properties);
+    WebCore::setScreenProperties(properties);
 }
 #endif
 

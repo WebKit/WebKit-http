@@ -25,6 +25,7 @@
 #include "stdafx.h"
 #include "ResourceLoadDelegate.h"
 
+#include "Common.h"
 #include "MiniBrowser.h"
 #include "PageLoadTestClient.h"
 #include <WebCore/COMPtr.h>
@@ -36,8 +37,6 @@
 #include <shlwapi.h>
 #include <string>
 #include <wininet.h>
-
-extern HRESULT DisplayAuthDialog(std::wstring& username, std::wstring& password);
 
 HRESULT ResourceLoadDelegate::QueryInterface(_In_ REFIID riid, _COM_Outptr_ void** ppvObject)
 {
@@ -57,16 +56,12 @@ HRESULT ResourceLoadDelegate::QueryInterface(_In_ REFIID riid, _COM_Outptr_ void
 
 ULONG ResourceLoadDelegate::AddRef()
 {
-    return ++m_refCount;
+    return m_client->AddRef();
 }
 
 ULONG ResourceLoadDelegate::Release()
 {
-    ULONG newRef = --m_refCount;
-    if (!newRef)
-        delete this;
-
-    return newRef;
+    return m_client->Release();
 }
 
 HRESULT ResourceLoadDelegate::identifierForInitialRequest(_In_opt_ IWebView*, _In_opt_ IWebURLRequest*, _In_opt_ IWebDataSource*, unsigned long identifier)
@@ -94,7 +89,7 @@ HRESULT ResourceLoadDelegate::didReceiveAuthenticationChallenge(_In_opt_ IWebVie
         return E_FAIL;
 
     std::wstring username, password;
-    if (DisplayAuthDialog(username, password) != S_OK)
+    if (displayAuthDialog(m_client->hwnd(), username, password) != S_OK)
         return E_FAIL;
 
     COMPtr<IWebURLCredential> credential;

@@ -105,6 +105,8 @@ allowCrossOriginSubresourcesToAskForCredentials:
   initial: false
 needsStorageAccessFromFileURLsQuirk:
   initial: true
+needsFrameNameFallbackToIdQuirk:
+  initial: false
 useAnonymousModeWhenFetchingMaskImages:
   initial: true
 javaScriptCanOpenWindowsAutomatically:
@@ -742,7 +744,7 @@ clientCoordinatesRelativeToLayoutViewport:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
 
-crossOriginOptionsSupportEnabled:
+crossOriginWindowPolicySupportEnabled:
   initial: true
 
 accessibilityEventsEnabled:

@@ -37,7 +37,7 @@ namespace JSC {
 
 class JSBigInt final : public JSCell {
     using Base = JSCell;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesToThis;
+    static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal | OverridesToThis;
 
 public:
 
@@ -46,10 +46,7 @@ public:
     enum class InitializationType { None, WithZero };
     void initialize(InitializationType);
 
-    static void visitChildren(JSCell*, SlotVisitor&);
-
     static size_t estimatedSize(JSCell*);
-    static size_t allocationSize(unsigned length);
 
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue prototype);
     static JSBigInt* createZero(VM&);
@@ -61,8 +58,6 @@ public:
     static JSBigInt* createFrom(VM&, bool value);
 
     DECLARE_EXPORT_INFO;
-
-    void finishCreation(VM&);
 
     JSValue toPrimitive(ExecState*, PreferredPrimitiveType) const;
 
@@ -87,6 +82,11 @@ public:
     std::optional<uint8_t> singleDigitValueForString();
     String toString(ExecState*, unsigned radix);
     
+    enum class ComparisonMode {
+        LessThan,
+        LessThanOrEqual
+    };
+
     enum class ComparisonResult {
         Equal,
         Undefined,
@@ -107,6 +107,8 @@ public:
     
     ComparisonResult static compareToDouble(JSBigInt* x, double y);
 
+    static JSBigInt* add(VM&, JSBigInt* x, JSBigInt* y);
+    static JSBigInt* sub(VM&, JSBigInt* x, JSBigInt* y);
     static JSBigInt* divide(ExecState*, JSBigInt* x, JSBigInt* y);
     static JSBigInt* remainder(ExecState*, JSBigInt* x, JSBigInt* y);
     static JSBigInt* unaryMinus(VM&, JSBigInt* x);
@@ -169,7 +171,10 @@ private:
     JSBigInt* rightTrim(VM&);
 
     void inplaceMultiplyAdd(Digit multiplier, Digit part);
+    static JSBigInt* absoluteAdd(VM&, JSBigInt* x, JSBigInt* y, bool resultSign);
+    static JSBigInt* absoluteSub(VM&, JSBigInt* x, JSBigInt* y, bool resultSign);
     
+    static size_t allocationSize(unsigned length);
     static size_t offsetOfData();
     Digit* dataStorage();
 

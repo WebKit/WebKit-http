@@ -81,6 +81,10 @@
 #endif // !GST_CHECK_VERSION(1, 14, 0)
 #endif // USE(LIBEPOXY)
 
+#if ENABLE(MEDIA_STREAM) && GST_CHECK_VERSION(1, 10, 0)
+#include "GStreamerMediaStreamSource.h"
+#endif
+
 #define GST_USE_UNSTABLE_API
 #include <gst/gl/gl.h>
 #undef GST_USE_UNSTABLE_API
@@ -142,6 +146,9 @@ void registerWebKitGStreamerElements()
     GRefPtr<GstElementFactory> clearKeyDecryptorFactory = adoptGRef(gst_element_factory_find("webkitclearkey"));
     if (!clearKeyDecryptorFactory)
         gst_element_register(nullptr, "webkitclearkey", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
+#endif
+#if ENABLE(MEDIA_STREAM) && GST_CHECK_VERSION(1,10,0)
+    gst_element_register(nullptr, "mediastreamsrc", GST_RANK_PRIMARY, WEBKIT_TYPE_MEDIA_STREAM_SRC);
 #endif
 }
 
@@ -384,7 +391,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         if (concatenatedInitDataChunksNumber > 1)
             eventKeySystemIdString = emptyString();
 
-        RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), eventKeySystemIdString, initData = WTFMove(concatenatedInitDataChunks)] {
+        RunLoop::main().dispatch([weakThis = makeWeakPtr(*this), eventKeySystemIdString, initData = WTFMove(concatenatedInitDataChunks)] {
             if (!weakThis)
                 return;
 
@@ -1014,11 +1021,6 @@ bool MediaPlayerPrivateGStreamerBase::supportsFullscreen() const
     return true;
 }
 
-PlatformMedia MediaPlayerPrivateGStreamerBase::platformMedia() const
-{
-    return NoPlatformMedia;
-}
-
 MediaPlayer::MovieLoadType MediaPlayerPrivateGStreamerBase::movieLoadType() const
 {
     if (m_readyState == MediaPlayer::HaveNothing)
@@ -1248,7 +1250,7 @@ void MediaPlayerPrivateGStreamerBase::initializationDataEncountered(GstEvent* ev
     gst_buffer_unmap(data, &mapInfo);
 
     String eventKeySystemUUIDString = eventKeySystemUUID;
-    RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), eventKeySystemUUID = eventKeySystemUUIDString, initData] {
+    RunLoop::main().dispatch([weakThis = makeWeakPtr(*this), eventKeySystemUUID = eventKeySystemUUIDString, initData] {
         if (!weakThis)
             return;
 

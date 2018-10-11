@@ -293,27 +293,27 @@ bool RenderThemeWin::supportsHover(const RenderStyle&) const
     return haveTheme;
 }
 
-Color RenderThemeWin::platformActiveSelectionBackgroundColor() const
+Color RenderThemeWin::platformActiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const
 {
     COLORREF color = GetSysColor(COLOR_HIGHLIGHT);
     return Color(GetRValue(color), GetGValue(color), GetBValue(color));
 }
 
-Color RenderThemeWin::platformInactiveSelectionBackgroundColor() const
+Color RenderThemeWin::platformInactiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const
 {
     // This color matches Firefox.
     return Color(176, 176, 176);
 }
 
-Color RenderThemeWin::platformActiveSelectionForegroundColor() const
+Color RenderThemeWin::platformActiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const
 {
     COLORREF color = GetSysColor(COLOR_HIGHLIGHTTEXT);
     return Color(GetRValue(color), GetGValue(color), GetBValue(color));
 }
 
-Color RenderThemeWin::platformInactiveSelectionForegroundColor() const
+Color RenderThemeWin::platformInactiveSelectionForegroundColor(OptionSet<StyleColor::Options> options) const
 {
-    return platformActiveSelectionForegroundColor();
+    return platformActiveSelectionForegroundColor(options);
 }
 
 static void fillFontDescription(FontCascadeDescription& fontDescription, LOGFONT& logFont, float fontSize)

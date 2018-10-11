@@ -269,7 +269,7 @@ public:
     void setPopUpPolicy(PopUpPolicy popUpPolicy) { m_popUpPolicy = popUpPolicy; }
 
     void addSubresourceLoader(ResourceLoader*);
-    void removeSubresourceLoader(ResourceLoader*);
+    void removeSubresourceLoader(LoadCompletionType, ResourceLoader*);
     void addPlugInStreamLoader(ResourceLoader&);
     void removePlugInStreamLoader(ResourceLoader&);
 
@@ -377,6 +377,7 @@ private:
     bool isPostOrRedirectAfterPost(const ResourceRequest&, const ResourceResponse&);
 
     bool tryLoadingRequestFromApplicationCache();
+    bool tryLoadingSubstituteData();
     bool tryLoadingRedirectRequestFromApplicationCache(const ResourceRequest&);
 #if ENABLE(SERVICE_WORKER)
     void restartLoadingDueToServiceWorkerRegistrationChange(ResourceRequest&&, std::optional<ServiceWorkerRegistrationData>&&);
@@ -391,7 +392,6 @@ private:
 #else
     typedef Timer DocumentLoaderTimer;
 #endif
-    void handleSubstituteDataLoadSoon();
     void handleSubstituteDataLoadNow();
     void startDataLoadTimer();
 

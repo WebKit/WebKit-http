@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,28 +23,32 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OSObjectPtr_h
-#define OSObjectPtr_h
+#pragma once
 
 #include <os/object.h>
-#include <wtf/Assertions.h>
 #include <wtf/StdLibExtras.h>
 
 namespace WTF {
 
-template<typename T> class OSObjectPtr;
+template<typename> class OSObjectPtr;
 template<typename T> OSObjectPtr<T> adoptOSObject(T);
 
-template<typename T>
-static inline void retainOSObject(T ptr)
+template<typename T> static inline void retainOSObject(T ptr)
 {
+#if __has_feature(objc_arc)
+    UNUSED_PARAM(ptr);
+#else
     os_retain(ptr);
+#endif
 }
 
-template<typename T>
-static inline void releaseOSObject(T ptr)
+template<typename T> static inline void releaseOSObject(T ptr)
 {
+#if __has_feature(objc_arc)
+    UNUSED_PARAM(ptr);
+#else
     os_release(ptr);
+#endif
 }
 
 template<typename T> class OSObjectPtr {
@@ -73,9 +77,16 @@ public:
     }
 
     OSObjectPtr(OSObjectPtr&& other)
-        : m_ptr(other.m_ptr)
+        : m_ptr(WTFMove(other.m_ptr))
     {
         other.m_ptr = nullptr;
+    }
+
+    OSObjectPtr(T ptr)
+        : m_ptr(WTFMove(ptr))
+    {
+        if (m_ptr)
+            retainOSObject(m_ptr);
     }
 
     OSObjectPtr& operator=(const OSObjectPtr& other)
@@ -97,7 +108,13 @@ public:
         if (m_ptr)
             releaseOSObject(m_ptr);
         m_ptr = nullptr;
+        return *this;
+    }
 
+    OSObjectPtr& operator=(T other)
+    {
+        OSObjectPtr ptr = WTFMove(other);
+        swap(ptr);
         return *this;
     }
 
@@ -116,7 +133,7 @@ public:
 private:
     struct AdoptOSObject { };
     OSObjectPtr(AdoptOSObject, T ptr)
-        : m_ptr(ptr)
+        : m_ptr(WTFMove(ptr))
     {
     }
 
@@ -125,12 +142,10 @@ private:
 
 template<typename T> inline OSObjectPtr<T> adoptOSObject(T ptr)
 {
-    return OSObjectPtr<T>(typename OSObjectPtr<T>::AdoptOSObject { }, ptr);
+    return OSObjectPtr<T> { typename OSObjectPtr<T>::AdoptOSObject { }, WTFMove(ptr) };
 }
 
 } // namespace WTF
 
 using WTF::OSObjectPtr;
 using WTF::adoptOSObject;
-
-#endif // OSObjectPtr_h

@@ -1,4 +1,28 @@
-ResultsDashboard = Utilities.createClass(
+/*
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+ ResultsDashboard = Utilities.createClass(
     function(options, testData)
     {
         this._iterationsSamplers = [];
@@ -68,10 +92,6 @@ ResultsDashboard = Utilities.createClass(
         data[Strings.json.result] = result;
         var samples = data[Strings.json.samples];
 
-        var desiredFrameLength = 1000/60;
-        if (this._options["controller"] == "ramp30")
-            desiredFrameLength = 1000/30;
-
         function findRegression(series, profile) {
             var minIndex = Math.round(.025 * series.length);
             var maxIndex = Math.round(.975 * (series.length - 1));
@@ -87,7 +107,7 @@ ResultsDashboard = Utilities.createClass(
 
             var complexityIndex = series.fieldMap[Strings.json.complexity];
             var frameLengthIndex = series.fieldMap[Strings.json.frameLength];
-            var regressionOptions = { desiredFrameLength: desiredFrameLength };
+            var regressionOptions = { desiredFrameLength: 1000/60 };
             if (profile)
                 regressionOptions.preferredProfile = profile;
             return {
@@ -102,15 +122,14 @@ ResultsDashboard = Utilities.createClass(
             };
         }
 
-        var complexitySamples;
         // Convert these samples into SampleData objects if needed
-        [Strings.json.complexity, Strings.json.complexityAverage, Strings.json.controller].forEach(function(seriesName) {
+        [Strings.json.complexity, Strings.json.controller].forEach(function(seriesName) {
             var series = samples[seriesName];
             if (series && !(series instanceof SampleData))
                 samples[seriesName] = new SampleData(series.fieldMap, series.data);
         });
 
-        var isRampController = ["ramp", "ramp30"].indexOf(this._options["controller"]) != -1;
+        var isRampController = this._options["controller"] == "ramp";
         var predominantProfile = "";
         if (isRampController) {
             var profiles = {};
@@ -130,27 +149,19 @@ ResultsDashboard = Utilities.createClass(
             }
         }
 
-        [Strings.json.complexity, Strings.json.complexityAverage].forEach(function(seriesName) {
-            if (!(seriesName in samples))
-                return;
-
-            var regression = {};
-            result[seriesName] = regression;
-            var regressionResult = findRegression(samples[seriesName], predominantProfile);
-            if (seriesName == Strings.json.complexity)
-                complexitySamples = regressionResult.samples;
-            var calculation = regressionResult.regression;
-            regression[Strings.json.regressions.segment1] = [
-                [regressionResult.minComplexity, calculation.s1 + calculation.t1 * regressionResult.minComplexity],
-                [calculation.complexity, calculation.s1 + calculation.t1 * calculation.complexity]
-            ];
-            regression[Strings.json.regressions.segment2] = [
-                [calculation.complexity, calculation.s2 + calculation.t2 * calculation.complexity],
-                [regressionResult.maxComplexity, calculation.s2 + calculation.t2 * regressionResult.maxComplexity]
-            ];
-            regression[Strings.json.complexity] = calculation.complexity;
-            regression[Strings.json.measurements.stdev] = Math.sqrt(calculation.error / samples[seriesName].length);
-        });
+        var regressionResult = findRegression(samples[Strings.json.complexity], predominantProfile);
+        var calculation = regressionResult.regression;
+        result[Strings.json.complexity] = {};
+        result[Strings.json.complexity][Strings.json.regressions.segment1] = [
+            [regressionResult.minComplexity, calculation.s1 + calculation.t1 * regressionResult.minComplexity],
+            [calculation.complexity, calculation.s1 + calculation.t1 * calculation.complexity]
+        ];
+        result[Strings.json.complexity][Strings.json.regressions.segment2] = [
+            [calculation.complexity, calculation.s2 + calculation.t2 * calculation.complexity],
+            [regressionResult.maxComplexity, calculation.s2 + calculation.t2 * regressionResult.maxComplexity]
+        ];
+        result[Strings.json.complexity][Strings.json.complexity] = calculation.complexity;
+        result[Strings.json.complexity][Strings.json.measurements.stdev] = Math.sqrt(calculation.error / samples[Strings.json.complexity].length);
 
         if (isRampController) {
             var timeComplexity = new Experiment;
@@ -166,15 +177,15 @@ ResultsDashboard = Utilities.createClass(
             experimentResult[Strings.json.measurements.percent] = timeComplexity.percentage();
 
             const bootstrapIterations = 2500;
-            var bootstrapResult = Regression.bootstrap(complexitySamples.data, bootstrapIterations, function(resampleData) {
-                var complexityIndex = complexitySamples.fieldMap[Strings.json.complexity];
+            var bootstrapResult = Regression.bootstrap(regressionResult.samples.data, bootstrapIterations, function(resampleData) {
+                var complexityIndex = regressionResult.samples.fieldMap[Strings.json.complexity];
                 resampleData.sort(function(a, b) {
                     return a[complexityIndex] - b[complexityIndex];
                 });
 
-                var resample = new SampleData(complexitySamples.fieldMap, resampleData);
-                var regressionResult = findRegression(resample, predominantProfile);
-                return regressionResult.regression.complexity;
+                var resample = new SampleData(regressionResult.samples.fieldMap, resampleData);
+                var bootstrapRegressionResult = findRegression(resample, predominantProfile);
+                return bootstrapRegressionResult.regression.complexity;
             }, .8);
 
             result[Strings.json.complexity][Strings.json.bootstrap] = bootstrapResult;

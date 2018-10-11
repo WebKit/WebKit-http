@@ -64,7 +64,7 @@ static LayoutUnit shrinkToFitWidth(LayoutContext&, const Box&)
     return { };
 }
 
-LayoutUnit FormattingContext::Geometry::outOfFlowNonReplacedHeight(LayoutContext& layoutContext, const Box& layoutBox)
+FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::outOfFlowNonReplacedHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned() && !layoutBox.replaced());
 
@@ -125,10 +125,10 @@ LayoutUnit FormattingContext::Geometry::outOfFlowNonReplacedHeight(LayoutContext
         ASSERT_NOT_REACHED();
     }
 
-    return computedHeightValue;
+    return { computedHeightValue, { } };
 }
 
-LayoutUnit FormattingContext::Geometry::outOfFlowNonReplacedWidth(LayoutContext& layoutContext, const Box& layoutBox)
+FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::outOfFlowNonReplacedWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned() && !layoutBox.replaced());
     
@@ -183,28 +183,28 @@ LayoutUnit FormattingContext::Geometry::outOfFlowNonReplacedWidth(LayoutContext&
         ASSERT_NOT_REACHED();
     }
 
-    return computedWidthValue;
+    return WidthAndMargin { computedWidthValue, { } };
 }
 
-LayoutUnit FormattingContext::Geometry::outOfFlowReplacedHeight(LayoutContext& layoutContext, const Box& layoutBox)
+FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::outOfFlowReplacedHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned() && layoutBox.replaced());
     // 10.6.5 Absolutely positioned, replaced elements
     //
     // The used value of 'height' is determined as for inline replaced elements.
-    return replacedHeight(layoutContext, layoutBox);
+    return inlineReplacedHeightAndMargin(layoutContext, layoutBox);
 }
 
-LayoutUnit FormattingContext::Geometry::outOfFlowReplacedWidth(LayoutContext& layoutContext, const Box& layoutBox)
+FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::outOfFlowReplacedWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned() && layoutBox.replaced());
     // 10.3.8 Absolutely positioned, replaced elements
     //
     // The used value of 'width' is determined as for inline replaced elements.
-    return replacedWidth(layoutContext, layoutBox);
+    return inlineReplacedWidthAndMargin(layoutContext, layoutBox);
 }
 
-LayoutUnit FormattingContext::Geometry::floatingNonReplacedHeight(LayoutContext& layoutContext, const Box& layoutBox)
+FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::floatingNonReplacedHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isFloatingPositioned() && !layoutBox.replaced());
     // 10.6.6 Complicated cases
@@ -213,38 +213,49 @@ LayoutUnit FormattingContext::Geometry::floatingNonReplacedHeight(LayoutContext&
     //
     // If 'height' is 'auto', the height depends on the element's descendants per 10.6.7.
     auto height = layoutBox.style().logicalHeight();
-    return height.isAuto() ? contentHeightForFormattingContextRoot(layoutContext, layoutBox) : LayoutUnit(height.value());
+    auto computedHeightValue = height.isAuto() ? contentHeightForFormattingContextRoot(layoutContext, layoutBox) : LayoutUnit { height.value() };
+    return FormattingContext::Geometry::HeightAndMargin { computedHeightValue, { } };
 }
 
-LayoutUnit FormattingContext::Geometry::floatingNonReplacedWidth(LayoutContext& layoutContext, const Box& layoutBox)
+FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::floatingNonReplacedWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isFloatingPositioned() && !layoutBox.replaced());
     // 10.3.5 Floating, non-replaced elements
-
-    // If 'width' is computed as 'auto', the used value is the "shrink-to-fit" width.
-    auto width = layoutBox.style().logicalWidth();
-    return width.isAuto() ? shrinkToFitWidth(layoutContext, layoutBox) : LayoutUnit(width.value());
+    //
+    // 1. If 'margin-left', or 'margin-right' are computed as 'auto', their used value is '0'.
+    // 2. If 'width' is computed as 'auto', the used value is the "shrink-to-fit" width.
+    auto& style = layoutBox.style();
+    auto width = style.logicalWidth();
+    // #1
+    auto computedNonCollapsedHorizontalMarginValues = computedNonCollapsedHorizontalMarginValue(layoutContext, layoutBox);
+    // #2
+    auto computedWidthValue = width.isAuto() ? shrinkToFitWidth(layoutContext, layoutBox) : LayoutUnit(width.value());
+    return FormattingContext::Geometry::WidthAndMargin { computedWidthValue, computedNonCollapsedHorizontalMarginValues };
 }
 
-LayoutUnit FormattingContext::Geometry::floatingReplacedHeight(LayoutContext& layoutContext, const Box& layoutBox)
+FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::floatingReplacedHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isFloatingPositioned() && layoutBox.replaced());
     // 10.6.2 Inline replaced elements, block-level replaced elements in normal flow, 'inline-block'
     // replaced elements in normal flow and floating replaced elements
-    return replacedHeight(layoutContext, layoutBox);
+    return inlineReplacedHeightAndMargin(layoutContext, layoutBox);
 }
 
-LayoutUnit FormattingContext::Geometry::floatingReplacedWidth(LayoutContext& layoutContext, const Box& layoutBox)
+FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::floatingReplacedWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isFloatingPositioned() && layoutBox.replaced());
     // 10.3.6 Floating, replaced elements
     //
-    // The used value of 'width' is determined as for inline replaced elements.
-    return replacedWidth(layoutContext, layoutBox);
+    // 1. If 'margin-left' or 'margin-right' are computed as 'auto', their used value is '0'.
+    // 2. The used value of 'width' is determined as for inline replaced elements.
+    auto computedNonCollapsedHorizontalMarginValues = computedNonCollapsedHorizontalMarginValue(layoutContext, layoutBox);
+    return inlineReplacedWidthAndMargin(layoutContext, layoutBox, computedNonCollapsedHorizontalMarginValues.left, computedNonCollapsedHorizontalMarginValues.right);
 }
 
-LayoutPoint FormattingContext::Geometry::outOfFlowNonReplacedPosition(LayoutContext& layoutContext, const Box& layoutBox)
+static LayoutPoint outOfFlowNonReplacedPosition(LayoutContext& layoutContext, const Box& layoutBox)
 {
+    ASSERT(layoutBox.isOutOfFlowPositioned() && !layoutBox.replaced());
+
     // 10.3.7 Absolutely positioned, non-replaced elements (left/right)
     // 10.6.4 Absolutely positioned, non-replaced elements (top/bottom)
 
@@ -338,8 +349,10 @@ LayoutPoint FormattingContext::Geometry::outOfFlowNonReplacedPosition(LayoutCont
     return { computedLeftValue, computedTopValue };
 }
 
-LayoutPoint FormattingContext::Geometry::outOfFlowReplacedPosition(LayoutContext& layoutContext, const Box& layoutBox)
+static LayoutPoint outOfFlowReplacedPosition(LayoutContext& layoutContext, const Box& layoutBox)
 {
+    ASSERT(layoutBox.isOutOfFlowPositioned() && layoutBox.replaced());
+
     // 10.6.5 Absolutely positioned, replaced elements (top/bottom)
     // 10.3.8 Absolutely positioned, replaced elements (left/right)
 
@@ -427,59 +440,100 @@ LayoutPoint FormattingContext::Geometry::outOfFlowReplacedPosition(LayoutContext
     return { computedLeftValue, computedTopValue };
 }
 
-LayoutUnit FormattingContext::Geometry::replacedHeight(LayoutContext&, const Box& layoutBox)
+FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::outOfFlowHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
+{
+    ASSERT(layoutBox.isOutOfFlowPositioned());
+
+    if (!layoutBox.replaced())
+        return outOfFlowNonReplacedHeightAndMargin(layoutContext, layoutBox);
+    return outOfFlowReplacedHeightAndMargin(layoutContext, layoutBox);
+}
+
+FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::outOfFlowWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
+{
+    ASSERT(layoutBox.isOutOfFlowPositioned());
+
+    if (!layoutBox.replaced())
+        return outOfFlowNonReplacedWidthAndMargin(layoutContext, layoutBox);
+    return outOfFlowReplacedWidthAndMargin(layoutContext, layoutBox);
+}
+
+FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::floatingHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
+{
+    ASSERT(layoutBox.isFloatingPositioned());
+
+    if (!layoutBox.replaced())
+        return floatingNonReplacedHeightAndMargin(layoutContext, layoutBox);
+    return floatingReplacedHeightAndMargin(layoutContext, layoutBox);
+}
+
+FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::floatingWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
+{
+    ASSERT(layoutBox.isFloatingPositioned());
+
+    if (!layoutBox.replaced())
+        return floatingNonReplacedWidthAndMargin(layoutContext, layoutBox);
+    return floatingReplacedWidthAndMargin(layoutContext, layoutBox);
+}
+
+LayoutPoint FormattingContext::Geometry::outOfFlowPosition(LayoutContext& layoutContext, const Box& layoutBox)
+{
+    ASSERT(layoutBox.isOutOfFlowPositioned());
+
+    if (!layoutBox.replaced())
+        return outOfFlowNonReplacedPosition(layoutContext, layoutBox);
+    return outOfFlowReplacedPosition(layoutContext, layoutBox);
+}
+
+FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::inlineReplacedHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT((layoutBox.isOutOfFlowPositioned() || layoutBox.isFloatingPositioned() || layoutBox.isInFlow()) && layoutBox.replaced());
-    // 10.6.5 Absolutely positioned, replaced elements. The used value of 'height' is determined as for inline replaced elements.
-
     // 10.6.2 Inline replaced elements, block-level replaced elements in normal flow, 'inline-block' replaced elements in normal flow and floating replaced elements
     //
-    // 1. If 'height' and 'width' both have computed values of 'auto' and the element also has an intrinsic height, then that intrinsic height is the used value of 'height'.
-    //
-    // 2. Otherwise, if 'height' has a computed value of 'auto', and the element has an intrinsic ratio then the used value of 'height' is:
+    // 1. If 'margin-top', or 'margin-bottom' are 'auto', their used value is 0.
+    // 2. If 'height' and 'width' both have computed values of 'auto' and the element also has an intrinsic height, then that intrinsic height is the used value of 'height'.
+    // 3. Otherwise, if 'height' has a computed value of 'auto', and the element has an intrinsic ratio then the used value of 'height' is:
     //    (used width) / (intrinsic ratio)
-    //
-    // 3. Otherwise, if 'height' has a computed value of 'auto', and the element has an intrinsic height, then that intrinsic height is the used value of 'height'.
-    //
-    // 4. Otherwise, if 'height' has a computed value of 'auto', but none of the conditions above are met, then the used value of 'height' must be set to
+    // 4. Otherwise, if 'height' has a computed value of 'auto', and the element has an intrinsic height, then that intrinsic height is the used value of 'height'.
+    // 5. Otherwise, if 'height' has a computed value of 'auto', but none of the conditions above are met, then the used value of 'height' must be set to
     //    the height of the largest rectangle that has a 2:1 ratio, has a height not greater than 150px, and has a width not greater than the device width.
+
+    // #1
+    auto computedNonCollapsedVerticalMarginValues = computedNonCollapsedVerticalMarginValue(layoutContext, layoutBox);
+
     auto& style = layoutBox.style();
-    auto width = style.logicalWidth();
     auto height = style.logicalHeight();
-
     LayoutUnit computedHeightValue;
-    auto replaced = layoutBox.replaced();
-    ASSERT(replaced);
-
     if (height.isAuto()) {
+        auto width = style.logicalWidth();
+        auto replaced = layoutBox.replaced();
+
         if (width.isAuto() && replaced->hasIntrinsicHeight()) {
-            // #1
+            // #2
             computedHeightValue = replaced->intrinsicHeight();
         } else if (replaced->hasIntrinsicRatio()) {
-            // #2
+            // #3
             computedHeightValue = width.value() / replaced->intrinsicRatio();
         } else if (replaced->hasIntrinsicHeight()) {
-            // #3
+            // #4
             computedHeightValue = replaced->intrinsicHeight();
         } else {
-            // #4
+            // #5
             computedHeightValue = 150;
         }
     } else
         computedHeightValue = height.value();
 
-    return computedHeightValue;
+    return { computedHeightValue, computedNonCollapsedVerticalMarginValues };
 }
 
-LayoutUnit FormattingContext::Geometry::replacedWidth(LayoutContext&, const Box& layoutBox)
+FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::inlineReplacedWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox,
+    std::optional<LayoutUnit> precomputedMarginLeft, std::optional<LayoutUnit> precomputedMarginRight)
 {
     ASSERT((layoutBox.isOutOfFlowPositioned() || layoutBox.isFloatingPositioned() || layoutBox.isInFlow()) && layoutBox.replaced());
-
-    // 10.3.4 Block-level, replaced elements in normal flow: The used value of 'width' is determined as for inline replaced elements.
-    // 10.3.6 Floating, replaced elements: The used value of 'width' is determined as for inline replaced elements.
-    // 10.3.8 Absolutely positioned, replaced elements: The used value of 'width' is determined as for inline replaced elements.
-
     // 10.3.2 Inline, replaced elements
+    //
+    // A computed value of 'auto' for 'margin-left' or 'margin-right' becomes a used value of '0'.
     //
     // 1. If 'height' and 'width' both have computed values of 'auto' and the element also has an intrinsic width, then that intrinsic width is the used value of 'width'.
     //
@@ -496,10 +550,28 @@ LayoutUnit FormattingContext::Geometry::replacedWidth(LayoutContext&, const Box&
     // 5. Otherwise, if 'width' has a computed value of 'auto', but none of the conditions above are met, then the used value of 'width' becomes 300px.
     //    If 300px is too wide to fit the device, UAs should use the width of the largest rectangle that has a 2:1 ratio and fits the device instead.
     auto& style = layoutBox.style();
-    auto width = style.logicalWidth();
-    auto height = style.logicalHeight();
+    auto containingBlockWidth = layoutContext.displayBoxForLayoutBox(*layoutBox.containingBlock())->width();
+
+    auto computeMarginRight = [&]() {
+        if (precomputedMarginRight)
+            return precomputedMarginRight.value();
+        auto marginRight = style.marginRight();
+        return marginRight.isAuto() ? LayoutUnit { 0 } : valueForLength(marginRight, containingBlockWidth);
+    };
+
+    auto computeMarginLeft = [&]() {
+        if (precomputedMarginLeft)
+            return precomputedMarginLeft.value();
+        auto marginLeft = style.marginLeft();
+        return marginLeft.isAuto() ? LayoutUnit { 0 } : valueForLength(marginLeft, containingBlockWidth);
+    };
+
+    LayoutUnit computedMarginLeftValue = computeMarginLeft();
+    LayoutUnit computedMarginRightValue = computeMarginRight();
 
     LayoutUnit computedWidthValue;
+    auto width = style.logicalWidth();
+    auto height = style.logicalHeight();
     auto replaced = layoutBox.replaced();
     ASSERT(replaced);
 
@@ -522,17 +594,15 @@ LayoutUnit FormattingContext::Geometry::replacedWidth(LayoutContext&, const Box&
         computedWidthValue = 300;
     }
 
-    return computedWidthValue;
+    return WidthAndMargin { computedWidthValue, { computedMarginLeftValue, computedMarginRightValue } };
 }
 
 Display::Box::Edges FormattingContext::Geometry::computedBorder(LayoutContext&, const Box& layoutBox)
 {
     auto& style = layoutBox.style();
     return {
-        style.borderTop().boxModelWidth(),
-        style.borderLeft().boxModelWidth(),
-        style.borderBottom().boxModelWidth(),
-        style.borderRight().boxModelWidth()
+        { style.borderLeft().boxModelWidth(), style.borderRight().boxModelWidth() },
+        { style.borderTop().boxModelWidth(), style.borderBottom().boxModelWidth() }
     };
 }
 
@@ -543,12 +613,36 @@ std::optional<Display::Box::Edges> FormattingContext::Geometry::computedPadding(
 
     auto& style = layoutBox.style();
     auto containingBlockWidth = layoutContext.displayBoxForLayoutBox(*layoutBox.containingBlock())->width();
-    return Display::Box::Edges(
-        valueForLength(style.paddingTop(), containingBlockWidth),
-        valueForLength(style.paddingLeft(), containingBlockWidth),
-        valueForLength(style.paddingBottom(), containingBlockWidth),
-        valueForLength(style.paddingRight(), containingBlockWidth)
-    );
+    return Display::Box::Edges {
+        { valueForLength(style.paddingLeft(), containingBlockWidth), valueForLength(style.paddingRight(), containingBlockWidth) },
+        { valueForLength(style.paddingTop(), containingBlockWidth), valueForLength(style.paddingBottom(), containingBlockWidth) }
+    };
+}
+
+Display::Box::HorizontalEdges FormattingContext::Geometry::computedNonCollapsedHorizontalMarginValue(const LayoutContext& layoutContext, const Box& layoutBox)
+{
+    auto& style = layoutBox.style();
+    auto marginLeft = style.marginLeft();
+    auto marginRight = style.marginRight();
+
+    auto containingBlockWidth = layoutContext.displayBoxForLayoutBox(*layoutBox.containingBlock())->width();
+    return Display::Box::HorizontalEdges {
+        marginLeft.isAuto() ? LayoutUnit { 0 } : valueForLength(marginLeft, containingBlockWidth),
+        marginRight.isAuto() ? LayoutUnit { 0 } : valueForLength(marginRight, containingBlockWidth)
+    };
+}
+
+Display::Box::VerticalEdges FormattingContext::Geometry::computedNonCollapsedVerticalMarginValue(const LayoutContext& layoutContext, const Box& layoutBox)
+{
+    auto& style = layoutBox.style();
+    auto marginTop = style.marginTop();
+    auto marginBottom = style.marginBottom();
+
+    auto containingBlockWidth = layoutContext.displayBoxForLayoutBox(*layoutBox.containingBlock())->width();
+    return Display::Box::VerticalEdges {
+        marginTop.isAuto() ? LayoutUnit { 0 } : valueForLength(marginTop, containingBlockWidth),
+        marginBottom.isAuto() ? LayoutUnit { 0 } : valueForLength(marginBottom, containingBlockWidth)
+    };
 }
 
 }
