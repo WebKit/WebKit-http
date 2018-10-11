@@ -29,6 +29,8 @@
 #include "config.h"
 #include "ImageDecoderQt.h"
 #include "ImageSource.h"
+#include "IntSize.h"
+#include "NotImplemented.h"
 
 #include <QtCore/QBuffer>
 #include <QtCore/QByteArray>
@@ -38,7 +40,8 @@
 namespace WebCore {
 
 ImageDecoderQt::ImageDecoderQt(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
-    : ScalableImageDecoder(alphaOption, gammaAndColorProfileOption)
+    : m_premultiplyAlpha(alphaOption == AlphaOption::Premultiplied)
+    , m_ignoreGammaAndColorProfile(gammaAndColorProfileOption == GammaAndColorProfileOption::Ignored)
     , m_repetitionCount(RepetitionCountNone)
 {
 }
@@ -76,7 +79,7 @@ void ImageDecoderQt::setData(SharedBuffer& data, bool allDataReceived)
         return;
 
     // Cache our own new data.
-    ScalableImageDecoder::setData(data, allDataReceived);
+    ImageDecoder::setData(data, allDataReceived);
 
     // We expect to be only called once with allDataReceived
     ASSERT(!m_buffer);
@@ -103,10 +106,10 @@ void ImageDecoderQt::setData(SharedBuffer& data, bool allDataReceived)
 
 bool ImageDecoderQt::isSizeAvailable() const
 {
-    if (!ScalableImageDecoder::isSizeAvailable() && m_reader)
+    if (!ImageDecoder::isSizeAvailable() && m_reader)
         internalDecodeSize();
 
-    return ScalableImageDecoder::isSizeAvailable();
+    return ImageDecoder::isSizeAvailable();
 }
 
 size_t ImageDecoderQt::frameCount() const
@@ -122,12 +125,9 @@ size_t ImageDecoderQt::frameCount() const
                 forceLoadEverything();
             else {
                 m_frameBufferCache.resize(imageCount);
-                for (size_t i = 0; i < m_frameBufferCache.size(); ++i)
-                    m_frameBufferCache[i].setPremultiplyAlpha(m_premultiplyAlpha);
             }
         } else {
             m_frameBufferCache.resize(1);
-            m_frameBufferCache[0].setPremultiplyAlpha(m_premultiplyAlpha);
         }
     }
 
@@ -146,7 +146,11 @@ String ImageDecoderQt::filenameExtension() const
     return String(m_format.constData(), m_format.length());
 }
 
-ImageFrame* ImageDecoderQt::frameBufferAtIndex(size_t index)
+void ImageDecoderQt::clearFrameBufferCache(size_t /*index*/)
+{
+}
+
+ScalableImageDecoderFrame* ImageDecoderQt::frameBufferAtIndex(size_t index) const
 {
     // In case the ImageDecoderQt got recreated we don't know
     // yet how many images we are going to have and need to
@@ -160,14 +164,10 @@ ImageFrame* ImageDecoderQt::frameBufferAtIndex(size_t index)
     if (index >= count)
         return 0;
 
-    ImageFrame& frame = m_frameBufferCache[index];
-    if (frame.status() != ImageFrame::FrameComplete && m_reader)
+    ScalableImageDecoderFrame& frame = m_frameBufferCache[index];
+    if (!frame.isComplete() && m_reader)
         internalReadImage(index);
     return &frame;
-}
-
-void ImageDecoderQt::clearFrameBufferCache(size_t /*index*/)
-{
 }
 
 void ImageDecoderQt::internalDecodeSize() const
@@ -181,16 +181,16 @@ void ImageDecoderQt::internalDecodeSize() const
         return clearPointers();
     }
 
-    setSize(size.width(), size.height());
+    setSize(IntSize(size.width(), size.height()));
 
     // We don't need the tables set by prepareScaleDataIfNecessary,
-    // but their dimensions are used by ScalableImageDecoder::scaledSize().
+    // but their dimensions are used by ImageDecoder::scaledSize().
     prepareScaleDataIfNecessary();
     if (m_scaled)
         m_reader->setScaledSize(scaledSize());
 }
 
-void ImageDecoderQt::internalReadImage(size_t frameIndex)
+void ImageDecoderQt::internalReadImage(size_t frameIndex) const
 {
     ASSERT(m_reader);
 
@@ -206,30 +206,30 @@ void ImageDecoderQt::internalReadImage(size_t frameIndex)
 
     // Attempt to return some memory
     for (size_t i = 0; i < m_frameBufferCache.size(); ++i) {
-        if (m_frameBufferCache[i].status() != ImageFrame::FrameComplete)
+        if (!m_frameBufferCache[i].isComplete())
             return;
     }
 
     clearPointers();
 }
 
-bool ImageDecoderQt::internalHandleCurrentImage(size_t frameIndex)
+bool ImageDecoderQt::internalHandleCurrentImage(size_t frameIndex) const
 {
-    ImageFrame* const buffer = &m_frameBufferCache[frameIndex];
+    ScalableImageDecoderFrame* const buffer = &m_frameBufferCache[frameIndex];
     QSize imageSize = m_reader->scaledSize();
     if (imageSize.isEmpty())
         imageSize = m_reader->size();
 
-    if (!buffer->setSize(imageSize.width(), imageSize.height()))
+    if (!buffer->initialize(IntSize(imageSize.width(), imageSize.height()), m_premultiplyAlpha))
         return false;
 
-    QImage image(reinterpret_cast<uchar*>(buffer->getAddr(0, 0)), imageSize.width(), imageSize.height(), sizeof(ImageFrame::PixelData) * imageSize.width(), m_reader->imageFormat());
+    QImage image(reinterpret_cast<uchar*>(buffer->backingStore()->pixelAt(0, 0)), imageSize.width(), imageSize.height(), sizeof(RGBA32) * imageSize.width(), m_reader->imageFormat());
 
-    buffer->setDuration(m_reader->nextImageDelay());
+    buffer->setDuration(Seconds::fromMilliseconds(m_reader->nextImageDelay()));
     m_reader->read(&image);
 
-    // ImageFrame expects ARGB32.
-    if (buffer->premultiplyAlpha()) {
+    // ScalableImageDecoderFrame expects ARGB32.
+    if (m_premultiplyAlpha) {
         if (image.format() != QImage::Format_ARGB32_Premultiplied)
             image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     } else {
@@ -237,9 +237,9 @@ bool ImageDecoderQt::internalHandleCurrentImage(size_t frameIndex)
             image = image.convertToFormat(QImage::Format_ARGB32);
     }
 
-    if (reinterpret_cast<const uchar*>(image.constBits()) != reinterpret_cast<const uchar*>(buffer->getAddr(0, 0))) {
+    if (reinterpret_cast<const uchar*>(image.constBits()) != reinterpret_cast<const uchar*>(buffer->backingStore()->pixelAt(0, 0))) {
         // The in-buffer was replaced during decoding with another, so copy into it manually.
-        memcpy(buffer->getAddr(0, 0), image.constBits(),  image.byteCount());
+        memcpy(buffer->backingStore()->pixelAt(0, 0), image.constBits(),  image.sizeInBytes());
     }
 
     if (image.isNull()) {
@@ -249,9 +249,9 @@ bool ImageDecoderQt::internalHandleCurrentImage(size_t frameIndex)
         return false;
     }
 
-    buffer->setOriginalFrameRect(image.rect());
+    buffer->backingStore()->setFrameRect(image.rect());
     buffer->setHasAlpha(image.hasAlphaChannel());
-    buffer->setStatus(ImageFrame::FrameComplete);
+    buffer->setDecodingStatus(DecodingStatus::Complete);
 
     return true;
 }
@@ -278,29 +278,98 @@ void ImageDecoderQt::forceLoadEverything() const
     // Otherwise, we want to forget about
     // the last attempt to decode a image.
     m_frameBufferCache.resize(imageCount - 1);
-    for (size_t i = 0; i < m_frameBufferCache.size(); ++i)
-        m_frameBufferCache[i].setPremultiplyAlpha(m_premultiplyAlpha);
     if (imageCount == 1)
-      setFailed();
+        setFailed();
 }
 
-void ImageDecoderQt::clearPointers()
+void ImageDecoderQt::clearPointers() const
 {
     m_reader = nullptr;
     m_buffer = nullptr;
 }
 
-PassNativeImagePtr ImageFrame::asNewNativeImage() const
+IntSize ImageDecoderQt::frameSizeAtIndex(size_t index, SubsamplingLevel) const
 {
-    QImage::Format format;
-    if (m_hasAlpha)
-        format = m_premultiplyAlpha ?  QImage::Format_ARGB32_Premultiplied : QImage::Format_ARGB32;
-    else
-        format = QImage::Format_RGB32;
+    if (!m_reader || (index > 0 && !m_reader->supportsAnimation()))
+        return IntSize();
 
-    QImage img(reinterpret_cast<uchar*>(m_bytes), m_size.width(), m_size.height(), sizeof(PixelData) * m_size.width(), format);
+    m_reader->jumpToImage(index);
+    QImage image = m_reader->read();
 
-    return new QPixmap(QPixmap::fromImage(img).copy());
+    if (!image.isNull()) {
+        return IntSize(image.width(), image.height());
+    } else {
+        return IntSize();
+    }
+}
+
+bool ImageDecoderQt::frameIsCompleteAtIndex(size_t index) const
+{
+    ScalableImageDecoderFrame* buffer = frameBufferAtIndex(index);
+    return buffer && buffer->isComplete();
+}
+
+ImageOrientation ImageDecoderQt::frameOrientationAtIndex(size_t index) const
+{
+    ScalableImageDecoderFrame* buffer = frameBufferAtIndex(index);
+    return buffer ? buffer->orientation() : ImageOrientation();
+}
+
+Seconds ImageDecoderQt::frameDurationAtIndex(size_t index) const
+{
+    ScalableImageDecoderFrame* buffer = frameBufferAtIndex(index);
+    return buffer ? buffer->duration() : 100_ms;
+}
+
+bool ImageDecoderQt::frameAllowSubsamplingAtIndex(size_t) const
+{
+    notImplemented();
+    return true;
+}
+
+bool ImageDecoderQt::frameHasAlphaAtIndex(size_t) const
+{
+    notImplemented();
+    return true;
+}
+
+unsigned ImageDecoderQt::frameBytesAtIndex(size_t index, SubsamplingLevel subsamplingLevel) const
+{
+    if (!m_reader)
+        return 0;
+
+    auto frameSize = frameSizeAtIndex(index, subsamplingLevel);
+    return (frameSize.area() * 4).unsafeGet();
+}
+
+size_t ImageDecoderQt::bytesDecodedToDetermineProperties() const
+{
+    // Set to match value used for CoreGraphics.
+    return 13088;
+}
+
+EncodedDataStatus ImageDecoderQt::encodedDataStatus() const
+{
+    notImplemented();
+    return EncodedDataStatus::Unknown;
+}
+
+IntSize ImageDecoderQt::size() const
+{
+    if (!m_reader)
+        return IntSize();
+
+    m_reader->jumpToImage(0);
+    QImage image = m_reader->read();
+    if (image.isNull())
+        return IntSize();
+
+    return IntSize(image.width(), image.height());
+}
+
+std::optional<IntPoint> ImageDecoderQt::hotSpot() const
+{
+    return IntPoint();
 }
 
 }
