@@ -1,3 +1,182 @@
+2018-10-11  Alejandro G. Castro  <alex@igalia.com>
+
+        [GTK][WPE] Add mediaDevices.enumerateDevices support
+        https://bugs.webkit.org/show_bug.cgi?id=185761
+
+        Reviewed by Youenn Fablet.
+
+        Remove the failure expectation for the test
+        media-devices-enumerate-devices.html. Just for the record we have
+        also checked the following tests.
+
+        fast/mediastream/media-devices-enumerate-devices.html
+        fast/mediastream/resources/enumerate-devices-frame.html
+        http/tests/media/media-stream/enumerate-devices-source-id.html
+        http/tests/media/media-stream/enumerate-devices-source-id-persistent.html
+        http/tests/media/media-stream/resources/enumerate-devices-source-id-frame.html
+
+        * platform/gtk/TestExpectations:
+
+2018-10-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: create special Network waterfall for media events
+        https://bugs.webkit.org/show_bug.cgi?id=189773
+        <rdar://problem/44626605>
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/dom/didFireEvent-expected.txt: Added.
+        * http/tests/inspector/dom/didFireEvent.html: Added.
+
+        * inspector/unit-tests/array-utilities-expected.txt:
+        * inspector/unit-tests/array-utilities.html:
+
+2018-10-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Only report the supported WebGL version
+        https://bugs.webkit.org/show_bug.cgi?id=190434
+        <rdar://problem/45024677>
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/webgl/gl-getstring-expected.txt:
+        * fast/canvas/webgl/gl-getstring.html:
+
+2018-10-10  Tim Horton  <timothy_horton@apple.com>
+
+        Share more WKShareSheet code between macOS and iOS, and fix a few bugs
+        https://bugs.webkit.org/show_bug.cgi?id=190420
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/ios/share-expected.txt: Removed.
+        * fast/events/ios/share.html: Removed.
+        * fast/web-share/share.html: Added.
+        * fast/web-share/share-expected.txt: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.setShareSheetCompletesImmediatelyWithResolution):
+        (window.UIHelper.invokeShareSheetWithResolution): Deleted.
+        Move the existing share sheet test to fast/web-share so it runs on both macOS and iOS.
+
+        * fast/web-share/share-with-no-url.html: Added.
+        * fast/web-share/share-with-no-url-expected.txt: Added.
+        Add a new test that the sheet is successfully invoked even when a URL is not provided.
+
+2018-10-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: notify the frontend when a canvas has started recording via console.record
+        https://bugs.webkit.org/show_bug.cgi?id=190306
+
+        Reviewed by Brian Burg.
+
+        * inspector/canvas/recording-2d.html:
+        * inspector/canvas/recording-bitmaprenderer.html:
+        * inspector/canvas/recording-webgl-snapshots.html:
+        * inspector/canvas/recording-webgl.html:
+        * inspector/canvas/resources/recording-utilities.js:
+        (TestPage.registerInitializer.window.startRecording):
+        Wait to complete the test until the "LastFrame" event is fired, ensuring that any running
+        commands don't affect the next test case.
+
+2018-10-09  Antoine Quint  <graouts@apple.com>
+
+        Remove the frames() timing function
+        https://bugs.webkit.org/show_bug.cgi?id=190034
+        <rdar://problem/44827544>
+
+        Reviewed by Dean Jackson.
+
+        * legacy-animation-engine/transitions/frames-timing-function-expected.txt:
+        * legacy-animation-engine/transitions/transitions-parsing-expected.txt:
+        * transitions/frames-timing-function-expected.txt:
+        * transitions/transitions-parsing-expected.txt:
+
+2018-10-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: show redirect requests in Network and Timelines tabs
+        https://bugs.webkit.org/show_bug.cgi?id=150005
+        <rdar://problem/5378164>
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/network/resource-timing-expected.txt:
+        * http/tests/inspector/network/resource-timing.html:
+
+        * http/tests/inspector/network/resources/delay.php: Added.
+        * http/tests/inspector/network/resources/redirect.php: Added.
+
+2018-10-09  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION(r234620): SVGLangSpace::svgAttributeChanged() should invalidate the renderer of the SVGGeometryElement descendant only
+        https://bugs.webkit.org/show_bug.cgi?id=190411
+
+        Reviewed by Simon Fraser.
+
+        * svg/dynamic-updates/SVGStopElement-dom-xml-lang-attrr-expected.txt: Added.
+        * svg/dynamic-updates/SVGStopElement-dom-xml-lang-attrr.html: Added.
+
+2018-10-09  Chris Dumez  <cdumez@apple.com>
+
+        Anchor target should be ignored on activation when the download attribute is set
+        https://bugs.webkit.org/show_bug.cgi?id=190408
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-base-target-popup-not-allowed-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-base-target-popup-not-allowed.html: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-target-popup-not-allowed-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-target-popup-not-allowed.html: Added.
+        Add layout test coverage.
+
+        * http/tests/download/anchor-load-after-download.html:
+        * http/tests/workers/service/resources/registration-task-queue-scheduling-1.js:
+        Update existing WK2-only layout tests to call testRunner.setCanOpenWindows() since they rely on
+        opening a new window. We failed to notice the issue because these tests are not run on WK1.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+        Skip new tests on WebKit1 since the download attribute is only supported on WebKit2.
+
+2018-10-09  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, skip fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-target.html on iOS.
+
+        The download attribute is not supported on iOS yet.
+
+        * platform/ios-wk2/TestExpectations:
+
+2018-10-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: fix canvas test failures after r236952 and r236954
+        https://bugs.webkit.org/show_bug.cgi?id=190403
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/create-context-webmetal.html:
+        Fix missing parenthesis.
+
+        * inspector/canvas/resources/shaderProgram-utilities.js:
+        (createProgram):
+        (TestPage.registerInitializer.awaitProgramAdded):
+        (TestPage.registerInitializer):
+        (TestPage.registerInitializer.window.initializeTestSuite):
+        Replace the `WI.CanvasManager` events (which were removed) with listeners for events on the
+        specific `WI.Canvas`.
+
+2018-10-09  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (Safari 12): Download of Blob URL fails
+        https://bugs.webkit.org/show_bug.cgi?id=190351
+        <rdar://problem/45091181>
+
+        Reviewed by Geoffrey Garen.
+
+        Add layout test coverage.
+
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-target-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-target.html: Added.
+
 2018-10-09  Youenn Fablet  <youenn@apple.com>
 
         Add support for IceCandidate stats
