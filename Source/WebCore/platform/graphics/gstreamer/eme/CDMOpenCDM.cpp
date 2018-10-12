@@ -285,7 +285,7 @@ CDMInstance::SuccessValue CDMInstanceOpenCDM::setStorageDirectory(const String&)
     return WebCore::CDMInstance::SuccessValue::Succeeded;
 }
 
-void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicString&, Ref<SharedBuffer>&& rawInitData, LicenseCallback callback)
+void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicString&, Ref<SharedBuffer>&& rawInitData, Ref<SharedBuffer>&& rawCustomData, LicenseCallback callback)
 {
     InitData initData = InitData(reinterpret_cast<const uint8_t*>(rawInitData->data()), rawInitData->size());
 

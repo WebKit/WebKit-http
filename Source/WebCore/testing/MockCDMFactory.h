@@ -132,7 +132,7 @@ private:
     SuccessValue setPersistentStateAllowed(bool) final;
     SuccessValue setServerCertificate(Ref<SharedBuffer>&&) final;
     SuccessValue setStorageDirectory(const String&) final;
-    void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback) final;
+    void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, Ref<SharedBuffer>&& customData, LicenseCallback) final;
     void updateLicense(const String&, LicenseType, const SharedBuffer&, LicenseUpdateCallback) final;
     void loadSession(LicenseType, const String&, const String&, LoadSessionCallback) final;
     void closeSession(const String&, CloseSessionCallback) final;

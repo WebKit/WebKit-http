@@ -620,6 +620,12 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
                 m_volumeAndMuteInitialized = true;
             }
 
+#if PLATFORM(BCM_NEXUS)
+            if (!isTimeBuffered(currentMediaTime()) && !playbackPipelineHasFutureData()) {
+                m_readyState = MediaPlayer::HaveMetadata;
+            }
+            else
+#endif
             if (!seeking() && !buffering && !m_paused && m_playbackRate) {
                 GST_DEBUG("[Buffering] Restarting playback.");
                 changePipelineState(GST_STATE_PLAYING);

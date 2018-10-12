@@ -94,7 +94,7 @@ public:
     virtual void clearClient() { }
 
     using LicenseCallback = Function<void(Ref<SharedBuffer>&& message, const String& sessionId, bool needsIndividualization, SuccessValue succeeded)>;
-    virtual void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback) = 0;
+    virtual void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, Ref<SharedBuffer>&& customData, LicenseCallback) = 0;
 
     using KeyStatusVector = CDMInstanceClient::KeyStatusVector;
     using Message = std::pair<MessageType, Ref<SharedBuffer>>;

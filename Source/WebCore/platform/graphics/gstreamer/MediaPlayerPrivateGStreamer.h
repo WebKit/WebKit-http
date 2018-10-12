@@ -206,6 +206,7 @@ protected:
     MediaTime m_seekTime;
     GRefPtr<GstElement> m_source;
     bool m_volumeAndMuteInitialized;
+    MediaTime m_previousDuration;
 
     static GstSeekFlags hardwareDependantSeekFlags();
     void readyTimerFired();

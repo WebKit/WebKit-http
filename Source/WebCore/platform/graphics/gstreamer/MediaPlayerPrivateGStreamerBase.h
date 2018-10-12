@@ -156,6 +156,7 @@ public:
     void handleProtectionStructure(const GstStructure*);
     void dispatchLocalCDMInstance();
     void initializationDataEncountered(GstEvent*);
+    void reportWaitingForKey();
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);

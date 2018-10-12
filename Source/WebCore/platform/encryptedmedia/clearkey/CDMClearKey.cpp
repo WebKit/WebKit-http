@@ -465,7 +465,7 @@ CDMInstance::SuccessValue CDMInstanceClearKey::setStorageDirectory(const String&
     return storageDirectory.isEmpty() ? Succeeded : Failed;
 }
 
-void CDMInstanceClearKey::requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback callback)
+void CDMInstanceClearKey::requestLicense(LicenseType, const AtomicString&, Ref<SharedBuffer>&& initData, Ref<SharedBuffer>&& customData, LicenseCallback callback)
 {
     static uint32_t s_sessionIdValue = 0;
     ++s_sessionIdValue;

@@ -65,10 +65,10 @@ void MemoryPressureHandler::triggerMemoryPressureEvent(bool isCritical)
     setUnderMemoryPressure(true);
 
     if (isMainThread())
-        respondToMemoryPressure(isCritical ? Critical::Yes : Critical::No);
+        respondToMemoryPressure(isCritical ? Critical::Yes : Critical::No, isCritical ? Synchronous::Yes : Synchronous::No);
     else
         RunLoop::main().dispatch([this, isCritical] {
-            respondToMemoryPressure(isCritical ? Critical::Yes : Critical::No);
+            respondToMemoryPressure(isCritical ? Critical::Yes : Critical::No, isCritical ? Synchronous::Yes : Synchronous::No);
         });
 
     if (ReliefLogger::loggingEnabled() && isUnderMemoryPressure())

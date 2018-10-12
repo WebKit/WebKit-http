@@ -856,20 +856,6 @@ void CachedResourceStreamingClient::responseReceived(PlatformMediaResource&, con
         return;
     }
 
-    // FIXME: priv->uri disappeared.
-#if 0
-    if (response.isRedirected()) {
-        if (!urlHasSupportedProtocol(response.url())) {
-            GST_ELEMENT_ERROR(src, RESOURCE, READ, ("Invalid URI '%s'", response.url().string().utf8().data()), (nullptr));
-            gst_app_src_end_of_stream(priv->appsrc);
-            webKitWebSrcStop(src);
-            return;
-        }
-        g_free(priv->uri);
-        priv->uri = g_strdup(response.url().string().utf8().data());
-    }
-#endif
-
     if (priv->requestedOffset) {
         // Seeking ... we expect a 206 == PARTIAL_CONTENT
         if (response.httpStatusCode() == 200) {
