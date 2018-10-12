@@ -164,7 +164,6 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_readyTimerHandler(RunLoop::main(), this, &MediaPlayerPrivateGStreamer::readyTimerFired)
     , m_totalBytes(0)
     , m_preservesPitch(false)
-    , m_lastQuery(-1)
 {
 #if USE(GLIB)
     m_readyTimerHandler.setPriority(G_PRIORITY_DEFAULT_IDLE);
@@ -398,12 +397,6 @@ MediaTime MediaPlayerPrivateGStreamer::playbackPosition() const
         MediaTime duration = durationMediaTime();
         return duration.isInvalid() ? MediaTime::zeroTime() : duration;
     }
-
-    double now = MonotonicTime::now().secondsSinceEpoch().value();
-    if (m_lastQuery > -1 && ((now - m_lastQuery) < 0.25) && m_cachedPosition.isValid())
-        return m_cachedPosition;
-
-    m_lastQuery = now;
 
     // This constant should remain lower than HTMLMediaElement's maxTimeupdateEventFrequency.
     static const Seconds positionCacheThreshold = 200_ms;

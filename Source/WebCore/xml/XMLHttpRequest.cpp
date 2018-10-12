@@ -605,7 +605,7 @@ ExceptionOr<void> XMLHttpRequest::createRequest()
     options.filteringPolicy = ResponseFilteringPolicy::Enable;
     options.sniffContentEncoding = ContentEncodingSniffingPolicy::DoNotSniff;
 
-    if (m_responseType == ResponseType::Arraybuffer || getenv("WPE_DISABLE_XHR_RESPONSE_CACHING")) {
+    if (responseType() == ResponseType::Arraybuffer || getenv("WPE_DISABLE_XHR_RESPONSE_CACHING")) {
         options.dataBufferingPolicy = DataBufferingPolicy::DoNotBufferData;
         options.cachingPolicy = CachingPolicy::DisallowCaching;
         request.setCachePolicy(ResourceRequestCachePolicy::DoNotUseAnyCache);
