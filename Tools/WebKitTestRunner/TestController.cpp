@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -506,9 +506,10 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
         WKArrayAppendItem(overrideLanguages.get(), adoptWK(WKStringCreateWithUTF8CString(language.utf8().data())).get());
     WKContextConfigurationSetOverrideLanguages(contextConfiguration.get(), overrideLanguages.get());
 
-    if (options.enableProcessSwapOnNavigation) {
+    if (options.enableProcessSwapOnNavigation || options.enableProcessSwapOnWindowOpen) {
         WKContextConfigurationSetProcessSwapsOnNavigation(contextConfiguration.get(), true);
-        WKContextConfigurationSetProcessSwapsOnWindowOpenWithOpener(contextConfiguration.get(), true);
+        if (options.enableProcessSwapOnWindowOpen)
+            WKContextConfigurationSetProcessSwapsOnWindowOpenWithOpener(contextConfiguration.get(), true);
     }
 
     auto configuration = generatePageConfiguration(contextConfiguration.get());
@@ -804,6 +805,12 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     }
     WKDictionarySetItem(resetMessageBody.get(), allowedHostsKey.get(), allowedHostsValue.get());
 
+    if (options.jscOptions.length()) {
+        WKRetainPtr<WKStringRef> jscOptionsKey = adoptWK(WKStringCreateWithUTF8CString("JSCOptions"));
+        WKRetainPtr<WKStringRef> jscOptionsValue = adoptWK(WKStringCreateWithUTF8CString(options.jscOptions.c_str()));
+        WKDictionarySetItem(resetMessageBody.get(), jscOptionsKey.get(), jscOptionsValue.get());
+    }
+
     WKPagePostMessageToInjectedBundle(TestController::singleton().mainWebView()->page(), messageName.get(), resetMessageBody.get());
 
     WKContextSetShouldUseFontSmoothing(TestController::singleton().context(), false);
@@ -1078,50 +1085,54 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
         auto value = pairString.substr(equalsLocation + 1, pairEnd - (equalsLocation + 1));
         if (key == "language")
             String(value.c_str()).split(",", false, testOptions.overrideLanguages);
-        if (key == "useThreadedScrolling")
+        else if (key == "useThreadedScrolling")
             testOptions.useThreadedScrolling = parseBooleanTestHeaderValue(value);
-        if (key == "useAcceleratedDrawing")
+        else if (key == "useAcceleratedDrawing")
             testOptions.useAcceleratedDrawing = parseBooleanTestHeaderValue(value);
-        if (key == "useFlexibleViewport")
+        else if (key == "useFlexibleViewport")
             testOptions.useFlexibleViewport = parseBooleanTestHeaderValue(value);
-        if (key == "useDataDetection")
+        else if (key == "useDataDetection")
             testOptions.useDataDetection = parseBooleanTestHeaderValue(value);
-        if (key == "useMockScrollbars")
+        else if (key == "useMockScrollbars")
             testOptions.useMockScrollbars = parseBooleanTestHeaderValue(value);
-        if (key == "needsSiteSpecificQuirks")
+        else if (key == "needsSiteSpecificQuirks")
             testOptions.needsSiteSpecificQuirks = parseBooleanTestHeaderValue(value);
-        if (key == "ignoresViewportScaleLimits")
+        else if (key == "ignoresViewportScaleLimits")
             testOptions.ignoresViewportScaleLimits = parseBooleanTestHeaderValue(value);
-        if (key == "useCharacterSelectionGranularity")
+        else if (key == "useCharacterSelectionGranularity")
             testOptions.useCharacterSelectionGranularity = parseBooleanTestHeaderValue(value);
-        if (key == "enableAttachmentElement")
+        else if (key == "enableAttachmentElement")
             testOptions.enableAttachmentElement = parseBooleanTestHeaderValue(value);
-        if (key == "enableIntersectionObserver")
+        else if (key == "enableIntersectionObserver")
             testOptions.enableIntersectionObserver = parseBooleanTestHeaderValue(value);
-        if (key == "enableMenuItemElement")
+        else if (key == "enableMenuItemElement")
             testOptions.enableMenuItemElement = parseBooleanTestHeaderValue(value);
-        if (key == "enableModernMediaControls")
+        else if (key == "enableModernMediaControls")
             testOptions.enableModernMediaControls = parseBooleanTestHeaderValue(value);
-        if (key == "enablePointerLock")
+        else if (key == "enablePointerLock")
             testOptions.enablePointerLock = parseBooleanTestHeaderValue(value);
-        if (key == "enableWebAuthentication")
+        else if (key == "enableWebAuthentication")
             testOptions.enableWebAuthentication = parseBooleanTestHeaderValue(value);
-        if (key == "enableIsSecureContextAttribute")
+        else if (key == "enableIsSecureContextAttribute")
             testOptions.enableIsSecureContextAttribute = parseBooleanTestHeaderValue(value);
-        if (key == "enableInspectorAdditions")
+        else if (key == "enableInspectorAdditions")
             testOptions.enableInspectorAdditions = parseBooleanTestHeaderValue(value);
-        if (key == "dumpJSConsoleLogInStdErr")
+        else if (key == "dumpJSConsoleLogInStdErr")
             testOptions.dumpJSConsoleLogInStdErr = parseBooleanTestHeaderValue(value);
-        if (key == "applicationManifest")
+        else if (key == "applicationManifest")
             testOptions.applicationManifest = parseStringTestHeaderValueAsRelativePath(value, pathOrURL);
-        if (key == "allowCrossOriginSubresourcesToAskForCredentials")
+        else if (key == "allowCrossOriginSubresourcesToAskForCredentials")
             testOptions.allowCrossOriginSubresourcesToAskForCredentials = parseBooleanTestHeaderValue(value);
-        if (key == "enableWebAnimationsCSSIntegration")
+        else if (key == "enableWebAnimationsCSSIntegration")
             testOptions.enableWebAnimationsCSSIntegration = parseBooleanTestHeaderValue(value);
-        if (key == "enableProcessSwapOnNavigation")
+        else if (key == "enableProcessSwapOnNavigation")
             testOptions.enableProcessSwapOnNavigation = parseBooleanTestHeaderValue(value);
-        if (key == "enableColorFilter")
+        else if (key == "enableProcessSwapOnWindowOpen")
+            testOptions.enableProcessSwapOnWindowOpen = parseBooleanTestHeaderValue(value);
+        else if (key == "enableColorFilter")
             testOptions.enableColorFilter = parseBooleanTestHeaderValue(value);
+        else if (key == "jscOptions")
+            testOptions.jscOptions = value;
         pairStart = pairEnd + 1;
     }
 }
@@ -1135,6 +1146,7 @@ TestOptions TestController::testOptionsForTest(const TestCommand& command) const
 
     updatePlatformSpecificTestOptionsForTest(options, command.pathOrURL);
     updateTestOptionsFromTestHeader(options, command.pathOrURL, command.absolutePath);
+    platformAddTestOptions(options);
 
     return options;
 }
@@ -2853,5 +2865,11 @@ void TestController::statisticsResetToConsistentState()
     auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
     WKWebsiteDataStoreStatisticsResetToConsistentState(dataStore);
 }
+
+#if !PLATFORM(COCOA)
+void TestController::platformAddTestOptions(TestOptions&) const
+{
+}
+#endif
 
 } // namespace WTR

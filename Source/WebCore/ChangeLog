@@ -1,3 +1,953 @@
+2018-06-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        TileFirstPaint strategy for async image decoding should be disabled for non root RenderLayers
+        https://bugs.webkit.org/show_bug.cgi?id=186336
+        <rdar://problem/40808099>
+
+        Reviewed by Simon Fraser.
+
+        When showing a composited RenderLayer for the first time, the images in 
+        this layer have to be decoded synchronously to avoid unwanted flashing.
+
+        To create a layout test for this patch, FrameDecodingDurationForTesting
+        needs to be generalized for large and animated images. The decoding thread
+        now forces the decoding time to be at least equal to 
+        FrameDecodingDurationForTesting.
+
+        Test: fast/images/async-image-composited-show.html
+
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::shouldUseAsyncDecodingForAnimatedImages const):
+        (WebCore::BitmapImage::internalStartAnimation):
+        (WebCore::BitmapImage::advanceAnimation):
+        * platform/graphics/BitmapImage.h:
+        * platform/graphics/ImageSource.cpp:
+        (WebCore::ImageSource::startAsyncDecodingQueue):
+        * platform/graphics/ImageSource.h:
+        (WebCore::ImageSource::setFrameDecodingDurationForTesting):
+        (WebCore::ImageSource::frameDecodingDurationForTesting const):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::paintLayerContents):
+
+2018-06-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        CSS "background-color" style no longer affects natively rendered text fields
+        https://bugs.webkit.org/show_bug.cgi?id=186597
+        <rdar://problem/41050528>
+
+        Reviewed by Tim Horton.
+
+        AppKit currently does not support rendering background color to the edges of a text field cell. This means that
+        in WebCore, when natively rendering text inputs with background color, we need to only draw the bezels of a text
+        field, such that the background color we paint behind the text field will be shown. Currently, the way we
+        accomplish this is by intercepting an internal NSTextField method that computes drawing options for CoreUI, and
+        inserting a `"borders only" => true` entry.
+
+        However, in a recent build of macOS Mojave, AppKit tweaked -_coreUIDrawOptionsWithFrame:inView:includeFocus: to
+        add an extra argument (such that it's now -_coreUIDrawOptionsWithFrame:inView:includeFocus:maskOnly:), which
+        negates the above workaround. To fix this in the short term, augment the workaround to apply to the latest macOS
+        Mojave as well. A longer-term fix is already tracked in <rdar://problem/11385461>, which would allow WebKit to
+        simply specify a background color on the text field cell, and have AppKit render it properly to the edges of the
+        bezels.
+
+        Covered by a test that is currently failing on Mojave: fast/forms/hidpi-textfield-background-bleeding.html
+
+        * rendering/RenderThemeMac.mm:
+        (-[WebCoreTextFieldCell _adjustedCoreUIDrawOptionsForDrawingBordersOnly:]):
+        (-[WebCoreTextFieldCell _coreUIDrawOptionsWithFrame:inView:includeFocus:]):
+        (-[WebCoreTextFieldCell _coreUIDrawOptionsWithFrame:inView:includeFocus:maskOnly:]):
+
+2018-06-13  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE] Build getUserMedia support
+        https://bugs.webkit.org/show_bug.cgi?id=186547
+
+        Reviewed by Alejandro G. Castro.
+
+        Enable mediastream tests.
+
+        * PlatformWPE.cmake: Build MediaStream support.
+        * SourcesGTK.txt: Moved GStreamer related files to GStreamer.cmake.
+        * SourcesWPE.txt: Removed `platform/mediastream/libwebrtc/LibWebRTCProviderGlib.cpp`
+        which is now in GStreamer.cmake.
+        * platform/GStreamer.cmake: Build more MediaStream/webrtc related files.
+        * platform/graphics/ImageBuffer.cpp: Handle the fact that toBGRAData is
+        now built directly into the Cairo backend and not GTK anymore.
+        * platform/graphics/cairo/ImageBufferCairo.cpp: Implement `toBGRAData`
+        * platform/graphics/gtk/ImageBufferGtk.cpp: Removed `toBGRAData` as it is
+        now implemented in the Cairo backend itself.
+        * platform/mediastream/gstreamer/GStreamerMediaStreamSource.cpp: Switch an
+        ASSERT to RELEASE_ASSERT when adding the GhostPad to itself. This was making
+        test fail when built in RELEASE mode.
+        (WebCore::webkitMediaStreamSrcChain): Minor variable name change to make it
+        more accurate.
+        (WebCore::webkitMediaStreamSrcAddPad): Now add the ghost pad to the element
+        before setting its chain function, making things clearer.
+        (WebCore::webkitMediaStreamSrcSetupSrc): Remove extra new line.
+
+2018-06-13  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] fast/canvas/webgl crashes
+        https://bugs.webkit.org/show_bug.cgi?id=186590
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        After r232747 the sample managed by the player can be empty,
+        without buffer. So we need to check for this before mapping video
+        frames. Also use the GstVideoFrameHolder in more places to reduce
+        copy-paste churn.
+
+        * platform/graphics/gstreamer/ImageGStreamer.h:
+        * platform/graphics/gstreamer/ImageGStreamerCairo.cpp:
+        (ImageGStreamer::ImageGStreamer):
+        (ImageGStreamer::~ImageGStreamer):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::GstVideoFrameHolder::GstVideoFrameHolder):
+        (WebCore::MediaPlayerPrivateGStreamerBase::copyVideoTextureToPlatformTexture):
+        (WebCore::MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime):
+
+2018-06-13  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed GTK build fix for --cmakeargs=-DUSE_GSTREAMER_GL=OFF
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::load):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::pushTextureToCompositor):
+
+2018-06-12  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Video freezes when GStreamerGL is not installed
+        https://bugs.webkit.org/show_bug.cgi?id=184925
+
+        Reviewed by Žan Doberšek.
+
+        At runtime when the GStreamer opengl plugin isn't available the
+        player will fallback to the internal WebKit video sink. The
+        VideoFrameHolder was refactored to handle both cases (opengl,
+        non-opengl).
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::GstVideoFrameHolder::GstVideoFrameHolder):
+        (WebCore::GstVideoFrameHolder::~GstVideoFrameHolder):
+        (WebCore::GstVideoFrameHolder::frame const):
+        (WebCore::GstVideoFrameHolder::updateTexture):
+        (WebCore::MediaPlayerPrivateGStreamerBase::pushTextureToCompositor):
+        (WebCore::MediaPlayerPrivateGStreamerBase::triggerRepaint):
+        (WebCore::GstVideoFrameHolder::isValid const): Deleted.
+        (WebCore::MediaPlayerPrivateGStreamerBase::updateTexture): Deleted.
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.h:
+
+2018-06-12  Zalan Bujtas  <zalan@apple.com>
+
+        Complex text handling should opt out of bounded text layout.
+        https://bugs.webkit.org/show_bug.cgi?id=186571
+        <rdar://problem/41060908>
+
+        Reviewed by Tim Horton.
+
+        Test: fast/text/complex-long-text-crash.html
+
+        * platform/graphics/mac/ComplexTextControllerCoreText.mm:
+        (WebCore::ComplexTextController::collectComplexTextRunsForCharacters):
+
+2018-06-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r232774.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Complex text handling should opt out of bounded text layout."
+        https://bugs.webkit.org/show_bug.cgi?id=186571
+        https://trac.webkit.org/changeset/232774
+
+2018-06-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS WK1: Occasional crash in FrameView::setScrollPosition
+        https://bugs.webkit.org/show_bug.cgi?id=186575
+
+        Reviewed by David Kilzer.
+
+        The bug was caused by ScrollView::platformSetScrollPosition releasing the web thread lock
+        and DumpRenderTree requesting a new page load thereby destroying FrameView.
+
+        Fixed the crash by keeping FrameView alive while scrollToFocusedElementTimerFired is getting called.
+
+        No new tests since the bug is caught by existing layout tests under guard malloc.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scrollToFocusedElementTimerFired):
+
+2018-06-12  Zalan Bujtas  <zalan@apple.com>
+
+        Complex text handling should opt out of bounded text layout.
+        https://bugs.webkit.org/show_bug.cgi?id=186571
+        <rdar://problem/40801429>
+
+        Reviewed by Tim Horton.
+
+        Test: fast/text/complex-long-text-crash.html
+
+        * platform/graphics/mac/ComplexTextControllerCoreText.mm:
+        (WebCore::ComplexTextController::collectComplexTextRunsForCharacters):
+
+2018-06-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the Windows build after r232757
+
+        * editing/ReplaceSelectionCommand.cpp:
+        (WebCore::ReplaceSelectionCommand::InsertedNodes::willRemoveNodePreservingChildren):
+
+2018-06-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION(r228724): Occasional crash when executing ReplaceSelectionCommand at the end of the document
+        https://bugs.webkit.org/show_bug.cgi?id=186555
+        <rdar://problem/39703004>
+
+        Reviewed by Ryosuke Niwa.
+
+        r228724 removed a null check for m_lastNodeInserted in InsertedNodes::pastLastLeaf(). This null check was
+        guarding against the case where m_firstNodeInserted might exist, but m_lastNodeInserted is null, which may
+        happen when inserting content at the end of the document, since InsertedNodes::willRemoveNodePreservingChildren
+        may cause m_lastNodeInserted to be null. This is because the removed node may be at the very end of the document
+        _and also_ not have any children, which means that both `node->lastChild()` as well as
+        `NodeTraversal::nextSkippingChildren(*node)` will be null.
+
+        After getting into this state, we subsequently crash when attempting to compute InsertedNodes::pastLastLeaf().
+        To fix this, avoid accidentally clearing out m_lastNodeInserted; if the last inserted node has neither a child
+        nor a next node, seek backwards to the previous node in the DOM instead, and clamp to the first inserted node,
+        such that the last inserted node's document position is at or after the first inserted node's position.
+
+        Test: editing/execCommand/insert-apple-style-span-at-document-end.html
+
+        * editing/ReplaceSelectionCommand.cpp:
+        (WebCore::ReplaceSelectionCommand::InsertedNodes::willRemoveNodePreservingChildren):
+
+2018-06-12  Jianjun Zhu  <jianjun.zhu@intel.com>
+
+        Hash deviceId and groupId of MediaTrackCapabilities.
+        https://bugs.webkit.org/show_bug.cgi?id=186471
+
+        Reviewed by Eric Carlson.
+
+        This change makes the identifier for the source of the MediaStreamTrack
+        has the same value returned by enumerateDevices(). It also prevents real
+        device ID being leaked.
+
+        (WebCore::MediaStreamTrack::getCapabilities const):
+        * Modules/mediastream/MediaStreamTrack.h:
+        * Modules/mediastream/MediaStreamTrack.idl:
+
+2018-06-12  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed WPE build fix after r232749.
+
+        * platform/graphics/gstreamer/eme/GStreamerEMEUtilities.h:
+
+2018-06-12  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Add vertical margin computation for inflow non-replaced box and for the (10.6.6) complicated cases.
+        https://bugs.webkit.org/show_bug.cgi?id=186469
+
+        Reviewed by Antti Koivisto.
+
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::floatingNonReplacedHeightAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::floatingNonReplacedWidthAndMargin):
+        * layout/blockformatting/BlockFormattingContextGeometry.cpp:
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowNonReplacedHeightAndMargin):
+
+2018-06-12  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Bump required version to 1.8.3
+        https://bugs.webkit.org/show_bug.cgi?id=186558
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/GStreamer.cmake: Remove useless file.
+        * platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp:
+        (webKitWebAudioSrcChangeState): Remove useless version check.
+        * platform/graphics/gstreamer/eme/GStreamerEMEUtilities.cpp:
+        Removed. createDecryptor() is dead code since the decryptors moved
+        to the MSE playback pipeline.
+        * platform/graphics/gstreamer/eme/GStreamerEMEUtilities.h:
+        (WebCore::GStreamerEMEUtilities::keySystemToUuid):
+
+2018-06-11  Philippe Normand  <philn@igalia.com>
+
+        [GStreamer] flush video sample upon DRAIN query
+        https://bugs.webkit.org/show_bug.cgi?id=186481
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Use the appsink sink pad pad probe for both event and drain query
+        management. This patch is partially based on
+        https://github.com/WebPlatformForEmbedded/WPEWebKit/commit/d3a336523d123119fe1dd53da5d9006c92cf078c
+        by Enrique Ocaña González <eocanha@igalia.com>.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::flushCurrentBuffer):
+        (WebCore::MediaPlayerPrivateGStreamerBase::createGLAppSink):
+
+2018-06-11  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Replace HorizontalGeometry::width and margin with WidthAndMargin (Vertical too)
+        https://bugs.webkit.org/show_bug.cgi?id=186556
+
+        Reviewed by Sam Weinig.
+
+        HorizontalGeometry::width and margin -> WidthAndMargin
+        VerticalGeometry::height and margin -> HeightAndMargin
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::computeOutOfFlowHorizontalGeometry const):
+        (WebCore::Layout::FormattingContext::computeOutOfFlowVerticalGeometry const):
+        * layout/FormattingContext.h:
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::inlineReplacedWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::computedNonCollapsedHorizontalMarginValue):
+        (WebCore::Layout::FormattingContext::Geometry::computedNonCollapsedVerticalMarginValue):
+
+2018-06-11  Youenn Fablet  <youenn@apple.com>
+
+        Improve error messages in case FetchEvent.respondWith has a rejected promise
+        https://bugs.webkit.org/show_bug.cgi?id=186368
+
+        Reviewed by Chris Dumez.
+
+        Covered by rebased tests.
+
+        Introduce a new error domain for service worker ResourceError.
+        Used this domain to log in the console any such error.
+
+        Update FetchEvent implementation to get meaningful error messages for respondWith error cases.
+        In particular, convert the rejected promise JS value as a string to populate the error message.
+
+        * loader/SubresourceLoader.cpp:
+        (WebCore::SubresourceLoader::didFail):
+        * platform/network/ResourceErrorBase.cpp:
+        * platform/network/ResourceErrorBase.h:
+        * testing/ServiceWorkerInternals.cpp:
+        (WebCore::ServiceWorkerInternals::waitForFetchEventToFinish):
+        * workers/service/FetchEvent.cpp:
+        (WebCore::FetchEvent::~FetchEvent):
+        (WebCore::FetchEvent::createResponseError):
+        (WebCore::FetchEvent::onResponse):
+        (WebCore::FetchEvent::respondWithError):
+        (WebCore::FetchEvent::processResponse):
+        (WebCore::FetchEvent::promiseIsSettled):
+        * workers/service/FetchEvent.h:
+        * workers/service/context/ServiceWorkerFetch.cpp:
+        (WebCore::ServiceWorkerFetch::processResponse):
+        (WebCore::ServiceWorkerFetch::dispatchFetchEvent):
+
+2018-06-11  Chris Dumez  <cdumez@apple.com>
+
+        http/tests/security/xss-DENIED-script-inject-into-inactive-window2.html times out with PSON enabled
+        https://bugs.webkit.org/show_bug.cgi?id=186546
+
+        Reviewed by Brady Eidson.
+
+        Add a hasOpenedFrames flag to NavigationAction, which we'll use in the UIProcess when deciding
+        to process swap on navigation or not.
+
+        Test: http/tests/security/xss-DENIED-script-inject-into-inactive-window2-pson.html
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::loadURL):
+        * loader/NavigationAction.h:
+        (WebCore::NavigationAction::hasOpenedFrames const):
+        (WebCore::NavigationAction::setHasOpenedFrames):
+
+2018-06-11  Tim Horton  <timothy_horton@apple.com>
+
+        Link drag image is inconsistently unreadable in dark mode
+        https://bugs.webkit.org/show_bug.cgi?id=186472
+
+        Reviewed by Timothy Hatcher.
+
+        * platform/mac/DragImageMac.mm:
+        (WebCore::createDragImageForLink):
+        Use LocalDefaultSystemAppearance so that NSColors used inside
+        createDragImageForLink are interpreted correctly. This function
+        always follows the system appearance regardless of what the preference
+        is set to, because it's generating UI that isn't part of the page.
+
+        Use controlBackgroundColor to get a consistently contrasting background
+        for the link drag image.
+
+2018-06-11  Chris Dumez  <cdumez@apple.com>
+
+        http/tests/security/cors-post-redirect-307.html fails with PSON enabled
+        https://bugs.webkit.org/show_bug.cgi?id=186441
+
+        Reviewed by Brady Eidson.
+
+        When we are continuing a load in a new process, we currently bypass the navigation policy
+        check. We now also bypass the adding of headers such as the Origin one since the request
+        was already processed in the previous process. This is important because in the case of
+        a cross-origin redirect, the previous process has removed the Origin header from the
+        request and we do not want the new process to add it again.
+
+        Test: http/tests/security/cors-post-redirect-307-pson.html
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * history/BackForwardController.cpp:
+        (WebCore::BackForwardController::goBackOrForward):
+        (WebCore::BackForwardController::goBack):
+        (WebCore::BackForwardController::goForward):
+        * loader/FrameLoadRequest.h:
+        (WebCore::FrameLoadRequest::setShouldTreatAsContinuingLoad):
+        (WebCore::FrameLoadRequest::shouldTreatAsContinuingLoad const):
+        (WebCore::FrameLoadRequest::setShouldCheckNavigationPolicy): Deleted.
+        (WebCore::FrameLoadRequest::shouldCheckNavigationPolicy const): Deleted.
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::loadURLIntoChildFrame):
+        (WebCore::FrameLoader::load):
+        (WebCore::FrameLoader::loadWithNavigationAction):
+        (WebCore::FrameLoader::loadWithDocumentLoader):
+        (WebCore::FrameLoader::reloadWithOverrideEncoding):
+        (WebCore::FrameLoader::reload):
+        (WebCore::FrameLoader::addExtraFieldsToRequest):
+        (WebCore::FrameLoader::addHTTPOriginIfNeeded):
+        (WebCore::FrameLoader::loadDifferentDocumentItem):
+        (WebCore::FrameLoader::loadItem):
+        (WebCore::FrameLoader::retryAfterFailedCacheOnlyMainResourceLoad):
+        * loader/FrameLoader.h:
+        * loader/HistoryController.cpp:
+        (WebCore::HistoryController::goToItem):
+        (WebCore::HistoryController::setDefersLoading):
+        (WebCore::HistoryController::recursiveGoToItem):
+        * loader/HistoryController.h:
+        * loader/ShouldTreatAsContinuingLoad.h: Renamed from Source/WebCore/loader/NavigationPolicyCheck.h.
+        * page/Page.cpp:
+        (WebCore::Page::goToItem):
+        * page/Page.h:
+
+2018-06-11  Youenn Fablet  <youenn@apple.com>
+
+        Accept request header values should be more tightly checked after r232572 in case of CORS load
+        https://bugs.webkit.org/show_bug.cgi?id=186533
+        <rdar://problem/40933880>
+
+        Reviewed by Darin Adler.
+
+        Covered by updated test.
+
+        * platform/network/HTTPParsers.cpp:
+        (WebCore::isValidAcceptHeaderValue): Checking that Accept header value conforms with RFC7370.
+        If not, this will trigger preflighting for CORS cross origin loads.
+        Current checks for Accept-Language and Content-Language are sufficient to ensure values conform with RFC7370.
+
+2018-06-11  Chris Dumez  <cdumez@apple.com>
+
+        Crash under com.apple.WebKit.Networking at WebCore: WebCore::NetworkStorageSession::hasStorageAccess const
+        https://bugs.webkit.org/show_bug.cgi?id=186433
+        <rdar://problem/40750907>
+
+        Reviewed by Geoffrey Garen.
+
+        Do some hardening in NetworkStorageSession::hasStorageAccess() to make sure
+        we do not try and do a HashMap lookup with a null firstPartyDomain, as this
+        would crash.
+
+        * platform/network/cf/NetworkStorageSessionCFNet.cpp:
+        (WebCore::NetworkStorageSession::hasStorageAccess const):
+
+2018-06-11  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Remove redundant position functions for out-of-flow elements
+        https://bugs.webkit.org/show_bug.cgi?id=186525
+
+        Reviewed by Antti Koivisto.
+
+        Position is computed as part of the Horizontal/Vertical geometry computation.
+        (see outOfFlow(Non)ReplacedHorizontalGeometry/outOfFlow(Non)ReplacedVerticalGeometry functions)
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::layoutOutOfFlowDescendants const):
+        (WebCore::Layout::FormattingContext::computeOutOfFlowPosition const): Deleted.
+        * layout/FormattingContext.h:
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::outOfFlowNonReplacedPosition): Deleted.
+        (WebCore::Layout::outOfFlowReplacedPosition): Deleted.
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowPosition): Deleted.
+
+2018-06-11  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Merge top, bottom, height and vertical margin computation for out-of-flow replaced elements
+        https://bugs.webkit.org/show_bug.cgi?id=186524
+
+        Reviewed by Antti Koivisto.
+
+        Implement https://www.w3.org/TR/CSS22/visudet.html#abs-replaced-height
+        (10.6.5 Absolutely positioned, replaced elements)
+
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedVerticalGeometry):
+
+2018-06-11  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Merge left, right, width and horizontal margin computation for out-of-flow replaced elements
+        https://bugs.webkit.org/show_bug.cgi?id=186475
+
+        Reviewed by Antti Koivisto.
+
+        Implement https://www.w3.org/TR/CSS22/visudet.html#abs-replaced-width
+        (10.3.8 Absolutely positioned, replaced elements)
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::computeOutOfFlowHorizontalGeometry const):
+        (WebCore::Layout::FormattingContext::layoutOutOfFlowDescendants const):
+        (WebCore::Layout::FormattingContext::computeOutOfFlowWidthAndMargin const): Deleted.
+        * layout/FormattingContext.h:
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+        (WebCore::Layout::computedValueIfNotAuto):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedWidthAndMargin): Deleted.
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedWidthAndMargin): Deleted.
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowWidthAndMargin): Deleted.
+
+2018-06-11  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Merge left, right, width and horizontal margin computation for out-of-flow non-replaced elements
+        https://bugs.webkit.org/show_bug.cgi?id=186474
+
+        Reviewed by Antti Koivisto.
+
+        Implement https://www.w3.org/TR/CSS22/visudet.html#abs-non-replaced-width 
+        (10.3.7 Absolutely positioned, non-replaced elements)
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::computeOutOfFlowHorizontalGeometry const):
+        (WebCore::Layout::FormattingContext::layoutOutOfFlowDescendants const):
+        (WebCore::Layout::FormattingContext::computeOutOfFlowWidthAndMargin const): Deleted.
+        * layout/FormattingContext.h:
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedWidthAndMargin): Deleted.
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedWidthAndMargin): Deleted.
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowWidthAndMargin): Deleted.
+
+2018-06-10  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Merge top, bottom, height and vertical margin computation for out-of-flow non-replaced elements
+        https://bugs.webkit.org/show_bug.cgi?id=186476
+
+        Reviewed by Antti Koivisto.
+
+        Implement https://www.w3.org/TR/CSS22/visudet.html#abs-non-replaced-height
+        (10.6.4 Absolutely positioned, non-replaced elements)
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::computeOutOfFlowVerticalGeometry const):
+        (WebCore::Layout::FormattingContext::layoutOutOfFlowDescendants const):
+        (WebCore::Layout::FormattingContext::computeOutOfFlowHeight const): Deleted.
+        * layout/FormattingContext.h:
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::computedValueIfNotAuto):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHeightAndMargin): Deleted.
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedHeightAndMargin): Deleted.
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowHeightAndMargin): Deleted.
+
+2018-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API run run javascript from a WebKitWebView in an isolated world
+        https://bugs.webkit.org/show_bug.cgi?id=186192
+
+        Reviewed by Michael Catanzaro.
+
+        * bindings/js/ScriptController.cpp:
+        (WebCore::ScriptController::executeScriptInWorld): Add ExceptionDetails parameter.
+        * bindings/js/ScriptController.h:
+
+2018-06-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] paypal.com requires user agent quirk
+        https://bugs.webkit.org/show_bug.cgi?id=186466
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/UserAgentQuirks.cpp:
+        (WebCore::urlRequiresMacintoshPlatform):
+
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Clean up and modernize some build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=186463
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Removed definition for macOS 10.11.
+        * Configurations/DebugRelease.xcconfig: Ditto.
+        * Configurations/FeatureDefines.xcconfig: Simplified the definitions of ENABLE_APPLE_PAY and
+          ENABLE_VIDEO_PRESENTATION_MODE now macOS 10.12 is the earliest supported version.
+        * Configurations/Version.xcconfig: Removed definition for macOS 10.11.
+        * Configurations/WebCore.xcconfig: Simplified the definition of WK_PRIVATE_FRAMEWORKS_DIR
+          now that WK_XCODE_SUPPORTS_TEXT_BASED_STUBS is true for all supported Xcode versions.
+        * Configurations/WebKitTargetConditionals.xcconfig: Removed definitions for macOS 10.11.
+
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        Added missing file references to the Configuration group.
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2018-06-09  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r230480): Cannot adjust photo position on LinkedIn's profile page
+        https://bugs.webkit.org/show_bug.cgi?id=186464
+        <rdar://problem/40369448>
+
+        Reviewed by Simon Fraser.
+
+        The optimization logic for skipping image layout when we only need overflow computation should check if the image actually needs
+        simplified layout only. The needsSimplifiedNormalFlowLayout() flag means that the overflow information needs to be updated but
+        it does not mean that overflow is the only property that we need to recompute.
+
+        Test: fast/images/positioned-image-when-transform-is-present.html
+
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::layout):
+        * rendering/RenderObject.h:
+        (WebCore::RenderObject::needsSimplifiedNormalFlowLayoutOnly const):
+
+2018-06-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(macOS Mojave): move-by-word-visually-multi-line.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=186454
+
+        Reviewed by Darin Adler.
+
+        Like r232635, this patch fixes a selection test failure caused by the change in ICU's behavior in macOS Mojave,
+        which caused isWordTextBreak to return true in more cases.
+
+        In this particular failing test case, previousTextOrLineBreakBox and nextTextOrLineBreakBox were failing to find
+        an inline text box when it found an inline box for a BR, which was mentioned by an existing FIXME comment.
+        Consequently, visualWordPosition were erroneously detecting the end of a word followed by a blank line created by
+        a BR as a valid word boundary to move when the Windows editing behavior is enacted.
+
+        Addressed the FIXME comment by finding the next inline text box skipping all inline boxes for BRs. Renamed
+        misleadingly named previousBoxInDifferentBlock and nextBoxInDifferentBlock to previousBoxInDifferentLine and
+        nextBoxInDifferentLine respectively, and set them to true as they're really indicating whether line boxes
+        belong to a distinct line or not; whether an inline box belong to two (render) blocks or not is irrelevant.
+
+        Finally, this patch fixes a bug in visualWordPosition that it was failing to skip blank lines when a word break is
+        found as we traversed past a line break. In those cases, we must skip all line breaks before stopping.
+
+        Tests: editing/selection/move-by-word-visually-mac.html
+               editing/selection/move-by-word-visually-multi-line.htm
+
+        * editing/VisibleUnits.cpp:
+        (WebCore::CachedLogicallyOrderedLeafBoxes::previousTextOrLineBreakBox):
+        (WebCore::CachedLogicallyOrderedLeafBoxes::nextTextOrLineBreakBox):
+        (WebCore::CachedLogicallyOrderedLeafBoxes::boxIndexInLeaves const):
+        (WebCore::logicallyPreviousBox):
+        (WebCore::logicallyNextBox):
+        (WebCore::wordBreakIteratorForMinOffsetBoundary):
+        (WebCore::wordBreakIteratorForMaxOffsetBoundary):
+        (WebCore::visualWordPosition):
+
+2018-06-09  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] MarginCollapse functions should be able to resolve non-fixed margin values
+        https://bugs.webkit.org/show_bug.cgi?id=186461
+
+        Reviewed by Antti Koivisto.
+
+        We need the containing block's computed width to resolve vertical and horizontal margins.
+
+        * layout/blockformatting/BlockFormattingContext.h:
+        * layout/blockformatting/BlockMarginCollapse.cpp:
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::collapsedMarginTopFromFirstChild):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::nonCollapsedMarginTop):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::computedNonCollapsedMarginTop):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::computedNonCollapsedMarginBottom):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginTop):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginBottom):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::collapsedMarginBottomFromLastChild):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::nonCollapsedMarginBottom):
+        (WebCore::Layout::collapsedMarginTopFromFirstChild): Deleted.
+        (WebCore::Layout::nonCollapsedMarginTop): Deleted.
+
+2018-06-08  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove all uses of NSAutoreleasePool as part of preparation for ARC
+        https://bugs.webkit.org/show_bug.cgi?id=186436
+
+        Reviewed by Anders Carlsson.
+
+        * bridge/objc/objc_class.mm: Use import instead of include.
+
+        * bridge/objc/objc_instance.h: Replaced _pool member to hold an object with
+        m_autoreleasePool member to hold a token from objc_autoreleasePoolPush. Also
+        initialize all data members here in the class definition.
+
+        * bridge/objc/objc_instance.mm:
+        (ObjcInstance::ObjcInstance): Moved most initialization to class definition.
+        (ObjcInstance::virtualBegin): Use objc_autoreleasePoolPush instead of
+        NSAutoreleasePool class.
+        (ObjcInstance::virtualEnd): Use objc_autoreleasePoolPop.
+
+        * bridge/objc/objc_runtime.mm: Use import instead of include.
+        * bridge/objc/objc_utility.mm: Ditto.
+
+        * platform/audio/mac/AudioBusMac.mm:
+        (WebCore::AudioBus::loadPlatformResource): Use @autoreleasepool.
+
+        * platform/ios/wak/WebCoreThread.mm: Re-sorted includes. Removed declaration of
+        autorelease pool SPI and use FoundationSPI.h instead.
+
+        * platform/network/cocoa/ResourceResponseCocoa.mm:
+        (WebCore::ResourceResponse::platformLazyInit): Use @autoreleasepool.
+
+2018-06-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit on watchOS] Upstream watchOS source additions to OpenSource (Part 1)
+        https://bugs.webkit.org/show_bug.cgi?id=186442
+        <rdar://problem/40879364>
+
+        Reviewed by Tim Horton.
+
+        No change in behavior.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * page/DisabledAdaptations.cpp:
+        (WebCore::extraZoomModeAdaptationName):
+
+2018-06-08  Per Arne Vollan  <pvollan@apple.com>
+
+        Only display refresh monitors having requested display refresh callback should get notified on screen updates.
+        https://bugs.webkit.org/show_bug.cgi?id=186397
+        <rdar://problem/40897835>
+
+        Reviewed by Brent Fulgham.
+
+        Since all display refresh monitors in the WebContent process share a single UI process display link,
+        we should make sure that only the monitors having requested callback are getting notified on screen
+        updates. I have not been able to reproduce a case where a monitor is being notified without having
+        requested updates, but we should safeguard the code for future code changes.
+
+        No new tests, since this is a safeguarding measure.
+
+        * platform/graphics/DisplayRefreshMonitor.h:
+        (WebCore::DisplayRefreshMonitor::hasRequestedRefreshCallback const):
+        * platform/graphics/DisplayRefreshMonitorManager.cpp:
+        (WebCore::DisplayRefreshMonitorManager::displayWasUpdated):
+
+2018-06-07  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION:  Cannot listen to audio on Google Translate with side switch set to "vibrate"
+        https://bugs.webkit.org/show_bug.cgi?id=186415
+        <rdar://problem/40584651>
+
+        Reviewed by Eric Carlson.
+
+        Test: platform/mac/media/audio-session-category-audio-autoplay.html
+
+        Make sure that the PlatformMediaSession's state has already been set when calling updateSessionStates().
+
+        * platform/audio/PlatformMediaSession.cpp:
+        (WebCore::PlatformMediaSession::setState):
+        * platform/audio/PlatformMediaSessionManager.cpp:
+        (WebCore::PlatformMediaSessionManager::sessionWillBeginPlayback):
+        (WebCore::PlatformMediaSessionManager::sessionStateChanged):
+
+2018-06-08  Dean Jackson  <dino@apple.com>
+
+        'setRenderPipelineState:' is unavailable: not available on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=186449
+        <rdar://problem/40880602>
+
+        Reviewed by Simon Fraser.
+
+        Be more explicit about the protocol type to avoid
+        the compiler getting confused by a similar signature.
+
+        * platform/graphics/cocoa/GPURenderCommandEncoderMetal.mm:
+        (WebCore::GPURenderCommandEncoder::setRenderPipelineState):
+
+2018-06-08  Darin Adler  <darin@apple.com>
+
+        Fix iOS build.
+
+        * platform/ios/QuickLookSoftLink.mm: Removed QLPreviousScheme, which I said I did in the
+        change log but looks like it didn't happen.
+
+2018-06-08  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Make more of our soft linking ARC-compatible
+        https://bugs.webkit.org/show_bug.cgi?id=186437
+
+        Reviewed by Daniel Bates.
+
+        * editing/cocoa/DataDetection.mm:
+        (WebCore::removeResultLinksFromAnchor): Fix comment referring to unused constant DDURLScheme.
+
+        * platform/cocoa/DataDetectorsCoreSoftLink.h: Removed unused DDURLScheme.
+        * platform/cocoa/DataDetectorsCoreSoftLink.mm: Ditto.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        Use SOFT_LINK_CONSTANT_MAY_FAIL for NSString constants instead of using
+        SOFT_LINK_POINTER_OPTIONAL. Required moving iOS-specific items inside the
+        #if PLATFORM(IOS) section.
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL): Use the
+        canLoad functions instead of checking for null to handle possibly-missing string constants.
+        (WebCore::metadataType): Ditto.
+
+        * platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm: Removed unused
+        AVMediaTypeVideo, AVMediaTypeAudio, and AVMediaTypeText soft linking.
+
+        * platform/ios/QuickLook.mm:
+        (WebCore::isQuickLookPreviewURL): Removed unneeded assertion.
+
+        * platform/ios/QuickLookSoftLink.h: Removed unneeded QLPreviousScheme, which was used only
+        for an assertion, one we can do without.
+        * platform/ios/QuickLookSoftLink.mm: Ditto.
+
+        * platform/mediastream/mac/AVVideoCaptureSource.mm: Removed unused soft linking of
+        AVCaptureVideoPreviewLayer class and AVCaptureSessionPresetLow string constant. Use
+        SOFT_LINK_CONSTANT_MAY_FAIL for NSString constants instead of using
+        SOFT_LINK_POINTER_OPTIONAL.
+        (WebCore::AVVideoCaptureSource::initializeCapabilities): Use the canLoad functions
+        instead of checking for null to handle possibly-missing string constants.
+        (WebCore::sizeForPreset): Ditto.
+        (WebCore::AVVideoCaptureSource::bestSessionPresetForVideoDimensions const): Ditto.
+
+2018-06-08  Aditya Keerthi  <akeerthi@apple.com>
+
+        [Datalist] Allow TextFieldInputType to show and hide suggestions
+        https://bugs.webkit.org/show_bug.cgi?id=186151
+
+        Reviewed by Tim Horton.
+
+        TextFieldInputTypes with a list attribute should be able to display suggestions as the user
+        interacts with the input field. In order to display suggestions for an input field with a list
+        attribute, we need provide certain information - including the items to suggest and the location
+        to present the suggestions. TextFieldInputType can now provide this information by conforming to
+        the DataListSuggestionsClient interface.
+
+        In this initial patch, the suggestions can be shown in two ways. The first is by clicking on the
+        input field. The other is by typing text in the field. In a later patch, we will add a third way
+        to display suggestions, using a button. These ways to activate the suggestions are enumerated in
+        DataListSuggestionInformation.
+
+        We hide the suggestions if there are no more to show, or if the input has blurred.
+
+        Tests to be added once work has been done in the UIProcess.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * html/DataListSuggestionInformation.h: Added. Contains the information necessary to display suggestions.
+        * html/TextFieldInputType.cpp:
+        (WebCore::TextFieldInputType::~TextFieldInputType):
+        (WebCore::TextFieldInputType::handleClickEvent): Show suggestions when the element is clicked.
+        (WebCore::TextFieldInputType::handleKeydownEvent): Allow users to interact with the suggestions using the keyboard.
+        (WebCore::TextFieldInputType::elementDidBlur): Hide the suggestions.
+        (WebCore::TextFieldInputType::shouldRespectListAttribute):
+        (WebCore::TextFieldInputType::didSetValueByUserEdit): Update the suggestions if the text has changed.
+        (WebCore::TextFieldInputType::elementRectRelativeToRootView const): Provide the location where the suggestions should be shown.
+        (WebCore::TextFieldInputType::suggestions const): Provide the list of suggestions.
+        (WebCore::TextFieldInputType::didSelectDataListOption): Update the text once an suggestion has been selected.
+        (WebCore::TextFieldInputType::didCloseSuggestions):
+        (WebCore::TextFieldInputType::displaySuggestions):
+        (WebCore::TextFieldInputType::closeSuggestions):
+        * html/TextFieldInputType.h:
+        * loader/EmptyClients.cpp:
+        (WebCore::EmptyChromeClient::createDataListSuggestionPicker):
+        * loader/EmptyClients.h:
+        * page/Chrome.cpp:
+        (WebCore::Chrome::createDataListSuggestionPicker):
+        * page/Chrome.h:
+        * page/ChromeClient.h:
+        * platform/DataListSuggestionPicker.h: Added.
+        (WebCore::DataListSuggestionPicker::close):
+        (WebCore::DataListSuggestionPicker::handleKeydownWithIdentifier):
+        (WebCore::DataListSuggestionPicker::displayWithActivationType):
+        * platform/DataListSuggestionsClient.h: Added.
+
+2018-06-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(macOS Mojave): move-by-word-visually-inline-block-positioned-element.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=186424
+
+        Reviewed by Wenson Hsieh.
+
+        The test failure is ultimately caused by the change in ICU's behavior. With the CPU in the latest macOS Mojave,
+        ubrk_getRuleStatus returns 200 / UBRK_WORD_LETTER at the end of a buffer given to UBreakIterator. This caused
+        isWordTextBreak to return true instead of false in isLogicalStartOfWord at the end of the buffer.
+
+        This ICU behavior shouldn't have caused a problem in theory. However, WebKit had a bug in visualWordPosition which
+        caused UBreakIterator to not include the succeeding word when traversing words to the left (backwards in LTR text)
+        at the beginning of the last block element with exactly one line box after an non-statically positioned element.
+
+        In this case, visualWordPosition invokes wordBreakIteratorForMaxOffsetBoundary (because adjacentCharacterPosition
+        is now at the end of the last word in the non-statically positioned element) to setup UBreakIterator. Because
+        there are no line boxes left in the current line (in the last block element with exactly one line box),
+        logicallyNextBox enters the while loop and invoke nextRootInlineBoxCandidatePosition to find the next root line box.
+        However, the visible position given to this function is at the beginning of the first word in the block element.
+        As a result, nextRootInlineBoxCandidatePosition skips over this entire line and finds no line box after the one
+        we had in the non-statically positioned element.
+
+        Let us consider the following concrete example in which a position: static div is followed by another div, and each
+        div contains text nodes "hello" and "world" respectively:
+        - div position: static (1)
+            - "hello"
+        - div (2)
+            - "world"
+        Suppose we're at the offset 0 of "world", and trying to move to the left. In this case, adjacentCharacterPosition is
+        at offset 5 of "world". The next line box should be that of "world". However, because we invoke logicallyNextBox via
+        wordBreakIteratorForMaxOffsetBoundary with the visible position at offset 0 of "world", it skips this line and return
+        nullptr.
+
+        This patch addresses this test failure by fixing visualWordPosition by passing adjacentCharacterPosition (at offset 5
+        of "hello") as the visible position to find the next text box so that nextRootInlineBoxCandidatePosition invoked in
+        logicallyNextBox would not skip the line ("world") from which we started the traversal to find the next line box.
+
+        Tests: editing/selection/move-by-word-visually-inline-block-positioned-element.html
+
+        * editing/VisibleUnits.cpp:
+        (WebCore::visualWordPosition):
+
+2018-06-08  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION (r230930): Link drag image is very blurry
+        https://bugs.webkit.org/show_bug.cgi?id=186435
+        <rdar://problem/40797202>
+
+        Reviewed by Tim Horton.
+
+        Tell NSImage the proper display scale factor it needs when performing a 'lockFocus' by passing
+        the correct scaling transform as an NSImageHintCTM.
+
+        I reviewed the other drag operations (selection, image, and attachment) and confirmed through
+        manual testing that these operations already properly scale the images. It appears that links
+        were the only place where we relied on NSImage to determine and use the relevant device scale
+        factor.
+
+        * SourcesCocoa.txt: Add new WebKitNSImageExtras.mm file.
+        * WebCore.xcodeproj/project.pbxproj: Update for new files.
+        * platform/graphics/mac/WebKitNSImageExtras.h: Added.
+        * platform/graphics/mac/WebKitNSImageExtras.mm: Added.
+        (-[NSImage _web_lockFocusWithTransform:]): Helper method that takes a device scale factor, creates the
+        relevant scaling NSAffineTransform and passes it to the internal NSImage 'lockFocusWithRect' as the
+        NSImageHintCTM hint.
+        * platform/mac/DragImageMac.mm:
+        (WebCore::createDragImageForLink): Use the new helper function.
+
 2018-06-08  Zalan Bujtas  <zalan@apple.com>
 
         [LFC] Add vertical margin computation for inline, block-level, inline-block and floating replaced elements

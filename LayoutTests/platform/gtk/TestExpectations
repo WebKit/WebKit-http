@@ -581,7 +581,7 @@ webkit.org/b/79203 fast/mediastream/getUserMedia-webaudio.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/MediaStream-video-element-track-stop.html [ Timeout ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-dtmf.html [ Timeout ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-icecandidate-event.html [ Failure Crash ]
-webkit.org/b/79203 fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html [ Failure Crash ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html [ Pass Failure Crash ]
 webkit.org/b/79203 fast/mediastream/RTCRtpSender-replaceTrack.html [ Failure ]
 # Crash is webkit.org/b/184292
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-addIceCandidate.html [ Failure Pass Crash ]
@@ -591,7 +591,7 @@ webkit.org/b/79203 fast/mediastream/RTCPeerConnection-inspect-answer.html [ Fail
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-inspect-offer-bundlePolicy-bundle-only.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-inspect-offer.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-legacy-stream-based-api.html [ Failure ]
-webkit.org/b/79203 fast/mediastream/RTCPeerConnection-media-setup-callbacks-single-dialog.html [ Crash Failure ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-media-setup-callbacks-single-dialog.html [ Pass Crash Failure ]
 webkit.org/b/79203 webaudio/mediastreamaudiosourcenode.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled.html [ Timeout Failure ]
 webkit.org/b/79203 fast/mediastream/MediaStream-video-element-displays-buffer.html [ Failure ]
@@ -604,6 +604,7 @@ webkit.org/b/151344 fast/mediastream/MediaStream-add-ended-tracks.html [ Timeout
 webkit.org/b/160996 fast/mediastream/MediaStream-video-element-video-tracks-disabled.html [ ImageOnlyFailure Crash ]
 webkit.org/b/172269 fast/mediastream/media-devices-enumerate-devices.html [ Failure ]
 webkit.org/b/173257 fast/mediastream/getUserMedia-grant-persistency3.html [ Pass Failure ]
+webkit.org/b/176801 fast/mediastream/argument-types.html [ Crash Pass ]
 
 # Canvas captureStream support is not implemented
 webkit.org/b/169811 fast/mediacapturefromelement [ Skip ]
@@ -1162,6 +1163,8 @@ http/tests/media/now-playing-info.html [ Skip ]
 # Font collections
 webkit.org/b/186086 fast/text/font-collection.html [ ImageOnlyFailure ]
 
+webkit.org/b/186601 fullscreen/full-screen-layer-dump.html [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures.
 #
@@ -1240,8 +1243,6 @@ webkit.org/b/172281 accessibility/insert-children-assert.html [ Crash ]
 webkit.org/b/172955 media/video-preload.html [ Crash Pass ]
 
 webkit.org/b/175575 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay-with-slow-text-tracks.html [ Crash Pass ]
-
-webkit.org/b/176801 fast/mediastream/argument-types.html [ Crash Pass ]
 
 webkit.org/b/176803 http/tests/local/blob/send-hybrid-blob-using-open-panel.html [ Crash ]
 
@@ -1921,6 +1922,9 @@ webkit.org/b/186143 imported/mozilla/css-animations/test_event-dispatch.html [ T
 
 webkit.org/b/184569 storage/indexeddb/modern/transactions-stop-on-navigation.html [ Pass Failure ]
 
+webkit.org/b/186598 http/tests/media/hls/hls-audio-tracks.html [ Timeout Pass ]
+webkit.org/b/186598 http/tests/media/hls/hls-audio-tracks-has-audio.html [ Timeout Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2255,7 +2259,7 @@ webkit.org/b/186253 http/tests/media/remove-while-loading.html [ Timeout ]
 webkit.org/b/186253 http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Timeout ]
 
 webkit.org/b/186341 fast/animation/css-animation-resuming-when-visible-with-style-change.html [ Timeout Failure ]
-webkit.org/b/186252 legacy-animation-engine/css3/filters/backdrop/animation.html [ Failure ]
+webkit.org/b/186252 legacy-animation-engine/css3/filters/backdrop/animation.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -3201,8 +3205,6 @@ webkit.org/b/175421 printing/width-overflow.html [ Failure ]
 
 webkit.org/b/175422 http/tests/blink/sendbeacon/beacon-same-origin.html [ Failure ]
 
-webkit.org/b/175582 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes.worker.html [ Failure ]
-
 webkit.org/b/175931 fast/canvas/webgl/no-info-log-for-simple-shaders.html [ Failure ]
 
 webkit.org/b/176021 fast/events/overflow-viewport-renderer-deleted.html [ Missing ]
@@ -3314,8 +3316,6 @@ webkit.org/b/184080 animations/transform-non-accelerated.html [ Failure ]
 
 webkit.org/b/184086 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property.html [ Failure ]
 webkit.org/b/184086 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property.html [ Failure ]
-
-webkit.org/b/184501 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures.worker.html [ Failure ]
 
 webkit.org/b/184503 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method.html [ Failure ]
 webkit.org/b/184503 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method-worker.html [ Failure ]

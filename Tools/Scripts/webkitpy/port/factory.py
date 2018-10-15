@@ -95,6 +95,7 @@ class PortFactory(object):
         'haiku.HaikuPort',
         'ios_simulator.IOSSimulatorPort',
         'ios_device.IOSDevicePort',
+        'jsc_only.JscOnlyPort',
         'mac.MacPort',
         'mock_drt.MockDRTPort',
         'test.TestPort',

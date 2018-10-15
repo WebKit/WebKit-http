@@ -1,3 +1,80 @@
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Clean up and modernize some build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=186463
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Removed definition for macOS 10.11.
+        * Configurations/DebugRelease.xcconfig: Ditto.
+        * Configurations/FeatureDefines.xcconfig: Simplified the definitions of ENABLE_APPLE_PAY and
+          ENABLE_VIDEO_PRESENTATION_MODE now macOS 10.12 is the earliest supported version.
+        * Configurations/PAL.xcconfig: Removed WK_PRIVATE_FRAMEWORKS_DIR, because the private
+          framework stubs aren’t used when linking PAL.
+        * Configurations/Version.xcconfig: Removed definition for macOS 10.11.
+        * Configurations/WebKitTargetConditionals.xcconfig: Ditto.
+
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        Added missing file references to the Configuration group.
+
+        * PAL.xcodeproj/project.pbxproj:
+
+2018-06-08  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove all uses of NSAutoreleasePool as part of preparation for ARC
+        https://bugs.webkit.org/show_bug.cgi?id=186436
+
+        Reviewed by Anders Carlsson.
+
+        * PAL.xcodeproj/project.pbxproj: Removed FoundationSPI.h.
+        * pal/PlatformMac.cmake: Ditto.
+        * pal/spi/cocoa/FoundationSPI.h: Moved into WTF project.
+
+2018-06-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit on watchOS] Upstream watchOS source additions to OpenSource (Part 1)
+        https://bugs.webkit.org/show_bug.cgi?id=186442
+        <rdar://problem/40879364>
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-06-08  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Make more of our soft linking ARC-compatible
+        https://bugs.webkit.org/show_bug.cgi?id=186437
+
+        Reviewed by Daniel Bates.
+
+        * pal/spi/cocoa/DataDetectorsCoreSPI.h: Removed unused DDURLScheme.
+
+2018-06-08  Jonathan Bedard  <jbedard@apple.com>
+
+        [Mojave] Enable build
+        https://bugs.webkit.org/show_bug.cgi?id=186401
+        <rdar://problem/39759031>
+
+        Reviewed by Dan Bernstein.
+
+        * pal/spi/cg/CoreGraphicsSPI.h: Declare CGSShutdownServerConnections().
+        * pal/spi/cocoa/QuartzCoreSPI.h: Declare [CAContext setAllowsCGSConnections] in Mojave + builds.
+        * pal/spi/mac/DataDetectorsSPI.h: Declare DDResultGetCFTypeID in Mojave+ builds.
+
+2018-06-08  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION (r230930): Link drag image is very blurry
+        https://bugs.webkit.org/show_bug.cgi?id=186435
+        <rdar://problem/40797202>
+
+        Reviewed by Tim Horton.
+
+        Add the necessary NSImage SPI to our SPI headers.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/mac/NSImageSPI.h: Added.
+
 2018-06-07  Chris Dumez  <cdumez@apple.com>
 
         Add base class to get WeakPtrFactory member and avoid some boilerplate code

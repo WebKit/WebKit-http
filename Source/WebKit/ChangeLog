@@ -1,3 +1,646 @@
+2018-06-13  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE] Build getUserMedia support
+        https://bugs.webkit.org/show_bug.cgi?id=186547
+
+        Reviewed by Alejandro G. Castro.
+
+        * SourcesWPE.txt: Compile files necessary for MediaStream/webrtc.
+
+2018-06-13  Andy Estes  <aestes@apple.com>
+
+        [iOS] Synchronize PDF resizing with device rotation
+        https://bugs.webkit.org/show_bug.cgi?id=186587
+        <rdar://problem/40922462>
+
+        Reviewed by Darin Adler.
+
+        Both -beginPDFViewRotation and -endPDFViewRotation need to be called as part of
+        the transition coordinator's -animateAlongsideTransition: block to be synchronized
+        with rotation. Additionally, updateBlock needs to be invoked between the two calls
+        so that PDFKit can capture the frame geometry before and after the update.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _beginAnimatedResizeWithUpdates:]):
+        * UIProcess/Cocoa/WKWebViewContentProvider.h:
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView web_beginAnimatedResizeWithUpdates:]):
+        (-[WKPDFView web_beginAnimatedResize]): Renamed to web_beginAnimatedResizeWithUpdates:.
+        (-[WKPDFView web_endAnimatedResize]): Deleted.
+
+2018-06-12  Brent Fulgham  <bfulgham@apple.com>
+
+        Turn CSS Spring Animations and Link Preload off by default for production builds.
+        https://bugs.webkit.org/show_bug.cgi?id=186548
+        <rdar://problem/41023774>
+
+        Reviewed by Eric Carlson.
+
+        * Shared/WebPreferences.yaml: Switch these features from 'on' to
+        DEFAULT_EXPERIMENTAL_FEATURES_ENABLED.
+
+2018-06-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit on watchOS] Upstream watchOS source additions to OpenSource (Part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=186442
+        <rdar://problem/40879364>
+
+        Reviewed by Tim Horton.
+
+        Upstream most of the work around form controls on watchOS. Also, rename WKFormControlListViewController.* to
+        its intended name, WKQuickboardListViewController.*.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        * UIProcess/ios/forms/WKDatePickerViewController.h:
+        * UIProcess/ios/forms/WKDatePickerViewController.mm:
+        (datePickerSetButtonHeight):
+        (datePickerVerticalMargin):
+        (-[WKDatePickerWheelLabel initWithFrame:]):
+        (-[WKDatePickerWheelLabel lastSelectedDate]):
+        (-[WKDatePickerWheelLabel setLastSelectedDate:]):
+        (-[WKDatePickerWheelLabel needsUpdateForIndex:selectedDate:]):
+        (-[WKDatePickerWheel initWithStyle:]):
+        (-[WKDatePickerWheel initWithController:style:]):
+        (-[WKDatePickerWheel gestureRecognized:]):
+        (-[WKDatePickerWheel setDrawsFocusOutline:]):
+        (-[WKDatePickerWheel drawsFocusOutline]):
+        (-[WKDatePickerWheel gestureRecognizer:shouldRecognizeSimultaneouslyWithGestureRecognizer:]):
+        (-[WKDatePickerViewController initWithDelegate:]):
+        (-[WKDatePickerViewController viewDidLoad]):
+        (-[WKDatePickerViewController prefersStatusBarHidden]):
+        (-[WKDatePickerViewController viewWillAppear:]):
+        (-[WKDatePickerViewController viewDidAppear:]):
+        (-[WKDatePickerViewController viewDidDisappear:]):
+        (-[WKDatePickerViewController _handleStatusBarNavigation]):
+        (-[WKDatePickerViewController viewWillLayoutSubviews]):
+        (-[WKDatePickerViewController becomeFirstResponder]):
+        (-[WKDatePickerViewController defaultMinimumDate]):
+        (-[WKDatePickerViewController defaultMaximumDate]):
+        (-[WKDatePickerViewController _valueForInput]):
+        (-[WKDatePickerViewController _dateFromInitialText]):
+        (-[WKDatePickerViewController _setButtonPressed]):
+        (-[WKDatePickerViewController _updateSelectedPickerViewIndices]):
+        (-[WKDatePickerViewController _configurePickerView:]):
+        (-[WKDatePickerViewController setMinimumDate:]):
+        (-[WKDatePickerViewController minimumDate]):
+        (-[WKDatePickerViewController setMaximumDate:]):
+        (-[WKDatePickerViewController maximumDate]):
+        (-[WKDatePickerViewController setDate:]):
+        (-[WKDatePickerViewController setDateFromComponents:]):
+        (-[WKDatePickerViewController setDay:month:year:era:]):
+        (-[WKDatePickerViewController date]):
+        (-[WKDatePickerViewController _dateComponentForDay:month:year:era:]):
+        (-[WKDatePickerViewController _adjustDateToValidDateIfNecessary]):
+        (-[WKDatePickerViewController _createAndConfigureGranularityLabelWithText:]):
+        (-[WKDatePickerViewController _canonicalizeAndUpdateSelectedDate]):
+        (-[WKDatePickerViewController numberOfItemsInPickerView:]):
+        (-[WKDatePickerViewController pickerView:viewForItemAtIndex:]):
+        (-[WKDatePickerViewController didBeginInteractingWithDatePicker:]):
+        (-[WKDatePickerViewController pickerView:didSelectItemAtIndex:]):
+        (-[WKDatePickerViewController pickerViewWillBeginSelection:]):
+        (-[WKDatePickerViewController pickerViewDidEndSelection:]):
+        (-[WKDatePickerViewController _dayFromIndex:]):
+        (-[WKDatePickerViewController _eraAndYearFromIndex:]):
+        (-[WKDatePickerViewController _monthFromIndex:]):
+        (-[WKDatePickerViewController _indexFromDay:]):
+        (-[WKDatePickerViewController _indexFromYear:era:]):
+        (-[WKDatePickerViewController _indexFromMonth:]):
+        * UIProcess/ios/forms/WKFormControlListViewController.h: Removed.
+        * UIProcess/ios/forms/WKFormControlListViewController.mm: Removed.
+        * UIProcess/ios/forms/WKNumberPadViewController.h:
+        * UIProcess/ios/forms/WKNumberPadViewController.mm:
+        (inputLabelFontSize):
+        (-[WKNumberPadViewController initWithDelegate:initialText:inputMode:]):
+        (-[WKNumberPadViewController dealloc]):
+        (-[WKNumberPadViewController viewDidLoad]):
+        (-[WKNumberPadViewController viewWillDisappear:]):
+        (-[WKNumberPadViewController viewWillLayoutSubviews]):
+        (-[WKNumberPadViewController _reloadHeaderViewFromInputText]):
+        (-[WKNumberPadViewController didSelectKey:]):
+        (-[WKNumberPadViewController _handleKeyPress:]):
+        (-[WKNumberPadViewController _cancelInput]):
+        (-[WKNumberPadViewController _deleteLastInputCharacter]):
+        (-[WKNumberPadViewController _deleteButtonPressed]):
+        (-[WKNumberPadViewController _cancelDeletionTimers]):
+        (-[WKNumberPadViewController _startDeletionTimer]):
+        (-[WKNumberPadViewController _deletionTimerFired]):
+        (-[WKNumberPadViewController addContentViewAnimations:]):
+        * UIProcess/ios/forms/WKQuickboardListViewController.h: Added.
+        * UIProcess/ios/forms/WKQuickboardListViewController.mm: Added.
+        (-[WKQuickboardListItemCell topToLabelBaselineSpecValue]):
+        (-[WKQuickboardListItemCell baselineToBottomSpecValue]):
+        (-[WKQuickboardListViewController initWithDelegate:]):
+        (-[WKQuickboardListViewController updateContextViewIfNeeded]):
+        (-[WKQuickboardListViewController prefersStatusBarHidden]):
+        (-[WKQuickboardListViewController viewDidLoad]):
+        (-[WKQuickboardListViewController viewWillAppear:]):
+        (-[WKQuickboardListViewController viewDidDisappear:]):
+        (-[WKQuickboardListViewController _handleStatusBarNavigation]):
+        (-[WKQuickboardListViewController reloadContextView]):
+        (-[WKQuickboardListViewController actionController]):
+        (-[WKQuickboardListViewController languageControllerDidChangePrimaryLanguage:]):
+        (-[WKQuickboardListViewController headerContentViewHeight]):
+        (-[WKQuickboardListViewController headerContentView]):
+        (configureStatusBarForController):
+        * UIProcess/ios/forms/WKSelectMenuListViewController.h:
+        * UIProcess/ios/forms/WKSelectMenuListViewController.mm:
+        (-[WKSelectMenuItemCell initWithStyle:reuseIdentifier:]):
+        (-[WKSelectMenuItemCell imageView]):
+        (-[WKSelectMenuListViewController initWithDelegate:]):
+        (-[WKSelectMenuListViewController viewDidLoad]):
+        (-[WKSelectMenuListViewController acceptButtonTappedWithCompletion:]):
+        (-[WKSelectMenuListViewController shouldShowTrayView]):
+        (-[WKSelectMenuListViewController didSelectListItem:]):
+        (-[WKSelectMenuListViewController numberOfListItems]):
+        (-[WKSelectMenuListViewController heightForListItem:width:]):
+        (-[WKSelectMenuListViewController cellForListItem:]):
+        (-[WKSelectMenuListViewController selectItemAtIndex:]):
+        * UIProcess/ios/forms/WKTimePickerViewController.h:
+        * UIProcess/ios/forms/WKTimePickerViewController.mm:
+        (-[WKTimePickerViewController initWithDelegate:]):
+        (-[WKTimePickerViewController dateFormatter]):
+        (-[WKTimePickerViewController timeValueForFormControls]):
+        (-[WKTimePickerViewController dateComponentsFromInitialValue]):
+        (-[WKTimePickerViewController viewDidAppear:]):
+        (-[WKTimePickerViewController viewDidLoad]):
+        (-[WKTimePickerViewController becomeFirstResponder]):
+        (-[WKTimePickerViewController setHour:minute:]):
+        (-[WKTimePickerViewController leftButtonWOTAction]):
+        (-[WKTimePickerViewController rightButtonWOTAction]):
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-06-12  Jer Noble  <jer.noble@apple.com>
+
+        Make Modern EME An Experimental Feature Again
+        https://bugs.webkit.org/show_bug.cgi?id=186569
+        <rdar://problem/41054402>
+
+        Reviewed by Eric Carlson.
+
+        * Shared/WebPreferences.yaml:
+
+2018-06-12  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Enable NetworkActivityTracker
+        https://bugs.webkit.org/show_bug.cgi?id=186568
+        <rdar://problem/41050624>
+
+        Reviewed by Tim Horton.
+
+        * NetworkProcess/NetworkActivityTracker.h:
+
+2018-06-12  Antti Koivisto  <antti@apple.com>
+
+        Add performance logging for slow cache retrieves
+        https://bugs.webkit.org/show_bug.cgi?id=186520
+        <rdar://problem/41002070>
+
+        Reviewed by Chris Dumez.
+
+        We sometimes see slow cache retrieves in logs. Add some more logging to better analyze these cases.
+
+        This patch adds timings to all cache storage retrieve operations and passes them up to the client.
+        We then log the timings on NetworkResourceLoader levels if needed. Items logged include
+
+        - total retrieve time
+        - dispatch delay and number of resources dispatched before this one
+        - record I/O time
+        - blob I/O time
+        - whether cache shrink was in progress
+        - whether cache synchronization was in progress
+        - cancellation
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::retrieveCacheEntry):
+        (WebKit::NetworkResourceLoader::logSlowCacheRetrieveIfNeeded):
+
+        Log if the retrieve took more than 1s.
+
+        * NetworkProcess/NetworkResourceLoader.h:
+        * NetworkProcess/cache/CacheStorageEngineCaches.cpp:
+        (WebKit::CacheStorage::Caches::readRecord):
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::retrieve):
+        (WebKit::NetworkCache::Cache::completeRetrieve):
+        (WebKit::NetworkCache::Cache::retrieveData):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp:
+        (WebKit::NetworkCache::SpeculativeLoadManager::retrieveEntryFromStorage):
+        (WebKit::NetworkCache::SpeculativeLoadManager::retrieveSubresourcesEntry):
+
+        SpeculativeLoadManager does not records specific timings yet but at least we do log when they occur.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::ReadOperation::cancel):
+        (WebKit::NetworkCache::Storage::ReadOperation::finish):
+
+        Record timing info in ReadOperations.
+
+        (WebKit::NetworkCache::Storage::dispatchReadOperation):
+        (WebKit::NetworkCache::retrieveFromMemory):
+        (WebKit::NetworkCache::Storage::retrieve):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+
+2018-06-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.21.4 release.
+
+        * gtk/NEWS: Add release notes for 2.21.4.
+
+2018-06-11  Youenn Fablet  <youenn@apple.com>
+
+        Improve error messages in case FetchEvent.respondWith has a rejected promise
+        https://bugs.webkit.org/show_bug.cgi?id=186368
+
+        Reviewed by Chris Dumez.
+
+        Log in JS console in case of failures.
+        Rely on ThreadableLoader to log which client actually failed.
+
+        * WebProcess/Storage/ServiceWorkerClientFetch.cpp:
+        (WebKit::ServiceWorkerClientFetch::didFail):
+
+2018-06-11  Chris Dumez  <cdumez@apple.com>
+
+        http/tests/security/xss-DENIED-script-inject-into-inactive-window2.html times out with PSON enabled
+        https://bugs.webkit.org/show_bug.cgi?id=186546
+
+        Reviewed by Brady Eidson.
+
+        Disable process swap on navigation in frames that have opened other frames via
+        window.open(). These new windows may have a WindowProxy to their opener, and it
+        would therefore be unsafe to process swap at this point.
+
+        * Shared/NavigationActionData.cpp:
+        (WebKit::NavigationActionData::encode const):
+        (WebKit::NavigationActionData::decode):
+        * Shared/NavigationActionData.h:
+        * UIProcess/API/APINavigation.h:
+        (API::Navigation::setHasOpenedFrames):
+        (API::Navigation::hasOpenedFrames const):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::processForNavigationInternal):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+
+2018-06-11  Keith Rollin  <krollin@apple.com>
+
+        Add logging around internalError(const URL&)
+        https://bugs.webkit.org/show_bug.cgi?id=186369
+        <rdar://problem/40872046>
+
+        Reviewed by Brent Fulgham.
+
+        There are times when we receive bug reports where the user says that
+        they are simply shown a page saying an internal error occurred. To
+        help understand the circumstances of that error, add some logging to
+        internalError() in WebErrors.cpp. This logging logs at the Error level
+        that internalError() was called and then logs a backtrace.
+
+        * Shared/WebErrors.cpp:
+        (WebKit::internalError):
+
+2018-06-11  Tim Horton  <timothy_horton@apple.com>
+
+        Link drag image is inconsistently unreadable in dark mode
+        https://bugs.webkit.org/show_bug.cgi?id=186472
+
+        Reviewed by Timothy Hatcher.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::useDefaultAppearance):
+        Make defaultAppearance accurate even if useSystemAppearance is false.
+        Some parts of WebKit (like the link drag image, but also context menus)
+        want to be able to follow the system appearance regardless of whether
+        the view or content has opted in.
+
+2018-06-11  Chris Dumez  <cdumez@apple.com>
+
+        http/tests/security/cors-post-redirect-307.html fails with PSON enabled
+        https://bugs.webkit.org/show_bug.cgi?id=186441
+
+        Reviewed by Brady Eidson.
+
+        Rename existing flag to something a bit more generic, now that it is used for
+        more things than bypassing the navigation policy check.
+
+        * Shared/LoadParameters.cpp:
+        (WebKit::LoadParameters::encode const):
+        (WebKit::LoadParameters::decode):
+        * Shared/LoadParameters.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::reattachToWebProcessForReload):
+        (WebKit::WebPageProxy::reattachToWebProcessWithItem):
+        (WebKit::WebPageProxy::loadRequest):
+        (WebKit::WebPageProxy::loadRequestWithNavigation):
+        (WebKit::WebPageProxy::goToBackForwardItem):
+        (WebKit::WebPageProxy::continueNavigationInNewProcess):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::loadRequest):
+        (WebKit::WebPage::goToBackForwardItem):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2018-06-11  Nan Wang  <n_wang@apple.com>
+
+        AX: [iOS] accessibility sometimes doesn't know process suspension is canceled
+        https://bugs.webkit.org/show_bug.cgi?id=186450
+
+        Reviewed by Chris Fleizach.
+
+        There's some early return condition in WebProcess::cancelPrepareToSuspend() which
+        could lead to accessibility failing to post process status notificaiton. Fixed it
+        by moving the accessibility notification before the early return condition.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::cancelPrepareToSuspend):
+
+2018-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API run run javascript from a WebKitWebView in an isolated world
+        https://bugs.webkit.org/show_bug.cgi?id=186192
+
+        Reviewed by Michael Catanzaro.
+
+        Add webkit_web_view_run_javascript_in_world() that receives a world name. Also add
+        webkit_script_world_new_with_name() to create an isolated world with a name and webkit_script_world_get_name()
+        to get the name of a WebKitScriptWorld.
+
+        * UIProcess/API/glib/WebKitWebView.cpp:
+        (webkit_web_view_run_javascript):
+        (webkit_web_view_run_javascript_finish):
+        (webkit_web_view_run_javascript_in_world):
+        (webkit_web_view_run_javascript_in_world_finish):
+        * UIProcess/API/gtk/WebKitWebView.h:
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0-sections.txt: Add new symbols.
+        * UIProcess/API/wpe/WebKitWebView.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::runJavaScriptInMainFrameScriptWorld): Send RunJavaScriptInMainFrameScriptWorld message to
+        the WebProcess.
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/InjectedBundle/API/glib/WebKitScriptWorld.cpp:
+        (webkitScriptWorldCreate):
+        (webkit_script_world_new_with_name):
+        (webkit_script_world_get_name):
+        * WebProcess/InjectedBundle/API/gtk/WebKitScriptWorld.h:
+        * WebProcess/InjectedBundle/API/wpe/WebKitScriptWorld.h:
+        * WebProcess/InjectedBundle/InjectedBundleScriptWorld.cpp:
+        (WebKit::InjectedBundleScriptWorld::find): Find an InjectedBundleScriptWorld by its name.
+        * WebProcess/InjectedBundle/InjectedBundleScriptWorld.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::runJavaScriptInMainFrameScriptWorld): Find the InjectedBundleScriptWorld for the given name
+        and run the script in its js context.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in: Add RunJavaScriptInMainFrameScriptWorld message.
+
+2018-06-10  Chris Dumez  <cdumez@apple.com>
+
+        Reload the Web view in case of crash if the client does not implement webViewWebContentProcessDidTerminate delegate
+        https://bugs.webkit.org/show_bug.cgi?id=186468
+
+        Reviewed by Geoffrey Garen.
+
+        We now attempt to reload the Web view if the web content process crashes and the client
+        does not implement the webViewWebContentProcessDidTerminate delegate (or any of the similar
+        delegates in our SPI).
+
+        * UIProcess/API/APILoaderClient.h:
+        (API::LoaderClient::processDidCrash):
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::processDidTerminate):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient):
+        (WKPageSetPageNavigationClient):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/glib/WebKitNavigationClient.cpp:
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationClient::processDidTerminate):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::m_resetRecentCrashCountTimer):
+        (WebKit::WebPageProxy::didFinishLoadForFrame):
+        (WebKit::shouldReloadAfterProcessTermination):
+        (WebKit::WebPageProxy::dispatchProcessDidTerminate):
+        (WebKit::WebPageProxy::tryReloadAfterProcessTermination):
+        (WebKit::WebPageProxy::resetRecentCrashCountSoon):
+        (WebKit::WebPageProxy::resetRecentCrashCount):
+        (WebKit::m_configurationPreferenceValues): Deleted.
+        * UIProcess/WebPageProxy.h:
+
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Clean up and modernize some build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=186463
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Removed definition for macOS 10.11.
+        * Configurations/BaseTarget.xcconfig: Simplified the definition of WK_PRIVATE_FRAMEWORKS_DIR
+          now that WK_XCODE_SUPPORTS_TEXT_BASED_STUBS is true for all supported Xcode versions.
+        * Configurations/DebugRelease.xcconfig: Removed definition for macOS 10.11.
+        * Configurations/FeatureDefines.xcconfig: Simplified the definitions of ENABLE_APPLE_PAY and
+          ENABLE_VIDEO_PRESENTATION_MODE now macOS 10.12 is the earliest supported version.
+        * Configurations/Version.xcconfig: Removed definition for macOS 10.11.
+        * Configurations/WebKitTargetConditionals.xcconfig: Removed definitions for macOS 10.11.
+
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        Added missing file references to the Configuration group.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-06-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit on watchOS] Upstream watchOS source additions to OpenSource (Part 1)
+        https://bugs.webkit.org/show_bug.cgi?id=186442
+        <rdar://problem/40879364>
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView dismissQuickboardViewControllerAndRevealFocusedFormOverlayIfNecessary:]):
+        (-[WKContentView quickboard:textEntered:]):
+        (-[WKContentView quickboardInputCancelled:]):
+        (-[WKContentView viewController:inputContextViewHeightForSize:]):
+        (-[WKContentView allowsLanguageSelectionMenuForListViewController:]):
+        (-[WKContentView inputContextViewForViewController:]):
+        (-[WKContentView inputLabelTextForViewController:]):
+        (-[WKContentView initialValueForViewController:]):
+        (-[WKContentView shouldDisplayInputContextViewForListViewController:]):
+        (-[WKContentView numericInputModeForListViewController:]):
+        (-[WKContentView textContentTypeForListViewController:]):
+        (-[WKContentView textSuggestionsForListViewController:]):
+        (-[WKContentView listViewController:didSelectTextSuggestion:]):
+        (-[WKContentView allowsDictationInputForListViewController:]):
+        * UIProcess/ios/WKScrollView.mm:
+        (-[WKScrollView initWithFrame:]):
+        (-[WKScrollView addGestureRecognizer:]):
+        (-[WKScrollView _configureDigitalCrownScrolling]):
+        (-[WKScrollView _puic_contentOffsetForCrownInputSequencerOffset:]):
+        * UIProcess/ios/forms/WKFocusedFormControlView.h:
+        * UIProcess/ios/forms/WKFocusedFormControlView.mm:
+        (pathWithRoundedRectInFrame):
+        (-[WKFocusedFormControlView initWithFrame:delegate:]):
+        (-[WKFocusedFormControlView handleWheelEvent:]):
+        (-[WKFocusedFormControlView show:]):
+        (-[WKFocusedFormControlView hide:]):
+        (-[WKFocusedFormControlView delegate]):
+        (-[WKFocusedFormControlView setDelegate:]):
+        (-[WKFocusedFormControlView dimmingMaskLayer]):
+        (-[WKFocusedFormControlView handleTap]):
+        (-[WKFocusedFormControlView _wheelChangedWithEvent:]):
+        (-[WKFocusedFormControlView didDismiss]):
+        (-[WKFocusedFormControlView didSubmit]):
+        (-[WKFocusedFormControlView layoutSubviews]):
+        (-[WKFocusedFormControlView setHighlightedFrame:]):
+        (-[WKFocusedFormControlView computeDimmingViewCutoutPath]):
+        (-[WKFocusedFormControlView disengageFocusedFormControlNavigation]):
+        (-[WKFocusedFormControlView engageFocusedFormControlNavigation]):
+        (-[WKFocusedFormControlView reloadData:]):
+        (-[WKFocusedFormControlView setMaskLayerPosition:animated:]):
+        (-[WKFocusedFormControlView setHighlightedFrame:animated:]):
+        (-[WKFocusedFormControlView submitActionName]):
+        (submitActionNameFontAttributes):
+        (-[WKFocusedFormControlView setSubmitActionName:]):
+        (-[WKFocusedFormControlView scrollViewForCrownInputSequencer]):
+        (-[WKFocusedFormControlView updateViewForCurrentCrownInputSequencerState]):
+        (-[WKFocusedFormControlView scrollOffsetForCrownInputOffset:]):
+        (-[WKFocusedFormControlView _crownInputSequencerTimerFired]):
+        (-[WKFocusedFormControlView cancelPendingCrownInputSequencerUpdate]):
+        (-[WKFocusedFormControlView scheduleCrownInputSequencerUpdate]):
+        (-[WKFocusedFormControlView crownInputSequencerOffsetDidChange:]):
+        (-[WKFocusedFormControlView crownInputSequencerDidBecomeIdle:willDecelerate:]):
+        (-[WKFocusedFormControlView crownInputSequencerIdleDidChange:]):
+        (-[WKFocusedFormControlView suggestions]):
+        (-[WKFocusedFormControlView setSuggestions:]):
+        (-[WKFocusedFormControlView handleWebViewCredentialsSaveForWebsiteURL:user:password:passwordIsAutoGenerated:]):
+        (-[WKFocusedFormControlView selectionWillChange:]):
+        (-[WKFocusedFormControlView selectionDidChange:]):
+        (-[WKFocusedFormControlView textWillChange:]):
+        (-[WKFocusedFormControlView textDidChange:]):
+
+2018-06-08  Per Arne Vollan  <pvollan@apple.com>
+
+        Only display refresh monitors having requested display refresh callback should get notified on screen updates.
+        https://bugs.webkit.org/show_bug.cgi?id=186397
+        <rdar://problem/40897835>
+
+        Reviewed by Brent Fulgham.
+
+        Since all display refresh monitors in the WebContent process share a single UI process display link,
+        we should make sure that only the monitors having requested callback are getting notified on screen
+        updates. I have not been able to reproduce a case where a monitor is being notified without having
+        requested updates, but we should safeguard the code for future code changes.
+
+        * WebProcess/WebPage/mac/DrawingAreaMac.cpp:
+
+2018-06-08  Aditya Keerthi  <akeerthi@apple.com>
+
+        [Datalist] Allow TextFieldInputType to show and hide suggestions
+        https://bugs.webkit.org/show_bug.cgi?id=186151
+
+        Reviewed by Tim Horton.
+
+        Added WebDataListSuggestionPicker to send messages to the UIProcess in order to update the suggestions view.
+        This object is also responsible for forwarding messages from WebKit into the DataListSuggestionsClient, which
+        is the TextFieldInputType in this case. The client needs to know when the suggestions are hidden or if an
+        suggestion has been selected.
+
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::createDataListSuggestionPicker): Responsible for creating WebDataListSuggestionPicker to send/receive messages.
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebCoreSupport/WebDataListSuggestionPicker.cpp: Added. Responsible for sending messages to UIProcess and updating the DataListSuggestionsClient.
+        (WebKit::WebDataListSuggestionPicker::WebDataListSuggestionPicker):
+        (WebKit::WebDataListSuggestionPicker::~WebDataListSuggestionPicker):
+        (WebKit::WebDataListSuggestionPicker::handleKeydownWithIdentifier):
+        (WebKit::WebDataListSuggestionPicker::didSelectOption):
+        (WebKit::WebDataListSuggestionPicker::didCloseSuggestions):
+        (WebKit::WebDataListSuggestionPicker::close):
+        (WebKit::WebDataListSuggestionPicker::displayWithActivationType):
+        * WebProcess/WebCoreSupport/WebDataListSuggestionPicker.h: Added.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setActiveDataListSuggestionPicker):
+        (WebKit::WebPage::didSelectDataListOption): Called by UIProcess when option selected.
+        (WebKit::WebPage::didCloseSuggestions): Called by UIProcess if the suggestions view is closed.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2018-06-08  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Win] Fix initial value of HANDLE to INVALID_HANDLE_VALUE
+        https://bugs.webkit.org/show_bug.cgi?id=186405
+
+        The handle was not initialized at all. Initialized with INVALID_HANDLE_VALUE.
+
+        Reviewed by Per Arne Vollan.
+
+        * Platform/IPC/Attachment.h:
+        * Platform/IPC/win/AttachmentWin.cpp:
+        (IPC::Attachment::decode):
+
+2018-06-08  Brian Burg  <bburg@apple.com>
+
+        [Cocoa] Web Automation: include browser name and version in listing for automation targets
+        https://bugs.webkit.org/show_bug.cgi?id=186204
+        <rdar://problem/36950423>
+
+        Reviewed by Darin Adler.
+
+        Add a new delegate method that allows the client to set the name and version
+        of the browser as returned in the 'browserName' and 'browserVersion' capabilities.
+        If the delegate methods are not implemented, try to get this information from
+        the main bundle.
+
+        In the RWI protocol, these fields are added to automation target listings.
+
+        * UIProcess/API/Cocoa/_WKAutomationDelegate.h:
+        * UIProcess/Cocoa/AutomationClient.h:
+        * UIProcess/Cocoa/AutomationClient.mm:
+        (WebKit::AutomationClient::AutomationClient):
+        (WebKit::AutomationClient::browserName const):
+        (WebKit::AutomationClient::browserVersion const):
+
+2018-06-08  Per Arne Vollan  <pvollan@apple.com>
+
+        Run display links in the UI process when ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING) is true.
+        https://bugs.webkit.org/show_bug.cgi?id=186379
+
+        Reviewed by Brent Fulgham.
+
+        Replace __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400 with ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING).
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::dispatchActivityStateChange):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/mac/DisplayLink.cpp:
+        * UIProcess/mac/DisplayLink.h:
+        * UIProcess/mac/WebPageProxyMac.mm:
+        * WebProcess/WebPage/DrawingArea.cpp:
+        * WebProcess/WebPage/mac/DrawingAreaMac.cpp:
+
+2018-06-08  Per Arne Vollan  <pvollan@apple.com>
+
+        Send display link IPC message from display link thread.
+        https://bugs.webkit.org/show_bug.cgi?id=186429
+
+        Reviewed by Geoffrey Garen.
+
+        When the display link callback is firing on the display link thread in the UI process,
+        we schedule a function to be called on the main thread to send the IPC message to the
+        WebContent process. Since Connection::send is thread-safe, we can just send the message
+        from the display link thread, instead. This should be a small performance improvement.
+
+        * UIProcess/mac/DisplayLink.cpp:
+        (WebKit::DisplayLink::DisplayLink):
+        (WebKit::DisplayLink::displayLinkCallback):
+        * UIProcess/mac/DisplayLink.h:
+
 2018-06-07  Chris Dumez  <cdumez@apple.com>
 
         Add base class to get WeakPtrFactory member and avoid some boilerplate code

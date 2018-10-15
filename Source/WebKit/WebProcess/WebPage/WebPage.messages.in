@@ -126,6 +126,11 @@ messages -> WebPage LegacyReceiver {
     DidChooseColor(WebCore::Color color)
 #endif
 
+#if ENABLE(DATALIST_ELEMENT)
+    DidSelectDataListOption(String selectedOption);
+    DidCloseSuggestions();
+#endif
+
 #if ENABLE(CONTEXT_MENUS)
     ContextMenuHidden()
     ContextMenuForKeyEvent()
@@ -134,7 +139,7 @@ messages -> WebPage LegacyReceiver {
     ScrollBy(uint32_t scrollDirection, uint32_t scrollGranularity)
     CenterSelectionInVisibleArea()
 
-    GoToBackForwardItem(uint64_t navigationID, struct WebCore::BackForwardItemIdentifier backForwardItemID, enum WebCore::FrameLoadType backForwardType, enum WebCore::NavigationPolicyCheck navigationPolicyCheck)
+    GoToBackForwardItem(uint64_t navigationID, struct WebCore::BackForwardItemIdentifier backForwardItemID, enum WebCore::FrameLoadType backForwardType, enum WebCore::ShouldTreatAsContinuingLoad shouldTreatAsContinuingLoad)
     TryRestoreScrollPosition()
 
     LoadURLInFrame(WebCore::URL url, uint64_t frameID)
@@ -175,6 +180,7 @@ messages -> WebPage LegacyReceiver {
     GetSourceForFrame(uint64_t frameID, WebKit::CallbackID callbackID)
     GetWebArchiveOfFrame(uint64_t frameID, WebKit::CallbackID callbackID)
     RunJavaScriptInMainFrame(String script, bool forceUserGesture, WebKit::CallbackID callbackID)
+    RunJavaScriptInMainFrameScriptWorld(String script, bool forceUserGesture, String worldName, WebKit::CallbackID callbackID)
     ForceRepaint(WebKit::CallbackID callbackID)
 
 #if PLATFORM(COCOA)

@@ -25,14 +25,18 @@
 
 #pragma once
 
-#include "MiniBrowser.h"
+#include "BrowserWindow.h"
 #include <memory>
 #include <string>
 #include <wtf/RefPtr.h>
 
 class MainWindow : public RefCounted<MainWindow> {
 public:
-    static Ref<MainWindow> create();
+    enum class BrowserWindowType {
+        WebKit,
+        WebKitLegacy
+    };
+    static Ref<MainWindow> create(BrowserWindowType);
 
     ~MainWindow();
     bool init(HINSTANCE hInstance, bool usesLayeredWebView = false, bool pageLoadTesting = false);
@@ -51,7 +55,7 @@ private:
     static std::wstring s_windowClass;
     static size_t s_numInstances;
 
-    MainWindow();
+    MainWindow(BrowserWindowType);
     bool toggleMenuItem(UINT menuID);
     void onURLBarEnter();
     void updateDeviceScaleFactor();
@@ -62,5 +66,6 @@ private:
     HWND m_hForwardButtonWnd { nullptr };
     HWND m_hCacheWnd { nullptr };
     HGDIOBJ m_hURLBarFont { nullptr };
+    BrowserWindowType m_browserWindowType;
     RefPtr<BrowserWindow> m_browserWindow;
 };

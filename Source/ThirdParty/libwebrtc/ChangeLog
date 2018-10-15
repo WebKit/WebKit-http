@@ -1,3 +1,40 @@
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Clean up and modernize some build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=186463
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Removed definition for macOS 10.11.
+        * Configurations/DebugRelease.xcconfig: Ditto.
+        * Configurations/Version.xcconfig: Removed definitions for macOS 10.10 and 10.11, and added
+          definitions for later versions.
+        * Configurations/WebKitTargetConditionals.xcconfig: Removed definitions for macOS 10.11.
+        * Configurations/opus.xcconfig: Simplified the definition of SSE4_FLAG now that macOS 10.12
+          is the earliest supported version.
+
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        Added missing file references to the Configuration group.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2018-06-07  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Minor ARC tidying of libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=186396
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig: Set CLANG_ENABLE_OBJC_ARC here as we will eventually be
+        doing in all the various Base.xcconfig files as we make progress on conversion.
+
+        * Configurations/libwebrtc.xcconfig: Removed override of CLANG_ENABLE_OBJC_ARC here and
+        also removed five other redundant settings that match Base.xcconfig.
+
+        * libwebrtc.xcodeproj/project.pbxproj: Removed explicit -fobjc-arc that was set on
+        one particular source file, since that's already the default for the project.
+
 2018-06-04  Youenn Fablet  <youenn@apple.com>
 
         [WK1] Add an option to restrict communication to localhost sockets

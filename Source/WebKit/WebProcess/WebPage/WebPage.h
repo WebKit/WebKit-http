@@ -157,7 +157,7 @@ class URL;
 class VisiblePosition;
 
 enum SyntheticClickType : int8_t;
-enum class NavigationPolicyCheck;
+enum class ShouldTreatAsContinuingLoad;
 enum class TextIndicatorPresentationTransition : uint8_t;
 
 struct BackForwardItemIdentifier;
@@ -200,6 +200,7 @@ class VisibleContentRectUpdateInfo;
 class WebColorChooser;
 class WebContextMenu;
 class WebContextMenuItemData;
+class WebDataListSuggestionPicker;
 class WebDocumentLoader;
 class WebEvent;
 class WebFrame;
@@ -360,6 +361,12 @@ public:
     void setActiveColorChooser(WebColorChooser*);
     void didChooseColor(const WebCore::Color&);
     void didEndColorPicker();
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+    void setActiveDataListSuggestionPicker(WebDataListSuggestionPicker*);
+    void didSelectDataListOption(const String&);
+    void didCloseSuggestions();
 #endif
 
     WebOpenPanelResultListener* activeOpenPanelResultListener() const { return m_activeOpenPanelResultListener.get(); }
@@ -1153,7 +1160,7 @@ private:
     void loadAlternateHTMLString(const LoadParameters&);
     void navigateToPDFLinkWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
     void reload(uint64_t navigationID, uint32_t reloadOptions, SandboxExtension::Handle&&);
-    void goToBackForwardItem(uint64_t navigationID, const WebCore::BackForwardItemIdentifier&, WebCore::FrameLoadType, WebCore::NavigationPolicyCheck);
+    void goToBackForwardItem(uint64_t navigationID, const WebCore::BackForwardItemIdentifier&, WebCore::FrameLoadType, WebCore::ShouldTreatAsContinuingLoad);
     void tryRestoreScrollPosition();
     void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&, CallbackID);
     void updateIsInWindow(bool isInitialState = false);
@@ -1215,7 +1222,9 @@ private:
     void getSelectionAsWebArchiveData(CallbackID);
     void getSourceForFrame(uint64_t frameID, CallbackID);
     void getWebArchiveOfFrame(uint64_t frameID, CallbackID);
+    void runJavaScript(const String&, bool forceUserGesture, std::optional<String> worldName, CallbackID);
     void runJavaScriptInMainFrame(const String&, bool forceUserGesture, CallbackID);
+    void runJavaScriptInMainFrameScriptWorld(const String&, bool forceUserGesture, const String& worldName, CallbackID);
     void forceRepaint(CallbackID);
     void takeSnapshot(WebCore::IntRect snapshotRect, WebCore::IntSize bitmapSize, uint32_t options, CallbackID);
 
@@ -1545,6 +1554,10 @@ private:
 
 #if ENABLE(INPUT_TYPE_COLOR)
     WebColorChooser* m_activeColorChooser { nullptr };
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+    WebDataListSuggestionPicker* m_activeDataListSuggestionPicker { nullptr };
 #endif
 
     RefPtr<WebOpenPanelResultListener> m_activeOpenPanelResultListener;

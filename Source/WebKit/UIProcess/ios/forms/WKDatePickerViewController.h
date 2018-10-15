@@ -25,6 +25,17 @@
 
 #pragma once
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKDatePickerViewControllerAdditions.h>
+#if PLATFORM(WATCHOS)
+
+#import "WKQuickboardListViewController.h"
+
+@interface WKDatePickerViewController : PUICQuickboardViewController
+
+- (instancetype)initWithDelegate:(id <WKQuickboardViewControllerDelegate>)delegate NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithCoder:(NSCoder *)aDecoder NS_UNAVAILABLE;
+
+@property (nonatomic, weak) id <WKQuickboardViewControllerDelegate> delegate;
+
+@end
+
 #endif

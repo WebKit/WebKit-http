@@ -1,3 +1,714 @@
+2018-06-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        TileFirstPaint strategy for async image decoding should be disabled for non root RenderLayers
+        https://bugs.webkit.org/show_bug.cgi?id=186336
+        <rdar://problem/40808099>
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/async-image-composited-show-expected.html: Added.
+        * fast/images/async-image-composited-show.html: Added.
+
+2018-06-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Mark some flaky tests and expected failures.
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+
+2018-06-13  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE] Build getUserMedia support
+        https://bugs.webkit.org/show_bug.cgi?id=186547
+
+        Reviewed by Alejandro G. Castro.
+
+        * platform/gtk/TestExpectations: Mark some tests as potentially passing (they fail only
+        when built in debug mode).
+        * platform/wpe/TestExpectations: Enable MediaStream tests.
+
+2018-06-13  Ms2ger  <Ms2ger@igalia.com>
+
+        Update expectations for WebCryptoAPI generateKey tests
+        https://bugs.webkit.org/show_bug.cgi?id=186591
+
+        Unreviewed test gardening.
+
+        These tests were split and moved around several times, and expectation
+        files for old names stuck around.
+
+        * TestExpectations: Remove reference to long-removed test.
+        * platform/gtk/TestExpectations: Remove reference to long-removed test.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures.worker-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDH.https.any-expected.txt: Copied from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDH.https.worker-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDH.https.any.worker-expected.txt: Renamed from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDH.worker-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDSA.https.any-expected.txt: Copied from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDSA.https.worker-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDSA.https.any.worker-expected.txt: Renamed from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDSA.worker-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.any-expected.txt: Copied from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.worker-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.any.worker-expected.txt: Renamed from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.worker-expected.txt.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes.worker-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_ECDH.worker-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_ECDSA.worker-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-PSS.worker-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures.https-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_ECDH.https-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_ECDSA.https-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_RSA-PSS.https-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_ECDH.https-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_ECDSA.https-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_RSA-PSS.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures.https.worker-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDH.https.any-expected.txt: Renamed from LayoutTests/platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDH.https.worker-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDH.https.any.worker-expected.txt: Renamed from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDH.https.worker-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDSA.https.any-expected.txt: Renamed from LayoutTests/platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDSA.https.worker-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDSA.https.any.worker-expected.txt: Renamed from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_ECDSA.https.worker-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.any-expected.txt: Renamed from LayoutTests/platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.worker-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.any.worker-expected.txt: Renamed from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.worker-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes.https.worker-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_ECDH.https.worker-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_ECDSA.https.worker-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-OAEP.https.worker-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-PSS.https.worker-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_ECDH.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_ECDSA.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures_RSA-PSS.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_ECDH.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_ECDSA.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_RSA-PSS.https-expected.txt: Removed.
+
+2018-06-13  Per Arne Vollan  <pvollan@apple.com>
+
+        A few layout tests are failing on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=186562
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-06-12  Zalan Bujtas  <zalan@apple.com>
+
+        Complex text handling should opt out of bounded text layout.
+        https://bugs.webkit.org/show_bug.cgi?id=186571
+        <rdar://problem/41060908>
+
+        Reviewed by Tim Horton.
+
+        * fast/text/complex-long-text-crash-expected.txt: Added.
+        * fast/text/complex-long-text-crash.html: Added.
+
+2018-06-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r232774.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Complex text handling should opt out of bounded text layout."
+        https://bugs.webkit.org/show_bug.cgi?id=186571
+        https://trac.webkit.org/changeset/232774
+
+2018-06-07  Justin Fan  <justin_fan@apple.com>
+
+        Import the 2.0.0 version of Khronos WebGL conformance suite
+        https://bugs.webkit.org/show_bug.cgi?id=181293
+        <rdar://problem/40654103>
+
+        Reviewed by Dean Jackson.
+
+        Original description and patch by Zan Dobersek <zdobersek@igalia.com>. 
+        Retrying patch with up-to-date revision of conformance suite:
+
+        "Import the 2.0.0 version of the WebGL conformance suite that's
+        maintained under the Khronos organization on GitHub:
+        https://github.com/KhronosGroup/WebGL.git
+
+        The following revision of this repository has been used for importing:
+        8ea92581353d18f50d25159489897ae634eb23b1
+
+        For importing purposes, the generate-webgl-tests.py script is modified
+        to import tests at version 2.0.0 or below. 2.0 is now used as the
+        default version for importing purposes. Additionally, the
+        GreaterThanOrEqualToVersion function is fixed to correctly compare 2.x
+        versions against 1.x.
+
+        The following generate-webgl-tests.py invocation was used:
+        $ python generate-webgl-tests.py -e -w ~/WebGL/conformance-suites/2.0.0
+
+        The 2.0.0 version of the conformance suite is composed of three parts:
+        - tests under conformance/ cover WebGL1 functionality,
+        - tests under conformance2/ cover WebGL2 functionality,
+        - tests under deqp/ are a port of the dEQP suite.
+        webkit-webgl-test-harness.js file is added under webgl/2.0.0/resources/
+        to properly integrate the imported tests with the WebKit testing
+        facilities.
+
+        The complete suite is for now skipped on all platforms. WebGL1 tests
+        should be passing in majority, with failures in that part of the suite
+        mirroring the ones experienced in the current 1.0.2 and 1.0.3 suites.
+        The WebGL2 support is still incomplete, and the conformance2/ pass rate
+        will reflect that. dEQP in majority utilizes WebGL2, so the pass rate
+        is similarly poor.
+
+        List of imported conformance suite files is omitted for brevity."
+
+        * TestExpectations: Skip the WebGL 1 (conformance) and WebGL 2 (conformance2) tests
+        * webgl/2.0.0/conformance: Added.
+        * webgl/2.0.0/conformance2: Added.
+        * webgl/2.0.0/deqp: Added.
+        * webgl/2.0.0/resources: Added.
+        * webgl/2.0.0/resources/webkit-webgl-test-harness.js:
+        (window.layoutTestController.window.console.log):
+        (window.layoutTestController.window.console.error):
+        (log):
+        (window.webglTestHarness.reportResults):
+        (window.webglTestHarness.notifyFinished):
+        * webgl/generate-webgl-tests.py:
+        (GreaterThanOrEqualToVersion):
+        * webgl/resources/js-test-pre.js:
+        (window.console.log):
+        (window.console.error):
+        (initNonKhronosFramework):
+        (this.initTestingHarness):
+        (nonKhronosFrameworkNotifyDone):
+        (reportTestResultsToHarness):
+        (notifyFinishedToHarness):
+        (_logToConsole):
+        (enableJSTestPreVerboseLogging):
+        (description):
+        (_addSpan):
+        (debug):
+        (escapeHTML):
+        (testPassed):
+        (testFailed):
+        (areArraysEqual):
+        (isMinusZero):
+        (isResultCorrect):
+        (stringify):
+        (evalAndLog):
+        (shouldBe):
+        (shouldNotBe):
+        (shouldBeTrue):
+        (shouldBeFalse):
+        (shouldBeNaN):
+        (shouldBeNull):
+        (shouldBeEqualToString):
+        (shouldEvaluateTo):
+        (shouldBeNonZero):
+        (shouldBeNonNull):
+        (shouldBeUndefined):
+        (shouldBeDefined):
+        (shouldBeGreaterThanOrEqual):
+        (expectTrue):
+        (shouldThrow):
+        (assertMsg):
+        (gc.gcRec):
+        (gc):
+        (finishTest):
+        * webgl/resources/webgl-test-harness.js:
+        (log):
+        (try.request.onreadystatechange):
+        (loadTextFileAsynchronous):
+        (getMajorVersion):
+        (getURLWithOptions):
+        (greaterThanOrEqualToVersion):
+        (copyObject):
+        (toCamelCase):
+        (getFileListImpl):
+        (getFileList):
+        (FilterURL):
+        (TestFile):
+        (Test):
+        (TestHarness):
+        (TestHarness.prototype.addFiles_):
+        (TestHarness.prototype.runTests):
+        (TestHarness.prototype.setTimeout):
+        (TestHarness.prototype.clearTimeout):
+        (TestHarness.prototype.startNextTest):
+        (TestHarness.prototype.startTest):
+        (TestHarness.prototype.getTest):
+        (TestHarness.prototype.reportResults):
+        (TestHarness.prototype.dequeTest):
+        (TestHarness.prototype.notifyFinished):
+        (TestHarness.prototype.timeout):
+        (TestHarness.prototype.setTimeoutDelay):
+        (WebGLTestHarnessModule):
+
+2018-06-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rebaseline RSA-PSS tests for High Sierra.
+
+        * platform/mac/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.any-expected.txt: Add missing whitespace.
+        * platform/mac/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.any.worker-expected.txt: Ditto.
+
+2018-06-12  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Unreviewed followup for r232736
+        https://bugs.webkit.org/show_bug.cgi?id=185698
+
+        Consider the case when the SVG animation starts before requestAnimationFrame()
+        is called. Store the value of animItem and compare it later with the value
+        of animItem after detaching it from the animated animList.
+
+        * svg/dom/animated-tearoff-list-remove-target.html:
+
+2018-06-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/console/webcore-logging.html as flaky on mac-wk2 debug.
+        https://bugs.webkit.org/show_bug.cgi?id=186425
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-06-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/video-buffering-allowed.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=186574
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-06-12  Zalan Bujtas  <zalan@apple.com>
+
+        Complex text handling should opt out of bounded text layout.
+        https://bugs.webkit.org/show_bug.cgi?id=186571
+        <rdar://problem/40801429>
+
+        Reviewed by Tim Horton.
+
+        * fast/text/complex-long-text-crash-expected.txt: Added.
+        * fast/text/complex-long-text-crash.html: Added.
+
+2018-06-12  David Fenton  <david_fenton@apple.com>
+
+        Rebaseline WebCrypto API tests for High Sierra after r232641.
+        https://bugs.webkit.org/show_bug.cgi?id=186565
+
+        Unreviewed test gardening.
+
+        * platform/mac-sierra/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.any-expected.txt: Added.
+        * platform/mac-sierra/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.any.worker-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.any-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures_RSA-PSS.https.any.worker-expected.txt: Added.
+
+2018-06-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit on watchOS] Upstream watchOS source additions to OpenSource (Part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=186442
+        <rdar://problem/40879364>
+
+        Reviewed by Tim Horton.
+
+        Upstream a couple of internal test expectations on watchOS.
+
+        * fast/viewport/extrazoom/viewport-adaptations-after-navigation-expected.txt: Added.
+        * fast/viewport/extrazoom/viewport-disable-extra-zoom-adaptations-expected.txt: Added.
+
+2018-06-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION(r228724): Occasional crash when executing ReplaceSelectionCommand at the end of the document
+        https://bugs.webkit.org/show_bug.cgi?id=186555
+        <rdar://problem/39703004>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new layout test demonstrating the crash. The test passes if the right text is inserted into the DOM, and
+        we don't hit a crash.
+
+        * editing/execCommand/insert-apple-style-span-at-document-end-expected.txt: Added.
+        * editing/execCommand/insert-apple-style-span-at-document-end.html: Added.
+
+2018-06-12  Jianjun Zhu  <jianjun.zhu@intel.com>
+
+        Hash deviceId and groupId of MediaTrackCapabilities.
+        https://bugs.webkit.org/show_bug.cgi?id=186471
+
+        Reviewed by Eric Carlson.
+
+        This change makes the identifier for the source of the MediaStreamTrack
+        has the same value returned by enumerateDevices(). It also prevents real
+        device ID being leaked.
+
+        * fast/mediastream/MediaStreamTrack-getCapabilities.html:
+
+2018-06-12  Per Arne Vollan  <pvollan@apple.com>
+
+        A few layout tests are failing on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=186562
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-06-11  Youenn Fablet  <youenn@apple.com>
+
+        Improve error messages in case FetchEvent.respondWith has a rejected promise
+        https://bugs.webkit.org/show_bug.cgi?id=186368
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+        * http/tests/workers/service/basic-fetch.https-expected.txt:
+
+2018-06-11  Chris Dumez  <cdumez@apple.com>
+
+        http/tests/security/xss-DENIED-script-inject-into-inactive-window2.html times out with PSON enabled
+        https://bugs.webkit.org/show_bug.cgi?id=186546
+
+        Reviewed by Brady Eidson.
+
+        Add layout test coverage.
+
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window2-pson-expected.txt: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window2-pson.html: Added.
+
+2018-06-11  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Layout Test svg/dom/animated-tearoff-list-remove-target.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=185698
+        <rdar://problem/40341200>
+
+        Reviewed by Daniel Bates.
+
+        The test is flaky because we get the animVal.getItem(0) of the 'x' attribute
+        from the target element without initializing this attribute with a base value.
+
+        The test assumes the animator would set the animVal of the 'x' attribute
+        from the 'from' attribute of the <animate> element before animVal.getItem(0)
+        is executed. But this may not always happen. Therefore the test will get 
+        the 'IndexSizeError' exception and it will time out.
+
+        The fix is:
+        -- Initialize the attribute of the target element by a base value.
+        -- Use requestAnimationFrame() instead of using setTimeout() to make the
+           test deterministic.
+        -- Allow the animation to advance one more step after kicking off the GC
+           to ensure the variable 'animItem' is detached from animVal.getItem(0).
+
+        * svg/dom/animated-tearoff-list-remove-target.html:
+
+2018-06-11  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed gardening; add a late endTest(), in case none of the other events fire in time.
+
+        * media/track/track-delete-during-setup.html:
+
+2018-06-11  Mark Lam  <mark.lam@apple.com>
+
+        Add support for webkit-test-runner jscOptions in DumpRenderTree and WebKitTestRunner.
+        https://bugs.webkit.org/show_bug.cgi?id=186451
+        <rdar://problem/40875792>
+
+        Reviewed by Tim Horton.
+
+        * js/intl-numberformat-format-to-parts.html:
+        * js/intl-pluralrules.html:
+        * js/script-tests/intl-numberformat-format-to-parts.js:
+
+2018-06-11  Chris Dumez  <cdumez@apple.com>
+
+        http/tests/security/cors-post-redirect-307.html fails with PSON enabled
+        https://bugs.webkit.org/show_bug.cgi?id=186441
+
+        Reviewed by Brady Eidson.
+
+        Add layout test coverage.
+
+        * http/tests/security/cors-post-redirect-307-pson-expected.txt: Added.
+        * http/tests/security/cors-post-redirect-307-pson.html: Added.
+
+2018-06-11  Chris Dumez  <cdumez@apple.com>
+
+        Allow enabling PSON in layout tests without window.open support
+        https://bugs.webkit.org/show_bug.cgi?id=186537
+
+        Reviewed by Geoffrey Garen.
+
+        Update layout test which requires window.open support in addition to PSON.
+
+        * http/tests/navigation/process-swap-window-open.html:
+
+2018-06-11  Youenn Fablet  <youenn@apple.com>
+
+        Accept request header values should be more tightly checked after r232572 in case of CORS load
+        https://bugs.webkit.org/show_bug.cgi?id=186533
+        <rdar://problem/40933880>
+
+        Reviewed by Darin Adler.
+
+        Added test to check Accept header value preflight.
+        Updated test to check that a preflight really happens if expected.
+
+        * http/tests/xmlhttprequest/cors-non-standard-safelisted-headers-should-trigger-preflight-expected.txt:
+        * http/tests/xmlhttprequest/cors-non-standard-safelisted-headers-should-trigger-preflight.html:
+        * http/tests/xmlhttprequest/resources/cors-preflight-safelisted-headers-responder.php:
+
+2018-06-11  Antti Koivisto  <antti@apple.com>
+
+        Fix spelling.
+
+        * http/tests/cache/disk-cache/disk-cache-media-small.html:
+
+2018-06-11  Brady Eidson  <beidson@apple.com>
+
+        http/tests/navigation/https-in-page-cache.html fails with process swapping on.
+        https://bugs.webkit.org/show_bug.cgi?id=186532
+
+        Reviewed by Geoffrey Garen.
+
+        * http/tests/navigation/resources/https-in-page-cache-1.php:
+        * http/tests/navigation/resources/https-in-page-cache-2.php:
+        * http/tests/navigation/resources/https-in-page-cache-3.html:
+
+2018-06-11  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (Mojave): LayoutTest http/tests/cache/disk-cache/disk-cache-media-small.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=186482
+        <rdar://problem/40924056>
+
+        Reviewed by Zalan Bujtas.
+
+        The test was sensitive to which exact ranges the system media framework would request.
+
+        * http/tests/cache/disk-cache/disk-cache-media-small-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-media-small.html:
+
+        Don't print out the ranges, just check they are all coming from the right source.
+
+2018-06-11  Per Arne Vollan  <pvollan@apple.com>
+
+        Some CSS animations tests are failing on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=186522
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-06-11  Philippe Normand  <pnormand@igalia.com>
+
+        [webkitpy] PHP7.2 support on Debian platforms
+        https://bugs.webkit.org/show_bug.cgi?id=186521
+
+        Reviewed by Michael Catanzaro.
+
+        * http/conf/debian-httpd-2.4-php7.2.conf: Added.
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_setting-effect.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183850
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * TestExpectations:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_setting-effect.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183849
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * TestExpectations:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_cssanimation-animationname.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183838
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * TestExpectations:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_csstransition-transitionproperty.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183835
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * TestExpectations:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_animation-starttime.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183833
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * TestExpectations:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-reverse.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183832
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * TestExpectations:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_animation-pausing.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183829
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * TestExpectations:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_animation-finished.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183827
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * TestExpectations:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_animation-currenttime.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183825
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * TestExpectations:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-id.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183824
+
+        Unreviewed.
+
+        This test has been passing reliably on the bots.
+
+        * TestExpectations:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_animation-computed-timing.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183823
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * TestExpectations:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-finished.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183822
+
+        Unreviewed.
+
+        This test has been passing reliably on the bots.
+
+        * TestExpectations:
+
+2018-06-09  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r230480): Cannot adjust photo position on LinkedIn's profile page
+        https://bugs.webkit.org/show_bug.cgi?id=186464
+        <rdar://problem/40369448>
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/positioned-image-when-transform-is-present-expected.html: Added.
+        * fast/images/positioned-image-when-transform-is-present.html: Added.
+
+2018-06-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(macOS Mojave): move-by-word-visually-multi-line.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=186454
+
+        Reviewed by Darin Adler.
+
+        Added a multi-line test case which causes a failure under Mac editing behavior. The test case is symmetric to ml_1.
+
+        * editing/selection/move-by-word-visually-mac-expected.txt:
+        * editing/selection/move-by-word-visually-mac.html:
+        * editing/selection/move-by-word-visually-multi-line-expected.txt:
+        * editing/selection/move-by-word-visually-multi-line.html:
+
+2018-06-07  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION:  Cannot listen to audio on Google Translate with side switch set to "vibrate"
+        https://bugs.webkit.org/show_bug.cgi?id=186415
+        <rdar://problem/40584651>
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/media/audio-session-category-audio-autoplay-expected.txt: Added.
+        * platform/mac/media/audio-session-category-audio-autoplay.html: Added.
+
+2018-06-08  Brendan McLoughlin  <brendan@bocoup.com>
+
+        Sync web-platform-tests repo to 197cdad
+        https://bugs.webkit.org/show_bug.cgi?id=186267
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        * platform/ios/imported/w3c/web-platform-tests/beacon/headers/header-content-type-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/beacon/headers/header-content-type-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors-large-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors-small-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-PSS.https.worker-expected.txt: Removed.
+        * platform/mac/imported/w3c/web-platform-tests/beacon/headers/header-content-type-expected.txt:
+
+2018-06-08  Chris Dumez  <cdumez@apple.com>
+
+        http/tests/navigation/https-no-store-subframe-in-page-cache.html fails with PSON enabled
+        https://bugs.webkit.org/show_bug.cgi?id=186440
+
+        Reviewed by Geoffrey Garen.
+
+        Override the PageCache setting *after* the cross-origin navigation. It was previously
+        overriden before the navigation and thus would not persist with process swap on navigation
+        enabled.
+
+        * http/tests/navigation/https-no-store-subframe-in-page-cache.html:
+        * http/tests/navigation/resources/https-no-store-subframe-in-page-cache.html:
+
+2018-06-08  Chris Dumez  <cdumez@apple.com>
+
+        http/tests/cache/partitioned-cache.html fails with PSON enabled
+        https://bugs.webkit.org/show_bug.cgi?id=186438
+
+        Reviewed by Geoffrey Garen.
+
+        http/tests/cache/partitioned-cache.html was overriding a setting then navigating
+        cross-origin, expecting the setting override to persist. However, with process
+        swap on navigation enabled, the setting does not persist. To address the issue,
+        we override the setting again in the document we navigate to.
+
+        * http/tests/cache/partitioned-cache-expected.txt:
+        * http/tests/cache/resources/partitioned-cache-loader.html:
+
 2018-06-07  Mark Lam  <mark.lam@apple.com>
 
         Enhance run-jsc-stress-tests to allow a test to specify test specific options required for it to run.

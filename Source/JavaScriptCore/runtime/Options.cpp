@@ -48,7 +48,7 @@
 #include <crt_externs.h>
 #endif
 
-#if OS(WINDOWS) || OS(HAIKU)
+#if (OS(WINDOWS) || OS(HAIKU)) && ENABLE(JIT)
 #include "MacroAssembler.h"
 #endif
 
@@ -392,7 +392,7 @@ static void recomputeDependentOptions()
     Options::useConcurrentGC() = false;
 #endif
     
-#if (OS(WINDOWS) || OS(HAIKU)) && CPU(X86) 
+#if (OS(WINDOWS) || OS(HAIKU)) && ENABLE(JIT) && CPU(X86) 
     // Disable JIT on Windows if SSE2 is not present 
     if (!MacroAssemblerX86::supportsFloatingPoint())
         Options::useJIT() = false;
@@ -599,6 +599,11 @@ void Options::dumpOptionsIfNeeded()
     }
 }
 
+static bool isSeparator(char c)
+{
+    return isASCIISpace(c) || (c == ',');
+}
+
 bool Options::setOptions(const char* optionsStr)
 {
     Vector<char*> options;
@@ -609,8 +614,8 @@ bool Options::setOptions(const char* optionsStr)
     char* p = optionsStrCopy;
 
     while (p < end) {
-        // Skip white space.
-        while (p < end && isASCIISpace(*p))
+        // Skip separators (white space or commas).
+        while (p < end && isSeparator(*p))
             p++;
         if (p == end)
             break;
@@ -637,8 +642,8 @@ bool Options::setOptions(const char* optionsStr)
             hasStringValue = true;
         }
 
-        // Find next white space.
-        while (p < end && !isASCIISpace(*p))
+        // Find next separator (white space or commas).
+        while (p < end && !isSeparator(*p))
             p++;
         if (!p)
             p = end; // No more " " separator. Hence, this is the last arg.

@@ -38,7 +38,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) && PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
 
 class DisplayRefreshMonitorMac : public DisplayRefreshMonitor {
 public:
@@ -55,6 +55,8 @@ public:
 private:
     explicit DisplayRefreshMonitorMac(PlatformDisplayID, WebPage&);
     
+    bool hasRequestedRefreshCallback() const override { return m_hasSentMessage; }
+
     Ref<WebPage> m_webPage;
     bool m_hasSentMessage { false };
     unsigned m_observerID;

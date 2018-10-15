@@ -76,6 +76,7 @@
 #include "WebContextMenu.h"
 #include "WebContextMenuClient.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebDataListSuggestionPicker.h"
 #include "WebDatabaseProvider.h"
 #include "WebDiagnosticLoggingClient.h"
 #include "WebDocumentLoader.h"
@@ -1267,7 +1268,7 @@ void WebPage::loadRequest(LoadParameters&& loadParameters)
     FrameLoadRequest frameLoadRequest { *m_mainFrame->coreFrame(), loadParameters.request, ShouldOpenExternalURLsPolicy::ShouldNotAllow };
     ShouldOpenExternalURLsPolicy externalURLsPolicy = static_cast<ShouldOpenExternalURLsPolicy>(loadParameters.shouldOpenExternalURLsPolicy);
     frameLoadRequest.setShouldOpenExternalURLsPolicy(externalURLsPolicy);
-    frameLoadRequest.setShouldCheckNavigationPolicy(loadParameters.shouldCheckNavigationPolicy);
+    frameLoadRequest.setShouldTreatAsContinuingLoad(loadParameters.shouldTreatAsContinuingLoad);
 
     corePage()->userInputBridge().loadRequest(WTFMove(frameLoadRequest));
 
@@ -1392,7 +1393,7 @@ void WebPage::reload(uint64_t navigationID, uint32_t reloadOptions, SandboxExten
     }
 }
 
-void WebPage::goToBackForwardItem(uint64_t navigationID, const BackForwardItemIdentifier& backForwardItemID, FrameLoadType backForwardType, NavigationPolicyCheck navigationPolicyCheck)
+void WebPage::goToBackForwardItem(uint64_t navigationID, const BackForwardItemIdentifier& backForwardItemID, FrameLoadType backForwardType, ShouldTreatAsContinuingLoad shouldTreatAsContinuingLoad)
 {
     SendStopResponsivenessTimer stopper;
 
@@ -1408,7 +1409,7 @@ void WebPage::goToBackForwardItem(uint64_t navigationID, const BackForwardItemId
     ASSERT(!m_pendingNavigationID);
     m_pendingNavigationID = navigationID;
 
-    m_page->goToItem(*item, backForwardType, navigationPolicyCheck);
+    m_page->goToItem(*item, backForwardType, shouldTreatAsContinuingLoad);
 }
 
 void WebPage::tryRestoreScrollPosition()
@@ -2935,7 +2936,7 @@ KeyboardUIMode WebPage::keyboardUIMode()
     return static_cast<KeyboardUIMode>((fullKeyboardAccessEnabled ? KeyboardAccessFull : KeyboardAccessDefault) | (m_tabToLinks ? KeyboardAccessTabsToLinks : 0));
 }
 
-void WebPage::runJavaScriptInMainFrame(const String& script, bool forceUserGesture, CallbackID callbackID)
+void WebPage::runJavaScript(const String& script, bool forceUserGesture, std::optional<String> worldName, CallbackID callbackID)
 {
     // NOTE: We need to be careful when running scripts that the objects we depend on don't
     // disappear during script execution.
@@ -2944,16 +2945,29 @@ void WebPage::runJavaScriptInMainFrame(const String& script, bool forceUserGestu
     JSLockHolder lock(commonVM());
     bool hadException = true;
     ExceptionDetails details;
-    if (JSValue resultValue = m_mainFrame->coreFrame()->script().executeScript(script, forceUserGesture, &details)) {
-        hadException = false;
-        serializedResultValue = SerializedScriptValue::create(m_mainFrame->jsContext(),
-            toRef(m_mainFrame->coreFrame()->script().globalObject(mainThreadNormalWorld())->globalExec(), resultValue), nullptr);
+    auto* world = worldName ? InjectedBundleScriptWorld::find(worldName.value()) : &InjectedBundleScriptWorld::normalWorld();
+    if (world) {
+        if (JSValue resultValue = m_mainFrame->coreFrame()->script().executeScriptInWorld(world->coreWorld(), script, forceUserGesture, &details)) {
+            hadException = false;
+            serializedResultValue = SerializedScriptValue::create(m_mainFrame->jsContextForWorld(world),
+                toRef(m_mainFrame->coreFrame()->script().globalObject(world->coreWorld())->globalExec(), resultValue), nullptr);
+        }
     }
 
     IPC::DataReference dataReference;
     if (serializedResultValue)
         dataReference = serializedResultValue->data();
     send(Messages::WebPageProxy::ScriptValueCallback(dataReference, hadException, details, callbackID));
+}
+
+void WebPage::runJavaScriptInMainFrame(const String& script, bool forceUserGesture, CallbackID callbackID)
+{
+    runJavaScript(script, forceUserGesture, std::nullopt, callbackID);
+}
+
+void WebPage::runJavaScriptInMainFrameScriptWorld(const String& script, bool forceUserGesture, const String& worldName, CallbackID callbackID)
+{
+    runJavaScript(script, forceUserGesture, worldName, callbackID);
 }
 
 void WebPage::getContentsAsString(CallbackID callbackID)
@@ -3552,6 +3566,26 @@ void WebPage::didEndColorPicker()
 void WebPage::didChooseColor(const WebCore::Color& color)
 {
     m_activeColorChooser->didChooseColor(color);
+}
+
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+
+void WebPage::setActiveDataListSuggestionPicker(WebDataListSuggestionPicker* dataListSuggestionPicker)
+{
+    m_activeDataListSuggestionPicker = dataListSuggestionPicker;
+}
+
+void WebPage::didSelectDataListOption(const String& selectedOption)
+{
+    m_activeDataListSuggestionPicker->didSelectOption(selectedOption);
+}
+
+void WebPage::didCloseSuggestions()
+{
+    m_activeDataListSuggestionPicker->didCloseSuggestions();
+    m_activeDataListSuggestionPicker = nullptr;
 }
 
 #endif

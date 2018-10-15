@@ -1,3 +1,615 @@
+2018-06-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [JSCOnly] Add a MIPS32el JSCOnly EWS (follow-up fix)
+        https://bugs.webkit.org/show_bug.cgi?id=186523
+
+        Unreviewed follow-up fix after r232748
+
+        * Scripts/webkitpy/common/config/ports.py:
+        (JscOnlyPort.build_jsc_command): It is needed to pass a --jsc-only argument to the build-jsc script.
+        * Scripts/webkitpy/common/config/ports_unittest.py:
+        (DeprecatedPortTest.test_jsconly_port):
+
+2018-06-12  Thibault Saunier  <tsaunier@igalia.com>
+
+        webkitpy: Implement coredumpctl support on linux
+        https://bugs.webkit.org/show_bug.cgi?id=184039
+
+        Reviewed by Daniel Bates.
+
+        And start using an Executive to run subprocesses
+        in GDBCrashLogGenerator.
+
+        Unit tests adapted to the new API and still passing.
+
+        * Scripts/webkitpy/port/linux_get_crash_log.py:
+        (GDBCrashLogGenerator):
+        (GDBCrashLogGenerator._get_trace_from_systemd):
+        (GDBCrashLogGenerator.generate_crash_log):
+
+2018-06-12  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: fix one test (can't find jsc)
+        https://bugs.webkit.org/show_bug.cgi?id=186573
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/webkitperl/test262_unittest/test262-runner-tests.pl:
+        fix subtest to use mock JSC
+
+2018-06-12  Tim Horton  <timothy_horton@apple.com>
+
+        Add a API test for r232601
+        https://bugs.webkit.org/show_bug.cgi?id=186417
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/AnimatedResize.mm:
+        (immediateSubviewOfClass):
+        (TEST):
+        Ensure that we put the view hierarchy back together (move WKContentView
+        out of the animated resize view) and unhide WKContentView after a
+        resize-with-hidden-content.
+
+2018-06-12  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: add unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=185783
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/webkitperl/test262_unittest/README: Added.
+        * Scripts/webkitperl/test262_unittest/fixtures/expectations-compare.yaml: Added.
+        * Scripts/webkitperl/test262_unittest/fixtures/expectations.yaml: Added.
+        * Scripts/webkitperl/test262_unittest/fixtures/mock-jsc-fail-new-error.pl: Added.
+        * Scripts/webkitperl/test262_unittest/fixtures/mock-jsc-fail.pl: Added.
+        * Scripts/webkitperl/test262_unittest/fixtures/mock-jsc-pass.pl: Added.
+        * Scripts/webkitperl/test262_unittest/fixtures/test/expected-to-fail-now-failing-with-new-error.js: Added.
+        * Scripts/webkitperl/test262_unittest/fixtures/test/expected-to-fail-now-failing.js: Added.
+        * Scripts/webkitperl/test262_unittest/fixtures/test/expected-to-fail-now-passing.js: Added.
+        (f):
+        * Scripts/webkitperl/test262_unittest/fixtures/test/expected-to-pass-now-failing.js: Added.
+        * Scripts/webkitperl/test262_unittest/fixtures/test/fail.js: Added.
+        * Scripts/webkitperl/test262_unittest/fixtures/test/pass.js: Added.
+        (f):
+        * Scripts/webkitperl/test262_unittest/test262-runner-tests.pl: Added.
+
+2018-06-12  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: minor updates
+        https://bugs.webkit.org/show_bug.cgi?id=186399
+
+        - If harness files cannot be found in a CLI supplied
+        test262 path, then default to webkit's test262 harness files.
+        - Lazily create the test262-results directory (only right before
+        writing to it)
+       - If an expectation file is supplied via the CLI, save to the
+        supplied location instead of the default webkit location
+        (JSTest/test262/expectation.yaml).
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+        (main):
+        (compileTest):
+        (processResult):
+        (getHarness):
+        (summarizeResults):
+
+2018-06-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [JSCOnly] Add a MIPS32el JSCOnly EWS
+        https://bugs.webkit.org/show_bug.cgi?id=186523
+
+        Reviewed by Michael Catanzaro.
+
+        Add a new jsc-mips-ews queue that will execute build-jsc for the jsc-only (Linux) port.
+        The worker(s) on this queue should be pre-configured to cross-build JSC for MIPS32el.
+
+        * QueueStatusServer/config/queues.py:
+        * QueueStatusServer/model/queues.py:
+        (Queue.display_name):
+        * Scripts/webkitpy/common/config/ews.json:
+        * Scripts/webkitpy/common/config/ports.py:
+        (DeprecatedPort.port):
+        (WpePort.run_webkit_tests_command):
+        (JscOnlyPort):
+        (JscOnlyPort.build_jsc_command):
+        * Scripts/webkitpy/common/config/ports_unittest.py:
+        (DeprecatedPortTest.test_wincairo_port):
+        (DeprecatedPortTest):
+        (DeprecatedPortTest.test_jsconly_port):
+        * Scripts/webkitpy/port/factory.py:
+        (PortFactory):
+        * Scripts/webkitpy/port/jsc_only.py: Added. Add a basic port definition. Required by the EWS tooling.
+        (JscOnlyPort):
+        (JscOnlyPort.__init__):
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        (test_ews_name):
+
+2018-06-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Add run-web-platform-tests script
+        https://bugs.webkit.org/show_bug.cgi?id=183356
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Add the run-web-platform-tests script that allows running WebKit builds
+        against the external web-platform-tests project.
+
+        The script sets up all the port-specific information, including the
+        display driver. If no web-platform-tests repository location is
+        specified, the TestDownloader utility is used to clone the repository,
+        and path to that clone is leveraged instead.
+
+        Port-specific TestManifest.ini and TestExpectations.json file paths are
+        then constructed, bailing if any of the files is missing. The JSON file
+        is then used to construct the metadata file tree, creating an .ini file
+        for each test that is disabled, has a certain expectation, or has
+        subtests that themselves have certain expectations. This metadata tree
+        is built under the build directory, and is purged and reconstructed for
+        each separate run.
+
+        Lastly, the WPT python module is imported from the web-platform-tests
+        source location, and wpt.main() is invoked along with all the necessary
+        arguments that set up a web-platform-tests suite run using the WebKit
+        product.
+
+        * Scripts/run-web-platform-tests: Added.
+        * Scripts/webkitpy/common/config/ports_mock.py:
+        (MockPort.run_bindings_tests_command):
+        (MockPort):
+        (MockPort.wpt_metadata_directory):
+        (MockPort.wpt_manifest_file):
+        * Scripts/webkitpy/port/base.py:
+        (Port.wpt_metadata_directory):
+        (Port):
+        (Port.wpt_manifest_file):
+        * Scripts/webkitpy/w3c/common.py:
+        (is_file_exportable):
+        (WPTPaths):
+        (WPTPaths.checkout_directory):
+        (WPTPaths.wpt_checkout_path):
+        * Scripts/webkitpy/w3c/test_downloader.py:
+        (TestDownloader.clone_tests):
+        (TestDownloader):
+        (TestDownloader.download_tests):
+        * Scripts/webkitpy/w3c/test_exporter.py:
+        (WebPlatformTestExporter.__init__):
+        * Scripts/webkitpy/w3c/wpt_runner.py: Added.
+        (main):
+        (parse_args):
+        (create_webdriver):
+        (spawn_wpt):
+        (WPTRunner):
+        (WPTRunner.__init__):
+        (WPTRunner._prepare_wpt_checkout):
+        (WPTRunner._generate_metadata_directory):
+        (WPTRunner.run):
+        * Scripts/webkitpy/w3c/wpt_runner_unittest.py: Added.
+        (WPTRunnerTest):
+        (WPTRunnerTest.MockTestDownloader):
+        (WPTRunnerTest.MockTestDownloader.default_options):
+        (WPTRunnerTest.MockTestDownloader.__init__):
+        (WPTRunnerTest.MockTestDownloader.clone_tests):
+        (WPTRunnerTest.MockWebDriver):
+        (WPTRunnerTest.MockWebDriver.create):
+        (WPTRunnerTest.MockWebDriver.binary_path):
+        (WPTRunnerTest.MockWebDriver.browser_path):
+        (WPTRunnerTest.MockWebDriver.browser_args):
+        (WPTRunnerTest.MockSpawnWPT):
+        (WPTRunnerTest.MockSpawnWPT.__init__):
+        (WPTRunnerTest.MockSpawnWPT.__call__):
+        (WPTRunnerTest.TestInstance):
+        (WPTRunnerTest.TestInstance.__init__):
+        (WPTRunnerTest.TestInstance.prepare_mock_files_for_run):
+        (WPTRunnerTest.test_prepare_wpt_checkout):
+        (WPTRunnerTest.test_prepare_wpt_checkout_specified_path):
+        (WPTRunnerTest.test_generate_metadata_directory):
+        (WPTRunnerTest.test_run):
+        (WPTRunnerTest.test_run_with_specified_options):
+        (WPTRunnerTest.test_run_with_args):
+
+2018-06-11  Mark Lam  <mark.lam@apple.com>
+
+        Add support for webkit-test-runner jscOptions in DumpRenderTree and WebKitTestRunner.
+        https://bugs.webkit.org/show_bug.cgi?id=186451
+        <rdar://problem/40875792>
+
+        Reviewed by Tim Horton.
+
+        This jscOptions option can be used by a layout test to specify some JSC runtime
+        options needed by the test e.g. by adding something like this to the top of the
+        html file after the DOCTYPE tag:
+            <!-- webkit-test-runner [ jscOptions=--useIntlPluralRules=true ] -->
+
+        If more than one option is needed, the options can be specified as a comma
+        separated string e.g.
+            <!-- webkit-test-runner [ jscOptions=--useIntlPluralRules=true,--useZombieMode=true ] -->
+
+        This only works with JSC options that can be changed at runtime.  Not all JSC
+        options can be changed this way as some options are only checked and set once at
+        VM / process initialization time: changing this type of options may have no
+        effect.  It's the test writer's responsibility to determine which options are
+        appropriate for with this webkit-test-runner jscOptions option.
+
+        This implementation is a workaround until we can change the run-webkit-tests
+        scripts to parse the option and apply it to a new launch of DRT or WKTR:
+        https://bugs.webkit.org/show_bug.cgi?id=186452
+
+        * DumpRenderTree/TestOptions.cpp:
+        (TestOptions::TestOptions):
+        (TestOptions::webViewIsCompatibleWithOptions const):
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setJSCOptions):
+        (resetWebViewToConsistentStateBeforeTesting):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2018-06-11  Brady Eidson  <beidson@apple.com>
+
+        Add a command line default to force WebKitTestRunner to turn on process swap on navigation.
+        https://bugs.webkit.org/show_bug.cgi?id=186534
+
+        Reviewed by Chris Dumez.
+
+        Right now Process Swap On Navigation is enabled on a per-test basis.
+        The future is to enable it by default.
+
+        Adding a 'defaults write' helps us get to that future.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::testOptionsForTest const):
+        (WTR::TestController::platformAddTestOptions const):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformAddTestOptions const):
+
+2018-06-11  Chris Dumez  <cdumez@apple.com>
+
+        Allow enabling PSON in layout tests without window.open support
+        https://bugs.webkit.org/show_bug.cgi?id=186537
+
+        Reviewed by Geoffrey Garen.
+
+        Allow enabling PSON in layout tests without window.open support since window.open support
+        is far from being ready and we plan to enable PSON in layout tests soon.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2018-06-11  Brady Eidson  <beidson@apple.com>
+
+        Followup to [Cocoa] Remove all uses of NSAutoreleasePool as part of preparation for ARC
+        https://bugs.webkit.org/show_bug.cgi?id=186436
+
+        Patch by Darin Adler
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/mac/StopLoadingFromDidFinishLoading.mm:
+        (TestWebKitAPI::TEST):
+
+2018-06-11  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: skip BigInt tests on iOS until the feature is stable.
+        <rdar://problem/40331121>
+
+        Not reviewed.
+
+        * Scripts/run-jsc-stress-tests:
+
+2018-06-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] Add WebKitBrowserWindow class for modern WebKit API
+        https://bugs.webkit.org/show_bug.cgi?id=186478
+
+        Reviewed by Alex Christensen.
+
+        Added "New WebKit Window" and "New WebKitLegacy Window" menu
+        items. Disabled the menu item "New WebKit Window" if
+        !ENABLE(WEBKIT).
+
+        * MiniBrowser/win/CMakeLists.txt: Added WebKitBrowserWindow.cpp
+        source file and ENABLE_WEBKIT macro if ENABLE_WEBKIT.
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::MainWindow):
+        (MainWindow::create):
+        (MainWindow::init):
+        (MainWindow::WndProc):
+        * MiniBrowser/win/MainWindow.h:
+        * MiniBrowser/win/MiniBrowserLib.rc:
+        * MiniBrowser/win/MiniBrowserLibResource.h:
+        * MiniBrowser/win/PrintWebUIDelegate.cpp:
+        (PrintWebUIDelegate::createWebViewWithRequest):
+        * MiniBrowser/win/WebKitBrowserWindow.cpp: Added.
+        (createString):
+        (toUtf8):
+        (createWKString):
+        (createWKURL):
+        (WebKitBrowserWindow::create):
+        (WebKitBrowserWindow::WebKitBrowserWindow):
+        (WebKitBrowserWindow::init):
+        (WebKitBrowserWindow::hwnd):
+        (WebKitBrowserWindow::loadURL):
+        (WebKitBrowserWindow::loadHTMLString):
+        (WebKitBrowserWindow::navigateForwardOrBackward):
+        (WebKitBrowserWindow::navigateToHistory):
+        (WebKitBrowserWindow::setPreference):
+        (WebKitBrowserWindow::print):
+        (WebKitBrowserWindow::launchInspector):
+        (WebKitBrowserWindow::setUserAgent):
+        (WebKitBrowserWindow::userAgent):
+        (WebKitBrowserWindow::showLayerTree):
+        (WebKitBrowserWindow::updateStatistics):
+        (WebKitBrowserWindow::resetZoom):
+        (WebKitBrowserWindow::zoomIn):
+        (WebKitBrowserWindow::zoomOut):
+        (toWebKitBrowserWindow):
+        (WebKitBrowserWindow::didReceiveTitleForFrame):
+        (WebKitBrowserWindow::didCommitLoadForFrame):
+        * MiniBrowser/win/WebKitBrowserWindow.h:
+        * MiniBrowser/win/WinMain.cpp:
+        (wWinMain):
+
+2018-06-11  Keith Miller  <keith_miller@apple.com>
+
+        Add missing whitespace to run-jsc command
+        https://bugs.webkit.org/show_bug.cgi?id=186528
+
+        Reviewed by Mark Lam.
+
+        * Scripts/run-jsc:
+
+2018-06-11  Philippe Normand  <pnormand@igalia.com>
+
+        [webkitpy] PHP7.2 support on Debian platforms
+        https://bugs.webkit.org/show_bug.cgi?id=186521
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port._debian_php_version): Refactor and add PHP 7.2 version support.
+
+2018-06-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix WPE API and layout tests after r232670.
+
+        Now that dyz is not installed, there's not -default.so symlink for the WPE backend, so we need to use
+        WPE_BACKEND_LIBRARY environment variable to ensure tests are run with fdo backend.
+
+        * Scripts/run-wpe-tests:
+        (WPETestRunner.__init__):
+        (WPETestRunner):
+        (WPETestRunner.setup_testing_environment):
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort.setup_environ_for_server):
+        * glib/api_test_runner.py:
+        (TestRunner.setup_testing_environment):
+        (TestRunner.run_tests):
+        (TestRunner._setup_testing_environment): Deleted.
+
+2018-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API run run javascript from a WebKitWebView in an isolated world
+        https://bugs.webkit.org/show_bug.cgi?id=186192
+
+        Reviewed by Michael Catanzaro.
+
+        Add tests cases for the new API.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitWebView.cpp:
+        (testWebViewRunJavaScript):
+        * TestWebKitAPI/Tests/WebKitGLib/WebExtensionTest.cpp:
+        (methodCallCallback):
+        (webkit_web_extension_initialize_with_user_data):
+        * TestWebKitAPI/glib/WebKitGLib/WebViewTest.cpp:
+        (runJavaScriptInWorldReadyCallback):
+        (WebViewTest::runJavaScriptFromGResourceAndWaitUntilFinished):
+        (WebViewTest::runJavaScriptInWorldAndWaitUntilFinished):
+        * TestWebKitAPI/glib/WebKitGLib/WebViewTest.h:
+
+2018-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Add a MiniBrowser and use it to run WebDriver tests
+        https://bugs.webkit.org/show_bug.cgi?id=186345
+
+        Reviewed by Žan Doberšek.
+
+        Most of the code is based on dyz and gtk MiniBrowser. This patch adds a new internal library WPEToolingBackends,
+        including the headless view backend and a new window backend to be used by the MiniBrowser. MiniBrowser can also
+        run in headless mode, by using the headless backend instead of the window one, which will allow us to run the
+        WebDriver tests in the bots.
+
+        * CMakeLists.txt:
+        * MiniBrowser/wpe/CMakeLists.txt: Added.
+        * MiniBrowser/wpe/main.cpp: Added.
+        (automationStartedCallback):
+        (createViewBackend):
+        (main):
+        * Scripts/run-minibrowser: Remove WPE specific code.
+        * Scripts/run-webdriver-tests: Add headless display-server option.
+        * Scripts/webkitdirs.pm:
+        (launcherName): Remove WPE specific code.
+        * Scripts/webkitpy/webdriver_tests/webdriver_driver_wpe.py:
+        (WebDriverWPE.browser_name): Return MiniBrowser.
+        (WebDriverWPE.browser_path): Return the path to the MiniBrowser in build dir.
+        (WebDriverWPE.browser_args): Add --headless when running in headless mode.
+        (WebDriverWPE.capabilities): Use the full browser path.
+        * Scripts/webkitpy/webdriver_tests/webdriver_test_runner_selenium.py:
+        (WebDriverTestRunnerSelenium.collect_tests): Fix early return value.
+        * TestWebKitAPI/PlatformWPE.cmake: Use WPEToolingBackends instead of HeadlessViewBackend.
+        * TestWebKitAPI/PlatformWebView.h: Ditto.
+        * TestWebKitAPI/glib/PlatformWPE.cmake: Ditto
+        * TestWebKitAPI/glib/WebKitGLib/TestMain.h:
+        (Test::createWebViewBackend): Ditto.
+        * TestWebKitAPI/wpe/PlatformWebViewWPE.cpp:
+        (TestWebKitAPI::PlatformWebView::initialize): Ditto.
+        * WebKitTestRunner/PlatformWPE.cmake: Ditto.
+        * WebKitTestRunner/PlatformWebView.h: Ditto.
+        * WebKitTestRunner/wpe/PlatformWebViewWPE.cpp:
+        (WTR::PlatformWebView::PlatformWebView): Ditto.
+        * wpe/HeadlessViewBackend/CMakeLists.txt: Removed.
+        * wpe/backends/CMakeLists.txt: Added.
+        * wpe/backends/HeadlessViewBackend.cpp: Renamed from Tools/wpe/HeadlessViewBackend/HeadlessViewBackend.cpp.
+        (WPEToolingBackends::getEGLDisplay):
+        (WPEToolingBackends::HeadlessViewBackend::HeadlessViewBackend):
+        (WPEToolingBackends::HeadlessViewBackend::~HeadlessViewBackend):
+        (WPEToolingBackends::HeadlessViewBackend::createSnapshot):
+        (WPEToolingBackends::HeadlessViewBackend::performUpdate):
+        (WPEToolingBackends::HeadlessViewBackend::displayBuffer):
+        * wpe/backends/HeadlessViewBackend.h: Renamed from Tools/wpe/HeadlessViewBackend/HeadlessViewBackend.h.
+        * wpe/backends/ViewBackend.cpp: Added.
+        (WPEToolingBackends::ViewBackend::ViewBackend):
+        (WPEToolingBackends::ViewBackend::~ViewBackend):
+        (WPEToolingBackends::ViewBackend::initialize):
+        (WPEToolingBackends::ViewBackend::setInputClient):
+        (WPEToolingBackends::ViewBackend::backend const):
+        (WPEToolingBackends::ViewBackend::dispatchInputPointerEvent):
+        (WPEToolingBackends::ViewBackend::dispatchInputAxisEvent):
+        (WPEToolingBackends::ViewBackend::dispatchInputKeyboardEvent):
+        * wpe/backends/ViewBackend.h: Added.
+        * wpe/backends/WindowViewBackend.cpp: Added.
+        (WPEToolingBackends::WindowViewBackend::WindowViewBackend):
+        (WPEToolingBackends::WindowViewBackend::~WindowViewBackend):
+        (WPEToolingBackends::WindowViewBackend::displayBuffer):
+        (WPEToolingBackends::WindowViewBackend::handleKeyEvent):
+        * wpe/backends/WindowViewBackend.h: Added.
+        * wpe/jhbuild.modules: Remove dyz and add wayland-protocols.
+
+2018-06-10  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][MiniBrowser] MiniBrowser class should be renamed to WebKitLegacyBrowserWindow
+        https://bugs.webkit.org/show_bug.cgi?id=186427
+
+        Reviewed by Ryosuke Niwa.
+
+        * MiniBrowser/win/AccessibilityDelegate.cpp:
+        * MiniBrowser/win/AccessibilityDelegate.h:
+        (AccessibilityDelegate::AccessibilityDelegate):
+        * MiniBrowser/win/CMakeLists.txt: Removed MiniBrowser.cpp. Added WebKitLegacyBrowserWindow.cpp.
+        * MiniBrowser/win/Common.h:
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::init):
+        * MiniBrowser/win/MainWindow.h:
+        * MiniBrowser/win/MiniBrowserWebHost.cpp:
+        * MiniBrowser/win/MiniBrowserWebHost.h:
+        (MiniBrowserWebHost::MiniBrowserWebHost):
+        * MiniBrowser/win/PageLoadTestClient.cpp:
+        (PageLoadTestClient::PageLoadTestClient):
+        * MiniBrowser/win/PageLoadTestClient.h:
+        * MiniBrowser/win/PrintWebUIDelegate.cpp:
+        (PrintWebUIDelegate::createWebViewWithRequest):
+        * MiniBrowser/win/PrintWebUIDelegate.h:
+        (PrintWebUIDelegate::PrintWebUIDelegate):
+        * MiniBrowser/win/ResourceLoadDelegate.cpp:
+        * MiniBrowser/win/ResourceLoadDelegate.h:
+        (ResourceLoadDelegate::ResourceLoadDelegate):
+        * MiniBrowser/win/WebKitLegacyBrowserWindow.cpp: Renamed from Tools/MiniBrowser/win/MiniBrowser.cpp.
+        * MiniBrowser/win/WebKitLegacyBrowserWindow.h: Renamed from Tools/MiniBrowser/win/MiniBrowser.h.
+        * MiniBrowser/win/WebDownloadDelegate.cpp:
+        (WebDownloadDelegate::WebDownloadDelegate):
+        * MiniBrowser/win/WebDownloadDelegate.h:
+
+2018-06-10  Chris Dumez  <cdumez@apple.com>
+
+        Reload the Web view in case of crash if the client does not implement webViewWebContentProcessDidTerminate delegate
+        https://bugs.webkit.org/show_bug.cgi?id=186468
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebContentProcessDidTerminate.mm:
+        (-[BasicNavigationDelegateWithoutCrashHandler webView:didStartProvisionalNavigation:]):
+        (-[BasicNavigationDelegateWithoutCrashHandler webView:didFinishNavigation:]):
+        (TEST):
+
+2018-06-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] paypal.com requires user agent quirk
+        https://bugs.webkit.org/show_bug.cgi?id=186466
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Clean up and modernize some build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=186463
+
+        Reviewed by Sam Weinig.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig: Removed definition for macOS 10.11.
+          Simplified the definition of WK_PRIVATE_FRAMEWORK_STUBS_DIR now that
+          WK_XCODE_SUPPORTS_TEXT_BASED_STUBS is true for all supported Xcode versions.
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig: Removed definition for macOS
+          10.11.
+        * MiniBrowser/Configurations/Base.xcconfig: Ditto.
+        * MiniBrowser/Configurations/DebugRelease.xcconfig: Ditto.
+        * TestWebKitAPI/Configurations/Base.xcconfig: Ditto.
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig: Ditto.
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Simplified the definitions of
+          ENABLE_APPLE_PAY and ENABLE_VIDEO_PRESENTATION_MODE now macOS 10.12 is the earliest
+          supported version.
+        * TestWebKitAPI/Configurations/WebKitTargetConditionals.xcconfig: Removed definitions for
+          macOS 10.11.
+        * WebKitTestRunner/Configurations/Base.xcconfig: Ditto. Also simplified the definition of
+          WK_PRIVATE_FRAMEWORK_STUBS_DIR now that WK_XCODE_SUPPORTS_TEXT_BASED_STUBS is true for all
+          supported Xcode versions
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig: Removed definition for macOS 10.11.
+
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        Added missing file references to the Configuration group.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+2018-06-08  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove all uses of NSAutoreleasePool as part of preparation for ARC
+        https://bugs.webkit.org/show_bug.cgi?id=186436
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WebKitObjC/CustomProtocolsTest.mm:
+        (TestWebKitAPI::WebKit2CustomProtocolsTest_ProcessPoolDestroyedDuringLoading):
+        Use @autoreleasepool.
+        * TestWebKitAPI/Tests/mac/MenuTypesForMouseEvents.mm:
+        (TestWebKitAPI::buildAndPerformTest): Ditto.
+        * TestWebKitAPI/Tests/mac/StopLoadingFromDidFinishLoading.mm:
+        (TestWebKitAPI::WebKitLegacy_StopLoadingFromDidFinishLoading): Ditto.
+
+2018-06-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit on watchOS] Upstream watchOS source additions to OpenSource (Part 1)
+        https://bugs.webkit.org/show_bug.cgi?id=186442
+        <rdar://problem/40879364>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-06-08  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK] Update to libva-2.1.0 in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=186434
+
+        Reviewed by Philippe Normand.
+
+        * gstreamer/jhbuild.modules:
+
 2018-06-07  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [WTF] Add WorkerPool
@@ -158,7 +770,7 @@
         (availableXcodeSDKS): Generate a list of all available Xcode SDKs on this machine.
         (determineXcodeSDK): Always prefer .internal SDKs if available.
         * Scripts/webkitperl/webkitdirs_unittest/availableXcodeSDKS.pl:
-        
+
 2018-06-07  Fujii Hironori  <Hironori.Fujii@sony.com>
 
         [Win][MiniBrowser] Support multiple windows properly

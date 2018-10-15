@@ -2948,7 +2948,7 @@ http/tests/contentfiltering [ Skip ]
 [ Release ] fast/images/animated-gif-webkit-transform.html [ Skip ] # Timeout
 [ Release ] fast/repaint/animation-after-layer-scroll.html [ Pass Failure ]
 [ Release ] fast/text/international/float-as-only-child-of-isolate-crash.html [ Pass Failure ]
-[ Release ] js/slow-stress/emscripten-memops.html [ Pass Failure ]
+[ Release ] js/slow-stress/emscripten-memops.html [ Skip ] # Timeout
 [ Release ] js/slow-stress/fold-strict-eq.html [ Skip ] # Crashes on EWS
 [ Release ] inspector/layers/layers-anonymous.html [ Skip ] # Timeouts
 [ Release ] inspector/layers/layers-blending-compositing-reasons.html [ Skip ] # Timeouts
@@ -4095,3 +4095,23 @@ webkit.org/b/185765 fast/images/animated-image-mp4-crash.html [ Skip ]
 webkit.org/b/185678 fast/css-generated-content/pseudo-animation.html [ Failure ]
 
 webkit.org/b/186183 http/tests/security/referrer-policy-header.html [ Skip ]
+
+webkit.org/b/186522 imported/mozilla/css-animations/test_animation-finished.html [ Failure ]
+webkit.org/b/186522 imported/mozilla/css-animations/test_animation-id.html [ Failure ]
+webkit.org/b/186522 imported/mozilla/css-animations/test_animation-reverse.html [ Failure ]
+webkit.org/b/186522 imported/mozilla/css-animations/test_cssanimation-animationname.html [ Failure ]
+webkit.org/b/186522 imported/mozilla/css-animations/test_setting-effect.html [ Failure ]
+webkit.org/b/186522 imported/mozilla/css-transitions/test_animation-computed-timing.html [ Failure ]
+webkit.org/b/186522 imported/mozilla/css-transitions/test_animation-currenttime.html [ Failure ]
+webkit.org/b/186522 imported/mozilla/css-transitions/test_animation-finished.html [ Failure ]
+webkit.org/b/186522 imported/mozilla/css-transitions/test_animation-pausing.html [ Failure ]
+webkit.org/b/186522 imported/mozilla/css-transitions/test_animation-starttime.html [ Failure ]
+webkit.org/b/186522 imported/mozilla/css-transitions/test_csstransition-transitionproperty.html [ Failure ]
+webkit.org/b/186522 imported/mozilla/css-transitions/test_setting-effect.html [ Failure ]
+
+webkit.org/b/186562 accessibility/accessibility-node-memory-management.html [ Failure ]
+webkit.org/b/186562 fast/workers/worker-document-leak.html [ Failure ]
+webkit.org/b/186562 js/dom/line-column-numbers.html [ Failure ]
+webkit.org/b/186562 storage/indexeddb/modern/leak-1.html [ Failure ]
+webkit.org/b/186562 svg/animations/animation-leak-list-property-instances.html [ Failure ]
+webkit.org/b/186562 workers/bomb.html [ Skip ]

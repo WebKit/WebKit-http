@@ -656,7 +656,8 @@ void Graph::handleSuccessor(Vector<BasicBlock*, 16>& worklist, BasicBlock* block
         worklist.append(successor);
     }
     
-    successor->predecessors.append(block);
+    if (!successor->predecessors.contains(block))
+        successor->predecessors.append(block);
 }
 
 void Graph::determineReachability()
@@ -911,7 +912,7 @@ BlockList Graph::blocksInPreOrder()
     return result;
 }
 
-BlockList Graph::blocksInPostOrder()
+BlockList Graph::blocksInPostOrder(bool isSafeToValidate)
 {
     BlockList result;
     PostOrderBlockWorklist worklist;
@@ -930,7 +931,7 @@ BlockList Graph::blocksInPostOrder()
         }
     }
 
-    if (validationEnabled()) {
+    if (isSafeToValidate && validationEnabled()) { // There are users of this where we haven't yet built of the CFG enough to be able to run dominators.
         auto validateResults = [&] (auto& dominators) {
             // When iterating over reverse post order, we should see dominators
             // before things they dominate.

@@ -92,6 +92,7 @@
 #include <wtf/ProcessID.h>
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
+#include <wtf/RunLoop.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -122,7 +123,7 @@ OBJC_CLASS _WKRemoteObjectRegistry;
 #include <WebCore/WebMediaSessionManagerClient.h>
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
 #include "DisplayLink.h"
 #endif
 
@@ -170,9 +171,9 @@ enum SelectionDirection : uint8_t;
 
 enum class AutoplayEvent;
 enum class HasInsecureContent;
-enum class NavigationPolicyCheck;
 enum class NotificationDirection;
 enum class ShouldSample;
+enum class ShouldTreatAsContinuingLoad;
 
 struct ApplicationManifest;
 struct BackForwardItemIdentifier;
@@ -876,6 +877,7 @@ public:
     void getSourceForFrame(WebFrameProxy*, WTF::Function<void (const String&, CallbackBase::Error)>&&);
     void getWebArchiveOfFrame(WebFrameProxy*, Function<void (API::Data*, CallbackBase::Error)>&&);
     void runJavaScriptInMainFrame(const String&, bool, WTF::Function<void (API::SerializedScriptValue*, bool hadException, const WebCore::ExceptionDetails&, CallbackBase::Error)>&& callbackFunction);
+    void runJavaScriptInMainFrameScriptWorld(const String&, bool, const String& worldName, WTF::Function<void(API::SerializedScriptValue*, bool hadException, const WebCore::ExceptionDetails&, CallbackBase::Error)>&& callbackFunction);
     void forceRepaint(RefPtr<VoidCallback>&&);
 
     float headerHeight(WebFrameProxy&);
@@ -1481,7 +1483,7 @@ private:
     RefPtr<API::Navigation> reattachToWebProcessForReload();
     RefPtr<API::Navigation> reattachToWebProcessWithItem(WebBackForwardListItem&);
 
-    void loadRequestWithNavigation(API::Navigation&, WebCore::ResourceRequest&&, WebCore::ShouldOpenExternalURLsPolicy, API::Object* userData, WebCore::NavigationPolicyCheck);
+    void loadRequestWithNavigation(API::Navigation&, WebCore::ResourceRequest&&, WebCore::ShouldOpenExternalURLsPolicy, API::Object* userData, WebCore::ShouldTreatAsContinuingLoad);
 
     void requestNotificationPermission(uint64_t notificationID, const String& originString);
     void showNotification(const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, WebCore::NotificationDirection, const String& originString, uint64_t notificationID);
@@ -1724,6 +1726,10 @@ private:
     void contentFilterDidBlockLoadForFrame(const WebCore::ContentFilterUnblockHandler&, uint64_t frameID);
 #endif
 
+    void tryReloadAfterProcessTermination();
+    void resetRecentCrashCountSoon();
+    void resetRecentCrashCount();
+
     API::DiagnosticLoggingClient* effectiveDiagnosticLoggingClient(WebCore::ShouldSample);
 
     void dispatchActivityStateChange();
@@ -1765,7 +1771,7 @@ private:
     void didRemoveAttachment(const String& identifier);
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     void startDisplayLink(unsigned observerID);
     void stopDisplayLink(unsigned observerID);
 #endif
@@ -2163,7 +2169,7 @@ private:
     HashMap<String, Ref<WebURLSchemeHandler>> m_urlSchemeHandlersByScheme;
     HashMap<uint64_t, Ref<WebURLSchemeHandler>> m_urlSchemeHandlersByIdentifier;
         
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     std::unique_ptr<DisplayLink> m_displayLink;
 #endif
 
@@ -2173,6 +2179,10 @@ private:
     // and have a global collection of them per process pool
     // (e.g. for that process pool's page cache)
     RefPtr<SuspendedPageProxy> m_suspendedPage;
+
+    RunLoop::Timer<WebPageProxy> m_resetRecentCrashCountTimer;
+    unsigned m_recentCrashCount { 0 };
+
 };
 
 } // namespace WebKit

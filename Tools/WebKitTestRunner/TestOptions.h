@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -57,12 +57,14 @@ struct TestOptions {
     bool allowCrossOriginSubresourcesToAskForCredentials { false };
     bool enableWebAnimationsCSSIntegration { false };
     bool enableProcessSwapOnNavigation { false };
+    bool enableProcessSwapOnWindowOpen { false };
     bool enableColorFilter { false };
 
     float deviceScaleFactor { 1 };
     Vector<String> overrideLanguages;
     std::string applicationManifest;
-    
+    std::string jscOptions;
+
     TestOptions(const std::string& pathOrURL);
 
     // Add here options that can only be set upon PlatformWebView
@@ -90,7 +92,9 @@ struct TestOptions {
             || allowCrossOriginSubresourcesToAskForCredentials != options.allowCrossOriginSubresourcesToAskForCredentials
             || enableWebAnimationsCSSIntegration != options.enableWebAnimationsCSSIntegration
             || enableProcessSwapOnNavigation != options.enableProcessSwapOnNavigation
-            || enableColorFilter != options.enableColorFilter)
+            || enableProcessSwapOnWindowOpen != options.enableProcessSwapOnWindowOpen
+            || enableColorFilter != options.enableColorFilter
+            || jscOptions != options.jscOptions)
             return false;
 
         return true;

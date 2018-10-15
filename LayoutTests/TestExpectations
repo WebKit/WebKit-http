@@ -218,7 +218,9 @@ webkit.org/b/181900 imported/w3c/web-platform-tests/service-workers/service-work
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-response-taint.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/registration-security-error.https.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-css-images.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-redirect.https.html [ DumpJSConsoleLogInStdErr Slow ]
+imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-resources.https.html [ DumpJSConsoleLogInStdErr ]
 [ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/clients-matchall-order.https.html [ Slow ]
 [ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/getregistrations.https.html [ Slow ]
 [ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/interfaces-sw.https.html [ Slow ]
@@ -1423,14 +1425,10 @@ workers/wasm-long-compile.html [ Slow ]
 # Flaky WebCrypto API tests
 imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/test_wrapKey_unwrapKey.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.https.worker.html [ Pass Failure Slow ]
-imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_RSA-OAEP.https.html [ Pass Failure ]
 
 # WebCryptoAPI tests that take too long to complete
-imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-OAEP.https.worker.html [ Skip ]
-imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSASSA-PKCS1-v1_5.https.worker.html [ Slow ]
 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/rsa_importKey.https.worker.html [ Slow ]
 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https.html [ Slow ]
-imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-PSS.https.worker.html [ Slow ]
 
 # Imported Beacon test that is flaky because its last check is very slow.
 webkit.org/b/175202 imported/w3c/web-platform-tests/beacon/beacon-basic-string.html [ Pass Failure ]
@@ -1466,10 +1464,6 @@ crypto/subtle/rsa-pss-import-spki-key-empty-usages.html [ Skip ]
 crypto/subtle/rsa-pss-import-spki-key.html [ Skip ]
 crypto/workers/subtle/rsa-pss-import-key-sign.html [ Skip ]
 crypto/workers/subtle/rsa-pss-import-key-verify.html [ Skip ]
-
-# WebCryptoAPI superset tests
-imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes.worker.html [ Skip ]
-imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures.worker.html [ Skip ]
 
 editing/deleting/delete-emoji.html [ Slow ]
 
@@ -1936,30 +1930,18 @@ webkit.org/b/181888 imported/w3c/web-platform-tests/web-animations/timing-model/
 webkit.org/b/183818 imported/mozilla/css-animations/test_pseudoElement-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/184011 imported/mozilla/css-animations/test_animation-cancel.html [ Pass Failure ]
 webkit.org/b/183821 imported/mozilla/css-transitions/test_animation-cancel.html [ Pass Failure Timeout ]
-webkit.org/b/183822 imported/mozilla/css-animations/test_animation-finished.html [ Pass Failure Timeout ]
-webkit.org/b/183823 imported/mozilla/css-transitions/test_animation-computed-timing.html [ Pass Failure Timeout ]
-webkit.org/b/183824 imported/mozilla/css-animations/test_animation-id.html [ Pass Failure Timeout ]
-webkit.org/b/183825 imported/mozilla/css-transitions/test_animation-currenttime.html [ Pass Failure Timeout ]
 webkit.org/b/183826 imported/mozilla/css-animations/test_animation-pausing.html [ Pass Failure Timeout ]
-webkit.org/b/183827 imported/mozilla/css-transitions/test_animation-finished.html [ Pass Failure Timeout ]
 webkit.org/b/183828 imported/mozilla/css-animations/test_animation-playstate.html [ Pass Failure Timeout ]
-webkit.org/b/183829 imported/mozilla/css-transitions/test_animation-pausing.html [ Pass Failure Timeout ]
 webkit.org/b/183830 imported/mozilla/css-animations/test_animation-ready.html [ Pass Failure Timeout ]
 webkit.org/b/183831 imported/mozilla/css-transitions/test_animation-ready.html [ Pass Failure Timeout ]
-webkit.org/b/183832 imported/mozilla/css-animations/test_animation-reverse.html [ Pass Failure Timeout ]
-webkit.org/b/183833 imported/mozilla/css-transitions/test_animation-starttime.html [ Pass Failure Timeout ]
 webkit.org/b/183834 imported/mozilla/css-animations/test_animation-starttime.html [ Pass Failure Timeout ]
-webkit.org/b/183835 imported/mozilla/css-transitions/test_csstransition-transitionproperty.html [ Pass Failure Timeout ]
 webkit.org/b/183836 imported/mozilla/css-animations/test_animations-dynamic-changes.html [ Pass Failure Timeout ]
 webkit.org/b/183837 imported/mozilla/css-transitions/test_document-get-animations.html [ Pass Failure Timeout ]
-webkit.org/b/183838 imported/mozilla/css-animations/test_cssanimation-animationname.html [ Pass Failure Timeout ]
 webkit.org/b/183840 imported/mozilla/css-animations/test_document-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183841 imported/mozilla/css-transitions/test_element-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183844 imported/mozilla/css-animations/test_element-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183846 imported/mozilla/css-transitions/test_pseudoElement-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183847 imported/mozilla/css-animations/test_event-order.html [ Pass Failure Timeout ]
-webkit.org/b/183849 imported/mozilla/css-animations/test_setting-effect.html [ Pass Failure Timeout ]
-webkit.org/b/183850 imported/mozilla/css-transitions/test_setting-effect.html [ Pass Failure Timeout ]
 
 webkit.org/b/183848 imported/mozilla/css-animations/test_keyframeeffect-getkeyframes.html [ Skip ]
 
@@ -2012,3 +1994,13 @@ webkit.org/b/184800 http/tests/workers/worker-importScripts-banned-mimetype.html
 webkit.org/b/184802 http/tests/security/contentTypeOptions/nosniff-importScript-blocked.html [ Pass Timeout ]
 
 webkit.org/b/181100 inspector/worker/worker-recover-if-inspector-close.html [ Pass Failure ]
+
+[ Debug ] imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors-large.html [ Failure ]
+[ Debug ] imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors-small.html [ Failure ]
+
+webkit.org/b/186574 media/video-buffering-allowed.html [ Pass Failure ]
+
+### WebL Conformance Suite 2.0.0 tests that do not yet have support as of 6/7/2018. Enable as support is implemented. ###
+
+# All WebGL 1 and 2 tests for now
+webgl/2.0.0 [ Skip ]

@@ -871,6 +871,12 @@ class Port(object):
         # to have multiple copies of webkit checked out and built.
         return self._build_path('layout-test-results')
 
+    def wpt_metadata_directory(self):
+        return self._build_path('web-platform-tests-metadata')
+
+    def wpt_manifest_file(self):
+        return self._build_path('web-platform-tests-manifest.json')
+
     def setup_test_run(self, device_class=None):
         """Perform port-specific work at the beginning of a test run."""
         pass
@@ -1250,11 +1256,11 @@ class Port(object):
         return re.sub(r'(?:.|\n)*Server version: Apache/(\d+\.\d+)(?:.|\n)*', r'\1', config)
 
     def _debian_php_version(self):
-        if self._filesystem.exists("/usr/lib/apache2/modules/libphp7.0.so"):
-            return "-php7.0"
-        elif self._filesystem.exists("/usr/lib/apache2/modules/libphp7.1.so"):
-            return "-php7.1"
-        _log.error("No libphp7.x.so found")
+        prefix = "/usr/lib/apache2/modules/"
+        for version in ("7.0", "7.1", "7.2"):
+            if self._filesystem.exists("%s/libphp%s.so" % (prefix, version)):
+                return "-php%s" % version
+        _log.error("No libphp7.x.so found in %s" % prefix)
         return ""
 
     def _darwin_php_version(self):

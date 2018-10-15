@@ -1,3 +1,293 @@
+2018-06-13  Keith Miller  <keith_miller@apple.com>
+
+        AutomaticThread should have a way to provide a thread name
+        https://bugs.webkit.org/show_bug.cgi?id=186604
+
+        Reviewed by Filip Pizlo.
+
+        Add names for JSC's automatic threads.
+
+        * dfg/DFGWorklist.cpp:
+        * heap/Heap.cpp:
+        * jit/JITWorklist.cpp:
+        * runtime/VMTraps.cpp:
+        * wasm/WasmWorklist.cpp:
+
+2018-06-13  Saam Barati  <sbarati@apple.com>
+
+        CFGSimplificationPhase should de-dupe jettisonedBlocks
+        https://bugs.webkit.org/show_bug.cgi?id=186583
+
+        Reviewed by Filip Pizlo.
+
+        When making the predecessors list unique in r232741, it revealed a bug inside
+        of CFG simplification, where we try to remove the same predecessor more than
+        once from a blocks predecessors list. We built the list of blocks to remove
+        from the list of successors, which is not unique, causing us to try to remove
+        the same predecessor more than once. The solution here is to just add to this
+        list of blocks to remove only if the block is not already in the list.
+
+        * dfg/DFGCFGSimplificationPhase.cpp:
+        (JSC::DFG::CFGSimplificationPhase::run):
+
+2018-06-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Always use Nuke & Set procedure for x86
+        https://bugs.webkit.org/show_bug.cgi?id=186592
+
+        Reviewed by Keith Miller.
+
+        We always use nukeStructureAndStoreButterfly for Contiguous -> ArrayStorage conversion if the architecture is x86.
+        By doing so, we can concurrently load structure and butterfly at least in x86 environment even in non-collector
+        threads.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::convertContiguousToArrayStorage):
+
+2018-06-12  Saam Barati  <sbarati@apple.com>
+
+        Remove JSVirtualMachine shrinkFootprint when clients move to shrinkFootprintWhenIdle
+        https://bugs.webkit.org/show_bug.cgi?id=186071
+
+        Reviewed by Mark Lam.
+
+        * API/JSVirtualMachine.mm:
+        (-[JSVirtualMachine shrinkFootprint]): Deleted.
+        * API/JSVirtualMachinePrivate.h:
+
+2018-06-11  Saam Barati  <sbarati@apple.com>
+
+        Reduce graph size by replacing terminal nodes in blocks that have a ForceOSRExit with Unreachable
+        https://bugs.webkit.org/show_bug.cgi?id=181409
+        <rdar://problem/36383749>
+
+        Reviewed by Keith Miller.
+
+        This patch is me redoing r226655. This is a patch I wrote when
+        profiling Speedometer. Fil rolled this change out in r230928. He
+        showed this slowed down a sunspider tests by ~2x. This sunspider
+        regression revealed a real performance bug in the original change:
+        we would kill blocks that reached OSR entry targets, sometimes leading
+        us to not do OSR entry into the DFG, since we could end up deleting
+        entire loops from the CFG. The reason for this is that code that has run
+        ~once and that reaches loops often has ForceOSRExits inside of it. The
+        solution to this is to not perform this optimization on blocks that can
+        reach OSR entry targets.
+        
+        The reason I'm redoing this patch is that it turns out Fil rolling
+        out the change was a Speedometer 2 regression.
+        
+        This is a modified version of the original ChangeLog I wrote in r226655:
+        
+        When I was looking at profiler data for Speedometer, I noticed that one of
+        the hottest functions in Speedometer is around 1100 bytecode operations long.
+        Only about 100 of those bytecode ops ever execute. However, we ended up
+        spending a lot of time compiling basic blocks that never executed. We often
+        plant ForceOSRExit nodes when we parse bytecodes that have a null value profile.
+        This is the case when such a node never executes.
+        
+        This patch makes it so that anytime a block has a ForceOSRExit, and that block
+        can not reach an OSR entry target, we replace its terminal node with an Unreachable
+        node, and remove all nodes after the ForceOSRExit. This cuts down the graph
+        size since it removes control flow edges from the CFG. This allows us to get
+        rid of huge chunks of the CFG in certain programs. When doing this transformation,
+        we also insert Flushes/PhantomLocals to ensure we can recover values that are bytecode
+        live-in to the ForceOSRExit.
+        
+        Using ForceOSRExit as the signal for this is a bit of a hack. It definitely
+        does not get rid of all the CFG that it could. If we decide it's worth
+        it, we could use additional inputs into this mechanism. For example, we could
+        profile if a basic block ever executes inside the LLInt/Baseline, and
+        remove parts of the CFG based on that.
+        
+        When running Speedometer with the concurrent JIT turned off, this patch
+        improves DFG/FTL compile times by around 5%.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::addToGraph):
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        (JSC::DFG::ByteCodeParser::parse):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::blocksInPostOrder):
+
+2018-06-11  Saam Barati  <sbarati@apple.com>
+
+        The NaturalLoops algorithm only works when the list of blocks in a loop is de-duplicated
+        https://bugs.webkit.org/show_bug.cgi?id=184829
+
+        Reviewed by Michael Saboff.
+
+        This patch codifies that a BasicBlock's list of predecessors is de-duplicated.
+        In B3/Air, this just meant writing a validation rule. In DFG, this meant
+        ensuring this property when building up the predecessors list, and also adding
+        a validation rule. The NaturalLoops algorithm relies on this property.
+
+        * b3/B3Validate.cpp:
+        * b3/air/AirValidate.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::testLoopWithMultipleHeaderEdges):
+        (JSC::B3::run):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::handleSuccessor):
+        * dfg/DFGValidate.cpp:
+
+2018-06-11  Keith Miller  <keith_miller@apple.com>
+
+        Loading cnn.com in MiniBrowser hits Structure::dump() under DFG::AdaptiveInferredPropertyValueWatchpoint::handleFire  which churns 65KB of memory
+        https://bugs.webkit.org/show_bug.cgi?id=186467
+
+        Reviewed by Simon Fraser.
+
+        This patch adds a LazyFireDetail that wraps ScopedLambda so that
+        we don't actually malloc any strings for firing unless those
+        Strings are actually going to be printed.
+
+        * bytecode/Watchpoint.h:
+        (JSC::LazyFireDetail::LazyFireDetail):
+        * dfg/DFGAdaptiveInferredPropertyValueWatchpoint.cpp:
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::handleFire):
+        * dfg/DFGAdaptiveStructureWatchpoint.cpp:
+        (JSC::DFG::AdaptiveStructureWatchpoint::fireInternal):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototypeAdaptiveInferredPropertyWatchpoint::handleFire):
+
+2018-06-11  Mark Lam  <mark.lam@apple.com>
+
+        Add support for webkit-test-runner jscOptions in DumpRenderTree and WebKitTestRunner.
+        https://bugs.webkit.org/show_bug.cgi?id=186451
+        <rdar://problem/40875792>
+
+        Reviewed by Tim Horton.
+
+        Enhance setOptions() to be able to take a comma separated options string in
+        addition to white space separated options strings.
+
+        * runtime/Options.cpp:
+        (JSC::isSeparator):
+        (JSC::Options::setOptions):
+
+2018-06-11  Michael Saboff  <msaboff@apple.com>
+
+        JavaScriptCore: Disable 32-bit JIT on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=185989
+
+        Reviewed by Mark Lam.
+
+        Fixed the CLOOP so it can work when COMPUTED_GOTOs are not supported.
+
+        * llint/LLIntData.h:
+        (JSC::LLInt::getCodePtr): Used a reinterpret_cast since Opcode could be an int.
+        * llint/LowLevelInterpreter.cpp: Changed the definition of OFFLINE_ASM_GLOBAL_LABEL to not
+        have a case label because these aren't opcodes.
+        * runtime/Options.cpp: Made assembler related Windows conditional code also conditional
+        on the JIT being enabled.
+        (JSC::recomputeDependentOptions):
+
+2018-06-11  Michael Saboff  <msaboff@apple.com>
+
+        Test js/regexp-zero-length-alternatives.html fails when RegExpJIT is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=186477
+
+        Reviewed by Filip Pizlo.
+
+        Fixed bug where we were using the wrong frame size for TypeParenthesesSubpatternTerminalBegin
+        YARR interpreter nodes.  This caused us to overwrite other frame information.
+
+        Added frame offset debugging code to YARR interpreter.
+
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::ByteCompiler::emitDisjunction):
+        (JSC::Yarr::ByteCompiler::dumpDisjunction):
+
+2018-06-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Array.prototype.sort should rejects null comparator
+        https://bugs.webkit.org/show_bug.cgi?id=186458
+
+        Reviewed by Keith Miller.
+
+        This relaxed behavior is once introduced in r216169 to fix some pages by aligning
+        the behavior to Chrome and Firefox.
+
+        However, now Chrome, Firefox and Edge reject a null comparator. So only JavaScriptCore
+        accepts it. This patch reverts r216169 to align JSC to the other engines and fix
+        the spec issue.
+
+        * builtins/ArrayPrototype.js:
+        (sort):
+
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Clean up and modernize some build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=186463
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Removed definition for macOS 10.11. Simplified the
+          definition of WK_PRIVATE_FRAMEWORK_STUBS_DIR now that WK_XCODE_SUPPORTS_TEXT_BASED_STUBS
+          is true for all supported Xcode versions.
+        * Configurations/DebugRelease.xcconfig: Removed definition for macOS 10.11.
+        * Configurations/FeatureDefines.xcconfig: Simplified the definitions of ENABLE_APPLE_PAY and
+          ENABLE_VIDEO_PRESENTATION_MODE now macOS 10.12 is the earliest supported version.
+        * Configurations/Version.xcconfig: Removed definition for macOS 10.11.
+        * Configurations/WebKitTargetConditionals.xcconfig: Removed definitions for macOS 10.11.
+
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        Added missing file references to the Configuration group.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2018-06-08  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Remove all uses of NSAutoreleasePool as part of preparation for ARC
+        https://bugs.webkit.org/show_bug.cgi?id=186436
+
+        Reviewed by Anders Carlsson.
+
+        * heap/Heap.cpp: Include FoundationSPI.h rather than directly including
+        objc-internal.h and explicitly declaring the alternative.
+
+2018-06-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit on watchOS] Upstream watchOS source additions to OpenSource (Part 1)
+        https://bugs.webkit.org/show_bug.cgi?id=186442
+        <rdar://problem/40879364>
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-06-08  Tadeu Zagallo  <tzagallo@apple.com>
+
+        jumpTrueOrFalse only takes the fast path for boolean false on 64bit LLInt 
+        https://bugs.webkit.org/show_bug.cgi?id=186446
+        <rdar://problem/40949995>
+
+        Reviewed by Mark Lam.
+
+        On 64bit LLInt, jumpTrueOrFalse did a mask check to take the fast path for
+        boolean literals, but it would only work for false. Change it so that it
+        takes the fast path for true, false, null and undefined.
+
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2018-06-08  Brian Burg  <bburg@apple.com>
+
+        [Cocoa] Web Automation: include browser name and version in listing for automation targets
+        https://bugs.webkit.org/show_bug.cgi?id=186204
+        <rdar://problem/36950423>
+
+        Reviewed by Darin Adler.
+
+        Ask the client what the reported browser name and version should be, then
+        send this as part of the listing for an automation target.
+
+        * inspector/remote/RemoteInspectorConstants.h:
+        * inspector/remote/cocoa/RemoteInspectorCocoa.mm:
+        (Inspector::RemoteInspector::listingForAutomationTarget const):
+
 2018-06-07  Chris Dumez  <cdumez@apple.com>
 
         Add base class to get WeakPtrFactory member and avoid some boilerplate code

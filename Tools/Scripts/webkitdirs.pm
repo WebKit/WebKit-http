@@ -1707,7 +1707,7 @@ sub launcherPath()
 
 sub launcherName()
 {
-    if (isGtk()) {
+    if (isGtk() || isWPE()) {
         return "MiniBrowser";
     } elsif (isAppleMacWebKit()) {
         return "Safari";
@@ -1715,8 +1715,6 @@ sub launcherName()
         return "MiniBrowser";
     } elsif (isHaiku()) {
         return "HaikuLauncher";
-    } elsif (isWPE()) {
-        return "dyz";
     }
 }
 
