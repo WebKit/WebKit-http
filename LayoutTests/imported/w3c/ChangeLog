@@ -1,3 +1,161 @@
+2018-10-15  Youenn Fablet  <youenn@apple.com>
+
+        RTCPeerConnection.generateCertificate is not a function
+        https://bugs.webkit.org/show_bug.cgi?id=173541
+        <rdar://problem/32638029>
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCCertificate-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-generateCertificate-expected.txt:
+        * web-platform-tests/webrtc/interfaces.https-expected.txt:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+
+2018-10-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237054.
+        https://bugs.webkit.org/show_bug.cgi?id=190593
+
+        "this regressed JetStream 2 by 6% on iOS" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] JSC should have "parseFunction" to optimize Function
+        constructor"
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+        https://trac.webkit.org/changeset/237054
+
+2018-10-15  YUHAN WU  <yuhan_wu@apple.com>
+
+        Implement error handler of MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=190438
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/mediacapture-record/MediaRecorder-error-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-error.html: Added.
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Window's properties such as 'location' should not become null when it loses its browsing context
+        https://bugs.webkit.org/show_bug.cgi?id=190539
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline WPT test whose output has changed.
+
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/url.window-expected.txt:
+
+2018-10-08  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] JSC should have "parseFunction" to optimize Function constructor
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        Reviewed by Mark Lam.
+
+        * web-platform-tests/html/webappapis/scripting/events/inline-event-handler-ordering-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/events/invalid-uncompiled-raw-handler-compiled-late-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-in-attribute-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-in-body-onerror-expected.txt:
+
+2018-10-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r236802.
+
+        Working on getting the HTML spec updated instead
+        (https://github.com/whatwg/html/pull/4079)
+
+        Reverted changeset:
+
+        "Passing noopener=NOOPENER to window.open() should cause the
+        new window to not have an opener"
+        https://bugs.webkit.org/show_bug.cgi?id=190251
+        https://trac.webkit.org/changeset/236802
+
+2018-10-09  Antoine Quint  <graouts@apple.com>
+
+        Remove the frames() timing function
+        https://bugs.webkit.org/show_bug.cgi?id=190034
+        <rdar://problem/44827544>
+
+        Reviewed by Dean Jackson.
+
+        * web-platform-tests/css-timing-1/frames-timing-functions-output-expected.txt:
+        * web-platform-tests/css-timing-1/frames-timing-functions-syntax-expected.txt:
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-transformed-distance-expected.txt:
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/easing-expected.txt:
+        * web-platform-tests/web-animations/timing-model/time-transformations/transformed-progress-expected.txt:
+
+2018-10-09  Oriol Brufau  <obrufau@igalia.com>
+
+        Resolve inset properties to computed style when there is overconstraintment
+        https://bugs.webkit.org/show_bug.cgi?id=188711
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        This patch makes WebKit behave closer to Blink. Specifically,
+         - In overconstrained relative or absolute positioning, inset properties resolve
+           to the computed value (absolutizing percentages) instead of to the used value.
+         - In fixed positioning, the resolved value of non-'auto' values is no longer
+           increased by the border of the containg block.
+
+        Some tests still have failures due to
+         - https://bugs.webkit.org/show_bug.cgi?id=189513
+         - https://bugs.webkit.org/show_bug.cgi?id=189518
+         - https://bugs.webkit.org/show_bug.cgi?id=189549
+
+        This patch can slighlty alter the resolved value if it's a long decimal number,
+        that's why test expectations for the timing functions test changed.
+
+        * web-platform-tests/css-timing-1/cubic-bezier-timing-functions-output-expected.txt:
+        * web-platform-tests/css/cssom/getComputedStyle-insets-absolute-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-absolute.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-fixed-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-fixed.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-nobox-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-nobox.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-relative-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-relative.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-static-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-static.html: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-sticky-expected.txt: Added.
+        * web-platform-tests/css/cssom/getComputedStyle-insets-sticky.html: Added.
+        * web-platform-tests/css/cssom/support/getComputedStyle-insets.js: Added.
+        (serialize):
+        (wmName):
+        (checkStyle):
+        (runTestsWithWM):
+        (export.runTests):
+
+2018-10-08  Truitt Savell  <tsavell@apple.com>
+
+        Attempt to fix test failure after 236915
+        https://bugs.webkit.org/show_bug.cgi?id=190352
+
+        Unreviewed Test Gardening
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker-expected.txt:
+
+2018-10-08  Truitt Savell  <tsavell@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker.html for Mojave
+        https://bugs.webkit.org/show_bug.cgi?id=190352
+
+        Unreviewed Test Expetations
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker-expected.txt:
+
+2018-10-06  Justin Michaud  <justin_michaud@apple.com>
+
+        Properly determine if css custom property values are computationally independent
+        https://bugs.webkit.org/show_bug.cgi?id=190303
+
+        Reviewed by Antti Koivisto.
+
+        * web-platform-tests/css/css-properties-values-api/register-property-syntax-parsing-expected.txt:
+        * web-platform-tests/css/css-properties-values-api/registered-property-computation-expected.txt:
+
 2018-10-04  Chris Dumez  <cdumez@apple.com>
 
         A Document / Window should lose its browsing context as soon as its iframe is removed from the document

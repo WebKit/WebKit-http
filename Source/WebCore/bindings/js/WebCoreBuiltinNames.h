@@ -121,6 +121,7 @@ namespace WebCore {
     macro(PerformanceResourceTiming) \
     macro(PerformanceServerTiming) \
     macro(PublicKeyCredential) \
+    macro(RTCCertificate) \
     macro(RTCDTMFSender) \
     macro(RTCDTMFToneChangeEvent) \
     macro(RTCDataChannel) \
