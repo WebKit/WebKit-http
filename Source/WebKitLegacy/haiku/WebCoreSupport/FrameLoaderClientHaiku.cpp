@@ -548,9 +548,8 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
     bool switchTab = false;
 
     // Switch to the new tab, when shift is pressed.
-    if (action.event() && action.event()->isMouseEvent()) {
-        const MouseEvent* mouseEvent = static_cast<const MouseEvent*>(action.event());
-        switchTab = (mouseEvent && mouseEvent->shiftKey());
+    if (action.mouseEventData().has_value()) {
+        switchTab = action.mouseEventData()->shiftKey;
     }
 
     message.AddBool("primary", switchTab);
@@ -1036,9 +1035,8 @@ Ref<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingContext()
 
 bool FrameLoaderClientHaiku::isTertiaryMouseButton(const NavigationAction& action) const
 {
-    if (action.event() && action.event()->isMouseEvent()) {
-        const MouseEvent* mouseEvent = static_cast<const MouseEvent*>(action.event());
-        return (mouseEvent && mouseEvent->button() == 1);
+    if (action.mouseEventData().has_value()) {
+        return (action.mouseEventData()->button == 1);
     }
     return false;
 }

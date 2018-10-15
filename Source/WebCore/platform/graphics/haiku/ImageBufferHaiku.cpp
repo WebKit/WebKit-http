@@ -84,7 +84,7 @@ ImageBufferData::~ImageBufferData()
     m_bitmap->Unlock();
 }
 
-ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace, RenderingMode, bool& success)
+ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace, RenderingMode, const HostWindow*, bool& success)
     : m_data(size)
     , m_size(size)
     , m_logicalSize(size)

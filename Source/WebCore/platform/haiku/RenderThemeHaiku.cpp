@@ -78,26 +78,6 @@ bool RenderThemeHaiku::supportsFocusRing(const RenderStyle& style) const
     }
 }
 
-Color RenderThemeHaiku::platformActiveSelectionBackgroundColor() const
-{
-    return Color(255, 80, 40, 200);
-}
-
-Color RenderThemeHaiku::platformInactiveSelectionBackgroundColor() const
-{
-    return Color(255, 80, 40, 200);
-}
-
-Color RenderThemeHaiku::platformActiveSelectionForegroundColor() const
-{
-    return Color(0, 0, 0, 255);
-}
-
-Color RenderThemeHaiku::platformInactiveSelectionForegroundColor() const
-{
-    return Color(0, 0, 0, 255);
-}
-
 bool RenderThemeHaiku::paintSliderTrack(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
 {
     rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);

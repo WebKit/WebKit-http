@@ -45,12 +45,6 @@ public:
     // A method asking if the theme is able to draw the focus ring.
     bool supportsFocusRing(const RenderStyle&) const override;
 
-    // The platform selection color.
-    Color platformActiveSelectionBackgroundColor() const override;
-    Color platformInactiveSelectionBackgroundColor() const override;
-    Color platformActiveSelectionForegroundColor() const override;
-    Color platformInactiveSelectionForegroundColor() const override;
-
     // System fonts.
     void updateCachedSystemFontDescription(CSSValueID propId, FontCascadeDescription&) const override;
 

@@ -32,7 +32,7 @@
 #include "config.h"
 #include "JavaScriptThreading.h"
 
-#include <JavaScriptCore/JavaScriptCore.h>
+#include <JavaScriptCore/API/JavaScriptCore.h>
 #include <stdlib.h>
 #include <wtf/Assertions.h>
 #include <wtf/HashSet.h>
