@@ -1264,8 +1264,6 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
 #if ENABLE(ENCRYPTED_MEDIA)
 void MediaPlayerPrivateGStreamerBase::handleProtectionStructure(const GstStructure* structure)
 {
-    ASSERT(isMainThread());
-
     GUniqueOutPtr<char> keySystemUUID;
     GRefPtr<GstBuffer> data;
     gst_structure_get(structure, "init-data", GST_TYPE_BUFFER, &data.outPtr(), "key-system-uuid", G_TYPE_STRING, &keySystemUUID.outPtr(), nullptr);
@@ -1276,12 +1274,18 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionStructure(const GstStructu
         return;
     }
 
-    String keySystemUUIDString = keySystemUUID ? keySystemUUID.get() : "(unspecified)";
     InitData initData(mappedInitData.data(), mappedInitData.size());
-    GST_TRACE("init data encountered for %s of size %" G_GSIZE_FORMAT " with MD5 %s", keySystemUUIDString.utf8().data(), mappedInitData.size(), GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
-    GST_MEMDUMP("init data", mappedInitData.data(), mappedInitData.size());
+    initializationDataEncountered(initData, keySystemUUID ? keySystemUUID.get() : "(unspecified)");
+}
 
-    RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), keySystemUUID = keySystemUUIDString, initData] {
+void MediaPlayerPrivateGStreamerBase::initializationDataEncountered(const InitData& initData, const String& keySystemUUID)
+{
+    ASSERT(isMainThread());
+
+    GST_TRACE("init data encountered for %s of size %" G_GSIZE_FORMAT " with MD5 %s", keySystemUUID.utf8().data(), initData.sizeInBytes(), GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
+    GST_MEMDUMP("init data", initData.characters8(), initData.sizeInBytes());
+
+    RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), keySystemUUID, initData] {
         if (!weakThis)
             return;
 

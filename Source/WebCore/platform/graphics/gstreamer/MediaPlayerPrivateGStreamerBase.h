@@ -25,7 +25,7 @@
 #define MediaPlayerPrivateGStreamerBase_h
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
-#include "GStreamerCommon.h"
+#include "GStreamerEMEUtilities.h"
 #include "MainThreadNotifier.h"
 #include "MediaPlayerPrivate.h"
 #include "PlatformLayer.h"
@@ -147,6 +147,7 @@ public:
     void cdmInstanceDetached(const CDMInstance&) override;
     void attemptToDecryptWithInstance(const CDMInstance&) final;
     void handleProtectionStructure(const GstStructure*);
+    void initializationDataEncountered(const InitData&, const String&);
     void dispatchLocalCDMInstance();
     void reportWaitingForKey();
 #endif
