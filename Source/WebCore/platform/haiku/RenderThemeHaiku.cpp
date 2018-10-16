@@ -184,7 +184,7 @@ void RenderThemeHaiku::updateCachedSystemFontDescription(CSSValueID, FontCascade
 #if ENABLE(VIDEO)
 String RenderThemeHaiku::mediaControlsStyleSheet()
 {
-    return ASCIILiteral(mediaControlsBaseUserAgentStyleSheet);
+    return ASCIILiteral::fromLiteralUnsafe(mediaControlsBaseUserAgentStyleSheet);
 }
 
 String RenderThemeHaiku::mediaControlsScript()

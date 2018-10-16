@@ -125,7 +125,7 @@ IntRect ScrollbarThemeHaiku::trackRect(Scrollbar& scrollbar, bool)
     return IntRect(scrollbar.x(), scrollbar.y() + thickness, thickness, scrollbar.height() - 2 * thickness - 1);
 }
 
-void ScrollbarThemeHaiku::paintScrollCorner(ScrollView* scrollView, GraphicsContext& context, const IntRect& rect)
+void ScrollbarThemeHaiku::paintScrollCorner(GraphicsContext& context, const IntRect& rect)
 {
 	if (rect.width() == 0 || rect.height() == 0)
 		return;

@@ -567,7 +567,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(const NavigationAction& action,
-    const ResourceRequest& request, bool didReceiveRedirectResponse, FormState* formState, PolicyDecisionMode, FramePolicyFunction&& function)
+    const ResourceRequest& request, const WebCore::ResourceResponse& response, FormState* formState, PolicyDecisionMode, FramePolicyFunction&& function)
 {
     // Potentially we want to open a new window, when the user clicked with the
     // tertiary mouse button. That's why we can reuse the other method.
