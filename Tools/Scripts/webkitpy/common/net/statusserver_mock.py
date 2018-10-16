@@ -39,6 +39,7 @@ class MockStatusServer(object):
         self.host = "example.com"
         self.bot_id = bot_id
         self._work_items = work_items or []
+        self.use_https = True
 
     def patch_status(self, queue_name, patch_id):
         return None
@@ -78,6 +79,7 @@ class MockStatusServer(object):
         return "http://dummy_url"
 
     def fetch_attachment(self, attachment_id):
+        _log.info('MOCK: fetch_attachment: {}'.format(attachment_id))
         attachment = Attachment({'id': 10008}, None)
         attachment.content = lambda: 'Patch'
         return attachment

@@ -1,3 +1,376 @@
+2018-06-27  Youenn Fablet  <youenn@apple.com>
+
+        NetworkLoadChecker should not need to hard ref NetworkConnectionToWebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=186551
+
+        Reviewed by Daniel Bates.
+
+        Removed the need for NetworkLoadChecker to reference a NetworkConnectionToWebProcess.
+        Instead a CSP client is given to NetworkLoadChecker when needed.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::loadPing):
+        * NetworkProcess/NetworkLoadChecker.cpp:
+        (WebKit::NetworkLoadChecker::NetworkLoadChecker):
+        (WebKit::NetworkLoadChecker::check):
+        (WebKit::NetworkLoadChecker::checkRedirection):
+        (WebKit::NetworkLoadChecker::checkRequest):
+        (WebKit::NetworkLoadChecker::contentSecurityPolicy):
+        (WebKit::NetworkLoadChecker::addConsoleMessage): Deleted.
+        (WebKit::NetworkLoadChecker::sendCSPViolationReport): Deleted.
+        (WebKit::NetworkLoadChecker::enqueueSecurityPolicyViolationEvent): Deleted.
+        * NetworkProcess/NetworkLoadChecker.h:
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::start):
+        (WebKit::NetworkResourceLoader::willSendRedirectedRequest):
+        * NetworkProcess/PingLoad.cpp:
+        (WebKit::PingLoad::PingLoad):
+        (WebKit::PingLoad::willPerformHTTPRedirection):
+        * NetworkProcess/PingLoad.h:
+
+2018-06-27  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [Wincairo] Add support for context menus to non-legacy minibrowser
+        https://bugs.webkit.org/show_bug.cgi?id=186815.
+
+        Reviewed by Ryosuke Niwa.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/win/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::viewWidget):
+        * UIProcess/win/PageClientImpl.h:
+        * UIProcess/win/WebContextMenuProxyWin.cpp:
+        (WebKit::WebContextMenuProxyWin::show):
+        (WebKit::createMenu):
+        (WebKit::createMenuItem):
+        (WebKit::populate):
+        (WebKit::WebContextMenuProxyWin::showContextMenuWithItems):
+        (WebKit::WebContextMenuProxyWin::WebContextMenuProxyWin):
+        (WebKit::WebContextMenuProxyWin::~WebContextMenuProxyWin):
+        * UIProcess/win/WebContextMenuProxyWin.h:
+        * UIProcess/win/WebPageProxyWin.cpp:
+        (WebKit::WebPageProxy::viewWidget):
+        * UIProcess/win/WebView.cpp:
+        (WebKit::WebView::wndProc):
+        (WebKit::WebView::onMenuCommand):
+        * UIProcess/win/WebView.h:
+
+2018-06-27  Youenn Fablet  <youenn@apple.com>
+
+        Disable content blockers in NetworkLoadChecker except for ping loads
+        https://bugs.webkit.org/show_bug.cgi?id=187083
+        <rdar://problem/41440083>
+
+        Reviewed by Chris Dumez.
+
+        * NetworkProcess/NetworkLoadChecker.cpp:
+        (WebKit::NetworkLoadChecker::processContentExtensionRulesForLoad):
+        * NetworkProcess/NetworkLoadChecker.h:
+        (WebKit::NetworkLoadChecker::enableContentExtensionsCheck):
+        * NetworkProcess/PingLoad.cpp:
+
+2018-06-27  Simon Fraser  <simon.fraser@apple.com>
+
+        https://hackernoon.com/ uses lots of layer backing store
+        https://bugs.webkit.org/show_bug.cgi?id=186909
+        rdar://problem/40257540
+
+        Reviewed by Tim Horton.
+        
+        PlatformCALayerRemote was actually holding onto backing stores for layers with
+        backing store detached, which could increase memory use. When told that backing stores
+        are not attached, explicitly throw away the backing, and re-create it (via setNeedsDisplay)
+        when attached. This is now similar to what PlatformLayerCACocoa does.
+
+        * WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::setNeedsDisplayInRect):
+        (WebKit::PlatformCALayerRemote::setNeedsDisplay):
+        (WebKit::PlatformCALayerRemote::hasContents const):
+        * WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemote.h:
+
+2018-06-27  Jonathan Bedard  <jbedard@apple.com>
+
+        Enable WebKit iOS 12 build
+        https://bugs.webkit.org/show_bug.cgi?id=187024
+        <rdar://problem/39759057>
+
+        Reviewed by David Kilzer.
+
+        * Platform/spi/ios/PDFKitSPI.h: Added PDFKit SPI.
+        * Platform/spi/ios/UIKitSPI.h: Add new UIKit SPI and UICompositingMode enumeration.
+        * UIProcess/ios/WKPDFView.mm: Use PDFKitSPI header.
+        * UIProcess/ios/WKSystemPreviewView.mm: Use CoreGraphicsSPI.h.
+        * UIProcess/ios/fullscreen/WKFullscreenStackView.mm: Use QuartzCoreSPI.h.
+
+2018-06-27  Timothy Horton  <timothy_horton@apple.com>
+
+        CSS Animation Triggers is not an experimental feature, should be globally off by default
+
+        Reviewed by Dean Jackson.
+
+        * Shared/WebPreferences.yaml:
+
+2018-06-27  Timothy Horton  <timothy_horton@apple.com>
+
+        Promote the Secure Context API feature from experimental-yet-on-by-default to always-on
+
+        Reviewed by Dan Bates.
+
+        * Shared/WebPreferences.yaml:
+        Secure Context API is on by default, it's not experimental anymore.
+
+2018-06-27  Timothy Horton  <timothy_horton@apple.com>
+
+        Make Link Preload an on-by-default feature
+        https://bugs.webkit.org/show_bug.cgi?id=187104
+
+        Reviewed by Ryosuke Niwa.
+
+        * Shared/WebPreferences.yaml:
+        This should be on, not experimental. It already shipped on in the past.
+
+2018-06-27  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r233208): Completion handler does not get called on GTK port
+        https://bugs.webkit.org/show_bug.cgi?id=187099
+
+        Reviewed by Antti Koivisto.
+
+        Make sure UpdatePrevalentDomainsToPartitionOrBlockCookiesHandler's completion handler
+        gets called on non-COCOA ports.
+
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2018-06-27  Tim Horton  <timothy_horton@apple.com>
+
+        When trying to print a very long email on iOS, the print preview is blank
+        https://bugs.webkit.org/show_bug.cgi?id=187077
+        <rdar://problem/41107013>
+
+        Reviewed by Timothy Hatcher.
+
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::computePagesForPrintingAndDrawToPDF):
+        ChildProcessProxy::sendSync has a (surprising) default timeout of 1 second,
+        (as opposed to Connection::sendSync's default timeout of ∞ seconds).
+        The printing path already waits ∞ seconds for the final PDF, but currently
+        uses the default 1 second timeout for page count computation. If page
+        count computation takes more than 1 second, the preview will be blank.
+        Since the print preview is generated asynchronously, we really want
+        to wait until it's done, and not give up after 1 second.
+
+2018-06-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iPad apps on macOS] Unable to interact with video elements that have started playing
+        https://bugs.webkit.org/show_bug.cgi?id=187073
+        <rdar://problem/40591107>
+
+        Reviewed by Tim Horton.
+
+        On iOS, we currently force remote hosting contexts to be non-interactive by passing in `kCAContextIgnoresHitTest`
+        when creating the CAContext. However, this flag is not respected by CoreAnimation when running iOS apps on macOS.
+        This means all HID events dispatched over a video that has been played (which causes WebKit to insert a
+        CALayerHost-backed WKRemoteView in the view hierarchy) will be routed to the context ID of the video's CAContext
+        rather than the context ID of the key window containing the WKWebView.
+
+        This subsequently causes all gesture recognizers (hover, touch, tap, long press) to fail recognition when
+        running iOS apps on macOS. To address this, we set a flag on WKRemoteView's CALayerHost to prevent hit-testing
+        to the remote layer. This allows us to avoid routing HID events to the wrong context, and instead target the
+        main UIWindow.
+
+        Manually verified that click, touch, and mouseenter/mouseleave events are dispatched when interacting over a
+        video element.
+
+        * UIProcess/RemoteLayerTree/ios/RemoteLayerTreeHostIOS.mm:
+        (-[WKRemoteView initWithFrame:contextID:]):
+
+2018-06-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r233232.
+        https://bugs.webkit.org/show_bug.cgi?id=187081
+
+        "This is breaking launching some plugins" (Requested by youenn
+        on #webkit).
+
+        Reverted changeset:
+
+        "Remove quarantine for Webex plugin"
+        https://bugs.webkit.org/show_bug.cgi?id=187050
+        https://trac.webkit.org/changeset/233232
+
+2018-06-26  Timothy Horton  <timothy_horton@apple.com>
+
+        Rearrange some WebPreferences; move two experimental prefs into the experimental section
+
+        * Shared/WebPreferences.yaml:
+
+2018-06-26  Chris Dumez  <cdumez@apple.com>
+
+        Deal better with the network process crashing on startup
+        https://bugs.webkit.org/show_bug.cgi?id=187065
+        <rdar://problem/41451622>
+
+        Reviewed by Geoffrey Garen.
+
+        When a network process crashes on startup, we would not attempt to relaunch it. If there were web
+        processes waiting for a connection to this network process, we would send them an invalid connection
+        identifier which would cause them to forcefully crash.
+
+        Instead, we now apply the same policy whether a network process crashes on startup or later:
+        - We attempt to relaunch the network process
+        - If there were pending connections from WebContent processes, we ask the new Network process instead.
+
+        As a result, WebContent processes no longer crash in this case. Instead, they wait for a valid
+        connection to the network process.
+
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _makeNextNetworkProcessLaunchFailForTesting]):
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::getLaunchOptions):
+        (WebKit::NetworkProcessProxy::didFinishLaunching):
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::networkProcessCrashed):
+        * UIProcess/WebProcessPool.h:
+
+2018-06-26  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r231479): Unable to buy Odeon cinema tickets in STP (bogus 'X-Frame-Options' to 'SAMEORIGIN')
+        https://bugs.webkit.org/show_bug.cgi?id=186090
+        <rdar://problem/40692595>
+
+        Reviewed by Andy Estes.
+
+        Fixes an issue where a page P delivered with "X-Frame-Options: SAMEORIGIN" loaded in a sub-
+        frame would be blocked if we were redirected to it in response to the cross-origin POST
+        request regardless of whether P is same-origin with its parent document.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::shouldInterruptLoadForXFrameOptions): Compare the origin
+        of the top frame's document as opposed to the source origin. The latter represents the
+        origin of the document that initiated the navigation, which can be cross-origin, and
+        should not be considered when applying "X-Frame-Options: SAMEORIGIN". This check exists
+        as a performance optimization to avoid traversing over all frame ancestors only to find
+        out that the innermost frame (the one that made this request) is cross-origin with the
+        top-most frame.
+        * NetworkProcess/NetworkResourceLoader.h:
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::scheduleLoadFromNetworkProcess): Exclude the origin of the
+        frame that is making the load request from the list of ancestor origins. This makes the
+        X-Frame-Options algorithm in WebKit2 match the logic we do in FrameLoader::shouldInterruptLoadForXFrameOptions().
+
+2018-06-26  Youenn Fablet  <youenn@apple.com>
+
+        Remove quarantine for Webex plugin
+        https://bugs.webkit.org/show_bug.cgi?id=187050
+        rdar://problem/41478189
+
+        Reviewed by Brent Fulgham.
+
+        Update the Plugin Info.plist to not do quarantine of downloaded files by default.
+        Update PluginProcess implementation to reenable quarantine for all plug-ins except cisco webex plug-in.
+
+        * PluginProcess/EntryPoint/mac/XPCService/PluginService.32-64.Info.plist:
+        * PluginProcess/PluginProcess.h:
+        * PluginProcess/mac/PluginProcessMac.mm:
+        (WebKit::PluginProcess::shouldOverrideQuarantine):
+        * Shared/ChildProcess.h:
+        (WebKit::ChildProcess::shouldOverrideQuarantine):
+        * Shared/mac/ChildProcessMac.mm:
+        (WebKit::ChildProcess::initializeSandbox):
+
+2018-06-26  Jeremy Jones  <jeremyj@apple.com>
+
+        Ensure element fullscreen animation is always visible.
+        https://bugs.webkit.org/show_bug.cgi?id=187068
+        rdar://problem/36187369
+
+        Reviewed by Eric Carlson.
+
+        The fullscreen animation is important for communicating to users that they are no longer in inline mode.
+        If fullscreen animation's inline rect is not visible, animate from a point in the middle of the screen.
+
+        * UIProcess/ios/fullscreen/WKFullScreenWindowControllerIOS.mm:
+        (WebKit::safeInlineRect):
+        (-[WKFullScreenWindowController beganEnterFullScreenWithInitialFrame:finalFrame:]):
+        (-[WKFullScreenWindowController beganExitFullScreenWithInitialFrame:finalFrame:]):
+
+2018-06-26  Youenn Fablet  <youenn@apple.com>
+
+        Add a sandbox profile for com.google.o1dbrowserplugin plugin
+        https://bugs.webkit.org/show_bug.cgi?id=187067
+
+        Reviewed by Brent Fulgham.
+
+        * Resources/PlugInSandboxProfiles/com.google.o1dbrowserplugin.sb: Added.
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-06-26  Tim Horton  <timothy_horton@apple.com>
+
+        Promote two more experimental features to traditional features
+        https://bugs.webkit.org/show_bug.cgi?id=187063
+
+        Reviewed by Dean Jackson.
+
+        * Shared/WebPreferences.yaml:
+        Promote some shipped/default-on features to non-experimental.
+
+2018-06-26  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Rollout macOS sandbox change in r232276
+        https://bugs.webkit.org/show_bug.cgi?id=186904
+        <rdar://problem/41350969>
+
+        Reviewed by Brent Fulgham.
+
+        * NetworkProcess/mac/com.apple.WebKit.NetworkProcess.sb.in:
+
+2018-06-26  Aditya Keerthi  <akeerthi@apple.com>
+
+        Tap highlight displayed when tapping a field that is already focussed
+        https://bugs.webkit.org/show_bug.cgi?id=187004
+        <rdar://problem/41428008>
+        Reviewed by Tim Horton.
+
+        In the case where fast-clicking is enabled, _singleTapCommited: could be invoked
+        before the tap highlight request, causing _potentialTapInProgress to be set to NO.
+        This results in the early return for preventing multiple tap highlights on an
+        assisted node to be skipped. Since a tap highlight should never be shown for an
+        input field that is already focussed, _potentialTapInProgress can be removed from
+        the early return condition.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _didGetTapHighlightForRequest:color:quads:topLeftRadius:topRightRadius:bottomLeftRadius:bottomRightRadius:]):
+
+2018-06-26  Timothy Horton  <timothy_horton@apple.com>
+
+        Rearrange some WebPreferences; move two non-experimental prefs out of the experimental section
+
+        * Shared/WebPreferences.yaml:
+
+2018-06-26  Tim Horton  <timothy_horton@apple.com>
+
+        Promote some experimental features to traditional features
+        https://bugs.webkit.org/show_bug.cgi?id=187047
+
+        Reviewed by Simon Fraser.
+
+        * Shared/WebPreferences.yaml:
+        Reindent.
+        Promote some shipped/default-on features to non-experimental.
+
+2018-06-26  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] AirPlay picker uses incorrect theme in Dark mode
+        https://bugs.webkit.org/show_bug.cgi?id=187054
+        <rdar://problem/41291093>
+
+        Reviewed by Timothy Hatcher.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::showPlaybackTargetPicker): Pass m_defaultAppearance.
+
 2018-06-26  Chris Dumez  <cdumez@apple.com>
 
         Resource Load Statistics: Make WebResourceLoadStatisticsStore::updateCookiePartitioningForDomains() wait for the network process before calling its callback

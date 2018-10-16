@@ -260,5 +260,146 @@ class TestRunBindingsTests(BuildStepMixinAdditions, unittest.TestCase):
         return self.runStep()
 
 
+class TestunWebKitPerlTests(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(RunWebKitPerlTests())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['Tools/Scripts/test-webkitperl'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='webkitperl-tests')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(RunWebKitPerlTests())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['Tools/Scripts/test-webkitperl'],
+                        )
+            + ExpectShell.log('stdio', stdout='''Failed tests:  1-3, 5-7, 9, 11-13
+Files=40, Tests=630,  4 wallclock secs ( 0.16 usr  0.09 sys +  2.78 cusr  0.64 csys =  3.67 CPU)
+Result: FAIL
+Failed 1/40 test programs. 10/630 subtests failed.''')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='webkitperl-tests (failure)')
+        return self.runStep()
+
+
+class TestKillOldProcesses(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(KillOldProcesses())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['python', 'Tools/BuildSlaveSupport/kill-old-processes', 'buildbot'],
+                        timeout=60,
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='killed old processes')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(KillOldProcesses())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['python', 'Tools/BuildSlaveSupport/kill-old-processes', 'buildbot'],
+                        timeout=60,
+                        )
+            + ExpectShell.log('stdio', stdout='Unexpected error.')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='killed old processes (failure)')
+        return self.runStep()
+
+
+class TestCleanBuild(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(CleanBuild())
+        self.setProperty('fullPlatform', 'ios-11')
+        self.setProperty('configuration', 'Release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['python', 'Tools/BuildSlaveSupport/clean-build', '--platform=ios-11', '--Release'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='deleted WebKitBuild directory')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(CleanBuild())
+        self.setProperty('fullPlatform', 'ios-simulator-11')
+        self.setProperty('configuration', 'Debug')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['python', 'Tools/BuildSlaveSupport/clean-build', '--platform=ios-simulator-11', '--Debug'],
+                        )
+            + ExpectShell.log('stdio', stdout='Unexpected error.')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='deleted WebKitBuild directory (failure)')
+        return self.runStep()
+
+
+class TestCompileWebKit(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(CompileWebKit())
+        self.setProperty('fullPlatform', 'ios-simulator-11')
+        self.setProperty('configuration', 'Release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=["perl", "Tools/Scripts/build-webkit", '--Release'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='compiled webkit')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(CompileWebKit())
+        self.setProperty('fullPlatform', 'mac-sierra')
+        self.setProperty('configuration', 'Debug')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=["perl", "Tools/Scripts/build-webkit", '--Debug'],
+                        )
+            + ExpectShell.log('stdio', stdout='1 error generated.')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='compiled webkit (failure)')
+        return self.runStep()
+
+
 if __name__ == '__main__':
     unittest.main()

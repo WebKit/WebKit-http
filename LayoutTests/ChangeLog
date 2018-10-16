@@ -1,3 +1,156 @@
+2018-06-27  Antti Koivisto  <antti@apple.com>
+
+        Don't invoke post resolution callbacks when resolving computed style
+        https://bugs.webkit.org/show_bug.cgi?id=187113
+        <rdar://problem/41365766>
+
+        Reviewed by Geoff Garen.
+
+        * fast/dom/object-computed-style-event-expected.txt: Added.
+        * fast/dom/object-computed-style-event.html: Added.
+
+2018-06-27  Timothy Hatcher  <timothy@apple.com>
+
+        Find on page selection color isn't adapted for dark mode.
+        https://bugs.webkit.org/show_bug.cgi?id=187072
+        rdar://problem/40354841
+
+        Reviewed by Tim Horton.
+
+        * fast/css/apple-system-control-colors-expected.txt: Updated.
+        * fast/text/mark-matches-broken-line-rendering-expected.html: Ditto.
+        * fast/text/mark-matches-rendering-expected.html: Ditto.
+
+2018-06-27  Youenn Fablet  <youenn@apple.com>
+
+        Disable content blockers in NetworkLoadChecker except for ping loads
+        https://bugs.webkit.org/show_bug.cgi?id=187083
+        <rdar://problem/41440083>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/contentextensions/reload-without-contentextensions-expected.txt: Added.
+        * http/tests/contentextensions/reload-without-contentextensions.html: Added.
+        * http/tests/contentextensions/reload-without-contentextensions.html.json: Added.
+
+2018-06-27  Simon Fraser  <simon.fraser@apple.com>
+
+        https://hackernoon.com/ uses lots of layer backing store
+        https://bugs.webkit.org/show_bug.cgi?id=186909
+        rdar://problem/40257540
+
+        Reviewed by Tim Horton.
+        
+        New test.
+
+        * compositing/backing/backing-store-attachment-outside-viewport-expected.txt: Added.
+        * compositing/backing/backing-store-attachment-outside-viewport.html: Added.
+
+2018-06-27  Nan Wang  <n_wang@apple.com>
+
+        AX: [iOS] Remove the ability to set keyboard focus when VoiceOver takes focus
+        https://bugs.webkit.org/show_bug.cgi?id=187076
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ios-simulator/accessibility-focus-do-not-set-focus-expected.txt: Added.
+        * accessibility/ios-simulator/accessibility-focus-do-not-set-focus.html: Added.
+        * accessibility/ios-simulator/dom-focus-fires-on-correct-element-expected.txt: Removed.
+        * accessibility/ios-simulator/dom-focus-fires-on-correct-element.html: Removed.
+
+2018-06-26  Youenn Fablet  <youenn@apple.com>
+
+        Import wpt CORP tests
+        https://bugs.webkit.org/show_bug.cgi?id=187027
+
+        Reviewed by Chris Dumez.
+
+        Skipping tests for WK1.
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2018-06-26  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r231479): Unable to buy Odeon cinema tickets in STP (bogus 'X-Frame-Options' to 'SAMEORIGIN')
+        https://bugs.webkit.org/show_bug.cgi?id=186090
+        <rdar://problem/40692595>
+
+        Reviewed by Andy Estes.
+
+        Add a test to ensure that we allow a same-origin page with "X-Frame-Options: SAMEORIGIN" to
+        load as a result of a redirected cross-origin POST request.
+
+        * http/tests/security/XFrameOptions/cross-origin-iframe-post-form-to-parent-same-origin-x-frame-options-page-allow-expected.txt: Added.
+        * http/tests/security/XFrameOptions/cross-origin-iframe-post-form-to-parent-same-origin-x-frame-options-page-allow.html: Added.
+        * http/tests/security/XFrameOptions/resources/post-form-to-x-frame-options-parent-same-origin-allow.html: Added.
+        * http/tests/security/XFrameOptions/resources/x-frame-options-parent-same-origin-allow.cgi:
+
+2018-06-26  Saam Barati  <sbarati@apple.com>
+
+        JSImmutableButterfly can't be allocated from a subspace with HeapCell::Kind::Auxiliary
+        https://bugs.webkit.org/show_bug.cgi?id=186878
+        <rdar://problem/40568659>
+
+        Reviewed by Filip Pizlo.
+
+        Make these test not susceptible to conservative scan leaks by ensuring at least
+        one object gets collected when we allocate many of them. Before, these were just
+        testing that a fixed number of objects were collected.
+
+        * editing/selection/navigation-clears-editor-state-expected.txt:
+        * editing/selection/navigation-clears-editor-state.html:
+        * fast/dom/reference-cycle-leaks.html:
+        * fast/misc/resources/test-observegc.js:
+        * fast/misc/test-observegc-expected.txt:
+        * platform/mac-wk2/plugins/refcount-leaks-expected.txt:
+        * plugins/refcount-leaks-expected.txt:
+        * plugins/refcount-leaks.html:
+
+2018-06-26  Truitt Savell  <tsavell@apple.com>
+
+        [iOS] Rebaseline two webanimations tests after r233164
+        https://bugs.webkit.org/show_bug.cgi?id=187071
+
+        Unreviewed gardening
+
+        * platform/ios/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+        * platform/ios/webanimations/opacity-animation-yields-compositing-span-expected.txt: Added.
+
+2018-06-26  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION (r232314): Flaky Test: imported/w3c/web-platform-tests/streams/piping/error-propagation-forward.html
+        https://bugs.webkit.org/show_bug.cgi?id=186161
+
+        Unreviewed gardening.
+
+        * TestExpectations:
+
+2018-06-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r233184.
+        https://bugs.webkit.org/show_bug.cgi?id=187059
+
+        "It regressed JetStream between 5-8%" (Requested by saamyjoon
+        on #webkit).
+
+        Reverted changeset:
+
+        "JSImmutableButterfly can't be allocated from a subspace with
+        HeapCell::Kind::Auxiliary"
+        https://bugs.webkit.org/show_bug.cgi?id=186878
+        https://trac.webkit.org/changeset/233184
+
+2018-06-26  Charlie Turner  <cturner@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=187048
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
 2018-06-26  Truitt Savell  <tsavell@apple.com>
 
         Layout Test http/tests/resourceLoadStatistics/prevalent-resource-without-user-interaction.html is flaky

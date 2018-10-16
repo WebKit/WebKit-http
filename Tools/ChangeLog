@@ -1,3 +1,193 @@
+2018-06-27  Daniel Bates  <dabates@apple.com>
+
+        webkit-patch should ignore non-ASCII characters in the status server API key
+        https://bugs.webkit.org/show_bug.cgi?id=187107
+
+        Reviewed by Lucas Forschler.
+
+        The API key should only consists of ASCII characters. If it contains any
+        non-ASCII characters then log a warning and ignore them.
+
+        * Scripts/webkitpy/common/net/statusserver.py:
+        (StatusServer.set_api_key): Force conversion to ASCII.
+        * Scripts/webkitpy/tool/main.py:
+        (WebKitPatch._status_server_api_key): Convert to ASCII, ignoring non-ASCII
+        characters and logging a warning.
+
+2018-06-27  Jonathan Bedard  <jbedard@apple.com>
+
+        Enable WebKit iOS 12 build
+        https://bugs.webkit.org/show_bug.cgi?id=187024
+        <rdar://problem/39759057>
+
+        Reviewed by David Kilzer.
+
+        * Scripts/configure-xcode-for-ios-development:
+        (copyMissingHeadersFromSDKToSDKIfNeeded): Copy launch.h into embedded SDKs.
+
+2018-06-27  Robin Morisset  <rmorisset@apple.com>
+
+        [WSL] Add a control-flow stack to the execution rules in WSL.ott
+        https://bugs.webkit.org/show_bug.cgi?id=186310
+
+        Rubberstamped by Filip Pizlo.
+
+        The goal of this is to enable (future) rules about uniform control flow for barriers.
+        It required adding two new special construct: Join(s) and JoinExpr(e) whose only role is to pop the last element of the stack.
+
+        * WebGPUShadingLanguageRI/SpecWork/WSL.ott:
+
+2018-06-27  Robin Morisset  <rmorisset@apple.com>
+
+        [WSL] Fix minor formatting issues in the grammar section
+        https://bugs.webkit.org/show_bug.cgi?id=186310
+
+        Rubberstamped by Filip Pizlo.
+
+        * WebGPUShadingLanguageRI/SpecWork/source/index.rst:
+
+2018-06-27  Robin Morisset  <rmorisset@apple.com>
+
+        [WSL] Put the full grammar in the Sphinx document
+        https://bugs.webkit.org/show_bug.cgi?id=186310
+
+        Rubberstamped by Filip Pizlo.
+
+        Put the grammar's production rules in the Sphinx document, along with a few comments and the rules for desugaring.
+        Also includes a bit of clean-up of the antlr rules.
+
+        * WebGPUShadingLanguageRI/SpecWork/WSL.g4:
+        * WebGPUShadingLanguageRI/SpecWork/source/index.rst:
+
+2018-06-26  Chris Dumez  <cdumez@apple.com>
+
+        Deal better with the network process crashing on startup
+        https://bugs.webkit.org/show_bug.cgi?id=187065
+        <rdar://problem/41451622>
+
+        Reviewed by Geoffrey Garen.
+
+        Add layout test coverage.
+
+        * TestWebKitAPI/Tests/WebKit/NetworkProcessCrashWithPendingConnection.mm:
+        (-[MonitorWebContentCrashNavigationDelegate _webView:webContentProcessDidTerminateWithReason:]):
+        (-[MonitorWebContentCrashNavigationDelegate webView:didFinishNavigation:]):
+        (TestWebKitAPI::TEST):
+
+2018-06-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove static initializers more
+        https://bugs.webkit.org/show_bug.cgi?id=186969
+
+        Reviewed by Michael Catanzaro.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::assignedUrlsCache):
+        (WTR::dumpResourceURL):
+        (WTR::InjectedBundlePage::resetAfterTest):
+        (WTR::InjectedBundlePage::didInitiateLoadForResource):
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.cpp:
+        (WTR::AccessibilityNotificationHandler::setNotificationFunctionCallback):
+        (WTR::AccessibilityNotificationHandler::removeAccessibilityNotificationHandler):
+        (WTR::AccessibilityNotificationHandler::connectAccessibilityCallbacks):
+        (WTR::AccessibilityNotificationHandler::disconnectAccessibilityCallbacks):
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::stringAttributeValue):
+        Use NeverDestroyed<> and static functions.
+
+2018-06-26  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add support for compiling WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=187019
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (CompileWebKit): Added, class to compile WebKit.
+        (CleanBuild): Added, class to clean up the build.
+        (KillOldProcesses): Added, class to kill old processes.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-tests.
+        * BuildSlaveSupport/ews-build/config.json: Renamed ios-11-simulator to ios-simulator-11, to match with build.webkit.org code.
+        Added configuration, architecture which is required for compiling. Renamed Release to release as the tools expect lower-case release.
+        * BuildSlaveSupport/ews-build/factories.py: Added BuildFactory.
+        * BuildSlaveSupport/ews-build/loadConfig.py: Renamed configuraton value to lower-case as tools expect lower-case values.
+        * BuildSlaveSupport/ews-build/loadConfig_unittest.py: Ditto.
+
+2018-06-26  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add support for WebKitPerl-Tests-EWS
+        https://bugs.webkit.org/show_bug.cgi?id=187023
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/config.json: Added WebKitPerl-tests-EWS.
+        * BuildSlaveSupport/ews-build/factories.py: Added WebKitPerlFactory.
+        * BuildSlaveSupport/ews-build/steps.py: Added build step RunWebKitPerlTests.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-test.
+
+2018-06-26  Aakash Jain  <aakash_jain@apple.com>
+
+        [build.webkit.org] Rename badly named variable kls to schedulerType
+        https://bugs.webkit.org/show_bug.cgi?id=186926
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/build.webkit.org-config/loadConfig.py:
+        (loadBuilderConfig): Renamed kls to schedulerType.
+
+2018-06-26  Daniel Bates  <dabates@apple.com>
+
+        EWS should pass --status-host-uses-http when invoking webkit-patch, if needed
+        https://bugs.webkit.org/show_bug.cgi?id=187061
+
+        Reviewed by Per Arne Vollan.
+
+        When EWS invokes webkit-patch to perform an operation (e.g. apply an attachment)
+        it should pass the command line option --status-host-uses-http, if EWS was
+        started with this command line option, so that we query the status server over
+        HTTP in child "webkit-patch" processes as we do in the main EWS process.
+
+        * Scripts/webkitpy/common/net/statusserver_mock.py:
+        (MockStatusServer.__init__):
+        * Scripts/webkitpy/tool/commands/queues.py:
+        (AbstractQueue.run_webkit_patch):
+
+2018-06-26  Daniel Bates  <dabates@apple.com>
+
+        webkit-patch: Make attachment commands work with status-server hosted attachments
+        https://bugs.webkit.org/show_bug.cgi?id=187056
+
+        Reviewed by Per Arne Vollan.
+
+        Allow the EWS bots to apply, build, test, check-style, and (in the future) land
+        attachments hosted on the status server. We only download an attachment from the
+        status server if we do not have sufficient permission to download it from Bugzilla
+        (e.g. security-sensitive patches).
+
+        A valid status server API key is required to run these commands by hand. Otherwise,
+        the status server will not provide attachment data.
+
+        * Scripts/webkitpy/common/net/statusserver_mock.py:
+        (MockStatusServer.fetch_attachment): Log a message for testing purposes.
+        * Scripts/webkitpy/tool/commands/download.py:
+        (ProcessAttachmentsMixin._fetch_list_of_patches_to_process): Fetch the attachment
+        from the status server if we do not have permission to fetch it from Bugzilla.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        (EarlyWarningSystemTest._default_expected_logs): Update expected result when
+        using a custom work item and when fetching an attachment from the status server.
+        (_test_ews): Modified to take use_security_sensitive_patch (defaults to False) as
+        to whether to use a security-sensitive patch when testing.
+        (test_ewses_with_security_sensitive_patch): Added.
+
+2018-06-26  Daniel Bates  <dabates@apple.com>
+
+        contributors.json fails to parse after r233209
+
+        Removing trailing ',' that caused this file to be malformed. Also ran
+        "validate-committer-lists -c" to canonicalize the style of this file.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
 2018-06-26  Timothy Horton  <timothy_horton@apple.com>
 
         Add Aditya to contributors.json as a contributor

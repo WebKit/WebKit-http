@@ -94,7 +94,7 @@ Accelerated2dCanvasEnabled:
 
 CSSAnimationTriggersEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  defaultValue: false
   webcoreBinding: RuntimeEnabledFeatures
   webcoreName: animationTriggersEnabled
   condition: ENABLE(CSS_ANIMATIONS_LEVEL_2)
@@ -157,15 +157,6 @@ LinkPreconnect:
   type: bool
   defaultValue: DEFAULT_LINK_PRECONNECT_ENABLED
   webcoreName: linkPreconnectEnabled
-
-FullScreenEnabled:
-  type: bool
-  defaultValue: DEFAULT_ENABLE_FULLSCREEN_API
-  condition: ENABLE(FULLSCREEN_API)
-  visibleCondition: PLATFORM(IOS)
-  humanReadableName: "Fullscreen API"
-  humanReadableDescription: "Fullscreen API"
-  category: experimental
 
 AsynchronousSpellCheckingEnabled:
   type: bool
@@ -659,15 +650,6 @@ MenuItemElementEnabled:
   defaultValue: false
   webcoreBinding: RuntimeEnabledFeatures
 
-EncryptedMediaAPIEnabled:
-  type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
-  humanReadableName: "Modern Encrypted Media API"
-  humanReadableDescription: "Modern Encrypted Media API"
-  webcoreBinding: RuntimeEnabledFeatures
-  category: experimental
-  condition: ENABLE(ENCRYPTED_MEDIA)
-
 MediaPreloadingEnabled:
   type: bool
   defaultValue: false
@@ -1001,10 +983,10 @@ TiledScrollingIndicatorVisible:
   webcoreName: showTiledScrollingIndicator
 
 DisableScreenSizeOverride:
-    type: bool
-    defaultValue: false
-    category: debug
-    condition: PLATFORM(IOS)
+  type: bool
+  defaultValue: false
+  category: debug
+  condition: PLATFORM(IOS)
 
 SimpleLineLayoutDebugBordersEnabled:
   type: bool
@@ -1056,15 +1038,74 @@ ShouldAllowUserInstalledFonts:
   defaultValue: true
 
 MediaCapabilitiesEnabled:
-    type: bool
-    defaultValue: false
-    webcoreBinding: RuntimeEnabledFeatures
+  type: bool
+  defaultValue: false
+  webcoreBinding: RuntimeEnabledFeatures
 
 SystemPreviewEnabled:
-    type: bool
-    defaultValue: false
-    webcoreBinding: RuntimeEnabledFeatures
-    condition: USE(SYSTEM_PREVIEW)
+  type: bool
+  defaultValue: false
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: USE(SYSTEM_PREVIEW)
+
+CacheAPIEnabled:
+  type: bool
+  defaultValue: true
+  webcoreBinding: RuntimeEnabledFeatures
+
+ConstantPropertiesEnabled:
+  type: bool
+  defaultValue: true
+
+CrossOriginWindowPolicySupportEnabled:
+  type: bool
+  defaultValue: true
+
+SubresourceIntegrityEnabled:
+  type: bool
+  defaultValue: true
+
+RestrictedHTTPResponseAccess:
+  type: bool
+  defaultValue: true
+  webcoreBinding: RuntimeEnabledFeatures
+
+CrossOriginResourcePolicyEnabled:
+  type: bool
+  defaultValue: true
+  webcoreBinding: RuntimeEnabledFeatures
+
+DisabledAdaptationsMetaTagEnabled:
+  type: bool
+  defaultValue: DISABLED_ADAPTATIONS_META_TAG_ENABLED
+  webcoreBinding: RuntimeEnabledFeatures
+
+ColorFilterEnabled:
+  type: bool
+  defaultValue: false
+
+IncompleteImageBorderEnabled:
+  type: bool
+  defaultValue: false
+
+StorageAccessAPIEnabled:
+  type: bool
+  defaultValue: true
+
+StorageAccessPromptsEnabled:
+  type: bool
+  defaultValue: true
+  webcoreBinding: RuntimeEnabledFeatures
+
+LinkPreloadEnabled:
+  type: bool
+  defaultValue: true
+  webcoreBinding: RuntimeEnabledFeatures
+
+IsSecureContextAttributeEnabled:
+  type: bool
+  defaultValue: true
+  webcoreBinding: RuntimeEnabledFeatures
 
 # For experimental features:
 # The type should be boolean.
@@ -1082,28 +1123,6 @@ AsyncFrameScrollingEnabled:
   humanReadableDescription: "Perform frame scrolling in a dedicated thread or process"
   category: experimental
 
-CacheAPIEnabled:
-  type: bool
-  defaultValue: true
-  humanReadableName: "Cache API"
-  humanReadableDescription: "Enable Cache API"
-  category: experimental
-  webcoreBinding: RuntimeEnabledFeatures
-
-ConstantPropertiesEnabled:
-  type: bool
-  defaultValue: true
-  humanReadableName: "Constant Properties"
-  humanReadableDescription: "Enable CSS constant() values"
-  category: experimental
-
-CrossOriginWindowPolicySupportEnabled:
-  type: bool
-  defaultValue: true
-  humanReadableName: "Cross-Origin-Window-Policy HTTP Header"
-  humanReadableDescription: "Enable support for Cross-Origin-Window-Policy HTTP Header"
-  category: experimental
-
 SpringTimingFunctionEnabled:
   type: bool
   defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
@@ -1116,14 +1135,6 @@ ImageBitmapOffscreenCanvasEnabled:
   defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
   humanReadableName: "ImageBitmap and OffscreenCanvas"
   humanReadableDescription: "Support for the ImageBitmap and OffscreenCanvas APIs"
-  category: experimental
-  webcoreBinding: RuntimeEnabledFeatures
-
-LinkPreloadEnabled:
-  type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
-  humanReadableName: "Link Preload"
-  humanReadableDescription: "Link preload support"
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
 
@@ -1144,14 +1155,6 @@ MDNSICECandidatesEnabled:
   category: experimental
   condition: ENABLE(WEB_RTC)
 
-IsSecureContextAttributeEnabled:
-  type: bool
-  defaultValue: true
-  humanReadableName: "Secure Contexts API"
-  humanReadableDescription: "Enable Secure Contexts API"
-  category: experimental
-  webcoreBinding: RuntimeEnabledFeatures
-
 FetchAPIKeepAliveEnabled:
   type: bool
   defaultValue: false
@@ -1170,20 +1173,6 @@ ServiceWorkersEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   webcoreName: serviceWorkerEnabled
   condition: ENABLE(SERVICE_WORKER)
-
-StorageAccessAPIEnabled:
-  type: bool
-  defaultValue: true
-  humanReadableName: "Storage Access API"
-  humanReadableDescription: "Enable Storage Access API"
-  category: experimental
-
-SubresourceIntegrityEnabled:
-  type: bool
-  defaultValue: true
-  humanReadableName: "SubresourceIntegrity"
-  humanReadableDescription: "Enable SubresourceIntegrity"
-  category: experimental
 
 VisualViewportAPIEnabled:
   type: bool
@@ -1227,12 +1216,12 @@ WebGPUEnabled:
   condition: ENABLE(WEBGPU)
 
 AccessibilityObjectModelEnabled:
-    type: bool
-    defaultValue: false
-    humanReadableName: "Accessibility Object Model"
-    humanReadableDescription: "Accessibility Object Model support"
-    category: experimental
-    webcoreBinding: RuntimeEnabledFeatures
+  type: bool
+  defaultValue: false
+  humanReadableName: "Accessibility Object Model"
+  humanReadableDescription: "Accessibility Object Model support"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
 
 WebVREnabled:
   type: bool
@@ -1251,22 +1240,6 @@ ResourceLoadStatisticsDebugMode:
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
 
-RestrictedHTTPResponseAccess:
-    type: bool
-    defaultValue: true
-    humanReadableName: "Restricted HTTP Response Access to Web Process"
-    humanReadableDescription: "Restricted HTTP Response Access to Web Process"
-    category: experimental
-    webcoreBinding: RuntimeEnabledFeatures
-
-CrossOriginResourcePolicyEnabled:
-    type: bool
-    defaultValue: true
-    humanReadableName: "Cross-Origin-Resource-Policy Response Header"
-    humanReadableDescription: "Support for the Cross-Origin-Resource-Policy Response Header"
-    category: experimental
-    webcoreBinding: RuntimeEnabledFeatures
-
 WebGLCompressedTextureASTCSupportEnabled:
   type: bool
   defaultValue: false
@@ -1275,35 +1248,29 @@ WebGLCompressedTextureASTCSupportEnabled:
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
 
-StorageAccessPromptsEnabled:
-    type: bool
-    defaultValue: true
-    humanReadableName: "Prompt for Storage Access API Requests"
-    humanReadableDescription: "Prompt the user when Storage Access API calls are made"
-    category: experimental
-    webcoreBinding: RuntimeEnabledFeatures
-
 ServerTimingEnabled:
-    type: bool
-    defaultValue: false
-    humanReadableName: "Server Timing"
-    humanReadableDescription: "Enable Server Timing API"
-    category: experimental
-    webcoreBinding: RuntimeEnabledFeatures
-    webcoreName: serverTimingEnabled
-
-DisabledAdaptationsMetaTagEnabled:
-    type: bool
-    defaultValue: DISABLED_ADAPTATIONS_META_TAG_ENABLED
-    humanReadableName: "disabled-adaptations"
-    humanReadableDescription: "Enable the 'disabled-adaptations' meta tag"
-    category: experimental
-    webcoreBinding: RuntimeEnabledFeatures
-
-ColorFilterEnabled:
   type: bool
   defaultValue: false
+  humanReadableName: "Server Timing"
+  humanReadableDescription: "Enable Server Timing API"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
+  webcoreName: serverTimingEnabled
 
-IncompleteImageBorderEnabled:
+FullScreenEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_ENABLE_FULLSCREEN_API
+  condition: ENABLE(FULLSCREEN_API)
+  visibleCondition: PLATFORM(IOS)
+  humanReadableName: "Fullscreen API"
+  humanReadableDescription: "Fullscreen API"
+  category: experimental
+
+EncryptedMediaAPIEnabled:
+  type: bool
+  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  humanReadableName: "Modern Encrypted Media API"
+  humanReadableDescription: "Modern Encrypted Media API"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+  condition: ENABLE(ENCRYPTED_MEDIA)

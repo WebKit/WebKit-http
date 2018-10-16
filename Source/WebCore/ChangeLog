@@ -1,3 +1,485 @@
+2018-06-27  Antti Koivisto  <antti@apple.com>
+
+        Don't invoke post resolution callbacks when resolving computed style
+        https://bugs.webkit.org/show_bug.cgi?id=187113
+        <rdar://problem/41365766>
+
+        Reviewed by Geoff Garen.
+
+        Post-resolution callbacks should only be invoked when we resolve the full document style,
+        not when resolving computed style for a single element.
+
+        Tests: fast/dom/object-computed-style-event.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::styleForElementIgnoringPendingStylesheets):
+        * dom/Element.cpp:
+        (WebCore::Element::resolveComputedStyle):
+
+        Also ref the ancestor stack to be safe.
+
+        * style/StyleTreeResolver.cpp:
+        (WebCore::Style::PostResolutionCallbackDisabler::PostResolutionCallbackDisabler):
+        (WebCore::Style::PostResolutionCallbackDisabler::~PostResolutionCallbackDisabler):
+
+        Add an option to not drain the callback queue on destruction. In this mode we
+        just block network loads.
+
+        * style/StyleTreeResolver.h:
+
+2018-06-27  Timothy Hatcher  <timothy@apple.com>
+
+        Find on page selection color isn't adapted for dark mode.
+        https://bugs.webkit.org/show_bug.cgi?id=187072
+        rdar://problem/40354841
+
+        Reviewed by Tim Horton.
+
+        * page/mac/TextIndicatorWindow.mm:
+        (-[WebTextIndicatorView initWithFrame:textIndicator:margin:offset:]): Use [NSColor findHighlightColor].
+        * platform/mac/LocalDefaultSystemAppearance.h:
+        (WebCore::LocalDefaultSystemAppearance::usingDarkAppearance const): Added.
+        * platform/mac/LocalDefaultSystemAppearance.mm:
+        (WebCore::LocalDefaultSystemAppearance::LocalDefaultSystemAppearance): Set m_usingDarkAppearance.
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::paintPlatformDocumentMarkers): Use TextPaintPhase::Decoration since this
+        matches step three of InlineTextBox::paint ("Paint fancy decorations"). This allows TextMatch to
+        paint a forground and not end up painting during this "fancy decorations" phase.
+        (WebCore::InlineTextBox::resolveStyleForMarkedText): Set the fillColor for TextMarker to force a
+        dark text color which will draw over the yellow highlight.
+        (WebCore::InlineTextBox::collectMarkedTextsForDocumentMarkers): Added support for TextPaintPhase::Decoration.
+        Seperate DocumentMarker::TelephoneNumber and DocumentMarker::TextMatch. Have DocumentMarker::TextMatch
+        support Forground and Background phases.
+        * rendering/RenderTheme.cpp:
+        (WebCore::RenderTheme::platformColorsDidChange):
+        (WebCore::RenderTheme::activeTextSearchHighlightColor const): Added. Call the platfrom version.
+        (WebCore::RenderTheme::inactiveTextSearchHighlightColor const): Added. Ditto.
+        (WebCore::RenderTheme::platformActiveTextSearchHighlightColor const): Added StyleColor::Options.
+        (WebCore::RenderTheme::platformInactiveTextSearchHighlightColor const): Ditto.
+        * rendering/RenderTheme.h:
+        * rendering/RenderThemeMac.h:
+        * rendering/RenderThemeMac.mm:
+        (WebCore::RenderThemeMac::platformActiveTextSearchHighlightColor const): Added.
+        (WebCore::RenderThemeMac::platformInactiveTextSearchHighlightColor const): Added.
+        (WebCore::RenderThemeMac::platformColorsDidChange): Clear new color caches.
+        (WebCore::RenderThemeMac::systemColor const): Cache system colors by light and dark mode.
+
+2018-06-27  Chris Dumez  <cdumez@apple.com>
+
+        Crash under SWServer::unregisterServiceWorkerClient()
+        https://bugs.webkit.org/show_bug.cgi?id=187115
+        <rdar://problem/41539197>
+
+        Reviewed by Youenn Fablet.
+
+        Connections are usually destroyed before their SWServer. However, as per crash traces, it is possible
+        for SWServers to get destroyed while they still have connections. When this happens, the connections
+        (which are owned by the SWServer) get destroyed with other SWServer data members. In turn, the
+        connection destructor tries to unregister its clients from the server that is currently being destroyed.
+
+        To address the issue, the SWServer destructor now destroys remaining connections early, before SWServer's
+        other data members get destroyed.
+
+        * workers/service/server/SWServer.cpp:
+        (WebCore::SWServer::~SWServer):
+
+2018-06-27  Youenn Fablet  <youenn@apple.com>
+
+        NetworkLoadChecker should not need to hard ref NetworkConnectionToWebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=186551
+
+        Reviewed by Daniel Bates.
+
+        No change of behavior.
+        Add a way to set the client receiving any CSP warning/error notification.
+
+        * page/csp/ContentSecurityPolicy.h:
+        (WebCore::ContentSecurityPolicy::setClient):
+
+2018-06-27  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Do not collapse margin with the parent when element has border/padding.
+        https://bugs.webkit.org/show_bug.cgi?id=187114
+
+        Reviewed by Antti Koivisto.
+
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::layout const):
+        * layout/blockformatting/BlockMarginCollapse.cpp:
+        (WebCore::Layout::isMarginTopCollapsedWithParent):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::collapsedMarginTopFromFirstChild):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginTop):
+
+2018-06-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix Windows build after r233268.
+
+        * platform/graphics/ca/win/PlatformCALayerWin.cpp:
+        (PlatformCALayerWin::hasContents const):
+        * platform/graphics/ca/win/PlatformCALayerWin.h:
+
+2018-06-27  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Out-of-flow positioned element's height depends on its containing block's height.
+        https://bugs.webkit.org/show_bug.cgi?id=187082
+
+        Reviewed by Antti Koivisto.
+
+        We can't really compute the final height of an out-of-flow element until after its containing block's height is computed.
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::layoutOutOfFlowDescendants const):
+        * layout/FormattingContext.h:
+        * layout/LayoutContext.cpp:
+        (WebCore::Layout::LayoutContext::updateLayout):
+        (WebCore::Layout::LayoutContext::layoutFormattingContextSubtree):
+        * layout/LayoutContext.h:
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::layout const):
+        * layout/layouttree/LayoutContainer.h:
+        (WebCore::Layout::Container::outOfFlowDescendants const):
+        (WebCore::Layout::Container::outOfFlowDescendants): Deleted.
+
+2018-06-27  Youenn Fablet  <youenn@apple.com>
+
+        Disable content blockers in NetworkLoadChecker except for ping loads
+        https://bugs.webkit.org/show_bug.cgi?id=187083
+        <rdar://problem/41440083>
+
+        Reviewed by Chris Dumez.
+
+        Add internals API to reload a frame without content extensions.
+
+        Test: http/tests/contentextensions/reload-without-contentextensions.html
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::reloadWithoutContentExtensions):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2018-06-27  Simon Fraser  <simon.fraser@apple.com>
+
+        https://hackernoon.com/ uses lots of layer backing store
+        https://bugs.webkit.org/show_bug.cgi?id=186909
+        rdar://problem/40257540
+
+        Reviewed by Tim Horton.
+        
+        The existing "backing store detached" logic, which was used to eliminate backing store
+        for compositing layers outside the viewport, had a number of bugs that allowed layers
+        to have backing store when they should not.
+        
+        Specifically, any code path that ended up in setNeedsDisplay{InRect}() in PlatformCALayer
+        could trigger backing store creation on layers that should have never had any.
+        
+        Rather than monkeypatch all the GraphicsLayerCA call sites that call setNeedsDisplay{InRect}(),
+        just bail early from the PlatformCALayer* methods that trigger repaints.
+        
+        Tests didn't catch this because they just dumped the state of the backingStoreAttached flag. To fix this,
+        create backingStoreAttachedForTesting() which also tests whether the layer has contents.
+
+        Test: compositing/backing/backing-store-attachment-outside-viewport.html
+
+        * platform/graphics/GraphicsLayer.cpp:
+        (WebCore::GraphicsLayer::dumpProperties const):
+        (showGraphicsLayerTree):
+        * platform/graphics/GraphicsLayer.h:
+        (WebCore::GraphicsLayer::backingStoreAttachedForTesting const):
+        * platform/graphics/GraphicsLayerClient.h:
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::backingStoreAttachedForTesting const):
+        (WebCore::GraphicsLayerCA::setNeedsDisplay):
+        * platform/graphics/ca/GraphicsLayerCA.h:
+        * platform/graphics/ca/PlatformCALayer.h:
+        * platform/graphics/ca/cocoa/PlatformCALayerCocoa.h:
+        * platform/graphics/ca/cocoa/PlatformCALayerCocoa.mm:
+        (PlatformCALayerCocoa::setNeedsDisplay):
+        (PlatformCALayerCocoa::setNeedsDisplayInRect):
+        (PlatformCALayerCocoa::hasContents const):
+
+2018-06-27  David Kilzer  <ddkilzer@apple.com>
+
+        Fix clang static analyzer warnings: Branch condition evaluates to a garbage value
+        <https://webkit.org/b/186968>
+
+        Reviewed by Zalan Bujtas.
+
+        This patch changes two stack-allocated `bool` variables into
+        `std::optional<bool>` since the functions that set the variable
+        may return early without setting it.  It also changes one
+        stack-allocated pointer to be initialized to `nullptr`.
+
+        * animation/AnimationTimeline.cpp:
+        (WebCore::AnimationTimeline::updateCSSTransitionsForElement):
+        Update for change to CSSPropertyAnimation::getPropertyAtIndex()
+        argument type.
+
+        * editing/ios/EditorIOS.mm:
+        (WebCore::Editor::writeImageToPasteboard): Initialize
+        `cachedImage` stack pointer to nullptr since getImage() has an
+        early return that doesn't set `cachedImage`.
+        * editing/mac/EditorMac.mm:
+        (WebCore::Editor::writeImageToPasteboard): Ditto.
+
+        * page/animation/CSSPropertyAnimation.cpp:
+        (WebCore::CSSPropertyAnimation::getPropertyAtIndex):
+        * page/animation/CSSPropertyAnimation.h:
+        (WebCore::CSSPropertyAnimation::getPropertyAtIndex):
+        - Change method to take `std::optional<bool>` instead of `bool`
+          as second argument since the method may return early without
+          setting `isShorthand`.
+
+        * page/animation/CompositeAnimation.cpp:
+        (WebCore::CompositeAnimation::updateTransitions): Update for
+        change to CSSPropertyAnimation::getPropertyAtIndex() argument
+        type.
+
+        * rendering/InlineFlowBox.cpp:
+        (WebCore::InlineFlowBox::placeBoxesInBlockDirection): Also
+        rename local `emphasisMarkIsOver` to `emphasisMarkIsAbove` to
+        match other call sites.
+        (WebCore::InlineFlowBox::addTextBoxVisualOverflow):
+        (WebCore::InlineFlowBox::computeOverAnnotationAdjustment const):
+        (WebCore::InlineFlowBox::computeUnderAnnotationAdjustment const):
+        - Update for change to InlineTextBox::emphasisMarkExistsAndIsAbove()
+          argument type.
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::emphasisMarkExistsAndIsAbove const):
+        - Change method to take `std::optional<bool>` instead of `bool`
+          as second argument since the method may return early without
+          setting `above`.
+        (WebCore::InlineTextBox::paintMarkedTextForeground):
+        - Update for change to InlineTextBox::emphasisMarkExistsAndIsAbove()
+          argument type.
+        * rendering/InlineTextBox.h:
+        (WebCore::InlineTextBox::emphasisMarkExistsAndIsAbove const):
+        - Change method to take `std::optional<bool>` instead of `bool`.
+
+2018-06-27  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Move formatting context root layout logic to a dedicated function.
+        https://bugs.webkit.org/show_bug.cgi?id=187097
+
+        Reviewed by Antti Koivisto.
+
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::layout const):
+        (WebCore::Layout::BlockFormattingContext::layoutFormattingContextRoot const):
+        * layout/blockformatting/BlockFormattingContext.h:
+
+2018-06-27  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Compute static position for out-of-flow elements only when required.
+        https://bugs.webkit.org/show_bug.cgi?id=187096
+
+        Reviewed by Antti Koivisto.
+
+        Computing static position for out-of-flow elements could be somewhat expensive, so let's not do it unless we actually need it.
+
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::staticVerticalPositionForOutOfFlowPositioned):
+        (WebCore::Layout::staticHorizontalPositionForOutOfFlowPositioned):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry):
+        * layout/blockformatting/BlockFormattingContextGeometry.cpp:
+        (WebCore::Layout::BlockFormattingContext::Geometry::staticPosition):
+        (WebCore::Layout::BlockFormattingContext::Geometry::staticPositionForOutOfFlowPositioned): Deleted.
+
+2018-06-27  Nan Wang  <n_wang@apple.com>
+
+        AX: [iOS] Remove the ability to set keyboard focus when VoiceOver takes focus
+        https://bugs.webkit.org/show_bug.cgi?id=187076
+
+        Reviewed by Chris Fleizach.
+
+        We shouldn't set keyboard focus when assistive technology takes focus since
+        this is causing website incompatibility issues by causing focus to be lost.
+
+        Test: accessibility/ios-simulator/accessibility-focus-do-not-set-focus.html
+
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityElementDidBecomeFocused]):
+
+2018-06-21  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Move clearChildNeedsStyleRecalc into resetStyleForNonRenderedDescendants.
+        https://bugs.webkit.org/show_bug.cgi?id=186881
+
+        Reviewed by Antti Koivisto.
+
+        Every caller does this already.
+
+        No new tests, no change in behavior.
+
+        * style/StyleTreeResolver.cpp:
+        (WebCore::Style::resetStyleForNonRenderedDescendants):
+        (WebCore::Style::TreeResolver::resolveComposedTree):
+
+2018-06-27  Tomas Popela  <tpopela@redhat.com>
+
+        [GStreamer] Coverity scan issues
+        https://bugs.webkit.org/show_bug.cgi?id=187087
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Fix uninitialized members.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        * platform/graphics/gstreamer/VideoSinkGStreamer.cpp:
+        * platform/graphics/gstreamer/mse/SourceBufferPrivateGStreamer.h:
+
+2018-06-27  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Move definitions of GCryptUtilities helpers into a separate source file
+        https://bugs.webkit.org/show_bug.cgi?id=187033
+
+        Reviewed by Michael Catanzaro.
+
+        Move the GCryptUtilities helpers that operate on libgcrypt values and
+        constants into a separate source file. This limits a bit the amount of
+        inlining the compiler might feel compelled to do, and the resulting
+        shared library is 8kB smaller in size.
+
+        * crypto/gcrypt/GCryptUtilities.cpp: Copied from Source/WebCore/crypto/gcrypt/GCryptUtilities.h.
+        (WebCore::hmacAlgorithm):
+        (WebCore::digestAlgorithm):
+        (WebCore::hashCryptoDigestAlgorithm):
+        (WebCore::mpiLength):
+        (WebCore::mpiData):
+        (WebCore::mpiZeroPrefixedData):
+        (WebCore::mpiSignedData):
+        * crypto/gcrypt/GCryptUtilities.h:
+        (WebCore::hmacAlgorithm): Deleted.
+        (WebCore::digestAlgorithm): Deleted.
+        (WebCore::hashCryptoDigestAlgorithm): Deleted.
+        (WebCore::mpiLength): Deleted.
+        (WebCore::mpiData): Deleted.
+        (WebCore::mpiZeroPrefixedData): Deleted.
+        (WebCore::mpiSignedData): Deleted.
+        * platform/SourcesGCrypt.txt:
+
+2018-06-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Pass VM& to functions more
+        https://bugs.webkit.org/show_bug.cgi?id=186241
+
+        Reviewed by Mark Lam.
+
+        * bindings/js/JSCustomElementRegistryCustom.cpp:
+        (WebCore::JSCustomElementRegistry::define):
+
+2018-06-26  Simon Fraser  <simon.fraser@apple.com>
+
+        CSSGradientValue's color stops vector wastes 12KB on theverge.com
+        https://bugs.webkit.org/show_bug.cgi?id=186988
+
+        Reviewed by Sam Weinig.
+
+        Shrink the color stops vector when we're done parsing the stops.
+
+        * css/CSSGradientValue.h:
+        (WebCore::CSSGradientValue::doneAddingStops):
+        * css/parser/CSSPropertyParserHelpers.cpp:
+        (WebCore::CSSPropertyParserHelpers::consumeDeprecatedGradient):
+        (WebCore::CSSPropertyParserHelpers::consumeGradientColorStops):
+        (WebCore::CSSPropertyParserHelpers::consumeAngularGradientColorStops):
+
+2018-06-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove static initializers more
+        https://bugs.webkit.org/show_bug.cgi?id=186969
+
+        Reviewed by Michael Catanzaro.
+
+        This patch removes static initializers more. They typically exists in GTK port.
+
+        No behavior change.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * page/ResourceUsageData.cpp: Removed.
+        * page/ResourceUsageData.h:
+        Remove ResourceUsageData constructors since default constructors are enough.
+
+        (WebCore::MemoryCategoryInfo::MemoryCategoryInfo):
+        * platform/gtk/PasteboardHelper.cpp:
+        (WebCore::markupPrefix):
+        (WebCore::removeMarkupPrefix):
+        (WebCore::PasteboardHelper::fillSelectionData):
+        Use NeverDestroyed<> and static functions.
+
+        * platform/mediastream/gstreamer/GStreamerAudioCaptureSource.cpp:
+        (WebCore::defaultVolumeCapability):
+        (WebCore::GStreamerAudioCaptureSource::capabilities const):
+        CapabilityValueOrRange's constructor is not constexpr.
+
+        * platform/network/soup/SoupNetworkSession.cpp:
+        (WebCore::initialAcceptLanguages):
+        (WebCore::proxySettings):
+        (WebCore::SoupNetworkSession::SoupNetworkSession):
+        (WebCore::SoupNetworkSession::setupProxy):
+        (WebCore::SoupNetworkSession::setProxySettings):
+        (WebCore::SoupNetworkSession::setInitialAcceptLanguages):
+        Use NeverDestroyed<> and static functions.
+
+2018-06-26  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r231479): Unable to buy Odeon cinema tickets in STP (bogus 'X-Frame-Options' to 'SAMEORIGIN')
+        https://bugs.webkit.org/show_bug.cgi?id=186090
+        <rdar://problem/40692595>
+
+        Reviewed by Andy Estes.
+
+        Fix up Content Security Policy logic for checking the frame ancestors now that we
+        exclude the frame that initiated the load request.
+
+        Test: http/tests/security/XFrameOptions/cross-origin-iframe-post-form-to-parent-same-origin-x-frame-options-page-allow.html
+
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::ContentSecurityPolicy::allowFrameAncestors const): 
+        * page/csp/ContentSecurityPolicyDirectiveList.cpp:
+        (WebCore::checkFrameAncestors):
+
+2018-06-26  Chris Dumez  <cdumez@apple.com>
+
+        Simplify NetworkStorageSession::getAllStorageAccessEntries()
+        https://bugs.webkit.org/show_bug.cgi?id=187016
+
+        Reviewed by Youenn Fablet.
+
+        Iterate over the HashMaps' values instead of iterating over their keys and then looking them
+        up in the HashMap.
+
+        * platform/network/cf/NetworkStorageSessionCFNet.cpp:
+        (WebCore::NetworkStorageSession::getAllStorageAccessEntries const):
+
+2018-06-26  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] AirPlay picker uses incorrect theme in Dark mode
+        https://bugs.webkit.org/show_bug.cgi?id=187054
+        <rdar://problem/41291093>
+
+        Reviewed by Timothy Hatcher.
+
+        * Modules/mediasession/WebMediaSessionManager.cpp:
+        (WebCore::WebMediaSessionManager::showPlaybackTargetPicker): Add useDefaultAppearance parameter.
+        * Modules/mediasession/WebMediaSessionManager.h:
+
+        * platform/graphics/MediaPlaybackTargetPicker.cpp:
+        (WebCore::MediaPlaybackTargetPicker::showPlaybackTargetPicker): Ditto.
+        * platform/graphics/MediaPlaybackTargetPicker.h:
+
+        * platform/graphics/avfoundation/objc/MediaPlaybackTargetPickerMac.h:
+        * platform/graphics/avfoundation/objc/MediaPlaybackTargetPickerMac.mm:
+        (WebCore::MediaPlaybackTargetPickerMac::showPlaybackTargetPicker): Choose theme based on
+        useDefaultAppearance parameter.
+
+        * platform/mock/MediaPlaybackTargetPickerMock.cpp:
+        (WebCore::MediaPlaybackTargetPickerMock::showPlaybackTargetPicker): Log parameter.
+        * platform/mock/MediaPlaybackTargetPickerMock.h:
+
 2018-06-26  Thibault Saunier  <tsaunier@igalia.com>
 
         [GStreamer] Do not forget to set stream on track switching

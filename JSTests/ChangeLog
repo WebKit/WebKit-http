@@ -1,3 +1,44 @@
+2018-06-27  Mark Lam  <mark.lam@apple.com>
+
+        DFG's compileReallocatePropertyStorage() and compileAllocatePropertyStorage() slow paths should also clear unused properties.
+        https://bugs.webkit.org/show_bug.cgi?id=187091
+        <rdar://problem/41395624>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/regress-187091.js: Added.
+
+2018-06-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] ArrayPatternNode::emitDirectBinding does not return assignment target value if dst is nullptr
+        https://bugs.webkit.org/show_bug.cgi?id=185943
+
+        Reviewed by Mark Lam.
+
+        * stress/direct-binding-return-result.js: Added.
+        (shouldBe):
+        (test):
+
+2018-06-26  Mark Lam  <mark.lam@apple.com>
+
+        eval() is wrong about the LiteralParser never throwing any exceptions.
+        https://bugs.webkit.org/show_bug.cgi?id=187074
+        <rdar://problem/41461099>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-187074.js: Added.
+
+2018-06-26  Mark Lam  <mark.lam@apple.com>
+
+        ASSERTION FAILED: length > butterfly->vectorLength() in JSObject::ensureLengthSlow().
+        https://bugs.webkit.org/show_bug.cgi?id=187060
+        <rdar://problem/41452767>
+
+        Reviewed by Keith Miller.
+
+        * stress/regress-187060.js: Added.
+
 2018-06-25  Mark Lam  <mark.lam@apple.com>
 
         constructArray() should set m_numValuesInVector to the specified length.

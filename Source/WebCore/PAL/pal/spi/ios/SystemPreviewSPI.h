@@ -36,12 +36,12 @@
 @class QLPreviewController;
 
 @protocol ASVThumbnailViewDelegate <NSObject>
-- (void)thumbnailView:(ASVThumbnailView *)thumbnailView wantsToPresentPreviewController:(QLPreviewController *)previewController forItem:(QLItem *)item
+- (void)thumbnailView:(ASVThumbnailView *)thumbnailView wantsToPresentPreviewController:(QLPreviewController *)previewController forItem:(QLItem *)item;
 @end
 
 @interface ASVThumbnailView : UIView
 @property (nonatomic, weak) id<ASVThumbnailViewDelegate> delegate;
-@property (nonatomic) QLItem *thumbnailItem;
+@property (nonatomic, assign) QLItem *thumbnailItem;
 @property (nonatomic) CGSize maxThumbnailSize;
 @end
 

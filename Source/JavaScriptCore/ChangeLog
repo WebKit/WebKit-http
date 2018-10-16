@@ -1,3 +1,243 @@
+2018-06-27  Keith Miller  <keith_miller@apple.com>
+
+        Add logging to try to diagnose where we get a null structure.
+        https://bugs.webkit.org/show_bug.cgi?id=187106
+
+        Reviewed by Mark Lam.
+
+        Add a logging to JSObject::toPrimitive to help diagnose a nullptr
+        structure crash.
+
+        This code should be removed when we fix <rdar://problem/33451840>
+
+        * runtime/JSObject.cpp:
+        (JSC::callToPrimitiveFunction):
+        * runtime/JSObject.h:
+        (JSC::JSObject::getPropertySlot):
+
+2018-06-27  Mark Lam  <mark.lam@apple.com>
+
+        DFG's compileReallocatePropertyStorage() and compileAllocatePropertyStorage() slow paths should also clear unused properties.
+        https://bugs.webkit.org/show_bug.cgi?id=187091
+        <rdar://problem/41395624>
+
+        Reviewed by Yusuke Suzuki.
+
+        Previously, when compileReallocatePropertyStorage() and compileAllocatePropertyStorage()
+        take their slow paths, the slow path would jump back to the fast path right after
+        the emitted code which clears the unused property values.  As a result, the
+        unused properties are not initialized.  We've fixed this by adding the slow path
+        generators before we emit the code to clear the unused properties.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileAllocatePropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileReallocatePropertyStorage):
+
+2018-06-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] ArrayPatternNode::emitDirectBinding does not return assignment target value if dst is nullptr
+        https://bugs.webkit.org/show_bug.cgi?id=185943
+
+        Reviewed by Mark Lam.
+
+        ArrayPatternNode::emitDirectBinding should return a register with an assignment target instead of filling
+        the result with undefined if `dst` is nullptr. While `dst == ignoredResult()` means we do not require
+        the result, `dst == nullptr` just means "dst is required, but a register for dst is not allocated.".
+        This patch fixes emitDirectBinding to return an appropriate value with an allocated register for dst.
+
+        ArrayPatternNode::emitDirectBinding() should be removed later since it does not follow array spreading protocol,
+        but it should be done in a separate patch since it would be performance sensitive.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ArrayPatternNode::emitDirectBinding):
+
+2018-06-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Pass VM& to functions more
+        https://bugs.webkit.org/show_bug.cgi?id=186241
+
+        Reviewed by Mark Lam.
+
+        This patch threads VM& to functions requiring VM& more.
+
+        * API/JSObjectRef.cpp:
+        (JSObjectIsConstructor):
+        * bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp:
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::install):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::fire):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::StructureWatchpoint::fireInternal):
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::PropertyWatchpoint::fireInternal):
+        * bytecode/AdaptiveInferredPropertyValueWatchpointBase.h:
+        * bytecode/CodeBlockJettisoningWatchpoint.cpp:
+        (JSC::CodeBlockJettisoningWatchpoint::fireInternal):
+        * bytecode/CodeBlockJettisoningWatchpoint.h:
+        * bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp:
+        (JSC::LLIntPrototypeLoadAdaptiveStructureWatchpoint::install):
+        (JSC::LLIntPrototypeLoadAdaptiveStructureWatchpoint::fireInternal):
+        * bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.h:
+        * bytecode/StructureStubClearingWatchpoint.cpp:
+        (JSC::StructureStubClearingWatchpoint::fireInternal):
+        * bytecode/StructureStubClearingWatchpoint.h:
+        * bytecode/Watchpoint.cpp:
+        (JSC::Watchpoint::fire):
+        (JSC::WatchpointSet::fireAllWatchpoints):
+        * bytecode/Watchpoint.h:
+        * dfg/DFGAdaptiveInferredPropertyValueWatchpoint.cpp:
+        (JSC::DFG::AdaptiveInferredPropertyValueWatchpoint::handleFire):
+        * dfg/DFGAdaptiveInferredPropertyValueWatchpoint.h:
+        * dfg/DFGAdaptiveStructureWatchpoint.cpp:
+        (JSC::DFG::AdaptiveStructureWatchpoint::install):
+        (JSC::DFG::AdaptiveStructureWatchpoint::fireInternal):
+        * dfg/DFGAdaptiveStructureWatchpoint.h:
+        * dfg/DFGDesiredWatchpoints.cpp:
+        (JSC::DFG::AdaptiveStructureWatchpointAdaptor::add):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::setupGetByIdPrototypeCache):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::tryInitializeSpeciesWatchpoint):
+        (JSC::ArrayPrototypeAdaptiveInferredPropertyWatchpoint::handleFire):
+        * runtime/ECMAScriptSpecInternalFunctions.cpp:
+        (JSC::esSpecIsConstructor):
+        * runtime/FunctionRareData.cpp:
+        (JSC::FunctionRareData::AllocationProfileClearingWatchpoint::fireInternal):
+        * runtime/FunctionRareData.h:
+        * runtime/InferredStructureWatchpoint.cpp:
+        (JSC::InferredStructureWatchpoint::fireInternal):
+        * runtime/InferredStructureWatchpoint.h:
+        * runtime/InternalFunction.cpp:
+        (JSC::InternalFunction::createSubclassStructureSlow):
+        * runtime/InternalFunction.h:
+        (JSC::InternalFunction::createSubclassStructure):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::isConstructor const):
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::isConstructor):
+        (JSC::JSCell::methodTable const):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/ObjectPropertyChangeAdaptiveWatchpoint.h:
+        (JSC::ObjectPropertyChangeAdaptiveWatchpoint::ObjectPropertyChangeAdaptiveWatchpoint):
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::finishCreation):
+        * runtime/ReflectObject.cpp:
+        (JSC::reflectObjectConstruct):
+        * runtime/StructureRareData.cpp:
+        (JSC::StructureRareData::setObjectToStringValue):
+        (JSC::ObjectToStringAdaptiveStructureWatchpoint::install):
+        (JSC::ObjectToStringAdaptiveStructureWatchpoint::fireInternal):
+        (JSC::ObjectToStringAdaptiveInferredPropertyValueWatchpoint::handleFire):
+
+2018-06-26  Mark Lam  <mark.lam@apple.com>
+
+        eval() is wrong about the LiteralParser never throwing any exceptions.
+        https://bugs.webkit.org/show_bug.cgi?id=187074
+        <rdar://problem/41461099>
+
+        Reviewed by Saam Barati.
+
+        Added the missing exception check, and removed an erroneous assertion.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::eval):
+
+2018-06-26  Saam Barati  <sbarati@apple.com>
+
+        JSImmutableButterfly can't be allocated from a subspace with HeapCell::Kind::Auxiliary
+        https://bugs.webkit.org/show_bug.cgi?id=186878
+        <rdar://problem/40568659>
+
+        Reviewed by Filip Pizlo.
+
+        This patch fixes a bug in our JSImmutableButterfly implementation uncovered by
+        our stress GC bots. Before this patch, JSImmutableButterfly was allocated
+        with HeapCell::Kind::Auxiliary. This is wrong. Things that are JSCells can't
+        be allocated from HeapCell::Kind::Auxiliary. This patch adds a new HeapCell::Kind
+        called JSCellWithInteriorPointers. It behaves like JSCell in all ways, except
+        conservative scan knows to treat it like a butterfly in when we we may be
+        pointing into the middle of it.
+        
+        The way we were crashing on the stress GC bots is that our conservative marking
+        won't do cell visiting for things that are Auxiliary. This meant that if the
+        stack were the only thing pointing to a JSImmutableButterfly when a GC took place,
+        that JSImmutableButterfly would not be visited. This is now fixed.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ArrayNode::emitBytecode):
+        * debugger/Debugger.cpp:
+        * heap/ConservativeRoots.cpp:
+        (JSC::ConservativeRoots::genericAddPointer):
+        * heap/Heap.cpp:
+        (JSC::GatherHeapSnapshotData::operator() const):
+        (JSC::RemoveDeadHeapSnapshotNodes::operator() const):
+        (JSC::Heap::globalObjectCount):
+        (JSC::Heap::objectTypeCounts):
+        (JSC::Heap::deleteAllCodeBlocks):
+        * heap/HeapCell.cpp:
+        (WTF::printInternal):
+        * heap/HeapCell.h:
+        (JSC::isJSCellKind):
+        (JSC::hasInteriorPointers):
+        * heap/HeapUtil.h:
+        (JSC::HeapUtil::findGCObjectPointersForMarking):
+        (JSC::HeapUtil::isPointerGCObjectJSCell):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::didAddToDirectory):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::appendJSCellOrAuxiliary):
+        * runtime/JSGlobalObject.cpp:
+        * runtime/JSImmutableButterfly.h:
+        (JSC::JSImmutableButterfly::subspaceFor):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * tools/CellProfile.h:
+        (JSC::CellProfile::CellProfile):
+        (JSC::CellProfile::isJSCell const):
+        * tools/HeapVerifier.cpp:
+        (JSC::HeapVerifier::validateCell):
+
+2018-06-26  Mark Lam  <mark.lam@apple.com>
+
+        Skip some unnecessary work in Interpreter::getStackTrace().
+        https://bugs.webkit.org/show_bug.cgi?id=187070
+
+        Reviewed by Michael Saboff.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::getStackTrace):
+
+2018-06-26  Mark Lam  <mark.lam@apple.com>
+
+        ASSERTION FAILED: length > butterfly->vectorLength() in JSObject::ensureLengthSlow().
+        https://bugs.webkit.org/show_bug.cgi?id=187060
+        <rdar://problem/41452767>
+
+        Reviewed by Keith Miller.
+
+        JSObject::ensureLengthSlow() may be called only because it needs to do a copy on
+        write conversion.  Hence, we can return early after the conversion if the vector
+        length is already sufficient to cover the requested length.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::ensureLengthSlow):
+
+2018-06-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r233184.
+        https://bugs.webkit.org/show_bug.cgi?id=187059
+
+        "It regressed JetStream between 5-8%" (Requested by saamyjoon
+        on #webkit).
+
+        Reverted changeset:
+
+        "JSImmutableButterfly can't be allocated from a subspace with
+        HeapCell::Kind::Auxiliary"
+        https://bugs.webkit.org/show_bug.cgi?id=186878
+        https://trac.webkit.org/changeset/233184
+
 2018-06-26  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         REGRESSION(r233065): Build broken with clang-3.8 and libstdc++-5

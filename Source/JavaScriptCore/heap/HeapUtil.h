@@ -87,7 +87,8 @@ public:
             char* previousPointer = pointer - sizeof(IndexingHeader) - 1;
             MarkedBlock* previousCandidate = MarkedBlock::blockFor(previousPointer);
             if (!filter.ruleOut(bitwise_cast<Bits>(previousCandidate))
-                && set.contains(previousCandidate)) {
+                && set.contains(previousCandidate)
+                && hasInteriorPointers(previousCandidate->handle().cellKind())) {
                 previousPointer = static_cast<char*>(previousCandidate->handle().cellAlign(previousPointer));
                 if (previousCandidate->handle().isLiveCell(markingVersion, newlyAllocatedVersion, isMarking, previousPointer))
                     func(previousPointer, previousCandidate->handle().cellKind());
@@ -102,16 +103,22 @@ public:
         if (!set.contains(candidate))
             return;
 
-        MarkedBlock::Handle& handle = candidate->handle();
-        HeapCell::Kind cellKind = handle.cellKind();
+        HeapCell::Kind cellKind = candidate->handle().cellKind();
         
         auto tryPointer = [&] (void* pointer) {
-            if (handle.isLiveCell(markingVersion, newlyAllocatedVersion, isMarking, pointer))
+            if (candidate->handle().isLiveCell(markingVersion, newlyAllocatedVersion, isMarking, pointer))
                 func(pointer, cellKind);
         };
     
+        if (isJSCellKind(cellKind)) {
+            if (MarkedBlock::isAtomAligned(pointer))
+                tryPointer(pointer);
+            if (!hasInteriorPointers(cellKind))
+                return;
+        }
+    
         // A butterfly could point into the middle of an object.
-        char* alignedPointer = static_cast<char*>(handle.cellAlign(pointer));
+        char* alignedPointer = static_cast<char*>(candidate->handle().cellAlign(pointer));
         tryPointer(alignedPointer);
     
         // Also, a butterfly could point at the end of an object plus sizeof(IndexingHeader). In that
@@ -136,14 +143,14 @@ public:
                 if (result) {
                     if (result > largeAllocations.begin()
                         && result[-1]->cell() == pointer
-                        && result[-1]->attributes().cellKind == HeapCell::JSCell)
+                        && isJSCellKind(result[-1]->attributes().cellKind))
                         return true;
                     if (result[0]->cell() == pointer
-                        && result[0]->attributes().cellKind == HeapCell::JSCell)
+                        && isJSCellKind(result[0]->attributes().cellKind))
                         return true;
                     if (result + 1 < largeAllocations.end()
                         && result[1]->cell() == pointer
-                        && result[1]->attributes().cellKind == HeapCell::JSCell)
+                        && isJSCellKind(result[1]->attributes().cellKind))
                         return true;
                 }
             }
