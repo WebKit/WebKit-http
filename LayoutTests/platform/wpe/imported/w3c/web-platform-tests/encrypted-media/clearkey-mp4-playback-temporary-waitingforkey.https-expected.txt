@@ -1,7 +1,3 @@
 
-<<<<<<< HEAD
 Pass	org.w3.clearkey, successful playback, temporary, mp4, waitingforkey event, 1 key 
-=======
-PASS org.w3.clearkey, successful playback, temporary, mp4, waitingforkey event, 1 key 
->>>>>>> b8c993ea8f030770d38c14a809f5e3431d3d7e47
 

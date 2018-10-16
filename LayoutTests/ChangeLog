@@ -1,22 +1,4 @@
-<<<<<<< HEAD
 2018-10-01  Alicia Boya García  <aboya@igalia.com>
-=======
-2018-09-18  Xabier Rodriguez Calvar  <calvaris@igalia.com>
-
-        [EME][GStreamer] The current EME implementation doesn't support the waitingforkey event
-        https://bugs.webkit.org/show_bug.cgi?id=185590
-
-        Reviewed by Philippe Normand.
-
-        Updated status of
-        imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-waitingforkey.https
-        and expectations.
-
-        * platform/wpe/TestExpectations:
-        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-waitingforkey.https-expected.txt:
-
-2017-09-26  Antti Koivisto  <antti@apple.com>
->>>>>>> b8c993ea8f030770d38c14a809f5e3431d3d7e47
 
         [MSE][GStreamer] Reset running time in PlaybackPipeline::flush()
         https://bugs.webkit.org/show_bug.cgi?id=190076

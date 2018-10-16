@@ -855,7 +855,6 @@ Bug(WPE) security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src
 
 Bug(WPE) userscripts/user-script-plugin-document.html [ Failure ]
 
-imported/w3c/web-platform-tests/2dcontext/imagebitmap [ Pass ]
 
 # WPT: cors
 # =========
