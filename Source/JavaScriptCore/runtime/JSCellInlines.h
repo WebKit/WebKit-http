@@ -161,11 +161,6 @@ ALWAYS_INLINE void* tryAllocateCellHelper(Heap& heap, size_t size, GCDeferralCon
     JSCell* result = static_cast<JSCell*>(subspaceFor<T>(vm)->allocateNonVirtual(vm, size, deferralContext, failureMode));
     if (failureMode == AllocationFailureMode::ReturnNull && !result)
         return nullptr;
-#if ENABLE(JS_MEMORY_TRACKING) && 0
-    // FIXME: HeapStatistics was removed
-    if (Options::showAllocationBacktraces())
-        HeapStatistics::showAllocBacktrace(&heap, size, result);
-#endif
 #if ENABLE(GC_VALIDATION)
     ASSERT(!vm.isInitializingObject());
     vm.setInitializingObjectClass(T::info());

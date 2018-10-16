@@ -53,8 +53,6 @@
 #include "MacroAssembler.h"
 #endif
 
-using namespace std;
-
 namespace JSC {
 
 namespace {

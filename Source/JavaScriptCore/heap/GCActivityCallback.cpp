@@ -66,9 +66,6 @@ void GCActivityCallback::scheduleTimer(Seconds newDelay)
         return;
     Seconds delta = m_delay - newDelay;
     m_delay = newDelay;
-
-    // FIXME: Options::maxDelayForGCTimers() ?
-
     if (auto timeUntilFire = this->timeUntilFire())
         setTimeUntilFire(*timeUntilFire - delta);
     else

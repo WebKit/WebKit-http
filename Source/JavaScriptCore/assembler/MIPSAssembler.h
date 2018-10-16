@@ -250,11 +250,6 @@ public:
         FP_CAUSE_INVALID_OPERATION = 1 << 16
     };
 
-    // FCSR Bits
-    enum {
-        FP_CAUSE_INVALID_OPERATION = 1 << 16
-    };
-
     void emitInst(MIPSWord op)
     {
         void* oldBase = m_buffer.data();
