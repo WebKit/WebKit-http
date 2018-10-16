@@ -156,6 +156,14 @@ static const double progressAnimationNumFrames = 256;
 
 - (CFDictionaryRef)_adjustedCoreUIDrawOptionsForDrawingBordersOnly:(CFDictionaryRef)defaultOptions
 {
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    // Dark mode controls don't have borders, just a semi-transparent background of shadows.
+    // In the dark mode case we can't disable borders, or we will not paint anything for the control.
+    NSAppearanceName appearance = [self.controlView.effectiveAppearance bestMatchFromAppearancesWithNames:@[ NSAppearanceNameAqua, NSAppearanceNameDarkAqua ]];
+    if ([appearance isEqualToString:NSAppearanceNameDarkAqua])
+        return defaultOptions;
+#endif
+
     // FIXME: This is a workaround for <rdar://problem/11385461>. When that bug is resolved, we should remove this code,
     // as well as the internal method overrides below.
     CFMutableDictionaryRef coreUIDrawOptions = CFDictionaryCreateMutableCopy(NULL, 0, defaultOptions);
@@ -497,7 +505,7 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
         // Only use NSColor when the system appearance is desired, otherwise use RenderTheme's default.
         if (useSystemAppearance) {
             if (!m_systemVisitedLinkColor.isValid())
-                m_systemVisitedLinkColor = colorFromNSColor([NSColor systemPurpleColor]);
+                m_systemVisitedLinkColor = semanticColorFromNSColor([NSColor systemPurpleColor]);
             return m_systemVisitedLinkColor;
         }
 
@@ -570,8 +578,52 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
                 return @selector(headerTextColor);
             case CSSValueAppleSystemTextBackground:
                 return @selector(textBackgroundColor);
+            case CSSValueAppleSystemControlBackground:
+                return @selector(controlBackgroundColor);
             case CSSValueAppleSystemAlternateSelectedText:
                 return @selector(alternateSelectedControlTextColor);
+            case CSSValueAppleSystemControlAccent:
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+                return @selector(controlAccentColor);
+#else
+                return @selector(alternateSelectedControlColor);
+#endif
+            case CSSValueAppleSystemSelectedContentBackground:
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+                return @selector(selectedContentBackgroundColor);
+#else
+                return @selector(alternateSelectedControlColor);
+#endif
+            case CSSValueAppleSystemUnemphasizedSelectedContentBackground:
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+                return @selector(unemphasizedSelectedContentBackgroundColor);
+#else
+                return @selector(secondarySelectedControlColor);
+#endif
+            case CSSValueAppleSystemSelectedText:
+                return @selector(selectedTextColor);
+            case CSSValueAppleSystemUnemphasizedSelectedText:
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+                return @selector(unemphasizedSelectedTextColor);
+#else
+                return @selector(textColor);
+#endif
+            case CSSValueAppleSystemSelectedTextBackground:
+                return @selector(selectedTextBackgroundColor);
+            case CSSValueAppleSystemUnemphasizedSelectedTextBackground:
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+                return @selector(unemphasizedSelectedTextBackgroundColor);
+#else
+                return @selector(secondarySelectedControlColor);
+#endif
+            case CSSValueAppleSystemPlaceholderText:
+                return @selector(placeholderTextColor);
+            case CSSValueAppleSystemFindHighlightBackground:
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+                return @selector(findHighlightColor);
+#else
+                return @selector(systemYellowColor);
+#endif
             case CSSValueAppleSystemLabel:
                 return @selector(labelColor);
             case CSSValueAppleSystemSecondaryLabel:
@@ -582,6 +634,12 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
                 return @selector(quaternaryLabelColor);
             case CSSValueAppleSystemGrid:
                 return @selector(gridColor);
+            case CSSValueAppleSystemSeparator:
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+                return @selector(separatorColor);
+#else
+                return @selector(gridColor);
+#endif
             case CSSValueAppleWirelessPlaybackTargetActive:
                 return @selector(systemBlueColor);
             case CSSValueAppleSystemBlue:
@@ -609,26 +667,51 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
 
         if (auto selector = selectCocoaColor()) {
             if (auto color = wtfObjcMsgSend<NSColor *>([NSColor class], selector))
-                return colorFromNSColor(color);
+                return semanticColorFromNSColor(color);
         }
 
         switch (cssValueID) {
         case CSSValueActivebuttontext:
             // No corresponding NSColor for this so we use a hard coded value.
             return Color::white;
+
         case CSSValueButtonface:
         case CSSValueThreedface:
             // We selected this value instead of [NSColor controlColor] to avoid website incompatibilities.
             // We may want to consider changing to [NSColor controlColor] some day.
             return 0xFFC0C0C0;
+
         case CSSValueInfobackground:
             // No corresponding NSColor for this so we use a hard coded value.
             return 0xFFFBFCC5;
+
         case CSSValueMenu:
             return menuBackgroundColor();
+
+        case CSSValueAppleSystemEvenAlternatingContentBackground: {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+            NSArray<NSColor *> *alternateColors = [NSColor alternatingContentBackgroundColors];
+#else
+            NSArray<NSColor *> *alternateColors = [NSColor controlAlternatingRowBackgroundColors];
+#endif
+            ASSERT(alternateColors.count >= 2);
+            return semanticColorFromNSColor(alternateColors[0]);
+        }
+
+        case CSSValueAppleSystemOddAlternatingContentBackground: {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+            NSArray<NSColor *> *alternateColors = [NSColor alternatingContentBackgroundColors];
+#else
+            NSArray<NSColor *> *alternateColors = [NSColor controlAlternatingRowBackgroundColors];
+#endif
+            ASSERT(alternateColors.count >= 2);
+            return semanticColorFromNSColor(alternateColors[1]);
+        }
+
         case CSSValueBackground:
             // Use platform-independent value returned by base class.
             FALLTHROUGH;
+
         default:
             return RenderTheme::systemColor(cssValueID, options);
         }
@@ -867,7 +950,12 @@ bool RenderThemeMac::paintTextField(const RenderObject& o, const PaintInfo& pain
     AffineTransform transform = paintInfo.context().getCTM();
     if (transform.xScale() > 1 || transform.yScale() > 1) {
         adjustedPaintRect.inflateX(1 / transform.xScale());
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+        adjustedPaintRect.inflateY(2 / transform.yScale());
+        adjustedPaintRect.move(0, -1 / transform.yScale());
+#else
         adjustedPaintRect.inflateY(1 / transform.yScale());
+#endif
     }
     NSTextFieldCell *textField = this->textField();
 

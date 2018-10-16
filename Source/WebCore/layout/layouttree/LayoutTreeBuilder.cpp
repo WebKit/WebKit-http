@@ -28,10 +28,12 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "DisplayBox.h"
 #include "LayoutBlockContainer.h"
 #include "LayoutBox.h"
 #include "LayoutChildIterator.h"
 #include "LayoutContainer.h"
+#include "LayoutContext.h"
 #include "LayoutInlineBox.h"
 #include "LayoutInlineContainer.h"
 #include "RenderBlock.h"
@@ -72,7 +74,10 @@ void TreeBuilder::createSubTree(const RenderElement& rootRenderer, Container& ro
                 return Box::ElementAttributes { Box::ElementType::TableHeaderGroup };
             if (element->hasTagName(HTMLNames::tfootTag))
                 return Box::ElementAttributes { Box::ElementType::TableFooterGroup };
-        } 
+            if (element->hasTagName(HTMLNames::tfootTag))
+                return Box::ElementAttributes { Box::ElementType::TableFooterGroup };
+            return Box::ElementAttributes { Box::ElementType::GenericElement };
+        }
         return std::nullopt;
     };
 
@@ -80,13 +85,11 @@ void TreeBuilder::createSubTree(const RenderElement& rootRenderer, Container& ro
     for (auto& child : childrenOfType<RenderElement>(rootRenderer)) {
         Box* box = nullptr;
 
-        if (is<RenderBlock>(child)) {
+        if (is<RenderBlock>(child))
             box = new BlockContainer(elementAttributes(child), RenderStyle::clone(child.style()));
-            createSubTree(child, downcast<Container>(*box));
-        } else if (is<RenderInline>(child)) {
+        else if (is<RenderInline>(child))
             box = new InlineContainer(elementAttributes(child), RenderStyle::clone(child.style()));
-            createSubTree(child, downcast<Container>(*box));
-        } else
+        else
             ASSERT_NOT_IMPLEMENTED_YET();
 
         if (!rootContainer.hasChild()) {
@@ -99,11 +102,18 @@ void TreeBuilder::createSubTree(const RenderElement& rootRenderer, Container& ro
             rootContainer.setLastChild(*box);
         }
         box->setParent(rootContainer);
+
+        if (box->isOutOfFlowPositioned()) {
+            // Not efficient, but this is temporary anyway.
+            // Collect the out-of-flow descendants at the formatting root lever (as opposed to at the containing block level, though they might be the same).
+            const_cast<Container&>(box->formattingContextRoot()).addOutOfFlowDescendant(*box);
+        }
+        createSubTree(child, downcast<Container>(*box));
     }
 }
 
 #if ENABLE(TREE_DEBUGGING)
-static void outputLayoutBox(TextStream& stream, const Box& layoutBox, unsigned depth)
+static void outputLayoutBox(TextStream& stream, const Box& layoutBox, const Display::Box& displayBox, unsigned depth)
 {
     unsigned printedCharacters = 0;
     while (++printedCharacters <= depth * 2)
@@ -119,26 +129,26 @@ static void outputLayoutBox(TextStream& stream, const Box& layoutBox, unsigned d
         stream << "block container";
     } else
         stream << "box";
-    stream << " at [0 0] size [0 0]";
+    stream << " at [" << displayBox.left() << " " << displayBox.top() << "] size [" << displayBox.width() << " " << displayBox.height() << "]";
     stream << " object [" << &layoutBox << "]";
 
     stream.nextLine();
 }
 
-static void outputLayoutTree(TextStream& stream, const Container& rootContainer, unsigned depth)
+static void outputLayoutTree(const LayoutContext& layoutContext, TextStream& stream, const Container& rootContainer, unsigned depth)
 {
     for (auto& child : childrenOfType<Box>(rootContainer)) {
-        outputLayoutBox(stream, child, depth);
+        outputLayoutBox(stream, child, *layoutContext.displayBoxForLayoutBox(child), depth);
         if (is<Container>(child))
-            outputLayoutTree(stream, downcast<Container>(child), depth + 1);
+            outputLayoutTree(layoutContext, stream, downcast<Container>(child), depth + 1);
     }
 }
 
-void TreeBuilder::showLayoutTree(const Container& layoutBox)
+void TreeBuilder::showLayoutTree(const LayoutContext& layoutContext, const Container& layoutBox)
 {
     TextStream stream(TextStream::LineMode::MultipleLine, TextStream::Formatting::SVGStyleRect);
-    outputLayoutBox(stream, layoutBox, 0);
-    outputLayoutTree(stream, layoutBox, 1);
+    outputLayoutBox(stream, layoutBox, *layoutContext.displayBoxForLayoutBox(layoutBox), 0);
+    outputLayoutTree(layoutContext, stream, layoutBox, 1);
     WTFLogAlways("%s", stream.release().utf8().data());
 }
 
@@ -150,7 +160,8 @@ void printLayoutTreeForLiveDocuments()
         if (document->frame() && document->frame()->isMainFrame())
             fprintf(stderr, "----------------------main frame--------------------------\n");
         fprintf(stderr, "%s\n", document->url().string().utf8().data());
-        Layout::TreeBuilder::showLayoutTree(*TreeBuilder::createLayoutTree(*document->renderView()));
+        // FIXME: Need to find a way to output geometry without layout context.
+        // Layout::TreeBuilder::showLayoutTree(*TreeBuilder::createLayoutTree(*document->renderView()));
     }
 }
 #endif

@@ -53,18 +53,20 @@ public:
     virtual std::optional<Seconds> currentTime() { return m_currentTime; }
     WEBCORE_EXPORT void setCurrentTime(Seconds);
     WEBCORE_EXPORT String description();
-    WEBCORE_EXPORT virtual void pause() { };
+    virtual void pause() { };
 
     virtual void timingModelDidChange() { };
 
+    enum class Ordering { Sorted, Unsorted };
     const ListHashSet<RefPtr<WebAnimation>>& animations() const { return m_animations; }
-    Vector<RefPtr<WebAnimation>> animationsForElement(Element&) const;
+    Vector<RefPtr<WebAnimation>> animationsForElement(Element&, Ordering ordering = Ordering::Unsorted) const;
     void removeAnimationsForElement(Element&);
+    void cancelDeclarativeAnimationsForElement(Element&);
     void animationWasAddedToElement(WebAnimation&, Element&);
     void animationWasRemovedFromElement(WebAnimation&, Element&);
 
-    void updateCSSAnimationsForElement(Element&, const RenderStyle& newStyle, const RenderStyle* oldStyle);
-    void updateCSSTransitionsForElement(Element&, const RenderStyle& newStyle, const RenderStyle* oldStyle);
+    void updateCSSAnimationsForElement(Element&, const RenderStyle* currentStyle, const RenderStyle& afterChangeStyle);
+    void updateCSSTransitionsForElement(Element&, const RenderStyle& currentStyle, const RenderStyle& afterChangeStyle);
 
     virtual ~AnimationTimeline();
 
@@ -96,7 +98,8 @@ private:
     ListHashSet<RefPtr<WebAnimation>> m_animations;
 
     HashMap<Element*, HashMap<String, RefPtr<CSSAnimation>>> m_elementToCSSAnimationByName;
-    HashMap<Element*, HashMap<CSSPropertyID, RefPtr<CSSTransition>>> m_elementToCSSTransitionByCSSPropertyID;
+    HashMap<Element*, HashMap<CSSPropertyID, RefPtr<CSSTransition>>> m_elementToRunningCSSTransitionByCSSPropertyID;
+    HashMap<Element*, HashMap<CSSPropertyID, RefPtr<CSSTransition>>> m_elementToCompletedCSSTransitionByCSSPropertyID;
 };
 
 } // namespace WebCore

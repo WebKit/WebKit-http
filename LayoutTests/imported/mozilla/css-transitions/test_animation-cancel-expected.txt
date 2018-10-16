@@ -7,7 +7,7 @@ PASS Setting display:none on an element cancels its transitions
 PASS Setting display:none cancels transitions on a child element 
 PASS Removing a property from transition-property cancels transitions on that property 
 PASS Setting zero combined duration 
-FAIL Changing style to another interpolable value cancels the original transition assert_equals: expected "idle" but got "finished"
-FAIL An after-change style value can't be interpolated assert_equals: There should be no transitions expected 0 but got 1
-FAIL Reversing a running transition cancels the original transition assert_equals: expected "idle" but got "running"
+PASS Changing style to another interpolable value cancels the original transition 
+PASS An after-change style value can't be interpolated 
+PASS Reversing a running transition cancels the original transition 
 

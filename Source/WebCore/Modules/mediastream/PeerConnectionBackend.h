@@ -101,7 +101,7 @@ public:
     virtual Vector<RefPtr<MediaStream>> getRemoteStreams() const = 0;
 
     virtual Ref<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) = 0;
-    virtual void replaceTrack(RTCRtpSender&, Ref<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&) = 0;
+    virtual void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&) = 0;
     virtual void notifyAddedTrack(RTCRtpSender&) { }
     virtual void notifyRemovedTrack(RTCRtpSender&) { }
 
@@ -113,7 +113,7 @@ public:
 
     virtual void emulatePlatformEvent(const String& action) = 0;
 
-    void newICECandidate(String&& sdp, String&& mid, unsigned short sdpMLineIndex);
+    void newICECandidate(String&& sdp, String&& mid, unsigned short sdpMLineIndex, String&& serverURL);
     void disableICECandidateFiltering();
     void enableICECandidateFiltering();
 
@@ -131,7 +131,7 @@ public:
     void finishedRegisteringMDNSName(const String& ipAddress, const String& name);
 
 protected:
-    void fireICECandidateEvent(RefPtr<RTCIceCandidate>&&);
+    void fireICECandidateEvent(RefPtr<RTCIceCandidate>&&, String&& url);
     void doneGatheringCandidates();
 
     void updateSignalingState(RTCSignalingState);
@@ -179,6 +179,7 @@ private:
         String sdp;
         String mid;
         unsigned short sdpMLineIndex;
+        String serverURL;
     };
     Vector<PendingICECandidate> m_pendingICECandidates;
 

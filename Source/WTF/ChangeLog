@@ -1,3 +1,249 @@
+2018-06-25  David Fenton  <david_fenton@apple.com>
+
+        Unreviewed, rolling out r233120.
+
+        caused regression in ios API tests
+
+        Reverted changeset:
+
+        "[Cocoa] reduce unnecessary use of .mm source files in WTF,
+        spruce up some implementation details"
+        https://bugs.webkit.org/show_bug.cgi?id=186924
+        https://trac.webkit.org/changeset/233120
+
+2018-06-25  Alicia Boya García  <aboya@igalia.com>
+
+        Fix ASAN_ENABLED in GCC
+        https://bugs.webkit.org/show_bug.cgi?id=186957
+
+        Reviewed by Michael Catanzaro.
+
+        ASAN_ENABLED used to rely on Clang-specific features for detection.
+        This patch enables ASAN_ENABLED to work on GCC too.
+
+        It also fixes compilation errors and warnings that were triggered when
+        compiling code guarded by ASAN_ENABLED in gcc.
+
+        * wtf/Compiler.h:
+        * wtf/Vector.h:
+        (WTF::VectorBuffer::endOfBuffer):
+
+2018-06-22  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Convert the small bit of Objective-C++ code in WTF to ARC
+        https://bugs.webkit.org/show_bug.cgi?id=186961
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/Base.xcconfig: Turn on ARC.
+
+        * wtf/cocoa/MemoryPressureHandlerCocoa.mm:
+        (WTF::MemoryPressureHandler::uninstall): Remove calls to dispatch_release.
+        (WTF::MemoryPressureHandler::holdOff): Ditto.
+
+        * wtf/mac/MainThreadMac.mm:
+        (WTF::initializeMainThreadPlatform): Remove call to retain.
+        (WTF::initializeWebThreadPlatform): Ditto.
+
+2018-06-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use Ref<> for the result type of non-failing factory functions
+        https://bugs.webkit.org/show_bug.cgi?id=186920
+
+        Reviewed by Darin Adler.
+
+        Use Ref<> instead of RefPtr<> if the `create` function do not return nullptr.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThreadCondition::create):
+        (WTF::AutomaticThread::AutomaticThread):
+        * wtf/AutomaticThread.h:
+        * wtf/ParallelHelperPool.cpp:
+        (WTF::ParallelHelperPool::Thread::Thread):
+        * wtf/ParallelHelperPool.h:
+        * wtf/WorkerPool.cpp:
+        (WTF::WorkerPool::WorkerPool):
+        * wtf/WorkerPool.h:
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::TimerContext::create):
+        (WTF::WorkQueue::dispatchAfter):
+
+2018-06-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add user-defined literal for ASCIILiteral
+        https://bugs.webkit.org/show_bug.cgi?id=186839
+
+        Reviewed by Darin Adler.
+
+        This patch adds user-defined literal for ASCIILiteral. We can create ASCIILiteral in the form of `"Hello World"_s`.
+        And we remove public ASCIILiteral constructor. This change ensures that ASCIILiteral is created from literal.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Indenter.h:
+        (WTF::Indenter::Indenter):
+        * wtf/Logger.h:
+        (WTF::LogArgument::toString):
+        * wtf/MediaTime.cpp:
+        (WTF::toJSONStringInternal):
+        (WTF::MediaTimeRange::toJSONString const):
+        * wtf/linux/MemoryFootprintLinux.cpp:
+        (WTF::memoryFootprint):
+        * wtf/text/ASCIILiteral.cpp: Copied from Source/WebCore/css/CSSUnsetValue.cpp.
+        (WTF::ASCIILiteral::dump const):
+        * wtf/text/ASCIILiteral.h: Copied from Source/WTF/wtf/Indenter.h.
+        (WTF::ASCIILiteral::operator const char* const):
+        (WTF::ASCIILiteral::fromLiteralUnsafe):
+        (WTF::ASCIILiteral::null):
+        (WTF::ASCIILiteral::characters const):
+        (WTF::ASCIILiteral::ASCIILiteral):
+        (WTF::StringLiterals::operator _s):
+        * wtf/text/WTFString.cpp:
+        (asciiDebug):
+        * wtf/text/WTFString.h:
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::ASCIILiteral::ASCIILiteral): Deleted.
+        (WTF::ASCIILiteral::operator const char*): Deleted.
+        * wtf/unix/LanguageUnix.cpp:
+        (WTF::platformLanguage):
+
+2018-06-22  Darin Adler  <darin@apple.com>
+
+        [Cocoa] reduce unnecessary use of .mm source files in WTF, spruce up some implementation details
+        https://bugs.webkit.org/show_bug.cgi?id=186924
+
+        Reviewed by Anders Carlsson.
+
+        * WTF.xcodeproj/project.pbxproj: Update for file and directory renames, file type changes,
+        and deletions.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::holdOff): Deleted empty placeholder; this one is not needed.
+
+        * wtf/PlatformMac.cmake: Update for file and directory renames, file type changes,
+        and deletions.
+
+        * wtf/cocoa/CPUTimeCocoa.cpp: Renamed from Source/WTF/wtf/cocoa/CPUTimeCocoa.mm.
+        Reworked math to make better use of the Seconds class.
+
+        * wtf/text/WTFString.h: Added a new inline version of the constructor that takes an NSString.
+        This is identical to the one that takes a CFStringRef, so no need to keep both.
+
+        * wtf/text/cocoa/StringImplCocoa.mm: Renamed from Source/WTF/wtf/text/mac/StringImplMac.mm.
+        Also removed an unneeded include.
+
+        * wtf/text/cocoa/StringViewCocoa.mm: Renamed from Source/WTF/wtf/text/mac/StringViewObjC.mm.
+
+        * wtf/text/cocoa/TextBreakIteratorInternalICUCocoa.cpp: Renamed from
+        Source/WTF/wtf/text/mac/TextBreakIteratorInternalICUMac.mm.
+
+        * wtf/text/mac/StringMac.mm: Removed.
+
+2018-06-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] improve get_type() fast path in WEBKIT_DEFINE_TYPE
+        https://bugs.webkit.org/show_bug.cgi?id=186885
+
+        Reviewed by Anders Carlsson.
+
+        This is a backport of glib commit
+        https://gitlab.gnome.org/GNOME/glib/commit/e924f777369710221c3e0a9d7bf40392a27d1fa4
+
+        "The -fstack-protector-strong used in many distributions by default has a
+        rather drastic slowdown of the fast path in generated _get_type()
+        functions using G_DEFINE_* macros. The amount can vary by architecture,
+        GCC version, and compiler flags.
+
+        To work around this, and ensure a higher probability that our fast-path
+        will match what we had previously, we need to break out the slow-path
+        (registering the type) into a secondary function that is not a candidate
+        for inlining.
+
+        This ensures that the common case (type registered, return the GType id)
+        is the hot path and handled in the prologue of the generated assembly even
+        when -fstack-protector-strong is enabled."
+
+        * wtf/glib/WTFGType.h:
+
+2018-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][WPE][Nicosia] Add name for Nicosia Painting Threads
+        https://bugs.webkit.org/show_bug.cgi?id=186836
+
+        Reviewed by Carlos Garcia Campos.
+
+        AutomaticThread can take a name for the generated threads now.
+        This patch adds the above ability to WorkerPool.
+
+        * wtf/WorkerPool.cpp:
+        (WTF::WorkerPool::WorkerPool):
+        * wtf/WorkerPool.h:
+        (WTF::WorkerPool::create):
+        (WTF::WorkerPool::name const):
+
+2018-06-18  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Add a graceful exit for AuthenticationManager::initializeConnection
+        https://bugs.webkit.org/show_bug.cgi?id=186632
+        <rdar://problem/41041033>
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/spi/darwin/XPCSPI.h:
+
+2018-06-18  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WTF] Remove workarounds needed to support libstdc++-4
+        https://bugs.webkit.org/show_bug.cgi?id=186762
+
+        Reviewed by Michael Catanzaro.
+
+        Revert r226299, r226300 r226301 and r226302-
+
+        * wtf/StdLibExtras.h:
+
+2018-06-12  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Make some RetainPtr refinements to get more ready for ARC
+        https://bugs.webkit.org/show_bug.cgi?id=186526
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/RetainPtr.h: Improved the definition of autorelease so it does
+        the right thing for both Objective-C types and non-Objective-C types.
+        Also added bridgingAutorelease for when we want to autorelease as
+        part of converting from a CF type to an Objective-C type. The two
+        advantages of bridgingAutorelease are that it does not require an
+        additional explicit __bridge cast and that it does not prevent the
+        ARC objc_autoreleaseReturnValue optimization the way that doing an
+        autorelease on the CF type would.
+
+        * wtf/text/mac/StringImplMac.mm:
+        (WTF::StringImpl::operator NSString *): Use bridgingAutorelease.
+
+2018-06-15  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [WinCairo] Move unrelated features of WorkQueueWin into IPC::Connection
+        https://bugs.webkit.org/show_bug.cgi?id=186582
+
+        Remove unrelated feature from WorkQueueWin.
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/PlatformWin.cmake: Remove WorkItemContext.*
+        * wtf/WorkQueue.cpp:
+        * wtf/WorkQueue.h:
+        * wtf/win/Win32Handle.h:
+        * wtf/win/WorkItemContext.cpp: Removed.
+        * wtf/win/WorkItemContext.h: Removed.
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::handleCallback): Deleted.
+        (WTF::WorkQueue::registerHandle): Deleted.
+        (WTF::WorkQueue::unregisterAndCloseHandle): Deleted.
+        (WTF::WorkQueue::unregisterWaitAndDestroyItemSoon): Deleted.
+        (WTF::WorkQueue::unregisterWaitAndDestroyItemCallback): Deleted.
+
 2018-06-13  Keith Miller  <keith_miller@apple.com>
 
         AutomaticThread should have a way to provide a thread name

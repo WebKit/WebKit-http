@@ -401,8 +401,16 @@ public:
     bool isAnimatingFullScreen() const;
 #endif
 
-    void setFullscreenInsetTop(double);
+    struct FullscreenInsets {
+        float top { 0 };
+        float left { 0 };
+        float bottom { 0 };
+        float right { 0 };
+    };
+    void setFullscreenInsets(FullscreenInsets);
     void setFullscreenAutoHideDelay(double);
+    void setFullscreenAutoHideDuration(double);
+    void setFullscreenControlsHidden(bool);
 
     WEBCORE_TESTSUPPORT_EXPORT void setApplicationCacheOriginQuota(unsigned long long);
 
@@ -679,8 +687,6 @@ public:
     bool isSystemPreviewLink(Element&) const;
     bool isSystemPreviewImage(Element&) const;
 
-    String extraZoomModeAdaptationName() const;
-
     bool usingAppleInternalSDK() const;
 
     struct NowPlayingState {
@@ -695,6 +701,9 @@ public:
 
     using PlaybackControlsPurpose = MediaElementSession::PlaybackControlsPurpose;
     HTMLMediaElement* bestMediaElementForShowingPlaybackControlsManager(PlaybackControlsPurpose);
+
+    void setCaptureExtraNetworkLoadMetricsEnabled(bool);
+    String ongoingLoadsDescriptions() const;
 
 private:
     explicit Internals(Document&);

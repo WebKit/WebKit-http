@@ -22,9 +22,12 @@
 
 
 import json
+import os
 import re
 
 from buildbot.scheduler import AnyBranchScheduler, Periodic, Dependent, Triggerable, Nightly
+from buildbot.schedulers.forcesched import ForceScheduler, WorkerChoiceParameter
+from buildbot.schedulers.trysched import Try_Userpass
 from buildbot.worker import Worker
 from buildbot.util import identifiers as buildbot_identifiers
 
@@ -34,30 +37,49 @@ BUILDER_NAME_LENGTH_LIMIT = 70
 STEP_NAME_LENGTH_LIMIT = 50
 
 
-def loadBuilderConfig(c):
-    config = json.load(open('config.json'))
-    passwords = json.load(open('passwords.json'))
+def loadBuilderConfig(c, use_localhost_worker=False, master_prefix_path='./'):
+    config = json.load(open(os.path.join(master_prefix_path, 'config.json')))
+    passwords = json.load(open(os.path.join(master_prefix_path, 'passwords.json')))
     checkWorkersAndBuildersForConsistency(config['workers'], config['builders'])
 
     c['workers'] = [Worker(worker['name'], passwords.get(worker['name'], 'password')) for worker in config['workers']]
+    if use_localhost_worker:
+        c['workers'].append(Worker('local-worker', 'password', max_builds=2))
+
     c['builders'] = []
     for builder in config['builders']:
         builder['tags'] = getTagsForBuilder(builder)
         factory = globals()[builder['factory']]
-        builder['factory'] = factory()
-        del builder['platform']
-        if 'configuration' in builder:
-            del builder['configuration']
+        factorykwargs = {}
+        for key in ["platform", "configuration", "architectures", "triggers", "additionalArguments"]:
+            value = builder.pop(key, None)
+            if value:
+                factorykwargs[key] = value
+
+        builder["factory"] = factory(**factorykwargs)
+
+        if use_localhost_worker:
+            builder['workernames'].append("local-worker")
+
         c['builders'].append(builder)
 
     c['schedulers'] = []
     for scheduler in config['schedulers']:
-        schedulerType = globals()[scheduler.pop('type')]
+        schedulerClassName = scheduler.pop('type')
+        schedulerClass = globals()[schedulerClassName]
         # Python 2.6 can't handle unicode keys as keyword arguments:
         # http://bugs.python.org/issue2646.  Modern versions of json return
         # unicode strings from json.load, so we map all keys to str objects.
         scheduler = dict(map(lambda key_value_pair: (str(key_value_pair[0]), key_value_pair[1]), scheduler.items()))
-        c['schedulers'].append(schedulerType(**scheduler))
+        if (schedulerClassName == 'Try_Userpass'):
+            # FIXME: Read the credentials from local file on disk.
+            scheduler['userpass'] = [('sampleuser', 'samplepass')]
+        c['schedulers'].append(schedulerClass(**scheduler))
+
+        force_scheduler = ForceScheduler(name='force-{0}'.format(scheduler['name']),
+                                         builderNames=scheduler['builderNames'],
+                                         properties=[WorkerChoiceParameter()])
+        c['schedulers'].append(force_scheduler)
 
 
 def checkValidWorker(worker):

@@ -39,8 +39,8 @@ namespace WebCore {
 class LocalDefaultSystemAppearance {
     WTF_MAKE_NONCOPYABLE(LocalDefaultSystemAppearance);
 public:
-    LocalDefaultSystemAppearance(bool useSystemAppearance, bool useDefaultAppearance);
-    ~LocalDefaultSystemAppearance();
+    WEBCORE_EXPORT LocalDefaultSystemAppearance(bool useSystemAppearance, bool useDefaultAppearance);
+    WEBCORE_EXPORT ~LocalDefaultSystemAppearance();
 private:
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     RetainPtr<NSAppearance> m_savedSystemAppearance;

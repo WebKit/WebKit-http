@@ -4,6 +4,8 @@ grammar WSL;
  * Lexer
  */
 Whitespace: [ \t\r\n]+ -> skip ;
+LineComment: '//'[^\r\n] -> skip ;
+LongComment: '/*'.*?'*/' -> skip ;
 
 // Note: we forbid leading 0s in decimal integers. to bikeshed.
 fragment CoreDecimalIntLiteral: [1-9] [0-9]* ;
@@ -44,9 +46,9 @@ DO: 'do';
 RETURN: 'return';
 TRAP: 'trap';
 
-fragment NULL: 'null' | 'NULL' ;
-fragment TRUE: 'true' | 'True' ;
-fragment FALSE: 'false' | 'False' ;
+NULL: 'null';
+TRUE: 'true';
+FALSE: 'false';
 // Note: We could make these three fully case sensitive or insensitive. to bikeshed.
 
 CONSTANT: 'constant';
@@ -132,7 +134,7 @@ typeParameter
     | Identifier (':' protocolRef ('+' protocolRef)*)? ;
 
 type
-    : addressSpace Identifier typeArguments typeSuffixAbbreviated*
+    : addressSpace Identifier typeArguments typeSuffixAbbreviated+
     | Identifier typeArguments typeSuffixNonAbbreviated* ;
 addressSpace: CONSTANT | DEVICE | THREADGROUP | THREAD ;
 typeSuffixAbbreviated: '*' | '[]' | '[' constexpr ']';
@@ -182,7 +184,10 @@ variableDecl: Identifier ('=' expr)? ;
 /* 
  * Parser: Expressions
  */
-constexpr: Literal | Identifier;
+constexpr
+    : Literal 
+    | Identifier // to get the (constexpr) value of a type variable
+    | Identifier '.' Identifier; // to get a value out of an enum
 
 // Note: we separate effectful expressions from normal expressions, and only allow the former in statement positions, to disambiguate the following:
 // "x * y;". Without this trick, it would look like both an expression and a variable declaration, and could not be disambiguated until name resolution.

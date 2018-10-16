@@ -43,7 +43,16 @@ public:
     const String& animationName() const { return m_animationName; }
     const RenderStyle& unanimatedStyle() const { return *m_unanimatedStyle; }
 
+    std::optional<double> bindingsStartTime() const final;
+    void setBindingsStartTime(std::optional<double>) final;
     std::optional<double> bindingsCurrentTime() const final;
+    ExceptionOr<void> setBindingsCurrentTime(std::optional<double>) final;
+    WebAnimation::PlayState bindingsPlayState() const final;
+    bool bindingsPending() const final;
+    WebAnimation::ReadyPromise& bindingsReady() final;
+    WebAnimation::FinishedPromise& bindingsFinished() final;
+    ExceptionOr<void> bindingsPlay() final;
+    ExceptionOr<void> bindingsPause() final;
 
 protected:
     void syncPropertiesWithBackingAnimation() final;
@@ -51,8 +60,11 @@ protected:
 private:
     CSSAnimation(Element&, const Animation&, const RenderStyle&);
 
+    void flushPendingStyleChanges() const;
+
     String m_animationName;
     std::unique_ptr<RenderStyle> m_unanimatedStyle;
+    bool m_stickyPaused { false };
 };
 
 } // namespace WebCore

@@ -237,7 +237,7 @@ bool PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint(
             return false;
         }
 
-        JSValue currentValue = base->getDirect(currentOffset);
+        JSValue currentValue = base->getDirectConcurrently(structure, currentOffset);
         if (currentValue != requiredValue()) {
             if (PropertyConditionInternal::verbose) {
                 dataLog(
@@ -377,6 +377,8 @@ void PropertyCondition::validateReferences(const TrackedReferences& tracked) con
 
 bool PropertyCondition::isValidValueForAttributes(VM& vm, JSValue value, unsigned attributes)
 {
+    if (!value)
+        return false;
     bool attributesClaimAccessor = !!(attributes & PropertyAttribute::Accessor);
     bool valueClaimsAccessor = !!jsDynamicCast<GetterSetter*>(vm, value);
     return attributesClaimAccessor == valueClaimsAccessor;
@@ -390,9 +392,8 @@ bool PropertyCondition::isValidValueForPresence(VM& vm, JSValue value) const
 PropertyCondition PropertyCondition::attemptToMakeEquivalenceWithoutBarrier(VM& vm, JSObject* base) const
 {
     Structure* structure = base->structure(vm);
-    if (!structure->isValidOffset(offset()))
-        return PropertyCondition();
-    JSValue value = base->getDirect(offset());
+
+    JSValue value = base->getDirectConcurrently(structure, offset());
     if (!isValidValueForPresence(vm, value))
         return PropertyCondition();
     return equivalenceWithoutBarrier(uid(), value);

@@ -34,6 +34,7 @@ from optparse import make_option
 
 from webkitpy.common.config.committers import CommitterList
 from webkitpy.common.config.ports import DeprecatedPort
+from webkitpy.common.net.bugzilla import Bugzilla
 from webkitpy.common.system.filesystem import FileSystem
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.tool.bot.earlywarningsystemtask import EarlyWarningSystemTask, EarlyWarningSystemTaskDelegate
@@ -88,6 +89,8 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
             message += "\n\n%s" % extra_message_text
         # FIXME: We might want to add some text about rejecting from the commit-queue in
         # the case where patch.commit_queue() isn't already set to '-'.
+        if not self._can_access_bug(patch.bug_id()):
+            return
         if self.watchers:
             tool.bugs.add_cc_to_bug(patch.bug_id(), self.watchers)
         tool.bugs.set_flag_on_attachment(patch.id(), "commit-queue", "-", message)
@@ -150,7 +153,16 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
         return self._group
 
     def refetch_patch(self, patch):
-        return self._tool.bugs.fetch_attachment(patch.id())
+        patch_id = patch.id()
+        try:
+            patch = self._tool.bugs.fetch_attachment(patch_id, throw_on_access_error=True)
+        except Bugzilla.AccessError as e:
+            # FIXME: Need a way to ask the status server to fetch the patch again. For now
+            # we return the attachment as it was when it was originally uploaded to the
+            # status server. See <https://bugs.webkit.org/show_bug.cgi?id=186817>.
+            if e.error_code == Bugzilla.AccessError.NOT_PERMITTED:
+                patch = self._tool.status_server.fetch_attachment(patch_id)
+        return patch
 
     def report_flaky_tests(self, patch, flaky_test_results, results_archive):
         pass

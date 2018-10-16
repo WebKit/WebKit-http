@@ -1326,8 +1326,6 @@ webkit.org/b/177501 webrtc/video-mute.html [ Pass Timeout ]
 
 webkit.org/b/172397 legacy-animation-engine/animations/needs-layout.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/179176 [ Release ] svg/wicd/test-rightsizing-a.xhtml [ Pass Failure ]
-
 webkit.org/b/178195 accessibility/ios-simulator/video-elements-ios.html [ Pass Timeout ]
 
 webkit.org/b/181166 imported/w3c/web-platform-tests/service-workers/service-worker/register-same-scope-different-script-url.https.html [ Pass Failure ]
@@ -1349,7 +1347,7 @@ webkit.org/b/182849 imported/w3c/web-platform-tests/XMLHttpRequest/event-upload-
 # This is marked as Pass to see if additional logging can reveal the cause of the flakiness.
 webkit.org/b/183714 [ Debug ] http/tests/storageAccess/grant-storage-access-under-opener.html [ Pass ]
 
-webkit.org/b/183860 [ Release ] http/wpt/service-workers/third-party-registration.html [ Pass Failure ]
+webkit.org/b/183860 http/wpt/service-workers/third-party-registration.html [ Pass Timeout ]
 
 webkit.org/b/184245 http/tests/workers/service/service-worker-cache-api.https.html [ Pass Failure ]
 

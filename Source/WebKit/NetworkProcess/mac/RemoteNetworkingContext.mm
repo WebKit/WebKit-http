@@ -46,12 +46,8 @@ namespace WebKit {
 void RemoteNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&& parameters)
 {
     auto sessionID = parameters.networkSessionParameters.sessionID;
-    if (auto* session = NetworkStorageSession::storageSession(sessionID)) {
-        ASSERT(parameters.pendingCookies.isEmpty() || sessionID == PAL::SessionID::defaultSessionID());
-        for (const auto& cookie : parameters.pendingCookies)
-            session->setCookie(cookie);
+    if (NetworkStorageSession::storageSession(sessionID))
         return;
-    }
 
     String base;
     if (SessionTracker::getIdentifierBase().isNull())
@@ -71,12 +67,6 @@ void RemoteNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStorePara
     auto* session = NetworkStorageSession::storageSession(sessionID);
     for (const auto& cookie : parameters.pendingCookies)
         session->setCookie(cookie);
-
-    if (!sessionID.isEphemeral() && !parameters.cacheStorageDirectory.isNull()) {
-        SandboxExtension::consumePermanently(parameters.cacheStorageDirectoryExtensionHandle);
-        session->setCacheStorageDirectory(WTFMove(parameters.cacheStorageDirectory));
-        session->setCacheStoragePerOriginQuota(parameters.cacheStoragePerOriginQuota);
-    }
 
     SessionTracker::setSession(sessionID, NetworkSession::create(WTFMove(parameters.networkSessionParameters)));
 }

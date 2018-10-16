@@ -65,13 +65,14 @@ private:
         static FormattingContext::Geometry::HeightAndMargin inFlowHeightAndMargin(LayoutContext&, const Box&);
         static FormattingContext::Geometry::WidthAndMargin inFlowWidthAndMargin(LayoutContext&, const Box&);
 
-        static LayoutPoint staticPosition(LayoutContext&, const Box&);
-        static LayoutPoint inFlowPositionedPosition(LayoutContext&, const Box&);
+        static FormattingContext::Geometry::Position staticPosition(LayoutContext&, const Box&);
+        static FormattingContext::Geometry::Position inFlowPositionedPosition(LayoutContext&, const Box&);
 
     private:
         static FormattingContext::Geometry::HeightAndMargin inFlowNonReplacedHeightAndMargin(LayoutContext&, const Box&);
         static FormattingContext::Geometry::WidthAndMargin inFlowNonReplacedWidthAndMargin(LayoutContext&, const Box&, std::optional<LayoutUnit> precomputedWidth = std::nullopt);
         static FormattingContext::Geometry::WidthAndMargin inFlowReplacedWidthAndMargin(LayoutContext&, const Box&);
+        static FormattingContext::Geometry::Position staticPositionForOutOfFlowPositioned(const LayoutContext&, const Box&);
     };
     
     // This class implements margin collapsing for block formatting context.

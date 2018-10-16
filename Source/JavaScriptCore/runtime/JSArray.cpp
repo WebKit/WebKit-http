@@ -37,25 +37,11 @@
 
 namespace JSC {
 
-const char* const LengthExceededTheMaximumArrayLengthError = "Length exceeded the maximum array length";
+const ASCIILiteral LengthExceededTheMaximumArrayLengthError { "Length exceeded the maximum array length"_s };
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(JSArray);
 
 const ClassInfo JSArray::s_info = {"Array", &JSNonFinalObject::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSArray)};
-
-Butterfly* createArrayButterflyInDictionaryIndexingMode(
-    VM& vm, JSCell* intendedOwner, unsigned initialLength)
-{
-    Butterfly* butterfly = Butterfly::create(
-        vm, intendedOwner, 0, 0, true, IndexingHeader(), ArrayStorage::sizeFor(0));
-    ArrayStorage* storage = butterfly->arrayStorage();
-    storage->setLength(initialLength);
-    storage->setVectorLength(0);
-    storage->m_indexBias = 0;
-    storage->m_sparseMap.clear();
-    storage->m_numValuesInVector = 0;
-    return butterfly;
-}
 
 JSArray* JSArray::tryCreateUninitializedRestricted(ObjectInitializationScope& scope, GCDeferralContext* deferralContext, Structure* structure, unsigned initialLength)
 {
@@ -64,10 +50,7 @@ JSArray* JSArray::tryCreateUninitializedRestricted(ObjectInitializationScope& sc
     if (UNLIKELY(initialLength > MAX_STORAGE_VECTOR_LENGTH))
         return 0;
 
-    JSGlobalObject* globalObject = structure->globalObject();
-    bool createUninitialized = globalObject->isOriginalArrayStructure(structure);
     unsigned outOfLineStorage = structure->outOfLineCapacity();
-
     Butterfly* butterfly;
     IndexingType indexingType = structure->indexingType();
     if (LIKELY(!hasAnyArrayStorage(indexingType))) {
@@ -87,12 +70,11 @@ JSArray* JSArray::tryCreateUninitializedRestricted(ObjectInitializationScope& sc
         butterfly = Butterfly::fromBase(temp, 0, outOfLineStorage);
         butterfly->setVectorLength(vectorLength);
         butterfly->setPublicLength(initialLength);
-        unsigned i = (createUninitialized ? initialLength : 0);
         if (hasDouble(indexingType)) {
-            for (; i < vectorLength; ++i)
+            for (unsigned i = initialLength; i < vectorLength; ++i)
                 butterfly->contiguousDouble().atUnsafe(i) = PNaN;
         } else {
-            for (; i < vectorLength; ++i)
+            for (unsigned i = initialLength; i < vectorLength; ++i)
                 butterfly->contiguous().atUnsafe(i).clear();
         }
     } else {
@@ -110,12 +92,13 @@ JSArray* JSArray::tryCreateUninitializedRestricted(ObjectInitializationScope& sc
         storage->m_indexBias = indexBias;
         storage->m_sparseMap.clear();
         storage->m_numValuesInVector = initialLength;
-        unsigned i = (createUninitialized ? initialLength : 0);
-        for (; i < vectorLength; ++i)
+        for (unsigned i = initialLength; i < vectorLength; ++i)
             storage->m_vector[i].clear();
     }
 
     JSArray* result = createWithButterfly(vm, deferralContext, structure, butterfly);
+
+    const bool createUninitialized = true;
     scope.notifyAllocated(result, createUninitialized);
     return result;
 }
@@ -146,18 +129,18 @@ bool JSArray::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName 
         // All paths through length definition call the default [[DefineOwnProperty]], hence:
         // from ES5.1 8.12.9 7.a.
         if (descriptor.configurablePresent() && descriptor.configurable())
-            return typeError(exec, scope, throwException, ASCIILiteral(UnconfigurablePropertyChangeConfigurabilityError));
+            return typeError(exec, scope, throwException, UnconfigurablePropertyChangeConfigurabilityError);
         // from ES5.1 8.12.9 7.b.
         if (descriptor.enumerablePresent() && descriptor.enumerable())
-            return typeError(exec, scope, throwException, ASCIILiteral(UnconfigurablePropertyChangeEnumerabilityError));
+            return typeError(exec, scope, throwException, UnconfigurablePropertyChangeEnumerabilityError);
 
         // a. If the [[Value]] field of Desc is absent, then
         // a.i. Return the result of calling the default [[DefineOwnProperty]] internal method (8.12.9) on A passing "length", Desc, and Throw as arguments.
         if (descriptor.isAccessorDescriptor())
-            return typeError(exec, scope, throwException, ASCIILiteral(UnconfigurablePropertyChangeAccessMechanismError));
+            return typeError(exec, scope, throwException, UnconfigurablePropertyChangeAccessMechanismError);
         // from ES5.1 8.12.9 10.a.
         if (!array->isLengthWritable() && descriptor.writablePresent() && descriptor.writable())
-            return typeError(exec, scope, throwException, ASCIILiteral(UnconfigurablePropertyChangeWritabilityError));
+            return typeError(exec, scope, throwException, UnconfigurablePropertyChangeWritabilityError);
         // This descriptor is either just making length read-only, or changing nothing!
         if (!descriptor.value()) {
             if (descriptor.writablePresent())
@@ -173,7 +156,7 @@ bool JSArray::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName 
         double valueAsNumber = descriptor.value().toNumber(exec);
         RETURN_IF_EXCEPTION(scope, false);
         if (newLen != valueAsNumber) {
-            JSC::throwException(exec, scope, createRangeError(exec, ASCIILiteral("Invalid array length")));
+            JSC::throwException(exec, scope, createRangeError(exec, "Invalid array length"_s));
             return false;
         }
 
@@ -190,7 +173,7 @@ bool JSArray::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName 
         // f.i. Return the result of calling the default [[DefineOwnProperty]] internal method (8.12.9) on A passing "length", newLenDesc, and Throw as arguments.
         // g. Reject if oldLenDesc.[[Writable]] is false.
         if (!array->isLengthWritable())
-            return typeError(exec, scope, throwException, ASCIILiteral(ReadonlyPropertyChangeError));
+            return typeError(exec, scope, throwException, ReadonlyPropertyChangeError);
         
         // h. If newLenDesc.[[Writable]] is absent or has the value true, let newWritable be true.
         // i. Else,
@@ -232,7 +215,7 @@ bool JSArray::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName 
         uint32_t index = optionalIndex.value();
         // FIXME: Nothing prevents this from being called on a RuntimeArray, and the length function will always return 0 in that case.
         if (index >= array->length() && !array->isLengthWritable())
-            return typeError(exec, scope, throwException, ASCIILiteral("Attempting to define numeric property on array with non-writable length property."));
+            return typeError(exec, scope, throwException, "Attempting to define numeric property on array with non-writable length property."_s);
         // c. Let succeeded be the result of calling the default [[DefineOwnProperty]] internal method (8.12.9) on A passing P, Desc, and false as arguments.
         // d. Reject if succeeded is false.
         // e. If index >= oldLen
@@ -284,7 +267,7 @@ bool JSArray::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSVa
         double valueAsNumber = value.toNumber(exec);
         RETURN_IF_EXCEPTION(scope, false);
         if (valueAsNumber != static_cast<double>(newLength)) {
-            throwException(exec, scope, createRangeError(exec, ASCIILiteral("Invalid array length")));
+            throwException(exec, scope, createRangeError(exec, "Invalid array length"_s));
             return false;
         }
         scope.release();
@@ -364,7 +347,7 @@ bool JSArray::unshiftCountSlowCase(const AbstractLocker&, VM& vm, DeferGC&, bool
     // Step 2:
     // We're either going to choose to allocate a new ArrayStorage, or we're going to reuse the existing one.
 
-    void* newAllocBase = 0;
+    void* newAllocBase = nullptr;
     unsigned newStorageCapacity;
     bool allocatedNewStorage;
     // If the current storage array is sufficiently large (but not too large!) then just keep using it.
@@ -373,11 +356,11 @@ bool JSArray::unshiftCountSlowCase(const AbstractLocker&, VM& vm, DeferGC&, bool
         newStorageCapacity = currentCapacity;
         allocatedNewStorage = false;
     } else {
-        size_t newSize = Butterfly::totalSize(0, propertyCapacity, true, ArrayStorage::sizeFor(desiredCapacity));
-        newAllocBase = vm.jsValueGigacageAuxiliarySpace.allocateNonVirtual(
-            vm, newSize, nullptr, AllocationFailureMode::ReturnNull);
-        if (!newAllocBase)
+        const unsigned preCapacity = 0;
+        Butterfly* newButterfly = Butterfly::tryCreateUninitialized(vm, this, preCapacity, propertyCapacity, true, ArrayStorage::sizeFor(desiredCapacity));
+        if (!newButterfly)
             return false;
+        newAllocBase = newButterfly->base(preCapacity, propertyCapacity);
         newStorageCapacity = desiredCapacity;
         allocatedNewStorage = true;
     }
@@ -402,23 +385,25 @@ bool JSArray::unshiftCountSlowCase(const AbstractLocker&, VM& vm, DeferGC&, bool
 
     unsigned newVectorLength = requiredVectorLength + postCapacity;
     RELEASE_ASSERT(newVectorLength <= MAX_STORAGE_VECTOR_LENGTH);
-    unsigned newIndexBias = newStorageCapacity - newVectorLength;
+    unsigned preCapacity = newStorageCapacity - newVectorLength;
 
-    Butterfly* newButterfly = Butterfly::fromBase(newAllocBase, newIndexBias, propertyCapacity);
+    Butterfly* newButterfly = Butterfly::fromBase(newAllocBase, preCapacity, propertyCapacity);
 
     if (addToFront) {
         ASSERT(count + usedVectorLength <= newVectorLength);
         memmove(newButterfly->arrayStorage()->m_vector + count, storage->m_vector, sizeof(JSValue) * usedVectorLength);
         memmove(newButterfly->propertyStorage() - propertySize, butterfly->propertyStorage() - propertySize, sizeof(JSValue) * propertySize + sizeof(IndexingHeader) + ArrayStorage::sizeFor(0));
-        
+
         if (allocatedNewStorage) {
             // We will set the vectorLength to newVectorLength. We populated requiredVectorLength
             // (usedVectorLength + count), which is less. Clear the difference.
             for (unsigned i = requiredVectorLength; i < newVectorLength; ++i)
                 newButterfly->arrayStorage()->m_vector[i].clear();
+            // We don't need to zero the pre-capacity because it is not available to use as property storage.
+            memset(newButterfly->base(0, propertyCapacity), 0, (propertyCapacity - propertySize) * sizeof(JSValue));
         }
-    } else if ((newAllocBase != butterfly->base(structure)) || (newIndexBias != storage->m_indexBias)) {
-        memmove(newButterfly->propertyStorage() - propertySize, butterfly->propertyStorage() - propertySize, sizeof(JSValue) * propertySize + sizeof(IndexingHeader) + ArrayStorage::sizeFor(0));
+    } else if ((newAllocBase != butterfly->base(structure)) || (preCapacity != storage->m_indexBias)) {
+        memmove(newButterfly->propertyStorage() - propertyCapacity, butterfly->propertyStorage() - propertyCapacity, sizeof(JSValue) * propertyCapacity + sizeof(IndexingHeader) + ArrayStorage::sizeFor(0));
         memmove(newButterfly->arrayStorage()->m_vector, storage->m_vector, sizeof(JSValue) * usedVectorLength);
         
         for (unsigned i = requiredVectorLength; i < newVectorLength; i++)
@@ -426,7 +411,7 @@ bool JSArray::unshiftCountSlowCase(const AbstractLocker&, VM& vm, DeferGC&, bool
     }
 
     newButterfly->arrayStorage()->setVectorLength(newVectorLength);
-    newButterfly->arrayStorage()->m_indexBias = newIndexBias;
+    newButterfly->arrayStorage()->m_indexBias = preCapacity;
     
     setButterfly(vm, newButterfly);
 
@@ -446,7 +431,7 @@ bool JSArray::setLengthWithArrayStorage(ExecState* exec, unsigned newLength, boo
     if (SparseArrayValueMap* map = storage->m_sparseMap.get()) {
         // Fail if the length is not writable.
         if (map->lengthIsReadOnly())
-            return typeError(exec, scope, throwException, ASCIILiteral(ReadonlyPropertyWriteError));
+            return typeError(exec, scope, throwException, ReadonlyPropertyWriteError);
 
         if (newLength < length) {
             // Copy any keys we might be interested in into a vector.
@@ -471,7 +456,7 @@ bool JSArray::setLengthWithArrayStorage(ExecState* exec, unsigned newLength, boo
                     ASSERT(it != map->notFound());
                     if (it->value.attributes & PropertyAttribute::DontDelete) {
                         storage->setLength(index + 1);
-                        return typeError(exec, scope, throwException, ASCIILiteral(UnableToDeletePropertyError));
+                        return typeError(exec, scope, throwException, UnableToDeletePropertyError);
                     }
                     map->remove(it);
                 }
@@ -530,7 +515,7 @@ bool JSArray::appendMemcpy(ExecState* exec, VM& vm, unsigned startIndex, JSC::JS
 
     unsigned newLength;
     if (checkedNewLength.safeGet(newLength) == CheckedState::DidOverflow) {
-        throwException(exec, scope, createRangeError(exec, ASCIILiteral(LengthExceededTheMaximumArrayLengthError)));
+        throwException(exec, scope, createRangeError(exec, LengthExceededTheMaximumArrayLengthError));
         return false;
     }
 
@@ -700,7 +685,7 @@ JSValue JSArray::pop(ExecState* exec)
         unsigned length = storage->length();
         if (!length) {
             if (!isLengthWritable())
-                throwTypeError(exec, scope, ASCIILiteral(ReadonlyPropertyWriteError));
+                throwTypeError(exec, scope, ReadonlyPropertyWriteError);
             return jsUndefined();
         }
 
@@ -733,7 +718,7 @@ JSValue JSArray::pop(ExecState* exec)
     bool success = deletePropertyByIndex(this, exec, index);
     RETURN_IF_EXCEPTION(scope, JSValue());
     if (!success) {
-        throwTypeError(exec, scope, ASCIILiteral(UnableToDeletePropertyError));
+        throwTypeError(exec, scope, UnableToDeletePropertyError);
         return jsUndefined();
     }
     // Call the [[Put]] internal method of O with arguments "length", indx, and true.
@@ -1351,6 +1336,67 @@ bool JSArray::isIteratorProtocolFastAndNonObservable()
         return false;
 
     return true;
+}
+
+inline JSArray* constructArray(ObjectInitializationScope& scope, Structure* arrayStructure, unsigned length)
+{
+    // FIXME: We only need this for subclasses of Array because we might need to allocate a new structure to change
+    // indexing types while initializing. If this triggered a GC then we might scan our currently uninitialized
+    // array and crash. https://bugs.webkit.org/show_bug.cgi?id=186811
+    JSArray* array;
+    if (arrayStructure->globalObject()->isOriginalArrayStructure(arrayStructure))
+        array = JSArray::tryCreateUninitializedRestricted(scope, arrayStructure, length);
+    else {
+        array = JSArray::create(scope.vm(), arrayStructure, length);
+
+        // Our client will initialize the storage using initializeIndex() up to
+        // length values, and expects that we've already set m_numValuesInVector
+        // to length. This matches the behavior of tryCreateUninitializedRestricted().
+        IndexingType indexingType = arrayStructure->indexingType();
+        if (UNLIKELY(hasAnyArrayStorage(indexingType)))
+            array->butterfly()->arrayStorage()->m_numValuesInVector = length;
+    }
+
+    // FIXME: we should probably throw an out of memory error here, but
+    // when making this change we should check that all clients of this
+    // function will correctly handle an exception being thrown from here.
+    // https://bugs.webkit.org/show_bug.cgi?id=169786
+    RELEASE_ASSERT(array);
+    return array;
+}
+
+JSArray* constructArray(ExecState* exec, Structure* arrayStructure, const ArgList& values)
+{
+    VM& vm = exec->vm();
+    unsigned length = values.size();
+    ObjectInitializationScope scope(vm);
+
+    JSArray* array = constructArray(scope, arrayStructure, length);
+    for (unsigned i = 0; i < length; ++i)
+        array->initializeIndex(scope, i, values.at(i));
+    return array;
+}
+
+JSArray* constructArray(ExecState* exec, Structure* arrayStructure, const JSValue* values, unsigned length)
+{
+    VM& vm = exec->vm();
+    ObjectInitializationScope scope(vm);
+
+    JSArray* array = constructArray(scope, arrayStructure, length);
+    for (unsigned i = 0; i < length; ++i)
+        array->initializeIndex(scope, i, values[i]);
+    return array;
+}
+
+JSArray* constructArrayNegativeIndexed(ExecState* exec, Structure* arrayStructure, const JSValue* values, unsigned length)
+{
+    VM& vm = exec->vm();
+    ObjectInitializationScope scope(vm);
+
+    JSArray* array = constructArray(scope, arrayStructure, length);
+    for (int i = 0; i < static_cast<int>(length); ++i)
+        array->initializeIndex(scope, i, values[-i]);
+    return array;
 }
 
 } // namespace JSC

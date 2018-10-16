@@ -1,3 +1,62 @@
+2018-06-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add user-defined literal for ASCIILiteral
+        https://bugs.webkit.org/show_bug.cgi?id=186839
+
+        Reviewed by Darin Adler.
+
+        * pal/unix/LoggingUnix.cpp:
+        (PAL::logLevelString):
+
+2018-06-22  Timothy Hatcher  <timothy@apple.com>
+
+        Corner of two scroll bars is white with dark mode enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=186819
+        rdar://problem/40434350
+
+        Reviewed by Tim Horton.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/mac/CoreUISPI.h: Added.
+        * pal/spi/mac/NSAppearanceSPI.h: Added.
+
+2018-06-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed attempt to fix the build after r233052.
+
+        * pal/spi/cocoa/AVKitSPI.h:
+
+2018-06-21  Jer Noble  <jer.noble@apple.com>
+
+        [Fullscreen] Use secondary glyph style for fullscreen controls
+        https://bugs.webkit.org/show_bug.cgi?id=186862
+        <rdar://problem/41212210>
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cocoa/AVKitSPI.h:
+
+2018-06-15  Jonathan Bedard  <jbedard@apple.com>
+
+        Complex text handling should opt out of bounded text layout (follow-up fix)
+        https://bugs.webkit.org/show_bug.cgi?id=186571
+        <rdar://problem/40801429>
+
+        Reviewed by Zalan Bujtas.
+
+        * pal/spi/cocoa/CoreTextSPI.h: Add declaration for OpenSource Mojave builds.
+
+2018-06-14  Timothy Hatcher  <timothy@apple.com>
+
+        Expose more semantic system colors.
+
+        https://bugs.webkit.org/show_bug.cgi?id=186609
+        rdar://problem/39287277
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cocoa/NSColorSPI.h: Added findHighlightColor and placeholderTextColor.
+
 2018-06-09  Dan Bernstein  <mitz@apple.com>
 
         [Xcode] Clean up and modernize some build setting definitions

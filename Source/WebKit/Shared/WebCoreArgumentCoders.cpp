@@ -659,6 +659,14 @@ bool ArgumentCoder<ViewportArguments>::decode(Decoder& decoder, ViewportArgument
 {
     return SimpleArgumentCoder<ViewportArguments>::decode(decoder, viewportArguments);
 }
+
+std::optional<ViewportArguments> ArgumentCoder<ViewportArguments>::decode(Decoder& decoder)
+{
+    ViewportArguments viewportArguments;
+    if (!SimpleArgumentCoder<ViewportArguments>::decode(decoder, viewportArguments))
+        return std::nullopt;
+    return WTFMove(viewportArguments);
+}
 #endif // PLATFORM(IOS)
 
 
@@ -963,8 +971,8 @@ void ArgumentCoder<PluginInfo>::encode(Encoder& encoder, const PluginInfo& plugi
     encoder << pluginInfo.mimes;
     encoder << pluginInfo.isApplicationPlugin;
     encoder.encodeEnum(pluginInfo.clientLoadPolicy);
-#if PLATFORM(MAC)
     encoder << pluginInfo.bundleIdentifier;
+#if PLATFORM(MAC)
     encoder << pluginInfo.versionString;
 #endif
 }
@@ -984,9 +992,9 @@ std::optional<WebCore::PluginInfo> ArgumentCoder<PluginInfo>::decode(Decoder& de
         return std::nullopt;
     if (!decoder.decodeEnum(pluginInfo.clientLoadPolicy))
         return std::nullopt;
-#if PLATFORM(MAC)
     if (!decoder.decode(pluginInfo.bundleIdentifier))
         return std::nullopt;
+#if PLATFORM(MAC)
     if (!decoder.decode(pluginInfo.versionString))
         return std::nullopt;
 #endif

@@ -71,8 +71,8 @@ public:
     
     const RealtimeMediaSourceSupportedConstraints& supportedConstraints() { return m_supportedConstraints; }
 
-    WEBCORE_EXPORT virtual void setAudioFactory(RealtimeMediaSource::AudioCaptureFactory&) { }
-    WEBCORE_EXPORT virtual void unsetAudioFactory(RealtimeMediaSource::AudioCaptureFactory&) { }
+    virtual void setAudioFactory(RealtimeMediaSource::AudioCaptureFactory&) { }
+    virtual void unsetAudioFactory(RealtimeMediaSource::AudioCaptureFactory&) { }
     WEBCORE_EXPORT virtual RealtimeMediaSource::AudioCaptureFactory& audioFactory() = 0;
 
     virtual RealtimeMediaSource::VideoCaptureFactory& videoFactory() = 0;
@@ -88,12 +88,13 @@ public:
     using DevicesChangedObserverToken = unsigned;
     DevicesChangedObserverToken addDevicesChangedObserver(std::function<void()>&&);
     void removeDevicesChangedObserver(DevicesChangedObserverToken);
-    void captureDevicesChanged();
 
     void setVideoCapturePageState(bool, bool);
 
 protected:
     RealtimeMediaSourceCenter();
+
+    void captureDevicesChanged();
 
     static RealtimeMediaSourceCenter& platformCenter();
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;

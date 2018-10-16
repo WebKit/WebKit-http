@@ -52,7 +52,7 @@ static inline bool isSameOrigin(const URL& url, const SecurityOrigin* origin)
     return url.protocolIsData() || url.protocolIsBlob() || !origin || origin->canRequest(url);
 }
 
-NetworkLoadChecker::NetworkLoadChecker(NetworkConnectionToWebProcess& connection, uint64_t webPageID, uint64_t webFrameID, ResourceLoadIdentifier loadIdentifier, FetchOptions&& options, PAL::SessionID sessionID, HTTPHeaderMap&& originalRequestHeaders, URL&& url, RefPtr<SecurityOrigin>&& sourceOrigin, PreflightPolicy preflightPolicy, String&& referrer)
+NetworkLoadChecker::NetworkLoadChecker(NetworkConnectionToWebProcess& connection, uint64_t webPageID, uint64_t webFrameID, ResourceLoadIdentifier loadIdentifier, FetchOptions&& options, PAL::SessionID sessionID, HTTPHeaderMap&& originalRequestHeaders, URL&& url, RefPtr<SecurityOrigin>&& sourceOrigin, PreflightPolicy preflightPolicy, String&& referrer, bool shouldCaptureExtraNetworkLoadMetrics)
     : m_connection(connection)
     , m_webPageID(webPageID)
     , m_webFrameID(webFrameID)
@@ -64,6 +64,7 @@ NetworkLoadChecker::NetworkLoadChecker(NetworkConnectionToWebProcess& connection
     , m_origin(WTFMove(sourceOrigin))
     , m_preflightPolicy(preflightPolicy)
     , m_referrer(WTFMove(referrer))
+    , m_shouldCaptureExtraNetworkLoadMetrics(shouldCaptureExtraNetworkLoadMetrics)
 {
     m_isSameOriginRequest = isSameOrigin(m_url, m_origin.get());
     switch (options.credentials) {
@@ -84,6 +85,9 @@ NetworkLoadChecker::~NetworkLoadChecker() = default;
 void NetworkLoadChecker::check(ResourceRequest&& request, ValidationHandler&& handler)
 {
     ASSERT(!isChecking());
+
+    if (m_shouldCaptureExtraNetworkLoadMetrics)
+        m_loadInformation.request = request;
 
     m_firstRequestHeaders = request.httpHeaderFields();
     // FIXME: We should not get this information from the request but directly from some NetworkProcess setting.
@@ -121,7 +125,7 @@ void NetworkLoadChecker::checkRedirection(ResourceResponse& redirectResponse, Re
     // See https://github.com/whatwg/fetch/issues/393
 
     if (++m_redirectCount > 20) {
-        handler(accessControlErrorForValidationHandler(ASCIILiteral("Load cannot follow more than 20 redirections")));
+        handler(accessControlErrorForValidationHandler("Load cannot follow more than 20 redirections"_s));
         return;
     }
 
@@ -129,29 +133,6 @@ void NetworkLoadChecker::checkRedirection(ResourceResponse& redirectResponse, Re
     m_url = request.url();
 
     checkRequest(WTFMove(request), WTFMove(handler));
-}
-
-bool NetworkLoadChecker::shouldCrossOriginResourcePolicyPolicyCancelLoad(const ResourceResponse& response)
-{
-    if (m_origin->canRequest(response.url()))
-        return false;
-
-    auto policy = parseCrossOriginResourcePolicyHeader(response.httpHeaderField(HTTPHeaderName::CrossOriginResourcePolicy));
-    switch (policy) {
-    case CrossOriginResourcePolicy::None:
-    case CrossOriginResourcePolicy::Invalid:
-        return false;
-    case CrossOriginResourcePolicy::SameOrigin:
-        return true;
-    case CrossOriginResourcePolicy::SameSite: {
-#if ENABLE(PUBLIC_SUFFIX_LIST)
-        return m_origin->isUnique() || !registrableDomainsAreEqual(response.url(), ResourceRequest::partitionName(m_origin->host()));
-#else
-        return true;
-#endif
-    }}
-
-    RELEASE_ASSERT_NOT_REACHED();
 }
 
 ResourceError NetworkLoadChecker::validateResponse(ResourceResponse& response)
@@ -170,13 +151,18 @@ ResourceError NetworkLoadChecker::validateResponse(ResourceResponse& response)
     }
 
     if (m_options.mode == FetchOptions::Mode::NoCors) {
-        if (shouldCrossOriginResourcePolicyPolicyCancelLoad(response))
-            return ResourceError { errorDomainWebKitInternal, 0, m_url, makeString("Cancelled load to ", response.url().stringCenterEllipsizedToLength(), " because it violates the resource's Cross-Origin-Resource-Policy response header."), ResourceError::Type::AccessControl };
+        if (auto error = validateCrossOriginResourcePolicy(*m_origin, m_url, response))
+            return WTFMove(*error);
+
         response.setTainting(ResourceResponse::Tainting::Opaque);
         return { };
     }
 
     ASSERT(m_options.mode == FetchOptions::Mode::Cors);
+
+    // If we have a 304, the cached response is in WebProcess so we let WebProcess do the CORS check on the cached response.
+    if (response.httpStatusCode() == 304)
+        return { };
 
     String errorMessage;
     if (!passesAccessControlCheck(response, m_storedCredentialsPolicy, *m_origin, errorMessage))
@@ -193,6 +179,17 @@ auto NetworkLoadChecker::accessControlErrorForValidationHandler(String&& message
 
 void NetworkLoadChecker::checkRequest(ResourceRequest&& request, ValidationHandler&& handler)
 {
+    if (auto* contentSecurityPolicy = this->contentSecurityPolicy()) {
+        if (isRedirected()) {
+            auto type = m_options.mode == FetchOptions::Mode::Navigate ? ContentSecurityPolicy::InsecureRequestType::Navigation : ContentSecurityPolicy::InsecureRequestType::Load;
+            contentSecurityPolicy->upgradeInsecureRequestIfNeeded(request, type);
+        }
+        if (!isAllowedByContentSecurityPolicy(request)) {
+            handler(accessControlErrorForValidationHandler("Blocked by Content Security Policy."_s));
+            return;
+        }
+    }
+
 #if ENABLE(CONTENT_EXTENSIONS)
     processContentExtensionRulesForLoad(WTFMove(request), [this, handler = WTFMove(handler)](auto result) mutable {
         if (!result.has_value()) {
@@ -201,7 +198,7 @@ void NetworkLoadChecker::checkRequest(ResourceRequest&& request, ValidationHandl
             return;
         }
         if (result.value().status.blockedLoad) {
-            handler(this->accessControlErrorForValidationHandler(ASCIILiteral("Blocked by content extension")));
+            handler(this->accessControlErrorForValidationHandler("Blocked by content extension"_s));
             return;
         }
         this->continueCheckingRequest(WTFMove(result.value().request), WTFMove(handler));
@@ -248,20 +245,6 @@ bool NetworkLoadChecker::isAllowedByContentSecurityPolicy(const ResourceRequest&
 
 void NetworkLoadChecker::continueCheckingRequest(ResourceRequest&& request, ValidationHandler&& handler)
 {
-    if (auto* contentSecurityPolicy = this->contentSecurityPolicy()) {
-        if (isRedirected()) {
-            URL url = request.url();
-            auto type = m_options.mode == FetchOptions::Mode::Navigate ? ContentSecurityPolicy::InsecureRequestType::Navigation : ContentSecurityPolicy::InsecureRequestType::Load;
-            contentSecurityPolicy->upgradeInsecureRequestIfNeeded(url, type);
-            if (url != request.url())
-                request.setURL(url);
-        }
-        if (!isAllowedByContentSecurityPolicy(request)) {
-            handler(accessControlErrorForValidationHandler(ASCIILiteral { "Blocked by Content Security Policy." }));
-            return;
-        }
-    }
-
     if (m_options.credentials == FetchOptions::Credentials::SameOrigin)
         m_storedCredentialsPolicy = m_isSameOriginRequest && m_origin->canRequest(request.url()) ? StoredCredentialsPolicy::Use : StoredCredentialsPolicy::DoNotUse;
 
@@ -358,13 +341,16 @@ void NetworkLoadChecker::checkCORSRequestWithPreflight(ResourceRequest&& request
         m_sessionID,
         m_storedCredentialsPolicy
     };
-    m_corsPreflightChecker = std::make_unique<NetworkCORSPreflightChecker>(WTFMove(parameters), [this, request = WTFMove(request), handler = WTFMove(handler), isRedirected = isRedirected()](auto&& error) mutable {
+    m_corsPreflightChecker = std::make_unique<NetworkCORSPreflightChecker>(WTFMove(parameters), m_shouldCaptureExtraNetworkLoadMetrics, [this, request = WTFMove(request), handler = WTFMove(handler), isRedirected = isRedirected()](auto&& error) mutable {
         RELEASE_LOG_IF_ALLOWED("checkCORSRequestWithPreflight - makeCrossOriginAccessRequestWithPreflight preflight complete, success: %d forRedirect? %d", error.isNull(), isRedirected);
 
         if (!error.isNull()) {
             handler(makeUnexpected(WTFMove(error)));
             return;
         }
+
+        if (m_shouldCaptureExtraNetworkLoadMetrics)
+            m_loadInformation.transactions.append(m_corsPreflightChecker->takeInformation());
 
         auto corsPreflightChecker = WTFMove(m_corsPreflightChecker);
         updateRequestForAccessControl(request, *m_origin, m_storedCredentialsPolicy);
@@ -429,10 +415,17 @@ void NetworkLoadChecker::sendCSPViolationReport(URL&& reportURL, Ref<FormData>&&
         m_connection->connection().send(Messages::WebPage::SendCSPViolationReport { m_webFrameID, WTFMove(reportURL), IPC::FormDataReference { WTFMove(report) } }, m_webPageID);
 }
 
-void NetworkLoadChecker::enqueueSecurityPolicyViolationEvent(WebCore::SecurityPolicyViolationEvent::Init&& eventInit)
+void NetworkLoadChecker::enqueueSecurityPolicyViolationEvent(SecurityPolicyViolationEvent::Init&& eventInit)
 {
     if (m_webPageID && m_webFrameID)
         m_connection->connection().send(Messages::WebPage::EnqueueSecurityPolicyViolationEvent { m_webFrameID, WTFMove(eventInit) }, m_webPageID);
+}
+
+void NetworkLoadChecker::storeRedirectionIfNeeded(const ResourceRequest& request, const ResourceResponse& response)
+{
+    if (!m_shouldCaptureExtraNetworkLoadMetrics)
+        return;
+    m_loadInformation.transactions.append(NetworkTransactionInformation { NetworkTransactionInformation::Type::Redirection, ResourceRequest { request }, ResourceResponse { response }, { } });
 }
 
 } // namespace WebKit

@@ -35,7 +35,9 @@
 #include "LayoutBox.h"
 #include "LayoutContainer.h"
 #include "LayoutContext.h"
+#include "Logging.h"
 #include <wtf/IsoMallocInlines.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 namespace Layout {
@@ -55,6 +57,9 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
     // Vertical margins between adjacent block-level boxes in a block formatting context collapse.
     if (!is<Container>(root()))
         return;
+
+    LOG_WITH_STREAM(FormattingContextLayout, stream << "[Start] -> block formatting context -> layout context(" << &layoutContext << ") formatting root(" << &root() << ")");
+
     auto& formattingRoot = downcast<Container>(root());
     LayoutQueue layoutQueue;
     FloatingContext floatingContext(formattingState.floatingState());
@@ -73,9 +78,10 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
             auto& layoutBox = layoutPair.layoutBox;
             auto& displayBox = layoutPair.displayBox;
             
+            LOG_WITH_STREAM(FormattingContextLayout, stream << "[Compute] -> [Position][Border][Padding][Width][Margin] -> for layoutBox(" << &layoutBox << ")");
+            computeStaticPosition(layoutContext, layoutBox, displayBox);
             computeBorderAndPadding(layoutContext, layoutBox, displayBox);
             computeWidthAndMargin(layoutContext, layoutBox, displayBox);
-            computeStaticPosition(layoutContext, layoutBox, displayBox);
             if (layoutBox.establishesFormattingContext()) {
                 auto formattingContext = layoutContext.formattingContext(layoutBox);
                 formattingContext->layout(layoutContext, layoutContext.establishedFormattingState(layoutBox, *formattingContext));
@@ -93,6 +99,7 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
             auto layoutPair = layoutQueue.takeLast();
             auto& layoutBox = layoutPair->layoutBox;
             auto& displayBox = layoutPair->displayBox;
+            LOG_WITH_STREAM(FormattingContextLayout, stream << "[Compute] -> [Height][Margin] -> for layoutBox(" << &layoutBox << ")");
 
             computeHeightAndMargin(layoutContext, layoutBox, displayBox);
             // Adjust position now that we have all the previous floats placed in this context -if needed.
@@ -115,6 +122,7 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
 #ifndef NDEBUG
     validateGeometryConstraintsAfterLayout(layoutContext);
 #endif
+    LOG_WITH_STREAM(FormattingContextLayout, stream << "[End] -> block formatting context -> layout context(" << &layoutContext << ") formatting root(" << &root() << ")");
 }
 
 std::unique_ptr<FormattingState> BlockFormattingContext::createFormattingState(Ref<FloatingState>&& floatingState) const
@@ -163,14 +171,16 @@ void BlockFormattingContext::computeHeightAndMargin(LayoutContext& layoutContext
 void BlockFormattingContext::computeInFlowHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
     auto heightAndMargin = Geometry::inFlowHeightAndMargin(layoutContext, layoutBox);
-    displayBox.setHeight(heightAndMargin.height);
+    displayBox.setContentBoxHeight(heightAndMargin.height);
+    displayBox.moveVertically(heightAndMargin.margin.top);
     displayBox.setVerticalMargin(heightAndMargin.margin);
 }
 
 void BlockFormattingContext::computeInFlowWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
     auto widthAndMargin = Geometry::inFlowWidthAndMargin(layoutContext, layoutBox);
-    displayBox.setWidth(widthAndMargin.width);
+    displayBox.setContentBoxWidth(widthAndMargin.width);
+    displayBox.moveHorizontally(widthAndMargin.margin.left);
     displayBox.setHorizontalMargin(widthAndMargin.margin);
 }
 

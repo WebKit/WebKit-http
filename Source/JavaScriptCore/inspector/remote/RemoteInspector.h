@@ -27,6 +27,7 @@
 
 #if ENABLE(REMOTE_INSPECTOR)
 
+#include <utility>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
@@ -76,14 +77,22 @@ public:
             String browserVersion;
         };
 
+        struct SessionCapabilities {
+            bool acceptInsecureCertificates { false };
+#if USE(GLIB)
+            Vector<std::pair<String, String>> certificates;
+#endif
+#if PLATFORM(COCOA)
+            std::optional<bool> allowInsecureMediaCapture;
+            std::optional<bool> suppressICECandidateFiltering;
+#endif
+        };
+
         virtual ~Client() { }
         virtual bool remoteAutomationAllowed() const = 0;
         virtual String browserName() const { return { }; }
         virtual String browserVersion() const { return { }; }
-        virtual void requestAutomationSession(const String& sessionIdentifier) = 0;
-#if PLATFORM(COCOA)
-        virtual void requestAutomationSessionWithCapabilities(NSString *sessionIdentifier, NSDictionary *forwardedCapabilities) = 0;
-#endif
+        virtual void requestAutomationSession(const String& sessionIdentifier, const SessionCapabilities&) = 0;
     };
 
     static void startDisabled();
@@ -122,7 +131,7 @@ public:
     void updateTargetListing(unsigned targetIdentifier);
 
 #if USE(GLIB)
-    void requestAutomationSession(const char* sessionID);
+    void requestAutomationSession(const char* sessionID, const Client::SessionCapabilities&);
     void setup(unsigned targetIdentifier);
     void sendMessageToTarget(unsigned targetIdentifier, const char* message);
 #endif

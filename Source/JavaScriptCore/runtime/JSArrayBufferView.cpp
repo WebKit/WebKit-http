@@ -40,7 +40,7 @@ const ClassInfo JSArrayBufferView::s_info = {
 
 String JSArrayBufferView::toStringName(const JSObject*, ExecState*)
 {
-    return ASCIILiteral("Object");
+    return "Object"_s;
 }
 
 JSArrayBufferView::ConstructionContext::ConstructionContext(
@@ -159,6 +159,7 @@ void JSArrayBufferView::finishCreation(VM& vm)
 void JSArrayBufferView::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSArrayBufferView* thisObject = jsCast<JSArrayBufferView*>(cell);
+    Base::visitChildren(cell, visitor);
 
     if (thisObject->hasArrayBuffer()) {
         WTF::loadLoadFence();
@@ -166,8 +167,6 @@ void JSArrayBufferView::visitChildren(JSCell* cell, SlotVisitor& visitor)
         RELEASE_ASSERT(buffer);
         visitor.addOpaqueRoot(buffer);
     }
-    
-    Base::visitChildren(thisObject, visitor);
 }
 
 bool JSArrayBufferView::put(

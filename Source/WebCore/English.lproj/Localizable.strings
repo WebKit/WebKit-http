@@ -265,6 +265,9 @@
 /* Validation message for input form controls of type 'email' that have an invalid value */
 "Enter an email address" = "Enter an email address";
 
+/* Custom protocol synchronous load failure description */
+"Error handling synchronous load with custom protocol" = "Error handling synchronous load with custom protocol";
+
 /* Button for exiting full screen when in full screen media playback */
 "Exit Full Screen" = "Exit Full Screen";
 
@@ -734,7 +737,7 @@
 "The user name or password you entered for this area on %@ was incorrect. Make sure you’re entering them correctly, and then try again." = "The user name or password you entered for this area on %@ was incorrect. Make sure you’re entering them correctly, and then try again.";
 
 /* Fullscreen Deceptive Website Warning Sheet Content Text */
-"The website \"%@\" may be a deceptive website. Would you like to exit fullscreen?" = "The website \"%@\" may be a deceptive website. Would you like to exit fullscreen?";
+"The website “%@” may try to trick you into doing something dangerous, like installing software or disclosing personal or financial information, like passwords, phone numbers, or credit cards." = "The website “%@” may try to trick you into doing something dangerous, like installing software or disclosing personal or financial information, like passwords, phone numbers, or credit cards.";
 
 /* text that appears at the start of nearly-obsolete web pages in the form of a 'searchable index' */
 "This is a searchable index. Enter search keywords: " = "This is a searchable index. Enter search keywords: ";

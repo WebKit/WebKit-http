@@ -60,6 +60,10 @@
 #include <JavaScriptCore/JSLock.h>
 #include <wtf/text/TextStream.h>
 
+#if PLATFORM(MAC)
+#include "LocalDefaultSystemAppearance.h"
+#endif
+
 #if USE(DIRECT2D)
 #include "COMPtr.h"
 #include <d2d1.h>
@@ -319,6 +323,10 @@ ImageDrawResult SVGImage::draw(GraphicsContext& context, const FloatRect& dstRec
             view->layoutContext().layout();
     }
 
+#if PLATFORM(MAC)
+    LocalDefaultSystemAppearance localAppearance(m_page->useSystemAppearance(), m_page->defaultAppearance());
+#endif
+
     view->paint(context, intersection(context.clipBounds(), enclosingIntRect(srcRect)));
 
     if (compositingRequiresTransparencyLayer)
@@ -494,7 +502,7 @@ EncodedDataStatus SVGImage::dataChanged(bool allDataReceived)
 
 String SVGImage::filenameExtension() const
 {
-    return ASCIILiteral("svg");
+    return "svg"_s;
 }
 
 bool isInSVGImage(const Element* element)

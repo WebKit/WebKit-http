@@ -35,7 +35,7 @@ webkit.org/b/79203 fast/mediastream/RTCPeerConnection-media-setup-callbacks-sing
 webkit.org/b/79203 webaudio/mediastreamaudiosourcenode.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled.html [ Timeout Failure ]
 webkit.org/b/79203 fast/mediastream/MediaStream-video-element-displays-buffer.html [ Failure ]
-webkit.org/b/79203 http/tests/media/media-stream/getusermedia-with-canvas.html [ Crash ]
+webkit.org/b/79203 http/tests/media/media-stream/getusermedia-with-canvas.html [ Timeout ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stats.html [ Timeout ]
 webkit.org/b/79203 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-preload-none.https.html [ Failure ]
 webkit.org/b/79203 imported/w3c/web-platform-tests/mediacapture-streams/MediaStreamTrack-end-manual.https.html [ Failure ]
@@ -744,6 +744,11 @@ webkit.org/b/173419 fast/events/touch/touch-target.html [ Timeout ]
 webkit.org/b/163858 fast/events/touch/touch-constructor.html [ Skip ]
 webkit.org/b/173411 fast/events/touch/frame-hover-update.html [ Failure ]
 
+webkit.org/b/186879 fast/events/open-window-from-another-frame.html [ Timeout ]
+webkit.org/b/186879 fast/events/popup-allowed-from-gesture-initiated-event.html [ Timeout ]
+webkit.org/b/186879 fast/events/popup-blocked-from-fake-user-gesture.html [ Timeout ]
+webkit.org/b/186879 fast/events/popup-blocking-timers1.html [ Timeout ]
+
 fast/events/ios [ Skip ]
 fast/events/touch/ios [ Skip ]
 fast/events/touch/gesture [ Skip ]
@@ -856,8 +861,6 @@ Bug(WPE) css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFailure ]
 Bug(WPE) css3/zoom-coords.xhtml [ Failure ]
 
 webkit.org/b/133151 js/cached-window-properties.html [ Slow ]
-webkit.org/b/159754 [ Release ] workers/bomb.html [ Slow ]
-webkit.org/b/159754 [ Debug ] workers/bomb.html [ Skip ]
 
 # These are failures that will be enabled once the relevant parts of implementation land.
 webkit.org/b/133122 crypto/subtle/aes-cfb-generate-export-key-jwk-length-128.html [ Skip ]
@@ -1023,8 +1026,6 @@ webkit.org/b/185594 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4
 webkit.org/b/172815 imported/w3c/i18n/bidi/bidi-plaintext-011.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/176174 media/event-queue-crash.html [ Pass Failure ]
-
-webkit.org/b/176358 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/rsa.https.worker.html [ Failure Pass ]
 webkit.org/b/177226 imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/wrapKey_unwrapKey.https.worker.html [ Pass Failure ]
 
 # Apparently fails on Mac, but I don't know for what reasons. It passes on GTK/WPE.
@@ -1183,8 +1184,6 @@ webkit.org/b/182317 http/tests/resourceLoadStatistics/grandfathering.html [ Fail
 
 webkit.org/b/182240 svg/animations/svgenum-animation-7.html [ Pass Crash ]
 
-webkit.org/b/181139 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_rsa_oaep.https.html [ Pass Failure ]
-
 webkit.org/b/184086 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property.html [ Failure ]
 webkit.org/b/184086 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property.html [ Failure ]
 
@@ -1220,3 +1219,22 @@ webkit.org/b/185254 http/tests/cache/disk-cache/redirect-chain-limits.html [ Fai
 
 webkit.org/b/184501 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures.worker.html [ Failure ]
 webkit.org/b/184501 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes.worker.html [ Failure ]
+
+webkit.org/b/186752 fast/css-grid-layout/flex-sizing-rows-min-max-height.html [ Crash ]
+webkit.org/b/186752 fast/css-grid-layout/grid-indefinite-size-auto-repeat-crash.html [ Crash ]
+webkit.org/b/186752 fast/css-grid-layout/maximize-tracks-definite-indefinite-height.html [ Crash ]
+
+webkit.org/b/186100 css3/color-filters/color-filter-color-property-list-item.html [ ImageOnlyFailure ]
+webkit.org/b/186100 css3/color-filters/color-filter-ignore-semantic.html [ ImageOnlyFailure ]
+webkit.org/b/186100 css3/color-filters/color-filter-opacity.html [ ImageOnlyFailure ]
+
+webkit.org/b/186754 legacy-animation-engine/accessibility/transformed-bounds.html [ Failure ]
+webkit.org/b/186252 legacy-animation-engine/css3/filters/backdrop/animation.html [ Timeout ]
+webkit.org/b/168426 legacy-animation-engine/imported/blink/animations/display-inline-style-adjust.html [ ImageOnlyFailure ]
+
+webkit.org/b/119253 fast/workers/dedicated-worker-lifecycle.html [ Timeout Pass ]
+
+Bug(WPE) js/dom/create-lots-of-workers.html [ Pass Timeout ]
+
+# This test is so slow that a Slow expectation is not enough to avoid flakiness.
+webkit.org/b/159754 workers/bomb.html [ Skip ]

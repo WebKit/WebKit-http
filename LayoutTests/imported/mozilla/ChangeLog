@@ -1,3 +1,114 @@
+2018-06-25  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-pausing.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183826
+        <rdar://problem/40997412>
+
+        Reviewed by Dean Jackson.
+
+        Mark progressions in the Mozilla CSS Animations tests.
+
+        * css-animations/test_animation-pausing-expected.txt:
+
+2018-06-25  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Ensure animations are updated prior to requestAnimationFrame callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=186997
+        <rdar://problem/41419414>
+
+        Reviewed by Dean Jackson.
+
+        Mark progressions in the Mozilla CSS Animations tests.
+
+        * css-animations/test_animation-pausing-expected.txt:
+
+2018-06-20  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-ready.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183830
+        <rdar://problem/40997539>
+
+        Reviewed by Dean Jackson.
+
+        Mark progressions in the Mozilla CSS Animations tests.
+
+        * css-animations/test_animation-ready-expected.txt:
+
+2018-06-20  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_element-get-animations.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183841
+        <rdar://problem/40998101>
+
+        Reviewed by Dean Jackson.
+
+        Mark progressions in the Mozilla CSS Transitions and CSS Animations tests.
+
+        * css-animations/test_element-get-animations-expected.txt:
+        * css-transitions/test_element-get-animations-expected.txt:
+
+2018-06-19  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_pseudoElement-get-animations.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183818
+        <rdar://problem/40997015>
+
+        Reviewed by Dean Jackson.
+
+        Mark progressions in the Mozilla CSS Transitions and CSS Animations tests.
+
+        * css-animations/test_pseudoElement-get-animations-expected.txt:
+        * css-transitions/test_element-get-animations-expected.txt:
+
+2018-06-19  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-playstate.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183828
+        <rdar://problem/40997469>
+
+        Reviewed by Dean Jackson.
+
+        Mark a progression in the Mozilla CSS Animations tests.
+
+        * css-animations/test_animation-playstate-expected.txt:
+
+2018-06-19  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_animation-cancel.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183821
+        <rdar://problem/40997034>
+
+        Reviewed by Dean Jackson.
+
+        Mark a progression in the Mozilla CSS Transitions tests.
+
+        * css-transitions/test_animation-cancel-expected.txt:
+
+2018-06-18  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Implement "Starting of transitions" section from CSS Transitions
+        https://bugs.webkit.org/show_bug.cgi?id=186517
+        <rdar://problem/41000798>
+
+        Reviewed by Dean Jackson.
+
+        Mark some progressions in the Mozilla CSS Animations and CSS Transitions tests.
+
+        * css-transitions/test_animation-cancel-expected.txt:
+        * css-transitions/test_animation-ready-expected.txt:
+
+2018-06-15  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] CSS Animations should take precedence over CSS Transitions
+        https://bugs.webkit.org/show_bug.cgi?id=186651
+
+        Reviewed by Dean Jackson.
+
+        Mark some progressions in the Mozilla CSS Animations and CSS Transitions tests.
+
+        * css-animations/test_element-get-animations-expected.txt:
+        * css-transitions/test_document-get-animations-expected.txt:
+
 2018-06-11  Antoine Quint  <graouts@apple.com>
 
         [Web Animations] Make imported/mozilla/css-transitions/test_setting-effect.html pass reliably

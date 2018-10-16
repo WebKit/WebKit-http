@@ -102,6 +102,16 @@ enum EventThrottlingBehavior {
 
 [
     ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
+    JSGenerateToJSObject,
+] dictionary FullscreenInsets {
+    double top;
+    double left;
+    double bottom;
+    double right;
+};
+
+[
+    ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
     NoInterfaceObject,
 ] interface Internals {
     DOMString address(Node node);
@@ -371,8 +381,10 @@ enum EventThrottlingBehavior {
     [Conditional=FULLSCREEN_API] void webkitDidExitFullScreenForElement(Element element);
     [Conditional=FULLSCREEN_API] readonly attribute boolean isAnimatingFullScreen;
 
-    void setFullscreenInsetTop(double inset);
+    void setFullscreenInsets(FullscreenInsets insets);
     void setFullscreenAutoHideDelay(double delay);
+    void setFullscreenAutoHideDuration(double duration);
+    void setFullscreenControlsHidden(boolean hidden);
 
     void setApplicationCacheOriginQuota(unsigned long long quota);
 
@@ -618,11 +630,12 @@ enum EventThrottlingBehavior {
     boolean isSystemPreviewLink(Element element);
     boolean isSystemPreviewImage(Element element);
 
-    DOMString extraZoomModeAdaptationName();
-
     boolean usingAppleInternalSDK();
 
     [Conditional=VIDEO, MayThrowException] readonly attribute NowPlayingState nowPlayingState;
 
     [Conditional=VIDEO] HTMLMediaElement bestMediaElementForShowingPlaybackControlsManager(PlaybackControlsPurpose purpose);
+
+    DOMString ongoingLoadsDescriptions();
+    void setCaptureExtraNetworkLoadMetricsEnabled(boolean value);
 };

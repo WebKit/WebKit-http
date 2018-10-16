@@ -23,12 +23,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import "JSExportMacros.h"
 #import <JavaScriptCore/JavaScriptCore.h>
 
+#undef NS_AVAILABLE
+#define NS_AVAILABLE(_mac, _ios)
+
 #import "CurrentThisInsideBlockGetterTest.h"
+#import "DFGWorklist.h"
 #import "DateTests.h"
 #import "JSExportTests.h"
 #import "JSVirtualMachinePrivate.h"
+#import "JSWrapperMapTests.h"
 #import "Regress141275.h"
 #import "Regress141809.h"
 
@@ -513,8 +519,43 @@ static void* multiVMThreadMain(void* okPtr)
     return nullptr;
 }
 
+static void runJITThreadLimitTests()
+{
+#if ENABLE(DFG_JIT)
+    auto testDFG = [] {
+        unsigned defaultNumberOfThreads = JSC::Options::numberOfDFGCompilerThreads();
+        unsigned targetNumberOfThreads = 1;
+        unsigned initialNumberOfThreads = [JSVirtualMachine setNumberOfDFGCompilerThreads:1];
+        checkResult(@"Initial number of DFG threads should be the value provided through Options", initialNumberOfThreads == defaultNumberOfThreads);
+        unsigned updatedNumberOfThreads = [JSVirtualMachine setNumberOfDFGCompilerThreads:initialNumberOfThreads];
+        checkResult(@"Number of DFG threads should have been updated", updatedNumberOfThreads == targetNumberOfThreads);
+    };
+
+    auto testFTL = [] {
+        unsigned defaultNumberOfThreads = JSC::Options::numberOfFTLCompilerThreads();
+        unsigned targetNumberOfThreads = 3;
+        unsigned initialNumberOfThreads = [JSVirtualMachine setNumberOfFTLCompilerThreads:1];
+        checkResult(@"Initial number of FTL threads should be the value provided through Options", initialNumberOfThreads == defaultNumberOfThreads);
+        unsigned updatedNumberOfThreads = [JSVirtualMachine setNumberOfFTLCompilerThreads:initialNumberOfThreads];
+        checkResult(@"Number of FTL threads should have been updated", updatedNumberOfThreads == targetNumberOfThreads);
+    };
+
+    checkResult(@"runJITThreadLimitTests() must run at the very beginning to test the case where the global JIT worklist was not initialized yet", !JSC::DFG::existingGlobalDFGWorklistOrNull() && !JSC::DFG::existingGlobalFTLWorklistOrNull());
+
+    testDFG();
+    JSC::DFG::ensureGlobalDFGWorklist();
+    testDFG();
+
+    testFTL();
+    JSC::DFG::ensureGlobalFTLWorklist();
+    testFTL();
+#endif // ENABLE(DFG_JIT)
+}
+
 static void testObjectiveCAPIMain()
 {
+    runJITThreadLimitTests();
+
     @autoreleasepool {
         JSVirtualMachine* vm = [[JSVirtualMachine alloc] init];
         JSContext* context = [[JSContext alloc] initWithVirtualMachine:vm];
@@ -705,7 +746,7 @@ static void testObjectiveCAPIMain()
         context.exceptionHandler = ^(JSContext *, JSValue *exception) {
             exceptionSourceURL = [exception[@"sourceURL"] toString];
         };
-        NSURL *url = [NSURL fileURLWithPath:@"/foo/bar.js"];
+        NSURL *url = [NSURL fileURLWithPath:@"/foo/bar.js" isDirectory:NO];
         [context evaluateScript:@"!@#$%^&*() THIS IS NOT VALID JAVASCRIPT SYNTAX !@#$%^&*()" withSourceURL:url];
         checkResult(@"evaluateScript:withSourceURL: exception has expected sourceURL", [exceptionSourceURL isEqualToString:[url absoluteString]]);
     }
@@ -1475,6 +1516,7 @@ static void testObjectiveCAPIMain()
     currentThisInsideBlockGetterTest();
     runDateTests();
     runJSExportTests();
+    runJSWrapperMapTests();
     runRegress141275();
     runRegress141809();
 }

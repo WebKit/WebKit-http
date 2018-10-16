@@ -191,7 +191,7 @@ char* newTypedArrayWithSize(ExecState* exec, Structure* structure, int32_t size,
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (size < 0) {
-        throwException(exec, scope, createRangeError(exec, ASCIILiteral("Requested length is negative")));
+        throwException(exec, scope, createRangeError(exec, "Requested length is negative"_s));
         return 0;
     }
     
@@ -257,7 +257,7 @@ JSCell* JIT_OPERATION operationObjectCreate(ExecState* exec, EncodedJSValue enco
     JSValue prototype = JSValue::decode(encodedPrototype);
 
     if (!prototype.isObject() && !prototype.isNull()) {
-        throwVMTypeError(exec, scope, ASCIILiteral("Object prototype may only be an Object or null."));
+        throwVMTypeError(exec, scope, "Object prototype may only be an Object or null."_s);
         return nullptr;
     }
 
@@ -1508,7 +1508,7 @@ char* JIT_OPERATION operationNewArrayWithSize(ExecState* exec, Structure* arrayS
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (UNLIKELY(size < 0))
-        return bitwise_cast<char*>(throwException(exec, scope, createRangeError(exec, ASCIILiteral("Array size is not a small enough positive integer."))));
+        return bitwise_cast<char*>(throwException(exec, scope, createRangeError(exec, "Array size is not a small enough positive integer."_s)));
 
     JSArray* result;
     if (butterfly)
@@ -1525,7 +1525,7 @@ char* JIT_OPERATION operationNewArrayWithSizeAndHint(ExecState* exec, Structure*
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (UNLIKELY(size < 0))
-        return bitwise_cast<char*>(throwException(exec, scope, createRangeError(exec, ASCIILiteral("Array size is not a small enough positive integer."))));
+        return bitwise_cast<char*>(throwException(exec, scope, createRangeError(exec, "Array size is not a small enough positive integer."_s)));
 
     JSArray* result;
     if (butterfly)
@@ -1888,7 +1888,7 @@ char* JIT_OPERATION operationEnsureInt32(ExecState* exec, JSCell* cell)
     if (!cell->isObject())
         return 0;
 
-    auto* result = reinterpret_cast<char*>(asObject(cell)->ensureWritableInt32(vm).data());
+    auto* result = reinterpret_cast<char*>(asObject(cell)->tryMakeWritableInt32(vm).data());
     ASSERT((!isCopyOnWrite(asObject(cell)->indexingMode()) && hasInt32(cell->indexingMode())) || !result);
     return result;
 }
@@ -1901,7 +1901,7 @@ char* JIT_OPERATION operationEnsureDouble(ExecState* exec, JSCell* cell)
     if (!cell->isObject())
         return 0;
 
-    auto* result = reinterpret_cast<char*>(asObject(cell)->ensureWritableDouble(vm).data());
+    auto* result = reinterpret_cast<char*>(asObject(cell)->tryMakeWritableDouble(vm).data());
     ASSERT((!isCopyOnWrite(asObject(cell)->indexingMode()) && hasDouble(cell->indexingMode())) || !result);
     return result;
 }
@@ -1914,7 +1914,7 @@ char* JIT_OPERATION operationEnsureContiguous(ExecState* exec, JSCell* cell)
     if (!cell->isObject())
         return 0;
     
-    auto* result = reinterpret_cast<char*>(asObject(cell)->ensureWritableContiguous(vm).data());
+    auto* result = reinterpret_cast<char*>(asObject(cell)->tryMakeWritableContiguous(vm).data());
     ASSERT((!isCopyOnWrite(asObject(cell)->indexingMode()) && hasContiguous(cell->indexingMode())) || !result);
     return result;
 }
@@ -2051,7 +2051,7 @@ char* JIT_OPERATION operationInt32ToString(ExecState* exec, int32_t value, int32
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (radix < 2 || radix > 36) {
-        throwVMError(exec, scope, createRangeError(exec, ASCIILiteral("toString() radix argument must be between 2 and 36")));
+        throwVMError(exec, scope, createRangeError(exec, "toString() radix argument must be between 2 and 36"_s));
         return nullptr;
     }
 
@@ -2066,7 +2066,7 @@ char* JIT_OPERATION operationInt52ToString(ExecState* exec, int64_t value, int32
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (radix < 2 || radix > 36) {
-        throwVMError(exec, scope, createRangeError(exec, ASCIILiteral("toString() radix argument must be between 2 and 36")));
+        throwVMError(exec, scope, createRangeError(exec, "toString() radix argument must be between 2 and 36"_s));
         return nullptr;
     }
 
@@ -2081,7 +2081,7 @@ char* JIT_OPERATION operationDoubleToString(ExecState* exec, double value, int32
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (radix < 2 || radix > 36) {
-        throwVMError(exec, scope, createRangeError(exec, ASCIILiteral("toString() radix argument must be between 2 and 36")));
+        throwVMError(exec, scope, createRangeError(exec, "toString() radix argument must be between 2 and 36"_s));
         return nullptr;
     }
 
@@ -2647,7 +2647,7 @@ void JIT_OPERATION operationProcessTypeProfilerLogDFG(ExecState* exec)
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    vm.typeProfilerLog()->processLogEntries(ASCIILiteral("Log Full, called from inside DFG."));
+    vm.typeProfilerLog()->processLogEntries("Log Full, called from inside DFG."_s);
 }
 
 EncodedJSValue JIT_OPERATION operationResolveScopeForHoistingFuncDeclInEval(ExecState* exec, JSScope* scope, UniquedStringImpl* impl)

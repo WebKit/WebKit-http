@@ -2,12 +2,15 @@
 <div id="target" style="width: 100px; height: 100px; background-color: black;"></div>
 <script>
 
-document.getElementById("target").animate([
-    { opacity: 1 },
-    { opacity: 0 }
-], 1000);
-
+testRunner.waitUntilDone();
 testRunner.dumpAsText();
-document.getElementById("results").innerText = internals.layerTreeAsText(document);
+
+document.getElementById("target").animate([
+    { opacity: 0.5 },
+    { opacity: 0 }
+], 1000 * 60).ready.then(() => {
+    document.getElementById("results").innerText = internals.layerTreeAsText(document);
+    testRunner.notifyDone();
+});
 
 </script>

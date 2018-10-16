@@ -570,7 +570,7 @@ HTTPEquivEnabled:
 
 MockCaptureDevicesEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_MOCK_CAPTURE_DEVICES_ENABLED
   webcoreBinding: DeprecatedGlobalSettings
   condition: ENABLE(MEDIA_STREAM)
 
@@ -1060,6 +1060,12 @@ MediaCapabilitiesEnabled:
     defaultValue: false
     webcoreBinding: RuntimeEnabledFeatures
 
+SystemPreviewEnabled:
+    type: bool
+    defaultValue: false
+    webcoreBinding: RuntimeEnabledFeatures
+    condition: USE(SYSTEM_PREVIEW)
+
 # For experimental features:
 # The type should be boolean.
 # You must provide a humanReadableName and humanReadableName for all experimental features. They
@@ -1295,5 +1301,9 @@ DisabledAdaptationsMetaTagEnabled:
     webcoreBinding: RuntimeEnabledFeatures
 
 ColorFilterEnabled:
+  type: bool
+  defaultValue: false
+
+IncompleteImageBorderEnabled:
   type: bool
   defaultValue: false

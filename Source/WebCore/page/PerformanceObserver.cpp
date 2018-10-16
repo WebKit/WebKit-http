@@ -51,6 +51,7 @@ PerformanceObserver::PerformanceObserver(ScriptExecutionContext& scriptExecution
 void PerformanceObserver::disassociate()
 {
     m_performance = nullptr;
+    m_registered = false;
 }
 
 ExceptionOr<void> PerformanceObserver::observe(Init&& init)
@@ -59,7 +60,7 @@ ExceptionOr<void> PerformanceObserver::observe(Init&& init)
         return Exception { TypeError };
 
     if (init.entryTypes.isEmpty())
-        return Exception { TypeError, ASCIILiteral("entryTypes cannot be an empty list") };
+        return Exception { TypeError, "entryTypes cannot be an empty list"_s };
 
     OptionSet<PerformanceEntry::Type> filter;
     for (const String& entryType : init.entryTypes) {
@@ -68,7 +69,7 @@ ExceptionOr<void> PerformanceObserver::observe(Init&& init)
     }
 
     if (filter.isEmpty())
-        return Exception { TypeError, ASCIILiteral("entryTypes contained only unsupported types") };
+        return Exception { TypeError, "entryTypes contained only unsupported types"_s };
 
     m_typeFilter = filter;
 

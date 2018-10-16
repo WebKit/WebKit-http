@@ -544,7 +544,9 @@ void RenderTreeBuilder::normalizeTreeAfterStyleChange(RenderElement& renderer, R
         // We have gone from not affecting the inline status of the parent flow to suddenly
         // having an impact. See if there is a mismatch between the parent flow's
         // childrenInline() state and our state.
-        renderer.setInline(renderer.style().isDisplayInlineType());
+        // FIXME(186894): startsAffectingParent has clearly nothing to do with resetting the inline state.
+        if (!is<RenderSVGInline>(renderer))
+            renderer.setInline(renderer.style().isDisplayInlineType());
         if (renderer.isInline() != renderer.parent()->childrenInline())
             childFlowStateChangesAndAffectsParentBlock(renderer);
         return;
@@ -734,13 +736,16 @@ void RenderTreeBuilder::destroyAndCleanUpAnonymousWrappers(RenderObject& child)
     if (is<RenderTableRow>(destroyRoot))
         tableBuilder().collapseAndDestroyAnonymousSiblingRows(downcast<RenderTableRow>(destroyRoot));
 
-    auto& destroyRootParent = *destroyRoot.parent();
+    // FIXME: Do not try to collapse/cleanup the anonymous wrappers inside destroy (see webkit.org/b/186746).
+    auto destroyRootParent = makeWeakPtr(*destroyRoot.parent());
     destroy(destroyRoot);
-    removeAnonymousWrappersForInlineChildrenIfNeeded(destroyRootParent);
+    if (!destroyRootParent)
+        return;
+    removeAnonymousWrappersForInlineChildrenIfNeeded(*destroyRootParent);
 
     // Anonymous parent might have become empty, try to delete it too.
-    if (isAnonymousAndSafeToDelete(destroyRootParent) && !destroyRootParent.firstChild())
-        destroyAndCleanUpAnonymousWrappers(destroyRootParent);
+    if (isAnonymousAndSafeToDelete(*destroyRootParent) && !destroyRootParent->firstChild())
+        destroyAndCleanUpAnonymousWrappers(*destroyRootParent);
     // WARNING: child is deleted here.
 }
 

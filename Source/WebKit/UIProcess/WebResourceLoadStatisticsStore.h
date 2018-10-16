@@ -48,6 +48,7 @@ class WorkQueue;
 namespace WebCore {
 class KeyedDecoder;
 class KeyedEncoder;
+class ResourceRequest;
 class URL;
 struct ResourceLoadStatistics;
 }
@@ -55,6 +56,7 @@ struct ResourceLoadStatistics;
 namespace WebKit {
 
 class OperatingDate;
+class WebFrameProxy;
 class WebProcessProxy;
 
 enum class ShouldClearFirst;
@@ -66,12 +68,12 @@ enum class StorageAccessStatus {
 
 class WebResourceLoadStatisticsStore final : public IPC::Connection::WorkQueueMessageReceiver {
 public:
-    using UpdatePrevalentDomainsToPartitionOrBlockCookiesHandler = WTF::Function<void(const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, ShouldClearFirst)>;
+    using UpdatePrevalentDomainsToPartitionOrBlockCookiesHandler = WTF::Function<void(const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, ShouldClearFirst, CompletionHandler<void()>&&)>;
     using HasStorageAccessForFrameHandler = WTF::Function<void(const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, WTF::Function<void(bool hasAccess)>&& callback)>;
     using GrantStorageAccessHandler = WTF::Function<void(const String& resourceDomain, const String& firstPartyDomain, std::optional<uint64_t> frameID, uint64_t pageID, WTF::Function<void(bool wasGranted)>&& callback)>;
     using RemoveAllStorageAccessHandler = WTF::Function<void()>;
     using RemovePrevalentDomainsHandler = WTF::Function<void (const Vector<String>&)>;
-    static Ref<WebResourceLoadStatisticsStore> create(const String& resourceLoadStatisticsDirectory, Function<void (const String&)>&& testingCallback, bool isEphemeral, UpdatePrevalentDomainsToPartitionOrBlockCookiesHandler&& updatePrevalentDomainsToPartitionOrBlockCookiesHandler = [](const WTF::Vector<String>&, const WTF::Vector<String>&, const WTF::Vector<String>&, ShouldClearFirst) { }, HasStorageAccessForFrameHandler&& hasStorageAccessForFrameHandler = [](const String&, const String&, uint64_t, uint64_t, WTF::Function<void(bool)>&&) { }, GrantStorageAccessHandler&& grantStorageAccessHandler = [](const String&, const String&, std::optional<uint64_t>, uint64_t, WTF::Function<void(bool)>&&) { }, RemoveAllStorageAccessHandler&& removeAllStorageAccessHandler = []() { }, RemovePrevalentDomainsHandler&& removeDomainsHandler = [] (const WTF::Vector<String>&) { })
+    static Ref<WebResourceLoadStatisticsStore> create(const String& resourceLoadStatisticsDirectory, Function<void (const String&)>&& testingCallback, bool isEphemeral, UpdatePrevalentDomainsToPartitionOrBlockCookiesHandler&& updatePrevalentDomainsToPartitionOrBlockCookiesHandler = [](const WTF::Vector<String>&, const WTF::Vector<String>&, const WTF::Vector<String>&, ShouldClearFirst, CompletionHandler<void()>&& callback = []() { }) { }, HasStorageAccessForFrameHandler&& hasStorageAccessForFrameHandler = [](const String&, const String&, uint64_t, uint64_t, WTF::Function<void(bool)>&&) { }, GrantStorageAccessHandler&& grantStorageAccessHandler = [](const String&, const String&, std::optional<uint64_t>, uint64_t, WTF::Function<void(bool)>&&) { }, RemoveAllStorageAccessHandler&& removeAllStorageAccessHandler = []() { }, RemovePrevalentDomainsHandler&& removeDomainsHandler = [] (const WTF::Vector<String>&) { })
     {
         return adoptRef(*new WebResourceLoadStatisticsStore(resourceLoadStatisticsDirectory, WTFMove(testingCallback), isEphemeral, WTFMove(updatePrevalentDomainsToPartitionOrBlockCookiesHandler), WTFMove(hasStorageAccessForFrameHandler), WTFMove(grantStorageAccessHandler), WTFMove(removeAllStorageAccessHandler), WTFMove(removeDomainsHandler)));
     }
@@ -99,20 +101,21 @@ public:
     void processDidCloseConnection(WebProcessProxy&, IPC::Connection&);
     void applicationWillTerminate();
 
+    void logFrameNavigation(const WebFrameProxy&, const WebCore::URL& pageURL, const WebCore::ResourceRequest&, const WebCore::URL& redirectURL);
     void logUserInteraction(const WebCore::URL&);
     void logNonRecentUserInteraction(const WebCore::URL&);
     void clearUserInteraction(const WebCore::URL&);
-    void hasHadUserInteraction(const WebCore::URL&, WTF::Function<void (bool)>&&);
+    void hasHadUserInteraction(const WebCore::URL&, CompletionHandler<void (bool)>&&);
     void setLastSeen(const WebCore::URL&, Seconds);
     void setPrevalentResource(const WebCore::URL&);
     void setVeryPrevalentResource(const WebCore::URL&);
-    void isPrevalentResource(const WebCore::URL&, WTF::Function<void (bool)>&&);
-    void isVeryPrevalentResource(const WebCore::URL&, WTF::Function<void(bool)>&&);
-    void isRegisteredAsSubFrameUnder(const WebCore::URL& subFrame, const WebCore::URL& topFrame, WTF::Function<void (bool)>&&);
-    void isRegisteredAsRedirectingTo(const WebCore::URL& hostRedirectedFrom, const WebCore::URL& hostRedirectedTo, WTF::Function<void (bool)>&&);
+    void isPrevalentResource(const WebCore::URL&, CompletionHandler<void (bool)>&&);
+    void isVeryPrevalentResource(const WebCore::URL&, CompletionHandler<void(bool)>&&);
+    void isRegisteredAsSubFrameUnder(const WebCore::URL& subFrame, const WebCore::URL& topFrame, CompletionHandler<void (bool)>&&);
+    void isRegisteredAsRedirectingTo(const WebCore::URL& hostRedirectedFrom, const WebCore::URL& hostRedirectedTo, CompletionHandler<void (bool)>&&);
     void clearPrevalentResource(const WebCore::URL&);
     void setGrandfathered(const WebCore::URL&, bool);
-    void isGrandfathered(const WebCore::URL&, WTF::Function<void (bool)>&&);
+    void isGrandfathered(const WebCore::URL&, CompletionHandler<void (bool)>&&);
     void setSubframeUnderTopFrameOrigin(const WebCore::URL& subframe, const WebCore::URL& topFrame);
     void setSubresourceUnderTopFrameOrigin(const WebCore::URL& subresource, const WebCore::URL& topFrame);
     void setSubresourceUniqueRedirectTo(const WebCore::URL& subresource, const WebCore::URL& hostNameRedirectedTo);
@@ -182,8 +185,12 @@ private:
     void mergeStatistics(Vector<WebCore::ResourceLoadStatistics>&&);
     WebCore::ResourceLoadStatistics& ensureResourceStatisticsForPrimaryDomain(const String&);
     unsigned recursivelyGetAllDomainsThatHaveRedirectedToThisDomain(const WebCore::ResourceLoadStatistics&, HashSet<String>& domainsThatHaveRedirectedTo, unsigned numberOfRecursiveCalls);
+    void markAsPrevalentIfHasRedirectedToPrevalent(WebCore::ResourceLoadStatistics&);
     void setPrevalentResource(WebCore::ResourceLoadStatistics&, ResourceLoadPrevalence);
     void processStatisticsAndDataRecords();
+
+    void scheduleStatisticsProcessingRequestIfNecessary();
+    void cancelPendingStatisticsProcessingRequest();
 
     void resetCookiePartitioningState();
     StorageAccessStatus storageAccessStatus(const String& subFramePrimaryDomain, const String& topFramePrimaryDomain);
@@ -192,6 +199,8 @@ private:
 
     void setDebugLogggingEnabled(bool enabled) { m_debugLoggingEnabled  = enabled; }
     void setStorageAccessPromptsEnabled(bool enabled) { m_storageAccessPromptsEnabled  = enabled; }
+
+    void flushAndDestroyPersistentStore();
 
 #if PLATFORM(COCOA)
     void registerUserDefaultsIfNeeded();
@@ -218,7 +227,7 @@ private:
     ResourceLoadStatisticsClassifier m_resourceLoadStatisticsClassifier;
 #endif
     Ref<WTF::WorkQueue> m_statisticsQueue;
-    ResourceLoadStatisticsPersistentStorage m_persistentStorage;
+    std::unique_ptr<ResourceLoadStatisticsPersistentStorage> m_persistentStorage;
     Vector<OperatingDate> m_operatingDates;
 
     UpdatePrevalentDomainsToPartitionOrBlockCookiesHandler m_updatePrevalentDomainsToPartitionOrBlockCookiesHandler;
@@ -241,8 +250,12 @@ private:
     bool m_debugModeEnabled { false };
     bool m_debugLoggingEnabled { false };
     bool m_storageAccessPromptsEnabled { false };
+    bool m_hasScheduledProcessStats { false };
 
     Function<void (const String&)> m_statisticsTestingCallback;
+
+    uint64_t m_lastStatisticsProcessingRequestIdentifier { 0 };
+    std::optional<uint64_t> m_pendingStatisticsProcessingRequestIdentifier;
 };
 
 } // namespace WebKit

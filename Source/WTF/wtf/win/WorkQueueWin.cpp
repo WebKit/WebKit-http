@@ -29,43 +29,8 @@
 
 #include <wtf/MathExtras.h>
 #include <wtf/Threading.h>
-#include <wtf/win/WorkItemContext.h>
 
 namespace WTF {
-
-void WorkQueue::handleCallback(void* data, BOOLEAN timerOrWaitFired)
-{
-    ASSERT_ARG(data, data);
-    ASSERT_ARG(timerOrWaitFired, !timerOrWaitFired);
-
-    WorkItemContext* context = static_cast<WorkItemContext*>(data);
-    WorkQueue* queue = context->queue();
-
-    RefPtr<WorkItemContext> protector(context);
-    queue->dispatch([protector] {
-        protector->function()();
-    });
-}
-
-void WorkQueue::registerHandle(HANDLE handle, Function<void()>&& function)
-{
-    Ref<WorkItemContext> context = WorkItemContext::create(handle, nullptr, WTFMove(function), this);
-
-    if (!::RegisterWaitForSingleObject(&context->waitHandle().m_handle, handle, handleCallback, context.ptr(), INFINITE, WT_EXECUTEDEFAULT))
-        ASSERT_WITH_MESSAGE(m_timerQueue, "::RegisterWaitForSingleObject %lu", ::GetLastError());
-
-    auto locker = holdLock(m_itemsMapLock);
-    ASSERT_ARG(handle, !m_itemsMap.contains(handle));
-    m_itemsMap.set(handle, WTFMove(context));
-}
-
-void WorkQueue::unregisterAndCloseHandle(HANDLE handle)
-{
-    auto locker = holdLock(m_itemsMapLock);
-    ASSERT_ARG(handle, m_itemsMap.contains(handle));
-
-    unregisterWaitAndDestroyItemSoon(m_itemsMap.take(handle).value());
-}
 
 DWORD WorkQueue::workThreadCallback(void* context)
 {
@@ -151,7 +116,7 @@ void WorkQueue::dispatch(Function<void()>&& function)
 }
 
 struct TimerContext : public ThreadSafeRefCounted<TimerContext> {
-    static RefPtr<TimerContext> create() { return adoptRef(new TimerContext); }
+    static Ref<TimerContext> create() { return adoptRef(*new TimerContext); }
 
     Lock timerLock;
     WorkQueue* queue { nullptr };
@@ -186,7 +151,7 @@ void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
     ASSERT(m_timerQueue);
     ref();
 
-    RefPtr<TimerContext> context = TimerContext::create();
+    Ref<TimerContext> context = TimerContext::create();
     context->queue = this;
     context->function = WTFMove(function);
 
@@ -212,7 +177,7 @@ void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
 
         // Since our timer callback is quick, we can execute in the timer thread itself and avoid
         // an extra thread switch over to a worker thread.
-        if (!::CreateTimerQueueTimer(&context->timer, m_timerQueue, timerCallback, context.get(), clampTo<DWORD>(milliseconds), 0, WT_EXECUTEINTIMERTHREAD)) {
+        if (!::CreateTimerQueueTimer(&context->timer, m_timerQueue, timerCallback, context.ptr(), clampTo<DWORD>(milliseconds), 0, WT_EXECUTEINTIMERTHREAD)) {
             ASSERT_WITH_MESSAGE(false, "::CreateTimerQueueTimer failed with error %lu", ::GetLastError());
             return;
         }
@@ -220,28 +185,6 @@ void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
 
     // The timer callback will handle destroying context.
     context.leakRef();
-}
-
-void WorkQueue::unregisterWaitAndDestroyItemSoon(Ref<WorkItemContext>&& workItem)
-{
-    // We're going to make a blocking call to ::UnregisterWaitEx before closing the handle. (The
-    // blocking version of ::UnregisterWaitEx is much simpler than the non-blocking version.) If we
-    // do this on the current thread, we'll deadlock if we're currently in a callback function for
-    // the wait we're unregistering. So instead we do it asynchronously on some other worker thread.
-    ::QueueUserWorkItem(unregisterWaitAndDestroyItemCallback, workItem.ptr(), WT_EXECUTEDEFAULT);
-}
-
-DWORD WINAPI WorkQueue::unregisterWaitAndDestroyItemCallback(void* data)
-{
-    ASSERT_ARG(data, data);
-    WorkItemContext* context = static_cast<WorkItemContext*>(data);
-
-    // Now that we know we're not in a callback function for the wait we're unregistering, we can
-    // make a blocking call to ::UnregisterWaitEx.
-    if (!::UnregisterWaitEx(context->waitHandle().get(), INVALID_HANDLE_VALUE))
-        ASSERT_WITH_MESSAGE(false, "::UnregisterWaitEx failed with '%s'", ::GetLastError());
-
-    return 0;
 }
 
 } // namespace WTF

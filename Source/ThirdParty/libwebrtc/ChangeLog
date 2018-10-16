@@ -1,3 +1,74 @@
+2018-06-25  Keith Rollin  <krollin@apple.com>
+
+        Adjust webrtc library for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=186952
+        <rdar://problem/41387815>
+
+        Reviewed by Youenn Fablet.
+
+        There are a number of files in webrtc that have main() functions (in
+        particular, rtpcat.cc and click_annotate.cc). When compiling with LTO,
+        these symbols are exposed to each other, leading to the following
+        build failure:
+
+            Ld libwebrtc.dylib
+            duplicate symbol _main in:
+            ld: 1 duplicate symbol for architecture x86_64
+            clang: error: linker command failed with exit code 1 (use -v to see invocation)
+            ** BUILD FAILED **
+
+        Address this by removing the indicated files from the build.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2018-06-14  Youenn Fablet  <youenn@apple.com>
+
+        Activate -Wexit-time-destructors -and Wglobal-constructors in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=186615
+
+        Reviewed by Darin Adler.
+
+        Update xcconfig files to activate these compile flags.
+        Also enable -Wthread-safety since libwebrtc code is using some related attributes.
+        Update libwebrtc code base to accomodate these flags.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/opus.xcconfig:
+        * Configurations/usrsctp.xcconfig:
+        * Source/webrtc/modules/audio_processing/beamformer/array_util.h:
+        (webrtc::DegreesToRadians): Make function constexpr.
+        * Source/webrtc/modules/rtp_rtcp/source/rtp_utility.cc:
+        Make sure the destructor is never called.
+        * Source/webrtc/rtc_base/logging.cc:
+        Update code to move streams_ from a static class member to a regular static function variable.
+        * Source/webrtc/rtc_base/logging.h:
+        * Source/webrtc/system_wrappers/source/clock.cc:
+        Make sure the destructor is never called.
+
+2018-06-14  Youenn Fablet  <youenn@apple.com>
+
+        Eliminate static initializers in libwebrtc.dylib
+        https://bugs.webkit.org/show_bug.cgi?id=186570
+        <rdar://problem/41054874>
+
+        Reviewed by Darin Adler.
+
+        * Source/webrtc/rtc_base/flags.h:
+        Fix memory corruption error by having the actual flag value be static.
+
+2018-06-13  Youenn Fablet  <youenn@apple.com>
+
+        Eliminate static initializers in libwebrtc.dylib
+        https://bugs.webkit.org/show_bug.cgi?id=186570
+
+        Reviewed by Darin Adler.
+
+        * Source/webrtc/rtc_base/flags.h: Changed macro to create the static into a function.
+        * Source/webrtc/rtc_base/logging.cc: Ditto.
+        Made sure that the scope is created on instantiation of the first Log instance that might use it.
+        * Source/webrtc/sdk/objc/Framework/Classes/PeerConnection/RTCVideoCodec.mm:
+        * Source/webrtc/system_wrappers/source/runtime_enabled_features_default.cc:
+
 2018-06-09  Dan Bernstein  <mitz@apple.com>
 
         [Xcode] Clean up and modernize some build setting definitions

@@ -92,12 +92,10 @@ ResourceRequest createAccessControlPreflightRequest(const ResourceRequest& reque
 
     if (!requestHeaderFields.isEmpty()) {
         Vector<String> unsafeHeaders;
-        for (const auto& headerField : requestHeaderFields.commonHeaders()) {
-            if (!isCrossOriginSafeRequestHeader(headerField.key, headerField.value))
-                unsafeHeaders.append(httpHeaderNameString(headerField.key).toStringWithoutCopying().convertToASCIILowercase());
+        for (auto& headerField : requestHeaderFields) {
+            if (!headerField.keyAsHTTPHeaderName || !isCrossOriginSafeRequestHeader(*headerField.keyAsHTTPHeaderName, headerField.value))
+                unsafeHeaders.append(headerField.key.convertToASCIILowercase());
         }
-        for (const auto& headerField : requestHeaderFields.uncommonHeaders())
-            unsafeHeaders.append(headerField.key.convertToASCIILowercase());
 
         std::sort(unsafeHeaders.begin(), unsafeHeaders.end(), WTF::codePointCompareLessThan);
 
@@ -168,9 +166,9 @@ bool passesAccessControlCheck(const ResourceResponse& response, StoredCredential
     String securityOriginString = securityOrigin.toString();
     if (accessControlOriginString != securityOriginString) {
         if (accessControlOriginString == "*")
-            errorDescription = ASCIILiteral("Cannot use wildcard in Access-Control-Allow-Origin when credentials flag is true.");
+            errorDescription = "Cannot use wildcard in Access-Control-Allow-Origin when credentials flag is true."_s;
         else if (accessControlOriginString.find(',') != notFound)
-            errorDescription = ASCIILiteral("Access-Control-Allow-Origin cannot contain more than one origin.");
+            errorDescription = "Access-Control-Allow-Origin cannot contain more than one origin."_s;
         else
             errorDescription = makeString("Origin ", securityOriginString, " is not allowed by Access-Control-Allow-Origin.");
         return false;
@@ -190,7 +188,7 @@ bool passesAccessControlCheck(const ResourceResponse& response, StoredCredential
 bool validatePreflightResponse(const ResourceRequest& request, const ResourceResponse& response, StoredCredentialsPolicy storedCredentialsPolicy, SecurityOrigin& securityOrigin, String& errorDescription)
 {
     if (!response.isSuccessful()) {
-        errorDescription = ASCIILiteral("Preflight response is not successful");
+        errorDescription = "Preflight response is not successful"_s;
         return false;
     }
 
@@ -206,6 +204,36 @@ bool validatePreflightResponse(const ResourceRequest& request, const ResourceRes
 
     CrossOriginPreflightResultCache::singleton().appendEntry(securityOrigin.toString(), request.url(), WTFMove(result));
     return true;
+}
+
+static inline bool shouldCrossOriginResourcePolicyCancelLoad(const SecurityOrigin& origin, const ResourceResponse& response)
+{
+    if (origin.canRequest(response.url()))
+        return false;
+
+    auto policy = parseCrossOriginResourcePolicyHeader(response.httpHeaderField(HTTPHeaderName::CrossOriginResourcePolicy));
+    switch (policy) {
+    case CrossOriginResourcePolicy::None:
+    case CrossOriginResourcePolicy::Invalid:
+        return false;
+    case CrossOriginResourcePolicy::SameOrigin:
+        return true;
+    case CrossOriginResourcePolicy::SameSite: {
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+        return origin.isUnique() || !registrableDomainsAreEqual(response.url(), ResourceRequest::partitionName(origin.host()));
+#else
+        return true;
+#endif
+    }}
+
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+std::optional<ResourceError> validateCrossOriginResourcePolicy(const SecurityOrigin& origin, const URL& requestURL, const ResourceResponse& response)
+{
+    if (shouldCrossOriginResourcePolicyCancelLoad(origin, response))
+        return ResourceError { errorDomainWebKitInternal, 0, requestURL, makeString("Cancelled load to ", response.url().stringCenterEllipsizedToLength(), " because it violates the resource's Cross-Origin-Resource-Policy response header."), ResourceError::Type::AccessControl };
+    return std::nullopt;
 }
 
 } // namespace WebCore

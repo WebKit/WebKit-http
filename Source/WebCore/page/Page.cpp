@@ -2073,28 +2073,28 @@ void Page::logNavigation(const Navigation& navigation)
     String navigationDescription;
     switch (navigation.type) {
     case FrameLoadType::Standard:
-        navigationDescription = ASCIILiteral("standard");
+        navigationDescription = "standard"_s;
         break;
     case FrameLoadType::Back:
-        navigationDescription = ASCIILiteral("back");
+        navigationDescription = "back"_s;
         break;
     case FrameLoadType::Forward:
-        navigationDescription = ASCIILiteral("forward");
+        navigationDescription = "forward"_s;
         break;
     case FrameLoadType::IndexedBackForward:
-        navigationDescription = ASCIILiteral("indexedBackForward");
+        navigationDescription = "indexedBackForward"_s;
         break;
     case FrameLoadType::Reload:
-        navigationDescription = ASCIILiteral("reload");
+        navigationDescription = "reload"_s;
         break;
     case FrameLoadType::Same:
-        navigationDescription = ASCIILiteral("same");
+        navigationDescription = "same"_s;
         break;
     case FrameLoadType::ReloadFromOrigin:
-        navigationDescription = ASCIILiteral("reloadFromOrigin");
+        navigationDescription = "reloadFromOrigin"_s;
         break;
     case FrameLoadType::ReloadExpiredOnly:
-        navigationDescription = ASCIILiteral("reloadRevalidatingExpired");
+        navigationDescription = "reloadRevalidatingExpired"_s;
         break;
     case FrameLoadType::Replace:
     case FrameLoadType::RedirectWithLockedBackForwardList:
@@ -2377,22 +2377,48 @@ bool Page::defaultAppearance() const
     return m_defaultAppearance;
 }
 
-void Page::setFullscreenInsetTop(double inset)
+void Page::setFullscreenInsets(const FloatBoxExtent& insets)
 {
+    if (insets == m_fullscreenInsets)
+        return;
+    m_fullscreenInsets = insets;
+
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (!frame->document())
             continue;
-        frame->document()->constantProperties().setFullscreenInsetTop(inset);
+        frame->document()->constantProperties().didChangeFullscreenInsets();
     }
 }
 
-void Page::setFullscreenAutoHideDelay(double delay)
+void Page::setFullscreenAutoHideDelay(Seconds delay)
 {
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (!frame->document())
             continue;
         frame->document()->constantProperties().setFullscreenAutoHideDelay(delay);
     }
+}
+
+void Page::setFullscreenAutoHideDuration(Seconds duration)
+{
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (!frame->document())
+            continue;
+        frame->document()->constantProperties().setFullscreenAutoHideDuration(duration);
+    }
+}
+
+void Page::setFullscreenControlsHidden(bool hidden)
+{
+#if ENABLE(FULLSCREEN_API)
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (!frame->document())
+            continue;
+        frame->document()->setFullscreenControlsHidden(hidden);
+    }
+#else
+    UNUSED_PARAM(hidden);
+#endif
 }
 
 #if ENABLE(DATA_INTERACTION)

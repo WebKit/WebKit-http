@@ -1335,6 +1335,9 @@ void WebPage::updateSelectionWithTouches(const IntPoint& point, uint32_t touches
         break;
 
     case SelectionTouch::Moved:
+        HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
+        if (result.targetNode())
+            position = m_page->mainFrame().eventHandler().selectionExtentRespectingEditingBoundary(frame.selection().selection(), result.localPoint(), result.targetNode());
         range = rangeForPosition(&frame, position, baseIsStart);
         break;
     }
@@ -1961,7 +1964,7 @@ static void computeAutocorrectionContext(Frame& frame, String& contextBefore, St
             if (currentPosition.isNotNull() && currentPosition != startPosition) {
                 contextBefore = plainTextReplacingNoBreakSpace(Range::create(*frame.document(), currentPosition, startPosition).ptr());
                 if (atBoundaryOfGranularity(currentPosition, ParagraphGranularity, DirectionBackward))
-                    contextBefore = ASCIILiteral("\n ") + contextBefore;
+                    contextBefore = makeString("\n "_s, contextBefore);
             }
         }
 
@@ -2390,7 +2393,10 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         HTMLFormElement* form = element.form();
         if (form)
             information.formAction = form->getURLAttribute(WebCore::HTMLNames::actionAttr);
-        information.acceptsAutofilledLoginCredentials = !!WebCore::AutofillElements::computeAutofillElements(element);
+        if (auto autofillElements = WebCore::AutofillElements::computeAutofillElements(element)) {
+            information.acceptsAutofilledLoginCredentials = true;
+            information.isAutofillableUsernameField = autofillElements->username() == m_assistedNode;
+        }
         information.representingPageURL = element.document().urlForBindings();
         information.autocapitalizeType = element.autocapitalizeType();
         information.isAutocorrect = element.shouldAutocorrect();
@@ -2476,6 +2482,12 @@ void WebPage::setDeviceOrientation(int32_t deviceOrientation)
         return;
     m_deviceOrientation = deviceOrientation;
     m_page->mainFrame().orientationChanged();
+}
+
+void WebPage::setOverrideViewportArguments(const std::optional<WebCore::ViewportArguments>& arguments)
+{
+    if (auto* document = m_page->mainFrame().document())
+        document->setOverrideViewportArguments(arguments);
 }
 
 // WebCore stores the page scale factor as float instead of double. When we get a scale from WebCore,
@@ -2757,7 +2769,8 @@ void WebPage::updateViewportSizeForCSSViewportUnits()
 void WebPage::applicationWillResignActive()
 {
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationWillResignActiveNotification object:nil];
-    m_page->applicationWillResignActive();
+    if (m_page)
+        m_page->applicationWillResignActive();
 }
 
 void WebPage::applicationDidEnterBackground(bool isSuspendedUnderLock)

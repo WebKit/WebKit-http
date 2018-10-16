@@ -82,7 +82,7 @@ bool Box::isStickyPositioned() const
 
 bool Box::isAbsolutelyPositioned() const
 {
-    return m_style.position() == PositionType::Absolute;
+    return m_style.position() == PositionType::Absolute || isFixedPositioned(); 
 }
 
 bool Box::isFixedPositioned() const
@@ -230,8 +230,9 @@ bool Box::isPaddingApplicable() const
 {
     // 8.4 Padding properties:
     // Applies to: all elements except table-row-group, table-header-group, table-footer-group, table-row, table-column-group and table-column
-    if (!m_elementAttributes)
+    if (isAnonymous())
         return false;
+
     auto elementType = m_elementAttributes.value().elementType;
     return elementType != ElementType::TableRowGroup
         && elementType != ElementType::TableHeaderGroup

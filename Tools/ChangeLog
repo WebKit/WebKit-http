@@ -1,3 +1,1340 @@
+2018-06-26  Timothy Horton  <timothy_horton@apple.com>
+
+        Add Aditya to contributors.json as a contributor
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-06-26  Brent Fulgham  <bfulgham@apple.com>
+
+        Provide a way for Injected Bundles to indicate classes approved for NSSecureCoding
+        https://bugs.webkit.org/show_bug.cgi?id=186788
+        <rdar://problem/41094167>
+
+        Reviewed by Chris Dumez.
+
+        Add a new test case to exercise the class check during NSSecureCoding.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/mac/CustomBundleObject.h: Added.
+        * TestWebKitAPI/Tests/WebKit/mac/CustomBundleObject.mm: Added.
+        (-[CustomBundleObject initWithValue:]):
+        (+[CustomBundleObject supportsSecureCoding]):
+        (-[CustomBundleObject copyWithZone:]):
+        (-[CustomBundleObject initWithCoder:]):
+        (-[CustomBundleObject encodeWithCoder:]):
+        * TestWebKitAPI/Tests/WebKit/mac/CustomBundleParameter.mm: Added.
+        (TestWebKitAPI::didReceiveMessageFromInjectedBundle):
+        (TestWebKitAPI::didFinishLoadForFrame):
+        * TestWebKitAPI/Tests/WebKit/mac/CustomBundleParameter_Bundle.mm: Added.
+        (TestWebKitAPI::CustomBundleParameterTest::CustomBundleParameterTest):
+        (TestWebKitAPI::CustomBundleParameterTest::didCreatePage):
+
+2018-06-25  Daniel Bates  <dabates@apple.com>
+
+        Log a message when fetching attachment data from the status server
+        https://bugs.webkit.org/show_bug.cgi?id=187032
+
+        Reviewed by Zalan Bujtas.
+
+        Currently we silently fetch from the status server an attachment when fetching
+        the attachment from Bugzilla fails due to an access denied error. Instead we
+        should emit a message when fetching data from the status server to indicate
+        that webkit-patch/EWS is still processing the command/trying to obtain the
+        patch.
+
+        * Scripts/webkitpy/common/net/statusserver.py:
+        (StatusServer._fetch_attachment_page):
+
+2018-06-25  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add support for Bindings-tests-EWS
+        https://bugs.webkit.org/show_bug.cgi?id=187014
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/factories.py:
+        (BindingsFactory): Added RunBindingsTests build step to BindingsFactory.
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunBindingsTests): Added build-step for running Bindings tests.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-tests.
+
+2018-06-25  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add support for Style-EWS
+        https://bugs.webkit.org/show_bug.cgi?id=186955
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/factories.py:
+        (Factory): Base class for all the factory.
+        * BuildSlaveSupport/ews-build/loadConfig.py: Initialize factory with required parameters.
+        * BuildSlaveSupport/ews-build/runUnittests.py: Added, script to run all the unit tests.
+        * BuildSlaveSupport/ews-build/steps.py: Added.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-tests.
+
+2018-06-25  Youenn Fablet  <youenn@apple.com>
+
+        Add API to control mock media devices
+        https://bugs.webkit.org/show_bug.cgi?id=186958
+
+        Reviewed by Eric Carlson.
+
+        Add test runner API to clear/add/remove/reset mock media devices.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::addMockMediaDevice):
+        (WTR::TestRunner::addMockCameraDevice):
+        (WTR::TestRunner::addMockMicrophoneDevice):
+        (WTR::TestRunner::addMockScreenDevice):
+        (WTR::TestRunner::clearMockMediaDevices):
+        (WTR::TestRunner::removeMockMediaDevice):
+        (WTR::TestRunner::resetMockMediaDevices):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::addMockMediaDevice):
+        (WTR::TestController::clearMockMediaDevices):
+        (WTR::TestController::removeMockMediaDevice):
+        (WTR::TestController::resetMockMediaDevices):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2018-06-25  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add support for try Buildbot try schedulers
+        https://bugs.webkit.org/show_bug.cgi?id=186948
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/config.json: Use Try_Userpass scheduler.
+        * BuildSlaveSupport/ews-build/loadConfig.py: Updated to use try scheduler.
+
+2018-06-25  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Unreviewed build fix for r233088.
+
+        * BuildSlaveSupport/built-product-archive:
+        (extractBuiltProduct):
+        "move" throws instead of overwriting, so just use "copy" instead.
+
+2018-06-25  Leo Balter  <leonardo.balter@gmail.com>
+
+        [test262-runner] Sort the list of failing files in the HTML report
+        https://bugs.webkit.org/show_bug.cgi?id=186998
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/Runner.pm:
+        (printHTMLResults): The current list of failing files it not ordered and it's hard to read.
+        This small patch will sort the list.
+
+2018-06-25  Robin Morisset  <rmorisset@apple.com>
+
+        [WSL] Start writing the Sphinx document
+        https://bugs.webkit.org/show_bug.cgi?id=186310
+
+        Rubberstamped by Filip Pizlo.
+
+        Very early work, just has the lexer and a few fragments of the parser so far.
+        Also fixing some minor mistake in the formal rules.
+
+        * WebGPUShadingLanguageRI/SpecWork/WSL.g4:
+        * WebGPUShadingLanguageRI/SpecWork/WSL.ott:
+        * WebGPUShadingLanguageRI/SpecWork/source/conf.py:
+        * WebGPUShadingLanguageRI/SpecWork/source/index.rst:
+
+2018-06-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add user-defined literal for ASCIILiteral
+        https://bugs.webkit.org/show_bug.cgi?id=186839
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/StringOperators.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/WorkerPool.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/ApplicationManifestParser.cpp:
+        (TEST_F):
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/URL.cpp:
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/ios/PreviewLoader.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/mac/GPUCommandQueue.mm:
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/mac/GPUTest.h:
+        * TestWebKitAPI/Tests/WebKitCocoa/ContentFilteringPlugIn.mm:
+        (-[MockContentFilterEnabler initWithCoder:]):
+        * TestWebKitAPI/Tests/mac/ContentFiltering.mm:
+        (TestWebKitAPI::loadAlternateTest):
+
+2018-06-22  Brady Eidson  <beidson@apple.com>
+
+        WKURLSchemeHandler doesn't handle sync XHR.
+        <rdar://problem/40955884> and https://bugs.webkit.org/show_bug.cgi?id=186902
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKURLSchemeHandler-1.mm:
+        (-[SyncScheme webView:startURLSchemeTask:]):
+        (-[SyncScheme webView:stopURLSchemeTask:]):
+        (-[SyncMessageHandler userContentController:didReceiveScriptMessage:]):
+        (catch):
+
+2018-06-22  Daniel Bates  <dabates@apple.com>
+
+        Security EWS: bots fails with exception 'NoneType' object has no attribute 'is_closed'
+        https://bugs.webkit.org/show_bug.cgi?id=186923
+
+        Reviewed by Lucas Forschler.
+
+        Attachments downloaded from the status server (http://webkit-queues.webkit.org) do not
+        have an associated Bug object (i.e. Attachment.bug() is None) and reflect the state they
+        were in, including flags set, at the time they were uploaded to the status server. We
+        will add support for fetching up-to-date status info about the attachment and its bug
+        in <https://bugs.webkit.org/show_bug.cgi?id=186817>. For now, we only check if the
+        bug associated with the patch we are processing is closed if the attachment has a
+        non-None Bug object.
+
+        * Scripts/webkitpy/tool/bot/earlywarningsystemtask.py:
+        (EarlyWarningSystemTask.validate):
+
+2018-06-22  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Win] ImageDiff should use DLLLauncher
+        https://bugs.webkit.org/show_bug.cgi?id=186927
+
+        ImageDiff should use DLLLauncher to find DLLs under WEBKIT_LIBRARIES, in the same way as DRT & TestWebKitAPI.
+
+        Reviewed by Per Arne Vollan.
+
+        * ImageDiff/CMakeLists.txt:
+        * ImageDiff/ImageDiff.cpp:
+        (dllLauncherEntryPoint):
+        * ImageDiff/PlatformWin.cmake:
+
+2018-06-22  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [style] Fix --git-index option for check-webkit-style command
+        https://bugs.webkit.org/show_bug.cgi?id=186810
+
+        When --git-index is specified, it should be compared with HEAD, not the origin/master.
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.create_patch):
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (test_create_patch_with_git_index): Added.
+
+2018-06-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, fix syntax error introduced by r233088.
+
+        * BuildSlaveSupport/built-product-archive:
+        (extractBuiltProduct):
+
+2018-06-22  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo][Buildbot] Test bots should use same WinCairoRequirements version as the triggering build
+        https://bugs.webkit.org/show_bug.cgi?id=186857
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/built-product-archive:
+        (archiveBuiltProduct):
+        (extractBuiltProduct):
+        Save and restore the WinCairoRequirements version using the build archive.
+
+        * Scripts/download-github-release.py: Renamed from Tools/Scripts/download-latest-github-release.py.
+        Generalize download script -- get the latest version by default, but allow an arbitrary version to be specified.
+
+        * Scripts/update-vswhere.py:
+        Consume renamed script.
+
+        * Scripts/update-webkit-wincairo-libs.py:
+        Consume renamed script and specify a version to download when a config file is present.
+
+2018-06-20  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Use the isDirectory: variants of NSURL methods more to eliminate unnecessary file system activity
+        https://bugs.webkit.org/show_bug.cgi?id=186875
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (activateTestingFonts): Use isDirectory:NO to create a URL for a font file.
+        * WebKitTestRunner/InjectedBundle/cocoa/ActivateFontsCocoa.mm:
+        (WTR::activateFonts): Ditto.
+        (WTR::installFakeHelvetica): Ditto.
+
+2018-06-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebDriver: use a dictionary for session capabilities in StartAutomationSession message
+        https://bugs.webkit.org/show_bug.cgi?id=186915
+
+        Reviewed by Žan Doberšek.
+
+        Update /webkit/WebKitAutomationSession/request-session to use the new StartAutomationSession message signature.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestAutomationSession.cpp:
+
+2018-06-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GLib test /webkit/WebKitSecurityManager/file-xhr after r231000
+
+        We are now receiving two console messages instead of one. Simply update the test to check both messages.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitWebContext.cpp:
+        (consoleMessageReceivedCallback):
+        (testWebContextSecurityFileXHR):
+
+2018-06-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GLib gardening. Update expectations of TestSSL.
+
+        /webkit/WebKitWebView/tls-errors-policy and /webkit/WebKitWebView/load-failed-with-tls-errors are failing only
+        in the bots.
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2018-06-21  Daniel Bates  <dabates@apple.com>
+
+        EWS for security bugs
+        https://bugs.webkit.org/show_bug.cgi?id=186291
+        <rdar://problem/40829658>
+
+        Substitute webkit.status-api-key for webkit.status_api_key as Git configuration variables can
+        only consist of alphanumeric characters and underscores (_) per the second paragraph of section
+        Configuration File of <https://git-scm.com/docs/git-config/2.18.0#_configuration_file>:
+
+             The variable names are case-insensitive, allow only alphanumeric characters and -, and must
+             start with an alphabetic character.
+
+        * Scripts/webkitpy/tool/main.py:
+        (WebKitPatch._status_server_api_key_from_git):
+
+2018-06-21  Daniel Bates  <dabates@apple.com>
+
+        EWS for security bugs
+        https://bugs.webkit.org/show_bug.cgi?id=186291
+        <rdar://problem/40829658>
+
+        In r232979, I inadvertently removed a line of code in _parse_authorized_api_keys() to define a local called api_keys.
+        Add this code back.
+
+        * QueueStatusServer/config/authorization.py:
+        (_parse_authorized_api_keys):
+
+2018-06-21  Daniel Bates  <dabates@apple.com>
+
+        EWS should not try to post comments or upload result archives to security-sensitive
+        bugs unless it has access
+        https://bugs.webkit.org/show_bug.cgi?id=186831
+
+        Reviewed by Lucas Forschler.
+
+        Following r232979 security-sensitive patches are uploaded to the status server so
+        that they can be retrieved and processed by EWS bots without the need for Bugzilla
+        security bug access. Although the EWS machinery is robust against unexpected exceptions,
+        including exceptions raised when interacting with Bugzilla bugs/attachments with
+        insufficient credentials, we should not depend on such defenses as they cause webkit-
+        patch to log a message for the "unexpected" exception. We should reserve such logging
+        for truly unexpected exceptions that indicate a programming mistake that we need to fix.
+
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        (AbstractEarlyWarningSystem._post_reject_message_on_bug): Bail out early if we cannot
+        access the bug.
+        * Scripts/webkitpy/tool/commands/queues.py:
+        (PatchProcessingQueue._can_access_bug): Added.
+        (PatchProcessingQueue._upload_results_archive_for_patch): Only add an attachment if we
+        can access the bug.
+        (CommitQueue.process_work_item): Only post a rejection comment (i.e. call CommitterValidatorreject_patch_from_commit_queue())
+        if we can access the bug.
+
+2018-06-21  Lucas Forschler  <lforschler@apple.com>
+
+        bisect-builds --list not showing all builds
+        https://bugs.webkit.org/show_bug.cgi?id=185790
+
+        The AWS Gateway API call into dynamoDB is limited to returning 1MB of query data. Our archive set has overgrown this limit,
+        causing us to retrieve a truncated list of results. Fortunately, when this limit is reached, dynamoDB returns a 
+        "LastEvaluatedKey", which can be used to continue the query in another request. 
+
+        This patch teaches bisect-build to pass along this key when needed. The backend api was updated from v2 to v2_1 to support
+        this new querystring option. Any existing code using v2 will not be affected.
+        
+        Reviewed by Aakash Jain.
+
+        * Scripts/bisect-builds:
+        (get_api_url): added optional LastEvaluatedKey argument, which will append the query string to the base api url.
+        (fetch_revision_list): Added to allow a recursive call which will query until we retrieve every item requested.
+        (main): teach how to use fetch_revision_list.
+
+2018-06-21  Keith Rollin  <krollin@apple.com>
+
+        check-webkit-style should warn about exported inline functions
+        https://bugs.webkit.org/show_bug.cgi?id=186861
+        <rdar://problem/41303668>
+
+        Reviewed by Brent Fulgham.
+
+        When checking binaries compiled with LTO enabled, WebKit's
+        check-for-weak-vtables-and-externals script can complain about
+        exported inline functions. For instance, in
+        Source/WebCore/page/scrolling/ScrollingTree.h, the following:
+
+        WEBCORE_EXPORT virtual void reportSynchronousScrollingReasonsChanged(MonotonicTime, SynchronousScrollingReasons) { }
+        WEBCORE_EXPORT virtual void reportExposedUnfilledArea(MonotonicTime, unsigned /* unfilledArea */) { }
+
+        Can result in the following error messages:
+
+        ERROR: WebCore has a weak external symbol in it (.../OpenSource/WebKitBuild/Release/WebCore.framework/Versions/A/WebCore)
+        ERROR: A weak external symbol is generated when a symbol is defined in multiple compilation units and is also marked as being exported from the library.
+        ERROR: A common cause of weak external symbols is when an inline function is listed in the linker export file.
+        ERROR: symbol __ZN7WebCore13ScrollingTree25reportExposedUnfilledAreaEN3WTF13MonotonicTimeEj
+        ERROR: symbol __ZN7WebCore13ScrollingTree40reportSynchronousScrollingReasonsChangedEN3WTF13MonotonicTimeEj
+
+        Unfortunately, these errors are only emitted when LTO is enabled,
+        meaning that a developer could check-in a file that will fail an LTO
+        build if they don't build with that option locally. Therefore, try to
+        head this off by updating check-webkit-style to identify and warn
+        about these cases (which includes when an export macro is applied
+        directly to an inline method as well as when an inline method is part
+        of an exported class).
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (_FunctionState.begin):
+        (_FunctionState.export_macro):
+        (_ClassInfo.__init__):
+        (check_for_non_standard_constructs):
+        (check_function_definition):
+        (process_line):
+        (CppChecker):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (FunctionDetectionTest.perform_function_detection):
+        (FunctionDetectionTest.test_webcore_export):
+
+2018-06-21  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] unit-tests fail when run from another directory
+        https://bugs.webkit.org/show_bug.cgi?id=186872
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        (loadBuilderConfig): Add support for passing master_prefix_path.
+        * BuildSlaveSupport/ews-build/loadConfig_unittest.py:
+        (ConfigDotJSONTest.test_configuration): Set master_prefix_path as current directory.
+
+2018-06-21  Aakash Jain  <aakash_jain@apple.com>
+
+        Add support for using localhost worker in OpenSource EWS Buildbot
+        https://bugs.webkit.org/show_bug.cgi?id=186871
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        (loadBuilderConfig): Added a worker named 'local-worker' if use_localhost_worker option is used.
+        * BuildSlaveSupport/ews-build/master.cfg: Check BUILDBOT_TESTING environment variable and use_localhost_worker if so.
+
+2018-06-21  Aakash Jain  <aakash_jain@apple.com>
+
+        Add force schedulers to OpenSource EWS Buildbot
+        https://bugs.webkit.org/show_bug.cgi?id=186876
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        (loadBuilderConfig): Added support for ForceScheduler.
+
+2018-06-21  Robin Morisset  <rmorisset@apple.com>
+
+        [WSL] Merge WSL_type.ott and WSL_exec.ott
+        https://bugs.webkit.org/show_bug.cgi?id=186310
+
+        Rubberstamped by Filip Pizlo.
+
+        I moved the execution rules into WSL_type.ott, that was renamed WSL.ott.
+        I also changed the execution judgements:
+        - they now emit memory events instead of having an explicit store (so they can be connected later to a memory model)
+        - the environment is now unchangeable (except inside blocks, which are the only place that variable declarations can appear)
+        - various rules were simplified.
+
+        * WebGPUShadingLanguageRI/SpecWork/WSL.ott: Copied from Tools/WebGPUShadingLanguageRI/SpecWork/WSL_type.ott.
+        * WebGPUShadingLanguageRI/SpecWork/WSL_exec.ott: Removed.
+        * WebGPUShadingLanguageRI/SpecWork/WSL_type.ott: Removed.
+
+2018-06-21  Leo Balter  <leonardo.balter@gmail.com>
+
+        [test262-runner] Improve failures output
+        https://bugs.webkit.org/show_bug.cgi?id=186858
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/Runner.pm:
+        (main):
+        (processResult):
+
+2018-06-21  Caitlin Potter  <caitp@igalia.com>
+
+        [Tools] add a --debug option to test262/Runner.pm for buildbots
+        https://bugs.webkit.org/show_bug.cgi?id=186113
+
+        Reviewed by Michael Saboff.
+
+        test262-runner runs Debug builds by default, but this allows us to be
+        explicit about it in buildbots.
+
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+
+2018-06-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        run-gtk-tests (glib/common.py) cannot determine build directory when webKitBranchBuild=true
+        https://bugs.webkit.org/show_bug.cgi?id=185643
+
+        Reviewed by Frédéric Wang.
+
+        Check if webKitBranchBuild is true in git config to add the branch name to the build path.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.read_git_config): Add output_type parameter.
+        (Git.read_config): Call read_git_config with cws and executive.
+        (Git._upstream_branch): Use read_config().
+        (Git._assert_can_squash): Ditto.
+        (Git.remote_branch_ref): Ditto.
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (GitSVNTest.test_read_git_config):
+        * glib/common.py:
+        (get_build_path):
+
+2018-06-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit on watchOS] Fixed position elements sometimes flicker when scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=186860
+        <rdar://problem/39953563>
+
+        Reviewed by Tim Horton.
+
+        Add a new API test to exercise a race condition between receiving remote layer tree commits and updating visible
+        content rects which would result in the compositing layer for a fixed position element sometimes appearing in
+        the wrong place. See WebKit ChangeLog for more details.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/fixed-nav-bar.html: Added.
+        * TestWebKitAPI/Tests/ios/WKScrollViewTests.mm: Added.
+        (traverseLayerTree):
+        (TEST):
+
+2018-06-20  Daniel Bates  <dabates@apple.com>
+
+        AttributeError: StatusServer instance has no attribute '_api_key' thrown when processing a patch
+        https://bugs.webkit.org/show_bug.cgi?id=186852
+
+        Fixes an issue where StatusServer._api_key may not be defined. This issue manifests itself
+        in a Python AttributeError exception when an EWS bot tries to fetch the next patch to process.
+
+        Currently StatusServer._api_key is only defined when either the environment variable WEBKIT_STATUS_API_KEY
+        or the Git configuration key webkit.status_api_key has a non-empty value. Instead we should
+        always define StatusServer._api_key in the StatusServer constructor.
+
+        * Scripts/webkitpy/common/net/statusserver.py:
+        (StatusServer.__init__):
+
+2018-06-20  Robin Morisset  <rmorisset@apple.com>
+
+        [WSL] Add details to the sphinx outline
+        https://bugs.webkit.org/show_bug.cgi?id=186310
+
+        Rubberstamped by Filip Pizlo.
+
+        Mostly improving the sphinx outline.
+        Also started moving the execution rules to WSL_type.ott (which will eventually become WSL.ott).
+        Tried formalizing the gathering of declarations into the environment, but I think I will scratch it.
+            It is both trivial to do (and to explain in english) and a bit of a pain to formalize.
+
+        * WebGPUShadingLanguageRI/SpecWork/WSL_type.ott:
+        * WebGPUShadingLanguageRI/SpecWork/source/index.rst:
+
+2018-06-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r232844.
+        https://bugs.webkit.org/show_bug.cgi?id=186843
+
+        "Too many flakiness on the tests, so the EWS bots cant process
+        patches correctly" (Requested by clopez on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Enable tests on the GTK EWS queue"
+        https://bugs.webkit.org/show_bug.cgi?id=186559
+        https://trac.webkit.org/changeset/232844
+
+2018-06-20  Rob Buis  <rbuis@igalia.com>
+
+        [GTK] ASSERTION FAILED: url == m_string in UserAgentQuirks test
+        https://bugs.webkit.org/show_bug.cgi?id=186838
+
+        This URL constructor expects canonicalized input, so fix the passed URL.
+
+        Reviewed by Frédéric Wang.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-06-20  Robin Morisset  <rmorisset@apple.com>
+
+        [WSL] Make the typing rules explicitely translate type syntax into actual types
+        https://bugs.webkit.org/show_bug.cgi?id=186310
+
+        Rubberstamped by Filip Pizlo.
+
+        The typing rules must describe how and most importantly when typedefs and the like are resolved.
+        This is important because they can be shadowed (by type variables for example), and we want to make it unambiguous what behaviour is required in that case.
+
+        * WebGPUShadingLanguageRI/SpecWork/WSL.g4:
+        * WebGPUShadingLanguageRI/SpecWork/WSL_type.ott:
+
+2018-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][WPE][Nicosia] Add name for Nicosia Painting Threads
+        https://bugs.webkit.org/show_bug.cgi?id=186836
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WTF/WorkerPool.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WPE] Remove warnings by setting nullptr for unused listeners
+        https://bugs.webkit.org/show_bug.cgi?id=186835
+
+        Reviewed by Carlos Garcia Campos.
+
+        frame, axis_source, axis_stop, and axis_discrete are unused.
+        Setting nullptr explicitly to remove warnings in GCC.
+
+        * wpe/backends/WindowViewBackend.cpp:
+
+2018-06-19  Leo Balter  <leonardo.balter@gmail.com>
+
+        [test262-runner] Reduce flakiness of unit tests for the runner
+        https://bugs.webkit.org/show_bug.cgi?id=186824
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/Runner.pm:
+        (main):
+        * Scripts/webkitperl/test262_unittest/test262-runner-tests.pl:
+
+2018-06-19  Leo Balter  <leonardo.balter@gmail.com>
+
+        [test262-runner] Print results report to HTML
+        https://bugs.webkit.org/show_bug.cgi?id=186790
+
+        Reviewed by Michael Saboff.
+
+        After runing the tests, 2 html files are created with a list to failing tests and summaries.
+        * Scripts/test262/Runner.pm:
+        (main):
+        (summarizeResults):
+        (printHTML):
+
+2018-06-19  Keith Rollin  <krollin@apple.com>
+
+        Crash running check-webkit-style on webrtc/.../exceptions.py
+        https://bugs.webkit.org/show_bug.cgi?id=186816
+        <rdar://problem/41262553>
+
+        Reviewed by Michael Catanzaro.
+
+        It's not apparent to me why the crash is occurring. Trying to write a
+        unittest that checks this file in isolation does not reproduce the
+        crash. But the crash goes away when updating to pylint-0.25.2.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook._install_pylint):
+
+2018-06-19  Keith Rollin  <krollin@apple.com>
+
+        cpp style checker needs to know more about NOLINT
+        https://bugs.webkit.org/show_bug.cgi?id=186796
+
+        Reviewed by Aakash Jain.
+
+        Running check-webkit-style on
+        ThirdParty/gtest/src/gtest-internal-inl.h crashes with a KeyError as
+        it tries to look up information about a particular #include in a
+        dictionary it maintains. The problem has to do with the following
+        lines in gtest-internal-inl.h:
+
+        #include <gtest/gtest.h>  // NOLINT
+        #include <gtest/gtest-spi.h>
+
+        The NOLINT annotation will prevent the cpp-checker from processing or
+        even seeing that line. In skipping that line, information regarding
+        that line is NOT added to some internal tables. However, when the code
+        that checks that #includes are correctly alphabetized gets to the
+        "gtest-spi.h" line, it will not respect the NOLINT annotation and will
+        see the gtest.h line. When doing so, it runs afoul of the fact that it
+        hadn't seen that line before and it crashes when it tries to look up
+        that line in some internal records.
+
+        Fix this by catering to the possibility that a #include line may not
+        have been entered into these internal records.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_include_line):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+
+2018-06-19  Daniel Bates  <dabates@apple.com>
+
+        EWS for security bugs
+        https://bugs.webkit.org/show_bug.cgi?id=186291
+        <rdar://problem/40829658>
+
+        Update comment in AbstractEarlyWarningSystem.refetch_patch() to reference <https://bugs.webkit.org/show_bug.cgi?id=186817>.
+
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        (AbstractEarlyWarningSystem.refetch_patch):
+
+2018-06-19  Daniel Bates  <dabates@apple.com>
+
+        EWS for security bugs
+        https://bugs.webkit.org/show_bug.cgi?id=186291
+        <rdar://problem/40829658>
+
+        Reviewed by Lucas Forschler.
+
+        Part 1 of 2.
+
+        Implements support for EWS processing of patches on security sensitive bugs. We add new
+        endpoints to the status server to support uploading and downloading of patches and associated
+        metadata. When webkit-patch submits a patch for EWS processing it will now upload the contents
+        and metadata for the patch to the status server if the patch is on a security sensitive bug.
+        We teach the EWS machinery in webkitpy to query the status server for a patch only if fetching
+        the patch from Bugzilla is not permitted due to an authorization error.
+
+        Fetching patches from the status server requires an API key. The API key is read from the
+        environment variable WEBKIT_STATUS_API_KEY or the value of the Git configuration key webkit.status_api_key
+        (in that order). Contact me or another Apple engineer for an API key.
+
+        Additionally, default to using HTTPS when querying the status server and expose an optional
+        command line option called --status-host-uses-http to use the former behavior of querying
+        over HTTP.
+
+        * QueueStatusServer/config/authorization.py: Added.
+        (_path_to_authorized_api_keys_file): Returns the absolute filesystem path to the file authorized_api_keys.txt.
+        (_parse_authorized_api_keys):
+        (authorized_api_keys):
+        (_parse_authorization_header): Parses the API key from the Authorization header. We use a
+        custom authentication scheme: "apikey". See remark below for more details.
+        (is_authorized): Checks if the request includes an API key and whether that API key is in the
+        list of authorized keys (performs a case-sensitive match). The API key may be specified either
+        in a HTTP header Authorization or in the query string argument "apikey". When using the HTTP
+        headers approach the Authorization header should have the form: "Authorization: apikey X" where
+        X is the case-sensitive API key.
+        * QueueStatusServer/handlers/fetchattachment.py: Added.
+        (FetchAttachment):
+        (FetchAttachment.get):
+        * QueueStatusServer/handlers/releasepatch.py:
+        (ReleasePatch.check_processed_by_all_queues): Returns whether the specified attachment was processed by all the queues.
+        (ReleasePatch.post): Delete the patch from AppEngine (if we have it) once the patch was processed
+        by all the queues.
+        * QueueStatusServer/handlers/submittoews.py:
+        (SubmitToEWS._should_add_to_ews_queue): Fix a typo in a comment while I am working in this code.
+        * QueueStatusServer/handlers/uploadattachment.py: Added.
+        (UploadAttachment):
+        (UploadAttachment.get):
+        (UploadAttachment.post):
+        * QueueStatusServer/main.py: Add new routes /upload-attachment and /attachment to upload an attachment
+        and view an attachment (or its metadata), respectively.
+        * QueueStatusServer/model/attachmentdata.py: Added.
+        (AttachmentData):
+        (AttachmentData.add_attachment_data):
+        (AttachmentData.lookup_if_exists):
+        (AttachmentData.remove_attachment_data):
+        * QueueStatusServer/templates/uploadattachment.html: Added.
+        * Scripts/webkitpy/common/net/bugzilla/attachment.py:
+        (Attachment.committer):
+        (Attachment):
+        (Attachment.to_json): Serialize to JSON so that we can upload it to AppEngine.
+        (Attachment.from_json): Deserialize from JSON. This is used as part of downloading a patch from AppEngine.
+        * Scripts/webkitpy/common/net/bugzilla/attachment_unittest.py:
+        (AttachmentTest.test_convert_to_json_and_back): Added.
+        * Scripts/webkitpy/common/net/bugzilla/bug.py:
+        (Bug.groups): Returns a frozenset of groups that the bug is a member of.
+        (Bug.is_security_sensitive): Returns whether the bug is in group Security-Sensitive.
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (BugzillaQueries.fetch_attachment_ids_from_review_queue): Modified to take an optional boolean, only_security_bugs,
+        as to whether to only fetch attachment ids for unreviewed patches associated with security bugs. By default, we
+        keep the current behavior and query for the attachment ids of all unreviewed patches that the currently logged in
+        Bugzilla user can see, which may include patches associated with security bugs.
+        (Bugzilla._parse_date): Update for moved and renamed constant. See remark for class Bugzilla.
+        (Bugzilla._parse_bug_dictionary_from_xml): Modified to return an empty dictionary if we do not have access to view the bug.
+        Otherwise, extract the name of the group the bug is in.
+        (Bugzilla.fetch_bug): Modified to return None if we do not have access to view the bug.
+        (Bugzilla._parse_bug_title_from_attachment_page): Extracted out logic to parse the title of the Attachment page
+        from _parse_bug_id_from_attachment_page() so that it can be used from both _parse_bug_id_from_attachment_page()
+        and get_bug_id_for_attachment_id().
+        (Bugzilla): Moved class constant _bugzilla_date_format to Scripts/webkitpy/common/net/bugzilla/constants.py
+        and renamed it to BUGZILLA_DATE_FORMAT.
+        (Bugzilla.AccessError):
+        (Bugzilla.AccessError.__init__):
+        (Bugzilla._parse_bug_id_from_attachment_page): Modified to return a tuple of ("bug id", "error code") so that
+        the caller can know the reason the parse failed if it did. The parse will fail if we do not have access to view
+        the bug.
+        (Bugzilla.bug_id_for_attachment_id): Modified to take a boolean throw_on_access_error (default: False)
+        as to whether to raise a Bugzilla.AccessError exception and pass it through to get_bug_id_for_attachment_id().
+        (Bugzilla.get_bug_id_for_attachment_id): Modified to take a boolean throw_on_access_error (default: False)
+        as to whether to raise a Bugzilla.AccessError exception if we do not have access to the bug associated with
+        the specified attachment id.
+        (Bugzilla.fetch_attachment):
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla_mock.py:
+        (MockBugzillaQueries.fetch_attachment_ids_from_review_queue):
+        (MockBugzilla):
+        (MockBugzilla.fetch_attachment):
+        (MockBugzilla.fetch_attachment_contents):
+        (MockBugzilla.add_patch_to_bug):
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla_unittest.py:
+        * Scripts/webkitpy/common/net/bugzilla/constants.py: Added.
+        * Scripts/webkitpy/common/net/statusserver.py:
+        (StatusServer)
+        (StatusServer.__init__): Modified to take an boolean use_https as to whether to query the server using
+        HTTPS (default: True - use HTTPS).
+        (StatusServer.set_host): Moved logic to compute the server URL from her to _server_url().
+        (StatusServer.set_use_https): Added.
+        (StatusServer.set_api_key): Added.
+        (StatusServer._server_url): Added.
+        (StatusServer._authorization_header_name_and_value_pair): Added.
+        (StatusServer.results_url_for_status): Update to use _server_url().
+        (StatusServer._post_status_to_server): Ditto.
+        (StatusServer._post_svn_revision_to_server): Ditto.
+        (StatusServer._post_work_items_to_server): Ditto.
+        (StatusServer._upload_attachment_to_server): Added.
+        (StatusServer.upload_attachment): Added.
+        (StatusServer._post_work_item_to_ews): Update to use _server_url().
+        (StatusServer.next_work_item): Ditto.
+        (StatusServer._post_release_work_item): Ditto.
+        (StatusServer._post_release_lock): Ditto.
+        (StatusServer._fetch_attachment_page): Added.
+        (StatusServer.fetch_attachment): Added.
+        (StatusServer._fetch_url): Add the API Key to the request if we have one.
+        (StatusServer.patch_status): Update to use _server_url().
+        (StatusServer.svn_revision): Ditto.
+        * Scripts/webkitpy/common/net/statusserver_mock.py:
+        (MockStatusServer.upload_attachment): Added.
+        (MockStatusServer.fetch_attachment): Added.
+        * Scripts/webkitpy/tool/bot/feeders.py:
+        (EWSFeeder.feed): Modified to download patches on security bugs and upload them to the status server (AppEngine).
+        * Scripts/webkitpy/tool/commands/download.py:
+        (ProcessAttachmentsMixin._fetch_list_of_patches_to_process): Modified to handle the case when fetching the
+        bug details from Bugzilla fail, say because we are not allowed to the view the bug.
+        (ProcessBugsMixin._fetch_list_of_patches_to_process): Filter out None values for attachments that we failed
+        to fetch, say because we are not allowed to the view the bug the attachment is on.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        (AbstractEarlyWarningSystem.refetch_patch): For now, refetch the patch from the status server. Ideally, we
+        need a way to ask the status server to fetch the patch again from Bugzilla (or at least its metadata) so
+        that the EWS can check the current state of the patch (i.e. is it still marked r?).
+        * Scripts/webkitpy/tool/commands/queries_unittest.py:
+        (QueryCommandsTest.test_patches_to_review): Update expected result.
+        * Scripts/webkitpy/tool/commands/queues.py:
+        (AbstractPatchQueue._next_patch): Fetch the patch  from the status server if we failed to fetch it from
+        Bugzilla because we do not have permission to view it.
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+        * Scripts/webkitpy/tool/commands/upload_unittest.py:
+        (test_upload_of_security_sensitive_patch_with_no_review_and_ews): Added.
+        * Scripts/webkitpy/tool/main.py:
+        (WebKitPatch):
+        (WebKitPatch._status_server_api_key_from_git): Read the API key from the Git configuration key webkit.status_api_key.
+        (WebKitPatch._status_server_api_key): Read the API key from the environment variable WEBKIT_STATUS_API_KEY.
+        (WebKitPatch.handle_global_options): Read the API key and update the state of the StatusServer object, if applicable.
+        * Scripts/webkitpy/tool/steps/obsoletepatches.py:
+        (ObsoletePatches.run): Modified to handle the case when fetching the bug details from Bugzilla fail, say because we
+        are not allowed to the view the bug.
+        * Scripts/webkitpy/tool/steps/submittoews.py:
+        (SubmitToEWS.run): Upload the contents of the patch and the Bugzilla metadata about it to the status server
+        if the patch was posted to a security bug.
+
+2018-06-19  Daniel Bates  <dabates@apple.com>
+
+        QueueStatusServer: "'NoneType' object has no attribute 'message'" in ReleasePatch.get()
+        when attachment is skipped by queue
+        https://bugs.webkit.org/show_bug.cgi?id=186748
+
+        Reviewed by Lucas Forschler.
+
+        Fixes an issue where releasing a patch that was skipped by a queue would cause an AttributeError
+        in ReleasePatch.get().
+
+        When removing a patch from a queue we update queue statistics. As part of this process
+        we record the last message posted to the status server for the patch. Currently if a patch
+        is skipped by the queue when picking the next patch to process (say, we failed to fetch the
+        attachment) then the queue does not post a message to the status server before it asks the
+        status server to remove the patch from the list of patches the queue needs to process. Instead
+        the queue should tell the status server that it chose to skip the patch before asking for the
+        patch to be removed from its list of patches to process.
+
+        * Scripts/webkitpy/common/net/bugzilla/attachment.py:
+        (Attachment.bug_id): Return None if we do not have a bug ID. This can happen if we failed
+        to fetch the attachment from Bugzilla (say, Bugzilla's markup changed) or we do not have
+        have permission to view the Bugzilla bug.
+        * Scripts/webkitpy/common/net/bugzilla/attachment_unittest.py: Added.
+        (AttachmentTest):
+        (AttachmentTest.test_no_bug_id):
+        * Scripts/webkitpy/tool/commands/queues.py:
+        (AbstractPatchQueue._next_patch): Call AbstractPatchQueue._did_skip() to post a status
+        update to the status server and then release the work item.
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+        (AbstractPatchQueueTest.test_next_patch): Update expected result.
+
+2018-06-19  Leo Balter  <leonardo.balter@gmail.com>
+
+        Test262-Runner: Improve files queue to optimize CPU usage/balancing
+        https://bugs.webkit.org/show_bug.cgi?id=186443
+
+        Reviewed by Michael Saboff.
+
+        This patch creates a queue manager for to keep the child process open while the parent process feed each child with test files to run.
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+        (main):
+
+2018-06-19  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit on watchOS] Vend username text content type when using scribble in login fields
+        https://bugs.webkit.org/show_bug.cgi?id=186791
+        <rdar://problem/41226935>
+
+        Reviewed by Beth Dakin.
+
+        Add testing support for grabbing the current text content type of the focused element.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::textContentType const):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::textContentType const):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::textContentType const):
+
+2018-06-19  Robin Morisset  <rmorisset@apple.com>
+
+        [WSL] Improving the typing rules
+        https://bugs.webkit.org/show_bug.cgi?id=186310
+
+        Rubberstamped by Filip Pizlo.
+
+        Several changes:
+        - added a "well_formed" judgement, and defined it on function definitions (tying together with the typing rules)
+        - cleaned up the desugaring relation (it now works on normal statements, and deals with for loops correctly)
+        - added the null literal, the comma operator, the not operator, and parens
+        - fixed a bunch of minor typographic issues
+
+        * WebGPUShadingLanguageRI/SpecWork/WSL_type.ott:
+
+2018-06-18  Robin Morisset  <rmorisset@apple.com>
+
+        [WSL] Starting to write the spec
+        https://bugs.webkit.org/show_bug.cgi?id=186310
+
+        Rubberstamped by Filip Pizlo.
+
+        This is a snapshot of my current work on the WSL spec (I will try to commit more regularly in the future).
+
+        WSL.g4 is the grammar, in antlr4 format. I only made minor changes in it since last time.
+
+        source/index.rst is the Sphinx document. 
+        It currently only contain a very rough outline, and some TODOs.
+        It can be compiled with make html or make pdf, and relies on Makefile and source/conf.py.
+
+        WSL_exec.ott is the current set of execution rules I have formalized.
+        They will need a fair bit of refactoring, to account for the new desugaring phase,
+            to be compatible with whatever memory model we decide on,
+            and to be explicit about the memory layout of structs and arrays
+        They can be compiled to latex with OTT (which in turn requires OCaml and opam).
+            Just ask me by email if you want a pdf of all the rules without having to install all that.
+
+        WSL_type.ott is the current set of local typing rules I have formalized.
+            Like WSL_exex.ott, it is very incomplete, lacking all function calls among other things.
+
+        * WebGPUShadingLanguageRI/SpecWork/Makefile: Added.
+        * WebGPUShadingLanguageRI/SpecWork/WSL.g4:
+        * WebGPUShadingLanguageRI/SpecWork/WSL_exec.ott: Added.
+        * WebGPUShadingLanguageRI/SpecWork/WSL_type.ott: Added.
+        * WebGPUShadingLanguageRI/SpecWork/source: Added.
+        * WebGPUShadingLanguageRI/SpecWork/source/conf.py: Added.
+        * WebGPUShadingLanguageRI/SpecWork/source/index.rst: Added.
+
+2018-06-18  Chris Dumez  <cdumez@apple.com>
+
+        Crash under WebProcessPool::networkProcessFailedToLaunch():
+        https://bugs.webkit.org/show_bug.cgi?id=186784
+        <rdar://problem/33535377>
+
+        Reviewed by Brady Eidson.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2018-06-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        [webkitpy] WPTRunner should remove any metadata content before (re)generating it
+        https://bugs.webkit.org/show_bug.cgi?id=186755
+
+        Reviewed by Carlos Garcia Campos.
+
+        WPTRunner generates the WPT-compliant metadata content before each test
+        run. Before it does so, it should remove the complete target directory
+        for this metadata, allowing any change in the expectations JSON to be
+        immediately reflected.
+
+        For example, if a test failure expectation is removed, the related .ini
+        metadata file is not generated anymore, but the stale .ini file isn't
+        removed from the current metadata directory. To avoid this, purging
+        the metadata directory and regenerating it from scratch should be done
+        for each test run.
+
+        * Scripts/webkitpy/w3c/wpt_runner.py:
+        (WPTRunner._generate_metadata_directory):
+        * Scripts/webkitpy/w3c/wpt_runner_unittest.py:
+        (WPTRunnerTest.test_generate_metadata_directory):
+
+2018-06-12  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Make some RetainPtr refinements to get more ready for ARC
+        https://bugs.webkit.org/show_bug.cgi?id=186526
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+        (colorProfileURLForDisplay): Use CFBridgingRelease instead of using
+        CFAutorelease for a bridging use case.
+
+2018-06-16  Leo Balter  <leonardo.balter@gmail.com>
+
+        [test262-runner] Handle items from the config list with inline comments
+        https://bugs.webkit.org/show_bug.cgi?id=186707
+
+        Reviewed by Michael Saboff.
+
+        This is a workaround for the Yaml parser that bundles inline comments together with any items.
+        * Scripts/test262/Runner.pm:
+        (shouldSkip):
+
+2018-06-16  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: option to run test skipped in config file
+        https://bugs.webkit.org/show_bug.cgi?id=186660
+
+        Reviewed by Michael Saboff.
+
+        Adds option --skipped-files, -S, to run all files skipped in the
+        config.yaml file.
+
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+        (main):
+        (getBuildPath):
+        (processFile):
+        (processResult):
+
+2018-05-18  Basuke Suzuki  <basuke.suzuki@sony.com>
+
+        Unreviewed, add myself as a WebKit committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-06-15  Chris Dumez  <cdumez@apple.com>
+
+        Add API test coverage for SW RegistrationDatabase destruction and fix issues found by the test
+        https://bugs.webkit.org/show_bug.cgi?id=186681
+
+        Reviewed by Brady Eidson.
+
+       Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+
+2018-06-15  Brady Eidson  <beidson@apple.com>
+
+        Crash in both StorageProcess and UIProcess when using custom WKWebsiteDataStores for data management.
+        <rdar://problem/41019893> and https://bugs.webkit.org/show_bug.cgi?id=186682
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2018-06-15  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Fix adding error in browserperfdash_runner.
+
+        Unreviewed follow-up fix after r232820.
+
+        * Scripts/webkitpy/browserperfdash/browserperfdash_runner.py:
+        (BrowserPerfDashRunner.run):
+
+2018-06-15  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WKE] Disable memory pressure handling when running layout tests (WTR)
+        https://bugs.webkit.org/show_bug.cgi?id=186663
+
+        Reviewed by Michael Catanzaro.
+
+        Disable memory pressure handling when running tests via WTR by
+        setting WEBKIT_DISABLE_MEMORY_PRESSURE_MONITOR=1 on the environment.
+
+        * WebKitTestRunner/gtk/main.cpp:
+        (main):
+        * WebKitTestRunner/wpe/main.cpp:
+        (main):
+
+2018-06-15  Jonathan Bedard  <jbedard@apple.com>
+
+        Add iOS 12 and watchOS 5 to webkitpy
+        https://bugs.webkit.org/show_bug.cgi?id=186285
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild.py:
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild_unittest.py:
+        Trigger the right build queues for iOS 12 on check-in.
+        * Scripts/webkitpy/common/version_name_map.py:
+        (VersionNameMap.__init__): Add iOS 12, tvOS 12 and watchOS 5.
+        * Scripts/webkitpy/common/version_name_map_unittest.py:
+        (VersionMapTestCase.test_ios_name_by_version): Test iOS 12 version-name mapping.
+        * Scripts/webkitpy/port/ios_device_unittest.py:
+        (IOSDeviceTest.test_layout_test_searchpath_without_apple_additions):
+        * Scripts/webkitpy/port/ios_simulator_unittest.py:
+        (IOSSimulatorTest.test_layout_test_searchpath_without_apple_additions):
+
+2018-06-14  Saam Barati  <sbarati@apple.com>
+
+        sun spider compile time benchmark fails in run-jsc-benchmarks with JSC_validateOptions=1
+        https://bugs.webkit.org/show_bug.cgi?id=186647
+
+        Reviewed by Yusuke Suzuki.
+
+        Let's use `unset JSC_useBlah` instead of `export JSC_useBlah=` to clear environment
+        variables. The latter was causing crashes with when JSC_validateOptions was true.
+
+        * Scripts/run-jsc-benchmarks:
+
+2018-06-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][buildbot] Raise timeouts for the step benchmark-test on the GTK perf bot
+        https://bugs.webkit.org/show_bug.cgi?id=186635
+
+        Reviewed by Michael Catanzaro.
+
+        The current maximum timeout for a run-benchmark test is 1800 (Motionmark plan),
+        but the buildbot default timeout for the whole step without text output is 1200.
+        That means that a timeout on a single test can cause a whole step abort because
+        the buildbot one will trigger first.
+
+        Set the benchmark-test step timeout to 2000 to avoid this.
+
+        When this benchmark-test was added in r197505 it was already added with a higher
+        timeout than default (1500) due to the above problem, but it seems this has been
+        ignored so far because buildbot won't accept the timeout to be set on the class
+        definition (not even on the class constructor).
+        The new timeout has to be defined in the addStep call itself.
+        I have double-checked that by testing locally with the script run-buildbot-test.py
+        And this upstream issue confirms that https://github.com/buildbot/buildbot/issues/3887
+
+        * BuildSlaveSupport/build.webkit.org-config/factories.py:
+        (BuildAndPerfTestFactory.__init__):
+        (DownloadAndPerfTestFactory.__init__):
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunBenchmarkTests):
+
+2018-06-14  Roy Reapor  <rreapor@apple.com>
+
+        Use new jQuery file layout
+        https://bugs.webkit.org/show_bug.cgi?id=186636
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/garden-o-matic.html:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/rebaseline.html:
+        * TestResultServer/static-dashboards/run-embedded-unittests.html:
+
+2018-06-14  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Win][MiniBrowser] Change to use WebKit by default if it's available
+        https://bugs.webkit.org/show_bug.cgi?id=186633
+
+        When MiniBrowser is built with WebKit, use it by default. Also add command
+        line switch for WebKitLegacy.
+
+        Reviewed by Youenn Fablet.
+
+        * MiniBrowser/win/Common.cpp:
+        (parseCommandLine):
+        (dllLauncherEntryPoint): Deleted.
+        * MiniBrowser/win/Common.h:
+        * MiniBrowser/win/WinMain.cpp:
+        (wWinMain):
+        (dllLauncherEntryPoint):
+
+2018-06-14  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r232823.
+
+        This caused both test timeouts and api failures.
+
+        Reverted changeset:
+
+        "[Mail] Use the Mail Viewer width as the base for resolving
+        horizontal viewport units"
+        https://bugs.webkit.org/show_bug.cgi?id=186585
+        https://trac.webkit.org/changeset/232823
+
+2018-06-14  Youenn Fablet  <youenn@apple.com>
+
+        TestWebKitAPI.WebKit.WKNavigationResponsePDFType fails after r232815
+        https://bugs.webkit.org/show_bug.cgi?id=186631
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKNavigationResponse.mm:
+        (TEST): Update PDF plug-in identifier.
+
+2018-06-14  Leo Balter  <leonardo.balter@gmail.com>
+
+        [test262-runner] Improve displayed settings, use rel paths
+        https://bugs.webkit.org/show_bug.cgi?id=186626
+
+        Reviewed by Michael Saboff.
+
+        Use relative paths for the information printed in the settings summary after calling the Test262 Runner. This provides a cleaner summary that is easier to read and consume.
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+        (getBuildPath):
+
+2018-06-14  Leo Balter  <leonardo.balter@gmail.com>
+
+        Test262-Runner: Add more information in the summarized stats
+        https://bugs.webkit.org/show_bug.cgi?id=185749
+
+        Reviewed by Michael Saboff.
+
+        This patch adds extra information in the summarized stats for the given results for each run.
+        This includes a total of files, a total of executed files and a time information per path and feature.
+        * Scripts/test262/Runner.pm:
+        (summarizeResults):
+
+2018-06-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Enable tests on the GTK EWS queue
+        https://bugs.webkit.org/show_bug.cgi?id=186559
+
+        Reviewed by Michael Catanzaro.
+
+        Enable testing for the gtk-wk2 EWS queue.
+
+        * Scripts/webkitpy/common/config/ews.json:
+
+2018-06-14  Valerie R Young  <valerie@bocoup.com>
+
+        [test262-runner] Test output should summarize tests that are
+        unexpectedly passing/failing.
+        https://bugs.webkit.org/show_bug.cgi?id=186527
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/Runner.pm:
+        (main):
+          In verbose mode, a summary of all new failing tests
+          and all new passing tests are printed at the end of
+          the script output.
+
+2018-06-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WPE] MiniBrowsers should be able to ignore TLS errors
+        https://bugs.webkit.org/show_bug.cgi?id=186557
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add the --ignore-tls-errors flags to the GTK and WPE MiniBrowsers.
+        Enabling the flag enforces ignoring of TLS errors that occur during
+        load. This is primarily useful for loading test cases from the wpt or
+        run-webkit-httpd servers where testing-purpose certificates are used.
+
+        * MiniBrowser/gtk/main.c:
+        (main):
+        * MiniBrowser/wpe/main.cpp:
+        (main):
+
+2018-06-13  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] Trying to access the remote inspector hits an assertion in the UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=186588
+
+        Reviewed by Carlos Garcia Campos.
+
+        Make both the WPE and GTK+ ports use /org/webkit/inspector as base prefix
+        for resource paths, which avoids needing a switcheroo depending on the port.
+
+        * WebKitTestRunner/InjectedBundle/gtk/TestRunnerGtk.cpp:
+        (WTR::TestRunner::inspectorTestStubURL):
+        * glib/generate-inspector-gresource-manifest.py:
+
+2018-06-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Add a script to upload the data generated with run-benchmark to a browserperfdash server and use it on the gtk perf bot
+        https://bugs.webkit.org/show_bug.cgi?id=166885
+
+        Reviewed by Michael Catanzaro.
+
+        This patch adds a new script that will execute run-benchmark and upload the results it generates to a browserperfdash web app.
+
+        It also modifies the buildbot config file so the GTK performance bot runs this script on the perf-test step.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunBenchmarkTests):
+        * Scripts/browserperfdash-benchmark: Added.
+        * Scripts/webkitpy/browserperfdash/README: Added.
+        * Scripts/webkitpy/browserperfdash/__init__.py: Added.
+        * Scripts/webkitpy/browserperfdash/browserperfdash_runner.py: Added.
+        (parse_args):
+        (BrowserPerfDashRunner):
+        (BrowserPerfDashRunner.__init__):
+        (BrowserPerfDashRunner._parse_config_file):
+        (BrowserPerfDashRunner._get_test_version_string):
+        (BrowserPerfDashRunner._get_test_data_json_string):
+        (BrowserPerfDashRunner._upload_result):
+        (BrowserPerfDashRunner.run):
+        (format_logger):
+        (main):
+        * Scripts/webkitpy/browserperfdash/browserperfdash_unittest.py: Added.
+        (FakeBenchmarkRunner):
+        (FakeBenchmarkRunner.__init__):
+        (FakeBenchmarkRunner.execute):
+        (BrowserPerfDashRunnerTest):
+        (BrowserPerfDashRunnerTest.test_list_plans_at_least_five):
+        (BrowserPerfDashRunnerTest.test_benchmark_runner_subclasses_at_least_two):
+        (BrowserPerfDashRunnerTest.test_can_construct_runner_object_minimum_parameters):
+        * Scripts/webkitpy/browserperfdash/config-file-example.txt: Added.
+
+2018-06-13  David Fenton  <david_fenton@apple.com>
+
+        Unreviewed, add myself as a WebKit committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
 2018-06-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         [JSCOnly] Add a MIPS32el JSCOnly EWS (follow-up fix)

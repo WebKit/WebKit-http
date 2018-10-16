@@ -431,7 +431,7 @@ bool JSGenericTypedArrayView<Adaptor>::deleteProperty(
     JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(cell);
 
     if (thisObject->isNeutered())
-        return typeError(exec, scope, true, ASCIILiteral(typedArrayBufferHasBeenDetachedErrorMessage));
+        return typeError(exec, scope, true, typedArrayBufferHasBeenDetachedErrorMessage);
 
     if (parseIndex(propertyName))
         return false;
@@ -514,7 +514,8 @@ template<typename Adaptor>
 void JSGenericTypedArrayView<Adaptor>::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(cell);
-    
+    Base::visitChildren(thisObject, visitor);
+
     TypedArrayMode mode;
     void* vector;
     size_t byteSize;
@@ -545,8 +546,6 @@ void JSGenericTypedArrayView<Adaptor>::visitChildren(JSCell* cell, SlotVisitor& 
         RELEASE_ASSERT_NOT_REACHED();
         break;
     }
-    
-    Base::visitChildren(thisObject, visitor);
 }
 
 template<typename Adaptor>

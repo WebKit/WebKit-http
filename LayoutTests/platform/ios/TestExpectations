@@ -87,10 +87,13 @@ fast/events/continuous-platform-wheelevent-in-scrolling-div.html [ Skip ]
 compositing/video/video-background-color.html [ WontFix ]
 
 # Not supported on iOS
-fast/mediastream
 fast/speechsynthesis
 gamepad
 mhtml
+
+# Some media stream tests crash because of OS issues, so skip all but one while we investigate.
+fast/mediastream [ Skip ]
+fast/mediastream/getUserMedia-default.html [ Pass ]
 
 # ENABLE(MEDIA_CAPTURE) is not enabled
 fast/forms/file/file-input-capture.html
@@ -1048,6 +1051,9 @@ fast/css/caret-color-span-inside-editable-parent.html [ Skip ]
 fast/css/caret-color.html [ Skip ]
 fast/history/visited-link-caret-color.html [ Skip ]
 css3/color-filters/color-filter-caret-color.html [ Skip ]
+
+# Not relevant for iOS.
+css3/color-filters/color-filter-ignore-semantic.html [ Skip ]
 
 # Run webrtc tests on iOS 11
 imported/w3c/web-platform-tests/webrtc [ Pass ]
@@ -3305,3 +3311,6 @@ webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/i18n/css3-text-
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/i18n/css3-text-line-break-opclns-115.html [ ImageOnlyFailure ]
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/i18n/css3-text-line-break-opclns-116.html [ ImageOnlyFailure ]
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-006.html [ ImageOnlyFailure ]
+
+# unsupported
+fast/dynamic/mail-autosize-viewport-unit.html [ Failure ]

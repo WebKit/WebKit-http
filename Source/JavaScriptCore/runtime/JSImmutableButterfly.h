@@ -89,7 +89,7 @@ public:
     static CompleteSubspace* subspaceFor(VM& vm)
     {
         // We allocate out of the JSValue gigacage as other code expects all butterflies to live there.
-        return &vm.jsValueGigacageAuxiliarySpace;
+        return &vm.jsValueGigacageCellSpace;
     }
 
     // Only call this if you just allocated this butterfly.
@@ -101,12 +101,12 @@ public:
             toButterfly()->contiguous().atUnsafe(index).set(vm, this, value);
     }
 
-private:
     static constexpr size_t offsetOfData()
     {
         return WTF::roundUpToMultipleOf<sizeof(WriteBarrier<Unknown>)>(sizeof(JSImmutableButterfly));
     }
 
+private:
     static Checked<size_t, RecordOverflow> allocationSize(Checked<size_t, RecordOverflow> numItems)
     {
         return offsetOfData() + numItems * sizeof(WriteBarrier<Unknown>);

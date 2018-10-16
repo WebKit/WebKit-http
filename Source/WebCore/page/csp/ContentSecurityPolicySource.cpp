@@ -37,8 +37,8 @@ ContentSecurityPolicySource::ContentSecurityPolicySource(const ContentSecurityPo
     : m_policy(policy)
     , m_scheme(scheme)
     , m_host(host)
-    , m_port(port)
     , m_path(path)
+    , m_port(port)
     , m_hostHasWildcard(hostHasWildcard)
     , m_portHasWildcard(portHasWildcard)
 {
@@ -100,7 +100,7 @@ bool ContentSecurityPolicySource::portMatches(const URL& url) const
     if (port == m_port)
         return true;
 
-    if (isDefaultPortForProtocol(m_port.value(), "http") && ((!port && url.protocolIs("https")) || isDefaultPortForProtocol(port.value(), "https")))
+    if ((m_port && isDefaultPortForProtocol(m_port.value(), "http")) && ((!port && url.protocolIs("https")) || (port && isDefaultPortForProtocol(port.value(), "https"))))
         return true;
 
     if (!port)

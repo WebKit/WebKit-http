@@ -36,8 +36,10 @@ static const char kLibjingle[] = "libjingle";
 
 #include <algorithm>
 #include <iomanip>
+#include <mutex>
 #include <ostream>
 #include <vector>
+#include <type_traits>
 
 #include "rtc_base/criticalsection.h"
 #include "rtc_base/logging.h"
@@ -103,15 +105,31 @@ LoggingSeverity LogMessage::dbg_sev_ = LS_NONE;
 bool LogMessage::log_to_stderr_ = true;
 
 namespace {
-// Global lock for log subsystem, only needed to serialize access to streams_.
-CriticalSection g_log_crit;
+
+// Global lock for log subsystem, only needed to serialize access to streamList().
+CriticalSection& logCriticalScope() {
+  static std::aligned_storage<sizeof(CriticalSection), std::alignment_of<CriticalSection>::value>::type g_log_crit_storage;
+  static CriticalSection* g_log_crit = new (&g_log_crit_storage) CriticalSection;
+  return *g_log_crit;
+}
+
 }  // namespace
 
 // The list of logging streams currently configured.
 // Note: we explicitly do not clean this up, because of the uncertain ordering
 // of destructors at program exit.  Let the person who sets the stream trigger
 // cleanup by setting to null, or let it leak (safe at program exit).
-LogMessage::StreamList LogMessage::streams_ RTC_GUARDED_BY(g_log_crit);
+
+typedef std::pair<LogSink*, LoggingSeverity> StreamAndSeverity;
+typedef std::list<StreamAndSeverity> StreamList;
+
+// The output streams and their associated severities
+StreamList& streamList()
+    RTC_EXCLUSIVE_LOCKS_REQUIRED(logCriticalScope()) {
+  static std::aligned_storage<sizeof(StreamList), std::alignment_of<StreamList>::value>::type stream_list_storage;
+  static StreamList* stream_list = new (&stream_list_storage) StreamList;
+  return *stream_list;
+}
 
 // Boolean options default to false (0)
 bool LogMessage::thread_, LogMessage::timestamp_;
@@ -123,6 +141,10 @@ LogMessage::LogMessage(const char* file,
                        int err,
                        const char* module)
     : severity_(sev), tag_(kLibjingle) {
+
+  static std::once_flag callLogCriticalScopeOnce;
+  std::call_once(callLogCriticalScopeOnce,[] { logCriticalScope(); });
+
   if (timestamp_) {
     // Use SystemTimeMillis so that even if tests use fake clocks, the timestamp
     // in log messages represents the real system time.
@@ -207,8 +229,8 @@ LogMessage::~LogMessage() {
     OutputToDebug(str, severity_, tag_);
   }
 
-  CritScope cs(&g_log_crit);
-  for (auto& kv : streams_) {
+  CritScope cs(&logCriticalScope());
+  for (auto& kv : streamList()) {
     if (severity_ >= kv.second) {
       kv.first->OnLogMessage(str);
     }
@@ -235,7 +257,7 @@ void LogMessage::LogTimestamps(bool on) {
 
 void LogMessage::LogToDebug(LoggingSeverity min_sev) {
   dbg_sev_ = min_sev;
-  CritScope cs(&g_log_crit);
+  CritScope cs(&logCriticalScope());
   UpdateMinLogSeverity();
 }
 
@@ -244,9 +266,9 @@ void LogMessage::SetLogToStderr(bool log_to_stderr) {
 }
 
 int LogMessage::GetLogToStream(LogSink* stream) {
-  CritScope cs(&g_log_crit);
+  CritScope cs(&logCriticalScope());
   LoggingSeverity sev = LS_NONE;
-  for (auto& kv : streams_) {
+  for (auto& kv : streamList()) {
     if (!stream || stream == kv.first) {
       sev = std::min(sev, kv.second);
     }
@@ -255,16 +277,17 @@ int LogMessage::GetLogToStream(LogSink* stream) {
 }
 
 void LogMessage::AddLogToStream(LogSink* stream, LoggingSeverity min_sev) {
-  CritScope cs(&g_log_crit);
-  streams_.push_back(std::make_pair(stream, min_sev));
+  CritScope cs(&logCriticalScope());
+  streamList().push_back(std::make_pair(stream, min_sev));
   UpdateMinLogSeverity();
 }
 
 void LogMessage::RemoveLogToStream(LogSink* stream) {
-  CritScope cs(&g_log_crit);
-  for (StreamList::iterator it = streams_.begin(); it != streams_.end(); ++it) {
+  CritScope cs(&logCriticalScope());
+  auto& streams = streamList();
+  for (auto it = streams.begin(); it != streams.end(); ++it) {
     if (stream == it->first) {
-      streams_.erase(it);
+      streams.erase(it);
       break;
     }
   }
@@ -334,9 +357,9 @@ void LogMessage::ConfigureLogging(const char* params) {
 }
 
 void LogMessage::UpdateMinLogSeverity()
-    RTC_EXCLUSIVE_LOCKS_REQUIRED(g_log_crit) {
+    RTC_EXCLUSIVE_LOCKS_REQUIRED(logCriticalScope()) {
   LoggingSeverity min_sev = dbg_sev_;
-  for (auto& kv : streams_) {
+  for (auto& kv : streamList()) {
     min_sev = std::min(dbg_sev_, kv.second);
   }
   min_sev_ = min_sev;

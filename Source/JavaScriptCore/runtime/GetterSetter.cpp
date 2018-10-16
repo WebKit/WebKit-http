@@ -39,7 +39,7 @@ void GetterSetter::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     GetterSetter* thisObject = jsCast<GetterSetter*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    JSCell::visitChildren(thisObject, visitor);
+    Base::visitChildren(thisObject, visitor);
 
     visitor.append(thisObject->m_getter);
     visitor.append(thisObject->m_setter);
@@ -69,7 +69,7 @@ bool callSetter(ExecState* exec, JSValue base, JSValue getterSetter, JSValue val
     GetterSetter* getterSetterObj = jsCast<GetterSetter*>(getterSetter);
 
     if (getterSetterObj->isSetterNull())
-        return typeError(exec, scope, ecmaMode == StrictMode, ASCIILiteral(ReadonlyPropertyWriteError));
+        return typeError(exec, scope, ecmaMode == StrictMode, ReadonlyPropertyWriteError);
 
     JSObject* setter = getterSetterObj->setter();
 

@@ -140,7 +140,7 @@ void MediaQueryParser::commitMediaQuery()
 {
     // FIXME-NEWPARSER: Convoluted and awful, but we can't change the MediaQuerySet yet because of the
     // old parser.
-    static const NeverDestroyed<String> defaultMediaType = ASCIILiteral { "all" };
+    static const NeverDestroyed<String> defaultMediaType { "all"_s };
     MediaQuery mediaQuery { m_mediaQueryData.restrictor(), m_mediaQueryData.mediaType().value_or(defaultMediaType), WTFMove(m_mediaQueryData.expressions()) };
     m_mediaQueryData.clear();
     m_querySet->addMediaQuery(WTFMove(mediaQuery));
@@ -271,6 +271,8 @@ RefPtr<MediaQuerySet> MediaQueryParser::parseInternal(CSSParserTokenRange range)
         m_querySet->addMediaQuery(WTFMove(query));
     } else if (m_mediaQueryData.currentMediaQueryChanged())
         commitMediaQuery();
+
+    m_querySet->shrinkToFit();
 
     return m_querySet;
 }

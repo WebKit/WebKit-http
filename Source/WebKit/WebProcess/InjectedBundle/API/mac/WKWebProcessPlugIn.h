@@ -43,6 +43,7 @@
 
 WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @interface WKWebProcessPlugInController : NSObject
+- (void)extendClassesForParameterCoder:(NSArray *)classes;
 
 @property (readonly) WKConnection *connection;
 
