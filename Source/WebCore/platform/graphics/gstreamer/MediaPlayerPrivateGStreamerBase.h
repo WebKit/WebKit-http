@@ -150,7 +150,7 @@ public:
     void cdmInstanceDetached(CDMInstance&) override;
     void attemptToDecryptWithInstance(CDMInstance&) override;
     void handleProtectionStructure(const GstStructure*);
-    void initializationDataEncountered(const InitData&, const String&);
+    void initializationDataEncountered(const InitData&);
     void dispatchLocalCDMInstance();
     void initializationDataEncountered(GstEvent*);
     void reportWaitingForKey();
