@@ -130,6 +130,10 @@ JSC_API JSCValue *
 jsc_value_new_array_from_garray           (JSCContext           *context,
                                            GPtrArray            *array);
 
+JSC_API JSCValue *
+jsc_value_new_array_from_strv             (JSCContext           *context,
+                                           const char *const    *strv);
+
 JSC_API gboolean
 jsc_value_is_array                        (JSCValue             *value);
 
@@ -221,6 +225,14 @@ jsc_value_new_functionv                   (JSCContext           *context,
                                            GType                 return_type,
                                            guint                 n_parameters,
                                            GType                *parameter_types);
+
+JSC_API JSCValue *
+jsc_value_new_function_variadic           (JSCContext           *context,
+                                           const char           *name,
+                                           GCallback             callback,
+                                           gpointer              user_data,
+                                           GDestroyNotify        destroy_notify,
+                                           GType                 return_type);
 
 JSC_API gboolean
 jsc_value_is_function                     (JSCValue             *value);

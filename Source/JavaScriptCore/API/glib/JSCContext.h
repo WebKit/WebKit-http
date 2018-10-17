@@ -111,7 +111,20 @@ JSC_API JSCValue *
 jsc_context_evaluate_with_source_uri (JSCContext         *context,
                                       const char         *code,
                                       gssize              length,
-                                      const char         *uri);
+                                      const char         *uri,
+                                      guint               line_number);
+
+JSC_API JSCValue *
+jsc_context_evaluate_in_object       (JSCContext         *context,
+                                      const char         *code,
+                                      gssize              length,
+                                      JSCClass           *object_class,
+                                      const char         *uri,
+                                      guint               line_number,
+                                      JSCValue          **object);
+
+JSC_API JSCValue *
+jsc_context_get_global_object        (JSCContext         *context);
 
 JSC_API void
 jsc_context_set_value                (JSCContext         *context,

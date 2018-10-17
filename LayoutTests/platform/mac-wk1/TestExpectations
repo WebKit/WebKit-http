@@ -100,6 +100,8 @@ webkit.org/b/178272 [ Sierra ] http/tests/security/video-cross-origin-caching.ht
 # WK1 does not support sync XHR redirections as does WK2
 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-sync-xhr-in-main-frame.html [ Skip ]
 
+webkit.org/b/187230 editing/mac/pasteboard/can-copy-url-without-title.html [ Skip ]
+
 ### END OF (1) Failures with bug reports
 ########################################
 
@@ -565,4 +567,18 @@ webkit.org/b/185404 http/tests/security/contentSecurityPolicy/block-all-mixed-co
 
 webkit.org/b/186581 [ Debug ] fast/parser/xml-error-adopted.xml [ Timeout Pass ]
 
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0005.html [ Pass Failure ]
 webkit.org/b/187522 [ Debug ] media/media-fragments/TC0015.html [ Pass Failure ]
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0024.html [ Pass Failure ]
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0037.html [ Pass Failure ]
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0078.html [ Pass Failure ]
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0079.html [ Pass Failure ]
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0085.html [ Pass Failure ]
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0086.html [ Pass Failure ]
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0087.html [ Pass Failure ]
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0088.html [ Pass Failure ]
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0089.html [ Pass Failure ]
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0090.html [ Pass Failure ]
+webkit.org/b/187557 [ Debug ] media/media-fragments/TC0091.html [ Pass Failure ]
+
+

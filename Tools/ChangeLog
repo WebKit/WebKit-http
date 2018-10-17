@@ -1,3 +1,398 @@
+2018-07-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add API to evaluate code using a given object to store global symbols
+        https://bugs.webkit.org/show_bug.cgi?id=187639
+
+        Reviewed by Michael Catanzaro.
+
+        Add a new test case.
+
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/TestJSC.cpp:
+        (testJSCEvaluateInObject):
+        (testJSCExceptions):
+        (main):
+
+2018-07-15  Zan Dobersek  <zdobersek@igalia.com>
+
+        [webkitpy] run-web-platform-tests should allow specifying custom WPT metadata directories
+        https://bugs.webkit.org/show_bug.cgi?id=187353
+
+        Reviewed by Youenn Fablet.
+
+        When using run-web-platform-tests, allow specifying custom WPT metadata
+        directory. This will avoid generating such metadata-filled directory
+        from the port-specific JSON expectations file, and instead will search
+        for the metadata files and the include manifest inside the specified
+        directory. The MANIFEST.json file will also be generated under there.
+
+        Rationale for this change is prototyping using custom metadata
+        directories and avoiding generating all this content from a JSON file.
+        Using this by default in the future would avoid sporradic changes in how
+        WPT handles metadata .ini files and releases us from the obligation of
+        adjusting the generator for every such change. This would also allow
+        managing this metadata content in a separate repository, avoiding
+        polluting the main webkit.org repository with thousands of .ini files.
+
+        If this turns out to be the preferable way of managing the metadata
+        content, the JSON files under WebPlatformTests/ and the related code in
+        wpt_runner.py would be removed.
+
+        * Scripts/webkitpy/w3c/wpt_runner.py:
+        (parse_args):
+        (WPTRunner._wpt_run_paths):
+        (WPTRunner.run):
+        * Scripts/webkitpy/w3c/wpt_runner_unittest.py:
+        (WPTRunnerTest.test_run_with_specified_options):
+
+2018-07-13  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] run-api-tests is timing out for almost all test cases
+        https://bugs.webkit.org/show_bug.cgi?id=187547
+
+        Reviewed by Fujii Hironori.
+
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess._wait_for_data_and_update_buffers_using_win32_apis):
+        Still attempt to read from stdout/stderr even if the process has exited, as long as it's before the deadline.
+
+        * Scripts/webkitpy/port/server_process_unittest.py:
+        (TestServerProcess.test_read_after_process_exits):
+        Add test case.
+
+2018-07-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add TestExpectations and baselines for iOS 12
+        https://bugs.webkit.org/show_bug.cgi?id=187628
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort): Bump current version to 12.
+
+2018-07-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add TestExpectations and baselines for Mojave.
+        https://bugs.webkit.org/show_bug.cgi?id=187620
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort): Bump current version to 10.14.
+
+2018-07-13  Timothy Hatcher  <timothy@apple.com>
+
+        Add _drawsBackground to WKWebViewConfiguration.
+        https://bugs.webkit.org/show_bug.cgi?id=187665
+        rdar://problem/42182268
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Configuration.mm:
+        (TestWebKitAPI.WebKit.ConfigurationDrawsBackground): Added.
+
+2018-07-13  Chris Dumez  <cdumez@apple.com>
+
+        Add a FrameLoaderClient willInjectUserScriptForFrame callback
+        https://bugs.webkit.org/show_bug.cgi?id=187565
+        <rdar://problem/42095701>
+
+        Unreviewed WKTR fix after r233782.
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2018-07-13  Chris Dumez  <cdumez@apple.com>
+
+        Reduce size of WebCore::URL
+        https://bugs.webkit.org/show_bug.cgi?id=186820
+        <rdar://problem/42087508>
+
+        Unreviewed, re-generates Service worker registrations database used by API tests after r233789.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/SimpleServiceWorkerRegistrations-2.sqlite3: Removed.
+        * TestWebKitAPI/Tests/WebKitCocoa/SimpleServiceWorkerRegistrations-2.sqlite3-shm: Removed.
+        * TestWebKitAPI/Tests/WebKitCocoa/SimpleServiceWorkerRegistrations-3.sqlite3: Renamed from Tools/TestWebKitAPI/Tests/WebKitCocoa/SimpleServiceWorkerRegistrations-2.sqlite3-wal.
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2018-07-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Make it easier to hit the significant rendered text layout milestone on pages with main article elements
+        https://bugs.webkit.org/show_bug.cgi?id=187578
+        <rdar://problem/42104637>
+
+        Reviewed by Ryosuke Niwa.
+
+        Tweak an existing layout test to additionally check that the significant text layout milestone is fired on a
+        page with an article element that is clearly the "main" content on the page (i.e. much taller than all other
+        articles).
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/significant-text-milestone-article.html: Copied from Tools/TestWebKitAPI/Tests/WebKitCocoa/significant-text-milestone.html.
+        * TestWebKitAPI/Tests/WebKitCocoa/significant-text-milestone.html:
+        * TestWebKitAPI/Tests/ios/RenderingProgressTests.mm:
+        (TEST):
+
+2018-07-12  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Change my status to be a WebKit reviewer.
+
+        Unreviewed status update.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-07-12  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed contributors.json update
+
+        Just run "validate-committer-lists -c" to canonicalize the style.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-07-12  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce size of WebCore::URL
+        https://bugs.webkit.org/show_bug.cgi?id=186820
+
+        Reviewed by Yusuke Suzuki and Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2018-07-12  Brady Eidson  <beidson@apple.com>
+
+        Make process-swap-on-navigation an experimental feature.
+        <rdar://problem/41995053> and https://bugs.webkit.org/show_bug.cgi?id=187558
+
+        Reviewed by Chris Dumez.
+
+        Make sure WKTR doesn't enable ProcessSwapOnNavigation by default simply because it's an experimental feature.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions):
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::shouldEnableProcessSwapOnNavigation const):
+
+2018-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Add a FrameLoaderClient willInjectUserScriptForFrame callback
+        https://bugs.webkit.org/show_bug.cgi?id=187565
+
+        Reviewed by Alex Christensen.
+
+        Added new test runner API to check for willInjectUserScriptForFrame callback.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        (WTR::InjectedBundle::resetUserScriptInjectedCount):
+        (WTR::InjectedBundle::increaseUserScriptInjectedCount):
+        (WTR::InjectedBundle::userScriptInjectedCount const):
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::InjectedBundlePage):
+        (WTR::InjectedBundlePage::resetAfterTest):
+        (WTR::InjectedBundlePage::willInjectUserScriptForFrame):
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::userScriptInjectedCount const):
+        (WTR::TestRunner::injectUserScript):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::injectUserScript):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::injectUserScript):
+
+2018-07-12  Sihui Liu  <sihui_liu@apple.com>
+
+        IndexedDB: database file of subframe cannot be removed
+        https://bugs.webkit.org/show_bug.cgi?id=187564
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2018-07-12  Timothy Hatcher  <timothy@apple.com>
+
+        Make WebKit.LinkColorWithSystemAppearance work across system versions.
+        https://bugs.webkit.org/show_bug.cgi?id=187573
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/SystemColors.mm:
+        (TestWebKitAPI.WebKit.LinkColorWithSystemAppearance): Dynamically generate the expected string.
+
+2018-07-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Pass the backend library name as command line parameter to the web process
+        https://bugs.webkit.org/show_bug.cgi?id=186841
+
+        Reviewed by Žan Doberšek.
+
+        * MiniBrowser/wpe/main.cpp:
+        (main): Stop using WPE_BACKEND_LIBRARY env var.
+        * Scripts/run-wpe-tests:
+        (WPETestRunner.__init__): Ditto.
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort.setup_environ_for_server): Ditto.
+        * wpe/backends/ViewBackend.cpp:
+        (WPEToolingBackends::ViewBackend::ViewBackend): Call wpe_loader_init() to ensure WPEBackend-fdo is used.
+        * wpe/jhbuild.modules: Upgrade WPEBackend to version 0.2.0.
+
+2018-07-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add API to allow creating variadic functions
+        https://bugs.webkit.org/show_bug.cgi?id=187517
+
+        Reviewed by Michael Catanzaro.
+
+        Add test cases.
+
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/TestJSC.cpp:
+        (testJSCFunction):
+        (fooCreateWithFooV):
+        (multiplyFooV):
+
+2018-07-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add jsc_context_get_global_object() to GLib API
+        https://bugs.webkit.org/show_bug.cgi?id=187515
+
+        Reviewed by Michael Catanzaro.
+
+        Add test cases.
+
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/TestJSC.cpp:
+        (testJSCGlobalObject):
+        (main):
+
+2018-07-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Handle G_TYPE_STRV in glib API
+        https://bugs.webkit.org/show_bug.cgi?id=187512
+
+        Reviewed by Michael Catanzaro.
+
+        Add test cases.
+
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/TestJSC.cpp:
+        (testJSCTypes):
+        (joinFunction):
+        (testJSCFunction):
+
+2018-07-11  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] EWS should unapply patch and re-run jsc tests when patch fails jsc tests
+        https://bugs.webkit.org/show_bug.cgi?id=187549
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/ews-build/factories.py:
+        (JSCTestsFactory.__init__):
+        * BuildSlaveSupport/ews-build/steps.py:
+        (CompileJSCOnlyToT): Build ToT without patch.
+        (CompileJSCOnlyToT.doStepIf): Run this step only if patch failed to build.
+        (RunJavaScriptCoreTests.evaluateCommand): Set patchFailedJSCTests property appropriately.
+        (ReRunJavaScriptCoreTests): Re-runs JSC tests.
+        (ReRunJavaScriptCoreTests.doStepIf): Run this step only if patch failed JSC tests.
+        (ReRunJavaScriptCoreTests.evaluateCommand): Set patchFailedJSCTests property appropriately.
+        (RunJavaScriptCoreTestsToT): Run JSC tests on ToT without patch.
+        (RunJavaScriptCoreTestsToT.doStepIf): Run this step only if patch failed JSC tests.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-tests.
+
+2018-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r233742.
+        https://bugs.webkit.org/show_bug.cgi?id=187577
+
+        Binary incompatible change with respect to Service Worker
+        registration map (Requested by dydz on #webkit).
+
+        Reverted changeset:
+
+        "Reduce size of WebCore::URL"
+        https://bugs.webkit.org/show_bug.cgi?id=186820
+        https://trac.webkit.org/changeset/233742
+
+2018-07-11  Aditya Keerthi  <akeerthi@apple.com>
+
+        REGRESSION (231276): Attempting to copy an image fails
+        https://bugs.webkit.org/show_bug.cgi?id=187212
+
+        Reviewed by Ryosuke Niwa.
+        <rdar://problem/41540074>
+
+        Augmented test to include a URL where the lastPathComponent looks similar to a
+        file URL.
+
+        * TestWebKitAPI/Tests/mac/ContextMenuCanCopyURL.html:
+        * TestWebKitAPI/Tests/mac/ContextMenuCanCopyURL.mm:
+        (TestWebKitAPI::TEST):
+
+2018-07-11  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI for immediate injection of user scripts
+        https://bugs.webkit.org/show_bug.cgi?id=173342
+        <rdar://problem/29202285>
+
+        Reviewed by Brady Eidson, Youenn Fablet, and Geoff Garen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentController.mm:
+        (waitForMessage):
+        (TEST):
+
+2018-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Move WHLSL spec work to the W3C GPUWeb GitHub repository
+
+        See https://github.com/gpuweb/WHLSL
+
+        * WebGPUShadingLanguageRI/SpecWork/Makefile: Removed.
+        * WebGPUShadingLanguageRI/SpecWork/WSL.g4: Removed.
+        * WebGPUShadingLanguageRI/SpecWork/WSL.ott: Removed.
+        * WebGPUShadingLanguageRI/SpecWork/source/conf.py: Removed.
+        * WebGPUShadingLanguageRI/SpecWork/source/index.rst: Removed.
+
+2018-07-11  Dean Jackson  <dino@apple.com>
+
+        Force WKTR to use the light appearance
+        https://bugs.webkit.org/show_bug.cgi?id=187572
+        <rdar://problem/42097805>
+
+        Reviewed by Simon Fraser.
+
+        Set the NSAppearance on the NSWindow to light mode.
+
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::PlatformWebView): Use the Aqua appearance.
+
+2018-07-11  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce size of WebCore::URL
+        https://bugs.webkit.org/show_bug.cgi?id=186820
+
+        Reviewed by Yusuke Suzuki.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2018-07-11  Youenn Fablet  <youenn@apple.com>
+
+        Fix remaining Cross-Origin-Resource-Policy failures, if any
+        https://bugs.webkit.org/show_bug.cgi?id=186761
+        <rdar://problem/41209829>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/HTTPParsers.cpp:
+        (TestWebKitAPI::TEST):
+
  2018-07-11  Aakash Jain  <aakash_jain@apple.com>
  
         [ews-build] EWS should unapply the patch and build ToT when patch fails to build

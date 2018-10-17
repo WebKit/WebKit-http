@@ -1,3 +1,178 @@
+2018-07-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: Console filter field buttons should be darker
+        https://bugs.webkit.org/show_bug.cgi?id=187626
+        <rdar://problem/42142744>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/FindBanner.css:
+        (@media (prefers-dark-interface)):
+        (.find-banner > button.segmented):
+        (.find-banner > button.segmented > .glyph):
+
+2018-07-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: selected item background color is too light
+        https://bugs.webkit.org/show_bug.cgi?id=187691
+        <rdar://problem/42225308>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DarkMode.css:
+        (@media (prefers-dark-interface)):
+        (:root):
+        (.tree-outline.dom li.elements-drag-over .selection-area):
+        (.tree-outline.dom:focus li.selected .selection-area):
+
+2018-07-14  Kocsen Chung  <kocsen_chung@apple.com>
+
+        Ensure WebKit stack is ad-hoc signed
+        https://bugs.webkit.org/show_bug.cgi?id=187667
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+
+2018-07-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r195723): Improve support for resources with '\r' and '\r\n' line endings
+        https://bugs.webkit.org/show_bug.cgi?id=186453
+        <rdar://problem/39689180>
+
+        Reviewed by Joseph Pecoraro.
+
+        Now that the frontend no longer uses offsets from the original source
+        file to calculate positions within CodeMirror, it is possible to support
+        resources with '\r' and '\r\n' line endings in the editor.
+
+        * UserInterface/Views/CodeMirrorEditor.js:
+        (WI.CodeMirrorEditor.create):
+        (WI.CodeMirrorEditor):
+
+2018-07-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Basic blocks highlighting should use line/column locations instead of offsets
+        https://bugs.webkit.org/show_bug.cgi?id=187613
+        <rdar://problem/42131808>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/BasicBlockAnnotator.js:
+        Basic blocks sent from the backend include offsets into the original
+        file, rather than line/column locations. In order to translate to positions
+        within CodeMirror, we need to calculate the original line and column
+        for each block.
+
+        (WI.BasicBlockAnnotator.prototype.insertAnnotations):
+        (WI.BasicBlockAnnotator.prototype._calculateBasicBlockPositions.offsetToPosition):
+        (WI.BasicBlockAnnotator.prototype._calculateBasicBlockPositions):
+        (WI.BasicBlockAnnotator.prototype._annotateBasicBlockExecutionRanges.):
+        (WI.BasicBlockAnnotator.prototype._annotateBasicBlockExecutionRanges):
+        (WI.BasicBlockAnnotator.prototype._highlightTextForBasicBlock):
+
+        * UserInterface/Models/SourceCodePosition.js:
+        (WI.SourceCodePosition.prototype.offsetColumn):
+
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype.getTextInRange):
+        (WI.TextEditor.prototype.addStyleToTextRange):
+        Better encapsulation for CodeMirror positions.
+
+        * UserInterface/Workers/Formatter/FormatterUtilities.js:
+        (get if):
+        Update String.prototype.lineEndings to support additional line separators.
+
+2018-07-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Execution highlighting in the frontend should be line/column-based
+        https://bugs.webkit.org/show_bug.cgi?id=187532
+        <rdar://problem/42035580>
+
+        Reviewed by Joseph Pecoraro.
+
+        Source code offsets from Esprima should not be used to calculate ranges
+        in CodeMirror for expression highlighting.
+
+        This also fixes a long standing bug when adjusting for the starting
+        position of an inline script. Previously the start offset from the script
+        TextRange was used for this purpose, but the value is often incorrect (see
+        https://bugs.webkit.org/show_bug.cgi?id=187532#c5). By using the starting
+        line/column instead, we avoid the problem.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WI.ScriptSyntaxTree.prototype.containersOfPosition):
+        (WI.ScriptSyntaxTree.prototype.containersOfOffset): Deleted.
+
+        * UserInterface/Models/SourceCodePosition.js:
+        (WI.SourceCodePosition.prototype.offsetColumn):
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.textEditorExecutionHighlightRange.toInlineScriptPosition):
+        (WI.SourceCodeTextEditor.prototype.textEditorExecutionHighlightRange.fromInlineScriptPosition):
+        (WI.SourceCodeTextEditor.prototype.textEditorExecutionHighlightRange):
+        (WI.SourceCodeTextEditor.prototype.textEditorExecutionHighlightRange.convertRangeOffsetsToSourceCodeOffsets): Deleted.
+
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype._updateExecutionRangeHighlight):
+
+2018-07-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: SourceCodePosition.js missing from Test.html
+        https://bugs.webkit.org/show_bug.cgi?id=187644
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Test.html:
+
+2018-07-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Type token positioning should use line/column locations from Esprima instead of offsets
+        https://bugs.webkit.org/show_bug.cgi?id=187612
+        <rdar://problem/42131910>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/TypeTokenAnnotator.js:
+        (WI.TypeTokenAnnotator.prototype.insertAnnotations):
+        (WI.TypeTokenAnnotator.prototype._insertTypeToken):
+        (WI.TypeTokenAnnotator.prototype._insertToken):
+        Use line/column locations, instead of offsets, from the AST when calculating
+        token positions for CodeMirror. Once in CodeMirror's string space, we
+        can safely convert to/from offsets.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        Retrieve line/column locations for AST nodes, in addition to offsets.
+        Offsets into the original file are still needed for getting type information
+        from the profiler in the backend.
+
+        (WI.ScriptSyntaxTree):
+        (WI.ScriptSyntaxTree.prototype.filterByRange):
+        Filter by positions, which can be safely used from CodeMirror, instead of offsets.
+
+        (WI.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        (WI.ScriptSyntaxTree.prototype.filterByRange.filterForNodesInRange): Deleted.
+
+        * UserInterface/Models/SourceCodePosition.js:
+        Add convenience methods for comparing line/column positions, and for
+        converting to the format expected by CodeMirror. SourceCodePosition could
+        be made to interoperate with CodeMirror by exposing properties `line`
+        and `ch`, but making the conversion explicit improves code readability.
+
+        (WI.SourceCodePosition.prototype.equals):
+        (WI.SourceCodePosition.prototype.isBefore):
+        (WI.SourceCodePosition.prototype.isAfter):
+        (WI.SourceCodePosition.prototype.isWithin):
+        (WI.SourceCodePosition.prototype.toCodeMirror):
+        (WI.SourceCodePosition):
+
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype.visibleRangePositions):
+        (WI.TextEditor.prototype.originalPositionToCurrentPosition):
+        (WI.TextEditor.prototype.currentOffsetToCurrentPosition):
+        (WI.TextEditor.prototype.currentPositionToCurrentOffset):
+        (WI.TextEditor.prototype.setInlineWidget):
+
 2018-07-10  Fujii Hironori  <Hironori.Fujii@sony.com>
 
         REGRESSION(r229932) Use of uninitialized value in subroutine entry at copy-user-interface-resources.pl

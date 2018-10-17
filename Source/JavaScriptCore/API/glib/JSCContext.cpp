@@ -28,6 +28,7 @@
 #include "JSCVirtualMachinePrivate.h"
 #include "JSCWrapperMap.h"
 #include "JSRetainPtr.h"
+#include "JSWithScope.h"
 #include "OpaqueJSString.h"
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/glib/WTFGType.h>
@@ -327,6 +328,48 @@ static GRefPtr<GPtrArray> jscContextJSArrayToGArray(JSCContext* context, JSValue
     return gArray;
 }
 
+GUniquePtr<char*> jscContextJSArrayToGStrv(JSCContext* context, JSValueRef jsArray, JSValueRef* exception)
+{
+    JSCContextPrivate* priv = context->priv;
+    if (JSValueIsNull(priv->jsContext.get(), jsArray))
+        return nullptr;
+
+    if (!JSValueIsArray(priv->jsContext.get(), jsArray)) {
+        *exception = toRef(JSC::createTypeError(toJS(priv->jsContext.get()), makeString("invalid js type for GStrv")));
+        return nullptr;
+    }
+
+    auto* jsArrayObject = JSValueToObject(priv->jsContext.get(), jsArray, exception);
+    if (*exception)
+        return nullptr;
+
+    JSRetainPtr<JSStringRef> lengthString(Adopt, JSStringCreateWithUTF8CString("length"));
+    auto* jsLength = JSObjectGetProperty(priv->jsContext.get(), jsArrayObject, lengthString.get(), exception);
+    if (*exception)
+        return nullptr;
+
+    auto length = JSC::toUInt32(JSValueToNumber(priv->jsContext.get(), jsLength, exception));
+    if (*exception)
+        return nullptr;
+
+    GUniquePtr<char*> strv(static_cast<char**>(g_new0(char*, length + 1)));
+    for (unsigned i = 0; i < length; ++i) {
+        auto* jsItem = JSObjectGetPropertyAtIndex(priv->jsContext.get(), jsArrayObject, i, exception);
+        if (*exception)
+            return nullptr;
+
+        auto jsValueItem = jscContextGetOrCreateValue(context, jsItem);
+        if (!jsc_value_is_string(jsValueItem.get())) {
+            *exception = toRef(JSC::createTypeError(toJS(priv->jsContext.get()), makeString("invalid js type for GStrv: item ", String::number(i), " is not a string")));
+            return nullptr;
+        }
+
+        strv.get()[i] = jsc_value_to_string(jsValueItem.get());
+    }
+
+    return strv;
+}
+
 JSValueRef jscContextGValueToJSValue(JSCContext* context, const GValue* value, JSValueRef* exception)
 {
     JSCContextPrivate* priv = context->priv;
@@ -377,6 +420,15 @@ JSValueRef jscContextGValueToJSValue(JSCContext* context, const GValue* value, J
 
             if (g_type_is_a(G_VALUE_TYPE(value), G_TYPE_PTR_ARRAY))
                 return jscContextGArrayToJSArray(context, static_cast<GPtrArray*>(ptr), exception);
+
+            if (g_type_is_a(G_VALUE_TYPE(value), G_TYPE_STRV)) {
+                auto** strv = static_cast<char**>(ptr);
+                auto strvLength = g_strv_length(strv);
+                GRefPtr<GPtrArray> gArray = adoptGRef(g_ptr_array_new_full(strvLength, g_object_unref));
+                for (unsigned i = 0; i < strvLength; i++)
+                    g_ptr_array_add(gArray.get(), jsc_value_new_string(context, strv[i]));
+                return jscContextGArrayToJSArray(context, gArray.get(), exception);
+            }
         } else
             return JSValueMakeNull(priv->jsContext.get());
 
@@ -460,6 +512,13 @@ void jscContextJSValueToGValue(JSCContext* context, JSValueRef jsValue, GType ty
                     auto gArray = jscContextJSArrayToGArray(context, jsValue, exception);
                     if (!*exception)
                         g_value_take_boxed(value, gArray.leakRef());
+                    return;
+                }
+
+                if (g_type_is_a(G_VALUE_TYPE(value), G_TYPE_STRV)) {
+                    auto strv = jscContextJSArrayToGStrv(context, jsValue, exception);
+                    if (!*exception)
+                        g_value_take_boxed(value, strv.release());
                     return;
                 }
 
@@ -693,7 +752,14 @@ JSCContext* jsc_context_get_current()
  */
 JSCValue* jsc_context_evaluate(JSCContext* context, const char* code, gssize length)
 {
-    return jsc_context_evaluate_with_source_uri(context, code, length, nullptr);
+    return jsc_context_evaluate_with_source_uri(context, code, length, nullptr, 0);
+}
+
+static JSValueRef evaluateScriptInContext(JSGlobalContextRef jsContext, String&& script, const char* uri, unsigned lineNumber, JSValueRef* exception)
+{
+    JSRetainPtr<JSStringRef> scriptJS(Adopt, OpaqueJSString::create(WTFMove(script)).leakRef());
+    JSRetainPtr<JSStringRef> sourceURI = uri ? adopt(JSStringCreateWithUTF8CString(uri)) : nullptr;
+    return JSEvaluateScript(jsContext, scriptJS.get(), nullptr, sourceURI.get(), lineNumber, exception);
 }
 
 /**
@@ -702,29 +768,78 @@ JSCValue* jsc_context_evaluate(JSCContext* context, const char* code, gssize len
  * @code: a JavaScript script to evaluate
  * @length: length of @code, or -1 if @code is a nul-terminated string
  * @uri: the source URI
+ * @line_number: the starting line number
  *
- * Evaluate @code in @context using @uri as the source URI. This is exactly the same as
- * jsc_context_evaluate() but @uri will be shown in exceptions. The source @uri doesn't
- * affect the behavior of the script.
+ * Evaluate @code in @context using @uri as the source URI. The @line_number is the starting line number
+ * in @uri; the value is one-based so the first line is 1. @uri and @line_number will be shown in exceptions and
+ * they don't affect the behavior of the script.
  *
  * Returns: (transfer full): a #JSCValue representing the last value generated by the script.
  */
-JSCValue* jsc_context_evaluate_with_source_uri(JSCContext* context, const char* code, gssize length, const char* uri)
+JSCValue* jsc_context_evaluate_with_source_uri(JSCContext* context, const char* code, gssize length, const char* uri, unsigned lineNumber)
 {
     g_return_val_if_fail(JSC_IS_CONTEXT(context), nullptr);
     g_return_val_if_fail(code, nullptr);
 
-    if (length < 0)
-        length = strlen(code);
-    auto script = String::fromUTF8(code, length);
-    JSRetainPtr<JSStringRef> scriptJS(Adopt, OpaqueJSString::create(WTFMove(script)).leakRef());
-    JSRetainPtr<JSStringRef> sourceURI = uri ? adopt(JSStringCreateWithUTF8CString(uri)) : nullptr;
     JSValueRef exception = nullptr;
-    JSValueRef result = JSEvaluateScript(context->priv->jsContext.get(), scriptJS.get(), nullptr, sourceURI.get(), 1, &exception);
+    JSValueRef result = evaluateScriptInContext(context->priv->jsContext.get(), String::fromUTF8(code, length < 0 ? strlen(code) : length), uri, lineNumber, &exception);
     if (jscContextHandleExceptionIfNeeded(context, exception))
         return jsc_value_new_undefined(context);
 
     return jscContextGetOrCreateValue(context, result).leakRef();
+}
+
+/**
+ * jsc_context_evaluate_in_object:
+ * @context: a #JSCContext
+ * @code: a JavaScript script to evaluate
+ * @length: length of @code, or -1 if @code is a nul-terminated string
+ * @object_class: (nullable): a #JSCClass or %NULL to use the default
+ * @uri: the source URI
+ * @line_number: the starting line number
+ * @object: (out) (transfer full): return location for a #JSCValue.
+ *
+ * Evaluate @code and create an new object where symbols defined in @code will be added as properties,
+ * instead of being added to @context global object. The new object is returned as @object parameter.
+ * The @line_number is the starting line number in @uri; the value is one-based so the first line is 1.
+ * @uri and @line_number will be shown in exceptions and they don't affect the behavior of the script.
+ *
+ * Returns: (transfer full): a #JSCValue representing the last value generated by the script.
+ */
+JSCValue* jsc_context_evaluate_in_object(JSCContext* context, const char* code, gssize length, JSCClass* objectClass, const char* uri, unsigned lineNumber, JSCValue** object)
+{
+    g_return_val_if_fail(JSC_IS_CONTEXT(context), nullptr);
+    g_return_val_if_fail(code, nullptr);
+    g_return_val_if_fail(!objectClass || JSC_IS_CLASS(objectClass), nullptr);
+    g_return_val_if_fail(object && !*object, nullptr);
+
+    JSRetainPtr<JSGlobalContextRef> objectContext(Adopt, JSGlobalContextCreateInGroup(jscVirtualMachineGetContextGroup(context->priv->vm.get()), objectClass ? jscClassGetJSClass(objectClass) : nullptr));
+    JSC::ExecState* exec = toJS(objectContext.get());
+    auto* jsObject = exec->vmEntryGlobalObject();
+    jsObject->setGlobalScopeExtension(JSC::JSWithScope::create(exec->vm(), jsObject, jsObject->globalScope(), toJS(JSContextGetGlobalObject(context->priv->jsContext.get()))));
+    JSValueRef exception = nullptr;
+    JSValueRef result = evaluateScriptInContext(objectContext.get(), String::fromUTF8(code, length < 0 ? strlen(code) : length), uri, lineNumber, &exception);
+    if (jscContextHandleExceptionIfNeeded(context, exception))
+        return jsc_value_new_undefined(context);
+
+    *object = jscContextGetOrCreateValue(context, JSContextGetGlobalObject(objectContext.get())).leakRef();
+
+    return jscContextGetOrCreateValue(context, result).leakRef();
+}
+
+/**
+ * jsc_context_get_global_object:
+ * @context: a #JSCContext
+ *
+ * Get a #JSCValue referencing the @context global object
+ *
+ * Returns: (transfer full): a #JSCValue
+ */
+JSCValue* jsc_context_get_global_object(JSCContext* context)
+{
+    g_return_val_if_fail(JSC_IS_CONTEXT(context), nullptr);
+
+    return jscContextGetOrCreateValue(context, JSContextGetGlobalObject(context->priv->jsContext.get())).leakRef();
 }
 
 /**

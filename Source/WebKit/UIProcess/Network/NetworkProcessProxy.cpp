@@ -284,6 +284,7 @@ void NetworkProcessProxy::didCreateNetworkConnectionToWebProcess(const IPC::Atta
 #if USE(UNIX_DOMAIN_SOCKETS) || OS(WINDOWS)
     reply(connectionIdentifier);
 #elif OS(DARWIN)
+    MESSAGE_CHECK(MACH_PORT_VALID(connectionIdentifier.port()));
     reply(IPC::Attachment(connectionIdentifier.port(), MACH_MSG_TYPE_MOVE_SEND));
 #else
     notImplemented();
@@ -645,5 +646,15 @@ void NetworkProcessProxy::didDestroyWebUserContentControllerProxy(WebUserContent
     m_webUserContentControllerProxies.remove(&proxy);
 }
 #endif
+    
+void NetworkProcessProxy::sendProcessDidTransitionToForeground()
+{
+    send(Messages::NetworkProcess::ProcessDidTransitionToForeground(), 0);
+}
+
+void NetworkProcessProxy::sendProcessDidTransitionToBackground()
+{
+    send(Messages::NetworkProcess::ProcessDidTransitionToBackground(), 0);
+}
 
 } // namespace WebKit

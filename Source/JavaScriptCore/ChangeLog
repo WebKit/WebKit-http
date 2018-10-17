@@ -1,3 +1,246 @@
+2018-07-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add API to evaluate code using a given object to store global symbols
+        https://bugs.webkit.org/show_bug.cgi?id=187639
+
+        Reviewed by Michael Catanzaro.
+
+        Add jsc_context_evaluate_in_object(). It returns a new object as an out parameter. Global symbols in the
+        evaluated script are added as properties to the new object instead of to the context global object. This is
+        similar to JS::Evaluate in spider monkey when a scopeChain parameter is passed, but JSC doesn't support using a
+        scope for assignments, so we have to create a new context and get its global object. This patch also updates
+        jsc_context_evaluate_with_source_uri() to receive the starting line number for consistency with the new
+        jsc_context_evaluate_in_object().
+
+        * API/glib/JSCContext.cpp:
+        (jsc_context_evaluate): Pass 0 as line number to jsc_context_evaluate_with_source_uri().
+        (evaluateScriptInContext): Helper function to evaluate a script in a JSGlobalContextRef.
+        (jsc_context_evaluate_with_source_uri): Use evaluateScriptInContext().
+        (jsc_context_evaluate_in_object): Create a new context and set the main context global object as extension
+        scope of it. Evaluate the script in the new context and get its global object to be returned as parameter.
+        * API/glib/JSCContext.h:
+        * API/glib/docs/jsc-glib-4.0-sections.txt:
+
+2018-07-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [32bit JSC tests]  stress/cow-convert-double-to-contiguous.js and stress/cow-convert-int32-to-contiguous.js are failing
+        https://bugs.webkit.org/show_bug.cgi?id=187561
+
+        Reviewed by Darin Adler.
+
+        This patch fixes the issue that CoW array handling is not introduced in 32bit put_by_val code.
+        We clean up 32bit put_by_val code.
+
+        1. We remove inline out-of-bounds recording code since it is done in C operation code. This change
+        aligns 32bit implementation to 64bit implementation.
+
+        2. We add CoW array checking, which is done in 64bit implementation.
+
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_put_by_val):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_put_by_val):
+        (JSC::JIT::emitSlow_op_put_by_val):
+
+2018-07-12  Mark Lam  <mark.lam@apple.com>
+
+        Need to handle CodeBlock::replacement() being null.
+        https://bugs.webkit.org/show_bug.cgi?id=187569
+        <rdar://problem/41468692>
+
+        Reviewed by Saam Barati.
+
+        CodeBlock::replacement() may return a nullptr.  Some of our code already checks
+        for this while others do not.  We should add null checks in all the places that
+        need it.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::hasOptimizedReplacement):
+        (JSC::CodeBlock::jettison):
+        (JSC::CodeBlock::numberOfDFGCompiles):
+        (JSC::CodeBlock::setOptimizationThresholdBasedOnCompilationResult):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGToFTLDeferredCompilationCallback.cpp:
+        (JSC::DFG::ToFTLDeferredCompilationCallback::compilationDidBecomeReadyAsynchronously):
+        (JSC::DFG::ToFTLDeferredCompilationCallback::compilationDidComplete):
+        * jit/JITOperations.cpp:
+
+2018-07-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Thread VM& to JSCell::methodTable(VM&)
+        https://bugs.webkit.org/show_bug.cgi?id=187548
+
+        Reviewed by Saam Barati.
+
+        This patch threads VM& to methodTable(VM&) and remove methodTable().
+        We add VM& parameter to estimatedSize() to thread VM& in estimatedSize implementations.
+
+        * API/APICast.h:
+        (toJS):
+        * API/JSCallbackObject.h:
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::className):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::estimatedSize):
+        * bytecode/CodeBlock.h:
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::estimatedSize):
+        * bytecode/UnlinkedCodeBlock.h:
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::className):
+        * debugger/DebuggerScope.h:
+        * heap/Heap.cpp:
+        (JSC::GatherHeapSnapshotData::GatherHeapSnapshotData):
+        (JSC::GatherHeapSnapshotData::operator() const):
+        (JSC::Heap::gatherExtraHeapSnapshotData):
+        * heap/HeapSnapshotBuilder.cpp:
+        (JSC::HeapSnapshotBuilder::json):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncToString):
+        * runtime/ClassInfo.h:
+        * runtime/DirectArguments.cpp:
+        (JSC::DirectArguments::estimatedSize):
+        * runtime/DirectArguments.h:
+        * runtime/HashMapImpl.cpp:
+        (JSC::HashMapImpl<HashMapBucket>::estimatedSize):
+        * runtime/HashMapImpl.h:
+        * runtime/JSArrayBuffer.cpp:
+        (JSC::JSArrayBuffer::estimatedSize):
+        * runtime/JSArrayBuffer.h:
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::estimatedSize):
+        * runtime/JSBigInt.h:
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::dump const):
+        (JSC::JSCell::estimatedSizeInBytes const):
+        (JSC::JSCell::estimatedSize):
+        (JSC::JSCell::className):
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        * runtime/JSGenericTypedArrayView.h:
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::estimatedSize):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::estimatedSize):
+        (JSC::JSObject::className):
+        (JSC::JSObject::toStringName):
+        (JSC::JSObject::calculatedClassName):
+        * runtime/JSObject.h:
+        * runtime/JSProxy.cpp:
+        (JSC::JSProxy::className):
+        * runtime/JSProxy.h:
+        * runtime/JSString.cpp:
+        (JSC::JSString::estimatedSize):
+        * runtime/JSString.h:
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::estimatedSize):
+        * runtime/RegExp.h:
+        * runtime/WeakMapImpl.cpp:
+        (JSC::WeakMapImpl<WeakMapBucket>::estimatedSize):
+        * runtime/WeakMapImpl.h:
+
+2018-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r233714.
+        https://bugs.webkit.org/show_bug.cgi?id=187579
+
+        it made tests time out (Requested by pizlo on #webkit).
+
+        Reverted changeset:
+
+        "Change the reoptimization backoff base to 1.3 from 2"
+        https://bugs.webkit.org/show_bug.cgi?id=187540
+        https://trac.webkit.org/changeset/233714
+
+2018-07-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add API to allow creating variadic functions
+        https://bugs.webkit.org/show_bug.cgi?id=187517
+
+        Reviewed by Michael Catanzaro.
+
+        Add a _variadic alternate method for jsc_class_add_constructor, jsc_class_add_method and
+        jsc_value_new_function. In that case the callback always receives a GPtrArray of JSCValue.
+
+        * API/glib/JSCCallbackFunction.cpp:
+        (JSC::JSCCallbackFunction::create): Make the parameters optional.
+        (JSC::JSCCallbackFunction::JSCCallbackFunction): Ditto.
+        (JSC::JSCCallbackFunction::call): Handle the case of parameters being nullopt by creating a GPtrArray of
+        JSCValue for the arguments.
+        (JSC::JSCCallbackFunction::construct): Ditto.
+        * API/glib/JSCCallbackFunction.h:
+        * API/glib/JSCClass.cpp:
+        (jscClassCreateConstructor): Make the parameters optional.
+        (jsc_class_add_constructor_variadic): Pass nullopt as parameters to jscClassCreateConstructor.
+        (jscClassAddMethod): Make the parameters optional.
+        (jsc_class_add_method_variadic): Pass nullopt as parameters to jscClassAddMethod.
+        * API/glib/JSCClass.h:
+        * API/glib/JSCValue.cpp:
+        (jsc_value_object_define_property_accessor): Update now that parameters are optional.
+        (jscValueFunctionCreate): Make the parameters optional.
+        (jsc_value_new_function_variadic): Pass nullopt as parameters to jscValueFunctionCreate.
+        * API/glib/JSCValue.h:
+        * API/glib/docs/jsc-glib-4.0-sections.txt:
+
+2018-07-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add jsc_context_get_global_object() to GLib API
+        https://bugs.webkit.org/show_bug.cgi?id=187515
+
+        Reviewed by Michael Catanzaro.
+
+        This wasn't exposed because we have convenient methods in JSCContext to get and set properties on the global
+        object. However, getting the global object could be useful in some cases, for example to give it a well known
+        name like 'window' in browsers and GJS.
+
+        * API/glib/JSCContext.cpp:
+        (jsc_context_get_global_object):
+        * API/glib/JSCContext.h:
+        * API/glib/docs/jsc-glib-4.0-sections.txt:
+
+2018-07-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Handle G_TYPE_STRV in glib API
+        https://bugs.webkit.org/show_bug.cgi?id=187512
+
+        Reviewed by Michael Catanzaro.
+
+        Add jsc_value_new_array_from_strv() and handle G_TYPE_STRV types in function parameters.
+
+        * API/glib/JSCContext.cpp:
+        (jscContextGValueToJSValue):
+        (jscContextJSValueToGValue):
+        * API/glib/JSCValue.cpp:
+        (jsc_value_new_array_from_strv):
+        * API/glib/JSCValue.h:
+        * API/glib/docs/jsc-glib-4.0-sections.txt:
+
+2018-07-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Iterator of Array.keys() returns object in wrong order
+        https://bugs.webkit.org/show_bug.cgi?id=185197
+
+        Reviewed by Keith Miller.
+
+        * builtins/ArrayIteratorPrototype.js:
+        (globalPrivate.arrayIteratorValueNext):
+        (globalPrivate.arrayIteratorKeyNext):
+        (globalPrivate.arrayIteratorKeyValueNext):
+        * builtins/AsyncFromSyncIteratorPrototype.js:
+        * builtins/AsyncGeneratorPrototype.js:
+        (globalPrivate.asyncGeneratorResolve):
+        * builtins/GeneratorPrototype.js:
+        (globalPrivate.generatorResume):
+        * builtins/MapIteratorPrototype.js:
+        (globalPrivate.mapIteratorNext):
+        * builtins/SetIteratorPrototype.js:
+        (globalPrivate.setIteratorNext):
+        * builtins/StringIteratorPrototype.js:
+        (next):
+        * runtime/IteratorOperations.cpp:
+        (JSC::createIteratorResultObjectStructure):
+        (JSC::createIteratorResultObject):
+
 2018-07-10  Mark Lam  <mark.lam@apple.com>
 
         constructArray() should always allocate the requested length.

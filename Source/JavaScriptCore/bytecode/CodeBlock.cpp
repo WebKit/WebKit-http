@@ -999,13 +999,13 @@ CodeBlock* CodeBlock::specialOSREntryBlockOrNull()
 #endif // ENABLE(FTL_JIT)
 }
 
-size_t CodeBlock::estimatedSize(JSCell* cell)
+size_t CodeBlock::estimatedSize(JSCell* cell, VM& vm)
 {
     CodeBlock* thisObject = jsCast<CodeBlock*>(cell);
     size_t extraMemoryAllocated = thisObject->m_instructions.size() * sizeof(Instruction);
     if (thisObject->m_jitCode)
         extraMemoryAllocated += thisObject->m_jitCode->size();
-    return Base::estimatedSize(cell) + extraMemoryAllocated;
+    return Base::estimatedSize(cell, vm) + extraMemoryAllocated;
 }
 
 void CodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -1656,7 +1656,8 @@ CodeBlock* CodeBlock::baselineVersion()
 #if ENABLE(JIT)
 bool CodeBlock::hasOptimizedReplacement(JITCode::JITType typeToReplace)
 {
-    return JITCode::isHigherTier(replacement()->jitType(), typeToReplace);
+    CodeBlock* replacement = this->replacement();
+    return replacement && JITCode::isHigherTier(replacement->jitType(), typeToReplace);
 }
 
 bool CodeBlock::hasOptimizedReplacement()
@@ -2136,6 +2137,7 @@ void CodeBlock::noticeIncomingCall(ExecState* callerFrame)
 unsigned CodeBlock::reoptimizationRetryCounter() const
 {
 #if ENABLE(JIT)
+    ASSERT(m_reoptimizationRetryCounter <= Options::reoptimizationRetryCounterMax());
     return m_reoptimizationRetryCounter;
 #else
     return 0;
@@ -2173,6 +2175,8 @@ size_t CodeBlock::calleeSaveSpaceAsVirtualRegisters()
 void CodeBlock::countReoptimization()
 {
     m_reoptimizationRetryCounter++;
+    if (m_reoptimizationRetryCounter > Options::reoptimizationRetryCounterMax())
+        m_reoptimizationRetryCounter = Options::reoptimizationRetryCounterMax();
 }
 
 unsigned CodeBlock::numberOfDFGCompiles()
@@ -2183,7 +2187,8 @@ unsigned CodeBlock::numberOfDFGCompiles()
             return 1000000;
         return (m_hasBeenCompiledWithFTL ? 1 : 0) + m_reoptimizationRetryCounter;
     }
-    return (JITCode::isOptimizingJIT(replacement()->jitType()) ? 1 : 0) + m_reoptimizationRetryCounter;
+    CodeBlock* replacement = this->replacement();
+    return ((replacement && JITCode::isOptimizingJIT(replacement->jitType())) ? 1 : 0) + m_reoptimizationRetryCounter;
 }
 
 int32_t CodeBlock::codeTypeThresholdMultiplier() const
@@ -2291,7 +2296,7 @@ int32_t CodeBlock::adjustedCounterValue(int32_t desiredThreshold)
     return clipThreshold(
         static_cast<double>(desiredThreshold) *
         optimizationThresholdScalingFactor() *
-        pow(Options::reoptimizationBackoffBase(), reoptimizationRetryCounter()));
+        (1 << reoptimizationRetryCounter()));
 }
 
 bool CodeBlock::checkIfOptimizationThresholdReached()
@@ -2418,19 +2423,20 @@ void CodeBlock::setOptimizationThresholdBasedOnCompilationResult(CompilationResu
         RELEASE_ASSERT_NOT_REACHED();
     }
     
-    CodeBlock* theReplacement = replacement();
-    if ((result == CompilationSuccessful) != (theReplacement != this)) {
+    CodeBlock* replacement = this->replacement();
+    bool hasReplacement = (replacement && replacement != this);
+    if ((result == CompilationSuccessful) != hasReplacement) {
         dataLog(*this, ": we have result = ", result, " but ");
-        if (theReplacement == this)
+        if (replacement == this)
             dataLog("we are our own replacement.\n");
         else
-            dataLog("our replacement is ", pointerDump(theReplacement), "\n");
+            dataLog("our replacement is ", pointerDump(replacement), "\n");
         RELEASE_ASSERT_NOT_REACHED();
     }
     
     switch (result) {
     case CompilationSuccessful:
-        RELEASE_ASSERT(JITCode::isOptimizingJIT(replacement()->jitType()));
+        RELEASE_ASSERT(replacement && JITCode::isOptimizingJIT(replacement->jitType()));
         optimizeNextInvocation();
         return;
     case CompilationFailed:

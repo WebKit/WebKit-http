@@ -38,6 +38,8 @@ jsc_context_pop_exception_handler
 jsc_context_get_current
 jsc_context_evaluate
 jsc_context_evaluate_with_source_uri
+jsc_context_evaluate_in_object
+jsc_context_get_global_object
 jsc_context_set_value
 jsc_context_get_value
 jsc_context_register_class
@@ -80,6 +82,7 @@ jsc_value_to_string
 jsc_value_to_string_as_bytes
 jsc_value_new_array
 jsc_value_new_array_from_garray
+jsc_value_new_array_from_strv
 jsc_value_is_array
 jsc_value_new_object
 jsc_value_is_object
@@ -97,6 +100,7 @@ jsc_value_object_define_property_data
 jsc_value_object_define_property_accessor
 jsc_value_new_function
 jsc_value_new_functionv
+jsc_value_new_function_variadic
 jsc_value_is_function
 jsc_value_function_call
 jsc_value_function_callv
@@ -176,8 +180,10 @@ jsc_class_get_name
 jsc_class_get_parent
 jsc_class_add_constructor
 jsc_class_add_constructorv
+jsc_class_add_constructor_variadic
 jsc_class_add_method
 jsc_class_add_methodv
+jsc_class_add_method_variadic
 jsc_class_add_property
 
 <SUBSECTION Standard>

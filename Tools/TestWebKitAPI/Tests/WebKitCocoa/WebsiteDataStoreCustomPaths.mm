@@ -178,6 +178,18 @@ TEST(WebKit, WebsiteDataStoreCustomPaths)
     RetainPtr<WKWebsiteDataStore> dataStore = [[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration.get()];
     RetainPtr<NSSet> types = adoptNS([[NSSet alloc] initWithObjects:WKWebsiteDataTypeIndexedDBDatabases, nil]);
 
+    // Subframe of different origins may also create IndexedDB files.
+    RetainPtr<NSURL> url1 = [[NSBundle mainBundle] URLForResource:@"IndexedDB" withExtension:@"sqlite3" subdirectory:@"TestWebKitAPI.resources"];
+    RetainPtr<NSURL> url2 = [[NSBundle mainBundle] URLForResource:@"IndexedDB" withExtension:@"sqlite3-shm" subdirectory:@"TestWebKitAPI.resources"];
+    RetainPtr<NSURL> url3 = [[NSBundle mainBundle] URLForResource:@"IndexedDB" withExtension:@"sqlite3-wal" subdirectory:@"TestWebKitAPI.resources"];
+    
+    RetainPtr<NSURL> frameIDBPath = [[fileIDBPath URLByAppendingPathComponent:@"https_apple.com_0"] URLByAppendingPathComponent:@"WebsiteDataStoreCustomPaths"];
+    [[NSFileManager defaultManager] createDirectoryAtURL:frameIDBPath.get() withIntermediateDirectories:YES attributes:nil error:nil];
+    
+    [[NSFileManager defaultManager] copyItemAtURL:url1.get() toURL:[frameIDBPath.get() URLByAppendingPathComponent:@"IndexedDB.sqlite3"] error:nil];
+    [[NSFileManager defaultManager] copyItemAtURL:url2.get() toURL:[frameIDBPath.get() URLByAppendingPathComponent:@"IndexedDB.sqlite3-shm"] error:nil];
+    [[NSFileManager defaultManager] copyItemAtURL:url3.get() toURL:[frameIDBPath.get() URLByAppendingPathComponent:@"IndexedDB.sqlite3-wal"] error:nil];
+    
     receivedScriptMessage = false;
     [dataStore removeDataOfTypes:types.get() modifiedSince:[NSDate distantPast] completionHandler:[]() {
         receivedScriptMessage = true;
@@ -228,18 +240,14 @@ TEST(WebKit, WebsiteDataStoreCustomPaths)
 TEST(WebKit, CustomDataStorePathsVersusCompletionHandlers)
 {
     // Copy the baked database files to the database directory
-    NSURL *url1 = [[NSBundle mainBundle] URLForResource:@"SimpleServiceWorkerRegistrations-2" withExtension:@"sqlite3" subdirectory:@"TestWebKitAPI.resources"];
-    NSURL *url2 = [[NSBundle mainBundle] URLForResource:@"SimpleServiceWorkerRegistrations-2" withExtension:@"sqlite3-shm" subdirectory:@"TestWebKitAPI.resources"];
-    NSURL *url3 = [[NSBundle mainBundle] URLForResource:@"SimpleServiceWorkerRegistrations-2" withExtension:@"sqlite3-wal" subdirectory:@"TestWebKitAPI.resources"];
+    NSURL *url1 = [[NSBundle mainBundle] URLForResource:@"SimpleServiceWorkerRegistrations-3" withExtension:@"sqlite3" subdirectory:@"TestWebKitAPI.resources"];
 
     NSURL *swPath = [NSURL fileURLWithPath:[@"~/Library/Caches/TestWebKitAPI/WebKit/ServiceWorkers/" stringByExpandingTildeInPath]];
     [[NSFileManager defaultManager] removeItemAtURL:swPath error:nil];
     EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:swPath.path]);
 
     [[NSFileManager defaultManager] createDirectoryAtURL:swPath withIntermediateDirectories:YES attributes:nil error:nil];
-    [[NSFileManager defaultManager] copyItemAtURL:url1 toURL:[swPath URLByAppendingPathComponent:@"ServiceWorkerRegistrations-2.sqlite3"] error:nil];
-    [[NSFileManager defaultManager] copyItemAtURL:url2 toURL:[swPath URLByAppendingPathComponent:@"ServiceWorkerRegistrations-2.sqlite3-shm"] error:nil];
-    [[NSFileManager defaultManager] copyItemAtURL:url3 toURL:[swPath URLByAppendingPathComponent:@"ServiceWorkerRegistrations-2.sqlite3-wal"] error:nil];
+    [[NSFileManager defaultManager] copyItemAtURL:url1 toURL:[swPath URLByAppendingPathComponent:@"ServiceWorkerRegistrations-3.sqlite3"] error:nil];
 
     auto websiteDataStoreConfiguration = adoptNS([[_WKWebsiteDataStoreConfiguration alloc] init]);
     websiteDataStoreConfiguration.get()._serviceWorkerRegistrationDirectory = swPath;
@@ -249,7 +257,7 @@ TEST(WebKit, CustomDataStorePathsVersusCompletionHandlers)
     auto websiteDataTypes = adoptNS([[NSSet alloc] initWithArray:@[WKWebsiteDataTypeServiceWorkerRegistrations]]);
     static bool readyToContinue;
     [dataStore fetchDataRecordsOfTypes:websiteDataTypes.get() completionHandler:^(NSArray<WKWebsiteDataRecord *> *dataRecords) {
-        EXPECT_EQ((int)dataRecords.count, 1);
+        EXPECT_EQ(1U, dataRecords.count);
         readyToContinue = true;
     }];
     TestWebKitAPI::Util::run(&readyToContinue);
@@ -258,7 +266,7 @@ TEST(WebKit, CustomDataStorePathsVersusCompletionHandlers)
     // Fetch records again, this time releasing our reference to the data store while the request is in flight.
     // Without a bug fix, this would crash the StorageProcess and the UI process wouldn't get the info back.
     [dataStore fetchDataRecordsOfTypes:websiteDataTypes.get() completionHandler:^(NSArray<WKWebsiteDataRecord *> *dataRecords) {
-        EXPECT_EQ((int)dataRecords.count, 1);
+        EXPECT_EQ(1U, dataRecords.count);
         readyToContinue = true;
     }];
     dataStore = nil;
@@ -279,7 +287,7 @@ TEST(WebKit, CustomDataStorePathsVersusCompletionHandlers)
     // Now refetch the records to verify they are gone.
     dataStore = adoptNS([[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration.get()]);
     [dataStore fetchDataRecordsOfTypes:websiteDataTypes.get() completionHandler:^(NSArray<WKWebsiteDataRecord *> *dataRecords) {
-        EXPECT_EQ((int)dataRecords.count, 0);
+        EXPECT_EQ(0U, dataRecords.count);
         readyToContinue = true;
     }];
     TestWebKitAPI::Util::run(&readyToContinue);

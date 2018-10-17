@@ -58,8 +58,8 @@
 namespace WebCore {
 
 struct SameSizeAsBorderValue {
-    float m_width;
     Color m_color;
+    float m_width;
     int m_restBits;
 };
 
@@ -2015,18 +2015,18 @@ std::pair<FontOrientation, NonCJKGlyphOrientation> RenderStyle::fontAndGlyphOrie
     // FIXME: TextOrientationSideways should map to sideways-left in vertical-lr, which is not supported yet.
 
     if (isHorizontalWritingMode())
-        return { Horizontal, NonCJKGlyphOrientation::Mixed };
+        return { FontOrientation::Horizontal, NonCJKGlyphOrientation::Mixed };
 
     switch (textOrientation()) {
     case TextOrientation::Mixed:
-        return { Vertical, NonCJKGlyphOrientation::Mixed };
+        return { FontOrientation::Vertical, NonCJKGlyphOrientation::Mixed };
     case TextOrientation::Upright:
-        return { Vertical, NonCJKGlyphOrientation::Upright };
+        return { FontOrientation::Vertical, NonCJKGlyphOrientation::Upright };
     case TextOrientation::Sideways:
-        return { Horizontal, NonCJKGlyphOrientation::Mixed };
+        return { FontOrientation::Horizontal, NonCJKGlyphOrientation::Mixed };
     default:
         ASSERT_NOT_REACHED();
-        return { Horizontal, NonCJKGlyphOrientation::Mixed };
+        return { FontOrientation::Horizontal, NonCJKGlyphOrientation::Mixed };
     }
 }
 

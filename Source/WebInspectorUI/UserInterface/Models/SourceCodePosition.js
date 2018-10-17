@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,4 +35,58 @@ WI.SourceCodePosition = class SourceCodePosition
 
     get lineNumber() { return this._lineNumber; }
     get columnNumber() { return this._columnNumber; }
+
+    offsetColumn(delta)
+    {
+        console.assert(this._columnNumber + delta >= 0);
+        return new WI.SourceCodePosition(this._lineNumber, this._columnNumber + delta);
+    }
+
+    offsetColumn(delta)
+    {
+        console.assert(this._columnNumber + delta >= 0);
+        return new WI.SourceCodePosition(this._lineNumber, this._columnNumber + delta);
+    }
+
+    equals(position)
+    {
+        return this._lineNumber === position.lineNumber && this._columnNumber === position.columnNumber;
+    }
+
+    isBefore(position)
+    {
+        if (this._lineNumber < position.lineNumber)
+            return true;
+        if (this._lineNumber === position.lineNumber && this._columnNumber < position.columnNumber)
+            return true;
+
+        return false;
+    }
+
+    isAfter(position)
+    {
+        if (this._lineNumber > position.lineNumber)
+            return true;
+        if (this._lineNumber === position.lineNumber && this._columnNumber > position.columnNumber)
+            return true;
+
+        return false;
+    }
+
+    isWithin(startPosition, endPosition)
+    {
+        console.assert(startPosition.isBefore(endPosition) || startPosition.equals(endPosition));
+
+        if (this.equals(startPosition) || this.equals(endPosition))
+            return true;
+        if (this.isAfter(startPosition) && this.isBefore(endPosition))
+            return true;
+
+        return false;
+    }
+
+    toCodeMirror()
+    {
+        return {line: this._lineNumber, ch: this._columnNumber};
+    }
 };

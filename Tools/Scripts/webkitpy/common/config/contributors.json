@@ -2149,7 +2149,7 @@
       "nicks" : [
          "fujihiro"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Fumitoshi Ukai" : {
       "emails" : [
@@ -5919,6 +5919,15 @@
          "youenn"
       ],
       "status" : "reviewer"
+   },
+   "Yousuke Kimoto" : {
+      "emails" : [
+         "yousuke.kimoto@sony.com"
+      ],
+      "nicks" : [
+         "ykimoto"
+      ],
+      "status" : "committer"
    },
    "Yuqiang Xian" : {
       "emails" : [

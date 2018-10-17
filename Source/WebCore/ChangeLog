@@ -1,3 +1,999 @@
+2018-07-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Shrink some font-related classes and enums
+        https://bugs.webkit.org/show_bug.cgi?id=187686
+
+        Reviewed by Myles Maxfield.
+        
+        Use enum class for enums in TextFlags.h and make them one byte big.
+
+        Re-order members of Font to shrink it from 360 to 328 bytes.
+
+        * css/CSSPrimitiveValueMappings.h:
+        (WebCore::CSSPrimitiveValue::CSSPrimitiveValue):
+        (WebCore::CSSPrimitiveValue::operator FontSmoothingMode const):
+        (WebCore::CSSPrimitiveValue::operator FontSmallCaps const):
+        (WebCore::CSSPrimitiveValue::operator TextRenderingMode const):
+        * platform/graphics/Font.cpp:
+        (WebCore::Font::Font):
+        (WebCore::Font::verticalRightOrientationFont const):
+        * platform/graphics/Font.h:
+        * platform/graphics/FontCascade.cpp:
+        (WebCore::offsetToMiddleOfGlyph):
+        * platform/graphics/FontCascade.h:
+        (WebCore::FontCascade::advancedTextRenderingMode const):
+        * platform/graphics/FontCascadeFonts.cpp:
+        (WebCore::FontCascadeFonts::glyphDataForSystemFallback):
+        (WebCore::FontCascadeFonts::glyphDataForVariant):
+        (WebCore::glyphPageFromFontRanges):
+        * platform/graphics/FontDescription.cpp:
+        (WebCore::FontCascadeDescription::FontCascadeDescription):
+        * platform/graphics/FontDescription.h:
+        (WebCore::FontDescription::setTextRenderingMode):
+        (WebCore::FontDescription::setOrientation):
+        (WebCore::FontDescription::setWidthVariant):
+        (WebCore::FontCascadeDescription::setFontSmoothing):
+        (WebCore::FontCascadeDescription::initialSmallCaps):
+        (WebCore::FontCascadeDescription::initialFontSmoothing):
+        (WebCore::FontCascadeDescription::initialTextRenderingMode):
+        * platform/graphics/FontPlatformData.h:
+        (WebCore::FontPlatformData::isForTextCombine const):
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::preparePlatformFont):
+        * platform/graphics/cocoa/FontCascadeCocoa.mm:
+        (WebCore::showLetterpressedGlyphsWithAdvances):
+        (WebCore::showGlyphsWithAdvances):
+        (WebCore::FontCascade::drawGlyphs):
+        (WebCore::FontCascade::fontForCombiningCharacterSequence const):
+        * platform/graphics/cocoa/FontCocoa.mm:
+        (WebCore::Font::platformInit):
+        (WebCore::Font::platformBoundsForGlyph const):
+        (WebCore::Font::platformWidthForGlyph const):
+        * platform/graphics/cocoa/FontPlatformDataCocoa.mm:
+        (WebCore::FontPlatformData::hash const):
+        (WebCore::mapFontWidthVariantToCTFeatureSelector):
+        (WebCore::FontPlatformData::ctFont const):
+        (WebCore::FontPlatformData::description const):
+        * platform/graphics/freetype/FontPlatformDataFreeType.cpp:
+        (WebCore::FontPlatformData::buildScaledFont):
+        * platform/graphics/freetype/SimpleFontDataFreeType.cpp:
+        (WebCore::Font::platformInit):
+        (WebCore::Font::platformWidthForGlyph const):
+        * platform/graphics/harfbuzz/ComplexTextControllerHarfBuzz.cpp:
+        (WebCore::fontFeatures):
+        (WebCore::ComplexTextController::collectComplexTextRunsForCharacters):
+        * platform/graphics/mac/SimpleFontDataCoreText.cpp:
+        (WebCore::Font::getCFStringAttributes const):
+        * platform/graphics/win/FontCGWin.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        * platform/graphics/win/FontCascadeDirect2D.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        * platform/graphics/win/GlyphPageTreeNodeDirect2D.cpp:
+        (WebCore::GlyphPage::fill):
+        * platform/graphics/win/SimpleFontDataDirect2D.cpp:
+        (WebCore::Font::platformInit):
+        (WebCore::Font::platformBoundsForGlyph const):
+        (WebCore::Font::platformWidthForGlyph const):
+        * platform/text/TextFlags.h:
+        * rendering/RenderCombineText.cpp:
+        (WebCore::RenderCombineText::combineTextIfNeeded):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::calculateClipRects const):
+        * rendering/TextPainter.cpp:
+        (WebCore::TextPainter::paintTextWithShadows):
+        * rendering/TextPainter.h:
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::fontAndGlyphOrientation):
+        * rendering/svg/RenderSVGInlineText.cpp:
+        (WebCore::RenderSVGInlineText::computeNewScaledFontForStyle):
+
+2018-07-16  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebVR] Add support for connect/disconnect and mount/unmount device events
+        https://bugs.webkit.org/show_bug.cgi?id=187343
+
+        Reviewed by Žan Doberšek.
+
+        WebVR specs define a series of events as part of the Window Interface Extension. We're
+        adding support for the connect/disconnect and mount/unmount events both at the module level
+        and the platform level using OpenVR.
+
+        In order to do that we need to keep lists of VRPlatformDisplays at platform level and
+        VRDisplays at bindings level. We then update those lists accordingly to detect potential
+        additions/removals, and emit the corresponding signals. A new client interface
+        VRPlatformDisplayClient was also defined so that VRPlatformDisplay implementations could
+        notify their clients (typically a VRDisplay).
+
+        Last but not least, NavigatorWebVR was updated so it supplements Navigator instead of
+        supplementing Page.
+
+        * Modules/webvr/NavigatorWebVR.cpp: Supplement Navigator not Page.
+        (WebCore::NavigatorWebVR::getVRDisplays): Keep a list of VRDisplays and update them
+        conveniently, also emitting the required events under certain conditions (like device
+        disconnection).
+        (WebCore::NavigatorWebVR::supplementName): New method.
+        (WebCore::NavigatorWebVR::from): Ditto.
+        * Modules/webvr/NavigatorWebVR.h: Supplement Navigator not Page.
+        * Modules/webvr/VRDisplay.cpp:
+        (WebCore::VRDisplay::create): Moved suspendIfNeeded() to constructor.
+        (WebCore::VRDisplay::VRDisplay): Set itself as VRPlatformDisplay client.
+        (WebCore::VRDisplay::~VRDisplay): Unset as  VRPlatformDisplay client.
+        (WebCore::VRDisplay::VRPlatformDisplayConnected): Dispatch event on DOM window.
+        (WebCore::VRDisplay::VRPlatformDisplayDisconnected): Ditto.
+        (WebCore::VRDisplay::VRPlatformDisplayMounted): Ditto.
+        (WebCore::VRDisplay::VRPlatformDisplayUnmounted): Ditto.
+        * Modules/webvr/VRDisplay.h: Extend from VRPlatformDisplayClient.
+        (WebCore::VRDisplay::document):
+        * Modules/webvr/VRDisplayEvent.cpp: Updated Copyright.
+        * Modules/webvr/VRDisplayEvent.h: Ditto.
+        * Sources.txt: Added the two new files.
+        * WebCore.xcodeproj/project.pbxproj: Ditto.
+        * platform/vr/VRManager.cpp:
+        (WebCore::VRManager::getVRDisplays): Keep a list of VRPlatformDisplays and update them conveniently,
+        also emitting the required events under certain conditions (like device disconnection).
+        * platform/vr/VRManager.h:
+        * platform/vr/VRPlatformDisplay.cpp: New file with common implementations for VRPlatformDisplays.
+        (WebCore::VRPlatformDisplay::setClient):
+        (WebCore::VRPlatformDisplay::notifyVRPlatformDisplayEvent):
+        * platform/vr/VRPlatformDisplay.h: Added a generic method to notify about different
+        events. Added the client pointer.
+        * platform/vr/VRPlatformDisplayClient.h: New file. VRPlatformDisplay implementations will
+        call the client methods in the event of some circumstances happening.
+        (WebCore::VRPlatformDisplayClient::VRPlatformDisplayConnected):
+        (WebCore::VRPlatformDisplayClient::VRPlatformDisplayDisconnected):
+        (WebCore::VRPlatformDisplayClient::VRPlatformDisplayMounted):
+        (WebCore::VRPlatformDisplayClient::VRPlatformDisplayUnmounted):
+        * platform/vr/openvr/VRPlatformDisplayOpenVR.cpp:
+        (WebCore::VRPlatformDisplayOpenVR::updateDisplayInfo): Poll the device for new events to
+        detect connection/disconnections or device activations/deactivations (HMD
+        mounted/unmounted).
+        * platform/vr/openvr/VRPlatformDisplayOpenVR.h:
+
+2018-07-16  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Nicosia] Add Nicosia::PlatformLayer, Nicosia::CompositionLayer classes
+        https://bugs.webkit.org/show_bug.cgi?id=187693
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add the Nicosia::PlatformLayer class. This will be the base platform
+        layer class from which different derivatives will be created, addressing
+        different use cases. The generic PlatformLayer type alias will point to
+        this class in the future.
+
+        First class deriving from Nicosia::PlatformLayer is
+        Nicosia::CompositionLayer, purpose of which will be to mirror the state
+        that's stored in the platform-specific GraphicsLayer derivative. It will
+        also allow making thread-safe updates to that state.
+
+        CoordinatedGraphicsLayer implementation now spawns a CompositionLayer
+        object and tracks state changes in a separate
+        CompositionLayer::LayerState::Delta object. During flushing, the changed
+        state is applied to the layer's pending state before the delta is nulled
+        out. The updated state isn't used anywhere yet, but future changes will
+        implement committing this state into the rendering pipeline.
+
+        There's bits of state not yet being managed by CompositionLayer, e.g.
+        debug visuals, filters and animations. These will be addressed later.
+
+        The m_solidColor member variable is added to CoordinatedGraphicsLayer in
+        order to properly store the solid color value. Normally this would be
+        contained by the parent GraphicsLayer class, but no such member variable
+        exists there.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/nicosia/NicosiaPlatformLayer.cpp: Added.
+        (Nicosia::PlatformLayer::PlatformLayer):
+        (Nicosia::CompositionLayer::CompositionLayer):
+        * platform/graphics/nicosia/NicosiaPlatformLayer.h: Added.
+        (Nicosia::PlatformLayer::isCompositionLayer const):
+        (Nicosia::PlatformLayer::id const):
+        (Nicosia::CompositionLayer::create):
+        (Nicosia::CompositionLayer::LayerState::Flags::Flags):
+        (Nicosia::CompositionLayer::updateState):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::CoordinatedGraphicsLayer):
+        (WebCore::CoordinatedGraphicsLayer::setPosition):
+        (WebCore::CoordinatedGraphicsLayer::setAnchorPoint):
+        (WebCore::CoordinatedGraphicsLayer::setSize):
+        (WebCore::CoordinatedGraphicsLayer::setTransform):
+        (WebCore::CoordinatedGraphicsLayer::setChildrenTransform):
+        (WebCore::CoordinatedGraphicsLayer::setPreserves3D):
+        (WebCore::CoordinatedGraphicsLayer::setMasksToBounds):
+        (WebCore::CoordinatedGraphicsLayer::setDrawsContent):
+        (WebCore::CoordinatedGraphicsLayer::setContentsVisible):
+        (WebCore::CoordinatedGraphicsLayer::setContentsOpaque):
+        (WebCore::CoordinatedGraphicsLayer::setBackfaceVisibility):
+        (WebCore::CoordinatedGraphicsLayer::setOpacity):
+        (WebCore::CoordinatedGraphicsLayer::setContentsRect):
+        (WebCore::CoordinatedGraphicsLayer::setContentsTileSize):
+        (WebCore::CoordinatedGraphicsLayer::setContentsTilePhase):
+        (WebCore::CoordinatedGraphicsLayer::setContentsToSolidColor):
+        (WebCore::CoordinatedGraphicsLayer::setMaskLayer):
+        (WebCore::CoordinatedGraphicsLayer::setReplicatedByLayer):
+        (WebCore::CoordinatedGraphicsLayer::syncChildren):
+        (WebCore::CoordinatedGraphicsLayer::flushCompositingStateForThisLayerOnly):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+
+2018-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS apps on macOS] Playing embedded Twitter videos in the News app crashes the web process
+        https://bugs.webkit.org/show_bug.cgi?id=187690
+        <rdar://problem/41869703>
+
+        Reviewed by Tim Horton.
+
+        Work around unexpected behavior when soft-linking AVFoundation. After using `dlopen_preflight` to check for the
+        existence of a library prior to loading the library using `dlopen`, `dlsym` subsequently returns null for some
+        symbols that would otherwise be available. This causes us to RELEASE_ASSERT later down the road when we try to
+        load AVAudioSessionModeDefault in AudioSessionIOS.mm.
+
+        To fix this for now, simply check for the library directly instead of using the more lightweight preflight
+        check. See clone: <rdar://problem/42224780> for more detail.
+
+        * platform/graphics/avfoundation/objc/AVFoundationMIMETypeCache.mm:
+        (WebCore::AVFoundationMIMETypeCache::isAvailable const):
+
+2018-07-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Shrink StyleFillData, StyleStrokeData and StyleMiscData
+        https://bugs.webkit.org/show_bug.cgi?id=187681
+
+        Reviewed by Anders Carlsson.
+
+        Shrink these data structures by making more enum classes one byte in size, and
+        re-ordering. StyleFillData goes from 56 to 48, StyleStrokeData from 80 to 72,
+        StyleMiscData from 40 to 32 bytes.
+
+        * rendering/style/SVGRenderStyleDefs.cpp:
+        (WebCore::StyleFillData::StyleFillData):
+        (WebCore::StyleFillData::operator== const):
+        (WebCore::StyleStrokeData::StyleStrokeData):
+        (WebCore::StyleStrokeData::operator== const):
+        (WebCore::StyleStopData::operator== const):
+        (WebCore::StyleMiscData::StyleMiscData):
+        * rendering/style/SVGRenderStyleDefs.h:
+
+2018-07-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Shrink CachedResource and subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=187546
+
+        Reviewed by Daniel Bates.
+
+        Shrink CachedResource down from 1384 to 1336 bytes, CachedImage from 1480 to
+        1424 bytes, and CachedFont a little.
+        
+        This saves about 23KB on cnn.com.
+
+        * loader/ResourceLoaderOptions.h:
+        * loader/cache/CachedFont.h:
+        * loader/cache/CachedImage.h:
+        * loader/cache/CachedResource.cpp:
+        (WebCore::CachedResource::CachedResource):
+        * loader/cache/CachedResource.h:
+        * platform/network/CacheValidation.h:
+        (WebCore::RedirectChainCacheStatus::RedirectChainCacheStatus):
+        * platform/network/NetworkLoadMetrics.h:
+        * platform/network/ParsedContentRange.h:
+        * platform/network/ResourceRequestBase.h:
+        * platform/network/ResourceResponseBase.h:
+
+2018-07-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Shrink some style-related classes and enums
+        https://bugs.webkit.org/show_bug.cgi?id=187680
+
+        Reviewed by Antti Koivisto.
+        
+        Make all the enum classes in RenderStyleConstants be one byte big (all have less
+        than 256 values).
+        
+        Shrink DocumentRuleSet from 384 to 368 bytes by re-ordering, which also helps shrink
+        StyleResolver from 1024 to 952 bytes.
+        
+        Shrink BorderValue by re-ordering (now that the layout of Color has changed) which
+        shrinks BorderData from 168 to 136 bytes.
+        
+        Convert a couple of other enums to enum class so that they can have explicit size.
+
+        * css/DocumentRuleSets.h:
+        * css/MediaQueryMatcher.cpp:
+        (WebCore::MediaQueryMatcher::documentElementUserAgentStyle const):
+        * css/StyleMedia.cpp:
+        (WebCore::StyleMedia::matchMedium const):
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::StyleResolver):
+        (WebCore::StyleResolver::State::State):
+        (WebCore::StyleResolver::styleForElement):
+        (WebCore::StyleResolver::cascadedPropertiesForRollback):
+        (WebCore::StyleResolver::applyProperty):
+        (WebCore::cascadeLevelForIndex):
+        * css/StyleResolver.h:
+        * rendering/style/BorderValue.h:
+        * rendering/style/RenderStyle.cpp:
+        * rendering/style/RenderStyleConstants.h:
+        * style/StyleTreeResolver.cpp:
+        (WebCore::Style::TreeResolver::styleForElement):
+        * svg/SVGElementRareData.h:
+        (WebCore::SVGElementRareData::overrideComputedStyle):
+
+2018-07-14  Kocsen Chung  <kocsen_chung@apple.com>
+
+        Ensure WebKit stack is ad-hoc signed
+        https://bugs.webkit.org/show_bug.cgi?id=187667
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+
+2018-07-14  Dirk Schulze  <krit@webkit.org>
+
+        [css-masking] Fully support -webkit-clip-path on SVG elements
+        https://bugs.webkit.org/show_bug.cgi?id=185829
+
+        Reviewed by Simon Fraser.
+
+        -webkit-clip-path contributes to SVG elements with boxes, shapes and now with
+        element references to <clipPath> elements as well. Make sure that all types
+        contribute to hit-testing of the SVG element as well as they should.
+
+        Tests: svg/clip-path/webkit-clip-path-after-expected.svg
+               svg/clip-path/webkit-clip-path-after.svg
+               svg/clip-path/webkit-clip-path-before-expected.svg
+               svg/clip-path/webkit-clip-path-before.svg
+               svg/dynamic-updates/SVGClipPath-prefixed-influences-hitTesting.html
+               svg/dynamic-updates/SVGClipPath-prefixed-path-influences-hitTesting.html
+               svg/dynamic-updates/SVGClipPathElement-prefixed-css-transform-influences-hitTesting.html
+               svg/dynamic-updates/SVGClipPathElement-prefixed-transform-influences-hitTesting.html
+
+        * rendering/svg/SVGRenderSupport.cpp: Share code as much as possible.
+        (WebCore::clipPathReferenceBox):
+        (WebCore::isPointInCSSClippingArea): Take -webkit-clip-path into account.
+        (WebCore::SVGRenderSupport::clipContextToCSSClippingArea):
+        (WebCore::SVGRenderSupport::pointInClippingArea):
+        * rendering/svg/SVGRenderSupport.h:
+        * rendering/svg/SVGRenderingContext.cpp: Clip to -webkit-clip-path boxes, shapes and references.
+        (WebCore::SVGRenderingContext::prepareToRenderSVGContent):
+        * rendering/svg/SVGResources.cpp: Add -webkit-clip-path references to cached resources. Mimic SVG clip-path.
+        (WebCore::SVGResources::buildCachedResources):
+
+2018-07-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid fetching visitedDependentColor() so many times in editing code
+        https://bugs.webkit.org/show_bug.cgi?id=187676
+
+        Reviewed by Zalan Bujtas.
+        
+        editingAttributedStringFromRange called style.visitedDependentColor() twice for each property,
+        and fontAttributesForSelectionStart() called it two or three times. Use a local Color variable
+        to avoid so many calls. Also replace a call to alpha() with isVisible() which makes the usage more clear.
+
+        No behavior change.
+
+        * editing/cocoa/EditorCocoa.mm:
+        (WebCore::Editor::fontAttributesForSelectionStart const):
+        * editing/cocoa/HTMLConverter.mm:
+        (WebCore::editingAttributedStringFromRange):
+
+2018-07-13  Youenn Fablet  <youenn@apple.com>
+
+        Support connecting a MediaStreamAudioDestinationNode to RTCPeerConnection
+        https://bugs.webkit.org/show_bug.cgi?id=187627
+        <rdar://problem/35334400>
+
+        Reviewed by Jer Noble.
+
+        When MediaStreamAudioSource is called to read new audio samples,
+        convert these samples to a WebAudioBufferList and call RealtimeMediaSource::audioSamplesAvailable.
+        This makes its observers to get the audio data.
+
+        Test: webrtc/peer-connection-createMediaStreamDestination.html
+
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::create): Minor refactoring.
+        * Modules/webaudio/MediaStreamAudioDestinationNode.cpp:
+        (WebCore::createMediaStream):
+        (WebCore::MediaStreamAudioDestinationNode::MediaStreamAudioDestinationNode):
+        (WebCore::MediaStreamAudioDestinationNode::process):
+        * Modules/webaudio/MediaStreamAudioDestinationNode.h:
+        * Modules/webaudio/MediaStreamAudioSource.cpp:
+        (WebCore::MediaStreamAudioSource::MediaStreamAudioSource):
+        (WebCore::MediaStreamAudioSource::consumeAudio):
+        * Modules/webaudio/MediaStreamAudioSource.h:
+        * Modules/webaudio/MediaStreamAudioSourceCocoa.cpp: Added.
+        (WebCore::streamDescription):
+        (WebCore::MediaStreamAudioSource::consumeAudio):
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/audio/AudioDestinationConsumer.h: Removed.
+        * platform/mediastream/MediaStreamPrivate.cpp:
+        (WebCore::MediaStreamPrivate::create):
+        * platform/mediastream/MediaStreamPrivate.h:
+
+2018-07-13  Christopher Reid  <chris.reid@sony.com>
+
+        [WinCairo] Enable WebGL when Accelerated Compositing is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=187664
+
+        Reviewed by Fujii Hironori.
+
+        AC was disabled for WinCairo in r233725 but it can still run WebGL without AC.
+
+        * html/HTMLCanvasElement.cpp:
+
+2018-07-13  Chris Dumez  <cdumez@apple.com>
+
+        Crash under ApplicationCacheGroup::didFailLoadingEntry()
+        https://bugs.webkit.org/show_bug.cgi?id=187661
+        <rdar://problem/42179755>
+
+        Reviewed by Youenn Fablet.
+
+        If ApplicationCacheResourceLoader::create() fails synchronously with
+        ApplicationCacheResourceLoader::Error::CannotCreateResource error, then
+        m_entryLoader will be null when didFailLoadingEntry() is called. However,
+        didFailLoadingEntry() fails to null check m_entryLoader before using it.
+
+        * loader/appcache/ApplicationCacheGroup.cpp:
+        (WebCore::ApplicationCacheGroup::didFailLoadingEntry):
+        (WebCore::ApplicationCacheGroup::startLoadingEntry):
+        * loader/appcache/ApplicationCacheGroup.h:
+
+2018-07-13  Alex Christensen  <achristensen@webkit.org>
+
+        Add release assertion to check thread in TimerBase::setNextFireTime
+        https://bugs.webkit.org/show_bug.cgi?id=187666
+
+        Reviewed by Ryosuke Niwa.
+
+        This should give us insight into what is causing <rdar://problem/33352721>
+        
+        * platform/Timer.cpp:
+        (WebCore::TimerBase::setNextFireTime):
+
+2018-07-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [iOS] [WK1] Crash inside IOSurfacePool::platformGarbageCollectNow() in WebThread
+        https://bugs.webkit.org/show_bug.cgi?id=187635
+        <rdar://problem/34297065>
+
+        Reviewed by Simon Fraser.
+
+        r167717 added code to trigger a CA commit in the web process via platformGarbageCollectNow() in order to free IOSurface-related memory.
+        However, that code is also running in the web thread in apps using WebKit1, causing unwanted UIView layout on the web thread.
+
+        Fix by not triggering this CA commit if it's called on the web thread.
+
+        * platform/graphics/cocoa/IOSurfacePoolCocoa.mm:
+        (WebCore::IOSurfacePool::platformGarbageCollectNow):
+
+2018-07-13  Antoine Quint  <graouts@apple.com>
+
+        Dark Mode: document markers are difficult to see
+        https://bugs.webkit.org/show_bug.cgi?id=187632
+        <rdar://problem/41099719>
+
+        Reviewed by Simon Fraser.
+
+        We update the way we draw the document markers for macOS and use more constrasting colors in dark mode.
+        Paving the way for future improvements, we move the drawLineForDocumentMarker() method from GraphicsContext
+        to RenderTheme and implement a first version in RenderThemeMac. The circles used for the underline are now
+        drawn directly with Core Graphics and we no longer use an image resource. To allow both GraphicsContext
+        and RenderTheme to have different versions of the drawLineForDocumentMarker() method, the DocumentMarkerLineStyle
+        enum is now an "enum class".
+
+        No new test due to webkit.org/b/105616, webkit.org/b/187655 was raised to track the creation of new tests
+        when it becomes possible again.
+
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/GraphicsContextImpl.h:
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawLineForDocumentMarker):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextImplCairo.cpp:
+        (WebCore::GraphicsContextImplCairo::drawLineForDocumentMarker):
+        * platform/graphics/cairo/GraphicsContextImplCairo.h:
+        * platform/graphics/cocoa/GraphicsContextCocoa.mm:
+        (WebCore::GraphicsContext::drawLineForDocumentMarker):
+        * platform/graphics/displaylists/DisplayListItems.h:
+        (WebCore::DisplayList::DrawLineForDocumentMarker::create):
+        (WebCore::DisplayList::DrawLineForDocumentMarker::DrawLineForDocumentMarker):
+        * platform/graphics/displaylists/DisplayListRecorder.cpp:
+        (WebCore::DisplayList::Recorder::drawLineForDocumentMarker):
+        * platform/graphics/displaylists/DisplayListRecorder.h:
+        * platform/graphics/nicosia/cairo/NicosiaCairoOperationRecorder.cpp:
+        (Nicosia::CairoOperationRecorder::drawLineForDocumentMarker):
+        * platform/graphics/nicosia/cairo/NicosiaCairoOperationRecorder.h:
+        * platform/graphics/win/GraphicsContextCGWin.cpp:
+        (WebCore::GraphicsContext::drawLineForDocumentMarker):
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::paintPlatformDocumentMarker): Call drawLineForDocumentMarker() on the RenderTheme on
+        macOS and on GraphicsContext in all other cases.
+        * rendering/RenderTheme.cpp:
+        (WebCore::RenderTheme::drawLineForDocumentMarker):
+        * rendering/RenderTheme.h:
+        * rendering/RenderThemeMac.h:
+        * rendering/RenderThemeMac.mm:
+        (WebCore::colorForStyle): Provide different colors for light and dark modes.
+        (WebCore::RenderThemeMac::drawLineForDocumentMarker): A new macOS-specific version of drawLineForDocumentMarker()
+        where we paint circles using Core Graphics directly.
+
+2018-07-13  Charlie Turner  <cturner@igalia.com>
+
+        [GStreamer] Use smart pointers for GstByteReader
+        https://bugs.webkit.org/show_bug.cgi?id=187638
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/graphics/gstreamer/GUniquePtrGStreamer.h: Add
+        specialisation for GstByteReader.
+        * platform/graphics/gstreamer/eme/WebKitClearKeyDecryptorGStreamer.cpp:
+        Use the new smart pointer class to avoid needing to remember where
+        to call gst_byte_reader_free.
+        (webKitMediaClearKeyDecryptorDecrypt):
+
+2018-07-13  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Move HTTP Setup logic from CurlRequest to CurlHandle for reuse.
+        https://bugs.webkit.org/show_bug.cgi?id=187427
+
+        Reviewed by Fujii Hironori.
+
+        CurlContext will be used by Secure WebSocket client, but HTTP setup code is
+        in CurlRequest, which is only for regular HTTP/HTTPS transaction. This patch
+        allows wss client to setup CurlHandle for HTTPS communication, such as TLS,
+        proxy or authentication.
+
+        No new tests because there's no behavior change.
+
+        * platform/network/curl/CurlContext.cpp:
+        (WebCore::CurlHandle::CurlHandle):
+        (WebCore::CurlHandle::enableSSLForHost):
+        (WebCore::CurlHandle::willSetupSslCtx):
+        (WebCore::CurlHandle::willSetupSslCtxCallback):
+        (WebCore::CurlHandle::sslErrors const):
+        (WebCore::CurlHandle::setUrl):
+        (WebCore::CurlHandle::enableHttp):
+        (WebCore::CurlHandle::enableConnectionOnly):
+        (WebCore::CurlHandle::certificateInfo const):
+        (WebCore::CurlHandle::enableStdErrIfUsed):
+        (WebCore::CurlHandle::initialize): Deleted.
+        * platform/network/curl/CurlContext.h:
+        (WebCore::CurlHandle::url const):
+        * platform/network/curl/CurlRequest.cpp:
+        (WebCore::CurlRequest::setupTransfer):
+        (WebCore::CurlRequest::didReceiveHeader):
+        (WebCore::CurlRequest::didCompleteTransfer):
+        (WebCore::CurlRequest::finalizeTransfer):
+        (WebCore::CurlRequest::willSetupSslCtx): Deleted.
+        (WebCore::CurlRequest::willSetupSslCtxCallback): Deleted.
+        * platform/network/curl/CurlRequest.h:
+        * platform/network/curl/CurlSSLVerifier.cpp:
+        (WebCore::CurlSSLVerifier::CurlSSLVerifier):
+        (WebCore::CurlSSLVerifier::verify):
+        * platform/network/curl/CurlSSLVerifier.h:
+
+2018-07-13  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer][MSE] Add GstFlowCombiner to handle non-linked inactive branches
+        https://bugs.webkit.org/show_bug.cgi?id=187636
+
+        Reviewed by Carlos Garcia Campos.
+
+        When we have more than one source buffer, only one will be
+        rendered and the inactive branch will report linking errors that
+        we have to deal with.
+
+        * platform/graphics/gstreamer/GUniquePtrGStreamer.h: Added GstFlowCombiner.
+        * platform/graphics/gstreamer/mse/WebKitMediaSourceGStreamer.cpp:
+        (webkitMediaSrcChain): Combine the flow in the flow combiner.
+        (webkit_media_src_init): Initialize the flow combiner.
+        (webKitMediaSrcLinkStreamToSrcPad): Add the proxypad to the
+        combiner and set the chain function.
+        * platform/graphics/gstreamer/mse/WebKitMediaSourceGStreamerPrivate.h:
+        Declare the flow combiner.
+
+2018-07-13  Charlie Turner  <cturner@igalia.com>
+
+        [GStreamer] Add GstBufferMapped abstraction
+        https://bugs.webkit.org/show_bug.cgi?id=187600
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        There is a similar abstraction called `mapGstBuffer` and friends,
+        which have a slightly different use-case: wanting a buffer that is
+        mapped for a longer lifetime without have to keep track of the map
+        infos separately. They could be subsumed by this abstraction, but
+        everytime they need to write to the buffer, they'd have to remap
+        the memory blocks.
+
+        This abstraction is more for one-short reads and writes saving the user
+        from remembering to unmap the buffer and having to manage to
+        auxiliary GstMapInfo structures.
+
+        * platform/graphics/gstreamer/GStreamerCommon.h:
+        (WebCore::GstMappedBuffer::GstMappedBuffer):
+        (WebCore::GstMappedBuffer::~GstMappedBuffer):
+        (WebCore::GstMappedBuffer::data):
+        (WebCore::GstMappedBuffer::size const):
+        (WebCore::GstMappedBuffer::operator bool const):
+        * platform/graphics/gstreamer/InbandTextTrackPrivateGStreamer.cpp:
+        (WebCore::InbandTextTrackPrivateGStreamer::notifyTrackOfSample):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::handleSyncMessage):
+        (WebCore::MediaPlayerPrivateGStreamerBase::initializationDataEncountered):
+        * platform/graphics/gstreamer/eme/WebKitClearKeyDecryptorGStreamer.cpp:
+        (webKitMediaClearKeyDecryptorSetupCipher):
+        (webKitMediaClearKeyDecryptorDecrypt):
+
+2018-07-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Make it easier to hit the significant rendered text layout milestone on pages with main article elements
+        https://bugs.webkit.org/show_bug.cgi?id=187578
+        <rdar://problem/42104637>
+
+        Reviewed by Ryosuke Niwa.
+
+        Our current heuristics for triggering the significant rendered text layout milestone are very conservative, with
+        the intention of avoiding false positives. In practice, we can relax some of these constraints when we've
+        detected the presence of a main article element on the page. (e.g. in New York Times articles). See per-method
+        changes below for more detail.
+
+        Test: RenderingProgressTests.DidRenderSignificantAmountOfText
+
+        * dom/Document.cpp:
+        (WebCore::Document::registerArticleElement):
+        (WebCore::Document::unregisterArticleElement):
+        (WebCore::Document::updateMainArticleElementAfterLayout):
+
+        As a post layout task, update the main article element by looping through the articles (up to a maximum limit of
+        10) in search of an article element that is several times larger than the second largest article element.
+
+        * dom/Document.h:
+
+        Store a set containing the article elements in the document, as well as the current main article on the page.
+
+        (WebCore::Document::hasMainArticleElement const):
+        * html/Element.cpp:
+        (WebCore::Element::insertedIntoAncestor):
+        (WebCore::Element::removedFromAncestor):
+
+        Keep track of the article elements that exist in the document whenever elements with the article tag are added
+        to or removed from the document.
+
+        * page/FrameView.cpp:
+
+        Add new minimum thresholds for firing the significant rendered text milestone when there exists a main article.
+
+        (WebCore::FrameView::performPostLayoutTasks):
+        (WebCore::FrameView::updateSignificantRenderedTextMilestoneIfNeeded):
+
+        Take the main article element into consideration when determining whether to fire the significant text
+        layout milestone.
+
+2018-07-12  Daniel Bates  <dabates@apple.com>
+
+        JavaScript URL gives incorrect result when frame is navigated
+        https://bugs.webkit.org/show_bug.cgi?id=187203
+        <rdar://problem/41438443>
+
+        Reviewed by David Kilzer.
+
+        * loader/SubframeLoader.cpp:
+        (WebCore::SubframeLoader::requestFrame):
+
+2018-07-12  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce size of WebCore::URL
+        https://bugs.webkit.org/show_bug.cgi?id=186820
+
+        Reviewed by Yusuke Suzuki and Youenn Fablet.
+
+        We were using 32 bits for the length of the port, which is always between 0 and 5 inclusive
+        because port numbers are missing or between 0 and 65535.  Let's just use 3 bits here.
+        We were using 32 bits for the length of the scheme, which is usually 3-5 characters and can be
+        longer for some custom schemes, but I've never seen one more than 20 characters.  If we assume
+        schemes are always less than 64MB, we can save 8 bytes per URL!
+
+        No change in behavior, just less memory use!
+        
+        To restore the IPC encoding to how it was before r221165, I just encode the string and reparse it.
+
+        * platform/URL.cpp:
+        (WebCore::URL::invalidate):
+        (WebCore::URL::lastPathComponent const):
+        (WebCore::URL::port const):
+        (WebCore::URL::protocolHostAndPort const):
+        (WebCore::URL::path const):
+        (WebCore::URL::removePort):
+        (WebCore::URL::setPort):
+        (WebCore::URL::setHostAndPort):
+        (WebCore::URL::setPath):
+        * platform/URL.h:
+        (WebCore::URL::encode const):
+        (WebCore::URL::decode):
+        (WebCore::URL::hasPath const):
+        (WebCore::URL::pathStart const):
+        * platform/URLParser.cpp:
+        (WebCore::URLParser::copyBaseWindowsDriveLetter):
+        (WebCore::URLParser::urlLengthUntilPart):
+        (WebCore::URLParser::copyURLPartsUntil):
+        (WebCore::URLParser::shouldPopPath):
+        (WebCore::URLParser::popPath):
+        (WebCore::URLParser::parse):
+        (WebCore::URLParser::parsePort):
+        (WebCore::URLParser::parseHostAndPort):
+        (WebCore::URLParser::allValuesEqual):
+        (WebCore::URLParser::internalValuesConsistent):
+        * workers/service/server/RegistrationDatabase.cpp:
+        Increment the service worker registration schema version because of the URL encoding change.
+
+2018-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Add a FrameLoaderClient willInjectUserScriptForFrame callback
+        https://bugs.webkit.org/show_bug.cgi?id=187565
+
+        Reviewed by Alex Christensen.
+
+        Test: http/tests/contentextensions/injected-script-callback.html.
+
+        * loader/FrameLoaderClient.h:
+        * page/Frame.cpp:
+        (WebCore::Frame::injectUserScriptImmediately):
+        Calling the new callback whenever being about to inject a new script.
+
+2018-07-12  Megan Gardner  <megan_gardner@apple.com>
+
+        Keep Selections within Shadow DOM boundaries
+        https://bugs.webkit.org/show_bug.cgi?id=187556
+        <rdar://problem/41664567>
+
+        Reviewed by Ryosuke Niwa.
+
+        Expose needed functionality to WebKit to help with determing editing and shadow dom boundries.
+
+        Only exposing functionality to WebKit.
+
+        * dom/TreeScope.h:
+        * editing/Editing.h:
+        * editing/VisibleSelection.cpp:
+        (WebCore::VisibleSelection::adjustPositionForEnd const):
+        (WebCore::VisibleSelection::adjustPositionForStart const):
+        (WebCore::adjustPositionForEnd): Deleted.
+        (WebCore::adjustPositionForStart): Deleted.
+        * editing/VisibleSelection.h:
+        
+2018-07-12  Sihui Liu  <sihui_liu@apple.com>
+
+        IndexedDB: database file of subframe cannot be removed
+        https://bugs.webkit.org/show_bug.cgi?id=187564
+
+        Reviewed by Youenn Fablet.
+
+        For IndexedDB, if openingOrigin is different from mainFrameOrigin, there will be another 
+        layer in the database file path. 
+        IDBServer should delete database files recursively to make sure all files are removed.
+
+        Covered by modified test: WebKit.WebsiteDataStoreCustomPaths.
+
+        * Modules/indexeddb/server/IDBServer.cpp:
+        (WebCore::IDBServer::removeAllDatabasesForOriginPath):
+
+2018-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        Add compile guard for enabling NSRunLoop in the WebContent process.
+        https://bugs.webkit.org/show_bug.cgi?id=187563
+
+        Reviewed by Chris Dumez.
+
+        No new tests, no change in behavior.
+
+        * platform/mac/EventLoopMac.mm:
+        (WebCore::EventLoop::cycle):
+
+2018-07-12  Zalan Bujtas  <zalan@apple.com>
+
+        Newly added float should trigger full layout on the block.
+        https://bugs.webkit.org/show_bug.cgi?id=187251
+        <rdar://problem/41726137>
+
+        Reviewed by David Kilzer.
+
+        RenderBlockFlow::determineStartPosition() is one of the places where we decide the extent of the line layout for the current block.
+        In here we try to figure out the first line in the block that requires layout. In certain cases when floats are present,
+        (due to their intrusive behavior) we just trigger a full layout on the entire block.
+        One of the special cases is when a new float is added to the block. determineStartPosition() checks for such floats (floats inserted
+        after the "last known float") and marks the block for full layout. However it missed the case when other, unrelated mutations happened
+        in addition to this newly inserted float. This patch fixes this case by checking if the floats after the "last know float" actually need layout.
+
+        Test: fast/inline/new-float-needs-layout-when-line-is-dirty.html
+
+        * rendering/RenderBlockLineLayout.cpp:
+        (WebCore::RenderBlockFlow::determineStartPosition):
+
+2018-07-12  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer] Add pads to the GstFlowCombiner in MediaStreamSrc
+        https://bugs.webkit.org/show_bug.cgi?id=187552
+
+        Reviewed by Alejandro G. Castro.
+
+        This was overlooked and it is the way the API is supposed to be used.
+
+        * platform/mediastream/gstreamer/GStreamerMediaStreamSource.cpp:
+        (WebCore::webkitMediaStreamSrcAddPad):
+
+2018-07-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Thread VM& to JSCell::methodTable(VM&)
+        https://bugs.webkit.org/show_bug.cgi?id=187548
+
+        Reviewed by Saam Barati.
+
+        * bindings/js/JSDOMConstructorBase.h:
+        (WebCore::JSDOMConstructorBase::className):
+        * bindings/js/JSPluginElementFunctions.cpp:
+        (WebCore::pluginElementCustomGetCallData):
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        (GenerateImplementation):
+        * bindings/scripts/test/JS/JSInterfaceName.cpp:
+        (WebCore::JSInterfaceName::estimatedSize):
+        * bindings/scripts/test/JS/JSInterfaceName.h:
+
+2018-07-11  Youenn Fablet  <youenn@apple.com>
+
+        MediaDevices should derive from EventTarget in its IDL
+        https://bugs.webkit.org/show_bug.cgi?id=187575
+
+        Reviewed by Chris Dumez.
+
+        Test: fast/mediastream/MediaDevices-addEventListener.html
+
+        * Modules/mediastream/MediaDevices.idl:
+
+2018-07-11  Jon Lee  <jonlee@apple.com>
+
+        Update iOS fullscreen alert text
+        https://bugs.webkit.org/show_bug.cgi?id=187576
+        rdar://problem/42052284
+
+        Reviewed by Ryosuke Niwa.
+
+        * English.lproj/Localizable.strings:
+
+2018-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r233742.
+        https://bugs.webkit.org/show_bug.cgi?id=187577
+
+        Binary incompatible change with respect to Service Worker
+        registration map (Requested by dydz on #webkit).
+
+        Reverted changeset:
+
+        "Reduce size of WebCore::URL"
+        https://bugs.webkit.org/show_bug.cgi?id=186820
+        https://trac.webkit.org/changeset/233742
+
+2018-07-11  Aditya Keerthi  <akeerthi@apple.com>
+
+        REGRESSION (231276): Attempting to copy an image fails
+        https://bugs.webkit.org/show_bug.cgi?id=187212
+        <rdar://problem/41540074>
+
+        Reviewed by Ryosuke Niwa.
+
+        Renamed methods to make it clear that one URL and one title are being passed in.
+
+        Test: editing/mac/pasteboard/can-copy-url-without-title.html
+
+        * platform/PasteboardStrategy.h:
+        * platform/PlatformPasteboard.h:
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::setURL):
+        * platform/mac/PasteboardMac.mm:
+        (WebCore::writeURLForTypes):
+        (WebCore::Pasteboard::writeTrustworthyWebURLsPboardType):
+        * platform/mac/PlatformPasteboardMac.mm:
+        (WebCore::PlatformPasteboard::setURL):
+
+2018-07-11  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI for immediate injection of user scripts
+        https://bugs.webkit.org/show_bug.cgi?id=173342
+        <rdar://problem/29202285>
+
+        Reviewed by Brady Eidson, Youenn Fablet, and Geoff Garen.
+
+        The new SPI is WKUserContentController._addUserScriptImmediately.
+        It is covered by new API tests.
+        Existing functionality remains unchanged unless the new SPI is adopted.
+
+        * page/Frame.cpp:
+        (WebCore::Frame::injectUserScripts):
+        (WebCore::Frame::injectUserScriptImmediately):
+        Move injection functionality to allow us to call it directly from the new SPI.
+        * page/Frame.h:
+        * page/Page.cpp:
+        (WebCore::Page::forEachPage):
+        * page/Page.h:
+
+2018-07-11  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce size of WebCore::URL
+        https://bugs.webkit.org/show_bug.cgi?id=186820
+
+        Reviewed by Yusuke Suzuki.
+
+        We were using 32 bits for the length of the port, which is always between 0 and 5 inclusive
+        because port numbers are missing or between 0 and 65535.  Let's just use 3 bits here.
+        We were using 32 bits for the length of the scheme, which is usually 3-5 characters and can be
+        longer for some custom schemes, but I've never seen one more than 20 characters.  If we assume
+        schemes are always less than 64MB, we can save 8 bytes per URL!
+
+        No change in behavior, just less memory use!
+
+        * platform/URL.cpp:
+        (WebCore::URL::invalidate):
+        (WebCore::URL::lastPathComponent const):
+        (WebCore::URL::port const):
+        (WebCore::URL::protocolHostAndPort const):
+        (WebCore::URL::path const):
+        (WebCore::URL::removePort):
+        (WebCore::URL::setPort):
+        (WebCore::URL::setHostAndPort):
+        (WebCore::URL::setPath):
+        * platform/URL.h:
+        (WebCore::URL::encode const):
+        (WebCore::URL::decode):
+        (WebCore::URL::hasPath const):
+        (WebCore::URL::pathStart const):
+        * platform/URLParser.cpp:
+        (WebCore::URLParser::copyBaseWindowsDriveLetter):
+        (WebCore::URLParser::urlLengthUntilPart):
+        (WebCore::URLParser::copyURLPartsUntil):
+        (WebCore::URLParser::shouldPopPath):
+        (WebCore::URLParser::popPath):
+        (WebCore::URLParser::parse):
+        (WebCore::URLParser::parsePort):
+        (WebCore::URLParser::parseHostAndPort):
+        (WebCore::URLParser::allValuesEqual):
+        (WebCore::URLParser::internalValuesConsistent):
+
+2018-07-11  Youenn Fablet  <youenn@apple.com>
+
+        Fix remaining Cross-Origin-Resource-Policy failures, if any
+        https://bugs.webkit.org/show_bug.cgi?id=186761
+        <rdar://problem/41209829>
+
+        Reviewed by Alex Christensen.
+
+        Add case-sensitive check for CORP header value, as per fetch specification.
+        Add HTTP->HTTPS check for same-site case, as per fetch specification.
+        https://fetch.spec.whatwg.org/#cross-origin-resource-policy-check
+
+        Test: imported/w3c/web-platform-tests/fetch/cross-origin-resource-policy/scheme-restriction.https.window.html
+
+        * loader/CrossOriginAccessControl.cpp:
+        (WebCore::shouldCrossOriginResourcePolicyCancelLoad):
+        * platform/network/HTTPParsers.cpp:
+        (WebCore::parseCrossOriginResourcePolicyHeader):
+
+2018-07-11  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] MIME type registry doesn't explicitly recognize *.xht
+        https://bugs.webkit.org/show_bug.cgi?id=187555
+
+        Reviewed by Konstantin Tokarev.
+
+        Follow-up to r233715 -- WinCairo bots are failing on *.xht layout tests as they lack a registry key for this filetype.
+        (Hopefully this is the last one to add.)
+
+        * platform/win/MIMETypeRegistryWin.cpp:
+        (WebCore::MIMETypeRegistry::getMIMETypeForExtension):
+        Add *.xht to the list of recognized filetypes.
+
 2018-07-11  Antoine Quint  <graouts@apple.com>
 
         [Web Animations] Make WPT test at interfaces/KeyframeEffect/processing-a-keyframes-argument-001.html pass reliably

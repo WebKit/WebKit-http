@@ -3,6 +3,6 @@ This test verifies that the HTTP referrer is hidden when navigating from a Micro
 
 
 --------
-Frame: '<!--frame1-->'
+Frame: '<!--framePath //<!--frame0-->-->'
 --------
 

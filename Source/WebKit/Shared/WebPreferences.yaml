@@ -1268,9 +1268,9 @@ ExperimentalPlugInSandboxProfilesEnabled:
 
 FullScreenEnabled:
   type: bool
-  defaultValue: DEFAULT_ENABLE_FULLSCREEN_API
+  defaultValue: false
   condition: ENABLE(FULLSCREEN_API)
-  visibleCondition: PLATFORM(IOS)
+  hidden: EXPERIMENTAL_FULLSCREEN_API_HIDDEN
   humanReadableName: "Fullscreen API"
   humanReadableDescription: "Fullscreen API"
   category: experimental
@@ -1283,3 +1283,12 @@ EncryptedMediaAPIEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   category: experimental
   condition: ENABLE(ENCRYPTED_MEDIA)
+
+ProcessSwapOnNavigationEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Swap Processes on Navigation"
+  humanReadableDescription: "Swap WebContent processes on cross-origin navigations"
+  category: experimental
+  webcoreBinding: none
+

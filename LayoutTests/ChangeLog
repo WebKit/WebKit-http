@@ -1,3 +1,254 @@
+2018-07-16  Truitt Savell  <tsavell@apple.com>
+
+        [ iOS ] Layout Test fast/forms/submit-change-fragment.html is a flaky Timeout
+        https://bugs.webkit.org/show_bug.cgi?id=187699
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2018-07-16  Truitt Savell  <tsavell@apple.com>
+
+        [ EWS ] http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html is Crashing on Win-EWS
+        https://bugs.webkit.org/show_bug.cgi?id=187700
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-07-14  Dirk Schulze  <krit@webkit.org>
+
+        [css-masking] Fully support -webkit-clip-path on SVG elements
+        https://bugs.webkit.org/show_bug.cgi?id=185829
+
+        Reviewed by Simon Fraser.
+
+        Test -webkit-clip-path element references on SVG elements. Make sure, -webkit-clip-path
+        contributes to hit testing for element references and basic shapes.
+
+        * svg/clip-path/webkit-clip-path-after-expected.svg: Added.
+        * svg/clip-path/webkit-clip-path-after.svg: Added.
+        * svg/clip-path/webkit-clip-path-before-expected.svg: Added.
+        * svg/clip-path/webkit-clip-path-before.svg: Added.
+        * svg/dynamic-updates/SVGClipPath-prefixed-influences-hitTesting-expected.txt: Added.
+        * svg/dynamic-updates/SVGClipPath-prefixed-influences-hitTesting.html: Added.
+        * svg/dynamic-updates/SVGClipPath-prefixed-path-influences-hitTesting-expected.txt: Added.
+        * svg/dynamic-updates/SVGClipPath-prefixed-path-influences-hitTesting.html: Added.
+        * svg/dynamic-updates/SVGClipPathElement-prefixed-css-transform-influences-hitTesting-expected.txt: Added.
+        * svg/dynamic-updates/SVGClipPathElement-prefixed-css-transform-influences-hitTesting.html: Added.
+        * svg/dynamic-updates/SVGClipPathElement-prefixed-transform-influences-hitTesting-expected.txt: Added.
+        * svg/dynamic-updates/SVGClipPathElement-prefixed-transform-influences-hitTesting.html: Added.
+
+2018-07-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add TestExpectations and baselines for iOS 12
+        https://bugs.webkit.org/show_bug.cgi?id=187628
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/ios-12/TestExpectations: Added.
+
+2018-07-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add TestExpectations and baselines for Mojave.
+        https://bugs.webkit.org/show_bug.cgi?id=187620
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/mac/TestExpectations:
+
+2018-07-13  John Wilander  <wilander@apple.com>
+
+        Flesh out WebSocket cookie tests to cover cookie policy for third-party resources
+        https://bugs.webkit.org/show_bug.cgi?id=187541
+        <rdar://problem/42048729>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/cookies/resources/cookie-utilities.js:
+            Added a function for setting a cookie in a WebSocket handshake.
+        * http/tests/websocket/tests/hybi/cookie_wsh.py:
+        (web_socket_do_extra_handshake):
+            Now sets the root path for new cookies so that they can be seen by
+            for example cookies/resources/echo-cookies.php.
+        * http/tests/websocket/tests/hybi/websocket-allowed-setting-cookie-as-third-party-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/websocket-allowed-setting-cookie-as-third-party.html: Added.
+        * http/tests/websocket/tests/hybi/websocket-blocked-from-setting-cookie-as-third-party-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/websocket-blocked-from-setting-cookie-as-third-party.html: Added.
+        * http/tests/websocket/tests/hybi/websocket-cookie-overwrite-behavior-expected.txt:
+        * http/tests/websocket/tests/hybi/websocket-cookie-overwrite-behavior.html:
+            Now tests under the condition where localhost as third-party is
+            allowed to set a new cookie as third party. It also makes sure to use
+            cookies with the path set to the root so that all cookies are visible.
+
+2018-07-13  Youenn Fablet  <youenn@apple.com>
+
+        Support connecting a MediaStreamAudioDestinationNode to RTCPeerConnection
+        https://bugs.webkit.org/show_bug.cgi?id=187627
+        <rdar://problem/35334400>
+
+        Reviewed by Jer Noble.
+
+        * webrtc/peer-connection-createMediaStreamDestination-expected.txt: Added.
+        * webrtc/peer-connection-createMediaStreamDestination.html: Added.
+
+2018-07-13  Truitt Savell  <tsavell@apple.com>
+
+        [ MacOS WK1 ] Layout Tests in media/media-fragments/ are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187557
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-07-13  Truitt Savell  <tsavell@apple.com>
+
+        [ WK2 ] Layout Test editing/selection/update-selection-by-style-change.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187649
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-07-13  Truitt Savell  <tsavell@apple.com>
+
+        [ MacOS Debug ] Layout Test inspector/view/asynchronous-layout.html is a Flaky Timeout
+        https://bugs.webkit.org/show_bug.cgi?id=187622
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Add a FrameLoaderClient willInjectUserScriptForFrame callback
+        https://bugs.webkit.org/show_bug.cgi?id=187565
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/contentextensions/injected-script-callback-expected.txt: Added.
+        * http/tests/contentextensions/injected-script-callback.html: Added.
+
+2018-07-11  Ross Kirsling  <ross.kirsling@sony.com>
+
+        UTF-16 XHTML files need svn:mime-type to be handled correctly by Windows SVN
+        https://bugs.webkit.org/show_bug.cgi?id=187571
+
+        Reviewed by Alex Christensen.
+
+        * dom/xhtml/level3/core/documentgetinputencoding03.xhtml:
+        * dom/xhtml/level3/core/entitygetinputencoding02.xhtml:
+        * dom/xhtml/level3/core/entitygetxmlversion02.xhtml:
+        * dom/xhtml/level3/core/external_foo.ent:
+        Added property svn:mime-type and removed property svn:eol-style (to align with documentgetxmlencoding03.xhtml).
+
+2018-07-12  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ and WPE gardening after r233765.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-07-12  Zalan Bujtas  <zalan@apple.com>
+
+        Newly added float should trigger full layout on the block.
+        https://bugs.webkit.org/show_bug.cgi?id=187251
+        <rdar://problem/41726137>
+
+        Reviewed by David Kilzer.
+
+        * fast/inline/new-float-needs-layout-when-line-is-dirty-expected.txt: Added.
+        * fast/inline/new-float-needs-layout-when-line-is-dirty.html: Added.
+
+2018-07-11  Youenn Fablet  <youenn@apple.com>
+
+        MediaDevices should derive from EventTarget in its IDL
+        https://bugs.webkit.org/show_bug.cgi?id=187575
+
+        Reviewed by Chris Dumez.
+
+        * fast/mediastream/MediaDevices-addEventListener-expected.txt: Added.
+        * fast/mediastream/MediaDevices-addEventListener.html: Added.
+
+2018-07-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Layout Test editing/selection/navigation-clears-editor-state.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187389
+
+        Reviewed by Wenson Hsieh.
+
+        Use 200 iterations like we did before r233701 and mark it as SLOW.
+
+        * TestExpectations:
+        * editing/selection/navigation-clears-editor-state.html:
+
+2018-07-11  Aditya Keerthi  <akeerthi@apple.com>
+
+        REGRESSION (231276): Attempting to copy an image fails
+        https://bugs.webkit.org/show_bug.cgi?id=187212
+        <rdar://problem/41540074>
+
+        Reviewed by Ryosuke Niwa.
+
+        Added test to ensure that we can copy a URL without a title, and the URL's
+        lastPathComponent appears like a file URL.
+
+        * editing/mac/pasteboard/can-copy-url-without-title-expected.txt: Added.
+        * editing/mac/pasteboard/can-copy-url-without-title.html: Added.
+        * platform/mac-wk1/TestExpectations: The added test is WK2-only due to webkit.org/b/187230.
+
+2018-07-11  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Unreviewed test gardening.
+
+        * platform/wincairo/TestExpectations:
+
+2018-07-11  Truitt Savell  <tsavell@apple.com>
+
+        Layout Test media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187420
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-07-11  Youenn Fablet  <youenn@apple.com>
+
+        Fix remaining Cross-Origin-Resource-Policy failures, if any
+        https://bugs.webkit.org/show_bug.cgi?id=186761
+        <rdar://problem/41209829>
+
+        Reviewed by Alex Christensen.
+
+        Remove redundant tests with WPT.
+
+        * http/wpt/cross-origin-resource-policy/fetch-expected.txt: Removed.
+        * http/wpt/cross-origin-resource-policy/fetch-in-iframe-expected.txt: Removed.
+        * http/wpt/cross-origin-resource-policy/fetch-in-iframe.html: Removed.
+        * http/wpt/cross-origin-resource-policy/fetch.html: Removed.
+        * http/wpt/cross-origin-resource-policy/iframe-loads-expected.txt: Removed.
+        * http/wpt/cross-origin-resource-policy/iframe-loads.html: Removed.
+        * http/wpt/cross-origin-resource-policy/image-loads-expected.txt: Removed.
+        * http/wpt/cross-origin-resource-policy/image-loads.html: Removed.
+        * http/wpt/cross-origin-resource-policy/resources/hello.py: Removed.
+        * http/wpt/cross-origin-resource-policy/resources/iframe.py: Removed.
+        * http/wpt/cross-origin-resource-policy/resources/iframeFetch.html: Removed.
+        * http/wpt/cross-origin-resource-policy/resources/redirect.py: Removed.
+        * http/wpt/cross-origin-resource-policy/resources/script.py: Removed.
+        * http/wpt/cross-origin-resource-policy/script-loads-expected.txt: Removed.
+        * http/wpt/cross-origin-resource-policy/script-loads.html: Removed.
+
+2018-07-11  Jer Noble  <jer.noble@apple.com>
+
+        Disable all network caching for HLS streams.
+        https://bugs.webkit.org/show_bug.cgi?id=187544
+        <rdar://problem/41863600>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/cache/disk-cache/disk-cache-media-small-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-media-small.html:
+
 2018-07-11  Ms2ger  <Ms2ger@igalia.com>
 
         [GTK] Unreviewed test gardening
