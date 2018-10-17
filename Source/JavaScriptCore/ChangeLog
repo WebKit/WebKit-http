@@ -1,3 +1,496 @@
+2018-07-10  Mark Lam  <mark.lam@apple.com>
+
+        constructArray() should always allocate the requested length.
+        https://bugs.webkit.org/show_bug.cgi?id=187543
+        <rdar://problem/41947884>
+
+        Reviewed by Saam Barati.
+
+        Currently, it does not when we're having a bad time.  We fix this by switching
+        back to using tryCreateUninitializedRestricted() exclusively in constructArray().
+        If we detect that a structure transition is possible before we can initialize
+        the butterfly, we'll go ahead and eagerly initialize the rest of the butterfly.
+        We will introduce JSArray::eagerlyInitializeButterfly() to handle this.
+
+        Also enhanced the DisallowScope and ObjectInitializationScope to support this
+        eager initialization when needed.
+
+        * dfg/DFGOperations.cpp:
+        - the client of operationNewArrayWithSizeAndHint() (in FTL generated code) expects
+          the array allocation to always succeed.  Adding this RELEASE_ASSERT here makes
+          it clearer that we encountered an OutOfMemory condition instead of failing in FTL
+          generated code, which will appear as a generic null pointer dereference.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::concatAppendOne):
+        - the code here clearly wants to check for an allocation failure.  Switched to
+          using JSArray::tryCreate() instead of JSArray::create().
+
+        * runtime/DisallowScope.h:
+        (JSC::DisallowScope::disable):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::tryCreateUninitializedRestricted):
+        (JSC::JSArray::eagerlyInitializeButterfly):
+        (JSC::constructArray):
+        * runtime/JSArray.h:
+        * runtime/ObjectInitializationScope.cpp:
+        (JSC::ObjectInitializationScope::notifyInitialized):
+        * runtime/ObjectInitializationScope.h:
+        (JSC::ObjectInitializationScope::notifyInitialized):
+
+2018-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Remove getTypedArrayImpl
+        https://bugs.webkit.org/show_bug.cgi?id=187338
+
+        Reviewed by Mark Lam.
+
+        getTypedArrayImpl is overridden only by typed arrays and DataView. Since the number of these classes
+        are limited, we do not need to add this function to MethodTable: dispatching it in JSArrayBufferView is fine.
+        This patch removes getTypedArrayImpl from MethodTable, and moves it to JSArrayBufferView.
+
+        * runtime/ClassInfo.h:
+        * runtime/GenericTypedArrayView.h:
+        (JSC::GenericTypedArrayView::data const): Deleted.
+        (JSC::GenericTypedArrayView::set): Deleted.
+        (JSC::GenericTypedArrayView::setRange): Deleted.
+        (JSC::GenericTypedArrayView::zeroRange): Deleted.
+        (JSC::GenericTypedArrayView::zeroFill): Deleted.
+        (JSC::GenericTypedArrayView::length const): Deleted.
+        (JSC::GenericTypedArrayView::item const): Deleted.
+        (JSC::GenericTypedArrayView::set const): Deleted.
+        (JSC::GenericTypedArrayView::setNative const): Deleted.
+        (JSC::GenericTypedArrayView::getRange): Deleted.
+        (JSC::GenericTypedArrayView::checkInboundData const): Deleted.
+        (JSC::GenericTypedArrayView::internalByteLength const): Deleted.
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::possiblySharedImpl):
+        * runtime/JSArrayBufferView.h:
+        * runtime/JSArrayBufferViewInlines.h:
+        (JSC::JSArrayBufferView::possiblySharedImpl): Deleted.
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::getTypedArrayImpl): Deleted.
+        * runtime/JSCell.h:
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::getTypedArrayImpl): Deleted.
+        * runtime/JSDataView.h:
+        * runtime/JSGenericTypedArrayView.h:
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::getTypedArrayImpl): Deleted.
+
+2018-07-10  Keith Miller  <keith_miller@apple.com>
+
+        hasOwnProperty returns true for out of bounds property index on TypedArray
+        https://bugs.webkit.org/show_bug.cgi?id=187520
+
+        Reviewed by Saam Barati.
+
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::getOwnPropertySlot):
+
+2018-07-10  Michael Saboff  <msaboff@apple.com>
+
+        DFG JIT: compileMathIC produces incorrect machine code
+        https://bugs.webkit.org/show_bug.cgi?id=187537
+
+        Reviewed by Saam Barati.
+
+        Added checks for constant multipliers in JITMulGenerator::generateInline().  If we have a constant multiplier,
+        fall back to the fast path generator which handles such cases.
+
+        * jit/JITMulGenerator.cpp:
+        (JSC::JITMulGenerator::generateInline):
+
+2018-07-10  Filip Pizlo  <fpizlo@apple.com>
+
+        Change the reoptimization backoff base to 1.3 from 2
+        https://bugs.webkit.org/show_bug.cgi?id=187540
+
+        Reviewed by Saam Barati.
+        
+        I have data that hints at this being a speed-up on JetStream, ARES-6, and Speedometer2.
+        
+        I also have data that hints that a backoff base of 1 might be even better, but I think that
+        we want to keep *some* backoff in case we find ourselves in an unmitigated recomp loop.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::reoptimizationRetryCounter const):
+        (JSC::CodeBlock::countReoptimization):
+        (JSC::CodeBlock::adjustedCounterValue):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+
+2018-07-10  Mark Lam  <mark.lam@apple.com>
+
+        [32-bit JSC tests] ASSERTION FAILED: !butterfly->propertyStorage()[-I - 1].get() under JSC::ObjectInitializationScope::verifyPropertiesAreInitialized.
+        https://bugs.webkit.org/show_bug.cgi?id=187362
+        <rdar://problem/42027210>
+
+        Reviewed by Saam Barati.
+
+        On 32-bit targets, a 0 valued JSValue is not the empty JSValue, but it is a valid
+        value to use for initializing unused properties.  Updated an assertion to account
+        for this.
+
+        * runtime/ObjectInitializationScope.cpp:
+        (JSC::ObjectInitializationScope::verifyPropertiesAreInitialized):
+
+2018-07-10  Michael Saboff  <msaboff@apple.com>
+
+        YARR: . doesn't match non-BMP Unicode characters in some cases
+        https://bugs.webkit.org/show_bug.cgi?id=187248
+
+        Reviewed by Geoffrey Garen.
+
+        The safety check in optimizeAlternative() for moving character classes that only consist of BMP
+        characters did not take into account that the character class is inverted.  In this case, we
+        represent '.' as "not a newline" using the newline character class with an inverted check.
+        Clearly that includes non-BMP characters.
+
+        The fix is to check that the character class doesn't have non-BMP characters AND it isn't an
+        inverted use of that character class.
+
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::optimizeAlternative):
+
+2018-07-09  Mark Lam  <mark.lam@apple.com>
+
+        Add --traceLLIntExecution and --traceLLIntSlowPath options.
+        https://bugs.webkit.org/show_bug.cgi?id=187479
+
+        Reviewed by Yusuke Suzuki and Saam Barati.
+
+        These options are only available if LLINT_TRACING is enabled in LLIntCommon.h.
+
+        The details:
+        1. LLINT_TRACING consolidates and replaces LLINT_EXECUTION_TRACING and LLINT_SLOW_PATH_TRACING.
+        2. Tracing is now guarded behind runtime options --traceLLIntExecution and --traceLLIntSlowPath.
+           This makes it such that enabling LLINT_TRACING doesn't means that we'll
+           continually spammed with logging until we rebuild.
+        3. Fixed slow path LLINT tracing to work with exception check validation.
+
+        * llint/LLIntCommon.h:
+        * llint/LLIntExceptions.cpp:
+        (JSC::LLInt::returnToThrow):
+        (JSC::LLInt::callToThrow):
+        * llint/LLIntOfflineAsmConfig.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::slowPathLog):
+        (JSC::LLInt::slowPathLn):
+        (JSC::LLInt::slowPathLogF):
+        (JSC::LLInt::slowPathLogLn):
+        (JSC::LLInt::llint_trace_operand):
+        (JSC::LLInt::llint_trace_value):
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        (JSC::LLInt::traceFunctionPrologue):
+        (JSC::LLInt::handleHostCall):
+        (JSC::LLInt::setUpCall):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.asm:
+        * runtime/CommonSlowPathsExceptions.cpp:
+        (JSC::CommonSlowPaths::interpreterThrowInCaller):
+        * runtime/Options.cpp:
+        (JSC::Options::isAvailable):
+        * runtime/Options.h:
+
+2018-07-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Embed RegExp into constant buffer in UnlinkedCodeBlock and CodeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=187477
+
+        Reviewed by Mark Lam.
+
+        Before this patch, RegExp* is specially held in m_regexp buffer which resides in CodeBlock's RareData.
+        However, it is not necessary since JSCells can be reside in a constant buffer.
+        This patch embeds RegExp* to a constant buffer in UnlinkedCodeBlock and CodeBlock. And remove RegExp
+        vector from RareData.
+
+        We also move the code of dumping RegExp from BytecodeDumper to RegExp::dumpToStream.
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        (JSC::BytecodeDumper<Block>::dumpBlock):
+        (JSC::regexpToSourceString): Deleted.
+        (JSC::regexpName): Deleted.
+        (JSC::BytecodeDumper<Block>::dumpRegExps): Deleted.
+        * bytecode/BytecodeDumper.h:
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::regexp const): Deleted.
+        (JSC::CodeBlock::numberOfRegExps const): Deleted.
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::visitChildren):
+        (JSC::UnlinkedCodeBlock::shrinkToFit):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addRegExp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfRegExps const): Deleted.
+        (JSC::UnlinkedCodeBlock::regexp const): Deleted.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitNewRegExp):
+        (JSC::BytecodeGenerator::addRegExp): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_new_regexp):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::dumpInContextAssumingStructure const):
+        * runtime/RegExp.cpp:
+        (JSC::regexpToSourceString):
+        (JSC::RegExp::dumpToStream):
+        * runtime/RegExp.h:
+
+2018-07-09  Brian Burg  <bburg@apple.com>
+
+        REGRESSION: Web Inspector no longer pauses in internal injected scripts like WDFindNodes.js
+        https://bugs.webkit.org/show_bug.cgi?id=187350
+        <rdar://problem/41728249>
+
+        Reviewed by Matt Baker.
+
+        Add a new command that toggles whether or not to blackbox internal scripts.
+        If blackboxed, the scripts will not be shown to the frontend and the debugger will
+        not pause in source frames from blackboxed scripts. Sometimes we want to break into
+        those scripts when debugging Web Inspector, WebDriver, or other WebKit-internal code
+        that injects scripts.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::setPauseForInternalScripts):
+        (Inspector::InspectorDebuggerAgent::didParseSource):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/protocol/Debugger.json:
+
+2018-07-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Make some data members of UnlinkedCodeBlock private
+        https://bugs.webkit.org/show_bug.cgi?id=187467
+
+        Reviewed by Mark Lam.
+
+        This patch makes m_numVars, m_numCalleeLocals, and m_numParameters of UnlinkedCodeBlock private.
+        We also remove m_numCapturedVars since it is no longer used.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * bytecode/CodeBlock.h:
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock):
+        * bytecode/UnlinkedCodeBlock.h:
+
+2018-07-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize layout of AccessCase / ProxyableAccessCase to reduce size of ProxyableAccessCase
+        https://bugs.webkit.org/show_bug.cgi?id=187465
+
+        Reviewed by Keith Miller.
+
+        ProxyableAccessCase is allocated so frequently and it is persisted so long. Reducing the size
+        of ProxyableAccessCase can reduce the footprint of many web sites including nytimes.com.
+
+        This patch uses a bit complicated layout to reduce ProxyableAccessCase. We add unused bool member
+        in AccessCase's padding, and use it in ProxyableAccessCase. By doing so, we can reduce the size
+        of ProxyableAccessCase from 56 to 48. And it also reduces the size of GetterSetterAccessCase
+        from 104 to 96 since it inherits ProxyableAccessCase.
+
+        * bytecode/AccessCase.h:
+        (JSC::AccessCase::viaProxy const):
+        (JSC::AccessCase::AccessCase):
+        * bytecode/ProxyableAccessCase.cpp:
+        (JSC::ProxyableAccessCase::ProxyableAccessCase):
+        * bytecode/ProxyableAccessCase.h:
+
+2018-07-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for debug builds after r233630
+        https://bugs.webkit.org/show_bug.cgi?id=187441
+
+        * jit/JIT.cpp:
+        (JSC::JIT::frameRegisterCountFor):
+        * llint/LLIntEntrypoint.cpp:
+        (JSC::LLInt::frameRegisterCountFor):
+
+2018-07-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize layout of CodeBlock to reduce padding
+        https://bugs.webkit.org/show_bug.cgi?id=187441
+
+        Reviewed by Mark Lam.
+
+        Arrange the order of members to reduce the size of CodeBlock from 552 to 544.
+        We also make SourceCodeRepresentation 1 byte since CodeBlock has a vector of this,
+        Vector<SourceCodeRepresentation> m_constantsSourceCodeRepresentation.
+
+        We also move m_numCalleeLocals and m_numVars from `public` to `private` in CodeBlock.
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::dumpBlock):
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::numVars const):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::numVars const):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::ByteCodeParser):
+        (JSC::DFG::ByteCodeParser::flushForTerminalImpl):
+        (JSC::DFG::ByteCodeParser::handleRecursiveTailCall):
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        (JSC::DFG::ByteCodeParser::handlePutById):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::forAllLocalsLiveInBytecode):
+        * dfg/DFGOSREntrypointCreationPhase.cpp:
+        (JSC::DFG::OSREntrypointCreationPhase::run):
+        * dfg/DFGVariableEventStream.cpp:
+        (JSC::DFG::VariableEventStream::reconstruct const):
+        * ftl/FTLOSREntry.cpp:
+        (JSC::FTL::prepareOSREntry):
+        * ftl/FTLState.cpp:
+        (JSC::FTL::State::State):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::dumpRegisters):
+        * jit/JIT.cpp:
+        (JSC::JIT::frameRegisterCountFor):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_enter):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_enter):
+        * jit/JITOperations.cpp:
+        * llint/LLIntEntrypoint.cpp:
+        (JSC::LLInt::frameRegisterCountFor):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::traceFunctionPrologue):
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/JSCJSValue.h:
+
+2018-07-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize padding of UnlinkedCodeBlock to shrink
+        https://bugs.webkit.org/show_bug.cgi?id=187448
+
+        Reviewed by Saam Barati.
+
+        We optimize the size of CodeType and TriState. And we arrange the layout of UnlinkedCodeBlock.
+        These optimizations reduce the size of UnlinkedCodeBlock from 304 to 288.
+
+        * bytecode/CodeType.h:
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::codeType const):
+        (JSC::UnlinkedCodeBlock::didOptimize const):
+        (JSC::UnlinkedCodeBlock::setDidOptimize):
+        * bytecode/VirtualRegister.h:
+
+2018-07-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize padding of InferredTypeTable by using cellLock
+        https://bugs.webkit.org/show_bug.cgi?id=187447
+
+        Reviewed by Mark Lam.
+
+        Use cellLock() in InferredTypeTable to guard changes of internal structures.
+        This is the same usage to SparseArrayValueMap. By using cellLock(), we can
+        reduce the size of InferredTypeTable from 40 to 32.
+
+        * runtime/InferredTypeTable.cpp:
+        (JSC::InferredTypeTable::visitChildren):
+        (JSC::InferredTypeTable::get):
+        (JSC::InferredTypeTable::willStoreValue):
+        (JSC::InferredTypeTable::makeTop):
+        * runtime/InferredTypeTable.h:
+        Using enum class and using. And remove `isEmpty()` since it is not used.
+
+        * runtime/Structure.h:
+
+2018-07-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize layout of SourceProvider to reduce padding
+        https://bugs.webkit.org/show_bug.cgi?id=187440
+
+        Reviewed by Mark Lam.
+
+        Arrange members of SourceProvider to reduce the size from 80 to 72.
+
+        * parser/SourceProvider.cpp:
+        (JSC::SourceProvider::SourceProvider):
+        * parser/SourceProvider.h:
+
+2018-07-08  Mark Lam  <mark.lam@apple.com>
+
+        PropertyTable::skipDeletedEntries() should guard against iterating past the table end.
+        https://bugs.webkit.org/show_bug.cgi?id=187444
+        <rdar://problem/41282849>
+
+        Reviewed by Saam Barati.
+
+        PropertyTable supports C++ iteration by offering begin() and end() methods, and
+        an iterator class.  The begin() methods and the iterator operator++() method uses
+        PropertyTable::skipDeletedEntries() to skip over deleted entries in the table.
+        However, PropertyTable::skipDeletedEntries() does not prevent the iteration
+        pointer from being incremented past the end of the table.  As a result, we can
+        iterate past the end of the table.  Note that the C++ iteration protocol tests
+        for the iterator not being equal to the end() value.  It does not do a <= test.
+        If the iterator ever shoots past end, the loop will effectively not terminate.
+
+        This issue can manifest if and only if the last entry in the table is a deleted
+        one, and the key field of the PropertyMapEntry shaped space at the end of the
+        table (the one beyond the last) contains a 1 (i.e. PROPERTY_MAP_DELETED_ENTRY_KEY)
+        value.
+
+        No test because manifesting this issue requires uncontrollable happenstance where
+        memory just beyond the end of the table looks like a deleted entry.
+
+        * runtime/PropertyMapHashTable.h:
+        (JSC::PropertyTable::begin):
+        (JSC::PropertyTable::end):
+        (JSC::PropertyTable::begin const):
+        (JSC::PropertyTable::end const):
+        (JSC::PropertyTable::skipDeletedEntries):
+
+2018-07-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize layout of SymbolTable to reduce padding
+        https://bugs.webkit.org/show_bug.cgi?id=187437
+
+        Reviewed by Mark Lam.
+
+        Arrange the layout of SymbolTable to reduce the size from 88 to 72.
+
+        * runtime/SymbolTable.h:
+
+2018-07-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize layout of RegExp to reduce padding
+        https://bugs.webkit.org/show_bug.cgi?id=187438
+
+        Reviewed by Mark Lam.
+
+        Reduce the size of RegExp from 168 to 144.
+
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::RegExp):
+        * runtime/RegExp.h:
+        * runtime/RegExpKey.h:
+        * yarr/YarrErrorCode.h:
+
+2018-07-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize layout of ValueProfile to reduce padding
+        https://bugs.webkit.org/show_bug.cgi?id=187439
+
+        Reviewed by Mark Lam.
+
+        Reduce the size of ValueProfile from 40 to 32 by reordering members.
+
+        * bytecode/ValueProfile.h:
+        (JSC::ValueProfileBase::ValueProfileBase):
+
 2018-07-05  Saam Barati  <sbarati@apple.com>
 
         ProgramExecutable may be collected as we checkSyntax on it

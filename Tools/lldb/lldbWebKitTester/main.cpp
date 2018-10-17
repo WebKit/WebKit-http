@@ -23,6 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "DumpClassLayoutTesting.h"
 #include <stdio.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
@@ -65,6 +66,7 @@ static void testSummaryProviders()
 
 int main(int argc, const char* argv[])
 {
+    avoidClassDeadStripping();
     testSummaryProviders();
     fprintf(stderr, "This executable does nothing and is only meant for debugging lldb_webkit.py.\n");
     return 0;

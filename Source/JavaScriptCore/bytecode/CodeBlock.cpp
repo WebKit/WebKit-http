@@ -297,8 +297,6 @@ private:
 CodeBlock::CodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, CodeBlock& other)
     : JSCell(*vm, structure)
     , m_globalObject(other.m_globalObject)
-    , m_numCalleeLocals(other.m_numCalleeLocals)
-    , m_numVars(other.m_numVars)
     , m_shouldAlwaysBeInlined(true)
 #if ENABLE(JIT)
     , m_capabilityLevelState(DFG::CapabilityLevelNotSet)
@@ -309,11 +307,13 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, CodeBlock
     , m_isConstructor(other.m_isConstructor)
     , m_isStrictMode(other.m_isStrictMode)
     , m_codeType(other.m_codeType)
-    , m_unlinkedCode(*other.vm(), this, other.m_unlinkedCode.get())
+    , m_numCalleeLocals(other.m_numCalleeLocals)
+    , m_numVars(other.m_numVars)
     , m_numberOfArgumentsToSkip(other.m_numberOfArgumentsToSkip)
     , m_hasDebuggerStatement(false)
     , m_steppingMode(SteppingModeDisabled)
     , m_numBreakpoints(0)
+    , m_unlinkedCode(*other.vm(), this, other.m_unlinkedCode.get())
     , m_ownerExecutable(*other.vm(), this, other.m_ownerExecutable.get())
     , m_poisonedVM(other.m_poisonedVM)
     , m_instructions(other.m_instructions)
@@ -361,8 +361,6 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecut
     JSScope* scope, RefPtr<SourceProvider>&& sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
     : JSCell(*vm, structure)
     , m_globalObject(*vm, this, scope->globalObject(*vm))
-    , m_numCalleeLocals(unlinkedCodeBlock->m_numCalleeLocals)
-    , m_numVars(unlinkedCodeBlock->m_numVars)
     , m_shouldAlwaysBeInlined(true)
 #if ENABLE(JIT)
     , m_capabilityLevelState(DFG::CapabilityLevelNotSet)
@@ -373,10 +371,12 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecut
     , m_isConstructor(unlinkedCodeBlock->isConstructor())
     , m_isStrictMode(unlinkedCodeBlock->isStrictMode())
     , m_codeType(unlinkedCodeBlock->codeType())
-    , m_unlinkedCode(*vm, this, unlinkedCodeBlock)
+    , m_numCalleeLocals(unlinkedCodeBlock->numCalleeLocals())
+    , m_numVars(unlinkedCodeBlock->numVars())
     , m_hasDebuggerStatement(false)
     , m_steppingMode(SteppingModeDisabled)
     , m_numBreakpoints(0)
+    , m_unlinkedCode(*vm, this, unlinkedCodeBlock)
     , m_ownerExecutable(*vm, this, ownerExecutable)
     , m_poisonedVM(vm)
     , m_thisRegister(unlinkedCodeBlock->thisRegister())
@@ -2136,7 +2136,6 @@ void CodeBlock::noticeIncomingCall(ExecState* callerFrame)
 unsigned CodeBlock::reoptimizationRetryCounter() const
 {
 #if ENABLE(JIT)
-    ASSERT(m_reoptimizationRetryCounter <= Options::reoptimizationRetryCounterMax());
     return m_reoptimizationRetryCounter;
 #else
     return 0;
@@ -2174,8 +2173,6 @@ size_t CodeBlock::calleeSaveSpaceAsVirtualRegisters()
 void CodeBlock::countReoptimization()
 {
     m_reoptimizationRetryCounter++;
-    if (m_reoptimizationRetryCounter > Options::reoptimizationRetryCounterMax())
-        m_reoptimizationRetryCounter = Options::reoptimizationRetryCounterMax();
 }
 
 unsigned CodeBlock::numberOfDFGCompiles()
@@ -2294,7 +2291,7 @@ int32_t CodeBlock::adjustedCounterValue(int32_t desiredThreshold)
     return clipThreshold(
         static_cast<double>(desiredThreshold) *
         optimizationThresholdScalingFactor() *
-        (1 << reoptimizationRetryCounter()));
+        pow(Options::reoptimizationBackoffBase(), reoptimizationRetryCounter()));
 }
 
 bool CodeBlock::checkIfOptimizationThresholdReached()

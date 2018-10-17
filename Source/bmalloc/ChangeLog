@@ -1,3 +1,54 @@
+2018-07-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r233547 and r233550.
+        https://bugs.webkit.org/show_bug.cgi?id=187497
+
+        Introduced flakiness for media/fullscreen-* tests on mac-wk1
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Disable IsoHeaps when Gigacage is off"
+        https://bugs.webkit.org/show_bug.cgi?id=187160
+        https://trac.webkit.org/changeset/233547
+
+        "Build fix (r233547): Disable IsoHeaps when Gigacage is off"
+        https://bugs.webkit.org/show_bug.cgi?id=187160
+        https://trac.webkit.org/changeset/233550
+
+2018-07-05  David Kilzer  <ddkilzer@apple.com>
+
+        Build fix (r233547): Disable IsoHeaps when Gigacage is off
+        <https://webkit.org/b/187160>
+
+        * bmalloc/PerThread.cpp: Add #if !HAVE_PTHREAD_MACHDEP_H/#endif
+        around variables only used when that macro is 0.  Include what
+        you use: Cache.h and Heap.h.
+        * bmalloc/PerThread.h: Include <memory> for std::once_flag.
+
+2018-07-05  Michael Saboff  <msaboff@apple.com>
+
+        Disable IsoHeaps when Gigacage is off
+        https://bugs.webkit.org/show_bug.cgi?id=187160
+
+        Reviewed by Saam Barati.
+
+        Updated determineMallocFallbackState to base enabling of Iso Heaps on Gigacage 
+        being enabled.  We do this because if Gigacage is disabled, it may be due to lack
+        of address space.
+
+        To work around a compiler issue uncovered by the change above, I added explicit
+        instantiation of PerThread's static variables.  Defined the same explicit
+        instantiated static variables with export scope in the new file PerThread.cpp
+        to eliminate separate variables allocations in each linked framework / library.
+
+        * CMakeLists.txt:
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/IsoTLS.cpp:
+        (bmalloc::IsoTLS::determineMallocFallbackState):
+        * bmalloc/PerThread.cpp: Added.
+        * bmalloc/PerThread.h:
+
 2018-07-04  Tim Horton  <timothy_horton@apple.com>
 
         Introduce PLATFORM(IOSMAC)

@@ -1059,7 +1059,7 @@ ConstantPropertiesEnabled:
 
 CrossOriginWindowPolicySupportEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: false
 
 SubresourceIntegrityEnabled:
   type: bool
@@ -1256,6 +1256,15 @@ ServerTimingEnabled:
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
   webcoreName: serverTimingEnabled
+
+ExperimentalPlugInSandboxProfilesEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Sandbox Plug-Ins"
+  humanReadableDescription: "Enable Plug-In sandboxing"
+  category: debug
+  webcoreBinding: RuntimeEnabledFeatures
+  webcoreName: experimentalPlugInSandboxProfilesEnabled
 
 FullScreenEnabled:
   type: bool

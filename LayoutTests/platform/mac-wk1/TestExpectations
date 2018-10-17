@@ -111,6 +111,7 @@ editing/secure-input/reset-state-on-navigation.html [ Failure ]
 
 # Plug-in blocking callback doesn't exist in WebKit1.
 plugins/unavailable-plugin-indicator-obscurity.html
+http/tests/plugins/plugin-allow-then-reload.html [ Skip ]
 
 http/tests/plugins/nounsupported-plugin.html [ Skip ]
 http/tests/plugins/supported-plugin-all-origin-visibility.html [ Skip ]
@@ -427,6 +428,8 @@ webkit.org/b/170877 [ Debug ] webgl/1.0.2/conformance/glsl/misc/shader-with-rese
 
 webkit.org/b/180554 imported/w3c/web-platform-tests/XMLHttpRequest/event-upload-progress-crossorigin.htm [ Skip ]
 
+webkit.org/b/187372 imported/w3c/web-platform-tests/IndexedDB/interfaces.any.worker.html [ Pass Timeout Slow ]
+
 # Beacon is not supported on WK1.
 http/tests/blink/sendbeacon/ [ Skip ]
 http/tests/inspector/network/beacon-type.html [ Skip ]
@@ -561,3 +564,5 @@ webkit.org/b/184458 media/remote-control-command-is-user-gesture.html [ Pass Tim
 webkit.org/b/185404 http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-main-frame.html [ Pass Failure ]
 
 webkit.org/b/186581 [ Debug ] fast/parser/xml-error-adopted.xml [ Timeout Pass ]
+
+webkit.org/b/187522 [ Debug ] media/media-fragments/TC0015.html [ Pass Failure ]

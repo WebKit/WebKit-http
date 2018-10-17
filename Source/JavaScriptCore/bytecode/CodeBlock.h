@@ -151,6 +151,8 @@ public:
 
     int numCalleeLocals() const { return m_numCalleeLocals; }
 
+    int numVars() const { return m_numVars; }
+
     int* addressOfNumParameters() { return &m_numParameters; }
     static ptrdiff_t offsetOfNumParameters() { return OBJECT_OFFSETOF(CodeBlock, m_numParameters); }
 
@@ -558,9 +560,6 @@ public:
     int numberOfFunctionDecls() { return m_functionDecls.size(); }
     FunctionExecutable* functionExpr(int index) { return m_functionExprs[index].get(); }
     
-    RegExp* regexp(int index) const { return m_unlinkedCode->regexp(index); }
-    unsigned numberOfRegExps() const { return m_unlinkedCode->numberOfRegExps(); }
-
     const Vector<BitVector>& bitVectors() const { return m_unlinkedCode->bitVectors(); }
     const BitVector& bitVector(size_t i) { return m_unlinkedCode->bitVector(i); }
 
@@ -793,11 +792,6 @@ public:
 
     bool wasCompiledWithDebuggingOpcodes() const { return m_unlinkedCode->wasCompiledWithDebuggingOpcodes(); }
     
-    // FIXME: Make these remaining members private.
-
-    int m_numCalleeLocals;
-    int m_numVars;
-    
     // This is intentionally public; it's the responsibility of anyone doing any
     // of the following to hold the lock:
     //
@@ -948,7 +942,8 @@ private:
     void insertBasicBlockBoundariesForControlFlowProfiler(RefCountedArray<Instruction>&);
     void ensureCatchLivenessIsComputedForBytecodeOffsetSlow(unsigned);
 
-    WriteBarrier<UnlinkedCodeBlock> m_unlinkedCode;
+    int m_numCalleeLocals;
+    int m_numVars;
     int m_numParameters;
     int m_numberOfArgumentsToSkip { 0 };
     union {
@@ -959,6 +954,7 @@ private:
             unsigned m_numBreakpoints : 30;
         };
     };
+    WriteBarrier<UnlinkedCodeBlock> m_unlinkedCode;
     WriteBarrier<ExecutableBase> m_ownerExecutable;
     WriteBarrier<ExecutableToCodeBlockEdge> m_ownerEdge;
     Poisoned<CodeBlockPoison, VM*> m_poisonedVM;

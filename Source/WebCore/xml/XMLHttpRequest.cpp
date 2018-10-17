@@ -579,7 +579,7 @@ ExceptionOr<void> XMLHttpRequest::createRequest()
         request.setHTTPHeaderFields(m_requestHeaders);
 
     ThreadableLoaderOptions options;
-    options.sendLoadCallbacks = SendCallbacks;
+    options.sendLoadCallbacks = SendCallbackPolicy::SendCallbacks;
     // The presence of upload event listeners forces us to use preflighting because POSTing to an URL that does not
     // permit cross origin requests should look exactly like POSTing to an URL that does not respond at all.
     options.preflightPolicy = m_uploadListenerFlag ? PreflightPolicy::Force : PreflightPolicy::Consider;
@@ -1115,7 +1115,7 @@ void XMLHttpRequest::suspend(ReasonForSuspension reason)
         m_dispatchErrorOnResuming = true;
     }
 
-    if (reason == ActiveDOMObject::PageCache && m_loader) {
+    if (reason == ReasonForSuspension::PageCache && m_loader) {
         // Going into PageCache, abort the request and dispatch a network error on resuming.
         genericError();
         m_dispatchErrorOnResuming = true;

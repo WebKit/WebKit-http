@@ -33,9 +33,9 @@ PASS A KeyframeEffectReadOnly can be constructed with a one property two value p
 PASS A KeyframeEffectReadOnly constructed with a one property two value property-indexed keyframes specification where the second value is invalid roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with a single offset 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with a single offset roundtrips 
-FAIL A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets assert_equals: value for 'computedOffset' on ComputedKeyframe #1 expected 0.25 but got 0.45000000000000007
+PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an array of offsets roundtrips 
-FAIL A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets that is too short assert_equals: value for 'computedOffset' on ComputedKeyframe #1 expected 0.25 but got 0.5
+PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets that is too short 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an array of offsets that is too short roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets that is too long 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an array of offsets that is too long roundtrips 
@@ -43,9 +43,9 @@ PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyfram
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an empty array of offsets roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets with an embedded null value 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an array of offsets with an embedded null value roundtrips 
-FAIL A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets with a trailing null value assert_equals: value for 'computedOffset' on ComputedKeyframe #1 expected 0.25 but got 0.5
+PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets with a trailing null value 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an array of offsets with a trailing null value roundtrips 
-FAIL A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets with leading and trailing null values assert_equals: value for 'computedOffset' on ComputedKeyframe #1 expected 0.25 but got 0.5
+PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets with leading and trailing null values 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an array of offsets with leading and trailing null values roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets with adjacent null values 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an array of offsets with adjacent null values roundtrips 
@@ -53,7 +53,7 @@ PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyfram
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an array of offsets with all null values (and too many at that) roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with a single null offset 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with a single null offset roundtrips 
-FAIL A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets that is not strictly ascending in the unused part of the array assert_equals: value for 'computedOffset' on ComputedKeyframe #1 expected 0.2 but got 0.4
+PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of offsets that is not strictly ascending in the unused part of the array 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an array of offsets that is not strictly ascending in the unused part of the array roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe without any specified easing 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe without any specified easing roundtrips 
@@ -61,7 +61,7 @@ PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyfram
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with a single easing roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of easings 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an array of easings roundtrips 
-FAIL A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of easings that is too short assert_equals: value for 'easing' on ComputedKeyframe #2 expected "ease-in" but got "ease-out"
+PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with an array of easings that is too short 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with an array of easings that is too short roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with a single-element array of easings 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with a single-element array of easings roundtrips 
@@ -73,7 +73,7 @@ PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyfram
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with a single composite operation roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with a composite array 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with a composite array roundtrips 
-FAIL A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with a composite array that is too short assert_equals: value for 'composite' on ComputedKeyframe #2 expected "add" but got "replace"
+PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with a composite array that is too short 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with a composite array that is too short roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a property-indexed keyframe with a composite array that is too long 
 PASS A KeyframeEffectReadOnly constructed with a property-indexed keyframe with a composite array that is too long roundtrips 
@@ -99,12 +99,12 @@ PASS A KeyframeEffectReadOnly can be constructed with a keyframe sequence with a
 PASS A KeyframeEffectReadOnly constructed with a keyframe sequence with a CSS variable reference roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a keyframe sequence with a CSS variable reference in a shorthand property 
 PASS A KeyframeEffectReadOnly constructed with a keyframe sequence with a CSS variable reference in a shorthand property roundtrips 
-FAIL A KeyframeEffectReadOnly can be constructed with a keyframe sequence with duplicate values for a given interior offset Type error
-FAIL A KeyframeEffectReadOnly constructed with a keyframe sequence with duplicate values for a given interior offset roundtrips Type error
-FAIL A KeyframeEffectReadOnly can be constructed with a keyframe sequence with duplicate values for offsets 0 and 1 Type error
-FAIL A KeyframeEffectReadOnly constructed with a keyframe sequence with duplicate values for offsets 0 and 1 roundtrips Type error
-FAIL A KeyframeEffectReadOnly can be constructed with a two property four keyframe sequence Type error
-FAIL A KeyframeEffectReadOnly constructed with a two property four keyframe sequence roundtrips Type error
+PASS A KeyframeEffectReadOnly can be constructed with a keyframe sequence with duplicate values for a given interior offset 
+PASS A KeyframeEffectReadOnly constructed with a keyframe sequence with duplicate values for a given interior offset roundtrips 
+PASS A KeyframeEffectReadOnly can be constructed with a keyframe sequence with duplicate values for offsets 0 and 1 
+PASS A KeyframeEffectReadOnly constructed with a keyframe sequence with duplicate values for offsets 0 and 1 roundtrips 
+PASS A KeyframeEffectReadOnly can be constructed with a two property four keyframe sequence 
+PASS A KeyframeEffectReadOnly constructed with a two property four keyframe sequence roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a single keyframe sequence with omitted offset 
 PASS A KeyframeEffectReadOnly constructed with a single keyframe sequence with omitted offset roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a single keyframe sequence with null offset 
@@ -119,10 +119,10 @@ PASS A KeyframeEffectReadOnly can be constructed with a two property keyframe se
 PASS A KeyframeEffectReadOnly constructed with a two property keyframe sequence with some omitted offsets roundtrips 
 PASS A KeyframeEffectReadOnly can be constructed with a one property keyframe sequence with all omitted offsets 
 PASS A KeyframeEffectReadOnly constructed with a one property keyframe sequence with all omitted offsets roundtrips 
-FAIL A KeyframeEffectReadOnly can be constructed with a keyframe sequence with different easing values, but the same easing value for a given offset Type error
-FAIL A KeyframeEffectReadOnly constructed with a keyframe sequence with different easing values, but the same easing value for a given offset roundtrips Type error
-FAIL A KeyframeEffectReadOnly can be constructed with a keyframe sequence with different composite values, but the same composite value for a given offset Type error
-FAIL A KeyframeEffectReadOnly constructed with a keyframe sequence with different composite values, but the same composite value for a given offset roundtrips Type error
+PASS A KeyframeEffectReadOnly can be constructed with a keyframe sequence with different easing values, but the same easing value for a given offset 
+PASS A KeyframeEffectReadOnly constructed with a keyframe sequence with different easing values, but the same easing value for a given offset roundtrips 
+PASS A KeyframeEffectReadOnly can be constructed with a keyframe sequence with different composite values, but the same composite value for a given offset 
+PASS A KeyframeEffectReadOnly constructed with a keyframe sequence with different composite values, but the same composite value for a given offset roundtrips 
 PASS KeyframeEffectReadOnly constructor throws with keyframes with an out-of-bounded positive offset 
 PASS KeyframeEffectReadOnly constructor throws with keyframes with an out-of-bounded negative offset 
 PASS KeyframeEffectReadOnly constructor throws with property-indexed keyframes not loosely sorted by offset 

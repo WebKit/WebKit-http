@@ -42,12 +42,18 @@ namespace WebCore {
 
 Ref<DocumentTimeline> DocumentTimeline::create(Document& document)
 {
-    return adoptRef(*new DocumentTimeline(document));
+    return adoptRef(*new DocumentTimeline(document, 0_s));
 }
 
-DocumentTimeline::DocumentTimeline(Document& document)
+Ref<DocumentTimeline> DocumentTimeline::create(Document& document, DocumentTimelineOptions&& options)
+{
+    return adoptRef(*new DocumentTimeline(document, Seconds::fromMilliseconds(options.originTime)));
+}
+
+DocumentTimeline::DocumentTimeline(Document& document, Seconds originTime)
     : AnimationTimeline(DocumentTimelineClass)
     , m_document(&document)
+    , m_originTime(originTime)
     , m_animationScheduleTimer(*this, &DocumentTimeline::animationScheduleTimerFired)
 #if !USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_animationResolutionTimer(*this, &DocumentTimeline::animationResolutionTimerFired)
@@ -55,15 +61,18 @@ DocumentTimeline::DocumentTimeline(Document& document)
 {
 }
 
-DocumentTimeline::~DocumentTimeline()
-{
-}
+DocumentTimeline::~DocumentTimeline() = default;
 
 void DocumentTimeline::detachFromDocument()
 {
     m_invalidationTaskQueue.close();
     m_eventDispatchTaskQueue.close();
     m_animationScheduleTimer.stop();
+
+    auto& animationsToRemove = animations();
+    while (!animationsToRemove.isEmpty())
+        animationsToRemove.first()->remove();
+
     m_document = nullptr;
 }
 
@@ -131,6 +140,14 @@ std::optional<Seconds> DocumentTimeline::currentTime()
     if (m_paused || m_isSuspended || !m_document || !m_document->domWindow())
         return AnimationTimeline::currentTime();
 
+    if (auto* mainDocumentTimeline = m_document->existingTimeline()) {
+        if (mainDocumentTimeline != this) {
+            if (auto mainDocumentTimelineCurrentTime = mainDocumentTimeline->currentTime())
+                return mainDocumentTimelineCurrentTime.value() - m_originTime;
+            return std::nullopt;
+        }
+    }
+
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     // If we're in the middle of firing a frame, either due to a requestAnimationFrame callback
     // or scheduling an animation update, we want to ensure we use the same time we're using as
@@ -162,7 +179,7 @@ std::optional<Seconds> DocumentTimeline::currentTime()
             maybeClearCachedCurrentTime();
         });
     }
-    return m_cachedCurrentTime;
+    return m_cachedCurrentTime.value() - m_originTime;
 }
 
 void DocumentTimeline::pause()
@@ -277,6 +294,12 @@ void DocumentTimeline::updateAnimations()
     // running pending tasks can fire right away.
     MicrotaskQueue::mainThreadQueue().performMicrotaskCheckpoint();
 
+    // Let's first resolve any animation that does not have a target.
+    for (auto* animation : animationsWithoutTarget())
+        animation->resolve();
+
+    // For the rest of the animations, we will resolve them via TreeResolver::createAnimatedElementUpdate()
+    // by invalidating their target element's style.
     if (m_document && hasElementAnimations()) {
         for (const auto& elementToAnimationsMapItem : elementToAnimationsMap())
             elementToAnimationsMapItem.key->invalidateStyleAndLayerComposition();

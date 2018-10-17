@@ -1537,7 +1537,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 
 #if !PLATFORM(IOS)
     [self _registerDraggedTypes];
-    [self _updateDefaultAppearance];
 #endif
 
     [self _setIsVisible:[self _isViewVisible]];
@@ -1574,7 +1573,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         ResourceHandle::forceContentSniffing();
 
     _private->page->setDeviceScaleFactor([self _deviceScaleFactor]);
-    _private->page->setDefaultAppearance([self _defaultAppearance]);
+    _private->page->setUseDarkAppearance(self._effectiveAppearanceIsDark);
 #endif
 
     _private->page->settings().setContentDispositionAttachmentSandboxEnabled(true);
@@ -5275,47 +5274,38 @@ static Vector<String> toStringVector(NSArray* patterns)
     return insets;
 }
 
-- (bool)_defaultAppearance
+- (bool)_effectiveAppearanceIsDark
 {
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     NSAppearanceName appearance = [[self effectiveAppearance] bestMatchFromAppearancesWithNames:@[ NSAppearanceNameAqua, NSAppearanceNameDarkAqua ]];
-    return [appearance isEqualToString:NSAppearanceNameAqua];
+    return [appearance isEqualToString:NSAppearanceNameDarkAqua];
 #else
-    return true;
+    return false;
 #endif
-}
-
-- (void)_updateDefaultAppearance
-{
-    _private->page->setDefaultAppearance([self _defaultAppearance]);
-    RenderTheme::singleton().platformColorsDidChange();
-    _private->page->setNeedsRecalcStyleInAllFrames();
 }
 
 - (void)_setUseSystemAppearance:(BOOL)useSystemAppearance
 {
-    if (auto page = _private->page) {
-        page->setUseSystemAppearance(useSystemAppearance);
-        [self _updateDefaultAppearance];
-    }
+    if (_private && _private->page)
+        _private->page->setUseSystemAppearance(useSystemAppearance);
 }
 
 - (BOOL)_useSystemAppearance
 {
     if (!_private->page)
         return NO;
-    
+
     return _private->page->useSystemAppearance();
 }
 
-- (void)effectiveAppearanceDidChange
+- (void)viewDidChangeEffectiveAppearance
 {
     // This can be called during [super initWithCoder:] and [super initWithFrame:].
     // That is before _private is ready to be used, so check. <rdar://problem/39611236>
     if (!_private || !_private->page)
         return;
 
-    [self _updateDefaultAppearance];
+    _private->page->setUseDarkAppearance(self._effectiveAppearanceIsDark);
 }
 
 - (void)_setSourceApplicationAuditData:(NSData *)sourceApplicationAuditData

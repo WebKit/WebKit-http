@@ -66,6 +66,19 @@ class CheckOutSource(svn.SVN):
                                                 **kwargs)
 
 
+class UnApplyPatchIfRequired(CheckOutSource):
+    name = 'unapply-patch'
+
+    def __init__(self, **kwargs):
+        super(UnApplyPatchIfRequired, self).__init__(alwaysUseLatest=True, **kwargs)
+
+    def doStepIf(self, step):
+        return self.getProperty('patchFailedToBuild') or self.getProperty('patchFailedTests')
+
+    def hideStepIf(self, results, step):
+        return not self.doStepIf(step)
+
+
 class CheckStyle(shell.ShellCommand):
     name = 'check-webkit-style'
     description = ['check-webkit-style running']
@@ -125,6 +138,7 @@ class CompileWebKit(shell.Compile):
     descriptionDone = ["compiled"]
     env = {'MFLAGS': ''}
     warningPattern = ".*arning: .*"
+    haltOnFailure = False
     command = ["perl", "Tools/Scripts/build-webkit", WithProperties("--%(configuration)s")]
 
     def start(self):
@@ -150,10 +164,41 @@ class CompileWebKit(shell.Compile):
 
         return shell.Compile.start(self)
 
+    def evaluateCommand(self, cmd):
+        if cmd.didFail():
+            self.setProperty('patchFailedToBuild', True)
+
+        return super(CompileWebKit, self).evaluateCommand(cmd)
+
+
+class CompileWebKitToT(CompileWebKit):
+    name = 'compile-webkit-tot'
+    haltOnFailure = True
+
+    def doStepIf(self, step):
+        return self.getProperty('patchFailedToBuild')
+
+    def hideStepIf(self, results, step):
+        return not self.doStepIf(step)
+
 
 class CompileJSCOnly(CompileWebKit):
     name = "build-jsc"
     command = ["perl", "Tools/Scripts/build-jsc", WithProperties("--%(configuration)s")]
+
+
+class RunJavaScriptCoreTests(shell.Test):
+    name = 'jscore-test'
+    description = ['jscore-tests running']
+    descriptionDone = ['jscore-tests']
+    flunkOnFailure = True
+    jsonFileName = 'jsc_results.json'
+    logfiles = {"json": jsonFileName}
+    command = ['perl', 'Tools/Scripts/run-javascriptcore-tests', '--no-build', '--no-fail-fast', '--json-output={0}'.format(jsonFileName), WithProperties('--%(configuration)s')]
+
+    def start(self):
+        appendCustomBuildFlags(self, self.getProperty('platform'), self.getProperty('fullPlatform'))
+        return shell.Test.start(self)
 
 
 class CleanBuild(shell.Compile):

@@ -1,3 +1,492 @@
+2018-07-11  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=187551
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations: Mark new test as failing: it depends on mac-only code.
+
+2018-07-10  Youenn Fablet  <youenn@apple.com>
+
+        Make fetch() use "same-origin" credentials by default
+        https://bugs.webkit.org/show_bug.cgi?id=176023
+
+        Reviewed by Chris Dumez.
+
+        Resource timing does not work properly on WK1 when stopping fetch/XHR load to restart it without credentials.
+        Updated expected results accordingly.
+
+        * http/tests/inspector/network/resource-mime-type.html:
+        Update resource-mime-type.html to ensure we go to the network for every load.
+        * http/wpt/resource-timing/rt-cors.js:
+        (assertRedirectWithDisallowedTimingData):
+        Updated test according https://www.w3.org/TR/resource-timing-1/#performanceresourcetiming.
+        * platform/mac-wk1/http/wpt/resource-timing/rt-cors-expected.txt: Added.
+        * platform/mac-wk1/http/wpt/resource-timing/rt-cors.worker-expected.txt: Added.
+        * platform/win/http/wpt/resource-timing/rt-cors-expected.txt: Added.
+        * platform/win/http/wpt/resource-timing/rt-cors.worker-expected.txt: Added.
+
+2018-07-10  Saam Barati  <sbarati@apple.com>
+
+        Layout Test editing/selection/navigation-clears-editor-state.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187389
+        <rdar://problem/41898822>
+
+        Rubber-stamped by Ryosuke Niwa.
+
+        Make this test less susceptible to timing out on debug builds by:
+        - lowering the number of iframes we add by a factor of two
+        - removing the tests own internal 18 second timeout
+
+        * editing/selection/navigation-clears-editor-state.html:
+
+2018-07-10  Zalan Bujtas  <zalan@apple.com>
+
+        FragmentInterval, FragmentIntervalTree and FragmentSearchAdapter should hold not hold raw pointers to renderers.
+        https://bugs.webkit.org/show_bug.cgi?id=187249
+        <rdar://problem/41725869>
+
+        Reviewed by Simon Fraser.
+
+        * fast/multicol/crash-in-vertical-writing-mode-expected.txt: Added.
+        * fast/multicol/crash-in-vertical-writing-mode.html: Added.
+
+2018-07-10  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Make testRunner.statisticsResetToConsistentState() take a completion handler
+        https://bugs.webkit.org/show_bug.cgi?id=187499
+        <rdar://problem/41999431>
+
+        Reviewed by Chris Dumez.
+
+        These changes are to adopt and make use of the new completion handler in
+        testRunner.statisticsResetToConsistentState().
+
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect.html:
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-mixed-statistics.html:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-sub-frame-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-unique-redirects-to.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-statistics.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-collusion.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-to-prevalent.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-collusion.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-to-prevalent.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-unique-redirects-to.html:
+        * http/tests/resourceLoadStatistics/classify-as-very-prevalent-based-on-mixed-statistics.html:
+        * http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html:
+        * http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html:
+        * http/tests/resourceLoadStatistics/grandfathering.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout-expected.txt:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html:
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-unhandled-keydown.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/prune-statistics.html:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html:
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect.html:
+        * http/tests/resourceLoadStatistics/sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html:
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html:
+        * http/tests/resourceLoadStatistics/telemetry-generation.html:
+        * http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html:
+        * http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html:
+        * http/tests/resourceLoadStatistics/user-interaction-reported-after-website-data-removal.html:
+
+2018-07-10  Truitt Savell  <tsavell@apple.com>
+
+        [ MacOS Debug ] Layout Test media/media-fragments/TC0015.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187522
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-07-09  Dean Jackson  <dino@apple.com>
+
+        Remove fullscreen-auto-hide-delay
+        https://bugs.webkit.org/show_bug.cgi?id=187493
+        <rdar://problem/41830852>
+
+        Reviewed by Antoine Quint.
+
+        Update the existing test that partially used the delay, and remove the ones that
+        used only the delay.
+
+        * fullscreen/fullscreen-auto-hide-delay-expected.txt: Removed.
+        * fullscreen/fullscreen-auto-hide-delay.html: Removed.
+        * fullscreen/fullscreen-env-expected.txt:
+        * fullscreen/fullscreen-env.html:
+        * legacy-animation-engine/fullscreen/fullscreen-auto-hide-delay-expected.txt: Removed.
+        * legacy-animation-engine/fullscreen/fullscreen-auto-hide-delay.html: Removed.
+
+2018-07-09  Truitt Savell  <tsavell@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/update-after-navigation-fetch-event.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187484
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-07-09  Truitt Savell  <tsavell@apple.com>
+
+        [macOS] Layout Test fast/hidpi/filters-and-image-buffer-resolution.html is flaky, but no longer Flaky on [iOS]
+        https://bugs.webkit.org/show_bug.cgi?id=187491
+
+        Unreviewed test gardening
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-07-09  Brady Eidson  <beidson@apple.com>
+
+        Continued unreviewed hacking on this test because that's my full time job now.
+
+        * storage/indexeddb/modern/opendatabase-after-storage-crash.html:
+
+2018-07-09  Brady Eidson  <beidson@apple.com>
+
+        This test is *still* flaky. This unreviewed patch is my attempt to make it less so.
+
+        * storage/indexeddb/modern/opendatabase-after-storage-crash.html:
+
+2018-07-09  Brian Burg  <bburg@apple.com>
+
+        REGRESSION: Web Inspector no longer pauses in internal injected scripts like WDFindNodes.js
+        https://bugs.webkit.org/show_bug.cgi?id=187350
+        <rdar://problem/41728249>
+
+        Reviewed by Matt Baker.
+
+        Add a new test to demonstrate a difference in behavior when Debugger.setPauseForInternalScripts(true)
+        is sent to the backend. There's no way to correctly stringify the current call frame when stepping into
+        console.log because the injected script was blackboxed at the time that the scripts were parsed.
+        Instead, the stepping output just shows that the debugger is paused somewhere inside console.log.
+
+        * inspector/debugger/pause-for-internal-scripts-expected.txt: Added.
+        * inspector/debugger/pause-for-internal-scripts.html: Added.
+        * inspector/debugger/resources/log-pause-location.js:
+        (TestPage.registerInitializer.window.addSteppingTestCase):
+        (TestPage.registerInitializer):
+
+2018-07-09  Truitt Savell  <tsavell@apple.com>
+
+        Layout Test media/video-background-playback.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187476
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-07-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark animations/needs-layout.html as flaky on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=187388
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2018-07-08  David Kilzer  <ddkilzer@apple.com>
+
+        DOMMatrix.invertSelf() returns garbage values for a non-invertible matrix
+        <https://webkit.org/b/187446>
+        <rdar://problem/41853187>
+
+        Reviewed by Daniel Bates.
+
+        * http/wpt/css/geometry/DOMMatrix-invertSelf-expected.txt: Add.
+        * http/wpt/css/geometry/DOMMatrix-invertSelf.html: Add.
+        * http/wpt/css/geometry/support/dommatrix-test-util.js: Copy from
+          LayoutTests/imported/w3c/web-platform-tests/css/geometry/support/dommatrix-test-util.js.
+
+2018-07-06  Nan Wang  <n_wang@apple.com>
+
+        AX: add a subrole for meter elements on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=187409
+        <rdar://problem/41905702>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/meter-subrole-expected.txt: Added.
+        * accessibility/mac/meter-subrole.html: Added.
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2018-07-06  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC MediaStreamTrack Enable / Disable causes video delay / lag
+        https://bugs.webkit.org/show_bug.cgi?id=186889
+        <rdar://problem/41370285>
+
+        Reviewed by Eric Carlson.
+
+        Test is no longer valid since we are now sending 0 bytes for audio tracks.
+
+        * webrtc/audio-muted-stats2-expected.txt: Removed.
+        * webrtc/audio-muted-stats2.html: Removed.
+
+2018-07-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip imported/w3c/web-platform-tests/infrastructure/assumptions/html-elements.html on debug.
+        https://bugs.webkit.org/show_bug.cgi?id=187093
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-07-06  Brady Eidson  <beidson@apple.com>
+
+        This test is flaky. This unreviewed patch is my attempt to make it less so.
+
+        * storage/indexeddb/modern/opendatabase-after-storage-crash.html:
+
+2018-07-06  David Fenton  <david_fenton@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/IndexedDB/interfaces.any.worker.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=187372
+
+        Unreviewed test gardening.
+
+        Added [ Slow ] to the existing [ Pass Timeout ] expectation.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-07-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline accessibility/ios-simulator/strong-password-field.html after r233578.
+
+        Unreviewed test gardening.
+
+        * accessibility/ios-simulator/strong-password-field-expected.txt:
+
+2018-07-06  David Fenton  <david_fenton@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-PSS.https.any.worker.html is flaky timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=187408
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-07-06  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Using a Web Animation leaks the Document
+        https://bugs.webkit.org/show_bug.cgi?id=187088
+        <rdar://problem/41392046>
+
+        Reviewed by Darin Adler.
+
+        * webanimations/leak-document-with-web-animation-expected.txt: Added.
+        * webanimations/leak-document-with-web-animation.html: Added.
+        * webanimations/resources/web-animation-leak-iframe.html: Added.
+
+2018-07-06  Saam Barati  <sbarati@apple.com>
+
+        Layout Test editing/selection/navigation-clears-editor-state.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187389
+
+        Reviewed by Mark Lam.
+
+        * editing/selection/navigation-clears-editor-state.html:
+        Make the test's internal time out mechanism longer since
+        it's being hit on the bots.
+
+2018-07-06  Nan Wang  <n_wang@apple.com>
+
+        AX: setValue on text controls should send out key events
+        https://bugs.webkit.org/show_bug.cgi?id=186690
+        <rdar://problem/41169985>
+
+        Reviewed by Chris Fleizach.
+
+        Editor's clearText function will also dispatch the InputEvent. In the test, 
+        we need to make sure each test case finishes handling all the input events
+        before moving to the next test case.
+
+        * accessibility/mac/set-value-editable-dispatch-events-expected.txt:
+        * accessibility/mac/set-value-editable-dispatch-events.html:
+
+2018-07-06  Truitt Savell  <tsavell@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187393
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-07-06  Daniel Bates  <dabates@apple.com>
+
+        Remove Strong Confirmation Password button
+        https://bugs.webkit.org/show_bug.cgi?id=187306
+        <rdar://problem/41795185>
+
+        Reviewed by Sam Weinig.
+
+        Remove support for the Strong Confirmation Password button because we never made use of it.
+
+        * accessibility/ios-simulator/strong-password-field-expected.txt:
+        * accessibility/ios-simulator/strong-password-field.html:
+        * fast/forms/auto-fill-button/auto-fill-strong-password-button-when-maxlength-changes-expected.html:
+        * fast/forms/auto-fill-button/auto-fill-strong-password-button-when-maxlength-changes.html:
+        * fast/forms/auto-fill-button/auto-fill-strong-password-button-when-minlength-changes-expected.html:
+        * fast/forms/auto-fill-button/auto-fill-strong-password-button-when-minlength-changes.html:
+        * fast/forms/auto-fill-button/hide-auto-fill-strong-password-button-when-form-is-reset-expected.html:
+        * fast/forms/auto-fill-button/hide-auto-fill-strong-password-button-when-form-is-reset.html:
+        * fast/forms/auto-fill-button/hide-auto-fill-strong-password-button-when-value-changes-expected.html:
+        * fast/forms/auto-fill-button/hide-auto-fill-strong-password-button-when-value-changes.html:
+        * fast/forms/auto-fill-button/hide-strong-password-when-field-type-changes-expected.html:
+        * fast/forms/auto-fill-button/hide-strong-password-when-field-type-changes.html:
+        * fast/forms/auto-fill-button/input-autofilled-disabled-strong-password-auto-fill-button-expected.html: Removed.
+        * fast/forms/auto-fill-button/input-autofilled-disabled-strong-password-auto-fill-button.html: Removed.
+        * fast/forms/auto-fill-button/input-autofilled-readonly-strong-password-auto-fill-button-expected.html: Removed.
+        * fast/forms/auto-fill-button/input-autofilled-readonly-strong-password-auto-fill-button.html: Removed.
+        * fast/forms/auto-fill-button/input-disabled-strong-password-and-strong-confirmation-password-auto-fill-buttons-expected.html:
+        * fast/forms/auto-fill-button/input-disabled-strong-password-and-strong-confirmation-password-auto-fill-buttons.html:
+        * fast/forms/auto-fill-button/input-readonly-strong-password-and-strong-confirmation-password-auto-fill-buttons-expected.html:
+        * fast/forms/auto-fill-button/input-readonly-strong-password-and-strong-confirmation-password-auto-fill-buttons.html:
+        * fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button.html: Removed.
+        * fast/forms/auto-fill-button/last-auto-fill-button-type-expected.txt:
+        * fast/forms/auto-fill-button/last-auto-fill-button-type.html:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button-expected.txt: Removed.
+        * platform/ios/fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button-expected.txt: Removed.
+        * platform/mac/fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button-expected.txt: Removed.
+        * platform/win/TestExpectations:
+        * platform/win/fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button-expected.txt: Removed.
+        * platform/wincairo/fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button-expected.txt: Removed.
+
+2018-07-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK gardening. Remove platform expectations for imported/w3c/web-platform-tests/web-animations/interfaces/Animatable/animate-no-browsing-context.html
+
+        Since r233512 we are getting the same results as other ports.
+
+        * platform/gtk/imported/w3c/web-platform-tests/web-animations/interfaces/Animatable/animate-no-browsing-context-expected.txt: Removed.
+
+2018-07-05  Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION (r230843): Flash doesn't work; Produces blue box on page
+        https://bugs.webkit.org/show_bug.cgi?id=187346
+        <rdar://problem/41773974>
+
+        Reviewed by Ryosuke Niwa.
+
+        Skip new test on WK1 since it does not have the ability to block plugins.
+
+        * http/tests/plugins/plugin-allow-then-reload-expected.txt: Added.
+        * http/tests/plugins/plugin-allow-then-reload.html: Added.
+        * platform/mac-wk1/TestExpectations:
+
+2018-07-05  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB operations in a Page fail after a StorageProcess crash.
+        <rdar://problem/41626526> and https://bugs.webkit.org/show_bug.cgi?id=187123
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/opendatabase-after-storage-crash.html: Added.
+
+2018-07-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Youtube video pages crash after a couple of minutes
+        https://bugs.webkit.org/show_bug.cgi?id=187316
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test to remove an iframe with a video while there is a main content
+        which is eligible to be shown in the Touch Bar.
+
+        * media/remove-video-best-media-element-in-main-frame-crash-expected.txt: Added.
+        * media/remove-video-best-media-element-in-main-frame-crash.html: Added.
+
+2018-07-05  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        REGRESSION(r233495) [cairo] drawGlyphsShadow should use the fast path for zero blur-radius
+        https://bugs.webkit.org/show_bug.cgi?id=187336
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Unmarked fast/text/multiple-text-shadow-overflow-layout-rect.html.
+
+2018-07-05  Saam Barati  <sbarati@apple.com>
+
+        [mac-wk1] Layout Test editing/selection/navigation-clears-editor-state.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=187309
+
+        Reviewed by Mark Lam.
+
+        Try to make this test less flaky by making percents threshold of freed
+        objects smaller.
+
+        * editing/selection/navigation-clears-editor-state-expected.txt:
+        * editing/selection/navigation-clears-editor-state.html:
+
+2018-07-05  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test http/tests/workers/service/basic-messageport.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=182630
+
+        Reviewed by Alex Christensen.
+
+        Test is flaky due to a race between serviceWorkerClient.postMessage and MessagePort.postMessage.
+        Both are going through UIProcess but MessagePort events are grabbed asynchronously.
+        Fixed the test to not expect order between these two message exchange channels.
+
+        * http/tests/workers/service/basic-messageport-expected.txt:
+        * http/tests/workers/service/resources/basic-messageport.js:
+        (channel.port1.onmessage):
+        (then):
+        * platform/mac-wk2/TestExpectations:
+
+2018-07-05  David Fenton  <david_fenton@apple.com>
+
+        LayoutTest imported/w3c/web-platform-tests/IndexedDB/interfaces.any.worker.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=187372
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-07-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r233539.
+        https://bugs.webkit.org/show_bug.cgi?id=187368
+
+        Changes made for youtube crashes has caused 15 api failures
+        (Requested by Truitt on #webkit).
+
+        Reverted changeset:
+
+        "Youtube video pages crash after a couple of minutes"
+        https://bugs.webkit.org/show_bug.cgi?id=187316
+        https://trac.webkit.org/changeset/233539
+
 2018-07-04  Ryosuke Niwa  <rniwa@webkit.org>
 
         Youtube video pages crash after a couple of minutes

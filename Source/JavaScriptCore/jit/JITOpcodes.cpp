@@ -792,7 +792,7 @@ void JIT::emit_op_enter(Instruction*)
     // Even though CTI doesn't use them, we initialize our constant
     // registers to zap stale pointers, to avoid unnecessarily prolonging
     // object lifetime and increasing GC pressure.
-    size_t count = m_codeBlock->m_numVars;
+    size_t count = m_codeBlock->numVars();
     for (size_t j = CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters(); j < count; ++j)
         emitInitRegister(virtualRegisterForLocal(j).offset());
 
@@ -990,7 +990,8 @@ void JIT::emitSlow_op_check_traps(Instruction*, Vector<SlowCaseEntry>::iterator&
 void JIT::emit_op_new_regexp(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
-    callOperation(operationNewRegexp, m_codeBlock->regexp(currentInstruction[2].u.operand));
+    int regexp = currentInstruction[2].u.operand;
+    callOperation(operationNewRegexp, jsCast<RegExp*>(m_codeBlock->getConstant(regexp)));
     emitStoreCell(dst, returnValueGPR);
 }
 

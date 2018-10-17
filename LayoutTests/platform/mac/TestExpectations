@@ -667,6 +667,8 @@ webkit.org/b/131887 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncom
 
 webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas.html [ ImageOnlyFailure ]
 
+webkit.org/b/187491 fast/hidpi/filters-and-image-buffer-resolution.html [ Pass ImageOnlyFailure ]
+
 webkit.org/b/136419 fast/sub-pixel/block-with-margin-overflow.html [ ImageOnlyFailure ]
 webkit.org/b/137729 fast/sub-pixel/client-width-height-snapping.html [ Failure ]
 # Subpixel failures END
@@ -718,6 +720,8 @@ webkit.org/b/132385 compositing/repaint/repaint-on-layer-grouping-change.html [ 
 # This test, originally written for Chromium, historically was not testing anything on Mac because
 # resizing didn't work. Now the test fails. I believe this bug was never fixed for the Mac port.
 fast/dom/rtl-scroll-to-leftmost-and-resize.html [ Failure ]
+
+webkit.org/b/187408 [ Debug ] imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-PSS.https.any.worker.html [ Slow ]
 
 webkit.org/b/135015 plugins/quicktime-plugin-replacement.html [ Pass Failure ]
 
@@ -818,6 +822,7 @@ webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Failure Tim
 webkit.org/b/147944 media/video-seek-to-current-time.html [ Pass Failure ]
 webkit.org/b/150408 http/tests/media/video-load-suspend.html [ Pass Timeout ]
 webkit.org/b/155956 media/track/track-remove-track.html [ Pass Failure Timeout ]
+webkit.org/b/187476 media/video-background-playback.html [ Pass Failure ]
 ## --- End flaky media tests
 
 # Skipped while Eric Carlson works on a fix.
@@ -951,6 +956,8 @@ imported/w3c/web-platform-tests/media-source/mediasource-trackdefault.html [ Ski
 imported/w3c/web-platform-tests/media-source/mediasource-trackdefaultlist.html [ Skip ]
 
 ## --- End W3C Imported Media Source Tests
+
+webkit.org/b/187484 imported/w3c/web-platform-tests/service-workers/service-worker/update-after-navigation-fetch-event.https.html [ Pass Failure ]
 
 # This test times out.
 media/media-source/media-source-seek-complete.html [ Timeout ]
@@ -1776,3 +1783,5 @@ fast/forms/color [ Skip ]
 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/color.html [ Skip ]
 fast/css/read-only-read-write-input-basics.html [ ImageOnlyFailure ]
 fast/css/pseudo-visited-background-color-on-input.html [ ImageOnlyFailure ]
+
+webkit.org/b/187393 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub.html [ Pass Failure ]

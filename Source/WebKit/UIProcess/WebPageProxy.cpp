@@ -4523,14 +4523,18 @@ void WebPageProxy::runBeforeUnloadConfirmPanel(uint64_t frameID, const SecurityO
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
-    // Since runBeforeUnloadConfirmPanel() can spin a nested run loop we need to turn off the responsiveness timer.
-    m_process->responsivenessTimer().stop();
-
+    // Per §18 User Prompts in the WebDriver spec, "User prompts that are spawned from beforeunload
+    // event handlers, are dismissed implicitly upon navigation or close window, regardless of the
+    // defined user prompt handler." So, always allow the unload to proceed if the page is being automated.
     if (m_controlledByAutomation) {
-        if (auto* automationSession = process().processPool().automationSession())
-            automationSession->willShowJavaScriptDialog(*this);
+        if (!!process().processPool().automationSession()) {
+            reply(true);
+            return;
+        }
     }
 
+    // Since runBeforeUnloadConfirmPanel() can spin a nested run loop we need to turn off the responsiveness timer.
+    m_process->responsivenessTimer().stop();
     m_uiClient->runBeforeUnloadConfirmPanel(this, message, frame, securityOrigin, WTFMove(reply));
 }
 
@@ -5009,6 +5013,14 @@ void WebPageProxy::showPopupMenu(const IntRect& rect, uint64_t textDirection, co
         m_activePopupMenu->hidePopupMenu();
         m_activePopupMenu->invalidate();
         m_activePopupMenu = nullptr;
+    }
+
+    // If the page is controlled by automation, entering a nested run loop while the menu is open
+    // can hang the page / WebDriver test. Since <option> elements are selected via a different
+    // code path anyway, just don't show the native popup menu.
+    if (auto* automationSession = process().processPool().automationSession()) {
+        if (m_controlledByAutomation && automationSession->isSimulatingUserInteraction())
+            return;
     }
 
     m_activePopupMenu = m_pageClient.createPopupMenuProxy(*this);
@@ -6184,7 +6196,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
 #if PLATFORM(MAC)
     parameters.colorSpace = m_pageClient.colorSpace();
     parameters.useSystemAppearance = m_useSystemAppearance;
-    parameters.defaultAppearance = m_defaultAppearance;
+    parameters.useDarkAppearance = m_useDarkAppearance;
 #endif
 #if PLATFORM(IOS)
     parameters.screenSize = screenSize();
@@ -7308,16 +7320,16 @@ void WebPageProxy::setUseSystemAppearance(bool useSystemAppearance)
     m_process->send(Messages::WebPage::SetUseSystemAppearance(useSystemAppearance), m_pageID);
 }
     
-void WebPageProxy::setDefaultAppearance(bool defaultAppearance)
+void WebPageProxy::setUseDarkAppearance(bool useDarkAppearance)
 {
     if (!isValid())
         return;
-    
-    if (defaultAppearance == m_defaultAppearance)
+
+    if (useDarkAppearance == m_useDarkAppearance)
         return;
-    
-    m_defaultAppearance = defaultAppearance;
-    m_process->send(Messages::WebPage::SetDefaultAppearance(defaultAppearance), m_pageID);
+
+    m_useDarkAppearance = useDarkAppearance;
+    m_process->send(Messages::WebPage::SetUseDarkAppearance(useDarkAppearance), m_pageID);
 }
 
 void WebPageProxy::setHeaderBannerHeightForTesting(int height)
@@ -7365,7 +7377,7 @@ void WebPageProxy::removePlaybackTargetPickerClient(uint64_t contextId)
 
 void WebPageProxy::showPlaybackTargetPicker(uint64_t contextId, const WebCore::FloatRect& rect, bool hasVideo)
 {
-    m_pageClient.mediaSessionManager().showPlaybackTargetPicker(*this, contextId, m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo, m_defaultAppearance);
+    m_pageClient.mediaSessionManager().showPlaybackTargetPicker(*this, contextId, m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo, m_useDarkAppearance);
 }
 
 void WebPageProxy::playbackTargetPickerClientStateDidChange(uint64_t contextId, WebCore::MediaProducer::MediaStateFlags state)

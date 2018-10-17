@@ -31,32 +31,22 @@
 
 namespace WebCore {
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-static size_t recursionCount = 0;
-#endif
-
-LocalDefaultSystemAppearance::LocalDefaultSystemAppearance(bool useSystemAppearance, bool useDefaultAppearance)
+LocalDefaultSystemAppearance::LocalDefaultSystemAppearance(bool useSystemAppearance, bool useDarkAppearance)
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-    if (recursionCount++)
-        return;
-
     m_savedSystemAppearance = [NSAppearance currentAppearance];
-    m_usingDarkAppearance = useSystemAppearance && !useDefaultAppearance;
+    m_usingDarkAppearance = useSystemAppearance && useDarkAppearance;
 
     [NSAppearance setCurrentAppearance:[NSAppearance appearanceNamed:m_usingDarkAppearance ? NSAppearanceNameDarkAqua : NSAppearanceNameAqua]];
 #else
     UNUSED_PARAM(useSystemAppearance);
-    UNUSED_PARAM(useDefaultAppearance);
+    UNUSED_PARAM(useDarkAppearance);
 #endif
 }
 
 LocalDefaultSystemAppearance::~LocalDefaultSystemAppearance()
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-    if (--recursionCount)
-        return;
-
     [NSAppearance setCurrentAppearance:m_savedSystemAppearance.get()];
 #endif
 }

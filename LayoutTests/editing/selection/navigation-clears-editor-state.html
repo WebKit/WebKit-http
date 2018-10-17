@@ -36,7 +36,7 @@ async function runTest()
     initialDocumentCount = internals.numberOfLiveDocuments();
 
     let frames = [];
-    const count = 200;
+    const count = 100;
     for (let i = 0; i < count; ++i)
         frames.push(appendIframe());
 
@@ -59,10 +59,10 @@ async function runTest()
             GCController.collect();
             let after = internals.numberOfLiveDocuments();
             let delta = before - after;
-            if (delta > 0.3 * count)
-                debug("PASS freed more than 60 documents");
+            if (delta > 0.15 * count)
+                debug("PASS freed more than 15% of documents");
             else
-                debug("FAIL freed fewer than 60 documents");
+                debug("FAIL freed less than 15% of documents");
             finishJSTest();                
         };
     }
@@ -71,13 +71,10 @@ async function runTest()
 if (!window.GCController || !window.internals) {
     debug('This test requires GCController and internals');
 } else {
-    if (window.testRunner)
-        setTimeout(() => testRunner.notifyDone(), 5000);
     // Clear out any lingering documents from the previous tests.
     GCController.collect();
     GCController.collect();
     runTest();
-
 }
 
 </script>

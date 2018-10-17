@@ -534,8 +534,7 @@ public:
   }
 
   OPTIONAL_MUTABLE_CONSTEXPR T* operator ->() {
-    // FIXME: We need to offer special assert function that can be used under the contexpr context.
-    // CONSTEXPR_ASSERT(initialized());
+    ASSERT_UNDER_CONSTEXPR_CONTEXT(initialized());
     return dataptr();
   }
 
@@ -544,32 +543,27 @@ public:
   }
 
   OPTIONAL_MUTABLE_CONSTEXPR T& operator *() & {
-    // FIXME: We need to offer special assert function that can be used under the contexpr context.
-    // CONSTEXPR_ASSERT(initialized());
+    ASSERT_UNDER_CONSTEXPR_CONTEXT(initialized());
     return contained_val();
   }
 
   OPTIONAL_MUTABLE_CONSTEXPR T&& operator *() && {
-    // FIXME: We need to offer special assert function that can be used under the contexpr context.
-    // CONSTEXPR_ASSERT(initialized());
+    ASSERT_UNDER_CONSTEXPR_CONTEXT(initialized());
     return detail_::constexpr_move(contained_val());
   }
 
   constexpr T const& value() const& {
-    // FIXME: We need to offer special assert function that can be used under the contexpr context.
-    // return initialized() ? contained_val() : (throw bad_optional_access("bad optional access"), contained_val());
+    ASSERT_UNDER_CONSTEXPR_CONTEXT(initialized());
     return contained_val();
   }
 
   OPTIONAL_MUTABLE_CONSTEXPR T& value() & {
-    // FIXME: We need to offer special assert function that can be used under the contexpr context.
-    // return initialized() ? contained_val() : (throw bad_optional_access("bad optional access"), contained_val());
+    ASSERT_UNDER_CONSTEXPR_CONTEXT(initialized());
     return contained_val();
   }
 
   OPTIONAL_MUTABLE_CONSTEXPR T&& value() && {
-    // FIXME: We need to offer special assert function that can be used under the contexpr context.
-    // if (!initialized()) __THROW_EXCEPTION(bad_optional_access("bad optional access"));
+    ASSERT_UNDER_CONSTEXPR_CONTEXT(initialized());
     return std::move(contained_val());
   }
 
@@ -687,8 +681,7 @@ public:
   }
 
   constexpr T& value() const {
-    // FIXME: We need to offer special assert function that can be used under the contexpr context.
-    // return ref ? *ref : (throw bad_optional_access("bad optional access"), *ref);
+    ASSERT_UNDER_CONSTEXPR_CONTEXT(ref());
     return *ref;
   }
 

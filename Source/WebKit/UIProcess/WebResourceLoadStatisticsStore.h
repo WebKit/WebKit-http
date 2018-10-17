@@ -114,7 +114,7 @@ public:
     void submitTelemetry();
     void scheduleCookiePartitioningStateReset();
 
-    void scheduleClearInMemory();
+    void scheduleClearInMemory(CompletionHandler<void()>&&);
     
     enum class ShouldGrandfather {
         No,
@@ -130,7 +130,7 @@ public:
     void setMaxStatisticsEntries(size_t);
     void setPruneEntriesDownTo(size_t);
 
-    void resetParametersToDefaultValues();
+    void resetParametersToDefaultValues(CompletionHandler<void()>&&);
 
     void setResourceLoadStatisticsDebugMode(bool);
 
@@ -140,7 +140,7 @@ public:
     void removeAllStorageAccess();
     void callUpdatePrevalentDomainsToPartitionOrBlockCookiesHandler(const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, ShouldClearFirst, CompletionHandler<void()>&&);
     void callRemoveDomainsHandler(const Vector<String>& domains);
-    void callHasStorageAccessForFrameHandler(const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, WTF::Function<void(bool)>&&);
+    void callHasStorageAccessForFrameHandler(const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&&);
 
 private:
     explicit WebResourceLoadStatisticsStore(WebsiteDataStore&);

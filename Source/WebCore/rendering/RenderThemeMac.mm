@@ -136,14 +136,19 @@ static const double progressAnimationNumFrames = 256;
     self = [super init];
     if (!self)
         return nil;
+
     [[NSNotificationCenter defaultCenter] addObserver:self
         selector:@selector(systemColorsDidChange:) name:NSSystemColorsDidChangeNotification object:nil];
+
+    [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:self
+        selector:@selector(systemColorsDidChange:) name:NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification object:nil];
+
     return self;
 }
 
-- (void)systemColorsDidChange:(NSNotification *)unusedNotification
+- (void)systemColorsDidChange:(NSNotification *)notification
 {
-    ASSERT_UNUSED(unusedNotification, [[unusedNotification name] isEqualToString:NSSystemColorsDidChangeNotification]);
+    UNUSED_PARAM(notification);
     WebCore::RenderTheme::singleton().platformColorsDidChange();
 }
 
@@ -221,7 +226,7 @@ RenderThemeMac::RenderThemeMac()
 
 NSView *RenderThemeMac::documentViewFor(const RenderObject& o) const
 {
-    LocalDefaultSystemAppearance localAppearance(o.page().useSystemAppearance(), o.page().defaultAppearance());
+    LocalDefaultSystemAppearance localAppearance(o.page().useSystemAppearance(), o.page().useDarkAppearance());
     ControlStates states(extractControlStatesForRenderer(o));
     return ThemeMac::ensuredView(&o.view().frameView(), states);
 }
@@ -316,14 +321,14 @@ String RenderThemeMac::imageControlsStyleSheet() const
 
 Color RenderThemeMac::platformActiveSelectionBackgroundColor(OptionSet<StyleColor::Options> options) const
 {
-    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDarkAppearance));
     return colorFromNSColor([NSColor selectedTextBackgroundColor]);
 }
 
 Color RenderThemeMac::platformInactiveSelectionBackgroundColor(OptionSet<StyleColor::Options> options) const
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDarkAppearance));
     return colorFromNSColor([NSColor unemphasizedSelectedTextBackgroundColor]);
 #else
     UNUSED_PARAM(options);
@@ -333,13 +338,13 @@ Color RenderThemeMac::platformInactiveSelectionBackgroundColor(OptionSet<StyleCo
 
 bool RenderThemeMac::supportsSelectionForegroundColors(OptionSet<StyleColor::Options> options) const
 {
-    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDarkAppearance));
     return localAppearance.usingDarkAppearance();
 }
 
 Color RenderThemeMac::platformActiveSelectionForegroundColor(OptionSet<StyleColor::Options> options) const
 {
-    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDarkAppearance));
     if (localAppearance.usingDarkAppearance())
         return colorFromNSColor([NSColor selectedTextColor]);
     return { };
@@ -348,7 +353,7 @@ Color RenderThemeMac::platformActiveSelectionForegroundColor(OptionSet<StyleColo
 Color RenderThemeMac::platformInactiveSelectionForegroundColor(OptionSet<StyleColor::Options> options) const
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDarkAppearance));
     if (localAppearance.usingDarkAppearance())
         return colorFromNSColor([NSColor unemphasizedSelectedTextColor]);
     return { };
@@ -361,7 +366,7 @@ Color RenderThemeMac::platformInactiveSelectionForegroundColor(OptionSet<StyleCo
 Color RenderThemeMac::platformActiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options> options) const
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDarkAppearance));
     return colorFromNSColor([NSColor selectedContentBackgroundColor]);
 #else
     UNUSED_PARAM(options);
@@ -372,7 +377,7 @@ Color RenderThemeMac::platformActiveListBoxSelectionBackgroundColor(OptionSet<St
 Color RenderThemeMac::platformInactiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options> options) const
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDarkAppearance));
     return colorFromNSColor([NSColor unemphasizedSelectedContentBackgroundColor]);
 #else
     UNUSED_PARAM(options);
@@ -382,14 +387,14 @@ Color RenderThemeMac::platformInactiveListBoxSelectionBackgroundColor(OptionSet<
 
 Color RenderThemeMac::platformActiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options> options) const
 {
-    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDarkAppearance));
     return colorFromNSColor([NSColor alternateSelectedControlTextColor]);
 }
 
 Color RenderThemeMac::platformInactiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options> options) const
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDarkAppearance));
     return colorFromNSColor([NSColor unemphasizedSelectedTextColor]);
 #else
     UNUSED_PARAM(options);
@@ -407,7 +412,7 @@ Color RenderThemeMac::platformFocusRingColor(OptionSet<StyleColor::Options> opti
 Color RenderThemeMac::platformActiveTextSearchHighlightColor(OptionSet<StyleColor::Options> options) const
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDefaultAppearance));
+    LocalDefaultSystemAppearance localAppearance(options.contains(StyleColor::Options::UseSystemAppearance), options.contains(StyleColor::Options::UseDarkAppearance));
     return colorFromNSColor([NSColor findHighlightColor]);
 #else
     UNUSED_PARAM(options);
@@ -525,8 +530,8 @@ void RenderThemeMac::platformColorsDidChange()
 auto RenderThemeMac::colorCache(OptionSet<StyleColor::Options> options) const -> ColorCache&
 {
     const bool useSystemAppearance = options.contains(StyleColor::Options::UseSystemAppearance);
-    const bool useDefaultAppearance = options.contains(StyleColor::Options::UseDefaultAppearance);
-    LocalDefaultSystemAppearance localAppearance(useSystemAppearance, useDefaultAppearance);
+    const bool useDarkAppearance = options.contains(StyleColor::Options::UseDarkAppearance);
+    LocalDefaultSystemAppearance localAppearance(useSystemAppearance, useDarkAppearance);
     if (localAppearance.usingDarkAppearance())
         return m_darkColorCache;
     return RenderTheme::colorCache(options);
@@ -535,38 +540,47 @@ auto RenderThemeMac::colorCache(OptionSet<StyleColor::Options> options) const ->
 Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::Options> options) const
 {
     const bool useSystemAppearance = options.contains(StyleColor::Options::UseSystemAppearance);
-    const bool useDefaultAppearance = options.contains(StyleColor::Options::UseDefaultAppearance);
+    const bool useDarkAppearance = options.contains(StyleColor::Options::UseDarkAppearance);
     const bool forVisitedLink = options.contains(StyleColor::Options::ForVisitedLink);
 
-    LocalDefaultSystemAppearance localAppearance(useSystemAppearance, useDefaultAppearance);
+    LocalDefaultSystemAppearance localAppearance(useSystemAppearance, useDarkAppearance);
 
     auto& cache = colorCache(options);
 
-    // The system color cache below can't handle visited links. The only color value
-    // that cares about visited links is CSSValueWebkitLink, so handle it here.
-    if (forVisitedLink && cssValueID == CSSValueWebkitLink) {
-        // Only use NSColor when the system appearance is desired, otherwise use RenderTheme's default.
-        if (useSystemAppearance) {
-            if (!cache.systemVisitedLinkColor.isValid())
-                cache.systemVisitedLinkColor = semanticColorFromNSColor([NSColor systemPurpleColor]);
-            return cache.systemVisitedLinkColor;
-        }
+    if (useSystemAppearance) {
+        // Only use NSColor for links when the system appearance is desired.
+        auto systemAppearanceColor = [] (Color& color, SEL selector) -> Color {
+            if (!color.isValid()) {
+                auto systemColor = wtfObjcMsgSend<NSColor *>([NSColor class], selector);
+                color = semanticColorFromNSColor(systemColor);
+            }
 
+            return color;
+        };
+
+        switch (cssValueID) {
+        case CSSValueWebkitLink:
+            if (forVisitedLink)
+                return systemAppearanceColor(cache.systemVisitedLinkColor, @selector(systemPurpleColor));
+            return systemAppearanceColor(cache.systemLinkColor, @selector(linkColor));
+        case CSSValueWebkitActivelink:
+            // FIXME: Use a semantic system color for this, instead of systemRedColor. <rdar://problem/39256684>
+            return systemAppearanceColor(cache.systemActiveLinkColor, @selector(systemRedColor));
+        default:
+            // Handle non-link colors below, with the regular cache.
+            break;
+        }
+    } else if (forVisitedLink && cssValueID == CSSValueWebkitLink) {
+        // The system color cache below can't handle visited links. The only color value
+        // that cares about visited links is CSSValueWebkitLink, so handle it here.
         return RenderTheme::systemColor(cssValueID, options);
     }
 
     ASSERT(!forVisitedLink);
 
-    return cache.systemStyleColors.ensure(cssValueID, [this, cssValueID, useSystemAppearance, options] () -> Color {
-        auto selectCocoaColor = [cssValueID, useSystemAppearance] () -> SEL {
+    return cache.systemStyleColors.ensure(cssValueID, [this, cssValueID, options] () -> Color {
+        auto selectCocoaColor = [cssValueID] () -> SEL {
             switch (cssValueID) {
-            case CSSValueWebkitLink:
-                // Only use NSColor when the system appearance is desired, otherwise use RenderTheme's default.
-                return useSystemAppearance ? @selector(linkColor) : nullptr;
-            case CSSValueWebkitActivelink:
-                // Only use NSColor when the system appearance is desired, otherwise use RenderTheme's default.
-                // FIXME: Use a semantic system color for this, instead of systemRedColor. <rdar://problem/39256684>
-                return useSystemAppearance ? @selector(systemRedColor) : nullptr;
             case CSSValueActiveborder:
                 return @selector(keyboardFocusIndicatorColor);
             case CSSValueActivecaption:
@@ -1605,7 +1619,7 @@ void RenderThemeMac::setPopupButtonCellState(const RenderObject& o, const IntSiz
 
 void RenderThemeMac::paintCellAndSetFocusedElementNeedsRepaintIfNecessary(NSCell* cell, const RenderObject& renderer, const PaintInfo& paintInfo, const FloatRect& rect)
 {
-    LocalDefaultSystemAppearance localAppearance(renderer.page().useSystemAppearance(), renderer.page().defaultAppearance());
+    LocalDefaultSystemAppearance localAppearance(renderer.page().useSystemAppearance(), renderer.page().useDarkAppearance());
     bool shouldDrawFocusRing = isFocused(renderer) && renderer.style().outlineStyleIsAuto() == OutlineIsAuto::On;
     bool shouldUseImageBuffer = renderer.style().effectiveZoom() != 1 || renderer.page().pageScaleFactor() != 1;
     bool shouldDrawCell = true;
@@ -1687,7 +1701,7 @@ bool RenderThemeMac::paintSliderThumb(const RenderObject& o, const PaintInfo& pa
         ? sliderThumbVertical()
         : sliderThumbHorizontal();
 
-    LocalDefaultSystemAppearance localAppearance(o.page().useSystemAppearance(), o.page().defaultAppearance());
+    LocalDefaultSystemAppearance localAppearance(o.page().useSystemAppearance(), o.page().useDarkAppearance());
 
     LocalCurrentGraphicsContext localContext(paintInfo.context());
 

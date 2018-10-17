@@ -340,9 +340,9 @@ public:
     void addAudioTrack(Ref<AudioTrack>&&);
     void addTextTrack(Ref<TextTrack>&&);
     void addVideoTrack(Ref<VideoTrack>&&);
-    void removeAudioTrack(AudioTrack&);
-    void removeTextTrack(TextTrack&, bool scheduleEvent = true);
-    void removeVideoTrack(VideoTrack&);
+    void removeAudioTrack(Ref<AudioTrack>&&);
+    void removeTextTrack(Ref<TextTrack>&&, bool scheduleEvent = true);
+    void removeVideoTrack(Ref<VideoTrack>&&);
     void forgetResourceSpecificTracks();
     void closeCaptionTracksChanged();
     void notifyMediaPlayerOfTextTrackChanges();
@@ -899,7 +899,7 @@ private:
 
     void pauseAfterDetachedTask();
     void updatePlaybackControlsManager();
-    void scheduleUpdatePlaybackControlsManager();
+    void schedulePlaybackControlsManagerUpdate();
     void playbackControlsManagerBehaviorRestrictionsTimerFired();
 
     void updateRenderer();

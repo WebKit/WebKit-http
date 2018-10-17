@@ -21,27 +21,27 @@ PASS Element.animate() accepts a one property one non-array value property-index
 PASS Element.animate() accepts a one property two value property-indexed keyframes specification where the first value is invalid 
 PASS Element.animate() accepts a one property two value property-indexed keyframes specification where the second value is invalid 
 PASS Element.animate() accepts a property-indexed keyframe with a single offset 
-FAIL Element.animate() accepts a property-indexed keyframe with an array of offsets assert_equals: value for 'computedOffset' on ComputedKeyframe #1 expected 0.25 but got 0.45000000000000007
-FAIL Element.animate() accepts a property-indexed keyframe with an array of offsets that is too short assert_equals: value for 'computedOffset' on ComputedKeyframe #1 expected 0.25 but got 0.5
+PASS Element.animate() accepts a property-indexed keyframe with an array of offsets 
+PASS Element.animate() accepts a property-indexed keyframe with an array of offsets that is too short 
 PASS Element.animate() accepts a property-indexed keyframe with an array of offsets that is too long 
 PASS Element.animate() accepts a property-indexed keyframe with an empty array of offsets 
 PASS Element.animate() accepts a property-indexed keyframe with an array of offsets with an embedded null value 
-FAIL Element.animate() accepts a property-indexed keyframe with an array of offsets with a trailing null value assert_equals: value for 'computedOffset' on ComputedKeyframe #1 expected 0.25 but got 0.5
-FAIL Element.animate() accepts a property-indexed keyframe with an array of offsets with leading and trailing null values assert_equals: value for 'computedOffset' on ComputedKeyframe #1 expected 0.25 but got 0.5
+PASS Element.animate() accepts a property-indexed keyframe with an array of offsets with a trailing null value 
+PASS Element.animate() accepts a property-indexed keyframe with an array of offsets with leading and trailing null values 
 PASS Element.animate() accepts a property-indexed keyframe with an array of offsets with adjacent null values 
 PASS Element.animate() accepts a property-indexed keyframe with an array of offsets with all null values (and too many at that) 
 PASS Element.animate() accepts a property-indexed keyframe with a single null offset 
-FAIL Element.animate() accepts a property-indexed keyframe with an array of offsets that is not strictly ascending in the unused part of the array assert_equals: value for 'computedOffset' on ComputedKeyframe #1 expected 0.2 but got 0.4
+PASS Element.animate() accepts a property-indexed keyframe with an array of offsets that is not strictly ascending in the unused part of the array 
 PASS Element.animate() accepts a property-indexed keyframe without any specified easing 
 PASS Element.animate() accepts a property-indexed keyframe with a single easing 
 PASS Element.animate() accepts a property-indexed keyframe with an array of easings 
-FAIL Element.animate() accepts a property-indexed keyframe with an array of easings that is too short assert_equals: value for 'easing' on ComputedKeyframe #2 expected "ease-in" but got "ease-out"
+PASS Element.animate() accepts a property-indexed keyframe with an array of easings that is too short 
 PASS Element.animate() accepts a property-indexed keyframe with a single-element array of easings 
 PASS Element.animate() accepts a property-indexed keyframe with an empty array of easings 
 PASS Element.animate() accepts a property-indexed keyframe with an array of easings that is too long 
 PASS Element.animate() accepts a property-indexed keyframe with a single composite operation 
 PASS Element.animate() accepts a property-indexed keyframe with a composite array 
-FAIL Element.animate() accepts a property-indexed keyframe with a composite array that is too short assert_equals: value for 'composite' on ComputedKeyframe #2 expected "add" but got "replace"
+PASS Element.animate() accepts a property-indexed keyframe with a composite array that is too short 
 PASS Element.animate() accepts a property-indexed keyframe with a composite array that is too long 
 PASS Element.animate() accepts a property-indexed keyframe with a single-element composite array 
 PASS Element.animate() accepts a one property one keyframe sequence 
@@ -54,9 +54,9 @@ PASS Element.animate() accepts a two property keyframe sequence where one proper
 PASS Element.animate() accepts a one property two keyframe sequence that needs to stringify its values 
 PASS Element.animate() accepts a keyframe sequence with a CSS variable reference 
 PASS Element.animate() accepts a keyframe sequence with a CSS variable reference in a shorthand property 
-FAIL Element.animate() accepts a keyframe sequence with duplicate values for a given interior offset Type error
-FAIL Element.animate() accepts a keyframe sequence with duplicate values for offsets 0 and 1 Type error
-FAIL Element.animate() accepts a two property four keyframe sequence Type error
+PASS Element.animate() accepts a keyframe sequence with duplicate values for a given interior offset 
+PASS Element.animate() accepts a keyframe sequence with duplicate values for offsets 0 and 1 
+PASS Element.animate() accepts a two property four keyframe sequence 
 PASS Element.animate() accepts a single keyframe sequence with omitted offset 
 PASS Element.animate() accepts a single keyframe sequence with null offset 
 PASS Element.animate() accepts a single keyframe sequence with string offset 
@@ -64,8 +64,8 @@ PASS Element.animate() accepts a one property keyframe sequence with some omitte
 PASS Element.animate() accepts a one property keyframe sequence with some null offsets 
 PASS Element.animate() accepts a two property keyframe sequence with some omitted offsets 
 PASS Element.animate() accepts a one property keyframe sequence with all omitted offsets 
-FAIL Element.animate() accepts a keyframe sequence with different easing values, but the same easing value for a given offset Type error
-FAIL Element.animate() accepts a keyframe sequence with different composite values, but the same composite value for a given offset Type error
+PASS Element.animate() accepts a keyframe sequence with different easing values, but the same easing value for a given offset 
+PASS Element.animate() accepts a keyframe sequence with different composite values, but the same composite value for a given offset 
 PASS Element.animate() does not accept keyframes with an out-of-bounded positive offset 
 PASS Element.animate() does not accept keyframes with an out-of-bounded negative offset 
 PASS Element.animate() does not accept property-indexed keyframes not loosely sorted by offset 

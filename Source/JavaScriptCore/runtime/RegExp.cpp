@@ -211,7 +211,6 @@ void RegExpFunctionalTestCollector::outputEscapedString(const String& s, bool es
 
 RegExp::RegExp(VM& vm, const String& patternString, RegExpFlags flags)
     : JSCell(vm, vm.regExpStructure.get())
-    , m_state(NotCompiled)
     , m_patternString(patternString)
     , m_flags(flags)
 {
@@ -505,5 +504,30 @@ void RegExp::matchCompareWithInterpreter(const String& s, int startOffset, int* 
         printf("                                         %16.16s %16.16s %10d %10d %10u\n", jit8BitMatchAddr, jit16BitMatchAddr, m_rtMatchCallCount, m_rtMatchFoundCount, averageMatchStringLen);
     }
 #endif
+
+static CString regexpToSourceString(const RegExp* regExp)
+{
+    char postfix[7] = { '/', 0, 0, 0, 0, 0, 0 };
+    int index = 1;
+    if (regExp->global())
+        postfix[index++] = 'g';
+    if (regExp->ignoreCase())
+        postfix[index++] = 'i';
+    if (regExp->multiline())
+        postfix[index] = 'm';
+    if (regExp->dotAll())
+        postfix[index++] = 's';
+    if (regExp->unicode())
+        postfix[index++] = 'u';
+    if (regExp->sticky())
+        postfix[index++] = 'y';
+
+    return toCString("/", regExp->pattern().impl(), postfix);
+}
+
+void RegExp::dumpToStream(const JSCell* cell, PrintStream& out)
+{
+    out.print(regexpToSourceString(jsCast<const RegExp*>(cell)));
+}
 
 } // namespace JSC

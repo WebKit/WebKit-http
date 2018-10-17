@@ -239,6 +239,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_userContentProvider(*WTFMove(pageConfiguration.userContentProvider))
     , m_visitedLinkStore(*WTFMove(pageConfiguration.visitedLinkStore))
     , m_sessionID(PAL::SessionID::defaultSessionID())
+    , m_playbackControlsManagerUpdateTimer(*this, &Page::playbackControlsManagerUpdateTimerFired)
     , m_isUtilityPage(isUtilityPageChromeClient(chrome().client()))
     , m_performanceMonitor(isUtilityPage() ? nullptr : std::make_unique<PerformanceMonitor>(*this))
     , m_lowPowerModeNotifier(std::make_unique<LowPowerModeNotifier>([this](bool isLowPowerModeEnabled) { handleLowModePowerChange(isLowPowerModeEnabled); }))
@@ -519,20 +520,27 @@ void Page::initGroup()
     m_group = m_singlePageGroup.get();
 }
 
+void Page::updateStyleAfterChangeInEnvironment()
+{
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        // If a change in the global environment has occurred, we need to
+        // make sure all the properties a recomputed, therefore we invalidate
+        // the properties cache.
+        auto* document = frame->document();
+        if (!document)
+            continue;
+
+        if (StyleResolver* styleResolver = document->styleScope().resolverIfExists())
+            styleResolver->invalidateMatchedPropertiesCache();
+        document->scheduleForcedStyleRecalc();
+        document->styleScope().didChangeStyleSheetEnvironment();
+    }
+}
+
 void Page::updateStyleForAllPagesAfterGlobalChangeInEnvironment()
 {
-    for (auto* page : allPages()) {
-        for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
-            // If a change in the global environment has occurred, we need to
-            // make sure all the properties a recomputed, therefore we invalidate
-            // the properties cache.
-            if (!frame->document())
-                continue;
-            if (StyleResolver* styleResolver = frame->document()->styleScope().resolverIfExists())
-                styleResolver->invalidateMatchedPropertiesCache();
-            frame->document()->scheduleForcedStyleRecalc();
-        }
-    }
+    for (auto* page : allPages())
+        page->updateStyleAfterChangeInEnvironment();
 }
 
 void Page::setNeedsRecalcStyleInAllFrames()
@@ -1489,15 +1497,16 @@ void Page::updateIsPlayingMedia(uint64_t sourceElementID)
 
 void Page::schedulePlaybackControlsManagerUpdate()
 {
-    if (m_playbackControlsManagerUpdateTimer)
-        return;
+    if (!m_playbackControlsManagerUpdateTimer.isActive())
+        m_playbackControlsManagerUpdateTimer.startOneShot(0_s);
+}
 
-    m_playbackControlsManagerUpdateTimer = std::make_unique<DeferrableOneShotTimer>([this] () mutable {
-        if (auto bestMediaElement = HTMLMediaElement::bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose::ControlsManager))
-            chrome().client().setUpPlaybackControlsManager(*bestMediaElement);
-        else
-            chrome().client().clearPlaybackControlsManager();
-    }, 0_s);
+void Page::playbackControlsManagerUpdateTimerFired()
+{
+    if (auto bestMediaElement = HTMLMediaElement::bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose::ControlsManager))
+        chrome().client().setUpPlaybackControlsManager(*bestMediaElement);
+    else
+        chrome().client().clearPlaybackControlsManager();
 }
 
 void Page::setMuted(MediaProducer::MutedStateFlags muted)
@@ -2194,7 +2203,7 @@ void Page::setSessionID(PAL::SessionID sessionID)
 
 #if ENABLE(INDEXED_DATABASE)
     if (sessionID != m_sessionID)
-        m_idbIDBConnectionToServer = nullptr;
+        m_idbConnectionToServer = nullptr;
 #endif
 
     bool privateBrowsingStateChanged = (sessionID.isEphemeral() != m_sessionID.isEphemeral());
@@ -2318,10 +2327,20 @@ void Page::setAllowsMediaDocumentInlinePlayback(bool flag)
 #if ENABLE(INDEXED_DATABASE)
 IDBClient::IDBConnectionToServer& Page::idbConnection()
 {
-    if (!m_idbIDBConnectionToServer)
-        m_idbIDBConnectionToServer = &databaseProvider().idbConnectionToServerForSession(m_sessionID);
+    if (!m_idbConnectionToServer)
+        m_idbConnectionToServer = &databaseProvider().idbConnectionToServerForSession(m_sessionID);
     
-    return *m_idbIDBConnectionToServer;
+    return *m_idbConnectionToServer;
+}
+
+IDBClient::IDBConnectionToServer* Page::optionalIDBConnection()
+{
+    return m_idbConnectionToServer.get();
+}
+
+void Page::clearIDBConnection()
+{
+    m_idbConnectionToServer = nullptr;
 }
 #endif
 
@@ -2386,24 +2405,38 @@ void Page::setUseSystemAppearance(bool value)
 {
     if (m_useSystemAppearance == value)
         return;
+
     m_useSystemAppearance = value;
+
+    updateStyleAfterChangeInEnvironment();
 
     for (auto* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         auto* document = frame->document();
         if (!document)
             continue;
+
         // System apperance change may affect stylesheet parsing. We need to reparse.
         document->extensionStyleSheets().clearPageUserSheet();
         document->extensionStyleSheets().invalidateInjectedStyleSheetCache();
     }
 }
 
-bool Page::defaultAppearance() const
+void Page::setUseDarkAppearance(bool value)
+{
+    if (m_useDarkAppearance == value)
+        return;
+
+    m_useDarkAppearance = value;
+
+    updateStyleAfterChangeInEnvironment();
+}
+
+bool Page::useDarkAppearance() const
 {
     FrameView* view = mainFrame().view();
     if (!view || !equalLettersIgnoringASCIICase(view->mediaType(), "screen"))
-        return true;
-    return m_defaultAppearance;
+        return false;
+    return m_useDarkAppearance;
 }
 
 void Page::setFullscreenInsets(const FloatBoxExtent& insets)
@@ -2416,15 +2449,6 @@ void Page::setFullscreenInsets(const FloatBoxExtent& insets)
         if (!frame->document())
             continue;
         frame->document()->constantProperties().didChangeFullscreenInsets();
-    }
-}
-
-void Page::setFullscreenAutoHideDelay(Seconds delay)
-{
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
-        frame->document()->constantProperties().setFullscreenAutoHideDelay(delay);
     }
 }
 

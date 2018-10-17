@@ -231,7 +231,7 @@ void WebResourceLoadStatisticsStore::hasStorageAccess(String&& subFrameHost, Str
     });
 }
 
-void WebResourceLoadStatisticsStore::callHasStorageAccessForFrameHandler(const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, Function<void(bool hasAccess)>&& callback)
+void WebResourceLoadStatisticsStore::callHasStorageAccessForFrameHandler(const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool hasAccess)>&& callback)
 {
     ASSERT(RunLoop::isMain());
 
@@ -748,12 +748,16 @@ void WebResourceLoadStatisticsStore::scheduleCookiePartitioningStateReset()
 }
 #endif
 
-void WebResourceLoadStatisticsStore::scheduleClearInMemory()
+void WebResourceLoadStatisticsStore::scheduleClearInMemory(CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(RunLoop::isMain());
-    postTask([this] {
+    postTask([this, completionHandler = WTFMove(completionHandler)]() mutable {
         if (m_memoryStore)
             m_memoryStore->clear();
+
+        postTaskReply([completionHandler = WTFMove(completionHandler)] {
+            completionHandler();
+        });
     });
 }
 
@@ -866,13 +870,17 @@ void WebResourceLoadStatisticsStore::setPruneEntriesDownTo(size_t pruneTargetCou
     });
 }
 
-void WebResourceLoadStatisticsStore::resetParametersToDefaultValues()
+void WebResourceLoadStatisticsStore::resetParametersToDefaultValues(CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(RunLoop::isMain());
 
-    postTask([this] {
+    postTask([this, completionHandler = WTFMove(completionHandler)]() mutable {
         if (m_memoryStore)
             m_memoryStore->resetParametersToDefaultValues();
+
+        postTaskReply([completionHandler = WTFMove(completionHandler)] {
+            completionHandler();
+        });
     });
 }
 

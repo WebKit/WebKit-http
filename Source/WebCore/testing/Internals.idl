@@ -62,8 +62,7 @@ enum AutoFillButtonType {
     "None",
     "Contacts",
     "Credentials",
-    "StrongPassword",
-    "StrongConfirmationPassword"
+    "StrongPassword"
 };
 
 enum UserInterfaceLayoutDirection {
@@ -390,7 +389,6 @@ enum EventThrottlingBehavior {
     [Conditional=FULLSCREEN_API] readonly attribute boolean isAnimatingFullScreen;
 
     void setFullscreenInsets(FullscreenInsets insets);
-    void setFullscreenAutoHideDelay(double delay);
     void setFullscreenAutoHideDuration(double duration);
     void setFullscreenControlsHidden(boolean hidden);
 
@@ -654,4 +652,6 @@ enum EventThrottlingBehavior {
     void reloadWithoutContentExtensions();
 
     void setUseSystemAppearance(boolean value);
+
+    unsigned long pluginCount();
 };

@@ -695,7 +695,7 @@ HTMLMediaElement::~HTMLMediaElement()
     }
 
     m_mediaSession = nullptr;
-    scheduleUpdatePlaybackControlsManager();
+    schedulePlaybackControlsManagerUpdate();
 }
 
 static bool needsAutoplayPlayPauseEventsQuirk(const Document& document)
@@ -1139,7 +1139,7 @@ void HTMLMediaElement::notifyAboutPlaying(PlayPromiseVector&& pendingPlayPromise
     dispatchEvent(Event::create(eventNames().playingEvent, false, true));
     resolvePendingPlayPromises(WTFMove(pendingPlayPromises));
 
-    scheduleUpdatePlaybackControlsManager();
+    schedulePlaybackControlsManagerUpdate();
 }
 
 bool HTMLMediaElement::hasEverNotifiedAboutPlaying() const
@@ -3743,7 +3743,7 @@ void HTMLMediaElement::setMuted(bool muted)
         m_mediaSession->canProduceAudioChanged();
     }
 
-    scheduleUpdatePlaybackControlsManager();
+    schedulePlaybackControlsManagerUpdate();
 }
 
 #if USE(AUDIO_SESSION) && PLATFORM(MAC)
@@ -4046,28 +4046,28 @@ void HTMLMediaElement::addVideoTrack(Ref<VideoTrack>&& track)
     videoTracks().append(WTFMove(track));
 }
 
-void HTMLMediaElement::removeAudioTrack(AudioTrack& track)
+void HTMLMediaElement::removeAudioTrack(Ref<AudioTrack>&& track)
 {
-    m_audioTracks->remove(track);
-    track.clearClient();
+    track->clearClient();
+    m_audioTracks->remove(track.get());
 }
 
-void HTMLMediaElement::removeTextTrack(TextTrack& track, bool scheduleEvent)
+void HTMLMediaElement::removeTextTrack(Ref<TextTrack>&& track, bool scheduleEvent)
 {
     TrackDisplayUpdateScope scope { *this };
-    if (auto cues = makeRefPtr(track.cues()))
+    if (auto cues = makeRefPtr(track->cues()))
         textTrackRemoveCues(track, *cues);
-    track.clearClient();
+    track->clearClient();
     if (m_textTracks)
         m_textTracks->remove(track, scheduleEvent);
 
     closeCaptionTracksChanged();
 }
 
-void HTMLMediaElement::removeVideoTrack(VideoTrack& track)
+void HTMLMediaElement::removeVideoTrack(Ref<VideoTrack>&& track)
 {
+    track->clearClient();
     m_videoTracks->remove(track);
-    track.clearClient();
 }
 
 void HTMLMediaElement::forgetResourceSpecificTracks()
@@ -4078,9 +4078,9 @@ void HTMLMediaElement::forgetResourceSpecificTracks()
     if (m_textTracks) {
         TrackDisplayUpdateScope scope { *this };
         for (int i = m_textTracks->length() - 1; i >= 0; --i) {
-            auto& track = *m_textTracks->item(i);
-            if (track.trackType() == TextTrack::InBand)
-                removeTextTrack(track, false);
+            auto track = makeRef(*m_textTracks->item(i));
+            if (track->trackType() == TextTrack::InBand)
+                removeTextTrack(WTFMove(track), false);
         }
     }
 
@@ -4402,7 +4402,7 @@ void HTMLMediaElement::layoutSizeChanged()
 
     if (!m_receivedLayoutSizeChanged) {
         m_receivedLayoutSizeChanged = true;
-        scheduleUpdatePlaybackControlsManager();
+        schedulePlaybackControlsManagerUpdate();
     }
 
     // If the video is a candidate for main content, we should register it for viewport visibility callbacks
@@ -5328,7 +5328,7 @@ void HTMLMediaElement::updatePlayState(UpdateState updateState)
     }
 
     if (shouldBePlaying) {
-        scheduleUpdatePlaybackControlsManager();
+        schedulePlaybackControlsManagerUpdate();
 
         setDisplayMode(Video);
         invalidateCachedTime();
@@ -5357,7 +5357,7 @@ void HTMLMediaElement::updatePlayState(UpdateState updateState)
         startPlaybackProgressTimer();
         setPlaying(true);
     } else {
-        scheduleUpdatePlaybackControlsManager();
+        schedulePlaybackControlsManagerUpdate();
 
         if (!playerPaused)
             m_player->pause();
@@ -5521,7 +5521,7 @@ void HTMLMediaElement::clearMediaPlayer(DelayedActionType flags)
         m_player->invalidate();
         m_player = nullptr;
     }
-    scheduleUpdatePlaybackControlsManager();
+    schedulePlaybackControlsManagerUpdate();
 
     stopPeriodicTimers();
     m_pendingActionTimer.stop();
@@ -5561,7 +5561,7 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
 
     setPreparedToReturnVideoLayerToInline(true);
 
-    scheduleUpdatePlaybackControlsManager();
+    schedulePlaybackControlsManagerUpdate();
     setInActiveDocument(false);
 
     // Stop the playback without generating events
@@ -5615,29 +5615,28 @@ void HTMLMediaElement::stop()
     m_mediaSession->stopSession();
 }
 
-void HTMLMediaElement::suspend(ReasonForSuspension why)
+void HTMLMediaElement::suspend(ReasonForSuspension reason)
 {
     INFO_LOG(LOGIDENTIFIER);
     Ref<HTMLMediaElement> protectedThis(*this);
 
-    switch (why)
-    {
-        case PageCache:
-            stopWithoutDestroyingMediaPlayer();
-            m_asyncEventQueue.suspend();
-            setShouldBufferData(false);
-            m_mediaSession->addBehaviorRestriction(MediaElementSession::RequirePageConsentToResumeMedia);
-            break;
-        case PageWillBeSuspended:
-            if (!m_pausedInternal) {
-                m_shouldUnpauseInternalOnResume = true;
-                setPausedInternal(true);
-            }
-            break;
-        case JavaScriptDebuggerPaused:
-        case WillDeferLoading:
-            // Do nothing, we don't pause media playback in these cases.
-            break;
+    switch (reason) {
+    case ReasonForSuspension::PageCache:
+        stopWithoutDestroyingMediaPlayer();
+        m_asyncEventQueue.suspend();
+        setShouldBufferData(false);
+        m_mediaSession->addBehaviorRestriction(MediaElementSession::RequirePageConsentToResumeMedia);
+        break;
+    case ReasonForSuspension::PageWillBeSuspended:
+        if (!m_pausedInternal) {
+            m_shouldUnpauseInternalOnResume = true;
+            setPausedInternal(true);
+        }
+        break;
+    case ReasonForSuspension::JavaScriptDebuggerPaused:
+    case ReasonForSuspension::WillDeferLoading:
+        // Do nothing, we don't pause media playback in these cases.
+        break;
     }
 }
 
@@ -6550,7 +6549,7 @@ void HTMLMediaElement::createMediaPlayer()
 #endif
     m_player = MediaPlayer::create(*this);
     m_player->setShouldBufferData(m_shouldBufferData);
-    scheduleUpdatePlaybackControlsManager();
+    schedulePlaybackControlsManagerUpdate();
 
 #if ENABLE(WEB_AUDIO)
     if (m_audioSourceNode) {
@@ -7862,7 +7861,7 @@ void HTMLMediaElement::isVisibleInViewportChanged()
     m_visibilityChangeTaskQueue.enqueueTask([this] {
         m_mediaSession->isVisibleInViewportChanged();
         updateShouldAutoplay();
-        scheduleUpdatePlaybackControlsManager();
+        schedulePlaybackControlsManagerUpdate();
     });
 }
 
@@ -7905,7 +7904,7 @@ bool HTMLMediaElement::isVisibleInViewport() const
     return renderer && renderer->visibleInViewportState() == VisibleInViewportState::Yes;
 }
 
-void HTMLMediaElement::scheduleUpdatePlaybackControlsManager()
+void HTMLMediaElement::schedulePlaybackControlsManagerUpdate()
 {
     Page* page = document().page();
     if (!page)
@@ -7928,7 +7927,7 @@ void HTMLMediaElement::playbackControlsManagerBehaviorRestrictionsTimerFired()
             return;
 
         mediaElementSession->addBehaviorRestriction(MediaElementSession::RequirePlaybackToControlControlsManager);
-        protectedThis->scheduleUpdatePlaybackControlsManager();
+        protectedThis->schedulePlaybackControlsManagerUpdate();
     });
 }
 
@@ -7949,7 +7948,7 @@ void HTMLMediaElement::fullscreenModeChanged(VideoFullscreenMode mode)
 
     m_videoFullscreenMode = mode;
     visibilityStateChanged();
-    scheduleUpdatePlaybackControlsManager();
+    schedulePlaybackControlsManagerUpdate();
 }
 
 #if !RELEASE_LOG_DISABLED

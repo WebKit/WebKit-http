@@ -27,6 +27,7 @@
 #include "Options.h"
 
 #include "AssemblerCommon.h"
+#include "LLIntCommon.h"
 #include "MinimumReservedZoneSize.h"
 #include "SigillCrashAnalyzer.h"
 #include <algorithm>
@@ -158,6 +159,10 @@ bool Options::isAvailable(Options::ID id, Options::Availability availability)
     if (id == useSigillCrashAnalyzerID)
         return true;
 #endif
+    if (id == traceLLIntExecutionID)
+        return !!LLINT_TRACING;
+    if (id == traceLLIntSlowPathID)
+        return !!LLINT_TRACING;
     return false;
 }
 
@@ -465,18 +470,6 @@ static void recomputeDependentOptions()
 
     if (Options::alwaysUseShadowChicken())
         Options::maximumInliningDepth() = 1;
-
-    // Compute the maximum value of the reoptimization retry counter. This is simply
-    // the largest value at which we don't overflow the execute counter, when using it
-    // to left-shift the execution counter by this amount. Currently the value ends
-    // up being 18, so this loop is not so terrible; it probably takes up ~100 cycles
-    // total on a 32-bit processor.
-    Options::reoptimizationRetryCounterMax() = 0;
-    while ((static_cast<int64_t>(Options::thresholdForOptimizeAfterLongWarmUp()) << (Options::reoptimizationRetryCounterMax() + 1)) <= static_cast<int64_t>(std::numeric_limits<int32_t>::max()))
-        Options::reoptimizationRetryCounterMax()++;
-
-    ASSERT((static_cast<int64_t>(Options::thresholdForOptimizeAfterLongWarmUp()) << Options::reoptimizationRetryCounterMax()) > 0);
-    ASSERT((static_cast<int64_t>(Options::thresholdForOptimizeAfterLongWarmUp()) << Options::reoptimizationRetryCounterMax()) <= static_cast<int64_t>(std::numeric_limits<int32_t>::max()));
 
 #if !defined(NDEBUG)
     if (Options::maxSingleAllocationSize())

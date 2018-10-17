@@ -1,3 +1,144 @@
+2018-07-10  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make WPT test at interfaces/KeyframeEffect/processing-a-keyframes-argument-001.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=186501
+        <rdar://problem/41000224>
+
+        Reviewed by Dean Jackson.
+
+        Mark 2 new WPT progressions.
+
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001-expected.txt:
+
+2018-07-10  Youenn Fablet  <youenn@apple.com>
+
+        Make fetch() use "same-origin" credentials by default
+        https://bugs.webkit.org/show_bug.cgi?id=176023
+
+        Reviewed by Chris Dumez.
+
+        Tests updated according upstream WPT repo.
+
+        * web-platform-tests/fetch/api/request/request-init-003.sub.html:
+        * web-platform-tests/fetch/api/request/request-structure.html:
+
+2018-07-09  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make WPT test at animation-model/keyframe-effects/effect-value-overlapping-keyframes.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=186492
+        <rdar://problem/41000150>
+
+        Reviewed by Dean Jackson.
+
+        While we've fixed handling of overlapping keyframes in the fix for webkit.org/b/187498 (r233676), we weren't passing
+        the dedicated WPT test because it assumed absolute accuracy when reading the computed style opacity. This isn't correct
+        per the CSS spec and the WPT test has been updated (see https://github.com/web-platform-tests/wpt/pull/11880). We're
+        reflecting this change in our copy of this test which now passes. 
+
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-overlapping-keyframes-expected.txt:
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-overlapping-keyframes.html:
+
+2018-07-09  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Correct handle repetition of composite and easing values
+        https://bugs.webkit.org/show_bug.cgi?id=187498
+        <rdar://problem/41999183>
+
+        Reviewed by Dean Jackson.
+
+        Mark 6 new WPT progressions.
+
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/constructor-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/setKeyframes-expected.txt:
+
+2018-07-09  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make WPT test at interfaces/DocumentTimeline/constructor.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=186498
+        <rdar://problem/41000205>
+
+        Reviewed by Dean Jackson.
+
+        Mark 4 new WPT progressions.
+
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/constructor-expected.txt:
+
+2018-07-09  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Support overlapping keyframes
+        https://bugs.webkit.org/show_bug.cgi?id=187481
+        <rdar://problem/41988674>
+
+        Reviewed by Dean Jackson.
+
+        Mark 20 new WPT progressions and 2 different failures.
+
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-overlapping-keyframes-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/constructor-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/setKeyframes-expected.txt:
+
+2018-07-09  Youenn Fablet  <youenn@apple.com>
+
+        StringView operator==(char*) should check the length of the string
+        https://bugs.webkit.org/show_bug.cgi?id=187422
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/eventsource/format-field-parsing-expected.txt:
+
+2018-07-08  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] A number of tests report an incorrect computed offset
+        https://bugs.webkit.org/show_bug.cgi?id=187410
+        <rdar://problem/41905790>
+
+        Reviewed by Dean Jackson.
+
+        Mark 16 new WPT progressions.
+
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/constructor-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/setKeyframes-expected.txt:
+
+2018-07-06  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make WPT test at interfaces/KeyframeEffect/processing-a-keyframes-argument-002.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=186502
+        <rdar://problem/41000229>l
+
+        Reviewed by Dean Jackson.
+
+        Mark WPT progression.
+
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-002-expected.txt:
+
+2018-07-05  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make WPT test at interfaces/Animation/finish.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=186496
+        <rdar://problem/41000179>
+
+        Reviewed by Dean Jackson.
+
+        Mark a WPT progression.
+
+        * web-platform-tests/web-animations/interfaces/Animation/finish-expected.txt:
+
+2018-07-05  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make WPT test at interfaces/Animation/finished.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=186497
+        <rdar://problem/41000193>
+
+        Reviewed by Dean Jackson.
+
+        Mark WPT progression.
+
+        * web-platform-tests/web-animations/interfaces/Animation/finished-expected.txt:
+
 2018-07-05  Antoine Quint  <graouts@apple.com>
 
         [Web Animations] The ready promise should initially be resolved

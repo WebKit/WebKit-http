@@ -15,6 +15,7 @@
 # Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
 # Boston, MA 02110-1301, USA.
 import argparse
+import logging
 try:
     import configparser
 except ImportError:
@@ -31,6 +32,7 @@ import re
 
 from webkitpy.common.system.systemhost import SystemHost
 from webkitpy.port.factory import PortFactory
+from webkitpy.common.system.logutils import configure_logging
 
 try:
     from urllib.parse import urlparse  # pylint: disable=E0611
@@ -48,6 +50,7 @@ FLATPAK_REQ = [
 ]
 
 scriptdir = os.path.abspath(os.path.dirname(__file__))
+_log = logging.getLogger(__name__)
 
 
 class Colors:
@@ -449,6 +452,8 @@ class WebkitFlatpak:
 
         parser = argparse.ArgumentParser(prog="webkit-flatpak")
         general = parser.add_argument_group("General")
+        general.add_argument('--verbose', action='store_true',
+                             help='Show debug message')
         general.add_argument("--debug",
                             help="Compile with Debug configuration, also installs Sdk debug symboles.",
                             action="store_true")
@@ -512,6 +517,7 @@ class WebkitFlatpak:
         self.sdk_debug = None
         self.app = None
 
+        self.verbose = True
         self.quiet = False
         self.packs = []
         self.update = False
@@ -556,6 +562,7 @@ class WebkitFlatpak:
         self.makeargs = ""
 
     def clean_args(self):
+        configure_logging(logging.DEBUG if self.verbose else logging.INFO)
         if not self.debug and not self.release:
             factory = PortFactory(SystemHost())
             port = factory.get(self.platform)
@@ -627,18 +634,19 @@ class WebkitFlatpak:
         return True
 
     def _cleanup_faltpak_args_for_tests_if_needed(self, args):
-        if args and not args[0].endswith('run-webkit-tests'):
+        if not args or not args[0].endswith('run-webkit-tests'):
             return self.finish_args
 
         # We are going to run our own Xvfb server in the sandbox
-        unwanted_args = ["--socket=x11", "--device=all"]
+        unwanted_args = ["--socket=x11"]
         finish_args = [e for e in self.finish_args if e not in unwanted_args]
 
         return finish_args
 
     def run_in_sandbox(self, *args, **kwargs):
         cwd = kwargs.pop("cwd", None)
-        remove_devices = kwargs.pop("remove_devices", False)
+        stdout = kwargs.pop("stdout", sys.stdout)
+        extra_flatpak_args = kwargs.pop("extra_flatpak_args", [])
 
         if not isinstance(args, list):
             args = list(args)
@@ -653,6 +661,10 @@ class WebkitFlatpak:
         sandbox_build_path = os.path.join(self.sandbox_source_root, "WebKitBuild", self.build_type)
         with tempfile.NamedTemporaryFile(mode="w") as tmpscript:
             flatpak_command = ["flatpak", "build", "--die-with-parent",
+                "--bind-mount=/run/shm=/dev/shm",
+                # Workaround for https://webkit.org/b/187384 to have our own perl modules usable inside the sandbox
+                # as setting the PERL5LIB envvar won't work inside apache (and for scripts using `perl -T``).
+                "--bind-mount=/etc/perl=%s" % os.path.join(self.flatpak_build_path, "files/lib/perl"),
                 "--bind-mount=/run/host/%s=%s" % (tempfile.gettempdir(), tempfile.gettempdir()),
                 "--bind-mount=%s=%s" % (self.sandbox_source_root, self.source_root),
                 # We mount WebKitBuild/PORTNAME/BuildType to /app/webkit/WebKitBuild/BuildType
@@ -673,7 +685,7 @@ class WebkitFlatpak:
                 flatpak_command.append("--env=%s=%s" % (envvar, value))
 
             finish_args = self._cleanup_faltpak_args_for_tests_if_needed(args)
-            flatpak_command += finish_args + [self.flatpak_build_path]
+            flatpak_command += finish_args + extra_flatpak_args + [self.flatpak_build_path]
 
             shell_string = ""
             if args:
@@ -689,11 +701,11 @@ class WebkitFlatpak:
             tmpscript.write(shell_string)
             tmpscript.flush()
 
-            Console.message('Running in sandbox: "%s" %s\n' % ('" "'.join(flatpak_command), shell_string))
+            _log.debug('Running in sandbox: "%s" %s\n' % ('" "'.join(flatpak_command), shell_string))
             flatpak_command.extend(['sh', "/run/host/" + tmpscript.name])
 
             try:
-                subprocess.check_call(flatpak_command)
+                subprocess.check_call(flatpak_command, stdout=stdout)
             except subprocess.CalledProcessError as e:
                 sys.stderr.write(str(e) + "\n")
                 return e.returncode
@@ -747,9 +759,6 @@ class WebkitFlatpak:
             builder_args.append("--build-only")
             builder_args.append("--stop-at=%s" % self.name)
             subprocess.check_call(builder_args)
-
-        if not self.update and not os.path.exists(os.path.join(self.build_path, "bin", "MiniBrowser")):
-            self.build_webkit = True
 
         if self.build_webkit:
             builder = [os.path.join(self.sandbox_source_root, 'Tools/Scripts/build-webkit'),

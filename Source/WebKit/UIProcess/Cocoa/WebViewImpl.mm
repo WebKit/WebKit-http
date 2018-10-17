@@ -1311,6 +1311,8 @@ WebViewImpl::WebViewImpl(NSView <WebViewImplDelegate> *view, WKWebView *outerWeb
 
     m_page->setAddsVisitedLinks(processPool.historyClient().addsVisitedLinks());
 
+    m_page->setUseDarkAppearance(effectiveAppearanceIsDark());
+
     m_page->initializeWebPage();
 
     registerDraggedTypes();
@@ -3606,7 +3608,7 @@ NSView *WebViewImpl::inspectorAttachmentView()
 _WKRemoteObjectRegistry *WebViewImpl::remoteObjectRegistry()
 {
     if (!m_remoteObjectRegistry) {
-        m_remoteObjectRegistry = adoptNS([[_WKRemoteObjectRegistry alloc] _initWithMessageSender:m_page]);
+        m_remoteObjectRegistry = adoptNS([[_WKRemoteObjectRegistry alloc] _initWithWebPageProxy:m_page]);
         m_page->process().processPool().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), m_page->pageID(), [m_remoteObjectRegistry remoteObjectRegistry]);
     }
 
@@ -5013,19 +5015,24 @@ bool WebViewImpl::useSystemAppearance()
     return m_page->useSystemAppearance();
 }
 
-bool WebViewImpl::useDefaultAppearance()
+void WebViewImpl::effectiveAppearanceDidChange()
+{
+    setUseDarkAppearance(effectiveAppearanceIsDark());
+}
+
+bool WebViewImpl::effectiveAppearanceIsDark()
 {
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     NSAppearanceName appearance = [[m_view effectiveAppearance] bestMatchFromAppearancesWithNames:@[ NSAppearanceNameAqua, NSAppearanceNameDarkAqua ]];
-    return [appearance isEqualToString:NSAppearanceNameAqua];
+    return [appearance isEqualToString:NSAppearanceNameDarkAqua];
 #else
-    return true;
+    return false;
 #endif
 }
 
-void WebViewImpl::setDefaultAppearance(bool defaultAppearance)
+void WebViewImpl::setUseDarkAppearance(bool useDarkAppearance)
 {
-    m_page->setDefaultAppearance(defaultAppearance);
+    m_page->setUseDarkAppearance(useDarkAppearance);
 }
 
 } // namespace WebKit

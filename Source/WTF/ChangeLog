@@ -1,3 +1,111 @@
+2018-07-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed follow-up to r233660.
+
+        * wtf/linux/MemoryFootprintLinux.cpp:
+        (WTF::memoryFootprint): Revert accidental change of logical OR into a bitwise OR.
+
+2018-07-09  Youenn Fablet  <youenn@apple.com>
+
+        StringView operator==(char*) should check the length of the string
+        https://bugs.webkit.org/show_bug.cgi?id=187422
+
+        Reviewed by Chris Dumez.
+
+        Update StringView operator== to ensure that any character raw pointer comparison actually check the length of the raw pointer string.
+        This patch mimicks the behavior of String.
+        For instance, comparing a StringView with "he\0llo" and "he" will give the same result.
+
+        * wtf/linux/MemoryFootprintLinux.cpp:
+        (WTF::memoryFootprint):
+        * wtf/text/StringView.h:
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::equal):
+        (WTF::StringView::stripLeadingAndTrailingMatchedCharacters):
+
+2018-07-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Annotate RunLoop::Timer fast-allocated
+        https://bugs.webkit.org/show_bug.cgi?id=187473
+
+        Reviewed by Saam Barati.
+
+        It is allocated by std::unique_ptr for MemoryPressureHandler. And it uses system malloc now.
+
+        * wtf/RunLoop.h:
+
+2018-07-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize padding of UnlinkedCodeBlock to shrink
+        https://bugs.webkit.org/show_bug.cgi?id=187448
+
+        Reviewed by Saam Barati.
+
+        * wtf/TriState.h:
+
+2018-07-07  David Kilzer  <ddkilzer@apple.com>
+
+        iOS port should define HAVE_RUNLOOP_TIMER
+        <https://webkit.org/b/187370>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/Platform.h:
+        (HAVE_DTRACE): Remove unused macro since r200568.
+        (HAVE_RUNLOOP_TIMER): Define for PLATFORM(COCOA), not just
+        PLATFORM(MAC).  Alphabetize macros.
+
+2018-07-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [linux] ASSERT: Using an alternative signal stack is not supported. Consider disabling the concurrent GC.
+        https://bugs.webkit.org/show_bug.cgi?id=187297
+
+        Reviewed by Mark Lam.
+
+        This patch relaxes the JSC's limitation: accepting an alternative signal stack mechanism.
+
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::getApproximateStackPointer):
+        Fix approximate stack pointer function to make it valid.
+
+        (WTF::Thread::signalHandlerSuspendResume):
+        Use StackBounds::contains to check whether the given stack pointer is in range of StackBounds.
+        If it is out of range, it seems that this stack pointer is pointing an alternative signal stack.
+
+        (WTF::Thread::suspend):
+        Repeatedly retry suspension by using Thread::yield().
+
+        (WTF::isOnAlternativeSignalStack): Deleted.
+
+2018-07-06  Frederic Wang  <fwang@igalia.com>
+
+        WTF's internal std::optional implementation should abort() on bad optional access
+        https://bugs.webkit.org/show_bug.cgi?id=186536
+
+        Reviewed by Michael Catanzaro.
+
+        Currently, some ports built with recent compilers will cause the program to abort when one
+        tries to access the value of an unset std:optional (i.e. std::nullopt) as specified by C++17.
+        However, most ports still use WTF's internal std::optional implementation, which does not
+        verify illegal access. Hence it's not possible for developers working on these ports to
+        detect issues like bugs #186189, #186535, #186752, #186753, #187139, #187145, #187243 or
+        #187382.
+        WTF's version of std::optional was introduced in bug #164199 but it was not possible to
+        verify the availability of the value inside constexpr member functions because the assert
+        might involve asm declarations. This commit introduces a new ASSERT_UNDER_CONSTEXPR_CONTEXT
+        macro (a simplified version of ASSERT that can be used in constexpr context) and uses it in
+        WTF's implementation of std::optional.
+
+        * wtf/Assertions.h: Define ASSERT_UNDER_CONSTEXPR_CONTEXT as a version of ASSERT that can be
+        used in constexpr context (in particular avoids asm declarations).
+        * wtf/Optional.h:
+        (std::optional::operator ->): Add an assert to ensure the optional value is available.
+        (std::optional::operator *): Ditto.
+        (std::optional::value const): Ditto.
+        (std::optional::value): Ditto.
+        (std::optional<T::value const): Ditto.
+
 2018-07-05  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r233417 and r233418.

@@ -118,6 +118,7 @@ http/tests/resourceLoadStatistics/ [ Skip ]
 http/tests/storageAccess/ [ Skip ]
 http/tests/navigation/process-swap-window-open.html [ Skip ]
 http/tests/navigation/useragent-reload.php [ Skip ]
+storage/indexeddb/modern/opendatabase-after-storage-crash.html [ Skip ]
 
 # Only Mac and iOS have an implementation of UIScriptController::doAsyncTask().
 fast/harness/uiscriptcontroller [ Skip ]
@@ -817,7 +818,7 @@ imported/w3c/web-platform-tests/infrastructure/assumptions/ahem.html [ ImageOnly
 imported/w3c/web-platform-tests/infrastructure/assumptions/min-font-size.html [ ImageOnlyFailure ]
 webkit.org/b/186045 imported/w3c/web-platform-tests/infrastructure/reftest-wait.html [ ImageOnlyFailure ] # reftest-wait not supported yet.
 webkit.org/b/187039 imported/w3c/web-platform-tests/infrastructure/testdriver [ Skip ] # testdriver not supported yet.
-webkit.org/b/187093 imported/w3c/web-platform-tests/infrastructure/assumptions/html-elements.html [ Pass Crash ]
+webkit.org/b/187093 [ Debug ] imported/w3c/web-platform-tests/infrastructure/assumptions/html-elements.html [ Skip ]
 imported/w3c/web-platform-tests/infrastructure/server/wpt-server-websocket.sub.html [ Skip ] # non deterministic URL in text dump
 
 # Imported W3C canvas failed tests
@@ -2201,3 +2202,5 @@ webkit.org/b/179176 svg/wicd/test-rightsizing-a.xhtml [ Pass Failure ]
 webkit.org/b/172864 imported/blink/storage/indexeddb/blob-delete-objectstore-db.html [ Pass Timeout ]
 
 webkit.org/b/187183 http/tests/security/pasteboard-file-url.html [ Skip ]
+
+[ Debug ] fast/multicol/crash-in-vertical-writing-mode.html [ Skip ]

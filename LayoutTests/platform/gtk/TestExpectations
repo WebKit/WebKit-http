@@ -1184,6 +1184,9 @@ webkit.org/b/187041 imported/mozilla/css-animations/test_animation-pausing.html 
 # Requires support for testing text replacement
 editing/spelling/text-replacement-after-typing-to-word.html [ Skip ]
 
+# Depends on mac-specific code in TestController.
+webkit.org/b/187550 http/tests/plugins/plugin-allow-then-reload.html [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures.
 #
@@ -3350,7 +3353,6 @@ webkit.org/b/180803 imported/w3c/web-platform-tests/media-source/mediasource-dur
 webkit.org/b/180805 inspector/canvas/requestContent-bitmaprenderer.html [ Failure ]
 
 webkit.org/b/181662 fast/forms/auto-fill-button/input-strong-password-auto-fill-button.html [ Missing Failure ]
-webkit.org/b/181662 fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button.html [ Missing Failure ]
 
 webkit.org/b/182050 http/wpt/fetch/response-opaque-clone.html [ Pass Crash ]
 
@@ -3470,8 +3472,6 @@ webkit.org/b/187268 compositing/backing/backing-store-attachment-outside-viewpor
 webkit.org/b/187271 fast/text/emoji-with-joiner.html [ Failure ]
 
 webkit.org/b/187323 imported/w3c/web-platform-tests/web-animations/timing-model/timelines/timelines.html [ Failure ]
-
-webkit.org/b/187324 fast/text/multiple-text-shadow-overflow-layout-rect.html [ ImageOnlyFailure ]
 
 webkit.org/b/187325 http/wpt/css/css-animations/start-animation-001.html [ ImageOnlyFailure ]
 

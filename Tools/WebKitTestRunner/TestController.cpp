@@ -772,6 +772,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetAccessibilityObjectModelEnabled(preferences, true);
     WKPreferencesSetMediaCapabilitiesEnabled(preferences, true);
 
+    WKPreferencesSetCrossOriginWindowPolicyEnabled(preferences, true);
     WKPreferencesSetRestrictedHTTPResponseAccess(preferences, true);
 
     WKPreferencesSetServerTimingEnabled(preferences, true);
@@ -879,7 +880,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     m_authenticationUsername = String();
     m_authenticationPassword = String();
 
-    m_shouldBlockAllPlugins = false;
+    setBlockAllPlugins(false);
     setPluginSupportedMode({ });
 
     m_shouldLogDownloadCallbacks = false;
@@ -1737,6 +1738,21 @@ WKPluginLoadPolicy TestController::decidePolicyForPluginLoad(WKPageRef, WKPlugin
     RELEASE_ASSERT_NOT_REACHED(); // Please don't use any other plug-ins in tests, as they will not be installed on all machines.
 #else
     return currentPluginLoadPolicy;
+#endif
+}
+
+void TestController::setBlockAllPlugins(bool shouldBlock)
+{
+    m_shouldBlockAllPlugins = shouldBlock;
+
+#if PLATFORM(MAC)
+    auto policy = shouldBlock ? kWKPluginLoadClientPolicyBlock : kWKPluginLoadClientPolicyAllow;
+
+    WKRetainPtr<WKStringRef> nameNetscape = adoptWK(WKStringCreateWithUTF8CString("com.apple.testnetscapeplugin"));
+    WKRetainPtr<WKStringRef> nameFlash = adoptWK(WKStringCreateWithUTF8CString("com.macromedia.Flash Player.plugin"));
+    WKRetainPtr<WKStringRef> emptyString = adoptWK(WKStringCreateWithUTF8CString(""));
+    WKContextSetPluginLoadClientPolicy(m_context.get(), policy, emptyString.get(), nameNetscape.get(), emptyString.get());
+    WKContextSetPluginLoadClientPolicy(m_context.get(), policy, emptyString.get(), nameFlash.get(), emptyString.get());
 #endif
 }
 
@@ -2866,7 +2882,10 @@ void TestController::statisticsClearThroughWebsiteDataRemoval()
 void TestController::statisticsResetToConsistentState()
 {
     auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
-    WKWebsiteDataStoreStatisticsResetToConsistentState(dataStore);
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreStatisticsResetToConsistentState(dataStore, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didResetStatisticsToConsistentState();
 }
 
 void TestController::addMockMediaDevice(WKStringRef persistentID, WKStringRef label, WKStringRef type)

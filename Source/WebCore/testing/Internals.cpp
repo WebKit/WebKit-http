@@ -119,6 +119,7 @@
 #include "PathUtilities.h"
 #include "PlatformMediaSessionManager.h"
 #include "PlatformStrategies.h"
+#include "PluginData.h"
 #include "PrintContext.h"
 #include "PseudoElement.h"
 #include "Range.h"
@@ -503,7 +504,6 @@ void Internals::resetToConsistentState(Page& page)
 #endif
 
     page.settings().setStorageAccessAPIEnabled(false);
-    page.setFullscreenAutoHideDelay(0_s);
     page.setFullscreenAutoHideDuration(0_s);
     page.setFullscreenInsets({ });
     page.setFullscreenControlsHidden(false);
@@ -717,16 +717,16 @@ static ResourceRequestCachePolicy toResourceRequestCachePolicy(Internals::CacheP
 {
     switch (policy) {
     case Internals::CachePolicy::UseProtocolCachePolicy:
-        return UseProtocolCachePolicy;
+        return ResourceRequestCachePolicy::UseProtocolCachePolicy;
     case Internals::CachePolicy::ReloadIgnoringCacheData:
-        return ReloadIgnoringCacheData;
+        return ResourceRequestCachePolicy::ReloadIgnoringCacheData;
     case Internals::CachePolicy::ReturnCacheDataElseLoad:
-        return ReturnCacheDataElseLoad;
+        return ResourceRequestCachePolicy::ReturnCacheDataElseLoad;
     case Internals::CachePolicy::ReturnCacheDataDontLoad:
-        return ReturnCacheDataDontLoad;
+        return ResourceRequestCachePolicy::ReturnCacheDataDontLoad;
     }
     ASSERT_NOT_REACHED();
-    return UseProtocolCachePolicy;
+    return ResourceRequestCachePolicy::UseProtocolCachePolicy;
 }
 
 void Internals::setOverrideCachePolicy(CachePolicy policy)
@@ -1755,8 +1755,6 @@ static AutoFillButtonType toAutoFillButtonType(Internals::AutoFillButtonType typ
         return AutoFillButtonType::Credentials;
     case Internals::AutoFillButtonType::Contacts:
         return AutoFillButtonType::Contacts;
-    case Internals::AutoFillButtonType::StrongConfirmationPassword:
-        return AutoFillButtonType::StrongConfirmationPassword;
     case Internals::AutoFillButtonType::StrongPassword:
         return AutoFillButtonType::StrongPassword;
     }
@@ -1773,9 +1771,7 @@ static Internals::AutoFillButtonType toInternalsAutoFillButtonType(AutoFillButto
         return Internals::AutoFillButtonType::Credentials;
     case AutoFillButtonType::Contacts:
         return Internals::AutoFillButtonType::Contacts;
-    case AutoFillButtonType::StrongConfirmationPassword:
-        return Internals::AutoFillButtonType::StrongConfirmationPassword;
-   case AutoFillButtonType::StrongPassword:
+    case AutoFillButtonType::StrongPassword:
         return Internals::AutoFillButtonType::StrongPassword;
     }
     ASSERT_NOT_REACHED();
@@ -2858,14 +2854,6 @@ void Internals::setFullscreenInsets(FullscreenInsets insets)
     ASSERT(page);
 
     page->setFullscreenInsets(FloatBoxExtent(insets.top, insets.right, insets.bottom, insets.left));
-}
-
-void Internals::setFullscreenAutoHideDelay(double delay)
-{
-    Page* page = contextDocument()->frame()->page();
-    ASSERT(page);
-
-    page->setFullscreenAutoHideDelay(Seconds(delay));
 }
 
 void Internals::setFullscreenAutoHideDuration(double duration)
@@ -4635,6 +4623,14 @@ void Internals::setUseSystemAppearance(bool value)
     if (!contextDocument() || !contextDocument()->page())
         return;
     contextDocument()->page()->setUseSystemAppearance(value);
+}
+
+size_t Internals::pluginCount()
+{
+    if (!contextDocument() || !contextDocument()->page())
+        return 0;
+
+    return contextDocument()->page()->pluginData().webVisiblePlugins().size();
 }
 
 } // namespace WebCore
