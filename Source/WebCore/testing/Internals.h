@@ -364,6 +364,9 @@ public:
     unsigned numberOfLiveDocuments() const;
     unsigned referencingNodeCount(const Document&) const;
 
+    uint64_t documentIdentifier(const Document&) const;
+    bool isDocumentAlive(uint64_t documentIdentifier) const;
+
     RefPtr<WindowProxy> openDummyInspectorFrontend(const String& url);
     void closeDummyInspectorFrontend();
     ExceptionOr<void> setInspectorIsUnderTest(bool);
@@ -699,13 +702,20 @@ public:
     };
     ExceptionOr<NowPlayingState> nowPlayingState() const;
 
+#if ENABLE(VIDEO)
     using PlaybackControlsPurpose = MediaElementSession::PlaybackControlsPurpose;
-    HTMLMediaElement* bestMediaElementForShowingPlaybackControlsManager(PlaybackControlsPurpose);
+    RefPtr<HTMLMediaElement> bestMediaElementForShowingPlaybackControlsManager(PlaybackControlsPurpose);
+
+    using MediaSessionState = PlatformMediaSession::State;
+    MediaSessionState mediaSessionState(HTMLMediaElement&);
+#endif
 
     void setCaptureExtraNetworkLoadMetricsEnabled(bool);
     String ongoingLoadsDescriptions() const;
 
     void reloadWithoutContentExtensions();
+
+    void setUseSystemAppearance(bool);
 
 private:
     explicit Internals(Document&);

@@ -315,6 +315,7 @@ set(WebKit_SOURCES
     UIProcess/ProcessAssertion.cpp
     UIProcess/ProcessThrottler.cpp
     UIProcess/RemoteWebInspectorProxy.cpp
+    UIProcess/ResourceLoadStatisticsMemoryStore.cpp
     UIProcess/ResourceLoadStatisticsPersistentStorage.cpp
     UIProcess/ResponsivenessTimer.cpp
     UIProcess/ServiceWorkerProcessProxy.cpp

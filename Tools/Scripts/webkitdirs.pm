@@ -65,6 +65,7 @@ BEGIN {
        &baseProductDir
        &chdirWebKit
        &checkFrameworks
+       &cmakeArgsFromFeatures
        &cmakeBasedPortArguments
        &currentSVNRevision
        &debugSafari
@@ -820,10 +821,10 @@ sub executableProductDir
     my $productDirectory = productDir();
 
     my $binaryDirectory;
-    if (isGtk() || isHaiku() || isJSCOnly() || isWPE()) {
-        $binaryDirectory = "bin";
-    } elsif (isAnyWindows()) {
+    if (isAnyWindows()) {
         $binaryDirectory = isWin64() ? "bin64" : "bin32";
+    } elsif (isGtk() || isJSCOnly() || isWPE() || isHaiku()) {
+        $binaryDirectory = "bin";
     } else {
         return $productDirectory;
     }
@@ -1309,7 +1310,7 @@ sub isWin64()
 sub determineIsWin64()
 {
     return if defined($isWin64);
-    $isWin64 = checkForArgumentAndRemoveFromARGV("--64-bit") || isWinCairo() && !shouldBuild32Bit();
+    $isWin64 = checkForArgumentAndRemoveFromARGV("--64-bit") || ((isWinCairo() || isJSCOnly()) && !shouldBuild32Bit());
 }
 
 sub determineIsWin64FromArchitecture($)
@@ -1699,6 +1700,9 @@ sub launcherPath()
 {
     my $relativeScriptsPath = relativeScriptsDir();
     if (isGtk() || isHaiku() || isWPE()) {
+        if (inFlatpakSandbox()) {
+            return "Tools/Scripts/run-minibrowser";
+        }
         return "$relativeScriptsPath/run-minibrowser";
     } elsif (isAppleWebKit()) {
         return "$relativeScriptsPath/run-safari";
@@ -2016,9 +2020,25 @@ sub getJhbuildPath()
     } elsif (isWPE()) {
         push(@jhbuildPath, "DependenciesWPE");
     } else {
-        die "Cannot get JHBuild path for platform that isn't GTK+.\n";
+        die "Cannot get JHBuild path for platform that isn't GTK+ or WPE.\n";
     }
     return File::Spec->catdir(@jhbuildPath);
+}
+
+sub getFlatpakPath()
+{
+    my @flatpakBuildPath = File::Spec->splitdir(baseProductDir());
+    if (isGtk()) {
+        push(@flatpakBuildPath, "GTK");
+    } elsif (isWPE()) {
+        push(@flatpakBuildPath, "WPE");
+    } else {
+        die "Cannot get Flatpak path for platform that isn't GTK+ or WPE.\n";
+    }
+    my @configuration = configuration();
+    push(@flatpakBuildPath, "FlatpakTree$configuration");
+
+    return File::Spec->catdir(@flatpakBuildPath);
 }
 
 sub isCachedArgumentfileOutOfDate($@)
@@ -2030,7 +2050,7 @@ sub isCachedArgumentfileOutOfDate($@)
     }
 
     open(CONTENTS_FILE, $filename);
-    chomp(my $previousContents = <CONTENTS_FILE>);
+    chomp(my $previousContents = <CONTENTS_FILE> || "");
     close(CONTENTS_FILE);
 
     if ($previousContents ne $currentContents) {
@@ -2041,6 +2061,40 @@ sub isCachedArgumentfileOutOfDate($@)
     }
 
     return 0;
+}
+
+sub inFlatpakSandbox()
+{
+    if (-f "/usr/manifest.json") {
+        return 1;
+    }
+
+    return 0;
+}
+
+sub runInFlatpak(@)
+{
+    my @arg = @_;
+    my @command = (File::Spec->catfile(sourceDir(), "Tools", "Scripts", "webkit-flatpak"));
+    exec @command, argumentsForConfiguration(), "--command", @_, argumentsForConfiguration(), @ARGV or die;
+}
+
+sub runInFlatpakIfAvalaible(@)
+{
+    if (inFlatpakSandbox()) {
+        return 0;
+    }
+
+    my @command = (File::Spec->catfile(sourceDir(), "Tools", "Scripts", "webkit-flatpak"));
+    if (system(@command, "--avalaible") != 0) {
+        return 0;
+    }
+
+    if (! -e getFlatpakPath()) {
+        return 0;
+    }
+
+    runInFlatpak(@_)
 }
 
 sub wrapperPrefixIfNeeded()
@@ -2069,6 +2123,11 @@ sub wrapperPrefixIfNeeded()
 sub shouldUseJhbuild()
 {
     return ((isGtk() or isWPE()) and -e getJhbuildPath());
+}
+
+sub shouldUseFlatpak()
+{
+    return ((isGtk() or isWPE()) and ! inFlatpakSandbox() and -e getFlatpakPath());
 }
 
 sub cmakeCachePath()
@@ -2214,6 +2273,8 @@ sub generateBuildSystemFromCMakeProject
         push @args, "-DCMAKE_BUILD_TYPE=Debug";
     }
 
+    push @args, "-DENABLE_ADDRESS_SANITIZER=ON" if asanIsEnabled();
+
     if ($willUseNinja) {
         push @args, "-G";
         if (canUseEclipseNinjaGenerator()) {
@@ -2316,6 +2377,26 @@ sub buildCMakeProjectOrExit($$$@)
     exit($returnCode) if $returnCode;
     return 0;
 }
+
+sub cmakeArgsFromFeatures(\@;$)
+{
+    my ($featuresArrayRef, $enableExperimentalFeatures) = @_;
+
+    my @args;
+    push @args, "-DENABLE_EXPERIMENTAL_FEATURES=ON" if $enableExperimentalFeatures;
+    foreach (@$featuresArrayRef) {
+        my $featureName = $_->{define};
+        if ($featureName) {
+            my $featureValue = ${$_->{value}}; # Undef to let the build system use its default.
+            if (defined($featureValue)) {
+                my $featureEnabled = $featureValue ? "ON" : "OFF";
+                push @args, "-D$featureName=$featureEnabled";
+            }
+        }
+    }
+    return @args;
+}
+
 
 sub cmakeBasedPortArguments()
 {

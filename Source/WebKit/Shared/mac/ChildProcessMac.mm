@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if PLATFORM(MAC) || ENABLE(MINIMAL_SIMULATOR)
+#if PLATFORM(MAC) || PLATFORM(IOSMAC)
 #import "ChildProcess.h"
 
 #import "CodeSigning.h"
@@ -67,7 +67,7 @@ static void initializeTimerCoalescingPolicy()
 
 void ChildProcess::setApplicationIsDaemon()
 {
-#if !ENABLE(MINIMAL_SIMULATOR)
+#if !PLATFORM(IOSMAC)
     OSStatus error = SetApplicationIsDaemon(true);
     ASSERT_UNUSED(error, error == noErr);
 #endif
@@ -89,17 +89,19 @@ void ChildProcess::platformInitialize()
 
 static OSStatus enableSandboxStyleFileQuarantine()
 {
-#if !ENABLE(MINIMAL_SIMULATOR)
-    int error;
+#if !PLATFORM(IOSMAC)
     qtn_proc_t quarantineProperties = qtn_proc_alloc();
     auto quarantinePropertiesDeleter = makeScopeExit([quarantineProperties]() {
         qtn_proc_free(quarantineProperties);
     });
 
-    if ((error = qtn_proc_init_with_self(quarantineProperties)))
-        return error;
 
-    if ((error = qtn_proc_set_flags(quarantineProperties, QTN_FLAG_SANDBOX)))
+    if (qtn_proc_init_with_self(quarantineProperties)) {
+        // See <rdar://problem/13463752>.
+        qtn_proc_init(quarantineProperties);
+    }
+
+    if (auto error = qtn_proc_set_flags(quarantineProperties, QTN_FLAG_SANDBOX))
         return error;
 
     // QTN_FLAG_SANDBOX is silently ignored if security.mac.qtn.sandbox_enforce sysctl is 0.
@@ -211,11 +213,13 @@ void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters&
     }
     }
 
-    // This will override LSFileQuarantineEnabled from Info.plist unless sandbox quarantine is globally disabled.
-    OSStatus error = enableSandboxStyleFileQuarantine();
-    if (error) {
-        WTFLogAlways("%s: Couldn't enable sandbox style file quarantine: %ld\n", getprogname(), static_cast<long>(error));
-        exit(EX_NOPERM);
+    if (shouldOverrideQuarantine()) {
+        // This will override LSFileQuarantineEnabled from Info.plist unless sandbox quarantine is globally disabled.
+        OSStatus error = enableSandboxStyleFileQuarantine();
+        if (error) {
+            WTFLogAlways("%s: Couldn't enable sandbox style file quarantine: %ld\n", getprogname(), static_cast<long>(error));
+            exit(EX_NOPERM);
+        }
     }
 }
 
@@ -230,7 +234,7 @@ void ChildProcess::stopNSAppRunLoop()
 }
 #endif
 
-#if !ENABLE(MINIMAL_SIMULATOR) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if !PLATFORM(IOSMAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
 void ChildProcess::stopNSRunLoop()
 {
     ASSERT([NSRunLoop mainRunLoop]);
@@ -240,7 +244,7 @@ void ChildProcess::stopNSRunLoop()
 }
 #endif
 
-#if ENABLE(MINIMAL_SIMULATOR)
+#if PLATFORM(IOSMAC)
 void ChildProcess::platformStopRunLoop()
 {
     XPCServiceExit(WTFMove(m_priorityBoostMessage));

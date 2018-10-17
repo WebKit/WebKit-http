@@ -1,3 +1,449 @@
+2018-07-05  Saam Barati  <sbarati@apple.com>
+
+        ProgramExecutable may be collected as we checkSyntax on it
+        https://bugs.webkit.org/show_bug.cgi?id=187359
+        <rdar://problem/41832135>
+
+        Reviewed by Mark Lam.
+
+        The bug was we were passing in a reference to the SourceCode field on ProgramExecutable as
+        the ProgramExecutable itself may be collected. The fix here is to make a copy
+        of the field instead of passing in a reference inside of ParserError::toErrorObject.
+        
+        No new tests here as this was already caught by our iOS JSC testers.
+
+        * parser/ParserError.h:
+        (JSC::ParserError::toErrorObject):
+
+2018-07-04  Tim Horton  <timothy_horton@apple.com>
+
+        Introduce PLATFORM(IOSMAC)
+        https://bugs.webkit.org/show_bug.cgi?id=187315
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-07-03  Mark Lam  <mark.lam@apple.com>
+
+        [32-bit JSC tests] ASSERTION FAILED: !getDirect(offset) || !JSValue::encode(getDirect(offset)).
+        https://bugs.webkit.org/show_bug.cgi?id=187255
+        <rdar://problem/41785257>
+
+        Reviewed by Saam Barati.
+
+        The 32-bit JIT::emit_op_create_this() needs to initialize uninitialized properties
+        too: basically, do what the 64-bit code is doing.  At present, this change only
+        serves to pacify an assertion.  It is not needed for correctness because the
+        concurrent GC is not used on 32-bit builds.
+
+        This issue is already covered by the slowMicrobenchmarks/rest-parameter-allocation-elimination.js
+        test.
+
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_create_this):
+
+2018-07-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Move slowDownAndWasteMemory function to JSArrayBufferView
+        https://bugs.webkit.org/show_bug.cgi?id=187290
+
+        Reviewed by Saam Barati.
+
+        slowDownAndWasteMemory is just overridden by typed arrays. Since they are limited,
+        we do not need to add this function to MethodTable: just dispatching it in JSArrayBufferView
+        is fine. And slowDownAndWasteMemory only requires the sizeof(element), which can be
+        easily calculated from JSType.
+        This patch removes slowDownAndWasteMemory from MethodTable, and moves it to JSArrayBufferView.
+
+        * runtime/ClassInfo.h:
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::elementSize):
+        (JSC::JSArrayBufferView::slowDownAndWasteMemory):
+        * runtime/JSArrayBufferView.h:
+        * runtime/JSArrayBufferViewInlines.h:
+        (JSC::JSArrayBufferView::possiblySharedBuffer):
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::slowDownAndWasteMemory): Deleted.
+        * runtime/JSCell.h:
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::slowDownAndWasteMemory): Deleted.
+        * runtime/JSDataView.h:
+        * runtime/JSGenericTypedArrayView.h:
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::slowDownAndWasteMemory): Deleted.
+
+2018-07-02  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Regular expressions with ".?" expressions at the start and the end match the entire string
+        https://bugs.webkit.org/show_bug.cgi?id=119191
+
+        Reviewed by Michael Saboff.
+
+        r90962 optimized regular expressions in the form of /.*abc.*/ by looking
+        for "abc" first and then processing the leading and trailing dot stars
+        to find the beginning and the end of the match. However, it erroneously
+        enabled this optimization for regular expressions whose leading or
+        trailing dots had quantifiers that were not of arbitrary length, e.g.,
+        /.?abc.*/, /.*abc.?/, /.{0,4}abc.*/, etc. This caused the expression to
+        match the entire string when it shouldn't. This patch disables the
+        optimization for those cases.
+
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPatternConstructor::optimizeDotStarWrappedExpressions):
+
+2018-07-02  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        RegExp.exec returns wrong value with a long integer quantifier
+        https://bugs.webkit.org/show_bug.cgi?id=187042
+
+        Reviewed by Saam Barati.
+
+        Prior to this patch, the Yarr parser checked for integer overflow when
+        parsing quantifiers in regular expressions by adding one digit at a time
+        to a number and checking if the result got larger. This is wrong;
+        The parser would fail to detect overflow when parsing, for example,
+        10,000,000,003 because (1000000000*10 + 3) % (2^32) = 1410065411 > 1000000000.
+
+        Another issue was that once it detected overflow, it stopped consuming
+        the remaining digits. Since it didn't find the closing bracket, it
+        parsed the quantifier as a normal string instead.
+
+        This patch fixes these issues by reading all the digits and checking for
+        overflow with Checked<unsigned, RecordOverflow>. If it overflows, it
+        returns the largest possible value (quantifyInfinite in this case). This
+        matches Chrome [1], Firefox [2], and Edge [3].
+
+        [1] https://chromium.googlesource.com/v8/v8.git/+/23222f0a88599dcf302ccf395883944620b70fd5/src/regexp/regexp-parser.cc#1042
+        [2] https://dxr.mozilla.org/mozilla-central/rev/aea3f3457f1531706923b8d4c595a1f271de83da/js/src/irregexp/RegExpParser.cpp#1310
+        [3] https://github.com/Microsoft/ChakraCore/blob/fc08987381da141bb686b5d0c71d75da96f9eb8a/lib/Parser/RegexParser.cpp#L1149
+
+        * yarr/YarrParser.h:
+        (JSC::Yarr::Parser::consumeNumber):
+
+2018-07-02  Keith Miller  <keith_miller@apple.com>
+
+        InstanceOf IC should do generic if the prototype is not an object.
+        https://bugs.webkit.org/show_bug.cgi?id=187250
+
+        Reviewed by Mark Lam.
+
+        The old code was wrong for two reasons. First, the AccessCase expected that
+        the prototype value would be non-null. Second, we would end up returning
+        false instead of throwing an exception.
+
+        * jit/Repatch.cpp:
+        (JSC::tryCacheInstanceOf):
+
+2018-07-01  Mark Lam  <mark.lam@apple.com>
+
+        Builtins and host functions should get their own structures.
+        https://bugs.webkit.org/show_bug.cgi?id=187211
+        <rdar://problem/41646336>
+
+        Reviewed by Saam Barati.
+
+        JSFunctions do lazy reification of properties, but ordinary functions applies
+        different rules of property reification than builtin and host functions.  Hence,
+        we should give builtins and host functions their own structures.
+
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::selectStructureForNewFuncExp):
+        (JSC::JSFunction::create):
+        (JSC::JSFunction::getOwnPropertySlot):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::hostFunctionStructure const):
+        (JSC::JSGlobalObject::arrowFunctionStructure const):
+        (JSC::JSGlobalObject::sloppyFunctionStructure const):
+        (JSC::JSGlobalObject::strictFunctionStructure const):
+
+2018-07-01  David Kilzer  <ddkilzer@apple.com>
+
+        JavaScriptCore: Fix clang static analyzer warnings: Assigned value is garbage or undefined
+        <https://webkit.org/b/187233>
+
+        Reviewed by Mark Lam.
+
+        * b3/air/AirEliminateDeadCode.cpp:
+        (JSC::B3::Air::eliminateDeadCode): Initialize `changed`.
+        * parser/ParserTokens.h:
+        (JSC::JSTextPosition::JSTextPosition): Add struct member
+        initialization. Simplify default constructor.
+        (JSC::JSTokenLocation::JSTokenData): Move largest struct in the
+        union to the beginning to make it easy to zero out all fields.
+        (JSC::JSTokenLocation::JSTokenLocation): Add struct member
+        initialization.  Simplify default constructor.  Note that
+        `endOffset` was not being initialized previously.
+        (JSC::JSTextPosition::JSToken): Add struct member initialization
+        where necessary.
+        * runtime/IntlObject.cpp:
+        (JSC::MatcherResult): Add struct member initialization.
+
+2018-06-23  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Improve ARC compatibility of more code in JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=186973
+
+        Reviewed by Dan Bernstein.
+
+        * API/JSContext.mm:
+        (WeakContextRef::WeakContextRef): Deleted.
+        (WeakContextRef::~WeakContextRef): Deleted.
+        (WeakContextRef::get): Deleted.
+        (WeakContextRef::set): Deleted.
+
+        * API/JSContextInternal.h: Removed unneeded header guards since this is
+        an Objective-C++ header. Removed unused WeakContextRef class. Removed declaration
+        of method -[JSContext initWithGlobalContextRef:] and JSContext property wrapperMap
+        since neither is used outside the class implementation.
+
+        * API/JSManagedValue.mm:
+        (-[JSManagedValue initWithValue:]): Use a bridging cast.
+        (-[JSManagedValue dealloc]): Ditto.
+        (-[JSManagedValue didAddOwner:]): Ditto.
+        (-[JSManagedValue didRemoveOwner:]): Ditto.
+        (JSManagedValueHandleOwner::isReachableFromOpaqueRoots): Ditto.
+        (JSManagedValueHandleOwner::finalize): Ditto.
+        * API/JSValue.mm:
+        (+[JSValue valueWithNewRegularExpressionFromPattern:flags:inContext:]): Ditto.
+        (+[JSValue valueWithNewErrorFromMessage:inContext:]): Ditto.
+        (-[JSValue valueForProperty:]): Ditto.
+        (-[JSValue setValue:forProperty:]): Ditto.
+        (-[JSValue deleteProperty:]): Ditto.
+        (-[JSValue hasProperty:]): Ditto.
+        (-[JSValue invokeMethod:withArguments:]): Ditto.
+        (valueToObjectWithoutCopy): Ditto. Also removed unneeded explicit type names.
+        (valueToArray): Ditto.
+        (valueToDictionary): Ditto.
+        (objectToValueWithoutCopy): Ditto.
+        (objectToValue): Ditto.
+        * API/JSVirtualMachine.mm:
+        (+[JSVMWrapperCache addWrapper:forJSContextGroupRef:]): Ditto.
+        (+[JSVMWrapperCache wrapperForJSContextGroupRef:]): Ditto.
+        (-[JSVirtualMachine isOldExternalObject:]): Ditto.
+        (-[JSVirtualMachine addManagedReference:withOwner:]): Ditto.
+        (-[JSVirtualMachine removeManagedReference:withOwner:]): Ditto.
+        (-[JSVirtualMachine contextForGlobalContextRef:]): Ditto.
+        (-[JSVirtualMachine addContext:forGlobalContextRef:]): Ditto.
+        (scanExternalObjectGraph): Ditto.
+        (scanExternalRememberedSet): Ditto.
+        * API/JSWrapperMap.mm:
+        (makeWrapper): Ditto.
+        (-[JSObjCClassInfo wrapperForObject:inContext:]): Ditto.
+        (-[JSWrapperMap objcWrapperForJSValueRef:inContext:]): Ditto.
+        (tryUnwrapObjcObject): Ditto.
+        * API/ObjCCallbackFunction.mm:
+        (blockSignatureContainsClass): Ditto.
+        (objCCallbackFunctionForMethod): Switched from retain to CFRetain, but not
+        sure we will be keeping this the same way under ARC.
+        (objCCallbackFunctionForBlock): Use a bridging cast.
+
+        * API/ObjcRuntimeExtras.h:
+        (protocolImplementsProtocol): Use a more specific type that includes the
+        explicit __unsafe_unretained for copied protocol lists.
+        (forEachProtocolImplementingProtocol): Ditto.
+
+        * inspector/remote/cocoa/RemoteInspectorCocoa.mm:
+        (Inspector::convertNSNullToNil): Added to replace the CONVERT_NSNULL_TO_NIL macro.
+        (Inspector::RemoteInspector::receivedSetupMessage): Use convertNSNullToNil.
+
+        * inspector/remote/cocoa/RemoteInspectorXPCConnection.mm: Moved the
+        CFXPCBridge SPI to a header named CFXPCBridgeSPI.h.
+        (auditTokenHasEntitlement): Deleted. Moved to Entitlements.h/cpp in WTF.
+        (Inspector::RemoteInspectorXPCConnection::handleEvent): Use WTF::hasEntitlement.
+        (Inspector::RemoteInspectorXPCConnection::sendMessage): Use a bridging cast.
+
+2018-06-30  Adam Barth  <abarth@webkit.org>
+
+        Port JavaScriptCore to OS(FUCHSIA)
+        https://bugs.webkit.org/show_bug.cgi?id=187223
+
+        Reviewed by Daniel Bates.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::cacheFlush): Call zx_cache_flush to flush cache.
+        * runtime/MachineContext.h: Fuchsia has the same mcontext_t as glibc.
+        (JSC::MachineContext::stackPointerImpl):
+        (JSC::MachineContext::framePointerImpl):
+        (JSC::MachineContext::instructionPointerImpl):
+        (JSC::MachineContext::argumentPointer<1>):
+        (JSC::MachineContext::llintInstructionPointer):
+
+2018-06-30  David Kilzer  <ddkilzer@apple.com>
+
+        Fix clang static analyzer warnings: Garbage return value
+        <https://webkit.org/b/187224>
+
+        Reviewed by Eric Carlson.
+
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::lineNumberForBytecodeOffset):
+        - Use brace initialization for local variables.
+        * debugger/DebuggerCallFrame.cpp:
+        (class JSC::LineAndColumnFunctor):
+        - Use class member initialization for member variables.
+
+2018-06-29  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Try to fix Windows build after r233377
+
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createExecutable):
+
+2018-06-29  Saam Barati  <sbarati@apple.com>
+
+        Don't use tracePoints in JS/Wasm entry
+        https://bugs.webkit.org/show_bug.cgi?id=187196
+
+        Reviewed by Mark Lam.
+
+        This puts VM entry and Wasm entry tracePoints behind a runtime
+        option. This is a ~4x speedup on a soon to be released Wasm
+        benchmark. tracePoints should basically never run more than 50
+        times a second. Entering the VM and entering Wasm are user controlled,
+        and can happen hundreds of thousands of times in a second. Depending
+        on how the Wasm/JS code is structured, this can be disastrous for
+        performance.
+
+        * runtime/Options.h:
+        * runtime/VMEntryScope.cpp:
+        (JSC::VMEntryScope::VMEntryScope):
+        (JSC::VMEntryScope::~VMEntryScope):
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::compileFunctions):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+
+2018-06-29  Saam Barati  <sbarati@apple.com>
+
+        We shouldn't recurse into the parser when gathering metadata about various function offsets
+        https://bugs.webkit.org/show_bug.cgi?id=184074
+        <rdar://problem/37165897>
+
+        Reviewed by Mark Lam.
+
+        Prior to this patch, when we made a builtin, we had to make an UnlinkedFunctionExecutable
+        for that builtin. This required calling into the parser. However, the parser
+        may throw a stack overflow. We were not able to recover from that. The only
+        reason we called into the parser here is that we were gathering text offsets
+        and various metadata for things in the builtin function. This patch writes a
+        mini parser that figures this information out without calling into the full
+        parser. (I've also added a debug assert that verifies the mini parser stays in
+        sync with the full parser.) The result of this is that BuiltinExecutbles::createExecutable
+        always succeeds.
+
+        * builtins/AsyncFromSyncIteratorPrototype.js:
+        (globalPrivate.createAsyncFromSyncIterator):
+        (globalPrivate.AsyncFromSyncIteratorConstructor):
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createExecutable):
+        * builtins/GlobalOperations.js:
+        (globalPrivate.getter.overriddenName.string_appeared_here.speciesGetter):
+        (globalPrivate.speciesConstructor):
+        (globalPrivate.copyDataProperties):
+        (globalPrivate.copyDataPropertiesNoExclusions):
+        * builtins/PromiseOperations.js:
+        (globalPrivate.newHandledRejectedPromise):
+        * builtins/RegExpPrototype.js:
+        (globalPrivate.hasObservableSideEffectsForRegExpMatch):
+        (globalPrivate.hasObservableSideEffectsForRegExpSplit):
+        * builtins/StringPrototype.js:
+        (globalPrivate.hasObservableSideEffectsForStringReplace):
+        (globalPrivate.getDefaultCollator):
+        * parser/Nodes.cpp:
+        (JSC::FunctionMetadataNode::FunctionMetadataNode):
+        (JSC::FunctionMetadataNode::operator== const):
+        (JSC::FunctionMetadataNode::dump const):
+        * parser/Nodes.h:
+        * parser/Parser.h:
+        (JSC::parse):
+        * parser/ParserError.h:
+        (JSC::ParserError::type const):
+        * parser/ParserTokens.h:
+        (JSC::JSTextPosition::operator== const):
+        (JSC::JSTextPosition::operator!= const):
+        * parser/SourceCode.h:
+        (JSC::SourceCode::operator== const):
+        (JSC::SourceCode::operator!= const):
+        (JSC::SourceCode::subExpression const):
+        (JSC::SourceCode::subExpression): Deleted.
+
+2018-06-28  Michael Saboff  <msaboff@apple.com>
+  
+        IsoCellSet::sweepToFreeList() not safe when Full GC in process
+        https://bugs.webkit.org/show_bug.cgi?id=187157
+
+        Reviewed by Mark Lam.
+
+        * heap/IsoCellSet.cpp:
+        (JSC::IsoCellSet::sweepToFreeList): Changed the "stale marks logic" to match what
+        is in MarkedBlock::Handle::specializedSweep where it takes into account whether
+        or not we are in the process of marking during a full GC.
+        * heap/MarkedBlock.h:
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::Handle::areMarksStaleForSweep): New helper.
+
+2018-06-27  Saam Barati  <sbarati@apple.com>
+
+        Add some more register state information when we crash in repatchPutById
+        https://bugs.webkit.org/show_bug.cgi?id=187112
+
+        Reviewed by Mark Lam.
+
+        This will help us gather info when we end up seeing a ObjectPropertyConditionSet
+        with an offset that is different than what the put tells us.
+
+        * jit/Repatch.cpp:
+        (JSC::tryCachePutByID):
+
+2018-06-27  Mark Lam  <mark.lam@apple.com>
+
+        Fix a bug in $vm.callFrame() and apply previously requested renaming of $vm.println to print.
+        https://bugs.webkit.org/show_bug.cgi?id=187119
+
+        Reviewed by Keith Miller.
+
+        $vm.callFrame()'s JSDollarVMCallFrame::finishCreation()
+        should be checking for codeBlock instead of !codeBlock
+        before using the codeBlock.
+
+        I also renamed some other "print" functions to use "dump" instead
+        to match their underlying C++ code that they will call e.g.
+        CodeBlock::dumpSource().
+
+        * tools/JSDollarVM.cpp:
+        (WTF::JSDollarVMCallFrame::finishCreation):
+        (JSC::functionDumpSourceFor):
+        (JSC::functionDumpBytecodeFor):
+        (JSC::doPrint):
+        (JSC::functionDataLog):
+        (JSC::functionPrint):
+        (JSC::functionDumpCallFrame):
+        (JSC::functionDumpStack):
+        (JSC::JSDollarVM::finishCreation):
+        (JSC::functionPrintSourceFor): Deleted.
+        (JSC::functionPrintBytecodeFor): Deleted.
+        (JSC::doPrintln): Deleted.
+        (JSC::functionPrintln): Deleted.
+        (JSC::functionPrintCallFrame): Deleted.
+        (JSC::functionPrintStack): Deleted.
+        * tools/VMInspector.cpp:
+        (JSC::DumpFrameFunctor::DumpFrameFunctor):
+        (JSC::DumpFrameFunctor::operator() const):
+        (JSC::VMInspector::dumpCallFrame):
+        (JSC::VMInspector::dumpStack):
+        (JSC::VMInspector::dumpValue):
+        (JSC::PrintFrameFunctor::PrintFrameFunctor): Deleted.
+        (JSC::PrintFrameFunctor::operator() const): Deleted.
+        (JSC::VMInspector::printCallFrame): Deleted.
+        (JSC::VMInspector::printStack): Deleted.
+        (JSC::VMInspector::printValue): Deleted.
+        * tools/VMInspector.h:
+
 2018-06-27  Keith Miller  <keith_miller@apple.com>
 
         Add logging to try to diagnose where we get a null structure.

@@ -110,6 +110,9 @@ editing/spelling/spelling-markers-in-overlapping-lines-large-font.html [ WontFix
 fast/writing-mode/english-bt-text-with-spelling-marker.html [ WontFix ]
 fast/writing-mode/english-rl-text-with-spelling-marker.html [ WontFix ]
 
+# Requires support for testing text replacement
+editing/spelling/text-replacement-after-typing-to-word.html [ Skip ]
+
 # UIKit draws selection on iOS
 fast/selectors/input-with-selection-pseudo-element.html [ WontFix ]
 fast/selectors/selection-window-inactive.html [ WontFix ]
@@ -964,6 +967,7 @@ http/tests/resourceLoadStatistics/prevalent-resource-unhandled-keydown.html [ Sk
 media/audio-dealloc-crash.html [ Skip ]
 media/audio-playback-volume-changes-with-restrictions-and-user-gestures.html [ Skip ]
 media/audio-playback-volume-changes-with-restrictions.html [ Skip ]
+media/picture-in-picture-interruption.html [ Skip ]
 media/restricted-audio-playback-with-document-gesture.html [ Skip ]
 media/restricted-audio-playback-with-multiple-settimeouts.html [ Skip ]
 media/video-fullscreen-reload-crash.html [ Skip ]
@@ -3274,6 +3278,7 @@ webkit.org/b/180062 fast/text/user-installed-fonts/shadow-family.html [ ImageOnl
 webkit.org/b/180062 fast/text/user-installed-fonts/shadow-postscript.html [ ImageOnlyFailure ]
 webkit.org/b/180062 fast/text/user-installed-fonts/shadow.html [ ImageOnlyFailure ]
 webkit.org/b/180062 fast/text/user-installed-fonts/shadow-postscript-family.html [ ImageOnlyFailure ]
+webkit.org/b/187228 fast/text/user-installed-fonts/local.html [ ImageOnlyFailure ]
 
 webkit.org/b/181838 js/slow-stress/Int32Array-alloc-huge-long-lived.html [ Slow ]
 
@@ -3303,8 +3308,6 @@ webkit.org/b/185028 imported/w3c/web-platform-tests/service-workers/service-work
 
 webkit.org/b/185332 animations/duplicate-keys.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/183843 imported/mozilla/css-transitions/test_event-dispatch.html [ Pass Failure ]
-
 # Imported css-text test suite from WPT
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/i18n/css3-text-line-break-opclns-010.html [ ImageOnlyFailure ]
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/i18n/css3-text-line-break-opclns-011.html [ ImageOnlyFailure ]
@@ -3314,3 +3317,15 @@ webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word
 
 # unsupported
 fast/dynamic/mail-autosize-viewport-unit.html [ Failure ]
+
+# LFC
+fast/block/block-only/border-simple.html [ Failure ]
+fast/block/block-only/floating-box-clear-both-simple.html [ Failure ]
+fast/block/block-only/floating-box-clear-right-simple.html [ Failure ]
+fast/block/block-only/floating-box-left-and-right-multiple-with-top-offset.html [ Failure ]
+fast/block/block-only/floating-box-right-simple.html [ Failure ]
+fast/block/block-only/floating-left-right-with-all-margins.html [ Failure ]
+fast/block/block-only/margin-left-right-sizing-out-of-flow.html [ Failure ]
+fast/block/block-only/margin-left-right-sizing.html [ Failure ]
+fast/block/block-only/margin-sibling-collapse-propagated.html [ Failure ]
+fast/block/block-only/relative-auto-with-parent-offset.html [ Failure ]

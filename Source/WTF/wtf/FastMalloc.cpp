@@ -35,7 +35,9 @@
 #include <windows.h>
 #else
 #include <pthread.h>
+#if HAVE(RESOURCE_H)
 #include <sys/resource.h>
+#endif // HAVE(RESOURCE_H)
 #endif
 
 #if OS(HAIKU)
@@ -373,7 +375,7 @@ FastMallocStatistics fastMallocStatistics()
 	{
 		statistics.committedVMBytes += info.ram_size;
 	}
-#else
+#elif HAVE(RESOURCE_H)
     struct rusage resourceUsage;
     getrusage(RUSAGE_SELF, &resourceUsage);
 

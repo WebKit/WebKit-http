@@ -283,10 +283,25 @@ String convertEnumerationToString(HTMLMediaElement::NetworkState enumerationValu
         MAKE_STATIC_STRING_IMPL("NETWORK_LOADING"),
         MAKE_STATIC_STRING_IMPL("NETWORK_NO_SOURCE"),
     };
-    static_assert(static_cast<size_t>(HTMLMediaElementEnums::NETWORK_EMPTY) == 0, "HTMLMediaElement::NETWORK_EMPTY is not 0 as expected");
-    static_assert(static_cast<size_t>(HTMLMediaElementEnums::NETWORK_IDLE) == 1, "HTMLMediaElement::NETWORK_IDLE is not 1 as expected");
-    static_assert(static_cast<size_t>(HTMLMediaElementEnums::NETWORK_LOADING) == 2, "HTMLMediaElement::NETWORK_LOADING is not 2 as expected");
-    static_assert(static_cast<size_t>(HTMLMediaElementEnums::NETWORK_NO_SOURCE) == 3, "HTMLMediaElement::NETWORK_NO_SOURCE is not 3 as expected");
+    static_assert(static_cast<size_t>(HTMLMediaElementEnums::NETWORK_EMPTY) == 0, "HTMLMediaElementEnums::NETWORK_EMPTY is not 0 as expected");
+    static_assert(static_cast<size_t>(HTMLMediaElementEnums::NETWORK_IDLE) == 1, "HTMLMediaElementEnums::NETWORK_IDLE is not 1 as expected");
+    static_assert(static_cast<size_t>(HTMLMediaElementEnums::NETWORK_LOADING) == 2, "HTMLMediaElementEnums::NETWORK_LOADING is not 2 as expected");
+    static_assert(static_cast<size_t>(HTMLMediaElementEnums::NETWORK_NO_SOURCE) == 3, "HTMLMediaElementEnums::NETWORK_NO_SOURCE is not 3 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+String convertEnumerationToString(HTMLMediaElement::PlaybackWithoutUserGesture enumerationValue)
+{
+    static const NeverDestroyed<String> values[] = {
+        MAKE_STATIC_STRING_IMPL("None"),
+        MAKE_STATIC_STRING_IMPL("Started"),
+        MAKE_STATIC_STRING_IMPL("Prevented"),
+        MAKE_STATIC_STRING_IMPL("NETWORK_NO_SOURCE"),
+    };
+    static_assert(static_cast<size_t>(HTMLMediaElement::PlaybackWithoutUserGesture::None) == 0, "PlaybackWithoutUserGesture::None is not 0 as expected");
+    static_assert(static_cast<size_t>(HTMLMediaElement::PlaybackWithoutUserGesture::Started) == 1, "PlaybackWithoutUserGesture::Started is not 1 as expected");
+    static_assert(static_cast<size_t>(HTMLMediaElement::PlaybackWithoutUserGesture::Prevented) == 2, "PlaybackWithoutUserGesture::Prevented is not 2 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return values[static_cast<size_t>(enumerationValue)];
 }
@@ -665,7 +680,6 @@ HTMLMediaElement::~HTMLMediaElement()
     m_seekTaskQueue.close();
     m_promiseTaskQueue.close();
     m_pauseAfterDetachedTaskQueue.close();
-    m_updatePlaybackControlsManagerQueue.close();
     m_playbackControlsManagerBehaviorRestrictionsQueue.close();
     m_resourceSelectionTaskQueue.close();
     m_visibilityChangeTaskQueue.close();
@@ -681,7 +695,7 @@ HTMLMediaElement::~HTMLMediaElement()
     }
 
     m_mediaSession = nullptr;
-    updatePlaybackControlsManager();
+    scheduleUpdatePlaybackControlsManager();
 }
 
 static bool needsAutoplayPlayPauseEventsQuirk(const Document& document)
@@ -694,7 +708,7 @@ static bool needsAutoplayPlayPauseEventsQuirk(const Document& document)
     return loader && loader->allowedAutoplayQuirks().contains(AutoplayQuirk::SynthesizedPauseEvents);
 }
 
-HTMLMediaElement* HTMLMediaElement::bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose purpose)
+RefPtr<HTMLMediaElement> HTMLMediaElement::bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose purpose)
 {
     auto allSessions = PlatformMediaSessionManager::sharedManager().currentSessionsMatching([] (const PlatformMediaSession& session) {
         return is<MediaElementSession>(session);
@@ -1284,6 +1298,9 @@ void HTMLMediaElement::prepareForLoad()
     m_loadState = WaitingForSource;
     m_currentSourceNode = nullptr;
 
+    if (!document().hasBrowsingContext())
+        return;
+
     createMediaPlayer();
 
     // 2 - Let pending tasks be a list of all tasks from the media element's media element event task source in one of the task queues.
@@ -1400,7 +1417,6 @@ void HTMLMediaElement::selectMediaResource()
     // playlist that starts in a foreground tab to continue automatically if the tab is subsequently
     // put into the background.
     m_mediaSession->removeBehaviorRestriction(MediaElementSession::RequirePageConsentToLoadMedia);
-
 
     m_resourceSelectionTaskQueue.enqueueTask([this]  {
         // 5. If the media element’s blocked-on-parser flag is false, then populate the list of pending text tracks.
@@ -2439,6 +2455,7 @@ void HTMLMediaElement::dispatchPlayPauseEventsIfNeedsQuirks()
     if (!needsAutoplayPlayPauseEventsQuirk(document) && !needsAutoplayPlayPauseEventsQuirk(document.topDocument()))
         return;
 
+    ALWAYS_LOG(LOGIDENTIFIER);
     scheduleEvent(eventNames().playingEvent);
     scheduleEvent(eventNames().pauseEvent);
 }
@@ -2877,7 +2894,7 @@ bool HTMLMediaElement::supportsScanning() const
 void HTMLMediaElement::prepareToPlay()
 {
     INFO_LOG(LOGIDENTIFIER);
-    if (m_havePreparedToPlay)
+    if (m_havePreparedToPlay || !document().hasBrowsingContext())
         return;
     m_havePreparedToPlay = true;
     if (m_player)
@@ -3472,6 +3489,11 @@ void HTMLMediaElement::playInternal()
         return;
     }
 
+    if (!document().hasBrowsingContext()) {
+        INFO_LOG(LOGIDENTIFIER, "  returning because there is no browsing context");
+        return;
+    }
+
     if (!m_mediaSession->clientWillBeginPlayback()) {
         ALWAYS_LOG(LOGIDENTIFIER, "  returning because of interruption");
         return;
@@ -3560,6 +3582,11 @@ void HTMLMediaElement::pauseInternal()
 
     if (isSuspended()) {
         ALWAYS_LOG(LOGIDENTIFIER, "  returning because context is suspended");
+        return;
+    }
+
+    if (!document().hasBrowsingContext()) {
+        INFO_LOG(LOGIDENTIFIER, "  returning because there is no browsing context");
         return;
     }
 
@@ -3731,6 +3758,7 @@ void HTMLMediaElement::hardwareMutedStateDidChange(AudioSession* session)
     if (effectiveMuted() || !volume())
         return;
 
+    INFO_LOG(LOGIDENTIFIER);
     userDidInterfereWithAutoplay();
 }
 #endif
@@ -4624,6 +4652,11 @@ void HTMLMediaElement::sourceWasAdded(HTMLSourceElement& source)
         INFO_LOG(LOGIDENTIFIER, "'src' is ", url);
     }
 
+    if (!document().hasBrowsingContext()) {
+        INFO_LOG(LOGIDENTIFIER, "<source> inserted inside a document without a browsing context is not loaded");
+        return;
+    }
+
     // We should only consider a <source> element when there is not src attribute at all.
     if (hasAttributeWithoutSynchronization(srcAttr))
         return;
@@ -5488,7 +5521,7 @@ void HTMLMediaElement::clearMediaPlayer(DelayedActionType flags)
         m_player->invalidate();
         m_player = nullptr;
     }
-    updatePlaybackControlsManager();
+    scheduleUpdatePlaybackControlsManager();
 
     stopPeriodicTimers();
     m_pendingActionTimer.stop();
@@ -5528,13 +5561,13 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
 
     setPreparedToReturnVideoLayerToInline(true);
 
-    updatePlaybackControlsManager();
+    scheduleUpdatePlaybackControlsManager();
     setInActiveDocument(false);
 
     // Stop the playback without generating events
     setPlaying(false);
     setPausedInternal(true);
-    m_mediaSession->clientWillPausePlayback();
+    m_mediaSession->stopSession();
 
     setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::None);
 
@@ -5553,7 +5586,6 @@ void HTMLMediaElement::contextDestroyed()
     m_shadowDOMTaskQueue.close();
     m_promiseTaskQueue.close();
     m_pauseAfterDetachedTaskQueue.close();
-    m_updatePlaybackControlsManagerQueue.close();
 #if ENABLE(ENCRYPTED_MEDIA)
     m_encryptedMediaQueue.close();
 #endif
@@ -5572,7 +5604,6 @@ void HTMLMediaElement::stop()
 
     m_asyncEventQueue.close();
     m_promiseTaskQueue.close();
-    m_updatePlaybackControlsManagerQueue.close();
     m_resourceSelectionTaskQueue.close();
 
     // Once an active DOM object has been stopped it can not be restarted, so we can deallocate
@@ -7635,6 +7666,7 @@ void HTMLMediaElement::handleAutoplayEvent(AutoplayEvent event)
 {
     if (Page* page = document().page()) {
         bool hasAudio = this->hasAudio() && !muted() && volume();
+        ALWAYS_LOG(LOGIDENTIFIER, "hasAudio = ", hasAudio);
         page->chrome().client().handleAutoplayEvent(event, hasAudio ? AutoplayEventFlags::HasAudio : OptionSet<AutoplayEventFlags>());
     }
 }
@@ -7648,15 +7680,18 @@ void HTMLMediaElement::userDidInterfereWithAutoplay()
     if (currentTime() - m_playbackWithoutUserGestureStartedTime->toDouble() > AutoplayInterferenceTimeThreshold)
         return;
 
+    ALWAYS_LOG(LOGIDENTIFIER);
     handleAutoplayEvent(AutoplayEvent::UserDidInterfereWithPlayback);
     setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::None);
 }
 
-void HTMLMediaElement::setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture playbackWithoutUserGesture)
+void HTMLMediaElement::setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture reason)
 {
-    m_playbackWithoutUserGesture = playbackWithoutUserGesture;
+    ALWAYS_LOG(LOGIDENTIFIER, reason);
 
-    switch (playbackWithoutUserGesture) {
+    m_playbackWithoutUserGesture = reason;
+
+    switch (reason) {
     case PlaybackWithoutUserGesture::Started:
         m_playbackWithoutUserGestureStartedTime = currentMediaTime();
         break;
@@ -7668,7 +7703,6 @@ void HTMLMediaElement::setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture 
 
         dispatchPlayPauseEventsIfNeedsQuirks();
         handleAutoplayEvent(AutoplayEvent::DidPreventMediaFromPlaying);
-
         break;
     }
 }
@@ -7871,23 +7905,12 @@ bool HTMLMediaElement::isVisibleInViewport() const
     return renderer && renderer->visibleInViewportState() == VisibleInViewportState::Yes;
 }
 
-void HTMLMediaElement::updatePlaybackControlsManager()
+void HTMLMediaElement::scheduleUpdatePlaybackControlsManager()
 {
     Page* page = document().page();
     if (!page)
         return;
-
-    // FIXME: Ensure that the renderer here should be up to date.
-    if (auto bestMediaElement = bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose::ControlsManager))
-        page->chrome().client().setUpPlaybackControlsManager(*bestMediaElement);
-    else
-        page->chrome().client().clearPlaybackControlsManager();
-}
-
-void HTMLMediaElement::scheduleUpdatePlaybackControlsManager()
-{
-    if (!m_updatePlaybackControlsManagerQueue.hasPendingTasks())
-        m_updatePlaybackControlsManagerQueue.enqueueTask(std::bind(&HTMLMediaElement::updatePlaybackControlsManager, this));
+    page->schedulePlaybackControlsManagerUpdate();
 }
 
 void HTMLMediaElement::playbackControlsManagerBehaviorRestrictionsTimerFired()

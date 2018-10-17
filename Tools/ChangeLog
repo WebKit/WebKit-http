@@ -1,3 +1,1098 @@
+2018-07-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Bindings-tests-EWS should output result in json
+        https://bugs.webkit.org/show_bug.cgi?id=187330
+
+        Reviewed by David Kilzer.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunBindingsTests):  Passed --json-output parameter to run-bindings-tests.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Updated unit-tests.
+
+2018-07-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] WebKitPy-Tests-EWS should output result in json
+        https://bugs.webkit.org/show_bug.cgi?id=187331
+
+        Follow-up fix to r233527. Extracting jsonFileName as a variable and re-using it.
+
+2018-07-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] WebKitPy-Tests-EWS should output result in json
+        https://bugs.webkit.org/show_bug.cgi?id=187331
+
+        Reviewed by David Kilzer.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunWebKitPyTests): Passed --json-output parameter to test-webkitpy.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Updated unit-tests.
+
+2018-07-05  Philippe Normand  <pnormand@igalia.com>
+
+        [Flatpak] Add gst-libav to dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=187340
+
+        Reviewed by Žan Doberšek.
+
+        * flatpak/org.webkit.WebKit.yaml: Use tarballs instead of git
+        clones because the FFMPeg git server doesn't support shallow
+        clones.
+
+2018-07-05  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE][GTK]: Call gtk platform 'gtk' by default as this is what PortFactory expects
+        https://bugs.webkit.org/show_bug.cgi?id=187322
+
+        Reviewed by Žan Doberšek.
+
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak.__init__):
+
+2018-07-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed, rolling out r233511.
+
+        Proper fix provided in bug #187322
+
+        Reverted changeset:
+
+        "Unreviewed. Fixing a call in flatpakutils.py to
+        PortFactory.get(),"
+        https://trac.webkit.org/changeset/233511
+
+2018-07-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed. Fixing a call in flatpakutils.py to PortFactory.get(),
+        enforcing the passed platform argument to always be lowercase, as is
+        expected from the PortFactory code.
+
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak.clean_args):
+
+2018-07-04  Tim Horton  <timothy_horton@apple.com>
+
+        Introduce PLATFORM(IOSMAC)
+        https://bugs.webkit.org/show_bug.cgi?id=187315
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-07-03  Brady Eidson  <beidson@apple.com>
+
+        WebKit.ResponsivenessTimerCrash sometimes fails.
+        https://bugs.webkit.org/show_bug.cgi?id=187314
+
+        Reviewed by Tim Horton.
+
+        Actually unregister observers from objects we're about to destroy before destroying them.
+
+        * TestWebKitAPI/Tests/WebKit/ResponsivenessTimerCrash.mm:
+        (-[ResponsivenessTimerObserver observeValueForKeyPath:ofObject:change:context:]): 
+
+2018-07-03  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        update-webkitgtk-flatpak fails if running with python2
+        https://bugs.webkit.org/show_bug.cgi?id=187240
+
+        Reviewed by Michael Catanzaro.
+
+        urllib.urlretrieve of Python2 sends invalid requests. Use
+        urllib2.urlopen instead.
+
+        * flatpak/flatpakutils.py: Import urllib2.urlopen for Python2,
+        urllib.request.urlopen for Python3.
+        (FlatpakRepo.repo_file): Copy the content of urlopen result to the
+        temporary file.
+
+2018-07-03  Chris Dumez  <cdumez@apple.com>
+
+        Make CallbackMap::invalidate() safe to re-enter
+        https://bugs.webkit.org/show_bug.cgi?id=187298
+        <rdar://problem/41057167>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebContentProcessDidTerminate.mm:
+        (TEST):
+
+2018-07-03  Chris Dumez  <cdumez@apple.com>
+
+        [Cocoa] Disable vnode guard related simulated crashes for WKTR / DRT and WebSQL
+        https://bugs.webkit.org/show_bug.cgi?id=187270
+        <rdar://problem/40674034>
+
+        Reviewed by Geoffrey Garen.
+
+        Disable vnode guard related simulated crashes for WKTR / DRT by setting the
+        expected environment variable in the test driver.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._setup_environ_for_driver):
+
+2018-07-03  Eric Carlson  <eric.carlson@apple.com>
+
+        Video sometimes flickers when playing to AppleTV
+        https://bugs.webkit.org/show_bug.cgi?id=187193
+        <rdar://problem/40153865>
+
+        Unreviewed, fix test broken by r233435.
+
+        * TestWebKitAPI/Tests/WebKitLegacy/ios/AudioSessionCategoryIOS.mm:
+        (TestWebKitAPI::waitUntilAudioSessionCategoryIsEqualTo): Poll for a change in audio session 
+        category because it doesn't necessarily happen synchronously.
+        (TestWebKitAPI::TEST):
+
+2018-07-03  Thibault Saunier  <tsaunier@igalia.com>
+
+        Unreviewed, add myself as a WebKit committer.
+
+        And canonicalize the file as suggested by `check-webkit-style`
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-07-03  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        check-webkit-style: Run the tool without SVN client.
+        https://bugs.webkit.org/show_bug.cgi?id=187294
+
+        Reviewed by Daniel Bates.
+
+        When invoking check-webkit-style without SVN client, the exception was raised and terminated.
+        Using Git repository is acceptable workflow according to the wording on:
+        <https://webkit.org/getting-the-code/#checking-out-with-git>
+        and using Subversion is considered optional by following link:
+        <https://webkit.org/webkit-on-windows/#installing-developer-tools>.
+        This patch makes it so that people with only a Git checkout of WebKit that commit using
+        the commit-queue (or another machine with an SVN checkout) can run check-webkit-style.
+
+        * Scripts/webkitpy/common/checkout/scm/svn.py:
+        (SVN.in_working_directory):
+
+2018-07-03  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove old JSCTestsFactory
+
+        Follow-up fix to r233471.
+
+2018-07-03  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add support for JSC-Tests-EWS
+        https://bugs.webkit.org/show_bug.cgi?id=187201
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/factories.py:
+        (JSCTestsFactory): Added JSCTestsFactory.
+        * BuildSlaveSupport/ews-build/steps.py:
+        (CompileJSCOnly): Command to compile JSC.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Updated unit-tests.
+        * BuildSlaveSupport/ews-build/config.json: Changed platform to jsc-only. This matches with build.webkit.org configuration.
+
+2018-07-03  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Add test-list file for regression testing
+        https://bugs.webkit.org/show_bug.cgi?id=187296
+
+        Reviewed by Antti Koivisto.
+
+        run-webkit-tests --test-list=./Tools/LayoutReloaded/misc/LFC-passing-tests.txt
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt: Added.
+
+2018-07-03  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Make WebsiteDataStore::getAllStorageAccessEntries() call the right network process instead of iterating over the process pools
+        https://bugs.webkit.org/show_bug.cgi?id=187277
+        <rdar://problem/41745510>
+
+        Reviewed by Chris Dumez.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::getAllStorageAccessEntries):
+
+2018-07-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Fix a leak in ActionSheetTests.DismissingActionSheetShouldNotDismissPresentingViewController
+        https://bugs.webkit.org/show_bug.cgi?id=187280
+
+        Reviewed by Tim Horton.
+
+        Add a missing `adoptNS()`.
+
+        * TestWebKitAPI/Tests/ios/ActionSheetTests.mm:
+        (TestWebKitAPI::TEST):
+
+2018-07-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Google Fonts doesn't work if the user has the requested font locally-installed
+        https://bugs.webkit.org/show_bug.cgi?id=187228
+        <rdar://problem/40967280>
+
+        Reviewed by Brent Fulgham.
+
+        The test only fails before the patch if the lookup for Helvetica2 is allowed to occur.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::allowedFontFamilySet):
+
+2018-07-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-benchmark should include the version number of MotionMark's results
+        https://bugs.webkit.org/show_bug.cgi?id=187274
+
+        Reviewed by Jon Lee.
+
+        Append the version number as a part of the suite name.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/MotionMark.patch:
+
+2018-07-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK1] editing/spelling/markers.html is failing on recent builds of macOS Mojave
+        https://bugs.webkit.org/show_bug.cgi?id=187253
+
+        Reviewed by Tim Horton.
+
+        Enhances and refactors LayoutTestSpellChecker, which was introduced in r233412.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (setSpellCheckerResultsCallback):
+
+        Rename setSpellCheckerTextReplacements to setSpellCheckerResults.
+
+        (TestRunner::staticFunctions):
+        (setSpellCheckerTextReplacementsCallback): Deleted.
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::setSpellCheckerResults):
+        (TestRunner::setSpellCheckerTextReplacements): Deleted.
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::setSpellCheckerResults):
+        (TestRunner::setSpellCheckerTextReplacements): Deleted.
+        * TestRunnerShared/cocoa/LayoutTestSpellChecker.h:
+        * TestRunnerShared/cocoa/LayoutTestSpellChecker.mm:
+        (-[LayoutTestTextCheckingResult initWithType:range:replacement:details:]):
+        (-[LayoutTestTextCheckingResult grammarDetails]):
+        (-[LayoutTestSpellChecker reset]):
+        (-[LayoutTestSpellChecker results]):
+        (-[LayoutTestSpellChecker setResults:]):
+        (-[LayoutTestSpellChecker setResultsFromJSObject:inContext:]):
+
+        Add support for passing in a list of grammar correction detail ranges. Necessary for simulating grammar errors.
+
+        (-[LayoutTestSpellChecker checkString:range:types:options:inSpellDocumentWithTag:orthography:wordCount:]):
+
+        Tweaked to always call the superclass method. This ensures that we set the `orthography` and `wordCount`
+        outpointers if applicable.
+
+        (-[LayoutTestSpellChecker requestCheckingOfString:range:types:options:inSpellDocumentWithTag:completionHandler:]):
+
+        Added support for simulating asynchronous spell checking.
+
+        (-[LayoutTestTextCheckingResult initWithType:range:replacement:]): Deleted.
+        (-[LayoutTestSpellChecker replacements]): Deleted.
+        (-[LayoutTestSpellChecker setReplacements:]): Deleted.
+        (-[LayoutTestSpellChecker setReplacementsFromJSObject:inContext:]): Deleted.
+
+2018-07-02  Brady Eidson  <beidson@apple.com>
+
+        Another unreviewed followup to:
+        Crash notifying observers of responsiveness state change
+
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView typeCharacter:]): Move this back to the Mac-only category, as we won't be running this
+          test on iOS for other reasons.
+
+2018-07-02  Brady Eidson  <beidson@apple.com>
+
+        Unreviewed followup to:
+        Crash notifying observers of responsiveness state change
+
+        * TestWebKitAPI/Tests/WebKit/ResponsivenessTimerCrash.mm: Need the C-SPI for this test.
+
+2018-07-02  Brady Eidson  <beidson@apple.com>
+
+        Crash notifying observers of responsiveness state change
+        <rdar://problem/41267796> and https://bugs.webkit.org/show_bug.cgi?id=187262
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/ResponsivenessTimerCrash.mm: Added.
+        (-[RTObserver observeValueForKeyPath:ofObject:change:context:]):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView typeCharacter:]):
+        (-[TestWKWebView hostWindow]):
+
+2018-07-02  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] flatpakutils.py should respect set-webkit-configuration build type
+        https://bugs.webkit.org/show_bug.cgi?id=187218
+
+        Reviewed by Philippe Normand.
+
+        Using the webkitpy Config module, if the build type is not passed on the command line, we
+        read it from WebKitBuild/Configuration and respect it.
+
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak.__init__):
+        (WebkitFlatpak.clean_args):
+
+2018-07-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Add touch support to WindowViewBackend
+        https://bugs.webkit.org/show_bug.cgi?id=187245
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add touch input support to the WindowViewBackend implementation,
+        plugging into the Wayland protocol in order to get properly notified
+        about these events, and then dispatching them against the appropriate
+        wpe_view_backend object so that WebKit can process them.
+
+        * wpe/backends/ViewBackend.cpp:
+        (WPEToolingBackends::ViewBackend::dispatchInputTouchEvent):
+        * wpe/backends/ViewBackend.h:
+        * wpe/backends/WindowViewBackend.cpp:
+        * wpe/backends/WindowViewBackend.h:
+
+2018-07-02  Rob Buis  <rbuis@igalia.com>
+
+        [GTK] ASSERTION FAILED: url == m_string in UserAgentQuirks test
+        https://bugs.webkit.org/show_bug.cgi?id=186838
+
+        This URL constructor expects canonicalized input, so fix the passed URL. I missed
+        this one some weeks ago since I had an older checkout.
+
+        Reviewed by Michael Catanzaro.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-07-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Text replacements that end with symbols are expanded immediately
+        https://bugs.webkit.org/show_bug.cgi?id=187225
+        <rdar://problem/41112433>
+
+        Reviewed by Darin Adler.
+
+        Adds testing support for mocking NSSpellChecker's text checking results. See below for more details, and the new
+        layout test for an example of its usage.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/TestRunner.cpp:
+        (setSpellCheckerTextReplacementsCallback):
+
+        Add bindings support in TestRunner to specify a set of text replacement mappings. Each entry in the dictionary
+        maps a string representing an input to the NSSpellChecker to some information describing the spell checking
+        result that LayoutTestSpellChecker will return.
+
+        (TestRunner::staticFunctions):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting):
+
+        Restore the original shared NSSpellchecker before transitioning to the next layout test, if needed.
+
+        * DumpRenderTree/mac/DumpRenderTreeSpellChecker.mm: Removed.
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::setSpellCheckerLoggingEnabled):
+        (TestRunner::setSpellCheckerTextReplacements):
+
+        These testRunner methods ensure that `-[NSSpellChecker sharedSpellChecker]` is swizzled to return our mock
+        LayoutTestSpellChecker instance before calling into it.
+
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::setSpellCheckerTextReplacements):
+        * TestRunnerShared/cocoa/LayoutTestSpellChecker.h: Renamed from Tools/DumpRenderTree/mac/DumpRenderTreeSpellChecker.h.
+        * TestRunnerShared/cocoa/LayoutTestSpellChecker.mm: Added.
+
+        Moved DumpRenderTreeSpellChecker to LayoutTestSpellChecker, and made it compile for both WebKitTestRunner
+        (modern WebKit) and DumpRenderTree (legacy WebKit) by putting it in TestRunnerShared.
+
+        (existingGlobalLayoutTestSpellChecker):
+        (ensureGlobalLayoutTestSpellChecker):
+        (stringForCorrectionResponse):
+        (nsTextCheckingType):
+        (-[LayoutTestTextCheckingResult initWithType:range:replacement:]):
+        (-[LayoutTestTextCheckingResult range]):
+        (-[LayoutTestTextCheckingResult resultType]):
+        (-[LayoutTestTextCheckingResult replacementString]):
+        (-[LayoutTestTextCheckingResult description]):
+
+        LayoutTestTextCheckingResult represents a fake NSTextCheckingResult containing spell checking results supplied
+        by the layout test.
+
+        (+[LayoutTestSpellChecker installIfNecessary]):
+        (+[LayoutTestSpellChecker uninstallAndReset]):
+
+        Helper methods to begin and end swizzling the shared NSSpellChecker.
+
+        (-[LayoutTestSpellChecker reset]):
+
+        Resets the state of the LayoutTestSpellChecker (this entails clearing the fake replacements dictionary and
+        turning off logging for recorded spellchecking responses).
+
+        (-[LayoutTestSpellChecker replacements]):
+        (-[LayoutTestSpellChecker setReplacements:]):
+        (-[LayoutTestSpellChecker setReplacementsFromJSObject:inContext:]):
+
+        Helper method to take a `JSObjectRef` supplied by the test runner and transform it into a map of spell checking
+        string inputs to LayoutTestTextCheckingResults.
+
+        (-[LayoutTestSpellChecker checkString:range:types:options:inSpellDocumentWithTag:orthography:wordCount:]):
+
+        Consult the text replacement map and bail early if a match is found, before calling into real NSSpellChecker
+        logic to perform spellchecking.
+
+        (-[LayoutTestSpellChecker recordResponse:toCorrection:forWord:language:inSpellDocumentWithTag:]):
+
+        Reimplement the original functionality in DumpRenderTreeSpellChecker to make `-recordResponse:…` print to stdout
+        by overriding the method and printing if the `-spellCheckerLoggingEnabled` property has been set to YES.
+
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+
+2018-07-01  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE][GTK] Fix retrieving backtrace from within flatpak sandbox in test runner
+        https://bugs.webkit.org/show_bug.cgi?id=187232
+
+        Reviewed by Michael Catanzaro.
+
+        The place where host tmp folder is mounted changed to /run/host/ we
+        need to take that into account.
+
+        Also explicitely close temporary files as relying on garbage collection to
+        remove them is a bad idea.
+
+        Also minor optimization avoiding to compile regex for each backtrace
+        retrieval.
+
+        * Scripts/webkitpy/port/linux_get_crash_log.py:
+        (GDBCrashLogGenerator):
+        (GDBCrashLogGenerator._get_tmp_file_name):
+        (GDBCrashLogGenerator._get_trace_from_systemd):
+
+2018-06-30  Daniel Bates  <dabates@apple.com>
+
+        test-webkitpy never rebuilds lldbWebKitTester
+        https://bugs.webkit.org/show_bug.cgi?id=187229
+
+        Reviewed by David Kilzer.
+
+        Have test-webkitpy always call script build-lldbwebkittester to build lldbWebKitTester, if needed.
+
+        Currently test-webkitpy only calls script build-lldbwebkittester if lldbWebKitTester does not
+        exist in the build products directory for the active configuration (e.g. Debug); => we do not
+        build lldbWebKitTester again if its source changes (say, as a result of hacking on lldbWebKitTester).
+        Instead we should have test-webkitpy unconditionally call build-lldbwebkittester to ensure
+        that we have an up-to-date build of lldbWebKitTester.
+
+        * Scripts/webkitpy/test/main.py:
+        (Tester._run_tests):
+        (_find_lldb_webkit_tester): Deleted.
+
+2018-06-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] build-webkit should be able to enable address sanitizer
+        https://bugs.webkit.org/show_bug.cgi?id=187222
+
+        Reviewed by Daniel Bates.
+
+        If 'set-webkit-configuration --asan' has been run, then build-webkit should pass
+        -DENABLE_ADDRESS_SANITIZER=ON to CMake, so that it actually does something.
+
+        This also works for build-jsc.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject):
+
+2018-06-30  Thibault Saunier  <tsaunier@igalia.com>
+
+        Make check_flatpak() not verbose when only trying to run command inside flatpak
+        https://bugs.webkit.org/show_bug.cgi?id=187187
+
+        Reviewed by Michael Catanzaro.
+
+        * flatpak/flatpakutils.py:
+        (run_in_sandbox_if_available):
+
+2018-06-29  Daniel Bates  <dabates@apple.com>
+
+        build-webkit: Perl "use of uninitialized value $previousContents"
+        https://bugs.webkit.org/show_bug.cgi?id=185776
+
+        Reviewed by Michael Catanzaro.
+
+        Fixes an issue where reading an empty cached argument file would cause
+        Perl "uninitialized value" warnings of the form:
+            Use of uninitialized value $previousContents in chomp at C:/WebKit-BuildWorker/wincairo-wkl-debug/build/Tools/Scripts/webkitdirs.pm line 1969.
+            Use of uninitialized value $previousContents in string ne at C:/WebKit-BuildWorker/wincairo-wkl-debug/build/Tools/Scripts/webkitdirs.pm line 1972.
+
+        * Scripts/webkitdirs.pm:
+        (isCachedArgumentfileOutOfDate):
+
+2018-06-29  Daniel Bates  <dabates@apple.com>
+
+        Perl uninitialized value $isEnabled when running build-jsc using a CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=187208
+
+        Reviewed by Tim Horton.
+
+        Share logic for computing the feature flags to enable in CMake with both script
+        build-webkit and script build-jsc instead of duplicating it. This also fixes a
+        bug in the version of this logic in build-jsc that was inadvertently not updated
+        in r222394. In r222394 we removed the notion of a default value for a feature flag
+        listed in webkitperl::FeatureList.
+
+        We keep the current behavior of build-jsc and leave it up to the build system
+        to determine whether to enable or disable ENABLE_EXPERIMENTAL_FEATURES.
+
+        * Scripts/build-jsc:
+        (buildMyProject):
+        (cMakeArgsFromFeatures): Deleted.
+        * Scripts/build-webkit:
+        (cMakeArgsFromFeatures): Deleted; moved to webkitdirs.pm.
+        * Scripts/webkitdirs.pm:
+        (cmakeArgsFromFeatures): Moved code from script build-webkit so that it can be shared
+        with build-jsc.
+
+2018-06-29  Tim Horton  <timothy_horton@apple.com>
+
+        Add -apple-color-filter and system appearance toggles to MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=187210
+
+        Reviewed by Simon Fraser.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (defaultConfiguration):
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]):
+        (-[SettingsController validateMenuItem:]):
+        (-[SettingsController toggleAppleColorFilterEnabled:]):
+        (-[SettingsController appleColorFilterEnabled]):
+        (-[SettingsController toggleUseSystemAppearance:]):
+        (-[SettingsController useSystemAppearance]):
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController didChangeSettings]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController didChangeSettings]):
+
+2018-06-29  Aditya Keerthi  <akeerthi@apple.com>
+
+        [macOS] Do not crash if there is an attempt to copy a file URL to the clipboard
+        https://bugs.webkit.org/show_bug.cgi?id=187183
+
+        Reviewed by Wenson Hsieh.
+
+        Added a 'runSingly' option to the TestOptions struct. Setting this option to true
+        will force a new PlatformWebView to be created before running a test. This ensures
+        that any state set by previous tests are not preserved.
+
+        One example of the importance of having this ability is in the case where we want
+        to test functionality that deals with read access to files. If a test were to
+        load a valid file URL, universal read access will be granted in WebProcessProxy.
+        This prevents us from testing cases that rely on us not have universal read
+        access. Now, if we write the test using the 'runSingly' option, any state set
+        by previous tests is cleared. Consequently, our test will behave as expected.
+
+        * WebKitTestRunner/PlatformWebView.h:
+        (WTR::PlatformWebView::viewSupportsOptions const):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2018-06-29  Daniel Bates  <dabates@apple.com>
+
+        [lldb-webkit] Non-empty strings may be pretty-printed as empty
+        https://bugs.webkit.org/show_bug.cgi?id=187185
+
+        Reviewed by Simon Fraser.
+
+        For some reason lldb(1) sometimes has an issue accessing members of WTF::StringImplShape
+        via a WTF::StringImpl pointer (why?). Explicitly casting a WTF::StringImpl* to a
+        WTF::StringImplShape* before accessing such members makes LLDB happy.
+
+        I tried writing a test for this both for the LLVM project and to add to our lldb_webkit unit
+        tests to no avail. I have only been able to reproduce this bug sporadically during my WebCore/WebKit
+        debugging sessions so far.
+
+        * lldb/lldb_webkit.py:
+        (WTFStringImplProvider.__init__): Explicitly cast the WTF::StringImpl* to WTF::StringImplShape*.
+        (WTFStringImplProvider.get_data8): Update code now that we are directly accessing WTF::StringImplShape*.
+        (WTFStringImplProvider.get_data16): Ditto.
+
+2018-06-29  Chris Dumez  <cdumez@apple.com>
+
+        WebKitLegacy: Can trigger recursive loads triggering debug assertions
+        https://bugs.webkit.org/show_bug.cgi?id=187121
+        <rdar://problem/41259430>
+
+        Reviewed by Brent Fulgham.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/StartLoadInDidFailProvisionalLoad.mm: Added.
+        (-[StartLoadInDidFailProvisionalLoadDelegate webView:didFailProvisionalLoadWithError:forFrame:]):
+        (-[StartLoadInDidFailProvisionalLoadDelegate webView:didFinishLoadForFrame:]):
+        (TestWebKitAPI::TEST):
+
+2018-06-29  Lucas Forschler  <lforschler@apple.com>
+
+        Teach bisect-builds to retrieve supported platforms from the rest api.
+        https://bugs.webkit.org/show_bug.cgi?id=187195
+        
+        This patch updates bisect-builds to use v2_2 of the API. v2_2 adds two api endpoints: /platforms, and /minified-platforms.
+        These endpoints scan a dynamoDB database, returning the identifier key for all available platforms.
+        The identifier keys are in the format: platform-architecture-configuration.
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/bisect-builds:
+        (get_api_archive_url): refactored from get_api_url.
+        (get_platforms): helper function to retrieve from the platforms api.
+        (minified_platforms): returns a list of minified platforms currently in the database
+        (unminified_platforms): returns a list of unminified platforms currently in the database
+        (is_supported_platform): checks if the platform-architecture-configuration combo is supported
+        (fetch_revision_list): refactored to use get_api_archive_url
+        (get_api_url): Deleted/refactored to get_api_archive_url.
+
+2018-06-29  Keith Miller  <keith_miller@apple.com>
+
+        run-jsc should print when jsc exits with non-zero status
+        https://bugs.webkit.org/show_bug.cgi?id=187192
+
+        Reviewed by Saam Barati.
+
+        * Scripts/run-jsc:
+
+2018-06-29  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add timeout to webkitpy and webkitperl tests
+        https://bugs.webkit.org/show_bug.cgi?id=187191
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunWebKitPerlTests.__init__): Set timeout of 2 minutes.
+        (RunWebKitPyTests.__init__): Ditto.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Updated unit-tests.
+
+2018-06-29  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE]: Fix exception handling when flatpak is not installed
+        https://bugs.webkit.org/show_bug.cgi?id=186771
+
+        Unreviewed followup-fix after r233362
+
+        This was causing failures when flatpak is not installed.
+
+        * flatpak/flatpakutils.py:
+        (check_flatpak):
+
+2018-06-29  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSCOnly] Restore Windows build.
+        https://bugs.webkit.org/show_bug.cgi?id=187127
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/build-jsc:
+        Fix condition for disabling FTL JIT on Windows.
+
+        * Scripts/webkitdirs.pm:
+        (executableProductDir):
+        JSCOnly should still use bin64 on Windows (for consistency with full WebKit build).
+        (determineIsWin64):
+        JSCOnly already defaults to 64-bit on Windows with Ninja -- ensure that this is true even with MSBuild.
+
+2018-06-29  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GTK][WPE]: Add a way to setup our development environment inside flatpak
+        https://bugs.webkit.org/show_bug.cgi?id=186771
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        This patch introduce a way to setup the development environment inside flatpak[0]
+        removing the need for jhbuild when doing so. Anything needed to build/run minibrowser/ run
+        layout tests is provided either but the org.gnome.Sdk runtime or built with flatpak-builder.
+
+        The workflow is very similar to the "jhbuild based" one except that you should use update-webkit$PORTNAME-flatpak instead
+        of update-webkit$PORTNAME-libs and that script requires to specify a build configuration (--release is default).
+
+        Our scripts have been updated to be able to run inside that new build environment.
+
+        Since everything runs inside a flatpak sandbox, gdb needs to be run from within the sandbox, the script exposes a way to do it
+        easily with the `--gdb` option:
+
+          $ webkit-flatpak --gdb [-m COREDUMPCTL MATCHES]
+
+        The Layout test `GDBCrashLogGenerator` has been taugth how to use that and is able to retrieve stacktrace as with the jhbuild based workflow.
+
+        [0] http://flatpak.org
+
+        * Scripts/build-webkit:
+        * Scripts/generate-jsc-bundle:
+        (main):
+        * Scripts/run-gtk-tests:
+        * Scripts/run-minibrowser:
+        * Scripts/run-webdriver-tests:
+        * Scripts/run-webkit-tests:
+        * Scripts/run-wpe-tests:
+        * Scripts/update-webkitgtk-libs:
+        * Scripts/update-webkitwpe-libs:
+        * Scripts/webkit-flatpak: Added.
+        * Scripts/webkitdirs.pm:
+        (getJhbuildPath):
+        (getFlatpakPath):
+        (inFlatpakSandbox):
+        (runInFlatpak):
+        (runInFlatpakIfAvalaible):
+        (wrapperPrefixIfNeeded):
+        (shouldUseFlatpak):
+        * Scripts/webkitpy/port/base.py:
+        (Port._path_to_apache):
+        (Port._is_flatpak):
+        (Port._apache_config_file_name_for_platform):
+        (Port._should_use_flatpak):
+        (Port):
+        (Port._in_flatpak_sandbox):
+        (Port._should_use_jhbuild):
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.setup_environ_for_server):
+        * Scripts/webkitpy/port/linux_get_crash_log.py:
+        (GDBCrashLogGenerator._get_trace_from_systemd):
+        (GDBCrashLogGenerator.generate_crash_log):
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort.setup_environ_for_server):
+        * Scripts/webkitpy/w3c/wpt_runner.py:
+        (main):
+        * flatpak/files/default.xkm: Added.
+        * flatpak/files/httpd-autogen.sh: Added.
+        * flatpak/flatpakutils.py: Added.
+        (Colors):
+        (Console):
+        (Console.message):
+        (remove_extension_points):
+        (remove_comments):
+        (remove_comments._replacer):
+        (load_manifest):
+        (expand_manifest):
+        (FlatpakObject):
+        (FlatpakObject.__init__):
+        (FlatpakObject.flatpak):
+        (FlatpakPackages):
+        (FlatpakPackages.__init__):
+        (FlatpakPackages.__detect_packages):
+        (FlatpakPackages.__detect_packages.in):
+        (FlatpakPackages.__detect_runtimes):
+        (FlatpakPackages.__detect_apps):
+        (FlatpakPackages.__iter__):
+        (FlatpakRepos):
+        (FlatpakRepos.__init__):
+        (FlatpakRepos.update):
+        (FlatpakRepos.add):
+        (FlatpakRepo):
+        (FlatpakRepo.__init__):
+        (FlatpakRepo.repo_file):
+        (FlatpakPackage):
+        (FlatpakPackage.__init__):
+        (FlatpakPackage.__str__):
+        (FlatpakPackage.is_installed):
+        (FlatpakPackage.install):
+        (FlatpakPackage.update):
+        (WebkitFlatpak):
+        (WebkitFlatpak.load_from_args):
+        (WebkitFlatpak.__init__):
+        (WebkitFlatpak.check_flatpak):
+        (WebkitFlatpak.check_flatpak.comparable_version):
+        (WebkitFlatpak.clean_args):
+        (WebkitFlatpak.run_in_sandbox):
+        (WebkitFlatpak.run):
+        (WebkitFlatpak.has_environment):
+        (WebkitFlatpak.setup_dev_env):
+        (WebkitFlatpak.install_all):
+        (WebkitFlatpak.run_gdb):
+        (WebkitFlatpak.update_all):
+        (is_sandboxed):
+        (run_in_sandbox_if_available):
+        * flatpak/org.webkit.GTK.yaml: Added.
+        * flatpak/org.webkit.WPE.yaml: Added.
+        * flatpak/org.webkit.WebKit.yaml: Added.
+        * flatpak/patches/httpd-0001-configure-use-pkg-config-for-PCRE-detection.patch: Added.
+        * flatpak/patches/xvfb-0001-HACK-Avoid-compiling-a-kbm-file.patch: Added.
+
+2018-06-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] DataTransfer.getData always returns the empty string when dropping text
+        https://bugs.webkit.org/show_bug.cgi?id=187130
+        <rdar://problem/41014117>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add 2 new API tests to verify that:
+        -   When dropping an item with text, markup, and URL representations, the page is allowed to get "text/html",
+            "text/plain" and "text/uri-list" data.
+        -   Adding a suggested name to a plain text item causes WebKit to treat it as a file, and suppress access to
+            DataTransfer.getData().
+
+        Additionally tweaks a couple of existing API tests. Namely, in two API tests
+        (ExternalSourceOverrideDropFileUpload and ExternalSourceHTMLToUploadArea) only a markup string is dropped, and
+        we previously expected to handle the drop as a file. To allow this test to continue serving its purpose, tweak
+        them such that the registered items appear to be file-backed (i.e. by adding a suggested filename in one of the
+        tests, and specifying UIPreferredPresentationStyleAttachment in the other).
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2018-06-28  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        Unreviewed, rolling out r226652.
+        https://bugs.webkit.org/show_bug.cgi?id=180827
+
+        "PlatformInfo should never be instantiated in isolation. So, PlatformInfo should
+        not have default argument values. The preferred way to get a PlatformInfo object
+        is to instantiate a Host object." (Requested by dbates).
+
+        Reverted changeset:
+
+        "[webkitpy] PlatformInfo should have default argument for casual use"
+        https://bugs.webkit.org/show_bug.cgi?id=180827
+
+2018-06-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Try to address test failures on the bots.
+
+        Allow the test to distinguish between a failure to find the variable, and an error
+        reporting vector capacity.
+
+        * lldb/lldb_webkit_unittest.py:
+        (TestSummaryProviders.serial_test_WTFVectorProvider_empty_vector):
+        (TestSummaryProviders.serial_test_WTFVectorProvider_vector_size_and_capacity):
+
+2018-06-28  Lucas Forschler  <lforschler@apple.com>
+
+        Add Windows support for WEBKIT_API_KEY.
+        https://bugs.webkit.org/show_bug.cgi?id=187155
+
+        Reviewed by Daniel Bates.
+
+        * EWSTools/start-queue-win.sh:
+
+2018-06-28  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add support for WebKitPy-Tests-EWS
+        https://bugs.webkit.org/show_bug.cgi?id=187148
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/factories.py: Added WebKitPyFactory.
+        * BuildSlaveSupport/ews-build/steps.py: Added build step RunWebKitPyTests.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-tests.
+        * BuildSlaveSupport/ews-build/config.json: Updated to use CamelCase. 
+
+2018-06-28  Daniel Bates  <dabates@apple.com>
+
+        Fix the iOS build following r233299
+        (https://bugs.webkit.org/show_bug.cgi?id=183744)
+
+        Only build lldbWebKitTester on Mac as that is the only supported platform at the time of writing.
+
+        * Makefile:
+
+2018-06-28  Sihui Liu  <sihui_liu@apple.com>
+
+        Cookie API: cookie creation time is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=187101
+
+        Reviewed by Geoffrey Garen.
+
+        Add test coverage: make sure the cookie creation time returned is the same as set.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKHTTPCookieStore.mm:
+        (TEST):
+
+2018-06-28  Simon Fraser  <simon.fraser@apple.com>
+
+        The lldb vector summary provider always shows zero capacity
+        https://bugs.webkit.org/show_bug.cgi?id=187132
+
+        Reviewed by Daniel Bates.
+        
+        WTFVectorProvider in lldb_webkit.py was calling GetChildMemberWithName('m_capacity')
+        on the buffer instead of the valobj.
+
+        * lldb/lldbWebKitTester/main.cpp:
+        (testSummaryProviders):
+        * lldb/lldb_webkit.py:
+        (WTFVectorProvider.update):
+        * lldb/lldb_webkit_unittest.py:
+        (TestSummaryProviders.serial_test_WTFString_SummaryProvider_16bit_string):
+        (TestSummaryProviders):
+        (TestSummaryProviders.serial_test_WTFVectorProvider_empty_vector):
+        (TestSummaryProviders.serial_test_WTFVectorProvider_vector_size_and_capacity):
+
+2018-06-28  Adam Barth  <abarth@webkit.org>
+
+        Switch OS(FUCHSIA) to using JSCOnly
+        https://bugs.webkit.org/show_bug.cgi?id=187133
+
+        Reviewed by Yusuke Suzuki.
+
+        Switch Fuchsia from being a port to just being an OS. We now use a
+        CMAKE_TOOLCHAIN_FILE to configure the toolchain and the target triple.
+
+        * Scripts/webkitdirs.pm: Remove isFuchsia() and clients. Turns out we
+        can do everything we need using a CMAKE_TOOLCHAIN_FILE via the
+        --cmakeargs flag.
+
+2018-06-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make MotionMark's plan file more robust against code changes
+        https://bugs.webkit.org/show_bug.cgi?id=187116
+        <rdar://problem/41533956>
+
+        Reviewed by Saam Barati.
+
+        Moved the code to auto-start the test to the load event listener.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/MotionMark.patch:
+
+2018-06-27  Daniel Bates  <dabates@apple.com>
+
+        Add some tests for lldb_webkit.py
+        https://bugs.webkit.org/show_bug.cgi?id=183744
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adds some tests to ensure we do not regress LLDB pretty-printing of WTF::StringImpl
+        and WTF::String objects.
+
+        The tests make use of the LLDB Python API (lldb.py) and a simple debug-built test
+        program, lldbWebKitTester, to run. For now, we only support building lldbWebKitTester
+        on Mac.
+
+        * Makefile: Build the simple test tool lldbWebKitTester on Mac.
+        * Scripts/build-lldbwebkittester: Added.
+        (buildProjectOrDie):
+        * Scripts/dump-class-layout: Extract logic to compute the path to the LLDB Python module
+        from here to Scripts/webkitpy/common/system/systemhost.py so that it can used by both
+        this script and lldb/lldb_webkit_unittest.py. Also import the lldb module at the top of
+        the file and take advantage of Python's default error semantics to throw an exception
+        if the import fails instead of handling it ourself. This has the side effect that we
+        now always import the LLDB Python module even if this script is invoked with --help.
+        If this turns out to be a significant annoyance then we can look to dynamically import
+        the module as we did before this change.
+        (webkit_build_dir):
+        (main):
+        (developer_dir): Deleted.
+        (import_lldb): Deleted.
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py: Update FIXME comment to reflect
+        that fact that test-webkitpy does not support class and module fixtures. This is because
+        test-webkitpy currently implements parallelism by breaking down existing test classes
+        into individual test methods itself and having each worker run exactly one test method (via
+        unittest.TestLoader.loadTestsFromName()) at a time. As a result of this reorganization,
+        setUpModule()/setUpClass() are called for each test method as opposed to once per test
+        class/test module.
+        (remove_dir): Ditto.
+        * Scripts/webkitpy/common/system/systemhost.py:
+        (SystemHost):
+        (SystemHost.path_to_lldb_python_directory): Added.
+        * Scripts/webkitpy/test/main.py:
+        (_find_lldb_webkit_tester): Returns whether there exists a Debug or Release-built lldbWebKitTester.
+        (_build_lldb_webkit_tester): Builds lldbWebKitTester. For now, we only support building
+        lldbWebKitTester on Mac.
+        (main): Add Tools/lldb to the test search path if the platform has lldb.py.
+        (Tester.run): Pass a boolean as to whether we will run the lldb_webkit unit tests.
+        (Tester._run_tests): Modified to take a boolean as to whether to run the lldb_webkit unit tests.
+        If we will run these tests then build lldbWebKitTester if it has not already been built as the
+        unit tests depend on this program.
+        * lldb/lldbWebKitTester/Configurations/Base.xcconfig: Added.
+        * lldb/lldbWebKitTester/Configurations/DebugRelease.xcconfig: Added.
+        * lldb/lldbWebKitTester/Configurations/lldbWebKitTester.xcconfig: Added.
+        * lldb/lldbWebKitTester/Makefile: Added.
+        * lldb/lldbWebKitTester/lldbWebKitTester.xcodeproj/project.pbxproj: Added.
+        * lldb/lldbWebKitTester/main.cpp: Added.
+        (breakForTestingSummaryProviders):
+        (utf16String):
+        (testSummaryProviders):
+        (main):
+        * lldb/lldb_webkit_unittest.py: Added.
+        (destroy_cached_debug_session):
+        (LLDBDebugSession):
+        (LLDBDebugSession.setup):
+        (LLDBDebugSession.tearDown):
+        (TestSummaryProviders):
+        (TestSummaryProviders.setUpClass):
+        (TestSummaryProviders._sbFrame):
+        (TestSummaryProviders.serial_test_WTFStringImpl_SummaryProvider_null_string):
+        (TestSummaryProviders.serial_test_WTFStringImpl_SummaryProvider_empty_string):
+        (TestSummaryProviders.serial_test_WTFStringImpl_SummaryProvider_8bit_string):
+        (TestSummaryProviders.serial_test_WTFStringImpl_SummaryProvider_16bit_string):
+        (TestSummaryProviders.serial_test_WTFString_SummaryProvider_null_string):
+        (TestSummaryProviders.serial_test_WTFString_SummaryProvider_empty_string):
+        (TestSummaryProviders.serial_test_WTFString_SummaryProvider_8bit_string):
+        (TestSummaryProviders.serial_test_WTFString_SummaryProvider_16bit_string):
+
+2018-06-27  Adam Barth  <abarth@webkit.org>
+
+        Add Fuchsia support to build-jsc
+        https://bugs.webkit.org/show_bug.cgi?id=187086
+
+        Reviewed by Yusuke Suzuki.
+
+        Add Fuchsia port to webkitdirs.pm. This patch is sufficient to make
+        build-jsc kick off a cmake for Fuchsia.
+
+        * Scripts/webkitdirs.pm:
+        (determineSourceDir):
+        (argumentsForConfiguration):
+        (determineXcodeSDK):
+        (findMatchingArguments):
+        (determinePortName):
+        (isFuchsia):
+        (setupAppleWinEnv):
+        (wrapperPrefixIfNeeded):
+        (relaunchIOSSimulator):
+        (debugMiniBrowser):
+
+2018-06-27  Daniel Bates  <dabates@apple.com>
+
+        style-queue "AttributeError: 'NoneType' object has no attribute 'is_obsolete'" when processing security patch
+        https://bugs.webkit.org/show_bug.cgi?id=187120
+
+        Reviewed by David Kilzer.
+
+        Teach the style queue how to refetch a patch from the status server as we did for non-Style
+        EWS queues.
+
+        * Scripts/webkitpy/tool/bot/stylequeuetask.py:
+        (StyleQueueTask.validate): Similar to change made to EarlyWarningSystemTask.validate() in r233107,
+        only check if the bug associated with the patch we are processing is closed if the attachment has a
+        non-None Bug object.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        (AbstractEarlyWarningSystem.refetch_patch): Extract logic to refetch a patch from here...
+        * Scripts/webkitpy/tool/commands/queues.py:
+        (PatchProcessingQueue._refetch_patch): ... to here.
+        (StyleQueue.refetch_patch): Turn around and call PatchProcessingQueue._refetch_patch().
+
+2018-06-27  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Unreviewed, add myself as a WebKit committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
 2018-06-27  Daniel Bates  <dabates@apple.com>
 
         webkit-patch should ignore non-ASCII characters in the status server API key

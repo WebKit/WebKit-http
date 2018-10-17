@@ -128,7 +128,6 @@ void WebPasteboardProxy::setPasteboardPathnamesForType(IPC::Connection& connecti
         
         for (const auto& pathname : pathnames) {
             if (!webProcessProxy->checkURLReceivedFromWebProcess(pathname)) {
-                connection.markCurrentlyDispatchedMessageAsInvalid();
                 newChangeCount = 0;
                 return;
             }
@@ -224,6 +223,11 @@ void WebPasteboardProxy::readBufferFromPasteboard(uint64_t index, const String& 
 void WebPasteboardProxy::getPasteboardItemsCount(const String& pasteboardName, uint64_t& itemsCount)
 {
     itemsCount = PlatformPasteboard(pasteboardName).count();
+}
+
+void WebPasteboardProxy::allPasteboardItemInfo(const String& pasteboardName, Vector<PasteboardItemInfo>& allInfo)
+{
+    allInfo = PlatformPasteboard(pasteboardName).allPasteboardItemInfo();
 }
 
 void WebPasteboardProxy::informationForItemAtIndex(int index, const String& pasteboardName, PasteboardItemInfo& info)

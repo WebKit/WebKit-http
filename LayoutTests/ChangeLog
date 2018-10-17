@@ -1,3 +1,868 @@
+2018-07-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Youtube video pages crash after a couple of minutes
+        https://bugs.webkit.org/show_bug.cgi?id=187316
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test to remove an iframe with a video while there is a main content
+        which is eligible to be shown in the Touch Bar.
+
+        * media/remove-video-best-media-element-in-main-frame-crash-expected.txt: Added.
+        * media/remove-video-best-media-element-in-main-frame-crash.html: Added.
+
+2018-07-05  Zalan Bujtas  <zalan@apple.com>
+
+        Do not assume that hypen's width can be computed using the simplified text measure codepath.
+        https://bugs.webkit.org/show_bug.cgi?id=187352
+        <rdar://problem/40821283>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/hyphen-is-complex-crash-expected.txt: Added.
+        * fast/text/hyphen-is-complex-crash.html: Added.
+
+2018-07-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK1] editing/spelling/markers.html times out on High Sierra after r233439
+        https://bugs.webkit.org/show_bug.cgi?id=187351
+
+        Reviewed by Tim Horton.
+
+        This is currently timing out on High Sierra, because the `verifyUnexpectedMarkers` portion of the
+        test fails to actually make use of the override spell checking results. Fix this by passing the
+        results when calling the function.
+
+        * editing/spelling/markers.html:
+
+2018-07-05  Nan Wang  <n_wang@apple.com>
+
+        AX: setValue on text controls should send out key events
+        https://bugs.webkit.org/show_bug.cgi?id=186690
+        <rdar://problem/41169985>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/set-value-editable-dispatch-events-expected.txt: Added.
+        * accessibility/mac/set-value-editable-dispatch-events.html: Added.
+
+2018-07-05  Truitt Savell  <tsavell@apple.com>
+
+        Layout Test svg/animations/animateMotion-additive-2c.svg and svg/animations/animateMotion-additive-2d.svg is flaky 
+        https://bugs.webkit.org/show_bug.cgi?id=187345
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-07-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r233325): [GTK] Broke 40 animations tests
+        https://bugs.webkit.org/show_bug.cgi?id=187264
+
+        Reviewed by Žan Doberšek.
+
+        Remove expectations for tests that are passing now.
+
+        * platform/gtk/TestExpectations:
+
+2018-07-04  Antti Koivisto  <antti@apple.com>
+
+        Reparse user stylesheets when _useSystemAppearance changes
+        https://bugs.webkit.org/show_bug.cgi?id=187312
+        <rdar://problem/38565834>
+
+        Reviewed by Tim Horton.
+
+        * fast/media/use-system-appearance-user-stylesheet-parsing-expected.txt: Added.
+        * fast/media/use-system-appearance-user-stylesheet-parsing.html: Added.
+
+2018-07-04  Alicia Boya García  <aboya@igalia.com>
+
+        Unreviewed GTK test gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=187328
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-07-03  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make WPT test at timing-model/timelines/timelines.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=186508
+        <rdar://problem/41000260>
+
+        Reviewed by Dean Jackson.
+
+        We're now passing this test reliably.
+
+        * TestExpectations:
+
+2018-07-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Nullptr crash accessing Document in GenericEventQueue::dispatchOneEvent()
+        https://bugs.webkit.org/show_bug.cgi?id=187284
+
+        Reviewed by Eric Carlson.
+
+        Added a regression test which reliably hits the newly added debug assertion.
+
+        * media/track/video-track-addition-and-frame-removal-expected.txt: Added.
+        * media/track/video-track-addition-and-frame-removal.html: Added.
+
+2018-07-03  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [cairo] Doesn't paint box-shadow with zero blur-radius
+        https://bugs.webkit.org/show_bug.cgi?id=187244
+
+        Reviewed by Žan Doberšek.
+
+        * platform/gtk/fast/box-shadow/inset-expected.png: Updated.
+
+2018-07-03  Youenn Fablet  <youenn@apple.com>
+
+        Crash in  WebKit::CacheStorage::Cache::toRecordInformation when running http/tests/cache-storage/cache-persistency.https.html
+        https://bugs.webkit.org/show_bug.cgi?id=187243
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+
+2018-07-03  Chris Dumez  <cdumez@apple.com>
+
+        performance-api/performance-observer-no-document-leak.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=186938
+        <rdar://problem/41379336>
+
+        Reviewed by Simon Fraser.
+
+        Update test to stop relying on internals.numberOfLiveDocuments() and instead rely on the new
+        internals.documentIdentifier() / internals.isDocumentAlive(documentIdentifier) API in order
+        to address the flakiness. Relying on the number of live documents to check if a particular
+        document was destroyed is unreliable and flaky given that WebKit constructs documents for
+        various reasons.
+
+        * TestExpectations:
+        * performance-api/performance-observer-no-document-leak-expected.txt:
+        * performance-api/performance-observer-no-document-leak.html:
+
+2018-07-03  Truitt Savell  <tsavell@apple.com>
+
+        Re-enabling canvas tests for canvas/philip/tests/initial.reset.gradient.html
+        https://bugs.webkit.org/show_bug.cgi?id=187307
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-07-03  Truitt Savell  <tsavell@apple.com>
+
+        re-enable some canvas tests that are now consistently passing
+        https://bugs.webkit.org/show_bug.cgi?id=187305
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-07-03  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed, rolling out r233461.
+
+        Assertions triggered during iOS 11 debug layout and API tests
+
+        Reverted changeset:
+
+        "[iOS] Add assert to catch improper use of WebCore::Timer in
+        UI Process"
+        https://bugs.webkit.org/show_bug.cgi?id=185330
+        https://trac.webkit.org/changeset/233461
+
+2018-07-03  Frederic Wang  <fwang@igalia.com>
+
+        Import WPT infrastructure tests
+        https://bugs.webkit.org/show_bug.cgi?id=187095
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations: Mark known failures.
+
+2018-07-03  Frederic Wang  <fwang@igalia.com>
+
+        REGRESSION (r232186): Hardware-accelerated CSS animations using steps() timing function no longer work
+        https://bugs.webkit.org/show_bug.cgi?id=186129
+
+        Reviewed by Antoine Quint.
+
+        Add a test to ensure that accelerated and non-accelerated animations are properly started
+        when WebAnimationsCSSIntegration is enabled. In particular, consider the case of animated
+        transform using steps() timing function.
+
+        * http/wpt/css/css-animations/start-animation-001-expected.html: Added.
+        * http/wpt/css/css-animations/start-animation-001.html: Added.
+
+2018-07-03  Frederic Wang  <fred.wang@free.fr>
+
+        [iOS] Animations with Bézier timing function not suspended on UI process when animation-play-state is set to "paused"
+        https://bugs.webkit.org/show_bug.cgi?id=170784
+
+        Add a reftest to visually check pausing of transform animations.
+
+        Reviewed by Antoine Quint.
+
+        * http/wpt/css/css-animations/set-animation-play-state-to-paused-001-expected.html: Added.
+        * http/wpt/css/css-animations/set-animation-play-state-to-paused-001.html: Added.
+
+2018-07-03  Antoine Quint  <graouts@apple.com>
+
+        Crash in WebCore::WebAnimation::timeToNextRequiredTick when running imported/w3c/web-platform-tests/web-animations/interfaces/Animatable/animate-no-browsing-context.html
+        https://bugs.webkit.org/show_bug.cgi?id=187145
+
+        Unreviewed. Forgot to remove the expectation change when fixing the bug in r233430.
+
+        * TestExpectations:
+
+2018-07-02  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Regular expressions with ".?" expressions at the start and the end match the entire string
+        https://bugs.webkit.org/show_bug.cgi?id=119191
+
+        Reviewed by Michael Saboff.
+
+        * fast/regex/dotstar-expected.txt:
+        * fast/regex/script-tests/dotstar.js:
+
+2018-07-02  Antti Koivisto  <antti@apple.com>
+
+        Tighter limit for canvas memory use on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=187279
+        <rdar://problem/38420562>
+
+        Reviewed by Simon Fraser.
+
+        * platform/ios-simulator/fast/canvas/canvas-crash-expected.txt:
+        * platform/ios-simulator/fast/canvas/canvas-skia-excessive-size-expected.txt:
+
+2018-07-02  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        RegExp.exec returns wrong value with a long integer quantifier
+        https://bugs.webkit.org/show_bug.cgi?id=187042
+
+        Reviewed by Saam Barati.
+
+        * fast/regex/overflow-expected.txt:
+        * fast/regex/script-tests/overflow.js:
+
+2018-07-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Google Fonts doesn't work if the user has the requested font locally-installed
+        https://bugs.webkit.org/show_bug.cgi?id=187228
+        <rdar://problem/40967280>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/text/user-installed-fonts/local-expected.html: Added.
+        * fast/text/user-installed-fonts/local.html: Added.
+
+2018-07-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK1] editing/spelling/markers.html is failing on recent builds of macOS Mojave
+        https://bugs.webkit.org/show_bug.cgi?id=187253
+
+        Reviewed by Tim Horton.
+
+        In recent builds of macOS Mojave, NSSpellChecker returns both grammar and spelling errors when asked to analyze
+        the string "I have a issue.". While arguably correct, the change causes this existing layout test to fail due
+        to one of the calls to `verifyUnexpectedMarkers` expecting either grammar markers and not spelling markers, or
+        vice versa.
+
+        To fix this, we can leverage the mechanism added in r233412 to simulate different results from the platform
+        spellchecker, such that the test now exercises all combinations of grammar and spelling corrections observed on
+        each macOS platform, regardless of the actual platform where the test is being run.
+
+        This patch also enhances the capabilities of `LayoutTestSpellChecker`. See `Tools/ChangeLog` for more details.
+
+        * editing/spelling/markers-expected.txt:
+        * editing/spelling/markers.html:
+        * editing/spelling/text-replacement-after-typing-to-word.html:
+
+        Adjusted for a renamed TestRunner method.
+
+2018-07-02  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed GTK gardening
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/web-animations/interfaces/Animatable/animate-no-browsing-context-expected.txt: Added.
+
+2018-07-02  Eric Carlson  <eric.carlson@apple.com>
+
+        Video sometimes flickers when playing to AppleTV
+        https://bugs.webkit.org/show_bug.cgi?id=187193
+        <rdar://problem/40153865>
+
+        Reviewed by Jer Noble and Youenn Fablet.
+
+        * platform/mac/media/audio-session-category-audio-autoplay.html: Update as audio category
+        doesn't change immediately.
+
+2018-07-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening.
+
+        Adjust or add a few test expectations. Remove a bad text baseline for
+        one W3C Fetch test, add a proper text baseline for another.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/headers: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/headers/header-values-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/security: Removed.
+
+2018-07-02  Frederic Wang  <fwang@igalia.com>
+
+        WTF's internal std::optional implementation should abort() on bad optional access
+        https://bugs.webkit.org/show_bug.cgi?id=186536
+
+        Unreviewed test gardening.
+
+2018-07-02  Frederic Wang  <fwang@igalia.com>
+
+        WTF's internal std::optional implementation should abort() on bad optional access
+        https://bugs.webkit.org/show_bug.cgi?id=186536
+
+        Reviewed by Michael Catanzaro.
+
+        * TestExpectations: Mark two tests as crashing (bug #187145 and bug #187243).
+
+2018-07-01  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WK2] fast/parser/document-open-in-unload.html makes the following test crash
+        https://bugs.webkit.org/show_bug.cgi?id=98345
+        <rdar://problem/12474923>
+
+        Reviewed by Ryosuke Niwa.
+
+        * platform/wk2/TestExpectations: Unskipped fast/parser/document-open-in-unload.html.
+
+2018-07-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] LastResort in the font family list causes emoji with joiners to be rendered as multiple .notdef characters
+        https://bugs.webkit.org/show_bug.cgi?id=187209
+        <rdar://problem/40920785>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/emoji-with-joiner-expected.txt: Added.
+        * fast/text/emoji-with-joiner.html: Added.
+
+2018-07-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Text replacements that end with symbols are expanded immediately
+        https://bugs.webkit.org/show_bug.cgi?id=187225
+        <rdar://problem/41112433>
+
+        Reviewed by Darin Adler.
+
+        Adds a layout test to check that if a user has configured a text replacement that ends with punctuation, then:
+        1. Typing that text replacement won't immediately trigger replacement.
+        2. Text replacement is triggered after pressing enter.
+
+        * editing/spelling/text-replacement-after-typing-to-word-expected.txt: Added.
+        * editing/spelling/text-replacement-after-typing-to-word.html: Added.
+        * platform/ios/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-06-29  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make WPT test at timing-model/timelines/document-timelines.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=186507
+        <rdar://problem/41000257>
+
+        Reviewed by Dean Jackson.
+
+        This test now passes reliably.
+
+        * TestExpectations:
+
+2018-06-30  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_event-dispatch.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183843
+
+        Unreviewed.
+
+        This test is no longer flaky, the fix for webkit.org/b/183834 fixed the issue.
+
+        * platform/ios/TestExpectations:
+
+2018-06-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r233391.
+        https://bugs.webkit.org/show_bug.cgi?id=187217
+
+        This patch broke Windows ports (Requested by fredw on
+        #webkit).
+
+        Reverted changeset:
+
+        "WTF's internal std::optional implementation should abort() on
+        bad optional access"
+        https://bugs.webkit.org/show_bug.cgi?id=186536
+        https://trac.webkit.org/changeset/233391
+
+2018-06-29  Frederic Wang  <fwang@igalia.com>
+
+        WTF's internal std::optional implementation should abort() on bad optional access
+        https://bugs.webkit.org/show_bug.cgi?id=186536
+
+        Reviewed by Michael Catanzaro.
+
+        * TestExpectations: Mark one WebAnimations test as crashing (bug #187145).
+
+2018-06-29  Nan Wang  <n_wang@apple.com>
+
+        Crash under WebCore::AXObjectCache::handleMenuItemSelected
+        https://bugs.webkit.org/show_bug.cgi?id=186918
+        <rdar://problem/41365984>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/accessibility-crash-focused-element-change-expected.txt: Added.
+        * accessibility/accessibility-crash-focused-element-change.html: Added.
+
+2018-06-29  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r232806): Facebook login fields have blue fill background instead of white
+        https://bugs.webkit.org/show_bug.cgi?id=187207
+
+        Reviewed by Tim Horton.
+
+        * fast/forms/input-background-ua-media-query-expected.html: Added.
+        * fast/forms/input-background-ua-media-query.html: Added.
+
+2018-06-29  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r230921): Cannot log in to forums.swift.org using GitHub account
+        https://bugs.webkit.org/show_bug.cgi?id=187197
+        <rdar://problem/40420821>
+
+        Reviewed by Brent Fulgham.
+
+        Add tests to ensure that Same-Site cookies are sent in a subsequent same-origin form submission
+        from a child window that is cross-origin with its opener. Also add a test to ensure that Same-Site
+        cookies are visible to an about:blank pop-up window (as about:blank is Same-Site with its opener
+        by definition of being same-origin with it).
+
+        * http/tests/cookies/same-site/fetch-in-about-blank-popup-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-about-blank-popup.html: Added.
+        * http/tests/cookies/same-site/post-from-cross-site-popup-expected.txt: Added.
+        * http/tests/cookies/same-site/post-from-cross-site-popup.html: Added.
+        * http/tests/cookies/same-site/resources/post-from-popup.html: Added.
+
+2018-06-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip media/picture-in-picture-interruption.html on iOS since it relies on 'runWithKeyDown'.
+        https://bugs.webkit.org/show_bug.cgi?id=187181
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-06-29  Aditya Keerthi  <akeerthi@apple.com>
+
+        [macOS] Do not crash if there is an attempt to copy a file URL to the clipboard
+        https://bugs.webkit.org/show_bug.cgi?id=187183
+
+        Reviewed by Wenson Hsieh.
+
+        Added a test to ensure that the WebProcess does not crash if we attempt to copy a
+        file URL to the clipboard. The test also ensures the clipboard content remains
+        unchanged.
+
+        * TestExpectations:
+        * http/tests/security/pasteboard-file-url-expected.txt: Added.
+        * http/tests/security/pasteboard-file-url.html: Added.
+        * platform/mac-wk2/TestExpectations:
+
+2018-06-29  Nan Wang  <n_wang@apple.com>
+
+        AX: [iOS] VoiceOver scroll position is jumpy in frames
+        https://bugs.webkit.org/show_bug.cgi?id=186956
+
+        Reviewed by Simon Fraser.
+
+        * fast/scrolling/ios/iframe-scroll-into-view-expected.html: Added.
+        * fast/scrolling/ios/iframe-scroll-into-view.html: Added.
+
+2018-06-29  Truitt Savell  <tsavell@apple.com>
+
+        Layout Test webrtc/datachannel/mdns-ice-candidates.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187180
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-06-29  Truitt Savell  <tsavell@apple.com>
+
+        Layout Test js/error-should-not-strong-reference-global-object.html is flaky on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=187103
+
+        Unreviewed test gardening
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-06-25  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Infinite loop if a <use> element references its ancestor and the DOMNodeInserted event handler of one its ancestor's descents updates the document style
+        https://bugs.webkit.org/show_bug.cgi?id=186925
+
+        Reviewed by Antti Koivisto.
+
+        * svg/dom/svg-use-infinite-loop-cloning-expected.txt: Added.
+        * svg/dom/svg-use-infinite-loop-cloning.html: Added.
+
+2018-06-29  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [WPE] Three CSS Grid Layout tests crash due to valueless std::optional access
+        https://bugs.webkit.org/show_bug.cgi?id=186752
+
+        Reviewed by Frédéric Wang.
+
+        * platform/wpe/TestExpectations: Remove tests from TestExpectations file
+        as they're passing now.
+
+2018-06-29  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GTK][WPE]: Add a way to setup our development environment inside flatpak
+        https://bugs.webkit.org/show_bug.cgi?id=186771
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * http/conf/flatpak-httpd.conf: Added. Apache configuration file to be used inside flaptak.
+
+2018-06-29  David Fenton  <david_fenton@apple.com>
+
+        Unreviewed, rolling out r233349.
+
+        caused 42 crashes on iOS GuardMalloc and iOS ASan tests
+
+        Reverted changeset:
+
+        "[Web Animations] Using a Web Animation leaks the Document"
+        https://bugs.webkit.org/show_bug.cgi?id=187088
+        https://trac.webkit.org/changeset/233349
+
+2018-06-29  Jer Noble  <jer.noble@apple.com>
+
+        Returning PiP'd video to fullscreen while playing leaves video muted.
+        https://bugs.webkit.org/show_bug.cgi?id=187181
+        <rdar://problem/41408335>
+
+        Reviewed by Eric Carlson.
+
+        * media/picture-in-picture-interruption-expected.txt: Added.
+        * media/picture-in-picture-interruption.html: Added.
+
+2018-06-29  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test imported/mozilla/css-animations/test_animation-starttime.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=186807
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-06-29  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test fast/text/mark-matches-broken-line-rendering.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=187177
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-06-29  Antoine Quint  <graouts@apple.com>
+
+        Layout Test compositing/animation/layer-for-filling-animation.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=187163
+
+        Unreviewed.
+
+        This test needed to be modified to account for the pending state being updated at a different time,
+        so we just wait a frame to ensure the animation is ended. See r233325.
+
+        * compositing/animation/layer-for-filling-animation.html:
+
+2018-06-29  Antoine Quint  <graouts@apple.com>
+
+        [mac][wk2] REGRESSION (Tiled Drawing): Some css3/ tests fail with fringing around tiled background-images that intersect tile boundaries
+        https://bugs.webkit.org/show_bug.cgi?id=122235
+
+        Unreviewed. This test has not been flaky on all ports by GTK for a long time.
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2018-06-27  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Using a Web Animation leaks the Document
+        https://bugs.webkit.org/show_bug.cgi?id=187088
+        <rdar://problem/41392046>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test that creates an Animation object in JS within an iframe and checks that removing
+        the iframe clears its Document. 
+
+        * webanimations/leak-document-with-web-animation-expected.txt: Added.
+        * webanimations/leak-document-with-web-animation.html: Added.
+        * webanimations/resources/web-animation-leak-iframe.html: Added.
+
+2018-06-28  Olivia Barnett  <obarnett@apple.com>
+        
+        Find in page for typographic quotes does not find low (German) quotes
+        https://bugs.webkit.org/show_bug.cgi?id=187164
+        <rdar://problem/29612785>
+       
+        Reviewed by Tim Horton.
+
+        Added additional test for German quotes.
+
+        * fast/text/find-quotes.html:
+
+2018-06-28  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-06-28  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Add block formatting only test cases
+        https://bugs.webkit.org/show_bug.cgi?id=187162
+
+        Reviewed by Antti Koivisto.
+
+        These tests are expected to generate the same tree output on every platform (no text, strictly block only). 
+
+        * fast/block/block-only/absolute-auto-with-sibling-margin-bottom-expected.txt: Added.
+        * fast/block/block-only/absolute-auto-with-sibling-margin-bottom.html: Added.
+        * fast/block/block-only/absolute-height-stretch-expected.txt: Added.
+        * fast/block/block-only/absolute-height-stretch.html: Added.
+        * fast/block/block-only/absolute-left-auto-expected.txt: Added.
+        * fast/block/block-only/absolute-left-auto.html: Added.
+        * fast/block/block-only/absolute-left-right-top-bottom-auto-expected.txt: Added.
+        * fast/block/block-only/absolute-left-right-top-bottom-auto.html: Added.
+        * fast/block/block-only/absolute-nested-expected.txt: Added.
+        * fast/block/block-only/absolute-nested.html: Added.
+        * fast/block/block-only/absolute-nested2-expected.txt: Added.
+        * fast/block/block-only/absolute-nested2.html: Added.
+        * fast/block/block-only/absolute-position-when-containing-block-is-not-in-the-formatting-context-expected.txt: Added.
+        * fast/block/block-only/absolute-position-when-containing-block-is-not-in-the-formatting-context.html: Added.
+        * fast/block/block-only/absolute-position-when-containing-block-is-not-in-the-formatting-context2-expected.txt: Added.
+        * fast/block/block-only/absolute-position-when-containing-block-is-not-in-the-formatting-context2.html: Added.
+        * fast/block/block-only/absolute-simple-expected.txt: Added.
+        * fast/block/block-only/absolute-simple.html: Added.
+        * fast/block/block-only/absolute-width-shrink-to-fit-expected.txt: Added.
+        * fast/block/block-only/absolute-width-shrink-to-fit.html: Added.
+        * fast/block/block-only/absolute-width-stretch-expected.txt: Added.
+        * fast/block/block-only/absolute-width-stretch.html: Added.
+        * fast/block/block-only/absolute-with-static-block-position-nested-expected.txt: Added.
+        * fast/block/block-only/absolute-with-static-block-position-nested.html: Added.
+        * fast/block/block-only/almost-intruding-left-float-simple-expected.txt: Added.
+        * fast/block/block-only/almost-intruding-left-float-simple.html: Added.
+        * fast/block/block-only/border-simple-expected.txt: Added.
+        * fast/block/block-only/border-simple.html: Added.
+        * fast/block/block-only/fixed-nested-expected.txt: Added.
+        * fast/block/block-only/fixed-nested.html: Added.
+        * fast/block/block-only/float-left-when-container-has-padding-margin-expected.txt: Added.
+        * fast/block/block-only/float-left-when-container-has-padding-margin.html: Added.
+        * fast/block/block-only/floating-box-clear-both-simple-expected.txt: Added.
+        * fast/block/block-only/floating-box-clear-both-simple.html: Added.
+        * fast/block/block-only/floating-box-clear-right-simple-expected.txt: Added.
+        * fast/block/block-only/floating-box-clear-right-simple.html: Added.
+        * fast/block/block-only/floating-box-left-and-right-multiple-expected.txt: Added.
+        * fast/block/block-only/floating-box-left-and-right-multiple-with-top-offset-expected.txt: Added.
+        * fast/block/block-only/floating-box-left-and-right-multiple-with-top-offset.html: Added.
+        * fast/block/block-only/floating-box-left-and-right-multiple.html: Added.
+        * fast/block/block-only/floating-box-right-simple-expected.txt: Added.
+        * fast/block/block-only/floating-box-right-simple.html: Added.
+        * fast/block/block-only/floating-box-with-clear-siblings-expected.txt: Added.
+        * fast/block/block-only/floating-box-with-clear-siblings.html: Added.
+        * fast/block/block-only/floating-box-with-clear-simple-expected.txt: Added.
+        * fast/block/block-only/floating-box-with-clear-simple.html: Added.
+        * fast/block/block-only/floating-box-with-new-formatting-context-expected.txt: Added.
+        * fast/block/block-only/floating-box-with-new-formatting-context.html: Added.
+        * fast/block/block-only/floating-box-with-relative-positioned-sibling-expected.txt: Added.
+        * fast/block/block-only/floating-box-with-relative-positioned-sibling.html: Added.
+        * fast/block/block-only/floating-left-right-simple-expected.txt: Added.
+        * fast/block/block-only/floating-left-right-simple.html: Added.
+        * fast/block/block-only/floating-left-right-with-all-margins-expected.txt: Added.
+        * fast/block/block-only/floating-left-right-with-all-margins.html: Added.
+        * fast/block/block-only/floating-lefts-and-rights-simple-expected.txt: Added.
+        * fast/block/block-only/floating-lefts-and-rights-simple.html: Added.
+        * fast/block/block-only/floating-multiple-lefts-expected.txt: Added.
+        * fast/block/block-only/floating-multiple-lefts-in-body-expected.txt: Added.
+        * fast/block/block-only/floating-multiple-lefts-in-body.html: Added.
+        * fast/block/block-only/floating-multiple-lefts-multiple-lines-expected.txt: Added.
+        * fast/block/block-only/floating-multiple-lefts-multiple-lines.html: Added.
+        * fast/block/block-only/floating-multiple-lefts.html: Added.
+        * fast/block/block-only/floating-with-new-block-formatting-context-expected.txt: Added.
+        * fast/block/block-only/floating-with-new-block-formatting-context.html: Added.
+        * fast/block/block-only/margin-collapse-bottom-bottom-expected.txt: Added.
+        * fast/block/block-only/margin-collapse-bottom-bottom.html: Added.
+        * fast/block/block-only/margin-collapse-bottom-nested-expected.txt: Added.
+        * fast/block/block-only/margin-collapse-bottom-nested.html: Added.
+        * fast/block/block-only/margin-collapse-first-last-are-floating-expected.txt: Added.
+        * fast/block/block-only/margin-collapse-first-last-are-floating.html: Added.
+        * fast/block/block-only/margin-collapse-simple-expected.txt: Added.
+        * fast/block/block-only/margin-collapse-simple.html: Added.
+        * fast/block/block-only/margin-collapse-top-nested-expected.txt: Added.
+        * fast/block/block-only/margin-collapse-top-nested.html: Added.
+        * fast/block/block-only/margin-collapse-when-child-has-padding-border-expected.txt: Added.
+        * fast/block/block-only/margin-collapse-when-child-has-padding-border.html: Added.
+        * fast/block/block-only/margin-collapse-with-block-formatting-context-expected.txt: Added.
+        * fast/block/block-only/margin-collapse-with-block-formatting-context.html: Added.
+        * fast/block/block-only/margin-collapse-with-block-formatting-context2-expected.txt: Added.
+        * fast/block/block-only/margin-collapse-with-block-formatting-context2.html: Added.
+        * fast/block/block-only/margin-left-right-sizing-expected.txt: Added.
+        * fast/block/block-only/margin-left-right-sizing-out-of-flow-expected.txt: Added.
+        * fast/block/block-only/margin-left-right-sizing-out-of-flow.html: Added.
+        * fast/block/block-only/margin-left-right-sizing.html: Added.
+        * fast/block/block-only/margin-propagation-simple-content-height-expected.txt: Added.
+        * fast/block/block-only/margin-propagation-simple-content-height.html: Added.
+        * fast/block/block-only/margin-sibling-collapse-propagated-expected.txt: Added.
+        * fast/block/block-only/margin-sibling-collapse-propagated.html: Added.
+        * fast/block/block-only/margin-simple-expected.txt: Added.
+        * fast/block/block-only/margin-simple.html: Added.
+        * fast/block/block-only/negative-margin-simple-expected.txt: Added.
+        * fast/block/block-only/negative-margin-simple.html: Added.
+        * fast/block/block-only/padding-nested-expected.txt: Added.
+        * fast/block/block-only/padding-nested.html: Added.
+        * fast/block/block-only/padding-simple-expected.txt: Added.
+        * fast/block/block-only/padding-simple.html: Added.
+        * fast/block/block-only/relative-auto-expected.txt: Added.
+        * fast/block/block-only/relative-auto-with-parent-offset-expected.txt: Added.
+        * fast/block/block-only/relative-auto-with-parent-offset.html: Added.
+        * fast/block/block-only/relative-auto.html: Added.
+        * fast/block/block-only/relative-bottom-expected.txt: Added.
+        * fast/block/block-only/relative-bottom.html: Added.
+        * fast/block/block-only/relative-position-when-containing-block-is-not-in-the-formatting-context-expected.txt: Added.
+        * fast/block/block-only/relative-position-when-containing-block-is-not-in-the-formatting-context.html: Added.
+        * fast/block/block-only/relative-right-expected.txt: Added.
+        * fast/block/block-only/relative-right.html: Added.
+        * fast/block/block-only/relative-siblings-expected.txt: Added.
+        * fast/block/block-only/relative-siblings.html: Added.
+        * fast/block/block-only/relative-simple-expected.txt: Added.
+        * fast/block/block-only/relative-simple.html: Added.
+
+2018-06-28  Timothy Hatcher  <timothy@apple.com>
+
+        Find on page selection color isn't adapted for dark mode.
+        https://bugs.webkit.org/show_bug.cgi?id=187072
+        rdar://problem/40354841
+
+        Unreviewed test gardening.
+
+        * fast/css/apple-system-control-colors-expected.txt: Use pure yellow for find.
+        * fast/text/mark-matches-broken-line-rendering-expected.html:
+        * fast/text/mark-matches-rendering-expected.html:
+        Use -apple-system-find-highlight-background to work on all macOS versions.
+        * platform/mac-sierra/fast/css/apple-system-control-colors-expected.txt: Use pure yellow for find.
+
+2018-06-28  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-starttime.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183834
+        <rdar://problem/40997932>
+
+        Reviewed by Dean Jackson.
+
+        This test now passes reliably so we remove any specific expectation. Another test needed to be modified to account for 
+        the pending state being updated at a different time, so we just wait a frame to ensure the animation is started.
+
+        * TestExpectations:
+        * compositing/visible-rect/animated.html:
+
+2018-06-28  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed gardening; media/video-buffering-allowed.html is flakey due to not completing in time.
+
+        Remove the artificial early timeout (1s) in this test.
+
+        * media/video-buffering-allowed.html:
+
+2018-06-28  Aditya Keerthi  <akeerthi@apple.com>
+
+        REGRESSION (r232040): Cursor jumping in Safari text fields
+        https://bugs.webkit.org/show_bug.cgi?id=187142
+        <rdar://problem/41397577>
+
+        Reviewed by Tim Horton.
+
+        Added test to ensure that the 'selectionchange' event is only fired once per
+        click in an editable node.
+
+        * fast/events/ios/click-selectionchange-once-expected.txt: Added.
+        * fast/events/ios/click-selectionchange-once.html: Added.
+
+2018-06-28  Dirk Schulze  <krit@webkit.org>
+
+        [css-masking] Update clip-path box mapping to unified box
+        https://bugs.webkit.org/show_bug.cgi?id=185797
+
+        Reviewed by Simon Fraser.
+
+        Update existing tests and add new tests to check the slightly different behavior.
+
+        * fast/masking/parsing-clip-path-shape-expected.txt:
+        * fast/masking/parsing-clip-path-shape.html:
+        * svg/clip-path/clip-path-shape-border-box-expected.svg: Added.
+        * svg/clip-path/clip-path-shape-border-box.svg: Copied from LayoutTests/svg/clip-path/clip-path-shape-stroke.svg.
+        * svg/clip-path/clip-path-shape-content-box-expected.svg: Copied from LayoutTests/svg/clip-path/clip-path-shape-fill.svg.
+        * svg/clip-path/clip-path-shape-content-box.svg: Copied from LayoutTests/svg/clip-path/clip-path-shape-fill.svg.
+        * svg/clip-path/clip-path-shape-fill.svg:
+        * svg/clip-path/clip-path-shape-margin-box-expected.svg: Added.
+        * svg/clip-path/clip-path-shape-margin-box.svg: Copied from LayoutTests/svg/clip-path/clip-path-shape-stroke.svg.
+        * svg/clip-path/clip-path-shape-padding-box-expected.svg: Copied from LayoutTests/svg/clip-path/clip-path-shape-fill.svg.
+        * svg/clip-path/clip-path-shape-padding-box.svg: Copied from LayoutTests/svg/clip-path/clip-path-shape-fill.svg.
+        * svg/clip-path/clip-path-shape-stroke.svg:
+
+2018-06-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/blink/storage/indexeddb/blob-delete-objectstore-db.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=172864
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-06-27  Youenn Fablet  <youenn@apple.com>
+
+        Rebase LayoutTests/http/tests/contentextensions/subresource-redirect-blocked-expected.txt after r233269
+        https://bugs.webkit.org/show_bug.cgi?id=187125
+
+        Unreviewed.
+
+        * http/tests/contentextensions/subresource-redirect-blocked-expected.txt:
+
+2018-06-27  Dirk Schulze  <krit@webkit.org>
+
+        -webkit-clip-path wrong offset for clipPath references
+        https://bugs.webkit.org/show_bug.cgi?id=129246
+
+        Reviewed by Simon Fraser.
+
+        Add test for reference clip-path offset. Correct a broken test.
+        All tests in the repo for references are interoperable between Gecko, Blink
+        and WebKit now.
+
+        * css3/masking/clip-path-reference-2-expected.html: Added.
+        * css3/masking/clip-path-reference-2.html: Added.
+        * css3/masking/clip-path-reference-userSpaceOnUse-expected.html:
+        * css3/masking/clip-path-reference-userSpaceOnUse.html:
+
 2018-06-27  Antti Koivisto  <antti@apple.com>
 
         Don't invoke post resolution callbacks when resolving computed style

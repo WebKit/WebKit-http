@@ -135,14 +135,13 @@ void AudioSession::setCategory(CategoryType newCategory)
         categoryString = AVAudioSessionCategoryAudioProcessing;
         break;
     case None:
-    default:
-        categoryString = nil;
+        categoryString = AVAudioSessionCategoryAmbient;
         break;
     }
 
     NSError *error = nil;
     [[AVAudioSession sharedInstance] setCategory:categoryString mode:categoryMode routeSharingPolicy:policy options:options error:&error];
-#if !PLATFORM(IOS_SIMULATOR) && !ENABLE(MINIMAL_SIMULATOR)
+#if !PLATFORM(IOS_SIMULATOR) && !PLATFORM(IOSMAC)
     ASSERT(!error);
 #endif
 }
@@ -178,7 +177,7 @@ RouteSharingPolicy AudioSession::routeSharingPolicy() const
 
 String AudioSession::routingContextUID() const
 {
-#if !PLATFORM(IOS_SIMULATOR) && !ENABLE(MINIMAL_SIMULATOR) && !PLATFORM(WATCHOS)
+#if !PLATFORM(IOS_SIMULATOR) && !PLATFORM(IOSMAC) && !PLATFORM(WATCHOS)
     return [[AVAudioSession sharedInstance] routingContextUID];
 #else
     return emptyString();
@@ -217,7 +216,7 @@ size_t AudioSession::numberOfOutputChannels() const
 bool AudioSession::tryToSetActive(bool active)
 {
     NSError *error = nil;
-    [[AVAudioSession sharedInstance] setActive:active error:&error];
+    [[AVAudioSession sharedInstance] setActive:active withOptions:active ? 0 : AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation error:&error];
     return !error;
 }
 

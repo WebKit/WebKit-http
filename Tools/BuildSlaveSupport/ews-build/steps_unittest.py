@@ -231,6 +231,7 @@ Total errors found: 8 in 48 files''')
 class TestRunBindingsTests(BuildStepMixinAdditions, unittest.TestCase):
     def setUp(self):
         self.longMessage = True
+        self.jsonFileName = 'bindings_test_results.json'
         return self.setUpBuildStep()
 
     def tearDown(self):
@@ -240,7 +241,8 @@ class TestRunBindingsTests(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(RunBindingsTests())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/run-bindings-tests'],
+                        command=['Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(self.jsonFileName)],
+                        logfiles={'json': self.jsonFileName},
                         )
             + 0,
         )
@@ -251,7 +253,8 @@ class TestRunBindingsTests(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(RunBindingsTests())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/run-bindings-tests'],
+                        command=['Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(self.jsonFileName)],
+                        logfiles={'json': self.jsonFileName},
                         )
             + ExpectShell.log('stdio', stdout='FAIL: (JS) JSTestInterface.cpp')
             + 2,
@@ -273,6 +276,7 @@ class TestunWebKitPerlTests(BuildStepMixinAdditions, unittest.TestCase):
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         command=['Tools/Scripts/test-webkitperl'],
+                        timeout=120,
                         )
             + 0,
         )
@@ -284,6 +288,7 @@ class TestunWebKitPerlTests(BuildStepMixinAdditions, unittest.TestCase):
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         command=['Tools/Scripts/test-webkitperl'],
+                        timeout=120,
                         )
             + ExpectShell.log('stdio', stdout='''Failed tests:  1-3, 5-7, 9, 11-13
 Files=40, Tests=630,  4 wallclock secs ( 0.16 usr  0.09 sys +  2.78 cusr  0.64 csys =  3.67 CPU)
@@ -292,6 +297,44 @@ Failed 1/40 test programs. 10/630 subtests failed.''')
             + 2,
         )
         self.expectOutcome(result=FAILURE, state_string='webkitperl-tests (failure)')
+        return self.runStep()
+
+
+class TestWebKitPyTests(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        self.jsonFileName = 'webkitpy_test_results.json'
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(RunWebKitPyTests())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['Tools/Scripts/test-webkitpy', '--json-output={0}'.format(self.jsonFileName)],
+                        logfiles={'json': self.jsonFileName},
+                        timeout=120,
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='webkitpy-tests')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(RunWebKitPyTests())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['Tools/Scripts/test-webkitpy', '--json-output={0}'.format(self.jsonFileName)],
+                        logfiles={'json': self.jsonFileName},
+                        timeout=120,
+                        )
+            + ExpectShell.log('stdio', stdout='''Ran 1744 tests in 5.913s
+FAILED (failures=1, errors=0)''')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='webkitpy-tests (failure)')
         return self.runStep()
 
 
@@ -383,7 +426,7 @@ class TestCompileWebKit(BuildStepMixinAdditions, unittest.TestCase):
                         )
             + 0,
         )
-        self.expectOutcome(result=SUCCESS, state_string='compiled webkit')
+        self.expectOutcome(result=SUCCESS, state_string='compiled')
         return self.runStep()
 
     def test_failure(self):
@@ -397,7 +440,43 @@ class TestCompileWebKit(BuildStepMixinAdditions, unittest.TestCase):
             + ExpectShell.log('stdio', stdout='1 error generated.')
             + 2,
         )
-        self.expectOutcome(result=FAILURE, state_string='compiled webkit (failure)')
+        self.expectOutcome(result=FAILURE, state_string='compiled (failure)')
+        return self.runStep()
+
+
+class TestCompileJSCOnly(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(CompileJSCOnly())
+        self.setProperty('fullPlatform', 'jsc-only')
+        self.setProperty('configuration', 'release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=["perl", "Tools/Scripts/build-jsc", '--release'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='compiled')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(CompileJSCOnly())
+        self.setProperty('fullPlatform', 'jsc-only')
+        self.setProperty('configuration', 'debug')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=["perl", "Tools/Scripts/build-jsc", '--debug'],
+                        )
+            + ExpectShell.log('stdio', stdout='1 error generated.')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='compiled (failure)')
         return self.runStep()
 
 

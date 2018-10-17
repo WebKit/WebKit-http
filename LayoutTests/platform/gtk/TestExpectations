@@ -1177,10 +1177,12 @@ webkit.org/b/186219 fast/forms/textarea-placeholder-wrapping.html [ ImageOnlyFai
 # This seems to be testing Apple-specific behavior?
 css3/color-filters/color-filter-ignore-semantic.html [ ImageOnlyFailure ]
 
-webkit.org/b/187044 animations/transition-and-animation-1.html [ Failure ]
-webkit.org/b/187044 webanimations/opacity-animation-yields-compositing-span.html [ Failure ]
+webkit.org/b/187044 webanimations/opacity-animation-yields-compositing-span.html [ Failure Timeout ]
 
-webkit.org/b/187041 imported/mozilla/css-animations/test_animation-pausing.html [ Failure ]
+webkit.org/b/187041 imported/mozilla/css-animations/test_animation-pausing.html [ Failure Timeout ]
+
+# Requires support for testing text replacement
+editing/spelling/text-replacement-after-typing-to-word.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures.
@@ -1919,7 +1921,7 @@ webkit.org/b/183903 http/tests/media/video-buffered-range-contains-currentTime.h
 
 webkit.org/b/183904 imported/w3c/web-platform-tests/IndexedDB/idbindex_getAllKeys.html [ Crash Pass ]
 
-webkit.org/b/186136 compositing/animation/layer-for-filling-animation.html [ Failure Pass ]
+webkit.org/b/186136 compositing/animation/layer-for-filling-animation.html [ Failure Pass Timeout ]
 
 webkit.org/b/186143 imported/mozilla/css-animations/test_event-dispatch.html [ Timeout Pass ]
 
@@ -1989,6 +1991,10 @@ webkit.org/b/186847 http/tests/inspector/network/resource-sizes-memory-cache.htm
 
 webkit.org/b/186851 imported/w3c/web-platform-tests/XMLHttpRequest/formdata.htm [ Pass Failure ]
 webkit.org/b/186851 imported/w3c/web-platform-tests/XMLHttpRequest/formdata-blob.htm [ Pass Failure ]
+
+webkit.org/b/187326 fast/selectors/selection-window-inactive-stroke-color.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/187327 imported/w3c/web-platform-tests/mathml/relations/css-styling/color-1.html [ Pass Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -2324,10 +2330,14 @@ webkit.org/b/184080 animations/animation-iteration-event-destroy-renderer.html [
 webkit.org/b/186253 http/tests/media/remove-while-loading.html [ Timeout ]
 webkit.org/b/186253 http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Timeout ]
 
-webkit.org/b/186341 fast/animation/css-animation-resuming-when-visible-with-style-change.html [ Timeout Failure ]
+webkit.org/b/186341 fast/animation/css-animation-resuming-when-visible-with-style-change.html [ Timeout Failure Pass ]
 webkit.org/b/186252 legacy-animation-engine/css3/filters/backdrop/animation.html [ Timeout ]
-webkit.org/b/186662 animations/transition-and-animation-3.html [ Timeout ]
-webkit.org/b/186853 imported/mozilla/css-transitions/test_element-get-animations.html [ Timeout ]
+
+webkit.org/b/187266 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/track/track-element/track-api-texttracks.html [ Pass Timeout ]
+
+webkit.org/b/187267 imported/w3c/web-platform-tests/IndexedDB/idbcursor-continue.htm [ Pass Failure ]
+
+webkit.org/b/187273 media/picture-in-picture-interruption.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -3371,7 +3381,6 @@ webkit.org/b/183902 fast/dom/frame-loading-via-document-write.html [ Failure ]
 
 webkit.org/b/184080 animations/animation-direction-normal.html [ Failure ]
 webkit.org/b/184080 animations/animation-direction-reverse.html [ Failure ]
-webkit.org/b/184080 animations/change-keyframes.html [ Failure ]
 webkit.org/b/184080 animations/play-state-in-shorthand.html [ Failure ]
 webkit.org/b/184080 animations/transform-non-accelerated.html [ Failure ]
 
@@ -3439,19 +3448,13 @@ webkit.org/b/186100 css3/color-filters/color-filter-color-property-list-item.htm
 webkit.org/b/186100 css3/color-filters/color-filter-opacity.html [ ImageOnlyFailure ]
 webkit.org/b/186100 fast/hidpi/filters-turbulence.html [ ImageOnlyFailure ]
 
-webkit.org/b/186138 imported/mozilla/css-transitions/test_event-dispatch.html [ Failure ]
-
 webkit.org/b/186139 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property.html [ Failure ]
 
 webkit.org/b/186141 svg/dom/SVGGeometry-isPointInStroke.xhtml [ Failure ]
 
 webkit.org/b/186142 imported/w3c/web-platform-tests/css/css-text/text-transform/text-transform-upperlower-016.html [ ImageOnlyFailure ]
 
-webkit.org/b/186144 transitions/transition-end-event-rendering.html [ Timeout ]
-
 webkit.org/b/186252 legacy-animation-engine/css3/filters/composited-during-transition-layertree.html [ Failure ]
-
-webkit.org/b/186340 transitions/zero-duration-with-non-zero-delay-start.html [ Timeout Failure ]
 
 webkit.org/b/186618 imported/w3c/web-platform-tests/fetch/api/headers/header-values.html [ Failure ]
 
@@ -3460,7 +3463,17 @@ webkit.org/b/186601 fullscreen/full-screen-layer-dump.html [ Failure ]
 webkit.org/b/186845 fast/mediastream/captureStream/canvas2d-heavy-drawing.html [ Failure Timeout ]
 webkit.org/b/162017 http/tests/navigation/ping-attribute/area-cross-origin-from-https.html [ Failure Timeout ]
 
-webkit.org/b/186144 transitions/move-after-transition.html [ Failure ]
+webkit.org/b/186144 transitions/move-after-transition.html [ Failure Timeout ]
+
+webkit.org/b/187268 compositing/backing/backing-store-attachment-outside-viewport.html [ Failure ]
+
+webkit.org/b/187271 fast/text/emoji-with-joiner.html [ Failure ]
+
+webkit.org/b/187323 imported/w3c/web-platform-tests/web-animations/timing-model/timelines/timelines.html [ Failure ]
+
+webkit.org/b/187324 fast/text/multiple-text-shadow-overflow-layout-rect.html [ ImageOnlyFailure ]
+
+webkit.org/b/187325 http/wpt/css/css-animations/start-animation-001.html [ ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

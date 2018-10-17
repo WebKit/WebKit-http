@@ -801,6 +801,25 @@ imported/w3c/web-platform-tests/fonts [ Skip ]
 imported/w3c/web-platform-tests/images [ Skip ]
 imported/w3c/web-platform-tests/tools [ Skip ]
 
+# Skip WPT infrastructure tests using expectation manifest.
+webkit.org/b/187003 imported/w3c/web-platform-tests/infrastructure/browsers/firefox [ Skip ]
+webkit.org/b/187003 imported/w3c/web-platform-tests/infrastructure/expected-fail/failing-test.html [ Skip ]
+webkit.org/b/187003 imported/w3c/web-platform-tests/infrastructure/expected-fail/timeout.html [ Skip ]
+webkit.org/b/187003 imported/w3c/web-platform-tests/infrastructure/reftest/reftest_and_fail.html [ Skip ]
+webkit.org/b/187003 imported/w3c/web-platform-tests/infrastructure/reftest/reftest_cycle_fail.html [ Skip ]
+webkit.org/b/187003 imported/w3c/web-platform-tests/infrastructure/reftest/reftest_match_fail.html [ Skip ]
+webkit.org/b/187003 imported/w3c/web-platform-tests/infrastructure/reftest/reftest_mismatch_fail.html [ Skip ]
+webkit.org/b/187003 imported/w3c/web-platform-tests/infrastructure/reftest/reftest_ref_timeout.html [ Skip ]
+webkit.org/b/187003 imported/w3c/web-platform-tests/infrastructure/reftest/reftest_timeout.html [ Skip ]
+
+# WPT infrastructure tests failing.
+imported/w3c/web-platform-tests/infrastructure/assumptions/ahem.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/infrastructure/assumptions/min-font-size.html [ ImageOnlyFailure ]
+webkit.org/b/186045 imported/w3c/web-platform-tests/infrastructure/reftest-wait.html [ ImageOnlyFailure ] # reftest-wait not supported yet.
+webkit.org/b/187039 imported/w3c/web-platform-tests/infrastructure/testdriver [ Skip ] # testdriver not supported yet.
+webkit.org/b/187093 imported/w3c/web-platform-tests/infrastructure/assumptions/html-elements.html [ Pass Crash ]
+imported/w3c/web-platform-tests/infrastructure/server/wpt-server-websocket.sub.html [ Skip ] # non deterministic URL in text dump
+
 # Imported W3C canvas failed tests
 webkit.org/b/138676 imported/w3c/canvas/2d.pattern.image.null.html [ Failure ]
 webkit.org/b/138676 imported/w3c/canvas/2d.pattern.image.incomplete.omitted.html [ Failure ]
@@ -1131,6 +1150,7 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 media/session [ Skip ]
 
 webrtc/datachannel/multiple-connections.html [ Slow ]
+webkit.org/b/187180 webrtc/datachannel/mdns-ice-candidates.html [ Pass Failure ]
 webkit.org/b/171094 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html [ Failure ]
 webkit.org/b/172f21 imported/w3c/web-platform-tests/webrtc/getstats.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-ontrack.https.html [ Skip ]
@@ -1954,8 +1974,6 @@ webkit.org/b/177997 webgl/1.0.2/conformance/textures/copy-tex-image-2d-formats.h
 
 webkit.org/b/179069 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/sandbox_032.htm [ Pass Failure ]
 
-webkit.org/b/179287 imported/w3c/web-platform-tests/web-animations/timing-model/timelines/document-timelines.html [ Pass Failure ]
-webkit.org/b/179287 imported/w3c/web-platform-tests/web-animations/timing-model/timelines/timelines.html [ Pass Failure ]
 webkit.org/b/181116 imported/w3c/web-platform-tests/web-animations/interfaces/Animation/finished.html [ Pass Failure ]
 webkit.org/b/181120 imported/w3c/web-platform-tests/web-animations/interfaces/Animation/onfinish.html [ Pass Failure ]
 webkit.org/b/181121 imported/w3c/web-platform-tests/web-animations/timing-model/animations/updating-the-finished-state.html [ Pass Failure ]
@@ -1963,7 +1981,6 @@ webkit.org/b/181122 imported/w3c/web-platform-tests/web-animations/interfaces/An
 webkit.org/b/181123 imported/w3c/web-platform-tests/web-animations/interfaces/Animation/finish.html [ Pass Failure ]
 webkit.org/b/181888 imported/w3c/web-platform-tests/web-animations/timing-model/animation-effects/current-iteration.html [ Pass Failure ]
 
-webkit.org/b/183834 imported/mozilla/css-animations/test_animation-starttime.html [ Pass Failure Timeout ]
 webkit.org/b/183836 imported/mozilla/css-animations/test_animations-dynamic-changes.html [ Pass Failure Timeout ]
 webkit.org/b/183837 imported/mozilla/css-transitions/test_document-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183840 imported/mozilla/css-animations/test_document-get-animations.html [ Pass Failure Timeout ]
@@ -2176,9 +2193,11 @@ imported/w3c/web-platform-tests/css/css-pseudo/first-letter-property-whitelist.h
 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-OAEP.https.any.html [ Pass Failure ]
 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-OAEP.https.any.worker.html [ Pass Failure ]
 
-webkit.org/b/186938 performance-api/performance-observer-no-document-leak.html [ Skip ]
-
 webkit.org/b/175609 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getAll.html [ Pass Failure ]
 
 webkit.org/b/186848 imported/w3c/web-platform-tests/FileAPI/blob/Blob-slice.html [ Pass Failure ]
 webkit.org/b/179176 svg/wicd/test-rightsizing-a.xhtml [ Pass Failure ]
+
+webkit.org/b/172864 imported/blink/storage/indexeddb/blob-delete-objectstore-db.html [ Pass Timeout ]
+
+webkit.org/b/187183 http/tests/security/pasteboard-file-url.html [ Skip ]

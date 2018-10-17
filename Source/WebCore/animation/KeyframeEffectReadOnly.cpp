@@ -1243,14 +1243,22 @@ void KeyframeEffectReadOnly::applyPendingAcceleratedActions()
 
     auto* compositedRenderer = downcast<RenderBoxModelObject>(renderer);
 
-    auto timeOffset = animation()->currentTime().value().seconds();
+    auto currentTime = animation()->currentTime();
+    if (!currentTime)
+        return;
+
+    auto timeOffset = currentTime->seconds();
     if (timing()->delay() < 0_s)
         timeOffset = -timing()->delay().seconds();
 
     for (const auto& action : pendingAccelerationActions) {
         switch (action) {
         case AcceleratedAction::Play:
-            compositedRenderer->startAnimation(timeOffset, backingAnimationForCompositedRenderer().ptr(), m_blendingKeyframes);
+            if (!compositedRenderer->startAnimation(timeOffset, backingAnimationForCompositedRenderer().ptr(), m_blendingKeyframes)) {
+                m_shouldRunAccelerated = false;
+                m_lastRecordedAcceleratedAction = AcceleratedAction::Stop;
+                return;
+            }
             break;
         case AcceleratedAction::Pause:
             compositedRenderer->animationPaused(timeOffset, m_blendingKeyframes.animationName());

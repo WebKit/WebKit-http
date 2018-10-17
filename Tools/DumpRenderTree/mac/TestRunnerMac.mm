@@ -31,8 +31,8 @@
 #import "TestRunner.h"
 
 #import "DefaultPolicyDelegate.h"
-#import "DumpRenderTreeSpellChecker.h"
 #import "EditingDelegate.h"
+#import "LayoutTestSpellChecker.h"
 #import "MockGeolocationProvider.h"
 #import "MockWebNotificationProvider.h"
 #import "PolicyDelegate.h"
@@ -212,7 +212,21 @@ void TestRunner::setStorageDatabaseIdleInterval(double interval)
 
 void TestRunner::setSpellCheckerLoggingEnabled(bool enabled)
 {
-    ::setSpellCheckerLoggingEnabled(enabled);
+#if PLATFORM(MAC)
+    [LayoutTestSpellChecker checker].spellCheckerLoggingEnabled = enabled;
+#else
+    UNUSED_PARAM(enabled);
+#endif
+}
+
+void TestRunner::setSpellCheckerResults(JSContextRef context, JSObjectRef results)
+{
+#if PLATFORM(MAC)
+    [[LayoutTestSpellChecker checker] setResultsFromJSObject:results inContext:context];
+#else
+    UNUSED_PARAM(results);
+    UNUSED_PARAM(context);
+#endif
 }
 
 void TestRunner::closeIdleLocalStorageDatabases()

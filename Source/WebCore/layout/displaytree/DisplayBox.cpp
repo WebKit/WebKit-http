@@ -62,6 +62,18 @@ Box::Rect Box::marginBox() const
     return marginBox;
 }
 
+Box::Rect Box::nonCollapsedMarginBox() const
+{
+    auto borderBox = this->borderBox();
+
+    Rect marginBox;
+    marginBox.setTop(borderBox.top() - nonCollapsedMarginTop());
+    marginBox.setLeft(borderBox.left() - marginLeft());
+    marginBox.setHeight(borderBox.height() + nonCollapsedMarginTop() + nonCollapsedMarginBottom());
+    marginBox.setWidth(borderBox.width() + marginLeft() + marginRight());
+    return marginBox;
+}
+
 Box::Rect Box::borderBox() const
 {
     Rect borderBox;

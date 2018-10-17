@@ -45,7 +45,8 @@
 #import <wtf/SoftLinking.h>
 #import <wtf/text/StringHash.h>
 
-#define PASTEBOARD_SUPPORTS_ITEM_PROVIDERS (PLATFORM(IOS) && !(PLATFORM(WATCHOS) || PLATFORM(APPLETV) || ENABLE(MINIMAL_SIMULATOR)))
+#define PASTEBOARD_SUPPORTS_ITEM_PROVIDERS (PLATFORM(IOS) && !(PLATFORM(WATCHOS) || PLATFORM(APPLETV)))
+#define NSURL_SUPPORTS_TITLE (!PLATFORM(IOSMAC))
 
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK_CLASS(UIKit, UIImage)
@@ -122,6 +123,14 @@ static PasteboardItemPresentationStyle pasteboardItemPresentationStyle(UIPreferr
     }
 }
 
+Vector<PasteboardItemInfo> PlatformPasteboard::allPasteboardItemInfo()
+{
+    Vector<PasteboardItemInfo> itemInfo;
+    for (NSInteger itemIndex = 0; itemIndex < [m_pasteboard numberOfItems]; ++itemIndex)
+        itemInfo.append(informationForItemAtIndex(itemIndex));
+    return itemInfo;
+}
+
 PasteboardItemInfo PlatformPasteboard::informationForItemAtIndex(int index)
 {
     if (index >= [m_pasteboard numberOfItems])
@@ -136,12 +145,39 @@ PasteboardItemInfo PlatformPasteboard::informationForItemAtIndex(int index)
 
     NSItemProvider *itemProvider = [[m_pasteboard itemProviders] objectAtIndex:index];
     info.preferredPresentationStyle = pasteboardItemPresentationStyle(itemProvider.preferredPresentationStyle);
+    info.suggestedFileName = itemProvider.suggestedName;
+    for (NSString *typeIdentifier in itemProvider.registeredTypeIdentifiers) {
+        CFStringRef cfTypeIdentifier = (CFStringRef)typeIdentifier;
+        if (!UTTypeIsDeclared(cfTypeIdentifier))
+            continue;
+
+        if (UTTypeConformsTo(cfTypeIdentifier, kUTTypeText))
+            continue;
+
+        if (UTTypeConformsTo(cfTypeIdentifier, kUTTypeURL))
+            continue;
+
+        if (UTTypeConformsTo(cfTypeIdentifier, kUTTypeRTFD))
+            continue;
+
+        if (UTTypeConformsTo(cfTypeIdentifier, kUTTypeFlatRTFD))
+            continue;
+
+        info.isNonTextType = true;
+        break;
+    }
+
     return info;
 }
 
 #else
 
 PasteboardItemInfo PlatformPasteboard::informationForItemAtIndex(int)
+{
+    return { };
+}
+
+Vector<PasteboardItemInfo> PlatformPasteboard::allPasteboardItemInfo()
 {
     return { };
 }
@@ -253,6 +289,14 @@ static NSString *webIOSPastePboardType = @"iOS rich content paste pasteboard typ
 
 static void registerItemToPasteboard(WebItemProviderRegistrationInfoList *representationsToRegister, id <AbstractPasteboard> pasteboard)
 {
+#if PLATFORM(IOSMAC)
+    auto itemDictionary = adoptNS([[NSMutableDictionary alloc] init]);
+    [representationsToRegister enumerateItems:[itemDictionary] (id <WebItemProviderRegistrar> item, NSUInteger) {
+        if ([item respondsToSelector:@selector(typeIdentifierForClient)] && [item respondsToSelector:@selector(dataForClient)])
+            [itemDictionary setObject:item.dataForClient forKey:item.typeIdentifierForClient];
+    }];
+    [pasteboard setItems:@[ itemDictionary.get() ]];
+#else
     if (UIItemProvider *itemProvider = representationsToRegister.itemProvider)
         [pasteboard setItemProviders:@[ itemProvider ]];
     else
@@ -260,6 +304,8 @@ static void registerItemToPasteboard(WebItemProviderRegistrationInfoList *repres
 
     if ([pasteboard respondsToSelector:@selector(stageRegistrationList:)])
         [pasteboard stageRegistrationList:representationsToRegister];
+#endif
+    
 }
 
 static void addRepresentationsForPlainText(WebItemProviderRegistrationInfoList *itemsToRegister, const String& plainText)
@@ -351,7 +397,9 @@ void PlatformPasteboard::write(const PasteboardImage& pasteboardImage)
     // the URL (i.e. the anchor's href attribute) to be a higher fidelity representation.
     auto& pasteboardURL = pasteboardImage.url;
     if (NSURL *nsURL = pasteboardURL.url) {
+#if NSURL_SUPPORTS_TITLE
         nsURL._title = pasteboardURL.title.isEmpty() ? userVisibleString(pasteboardURL.url) : (NSString *)pasteboardURL.title;
+#endif
         [representationsToRegister addRepresentingObject:nsURL];
     }
 
@@ -381,8 +429,10 @@ void PlatformPasteboard::write(const PasteboardURL& url)
     [representationsToRegister setPreferredPresentationStyle:WebPreferredPresentationStyleInline];
 
     if (NSURL *nsURL = url.url) {
+#if NSURL_SUPPORTS_TITLE
         if (!url.title.isEmpty())
             nsURL._title = url.title;
+#endif
         [representationsToRegister addRepresentingObject:nsURL];
         [representationsToRegister addRepresentingObject:(NSString *)url.url.string()];
     }
@@ -623,7 +673,7 @@ URL PlatformPasteboard::readURL(int index, const String& type, String& title)
     if (!allowReadingURLAtIndex(url, index))
         return { };
 
-#if PASTEBOARD_SUPPORTS_ITEM_PROVIDERS
+#if PASTEBOARD_SUPPORTS_ITEM_PROVIDERS && NSURL_SUPPORTS_TITLE
     title = [url _title];
 #else
     UNUSED_PARAM(title);

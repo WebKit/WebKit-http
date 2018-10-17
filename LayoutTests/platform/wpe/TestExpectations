@@ -1037,7 +1037,7 @@ Bug(WPE) perf/accessibility-title-ui-element.html [ Failure ]
 
 webkit.org/b/177873 http/wpt/beacon/beacon-async-error-logging.html [ Failure ]
 
-webkit.org/b/182050 http/wpt/fetch/response-opaque-clone.html [ Failure ]
+webkit.org/b/182050 http/wpt/fetch/response-opaque-clone.html [ Pass Crash ]
 webkit.org/b/180749 http/wpt/offscreen-canvas/transferToImageBitmap-webgl.html [ ImageOnlyFailure ]
 webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.html [ Failure ]
 webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
@@ -1220,10 +1220,6 @@ webkit.org/b/185254 http/tests/cache/disk-cache/redirect-chain-limits.html [ Fai
 webkit.org/b/184501 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures.worker.html [ Failure ]
 webkit.org/b/184501 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes.worker.html [ Failure ]
 
-webkit.org/b/186752 fast/css-grid-layout/flex-sizing-rows-min-max-height.html [ Crash ]
-webkit.org/b/186752 fast/css-grid-layout/grid-indefinite-size-auto-repeat-crash.html [ Crash ]
-webkit.org/b/186752 fast/css-grid-layout/maximize-tracks-definite-indefinite-height.html [ Crash ]
-
 webkit.org/b/186100 css3/color-filters/color-filter-color-property-list-item.html [ ImageOnlyFailure ]
 webkit.org/b/186100 css3/color-filters/color-filter-ignore-semantic.html [ ImageOnlyFailure ]
 webkit.org/b/186100 css3/color-filters/color-filter-opacity.html [ ImageOnlyFailure ]
@@ -1238,3 +1234,10 @@ Bug(WPE) js/dom/create-lots-of-workers.html [ Pass Timeout ]
 
 # This test is so slow that a Slow expectation is not enough to avoid flakiness.
 webkit.org/b/159754 workers/bomb.html [ Skip ]
+
+webkit.org/b/171599 animations/trigger-container-scroll-empty.html [ Pass Failure ]
+webkit.org/b/171599 legacy-animation-engine/animations/trigger-container-scroll-empty.html [ Pass Failure ]
+
+webkit.org/b/187044 webanimations/opacity-animation-yields-compositing-span.html [ Failure ]
+
+webkit.org/b/187323 imported/w3c/web-platform-tests/web-animations/timing-model/timelines/timelines.html [ Pass Failure ]

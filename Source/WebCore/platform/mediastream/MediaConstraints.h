@@ -240,9 +240,9 @@ public:
 
     ValueType valueForCapabilityRange(ValueType current, ValueType capabilityMin, ValueType capabilityMax) const
     {
-        ValueType value;
-        ValueType min = capabilityMin;
-        ValueType max = capabilityMax;
+        ValueType value { 0 };
+        ValueType min { capabilityMin };
+        ValueType max { capabilityMax };
 
         if (m_exact) {
             ASSERT(validForRange(capabilityMin, capabilityMax));

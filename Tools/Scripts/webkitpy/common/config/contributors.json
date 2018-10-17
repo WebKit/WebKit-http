@@ -5316,6 +5316,15 @@
          "tabatkins"
       ]
    },
+   "Tadeu Zagallo" : {
+      "emails" : [
+         "tzagallo@apple.com"
+      ],
+      "nicks" : [
+         "tadeuzagallo"
+      ],
+      "status" : "committer"
+   },
    "Taiju Tsuiki" : {
       "emails" : [
          "tzik@chromium.org"
@@ -5415,7 +5424,8 @@
       "expertise" : "WebRTC",
       "nicks" : [
          "thiblahute"
-      ]
+      ],
+      "status" : "committer"
    },
    "Thomas Sepez" : {
       "emails" : [

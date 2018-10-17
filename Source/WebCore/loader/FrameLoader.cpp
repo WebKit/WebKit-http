@@ -1316,7 +1316,7 @@ bool FrameLoader::isStopLoadingAllowed() const
 void FrameLoader::loadURL(FrameLoadRequest&& frameLoadRequest, const String& referrer, FrameLoadType newLoadType, Event* event, RefPtr<FormState>&& formState, CompletionHandler<void()>&& completionHandler)
 {
     CompletionHandlerCallingScope completionHandlerCaller(WTFMove(completionHandler));
-    if (m_inStopAllLoaders)
+    if (m_inStopAllLoaders || m_inClearProvisionalLoadForPolicyCheck)
         return;
 
     Ref<Frame> protect(m_frame);
@@ -1431,7 +1431,7 @@ SubstituteData FrameLoader::defaultSubstituteDataForURL(const URL& url)
 
 void FrameLoader::load(FrameLoadRequest&& request)
 {
-    if (m_inStopAllLoaders)
+    if (m_inStopAllLoaders || m_inClearProvisionalLoadForPolicyCheck)
         return;
 
     if (!request.frameName().isEmpty()) {
@@ -1603,9 +1603,10 @@ void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType t
 
 void FrameLoader::clearProvisionalLoadForPolicyCheck()
 {
-    if (!m_policyDocumentLoader || !m_provisionalDocumentLoader)
+    if (!m_policyDocumentLoader || !m_provisionalDocumentLoader || m_inClearProvisionalLoadForPolicyCheck)
         return;
 
+    SetForScope<bool> change(m_inClearProvisionalLoadForPolicyCheck, true);
     m_provisionalDocumentLoader->stopLoading();
     setProvisionalDocumentLoader(nullptr);
 }
@@ -2010,7 +2011,7 @@ void FrameLoader::commitProvisionalLoad()
     LOG(Loading, "WebCoreLoading %s: Finished committing provisional load to URL %s", m_frame.tree().uniqueName().string().utf8().data(),
         m_frame.document() ? m_frame.document()->url().stringCenterEllipsizedToLength().utf8().data() : "");
 
-    if (m_loadType == FrameLoadType::Standard && m_documentLoader->isClientRedirect())
+    if (m_loadType == FrameLoadType::Standard && m_documentLoader && m_documentLoader->isClientRedirect())
         history().updateForClientRedirect();
 
     if (m_loadingFromCachedPage) {
@@ -2775,7 +2776,7 @@ void FrameLoader::addExtraFieldsToRequest(ResourceRequest& request, FrameLoadTyp
         auto* initiator = m_frame.document();
         if (isMainResource) {
             auto* ownerFrame = m_frame.tree().parent();
-            if (!ownerFrame)
+            if (!ownerFrame && m_stateMachine.isDisplayingInitialEmptyDocument())
                 ownerFrame = m_opener;
             if (ownerFrame)
                 initiator = ownerFrame->document();

@@ -45,8 +45,16 @@ use List::Util qw(first);
 use webkitperl::FeatureList qw(getFeatureOptionList);
 use POSIX;
 
-sub cMakeArgsFromFeatures();
 sub writeCongrats();
+
+checkRequiredSystemConfig();
+setConfiguration();
+
+if (shouldUseFlatpak()) {
+    print "Building flatpak based environment\n";
+
+    runInFlatpak("/app/webkit/Tools/Scripts/build-webkit");
+}
 
 my $originalWorkingDirectory = getcwd();
 chdirWebKit();
@@ -168,8 +176,6 @@ if ($useCCache == 1) {
     $ENV{'WK_USE_CCACHE'} = "NO";
 }
 
-checkRequiredSystemConfig();
-setConfiguration();
 
 my $productDir = productDir();
 
@@ -279,7 +285,7 @@ if (isCMakeBuild() && !isAnyWindows()) {
 
     # We remove CMakeCache to avoid the bots reusing cached flags when
     # we enable new features. This forces a reconfiguration.
-    my @featureArgs = cMakeArgsFromFeatures();
+    my @featureArgs = cmakeArgsFromFeatures(@features, !$noExperimentalFeatures);
     removeCMakeCache(@featureArgs);
 
     buildCMakeProjectOrExit($clean, $prefixPath, $makeArgs, (cmakeBasedPortArguments(), @featureArgs), @cmakeArgs);
@@ -287,7 +293,7 @@ if (isCMakeBuild() && !isAnyWindows()) {
 
 my $baseProductDir = baseProductDir();
 if (isAppleWinWebKit() || isWinCairo()) {
-    my @featureArgs = cMakeArgsFromFeatures();
+    my @featureArgs = cmakeArgsFromFeatures(@features, !$noExperimentalFeatures);
     removeCMakeCache(@featureArgs);
 
     chdirWebKit();
@@ -370,28 +376,6 @@ chdir $originalWorkingDirectory;
 writeCongrats();
 
 exit 0;
-
-sub cMakeArgsFromFeatures()
-{
-    my @args;
-
-    if (!$noExperimentalFeatures) {
-        push @args, "-DENABLE_EXPERIMENTAL_FEATURES=ON";
-    }
-
-    foreach (@features) {
-        my $featureName = $_->{define};
-        if ($featureName) {
-            my $featureValue = ${$_->{value}};
-            if (defined $featureValue) {
-                my $featureEnabled = $featureValue ? "ON" : "OFF";
-                push @args, "-D$featureName=$featureEnabled";
-            }
-        }
-    }
-
-    return @args;
-}
 
 sub writeCongrats()
 {

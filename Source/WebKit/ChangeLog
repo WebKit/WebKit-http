@@ -1,3 +1,1194 @@
+2018-07-05  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r232886): WebsiteDataStore objects may get destroyed on a background thread
+        https://bugs.webkit.org/show_bug.cgi?id=187356
+        <rdar://problem/41854555>
+
+        Reviewed by Geoffrey Garen.
+
+        As of r232886, CallbackAggregators in WebsiteDataStore hold a Ref<> to their WebsiteDataStore. This
+        is an issue because CallbackAggregator objects can get destroyed on a background thread and may be
+        the last ones holding a ref to the data store. When this happens, the WebsiteDataStore would get
+        destroyed on a background store and potentially cause crashes. Note that even if the callback
+        aggregator would not be the last one to hold a ref to the store, it still would not be safe to deref
+        the store on the background thread since WebsiteDataStore is not ThreadSafeRefCounted.
+
+        To address the issue, this patch updates the CallbackAggregators' destructor to deref their data
+        store member on the main thread. Note that we could also have WebsiteDataStore subclass
+        ThreadSafeRefCounted<T, DestructionThread::Main> but the data store technically does not need to
+        be ThreadSafeRefCounted at the moment.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::WebsiteDataStore):
+        (WebKit::WebsiteDataStore::~WebsiteDataStore):
+        (WebKit::WebsiteDataStore::fetchDataAndApply):
+        (WebKit::WebsiteDataStore::removeData):
+
+2018-07-05  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] REGRESSION: Development WebContent service has restricted entitlements, rendering it useless for development
+        https://bugs.webkit.org/show_bug.cgi?id=187355
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/WebContentService.Development.xcconfig: Set WK_USE_RESTRICTED_ENTITLEMENTS
+          to NO for the Development service.
+
+2018-07-05  Rob Buis  <rbuis@igalia.com>
+
+        [GTK] Remove soup/DownloadSoupErrors.h
+        https://bugs.webkit.org/show_bug.cgi?id=187339
+
+        This header is not used anymore.
+
+        Reviewed by Frédéric Wang.
+
+        * NetworkProcess/Downloads/soup/DownloadSoupErrors.h: Removed.
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        * PlatformGTK.cmake:
+
+2018-07-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r233325): [GTK] Broke 40 animations tests
+        https://bugs.webkit.org/show_bug.cgi?id=187264
+
+        Reviewed by Žan Doberšek.
+
+        Use a different PlatformDisplayID for compositing in the GTK port. This way, when entering AC a window screen
+        changed is emitted and the GTK default display refresh monitor is destroyed, ensuring the one created by the
+        threaded compositor is used.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::create): Remove unused WebPage parameter and add PlatformDisplayID.
+        (WebKit::ThreadedCompositor::ThreadedCompositor): Create the display refresh monitor with the given displayID.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedDisplayRefreshMonitor.cpp:
+        (WebKit::ThreadedDisplayRefreshMonitor::ThreadedDisplayRefreshMonitor): Pass the given displayID to the parent constructor.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedDisplayRefreshMonitor.h:
+        (WebKit::ThreadedDisplayRefreshMonitor::create): Add PlatformDisplayID parameter.
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost): Use compositingDisplayID when
+        creating the threaded compositor and notify about the window screen change.
+        (WebKit::ThreadedCoordinatedLayerTreeHost::setIsDiscardable): Use primaryDisplayID when leaving AC and
+        compositingDisplayID when re-entering.
+
+2018-07-04  Olivia Barnett  <obarnett@apple.com>
+
+        A WKWebView in a UIViewController that is presented modally and uses a file picker will be incorrectly dismissed by the system
+        https://bugs.webkit.org/show_bug.cgi?id=185257
+        <rdar://problem/40819252>
+
+        Reviewed by Tim Horton.
+
+        Call to dismiss the presented modal was being called on the parent and not the child, which caused the file picker to be incorrectly dismissed along with the modal. A test for this bug-fix could not be completed without additional tools as TestWebKitAPI is not a UI application.
+
+        * UIProcess/ios/forms/WKFileUploadPanel.mm:
+        (-[WKFileUploadPanel _dismissDisplayAnimated:]):
+
+2018-07-04  Tim Horton  <timothy_horton@apple.com>
+
+        Introduce PLATFORM(IOSMAC)
+        https://bugs.webkit.org/show_bug.cgi?id=187315
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/NetworkService.xcconfig:
+        * Configurations/WebContentService.xcconfig:
+        * Configurations/WebKit.xcconfig:
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::NetworkProcess::sourceApplicationAuditData const):
+        * NetworkProcess/ios/NetworkProcessIOS.mm:
+        * NetworkProcess/mac/NetworkProcessMac.mm:
+        (WebKit::NetworkProcess::initializeProcessName):
+        (WebKit::overrideSystemProxies):
+        * Platform/mac/LayerHostingContext.mm:
+        (WebKit::LayerHostingContext::createForExternalHostingProcess):
+        * Platform/spi/ios/UIKitSPI.h:
+        * Shared/ios/ChildProcessIOS.mm:
+        (WebKit::ChildProcess::initializeSandbox):
+        * Shared/ios/InteractionInformationAtPosition.h:
+        * Shared/ios/InteractionInformationAtPosition.mm:
+        (WebKit::InteractionInformationAtPosition::encode const):
+        (WebKit::InteractionInformationAtPosition::decode):
+        * Shared/mac/ChildProcessMac.mm:
+        (WebKit::ChildProcess::setApplicationIsDaemon):
+        (WebKit::enableSandboxStyleFileQuarantine):
+        * Shared/mac/CodeSigning.mm:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _webViewPrintFormatter]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/RemoteLayerTree/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::updateLayerTree):
+        * UIProcess/RemoteLayerTree/ios/RemoteLayerTreeHostIOS.mm:
+        (-[WKRemoteView initWithFrame:contextID:]):
+        * UIProcess/_WKWebViewPrintFormatter.mm:
+        * UIProcess/_WKWebViewPrintFormatterInternal.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _didExitStableState]):
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView gestureRecognizer:canBePreventedByGestureRecognizer:]):
+        (-[WKContentView gestureRecognizer:shouldRecognizeSimultaneouslyWithGestureRecognizer:]):
+        (-[WKContentView canPerformActionForWebView:withSender:]):
+        (-[WKContentView _defineForWebView:]):
+        (-[WKContentView setSelectedTextRange:]):
+        (-[WKContentView closestPositionToPoint:]):
+        (-[WKContentView _updateChangedSelection:]):
+        * UIProcess/ios/WKLegacyPDFView.mm:
+        * UIProcess/ios/WKPDFView.mm:
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::selectWithGesture):
+        (WebKit::WebPage::getPositionInformation):
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::initializeSandbox):
+        * config.h:
+
+2018-07-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        50 failing WebDriver tests after r233417
+        https://bugs.webkit.org/show_bug.cgi?id=187263
+
+        Reviewed by Frédéric Wang.
+
+        A std::optional value is used while being std::nullopt. This is because the wrong input source is used when
+        transitioning keyboard input states.
+
+        * UIProcess/Automation/SimulatedInputDispatcher.cpp:
+        (WebKit::SimulatedInputDispatcher::transitionInputSourceToState):
+
+2018-07-03  Youenn Fablet  <youenn@apple.com>
+
+        Remove quarantine for Webex plugin
+        https://bugs.webkit.org/show_bug.cgi?id=187050
+        rdar://problem/41478189
+
+        Reviewed by Brent Fulgham.
+
+        Update the Plugin Info.plist to not do quarantine of downloaded files by default.
+        Update PluginProcess implementation to reenable quarantine for all plug-ins except cisco webex plug-in.
+
+        * Platform/spi/mac/QuarantineSPI.h: Add qtn_proc_init.
+        * PluginProcess/EntryPoint/mac/XPCService/PluginService.32-64.Info.plist:
+        * PluginProcess/PluginProcess.h:
+        * PluginProcess/mac/PluginProcessMac.mm:
+        (WebKit::PluginProcess::shouldOverrideQuarantine):
+        * Shared/ChildProcess.h:
+        (WebKit::ChildProcess::shouldOverrideQuarantine):
+        * Shared/mac/ChildProcessMac.mm:
+        (WebKit::ChildProcess::initializeSandbox):
+
+2018-07-03  Youenn Fablet  <youenn@apple.com>
+
+        Crash in  WebKit::CacheStorage::Cache::toRecordInformation when running http/tests/cache-storage/cache-persistency.https.html
+        https://bugs.webkit.org/show_bug.cgi?id=187243
+
+        Reviewed by Chris Dumez.
+
+        In case a caches object has an engine, it uses the engine to get the salt.
+        In case engine/caches are non persistent, no salt was set for the engine, hence the crashes.
+        Add an empty salt whenever initializing a non-persistent engine to remove the crash.
+
+        Covered by updated expectations for two tests.
+
+        * NetworkProcess/cache/CacheStorageEngine.cpp:
+        (WebKit::CacheStorage::Engine::initialize):
+
+2018-07-03  Youenn Fablet  <youenn@apple.com>
+
+        Fix regression introduced in r233335
+        https://bugs.webkit.org/show_bug.cgi?id=187282
+
+        Reviewed by Chris Dumez.
+
+        When checking for navigation loads, we need to return whether the request URL matches the service worker URL.
+        Before this patch, if the request URL was not matching the service worker URL, we were using the origin/referrer
+        which should only be used for subresource loads.
+
+        Covered by imported/w3c/web-platform-tests/service-workers/service-worker/claim-with-redirect.https.html
+        being no longer flaky.
+
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::isValidFetch):
+
+2018-07-03  Chris Dumez  <cdumez@apple.com>
+
+        Make CallbackMap::invalidate() safe to re-enter
+        https://bugs.webkit.org/show_bug.cgi?id=187298
+        <rdar://problem/41057167>
+
+        Reviewed by Geoffrey Garen.
+
+        Made it safe to re-enter CallbackMap::invalidate(), GenericCallback::performCallbackWithReturnValue(),
+        GenericCallback::invalidate() & invalidateCallbackMap() since those execute client blocks which may
+        re-enter WebKit.
+
+        * UIProcess/GenericCallback.h:
+        (WebKit::GenericCallback::performCallbackWithReturnValue):
+        (WebKit::invalidateCallbackMap):
+
+2018-07-03  Brent Fulgham  <bfulgham@apple.com>
+
+        [iOS] Clean up sandbox warnings found during Public Beta
+        https://bugs.webkit.org/show_bug.cgi?id=187308
+        <rdar://problem/41203914>
+
+        Reviewed by Eric Carlson.
+
+        I made our sandbox overly restrictive during our iOS 12.0 development cycle, and have found a number of missing items.
+
+        This patch adds the missing IOKit properties, and removes a duplicate call to (play-media).
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2018-07-03  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Embed certificate information into ResourceResponse.
+        https://bugs.webkit.org/show_bug.cgi?id=187102
+
+        Reviewed by Youenn Fablet.
+
+        * NetworkProcess/curl/NetworkDataTaskCurl.cpp:
+        (WebKit::NetworkDataTaskCurl::curlDidComplete):.
+
+2018-07-03  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] We fail to make surfaces volatile when suspending, increasing memory impact
+        https://bugs.webkit.org/show_bug.cgi?id=187285
+        rdar://problem/41732391
+
+        Reviewed by Tim Horton.
+        
+        The "Mach port as layer contents" code path used in iOS WK2 relies on replacing the 
+        Mach port layer contents with the actual IOSurface on suspension (otherwise the
+        live Mach port will keep the surface in use). However, we were never hitting this
+        RemoteLayerTreeHost::mapAllIOSurfaceBackingStore() code path on iOS 11 and later
+        because UIKit stopped firing the notification we relied on.
+        
+        To fix this, use the _UIApplicationDidFinishSuspensionSnapshotNotification notification
+        which is fired on UIApp.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/ApplicationStateTracker.mm:
+        (WebKit::ApplicationStateTracker::ApplicationStateTracker):
+
+2018-07-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up the layer volatility code and logging
+        https://bugs.webkit.org/show_bug.cgi?id=187286
+
+        Reviewed by Tim Horton.
+        
+        Fix the layer volatility logging so it doesn't say "succeeded" when it actually failed
+        and gave up.
+        
+        Use a couple of lambda functions in RemoteLayerBackingStore::setBufferVolatility() to
+        make the code easier to read.
+
+        * Shared/RemoteLayerTree/RemoteLayerBackingStore.h:
+        * Shared/RemoteLayerTree/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::setBufferVolatility):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::callVolatilityCompletionHandlers):
+        (WebKit::WebPage::layerVolatilityTimerFired):
+        (WebKit::WebPage::markLayersVolatile):
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::markLayersVolatile):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::actualPrepareToSuspend):
+        (WebKit::WebProcess::markAllLayersVolatile):
+        * WebProcess/WebProcess.h:
+
+2018-07-03  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Make WebsiteDataStore::getAllStorageAccessEntries() call the right network process instead of iterating over the process pools
+        https://bugs.webkit.org/show_bug.cgi?id=187277
+        <rdar://problem/41745510>
+
+        Reviewed by Chris Dumez.
+
+        Existing tests use this code. The change is for correctness.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _getAllStorageAccessEntriesFor:completionHandler:]):
+            Now receives a WKWebView from its caller and gets the page ID from it.
+        (-[WKWebsiteDataStore _getAllStorageAccessEntries:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::getAllStorageAccessEntries):
+            Now gets a page ID from its caller and gets the right network process
+            through it.
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+
+2018-07-03  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed, rolling out r233461.
+
+        Assertions triggered during iOS 11 debug layout and API tests
+
+        Reverted changeset:
+
+        "[iOS] Add assert to catch improper use of WebCore::Timer in
+        UI Process"
+        https://bugs.webkit.org/show_bug.cgi?id=185330
+        https://trac.webkit.org/changeset/233461
+
+2018-07-03  Youenn Fablet  <youenn@apple.com>
+
+        Update com.cmbchina.CMBSecurity.sb to make it functional
+        https://bugs.webkit.org/show_bug.cgi?id=187278
+
+        Reviewed by Brent Fulgham.
+
+        * Resources/PlugInSandboxProfiles/com.cmbchina.CMBSecurity.sb:
+
+2018-07-03  Jer Noble  <jer.noble@apple.com>
+
+        Update Fullscreen anti-phishing alert text
+        https://bugs.webkit.org/show_bug.cgi?id=187199
+        <rdar://problem/41162543>
+
+        Reviewed by Brent Fulgham.
+
+        * UIProcess/ios/fullscreen/WKFullScreenViewController.mm:
+        (-[WKFullScreenViewController _showPhishingAlert]):
+
+2018-07-03  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Add assert to catch improper use of WebCore::Timer in UI Process
+        <https://webkit.org/b/185330>
+        <rdar://problem/32816079>
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::NetworkProcess):
+        * StorageProcess/StorageProcess.cpp:
+        (WebKit::StorageProcess::StorageProcess):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::m_nonVisibleProcessCleanupTimer):
+        - Call setWebKitProcessType() to se the global for the current
+          process.
+
+2018-07-03  Frederic Wang  <fred.wang@free.fr>
+
+        [iOS] Animations with Bézier timing function not suspended on UI process when animation-play-state is set to "paused"
+        https://bugs.webkit.org/show_bug.cgi?id=170784
+
+        Reviewed by Antoine Quint.
+
+        In order to pause a running animation, GraphicsLayerCA::pauseCAAnimationOnLayer calls
+        PlatformCALayer::addAnimationForKey, assuming it will replace the current animation.
+        This patch fixes PlatformCALayerRemote::addAnimationForKey to ensure this assumption holds.
+
+        * WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::addAnimationForKey): If the animation was already sent to
+        the UI process, make sure it is properly updated.
+
+2018-07-02  Youenn Fablet  <youenn@apple.com>
+
+        Add sandbox to microdone plugin
+        https://bugs.webkit.org/show_bug.cgi?id=187149
+        <rdar://problem/41538057>
+
+        Unreviewed.
+
+        * Resources/PlugInSandboxProfiles/cn.microdone.cmb.safari.sb: Renamed from Source/WebKit/Resources/PlugInSandboxProfiles/cn.microdone.cmb.safari.
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-07-02  Tim Horton  <timothy_horton@apple.com>
+
+        Adjust now-incorrect animated resize logging after r232544
+        https://bugs.webkit.org/show_bug.cgi?id=187281
+        <rdar://problem/41645347>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+        (-[WKWebView _didCompleteAnimatedResize]):
+        (-[WKWebView _beginAnimatedResizeWithUpdates:]):
+        _beginAnimatedResizeWithUpdate: and _didCompleteAnimatedResize are
+        not strictly paired; we could instead track the SPI, but it's a bit
+        tricky since resizeWithContentHidden has an implicit endAnimatedResize.
+        Instead, just log if we still have a resizeAnimationView when we're
+        committing outside of an animated resize, which seems to be the original concern,
+        and point toward the possibility of unpaired begin/end.
+        Also fix logging that has the wrong method name.
+
+2018-07-02  Youenn Fablet  <youenn@apple.com>
+
+        Update com.apple.NPSafeInput.sb to make it functional
+        https://bugs.webkit.org/show_bug.cgi?id=187276
+
+        Reviewed by Brent Fulgham.
+
+        * Resources/PlugInSandboxProfiles/com.apple.NPSafeInput.sb:
+
+2018-07-02  Youenn Fablet  <youenn@apple.com>
+
+        Update com.cfca.npSecEditCtl.MAC.BOC.plugin.sb to make it functional
+        https://bugs.webkit.org/show_bug.cgi?id=187261
+
+        Reviewed by Brent Fulgham.
+
+        * Resources/PlugInSandboxProfiles/com.cfca.npSecEditCtl.MAC.BOC.plugin.sb:
+
+2018-07-02  Brady Eidson  <beidson@apple.com>
+
+        Crash notifying observers of responsiveness state change
+        <rdar://problem/41267796> and https://bugs.webkit.org/show_bug.cgi?id=187262
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/PageLoadState.cpp:
+        (WebKit::PageLoadState::callObserverCallback): Copy the container ahead of time.
+
+2018-07-02  Sihui Liu  <sihui_liu@apple.com>
+
+        Remove InitWebCoreThreadSystemInterface() in WKProcessPool _initWithConfiguration
+        https://bugs.webkit.org/show_bug.cgi?id=187252
+
+        Reviewed by Dan Bernstein.
+
+        Clean up after <rdar://problem/15256572>.
+
+        * UIProcess/API/Cocoa/WKProcessGroup.mm:
+        (-[WKProcessGroup initWithInjectedBundleURL:]):
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _initWithConfiguration:]):
+
+2018-07-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        REGRESSION(r233381): Double WebResourceLoadStatisticsStore destructor invocation
+        https://bugs.webkit.org/show_bug.cgi?id=187247
+
+        Reviewed by Chris Dumez.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::flushAndDestroyPersistentStore):
+        Don't call postTask() to dispatch this task, as that keeps a reference
+        to this WebResourceLoadStatisticsStore object and thus causes problems
+        when invoked from the destructor in the form of a second destructor
+        invocation that ends up crashing the process. Blocking nature of this
+        call should be enough to avoid WebResourceLoadStatisticsStore lifetime
+        issues.
+
+2018-07-02  Per Arne Vollan  <pvollan@apple.com>
+
+        Delete display link when closing page or the WebContent process has crashed.
+        https://bugs.webkit.org/show_bug.cgi?id=186895
+
+        Reviewed by Brent Fulgham.
+
+        If there is a running display link in the UI process, there is no need to keep it around if the
+        page is being closed or the WebContent process has crashed.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::close):
+        (WebKit::WebPageProxy::resetStateAfterProcessExited):
+
+2018-06-23  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Improve ARC compatibility of more code in JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=186973
+
+        Reviewed by Dan Bernstein.
+
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.mm:
+        (WebKit::XPCServiceInitializerDelegate::hasEntitlement): Use WTF::hasEntitlement.
+
+        * Shared/mac/SandboxUtilities.h: Removed connectedProcessHasEntitlement since
+        we can now use WTF::hasEntitlement instead.
+        * Shared/mac/SandboxUtilities.mm: Ditto.
+
+        * StorageProcess/ios/StorageProcessIOS.mm:
+        (WebKit::StorageProcess::parentProcessHasServiceWorkerEntitlement): Use
+        WTF::hasEntitlement.
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::parentProcessHasServiceWorkerEntitlement): Ditto.
+
+2018-06-30  David Kilzer  <ddkilzer@apple.com>
+
+        Fix clang static analyzer warnings: Garbage return value
+        <https://webkit.org/b/187224>
+
+        Reviewed by Eric Carlson.
+
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::changeCount):
+        (WebKit::WebPlatformStrategies::addTypes):
+        (WebKit::WebPlatformStrategies::setTypes):
+        (WebKit::WebPlatformStrategies::setBufferForType):
+        (WebKit::WebPlatformStrategies::setPathnamesForType):
+        (WebKit::WebPlatformStrategies::setStringForType):
+        (WebKit::WebPlatformStrategies::getNumberOfFiles):
+        (WebKit::WebPlatformStrategies::getPasteboardItemsCount):
+        (WebKit::WebPlatformStrategies::writeCustomData):
+        * WebProcess/WebCoreSupport/mac/WebEditorClientMac.mm:
+        (WebKit::WebEditorClient::substitutionsPanelIsShowing):
+        - Use brace initialization for local variables.
+
+2018-06-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, add missing PLATFORM(COCOA) guard after r233207
+        https://bugs.webkit.org/show_bug.cgi?id=186788
+        <rdar://problem/41094167>
+
+        * WebProcess/InjectedBundle/API/c/WKBundle.cpp:
+        (WKBundleExtendClassesForParameterCoder):
+
+2018-06-30  Dan Bernstein  <mitz@apple.com>
+
+        Added a missing availability attribute.
+
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugIn.h:
+
+2018-06-29  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Make network process calls only for the process pool that the page belongs to
+        https://bugs.webkit.org/show_bug.cgi?id=187206
+        <rdar://problem/41659160>
+
+        Reviewed by Chris Dumez.
+
+        Instead of iterating over all process pools, we should resolve which
+        process pool the page belongs to and call the network process only for
+        that pool. This is especially important since we use WTFMove for the
+        completion handlers.
+
+        This patch also renames "callback" to "completionHandler" for
+        the functions touched.
+
+        A FIXME comment is added to WebsiteDataStore::getAllStorageAccessEntries()
+        where we currently don't have a page ID to do the lookup with.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::updatePrevalentDomainsToPartitionOrBlockCookies):
+        (WebKit::WebsiteDataStore::hasStorageAccessForFrameHandler):
+        (WebKit::WebsiteDataStore::getAllStorageAccessEntries):
+        (WebKit::WebsiteDataStore::grantStorageAccessHandler):
+        (WebKit::WebsiteDataStore::hasStorageAccess):
+        (WebKit::WebsiteDataStore::requestStorageAccess):
+        (WebKit::WebsiteDataStore::grantStorageAccess):
+
+2018-06-29  Chris Dumez  <cdumez@apple.com>
+
+        Add utility methods to WebResourceLoadStatisticsStore to hop back and forth between threads
+        https://bugs.webkit.org/show_bug.cgi?id=187200
+
+        Reviewed by Brent Fulgham.
+
+        Add utility methods to WebResourceLoadStatisticsStore to hop back and forth between threads,
+        in order the simplify the code a little bit.
+
+        * UIProcess/ResourceLoadStatisticsMemoryStore.cpp:
+        (WebKit::ResourceLoadStatisticsMemoryStore::ResourceLoadStatisticsMemoryStore):
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::setNotifyPagesWhenDataRecordsWereScanned):
+        (WebKit::WebResourceLoadStatisticsStore::setShouldClassifyResourcesBeforeDataRecordsRemoval):
+        (WebKit::WebResourceLoadStatisticsStore::setShouldSubmitTelemetry):
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore):
+        (WebKit::WebResourceLoadStatisticsStore::postTask):
+        (WebKit::WebResourceLoadStatisticsStore::postTaskReply):
+        (WebKit::WebResourceLoadStatisticsStore::flushAndDestroyPersistentStore):
+        (WebKit::WebResourceLoadStatisticsStore::setResourceLoadStatisticsDebugMode):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleStatisticsAndDataRecordsProcessing):
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+        (WebKit::WebResourceLoadStatisticsStore::hasStorageAccess):
+        (WebKit::WebResourceLoadStatisticsStore::requestStorageAccess):
+        (WebKit::WebResourceLoadStatisticsStore::requestStorageAccessUnderOpener):
+        (WebKit::WebResourceLoadStatisticsStore::grantStorageAccess):
+        (WebKit::WebResourceLoadStatisticsStore::performDailyTasks):
+        (WebKit::WebResourceLoadStatisticsStore::submitTelemetry):
+        (WebKit::WebResourceLoadStatisticsStore::logFrameNavigation):
+        (WebKit::WebResourceLoadStatisticsStore::logUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::logNonRecentUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::clearUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::hasHadUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::setLastSeen):
+        (WebKit::WebResourceLoadStatisticsStore::setPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::setVeryPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::isPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::isVeryPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::isRegisteredAsSubFrameUnder):
+        (WebKit::WebResourceLoadStatisticsStore::isRegisteredAsRedirectingTo):
+        (WebKit::WebResourceLoadStatisticsStore::clearPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::setGrandfathered):
+        (WebKit::WebResourceLoadStatisticsStore::isGrandfathered):
+        (WebKit::WebResourceLoadStatisticsStore::setSubframeUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUniqueRedirectTo):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUniqueRedirectFrom):
+        (WebKit::WebResourceLoadStatisticsStore::setTopFrameUniqueRedirectTo):
+        (WebKit::WebResourceLoadStatisticsStore::setTopFrameUniqueRedirectFrom):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleCookiePartitioningUpdate):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleCookiePartitioningUpdateForDomains):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleClearPartitioningStateForDomains):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleCookiePartitioningStateReset):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleClearInMemory):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleClearInMemoryAndPersistent):
+        (WebKit::WebResourceLoadStatisticsStore::setTimeToLiveUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::setTimeToLiveCookiePartitionFree):
+        (WebKit::WebResourceLoadStatisticsStore::setMinimumTimeBetweenDataRecordsRemoval):
+        (WebKit::WebResourceLoadStatisticsStore::setGrandfatheringTime):
+        (WebKit::WebResourceLoadStatisticsStore::setMaxStatisticsEntries):
+        (WebKit::WebResourceLoadStatisticsStore::setPruneEntriesDownTo):
+        (WebKit::WebResourceLoadStatisticsStore::resetParametersToDefaultValues):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2018-06-29  Aditya Keerthi  <akeerthi@apple.com>
+
+        [macOS] Do not crash if there is an attempt to copy a file URL to the clipboard
+        https://bugs.webkit.org/show_bug.cgi?id=187183
+
+        Reviewed by Wenson Hsieh.
+
+        r210683 introduced logic to prevent file URLs from being copied to the clipboard
+        in unexpected cases. The current logic always crashes the WebProcess if
+        webProcessProxy->checkURLReceivedFromWebProcess returns false. Instead of
+        crashing, we can fail silently and not copy anything to the clipboard.
+
+        * UIProcess/Cocoa/WebPasteboardProxyCocoa.mm:
+        (WebKit::WebPasteboardProxy::setPasteboardPathnamesForType): Removed call to markCurrentlyDispatchedMessageAsInvalid() which was causing the process to crash.
+
+2018-06-29  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r233359): Caused ITP tests to be flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187189
+
+        Reviewed by Youenn Fablet.
+
+        r233359 started using m_resolvedConfiguration.resourceLoadStatisticsDirectory instead of
+        m_configuration.resourceLoadStatisticsDirectory for the ITP path. This is consistent
+        with what we do for other database paths so that things like '~' in paths get resolved.
+
+        This introduced flakiness because the resourceLoadStatisticsDirectory was never getting
+        resolved and m_resolvedConfiguration.resourceLoadStatisticsDirectory was not set.
+        Update the WebsiteDataStore so that m_resolvedConfiguration.resourceLoadStatisticsDirectory
+        properly gets set to the resolved version of m_configuration.resourceLoadStatisticsDirectory.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::resolveDirectoriesIfNecessary):
+        (WebKit::WebsiteDataStore::enableResourceLoadStatisticsAndSetTestingCallback):
+
+2018-06-29  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Don't create a WebResourceLoadStatisticsStore for ephemeral sessions
+        https://bugs.webkit.org/show_bug.cgi?id=187154
+        <rdar://problem/41487250>
+
+        Reviewed by Brent Fulgham and Chris Dumez.
+
+        Most of the changes in this patch remove the boolean parameter for tracking
+        ephemeral sessions and the IsReadOnly enum.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _setResourceLoadStatisticsTestingCallback:]):
+            Now returns early for ephemeral sessions.
+        * UIProcess/ResourceLoadStatisticsPersistentStorage.cpp:
+        (WebKit::ResourceLoadStatisticsPersistentStorage::ResourceLoadStatisticsPersistentStorage):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::writeMemoryStoreToDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::scheduleOrWriteMemoryStore):
+        * UIProcess/ResourceLoadStatisticsPersistentStorage.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::setResourceLoadStatisticsEnabled):
+            Now returns early for ephemeral sessions.
+        (WebKit::WebsiteDataStore::enableResourceLoadStatisticsAndSetTestingCallback):
+
+2018-06-29  Chris Dumez  <cdumez@apple.com>
+
+        Stop using lambdas for WebResourceLoadStatisticsStore to interact with its WebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=187165
+
+        Reviewed by Brent Fulgham.
+
+        Stop using lambdas for WebResourceLoadStatisticsStore to interact with its WebsiteDataStore. Instead,
+        WebResourceLoadStatisticsStore now holds a weak pointer to its WebsiteDataStore and is able to call
+        methods on it directly. Reducing the indirection makes the code less complex and more understandable.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore):
+        (WebKit::WebResourceLoadStatisticsStore::callHasStorageAccessForFrameHandler):
+        (WebKit::WebResourceLoadStatisticsStore::callGrantStorageAccessHandler):
+        (WebKit::WebResourceLoadStatisticsStore::removeAllStorageAccess):
+        (WebKit::WebResourceLoadStatisticsStore::callUpdatePrevalentDomainsToPartitionOrBlockCookiesHandler):
+        (WebKit::WebResourceLoadStatisticsStore::callRemoveDomainsHandler):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::enableResourceLoadStatisticsAndSetTestingCallback):
+
+2018-06-29  Miguel Gomez  <magomez@igalia.com>
+
+        [WPE] Some frames are dropped when using rAF to animate an element
+        https://bugs.webkit.org/show_bug.cgi?id=187175
+
+        Always call renderNextFrame in ThreadedCompositor::requestDisplayRefreshMonitorUpdate()
+        so we have to process any pending layer flush request.
+
+        Reviewed by Žan Doberšek.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::handleDisplayRefreshMonitorUpdate):
+
+2018-06-28  Chris Dumez  <cdumez@apple.com>
+
+        Make sure the WebResourceLoadStatisticsStore gets destroyed on the main thread
+        https://bugs.webkit.org/show_bug.cgi?id=187143
+
+        Reviewed by Youenn Fablet.
+
+        Have WebResourceLoadStatisticsStore subclass ThreadSafeRefCounted<WebResourceLoadStatisticsStore, WTF::DestructionThread::Main>
+        instead of IPC::Connection::WorkQueueMessageReceiver. This makes sure that the WebResourceLoadStatisticsStore
+        objects get destroyed on the main thread, even if the last ref was held by a background thread.
+
+        Also, methods called by IPC are now called on the main thread instead of the background queue. I think it is clearer for all
+        of WebResourceLoadStatisticsStore usage to be on the main thread. Expensive work is still done on the background queue, inside
+        the persistent / memory store classes.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::~WebResourceLoadStatisticsStore):
+        (WebKit::WebResourceLoadStatisticsStore::flushAndDestroyPersistentStore):
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+        (WebKit::WebResourceLoadStatisticsStore::requestStorageAccessUnderOpener):
+        (WebKit::WebResourceLoadStatisticsStore::processWillOpenConnection):
+        (WebKit::WebResourceLoadStatisticsStore::processDidCloseConnection):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2018-06-28  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Add nullptr check for xpc_connection_t in AuthenticationManager::initializeConnection
+        https://bugs.webkit.org/show_bug.cgi?id=187110
+        <rdar://problem/41536815>
+
+        Reviewed by Brent Fulgham.
+
+        In some rare cases as shown by crash tracers that the passed xpc_connection_t object could be nullptr,
+        and xpc_connection_set_event_handler won't do the nullptr check on its parameters. Therefore, we should
+        do it by ourselves.
+
+        * Shared/Authentication/cocoa/AuthenticationManagerCocoa.mm:
+        (WebKit::AuthenticationManager::initializeConnection):
+        * UIProcess/Authentication/cocoa/AuthenticationChallengeProxyCocoa.mm:
+        (WebKit::AuthenticationChallengeProxy::sendClientCertificateCredentialOverXpc const):
+
+2018-06-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] DataTransfer.getData always returns the empty string when dropping text
+        https://bugs.webkit.org/show_bug.cgi?id=187130
+        <rdar://problem/41014117>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add plumbing to grab information for each item in the pasteboard. See WebCore ChangeLog for more detail.
+
+        * UIProcess/Cocoa/WebPasteboardProxyCocoa.mm:
+        (WebKit::WebPasteboardProxy::allPasteboardItemInfo):
+        * UIProcess/WebPasteboardProxy.h:
+        * UIProcess/WebPasteboardProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::allPasteboardItemInfo):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+
+2018-06-28  Youenn Fablet  <youenn@apple.com>
+
+        Early return when handling fetch event in case service worker origin does not match origin of a subresource load
+        https://bugs.webkit.org/show_bug.cgi?id=187153
+        <rdar://problem/41329832>
+
+        Reviewed by Chris Dumez.
+
+        Stop crashing the service worker process in case a subresource load origin is not matching a service worker origin.
+        Instead, just return early so that the load will be handled by the network process.
+
+        Keep crashing in case a navigation load is not matching its service worker origin.
+        Add more logging to help with the debugging.
+
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::logValidFetchError):
+        (WebKit::isValidFetch):
+        (WebKit::WebSWContextManagerConnection::startFetch):
+
+2018-06-28  Jeremy Jones  <jeremyj@apple.com>
+
+        Fullscreen exits when placeholder is removed then added during a single runloop.
+        https://bugs.webkit.org/show_bug.cgi?id=187079
+
+        Reviewed by Jer Noble.
+
+        Instead of closing fullscreen as soon as the placeholder is removed from the view hierarchy,
+        give the placeholder until the next runloop to be re-added to the view hierarchy.
+
+        * UIProcess/ios/fullscreen/WKFullScreenWindowControllerIOS.mm:
+        (-[WKFullScreenWindowController placeholderWillMoveToSuperview:]):
+
+2018-06-28  Youenn Fablet  <youenn@apple.com>
+
+        Handle the case of registerMDNSNameCallback called several times
+        https://bugs.webkit.org/show_bug.cgi?id=187150
+        <rdar://problem/41329832>
+
+        Reviewed by Eric Carlson.
+
+        This is a speculative fix on the basis that registerMDNSNameCallback may be called several times.
+        In that case, we would have freed the context after the first call and would reuse it for the second call.
+
+        Instead, keep a map of pending requests and pass to registerMDNSNameCallback an identifier to that map.
+        If the map has no value for that identifier, return early.
+
+        * NetworkProcess/webrtc/NetworkMDNSRegister.cpp:
+        (WebKit::NetworkMDNSRegister::~NetworkMDNSRegister):
+        (WebKit::pendingRegistrationRequests):
+        (WebKit::registerMDNSNameCallback):
+        (WebKit::NetworkMDNSRegister::clearPendingRequests):
+        (WebKit::NetworkMDNSRegister::registerMDNSName):
+        * NetworkProcess/webrtc/NetworkMDNSRegister.h:
+        (): Deleted.
+
+2018-06-28  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed attempt to fix Win Cairo build after r233310.
+
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2018-06-28  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed attempt to fix Win Cairo build after r233310.
+
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2018-06-28  Chris Dumez  <cdumez@apple.com>
+
+        Split memory store logic out of WebResourceLoadStatisticsStore to clarify threading model
+        https://bugs.webkit.org/show_bug.cgi?id=187055
+        <rdar://problem/41584026>
+
+        Unreviewed, temporarily disable main thread assertion added to flushAndDestroyPersistentStore()
+        in r233310, until Bug 187143 is fixed.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::flushAndDestroyPersistentStore):
+
+2018-06-28  Youenn Fablet  <youenn@apple.com>
+
+        Add sandbox to microdone plugin
+        https://bugs.webkit.org/show_bug.cgi?id=187149
+        rdar://problem/41538057
+
+        Reviewed by Brent Fulgham.
+
+        * Resources/PlugInSandboxProfiles/cn.microdone.cmb.safari: Added.
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-06-28  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: REGRESSION(r223770): "Open Link" context menu action on a linkified URL doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=187146
+        <rdar://problem/41369591>
+
+        Reviewed by Joseph Pecoraro.
+
+        When Web Inspector's page receives a navigation request, it's supposed to redirect any
+        non-Inspector navigations to be loaded in the inspected page. When I refactored to use
+        modern a policy delegate, the one line that redirects the loads was left out.
+
+        No new tests, because inspector tests can't navigate the inspector or inspected pages.
+
+        * UIProcess/mac/WKInspectorViewController.mm:
+        (-[WKInspectorViewController webView:decidePolicyForNavigationAction:decisionHandler:]):
+
+2018-06-28  Jeremy Jones  <jeremyj@apple.com>
+
+        Crash when _topConstraint is null in element fullscreen.
+        https://bugs.webkit.org/show_bug.cgi?id=187075
+
+        Reviewed by Eric Carlson.
+
+        NSArray can't contain a null pointer, so check for null before creating an array from a pointer.
+        Use the recommended +deactivateConstraints: instead of -removeConstraints:.
+
+        * UIProcess/ios/fullscreen/WKFullScreenViewController.mm:
+        (-[WKFullScreenViewController showUI]):
+        (-[WKFullScreenViewController hideUI]):
+
+2018-06-28  Chris Dumez  <cdumez@apple.com>
+
+        Split memory store logic out of WebResourceLoadStatisticsStore to clarify threading model
+        https://bugs.webkit.org/show_bug.cgi?id=187055
+        <rdar://problem/41584026>
+
+        Reviewed by Brent Fulgham.
+
+        Split memory store logic out of WebResourceLoadStatisticsStore and into a ResourceLoadStatisticsMemoryStore class
+        to clarify the threading model. Previously, some of the methods of the WebResourceLoadStatisticsStore had to be
+        called on the main thread and some of them on the background queue, which was confusing and error prone. Now,
+        all WebResourceLoadStatisticsStore methods (except for IPC ones which will be addressed in a follow-up) are called
+        on the main thread. The ResourceLoadStatisticsMemoryStore objects is constructed / used and destroyed on the
+        background queue, similarly to the ResourceLoadStatisticsPersistentStore. The WebResourceLoadStatisticsStore
+        objects merely proxies calls from WebKit to those persistent / memory stores and takes care of hopping back and
+        forth between the background thread and the work queue.
+
+        While spliting code code, I found several instances where we were calling completion handlers on the wrong thread.
+        I fixed those in this patch now that the model is clearer.
+
+        We can likely clean up (organize the code a bit better) in a follow-up). This patch takes care of splitting the
+        code as it was. Code that was called on the background queue was moved to ResourceLoadStatisticsMemoryStore class
+        and code that was called on the main thread stays in WebResourceLoadStatisticsStore.
+
+        * CMakeLists.txt:
+        * UIProcess/Cocoa/ResourceLoadStatisticsMemoryStoreCocoa.mm: Renamed from Source/WebKit/UIProcess/Cocoa/WebResourceLoadStatisticsStoreCocoa.mm.
+        (WebKit::ResourceLoadStatisticsMemoryStore::registerUserDefaultsIfNeeded):
+        * UIProcess/ResourceLoadStatisticsMemoryStore.cpp: Added.
+        (WebKit::appendWithDelimiter):
+        (WebKit::OperatingDate::fromWallTime):
+        (WebKit::OperatingDate::today):
+        (WebKit::OperatingDate::secondsSinceEpoch const):
+        (WebKit::OperatingDate::operator== const):
+        (WebKit::OperatingDate::operator< const):
+        (WebKit::OperatingDate::operator<= const):
+        (WebKit::OperatingDate::OperatingDate):
+        (WebKit::mergeOperatingDates):
+        (WebKit::pruneResources):
+        (WebKit::computeImportance):
+        (WebKit::ResourceLoadStatisticsMemoryStore::ResourceLoadStatisticsMemoryStore):
+        (WebKit::ResourceLoadStatisticsMemoryStore::~ResourceLoadStatisticsMemoryStore):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setPersistentStorage):
+        (WebKit::ResourceLoadStatisticsMemoryStore::calculateAndSubmitTelemetry):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setNotifyPagesWhenDataRecordsWereScanned):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setShouldClassifyResourcesBeforeDataRecordsRemoval):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setShouldSubmitTelemetry):
+        (WebKit::ResourceLoadStatisticsMemoryStore::removeDataRecords):
+        (WebKit::ResourceLoadStatisticsMemoryStore::recursivelyGetAllDomainsThatHaveRedirectedToThisDomain):
+        (WebKit::ResourceLoadStatisticsMemoryStore::markAsPrevalentIfHasRedirectedToPrevalent):
+        (WebKit::ResourceLoadStatisticsMemoryStore::processStatisticsAndDataRecords):
+        (WebKit::ResourceLoadStatisticsMemoryStore::hasStorageAccess):
+        (WebKit::ResourceLoadStatisticsMemoryStore::requestStorageAccess):
+        (WebKit::ResourceLoadStatisticsMemoryStore::requestStorageAccessUnderOpener):
+        (WebKit::ResourceLoadStatisticsMemoryStore::grantStorageAccess):
+        (WebKit::ResourceLoadStatisticsMemoryStore::grantStorageAccessInternal):
+        (WebKit::ResourceLoadStatisticsMemoryStore::grandfatherExistingWebsiteData):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setResourceLoadStatisticsDebugMode):
+        (WebKit::ResourceLoadStatisticsMemoryStore::scheduleStatisticsProcessingRequestIfNecessary):
+        (WebKit::ResourceLoadStatisticsMemoryStore::cancelPendingStatisticsProcessingRequest):
+        (WebKit::ResourceLoadStatisticsMemoryStore::logFrameNavigation):
+        (WebKit::ResourceLoadStatisticsMemoryStore::logUserInteraction):
+        (WebKit::ResourceLoadStatisticsMemoryStore::logNonRecentUserInteraction):
+        (WebKit::ResourceLoadStatisticsMemoryStore::clearUserInteraction):
+        (WebKit::ResourceLoadStatisticsMemoryStore::hasHadUserInteraction):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setPrevalentResource):
+        (WebKit::ResourceLoadStatisticsMemoryStore::isPrevalentResource const):
+        (WebKit::ResourceLoadStatisticsMemoryStore::isVeryPrevalentResource const):
+        (WebKit::ResourceLoadStatisticsMemoryStore::isRegisteredAsSubFrameUnder):
+        (WebKit::ResourceLoadStatisticsMemoryStore::isRegisteredAsRedirectingTo):
+        (WebKit::ResourceLoadStatisticsMemoryStore::clearPrevalentResource):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setGrandfathered):
+        (WebKit::ResourceLoadStatisticsMemoryStore::isGrandfathered const):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setSubframeUnderTopFrameOrigin):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setSubresourceUnderTopFrameOrigin):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setSubresourceUniqueRedirectTo):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setSubresourceUniqueRedirectFrom):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setTopFrameUniqueRedirectTo):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setTopFrameUniqueRedirectFrom):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setTimeToLiveUserInteraction):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setTimeToLiveCookiePartitionFree):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setMinimumTimeBetweenDataRecordsRemoval):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setGrandfatheringTime):
+        (WebKit::ResourceLoadStatisticsMemoryStore::shouldRemoveDataRecords const):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setDataRecordsBeingRemoved):
+        (WebKit::ResourceLoadStatisticsMemoryStore::ensureResourceStatisticsForPrimaryDomain):
+        (WebKit::ResourceLoadStatisticsMemoryStore::createEncoderFromData const):
+        (WebKit::ResourceLoadStatisticsMemoryStore::mergeWithDataFromDecoder):
+        (WebKit::ResourceLoadStatisticsMemoryStore::clear):
+        (WebKit::ResourceLoadStatisticsMemoryStore::wasAccessedAsFirstPartyDueToUserInteraction):
+        (WebKit::ResourceLoadStatisticsMemoryStore::mergeStatistics):
+        (WebKit::ResourceLoadStatisticsMemoryStore::shouldPartitionCookies):
+        (WebKit::ResourceLoadStatisticsMemoryStore::shouldBlockCookies):
+        (WebKit::ResourceLoadStatisticsMemoryStore::hasUserGrantedStorageAccessThroughPrompt):
+        (WebKit::ResourceLoadStatisticsMemoryStore::updateCookiePartitioning):
+        (WebKit::ResourceLoadStatisticsMemoryStore::updateCookiePartitioningForDomains):
+        (WebKit::ResourceLoadStatisticsMemoryStore::clearPartitioningStateForDomains):
+        (WebKit::ResourceLoadStatisticsMemoryStore::resetCookiePartitioningState):
+        (WebKit::ResourceLoadStatisticsMemoryStore::processStatistics const):
+        (WebKit::ResourceLoadStatisticsMemoryStore::hasHadUnexpiredRecentUserInteraction const):
+        (WebKit::ResourceLoadStatisticsMemoryStore::topPrivatelyControlledDomainsToRemoveWebsiteDataFor):
+        (WebKit::ResourceLoadStatisticsMemoryStore::includeTodayAsOperatingDateIfNecessary):
+        (WebKit::ResourceLoadStatisticsMemoryStore::hasStatisticsExpired const):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setMaxStatisticsEntries):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setPruneEntriesDownTo):
+        (WebKit::ResourceLoadStatisticsMemoryStore::pruneStatisticsIfNeeded):
+        (WebKit::ResourceLoadStatisticsMemoryStore::resetParametersToDefaultValues):
+        (WebKit::ResourceLoadStatisticsMemoryStore::logTestingEvent):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setLastSeen):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setVeryPrevalentResource):
+        (WebKit::ResourceLoadStatisticsMemoryStore::removeAllStorageAccess):
+        * UIProcess/ResourceLoadStatisticsMemoryStore.h: Added.
+        (WebKit::ResourceLoadStatisticsMemoryStore::isEmpty const):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setStorageAccessPromptsEnabled):
+        (WebKit::ResourceLoadStatisticsMemoryStore::setDebugLogggingEnabled):
+        * UIProcess/ResourceLoadStatisticsPersistentStorage.cpp:
+        (WebKit::ResourceLoadStatisticsPersistentStorage::ResourceLoadStatisticsPersistentStorage):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::startMonitoringDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::monitorDirectoryForNewStatistics):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::scheduleOrWriteMemoryStore):
+        * UIProcess/ResourceLoadStatisticsPersistentStorage.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::setNotifyPagesWhenDataRecordsWereScanned):
+        (WebKit::WebResourceLoadStatisticsStore::setShouldClassifyResourcesBeforeDataRecordsRemoval):
+        (WebKit::WebResourceLoadStatisticsStore::setShouldSubmitTelemetry):
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore):
+        (WebKit::WebResourceLoadStatisticsStore::flushAndDestroyPersistentStore):
+        (WebKit::WebResourceLoadStatisticsStore::setResourceLoadStatisticsDebugMode):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleStatisticsAndDataRecordsProcessing):
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+        (WebKit::WebResourceLoadStatisticsStore::hasStorageAccess):
+        (WebKit::WebResourceLoadStatisticsStore::requestStorageAccess):
+        (WebKit::WebResourceLoadStatisticsStore::requestStorageAccessUnderOpener):
+        (WebKit::WebResourceLoadStatisticsStore::grantStorageAccess):
+        (WebKit::WebResourceLoadStatisticsStore::callGrantStorageAccessHandler):
+        (WebKit::WebResourceLoadStatisticsStore::removeAllStorageAccess):
+        (WebKit::WebResourceLoadStatisticsStore::performDailyTasks):
+        (WebKit::WebResourceLoadStatisticsStore::submitTelemetry):
+        (WebKit::WebResourceLoadStatisticsStore::logFrameNavigation):
+        (WebKit::WebResourceLoadStatisticsStore::logUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::logNonRecentUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::clearUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::hasHadUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::setLastSeen):
+        (WebKit::WebResourceLoadStatisticsStore::setPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::setVeryPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::isPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::isVeryPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::isRegisteredAsSubFrameUnder):
+        (WebKit::WebResourceLoadStatisticsStore::isRegisteredAsRedirectingTo):
+        (WebKit::WebResourceLoadStatisticsStore::clearPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::setGrandfathered):
+        (WebKit::WebResourceLoadStatisticsStore::isGrandfathered):
+        (WebKit::WebResourceLoadStatisticsStore::setSubframeUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUniqueRedirectTo):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUniqueRedirectFrom):
+        (WebKit::WebResourceLoadStatisticsStore::setTopFrameUniqueRedirectTo):
+        (WebKit::WebResourceLoadStatisticsStore::setTopFrameUniqueRedirectFrom):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleCookiePartitioningUpdate):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleCookiePartitioningUpdateForDomains):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleClearPartitioningStateForDomains):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleCookiePartitioningStateReset):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleClearInMemory):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleClearInMemoryAndPersistent):
+        (WebKit::WebResourceLoadStatisticsStore::setTimeToLiveUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::setTimeToLiveCookiePartitionFree):
+        (WebKit::WebResourceLoadStatisticsStore::setMinimumTimeBetweenDataRecordsRemoval):
+        (WebKit::WebResourceLoadStatisticsStore::setGrandfatheringTime):
+        (WebKit::WebResourceLoadStatisticsStore::callUpdatePrevalentDomainsToPartitionOrBlockCookiesHandler):
+        (WebKit::WebResourceLoadStatisticsStore::callRemoveDomainsHandler):
+        (WebKit::WebResourceLoadStatisticsStore::setMaxStatisticsEntries):
+        (WebKit::WebResourceLoadStatisticsStore::setPruneEntriesDownTo):
+        (WebKit::WebResourceLoadStatisticsStore::resetParametersToDefaultValues):
+        (WebKit::WebResourceLoadStatisticsStore::logTestingEvent):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * UIProcess/WebResourceLoadStatisticsTelemetry.cpp:
+        (WebKit::sortedPrevalentResourceTelemetry):
+        (WebKit::WebResourceLoadStatisticsTelemetry::calculateAndSubmit):
+        * UIProcess/WebResourceLoadStatisticsTelemetry.h:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-06-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] ASSERTION FAILED: !HashTranslator::equal(KeyTraits::emptyValue(), key) when dragging file into webview
+        https://bugs.webkit.org/show_bug.cgi?id=175602
+
+        Reviewed by Carlos Garcia Campos.
+
+        We check using the GdkDragContext to ensure the DroppingContext is still alive (present in
+        m_droppingContexts), but access it via the pointer to the DroppingContext that could be
+        dangling. This happens on every drag. I can't actually reproduce the original assertion
+        since I'm currently working with an asan build, but I imagine it's probably the same issue
+        that I'm fixing here.
+
+        * UIProcess/gtk/DragAndDropHandler.cpp:
+        (WebKit::DragAndDropHandler::dragLeave):
+
+2018-06-27  Timothy Hatcher  <timothy@apple.com>
+
+        Don't expose new semantic -apple-system color keywords on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=187080
+        rdar://problem/41505699
+
+        Reviewed by Tim Horton.
+
+        * DerivedSources.make: Use gnu++14, since gnu++17 is giving errors on macOS 10.12.
+
+2018-06-27  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix IBeam issues with iPad apps on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=186900
+
+        Reviewed by Wenson Hsieh.
+
+        * Shared/ios/InteractionInformationAtPosition.h:
+        * Shared/ios/InteractionInformationAtPosition.mm:
+        (WebKit::InteractionInformationAtPosition::encode const):
+        (WebKit::InteractionInformationAtPosition::decode):
+
+        Add functionality to determine what a caret rect should be, but as it is
+        expensive, it should only be done for this platform.
+        
+        * Shared/ios/InteractionInformationRequest.cpp:
+        (WebKit::InteractionInformationRequest::isApproximateForRequest):
+        * Shared/ios/InteractionInformationRequest.h:
+
+        As there is no way to premptively request information on hover, we need to use 
+        the last cached information, but only if it is close to the point we are about
+        to request information for. So having a way to determine if a point is very close
+        to a previous point is a good idea.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _currentPositionInformationIsApproximateForRequest:]):
+        (-[WKContentView closestPositionToPoint:]):
+
+        UIKit is using this function to determine if we should show an Ibeam or not.
+        So we need to implement it, at least for this platform. 
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPositionInformation):
+
+        Pass up the calculated caret rect, but only for iPad apps on Mac.
+
+2018-06-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][WPE] Use LazyNeverDestroyed<XErrorTrapper> to remove static initializers
+        https://bugs.webkit.org/show_bug.cgi?id=187089
+
+        Reviewed by Michael Catanzaro.
+
+        Use LazyNeverDestroyed<XErrorTrapper> instead of global std::unique_ptr<XErrorTrapper>.
+        Since this variable's exit time destructor is not important in this code, using
+        LazyNeverDestroyed<XErrorTrapper> is fine. This removes the last static initializer
+        of libwebkit2gtk.so.
+
+        * PluginProcess/unix/PluginProcessMainUnix.cpp:
+
+2018-06-27  Youenn Fablet  <youenn@apple.com>
+
+        Add a sandbox profile for some additional bank plugins
+        https://bugs.webkit.org/show_bug.cgi?id=187105
+
+        Reviewed by Brent Fulgham.
+
+        * Resources/PlugInSandboxProfiles/cfca.com.npCryptoKit.CGB.MAC.sb: Added.
+        * Resources/PlugInSandboxProfiles/cfca.com.npP11CertEnroll.MAC.CGB.sb: Added.
+        * Resources/PlugInSandboxProfiles/com.apple.BocomSubmitCtrl.sb: Added.
+        * Resources/PlugInSandboxProfiles/com.apple.NPSafeInput.sb: Added.
+        * Resources/PlugInSandboxProfiles/com.apple.NPSafeSubmit.sb: Added.
+        * Resources/PlugInSandboxProfiles/com.cfca.npSecEditCtl.MAC.BOC.plugin.sb: Added.
+        * Resources/PlugInSandboxProfiles/com.cmbchina.CMBSecurity.sb: Added.
+        * Resources/PlugInSandboxProfiles/com.ftsafe.NPAPI-Core-Safe-SoftKeybaord.plugin.rfc1034identifier.sb: Added.
+        * WebKit.xcodeproj/project.pbxproj:
+
 2018-06-27  Youenn Fablet  <youenn@apple.com>
 
         NetworkLoadChecker should not need to hard ref NetworkConnectionToWebProcess

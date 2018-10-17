@@ -27,6 +27,7 @@
 #include "ResourceLoadStatisticsPersistentStorage.h"
 
 #include "Logging.h"
+#include "ResourceLoadStatisticsMemoryStore.h"
 #include "WebResourceLoadStatisticsStore.h"
 #include <WebCore/FileMonitor.h>
 #include <WebCore/FileSystem.h>
@@ -81,12 +82,14 @@ static std::unique_ptr<KeyedDecoder> createDecoderForFile(const String& path)
     return KeyedDecoder::decoder(reinterpret_cast<const uint8_t*>(buffer.data()), buffer.size());
 }
 
-ResourceLoadStatisticsPersistentStorage::ResourceLoadStatisticsPersistentStorage(WebResourceLoadStatisticsStore& store, const String& storageDirectoryPath, IsReadOnly isReadOnly)
-    : m_memoryStore(store)
+ResourceLoadStatisticsPersistentStorage::ResourceLoadStatisticsPersistentStorage(ResourceLoadStatisticsMemoryStore& memoryStore, WorkQueue& workQueue, const String& storageDirectoryPath)
+    : m_memoryStore(memoryStore)
+    , m_workQueue(workQueue)
     , m_storageDirectoryPath(storageDirectoryPath)
-    , m_isReadOnly(isReadOnly)
 {
     ASSERT(!RunLoop::isMain());
+
+    m_memoryStore.setPersistentStorage(*this);
 
     populateMemoryStoreFromDisk();
     startMonitoringDisk();
@@ -124,7 +127,7 @@ void ResourceLoadStatisticsPersistentStorage::startMonitoringDisk()
     if (resourceLogPath.isEmpty())
         return;
 
-    m_fileMonitor = std::make_unique<FileMonitor>(resourceLogPath, m_memoryStore.statisticsQueue(), [this, weakThis = makeWeakPtr(*this)] (FileMonitor::FileChangeType type) {
+    m_fileMonitor = std::make_unique<FileMonitor>(resourceLogPath, m_workQueue.copyRef(), [this, weakThis = makeWeakPtr(*this)] (FileMonitor::FileChangeType type) {
         ASSERT(!RunLoop::isMain());
         if (!weakThis)
             return;
@@ -134,7 +137,7 @@ void ResourceLoadStatisticsPersistentStorage::startMonitoringDisk()
             refreshMemoryStoreFromDisk();
             break;
         case FileMonitor::FileChangeType::Removal:
-            m_memoryStore.clearInMemory();
+            m_memoryStore.clear();
             m_fileMonitor = nullptr;
             monitorDirectoryForNewStatistics();
             break;
@@ -156,7 +159,7 @@ void ResourceLoadStatisticsPersistentStorage::monitorDirectoryForNewStatistics()
         }
     }
 
-    m_fileMonitor = std::make_unique<FileMonitor>(storagePath, m_memoryStore.statisticsQueue(), [this] (FileMonitor::FileChangeType type) {
+    m_fileMonitor = std::make_unique<FileMonitor>(storagePath, m_workQueue.copyRef(), [this] (FileMonitor::FileChangeType type) {
         ASSERT(!RunLoop::isMain());
         if (type == FileMonitor::FileChangeType::Removal) {
             // Directory was removed!
@@ -243,7 +246,6 @@ void ResourceLoadStatisticsPersistentStorage::populateMemoryStoreFromDisk()
 void ResourceLoadStatisticsPersistentStorage::writeMemoryStoreToDisk()
 {
     ASSERT(!RunLoop::isMain());
-    RELEASE_ASSERT(m_isReadOnly != IsReadOnly::Yes);
 
     m_hasPendingWrite = false;
     stopMonitoringDisk();
@@ -278,15 +280,13 @@ void ResourceLoadStatisticsPersistentStorage::writeMemoryStoreToDisk()
 void ResourceLoadStatisticsPersistentStorage::scheduleOrWriteMemoryStore(ForceImmediateWrite forceImmediateWrite)
 {
     ASSERT(!RunLoop::isMain());
-    if (m_isReadOnly == IsReadOnly::Yes)
-        return;
 
     auto timeSinceLastWrite = MonotonicTime::now() - m_lastStatisticsWriteTime;
     if (forceImmediateWrite != ForceImmediateWrite::Yes && timeSinceLastWrite < minimumWriteInterval) {
         if (!m_hasPendingWrite) {
             m_hasPendingWrite = true;
             Seconds delay = minimumWriteInterval - timeSinceLastWrite + 1_s;
-            m_memoryStore.statisticsQueue().dispatchAfter(delay, [weakThis = makeWeakPtr(*this)] {
+            m_workQueue->dispatchAfter(delay, [weakThis = makeWeakPtr(*this)] {
                 if (weakThis)
                     weakThis->writeMemoryStoreToDisk();
             });

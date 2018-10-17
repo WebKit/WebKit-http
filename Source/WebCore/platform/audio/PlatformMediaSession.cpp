@@ -154,6 +154,9 @@ void PlatformMediaSession::endInterruption(EndInterruptionFlags flags)
     if (--m_interruptionCount)
         return;
 
+    if (m_interruptionType == NoInterruption)
+        return;
+
     State stateToRestore = m_stateToRestore;
     m_stateToRestore = Idle;
     m_interruptionType = NoInterruption;
@@ -185,6 +188,8 @@ bool PlatformMediaSession::clientWillBeginPlayback()
 {
     if (m_notifyingClient)
         return true;
+
+    INFO_LOG(LOGIDENTIFIER, "state = ", m_state);
 
     if (!PlatformMediaSessionManager::sharedManager().sessionWillBeginPlayback(*this)) {
         if (state() == Interrupted)

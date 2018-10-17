@@ -87,6 +87,14 @@ enum EventThrottlingBehavior {
     "NowPlaying"
 };
 
+[Conditional=VIDEO] enum MediaSessionState {
+    "Idle",
+    "Autoplaying",
+    "Playing",
+    "Paused",
+    "Interrupted"
+};
+
 [
     ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
     Conditional=VIDEO,
@@ -605,6 +613,9 @@ enum EventThrottlingBehavior {
     [Conditional=MEDIA_STREAM] void simulateMediaStreamTrackCaptureSourceFailure(MediaStreamTrack track);
     [Conditional=MEDIA_STREAM] void setMediaStreamTrackIdentifier(MediaStreamTrack track, DOMString identifier);
 
+    unsigned long long documentIdentifier(Document document);
+    boolean isDocumentAlive(unsigned long long documentIdentifier);
+
     Promise<void> clearCacheStorageMemoryRepresentation();
     Promise<DOMString> cacheStorageEngineRepresentation();
     void setResponseSizeWithPadding(FetchResponse response, unsigned long long size);
@@ -635,9 +646,12 @@ enum EventThrottlingBehavior {
     [Conditional=VIDEO, MayThrowException] readonly attribute NowPlayingState nowPlayingState;
 
     [Conditional=VIDEO] HTMLMediaElement bestMediaElementForShowingPlaybackControlsManager(PlaybackControlsPurpose purpose);
+    [Conditional=VIDEO] MediaSessionState mediaSessionState(HTMLMediaElement element);
 
     DOMString ongoingLoadsDescriptions();
     void setCaptureExtraNetworkLoadMetricsEnabled(boolean value);
 
     void reloadWithoutContentExtensions();
+
+    void setUseSystemAppearance(boolean value);
 };

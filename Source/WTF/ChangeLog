@@ -1,3 +1,237 @@
+2018-07-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r233417 and r233418.
+        https://bugs.webkit.org/show_bug.cgi?id=187364
+
+        Introduced an occasional crash on Google Drive (Requested by
+        rniwa on #webkit).
+
+        Reverted changesets:
+
+        "WTF's internal std::optional implementation should abort() on
+        bad optional access"
+        https://bugs.webkit.org/show_bug.cgi?id=186536
+        https://trac.webkit.org/changeset/233417
+
+        "WTF's internal std::optional implementation should abort() on
+        bad optional access"
+        https://bugs.webkit.org/show_bug.cgi?id=186536
+        https://trac.webkit.org/changeset/233418
+
+2018-07-04  Guillaume Emont  <guijemont@igalia.com>
+
+        FunctionTraits: Make cCallArity() constant on 32-bits.
+        https://bugs.webkit.org/show_bug.cgi?id=187292
+
+        Reviewed by Yusuke Suzuki.
+
+        On X86, in Source/JavaScriptCore/jit/CCallHelpers.h we have a
+        static_assert that uses cCallArity(), so it needs to be constant to
+        avoid a compilation error. This is achieved by changing an ASSERT into
+        a static_assert.
+
+
+        * wtf/FunctionTraits.h:
+        (WTF::slotsForCCallArgument):
+
+2018-07-04  Tim Horton  <timothy_horton@apple.com>
+
+        Introduce PLATFORM(IOSMAC)
+        https://bugs.webkit.org/show_bug.cgi?id=187315
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+
+2018-07-02  Alicia Boya García  <aboya@igalia.com>
+
+        [Linux] Fix memory leak in WTF::forEachLine()
+        https://bugs.webkit.org/show_bug.cgi?id=187174
+
+        Reviewed by Žan Doberšek.
+
+        * wtf/linux/MemoryFootprintLinux.cpp:
+        (WTF::forEachLine):
+
+2018-07-02  Frederic Wang  <fwang@igalia.com>
+
+        WTF's internal std::optional implementation should abort() on bad optional access
+        https://bugs.webkit.org/show_bug.cgi?id=186536
+
+        Reviewed by Michael Catanzaro.
+
+        Currently, some ports built with recent compilers will cause the program to abort when one
+        tries to access the value of an unset std:optional (i.e. std::nullopt) as specified by C++17.
+        However, most ports still use WTF's internal std::optional implementation, which does not
+        verify illegal access. Hence it's not possible for developers working on these ports to
+        detect issues like bugs #186189, #186535, #186752, #186753, #187139, #187145 or #187243.
+        WTF's version of std::optional was introduced in bug #164199 but it was not possible to
+        verify the availability of the value inside constexpr member functions because the assert
+        might involve asm declarations. This commit introduces a new
+        RELEASE_ASSERT_UNDER_CONSTEXPR_CONTEXT macro (a simplified version of RELEASE_ASSERT that can
+        be used in constexpr context) and uses it in WTF's implementation of std::optional.
+
+        * wtf/Assertions.h: Define RELEASE_ASSERT_UNDER_CONSTEXPR_CONTEXT as a version of
+        RELEASE_ASSERT that can be used in constexpr context (in particular avoids asm declarations).
+        * wtf/Optional.h:
+        (std::optional::operator ->): Add an assert to ensure the optional value is available.
+        (std::optional::operator *): Ditto.
+        (std::optional::value const): Ditto.
+        (std::optional::value): Ditto.
+        (std::optional<T::value const): Ditto.
+
+2018-07-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] RandomDevice should be initialized inside std::call_once
+        https://bugs.webkit.org/show_bug.cgi?id=186017
+
+        Reviewed by Darin Adler.
+
+        While Linux ports uses mutex-guarded static variables, Mac ports do not.
+        So we should guard static variables' initialization by using std::call_once.
+        This patch does it for RandomDevice.
+
+        * wtf/OSRandomSource.cpp:
+        (WTF::cryptographicallyRandomValuesFromOS):
+        * wtf/RandomDevice.h: Small fix for OS(FUCHSIA).
+
+2018-07-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] LastResort in the font family list causes emoji with joiners to be rendered as multiple .notdef characters
+        https://bugs.webkit.org/show_bug.cgi?id=187209
+        <rdar://problem/40920785>
+
+        Reviewed by Darin Adler.
+
+        * wtf/unicode/CharacterNames.h:
+
+2018-06-23  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Improve ARC compatibility of more code in JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=186973
+
+        Reviewed by Dan Bernstein.
+
+        * WTF.xcodeproj/project.pbxproj: Added CFXPCBridgeSPI.h, fixed a few
+        other small problems in the project file, and let Xcode fix a few too.
+
+        * wtf/cocoa/Entitlements.h: Added hasEntitlement function with overloads
+        for an audit token and an XPC connection.
+        * wtf/cocoa/Entitlements.mm:
+        (WTF::hasEntitlement): Added, with overloads for a SecTask, an audit token,
+        and an XPC connection.
+        (WTF::processHasEntitlement): Refactored to use the function above.
+
+        * wtf/spi/cocoa/CFXPCBridgeSPI.h: Added.
+
+2018-06-30  Adam Barth  <abarth@webkit.org>
+
+        Port JavaScriptCore to OS(FUCHSIA)
+        https://bugs.webkit.org/show_bug.cgi?id=187223
+
+        Reviewed by Daniel Bates.
+
+        * wtf/Platform.h: Fuchsia uses mcontext_t to provide machine context.
+
+2018-06-30  Adam Barth  <abarth@webkit.org>
+
+        Port WTF to OS(FUCHSIA)
+        https://bugs.webkit.org/show_bug.cgi?id=187221
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/FastMalloc.cpp: Fuchsia does not have resource.h
+        (WTF::fastMallocStatistics): Skip collecting stats without resource.h
+        * wtf/InlineASM.h: Fuchsia uses ELF
+        * wtf/Platform.h: Define OS(FUCHSIA) as an OS(UNIX) variant
+        * wtf/RandomDevice.cpp: Call zx_cprng_draw for crypographic randomness
+        (WTF::RandomDevice::cryptographicallyRandomValues):
+        * wtf/ThreadingPthreads.cpp: Fuchsia does not have pthread_setschedparam
+        (WTF::Thread::changePriority):
+        * wtf/unix/CPUTimeFuchsia.cpp: Added.
+
+2018-06-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r233391.
+        https://bugs.webkit.org/show_bug.cgi?id=187217
+
+        This patch broke Windows ports (Requested by fredw on
+        #webkit).
+
+        Reverted changeset:
+
+        "WTF's internal std::optional implementation should abort() on
+        bad optional access"
+        https://bugs.webkit.org/show_bug.cgi?id=186536
+        https://trac.webkit.org/changeset/233391
+
+2018-06-29  Frederic Wang  <fwang@igalia.com>
+
+        WTF's internal std::optional implementation should abort() on bad optional access
+        https://bugs.webkit.org/show_bug.cgi?id=186536
+
+        Reviewed by Michael Catanzaro.
+
+        Currently, some ports built with recent compilers will cause the program to abort when one
+        tries to access the value of an unset std:optional (i.e. std::nullopt) as specified by C++17.
+        However, most ports still use WTF's internal std::optional implementation, which does not
+        verify illegal access. Hence it's not possible for developers working on these ports to
+        detect issues like bugs #186189, #186535, #186752, #186753, #187139 or #187145. WTF's version
+        of std::optional was introduced in bug #164199 but it was not possible to verify the
+        availability of the value inside constexpr member functions because the assert might involve
+        asm declarations. This commit introduces a new RELEASE_ASSERT_UNDER_CONSTEXPR_CONTEXT macro
+        (a simplified version of RELEASE_ASSERT that can be used in constexpr context) and uses it in
+        WTF's implementation of std::optional.
+
+        * wtf/Assertions.h: Define RELEASE_ASSERT_UNDER_CONSTEXPR_CONTEXT as a version of
+        RELEASE_ASSERT that can be used in constexpr context (in particular avoids asm declarations).
+        * wtf/Optional.h:
+        (std::optional::operator ->): Add an assert to ensure the optional value is available.
+        (std::optional::operator *): Ditto.
+        (std::optional::value const): Ditto. 
+        (std::optional::value): Ditto.
+        (std::optional<T::value const): Ditto.
+
+2018-06-29  Darin Adler  <darin@apple.com>
+
+        [Cocoa] reduce unnecessary use of .mm source files in WTF, spruce up some implementation details
+        https://bugs.webkit.org/show_bug.cgi?id=186924
+
+        Reviewed by Anders Carlsson.
+
+        * WTF.xcodeproj/project.pbxproj: Update for file and directory renames, file type changes,
+        and deletions.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::holdOff): Deleted empty placeholder; this one is not needed.
+
+        * wtf/PlatformMac.cmake: Update for file and directory renames, file type changes,
+        and deletions.
+
+        * wtf/cocoa/CPUTimeCocoa.cpp: Renamed from Source/WTF/wtf/cocoa/CPUTimeCocoa.mm.
+
+        * wtf/text/cocoa/StringImplCocoa.mm: Renamed from Source/WTF/wtf/text/mac/StringImplMac.mm.
+        Also removed an unneeded include.
+
+        * wtf/text/cocoa/StringViewCocoa.mm: Renamed from Source/WTF/wtf/text/mac/StringViewObjC.mm.
+
+        * wtf/text/cocoa/TextBreakIteratorInternalICUCocoa.cpp: Renamed from
+        Source/WTF/wtf/text/mac/TextBreakIteratorInternalICUMac.mm.
+
+2018-06-28  Olivia Barnett  <obarnett@apple.com>
+
+        Find in page for typographic quotes does not find low (German) quotes
+        https://bugs.webkit.org/show_bug.cgi?id=187164
+        <rdar://problem/29612785>
+
+        Reviewed by Tim Horton.
+
+        Added Unicode definitions for German quotation marks.
+
+        * wtf/unicode/CharacterNames.h:
+
 2018-06-27  Jonathan Bedard  <jbedard@apple.com>
 
         Enable WebKit iOS 12 build

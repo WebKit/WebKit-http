@@ -4083,8 +4083,7 @@ bool RenderLayer::setupFontSubpixelQuantization(GraphicsContext& context, bool& 
     return false;
 }
 
-template <class ReferenceBoxClipPathOperation>
-static inline LayoutRect computeReferenceBox(const RenderObject& renderer, const ReferenceBoxClipPathOperation& clippingPath, const LayoutSize& offsetFromRoot, const LayoutRect& rootRelativeBounds)
+static inline LayoutRect computeReferenceBox(const RenderObject& renderer, const CSSBoxType& boxType, const LayoutSize& offsetFromRoot, const LayoutRect& rootRelativeBounds)
 {
     // FIXME: Support different reference boxes for inline content.
     // https://bugs.webkit.org/show_bug.cgi?id=129047
@@ -4093,8 +4092,9 @@ static inline LayoutRect computeReferenceBox(const RenderObject& renderer, const
 
     LayoutRect referenceBox;
     const auto& box = downcast<RenderBox>(renderer);
-    switch (clippingPath.referenceBox()) {
+    switch (boxType) {
     case CSSBoxType::ContentBox:
+    case CSSBoxType::FillBox:
         referenceBox = box.contentBoxRect();
         referenceBox.move(offsetFromRoot);
         break;
@@ -4105,9 +4105,8 @@ static inline LayoutRect computeReferenceBox(const RenderObject& renderer, const
     // FIXME: Support margin-box. Use bounding client rect for now.
     // https://bugs.webkit.org/show_bug.cgi?id=127984
     case CSSBoxType::MarginBox:
-    // fill, stroke, view-box compute to border-box for HTML elements.
-    case CSSBoxType::Fill:
-    case CSSBoxType::Stroke:
+    // stroke-box, view-box compute to border-box for HTML elements.
+    case CSSBoxType::StrokeBox:
     case CSSBoxType::ViewBox:
     case CSSBoxType::BorderBox:
     case CSSBoxType::BoxMissing:
@@ -4126,7 +4125,7 @@ Path RenderLayer::computeClipPath(const LayoutSize& offsetFromRoot, LayoutRect& 
 
     if (is<ShapeClipPathOperation>(*style.clipPath())) {
         auto& clipPath = downcast<ShapeClipPathOperation>(*style.clipPath());
-        FloatRect referenceBox = snapRectToDevicePixels(computeReferenceBox(renderer(), clipPath, offsetFromRoot, rootRelativeBounds), deviceSaleFactor);
+        FloatRect referenceBox = snapRectToDevicePixels(computeReferenceBox(renderer(), clipPath.referenceBox(), offsetFromRoot, rootRelativeBounds), deviceSaleFactor);
 
         windRule = clipPath.windRule();
         return clipPath.pathForReferenceRect(referenceBox);
@@ -4157,10 +4156,10 @@ bool RenderLayer::setupClipPath(GraphicsContext& context, const LayerPaintingInf
     }
 
     auto& style = renderer().style();
+    LayoutSize paintingOffsetFromRoot = LayoutSize(snapSizeToDevicePixel(offsetFromRoot + paintingInfo.subpixelOffset, LayoutPoint(), renderer().document().deviceScaleFactor()));
     ASSERT(style.clipPath());
     if (is<ShapeClipPathOperation>(*style.clipPath()) || (is<BoxClipPathOperation>(*style.clipPath()) && is<RenderBox>(renderer()))) {
         WindRule windRule;
-        LayoutSize paintingOffsetFromRoot = LayoutSize(snapSizeToDevicePixel(offsetFromRoot + paintingInfo.subpixelOffset, LayoutPoint(), renderer().document().deviceScaleFactor()));
         Path path = computeClipPath(paintingOffsetFromRoot, rootRelativeBounds, windRule);
         context.save();
         context.clipPath(path, windRule);
@@ -4170,9 +4169,15 @@ bool RenderLayer::setupClipPath(GraphicsContext& context, const LayerPaintingInf
     if (style.clipPath()->type() == ClipPathOperation::Reference) {
         ReferenceClipPathOperation* referenceClipPathOperation = static_cast<ReferenceClipPathOperation*>(style.clipPath());
         Element* element = renderer().document().getElementById(referenceClipPathOperation->fragment());
-        if (element && element->hasTagName(SVGNames::clipPathTag) && element->renderer()) {
+        if (element && element->renderer() && is<RenderSVGResourceClipper>(element->renderer())) {
             context.save();
-            downcast<RenderSVGResourceClipper>(*element->renderer()).applyClippingToContext(renderer(), rootRelativeBounds, paintingInfo.paintDirtyRect, context);
+            float deviceSaleFactor = renderer().document().deviceScaleFactor();
+            FloatRect referenceBox = snapRectToDevicePixels(computeReferenceBox(renderer(), CSSBoxType::ContentBox, paintingOffsetFromRoot, rootRelativeBounds), deviceSaleFactor);
+            FloatPoint offset {referenceBox.location()};
+            context.translate(offset);
+            FloatRect svgReferenceBox {FloatPoint(), referenceBox.size()};
+            downcast<RenderSVGResourceClipper>(*element->renderer()).applyClippingToContext(renderer(), svgReferenceBox, paintingInfo.paintDirtyRect, context);
+            context.translate(FloatPoint(-offset.x(), -offset.y()));
             return true;
         }
     }

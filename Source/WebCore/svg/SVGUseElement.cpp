@@ -115,9 +115,15 @@ Node::InsertedIntoAncestorResult SVGUseElement::insertedIntoAncestor(InsertionTy
             document().addSVGUseElement(*this);
         SVGExternalResourcesRequired::insertedIntoDocument(this);
         invalidateShadowTree();
-        updateExternalDocument();
+        // FIXME: Move back the call to updateExternalDocument() here once notifyFinished is made always async.
+        return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
     }
     return InsertedIntoAncestorResult::Done;
+}
+
+void SVGUseElement::didFinishInsertingNode()
+{
+    updateExternalDocument();
 }
 
 void SVGUseElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
@@ -254,6 +260,9 @@ void SVGUseElement::updateShadowTree()
         return;
     }
 
+    if (isDescendantOf(target))
+        return;
+    
     {
         auto& shadowRoot = ensureUserAgentShadowRoot();
         cloneTarget(shadowRoot, *target);
@@ -558,6 +567,7 @@ bool SVGUseElement::selfHasRelativeLengths() const
 
 void SVGUseElement::notifyFinished(CachedResource& resource)
 {
+    ASSERT(ScriptDisallowedScope::InMainThread::isScriptAllowed());
     invalidateShadowTree();
     if (resource.errorOccurred())
         dispatchEvent(Event::create(eventNames().errorEvent, false, false));

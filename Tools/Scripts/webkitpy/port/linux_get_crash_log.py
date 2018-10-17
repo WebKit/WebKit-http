@@ -39,6 +39,7 @@ from webkitpy.common.system.executive import ScriptError
 
 
 class GDBCrashLogGenerator(object):
+    _find_pid_regex = re.compile(r'PID: (\d+) \(.*\)')
 
     def __init__(self, executive, name, pid, newer_than, filesystem, path_to_driver):
         self.name = name
@@ -58,7 +59,13 @@ class GDBCrashLogGenerator(object):
             stdout = ('ERROR: The gdb process exited with non-zero return code %s\n\n' % proc.returncode) + stdout
         return (stdout.decode('utf8', 'ignore'), errors)
 
-    def _get_trace_from_systemd(self, pid):
+    def _get_tmp_file_name(self, coredumpctl, filename):
+        if coredumpctl[0] == 'flatpak-spawn':
+            return "/run/host/" + filename
+
+        return filename
+
+    def _get_trace_from_systemd(self, coredumpctl, pid):
         # Letting up to 5 seconds for the backtrace to be generated on the systemd side
         for try_number in range(5):
             if try_number != 0:
@@ -66,28 +73,27 @@ class GDBCrashLogGenerator(object):
                 time.sleep(1)
 
             try:
-                info = self._executive.run_command(['coredumpctl', 'info', str(pid)], return_stderr=True)
+                info = self._executive.run_command(coredumpctl + ['info', "--since=" + time.strftime("%a %Y-%m-%d %H:%M:%S %Z", time.localtime(self.newer_than))],
+                    return_stderr=True)
             except ScriptError, OSError:
                 continue
 
-            if self.newer_than:
-                found_newer = False
-                # Coredumpctl will use the latest core dump with the specified PID
-                # assume it is the right one.
-                for timestamp in re.findall(r'Timestamp:.*(\d{4}-\d+-\d+ \d+:\d+:\d+)', info):
-                    date = time.mktime(datetime.datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S").timetuple())
-                    if date > self.newer_than:
-                        found_newer = True
-                        break
-
-                if not found_newer:
-                    continue
-
-            temp_file = tempfile.NamedTemporaryFile()
-            if self._executive.run_command(['coredumpctl', 'dump', pid, '--output', temp_file.name], return_exit_code=True):
+            found_newer = False
+            # Coredumpctl will use the latest core dump with the specified PID
+            # assume it is the right one.
+            pids = self._find_pid_regex.findall(info)
+            if not pids:
                 continue
 
-            return self._get_gdb_output(temp_file.name)
+            pid = pids[0]
+            with tempfile.NamedTemporaryFile() as temp_file:
+                if self._executive.run_command(coredumpctl + ['dump', pid, '--output',
+                        temp_file.name], return_exit_code=True):
+                    continue
+
+                res = self._get_gdb_output(self._get_tmp_file_name(coredumpctl, temp_file.name))
+
+                return res
 
         return '', []
 
@@ -105,10 +111,12 @@ class GDBCrashLogGenerator(object):
             return filename.find(self.name) > -1
 
         # Poor man which, ignore any failure.
-        try:
-            coredumpctl = not self._executive.run_command(['coredumpctl', '--version'], return_exit_code=True)
-        except:
-            coredumpctl = False
+        for coredumpctl in [['coredumpctl'], ['flatpak-spawn', '--host', 'coredumpctl'], []]:
+            try:
+                if not self._executive.run_command(coredumpctl, return_exit_code=True):
+                    break
+            except:
+                continue
 
         if log_directory:
             dumps = self._filesystem.files_under(
@@ -119,7 +127,7 @@ class GDBCrashLogGenerator(object):
                 if not self.newer_than or self._filesystem.mtime(coredump_path) > self.newer_than:
                     crash_log, errors = self._get_gdb_output(coredump_path)
         elif coredumpctl:
-            crash_log, errors = self._get_trace_from_systemd(pid_representation)
+            crash_log, errors = self._get_trace_from_systemd(coredumpctl, pid_representation)
 
         stderr_lines = errors + str(stderr or '<empty>').decode('utf8', 'ignore').splitlines()
         errors_str = '\n'.join(('STDERR: ' + stderr_line) for stderr_line in stderr_lines)

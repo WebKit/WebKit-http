@@ -131,6 +131,9 @@ public:
     LayoutUnit marginBottom() const;
     LayoutUnit marginRight() const;
 
+    LayoutUnit nonCollapsedMarginTop() const;
+    LayoutUnit nonCollapsedMarginBottom() const;
+
     LayoutUnit borderTop() const;
     LayoutUnit borderLeft() const;
     LayoutUnit borderBottom() const;
@@ -147,6 +150,8 @@ public:
     LayoutUnit contentBoxWidth() const;
 
     Rect marginBox() const;
+    Rect nonCollapsedMarginBox() const;
+
     Rect borderBox() const;
     Rect paddingBox() const;
     Rect contentBox() const;
@@ -186,6 +191,8 @@ private:
 
     void setHorizontalMargin(HorizontalEdges);
     void setVerticalMargin(VerticalEdges);
+    void setVerticalNonCollapsedMargin(VerticalEdges);
+
     void setBorder(Edges);
     void setPadding(Edges);
 
@@ -195,6 +202,7 @@ private:
     void invalidatePadding() { m_hasValidPadding = false; }
 
     void setHasValidVerticalMargin() { m_hasValidVerticalMargin = true; }
+    void setHasValidVerticalNonCollapsedMargin() { m_hasValidVerticalNonCollapsedMargin = true; }
     void setHasValidHorizontalMargin() { m_hasValidHorizontalMargin = true; }
 
     void setHasValidBorder() { m_hasValidBorder = true; }
@@ -211,12 +219,15 @@ private:
     LayoutUnit m_contentHeight;
 
     Edges m_margin;
+    VerticalEdges m_verticalNonCollapsedMargin;
+
     Edges m_border;
     Edges m_padding;
 
 #if !ASSERT_DISABLED
     bool m_hasValidHorizontalMargin { false };
     bool m_hasValidVerticalMargin { false };
+    bool m_hasValidVerticalNonCollapsedMargin { false };
     bool m_hasValidBorder { false };
     bool m_hasValidPadding { false };
     bool m_hasValidContentHeight { false };
@@ -457,6 +468,14 @@ inline void Box::setVerticalMargin(VerticalEdges margin)
     m_margin.vertical = margin;
 }
 
+inline void Box::setVerticalNonCollapsedMargin(VerticalEdges margin)
+{
+#if !ASSERT_DISABLED
+    setHasValidVerticalNonCollapsedMargin();
+#endif
+    m_verticalNonCollapsedMargin = margin;
+}
+
 inline void Box::setBorder(Edges border)
 {
 #if !ASSERT_DISABLED
@@ -495,6 +514,18 @@ inline LayoutUnit Box::marginRight() const
 {
     ASSERT(m_hasValidHorizontalMargin);
     return m_margin.horizontal.right;
+}
+
+inline LayoutUnit Box::nonCollapsedMarginTop() const
+{
+    ASSERT(m_hasValidVerticalNonCollapsedMargin);
+    return m_verticalNonCollapsedMargin.top;
+}
+
+inline LayoutUnit Box::nonCollapsedMarginBottom() const
+{
+    ASSERT(m_hasValidVerticalNonCollapsedMargin);
+    return m_verticalNonCollapsedMargin.bottom;
 }
 
 inline LayoutUnit Box::paddingTop() const

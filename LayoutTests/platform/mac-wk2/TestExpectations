@@ -62,6 +62,8 @@ http/tests/security/contentSecurityPolicy/manifest-src-allowed.html [ Pass ]
 http/tests/security/contentSecurityPolicy/manifest-src-blocked.html [ Pass ]
 applicationmanifest/ [ Pass ]
 
+webkit.org/b/187183 http/tests/security/pasteboard-file-url.html [ Pass ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -178,6 +180,7 @@ webkit.org/b/105616 editing/spelling/spelling-with-whitespace-selection.html
 webkit.org/b/105616 editing/spelling/grammar.html
 webkit.org/b/105616 editing/spelling/markers.html
 webkit.org/b/105616 editing/spelling/retro-correction-spelling-markers.html
+webkit.org/b/105616 editing/spelling/text-replacement-after-typing-to-word.html
 webkit.org/b/105616 editing/spelling/spelling-markers-after-pasting-sentence.html
 webkit.org/b/105616 editing/mac/spelling/autocorrection-delete.html [ Failure ]
 webkit.org/b/105616 editing/mac/spelling/autocorrection-removing-underline-after-paste.html [ Failure ]
@@ -279,9 +282,6 @@ webkit.org/b/107018 svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg 
 
 # Color space issues from switching to tiled drawing.
 webkit.org/b/122234 css3/filters/null-effect-check.html [ ImageOnlyFailure ]
-
-# Tiled background images that intersect the tiles are getting weird fringing.
-webkit.org/b/122235 css3/masking/mask-repeat-space-border.html [ ImageOnlyFailure ]
 
 webkit.org/b/124476 platform/mac-wk2/plugins/slow/asynchronous-plugin-initialization-multiple.html [ Pass Failure ]
 
@@ -406,9 +406,12 @@ fast/dom/frame-loading-via-document-write.html [ Timeout ]
 fast/speechsynthesis/speech-synthesis-cancel.html [ Pass Timeout ]
 
 webkit.org/b/140084 js/dom/dfg-inline-resolve.html [ Pass Timeout ]
+webkit.org/b/187103 [ Sierra Debug ] js/error-should-not-strong-reference-global-object.html [ Pass Timeout ]
 
 webkit.org/b/139828 svg/animations/animateMotion-additive-2a.svg [ Pass ImageOnlyFailure ]
 webkit.org/b/139828 svg/animations/animateMotion-additive-2b.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/139828 svg/animations/animateMotion-additive-2c.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/139828 svg/animations/animateMotion-additive-2d.svg [ Pass ImageOnlyFailure ]
 
 [ Debug ] editing/undo/remove-css-property-and-remove-style.html [ Pass Failure ]
 

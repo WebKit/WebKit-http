@@ -79,7 +79,9 @@ class RunBindingsTests(shell.ShellCommand):
     description = ['bindings-tests running']
     descriptionDone = ['bindings-tests']
     flunkOnFailure = True
-    command = ['Tools/Scripts/run-bindings-tests']
+    jsonFileName = 'bindings_test_results.json'
+    logfiles = {'json': jsonFileName}
+    command = ['Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(jsonFileName)]
 
 
 class RunWebKitPerlTests(shell.ShellCommand):
@@ -88,6 +90,22 @@ class RunWebKitPerlTests(shell.ShellCommand):
     descriptionDone = ['webkitperl-tests']
     flunkOnFailure = True
     command = ['Tools/Scripts/test-webkitperl']
+
+    def __init__(self, **kwargs):
+        super(RunWebKitPerlTests, self).__init__(timeout=2 * 60, **kwargs)
+
+
+class RunWebKitPyTests(shell.ShellCommand):
+    name = 'webkitpy-tests'
+    description = ['webkitpy-tests running']
+    descriptionDone = ['webkitpy-tests']
+    flunkOnFailure = True
+    jsonFileName = 'webkitpy_test_results.json'
+    logfiles = {'json': jsonFileName}
+    command = ['Tools/Scripts/test-webkitpy', '--json-output={0}'.format(jsonFileName)]
+
+    def __init__(self, **kwargs):
+        super(RunWebKitPyTests, self).__init__(timeout=2 * 60, **kwargs)
 
 
 def appendCustomBuildFlags(step, platform, fullPlatform):
@@ -103,8 +121,8 @@ def appendCustomBuildFlags(step, platform, fullPlatform):
 
 class CompileWebKit(shell.Compile):
     name = "compile-webkit"
-    description = ["compiling webkit"]
-    descriptionDone = ["compiled webkit"]
+    description = ["compiling"]
+    descriptionDone = ["compiled"]
     env = {'MFLAGS': ''}
     warningPattern = ".*arning: .*"
     command = ["perl", "Tools/Scripts/build-webkit", WithProperties("--%(configuration)s")]
@@ -131,6 +149,11 @@ class CompileWebKit(shell.Compile):
         appendCustomBuildFlags(self, platform, self.getProperty('fullPlatform'))
 
         return shell.Compile.start(self)
+
+
+class CompileJSCOnly(CompileWebKit):
+    name = "build-jsc"
+    command = ["perl", "Tools/Scripts/build-jsc", WithProperties("--%(configuration)s")]
 
 
 class CleanBuild(shell.Compile):

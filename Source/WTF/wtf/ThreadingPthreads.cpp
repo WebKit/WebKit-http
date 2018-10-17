@@ -262,6 +262,7 @@ void Thread::initializeCurrentThreadInternal(const char* threadName)
 
 void Thread::changePriority(int delta)
 {
+#if HAVE(PTHREAD_SETSCHEDPARAM)
     auto locker = holdLock(m_mutex);
 
     int policy;
@@ -273,6 +274,7 @@ void Thread::changePriority(int delta)
     param.sched_priority += delta;
 
     pthread_setschedparam(m_handle, policy, &param);
+#endif
 }
 
 int Thread::waitForCompletion()

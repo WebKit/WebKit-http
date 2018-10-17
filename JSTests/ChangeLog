@@ -1,3 +1,65 @@
+2018-07-02  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        RegExp.exec returns wrong value with a long integer quantifier
+        https://bugs.webkit.org/show_bug.cgi?id=187042
+
+        Reviewed by Saam Barati.
+
+        * stress/regexp-large-quantifier.js: Added.
+        (testRegExp):
+        * stress/regress-159744.js:
+
+2018-07-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Repository fix after r233427 and r233443.
+        Added back the test which got erroneously deleted in r233443.
+
+        * stress/instanceof-non-object-prototype.js:
+
+2018-07-02  Keith Miller  <keith_miller@apple.com>
+
+        InstanceOf IC should do generic if the prototype is not an object.
+        https://bugs.webkit.org/show_bug.cgi?id=187250
+
+        Reviewed by Mark Lam.
+
+        * stress/instanceof-non-object-prototype.js: Added.
+        (let):
+        (test):
+        (i.catch):
+
+2018-06-30  Mark Lam  <mark.lam@apple.com>
+
+        Builtins and host functions should get their own structures.
+        https://bugs.webkit.org/show_bug.cgi?id=187211
+        <rdar://problem/41646336>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-187211.js: Added.
+
+2018-06-29  Saam Barati  <sbarati@apple.com>
+
+        We shouldn't recurse into the parser when gathering metadata about various function offsets
+        https://bugs.webkit.org/show_bug.cgi?id=184074
+        <rdar://problem/37165897>
+
+        Reviewed by Mark Lam.
+
+        * microbenchmarks/try-get-by-id-basic.js:
+        (const.bench.f.const.fooPlusBar.createBuiltin):
+        * microbenchmarks/try-get-by-id-polymorphic.js:
+        (fooPlusBar.createBuiltin):
+        * stress/array-push-with-force-exit.js:
+        * stress/dont-crash-on-stack-overflow-when-parsing-builtin.js: Added.
+        (f):
+        * stress/dont-crash-on-stack-overflow-when-parsing-default-constructor.js: Added.
+        (foo):
+        (prototype.runNearStackLimit):
+        * stress/is-constructor.js:
+        * stress/tailCallForwardArguments.js:
+        (putFuncToPrivateName.createBuiltin):
+
 2018-06-27  Mark Lam  <mark.lam@apple.com>
 
         DFG's compileReallocatePropertyStorage() and compileAllocatePropertyStorage() slow paths should also clear unused properties.

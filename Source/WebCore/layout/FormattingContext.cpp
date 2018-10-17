@@ -56,12 +56,14 @@ void FormattingContext::computeFloatingHeightAndMargin(LayoutContext& layoutCont
     auto heightAndMargin = Geometry::floatingHeightAndMargin(layoutContext, layoutBox);
     displayBox.setContentBoxHeight(heightAndMargin.height);
     displayBox.moveVertically(heightAndMargin.margin.top);
+    ASSERT(!heightAndMargin.collapsedMargin);
     displayBox.setVerticalMargin(heightAndMargin.margin);
+    displayBox.setVerticalNonCollapsedMargin(heightAndMargin.margin);
 }
 
 void FormattingContext::computeFloatingWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    auto widthAndMargin = Geometry::floatingWidthAndMargin(layoutContext, layoutBox);
+    auto widthAndMargin = Geometry::floatingWidthAndMargin(layoutContext, *this, layoutBox);
     displayBox.setContentBoxWidth(widthAndMargin.width);
     displayBox.moveHorizontally(widthAndMargin.margin.left);
     displayBox.setHorizontalMargin(widthAndMargin.margin);
@@ -69,8 +71,8 @@ void FormattingContext::computeFloatingWidthAndMargin(LayoutContext& layoutConte
 
 void FormattingContext::computeOutOfFlowHorizontalGeometry(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    auto horizontalGeometry = Geometry::outOfFlowHorizontalGeometry(layoutContext, layoutBox);
-    displayBox.setLeft(horizontalGeometry.left);
+    auto horizontalGeometry = Geometry::outOfFlowHorizontalGeometry(layoutContext, *this, layoutBox);
+    displayBox.setLeft(horizontalGeometry.left + horizontalGeometry.widthAndMargin.margin.left);
     displayBox.setContentBoxWidth(horizontalGeometry.widthAndMargin.width);
     displayBox.setHorizontalMargin(horizontalGeometry.widthAndMargin.margin);
 }
@@ -78,9 +80,11 @@ void FormattingContext::computeOutOfFlowHorizontalGeometry(LayoutContext& layout
 void FormattingContext::computeOutOfFlowVerticalGeometry(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
     auto verticalGeometry = Geometry::outOfFlowVerticalGeometry(layoutContext, layoutBox);
-    displayBox.setTop(verticalGeometry.top);
+    displayBox.setTop(verticalGeometry.top + verticalGeometry.heightAndMargin.margin.top);
     displayBox.setContentBoxHeight(verticalGeometry.heightAndMargin.height);
+    ASSERT(!verticalGeometry.heightAndMargin.collapsedMargin);
     displayBox.setVerticalMargin(verticalGeometry.heightAndMargin.margin);
+    displayBox.setVerticalNonCollapsedMargin(verticalGeometry.heightAndMargin.margin);
 }
 
 void FormattingContext::computeBorderAndPadding(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
@@ -124,16 +128,14 @@ void FormattingContext::layoutOutOfFlowDescendants(LayoutContext& layoutContext,
         auto& layoutBox = *outOfFlowBox;
         auto& displayBox = layoutContext.createDisplayBox(layoutBox);
 
-        // The term "static position" (of an element) refers, roughly, to the position an element would have had in the normal flow.
-        // More precisely, the static position for 'top' is the distance from the top edge of the containing block to the top margin edge
-        // of a hypothetical box that would have been the first box of the element if its specified 'position' value had been 'static' and
-        // its specified 'float' had been 'none' and its specified 'clear' had been 'none'.
+        ASSERT(layoutBox.establishesFormattingContext());
+        auto formattingContext = layoutContext.formattingContext(layoutBox);
+        auto& establishedFormattingState = layoutContext.establishedFormattingState(layoutBox, *formattingContext);
+
         computeBorderAndPadding(layoutContext, layoutBox, displayBox);
         computeOutOfFlowHorizontalGeometry(layoutContext, layoutBox, displayBox);
 
-        ASSERT(layoutBox.establishesFormattingContext());
-        auto formattingContext = layoutContext.formattingContext(layoutBox);
-        formattingContext->layout(layoutContext, layoutContext.establishedFormattingState(layoutBox, *formattingContext));
+        formattingContext->layout(layoutContext, establishedFormattingState);
 
         computeOutOfFlowVerticalGeometry(layoutContext, layoutBox, displayBox);
         layoutOutOfFlowDescendants(layoutContext, layoutBox);

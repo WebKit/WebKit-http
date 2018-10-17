@@ -104,7 +104,7 @@
 #import <UIKit/_UITextDragCaretView.h>
 #endif
 
-#else
+#else // USE(APPLE_INTERNAL_SDK)
 
 #if ENABLE(DRAG_SUPPORT)
 #import <UIKit/NSItemProvider+UIKitAdditions.h>
@@ -499,7 +499,7 @@ typedef NS_ENUM (NSInteger, _UIBackdropMaskViewFlags) {
 - (void)setGestureRecognizers;
 - (void)willStartScrollingOrZoomingPage;
 - (void)willStartScrollingOverflow;
-#if !ENABLE(MINIMAL_SIMULATOR)
+#if !PLATFORM(IOSMAC)
 @property (nonatomic, retain) UIWebSelectionView *selectionView;
 #endif
 @property (nonatomic, readonly) CGRect selectionFrame;
@@ -1028,6 +1028,8 @@ BOOL UIKeyboardEnabledInputModesAllowChineseTransliterationForText(NSString *);
 
 extern const float UITableCellDefaultFontSize;
 extern const float UITableViewCellDefaultFontSize;
+
+extern NSString *const _UIApplicationDidFinishSuspensionSnapshotNotification;
 
 extern NSString * const UIWindowDidMoveToScreenNotification;
 extern NSString * const UIWindowDidRotateNotification;

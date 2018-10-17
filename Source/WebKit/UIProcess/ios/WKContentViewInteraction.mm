@@ -1323,7 +1323,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
     isForcePressGesture = (preventingGestureRecognizer == _textSelectionAssistant.get().forcePressGesture);
 #endif
-#if ENABLE(MINIMAL_SIMULATOR)
+#if PLATFORM(IOSMAC)
     if ((preventingGestureRecognizer == _textSelectionAssistant.get().loupeGesture) && (preventedGestureRecognizer == _highlightLongPressGestureRecognizer || preventedGestureRecognizer == _longPressGestureRecognizer || preventedGestureRecognizer == _textSelectionAssistant.get().forcePressGesture))
         return YES;
 #endif
@@ -1347,7 +1347,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (isSamePair(gestureRecognizer, otherGestureRecognizer, _highlightLongPressGestureRecognizer.get(), _webSelectionAssistant.get().selectionLongPressRecognizer))
         return YES;
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
-#if ENABLE(MINIMAL_SIMULATOR)
+#if PLATFORM(IOSMAC)
     if (isSamePair(gestureRecognizer, otherGestureRecognizer, _textSelectionAssistant.get().loupeGesture, _textSelectionAssistant.get().forcePressGesture))
         return YES;
 
@@ -1498,6 +1498,11 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 - (BOOL)_hasValidOutstandingPositionInformationRequest:(const InteractionInformationRequest&)request
 {
     return _outstandingPositionInformationRequest && _outstandingPositionInformationRequest->isValidForRequest(request);
+}
+
+- (BOOL)_currentPositionInformationIsApproximatelyValidForRequest:(const InteractionInformationRequest&)request
+{
+    return _hasValidPositionInformation && _positionInformation.request.isApproximatelyValidForRequest(request);
 }
 
 - (void)_invokeAndRemovePendingHandlersValidForCurrentPositionInformation
@@ -2259,7 +2264,7 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
         if (!textLength || textLength > 200)
             return NO;
 
-#if !ENABLE(MINIMAL_SIMULATOR)
+#if !PLATFORM(IOSMAC)
         if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
             return NO;
 #endif
@@ -2271,7 +2276,7 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
         if (_page->editorState().isInPasswordField)
             return NO;
 
-#if !ENABLE(MINIMAL_SIMULATOR)
+#if !PLATFORM(IOSMAC)
         if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
             return NO;
 #endif
@@ -2417,7 +2422,7 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
 
 - (void)_defineForWebView:(id)sender
 {
-#if !ENABLE(MINIMAL_SIMULATOR)
+#if !PLATFORM(IOSMAC)
     if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
         return;
 #endif
@@ -3210,7 +3215,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
     if (range)
         return;
-#if !ENABLE(MINIMAL_SIMULATOR)
+#if !PLATFORM(IOSMAC)
     if (!hasAssistedNode(_assistedNodeInformation))
         return;
 #endif
@@ -3320,6 +3325,12 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 /* Hit testing. */
 - (UITextPosition *)closestPositionToPoint:(CGPoint)point
 {
+#if PLATFORM(IOSMAC)
+    InteractionInformationRequest request(roundedIntPoint(point));
+    [self requestAsynchronousPositionInformationUpdate:request];
+    if ([self _currentPositionInformationIsApproximatelyValidForRequest:request] && _positionInformation.isSelectable)
+        return [WKTextPosition textPositionWithRect:_positionInformation.caretRect];
+#endif
     return nil;
 }
 
@@ -4537,7 +4548,7 @@ static bool isAssistableInputType(InputType type)
     if (!state.isMissingPostLayoutData && state.postLayoutData().isStableStateUpdate && _needsDeferredEndScrollingSelectionUpdate && _page->inStableState()) {
         [[self selectionInteractionAssistant] showSelectionCommands];
         [_webSelectionAssistant didEndScrollingOrZoomingPage];
-#if !ENABLE(MINIMAL_SIMULATOR)
+#if !PLATFORM(IOSMAC)
         [[_webSelectionAssistant selectionView] setHidden:NO];
 #endif
 

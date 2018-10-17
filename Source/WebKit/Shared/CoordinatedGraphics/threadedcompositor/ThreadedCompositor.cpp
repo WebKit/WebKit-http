@@ -45,18 +45,18 @@
 namespace WebKit {
 using namespace WebCore;
 
-Ref<ThreadedCompositor> ThreadedCompositor::create(Client& client, WebPage& webPage, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
+Ref<ThreadedCompositor> ThreadedCompositor::create(Client& client, PlatformDisplayID displayID, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
 {
-    return adoptRef(*new ThreadedCompositor(client, webPage, viewportSize, scaleFactor, doFrameSync, paintFlags));
+    return adoptRef(*new ThreadedCompositor(client, displayID, viewportSize, scaleFactor, doFrameSync, paintFlags));
 }
 
-ThreadedCompositor::ThreadedCompositor(Client& client, WebPage& webPage, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
+ThreadedCompositor::ThreadedCompositor(Client& client, PlatformDisplayID displayID, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
     : m_client(client)
     , m_doFrameSync(doFrameSync)
     , m_paintFlags(paintFlags)
     , m_compositingRunLoop(std::make_unique<CompositingRunLoop>([this] { renderLayerTree(); }))
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    , m_displayRefreshMonitor(ThreadedDisplayRefreshMonitor::create(*this))
+    , m_displayRefreshMonitor(ThreadedDisplayRefreshMonitor::create(displayID, *this))
 #endif
 {
     {
@@ -321,21 +321,18 @@ void ThreadedCompositor::requestDisplayRefreshMonitorUpdate()
 
 void ThreadedCompositor::handleDisplayRefreshMonitorUpdate(bool hasBeenRescheduled)
 {
-    // Retrieve the clientRendersNextFrame and coordinateUpdateCompletionWithClient.
-    bool clientRendersNextFrame { false };
+    // Retrieve coordinateUpdateCompletionWithClient.
     bool coordinateUpdateCompletionWithClient { false };
     {
         LockHolder locker(m_attributes.lock);
-        clientRendersNextFrame = std::exchange(m_attributes.clientRendersNextFrame, false);
         coordinateUpdateCompletionWithClient = std::exchange(m_attributes.coordinateUpdateCompletionWithClient, false);
     }
 
-    // If clientRendersNextFrame is true, the client is finally notified about the scene update nearing
-    // completion. The client will use this opportunity to clean up resources as appropriate. It can also
-    // perform any layer flush that was requested during the composition, or by any DisplayRefreshMonitor
-    // notifications that have been handled at this point.
-    if (clientRendersNextFrame)
-        m_client.renderNextFrame();
+    // The client is finally notified about the scene update nearing completion. The client will use this
+    // opportunity to clean up resources as appropriate. It can also perform any layer flush that was
+    // requested during the composition, or by any DisplayRefreshMonitor notifications that have been
+    // handled at this point.
+    m_client.renderNextFrame();
 
     LockHolder stateLocker(m_compositingRunLoop->stateLock());
 

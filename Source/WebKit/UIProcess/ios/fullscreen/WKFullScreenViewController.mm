@@ -171,7 +171,8 @@ private:
         [_stackView setAlpha:1];
         self.prefersStatusBarHidden = NO;
         self.prefersHomeIndicatorAutoHidden = NO;
-        [self.view removeConstraints:@[_topConstraint.get()]];
+        if (_topConstraint)
+            [NSLayoutConstraint deactivateConstraints:@[_topConstraint.get()]];
         _topConstraint = [[_topGuide topAnchor] constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor];
         [_topConstraint setActive:YES];
         if (auto* manager = self._manager)
@@ -184,7 +185,8 @@ private:
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(hideUI) object:nil];
     [UIView animateWithDuration:showHideAnimationDuration animations:^{
 
-        [self.view removeConstraints:@[_topConstraint.get()]];
+        if (_topConstraint)
+            [NSLayoutConstraint deactivateConstraints:@[_topConstraint.get()]];
         _topConstraint = [[_topGuide topAnchor] constraintEqualToAnchor:self.view.topAnchor constant:self.view.safeAreaInsets.top];
         [_topConstraint setActive:YES];
         [_stackView setAlpha:0];
@@ -454,8 +456,8 @@ private:
 
 - (void)_showPhishingAlert
 {
-    NSString *alertTitle = WEB_UI_STRING("Deceptive Website Warning", "Fullscreen Deceptive Website Warning Sheet Title");
-    NSString *alertMessage = [NSString stringWithFormat:WEB_UI_STRING("The website “%@” may try to trick you into doing something dangerous, like installing software or disclosing personal or financial information, like passwords, phone numbers, or credit cards.", "Fullscreen Deceptive Website Warning Sheet Content Text") , (NSString *)self.location];
+    NSString *alertTitle = [NSString stringWithFormat:WEB_UI_STRING("Unexpected typing detected on “%@”", "Fullscreen Deceptive Website Warning Sheet Title"), (NSString *)self.location];
+    NSString *alertMessage = WEB_UI_STRING("This website may be trying to trick you into disclosing personal or financial information, like passwords, phone number, or credit cards.", "Fullscreen Deceptive Website Warning Sheet Content Text");
     UIAlertController* alert = [UIAlertController alertControllerWithTitle:alertTitle message:alertMessage preferredStyle:UIAlertControllerStyleAlert];
 
     if (auto* page = [self._webView _page])
