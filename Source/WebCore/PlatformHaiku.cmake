@@ -1,3 +1,4 @@
+include(platform/GCrypt.cmake)
 include(platform/ImageDecoders.cmake)
 include(platform/TextureMapper.cmake)
 
