@@ -301,7 +301,7 @@ private:
     float m_spaceWidth { 0 };
     float m_adjustedSpaceWidth { 0 };
 
-#if USE(CG) || USE(DIRECT2D) || USE(CAIRO)
+#if USE(CG) || USE(DIRECT2D) || USE(CAIRO) || USE(HAIKU)
     float m_syntheticBoldOffset { 0 };
 #endif
 
