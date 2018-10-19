@@ -297,8 +297,6 @@ protected:
 #if ENABLE(ENCRYPTED_MEDIA)
     RefPtr<const CDMInstance> m_cdmInstance;
 #endif
-
-    WeakPtrFactory<MediaPlayerPrivateGStreamerBase> m_weakPtrFactory;
 };
 
 }

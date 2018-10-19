@@ -1419,15 +1419,7 @@ void MediaPlayerPrivateGStreamerBase::initializationDataEncountered(const InitDa
     GST_TRACE("init data encountered of size %" G_GSIZE_FORMAT " with MD5 %s", initData.sizeInBytes(), GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
     GST_MEMDUMP("init data", initData.characters8(), initData.sizeInBytes());
 
-    RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), initData] {
-        if (!weakThis)
-            return;
-
-        GST_DEBUG("scheduling initializationDataEncountered event with init data size of %" G_GSIZE_FORMAT, initData.sizeInBytes());
-        GST_TRACE("init data MD5 %s", GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
-        GST_MEMDUMP("init datas", reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes());
-        weakThis->m_player->initializationDataEncountered("cenc"_s, ArrayBuffer::create(reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes()));
-    });
+    m_player->initializationDataEncountered("cenc"_s, ArrayBuffer::create(reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes()));
 }
 
 void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(CDMInstance& instance)
