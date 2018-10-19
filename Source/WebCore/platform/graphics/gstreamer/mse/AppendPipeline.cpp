@@ -1254,7 +1254,7 @@ static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadP
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-void AppendPipeline::cacheProtectionEvent(GRefPtr<GstEvent>&& event)
+void AppendPipeline::cacheProtectionEvent(GstEvent* event)
 {
     if (!m_isProcessingProtectionEvents) {
         GST_TRACE("first event, resetting list");
@@ -1262,10 +1262,10 @@ void AppendPipeline::cacheProtectionEvent(GRefPtr<GstEvent>&& event)
         g_value_reset(&m_cachedProtectionEvents);
     }
 
-    GST_DEBUG("caching protection event %u on append pipeline appsink pad", GST_EVENT_SEQNUM(event.get()));
+    GST_DEBUG("caching protection event %u on append pipeline appsink pad", GST_EVENT_SEQNUM(event));
     GValue* eventValue = g_new0(GValue, 1);
     g_value_init(eventValue, GST_TYPE_EVENT);
-    g_value_take_boxed(eventValue, event.leakRef());
+    g_value_take_boxed(eventValue, event);
     gst_value_list_append_and_take_value(&m_cachedProtectionEvents, eventValue);
 }
 
@@ -1295,7 +1295,7 @@ static GstPadProbeReturn appendPipelineAppsinkPadProtectionProbe(GstPad*, GstPad
 
         switch (GST_EVENT_TYPE(event)) {
         case GST_EVENT_PROTECTION:
-            appendPipeline->cacheProtectionEvent(adoptGRef(event));
+            appendPipeline->cacheProtectionEvent(event);
             return GST_PAD_PROBE_HANDLED;
         default:
             break;
