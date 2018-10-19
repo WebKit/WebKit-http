@@ -116,7 +116,7 @@ void PlatformMediaSessionManager::beginInterruption(PlatformMediaSession::Interr
     forEachSession([type] (PlatformMediaSession& session, size_t) {
         session.beginInterruption(type);
     });
-    scheduleUpdateSessionState();
+    updateSessionState();
 }
 
 void PlatformMediaSessionManager::endInterruption(PlatformMediaSession::EndInterruptionFlags flags)
@@ -143,7 +143,7 @@ void PlatformMediaSessionManager::addSession(PlatformMediaSession& session)
     if (!m_audioHardwareListener)
         m_audioHardwareListener = AudioHardwareListener::create(*this);
 
-    scheduleUpdateSessionState();
+    updateSessionState();
 }
 
 void PlatformMediaSessionManager::removeSession(PlatformMediaSession& session)
@@ -162,12 +162,9 @@ void PlatformMediaSessionManager::removeSession(PlatformMediaSession& session)
     if (m_sessions.isEmpty() || std::all_of(m_sessions.begin(), m_sessions.end(), std::logical_not<void>())) {
         m_remoteCommandListener = nullptr;
         m_audioHardwareListener = nullptr;
-#if USE(AUDIO_SESSION)
-        AudioSession::sharedSession().tryToSetActive(false);
-#endif
     }
 
-    scheduleUpdateSessionState();
+    updateSessionState();
 }
 
 void PlatformMediaSessionManager::addRestriction(PlatformMediaSession::MediaType type, SessionRestrictions restriction)
@@ -253,7 +250,7 @@ void PlatformMediaSessionManager::sessionWillEndPlayback(PlatformMediaSession& s
 
 void PlatformMediaSessionManager::sessionStateChanged(PlatformMediaSession&)
 {
-    scheduleUpdateSessionState();
+    updateSessionState();
 }
 
 void PlatformMediaSessionManager::setCurrentSession(PlatformMediaSession& session)
@@ -357,14 +354,8 @@ void PlatformMediaSessionManager::sessionIsPlayingToWirelessPlaybackTargetChange
 
 void PlatformMediaSessionManager::sessionCanProduceAudioChanged(PlatformMediaSession&)
 {
-    scheduleUpdateSessionState();
+    updateSessionState();
 }
-
-#if !PLATFORM(COCOA)
-void PlatformMediaSessionManager::scheduleUpdateSessionState()
-{
-}
-#endif
 
 void PlatformMediaSessionManager::didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType command, const PlatformMediaSession::RemoteCommandArgument* argument)
 {
@@ -404,7 +395,7 @@ void PlatformMediaSessionManager::systemDidWake()
 
 void PlatformMediaSessionManager::audioOutputDeviceChanged()
 {
-    scheduleUpdateSessionState();
+    updateSessionState();
 }
 
 void PlatformMediaSessionManager::stopAllMediaPlaybackForDocument(const Document* document)

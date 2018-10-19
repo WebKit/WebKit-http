@@ -713,6 +713,8 @@ fast/dom/Window/mozilla-focus-blur.html [ Pass Failure ]
 fast/dom/Window/named-getter-frame-id.html [ Pass Failure ]
 fast/dom/Window/window-special-properties.html [ Pass Failure ]
 
+[ Debug ] fast/html/marquee-reparent-check.html [ Pass Failure ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # Following tests are labeled "Skip" because not working well and causes crash or timeout
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -841,6 +843,99 @@ fast/dom/beforeload/video-before-load.html [ Pass Timeout ]
 fast/dom/focus-shift-crash.html [ Pass Timeout ]
 fast/dom/Range/detach-range-during-deletecontents.html [ Pass Timeout ]
 imported/blink/fast/dom/Window/open-window-features-fuzz.html [ Pass Timeout ]
+
+#//////////////////////////////////////////////////////////////////////////////////////////
+# http
+#//////////////////////////////////////////////////////////////////////////////////////////
+
+http/tests/appcache [ Skip ]
+http/tests/blink/sendbeacon [ Skip ]
+
+http/tests/cache [ Skip ]
+http/tests/cache-storage [ Skip ]
+http/tests/canvas [ Skip ]
+http/tests/contentdispositionattachmentsandbox [ Skip ]
+http/tests/contentfiltering [ Skip ]
+http/tests/cookies [ Skip ]
+
+http/tests/css/cross-fade-reload.html [ Timeout Pass ]
+
+http/tests/dom [ Skip ]
+http/tests/download [ Skip ]
+http/tests/eventsource [ Skip ]
+http/tests/events/touch/ios [ Skip ]
+http/tests/fetch [ Skip ]
+http/tests/fileapi [ Skip ]
+http/tests/frame-throttling [ Skip ]
+
+http/tests/globalhistory/history-delegate-basic-refresh-redirect.html [ Failure ]
+
+http/tests/history/back-with-fragment-change.php [ Failure ]
+
+http/tests/images [ Skip ]
+http/tests/incremental [ Skip ]
+http/tests/inspector [ Skip ]
+http/tests/loading [ Skip ]
+http/tests/local/blob [ Skip ]
+http/tests/local/fileapi [ Skip ]
+http/tests/local/formdata [ Skip ]
+http/tests/local/drag-over-remote-content.html [ Failure ]
+
+http/tests/media [ Skip ]
+
+# need to implement content sniffing
+http/tests/mime/mime-type-sniff.html [ Skip ]
+
+http/tests/misc [ Skip ]
+
+http/tests/multipart/load-last-non-html-frame.php [ Failure ]
+http/tests/multipart/multipart-replace-non-html-content.php [ Failure ]
+
+http/tests/navigation [ Skip ]
+http/tests/notifications [ Skip ]
+http/tests/paymentrequest [ Skip ]
+http/tests/plugins [ Skip ]
+http/tests/pointer-lock [ Skip ]
+http/tests/preconnect [ Skip ]
+http/tests/preload [ Skip ]
+http/tests/quicklook [ Skip ]
+http/tests/security [ Skip ]
+http/tests/ssl [ Skip ]
+http/tests/subresource-integrity [ Skip ]
+http/tests/webarchive [ Skip ]
+http/tests/webauthn [ Skip ]
+http/tests/webgl [ Skip ]
+http/tests/webrtc [ Skip ]
+
+http/tests/websocket/tests/hybi/close-event.html [ Failure ]
+http/tests/websocket/tests/hybi/close.html [ Failure ]
+http/tests/websocket/tests/hybi/contentextensions [ Failure ]
+http/tests/websocket/tests/hybi/contentextensions/block-cookies.php [ Pass ]
+http/tests/websocket/tests/hybi/contentextensions/block-cookies-worker.php [ Pass ]
+http/tests/websocket/tests/hybi/deflate-frame-parameter.html [ Failure ]
+http/tests/websocket/tests/hybi/httponly-cookie.pl [ Failure ]
+http/tests/websocket/tests/hybi/inspector [ Skip ]
+http/tests/websocket/tests/hybi/secure-cookie-insecure-connection.pl [ Failure ]
+http/tests/websocket/tests/hybi/secure-cookie-secure-connection.pl [ Failure ]
+http/tests/websocket/tests/hybi/upgrade-simple-ws.html [ Pass Failure ]
+http/tests/websocket/tests/hybi/websocket-allowed-setting-cookie-as-third-party.html [ Failure ]
+http/tests/websocket/tests/hybi/websocket-blocked-from-setting-cookie-as-third-party.html [ Failure ]
+http/tests/websocket/tests/hybi/websocket-cookie-overwrite-behavior.html [ Failure ]
+http/tests/websocket/tests/hybi/workers/close.html [ Pass Failure ]
+
+# There is not NetworkProcess in WK1, so it can't crash.
+http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
+
+http/tests/workers/service [ Skip ]
+http/tests/workers/worker-redirect.html [ Failure ]
+
+http/tests/xmlhttprequest [ Skip ]
+http/tests/xmlhttprequest/basic-auth-load-URL-with-consecutive-slashes.html [ Pass ]
+http/tests/xmlhttprequest/failed-auth.html [ Pass ]
+http/tests/xmlhttprequest/simple-sync.html [ Pass ]
+http/tests/xmlhttprequest/xmlhttprequest-unsafe-redirect.html [ Pass ]
+
+http/tests/xmlviewer [ Skip ]
 
 #///////////////////////////////////////////////////////////////////////////////
 # Issue categories below are shared with other platforms (primarily AppleWin)
@@ -1159,7 +1254,6 @@ webkit.org/b/53675 fast/animation/request-animation-frame-during-modal.html [ Sk
 webkit.org/b/176998 fast/animation/css-animation-resuming-when-visible-with-style-change2.html [ Failure ]
 webkit.org/b/176998 legacy-animation-engine/fast/animation/css-animation-resuming-when-visible-with-style-change2.html [ Failure ]
 
-webkit.org/b/185678 animations/keyframes-dynamic.html [ Failure ]
 webkit.org/b/185678 animations/missing-from-to-transforms.html [ Failure ]
 webkit.org/b/185678 animations/missing-from-to.html [ Failure ]
 
@@ -1178,7 +1272,6 @@ webkit.org/b/186807 animations/transition-and-animation-3.html [ Skip ]
 compositing/visible-rect/  [ Skip ]
 legacy-animation-engine/compositing/visible-rect/ [ Skip ]
 
-imported/blink/compositing/draws-content/webgl-simple-background.html [ ImageOnlyFailure ]
 imported/blink/compositing/video/video-controls-layer-creation-squashing.html [ Skip ]
 imported/blink/compositing/will-change/stacking-context-creation.html [ ImageOnlyFailure ]
 
@@ -1311,6 +1404,8 @@ webkit.org/b/150949 imported/blink/fast/css/transformed-overflow-hidden-clips-fi
 # color-filters are off by default
 webkit.org/b/185076 css3/color-filters [ Skip ]
 
+[ Debug ] css2.1/20110323/replaced-intrinsic-ratio-001.htm [ Pass Failure ]
+
 ################################################################################
 #################            End CSS Issues              #######################
 ################################################################################
@@ -1417,10 +1512,11 @@ editing/selection/ [ Pass Failure ImageOnlyFailure ]
 webkit.org/b/21796 [ Debug ] editing/pasteboard/drop-text-events.html [ Skip ]
 webkit.org/b/21796 [ Debug ] editing/selection/drag-in-iframe.html [ Skip ]
 
-[ Debug ] editing/selection/caret-at-bidi-boundary.html [ Skip ]
+editing/selection/caret-at-bidi-boundary.html [ Skip ]
 [ Debug ] editing/selection/doubleclick-beside-cr-span.html [ Skip ]
 [ Debug ] editing/selection/move-by-character-brute-force.html [ Skip ]
 [ Debug ] editing/selection/move-by-word-visually-crash-test-5.html [ Skip ]
+[ Debug ] editing/selection/navigation-clears-editor-state.html [ Skip ]
 
 ###### Command enabling
 editing/execCommand/enabling-and-selection-2.html [ Failure ]
@@ -1489,6 +1585,10 @@ editing/deleting/delete-emoji-9.html [ Pass Failure ]
 editing/input/caret-at-the-edge-of-input.html [ Pass Failure ]
 webkit.org/b/150684 editing/input/reveal-caret-of-multiline-contenteditable.html [ Pass Failure ]
 
+webkit.org/b/173281 editing/style/set-foreColor-with-color-filter.html [ Skip ]
+webkit.org/b/173281 editing/style/set-backColor-with-color-filter.html [ Skip ]
+webkit.org/b/173281 editing/style/inverse-color-filter.html [ Skip ]
+
 ################################################################################
 ###########################   End Editing Failures   ###########################
 ################################################################################
@@ -1544,6 +1644,7 @@ fast/text [ Skip ]
 fast/tokenizer [ Skip ]
 fast/transforms [ Skip ]
 fast/visual-viewport [ Skip ]
+fast/workers/worker-exception-during-navigation.html [ Pass Failure ]
 fast/writing-mode [ Skip ]
 fast/xmlhttprequest [ Skip ]
 fast/xpath [ Skip ]
@@ -1551,7 +1652,6 @@ fast/xsl [ Skip ]
 fonts/use-typo-metrics-1.html [ Skip ]
 fullscreen [ Skip ]
 html5lib [ Skip ]
-http/tests [ Skip ]
 http/wpt [ Skip ]
 imported/blink [ Skip ]
 imported/mozilla [ Skip ]
@@ -1561,10 +1661,11 @@ js/dom [ Skip ]
 js/intl-numberformat.html [ Skip ]
 js/intl-numberformat-format-to-parts.html [ Skip ]
 js/intl-pluralrules.html [ Skip ]
-legacy-animation-engine/media [ Skip ]
-legacy-animation-engine/transitions [ Skip ]
 legacy-animation-engine/fast/layers [ Skip ]
 legacy-animation-engine/fast/shadow-dom [ Skip ]
+legacy-animation-engine/imported/blink/transitions/unprefixed-transform.html [ Skip ]
+legacy-animation-engine/media [ Skip ]
+legacy-animation-engine/transitions [ Skip ]
 loader/reload-subresource-when-type-changes.html [ Skip ]
 loader/stateobjects/pushstate-size-iframe.html [ Skip ]
 loader/stateobjects/pushstate-size.html [ Skip ]
@@ -1610,6 +1711,7 @@ workers/bomb.html [ Skip ]
 [ Debug ] js/dfg-inline-many-blocks.html [ Skip ]
 [ Debug ] js/dfg-osr-entry-hoisted-clobbered-structure-check.html [ Skip ]
 [ Debug ] js/dfg-resolve-global-polymorphic-non-dictionary.html [ Skip ]
+[ Debug ] js/error-should-not-strong-reference-global-object.html [ Skip ]
 [ Debug ] js/excessive-comma-usage.html [ Skip ]
 [ Debug ] js/intl-datetimeformat.html [ Skip ]
 [ Debug ] js/large-expressions.html [ Skip ]
@@ -1618,5 +1720,4 @@ workers/bomb.html [ Skip ]
 [ Debug ] js/stack-overflow-regexp.html [ Skip ]
 [ Debug ] js/promises-tests [ Skip ]
 [ Debug ] js/slow-stress [ Skip ]
-[ Debug ] legacy-animation-engine/imported/blink/transitions/unprefixed-transform.html [ Skip ]
 [ Debug ] loader/load-defer-resume-crash.html [ Skip ]

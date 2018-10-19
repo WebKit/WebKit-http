@@ -362,7 +362,6 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitLineBoxContain,
     CSSPropertyLineBreak,
     CSSPropertyWebkitLineClamp,
-    CSSPropertyWebkitLinesClamp,
     CSSPropertyWebkitLineGrid,
     CSSPropertyWebkitLineSnap,
     CSSPropertyWebkitLocale,
@@ -1011,6 +1010,10 @@ Ref<CSSValue> ComputedStyleExtractor::valueForFilter(const RenderStyle& style, c
             case FilterOperation::INVERT: {
                 filterValue = CSSFunctionValue::create(CSSValueInvert);
                 filterValue->append(cssValuePool.createValue(downcast<BasicComponentTransferFilterOperation>(filterOperation).amount(), CSSPrimitiveValue::CSS_NUMBER));
+                break;
+            }
+            case FilterOperation::APPLE_INVERT_LIGHTNESS: {
+                filterValue = CSSFunctionValue::create(CSSValueAppleInvertLightness);
                 break;
             }
             case FilterOperation::OPACITY: {
@@ -2032,11 +2035,11 @@ Ref<CSSFontStyleValue> ComputedStyleExtractor::fontNonKeywordStyleFromStyleValue
     return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(CSSValueOblique), CSSValuePool::singleton().createValue(static_cast<float>(italic), CSSPrimitiveValue::CSS_DEG));
 }
 
-Ref<CSSFontStyleValue> ComputedStyleExtractor::fontStyleFromStyleValue(FontSelectionValue italic, FontStyleAxis fontStyleAxis)
+Ref<CSSFontStyleValue> ComputedStyleExtractor::fontStyleFromStyleValue(std::optional<FontSelectionValue> italic, FontStyleAxis fontStyleAxis)
 {
     if (auto keyword = fontStyleKeyword(italic, fontStyleAxis))
         return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(keyword.value()));
-    return fontNonKeywordStyleFromStyleValue(italic);
+    return fontNonKeywordStyleFromStyleValue(italic.value());
 }
 
 static Ref<CSSFontStyleValue> fontStyleFromStyle(const RenderStyle& style)
@@ -3166,15 +3169,6 @@ RefPtr<CSSValue> ComputedStyleExtractor::valueForPropertyinStyle(const RenderSty
             if (style.lineClamp().isNone())
                 return cssValuePool.createIdentifierValue(CSSValueNone);
             return cssValuePool.createValue(style.lineClamp().value(), style.lineClamp().isPercentage() ? CSSPrimitiveValue::CSS_PERCENTAGE : CSSPrimitiveValue::CSS_NUMBER);
-        case CSSPropertyWebkitLinesClamp: {
-            if (style.linesClamp().isNone())
-                return cssValuePool.createIdentifierValue(CSSValueNone);
-            auto list = CSSValueList::createSpaceSeparated();
-            list->append(cssValuePool.createValue(style.linesClamp().start().value(), style.linesClamp().start().isPercentage() ? CSSPrimitiveValue::CSS_PERCENTAGE : CSSPrimitiveValue::CSS_NUMBER));
-            list->append(cssValuePool.createValue(style.linesClamp().end().value(), style.linesClamp().end().isPercentage() ? CSSPrimitiveValue::CSS_PERCENTAGE : CSSPrimitiveValue::CSS_NUMBER));
-            list->append(cssValuePool.createValue(style.linesClamp().center(), CSSPrimitiveValue::CSS_STRING));
-            return WTFMove(list);
-        }
         case CSSPropertyLineHeight:
             return lineHeightFromStyle(style);
         case CSSPropertyListStyleImage:

@@ -414,7 +414,6 @@ fast/selectors/querySelector-window-inactive.html [ Failure ]
 fast/spatial-navigation/snav-only-clipped-overflow-content.html [ Failure ]
 fast/spatial-navigation/snav-z-index.html [ Failure ]
 fast/text/offsetForPosition-cluster-at-zero.html [ Failure ]
-fast/dom/adopt-node-crash-2.html [ Failure ]
 fast/dom/Window/window-focus-self.html [ Failure ]
 fast/dom/Window/window-lookup-precedence.html [ Failure ]
 fast/dom/Window/window-onFocus.html [ Failure ]
@@ -1258,6 +1257,8 @@ webkit.org/b/165165 [ Release ] http/tests/security/contentSecurityPolicy/1.1/sc
 
 webkit.org/b/165344 [ Release ] http/tests/security/module-incorrect-mime-types.html [ Pass Timeout ]
 
+webkit.org/b/162685 [ Release ] http/tests/cache/disk-cache/disk-cache-204-status-code.html [ Pass Failure ]
+
 # Hover test does not apply
 fast/css/deferred-parsing/hover-test.html [ Skip ]
 
@@ -1355,3 +1356,9 @@ webkit.org/b/183860 http/wpt/service-workers/third-party-registration.html [ Pas
 webkit.org/b/184245 http/tests/workers/service/service-worker-cache-api.https.html [ Pass Failure ]
 
 webkit.org/b/184783 compositing/ios/overflow-scroll-touch-tiles.html [ Pass Failure ]
+
+webkit.org/b/183705 http/tests/workers/service/client-added-to-clients-when-restored-from-page-cache.html [ Pass Failure ]
+webkit.org/b/183705 http/tests/workers/service/client-removed-from-clients-while-in-page-cache.html [ Pass Failure ]
+webkit.org/b/183705 http/tests/workers/service/serviceworkerclients-matchAll.https.html [ Pass Failure ]
+
+webkit.org/b/179853 [ Debug ] imported/blink/fast/text/international-iteration-simple-text.html [ Pass Failure ]

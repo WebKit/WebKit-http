@@ -29,6 +29,7 @@
 #if PLATFORM(MAC)
 
 #import "APILegacyContextHistoryClient.h"
+#import "APINavigation.h"
 #import "AttributedString.h"
 #import "ColorSpaceData.h"
 #import "FullscreenClient.h"
@@ -50,6 +51,7 @@
 #import "TextCheckerState.h"
 #import "TiledCoreAnimationDrawingAreaProxy.h"
 #import "UIGamepadProvider.h"
+#import "UndoOrRedo.h"
 #import "ViewGestureController.h"
 #import "WKBrowsingContextControllerInternal.h"
 #import "WKFullScreenWindowController.h"
@@ -1311,8 +1313,6 @@ WebViewImpl::WebViewImpl(NSView <WebViewImplDelegate> *view, WKWebView *outerWeb
 
     m_page->setAddsVisitedLinks(processPool.historyClient().addsVisitedLinks());
 
-    m_page->setUseDarkAppearance(effectiveAppearanceIsDark());
-
     m_page->initializeWebPage();
 
     registerDraggedTypes();
@@ -2571,13 +2571,13 @@ void WebViewImpl::executeEditCommandForSelector(SEL selector, const String& argu
     m_page->executeEditCommand(commandNameForSelector(selector), argument);
 }
 
-void WebViewImpl::registerEditCommand(Ref<WebEditCommandProxy>&& command, WebPageProxy::UndoOrRedo undoOrRedo)
+void WebViewImpl::registerEditCommand(Ref<WebEditCommandProxy>&& command, UndoOrRedo undoOrRedo)
 {
     RetainPtr<WKEditCommandObjC> commandObjC = adoptNS([[WKEditCommandObjC alloc] initWithWebEditCommandProxy:command.ptr()]);
     String actionName = WebEditCommandProxy::nameForEditAction(command->editAction());
 
     NSUndoManager *undoManager = [m_view undoManager];
-    [undoManager registerUndoWithTarget:m_undoTarget.get() selector:((undoOrRedo == WebPageProxy::Undo) ? @selector(undoEditing:) : @selector(redoEditing:)) object:commandObjC.get()];
+    [undoManager registerUndoWithTarget:m_undoTarget.get() selector:((undoOrRedo == UndoOrRedo::Undo) ? @selector(undoEditing:) : @selector(redoEditing:)) object:commandObjC.get()];
     if (!actionName.isEmpty())
         [undoManager setActionName:(NSString *)actionName];
 }
@@ -3282,6 +3282,11 @@ void WebViewImpl::videoControlsManagerDidChange()
 {
 #if HAVE(TOUCH_BAR)
     updateTouchBar();
+#endif
+
+#if ENABLE(FULLSCREEN_API)
+    if (hasFullScreenWindowController())
+        [fullScreenWindowController() videoControlsManagerDidChange];
 #endif
 }
 
@@ -5017,7 +5022,7 @@ bool WebViewImpl::useSystemAppearance()
 
 void WebViewImpl::effectiveAppearanceDidChange()
 {
-    setUseDarkAppearance(effectiveAppearanceIsDark());
+    m_page->effectiveAppearanceDidChange();
 }
 
 bool WebViewImpl::effectiveAppearanceIsDark()
@@ -5028,11 +5033,6 @@ bool WebViewImpl::effectiveAppearanceIsDark()
 #else
     return false;
 #endif
-}
-
-void WebViewImpl::setUseDarkAppearance(bool useDarkAppearance)
-{
-    m_page->setUseDarkAppearance(useDarkAppearance);
 }
 
 } // namespace WebKit

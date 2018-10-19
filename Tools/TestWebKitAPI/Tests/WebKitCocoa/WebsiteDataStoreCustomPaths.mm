@@ -45,7 +45,7 @@
 static bool receivedScriptMessage;
 static Deque<RetainPtr<WKScriptMessage>> scriptMessages;
 
-@interface WebsiteDataStoreCustomPathsMessageHandler : NSObject <WKScriptMessageHandler>
+@interface WebsiteDataStoreCustomPathsMessageHandler : NSObject <WKScriptMessageHandler, WKNavigationDelegate>
 @end
 
 @implementation WebsiteDataStoreCustomPathsMessageHandler
@@ -54,6 +54,11 @@ static Deque<RetainPtr<WKScriptMessage>> scriptMessages;
 {
     receivedScriptMessage = true;
     scriptMessages.append(message);
+}
+
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView
+{
+    // Overwrite the default policy which launches a new web process and reload page on crash.
 }
 
 @end
@@ -115,6 +120,7 @@ TEST(WebKit, WebsiteDataStoreCustomPaths)
     configuration.get().websiteDataStore = [[[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration.get()] autorelease];
 
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
+    [webView setNavigationDelegate:handler.get()];
 
     NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"WebsiteDataStoreCustomPaths" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
     [webView loadRequest:request];
@@ -190,10 +196,31 @@ TEST(WebKit, WebsiteDataStoreCustomPaths)
     [[NSFileManager defaultManager] copyItemAtURL:url2.get() toURL:[frameIDBPath.get() URLByAppendingPathComponent:@"IndexedDB.sqlite3-shm"] error:nil];
     [[NSFileManager defaultManager] copyItemAtURL:url3.get() toURL:[frameIDBPath.get() URLByAppendingPathComponent:@"IndexedDB.sqlite3-wal"] error:nil];
     
+    RetainPtr<NSURL> frameIDBPath2 = [[fileIDBPath URLByAppendingPathComponent:@"https_webkit.org_0"] URLByAppendingPathComponent:@"WebsiteDataStoreCustomPaths"];
+    [[NSFileManager defaultManager] createDirectoryAtURL:frameIDBPath2.get() withIntermediateDirectories:YES attributes:nil error:nil];
+    
+    [[NSFileManager defaultManager] copyItemAtURL:url1.get() toURL:[frameIDBPath2.get() URLByAppendingPathComponent:@"IndexedDB.sqlite3"] error:nil];
+    [[NSFileManager defaultManager] copyItemAtURL:url2.get() toURL:[frameIDBPath2.get() URLByAppendingPathComponent:@"IndexedDB.sqlite3-shm"] error:nil];
+    [[NSFileManager defaultManager] copyItemAtURL:url3.get() toURL:[frameIDBPath2.get() URLByAppendingPathComponent:@"IndexedDB.sqlite3-wal"] error:nil];
+
+    [dataStore fetchDataRecordsOfTypes:types.get() completionHandler:^(NSArray<WKWebsiteDataRecord *> * records) {
+        EXPECT_EQ([records count], (unsigned long)3);
+        for (id record in records) {
+            if ([[record displayName] isEqual: @"apple.com"]) {
+                [dataStore removeDataOfTypes:types.get() forDataRecords:[NSArray arrayWithObject:record] completionHandler:^() {
+                    receivedScriptMessage = true;
+                    EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:frameIDBPath.get().path]);
+                }];
+            }
+        }
+    }];
     receivedScriptMessage = false;
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+
     [dataStore removeDataOfTypes:types.get() modifiedSince:[NSDate distantPast] completionHandler:[]() {
         receivedScriptMessage = true;
     }];
+    receivedScriptMessage = false;
     TestWebKitAPI::Util::run(&receivedScriptMessage);
 
     EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:fileIDBPath.get().path]);

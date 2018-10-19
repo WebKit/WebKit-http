@@ -78,6 +78,12 @@ OBJC_CLASS WebGLLayer;
 typedef struct __IOSurface* IOSurfaceRef;
 #endif // PLATFORM(COCOA)
 
+#if USE(NICOSIA)
+namespace Nicosia {
+class GC3DLayer;
+}
+#endif
+
 #if !PLATFORM(COCOA)
 typedef unsigned GLuint;
 typedef void* PlatformGraphicsContext3D;
@@ -1286,6 +1292,11 @@ public:
     GC3Denum currentBoundTarget() const { return m_state.currentBoundTarget(); }
     unsigned textureSeed(GC3Duint texture) { return m_state.textureSeedCount.count(texture); }
 
+#if PLATFORM(MAC)
+    using PlatformDisplayID = uint32_t;
+    void screenDidChange(PlatformDisplayID);
+#endif
+
 private:
     GraphicsContext3D(GraphicsContext3DAttributes, HostWindow*, RenderStyle = RenderOffscreen, GraphicsContext3D* sharedContext = nullptr);
 
@@ -1480,7 +1491,10 @@ private:
     // Errors raised by synthesizeGLError().
     ListHashSet<GC3Denum> m_syntheticErrors;
 
-#if USE(TEXTURE_MAPPER)
+#if USE(NICOSIA) && USE(TEXTURE_MAPPER)
+    friend class Nicosia::GC3DLayer;
+    std::unique_ptr<Nicosia::GC3DLayer> m_nicosiaLayer;
+#elif USE(TEXTURE_MAPPER)
     friend class TextureMapperGC3DPlatformLayer;
     std::unique_ptr<TextureMapperGC3DPlatformLayer> m_texmapLayer;
 #else

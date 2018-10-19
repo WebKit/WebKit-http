@@ -73,16 +73,16 @@ public:
 
     DownloadProxy* createDownloadProxy(const WebCore::ResourceRequest&);
 
-    void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, WTF::Function<void(WebsiteData)>&& completionHandler);
-    void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, WallTime modifiedSince, WTF::Function<void()>&& completionHandler);
-    void deleteWebsiteDataForOrigins(PAL::SessionID, OptionSet<WebKit::WebsiteDataType>, const Vector<WebCore::SecurityOriginData>& origins, const Vector<String>& cookieHostNames, WTF::Function<void()>&& completionHandler);
+    void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, CompletionHandler<void(WebsiteData)>&&);
+    void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, WallTime modifiedSince, CompletionHandler<void()>&& completionHandler);
+    void deleteWebsiteDataForOrigins(PAL::SessionID, OptionSet<WebKit::WebsiteDataType>, const Vector<WebCore::SecurityOriginData>& origins, const Vector<String>& cookieHostNames, const Vector<String>& HSTSCacheHostNames, CompletionHandler<void()>&&);
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    void updatePrevalentDomainsToPartitionOrBlockCookies(PAL::SessionID, const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, ShouldClearFirst, CompletionHandler<void()>&&);
+    void updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID, const Vector<String>& domainsToBlock, ShouldClearFirst, CompletionHandler<void()>&&);
     void hasStorageAccessForFrame(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&& callback);
     void getAllStorageAccessEntries(PAL::SessionID, CompletionHandler<void(Vector<String>&& domains)>&&);
     void grantStorageAccess(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, std::optional<uint64_t> frameID, uint64_t pageID, CompletionHandler<void(bool)>&& callback);
-    void removeAllStorageAccess(PAL::SessionID);
+    void removeAllStorageAccess(PAL::SessionID, CompletionHandler<void()>&&);
 #endif
 
     void writeBlobToFilePath(const WebCore::URL&, const String& path, CompletionHandler<void(bool)>&& callback);
@@ -147,9 +147,10 @@ private:
     void canAuthenticateAgainstProtectionSpace(uint64_t loaderID, uint64_t pageID, uint64_t frameID, const WebCore::ProtectionSpace&);
 #endif
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    void didUpdatePartitionOrBlockCookies(uint64_t callbackId);
+    void didUpdateBlockCookies(uint64_t contextId);
     void storageAccessRequestResult(bool wasGranted, uint64_t contextId);
     void allStorageAccessEntriesResult(Vector<String>&& domains, uint64_t contextId);
+    void didRemoveAllStorageAccess(uint64_t contextId);
 #endif
     void retrieveCacheStorageParameters(PAL::SessionID);
 
@@ -165,9 +166,9 @@ private:
     unsigned m_numPendingConnectionRequests;
     Deque<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> m_pendingConnectionReplies;
 
-    HashMap<uint64_t, Function<void(WebsiteData)>> m_pendingFetchWebsiteDataCallbacks;
-    HashMap<uint64_t, Function<void()>> m_pendingDeleteWebsiteDataCallbacks;
-    HashMap<uint64_t, Function<void()>> m_pendingDeleteWebsiteDataForOriginsCallbacks;
+    HashMap<uint64_t, CompletionHandler<void(WebsiteData)>> m_pendingFetchWebsiteDataCallbacks;
+    HashMap<uint64_t, CompletionHandler<void()>> m_pendingDeleteWebsiteDataCallbacks;
+    HashMap<uint64_t, CompletionHandler<void()>> m_pendingDeleteWebsiteDataForOriginsCallbacks;
 
     std::unique_ptr<DownloadProxyMap> m_downloadProxyMap;
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
@@ -180,8 +181,9 @@ private:
     unsigned m_syncAllCookiesCounter { 0 };
 
     HashMap<uint64_t, CompletionHandler<void(bool success)>> m_writeBlobToFilePathCallbackMap;
-    HashMap<uint64_t, CompletionHandler<void()>> m_updatePartitionOrBlockCookiesCallbackMap;
+    HashMap<uint64_t, CompletionHandler<void()>> m_updateBlockCookiesCallbackMap;
     HashMap<uint64_t, CompletionHandler<void(bool wasGranted)>> m_storageAccessResponseCallbackMap;
+    HashMap<uint64_t, CompletionHandler<void()>> m_removeAllStorageAccessCallbackMap;
     HashMap<uint64_t, CompletionHandler<void(Vector<String>&& domains)>> m_allStorageAccessEntriesCallbackMap;
 
 #if ENABLE(CONTENT_EXTENSIONS)

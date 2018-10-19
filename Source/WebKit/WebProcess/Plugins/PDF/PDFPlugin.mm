@@ -127,7 +127,7 @@ static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
 
 @interface WKPDFPluginAccessibilityObject : NSObject {
     PDFLayerController *_pdfLayerController;
-    NSObject *_parent;
+    __unsafe_unretained NSObject *_parent;
     WebKit::PDFPlugin* _pdfPlugin;
 }
 
@@ -1202,7 +1202,7 @@ void PDFPlugin::destroy()
 
 void PDFPlugin::updateControlTints(GraphicsContext& graphicsContext)
 {
-    ASSERT(graphicsContext.updatingControlTints());
+    ASSERT(graphicsContext.invalidatingControlTints());
 
     if (m_horizontalScrollbar)
         m_horizontalScrollbar->invalidate();
@@ -1588,34 +1588,41 @@ bool PDFPlugin::showContextMenuAtPoint(const IntPoint& point)
 
 bool PDFPlugin::handleContextMenuEvent(const WebMouseEvent& event)
 {
+    if (!webFrame()->page())
+        return false;
+
+    WebPage* webPage = webFrame()->page();
     FrameView* frameView = webFrame()->coreFrame()->view();
     IntPoint point = frameView->contentsToScreen(IntRect(frameView->windowToContents(event.position()), IntSize())).location();
 
-    if (NSMenu *nsMenu = [m_pdfLayerController menuForEvent:nsEventForWebMouseEvent(event)]) {
-        Vector<PDFContextMenuItem> items;
-        auto itemCount = [nsMenu numberOfItems];
-        for (int i = 0; i < itemCount; i++) {
-            auto item = [nsMenu itemAtIndex:i];
-            if ([item submenu])
-                continue;
-            PDFContextMenuItem menuItem { String([item title]), !![item isEnabled], !![item isSeparatorItem], static_cast<int>([item state]), [item action], i };
-            items.append(WTFMove(menuItem));
-        }
-        PDFContextMenu contextMenu { point, WTFMove(items) };
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+    NSUserInterfaceLayoutDirection uiLayoutDirection = webPage->userInterfaceLayoutDirection() == UserInterfaceLayoutDirection::LTR ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft;
+    NSMenu *nsMenu = [m_pdfLayerController menuForEvent:nsEventForWebMouseEvent(event) withUserInterfaceLayoutDirection:uiLayoutDirection];
+#else
+    NSMenu *nsMenu = [m_pdfLayerController menuForEvent:nsEventForWebMouseEvent(event)];
+#endif
 
-        if (!webFrame()->page())
-            return false;
-
-        std::optional<int> selectedIndex = -1;
-        webFrame()->page()->sendSync(Messages::WebPageProxy::ShowPDFContextMenu(contextMenu), Messages::WebPageProxy::ShowPDFContextMenu::Reply(selectedIndex));
-
-        if (selectedIndex && *selectedIndex >= 0 && *selectedIndex < itemCount)
-            [nsMenu performActionForItemAtIndex:*selectedIndex];
-
-        return true;
-    }
+    if (!nsMenu)
+        return false;
     
-    return false;
+    Vector<PDFContextMenuItem> items;
+    auto itemCount = [nsMenu numberOfItems];
+    for (int i = 0; i < itemCount; i++) {
+        auto item = [nsMenu itemAtIndex:i];
+        if ([item submenu])
+            continue;
+        PDFContextMenuItem menuItem { String([item title]), !![item isEnabled], !![item isSeparatorItem], static_cast<int>([item state]), [item action], i };
+        items.append(WTFMove(menuItem));
+    }
+    PDFContextMenu contextMenu { point, WTFMove(items) };
+
+    std::optional<int> selectedIndex = -1;
+    webPage->sendSync(Messages::WebPageProxy::ShowPDFContextMenu(contextMenu), Messages::WebPageProxy::ShowPDFContextMenu::Reply(selectedIndex));
+
+    if (selectedIndex && *selectedIndex >= 0 && *selectedIndex < itemCount)
+        [nsMenu performActionForItemAtIndex:*selectedIndex];
+
+    return true;
 }
 
 bool PDFPlugin::handleKeyboardEvent(const WebKeyboardEvent& event)
@@ -2088,8 +2095,9 @@ std::tuple<String, PDFSelection *, NSDictionary *> PDFPlugin::lookupTextAtLocati
         return { selection.string, selection, nil };
     }
 
-    NSDictionary *options = nil;
-    NSString *lookupText = DictionaryLookup::stringForPDFSelection(selection, &options);
+    NSString *lookupText;
+    NSDictionary *options;
+    std::tie(lookupText, options) = DictionaryLookup::stringForPDFSelection(selection);
     if (!lookupText.length)
         return { emptyString(), selection, nil };
 

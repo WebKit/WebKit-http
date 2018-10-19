@@ -35,6 +35,7 @@
 // This include order is necessary to enforce the Wayland EGL platform.
 #include <wayland-egl.h>
 #include <epoxy/egl.h>
+#include <wpe/fdo-egl.h>
 
 #ifndef EGL_WL_bind_wayland_display
 #define EGL_WL_bind_wayland_display 1
@@ -46,8 +47,6 @@ typedef EGLBoolean (EGLAPIENTRYP PFNEGLQUERYWAYLANDBUFFERWL) (EGLDisplay dpy, st
 
 namespace WPEToolingBackends {
 
-static PFNEGLCREATEIMAGEKHRPROC createImage;
-static PFNEGLDESTROYIMAGEKHRPROC destroyImage;
 static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC imageTargetTexture2DOES;
 
 struct EventSource {
@@ -130,8 +129,10 @@ const struct wl_pointer_listener WindowViewBackend::s_pointerListener = {
     [](void* data, struct wl_pointer*, uint32_t /*serial*/, struct wl_surface* surface, wl_fixed_t, wl_fixed_t)
     {
         auto& window = *static_cast<WindowViewBackend*>(data);
-        if (window.m_surface == surface)
+        if (window.m_surface == surface) {
             window.m_seatData.pointer.target = surface;
+            window.m_seatData.pointer.modifiers = 0;
+        }
     },
     // leave
     [](void* data, struct wl_pointer*, uint32_t /*serial*/, struct wl_surface* surface)
@@ -150,7 +151,7 @@ const struct wl_pointer_listener WindowViewBackend::s_pointerListener = {
 
         if (window.m_seatData.pointer.target) {
             struct wpe_input_pointer_event event = { wpe_input_pointer_event_type_motion,
-                time, x, y, window.m_seatData.pointer.button, window.m_seatData.pointer.state };
+                time, x, y, window.m_seatData.pointer.button, window.m_seatData.pointer.state, window.modifiers() };
             window.dispatchInputPointerEvent(&event);
         }
     },
@@ -166,9 +167,35 @@ const struct wl_pointer_listener WindowViewBackend::s_pointerListener = {
         window.m_seatData.pointer.button = !!state ? button : 0;
         window.m_seatData.pointer.state = state;
 
+        uint32_t modifier = 0;
+        switch (button) {
+        case 1:
+            modifier = wpe_input_pointer_modifier_button1;
+            break;
+        case 2:
+            modifier = wpe_input_pointer_modifier_button2;
+            break;
+        case 3:
+            modifier = wpe_input_pointer_modifier_button3;
+            break;
+        case 4:
+            modifier = wpe_input_pointer_modifier_button4;
+            break;
+        case 5:
+            modifier = wpe_input_pointer_modifier_button5;
+            break;
+        default:
+            break;
+        }
+
+        if (state)
+            window.m_seatData.pointer.modifiers |= modifier;
+        else
+            window.m_seatData.pointer.modifiers &= ~modifier;
+
         if (window.m_seatData.pointer.target) {
             struct wpe_input_pointer_event event = { wpe_input_pointer_event_type_button,
-                time, window.m_seatData.pointer.coords.first, window.m_seatData.pointer.coords.second, button, state };
+                time, window.m_seatData.pointer.coords.first, window.m_seatData.pointer.coords.second, button, state, window.modifiers() };
             window.dispatchInputPointerEvent(&event);
         }
     },
@@ -178,7 +205,7 @@ const struct wl_pointer_listener WindowViewBackend::s_pointerListener = {
         auto& window = *static_cast<WindowViewBackend*>(data);
         if (window.m_seatData.pointer.target) {
             struct wpe_input_axis_event event = { wpe_input_axis_event_type_motion,
-                time, window.m_seatData.pointer.coords.first, window.m_seatData.pointer.coords.second, axis, -wl_fixed_to_int(value) };
+                time, window.m_seatData.pointer.coords.first, window.m_seatData.pointer.coords.second, axis, -wl_fixed_to_int(value), window.modifiers() };
             window.dispatchInputAxisEvent(&event);
         }
     },
@@ -190,9 +217,8 @@ const struct wl_pointer_listener WindowViewBackend::s_pointerListener = {
 
 const struct wl_keyboard_listener WindowViewBackend::s_keyboardListener = {
     // keymap
-    [](void* data, struct wl_keyboard*, uint32_t format, int fd, uint32_t size)
+    [](void*, struct wl_keyboard*, uint32_t format, int fd, uint32_t size)
     {
-        auto& window = *static_cast<WindowViewBackend*>(data);
         if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
             close(fd);
             return;
@@ -204,22 +230,14 @@ const struct wl_keyboard_listener WindowViewBackend::s_keyboardListener = {
             return;
         }
 
-        auto& xkb = window.m_seatData.xkb;
-        xkb.keymap = xkb_keymap_new_from_string(xkb.context, static_cast<char*>(mapping),
+        auto* xkb = wpe_input_xkb_context_get_default();
+        auto* keymap = xkb_keymap_new_from_string(wpe_input_xkb_context_get_context(xkb), static_cast<char*>(mapping),
             XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
         munmap(mapping, size);
         close(fd);
 
-        if (!xkb.keymap)
-            return;
-
-        xkb.state = xkb_state_new(xkb.keymap);
-        if (!xkb.state)
-            return;
-
-        xkb.indexes.control = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_CTRL);
-        xkb.indexes.alt = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_ALT);
-        xkb.indexes.shift = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_SHIFT);
+        wpe_input_xkb_context_set_keymap(xkb, keymap);
+        xkb_keymap_unref(keymap);
     },
     // enter
     [](void* data, struct wl_keyboard*, uint32_t /*serial*/, struct wl_surface* surface, struct wl_array*)
@@ -249,13 +267,15 @@ const struct wl_keyboard_listener WindowViewBackend::s_keyboardListener = {
         if (!seatData.repeatInfo.rate)
             return;
 
+        auto* keymap = wpe_input_xkb_context_get_keymap(wpe_input_xkb_context_get_default());
+
         if (state == WL_KEYBOARD_KEY_STATE_RELEASED
             && seatData.repeatData.key == key) {
             if (seatData.repeatData.eventSource)
                 g_source_remove(seatData.repeatData.eventSource);
             seatData.repeatData = { 0, 0, 0, 0 };
         } else if (state == WL_KEYBOARD_KEY_STATE_PRESSED
-            && xkb_keymap_key_repeats(seatData.xkb.keymap, key)) {
+            && keymap && xkb_keymap_key_repeats(keymap, key)) {
 
             if (seatData.repeatData.eventSource)
                 g_source_remove(seatData.repeatData.eventSource);
@@ -278,19 +298,8 @@ const struct wl_keyboard_listener WindowViewBackend::s_keyboardListener = {
     // modifiers
     [](void* data, struct wl_keyboard*, uint32_t /*serial*/, uint32_t depressedMods, uint32_t latchedMods, uint32_t lockedMods, uint32_t group)
     {
-        auto& xkb = static_cast<WindowViewBackend*>(data)->m_seatData.xkb;
-
-        xkb_state_update_mask(xkb.state, depressedMods, latchedMods, lockedMods, 0, 0, group);
-
-        auto& modifiers = xkb.modifiers;
-        modifiers = 0;
-        auto component = static_cast<xkb_state_component>(XKB_STATE_MODS_DEPRESSED | XKB_STATE_MODS_LATCHED);
-        if (xkb_state_mod_index_is_active(xkb.state, xkb.indexes.control, component))
-            modifiers |= wpe_input_keyboard_modifier_control;
-        if (xkb_state_mod_index_is_active(xkb.state, xkb.indexes.alt, component))
-            modifiers |= wpe_input_keyboard_modifier_alt;
-        if (xkb_state_mod_index_is_active(xkb.state, xkb.indexes.shift, component))
-            modifiers |= wpe_input_keyboard_modifier_shift;
+        auto& keyboard = static_cast<WindowViewBackend*>(data)->m_seatData.keyboard;
+        keyboard.modifiers = wpe_input_xkb_context_get_modifiers(wpe_input_xkb_context_get_default(), depressedMods, latchedMods, lockedMods, group);
     },
     // repeat_info
     [](void* data, struct wl_keyboard*, int32_t rate, int32_t delay)
@@ -326,7 +335,7 @@ const struct wl_touch_listener WindowViewBackend::s_touchListener = {
         memcpy(&seatData.touch.points[id], &rawEvent, sizeof(struct wpe_input_touch_event_raw));
 
         struct wpe_input_touch_event event = { seatData.touch.points, 10,
-            rawEvent.type, rawEvent.id, rawEvent.time };
+            rawEvent.type, rawEvent.id, rawEvent.time, window.modifiers() };
         window.dispatchInputTouchEvent(&event);
     },
     // up
@@ -344,7 +353,7 @@ const struct wl_touch_listener WindowViewBackend::s_touchListener = {
         memcpy(&seatData.touch.points[id], &rawEvent, sizeof(struct wpe_input_touch_event_raw));
 
         struct wpe_input_touch_event event = { seatData.touch.points, 10,
-            rawEvent.type, rawEvent.id, rawEvent.time };
+            rawEvent.type, rawEvent.id, rawEvent.time, window.modifiers() };
         window.dispatchInputTouchEvent(&event);
 
         memset(&seatData.touch.points[id], 0x00, sizeof(struct wpe_input_touch_event_raw));
@@ -362,7 +371,7 @@ const struct wl_touch_listener WindowViewBackend::s_touchListener = {
         memcpy(&seatData.touch.points[id], &rawEvent, sizeof(struct wpe_input_touch_event_raw));
 
         struct wpe_input_touch_event event = { seatData.touch.points, 10,
-            rawEvent.type, rawEvent.id, rawEvent.time };
+            rawEvent.type, rawEvent.id, rawEvent.time, window.modifiers() };
         window.dispatchInputTouchEvent(&event);
     },
     // frame
@@ -454,11 +463,6 @@ WindowViewBackend::WindowViewBackend(uint32_t width, uint32_t height)
 
         if (m_seat)
             wl_seat_add_listener(m_seat, &s_seatListener, this);
-
-        m_seatData.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-        m_seatData.xkb.composeTable = xkb_compose_table_new_from_locale(m_seatData.xkb.context, setlocale(LC_CTYPE, nullptr), XKB_COMPOSE_COMPILE_NO_FLAGS);
-        if (m_seatData.xkb.composeTable)
-            m_seatData.xkb.composeState = xkb_compose_state_new(m_seatData.xkb.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
     }
 
     m_eventSource = g_source_new(&EventSource::sourceFuncs, sizeof(EventSource));
@@ -499,8 +503,6 @@ WindowViewBackend::WindowViewBackend(uint32_t width, uint32_t height)
     if (!eglMakeCurrent(m_eglDisplay, m_eglSurface, m_eglSurface, m_eglContext))
         return;
 
-    createImage = reinterpret_cast<PFNEGLCREATEIMAGEKHRPROC>(eglGetProcAddress("eglCreateImageKHR"));
-    destroyImage = reinterpret_cast<PFNEGLDESTROYIMAGEKHRPROC>(eglGetProcAddress("eglDestroyImageKHR"));
     imageTargetTexture2DOES = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
 
     {
@@ -577,9 +579,6 @@ WindowViewBackend::~WindowViewBackend()
     if (m_compositor)
         wl_compositor_destroy(m_compositor);
 
-    if (m_committed.image)
-        destroyImage(m_eglDisplay, m_committed.image);
-
     if (m_eglSurface)
         eglDestroySurface(m_eglDisplay, m_eglSurface);
 
@@ -597,15 +596,13 @@ const struct wl_callback_listener WindowViewBackend::s_frameListener = {
         auto& window = *static_cast<WindowViewBackend*>(data);
         wpe_view_backend_exportable_fdo_dispatch_frame_complete(window.m_exportable);
 
-        if (window.m_committed.image)
-            destroyImage(window.m_eglDisplay, window.m_committed.image);
-        if (window.m_committed.bufferResource)
-            wpe_view_backend_exportable_fdo_dispatch_release_buffer(window.m_exportable, window.m_committed.bufferResource);
-        window.m_committed = { nullptr, nullptr };
+        if (window.m_committedImage)
+            wpe_view_backend_exportable_fdo_egl_dispatch_release_image(window.m_exportable, window.m_committedImage);
+        window.m_committedImage = EGL_NO_IMAGE_KHR;
     }
 };
 
-void WindowViewBackend::displayBuffer(struct wl_resource* bufferResource)
+void WindowViewBackend::displayBuffer(EGLImageKHR image)
 {
     if (!m_eglContext)
         return;
@@ -617,20 +614,12 @@ void WindowViewBackend::displayBuffer(struct wl_resource* bufferResource)
 
     glUseProgram(m_program);
 
-    {
-        static EGLint imageAttributes[] = {
-            EGL_WAYLAND_PLANE_WL, 0,
-            EGL_NONE
-        };
-        EGLImageKHR image = createImage(m_eglDisplay, EGL_NO_CONTEXT, EGL_WAYLAND_BUFFER_WL, bufferResource, imageAttributes);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, m_viewTexture);
+    imageTargetTexture2DOES(GL_TEXTURE_2D, image);
+    glUniform1i(m_textureUniform, 0);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, m_viewTexture);
-        imageTargetTexture2DOES(GL_TEXTURE_2D, image);
-        glUniform1i(m_textureUniform, 0);
-
-        m_committed = { bufferResource, image };
-    }
+    m_committedImage = image;
 
     static const GLfloat vertices[4][2] = {
         { -1.0, 1.0 },
@@ -665,22 +654,22 @@ void WindowViewBackend::displayBuffer(struct wl_resource* bufferResource)
 
 void WindowViewBackend::handleKeyEvent(uint32_t key, uint32_t state, uint32_t time)
 {
-    auto& xkb = m_seatData.xkb;
-    uint32_t keysym = xkb_state_key_get_one_sym(xkb.state, key);
-    uint32_t unicode = xkb_state_key_get_utf32(xkb.state, key);
-
-    if (xkb.composeState
-        && state == WL_KEYBOARD_KEY_STATE_PRESSED
-        && xkb_compose_state_feed(xkb.composeState, keysym) == XKB_COMPOSE_FEED_ACCEPTED
-        && xkb_compose_state_get_status(xkb.composeState) == XKB_COMPOSE_COMPOSED) {
-        keysym = xkb_compose_state_get_one_sym(xkb.composeState);
-        unicode = xkb_keysym_to_utf32(keysym);
-    }
+    uint32_t keysym = wpe_input_xkb_context_get_key_code(wpe_input_xkb_context_get_default(), key, state == WL_KEYBOARD_KEY_STATE_PRESSED);
+    if (!keysym)
+        return;
 
     if (m_seatData.keyboard.target) {
-        struct wpe_input_keyboard_event event = { time, keysym, unicode, !!state, xkb.modifiers };
+        struct wpe_input_keyboard_event event = { time, keysym, key, !!state, modifiers() };
         dispatchInputKeyboardEvent(&event);
     }
+}
+
+uint32_t WindowViewBackend::modifiers() const
+{
+    uint32_t mask = m_seatData.keyboard.modifiers;
+    if (m_seatData.pointer.object)
+        mask |= m_seatData.pointer.modifiers;
+    return mask;
 }
 
 } // namespace WPEToolingBackends

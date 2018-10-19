@@ -53,7 +53,7 @@
 #include "ImageData.h"
 #include "InspectorInstrumentation.h"
 #include "IntSize.h"
-#include "JSMainThreadExecState.h"
+#include "JSExecState.h"
 #include "Logging.h"
 #include "NotImplemented.h"
 #include "OESElementIndexUint.h"
@@ -583,7 +583,7 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(Can
 
 #if ENABLE(WEBGL2)
     if (type == "webgl2")
-        attributes.useGLES3 = true;
+        attributes.isWebGL2 = true;
 #endif
 
     if (isPendingPolicyResolution) {
@@ -613,7 +613,7 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(Can
 #if ENABLE(WEBGL2) && PLATFORM(MAC)
     // glTexStorage() was only added to Core in OpenGL 4.2.
     // However, according to https://developer.apple.com/opengl/capabilities/ all Apple GPUs support this extension.
-    if (attributes.useGLES3 && !extensions.supports("GL_ARB_texture_storage"))
+    if (attributes.isWebGL2 && !extensions.supports("GL_ARB_texture_storage"))
         return nullptr;
 #endif
 
@@ -1534,11 +1534,9 @@ void WebGLRenderingContextBase::compileShader(WebGLShader* shader)
     auto* canvas = htmlCanvas();
 
     if (canvas && m_synthesizedErrorsToConsole && !value) {
-        Ref<Inspector::ScriptCallStack> stackTrace = Inspector::createScriptCallStack(JSMainThreadExecState::currentState());
+        Ref<Inspector::ScriptCallStack> stackTrace = Inspector::createScriptCallStack(JSExecState::currentState());
 
-        Vector<String> errors;
-        getShaderInfoLog(shader).split("\n", errors);
-        for (String& error : errors)
+        for (auto& error : getShaderInfoLog(shader).split('\n'))
             canvas->document().addConsoleMessage(std::make_unique<Inspector::ConsoleMessage>(MessageSource::Rendering, MessageType::Log, MessageLevel::Error, "WebGL: " + error, stackTrace.copyRef()));
     }
 }
@@ -1770,6 +1768,8 @@ bool WebGLRenderingContextBase::deleteObject(WebGLObject* object)
         synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, "delete", "object does not belong to this context");
         return false;
     }
+    if (object->isDeleted())
+        return false;
     if (object->object())
         // We need to pass in context here because we want
         // things in this context unbound.
@@ -5658,7 +5658,7 @@ void WebGLRenderingContextBase::printToConsole(MessageLevel level, const String&
 
     // Error messages can occur during function calls, so show stack traces for them.
     if (level == MessageLevel::Error) {
-        Ref<Inspector::ScriptCallStack> stackTrace = Inspector::createScriptCallStack(JSMainThreadExecState::currentState());
+        Ref<Inspector::ScriptCallStack> stackTrace = Inspector::createScriptCallStack(JSExecState::currentState());
         consoleMessage = std::make_unique<Inspector::ConsoleMessage>(MessageSource::Rendering, MessageType::Log, level, message, WTFMove(stackTrace));
     } else
         consoleMessage = std::make_unique<Inspector::ConsoleMessage>(MessageSource::Rendering, MessageType::Log, level, message);

@@ -472,7 +472,7 @@ static std::unique_ptr<Decoder> createMessageDecoder(mach_msg_header_t* header)
     uint8_t* messageBody = descriptorData;
     size_t messageBodySize = header->msgh_size - (descriptorData - reinterpret_cast<uint8_t*>(header));
 
-    return std::make_unique<Decoder>(messageBody, messageBodySize, nullptr, attachments);
+    return std::make_unique<Decoder>(messageBody, messageBodySize, nullptr, WTFMove(attachments));
 }
 
 // The receive buffer size should always include the maximum trailer size.
@@ -582,7 +582,7 @@ void Connection::receiveSourceEventHandler()
 #if !PLATFORM(IOS)
     if (decoder->messageReceiverName() == "IPC" && decoder->messageName() == "SetExceptionPort") {
         if (m_isServer) {
-            // Server connections aren't supposed to have their exception ports overriden. Treat this as an invalid message.
+            // Server connections aren't supposed to have their exception ports overridden. Treat this as an invalid message.
             StringReference messageReceiverNameReference = decoder->messageReceiverName();
             String messageReceiverName(String(messageReceiverNameReference.data(), messageReceiverNameReference.size()));
             StringReference messageNameReference = decoder->messageName();

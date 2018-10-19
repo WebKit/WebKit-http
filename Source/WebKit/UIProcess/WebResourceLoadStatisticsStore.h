@@ -60,7 +60,7 @@ enum class StorageAccessStatus {
     HasAccess
 };
 
-class WebResourceLoadStatisticsStore final : public ThreadSafeRefCounted<WebResourceLoadStatisticsStore, WTF::DestructionThread::Main>, private IPC::MessageReceiver {
+class WebResourceLoadStatisticsStore final : public ThreadSafeRefCounted<WebResourceLoadStatisticsStore, WTF::DestructionThread::Main>, public IPC::MessageReceiver {
 public:
     static Ref<WebResourceLoadStatisticsStore> create(WebsiteDataStore& websiteDataStore)
     {
@@ -82,23 +82,20 @@ public:
     void grantStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, bool userWasPromptedNow, CompletionHandler<void(bool)>&&);
     void requestStorageAccessCallback(bool wasGranted, uint64_t contextId);
 
-    void processWillOpenConnection(WebProcessProxy&, IPC::Connection&);
-    void processDidCloseConnection(WebProcessProxy&, IPC::Connection&);
     void applicationWillTerminate();
 
     void logFrameNavigation(const WebFrameProxy&, const WebCore::URL& pageURL, const WebCore::ResourceRequest&, const WebCore::URL& redirectURL);
-    void logUserInteraction(const WebCore::URL&);
-    void logNonRecentUserInteraction(const WebCore::URL&);
-    void clearUserInteraction(const WebCore::URL&);
+    void logUserInteraction(const WebCore::URL&, CompletionHandler<void()>&&);
+    void clearUserInteraction(const WebCore::URL&, CompletionHandler<void()>&&);
     void hasHadUserInteraction(const WebCore::URL&, CompletionHandler<void(bool)>&&);
-    void setLastSeen(const WebCore::URL&, Seconds);
-    void setPrevalentResource(const WebCore::URL&);
-    void setVeryPrevalentResource(const WebCore::URL&);
+    void setLastSeen(const WebCore::URL&, Seconds, CompletionHandler<void()>&&);
+    void setPrevalentResource(const WebCore::URL&, CompletionHandler<void()>&&);
+    void setVeryPrevalentResource(const WebCore::URL&, CompletionHandler<void()>&&);
     void isPrevalentResource(const WebCore::URL&, CompletionHandler<void(bool)>&&);
     void isVeryPrevalentResource(const WebCore::URL&, CompletionHandler<void(bool)>&&);
     void isRegisteredAsSubFrameUnder(const WebCore::URL& subFrame, const WebCore::URL& topFrame, CompletionHandler<void(bool)>&&);
     void isRegisteredAsRedirectingTo(const WebCore::URL& hostRedirectedFrom, const WebCore::URL& hostRedirectedTo, CompletionHandler<void(bool)>&&);
-    void clearPrevalentResource(const WebCore::URL&);
+    void clearPrevalentResource(const WebCore::URL&, CompletionHandler<void()>&&);
     void setGrandfathered(const WebCore::URL&, bool);
     void isGrandfathered(const WebCore::URL&, CompletionHandler<void(bool)>&&);
     void setSubframeUnderTopFrameOrigin(const WebCore::URL& subframe, const WebCore::URL& topFrame);
@@ -107,12 +104,12 @@ public:
     void setSubresourceUniqueRedirectFrom(const WebCore::URL& subresource, const WebCore::URL& hostNameRedirectedFrom);
     void setTopFrameUniqueRedirectTo(const WebCore::URL& topFrameHostName, const WebCore::URL& hostNameRedirectedTo);
     void setTopFrameUniqueRedirectFrom(const WebCore::URL& topFrameHostName, const WebCore::URL& hostNameRedirectedFrom);
-    void scheduleCookiePartitioningUpdate(CompletionHandler<void()>&&);
-    void scheduleCookiePartitioningUpdateForDomains(const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, ShouldClearFirst, CompletionHandler<void()>&&);
-    void scheduleClearPartitioningStateForDomains(const Vector<String>& domains, CompletionHandler<void()>&&);
+    void scheduleCookieBlockingUpdate(CompletionHandler<void()>&&);
+    void scheduleCookieBlockingUpdateForDomains(const Vector<String>& domainsToBlock, ShouldClearFirst, CompletionHandler<void()>&&);
+    void scheduleClearBlockingStateForDomains(const Vector<String>& domains, CompletionHandler<void()>&&);
     void scheduleStatisticsAndDataRecordsProcessing();
     void submitTelemetry();
-    void scheduleCookiePartitioningStateReset();
+    void scheduleCookieBlockingStateReset();
 
     void scheduleClearInMemory(CompletionHandler<void()>&&);
     
@@ -124,7 +121,6 @@ public:
     void scheduleClearInMemoryAndPersistent(WallTime modifiedSince, ShouldGrandfather, CompletionHandler<void()>&&);
 
     void setTimeToLiveUserInteraction(Seconds);
-    void setTimeToLiveCookiePartitionFree(Seconds);
     void setMinimumTimeBetweenDataRecordsRemoval(Seconds);
     void setGrandfatheringTime(Seconds);
     void setMaxStatisticsEntries(size_t);
@@ -132,13 +128,14 @@ public:
 
     void resetParametersToDefaultValues(CompletionHandler<void()>&&);
 
-    void setResourceLoadStatisticsDebugMode(bool);
-
+    void setResourceLoadStatisticsDebugMode(bool, CompletionHandler<void()>&&);
+    void setPrevalentResourceForDebugMode(const WebCore::URL&, CompletionHandler<void()>&&);
+    
     void setStatisticsTestingCallback(WTF::Function<void(const String&)>&& callback) { m_statisticsTestingCallback = WTFMove(callback); }
     void logTestingEvent(const String&);
     void callGrantStorageAccessHandler(const String& subFramePrimaryDomain, const String& topFramePrimaryDomain, std::optional<uint64_t> frameID, uint64_t pageID, CompletionHandler<void(bool)>&&);
-    void removeAllStorageAccess();
-    void callUpdatePrevalentDomainsToPartitionOrBlockCookiesHandler(const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, ShouldClearFirst, CompletionHandler<void()>&&);
+    void removeAllStorageAccess(CompletionHandler<void()>&&);
+    void callUpdatePrevalentDomainsToBlockCookiesForHandler(const Vector<String>& domainsToBlock, ShouldClearFirst, CompletionHandler<void()>&&);
     void callRemoveDomainsHandler(const Vector<String>& domains);
     void callHasStorageAccessForFrameHandler(const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&&);
 

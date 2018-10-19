@@ -1,3 +1,308 @@
+2018-08-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add another Protocol Version (iOS 12)
+        https://bugs.webkit.org/show_bug.cgi?id=188359
+        <rdar://problem/42981364>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Protocol/Legacy/12.0/InspectorBackendCommands.js: Added.
+        * Versions/Inspector-iOS-12.0.json: Added.
+
+2018-08-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Global search sometimes returns duplicate results for a resource
+        https://bugs.webkit.org/show_bug.cgi?id=188270
+        <rdar://problem/42867498>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WI.SearchSidebarPanel.prototype.performSearch.resourcesCallback):
+        Avoid duplicate search results in the frontend. We should also fix the backend
+        but a frontend fix will also be desired for backends that have the issue.
+
+2018-08-03  Alex Christensen  <achristensen@webkit.org>
+
+        Fix spelling of "overridden"
+        https://bugs.webkit.org/show_bug.cgi?id=188315
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WI.ContentBrowserTabContentView.prototype.treeElementForRepresentedObject):
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WI.GeneralTreeElement.prototype.ondetach):
+        * UserInterface/Views/NavigationBar.js:
+        (WI.NavigationBar.prototype.get sizesToFit):
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WI.NavigationSidebarPanel.prototype.shouldFilterPopulate):
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype.canBeFormatted):
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.prototype.onpopulate):
+
+2018-08-01  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: SourceCodeTextEditor thread indicator widget is too light
+        https://bugs.webkit.org/show_bug.cgi?id=188119
+        <rdar://problem/42670811>
+
+        Reviewed by Matt Baker.
+
+        Make the background of the thread indicator widget darker.
+
+        Reduce the number of HTML elements and simplify CSS by removing the HTML element that drew an arrow and using clip-path on inline widgets instead.
+
+        * UserInterface/Views/DarkMode.css:
+        (@media (prefers-dark-interface)):
+        (.text-editor > .CodeMirror .execution-line):
+        (.text-editor > .CodeMirror .execution-range-highlight:not(.CodeMirror-selectedtext),):
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.source-code.text-editor .CodeMirror-linewidget):
+        (.source-code.text-editor > .CodeMirror .line-indicator-widget.inline):
+        (@media (prefers-dark-interface)):
+        (.source-code.text-editor > .CodeMirror .thread-widget.inline):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype._updateThreadIndicatorWidget):
+        (WI.SourceCodeTextEditor.prototype._updateIssueWidgetForIssues):
+        * UserInterface/Views/TextEditor.css:
+        (@media (prefers-dark-interface)):
+        (.text-editor > .CodeMirror .execution-line.primary .CodeMirror-linenumber::after):
+        * UserInterface/Views/Variables.css:
+        (:root):
+
+2018-08-01  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: disabled breakpoints banner is too light
+        https://bugs.webkit.org/show_bug.cgi?id=188120
+        <rdar://problem/42671348>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (@media (prefers-dark-interface)):
+        (.sidebar > .panel.navigation.debugger .warning-banner):
+
+2018-07-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include a full URL tooltip when hovering the name in the Network Tab
+        https://bugs.webkit.org/show_bug.cgi?id=188199
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+        Give a tooltip to the entire cell since the entire cell has interactivity.
+
+2018-07-30  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: Search sidebar panel text field has a white background
+        https://bugs.webkit.org/show_bug.cgi?id=188128
+        <rdar://problem/42678270>
+
+        Reviewed by Matt Baker.
+
+        Make the search bar in Search tab match the style of the filter bar.
+
+        * UserInterface/Views/DarkMode.css:
+        (@media (prefers-dark-interface)):
+        (:matches(.search-bar, .filter-bar) > input[type="search"],):
+        (:matches(.search-bar, .filter-bar) > input[type="search"]::placeholder):
+        (:matches(.search-bar, .filter-bar) > input[type="search"]:focus):
+        (.filter-bar > input[type="search"]): Deleted.
+        (.filter-bar > input[type="search"]::placeholder): Deleted.
+        (.filter-bar > input[type="search"]:focus): Deleted.
+
+2018-07-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r234281.
+
+        Broke internal builds.
+
+        Reverted changeset:
+
+        "[Datalist] Add button to TextFieldInputs with a datalist"
+        https://bugs.webkit.org/show_bug.cgi?id=187741
+        https://trac.webkit.org/changeset/234281
+
+2018-07-26  Aditya Keerthi  <akeerthi@apple.com>
+
+        [Datalist] Add button to TextFieldInputs with a datalist
+        https://bugs.webkit.org/show_bug.cgi?id=187741
+
+        Reviewed by Tim Horton.
+
+        Add keyword completion for 'list-button'.
+
+        * UserInterface/External/CodeMirror/css.js:
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2018-07-25  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: Breakpoint editor in JS debugger has inconsistent background
+        https://bugs.webkit.org/show_bug.cgi?id=188026
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DarkMode.css:
+        (@media (prefers-dark-interface)):
+        (.edit-breakpoint-popover-condition):
+        (.breakpoint-action-eval-editor):
+
+2018-07-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: remove odd-looking top border
+        https://bugs.webkit.org/show_bug.cgi?id=187885
+
+        Reviewed by Matt Baker.
+
+        This border doesn't exist in the light mode, and it shouldn't be in the dark mode either.
+
+        * UserInterface/Views/DarkMode.css:
+        (@media (prefers-dark-interface)):
+        (body .toolbar):
+
+2018-07-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: Layers tab background should be dark
+        https://bugs.webkit.org/show_bug.cgi?id=187660
+        <rdar://problem/42179616>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/Layers3DContentView.js:
+        (WI.Layers3DContentView.prototype.initialLayout):
+        * UserInterface/Views/Variables.css:
+        (:root):
+
+2018-07-19  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Layers visualization shouldn't select on mousedown
+        https://bugs.webkit.org/show_bug.cgi?id=187488
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Layers3DContentView.js:
+        (WI.Layers3DContentView):
+        (WI.Layers3DContentView.prototype.initialLayout):
+        (WI.Layers3DContentView.prototype._canvasMouseDown):
+        (WI.Layers3DContentView.prototype._canvasMouseUp):
+        Don't update selection on mousedown, update on mouseup!
+        Specifically, only update when mousedown & mouseup targets are the same and mousemove hasn't been triggered.
+
+2018-07-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: poor contrast for Search Tab's "the page's content has changed" message
+        https://bugs.webkit.org/show_bug.cgi?id=187792
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DarkMode.css:
+        (@media (prefers-dark-interface)):
+        (:root):
+        Make the background color slightly more yellow and less red. This slightly dicreases the contrast
+        but makes the text look less like an error.
+
+        * UserInterface/Views/SearchSidebarPanel.css:
+        (@media (prefers-dark-interface)):
+        (.sidebar > .panel.navigation.search.changed > .banner):
+
+2018-07-18  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION(r232591): CodeMirrorEditor should not use a RegExp lineSeparator option
+        https://bugs.webkit.org/show_bug.cgi?id=187772
+        <rdar://problem/42331640>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CodeMirrorEditor.js:
+        (WI.CodeMirrorEditor.create):
+        (WI.CodeMirrorEditor):
+        CodeMirror should be left to auto-detect line separators. By default
+        it detects \n, \r\n, and \r. By specifying a regular expression we
+        merely cause problems when CodeMirror uses the supplied lineSeparator
+        when joining its array of lines together.
+
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.set string.update):
+        (WI.TextEditor.prototype.set string):
+        This assertion was only true when we forced "\n" line endings everywhere.
+        It no longer holds for source text with "\r\n" (Windows-style) line endings.
+
+2018-07-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Fix execution highlighting after r233820
+        https://bugs.webkit.org/show_bug.cgi?id=187703
+        <rdar://problem/42246167>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.textEditorExecutionHighlightRange):
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype.currentPositionToOriginalPosition):
+        (WI.TextEditor.prototype._updateExecutionRangeHighlight):
+
+2018-07-16  Aaron Chu  <aaron_chu@apple.com>
+
+        AX: Audit Tab should have an Audit Manager
+        https://bugs.webkit.org/show_bug.cgi?id=184071
+        <rdar://problem/38946364>
+
+        Reviewed by Brian Burg.
+
+        This implements the AuditManager for the audit feature. This patch revolves
+        around building out an AuditManager that facilitates an audit. The AuditManager
+        is responsible for managing and storing AuditReports and AuditTestSuites. It is
+        also tasked to decide how to run a test -- whether as a test case or as a test
+        suite. This patch also includes 4 models with which the AuditManager works to
+        perform an audit and to generate a report. These models include AuditTestCase,
+        which as a collection is stored inside an AuditTestSuite; and AuditResult,
+        which, as a collection is stored inside an AuditReport.
+
+        * UserInterface/Controllers/AuditManager.js: Added.
+        (WI.AuditManager):
+        (WI.AuditManager.prototype.get testSuites):
+        (WI.AuditManager.prototype.get reports):
+        (WI.AuditManager.prototype.async.runAuditTestByRepresentedObject):
+        (WI.AuditManager.prototype.reportForId):
+        (WI.AuditManager.prototype.removeAllReports):
+        (WI.AuditManager.prototype.async._runTestCase):
+        * UserInterface/Main.html:
+        * UserInterface/Models/AuditReport.js: Added.
+        (WI.AuditReport):
+        (WI.AuditReport.prototype.get representedTestCases):
+        (WI.AuditReport.prototype.get representedTestSuite):
+        (WI.AuditReport.prototype.get resultsData):
+        (WI.AuditReport.prototype.get isWritable):
+        (WI.AuditReport.prototype.get failedCount):
+        (WI.AuditReport.prototype.addResult):
+        (WI.AuditReport.prototype.close):
+        * UserInterface/Models/AuditResult.js: Added.
+        (WI.AuditResult):
+        (WI.AuditResult.prototype.get testResult):
+        (WI.AuditResult.prototype.get name):
+        (WI.AuditResult.prototype.get logLevel):
+        (WI.AuditResult.prototype.get failed):
+        * UserInterface/Models/AuditTestCase.js: Added.
+        (WI.AuditTestCase.prototype.get id):
+        (WI.AuditTestCase.prototype.get name):
+        (WI.AuditTestCase.prototype.get suite):
+        (WI.AuditTestCase.prototype.get test):
+        (WI.AuditTestCase.prototype.get setup):
+        (WI.AuditTestCase.prototype.get tearDown):
+        (WI.AuditTestCase.prototype.get errorDetails):
+        (WI.AuditTestCase):
+        * UserInterface/Models/AuditTestSuite.js: Added.
+        (WI.AuditTestSuite):
+        (WI.AuditTestSuite.testCaseDescriptors):
+        (WI.AuditTestSuite.prototype.get id):
+        (WI.AuditTestSuite.prototype.get name):
+        (WI.AuditTestSuite.prototype.get testCases):
+        (WI.AuditTestSuite.prototype._buildTestCasesFromDescriptors):
+        * UserInterface/Test.html:
+
 2018-07-16  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: Dark Mode: Console filter field buttons should be darker

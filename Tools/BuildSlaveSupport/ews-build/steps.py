@@ -20,13 +20,17 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from buildbot.process import buildstep, properties
+from buildbot.process import buildstep, logobserver, properties
 from buildbot.process.results import Results, SUCCESS, FAILURE, WARNINGS, SKIPPED, EXCEPTION, RETRY
-from buildbot.steps import shell
+from buildbot.steps import shell, transfer
 from buildbot.steps.source import svn
 from twisted.internet import defer
 
+import re
+
+EWS_URL = 'http://ews-build.webkit-uat.org/'
 WithProperties = properties.WithProperties
+
 
 class ConfigureBuild(buildstep.BuildStep):
     name = "configure-build"
@@ -45,12 +49,18 @@ class ConfigureBuild(buildstep.BuildStep):
         self.additionalArguments = additionalArguments
 
     def start(self):
-        self.setProperty("platform", self.platform)
-        self.setProperty("fullPlatform", self.fullPlatform)
-        self.setProperty("configuration", self.configuration)
-        self.setProperty("architecture", self.architecture)
-        self.setProperty("buildOnly", self.buildOnly)
-        self.setProperty("additionalArguments", self.additionalArguments)
+        if self.platform and self.platform != '*':
+            self.setProperty('platform', self.platform, 'config.json')
+        if self.fullPlatform and self.fullPlatform != '*':
+            self.setProperty('fullPlatform', self.fullPlatform, 'ConfigureBuild')
+        if self.configuration:
+            self.setProperty('configuration', self.configuration, 'config.json')
+        if self.architecture:
+            self.setProperty('architecture', self.architecture, 'config.json')
+        if self.buildOnly:
+            self.setProperty("buildOnly", self.buildOnly, 'config.json')
+        if self.additionalArguments:
+            self.setProperty("additionalArguments", self.additionalArguments, 'config.json')
         self.finished(SUCCESS)
         return defer.succeed(None)
 
@@ -64,6 +74,95 @@ class CheckOutSource(svn.SVN):
                                                 retry=self.CHECKOUT_DELAY_AND_MAX_RETRIES_PAIR,
                                                 preferLastChangedRev=True,
                                                 **kwargs)
+
+
+class CheckPatchRelevance(buildstep.BuildStep):
+    name = 'check-patch-relevance'
+    description = ['check-patch-relevance running']
+    descriptionDone = ['check-patch-relevance']
+    flunkOnFailure = True
+    haltOnFailure = True
+
+    bindings_paths = [
+        "Source/WebCore",
+        "Tools",
+    ]
+
+    jsc_paths = [
+        "JSTests/",
+        "Source/JavaScriptCore/",
+        "Source/WTF/",
+        "Source/bmalloc/",
+        "Makefile",
+        "Makefile.shared",
+        "Source/Makefile",
+        "Source/Makefile.shared",
+        "Tools/Scripts/build-webkit",
+        "Tools/Scripts/build-jsc",
+        "Tools/Scripts/jsc-stress-test-helpers/",
+        "Tools/Scripts/run-jsc",
+        "Tools/Scripts/run-jsc-benchmarks",
+        "Tools/Scripts/run-jsc-stress-tests",
+        "Tools/Scripts/run-javascriptcore-tests",
+        "Tools/Scripts/run-layout-jsc",
+        "Tools/Scripts/update-javascriptcore-test-results",
+        "Tools/Scripts/webkitdirs.pm",
+    ]
+
+    webkitpy_paths = [
+        "Tools/Scripts/webkitpy/",
+        "Tools/QueueStatusServer/",
+    ]
+
+    group_to_paths_mapping = {
+        'bindings': bindings_paths,
+        'jsc': jsc_paths,
+        'webkitpy': webkitpy_paths,
+    }
+
+    def _patch_is_relevant(self, patch, builderName):
+        group = [group for group in self.group_to_paths_mapping.keys() if group in builderName.lower()]
+        if not group:
+            # This builder doesn't have paths defined, all patches are relevant.
+            return True
+
+        relevant_paths = self.group_to_paths_mapping[group[0]]
+
+        for change in patch.splitlines():
+            for path in relevant_paths:
+                if re.search(path, change, re.IGNORECASE):
+                    return True
+        return False
+
+    def _get_patch(self):
+        sourcestamp = self.build.getSourceStamp(self.getProperty('codebase', ''))
+        if not sourcestamp or not sourcestamp.patch:
+            return None
+        return sourcestamp.patch[1]
+
+    @defer.inlineCallbacks
+    def _addToLog(self, logName, message):
+        try:
+            log = self.getLog(logName)
+        except KeyError:
+            log = yield self.addLog(logName)
+        log.addStdout(message)
+
+    def start(self):
+        patch = self._get_patch()
+        if not patch:
+            # This build doesn't have a patch, it might be a force build.
+            self.finished(SUCCESS)
+            return None
+
+        if self._patch_is_relevant(patch, self.getProperty('buildername', '')):
+            self._addToLog('stdio', 'This patch contains relevant changes.')
+            self.finished(SUCCESS)
+            return None
+
+        self._addToLog('stdio', 'This patch does not have relevant changes.')
+        self.finished(FAILURE)
+        return None
 
 
 class UnApplyPatchIfRequired(CheckOutSource):
@@ -85,6 +184,44 @@ class CheckStyle(shell.ShellCommand):
     descriptionDone = ['check-webkit-style']
     flunkOnFailure = True
     command = ['Tools/Scripts/check-webkit-style']
+
+
+class TestWithFailureCount(shell.Test):
+    failedTestsFormatString = "%d test%s failed"
+    failedTestCount = 0
+
+    def start(self):
+        self.log_observer = logobserver.BufferLogObserver(wantStderr=True)
+        self.addLogObserver('stdio', self.log_observer)
+        return shell.Test.start(self)
+
+    def countFailures(self, cmd):
+        raise NotImplementedError
+
+    def commandComplete(self, cmd):
+        shell.Test.commandComplete(self, cmd)
+        self.failedTestCount = self.countFailures(cmd)
+        self.failedTestPluralSuffix = "" if self.failedTestCount == 1 else "s"
+
+    def evaluateCommand(self, cmd):
+        if self.failedTestCount:
+            return FAILURE
+
+        if cmd.rc != 0:
+            return FAILURE
+
+        return SUCCESS
+
+    def getResultSummary(self):
+        status = self.name
+
+        if self.results != SUCCESS and self.failedTestCount:
+            status = self.failedTestsFormatString % (self.failedTestCount, self.failedTestPluralSuffix)
+
+        if self.results != SUCCESS:
+            status += u' ({})'.format(Results[self.results])
+
+        return {u'step': status}
 
 
 class RunBindingsTests(shell.ShellCommand):
@@ -258,3 +395,93 @@ class KillOldProcesses(shell.Compile):
 
     def __init__(self, **kwargs):
         super(KillOldProcesses, self).__init__(timeout=60, **kwargs)
+
+
+class RunWebKitTests(shell.Test):
+    name = 'layout-tests'
+    description = ['layout-tests running']
+    descriptionDone = ['layout-tests']
+    resultDirectory = 'layout-test-results'
+    command = ['python', 'Tools/Scripts/run-webkit-tests',
+               '--no-build',
+               '--no-new-test-results',
+               '--no-show-results',
+               '--exit-after-n-failures', '30',
+               '--skip-failing-tests',
+               WithProperties('--%(configuration)s')]
+
+    def start(self):
+        platform = self.getProperty('platform')
+        appendCustomBuildFlags(self, platform, self.getProperty('fullPlatform'))
+        additionalArguments = self.getProperty('additionalArguments')
+
+        self.setCommand(self.command + ['--results-directory', self.resultDirectory])
+        self.setCommand(self.command + ['--debug-rwt-logging'])
+
+        if additionalArguments:
+            self.setCommand(self.command + additionalArguments)
+        return shell.Test.start(self)
+
+
+class ArchiveBuiltProduct(shell.ShellCommand):
+    command = ['python', 'Tools/BuildSlaveSupport/built-product-archive',
+               WithProperties('--platform=%(fullPlatform)s'), WithProperties('--%(configuration)s'), 'archive']
+    name = 'archive-built-product'
+    description = ['archiving built product']
+    descriptionDone = ['archived built product']
+    haltOnFailure = True
+
+
+class UploadBuiltProduct(transfer.FileUpload):
+    name = 'upload-built-product'
+    workersrc = WithProperties('WebKitBuild/%(configuration)s.zip')
+    masterdest = WithProperties('public_html/archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(ewspatchid)s.zip')
+    haltOnFailure = True
+
+    def __init__(self, **kwargs):
+        kwargs['workersrc'] = self.workersrc
+        kwargs['masterdest'] = self.masterdest
+        kwargs['mode'] = 0644
+        kwargs['blocksize'] = 1024 * 256
+        transfer.FileUpload.__init__(self, **kwargs)
+
+
+class DownloadBuiltProduct(shell.ShellCommand):
+    command = ['python', 'Tools/BuildSlaveSupport/download-built-product',
+        WithProperties('--platform=%(platform)s'), WithProperties('--%(configuration)s'),
+        WithProperties(EWS_URL + 'archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(ewspatchid)s.zip')]
+    name = 'download-built-product'
+    description = ['downloading built product']
+    descriptionDone = ['downloaded built product']
+    haltOnFailure = True
+    flunkOnFailure = True
+
+
+class ExtractBuiltProduct(shell.ShellCommand):
+    command = ['python', 'Tools/BuildSlaveSupport/built-product-archive',
+               WithProperties('--platform=%(fullPlatform)s'), WithProperties('--%(configuration)s'), 'extract']
+    name = 'extract-built-product'
+    description = ['extracting built product']
+    descriptionDone = ['extracted built product']
+    haltOnFailure = True
+    flunkOnFailure = True
+
+
+class RunAPITests(TestWithFailureCount):
+    name = 'run-api-tests'
+    description = ['api tests running']
+    descriptionDone = ['api-tests']
+    command = ['python', 'Tools/Scripts/run-api-tests', '--no-build', WithProperties('--%(configuration)s'), '--verbose']
+    failedTestsFormatString = '%d api test%s failed or timed out'
+
+    def start(self):
+        appendCustomBuildFlags(self, self.getProperty('platform'), self.getProperty('fullPlatform'))
+        return TestWithFailureCount.start(self)
+
+    def countFailures(self, cmd):
+        log_text = self.log_observer.getStdout() + self.log_observer.getStderr()
+
+        match = re.search(r'Ran (?P<ran>\d+) tests of (?P<total>\d+) with (?P<passed>\d+) successful', log_text)
+        if not match:
+            return 0
+        return int(match.group('ran')) - int(match.group('passed'))

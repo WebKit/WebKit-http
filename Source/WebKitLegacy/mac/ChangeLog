@@ -1,3 +1,482 @@
+2018-08-08  Jonathan Bedard  <jbedard@apple.com>
+
+        Follow-up build fix for r234685
+        https://bugs.webkit.org/show_bug.cgi?id=188245
+
+        Unreviewed build fix.
+
+        * WebCoreSupport/WebSecurityOriginPrivate.h:
+
+2018-08-05  Darin Adler  <darin@apple.com>
+
+        [Cocoa] More tweaks and refactoring to prepare for ARC
+        https://bugs.webkit.org/show_bug.cgi?id=188245
+
+        Reviewed by Dan Bernstein.
+
+        * Carbon/CarbonUtils.m: Updated include for rename: FoundationSPI.h -> objcSPI.h.
+
+        * Carbon/CarbonWindowFrame.m:
+        (-[CarbonWindowFrame dealloc]): Deleted. It was empty.
+
+        * DOM/DOM.mm:
+        (-[DOMElement _imageTIFFRepresentation]): Use a bridging cast.
+        (-[DOMNodeFilter finalize]): Deleted. WebKit no longer supports Objective-C
+        garbage collection so this method isn't useful.
+
+        * DOM/DOMXPath.mm:
+        (-[DOMNativeXPathNSResolver finalize]): Deleted. WebKit no longer supports
+        Objective-C garbage collection so this method isn't useful.
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate data]): Allocate an NSData instead of casting from a CFData.
+
+        * Misc/WebElementDictionary.mm:
+        (addLookupKey): Use a bridging cast.
+        (cacheValueForKey): Ditto.
+        (-[WebElementDictionary _fillCache]): Ditto.
+        (-[WebElementDictionary objectForKey:]): Ditto.
+
+        * Misc/WebKitNSStringExtras.mm:
+        (-[NSString _web_drawAtPoint:font:textColor:]): Use a bridging cast.
+        (-[NSString _web_widthWithFont:]): Ditto.
+        (-[NSString _webkit_stringByTrimmingWhitespace]): Ditto.
+
+        * Misc/WebLocalizableStrings.mm:
+        (WebLocalizedString): Use a bridging cast.
+
+        * Misc/WebNSDataExtras.mm:
+        (-[NSString _web_capitalizeRFC822HeaderFieldName]): Use a bridging cast
+        and use CFBridgingRelease instead of calling autorelease directly.
+        (-[NSData _webkit_parseRFC822HeaderFields]): Use NSString methods instead
+        of a mix of CFString and NSString. Also simplified logic a bit, and cut down
+        on the amount of explicit release and autorelease.
+
+        * Misc/WebNSDictionaryExtras.h: Deleted unused methods.
+        * Misc/WebNSDictionaryExtras.m:
+        (-[NSDictionary _webkit_intForKey:]): Deleted.
+        (-[NSMutableDictionary _webkit_setInt:forKey:]): Deleted.
+        (-[NSMutableDictionary _webkit_setFloat:forKey:]): Deleted.
+        (-[NSMutableDictionary _webkit_setBool:forKey:]): Deleted.
+        (-[NSMutableDictionary _webkit_setLongLong:forKey:]): Deleted.
+        (-[NSMutableDictionary _webkit_setUnsignedLongLong:forKey:]): Deleted.
+        (-[NSMutableDictionary _webkit_setUnsignedInt:forKey:]): Deleted.
+
+        * Misc/WebStringTruncator.mm:
+        (fontFromNSFont): Use a bridging cast.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::preferredBundleLocalizationName): Use a bridging cast and CFBridgingRelease.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::cleanup): Use a bridging cast.
+        (WebKit::NetscapePluginInstanceProxy::status): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::loadURL): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::demarshalValueFromArray): Ditto.
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::getPropertyNames): Ditto.
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage _objectForInfoDictionaryKey:]): Ditto.
+        * Plugins/WebNetscapePluginEventHandlerCocoa.mm:
+        (WebNetscapePluginEventHandlerCocoa::platformWindow): Ditto.
+        * Plugins/WebNetscapePluginPackage.mm:
+        (-[WebNetscapePluginPackage _initWithPath:]): Ditto.
+
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView _postURL:target:len:buf:file:notifyData:sendNotification:allowHeaders:]):
+        Use bridging casts and use RetainPtr insteead of an explicit CFRelease.
+        (-[WebNetscapePluginView status:]): Use a bridging cast.
+        (-[WebNetscapePluginView popUpContextMenu:]): Ditto.
+
+        * Plugins/WebPluginController.mm:
+        (-[WebPluginController _cancelOutstandingChecks]): Use a bridging cast.
+
+        * Plugins/WebPluginDatabase.mm:
+        (checkCandidate): Use explicit __strong for out argument types.
+
+        * Plugins/npapi.mm:
+        (pluginViewForInstance): Use a bridging cast.
+
+        * Storage/WebDatabaseManager.mm:
+        (-[WebDatabaseManager detailsForDatabase:withOrigin:]): Use modern boxing instead of
+        explicit NSNumber and NSDictionary calls.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::speak): Remove an unnecessary copy/autorelease pair.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::handleKeyboardEvent): Added a missing typecast.
+        (WebEditorClient::handleInputMethodKeydown): Ditto.
+
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::sourceApplicationAuditData const): Use a bridging cast.
+
+        * WebCoreSupport/WebSecurityOriginPrivate.h: Forward declare WebSecurityOriginPrivate
+        as a struct rather than an Objective-C class, since that's how it's defined.
+
+        * WebInspector/WebNodeHighlighter.mm: Added missing includes.
+
+        * WebView/WebFullScreenController.mm:
+        (-[WebFullScreenController enterFullScreen:]): Use a bridging cast.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _writeSelectionWithPasteboardTypes:toPasteboard:cachedAttributedString:]):
+        Ditto.
+        (-[WebHTMLView pasteboard:provideDataForType:]): Ditto.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController performHitTestAtPoint:]): Removed redundant code to
+        go down to the document and then back to the frame.
+        (-[WebImmediateActionController immediateActionRecognizerDidUpdateAnimation:]): Ditto.
+        (-[WebImmediateActionController immediateActionRecognizerDidCancelAnimation:]): Ditto.
+        (-[WebImmediateActionController immediateActionRecognizerDidCompleteAnimation:]): Ditto.
+
+        * WebView/WebJSPDFDoc.mm:
+        (jsPDFDocInitialize): Removed some unneeded type casting.
+        (jsPDFDocFinalize): Ditto.
+        (jsPDFDocPrint): Use a bridging cast.
+
+        * WebView/WebPDFView.mm:
+        (_applicationInfoForMIMEType): Use bridging casts.
+
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences _setIntegerValue:forKey:]): Use boxing and setObject directly
+        instead of methods from WebNSDictionaryExtras.
+        (-[WebPreferences _setUnsignedIntValue:forKey:]): Ditto.
+        (-[WebPreferences _setFloatValue:forKey:]): Ditto.
+        (-[WebPreferences _setBoolValue:forKey:]): Ditto.
+        (-[WebPreferences _setLongLongValue:forKey:]): Ditto.
+        (-[WebPreferences _setUnsignedLongLongValue:forKey:]): Ditto.
+
+        * WebView/WebView.mm:
+        (-[WebView _removeFromAllWebViewsSet]): Use bridging cast.
+        (-[WebView _addToAllWebViewsSet]): Ditto.
+        (+[WebView closeAllWebViews]): Use a modern for loop instead of NSEnumerator.
+        (-[WebView _windowVisibilityChanged:]): Moved this into the internal category
+        so it can be called from WebViewData methods.
+
+        * WebView/WebViewData.mm: Added an import so we can call an internal WebView
+        method, _windowVisibilityChanged:.
+
+        * WebView/WebViewInternal.h: Declared _windowVisibilityChanged: so it can be
+        called from WebViewData methods.
+
+2018-08-06  Alex Christensen  <achristensen@webkit.org>
+
+        Use enum classes and OptionSets for PaintPhase and PaintBehavior
+        https://bugs.webkit.org/show_bug.cgi?id=188323
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::imageForCurrentSharingServicePickerItem):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _paintBehaviorForDestinationContext:]):
+        (-[WebFrame _drawRect:contentsOnly:]):
+        * WebView/WebHTMLView.mm:
+        (imageFromRect):
+        (selectionImage):
+
+2018-08-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add support for microtasks in workers
+        https://bugs.webkit.org/show_bug.cgi?id=188246
+
+        Reviewed by Darin Adler.
+
+        Rename JSMainThreadExecState.h to JSExecState.h.
+
+        * DOM/DOMAttr.mm:
+        * DOM/DOMBlob.mm:
+        * DOM/DOMCDATASection.mm:
+        * DOM/DOMCSSCharsetRule.mm:
+        * DOM/DOMCSSFontFaceRule.mm:
+        * DOM/DOMCSSImportRule.mm:
+        * DOM/DOMCSSMediaRule.mm:
+        * DOM/DOMCSSPageRule.mm:
+        * DOM/DOMCSSPrimitiveValue.mm:
+        * DOM/DOMCSSRule.mm:
+        * DOM/DOMCSSRuleList.mm:
+        * DOM/DOMCSSStyleDeclaration.mm:
+        * DOM/DOMCSSStyleRule.mm:
+        * DOM/DOMCSSStyleSheet.mm:
+        * DOM/DOMCSSUnknownRule.mm:
+        * DOM/DOMCSSValue.mm:
+        * DOM/DOMCSSValueList.mm:
+        * DOM/DOMCharacterData.mm:
+        * DOM/DOMComment.mm:
+        * DOM/DOMCounter.mm:
+        * DOM/DOMDocument.mm:
+        * DOM/DOMDocumentFragment.mm:
+        * DOM/DOMDocumentType.mm:
+        * DOM/DOMElement.mm:
+        * DOM/DOMEvent.mm:
+        * DOM/DOMFile.mm:
+        * DOM/DOMFileList.mm:
+        * DOM/DOMHTML.mm:
+        * DOM/DOMHTMLAnchorElement.mm:
+        * DOM/DOMHTMLAppletElement.mm:
+        * DOM/DOMHTMLAreaElement.mm:
+        * DOM/DOMHTMLBRElement.mm:
+        * DOM/DOMHTMLBaseElement.mm:
+        * DOM/DOMHTMLBaseFontElement.mm:
+        * DOM/DOMHTMLBodyElement.mm:
+        * DOM/DOMHTMLButtonElement.mm:
+        * DOM/DOMHTMLCanvasElement.mm:
+        * DOM/DOMHTMLCollection.mm:
+        * DOM/DOMHTMLDListElement.mm:
+        * DOM/DOMHTMLDirectoryElement.mm:
+        * DOM/DOMHTMLDivElement.mm:
+        * DOM/DOMHTMLDocument.mm:
+        * DOM/DOMHTMLElement.mm:
+        * DOM/DOMHTMLEmbedElement.mm:
+        * DOM/DOMHTMLFieldSetElement.mm:
+        * DOM/DOMHTMLFontElement.mm:
+        * DOM/DOMHTMLFormElement.mm:
+        * DOM/DOMHTMLFrameElement.mm:
+        * DOM/DOMHTMLFrameSetElement.mm:
+        * DOM/DOMHTMLHRElement.mm:
+        * DOM/DOMHTMLHeadElement.mm:
+        * DOM/DOMHTMLHeadingElement.mm:
+        * DOM/DOMHTMLHtmlElement.mm:
+        * DOM/DOMHTMLIFrameElement.mm:
+        * DOM/DOMHTMLImageElement.mm:
+        * DOM/DOMHTMLInputElement.mm:
+        * DOM/DOMHTMLLIElement.mm:
+        * DOM/DOMHTMLLabelElement.mm:
+        * DOM/DOMHTMLLegendElement.mm:
+        * DOM/DOMHTMLLinkElement.mm:
+        * DOM/DOMHTMLMapElement.mm:
+        * DOM/DOMHTMLMarqueeElement.mm:
+        * DOM/DOMHTMLMediaElement.mm:
+        * DOM/DOMHTMLMenuElement.mm:
+        * DOM/DOMHTMLMetaElement.mm:
+        * DOM/DOMHTMLModElement.mm:
+        * DOM/DOMHTMLOListElement.mm:
+        * DOM/DOMHTMLObjectElement.mm:
+        * DOM/DOMHTMLOptGroupElement.mm:
+        * DOM/DOMHTMLOptionElement.mm:
+        * DOM/DOMHTMLOptionsCollection.mm:
+        * DOM/DOMHTMLParagraphElement.mm:
+        * DOM/DOMHTMLParamElement.mm:
+        * DOM/DOMHTMLPreElement.mm:
+        * DOM/DOMHTMLQuoteElement.mm:
+        * DOM/DOMHTMLScriptElement.mm:
+        * DOM/DOMHTMLSelectElement.mm:
+        * DOM/DOMHTMLStyleElement.mm:
+        * DOM/DOMHTMLTableCaptionElement.mm:
+        * DOM/DOMHTMLTableCellElement.mm:
+        * DOM/DOMHTMLTableColElement.mm:
+        * DOM/DOMHTMLTableElement.mm:
+        * DOM/DOMHTMLTableRowElement.mm:
+        * DOM/DOMHTMLTableSectionElement.mm:
+        * DOM/DOMHTMLTextAreaElement.mm:
+        * DOM/DOMHTMLTitleElement.mm:
+        * DOM/DOMHTMLUListElement.mm:
+        * DOM/DOMHTMLVideoElement.mm:
+        * DOM/DOMImplementation.mm:
+        * DOM/DOMKeyboardEvent.mm:
+        * DOM/DOMMediaError.mm:
+        * DOM/DOMMediaList.mm:
+        * DOM/DOMMouseEvent.mm:
+        * DOM/DOMMutationEvent.mm:
+        * DOM/DOMNamedNodeMap.mm:
+        * DOM/DOMNode.mm:
+        * DOM/DOMNodeIterator.mm:
+        * DOM/DOMNodeList.mm:
+        * DOM/DOMOverflowEvent.mm:
+        * DOM/DOMProcessingInstruction.mm:
+        * DOM/DOMProgressEvent.mm:
+        * DOM/DOMRGBColor.mm:
+        * DOM/DOMRange.mm:
+        * DOM/DOMRect.mm:
+        * DOM/DOMStyleSheet.mm:
+        * DOM/DOMStyleSheetList.mm:
+        * DOM/DOMText.mm:
+        * DOM/DOMTextEvent.mm:
+        * DOM/DOMTimeRanges.mm:
+        * DOM/DOMTokenList.mm:
+        * DOM/DOMTreeWalker.mm:
+        * DOM/DOMUIEvent.mm:
+        * DOM/DOMWheelEvent.mm:
+        * DOM/DOMXPathExpression.mm:
+        * DOM/DOMXPathResult.mm:
+        * DOM/ObjCEventListener.mm:
+
+2018-08-03  Alex Christensen  <achristensen@webkit.org>
+
+        Fix spelling of "overridden"
+        https://bugs.webkit.org/show_bug.cgi?id=188315
+
+        Reviewed by Darin Adler.
+
+        * Misc/WebKitVersionChecks.mm:
+        (setWebKitLinkTimeVersion):
+        (WebKitLinkTimeVersion):
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (-[WebBaseNetscapePluginView handleMouseMoved:]):
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::populate):
+
+2018-08-01  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM: Add ARIA IDL Attribute Reflection
+        https://bugs.webkit.org/show_bug.cgi?id=184676
+        <rdar://problem/39476882>
+
+        Reviewed by Chris Fleizach.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences ariaReflectionEnabled]):
+        (-[WebPreferences setAriaReflectionEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-07-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Shrink GraphicsLayerCA
+        https://bugs.webkit.org/show_bug.cgi?id=188141
+
+        Reviewed by Zalan Bujtas.
+
+        Shrink GraphicsLayerCA from 1040 to 880 bytes by:
+        * moving all the clone-related stuff into the lazily-allocated m_layerClones
+        * moving all the animation-related stuff into the lazily-allocated m_animations
+        * making enums be 8-bit
+        * re-ordering data members
+
+        * WebView/WebView.mm:
+        (-[WebView _setMediaLayer:forPluginView:]):
+
+2018-07-30  Rob Buis  <rbuis@igalia.com>
+
+        Merge PlatformCookieJar functions into NetworkStorageSession
+        https://bugs.webkit.org/show_bug.cgi?id=188137
+
+        Adapt callsites to use NetworkStorageSession instead of CookieJar functions.
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::cookiesForDOM):
+        (WebPlatformStrategies::setCookiesFromDOM):
+        (WebPlatformStrategies::cookiesEnabled):
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue):
+        (WebPlatformStrategies::getRawCookies):
+        (WebPlatformStrategies::deleteCookie):
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences _clearNetworkLoaderSession]):
+
+2018-07-28  Darin Adler  <darin@apple.com>
+
+        [Cocoa] Update more WebCore Objective-C code to be ARC compatible
+        https://bugs.webkit.org/show_bug.cgi?id=188140
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _animationControllerForText]): Updated to use the
+        new DictionaryLookup function that returns a tuple instead of using an out argument.
+
+2018-07-26  Andy VanWagoner  <andy@vanwagoner.family>
+
+        [INTL] Remove INTL sub-feature compile flags
+        https://bugs.webkit.org/show_bug.cgi?id=188081
+
+        Reviewed by Michael Catanzaro.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-07-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r234181 and r234189.
+        https://bugs.webkit.org/show_bug.cgi?id=188075
+
+        These are not needed right now (Requested by thorton on
+        #webkit).
+
+        Reverted changesets:
+
+        "Enable Web Content Filtering on watchOS"
+        https://bugs.webkit.org/show_bug.cgi?id=187979
+        https://trac.webkit.org/changeset/234181
+
+        "HAVE(PARENTAL_CONTROLS) should be true on watchOS"
+        https://bugs.webkit.org/show_bug.cgi?id=187985
+        https://trac.webkit.org/changeset/234189
+
+2018-07-26  Timothy Hatcher  <timothy@apple.com>
+
+        Use the Page's appearance when converting pasteboard attributed strings.
+        https://bugs.webkit.org/show_bug.cgi?id=188067
+        rdar://problem/42632246
+
+        Reviewed by Wenson Hsieh.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (_WebCreateFragment): Create a LocalDefaultSystemAppearance based on the Page.
+
+2018-07-25  Chris Dumez  <cdumez@apple.com>
+
+        navigator.userAgent may return outdated value after webView.customUserAgent is set
+        https://bugs.webkit.org/show_bug.cgi?id=188009
+        <rdar://problem/42566456>
+
+        Reviewed by Alex Christensen.
+
+        Let the page know when the user agent changes.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+        (-[WebView setApplicationNameForUserAgent:]):
+        (-[WebView _invalidateUserAgentCache]):
+        (-[WebView setCustomUserAgent:]):
+        * WebView/WebViewInternal.h:
+
+2018-07-24  Tim Horton  <timothy_horton@apple.com>
+
+        Enable Web Content Filtering on watchOS
+        https://bugs.webkit.org/show_bug.cgi?id=187979
+        <rdar://problem/42559346>
+
+        Reviewed by Wenson Hsieh.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-07-20  Ryosuke Niwa  <rniwa@apple.com>
+
+        Picking a color from the color panel for typing attributes needs to inverse transform through color-filter
+        https://bugs.webkit.org/show_bug.cgi?id=187846
+
+        Reviewed by Simon Fraser.
+
+        Invert the filtered font and background colors when using font panels, font pasteboard, and other Objective-C APIs.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _applyStyleToSelection:withUndoAction:]): Share code with _applyEditingStyleToSelection.
+        (-[WebHTMLView _applyEditingStyleToSelection:withUndoAction:]):
+
+2018-07-11  Dean Jackson  <dino@apple.com>
+
+        Allow removal of white backgrounds
+        https://bugs.webkit.org/show_bug.cgi?id=187574
+        <rdar://problem/41146792>
+
+        Reviewed by Simon Fraser.
+
+        Add a new WebPreference for punching out white backgrounds.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences punchOutWhiteBackgroundsInDarkMode]):
+        (-[WebPreferences setPunchOutWhiteBackgroundsInDarkMode:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
 2018-07-14  Kocsen Chung  <kocsen_chung@apple.com>
 
         Ensure WebKit stack is ad-hoc signed

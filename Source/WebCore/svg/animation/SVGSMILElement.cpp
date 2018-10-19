@@ -446,9 +446,7 @@ void SVGSMILElement::parseBeginOrEnd(const String& parseString, BeginOrEnd begin
     HashSet<double> existing;
     for (auto& time : timeList)
         existing.add(time.time().value());
-    Vector<String> splitString;
-    parseString.split(';', splitString);
-    for (auto& string : splitString) {
+    for (auto& string : parseString.split(';')) {
         SMILTime value = parseClockValue(string);
         if (value.isUnresolved())
             parseCondition(string, beginOrEnd);
@@ -469,6 +467,7 @@ bool SVGSMILElement::isSupportedAttribute(const QualifiedName& attrName)
         SVGNames::minAttr,
         SVGNames::maxAttr,
         SVGNames::attributeNameAttr,
+        SVGNames::hrefAttr,
         XLinkNames::hrefAttr,
     });
     return supportedAttributes.get().contains<SVGAttributeHashTranslator>(attrName);
@@ -521,7 +520,7 @@ void SVGSMILElement::svgAttributeChanged(const QualifiedName& attrName)
         m_cachedMax = invalidCachedTime;
     else if (attrName == SVGNames::attributeNameAttr)
         updateAttributeName();
-    else if (attrName.matches(XLinkNames::hrefAttr)) {
+    else if (attrName.matches(SVGNames::hrefAttr) || attrName.matches(XLinkNames::hrefAttr)) {
         InstanceInvalidationGuard guard(*this);
         buildPendingResource();
     } else if (isConnected()) {

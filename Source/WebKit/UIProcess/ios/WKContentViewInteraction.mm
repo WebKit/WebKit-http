@@ -111,6 +111,10 @@
 #import <pal/spi/ios/GraphicsServicesSPI.h>
 #endif
 
+#if ENABLE(INPUT_TYPE_COLOR)
+#import "WKFormColorControl.h"
+#endif
+
 @interface UIEvent(UIEventInternal)
 @property (nonatomic, assign) UIKeyboardInputFlags _inputFlags;
 @end
@@ -477,6 +481,11 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     case WebKit::InputType::Select:
         _type = WKInputTypeSelect;
         break;
+#if ENABLE(INPUT_TYPE_COLOR)
+    case WebKit::InputType::Color:
+        _type = WKInputTypeColor;
+        break;
+#endif
     case WebKit::InputType::None:
         _type = WKInputTypeNone;
         break;
@@ -612,6 +621,8 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
         [_interactionViewsContainerView layer].anchorPoint = CGPointZero;
         [self.superview addSubview:_interactionViewsContainerView.get()];
     }
+
+    _keyboardScrollingAnimator = adoptNS([[WKKeyboardScrollingAnimator alloc] initWithScrollable:self]);
 
     [self.layer addObserver:self forKeyPath:@"transform" options:NSKeyValueObservingOptionInitial context:nil];
 
@@ -769,6 +780,9 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     
     _inputViewUpdateDeferrer = nullptr;
     _assistedNodeInformation = { };
+    
+    [_keyboardScrollingAnimator invalidate];
+    _keyboardScrollingAnimator = nil;
 }
 
 - (void)_removeDefaultGestureRecognizers
@@ -799,7 +813,7 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
 #endif
 }
 
-- (UIView*)unscaledView
+- (UIView *)unscaledView
 {
     return _interactionViewsContainerView.get();
 }
@@ -899,7 +913,7 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
 
 - (id <UITextInputDelegate>)inputDelegate
 {
-    return _inputDelegate;
+    return _inputDelegate.getAutoreleased();
 }
 
 - (CGPoint)lastInteractionLocation
@@ -959,6 +973,9 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
         SetForScope<BOOL> becomingFirstResponder { _becomingFirstResponder, YES };
         didBecomeFirstResponder = [super becomeFirstResponder];
     }
+
+    if (didBecomeFirstResponder && [self canShowNonEmptySelectionView])
+        [_textSelectionAssistant activateSelection];
 
     return didBecomeFirstResponder;
 }
@@ -1256,6 +1273,9 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     case InputType::None:
         return NO;
     case InputType::Select:
+#if ENABLE(INPUT_TYPE_COLOR)
+    case InputType::Color:
+#endif
         return !currentUserInterfaceIdiomIsPad();
     case InputType::Date:
     case InputType::Month:
@@ -1296,9 +1316,21 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     if (!hasAssistedNode(_assistedNodeInformation))
         return nil;
 
-    if (!_inputPeripheral)
-        _inputPeripheral = adoptNS(_assistedNodeInformation.elementType == InputType::Select ? [[WKFormSelectControl alloc] initWithView:self] : [[WKFormInputControl alloc] initWithView:self]);
-    else
+    if (!_inputPeripheral) {
+        switch (_assistedNodeInformation.elementType) {
+        case InputType::Select:
+            _inputPeripheral = adoptNS([[WKFormSelectControl alloc] initWithView:self]);
+            break;
+#if ENABLE(INPUT_TYPE_COLOR)
+        case InputType::Color:
+            _inputPeripheral = adoptNS([[WKFormColorControl alloc] initWithView:self]);
+            break;
+#endif
+        default:
+            _inputPeripheral = adoptNS([[WKFormInputControl alloc] initWithView:self]);
+            break;
+        }
+    } else
         [self _displayFormNodeInputView];
 
     return [_formInputSession customInputView] ?: [_inputPeripheral assistantView];
@@ -1645,6 +1677,15 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
                          if (finished)
                              [_highlightView removeFromSuperview];
                      }];
+}
+
+- (BOOL)canShowNonEmptySelectionView
+{
+    if (self.suppressAssistantSelectionView)
+        return NO;
+
+    auto& state = _page->editorState();
+    return !state.isMissingPostLayoutData && !state.selectionIsNone;
 }
 
 - (BOOL)hasSelectablePositionAtPoint:(CGPoint)point
@@ -2034,6 +2075,9 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     case InputType::Month:
     case InputType::Week:
     case InputType::Time:
+#if ENABLE(INPUT_TYPE_COLOR)
+    case InputType::Color:
+#endif
         return !currentUserInterfaceIdiomIsPad();
     }
 }
@@ -3611,21 +3655,22 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (void)handleKeyWebEvent:(::WebEvent *)theEvent
 {
+    if ([_keyboardScrollingAnimator handleKeyEvent:theEvent])
+        return;
+
     _page->handleKeyboardEvent(NativeWebKeyboardEvent(theEvent));
 }
 
 - (void)handleKeyWebEvent:(::WebEvent *)theEvent withCompletionHandler:(void (^)(::WebEvent *theEvent, BOOL wasHandled))completionHandler
 {
-    _keyWebEventHandler = [completionHandler copy];
+    _keyWebEventHandler = makeBlockPtr(completionHandler);
     _page->handleKeyboardEvent(NativeWebKeyboardEvent(theEvent));
 }
 
 - (void)_didHandleKeyEvent:(::WebEvent *)event eventWasHandled:(BOOL)eventWasHandled
 {
-    if (_keyWebEventHandler) {
-        _keyWebEventHandler(event, eventWasHandled);
-        [_keyWebEventHandler release];
-        _keyWebEventHandler = nil;
+    if (auto handler = WTFMove(_keyWebEventHandler)) {
+        handler(event, eventWasHandled);
         return;
     }
         
@@ -3649,73 +3694,6 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     _uiEventBeingResent = nil;
 }
 
-- (std::optional<FloatPoint>)_scrollOffsetForEvent:(::WebEvent *)event
-{
-    static const unsigned kWebSpaceKey = 0x20;
-
-    if (_page->editorState().isContentEditable)
-        return std::nullopt;
-    
-    if (_assistedNodeInformation.elementType == InputType::Select)
-        return std::nullopt;
-
-    NSString *charactersIgnoringModifiers = event.charactersIgnoringModifiers;
-    if (!charactersIgnoringModifiers.length)
-        return std::nullopt;
-
-    enum ScrollingIncrement { Document, Page, Line };
-    enum ScrollingDirection { Up, Down, Left, Right };
-
-    auto computeOffset = ^(ScrollingIncrement increment, ScrollingDirection direction) {
-        bool isHorizontal = (direction == Left || direction == Right);
-
-        CGFloat scrollDistance = ^ CGFloat {
-            switch (increment) {
-            case Document:
-                ASSERT(!isHorizontal);
-                return self.bounds.size.height;
-            case Page:
-                ASSERT(!isHorizontal);
-                return Scrollbar::pageStep(_page->unobscuredContentRect().height(), self.bounds.size.height);
-            case Line:
-                return Scrollbar::pixelsPerLineStep();
-            }
-            ASSERT_NOT_REACHED();
-            return 0;
-        }();
-
-        if (direction == Up || direction == Left)
-            scrollDistance = -scrollDistance;
-        
-        return (isHorizontal ? FloatPoint(scrollDistance, 0) : FloatPoint(0, scrollDistance));
-    };
-
-    if ([charactersIgnoringModifiers isEqualToString:UIKeyInputLeftArrow])
-        return computeOffset(Line, Left);
-    if ([charactersIgnoringModifiers isEqualToString:UIKeyInputRightArrow])
-        return computeOffset(Line, Right);
-
-    ScrollingIncrement incrementForVerticalArrowKey = Line;
-    if (event.modifierFlags & WebEventFlagMaskAlternate)
-        incrementForVerticalArrowKey = Page;
-    else if (event.modifierFlags & WebEventFlagMaskCommand)
-        incrementForVerticalArrowKey = Document;
-    if ([charactersIgnoringModifiers isEqualToString:UIKeyInputUpArrow])
-        return computeOffset(incrementForVerticalArrowKey, Up);
-    if ([charactersIgnoringModifiers isEqualToString:UIKeyInputDownArrow])
-        return computeOffset(incrementForVerticalArrowKey, Down);
-
-    if ([charactersIgnoringModifiers isEqualToString:UIKeyInputPageDown])
-        return computeOffset(Page, Down);
-    if ([charactersIgnoringModifiers isEqualToString:UIKeyInputPageUp])
-        return computeOffset(Page, Up);
-
-    if ([charactersIgnoringModifiers characterAtIndex:0] == kWebSpaceKey)
-        return computeOffset(Page, (event.modifierFlags & WebEventFlagMaskShift) ? Up : Down);
-
-    return std::nullopt;
-}
-
 - (BOOL)_interpretKeyEvent:(::WebEvent *)event isCharEvent:(BOOL)isCharEvent
 {
     static const unsigned kWebEnterKey = 0x0003;
@@ -3730,10 +3708,8 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     if (!contentEditable && event.isTabKey)
         return NO;
 
-    if (std::optional<FloatPoint> scrollOffset = [self _scrollOffsetForEvent:event]) {
-        [_webView _scrollByContentOffset:*scrollOffset];
+    if ([_keyboardScrollingAnimator beginWithEvent:event])
         return YES;
-    }
 
     UIKeyboardImpl *keyboard = [UIKeyboardImpl sharedInstance];
     NSString *characters = event.characters;
@@ -3779,6 +3755,36 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     }
 
     return NO;
+}
+
+- (BOOL)isKeyboardScrollable
+{
+    if (_page->editorState().isContentEditable)
+        return NO;
+
+    if (_assistedNodeInformation.elementType == InputType::Select)
+        return NO;
+
+    return YES;
+}
+
+- (CGFloat)distanceForScrollingIncrement:(ScrollingIncrement)increment
+{
+    switch (increment) {
+    case ScrollingIncrement::Document:
+        return self.bounds.size.height;
+    case ScrollingIncrement::Page:
+        return WebCore::Scrollbar::pageStep(_page->unobscuredContentRect().height(), self.bounds.size.height);
+    case ScrollingIncrement::Line:
+        return WebCore::Scrollbar::pixelsPerLineStep();
+    }
+    ASSERT_NOT_REACHED();
+    return 0;
+}
+
+- (void)scrollByContentOffset:(WebCore::FloatPoint)offset animated:(BOOL)animated
+{
+    [_webView _scrollByContentOffset:offset animated:animated];
 }
 
 - (void)executeEditCommandWithCallback:(NSString *)commandName
@@ -4035,6 +4041,9 @@ static bool isAssistableInputType(InputType type)
     case InputType::Week:
     case InputType::Time:
     case InputType::Select:
+#if ENABLE(INPUT_TYPE_COLOR)
+    case InputType::Color:
+#endif
         return true;
 
     case InputType::None:
@@ -4140,6 +4149,9 @@ static bool isAssistableInputType(InputType type)
     case InputType::Time:
     case InputType::Month:
     case InputType::Date:
+#if ENABLE(INPUT_TYPE_COLOR)
+    case InputType::Color:
+#endif
         break;
     default:
         [self _startAssistingKeyboard];
@@ -4396,6 +4408,9 @@ static bool isAssistableInputType(InputType type)
     case InputType::Select:
     case InputType::Time:
     case InputType::Date:
+#if ENABLE(INPUT_TYPE_COLOR)
+    case InputType::Color:
+#endif
         return nil;
     case InputType::Search:
         return formControlSearchButtonTitle();
@@ -5254,9 +5269,9 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 {
     id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
     if ([uiDelegate respondsToSelector:@selector(_webView:previewForLiftingItem:session:)]) {
-        UITargetedDragPreview *overridenPreview = [uiDelegate _webView:_webView previewForLiftingItem:item session:session];
-        if (overridenPreview)
-            return overridenPreview;
+        UITargetedDragPreview *overriddenPreview = [uiDelegate _webView:_webView previewForLiftingItem:item session:session];
+        if (overriddenPreview)
+            return overriddenPreview;
     }
     return _dragDropInteractionState.previewForDragItem(item, self, self.unscaledView);
 }
@@ -5318,9 +5333,9 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 {
     id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
     if ([uiDelegate respondsToSelector:@selector(_webView:previewForCancellingItem:withDefault:)]) {
-        UITargetedDragPreview *overridenPreview = [uiDelegate _webView:_webView previewForCancellingItem:item withDefault:defaultPreview];
-        if (overridenPreview)
-            return overridenPreview;
+        UITargetedDragPreview *overriddenPreview = [uiDelegate _webView:_webView previewForCancellingItem:item withDefault:defaultPreview];
+        if (overriddenPreview)
+            return overriddenPreview;
     }
     return _dragDropInteractionState.previewForDragItem(item, self, self.unscaledView);
 }

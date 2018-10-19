@@ -33,6 +33,7 @@ if (USE_COORDINATED_GRAPHICS)
         platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp
         platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp
 
+        platform/graphics/texmap/coordinated/CoordinatedBackingStore.cpp
         platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
         platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
         platform/graphics/texmap/coordinated/Tile.cpp
@@ -43,6 +44,7 @@ if (USE_COORDINATED_GRAPHICS)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/nicosia"
         "${WEBCORE_DIR}/platform/graphics/nicosia/cairo"
+        "${WEBCORE_DIR}/platform/graphics/nicosia/texmap"
     )
     list(APPEND WebCore_SOURCES
         platform/graphics/nicosia/NicosiaBuffer.cpp
@@ -51,9 +53,14 @@ if (USE_COORDINATED_GRAPHICS)
         platform/graphics/nicosia/NicosiaPaintingEngineBasic.cpp
         platform/graphics/nicosia/NicosiaPaintingEngineThreaded.cpp
         platform/graphics/nicosia/NicosiaPlatformLayer.cpp
+        platform/graphics/nicosia/NicosiaScene.cpp
 
         platform/graphics/nicosia/cairo/NicosiaCairoOperationRecorder.cpp
         platform/graphics/nicosia/cairo/NicosiaPaintingContextCairo.cpp
+
+        platform/graphics/nicosia/texmap/NicosiaCompositionLayerTextureMapperImpl.cpp
+        platform/graphics/nicosia/texmap/NicosiaContentLayerTextureMapperImpl.cpp
+        platform/graphics/nicosia/texmap/NicosiaGC3DLayer.cpp
     )
 else ()
     list(APPEND WebCore_SOURCES

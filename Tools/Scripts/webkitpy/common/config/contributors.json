@@ -23,7 +23,8 @@
       ],
       "nicks" : [
          "aaron_chu"
-      ]
+      ],
+      "status" : "committer"
    },
    "Aaron Colwell" : {
       "emails" : [
@@ -5206,6 +5207,15 @@
       ],
       "status" : "committer"
    },
+   "Stephan Szabo" : {
+      "emails" : [
+         "stephan.szabo@sony.com"
+      ],
+      "nicks" : [
+         "szabos1"
+      ],
+      "status" : "committer"
+   },
    "Stephanie Lewis" : {
       "emails" : [
          "slewis@apple.com"
@@ -5602,6 +5612,12 @@
       ],
       "status" : "committer"
    },
+   "Truitt Savell" : {
+      "emails" : [
+         "tsavell@apple.com"
+      ],
+      "status" : "committer"
+   },
    "Ulrike Rausch" : {
       "emails" : [
          "ich@liebefonts.com"
@@ -5948,6 +5964,7 @@
    },
    "Yusuke Suzuki" : {
       "emails" : [
+         "yusukesuzuki@slowstart.org",
          "utatane.tea@gmail.com"
       ],
       "expertise" : "JIT Compilers, CSS JIT, JavaScript/ECMAScript",

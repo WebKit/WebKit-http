@@ -44,7 +44,7 @@ class FloatSize;
 class PlaybackSessionInterfaceMac;
 class VideoFullscreenChangeObserver;
 
-class WEBCORE_EXPORT VideoFullscreenInterfaceMac
+class VideoFullscreenInterfaceMac
     : public VideoFullscreenModelClient
     , private PlaybackSessionModelClient
     , public RefCounted<VideoFullscreenInterfaceMac> {
@@ -55,6 +55,7 @@ public:
         return adoptRef(*new VideoFullscreenInterfaceMac(playbackSessionInterface));
     }
     virtual ~VideoFullscreenInterfaceMac();
+    PlaybackSessionInterfaceMac& playbackSessionInterface() const { return m_playbackSessionInterface.get(); }
     VideoFullscreenModel* videoFullscreenModel() const { return m_videoFullscreenModel; }
     PlaybackSessionModel* playbackSessionModel() const { return m_playbackSessionInterface->playbackSessionModel(); }
     WEBCORE_EXPORT void setVideoFullscreenModel(VideoFullscreenModel*);
@@ -83,18 +84,20 @@ public:
     HTMLMediaElementEnums::VideoFullscreenMode mode() const { return m_mode; }
     bool hasMode(HTMLMediaElementEnums::VideoFullscreenMode mode) const { return m_mode & mode; }
     bool isMode(HTMLMediaElementEnums::VideoFullscreenMode mode) const { return m_mode == mode; }
-    void setMode(HTMLMediaElementEnums::VideoFullscreenMode);
+    WEBCORE_EXPORT void setMode(HTMLMediaElementEnums::VideoFullscreenMode);
     void clearMode(HTMLMediaElementEnums::VideoFullscreenMode);
 
-    bool isPlayingVideoInEnhancedFullscreen() const;
+    WEBCORE_EXPORT bool isPlayingVideoInEnhancedFullscreen() const;
 
     bool mayAutomaticallyShowVideoPictureInPicture() const { return false; }
     void applicationDidBecomeActive() { }
 
     WEBCORE_EXPORT WebVideoFullscreenInterfaceMacObjC *videoFullscreenInterfaceObjC();
 
+    WEBCORE_EXPORT void requestHideAndExitPiP();
+
 private:
-    VideoFullscreenInterfaceMac(PlaybackSessionInterfaceMac&);
+    WEBCORE_EXPORT VideoFullscreenInterfaceMac(PlaybackSessionInterfaceMac&);
     Ref<PlaybackSessionInterfaceMac> m_playbackSessionInterface;
     VideoFullscreenModel* m_videoFullscreenModel { nullptr };
     VideoFullscreenChangeObserver* m_fullscreenChangeObserver { nullptr };

@@ -148,7 +148,7 @@ void PageClientImpl::didChangeViewportProperties(const WebCore::ViewportAttribut
     notImplemented();
 }
 
-void PageClientImpl::registerEditCommand(Ref<WebEditCommandProxy>&& command, WebPageProxy::UndoOrRedo undoOrRedo)
+void PageClientImpl::registerEditCommand(Ref<WebEditCommandProxy>&& command, UndoOrRedo undoOrRedo)
 {
     m_undoController.registerEditCommand(WTFMove(command), undoOrRedo);
 }
@@ -158,12 +158,12 @@ void PageClientImpl::clearAllEditCommands()
     m_undoController.clearAllEditCommands();
 }
 
-bool PageClientImpl::canUndoRedo(WebPageProxy::UndoOrRedo undoOrRedo)
+bool PageClientImpl::canUndoRedo(UndoOrRedo undoOrRedo)
 {
     return m_undoController.canUndoRedo(undoOrRedo);
 }
 
-void PageClientImpl::executeUndoRedo(WebPageProxy::UndoOrRedo undoOrRedo)
+void PageClientImpl::executeUndoRedo(UndoOrRedo undoOrRedo)
 {
     m_undoController.executeUndoRedo(undoOrRedo);
 }
@@ -217,7 +217,7 @@ Ref<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy& pa
     return WebContextMenuProxyGtk::create(m_viewWidget, page, WTFMove(context), userData);
 }
 
-RefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy* page, const WebCore::Color& color, const WebCore::IntRect& rect)
+RefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy* page, const WebCore::Color& color, const WebCore::IntRect& rect, Vector<WebCore::Color>&&)
 {
     if (WEBKIT_IS_WEB_VIEW(m_viewWidget))
         return WebKitColorChooser::create(*page, color, rect);

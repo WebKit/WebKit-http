@@ -692,17 +692,15 @@ void Element::scrollIntoViewIfNotVisible(bool centerIfNotVisible)
 
 void Element::scrollBy(const ScrollToOptions& options)
 {
-    return scrollBy(options.left.value_or(0), options.top.value_or(0));
-}
-
-static inline double normalizeNonFiniteValue(double f)
-{
-    return std::isfinite(f) ? f : 0;
+    ScrollToOptions scrollToOptions = normalizeNonFiniteCoordinatesOrFallBackTo(options, 0, 0);
+    scrollToOptions.left.value() += scrollLeft();
+    scrollToOptions.top.value() += scrollTop();
+    scrollTo(scrollToOptions);
 }
 
 void Element::scrollBy(double x, double y)
 {
-    scrollTo(scrollLeft() + normalizeNonFiniteValue(x), scrollTop() + normalizeNonFiniteValue(y));
+    scrollBy({ x, y });
 }
 
 void Element::scrollTo(const ScrollToOptions& options, ScrollClamping clamping)
@@ -720,12 +718,12 @@ void Element::scrollTo(const ScrollToOptions& options, ScrollClamping clamping)
     if (!renderer || !renderer->hasOverflowClip())
         return;
 
-    // Normalize non-finite values for left and top dictionary members of options, if present.
-    double x = options.left ? normalizeNonFiniteValue(options.left.value()) : adjustForAbsoluteZoom(renderer->scrollLeft(), *renderer);
-    double y = options.top ? normalizeNonFiniteValue(options.top.value()) : adjustForAbsoluteZoom(renderer->scrollTop(), *renderer);
-
-    renderer->setScrollLeft(clampToInteger(x * renderer->style().effectiveZoom()), clamping);
-    renderer->setScrollTop(clampToInteger(y * renderer->style().effectiveZoom()), clamping);
+    ScrollToOptions scrollToOptions = normalizeNonFiniteCoordinatesOrFallBackTo(options,
+        adjustForAbsoluteZoom(renderer->scrollLeft(), *renderer),
+        adjustForAbsoluteZoom(renderer->scrollTop(), *renderer)
+    );
+    renderer->setScrollLeft(clampToInteger(scrollToOptions.left.value() * renderer->style().effectiveZoom()), clamping);
+    renderer->setScrollTop(clampToInteger(scrollToOptions.top.value() * renderer->style().effectiveZoom()), clamping);
 }
 
 void Element::scrollTo(double x, double y)
@@ -1474,7 +1472,7 @@ URL Element::absoluteLinkURL() const
 
     AtomicString linkAttribute;
     if (hasTagName(SVGNames::aTag))
-        linkAttribute = getAttribute(XLinkNames::hrefAttr);
+        linkAttribute = getAttribute(SVGNames::hrefAttr, XLinkNames::hrefAttr);
     else
         linkAttribute = getAttribute(HTMLNames::hrefAttr);
 
@@ -1747,8 +1745,10 @@ Node::InsertedIntoAncestorResult Element::insertedIntoAncestor(InsertionType ins
     }
 
     if (becomeConnected) {
-        if (UNLIKELY(isCustomElementUpgradeCandidate()))
+        if (UNLIKELY(isCustomElementUpgradeCandidate())) {
+            ASSERT(isConnected());
             CustomElementReactionQueue::enqueueElementUpgradeIfDefined(*this);
+        }
         if (UNLIKELY(isDefinedCustomElement()))
             CustomElementReactionQueue::enqueueConnectedCallbackIfNeeded(*this);
     }
@@ -1827,7 +1827,7 @@ void Element::removedFromAncestor(RemovalType removalType, ContainerNode& oldPar
     RefPtr<Frame> frame = document().frame();
     if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
         if (auto* timeline = document().existingTimeline())
-            timeline->removeAnimationsForElement(*this);
+            timeline->elementWasRemoved(*this);
     } else if (frame)
         frame->animation().cancelAnimations(*this);
 
@@ -2007,10 +2007,10 @@ void Element::enqueueToUpgrade(JSCustomElementInterface& elementInterface)
     InspectorInstrumentation::didChangeCustomElementState(*this);
 
     auto& data = ensureElementRareData();
-    ASSERT(!data.customElementReactionQueue());
-
-    data.setCustomElementReactionQueue(std::make_unique<CustomElementReactionQueue>(elementInterface));
-    data.customElementReactionQueue()->enqueueElementUpgrade(*this);
+    bool alreadyScheduledToUpgrade = data.customElementReactionQueue();
+    if (!alreadyScheduledToUpgrade)
+        data.setCustomElementReactionQueue(std::make_unique<CustomElementReactionQueue>(elementInterface));
+    data.customElementReactionQueue()->enqueueElementUpgrade(*this, alreadyScheduledToUpgrade);
 }
 
 CustomElementReactionQueue* Element::reactionQueue() const

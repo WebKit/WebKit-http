@@ -361,7 +361,7 @@ public:
 #endif
     FontSelectionValue fontWeight() const { return fontDescription().weight(); }
     FontSelectionValue fontStretch() const { return fontDescription().stretch(); }
-    FontSelectionValue fontItalic() const { return fontDescription().italic(); }
+    std::optional<FontSelectionValue> fontItalic() const { return fontDescription().italic(); }
 
     const Length& textIndent() const { return m_rareInheritedData->indent; }
     TextAlignMode textAlign() const { return static_cast<TextAlignMode>(m_inheritedFlags.textAlign); }
@@ -683,8 +683,6 @@ public:
     
     LineBoxContain lineBoxContain() const { return m_rareInheritedData->lineBoxContain; }
     const LineClampValue& lineClamp() const { return m_rareNonInheritedData->lineClamp; }
-    const LinesClampValue& linesClamp() const { return m_rareNonInheritedData->linesClamp; }
-    bool hasLinesClamp() const { return !linesClamp().start().isNone(); }
     const IntSize& initialLetter() const { return m_rareNonInheritedData->initialLetter; }
     int initialLetterDrop() const { return initialLetter().width(); }
     int initialLetterHeight() const { return initialLetter().height(); }
@@ -768,14 +766,14 @@ public:
 
 #if ENABLE(CSS_COMPOSITING)
     BlendMode blendMode() const { return static_cast<BlendMode>(m_rareNonInheritedData->effectiveBlendMode); }
-    void setBlendMode(BlendMode mode) { SET_VAR(m_rareNonInheritedData, effectiveBlendMode, mode); }
-    bool hasBlendMode() const { return static_cast<BlendMode>(m_rareNonInheritedData->effectiveBlendMode) != BlendModeNormal; }
+    void setBlendMode(BlendMode mode) { SET_VAR(m_rareNonInheritedData, effectiveBlendMode, static_cast<unsigned>(mode)); }
+    bool hasBlendMode() const { return static_cast<BlendMode>(m_rareNonInheritedData->effectiveBlendMode) != BlendMode::Normal; }
 
     Isolation isolation() const { return static_cast<Isolation>(m_rareNonInheritedData->isolation); }
     void setIsolation(Isolation isolation) { SET_VAR(m_rareNonInheritedData, isolation, static_cast<unsigned>(isolation)); }
     bool hasIsolation() const { return isolation() != Isolation::Auto; }
 #else
-    BlendMode blendMode() const { return BlendModeNormal; }
+    BlendMode blendMode() const { return BlendMode::Normal; }
     bool hasBlendMode() const { return false; }
 
     Isolation isolation() const { return Isolation::Auto; }
@@ -910,7 +908,7 @@ public:
 #endif
     void setFontWeight(FontSelectionValue);
     void setFontStretch(FontSelectionValue);
-    void setFontItalic(FontSelectionValue);
+    void setFontItalic(std::optional<FontSelectionValue>);
 
     void setColor(const Color&);
     void setTextIndent(Length&& length) { SET_VAR(m_rareInheritedData, indent, WTFMove(length)); }
@@ -1201,7 +1199,6 @@ public:
 
     void setLineBoxContain(LineBoxContain c) { SET_VAR(m_rareInheritedData, lineBoxContain, c); }
     void setLineClamp(LineClampValue c) { SET_VAR(m_rareNonInheritedData, lineClamp, c); }
-    void setLinesClamp(const LinesClampValue& c) { SET_VAR(m_rareNonInheritedData, linesClamp, c); }
     
     void setInitialLetter(const IntSize& size) { SET_VAR(m_rareNonInheritedData, initialLetter, size); }
     
@@ -1647,7 +1644,6 @@ public:
 
     static IntSize initialInitialLetter() { return IntSize(); }
     static LineClampValue initialLineClamp() { return LineClampValue(); }
-    static LinesClampValue initialLinesClamp() { return LinesClampValue(); }
     static TextSecurity initialTextSecurity() { return TextSecurity::None; }
 
 #if PLATFORM(IOS)
@@ -1675,7 +1671,7 @@ public:
 #endif
 
 #if ENABLE(CSS_COMPOSITING)
-    static BlendMode initialBlendMode() { return BlendModeNormal; }
+    static BlendMode initialBlendMode() { return BlendMode::Normal; }
     static Isolation initialIsolation() { return Isolation::Auto; }
 #endif
 
@@ -2044,13 +2040,13 @@ inline bool RenderStyle::breakOnlyAfterWhiteSpace() const
 
 inline bool RenderStyle::breakWords() const
 {
-    return wordBreak() == WordBreak::Break || overflowWrap() == OverflowWrap::Break;
+    return wordBreak() == WordBreak::BreakWord || overflowWrap() == OverflowWrap::Break;
 }
 
 inline bool RenderStyle::hasInlineColumnAxis() const
 {
     auto axis = columnAxis();
-    return (axis == ColumnAxis::Auto || isHorizontalWritingMode() == (axis == ColumnAxis::Horizontal)) && !hasLinesClamp();
+    return axis == ColumnAxis::Auto || isHorizontalWritingMode() == (axis == ColumnAxis::Horizontal);
 }
 
 inline ImageOrientationEnum RenderStyle::imageOrientation() const

@@ -78,12 +78,22 @@ private:
 #endif // USE(OS_LOG)
 
 struct SignalContext {
-    SignalContext(PlatformRegisters& registers)
+private:
+    SignalContext(PlatformRegisters& registers, MacroAssemblerCodePtr<PlatformRegistersPCPtrTag> machinePC)
         : registers(registers)
-        , machinePC(MachineContext::instructionPointer(registers))
+        , machinePC(machinePC)
         , stackPointer(MachineContext::stackPointer(registers))
         , framePointer(MachineContext::framePointer(registers))
     { }
+
+public:
+    static std::optional<SignalContext> tryCreate(PlatformRegisters& registers)
+    {
+        auto instructionPointer = MachineContext::instructionPointer(registers);
+        if (!instructionPointer)
+            return std::nullopt;
+        return SignalContext(registers, *instructionPointer);
+    }
 
     void dump()
     {
@@ -132,13 +142,13 @@ struct SignalContext {
             MachineContext::linkRegister(registers).untaggedExecutableAddress<uint64_t>());
         log("sp: %016llx pc: %016llx cpsr: %08x",
             MachineContext::stackPointer<uint64_t>(registers),
-            MachineContext::instructionPointer(registers).untaggedExecutableAddress<uint64_t>(),
+            machinePC.untaggedExecutableAddress<uint64_t>(),
             registers.__cpsr);
 #endif
     }
 
     PlatformRegisters& registers;
-    MacroAssemblerCodePtr<CFunctionPtrTag> machinePC;
+    MacroAssemblerCodePtr<PlatformRegistersPCPtrTag> machinePC;
     void* stackPointer;
     void* framePointer;
 };
@@ -147,14 +157,16 @@ static void installCrashHandler()
 {
 #if CPU(X86_64) || CPU(ARM64)
     installSignalHandler(Signal::Ill, [] (Signal, SigInfo&, PlatformRegisters& registers) {
-        SignalContext context(registers);
-
-        void* machinePC = context.machinePC.untaggedExecutableAddress();
+        auto signalContext = SignalContext::tryCreate(registers);
+        if (!signalContext)
+            return SignalAction::NotHandled;
+            
+        void* machinePC = signalContext->machinePC.untaggedExecutableAddress();
         if (!isJITPC(machinePC))
             return SignalAction::NotHandled;
 
         SigillCrashAnalyzer& analyzer = SigillCrashAnalyzer::instance();
-        analyzer.analyze(context);
+        analyzer.analyze(*signalContext);
         return SignalAction::NotHandled;
     });
 #endif
@@ -169,7 +181,7 @@ struct SignalContext {
 
     void dump() { }
 
-    MacroAssemblerCodePtr<CFunctionPtrTag> machinePC;
+    MacroAssemblerCodePtr<PlatformRegistersPCPtrTag> machinePC;
     void* stackPointer;
     void* framePointer;
 };

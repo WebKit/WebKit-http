@@ -110,7 +110,9 @@ int webProcessLatencyQOS();
 int webProcessThroughputQOS();
 #endif
 
-class WebProcessPool final : public API::ObjectImpl<API::Object::Type::ProcessPool>, private IPC::MessageReceiver {
+enum class ShouldProcessSwapIfPossible;
+
+class WebProcessPool final : public API::ObjectImpl<API::Object::Type::ProcessPool>, public CanMakeWeakPtr<WebProcessPool>, private IPC::MessageReceiver {
 public:
     static Ref<WebProcessPool> create(API::ProcessPoolConfiguration&);
 
@@ -153,6 +155,12 @@ public:
 
     void setMaximumNumberOfProcesses(unsigned); // Can only be called when there are no processes running.
     unsigned maximumNumberOfProcesses() const { return !m_configuration->maximumProcessCount() ? UINT_MAX : m_configuration->maximumProcessCount(); }
+
+    void setMaximumNumberOfPrewarmedProcesses(unsigned); // Can only be called when there are no processes running.
+    unsigned maximumNumberOfPrewarmedProcesses() const { return m_configuration->maximumPrewarmedProcessCount(); }
+
+    void setCustomWebContentServiceBundleIdentifier(const String&);
+    const String& customWebContentServiceBundleIdentifier() { return m_configuration->customWebContentServiceBundleIdentifier(); }
 
     const Vector<RefPtr<WebProcessProxy>>& processes() const { return m_processes; }
 
@@ -452,7 +460,7 @@ public:
     BackgroundWebProcessToken backgroundWebProcessToken() const { return BackgroundWebProcessToken(m_backgroundWebProcessCounter.count()); }
 #endif
 
-    Ref<WebProcessProxy> processForNavigation(WebPageProxy&, const API::Navigation&, WebCore::PolicyAction&);
+    Ref<WebProcessProxy> processForNavigation(WebPageProxy&, const API::Navigation&, ShouldProcessSwapIfPossible, WebCore::PolicyAction&);
     void registerSuspendedPageProxy(SuspendedPageProxy&);
     void unregisterSuspendedPageProxy(SuspendedPageProxy&);
     void didReachGoodTimeToPrewarm();
@@ -470,7 +478,7 @@ private:
     void platformInitializeWebProcess(WebProcessCreationParameters&);
     void platformInvalidateContext();
 
-    Ref<WebProcessProxy> processForNavigationInternal(WebPageProxy&, const API::Navigation&, WebCore::PolicyAction&);
+    Ref<WebProcessProxy> processForNavigationInternal(WebPageProxy&, const API::Navigation&, ShouldProcessSwapIfPossible, WebCore::PolicyAction&);
 
     RefPtr<WebProcessProxy> tryTakePrewarmedProcess(WebsiteDataStore&);
 

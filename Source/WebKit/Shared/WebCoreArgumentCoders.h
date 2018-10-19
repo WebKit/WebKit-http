@@ -135,6 +135,10 @@ struct PasteboardWebContent;
 struct ViewportArguments;
 #endif
 
+#if ENABLE(DATALIST_ELEMENT)
+struct DataListSuggestionInformation;
+#endif
+
 #if USE(SOUP)
 struct SoupNetworkProxySettings;
 #endif
@@ -375,6 +379,7 @@ template<> struct ArgumentCoder<WebCore::WindowFeatures> {
 template<> struct ArgumentCoder<WebCore::Color> {
     static void encode(Encoder&, const WebCore::Color&);
     static bool decode(Decoder&, WebCore::Color&);
+    static std::optional<WebCore::Color> decode(Decoder&);
 };
 
 #if ENABLE(DRAG_SUPPORT)
@@ -452,6 +457,13 @@ template<> struct ArgumentCoder<WebCore::DatabaseDetails> {
     static void encode(Encoder&, const WebCore::DatabaseDetails&);
     static bool decode(Decoder&, WebCore::DatabaseDetails&);
 };
+
+#if ENABLE(DATALIST_ELEMENT)
+template<> struct ArgumentCoder<WebCore::DataListSuggestionInformation> {
+    static void encode(Encoder&, const WebCore::DataListSuggestionInformation&);
+    static bool decode(Decoder&, WebCore::DataListSuggestionInformation&);
+};
+#endif
 
 template<> struct ArgumentCoder<WebCore::DictationAlternative> {
     static void encode(Encoder&, const WebCore::DictationAlternative&);
@@ -749,7 +761,8 @@ template<> struct EnumTraits<WebCore::NetworkLoadPriority> {
         WebCore::NetworkLoadPriority,
         WebCore::NetworkLoadPriority::Low,
         WebCore::NetworkLoadPriority::Medium,
-        WebCore::NetworkLoadPriority::High
+        WebCore::NetworkLoadPriority::High,
+        WebCore::NetworkLoadPriority::Unknown
     >;
 };
 

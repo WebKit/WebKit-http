@@ -32,6 +32,7 @@
 
 #include "Error.h"
 #include "FunctionPrototype.h"
+#include "IntlCanonicalizeLanguage.h"
 #include "IntlCollator.h"
 #include "IntlCollatorConstructor.h"
 #include "IntlCollatorPrototype.h"
@@ -129,9 +130,19 @@ Structure* IntlObject::createStructure(VM& vm, JSGlobalObject* globalObject, JSV
     return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
 }
 
-void convertICULocaleToBCP47LanguageTag(String& locale)
+String convertICULocaleToBCP47LanguageTag(const char* localeID)
 {
-    locale.replace('_', '-');
+    UErrorCode status = U_ZERO_ERROR;
+    Vector<char, 32> buffer(32);
+    auto length = uloc_toLanguageTag(localeID, buffer.data(), buffer.size(), false, &status);
+    if (status == U_BUFFER_OVERFLOW_ERROR) {
+        buffer.grow(length);
+        status = U_ZERO_ERROR;
+        uloc_toLanguageTag(localeID, buffer.data(), buffer.size(), false, &status);
+    }
+    if (!U_FAILURE(status))
+        return String(buffer.data(), length);
+    return String();
 }
 
 bool intlBooleanOption(ExecState& state, JSValue options, PropertyName property, bool& usesFallback)
@@ -201,6 +212,18 @@ unsigned intlNumberOption(ExecState& state, JSValue options, PropertyName proper
     JSValue value = opts->get(&state, property);
     RETURN_IF_EXCEPTION(scope, 0);
 
+    scope.release();
+    return intlDefaultNumberOption(state, value, property, minimum, maximum, fallback);
+}
+
+unsigned intlDefaultNumberOption(ExecState& state, JSValue value, PropertyName property, unsigned minimum, unsigned maximum, unsigned fallback)
+{
+    // DefaultNumberOption (value, minimum, maximum, fallback)
+    // https://tc39.github.io/ecma402/#sec-defaultnumberoption
+
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!value.isUndefined()) {
         double doubleValue = value.toNumber(&state);
         RETURN_IF_EXCEPTION(scope, 0);
@@ -261,6 +284,23 @@ static String privateUseLangTag(const Vector<String>& parts, size_t startIndex)
     return privateuse.toString();
 }
 
+static String preferredLanguage(const String& language)
+{
+    auto preferred = intlPreferredLanguageTag(language);
+    if (!preferred.isNull())
+        return preferred;
+    return language;
+}
+
+static String preferredRegion(const String& region)
+{
+    auto preferred = intlPreferredRegionTag(region);
+    if (!preferred.isNull())
+        return preferred;
+    return region;
+
+}
+
 static String canonicalLangTag(const Vector<String>& parts)
 {
     ASSERT(!parts.isEmpty());
@@ -281,7 +321,9 @@ static String canonicalLangTag(const Vector<String>& parts)
 
     ++currentIndex;
     StringBuilder canonical;
-    canonical.append(language.convertToASCIILowercase());
+
+    const String langtag = preferredLanguage(language.convertToASCIILowercase());
+    canonical.append(langtag);
 
     // Check for extlang.
     // extlang = 3ALPHA *2("-" 3ALPHA)
@@ -291,8 +333,14 @@ static String canonicalLangTag(const Vector<String>& parts)
             unsigned extlangLength = extlang.length();
             if (extlangLength == 3 && extlang.isAllSpecialCharacters<isASCIIAlpha>()) {
                 ++currentIndex;
+                auto extlangLower = extlang.convertToASCIILowercase();
+                if (!times && intlPreferredExtlangTag(extlangLower) == langtag) {
+                    canonical.clear();
+                    canonical.append(extlangLower);
+                    continue;
+                }
                 canonical.append('-');
-                canonical.append(extlang.convertToASCIILowercase());
+                canonical.append(extlangLower);
             } else
                 break;
         }
@@ -323,7 +371,7 @@ static String canonicalLangTag(const Vector<String>& parts)
         if (isValidRegion) {
             ++currentIndex;
             canonical.append('-');
-            canonical.append(region.convertToASCIIUppercase());
+            canonical.append(preferredRegion(region.convertToASCIIUppercase()));
         }
     }
 
@@ -417,47 +465,11 @@ static String canonicalLangTag(const Vector<String>& parts)
         canonical.append(privateuse);
     }
 
-    // FIXME: Replace subtags with their preferred values.
-
-    return canonical.toString();
-}
-
-static String grandfatheredLangTag(const String& locale)
-{
-    // grandfathered = irregular / regular
-    // FIXME: convert to a compile time hash table if this is causing performance issues.
-    HashMap<String, String> tagMap = {
-        // Irregular.
-        { "en-gb-oed"_s, "en-GB-oed"_s },
-        { "i-ami"_s, "ami"_s },
-        { "i-bnn"_s, "bnn"_s },
-        { "i-default"_s, "i-default"_s },
-        { "i-enochian"_s, "i-enochian"_s },
-        { "i-hak"_s, "hak"_s },
-        { "i-klingon"_s, "tlh"_s },
-        { "i-lux"_s, "lb"_s },
-        { "i-mingo"_s, "i-mingo"_s },
-        { "i-navajo"_s, "nv"_s },
-        { "i-pwn"_s, "pwn"_s },
-        { "i-tao"_s, "tao"_s },
-        { "i-tay"_s, "tay"_s },
-        { "i-tsu"_s, "tsu"_s },
-        { "sgn-be-fr"_s, "sfb"_s },
-        { "sgn-be-nl"_s, "vgt"_s },
-        { "sgn-ch-de"_s, "sgg"_s },
-        // Regular.
-        { "art-lojban"_s, "jbo"_s },
-        { "cel-gaulish"_s, "cel-gaulish"_s },
-        { "no-bok"_s, "nb"_s },
-        { "no-nyn"_s, "nn"_s },
-        { "zh-guoyu"_s, "cmn"_s },
-        { "zh-hakka"_s, "hak"_s },
-        { "zh-min"_s, "zh-min"_s },
-        { "zh-min-nan"_s, "nan"_s },
-        { "zh-xiang"_s, "hsn"_s }
-    };
-
-    return tagMap.get(locale.convertToASCIILowercase());
+    const String tag = canonical.toString();
+    const String preferred = intlRedundantLanguageTag(tag);
+    if (!preferred.isNull())
+        return preferred;
+    return tag;
 }
 
 static String canonicalizeLanguageTag(const String& locale)
@@ -468,14 +480,11 @@ static String canonicalizeLanguageTag(const String& locale)
     // https://www.rfc-editor.org/rfc/bcp/bcp47.txt
 
     // Language-Tag = langtag / privateuse / grandfathered
-    String grandfather = grandfatheredLangTag(locale);
+    String grandfather = intlGrandfatheredLanguageTag(locale.convertToASCIILowercase());
     if (!grandfather.isNull())
         return grandfather;
 
-    // FIXME: Replace redundant tags [RFC4647].
-
-    Vector<String> parts;
-    locale.split('-', true, parts);
+    Vector<String> parts = locale.splitAllowingEmptyEntries('-');
     if (!parts.isEmpty()) {
         String langtag = canonicalLangTag(parts);
         if (!langtag.isNull())
@@ -584,38 +593,45 @@ String defaultLocale(ExecState& state)
 {
     // DefaultLocale ()
     // https://tc39.github.io/ecma402/#sec-defaultlocale
-    
+
     // WebCore's global objects will have their own ideas of how to determine the language. It may
     // be determined by WebCore-specific logic like some WK settings. Usually this will return the
     // same thing as userPreferredLanguages()[0].
     VM& vm = state.vm();
     if (auto defaultLanguage = state.jsCallee()->globalObject(vm)->globalObjectMethodTable()->defaultLanguage) {
-        String locale = defaultLanguage();
+        String locale = canonicalizeLanguageTag(defaultLanguage());
         if (!locale.isEmpty())
-            return canonicalizeLanguageTag(locale);
+            return locale;
     }
 
     Vector<String> languages = userPreferredLanguages();
-    if (!languages.isEmpty() && !languages[0].isEmpty())
-        return canonicalizeLanguageTag(languages[0]);
-    
+    for (const auto& language : languages) {
+        String locale = canonicalizeLanguageTag(language);
+        if (!locale.isEmpty())
+            return locale;
+    }
+
     // If all else fails, ask ICU. It will probably say something bogus like en_us even if the user
     // has configured some other language, but being wrong is better than crashing.
-    String locale = uloc_getDefault();
-    convertICULocaleToBCP47LanguageTag(locale);
-    return locale;
+    String locale = convertICULocaleToBCP47LanguageTag(uloc_getDefault());
+    if (!locale.isEmpty())
+        return locale;
+
+    return "en"_s;
 }
 
 String removeUnicodeLocaleExtension(const String& locale)
 {
-    Vector<String> parts;
-    locale.split('-', parts);
+    Vector<String> parts = locale.split('-');
     StringBuilder builder;
     size_t partsSize = parts.size();
+    bool atPrivate = false;
     if (partsSize > 0)
         builder.append(parts[0]);
     for (size_t p = 1; p < partsSize; ++p) {
-        if (parts[p] == "u" && p + 1 < partsSize) {
+        if (parts[p] == "x")
+            atPrivate = true;
+        if (!atPrivate && parts[p] == "u" && p + 1 < partsSize) {
             // Skip the u- and anything that follows until another singleton.
             // While the next part is part of the unicode extension, skip it.
             while (p + 1 < partsSize && parts[p + 1].length() > 1)
@@ -643,7 +659,7 @@ static MatcherResult lookupMatcher(ExecState& state, const HashSet<String>& avai
     }
 
     MatcherResult result;
-    if (!availableLocale.isNull()) {
+    if (!availableLocale.isEmpty()) {
         result.locale = availableLocale;
         if (locale != noExtensionsLocale) {
             size_t extensionIndex = locale.find("-u-");
@@ -763,11 +779,11 @@ HashMap<String, String> resolveLocale(ExecState& state, const HashSet<String>& a
         HashMap<String, String>::const_iterator iterator = options.find(key);
         if (iterator != options.end()) {
             const String& optionsValue = iterator->value;
-            if (!optionsValue.isNull() && keyLocaleData.contains(optionsValue)) {
-                if (optionsValue != value) {
-                    value = optionsValue;
-                    supportedExtensionAddition = String();
-                }
+            // Undefined should not get added to the options, it won't displace the extension.
+            // Null will remove the extension.
+            if ((optionsValue.isNull() || keyLocaleData.contains(optionsValue)) && optionsValue != value) {
+                value = optionsValue;
+                supportedExtensionAddition = String();
             }
         }
         result.add(key, value);
@@ -879,7 +895,12 @@ Vector<String> numberingSystemsForLocale(const String& locale)
             // Numbering system names are always ASCII, so use char[].
             while (const char* result = uenum_next(numberingSystemNames, &resultLength, &status)) {
                 ASSERT(U_SUCCESS(status));
-                availableNumberingSystems.append(String(result, resultLength));
+                auto numsys = unumsys_openByName(result, &status);
+                ASSERT(U_SUCCESS(status));
+                // Only support algorithmic if it is the default fot the locale, handled below.
+                if (!unumsys_isAlgorithmic(numsys))
+                    availableNumberingSystems.append(String(result, resultLength));
+                unumsys_close(numsys);
             }
             uenum_close(numberingSystemNames);
         }

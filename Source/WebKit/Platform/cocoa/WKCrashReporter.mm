@@ -26,6 +26,7 @@
 #import "config.h"
 #import "WKCrashReporter.h"
 
+#import <cstdlib>
 #import "CrashReporterClientSPI.h"
 
 // Avoid having to link with libCrashReporterClient.a
@@ -36,19 +37,21 @@ __attribute__((section("__DATA," CRASHREPORTER_ANNOTATIONS_SECTION)))
 
 namespace WebKit {
 
+static void setCrashLogMessage(const char* message)
+{
+    // We have to copy the string because CRSetCrashLogMessage doesn't.
+    char* copiedMessage = message ? strdup(message) : nullptr;
+
+    CRSetCrashLogMessage(copiedMessage);
+
+    // Delete the message from last time, so we don't keep leaking messages.
+    static char* previousCopiedCrashLogMessage;
+    std::free(std::exchange(previousCopiedCrashLogMessage, copiedMessage));
+}
+
 void setCrashReportApplicationSpecificInformation(CFStringRef infoString)
 {
-    if (char* oldMessage = const_cast<char*>(CRGetCrashLogMessage()))
-        free(oldMessage);
-
-    if (!infoString) {
-        CRSetCrashLogMessage(nullptr);
-        return;
-    }
-
-    // We have to copy the string, because CRSetCrashLogMessage doesn't copy the data.
-    char* lastInfoChars = strdup([(NSString *)infoString UTF8String]);
-    CRSetCrashLogMessage(lastInfoChars);
+    setCrashLogMessage([(__bridge NSString *)infoString UTF8String]);
 }
 
 }

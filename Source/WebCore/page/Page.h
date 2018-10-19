@@ -154,6 +154,11 @@ enum class EventThrottlingBehavior {
     Unresponsive
 };
 
+enum class CompositingPolicy : uint8_t {
+    Normal,
+    Conservative, // Used in low memory situations.
+};
+
 enum class CanWrap : bool;
 enum class DidWrap : bool;
 enum class RouteSharingPolicy;
@@ -352,9 +357,10 @@ public:
     void setTextAutosizingWidth(float textAutosizingWidth) { m_textAutosizingWidth = textAutosizingWidth; }
 #endif
 
-    WEBCORE_EXPORT void setFullscreenInsets(const FloatBoxExtent&);
     const FloatBoxExtent& fullscreenInsets() const { return m_fullscreenInsets; }
+    WEBCORE_EXPORT void setFullscreenInsets(const FloatBoxExtent&);
 
+    const Seconds fullscreenAutoHideDuration() const { return m_fullscreenAutoHideDuration; }
     WEBCORE_EXPORT void setFullscreenAutoHideDuration(Seconds);
     WEBCORE_EXPORT void setFullscreenControlsHidden(bool);
 
@@ -437,6 +443,8 @@ public:
 
     void userStyleSheetLocationChanged();
     const String& userStyleSheet() const;
+
+    WEBCORE_EXPORT void userAgentChanged();
 
     void dnsPrefetchingStateChanged();
     void storageBlockingStateChanged();
@@ -633,6 +641,9 @@ public:
     std::optional<EventThrottlingBehavior> eventThrottlingBehaviorOverride() const { return m_eventThrottlingBehaviorOverride; }
     void setEventThrottlingBehaviorOverride(std::optional<EventThrottlingBehavior> throttling) { m_eventThrottlingBehaviorOverride = throttling; }
 
+    std::optional<CompositingPolicy> compositingPolicyOverride() const { return m_compositingPolicyOverride; }
+    void setCompositingPolicyOverride(std::optional<CompositingPolicy> policy) { m_compositingPolicyOverride = policy; }
+
     WebGLStateTracker* webGLStateTracker() const { return m_webGLStateTracker.get(); }
 
     bool isOnlyNonUtilityPage() const;
@@ -754,6 +765,7 @@ private:
     FloatBoxExtent m_obscuredInsets;
     FloatBoxExtent m_unobscuredSafeAreaInsets;
     FloatBoxExtent m_fullscreenInsets;
+    Seconds m_fullscreenAutoHideDuration { 0_s };
 
 #if PLATFORM(IOS)
     bool m_enclosedInScrollableAncestorView { false };
@@ -869,6 +881,7 @@ private:
     
     // For testing.
     std::optional<EventThrottlingBehavior> m_eventThrottlingBehaviorOverride;
+    std::optional<CompositingPolicy> m_compositingPolicyOverride;
 
     std::unique_ptr<PerformanceMonitor> m_performanceMonitor;
     std::unique_ptr<LowPowerModeNotifier> m_lowPowerModeNotifier;

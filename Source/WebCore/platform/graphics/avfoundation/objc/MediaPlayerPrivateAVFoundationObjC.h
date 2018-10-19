@@ -227,6 +227,8 @@ private:
     void updateVideoLayerGravity() override;
 
     bool didPassCORSAccessCheck() const override;
+    std::optional<bool> wouldTaintOrigin(const SecurityOrigin&) const final;
+
 
     MediaTime getStartDate() const override;
 
@@ -355,7 +357,7 @@ private:
 
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE)
     friend class WebCoreAVFResourceLoader;
-    HashMap<RetainPtr<AVAssetResourceLoadingRequest>, RefPtr<WebCoreAVFResourceLoader>> m_resourceLoaderMap;
+    HashMap<RetainPtr<CFTypeRef>, RefPtr<WebCoreAVFResourceLoader>> m_resourceLoaderMap;
     RetainPtr<WebCoreAVFLoaderDelegate> m_loaderDelegate;
     HashMap<String, RetainPtr<AVAssetResourceLoadingRequest>> m_keyURIToRequestMap;
     HashMap<String, RetainPtr<AVAssetResourceLoadingRequest>> m_sessionIDToRequestMap;

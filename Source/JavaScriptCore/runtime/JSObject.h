@@ -1014,7 +1014,8 @@ protected:
         
 private:
     friend class LLIntOffsetsExtractor;
-        
+    friend class VMInspector;
+
     // Nobody should ever ask any of these questions on something already known to be a JSObject.
     using JSCell::isAPIValueWrapper;
     using JSCell::isGetterSetter;
@@ -1043,8 +1044,6 @@ private:
         const HashTableValue* value;
     };
     std::optional<PropertyHashEntry> findPropertyHashEntry(VM&, PropertyName) const;
-        
-    bool putIndexedDescriptor(ExecState*, SparseArrayEntry*, const PropertyDescriptor&, PropertyDescriptor& old);
         
     bool putByIndexBeyondVectorLength(ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
     bool putDirectIndexBeyondVectorLengthWithArrayStorage(ExecState*, unsigned propertyName, JSValue, unsigned attributes, PutDirectIndexMode, ArrayStorage*);

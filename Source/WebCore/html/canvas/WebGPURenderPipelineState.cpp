@@ -28,41 +28,26 @@
 
 #if ENABLE(WEBGPU)
 
-#include "GPURenderPipelineState.h"
-#include "WebGPURenderPipelineDescriptor.h"
-#include "WebGPURenderingContext.h"
-
 namespace WebCore {
 
-Ref<WebGPURenderPipelineState> WebGPURenderPipelineState::create(WebGPURenderingContext* context, WebGPURenderPipelineDescriptor* descriptor)
+Ref<WebGPURenderPipelineState> WebGPURenderPipelineState::create(GPURenderPipelineState&& state)
 {
-    return adoptRef(*new WebGPURenderPipelineState(context, descriptor));
+    return adoptRef(*new WebGPURenderPipelineState(WTFMove(state)));
 }
 
-WebGPURenderPipelineState::WebGPURenderPipelineState(WebGPURenderingContext* context, WebGPURenderPipelineDescriptor* descriptor)
-    : WebGPUObject(context)
+WebGPURenderPipelineState::WebGPURenderPipelineState(GPURenderPipelineState&& state)
+    : m_state { WTFMove(state) }
 {
-    if (!context || !descriptor)
-        return;
-    m_renderPipelineState = GPURenderPipelineState::create(context->device().get(), descriptor->renderPipelineDescriptor());
 }
-
-WebGPURenderPipelineState::~WebGPURenderPipelineState() = default;
 
 String WebGPURenderPipelineState::label() const
 {
-    if (!m_renderPipelineState)
-        return emptyString();
-
-    return m_renderPipelineState->label();
+    return m_state.label();
 }
 
 void WebGPURenderPipelineState::setLabel(const String& label)
 {
-    if (!m_renderPipelineState)
-        return;
-
-    m_renderPipelineState->setLabel(label);
+    m_state.setLabel(label);
 }
 
 } // namespace WebCore

@@ -78,11 +78,6 @@ static bool shouldLeakBoost(const ProcessLauncher::LaunchOptions& launchOptions)
     UNUSED_PARAM(launchOptions);
     return true;
 #else
-#if ENABLE(WEBPROCESS_NSRUNLOOP)
-    // Boost the WebContent process if the NSApplication run loop is not used.
-    if (launchOptions.processType == ProcessLauncher::ProcessType::Web)
-        return true;
-#endif
     // On Mac, leak a boost onto the NetworkProcess.
     return launchOptions.processType == ProcessLauncher::ProcessType::Network;
 #endif
@@ -106,7 +101,13 @@ void ProcessLauncher::launchProcess()
 {
     ASSERT(!m_xpcConnection);
 
-    m_xpcConnection = adoptOSObject(xpc_connection_create(serviceName(m_launchOptions), dispatch_get_main_queue()));
+    const char* name;
+    if (!m_launchOptions.customWebContentServiceBundleIdentifier.isNull())
+        name = m_launchOptions.customWebContentServiceBundleIdentifier.data();
+    else
+        name = serviceName(m_launchOptions);
+
+    m_xpcConnection = adoptOSObject(xpc_connection_create(name, dispatch_get_main_queue()));
 
     uuid_t uuid;
     uuid_generate(uuid);
@@ -133,9 +134,7 @@ void ProcessLauncher::launchProcess()
     auto languagesIterator = m_launchOptions.extraInitializationData.find("OverrideLanguages");
     if (languagesIterator != m_launchOptions.extraInitializationData.end()) {
         auto languages = adoptOSObject(xpc_array_create(nullptr, 0));
-        Vector<String> languageVector;
-        languagesIterator->value.split(",", false, languageVector);
-        for (auto& language : languageVector)
+        for (auto& language : languagesIterator->value.split(','))
             xpc_array_set_string(languages.get(), XPC_ARRAY_APPEND, language.utf8().data());
         xpc_dictionary_set_value(initializationMessage.get(), "OverrideLanguages", languages.get());
     }

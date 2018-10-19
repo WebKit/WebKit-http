@@ -285,7 +285,7 @@ void RenderImage::updateIntrinsicSizeIfNeeded(const LayoutSize& newSize)
 void RenderImage::updateInnerContentRect()
 {
     // Propagate container size to image resource.
-    IntSize containerSize(replacedContentRect(intrinsicSize()).size());
+    IntSize containerSize(replacedContentRect().size());
     if (!containerSize.isEmpty()) {
         URL imageSourceURL;
         if (HTMLImageElement* imageElement = is<HTMLImageElement>(element()) ? downcast<HTMLImageElement>(element()) : nullptr)
@@ -400,17 +400,22 @@ void RenderImage::paintIncompleteImageOutline(PaintInfo& paintInfo, LayoutPoint 
 
 void RenderImage::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    auto contentSize = this->contentSize();
-
     GraphicsContext& context = paintInfo.context();
+    if (context.invalidatingImagesWithAsyncDecodes()) {
+        if (cachedImage() && cachedImage()->isClientWaitingForAsyncDecoding(*this))
+            cachedImage()->removeAllClientsWaitingForAsyncDecoding();
+        return;
+    }
+
+    auto contentSize = this->contentSize();
     float deviceScaleFactor = document().deviceScaleFactor();
     LayoutUnit missingImageBorderWidth(1 / deviceScaleFactor);
 
     if (!imageResource().cachedImage() || imageResource().errorOccurred()) {
-        if (paintInfo.phase == PaintPhaseSelection)
+        if (paintInfo.phase == PaintPhase::Selection)
             return;
 
-        if (paintInfo.phase == PaintPhaseForeground)
+        if (paintInfo.phase == PaintPhase::Foreground)
             page().addRelevantUnpaintedObject(this, visualOverflowRect());
 
         paintIncompleteImageOutline(paintInfo, paintOffset, missingImageBorderWidth);
@@ -485,14 +490,14 @@ void RenderImage::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
         if (showBorderForIncompleteImage)
             paintIncompleteImageOutline(paintInfo, paintOffset, missingImageBorderWidth);
 
-        if (paintInfo.phase == PaintPhaseForeground)
+        if (paintInfo.phase == PaintPhase::Foreground)
             page().addRelevantUnpaintedObject(this, visualOverflowRect());
         return;
     }
 
     LayoutRect contentBoxRect = this->contentBoxRect();
     contentBoxRect.moveBy(paintOffset);
-    LayoutRect replacedContentRect = this->replacedContentRect(intrinsicSize());
+    LayoutRect replacedContentRect = this->replacedContentRect();
     replacedContentRect.moveBy(paintOffset);
     bool clip = !contentBoxRect.contains(replacedContentRect);
     GraphicsContextStateSaver stateSaver(context, clip);
@@ -504,7 +509,7 @@ void RenderImage::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
     if (showBorderForIncompleteImage && (result != ImageDrawResult::DidDraw || (cachedImage() && cachedImage()->isLoading())))
         paintIncompleteImageOutline(paintInfo, paintOffset, missingImageBorderWidth);
     
-    if (cachedImage() && paintInfo.phase == PaintPhaseForeground) {
+    if (cachedImage() && paintInfo.phase == PaintPhase::Foreground) {
         // For now, count images as unpainted if they are still progressively loading. We may want 
         // to refine this in the future to account for the portion of the image that has painted.
         LayoutRect visibleRect = intersection(replacedContentRect, contentBoxRect);
@@ -519,7 +524,7 @@ void RenderImage::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
     RenderReplaced::paint(paintInfo, paintOffset);
     
-    if (paintInfo.phase == PaintPhaseOutline)
+    if (paintInfo.phase == PaintPhase::Outline)
         paintAreaElementFocusRing(paintInfo, paintOffset);
 }
     
@@ -532,7 +537,7 @@ void RenderImage::paintAreaElementFocusRing(PaintInfo& paintInfo, const LayoutPo
     if (document().printing() || !frame().selection().isFocusedAndActive())
         return;
     
-    if (paintInfo.context().paintingDisabled() && !paintInfo.context().updatingControlTints())
+    if (paintInfo.context().paintingDisabled() && !paintInfo.context().performingPaintInvalidation())
         return;
 
     Element* focusedElement = document().focusedElement();
@@ -612,9 +617,9 @@ ImageDrawResult RenderImage::paintIntoRect(PaintInfo& paintInfo, const FloatRect
 
     ImageOrientationDescription orientationDescription(shouldRespectImageOrientation(), style().imageOrientation());
     auto decodingMode = decodingModeForImageDraw(*image, paintInfo);
-    auto drawResult = paintInfo.context().drawImage(*img, rect, ImagePaintingOptions(compositeOperator, BlendModeNormal, decodingMode, orientationDescription, interpolation));
+    auto drawResult = paintInfo.context().drawImage(*img, rect, ImagePaintingOptions(compositeOperator, BlendMode::Normal, decodingMode, orientationDescription, interpolation));
     if (drawResult == ImageDrawResult::DidRequestDecoding)
-        imageResource().cachedImage()->addPendingImageDrawingClient(*this);
+        imageResource().cachedImage()->addClientWaitingForAsyncDecoding(*this);
 
 #if USE(SYSTEM_PREVIEW)
     if (imageElement && imageElement->isSystemPreviewImage() && drawResult == ImageDrawResult::DidDraw && RuntimeEnabledFeatures::sharedFeatures().systemPreviewEnabled())

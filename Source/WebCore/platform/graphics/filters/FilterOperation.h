@@ -56,6 +56,7 @@ public:
         SATURATE,
         HUE_ROTATE,
         INVERT,
+        APPLE_INVERT_LIGHTNESS,
         OPACITY,
         BRIGHTNESS,
         CONTRAST,
@@ -79,6 +80,7 @@ public:
     }
     
     virtual bool transformColor(FloatComponents&) const { return false; }
+    virtual bool inverseTransformColor(FloatComponents&) const { return false; }
 
     OperationType type() const { return m_type; }
 
@@ -270,6 +272,32 @@ private:
     double m_amount;
 };
 
+class WEBCORE_EXPORT InvertLightnessFilterOperation : public FilterOperation {
+public:
+    static Ref<InvertLightnessFilterOperation> create()
+    {
+        return adoptRef(*new InvertLightnessFilterOperation());
+    }
+
+    Ref<FilterOperation> clone() const final
+    {
+        return adoptRef(*new InvertLightnessFilterOperation());
+    }
+
+    RefPtr<FilterOperation> blend(const FilterOperation* from, double progress, bool blendToPassthrough = false) override;
+
+private:
+    bool operator==(const FilterOperation&) const final;
+
+    InvertLightnessFilterOperation()
+        : FilterOperation(APPLE_INVERT_LIGHTNESS)
+    {
+    }
+
+    bool transformColor(FloatComponents&) const final;
+    bool inverseTransformColor(FloatComponents&) const final;
+};
+
 class WEBCORE_EXPORT BlurFilterOperation : public FilterOperation {
 public:
     static Ref<BlurFilterOperation> create(Length stdDeviation)
@@ -354,6 +382,7 @@ SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(PassthroughFilterOperation, type() == Web
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(ReferenceFilterOperation, type() == WebCore::FilterOperation::REFERENCE)
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(BasicColorMatrixFilterOperation, isBasicColorMatrixFilterOperation())
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(BasicComponentTransferFilterOperation, isBasicComponentTransferFilterOperation())
+SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(InvertLightnessFilterOperation, type() == WebCore::FilterOperation::APPLE_INVERT_LIGHTNESS)
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(BlurFilterOperation, type() == WebCore::FilterOperation::BLUR)
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(DropShadowFilterOperation, type() == WebCore::FilterOperation::DROP_SHADOW)
 

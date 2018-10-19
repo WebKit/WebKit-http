@@ -466,7 +466,7 @@ void StyledMarkupAccumulator::appendElement(StringBuilder& out, const Element& e
             newInlineStyle = EditingStyle::create();
 
         if (is<StyledElement>(element) && downcast<StyledElement>(element).inlineStyle())
-            newInlineStyle->overrideWithStyle(downcast<StyledElement>(element).inlineStyle());
+            newInlineStyle->overrideWithStyle(*downcast<StyledElement>(element).inlineStyle());
 
         if (shouldAnnotateOrForceInline) {
             if (shouldAnnotate())
@@ -504,7 +504,7 @@ Node* StyledMarkupAccumulator::serializeNodes(Node* startNode, Node* pastEnd)
     }
 
     if (m_highestNodeToBeSerialized && m_highestNodeToBeSerialized->parentNode())
-        m_wrappingStyle = EditingStyle::wrappingStyleForSerialization(m_highestNodeToBeSerialized->parentNode(), shouldAnnotate());
+        m_wrappingStyle = EditingStyle::wrappingStyleForSerialization(*m_highestNodeToBeSerialized->parentNode(), shouldAnnotate());
 
     return traverseNodesForSerialization(startNode, pastEnd, EmitString);
 }
@@ -933,8 +933,7 @@ static void fillContainerFromString(ContainerNode& paragraph, const String& stri
 
     ASSERT(string.find('\n') == notFound);
 
-    Vector<String> tabList;
-    string.split('\t', true, tabList);
+    Vector<String> tabList = string.splitAllowingEmptyEntries('\t');
     String tabText = emptyString();
     bool first = true;
     size_t numEntries = tabList.size();
@@ -1034,8 +1033,7 @@ Ref<DocumentFragment> createFragmentFromText(Range& context, const String& text)
         && block != editableRootForPosition(context.startPosition());
     bool useLineBreak = enclosingTextFormControl(context.startPosition());
 
-    Vector<String> list;
-    string.split('\n', true, list); // true gets us empty strings in the list
+    Vector<String> list = string.splitAllowingEmptyEntries('\n');
     size_t numLines = list.size();
     for (size_t i = 0; i < numLines; ++i) {
         const String& s = list[i];

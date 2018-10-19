@@ -143,10 +143,6 @@ void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef characte
 {
 }
 
-void UIScriptController::selectTextCandidateAtIndex(long, JSValueRef)
-{
-}
-
 void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
 {
 }
@@ -364,6 +360,16 @@ void UIScriptController::beginBackSwipe(JSValueRef callback)
 
 void UIScriptController::completeBackSwipe(JSValueRef callback)
 {
+}
+
+JSObjectRef UIScriptController::selectionStartGrabberViewRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::selectionEndGrabberViewRect() const
+{
+    return nullptr;
 }
 
 }

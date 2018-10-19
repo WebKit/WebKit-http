@@ -295,7 +295,7 @@ Length convertTo100PercentMinusLength(const Length& length)
     lengths.reserveInitialCapacity(2);
     lengths.uncheckedAppend(std::make_unique<CalcExpressionLength>(Length(100, Percent)));
     lengths.uncheckedAppend(std::make_unique<CalcExpressionLength>(length));
-    auto op = std::make_unique<CalcExpressionOperation>(WTFMove(lengths), CalcSubtract);
+    auto op = std::make_unique<CalcExpressionOperation>(WTFMove(lengths), CalcOperator::Subtract);
     return Length(CalculationValue::create(WTFMove(op), ValueRangeAll));
 }
 
@@ -313,7 +313,10 @@ static Length blendMixedTypes(const Length& from, const Length& to, double progr
 
 Length blend(const Length& from, const Length& to, double progress)
 {
-    if (from.isAuto() || from.isUndefined() || to.isAuto() || to.isUndefined())
+    if (from.isAuto() || to.isAuto())
+        return progress < 0.5 ? from : to;
+
+    if (from.isUndefined() || to.isUndefined())
         return to;
 
     if (from.type() == Calculated || to.type() == Calculated)

@@ -13,7 +13,39 @@ Bug(WPE) printing/ [ Skip ]
 Bug(WPE) scrollingcoordinator/ [ Skip ]
 Bug(WPE) webarchive/ [ Skip ]
 Bug(WPE) webaudio/ [ Skip ]
-Bug(WPE) webrtc [ Skip ]
+
+# The webrtc implementation is not fully completed yet
+webkit.org/b/187064 webrtc/audio-peer-connection-g722.html
+webkit.org/b/187064 webrtc/video-with-receiver.html
+webkit.org/b/187064 webrtc/captureCanvas-webrtc.html
+webkit.org/b/187064 webrtc/video-remote-mute.html
+webkit.org/b/187064 webrtc/video-addTransceiver.html
+webkit.org/b/187064 webrtc/peer-connection-track-end.html
+webkit.org/b/187064 webrtc/video.html
+webkit.org/b/187064 webrtc/multi-video.html
+webkit.org/b/187064 webrtc/video-addTrack.html
+webkit.org/b/187064 webrtc/video-rotation.html
+webkit.org/b/187064 webrtc/video-mute.html
+webkit.org/b/187064 webrtc/video-disabled-black.html
+webkit.org/b/187064 webrtc/video-replace-track.html
+webkit.org/b/187064 webrtc/video-with-data-channel.html
+webkit.org/b/187064 webrtc/video-replace-muted-track.html
+webkit.org/b/187064 webrtc/video-unmute.html
+webkit.org/b/187064 webrtc/datachannel/mdns-ice-candidates.html
+webkit.org/b/187064 webrtc/libwebrtc/descriptionGetters.html
+webkit.org/b/177533 webrtc/video-interruption.html
+
+webkit.org/b/186933 webrtc/peer-connection-createMediaStreamDestination.html
+webkit.org/b/186933 webrtc/peer-connection-remote-audio-mute2.html
+webkit.org/b/186933 webrtc/peer-connection-audio-unmute.html
+webkit.org/b/186933 webrtc/peer-connection-audio-mute2.html
+webkit.org/b/186933 webrtc/peer-connection-audio-mute.html
+webkit.org/b/186933 webrtc/peer-connection-remote-audio-mute.html
+webkit.org/b/186933 webrtc/clone-audio-track.html
+webkit.org/b/186933 webrtc/audio-replace-track.html
+webkit.org/b/186933 webrtc/audio-peer-connection-webaudio.html
+webkit.org/b/186933 webrtc/audio-muted-stats.html
+
 
 # The MediaStream implementation is still not completed
 webkit.org/b/79203 fast/mediastream/mock-media-source-webaudio.html [ Timeout ]
@@ -40,8 +72,9 @@ webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stats.html [ Timeout ]
 webkit.org/b/79203 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-preload-none.https.html [ Failure ]
 webkit.org/b/79203 imported/w3c/web-platform-tests/mediacapture-streams/MediaStreamTrack-end-manual.https.html [ Failure ]
 webkit.org/b/151344 fast/mediastream/MediaStream-add-ended-tracks.html [ Timeout ]
+webkit.org/b/79203 fast/mediastream/MediaStream-video-element.html [ Failure Pass Timeout ]
 # Crash is bug #176801
-webkit.org/b/160996 fast/mediastream/MediaStream-video-element-video-tracks-disabled.html [ ImageOnlyFailure Crash ]
+webkit.org/b/160996 fast/mediastream/MediaStream-video-element-video-tracks-disabled.html [ Timeout ImageOnlyFailure Crash ]
 webkit.org/b/172269 fast/mediastream/media-devices-enumerate-devices.html [ Failure ]
 webkit.org/b/173257 fast/mediastream/getUserMedia-grant-persistency3.html [ Pass Failure ]
 
@@ -179,6 +212,10 @@ Bug(WPE) webgl/webgl-box-shadow.html [ ImageOnlyFailure ]
 webkit.org/b/169917 webgl/1.0.2/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Slow ]
 webkit.org/b/169917 webgl/1.0.2/conformance/glsl/misc/shader-with-non-reserved-words.html [ Slow ]
 webkit.org/b/169917 webgl/1.0.3/conformance/rendering/many-draw-calls.html [ Slow ]
+
+# webgl 2.0
+webkit.org/b/188346 webgl/2.0.0/conformance2/glsl3/no-attribute-vertex-shader.html [ Failure ]
+webkit.org/b/188346 webgl/2.0.0/conformance2/vertex_arrays/vertex-array-object.html [ Failure ]
 
 # fast/canvas/
 fast/canvas/canvas-blend-image.html [ Failure ]
@@ -684,7 +721,8 @@ webkit.org/b/173419 fast/events/input-events-paste-data.html [ Failure ]
 webkit.org/b/173419 fast/events/input-events-paste-rich-datatransfer.html [ Failure ]
 webkit.org/b/173419 fast/events/js-keyboard-event-creation.html [ Failure ]
 webkit.org/b/173419 fast/events/keydown-numpad-keys.html [ Failure ]
-webkit.org/b/173419 fast/events/mouse-cursor-image-set.html [ Failure ]
+webkit.org/b/109469 [ Release ] fast/events/mouse-cursor-image-set.html [ Failure ]
+webkit.org/b/109469 [ Debug ] fast/events/mouse-cursor-image-set.html [ Crash ]
 webkit.org/b/173419 fast/events/mouseover-button.html [ Failure ]
 webkit.org/b/173419 fast/events/mouseup-from-button2.html [ Failure ]
 webkit.org/b/173419 fast/events/no-scroll-on-input-text-selection.html [ Failure ]
@@ -725,9 +763,6 @@ webkit.org/b/173419 fast/events/before-input-prevent-insert-replacement.html [ F
 webkit.org/b/173419 fast/events/clipboard-dataTransferItemList.html [ Timeout ]
 webkit.org/b/173419 fast/events/drag-dataTransferItemList.html [ Timeout ]
 webkit.org/b/173419 fast/events/input-event-insert-replacement.html [ Failure ]
-webkit.org/b/173419 fast/events/mouse-force-changed.html [ Timeout ]
-webkit.org/b/173419 fast/events/mouse-force-down.html [ Timeout ]
-webkit.org/b/173419 fast/events/mouse-force-up.html [ Timeout ]
 webkit.org/b/173419 fast/events/page-visibility-iframe-delete-test.html [ Timeout ]
 webkit.org/b/173419 fast/events/page-visibility-iframe-move-test.html [ Timeout ]
 webkit.org/b/173419 fast/events/page-visibility-iframe-propagation-test.html [ Timeout ]
@@ -915,6 +950,8 @@ crypto/subtle/rsa-pss-import-spki-key-empty-usages.html [ Pass ]
 crypto/subtle/rsa-pss-import-spki-key.html [ Pass ]
 crypto/workers/subtle/rsa-pss-import-key-sign.html [ Pass ]
 crypto/workers/subtle/rsa-pss-import-key-verify.html [ Pass ]
+http/wpt/crypto/rsa-pss-crash.any.html [ Pass ]
+http/wpt/crypto/rsa-pss-crash.any.worker.html [ Pass ]
 
 # Missing support for 521-bit elliptic curves.
 webkit.org/b/175199 crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p521.html [ Skip ]
@@ -1038,11 +1075,11 @@ Bug(WPE) perf/accessibility-title-ui-element.html [ Failure ]
 webkit.org/b/177873 http/wpt/beacon/beacon-async-error-logging.html [ Failure ]
 
 webkit.org/b/182050 http/wpt/fetch/response-opaque-clone.html [ Pass Crash ]
-webkit.org/b/180749 http/wpt/offscreen-canvas/transferToImageBitmap-webgl.html [ ImageOnlyFailure ]
+webkit.org/b/180749 http/wpt/offscreen-canvas/transferToImageBitmap-webgl.html [ ImageOnlyFailure Timeout ]
 webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.html [ Failure ]
 webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
 webkit.org/b/177871 http/wpt/resource-timing/rt-shared-resource-in-workers.html [ Failure ]
-webkit.org/b/168357 http/wpt/resource-timing/rt-initiatorType-media.html [ Pass ]
+webkit.org/b/168357 http/wpt/resource-timing/rt-initiatorType-media.html [ Pass Failure ]
 webkit.org/b/181661 http/wpt/webrtc/third-party-frame-ice-candidate-filtering.html [ Failure ]
 
 Bug(WPE) contentfiltering/ [ Skip ]
@@ -1164,6 +1201,7 @@ webkit.org/b/179760 fast/canvas/webgl/texImage2D-mse-flipY-false.html [ Timeout 
 webkit.org/b/179760 fast/canvas/webgl/texImage2D-mse-flipY-true.html [ Timeout ]
 
 webkit.org/b/179761 workers/wasm-hashset-many-2.html [ Pass Timeout Crash ]
+webkit.org/b/188056 workers/wasm-hashset-many.html [ Timeout Pass ]
 
 webkit.org/b/179898 svg/animations/svglengthlist-animation-3.html [ Pass Failure ]
 
@@ -1247,6 +1285,8 @@ webkit.org/b/187593 http/tests/cache/disk-cache/disk-cache-cancel.html [ Failure
 webkit.org/b/187594 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_createIndex7-event_order.htm [ Failure Pass ]
 
 webkit.org/b/187595 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-margins-vertical-lr-002.html [ Failure Pass ]
+webkit.org/b/187595 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-margins-002.html [ Failure Pass ]
+webkit.org/b/187595 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-percentage-margins-vertical-rl-002.html [ Failure Pass ]
 
 webkit.org/b/187596 fast/events/autoscroll-with-non-scrollable-parent.html [ Timeout Pass ]
 
@@ -1263,3 +1303,32 @@ webkit.org/b/187590 imported/w3c/web-platform-tests/web-animations/timing-model/
 webkit.org/b/187602 media/media-source/media-source-remove-unload-crash.html [ Crash Pass ]
 
 webkit.org/b/187603 fast/mediastream/media-stream-track-source-failure.html [ Timeout Failure Pass ]
+
+webkit.org/b/188047 crypto/workers/subtle/hrsa-postMessage-worker.html [ Failure Pass ]
+
+webkit.org/b/188048 fast/canvas/webgl/worker-data-view-test.html [ Timeout Pass ]
+webkit.org/b/188048 fast/workers/empty-worker-nocrash.html [ Timeout Pass ]
+
+webkit.org/b/188049 fetch/fetch-worker-crash.html [ Timeout Pass ]
+
+webkit.org/b/188051 http/tests/cache/redirect-referer.html [ Timeout Pass ]
+
+webkit.org/b/188052 http/tests/images/draw-pattern-slow-load-large-image.html [ Timeout Pass ]
+
+webkit.org/b/188053 http/wpt/service-workers/update-service-worker.https.html [ Failure Timeout Pass ]
+
+webkit.org/b/188055 svg/filters/hidpi/fePointLight-coordinates.svg [ Timeout Pass ]
+
+webkit.org/b/188057 imported/w3c/web-platform-tests/html/dom/interfaces.html [ Failure Pass ]
+
+webkit.org/b/188098 webanimations/accelerated-animation-with-delay.html [ ImageOnlyFailure ]
+
+webkit.org/b/188159 svg/text/text-default-font-size.html [ ImageOnlyFailure ]
+webkit.org/b/188159 svg/as-image/svg-image-with-data-uri-background.html [ ImageOnlyFailure ]
+
+webkit.org/b/188161 [ Debug ] fast/canvas/webgl/context-lost-restored.html [ Crash ]
+webkit.org/b/188161 [ Debug ] fast/canvas/webgl/WebGLContextEvent.html [ Crash ]
+webkit.org/b/188161 [ Debug ] webgl/1.0.2/conformance/context/context-lost-restored.html [ Crash ]
+
+webkit.org/b/188162 [ Debug ] fast/canvas/webgl/texImage2D-video-flipY-false.html [ Crash ]
+webkit.org/b/188162 [ Debug ] fast/canvas/webgl/texImage2D-video-flipY-true.html [ Crash ]

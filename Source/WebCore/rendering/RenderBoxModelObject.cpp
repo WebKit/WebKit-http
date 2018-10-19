@@ -374,13 +374,13 @@ DecodingMode RenderBoxModelObject::decodingModeForImageDraw(const Image& image, 
         return DecodingMode::Asynchronous;
     if (document().isImageDocument())
         return DecodingMode::Synchronous;
-    if (paintInfo.paintBehavior & PaintBehaviorSnapshotting)
+    if (paintInfo.paintBehavior.contains(PaintBehavior::Snapshotting))
         return DecodingMode::Synchronous;
     if (!settings().largeImageAsyncDecodingEnabled())
         return DecodingMode::Synchronous;
     if (!bitmapImage.canUseAsyncDecodingForLargeImages())
         return DecodingMode::Synchronous;
-    if (paintInfo.paintBehavior & PaintBehaviorTileFirstPaint)
+    if (paintInfo.paintBehavior.contains(PaintBehavior::TileFirstPaint))
         return DecodingMode::Asynchronous;
     // FIXME: isVisibleInViewport() is not cheap. Find a way to make this condition faster.
     if (!isVisibleInViewport())
@@ -728,7 +728,7 @@ void RenderBoxModelObject::paintMaskForTextFillBox(ImageBuffer* maskImage, const
 
     // Now add the text to the clip. We do this by painting using a special paint phase that signals to
     // InlineTextBoxes that they should just add their contents to the clip.
-    PaintInfo info(maskImageContext, maskRect, PaintPhaseTextClip, PaintBehaviorForceBlackText);
+    PaintInfo info(maskImageContext, maskRect, PaintPhase::TextClip, PaintBehavior::ForceBlackText);
     if (box) {
         const RootInlineBox& rootBox = box->root();
         box->paint(info, LayoutPoint(scrolledPaintRect.x() - box->x(), scrolledPaintRect.y() - box->y()), rootBox.lineTop(), rootBox.lineBottom());
@@ -756,6 +756,12 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
     Color bgColor = color;
     StyleImage* bgImage = bgLayer.image();
     bool shouldPaintBackgroundImage = bgImage && bgImage->canRender(this, style().effectiveZoom());
+    
+    if (context.invalidatingImagesWithAsyncDecodes()) {
+        if (shouldPaintBackgroundImage && bgImage->cachedImage()->isClientWaitingForAsyncDecoding(*this))
+            bgImage->cachedImage()->removeAllClientsWaitingForAsyncDecoding();
+        return;
+    }
     
     bool forceBackgroundToWhite = false;
     if (document().printing()) {
@@ -802,16 +808,24 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
         if (hasRoundedBorder && bleedAvoidance != BackgroundBleedUseTransparencyLayer) {
             FloatRoundedRect pixelSnappedBorder = backgroundRoundedRectAdjustedForBleedAvoidance(context, rect, bleedAvoidance, box, boxSize,
                 includeLeftEdge, includeRightEdge).pixelSnappedRoundedRectForPainting(deviceScaleFactor);
-            if (pixelSnappedBorder.isRenderable())
+            if (pixelSnappedBorder.isRenderable()) {
+                CompositeOperator previousOperator = context.compositeOperation();
+                bool saveRestoreCompositeOp = op != previousOperator;
+                if (saveRestoreCompositeOp)
+                    context.setCompositeOperation(op);
+
                 context.fillRoundedRect(pixelSnappedBorder, bgColor);
-            else {
+
+                if (saveRestoreCompositeOp)
+                    context.setCompositeOperation(previousOperator);
+            } else {
                 context.save();
                 clipRoundedInnerRect(context, pixelSnappedRect, pixelSnappedBorder);
-                context.fillRect(pixelSnappedBorder.rect(), bgColor);
+                context.fillRect(pixelSnappedBorder.rect(), bgColor, op);
                 context.restore();
             }
         } else
-            context.fillRect(pixelSnappedRect, bgColor);
+            context.fillRect(pixelSnappedRect, bgColor, op);
 
         return;
     }
@@ -940,7 +954,13 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
                     baseColor = baseColor.blend(bgColor);
                 context.fillRect(backgroundRectForPainting, baseColor, CompositeCopy);
             } else if (!baseBgColorOnly && bgColor.isVisible()) {
-                auto operation = shouldClearBackground ? CompositeCopy : context.compositeOperation();
+                auto operation = context.compositeOperation();
+                if (shouldClearBackground) {
+                    if (op == CompositeDestinationOut) // We're punching out the background.
+                        operation = op;
+                    else
+                        operation = CompositeCopy;
+                }
                 context.fillRect(backgroundRectForPainting, bgColor, operation);
             } else if (shouldClearBackground)
                 context.clearRect(backgroundRectForPainting);
@@ -964,7 +984,7 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
             auto drawResult = context.drawTiledImage(*image, geometry.destRect(), toLayoutPoint(geometry.relativePhase()), geometry.tileSize(), geometry.spaceSize(), ImagePaintingOptions(compositeOp, bgLayer.blendMode(), decodingMode, ImageOrientationDescription(), interpolation));
             if (drawResult == ImageDrawResult::DidRequestDecoding) {
                 ASSERT(bgImage->isCachedImage());
-                bgImage->cachedImage()->addPendingImageDrawingClient(*this);
+                bgImage->cachedImage()->addClientWaitingForAsyncDecoding(*this);
             }
         }
     }
@@ -1152,7 +1172,7 @@ bool RenderBoxModelObject::fixedBackgroundPaintsInLocalCoordinates() const
     if (!isDocumentElementRenderer())
         return false;
 
-    if (view().frameView().paintBehavior() & PaintBehaviorFlattenCompositingLayers)
+    if (view().frameView().paintBehavior().contains(PaintBehavior::FlattenCompositingLayers))
         return false;
 
     RenderLayer* rootLayer = view().layer();

@@ -462,7 +462,7 @@ WTF_ATTRIBUTE_PRINTF(1, 0) static String createWithFormatAndArguments(const char
     if (strstr(format, "%@")) {
         auto cfFormat = adoptCF(CFStringCreateWithCString(kCFAllocatorDefault, format, kCFStringEncodingUTF8));
         auto result = adoptCF(CFStringCreateWithFormatAndArguments(kCFAllocatorDefault, nullptr, cfFormat.get(), args));
-        va_end(args);
+        va_end(argsCopy);
         return result.get();
     }
 #endif
@@ -474,12 +474,15 @@ WTF_ATTRIBUTE_PRINTF(1, 0) static String createWithFormatAndArguments(const char
     char ch;
     int result = vsnprintf(&ch, 1, format, args);
 #endif
-    va_end(args);
 
-    if (result == 0)
+    if (!result) {
+        va_end(argsCopy);
         return emptyString();
-    if (result < 0)
+    }
+    if (result < 0) {
+        va_end(argsCopy);
         return String();
+    }
 
     Vector<char, 256> buffer;
     unsigned len = result;
@@ -494,11 +497,6 @@ WTF_ATTRIBUTE_PRINTF(1, 0) static String createWithFormatAndArguments(const char
 #endif
 
     return StringImpl::create(reinterpret_cast<const LChar*>(buffer.data()), len);
-}
-
-String String::formatWithArguments(const char *format, va_list args)
-{
-    return createWithFormatAndArguments(format, args);
 }
 
 String String::format(const char *format, ...)
@@ -702,9 +700,10 @@ bool String::isSafeToSendToAnotherThread() const
     return isEmpty() || (m_impl->hasOneRef() && !m_impl->isAtomic());
 }
 
-void String::split(const String& separator, bool allowEmptyEntries, Vector<String>& result) const
+template<bool allowEmptyEntries>
+inline Vector<String> String::splitInternal(const String& separator) const
 {
-    result.clear();
+    Vector<String> result;
 
     unsigned startPos = 0;
     size_t endPos;
@@ -715,9 +714,12 @@ void String::split(const String& separator, bool allowEmptyEntries, Vector<Strin
     }
     if (allowEmptyEntries || startPos != length())
         result.append(substring(startPos));
+
+    return result;
 }
 
-void String::split(UChar separator, bool allowEmptyEntries, const SplitFunctor& functor) const
+template<bool allowEmptyEntries>
+inline void String::splitInternal(UChar separator, const SplitFunctor& functor) const
 {
     StringView view(*this);
 
@@ -732,12 +734,45 @@ void String::split(UChar separator, bool allowEmptyEntries, const SplitFunctor& 
         functor(view.substring(startPos));
 }
 
-void String::split(UChar separator, bool allowEmptyEntries, Vector<String>& result) const
+template<bool allowEmptyEntries>
+inline Vector<String> String::splitInternal(UChar separator) const
 {
-    result.clear();
-    split(separator, allowEmptyEntries, [&result](StringView item) {
+    Vector<String> result;
+    splitInternal<allowEmptyEntries>(separator, [&result](StringView item) {
         result.append(item.toString());
     });
+
+    return result;
+}
+
+void String::split(UChar separator, const SplitFunctor& functor) const
+{
+    splitInternal<false>(separator, functor);
+}
+
+Vector<String> String::split(UChar separator) const
+{
+    return splitInternal<false>(separator);
+}
+
+Vector<String> String::split(const String& separator) const
+{
+    return splitInternal<false>(separator);
+}
+
+void String::splitAllowingEmptyEntries(UChar separator, const SplitFunctor& functor) const
+{
+    splitInternal<true>(separator, functor);
+}
+
+Vector<String> String::splitAllowingEmptyEntries(UChar separator) const
+{
+    return splitInternal<true>(separator);
+}
+
+Vector<String> String::splitAllowingEmptyEntries(const String& separator) const
+{
+    return splitInternal<true>(separator);
 }
 
 CString String::ascii() const

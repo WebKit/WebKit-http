@@ -39,6 +39,7 @@
 
 #if USE(CURL)
 #include "CurlRequest.h"
+#include <wtf/MessageQueue.h>
 #endif
 
 #if PLATFORM(HAIKU)
@@ -131,6 +132,7 @@ public:
     unsigned m_authFailureCount { 0 };
     bool m_addedCacheValidationHeaders { false };
     RefPtr<CurlRequest> m_curlRequest;
+    MessageQueue<WTF::Function<void()>>* m_messageQueue { };
 #endif
 
 #if PLATFORM(HAIKU)

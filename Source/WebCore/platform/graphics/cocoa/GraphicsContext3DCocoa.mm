@@ -35,6 +35,7 @@
 #import "CanvasRenderingContext.h"
 #import "Extensions3DOpenGL.h"
 #import "GraphicsContext.h"
+#import "GraphicsContext3DManager.h"
 #import "HTMLCanvasElement.h"
 #import "HostWindow.h"
 #import "ImageBuffer.h"
@@ -69,247 +70,6 @@ namespace WebCore {
 
 static const unsigned statusCheckThreshold = 5;
 
-#if HAVE(APPLE_GRAPHICS_CONTROL)
-
-enum {
-    kAGCOpen,
-    kAGCClose
-};
-
-static io_connect_t attachToAppleGraphicsControl()
-{
-    mach_port_t masterPort = MACH_PORT_NULL;
-
-    if (IOMasterPort(MACH_PORT_NULL, &masterPort) != KERN_SUCCESS)
-        return MACH_PORT_NULL;
-
-    CFDictionaryRef classToMatch = IOServiceMatching("AppleGraphicsControl");
-    if (!classToMatch)
-        return MACH_PORT_NULL;
-
-    kern_return_t kernResult;
-    io_iterator_t iterator;
-    if ((kernResult = IOServiceGetMatchingServices(masterPort, classToMatch, &iterator)) != KERN_SUCCESS)
-        return MACH_PORT_NULL;
-
-    io_service_t serviceObject = IOIteratorNext(iterator);
-    IOObjectRelease(iterator);
-    if (!serviceObject)
-        return MACH_PORT_NULL;
-
-    io_connect_t dataPort;
-    IOObjectRetain(serviceObject);
-    kernResult = IOServiceOpen(serviceObject, mach_task_self(), 0, &dataPort);
-    IOObjectRelease(serviceObject);
-
-    return (kernResult == KERN_SUCCESS) ? dataPort : MACH_PORT_NULL;
-}
-
-static bool hasMuxCapability()
-{
-    io_connect_t dataPort = attachToAppleGraphicsControl();
-
-    if (dataPort == MACH_PORT_NULL)
-        return false;
-
-    bool result;
-    if (IOConnectCallScalarMethod(dataPort, kAGCOpen, nullptr, 0, nullptr, nullptr) == KERN_SUCCESS) {
-        IOConnectCallScalarMethod(dataPort, kAGCClose, nullptr, 0, nullptr, nullptr);
-        result = true;
-    } else
-        result = false;
-
-    IOServiceClose(dataPort);
-
-    if (result) {
-        // This is detecting Mac hardware with an Intel g575 GPU, which
-        // we don't want to make available to muxing.
-        // Based on information from Apple's OpenGL team, such devices
-        // have four or fewer processors.
-        // <rdar://problem/30060378>
-        int names[2] = { CTL_HW, HW_NCPU };
-        int cpuCount;
-        size_t cpuCountLength = sizeof(cpuCount);
-        sysctl(names, 2, &cpuCount, &cpuCountLength, nullptr, 0);
-        result = cpuCount > 4;
-    }
-    
-    return result;
-}
-
-static bool hasMuxableGPU()
-{
-    static bool canMux = hasMuxCapability();
-    return canMux;
-}
-#endif
-
-const unsigned MaxContexts = 16;
-
-class GraphicsContext3DManager {
-public:
-    GraphicsContext3DManager()
-        : m_disableHighPerformanceGPUTimer(*this, &GraphicsContext3DManager::disableHighPerformanceGPUTimerFired)
-    {
-    }
-
-    void addContext(GraphicsContext3D*);
-    void removeContext(GraphicsContext3D*);
-
-    void addContextRequiringHighPerformance(GraphicsContext3D*);
-    void removeContextRequiringHighPerformance(GraphicsContext3D*);
-
-    void recycleContextIfNecessary();
-    bool hasTooManyContexts() const { return m_contexts.size() >= MaxContexts; }
-
-    void updateAllContexts();
-
-private:
-    void updateHighPerformanceState();
-    void disableHighPerformanceGPUTimerFired();
-
-    Vector<GraphicsContext3D*> m_contexts;
-    HashSet<GraphicsContext3D*> m_contextsRequiringHighPerformance;
-
-    Timer m_disableHighPerformanceGPUTimer;
-
-#if PLATFORM(MAC)
-    CGLPixelFormatObj m_pixelFormatObj { nullptr };
-#endif
-};
-
-static GraphicsContext3DManager& manager()
-{
-    static NeverDestroyed<GraphicsContext3DManager> s_manager;
-    return s_manager;
-}
-
-#if PLATFORM(MAC)
-static void displayWasReconfigured(CGDirectDisplayID, CGDisplayChangeSummaryFlags flags, void*)
-{
-    if (flags & kCGDisplaySetModeFlag)
-        manager().updateAllContexts();
-}
-#endif
-
-void GraphicsContext3DManager::updateAllContexts()
-{
-#if PLATFORM(MAC)
-    for (auto* context : m_contexts) {
-        context->updateCGLContext();
-        context->dispatchContextChangedNotification();
-    }
-#endif
-}
-
-void GraphicsContext3DManager::addContext(GraphicsContext3D* context)
-{
-    ASSERT(context);
-    if (!context)
-        return;
-
-#if PLATFORM(MAC)
-    if (!m_contexts.size())
-        CGDisplayRegisterReconfigurationCallback(displayWasReconfigured, nullptr);
-#endif
-
-    ASSERT(!m_contexts.contains(context));
-    m_contexts.append(context);
-}
-
-void GraphicsContext3DManager::removeContext(GraphicsContext3D* context)
-{
-    ASSERT(m_contexts.contains(context));
-    m_contexts.removeFirst(context);
-    removeContextRequiringHighPerformance(context);
-
-#if PLATFORM(MAC)
-    if (!m_contexts.size())
-        CGDisplayRemoveReconfigurationCallback(displayWasReconfigured, nullptr);
-#endif
-}
-
-void GraphicsContext3DManager::addContextRequiringHighPerformance(GraphicsContext3D* context)
-{
-    ASSERT(context);
-    if (!context)
-        return;
-
-    ASSERT(m_contexts.contains(context));
-    ASSERT(!m_contextsRequiringHighPerformance.contains(context));
-
-    LOG(WebGL, "This context (%p) requires the high-performance GPU.", context);
-    m_contextsRequiringHighPerformance.add(context);
-
-    updateHighPerformanceState();
-}
-
-void GraphicsContext3DManager::removeContextRequiringHighPerformance(GraphicsContext3D* context)
-{
-    if (!m_contextsRequiringHighPerformance.contains(context))
-        return;
-
-    LOG(WebGL, "This context (%p) no longer requires the high-performance GPU.", context);
-    m_contextsRequiringHighPerformance.remove(context);
-
-    updateHighPerformanceState();
-}
-
-void GraphicsContext3DManager::updateHighPerformanceState()
-{
-#if PLATFORM(MAC)
-    if (!hasMuxableGPU())
-        return;
-
-    if (m_contextsRequiringHighPerformance.size()) {
-
-        if (m_disableHighPerformanceGPUTimer.isActive()) {
-            LOG(WebGL, "Cancel pending timer for turning off high-performance GPU.");
-            m_disableHighPerformanceGPUTimer.stop();
-        }
-
-        if (!m_pixelFormatObj) {
-            LOG(WebGL, "Turning on high-performance GPU.");
-
-            CGLPixelFormatAttribute attributes[] = { kCGLPFAAccelerated, kCGLPFAColorSize, static_cast<CGLPixelFormatAttribute>(32), static_cast<CGLPixelFormatAttribute>(0) };
-            GLint numPixelFormats = 0;
-            CGLChoosePixelFormat(attributes, &m_pixelFormatObj, &numPixelFormats);
-        }
-
-    } else if (m_pixelFormatObj) {
-        // Don't immediately turn off the high-performance GPU. The user might be
-        // swapping back and forth between tabs or windows, and we don't want to cause
-        // churn if we can avoid it.
-        if (!m_disableHighPerformanceGPUTimer.isActive()) {
-            LOG(WebGL, "Set a timer to turn off high-performance GPU.");
-            // FIXME: Expose this value as a Setting, which would require this class
-            // to reference a frame, page or document.
-            static const Seconds timeToKeepHighPerformanceGPUAlive { 10_s };
-            m_disableHighPerformanceGPUTimer.startOneShot(timeToKeepHighPerformanceGPUAlive);
-        }
-    }
-#endif
-}
-
-void GraphicsContext3DManager::disableHighPerformanceGPUTimerFired()
-{
-#if PLATFORM(MAC)
-    if (!m_contextsRequiringHighPerformance.size() && m_pixelFormatObj) {
-        LOG(WebGL, "Turning off high-performance GPU.");
-        CGLReleasePixelFormat(m_pixelFormatObj);
-        m_pixelFormatObj = nullptr;
-    }
-#endif
-}
-
-void GraphicsContext3DManager::recycleContextIfNecessary()
-{
-    if (hasTooManyContexts()) {
-        LOG(WebGL, "Manager recycled context (%p).", m_contexts.at(0));
-        m_contexts.at(0)->recycleContext();
-    }
-}
-
 // FIXME: This class is currently empty on Mac, but will get populated as
 // the restructuring in https://bugs.webkit.org/show_bug.cgi?id=66903 is done
 class GraphicsContext3DPrivate {
@@ -321,7 +81,7 @@ public:
 
 #if USE(OPENGL)
 
-static void setPixelFormat(Vector<CGLPixelFormatAttribute>& attribs, int colorBits, int depthBits, bool accelerated, bool supersample, bool closest, bool antialias, bool useGLES3, bool allowOfflineRenderers)
+static void setPixelFormat(Vector<CGLPixelFormatAttribute>& attribs, int colorBits, int depthBits, bool accelerated, bool supersample, bool closest, bool antialias, bool isWebGL2, bool allowOfflineRenderers)
 {
     attribs.clear();
     
@@ -358,11 +118,11 @@ static void setPixelFormat(Vector<CGLPixelFormatAttribute>& attribs, int colorBi
         attribs.append(static_cast<CGLPixelFormatAttribute>(4));
     }
 
-    if (useGLES3) {
-        // FIXME: Instead of backing a WebGL2 GraphicsContext3D with a OpenGL 3.2 context, we should instead back it with ANGLE.
-        // Use an OpenGL 3.2 context for now until the ANGLE backend is ready.
+    if (isWebGL2) {
+        // FIXME: Instead of backing a WebGL2 GraphicsContext3D with a OpenGL 4 context, we should instead back it with ANGLE.
+        // Use an OpenGL 4 context for now until the ANGLE backend is ready.
         attribs.append(kCGLPFAOpenGLProfile);
-        attribs.append(static_cast<CGLPixelFormatAttribute>(kCGLOGLPVersion_3_2_Core));
+        attribs.append(static_cast<CGLPixelFormatAttribute>(kCGLOGLPVersion_GL4_Core));
     }
         
     attribs.append(static_cast<CGLPixelFormatAttribute>(0));
@@ -377,8 +137,8 @@ RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes 
         return nullptr;
 
     // Make space for the incoming context if we're full.
-    manager().recycleContextIfNecessary();
-    if (manager().hasTooManyContexts())
+    GraphicsContext3DManager::sharedManager().recycleContextIfNecessary();
+    if (GraphicsContext3DManager::sharedManager().hasTooManyContexts())
         return nullptr;
 
     RefPtr<GraphicsContext3D> context = adoptRef(new GraphicsContext3D(attrs, hostWindow, renderStyle));
@@ -386,55 +146,119 @@ RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes 
     if (!context->m_contextObj)
         return nullptr;
 
-    manager().addContext(context.get());
+    GraphicsContext3DManager::sharedManager().addContext(context.get(), hostWindow);
 
     return context;
 }
 
 Ref<GraphicsContext3D> GraphicsContext3D::createShared(GraphicsContext3D& sharedContext)
 {
-    auto context = adoptRef(*new GraphicsContext3D(sharedContext.getContextAttributes(), nullptr, sharedContext.m_renderStyle, &sharedContext));
+    auto hostWindow = GraphicsContext3DManager::sharedManager().hostWindowForContext(&sharedContext);
+    auto context = adoptRef(*new GraphicsContext3D(sharedContext.getContextAttributes(), hostWindow, sharedContext.m_renderStyle, &sharedContext));
 
-    manager().addContext(context.ptr());
+    GraphicsContext3DManager::sharedManager().addContext(context.ptr(), hostWindow);
 
     return context;
 }
 
-#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-static void identifyAndSetCurrentGPU(CGLPixelFormatObj pixelFormatObj, int numPixelFormats, CGOpenGLDisplayMask displayMaskOpenGL, PlatformGraphicsContext3D contextObj)
+#if PLATFORM(MAC)
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+static void setGPUByRegistryID(PlatformGraphicsContext3D contextObj, CGLPixelFormatObj pixelFormatObj, IORegistryGPUID preferredGPUID)
 {
     // When the WebProcess does not have access to the WindowServer, there is no way for OpenGL to tell which GPU is connected to a display.
-    // CGLSetVirtualScreen can be used to tell OpenGL which GPU it should be using.
-    // See code example at https://developer.apple.com/library/content/technotes/tn2229/_index.html#//apple_ref/doc/uid/DTS40008924-CH1-SUBSECTION7
-    
-    if (!displayMaskOpenGL || !contextObj)
+    // On 10.13+, find the virtual screen that corresponds to the preferred GPU by its registryID.
+    // CGLSetVirtualScreen can then be used to tell OpenGL which GPU it should be using.
+
+    if (!contextObj || !preferredGPUID)
         return;
 
-    for (int virtualScreen = 0; virtualScreen < numPixelFormats; ++virtualScreen) {
+    GLint virtualScreenCount = 0;
+    CGLError error = CGLDescribePixelFormat(pixelFormatObj, 0, kCGLPFAVirtualScreenCount, &virtualScreenCount);
+    ASSERT(error == kCGLNoError);
+
+    GLint firstAcceleratedScreen = -1;
+
+    for (GLint virtualScreen = 0; virtualScreen < virtualScreenCount; ++virtualScreen) {
         GLint displayMask = 0;
-        CGLError error = CGLDescribePixelFormat(pixelFormatObj, virtualScreen, kCGLPFADisplayMask, &displayMask);
+        error = CGLDescribePixelFormat(pixelFormatObj, virtualScreen, kCGLPFADisplayMask, &displayMask);
+        ASSERT(error == kCGLNoError);
+
+        auto gpuID = gpuIDForDisplayMask(displayMask);
+
+        if (gpuID == preferredGPUID) {
+            error = CGLSetVirtualScreen(contextObj, virtualScreen);
+            ASSERT(error == kCGLNoError);
+            LOG(WebGL, "Context (%p) set to GPU with ID: (%lld).", contextObj, gpuID);
+            return;
+        }
+
+        if (firstAcceleratedScreen < 0) {
+            GLint isAccelerated = 0;
+            error = CGLDescribePixelFormat(pixelFormatObj, virtualScreen, kCGLPFAAccelerated, &isAccelerated);
+            ASSERT(error == kCGLNoError);
+            if (isAccelerated)
+                firstAcceleratedScreen = virtualScreen;
+        }
+    }
+
+    // No registryID match found; set to first hardware-accelerated virtual screen.
+    if (firstAcceleratedScreen >= 0) {
+        error = CGLSetVirtualScreen(contextObj, firstAcceleratedScreen);
+        ASSERT(error == kCGLNoError);
+        LOG(WebGL, "RegistryID (%lld) not matched; Context (%p) set to virtual screen (%d).", preferredGPUID, contextObj, firstAcceleratedScreen);
+    }
+}
+#else // __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+static void setGPUByDisplayMask(PlatformGraphicsContext3D contextObj, CGLPixelFormatObj pixelFormatObj, uint32_t preferredDisplayMask)
+{
+    // A common case for multiple GPUs, external GPUs, is not supported before macOS 10.13.4.
+    // In the rarer case where there are still multiple displays plugged into multiple GPUs, this should still work.
+    // See code example at https://developer.apple.com/library/content/technotes/tn2229/_index.html#//apple_ref/doc/uid/DTS40008924-CH1-SUBSECTION7
+    // FIXME: Window server is not blocked before 10.14. There might be a more straightforward way to detect the correct GPU.
+
+    if (!contextObj || !preferredDisplayMask)
+        return;
+
+    GLint virtualScreenCount = 0;
+    CGLError error = CGLDescribePixelFormat(pixelFormatObj, 0, kCGLPFAVirtualScreenCount, &virtualScreenCount);
+    ASSERT(error == kCGLNoError);
+
+    for (GLint virtualScreen = 0; virtualScreen < virtualScreenCount; ++virtualScreen) {
+        GLint displayMask = 0;
+        error = CGLDescribePixelFormat(pixelFormatObj, virtualScreen, kCGLPFADisplayMask, &displayMask);
         ASSERT(error == kCGLNoError);
         if (error != kCGLNoError)
             continue;
-        if (displayMask & displayMaskOpenGL) {
+
+        if (displayMask & preferredDisplayMask) {
             error = CGLSetVirtualScreen(contextObj, virtualScreen);
             ASSERT(error == kCGLNoError);
-            break;
+            return;
         }
     }
 }
 #endif
 
+#endif // !PLATFORM(MAC)
+
 GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attrs, HostWindow* hostWindow, GraphicsContext3D::RenderStyle, GraphicsContext3D* sharedContext)
     : m_attrs(attrs)
-#if PLATFORM(IOS)
-    , m_compiler(SH_ESSL_OUTPUT)
-#endif
     , m_private(std::make_unique<GraphicsContext3DPrivate>(this))
 {
+#if PLATFORM(IOS)
+    if (m_attrs.isWebGL2)
+        m_compiler = ANGLEWebKitBridge(SH_ESSL_OUTPUT, SH_WEBGL2_SPEC);
+    else
+        m_compiler = ANGLEWebKitBridge(SH_ESSL_OUTPUT);
+#else
+    if (m_attrs.isWebGL2)
+        m_compiler = ANGLEWebKitBridge(SH_GLSL_410_CORE_OUTPUT, SH_WEBGL2_SPEC);
+#endif
+
 #if USE(OPENGL_ES)
     UNUSED_PARAM(hostWindow);
-    EAGLRenderingAPI api = m_attrs.useGLES3 ? kEAGLRenderingAPIOpenGLES3 : kEAGLRenderingAPIOpenGLES2;
+    EAGLRenderingAPI api = m_attrs.isWebGL2 ? kEAGLRenderingAPIOpenGLES3 : kEAGLRenderingAPIOpenGLES2;
     if (!sharedContext)
         m_contextObj = [[EAGLContext alloc] initWithAPI:api];
     else
@@ -467,19 +291,19 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attrs, HostWind
     m_powerPreferenceUsedForCreation = GraphicsContext3DPowerPreference::Default;
 #endif
 
-    setPixelFormat(attribs, 32, 32, !attrs.forceSoftwareRenderer, true, false, useMultisampling, attrs.useGLES3, allowOfflineRenderers());
+    setPixelFormat(attribs, 32, 32, !attrs.forceSoftwareRenderer, true, false, useMultisampling, attrs.isWebGL2, allowOfflineRenderers());
     CGLChoosePixelFormat(attribs.data(), &pixelFormatObj, &numPixelFormats);
 
     if (!numPixelFormats) {
-        setPixelFormat(attribs, 32, 32, !attrs.forceSoftwareRenderer, false, false, useMultisampling, attrs.useGLES3, allowOfflineRenderers());
+        setPixelFormat(attribs, 32, 32, !attrs.forceSoftwareRenderer, false, false, useMultisampling, attrs.isWebGL2, allowOfflineRenderers());
         CGLChoosePixelFormat(attribs.data(), &pixelFormatObj, &numPixelFormats);
 
         if (!numPixelFormats) {
-            setPixelFormat(attribs, 32, 16, !attrs.forceSoftwareRenderer, false, false, useMultisampling, attrs.useGLES3, allowOfflineRenderers());
+            setPixelFormat(attribs, 32, 16, !attrs.forceSoftwareRenderer, false, false, useMultisampling, attrs.isWebGL2, allowOfflineRenderers());
             CGLChoosePixelFormat(attribs.data(), &pixelFormatObj, &numPixelFormats);
 
             if (!attrs.forceSoftwareRenderer && !numPixelFormats) {
-                setPixelFormat(attribs, 32, 16, false, false, true, false, attrs.useGLES3, allowOfflineRenderers());
+                setPixelFormat(attribs, 32, 16, false, false, true, false, attrs.isWebGL2, allowOfflineRenderers());
                 CGLChoosePixelFormat(attribs.data(), &pixelFormatObj, &numPixelFormats);
                 useMultisampling = false;
             }
@@ -493,15 +317,22 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attrs, HostWind
     GLint abortOnBlacklist = 0;
     CGLSetParameter(m_contextObj, kCGLCPAbortOnGPURestartStatusBlacklisted, &abortOnBlacklist);
     
-#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+#if PLATFORM(MAC)
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+    auto gpuID = (hostWindow && hostWindow->displayID()) ? gpuIDForDisplay(hostWindow->displayID()) : primaryGPUID();
+    setGPUByRegistryID(m_contextObj, pixelFormatObj, gpuID);
+#else
     if (auto displayMask = primaryOpenGLDisplayMask()) {
         if (hostWindow && hostWindow->displayID())
             displayMask = displayMaskForDisplay(hostWindow->displayID());
-        identifyAndSetCurrentGPU(pixelFormatObj, numPixelFormats, displayMask, m_contextObj);
+        setGPUByDisplayMask(m_contextObj, pixelFormatObj, displayMask);
     }
+#endif
+
 #else
     UNUSED_PARAM(hostWindow);
-#endif
+#endif // !PLATFORM(MAC)
 
     CGLDestroyPixelFormat(pixelFormatObj);
     
@@ -511,7 +342,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attrs, HostWind
         return;
     }
 
-    m_isForWebGL2 = attrs.useGLES3;
+    m_isForWebGL2 = attrs.isWebGL2;
 
     // Set the current context to the one given to us.
     CGLSetCurrentContext(m_contextObj);
@@ -601,7 +432,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attrs, HostWind
 
 GraphicsContext3D::~GraphicsContext3D()
 {
-    manager().removeContext(this);
+    GraphicsContext3DManager::sharedManager().removeContext(this);
 
     if (m_contextObj) {
 #if USE(OPENGL_ES)
@@ -771,9 +602,9 @@ void GraphicsContext3D::setContextVisibility(bool isVisible)
 {
     if (m_powerPreferenceUsedForCreation == GraphicsContext3DPowerPreference::HighPerformance) {
         if (isVisible)
-            manager().addContextRequiringHighPerformance(this);
+            GraphicsContext3DManager::sharedManager().addContextRequiringHighPerformance(this);
         else
-            manager().removeContextRequiringHighPerformance(this);
+            GraphicsContext3DManager::sharedManager().removeContextRequiringHighPerformance(this);
     }
 }
 #endif
@@ -793,7 +624,7 @@ void GraphicsContext3D::setErrorMessageCallback(std::unique_ptr<ErrorMessageCall
 
 void GraphicsContext3D::simulateContextChanged()
 {
-    manager().updateAllContexts();
+    GraphicsContext3DManager::sharedManager().updateAllContexts();
 }
 
 bool GraphicsContext3D::allowOfflineRenderers() const
@@ -816,6 +647,19 @@ bool GraphicsContext3D::allowOfflineRenderers() const
     
     return false;
 }
+
+#if PLATFORM(MAC)
+void GraphicsContext3D::screenDidChange(PlatformDisplayID displayID)
+{
+    if (!m_contextObj)
+        return;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+    setGPUByRegistryID(m_contextObj, CGLGetPixelFormat(m_contextObj), gpuIDForDisplay(displayID));
+#else
+    setGPUByDisplayMask(m_contextObj, CGLGetPixelFormat(m_contextObj), displayMaskForDisplay(displayID));
+#endif
+}
+#endif // !PLATFORM(MAC)
 
 }
 

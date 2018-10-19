@@ -289,7 +289,16 @@ public:
     JS_EXPORT_PRIVATE SamplingProfiler& ensureSamplingProfiler(RefPtr<Stopwatch>&&);
 #endif
 
+    static unsigned numberOfIDs() { return s_numberOfIDs.load(); }
+    unsigned id() const { return m_id; }
+    bool isEntered() const { return !!entryScope; }
+
 private:
+    unsigned nextID();
+
+    static Atomic<unsigned> s_numberOfIDs;
+
+    unsigned m_id;
     RefPtr<JSLock> m_apiLock;
 #if USE(CF)
     // These need to be initialized before heap below.
@@ -610,9 +619,21 @@ public:
     };
 
     static JS_EXPORT_PRIVATE bool canUseAssembler();
-    static JS_EXPORT_PRIVATE bool canUseJIT();
     static JS_EXPORT_PRIVATE bool canUseRegExpJIT();
     static JS_EXPORT_PRIVATE bool isInMiniMode();
+
+    static void computeCanUseJIT();
+    ALWAYS_INLINE static bool canUseJIT()
+    {
+#if ENABLE(JIT)
+#if !ASSERT_DISABLED
+        RELEASE_ASSERT(s_canUseJITIsSet);
+#endif
+        return s_canUseJIT;
+#else
+        return false;
+#endif
+    }
 
     SourceProviderCache* addSourceProviderCache(SourceProvider*);
     void clearSourceProviderCaches();
@@ -796,7 +817,7 @@ public:
     JSLock& apiLock() { return *m_apiLock; }
     CodeCache* codeCache() { return m_codeCache.get(); }
 
-    JS_EXPORT_PRIVATE void whenIdle(std::function<void()>);
+    JS_EXPORT_PRIVATE void whenIdle(Function<void()>&&);
 
     JS_EXPORT_PRIVATE void deleteAllCode(DeleteAllCodeEffort);
     JS_EXPORT_PRIVATE void deleteAllLinkedCode(DeleteAllCodeEffort);
@@ -973,6 +994,13 @@ private:
 #endif
     std::unique_ptr<ShadowChicken> m_shadowChicken;
     std::unique_ptr<BytecodeIntrinsicRegistry> m_bytecodeIntrinsicRegistry;
+
+#if ENABLE(JIT)
+#if !ASSERT_DISABLED
+    JS_EXPORT_PRIVATE static bool s_canUseJITIsSet;
+#endif
+    JS_EXPORT_PRIVATE static bool s_canUseJIT;
+#endif
 
     VM* m_prev; // Required by DoublyLinkedListNode.
     VM* m_next; // Required by DoublyLinkedListNode.

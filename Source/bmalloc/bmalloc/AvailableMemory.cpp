@@ -26,6 +26,9 @@
 #include "AvailableMemory.h"
 
 #include "Environment.h"
+#if BPLATFORM(IOS)
+#include "MemoryStatusSPI.h"
+#endif
 #include "PerProcess.h"
 #include "Scavenger.h"
 #include "Sizes.h"
@@ -72,12 +75,25 @@ static size_t memorySizeAccordingToKernel()
 }
 #endif
 
+#if BPLATFORM(IOS)
+static size_t jetsamLimit()
+{
+    memorystatus_memlimit_properties_t properties;
+    pid_t pid = getpid();
+    if (memorystatus_control(MEMORYSTATUS_CMD_GET_MEMLIMIT_PROPERTIES, pid, 0, &properties, sizeof(properties)))
+        return 840 * bmalloc::MB;
+    if (properties.memlimit_active < 0)
+        return std::numeric_limits<size_t>::max();
+    return static_cast<size_t>(properties.memlimit_active) * bmalloc::MB;
+}
+#endif
+
 static size_t computeAvailableMemory()
 {
 #if BOS(DARWIN)
     size_t sizeAccordingToKernel = memorySizeAccordingToKernel();
 #if BPLATFORM(IOS)
-    sizeAccordingToKernel = std::min(sizeAccordingToKernel, 840 * bmalloc::MB);
+    sizeAccordingToKernel = std::min(sizeAccordingToKernel, jetsamLimit());
 #endif
     size_t multiple = 128 * bmalloc::MB;
 
@@ -108,16 +124,12 @@ size_t availableMemory()
 #if BPLATFORM(IOS)
 MemoryStatus memoryStatus()
 {
-    size_t memoryFootprint;
-    if (PerProcess<Environment>::get()->isDebugHeapEnabled()) {
-        task_vm_info_data_t vmInfo;
-        mach_msg_type_number_t vmSize = TASK_VM_INFO_COUNT;
-        
-        memoryFootprint = 0;
-        if (KERN_SUCCESS == task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)(&vmInfo), &vmSize))
-            memoryFootprint = static_cast<size_t>(vmInfo.phys_footprint);
-    } else
-        memoryFootprint = PerProcess<Scavenger>::get()->footprint();
+    task_vm_info_data_t vmInfo;
+    mach_msg_type_number_t vmSize = TASK_VM_INFO_COUNT;
+    
+    size_t memoryFootprint = 0;
+    if (KERN_SUCCESS == task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)(&vmInfo), &vmSize))
+        memoryFootprint = static_cast<size_t>(vmInfo.phys_footprint);
 
     double percentInUse = static_cast<double>(memoryFootprint) / static_cast<double>(availableMemory());
     double percentAvailableMemoryInUse = std::min(percentInUse, 1.0);

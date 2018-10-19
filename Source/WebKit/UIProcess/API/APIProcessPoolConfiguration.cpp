@@ -98,6 +98,7 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::copy()
 
     copy->m_shouldHaveLegacyDataStore = this->m_shouldHaveLegacyDataStore;
     copy->m_maximumProcessCount = this->m_maximumProcessCount;
+    copy->m_maximumPrewarmedProcessCount = this->m_maximumPrewarmedProcessCount;
     copy->m_cacheModel = this->m_cacheModel;
     copy->m_diskCacheDirectory = this->m_diskCacheDirectory;
     copy->m_diskCacheSpeculativeValidationEnabled = this->m_diskCacheSpeculativeValidationEnabled;
@@ -117,6 +118,7 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::copy()
     copy->m_additionalReadAccessAllowedPaths = this->m_additionalReadAccessAllowedPaths;
     copy->m_fullySynchronousModeIsAllowedForTesting = this->m_fullySynchronousModeIsAllowedForTesting;
     copy->m_ignoreSynchronousMessagingTimeoutsForTesting = this->m_ignoreSynchronousMessagingTimeoutsForTesting;
+    copy->m_attrStyleEnabled = this->m_attrStyleEnabled;
     copy->m_overrideLanguages = this->m_overrideLanguages;
     copy->m_sourceApplicationBundleIdentifier = this->m_sourceApplicationBundleIdentifier;
     copy->m_sourceApplicationSecondaryIdentifier = this->m_sourceApplicationSecondaryIdentifier;

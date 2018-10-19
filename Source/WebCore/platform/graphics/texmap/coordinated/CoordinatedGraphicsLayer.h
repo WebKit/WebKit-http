@@ -134,6 +134,8 @@ public:
     void setNeedsVisibleRectAdjustment();
     void purgeBackingStores();
 
+    const RefPtr<Nicosia::CompositionLayer>& compositionLayer() const;
+
 private:
     bool isCoordinatedGraphicsLayer() const override { return true; }
 
@@ -227,6 +229,8 @@ private:
     struct {
         RefPtr<Nicosia::CompositionLayer> layer;
         Nicosia::CompositionLayer::LayerState::Delta delta;
+        Nicosia::CompositionLayer::LayerState::RepaintCounter repaintCounter;
+        Nicosia::CompositionLayer::LayerState::DebugBorder debugBorder;
     } m_nicosia;
 };
 

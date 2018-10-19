@@ -101,17 +101,17 @@ private:
 
     private:
         JSObject* m_object;
-        const bool m_isArray;
         const bool m_isJSArray;
-        unsigned m_index;
-        unsigned m_size;
+        const bool m_isArray;
+        unsigned m_index { 0 };
+        unsigned m_size { 0 };
         RefPtr<PropertyNameArrayData> m_propertyNames;
     };
 
     friend class Holder;
 
-    JSValue toJSON(JSValue, const PropertyNameForFunctionCall&);
-    JSValue toJSONImpl(VM&, JSValue, JSValue toJSONFunction, const PropertyNameForFunctionCall&);
+    JSValue toJSON(JSObject*, const PropertyNameForFunctionCall&);
+    JSValue toJSONImpl(VM&, JSObject*, JSValue toJSONFunction, const PropertyNameForFunctionCall&);
 
     enum StringifyResult { StringifyFailed, StringifySucceeded, StringifyFailedDueToUndefinedOrSymbolValue };
     StringifyResult appendStringifiedValue(StringBuilder&, JSValue, const Holder&, const PropertyNameForFunctionCall&);
@@ -120,12 +120,13 @@ private:
     void indent();
     void unindent();
     void startNewLine(StringBuilder&) const;
+    bool isCallableReplacer() const { return m_replacerCallType != CallType::None; }
 
     ExecState* const m_exec;
     JSValue m_replacer;
-    bool m_usingArrayReplacer;
+    bool m_usingArrayReplacer { false };
     PropertyNameArray m_arrayReplacerPropertyNames;
-    CallType m_replacerCallType;
+    CallType m_replacerCallType { CallType::None };
     CallData m_replacerCallData;
     String m_gap;
 
@@ -220,55 +221,57 @@ JSValue PropertyNameForFunctionCall::value(ExecState* exec) const
 Stringifier::Stringifier(ExecState* exec, JSValue replacer, JSValue space)
     : m_exec(exec)
     , m_replacer(replacer)
-    , m_usingArrayReplacer(false)
     , m_arrayReplacerPropertyNames(&exec->vm(), PropertyNameMode::Strings, PrivateSymbolMode::Exclude)
-    , m_replacerCallType(CallType::None)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    m_gap = gap(exec, space);
-    if (UNLIKELY(scope.exception()))
-        return;
+    if (m_replacer.isObject()) {
+        JSObject* replacerObject = asObject(m_replacer);
 
-    if (!m_replacer.isObject())
-        return;
-
-    JSObject* replacerObject = asObject(m_replacer);
-    if (replacerObject->inherits<JSArray>(vm)) {
-        m_usingArrayReplacer = true;
-        JSArray* array = jsCast<JSArray*>(replacerObject);
-        unsigned length = array->get(exec, vm.propertyNames->length).toUInt32(exec);
-        if (UNLIKELY(scope.exception()))
-            return;
-        for (unsigned i = 0; i < length; ++i) {
-            JSValue name = array->get(exec, i);
-            if (UNLIKELY(scope.exception()))
-                break;
-
-            if (auto* nameObject = jsDynamicCast<JSObject*>(vm, name)) {
-                if (!nameObject->inherits<NumberObject>(vm) && !nameObject->inherits<StringObject>(vm))
-                    continue;
-            } else if (!name.isNumber() && !name.isString())
-                continue;
-
-            m_arrayReplacerPropertyNames.add(name.toString(exec)->toIdentifier(exec));
+        m_replacerCallType = CallType::None;
+        if (!replacerObject->isCallable(vm, m_replacerCallType, m_replacerCallData)) {
+            bool isArrayReplacer = JSC::isArray(exec, replacerObject);
+            RETURN_IF_EXCEPTION(scope, );
+            if (isArrayReplacer) {
+                m_usingArrayReplacer = true;
+                unsigned length = replacerObject->get(exec, vm.propertyNames->length).toUInt32(exec);
+                RETURN_IF_EXCEPTION(scope, );
+                for (unsigned i = 0; i < length; ++i) {
+                    JSValue name = replacerObject->get(exec, i);
+                    RETURN_IF_EXCEPTION(scope, );
+                    if (name.isObject()) {
+                        auto* nameObject = jsCast<JSObject*>(name);
+                        if (!nameObject->inherits<NumberObject>(vm) && !nameObject->inherits<StringObject>(vm))
+                            continue;
+                    } else if (!name.isNumber() && !name.isString())
+                        continue;
+                    m_arrayReplacerPropertyNames.add(name.toString(exec)->toIdentifier(exec));
+                    RETURN_IF_EXCEPTION(scope, );
+                }
+            }
         }
-        return;
     }
 
-    m_replacerCallType = replacerObject->methodTable(vm)->getCallData(replacerObject, m_replacerCallData);
+    scope.release();
+    m_gap = gap(exec, space);
 }
 
 JSValue Stringifier::stringify(JSValue value)
 {
     VM& vm = m_exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    JSObject* object = constructEmptyObject(m_exec);
-    RETURN_IF_EXCEPTION(scope, jsNull());
 
     PropertyNameForFunctionCall emptyPropertyName(vm.propertyNames->emptyIdentifier);
-    object->putDirect(vm, vm.propertyNames->emptyIdentifier, value);
+
+    // If the replacer is not callable, root object wrapper is non-user-observable.
+    // We can skip creating this wrapper object.
+    JSObject* object = nullptr;
+    if (isCallableReplacer()) {
+        object = constructEmptyObject(m_exec);
+        RETURN_IF_EXCEPTION(scope, jsNull());
+        object->putDirect(vm, vm.propertyNames->emptyIdentifier, value);
+    }
 
     StringBuilder result;
     Holder root(Holder::RootHolder, object);
@@ -281,38 +284,35 @@ JSValue Stringifier::stringify(JSValue value)
     return jsString(m_exec, result.toString());
 }
 
-ALWAYS_INLINE JSValue Stringifier::toJSON(JSValue value, const PropertyNameForFunctionCall& propertyName)
+ALWAYS_INLINE JSValue Stringifier::toJSON(JSObject* object, const PropertyNameForFunctionCall& propertyName)
 {
     VM& vm = m_exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     scope.assertNoException();
-    if (!value.isObject())
-        return value;
-    
-    JSObject* object = asObject(value);
+
     PropertySlot slot(object, PropertySlot::InternalMethodType::Get);
     bool hasProperty = object->getPropertySlot(m_exec, vm.propertyNames->toJSON, slot);
     EXCEPTION_ASSERT(!scope.exception() || !hasProperty);
     if (!hasProperty)
-        return value;
+        return object;
 
     JSValue toJSONFunction = slot.getValue(m_exec, vm.propertyNames->toJSON);
     RETURN_IF_EXCEPTION(scope, { });
     scope.release();
-    return toJSONImpl(vm, value, toJSONFunction, propertyName);
+    return toJSONImpl(vm, object, toJSONFunction, propertyName);
 }
 
-JSValue Stringifier::toJSONImpl(VM& vm, JSValue value, JSValue toJSONFunction, const PropertyNameForFunctionCall& propertyName)
+JSValue Stringifier::toJSONImpl(VM& vm, JSObject* object, JSValue toJSONFunction, const PropertyNameForFunctionCall& propertyName)
 {
     CallType callType;
     CallData callData;
     if (!toJSONFunction.isCallable(vm, callType, callData))
-        return value;
+        return object;
 
     MarkedArgumentBuffer args;
     args.append(propertyName.value(m_exec));
     ASSERT(!args.hasOverflowed());
-    return call(m_exec, asObject(toJSONFunction), callType, callData, value, args);
+    return call(m_exec, asObject(toJSONFunction), callType, callData, object, args);
 }
 
 Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& builder, JSValue value, const Holder& holder, const PropertyNameForFunctionCall& propertyName)
@@ -321,15 +321,18 @@ Stringifier::StringifyResult Stringifier::appendStringifiedValue(StringBuilder& 
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     // Call the toJSON function.
-    value = toJSON(value, propertyName);
-    RETURN_IF_EXCEPTION(scope, StringifyFailed);
+    if (value.isObject()) {
+        value = toJSON(asObject(value), propertyName);
+        RETURN_IF_EXCEPTION(scope, StringifyFailed);
+    }
 
     // Call the replacer function.
-    if (m_replacerCallType != CallType::None) {
+    if (isCallableReplacer()) {
         MarkedArgumentBuffer args;
         args.append(propertyName.value(m_exec));
         args.append(value);
         ASSERT(!args.hasOverflowed());
+        ASSERT(holder.object());
         value = call(m_exec, m_replacer, m_replacerCallType, m_replacerCallData, holder.object(), args);
         RETURN_IF_EXCEPTION(scope, StringifyFailed);
     }
@@ -444,23 +447,15 @@ inline void Stringifier::startNewLine(StringBuilder& builder) const
 
 inline Stringifier::Holder::Holder(ExecState* exec, JSObject* object)
     : m_object(object)
+    , m_isJSArray(isJSArray(object))
     , m_isArray(JSC::isArray(exec, object))
-    , m_isJSArray(m_isArray && isJSArray(object))
-    , m_index(0)
-#ifndef NDEBUG
-    , m_size(0)
-#endif
 {
 }
 
 inline Stringifier::Holder::Holder(RootHolderTag, JSObject* object)
     : m_object(object)
-    , m_isArray(false)
     , m_isJSArray(false)
-    , m_index(0)
-#ifndef NDEBUG
-    , m_size(0)
-#endif
+    , m_isArray(false)
 {
 }
 
@@ -519,7 +514,9 @@ bool Stringifier::Holder::appendNextProperty(Stringifier& stringifier, StringBui
             value = asArray(m_object)->getIndexQuickly(index);
         else {
             PropertySlot slot(m_object, PropertySlot::InternalMethodType::Get);
-            if (m_object->methodTable(vm)->getOwnPropertySlotByIndex(m_object, exec, index, slot))
+            bool hasProperty = m_object->getPropertySlot(exec, index, slot);
+            EXCEPTION_ASSERT(!scope.exception() || !hasProperty);
+            if (hasProperty)
                 value = slot.getValue(exec, index);
             else
                 value = jsUndefined();
@@ -538,7 +535,9 @@ bool Stringifier::Holder::appendNextProperty(Stringifier& stringifier, StringBui
         // Get the value.
         PropertySlot slot(m_object, PropertySlot::InternalMethodType::Get);
         Identifier& propertyName = m_propertyNames->propertyNameVector()[index];
-        if (!m_object->methodTable(vm)->getOwnPropertySlot(m_object, exec, propertyName, slot))
+        bool hasProperty = m_object->getPropertySlot(exec, propertyName, slot);
+        EXCEPTION_ASSERT(!scope.exception() || !hasProperty);
+        if (!hasProperty)
             return true;
         JSValue value = slot.getValue(exec, propertyName);
         RETURN_IF_EXCEPTION(scope, false);

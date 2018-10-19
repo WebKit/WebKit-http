@@ -243,6 +243,9 @@ public:
 
     void setAccessibilityObjectModelEnabled(bool isEnabled) { m_accessibilityObjectModelEnabled = isEnabled; }
     bool accessibilityObjectModelEnabled() const { return m_accessibilityObjectModelEnabled; }
+    
+    void setAriaReflectionEnabled(bool isEnabled) { m_ariaReflectionEnabled = isEnabled; }
+    bool ariaReflectionEnabled() const { return m_ariaReflectionEnabled; }
 
     void setMediaCapabilitiesEnabled(bool isEnabled) { m_mediaCapabilitiesEnabled = isEnabled; }
     bool mediaCapabilitiesEnabled() const { return m_mediaCapabilitiesEnabled; }
@@ -275,6 +278,9 @@ public:
     void setSystemPreviewEnabled(bool isEnabled) { m_systemPreviewEnabled = isEnabled; }
     bool systemPreviewEnabled() const { return m_systemPreviewEnabled; }
 #endif
+
+    void setAttrStyleEnabled(bool isEnabled) { m_attrStyleEnabled = isEnabled; }
+    bool attrStyleEnabled() const { return m_attrStyleEnabled; }
 
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
@@ -402,6 +408,7 @@ private:
     bool m_inspectorAdditionsEnabled { false };
     bool m_webVREnabled { false };
     bool m_accessibilityObjectModelEnabled { false };
+    bool m_ariaReflectionEnabled { true };
     bool m_mediaCapabilitiesEnabled { false };
     bool m_resourceLoadStatisticsDebugMode { false };
     bool m_isRestrictedHTTPResponseAccess { true };
@@ -415,6 +422,8 @@ private:
 #if USE(SYSTEM_PREVIEW)
     bool m_systemPreviewEnabled { false };
 #endif
+
+    bool m_attrStyleEnabled { false };
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };

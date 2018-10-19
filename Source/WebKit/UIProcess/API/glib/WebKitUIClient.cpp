@@ -21,6 +21,7 @@
 #include "WebKitUIClient.h"
 
 #include "APIUIClient.h"
+#include "DrawingAreaProxy.h"
 #include "WebKitFileChooserRequestPrivate.h"
 #include "WebKitGeolocationPermissionRequestPrivate.h"
 #include "WebKitNavigationActionPrivate.h"
@@ -50,7 +51,7 @@ private:
     void createNewPage(WebPageProxy& page, Ref<API::FrameInfo>&& frameInfo, WebCore::ResourceRequest&& resourceRequest, WebCore::WindowFeatures&& windowFeatures, NavigationActionData&& navigationActionData, CompletionHandler<void(RefPtr<WebPageProxy>&&)>&& completionHandler) final
     {
         auto userInitiatedActivity = page.process().userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
-        WebKitNavigationAction navigationAction(API::NavigationAction::create(WTFMove(navigationActionData), frameInfo.ptr(), nullptr, std::nullopt, WTFMove(resourceRequest), { }, false, WTFMove(userInitiatedActivity)));
+        WebKitNavigationAction navigationAction(API::NavigationAction::create(WTFMove(navigationActionData), frameInfo.ptr(), nullptr, std::nullopt, WTFMove(resourceRequest), WebCore::URL { }, false, WTFMove(userInitiatedActivity)));
         completionHandler(webkitWebViewCreateNewPage(m_webView, windowFeatures, &navigationAction));
     }
 
@@ -160,7 +161,11 @@ private:
         completionHandler(WebCore::FloatRect(geometry));
 #elif PLATFORM(WPE)
         // FIXME: I guess this is actually the view size in WPE. We need more refactoring here.
-        completionHandler({ });
+        WebCore::FloatRect rect;
+        auto& page = webkitWebViewGetPage(m_webView);
+        if (page.drawingArea())
+            rect.setSize(page.drawingArea()->size());
+        completionHandler(WTFMove(rect));
 #endif
     }
 

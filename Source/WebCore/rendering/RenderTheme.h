@@ -38,6 +38,7 @@ class FileList;
 class FillLayer;
 class HTMLInputElement;
 class Icon;
+class Page;
 class RenderAttachment;
 class RenderBox;
 class RenderMeter;
@@ -138,6 +139,7 @@ public:
     // Text selection colors.
     Color activeSelectionBackgroundColor(OptionSet<StyleColor::Options>) const;
     Color inactiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const;
+    virtual Color transformSelectionBackgroundColor(const Color&, OptionSet<StyleColor::Options>) const;
     Color activeSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
     Color inactiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
 
@@ -254,6 +256,8 @@ public:
 #endif
 
     virtual void drawLineForDocumentMarker(const RenderText&, GraphicsContext&, const FloatPoint& origin, float width, DocumentMarkerLineStyle);
+
+    virtual bool usingDarkAppearance(const RenderObject&) const { return false; }
 
 protected:
     virtual FontCascadeDescription& cachedSystemFontDescription(CSSValueID systemFontID) const;
@@ -410,6 +414,8 @@ protected:
         Color systemLinkColor;
         Color systemActiveLinkColor;
         Color systemVisitedLinkColor;
+        Color systemFocusRingColor;
+        Color systemControlAccentColor;
 
         Color activeSelectionBackgroundColor;
         Color inactiveSelectionBackgroundColor;

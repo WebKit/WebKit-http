@@ -1084,7 +1084,15 @@ ColorFilterEnabled:
   type: bool
   defaultValue: false
 
+PunchOutWhiteBackgroundsInDarkMode:
+  type: bool
+  defaultValue: false
+
 IncompleteImageBorderEnabled:
+  type: bool
+  defaultValue: false
+
+ShouldDeferAsynchronousScriptsUntilAfterDocumentLoad:
   type: bool
   defaultValue: false
 
@@ -1220,6 +1228,14 @@ AccessibilityObjectModelEnabled:
   defaultValue: false
   humanReadableName: "Accessibility Object Model"
   humanReadableDescription: "Accessibility Object Model support"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
+
+AriaReflectionEnabled:
+  type: bool
+  defaultValue: true
+  humanReadableName: "ARIA Reflection"
+  humanReadableDescription: "ARIA Reflection support"
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
 

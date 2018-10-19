@@ -178,7 +178,9 @@ public:
     void waitForPreparedForInlineThen(WTF::Function<void()>&& completionHandler = [] { });
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler = [] { });
+#ifdef __OBJC__
     PlatformLayer* videoFullscreenLayer() const { return m_videoFullscreenLayer.get(); }
+#endif
     void setVideoFullscreenFrame(FloatRect);
     void setVideoFullscreenGravity(MediaPlayerEnums::VideoGravity);
     MediaPlayerEnums::VideoGravity videoFullscreenGravity() const { return m_videoFullscreenGravity; }
@@ -331,9 +333,12 @@ public:
 #if ENABLE(VIDEO_TRACK)
     ExceptionOr<TextTrack&> addTextTrack(const String& kind, const String& label, const String& language);
 
-    AudioTrackList& audioTracks();
-    TextTrackList& textTracks();
-    VideoTrackList& videoTracks();
+    AudioTrackList& ensureAudioTracks();
+    TextTrackList& ensureTextTracks();
+    VideoTrackList& ensureVideoTracks();
+    AudioTrackList* audioTracks() const { return m_audioTracks.get(); }
+    TextTrackList* textTracks() const { return m_textTracks.get(); }
+    VideoTrackList* videoTracks() const { return m_videoTracks.get(); }
 
     CueList currentlyActiveCues() const { return m_currentlyActiveCues; }
 
@@ -416,6 +421,7 @@ public:
 
     bool hasSingleSecurityOrigin() const { return !m_player || m_player->hasSingleSecurityOrigin(); }
     bool didPassCORSAccessCheck() const { return m_player && m_player->didPassCORSAccessCheck(); }
+    bool wouldTaintOrigin(const SecurityOrigin& origin) const { return m_player && m_player->wouldTaintOrigin(origin); }
     
     WEBCORE_EXPORT bool isFullscreen() const override;
     bool isStandardFullscreen() const;
@@ -930,6 +936,7 @@ private:
     Timer m_scanTimer;
     Timer m_playbackControlsManagerBehaviorRestrictionsTimer;
     Timer m_seekToPlaybackPositionEndedTimer;
+    GenericTaskQueue<Timer> m_resumeTaskQueue;
     GenericTaskQueue<Timer> m_seekTaskQueue;
     GenericTaskQueue<Timer> m_shadowDOMTaskQueue;
     GenericTaskQueue<Timer> m_promiseTaskQueue;

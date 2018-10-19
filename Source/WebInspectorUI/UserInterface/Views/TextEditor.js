@@ -118,10 +118,9 @@ WI.TextEditor = class TextEditor extends WI.View
             if (this._initialStringNotSet)
                 this._codeMirror.removeLineClass(0, "wrap");
 
-            if (this._codeMirror.getValue() !== newString) {
+            if (this._codeMirror.getValue() !== newString)
                 this._codeMirror.setValue(newString);
-                console.assert(this.string.length === newString.length, "A lot of our code depends on precise text offsets, so the string should remain the same.");
-            } else {
+            else {
                 // Ensure we at display content even if the value did not change. This often happens when auto formatting.
                 this.layout();
             }
@@ -197,7 +196,7 @@ WI.TextEditor = class TextEditor extends WI.View
 
     canBeFormatted()
     {
-        // Can be overriden by subclasses.
+        // Can be overridden by subclasses.
         return this.hasFormatter();
     }
 
@@ -784,8 +783,8 @@ WI.TextEditor = class TextEditor extends WI.View
         if (!this._formatterSourceMap)
             return position;
 
-        let location = this._formatterSourceMap.formattedToOriginal(position.line, position.ch);
-        return {line: location.lineNumber, ch: location.columnNumber};
+        let location = this._formatterSourceMap.formattedToOriginal(position.lineNumber, position.columnNumber);
+        return new WI.SourceCodePosition(location.lineNumber, location.columnNumber);
     }
 
     currentPositionToCurrentOffset(position)
@@ -1323,7 +1322,7 @@ WI.TextEditor = class TextEditor extends WI.View
         if (isNaN(this._executionLineNumber))
             return;
 
-        let currentPosition = {line: this._executionLineNumber, ch: this._executionColumnNumber};
+        let currentPosition = new WI.SourceCodePosition(this._executionLineNumber, this._executionColumnNumber);
 
         this._delegate.textEditorExecutionHighlightRange(currentPosition, (range) => {
             let start, end;

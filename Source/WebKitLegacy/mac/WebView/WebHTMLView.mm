@@ -1335,7 +1335,7 @@ static NSControlStateValue kit(TriState state)
     if ([types containsObject:WebArchivePboardType]) {
         if (RefPtr<LegacyWebArchive> coreArchive = LegacyWebArchive::createFromSelection(core([self _frame]))) {
             if (RetainPtr<CFDataRef> data = coreArchive ? coreArchive->rawDataRepresentation() : 0)
-                [pasteboard setData:(NSData *)data.get() forType:WebArchivePboardType];
+                [pasteboard setData:(__bridge NSData *)data.get() forType:WebArchivePboardType];
         }
     }
 
@@ -2020,7 +2020,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
         [pasteboard _web_writePromisedRTFDFromArchive:archive.get() containsImage:[[pasteboard types] containsObject:legacyTIFFPasteboardType()]];
     } else if ([type isEqualToString:legacyTIFFPasteboardType()] && _private->promisedDragTIFFDataSource) {
         if (auto* image = _private->promisedDragTIFFDataSource->image())
-            [pasteboard setData:(NSData *)image->tiffRepresentation() forType:legacyTIFFPasteboardType()];
+            [pasteboard setData:(__bridge NSData *)image->tiffRepresentation() forType:legacyTIFFPasteboardType()];
         [self setPromisedDragTIFFDataSource:nullptr];
     }
 }
@@ -5204,17 +5204,13 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
 - (void)_applyStyleToSelection:(DOMCSSStyleDeclaration *)style withUndoAction:(EditAction)undoAction
 {
-    if (Frame* coreFrame = core([self _frame])) {
-        // FIXME: We shouldn't have to make a copy here. We want callers of this function to work directly with StyleProperties eventually.
-        Ref<MutableStyleProperties> properties(core(style)->copyProperties());
-        coreFrame->editor().applyStyleToSelection(properties.ptr(), undoAction);
-    }
+    [self _applyEditingStyleToSelection:EditingStyle::create(core(style)) withUndoAction:undoAction];
 }
 
 - (void)_applyEditingStyleToSelection:(Ref<EditingStyle>&&)editingStyle withUndoAction:(EditAction)undoAction
 {
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->editor().applyStyleToSelection(WTFMove(editingStyle), undoAction);
+        coreFrame->editor().applyStyleToSelection(WTFMove(editingStyle), undoAction, Editor::ColorFilterMode::InvertColor);
 }
 
 #if PLATFORM(MAC)
@@ -7015,8 +7011,8 @@ static CGImageRef imageFromRect(Frame* frame, CGRect rect)
     
     WebHTMLView *view = (WebHTMLView *)documentView;
     
-    PaintBehavior oldPaintBehavior = frame->view()->paintBehavior();
-    frame->view()->setPaintBehavior(oldPaintBehavior | PaintBehaviorFlattenCompositingLayers | PaintBehaviorSnapshotting);
+    OptionSet<PaintBehavior> oldPaintBehavior = frame->view()->paintBehavior();
+    frame->view()->setPaintBehavior(oldPaintBehavior | PaintBehavior::FlattenCompositingLayers | PaintBehavior::Snapshotting);
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     
@@ -7071,10 +7067,10 @@ static CGImageRef imageFromRect(Frame* frame, CGRect rect)
 static CGImageRef selectionImage(Frame* frame, bool forceBlackText)
 {
     ASSERT(!WebThreadIsEnabled() || WebThreadIsLocked());
-    frame->view()->setPaintBehavior(PaintBehaviorSelectionOnly | (forceBlackText ? PaintBehaviorForceBlackText : 0));
+    frame->view()->setPaintBehavior(PaintBehavior::SelectionOnly | (forceBlackText ? OptionSet<PaintBehavior>(PaintBehavior::ForceBlackText) : OptionSet<PaintBehavior>()));
     frame->document()->updateLayout();
     CGImageRef result = imageFromRect(frame, frame->selection().selectionBounds());
-    frame->view()->setPaintBehavior(PaintBehaviorNormal);
+    frame->view()->setPaintBehavior(PaintBehavior::Normal);
     return result;
 }
 

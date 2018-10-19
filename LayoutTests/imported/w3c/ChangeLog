@@ -1,3 +1,190 @@
+2018-08-08  Charlie Turner  <cturner@igalia.com>
+
+        Add CENC sanitization
+        https://bugs.webkit.org/show_bug.cgi?id=188376
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * web-platform-tests/encrypted-media/scripts/generate-request-disallowed-input.js:
+        (runTest): Fixed an incorrect test failure message, added more
+        invalid init data tests to check the new box parsing methods in
+        WebCore.
+
+2018-08-08  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Update behavior of percentage row tracks and gutters
+        https://bugs.webkit.org/show_bug.cgi?id=188403
+
+        Reviewed by Sergio Villar Senin.
+
+        Import tests from WPT related to this issue.
+
+        * web-platform-tests/css/css-grid/alignment/grid-content-alignment-second-pass-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-content-alignment-second-pass-001.html: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-content-alignment-second-pass-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/alignment/grid-content-alignment-second-pass-002.html: Added.
+        * web-platform-tests/css/css-grid/alignment/w3c-import.log:
+        * web-platform-tests/css/css-grid/grid-definition/grid-percentage-rows-indefinite-height-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-percentage-rows-indefinite-height-001.html: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-percentage-rows-indefinite-height-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/grid-definition/grid-percentage-rows-indefinite-height-002.html: Added.
+        * web-platform-tests/css/css-grid/grid-definition/w3c-import.log:
+        * web-platform-tests/css/css-grid/grid-layout-properties.html: Update test to reflect the new behavior.
+
+2018-08-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        HTML parser should execute custom element reactions for setting attributes immediately after creating a custom element
+        https://bugs.webkit.org/show_bug.cgi?id=188336
+
+        Reviewed by Frédéric Wang.
+
+        Rebaseline the test now that the relevant test case is passing.
+
+        * web-platform-tests/custom-elements/parser/parser-sets-attributes-and-children-expected.txt:
+
+2018-08-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add support for microtasks in workers
+        https://bugs.webkit.org/show_bug.cgi?id=188246
+
+        Reviewed by Darin Adler.
+
+        This test is wrong[1,2]. It starts failing since our worker starts using correct microtask queues.
+
+        [1]: https://github.com/web-platform-tests/wpt/pull/8936
+        [2]: https://github.com/w3c/ServiceWorker/issues/1213#issuecomment-342640579
+
+        * web-platform-tests/service-workers/service-worker/extendable-event-async-waituntil.https-expected.txt:
+
+2018-08-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        innerHTML should not synchronously create a custom element
+        https://bugs.webkit.org/show_bug.cgi?id=188327
+        <rdar://problem/42923114>
+
+        Reviewed by Daniel Bates.
+
+        Rebaselined the test now that all test cases are passing.
+
+        * web-platform-tests/custom-elements/connected-callbacks-html-fragment-parsing-expected.txt:
+
+2018-08-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Release assert when throwing exceptions in custom element reactions
+        https://bugs.webkit.org/show_bug.cgi?id=187805
+        <rdar://problem/42432714>
+
+        Reviewed by Saam Barati.
+
+        Generated the expected result.
+
+        * web-platform-tests/custom-elements/reactions/with-exceptions-expected.txt: Added.
+
+2018-08-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Implement customElements.upgrade()
+        https://bugs.webkit.org/show_bug.cgi?id=183397
+
+        Reviewed by Frédéric Wang.
+
+        Rebaseline the test now that we're passing.
+
+        * web-platform-tests/custom-elements/custom-element-registry/upgrade-expected.txt:
+
+2018-07-23  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Add support for calc() in gutter properties
+        https://bugs.webkit.org/show_bug.cgi?id=187902
+
+        Reviewed by Simon Fraser.
+
+        Two new WPT tests are imported to verify the expected behavior.
+
+        * web-platform-tests/css/css-grid/abspos/grid-positioned-items-gaps-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/grid-positioned-items-gaps-002-rtl-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/grid-positioned-items-gaps-002-rtl.html: Added.
+        * web-platform-tests/css/css-grid/abspos/grid-positioned-items-gaps-002.html: Added.
+        * web-platform-tests/css/css-grid/abspos/w3c-import.log:
+
+2018-07-23  Sihui Liu  <sihui_liu@apple.com>
+
+        CrashTracer: com.apple.WebKit.Storage at WebCore: WebCore::encodeKey
+        https://bugs.webkit.org/show_bug.cgi?id=187927
+        <rdar://problem/42516426>
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/IndexedDB/key-conversion-exceptions-expected.txt:
+
+2018-07-20  Frederic Wang  <fwang@igalia.com>
+
+        Import new WPT tests for custom elements
+        https://bugs.webkit.org/show_bug.cgi?id=187806
+
+        Reviewed by Javier Fernandez.
+
+        * web-platform-tests/custom-elements/Document-createElement-expected.txt:
+        * web-platform-tests/custom-elements/Document-createElement-svg.svg: Added.
+        * web-platform-tests/custom-elements/Document-createElement.html:
+        * web-platform-tests/custom-elements/Document-createElementNS-expected.txt: Added.
+        * web-platform-tests/custom-elements/Document-createElementNS.html: Added.
+        * web-platform-tests/custom-elements/HTMLElement-constructor-expected.txt:
+        * web-platform-tests/custom-elements/HTMLElement-constructor.html:
+        * web-platform-tests/custom-elements/META.yml: Added.
+        * web-platform-tests/custom-elements/OWNERS: Removed.
+        * web-platform-tests/custom-elements/builtin-coverage-expected.txt: Added.
+        * web-platform-tests/custom-elements/builtin-coverage.html: Added.
+        * web-platform-tests/custom-elements/connected-callbacks-html-fragment-parsing-expected.txt: Added.
+        * web-platform-tests/custom-elements/connected-callbacks-html-fragment-parsing.html: Added.
+        * web-platform-tests/custom-elements/custom-element-registry/upgrade-expected.txt: Added.
+        * web-platform-tests/custom-elements/custom-element-registry/upgrade.html: Added.
+        * web-platform-tests/custom-elements/custom-element-registry/w3c-import.log:
+        * web-platform-tests/custom-elements/htmlconstructor/newtarget-expected.txt:
+        * web-platform-tests/custom-elements/htmlconstructor/newtarget.html:
+        * web-platform-tests/custom-elements/htmlconstructor/w3c-import.log:
+        * web-platform-tests/custom-elements/parser/parser-constructs-custom-elements-with-is-expected.txt: Added.
+        * web-platform-tests/custom-elements/parser/parser-constructs-custom-elements-with-is.html: Added.
+        * web-platform-tests/custom-elements/parser/parser-uses-create-an-element-for-a-token-svg.svg: Added.
+        * web-platform-tests/custom-elements/parser/parser-uses-registry-of-owner-document-expected.txt:
+        * web-platform-tests/custom-elements/parser/serializing-html-fragments-expected.txt: Added.
+        * web-platform-tests/custom-elements/parser/serializing-html-fragments.html: Added.
+        * web-platform-tests/custom-elements/parser/w3c-import.log:
+        * web-platform-tests/custom-elements/pseudo-class-defined-expected.txt: Added.
+        * web-platform-tests/custom-elements/pseudo-class-defined.html: Added.
+        * web-platform-tests/custom-elements/reactions/HTMLInputElement-expected.txt: Added.
+        * web-platform-tests/custom-elements/reactions/HTMLInputElement.html: Added.
+        * web-platform-tests/custom-elements/reactions/resources/w3c-import.log:
+        * web-platform-tests/custom-elements/reactions/w3c-import.log:
+        * web-platform-tests/custom-elements/reactions/with-exceptions.html: Added.
+        * web-platform-tests/custom-elements/resources/my-custom-element-html-document.html: Added.
+        * web-platform-tests/custom-elements/resources/w3c-import.log:
+        * web-platform-tests/custom-elements/upgrading/Document-importNode-expected.txt: Added.
+        * web-platform-tests/custom-elements/upgrading/Document-importNode.html: Added.
+        * web-platform-tests/custom-elements/upgrading/w3c-import.log:
+        * web-platform-tests/custom-elements/w3c-import.log:
+
+2018-07-18  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Interpolation between font-styles with a keyword value should be discrete
+        https://bugs.webkit.org/show_bug.cgi?id=187722
+
+        Reviewed by Myles Maxfield.
+
+        Mark some WPT progressions.
+
+        * web-platform-tests/web-animations/animation-model/animation-types/discrete-expected.txt:
+
+2018-07-17  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Interpolation between lengths with an "auto" value should be discrete
+        https://bugs.webkit.org/show_bug.cgi?id=187721
+
+        Reviewed by Dean Jackson.
+
+        Mark 2 new WPT progressions.
+
+        * web-platform-tests/web-animations/animation-model/animation-types/discrete-expected.txt:
+
 2018-07-11  Youenn Fablet  <youenn@apple.com>
 
         Fix remaining Cross-Origin-Resource-Policy failures, if any

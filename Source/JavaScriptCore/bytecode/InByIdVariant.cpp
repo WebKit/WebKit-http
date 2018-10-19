@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018 Yusuke Suzuki <utatane.tea@gmail.com>.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,13 +54,30 @@ bool InByIdVariant::attemptToMerge(const InByIdVariant& other)
     ObjectPropertyConditionSet mergedConditionSet;
     if (!m_conditionSet.isEmpty()) {
         mergedConditionSet = m_conditionSet.mergedWith(other.m_conditionSet);
-        if (!mergedConditionSet.isValid() || !mergedConditionSet.hasOneSlotBaseCondition())
+        if (!mergedConditionSet.isValid())
+            return false;
+        // If this is a hit variant, one slot base should exist. If this is not a hit variant, the slot base is not necessary.
+        if (isHit() && !mergedConditionSet.hasOneSlotBaseCondition())
             return false;
     }
     m_conditionSet = mergedConditionSet;
 
     m_structureSet.merge(other.m_structureSet);
 
+    return true;
+}
+
+void InByIdVariant::markIfCheap(SlotVisitor& visitor)
+{
+    m_structureSet.markIfCheap(visitor);
+}
+
+bool InByIdVariant::finalize()
+{
+    if (!m_structureSet.isStillAlive())
+        return false;
+    if (!m_conditionSet.areStillLive())
+        return false;
     return true;
 }
 

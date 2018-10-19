@@ -607,116 +607,206 @@ static void testJSCGlobalObject()
     g_assert_true(window2.get() == globalObject.get());
 }
 
+typedef struct {
+    const char* name;
+    bool wasDeleted;
+} Module;
+
+static JSCClassVTable moduleVTable = {
+    // get_property
+    [](JSCClass* jscClass, JSCContext* context, gpointer instance, const char* name) -> JSCValue* {
+        auto* checker = static_cast<LeakChecker*>(g_object_get_data(G_OBJECT(jscClass), "leak-checker"));
+        checker->watch(context);
+
+        if (g_strcmp0(name, "name"))
+            return nullptr;
+
+        auto* module = static_cast<Module*>(instance);
+        auto* returnValue = jsc_value_new_string(context, module->name);
+        checker->watch(returnValue);
+        return returnValue;
+    },
+    // set_property
+    nullptr,
+    // has_property
+    nullptr,
+    // delete_property
+    nullptr,
+    // enumerate_properties
+    nullptr,
+    // padding
+    nullptr, nullptr, nullptr, nullptr
+};
+
 static void testJSCEvaluateInObject()
+{
+    Module moduleObject = { "ModuleWithClass", false };
+    {
+        LeakChecker checker;
+        GRefPtr<JSCContext> context = adoptGRef(jsc_context_new());
+        checker.watch(context.get());
+        ExceptionHandler exceptionHandler(context.get());
+
+        GRefPtr<JSCValue> result = adoptGRef(jsc_context_evaluate(context.get(), "g = 54; function foo() { return 42; }", -1));
+        checker.watch(result.get());
+
+        GRefPtr<JSCValue> globalObject = adoptGRef(jsc_context_get_global_object(context.get()));
+        checker.watch(globalObject.get());
+
+        GRefPtr<JSCValue> rootFoo = adoptGRef(jsc_value_object_get_property(globalObject.get(), "foo"));
+        checker.watch(rootFoo.get());
+        g_assert(jsc_value_is_function(rootFoo.get()));
+        result = adoptGRef(jsc_value_function_call(rootFoo.get(), G_TYPE_NONE));
+        checker.watch(result.get());
+        g_assert_true(jsc_value_is_number(result.get()));
+        g_assert_cmpint(jsc_value_to_int32(result.get()), ==, 42);
+        GRefPtr<JSCValue> value = adoptGRef(jsc_context_evaluate(context.get(), "foo()", -1));
+        checker.watch(value.get());
+        g_assert_true(value.get() == result.get());
+
+        GRefPtr<JSCValue> module;
+        result = adoptGRef(jsc_context_evaluate_in_object(context.get(), "function bar() { return g; }", -1, nullptr, nullptr, nullptr, 1, &module.outPtr()));
+        checker.watch(result.get());
+        checker.watch(module.get());
+        g_assert_true(JSC_IS_VALUE(module.get()));
+        g_assert_true(jsc_value_is_object(module.get()));
+        GUniquePtr<char> valueString(jsc_value_to_string(module.get()));
+        g_assert_cmpstr(valueString.get(), ==, "[object GlobalObject]");
+        jsc_context_set_value(context.get(), "module", module.get());
+
+        GRefPtr<JSCValue> bar = adoptGRef(jsc_value_object_get_property(module.get(), "bar"));
+        checker.watch(bar.get());
+        g_assert_true(jsc_value_is_function(bar.get()));
+        result = adoptGRef(jsc_value_function_call(bar.get(), G_TYPE_NONE));
+        checker.watch(result.get());
+        g_assert_true(jsc_value_is_number(result.get()));
+        g_assert_cmpint(jsc_value_to_int32(result.get()), ==, 54);
+        value = adoptGRef(jsc_context_evaluate(context.get(), "module.bar()", -1));
+        checker.watch(value.get());
+        g_assert_true(value.get() == result.get());
+
+        bar = adoptGRef(jsc_context_get_value(context.get(), "bar"));
+        checker.watch(bar.get());
+        g_assert_true(jsc_value_is_undefined(bar.get()));
+
+        JSCClass* jscClass = jsc_context_register_class(context.get(), "Module", nullptr, &moduleVTable, [](gpointer module) {
+            static_cast<Module*>(module)->wasDeleted = true;
+        });
+        checker.watch(jscClass);
+        g_object_set_data(G_OBJECT(jscClass), "leak-checker", &checker);
+        GRefPtr<JSCValue> moduleWithClass;
+        result = adoptGRef(jsc_context_evaluate_in_object(context.get(), "function baz() { return foo(); }", -1, &moduleObject, jscClass, nullptr, 1, &moduleWithClass.outPtr()));
+        checker.watch(result.get());
+        checker.watch(moduleWithClass.get());
+        g_assert_true(JSC_IS_VALUE(moduleWithClass.get()));
+        g_assert_true(jsc_value_is_object(moduleWithClass.get()));
+        valueString.reset(jsc_value_to_string(moduleWithClass.get()));
+        g_assert_cmpstr(valueString.get(), ==, "[object Module]");
+        jsc_context_set_value(context.get(), "moduleWithClass", moduleWithClass.get());
+
+        GRefPtr<JSCValue> name = adoptGRef(jsc_value_object_get_property(moduleWithClass.get(), "name"));
+        checker.watch(name.get());
+        g_assert_true(jsc_value_is_string(name.get()));
+        valueString.reset(jsc_value_to_string(name.get()));
+        g_assert_cmpstr(valueString.get(), ==, "ModuleWithClass");
+
+        GRefPtr<JSCValue> baz = adoptGRef(jsc_value_object_get_property(moduleWithClass.get(), "baz"));
+        checker.watch(baz.get());
+        g_assert_true(jsc_value_is_function(baz.get()));
+        result = adoptGRef(jsc_value_function_call(baz.get(), G_TYPE_NONE));
+        checker.watch(result.get());
+        g_assert_true(jsc_value_is_number(result.get()));
+        g_assert_cmpint(jsc_value_to_int32(result.get()), ==, 42);
+        value = adoptGRef(jsc_context_evaluate(context.get(), "moduleWithClass.baz()", -1));
+        checker.watch(value.get());
+        g_assert_true(value.get() == result.get());
+
+        bar = adoptGRef(jsc_value_object_get_property(moduleWithClass.get(), "bar"));
+        checker.watch(bar.get());
+        g_assert_true(jsc_value_is_undefined(bar.get()));
+
+        baz = adoptGRef(jsc_value_object_get_property(module.get(), "baz"));
+        checker.watch(baz.get());
+        g_assert_true(jsc_value_is_undefined(baz.get()));
+
+        baz = adoptGRef(jsc_context_get_value(context.get(), "baz"));
+        checker.watch(baz.get());
+        g_assert_true(jsc_value_is_undefined(baz.get()));
+
+        GRefPtr<JSCValue> jsNamespace = adoptGRef(jsc_value_new_object(context.get(), nullptr, nullptr));
+        checker.watch(jsNamespace.get());
+        jsc_context_set_value(context.get(), "wk", jsNamespace.get());
+
+        GRefPtr<JSCValue> moduleInWk;
+        result = adoptGRef(jsc_context_evaluate_in_object(context.get(), "function bar() { return g; }", -1, nullptr, nullptr, nullptr, 1, &moduleInWk.outPtr()));
+        checker.watch(result.get());
+        checker.watch(moduleInWk.get());
+        g_assert_true(JSC_IS_VALUE(moduleInWk.get()));
+        g_assert_true(jsc_value_is_object(moduleInWk.get()));
+        jsc_value_object_set_property(jsNamespace.get(), "moduleInWk", moduleInWk.get());
+
+        bar = adoptGRef(jsc_value_object_get_property(moduleInWk.get(), "bar"));
+        checker.watch(bar.get());
+        g_assert_true(jsc_value_is_function(bar.get()));
+        result = adoptGRef(jsc_value_function_call(bar.get(), G_TYPE_NONE));
+        checker.watch(result.get());
+        g_assert_true(jsc_value_is_number(result.get()));
+        g_assert_cmpint(jsc_value_to_int32(result.get()), ==, 54);
+        value = adoptGRef(jsc_context_evaluate(context.get(), "wk.moduleInWk.bar()", -1));
+        checker.watch(value.get());
+        g_assert_true(value.get() == result.get());
+
+        moduleInWk = adoptGRef(jsc_context_get_value(context.get(), "moduleInWk"));
+        checker.watch(moduleInWk.get());
+        g_assert_true(jsc_value_is_undefined(moduleInWk.get()));
+    }
+    g_assert_true(moduleObject.wasDeleted);
+}
+
+static void testJSCCheckSyntax()
 {
     LeakChecker checker;
     GRefPtr<JSCContext> context = adoptGRef(jsc_context_new());
     checker.watch(context.get());
     ExceptionHandler exceptionHandler(context.get());
 
-    GRefPtr<JSCValue> result = adoptGRef(jsc_context_evaluate(context.get(), "g = 54; function foo() { return 42; }", -1));
-    checker.watch(result.get());
+    GRefPtr<JSCException> exception;
+    g_assert_cmpuint(jsc_context_check_syntax(context.get(), "f = 42", -1, JSC_CHECK_SYNTAX_MODE_SCRIPT, nullptr, 0, &exception.outPtr()), ==, JSC_CHECK_SYNTAX_RESULT_SUCCESS);
+    g_assert_null(exception.get());
 
+    g_assert_cmpuint(jsc_context_check_syntax(context.get(), "f = 42; b =", -1, JSC_CHECK_SYNTAX_MODE_SCRIPT, nullptr, 0, &exception.outPtr()), ==, JSC_CHECK_SYNTAX_RESULT_RECOVERABLE_ERROR);
+    checker.watch(exception.get());
+    g_assert_true(JSC_IS_EXCEPTION(exception.get()));
+    g_assert_cmpstr(jsc_exception_get_message(exception.get()), ==, "Unexpected end of script");
+    g_assert_cmpuint(jsc_exception_get_line_number(exception.get()), ==, 1);
+    g_assert_false(jsc_exception_get_source_uri(exception.get()));
     GRefPtr<JSCValue> globalObject = adoptGRef(jsc_context_get_global_object(context.get()));
     checker.watch(globalObject.get());
+    g_assert_false(jsc_value_object_has_property(globalObject.get(), "f"));
+    exception = nullptr;
 
-    GRefPtr<JSCValue> rootFoo = adoptGRef(jsc_value_object_get_property(globalObject.get(), "foo"));
-    checker.watch(rootFoo.get());
-    g_assert(jsc_value_is_function(rootFoo.get()));
-    result = adoptGRef(jsc_value_function_call(rootFoo.get(), G_TYPE_NONE));
-    checker.watch(result.get());
-    g_assert_true(jsc_value_is_number(result.get()));
-    g_assert_cmpint(jsc_value_to_int32(result.get()), ==, 42);
-    GRefPtr<JSCValue> value = adoptGRef(jsc_context_evaluate(context.get(), "foo()", -1));
+    // Only syntax errors are checked.
+    bool didThrow = false;
+    g_assert_throw_begin(exceptionHandler, didThrow);
+    GRefPtr<JSCValue> value = adoptGRef(jsc_context_evaluate(context.get(), "f", -1));
     checker.watch(value.get());
-    g_assert_true(value.get() == result.get());
+    g_assert_true(jsc_value_is_undefined(value.get()));
+    g_assert_did_throw(exceptionHandler, didThrow);
+    g_assert_cmpuint(jsc_context_check_syntax(context.get(), "f", -1, JSC_CHECK_SYNTAX_MODE_SCRIPT, nullptr, 0, &exception.outPtr()), ==, JSC_CHECK_SYNTAX_RESULT_SUCCESS);
+    g_assert_null(exception.get());
 
-    GRefPtr<JSCValue> module;
-    result = adoptGRef(jsc_context_evaluate_in_object(context.get(), "function bar() { return g; }", -1, nullptr, nullptr, 1, &module.outPtr()));
-    checker.watch(result.get());
-    checker.watch(module.get());
-    g_assert_true(JSC_IS_VALUE(module.get()));
-    g_assert_true(jsc_value_is_object(module.get()));
-    GUniquePtr<char> valueString(jsc_value_to_string(module.get()));
-    g_assert_cmpstr(valueString.get(), ==, "[object GlobalObject]");
-    jsc_context_set_value(context.get(), "module", module.get());
+    g_assert_cmpuint(jsc_context_check_syntax(context.get(), "f ==== 42", -1, JSC_CHECK_SYNTAX_MODE_SCRIPT, "file:///foo/script.js", 2, &exception.outPtr()), ==, JSC_CHECK_SYNTAX_RESULT_IRRECOVERABLE_ERROR);
+    checker.watch(exception.get());
+    g_assert_true(JSC_IS_EXCEPTION(exception.get()));
+    g_assert_cmpstr(jsc_exception_get_message(exception.get()), ==, "Unexpected token '='");
+    g_assert_cmpuint(jsc_exception_get_line_number(exception.get()), ==, 2);
+    g_assert_cmpstr(jsc_exception_get_source_uri(exception.get()), ==, "file:///foo/script.js");
 
-    GRefPtr<JSCValue> bar = adoptGRef(jsc_value_object_get_property(module.get(), "bar"));
-    checker.watch(bar.get());
-    g_assert_true(jsc_value_is_function(bar.get()));
-    result = adoptGRef(jsc_value_function_call(bar.get(), G_TYPE_NONE));
-    checker.watch(result.get());
-    g_assert_true(jsc_value_is_number(result.get()));
-    g_assert_cmpint(jsc_value_to_int32(result.get()), ==, 54);
-    value = adoptGRef(jsc_context_evaluate(context.get(), "module.bar()", -1));
-    checker.watch(value.get());
-    g_assert_true(value.get() == result.get());
+    g_assert_cmpuint(jsc_context_check_syntax(context.get(), "f := 42", -1, JSC_CHECK_SYNTAX_MODE_SCRIPT, nullptr, 0, nullptr), ==, JSC_CHECK_SYNTAX_RESULT_IRRECOVERABLE_ERROR);
+    g_assert_cmpuint(jsc_context_check_syntax(context.get(), "f '42;", -1, JSC_CHECK_SYNTAX_MODE_SCRIPT, nullptr, 0, nullptr), ==, JSC_CHECK_SYNTAX_RESULT_UNTERMINATED_LITERAL_ERROR);
 
-    bar = adoptGRef(jsc_context_get_value(context.get(), "bar"));
-    checker.watch(bar.get());
-    g_assert_true(jsc_value_is_undefined(bar.get()));
-
-    JSCClass* jscClass = jsc_context_register_class(context.get(), "Module", nullptr, nullptr, nullptr);
-    checker.watch(jscClass);
-    GRefPtr<JSCValue> moduleWithClass;
-    result = adoptGRef(jsc_context_evaluate_in_object(context.get(), "function baz() { return foo(); }", -1, jscClass, nullptr, 1, &moduleWithClass.outPtr()));
-    checker.watch(result.get());
-    checker.watch(moduleWithClass.get());
-    g_assert_true(JSC_IS_VALUE(moduleWithClass.get()));
-    g_assert_true(jsc_value_is_object(moduleWithClass.get()));
-    valueString.reset(jsc_value_to_string(moduleWithClass.get()));
-    g_assert_cmpstr(valueString.get(), ==, "[object Module]");
-    jsc_context_set_value(context.get(), "moduleWithClass", moduleWithClass.get());
-
-    GRefPtr<JSCValue> baz = adoptGRef(jsc_value_object_get_property(moduleWithClass.get(), "baz"));
-    checker.watch(baz.get());
-    g_assert_true(jsc_value_is_function(baz.get()));
-    result = adoptGRef(jsc_value_function_call(baz.get(), G_TYPE_NONE));
-    checker.watch(result.get());
-    g_assert_true(jsc_value_is_number(result.get()));
-    g_assert_cmpint(jsc_value_to_int32(result.get()), ==, 42);
-    value = adoptGRef(jsc_context_evaluate(context.get(), "moduleWithClass.baz()", -1));
-    checker.watch(value.get());
-    g_assert_true(value.get() == result.get());
-
-    bar = adoptGRef(jsc_value_object_get_property(moduleWithClass.get(), "bar"));
-    checker.watch(bar.get());
-    g_assert_true(jsc_value_is_undefined(bar.get()));
-
-    baz = adoptGRef(jsc_value_object_get_property(module.get(), "baz"));
-    checker.watch(baz.get());
-    g_assert_true(jsc_value_is_undefined(baz.get()));
-
-    baz = adoptGRef(jsc_context_get_value(context.get(), "baz"));
-    checker.watch(baz.get());
-    g_assert_true(jsc_value_is_undefined(baz.get()));
-
-    GRefPtr<JSCValue> jsNamespace = adoptGRef(jsc_value_new_object(context.get(), nullptr, nullptr));
-    checker.watch(jsNamespace.get());
-    jsc_context_set_value(context.get(), "wk", jsNamespace.get());
-
-    GRefPtr<JSCValue> moduleInWk;
-    result = adoptGRef(jsc_context_evaluate_in_object(context.get(), "function bar() { return g; }", -1, nullptr, nullptr, 1, &moduleInWk.outPtr()));
-    checker.watch(result.get());
-    checker.watch(moduleInWk.get());
-    g_assert_true(JSC_IS_VALUE(moduleInWk.get()));
-    g_assert_true(jsc_value_is_object(moduleInWk.get()));
-    jsc_value_object_set_property(jsNamespace.get(), "moduleInWk", moduleInWk.get());
-
-    bar = adoptGRef(jsc_value_object_get_property(moduleInWk.get(), "bar"));
-    checker.watch(bar.get());
-    g_assert_true(jsc_value_is_function(bar.get()));
-    result = adoptGRef(jsc_value_function_call(bar.get(), G_TYPE_NONE));
-    checker.watch(result.get());
-    g_assert_true(jsc_value_is_number(result.get()));
-    g_assert_cmpint(jsc_value_to_int32(result.get()), ==, 54);
-    value = adoptGRef(jsc_context_evaluate(context.get(), "wk.moduleInWk.bar()", -1));
-    checker.watch(value.get());
-    g_assert_true(value.get() == result.get());
-
-    moduleInWk = adoptGRef(jsc_context_get_value(context.get(), "moduleInWk"));
-    checker.watch(moduleInWk.get());
-    g_assert_true(jsc_value_is_undefined(moduleInWk.get()));
+    g_assert_cmpuint(jsc_context_check_syntax(context.get(), "import foo from '/foo.js'", -1, JSC_CHECK_SYNTAX_MODE_SCRIPT, nullptr, 0, nullptr), ==, JSC_CHECK_SYNTAX_RESULT_IRRECOVERABLE_ERROR);
+    g_assert_cmpuint(jsc_context_check_syntax(context.get(), "import foo from '/foo.js'", -1, JSC_CHECK_SYNTAX_MODE_MODULE, nullptr, 0, nullptr), ==, JSC_CHECK_SYNTAX_RESULT_SUCCESS);
 }
 
 static int foo(int n)
@@ -2998,6 +3088,7 @@ int main(int argc, char** argv)
     g_test_add_func("/jsc/types", testJSCTypes);
     g_test_add_func("/jsc/global-object", testJSCGlobalObject);
     g_test_add_func("/jsc/evaluate-in-object", testJSCEvaluateInObject);
+    g_test_add_func("/jsc/check-syntax", testJSCCheckSyntax);
     g_test_add_func("/jsc/function", testJSCFunction);
     g_test_add_func("/jsc/object", testJSCObject);
     g_test_add_func("/jsc/class", testJSCClass);

@@ -46,6 +46,7 @@ struct ScreenData {
     bool screenHasInvertedColors { false };
     bool screenIsMonochrome { false };
     uint32_t displayMask { 0 };
+    IORegistryGPUID gpuID { 0 };
 
     enum EncodedColorSpaceDataType {
         Null,
@@ -93,7 +94,7 @@ std::optional<ScreenProperties> ScreenProperties::decode(Decoder& decoder)
 template<class Encoder>
 void ScreenData::encode(Encoder& encoder) const
 {
-    encoder << screenAvailableRect << screenRect << screenDepth << screenDepthPerComponent << screenSupportsExtendedColor << screenHasInvertedColors << screenIsMonochrome << displayMask;
+    encoder << screenAvailableRect << screenRect << screenDepth << screenDepthPerComponent << screenSupportsExtendedColor << screenHasInvertedColors << screenIsMonochrome << displayMask << gpuID;
 
     if (colorSpace) {
         // Try to encode the name.
@@ -161,6 +162,11 @@ std::optional<ScreenData> ScreenData::decode(Decoder& decoder)
     decoder >> displayMask;
     if (!displayMask)
         return std::nullopt;
+
+    std::optional<IORegistryGPUID> gpuID;
+    decoder >> gpuID;
+    if (!gpuID)
+        return std::nullopt;
     
     EncodedColorSpaceDataType dataType;
     if (!decoder.decodeEnum(dataType))
@@ -197,7 +203,7 @@ std::optional<ScreenData> ScreenData::decode(Decoder& decoder)
     }
     }
 
-    return { { WTFMove(*screenAvailableRect), WTFMove(*screenRect), WTFMove(cgColorSpace), WTFMove(*screenDepth), WTFMove(*screenDepthPerComponent), WTFMove(*screenSupportsExtendedColor), WTFMove(*screenHasInvertedColors), WTFMove(*screenIsMonochrome), WTFMove(*displayMask) } };
+    return { { WTFMove(*screenAvailableRect), WTFMove(*screenRect), WTFMove(cgColorSpace), WTFMove(*screenDepth), WTFMove(*screenDepthPerComponent), WTFMove(*screenSupportsExtendedColor), WTFMove(*screenHasInvertedColors), WTFMove(*screenIsMonochrome), WTFMove(*displayMask), WTFMove(*gpuID) } };
 }
 
 } // namespace WebCore

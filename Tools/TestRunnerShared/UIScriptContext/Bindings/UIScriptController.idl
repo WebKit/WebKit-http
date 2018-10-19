@@ -63,8 +63,6 @@ interface UIScriptController {
     void keyDownUsingHardwareKeyboard(DOMString character, object callback);
     void keyUpUsingHardwareKeyboard(DOMString character, object callback);
 
-    void selectTextCandidateAtIndex(long index, object callback);
-
     // eventsJSON describes a series of user events in JSON form. For the keys, see HIDEventGenerator.mm.
     // For example, this JSON describes a touch down followed by a touch up (i.e. a single tap).
     //  {
@@ -195,6 +193,9 @@ interface UIScriptController {
 
     void setTimePickerValue(long hour, long minute);
 
+    // <datalist>
+    readonly attribute boolean isShowingDataListSuggestions;
+
     void keyboardAccessoryBarNext();
     void keyboardAccessoryBarPrevious();
 
@@ -231,6 +232,9 @@ interface UIScriptController {
 
     readonly attribute object selectionRangeViewRects; // An array of objects with 'left', 'top', 'width', and 'height' properties.
     readonly attribute object textSelectionCaretRect; // An object with 'left', 'top', 'width', 'height' properties.
+    readonly attribute object selectionStartGrabberViewRect;
+    readonly attribute object selectionEndGrabberViewRect;
+
     readonly attribute object inputViewBounds;
 
     void replaceTextAtRange(DOMString text, long location, long length);

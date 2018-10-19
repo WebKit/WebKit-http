@@ -31,6 +31,7 @@
 #include "NotImplemented.h"
 #include "WebContextMenuProxyWin.h"
 #include "WebPageProxy.h"
+#include "WebPopupMenuProxyWin.h"
 #include "WebView.h"
 
 using namespace WebCore;
@@ -101,14 +102,14 @@ void PageClientImpl::didRelaunchProcess()
     notImplemented();
 }
 
-void PageClientImpl::toolTipChanged(const String&, const String&)
+void PageClientImpl::toolTipChanged(const String&, const String& newToolTip)
 {
-    notImplemented();
+    m_view.setToolTip(newToolTip);
 }
 
 void PageClientImpl::setCursor(const WebCore::Cursor& cursor)
 {
-    notImplemented();
+    m_view.setCursor(cursor);
 }
 
 void PageClientImpl::setCursorHiddenUntilMouseMoves(bool /* hiddenUntilMouseMoves */)
@@ -121,7 +122,7 @@ void PageClientImpl::didChangeViewportProperties(const WebCore::ViewportAttribut
     notImplemented();
 }
 
-void PageClientImpl::registerEditCommand(Ref<WebEditCommandProxy>&& command, WebPageProxy::UndoOrRedo undoOrRedo)
+void PageClientImpl::registerEditCommand(Ref<WebEditCommandProxy>&& command, UndoOrRedo undoOrRedo)
 {
     m_undoController.registerEditCommand(WTFMove(command), undoOrRedo);
 }
@@ -131,12 +132,12 @@ void PageClientImpl::clearAllEditCommands()
     m_undoController.clearAllEditCommands();
 }
 
-bool PageClientImpl::canUndoRedo(WebPageProxy::UndoOrRedo undoOrRedo)
+bool PageClientImpl::canUndoRedo(UndoOrRedo undoOrRedo)
 {
     return m_undoController.canUndoRedo(undoOrRedo);
 }
 
-void PageClientImpl::executeUndoRedo(WebPageProxy::UndoOrRedo undoOrRedo)
+void PageClientImpl::executeUndoRedo(UndoOrRedo undoOrRedo)
 {
     m_undoController.executeUndoRedo(undoOrRedo);
 }
@@ -170,7 +171,7 @@ void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent& event, bool 
 
 RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy& page)
 {
-    return nullptr;
+    return WebPopupMenuProxyWin::create(&m_view, page);
 }
 
 #if ENABLE(CONTEXT_MENUS)

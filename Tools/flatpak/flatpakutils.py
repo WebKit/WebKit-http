@@ -20,11 +20,13 @@ try:
     import configparser
 except ImportError:
     import ConfigParser as configparser
+from contextlib import contextmanager
 import errno
 import json
 import os
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -444,6 +446,20 @@ class FlatpakPackage(FlatpakObject):
                     *extra_args, comment=comment)
 
 
+@contextmanager
+def disable_signals(signals=[signal.SIGINT]):
+    old_signal_handlers = []
+
+    for disabled_signal in signals:
+        old_signal_handlers.append((disabled_signal, signal.getsignal(disabled_signal)))
+        signal.signal(disabled_signal, signal.SIG_IGN)
+
+    yield
+
+    for disabled_signal, previous_handler in old_signal_handlers:
+        signal.signal(disabled_signal, previous_handler)
+
+
 class WebkitFlatpak:
 
     @staticmethod
@@ -488,9 +504,6 @@ class WebkitFlatpak:
         general.add_argument("-y", "--assumeyes",
                             help="Automatically answer yes for all questions.",
                             action="store_true")
-        general.add_argument("args",
-                            nargs=argparse.REMAINDER,
-                            help="Arguments passed when starting %s" % self.name)
         general.add_argument('--avalaible', action='store_true', dest="check_avalaible", help='Check if required dependencies are avalaible.'),
 
         debugoptions = parser.add_argument_group("Debugging")
@@ -505,7 +518,7 @@ class WebkitFlatpak:
         general.add_argument("--clean", dest="clean", action="store_true",
             help="Clean previous builds and restart from scratch")
 
-        parser.parse_args(args=args, namespace=self)
+        _, self.args = parser.parse_known_args(args=args, namespace=self)
 
         return self
 
@@ -517,7 +530,7 @@ class WebkitFlatpak:
         self.sdk_debug = None
         self.app = None
 
-        self.verbose = True
+        self.verbose = False
         self.quiet = False
         self.packs = []
         self.update = False
@@ -633,16 +646,6 @@ class WebkitFlatpak:
 
         return True
 
-    def _cleanup_faltpak_args_for_tests_if_needed(self, args):
-        if not args or not args[0].endswith('run-webkit-tests'):
-            return self.finish_args
-
-        # We are going to run our own Xvfb server in the sandbox
-        unwanted_args = ["--socket=x11"]
-        finish_args = [e for e in self.finish_args if e not in unwanted_args]
-
-        return finish_args
-
     def run_in_sandbox(self, *args, **kwargs):
         cwd = kwargs.pop("cwd", None)
         stdout = kwargs.pop("stdout", sys.stdout)
@@ -676,16 +679,33 @@ class WebkitFlatpak:
                 "TEST_RUNNER_INJECTED_BUNDLE_FILENAME": "/app/webkit/lib/libTestRunnerInjectedBundle.so",
             }
 
+            env_var_prefixes_to_keep = [
+                "GST",
+                "GTK",
+                "G",
+                "JSC",
+                "WEBKIT",
+                "WEBKIT2",
+                "WPE",
+                "GIGACAGE",
+            ]
+
+            env_vars_to_keep = [
+                "JavaScriptCoreUseJIT",
+                "Malloc",
+                "WAYLAND_DISPLAY",
+                "DISPLAY",
+                "LANG",
+            ]
+
             for envvar, value in os.environ.items():
-                if envvar.split("_")[0] in ("GST", "GTK", "G") or \
-                        envvar in ["WAYLAND_DISPLAY", "DISPLAY", "LANG"]:
+                if envvar.split("_")[0] in env_var_prefixes_to_keep or envvar in env_vars_to_keep:
                     forwarded[envvar] = value
 
             for envvar, value in forwarded.items():
                 flatpak_command.append("--env=%s=%s" % (envvar, value))
 
-            finish_args = self._cleanup_faltpak_args_for_tests_if_needed(args)
-            flatpak_command += finish_args + extra_flatpak_args + [self.flatpak_build_path]
+            flatpak_command += self.finish_args + extra_flatpak_args + [self.flatpak_build_path]
 
             shell_string = ""
             if args:
@@ -704,11 +724,12 @@ class WebkitFlatpak:
             _log.debug('Running in sandbox: "%s" %s\n' % ('" "'.join(flatpak_command), shell_string))
             flatpak_command.extend(['sh', "/run/host/" + tmpscript.name])
 
-            try:
-                subprocess.check_call(flatpak_command, stdout=stdout)
-            except subprocess.CalledProcessError as e:
-                sys.stderr.write(str(e) + "\n")
-                return e.returncode
+            with disable_signals():
+                try:
+                    subprocess.check_call(flatpak_command, stdout=stdout)
+                except subprocess.CalledProcessError as e:
+                    sys.stderr.write(str(e) + "\n")
+                    return e.returncode
 
         return 0
 
@@ -794,11 +815,12 @@ class WebkitFlatpak:
                 package.install()
 
     def run_gdb(self):
-        try:
-            subprocess.check_output(['which', 'coredumpctl'])
-        except subprocess.CalledProcessError as e:
-            sys.stderr.write("'coredumpctl' not present on the system, can't run. (%s)\n" % e)
-            return e.returncode
+        with disable_signals():
+            try:
+                subprocess.check_output(['which', 'coredumpctl'])
+            except subprocess.CalledProcessError as e:
+                sys.stderr.write("'coredumpctl' not present on the system, can't run. (%s)\n" % e)
+                return e.returncode
 
         # We need access to the host from the sandbox to run.
         with tempfile.NamedTemporaryFile() as coredump:

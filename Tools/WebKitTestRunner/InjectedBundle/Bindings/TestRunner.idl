@@ -97,7 +97,7 @@ interface TestRunner {
 
     // Special DOM functions.
     void clearBackForwardList();
-    void execCommand(DOMString name, DOMString argument);
+    void execCommand(DOMString name, DOMString showUI, DOMString value);
     boolean isCommandEnabled(DOMString name);
     unsigned long windowCount();
 
@@ -181,7 +181,6 @@ interface TestRunner {
 
     // Cookies testing
     void setAlwaysAcceptCookies(boolean accept);
-    void setCookieStoragePartitioningEnabled(boolean enabled);
 
     void overridePreference(DOMString preference, DOMString value);
 
@@ -272,15 +271,16 @@ interface TestRunner {
     void installStatisticsDidModifyDataRecordsCallback(object callback);
     void installStatisticsDidScanDataRecordsCallback(object callback);
     void installStatisticsDidRunTelemetryCallback(object callback);
-    void setStatisticsLastSeen(DOMString hostName, double seconds);
-    void setStatisticsPrevalentResource(DOMString hostName, boolean value);
-    void setStatisticsVeryPrevalentResource(DOMString hostName, boolean value);
+    void setStatisticsDebugMode(boolean value, object completionHandler);
+    void setStatisticsPrevalentResourceForDebugMode(DOMString hostName, object completionHandler);
+    void setStatisticsLastSeen(DOMString hostName, double seconds, object completionHandler);
+    void setStatisticsPrevalentResource(DOMString hostName, boolean value, object completionHandler);
+    void setStatisticsVeryPrevalentResource(DOMString hostName, boolean value, object completionHandler);
     boolean isStatisticsPrevalentResource(DOMString hostName);
     boolean isStatisticsVeryPrevalentResource(DOMString hostName);
     boolean isStatisticsRegisteredAsSubFrameUnder(DOMString subFrameHost, DOMString topFrameHost);
     boolean isStatisticsRegisteredAsRedirectingTo(DOMString hostRedirectedFrom, DOMString hostRedirectedTo);
-    void setStatisticsHasHadUserInteraction(DOMString hostName, boolean value);
-    void setStatisticsHasHadNonRecentUserInteraction(DOMString hostName);
+    void setStatisticsHasHadUserInteraction(DOMString hostName, boolean value, object completionHandler);
     boolean isStatisticsHasHadUserInteraction(DOMString hostName);
     void setStatisticsGrandfathered(DOMString hostName, boolean value);
     boolean isStatisticsGrandfathered(DOMString hostName);
@@ -291,11 +291,9 @@ interface TestRunner {
     void setStatisticsTopFrameUniqueRedirectTo(DOMString hostName, DOMString hostNameRedirectedTo);
     void setStatisticsTopFrameUniqueRedirectFrom(DOMString hostName, DOMString hostNameRedirectedTo);
     void setStatisticsTimeToLiveUserInteraction(double seconds);
-    void setStatisticsTimeToLiveCookiePartitionFree(double seconds);
     void statisticsNotifyObserver();
     void statisticsProcessStatisticsAndDataRecords();
-    void statisticsUpdateCookiePartitioning(object callback);
-    void statisticsSetShouldPartitionCookiesForHost(DOMString hostName, boolean value, object callback);
+    void statisticsUpdateCookieBlocking(object completionHandler);
     void statisticsSubmitTelemetry();
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(boolean value);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(boolean value);

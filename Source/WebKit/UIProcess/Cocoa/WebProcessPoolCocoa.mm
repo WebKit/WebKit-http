@@ -52,6 +52,7 @@
 #import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <sys/param.h>
 #import <wtf/ProcessPrivilege.h>
+#import <wtf/spi/darwin/dyldSPI.h>
 
 #if PLATFORM(IOS)
 #import "WebMemoryPressureHandlerIOS.h"
@@ -205,6 +206,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     SandboxExtension::createHandleWithoutResolvingPath(parameters.uiProcessBundleResourcePath, SandboxExtension::Type::ReadOnly, parameters.uiProcessBundleResourcePathExtensionHandle);
 
     parameters.uiProcessBundleIdentifier = String([[NSBundle mainBundle] bundleIdentifier]);
+    parameters.uiProcessSDKVersion = dyld_get_program_sdk_version();
 
 #if PLATFORM(IOS)
     if (!m_resolvedPaths.cookieStorageDirectory.isEmpty())
@@ -284,6 +286,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
 #if PLATFORM(MAC)
     auto screenProperties = WebCore::collectScreenProperties();
     parameters.screenProperties = WTFMove(screenProperties);
+    parameters.useOverlayScrollbars = ([NSScroller preferredScrollerStyle] == NSScrollerStyleOverlay);
 #endif
 }
 
@@ -291,6 +294,7 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 {
     parameters.parentProcessName = [[NSProcessInfo processInfo] processName];
     parameters.uiProcessBundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
+    parameters.uiProcessSDKVersion = dyld_get_program_sdk_version();
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
@@ -315,7 +319,6 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
     parameters.uiProcessCookieStorageIdentifier = identifyingDataFromCookieStorage([[NSHTTPCookieStorage sharedHTTPCookieStorage] _cookieStorage]);
 #endif
 
-    parameters.cookieStoragePartitioningEnabled = cookieStoragePartitioningEnabled();
     parameters.storageAccessAPIEnabled = storageAccessAPIEnabled();
     parameters.suppressesConnectionTerminationOnSystemChange = m_configuration->suppressesConnectionTerminationOnSystemChange();
 
@@ -615,10 +618,10 @@ void WebProcessPool::resetHSTSHostsAddedAfterDate(double startDateIntervalSince1
     _CFNetworkResetHSTSHostsSinceDate(privateBrowsingSession(), (__bridge CFDateRef)startDate);
 }
 
+// FIXME: Deprecated. Left here until a final decision is made.
 void WebProcessPool::setCookieStoragePartitioningEnabled(bool enabled)
 {
     m_cookieStoragePartitioningEnabled = enabled;
-    sendToNetworkingProcess(Messages::NetworkProcess::SetCookieStoragePartitioningEnabled(enabled));
 }
 
 void WebProcessPool::setStorageAccessAPIEnabled(bool enabled)

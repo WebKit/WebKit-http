@@ -102,6 +102,16 @@
     _processPoolConfiguration->setIgnoreSynchronousMessagingTimeoutsForTesting(ignoreSynchronousMessagingTimeoutsForTesting);
 }
 
+- (BOOL)attrStyleEnabled
+{
+    return _processPoolConfiguration->attrStyleEnabled();
+}
+
+- (void)setAttrStyleEnabled:(BOOL)enabled
+{
+    return _processPoolConfiguration->setAttrStyleEnabled(enabled);
+}
+
 - (NSArray<NSURL *> *)additionalReadAccessAllowedURLs
 {
     auto paths = _processPoolConfiguration->additionalReadAccessAllowedPaths();
@@ -249,6 +259,16 @@
     return _processPoolConfiguration->processSwapsOnNavigation();
 }
 
+- (void)setMaximumPrewarmedProcessCount:(NSUInteger)count
+{
+    _processPoolConfiguration->setMaximumPrewarmedProcessCount(count);
+}
+
+- (NSUInteger)maximumPrewarmedProcessCount
+{
+    return _processPoolConfiguration->maximumPrewarmedProcessCount();
+}
+
 - (void)setAlwaysKeepAndReuseSwappedProcesses:(BOOL)swaps
 {
     _processPoolConfiguration->setAlwaysKeepAndReuseSwappedProcesses(swaps);
@@ -337,6 +357,16 @@
 - (id)copyWithZone:(NSZone *)zone
 {
     return wrapper(_processPoolConfiguration->copy().leakRef());
+}
+
+- (NSString *)customWebContentServiceBundleIdentifier
+{
+    return _processPoolConfiguration->customWebContentServiceBundleIdentifier();
+}
+
+- (void)setCustomWebContentServiceBundleIdentifier:(NSString *)customWebContentServiceBundleIdentifier
+{
+    _processPoolConfiguration->setCustomWebContentServiceBundleIdentifier(customWebContentServiceBundleIdentifier);
 }
 
 #pragma mark WKObject protocol implementation

@@ -282,14 +282,6 @@ void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef, JSValueRef)
 {
 }
 
-void UIScriptController::selectTextCandidateAtIndex(long, JSValueRef)
-{
-}
-
-void UIScriptController::waitForTextPredictionsViewAndSelectCandidateAtIndex(long, unsigned, float)
-{
-}
-
 void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef, JSValueRef)
 {
 }
@@ -380,6 +372,16 @@ JSObjectRef UIScriptController::selectionRangeViewRects() const
 }
 
 JSObjectRef UIScriptController::textSelectionCaretRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::selectionStartGrabberViewRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::selectionEndGrabberViewRect() const
 {
     return nullptr;
 }
@@ -513,6 +515,11 @@ void UIScriptController::makeWindowContentViewFirstResponder()
 }
 
 bool UIScriptController::isWindowContentViewFirstResponder() const
+{
+    return false;
+}
+
+bool UIScriptController::isShowingDataListSuggestions() const
 {
     return false;
 }

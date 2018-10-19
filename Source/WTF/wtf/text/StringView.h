@@ -126,6 +126,7 @@ public:
 
     class SplitResult;
     SplitResult split(UChar) const;
+    SplitResult splitAllowingEmptyEntries(UChar) const;
 
     size_t find(UChar, unsigned start = 0) const;
     size_t find(CodeUnitMatchFunction, unsigned start = 0) const;
@@ -635,7 +636,7 @@ inline bool equalIgnoringASCIICase(StringView a, const char* b)
 
 class StringView::SplitResult {
 public:
-    explicit SplitResult(StringView, UChar separator);
+    SplitResult(StringView, UChar separator, bool allowEmptyEntries);
 
     class Iterator;
     Iterator begin() const;
@@ -644,6 +645,7 @@ public:
 private:
     StringView m_string;
     UChar m_separator;
+    bool m_allowEmptyEntries;
 };
 
 class StringView::GraphemeClusters {
@@ -703,6 +705,7 @@ private:
     const SplitResult& m_result;
     unsigned m_position { 0 };
     unsigned m_length;
+    bool m_isDone;
 };
 
 class StringView::GraphemeClusters::Iterator {
@@ -897,12 +900,18 @@ inline auto StringView::CodeUnits::end() const -> Iterator
 
 inline auto StringView::split(UChar separator) const -> SplitResult
 {
-    return SplitResult { *this, separator };
+    return SplitResult { *this, separator, false };
 }
 
-inline StringView::SplitResult::SplitResult(StringView stringView, UChar separator)
+inline auto StringView::splitAllowingEmptyEntries(UChar separator) const -> SplitResult
+{
+    return SplitResult { *this, separator, true };
+}
+
+inline StringView::SplitResult::SplitResult(StringView stringView, UChar separator, bool allowEmptyEntries)
     : m_string { stringView }
     , m_separator { separator }
+    , m_allowEmptyEntries { allowEmptyEntries }
 {
 }
 
@@ -918,6 +927,7 @@ inline auto StringView::SplitResult::end() const -> Iterator
 
 inline StringView::SplitResult::Iterator::Iterator(const SplitResult& result)
     : m_result { result }
+    , m_isDone { result.m_string.isEmpty() && !result.m_allowEmptyEntries }
 {
     findNextSubstring();
 }
@@ -925,19 +935,20 @@ inline StringView::SplitResult::Iterator::Iterator(const SplitResult& result)
 inline StringView::SplitResult::Iterator::Iterator(const SplitResult& result, PositionTag)
     : m_result { result }
     , m_position { result.m_string.length() }
+    , m_isDone { true }
 {
 }
 
 inline StringView StringView::SplitResult::Iterator::operator*() const
 {
-    ASSERT(m_position < m_result.m_string.length());
+    ASSERT(m_position <= m_result.m_string.length() && !m_isDone);
     return m_result.m_string.substring(m_position, m_length);
 }
 
 inline bool StringView::SplitResult::Iterator::operator==(const Iterator& other) const
 {
     ASSERT(&m_result == &other.m_result);
-    return m_position == other.m_position;
+    return m_position == other.m_position && m_isDone == other.m_isDone;
 }
 
 inline bool StringView::SplitResult::Iterator::operator!=(const Iterator& other) const

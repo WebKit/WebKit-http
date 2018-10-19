@@ -453,6 +453,10 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ProfileControlFlow:
     case PutHint:
     case InitializeEntrypointArguments:
+    case FilterCallLinkStatus:
+    case FilterGetByIdStatus:
+    case FilterPutByIdStatus:
+    case FilterInByIdStatus:
         write(SideState);
         return;
         
@@ -516,7 +520,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case PhantomClonedArguments:
         // DFG backend requires that the locals that this reads are flushed. FTL backend can handle those
         // locals being promoted.
-        if (!isFTL(graph.m_plan.mode))
+        if (!graph.m_plan.isFTL())
             read(Stack);
         
         // Even though it's phantom, it still has the property that one can't be replaced with another.

@@ -121,6 +121,8 @@ WebsiteDataStore::~WebsiteDataStore()
 
     platformDestroy();
 
+    unregisterWebResourceLoadStatisticsStoreAsMessageReceiver();
+
     if (m_sessionID.isValid() && m_sessionID != PAL::SessionID::defaultSessionID()) {
         ASSERT(nonDefaultDataStores().get(m_sessionID) == this);
         nonDefaultDataStores().remove(m_sessionID);
@@ -310,7 +312,7 @@ void WebsiteDataStore::fetchDataAndApply(OptionSet<WebsiteDataType> dataTypes, O
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
             for (auto& hostName : websiteData.hostNamesWithPluginData) {
-                auto displayName = WebsiteDataRecord::displayNameForPluginDataHostName(hostName);
+                auto displayName = WebsiteDataRecord::displayNameForHostName(hostName);
                 if (!displayName)
                     continue;
 
@@ -326,6 +328,18 @@ void WebsiteDataStore::fetchDataAndApply(OptionSet<WebsiteDataType> dataTypes, O
                 auto& record = m_websiteDataRecords.add(origin, WebsiteDataRecord { }).iterator->value;
                 
                 record.addOriginWithCredential(origin);
+            }
+
+            for (auto& hostName : websiteData.hostNamesWithHSTSCache) {
+                auto displayName = WebsiteDataRecord::displayNameForHostName(hostName);
+                if (!displayName)
+                    continue;
+                
+                auto& record = m_websiteDataRecords.add(displayName, WebsiteDataRecord { }).iterator->value;
+                if (!record.displayName)
+                    record.displayName = WTFMove(displayName);
+
+                record.addHSTSCacheHostname(hostName);
             }
 
             callIfNeeded();
@@ -1012,13 +1026,16 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
             }
 
             Vector<String> cookieHostNames;
+            Vector<String> HSTSCacheHostNames;
             for (const auto& dataRecord : dataRecords) {
                 for (auto& hostName : dataRecord.cookieHostNames)
                     cookieHostNames.append(hostName);
+                for (auto& hostName : dataRecord.HSTSCacheHostNames)
+                    HSTSCacheHostNames.append(hostName);
             }
 
             callbackAggregator->addPendingCallback();
-            processPool->networkProcess()->deleteWebsiteDataForOrigins(m_sessionID, dataTypes, origins, cookieHostNames, [callbackAggregator, processPool] {
+            processPool->networkProcess()->deleteWebsiteDataForOrigins(m_sessionID, dataTypes, origins, cookieHostNames, HSTSCacheHostNames, [callbackAggregator, processPool] {
                 callbackAggregator->removePendingCallback();
             });
         }
@@ -1232,13 +1249,13 @@ void WebsiteDataStore::removeDataForTopPrivatelyControlledDomains(OptionSet<Webs
 }
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-void WebsiteDataStore::updatePrevalentDomainsToPartitionOrBlockCookies(const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, ShouldClearFirst shouldClearFirst, CompletionHandler<void()>&& completionHandler)
+void WebsiteDataStore::updatePrevalentDomainsToBlockCookiesFor(const Vector<String>& domainsToBlock, ShouldClearFirst shouldClearFirst, CompletionHandler<void()>&& completionHandler)
 {
     auto callbackAggregator = CallbackAggregator::create(WTFMove(completionHandler));
 
     for (auto& processPool : processPools()) {
         if (auto* process = processPool->networkProcess())
-            process->updatePrevalentDomainsToPartitionOrBlockCookies(m_sessionID, domainsToPartition, domainsToBlock, domainsToNeitherPartitionNorBlock, shouldClearFirst, [callbackAggregator = callbackAggregator.copyRef()] { });
+            process->updatePrevalentDomainsToBlockCookiesFor(m_sessionID, domainsToBlock, shouldClearFirst, [callbackAggregator = callbackAggregator.copyRef()] { });
     }
 }
 
@@ -1278,11 +1295,13 @@ void WebsiteDataStore::grantStorageAccessHandler(const String& resourceDomain, c
     networkProcess.grantStorageAccess(m_sessionID, resourceDomain, firstPartyDomain, frameID, pageID, WTFMove(completionHandler));
 }
 
-void WebsiteDataStore::removeAllStorageAccessHandler()
+void WebsiteDataStore::removeAllStorageAccessHandler(CompletionHandler<void()>&& completionHandler)
 {
+    auto callbackAggregator = CallbackAggregator::create(WTFMove(completionHandler));
+    
     for (auto& processPool : processPools()) {
         if (auto networkProcess = processPool->networkProcess())
-            networkProcess->removeAllStorageAccess(m_sessionID);
+            networkProcess->removeAllStorageAccess(m_sessionID, [callbackAggregator = callbackAggregator.copyRef()] { });
     }
 }
 
@@ -1327,7 +1346,7 @@ void WebsiteDataStore::networkProcessDidCrash()
 {
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     if (m_resourceLoadStatistics)
-        m_resourceLoadStatistics->scheduleCookiePartitioningStateReset();
+        m_resourceLoadStatistics->scheduleCookieBlockingStateReset();
 #endif
 }
 
@@ -1349,7 +1368,7 @@ void WebsiteDataStore::webProcessWillOpenConnection(WebProcessProxy& webProcessP
         m_storageManager->processWillOpenConnection(webProcessProxy, connection);
 
     if (m_resourceLoadStatistics)
-        m_resourceLoadStatistics->processWillOpenConnection(webProcessProxy, connection);
+        webProcessProxy.addMessageReceiver(Messages::WebResourceLoadStatisticsStore::messageReceiverName(), *m_resourceLoadStatistics);
 }
 
 void WebsiteDataStore::webPageWillOpenConnection(WebPageProxy& webPageProxy, IPC::Connection& connection)
@@ -1367,7 +1386,7 @@ void WebsiteDataStore::webPageDidCloseConnection(WebPageProxy& webPageProxy, IPC
 void WebsiteDataStore::webProcessDidCloseConnection(WebProcessProxy& webProcessProxy, IPC::Connection& connection)
 {
     if (m_resourceLoadStatistics)
-        m_resourceLoadStatistics->processDidCloseConnection(webProcessProxy, connection);
+        webProcessProxy.removeMessageReceiver(Messages::WebResourceLoadStatisticsStore::messageReceiverName());
 
     if (m_storageManager)
         m_storageManager->processDidCloseConnection(webProcessProxy, connection);
@@ -1494,11 +1513,32 @@ void WebsiteDataStore::setResourceLoadStatisticsEnabled(bool enabled)
         return;
     }
 
+
+    unregisterWebResourceLoadStatisticsStoreAsMessageReceiver();
     m_resourceLoadStatistics = nullptr;
 
     auto existingProcessPools = processPools(std::numeric_limits<size_t>::max(), false);
     for (auto& processPool : existingProcessPools)
         processPool->setResourceLoadStatisticsEnabled(false);
+}
+
+void WebsiteDataStore::unregisterWebResourceLoadStatisticsStoreAsMessageReceiver()
+{
+    if (!m_resourceLoadStatistics)
+        return;
+
+    for (auto* webProcessProxy : processes())
+        webProcessProxy->removeMessageReceiver(Messages::WebResourceLoadStatisticsStore::messageReceiverName());
+}
+
+void WebsiteDataStore::registerWebResourceLoadStatisticsStoreAsMessageReceiver()
+{
+    ASSERT(m_resourceLoadStatistics);
+    if (!m_resourceLoadStatistics)
+        return;
+
+    for (auto* webProcessProxy : processes())
+        webProcessProxy->addMessageReceiver(Messages::WebResourceLoadStatisticsStore::messageReceiverName(), *m_resourceLoadStatistics);
 }
 
 bool WebsiteDataStore::resourceLoadStatisticsDebugMode() const
@@ -1508,9 +1548,16 @@ bool WebsiteDataStore::resourceLoadStatisticsDebugMode() const
 
 void WebsiteDataStore::setResourceLoadStatisticsDebugMode(bool enabled)
 {
+    setResourceLoadStatisticsDebugMode(enabled, []() { });
+}
+
+void WebsiteDataStore::setResourceLoadStatisticsDebugMode(bool enabled, CompletionHandler<void()>&& completionHandler)
+{
     m_resourceLoadStatisticsDebugMode = enabled;
     if (m_resourceLoadStatistics)
-        m_resourceLoadStatistics->setResourceLoadStatisticsDebugMode(enabled);
+        m_resourceLoadStatistics->setResourceLoadStatisticsDebugMode(enabled, WTFMove(completionHandler));
+    else
+        completionHandler();
 }
 
 void WebsiteDataStore::enableResourceLoadStatisticsAndSetTestingCallback(Function<void (const String&)>&& callback)
@@ -1525,6 +1572,8 @@ void WebsiteDataStore::enableResourceLoadStatisticsAndSetTestingCallback(Functio
     resolveDirectoriesIfNecessary();
     m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(*this);
     m_resourceLoadStatistics->setStatisticsTestingCallback(WTFMove(callback));
+
+    registerWebResourceLoadStatisticsStoreAsMessageReceiver();
 
     for (auto& processPool : processPools(std::numeric_limits<size_t>::max(), false))
         processPool->setResourceLoadStatisticsEnabled(true);

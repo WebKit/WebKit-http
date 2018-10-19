@@ -49,8 +49,8 @@ public:
     void close() override;
     void displayWithActivationType(WebCore::DataListSuggestionActivationType) override;
 private:
-    __unused WebCore::DataListSuggestionsClient* m_dataListSuggestionsClient;
-    __unused WebPage* m_page;
+    WebCore::DataListSuggestionsClient* m_dataListSuggestionsClient;
+    WebPage* m_page;
 };
 
 } // namespace WebKit

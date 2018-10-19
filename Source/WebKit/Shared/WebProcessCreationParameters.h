@@ -133,6 +133,7 @@ struct WebProcessCreationParameters {
     bool resourceLoadStatisticsEnabled { false };
     bool fullKeyboardAccessEnabled { false };
     bool memoryCacheDisabled { false };
+    bool attrStyleEnabled { false };
 
 #if ENABLE(SERVICE_CONTROLS)
     bool hasImageServices { false };
@@ -146,6 +147,7 @@ struct WebProcessCreationParameters {
 
 #if PLATFORM(COCOA)
     String uiProcessBundleIdentifier;
+    uint32_t uiProcessSDKVersion { 0 };
 #endif
 
     ProcessID presentingApplicationPID { 0 };
@@ -196,6 +198,7 @@ struct WebProcessCreationParameters {
 
 #if PLATFORM(MAC)
     WebCore::ScreenProperties screenProperties;
+    bool useOverlayScrollbars { true };
 #endif
 };
 

@@ -487,9 +487,6 @@ serviceControlsEnabled:
 appleMailPaginationQuirkEnabled:
   initial: false
 
-appleMailLinesClampEnabled:
-  initial: false
-
 deferredCSSParserEnabled:
   initial: false
 
@@ -530,6 +527,11 @@ conicGradientsEnabled:
 
 colorFilterEnabled:
   initial: false
+  onChange: setNeedsRecalcStyleInAllFrames
+
+punchOutWhiteBackgroundsInDarkMode:
+  initial: false
+  onChange: setNeedsRecalcStyleInAllFrames
 
 treatIPAddressAsDomain:
   initial: false
@@ -752,4 +754,7 @@ accessibilityEventsEnabled:
   conditional: ACCESSIBILITY_EVENTS
 
 incompleteImageBorderEnabled:
+  initial: false
+
+shouldDeferAsynchronousScriptsUntilAfterDocumentLoad:
   initial: false

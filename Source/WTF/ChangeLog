@@ -1,3 +1,577 @@
+2018-08-05  Darin Adler  <darin@apple.com>
+
+        [Cocoa] More tweaks and refactoring to prepare for ARC
+        https://bugs.webkit.org/show_bug.cgi?id=188245
+
+        Reviewed by Dan Bernstein.
+
+        * WTF.xcodeproj/project.pbxproj: Updated for rename: FoundationSPI.h -> objcSPI.h.
+
+        * wtf/BlockPtr.h: Added missing include of "StdLibExtras.h".
+        Also re-sorted includes.
+
+        * wtf/HashFunctions.h: Add function for "__unsafe_unretained id".
+        * wtf/HashTraits.h: Add traits for "__unsafe_unretained id".
+
+        * wtf/PlatformMac.cmake: Updated for rename: FoundationSPI.h -> objcSPI.h.
+
+        * wtf/WeakObjCPtr.h: Use mutable instead of const_cast, and write a version
+        that uses __weak explicitly under ARC. Also moved function declarations from
+        here to objcSPI.h.
+
+        * wtf/cocoa/AutodrainedPool.cpp: Updated include for rename: FoundationSPI.h -> objcSPI.h.
+
+        * wtf/spi/cocoa/objcSPI.h: Renamed from FoundationSPI.h and added the
+        additional functions used by WeakObjCPtr.h. Also changed to both include the
+        internal header and the function definitions when compiling with
+        USE(APPLE_INTERNAL_SDK), helping us check that function definitions match.
+
+2018-08-07  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Shrink size of PropertyCondition by packing UniquedStringImpl* and Kind
+        https://bugs.webkit.org/show_bug.cgi?id=188328
+
+        Reviewed by Saam Barati.
+
+        This patch adds CompactPointerTuple, which can pack a pointer and 8bit value into 8bytes.
+        In 32bit architecture, it just has two fields for a pointer and 8bit value. In 64bit architecture,
+        we use upper 5bits (zeros because of the effective width of virtual address) and lower 3bits (zeros
+        because of the alignment ensured by static_assert) to pack 8bit value into the pointer data. Since
+        even the 5-level page tables use 57bit effective address, this strategy works well.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/CompactPointerTuple.h: Added.
+        (WTF::CompactPointerTuple::encodeType):
+        (WTF::CompactPointerTuple::decodeType):
+        (WTF::CompactPointerTuple::CompactPointerTuple):
+        (WTF::CompactPointerTuple::pointer const):
+        (WTF::CompactPointerTuple::setPointer):
+        (WTF::CompactPointerTuple::type const):
+        (WTF::CompactPointerTuple::setType):
+        * wtf/Platform.h:
+
+2018-08-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, suppress warnings to fix the build.
+
+        * wtf/SHA1.cpp:
+        (WTF::SHA1::SHA1):
+        (WTF::SHA1::addBytes):
+        (WTF::SHA1::computeHash):
+
+2018-08-07  Karo Gyoker  <karogyoker2+webkit@gmail.com>
+
+        Hardcoded LFENCE instruction
+        https://bugs.webkit.org/show_bug.cgi?id=188145
+
+        Reviewed by Filip Pizlo.
+
+        Remove lfence instruction because it is crashing systems without SSE2 and
+        this is not the way how WebKit mitigates Spectre.
+
+        * wtf/Atomics.h:
+        (WTF::crossModifyingCodeFence):
+        (WTF::speculationFence): Deleted.
+        (WTF::x86_lfence): Deleted.
+
+2018-08-07  Antti Koivisto  <antti@apple.com>
+
+        Web process never leaves memory pressured state if caused by process size limit
+        https://bugs.webkit.org/show_bug.cgi?id=188299
+        <rdar://problem/42157442>
+
+        Reviewed by Darin Adler.
+
+        For vm memory pressure warnings we get notified when exiting the state and we can clear
+        the isUnderMemoryPressure bit. However as a compatibility behavior we were also notified using
+        the same event when approaching the process size limit. In this case there is no "all clear"
+        event so we'd stay in pressured state forever, leading to unnecessarily degraded user experience.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/cocoa/MemoryPressureHandlerCocoa.mm:
+        (WTF::MemoryPressureHandler::install):
+
+        Install a handler for process size limit events. This disables the compatibility behavior,
+        vm pressure events will be received for vm pressure only.
+
+        Process size limit events are treated as one-shot. We do cleanups based on criticality but
+        don't enter the pressured state.
+
+        (WTF::MemoryPressureHandler::uninstall):
+        (WTF::MemoryPressureHandler::holdOff):
+        * wtf/spi/darwin/DispatchSPI.h: Added.
+
+2018-08-06  Alex Christensen  <achristensen@webkit.org>
+
+        Use enum classes and OptionSets for PaintPhase and PaintBehavior
+        https://bugs.webkit.org/show_bug.cgi?id=188323
+
+        Reviewed by Simon Fraser.
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::OptionSet):
+        Allow a zero-valued enum value in the OptionSet constructor.
+
+2018-08-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r234569.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "We should cache the compiled sandbox profile in a data vault"
+        https://bugs.webkit.org/show_bug.cgi?id=184991
+        https://trac.webkit.org/changeset/234569
+
+2018-08-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, fix the build by ignoring some deprecation warnings.
+
+        * wtf/MD5.cpp:
+        (WTF::MD5::MD5):
+        (WTF::MD5::addBytes):
+        (WTF::MD5::checksum):
+
+2018-08-03  Ben Richards  <benton_richards@apple.com>
+
+        We should cache the compiled sandbox profile in a data vault
+        https://bugs.webkit.org/show_bug.cgi?id=184991
+
+        Reviewed by Ryosuke Niwa.
+
+        Added trace points for sandbox initialization and exposed functions needed for sandbox caching
+
+        * wtf/SystemTracing.h:
+        * wtf/spi/darwin/SandboxSPI.h:
+
+2018-08-02  Saam Barati  <sbarati@apple.com>
+
+        Reading instructionPointer from PlatformRegisters may fail when using pointer tagging
+        https://bugs.webkit.org/show_bug.cgi?id=188271
+        <rdar://problem/42850884>
+
+        Reviewed by Michael Saboff.
+
+        * wtf/PtrTag.h:
+        (WTF::isTaggedWith):
+        (WTF::usesPointerTagging):
+
+2018-08-02  Alex Christensen  <achristensen@webkit.org>
+
+        Add some Variant types to Forward.h
+        https://bugs.webkit.org/show_bug.cgi?id=188250
+
+        * wtf/Forward.h:
+
+2018-08-02  David Fenton  <david_fenton@apple.com>
+
+        Unreviewed, rolling out r234489.
+
+        Caused 50+ crashes and 60+ API failures on iOS
+
+        Reverted changeset:
+
+        "[WTF] Rename String::format to String::deprecatedFormat"
+        https://bugs.webkit.org/show_bug.cgi?id=188191
+        https://trac.webkit.org/changeset/234489
+
+2018-08-01  Tomas Popela  <tpopela@redhat.com>
+
+        [WTF] Rename String::format to String::deprecatedFormat
+        https://bugs.webkit.org/show_bug.cgi?id=188191
+
+        Reviewed by Darin Adler.
+
+        It should be replaced with string concatenation.
+
+        * wtf/Assertions.cpp:
+        * wtf/JSONValues.cpp:
+        * wtf/WorkQueue.cpp:
+        (WTF::WorkQueue::concurrentApply):
+        * wtf/dtoa.cpp:
+        (WTF::dtoa):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::deprecatedFormat):
+        (WTF::String::format): Deleted.
+        * wtf/text/WTFString.h:
+
+2018-07-31  Tomas Popela  <tpopela@redhat.com>
+
+        [WTF] String::formatWithArguments() is unused
+        https://bugs.webkit.org/show_bug.cgi?id=187955
+
+        Reviewed by Darin Adler.
+
+        This method is unused, remove it.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::formatWithArguments): Deleted.
+        * wtf/text/WTFString.h:
+
+2018-07-28  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: build fix for internal builds.
+        https://bugs.webkit.org/show_bug.cgi?id=188123
+        <rdar://problem/42672268>
+
+        Not reviewed.
+
+        Some code is relying on RELEASE_ASSERT (without extra crash info arguments)
+        being purely inlined and not require linkage to an external symbol.  This patch
+        restores this property of the original RELEASE_ASSERT.
+
+        This means moving the variant of WTFCrashWithInfo that does not take extra args
+        to Assertions.h and making it an "inline" function.  When compiling with clang,
+        we also specify __attribute__((optnone)) to force the function out of being an
+        inline function (each linkage unit will get a copy of the function).  This causes
+        the 1st 4 arguments of WTFCrashWithInfo (e.g. line number) to still be captured
+        in the argument registers for crash diagnostics.
+
+        * wtf/Assertions.cpp:
+        (WTFCrashWithInfo):
+        * wtf/Assertions.h:
+
+2018-07-27  Mark Lam  <mark.lam@apple.com>
+
+        Add some crash info to Heap::checkConn() RELEASE_ASSERTs.
+        https://bugs.webkit.org/show_bug.cgi?id=188123
+        <rdar://problem/42672268>
+
+        Reviewed by Keith Miller.
+
+        1. Rename STUFF_FOR_CRASH_REGISTERx to CRASH_GPRx.  These are only used in
+           locally in Assertions.cpp.  There is little to no chance of a name collision,
+           and the shorter names will be much easier to read and grok in the code.
+
+        2. Added an additional 2 registers so that we can pass more info.
+
+        3. Change the WTFCrashWithInfo() implementations to issue only a single asm
+           statement so that the compiler does not inadvertently move values out of the
+           CRASH_GPRs that we want them to be in.
+
+        4. Use register targeting for local variables to get the compiler to put our
+           desired values in specific registers.  For how this works, see
+           https://gcc.gnu.org/onlinedocs/gcc/Local-Register-Variables.html#Local-Register-Variables
+
+           "The only supported use for this feature is to specify registers for input and
+           output operands when calling Extended asm (see Extended Asm).  This may be
+           necessary if the constraints for a particular machine don’t provide sufficient
+           control to select the desired register."
+
+        5. Enhance ASSERT, ASSERT_UNUSED, RELEASE_ASSERT, RELEASE_ASSERT_NOT_REACHED to
+           accept crash info arguments.  We no longer need to use an if statement with a
+           call to CRASH_WITH_INFO instead of these assertions.  The only case not handled
+           yet is one where we might want to dataLog some info before the crash.  I'll
+           add that functionality in a subsequent patch.
+
+        6. Move UNREACHABLE_FOR_PLATFORM to the bottom of Assertions.h because it depends
+           on the definition of RELEASE_ASSERT_NOT_REACHED, which now depends on the
+           definiton of CRASH_WITH_INFO.
+
+        * wtf/Assertions.cpp:
+        (WTFCrashWithInfo):
+        * wtf/Assertions.h:
+
+2018-07-27  Alex Christensen  <achristensen@webkit.org>
+
+        Make CompletionHandler more const correct
+        https://bugs.webkit.org/show_bug.cgi?id=186543
+
+        Reviewed by Saam Barati.
+
+        * wtf/CompletionHandler.h:
+        (WTF::CompletionHandler<Out):
+        Calling a CompletionHandler mutates it. Make the code reflect that.
+
+2018-07-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Be more conservative with compositing layer creation when memory is low
+        https://bugs.webkit.org/show_bug.cgi?id=187866
+        rdar://problem/42366345
+
+        Reviewed by Zalan Bujtas.
+        
+        When process physical footprint is above a fraction of the jetsam limit, be more conservative in making
+        compositing layers. We avoid compositing for these situations:
+        1. Layers with 3D transforms which are affine (like translateZ(0)).
+        2. Layers with will-change
+        3. Layers for canvases (other than WebGL/WebGPU)
+        
+        We reuse some macOS code in MemoryPressureHandler() but choose different thresholds for iOS,
+        falling into "conservative mode" at 50% of jetsam limit, and "strict mode" at 65%.
+        Compositing chooses to be more conservative in either "conservative" or "strict" memory modes.
+        
+        Plumb through a "compositingPolicyOverride" both so that on-device testing isn't
+        flakily falling into a different mode, and so that we can impose the conservative
+        mode for testing.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::thresholdForPolicy):
+        (WTF::MemoryPressureHandler::currentMemoryUsagePolicy):
+        * wtf/MemoryPressureHandler.h:
+
+2018-07-26  Andy VanWagoner  <andy@vanwagoner.family>
+
+        [INTL] Remove INTL sub-feature compile flags
+        https://bugs.webkit.org/show_bug.cgi?id=188081
+
+        Reviewed by Michael Catanzaro.
+
+        Removed INTL sub-feature compile flags, and an old unused i18n flag.
+
+        * wtf/FeatureDefines.h:
+
+2018-07-26  Chris Dumez  <cdumez@apple.com>
+
+        It should be possible to use WTF::CallbackAggregator from a background thread
+        https://bugs.webkit.org/show_bug.cgi?id=188084
+
+        Reviewed by Alex Christensen.
+
+        Make WTF::CallbackAggregator usable on background threads by updating its destructor to call the
+        completion handler on whatever thread it is destroyed on, instead of always dispatching to the
+        main thread before calling the completion handler.
+
+        Existing CallbackAggregator users that deal with threads have been updated to make sure they
+        destroy the CallbackAggregator on the expected thread.
+
+        This will allow us to use CallbackAggregator in the ResourceLoadStatisticsMemoryStore, which lives
+        on a background WorkQueue.
+
+        * wtf/CallbackAggregator.h:
+        (WTF::CallbackAggregator::~CallbackAggregator):
+        (WTF::CallbackAggregator::CallbackAggregator):
+
+2018-07-26  Ross Kirsling  <ross.kirsling@sony.com>
+
+        String(View) should have a splitAllowingEmptyEntries function instead of a flag parameter
+        https://bugs.webkit.org/show_bug.cgi?id=187963
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Assertions.cpp:
+        Update split/splitAllowingEmptyEntries usage.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::splitAllowingEmptyEntries const):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::splitInternal const):
+        (WTF::String::split const):
+        (WTF::String::splitAllowingEmptyEntries const):
+        * wtf/text/WTFString.h:
+        (WTF::String::split const):
+        Introduce splitAllowingEmptyEntries instead of boolean or enum parameter.
+
+2018-07-26  Sam Weinig  <sam@webkit.org>
+
+        Remove unused/undefined String::appendInternal
+        https://bugs.webkit.org/show_bug.cgi?id=188063
+
+        Reviewed by Daniel Bates.
+
+        * wtf/text/WTFString.h:
+        String::appendInternal is declared in WTFString.h, but is never used
+        and and never even defined. Remove it.
+
+2018-07-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r234181 and r234189.
+        https://bugs.webkit.org/show_bug.cgi?id=188075
+
+        These are not needed right now (Requested by thorton on
+        #webkit).
+
+        Reverted changesets:
+
+        "Enable Web Content Filtering on watchOS"
+        https://bugs.webkit.org/show_bug.cgi?id=187979
+        https://trac.webkit.org/changeset/234181
+
+        "HAVE(PARENTAL_CONTROLS) should be true on watchOS"
+        https://bugs.webkit.org/show_bug.cgi?id=187985
+        https://trac.webkit.org/changeset/234189
+
+2018-07-04  Darin Adler  <darin@apple.com>
+
+        Improve WebGPU implementation, including using Metal Objective-C protocols more simply and correctly
+        https://bugs.webkit.org/show_bug.cgi?id=187333
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Compiler.h: Added OBJC_PROTOCOL, a macro for convieniently treating an
+        Objective-C protocol in a way that lets it be mentioned in a C++ source file.
+        This is the rough equivalent of OBJC_CLASS, but for protocols.
+
+        * wtf/Platform.h: Added USE(METAL), alongside USE(OPENGL) and the like.
+        Now used in the WebGPU platform layer to guard the Metal-specific code.
+
+2018-07-26  Tomas Popela  <tpopela@redhat.com>
+
+        [WTF] Coverity scan issues
+        https://bugs.webkit.org/show_bug.cgi?id=186800
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/CheckedArithmetic.h: Swap the operands to multiply().
+        * wtf/ThreadSpecific.h: Initialize the m_key variable.
+        * wtf/dtoa.cpp: Initialize the next variable.
+
+2018-07-25  Tomas Popela  <tpopela@redhat.com>
+
+        Correctly close the variable argument list
+        https://bugs.webkit.org/show_bug.cgi?id=186758
+
+        Reviewed by Michael Catanzaro.
+
+        The argcCopy is not ended when we early return. Also don't call
+        va_end() on args because it's closed in caller.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::createWithFormatAndArguments):
+
+2018-07-24  Tim Horton  <timothy_horton@apple.com>
+
+        HAVE(PARENTAL_CONTROLS) should be true on watchOS
+        https://bugs.webkit.org/show_bug.cgi?id=187985
+        <rdar://problem/42559346>
+
+        Reviewed by Andy Estes.
+
+        * wtf/Platform.h:
+
+2018-07-24  Daniel Bates  <dabates@apple.com>
+
+        Move-constructing NeverDestroyed should move construct underlying object instead of copy constructing it
+        https://bugs.webkit.org/show_bug.cgi?id=187971
+
+        Reviewed by Saam Barati.
+
+        Fixes an issue where move constructing a NeverDestroyed<T> would always copy construct T into
+        the destination storage buffer regardless of whether T is move constructable. For example:
+
+        {
+            static NeverDestroyed<T> x;
+            static NeverDestroyed<T> y { WTFMove(x) }; // currently makes a copy of x's T even if T is move constructable
+        }
+
+        Currently the NeverDestroyed<T> instantiates T into the destination storage buffer by WTFMove()ing
+        the NeverDestroyed<T> into it, implicitly converting it to const T& by way of const T& conversion
+        operator. As a result the compiler picks the copy constructor for T to invoke instead of evaluating
+        whether T can be move constructed. Instead we should explicitly WTFMove() the underlying T so that
+        the compiler can choose to either move-construct T or copy construct it.
+
+        A side benefit of this change it is now possible to invoke makeNeverDestroyed() with the result
+        of a function that returns a move-only type (e.g. RenderStyle):
+
+        static auto sharedStyle = makeNeverDestroyed([] {
+            auto style = RenderStyle::create();
+            ...
+            return style;
+        }());
+
+        * wtf/NeverDestroyed.h:
+        (WTF::NeverDestroyed::NeverDestroyed):
+
+2018-07-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r234121.
+
+        Caused perf test failures.
+
+        Reverted changeset:
+
+        "We should cache the compiled sandbox profile in a data vault"
+        https://bugs.webkit.org/show_bug.cgi?id=184991
+        https://trac.webkit.org/changeset/234121
+
+2018-07-24  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer] Implement bitrate modulation support in GStreamer based libwebrtc Encoders
+        https://bugs.webkit.org/show_bug.cgi?id=187643
+
+        Reviewed by Philippe Normand.
+
+        Added support for GRegex in GRefPtr.
+
+        Source/WTF:
+        * wtf/glib/GRefPtr.cpp:
+        (WTF::refGPtr):
+        (WTF::derefGPtr):
+        * wtf/glib/GRefPtr.h:
+
+2018-07-23  Ross Kirsling  <ross.kirsling@sony.com>
+
+        WTF::StringView::split should have an allowEmptyEntries flag
+        https://bugs.webkit.org/show_bug.cgi?id=187864
+
+        Reviewed by Konstantin Tokarev.
+
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::SplitResult::Iterator::findNextSubstring):
+        (WTF::StringView::SplitResult::Iterator::operator++):
+        * wtf/text/StringView.h:
+        (WTF::StringView::split const):
+        (WTF::StringView::SplitResult::SplitResult):
+        (WTF::StringView::SplitResult::Iterator::operator== const):
+        We can't mimic String::split completely, because this one's iterator-based --
+        achieve desired behavior by adding m_allowEmptyEntries to SplitResult and m_isDone to its Iterator.
+        (The latter keeps us from hitting begin() == end() prematurely on a final empty entry.)
+
+2018-07-23  Ben Richards  <benton_richards@apple.com>
+
+        We should cache the compiled sandbox profile in a data vault
+        https://bugs.webkit.org/show_bug.cgi?id=184991
+
+        Reviewed by Ryosuke Niwa.
+
+        Added trace points for sandbox initialization and exposed functions needed for sandbox caching
+
+        * wtf/SystemTracing.h:
+        * wtf/spi/darwin/SandboxSPI.h:
+
+2018-06-06  Filip Pizlo  <fpizlo@apple.com>
+
+        We should support CreateThis in the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=164904
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/TinyPtrSet.h:
+        (WTF::TinyPtrSet::operator!= const):
+
+2018-07-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use Function / ScopedLambda / RecursableLambda instead of std::function
+        https://bugs.webkit.org/show_bug.cgi?id=187472
+
+        Reviewed by Mark Lam.
+
+        * wtf/ScopedLambda.h:
+        (WTF::ScopedLambda<ResultType):
+
+2018-07-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Switch CMake ports back to C++ 14
+        https://bugs.webkit.org/show_bug.cgi?id=187744
+
+        Reviewed by Ryosuke Niwa.
+
+        Always use WTF's internal std::optional implementation, since std::optional is not part of
+        C++ 14.
+
+        * wtf/Optional.h:
+
+2018-07-17  Keith Miller  <keith_miller@apple.com>
+
+        Revert r233630 since it broke internal wasm benchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=187746
+
+        Unreviewed revert.
+
+        * wtf/TriState.h:
+
 2018-07-14  Kocsen Chung  <kocsen_chung@apple.com>
 
         Ensure WebKit stack is ad-hoc signed

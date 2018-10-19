@@ -25,6 +25,7 @@
 
 #include "config.h"
 
+#include "PluginProcessManager.h"
 #include "WKPreferencesRef.h"
 #include "WKPreferencesRefPrivate.h"
 #include "WKAPICast.h"
@@ -1153,6 +1154,19 @@ bool WKPreferencesGetPlugInSnapshottingEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->plugInSnapshottingEnabled();
 }
 
+void WKPreferencesSetPluginSandboxProfilesEnabledForAllPlugins(WKPreferencesRef preferencesRef, bool enabled)
+{
+#if ENABLE(NETSCAPE_PLUGIN_API) && PLATFORM(MAC)
+    WebKit::PluginProcessManager::singleton().setExperimentalPlugInSandboxProfilesEnabled(enabled);
+#endif
+    toImpl(preferencesRef)->setExperimentalPlugInSandboxProfilesEnabled(enabled);
+}
+
+bool WKPreferencesGetPluginSandboxProfilesEnabledForAllPlugins(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->experimentalPlugInSandboxProfilesEnabled();
+}
+
 void WKPreferencesSetSnapshotAllPlugIns(WKPreferencesRef preferencesRef, bool enabled)
 {
     toImpl(preferencesRef)->setSnapshotAllPlugIns(enabled);
@@ -1944,6 +1958,16 @@ bool WKPreferencesGetAccessibilityObjectModelEnabled(WKPreferencesRef preference
     return toImpl(preferencesRef)->accessibilityObjectModelEnabled();
 }
 
+void WKPreferencesSetAriaReflectionEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setAriaReflectionEnabled(flag);
+}
+
+bool WKPreferencesGetAriaReflectionEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->ariaReflectionEnabled();
+}
+
 void WKPreferencesSetShouldAllowUserInstalledFonts(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setShouldAllowUserInstalledFonts(flag);
@@ -2032,4 +2056,14 @@ void WKPreferencesSetProcessSwapOnNavigationEnabled(WKPreferencesRef preferences
 bool WKPreferencesGetProcessSwapOnNavigationEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->processSwapOnNavigationEnabled();
+}
+
+void WKPreferencesSetPunchOutWhiteBackgroundsInDarkMode(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setPunchOutWhiteBackgroundsInDarkMode(flag);
+}
+
+bool WKPreferencesGetPunchOutWhiteBackgroundsInDarkMode(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->punchOutWhiteBackgroundsInDarkMode();
 }

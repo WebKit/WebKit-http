@@ -38,6 +38,7 @@ namespace Layout {
 
 class BlockFormattingState;
 class Box;
+class FloatingContext;
 
 // This class implements the layout logic for block formatting contexts.
 // https://www.w3.org/TR/CSS22/visuren.html#block-formatting
@@ -47,16 +48,15 @@ public:
     BlockFormattingContext(const Box& formattingContextRoot);
 
     void layout(LayoutContext&, FormattingState&) const override;
-    std::unique_ptr<FormattingState> createFormattingState(Ref<FloatingState>&&, const LayoutContext&) const override;
-    Ref<FloatingState> createOrFindFloatingState(LayoutContext&) const override;
 
 private:
-    void layoutFormattingContextRoot(LayoutContext&, FormattingState&, const Box&, Display::Box&) const;
+    void layoutFormattingContextRoot(LayoutContext&, FloatingContext&, FormattingState&, const Box&, Display::Box&) const;
 
     void computeWidthAndMargin(LayoutContext&, const Box&, Display::Box&) const;
     void computeHeightAndMargin(LayoutContext&, const Box&, Display::Box&) const;
 
     void computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const override;
+    void computeFloatingPosition(FloatingContext&, const Box&, Display::Box&) const;
     void computeInFlowPositionedPosition(LayoutContext&, const Box&, Display::Box&) const override;
     void computeInFlowWidthAndMargin(LayoutContext&, const Box&, Display::Box&) const;
     void computeInFlowHeightAndMargin(LayoutContext&, const Box&, Display::Box&) const;
@@ -66,20 +66,20 @@ private:
     // This class implements positioning and sizing for boxes participating in a block formatting context.
     class Geometry {
     public:
-        static FormattingContext::Geometry::HeightAndMargin inFlowHeightAndMargin(LayoutContext&, const Box&);
-        static FormattingContext::Geometry::WidthAndMargin inFlowWidthAndMargin(LayoutContext&, const Box&);
+        static HeightAndMargin inFlowHeightAndMargin(LayoutContext&, const Box&);
+        static WidthAndMargin inFlowWidthAndMargin(LayoutContext&, const Box&);
 
-        static FormattingContext::Geometry::Position staticPosition(LayoutContext&, const Box&);
-        static FormattingContext::Geometry::Position inFlowPositionedPosition(LayoutContext&, const Box&);
+        static Position staticPosition(LayoutContext&, const Box&);
+        static Position inFlowPositionedPosition(LayoutContext&, const Box&);
 
         static bool instrinsicWidthConstraintsNeedChildrenWidth(const Box&);
         static FormattingContext::InstrinsicWidthConstraints instrinsicWidthConstraints(LayoutContext&, const Box&);
 
     private:
-        static FormattingContext::Geometry::HeightAndMargin inFlowNonReplacedHeightAndMargin(LayoutContext&, const Box&);
-        static FormattingContext::Geometry::WidthAndMargin inFlowNonReplacedWidthAndMargin(LayoutContext&, const Box&, std::optional<LayoutUnit> precomputedWidth = std::nullopt);
-        static FormattingContext::Geometry::WidthAndMargin inFlowReplacedWidthAndMargin(LayoutContext&, const Box&);
-        static FormattingContext::Geometry::Position staticPositionForOutOfFlowPositioned(const LayoutContext&, const Box&);
+        static HeightAndMargin inFlowNonReplacedHeightAndMargin(LayoutContext&, const Box&);
+        static WidthAndMargin inFlowNonReplacedWidthAndMargin(LayoutContext&, const Box&, std::optional<LayoutUnit> precomputedWidth = std::nullopt);
+        static WidthAndMargin inFlowReplacedWidthAndMargin(LayoutContext&, const Box&);
+        static Position staticPositionForOutOfFlowPositioned(const LayoutContext&, const Box&);
     };
     
     // This class implements margin collapsing for block formatting context.

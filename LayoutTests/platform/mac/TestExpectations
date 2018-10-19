@@ -152,6 +152,8 @@ fast/mediastream/RTCPeerConnection-stats.html [ Skip ]
 # Asserts in debug.
 [ Debug ] fast/images/large-size-image-crash.html [ Skip ]
 
+webkit.org/b/188061 [ Debug ] webgl/2.0.0/conformance2/glsl3/compound-assignment-type-combination.html [ Slow ]
+
 # Perf tests are very flaky, because they run in parallel with other tests.
 perf
 
@@ -1071,7 +1073,6 @@ webkit.org/b/148636 inspector/css/modify-rule-selector.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/pseudo-element-matches-for-pseudo-element-node.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-dynamic-specificity.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-specificity.html [ Pass Timeout ]
-webkit.org/b/165584 inspector/debugger/async-stack-trace.html [ Pass Timeout ]
 webkit.org/b/158742 [ Debug ] inspector/debugger/break-in-constructor-before-super.html [ Pass Timeout ]
 webkit.org/b/163604 inspector/debugger/breakpoint-action-eval.html [ Pass Timeout ]
 webkit.org/b/168338 [ Sierra ] inspector/debugger/breakpoint-action-detach.html [ Pass Timeout ]
@@ -1608,6 +1609,8 @@ webkit.org/b/172052 [ Debug ] imported/w3c/web-platform-tests/html/webappapis/ti
 [ HighSierra+ ] crypto/subtle/rsa-pss-import-spki-key.html [ Pass ]
 [ HighSierra+ ] crypto/workers/subtle/rsa-pss-import-key-sign.html [ Pass ]
 [ HighSierra+ ] crypto/workers/subtle/rsa-pss-import-key-verify.html [ Pass ]
+[ HighSierra+ ] http/wpt/crypto/rsa-pss-crash.any.html [ Pass ]
+[ HighSierra+ ] http/wpt/crypto/rsa-pss-crash.any.worker.html [ Pass ]
 
 # <rdar://problem/32352702> REGRESSION: fast/dom/HTMLMeterElement/meter-appearances LayoutTests failing
 [ HighSierra+ ] fast/dom/HTMLMeterElement/meter-appearances-capacity.html [ Failure ]
@@ -1723,8 +1726,6 @@ webkit.org/b/181969 fast/events/message-port.html [ Skip ]
 
 webkit.org/b/181831 [ HighSierra+ ] fast/forms/searchfield-heights.html [ Pass Failure ]
 
-webkit.org/b/182589 fast/dom/adopt-node-crash-2.html [ Pass Failure ]
-
 webkit.org/b/181612 [ Debug ] webanimations/animation-opacity-animation-crash.html [ Pass Failure ]
 
 webkit.org/b/173946 [ Debug ] media/modern-media-controls/fullscreen-support/fullscreen-support-press.html [ Pass Failure ]
@@ -1790,8 +1791,9 @@ webkit.org/b/187393 imported/w3c/web-platform-tests/2dcontext/imagebitmap/create
 
 [ Mojave+ ] http/tests/cookies/same-site [ Pass ]
 
-# <rdar://problem/39118706> REGRESSION (Mojave): LayoutTest fast/css/test-setting-canvas-color.html is failing
-[ Mojave+ ] fast/css/test-setting-canvas-color.html [ Failure ]
+# FIXME: Mark as Pass once the fix for <rdar://problem/42255251> is shipped.
+[ Mojave+ ] http/tests/cookies/same-site/set-first-party-cross-site-cookies.php [ Skip ]
+[ Mojave+ ] http/tests/cookies/same-site/set-first-party-same-site-cookies.php [ Skip ]
 
 # <rdar://problem/36639117> REGRESSION (Mojave): LayoutTest svg/custom/subpaths-moveto-only-rendering.svg is failing
 [ Mojave+ ] svg/custom/subpaths-moveto-only-rendering.svg [ Failure ]

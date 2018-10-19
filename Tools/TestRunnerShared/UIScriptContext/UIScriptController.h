@@ -89,8 +89,6 @@ public:
     void keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
     void keyUpUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
 
-    void selectTextCandidateAtIndex(long index, JSValueRef callback);
-
     void keyboardAccessoryBarNext();
     void keyboardAccessoryBarPrevious();
 
@@ -102,7 +100,9 @@ public:
     JSRetainPtr<JSStringRef> selectFormPopoverTitle() const;
     JSRetainPtr<JSStringRef> formInputLabel() const;
     void setTimePickerValue(long hour, long minute);
-    
+
+    bool isShowingDataListSuggestions() const;
+
     JSObjectRef contentsOfUserInterfaceItem(JSStringRef) const;
     void overridePreference(JSStringRef preference, JSStringRef value);
     
@@ -154,6 +154,8 @@ public:
     
     JSObjectRef selectionRangeViewRects() const;
     JSObjectRef textSelectionCaretRect() const;
+    JSObjectRef selectionStartGrabberViewRect() const;
+    JSObjectRef selectionEndGrabberViewRect() const;
     JSObjectRef inputViewBounds() const;
 
     void replaceTextAtRange(JSStringRef, int location, int length);
@@ -203,7 +205,6 @@ private:
     JSClassRef wrapperClass() final;
 
     JSObjectRef objectFromRect(const WebCore::FloatRect&) const;
-    void waitForTextPredictionsViewAndSelectCandidateAtIndex(long index, unsigned callbackID, float interval);
 
     UIScriptContext* m_context;
 };

@@ -61,6 +61,10 @@
 #import <pal/spi/cocoa/NSAttributedStringSPI.h>
 #import <wtf/SoftLinking.h>
 
+#if PLATFORM(MAC)
+#include "LocalDefaultSystemAppearance.h"
+#endif
+
 #if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300)
 @interface NSAttributedString ()
 - (NSString *)_htmlDocumentFragmentString:(NSRange)range documentAttributes:(NSDictionary *)dict subresources:(NSArray **)subresources;
@@ -106,11 +110,16 @@ static NSDictionary *attributesForAttributedStringConversion()
     static NSString * const NSExcludedElementsDocumentAttribute = @"ExcludedElements";
 #endif
 
+    NSURL *baseURL = URL::fakeURLWithRelativePart(emptyString());
+
+    // The output base URL needs +1 refcount to work around the fact that NSHTMLReader over-releases it.
+    CFRetain((__bridge CFTypeRef)baseURL);
+
     return @{
         NSExcludedElementsDocumentAttribute: excludedElements.get(),
         @"InterchangeNewline": @YES,
         @"CoalesceTabSpans": @YES,
-        @"OutputBaseURL": [(NSURL *)URL::fakeURLWithRelativePart(emptyString()) retain], // The value needs +1 refcount, as NSAttributedString over-releases it.
+        @"OutputBaseURL": baseURL,
         @"WebResourceHandler": [[WebArchiveResourceWebResourceHandler new] autorelease],
     };
 }
@@ -119,6 +128,11 @@ static FragmentAndResources createFragment(Frame& frame, NSAttributedString *str
 {
     FragmentAndResources result;
     Document& document = *frame.document();
+
+#if PLATFORM(MAC)
+    auto* page = frame.page();
+    LocalDefaultSystemAppearance localAppearance(page->useSystemAppearance(), page->useDarkAppearance());
+#endif
 
     NSArray *subresources = nil;
     NSString *fragmentString = [string _htmlDocumentFragmentString:NSMakeRange(0, [string length]) documentAttributes:attributesForAttributedStringConversion() subresources:&subresources];

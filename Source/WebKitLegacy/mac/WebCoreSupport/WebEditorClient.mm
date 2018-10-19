@@ -45,7 +45,7 @@
 #import "WebEditingDelegatePrivate.h"
 #import "WebFormDelegate.h"
 #import "WebFrameInternal.h"
-#import "WebHTMLView.h"
+#import "WebFrameView.h"
 #import "WebHTMLViewInternal.h"
 #import "WebKitLogging.h"
 #import "WebKitVersionChecks.h"
@@ -90,6 +90,10 @@
 #import "DOMElementInternal.h"
 #import "WebFrameView.h"
 #import "WebUIKitDelegate.h"
+#endif
+
+#if PLATFORM(MAC)
+#import <WebCore/LocalDefaultSystemAppearance.h>
 #endif
 
 using namespace WebCore;
@@ -473,6 +477,11 @@ static NSDictionary *attributesForAttributedStringConversion()
 
 void _WebCreateFragment(Document& document, NSAttributedString *string, FragmentAndResources& result)
 {
+#if PLATFORM(MAC)
+    auto* page = document.page();
+    LocalDefaultSystemAppearance localAppearance(page->useSystemAppearance(), page->useDarkAppearance());
+#endif
+
     static NSDictionary *documentAttributes = [attributesForAttributedStringConversion() retain];
     NSArray *subresources;
     DOMDocumentFragment* fragment = [string _documentFromRange:NSMakeRange(0, [string length])
@@ -763,7 +772,7 @@ void WebEditorClient::handleKeyboardEvent(KeyboardEvent* event)
 {
     auto* frame = downcast<Node>(event->target())->document().frame();
 #if !PLATFORM(IOS)
-    WebHTMLView *webHTMLView = [[kit(frame) frameView] documentView];
+    WebHTMLView *webHTMLView = (WebHTMLView *)[[kit(frame) frameView] documentView];
     if ([webHTMLView _interpretKeyEvent:event savingCommands:NO])
         event->setDefaultHandled();
 #else
@@ -778,7 +787,7 @@ void WebEditorClient::handleInputMethodKeydown(KeyboardEvent* event)
 #if !PLATFORM(IOS)
     // FIXME: Switch to WebKit2 model, interpreting the event before it's sent down to WebCore.
     auto* frame = downcast<Node>(event->target())->document().frame();
-    WebHTMLView *webHTMLView = [[kit(frame) frameView] documentView];
+    WebHTMLView *webHTMLView = (WebHTMLView *)[[kit(frame) frameView] documentView];
     if ([webHTMLView _interpretKeyEvent:event savingCommands:YES])
         event->setDefaultHandled();
 #else

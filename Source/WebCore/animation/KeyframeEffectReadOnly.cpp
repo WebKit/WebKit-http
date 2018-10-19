@@ -871,8 +871,6 @@ void KeyframeEffectReadOnly::computeCSSAnimationBlendingKeyframes()
 
     auto cssAnimation = downcast<CSSAnimation>(animation());
     auto& backingAnimation = cssAnimation->backingAnimation();
-    if (backingAnimation.name().isEmpty())
-        return;
 
     KeyframeList keyframeList(backingAnimation.name());
     if (auto* styleScope = Style::Scope::forOrdinal(*m_target, backingAnimation.nameStyleScopeOrdinal()))
@@ -1162,7 +1160,8 @@ void KeyframeEffectReadOnly::setAnimatedPropertiesInStyle(RenderStyle& targetSty
         if (startKeyframeIndex) {
             if (auto iterationDuration = timing()->iterationDuration()) {
                 auto rangeDuration = (endOffset - startOffset) * iterationDuration.seconds();
-                transformedDistance = timingFunctionForKeyframeAtIndex(startKeyframeIndex.value())->transformTime(intervalDistance, rangeDuration);
+                if (auto* timingFunction = timingFunctionForKeyframeAtIndex(startKeyframeIndex.value()))
+                    transformedDistance = timingFunction->transformTime(intervalDistance, rangeDuration);
             }
         }
 
@@ -1181,19 +1180,18 @@ TimingFunction* KeyframeEffectReadOnly::timingFunctionForKeyframeAtIndex(size_t 
         return m_parsedKeyframes[index].timingFunction.get();
 
     auto effectAnimation = animation();
+    if (is<DeclarativeAnimation>(effectAnimation)) {
+        // If we're dealing with a CSS Animation, the timing function is specified either on the keyframe itself.
+        if (is<CSSAnimation>(effectAnimation)) {
+            if (auto* timingFunction = m_blendingKeyframes[index].timingFunction())
+                return timingFunction;
+        }
 
-    // If we didn't have parsed keyframes, we must be dealing with a declarative animation.
-    ASSERT(is<DeclarativeAnimation>(effectAnimation));
-
-    // If we're dealing with a CSS Animation, the timing function is specified either on the keyframe itself,
-    // or failing that on the backing Animation object which defines the default for all keyframes.
-    if (is<CSSAnimation>(effectAnimation)) {
-        if (auto* timingFunction = m_blendingKeyframes[index].timingFunction())
-            return timingFunction;
+        // Failing that, or for a CSS Transition, the timing function is inherited from the backing Animation object.
+        return downcast<DeclarativeAnimation>(effectAnimation)->backingAnimation().timingFunction();
     }
 
-    // Failing that, or for a CSS Transition, the timing function is inherited from the backing Animation object. 
-    return downcast<DeclarativeAnimation>(effectAnimation)->backingAnimation().timingFunction();
+    return nullptr;
 }
 
 void KeyframeEffectReadOnly::updateAcceleratedAnimationState()
@@ -1266,15 +1264,17 @@ void KeyframeEffectReadOnly::applyPendingAcceleratedActions()
     // pending accelerated actions.
     m_needsForcedLayout = false;
 
-    auto pendingAccelerationActions = m_pendingAcceleratedActions;
-    m_pendingAcceleratedActions.clear();
-
-    if (pendingAccelerationActions.isEmpty())
+    if (m_pendingAcceleratedActions.isEmpty())
         return;
 
     auto* renderer = this->renderer();
-    if (!renderer || !renderer->isComposited())
+    if (!renderer || !renderer->isComposited()) {
+        animation()->acceleratedStateDidChange();
         return;
+    }
+
+    auto pendingAcceleratedActions = m_pendingAcceleratedActions;
+    m_pendingAcceleratedActions.clear();
 
     auto* compositedRenderer = downcast<RenderBoxModelObject>(renderer);
 
@@ -1286,7 +1286,7 @@ void KeyframeEffectReadOnly::applyPendingAcceleratedActions()
     if (timing()->delay() < 0_s)
         timeOffset = -timing()->delay().seconds();
 
-    for (const auto& action : pendingAccelerationActions) {
+    for (const auto& action : pendingAcceleratedActions) {
         switch (action) {
         case AcceleratedAction::Play:
             if (!compositedRenderer->startAnimation(timeOffset, backingAnimationForCompositedRenderer().ptr(), m_blendingKeyframes)) {

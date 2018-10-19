@@ -28,26 +28,17 @@
 
 #if ENABLE(WEBGPU)
 
-#include "GPUComputePipelineState.h"
-#include "WebGPUFunction.h"
-#include "WebGPURenderingContext.h"
-
 namespace WebCore {
 
-Ref<WebGPUComputePipelineState> WebGPUComputePipelineState::create(WebGPURenderingContext* context, WebGPUFunction* function)
+Ref<WebGPUComputePipelineState> WebGPUComputePipelineState::create(GPUComputePipelineState&& state)
 {
-    return adoptRef(*new WebGPUComputePipelineState(context, function));
+    return adoptRef(*new WebGPUComputePipelineState(WTFMove(state)));
 }
 
-WebGPUComputePipelineState::WebGPUComputePipelineState(WebGPURenderingContext* context, WebGPUFunction* function)
-    : WebGPUObject(context)
+WebGPUComputePipelineState::WebGPUComputePipelineState(GPUComputePipelineState&& state)
+    : m_state { WTFMove(state) }
 {
-    if (!context || !function)
-        return;
-    m_computePipelineState = GPUComputePipelineState::create(context->device().get(), function->function());
 }
-
-WebGPUComputePipelineState::~WebGPUComputePipelineState() = default;
 
 } // namespace WebCore
 

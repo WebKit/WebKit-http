@@ -678,6 +678,7 @@ HTMLMediaElement::~HTMLMediaElement()
 #endif
 
     m_seekTaskQueue.close();
+    m_resumeTaskQueue.close();
     m_promiseTaskQueue.close();
     m_pauseAfterDetachedTaskQueue.close();
     m_playbackControlsManagerBehaviorRestrictionsQueue.close();
@@ -4023,7 +4024,7 @@ void HTMLMediaElement::closeCaptionTracksChanged()
 
 void HTMLMediaElement::addAudioTrack(Ref<AudioTrack>&& track)
 {
-    audioTracks().append(WTFMove(track));
+    ensureAudioTracks().append(WTFMove(track));
 }
 
 void HTMLMediaElement::addTextTrack(Ref<TextTrack>&& track)
@@ -4036,14 +4037,14 @@ void HTMLMediaElement::addTextTrack(Ref<TextTrack>&& track)
             m_captionDisplayMode = page->group().captionPreferences().captionDisplayMode();
     }
 
-    textTracks().append(WTFMove(track));
+    ensureTextTracks().append(WTFMove(track));
 
     closeCaptionTracksChanged();
 }
 
 void HTMLMediaElement::addVideoTrack(Ref<VideoTrack>&& track)
 {
-    videoTracks().append(WTFMove(track));
+    ensureVideoTracks().append(WTFMove(track));
 }
 
 void HTMLMediaElement::removeAudioTrack(Ref<AudioTrack>&& track)
@@ -4121,7 +4122,7 @@ ExceptionOr<TextTrack&> HTMLMediaElement::addTextTrack(const String& kind, const
     return trackReference;
 }
 
-AudioTrackList& HTMLMediaElement::audioTracks()
+AudioTrackList& HTMLMediaElement::ensureAudioTracks()
 {
     if (!m_audioTracks)
         m_audioTracks = AudioTrackList::create(this, ActiveDOMObject::scriptExecutionContext());
@@ -4129,7 +4130,7 @@ AudioTrackList& HTMLMediaElement::audioTracks()
     return *m_audioTracks;
 }
 
-TextTrackList& HTMLMediaElement::textTracks()
+TextTrackList& HTMLMediaElement::ensureTextTracks()
 {
     if (!m_textTracks)
         m_textTracks = TextTrackList::create(this, ActiveDOMObject::scriptExecutionContext());
@@ -4137,7 +4138,7 @@ TextTrackList& HTMLMediaElement::textTracks()
     return *m_textTracks;
 }
 
-VideoTrackList& HTMLMediaElement::videoTracks()
+VideoTrackList& HTMLMediaElement::ensureVideoTracks()
 {
     if (!m_videoTracks)
         m_videoTracks = VideoTrackList::create(this, ActiveDOMObject::scriptExecutionContext());
@@ -4418,25 +4419,25 @@ void HTMLMediaElement::visibilityDidChange()
 
 void HTMLMediaElement::setSelectedTextTrack(TextTrack* trackToSelect)
 {
-    TextTrackList& trackList = textTracks();
-    if (!trackList.length())
+    auto* trackList = textTracks();
+    if (!trackList || !trackList->length())
         return;
 
     if (trackToSelect == TextTrack::captionMenuAutomaticItem()) {
         if (captionDisplayMode() != CaptionUserPreferences::Automatic)
             m_textTracks->scheduleChangeEvent();
     } else if (trackToSelect == TextTrack::captionMenuOffItem()) {
-        for (int i = 0, length = trackList.length(); i < length; ++i)
-            trackList.item(i)->setMode(TextTrack::Mode::Disabled);
+        for (int i = 0, length = trackList->length(); i < length; ++i)
+            trackList->item(i)->setMode(TextTrack::Mode::Disabled);
 
-        if (captionDisplayMode() != CaptionUserPreferences::ForcedOnly && !trackList.isChangeEventScheduled())
+        if (captionDisplayMode() != CaptionUserPreferences::ForcedOnly && !trackList->isChangeEventScheduled())
             m_textTracks->scheduleChangeEvent();
     } else {
-        if (!trackToSelect || !trackList.contains(*trackToSelect))
+        if (!trackToSelect || !trackList->contains(*trackToSelect))
             return;
 
-        for (int i = 0, length = trackList.length(); i < length; ++i) {
-            auto& track = *trackList.item(i);
+        for (int i = 0, length = trackList->length(); i < length; ++i) {
+            auto& track = *trackList->item(i);
             if (&track != trackToSelect)
                 track.setMode(TextTrack::Mode::Disabled);
             else
@@ -5583,6 +5584,7 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
 void HTMLMediaElement::contextDestroyed()
 {
     m_seekTaskQueue.close();
+    m_resumeTaskQueue.close();
     m_shadowDOMTaskQueue.close();
     m_promiseTaskQueue.close();
     m_pauseAfterDetachedTaskQueue.close();
@@ -5605,6 +5607,7 @@ void HTMLMediaElement::stop()
     m_asyncEventQueue.close();
     m_promiseTaskQueue.close();
     m_resourceSelectionTaskQueue.close();
+    m_resumeTaskQueue.cancelAllTasks();
 
     // Once an active DOM object has been stopped it can not be restarted, so we can deallocate
     // the media player now. Note that userCancelledLoad will already called clearMediaPlayer
@@ -5619,6 +5622,8 @@ void HTMLMediaElement::suspend(ReasonForSuspension reason)
 {
     INFO_LOG(LOGIDENTIFIER);
     Ref<HTMLMediaElement> protectedThis(*this);
+
+    m_resumeTaskQueue.cancelAllTasks();
 
     switch (reason) {
     case ReasonForSuspension::PageCache:
@@ -5662,13 +5667,13 @@ void HTMLMediaElement::resume()
 
     m_mediaSession->removeBehaviorRestriction(MediaElementSession::RequirePageConsentToResumeMedia);
 
-    if (m_error && m_error->code() == MediaError::MEDIA_ERR_ABORTED) {
+    if (m_error && m_error->code() == MediaError::MEDIA_ERR_ABORTED && !m_resumeTaskQueue.hasPendingTasks()) {
         // Restart the load if it was aborted in the middle by moving the document to the page cache.
         // m_error is only left at MEDIA_ERR_ABORTED when the document becomes inactive (it is set to
         //  MEDIA_ERR_ABORTED while the abortEvent is being sent, but cleared immediately afterwards).
         // This behavior is not specified but it seems like a sensible thing to do.
         // As it is not safe to immedately start loading now, let's schedule a load.
-        prepareForLoad();
+        m_resumeTaskQueue.enqueueTask(std::bind(&HTMLMediaElement::prepareForLoad, this));
     }
 
     updateRenderer();
@@ -5910,25 +5915,18 @@ void HTMLMediaElement::enterFullscreen(VideoFullscreenMode mode)
     if (m_videoFullscreenMode == mode)
         return;
 
+    if (!document().page() || !document().page()->chrome().client().isViewVisible()) {
+        ALWAYS_LOG(LOGIDENTIFIER, "  returning because document is hidden");
+        return;
+    }
+
     m_temporarilyAllowingInlinePlaybackAfterFullscreen = false;
     m_waitingToEnterFullscreen = true;
 
-#if ENABLE(FULLSCREEN_API)
-    if (document().settings().fullScreenEnabled()) {
-#if ENABLE(VIDEO_USES_ELEMENT_FULLSCREEN)
-        if (mode == VideoFullscreenModeStandard) {
-            document().requestFullScreenForElement(this, Document::ExemptIFrameAllowFullScreenRequirement);
-            return;
-        }
-#endif
-
-        // If this media element is not going to standard fullscreen mode but there's
-        // an element that's currently in full screen in the document, exit full screen
-        // if it contains this media element.
-        if (RefPtr<Element> fullscreenElement = document().webkitCurrentFullScreenElement()) {
-            if (fullscreenElement->contains(this))
-                document().webkitCancelFullScreen();
-        }
+#if ENABLE(FULLSCREEN_API) && ENABLE(VIDEO_USES_ELEMENT_FULLSCREEN)
+    if (document().settings().fullScreenEnabled() && mode == VideoFullscreenModeStandard) {
+        document().requestFullScreenForElement(this, Document::ExemptIFrameAllowFullScreenRequirement);
+        return;
     }
 #endif
 
@@ -5936,7 +5934,7 @@ void HTMLMediaElement::enterFullscreen(VideoFullscreenMode mode)
     configureMediaControls();
     if (hasMediaControls())
         mediaControls()->enteredFullscreen();
-    if (document().page() && is<HTMLVideoElement>(*this)) {
+    if (is<HTMLVideoElement>(*this)) {
         HTMLVideoElement& asVideo = downcast<HTMLVideoElement>(*this);
         if (document().page()->chrome().client().supportsVideoFullscreen(m_videoFullscreenMode)) {
             document().page()->chrome().client().enterVideoFullscreenForVideoElement(asVideo, m_videoFullscreenMode, m_videoFullscreenStandby);
@@ -5960,7 +5958,9 @@ void HTMLMediaElement::exitFullscreen()
     if (document().settings().fullScreenEnabled() && document().webkitCurrentFullScreenElement() == this) {
         if (document().webkitIsFullScreen())
             document().webkitCancelFullScreen();
-        return;
+
+        if (m_videoFullscreenMode == VideoFullscreenModeStandard)
+            return;
     }
 #endif
 

@@ -41,6 +41,7 @@
 #include "MediaSample.h"
 #include "PlatformLayer.h"
 #include "RealtimeMediaSourceCapabilities.h"
+#include <wtf/RecursiveLockAdapter.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
@@ -66,7 +67,7 @@ class WEBCORE_EXPORT RealtimeMediaSource : public ThreadSafeRefCounted<RealtimeM
 public:
     class Observer {
     public:
-        virtual ~Observer() = default;
+        virtual ~Observer();
 
         // Source state changes.
         virtual void sourceStarted() { }
@@ -112,7 +113,7 @@ public:
 #endif
     {
     public:
-        virtual ~AudioCaptureFactory() = default;
+        virtual ~AudioCaptureFactory();
         virtual CaptureSourceOrError createAudioCaptureSource(const CaptureDevice&, const MediaConstraints*) = 0;
 
     protected:
@@ -125,7 +126,7 @@ public:
 #endif
     {
     public:
-        virtual ~VideoCaptureFactory() = default;
+        virtual ~VideoCaptureFactory();
         virtual CaptureSourceOrError createVideoCaptureSource(const CaptureDevice&, const MediaConstraints*) = 0;
         virtual void setVideoCapturePageState(bool, bool) { }
 
@@ -253,13 +254,16 @@ private:
     virtual void startProducingData() { }
     virtual void stopProducingData() { }
 
+    void forEachObserver(const WTF::Function<void(Observer&)>&) const;
+
     bool m_muted { false };
 
     String m_id;
     String m_persistentID;
     Type m_type;
     String m_name;
-    Vector<std::reference_wrapper<Observer>> m_observers;
+    mutable RecursiveLock m_observersLock;
+    HashSet<Observer*> m_observers;
     IntSize m_size;
     double m_frameRate { 30 };
     double m_aspectRatio { 0 };

@@ -302,7 +302,7 @@ void GraphicsLayerTextureMapper::setContentsToImage(Image* image)
         m_compositedImage = nullptr;
     }
 
-    setContentsToPlatformLayer(m_compositedImage.get(), ContentsLayerForImage);
+    setContentsToPlatformLayer(m_compositedImage.get(), ContentsLayerPurpose::Image);
     notifyChange(ContentChange);
     GraphicsLayer::setContentsToImage(image);
 }
@@ -339,7 +339,7 @@ void GraphicsLayerTextureMapper::setShowRepaintCounter(bool show)
         return;
 
     GraphicsLayer::setShowRepaintCounter(show);
-    notifyChange(DebugVisualsChange);
+    notifyChange(RepaintCountChange);
 }
 
 void GraphicsLayerTextureMapper::flushCompositingStateForThisLayerOnly()
@@ -449,10 +449,10 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
         m_layer.setBackingStore(m_backingStore.get());
 
     if (m_changeMask & DebugVisualsChange)
-        m_layer.setDebugVisuals(isShowingDebugBorder(), debugBorderColor(), debugBorderWidth(), isShowingRepaintCounter());
+        m_layer.setDebugVisuals(isShowingDebugBorder(), debugBorderColor(), debugBorderWidth());
 
     if (m_changeMask & RepaintCountChange)
-        m_layer.setRepaintCount(repaintCount());
+        m_layer.setRepaintCounter(isShowingRepaintCounter(), repaintCount());
 
     if (m_changeMask & ContentChange)
         m_layer.setContentsLayer(platformLayer());
@@ -607,12 +607,6 @@ bool GraphicsLayerTextureMapper::setFilters(const FilterOperations& filters)
     }
 
     return canCompositeFilters;
-}
-
-void GraphicsLayerTextureMapper::setRepaintCount(int repaintCount)
-{
-    m_repaintCount = repaintCount;
-    notifyChange(RepaintCountChange);
 }
 
 }

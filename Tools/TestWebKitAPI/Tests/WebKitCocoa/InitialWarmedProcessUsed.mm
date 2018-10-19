@@ -37,18 +37,27 @@ static NSString *loadableURL = @"data:text/html,no%20error%20A";
 
 TEST(WKProcessPool, InitialWarmedProcessUsed)
 {
-    auto *pool = [WKProcessPool _sharedProcessPool];
+    auto pool = adoptNS([[WKProcessPool alloc] init]);
+    [pool _setMaximumNumberOfPrewarmedProcesses:1];
     [pool _warmInitialProcess];
 
+    EXPECT_EQ(static_cast<size_t>(1), [pool _prewarmedWebProcessCount]);
+    EXPECT_EQ(static_cast<size_t>(1), [pool _webPageContentProcessCount]);
+
     auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
-    configuration.get().processPool = pool;
+    configuration.get().processPool = pool.get();
     configuration.get().websiteDataStore = [WKWebsiteDataStore nonPersistentDataStore];
 
     auto webView = adoptNS([[WKWebView alloc] initWithFrame:CGRectMake(0, 0, 800, 600) configuration:configuration.get()]);
+
+    EXPECT_EQ(static_cast<size_t>(0), [pool _prewarmedWebProcessCount]);
+    EXPECT_EQ(static_cast<size_t>(1), [pool _webPageContentProcessCount]);
+
     [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:loadableURL]]];
     [webView _test_waitForDidFinishNavigation];
 
-    EXPECT_EQ([pool _webPageContentProcessCount], static_cast<size_t>(1));
+    EXPECT_EQ(static_cast<size_t>(1), [pool _prewarmedWebProcessCount]);
+    EXPECT_EQ(static_cast<size_t>(2), [pool _webPageContentProcessCount]);
 }
 
 #endif

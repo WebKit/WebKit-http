@@ -47,10 +47,10 @@
     CGPoint _fakeOrigin;
     BOOL _initialized;
 }
-@property (nonatomic, assign) WTR::PlatformWebView* platformWebView;
+@property (nonatomic) WTR::PlatformWebView* platformWebView;
 @end
 
-static Vector<WebKitTestRunnerWindow*> allWindows;
+static Vector<WebKitTestRunnerWindow *> allWindows;
 
 @implementation WebKitTestRunnerWindow
 @synthesize platformWebView = _platformWebView;
@@ -292,6 +292,15 @@ void PlatformWebView::makeWebViewFirstResponder()
 void PlatformWebView::changeWindowScaleIfNeeded(float)
 {
     // Retina only surface.
+}
+
+bool PlatformWebView::drawsBackground() const
+{
+    return false;
+}
+
+void PlatformWebView::setDrawsBackground(bool)
+{
 }
 
 #if !HAVE(IOSURFACE)

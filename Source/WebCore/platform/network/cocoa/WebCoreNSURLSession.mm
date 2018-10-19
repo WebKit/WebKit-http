@@ -44,6 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)taskCompleted:(WebCoreNSURLSessionDataTask *)task;
 - (void)addDelegateOperation:(Function<void()>&&)operation;
 - (void)task:(WebCoreNSURLSessionDataTask *)task didReceiveCORSAccessCheckResult:(BOOL)result;
+- (void)task:(WebCoreNSURLSessionDataTask *)task didReceiveResponseFromOrigin:(Ref<WebCore::SecurityOrigin>&&)origin;
 @end
 
 @interface WebCoreNSURLSessionDataTask ()
@@ -92,7 +93,7 @@ NS_ASSUME_NONNULL_END
     {
         Locker<Lock> locker(_dataTasksLock);
         for (auto& task : _dataTasks)
-            task.get().session = nil;
+            ((__bridge WebCoreNSURLSessionDataTask *)task.get()).session = nil;
     }
 
     callOnMainThread([loader = WTFMove(_loader)] {
@@ -115,8 +116,8 @@ NS_ASSUME_NONNULL_END
     {
         Locker<Lock> locker(_dataTasksLock);
 
-        ASSERT(_dataTasks.contains(task));
-        _dataTasks.remove(task);
+        ASSERT(_dataTasks.contains((__bridge CFTypeRef)task));
+        _dataTasks.remove((__bridge CFTypeRef)task);
         if (!_dataTasks.isEmpty() || !_invalidated)
             return;
     }
@@ -145,6 +146,12 @@ NS_ASSUME_NONNULL_END
         _corsResults = WebCoreNSURLSessionCORSAccessCheckResults::Fail;
     else if (_corsResults != WebCoreNSURLSessionCORSAccessCheckResults::Fail)
         _corsResults = WebCoreNSURLSessionCORSAccessCheckResults::Pass;
+}
+
+- (void)task:(WebCoreNSURLSessionDataTask *)task didReceiveResponseFromOrigin:(Ref<WebCore::SecurityOrigin>&&)origin
+{
+    UNUSED_PARAM(task);
+    _origins.add(WTFMove(origin));
 }
 
 #pragma mark - NSURLSession API
@@ -184,6 +191,15 @@ NS_ASSUME_NONNULL_END
     return _corsResults == WebCoreNSURLSessionCORSAccessCheckResults::Pass;
 }
 
+- (BOOL)wouldTaintOrigin:(const WebCore::SecurityOrigin &)origin
+{
+    for (auto& responseOrigin : _origins) {
+        if (!origin.canAccess(*responseOrigin))
+            return true;
+    }
+    return false;
+}
+
 - (void)finishTasksAndInvalidate
 {
     _invalidated = YES;
@@ -202,14 +218,14 @@ NS_ASSUME_NONNULL_END
 
 - (void)invalidateAndCancel
 {
-    Vector<RetainPtr<WebCoreNSURLSessionDataTask>> tasksCopy;
+    Vector<RetainPtr<CFTypeRef>> tasksCopy;
     {
         Locker<Lock> locker(_dataTasksLock);
         tasksCopy = copyToVector(_dataTasks);
     }
 
     for (auto& task : tasksCopy)
-        [task cancel];
+        [(__bridge WebCoreNSURLSessionDataTask *)task.get() cancel];
 
     [self finishTasksAndInvalidate];
 }
@@ -237,7 +253,7 @@ NS_ASSUME_NONNULL_END
         Locker<Lock> locker(_dataTasksLock);
         array = [NSMutableArray arrayWithCapacity:_dataTasks.size()];
         for (auto& task : _dataTasks)
-            [array addObject:task.get()];
+            [array addObject:(__bridge WebCoreNSURLSessionDataTask *)task.get()];
     }
     [self addDelegateOperation:^{
         completionHandler(array, nil, nil);
@@ -251,7 +267,7 @@ NS_ASSUME_NONNULL_END
         Locker<Lock> locker(_dataTasksLock);
         array = [NSMutableArray arrayWithCapacity:_dataTasks.size()];
         for (auto& task : _dataTasks)
-            [array addObject:task.get()];
+            [array addObject:(__bridge WebCoreNSURLSessionDataTask *)task.get()];
     }
     [self addDelegateOperation:^{
         completionHandler(array);
@@ -266,7 +282,7 @@ NS_ASSUME_NONNULL_END
     WebCoreNSURLSessionDataTask *task = [[WebCoreNSURLSessionDataTask alloc] initWithSession:self identifier:_nextTaskIdentifier++ request:request];
     {
         Locker<Lock> locker(_dataTasksLock);
-        _dataTasks.add(task);
+        _dataTasks.add((__bridge CFTypeRef)task);
     }
     return (NSURLSessionDataTask *)[task autorelease];
 }
@@ -279,7 +295,7 @@ NS_ASSUME_NONNULL_END
     WebCoreNSURLSessionDataTask *task = [[WebCoreNSURLSessionDataTask alloc] initWithSession:self identifier:_nextTaskIdentifier++ URL:url];
     {
         Locker<Lock> locker(_dataTasksLock);
-        _dataTasks.add(task);
+        _dataTasks.add((__bridge CFTypeRef)task);
     }
     return (NSURLSessionDataTask *)[task autorelease];
 }
@@ -614,6 +630,7 @@ void WebCoreNSURLSessionDataTaskClient::loadFinished(PlatformMediaResource& reso
     ASSERT(response.source() == ResourceResponse::Source::Network || response.source() == ResourceResponse::Source::DiskCache || response.source() == ResourceResponse::Source::DiskCacheAfterValidation || response.source() == ResourceResponse::Source::ServiceWorker);
     ASSERT_UNUSED(resource, &resource == _resource);
     ASSERT(isMainThread());
+    [self.session task:self didReceiveResponseFromOrigin:SecurityOrigin::create(response.url())];
     [self.session task:self didReceiveCORSAccessCheckResult:resource.didPassAccessControlCheck()];
     self.countOfBytesExpectedToReceive = response.expectedContentLength();
     [self _setDefersLoading:YES];

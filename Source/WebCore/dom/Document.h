@@ -317,6 +317,15 @@ using RenderingContext = Variant<
     RefPtr<CanvasRenderingContext2D>
 >;
 
+class DocumentParserYieldToken {
+public:
+    WEBCORE_EXPORT DocumentParserYieldToken(Document&);
+    WEBCORE_EXPORT ~DocumentParserYieldToken();
+
+private:
+    WeakPtr<Document> m_document;
+};
+
 class Document
     : public ContainerNode
     , public TreeScope
@@ -466,8 +475,8 @@ public:
 
     String xmlEncoding() const { return m_xmlEncoding; }
     String xmlVersion() const { return m_xmlVersion; }
-    enum StandaloneStatus { StandaloneUnspecified, Standalone, NotStandalone };
-    bool xmlStandalone() const { return m_xmlStandalone == Standalone; }
+    enum class StandaloneStatus : uint8_t { Unspecified, Standalone, NotStandalone };
+    bool xmlStandalone() const { return m_xmlStandalone == StandaloneStatus::Standalone; }
     StandaloneStatus xmlStandaloneStatus() const { return m_xmlStandalone; }
     bool hasXMLDeclaration() const { return m_hasXMLDeclaration; }
 
@@ -930,8 +939,8 @@ public:
     // the URL of the top-level document or the null URL depending on whether the registrable
     // domain of this document's URL matches the registrable domain of its parent's/opener's
     // URL. For the top-level document, it is set to the document's URL.
-    const URL& firstPartyForSameSiteCookies() const { return m_firstPartyForSameSiteCookies; }
-    void setFirstPartyForSameSiteCookies(const URL& url) { m_firstPartyForSameSiteCookies = url; }
+    const URL& siteForCookies() const { return m_siteForCookies; }
+    void setSiteForCookies(const URL& url) { m_siteForCookies = url; }
     
     // The following implements the rule from HTML 4 for what valid names are.
     // To get this right for all the XML cases, we probably have to improve this or move it
@@ -981,6 +990,8 @@ public:
     HTMLScriptElement* currentScript() const { return !m_currentScriptStack.isEmpty() ? m_currentScriptStack.last().get() : nullptr; }
     void pushCurrentScript(HTMLScriptElement*);
     void popCurrentScript();
+
+    bool shouldDeferAsynchronousScriptsUntilParsingFinishes() const;
 
 #if ENABLE(XSLT)
     void scheduleToApplyXSLTransforms();
@@ -1266,6 +1277,13 @@ public:
     void incrementActiveParserCount() { ++m_activeParserCount; }
     void decrementActiveParserCount();
 
+    std::unique_ptr<DocumentParserYieldToken> createParserYieldToken()
+    {
+        return std::make_unique<DocumentParserYieldToken>(*this);
+    }
+
+    bool hasActiveParserYieldToken() const { return m_parserYieldTokenCount; }
+
     DocumentSharedObjectPool* sharedObjectPool() { return m_sharedObjectPool.get(); }
 
     void invalidateMatchedPropertiesCacheAndForceStyleRecalc();
@@ -1460,9 +1478,11 @@ protected:
     virtual Ref<Document> cloneDocumentWithoutChildren() const;
 
 private:
+    friend class DocumentParserYieldToken;
     friend class Node;
-    friend class IgnoreDestructiveWriteCountIncrementer;
+    friend class ThrowOnDynamicMarkupInsertionCountIncrementer;
     friend class IgnoreOpensDuringUnloadCountIncrementer;
+    friend class IgnoreDestructiveWriteCountIncrementer;
 
     bool shouldInheritContentSecurityPolicyFromOwner() const;
 
@@ -1578,6 +1598,8 @@ private:
     Ref<CachedResourceLoader> m_cachedResourceLoader;
     RefPtr<DocumentParser> m_parser;
 
+    unsigned m_parserYieldTokenCount { 0 };
+
     // Document URLs.
     URL m_url; // Document.URL: The URL from which this document was retrieved.
     URL m_baseURL; // Node.baseURI: The URL to use when resolving relative URLs.
@@ -1585,7 +1607,7 @@ private:
     URL m_baseElementURL; // The URL set by the <base> element.
     URL m_cookieURL; // The URL to use for cookie access.
     URL m_firstPartyForCookies; // The policy URL for third-party cookie blocking.
-    URL m_firstPartyForSameSiteCookies; // The policy URL for Same-Site cookies.
+    URL m_siteForCookies; // The policy URL for Same-Site cookies.
 
     // Document.documentURI:
     // Although URL-like, Document.documentURI can actually be set to any
@@ -1661,7 +1683,7 @@ private:
 
     String m_xmlEncoding;
     String m_xmlVersion;
-    StandaloneStatus m_xmlStandalone { StandaloneUnspecified };
+    StandaloneStatus m_xmlStandalone { StandaloneStatus::Unspecified };
     bool m_hasXMLDeclaration { false };
 
     String m_contentLanguage;
@@ -1833,11 +1855,14 @@ private:
     int m_loadEventDelayCount { 0 };
     unsigned m_lastStyleUpdateSizeForTesting { 0 };
 
-    // https://html.spec.whatwg.org/multipage/webappapis.html#ignore-destructive-writes-counter
-    unsigned m_ignoreDestructiveWriteCount { 0 };
+    // https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#throw-on-dynamic-markup-insertion-counter
+    unsigned m_throwOnDynamicMarkupInsertionCount { 0 };
 
-    // https://html.spec.whatwg.org/multipage/webappapis.html#ignore-opens-during-unload-counter
+    // https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#ignore-opens-during-unload-counter
     unsigned m_ignoreOpensDuringUnloadCount { 0 };
+
+    // https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#ignore-destructive-writes-counter
+    unsigned m_ignoreDestructiveWriteCount { 0 };
 
     unsigned m_activeParserCount { 0 };
     unsigned m_styleRecalcCount { 0 };

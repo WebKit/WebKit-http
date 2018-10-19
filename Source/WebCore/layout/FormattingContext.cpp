@@ -130,17 +130,38 @@ void FormattingContext::layoutOutOfFlowDescendants(LayoutContext& layoutContext,
 
         ASSERT(layoutBox.establishesFormattingContext());
         auto formattingContext = layoutContext.formattingContext(layoutBox);
-        auto& establishedFormattingState = layoutContext.establishedFormattingState(layoutBox, *formattingContext);
 
         computeBorderAndPadding(layoutContext, layoutBox, displayBox);
         computeOutOfFlowHorizontalGeometry(layoutContext, layoutBox, displayBox);
 
-        formattingContext->layout(layoutContext, establishedFormattingState);
+        formattingContext->layout(layoutContext, layoutContext.establishedFormattingState(layoutBox));
 
         computeOutOfFlowVerticalGeometry(layoutContext, layoutBox, displayBox);
         layoutOutOfFlowDescendants(layoutContext, layoutBox);
     }
     LOG_WITH_STREAM(FormattingContextLayout, stream << "End: layout out-of-flow descendants -> context: " << &layoutContext << " root: " << &root());
+}
+
+Display::Box FormattingContext::mapToAncestor(const LayoutContext& layoutContext, const Box& layoutBox, const Container& ancestor)
+{
+    ASSERT(layoutBox.isDescendantOf(ancestor));
+
+    auto* displayBox = layoutContext.displayBoxForLayoutBox(layoutBox);
+    ASSERT(displayBox);
+    auto topLeft = displayBox->topLeft();
+
+    auto* containingBlock = layoutBox.containingBlock();
+    for (; containingBlock && containingBlock != &ancestor; containingBlock = containingBlock->containingBlock())
+        topLeft.moveBy(layoutContext.displayBoxForLayoutBox(*containingBlock)->topLeft());
+
+    if (!containingBlock) {
+        ASSERT_NOT_REACHED();
+        return Display::Box(*displayBox);
+    }
+
+    auto mappedDisplayBox = Display::Box(*displayBox);
+    mappedDisplayBox.setTopLeft(topLeft);
+    return mappedDisplayBox;
 }
 
 #ifndef NDEBUG

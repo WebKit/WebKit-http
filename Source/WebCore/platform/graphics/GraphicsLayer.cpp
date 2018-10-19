@@ -112,12 +112,6 @@ bool GraphicsLayer::supportsContentsTiling()
 
 GraphicsLayer::GraphicsLayer(Type type, GraphicsLayerClient& client)
     : m_client(client)
-    , m_anchorPoint(0.5f, 0.5f, 0)
-    , m_opacity(1)
-    , m_zPosition(0)
-#if ENABLE(CSS_COMPOSITING)
-    , m_blendMode(BlendModeNormal)
-#endif
     , m_type(type)
     , m_contentsOpaque(false)
     , m_supportsSubpixelAntialiasedText(false)
@@ -135,14 +129,6 @@ GraphicsLayer::GraphicsLayer(Type type, GraphicsLayerClient& client)
     , m_isTrackingDisplayListReplay(false)
     , m_userInteractionEnabled(true)
     , m_canDetachBackingStore(true)
-    , m_paintingPhase(GraphicsLayerPaintAllWithOverflowClip)
-    , m_contentsOrientation(CompositingCoordinatesTopDown)
-    , m_parent(nullptr)
-    , m_maskLayer(nullptr)
-    , m_replicaLayer(nullptr)
-    , m_replicatedLayer(nullptr)
-    , m_repaintCount(0)
-    , m_customAppearance(NoCustomAppearance)
 {
 #ifndef NDEBUG
     m_client.verifyNotPainting();
@@ -304,6 +290,32 @@ void GraphicsLayer::removeFromParent()
         m_parent->m_children.removeFirst(this);
         setParent(nullptr);
     }
+}
+
+const TransformationMatrix& GraphicsLayer::transform() const
+{
+    return m_transform ? *m_transform : TransformationMatrix::identity;
+}
+
+void GraphicsLayer::setTransform(const TransformationMatrix& matrix)
+{
+    if (m_transform)
+        *m_transform = matrix;
+    else
+        m_transform = std::make_unique<TransformationMatrix>(matrix);
+}
+
+const TransformationMatrix& GraphicsLayer::childrenTransform() const
+{
+    return m_childrenTransform ? *m_childrenTransform : TransformationMatrix::identity;
+}
+
+void GraphicsLayer::setChildrenTransform(const TransformationMatrix& matrix)
+{
+    if (m_childrenTransform)
+        *m_childrenTransform = matrix;
+    else
+        m_childrenTransform = std::make_unique<TransformationMatrix>(matrix);
 }
 
 void GraphicsLayer::setMaskLayer(GraphicsLayer* layer)
@@ -749,7 +761,7 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
         ts << indent << "(opacity " << m_opacity << ")\n";
 
 #if ENABLE(CSS_COMPOSITING)
-    if (m_blendMode != BlendModeNormal)
+    if (m_blendMode != BlendMode::Normal)
         ts << indent << "(blendMode " << compositeOperatorName(CompositeSourceOver, m_blendMode) << ")\n";
 #endif
 
@@ -789,22 +801,22 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
     if (behavior & LayerTreeAsTextIncludeBackingStoreAttached)
         ts << indent << "(backingStoreAttached " << backingStoreAttachedForTesting() << ")\n";
 
-    if (!m_transform.isIdentity()) {
+    if (m_transform && !m_transform->isIdentity()) {
         ts << indent << "(transform ";
-        ts << "[" << m_transform.m11() << " " << m_transform.m12() << " " << m_transform.m13() << " " << m_transform.m14() << "] ";
-        ts << "[" << m_transform.m21() << " " << m_transform.m22() << " " << m_transform.m23() << " " << m_transform.m24() << "] ";
-        ts << "[" << m_transform.m31() << " " << m_transform.m32() << " " << m_transform.m33() << " " << m_transform.m34() << "] ";
-        ts << "[" << m_transform.m41() << " " << m_transform.m42() << " " << m_transform.m43() << " " << m_transform.m44() << "])\n";
+        ts << "[" << m_transform->m11() << " " << m_transform->m12() << " " << m_transform->m13() << " " << m_transform->m14() << "] ";
+        ts << "[" << m_transform->m21() << " " << m_transform->m22() << " " << m_transform->m23() << " " << m_transform->m24() << "] ";
+        ts << "[" << m_transform->m31() << " " << m_transform->m32() << " " << m_transform->m33() << " " << m_transform->m34() << "] ";
+        ts << "[" << m_transform->m41() << " " << m_transform->m42() << " " << m_transform->m43() << " " << m_transform->m44() << "])\n";
     }
 
     // Avoid dumping the sublayer transform on the root layer, because it's used for geometry flipping, whose behavior
     // differs between platforms.
-    if (parent() && !m_childrenTransform.isIdentity()) {
+    if (parent() && m_childrenTransform && !m_childrenTransform->isIdentity()) {
         ts << indent << "(childrenTransform ";
-        ts << "[" << m_childrenTransform.m11() << " " << m_childrenTransform.m12() << " " << m_childrenTransform.m13() << " " << m_childrenTransform.m14() << "] ";
-        ts << "[" << m_childrenTransform.m21() << " " << m_childrenTransform.m22() << " " << m_childrenTransform.m23() << " " << m_childrenTransform.m24() << "] ";
-        ts << "[" << m_childrenTransform.m31() << " " << m_childrenTransform.m32() << " " << m_childrenTransform.m33() << " " << m_childrenTransform.m34() << "] ";
-        ts << "[" << m_childrenTransform.m41() << " " << m_childrenTransform.m42() << " " << m_childrenTransform.m43() << " " << m_childrenTransform.m44() << "])\n";
+        ts << "[" << m_childrenTransform->m11() << " " << m_childrenTransform->m12() << " " << m_childrenTransform->m13() << " " << m_childrenTransform->m14() << "] ";
+        ts << "[" << m_childrenTransform->m21() << " " << m_childrenTransform->m22() << " " << m_childrenTransform->m23() << " " << m_childrenTransform->m24() << "] ";
+        ts << "[" << m_childrenTransform->m31() << " " << m_childrenTransform->m32() << " " << m_childrenTransform->m33() << " " << m_childrenTransform->m34() << "] ";
+        ts << "[" << m_childrenTransform->m41() << " " << m_childrenTransform->m42() << " " << m_childrenTransform->m43() << " " << m_childrenTransform->m44() << "])\n";
     }
 
     if (m_maskLayer) {
@@ -906,11 +918,11 @@ TextStream& operator<<(TextStream& ts, const Vector<GraphicsLayer::PlatformLayer
 TextStream& operator<<(TextStream& ts, const WebCore::GraphicsLayer::CustomAppearance& customAppearance)
 {
     switch (customAppearance) {
-    case GraphicsLayer::CustomAppearance::NoCustomAppearance: ts << "none"; break;
+    case GraphicsLayer::CustomAppearance::None: ts << "none"; break;
     case GraphicsLayer::CustomAppearance::ScrollingOverhang: ts << "scrolling-overhang"; break;
     case GraphicsLayer::CustomAppearance::ScrollingShadow: ts << "scrolling-shadow"; break;
-    case GraphicsLayer::CustomAppearance::LightBackdropAppearance: ts << "light-backdrop"; break;
-    case GraphicsLayer::CustomAppearance::DarkBackdropAppearance: ts << "dark-backdrop"; break;
+    case GraphicsLayer::CustomAppearance::LightBackdrop: ts << "light-backdrop"; break;
+    case GraphicsLayer::CustomAppearance::DarkBackdrop: ts << "dark-backdrop"; break;
     }
     return ts;
 }

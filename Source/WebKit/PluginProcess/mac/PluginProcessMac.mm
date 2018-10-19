@@ -40,6 +40,7 @@
 #import "SandboxUtilities.h"
 #import <CoreAudio/AudioHardware.h>
 #import <WebCore/LocalizedStrings.h>
+#import <WebCore/RuntimeEnabledFeatures.h>
 #import <dlfcn.h>
 #import <mach-o/dyld.h>
 #import <mach-o/getsect.h>
@@ -520,6 +521,11 @@ void PluginProcess::platformInitializePluginProcess(PluginProcessCreationParamet
         initWithMemoryCapacity:pluginMemoryCacheSize
         diskCapacity:pluginDiskCacheSize
         diskPath:m_nsurlCacheDirectory]).get()];
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    // Disable Dark Mode in the plugin process to avoid rendering issues.
+    [NSApp setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameAqua]];
+#endif
 }
 
 void PluginProcess::platformInitializeProcess(const ChildProcessInitializationParameters& parameters)
@@ -527,6 +533,9 @@ void PluginProcess::platformInitializeProcess(const ChildProcessInitializationPa
     initializeShim();
 
     initializeCocoaOverrides();
+
+    bool experimentalPlugInSandboxProfilesEnabled = parameters.extraInitializationData.get("experimental-sandbox-plugin") == "1";
+    RuntimeEnabledFeatures::sharedFeatures().setExperimentalPlugInSandboxProfilesEnabled(experimentalPlugInSandboxProfilesEnabled);
 
     // FIXME: It would be better to proxy SetCursor calls over to the UI process instead of
     // allowing plug-ins to change the mouse cursor at any time.

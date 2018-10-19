@@ -42,7 +42,6 @@
 #import <WebCore/AudioSession.h>
 #import <WebCore/DeprecatedGlobalSettings.h>
 #import <WebCore/NetworkStorageSession.h>
-#import <WebCore/PlatformCookieJar.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Settings.h>
 #import <WebCore/TextEncodingRegistry.h>
@@ -678,10 +677,12 @@ public:
         @YES, WebKitViewportFitEnabledPreferenceKey,
         @YES, WebKitConstantPropertiesEnabledPreferenceKey,
         @NO, WebKitColorFilterEnabledPreferenceKey,
+        @NO, WebKitPunchOutWhiteBackgroundsInDarkModePreferenceKey,
         @YES, WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallbackKey,
         @NO, WebKitInspectorAdditionsEnabledPreferenceKey,
         (NSString *)Settings::defaultMediaContentTypesRequiringHardwareSupport(), WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey,
         @NO, WebKitAccessibilityObjectModelEnabledPreferenceKey,
+        @YES, WebKitAriaReflectionEnabledPreferenceKey,
         @NO, WebKitMediaCapabilitiesEnabledPreferenceKey,
         @NO, WebKitFetchAPIKeepAliveEnabledPreferenceKey,
         @NO, WebKitServerTimingEnabledPreferenceKey,
@@ -763,7 +764,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setInt:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -786,7 +787,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setUnsignedInt:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -809,7 +810,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setFloat:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -831,7 +832,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setBool:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -854,7 +855,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setLongLong:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -877,7 +878,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setUnsignedLongLong:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -1876,7 +1877,7 @@ static NSString *classIBCreatorID = nil;
 
 + (void)_clearNetworkLoaderSession
 {
-    WebCore::deleteAllCookies(NetworkStorageSession::defaultStorageSession());
+    NetworkStorageSession::defaultStorageSession().deleteAllCookies();
 }
 
 + (void)_setCurrentNetworkLoaderSessionCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy
@@ -3283,6 +3284,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitColorFilterEnabledPreferenceKey];
 }
 
+- (BOOL)punchOutWhiteBackgroundsInDarkMode
+{
+    return [self _boolValueForKey:WebKitPunchOutWhiteBackgroundsInDarkModePreferenceKey];
+}
+
+- (void)setPunchOutWhiteBackgroundsInDarkMode:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitPunchOutWhiteBackgroundsInDarkModePreferenceKey];
+}
+
 - (BOOL)allowMediaContentTypesRequiringHardwareSupportAsFallback
 {
     return [self _boolValueForKey:WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallbackKey];
@@ -3311,6 +3322,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setAccessibilityObjectModelEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitAccessibilityObjectModelEnabledPreferenceKey];
+}
+
+- (BOOL)ariaReflectionEnabled
+{
+    return [self _boolValueForKey:WebKitAriaReflectionEnabledPreferenceKey];
+}
+
+- (void)setAriaReflectionEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAriaReflectionEnabledPreferenceKey];
 }
 
 - (BOOL)mediaCapabilitiesEnabled

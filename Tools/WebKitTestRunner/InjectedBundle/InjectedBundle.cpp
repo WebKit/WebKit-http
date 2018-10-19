@@ -310,11 +310,41 @@ void InjectedBundle::didReceiveMessageToPage(WKBundlePageRef page, WKStringRef m
         return;
     }
     
-    if (WKStringIsEqualToUTF8CString(messageName, "CallDidSetPartitionOrBlockCookiesForHost")) {
-        m_testRunner->statisticsCallDidSetPartitionOrBlockCookiesForHostCallback();
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidSetBlockCookiesForHost")) {
+        m_testRunner->statisticsCallDidSetBlockCookiesForHostCallback();
         return;
     }
 
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidSetStatisticsDebugMode")) {
+        m_testRunner->statisticsCallDidSetDebugModeCallback();
+        return;
+    }
+    
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidSetPrevalentResourceForDebugMode")) {
+        m_testRunner->statisticsCallDidSetPrevalentResourceForDebugModeCallback();
+        return;
+    }
+    
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidSetLastSeen")) {
+        m_testRunner->statisticsCallDidSetLastSeenCallback();
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidSetPrevalentResource")) {
+        m_testRunner->statisticsCallDidSetPrevalentResourceCallback();
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidSetVeryPrevalentResource")) {
+        m_testRunner->statisticsCallDidSetVeryPrevalentResourceCallback();
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidSetHasHadUserInteraction")) {
+        m_testRunner->statisticsCallDidSetHasHadUserInteractionCallback();
+        return;
+    }
+    
     if (WKStringIsEqualToUTF8CString(messageName, "CallDidReceiveAllStorageAccessEntries")) {
         ASSERT(messageBody);
         ASSERT(WKGetTypeID(messageBody) == WKArrayGetTypeID());
@@ -828,6 +858,11 @@ bool InjectedBundle::shouldProcessWorkQueue() const
     WKTypeRef resultToPass = 0;
     WKBundlePagePostSynchronousMessageForTesting(page()->page(), messageName.get(), 0, &resultToPass);
     WKRetainPtr<WKBooleanRef> isEmpty(AdoptWK, static_cast<WKBooleanRef>(resultToPass));
+
+    // The IPC failed. This happens when swapping processes on navigation because the WebPageProxy unregisters itself
+    // as a MessageReceiver from the old WebProcessProxy and register itself with the new WebProcessProxy instead.
+    if (!isEmpty)
+        return false;
 
     return !WKBooleanGetValue(isEmpty.get());
 }

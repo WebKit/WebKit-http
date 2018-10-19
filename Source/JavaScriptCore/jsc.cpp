@@ -687,7 +687,7 @@ struct ModuleName {
 ModuleName::ModuleName(const String& moduleName)
 {
     // A module name given from code is represented as the UNIX style path. Like, `./A/B.js`.
-    moduleName.split('/', true, queries);
+    queries = moduleName.splitAllowingEmptyEntries('/');
 }
 
 static std::optional<DirectoryName> extractDirectoryName(const String& absolutePathToFile)
@@ -750,8 +750,7 @@ static std::optional<DirectoryName> currentWorkingDirectory()
 
 static String resolvePath(const DirectoryName& directoryName, const ModuleName& moduleName)
 {
-    Vector<String> directoryPieces;
-    directoryName.queryName.split(pathSeparator(), false, directoryPieces);
+    Vector<String> directoryPieces = directoryName.queryName.split(pathSeparator());
 
     // Only first '/' is recognized as the path from the root.
     if (moduleName.startsWithRoot())
@@ -1440,12 +1439,11 @@ EncodedJSValue JSC_HOST_CALL functionNoDFG(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL functionNoFTL(ExecState* exec)
 {
-    VM& vm = exec->vm();
-    if (JSFunction* function = jsDynamicCast<JSFunction*>(vm, exec->argument(0))) {
-        FunctionExecutable* executable = function->jsExecutable();
-        executable->setNeverFTLOptimize(true);
+    if (exec->argumentCount()) {
+        FunctionExecutable* executable = getExecutableForFunction(exec->argument(0));
+        if (executable)
+            executable->setNeverFTLOptimize(true);
     }
-
     return JSValue::encode(jsUndefined());
 }
 

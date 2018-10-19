@@ -106,6 +106,11 @@ public:
             if (m_state.forNode(edge).m_type & ~(SpecHeapTop & ~SpecObject))
                 m_result = false;
             return;
+
+        case KnownOtherUse:
+            if (m_state.forNode(edge).m_type & ~SpecOther)
+                m_result = false;
+            return;
             
         case LastUseKind:
             RELEASE_ASSERT_NOT_REACHED();
@@ -480,6 +485,14 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
         // keep them exactly where they were. This is sort of overkill since the clobberize effects
         // already force these things to be ordered precisely. I'm just not confident enough in my
         // effect based memory model to rely solely on that right now.
+        return false;
+        
+    case FilterCallLinkStatus:
+    case FilterGetByIdStatus:
+    case FilterPutByIdStatus:
+    case FilterInByIdStatus:
+        // We don't want these to be moved anywhere other than where we put them, since we want them
+        // to capture "profiling" at the point in control flow here the user put them.
         return false;
 
     case GetByVal:

@@ -210,6 +210,7 @@ AXObjectCache::AXObjectCache(Document& document)
     , m_liveRegionChangedPostTimer(*this, &AXObjectCache::liveRegionChangedNotificationPostTimerFired)
     , m_focusModalNodeTimer(*this, &AXObjectCache::focusModalNodeTimerFired)
     , m_currentModalNode(nullptr)
+    , m_performCacheUpdateTimer(*this, &AXObjectCache::performCacheUpdateTimerFired)
 {
     findModalNodes();
 }
@@ -219,6 +220,7 @@ AXObjectCache::~AXObjectCache()
     m_notificationPostTimer.stop();
     m_liveRegionChangedPostTimer.stop();
     m_focusModalNodeTimer.stop();
+    m_performCacheUpdateTimer.stop();
 
     for (const auto& object : m_objects.values()) {
         detachWrapper(object.get(), AccessibilityDetachmentType::CacheDestroyed);
@@ -1022,9 +1024,11 @@ void AXObjectCache::handleMenuItemSelected(Node* node)
     
 void AXObjectCache::deferFocusedUIElementChangeIfNeeded(Node* oldNode, Node* newNode)
 {
-    if (nodeAndRendererAreValid(newNode) && rendererNeedsDeferredUpdate(*newNode->renderer()))
+    if (nodeAndRendererAreValid(newNode) && rendererNeedsDeferredUpdate(*newNode->renderer())) {
         m_deferredFocusedNodeChange.append({ oldNode, newNode });
-    else
+        if (!newNode->renderer()->needsLayout() && !m_performCacheUpdateTimer.isActive())
+            m_performCacheUpdateTimer.startOneShot(0_s);
+    } else
         handleFocusedUIElementChanged(oldNode, newNode);
 }
     
@@ -1690,6 +1694,11 @@ CharacterOffset AXObjectCache::traverseToOffsetInRange(RefPtr<Range>range, int o
                             currentNode = shadowHost;
                             continue;
                         }
+                    } else if (previousNode && previousNode->isTextNode() && previousNode->isDescendantOf(currentNode) && currentNode->hasTagName(pTag)) {
+                        // TextIterator is emitting an extra newline after the <p> element. We should
+                        // ignore that since the extra text node is not in the DOM tree.
+                        currentNode = previousNode;
+                        continue;
                     } else if (currentNode != previousNode) {
                         // We should set the start offset and length for the current node in case this is the last iteration.
                         lastStartOffset = 1;
@@ -2852,6 +2861,15 @@ bool AXObjectCache::nodeIsTextControl(const Node* node)
 
     const AccessibilityObject* axObject = getOrCreate(const_cast<Node*>(node));
     return axObject && axObject->isTextControl();
+}
+
+void AXObjectCache::performCacheUpdateTimerFired()
+{
+    // If there's a pending layout, let the layout trigger the AX update.
+    if (!document().view() || document().view()->needsLayout())
+        return;
+    
+    performDeferredCacheUpdate();
 }
     
 void AXObjectCache::performDeferredCacheUpdate()

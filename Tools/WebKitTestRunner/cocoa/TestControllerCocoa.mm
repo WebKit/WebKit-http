@@ -66,7 +66,6 @@ void initializeWebViewConfiguration(const char* libraryPath, WKStringRef injecte
     globalWebViewConfiguration._applePayEnabled = YES;
 
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || PLATFORM(IOS)
-    WKCookieManagerSetCookieStoragePartitioningEnabled(WKContextGetCookieManager(context), true);
     WKCookieManagerSetStorageAccessAPIEnabled(WKContextGetCookieManager(context), true);
 #endif
 
@@ -168,6 +167,9 @@ void TestController::platformCreateWebView(WKPageConfigurationRef, const TestOpt
     }
 
     m_mainWebView = std::make_unique<PlatformWebView>(copiedConfiguration.get(), options);
+
+    if (options.punchOutWhiteBackgroundsInDarkMode)
+        m_mainWebView->setDrawsBackground(false);
 #else
     m_mainWebView = std::make_unique<PlatformWebView>(globalWebViewConfiguration, options);
 #endif

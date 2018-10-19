@@ -460,6 +460,11 @@ std::unique_ptr<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* 
     return state.takeStyle();
 }
 
+bool StyleResolver::isAnimationNameValid(const String& name)
+{
+    return m_keyframesRuleMap.find(AtomicString(name).impl()) != m_keyframesRuleMap.end();
+}
+
 void StyleResolver::keyframeStylesForAnimation(const Element& element, const RenderStyle* elementStyle, KeyframeList& list)
 {
     list.clear();
@@ -1885,6 +1890,8 @@ static FilterOperation::OperationType filterOperationForType(CSSValueID type)
         return FilterOperation::HUE_ROTATE;
     case CSSValueInvert:
         return FilterOperation::INVERT;
+    case CSSValueAppleInvertLightness:
+        return FilterOperation::APPLE_INVERT_LIGHTNESS;
     case CSSValueOpacity:
         return FilterOperation::OPACITY;
     case CSSValueBrightness:
@@ -1989,6 +1996,10 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
             }
 
             operations.operations().append(BasicComponentTransferFilterOperation::create(amount, operationType));
+            break;
+        }
+        case FilterOperation::APPLE_INVERT_LIGHTNESS: {
+            operations.operations().append(InvertLightnessFilterOperation::create());
             break;
         }
         case FilterOperation::BLUR: {

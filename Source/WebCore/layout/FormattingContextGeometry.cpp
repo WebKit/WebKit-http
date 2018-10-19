@@ -24,7 +24,9 @@
  */
 
 #include "config.h"
+#include "FloatingState.h"
 #include "FormattingContext.h"
+#include "FormattingState.h"
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
@@ -33,7 +35,7 @@ namespace Layout {
 
 static LayoutUnit contentHeightForFormattingContextRoot(LayoutContext& layoutContext, const Box& layoutBox)
 {
-    ASSERT(layoutBox.style().logicalHeight().isAuto() && layoutBox.establishesFormattingContext());
+    ASSERT(layoutBox.style().logicalHeight().isAuto() && (layoutBox.establishesFormattingContext() || layoutBox.isDocumentBox()));
 
     // 10.6.7 'Auto' heights for block formatting context roots
 
@@ -53,10 +55,20 @@ static LayoutUnit contentHeightForFormattingContextRoot(LayoutContext& layoutCon
 
     auto* firstDisplayBox = layoutContext.displayBoxForLayoutBox(*formattingRootContainer.firstInFlowChild());
     auto* lastDisplayBox = layoutContext.displayBoxForLayoutBox(*formattingRootContainer.lastInFlowChild());
+    auto top = firstDisplayBox->rectWithMargin().top();
+    auto bottom = lastDisplayBox->rectWithMargin().bottom();
 
-    auto top = firstDisplayBox->marginBox().top();
-    auto bottom = lastDisplayBox->marginBox().bottom();
-    // FIXME: add floating support.
+    auto* formattingContextRoot = &layoutBox;
+    // TODO: The document renderer is not a formatting context root by default at all. Need to find out what it is.
+    if (!layoutBox.establishesFormattingContext()) {
+        ASSERT(layoutBox.isDocumentBox());
+        formattingContextRoot = &layoutBox.formattingContextRoot();
+    }
+
+    auto floatsBottom = layoutContext.establishedFormattingState(*formattingContextRoot).floatingState().bottom(*formattingContextRoot);
+    if (floatsBottom)
+        bottom = std::max(*floatsBottom, bottom);
+
     auto computedHeight = bottom - top;
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[Height] -> content height for formatting context root -> height(" << computedHeight << "px) layoutBox("<< &layoutBox << ")");
     return computedHeight;
@@ -145,7 +157,7 @@ LayoutUnit FormattingContext::Geometry::shrinkToFitWidth(LayoutContext& layoutCo
     return std::min(std::max(instrinsicWidthConstraints.minimum, availableWidth), instrinsicWidthConstraints.maximum);
 }
 
-FormattingContext::Geometry::VerticalGeometry FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeometry(LayoutContext& layoutContext, const Box& layoutBox)
+VerticalGeometry FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeometry(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned() && !layoutBox.replaced());
 
@@ -261,7 +273,7 @@ FormattingContext::Geometry::VerticalGeometry FormattingContext::Geometry::outOf
     return { *top, *bottom, { *height, { *marginTop, *marginBottom }, { } } };
 }
 
-FormattingContext::Geometry::HorizontalGeometry FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry(LayoutContext& layoutContext, const FormattingContext& formattingContext, const Box& layoutBox)
+HorizontalGeometry FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry(LayoutContext& layoutContext, const FormattingContext& formattingContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned() && !layoutBox.replaced());
     
@@ -405,7 +417,7 @@ FormattingContext::Geometry::HorizontalGeometry FormattingContext::Geometry::out
     return { *left, *right, { *width, { *marginLeft, *marginRight } } };
 }
 
-FormattingContext::Geometry::VerticalGeometry FormattingContext::Geometry::outOfFlowReplacedVerticalGeometry(LayoutContext& layoutContext, const Box& layoutBox)
+VerticalGeometry FormattingContext::Geometry::outOfFlowReplacedVerticalGeometry(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned() && layoutBox.replaced());
 
@@ -474,7 +486,7 @@ FormattingContext::Geometry::VerticalGeometry FormattingContext::Geometry::outOf
     return { *top, *bottom, { height, { *marginTop, *marginBottom }, { } } };
 }
 
-FormattingContext::Geometry::HorizontalGeometry FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry(LayoutContext& layoutContext, const Box& layoutBox)
+HorizontalGeometry FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned() && layoutBox.replaced());
 
@@ -570,9 +582,11 @@ FormattingContext::Geometry::HorizontalGeometry FormattingContext::Geometry::out
     return { *left, *right, { width, { *marginLeft, *marginRight } } };
 }
 
-FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::floatingNonReplacedHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
+HeightAndMargin FormattingContext::Geometry::complicatedCases(LayoutContext& layoutContext, const Box& layoutBox)
 {
-    ASSERT(layoutBox.isFloatingPositioned() && !layoutBox.replaced());
+    ASSERT(!layoutBox.replaced());
+    // TODO: Use complicated-case for document renderer for now (see BlockFormattingContext::Geometry::inFlowHeightAndMargin).
+    ASSERT((layoutBox.isBlockLevelBox() && layoutBox.isInFlow() && !layoutBox.isOverflowVisible()) || layoutBox.isInlineBlockBox() || layoutBox.isFloatingPositioned() || layoutBox.isDocumentBox());
 
     // 10.6.6 Complicated cases
     //
@@ -586,10 +600,9 @@ FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::floati
     auto& style = layoutBox.style();
     auto& containingBlock = *layoutBox.containingBlock();
     auto& containingBlockDisplayBox = *layoutContext.displayBoxForLayoutBox(containingBlock);
-    auto containingBlockHeight = containingBlockDisplayBox.contentBoxHeight();
     auto containingBlockWidth = containingBlockDisplayBox.contentBoxWidth();
 
-    auto height = computedValueIfNotAuto(style.logicalHeight(), containingBlockHeight);
+    auto height = fixedValue(style.logicalHeight());
     auto marginTop = computedValueIfNotAuto(style.marginTop(), containingBlockWidth);
     auto marginBottom = computedValueIfNotAuto(style.marginBottom(), containingBlockWidth);
 
@@ -597,14 +610,22 @@ FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::floati
     marginTop = marginTop.value_or(0);
     marginBottom = marginBottom.value_or(0);
     // #2
-    if (!height)
-        height = contentHeightForFormattingContextRoot(layoutContext, layoutBox);
+    if (!height) {
+        if (style.logicalHeight().isAuto())
+            height = contentHeightForFormattingContextRoot(layoutContext, layoutBox);
+        else
+            ASSERT_NOT_IMPLEMENTED_YET();
+    }
+
+    ASSERT(height);
+    ASSERT(marginTop);
+    ASSERT(marginBottom);
 
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[Height][Margin] -> floating non-replaced -> height(" << *height << "px) margin(" << *marginTop << "px, " << *marginBottom << "px) -> layoutBox(" << &layoutBox << ")");
-    return FormattingContext::Geometry::HeightAndMargin { *height, { *marginTop, *marginBottom }, { } };
+    return HeightAndMargin { *height, { *marginTop, *marginBottom }, { } };
 }
 
-FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::floatingNonReplacedWidthAndMargin(LayoutContext& layoutContext, const FormattingContext& formattingContext, const Box& layoutBox)
+WidthAndMargin FormattingContext::Geometry::floatingNonReplacedWidthAndMargin(LayoutContext& layoutContext, const FormattingContext& formattingContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isFloatingPositioned() && !layoutBox.replaced());
 
@@ -624,10 +645,10 @@ FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::floatin
         width = shrinkToFitWidth(layoutContext, formattingContext, layoutBox);
 
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[Width][Margin] -> floating non-replaced -> width(" << *width << "px) margin(" << margin.left << "px, " << margin.right << "px) -> layoutBox(" << &layoutBox << ")");
-    return FormattingContext::Geometry::WidthAndMargin { *width, margin };
+    return WidthAndMargin { *width, margin };
 }
 
-FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::floatingReplacedHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
+HeightAndMargin FormattingContext::Geometry::floatingReplacedHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isFloatingPositioned() && layoutBox.replaced());
 
@@ -637,7 +658,7 @@ FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::floati
     return inlineReplacedHeightAndMargin(layoutContext, layoutBox);
 }
 
-FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::floatingReplacedWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
+WidthAndMargin FormattingContext::Geometry::floatingReplacedWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isFloatingPositioned() && layoutBox.replaced());
 
@@ -651,7 +672,7 @@ FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::floatin
     return inlineReplacedWidthAndMargin(layoutContext, layoutBox, margin.left, margin.right);
 }
 
-FormattingContext::Geometry::VerticalGeometry FormattingContext::Geometry::outOfFlowVerticalGeometry(LayoutContext& layoutContext, const Box& layoutBox)
+VerticalGeometry FormattingContext::Geometry::outOfFlowVerticalGeometry(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned());
 
@@ -660,7 +681,7 @@ FormattingContext::Geometry::VerticalGeometry FormattingContext::Geometry::outOf
     return outOfFlowReplacedVerticalGeometry(layoutContext, layoutBox);
 }
 
-FormattingContext::Geometry::HorizontalGeometry FormattingContext::Geometry::outOfFlowHorizontalGeometry(LayoutContext& layoutContext, const FormattingContext& formattingContext, const Box& layoutBox)
+HorizontalGeometry FormattingContext::Geometry::outOfFlowHorizontalGeometry(LayoutContext& layoutContext, const FormattingContext& formattingContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned());
 
@@ -669,16 +690,16 @@ FormattingContext::Geometry::HorizontalGeometry FormattingContext::Geometry::out
     return outOfFlowReplacedHorizontalGeometry(layoutContext, layoutBox);
 }
 
-FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::floatingHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
+HeightAndMargin FormattingContext::Geometry::floatingHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isFloatingPositioned());
 
     if (!layoutBox.replaced())
-        return floatingNonReplacedHeightAndMargin(layoutContext, layoutBox);
+        return complicatedCases(layoutContext, layoutBox);
     return floatingReplacedHeightAndMargin(layoutContext, layoutBox);
 }
 
-FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::floatingWidthAndMargin(LayoutContext& layoutContext, const FormattingContext& formattingContext, const Box& layoutBox)
+WidthAndMargin FormattingContext::Geometry::floatingWidthAndMargin(LayoutContext& layoutContext, const FormattingContext& formattingContext, const Box& layoutBox)
 {
     ASSERT(layoutBox.isFloatingPositioned());
 
@@ -687,7 +708,7 @@ FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::floatin
     return floatingReplacedWidthAndMargin(layoutContext, layoutBox);
 }
 
-FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::inlineReplacedHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
+HeightAndMargin FormattingContext::Geometry::inlineReplacedHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox)
 {
     ASSERT((layoutBox.isOutOfFlowPositioned() || layoutBox.isFloatingPositioned() || layoutBox.isInFlow()) && layoutBox.replaced());
 
@@ -707,22 +728,25 @@ FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::inline
     auto& style = layoutBox.style();
     auto replaced = layoutBox.replaced();
     auto& containingBlockDisplayBox = *layoutContext.displayBoxForLayoutBox(*layoutBox.containingBlock());
-    auto containingBlockHeight = containingBlockDisplayBox.height();
     auto containingBlockWidth = containingBlockDisplayBox.width();
 
-    auto height = computedValueIfNotAuto(style.logicalHeight(), containingBlockHeight);
+    auto height = fixedValue(style.logicalHeight());
+    auto heightIsAuto = style.logicalHeight().isAuto();
     auto width = computedValueIfNotAuto(style.logicalWidth(), containingBlockWidth);
 
-    if (!height && !width && replaced->hasIntrinsicHeight()) {
+    if (!height && !heightIsAuto)
+        ASSERT_NOT_IMPLEMENTED_YET();
+
+    if (heightIsAuto && !width && replaced->hasIntrinsicHeight()) {
         // #2
         height = replaced->intrinsicHeight();
-    } else if (!height && replaced->hasIntrinsicRatio()) {
+    } else if (heightIsAuto && replaced->hasIntrinsicRatio()) {
         // #3
         height = *width / replaced->intrinsicRatio();
-    } else if (!height && replaced->hasIntrinsicHeight()) {
+    } else if (heightIsAuto && replaced->hasIntrinsicHeight()) {
         // #4
         height = replaced->intrinsicHeight();
-    } else if (!height) {
+    } else if (heightIsAuto) {
         // #5
         height = { 150 };
     }
@@ -733,7 +757,7 @@ FormattingContext::Geometry::HeightAndMargin FormattingContext::Geometry::inline
     return { *height, margin, { } };
 }
 
-FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::inlineReplacedWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox,
+WidthAndMargin FormattingContext::Geometry::inlineReplacedWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox,
     std::optional<LayoutUnit> precomputedMarginLeft, std::optional<LayoutUnit> precomputedMarginRight)
 {
     ASSERT((layoutBox.isOutOfFlowPositioned() || layoutBox.isFloatingPositioned() || layoutBox.isInFlow()) && layoutBox.replaced());
@@ -759,7 +783,6 @@ FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::inlineR
 
     auto& style = layoutBox.style();
     auto& containingBlockDisplayBox = *layoutContext.displayBoxForLayoutBox(*layoutBox.containingBlock());
-    auto containingBlockHeight = containingBlockDisplayBox.height();
     auto containingBlockWidth = containingBlockDisplayBox.width();
 
     auto computeMarginRight = [&]() {
@@ -776,24 +799,26 @@ FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::inlineR
         return marginLeft.value_or(LayoutUnit { 0 });
     };
 
-    LayoutUnit marginLeft = computeMarginLeft();
-    LayoutUnit marginRight = computeMarginRight();
-
     auto replaced = layoutBox.replaced();
-    auto height = computedValueIfNotAuto(style.logicalHeight(), containingBlockHeight);
-    auto width = computedValueIfNotAuto(style.logicalWidth(), containingBlockWidth);
-
     ASSERT(replaced);
 
-    if (!width && !height && replaced->hasIntrinsicWidth()) {
+    auto marginLeft = computeMarginLeft();
+    auto marginRight = computeMarginRight();
+    auto width = computedValueIfNotAuto(style.logicalWidth(), containingBlockWidth);
+
+    auto heightIsAuto = style.logicalHeight().isAuto();
+    auto height = fixedValue(style.logicalHeight());
+    if (!height && !heightIsAuto)
+        ASSERT_NOT_IMPLEMENTED_YET();
+
+    if (!width && heightIsAuto && replaced->hasIntrinsicWidth()) {
         // #1
         width = replaced->intrinsicWidth();
-    } else if ((!width && !height && !replaced->hasIntrinsicWidth() && replaced->hasIntrinsicHeight() && replaced->hasIntrinsicRatio())
-        || (!width && height && replaced->hasIntrinsicRatio())) { 
+    } else if ((!width && heightIsAuto && !replaced->hasIntrinsicWidth() && replaced->hasIntrinsicHeight() && replaced->hasIntrinsicRatio())
+        || (!width && height && replaced->hasIntrinsicRatio())) {
         // #2
-        auto usedHeight = height.value_or(replaced->intrinsicHeight());
-        width = usedHeight * replaced->intrinsicRatio();
-    } else if (!width && !height && replaced->hasIntrinsicRatio() && !replaced->hasIntrinsicWidth() && !replaced->hasIntrinsicHeight()) {
+        width = height.value_or(replaced->hasIntrinsicHeight()) * replaced->intrinsicRatio();
+    } else if (!width && heightIsAuto && replaced->hasIntrinsicRatio() && !replaced->hasIntrinsicWidth() && !replaced->hasIntrinsicHeight()) {
         // #3
         // FIXME: undefined but surely doable.
         ASSERT_NOT_IMPLEMENTED_YET();
@@ -805,11 +830,13 @@ FormattingContext::Geometry::WidthAndMargin FormattingContext::Geometry::inlineR
         width = { 300 };
     }
 
+    ASSERT(width);
+
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[Width][Margin] -> inflow replaced -> width(" << *width << "px) margin(" << marginLeft << "px, " << marginRight << "px) -> layoutBox(" << &layoutBox << ")");
     return { *width, { marginLeft, marginRight } };
 }
 
-Display::Box::Edges FormattingContext::Geometry::computedBorder(LayoutContext&, const Box& layoutBox)
+Edges FormattingContext::Geometry::computedBorder(LayoutContext&, const Box& layoutBox)
 {
     auto& style = layoutBox.style();
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[Border] -> layoutBox: " << &layoutBox);
@@ -819,7 +846,7 @@ Display::Box::Edges FormattingContext::Geometry::computedBorder(LayoutContext&, 
     };
 }
 
-std::optional<Display::Box::Edges> FormattingContext::Geometry::computedPadding(LayoutContext& layoutContext, const Box& layoutBox)
+std::optional<Edges> FormattingContext::Geometry::computedPadding(LayoutContext& layoutContext, const Box& layoutBox)
 {
     if (!layoutBox.isPaddingApplicable())
         return std::nullopt;
@@ -827,13 +854,13 @@ std::optional<Display::Box::Edges> FormattingContext::Geometry::computedPadding(
     auto& style = layoutBox.style();
     auto containingBlockWidth = layoutContext.displayBoxForLayoutBox(*layoutBox.containingBlock())->contentBoxWidth();
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[Padding] -> layoutBox: " << &layoutBox);
-    return Display::Box::Edges {
+    return Edges {
         { valueForLength(style.paddingLeft(), containingBlockWidth), valueForLength(style.paddingRight(), containingBlockWidth) },
         { valueForLength(style.paddingTop(), containingBlockWidth), valueForLength(style.paddingBottom(), containingBlockWidth) }
     };
 }
 
-Display::Box::HorizontalEdges FormattingContext::Geometry::computedNonCollapsedHorizontalMarginValue(const LayoutContext& layoutContext, const Box& layoutBox)
+HorizontalEdges FormattingContext::Geometry::computedNonCollapsedHorizontalMarginValue(const LayoutContext& layoutContext, const Box& layoutBox)
 {
     auto& style = layoutBox.style();
     auto containingBlockWidth = layoutContext.displayBoxForLayoutBox(*layoutBox.containingBlock())->contentBoxWidth();
@@ -845,7 +872,7 @@ Display::Box::HorizontalEdges FormattingContext::Geometry::computedNonCollapsedH
     return { marginLeft, marginRight };
 }
 
-Display::Box::VerticalEdges FormattingContext::Geometry::computedNonCollapsedVerticalMarginValue(const LayoutContext& layoutContext, const Box& layoutBox)
+VerticalEdges FormattingContext::Geometry::computedNonCollapsedVerticalMarginValue(const LayoutContext& layoutContext, const Box& layoutBox)
 {
     auto& style = layoutBox.style();
     auto containingBlockWidth = layoutContext.displayBoxForLayoutBox(*layoutBox.containingBlock())->contentBoxWidth();

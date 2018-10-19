@@ -36,6 +36,7 @@
 #include <wtf/RefPtr.h>
 #include <wtf/Seconds.h>
 #include <wtf/UniqueRef.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -46,7 +47,7 @@ class Document;
 class Element;
 class RenderStyle;
 
-class WebAnimation : public RefCounted<WebAnimation>, public EventTargetWithInlineData, public ActiveDOMObject {
+class WebAnimation : public RefCounted<WebAnimation>, public CanMakeWeakPtr<WebAnimation>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
     static Ref<WebAnimation> create(Document&, AnimationEffectReadOnly*);
     static Ref<WebAnimation> create(Document&, AnimationEffectReadOnly*, AnimationTimeline*);
@@ -88,6 +89,7 @@ public:
     FinishedPromise& finished() { return m_finishedPromise.get(); }
 
     virtual void cancel();
+    void cancel(Silently);
     ExceptionOr<void> finish();
     ExceptionOr<void> play();
     ExceptionOr<void> pause();
@@ -129,6 +131,7 @@ protected:
     explicit WebAnimation(Document&);
 
     bool isEffectInvalidationSuspended() { return m_suspendCount; }
+    void stop() override;
 
 private:
     enum class DidSeek { Yes, No };
@@ -156,7 +159,7 @@ private:
     ExceptionOr<void> play(AutoRewind);
     void runPendingPauseTask();
     void runPendingPlayTask();
-    void resetPendingTasks();
+    void resetPendingTasks(Silently = Silently::No);
     void setEffectInternal(RefPtr<AnimationEffectReadOnly>&&, bool = false);
     void setTimelineInternal(RefPtr<AnimationTimeline>&&);
 
@@ -180,7 +183,6 @@ private:
     // ActiveDOMObject.
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
-    void stop() final;
 
     // EventTarget
     EventTargetInterface eventTargetInterface() const final { return WebAnimationEventTargetInterfaceType; }

@@ -28,7 +28,7 @@
 #include "APIObject.h"
 #include "FrameLoadState.h"
 #include "GenericCallback.h"
-#include "WebFrameListenerProxy.h"
+#include "WebFramePolicyListenerProxy.h"
 #include <WebCore/FrameLoaderTypes.h>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
@@ -48,11 +48,13 @@ class Decoder;
 }
 
 namespace WebKit {
+class SafeBrowsingResult;
 class WebCertificateInfo;
 class WebFramePolicyListenerProxy;
 class WebPageProxy;
 class WebsiteDataStore;
-enum class PolicyListenerType;
+enum class ShouldExpectSafeBrowsingResult;
+enum class ShouldProcessSwapIfPossible;
 struct WebsitePoliciesData;
 
 typedef GenericCallback<API::Data*> DataCallback;
@@ -115,13 +117,7 @@ public:
     void didSameDocumentNavigation(const WebCore::URL&); // eg. anchor navigation, session state change.
     void didChangeTitle(const String&);
 
-    // Policy operations.
-    void receivedPolicyDecision(WebCore::PolicyAction, uint64_t listenerID, API::Navigation*, std::optional<WebsitePoliciesData>&&);
-
-    WebFramePolicyListenerProxy& setUpPolicyListenerProxy(uint64_t listenerID, PolicyListenerType);
-    WebFramePolicyListenerProxy* activePolicyListenerProxy();
-
-    void changeWebsiteDataStore(WebsiteDataStore&);
+    WebFramePolicyListenerProxy& setUpPolicyListenerProxy(CompletionHandler<void(WebCore::PolicyAction, API::WebsitePolicies*, ShouldProcessSwapIfPossible, Vector<SafeBrowsingResult>&&)>&&, ShouldExpectSafeBrowsingResult);
 
 #if ENABLE(CONTENT_FILTERING)
     void contentFilterDidBlockLoad(WebCore::ContentFilterUnblockHandler contentFilterUnblockHandler) { m_contentFilterUnblockHandler = WTFMove(contentFilterUnblockHandler); }
@@ -144,7 +140,7 @@ private:
     bool m_isFrameSet;
     bool m_containsPluginDocument { false };
     RefPtr<WebCertificateInfo> m_certificateInfo;
-    RefPtr<WebFrameListenerProxy> m_activeListener;
+    RefPtr<WebFramePolicyListenerProxy> m_activeListener;
     uint64_t m_frameID;
 #if ENABLE(CONTENT_FILTERING)
     WebCore::ContentFilterUnblockHandler m_contentFilterUnblockHandler;

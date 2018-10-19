@@ -51,6 +51,7 @@
 #include "APISecurityOrigin.h"
 #include "APIUIClient.h"
 #include "APIURLRequest.h"
+#include "APIWebsitePolicies.h"
 #include "AuthenticationChallengeProxy.h"
 #include "AuthenticationDecisionListener.h"
 #include "DataReference.h"
@@ -75,10 +76,12 @@
 #include "PluginInformation.h"
 #include "PluginProcessManager.h"
 #include "PrintInfo.h"
+#include "SafeBrowsingResult.h"
 #include "TextChecker.h"
 #include "TextCheckerState.h"
 #include "UIMessagePortChannelProvider.h"
 #include "URLSchemeTaskParameters.h"
+#include "UndoOrRedo.h"
 #include "UserMediaPermissionRequestProxy.h"
 #include "UserMediaProcessManager.h"
 #include "WKContextPrivate.h"
@@ -439,7 +442,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 
     m_inspector = WebInspectorProxy::create(this);
 #if ENABLE(FULLSCREEN_API)
-    m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
+    m_fullScreenManager = std::make_unique<WebFullScreenManagerProxy>(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
 #if PLATFORM(IOS) && HAVE(AVKIT) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     m_playbackSessionManager = PlaybackSessionManagerProxy::create(*this);
@@ -757,7 +760,7 @@ void WebPageProxy::reattachToWebProcess(Ref<WebProcessProxy>&& process, API::Nav
 
     m_inspector = WebInspectorProxy::create(this);
 #if ENABLE(FULLSCREEN_API)
-    m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
+    m_fullScreenManager = std::make_unique<WebFullScreenManagerProxy>(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
 #if PLATFORM(IOS) && HAVE(AVKIT) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     m_playbackSessionManager = PlaybackSessionManagerProxy::create(*this);
@@ -1446,10 +1449,8 @@ void WebPageProxy::viewWillStartLiveResize()
 {
     if (!isValid())
         return;
-#if ENABLE(INPUT_TYPE_COLOR_POPOVER) && ENABLE(INPUT_TYPE_COLOR)
-    if (m_colorPicker)
-        endColorPicker();
-#endif
+
+    closeOverlayedViews();
     m_process->send(Messages::WebPage::ViewWillStartLiveResize(), m_pageID);
 }
 
@@ -1536,11 +1537,7 @@ void WebPageProxy::activityStateDidChange(ActivityState::Flags mayHaveChanged, b
 
 void WebPageProxy::viewDidLeaveWindow()
 {
-#if ENABLE(INPUT_TYPE_COLOR_POPOVER) && ENABLE(INPUT_TYPE_COLOR)
-    // When leaving the current page, close the popover color well.
-    if (m_colorPicker)
-        endColorPicker();
-#endif
+    closeOverlayedViews();
 #if PLATFORM(IOS) && HAVE(AVKIT) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     // When leaving the current page, close the video fullscreen.
     if (m_videoFullscreenManager)
@@ -1949,21 +1946,47 @@ void WebPageProxy::setDragCaretRect(const IntRect& dragCaretRect)
 
 #endif // ENABLE(DRAG_SUPPORT)
 
+static bool removeOldRedundantEvent(Deque<NativeWebMouseEvent>& queue, WebEvent::Type incomingEventType)
+{
+    if (incomingEventType != WebEvent::MouseMove && incomingEventType != WebEvent::MouseForceChanged)
+        return false;
+
+    auto it = queue.rbegin();
+    auto end = queue.rend();
+
+    // Must not remove the first event in the deque, since it is already being dispatched.
+    if (it != end)
+        --end;
+
+    for (; it != end; ++it) {
+        auto type = it->type();
+        if (type == incomingEventType) {
+            queue.remove(--it.base());
+            return true;
+        }
+        if (type != WebEvent::MouseMove && type != WebEvent::MouseForceChanged)
+            break;
+    }
+    return false;
+}
+
 void WebPageProxy::handleMouseEvent(const NativeWebMouseEvent& event)
 {
     if (!isValid())
         return;
 
-    // If we receive multiple mousemove events and the most recent mousemove event has not been
-    // sent to WebProcess for processing, replace the pending mousemove event with a new one.
-    if (event.type() == WebEvent::MouseMove && m_mouseEventQueue.size() > 1 && m_mouseEventQueue.last().type() == WebEvent::MouseMove) {
-        LOG(MouseHandling, "UIProcess: updated pending mousemove event (queue size %zu)", m_mouseEventQueue.size());
-        m_mouseEventQueue.removeLast();
-        m_mouseEventQueue.append(event);
-    } else {
-        LOG(MouseHandling, "UIProcess: enqueued mouse event %s (queue size %zu)", webMouseEventTypeString(event.type()), m_mouseEventQueue.size());
-        m_mouseEventQueue.append(event);
-    }
+    // If we receive multiple mousemove or mouseforcechanged events and the most recent mousemove or mouseforcechanged event
+    // (respectively) has not yet been sent to WebProcess for processing, remove the pending mouse event and insert the new
+    // event in the queue.
+    bool didRemoveEvent = removeOldRedundantEvent(m_mouseEventQueue, event.type());
+    m_mouseEventQueue.append(event);
+
+#if LOG_DISABLED
+    UNUSED_PARAM(didRemoveEvent);
+#else
+    LOG(MouseHandling, "UIProcess: %s mouse event %s (queue size %zu)", didRemoveEvent ? "replaced" : "enqueued", webMouseEventTypeString(event.type()), m_mouseEventQueue.size());
+#endif
+
     if (m_mouseEventQueue.size() == 1) // Otherwise, called from DidReceiveEvent message handler.
         processNextQueuedMouseEvent();
 }
@@ -2062,7 +2085,7 @@ void WebPageProxy::handleWheelEvent(const NativeWebWheelEvent& event)
     if (!isValid())
         return;
 
-    hideValidationMessage();
+    closeOverlayedViews();
 
     if (!m_currentlyProcessedWheelEvents.isEmpty()) {
         m_wheelEventQueue.append(event);
@@ -2412,10 +2435,32 @@ void WebPageProxy::centerSelectionInVisibleArea()
     m_process->send(Messages::WebPage::CenterSelectionInVisibleArea(), m_pageID);
 }
 
-void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& frame, uint64_t listenerID, API::Navigation* navigation, std::optional<WebsitePoliciesData>&& websitePolicies)
+class WebPageProxy::PolicyDecisionSender : public RefCounted<PolicyDecisionSender> {
+public:
+    using SendFunction = CompletionHandler<void(WebCore::PolicyAction, uint64_t newNavigationID, DownloadID, std::optional<WebsitePoliciesData>)>;
+    static Ref<PolicyDecisionSender> create(SendFunction&& sendFunction)
+    {
+        return adoptRef(*new PolicyDecisionSender(WTFMove(sendFunction)));
+    }
+
+    template<typename... Args> void send(Args... args)
+    {
+        if (m_sendFunction)
+            m_sendFunction(std::forward<Args>(args)...);
+    }
+private:
+    PolicyDecisionSender(SendFunction sendFunction)
+        : m_sendFunction(WTFMove(sendFunction)) { }
+
+    SendFunction m_sendFunction;
+};
+    
+void WebPageProxy::receivedPolicyDecision(PolicyAction action, API::Navigation* navigation, std::optional<WebsitePoliciesData>&& websitePolicies, Ref<PolicyDecisionSender>&& sender)
 {
-    if (!isValid())
+    if (!isValid()) {
+        sender->send(PolicyAction::Ignore, 0, DownloadID(), std::nullopt);
         return;
+    }
 
     auto transaction = m_pageLoadState.transaction();
 
@@ -2439,29 +2484,7 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& fr
         m_decidePolicyForResponseRequest = { };
     }
 
-    auto* activePolicyListener = frame.activePolicyListenerProxy();
-    if (activePolicyListener && activePolicyListener->policyListenerType() == PolicyListenerType::NavigationAction) {
-        ASSERT(activePolicyListener->listenerID() == listenerID);
-
-        if (action == PolicyAction::Use && navigation && frame.isMainFrame()) {
-            auto proposedProcess = process().processPool().processForNavigation(*this, *navigation, action);
-
-            if (proposedProcess.ptr() != &process()) {
-                LOG(ProcessSwapping, "(ProcessSwapping) Switching from process %i to new process (%i) for navigation %" PRIu64 " '%s'", processIdentifier(), proposedProcess->processIdentifier(), navigation->navigationID(), navigation->loggingString());
-
-                RunLoop::main().dispatch([this, protectedThis = makeRef(*this), navigation = makeRef(*navigation), proposedProcess = WTFMove(proposedProcess)]() mutable {
-                    continueNavigationInNewProcess(navigation.get(), WTFMove(proposedProcess));
-                });
-            }
-        }
-    }
-
-    if (auto syncNavigationActionPolicyReply = WTFMove(m_syncNavigationActionPolicyReply)) {
-        syncNavigationActionPolicyReply(navigation ? navigation->navigationID() : 0, action, downloadID, WTFMove(websitePolicies));
-        return;
-    }
-
-    m_process->send(Messages::WebPage::DidReceivePolicyDecision(frame.frameID(), listenerID, action, navigation ? navigation->navigationID() : 0, downloadID, websitePolicies), m_pageID);
+    sender->send(action, navigation ? navigation->navigationID() : 0, downloadID, WTFMove(websitePolicies));
 }
 
 void WebPageProxy::continueNavigationInNewProcess(API::Navigation& navigation, Ref<WebProcessProxy>&& process)
@@ -2692,7 +2715,7 @@ void WebPageProxy::setPageZoomFactor(double zoomFactor)
     if (m_pageZoomFactor == zoomFactor)
         return;
 
-    hideValidationMessage();
+    closeOverlayedViews();
 
     m_pageZoomFactor = zoomFactor;
     m_process->send(Messages::WebPage::SetPageZoomFactor(m_pageZoomFactor), m_pageID); 
@@ -2706,7 +2729,7 @@ void WebPageProxy::setPageAndTextZoomFactors(double pageZoomFactor, double textZ
     if (m_pageZoomFactor == pageZoomFactor && m_textZoomFactor == textZoomFactor)
         return;
 
-    hideValidationMessage();
+    closeOverlayedViews();
 
     m_pageZoomFactor = pageZoomFactor;
     m_textZoomFactor = textZoomFactor;
@@ -3464,7 +3487,7 @@ void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t na
         m_pageLoadStart = MonotonicTime::now();
         m_pageLoadState.didStartProvisionalLoad(transaction, url, unreachableURL);
         m_pageClient.didStartProvisionalLoadForMainFrame();
-        hideValidationMessage();
+        closeOverlayedViews();
     }
 
     frame->setUnreachableURL(unreachableURL);
@@ -3759,6 +3782,8 @@ void WebPageProxy::didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID
         m_pageClient.didFinishLoadForMainFrame();
 
         resetRecentCrashCountSoon();
+
+        notifyProcessPoolToPrewarm();
     }
 
     m_isLoadingAlternateHTMLStringForFailingProvisionalLoad = false;
@@ -3898,10 +3923,8 @@ void WebPageProxy::didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, cons
 
     m_loaderClient->didFirstVisuallyNonEmptyLayoutForFrame(*this, *frame, m_process->transformHandlesToObjects(userData.object()).get());
 
-    if (frame->isMainFrame()) {
+    if (frame->isMainFrame())
         m_pageClient.didFirstVisuallyNonEmptyLayoutForMainFrame();
-        notifyProcessPoolToPrewarm();
-    }
 }
 
 void WebPageProxy::didLayoutForCustomContentProvider()
@@ -3980,7 +4003,21 @@ void WebPageProxy::frameDidBecomeFrameSet(uint64_t frameID, bool value)
         m_frameSetLargestFrame = value ? m_mainFrame : 0;
 }
 
-void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, ResourceRequest&& request, ResourceResponse&& redirectResponse, uint64_t listenerID, const UserData& userData)
+#if !PLATFORM(COCOA)
+void WebPageProxy::beginSafeBrowsingCheck(const URL&, WebFramePolicyListenerProxy& listener)
+{
+    listener.didReceiveSafeBrowsingResults({ });
+}
+#endif
+
+void WebPageProxy::decidePolicyForNavigationActionAsync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& frameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request, WebCore::ResourceResponse&& redirectResponse, const UserData& userData, uint64_t listenerID)
+{
+    decidePolicyForNavigationAction(frameID, frameSecurityOrigin, navigationID, WTFMove(navigationActionData), frameInfoData, originatingPageID, originalRequest, WTFMove(request), WTFMove(redirectResponse), userData, PolicyDecisionSender::create([this, protectedThis = makeRef(*this), frameID, listenerID] (auto... args) {
+        m_process->send(Messages::WebPage::DidReceivePolicyDecision(frameID, listenerID, args...), m_pageID);
+    }));
+}
+
+void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request, WebCore::ResourceResponse&& redirectResponse, const UserData& userData, Ref<PolicyDecisionSender>&& sender)
 {
     LOG(Loading, "WebPageProxy::decidePolicyForNavigationAction - Original URL %s, current target URL %s", originalRequest.url().string().utf8().data(), request.url().string().utf8().data());
 
@@ -4027,16 +4064,40 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
     navigation->setHasOpenedFrames(navigationActionData.hasOpenedFrames);
     navigation->setOpener(navigationActionData.opener);
 
-    auto listener = makeRef(frame->setUpPolicyListenerProxy(listenerID, PolicyListenerType::NavigationAction));
-    listener->setNavigation(navigation.releaseNonNull());
-
 #if ENABLE(CONTENT_FILTERING)
     if (frame->didHandleContentFilterUnblockNavigation(request))
-        return receivedPolicyDecision(PolicyAction::Ignore, *frame, listenerID, &m_navigationState->navigation(newNavigationID), { });
+        return receivedPolicyDecision(PolicyAction::Ignore, &m_navigationState->navigation(newNavigationID), std::nullopt, WTFMove(sender));
 #else
     UNUSED_PARAM(newNavigationID);
 #endif
 
+    auto listener = makeRef(frame->setUpPolicyListenerProxy([this, protectedThis = makeRef(*this), frame = makeRef(*frame), sender = sender.copyRef(), navigation] (WebCore::PolicyAction policyAction, API::WebsitePolicies* policies, ShouldProcessSwapIfPossible swap, Vector<SafeBrowsingResult>&&) mutable {
+        // FIXME: do something with the SafeBrowsingResults.
+
+        std::optional<WebsitePoliciesData> data;
+        if (policies) {
+            data = policies->data();
+            if (policies->websiteDataStore())
+                changeWebsiteDataStore(policies->websiteDataStore()->websiteDataStore());
+        }
+
+        if (policyAction == PolicyAction::Use && frame->isMainFrame()) {
+            auto proposedProcess = process().processPool().processForNavigation(*this, *navigation, swap, policyAction);
+            
+            if (proposedProcess.ptr() != &process()) {
+                LOG(ProcessSwapping, "(ProcessSwapping) Switching from process %i to new process (%i) for navigation %" PRIu64 " '%s'", processIdentifier(), proposedProcess->processIdentifier(), navigation->navigationID(), navigation->loggingString());
+                
+                RunLoop::main().dispatch([this, protectedThis = WTFMove(protectedThis), navigation = makeRef(*navigation), proposedProcess = WTFMove(proposedProcess)]() mutable {
+                    continueNavigationInNewProcess(navigation.get(), WTFMove(proposedProcess));
+                });
+            }
+        }
+
+        receivedPolicyDecision(policyAction, navigation.get(), WTFMove(data), WTFMove(sender));
+    }, ShouldExpectSafeBrowsingResult::Yes));
+    beginSafeBrowsingCheck(request.url(), listener);
+
+    API::Navigation* mainFrameNavigation = frame->isMainFrame() ? navigation.get() : nullptr;
     WebFrameProxy* originatingFrame = m_process->webFrame(originatingFrameInfoData.frameID);
 
     if (auto* resourceLoadStatisticsStore = websiteDataStore().resourceLoadStatistics())
@@ -4053,7 +4114,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
         auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
         bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision && destinationFrameInfo->isMainFrame() && !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url()) && navigationActionData.navigationType != WebCore::NavigationType::BackForward;
 
-        auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), destinationFrameInfo.ptr(), std::nullopt, WTFMove(request), originalRequest.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
+        auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), destinationFrameInfo.ptr(), std::nullopt, WTFMove(request), originalRequest.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity), mainFrameNavigation);
 
         m_navigationClient->decidePolicyForNavigationAction(*this, WTFMove(navigationAction), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
     } else
@@ -4062,16 +4123,14 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
     m_shouldSuppressAppLinksInNextNavigationPolicyDecision = false;
 }
 
-void WebPageProxy::decidePolicyForNavigationActionSync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request, ResourceResponse&& redirectResponse, uint64_t listenerID, const UserData& userData, Messages::WebPageProxy::DecidePolicyForNavigationActionSync::DelayedReply&& reply)
+void WebPageProxy::decidePolicyForNavigationActionSync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& frameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request, WebCore::ResourceResponse&& redirectResponse, const UserData& userData, Messages::WebPageProxy::DecidePolicyForNavigationActionSync::DelayedReply&& reply)
 {
-    ASSERT(!m_syncNavigationActionPolicyReply);
-    m_syncNavigationActionPolicyReply = WTFMove(reply);
-
-    decidePolicyForNavigationAction(frameID, frameSecurityOrigin, navigationID, WTFMove(navigationActionData), originatingFrameInfoData, originatingPageID, originalRequest, WTFMove(request), WTFMove(redirectResponse), listenerID, userData);
+    auto sender = PolicyDecisionSender::create(WTFMove(reply));
+    
+    decidePolicyForNavigationAction(frameID, frameSecurityOrigin, navigationID, WTFMove(navigationActionData), frameInfoData, originatingPageID, originalRequest, WTFMove(request), WTFMove(redirectResponse), userData, sender.copyRef());
 
     // If the client did not respond synchronously, proceed with the load.
-    if (auto syncNavigationActionPolicyReply = WTFMove(m_syncNavigationActionPolicyReply))
-        syncNavigationActionPolicyReply(navigationID, PolicyAction::Use, { }, { });
+    sender->send(PolicyAction::Use, navigationID, DownloadID(), std::nullopt);
 }
 
 void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, NavigationActionData&& navigationActionData, ResourceRequest&& request, const String& frameName, uint64_t listenerID, const UserData& userData)
@@ -4082,7 +4141,14 @@ void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const Securi
     MESSAGE_CHECK(frame);
     MESSAGE_CHECK_URL(request.url());
 
-    Ref<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID, PolicyListenerType::NewWindowAction);
+    auto listener = makeRef(frame->setUpPolicyListenerProxy([this, protectedThis = makeRef(*this), listenerID, frameID] (WebCore::PolicyAction policyAction, API::WebsitePolicies*, ShouldProcessSwapIfPossible swap, Vector<SafeBrowsingResult>&& safeBrowsingResults) mutable {
+        // FIXME: Assert the API::WebsitePolicies* is nullptr here once clients of WKFramePolicyListenerUseWithPolicies go away.
+        RELEASE_ASSERT(swap == ShouldProcessSwapIfPossible::No);
+        ASSERT_UNUSED(safeBrowsingResults, safeBrowsingResults.isEmpty());
+        receivedPolicyDecision(policyAction, nullptr, std::nullopt, PolicyDecisionSender::create([this, protectedThis = WTFMove(protectedThis), frameID, listenerID] (auto... args) {
+            m_process->send(Messages::WebPage::DidReceivePolicyDecision(frameID, listenerID, args...), m_pageID);
+        }));
+    }, ShouldExpectSafeBrowsingResult::No));
 
     if (m_navigationClient) {
         RefPtr<API::FrameInfo> sourceFrameInfo;
@@ -4091,7 +4157,7 @@ void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const Securi
 
         auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
         bool shouldOpenAppLinks = !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
-        auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), nullptr, frameName, WTFMove(request), { }, shouldOpenAppLinks, WTFMove(userInitiatedActivity));
+        auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), nullptr, frameName, WTFMove(request), URL { }, shouldOpenAppLinks, WTFMove(userInitiatedActivity));
 
         m_navigationClient->decidePolicyForNavigationAction(*this, navigationAction.get(), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
 
@@ -4110,11 +4176,15 @@ void WebPageProxy::decidePolicyForResponse(uint64_t frameID, const SecurityOrigi
     MESSAGE_CHECK_URL(request.url());
     MESSAGE_CHECK_URL(response.url());
 
-    Ref<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID, PolicyListenerType::Response);
-    if (navigationID) {
-        auto& navigation = m_navigationState->navigation(navigationID);
-        listener->setNavigation(navigation);
-    }
+    RefPtr<API::Navigation> navigation = navigationID ? &m_navigationState->navigation(navigationID) : nullptr;
+    auto listener = makeRef(frame->setUpPolicyListenerProxy([this, protectedThis = makeRef(*this), frameID, listenerID, navigation = WTFMove(navigation)] (WebCore::PolicyAction policyAction, API::WebsitePolicies*, ShouldProcessSwapIfPossible swap, Vector<SafeBrowsingResult>&& safeBrowsingResults) mutable {
+        // FIXME: Assert the API::WebsitePolicies* is nullptr here once clients of WKFramePolicyListenerUseWithPolicies go away.
+        RELEASE_ASSERT(swap == ShouldProcessSwapIfPossible::No);
+        ASSERT_UNUSED(safeBrowsingResults, safeBrowsingResults.isEmpty());
+        receivedPolicyDecision(policyAction, navigation.get(), std::nullopt, PolicyDecisionSender::create([this, protectedThis = WTFMove(protectedThis), frameID, listenerID] (auto... args) {
+            m_process->send(Messages::WebPage::DidReceivePolicyDecision(frameID, listenerID, args...), m_pageID);
+        }));
+    }, ShouldExpectSafeBrowsingResult::No));
 
     if (m_navigationClient) {
         auto navigationResponse = API::NavigationResponse::create(API::FrameInfo::create(*frame, frameSecurityOrigin.securityOrigin()).get(), request, response, canShowMIMEType);
@@ -4241,7 +4311,7 @@ void WebPageProxy::createNewPage(const FrameInfoData& originatingFrameInfoData, 
 
     auto mainFrameURL = m_mainFrame->url();
 
-    m_uiClient->createNewPage(*this, WTFMove(originatingFrameInfo), WTFMove(request), WTFMove(windowFeatures), WTFMove(navigationActionData), [this, protectedThis = makeRef(*this), mainFrameURL, request, reply = WTFMove(reply)](RefPtr<WebPageProxy> newPage) {
+    m_uiClient->createNewPage(*this, WTFMove(originatingFrameInfo), WTFMove(request), WTFMove(windowFeatures), WTFMove(navigationActionData), [this, protectedThis = makeRef(*this), mainFrameURL, request, reply = WTFMove(reply)] (RefPtr<WebPageProxy> newPage) mutable {
         if (!newPage) {
             reply(0, { });
             return;
@@ -4422,7 +4492,7 @@ void WebPageProxy::unavailablePluginButtonClicked(uint32_t opaquePluginUnavailab
 void WebPageProxy::webGLPolicyForURL(URL&& url, Messages::WebPageProxy::WebGLPolicyForURL::DelayedReply&& reply)
 {
     if (m_navigationClient) {
-        m_navigationClient->webGLLoadPolicy(*this, url, [reply = WTFMove(reply)](WebGLLoadPolicy policy) {
+        m_navigationClient->webGLLoadPolicy(*this, url, [reply = WTFMove(reply)] (WebGLLoadPolicy policy) mutable {
             reply(static_cast<uint32_t>(policy));
         });
     } else
@@ -4432,7 +4502,7 @@ void WebPageProxy::webGLPolicyForURL(URL&& url, Messages::WebPageProxy::WebGLPol
 void WebPageProxy::resolveWebGLPolicyForURL(URL&& url, Messages::WebPageProxy::ResolveWebGLPolicyForURL::DelayedReply&& reply)
 {
     if (m_navigationClient) {
-        m_navigationClient->resolveWebGLLoadPolicy(*this, url, [reply = WTFMove(reply)](WebGLLoadPolicy policy) {
+        m_navigationClient->resolveWebGLLoadPolicy(*this, url, [reply = WTFMove(reply)] (WebGLLoadPolicy policy) mutable {
             reply(static_cast<uint32_t>(policy));
         });
     } else
@@ -4482,7 +4552,7 @@ void WebPageProxy::setWindowFrame(const FloatRect& newWindowFrame)
 
 void WebPageProxy::getWindowFrame(Messages::WebPageProxy::GetWindowFrame::DelayedReply&& reply)
 {
-    m_uiClient->windowFrame(*this, [this, protectedThis = makeRef(*this), reply = WTFMove(reply)] (FloatRect frame) {
+    m_uiClient->windowFrame(*this, [this, protectedThis = makeRef(*this), reply = WTFMove(reply)] (FloatRect frame) mutable {
         reply(m_pageClient.convertToUserSpace(frame));
     });
 }
@@ -4555,7 +4625,7 @@ void WebPageProxy::pageDidScroll()
     if (m_isKeyboardAnimatingIn)
         return;
 #endif
-    hideValidationMessage();
+    closeOverlayedViews();
 }
 
 void WebPageProxy::runOpenPanel(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, const FileChooserSettings& settings)
@@ -4701,7 +4771,7 @@ void WebPageProxy::didChangeContentSize(const IntSize& size)
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
-void WebPageProxy::showColorPicker(const WebCore::Color& initialColor, const IntRect& elementRect)
+void WebPageProxy::showColorPicker(const WebCore::Color& initialColor, const IntRect& elementRect, Vector<WebCore::Color>&& suggestions)
 {
 #if ENABLE(INPUT_TYPE_COLOR_POPOVER)
     // A new popover color well needs to be created (and the previous one destroyed) for
@@ -4709,7 +4779,7 @@ void WebPageProxy::showColorPicker(const WebCore::Color& initialColor, const Int
     m_colorPicker = nullptr;
 #endif
     if (!m_colorPicker)
-        m_colorPicker = m_pageClient.createColorPicker(this, initialColor, elementRect);
+        m_colorPicker = m_pageClient.createColorPicker(this, initialColor, elementRect, WTFMove(suggestions));
     m_colorPicker->showColorPicker(initialColor);
 }
 
@@ -4749,6 +4819,49 @@ void WebPageProxy::didEndColorPicker()
 
     m_process->send(Messages::WebPage::DidEndColorPicker(), m_pageID);
 }
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+
+void WebPageProxy::showDataListSuggestions(WebCore::DataListSuggestionInformation&& info)
+{
+    if (!m_dataListSuggestionsDropdown)
+        m_dataListSuggestionsDropdown = m_pageClient.createDataListSuggestionsDropdown(*this);
+
+    m_dataListSuggestionsDropdown->show(WTFMove(info));
+}
+
+void WebPageProxy::handleKeydownInDataList(const String& key)
+{
+    if (!m_dataListSuggestionsDropdown)
+        return;
+
+    m_dataListSuggestionsDropdown->handleKeydownWithIdentifier(key);
+}
+
+void WebPageProxy::endDataListSuggestions()
+{
+    if (m_dataListSuggestionsDropdown)
+        m_dataListSuggestionsDropdown->close();
+}
+
+void WebPageProxy::didCloseSuggestions()
+{
+    if (!m_dataListSuggestionsDropdown)
+        return;
+
+    m_dataListSuggestionsDropdown = nullptr;
+    m_process->send(Messages::WebPage::DidCloseSuggestions(), m_pageID);
+}
+
+void WebPageProxy::didSelectOption(String& selectedOption)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::DidSelectDataListOption(selectedOption), m_pageID);
+}
+
 #endif
 
 WebInspectorProxy* WebPageProxy::inspector() const
@@ -4867,7 +4980,7 @@ void WebPageProxy::compositionWasCanceled()
 
 void WebPageProxy::registerEditCommandForUndo(uint64_t commandID, uint32_t editAction)
 {
-    registerEditCommand(WebEditCommandProxy::create(commandID, static_cast<EditAction>(editAction), this), Undo);
+    registerEditCommand(WebEditCommandProxy::create(commandID, static_cast<EditAction>(editAction), this), UndoOrRedo::Undo);
 }
     
 void WebPageProxy::registerInsertionUndoGrouping()
@@ -4877,15 +4990,14 @@ void WebPageProxy::registerInsertionUndoGrouping()
 #endif
 }
 
-void WebPageProxy::canUndoRedo(uint32_t action, bool& result)
+void WebPageProxy::canUndoRedo(UndoOrRedo action, bool& result)
 {
-    result = m_pageClient.canUndoRedo(static_cast<UndoOrRedo>(action));
+    result = m_pageClient.canUndoRedo(action);
 }
 
-void WebPageProxy::executeUndoRedo(uint32_t action, bool& result)
+void WebPageProxy::executeUndoRedo(UndoOrRedo action)
 {
-    m_pageClient.executeUndoRedo(static_cast<UndoOrRedo>(action));
-    result = true;
+    m_pageClient.executeUndoRedo(action);
 }
 
 void WebPageProxy::clearAllEditCommands()
@@ -5248,16 +5360,12 @@ void WebPageProxy::removeEditCommand(WebEditCommandProxy* command)
 
 bool WebPageProxy::canUndo()
 {
-    bool result;
-    canUndoRedo(Undo, result);
-    return result;
+    return m_pageClient.canUndoRedo(UndoOrRedo::Undo);
 }
 
 bool WebPageProxy::canRedo()
 {
-    bool result;
-    canUndoRedo(Redo, result);
-    return result;
+    return m_pageClient.canUndoRedo(UndoOrRedo::Redo);
 }
 
 bool WebPageProxy::isValidEditCommand(WebEditCommandProxy* command)
@@ -5977,7 +6085,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_scrollingPerformanceData = nullptr;
 #endif
     m_drawingArea = nullptr;
-    hideValidationMessage();
+    closeOverlayedViews();
 
     if (m_inspector) {
         m_inspector->invalidate();
@@ -5985,10 +6093,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     }
 
 #if ENABLE(FULLSCREEN_API)
-    if (m_fullScreenManager) {
-        m_fullScreenManager->invalidate();
-        m_fullScreenManager = nullptr;
-    }
+    m_fullScreenManager = nullptr;
 #endif
 
     if (m_openPanelResultListener) {
@@ -6202,7 +6307,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
 #if PLATFORM(MAC)
     parameters.colorSpace = m_pageClient.colorSpace();
     parameters.useSystemAppearance = m_useSystemAppearance;
-    parameters.useDarkAppearance = m_useDarkAppearance;
+    parameters.useDarkAppearance = useDarkAppearance();
 #endif
 #if PLATFORM(IOS)
     parameters.screenSize = screenSize();
@@ -6817,6 +6922,11 @@ void WebPageProxy::handleAlternativeTextUIResult(const String& result)
         m_process->send(Messages::WebPage::HandleAlternativeTextUIResult(result), m_pageID);
 }
 
+bool WebPageProxy::useDarkAppearance() const
+{
+    return m_pageClient.effectiveAppearanceIsDark();
+}
+
 #if USE(DICTATION_ALTERNATIVES)
 void WebPageProxy::showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, uint64_t dictationContext)
 {
@@ -7326,16 +7436,12 @@ void WebPageProxy::setUseSystemAppearance(bool useSystemAppearance)
     m_process->send(Messages::WebPage::SetUseSystemAppearance(useSystemAppearance), m_pageID);
 }
     
-void WebPageProxy::setUseDarkAppearance(bool useDarkAppearance)
+void WebPageProxy::effectiveAppearanceDidChange()
 {
     if (!isValid())
         return;
 
-    if (useDarkAppearance == m_useDarkAppearance)
-        return;
-
-    m_useDarkAppearance = useDarkAppearance;
-    m_process->send(Messages::WebPage::SetUseDarkAppearance(useDarkAppearance), m_pageID);
+    m_process->send(Messages::WebPage::SetUseDarkAppearance(useDarkAppearance()), m_pageID);
 }
 
 void WebPageProxy::setHeaderBannerHeightForTesting(int height)
@@ -7383,7 +7489,7 @@ void WebPageProxy::removePlaybackTargetPickerClient(uint64_t contextId)
 
 void WebPageProxy::showPlaybackTargetPicker(uint64_t contextId, const WebCore::FloatRect& rect, bool hasVideo)
 {
-    m_pageClient.mediaSessionManager().showPlaybackTargetPicker(*this, contextId, m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo, m_useDarkAppearance);
+    m_pageClient.mediaSessionManager().showPlaybackTargetPicker(*this, contextId, m_pageClient.rootViewToScreen(IntRect(rect)), hasVideo, useDarkAppearance());
 }
 
 void WebPageProxy::playbackTargetPickerClientStateDidChange(uint64_t contextId, WebCore::MediaProducer::MediaStateFlags state)
@@ -7532,7 +7638,22 @@ void WebPageProxy::hideValidationMessage()
     m_validationBubble = nullptr;
 #endif
 }
-    
+
+// FIXME: Consolidate with dismissContentRelativeChildWindows
+void WebPageProxy::closeOverlayedViews()
+{
+    hideValidationMessage();
+
+#if ENABLE(DATALIST_ELEMENT)
+    endDataListSuggestions();
+#endif
+
+#if ENABLE(INPUT_TYPE_COLOR_POPOVER) && ENABLE(INPUT_TYPE_COLOR)
+    if (m_colorPicker)
+        endColorPicker();
+#endif
+}
+
 #if ENABLE(POINTER_LOCK)
 void WebPageProxy::requestPointerLock()
 {
@@ -7827,6 +7948,11 @@ void WebPageProxy::reportPageLoadResult(const ResourceError& error)
 void WebPageProxy::setDefersLoadingForTesting(bool defersLoading)
 {
     m_process->send(Messages::WebPage::SetDefersLoading(defersLoading), m_pageID);
+}
+
+void WebPageProxy::getIsViewVisible(bool& result)
+{
+    result = isViewVisible();
 }
 
 } // namespace WebKit

@@ -64,6 +64,7 @@
 #import <algorithm>
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/LaunchServicesSPI.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
 #import <pal/spi/cocoa/pthreadSPI.h>
@@ -86,6 +87,7 @@
 
 #if PLATFORM(MAC)
 #import <WebCore/ScrollbarThemeMac.h>
+#import <pal/spi/mac/NSScrollerImpSPI.h>
 #endif
 
 #if USE(OS_STATE)
@@ -123,6 +125,8 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
 #endif
 
     WebCore::setApplicationBundleIdentifier(parameters.uiProcessBundleIdentifier);
+    WebCore::setApplicationSDKVersion(parameters.uiProcessSDKVersion);
+
     SessionTracker::setIdentifierBase(parameters.uiProcessBundleIdentifier);
 
 #if ENABLE(SANDBOX_EXTENSIONS)
@@ -194,6 +198,9 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
 
 #if PLATFORM(MAC)
     WebCore::setScreenProperties(parameters.screenProperties);
+#if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    scrollerStylePreferenceChanged(parameters.useOverlayScrollbars);
+#endif
 #endif
 }
 
@@ -316,7 +323,7 @@ void WebProcess::platformInitializeProcess(const ChildProcessInitializationParam
 #if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     // Deny the WebContent process access to the WindowServer.
     // This call will not succeed if there are open WindowServer connections at this point.
-    setApplicationIsDaemon();
+    CGSSetDenyWindowServerConnections(true);
     // Make sure that we close any WindowServer connections after checking in with Launch Services.
     CGSShutdownServerConnections();
 #else
@@ -589,6 +596,9 @@ void WebProcess::scrollerStylePreferenceChanged(bool useOverlayScrollbars)
         return;
 
     static_cast<ScrollbarThemeMac&>(theme).preferencesChanged();
+    
+    NSScrollerStyle style = useOverlayScrollbars ? NSScrollerStyleOverlay : NSScrollerStyleLegacy;
+    [NSScrollerImpPair _updateAllScrollerImpPairsForNewRecommendedScrollerStyle:style];
 }
 #endif    
 

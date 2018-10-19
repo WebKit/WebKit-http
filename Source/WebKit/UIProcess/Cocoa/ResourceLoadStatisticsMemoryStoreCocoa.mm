@@ -25,6 +25,7 @@
 
 #import "config.h"
 #import "ResourceLoadStatisticsMemoryStore.h"
+#import <wtf/text/WTFString.h>
 
 namespace WebKit {
 
@@ -37,10 +38,6 @@ void ResourceLoadStatisticsMemoryStore::registerUserDefaultsIfNeeded()
         if (timeToLiveUserInteraction > 0_s && timeToLiveUserInteraction <= 24_h * 30)
             setTimeToLiveUserInteraction(timeToLiveUserInteraction);
 
-        Seconds timeToLiveCookiePartitionFree([[NSUserDefaults standardUserDefaults] doubleForKey:@"ResourceLoadStatisticsTimeToLiveCookiePartitionFree"]);
-        if (timeToLiveCookiePartitionFree > 0_s && timeToLiveCookiePartitionFree <= 24_h)
-            setTimeToLiveCookiePartitionFree(timeToLiveCookiePartitionFree);
-
         Seconds minimumTimeBetweenDataRecordsRemoval([[NSUserDefaults standardUserDefaults] doubleForKey:@"ResourceLoadStatisticsMinimumTimeBetweenDataRecordsRemoval"]);
         if (minimumTimeBetweenDataRecordsRemoval > 0_s && minimumTimeBetweenDataRecordsRemoval < 1_h)
             setMinimumTimeBetweenDataRecordsRemoval(minimumTimeBetweenDataRecordsRemoval);
@@ -51,6 +48,9 @@ void ResourceLoadStatisticsMemoryStore::registerUserDefaultsIfNeeded()
 
         setDebugLogggingEnabled([[NSUserDefaults standardUserDefaults] boolForKey:@"ResourceLoadStatisticsDebugLoggingEnabled"]);
         setResourceLoadStatisticsDebugMode([[NSUserDefaults standardUserDefaults] boolForKey:@"ExperimentalResourceLoadStatisticsDebugMode"]);
+        auto* debugManualPrevalentResource = [[NSUserDefaults standardUserDefaults] stringForKey:@"ResourceLoadStatisticsManualPrevalentResource"];
+        if (debugManualPrevalentResource)
+            setPrevalentResourceForDebugMode(debugManualPrevalentResource);
         setStorageAccessPromptsEnabled([[NSUserDefaults standardUserDefaults] boolForKey:@"ExperimentalStorageAccessPromptsEnabled"]);
     });
 }

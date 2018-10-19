@@ -23,7 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <wtf/Platform.h>
+#define ASSERT_DISABLED 0
+#include "config.h"
 
 #if USE(CF)
 #include "JavaScriptCore.h"
@@ -44,7 +45,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#define ASSERT_DISABLED 0
 #include <wtf/Assertions.h>
 
 #if OS(WINDOWS)
@@ -62,9 +62,15 @@
 #include "PingPongStackOverflowTest.h"
 #include "TypedArrayCTest.h"
 
+#if COMPILER(MSVC)
+#pragma warning(disable:4204)
+#endif
+
 #if JSC_OBJC_API_ENABLED
 void testObjectiveCAPI(void);
 #endif
+
+int testCAPIViaCpp(void);
 
 bool assertTrue(bool value, const char* message);
 
@@ -1204,7 +1210,7 @@ static void testMarkingConstraintsAndHeapFinalizers(void)
 
     weakRefs = (JSWeakRef*)calloc(numWeakRefs, sizeof(JSWeakRef));
 
-    JSContextGroupAddMarkingConstraint(group, markingConstraint, weakRefs);
+    JSContextGroupAddMarkingConstraint(group, markingConstraint, (void*)weakRefs);
     JSContextGroupAddHeapFinalizer(group, heapFinalizer, (void*)(uintptr_t)42);
     
     for (i = numWeakRefs; i--;)
@@ -1349,10 +1355,10 @@ static void testCFStrings(void)
 int main(int argc, char* argv[])
 {
 #if OS(WINDOWS)
-    // Cygwin calls ::SetErrorMode(SEM_FAILCRITICALERRORS), which we will inherit. This is bad for
+    // Cygwin calls SetErrorMode(SEM_FAILCRITICALERRORS), which we will inherit. This is bad for
     // testing/debugging, as it causes the post-mortem debugger not to be invoked. We reset the
     // error mode here to work around Cygwin's behavior. See <http://webkit.org/b/55222>.
-    ::SetErrorMode(0);
+    SetErrorMode(0);
 #endif
 
     testCompareAndSwap();
@@ -1361,6 +1367,7 @@ int main(int argc, char* argv[])
 #if JSC_OBJC_API_ENABLED
     testObjectiveCAPI();
 #endif
+    RELEASE_ASSERT(!testCAPIViaCpp());
 
     const char *scriptPath = "testapi.js";
     if (argc > 1) {
@@ -2154,8 +2161,8 @@ static char* createStringWithContentsOfFile(const char* fileName)
 }
 
 #if OS(WINDOWS)
-extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(int argc, const char* argv[])
+__declspec(dllexport) int WINAPI dllLauncherEntryPoint(int argc, char* argv[])
 {
-    return main(argc, const_cast<char**>(argv));
+    return main(argc, argv);
 }
 #endif

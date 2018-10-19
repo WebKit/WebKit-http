@@ -1,3 +1,78 @@
+2018-07-30  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer] Make codecparsers optionnal
+        https://bugs.webkit.org/show_bug.cgi?id=188010
+
+        And avoid building libWebRTC if it won't be used. While there is no other
+        WebRTC backend, it makes no sense to expose an option.
+
+        Error out when WEBRTC or MEDIA_STREAM is enabled but GStreamer < 1.10
+
+        Reviewed by Alejandro G. Castro.
+
+        * Source/cmake/GStreamerChecks.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-07-26  Andy VanWagoner  <andy@vanwagoner.family>
+
+        [INTL] Remove INTL sub-feature compile flags
+        https://bugs.webkit.org/show_bug.cgi?id=188081
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-07-24  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE][GTK] Implement PeerConnection API on top of libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=186932
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/FindGStreamer.cmake: Look for gstreamer-codecparser as it needed for GStreamerVideoDecoder
+
+2018-07-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.21.5 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-07-19  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [WinCairo] Support DEVELOPER_MODE for allowing inspection of web inspector
+        https://bugs.webkit.org/show_bug.cgi?id=187786
+
+        Reviewed by Fujii Hironori.
+
+        * Source/cmake/OptionsWinCairo.cmake: Add ENABLE_DEVELOPER_MODE
+        to build when DEVELOPER_MODE is turned on at cmake time.
+
+2018-07-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Switch CMake ports back to C++ 14
+        https://bugs.webkit.org/show_bug.cgi?id=187744
+
+        Reviewed by Ryosuke Niwa.
+
+        The XCode build is still not using C++ 17, it's been several months since CMake ports
+        switched, everything builds fine without changes if we switch back, and there have been some
+        unfixed problems. Let's go back to C++ 14 for now. We can switch back to C++ 17 whenever we
+        are ready to switch over XCode at the same time, to ensure we don't wind up with divergent
+        behavior for std::optional.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
+2018-07-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update ReadMe.md line 68
+        https://bugs.webkit.org/show_bug.cgi?id=187533
+
+        Reviewed by Wenson Hsieh.
+
+        * ReadMe.md:
+
 2018-07-02  Adrian Perez de Castro  <aperez@igalia.com>
 
         [CMake] Use JOB_POOLS to avoid memory-hungry linker processes running at the same time

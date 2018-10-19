@@ -136,6 +136,7 @@ public:
 
 
     const ResourceRequest& request() const { return m_request; }
+    void setRequest(ResourceRequest&& request) { m_request = WTFMove(request); }
 
     void setDataBufferingPolicy(DataBufferingPolicy);
 
@@ -152,6 +153,9 @@ public:
     WEBCORE_EXPORT bool isAlwaysOnLoggingAllowed() const;
 
     const ResourceLoaderOptions& options() const { return m_options; }
+
+    const ResourceRequest& deferredRequest() const { return m_deferredRequest; }
+    ResourceRequest takeDeferredRequest() { return std::exchange(m_deferredRequest, { }); }
 
 protected:
     ResourceLoader(Frame&, ResourceLoaderOptions);

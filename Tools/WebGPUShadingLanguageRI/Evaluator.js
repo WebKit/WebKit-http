@@ -33,7 +33,7 @@ class Evaluator extends Visitor {
     }
     
     // You must snapshot if you use a value in rvalue context. For example, a call expression will
-    // snapshot all of its arguments immedaitely upon executing them. In general, it should not be
+    // snapshot all of its arguments immediately upon executing them. In general, it should not be
     // possible for a pointer returned from a visit method in rvalue context to live across any effects.
     _snapshot(type, dstPtr, srcPtr)
     {
@@ -177,14 +177,13 @@ class Evaluator extends Visitor {
     visitLogicalExpression(node)
     {
         let lhs = node.left.visit(this).loadValue();
-        let rhs = node.right.visit(this).loadValue();
         let result;
         switch (node.text) {
         case "&&":
-            result = lhs && rhs;
+            result = lhs && node.right.visit(this).loadValue();
             break;
         case "||":
-            result = lhs || rhs;
+            result = lhs || node.right.visit(this).loadValue();
             break;
         default:
             throw new Error("Unknown type of logical expression");

@@ -40,6 +40,7 @@
 #import "WebCookieManagerProxy.h"
 #import "WebProcessMessages.h"
 #import "WebProcessPool.h"
+#import "XPCServiceEntryPoint.h"
 #import "_WKAutomationDelegate.h"
 #import "_WKAutomationSessionInternal.h"
 #import "_WKDownloadDelegate.h"
@@ -181,6 +182,11 @@ static WKProcessPool *sharedProcessPool;
     return [url URLByAppendingPathComponent:@"WebsiteData" isDirectory:YES];
 }
 
++ (int)_webContentProcessXPCMain
+{
+    return WebKit::XPCServiceMain();
+}
+
 - (void)_setAllowsSpecificHTTPSCertificate:(NSArray *)certificateChain forHost:(NSString *)host
 {
     _processPool->allowSpecificHTTPSCertificateForHost(WebKit::WebCertificateInfo::create(WebCore::CertificateInfo((__bridge CFArrayRef)certificateChain)).ptr(), host);
@@ -199,6 +205,11 @@ static WKProcessPool *sharedProcessPool;
 - (void)_setMaximumNumberOfProcesses:(NSUInteger)value
 {
     _processPool->setMaximumNumberOfProcesses(value);
+}
+
+- (void)_setMaximumNumberOfPrewarmedProcesses:(NSUInteger)value
+{
+    _processPool->setMaximumNumberOfPrewarmedProcesses(value);
 }
 
 - (void)_setCanHandleHTTPSServerTrustEvaluation:(BOOL)value

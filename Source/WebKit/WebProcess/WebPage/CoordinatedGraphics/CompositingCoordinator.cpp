@@ -52,6 +52,8 @@ CompositingCoordinator::CompositingCoordinator(Page* page, CompositingCoordinato
     , m_client(client)
     , m_paintingEngine(Nicosia::PaintingEngine::create())
 {
+    m_nicosia.scene = Nicosia::Scene::create();
+    m_state.nicosia.scene = m_nicosia.scene;
 }
 
 CompositingCoordinator::~CompositingCoordinator()
@@ -125,6 +127,14 @@ bool CompositingCoordinator::flushPendingLayerChanges()
     if (m_shouldSyncFrame) {
         didSync = true;
 
+        m_state.nicosia.scene->accessState(
+            [this](Nicosia::Scene::State& state)
+            {
+                ++state.id;
+                state.layers = m_nicosia.state.layers;
+                state.rootLayer = m_nicosia.state.rootLayer;
+            });
+
         m_client.commitSceneState(m_state);
 
         clearPendingStateChanges();
@@ -171,7 +181,9 @@ void CompositingCoordinator::initializeRootCompositingLayerIfNeeded()
     if (m_didInitializeRootCompositingLayer)
         return;
 
-    m_state.rootCompositingLayer = downcast<CoordinatedGraphicsLayer>(*m_rootLayer).id();
+    auto& rootLayer = downcast<CoordinatedGraphicsLayer>(*m_rootLayer);
+    m_nicosia.state.rootLayer = rootLayer.compositionLayer();
+    m_state.rootCompositingLayer = rootLayer.id();
     m_didInitializeRootCompositingLayer = true;
     m_shouldSyncFrame = true;
 }
@@ -261,6 +273,7 @@ std::unique_ptr<GraphicsLayer> CompositingCoordinator::createGraphicsLayer(Graph
 {
     CoordinatedGraphicsLayer* layer = new CoordinatedGraphicsLayer(layerType, client);
     layer->setCoordinator(this);
+    m_nicosia.state.layers.add(layer->compositionLayer());
     m_registeredLayers.add(layer->id(), layer);
     m_state.layersToCreate.append(layer->id());
     layer->setNeedsVisibleRectAdjustment();
@@ -301,6 +314,7 @@ void CompositingCoordinator::detachLayer(CoordinatedGraphicsLayer* layer)
     if (m_isPurging)
         return;
 
+    m_nicosia.state.layers.remove(layer->compositionLayer());
     m_registeredLayers.remove(layer->id());
 
     size_t index = m_state.layersToCreate.find(layer->id());
@@ -316,6 +330,7 @@ void CompositingCoordinator::detachLayer(CoordinatedGraphicsLayer* layer)
 void CompositingCoordinator::attachLayer(CoordinatedGraphicsLayer* layer)
 {
     layer->setCoordinator(this);
+    m_nicosia.state.layers.add(layer->compositionLayer());
     m_registeredLayers.add(layer->id(), layer);
     m_state.layersToCreate.append(layer->id());
     layer->setNeedsVisibleRectAdjustment();

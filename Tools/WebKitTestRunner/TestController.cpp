@@ -719,6 +719,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetAllowCrossOriginSubresourcesToAskForCredentials(preferences, options.allowCrossOriginSubresourcesToAskForCredentials);
     WKPreferencesSetWebAnimationsCSSIntegrationEnabled(preferences, options.enableWebAnimationsCSSIntegration);
     WKPreferencesSetColorFilterEnabled(preferences, options.enableColorFilter);
+    WKPreferencesSetPunchOutWhiteBackgroundsInDarkMode(preferences, options.punchOutWhiteBackgroundsInDarkMode);
 
     static WKStringRef defaultTextEncoding = WKStringCreateWithUTF8CString("ISO-8859-1");
     WKPreferencesSetDefaultTextEncodingName(preferences, defaultTextEncoding);
@@ -771,6 +772,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetStorageAccessAPIEnabled(preferences, true);
     
     WKPreferencesSetAccessibilityObjectModelEnabled(preferences, true);
+    WKPreferencesSetAriaReflectionEnabled(preferences, true);
     WKPreferencesSetMediaCapabilitiesEnabled(preferences, true);
 
     WKPreferencesSetCrossOriginWindowPolicyEnabled(preferences, true);
@@ -1087,7 +1089,7 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
         auto key = pairString.substr(pairStart, equalsLocation - pairStart);
         auto value = pairString.substr(equalsLocation + 1, pairEnd - (equalsLocation + 1));
         if (key == "language")
-            String(value.c_str()).split(",", false, testOptions.overrideLanguages);
+            testOptions.overrideLanguages = String(value.c_str()).split(',');
         else if (key == "useThreadedScrolling")
             testOptions.useThreadedScrolling = parseBooleanTestHeaderValue(value);
         else if (key == "useAcceleratedDrawing")
@@ -1134,6 +1136,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.enableProcessSwapOnWindowOpen = parseBooleanTestHeaderValue(value);
         else if (key == "enableColorFilter")
             testOptions.enableColorFilter = parseBooleanTestHeaderValue(value);
+        else if (key == "punchOutWhiteBackgroundsInDarkMode")
+            testOptions.punchOutWhiteBackgroundsInDarkMode = parseBooleanTestHeaderValue(value);
         else if (key == "jscOptions")
             testOptions.jscOptions = value;
         else if (key == "runSingly")
@@ -2617,24 +2621,6 @@ uint64_t TestController::domCacheSize(WKStringRef origin)
     return context.result;
 }
 
-void TestController::setStatisticsLastSeen(WKStringRef host, double seconds)
-{
-    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
-    WKWebsiteDataStoreSetStatisticsLastSeen(dataStore, host, seconds);
-}
-
-void TestController::setStatisticsPrevalentResource(WKStringRef host, bool value)
-{
-    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
-    WKWebsiteDataStoreSetStatisticsPrevalentResource(dataStore, host, value);
-}
-
-void TestController::setStatisticsVeryPrevalentResource(WKStringRef host, bool value)
-{
-    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
-    WKWebsiteDataStoreSetStatisticsVeryPrevalentResource(dataStore, host, value);
-}
-
 struct ResourceStatisticsCallbackContext {
     explicit ResourceStatisticsCallbackContext(TestController& controller)
         : testController(controller)
@@ -2659,6 +2645,51 @@ static void resourceStatisticsBooleanResultCallback(bool result, void* userData)
     context->result = result;
     context->done = true;
     context->testController.notifyDone();
+}
+
+void TestController::setStatisticsDebugMode(bool value)
+{
+    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreSetResourceLoadStatisticsDebugModeWithCompletionHandler(dataStore, value, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didSetStatisticsDebugMode();
+}
+
+void TestController::setStatisticsPrevalentResourceForDebugMode(WKStringRef hostName)
+{
+    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreSetResourceLoadStatisticsPrevalentResourceForDebugMode(dataStore, hostName, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didSetPrevalentResourceForDebugMode();
+}
+
+void TestController::setStatisticsLastSeen(WKStringRef host, double seconds)
+{
+    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreSetStatisticsLastSeen(dataStore, host, seconds, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didSetLastSeen();
+}
+
+void TestController::setStatisticsPrevalentResource(WKStringRef host, bool value)
+{
+    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreSetStatisticsPrevalentResource(dataStore, host, value, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didSetPrevalentResource();
+}
+
+void TestController::setStatisticsVeryPrevalentResource(WKStringRef host, bool value)
+{
+    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreSetStatisticsVeryPrevalentResource(dataStore, host, value, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didSetVeryPrevalentResource();
 }
 
 bool TestController::isStatisticsPrevalentResource(WKStringRef host)
@@ -2700,13 +2731,10 @@ bool TestController::isStatisticsRegisteredAsRedirectingTo(WKStringRef hostRedir
 void TestController::setStatisticsHasHadUserInteraction(WKStringRef host, bool value)
 {
     auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
-    WKWebsiteDataStoreSetStatisticsHasHadUserInteraction(dataStore, host, value);
-}
-
-void TestController::setStatisticsHasHadNonRecentUserInteraction(WKStringRef host)
-{
-    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
-    WKWebsiteDataStoreSetStatisticsHasHadNonRecentUserInteraction(dataStore, host);
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreSetStatisticsHasHadUserInteraction(dataStore, host, value, &context, resourceStatisticsVoidResultCallback);
+    runUntil(context.done, noTimeout);
+    m_currentInvocation->didSetHasHadUserInteraction();
 }
 
 bool TestController::isStatisticsHasHadUserInteraction(WKStringRef host)
@@ -2775,34 +2803,19 @@ void TestController::setStatisticsTimeToLiveUserInteraction(double seconds)
     WKWebsiteDataStoreSetStatisticsTimeToLiveUserInteraction(dataStore, seconds);
 }
 
-void TestController::setStatisticsTimeToLiveCookiePartitionFree(double seconds)
-{
-    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
-    WKWebsiteDataStoreSetStatisticsTimeToLiveCookiePartitionFree(dataStore, seconds);
-}
-
 void TestController::statisticsProcessStatisticsAndDataRecords()
 {
     auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
     WKWebsiteDataStoreStatisticsProcessStatisticsAndDataRecords(dataStore);
 }
 
-void TestController::statisticsUpdateCookiePartitioning()
+void TestController::statisticsUpdateCookieBlocking()
 {
     auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
     ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreStatisticsUpdateCookiePartitioning(dataStore, &context, resourceStatisticsVoidResultCallback);
+    WKWebsiteDataStoreStatisticsUpdateCookieBlocking(dataStore, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
-    m_currentInvocation->didSetPartitionOrBlockCookiesForHost();
-}
-
-void TestController::statisticsSetShouldPartitionCookiesForHost(WKStringRef host, bool value)
-{
-    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
-    ResourceStatisticsCallbackContext context(*this);
-    WKWebsiteDataStoreSetStatisticsShouldPartitionCookiesForHost(dataStore, host, value, &context, resourceStatisticsVoidResultCallback);
-    runUntil(context.done, noTimeout);
-    m_currentInvocation->didSetPartitionOrBlockCookiesForHost();
+    m_currentInvocation->didSetBlockCookiesForHost();
 }
 
 void TestController::statisticsSubmitTelemetry()

@@ -401,6 +401,7 @@ bindings/js/JSErrorHandler.cpp
 bindings/js/JSEventCustom.cpp
 bindings/js/JSEventListener.cpp
 bindings/js/JSEventTargetCustom.cpp
+bindings/js/JSExecState.cpp
 bindings/js/JSExtendableMessageEventCustom.cpp
 bindings/js/JSFetchEventCustom.cpp
 bindings/js/JSFileSystemEntryCustom.cpp
@@ -417,7 +418,6 @@ bindings/js/JSIDBTransactionCustom.cpp
 bindings/js/JSImageDataCustom.cpp
 bindings/js/JSLazyEventListener.cpp
 bindings/js/JSLocationCustom.cpp
-bindings/js/JSMainThreadExecState.cpp
 bindings/js/JSMediaStreamTrackCustom.cpp
 bindings/js/JSMessageChannelCustom.cpp
 bindings/js/JSMessageEventCustom.cpp
@@ -1113,7 +1113,6 @@ html/canvas/WebGPUDrawable.cpp
 html/canvas/WebGPUEnums.cpp
 html/canvas/WebGPUFunction.cpp
 html/canvas/WebGPULibrary.cpp
-html/canvas/WebGPUObject.cpp
 html/canvas/WebGPURenderCommandEncoder.cpp
 html/canvas/WebGPURenderPassAttachmentDescriptor.cpp
 html/canvas/WebGPURenderPassColorAttachmentDescriptor.cpp
@@ -1232,6 +1231,9 @@ layout/displaytree/DisplayBox.cpp
 layout/inlineformatting/InlineFormattingContext.cpp
 layout/inlineformatting/InlineFormattingState.cpp
 layout/inlineformatting/InlineInvalidation.cpp
+layout/inlineformatting/textlayout/TextContentProvider.cpp
+layout/inlineformatting/textlayout/simple/SimpleTextRunGenerator.cpp
+layout/inlineformatting/textlayout/simple/SimpleLineBreaker.cpp
 layout/layouttree/LayoutBlockContainer.cpp
 layout/layouttree/LayoutBox.cpp
 layout/layouttree/LayoutContainer.cpp
@@ -1698,6 +1700,7 @@ platform/graphics/gpu/GPUTextureDescriptor.cpp
 platform/graphics/iso/ISOBox.cpp
 platform/graphics/iso/ISOOriginalFormatBox.cpp
 platform/graphics/iso/ISOProtectionSchemeInfoBox.cpp
+platform/graphics/iso/ISOProtectionSystemSpecificHeaderBox.cpp
 platform/graphics/iso/ISOSchemeInformationBox.cpp
 platform/graphics/iso/ISOSchemeTypeBox.cpp
 platform/graphics/iso/ISOTrackEncryptionBox.cpp
@@ -1717,6 +1720,9 @@ platform/graphics/transforms/TransformOperations.cpp
 platform/graphics/transforms/TransformState.cpp
 platform/graphics/transforms/TransformationMatrix.cpp
 platform/graphics/transforms/TranslateTransformOperation.cpp
+
+platform/mediacapabilities/MediaEngineConfiguration.cpp
+platform/mediacapabilities/MediaEngineConfigurationFactory.cpp
 
 platform/mediastream/CaptureDeviceManager.cpp
 platform/mediastream/MediaConstraints.cpp
@@ -1738,6 +1744,8 @@ platform/mediastream/libwebrtc/LibWebRTCProvider.cpp
 
 platform/mock/DeviceOrientationClientMock.cpp
 platform/mock/GeolocationClientMock.cpp
+platform/mock/MediaEngineDecodingConfigurationMock.cpp
+platform/mock/MediaEngineEncodingConfigurationMock.cpp
 platform/mock/MockRealtimeAudioSource.cpp
 platform/mock/MockRealtimeMediaSource.cpp
 platform/mock/MockRealtimeMediaSourceCenter.cpp
@@ -1885,8 +1893,6 @@ rendering/RenderLayerFilterInfo.cpp
 rendering/RenderLayerModelObject.cpp
 rendering/RenderLineBoxList.cpp
 rendering/RenderLineBreak.cpp
-rendering/RenderLinesClampFlow.cpp
-rendering/RenderLinesClampSet.cpp
 rendering/RenderListBox.cpp
 rendering/RenderListItem.cpp
 rendering/RenderListMarker.cpp
@@ -2269,9 +2275,8 @@ svg/graphics/filters/SVGFEImage.cpp
 svg/graphics/filters/SVGFilter.cpp
 svg/graphics/filters/SVGFilterBuilder.cpp
 
+svg/properties/SVGAnimatedPathSegListPropertyTearOff.cpp
 svg/properties/SVGAnimatedProperty.cpp
-svg/properties/SVGAttributeToPropertyMap.cpp
-svg/properties/SVGPropertyInfo.cpp
 
 workers/AbstractWorker.cpp
 workers/DedicatedWorkerGlobalScope.cpp

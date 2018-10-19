@@ -199,7 +199,9 @@ imported/w3c/web-platform-tests/server-timing/navigation_timing_idl.https.html [
 
 imported/w3c/web-platform-tests/service-workers/service-worker/websocket.https.html [ Pass Failure ]
 
-webkit.org/b/186901 imported/w3c/web-platform-tests/css/css-display/display-contents-first-letter-002.html [ Skip ]
+# This test seems wrong as the order of setting ServiceWorker#state to 'activated' and resolving skipWaiting() promise is not deterministic.
+# Run this test to ensure this test does not crash.
+webkit.org/b/188246 imported/w3c/web-platform-tests/service-workers/service-worker/skip-waiting-installed.https.html [ Pass Failure ]
 
 # Console log lines may appear in a different order so we silence them.
 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ DumpJSConsoleLogInStdErr ]
@@ -271,6 +273,9 @@ http/tests/security/cross-origin-cached-images-parallel.html [ DumpJSConsoleLogI
 imported/w3c/web-platform-tests/css/css-ui/caret-color-018.html [ Skip ]
 imported/w3c/web-platform-tests/css/css-ui/caret-color-019.html [ Skip ]
 imported/w3c/web-platform-tests/css/css-ui/caret-color-020.html [ Skip ]
+
+# Only relevant on macOS
+css3/color-filters/punch-out-white-backgrounds.html [ Skip ]
 
 # This test tests a feature that only exists on iOS.
 fast/text/accessibility-bold-system-font-2.html [ Skip ]
@@ -566,6 +571,10 @@ imported/w3c/web-platform-tests/IndexedDB/bindings-inject-key.html [ Pass Failur
 # Those WPT tests are flaky when failing.
 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/allow-scripts-flag-changing-1.html [ Pass Failure ]
 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/allow-scripts-flag-changing-2.html [ Pass Failure ]
+
+# WPT tests for custom elements
+webkit.org/b/187800 imported/w3c/web-platform-tests/custom-elements/Document-createElement-svg.svg [ Skip ]
+webkit.org/b/187800 imported/w3c/web-platform-tests/custom-elements/parser/parser-uses-create-an-element-for-a-token-svg.svg [ Skip ]
 
 # selectors
 webkit.org/b/64861 imported/w3c/web-platform-tests/css/selectors/selectors-dir-selector-ltr-001.html [ ImageOnlyFailure ]
@@ -1445,10 +1454,8 @@ media/controls/picture-in-picture.html [ WontFix ]
 media/controls/pip-placeholder-without-video-controls.html [ WontFix ]
 media/element-containing-pip-video-going-into-fullscreen.html [ WontFix ]
 media/fullscreen-api-enabled-media-with-presentation-mode.html [ WontFix ]
-media/fullscreen-video-going-into-pip.html [ WontFix ]
 media/navigate-with-pip-should-not-crash.html [ WontFix ]
 media/pip-video-going-into-fullscreen.html [ WontFix ]
-media/video-contained-in-fullscreen-element-going-into-pip.html [ WontFix ]
 
 webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Skip ]
 
@@ -1475,19 +1482,16 @@ workers/sab/sent-from-worker-no-transfer.html [ Skip ]
 workers/wasm-hashset-many.html [ Slow ]
 workers/wasm-hashset-many-2.html [ Slow ]
 workers/wasm-hashset.html [ Slow ]
-workers/wasm-long-compile-many.html [ Slow ]
 workers/wasm-long-compile.html [ Slow ]
+
+# This one is so slow that we cannot use Slow for it anymore.
+workers/wasm-long-compile-many.html [ Pass Timeout ]
 
 # Flaky WebCrypto API tests
 imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/test_wrapKey_unwrapKey.https.html [ Pass Failure ]
-imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.https.worker.html [ Pass Failure Slow ]
-webkit.org/b/186940 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSASSA-PKCS1-v1_5.https.any.html [ Pass Failure Slow ]
-webkit.org/b/186940 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-PSS.https.any.html [ Pass Failure Slow ]
-webkit.org/b/187025 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSASSA-PKCS1-v1_5.https.any.worker.html  [ Pass Failure Slow ]
 
 # WebCryptoAPI tests that take too long to complete
-imported/w3c/web-platform-tests/WebCryptoAPI/import_export/rsa_importKey.https.worker.html [ Slow ]
-imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https.html [ Slow ]
+imported/w3c/web-platform-tests/WebCryptoAPI/ [ Slow ]
 
 # Imported Beacon test that is flaky because its last check is very slow.
 webkit.org/b/175202 imported/w3c/web-platform-tests/beacon/beacon-basic-string.html [ Pass Failure ]
@@ -1523,6 +1527,8 @@ crypto/subtle/rsa-pss-import-spki-key-empty-usages.html [ Skip ]
 crypto/subtle/rsa-pss-import-spki-key.html [ Skip ]
 crypto/workers/subtle/rsa-pss-import-key-sign.html [ Skip ]
 crypto/workers/subtle/rsa-pss-import-key-verify.html [ Skip ]
+http/wpt/crypto/rsa-pss-crash.any.html [ Skip ]
+http/wpt/crypto/rsa-pss-crash.any.worker.html [ Skip ]
 
 editing/deleting/delete-emoji.html [ Slow ]
 
@@ -2051,6 +2057,8 @@ webkit.org/b/186574 media/video-buffering-allowed.html [ Pass Failure ]
 
 # All WebGL 1 and 2 tests for now
 webgl/2.0.0 [ Skip ]
+webgl/2.0.0/conformance2/glsl3 [ Pass ]
+webgl/2.0.0/conformance2/vertex_arrays [ Pass ]
 
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-contains-table-row-001.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-style-008.html [ ImageOnlyFailure ]
@@ -2107,7 +2115,6 @@ imported/w3c/web-platform-tests/css/css-display/run-in/run-in-run-in-between-007
 imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-style-007.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-basic-007.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-grid/grid-items/percentage-size-replaced-subitems-001.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/css/css-grid/alignment/grid-gutters-012.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/cssom-view/scrollingElement-quirks-dynamic-002.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-position-above-right-002.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-contains-abspos-001.xht [ ImageOnlyFailure ]
@@ -2135,7 +2142,6 @@ imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-color-001.xht [
 imported/w3c/web-platform-tests/css/css-ui/text-overflow-028.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-position-below-left-001.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/display-contents-details.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/css/css-grid/alignment/grid-gutters-011.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-shapes/shape-outside/shape-image/gradients/shape-outside-linear-gradient-010.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-breaking-002.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-inline-between-003.xht [ ImageOnlyFailure ]
@@ -2148,7 +2154,6 @@ imported/w3c/web-platform-tests/css/css-shapes/shape-outside/shape-image/gradien
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-basic-005.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-basic-009.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/mediaqueries/viewport-script-dynamic.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/css/css-grid/alignment/grid-gutters-009.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-clear-002.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-restyle-003.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-contains-table-column-group-001.xht [ ImageOnlyFailure ]
@@ -2181,7 +2186,6 @@ imported/w3c/web-platform-tests/css/selectors/selection-image-001.html [ ImageOn
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-contains-inline-block-001.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-basic-002.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-table-row-between-003.xht [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/css/css-grid/alignment/grid-gutters-010.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-breaking-001.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-ui/text-overflow-027.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-style-012.html [ ImageOnlyFailure ]
@@ -2197,6 +2201,11 @@ imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-OAEP.http
 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-OAEP.https.any.worker.html [ Pass Failure ]
 
 webkit.org/b/175609 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getAll.html [ Pass Failure ]
+webkit.org/b/175609 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getKey.html [ Pass Failure ]
+webkit.org/b/175609 imported/w3c/web-platform-tests/IndexedDB/idbindex_getAllKeys.html [ Pass Failure ]
+webkit.org/b/175609 imported/w3c/web-platform-tests/IndexedDB/idbcursor-continue.htm [ Pass Failure ]
+webkit.org/b/175609 imported/w3c/web-platform-tests/IndexedDB/idbdatabase-deleteObjectStore-exception-order.htm [ Pass Failure ]
+webkit.org/b/175609 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getAllKeys.html [ Pass Failure ]
 
 webkit.org/b/186848 imported/w3c/web-platform-tests/FileAPI/blob/Blob-slice.html [ Pass Failure ]
 webkit.org/b/179176 svg/wicd/test-rightsizing-a.xhtml [ Pass Failure ]
@@ -2206,3 +2215,8 @@ webkit.org/b/172864 imported/blink/storage/indexeddb/blob-delete-objectstore-db.
 webkit.org/b/187183 http/tests/security/pasteboard-file-url.html [ Skip ]
 
 [ Debug ] fast/multicol/crash-in-vertical-writing-mode.html [ Skip ]
+
+webkit.org/b/187762 http/tests/websocket/tests/hybi/websocket-allowed-setting-cookie-as-third-party.html [ Failure ]
+webkit.org/b/187762 http/tests/websocket/tests/hybi/websocket-cookie-overwrite-behavior.html [ Failure ]
+
+webkit.org/b/187269 [ Debug ] imported/w3c/web-platform-tests/FileAPI/reading-data-section/filereader_abort.html [ Skip ]

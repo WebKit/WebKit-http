@@ -47,18 +47,11 @@ namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(SVGAnimationElement);
 
-// Animated property definitions
-DEFINE_ANIMATED_BOOLEAN(SVGAnimationElement, SVGNames::externalResourcesRequiredAttr, ExternalResourcesRequired, externalResourcesRequired)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGAnimationElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(externalResourcesRequired)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGTests)
-END_REGISTER_ANIMATED_PROPERTIES
-
 SVGAnimationElement::SVGAnimationElement(const QualifiedName& tagName, Document& document)
     : SVGSMILElement(tagName, document)
+    , SVGExternalResourcesRequired(this)
+    , SVGTests(this)
 {
-    registerAnimatedPropertiesForSVGAnimationElement();
 }
 
 static void parseKeyTimes(const String& parse, Vector<float>& result, bool verifyOrder)
@@ -166,7 +159,7 @@ void SVGAnimationElement::parseAttribute(const QualifiedName& name, const Atomic
         // Per the SMIL specification, leading and trailing white space,
         // and white space before and after semicolon separators, is allowed and will be ignored.
         // http://www.w3.org/TR/SVG11/animate.html#ValuesAttribute
-        value.string().split(';', m_values);
+        m_values = value.string().split(';');
         for (auto& value : m_values)
             value = value.stripWhiteSpace();
 
@@ -689,21 +682,6 @@ void SVGAnimationElement::setTargetElement(SVGElement* target)
 void SVGAnimationElement::checkInvalidCSSAttributeType(SVGElement* target)
 {
     m_hasInvalidCSSAttributeType = target && hasValidAttributeName() && attributeType() == AttributeType::CSS && !isTargetAttributeCSSProperty(target, attributeName());
-}
-
-Ref<SVGStringList> SVGAnimationElement::requiredFeatures()
-{
-    return SVGTests::requiredFeatures(*this);
-}
-
-Ref<SVGStringList> SVGAnimationElement::requiredExtensions()
-{ 
-    return SVGTests::requiredExtensions(*this);
-}
-
-Ref<SVGStringList> SVGAnimationElement::systemLanguage()
-{
-    return SVGTests::systemLanguage(*this);
 }
 
 }

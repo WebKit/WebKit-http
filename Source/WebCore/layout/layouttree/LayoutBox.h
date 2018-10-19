@@ -47,7 +47,8 @@ public:
     virtual ~Box();
 
     bool establishesFormattingContext() const;
-    virtual bool establishesBlockFormattingContext() const;
+    bool establishesBlockFormattingContext() const;
+    bool establishesBlockFormattingContextOnly() const;
     virtual bool establishesInlineFormattingContext() const { return false; }
 
     bool isInFlow() const { return !isFloatingOrOutOfFlowPositioned(); }
@@ -59,12 +60,14 @@ public:
     bool isAbsolutelyPositioned() const;
     bool isFixedPositioned() const;
     bool isFloatingPositioned() const;
+    bool isLeftFloatingPositioned() const;
+    bool isRightFloatingPositioned() const;
 
     bool isFloatingOrOutOfFlowPositioned() const { return isFloatingPositioned() || isOutOfFlowPositioned(); }
 
     const Container* containingBlock() const;
     const Container& formattingContextRoot() const;
-    bool isDescendantOf(Container&) const;
+    bool isDescendantOf(const Container&) const;
 
     bool isAnonymous() const { return !m_elementAttributes; }
 
@@ -92,6 +95,7 @@ public:
     bool isInlineContainer() const { return m_baseTypeFlags & InlineContainerFlag; }
 
     bool isPaddingApplicable() const;
+    bool isOverflowVisible() const;
 
     const RenderStyle& style() const { return m_style; }
 
@@ -121,8 +125,6 @@ protected:
         InlineContainerFlag   = 1 << 3
     };
     Box(std::optional<ElementAttributes>, RenderStyle&&, BaseTypeFlags);
-
-    bool isOverflowVisible() const;
 
 private:
     void setParent(Container& parent) { m_parent = &parent; }

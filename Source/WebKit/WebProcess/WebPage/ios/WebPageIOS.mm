@@ -1215,17 +1215,19 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
     send(Messages::WebPageProxy::GestureCallback(point, gestureType, gestureState, static_cast<uint32_t>(flags), callbackID));
 }
 
-static RefPtr<Range> rangeForPoint(Frame* frame, const IntPoint& point, bool baseIsStart)
+static RefPtr<Range> rangeForPointInRootViewCoordinates(Frame& frame, const IntPoint& pointInRootViewCoordinates, bool baseIsStart)
 {
-    IntPoint pointInDocument = frame->view()->rootViewToContents(point);
-    Position result = frame->visiblePositionForPoint(pointInDocument).deepEquivalent();
+    IntPoint pointInDocument = frame.view()->rootViewToContents(pointInRootViewCoordinates);
+    Position result;
     RefPtr<Range> range;
     
-    HitTestResult hitTest = frame->eventHandler().hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent);
+    HitTestResult hitTest = frame.eventHandler().hitTestResultAtPoint(pointInDocument, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent);
     if (hitTest.targetNode())
-        result = frame->eventHandler().selectionExtentRespectingEditingBoundary(frame->selection().selection(), hitTest.localPoint(), hitTest.targetNode()).deepEquivalent();
+        result = frame.eventHandler().selectionExtentRespectingEditingBoundary(frame.selection().selection(), hitTest.localPoint(), hitTest.targetNode()).deepEquivalent();
+    else
+        result = frame.visiblePositionForPoint(pointInDocument).deepEquivalent();
     
-    VisibleSelection existingSelection = frame->selection().selection();
+    VisibleSelection existingSelection = frame.selection().selection();
     Position selectionStart = existingSelection.visibleStart().deepEquivalent();
     Position selectionEnd = existingSelection.visibleEnd().deepEquivalent();
     
@@ -1235,14 +1237,14 @@ static RefPtr<Range> rangeForPoint(Frame* frame, const IntPoint& point, bool bas
         else if (&selectionStart.anchorNode()->treeScope() != &hitTest.targetNode()->treeScope())
             result = VisibleSelection::adjustPositionForEnd(result, selectionStart.containerNode());
         if (result.isNotNull())
-            range = Range::create(*frame->document(), selectionStart, result);
+            range = Range::create(*frame.document(), selectionStart, result);
     } else {
         if (comparePositions(selectionEnd, result) <= 0)
             result = selectionEnd.previous();
         else if (&hitTest.targetNode()->treeScope() != &selectionEnd.anchorNode()->treeScope())
             result = VisibleSelection::adjustPositionForStart(result, selectionEnd.containerNode());
         if (result.isNotNull())
-            range = Range::create(*frame->document(), result, selectionEnd);
+            range = Range::create(*frame.document(), result, selectionEnd);
     }
     
     return range;
@@ -1329,7 +1331,7 @@ void WebPage::updateSelectionWithTouches(const IntPoint& point, uint32_t touches
             if (result.isNotNull())
                 range = Range::create(*frame.document(), result, result);
         } else
-            range = rangeForPoint(&frame, point, baseIsStart);
+            range = rangeForPointInRootViewCoordinates(frame, point, baseIsStart);
         break;
 
     case SelectionTouch::EndedMovingForward:
@@ -1341,7 +1343,7 @@ void WebPage::updateSelectionWithTouches(const IntPoint& point, uint32_t touches
         break;
 
     case SelectionTouch::Moved:
-        range = rangeForPoint(&frame, point, baseIsStart);
+        range = rangeForPointInRootViewCoordinates(frame, point, baseIsStart);
         break;
     }
     if (range)
@@ -2018,6 +2020,10 @@ static inline bool isAssistableElement(Element& node)
     if (is<HTMLInputElement>(node)) {
         HTMLInputElement& inputElement = downcast<HTMLInputElement>(node);
         // FIXME: This laundry list of types is not a good way to factor this. Need a suitable function on HTMLInputElement itself.
+#if ENABLE(INPUT_TYPE_COLOR)
+        if (inputElement.isColorControl())
+            return true;
+#endif
         return inputElement.isTextField() || inputElement.isDateField() || inputElement.isDateTimeLocalField() || inputElement.isMonthField() || inputElement.isTimeField();
     }
     return node.isContentEditable();
@@ -2444,6 +2450,10 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
                     information.elementType = InputType::Search;
             }
         }
+#if ENABLE(INPUT_TYPE_COLOR)
+        else if (element.isColorControl())
+            information.elementType = InputType::Color;
+#endif
 
         information.isReadOnly = element.isReadOnly();
         information.value = element.value();
@@ -2465,7 +2475,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
 
 void WebPage::autofillLoginCredentials(const String& username, const String& password)
 {
-    if (is<HTMLInputElement>(*m_assistedNode)) {
+    if (is<HTMLInputElement>(m_assistedNode.get())) {
         if (auto autofillElements = AutofillElements::computeAutofillElements(downcast<HTMLInputElement>(*m_assistedNode)))
             autofillElements->autofill(username, password);
     }
@@ -2788,7 +2798,8 @@ void WebPage::applicationDidEnterBackground(bool isSuspendedUnderLock)
     m_isSuspendedUnderLock = isSuspendedUnderLock;
     setLayerTreeStateIsFrozen(true);
 
-    m_page->applicationDidEnterBackground();
+    if (m_page)
+        m_page->applicationDidEnterBackground();
 }
 
 void WebPage::applicationDidFinishSnapshottingAfterEnteringBackground()
@@ -2804,13 +2815,15 @@ void WebPage::applicationWillEnterForeground(bool isSuspendedUnderLock)
 
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationWillEnterForegroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": @(isSuspendedUnderLock)}];
 
-    m_page->applicationWillEnterForeground();
+    if (m_page)
+        m_page->applicationWillEnterForeground();
 }
 
 void WebPage::applicationDidBecomeActive()
 {
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationDidBecomeActiveNotification object:nil];
-    m_page->applicationDidBecomeActive();
+    if (m_page)
+        m_page->applicationDidBecomeActive();
 }
 
 static inline void adjustVelocityDataForBoundedScale(double& horizontalVelocity, double& verticalVelocity, double& scaleChangeRate, double exposedRectScale, double minimumScale, double maximumScale)

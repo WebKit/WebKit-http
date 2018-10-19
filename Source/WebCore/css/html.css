@@ -836,6 +836,15 @@ input[type="radio"] {
     background-color: rgba(255, 255, 255, 0.01);
 }
 
+input[type="checkbox"]:indeterminate {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+input[type="checkbox"]:indeterminate:disabled {
+    opacity: 0.4;
+    background: rgba(0, 0, 0, 0.8);
+}
+
 input:matches([type="checkbox"], [type="radio"]):checked {
     background: rgba(0, 0, 0, 0.8);
     border-color: rgba(255, 255, 255, 0.0);
@@ -863,7 +872,9 @@ select:focus {
 #if defined(ENABLE_INPUT_TYPE_COLOR) && ENABLE_INPUT_TYPE_COLOR
 
 input[type="color"] {
+#if !(defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS)
     -webkit-appearance: square-button;
+#endif
     width: 44px;
     height: 23px;
 }

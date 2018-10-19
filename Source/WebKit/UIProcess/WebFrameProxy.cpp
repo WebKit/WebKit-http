@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebFrameProxy.h"
 
+#include "APINavigation.h"
 #include "WebCertificateInfo.h"
 #include "WebFramePolicyListenerProxy.h"
 #include "WebPageMessages.h"
@@ -64,7 +65,7 @@ void WebFrameProxy::webProcessWillShutDown()
     m_page = nullptr;
 
     if (m_activeListener) {
-        m_activeListener->invalidate();
+        m_activeListener->ignore();
         m_activeListener = nullptr;
     }
 }
@@ -177,38 +178,15 @@ void WebFrameProxy::didChangeTitle(const String& title)
     m_title = title;
 }
 
-void WebFrameProxy::receivedPolicyDecision(PolicyAction action, uint64_t listenerID, API::Navigation* navigation, std::optional<WebsitePoliciesData>&& data)
-{
-    if (!m_page)
-        return;
-
-    ASSERT(m_activeListener);
-    ASSERT(m_activeListener->listenerID() == listenerID);
-    m_page->receivedPolicyDecision(action, *this, listenerID, navigation, WTFMove(data));
-}
-
-WebFramePolicyListenerProxy& WebFrameProxy::setUpPolicyListenerProxy(uint64_t listenerID, PolicyListenerType policyListenerType)
+WebFramePolicyListenerProxy& WebFrameProxy::setUpPolicyListenerProxy(CompletionHandler<void(WebCore::PolicyAction, API::WebsitePolicies*, ShouldProcessSwapIfPossible, Vector<SafeBrowsingResult>&&)>&& completionHandler, ShouldExpectSafeBrowsingResult expect)
 {
     if (m_activeListener)
-        m_activeListener->invalidate();
-    m_activeListener = WebFramePolicyListenerProxy::create(this, listenerID, policyListenerType);
-    return *static_cast<WebFramePolicyListenerProxy*>(m_activeListener.get());
-}
-
-WebFramePolicyListenerProxy* WebFrameProxy::activePolicyListenerProxy()
-{
-    if (!m_activeListener || m_activeListener->type() != WebFramePolicyListenerProxy::APIType)
-        return nullptr;
-
-    return static_cast<WebFramePolicyListenerProxy*>(m_activeListener.get());
-}
-
-void WebFrameProxy::changeWebsiteDataStore(WebsiteDataStore& websiteDataStore)
-{
-    if (!m_page)
-        return;
-
-    m_page->changeWebsiteDataStore(websiteDataStore);
+        m_activeListener->ignore();
+    m_activeListener = WebFramePolicyListenerProxy::create([this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)] (WebCore::PolicyAction action, API::WebsitePolicies* policies, ShouldProcessSwapIfPossible swap, Vector<SafeBrowsingResult>&& safeBrowsingResults) mutable {
+        completionHandler(action, policies, swap, WTFMove(safeBrowsingResults));
+        m_activeListener = nullptr;
+    }, expect);
+    return *m_activeListener;
 }
 
 void WebFrameProxy::getWebArchive(Function<void (API::Data*, CallbackBase::Error)>&& callbackFunction)

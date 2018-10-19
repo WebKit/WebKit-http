@@ -15,7 +15,7 @@ shouldBeType("new Intl.NumberFormat()", "Intl.NumberFormat");
 var classPrefix = "class DerivedNumberFormat extends Intl.NumberFormat {};";
 shouldBeTrue(classPrefix + "(new DerivedNumberFormat) instanceof DerivedNumberFormat");
 shouldBeTrue(classPrefix + "(new DerivedNumberFormat) instanceof Intl.NumberFormat");
-shouldBeTrue(classPrefix + "new DerivedNumberFormat().format(1) === '1'");
+shouldBeTrue(classPrefix + "new DerivedNumberFormat('en').format(1) === '1'");
 shouldBeTrue(classPrefix + "Object.getPrototypeOf(new DerivedNumberFormat) === DerivedNumberFormat.prototype");
 shouldBeTrue(classPrefix + "Object.getPrototypeOf(Object.getPrototypeOf(new DerivedNumberFormat)) === Intl.NumberFormat.prototype");
 
@@ -42,7 +42,6 @@ function testNumberFormat(numberFormat, possibleDifferences) {
 }
 
 // Locale is processed correctly.
-shouldBeTrue("testNumberFormat(Intl.NumberFormat(), [{locale: 'en-US'}])");
 shouldBeTrue("testNumberFormat(Intl.NumberFormat('en'), [{locale: 'en'}])");
 shouldBeTrue("testNumberFormat(Intl.NumberFormat('eN-uS'), [{locale: 'en-US'}])");
 shouldBeTrue("testNumberFormat(Intl.NumberFormat(['en', 'de']), [{locale: 'en'}])");
@@ -52,6 +51,39 @@ shouldBeTrue("testNumberFormat(Intl.NumberFormat('de'), [{locale: 'de'}])");
 shouldBeTrue("testNumberFormat(Intl.NumberFormat('zh-Hans-CN-u-nu-hanidec'), [{locale: 'zh-Hans-CN-u-nu-hanidec', numberingSystem: 'hanidec'}])");
 shouldBeTrue("testNumberFormat(Intl.NumberFormat('ZH-hans-cn-U-Nu-Hanidec'), [{locale: 'zh-Hans-CN-u-nu-hanidec', numberingSystem: 'hanidec'}])");
 shouldBeTrue("testNumberFormat(Intl.NumberFormat('en-u-nu-abcd'), [{locale: 'en'}])");
+
+let numberingSystems = [
+  "arab", "arabext", "bali", "beng", "deva", "fullwide", "gujr", "guru",
+  "hanidec", "khmr", "knda", "laoo", "latn", "limb", "mlym", "mong", "mymr",
+  "orya", "tamldec", "telu", "thai", "tibt"
+]
+for (let numberingSystem of numberingSystems) {
+  shouldBeTrue(`testNumberFormat(Intl.NumberFormat('en-u-nu-${numberingSystem}'), [{locale: 'en-u-nu-${numberingSystem}', numberingSystem: '${numberingSystem}'}])`);
+}
+
+// Numbering system sensitive format().
+shouldBe("Intl.NumberFormat('en-u-nu-arab').format(1234567890)", "'١٬٢٣٤٬٥٦٧٬٨٩٠'");
+shouldBe("Intl.NumberFormat('en-u-nu-arabext').format(1234567890)", "'۱٬۲۳۴٬۵۶۷٬۸۹۰'");
+shouldBe("Intl.NumberFormat('en-u-nu-bali').format(1234567890)", "'᭑,᭒᭓᭔,᭕᭖᭗,᭘᭙᭐'");
+shouldBe("Intl.NumberFormat('en-u-nu-beng').format(1234567890)", "'১,২৩৪,৫৬৭,৮৯০'");
+shouldBe("Intl.NumberFormat('en-u-nu-deva').format(1234567890)", "'१,२३४,५६७,८९०'");
+shouldBe("Intl.NumberFormat('en-u-nu-fullwide').format(1234567890)", "'１,２３４,５６７,８９０'");
+shouldBe("Intl.NumberFormat('en-u-nu-gujr').format(1234567890)", "'૧,૨૩૪,૫૬૭,૮૯૦'");
+shouldBe("Intl.NumberFormat('en-u-nu-guru').format(1234567890)", "'੧,੨੩੪,੫੬੭,੮੯੦'");
+shouldBe("Intl.NumberFormat('en-u-nu-hanidec').format(1234567890)", "'一,二三四,五六七,八九〇'");
+shouldBe("Intl.NumberFormat('en-u-nu-khmr').format(1234567890)", "'១,២៣៤,៥៦៧,៨៩០'");
+shouldBe("Intl.NumberFormat('en-u-nu-knda').format(1234567890)", "'೧,೨೩೪,೫೬೭,೮೯೦'");
+shouldBe("Intl.NumberFormat('en-u-nu-laoo').format(1234567890)", "'໑,໒໓໔,໕໖໗,໘໙໐'");
+shouldBe("Intl.NumberFormat('en-u-nu-latn').format(1234567890)", "'1,234,567,890'");
+shouldBe("Intl.NumberFormat('en-u-nu-limb').format(1234567890)", "'᥇,᥈᥉᥊,᥋᥌᥍,᥎᥏᥆'");
+shouldBe("Intl.NumberFormat('en-u-nu-mlym').format(1234567890)", "'൧,൨൩൪,൫൬൭,൮൯൦'");
+shouldBe("Intl.NumberFormat('en-u-nu-mong').format(1234567890)", "'᠑,᠒᠓᠔,᠕᠖᠗,᠘᠙᠐'");
+shouldBe("Intl.NumberFormat('en-u-nu-mymr').format(1234567890)", "'၁,၂၃၄,၅၆၇,၈၉၀'");
+shouldBe("Intl.NumberFormat('en-u-nu-orya').format(1234567890)", "'୧,୨୩୪,୫୬୭,୮୯୦'");
+shouldBe("Intl.NumberFormat('en-u-nu-tamldec').format(1234567890)", "'௧,௨௩௪,௫௬௭,௮௯௦'");
+shouldBe("Intl.NumberFormat('en-u-nu-telu').format(1234567890)", "'౧,౨౩౪,౫౬౭,౮౯౦'");
+shouldBe("Intl.NumberFormat('en-u-nu-thai').format(1234567890)", "'๑,๒๓๔,๕๖๗,๘๙๐'");
+shouldBe("Intl.NumberFormat('en-u-nu-tibt').format(1234567890)", "'༡,༢༣༤,༥༦༧,༨༩༠'");
 
 // Ignores irrelevant extension keys.
 shouldBeTrue("testNumberFormat(Intl.NumberFormat('zh-Hans-CN-u-aa-aaaa-co-pinyin-nu-hanidec-bb-bbbb'), [{locale: 'zh-Hans-CN-u-nu-hanidec', numberingSystem: 'hanidec'}])");
@@ -236,7 +268,7 @@ shouldBeTrue("Object.getOwnPropertyDescriptor(Intl.NumberFormat.prototype, Symbo
 // 11.4.3 Intl.NumberFormat.prototype.format
 
 // This named accessor property returns a function that formats a number according to the effective locale and the formatting options of this NumberFormat object.
-var defaultNFormat = Intl.NumberFormat();
+var defaultNFormat = Intl.NumberFormat("en");
 shouldBeType("defaultNFormat.format", "Function");
 
 // The value of the [[Get]] attribute is a function

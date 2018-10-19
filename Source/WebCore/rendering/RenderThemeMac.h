@@ -55,6 +55,7 @@ public:
 
     Color platformActiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const final;
     Color platformActiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const final;
+    Color transformSelectionBackgroundColor(const Color&, OptionSet<StyleColor::Options>) const final;
     Color platformInactiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const final;
     Color platformInactiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const final;
     Color platformActiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options>) const final;
@@ -169,6 +170,8 @@ private:
 #endif
 
     void drawLineForDocumentMarker(const RenderText&, GraphicsContext&, const FloatPoint& origin, float width, DocumentMarkerLineStyle) final;
+
+    bool usingDarkAppearance(const RenderObject&) const final;
 
 private:
     String fileListNameForWidth(const FileList*, const FontCascade&, int width, bool multipleFilesAllowed) const final;

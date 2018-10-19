@@ -74,6 +74,7 @@ static void initializeNetworkSettings()
 void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessCreationParameters& parameters)
 {
     WebCore::setApplicationBundleIdentifier(parameters.uiProcessBundleIdentifier);
+    WebCore::setApplicationSDKVersion(parameters.uiProcessSDKVersion);
 
 #if PLATFORM(IOS)
     SandboxExtension::consumePermanently(parameters.cookieStorageDirectoryExtensionHandle);
@@ -99,7 +100,6 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     setSharedHTTPCookieStorage(parameters.uiProcessCookieStorageIdentifier);
 #endif
 
-    WebCore::NetworkStorageSession::setCookieStoragePartitioningEnabled(parameters.cookieStoragePartitioningEnabled);
     WebCore::NetworkStorageSession::setStorageAccessAPIEnabled(parameters.storageAccessAPIEnabled);
     m_suppressesConnectionTerminationOnSystemChange = parameters.suppressesConnectionTerminationOnSystemChange;
 
@@ -150,6 +150,26 @@ RetainPtr<CFDataRef> NetworkProcess::sourceApplicationAuditData() const
 #endif
 }
 
+static void filterPreloadHSTSEntry(const void* key, const void* value, void* context)
+{
+    HashSet<String>* hostnames = static_cast<HashSet<String>*>(context);
+    auto val = static_cast<CFDictionaryRef>(value);
+    if (CFDictionaryGetValue(val, _kCFNetworkHSTSPreloaded) != kCFBooleanTrue)
+        hostnames->add((CFStringRef)key);
+}
+
+void NetworkProcess::getHostNamesWithHSTSCache(WebCore::NetworkStorageSession& session, HashSet<String>& hostNames)
+{
+    auto HSTSPolicies = adoptCF(_CFNetworkCopyHSTSPolicies(session.platformSession()));
+    CFDictionaryApplyFunction(HSTSPolicies.get(), filterPreloadHSTSEntry, &hostNames);
+}
+
+void NetworkProcess::deleteHSTSCacheForHostNames(WebCore::NetworkStorageSession& session, const Vector<String>& hostNames)
+{
+    for (auto& hostName : hostNames)
+        _CFNetworkResetHSTS(CFURLCreateWithString(kCFAllocatorDefault, hostName.createCFString().get(), NULL), session.platformSession());
+}
+
 void NetworkProcess::clearHSTSCache(WebCore::NetworkStorageSession& session, WallTime modifiedSince)
 {
     NSTimeInterval timeInterval = modifiedSince.secondsSinceEpoch().seconds();
@@ -180,11 +200,6 @@ void NetworkProcess::setSharedHTTPCookieStorage(const Vector<uint8_t>& identifie
 }
 #endif
 
-void NetworkProcess::setCookieStoragePartitioningEnabled(bool enabled)
-{
-    WebCore::NetworkStorageSession::setCookieStoragePartitioningEnabled(enabled);
-}
-
 void NetworkProcess::setStorageAccessAPIEnabled(bool enabled)
 {
     WebCore::NetworkStorageSession::setStorageAccessAPIEnabled(enabled);
@@ -192,50 +207,69 @@ void NetworkProcess::setStorageAccessAPIEnabled(bool enabled)
 
 void NetworkProcess::syncAllCookies()
 {
+    platformSyncAllCookies([this] {
+        didSyncAllCookies();
+    });
+}
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+static void saveCookies(NSHTTPCookieStorage *cookieStorage, CompletionHandler<void()>&& completionHandler)
+{
+    ASSERT(RunLoop::isMain());
+    [cookieStorage _saveCookies:BlockPtr<void()>::fromCallable([completionHandler = WTFMove(completionHandler)]() mutable {
+        // CFNetwork may call the completion block on a background queue, so we need to redispatch to the main thread.
+        RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)]() mutable {
+            completionHandler();
+        });
+    }).get()];
+}
+#endif
+
+void NetworkProcess::platformSyncAllCookies(CompletionHandler<void()>&& completionHander) {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
-    RefPtr<CallbackAggregator> callbackAggregator = CallbackAggregator::create([this] {
-        didSyncAllCookies();
-    });
+    RefPtr<CallbackAggregator> callbackAggregator = CallbackAggregator::create(WTFMove(completionHander));
     WebCore::NetworkStorageSession::forEach([&] (auto& networkStorageSession) {
-        [networkStorageSession.nsCookieStorage() _saveCookies:[callbackAggregator] { }];
+        saveCookies(networkStorageSession.nsCookieStorage(), [callbackAggregator] { });
     });
 #else
     _CFHTTPCookieStorageFlushCookieStores();
-    didSyncAllCookies();
+    completionHander();
 #endif
 
 #pragma clang diagnostic pop
 }
 
-void NetworkProcess::platformPrepareToSuspend()
+void NetworkProcess::platformPrepareToSuspend(CompletionHandler<void()>&& completionHandler)
 {
 #if ENABLE(WIFI_ASSERTIONS)
-    suspendWiFiAssertions(SuspensionReason::ProcessSuspending);
+    suspendWiFiAssertions(SuspensionReason::ProcessSuspending, WTFMove(completionHandler));
+#else
+    completionHandler();
 #endif
 }
 
 void NetworkProcess::platformProcessDidResume()
 {
 #if ENABLE(WIFI_ASSERTIONS)
-    resumeWiFiAssertions();
+    resumeWiFiAssertions(ResumptionReason::ProcessResuming);
 #endif
 }
 
 void NetworkProcess::platformProcessDidTransitionToBackground()
 {
 #if ENABLE(WIFI_ASSERTIONS)
-    suspendWiFiAssertions(SuspensionReason::ProcessBackgrounding);
+    suspendWiFiAssertions(SuspensionReason::ProcessBackgrounding, [] { });
 #endif
 }
-    
+
 void NetworkProcess::platformProcessDidTransitionToForeground()
 {
 #if ENABLE(WIFI_ASSERTIONS)
-    resumeWiFiAssertions();
+    resumeWiFiAssertions(ResumptionReason::ProcessForegrounding);
 #endif
 }
 

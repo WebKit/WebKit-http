@@ -195,6 +195,7 @@
 #define WebKitViewportFitEnabledPreferenceKey @"WebKitViewportFitEnabled"
 #define WebKitConstantPropertiesEnabledPreferenceKey @"WebKitConstantPropertiesEnabled"
 #define WebKitColorFilterEnabledPreferenceKey @"WebKitColorFilterEnabled"
+#define WebKitPunchOutWhiteBackgroundsInDarkModePreferenceKey @"WebKitPunchOutWhiteBackgroundsInDarkMode"
 #define WebKitFetchAPIKeepAliveEnabledPreferenceKey @"WebKitFetchAPIKeepAliveEnabled"
 #define WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey @"WebKitWebAnimationsCSSIntegrationEnabled"
 
@@ -257,5 +258,6 @@
 #define WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallbackKey @"WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallback"
 #define WebKitInspectorAdditionsEnabledPreferenceKey @"WebKitInspectorAdditionsEnabled"
 #define WebKitAccessibilityObjectModelEnabledPreferenceKey @"WebKitAccessibilityObjectModelEnabled"
+#define WebKitAriaReflectionEnabledPreferenceKey @"WebKitAriaReflectionEnabled"
 #define WebKitMediaCapabilitiesEnabledPreferenceKey @"WebKitMediaCapabilitiesEnabled"
 #define WebKitServerTimingEnabledPreferenceKey @"WebKitServerTimingEnabled"

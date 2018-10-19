@@ -440,9 +440,11 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     bytecode/ExecutableToCodeBlockEdge.h
     bytecode/ExecutionCounter.h
     bytecode/ExitKind.h
+    bytecode/ExitingInlineKind.h
     bytecode/ExitingJITType.h
     bytecode/ExpressionRangeInfo.h
     bytecode/HandlerInfo.h
+    bytecode/ICStatusMap.h
     bytecode/InlineCallFrame.h
     bytecode/Instruction.h
     bytecode/InternalFunctionAllocationProfile.h
@@ -792,6 +794,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/JSGlobalObjectInlines.h
     runtime/JSInternalPromise.h
     runtime/JSInternalPromiseDeferred.h
+    runtime/JSMicrotask.h
     runtime/JSLock.h
     runtime/JSMap.h
     runtime/JSMapIterator.h
@@ -971,6 +974,16 @@ add_custom_command(
     DEPENDS ${JAVASCRIPTCORE_DIR}/ucd/CaseFolding.txt
     COMMAND ${PYTHON_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/yarr/generateYarrCanonicalizeUnicode ${JAVASCRIPTCORE_DIR}/ucd/CaseFolding.txt ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/yarr/YarrCanonicalizeUnicode.cpp
     VERBATIM)
+
+#GENERATOR: "IntlCanonicalizeLanguage.h": tables used by Intl
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/IntlCanonicalizeLanguage.h
+    MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/Scripts/generateIntlCanonicalizeLanguage.py
+    DEPENDS ${JAVASCRIPTCORE_DIR}/ucd/language-subtag-registry.txt
+    COMMAND ${PYTHON_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/Scripts/generateIntlCanonicalizeLanguage.py ${JAVASCRIPTCORE_DIR}/ucd/language-subtag-registry.txt ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/IntlCanonicalizeLanguage.h
+    VERBATIM)
+list(APPEND JavaScriptCore_HEADERS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/IntlCanonicalizeLanguage.h)
+WEBKIT_ADD_SOURCE_DEPENDENCIES(${CMAKE_CURRENT_SOURCE_DIR}/runtime/IntlObject.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/IntlCanonicalizeLanguage.h)
 
 #GENERATOR: "KeywordLookup.h": keyword decision tree used by the lexer
 add_custom_command(

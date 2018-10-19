@@ -29,8 +29,6 @@
 #include "xdg-shell-unstable-v6-client-protocol.h"
 #include <glib.h>
 #include <unordered_map>
-#include <xkbcommon/xkbcommon.h>
-#include <xkbcommon/xkbcommon-compose.h>
 
 typedef void* EGLImageKHR;
 typedef void* EGLSurface;
@@ -41,10 +39,10 @@ namespace WPEToolingBackends {
 class WindowViewBackend final : public ViewBackend {
 public:
     WindowViewBackend(uint32_t width, uint32_t height);
-    ~WindowViewBackend();
+    virtual ~WindowViewBackend();
 
 private:
-    void displayBuffer(struct wl_resource*) override;
+    void displayBuffer(EGLImageKHR) override;
 
     static const struct wl_registry_listener s_registryListener;
     static const struct zxdg_shell_v6_listener s_xdgWmBaseListener;
@@ -57,6 +55,7 @@ private:
     static const struct zxdg_toplevel_v6_listener s_xdgToplevelListener;
 
     void handleKeyEvent(uint32_t key, uint32_t state, uint32_t time);
+    uint32_t modifiers() const;
 
     struct SeatData {
         struct {
@@ -65,11 +64,13 @@ private:
             std::pair<int, int> coords { 0, 0 };
             uint32_t button { 0 };
             uint32_t state { 0 };
+            uint32_t modifiers { 0 };
         } pointer;
 
         struct {
             struct wl_keyboard* object { nullptr };
             struct wl_surface* target { nullptr };
+            uint32_t modifiers { 0 };
         } keyboard;
 
         struct {
@@ -77,20 +78,6 @@ private:
             struct wpe_input_touch_event_raw points[10];
             bool tracking { false };
         } touch;
-
-        struct {
-            struct xkb_context* context { nullptr };
-            struct xkb_keymap* keymap { nullptr };
-            struct xkb_state* state { nullptr };
-            struct {
-                xkb_mod_index_t control { 0 };
-                xkb_mod_index_t alt { 0 };
-                xkb_mod_index_t shift { 0 };
-            } indexes;
-            uint8_t modifiers { 0 };
-            struct xkb_compose_table* composeTable { nullptr };
-            struct xkb_compose_state* composeState { nullptr };
-        } xkb;
 
         struct {
             int32_t rate { 0 };
@@ -119,10 +106,7 @@ private:
     unsigned m_program { 0 };
     unsigned m_textureUniform { 0 };
     unsigned m_viewTexture { 0 };
-    struct {
-        struct wl_resource* bufferResource { nullptr };
-        EGLImageKHR image;
-    } m_committed;
+    EGLImageKHR m_committedImage;
 };
 
 } // WPEToolingBackends

@@ -989,15 +989,15 @@ void RenderElement::paintAsInlineBlock(PaintInfo& paintInfo, const LayoutPoint& 
     // Paint all phases atomically, as though the element established its own stacking context.
     // (See Appendix E.2, section 6.4 on inline block/table/replaced elements in the CSS2.1 specification.)
     // This is also used by other elements (e.g. flex items and grid items).
-    PaintPhase paintPhaseToUse = isExcludedAndPlacedInBorder() ? paintInfo.phase : PaintPhaseForeground;
-    if (paintInfo.phase == PaintPhaseSelection)
+    PaintPhase paintPhaseToUse = isExcludedAndPlacedInBorder() ? paintInfo.phase : PaintPhase::Foreground;
+    if (paintInfo.phase == PaintPhase::Selection)
         paint(paintInfo, childPoint);
     else if (paintInfo.phase == paintPhaseToUse) {
-        paintPhase(*this, PaintPhaseBlockBackground, paintInfo, childPoint);
-        paintPhase(*this, PaintPhaseChildBlockBackgrounds, paintInfo, childPoint);
-        paintPhase(*this, PaintPhaseFloat, paintInfo, childPoint);
-        paintPhase(*this, PaintPhaseForeground, paintInfo, childPoint);
-        paintPhase(*this, PaintPhaseOutline, paintInfo, childPoint);
+        paintPhase(*this, PaintPhase::BlockBackground, paintInfo, childPoint);
+        paintPhase(*this, PaintPhase::ChildBlockBackgrounds, paintInfo, childPoint);
+        paintPhase(*this, PaintPhase::Float, paintInfo, childPoint);
+        paintPhase(*this, PaintPhase::Foreground, paintInfo, childPoint);
+        paintPhase(*this, PaintPhase::Outline, paintInfo, childPoint);
 
         // Reset |paintInfo| to the original phase.
         paintInfo.phase = paintPhaseToUse;
@@ -1361,7 +1361,7 @@ Color RenderElement::selectionColor(CSSPropertyID colorProperty) const
     // If the element is unselectable, or we are only painting the selection,
     // don't override the foreground color with the selection foreground color.
     if (style().userSelect() == UserSelect::None
-        || (view().frameView().paintBehavior() & (PaintBehaviorSelectionOnly | PaintBehaviorSelectionAndBackgroundsOnly)))
+        || (view().frameView().paintBehavior().contains(OptionSet<PaintBehavior>(PaintBehavior::SelectionOnly) | PaintBehavior::SelectionAndBackgroundsOnly)))
         return Color();
 
     if (std::unique_ptr<RenderStyle> pseudoStyle = selectionPseudoStyle()) {
@@ -1407,11 +1407,11 @@ Color RenderElement::selectionBackgroundColor() const
         return Color();
 
     if (frame().selection().shouldShowBlockCursor() && frame().selection().isCaret())
-        return style().visitedDependentColorWithColorFilter(CSSPropertyColor).blendWithWhite();
+        return theme().transformSelectionBackgroundColor(style().visitedDependentColorWithColorFilter(CSSPropertyColor), document().styleColorOptions());
 
     std::unique_ptr<RenderStyle> pseudoStyle = selectionPseudoStyle();
     if (pseudoStyle && pseudoStyle->visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor).isValid())
-        return pseudoStyle->visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor).blendWithWhite();
+        return theme().transformSelectionBackgroundColor(pseudoStyle->visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor), document().styleColorOptions());
 
     if (frame().selection().isFocusedAndActive())
         return theme().activeSelectionBackgroundColor(document().styleColorOptions());

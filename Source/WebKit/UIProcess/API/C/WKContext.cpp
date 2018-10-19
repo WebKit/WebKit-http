@@ -402,6 +402,16 @@ void WKContextSetCanHandleHTTPSServerTrustEvaluation(WKContextRef contextRef, bo
     toImpl(contextRef)->setCanHandleHTTPSServerTrustEvaluation(value);
 }
 
+void WKContextSetMaximumNumberOfPrewarmedProcesses(WKContextRef contextRef, unsigned value)
+{
+    toImpl(contextRef)->setMaximumNumberOfPrewarmedProcesses(value);
+}
+
+void WKContextSetCustomWebContentServiceBundleIdentifier(WKContextRef contextRef, WKStringRef name)
+{
+    toImpl(contextRef)->setCustomWebContentServiceBundleIdentifier(toImpl(name)->string());
+}
+
 void WKContextSetDiskCacheSpeculativeValidationEnabled(WKContextRef contextRef, bool value)
 {
     toImpl(contextRef)->configuration().setDiskCacheSpeculativeValidationEnabled(value);

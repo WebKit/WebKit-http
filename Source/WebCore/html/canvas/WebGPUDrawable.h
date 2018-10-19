@@ -27,26 +27,27 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WebGPUObject.h"
+#include "GPUDrawable.h"
+#include <wtf/Ref.h>
+#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-class GPUDrawable;
 class WebGPUTexture;
 
-class WebGPUDrawable : public WebGPUObject {
+class WebGPUDrawable : public RefCounted<WebGPUDrawable> {
 public:
-    virtual ~WebGPUDrawable();
-    static Ref<WebGPUDrawable> create(WebGPURenderingContext*);
+    ~WebGPUDrawable();
+    static Ref<WebGPUDrawable> create(GPUDrawable&&);
 
-    WebGPUTexture* texture();
-
-    GPUDrawable* drawable() { return m_drawable.get(); }
+    GPUDrawable& drawable() { return m_drawable; }
+    WebGPUTexture& texture() { return m_texture.get(); }
 
 private:
-    WebGPUDrawable(WebGPURenderingContext*);
-    RefPtr<GPUDrawable> m_drawable;
-    RefPtr<WebGPUTexture> m_texture;
+    explicit WebGPUDrawable(GPUDrawable&&);
+
+    GPUDrawable m_drawable;
+    Ref<WebGPUTexture> m_texture;
 };
 
 } // namespace WebCore

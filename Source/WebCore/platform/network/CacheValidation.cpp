@@ -29,7 +29,6 @@
 #include "CookiesStrategy.h"
 #include "HTTPHeaderMap.h"
 #include "NetworkStorageSession.h"
-#include "PlatformCookieJar.h"
 #include "PlatformStrategies.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
@@ -338,7 +337,7 @@ static String headerValueForVary(const ResourceRequest& request, const String& h
         auto* cookieStrategy = platformStrategies() ? platformStrategies()->cookiesStrategy() : nullptr;
         if (!cookieStrategy) {
             ASSERT(sessionID == PAL::SessionID::defaultSessionID());
-            return cookieRequestHeaderFieldValue(NetworkStorageSession::defaultStorageSession(), request.firstPartyForCookies(), SameSiteInfo::create(request), request.url(), std::nullopt, std::nullopt, includeSecureCookies).first;
+            return NetworkStorageSession::defaultStorageSession().cookieRequestHeaderFieldValue(request.firstPartyForCookies(), SameSiteInfo::create(request), request.url(), std::nullopt, std::nullopt, includeSecureCookies).first;
         }
         return cookieStrategy->cookieRequestHeaderFieldValue(sessionID, request.firstPartyForCookies(), SameSiteInfo::create(request), request.url(), std::nullopt, std::nullopt, includeSecureCookies).first;
     }
@@ -350,8 +349,7 @@ Vector<std::pair<String, String>> collectVaryingRequestHeaders(const WebCore::Re
     String varyValue = response.httpHeaderField(WebCore::HTTPHeaderName::Vary);
     if (varyValue.isEmpty())
         return { };
-    Vector<String> varyingHeaderNames;
-    varyValue.split(',', varyingHeaderNames);
+    Vector<String> varyingHeaderNames = varyValue.split(',');
     Vector<std::pair<String, String>> varyingRequestHeaders;
     varyingRequestHeaders.reserveCapacity(varyingHeaderNames.size());
     for (auto& varyHeaderName : varyingHeaderNames) {

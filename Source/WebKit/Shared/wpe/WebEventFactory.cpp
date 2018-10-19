@@ -26,12 +26,17 @@
 #include "config.h"
 #include "WebEventFactory.h"
 
+#include <WebCore/PlatformKeyboardEvent.h>
 #include <WebCore/Scrollbar.h>
 #include <cmath>
 #include <wpe/wpe.h>
-#include <wtf/glib/GUniquePtr.h>
 
 namespace WebKit {
+
+static inline bool isWPEKeyCodeFromKeyPad(unsigned keyCode)
+{
+    return keyCode >= WPE_KEY_KP_Space && keyCode <= WPE_KEY_KP_9;
+}
 
 static WebEvent::Modifiers modifiersForEvent(struct wpe_input_keyboard_event* event)
 {
@@ -50,28 +55,6 @@ static WebEvent::Modifiers modifiersForEvent(struct wpe_input_keyboard_event* ev
     return static_cast<WebEvent::Modifiers>(modifiers);
 }
 
-static String singleCharacterStringForKeyEvent(struct wpe_input_keyboard_event* event)
-{
-    const char* singleCharacter = wpe_input_single_character_for_key_event(wpe_input_key_mapper_get_singleton(), event);
-    if (singleCharacter)
-        return String(singleCharacter);
-
-    glong length;
-    GUniquePtr<gunichar2> uchar16(g_ucs4_to_utf16(&event->unicode, 1, 0, &length, nullptr));
-    if (uchar16)
-        return String(reinterpret_cast<UChar*>(uchar16.get()), length);
-    return String();
-}
-
-static String identifierStringForKeyEvent(struct wpe_input_keyboard_event* event)
-{
-    const char* identifier = wpe_input_identifier_for_key_event(wpe_input_key_mapper_get_singleton(), event);
-    if (identifier)
-        return String(identifier);
-
-    return String::format("U+%04X", event->unicode);
-}
-
 WallTime wallTimeForEventTime(uint64_t timestamp)
 {
     // This works if and only if the WPE backend uses CLOCK_MONOTONIC for its
@@ -84,14 +67,43 @@ WallTime wallTimeForEventTime(uint64_t timestamp)
 
 WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(struct wpe_input_keyboard_event* event)
 {
-    String singleCharacterString = singleCharacterStringForKeyEvent(event);
-    String identifierString = identifierStringForKeyEvent(event);
+    String singleCharacterString = WebCore::PlatformKeyboardEvent::singleCharacterString(event->key_code);
 
     return WebKeyboardEvent(event->pressed ? WebEvent::KeyDown : WebEvent::KeyUp,
-        singleCharacterString, singleCharacterString, identifierString,
-        wpe_input_windows_key_code_for_key_event(wpe_input_key_mapper_get_singleton(), event),
-        event->keyCode, 0, false, false, false,
-        modifiersForEvent(event), wallTimeForEventTime(event->time));
+        WebCore::PlatformKeyboardEvent::singleCharacterString(event->key_code),
+        WebCore::PlatformKeyboardEvent::keyValueForWPEKeyCode(event->key_code),
+        WebCore::PlatformKeyboardEvent::keyCodeForHardwareKeyCode(event->hardware_key_code),
+        WebCore::PlatformKeyboardEvent::keyIdentifierForWPEKeyCode(event->key_code),
+        WebCore::PlatformKeyboardEvent::windowsKeyCodeForWPEKeyCode(event->key_code),
+        event->key_code,
+        isWPEKeyCodeFromKeyPad(event->key_code),
+        modifiersForEvent(event),
+        wallTimeForEventTime(event->time));
+}
+
+static inline short pressedMouseButtons(uint32_t modifiers)
+{
+    // MouseEvent.buttons
+    // https://www.w3.org/TR/uievents/#ref-for-dom-mouseevent-buttons-1
+
+    // 0 MUST indicate no button is currently active.
+    short buttons = 0;
+
+    // 1 MUST indicate the primary button of the device (in general, the left button or the only button on
+    // single-button devices, used to activate a user interface control or select text).
+    if (modifiers & wpe_input_pointer_modifier_button1)
+        buttons |= 1;
+
+    // 2 MUST indicate the secondary button (in general, the right button, often used to display a context menu),
+    // if present.
+    if (modifiers & wpe_input_pointer_modifier_button2)
+        buttons |= 2;
+
+    // 4 MUST indicate the auxiliary button (in general, the middle button, often combined with a mouse wheel).
+    if (modifiers & wpe_input_pointer_modifier_button3)
+        buttons |= 4;
+
+    return buttons;
 }
 
 WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_event* event, float deviceScaleFactor)
@@ -128,7 +140,7 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(struct wpe_input_pointer_even
     // FIXME: Proper button support. Modifiers. deltaX/Y/Z. Click count.
     WebCore::IntPoint position(event->x, event->y);
     position.scale(1 / deviceScaleFactor);
-    return WebMouseEvent(type, button, 0, position, position,
+    return WebMouseEvent(type, button, pressedMouseButtons(event->modifiers), position, position,
         0, 0, 0, clickCount, static_cast<WebEvent::Modifiers>(0), wallTimeForEventTime(event->time));
 }
 

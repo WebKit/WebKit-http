@@ -32,7 +32,9 @@
 #include "HTMLTableCellElement.h"
 #include "PaintInfo.h"
 #include "RenderTableCol.h"
+#include "RenderTheme.h"
 #include "RenderView.h"
+#include "Settings.h"
 #include "StyleProperties.h"
 #include "TransformState.h"
 #include <wtf/IsoMallocInlines.h>
@@ -1105,7 +1107,7 @@ LayoutUnit RenderTableCell::borderHalfAfter(bool outer) const
 
 void RenderTableCell::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    ASSERT(paintInfo.phase != PaintPhaseCollapsedTableBorders);
+    ASSERT(paintInfo.phase != PaintPhase::CollapsedTableBorders);
     RenderBlockFlow::paint(paintInfo, paintOffset);
 }
 
@@ -1196,7 +1198,7 @@ void RenderTableCell::sortBorderValues(RenderTable::CollapsedBorderValues& borde
 
 void RenderTableCell::paintCollapsedBorders(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    ASSERT(paintInfo.phase == PaintPhaseCollapsedTableBorders);
+    ASSERT(paintInfo.phase == PaintPhase::CollapsedTableBorders);
 
     if (!paintInfo.shouldPaintWithinRoot(*this) || style().visibility() != Visibility::Visible)
         return;
@@ -1282,8 +1284,15 @@ void RenderTableCell::paintBackgroundsBehindCell(PaintInfo& paintInfo, const Lay
     if (backgroundObject != this)
         adjustedPaintOffset.moveBy(location());
 
-    Color color = backgroundObject->style().visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor);
-    auto& bgLayer = backgroundObject->style().backgroundLayers();
+    const auto& style = backgroundObject->style();
+    auto& bgLayer = style.backgroundLayers();
+
+    CompositeOperator compositeOp = CompositeSourceOver;
+    Color color = style.visitedDependentColor(CSSPropertyBackgroundColor);
+    if (document().settings().punchOutWhiteBackgroundsInDarkMode() && Color::isWhiteColor(color) && theme().usingDarkAppearance(*this))
+        compositeOp = CompositeDestinationOut;
+
+    color = style.colorByApplyingColorFilter(color);
 
     if (bgLayer.hasImage() || color.isValid()) {
         // We have to clip here because the background would paint
@@ -1295,7 +1304,7 @@ void RenderTableCell::paintBackgroundsBehindCell(PaintInfo& paintInfo, const Lay
                 width() - borderLeft() - borderRight(), height() - borderTop() - borderBottom());
             paintInfo.context().clip(clipRect);
         }
-        paintFillLayers(paintInfo, color, bgLayer, LayoutRect(adjustedPaintOffset, frameRect().size()), BackgroundBleedNone, CompositeSourceOver, backgroundObject);
+        paintFillLayers(paintInfo, color, bgLayer, LayoutRect(adjustedPaintOffset, frameRect().size()), BackgroundBleedNone, compositeOp, backgroundObject);
     }
 }
 
@@ -1326,7 +1335,7 @@ void RenderTableCell::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoin
 
 void RenderTableCell::paintMask(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    if (style().visibility() != Visibility::Visible || paintInfo.phase != PaintPhaseMask)
+    if (style().visibility() != Visibility::Visible || paintInfo.phase != PaintPhase::Mask)
         return;
 
     RenderTable* tableElt = table();

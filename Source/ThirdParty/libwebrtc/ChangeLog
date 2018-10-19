@@ -1,3 +1,48 @@
+2018-08-06  David Kilzer  <ddkilzer@apple.com>
+
+        [libwebrtc] SafeSetError() in peerconnection.cc contains use-after-move of webrtc::RTCError variable
+        <https://webkit.org/b/188337>
+        <rdar://problem/42882908>
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/pc/peerconnection.cc:
+        (webrtc::SafeSetError): Make static since it's not used outside
+        this translation unit.
+        (webrtc::SafeSetError): Ditto.  Change first argument to
+        webrtc::RTCError&& to prevent unnecessary copying of std::move()
+        argument.  Fix bug by saving value of `error.ok()` before moving
+        to `*error_out`.
+        * WebKit/0013-Fix-SafeSetError-use-after-move.patch: Add patch.
+
+2018-08-03  Alex Christensen  <achristensen@webkit.org>
+
+        Fix spelling of "overridden"
+        https://bugs.webkit.org/show_bug.cgi?id=188315
+
+        Reviewed by Darin Adler.
+
+        * Source/webrtc/p2p/client/basicportallocator.h:
+
+2018-07-24  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE][GTK] Implement PeerConnection API on top of libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=186932
+
+        Reviewed by Philippe Normand.
+
+        * CMakeLists.txt: Properly set our build as `WEBRTC_WEBKIT_BUILD`
+
+2018-07-19  Youenn Fablet  <youenn@apple.com>
+
+        PlatformThread::Run does not need to log the fact that it is running
+        https://bugs.webkit.org/show_bug.cgi?id=187801i
+        <rdar://problem/40331421>
+
+        Reviewed by Chris Dumez.
+
+        * Source/webrtc/rtc_base/platform_thread.cc:
+
 2018-07-14  Kocsen Chung  <kocsen_chung@apple.com>
 
         Ensure WebKit stack is ad-hoc signed

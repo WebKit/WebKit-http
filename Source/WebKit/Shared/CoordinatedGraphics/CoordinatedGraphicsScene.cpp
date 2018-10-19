@@ -24,7 +24,7 @@
 
 #if USE(COORDINATED_GRAPHICS)
 
-#include "CoordinatedBackingStore.h"
+#include <WebCore/CoordinatedBackingStore.h>
 #include <WebCore/NicosiaBuffer.h>
 #include <WebCore/TextureMapper.h>
 #include <WebCore/TextureMapperBackingStore.h>
@@ -128,14 +128,6 @@ void CoordinatedGraphicsScene::onNewBufferAvailable()
 }
 #endif
 
-void CoordinatedGraphicsScene::setLayerRepaintCountIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
-{
-    if (!layer->isShowingRepaintCounter() || !state.repaintCountChanged)
-        return;
-
-    layer->setRepaintCount(state.repaintCount);
-}
-
 void CoordinatedGraphicsScene::setLayerChildrenIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
 {
     if (!state.childrenChanged)
@@ -192,7 +184,9 @@ void CoordinatedGraphicsScene::setLayerState(CoordinatedLayerID id, const Coordi
         layer->setSolidColor(layerState.solidColor);
 
     if (layerState.debugVisualsChanged)
-        layer->setDebugVisuals(layerState.debugVisuals.showDebugBorders, layerState.debugVisuals.debugBorderColor, layerState.debugVisuals.debugBorderWidth, layerState.debugVisuals.showRepaintCounter);
+        layer->setDebugVisuals(layerState.debugVisuals.showDebugBorders, layerState.debugVisuals.debugBorderColor, layerState.debugVisuals.debugBorderWidth);
+    if (layerState.repaintCountChanged)
+        layer->setRepaintCounter(layerState.repaintCount.showRepaintCounter, layerState.repaintCount.count);
 
     if (layerState.replicaChanged)
         layer->setReplicaLayer(getLayerByIDIfExists(layerState.replica));
@@ -223,7 +217,6 @@ void CoordinatedGraphicsScene::setLayerState(CoordinatedLayerID id, const Coordi
     removeTilesIfNeeded(layer, layerState, commitScope);
     updateTilesIfNeeded(layer, layerState, commitScope);
     syncPlatformLayerIfNeeded(layer, layerState);
-    setLayerRepaintCountIfNeeded(layer, layerState);
 }
 
 TextureMapperLayer* CoordinatedGraphicsScene::getLayerByIDIfExists(CoordinatedLayerID id)
@@ -430,6 +423,9 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
 {
     if (!m_client)
         return;
+
+    m_nicosia = state.nicosia;
+    // FIXME: Start using the Nicosia layer state for updates.
 
     CommitScope commitScope;
 

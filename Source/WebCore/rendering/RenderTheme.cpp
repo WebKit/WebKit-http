@@ -27,6 +27,7 @@
 #include "FileList.h"
 #include "FileSystem.h"
 #include "FloatConversion.h"
+#include "FloatRoundedRect.h"
 #include "FocusController.h"
 #include "FontSelector.h"
 #include "Frame.h"
@@ -275,7 +276,7 @@ bool RenderTheme::paint(const RenderBox& box, ControlStates& controlStates, cons
     // If painting is disabled, but we aren't updating control tints, then just bail.
     // If we are updating control tints, just schedule a repaint if the theme supports tinting
     // for that control.
-    if (paintInfo.context().updatingControlTints()) {
+    if (paintInfo.context().invalidatingControlTints()) {
         if (controlSupportsTints(box))
             box.repaint();
         return false;
@@ -583,7 +584,7 @@ Color RenderTheme::activeSelectionBackgroundColor(OptionSet<StyleColor::Options>
 {
     auto& cache = colorCache(options);
     if (!cache.activeSelectionBackgroundColor.isValid())
-        cache.activeSelectionBackgroundColor = platformActiveSelectionBackgroundColor(options).blendWithWhite();
+        cache.activeSelectionBackgroundColor = transformSelectionBackgroundColor(platformActiveSelectionBackgroundColor(options), options);
     return cache.activeSelectionBackgroundColor;
 }
 
@@ -591,8 +592,13 @@ Color RenderTheme::inactiveSelectionBackgroundColor(OptionSet<StyleColor::Option
 {
     auto& cache = colorCache(options);
     if (!cache.inactiveSelectionBackgroundColor.isValid())
-        cache.inactiveSelectionBackgroundColor = platformInactiveSelectionBackgroundColor(options).blendWithWhite();
+        cache.inactiveSelectionBackgroundColor = transformSelectionBackgroundColor(platformInactiveSelectionBackgroundColor(options), options);
     return cache.inactiveSelectionBackgroundColor;
+}
+
+Color RenderTheme::transformSelectionBackgroundColor(const Color& color, OptionSet<StyleColor::Options>) const
+{
+    return color.blendWithWhite();
 }
 
 Color RenderTheme::activeSelectionForegroundColor(OptionSet<StyleColor::Options> options) const

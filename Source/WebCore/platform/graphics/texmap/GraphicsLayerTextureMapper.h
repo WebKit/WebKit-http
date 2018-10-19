@@ -90,14 +90,13 @@ public:
 
     Color debugBorderColor() const { return m_debugBorderColor; }
     float debugBorderWidth() const { return m_debugBorderWidth; }
-    void setRepaintCount(int);
 
 private:
     // GraphicsLayer
     bool isGraphicsLayerTextureMapper() const override { return true; }
 
     // TextureMapperPlatformLayer::Client
-    void platformLayerWillBeDestroyed() override { setContentsToPlatformLayer(0, NoContentsLayer); }
+    void platformLayerWillBeDestroyed() override { setContentsToPlatformLayer(0, ContentsLayerPurpose::None); }
     void setPlatformLayerNeedsDisplay() override { setContentsNeedsDisplay(); }
 
     void commitLayerChanges();

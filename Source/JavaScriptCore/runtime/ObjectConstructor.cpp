@@ -304,6 +304,8 @@ EncodedJSValue JSC_HOST_CALL objectConstructorAssign(ExecState* exec)
     // https://bugs.webkit.org/show_bug.cgi?id=185358
     bool targetCanPerformFastPut = jsDynamicCast<JSFinalObject*>(vm, target) && target->canPerformFastPutInlineExcludingProto(vm);
 
+    Vector<RefPtr<UniquedStringImpl>, 8> properties;
+    MarkedArgumentBuffer values;
     unsigned argsCount = exec->argumentCount();
     for (unsigned i = 1; i < argsCount; ++i) {
         JSValue sourceValue = exec->uncheckedArgument(i);
@@ -337,11 +339,21 @@ EncodedJSValue JSC_HOST_CALL objectConstructorAssign(ExecState* exec)
                 return true;
             };
 
-            Structure* structure = source->structure(vm);
-            if (canPerformFastPropertyEnumerationForObjectAssign(structure)) {
+            if (canPerformFastPropertyEnumerationForObjectAssign(source->structure(vm))) {
                 // |source| Structure does not have any getters. And target can perform fast put.
                 // So enumerating properties and putting properties are non observable.
-                structure->forEachProperty(vm, [&] (const PropertyMapEntry& entry) -> bool {
+
+                // FIXME: It doesn't seem like we should have to do this in two phases, but
+                // we're running into crashes where it appears that source is transitioning
+                // under us, and even ends up in a state where it has a null butterfly. My
+                // leading hypothesis here is that we fire some value replacement watchpoint
+                // that ends up transitioning the structure underneath us.
+                // https://bugs.webkit.org/show_bug.cgi?id=187837
+
+                // Do not clear since Vector::clear shrinks the backing store.
+                properties.resize(0);
+                values.clear();
+                source->structure(vm)->forEachProperty(vm, [&] (const PropertyMapEntry& entry) -> bool {
                     if (entry.attributes & PropertyAttribute::DontEnum)
                         return true;
 
@@ -349,12 +361,18 @@ EncodedJSValue JSC_HOST_CALL objectConstructorAssign(ExecState* exec)
                     if (propertyName.isPrivateName())
                         return true;
 
+                    properties.append(entry.key);
+                    values.appendWithCrashOnOverflow(source->getDirect(entry.offset));
+
+                    return true;
+                });
+
+                for (size_t i = 0; i < properties.size(); ++i) {
                     // FIXME: We could put properties in a batching manner to accelerate Object.assign more.
                     // https://bugs.webkit.org/show_bug.cgi?id=185358
                     PutPropertySlot putPropertySlot(target, true);
-                    target->putOwnDataProperty(vm, propertyName, source->getDirect(entry.offset), putPropertySlot);
-                    return true;
-                });
+                    target->putOwnDataProperty(vm, properties[i].get(), values.at(i), putPropertySlot);
+                }
                 continue;
             }
         }

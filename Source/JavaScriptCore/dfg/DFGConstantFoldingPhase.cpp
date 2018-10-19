@@ -557,15 +557,24 @@ private:
                     }
                 }
                 
+                auto addFilterStatus = [&] () {
+                    m_insertionSet.insertNode(
+                        indexInBlock, SpecNone, FilterGetByIdStatus, node->origin,
+                        OpInfo(m_graph.m_plan.recordedStatuses().addGetByIdStatus(node->origin.semantic, status)),
+                        Edge(child));
+                };
+                
                 if (status.numVariants() == 1) {
+                    addFilterStatus();
                     emitGetByOffset(indexInBlock, node, baseValue, status[0], identifierNumber);
                     changed = true;
                     break;
                 }
-                
-                if (!isFTL(m_graph.m_plan.mode))
+
+                if (!m_graph.m_plan.isFTL())
                     break;
                 
+                addFilterStatus();
                 MultiGetByOffsetData* data = m_graph.m_multiGetByOffsetData.add();
                 for (const GetByIdVariant& variant : status.variants()) {
                     data->cases.append(
@@ -608,8 +617,8 @@ private:
                     break;
 
                 ASSERT(status.numVariants());
-                
-                if (status.numVariants() > 1 && !isFTL(m_graph.m_plan.mode))
+
+                if (status.numVariants() > 1 && !m_graph.m_plan.isFTL())
                     break;
                 
                 changed = true;
@@ -639,12 +648,17 @@ private:
                 if (!allGood)
                     break;
                 
+                m_insertionSet.insertNode(
+                    indexInBlock, SpecNone, FilterPutByIdStatus, node->origin,
+                    OpInfo(m_graph.m_plan.recordedStatuses().addPutByIdStatus(node->origin.semantic, status)),
+                    Edge(child));
+                
                 if (status.numVariants() == 1) {
                     emitPutByOffset(indexInBlock, node, baseValue, status[0], identifierNumber);
                     break;
                 }
-                
-                ASSERT(isFTL(m_graph.m_plan.mode));
+
+                ASSERT(m_graph.m_plan.isFTL());
 
                 MultiPutByOffsetData* data = m_graph.m_multiPutByOffsetData.add();
                 data->variants = status.variants();

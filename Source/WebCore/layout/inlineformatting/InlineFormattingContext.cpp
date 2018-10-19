@@ -31,8 +31,15 @@
 #include "FloatingState.h"
 #include "InlineFormattingState.h"
 #include "LayoutBox.h"
+#include "LayoutContainer.h"
 #include "LayoutContext.h"
+#include "LayoutInlineBox.h"
+#include "LayoutInlineContainer.h"
+#include "Logging.h"
+#include "SimpleLineBreaker.h"
+#include "TextContentProvider.h"
 #include <wtf/IsoMallocInlines.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 namespace Layout {
@@ -44,26 +51,55 @@ InlineFormattingContext::InlineFormattingContext(const Box& formattingContextRoo
 {
 }
 
-void InlineFormattingContext::layout(LayoutContext&, FormattingState&) const
+void InlineFormattingContext::layout(LayoutContext& layoutContext, FormattingState& inlineFormattingState) const
 {
-}
+    if (!is<Container>(root()))
+        return;
 
-std::unique_ptr<FormattingState> InlineFormattingContext::createFormattingState(Ref<FloatingState>&& floatingState, const LayoutContext& layoutContext) const
-{
-    return std::make_unique<InlineFormattingState>(WTFMove(floatingState), layoutContext);
-}
+    LOG_WITH_STREAM(FormattingContextLayout, stream << "[Start] -> inline formatting context -> layout context(" << &layoutContext << ") formatting root(" << &root() << ")");
 
-Ref<FloatingState> InlineFormattingContext::createOrFindFloatingState(LayoutContext& layoutContext) const
-{
-    // If the block container box that initiates this inline formatting context also establishes a block context, the floats outside of the formatting root
-    // should not interfere with the content inside.
-    // <div style="float: left"></div><div style="overflow: hidden"> <- is a non-intrusive float, because overflow: hidden triggers new block formatting context.</div>
-    if (root().establishesBlockFormattingContext())
-        return FloatingState::create();
-    // Otherwise, the formatting context inherits the floats from the parent formatting context.
-    // Find the formatting state in which this formatting root lives, not the one it creates (this) and use its floating state.
-    auto& formattingState = layoutContext.formattingStateForBox(root());
-    return formattingState.floatingState();
+    TextContentProvider textContentProvider;
+    auto& formattingRoot = downcast<Container>(root());
+    auto* layoutBox = formattingRoot.firstInFlowOrFloatingChild();
+    // Casually walk through the block's descendants and place the inline boxes one after the other as much as we can (yeah, I am looking at you floats).
+    while (layoutBox) {
+        if (is<Container>(layoutBox)) {
+            ASSERT(is<InlineContainer>(layoutBox));
+            layoutBox = downcast<Container>(*layoutBox).firstInFlowOrFloatingChild();
+            continue;
+        }
+        auto& inlineBox = downcast<InlineBox>(*layoutBox);
+        // Only text content at this point.
+        if (inlineBox.textContent())
+            textContentProvider.appendText(*inlineBox.textContent(), inlineBox.style(), true);
+
+        for (; layoutBox; layoutBox = layoutBox->containingBlock()) {
+            if (layoutBox == &formattingRoot) {
+                layoutBox = nullptr;
+                break;
+            }
+            if (auto* nextSibling = layoutBox->nextInFlowOrFloatingSibling()) {
+                layoutBox = nextSibling;
+                break;
+            }
+        }
+        ASSERT(!layoutBox || layoutBox->isDescendantOf(formattingRoot));
+    }
+
+    auto& formattingRootDisplayBox = *layoutContext.displayBoxForLayoutBox(formattingRoot);
+    auto lineLeft = formattingRootDisplayBox.contentBoxLeft();
+    auto lineRight = formattingRootDisplayBox.contentBoxRight();
+
+    SimpleLineBreaker::LineConstraintList constraints;
+    constraints.append({ { }, lineLeft, lineRight });
+    auto textRunList = textContentProvider.textRuns();
+    SimpleLineBreaker simpleLineBreaker(textRunList, textContentProvider, WTFMove(constraints), formattingRoot.style());
+
+    // Since we don't yet have a display tree context for inline boxes, let's just cache the runs on the state so that they can be verified against the sll/inline tree runs later.
+    ASSERT(is<InlineFormattingState>(inlineFormattingState));
+    downcast<InlineFormattingState>(inlineFormattingState).addLayoutRuns(simpleLineBreaker.runs());
+
+    LOG_WITH_STREAM(FormattingContextLayout, stream << "[End] -> inline formatting context -> layout context(" << &layoutContext << ") formatting root(" << &root() << ")");
 }
 
 void InlineFormattingContext::computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const

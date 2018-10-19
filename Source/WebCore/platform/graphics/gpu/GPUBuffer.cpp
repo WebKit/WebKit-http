@@ -28,37 +28,20 @@
 
 #if ENABLE(WEBGPU)
 
-#include "GPUDevice.h"
 #include "Logging.h"
+#include <JavaScriptCore/ArrayBuffer.h>
 
 namespace WebCore {
-
-RefPtr<GPUBuffer> GPUBuffer::create(GPUDevice* device, ArrayBufferView* arrayBuffer)
-{
-    RefPtr<GPUBuffer> buffer = adoptRef(new GPUBuffer(device, arrayBuffer));
-    return buffer;
-}
 
 GPUBuffer::~GPUBuffer()
 {
     LOG(WebGPU, "GPUBuffer::~GPUBuffer()");
 }
 
-#if !PLATFORM(COCOA)
-unsigned long GPUBuffer::length() const
+unsigned GPUBuffer::length() const
 {
-    return 0;
+    return m_contents ? m_contents->byteLength() : 0;
 }
-
-RefPtr<ArrayBuffer> GPUBuffer::contents()
-{
-    if (m_contents)
-        return m_contents;
-
-    m_contents = ArrayBuffer::create(nullptr, 1);
-    return m_contents;
-}
-#endif
 
 } // namespace WebCore
 

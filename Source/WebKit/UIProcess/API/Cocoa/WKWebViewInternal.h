@@ -30,6 +30,7 @@
 #import "SameDocumentNavigationType.h"
 #import "WKWebViewConfiguration.h"
 #import "_WKAttachmentInternal.h"
+#import "_WKWebViewPrintFormatterInternal.h"
 #import <wtf/RefPtr.h>
 #import <wtf/RetainPtr.h>
 
@@ -61,7 +62,6 @@ struct PrintInfo;
 @class WKWebViewContentProviderRegistry;
 @class WKPasswordView;
 @class _WKFrameHandle;
-@protocol _WKWebViewPrintProvider;
 
 @interface WKWebView () WK_WEB_VIEW_PROTOCOLS {
 
@@ -91,7 +91,7 @@ struct PrintInfo;
 
 - (void)_scrollToContentScrollPosition:(WebCore::FloatPoint)scrollPosition scrollOrigin:(WebCore::IntPoint)scrollOrigin;
 - (BOOL)_scrollToRect:(WebCore::FloatRect)targetRect origin:(WebCore::FloatPoint)origin minimumScrollDistance:(float)minimumScrollDistance;
-- (void)_scrollByContentOffset:(WebCore::FloatPoint)offset;
+- (void)_scrollByContentOffset:(WebCore::FloatPoint)offset animated:(BOOL)animated;
 - (void)_zoomToFocusRect:(WebCore::FloatRect)focusedElementRect selectionRect:(WebCore::FloatRect)selectionRectInDocumentCoordinates insideFixed:(BOOL)insideFixed fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll;
 - (BOOL)_zoomToRect:(WebCore::FloatRect)targetRect withOrigin:(WebCore::FloatPoint)origin fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale minimumScrollDistance:(float)minimumScrollDistance;
 - (void)_zoomOutWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated;
@@ -147,6 +147,7 @@ struct PrintInfo;
 @property (nonatomic, readonly) WKSelectionGranularity _selectionGranularity;
 
 @property (nonatomic, readonly) BOOL _allowsDoubleTapGestures;
+@property (nonatomic, readonly) BOOL _haveSetObscuredInsets;
 @property (nonatomic, readonly) UIEdgeInsets _computedObscuredInset;
 @property (nonatomic, readonly) UIEdgeInsets _computedUnobscuredSafeAreaInset;
 #endif

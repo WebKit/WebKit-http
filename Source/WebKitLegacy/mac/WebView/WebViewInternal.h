@@ -146,6 +146,8 @@ OBJC_CLASS NSTextAlternatives;
 - (WebSelectionServiceController&)_selectionServiceController;
 #endif
 
+- (void)_windowVisibilityChanged:(NSNotification *)notification;
+
 @end
 
 #endif
@@ -267,6 +269,7 @@ OBJC_CLASS NSTextAlternatives;
 #endif
 
 - (void)_preferencesChanged:(WebPreferences *)preferences;
+- (void)_invalidateUserAgentCache;
 
 #if ENABLE(VIDEO) && defined(__cplusplus)
 - (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement mode:(WebCore::HTMLMediaElementEnums::VideoFullscreenMode)mode;

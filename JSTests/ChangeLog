@@ -1,3 +1,304 @@
+2018-08-01  Andy VanWagoner  <andy@vanwagoner.family>
+
+        [INTL] Implement hourCycle in DateTimeFormat
+        https://bugs.webkit.org/show_bug.cgi?id=188006
+
+        Reviewed by Darin Adler.
+
+        Removed fixed hourCycle expectations.
+
+        * test262/expectations.yaml:
+
+2018-07-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Record CoW status in ArrayProfile correctly
+        https://bugs.webkit.org/show_bug.cgi?id=187949
+
+        Reviewed by Saam Barati.
+
+        * stress/array-profile-should-record-copy-on-write.js: Added.
+        (shouldBe):
+        (test1):
+        (test2):
+        (test3):
+
+2018-07-26  Mark Lam  <mark.lam@apple.com>
+
+        arrayProtoPrivateFuncConcatMemcpy() should handle copying from an Undecided type array.
+        https://bugs.webkit.org/show_bug.cgi?id=188065
+        <rdar://problem/42515726>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-188065.js: Added.
+
+2018-07-25  Andy VanWagoner  <andy@vanwagoner.family>
+
+        [INTL] Call Typed Array elements toLocaleString with locale and options
+        https://bugs.webkit.org/show_bug.cgi?id=185796
+
+        Reviewed by Keith Miller.
+
+        Remove now passing TypedArray toLocaleString expectation.
+
+        * test262/expectations.yaml:
+
+2018-07-25  Andy VanWagoner  <andy@vanwagoner.family>
+
+        [INTL] Intl constructor lengths should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=187960
+
+        Reviewed by Saam Barati.
+
+        Removed fixed length expectations, and updated Intl.Locale expectations
+        that error differently since r234127.
+
+        * test262/expectations.yaml:
+
+2018-07-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r234183.
+        https://bugs.webkit.org/show_bug.cgi?id=187983
+
+        cause regression in Kraken gaussian blur and desaturate
+        (Requested by yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Record CoW status in ArrayProfile"
+        https://bugs.webkit.org/show_bug.cgi?id=187949
+        https://trac.webkit.org/changeset/234183
+
+2018-07-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Record CoW status in ArrayProfile
+        https://bugs.webkit.org/show_bug.cgi?id=187949
+
+        Reviewed by Saam Barati.
+
+        * stress/array-profile-should-record-copy-on-write.js: Added.
+        (shouldBe):
+        (test1):
+        (test2):
+        (test3):
+
+2018-07-23  Saam Barati  <sbarati@apple.com>
+
+        need to didFoldClobberWorld when we constant fold GetByVal
+        https://bugs.webkit.org/show_bug.cgi?id=187917
+        <rdar://problem/42505095>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/get-by-val-fold-did-clobber-world.js: Added.
+        (__f_443):
+
+2018-07-23  Andy VanWagoner  <andy@vanwagoner.family>
+
+        [INTL] Language tags are not canonicalized
+        https://bugs.webkit.org/show_bug.cgi?id=185836
+
+        Reviewed by Keith Miller.
+
+        Remove expected failures that have been fixed.
+
+        * test262/expectations.yaml:
+
+2018-07-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] GetByIdVariant and InByIdVariant do not need slot base if they are not "hit" variants
+        https://bugs.webkit.org/show_bug.cgi?id=187891
+
+        Reviewed by Saam Barati.
+
+        * stress/in-miss-variant-merge.js: Added.
+        (shouldBe):
+        (test):
+        * stress/miss-variant-merge.js: Added.
+        (shouldBe):
+        (test):
+
+2018-07-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Fold GetByVal if the indexed value is non configurable and non writable
+        https://bugs.webkit.org/show_bug.cgi?id=186462
+
+        Reviewed by Saam Barati.
+
+        * stress/folding-get-by-val-with-read-only-dont-delete-object.js: Added.
+        (shouldBe):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        * stress/folding-get-by-val-with-read-only-dont-delete-runtime-array.js: Added.
+        (shouldBe):
+        (test1):
+        (test2):
+        (test5):
+        * stress/folding-get-by-val-with-read-only-dont-delete.js: Added.
+        (shouldBe):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+
+2018-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        We should support CreateThis in the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=164904
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/polyvariant-get-by-id-shorter-tower.js: Added.
+        (polyvariant):
+        (Foo.prototype.func):
+        (Foo):
+        (foo):
+        (Bar.prototype.func):
+        (Bar):
+        (bar):
+        * microbenchmarks/polyvariant-get-by-id-tower.js: Added.
+        (polyvariant):
+        (Foo.prototype.func):
+        (Foo):
+        (foo):
+        (Bar.prototype.func):
+        (Bar):
+        (bar):
+        (Baz.prototype.func):
+        (Baz):
+        (baz):
+
+2018-07-20  Michael Saboff  <msaboff@apple.com>
+
+        DFG AbstractInterpreter: CheckArray filters array modes for DirectArguments/ScopedArguments using only NonArray
+        https://bugs.webkit.org/show_bug.cgi?id=187827
+        rdar://problem/42146858
+
+        Reviewed by Saam Barati.
+
+        New regression tests.
+
+        * stress/direct-arguments-check-array.js: Added.
+        (setup.f2):
+        (setup):
+        (forOfArray):
+        (forOfArgs):
+        (callEveryOnArgs):
+        * stress/scoped-arguments-check-array.js: Added.
+        (setup.foo):
+        (setup.f2):
+        (setup):
+        (forOfArray):
+        (forOfArgs):
+        (callEveryOnArgs):
+
+2018-07-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Fold GetByVal if Array is CoW
+        https://bugs.webkit.org/show_bug.cgi?id=186459
+
+        Reviewed by Saam Barati.
+
+        * stress/folding-get-by-val-with-immutable-butterfly-out-of-bounds-foldable.js: Added.
+        (shouldBe):
+        (test0):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        * stress/folding-get-by-val-with-immutable-butterfly-out-of-bounds.js: Added.
+        (shouldBe):
+        (test0):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        * stress/folding-get-by-val-with-immutable-butterfly-with-types.js: Added.
+        (shouldBe):
+        (test0):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        * stress/folding-get-by-val-with-immutable-butterfly.js: Added.
+        (shouldBe):
+        (checking):
+        (test):
+
+2018-07-20  Saam Barati  <sbarati@apple.com>
+
+        CompareEq should be using KnownOtherUse instead of OtherUse
+        https://bugs.webkit.org/show_bug.cgi?id=186814
+        <rdar://problem/39720030>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/compare-eq-should-use-known-other-use.js: Added.
+        (bar):
+        (i.func):
+
+2018-07-20  David Fenton  <david_fenton@apple.com>
+
+        stress/spread-forward-varargs-stack-overflow.js is timing out in 32 bit JSC tests.
+        https://bugs.webkit.org/show_bug.cgi?id=187698
+
+        Unreviewed test gardening, skipped test in 32 Bit JSC.
+
+        * stress/spread-forward-varargs-stack-overflow.js:
+
+2018-07-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        JSON.stringify should emit non own properties if second array argument includes
+        https://bugs.webkit.org/show_bug.cgi?id=187724
+
+        Reviewed by Mark Lam.
+
+        * stress/json-stringify-getter-call.js: Added.
+        (shouldBe):
+        (A.prototype.get cocoa):
+        (A.prototype.get cappuccino):
+        (A):
+        (shouldBe.JSON.stringify):
+
+2018-07-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] JSON.stringify's replacer should use `isArray` instead of JSArray checks
+        https://bugs.webkit.org/show_bug.cgi?id=187755
+
+        Reviewed by Mark Lam.
+
+        * stress/json-stringify-gap-calculation-should-be-after-replacer-check.js: Added.
+        (shouldThrow):
+        (shouldThrow.string.toString):
+        * test262/expectations.yaml:
+
+2018-07-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Generator and AsyncGeneratorMethod's prototype is incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=187585
+
+        Reviewed by Darin Adler.
+
+        * stress/default-proto-for-async-generator.js: Added.
+        (shouldBe):
+        (async.asyncGenerator):
+        * stress/default-proto-for-generator.js: Added.
+        (shouldBe):
+        (generator):
+        * stress/prototype-for-async-generator.js: Added.
+        (shouldBe):
+        (async.asyncGenerator):
+        (A.prototype.async.asyncGenerator):
+        (A):
+        * test262/expectations.yaml:
+
 2018-07-11  Ryan Haddad  <ryanhaddad@apple.com>
 
         Skip JSC test stress/keep-checks-when-converting-to-lazy-js-constant-in-strength-reduction.js

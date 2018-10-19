@@ -81,6 +81,24 @@ ColorInputType::~ColorInputType()
     endColorChooser();
 }
 
+bool ColorInputType::isMouseFocusable() const
+{
+    ASSERT(element());
+    return element()->isTextFormControlFocusable();
+}
+
+bool ColorInputType::isKeyboardFocusable(KeyboardEvent*) const
+{
+    ASSERT(element());
+#if PLATFORM(IOS)
+    if (element()->isReadOnly())
+        return false;
+
+    return element()->isTextFormControlFocusable();
+#endif
+    return false;
+}
+
 bool ColorInputType::isColorControl() const
 {
     return true;
@@ -169,7 +187,7 @@ void ColorInputType::detach()
 
 bool ColorInputType::shouldRespectListAttribute()
 {
-    return InputType::themeSupportsDataListUI(this);
+    return true;
 }
 
 bool ColorInputType::typeMismatchFor(const String& value) const

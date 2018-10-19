@@ -1,3 +1,2801 @@
+2018-08-08  Truitt Savell  <tsavell@apple.com>
+
+        Adjusting test expectations for imported/blink/fast/text/international-iteration-simple-text.html
+        https://bugs.webkit.org/show_bug.cgi?id=179853
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2018-08-08  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=188409
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations: Remove expectations for now-passing tests.
+
+2018-08-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] fast/events/ios/contenteditable-autocapitalize.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=188401
+        <rdar://problem/32542300>
+
+        Reviewed by Ryosuke Niwa.
+
+        Minor tweaks to make this test a bit easier to follow. Use async-await for each step of the test, and pass in
+        the current autocapitalization type to `runTestWithAutocapitalizeType` rather than the next type. See Tools
+        ChangeLog for more details.
+
+        * fast/events/ios/contenteditable-autocapitalize.html:
+        * platform/ios/TestExpectations:
+
+        Remove the failing test expecation.
+
+2018-08-08  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Update behavior of percentage row tracks and gutters
+        https://bugs.webkit.org/show_bug.cgi?id=188403
+
+        Reviewed by Sergio Villar Senin.
+
+        Update tests as needed according to the new behavior.
+
+        * TestExpectations: Two grid gutters tests from WPT css-align suite are passing now.
+        * fast/css-grid-layout/grid-columns-rows-get-set-expected.txt:
+        * fast/css-grid-layout/grid-columns-rows-get-set-multiple-expected.txt:
+        * fast/css-grid-layout/grid-columns-rows-get-set-multiple.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set.html:
+        * fast/css-grid-layout/grid-gutters-as-percentage-expected.txt:
+        * fast/css-grid-layout/grid-gutters-as-percentage.html:
+        * fast/css-grid-layout/grid-track-sizing-with-percentages-and-orthogonal-flows-expected.txt:
+        * fast/css-grid-layout/grid-track-sizing-with-percentages-and-orthogonal-flows.html:
+        * fast/css-grid-layout/named-grid-line-get-set-expected.txt:
+        * fast/css-grid-layout/named-grid-line-get-set.html:
+        * fast/css-grid-layout/nested-grid-expected.html:
+        * fast/css-grid-layout/percent-track-breadths-regarding-container-size.html:
+        * fast/css-grid-layout/resources/grid-columns-rows-get-set-multiple.js:
+        * fast/css-grid-layout/resources/grid-columns-rows-get-set.js:
+
+2018-08-07  Chris Dumez  <cdumez@apple.com>
+
+        navigator.sendBeacon does not work in pagehide callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=188329
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * http/wpt/beacon/sendBeacon-in-pagehide-expected.txt: Added.
+        * http/wpt/beacon/sendBeacon-in-pagehide.html: Added.
+        * http/wpt/beacon/support/sendBeacon-onpagehide-window.html: Added.
+
+2018-08-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Allow href attribute without xlink on SVG elements
+        https://bugs.webkit.org/show_bug.cgi?id=153854
+
+        Reviewed by Dean Jackson.
+
+        * fast/selectors/any-link-basics-2-expected.txt:
+        * fast/selectors/any-link-basics-2.html:
+        Re-baseline this test because it was assuming the bare href should not 
+        work for the SVG <a> element.
+        * svg/custom/href-svg-namespace-animate-expected.svg: Added.
+        * svg/custom/href-svg-namespace-animate.svg: Added.
+        * svg/custom/href-svg-namespace-dynamic-expected.svg: Added.
+        * svg/custom/href-svg-namespace-dynamic.svg: Added.
+        * svg/custom/href-svg-namespace-elements-expected.txt: Added.
+        * svg/custom/href-svg-namespace-elements.html: Added.
+        * svg/custom/href-svg-namespace-static-expected.svg: Added.
+        * svg/custom/href-svg-namespace.static-svg: Added.
+
+2018-08-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        document.open and document.write must throw while the HTML parser is synchronously constructing a custom element
+        https://bugs.webkit.org/show_bug.cgi?id=187319
+        <rdar://problem/42843012>
+
+        Reviewed by Frédéric Wang.
+
+        Added W3C style testharness.js tests. The WPT test added by https://github.com/web-platform-tests/wpt/pull/12037
+        doesn't test nearly as many edge cases.
+
+        * fast/custom-elements/resources/navigation-destination.html: Added.
+        * fast/custom-elements/throw-on-dynamic-markup-insertion-counter-construct-expected.txt: Added.
+        * fast/custom-elements/throw-on-dynamic-markup-insertion-counter-construct.html: Added.
+        * fast/custom-elements/throw-on-dynamic-markup-insertion-counter-reactions-expected.txt: Added.
+        * fast/custom-elements/throw-on-dynamic-markup-insertion-counter-reactions.html: Added.
+
+2018-08-07  Rob Buis  <rbuis@igalia.com>
+
+        fetch() with subresource integrity crashes on zero length body
+        https://bugs.webkit.org/show_bug.cgi?id=184325
+
+        Reviewed by Alex Christensen.
+
+        Add a subtest for zero length resources.
+
+        * http/tests/subresource-integrity/resources/empty-resource.txt: Added.
+        * http/tests/subresource-integrity/sri-fetch-expected.txt:
+        * http/tests/subresource-integrity/sri-fetch-worker-expected.txt:
+        * http/tests/subresource-integrity/sri-fetch.js:
+
+2018-08-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r234669.
+        https://bugs.webkit.org/show_bug.cgi?id=188390
+
+        Didn't commit the actual change (Requested by rniwa on
+        #webkit).
+
+        Reverted changeset:
+
+        "document.open and document.write must throw while the HTML
+        parser is synchronously constructing a custom element"
+        https://bugs.webkit.org/show_bug.cgi?id=187319
+        https://trac.webkit.org/changeset/234669
+
+2018-08-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        document.open and document.write must throw while the HTML parser is synchronously constructing a custom element
+        https://bugs.webkit.org/show_bug.cgi?id=187319
+        <rdar://problem/42843012>
+
+        Reviewed by Frédéric Wang.
+
+        Added W3C style testharness.js tests. The WPT test added by https://github.com/web-platform-tests/wpt/pull/12037
+        doesn't test nearly as many edge cases.
+
+        * fast/custom-elements/resources/navigation-destination.html: Added.
+        * fast/custom-elements/throw-on-dynamic-markup-insertion-counter-construct-expected.txt: Added.
+        * fast/custom-elements/throw-on-dynamic-markup-insertion-counter-construct.html: Added.
+        * fast/custom-elements/throw-on-dynamic-markup-insertion-counter-reactions-expected.txt: Added.
+        * fast/custom-elements/throw-on-dynamic-markup-insertion-counter-reactions.html: Added.
+
+2018-08-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r233778): Text selection sometimes cannot be extended in iframes
+        https://bugs.webkit.org/show_bug.cgi?id=188374
+        <rdar://problem/42928657>
+
+        Reviewed by Simon Fraser.
+
+        Add 2 new layout tests to cover the original bug that r233778 fixed, as well as the regression in this bug.
+
+        * editing/selection/ios/selection-handles-in-iframe-expected.txt: Added.
+        * editing/selection/ios/selection-handles-in-iframe.html: Added.
+
+        Add a test to verify that the user can select text in an iframe by dragging selection handles.
+
+        * editing/selection/ios/selection-handles-in-readonly-input-expected.txt: Added.
+        * editing/selection/ios/selection-handles-in-readonly-input.html: Added.
+
+        Add a test to verify that dragging a selection handle outside of a readonly input does not cause the selection
+        to jump outside of the input and clear out the selection in the input.
+
+2018-08-07  Alex Christensen  <achristensen@webkit.org>
+
+        Fix things after r234640
+        https://bugs.webkit.org/show_bug.cgi?id=188133
+
+        * platform/mac-sierra-wk2/http/tests/navigation/keyboard-events-during-provisional-navigation-expected.txt: Added.
+        Added test expectation for Sierra, which has no safe browsing framework.
+
+2018-08-07  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/skip-waiting-installed.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=188246
+
+        Unreviewed test gardening, marked test as flaky because the test is wrong.
+
+        * TestExpectations:
+
+2018-08-06  Simon Fraser  <simon.fraser@apple.com>
+
+        De-flake some animation tests
+        https://bugs.webkit.org/show_bug.cgi?id=188356
+
+        Reviewed by Dean Jackson.
+        
+        The tests in legacy-animation-engine were flakey because the animation can start before
+        we get a chance to register the event listener. Fix by starting the animation after the
+        load event fires. Make the non-legacy tests match.
+
+        * compositing/visible-rect/animated-from-none.html:
+        * compositing/visible-rect/animated.html:
+        * legacy-animation-engine/compositing/visible-rect/animated-from-none.html:
+        * legacy-animation-engine/compositing/visible-rect/animated.html:
+
+2018-08-06  Alex Christensen  <achristensen@webkit.org>
+
+        Check with SafeBrowsing during navigation in WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=188133
+
+        Reviewed by Andy Estes.
+
+        * platform/wk2/http/tests/navigation/keyboard-events-during-provisional-navigation-expected.txt: Copied from http/tests/navigation/keyboard-events-during-provisional-navigation-expected.txt.
+        This test verifies that keys cannot be entered during navigation, and the keys seen in WebKitTestRunner
+        are before the navigation.  This is seen now because there is a brief moment in time between when
+        WebKitTestRunner calls decidePolicyForNavigationAction and when the WebContent receives it.
+        * svg/custom/anchor-on-use.svg:
+        This test verifies what the page looks like after navigation.  It used to just call testRunner.notifyDone
+        when the link was clicked and because of the timing of messages sent with the UIProcess, WebKitTestRunner
+        would see the results after the page navigated.  Because we are adding a delay during navigation, the
+        message order can no longer be relied on in this way.  To fix this, we are just calling notifyDone in an
+        unload handler.
+
+2018-08-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        fast/custom-elements/custom-element-registry-wrapper-should-stay-alive.html always timeouts on debug bots
+        https://bugs.webkit.org/show_bug.cgi?id=188353
+
+        Remove the timeout expectation now that the test is passing on debug bots.
+
+        * TestExpectations:
+
+2018-08-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add CEReactions=NotNeeded for reactions only needed for customized builtins
+        https://bugs.webkit.org/show_bug.cgi?id=187851
+
+        Reviewed by Chris Dumez.
+
+        Added a regression test for enqueuing a custom element reaction in a DOM API marked as [CEReaction]
+        inside another DOM API with [CEReaction=NotNeeded]. WebKit should not hit a debug assertion added
+        by this patch.
+
+        * fast/custom-elements/custom-element-reaction-within-disallowed-scope-expected.txt: Added.
+        * fast/custom-elements/custom-element-reaction-within-disallowed-scope.html: Added.
+
+2018-08-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: split-up async stack trace test suite to improve clarity and maintainability
+        https://bugs.webkit.org/show_bug.cgi?id=185398
+        <rdar://problem/40040289>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/debugger/async-stack-trace-basic-expected.txt: Added.
+        * inspector/debugger/async-stack-trace-basic.html: Added.
+        Basic tests that check for the existence of an asynchronous stack trace
+        when pausing inside an asynchronous callback function.
+
+        * inspector/debugger/async-stack-trace-event-listener-expected.txt: Added.
+        * inspector/debugger/async-stack-trace-event-listener.html: Added.
+        * inspector/debugger/async-stack-trace-expected.txt: Removed.
+
+        * inspector/debugger/async-stack-trace-truncate-expected.txt: Added.
+        * inspector/debugger/async-stack-trace-truncate.html: Added.
+        Test scenarios where the number of call frames in the async stack trace
+        exceeds the maximum depth and is truncated.
+
+        * inspector/debugger/async-stack-trace.html: Removed.
+
+        * inspector/debugger/resources/async-stack-trace-test.js: Added.
+        (TestPage.registerInitializer.window.getAsyncStackTrace):
+        (TestPage.registerInitializer.logCallFrame):
+        (TestPage.registerInitializer.window.logAsyncStackTrace):
+        (TestPage.registerInitializer.window.addAsyncStackTraceTestCase):
+        (TestPage.registerInitializer):
+        Utility functions used across tests.
+
+        * inspector/debugger/resources/postMessage-echo.html: Removed.
+        This was unnecessary. To check that an async stack trace exists when
+        pausing in a postMessage handler, all we need is an iframe that posts a
+        message to its parent as soon as it is created. The iframe is now created
+        inline in async-stack-trace-basic.html.
+
+        * platform/mac/TestExpectations:
+
+2018-08-06  Daniel Bates  <dabates@apple.com>
+
+        Setting table layout to fixed causes incorrect cell width calculations
+        https://bugs.webkit.org/show_bug.cgi?id=90068
+
+        Reviewed by Simon Fraser.
+
+        Derived from the test case written by Pravin D.
+
+        Add a test case to ensure we do not regress cell width computation in fixed table layout
+        when colspan is greater than the number of columns in the table.
+
+        * fast/table/fixed-table-layout/width-distribution-when-colspan-greater-than-table-columns-expected.html: Added.
+        * fast/table/fixed-table-layout/width-distribution-when-colspan-greater-than-table-columns.html: Added.
+
+2018-08-06  Daniel Bates  <dabates@apple.com>
+
+        Add tests to ensure that Same-Site cookies are stored when set as the first party
+        https://bugs.webkit.org/show_bug.cgi?id=188080
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/cookies/resources/cookie-utilities.js:
+        (getDOMCookies): Return an empty dictionary when there are no DOM cookies. Currently we
+        return {"": undefined}.
+        * http/tests/cookies/resources/cookie-utilities.php: Added.
+        * http/tests/cookies/resources/echo-http-and-dom-cookies-and-notify-done.php: Added.
+        * http/tests/cookies/same-site/set-first-party-cross-site-cookies-expected.txt: Added.
+        * http/tests/cookies/same-site/set-first-party-cross-site-cookies.php: Added.
+        * http/tests/cookies/same-site/set-first-party-same-site-cookies-expected.txt: Added.
+        * http/tests/cookies/same-site/set-first-party-same-site-cookies.php: Added.
+        * platform/ios-12/TestExpectations: Skip the tests until the fix for <rdar://problem/42255251>
+        is shipped.
+        * platform/mac/TestExpectations: Ditto.
+
+2018-08-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        fast/custom-elements/custom-element-registry-wrapper-should-stay-alive.html always timeouts on debug bots
+        https://bugs.webkit.org/show_bug.cgi?id=188353
+
+        Reviewed by Saam Barati.
+
+        Rely on GCController.collect() instead of allocating 1,000,000 objects in WebKitTestRunner / DumpRenderTree
+        so that debug builders won't timeout.
+
+        * fast/custom-elements/custom-element-registry-wrapper-should-stay-alive.html:
+
+2018-08-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        fast/custom-elements/custom-element-registry-wrapper-should-stay-alive.html always timeouts on debug bots
+        https://bugs.webkit.org/show_bug.cgi?id=188353
+
+        Add a timeout expectation to the test while I verify the fix for the test.
+
+        * TestExpectations:
+
+2018-08-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening for mac-wk1.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-08-06  Aditya Keerthi  <akeerthi@apple.com>
+
+        [iOS] Indeterminate checkboxes appear unchecked
+        https://bugs.webkit.org/show_bug.cgi?id=160484
+        <rdar://problem/31143185>
+
+        Reviewed by Wenson Hsieh.
+
+        Added reftest to ensure that the indeterminate checkbox does not appear the same
+        as an unchecked checkbox.  
+
+        * fast/forms/ios/render-indeterminate-checkbox-expected-mismatch.html: Added.
+        * fast/forms/ios/render-indeterminate-checkbox.html: Added.
+        * platform/ios/fast/forms/indeterminate-expected.txt: Rebaseline.
+
+2018-08-06  Truitt Savell  <tsavell@apple.com>
+
+        storage/indexeddb/modern/opendatabase-after-storage-crash.html is causing tests in directory svg/ to timeout at random
+        https://bugs.webkit.org/show_bug.cgi?id=187931
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2018-08-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Tests that try to interact with the QuickType bar time out on iOS 11+
+        https://bugs.webkit.org/show_bug.cgi?id=188335
+        <rdar://problem/32542437> and <rdar://problem/32542433>
+
+        Reviewed by Tim Horton.
+
+        Refactors a couple of tests that currently rely on the QuickType bar being shown when the hardware keyboard is
+        presented in the iOS simulator, so that it can insert text suggestions by tapping QuickType bar buttons; in the
+        first place, it was never guaranteed that this bar would show up, or even have more than 1 text suggestion.
+        Instead, we use the existing UIScriptController::applyAutocorrection method to trigger text replacement in the
+        same way tapping a button on the QuickType bar would replace the current word with the suggested word.
+
+        * fast/events/ios/before-input-events-prevent-candidate-insertion-expected.txt:
+        * fast/events/ios/before-input-events-prevent-candidate-insertion.html:
+        * fast/events/ios/input-events-insert-replacement-text-expected.txt:
+        * fast/events/ios/input-events-insert-replacement-text.html:
+        * platform/ios/TestExpectations:
+
+        Removes a [Timeout] expectation.
+
+        * resources/ui-helper.js:
+        (window.UIHelper.typeCharacter):
+
+        Add a new UIHelper method to type a character using the keyboard. Sends hardware keyboard events on the WebKit2
+        port of iOS, and uses EventSender elsewhere.
+
+        (window.UIHelper.applyAutocorrection):
+
+        Add a new UIHelper method that wraps UIScriptController::applyAutocorrection. Only supported in WebKit2
+        currently.
+
+        (window.UIHelper):
+
+2018-08-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Caret disappears after resigning and becoming first responder if active focus state is retained
+        https://bugs.webkit.org/show_bug.cgi?id=188322
+        <rdar://problem/42455270>
+
+        Reviewed by Tim Horton.
+
+        Adds a new layout test to verify that (1) selection handles are not shown when selecting a word by long
+        pressing prior to ending the touch, and (2) selection handles are shown after ending the touch.
+
+        * editing/selection/ios/selection-handles-after-touch-end-expected.txt: Added.
+        * editing/selection/ios/selection-handles-after-touch-end.html: Added.
+        * platform/win/TestExpectations:
+
+        Skip iOS selection tests on Windows.
+
+        * resources/ui-helper.js:
+
+        Introduces new hooks in UIHelper to grab the frames of the start and end selection handle views.
+
+        (window.UIHelper.getSelectionStartGrabberViewRect.return.new.Promise.):
+        (window.UIHelper.getSelectionStartGrabberViewRect.return.new.Promise):
+        (window.UIHelper.getSelectionStartGrabberViewRect):
+        (window.UIHelper.getSelectionEndGrabberViewRect.return.new.Promise.):
+        (window.UIHelper.getSelectionEndGrabberViewRect.return.new.Promise):
+        (window.UIHelper.getSelectionEndGrabberViewRect):
+
+2018-08-06  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] New webgl 2.0 failures.
+
+        Unreviewed gardening.
+        * platform/wpe/TestExpectations: Two webgl 2.0 tests are failing,
+        mark them.
+
+2018-08-06  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Skip new webgl 2.0 tests. Unreviewed gardening.
+
+        * platform/gtk/TestExpectations: Expanded webgl 2.0 skipped
+        test to include all, since there were new failures.
+
+2018-08-06  Frederic Wang  <fwang@igalia.com>
+
+        ASSERTION !data.customElementReactionQueue() when creating custom element inside an SVG document
+        https://bugs.webkit.org/show_bug.cgi?id=187802
+
+        The assertion has been removed in bug 188327. This patch updates the test expectations and
+        add some non-regression test to verify different cases of XML custom element construction.
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestExpectations: This test no longer crashes but times out because of bug 187800.
+        * fast/custom-elements/xml-parsing-create-and-element-for-a-token-expected.txt: Added.
+        * fast/custom-elements/xml-parsing-create-and-element-for-a-token.svg: Added.
+
+2018-08-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Implement self.queueMicrotask in Workers
+        https://bugs.webkit.org/show_bug.cgi?id=188247
+
+        Reviewed by Ryosuke Niwa.
+
+        * http/wpt/workers/queue-microtask.any-expected.txt: Added.
+        * http/wpt/workers/queue-microtask.any.html: Added.
+        * http/wpt/workers/queue-microtask.any.js: Added.
+        (promise_test):
+        (promise_test.):
+        (queueMicrotask.promise_test):
+        (test):
+        * http/wpt/workers/queue-microtask.any.worker-expected.txt: Added.
+        * http/wpt/workers/queue-microtask.any.worker.html: Added.
+
+2018-08-05  Rob Buis  <rbuis@igalia.com>
+
+        [GTK][WPE] Fetch tests assert in SubresourceLoader::didReceiveResponse()
+        https://bugs.webkit.org/show_bug.cgi?id=188163
+
+        Reviewed by Frédéric Wang.
+
+        Unskip since this will not crash in Debug anymore.
+
+        * platform/wpe/TestExpectations:
+
+2018-08-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add support for microtasks in workers
+        https://bugs.webkit.org/show_bug.cgi?id=188246
+
+        Reviewed by Darin Adler.
+
+        * http/wpt/workers/microtasks.any-expected.txt: Added.
+        * http/wpt/workers/microtasks.any.html: Added.
+        * http/wpt/workers/microtasks.any.js: Added.
+        (promise_test):
+        * http/wpt/workers/microtasks.any.worker-expected.txt: Added.
+        * http/wpt/workers/microtasks.any.worker.html: Added.
+
+2018-08-05  Philippe Normand  <pnormand@igalia.com>
+
+        [MediaCapabilities] Platform integration
+        https://bugs.webkit.org/show_bug.cgi?id=187850
+
+        Reviewed by Eric Carlson.
+
+        Mock tests for the MediaCapabilities specification.
+
+        * media/mediacapabilities/mock-decodingInfo-expected.txt: Added.
+        * media/mediacapabilities/mock-decodingInfo.html: Added.
+        * media/mediacapabilities/mock-encodingInfo-expected.txt: Added.
+        * media/mediacapabilities/mock-encodingInfo.html: Added.
+        * media/video-test.js:
+        (checkMediaCapabilitiesInfo):
+
+2018-08-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Properties set on window.customElements can disappear due to GC
+        https://bugs.webkit.org/show_bug.cgi?id=172575
+        <rdar://problem/32440668>
+
+        Reviewed by Saam Barati.
+
+        Added a regression test.
+
+        * fast/custom-elements/custom-element-registry-wrapper-should-stay-alive-expected.txt: Added.
+        * fast/custom-elements/custom-element-registry-wrapper-should-stay-alive.html: Added.
+
+2018-08-03  Justin Fan  <justin_fan@apple.com>
+
+        WebGL 2 conformance: vertex_arrays/vertex_array_object.html
+        https://bugs.webkit.org/show_bug.cgi?id=188291
+        <rdar://problem/42792709>
+
+        Get https://www.khronos.org/registry/webgl/conformance-suites/2.0.0/conformance2/vertex_arrays/vertex-array-object.html 
+        working on Mac OS and iOS, and check in the new test expectations.
+
+        Reviewed by Dean Jackson.
+
+        * TestExpectations: No longer skipping vertex_arrays tests.
+        The following FAILed before this patch but are now expecting PASSes.
+        * webgl/2.0.0/conformance2/glsl3/array-as-return-value-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-assign-constructor-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-assign-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-complex-indexing-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-element-increment-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-equality-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-in-complex-expression-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/bool-type-cast-bug-uint-ivec-uvec-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/compare-structs-containing-arrays-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/const-array-init-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/frag-depth-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/loops-with-side-effects-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/no-attribute-vertex-shader-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/short-circuiting-in-loop-condition-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/tricky-loop-conditions-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/vector-dynamic-indexing-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/vector-dynamic-indexing-nv-driver-bug-expected.txt:
+
+2018-08-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip imported/w3c/web-platform-tests/FileAPI/reading-data-section/filereader_abort.html.
+        https://bugs.webkit.org/show_bug.cgi?id=187269
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-08-03  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [LayoutTests][websocket] Return correct value even when cookie is not set.
+        https://bugs.webkit.org/show_bug.cgi?id=188317
+
+        Reviewed by Darin Adler.
+
+        > ws://127.0.0.1:8880/websocket/tests/hybi/echo-cookie_wsh.py
+        This web socket script throw exception when cookie is not set. That is ended up with
+        immediate disconnection and causes timeout for failure tests which makes debugging hard.
+
+        * http/tests/websocket/tests/hybi/echo-cookie_wsh.py:
+        (web_socket_transfer_data):
+        * platform/wincairo/TestExpectations:
+
+2018-08-03  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=188316
+
+        Unreviewed test gardening.
+
+        Skip some flaky tests.
+        Add comments why we skip for some platform dependent reason.
+
+        * platform/wincairo/TestExpectations:
+
+2018-08-03  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [LayoutTests][PHP] Fix old-style script which uses function name as a keyword.
+        https://bugs.webkit.org/show_bug.cgi?id=188289
+
+        Reviewed by Alex Christensen.
+
+        Function name should be passed as a string literal. In PHP, named function is
+        not the first class citizen.
+
+        * http/tests/cookies/resources/echo-cookies.php:
+
+2018-08-03  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [LayoutTests] Suppress PHP Error message by removing an execution time limit.
+        https://bugs.webkit.org/show_bug.cgi?id=188288
+
+        Reviewed by Alex Christensen.
+
+        Remove execution timeout.
+
+        * http/tests/multipart/resources/multipart.php:
+
+2018-08-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Release assert when throwing exceptions in custom element reactions
+        https://bugs.webkit.org/show_bug.cgi?id=187805
+        <rdar://problem/42432714>
+
+        Reviewed by Saam Barati.
+
+        Unskipped the previously crashing test.
+
+        * TestExpectations:
+
+2018-08-02  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=188293
+
+        Unreviewed test gardening.
+
+        Unskip some http tests.
+
+        * platform/wincairo/TestExpectations:
+          - contentextensions
+          - events
+          - favicon.ico
+          - fullscreen
+          - globalhistory
+          - gzip-content-encoding
+          - history
+          - local
+          - messaging
+          - mime
+          - multipart
+          - performance
+          - permissionclient
+          - referrer-policy
+          - resourceLoadStatistics
+        * platform/wincairo/http/tests/local/file-url-sent-as-referer-expected.txt: Added.
+        * platform/wincairo/http/tests/multipart/invalid-image-data-expected.txt: Added.
+        * platform/wincairo/http/tests/multipart/invalid-image-data-standalone-expected.txt: Added.
+        * platform/wincairo/http/tests/uri/css-href-expected.txt: Added.
+
+2018-08-02  Jer Noble  <jer.noble@apple.com>
+
+        Control center controls disappear when pausing, locking device.
+        https://bugs.webkit.org/show_bug.cgi?id=188282
+        <rdar://problem/42497809>
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/media/audio-session-category-video-paused-expected.txt: Added.
+        * platform/mac/media/audio-session-category-video-paused.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-08-02  Nan Wang  <n_wang@apple.com>
+
+        AX: [iOS] add support to return the attributed string under the element
+        https://bugs.webkit.org/show_bug.cgi?id=188276
+        <rdar://problem/42872357>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ios-simulator/attributed-string-for-element-expected.txt: Added.
+        * accessibility/ios-simulator/attributed-string-for-element.html: Added.
+
+2018-08-02  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r234488): Layout test fast/events/ios/keyboard-scrolling-repeat.html is timing out
+        <rdar://problem/42878480>
+
+        * fast/events/ios/keyboard-scrolling-repeat-expected.txt: Removed.
+        * fast/events/ios/keyboard-scrolling-repeat.html: Removed.
+        Remove a test that can't work anymore.
+        If we need to re-write it it will probably need to be an API test.
+
+2018-08-02  Megan Gardner  <megan_gardner@apple.com>
+
+        Reformat editable selection tests to remove potential flakeyness due to autoscroll
+        https://bugs.webkit.org/show_bug.cgi?id=188263
+        <rdar://problem/40565375>
+
+        Reviewed by Wenson Hsieh
+
+        Change the format of these editable selection tests to put the editable content at the top of the page so
+        that when selecting we do not run into the page trying to autoscroll while selecting, which makes the tests more
+        flakey, and more difficult to get accurate and consistent answers.
+
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-down-to-change-selected-text.html:
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-left-to-change-selected-text.html:
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-right-to-change-selected-text.html:
+        * fast/events/touch/ios/double-tap-on-editable-content-for-selection-then-drag-up-to-change-selected-text.html:
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-down-to-change-selected-text.html:
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-left-to-change-selected-text.html:
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-right-to-change-selected-text.html:
+        * fast/events/touch/ios/long-press-on-editable-content-then-drag-up-to-change-selected-text.html:
+
+2018-08-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add self.queueMicrotask(f) on DOMWindow
+        https://bugs.webkit.org/show_bug.cgi?id=188212
+
+        Reviewed by Ryosuke Niwa.
+
+        * js/dom/queue-microtask-window-expected.txt: Added.
+        * js/dom/queue-microtask-window.html: Added.
+
+2018-08-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r227983): fast/dom/adopt-node-crash-2.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=182589
+
+        Rebaseline the test and remove the flaky test expectation.
+
+        * fast/dom/adopt-node-crash-2-expected.txt:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-08-01  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM: Add ARIA IDL Attribute Reflection
+        https://bugs.webkit.org/show_bug.cgi?id=184676
+        <rdar://problem/39476882>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ARIA-reflection-expected.txt: Added.
+        * accessibility/ARIA-reflection.html: Added.
+        * js/dom/dom-static-property-for-in-iteration.html:
+        * platform/win/TestExpectations:
+
+2018-08-01  David Fenton  <david_fenton@apple.com>
+
+        Layout Test editing/selection/update-selection-by-style-change.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=187649
+
+        Unreviewed test gardening, re-marked test as flaky.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-08-01  Andy VanWagoner  <andy@vanwagoner.family>
+
+        [INTL] Implement hourCycle in DateTimeFormat
+        https://bugs.webkit.org/show_bug.cgi?id=188006
+
+        Reviewed by Darin Adler.
+
+        Added tests for hourCycle.
+
+        * js/intl-datetimeformat-expected.txt:
+        * js/script-tests/intl-datetimeformat.js:
+
+2018-08-01  Andy VanWagoner  <andy@vanwagoner.family>
+
+        number-toLocaleString.js test fails on ARM Linux buildbots
+        https://bugs.webkit.org/show_bug.cgi?id=154533
+
+        Reviewed by Yusuke Suzuki.
+
+        Removed assumed default locale in Intl tests. The default is tested to
+        verify that it is a string, and a canonicalized language tag. All other
+        test cases explicitly use a locale when they expect a localized value.
+
+        * js/intl-collator-expected.txt:
+        * js/intl-datetimeformat-expected.txt:
+        * js/intl-default-locale-expected.txt:
+        * js/intl-default-locale.html:
+        * js/intl-numberformat-expected.txt:
+        * js/intl-pluralrules-expected.txt:
+        * js/script-tests/intl-collator.js:
+        * js/script-tests/intl-datetimeformat.js:
+        * js/script-tests/intl-numberformat.js:
+        * js/script-tests/intl-pluralrules.js:
+
+2018-08-01  Timothy Hatcher  <timothy@apple.com>
+
+        Hardcode some system colors to avoid fingerprinting exposure.
+        https://bugs.webkit.org/show_bug.cgi?id=188203
+        rdar://problem/42781630
+
+        Reviewed by Tim Horton.
+
+        * fast/css/apple-system-control-colors-expected.txt: Updated.
+        * fast/css/test-setting-canvas-color.html: Fixed for colors with alpha.
+        * platform/mac-highsierra/fast/css/apple-system-control-colors-expected.txt:
+        * platform/mac-sierra/fast/css/apple-system-control-colors-expected.txt: Updated.
+        * platform/mac/TestExpectations: Removed fast/css/test-setting-canvas-color.html.
+        * platform/mac/fast/css/apple-system-control-colors-expected.txt: Updated.
+
+2018-08-01  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=188221
+
+        * platform/gtk/TestExpectations:
+
+2018-07-31  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Unreviewed test gardening.
+
+        * platform/wincairo/TestExpectations:
+        * platform/wincairo/css2.1/20110323/replaced-intrinsic-ratio-001-expected.png: Added.
+        * platform/wincairo/css3/masking/clip-path-circle-margin-box-expected.txt: Removed.
+
+2018-07-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Tidy up a layout test introduced in r234436.
+        https://bugs.webkit.org/show_bug.cgi?id=188107
+        <rdar://problem/42354250>
+
+        Reviewed by Daniel Bates.
+
+        The expected output of a test that uses js-test.js should include a description, plus a line that states that
+        there will be a series of PASS messages, PASS/FAIL output, a successfully parsed line and finally a TEST
+        COMPLETE line. This patch adjusts a newly introduced test to follow this convention.
+
+        * fast/forms/ios/click-should-not-suppress-misspelling-expected.txt:
+        * fast/forms/ios/click-should-not-suppress-misspelling.html:
+
+2018-07-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Layout Test svg/animations/smil-leak-element-instances-noBaseValRef.svg is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=180997
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations: Remove flaky expectation.
+
+2018-07-31  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Remove partitioned cookies for reduced complexity, lower memory footprint, and ability to support more platforms
+        https://bugs.webkit.org/show_bug.cgi?id=188109
+        <rdar://problem/42664391>
+
+        Reviewed by Brent Fulgham, Chris Dumez, and Alex Christensen.
+
+        This patch removes cookie partitioning which reduces the model to just
+        blocked cookies (in third-party contexts) and first-party cookie access.
+
+        Several of the changes are renaming to reflect that there are no more
+        cookie partitions.
+
+        The changes to the Storage Access API tests also involve fixes for potential
+        flakiness by adopting several completion handlers in test functions.
+
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect.html:
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect-expected.txt: Removed.
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html: Removed.
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-collusion.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-to-prevalent.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-collusion.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-to-prevalent.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-unique-redirects-to.html:
+        * http/tests/resourceLoadStatistics/classify-as-very-prevalent-based-on-mixed-statistics.html:
+        * http/tests/resourceLoadStatistics/cookie-deletion-expected.txt: Renamed from LayoutTests/http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion-expected.txt.
+        * http/tests/resourceLoadStatistics/cookie-deletion.html: Renamed from LayoutTests/http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html.
+        * http/tests/resourceLoadStatistics/cookies-with-and-without-user-interaction-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/cookies-with-and-without-user-interaction.html: Renamed from LayoutTests/http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html.
+        * http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect.html:
+        * http/tests/resourceLoadStatistics/enable-debug-mode.html:
+        * http/tests/resourceLoadStatistics/grandfathering.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context-expected.txt:
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout-expected.txt: Removed.
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html: Removed.
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction-expected.txt: Removed.
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html:
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect-expected.txt: Removed.
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect.html: Removed.
+        * http/tests/resourceLoadStatistics/resources/get-cookies.php:
+        * http/tests/resourceLoadStatistics/resources/set-cookie-on-redirect.php: Added.
+        * http/tests/resourceLoadStatistics/resources/util.js: Added.
+        (setEnableFeature):
+        * http/tests/resourceLoadStatistics/sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/set-custom-prevalent-resource-in-debug-mode.html:
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html:
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html:
+        * http/tests/resourceLoadStatistics/telemetry-generation.html:
+        * http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction-expected.txt: Removed.
+        * http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html: Removed.
+        * http/tests/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html:
+        * http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html:
+        * http/tests/resourceLoadStatistics/user-interaction-reported-after-website-data-removal.html:
+        * http/tests/storageAccess/deny-storage-access-under-opener.html:
+        * http/tests/storageAccess/grant-storage-access-under-opener-expected.txt:
+        * http/tests/storageAccess/grant-storage-access-under-opener.html:
+        * http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-non-recent-user-interaction-expected.txt: Removed.
+        * http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-non-recent-user-interaction.html: Removed.
+        * http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-recent-user-interaction.html: Removed.
+        * http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-user-interaction-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-recent-user-interaction-expected.txt.
+        * http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-user-interaction.html: Added.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-non-sandboxed-iframe-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-non-sandboxed-iframe-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-non-sandboxed-iframe-pop-window-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-non-sandboxed-iframe-pop-window-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-non-sandboxed-iframe-pop-window.html: Added.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-non-sandboxed-iframe.html: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-non-sandboxed-iframe.html.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-and-access-from-right-frame-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-and-try-access-from-right-frame-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-and-access-from-right-frame.html: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-and-try-access-from-right-frame.html.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-but-access-from-wrong-frame-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-but-try-access-from-wrong-frame-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-but-access-from-wrong-frame.html: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-but-try-access-from-wrong-frame.html.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-recent-user-interaction-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction.html: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-recent-user-interaction.html.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-without-user-interaction-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-without-user-interaction-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-without-user-interaction.html: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-without-user-interaction.html.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe.html: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe.html.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-nested-iframe-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-nested-iframe-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-nested-iframe.html: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-nested-iframe.html.
+        * http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access-expected.txt:
+        * http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access.html:
+        * http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access.html:
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-non-sandboxed-iframe-pop-window.html: Removed.
+        * http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-with-unique-origin.html:
+        * http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-without-allow-token.html:
+        * http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-without-user-gesture.html:
+        * http/tests/storageAccess/request-storage-access-same-origin-iframe.html:
+        * http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe-without-allow-token.html:
+        * http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe.html:
+        * http/tests/storageAccess/request-storage-access-top-frame.html:
+        * http/tests/storageAccess/resources/nesting-iframe.html:
+        * platform/ios/TestExpectations:
+            Test case renaming.
+            webkit.org/b/183216 removed since it's resolved.
+        * platform/mac-wk2/TestExpectations:
+            Test case renaming.
+        * platform/wk2/TestExpectations:
+            Test case renaming.
+
+2018-07-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Spelling suggestions cannot be selected in focused form controls when zoomed in
+        https://bugs.webkit.org/show_bug.cgi?id=188107
+        <rdar://problem/42354250>
+
+        Reviewed by Tim Horton.
+
+        Adds a new test to verify that tapping in a misspelled word to bring up the spelling correction callout and
+        selection view does not immediately cause the selection to dismiss.
+
+        * fast/forms/ios/click-should-not-suppress-misspelling-expected.txt: Added.
+        * fast/forms/ios/click-should-not-suppress-misspelling.html: Added.
+
+2018-07-31  Alex Christensen  <achristensen@webkit.org>
+
+        Remove Yosemite test results.
+
+        We haven't run these tests in over a year.  They're not needed.
+
+        * platform/mac-yosemite: Removed.
+
+2018-07-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Layout Test media/video-add-autoplay-user-gesture.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=174591
+
+        Reviewed by Darin Adler.
+
+        Remove the 1000ms restriction for this test to complete in order to eliminate flakiness.
+
+        * media/video-add-autoplay-user-gesture.html:
+
+2018-07-31  Miguel Gomez  <magomez@igalia.com>
+
+        [WPE] webanimations/partly-accelerated-transition-by-removing-property.html is failing since added in r234250 "[Web Animations] REGRESSION: transition added immediately after element creation doesn't work"
+        https://bugs.webkit.org/show_bug.cgi?id=188058
+
+        Unreviewed. Adding custom test expectation for WPE, as it never leaves AC mode.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/webanimations/partly-accelerated-transition-by-removing-property-expected.txt: Added.
+
+2018-07-30  Justin Fan  <justin_fan@apple.com>
+
+        [WebGL2] Support compilation of GLSL ES version 300 shaders
+        https://bugs.webkit.org/show_bug.cgi?id=187982
+        <rdar://problem/42564229>
+
+        Reviewed by Dean Jackson.
+
+        New simple test added to ensure that GLSL ES version 300 shaders compile.
+        Updated other test results in glsl3 to match new functionality.
+
+        * fast/canvas/webgl/webgl2-glsl3-compile-expected.txt: Added.
+        * fast/canvas/webgl/webgl2-glsl3-compile.html: Added.
+        * platform/ios/TestExpectations: Skipping ios for now. 
+        * webgl/2.0.0/conformance2/glsl3/compound-assignment-type-combination-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/forbidden-operators-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/invalid-default-precision-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/invalid-invariant-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/misplaced-version-directive-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/sampler-no-precision-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/sequence-operator-returns-non-constant-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/texture-offset-out-of-range-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/texture-offset-uniform-texture-coordinate-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/uniform-block-layout-match-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/uniform-block-layouts-expected.txt:
+
+2018-07-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/forms/file/input-file-re-render.html for Mojave.
+
+        Unreviewed test gardening.
+
+        * platform/mac-highsierra/fast/forms/file/input-file-re-render-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/file/input-file-re-render-expected.txt.
+        * platform/mac/fast/forms/file/input-file-re-render-expected.txt:
+
+2018-07-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for mac-wk1.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-07-30  Chris Dumez  <cdumez@apple.com>
+
+        Nullptr crash accessing Document in GenericEventQueue::dispatchOneEvent()
+        https://bugs.webkit.org/show_bug.cgi?id=187284
+
+        Unreviewed, roll r233496 and r233571 now that all known issues have been fixed via
+        dependency bugs.
+
+        * media/track/video-track-addition-and-frame-removal-expected.txt: Added.
+        * media/track/video-track-addition-and-frame-removal.html: Added.
+
+2018-07-30  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Layout test http/tests/security/canvas-remote-read-remote-video-hls.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=188169
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-07-30  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Layout test fast/text/complex-first-glyph-with-initial-advance.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=188168
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-07-30  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Layout test fast/repaint/canvas-object-fit.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=188167
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-07-30  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Layout test webanimations/accessing-current-time-after-clearing-css-animation-effect.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=188166
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-07-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening. Adding and adjusting a bunch of expectations
+        to cover various ASSERT crashers.
+
+        * platform/wpe/TestExpectations:
+
+2018-07-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening.
+
+        Adding two WPE-specific test baselines. Adjusting or adding a few
+        additional test expectations.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/shader-with-mis-matching-uniform-block-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/texture-offset-out-of-range-expected.txt: Added.
+
+2018-07-29  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=188155
+
+        Unreviewed test gardening.
+
+        * platform/wincairo/TestExpectations:
+
+2018-07-29  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Fix the bug when client reject the redirect on WebKitLegacy.
+        https://bugs.webkit.org/show_bug.cgi?id=188130
+
+        Reviewed by Darin Adler.
+
+        * platform/wincairo/TestExpectations:
+        - xmlhttprequest/xmlhttprequest-unsafe-redirect-expected.txt: Pass
+
+2018-07-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Animation stops with object-fit:contain on an animated 2d canvas
+        https://bugs.webkit.org/show_bug.cgi?id=187840
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/repaint/canvas-object-fit-expected.txt: Added.
+        * fast/repaint/canvas-object-fit.html: Added.
+
+2018-07-27  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=188129
+
+        Unreviewed test gardening.
+
+        * platform/wincairo/TestExpectations:
+        * platform/wincairo/http/tests/xmlhttprequest/xmlhttprequest-unsafe-redirect-expected.txt: Added.
+
+2018-07-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Adjust the color matrix for the inverse apple-invert-lightness() transformation
+        https://bugs.webkit.org/show_bug.cgi?id=188131
+        rdar://problem/42673070
+
+        Reviewed by Zalan Bujtas.
+
+        Rebaseline tests that use the filter inversion. Add a new test that does inversion
+        for a whole range of colors, to get good coverage of the inversion matrix.
+
+        * editing/style/inverse-color-filter-expected.txt: Added.
+        * editing/style/inverse-color-filter.html: Added.
+        * editing/style/set-backColor-with-color-filter-expected.txt:
+        * editing/style/set-foreColor-with-color-filter-expected.txt:
+        * platform/win/TestExpectations:
+
+2018-07-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        More unreviewed GTK test gardening
+
+        * TestExpectations:
+
+2018-07-27  David Fenton  <david_fenton@apple.com>
+
+        LayoutTest http/tests/cache/disk-cache/disk-cache-204-status-code.html is a flaky failure.
+        https://bugs.webkit.org/show_bug.cgi?id=162685
+
+        Unreviewed test gardening, marked as flaky on iOS Release.
+
+        * platform/ios-wk2/TestExpectations:
+
+2018-07-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Be more conservative with compositing layer creation when memory is low
+        https://bugs.webkit.org/show_bug.cgi?id=187866
+        rdar://problem/42366345
+
+        Reviewed by Zalan Bujtas.
+        
+        * compositing/layer-creation/compositing-policy-expected.txt: Added.
+        * compositing/layer-creation/compositing-policy.html: Added.
+
+2018-07-27  Zalan Bujtas  <zalan@apple.com>
+
+        [WK1] ASSERTION FAILED: renderer().repaintLayoutRects().m_repaintRect == renderer().clippedOverflowRectForRepaint(renderer().containerForRepaint()) in WebCore::RenderLayer::updateLayerPositionsAfterScroll
+        https://bugs.webkit.org/show_bug.cgi?id=188122
+        <rdar://problem/42584790>
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-07-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed GTK test gardening
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2018-07-27  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Crash on synchronous request via ResourceHandle.
+        https://bugs.webkit.org/show_bug.cgi?id=188033
+
+        Reviewed by Alex Christensen.
+
+        bug/188033 Crash sync xmlhttprequest
+
+        * platform/wincairo/TestExpectations:
+
+2018-07-27  David Fenton  <david_fenton@apple.com>
+
+        Layout Test tiled-drawing/scrolling/fixed/four-bars-zoomed.html is flaky text failure.
+        https://bugs.webkit.org/show_bug.cgi?id=188096
+
+        Unreviewed test gardening, marked test as flaky.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-07-27  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Set correct source info to ResourceResponse.
+        https://bugs.webkit.org/show_bug.cgi?id=188069
+
+        Reviewed by Fujii Hironori.
+
+        * platform/wincairo/TestExpectations:
+          - http/tests/cache/disk-cache/disk-cache-302-status-code.html: Pass
+
+2018-07-27  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Unreviewed test gardening
+
+        * platform/wincairo/TestExpectations:
+        Enable test cases under http/tests/css.
+
+2018-07-26  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=188090
+
+        Unreviewed test gardening.
+        Rearrange http test section.
+
+        * platform/wincairo/TestExpectations:
+
+2018-07-26  Zalan Bujtas  <zalan@apple.com>
+
+        [Fullscreen] Do not create composited layers for renderers unless they are part of the fullscreen subtree.
+        https://bugs.webkit.org/show_bug.cgi?id=188087
+        <rdar://problem/42632124>
+
+        Reviewed by Simon Fraser.
+
+        * compositing/no-compositing-when-fulll-screen-is-present-expected.txt: Added.
+        * compositing/no-compositing-when-fulll-screen-is-present.html: Added.
+
+2018-07-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r234281.
+
+        Broke internal builds.
+
+        Reverted changeset:
+
+        "[Datalist] Add button to TextFieldInputs with a datalist"
+        https://bugs.webkit.org/show_bug.cgi?id=187741
+        https://trac.webkit.org/changeset/234281
+
+2018-07-26  Aditya Keerthi  <akeerthi@apple.com>
+
+        [Datalist] Add button to TextFieldInputs with a datalist
+        https://bugs.webkit.org/show_bug.cgi?id=187741
+
+        Reviewed by Tim Horton.
+
+        Added tests to verify appearance of TextFieldInputs with a datalist.
+
+        * fast/forms/datalist/datalist-searchinput-appearance.html: Added.
+        * fast/forms/datalist/datalist-textinput-appearance.html: Added.
+        * platform/mac/fast/forms/datalist/datalist-searchinput-appearance-expected.png: Added.
+        * platform/mac/fast/forms/datalist/datalist-searchinput-appearance-expected.txt: Added.
+        * platform/mac/fast/forms/datalist/datalist-textinput-appearance-expected.png: Added.
+        * platform/mac/fast/forms/datalist/datalist-textinput-appearance-expected.txt: Added.
+
+2018-07-26  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Accelerated animations don't respect a positive delay value
+        https://bugs.webkit.org/show_bug.cgi?id=186930
+        <rdar://problem/41393393>
+
+        Reviewed by Dean Jackson.
+
+        Creating a new test that runs an accelerated animation on a non-positioned element with a small
+        positive delay. Prior to this patch, the element would move slightly when the delay elapses but
+        wouldn't animate towards the target value. With this patch, it animatea correctly. To check
+        that it does animate, we add a cache over the element except for the first 25px which is the area
+        within which it might have moved prior to this patch. This way the test only passes if the element
+        is fully hidden by the cache.
+
+        * webanimations/accelerated-animation-with-delay-expected.html: Added.
+        * webanimations/accelerated-animation-with-delay.html: Added.
+
+2018-07-26  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=188076
+
+        Unreviewed test gardening.
+
+        Mark diskcache test "Failure" for upcoming fix:
+        - https://bugs.webkit.org/show_bug.cgi?id=188069.
+
+        * platform/wincairo/TestExpectations:
+          - http/tests/cache/disk-cache/disk-cache-302-status-code.html [ Failure ]
+
+2018-07-26  Nan Wang  <n_wang@apple.com>
+
+        AX: nothing returned for various previous text marker APIs from one div/p node to another
+        https://bugs.webkit.org/show_bug.cgi?id=188071
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/text-marker-p-tags-expected.txt: Added.
+        * accessibility/mac/text-marker-p-tags.html: Added.
+        * accessibility/mac/text-marker-string-for-document-range-expected.txt:
+
+2018-07-26  David Fenton  <david_fenton@apple.com>
+
+        Layout Test webgl/2.0.0/conformance2/glsl3/compound-assignment-type-combination.html is timing out on mac Debug
+        https://bugs.webkit.org/show_bug.cgi?id=188061
+
+        Unreviewed test gardening.
+
+        Marked test as [ Slow ].
+
+        * platform/mac/TestExpectations:
+
+2018-07-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, update TestExpectations for macOS WK1.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-07-26  Andy VanWagoner  <andy@vanwagoner.family>
+
+        JSC: Intl API should ignore encoding when parsing BCP 47 language tag from ISO 15897 locale string (passed via LANG)
+        https://bugs.webkit.org/show_bug.cgi?id=167991
+
+        Reviewed by Michael Catanzaro.
+
+        Replaced expecting throwing a runtime error to avoid a crash, with testing for good default locale fallback behavior.
+
+        * js/intl-default-locale-expected.txt: Added.
+        * js/intl-default-locale.html: Added.
+        * js/intl-invalid-locale-crash-expected.txt: Removed.
+        * js/intl-invalid-locale-crash.html: Removed.
+        * platform/win/TestExpectations:
+
+2018-07-26  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ and WPE gardening after r234252.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/overflow/line-clamp-expected.png:
+        * platform/gtk/fast/overflow/line-clamp-expected.txt:
+        * platform/wpe/TestExpectations:
+
+2018-07-26  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] REGRESSION: transition added immediately after element creation doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=187942
+
+        Reviewed by Dean Jackson.
+
+        Creating a new test that runs a transition based on an explicit value being removed in favor
+        of the implicit value of a property that can be accelerated. To check that we indeed run the
+        animation, we have a cache that covers the entire range of interpolated values except for the
+        start and end values and wait 100ms after creating the transition to end the test. Prior to this
+        patch, the element would be at its start value and a 1px red line would show to the right of the
+        cache. With this patch, the red line is hidden by the cache as it's animated.
+
+        We also add a test that checks that we do not create a composited layer when several transitions,
+        with only one being potentially accelerated, target the same element.
+
+        * webanimations/accelerated-transition-by-removing-property-expected.html: Added.
+        * webanimations/accelerated-transition-by-removing-property.html: Added.
+        * webanimations/partly-accelerated-transition-by-removing-property-expected.txt: Added.
+        * webanimations/partly-accelerated-transition-by-removing-property.html: Added.
+
+2018-07-26  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=188034
+
+        Unreviewed WinCairo gardening.
+
+        Add expected file.
+
+        * http/tests/xmlhttprequest/resources/print-referer.php: Added.
+        * http/tests/xmlhttprequest/simple-sync-expected.txt: Added.
+        * http/tests/xmlhttprequest/simple-sync.html:
+
+2018-07-25  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=188034
+
+        Unreviewed WinCairo gardening.
+
+        * httpxmlhttprequest/simple-sync.html: Added.
+        * platform/wincairo/TestExpectations:
+
+2018-07-25  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r227577) Text on TV & Movies page doesn't wrap properly in iTunes
+        https://bugs.webkit.org/show_bug.cgi?id=188018
+        <rdar://problem/42517520>
+
+        Reviewed by Dean Jackson.
+
+        * fast/block/lines-clamp-advanced-expected.html: Removed.
+        * fast/block/lines-clamp-advanced-rl-expected.html: Removed.
+        * fast/block/lines-clamp-advanced-rl.html: Removed.
+        * fast/block/lines-clamp-advanced.html: Removed.
+        * fast/block/lines-clamp-basic-expected.html: Removed.
+        * fast/block/lines-clamp-basic-rl-expected.html: Removed.
+        * fast/block/lines-clamp-basic-rl.html: Removed.
+        * fast/block/lines-clamp-basic.html: Removed.
+        * fast/css/lines-clamp-parsing-expected.txt: Removed.
+        * fast/css/lines-clamp-parsing.html: Removed.
+        * fast/overflow/line-clamp-with-text-shadow-expected.html: Added.
+        * fast/overflow/line-clamp-with-text-shadow.html: Added.
+        * platform/ios-simulator-wk2/fast/overflow/line-clamp-expected.txt: Removed.
+
+2018-07-25  David Fenton  <david_fenton@apple.com>
+
+        Layout Test media/audio-concurrent-supported.html is a flaky failure.
+        https://bugs.webkit.org/show_bug.cgi?id=188017
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2018-07-25  David Fenton  <david_fenton@apple.com>
+
+        Unreviewed, rolling out r234187.
+
+        the layout test added with this change is flaky on the bots
+
+        Reverted changeset:
+
+        "Animation stops with object-fit:contain on an animated 2d
+        canvas"
+        https://bugs.webkit.org/show_bug.cgi?id=187840
+        https://trac.webkit.org/changeset/234187
+
+2018-07-25  Andy VanWagoner  <andy@vanwagoner.family>
+
+        [INTL] Intl constructor lengths should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=187960
+
+        Reviewed by Saam Barati.
+
+        Expect DateTimeFormat formatToParts length to be 1.
+
+        * js/intl-datetimeformat-expected.txt:
+        * js/script-tests/intl-datetimeformat.js:
+
+2018-07-25  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK][WPE] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=188003
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+          - webgl/2.0.0/conformance2/glsl3/: skip while we disable WebGL2 support
+          - media/video-restricted-invisible-autoplay-allowed-when-visible.html: mark as flaky
+          - compositing/backing/backing-store-attachment-fill-forwards-animation.html: mark as failing
+          - http/tests/security/canvas-remote-read-remote-video-hls.html: mark as failing
+        * platform/wpe/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+          Update for r233935.
+
+2018-07-24  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r219757): Accessing response getter of XHR instance from IFRAME sets constructor to Object from the IFRAME
+        https://bugs.webkit.org/show_bug.cgi?id=187411
+        <rdar://problem/41920593>
+
+        Reviewed by Sam Weinig.
+
+        Add layout test coverage. I have verified locally that it passes in Chromium as well.
+
+        * http/tests/xmlhttprequest/resources/data.json: Added.
+        * http/tests/xmlhttprequest/resources/xhr-response-constructor-iframe.html: Added.
+        * http/tests/xmlhttprequest/xhr-response-constructor-subframe-expected.txt: Added.
+        * http/tests/xmlhttprequest/xhr-response-constructor-subframe.html: Added.
+
+2018-07-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Animation stops with object-fit:contain on an animated 2d canvas
+        https://bugs.webkit.org/show_bug.cgi?id=187840
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/repaint/canvas-object-fit-expected.txt: Added.
+        * fast/repaint/canvas-object-fit.html: Added.
+
+2018-07-24  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Add support for wss:// websockets
+        https://bugs.webkit.org/show_bug.cgi?id=172630
+
+        Reviewed by Fujii Hironori.
+
+        Pass simple-wss.html.
+
+        * platform/wincairo/TestExpectations:
+
+2018-07-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r233496 and r233571.
+
+        Likely cause of <rdar://problem/42160890> and
+        <rdar://problem/42329658> as ActiveDOMObjects can now be
+        constructed / destroyed while we are iterating over them.
+
+        Reverted changesets:
+
+        "Nullptr crash accessing Document in
+        GenericEventQueue::dispatchOneEvent()"
+        https://bugs.webkit.org/show_bug.cgi?id=187284
+        https://trac.webkit.org/changeset/233496
+
+        "REGRESSION(r233496): macOS Sierra hits debug assertions in
+        TrackListBase::suspend"
+        https://bugs.webkit.org/show_bug.cgi?id=187378
+        https://trac.webkit.org/changeset/233571
+
+2018-07-24  Thibault Saunier  <tsaunier@igalia.com>
+
+        Unreviewed WPE/GTK gardening.
+
+        Disabled newly added webrtc tests that depend on implementing WebAudioSourceProviderGStreamer.
+
+        Namely:
+          webrtc/peer-connection-createMediaStreamDestination.html
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-07-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/workers/service/serviceworkerclients-matchAll.https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=183705
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-07-24  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Crash when setting an animation style on an existing animation that had its effect set to null
+        https://bugs.webkit.org/show_bug.cgi?id=187953
+
+        Reviewed by Dean Jackson.
+
+        Add a new test that sets an animation property via style after setting the initial animation's effect to null.
+
+        * webanimations/setting-css-animation-timing-property-via-style-after-clearing-effect-expected.txt: Added.
+        * webanimations/setting-css-animation-timing-property-via-style-after-clearing-effect.html: Added.
+
+2018-07-24  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Crash when setting "animation: none" after clearing an animation's effect
+        https://bugs.webkit.org/show_bug.cgi?id=187952
+
+        Reviewed by Dean Jackson.
+
+        Add a new test that checks that setting "animation: none" on an element that previously had a valid
+        CSS animation and for which the effect was set to null does not crash.
+
+        * webanimations/setting-css-animation-none-after-clearing-effect-expected.txt: Added.
+        * webanimations/setting-css-animation-none-after-clearing-effect.html: Added.
+
+2018-07-24  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Crash accessing CSSAnimation::bindingsCurrentTime when effect has been set to null
+        https://bugs.webkit.org/show_bug.cgi?id=187950
+        <rdar://problem/42515747>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test where we check that the current time of a CSSAnimation can be accessed after setting its effect to null.
+
+        * webanimations/accessing-current-time-after-clearing-css-animation-effect-expected.txt: Added.
+        * webanimations/accessing-current-time-after-clearing-css-animation-effect.html: Added.
+
+2018-07-24  Daniel Bates  <dabates@apple.com>
+
+        Cannot view PDF's on my.gov.au: "Refused to load https://my.gov.au/attachment/viewAttachment because it
+        appears in neither the object-src directive nor the default-src directive of the Content Security Policy"
+        https://bugs.webkit.org/show_bug.cgi?id=187870
+        <rdar://problem/41190880>
+
+        Reviewed by Dean Jackson.
+
+        Add new tests and fix up the existing test http/tests/security/contentSecurityPolicy/same-origin-plugin-document-blocked-in-child-window.html
+        so that still tests a scenario where a same-origin plugin document loaded in a child window is blocked from
+        loading its plugin now that that "object-src: 'none'" is no longer inherited by the plugin document.
+
+        * http/tests/plugins/resources/plugin-document-alert-and-notify-done.pl:
+        * http/tests/security/contentSecurityPolicy/resources/checkDidSameOriginChildWindowLoad.js: Added.
+        (checkDidSameOriginChildWindowLoadAndNotifyDone):
+        (checkDidLoad):
+        * http/tests/security/contentSecurityPolicy/same-origin-plugin-document-allowed-in-child-window-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/same-origin-plugin-document-allowed-in-child-window.html: Added.
+        * http/tests/security/contentSecurityPolicy/same-origin-plugin-document-blocked-in-child-window-expected.txt:
+        * http/tests/security/contentSecurityPolicy/same-origin-plugin-document-blocked-in-child-window-report-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/same-origin-plugin-document-blocked-in-child-window-report.php: Added.
+        * http/tests/security/contentSecurityPolicy/same-origin-plugin-document-blocked-in-child-window.html:
+        * http/tests/security/contentSecurityPolicy/same-origin-plugin-document-with-csp-blocked-in-child-window-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/same-origin-plugin-document-with-csp-blocked-in-child-window.html: Added.
+        * platform/ios/TestExpectations: Skip the included tests as we do not support plugins on iOS.
+        * platform/win/TestExpectations: Skip the included tests as plugins do not seem to work on Windows. We currently skip many
+        (if not all) plugin tests on Windows despite <rdar://problem/5074411> being marked as Closed (why?). 
+
+2018-07-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening.
+
+        Adding WPE-specific baselines for WebGL2 conformance tests that are
+        already passing on this port.
+
+        * platform/wpe/webgl: Added.
+        * platform/wpe/webgl/2.0.0: Added.
+        * platform/wpe/webgl/2.0.0/conformance2: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/array-as-return-value-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/array-assign-constructor-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/array-assign-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/array-complex-indexing-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/array-element-increment-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/array-equality-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/array-in-complex-expression-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/bool-type-cast-bug-uint-ivec-uvec-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/compare-structs-containing-arrays-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/compound-assignment-type-combination-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/const-array-init-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/forbidden-operators-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/frag-depth-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/invalid-default-precision-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/invalid-invariant-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/loops-with-side-effects-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/misplaced-version-directive-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/sampler-no-precision-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/sequence-operator-returns-non-constant-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/shader-linking-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/short-circuiting-in-loop-condition-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/texture-offset-uniform-texture-coordinate-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/tricky-loop-conditions-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/uniform-block-layout-match-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/uniform-block-layouts-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/valid-invariant-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/vector-dynamic-indexing-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance2/glsl3/vector-dynamic-indexing-nv-driver-bug-expected.txt: Added.
+
+2018-07-24  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE][GTK] Implement PeerConnection API on top of libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=186932
+
+        Reviewed by Philippe Normand.
+
+        * platform/gtk/TestExpectations: Enable webrtc tests.
+
+2018-07-24  Dirk Schulze  <krit@webkit.org>
+
+        [css-masking] Black backdrop on -webkit-clip-path on SVG root
+        https://bugs.webkit.org/show_bug.cgi?id=187880
+
+        Avoid duplicated clip in RenderLayer.
+
+        Reviewed by Simon Fraser.
+
+        * svg/clip-path/clip-path-on-svg-005-expected.svg: Added.
+        * svg/clip-path/clip-path-on-svg-005.svg: Added.
+
+2018-07-23  Per Arne Vollan  <pvollan@apple.com>
+
+        The test webanimations/accessing-current-time-after-finished-css-animation-target-removal.html is failing on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=187943
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-07-23  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Add support for calc() in gutter properties
+        https://bugs.webkit.org/show_bug.cgi?id=187902
+
+        Reviewed by Simon Fraser.
+
+        Two tests are now passing thanks to this change.
+
+        * TestExpectations:
+
+2018-07-23  Andy VanWagoner  <andy@vanwagoner.family>
+
+        [INTL] Language tags are not canonicalized
+        https://bugs.webkit.org/show_bug.cgi?id=185836
+
+        Reviewed by Keith Miller.
+
+        Use gregory instead of gregorian, matching test262/intl402 and other engines.
+        Remove tests for algorithmic numbering systems. Add NumberFormat numbering system tests.
+
+        * js/intl-datetimeformat-expected.txt:
+        * js/intl-numberformat-expected.txt:
+        * js/script-tests/intl-datetimeformat.js:
+        * js/script-tests/intl-numberformat.js:
+        (string_appeared_here):
+
+2018-07-23  Sihui Liu  <sihui_liu@apple.com>
+
+        CrashTracer: com.apple.WebKit.Storage at WebCore: WebCore::encodeKey
+        https://bugs.webkit.org/show_bug.cgi?id=187927
+        <rdar://problem/42516426>
+
+        Reviewed by Chris Dumez.
+
+        Add a new test case in existing test file to cover the crash case and update the expecation accordingly.
+
+        * storage/indexeddb/index-multientry-expected.txt:
+        * storage/indexeddb/index-multientry-private-expected.txt:
+        * storage/indexeddb/resources/index-multientry.js:
+        (addData):
+
+2018-07-23  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=187932
+
+        Unreviewed test gardening.
+
+        Enable Secure WebSocket tests.
+
+        * platform/wincairo/TestExpectations:
+
+2018-07-23  Justin Fan  <justin_fan@apple.com>
+
+        Enable WebGL2 glsl3 tests with expected FAIL results
+        https://bugs.webkit.org/show_bug.cgi?id=187929
+        <rdar://problem/42516498>
+
+        Reviewed by Dean Jackson.
+
+        Before enabling glsl ES 3 for WebGL2 work, enable corresponding webgl2 conformance tests.
+
+        * TestExpectations:
+        * webgl/2.0.0/conformance2/glsl3/array-as-return-value-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-assign-constructor-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-assign-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-complex-indexing-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-element-increment-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-equality-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/array-in-complex-expression-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/attrib-location-length-limits-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/bool-type-cast-bug-uint-ivec-uvec-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/compare-structs-containing-arrays-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/compound-assignment-type-combination-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/const-array-init-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/forbidden-operators-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/frag-depth-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/invalid-default-precision-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/invalid-invariant-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/loops-with-side-effects-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/misplaced-version-directive-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/no-attribute-vertex-shader-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/sampler-no-precision-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/sequence-operator-returns-non-constant-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/shader-linking-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/shader-with-1024-character-define-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/shader-with-1024-character-identifier.frag-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/shader-with-invalid-characters-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/shader-with-mis-matching-uniform-block-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/short-circuiting-in-loop-condition-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/texture-offset-out-of-range-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/texture-offset-uniform-texture-coordinate-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/tricky-loop-conditions-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/unary-minus-operator-in-dynamic-loop-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/uniform-block-layout-match-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/uniform-block-layouts-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/uniform-location-length-limits-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/valid-invariant-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/vector-dynamic-indexing-expected.txt:
+        * webgl/2.0.0/conformance2/glsl3/vector-dynamic-indexing-nv-driver-bug-expected.txt:
+
+2018-07-23  Nan Wang  <n_wang@apple.com>
+
+        AX: Press tab to highlight items on a webpage is not working with voiceover enabled
+        https://bugs.webkit.org/show_bug.cgi?id=187824
+
+        Reviewed by Zalan Bujtas.
+
+        * accessibility/mac/tab-focus-post-notification-expected.txt: Added.
+        * accessibility/mac/tab-focus-post-notification.html: Added.
+
+2018-07-23  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Querying the current time of a finished CSSAnimation after removing its target leads to a crash
+        https://bugs.webkit.org/show_bug.cgi?id=187906
+
+        Reviewed by Dean Jackson.
+
+        Add a new test that checks the behavior of a CSSAnimation instance after its completion and removal of its target.
+
+        * webanimations/accessing-current-time-after-finished-css-animation-target-removal-expected.txt: Added.
+        * webanimations/accessing-current-time-after-finished-css-animation-target-removal.html: Added.
+
+2018-07-23  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION(PSON?): [ WK2 ] http/tests/workers/service/client-*-page-cache.html LayoutTests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=183705
+        <rdar://problem/42440606>
+
+        Unreviewed, attempting a better fix for http/tests/workers/service/serviceworkerclients-matchAll.https.html.
+        If it fixes the flakiness I'll do the same for the 2 page cache tests.
+
+        * http/tests/workers/service/serviceworkerclients-matchAll-worker.js:
+        (waitFor):
+        (matchAllPromise2):
+        (async.doTestAfterMessage):
+        (matchAllPromise1): Deleted.
+        (then): Deleted.
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-07-23  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout test webanimations/empty-keyframes-crash.html is failing on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=187912
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-07-23  Per Arne Vollan  <pvollan@apple.com>
+
+        Skip crypto tests on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=165090
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-07-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/security/bypassing-cors-checks-for-extension-urls.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=187658
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-07-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark three service worker clients tests as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=183705
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-07-22  Dean Jackson  <dino@apple.com>
+
+        fullscreen env() variables should have initial values
+        https://bugs.webkit.org/show_bug.cgi?id=187897
+        <rdar://problem/42485682>
+
+        Reviewed by Sam Weinig.
+
+        * fullscreen/fullscreen-env-initial-expected.html: Added.
+        * fullscreen/fullscreen-env-initial.html: Added.
+
+2018-07-20  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Enable basic functionality in experimental debug mode
+        https://bugs.webkit.org/show_bug.cgi?id=187835
+        <rdar://problem/42408590>
+
+        Reviewed by Chris Dumez.
+
+        This patch makes the experimental ITP Debug Mode feature work, at least
+        to a basic level.
+
+        * http/tests/resourceLoadStatistics/enable-debug-mode-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/enable-debug-mode.html: Added.
+        * http/tests/resourceLoadStatistics/set-custom-prevalent-resource-in-debug-mode-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/set-custom-prevalent-resource-in-debug-mode.html: Added.
+
+2018-07-20  Sihui Liu  <sihui_liu@apple.com>
+
+        [ MacOS iOS ] Layout Test storage/indexeddb/modern/opendatabase-after-storage-crash.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187648
+        <rdar://problem/42405935>
+
+        Reviewed by Brady Eidson.
+
+        Make test wait until requests finish to get correct result, because indexedDB operations are asynchronous.
+
+        * storage/indexeddb/modern/opendatabase-after-storage-crash-expected.txt:
+        * storage/indexeddb/modern/opendatabase-after-storage-crash.html:
+
+2018-07-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove completed animations from GraphicsLayer, thus avoiding excessive backing store allocation
+        https://bugs.webkit.org/show_bug.cgi?id=187844
+        rdar://problem/40387294
+
+        Reviewed by Dean Jackson.
+
+        * compositing/backing/backing-store-attachment-fill-forwards-animation-expected.txt: Added.
+        * compositing/backing/backing-store-attachment-fill-forwards-animation.html: Added.
+
+2018-07-20  Ryosuke Niwa  <rniwa@apple.com>
+
+        Picking a color from the color panel for typing attributes needs to inverse transform through color-filter
+        https://bugs.webkit.org/show_bug.cgi?id=187846
+
+        Reviewed by Simon Fraser.
+
+        Added tests to make sure foreground or background colors specified in execCommand don't get inverted.
+
+        Fixed the test which was asserting that textInputController.attributedSubstringFromRange doesn't invert the color
+        since that's exactly what WebKit embedders uses to compute the style for color pickers.
+
+        Added new tests for copy & paste case using textInputController.legacyAttributedString.
+
+        * editing/execCommand/set-backColor-with-color-filter-from-scripts-expected.txt: Added.
+        * editing/execCommand/set-backColor-with-color-filter-from-scripts.html: Added.
+        * editing/execCommand/set-foreColor-with-color-filter-from-scripts-expected.txt: Added.
+        * editing/execCommand/set-foreColor-with-color-filter-from-scripts.html: Added.
+        * editing/mac/attributed-string/attrib-string-range-with-color-filter-expected.txt:
+        * editing/mac/attributed-string/attrib-string-range-with-color-filter.html: This test uses attributedSubstringFromRange,
+        which implemented using editingAttributedStringFromRange in WebCore. Since this is exactly what WebKit embedders uses
+        to compute the current style of the selected text, we need to invert the color here. This API's main clinet is input methods
+        so this shouldn't affect other editing operations, in particular, copy and paste, which uses HTMLConverter.
+        * editing/mac/attributed-string/attribute-string-for-copy-with-color-filter-expected.txt: Added.
+        * editing/mac/attributed-string/attribute-string-for-copy-with-color-filter.html: Added. Make sure the attributed string
+        generated for copy & paste does not invert foreground or background colors via textInputController.legacyAttributedString.
+        This is testing HTMLConverter, not editingAttributedStringFromRange, used by WebKit embedders and input methods.
+        * editing/mac/attributed-string/attributed-string-for-typing-with-color-filter-expected.txt:
+        * editing/mac/attributed-string/attributed-string-for-typing-with-color-filter.html: Added background color in the test.
+        * editing/style/set-backColor-with-color-filter-expected.txt: Added.
+        * editing/style/set-backColor-with-color-filter.html: Added.
+        * editing/style/set-foreColor-with-color-filter-expected.txt: Renamed from exec-command-foreColor-with-color-filter-expected.txt.
+        * editing/style/set-foreColor-with-color-filter.html: Renamed from exec-command-foreColor-with-color-filter.html.
+        Updated the test to use testRunner.execCommand which uses CommandFromMenuOrKeyBinding in applyCommandToFrame since we're
+        trying to test the code path taken by WebKit embedders and font panel here.
+
+2018-07-20  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION(PSON?): [ WK2 ] http/tests/workers/service/client-*-page-cache.html LayoutTests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=183705
+
+        Reviewed by Youenn Fablet.
+
+        At the beginning of the tests, wait for the client count to reach the expected value instead of
+        expecting it to be the right value right away. Clients unregister themselves asynchronously so
+        it is flaky otherwise.
+
+        * http/tests/workers/service/client-added-to-clients-when-restored-from-page-cache.html:
+        * http/tests/workers/service/client-removed-from-clients-while-in-page-cache.html:
+        * http/tests/workers/service/serviceworkerclients-matchAll-worker.js:
+        (async.doTestAfterMessage):
+
+2018-07-20  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=187863
+
+        Unreviewed test gardening.
+
+        Enable WebSocket tests.
+
+        * platform/wincairo/TestExpectations:
+
+2018-07-19  Jer Noble  <jer.noble@apple.com>
+
+        HLS resources with remote subresources will not taint canvasses.
+        https://bugs.webkit.org/show_bug.cgi?id=187731
+        <rdar://problem/42290703>
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/media/resources/hls/test-vod-localhost.m3u8: Added.
+        * http/tests/security/canvas-remote-read-remote-video-hls-expected.txt: Added.
+        * http/tests/security/canvas-remote-read-remote-video-hls.html: Added.
+
+2018-07-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline editing/mac/attributed-string/attributed-string-for-typing-with-color-filter.html for Sierra.
+
+        Unreviewed test gardening.
+
+        * platform/mac-sierra/editing/mac/attributed-string/attributed-string-for-typing-with-color-filter-expected.txt: Added.
+
+2018-07-20  Frederic Wang  <fwang@igalia.com>
+
+        Import new WPT tests for custom elements
+        https://bugs.webkit.org/show_bug.cgi?id=187806
+
+        Reviewed by Javier Fernandez.
+
+        Some tests crashing or timing out are skipped. Also, one test depending on the availability
+        of the @capture attribute of the HTMLInputElement element has a specific expectation on iOS.
+
+        * TestExpectations: Skip some tests crashing or timing out.
+        * platform/ios/imported/w3c/web-platform-tests/custom-elements/reactions/HTMLInputElement-expected.txt: Added.
+
+2018-07-19  Antoine Quint  <graouts@apple.com>
+
+        Flaky crash in AnimationTimeline::cancelOrRemoveDeclarativeAnimation
+        https://bugs.webkit.org/show_bug.cgi?id=187530
+        <rdar://problem/42095186>
+
+        Reviewed by Dean Jackson.
+
+        Adjust an existing test which assumes an animation might be running when it's not really, so we test the animation is
+        not running using an alternate method.
+
+        * animations/keyframes-dynamic-expected.txt:
+        * animations/keyframes-dynamic.html:
+
+2018-07-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark storage/indexeddb/modern/opendatabase-after-storage-crash.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=187648
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2018-07-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the test.
+
+        * editing/mac/attributed-string/attributed-string-for-typing-with-color-filter.html:
+
+2018-07-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Setting foreground color when editing should take color-filter into account, and report the correct foreground color for collapsed selections
+        https://bugs.webkit.org/show_bug.cgi?id=187778
+
+        Reviewed by Ryosuke Niwa.
+
+        * editing/mac/attributed-string/attrib-string-colors-with-color-filter-expected.txt: Added.
+        * editing/mac/attributed-string/attrib-string-colors-with-color-filter.html: Added.
+        * editing/mac/attributed-string/attrib-string-range-with-color-filter-expected.txt: Added.
+        * editing/mac/attributed-string/attrib-string-range-with-color-filter.html: Added.
+        * editing/mac/attributed-string/attributed-string-for-typing-with-color-filter-expected.txt: Added.
+        * editing/mac/attributed-string/attributed-string-for-typing-with-color-filter.html: Added.
+        * editing/style/exec-command-foreColor-with-color-filter-expected.txt: Added.
+        * editing/style/exec-command-foreColor-with-color-filter.html: Added.
+
+2018-07-19  Truitt Savell  <tsavell@apple.com>
+
+        [ win-ews ] http/tests/preload/onload_event.html is flakey crash on win-ews
+        https://bugs.webkit.org/show_bug.cgi?id=187809
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-07-19  Frederic Wang  <fwang@igalia.com>
+
+        Fix message of NotSupportedError exception thrown during custom element creation
+        https://bugs.webkit.org/show_bug.cgi?id=187757
+
+        Reviewed by Yusuke Suzuki.
+
+        * fast/custom-elements/exceptions-for-synchronous-custom-element-creation-expected.txt: Added.
+        * fast/custom-elements/exceptions-for-synchronous-custom-element-creation.html: Added.
+
+2018-07-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/css/apple-system-colors.html.
+
+        Unreviewed test gardening.
+
+        * platform/mac/fast/css/apple-system-colors-expected.txt:
+
+2018-07-18  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Interpolation between font-styles with a keyword value should be discrete
+        https://bugs.webkit.org/show_bug.cgi?id=187722
+
+        Reviewed by Myles Maxfield.
+
+        Mark some WPT progressions.
+
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+
+2018-07-18  Jer Noble  <jer.noble@apple.com>
+
+        PiP from Element Fullscreen should match AVKit's behavior
+        https://bugs.webkit.org/show_bug.cgi?id=187623
+
+        Reviewed by Jon Lee.
+
+        * TestExpectations:
+        * media/fullscreen-video-going-into-pip-expected.txt: Removed.
+        * media/fullscreen-video-going-into-pip.html: Removed.
+        * media/video-contained-in-fullscreen-element-going-into-pip-expected.txt: Removed.
+        * media/video-contained-in-fullscreen-element-going-into-pip.html: Removed.
+        * platform/mac-wk2/TestExpectations:
+
+2018-07-18  Truitt Savell  <tsavell@apple.com>
+
+       [ WK2 ] Layout Test http/wpt/service-workers/update-service-worker.https.html is a flaky Timeout
+        https://bugs.webkit.org/show_bug.cgi?id=187766
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2018-07-18  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=187771
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-07-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the parsing of colors in attributed string tests, and make it possible to dump the typing attributes
+        https://bugs.webkit.org/show_bug.cgi?id=187747
+
+        Reviewed by Ryosuke Niwa.
+        
+        Fix the parsing of color properties in dump-attributed-string.js, and treat NSStrokeColor as
+        a color. Rebase all the affected tests. Give macOS Sierra its own expectations with the legacy NSCustomColorSpace.
+        
+        Add attributed-string-for-typing.html which tests typingAttributes.
+
+        * editing/mac/attributed-string/anchor-element-expected.txt:
+        * editing/mac/attributed-string/attributed-string-for-typing-expected.txt: Added.
+        * editing/mac/attributed-string/attributed-string-for-typing.html: Added.
+        * editing/mac/attributed-string/basic-expected.txt:
+        * editing/mac/attributed-string/comment-cdata-section-expected.txt:
+        * editing/mac/attributed-string/font-size-expected.txt:
+        * editing/mac/attributed-string/font-style-variant-effect-expected.txt:
+        * editing/mac/attributed-string/font-weight-expected.txt:
+        * editing/mac/attributed-string/letter-spacing-expected.txt:
+        * editing/mac/attributed-string/resources/dump-attributed-string.js:
+        (dumpAttributedString):
+        (formatNonParagraphAttributeValue):
+        (parseNSColorDescription):
+        (window.onload):
+        (serializeAttributedString.log): Deleted.
+        (serializeAttributedString.): Deleted.
+        (serializeAttributedString): Deleted.
+        * editing/mac/attributed-string/text-decorations-expected.txt:
+        * editing/mac/attributed-string/vertical-align-expected.txt:
+        * platform/mac-sierra/editing/mac/attributed-string/anchor-element-expected.txt:
+        * platform/mac-sierra/editing/mac/attributed-string/attributed-string-for-typing-expected.txt: Added.
+        * platform/mac-sierra/editing/mac/attributed-string/basic-expected.txt:
+        * platform/mac-sierra/editing/mac/attributed-string/comment-cdata-section-expected.txt:
+        * platform/mac-sierra/editing/mac/attributed-string/font-size-expected.txt:
+        * platform/mac-sierra/editing/mac/attributed-string/font-style-variant-effect-expected.txt:
+        * platform/mac-sierra/editing/mac/attributed-string/font-weight-expected.txt:
+        * platform/mac-sierra/editing/mac/attributed-string/letter-spacing-expected.txt:
+        * platform/mac-sierra/editing/mac/attributed-string/text-decorations-expected.txt:
+        * platform/mac-sierra/editing/mac/attributed-string/vertical-align-expected.txt:
+        * platform/mac/editing/mac/attributed-string/anchor-element-expected.txt: Removed.
+        * platform/mac/editing/mac/attributed-string/basic-expected.txt: Removed.
+        * platform/mac/editing/mac/attributed-string/comment-cdata-section-expected.txt: Removed.
+        * platform/mac/editing/mac/attributed-string/font-size-expected.txt: Removed.
+        * platform/mac/editing/mac/attributed-string/font-style-variant-effect-expected.txt: Removed.
+        * platform/mac/editing/mac/attributed-string/font-weight-expected.txt: Removed.
+        * platform/mac/editing/mac/attributed-string/letter-spacing-expected.txt: Removed.
+        * platform/mac/editing/mac/attributed-string/text-decorations-expected.txt: Removed.
+        * platform/mac/editing/mac/attributed-string/vertical-align-expected.txt: Removed.
+
+2018-07-17  Antoine Quint  <graouts@apple.com>
+
+        Ensure timingFunctionForKeyframeAtIndex() can be used from setAnimatedPropertiesInStyle().
+        https://bugs.webkit.org/show_bug.cgi?id=187637
+        <rdar://problem/42157915>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test that would crash prior to this change.
+
+        * webanimations/empty-keyframes-crash-expected.txt: Added.
+        * webanimations/empty-keyframes-crash.html: Added.
+
+2018-07-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.https.worker.html for Sierra after r233898.
+
+        Unreviewed test gardening.
+
+        * platform/mac-sierra/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.https.worker-expected.txt: Added.
+        * platform/mac/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.https.worker-expected.txt: Added.
+
+2018-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Layout Test compositing/iframes/display-none-subframe.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=186406
+
+        Unreviewed test gardening
+
+        * platform/wk2/TestExpectations:
+
+2018-07-17  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, test gardening after r233898.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-07-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Crypto operations should copy their parameters before hoping to another thread
+        https://bugs.webkit.org/show_bug.cgi?id=187501
+        <rdar://problem/41438160>
+
+        Reviewed by Youenn Fablet.
+
+        crypto/subtle/aes-gcm-import-key-unwrap-ec-raw-key.html is an exception of this series of tests as
+        it only aims to test the correct behavoir of suggested algorithms. This patch aslo does some test
+        gardening.
+
+        * TestExpectations:
+        * crypto/subtle/aes-gcm-import-key-unwrap-ec-raw-key-expected.txt: Added.
+        * crypto/subtle/aes-gcm-import-key-unwrap-ec-raw-key.html: Added.
+        * http/wpt/crypto/aes-cbc-crash.any-expected.txt: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.html: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.js: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.worker.html: Added.
+        * http/wpt/crypto/aes-ctr-crash.any-expected.txt: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.html: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.js: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.worker.html: Added.
+        * http/wpt/crypto/aes-gcm-crash.any-expected.txt: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.html: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.js: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.worker.html: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any-expected.txt: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.html: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.js: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.worker.html: Added.
+        * http/wpt/crypto/ecdsa-crash.any-expected.txt: Added.
+        * http/wpt/crypto/ecdsa-crash.any.html: Added.
+        * http/wpt/crypto/ecdsa-crash.any.js: Added.
+        * http/wpt/crypto/ecdsa-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/ecdsa-crash.any.worker.html: Added.
+        * http/wpt/crypto/hkdf-crash.any-expected.txt: Added.
+        * http/wpt/crypto/hkdf-crash.any.html: Added.
+        * http/wpt/crypto/hkdf-crash.any.js: Added.
+        * http/wpt/crypto/hkdf-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/hkdf-crash.any.worker.html: Added.
+        * http/wpt/crypto/pbkdf2-crash.any-expected.txt: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.html: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.js: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.worker.html: Added.
+        * http/wpt/crypto/resources/common.js: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any-expected.txt: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.html: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.js: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.worker.html: Added.
+        * http/wpt/crypto/rsa-pss-crash.any-expected.txt: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.html: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.js: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.worker.html: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any-expected.txt: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.html: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.js: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.worker.html: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any-expected.txt: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.html: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.js: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.worker.html: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.worker-expected.txt: Added.
+
+2018-07-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unskip LayoutTest imported/w3c/web-platform-tests/css/css-display/display-contents-first-letter-002.html.
+        https://bugs.webkit.org/show_bug.cgi?id=186901
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-07-17  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Interpolation between lengths with an "auto" value should be discrete
+        https://bugs.webkit.org/show_bug.cgi?id=187721
+
+        Reviewed by Dean Jackson.
+
+        Make two more tests opt into the new animation engine since they pass and they're not in the legacy-animation-engine directory.
+        A third test now has some logging due to transitions not actually running, which is expected and correct.
+
+        * fast/animation/height-auto-transition-computed-value.html:
+        * imported/blink/transitions/transition-not-interpolable.html:
+        * legacy-animation-engine/transitions/transition-to-from-auto-expected.txt:
+
+2018-07-17  John Wilander  <wilander@apple.com>
+
+        Add completion handlers to TestRunner functions setStatisticsLastSeen(), setStatisticsPrevalentResource(), setStatisticsVeryPrevalentResource(), setStatisticsHasHadUserInteraction(), and setStatisticsHasHadNonRecentUserInteraction()
+        https://bugs.webkit.org/show_bug.cgi?id=187710
+        <rdar://problem/42252757>
+
+        Reviewed by Chris Dumez.
+
+        These changes are to update all test cases that make use of
+        TestRunner functions:
+        - setStatisticsLastSeen(),
+        - setStatisticsPrevalentResource(),
+        - setStatisticsVeryPrevalentResource(),
+        - setStatisticsHasHadUserInteraction(), and
+        - setStatisticsHasHadNonRecentUserInteraction().
+
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect.html:
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-mixed-statistics.html:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-sub-frame-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-unique-redirects-to.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-statistics.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-collusion.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-to-prevalent.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-collusion.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-to-prevalent.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-unique-redirects-to.html:
+        * http/tests/resourceLoadStatistics/classify-as-very-prevalent-based-on-mixed-statistics.html:
+        * http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html:
+        * http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html:
+        * http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect.html:
+        * http/tests/resourceLoadStatistics/grandfathering.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout-expected.txt:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html:
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-unhandled-keydown.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/prune-statistics.html:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html:
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect.html:
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html:
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html:
+        * http/tests/resourceLoadStatistics/telemetry-generation.html:
+        * http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html:
+
+2018-07-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline displaylists/extent-includes-* tests for mac-wk1 after r233869.
+        https://bugs.webkit.org/show_bug.cgi?id=187574
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/displaylists/extent-includes-shadow-expected.txt:
+        * platform/mac-wk1/displaylists/extent-includes-transforms-expected.txt:
+
+2018-07-17  Dirk Schulze  <krit@webkit.org>
+
+        [clip-path] Implement support for margin-box as reference box and box shape
+        https://bugs.webkit.org/show_bug.cgi?id=127984
+
+        Reviewed by Simon Fraser.
+
+        Compute the margin-box rectangle as needed for clip-path based on the actual
+        computed values for the margin-top, *-left, *-bottom, *-right properties.
+
+        * css3/masking/clip-path-circle-margin-box-expected.html: Added.
+        * css3/masking/clip-path-margin-box-expected.html: Added.
+        * css3/masking/clip-path-margin-box.html: Added.
+        * platform/mac/css3/masking/clip-path-circle-margin-box-expected.png: Removed.
+        * platform/mac/css3/masking/clip-path-circle-margin-box-expected.txt: Removed.
+
+2018-07-17  Javier Fernandez  <jfernandez@igalia.com>
+
+        Delete content of a single cell table should not delete the whole table
+        https://bugs.webkit.org/show_bug.cgi?id=173117
+
+        Reviewed by Ryosuke Niwa.
+
+        Tests to verify that single-cell tables are not deleted when their
+        last character is deleted, unless it was previously selected by
+        the user.
+
+        Changes two expected files to adapt them to the new logic.
+
+        * LayoutTests/editing/deleting/deleting-relative-positioned-special-element-expected.txt: The paragraph is not deleted, even if it's empty. The paragraphs above are not merged, which was the goal of the test.
+        * editing/deleting/delete-last-char-in-table-expected.txt: The table is not removed, even if it's empty. The formatted elements are deleted, which was the goal of the test.
+        * editing/deleting/backspace-delete-last-char-in-table-expected.txt: Added.
+        * editing/deleting/backspace-delete-last-char-in-table.html: Added.
+        * editing/deleting/forward-delete-last-char-in-table-expected.txt: Added.
+        * editing/deleting/forward-delete-last-char-in-table.html: Added.
+        * editing/deleting/select-and-delete-last-char-in-table-expected.txt: Added.
+        * editing/deleting/select-and-delete-last-char-in-table.html: Added.
+
+2018-07-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Roll out r233873 and r233875 since they caused 8 new layout test crashes.
+
+        * TestExpectations:
+        * crypto/subtle/aes-gcm-import-key-unwrap-ec-raw-key-expected.txt: Removed.
+        * crypto/subtle/aes-gcm-import-key-unwrap-ec-raw-key.html: Removed.
+        * http/wpt/crypto/aes-cbc-crash.any-expected.txt: Removed.
+        * http/wpt/crypto/aes-cbc-crash.any.html: Removed.
+        * http/wpt/crypto/aes-cbc-crash.any.js: Removed.
+        * http/wpt/crypto/aes-cbc-crash.any.worker-expected.txt: Removed.
+        * http/wpt/crypto/aes-cbc-crash.any.worker.html: Removed.
+        * http/wpt/crypto/aes-ctr-crash.any-expected.txt: Removed.
+        * http/wpt/crypto/aes-ctr-crash.any.html: Removed.
+        * http/wpt/crypto/aes-ctr-crash.any.js: Removed.
+        * http/wpt/crypto/aes-ctr-crash.any.worker-expected.txt: Removed.
+        * http/wpt/crypto/aes-ctr-crash.any.worker.html: Removed.
+        * http/wpt/crypto/aes-gcm-crash.any-expected.txt: Removed.
+        * http/wpt/crypto/aes-gcm-crash.any.html: Removed.
+        * http/wpt/crypto/aes-gcm-crash.any.js: Removed.
+        * http/wpt/crypto/aes-gcm-crash.any.worker-expected.txt: Removed.
+        * http/wpt/crypto/aes-gcm-crash.any.worker.html: Removed.
+        * http/wpt/crypto/derive-hmac-key-crash.any-expected.txt: Removed.
+        * http/wpt/crypto/derive-hmac-key-crash.any.html: Removed.
+        * http/wpt/crypto/derive-hmac-key-crash.any.js: Removed.
+        * http/wpt/crypto/derive-hmac-key-crash.any.worker-expected.txt: Removed.
+        * http/wpt/crypto/derive-hmac-key-crash.any.worker.html: Removed.
+        * http/wpt/crypto/ecdsa-crash.any-expected.txt: Removed.
+        * http/wpt/crypto/ecdsa-crash.any.html: Removed.
+        * http/wpt/crypto/ecdsa-crash.any.js: Removed.
+        * http/wpt/crypto/ecdsa-crash.any.worker-expected.txt: Removed.
+        * http/wpt/crypto/ecdsa-crash.any.worker.html: Removed.
+        * http/wpt/crypto/hkdf-crash.any-expected.txt: Removed.
+        * http/wpt/crypto/hkdf-crash.any.html: Removed.
+        * http/wpt/crypto/hkdf-crash.any.js: Removed.
+        * http/wpt/crypto/hkdf-crash.any.worker-expected.txt: Removed.
+        * http/wpt/crypto/hkdf-crash.any.worker.html: Removed.
+        * http/wpt/crypto/pbkdf2-crash.any-expected.txt: Removed.
+        * http/wpt/crypto/pbkdf2-crash.any.html: Removed.
+        * http/wpt/crypto/pbkdf2-crash.any.js: Removed.
+        * http/wpt/crypto/pbkdf2-crash.any.worker-expected.txt: Removed.
+        * http/wpt/crypto/pbkdf2-crash.any.worker.html: Removed.
+        * http/wpt/crypto/resources/common.js: Removed.
+        * http/wpt/crypto/rsa-oaep-crash.any-expected.txt: Removed.
+        * http/wpt/crypto/rsa-oaep-crash.any.html: Removed.
+        * http/wpt/crypto/rsa-oaep-crash.any.js: Removed.
+        * http/wpt/crypto/rsa-oaep-crash.any.worker-expected.txt: Removed.
+        * http/wpt/crypto/rsa-oaep-crash.any.worker.html: Removed.
+        * http/wpt/crypto/rsa-pss-crash.any-expected.txt: Removed.
+        * http/wpt/crypto/rsa-pss-crash.any.html: Removed.
+        * http/wpt/crypto/rsa-pss-crash.any.js: Removed.
+        * http/wpt/crypto/rsa-pss-crash.any.worker-expected.txt: Removed.
+        * http/wpt/crypto/rsa-pss-crash.any.worker.html: Removed.
+        * http/wpt/crypto/unwrap-ec-key-crash.any-expected.txt: Removed.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.html: Removed.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.js: Removed.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.worker-expected.txt: Removed.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.worker.html: Removed.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any-expected.txt: Removed.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.html: Removed.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.js: Removed.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.worker-expected.txt: Removed.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.worker.html: Removed.
+
+2018-07-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [ WK2 ] Layout Test editing/selection/update-selection-by-style-change.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187649
+
+        Reviewed by Wenson Hsieh.
+
+        Force update the selection before ending the test.
+
+        * editing/selection/update-selection-by-style-change.html:
+
+2018-07-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Add color filter for transforming colors in Dark Mode
+        https://bugs.webkit.org/show_bug.cgi?id=187717
+        rdar://problem/41146650
+
+        Reviewed by Dean Jackson.
+
+        * css3/color-filters/color-filter-apple-invert-lightness-expected.html: Added.
+        * css3/color-filters/color-filter-apple-invert-lightness.html: Added.
+        * css3/color-filters/color-filter-parsing-expected.txt:
+        * css3/color-filters/color-filter-parsing.html:
+
+2018-07-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Crypto operations should copy their parameters before hoping to another thread
+        https://bugs.webkit.org/show_bug.cgi?id=187501
+        <rdar://problem/41438160>
+
+        Reviewed by Youenn Fablet.
+
+        crypto/subtle/aes-gcm-import-key-unwrap-ec-raw-key.html is an exception of this series of tests as
+        it only aims to test the correct behavoir of suggested algorithms. This patch aslo does some test
+        gardening.
+
+        * TestExpectations:
+        * crypto/subtle/aes-gcm-import-key-unwrap-ec-raw-key-expected.txt: Added.
+        * crypto/subtle/aes-gcm-import-key-unwrap-ec-raw-key.html: Added.
+        * http/wpt/crypto/aes-cbc-crash.any-expected.txt: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.html: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.js: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.worker.html: Added.
+        * http/wpt/crypto/aes-ctr-crash.any-expected.txt: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.html: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.js: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.worker.html: Added.
+        * http/wpt/crypto/aes-gcm-crash.any-expected.txt: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.html: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.js: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.worker.html: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any-expected.txt: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.html: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.js: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.worker.html: Added.
+        * http/wpt/crypto/ecdsa-crash.any-expected.txt: Added.
+        * http/wpt/crypto/ecdsa-crash.any.html: Added.
+        * http/wpt/crypto/ecdsa-crash.any.js: Added.
+        * http/wpt/crypto/ecdsa-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/ecdsa-crash.any.worker.html: Added.
+        * http/wpt/crypto/hkdf-crash.any-expected.txt: Added.
+        * http/wpt/crypto/hkdf-crash.any.html: Added.
+        * http/wpt/crypto/hkdf-crash.any.js: Added.
+        * http/wpt/crypto/hkdf-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/hkdf-crash.any.worker.html: Added.
+        * http/wpt/crypto/pbkdf2-crash.any-expected.txt: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.html: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.js: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.worker.html: Added.
+        * http/wpt/crypto/resources/common.js: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any-expected.txt: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.html: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.js: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.worker.html: Added.
+        * http/wpt/crypto/rsa-pss-crash.any-expected.txt: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.html: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.js: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.worker.html: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any-expected.txt: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.html: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.js: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.worker.html: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any-expected.txt: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.html: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.js: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.worker.html: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.worker-expected.txt: Added.
+
+2018-07-16  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [iOS] When bringing MobileSafari to the foreground, images, which are pending decoding, won't be drawn into the immediate-paint transaction
+        https://bugs.webkit.org/show_bug.cgi?id=187375
+
+        Reviewed by Simon Fraser.
+
+        The Internals API paintControlTints() is now renamed to invalidateControlTints()
+        to be consistent with the new enum values and with the new name of the
+        C++ function.
+
+        * fast/css/webkit-mask-crash-fieldset-legend.html:
+        * fast/css/webkit-mask-crash-figure.html:
+        * fast/css/webkit-mask-crash-table.html:
+        * fast/css/webkit-mask-crash-td-2.html:
+        * fast/css/webkit-mask-crash-td.html:
+
+2018-07-16  Truitt Savell  <tsavell@apple.com>
+
+        [ MacOS WK1 Debug ] Layout Test svg/custom/linking-uri-01-b.svg is flakey
+        https://bugs.webkit.org/show_bug.cgi?id=187711
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-07-16  David Fenton  <david_fenton@apple.com>
+
+        Unreviewed, rolling out r233867.
+
+        caused build failures on High Sierra, Sierra and iOS
+
+        Reverted changeset:
+
+        "[WebCrypto] Crypto operations should copy their parameters
+        before hoping to another thread"
+        https://bugs.webkit.org/show_bug.cgi?id=187501
+        https://trac.webkit.org/changeset/233867
+
+2018-07-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Crypto operations should copy their parameters before hoping to another thread
+        https://bugs.webkit.org/show_bug.cgi?id=187501
+        <rdar://problem/41438160>
+
+        Reviewed by Youenn Fablet.
+
+        crypto/subtle/aes-gcm-import-key-unwrap-ec-raw-key.html is an exception of this series of tests as
+        it only aims to test the correct behavoir of suggested algorithms. This patch aslo does some test
+        gardening.
+
+        * TestExpectations:
+        * crypto/subtle/aes-gcm-import-key-unwrap-ec-raw-key-expected.txt: Added.
+        * crypto/subtle/aes-gcm-import-key-unwrap-ec-raw-key.html: Added.
+        * http/wpt/crypto/aes-cbc-crash.any-expected.txt: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.html: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.js: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/aes-cbc-crash.any.worker.html: Added.
+        * http/wpt/crypto/aes-ctr-crash.any-expected.txt: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.html: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.js: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/aes-ctr-crash.any.worker.html: Added.
+        * http/wpt/crypto/aes-gcm-crash.any-expected.txt: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.html: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.js: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/aes-gcm-crash.any.worker.html: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any-expected.txt: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.html: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.js: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/derive-hmac-key-crash.any.worker.html: Added.
+        * http/wpt/crypto/ecdsa-crash.any-expected.txt: Added.
+        * http/wpt/crypto/ecdsa-crash.any.html: Added.
+        * http/wpt/crypto/ecdsa-crash.any.js: Added.
+        * http/wpt/crypto/ecdsa-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/ecdsa-crash.any.worker.html: Added.
+        * http/wpt/crypto/hkdf-crash.any-expected.txt: Added.
+        * http/wpt/crypto/hkdf-crash.any.html: Added.
+        * http/wpt/crypto/hkdf-crash.any.js: Added.
+        * http/wpt/crypto/hkdf-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/hkdf-crash.any.worker.html: Added.
+        * http/wpt/crypto/pbkdf2-crash.any-expected.txt: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.html: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.js: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/pbkdf2-crash.any.worker.html: Added.
+        * http/wpt/crypto/resources/common.js: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any-expected.txt: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.html: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.js: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/rsa-oaep-crash.any.worker.html: Added.
+        * http/wpt/crypto/rsa-pss-crash.any-expected.txt: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.html: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.js: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/rsa-pss-crash.any.worker.html: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any-expected.txt: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.html: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.js: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.worker-expected.txt: Added.
+        * http/wpt/crypto/unwrap-ec-key-crash.any.worker.html: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any-expected.txt: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.html: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.js: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.worker.html: Added.
+        * http/wpt/crypto/unwrap-rsa-key-crash.any.worker-expected.txt: Added.
+
+2018-07-16  Aditya Keerthi  <akeerthi@apple.com>
+
+        [Datalist][macOS] Add suggestions UI for TextFieldInputTypes
+        https://bugs.webkit.org/show_bug.cgi?id=186531
+
+        Reviewed by Tim Horton.
+
+        Added tests to verify that the suggestions are correctly shown and hidden, and that
+        suggestions can be selected and inserted into an input field.
+
+        * fast/forms/datalist/datalist-show-hide-expected.txt: Added.
+        * fast/forms/datalist/datalist-show-hide.html: Added.
+        * fast/forms/datalist/datalist-textinput-keydown-expected.txt: Added.
+        * fast/forms/datalist/datalist-textinput-keydown.html: Added.
+        * platform/ios/TestExpectations:
+        * resources/ui-helper.js:
+        (window.UIHelper.isShowingDataListSuggestions):
+
+2018-07-16  Jeremy Jones  <jeremyj@apple.com>
+
+        Fullscreen requires active document.
+        https://bugs.webkit.org/show_bug.cgi?id=186226
+        rdar://problem/36187413
+
+        Reviewed by Jer Noble.
+
+        This change guarantees the document to be visible for both element fullscreen and video fullscreen.
+
+        User gesture is not enough to guarantee that the document is visible when fullscreen is initiated
+        because JavaScript can spin wait before initiating fullscreen. During that spin the page or window might
+        be hidden.
+
+        Document::hidden() can't be relied upon because it won't update while JavaScript spins.
+
+        This change adds a sync call to the UI process to get the current UI visibility state.
+
+        * media/no-fullscreen-when-hidden.html: Added.
+        * media/video-test.js:
+        (eventName.string_appeared_here.thunk):
+        (runWithKeyDown):
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2018-07-16  Aaron Chu  <aaron_chu@apple.com>
+
+        AX: Audit Tab should have an Audit Manager
+        https://bugs.webkit.org/show_bug.cgi?id=184071
+        <rdar://problem/38946364>
+
+        Reviewed by Brian Burg.
+
+        Test cases for AuditManager, AuditTestCase, AuditTestSuite, AuditResult and AuditReport.
+
+        * inspector/audit/audit-manager-expected.txt: Added.
+        * inspector/audit/audit-manager.html: Added.
+        * inspector/audit/audit-report-expected.txt: Added.
+        * inspector/audit/audit-report.html: Added.
+        * inspector/audit/audit-test-case-expected.txt: Added.
+        * inspector/audit/audit-test-case.html: Added.
+        * inspector/audit/audit-test-suite-expected.txt: Added.
+        * inspector/audit/audit-test-suite.html: Added.
+        * inspector/audit/resources/audit-test-fixtures.js: Added.
+        (TestPage.registerInitializer.window.testSuiteFixture1):
+        (TestPage.registerInitializer.window.testSuiteFixture1.testCaseDescriptors):
+        (TestPage.registerInitializer.window.testSuiteFixture2):
+        (TestPage.registerInitializer.window.testSuiteFixture2.testCaseDescriptors):
+        (TestPage.registerInitializer):
+
 2018-07-16  Truitt Savell  <tsavell@apple.com>
 
         [ iOS ] Layout Test fast/forms/submit-change-fragment.html is a flaky Timeout

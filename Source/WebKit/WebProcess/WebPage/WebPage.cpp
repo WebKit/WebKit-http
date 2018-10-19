@@ -261,6 +261,7 @@
 
 #if PLATFORM(MAC)
 #include <WebCore/LocalDefaultSystemAppearance.h>
+#include <pal/spi/cf/CFUtilitiesSPI.h>
 #endif
 
 #ifndef NDEBUG
@@ -579,7 +580,6 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
         m_page->settings().setMediaKeysStorageDirectory(manager->mediaKeyStorageDirectory());
 #endif
     m_page->settings().setAppleMailPaginationQuirkEnabled(parameters.appleMailPaginationQuirkEnabled);
-    m_page->settings().setAppleMailLinesClampEnabled(parameters.appleMailLinesClampEnabled);
     
     if (parameters.viewScaleFactor != 1)
         scaleView(parameters.viewScaleFactor);
@@ -671,6 +671,15 @@ void WebPage::updateThrottleState()
     bool windowIsActive = m_activityState & ActivityState::WindowIsActive;
     bool pageSuppressed = !windowIsActive && !isLoading && !isPlayingAudio && !isCapturingMedia && m_processSuppressionEnabled && isVisuallyIdle;
 
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    if (!pageSuppressed) {
+        // App nap must be manually enabled when not running the NSApplication run loop.
+        static std::once_flag onceKey;
+        std::call_once(onceKey, [] {
+            __CFRunLoopSetOptionsReason(__CFRunLoopOptionsEnableAppNap, CFSTR("Finished checkin as application - enable app nap"));
+        });
+    }
+#endif
     // The UserActivity keeps the processes runnable. So if the page should be suppressed, stop the activity.
     // If the page should not be supressed, start it.
     if (pageSuppressed)
@@ -1388,7 +1397,7 @@ void WebPage::reload(uint64_t navigationID, uint32_t reloadOptions, SandboxExten
     ASSERT(!m_mainFrame->coreFrame()->loader().frameHasLoaded() || !m_pendingNavigationID);
     m_pendingNavigationID = navigationID;
 
-    m_sandboxExtensionTracker.beginLoad(m_mainFrame.get(), WTFMove(sandboxExtensionHandle));
+    m_sandboxExtensionTracker.beginReload(m_mainFrame.get(), WTFMove(sandboxExtensionHandle));
     corePage()->userInputBridge().reloadFrame(m_mainFrame->coreFrame(), OptionSet<ReloadOption>::fromRaw(reloadOptions));
 
     if (m_pendingNavigationID) {
@@ -2899,7 +2908,13 @@ String WebPage::userAgent(WebFrame* frame, const URL& webcoreURL) const
     
 void WebPage::setUserAgent(const String& userAgent)
 {
+    if (m_userAgent == userAgent)
+        return;
+
     m_userAgent = userAgent;
+
+    if (m_page)
+        m_page->userAgentChanged();
 }
 
 void WebPage::suspendActiveDOMObjectsAndAnimations()
@@ -4072,6 +4087,16 @@ void WebPage::SandboxExtensionTracker::beginLoad(WebFrame* frame, SandboxExtensi
     ASSERT_UNUSED(frame, frame->isMainFrame());
 
     setPendingProvisionalSandboxExtension(SandboxExtension::create(WTFMove(handle)));
+}
+
+void WebPage::SandboxExtensionTracker::beginReload(WebFrame* frame, SandboxExtension::Handle&& handle)
+{
+    ASSERT_UNUSED(frame, frame->isMainFrame());
+
+    // Maintain existing provisional SandboxExtension in case of a reload, if the new handle is null. This is needed
+    // because the UIProcess sends us a null handle if it already sent us a handle for this path in the past.
+    if (auto sandboxExtension = SandboxExtension::create(WTFMove(handle)))
+        setPendingProvisionalSandboxExtension(WTFMove(sandboxExtension));
 }
 
 void WebPage::SandboxExtensionTracker::setPendingProvisionalSandboxExtension(RefPtr<SandboxExtension>&& pendingProvisionalSandboxExtension)

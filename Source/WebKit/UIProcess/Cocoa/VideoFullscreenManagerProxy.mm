@@ -282,6 +282,36 @@ void VideoFullscreenModelContext::fullscreenMayReturnToInline()
         m_manager->fullscreenMayReturnToInline(m_contextId);
 }
 
+void VideoFullscreenModelContext::willEnterPictureInPicture()
+{
+    for (auto& client : m_clients)
+        client->willEnterPictureInPicture();
+}
+
+void VideoFullscreenModelContext::didEnterPictureInPicture()
+{
+    for (auto& client : m_clients)
+        client->didEnterPictureInPicture();
+}
+
+void VideoFullscreenModelContext::failedToEnterPictureInPicture()
+{
+    for (auto& client : m_clients)
+        client->failedToEnterPictureInPicture();
+}
+
+void VideoFullscreenModelContext::willExitPictureInPicture()
+{
+    for (auto& client : m_clients)
+        client->willExitPictureInPicture();
+}
+
+void VideoFullscreenModelContext::didExitPictureInPicture()
+{
+    for (auto& client : m_clients)
+        client->didExitPictureInPicture();
+}
+
 #pragma mark - VideoFullscreenManagerProxy
 
 RefPtr<VideoFullscreenManagerProxy> VideoFullscreenManagerProxy::create(WebPageProxy& page, PlaybackSessionManagerProxy& playbackSessionManagerProxy)
@@ -358,6 +388,13 @@ bool VideoFullscreenManagerProxy::isPlayingVideoInEnhancedFullscreen() const
 }
 #endif
 
+PlatformVideoFullscreenInterface* VideoFullscreenManagerProxy::controlsManagerInterface()
+{
+    if (auto contextId = m_playbackSessionManagerProxy->controlsManagerContextId())
+        return &ensureInterface(contextId);
+    return nullptr;
+}
+
 void VideoFullscreenManagerProxy::applicationDidBecomeActive()
 {
     for (auto& tuple : m_contextMap.values())
@@ -412,6 +449,7 @@ void VideoFullscreenManagerProxy::removeClientForContext(uint64_t contextId)
     clientCount--;
 
     if (clientCount <= 0) {
+        ensureInterface(contextId).setVideoFullscreenModel(nullptr);
         m_playbackSessionManagerProxy->removeClientForContext(contextId);
         m_clientCounts.remove(contextId);
         m_contextMap.remove(contextId);

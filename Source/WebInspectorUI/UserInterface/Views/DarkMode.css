@@ -93,7 +93,7 @@
         --green-highlight-background-color: hsl(120, 15%, 28%);
         --green-highlight-text-color: hsl(80, 75%, 80%);
 
-        --yellow-highlight-background-color: hsl(3, 20%, 26%);
+        --yellow-highlight-background-color: hsl(13, 20%, 26%);
         --yellow-highlight-text-color: hsl(50, 96%, 87%);
 
         --value-changed-highlight: var(--green-highlight-background-color);
@@ -233,11 +233,11 @@
 
     /* TextEditor.css */
     .text-editor > .CodeMirror .execution-line {
-        background-color: hsla(99, 100%, 51%, 0.3) !important;
+        background-color: hsla(89, 100%, 51%, 0.25) !important;
     }
     .text-editor > .CodeMirror .execution-range-highlight:not(.CodeMirror-selectedtext),
     .text-editor > .CodeMirror .execution-range-highlight:not(.CodeMirror-selectedtext) + .CodeMirror-widget {
-        background-color: hsl(99, 96%, 19%);
+        background-color: hsl(99, 85%, 30%);
     }
 
 
@@ -369,7 +369,6 @@
     /* Toolbar.css */
     body .toolbar {
         background-image: linear-gradient(to bottom, hsl(0, 0%, 25%), hsl(0, 0%, 22%));
-        border-top: 1px solid hsla(0, 0%, 100%, 0.3);
         box-shadow: none;
     }
 
@@ -534,6 +533,10 @@
         color: var(--text-color-secondary);
     }
 
+    .edit-breakpoint-popover-condition {
+        background: var(--background-color-code);
+    }
+
 
     /* BreakpointActionView.css */
     .breakpoint-action-block-body {
@@ -549,6 +552,10 @@
     .breakpoint-action-append-button,
     .breakpoint-action-remove-button {
         filter: invert();
+    }
+
+    .breakpoint-action-eval-editor {
+        background: var(--background-color-code);
     }
 
 
@@ -917,17 +924,18 @@
     }
 
 
-    /* FilterBar.css */
-    .filter-bar > input[type="search"] {
+    /* FilterBar.css, SearchBar.css */
+    :matches(.search-bar, .filter-bar) > input[type="search"],
+    .search-bar > input[type="search"]:not(:placeholder-shown) {
         border-color: var(--background-color-selected);
         background-color: var(--background-color-alternate);
     }
 
-    .filter-bar > input[type="search"]::placeholder {
+    :matches(.search-bar, .filter-bar) > input[type="search"]::placeholder {
         color: var(--text-color-secondary);
     }
 
-    .filter-bar > input[type="search"]:focus {
+    :matches(.search-bar, .filter-bar) > input[type="search"]:focus {
         background-color: hsla(0, 0%, var(--foreground-lightness), 0.2);
         color: var(--text-color-active);
     }
@@ -1035,16 +1043,8 @@
         background-color: var(--warning-background-color);
     }
 
-    .source-code.text-editor > .CodeMirror .issue-widget.inline.warning > .arrow {
-        border-right-color: var(--warning-background-color);
-    }
-
     .source-code.text-editor > .CodeMirror .issue-widget.inline.error {
         background-color: var(--error-background-color);
-    }
-
-    .source-code.text-editor > .CodeMirror .issue-widget.inline.error > .arrow {
-        border-right-color: var(--error-background-color);
     }
 
 

@@ -29,6 +29,7 @@
 #include "Logging.h"
 #include "NetworkCacheCoders.h"
 #include "NetworkProcess.h"
+#include "WebCoreArgumentCoders.h"
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SharedBuffer.h>
 #include <wtf/text/StringBuilder.h>
@@ -112,8 +113,6 @@ std::unique_ptr<Entry> Entry::decodeStorageRecord(const Storage::Record& storage
     if (!decoder.decode(entry->m_response))
         return nullptr;
     entry->m_response.setSource(WebCore::ResourceResponse::Source::DiskCache);
-    if (storageEntry.bodyHash)
-        entry->m_response.setCacheBodyKey(*storageEntry.bodyHash);
 
     bool hasVaryingRequestHeaders;
     if (!decoder.decode(hasVaryingRequestHeaders))

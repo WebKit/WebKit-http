@@ -153,6 +153,38 @@ window.UIHelper = class UIHelper {
         });
     }
 
+    static getSelectionStartGrabberViewRect()
+    {
+        if (!this.isWebKit2() || !this.isIOS())
+            return Promise.resolve();
+
+        return new Promise(resolve => {
+            testRunner.runUIScript(`(function() {
+                uiController.doAfterNextStablePresentationUpdate(function() {
+                    uiController.uiScriptComplete(JSON.stringify(uiController.selectionStartGrabberViewRect));
+                });
+            })()`, jsonString => {
+                resolve(JSON.parse(jsonString));
+            });
+        });
+    }
+
+    static getSelectionEndGrabberViewRect()
+    {
+        if (!this.isWebKit2() || !this.isIOS())
+            return Promise.resolve();
+
+        return new Promise(resolve => {
+            testRunner.runUIScript(`(function() {
+                uiController.doAfterNextStablePresentationUpdate(function() {
+                    uiController.uiScriptComplete(JSON.stringify(uiController.selectionEndGrabberViewRect));
+                });
+            })()`, jsonString => {
+                resolve(JSON.parse(jsonString));
+            });
+        });
+    }
+
     static replaceTextAtRange(text, location, length) {
         return new Promise(resolve => {
             testRunner.runUIScript(`(() => {
@@ -229,6 +261,15 @@ window.UIHelper = class UIHelper {
         });
     }
 
+    static isShowingDataListSuggestions()
+    {
+        return new Promise(resolve => {
+            testRunner.runUIScript(`(() => {
+                uiController.uiScriptComplete(uiController.isShowingDataListSuggestions);
+            })()`, resolve);
+        });
+    }
+
     static zoomScale()
     {
         return new Promise(resolve => {
@@ -236,5 +277,27 @@ window.UIHelper = class UIHelper {
                 uiController.uiScriptComplete(uiController.zoomScale);
             })()`, resolve);
         });
+    }
+
+    static typeCharacter(characterString)
+    {
+        if (!this.isWebKit2() || !this.isIOS()) {
+            eventSender.keyDown(key);
+            return;
+        }
+
+        const escapedString = characterString.replace(/`/g, "\\`");
+        const uiScript = `uiController.typeCharacterUsingHardwareKeyboard(\`${escapedString}\`, () => uiController.uiScriptComplete())`;
+        return new Promise(resolve => testRunner.runUIScript(uiScript, resolve));
+    }
+
+    static applyAutocorrection(newText, oldText)
+    {
+        if (!this.isWebKit2())
+            return;
+
+        const [escapedNewText, escapedOldText] = [newText.replace(/`/g, "\\`"), oldText.replace(/`/g, "\\`")];
+        const uiScript = `uiController.applyAutocorrection(\`${escapedNewText}\`, \`${escapedOldText}\`, () => uiController.uiScriptComplete())`;
+        return new Promise(resolve => testRunner.runUIScript(uiScript, resolve));
     }
 }

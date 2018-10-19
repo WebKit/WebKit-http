@@ -388,9 +388,9 @@ void SpeculativeJIT::addSlowPathGenerator(std::unique_ptr<SlowPathGenerator> slo
     m_slowPathGenerators.append(WTFMove(slowPathGenerator));
 }
 
-void SpeculativeJIT::addSlowPathGenerator(std::function<void()> lambda)
+void SpeculativeJIT::addSlowPathGeneratorLambda(Function<void()>&& lambda)
 {
-    m_slowPathLambdas.append(SlowPathLambda{ lambda, m_currentNode, static_cast<unsigned>(m_stream->size()) });
+    m_slowPathLambdas.append(SlowPathLambda{ WTFMove(lambda), m_currentNode, static_cast<unsigned>(m_stream->size()) });
 }
 
 void SpeculativeJIT::runSlowPathGenerators(PCToCodeOriginMapBuilder& pcToCodeOriginMapBuilder)
@@ -3900,7 +3900,7 @@ void SpeculativeJIT::compileMathIC(Node* node, JITBinaryMathIC<Generator>* mathI
 
         auto done = m_jit.label();
 
-        addSlowPathGenerator([=, savePlans = WTFMove(savePlans)] () {
+        addSlowPathGeneratorLambda([=, savePlans = WTFMove(savePlans)] () {
             addICGenerationState->slowPathJumps.link(&m_jit);
             addICGenerationState->slowPathStart = m_jit.label();
 #if ENABLE(MATH_IC_STATS)
@@ -4608,7 +4608,7 @@ void SpeculativeJIT::compileMathIC(Node* node, JITUnaryMathIC<Generator>* mathIC
 
         auto done = m_jit.label();
 
-        addSlowPathGenerator([=, savePlans = WTFMove(savePlans)] () {
+        addSlowPathGeneratorLambda([=, savePlans = WTFMove(savePlans)] () {
             icGenerationState->slowPathJumps.link(&m_jit);
             icGenerationState->slowPathStart = m_jit.label();
 #if ENABLE(MATH_IC_STATS)
@@ -9657,7 +9657,14 @@ void SpeculativeJIT::speculateNumber(Edge edge)
         JSValueRegs(gpr), edge, SpecBytecodeNumber,
         m_jit.branchIfNotNumber(gpr));
 #else
+#if COMPILER(GCC_OR_CLANG)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wenum-compare"
+#endif
     static_assert(JSValue::Int32Tag >= JSValue::LowestTag, "Int32Tag is included in >= JSValue::LowestTag range.");
+#if COMPILER(GCC_OR_CLANG)
+#pragma GCC diagnostic pop
+#endif
     GPRReg tagGPR = value.tagGPR();
     DFG_TYPE_CHECK(
         value.jsValueRegs(), edge, ~SpecInt32Only,
@@ -10150,7 +10157,14 @@ void SpeculativeJIT::speculateMisc(Edge edge, JSValueRegs regs)
         regs, edge, SpecMisc,
         m_jit.branch64(MacroAssembler::Above, regs.gpr(), MacroAssembler::TrustedImm64(TagBitTypeOther | TagBitBool | TagBitUndefined)));
 #else
+#if COMPILER(GCC_OR_CLANG)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wenum-compare"
+#endif
     static_assert(JSValue::Int32Tag >= JSValue::UndefinedTag, "Int32Tag is included in >= JSValue::UndefinedTag range.");
+#if COMPILER(GCC_OR_CLANG)
+#pragma GCC diagnostic pop
+#endif
     DFG_TYPE_CHECK(
         regs, edge, ~SpecInt32Only,
         m_jit.branchIfInt32(regs.tagGPR()));
@@ -10289,6 +10303,9 @@ void SpeculativeJIT::speculate(Node*, Edge edge)
         break;
     case NotCellUse:
         speculateNotCell(edge);
+        break;
+    case KnownOtherUse:
+        ASSERT(!needsTypeCheck(edge, SpecOther));
         break;
     case OtherUse:
         speculateOther(edge);

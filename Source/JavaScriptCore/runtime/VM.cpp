@@ -175,6 +175,15 @@ using namespace WTF;
 
 namespace JSC {
 
+#if ENABLE(JIT)
+#if !ASSERT_DISABLED
+bool VM::s_canUseJITIsSet = false;
+#endif
+bool VM::s_canUseJIT = false;
+#endif
+
+Atomic<unsigned> VM::s_numberOfIDs;
+
 // Note: Platform.h will enforce that ENABLE(ASSEMBLER) is true if either
 // ENABLE(JIT) or ENABLE(YARR_JIT) or both are enabled. The code below
 // just checks for ENABLE(JIT) or ENABLE(YARR_JIT) with this premise in mind.
@@ -210,17 +219,14 @@ bool VM::canUseAssembler()
 #endif
 }
 
-bool VM::canUseJIT()
+void VM::computeCanUseJIT()
 {
 #if ENABLE(JIT)
-    static std::once_flag onceKey;
-    static bool enabled = false;
-    std::call_once(onceKey, [] {
-        enabled = VM::canUseAssembler() && Options::useJIT();
-    });
-    return enabled;
-#else
-    return false; // interpreter only
+#if !ASSERT_DISABLED
+    RELEASE_ASSERT(!s_canUseJITIsSet);
+    s_canUseJITIsSet = true;
+#endif
+    s_canUseJIT = VM::canUseAssembler() && Options::useJIT();
 #endif
 }
 
@@ -243,8 +249,20 @@ bool VM::isInMiniMode()
     return !canUseJIT() || Options::forceMiniVMMode();
 }
 
+inline unsigned VM::nextID()
+{
+    for (;;) {
+        unsigned currentNumberOfIDs = s_numberOfIDs.load();
+        unsigned newID = currentNumberOfIDs + 1;
+        if (s_numberOfIDs.compareExchangeWeak(currentNumberOfIDs, newID))
+            return newID;
+    }
+}
+
+
 VM::VM(VMType vmType, HeapType heapType)
-    : m_apiLock(adoptRef(new JSLock(this)))
+    : m_id(nextID())
+    , m_apiLock(adoptRef(new JSLock(this)))
 #if USE(CF)
     , m_runLoop(CFRunLoopGetCurrent())
 #endif // USE(CF)
@@ -753,14 +771,14 @@ void VM::resetDateCache()
     dateInstanceCache.reset();
 }
 
-void VM::whenIdle(std::function<void()> callback)
+void VM::whenIdle(Function<void()>&& callback)
 {
     if (!entryScope) {
         callback();
         return;
     }
 
-    entryScope->addDidPopListener(callback);
+    entryScope->addDidPopListener(WTFMove(callback));
 }
 
 void VM::deleteAllLinkedCode(DeleteAllCodeEffort effort)
@@ -1023,7 +1041,8 @@ void VM::addImpureProperty(const String& propertyName)
         watchpointSet->fireAll(*this, "Impure property added");
 }
 
-static bool enableProfilerWithRespectToCount(unsigned& counter, std::function<void()> doEnableWork)
+template<typename Func>
+static bool enableProfilerWithRespectToCount(unsigned& counter, const Func& doEnableWork)
 {
     bool needsToRecompile = false;
     if (!counter) {
@@ -1035,7 +1054,8 @@ static bool enableProfilerWithRespectToCount(unsigned& counter, std::function<vo
     return needsToRecompile;
 }
 
-static bool disableProfilerWithRespectToCount(unsigned& counter, std::function<void()> doDisableWork)
+template<typename Func>
+static bool disableProfilerWithRespectToCount(unsigned& counter, const Func& doDisableWork)
 {
     RELEASE_ASSERT(counter > 0);
     bool needsToRecompile = false;

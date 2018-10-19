@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2010, 2012 Apple Inc.  All rights reserved.
+ * Copyright (C) 2007-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,12 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-@class WebSecurityOriginPrivate;
+struct WebSecurityOriginPrivate;
+
 @protocol WebQuotaManager;
 
 @interface WebSecurityOrigin : NSObject {
 @private
-    WebSecurityOriginPrivate *_private;
+    struct WebSecurityOriginPrivate *_private;
     id<WebQuotaManager> _applicationCacheQuotaManager;
     id<WebQuotaManager> _databaseQuotaManager;
 }

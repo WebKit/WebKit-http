@@ -31,6 +31,7 @@
 #include "NetworkCacheIOChannel.h"
 #include "NetworkCacheKey.h"
 #include "NetworkProcess.h"
+#include "WebCoreArgumentCoders.h"
 #include <WebCore/CacheQueryOptions.h>
 #include <WebCore/HTTPParsers.h>
 #include <pal/SessionID.h>
@@ -84,7 +85,7 @@ static inline void updateVaryInformation(RecordInformation& recordInformation, c
         return;
     }
 
-    varyValue.split(',', false, [&](StringView view) {
+    varyValue.split(',', [&](StringView view) {
         if (!recordInformation.hasVaryStar && stripLeadingAndTrailingHTTPSpaces(view) == "*")
             recordInformation.hasVaryStar = true;
         String headerName = view.toString();

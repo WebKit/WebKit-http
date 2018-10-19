@@ -104,8 +104,7 @@ static ScreenProperties& screenProperties()
 
 static PlatformDisplayID& primaryScreenDisplayID()
 {
-    static PlatformDisplayID primaryScreenDisplayID = 0;
-    return primaryScreenDisplayID;
+    return screenProperties().primaryDisplayID;
 }
 
 ScreenProperties collectScreenProperties()
@@ -128,8 +127,14 @@ ScreenProperties collectScreenProperties()
         bool screenHasInvertedColors = CGDisplayUsesInvertedPolarity();
         bool screenIsMonochrome = CGDisplayUsesForceToGray();
         uint32_t displayMask = CGDisplayIDToOpenGLDisplayMask(displayID);
+        IORegistryGPUID gpuID = 0;
 
-        screenProperties.screenDataMap.set(displayID, ScreenData { screenAvailableRect, screenRect, colorSpace, screenDepth, screenDepthPerComponent, screenSupportsExtendedColor, screenHasInvertedColors, screenIsMonochrome, displayMask });
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+        if (displayMask)
+            gpuID = gpuIDForDisplayMask(displayMask);
+#endif
+
+        screenProperties.screenDataMap.set(displayID, ScreenData { screenAvailableRect, screenRect, colorSpace, screenDepth, screenDepthPerComponent, screenSupportsExtendedColor, screenHasInvertedColors, screenIsMonochrome, displayMask, gpuID });
 
         if (!screenProperties.primaryDisplayID)
             screenProperties.primaryDisplayID = displayID;
@@ -175,6 +180,48 @@ uint32_t displayMaskForDisplay(PlatformDisplayID displayID)
     ASSERT_NOT_REACHED();
     return 0;
 }
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+IORegistryGPUID primaryGPUID()
+{
+    return gpuIDForDisplay(screenProperties().primaryDisplayID);
+}
+
+IORegistryGPUID gpuIDForDisplay(PlatformDisplayID displayID)
+{
+#if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    if (!screenProperties().screenDataMap.isEmpty())
+        return screenData(displayID).gpuID;
+#else
+    return gpuIDForDisplayMask(CGDisplayIDToOpenGLDisplayMask(displayID));
+#endif
+    return 0;
+}
+
+IORegistryGPUID gpuIDForDisplayMask(GLuint displayMask)
+{
+    GLint numRenderers;
+    CGLRendererInfoObj rendererInfo;
+    CGLError error = CGLQueryRendererInfo(displayMask, &rendererInfo, &numRenderers);
+    ASSERT(error == kCGLNoError);
+
+    // The 0th renderer should not be the software renderer.
+    GLint isAccelerated;
+    error = CGLDescribeRenderer(rendererInfo, 0, kCGLRPAccelerated, &isAccelerated);
+    ASSERT(error == kCGLNoError);
+    ASSERT(isAccelerated);
+
+    GLint gpuIDLow;
+    GLint gpuIDHigh;
+
+    error = CGLDescribeRenderer(rendererInfo, 0, kCGLRPRegistryIDLow, &gpuIDLow);
+    ASSERT(error == kCGLNoError);
+    error = CGLDescribeRenderer(rendererInfo, 0, kCGLRPRegistryIDHigh, &gpuIDHigh);
+    ASSERT(error == kCGLNoError);
+
+    return (IORegistryGPUID) gpuIDHigh << 32 | gpuIDLow;
+}
+#endif // !__MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 
 static ScreenData getScreenProperties(Widget* widget)
 {

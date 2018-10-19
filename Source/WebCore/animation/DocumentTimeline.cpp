@@ -27,6 +27,7 @@
 #include "DocumentTimeline.h"
 
 #include "AnimationPlaybackEvent.h"
+#include "CSSPropertyAnimation.h"
 #include "DOMWindow.h"
 #include "DeclarativeAnimation.h"
 #include "Document.h"
@@ -174,7 +175,7 @@ std::optional<Seconds> DocumentTimeline::currentTime()
         // fire syncronously if no JS is running.
         scheduleInvalidationTaskIfNeeded();
         m_waitingOnVMIdle = true;
-        m_document->vm().whenIdle([this]() {
+        m_document->vm().whenIdle([this, protectedThis = makeRefPtr(this)]() {
             m_waitingOnVMIdle = false;
             maybeClearCachedCurrentTime();
         });
@@ -396,8 +397,11 @@ void DocumentTimeline::animationAcceleratedRunningStateDidChange(WebAnimation& a
 
 void DocumentTimeline::applyPendingAcceleratedAnimations()
 {
+    auto acceleratedAnimationsPendingRunningStateChange = m_acceleratedAnimationsPendingRunningStateChange;
+    m_acceleratedAnimationsPendingRunningStateChange.clear();
+
     bool hasForcedLayout = false;
-    for (auto& animation : m_acceleratedAnimationsPendingRunningStateChange) {
+    for (auto& animation : acceleratedAnimationsPendingRunningStateChange) {
         if (!hasForcedLayout) {
             auto* effect = animation->effect();
             if (is<KeyframeEffectReadOnly>(effect))
@@ -405,8 +409,34 @@ void DocumentTimeline::applyPendingAcceleratedAnimations()
         }
         animation->applyPendingAcceleratedActions();
     }
+}
 
-    m_acceleratedAnimationsPendingRunningStateChange.clear();
+bool DocumentTimeline::resolveAnimationsForElement(Element& element, RenderStyle& targetStyle)
+{
+    bool hasNonAcceleratedAnimations = false;
+    bool hasPendingAcceleratedAnimations = true;
+    for (const auto& animation : animationsForElement(element)) {
+        animation->resolve(targetStyle);
+        if (!hasNonAcceleratedAnimations) {
+            if (auto* effect = animation->effect()) {
+                if (is<KeyframeEffectReadOnly>(effect)) {
+                    auto* keyframeEffect = downcast<KeyframeEffectReadOnly>(effect);
+                    for (auto cssPropertyId : keyframeEffect->animatedProperties()) {
+                        if (!CSSPropertyAnimation::animationOfPropertyIsAccelerated(cssPropertyId)) {
+                            hasNonAcceleratedAnimations = true;
+                            continue;
+                        }
+                        if (!hasPendingAcceleratedAnimations)
+                            hasPendingAcceleratedAnimations = keyframeEffect->hasPendingAcceleratedAction();
+                    }
+                }
+            }
+        }
+    }
+
+    // If there are no non-accelerated animations and we've encountered at least one pending
+    // accelerated animation, we should recomposite this element's layer for animation purposes.
+    return !hasNonAcceleratedAnimations && hasPendingAcceleratedAnimations;
 }
 
 bool DocumentTimeline::runningAnimationsForElementAreAllAccelerated(Element& element)

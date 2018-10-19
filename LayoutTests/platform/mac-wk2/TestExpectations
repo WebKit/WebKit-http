@@ -221,8 +221,6 @@ fast/events/input-events-insert-by-drop.html [ Failure ]
 
 webkit.org/b/81833 fast/events/drag-and-drop-link-into-focused-contenteditable.html [ Failure ]
 
-webkit.org/b/187649 editing/selection/update-selection-by-style-change.html [ Pass ImageOnlyFailure ]
-
 # Missing functionality of textInputController
 # https://bugs.webkit.org/show_bug.cgi?id=89401
 editing/mac/input/insert-dictated-text.html
@@ -549,10 +547,8 @@ webkit.org/b/158237 fast/scrolling/scroll-container-horizontally.html [ Pass Tim
 webkit.org/b/170620 [ Sierra+ ] media/controls/pip-placeholder-without-video-controls.html [ Pass Failure ]
 [ Sierra+ ] media/element-containing-pip-video-going-into-fullscreen.html [ Pass Timeout ]
 webkit.org/b/172998 [ Sierra+ ] media/fullscreen-api-enabled-media-with-presentation-mode.html [ Failure ]
-[ Sierra+ ] media/fullscreen-video-going-into-pip.html [ Pass ]
 webkit.org/b/173199 [ Sierra+ ] media/navigate-with-pip-should-not-crash.html [ Pass Failure ]
 [ Sierra+ ] media/pip-video-going-into-fullscreen.html [ Pass ]
-[ Sierra+ ] media/video-contained-in-fullscreen-element-going-into-pip.html [ Pass ]
 
 # RTL Scrollbars are enabled on Sierra WebKit2.
 webkit.org/b/179455 [ Sierra+ ] fast/scrolling/rtl-scrollbars.html [ Pass ImageOnlyFailure ]
@@ -609,6 +605,8 @@ webkit.org/b/161633 [ Debug ] storage/indexeddb/objectstore-cursor.html [ Pass T
 webkit.org/b/161742 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/keyorder.htm [ Pass Failure ]
 
 webkit.org/b/161547 [ Debug ] tiled-drawing/scrolling/fixed/four-bars-zoomed.html [ Pass Failure ]
+webkit.org/b/188096 [ Release ] tiled-drawing/scrolling/fixed/four-bars-zoomed.html [ Pass Failure ]
+
 
 webkit.org/b/162081 editing/inserting/typing-space-to-trigger-smart-link.html [ Failure ]
 webkit.org/b/162081 editing/inserting/smart-quote-with-all-configurations.html [ Failure ]
@@ -721,6 +719,8 @@ webkit.org/b/172201 webaudio/silent-audio-interrupted-in-background.html [ Pass 
 
 webkit.org/b/167757 workers/bomb.html [ Pass Timeout ]
 
+webkit.org/b/187649 editing/selection/update-selection-by-style-change.html [ Pass ImageOnlyFailure ]
+
 webkit.org/b/172397 legacy-animation-engine/animations/needs-layout.html [ Pass ImageOnlyFailure ]
 
 # Touch events are not available on open source bots, thus only tested on Mac.
@@ -728,23 +728,22 @@ http/tests/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.htm
 http/tests/resourceLoadStatistics/user-interaction-reported-after-website-data-removal.html [ Pass ]
 
 [ HighSierra+ ] http/tests/storageAccess/has-storage-access-crash.html [ Pass ]
-[ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-non-sandboxed-iframe.html [ Pass ]
-[ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-cross-origin-non-sandboxed-iframe.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-storage-access-crash.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-with-unique-origin.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-without-allow-token.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-storage-access-same-origin-iframe.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe-without-allow-token.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe.html [ Pass ]
-[ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-nested-iframe.html [ Pass ]
-[ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-recent-user-interaction.html [ Pass ]
-[ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-and-try-access-from-right-frame.html [ Pass ]
-[ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-but-try-access-from-wrong-frame.html [ Pass ]
-[ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-without-user-interaction.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-nested-iframe.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-and-access-from-right-frame.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-but-access-from-wrong-frame.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-without-user-interaction.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-storage-access-top-frame.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-without-user-gesture.html [ Pass ]
-[ HighSierra+ ] http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-non-recent-user-interaction.html [ Pass ]
-[ HighSierra+ ] http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-recent-user-interaction.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-user-interaction.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/deny-storage-access-under-opener.html [ Pass ]
@@ -794,14 +793,10 @@ webkit.org/b/185994 [ Debug ] fast/text/user-installed-fonts/shadow-postscript-f
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePaySessionV3.html [ Pass ]
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https.html [ Pass ]
 # <rdar://problem/31634451>
-[ HighSierra+ ] http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html [ Pass ]
-[ HighSierra+ ] http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html [ Pass ]
-[ HighSierra+ ] http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html [ Pass ]
-[ HighSierra+ ] http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html [ Pass Failure ]
+[ HighSierra+ ] http/tests/resourceLoadStatistics/cookies-with-and-without-user-interaction.html [ Pass ]
+[ HighSierra+ ] http/tests/resourceLoadStatistics/cookie-deletion.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html [ Pass ]
-[ HighSierra+ ] http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/add-blocking-to-redirect.html [ Pass ]
-[ HighSierra+ ] http/tests/resourceLoadStatistics/remove-partitioning-in-redirect.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html [ Pass ]
@@ -887,3 +882,9 @@ webkit.org/b/184937 transitions/opacity-transition-zindex.html [ Skip ]
 webkit.org/b/186362 [ Release ] http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html [ Skip ]
 
 webkit.org/b/186425 [ Debug ] inspector/console/webcore-logging.html [ Pass Failure ]
+
+webkit.org/b/183705 http/tests/workers/service/client-added-to-clients-when-restored-from-page-cache.html [ Pass Failure ]
+webkit.org/b/183705 http/tests/workers/service/client-removed-from-clients-while-in-page-cache.html [ Pass Failure ]
+webkit.org/b/183705 http/tests/workers/service/serviceworkerclients-matchAll.https.html [ Pass Failure ]
+
+webkit.org/b/187658 http/tests/security/bypassing-cors-checks-for-extension-urls.html [ Pass Failure ]

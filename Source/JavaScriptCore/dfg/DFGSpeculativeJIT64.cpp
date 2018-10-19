@@ -47,6 +47,7 @@
 #include "SetupVarargsFrame.h"
 #include "SpillRegistersMode.h"
 #include "StringPrototype.h"
+#include "SuperSampler.h"
 #include "Watchdog.h"
 
 namespace JSC { namespace DFG {
@@ -4565,7 +4566,7 @@ void SpeculativeJIT::compile(Node* node)
         silentSpillAllRegistersImpl(false, savePlans, InvalidGPRReg);
         unsigned bytecodeIndex = node->origin.semantic.bytecodeIndex;
 
-        addSlowPathGenerator([=]() {
+        addSlowPathGeneratorLambda([=]() {
             callTierUp.link(&m_jit);
 
             silentSpill(savePlans);
@@ -4617,7 +4618,7 @@ void SpeculativeJIT::compile(Node* node)
         unsigned streamIndex = m_stream->size();
         m_jit.jitCode()->bytecodeIndexToStreamIndex.add(bytecodeIndex, streamIndex);
 
-        addSlowPathGenerator([=]() {
+        addSlowPathGeneratorLambda([=]() {
             forceOSREntry.link(&m_jit);
             overflowedCounter.link(&m_jit);
 
@@ -4645,6 +4646,14 @@ void SpeculativeJIT::compile(Node* node)
         DFG_CRASH(m_jit.graph(), node, "Unexpected tier-up node");
         break;
 #endif // ENABLE(FTL_JIT)
+
+    case FilterCallLinkStatus:
+    case FilterGetByIdStatus:
+    case FilterPutByIdStatus:
+    case FilterInByIdStatus:
+        m_interpreter.filterICStatus(node);
+        noResult(node);
+        break;
 
     case LastNodeType:
     case EntrySwitch:

@@ -69,6 +69,7 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if PLATFORM(COCOA)
     encoder << parentProcessName;
     encoder << uiProcessBundleIdentifier;
+    encoder << uiProcessSDKVersion;
     encoder << sourceApplicationBundleIdentifier;
     encoder << sourceApplicationSecondaryIdentifier;
 #if PLATFORM(IOS)
@@ -77,7 +78,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << httpProxy;
     encoder << httpsProxy;
     IPC::encode(encoder, networkATSContext.get());
-    encoder << cookieStoragePartitioningEnabled;
     encoder << storageAccessAPIEnabled;
     encoder << suppressesConnectionTerminationOnSystemChange;
 #endif
@@ -184,6 +184,8 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
     if (!decoder.decode(result.uiProcessBundleIdentifier))
         return false;
+    if (!decoder.decode(result.uiProcessSDKVersion))
+        return false;
     if (!decoder.decode(result.sourceApplicationBundleIdentifier))
         return false;
     if (!decoder.decode(result.sourceApplicationSecondaryIdentifier))
@@ -197,8 +199,6 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!decoder.decode(result.httpsProxy))
         return false;
     if (!IPC::decode(decoder, result.networkATSContext))
-        return false;
-    if (!decoder.decode(result.cookieStoragePartitioningEnabled))
         return false;
     if (!decoder.decode(result.storageAccessAPIEnabled))
         return false;

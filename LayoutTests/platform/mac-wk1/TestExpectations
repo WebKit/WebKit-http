@@ -320,6 +320,9 @@ webkit.org/b/156069 http/tests/download/anchor-download-no-value.html [ Skip ]
 webkit.org/b/156069 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Skip ]
 webkit.org/b/156069 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html [ Skip ]
 
+# Not supported on WK1
+media/no-fullscreen-when-hidden.html [ Skip ]
+
 webkit.org/b/169523 [ Debug ] imported/w3c/web-platform-tests/html/dom/interfaces.worker.html [ Failure ]
 
 imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_no_argument.html [ Pass Failure ]
@@ -532,13 +535,11 @@ webkit.org/b/185742 accessibility/mac/primary-screen-height.html [ Skip ]
 # User-installed fonts test infrastructure is not present in WK1
 webkit.org/b/180062 fast/text/user-installed-fonts [ ImageOnlyFailure ]
 
-webkit.org/b/180997 svg/animations/smil-leak-element-instances-noBaseValRef.svg [ Pass Failure ]
-
 webkit.org/b/179643 media/W3C/video/networkState/networkState_during_loadstart.html [ Pass Failure ]
 
 webkit.org/b/181862 [ Debug ] http/tests/images/image-supports-video.html [ Pass Failure ]
 
-webkit.org/b/179853 [ Debug ] imported/blink/fast/text/international-iteration-simple-text.html [ Pass Failure ]
+webkit.org/b/179853 imported/blink/fast/text/international-iteration-simple-text.html [ Pass Failure ]
 
 # Skip anything related to WebAuthN
 http/tests/webauthn/ [ Skip ]
@@ -581,4 +582,30 @@ webkit.org/b/187557 [ Debug ] media/media-fragments/TC0089.html [ Pass Failure ]
 webkit.org/b/187557 [ Debug ] media/media-fragments/TC0090.html [ Pass Failure ]
 webkit.org/b/187557 [ Debug ] media/media-fragments/TC0091.html [ Pass Failure ]
 
+webkit.org/b/187711 [ Debug ] svg/custom/linking-uri-01-b.svg [ Pass Failure ]
 
+# <rdar://problem/42625657>
+[ Mojave+ ] fast/images/animated-gif-paint-after-animation.html [ Skip ]
+[ Mojave+ ] fast/images/async-image-background-image-repeated.html [ Skip ]
+[ Mojave+ ] fast/images/async-image-background-image.html [ Skip ]
+[ Mojave+ ] fast/images/async-image-multiple-clients-repaint.html [ Skip ]
+[ Mojave+ ] fast/images/composited-animated-gif-outside-viewport.html [ Skip ]
+[ Mojave+ ] fast/images/decode-render-animated-image.html [ Skip ]
+[ Mojave+ ] fast/images/decode-render-static-image.html [ Skip ]
+[ Mojave+ ] fast/images/decoding-attribute-async-small-image.html [ Skip ]
+[ Mojave+ ] fast/images/decoding-attribute-dynamic-async-small-image.html [ Skip ]
+[ Mojave+ ] fast/images/sprite-sheet-image-draw.html [ Skip ]
+
+# <rdar://problem/42627562>
+[ Mojave+ ] media/video-restricted-invisible-autoplay-not-allowed-source.html [ Skip ]
+[ Mojave+ ] media/video-restricted-invisible-autoplay-not-allowed.html [ Skip ]
+
+# <rdar://problem/42736213>
+[ Mojave+ ] displaylists/canvas-display-list.html [ Failure ]
+[ Mojave+ ] displaylists/extent-includes-shadow.html [ Failure ]
+[ Mojave+ ] displaylists/extent-includes-transforms.html [ Failure ]
+[ Mojave+ ] displaylists/layer-dispay-list.html [ Failure ]
+[ Mojave+ ] displaylists/replay-skip-clipped-rect.html [ Failure ]
+
+# <rdar://problem/42920617>
+[ Mojave+ ] compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint.html [ Pass Failure ]

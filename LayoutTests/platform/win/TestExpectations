@@ -98,6 +98,9 @@ webkit.org/b/173281 http/tests/security/mixedContent/insecure-image-redirects-to
 webkit.org/b/173281 http/tests/security/mixedContent/secure-redirect-to-insecure-redirect-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.https.html [ Skip ]
 webkit.org/b/173281 http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image-allowCrossOriginSubresourcesToAskForCredentials.https.html [ Skip ]
 webkit.org/b/173281 http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.https.html [ Skip ]
+webkit.org/b/173281 editing/style/set-foreColor-with-color-filter.html [ Skip ]
+webkit.org/b/173281 editing/style/set-backColor-with-color-filter.html [ Skip ]
+webkit.org/b/173281 editing/style/inverse-color-filter.html [ Skip ]
 
 # TODO HW filters not yet supported on Windows
 webkit.org/b/74716 css3/filters/effect-blur-hw.html [ Skip ]
@@ -735,6 +738,11 @@ http/tests/plugins/npapi-response-headers.html [ Skip ]
 webkit.org/b/117323 fast/frames/sandboxed-iframe-plugins.html [ Skip ]
 webkit.org/b/117323 platform/win/plugins/call-javascript-that-destroys-plugin.html [ Skip ]
 webkit.org/b/117323 platform/win/plugins/windowless-paint-rect-coordinates.html [ Skip ]
+
+http/tests/security/contentSecurityPolicy/same-origin-plugin-document-allowed-in-child-window.html [ Skip ]
+http/tests/security/contentSecurityPolicy/same-origin-plugin-document-blocked-in-child-window-report.php [ Skip ]
+http/tests/security/contentSecurityPolicy/same-origin-plugin-document-with-csp-blocked-in-child-window.html [ Skip ]
+
 ################################################################################
 ############################   End Plugin Failures   ###########################
 ################################################################################
@@ -1707,6 +1715,8 @@ webkit.org/b/138566 accessibility/aria-modal-multiple-dialogs.html [ Skip ]
 # Text marker tests are not supported
 webkit.org/b/153292 accessibility/text-marker [ Skip ]
 
+webkit.org/b/184676 accessibility/ARIA-reflection.html [ Skip ]
+
 ################################################################################
 #######################   End Accessibility Issues   ###########################
 ################################################################################
@@ -2474,6 +2484,7 @@ js/array-toLocaleString.html [ Skip ]
 js/date-toLocaleString.html [ Skip ]
 js/intl-collator.html [ Skip ]
 js/intl-datetimeformat.html [ Skip ]
+js/intl-default-locale.html [ Skip ]
 js/intl-numberformat.html [ Skip ]
 js/intl-numberformat-format-to-parts.html [ Skip ]
 js/intl-pluralrules.html [ Skip ]
@@ -3340,7 +3351,6 @@ js/dom/deep-recursion-test.html [ Failure ]
 js/dom/regress-157246.html [ Failure ]
 js/dom/string-prototype-properties.html [ Failure ]
 js/dom/webidl-type-mapping.html [ Failure ]
-js/intl-invalid-locale-crash.html [ Failure ]
 js/regress-141098.html [ Failure ]
 pageoverlay/overlay-installation.html [ Failure ]
 pageoverlay/overlay-large-document-scrolled.html [ Failure ]
@@ -3424,8 +3434,7 @@ crypto/crypto-key-usages-gc.html [ Skip ]
 editing/deleting/delete-emoji.html [ Skip ]
 editing/pasteboard/paste-image-as-blob-url.html [ Skip ]
 editing/selection/character-granularity-rect.html [ Skip ]
-editing/selection/ios/absolute-selection-after-scroll.html [ Skip ]
-editing/selection/ios/fixed-selection-after-scroll.html [ Skip ]
+editing/selection/ios [ Skip ]
 fast/canvas/canvas-createPattern-video-loading.html [ Skip ]
 fast/canvas/canvas-createPattern-video-modify.html [ Skip ]
 fast/events/before-input-prevent-insert-replacement.html [ Skip ]
@@ -3744,6 +3753,7 @@ http/wpt/resource-timing/rt-nextHopProtocol.worker.html [ Skip ]
 
 # WebCrypto tests are failing.
 webkit.org/b/165090 imported/w3c/web-platform-tests/WebCryptoAPI [ Skip ]
+webkit.org/b/165090 http/wpt/crypto [ Skip ]
 
 # webglcontextchanged event not supported
 fast/canvas/webgl/webglcontextchangedevent.html [ Skip ]
@@ -3927,6 +3937,8 @@ webkit.org/b/179297 fast/loader/empty-embed-src-attribute.html [ Pass Crash ]
 webkit.org/b/179297 http/tests/preload/download_resources.html [ Crash Pass ]
 webkit.org/b/179297 http/tests/preload/onerror_event.html [ Crash Pass ]
 webkit.org/b/179297 http/wpt/resource-timing/rt-initiatorType-media.html [ Crash Failure ]
+
+webkit.org/b/187809 http/tests/preload/onload_event.html [ Skip ]
 
 webkit.org/b/179301 http/tests/security/xss-DENIED-xsl-external-entity.xml [ Pass Failure ]
 
@@ -4134,3 +4146,18 @@ webkit.org/b/187041 webanimations/opacity-animation-yields-compositing-span.html
 
 webkit.org/b/187177 fast/text/mark-matches-broken-line-rendering.html [ ImageOnlyFailure ]
 webkit.org/b/187177 fast/text/mark-matches-rendering.html [ ImageOnlyFailure ]
+
+webkit.org/b/187912 webanimations/empty-keyframes-crash.html [ Failure ]
+
+webkit.org/b/187943 webanimations/accessing-current-time-after-finished-css-animation-target-removal.html [ Failure ]
+
+webkit.org/b/188166 webanimations/accessing-current-time-after-clearing-css-animation-effect.html [ Failure ]
+webkit.org/b/188166 webanimations/setting-css-animation-none-after-clearing-effect.html [ Failure ]
+webkit.org/b/188166 webanimations/setting-css-animation-timing-property-via-style-after-clearing-effect.html [ Failure ]
+
+webkit.org/b/188167 fast/repaint/canvas-object-fit.html [ Failure ]
+
+webkit.org/b/188168 fast/text/complex-first-glyph-with-initial-advance.html [ ImageOnlyFailure ]
+webkit.org/b/188168 fast/text/initial-advance-in-intermediate-run-complex.html [ ImageOnlyFailure ]
+
+webkit.org/b/188169 http/tests/security/canvas-remote-read-remote-video-hls.html [ Failure ]

@@ -33,6 +33,7 @@ perf/accessibility-title-ui-element.html
 # No fullscreen API on iOS
 fullscreen
 http/tests/fullscreen
+compositing/no-compositing-when-fulll-screen-is-present.html
 
 # WebGPU is not enabled on iOS Simulator.
 fast/canvas/webgpu
@@ -155,7 +156,10 @@ http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugi
 http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-main-frame.html
 http/tests/security/contentSecurityPolicy/cross-origin-plugin-document-allowed-in-child-window.html
 http/tests/security/contentSecurityPolicy/plugin-blocked-in-about-blank-window.html
+http/tests/security/contentSecurityPolicy/same-origin-plugin-document-allowed-in-child-window.html
 http/tests/security/contentSecurityPolicy/same-origin-plugin-document-blocked-in-child-window.html
+http/tests/security/contentSecurityPolicy/same-origin-plugin-document-blocked-in-child-window-report.php
+http/tests/security/contentSecurityPolicy/same-origin-plugin-document-with-csp-blocked-in-child-window.html
 
 # Pointer-lock not supported on iOS
 pointer-lock
@@ -1116,6 +1120,8 @@ crypto/subtle/rsa-pss-import-spki-key-empty-usages.html [ Pass ]
 crypto/subtle/rsa-pss-import-spki-key.html [ Pass ]
 crypto/workers/subtle/rsa-pss-import-key-sign.html [ Pass ]
 crypto/workers/subtle/rsa-pss-import-key-verify.html [ Pass ]
+http/wpt/crypto/rsa-pss-crash.any.html [ Pass ]
+http/wpt/crypto/rsa-pss-crash.any.worker.html [ Pass ]
 
 # Depend on iOS 11 API.
 fast/viewport/ios/viewport-fit-contain.html [ Pass ]
@@ -3018,14 +3024,10 @@ webkit.org/b/174120 http/tests/resourceLoadStatistics/user-interaction-in-cross-
 http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html [ Skip ]
 http/tests/resourceLoadStatistics/user-interaction-reported-after-website-data-removal.html [ Skip ]
 # Skipped in WK2 expectations because cookie partitioning is only available in macOS High Sierra and iOS 11.
-http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html [ Pass ]
-http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html [ Pass ]
-http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html [ Pass ]
-http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html [ Pass ]
+http/tests/resourceLoadStatistics/cookie-deletion.html [ Pass ]
+http/tests/resourceLoadStatistics/cookies-with-and-without-user-interaction.html [ Pass ]
 http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html [ Pass ]
-webkit.org/b/183216 [ Release ] http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html [ Pass ]
-webkit.org/b/183216 [ Release ] http/tests/resourceLoadStatistics/add-blocking-to-redirect.html [ Pass ]
-webkit.org/b/183216 [ Release ] http/tests/resourceLoadStatistics/remove-partitioning-in-redirect.html [ Pass ]
+http/tests/resourceLoadStatistics/add-blocking-to-redirect.html [ Pass ]
 http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html [ Pass ]
 http/tests/resourceLoadStatistics/grandfathering.html [ Pass ]
 http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
@@ -3075,12 +3077,6 @@ crypto/subtle/ecdsa-import-pkcs8-key-p521-validate-ecprivatekey-parameters-publi
 webkit.org/b/155092 js/arraybuffer-wrappers.html [ Pass Timeout ]
 
 webkit.org/b/172052 [ Release ] imported/w3c/web-platform-tests/html/webappapis/timers/type-long-setinterval.html [ Pass Failure ]
-
-# <rdar://problem/32542437> REGRESSION (iOS 11): LayoutTest fast/events/ios/before-input-events-prevent-candidate-insertion.html is timing out
-fast/events/ios/before-input-events-prevent-candidate-insertion.html [ Timeout ]
-
-# <rdar://problem/32542300> REGRESSION (iOS 11): LayoutTest fast/events/ios/contenteditable-autocapitalize.html is failing
-fast/events/ios/contenteditable-autocapitalize.html [ Failure ]
 
 webkit.org/b/183441 mathml/presentation/multiscripts-equivalence.html [ ImageOnlyFailure ]
 
@@ -3329,3 +3325,13 @@ fast/block/block-only/margin-left-right-sizing-out-of-flow.html [ Failure ]
 fast/block/block-only/margin-left-right-sizing.html [ Failure ]
 fast/block/block-only/margin-sibling-collapse-propagated.html [ Failure ]
 fast/block/block-only/relative-auto-with-parent-offset.html [ Failure ]
+
+# Datalist
+webkit.org/b/186714 fast/forms/datalist/datalist-show-hide.html [ Skip ]
+webkit.org/b/186714 fast/forms/datalist/datalist-textinput-keydown.html [ Skip ]
+
+# We are only accepting GLSL3 for macOS. 
+webkit.org/b/187982 webgl/2.0.0/conformance2/glsl3 [ Skip ]
+
+# Audio session does not have a "none" category on iOS [ Skip ]
+webkit.org/b/188285 platform/mac/media/audio-session-category-video-paused.html [ Skip ]

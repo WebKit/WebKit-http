@@ -137,7 +137,7 @@ void ResourceLoadStatisticsPersistentStorage::startMonitoringDisk()
             refreshMemoryStoreFromDisk();
             break;
         case FileMonitor::FileChangeType::Removal:
-            m_memoryStore.clear();
+            m_memoryStore.clear([] { });
             m_fileMonitor = nullptr;
             monitorDirectoryForNewStatistics();
             break;
@@ -235,7 +235,8 @@ void ResourceLoadStatisticsPersistentStorage::populateMemoryStoreFromDisk()
         return;
     }
 
-    ASSERT_WITH_MESSAGE(m_memoryStore.isEmpty(), "This is the initial import so the store should be empty");
+    // Debug mode has a prepoulated memory store.
+    ASSERT_WITH_MESSAGE(m_memoryStore.isEmpty() || m_memoryStore.isDebugModeEnabled(), "This is the initial import so the store should be empty");
     m_memoryStore.mergeWithDataFromDecoder(*decoder);
 
     m_lastStatisticsFileSyncTime = readTime;
