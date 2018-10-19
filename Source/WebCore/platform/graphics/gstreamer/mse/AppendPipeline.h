@@ -94,7 +94,7 @@ public:
     void reportAppsrcNeedDataReceived();
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    void cacheProtectionEvent(GRefPtr<GstEvent>&&);
+    void cacheProtectionEvent(GstEvent*);
     void handleProtectedBufferProbeInformation(GstPadProbeInfo*);
 #endif
 
