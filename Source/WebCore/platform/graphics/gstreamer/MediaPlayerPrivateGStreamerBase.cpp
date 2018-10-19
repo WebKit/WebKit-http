@@ -1277,6 +1277,40 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionStructure(const GstStructu
     initializationDataEncountered(initData);
 }
 
+void MediaPlayerPrivateGStreamerBase::handleProtectionEvents(const Vector<GstEvent*>& protectionEvents)
+{
+    if (!protectionEvents.size())
+        return;
+
+    ASSERT(isMainThread());
+
+    InitData concatenatedInitDatas;
+    for (auto* event : protectionEvents) {
+        GstBuffer* buffer = nullptr;
+        const char* eventKeySystemUUID = nullptr;
+        gst_event_parse_protection(event, &eventKeySystemUUID, &buffer, nullptr);
+
+        GST_TRACE("handling protection event %u for %s", GST_EVENT_SEQNUM(event), eventKeySystemUUID);
+        if (m_cdmInstance && g_strcmp0(eventKeySystemUUID, GStreamerEMEUtilities::keySystemToUuid(m_cdmInstance->keySystem()))) {
+            GST_TRACE("protection event for a different key system");
+            continue;
+        }
+
+        GstMappedBuffer mappedBuffer(buffer, GST_MAP_READ);
+        if (!mappedBuffer) {
+            GST_WARNING("cannot map protection data");
+            continue;
+        }
+
+        concatenatedInitDatas.append(mappedBuffer.data(), mappedBuffer.size());
+        GST_DEBUG("init data of size %u", mappedBuffer.size());
+        GST_MEMDUMP("init data", mappedBuffer.data(), mappedBuffer.size());
+    }
+
+    if (!concatenatedInitDatas.isEmpty())
+        initializationDataEncountered(concatenatedInitDatas);
+}
+
 void MediaPlayerPrivateGStreamerBase::initializationDataEncountered(const InitData& initData)
 {
     ASSERT(isMainThread());

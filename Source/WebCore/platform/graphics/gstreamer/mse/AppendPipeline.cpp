@@ -395,6 +395,13 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
         return;
     }
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    if (gst_structure_has_name(structure, "demuxer-done-sending-protection-events")) {
+        demuxerIsDoneSendingProtectionEvents(structure);
+        return;
+    }
+#endif
+
     if (gst_structure_has_name(structure, "transition-main-thread")) {
         GST_TRACE("Received transition-main-thread in main thread");
         AppendState nextState;
@@ -1273,12 +1280,24 @@ void AppendPipeline::handleProtectedBufferProbeInformation(GstPadProbeInfo* info
 {
     ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER);
 
+    bool wasProcessingProtectionEvents = m_isProcessingProtectionEvents;
     m_isProcessingProtectionEvents = false;
+
+    unsigned listSize = gst_value_list_get_size(&m_cachedProtectionEvents);
+    if (!listSize)
+        return;
+
+    if (wasProcessingProtectionEvents) {
+        GST_TRACE("sending %u protection events to the main thread", listSize);
+        GstStructure* structure = gst_structure_new_empty("demuxer-done-sending-protection-events");
+        gst_structure_set_value(structure, "stream-encryption-events", &m_cachedProtectionEvents);
+        GstMessage* message = gst_message_new_application(GST_OBJECT(m_demux.get()), structure);
+        gst_bus_post(m_bus.get(), message);
+    }
 
     GstBuffer* buffer = gst_pad_probe_info_get_buffer(info);
     GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
-    unsigned listSize = gst_value_list_get_size(&m_cachedProtectionEvents);
-    if (!listSize || !protectionMeta)
+    if (!protectionMeta)
         return;
 
     GST_DEBUG("adding %u protection events to buffer %p", listSize, buffer);
@@ -1307,6 +1326,21 @@ static GstPadProbeReturn appendPipelineAppsinkPadProtectionProbe(GstPad*, GstPad
     }
 
     return GST_PAD_PROBE_OK;
+}
+
+void AppendPipeline::demuxerIsDoneSendingProtectionEvents(const GstStructure* structure)
+{
+    const GValue* streamEncryptionEventsList = gst_structure_get_value(structure, "stream-encryption-events");
+    ASSERT(streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList));
+    unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
+    GST_DEBUG("forwarding %u protection events to the player", streamEncryptionEventsListSize);
+    if (!streamEncryptionEventsListSize)
+        return;
+    Vector<GstEvent*> protectionEvents;
+    protectionEvents.reserveInitialCapacity(streamEncryptionEventsListSize);
+    for (unsigned i = 0; i < streamEncryptionEventsListSize; ++i)
+        protectionEvents.uncheckedAppend(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i))));
+    m_playerPrivate->handleProtectionEvents(protectionEvents);
 }
 #endif
 
