@@ -32,7 +32,6 @@
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PageGroup.h"
-#include "PlatformCookieJar.h"
 #include "WebResourceLoadScheduler.h"
 
 
@@ -75,43 +74,43 @@ std::pair<WTF::String, bool> PlatformStrategiesHaiku::cookiesForDOM(const Networ
 	std::optional<uint64_t> frameID, std::optional<uint64_t> pageID,
 	IncludeSecureCookies includeSecure)
 {
-    return WebCore::cookiesForDOM(session, firstParty, sameSite, url, frameID, pageID, includeSecure);
+    return session.cookiesForDOM(firstParty, sameSite, url, frameID, pageID, includeSecure);
 }
 
 void PlatformStrategiesHaiku::setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstParty, const WebCore::SameSiteInfo& sameSite, const URL& url,
 	std::optional<uint64_t> frameID, std::optional<uint64_t> pageID,
 	const String& cookieString)
 {
-    WebCore::setCookiesFromDOM(session, firstParty, sameSite, url, frameID, pageID, cookieString);
+    session.setCookiesFromDOM(firstParty, sameSite, url, frameID, pageID, cookieString);
 }
 
 bool PlatformStrategiesHaiku::cookiesEnabled(const NetworkStorageSession& session)
 {
-    return WebCore::cookiesEnabled(session);
+    return session.cookiesEnabled();
 }
 
 std::pair<WTF::String, bool> PlatformStrategiesHaiku::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const WebCore::SameSiteInfo& sameSite, const URL& url,
 	std::optional<uint64_t> frameID, std::optional<uint64_t> pageID,
 	IncludeSecureCookies includeSecure)
 {
-    return WebCore::cookieRequestHeaderFieldValue(session, firstParty, sameSite, url, frameID, pageID, includeSecure);
+    return session.cookieRequestHeaderFieldValue(firstParty, sameSite, url, frameID, pageID, includeSecure);
 }
 
 std::pair<WTF::String, bool> PlatformStrategiesHaiku::cookieRequestHeaderFieldValue(PAL::SessionID sessionID, const URL& firstParty, const WebCore::SameSiteInfo& sameSite, const URL& url,
 	std::optional<uint64_t> frameID, std::optional<uint64_t> pageID,
 	IncludeSecureCookies includeSecure)
 {
-    return WebCore::cookieRequestHeaderFieldValue(NetworkStorageSession::defaultStorageSession(), firstParty, sameSite, url, frameID, pageID, includeSecure);
+    return NetworkStorageSession::defaultStorageSession().cookieRequestHeaderFieldValue(firstParty, sameSite, url, frameID, pageID, includeSecure);
 }
 
 bool PlatformStrategiesHaiku::getRawCookies(const NetworkStorageSession& session, const URL& firstParty, const WebCore::SameSiteInfo& sameSite, const URL& url,
 	std::optional<uint64_t> frameID, std::optional<uint64_t> pageID,
 	Vector<Cookie>& rawCookies)
 {
-    return WebCore::getRawCookies(session, firstParty, sameSite, url, frameID, pageID, rawCookies);
+    return session.getRawCookies(firstParty, sameSite, url, frameID, pageID, rawCookies);
 }
 
 void PlatformStrategiesHaiku::deleteCookie(const NetworkStorageSession& session, const URL& url, const String& cookieName)
 {
-    WebCore::deleteCookie(session, url, cookieName);
+    session.deleteCookie(url, cookieName);
 }

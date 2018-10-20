@@ -30,10 +30,18 @@
 #include <support/Locker.h>
 #include <UrlContext.h>
 
+#include "Cookie.h"
+#include "CookiesStrategy.h"
+#include "CookieRequestHeaderFieldProxy.h"
 #include "NetworkingContext.h"
+#include "NotImplemented.h"
 #include "ResourceHandle.h"
+#include "URL.h"
+
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
+
+#define TRACE_COOKIE_JAR 0
 
 namespace WebCore {
 
@@ -64,6 +72,164 @@ NetworkStorageSession& NetworkStorageSession::defaultStorageSession()
 void NetworkStorageSession::switchToNewTestingSession()
 {
     defaultSession() = std::make_unique<NetworkStorageSession>(PAL::SessionID::defaultSessionID(), new BUrlContext());
+}
+
+
+void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, const String& value) const
+{
+	BNetworkCookie* heapCookie
+		= new BNetworkCookie(value, BUrl(url));
+
+#if TRACE_COOKIE_JAR
+	printf("CookieJar: Add %s for %s\n", heapCookie->RawCookie(true).String(),
+        url.string().utf8().data());
+	printf("  from %s\n", value.utf8().data());
+#endif
+	platformSession().GetCookieJar().AddCookie(heapCookie);
+}
+
+bool NetworkStorageSession::cookiesEnabled() const
+{
+    return true;
+}
+
+std::pair<String, bool> NetworkStorageSession::cookiesForDOM(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies includeSecureCookies) const
+{
+#if TRACE_COOKIE_JAR
+	printf("CookieJar: Request for %s\n", url.string().utf8().data());
+#endif
+
+	BString result;
+	BUrl hUrl(url);
+	bool secure = false;
+
+	const BNetworkCookie* c;
+	for (BNetworkCookieJar::UrlIterator it(
+            platformSession().GetCookieJar().GetUrlIterator(hUrl));
+		    (c = it.Next()); ) {
+        // filter out httpOnly cookies,as this method is used to get cookies
+        // from JS code and these shouldn't be visible there.
+        if(c->HttpOnly())
+			continue;
+
+		// filter out secure cookies if they should be
+		if (c->Secure())
+		{
+			secure = true;
+            if (includeSecureCookies == IncludeSecureCookies::No)
+				continue;
+		}
+		
+		result << "; " << c->RawCookie(false);
+	}
+	result.Remove(0, 2);
+
+    return {result, secure};
+}
+
+void NetworkStorageSession::setCookies(const Vector<Cookie>&, const URL&, const URL&)
+{
+    // FIXME: Implement for WebKit to use.
+}
+
+void NetworkStorageSession::setCookie(const Cookie&)
+{
+    // FIXME: Implement for WebKit to use.
+}
+
+void NetworkStorageSession::deleteCookie(const Cookie&)
+{
+    // FIXME: Implement for WebKit to use.
+}
+
+void NetworkStorageSession::deleteCookie(const URL& url, const String& cookie) const
+{
+#if TRACE_COOKIE_JAR
+	printf("CookieJar: delete cookie for %s (NOT IMPLEMENTED)\n", url.string().utf8().data());
+#endif
+	notImplemented();
+}
+
+void NetworkStorageSession::deleteAllCookies()
+{
+    notImplemented();
+}
+
+void NetworkStorageSession::deleteAllCookiesModifiedSince(WallTime since)
+{
+    notImplemented();
+}
+
+void NetworkStorageSession::deleteCookiesForHostnames(const Vector<String>& cookieHostNames)
+{
+    notImplemented();
+}
+
+Vector<Cookie> NetworkStorageSession::getAllCookies()
+{
+    // FIXME: Implement for WebKit to use.
+    return { };
+}
+
+void NetworkStorageSession::getHostnamesWithCookies(HashSet<String>& hostnames)
+{
+    notImplemented();
+}
+
+Vector<Cookie> NetworkStorageSession::getCookies(const URL&)
+{
+    // FIXME: Implement for WebKit to use.
+    return { };
+}
+
+bool NetworkStorageSession::getRawCookies(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, Vector<Cookie>& rawCookies) const
+{
+#if TRACE_COOKIE_JAR
+	printf("CookieJar: get raw cookies for %s (NOT IMPLEMENTED)\n", url.string().utf8().data());
+#endif
+	notImplemented();
+
+    rawCookies.clear();
+    return false; // return true when implemented
+}
+
+void NetworkStorageSession::flushCookieStore()
+{
+    // FIXME: Implement for WebKit to use.
+}
+
+std::pair<String, bool> NetworkStorageSession::cookieRequestHeaderFieldValue(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies includeSecureCookies) const
+{
+#if TRACE_COOKIE_JAR
+	printf("CookieJar: RequestHeaderField for %s\n", url.string().utf8().data());
+#endif
+
+	BString result;
+	BUrl hUrl(url);
+	bool secure = false;
+
+	const BNetworkCookie* c;
+	for (BNetworkCookieJar::UrlIterator it(
+        	platformSession().GetCookieJar().GetUrlIterator(hUrl));
+		    (c = it.Next()); ) {
+		// filter out secure cookies if they should be
+		if (c->Secure())
+		{
+			secure = true;
+            if (includeSecureCookies == IncludeSecureCookies::No)
+				continue;
+		}
+		
+		result << "; " << c->RawCookie(false);
+	}
+	result.Remove(0, 2);
+
+    return {result, secure};
+}
+
+std::pair<String, bool> NetworkStorageSession::cookieRequestHeaderFieldValue(const CookieRequestHeaderFieldProxy& headerFieldProxy) const
+{
+    return cookieRequestHeaderFieldValue(headerFieldProxy.firstParty, headerFieldProxy.sameSiteInfo, headerFieldProxy.url, headerFieldProxy.frameID, headerFieldProxy.pageID, headerFieldProxy.includeSecureCookies);
 }
 
 BUrlContext& NetworkStorageSession::platformSession() const
