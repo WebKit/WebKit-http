@@ -86,6 +86,7 @@
 #endif
 
 #if PLATFORM(MAC)
+#import <WebCore/GraphicsContext3DManager.h>
 #import <WebCore/ScrollbarThemeMac.h>
 #import <pal/spi/mac/NSScrollerImpSPI.h>
 #endif
@@ -94,9 +95,8 @@
 #import <os/state_private.h>
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 #if PLATFORM(MAC)
 static const Seconds cpuMonitoringInterval { 8_min };
@@ -323,7 +323,8 @@ void WebProcess::platformInitializeProcess(const ChildProcessInitializationParam
 #if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     // Deny the WebContent process access to the WindowServer.
     // This call will not succeed if there are open WindowServer connections at this point.
-    CGSSetDenyWindowServerConnections(true);
+    auto retval = CGSSetDenyWindowServerConnections(true);
+    RELEASE_ASSERT(retval == kCGErrorSuccess);
     // Make sure that we close any WindowServer connections after checking in with Launch Services.
     CGSShutdownServerConnections();
 #else
@@ -600,7 +601,12 @@ void WebProcess::scrollerStylePreferenceChanged(bool useOverlayScrollbars)
     NSScrollerStyle style = useOverlayScrollbars ? NSScrollerStyleOverlay : NSScrollerStyleLegacy;
     [NSScrollerImpPair _updateAllScrollerImpPairsForNewRecommendedScrollerStyle:style];
 }
-#endif    
+
+void WebProcess::displayConfigurationChanged(CGDirectDisplayID displayID, CGDisplayChangeSummaryFlags flags)
+{
+    GraphicsContext3DManager::displayWasReconfigured(displayID, flags, nullptr);
+}
+#endif
 
 void WebProcess::setMediaMIMETypes(const Vector<String> types)
 {

@@ -397,6 +397,7 @@ bindings/js/JSDOMWrapperCache.cpp
 bindings/js/JSDocumentCustom.cpp
 bindings/js/JSDocumentFragmentCustom.cpp
 bindings/js/JSElementCustom.cpp
+bindings/js/JSErrorEventCustom.cpp
 bindings/js/JSErrorHandler.cpp
 bindings/js/JSEventCustom.cpp
 bindings/js/JSEventListener.cpp
@@ -432,6 +433,7 @@ bindings/js/JSPerformanceEntryCustom.cpp
 bindings/js/JSPerformanceObserverCustom.cpp
 bindings/js/JSPluginElementFunctions.cpp
 bindings/js/JSPopStateEventCustom.cpp
+bindings/js/JSPromiseRejectionEventCustom.cpp
 bindings/js/JSReadableStreamPrivateConstructors.cpp
 bindings/js/JSReadableStreamSourceCustom.cpp
 bindings/js/JSRemoteDOMWindowBase.cpp
@@ -1215,8 +1217,6 @@ inspector/agents/worker/WorkerDebuggerAgent.cpp
 inspector/agents/worker/WorkerNetworkAgent.cpp
 inspector/agents/worker/WorkerRuntimeAgent.cpp
 
-layout/FloatingContext.cpp
-layout/FloatingState.cpp
 layout/FormattingContext.cpp
 layout/FormattingContextGeometry.cpp
 layout/FormattingState.cpp
@@ -1228,6 +1228,8 @@ layout/blockformatting/BlockFormattingState.cpp
 layout/blockformatting/BlockMarginCollapse.cpp
 layout/blockformatting/BlockInvalidation.cpp
 layout/displaytree/DisplayBox.cpp
+layout/floats/FloatingContext.cpp
+layout/floats/FloatingState.cpp
 layout/inlineformatting/InlineFormattingContext.cpp
 layout/inlineformatting/InlineFormattingState.cpp
 layout/inlineformatting/InlineInvalidation.cpp
@@ -1349,6 +1351,7 @@ mathml/MathMLUnknownElement.cpp
 
 page/AbstractDOMWindow.cpp
 page/AbstractFrame.cpp
+page/ActivityState.cpp
 page/AutoscrollController.cpp
 page/BarProp.cpp
 page/Base64Utilities.cpp

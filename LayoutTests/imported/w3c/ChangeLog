@@ -1,3 +1,396 @@
+2018-08-22  Rob Buis  <rbuis@igalia.com>
+
+        Fetch: Stop checking Request.integrity's value in no-cors mode
+        https://bugs.webkit.org/show_bug.cgi?id=188802
+
+        Reviewed by Frédéric Wang.
+
+        Update integrity.html expected result.
+
+        * web-platform-tests/fetch/api/basic/integrity-expected.txt:
+
+2018-08-21  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Support "name" option for dedicated workers
+        https://bugs.webkit.org/show_bug.cgi?id=188779
+
+        Reviewed by Joseph Pecoraro.
+
+        * web-platform-tests/workers/interfaces.worker-expected.txt:
+        * web-platform-tests/workers/name-property-expected.txt:
+
+2018-08-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r235128.
+
+        The test added with this change is frequently failing.
+
+        Reverted changeset:
+
+        "Support "name" option for dedicated workers"
+        https://bugs.webkit.org/show_bug.cgi?id=188779
+        https://trac.webkit.org/changeset/235128
+
+2018-08-21  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Support "name" option for dedicated workers
+        https://bugs.webkit.org/show_bug.cgi?id=188779
+
+        Reviewed by Joseph Pecoraro.
+
+        * web-platform-tests/workers/interfaces.worker-expected.txt:
+        * web-platform-tests/workers/name-property-expected.txt:
+
+2018-08-20  Rob Buis  <rbuis@igalia.com>
+
+        Throw an exception if window.open() gets passed a URL that cannot be parsed
+        https://bugs.webkit.org/show_bug.cgi?id=171656
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/url/failure-expected.txt:
+
+2018-08-20  Rob Buis  <rbuis@igalia.com>
+
+        Relax Request constructor around referrers
+        https://bugs.webkit.org/show_bug.cgi?id=168649
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/fetch/api/policies/referrer-origin-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-worker-expected.txt:
+        * web-platform-tests/fetch/api/request/request-init-001.sub-expected.txt:
+
+2018-08-18  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Fire an initial dummy notification
+        https://bugs.webkit.org/show_bug.cgi?id=188670
+
+        Reviewed by Simon Fraser.
+
+        Rebaseline tests now that an initial notification is fired.
+
+        * web-platform-tests/intersection-observer/bounding-box-expected.txt:
+        * web-platform-tests/intersection-observer/client-rect-expected.txt:
+        * web-platform-tests/intersection-observer/containing-block-expected.txt:
+        * web-platform-tests/intersection-observer/cross-origin-iframe-expected.txt:
+        * web-platform-tests/intersection-observer/disconnect-expected.txt:
+        * web-platform-tests/intersection-observer/display-none-expected.txt:
+        * web-platform-tests/intersection-observer/edge-inclusive-intersection-expected.txt:
+        * web-platform-tests/intersection-observer/iframe-no-root-expected.txt:
+        * web-platform-tests/intersection-observer/inline-client-rect-expected.txt:
+        * web-platform-tests/intersection-observer/isIntersecting-change-events-expected.txt:
+        * web-platform-tests/intersection-observer/multiple-targets-expected.txt:
+        * web-platform-tests/intersection-observer/multiple-thresholds-expected.txt:
+        * web-platform-tests/intersection-observer/observer-without-js-reference-expected.txt:
+        * web-platform-tests/intersection-observer/remove-element-expected.txt:
+        * web-platform-tests/intersection-observer/root-margin-expected.txt:
+        * web-platform-tests/intersection-observer/same-document-no-root-expected.txt:
+        * web-platform-tests/intersection-observer/same-document-root-expected.txt:
+        * web-platform-tests/intersection-observer/same-document-zero-size-target-expected.txt:
+        * web-platform-tests/intersection-observer/shadow-content-expected.txt:
+        * web-platform-tests/intersection-observer/text-target-expected.txt:
+        * web-platform-tests/intersection-observer/timestamp-expected.txt:
+        * web-platform-tests/intersection-observer/unclipped-root-expected.txt:
+        * web-platform-tests/intersection-observer/zero-area-element-hidden-expected.txt:
+        * web-platform-tests/intersection-observer/zero-area-element-visible-expected.txt:
+
+2018-08-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Custom element constructor doesn't use HTMLElement in new.target's realm
+        https://bugs.webkit.org/show_bug.cgi?id=188634
+
+        Reviewed by Keith Miller.
+
+        Rebaselined the test now that all relevant test cases pass. All remaining test failures are
+        for customized builtin, which we do not and shall not implement.
+
+        * web-platform-tests/custom-elements/htmlconstructor/newtarget-expected.txt:
+
+2018-08-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Custom element doesn't invalidate its style when :defined rule starts to apply
+        https://bugs.webkit.org/show_bug.cgi?id=188637
+
+        Reviewed by Antti Koivisto.
+
+        Rebaselined the test now that all relevant test cases pass. The only remaining test failures
+        are for customized builtins which we do not and shall not implement.
+
+        * web-platform-tests/custom-elements/pseudo-class-defined-expected.txt:
+
+2018-08-15  Jer Noble  <jer.noble@apple.com>
+
+        Add Experimental Feature support for SourceBuffer.changeType()
+        https://bugs.webkit.org/show_bug.cgi?id=188626
+
+        Reviewed by Eric Carlson.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/media-source/mediasource-changetype-expected.txt: Added.
+        * web-platform-tests/media-source/mediasource-changetype-play-expected.txt: Added.
+        * web-platform-tests/media-source/mediasource-changetype-play.html: Added.
+        * web-platform-tests/media-source/mediasource-changetype-util.js: Added.
+        (findSupportedChangeTypeTestTypes):
+        (appendBuffer):
+        (trimBuffered):
+        (trimDuration):
+        (runChangeTypeTest):
+        (mediaSourceChangeTypeTest):
+        * web-platform-tests/media-source/mediasource-changetype.html: Added.
+        * web-platform-tests/media-source/mp3/sound_5.mp3: Added.
+        * web-platform-tests/media-source/mp3/w3c-import.log: Added.
+        * web-platform-tests/media-source/w3c-import.log:
+        * web-platform-tests/media-source/webm/test-vp9.webm: Added.
+        * web-platform-tests/media-source/webm/w3c-import.log:
+
+2018-08-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        connectedCallback is invoked by the HTML parser after child nodes had been inserted
+        https://bugs.webkit.org/show_bug.cgi?id=183931
+        <rdar://problem/38843548>
+
+        Reviewed by Alex Christensen.
+
+        Rebaselined the test now that all test cases pass.
+
+        * web-platform-tests/custom-elements/parser/parser-sets-attributes-and-children-expected.txt:
+
+2018-08-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unhandled Promise Rejection logging in workers should not emit ErrorEvent to host Worker object
+        https://bugs.webkit.org/show_bug.cgi?id=188551
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/ecdh_bits.https.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/ecdh_keys.https.worker-expected.txt:
+        * web-platform-tests/streams/readable-streams/tee.dedicatedworker-expected.txt:
+
+2018-08-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Worker should support unhandled promise rejections
+        https://bugs.webkit.org/show_bug.cgi?id=188265
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/ecdh_bits.https.worker-expected.txt:
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/ecdh_keys.https.worker-expected.txt:
+        * web-platform-tests/streams/readable-streams/tee.dedicatedworker-expected.txt:
+        * web-platform-tests/streams/readable-streams/tee.serviceworker.https-expected.txt:
+        * web-platform-tests/workers/interfaces.worker-expected.txt:
+        * web-platform-tests/workers/semantics/interface-objects/001.worker-expected.txt:
+
+2018-08-14  Rob Buis  <rbuis@igalia.com>
+
+        Fetch: content-length header is being added to the safe-list
+        https://bugs.webkit.org/show_bug.cgi?id=185473
+
+        Reviewed by Youenn Fablet.
+
+        Sync with wpt change:
+        https://github.com/web-platform-tests/wpt/commit/407ecdff87af8aeceaa07cbc71aac9ec355d4334
+
+        * web-platform-tests/fetch/api/cors/cors-filtering-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-filtering-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-filtering.js:
+
+2018-08-13  Youenn Fablet  <youenn@apple.com>
+
+        [WPT] Ensure templated tests do set a Content-Type: text/html HTTP header
+        https://bugs.webkit.org/show_bug.cgi?id=188523
+
+        Reviewed by Alexey Proskuryakov.
+
+        Importing change made in https://github.com/web-platform-tests/wpt/pull/12450
+        This helps running WPT tests in more platforms.
+
+        * web-platform-tests/tools/serve/serve.py:
+        (HtmlWrapperHandler):
+
+2018-08-13  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Validate threshold values
+        https://bugs.webkit.org/show_bug.cgi?id=188475
+
+        Reviewed by Simon Fraser.
+
+        Update expectation for newly passing test case.
+
+        * web-platform-tests/intersection-observer/observer-exceptions-expected.txt:
+        * web-platform-tests/intersection-observer/observer-exceptions.html: Fix typo already fixed upstream.
+
+2018-08-13  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Expose CloseEvent and CustomEvent to workers
+        https://bugs.webkit.org/show_bug.cgi?id=188493
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/workers/semantics/interface-objects/001.worker-expected.txt:
+
+2018-08-13  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-logical] Implement flow-relative margin, padding, border and sizing properties
+        https://bugs.webkit.org/show_bug.cgi?id=188386
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        These properties provide the author with the ability to control margins
+        through logical, rather than physical, direction and dimension mappings.
+
+        Only longhand properties and border shorthands for specific sides are
+        implemented as part of this patch.
+
+        The existing prefixed properties become aliases of the new ones.
+
+        The new tests are imported from the WPT test suite for CSS Logical
+        Properties and Values spec.
+
+        The tests still have some failures because sideways writing modes have
+        not been implemented yet.
+
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-logical/META.yml: Added.
+        * web-platform-tests/css/css-logical/animation-001-expected.txt: Added.
+        * web-platform-tests/css/css-logical/animation-001.html: Added.
+        * web-platform-tests/css/css-logical/animation-002-expected.txt: Added.
+        * web-platform-tests/css/css-logical/animation-002.html: Added.
+        * web-platform-tests/css/css-logical/animation-003.tentative-expected.txt: Added.
+        * web-platform-tests/css/css-logical/animation-003.tentative.html: Added.
+        * web-platform-tests/css/css-logical/cascading-001-expected.html: Added.
+        * web-platform-tests/css/css-logical/cascading-001.html: Added.
+        * web-platform-tests/css/css-logical/logical-box-border-color-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logical-box-border-color.html: Added.
+        * web-platform-tests/css/css-logical/logical-box-border-shorthands-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logical-box-border-shorthands.html: Added.
+        * web-platform-tests/css/css-logical/logical-box-border-style-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logical-box-border-style.html: Added.
+        * web-platform-tests/css/css-logical/logical-box-border-width-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logical-box-border-width.html: Added.
+        * web-platform-tests/css/css-logical/logical-box-inset-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logical-box-inset.html: Added.
+        * web-platform-tests/css/css-logical/logical-box-margin-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logical-box-margin.html: Added.
+        * web-platform-tests/css/css-logical/logical-box-padding-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logical-box-padding.html: Added.
+        * web-platform-tests/css/css-logical/logical-box-size-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logical-box-size.html: Added.
+        * web-platform-tests/css/css-logical/logicalprops-block-size-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logicalprops-block-size-vlr-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logicalprops-block-size-vlr.html: Added.
+        * web-platform-tests/css/css-logical/logicalprops-block-size.html: Added.
+        * web-platform-tests/css/css-logical/logicalprops-inline-size-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logicalprops-inline-size-vlr-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logicalprops-inline-size-vlr.html: Added.
+        * web-platform-tests/css/css-logical/logicalprops-inline-size.html: Added.
+        * web-platform-tests/css/css-logical/logicalprops-quirklength-expected.txt: Added.
+        * web-platform-tests/css/css-logical/logicalprops-quirklength.html: Added.
+        * web-platform-tests/css/css-logical/resources/test-box-properties.js: Added.
+        (testCSSValues):
+        (testComputedValues):
+        (makeDeclaration):
+        * web-platform-tests/css/css-logical/resources/w3c-import.log: Added.
+        * web-platform-tests/css/css-logical/w3c-import.log: Added.
+
+2018-08-10  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Implement rootMargin parsing
+        https://bugs.webkit.org/show_bug.cgi?id=188469
+
+        Reviewed by Darin Adler.
+
+        Update expectations for newly passing test cases.
+
+        * web-platform-tests/intersection-observer/observer-attributes-expected.txt:
+        * web-platform-tests/intersection-observer/observer-exceptions-expected.txt:
+
+2018-08-09  Ali Juma  <ajuma@chromium.org>
+
+        Import WPTs for IntersectionObserver
+        https://bugs.webkit.org/show_bug.cgi?id=188416
+
+        Reviewed by Simon Fraser.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/intersection-observer/META.yml: Added.
+        * web-platform-tests/intersection-observer/bounding-box-expected.txt: Added.
+        * web-platform-tests/intersection-observer/bounding-box.html: Added.
+        * web-platform-tests/intersection-observer/client-rect-expected.txt: Added.
+        * web-platform-tests/intersection-observer/client-rect.html: Added.
+        * web-platform-tests/intersection-observer/containing-block-expected.txt: Added.
+        * web-platform-tests/intersection-observer/containing-block.html: Added.
+        * web-platform-tests/intersection-observer/cross-origin-iframe-expected.txt: Added.
+        * web-platform-tests/intersection-observer/cross-origin-iframe.html: Added.
+        * web-platform-tests/intersection-observer/disconnect-expected.txt: Added.
+        * web-platform-tests/intersection-observer/disconnect.html: Added.
+        * web-platform-tests/intersection-observer/display-none-expected.txt: Added.
+        * web-platform-tests/intersection-observer/display-none.html: Added.
+        * web-platform-tests/intersection-observer/edge-inclusive-intersection-expected.txt: Added.
+        * web-platform-tests/intersection-observer/edge-inclusive-intersection.html: Added.
+        * web-platform-tests/intersection-observer/idlharness.window-expected.txt: Added.
+        * web-platform-tests/intersection-observer/idlharness.window.html: Added.
+        * web-platform-tests/intersection-observer/idlharness.window.js: Added.
+        (idl_array.self.observer.new.IntersectionObserver):
+        * web-platform-tests/intersection-observer/iframe-no-root-expected.txt: Added.
+        * web-platform-tests/intersection-observer/iframe-no-root.html: Added.
+        * web-platform-tests/intersection-observer/inline-client-rect-expected.txt: Added.
+        * web-platform-tests/intersection-observer/inline-client-rect.html: Added.
+        * web-platform-tests/intersection-observer/isIntersecting-change-events-expected.txt: Added.
+        * web-platform-tests/intersection-observer/isIntersecting-change-events.html: Added.
+        * web-platform-tests/intersection-observer/multiple-targets-expected.txt: Added.
+        * web-platform-tests/intersection-observer/multiple-targets.html: Added.
+        * web-platform-tests/intersection-observer/multiple-thresholds-expected.txt: Added.
+        * web-platform-tests/intersection-observer/multiple-thresholds.html: Added.
+        * web-platform-tests/intersection-observer/observer-attributes-expected.txt: Added.
+        * web-platform-tests/intersection-observer/observer-attributes.html: Added.
+        * web-platform-tests/intersection-observer/observer-exceptions-expected.txt: Added.
+        * web-platform-tests/intersection-observer/observer-exceptions.html: Added.
+        * web-platform-tests/intersection-observer/observer-in-iframe.html: Added.
+        * web-platform-tests/intersection-observer/observer-without-js-reference-expected.txt: Added.
+        * web-platform-tests/intersection-observer/observer-without-js-reference.html: Added.
+        * web-platform-tests/intersection-observer/remove-element-expected.txt: Added.
+        * web-platform-tests/intersection-observer/remove-element.html: Added.
+        * web-platform-tests/intersection-observer/resources/cross-origin-subframe.html: Added.
+        * web-platform-tests/intersection-observer/resources/iframe-no-root-subframe.html: Added.
+        * web-platform-tests/intersection-observer/resources/intersection-observer-test-utils.js: Added.
+        (waitForNotification):
+        (runTestCycle):
+        (contentBounds):
+        (borderBoxBounds):
+        (clientBounds):
+        (rectArea):
+        (checkRect):
+        (checkLastEntry):
+        (checkJsonEntry):
+        (checkJsonEntries):
+        * web-platform-tests/intersection-observer/resources/observer-in-iframe-subframe.html: Added.
+        * web-platform-tests/intersection-observer/resources/timestamp-subframe.html: Added.
+        * web-platform-tests/intersection-observer/resources/w3c-import.log: Added.
+        * web-platform-tests/intersection-observer/root-margin-expected.txt: Added.
+        * web-platform-tests/intersection-observer/root-margin.html: Added.
+        * web-platform-tests/intersection-observer/same-document-no-root-expected.txt: Added.
+        * web-platform-tests/intersection-observer/same-document-no-root.html: Added.
+        * web-platform-tests/intersection-observer/same-document-root-expected.txt: Added.
+        * web-platform-tests/intersection-observer/same-document-root.html: Added.
+        * web-platform-tests/intersection-observer/same-document-zero-size-target-expected.txt: Added.
+        * web-platform-tests/intersection-observer/same-document-zero-size-target.html: Added.
+        * web-platform-tests/intersection-observer/shadow-content-expected.txt: Added.
+        * web-platform-tests/intersection-observer/shadow-content.html: Added.
+        * web-platform-tests/intersection-observer/text-target-expected.txt: Added.
+        * web-platform-tests/intersection-observer/text-target.html: Added.
+        * web-platform-tests/intersection-observer/timestamp-expected.txt: Added.
+        * web-platform-tests/intersection-observer/timestamp.html: Added.
+        * web-platform-tests/intersection-observer/unclipped-root-expected.txt: Added.
+        * web-platform-tests/intersection-observer/unclipped-root.html: Added.
+        * web-platform-tests/intersection-observer/w3c-import.log: Added.
+        * web-platform-tests/intersection-observer/zero-area-element-hidden-expected.txt: Added.
+        * web-platform-tests/intersection-observer/zero-area-element-hidden.html: Added.
+        * web-platform-tests/intersection-observer/zero-area-element-visible-expected.txt: Added.
+        * web-platform-tests/intersection-observer/zero-area-element-visible.html: Added.
+
 2018-08-08  Charlie Turner  <cturner@igalia.com>
 
         Add CENC sanitization

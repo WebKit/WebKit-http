@@ -85,6 +85,23 @@ class BuildFactory(Factory):
         }
 
 
+class TestFactory(Factory):
+    LayoutTestClass = None
+    APITestClass = None
+
+    def getProduct(self):
+        self.addStep(DownloadBuiltProduct())
+        self.addStep(ExtractBuiltProduct())
+
+    def __init__(self, platform, configuration=None, architectures=None, additionalArguments=None, **kwargs):
+        Factory.__init__(self, platform, configuration, architectures, False, additionalArguments)
+        self.getProduct()
+        if self.LayoutTestClass:
+            self.addStep(self.LayoutTestClass())
+        if self.APITestClass:
+            self.addStep(self.APITestClass())
+
+
 class JSCTestsFactory(Factory):
     def __init__(self, platform, configuration='release', architectures=None, additionalArguments=None, **kwargs):
         Factory.__init__(self, platform, configuration, architectures, False, additionalArguments)
@@ -98,37 +115,32 @@ class JSCTestsFactory(Factory):
         self.addStep(RunJavaScriptCoreTestsToT())
 
 
-class APITestsFactory(Factory):
-    def getProduct(self):
-        self.addStep(DownloadBuiltProduct())
-        self.addStep(ExtractBuiltProduct())
-
-    def __init__(self, platform, configuration=None, architectures=None, additionalArguments=None, **kwargs):
-        Factory.__init__(self, platform, configuration, architectures, False, additionalArguments)
-        self.getProduct()
-        self.addStep(RunAPITests())
+class APITestsFactory(TestFactory):
+    APITestClass = RunAPITests
 
 
 class GTKFactory(Factory):
     pass
 
 
-class iOSFactory(BuildFactory):
+class iOSBuildFactory(BuildFactory):
     pass
 
 
-class iOSSimulatorFactory(BuildFactory):
-    def __init__(self, platform, configuration=None, architectures=None, additionalArguments=None, triggers=None, **kwargs):
-        BuildFactory.__init__(self, platform, configuration, architectures, additionalArguments, triggers)
-        self.addStep(RunWebKitTests())
+class iOSTestsFactory(TestFactory):
+    LayoutTestClass = RunWebKitTests
 
 
-class MacWK1Factory(BuildFactory):
+class macOSBuildFactory(BuildFactory):
     pass
 
 
-class MacWK2Factory(BuildFactory):
-    pass
+class macOSWK1Factory(TestFactory):
+    LayoutTestClass = RunWebKit1Tests
+
+
+class macOSWK2Factory(TestFactory):
+    LayoutTestClass = RunWebKitTests
 
 
 class WindowsFactory(Factory):

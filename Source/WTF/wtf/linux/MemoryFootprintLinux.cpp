@@ -27,6 +27,7 @@
 #include "MemoryFootprint.h"
 
 #if OS(LINUX)
+#include "MonotonicTime.h"
 #include <stdio.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringView.h>
@@ -35,6 +36,8 @@
 namespace WTF {
 
 #if OS(LINUX)
+static const Seconds s_memoryFootprintUpdateInterval = 1_s;
+
 template<typename Functor>
 static void forEachLine(FILE* file, Functor functor)
 {
@@ -45,14 +48,12 @@ static void forEachLine(FILE* file, Functor functor)
     }
     free(buffer);
 }
-#endif
 
-std::optional<size_t> memoryFootprint()
+static size_t computeMemoryFootprint()
 {
-#if OS(LINUX)
     FILE* file = fopen("/proc/self/smaps", "r");
     if (!file)
-        return std::nullopt;
+        return 0;
 
     unsigned long totalPrivateDirtyInKB = 0;
     bool isAnonymous = false;
@@ -86,8 +87,23 @@ std::optional<size_t> memoryFootprint()
     });
     fclose(file);
     return totalPrivateDirtyInKB * KB;
+}
 #endif
-    return std::nullopt;
+
+size_t memoryFootprint()
+{
+#if OS(LINUX)
+    static size_t footprint = 0;
+    static MonotonicTime previousUpdateTime = { };
+    Seconds elapsed = MonotonicTime::now() - previousUpdateTime;
+    if (elapsed >= s_memoryFootprintUpdateInterval) {
+        footprint = computeMemoryFootprint();
+        previousUpdateTime = MonotonicTime::now();
+    }
+
+    return footprint;
+#endif
+    return 0;
 }
 
 }

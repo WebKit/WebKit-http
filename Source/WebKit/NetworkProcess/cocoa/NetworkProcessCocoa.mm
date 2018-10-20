@@ -30,6 +30,7 @@
 #import "Logging.h"
 #import "NetworkCache.h"
 #import "NetworkProcessCreationParameters.h"
+#import "NetworkProximityManager.h"
 #import "NetworkResourceLoader.h"
 #import "NetworkSessionCocoa.h"
 #import "SandboxExtension.h"
@@ -44,10 +45,7 @@
 #import <wtf/BlockPtr.h>
 #import <wtf/CallbackAggregator.h>
 #import <wtf/ProcessPrivilege.h>
-
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/NetworkProcessCocoaAdditions.mm>
-#endif
+#import <wtf/RetainPtr.h>
 
 namespace WebKit {
 
@@ -96,7 +94,7 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
 
     initializeNetworkSettings();
 
-#if PLATFORM(COCOA)
+#if PLATFORM(MAC)
     setSharedHTTPCookieStorage(parameters.uiProcessCookieStorageIdentifier);
 #endif
 
@@ -109,10 +107,6 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     // One non-obvious constraint is that we need to use -setSharedURLCache: even in testing mode, to prevent creating a default one on disk later, when some other code touches the cache.
 
     ASSERT(!m_diskCacheIsDisabledForTesting);
-
-#if ENABLE(WIFI_ASSERTIONS)
-    initializeWiFiAssertions(parameters);
-#endif
 
     if (m_diskCacheDirectory.isNull())
         return;
@@ -166,8 +160,10 @@ void NetworkProcess::getHostNamesWithHSTSCache(WebCore::NetworkStorageSession& s
 
 void NetworkProcess::deleteHSTSCacheForHostNames(WebCore::NetworkStorageSession& session, const Vector<String>& hostNames)
 {
-    for (auto& hostName : hostNames)
-        _CFNetworkResetHSTS(CFURLCreateWithString(kCFAllocatorDefault, hostName.createCFString().get(), NULL), session.platformSession());
+    for (auto& hostName : hostNames) {
+        auto url = adoptCF(CFURLCreateWithString(kCFAllocatorDefault, hostName.createCFString().get(), NULL));
+        _CFNetworkResetHSTS(url.get(), session.platformSession());
+    }
 }
 
 void NetworkProcess::clearHSTSCache(WebCore::NetworkStorageSession& session, WallTime modifiedSince)
@@ -192,7 +188,7 @@ void NetworkProcess::clearDiskCache(WallTime modifiedSince, Function<void ()>&& 
     }
 }
 
-#if PLATFORM(COCOA)
+#if PLATFORM(MAC)
 void NetworkProcess::setSharedHTTPCookieStorage(const Vector<uint8_t>& identifier)
 {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
@@ -245,8 +241,8 @@ void NetworkProcess::platformSyncAllCookies(CompletionHandler<void()>&& completi
 
 void NetworkProcess::platformPrepareToSuspend(CompletionHandler<void()>&& completionHandler)
 {
-#if ENABLE(WIFI_ASSERTIONS)
-    suspendWiFiAssertions(SuspensionReason::ProcessSuspending, WTFMove(completionHandler));
+#if ENABLE(PROXIMITY_NETWORKING)
+    proximityManager().suspend(SuspensionReason::ProcessSuspending, WTFMove(completionHandler));
 #else
     completionHandler();
 #endif
@@ -254,23 +250,23 @@ void NetworkProcess::platformPrepareToSuspend(CompletionHandler<void()>&& comple
 
 void NetworkProcess::platformProcessDidResume()
 {
-#if ENABLE(WIFI_ASSERTIONS)
-    resumeWiFiAssertions(ResumptionReason::ProcessResuming);
+#if ENABLE(PROXIMITY_NETWORKING)
+    proximityManager().resume(ResumptionReason::ProcessResuming);
 #endif
 }
 
 void NetworkProcess::platformProcessDidTransitionToBackground()
 {
-#if ENABLE(WIFI_ASSERTIONS)
-    suspendWiFiAssertions(SuspensionReason::ProcessBackgrounding, [] { });
+#if ENABLE(PROXIMITY_NETWORKING)
+    proximityManager().suspend(SuspensionReason::ProcessBackgrounding, [] { });
 #endif
 }
 
 void NetworkProcess::platformProcessDidTransitionToForeground()
 {
-#if ENABLE(WIFI_ASSERTIONS)
-    resumeWiFiAssertions(ResumptionReason::ProcessForegrounding);
+#if ENABLE(PROXIMITY_NETWORKING)
+    proximityManager().resume(ResumptionReason::ProcessForegrounding);
 #endif
 }
 
-}
+} // namespace WebKit

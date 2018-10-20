@@ -1,0 +1,552 @@
+// Copyright (C) 2018 Apple Inc. All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+// THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+// PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+// BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+
+NetworkProcess/NetworkActivityTracker.cpp
+NetworkProcess/NetworkCORSPreflightChecker.cpp
+NetworkProcess/NetworkConnectionToWebProcess.cpp
+NetworkProcess/NetworkContentRuleListManager.cpp
+NetworkProcess/NetworkDataTask.cpp
+NetworkProcess/NetworkDataTaskBlob.cpp
+NetworkProcess/NetworkLoad.cpp
+NetworkProcess/NetworkLoadChecker.cpp
+NetworkProcess/NetworkProcess.cpp
+NetworkProcess/NetworkProcessCreationParameters.cpp
+NetworkProcess/NetworkProcessPlatformStrategies.cpp
+NetworkProcess/NetworkResourceLoadParameters.cpp
+NetworkProcess/NetworkResourceLoader.cpp
+NetworkProcess/NetworkSession.cpp
+NetworkProcess/NetworkSocketStream.cpp
+NetworkProcess/PingLoad.cpp
+NetworkProcess/PreconnectTask.cpp
+
+NetworkProcess/Cookies/WebCookieManager.cpp
+
+NetworkProcess/Downloads/Download.cpp
+NetworkProcess/Downloads/DownloadManager.cpp
+NetworkProcess/Downloads/PendingDownload.cpp
+
+NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
+
+NetworkProcess/cache/CacheStorageEngine.cpp
+NetworkProcess/cache/CacheStorageEngineCache.cpp
+NetworkProcess/cache/CacheStorageEngineCaches.cpp
+NetworkProcess/cache/CacheStorageEngineConnection.cpp
+NetworkProcess/cache/NetworkCache.cpp
+NetworkProcess/cache/NetworkCacheBlobStorage.cpp
+NetworkProcess/cache/NetworkCacheCoders.cpp
+NetworkProcess/cache/NetworkCacheData.cpp
+NetworkProcess/cache/NetworkCacheEntry.cpp
+NetworkProcess/cache/NetworkCacheFileSystem.cpp
+NetworkProcess/cache/NetworkCacheKey.cpp
+NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp
+NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp
+NetworkProcess/cache/NetworkCacheStatistics.cpp
+NetworkProcess/cache/NetworkCacheStorage.cpp
+NetworkProcess/cache/NetworkCacheSubresourcesEntry.cpp
+
+NetworkProcess/capture/NetworkCaptureEvent.cpp
+NetworkProcess/capture/NetworkCaptureManager.cpp
+NetworkProcess/capture/NetworkCaptureRecorder.cpp
+NetworkProcess/capture/NetworkCaptureReplayer.cpp
+NetworkProcess/capture/NetworkCaptureResource.cpp
+NetworkProcess/capture/NetworkDataTaskReplay.cpp
+
+NetworkProcess/webrtc/NetworkMDNSRegister.cpp
+
+// TODO: We should unify these files once GTK's PluginProcess2 is removed.
+Platform/Logging.cpp @no-unify
+Platform/Module.cpp @no-unify
+
+// TODO: We should unify these files once GTK's PluginProcess2 is removed.
+Platform/IPC/ArgumentCoders.cpp @no-unify
+Platform/IPC/Attachment.cpp @no-unify
+Platform/IPC/Connection.cpp @no-unify
+Platform/IPC/DataReference.cpp @no-unify
+Platform/IPC/Decoder.cpp @no-unify
+Platform/IPC/Encoder.cpp @no-unify
+Platform/IPC/MessageReceiverMap.cpp @no-unify
+Platform/IPC/MessageSender.cpp @no-unify
+Platform/IPC/StringReference.cpp @no-unify
+
+PluginProcess/PluginControllerProxy.cpp @no-unify
+PluginProcess/PluginCreationParameters.cpp @no-unify
+PluginProcess/PluginProcess.cpp @no-unify
+PluginProcess/WebProcessConnection.cpp @no-unify
+
+// TODO: The files here marked @no-unify should be unified once GTK's PluginProcess2 is removed.
+Shared/ActivityAssertion.cpp @no-unify
+Shared/AsyncRequest.cpp
+Shared/BlobDataFileReferenceWithSandboxExtension.cpp @no-unify
+Shared/CacheModel.cpp
+Shared/ChildProcess.cpp @no-unify
+Shared/ContextMenuContextData.cpp
+Shared/EditorState.cpp
+Shared/FontInfo.cpp
+Shared/FrameInfoData.cpp
+Shared/LayerTreeContext.cpp
+Shared/LoadParameters.cpp
+Shared/NavigationActionData.cpp
+Shared/PlatformPopupMenuData.cpp
+Shared/PrintInfo.cpp
+Shared/RTCNetwork.cpp
+Shared/RTCPacketOptions.cpp
+Shared/SessionState.cpp
+Shared/SessionTracker.cpp
+Shared/ShareableBitmap.cpp @no-unify
+Shared/ShareableResource.cpp
+Shared/SharedStringHashStore.cpp
+Shared/SharedStringHashTableReadOnly.cpp
+Shared/SharedStringHashTable.cpp
+Shared/StatisticsData.cpp
+Shared/TouchBarMenuData.cpp
+Shared/TouchBarMenuItemData.cpp
+Shared/URLSchemeTaskParameters.cpp
+Shared/UpdateInfo.cpp
+Shared/UserData.cpp
+Shared/WebBackForwardListItem.cpp
+Shared/WebCompiledContentRuleList.cpp
+Shared/WebCompiledContentRuleListData.cpp
+Shared/WebConnection.cpp
+Shared/WebConnectionClient.cpp
+Shared/WebContextMenuItem.cpp
+Shared/WebContextMenuItemData.cpp
+Shared/WebCoreArgumentCoders.cpp @no-unify
+Shared/WebErrors.cpp
+Shared/WebEvent.cpp @no-unify
+Shared/WebEventConversion.cpp
+Shared/WebGeolocationPosition.cpp
+Shared/WebHitTestResultData.cpp
+Shared/WebImage.cpp
+Shared/WebKeyboardEvent.cpp @no-unify
+Shared/WebKit2Initialize.cpp @no-unify
+Shared/WebMediaSessionMetadata.cpp
+Shared/WebMemorySampler.cpp
+Shared/WebMouseEvent.cpp @no-unify
+Shared/WebPageCreationParameters.cpp
+Shared/WebPageGroupData.cpp
+Shared/WebPlatformTouchPoint.cpp @no-unify
+Shared/WebPopupItem.cpp
+Shared/WebPreferencesDefaultValues.cpp
+Shared/WebPreferencesStore.cpp
+Shared/WebProcessCreationParameters.cpp
+Shared/WebRenderLayer.cpp
+Shared/WebRenderObject.cpp
+Shared/WebTouchEvent.cpp @no-unify
+Shared/WebUserContentControllerDataTypes.cpp
+Shared/WebWheelEvent.cpp @no-unify
+Shared/WebsiteDataStoreParameters.cpp
+Shared/WebsitePoliciesData.cpp
+
+Shared/API/APIArray.cpp @no-unify
+Shared/API/APIData.cpp @no-unify
+Shared/API/APIDictionary.cpp @no-unify
+Shared/API/APIError.cpp @no-unify
+Shared/API/APIFrameHandle.cpp @no-unify
+Shared/API/APIGeometry.cpp @no-unify
+Shared/API/APIObject.cpp @no-unify
+Shared/API/APIPageGroupHandle.cpp @no-unify
+Shared/API/APIPageHandle.cpp @no-unify
+Shared/API/APIURLRequest.cpp @no-unify
+Shared/API/APIURLResponse.cpp @no-unify
+
+Shared/API/c/WKArray.cpp @no-unify
+Shared/API/c/WKCertificateInfo.cpp @no-unify
+Shared/API/c/WKConnectionRef.cpp @no-unify
+Shared/API/c/WKContextMenuItem.cpp @no-unify
+Shared/API/c/WKData.cpp @no-unify
+Shared/API/c/WKDeprecatedFunctions.cpp @no-unify
+Shared/API/c/WKDictionary.cpp @no-unify
+Shared/API/c/WKErrorRef.cpp @no-unify
+Shared/API/c/WKGeometry.cpp @no-unify
+Shared/API/c/WKImage.cpp @no-unify
+Shared/API/c/WKMutableArray.cpp @no-unify
+Shared/API/c/WKMutableDictionary.cpp @no-unify
+Shared/API/c/WKNumber.cpp @no-unify
+Shared/API/c/WKPluginInformation.cpp @no-unify
+Shared/API/c/WKRenderLayer.cpp @no-unify
+Shared/API/c/WKRenderObject.cpp @no-unify
+Shared/API/c/WKSecurityOriginRef.cpp @no-unify
+Shared/API/c/WKSerializedScriptValue.cpp @no-unify
+Shared/API/c/WKString.cpp @no-unify
+Shared/API/c/WKType.cpp @no-unify
+Shared/API/c/WKURL.cpp @no-unify
+Shared/API/c/WKURLRequest.cpp @no-unify
+Shared/API/c/WKURLResponse.cpp @no-unify
+Shared/API/c/WKUserContentURLPattern.cpp @no-unify
+
+Shared/Authentication/AuthenticationManager.cpp
+
+Shared/Databases/IndexedDB/IDBUtilities.cpp
+Shared/Databases/IndexedDB/WebIDBResult.cpp
+
+Shared/Gamepad/GamepadData.cpp
+
+// TODO: These files should be unified once GTK's PluginProcess2 is removed.
+Shared/Plugins/NPIdentifierData.cpp @no-unify
+Shared/Plugins/NPObjectMessageReceiver.cpp @no-unify
+Shared/Plugins/NPObjectProxy.cpp @no-unify
+Shared/Plugins/NPRemoteObjectMap.cpp @no-unify
+Shared/Plugins/NPVariantData.cpp @no-unify
+Shared/Plugins/PluginProcessCreationParameters.cpp @no-unify
+
+// TODO: These files should be unified once GTK's PluginProcess2 is removed.
+Shared/Plugins/Netscape/NetscapePluginModule.cpp  @no-unify
+Shared/Plugins/Netscape/PluginInformation.cpp @no-unify
+
+Shared/Storage/StorageProcessCreationParameters.cpp
+
+Shared/WebsiteData/WebsiteData.cpp
+
+StorageProcess/StorageProcess.cpp @no-unify
+StorageProcess/StorageToWebProcessConnection.cpp @no-unify
+
+StorageProcess/IndexedDB/WebIDBConnectionToClient.cpp @no-unify
+
+StorageProcess/ServiceWorker/WebSWOriginStore.cpp @no-unify
+StorageProcess/ServiceWorker/WebSWServerConnection.cpp @no-unify
+StorageProcess/ServiceWorker/WebSWServerToContextConnection.cpp @no-unify
+
+UIProcess/BackgroundProcessResponsivenessTimer.cpp @no-unify
+UIProcess/ChildProcessProxy.cpp @no-unify
+UIProcess/DrawingAreaProxy.cpp @no-unify
+UIProcess/FrameLoadState.cpp @no-unify
+UIProcess/GeolocationPermissionRequestManagerProxy.cpp @no-unify
+UIProcess/GeolocationPermissionRequestProxy.cpp @no-unify
+UIProcess/PageLoadState.cpp @no-unify
+UIProcess/ProcessAssertion.cpp @no-unify
+UIProcess/ProcessThrottler.cpp @no-unify
+UIProcess/RemoteWebInspectorProxy.cpp @no-unify
+UIProcess/ResourceLoadStatisticsMemoryStore.cpp @no-unify
+UIProcess/ResourceLoadStatisticsPersistentStorage.cpp @no-unify
+UIProcess/ResponsivenessTimer.cpp @no-unify
+UIProcess/ServiceWorkerProcessProxy.cpp @no-unify
+UIProcess/StatisticsRequest.cpp @no-unify
+UIProcess/SuspendedPageProxy.cpp @no-unify
+UIProcess/SystemPreviewController.cpp @no-unify
+UIProcess/TextCheckerCompletion.cpp @no-unify
+UIProcess/UIMessagePortChannelProvider.cpp @no-unify
+UIProcess/UserMediaPermissionCheckProxy.cpp @no-unify
+UIProcess/UserMediaPermissionRequestManagerProxy.cpp @no-unify
+UIProcess/UserMediaPermissionRequestProxy.cpp @no-unify
+UIProcess/UserMediaProcessManager.cpp @no-unify
+UIProcess/VisitedLinkStore.cpp @no-unify
+UIProcess/WebBackForwardList.cpp @no-unify
+UIProcess/WebColorPicker.cpp @no-unify
+UIProcess/WebConnectionToWebProcess.cpp @no-unify
+UIProcess/WebContextClient.cpp @no-unify
+UIProcess/WebContextConnectionClient.cpp @no-unify
+UIProcess/WebContextInjectedBundleClient.cpp @no-unify
+UIProcess/WebContextMenuListenerProxy.cpp @no-unify
+UIProcess/WebContextMenuProxy.cpp @no-unify
+UIProcess/WebCookieManagerProxy.cpp @no-unify
+UIProcess/WebCookieManagerProxyClient.cpp @no-unify
+UIProcess/WebEditCommandProxy.cpp @no-unify
+UIProcess/WebFormClient.cpp @no-unify
+UIProcess/WebFormSubmissionListenerProxy.cpp @no-unify
+UIProcess/WebFramePolicyListenerProxy.cpp @no-unify
+UIProcess/WebFrameProxy.cpp @no-unify
+UIProcess/WebFullScreenManagerProxy.cpp @no-unify
+UIProcess/WebGeolocationManagerProxy.cpp @no-unify
+UIProcess/WebGeolocationProvider.cpp @no-unify
+UIProcess/WebInspectorProxy.cpp @no-unify
+UIProcess/WebInspectorUtilities.cpp @no-unify
+UIProcess/WebNavigationState.cpp @no-unify
+UIProcess/WebOpenPanelResultListenerProxy.cpp @no-unify
+UIProcess/WebPageDiagnosticLoggingClient.cpp @no-unify
+UIProcess/WebPageGroup.cpp @no-unify
+UIProcess/WebPageInjectedBundleClient.cpp @no-unify
+UIProcess/WebPageProxy.cpp @no-unify
+UIProcess/WebPasteboardProxy.cpp @no-unify
+UIProcess/WebPreferences.cpp @no-unify
+UIProcess/WebProcessLifetimeObserver.cpp @no-unify
+UIProcess/WebProcessLifetimeTracker.cpp @no-unify
+UIProcess/WebProcessPool.cpp @no-unify
+UIProcess/WebProcessProxy.cpp @no-unify
+UIProcess/WebURLSchemeHandler.cpp @no-unify
+UIProcess/WebURLSchemeTask.cpp @no-unify
+
+UIProcess/API/APIAttachment.cpp @no-unify
+UIProcess/API/APIContentRuleList.cpp @no-unify
+UIProcess/API/APIContentRuleListStore.cpp @no-unify
+UIProcess/API/APIExperimentalFeature.cpp @no-unify
+UIProcess/API/APIFrameInfo.cpp @no-unify
+UIProcess/API/APIHTTPCookieStore.cpp @no-unify
+UIProcess/API/APIHitTestResult.cpp @no-unify
+UIProcess/API/APINavigation.cpp @no-unify
+UIProcess/API/APINavigationData.cpp @no-unify
+UIProcess/API/APIPageConfiguration.cpp @no-unify
+UIProcess/API/APIProcessPoolConfiguration.cpp @no-unify
+UIProcess/API/APIOpenPanelParameters.cpp @no-unify
+UIProcess/API/APISessionState.cpp @no-unify
+UIProcess/API/APIURLSchemeTask.cpp @no-unify
+UIProcess/API/APIUserContentWorld.cpp @no-unify
+UIProcess/API/APIUserScript.cpp @no-unify
+UIProcess/API/APIUserStyleSheet.cpp @no-unify
+UIProcess/API/APIWebsiteDataStore.cpp @no-unify
+UIProcess/API/APIWebsitePolicies.cpp @no-unify
+UIProcess/API/APIWindowFeatures.cpp @no-unify
+
+UIProcess/API/C/WKApplicationCacheManager.cpp @no-unify
+UIProcess/API/C/WKAuthenticationChallenge.cpp @no-unify
+UIProcess/API/C/WKAuthenticationDecisionListener.cpp @no-unify
+UIProcess/API/C/WKBackForwardListItemRef.cpp @no-unify
+UIProcess/API/C/WKBackForwardListRef.cpp @no-unify
+UIProcess/API/C/WKContext.cpp @no-unify
+UIProcess/API/C/WKContextConfigurationRef.cpp @no-unify
+UIProcess/API/C/WKCookieManager.cpp @no-unify
+UIProcess/API/C/WKCredential.cpp @no-unify
+UIProcess/API/C/WKDownload.cpp @no-unify
+UIProcess/API/C/WKFormSubmissionListener.cpp @no-unify
+UIProcess/API/C/WKFrame.cpp @no-unify
+UIProcess/API/C/WKFrameHandleRef.cpp @no-unify
+UIProcess/API/C/WKFrameInfoRef.cpp @no-unify
+UIProcess/API/C/WKFramePolicyListener.cpp @no-unify
+UIProcess/API/C/WKGeolocationManager.cpp @no-unify
+UIProcess/API/C/WKGeolocationPermissionRequest.cpp @no-unify
+UIProcess/API/C/WKGeolocationPosition.cpp @no-unify
+UIProcess/API/C/WKHitTestResult.cpp @no-unify
+UIProcess/API/C/WKIconDatabase.cpp @no-unify
+UIProcess/API/C/WKInspector.cpp @no-unify
+UIProcess/API/C/WKKeyValueStorageManager.cpp @no-unify
+UIProcess/API/C/WKMediaSessionMetadata.cpp @no-unify
+UIProcess/API/C/WKMockDisplay.cpp @no-unify
+UIProcess/API/C/WKMockMediaDevice.cpp @no-unify
+UIProcess/API/C/WKNavigationActionRef.cpp @no-unify
+UIProcess/API/C/WKNavigationDataRef.cpp @no-unify
+UIProcess/API/C/WKNavigationRef.cpp @no-unify
+UIProcess/API/C/WKNavigationResponseRef.cpp @no-unify
+UIProcess/API/C/WKNotification.cpp @no-unify
+UIProcess/API/C/WKNotificationManager.cpp @no-unify
+UIProcess/API/C/WKNotificationPermissionRequest.cpp @no-unify
+UIProcess/API/C/WKOpenPanelParametersRef.cpp @no-unify
+UIProcess/API/C/WKOpenPanelResultListener.cpp @no-unify
+UIProcess/API/C/WKPage.cpp @no-unify
+UIProcess/API/C/WKPageConfigurationRef.cpp @no-unify
+UIProcess/API/C/WKPageGroup.cpp @no-unify
+UIProcess/API/C/WKPreferences.cpp @no-unify
+UIProcess/API/C/WKProtectionSpace.cpp @no-unify
+UIProcess/API/C/WKResourceCacheManager.cpp @no-unify
+UIProcess/API/C/WKSessionStateRef.cpp @no-unify
+UIProcess/API/C/WKTextChecker.cpp @no-unify
+UIProcess/API/C/WKUserContentControllerRef.cpp @no-unify
+UIProcess/API/C/WKUserMediaPermissionCheck.cpp @no-unify
+UIProcess/API/C/WKUserMediaPermissionRequest.cpp @no-unify
+UIProcess/API/C/WKViewportAttributes.cpp @no-unify
+UIProcess/API/C/WKWebsiteDataStoreRef.cpp @no-unify
+UIProcess/API/C/WKWebsitePolicies.cpp @no-unify
+UIProcess/API/C/WKWindowFeaturesRef.cpp @no-unify
+
+UIProcess/Authentication/AuthenticationChallengeProxy.cpp @no-unify
+UIProcess/Authentication/AuthenticationDecisionListener.cpp @no-unify
+UIProcess/Authentication/WebCredential.cpp @no-unify
+UIProcess/Authentication/WebProtectionSpace.cpp @no-unify
+
+UIProcess/Automation/SimulatedInputDispatcher.cpp @no-unify
+UIProcess/Automation/WebAutomationSession.cpp @no-unify
+
+UIProcess/Downloads/DownloadProxy.cpp @no-unify
+UIProcess/Downloads/DownloadProxyMap.cpp @no-unify
+
+UIProcess/Gamepad/UIGamepad.cpp @no-unify
+UIProcess/Gamepad/UIGamepadProvider.cpp @no-unify
+
+// TODO: This file should be "unified" once GTK's PluginProcess2 is removed.
+UIProcess/Launcher/ProcessLauncher.cpp @no-unify
+
+UIProcess/Network/NetworkProcessProxy.cpp @no-unify
+
+UIProcess/Notifications/NotificationPermissionRequestManagerProxy.cpp @no-unify
+UIProcess/Notifications/WebNotification.cpp @no-unify
+UIProcess/Notifications/WebNotificationManagerProxy.cpp @no-unify
+UIProcess/Notifications/WebNotificationProvider.cpp @no-unify
+
+UIProcess/Plugins/PlugInAutoStartProvider.cpp @no-unify
+UIProcess/Plugins/PluginInfoStore.cpp @no-unify
+UIProcess/Plugins/PluginProcessManager.cpp @no-unify
+UIProcess/Plugins/PluginProcessProxy.cpp @no-unify
+
+UIProcess/Storage/StorageProcessProxy.cpp @no-unify
+
+UIProcess/UserContent/WebScriptMessageHandler.cpp @no-unify
+UIProcess/UserContent/WebUserContentControllerProxy.cpp @no-unify
+
+UIProcess/WebStorage/LocalStorageDatabase.cpp @no-unify
+UIProcess/WebStorage/LocalStorageDatabaseTracker.cpp @no-unify
+
+UIProcess/WebsiteData/WebsiteDataRecord.cpp @no-unify
+UIProcess/WebsiteData/WebsiteDataStore.cpp @no-unify
+
+WebProcess/WebConnectionToUIProcess.cpp
+WebProcess/WebProcess.cpp
+
+WebProcess/Automation/WebAutomationSessionProxy.cpp
+
+WebProcess/Cache/WebCacheStorageConnection.cpp
+WebProcess/Cache/WebCacheStorageProvider.cpp
+
+WebProcess/Databases/WebDatabaseProvider.cpp
+
+WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp
+
+WebProcess/FileAPI/BlobRegistryProxy.cpp
+
+WebProcess/FullScreen/WebFullScreenManager.cpp
+
+WebProcess/Gamepad/WebGamepad.cpp
+WebProcess/Gamepad/WebGamepadProvider.cpp
+
+WebProcess/Geolocation/GeolocationPermissionRequestManager.cpp
+WebProcess/Geolocation/WebGeolocationManager.cpp
+
+WebProcess/InjectedBundle/InjectedBundle.cpp
+WebProcess/InjectedBundle/InjectedBundleBackForwardList.cpp
+WebProcess/InjectedBundle/InjectedBundleBackForwardListItem.cpp
+WebProcess/InjectedBundle/InjectedBundleClient.cpp
+WebProcess/InjectedBundle/InjectedBundleDOMWindowExtension.cpp
+WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp
+WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp
+WebProcess/InjectedBundle/InjectedBundlePageContextMenuClient.cpp
+WebProcess/InjectedBundle/InjectedBundlePageEditorClient.cpp
+WebProcess/InjectedBundle/InjectedBundlePageFormClient.cpp
+WebProcess/InjectedBundle/InjectedBundlePageFullScreenClient.cpp
+WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.cpp
+WebProcess/InjectedBundle/InjectedBundlePagePolicyClient.cpp
+WebProcess/InjectedBundle/InjectedBundlePageResourceLoadClient.cpp
+WebProcess/InjectedBundle/InjectedBundlePageUIClient.cpp
+WebProcess/InjectedBundle/InjectedBundleScriptWorld.cpp
+
+WebProcess/InjectedBundle/API/c/WKBundle.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundleBackForwardList.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundleBackForwardListItem.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundleDOMWindowExtension.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundleFrame.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundleInspector.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundleNavigationAction.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundlePage.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundlePageGroup.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundlePageOverlay.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundleRangeHandle.cpp @no-unify
+WebProcess/InjectedBundle/API/c/WKBundleScriptWorld.cpp @no-unify
+
+WebProcess/InjectedBundle/DOM/InjectedBundleCSSStyleDeclarationHandle.cpp
+WebProcess/InjectedBundle/DOM/InjectedBundleFileHandle.cpp
+WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp
+WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp
+
+WebProcess/MediaStream/MediaDeviceSandboxExtensions.cpp
+WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp
+
+WebProcess/Network/NetworkProcessConnection.cpp
+WebProcess/Network/WebLoaderStrategy.cpp
+WebProcess/Network/WebResourceLoader.cpp
+WebProcess/Network/WebSocketProvider.cpp
+WebProcess/Network/WebSocketStream.cpp
+
+WebProcess/Network/webrtc/LibWebRTCProvider.cpp
+WebProcess/Network/webrtc/LibWebRTCResolver.cpp
+WebProcess/Network/webrtc/LibWebRTCSocket.cpp
+WebProcess/Network/webrtc/LibWebRTCSocketFactory.cpp
+WebProcess/Network/webrtc/WebMDNSRegister.cpp
+WebProcess/Network/webrtc/WebRTCMonitor.cpp
+WebProcess/Network/webrtc/WebRTCResolver.cpp
+WebProcess/Network/webrtc/WebRTCSocket.cpp
+
+WebProcess/Notifications/NotificationPermissionRequestManager.cpp
+WebProcess/Notifications/WebNotificationManager.cpp
+
+// TODO: These files should be unified once GTK's PluginProcess2 is removed.
+WebProcess/Plugins/Plugin.cpp @no-unify
+WebProcess/Plugins/PluginProcessConnection.cpp @no-unify
+WebProcess/Plugins/PluginProcessConnectionManager.cpp @no-unify
+WebProcess/Plugins/PluginProxy.cpp @no-unify
+WebProcess/Plugins/PluginView.cpp @no-unify
+WebProcess/Plugins/WebPluginInfoProvider.cpp @no-unify
+
+// TODO: These files should be unified once GTK's PluginProcess2 is removed.
+WebProcess/Plugins/Netscape/JSNPMethod.cpp @no-unify
+WebProcess/Plugins/Netscape/JSNPObject.cpp @no-unify
+WebProcess/Plugins/Netscape/NPJSObject.cpp @no-unify
+WebProcess/Plugins/Netscape/NPRuntimeObjectMap.cpp @no-unify
+WebProcess/Plugins/Netscape/NPRuntimeUtilities.cpp @no-unify
+WebProcess/Plugins/Netscape/NetscapeBrowserFuncs.cpp @no-unify
+WebProcess/Plugins/Netscape/NetscapePlugin.cpp @no-unify
+WebProcess/Plugins/Netscape/NetscapePluginStream.cpp @no-unify
+
+WebProcess/Storage/ServiceWorkerClientFetch.cpp
+WebProcess/Storage/WebSWClientConnection.cpp
+WebProcess/Storage/WebSWContextManagerConnection.cpp
+WebProcess/Storage/WebSWOriginTable.cpp
+WebProcess/Storage/WebServiceWorkerFetchTaskClient.cpp
+WebProcess/Storage/WebServiceWorkerProvider.cpp
+WebProcess/Storage/WebToStorageProcessConnection.cpp
+
+WebProcess/UserContent/WebUserContentController.cpp
+
+WebProcess/WebCoreSupport/SessionStateConversion.cpp
+WebProcess/WebCoreSupport/WebChromeClient.cpp
+WebProcess/WebCoreSupport/WebColorChooser.cpp
+WebProcess/WebCoreSupport/WebContextMenuClient.cpp
+WebProcess/WebCoreSupport/WebDiagnosticLoggingClient.cpp
+WebProcess/WebCoreSupport/WebDragClient.cpp
+WebProcess/WebCoreSupport/WebEditorClient.cpp
+WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp
+WebProcess/WebCoreSupport/WebGeolocationClient.cpp
+WebProcess/WebCoreSupport/WebInspectorClient.cpp
+WebProcess/WebCoreSupport/WebMessagePortChannelProvider.cpp
+WebProcess/WebCoreSupport/WebNotificationClient.cpp
+WebProcess/WebCoreSupport/WebPerformanceLoggingClient.cpp
+WebProcess/WebCoreSupport/WebPlatformStrategies.cpp
+WebProcess/WebCoreSupport/WebPlugInClient.cpp
+WebProcess/WebCoreSupport/WebPopupMenu.cpp
+WebProcess/WebCoreSupport/WebProgressTrackerClient.cpp
+WebProcess/WebCoreSupport/WebSearchPopupMenu.cpp
+WebProcess/WebCoreSupport/WebUserMediaClient.cpp
+
+WebProcess/WebPage/DrawingArea.cpp
+WebProcess/WebPage/EventDispatcher.cpp
+WebProcess/WebPage/FindController.cpp
+WebProcess/WebPage/PageBanner.cpp
+WebProcess/WebPage/RemoteWebInspectorUI.cpp
+WebProcess/WebPage/VisitedLinkTableController.cpp
+WebProcess/WebPage/WebBackForwardListProxy.cpp
+WebProcess/WebPage/WebContextMenu.cpp
+WebProcess/WebPage/WebDocumentLoader.cpp
+WebProcess/WebPage/WebFrame.cpp
+WebProcess/WebPage/WebInspector.cpp
+WebProcess/WebPage/WebInspectorInterruptDispatcher.cpp
+WebProcess/WebPage/WebInspectorFrontendAPIDispatcher.cpp
+WebProcess/WebPage/WebInspectorUI.cpp
+WebProcess/WebPage/WebOpenPanelResultListener.cpp
+WebProcess/WebPage/WebPage.cpp
+WebProcess/WebPage/WebPageGroupProxy.cpp
+WebProcess/WebPage/WebPageOverlay.cpp
+WebProcess/WebPage/WebURLSchemeHandlerProxy.cpp
+WebProcess/WebPage/WebURLSchemeTaskProxy.cpp
+WebProcess/WebPage/WebUndoStep.cpp
+
+WebProcess/WebStorage/StorageAreaImpl.cpp
+WebProcess/WebStorage/StorageAreaMap.cpp
+WebProcess/WebStorage/StorageNamespaceImpl.cpp
+WebProcess/WebStorage/WebStorageNamespaceProvider.cpp

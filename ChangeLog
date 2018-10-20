@@ -1,3 +1,43 @@
+2018-08-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Switch to Nicosia::CompositionLayer state tracking
+        https://bugs.webkit.org/show_bug.cgi?id=188693
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake: Enable USE_NICOSIA alongside
+        USE_COORDINATED_GRAPHICS and USE_COORDINATED_GRAPHICS_THREADED.
+        * Source/cmake/OptionsWPE.cmake: Ditto.
+
+2018-08-21  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for 2.21.91 release.
+
+        * Source/cmake/OptionsWPE.cmake: Bump version numbers.
+
+2018-08-21  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] Update to use libwpe-1.0.0 and WPEBackend-fdo-1.0.0
+        https://bugs.webkit.org/show_bug.cgi?id=188782
+
+        Reviewed by Michael Catanzaro.
+
+        Make the build depend on wpe-0.2, and change the Flatpak and JHBuild development
+        environments to use version 1.0.0 of libwpe and WPEBackend-fdo.
+
+        * Source/cmake/FindWPE.cmake: Renamed from Source/cmake/FindWPEBackend.cmake and changed
+        to check for libwpe-0.2.
+        * Source/cmake/OptionsWPE.cmake: Adapt to the rename to FindWPE.cmake.
+
+2018-08-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Adjust CMAKE_MODULE_LINKER_FLAGS for asan
+        https://bugs.webkit.org/show_bug.cgi?id=188699
+
+        Reviewed by Konstantin Tokarev.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
 2018-07-30  Thibault Saunier  <tsaunier@igalia.com>
 
         [GStreamer] Make codecparsers optionnal

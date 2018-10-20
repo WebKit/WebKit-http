@@ -28,7 +28,7 @@
 #include "NetworkActivityTracker.h"
 #include "NetworkDataTask.h"
 #include "NetworkLoadParameters.h"
-#include "WiFiAssertionHolder.h"
+#include "NetworkProximityAssertion.h"
 #include <WebCore/NetworkLoadMetrics.h>
 #include <wtf/RetainPtr.h>
 
@@ -52,7 +52,7 @@ public:
     typedef uint64_t TaskIdentifier;
 
     void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend);
-    void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&);
+    void didReceiveChallenge(WebCore::AuthenticationChallenge&&, ChallengeCompletionHandler&&);
     void didCompleteWithError(const WebCore::ResourceError&, const WebCore::NetworkLoadMetrics&);
     void didReceiveData(Ref<WebCore::SharedBuffer>&&);
 
@@ -73,11 +73,11 @@ public:
     uint64_t frameID() const { return m_frameID; };
     uint64_t pageID() const { return m_pageID; };
 
-#if ENABLE(WIFI_ASSERTIONS)
-    void maybeHoldWiFiAssertion(bool shouldHoldWiFiAssertion)
+#if ENABLE(PROXIMITY_NETWORKING)
+    void holdProximityAssertion(NetworkProximityAssertion& assertion)
     {
-        ASSERT(!m_wiFiAssertionHolder);
-        m_wiFiAssertionHolder.emplace(shouldHoldWiFiAssertion);
+        ASSERT(!m_proximityAssertionToken);
+        m_proximityAssertionToken.emplace(assertion);
     }
 #endif
 
@@ -106,8 +106,8 @@ private:
     bool m_hasBeenSetToUseStatelessCookieStorage { false };
 #endif
 
-#if ENABLE(WIFI_ASSERTIONS)
-    std::optional<WiFiAssertionHolder> m_wiFiAssertionHolder;
+#if ENABLE(PROXIMITY_NETWORKING)
+    std::optional<NetworkProximityAssertion::Token> m_proximityAssertionToken;
 #endif
 };
 

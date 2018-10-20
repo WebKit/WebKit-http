@@ -123,9 +123,8 @@ SOFT_LINK_CLASS_OPTIONAL(Celestial, AVSystemController)
 SOFT_LINK_CONSTANT_MAY_FAIL(Celestial, AVSystemController_PIDToInheritApplicationStateFrom, NSString *)
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 const int blockSelectionStartWidth = 100;
 const int blockSelectionStartHeight = 100;
@@ -1217,8 +1216,26 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
 
 static RefPtr<Range> rangeForPointInRootViewCoordinates(Frame& frame, const IntPoint& pointInRootViewCoordinates, bool baseIsStart)
 {
-    IntPoint pointInDocument = frame.view()->rootViewToContents(pointInRootViewCoordinates);
-    Position result;
+    VisibleSelection existingSelection = frame.selection().selection();
+    VisiblePosition selectionStart = existingSelection.visibleStart();
+    VisiblePosition selectionEnd = existingSelection.visibleEnd();
+    
+    IntPoint adjustedPoint = pointInRootViewCoordinates;
+    
+    if (baseIsStart) {
+        IntRect caret = existingSelection.visibleStart().absoluteCaretBounds();
+        int startY = caret.center().y();
+        if (adjustedPoint.y() < startY)
+            adjustedPoint.setY(startY);
+    } else {
+        IntRect caret = existingSelection.visibleEnd().absoluteCaretBounds();
+        int endY = caret.center().y();
+        if (adjustedPoint.y() > endY)
+            adjustedPoint.setY(endY);
+    }
+    
+    IntPoint pointInDocument = frame.view()->rootViewToContents(adjustedPoint);
+    VisiblePosition result;
     RefPtr<Range> range;
     
     HitTestResult hitTest = frame.eventHandler().hitTestResultAtPoint(pointInDocument, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent);
@@ -1227,24 +1244,22 @@ static RefPtr<Range> rangeForPointInRootViewCoordinates(Frame& frame, const IntP
     else
         result = frame.visiblePositionForPoint(pointInDocument).deepEquivalent();
     
-    VisibleSelection existingSelection = frame.selection().selection();
-    Position selectionStart = existingSelection.visibleStart().deepEquivalent();
-    Position selectionEnd = existingSelection.visibleEnd().deepEquivalent();
-    
     if (baseIsStart) {
         if (comparePositions(result, selectionStart) <= 0)
             result = selectionStart.next();
-        else if (&selectionStart.anchorNode()->treeScope() != &hitTest.targetNode()->treeScope())
-            result = VisibleSelection::adjustPositionForEnd(result, selectionStart.containerNode());
+        else if (&selectionStart.deepEquivalent().anchorNode()->treeScope() != &hitTest.targetNode()->treeScope())
+            result = VisibleSelection::adjustPositionForEnd(result.deepEquivalent(), selectionStart.deepEquivalent().containerNode());
+        
         if (result.isNotNull())
             range = Range::create(*frame.document(), selectionStart, result);
     } else {
         if (comparePositions(selectionEnd, result) <= 0)
             result = selectionEnd.previous();
-        else if (&hitTest.targetNode()->treeScope() != &selectionEnd.anchorNode()->treeScope())
-            result = VisibleSelection::adjustPositionForStart(result, selectionEnd.containerNode());
+        else if (&hitTest.targetNode()->treeScope() != &selectionEnd.deepEquivalent().anchorNode()->treeScope())
+            result = VisibleSelection::adjustPositionForStart(result.deepEquivalent(), selectionEnd.deepEquivalent().containerNode());
+        
         if (result.isNotNull())
-            range = Range::create(*frame.document(), result, selectionEnd);
+            range = Range::create(*frame.document(), result.deepEquivalent(), selectionEnd);
     }
     
     return range;
@@ -2313,7 +2328,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         bool inFixed = false;
         renderer->localToContainerPoint(FloatPoint(), nullptr, UseTransforms, &inFixed);
         information.insideFixedPosition = inFixed;
-        information.isRTL = renderer->style().direction() == RTL;
+        information.isRTL = renderer->style().direction() == TextDirection::RTL;
 
         FrameView* frameView = elementFrame.view();
         if (inFixed && elementFrame.isMainFrame() && !frameView->frame().settings().visualViewportEnabled()) {
@@ -2451,8 +2466,12 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
             }
         }
 #if ENABLE(INPUT_TYPE_COLOR)
-        else if (element.isColorControl())
+        else if (element.isColorControl()) {
             information.elementType = InputType::Color;
+#if ENABLE(DATALIST_ELEMENT)
+            information.suggestedColors = element.suggestedColors();
+#endif
+        }
 #endif
 
         information.isReadOnly = element.isReadOnly();

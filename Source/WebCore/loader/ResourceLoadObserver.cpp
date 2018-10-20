@@ -36,6 +36,7 @@
 #include "ResourceLoadStatistics.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "URL.h"
@@ -53,24 +54,6 @@ ResourceLoadObserver& ResourceLoadObserver::shared()
 {
     static NeverDestroyed<ResourceLoadObserver> resourceLoadObserver;
     return resourceLoadObserver;
-}
-
-static bool shouldEnableSiteSpecificQuirks(Page* page)
-{
-#if PLATFORM(IOS)
-    UNUSED_PARAM(page);
-
-    // There is currently no way to toggle the needsSiteSpecificQuirks setting on iOS so we always enable
-    // the site-specific quirks on iOS.
-    return true;
-#else
-    return page && page->settings().needsSiteSpecificQuirks();
-#endif
-}
-
-static bool areDomainsAssociated(Page* page, const String& firstDomain, const String& secondDomain)
-{
-    return ResourceLoadStatistics::areDomainsAssociated(shouldEnableSiteSpecificQuirks(page), firstDomain, secondDomain);
 }
 
 void ResourceLoadObserver::setNotificationCallback(WTF::Function<void (Vector<ResourceLoadStatistics>&&)>&& notificationCallback)
@@ -95,22 +78,9 @@ static inline bool is3xxRedirect(const ResourceResponse& response)
     return response.httpStatusCode() >= 300 && response.httpStatusCode() <= 399;
 }
 
-bool ResourceLoadObserver::shouldLog(Page* page) const
+bool ResourceLoadObserver::shouldLog(bool usesEphemeralSession) const
 {
-    // FIXME: Err on the safe side until we have sorted out what to do in worker contexts
-    if (!page)
-        return false;
-
-    return DeprecatedGlobalSettings::resourceLoadStatisticsEnabled() && !page->usesEphemeralSession() && m_notificationCallback;
-}
-
-// FIXME: This quirk was added to address <rdar://problem/33325881> and should be removed once content is fixed.
-static bool resourceNeedsSSOQuirk(Page* page, const URL& url)
-{
-    if (!shouldEnableSiteSpecificQuirks(page))
-        return false;
-
-    return equalIgnoringASCIICase(url.host(), "sp.auth.adobe.com");
+    return DeprecatedGlobalSettings::resourceLoadStatisticsEnabled() && !usesEphemeralSession && m_notificationCallback;
 }
 
 void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse)
@@ -118,7 +88,7 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
     ASSERT(frame->page());
 
     auto* page = frame->page();
-    if (!shouldLog(page))
+    if (!shouldLog(page->usesEphemeralSession()))
         return;
 
     bool isRedirect = is3xxRedirect(redirectResponse);
@@ -135,11 +105,8 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
     auto targetPrimaryDomain = primaryDomain(targetURL);
     auto mainFramePrimaryDomain = primaryDomain(mainFrameURL);
     auto sourcePrimaryDomain = primaryDomain(sourceURL);
-    
-    if (areDomainsAssociated(page, targetPrimaryDomain, mainFramePrimaryDomain) || (isRedirect && areDomainsAssociated(page, targetPrimaryDomain, sourcePrimaryDomain)))
-        return;
 
-    if (resourceNeedsSSOQuirk(page, targetURL))
+    if (targetPrimaryDomain == mainFramePrimaryDomain || (isRedirect && targetPrimaryDomain == sourcePrimaryDomain))
         return;
 
     bool shouldCallNotificationCallback = false;
@@ -164,18 +131,10 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
         scheduleNotificationIfNeeded();
 }
 
-void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& targetURL)
+void ResourceLoadObserver::logWebSocketLoading(const URL& targetURL, const URL& mainFrameURL, bool usesEphemeralSession)
 {
-    // FIXME: Web sockets can run in detached frames. Decide how to count such connections.
-    // See LayoutTests/http/tests/websocket/construct-in-detached-frame.html
-    if (!frame)
+    if (!shouldLog(usesEphemeralSession))
         return;
-
-    auto* page = frame->page();
-    if (!shouldLog(page))
-        return;
-
-    auto& mainFrameURL = frame->mainFrame().document()->url();
 
     auto targetHost = targetURL.host();
     auto mainFrameHost = mainFrameURL.host();
@@ -185,8 +144,8 @@ void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& ta
     
     auto targetPrimaryDomain = primaryDomain(targetURL);
     auto mainFramePrimaryDomain = primaryDomain(mainFrameURL);
-    
-    if (areDomainsAssociated(page, targetPrimaryDomain, mainFramePrimaryDomain))
+
+    if (targetPrimaryDomain == mainFramePrimaryDomain)
         return;
 
     auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
@@ -197,10 +156,10 @@ void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& ta
 
 void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Document& document)
 {
-    if (!shouldLog(document.page()))
-        return;
-
     ASSERT(document.page());
+
+    if (!shouldLog(document.page()->usesEphemeralSession()))
+        return;
 
     auto& url = document.url();
     if (url.isBlankURL() || url.isEmpty())

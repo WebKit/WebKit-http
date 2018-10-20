@@ -25,11 +25,10 @@
 #pragma once
 
 #include "Event.h"
+#include "VRDisplay.h"
 #include "VRDisplayEventReason.h"
 
 namespace WebCore {
-
-class VRDisplay;
 
 class VRDisplayEvent final : public Event {
 public:

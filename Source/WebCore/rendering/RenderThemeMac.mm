@@ -197,6 +197,76 @@ static const double progressAnimationNumFrames = 256;
 @implementation WebCoreRenderThemeBundle
 @end
 
+#if ENABLE(DATALIST_ELEMENT)
+
+static const CGFloat listButtonWidth = 16.0f;
+static const CGFloat listButtonCornerRadius = 5.0f;
+
+@interface WebListButtonCell : NSCell
+@end
+
+@implementation WebListButtonCell
+- (void)drawWithFrame:(NSRect)cellFrame inView:(__unused NSView *)controlView
+{
+    CGFloat listButtonCornerRadius = 5.0f;
+    NSPoint topLeft = NSMakePoint(NSMinX(cellFrame), NSMinY(cellFrame));
+    NSPoint topRight = NSMakePoint(NSMaxX(cellFrame), NSMinY(cellFrame));
+    NSPoint bottomRight = NSMakePoint(NSMaxX(cellFrame), NSMaxY(cellFrame));
+    NSPoint bottomLeft = NSMakePoint(NSMinX(cellFrame), NSMaxY(cellFrame));
+
+    NSBezierPath *path = [NSBezierPath bezierPath];
+    [path moveToPoint:topLeft];
+
+    [path lineToPoint:NSMakePoint(topRight.x - listButtonCornerRadius, topRight.y)];
+    [path curveToPoint:NSMakePoint(topRight.x, topRight.y + listButtonCornerRadius) controlPoint1:topRight controlPoint2:topRight];
+
+    [path lineToPoint:NSMakePoint(bottomRight.x, bottomRight.y - listButtonCornerRadius)];
+    [path curveToPoint:NSMakePoint(bottomRight.x - listButtonCornerRadius, bottomRight.y) controlPoint1:bottomRight controlPoint2:bottomRight];
+
+    [path lineToPoint:bottomLeft];
+    [path lineToPoint:topLeft];
+
+    if ([self userInterfaceLayoutDirection] == NSUserInterfaceLayoutDirectionRightToLeft) {
+        NSAffineTransform *transform = [NSAffineTransform transform];
+        [transform translateXBy:NSMidX(cellFrame) yBy:NSMidY(cellFrame)];
+        [transform rotateByDegrees:180];
+        [transform translateXBy:-1 * NSMidX(cellFrame) yBy:-1 * NSMidY(cellFrame)];
+        [path transformUsingAffineTransform:transform];
+    }
+
+    // FIXME: Obtain the gradient colors from CoreUI or AppKit
+    RetainPtr<NSGradient> gradient;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    NSUserAccentColor accentColor = NSColorGetUserAccentColor();
+    if (accentColor == NSUserAccentColorRed)
+        gradient = adoptNS([[NSGradient alloc] initWithStartingColor:[NSColor colorWithRed:(212.0 / 255) green:(122.0 / 255) blue:(117.0 / 255) alpha:1.0] endingColor:[NSColor colorWithRed:(189.0 / 255) green:(34.0 / 255) blue:(23.0 / 255) alpha:1.0]]);
+    else if (accentColor == NSUserAccentColorOrange)
+        gradient = adoptNS([[NSGradient alloc] initWithStartingColor:[NSColor colorWithRed:(242.0 / 255) green:(185.0 / 255) blue:(113.0 / 255) alpha:1.0] endingColor:[NSColor colorWithRed:(242.0 / 255) green:(145.0 / 255) blue:(17.0 / 255) alpha:1.0]]);
+    else if (accentColor == NSUserAccentColorYellow)
+        gradient = adoptNS([[NSGradient alloc] initWithStartingColor:[NSColor colorWithRed:(241.0 / 255) green:(212.0 / 255) blue:(119.0 / 255) alpha:1.0] endingColor:[NSColor colorWithRed:(239.0 / 255) green:(193.0 / 255) blue:(27.0 / 255) alpha:1.0]]);
+    else if (accentColor == NSUserAccentColorGreen)
+        gradient = adoptNS([[NSGradient alloc] initWithStartingColor:[NSColor colorWithRed:(132.0 / 255) green:(186.0 / 255) blue:(120.0 / 255) alpha:1.0] endingColor:[NSColor colorWithRed:(46.0 / 255) green:(145.0 / 255) blue:(30.0 / 255) alpha:1.0]]);
+    else if (accentColor == NSUserAccentColorPurple)
+        gradient = adoptNS([[NSGradient alloc] initWithStartingColor:[NSColor colorWithRed:(178.0 / 255) green:(128.0 / 255) blue:(175.0 / 255) alpha:1.0] endingColor:[NSColor colorWithRed:(130.0 / 255) green:(43.0 / 255) blue:(123.0 / 255) alpha:1.0]]);
+    else if (accentColor == NSUserAccentColorPink)
+        gradient = adoptNS([[NSGradient alloc] initWithStartingColor:[NSColor colorWithRed:(225.0 / 255) green:(126.0 / 255) blue:(165.0 / 255) alpha:1.0] endingColor:[NSColor colorWithRed:(211.0 / 255) green:(42.0 / 255) blue:(105.0 / 255) alpha:1.0]]);
+    else if (accentColor == NSUserAccentColorNoColor)
+        gradient = adoptNS([[NSGradient alloc] initWithStartingColor:[NSColor colorWithRed:(177.0 / 255) green:(177.0 / 255) blue:(182.0 / 255) alpha:1.0] endingColor:[NSColor colorWithRed:(145.0 / 255) green:(145.0 / 255) blue:(150.0 / 255) alpha:1.0]]);
+    else
+#endif
+        gradient = adoptNS([[NSGradient alloc] initWithStartingColor:[NSColor colorWithRed:(114.0 / 255) green:(164.0 / 255) blue:(243.0 / 255) alpha:1.0] endingColor:[NSColor colorWithRed:(45.0 / 255) green:(117.0 / 255) blue:(246.0 / 255) alpha:1.0]]);
+
+    [gradient drawInBezierPath:path angle:90];
+    if ([self isHighlighted]) {
+        NSColor *overlay = [NSColor colorWithWhite:0 alpha:0.1];
+        [overlay setFill];
+        [path fill];
+    }
+}
+@end
+
+#endif // ENABLE(DATALIST_ELEMENT)
+
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -872,6 +942,9 @@ void RenderThemeMac::adjustRepaintRect(const RenderObject& renderer, FloatRect& 
         case RadioPart:
         case PushButtonPart:
         case SquareButtonPart:
+#if ENABLE(INPUT_TYPE_COLOR)
+        case ColorWellPart:
+#endif
         case DefaultButtonPart:
         case ButtonPart:
         case InnerSpinButtonPart:
@@ -1045,6 +1118,54 @@ NSControlSize RenderThemeMac::controlSizeForSystemFont(const RenderStyle& style)
     return NSControlSizeMini;
 }
 
+#if ENABLE(DATALIST_ELEMENT)
+
+void RenderThemeMac::paintListButtonForInput(const RenderObject& o, GraphicsContext& context, const FloatRect& r)
+{
+    // We can't paint an NSComboBoxCell since they are not height-resizable.
+    const auto& input = downcast<HTMLInputElement>(*(o.generatingNode()));
+    NSCell *listButton = this->listButton();
+
+    NSRect listButtonFrame = NSMakeRect(r.maxX() - listButtonWidth, r.y(), listButtonWidth, r.height());
+    if (!o.style().isLeftToRightDirection()) {
+        listButtonFrame.origin.x = r.x();
+        [listButton setUserInterfaceLayoutDirection:NSUserInterfaceLayoutDirectionRightToLeft];
+    } else
+        [listButton setUserInterfaceLayoutDirection:NSUserInterfaceLayoutDirectionLeftToRight];
+
+    [listButton setHighlighted:input.isPresentingAttachedView()];
+    if (!input.isPresentingAttachedView())
+        updatePressedState(listButton, *(input.dataListButtonElement()->renderer()));
+
+    [listButton drawWithFrame:listButtonFrame inView:documentViewFor(o)];
+    [listButton setControlView:nil];
+
+    RefPtr<Image> image;
+    float imageScale = 1;
+    if (o.document().deviceScaleFactor() >= 2) {
+        image = Image::loadPlatformResource("ListButtonArrow@2x");
+        imageScale = 2;
+    } else
+        image = Image::loadPlatformResource("ListButtonArrow");
+
+    FloatRect imageRect(0, 0, image->width() / imageScale, image->height() / imageScale);
+    imageRect.setX(NSMidX(listButtonFrame) - imageRect.width() / 2);
+    imageRect.setY(NSMidY(listButtonFrame) - imageRect.height() / 2);
+
+    context.drawImage(*image, imageRect);
+}
+
+void RenderThemeMac::adjustListButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
+{
+    // Add a margin to place the button at end of the input field.
+    if (style.isLeftToRightDirection())
+        style.setMarginRight(Length(-4, Fixed));
+    else
+        style.setMarginLeft(Length(-4, Fixed));
+}
+
+#endif
+
 bool RenderThemeMac::paintTextField(const RenderObject& o, const PaintInfo& paintInfo, const FloatRect& r)
 {
     LocalCurrentGraphicsContext localContext(paintInfo.context());
@@ -1070,6 +1191,15 @@ bool RenderThemeMac::paintTextField(const RenderObject& o, const PaintInfo& pain
     [textField drawWithFrame:NSRect(adjustedPaintRect) inView:documentViewFor(o)];
 
     [textField setControlView:nil];
+
+#if ENABLE(DATALIST_ELEMENT)
+    if (!is<HTMLInputElement>(o.generatingNode()))
+        return false;
+
+    const auto& input = downcast<HTMLInputElement>(*(o.generatingNode()));
+    if (input.list())
+        paintListButtonForInput(o, paintInfo.context(), adjustedPaintRect);
+#endif
 
     return false;
 }
@@ -1484,7 +1614,7 @@ void RenderThemeMac::paintMenuListButtonGradients(const RenderObject& o, const P
 
 bool RenderThemeMac::paintMenuListButtonDecorations(const RenderBox& renderer, const PaintInfo& paintInfo, const FloatRect& rect)
 {
-    bool isRTL = renderer.style().direction() == RTL;
+    bool isRTL = renderer.style().direction() == TextDirection::RTL;
     IntRect bounds = IntRect(rect.x() + renderer.style().borderLeftWidth(),
         rect.y() + renderer.style().borderTopWidth(),
         rect.width() - renderer.style().borderLeftWidth() - renderer.style().borderRightWidth(),
@@ -1593,7 +1723,7 @@ void RenderThemeMac::adjustMenuListStyle(StyleResolver& styleResolver, RenderSty
 LengthBox RenderThemeMac::popupInternalPaddingBox(const RenderStyle& style) const
 {
     if (style.appearance() == MenulistPart) {
-        const int* padding = popupButtonPadding(controlSizeForFont(style), style.direction() == RTL);
+        const int* padding = popupButtonPadding(controlSizeForFont(style), style.direction() == TextDirection::RTL);
         return { static_cast<int>(padding[topPadding] * style.effectiveZoom()),
             static_cast<int>(padding[rightPadding] * style.effectiveZoom()),
             static_cast<int>(padding[bottomPadding] * style.effectiveZoom()),
@@ -1604,7 +1734,7 @@ LengthBox RenderThemeMac::popupInternalPaddingBox(const RenderStyle& style) cons
         float arrowWidth = baseArrowWidth * (style.computedFontPixelSize() / baseFontSize);
         float rightPadding = ceilf(arrowWidth + (arrowPaddingBefore + arrowPaddingAfter + paddingBeforeSeparator) * style.effectiveZoom());
         float leftPadding = styledPopupPaddingLeft * style.effectiveZoom();
-        if (style.direction() == RTL)
+        if (style.direction() == TextDirection::RTL)
             std::swap(rightPadding, leftPadding);
         return { static_cast<int>(styledPopupPaddingTop * style.effectiveZoom()),
             static_cast<int>(rightPadding),
@@ -1651,7 +1781,7 @@ void RenderThemeMac::setPopupButtonCellState(const RenderObject& o, const IntSiz
     // Set the control size based off the rectangle we're painting into.
     setControlSize(popupButton, popupButtonSizes(), buttonSize, o.style().effectiveZoom());
 
-    popupButton.userInterfaceLayoutDirection = o.style().direction() == LTR ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft;
+    popupButton.userInterfaceLayoutDirection = o.style().direction() == TextDirection::LTR ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft;
 
     // Update the various states we respond to.
     updateCheckedState(popupButton, o);
@@ -1828,6 +1958,15 @@ bool RenderThemeMac::paintSearchField(const RenderObject& o, const PaintInfo& pa
     [search setControlView:nil];
     [search resetSearchButtonCell];
 
+#if ENABLE(DATALIST_ELEMENT)
+    if (!is<HTMLInputElement>(o.generatingNode()))
+        return false;
+
+    const auto& input = downcast<HTMLInputElement>(*(o.generatingNode()));
+    if (input.list())
+        paintListButtonForInput(o, paintInfo.context(), FloatRect(unzoomedRect.x(), unzoomedRect.y() + 1, unzoomedRect.width(), unzoomedRect.height() - 2));
+#endif
+
     return false;
 }
 
@@ -1930,9 +2069,15 @@ bool RenderThemeMac::paintSearchFieldCancelButton(const RenderBox& box, const Pa
     float zoomLevel = box.style().effectiveZoom();
 
     FloatRect localBounds = adjustedCancelButtonRect([search cancelButtonRectForBounds:NSRect(snappedIntRect(inputBox.contentBoxRect()))]);
+
     // Adjust position based on the content direction.
     float adjustedXPosition;
-    if (box.style().direction() == RTL)
+
+    if (is<HTMLInputElement>(*input)) {
+        RenderBox* cancelButtonBox = downcast<RenderBox>(downcast<HTMLInputElement>(*input).cancelButtonElement()->renderer());
+        // The cancel button won't always be the rightmost element.
+        adjustedXPosition = inputBox.contentBoxRect().x() + (cancelButtonBox->absoluteContentBox().x() - inputBox.absoluteContentBox().x());
+    } else if (box.style().direction() == TextDirection::RTL)
         adjustedXPosition = inputBox.contentBoxRect().x();
     else
         adjustedXPosition = inputBox.contentBoxRect().maxX() - localBounds.size().width();
@@ -2068,7 +2213,7 @@ bool RenderThemeMac::paintSearchFieldResultsButton(const RenderBox& box, const P
     FloatRect localBounds = adjustedResultButtonRect([search searchButtonRectForBounds:NSRect(snappedIntRect(inputBox.contentBoxRect()))]);
     // Adjust position based on the content direction.
     float adjustedXPosition;
-    if (box.style().direction() == RTL)
+    if (box.style().direction() == TextDirection::RTL)
         adjustedXPosition = inputBox.contentBoxRect().maxX() - localBounds.size().width();
     else
         adjustedXPosition = inputBox.contentBoxRect().x();
@@ -2266,6 +2411,16 @@ NSTextFieldCell* RenderThemeMac::textField() const
 
     return m_textField.get();
 }
+
+#if ENABLE(DATALIST_ELEMENT)
+NSCell *RenderThemeMac::listButton() const
+{
+    if (!m_listButton)
+        m_listButton = adoptNS([[WebListButtonCell alloc] init]);
+
+    return m_listButton.get();
+}
+#endif
 
 String RenderThemeMac::fileListNameForWidth(const FileList* fileList, const FontCascade& font, int width, bool multipleFilesAllowed) const
 {

@@ -192,8 +192,6 @@ enforceCSSMIMETypeInNoQuirksMode:
   initial: true
 usesEncodingDetector:
   initial: false
-allowScriptsToCloseWindows:
-  initial: false
 canvasUsesAcceleratedDrawing:
   initial: false
 acceleratedDrawingEnabled:
@@ -432,6 +430,10 @@ mediaSourceEnabled:
   initial: true
   conditional: MEDIA_SOURCE
 
+sourceBufferChangeTypeEnabled:
+  initial: false
+  conditional: MEDIA_SOURCE
+
 # FIXME: Rename to allowMultiElementImplicitFormSubmission once we upstream the iOS changes to WebView.mm.
 allowMultiElementImplicitSubmission:
   initial: false
@@ -508,7 +510,7 @@ userInterfaceDirectionPolicy:
   initial: UserInterfaceDirectionPolicy::Content
 systemLayoutDirection:
   type: TextDirection
-  initial: LTR
+  initial: TextDirection::LTR
 
 allowContentSecurityPolicySourceStarToMatchAnyProtocol:
   initial: false

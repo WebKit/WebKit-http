@@ -43,8 +43,10 @@
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessPlatformStrategies.h"
 #include "NetworkProcessProxyMessages.h"
+#include "NetworkProximityManager.h"
 #include "NetworkResourceLoader.h"
 #include "NetworkSession.h"
+#include "NetworkSessionCreationParameters.h"
 #include "PreconnectTask.h"
 #include "RemoteNetworkingContext.h"
 #include "SessionTracker.h"
@@ -95,9 +97,8 @@
 #include "NetworkSessionCocoa.h"
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 NetworkProcess& NetworkProcess::singleton()
 {
@@ -120,6 +121,9 @@ NetworkProcess::NetworkProcess()
     addSupplement<WebCookieManager>();
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     addSupplement<LegacyCustomProtocolManager>();
+#endif
+#if ENABLE(PROXIMITY_NETWORKING)
+    addSupplement<NetworkProximityManager>();
 #endif
 
     NetworkStateNotifier::singleton().addListener([this](bool isOnLine) {
@@ -147,6 +151,13 @@ DownloadManager& NetworkProcess::downloadManager()
     static NeverDestroyed<DownloadManager> downloadManager(*this);
     return downloadManager;
 }
+
+#if ENABLE(PROXIMITY_NETWORKING)
+NetworkProximityManager& NetworkProcess::proximityManager()
+{
+    return *supplement<NetworkProximityManager>();
+}
+#endif
 
 void NetworkProcess::removeNetworkConnectionToWebProcess(NetworkConnectionToWebProcess* connection)
 {
@@ -276,7 +287,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     m_logCookieInformation = parameters.logCookieInformation;
 #endif
 
-    SessionTracker::setSession(PAL::SessionID::defaultSessionID(), NetworkSession::create(WTFMove(parameters.defaultSessionParameters)));
+    SessionTracker::setSession(PAL::SessionID::defaultSessionID(), NetworkSession::create(NetworkSessionCreationParameters()));
 
     auto* defaultSession = SessionTracker::networkSession(PAL::SessionID::defaultSessionID());
     for (const auto& cookie : parameters.defaultSessionPendingCookies)
@@ -557,18 +568,18 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
         });
     }
 
-    if (websiteDataTypes.contains(WebsiteDataType::DiskCache)) {
-        fetchDiskCacheEntries(sessionID, fetchOptions, [callbackAggregator = WTFMove(callbackAggregator)](auto entries) mutable {
-            callbackAggregator->m_websiteData.entries.appendVector(entries);
-        });
-    }
-
 #if PLATFORM(COCOA)
     if (websiteDataTypes.contains(WebsiteDataType::HSTSCache)) {
         if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
             getHostNamesWithHSTSCache(*networkStorageSession, callbackAggregator->m_websiteData.hostNamesWithHSTSCache);
     }
 #endif
+
+    if (websiteDataTypes.contains(WebsiteDataType::DiskCache)) {
+        fetchDiskCacheEntries(sessionID, fetchOptions, [callbackAggregator = WTFMove(callbackAggregator)](auto entries) mutable {
+            callbackAggregator->m_websiteData.entries.appendVector(entries);
+        });
+    }
 }
 
 void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, WallTime modifiedSince, uint64_t callbackID)
@@ -667,45 +678,6 @@ void NetworkProcess::cancelDownload(DownloadID downloadID)
 {
     downloadManager().cancelDownload(downloadID);
 }
-    
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-static uint64_t generateCanAuthenticateIdentifier()
-{
-    static uint64_t lastLoaderID = 0;
-    return ++lastLoaderID;
-}
-
-void NetworkProcess::canAuthenticateAgainstProtectionSpace(NetworkResourceLoader& loader, const WebCore::ProtectionSpace& protectionSpace)
-{
-    uint64_t loaderID = generateCanAuthenticateIdentifier();
-    m_waitingNetworkResourceLoaders.set(loaderID, loader);
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::CanAuthenticateAgainstProtectionSpace(loaderID, loader.pageID(), loader.frameID(), protectionSpace), 0);
-}
-
-#if ENABLE(SERVER_PRECONNECT)
-void NetworkProcess::canAuthenticateAgainstProtectionSpace(PreconnectTask& preconnectTask, const WebCore::ProtectionSpace& protectionSpace)
-{
-    uint64_t loaderID = generateCanAuthenticateIdentifier();
-    m_waitingPreconnectTasks.set(loaderID, makeWeakPtr(preconnectTask));
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::CanAuthenticateAgainstProtectionSpace(loaderID, preconnectTask.pageID(), preconnectTask.frameID(), protectionSpace), 0);
-}
-#endif
-
-void NetworkProcess::continueCanAuthenticateAgainstProtectionSpace(uint64_t loaderID, bool canAuthenticate)
-{
-    if (auto resourceLoader = m_waitingNetworkResourceLoaders.take(loaderID)) {
-        resourceLoader.value()->continueCanAuthenticateAgainstProtectionSpace(canAuthenticate);
-        return;
-    }
-#if ENABLE(SERVER_PRECONNECT)
-    if (auto preconnectTask = m_waitingPreconnectTasks.take(loaderID)) {
-        preconnectTask->continueCanAuthenticateAgainstProtectionSpace(canAuthenticate);
-        return;
-    }
-#endif
-}
-
-#endif
 
 void NetworkProcess::continueWillSendRequest(DownloadID downloadID, WebCore::ResourceRequest&& request)
 {

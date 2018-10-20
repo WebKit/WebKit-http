@@ -57,7 +57,7 @@
 #include <WebCore/Pasteboard.h>
 #include <WebCore/Path.h>
 #include <WebCore/PluginData.h>
-#include <WebCore/PromisedBlobInfo.h>
+#include <WebCore/PromisedAttachmentInfo.h>
 #include <WebCore/ProtectionSpace.h>
 #include <WebCore/RectEdges.h>
 #include <WebCore/Region.h>
@@ -850,6 +850,15 @@ bool ArgumentCoder<Path>::decode(Decoder& decoder, Path& path)
     }
 
     return true;
+}
+
+std::optional<Path> ArgumentCoder<Path>::decode(Decoder& decoder)
+{
+    Path path;
+    if (!decode(decoder, path))
+        return std::nullopt;
+
+    return path;
 }
 
 void ArgumentCoder<RecentSearch>::encode(Encoder& encoder, const RecentSearch& recentSearch)
@@ -1947,7 +1956,7 @@ void ArgumentCoder<TextCheckingRequestData>::encode(Encoder& encoder, const Text
 {
     encoder << request.sequence();
     encoder << request.text();
-    encoder << request.mask();
+    encoder << request.checkingTypes();
     encoder.encodeEnum(request.processType());
 }
 
@@ -1961,15 +1970,15 @@ bool ArgumentCoder<TextCheckingRequestData>::decode(Decoder& decoder, TextChecki
     if (!decoder.decode(text))
         return false;
 
-    TextCheckingTypeMask mask;
-    if (!decoder.decode(mask))
+    OptionSet<TextCheckingType> checkingTypes;
+    if (!decoder.decode(checkingTypes))
         return false;
 
     TextCheckingProcessType processType;
     if (!decoder.decodeEnum(processType))
         return false;
 
-    request = TextCheckingRequestData(sequence, text, mask, processType);
+    request = TextCheckingRequestData { sequence, text, checkingTypes, processType };
     return true;
 }
 
@@ -2854,15 +2863,18 @@ std::optional<MediaSelectionOption> ArgumentCoder<MediaSelectionOption>::decode(
     return {{ WTFMove(*displayName), WTFMove(*type) }};
 }
 
-void ArgumentCoder<PromisedBlobInfo>::encode(Encoder& encoder, const PromisedBlobInfo& info)
+void ArgumentCoder<PromisedAttachmentInfo>::encode(Encoder& encoder, const PromisedAttachmentInfo& info)
 {
     encoder << info.blobURL;
     encoder << info.contentType;
     encoder << info.filename;
+#if ENABLE(ATTACHMENT_ELEMENT)
+    encoder << info.attachmentIdentifier;
+#endif
     encodeTypesAndData(encoder, info.additionalTypes, info.additionalData);
 }
 
-bool ArgumentCoder<PromisedBlobInfo>::decode(Decoder& decoder, PromisedBlobInfo& info)
+bool ArgumentCoder<PromisedAttachmentInfo>::decode(Decoder& decoder, PromisedAttachmentInfo& info)
 {
     if (!decoder.decode(info.blobURL))
         return false;
@@ -2873,50 +2885,16 @@ bool ArgumentCoder<PromisedBlobInfo>::decode(Decoder& decoder, PromisedBlobInfo&
     if (!decoder.decode(info.filename))
         return false;
 
+#if ENABLE(ATTACHMENT_ELEMENT)
+    if (!decoder.decode(info.attachmentIdentifier))
+        return false;
+#endif
+
     if (!decodeTypesAndData(decoder, info.additionalTypes, info.additionalData))
         return false;
 
     return true;
 }
-
-#if ENABLE(ATTACHMENT_ELEMENT)
-
-void ArgumentCoder<AttachmentInfo>::encode(Encoder& encoder, const AttachmentInfo& info)
-{
-    bool dataIsNull = !info.data;
-    encoder << info.contentType << info.name << info.filePath << dataIsNull;
-    if (!dataIsNull) {
-        SharedBufferDataReference dataReference { info.data.get() };
-        encoder << static_cast<DataReference&>(dataReference);
-    }
-}
-
-bool ArgumentCoder<AttachmentInfo>::decode(Decoder& decoder, AttachmentInfo& info)
-{
-    if (!decoder.decode(info.contentType))
-        return false;
-
-    if (!decoder.decode(info.name))
-        return false;
-
-    if (!decoder.decode(info.filePath))
-        return false;
-
-    bool dataIsNull = true;
-    if (!decoder.decode(dataIsNull))
-        return false;
-
-    if (!dataIsNull) {
-        DataReference dataReference;
-        if (!decoder.decode(dataReference))
-            return false;
-        info.data = SharedBuffer::create(dataReference.data(), dataReference.size());
-    }
-
-    return true;
-}
-
-#endif // ENABLE(ATTACHMENT_ELEMENT)
 
 void ArgumentCoder<Vector<RefPtr<SecurityOrigin>>>::encode(Encoder& encoder, const Vector<RefPtr<SecurityOrigin>>& origins)
 {

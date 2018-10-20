@@ -65,12 +65,11 @@
 #include <WebCore/PreviewLoader.h>
 #endif
 
-using namespace WebCore;
-
 #define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), Network, "%p - NetworkResourceLoader::" fmt, this, ##__VA_ARGS__)
 #define RELEASE_LOG_ERROR_IF_ALLOWED(fmt, ...) RELEASE_LOG_ERROR_IF(isAlwaysOnLoggingAllowed(), Network, "%p - NetworkResourceLoader::" fmt, this, ##__VA_ARGS__)
 
 namespace WebKit {
+using namespace WebCore;
 
 struct NetworkResourceLoader::SynchronousLoadData {
     SynchronousLoadData(Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&& reply)
@@ -337,7 +336,13 @@ void NetworkResourceLoader::cleanup(LoadResult result)
 
 void NetworkResourceLoader::convertToDownload(DownloadID downloadID, const ResourceRequest& request, const ResourceResponse& response)
 {
-    ASSERT(m_networkLoad);
+    // This can happen if the resource came from the disk cache.
+    if (!m_networkLoad) {
+        NetworkProcess::singleton().downloadManager().startDownload(m_connection.ptr(), m_parameters.sessionID, downloadID, request);
+        abort();
+        return;
+    }
+
     NetworkProcess::singleton().downloadManager().convertNetworkLoadToDownload(downloadID, std::exchange(m_networkLoad, nullptr), WTFMove(m_fileReferences), request, response);
 }
 
@@ -929,19 +934,6 @@ void NetworkResourceLoader::invalidateSandboxExtensions()
     m_fileReferences.clear();
 }
 
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-void NetworkResourceLoader::canAuthenticateAgainstProtectionSpaceAsync(const ProtectionSpace& protectionSpace)
-{
-    NetworkProcess::singleton().canAuthenticateAgainstProtectionSpace(*this, protectionSpace);
-}
-
-void NetworkResourceLoader::continueCanAuthenticateAgainstProtectionSpace(bool result)
-{
-    if (m_networkLoad)
-        m_networkLoad->continueCanAuthenticateAgainstProtectionSpace(result);
-}
-#endif
-
 bool NetworkResourceLoader::isAlwaysOnLoggingAllowed() const
 {
     if (NetworkProcess::singleton().sessionIsControlledByAutomation(sessionID()))
@@ -1130,3 +1122,6 @@ void NetworkResourceLoader::logSlowCacheRetrieveIfNeeded(const NetworkCache::Cac
 }
 
 } // namespace WebKit
+
+#undef RELEASE_LOG_IF_ALLOWED
+#undef RELEASE_LOG_ERROR_IF_ALLOWED

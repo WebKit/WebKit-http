@@ -1,3 +1,889 @@
+2018-08-22  Mark Lam  <mark.lam@apple.com>
+
+        The DFG CFGSimplification phase shouldn’t jettison a block when it’s the target of both branch directions.
+        https://bugs.webkit.org/show_bug.cgi?id=188298
+        <rdar://problem/42888427>
+
+        Reviewed by Saam Barati.
+
+        In the event that both targets of a Branch is the same block, then even if we'll
+        always take one path of the branch, the other target is not unreachable because
+        it is the same target as the one in the taken path.  Hence, it should not be
+        jettisoned.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        - Added DFGCFG.h which is in use and should have been added to the project.
+        * dfg/DFGCFGSimplificationPhase.cpp:
+        (JSC::DFG::CFGSimplificationPhase::run):
+
+2018-08-20  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] HeapUtil should care about pointer overflow
+        https://bugs.webkit.org/show_bug.cgi?id=188740
+
+        Reviewed by Saam Barati.
+
+        `pointer - sizeof(IndexingHeader) - 1` causes an undefined behavior if a pointer overflows.
+        For example, if `pointer` is nullptr, it causes pointer overflow. Instead of calculating this
+        with `char*` pointer, we cast it to `uintptr_t` temporarily. This issue is found by UBSan.
+
+        * heap/HeapUtil.h:
+        (JSC::HeapUtil::findGCObjectPointersForMarking):
+
+2018-08-19  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Should not rotate constant with 64
+        https://bugs.webkit.org/show_bug.cgi?id=188556
+
+        Reviewed by Saam Barati.
+
+        To defend against JIT splaying, we rotate a constant with a randomly generated seed.
+        But if a seed becomes 64 or 0, the following code performs `value << 64` or `value >> 64`
+        where value's type is uint64_t, and they cause undefined behaviors (UBs). This patch limits
+        the seed in the range of [1, 63] not to generate code causing UBs. This is found by UBSan.
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::generateRotationSeed):
+        (JSC::MacroAssembler::rotationBlindConstant):
+
+2018-08-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r235107.
+        https://bugs.webkit.org/show_bug.cgi?id=188832
+
+        "It revealed bugs in Blob code as well as regressed JS
+        performance tests" (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "JSRunLoopTimer may run part of a member function after it's
+        destroyed"
+        https://bugs.webkit.org/show_bug.cgi?id=188426
+        https://trac.webkit.org/changeset/235107
+
+2018-08-21  Saam barati  <sbarati@apple.com>
+
+        JSRunLoopTimer may run part of a member function after it's destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=188426
+
+        Reviewed by Mark Lam.
+
+        When I was reading the JSRunLoopTimer code, I noticed that it is possible
+        to end up running timer code after the class had been destroyed.
+        
+        The issue I spotted was in this function:
+        ```
+        void JSRunLoopTimer::timerDidFire()
+        {
+            JSLock* apiLock = m_apiLock.get();
+            if (!apiLock) {
+                // Likely a buggy usage: the timer fired while JSRunLoopTimer was being destroyed.
+                return;
+            }
+            // HERE
+            std::lock_guard<JSLock> lock(*apiLock);
+            RefPtr<VM> vm = apiLock->vm();
+            if (!vm) {
+                // The VM has been destroyed, so we should just give up.
+                return;
+            }
+        
+            doWork();
+        }
+        ```
+        
+        Look at the comment 'HERE'. Let's say that the timer callback thread gets context
+        switched before grabbing the API lock. Then, some other thread destroys the VM.
+        And let's say that the VM owns (perhaps transitively) this timer. Then, the
+        timer would run code and access member variables after it was destroyed.
+        
+        This patch fixes this issue by introducing a new timer manager class. 
+        This class manages timers on a per VM basis. When a timer is scheduled,
+        this class refs the timer. It also calls the timer callback while actively
+        maintaining a +1 ref to it. So, it's no longer possible to call the timer
+        callback after the timer has been destroyed. However, calling a timer callback
+        can still race with the VM being destroyed. We continue to detect this case and
+        bail out of the callback early.
+        
+        This patch also removes a lot of duplicate code between GCActivityCallback
+        and JSRunLoopTimer.
+
+        * heap/EdenGCActivityCallback.cpp:
+        (JSC::EdenGCActivityCallback::doCollection):
+        (JSC::EdenGCActivityCallback::lastGCLength):
+        (JSC::EdenGCActivityCallback::deathRate):
+        * heap/EdenGCActivityCallback.h:
+        * heap/FullGCActivityCallback.cpp:
+        (JSC::FullGCActivityCallback::doCollection):
+        (JSC::FullGCActivityCallback::lastGCLength):
+        (JSC::FullGCActivityCallback::deathRate):
+        * heap/FullGCActivityCallback.h:
+        * heap/GCActivityCallback.cpp:
+        (JSC::GCActivityCallback::doWork):
+        (JSC::GCActivityCallback::scheduleTimer):
+        (JSC::GCActivityCallback::didAllocate):
+        (JSC::GCActivityCallback::willCollect):
+        (JSC::GCActivityCallback::cancel):
+        (JSC::GCActivityCallback::cancelTimer): Deleted.
+        (JSC::GCActivityCallback::nextFireTime): Deleted.
+        * heap/GCActivityCallback.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::reportAbandonedObjectGraph):
+        (JSC::Heap::notifyIncrementalSweeper):
+        (JSC::Heap::updateAllocationLimits):
+        (JSC::Heap::didAllocate):
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::scheduleTimer):
+        (JSC::IncrementalSweeper::doWork):
+        (JSC::IncrementalSweeper::doSweep):
+        (JSC::IncrementalSweeper::sweepNextBlock):
+        (JSC::IncrementalSweeper::startSweeping):
+        (JSC::IncrementalSweeper::stopSweeping):
+        * heap/IncrementalSweeper.h:
+        * heap/StopIfNecessaryTimer.cpp:
+        (JSC::StopIfNecessaryTimer::doWork):
+        (JSC::StopIfNecessaryTimer::scheduleSoon):
+        * heap/StopIfNecessaryTimer.h:
+        * runtime/JSRunLoopTimer.cpp:
+        (JSC::epochTime):
+        (JSC::JSRunLoopTimer::Manager::timerDidFireCallback):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::setRunLoop):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::PerVMData):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::~PerVMData):
+        (JSC::JSRunLoopTimer::Manager::timerDidFire):
+        (JSC::JSRunLoopTimer::Manager::shared):
+        (JSC::JSRunLoopTimer::Manager::registerVM):
+        (JSC::JSRunLoopTimer::Manager::unregisterVM):
+        (JSC::JSRunLoopTimer::Manager::scheduleTimer):
+        (JSC::JSRunLoopTimer::Manager::cancelTimer):
+        (JSC::JSRunLoopTimer::Manager::timeUntilFire):
+        (JSC::JSRunLoopTimer::Manager::didChangeRunLoop):
+        (JSC::JSRunLoopTimer::timerDidFire):
+        (JSC::JSRunLoopTimer::JSRunLoopTimer):
+        (JSC::JSRunLoopTimer::timeUntilFire):
+        (JSC::JSRunLoopTimer::setTimeUntilFire):
+        (JSC::JSRunLoopTimer::cancelTimer):
+        (JSC::JSRunLoopTimer::setRunLoop): Deleted.
+        (JSC::JSRunLoopTimer::timerDidFireCallback): Deleted.
+        (JSC::JSRunLoopTimer::scheduleTimer): Deleted.
+        * runtime/JSRunLoopTimer.h:
+        (JSC::JSRunLoopTimer::Manager::PerVMData::PerVMData):
+        * runtime/PromiseDeferredTimer.cpp:
+        (JSC::PromiseDeferredTimer::doWork):
+        (JSC::PromiseDeferredTimer::runRunLoop):
+        (JSC::PromiseDeferredTimer::addPendingPromise):
+        (JSC::PromiseDeferredTimer::hasPendingPromise):
+        (JSC::PromiseDeferredTimer::hasDependancyInPendingPromise):
+        (JSC::PromiseDeferredTimer::cancelPendingPromise):
+        (JSC::PromiseDeferredTimer::scheduleWorkSoon):
+        * runtime/PromiseDeferredTimer.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::~VM):
+        (JSC::VM::setRunLoop):
+        (JSC::VM::registerRunLoopTimer): Deleted.
+        (JSC::VM::unregisterRunLoopTimer): Deleted.
+        * runtime/VM.h:
+        (JSC::VM::runLoop const):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::webAssemblyModuleValidateAsyncInternal):
+        (JSC::instantiate):
+        (JSC::compileAndInstantiate):
+        (JSC::webAssemblyModuleInstantinateAsyncInternal):
+        (JSC::webAssemblyCompileStreamingInternal):
+        (JSC::webAssemblyInstantiateStreamingInternal):
+
+2018-08-20  Saam barati  <sbarati@apple.com>
+
+        Inline DataView accesses into DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=188573
+        <rdar://problem/43286746>
+
+        Reviewed by Michael Saboff.
+
+        This patch teaches the DFG/FTL to inline DataView accesses. The approach is
+        straight forward. We inline the various get*/set* operations as intrinsics.
+        
+        This patch takes the most obvious approach for now. We OSR exit when:
+        - An isLittleEndian argument is provided, and is not a boolean.
+        - The index isn't an integer.
+        - The |this| isn't a DataView.
+        - We do an OOB access (or see a neutered array)
+        
+        To implement this change in a performant way, this patch teaches the macro
+        assembler how to emit byte swap operations. The semantics of the added functions
+        are byteSwap + zero extend. This means for the 16bit byte swaps, we need
+        to actually emit zero extend instructions. For the 32/64bit byte swaps,
+        the instructions already have these semantics.
+        
+        This patch is just a lightweight initial implementation. There are some easy
+        extensions we can do in future changes:
+        - Teach B3 how to byte swap: https://bugs.webkit.org/show_bug.cgi?id=188759
+        - CSE DataViewGet* nodes: https://bugs.webkit.org/show_bug.cgi?id=188768
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::byteSwap16):
+        (JSC::MacroAssemblerARM64::byteSwap32):
+        (JSC::MacroAssemblerARM64::byteSwap64):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::byteSwap32):
+        (JSC::MacroAssemblerX86Common::byteSwap16):
+        (JSC::MacroAssemblerX86Common::byteSwap64):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::bswapl_r):
+        (JSC::X86Assembler::bswapq_r):
+        (JSC::X86Assembler::shiftInstruction16):
+        (JSC::X86Assembler::rolw_i8r):
+        (JSC::X86Assembler::X86InstructionFormatter::SingleInstructionBufferWriter::memoryModRM):
+        * assembler/testmasm.cpp:
+        (JSC::testByteSwap):
+        (JSC::run):
+        * bytecode/DataFormat.h:
+        * bytecode/SpeculatedType.cpp:
+        (JSC::dumpSpeculation):
+        (JSC::speculationFromClassInfo):
+        (JSC::speculationFromJSType):
+        (JSC::speculationFromString):
+        * bytecode/SpeculatedType.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        (JSC::DFG::Node::dataViewData):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::SafeToExecuteEdge::operator()):
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::speculateDataViewObject):
+        (JSC::DFG::SpeculativeJIT::speculate):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGUseKind.cpp:
+        (WTF::printInternal):
+        * dfg/DFGUseKind.h:
+        (JSC::DFG::typeFilterFor):
+        (JSC::DFG::isCell):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::byteSwap32):
+        (JSC::FTL::DFG::LowerDFGToB3::byteSwap64):
+        (JSC::FTL::DFG::LowerDFGToB3::emitCodeBasedOnEndiannessBranch):
+        (JSC::FTL::DFG::LowerDFGToB3::compileDataViewGet):
+        (JSC::FTL::DFG::LowerDFGToB3::compileDataViewSet):
+        (JSC::FTL::DFG::LowerDFGToB3::lowDataViewObject):
+        (JSC::FTL::DFG::LowerDFGToB3::speculate):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateDataViewObject):
+        * runtime/Intrinsic.cpp:
+        (JSC::intrinsicName):
+        * runtime/Intrinsic.h:
+        * runtime/JSDataViewPrototype.cpp:
+
+2018-08-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [YARR] Extend size of fixed characters bulk matching in 64bit platform
+        https://bugs.webkit.org/show_bug.cgi?id=181989
+
+        Reviewed by Michael Saboff.
+
+        This patch extends bulk matching style for fixed-sized characters.
+        In 64bit environment, the GPR can hold up to 8 characters. This change
+        reduces the code size since we can fuse multiple `mov` operations into one.
+
+        * assembler/LinkBuffer.h:
+        * runtime/Options.h:
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterOnce):
+        (JSC::Yarr::YarrGenerator::compile):
+
+2018-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: allow breakpoints to be set for specific event listeners
+        https://bugs.webkit.org/show_bug.cgi?id=183138
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/DOM.json:
+        Add `setBreakpointForEventListener` and `removeBreakpointForEventListener`, each of which
+        takes an `eventListenerId` and toggles whether that specific usage of that event listener
+        should have a breakpoint and pause before running.
+
+2018-08-20  Mark Lam  <mark.lam@apple.com>
+
+        Fix the LLInt so that btjs shows vmEntryToJavaScript instead of llintPCRangeStart for the entry frame.
+        https://bugs.webkit.org/show_bug.cgi?id=188769
+
+        Reviewed by Michael Saboff.
+
+        * llint/LowLevelInterpreter.asm:
+        - Just put an unused instruction between llintPCRangeStart and vmEntryToJavaScript
+          so that libunwind doesn't get confused by the 2 labels pointing to the same
+          code address.
+
+2018-08-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add API to throw exceptions using printf formatted strings
+        https://bugs.webkit.org/show_bug.cgi?id=188698
+
+        Reviewed by Michael Catanzaro.
+
+        Add jsc_context_throw_printf() and jsc_context_throw_with_name_printf(). Also add new public constructors of
+        JSCException using printf formatted string.
+
+        * API/glib/JSCContext.cpp:
+        (jsc_context_throw_printf):
+        (jsc_context_throw_with_name_printf):
+        * API/glib/JSCContext.h:
+        * API/glib/JSCException.cpp:
+        (jsc_exception_new_printf):
+        (jsc_exception_new_vprintf):
+        (jsc_exception_new_with_name_printf):
+        (jsc_exception_new_with_name_vprintf):
+        * API/glib/JSCException.h:
+        * API/glib/docs/jsc-glib-4.0-sections.txt:
+
+2018-08-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Complete the JSCException API
+        https://bugs.webkit.org/show_bug.cgi?id=188695
+
+        Reviewed by Michael Catanzaro.
+
+        Add more API to JSCException:
+         - New function to get the column number
+         - New function get exception as string (toString())
+         - Add the possibility to create exceptions with a custom error name.
+         - New function to get the exception error name
+         - New function to get the exception backtrace.
+         - New convenience function to report a exception by returning a formatted string with all the exception
+           details, to be shown as a user error message.
+
+        * API/glib/JSCContext.cpp:
+        (jsc_context_throw_with_name):
+        * API/glib/JSCContext.h:
+        * API/glib/JSCException.cpp:
+        (jscExceptionEnsureProperties):
+        (jsc_exception_new):
+        (jsc_exception_new_with_name):
+        (jsc_exception_get_name):
+        (jsc_exception_get_column_number):
+        (jsc_exception_get_back_trace_string):
+        (jsc_exception_to_string):
+        (jsc_exception_report):
+        * API/glib/JSCException.h:
+        * API/glib/docs/jsc-glib-4.0-sections.txt:
+
+2018-08-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r234852.
+        https://bugs.webkit.org/show_bug.cgi?id=188736
+
+        Workaround is not correct (Requested by yusukesuzuki on
+        #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Should not rotate constant with 64"
+        https://bugs.webkit.org/show_bug.cgi?id=188556
+        https://trac.webkit.org/changeset/234852
+
+2018-08-19  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [WTF] Add WTF::unalignedLoad and WTF::unalignedStore
+        https://bugs.webkit.org/show_bug.cgi?id=188716
+
+        Reviewed by Darin Adler.
+
+        Use WTF::unalignedLoad and WTF::unalignedStore to avoid undefined behavior.
+        The compiler can emit appropriate mov operations in x86 even if we use these
+        helper functions.
+
+        * assembler/AssemblerBuffer.h:
+        (JSC::AssemblerBuffer::LocalWriter::putIntegralUnchecked):
+        (JSC::AssemblerBuffer::putIntegral):
+        (JSC::AssemblerBuffer::putIntegralUnchecked):
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::readCallTarget):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::linkJump):
+        (JSC::X86Assembler::readPointer):
+        (JSC::X86Assembler::replaceWithHlt):
+        (JSC::X86Assembler::replaceWithJump):
+        (JSC::X86Assembler::setPointer):
+        (JSC::X86Assembler::setInt32):
+        (JSC::X86Assembler::setInt8):
+        * interpreter/InterpreterInlines.h:
+        (JSC::Interpreter::getOpcodeID): Embedded opcode may be misaligned. Actually UBSan detects misaligned accesses here.
+
+2018-08-17  Saam barati  <sbarati@apple.com>
+
+        intersectionOfPastValuesAtHead must filter values after they've observed an invalidation point
+        https://bugs.webkit.org/show_bug.cgi?id=188707
+        <rdar://problem/43015442>
+
+        Reviewed by Mark Lam.
+
+        We use the values in intersectionOfPastValuesAtHead to verify that it is safe to
+        OSR enter at the head of a block. We verify it's safe to OSR enter by checking
+        that each incoming value is compatible with its corresponding AbstractValue.
+        
+        The bug is that we were sometimes filtering the intersectionOfPastValuesAtHead
+        with abstract values that were clobbererd. This meant that the value we're
+        verifying with at OSR entry effectively has an infinite structure set because
+        it's clobbered. So, imagine we have code like this:
+        ```
+        ---> We OSR enter here, and we're clobbered here
+        InvalidationPoint
+        GetByOffset(@base)
+        ```
+        
+        The abstract value for @base inside intersectionOfPastValuesAtHead has a
+        clobberred structure set, so we'd allow an incoming object with any
+        structure. However, this is wrong because the invalidation point is no
+        longer fulfilling its promise that it filters the structure that @base has.
+        
+        We fix this by filtering the AbstractValues in intersectionOfPastValuesAtHead
+        as if the incoming value may be live past an InvalidationPoint.
+        This places a stricter requirement that to safely OSR enter at any basic
+        block, all incoming values must be compatible as if they lived past
+        the execution of an invalidation point.
+
+        * dfg/DFGCFAPhase.cpp:
+        (JSC::DFG::CFAPhase::run):
+
+2018-08-17  Yusuke Suzuki  <yusukesuzuki@slowstart.org> and Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [JSC] Add GPRReg::InvalidGPRReg and FPRReg::InvalidFPRReg
+        https://bugs.webkit.org/show_bug.cgi?id=188589
+
+        Reviewed by Mark Lam.
+        And reviewed by Yusuke Suzuki for Hironori's change.
+
+        Since GPRReg(RegisterID) and FPRReg(FPRegisterID) do not include -1 in their enum values,
+        UBSan dumps bunch of warnings "runtime error: load of value 4294967295, which is not a valid value for type 'RegisterID'".
+
+        - We add InvalidGPRReg and InvalidFPRReg to enum values of GPRReg and FPRReg to suppress the above warnings.
+        - We make GPRReg and FPRReg int8_t enums.
+        - We replace `#define InvalidGPRReg ((JSC::GPRReg)-1)` to `static constexpr GPRReg InvalidGPRReg { GPRReg::InvalidGPRReg };`.
+        - We add operator+/- definition for RegisterIDs as a MSVC workaround. MSVC fails to resolve operator+ and operator-
+          if `enum : int8_t` is used instead of `enum`.
+
+        * assembler/ARM64Assembler.h:
+        * assembler/ARMAssembler.h:
+        * assembler/ARMv7Assembler.h:
+        * assembler/MIPSAssembler.h:
+        * assembler/MacroAssembler.h:
+        * assembler/X86Assembler.h:
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::clampArrayToSize):
+        * jit/FPRInfo.h:
+        * jit/GPRInfo.h:
+        (JSC::JSValueRegs::JSValueRegs):
+        (JSC::JSValueRegs::tagGPR const):
+        (JSC::JSValueRegs::payloadGPR const):
+        (JSC::JSValueSource::JSValueSource):
+        (JSC::JSValueSource::unboxedCell):
+        (JSC::JSValueSource::operator bool const):
+        (JSC::JSValueSource::base const):
+        (JSC::JSValueSource::tagGPR const):
+        (JSC::JSValueSource::payloadGPR const):
+        (JSC::JSValueSource::hasKnownTag const):
+
+2018-08-16  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] alignas for RegisterState should respect alignof(RegisterState) too
+        https://bugs.webkit.org/show_bug.cgi?id=188686
+
+        Reviewed by Saam Barati.
+
+        RegisterState would have larger alignment than `alignof(void*)`. We use the larger alignment value
+        for `alignof` for RegisterState.
+
+        * heap/RegisterState.h:
+
+2018-08-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [YARR] Align allocation size in BumpPointerAllocator with sizeof(void*)
+        https://bugs.webkit.org/show_bug.cgi?id=188571
+
+        Reviewed by Saam Barati.
+
+        UBSan finds YarrInterpreter performs misaligned accesses. This is because YarrInterpreter
+        allocates DisjunctionContext and ParenthesesDisjunctionContext from BumpPointerAllocator
+        without considering alignment of them. This patch adds DisjunctionContext::allocationSize
+        and ParenthesesDisjunctionContext::allocationSize to calculate allocation sizes for them.
+        The size is always rounded to `sizeof(void*)` so that these classes are always allocated
+        with `sizeof(void*)` alignment. We also ensure the alignments of both classes are less
+        than or equal to `sizeof(void*)` by `static_assert`.
+
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::Interpreter::DisjunctionContext::allocationSize):
+        (JSC::Yarr::Interpreter::allocDisjunctionContext):
+        (JSC::Yarr::Interpreter::ParenthesesDisjunctionContext::ParenthesesDisjunctionContext):
+        (JSC::Yarr::Interpreter::ParenthesesDisjunctionContext::getDisjunctionContext):
+        (JSC::Yarr::Interpreter::ParenthesesDisjunctionContext::allocationSize):
+        (JSC::Yarr::Interpreter::allocParenthesesDisjunctionContext):
+        (JSC::Yarr::Interpreter::Interpreter):
+        (JSC::Yarr::Interpreter::DisjunctionContext::DisjunctionContext): Deleted.
+
+2018-08-15  Keith Miller  <keith_miller@apple.com>
+
+        Remove evernote hacks
+        https://bugs.webkit.org/show_bug.cgi?id=188591
+
+        Reviewed by Joseph Pecoraro.
+
+        The hack was added in 2012 and the evernote app seems to work now.
+        It's probably not needed anymore.
+
+        * API/JSValueRef.cpp:
+        (JSValueUnprotect):
+        (evernoteHackNeeded): Deleted.
+
+2018-08-14  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed, rolling out r234874 and r234876.
+
+        WinCairo port can't compile
+
+        Reverted changesets:
+
+        "[JSC] Add GPRReg::InvalidGPRReg and FPRReg::InvalidFPRReg"
+        https://bugs.webkit.org/show_bug.cgi?id=188589
+        https://trac.webkit.org/changeset/234874
+
+        "Unreviewed, attempt to fix CLoop build"
+        https://bugs.webkit.org/show_bug.cgi?id=188589
+        https://trac.webkit.org/changeset/234876
+
+2018-08-14  Saam barati  <sbarati@apple.com>
+
+        HashMap<Ref<P>, V> asserts when V is not zero for its empty value
+        https://bugs.webkit.org/show_bug.cgi?id=188582
+
+        Reviewed by Sam Weinig.
+
+        * runtime/SparseArrayValueMap.h:
+
+2018-08-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, attempt to fix CLoop build
+        https://bugs.webkit.org/show_bug.cgi?id=188589
+
+        * assembler/MacroAssembler.h:
+
+2018-08-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Add GPRReg::InvalidGPRReg and FPRReg::InvalidFPRReg
+        https://bugs.webkit.org/show_bug.cgi?id=188589
+
+        Reviewed by Mark Lam.
+
+        Since GPRReg(RegisterID) and FPRReg(FPRegisterID) do not include -1 in their enum values,
+        UBSan dumps bunch of warnings "runtime error: load of value 4294967295, which is not a valid value for type 'RegisterID'".
+
+        1. We add InvalidGPRReg and InvalidFPRReg to enum values of GPRReg and FPRReg to suppress the above warnings.
+        2. We make GPRReg and FPRReg int8_t enums.
+        3. We replace `#define InvalidGPRReg ((JSC::GPRReg)-1)` to `static constexpr GPRReg InvalidGPRReg { GPRReg::InvalidGPRReg };`.
+
+        * assembler/ARM64Assembler.h:
+        * assembler/ARMAssembler.h:
+        * assembler/ARMv7Assembler.h:
+        * assembler/MIPSAssembler.h:
+        * assembler/X86Assembler.h:
+        * jit/FPRInfo.h:
+        * jit/GPRInfo.h:
+        (JSC::JSValueRegs::JSValueRegs):
+        (JSC::JSValueRegs::tagGPR const):
+        (JSC::JSValueRegs::payloadGPR const):
+        (JSC::JSValueSource::JSValueSource):
+        (JSC::JSValueSource::unboxedCell):
+        (JSC::JSValueSource::operator bool const):
+        (JSC::JSValueSource::base const):
+        (JSC::JSValueSource::tagGPR const):
+        (JSC::JSValueSource::payloadGPR const):
+        (JSC::JSValueSource::hasKnownTag const):
+
+2018-08-14  Keith Miller  <keith_miller@apple.com>
+
+        Add missing availability macro.
+        https://bugs.webkit.org/show_bug.cgi?id=188563
+
+        Reviewed by Mark Lam.
+
+        * API/JSValueRef.h:
+
+2018-08-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] GetByIdStatus::m_wasSeenInJIT is touched in GetByIdStatus::slowVersion
+        https://bugs.webkit.org/show_bug.cgi?id=188560
+
+        Reviewed by Keith Miller.
+
+        While GetByIdStatus() / GetByIdStatus(status) constructors do not set m_wasSeenInJIT,
+        it is loaded unconditionally in GetByIdStatus::slowVersion. This access to the
+        uninitialized member field is caught in UBSan. This patch fixes it by adding an initializer
+        `m_wasSeenInJIT { false }`.
+
+        * bytecode/GetByIdStatus.h:
+
+2018-08-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [DFG] DFGPredictionPropagation should set PrimaryPass when processing invariants
+        https://bugs.webkit.org/show_bug.cgi?id=188557
+
+        Reviewed by Mark Lam.
+
+        DFGPredictionPropagationPhase should set PrimaryPass before processing invariants since
+        processing for ArithRound etc.'s invariants requires `m_pass` load. This issue is found
+        in UBSan's result.
+
+        * dfg/DFGPredictionPropagationPhase.cpp:
+
+2018-08-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Should not rotate constant with 64
+        https://bugs.webkit.org/show_bug.cgi?id=188556
+
+        Reviewed by Mark Lam.
+
+        To defend against JIT splaying, we rotate a constant with a randomly generated seed.
+        But if a seed becomes 64, the following code performs `value << 64` where value's type
+        is uint64_t, and it causes undefined behaviors (UBs). This patch limits the seed in the
+        range of [0, 64) not to generate code causing UBs. This is found by UBSan.
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::generateRotationSeed):
+        (JSC::MacroAssembler::rotationBlindConstant):
+
+2018-08-12  Karo Gyoker  <karogyoker2+webkit@gmail.com>
+
+        Disable JIT on IA-32 without SSE2
+        https://bugs.webkit.org/show_bug.cgi?id=188476
+
+        Reviewed by Michael Catanzaro.
+
+        Including missing header (MacroAssembler.h) in case of other
+        operating systems than Windows too.
+
+        * runtime/Options.cpp:
+
+2018-08-11  Karo Gyoker  <karogyoker2+webkit@gmail.com>
+
+        Disable JIT on IA-32 without SSE2
+        https://bugs.webkit.org/show_bug.cgi?id=188476
+
+        Reviewed by Yusuke Suzuki.
+
+        On IA-32 CPUs without SSE2 most of the webpages cannot load
+        if the JIT is turned on.
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2018-08-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.log fires getters for deep properties
+        https://bugs.webkit.org/show_bug.cgi?id=187542
+        <rdar://problem/42873158>
+
+        Reviewed by Saam Barati.
+
+        * inspector/InjectedScriptSource.js:
+        (RemoteObject.prototype._isPreviewableObject):
+        Avoid getters/setters when checking for simple properties to preview.
+        Here we avoid invoking `object[property]` if it could be a user getter.
+
+2018-08-10  Keith Miller  <keith_miller@apple.com>
+
+        Slicing an ArrayBuffer with a long number returns an ArrayBuffer with byteLength zero
+        https://bugs.webkit.org/show_bug.cgi?id=185127
+
+        Reviewed by Saam Barati.
+
+        Previously, we would truncate the indicies passed to slice to an
+        int. This meant that the value was not getting properly clamped
+        later.
+
+        This patch also removes a non-spec compliant check that slice was
+        passed at least one argument.
+
+        * runtime/ArrayBuffer.cpp:
+        (JSC::ArrayBuffer::clampValue):
+        (JSC::ArrayBuffer::clampIndex const):
+        (JSC::ArrayBuffer::slice const):
+        * runtime/ArrayBuffer.h:
+        (JSC::ArrayBuffer::clampValue): Deleted.
+        (JSC::ArrayBuffer::clampIndex const): Deleted.
+        * runtime/JSArrayBufferPrototype.cpp:
+        (JSC::arrayBufferProtoFuncSlice):
+
+2018-08-10  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Date.UTC should not return NaN with only Year param
+        https://bugs.webkit.org/show_bug.cgi?id=188378
+
+        Reviewed by Keith Miller.
+
+        Date.UTC requires one argument for |year|. But the other ones are optional.
+        This patch fix this handling.
+
+        * runtime/DateConstructor.cpp:
+        (JSC::millisecondsFromComponents):
+
+2018-08-08  Keith Miller  <keith_miller@apple.com>
+
+        Array.prototype.sort should call @toLength instead of ">>> 0"
+        https://bugs.webkit.org/show_bug.cgi?id=188430
+
+        Reviewed by Saam Barati.
+
+        Also add a new function to $vm that will fetch a private
+        property. This can be useful for running builtin helper functions.
+
+        * builtins/ArrayPrototype.js:
+        (sort):
+        * tools/JSDollarVM.cpp:
+        (JSC::functionGetPrivateProperty):
+        (JSC::JSDollarVM::finishCreation):
+
+2018-08-08  Keith Miller  <keith_miller@apple.com>
+
+        Array.prototype.sort should throw TypeError if param is a not callable object
+        https://bugs.webkit.org/show_bug.cgi?id=188382
+
+        Reviewed by Saam Barati.
+
+        Improve spec compatability by checking if the Array.prototype.sort comparator is a function
+        before doing anything else.
+
+        Also, refactor the various helper functions to use let instead of var.
+
+        * builtins/ArrayPrototype.js:
+        (sort.stringComparator):
+        (sort.compactSparse):
+        (sort.compactSlow):
+        (sort.compact):
+        (sort.merge):
+        (sort.mergeSort):
+        (sort.bucketSort):
+        (sort.comparatorSort):
+        (sort.stringSort):
+        (sort):
+
+2018-08-08  Michael Saboff  <msaboff@apple.com>
+
+        Yarr JIT should include annotations with dumpDisassembly=true
+        https://bugs.webkit.org/show_bug.cgi?id=188415
+
+        Reviewed by Yusuke Suzuki.
+
+        Created a YarrDisassembler class that handles annotations similar to the baseline JIT.
+        Given that the Yarr creates matching code bu going through the YarrPattern ops forward and
+        then the backtracking code through the YarrPattern ops in reverse order, the disassembler
+        needs to do the same think.
+
+        Restructured some of the logging code in YarrPattern to eliminate redundent code and factor
+        out simple methods for what was needed by the YarrDisassembler.
+
+        Here is abbreviated sample output after this change.
+
+        Generated JIT code for 8-bit regular expression /ab*c/:
+            Code at [0x469561c03720, 0x469561c03840):
+                0x469561c03720: push %rbp
+                0x469561c03721: mov %rsp, %rbp
+                ...
+                0x469561c03762: sub $0x40, %rsp
+             == Matching ==
+           0:OpBodyAlternativeBegin minimum size 2
+                0x469561c03766: add $0x2, %esi
+                0x469561c03769: cmp %edx, %esi
+                0x469561c0376b: ja 0x469561c037fa
+           1:OpTerm TypePatternCharacter 'a'
+                0x469561c03771: movzx -0x2(%rdi,%rsi), %eax
+                0x469561c03776: cmp $0x61, %eax
+                0x469561c03779: jnz 0x469561c037e9
+           2:OpTerm TypePatternCharacter 'b' {0,...} greedy
+                0x469561c0377f: xor %r9d, %r9d
+                0x469561c03782: cmp %edx, %esi
+                0x469561c03784: jz 0x469561c037a2
+                ...
+                0x469561c0379d: jmp 0x469561c03782
+                0x469561c037a2: mov %r9, 0x8(%rsp)
+           3:OpTerm TypePatternCharacter 'c'
+                0x469561c037a7: movzx -0x1(%rdi,%rsi), %eax
+                0x469561c037ac: cmp $0x63, %eax
+                0x469561c037af: jnz 0x469561c037d1
+           4:OpBodyAlternativeEnd
+                0x469561c037b5: add $0x40, %rsp
+                ...
+                0x469561c037cf: pop %rbp
+                0x469561c037d0: ret
+             == Backtracking ==
+           4:OpBodyAlternativeEnd
+           3:OpTerm TypePatternCharacter 'c'
+           2:OpTerm TypePatternCharacter 'b' {0,...} greedy
+                0x469561c037d1: mov 0x8(%rsp), %r9
+                ...
+                0x469561c037e4: jmp 0x469561c037a2
+           1:OpTerm TypePatternCharacter 'a'
+           0:OpBodyAlternativeBegin minimum size 2
+                0x469561c037e9: mov %rsi, %rax
+                ...
+                0x469561c0382f: pop %rbp
+                0x469561c03830: ret
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+        * yarr/YarrDisassembler.cpp: Added.
+        (JSC::Yarr::YarrDisassembler::indentString):
+        (JSC::Yarr::YarrDisassembler::YarrDisassembler):
+        (JSC::Yarr::YarrDisassembler::~YarrDisassembler):
+        (JSC::Yarr::YarrDisassembler::dump):
+        (JSC::Yarr::YarrDisassembler::dumpHeader):
+        (JSC::Yarr::YarrDisassembler::dumpVectorForInstructions):
+        (JSC::Yarr::YarrDisassembler::dumpForInstructions):
+        (JSC::Yarr::YarrDisassembler::dumpDisassembly):
+        * yarr/YarrDisassembler.h: Added.
+        (JSC::Yarr::YarrJITInfo::~YarrJITInfo):
+        (JSC::Yarr::YarrDisassembler::setStartOfCode):
+        (JSC::Yarr::YarrDisassembler::setForGenerate):
+        (JSC::Yarr::YarrDisassembler::setForBacktrack):
+        (JSC::Yarr::YarrDisassembler::setEndOfGenerate):
+        (JSC::Yarr::YarrDisassembler::setEndOfBacktrack):
+        (JSC::Yarr::YarrDisassembler::setEndOfCode):
+        (JSC::Yarr::YarrDisassembler::indentString):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::generate):
+        (JSC::Yarr::YarrGenerator::backtrack):
+        (JSC::Yarr::YarrGenerator::YarrGenerator):
+        (JSC::Yarr::YarrGenerator::compile):
+        (JSC::Yarr::jitCompile):
+        * yarr/YarrJIT.h:
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::dumpCharacterClass):
+        (JSC::Yarr::PatternTerm::dump):
+        (JSC::Yarr::YarrPattern::dumpPatternString):
+        (JSC::Yarr::YarrPattern::dumpPattern):
+        * yarr/YarrPattern.h:
+
 2018-08-05  Darin Adler  <darin@apple.com>
 
         [Cocoa] More tweaks and refactoring to prepare for ARC

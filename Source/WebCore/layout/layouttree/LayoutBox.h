@@ -62,11 +62,14 @@ public:
     bool isFloatingPositioned() const;
     bool isLeftFloatingPositioned() const;
     bool isRightFloatingPositioned() const;
+    bool hasFloatClear() const;
 
     bool isFloatingOrOutOfFlowPositioned() const { return isFloatingPositioned() || isOutOfFlowPositioned(); }
 
     const Container* containingBlock() const;
     const Container& formattingContextRoot() const;
+    const Container& initialContainingBlock() const;
+
     bool isDescendantOf(const Container&) const;
 
     bool isAnonymous() const { return !m_elementAttributes; }

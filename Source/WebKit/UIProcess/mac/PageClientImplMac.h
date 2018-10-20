@@ -38,7 +38,7 @@
 namespace WebCore {
 class AlternativeTextUIController;
 struct DragItem;
-struct PromisedBlobInfo;
+struct PromisedAttachmentInfo;
 }
 
 namespace WebKit {
@@ -237,6 +237,8 @@ private:
     NSView *inspectorAttachmentView() override;
     _WKRemoteObjectRegistry *remoteObjectRegistry() override;
 #endif
+
+    void didFinishProcessingAllPendingMouseEvents() final;
 
     NSView *m_view;
     WebViewImpl* m_impl { nullptr };

@@ -31,9 +31,8 @@
 #include <WebCore/PopupMenuClient.h>
 #include <WebCore/RenderTheme.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 static const int separatorPadding = 4;
 static const int separatorHeight = 1;
@@ -112,7 +111,7 @@ void WebPopupMenu::setUpPlatformData(const WebCore::IntRect& pageCoordinates, Pl
 
         String itemText = m_popupClient->itemText(index);
 
-        TextDirection direction = itemText.defaultWritingDirection() == U_RIGHT_TO_LEFT ? RTL : LTR;
+        TextDirection direction = itemText.defaultWritingDirection() == U_RIGHT_TO_LEFT ? TextDirection::RTL : TextDirection::LTR;
         TextRun textRun(itemText, 0, 0, AllowTrailingExpansion, itemStyle.textDirection(), itemStyle.hasTextDirectionOverride());
 
         notSelectedBackingStoreContext->setFillColor(optionTextColor);
@@ -129,7 +128,7 @@ void WebPopupMenu::setUpPlatformData(const WebCore::IntRect& pageCoordinates, Pl
         // Draw the item text
         if (itemStyle.isVisible()) {
             int textX = 0;
-            if (m_popupClient->menuStyle().textDirection() == LTR) {
+            if (m_popupClient->menuStyle().textDirection() == TextDirection::LTR) {
                 textX = std::max<int>(0, m_popupClient->clientPaddingLeft() - m_popupClient->clientInsetLeft());
                 if (RenderTheme::singleton().popupOptionSupportsTextIndent())
                     textX += minimumIntValueForLength(itemStyle.textIndent(), itemRect.width());

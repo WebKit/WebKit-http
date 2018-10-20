@@ -45,19 +45,13 @@ sub applyPreprocessor
 
     my @args = ();
     if (!$preprocessor) {
-        require Config;
-        if ($ENV{CC}) {
-            $preprocessor = $ENV{CC};
+        if ($Config::Config{"osname"} eq "MSWin32") {
+            $preprocessor = $ENV{CC} || "cl";
+            push(@args, qw(/EP));
         } elsif (($Config::Config{'osname'}) =~ /haiku/i) {
             $preprocessor = "/bin/env gcc";
-        } elsif (-x "/usr/bin/clang") {
-            $preprocessor = "/usr/bin/clang";
         } else {
-            $preprocessor = "/usr/bin/gcc";
-        }
-        if ($Config::Config{"osname"} eq "MSWin32") {
-            push(@args, qw(/EP));
-        } else {
+            $preprocessor = $ENV{CC} || (-x "/usr/bin/clang" ? "/usr/bin/clang" : "/usr/bin/gcc");
             push(@args, qw(-E -P -x c++));
         }
     }

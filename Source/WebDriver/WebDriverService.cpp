@@ -695,34 +695,27 @@ void WebDriverService::createSession(Vector<Capabilities>&& capabilitiesList, st
             resultObject->setString("sessionId"_s, m_session->id());
             RefPtr<JSON::Object> capabilitiesObject = JSON::Object::create();
             const auto& capabilities = m_session->capabilities();
-            if (capabilities.browserName)
-                capabilitiesObject->setString("browserName"_s, capabilities.browserName.value());
-            if (capabilities.browserVersion)
-                capabilitiesObject->setString("browserVersion"_s, capabilities.browserVersion.value());
-            if (capabilities.platformName)
-                capabilitiesObject->setString("platformName"_s, capabilities.platformName.value());
-            if (capabilities.acceptInsecureCerts)
-                capabilitiesObject->setBoolean("acceptInsecureCerts"_s, capabilities.acceptInsecureCerts.value());
-            if (capabilities.setWindowRect)
-                capabilitiesObject->setBoolean("setWindowRect"_s, capabilities.setWindowRect.value());
-            if (capabilities.unhandledPromptBehavior) {
-                switch (capabilities.unhandledPromptBehavior.value()) {
-                case UnhandledPromptBehavior::Dismiss:
-                    capabilitiesObject->setString("unhandledPromptBehavior"_s, "dismiss");
-                    break;
-                case UnhandledPromptBehavior::Accept:
-                    capabilitiesObject->setString("unhandledPromptBehavior"_s, "accept");
-                    break;
-                case UnhandledPromptBehavior::DismissAndNotify:
-                    capabilitiesObject->setString("unhandledPromptBehavior"_s, "dismiss and notify");
-                    break;
-                case UnhandledPromptBehavior::AcceptAndNotify:
-                    capabilitiesObject->setString("unhandledPromptBehavior"_s, "accept and notify");
-                    break;
-                case UnhandledPromptBehavior::Ignore:
-                    capabilitiesObject->setString("unhandledPromptBehavior"_s, "ignore");
-                    break;
-                }
+            capabilitiesObject->setString("browserName"_s, capabilities.browserName.value_or(emptyString()));
+            capabilitiesObject->setString("browserVersion"_s, capabilities.browserVersion.value_or(emptyString()));
+            capabilitiesObject->setString("platformName"_s, capabilities.platformName.value_or(emptyString()));
+            capabilitiesObject->setBoolean("acceptInsecureCerts"_s, capabilities.acceptInsecureCerts.value_or(false));
+            capabilitiesObject->setBoolean("setWindowRect"_s, capabilities.setWindowRect.value_or(true));
+            switch (capabilities.unhandledPromptBehavior.value_or(UnhandledPromptBehavior::DismissAndNotify)) {
+            case UnhandledPromptBehavior::Dismiss:
+                capabilitiesObject->setString("unhandledPromptBehavior"_s, "dismiss");
+                break;
+            case UnhandledPromptBehavior::Accept:
+                capabilitiesObject->setString("unhandledPromptBehavior"_s, "accept");
+                break;
+            case UnhandledPromptBehavior::DismissAndNotify:
+                capabilitiesObject->setString("unhandledPromptBehavior"_s, "dismiss and notify");
+                break;
+            case UnhandledPromptBehavior::AcceptAndNotify:
+                capabilitiesObject->setString("unhandledPromptBehavior"_s, "accept and notify");
+                break;
+            case UnhandledPromptBehavior::Ignore:
+                capabilitiesObject->setString("unhandledPromptBehavior"_s, "ignore");
+                break;
             }
             switch (capabilities.pageLoadStrategy.value_or(PageLoadStrategy::Normal)) {
             case PageLoadStrategy::None:
@@ -1393,32 +1386,13 @@ void WebDriverService::elementSendKeys(RefPtr<JSON::Object>&& parameters, Functi
     if (!elementID)
         return;
 
-    RefPtr<JSON::Array> valueArray;
-    if (!parameters->getArray("value"_s, valueArray)) {
+    String text;
+    if (!parameters->getString("text"_s, text) || text.isEmpty()) {
         completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
         return;
     }
 
-    unsigned valueArrayLength = valueArray->length();
-    if (!valueArrayLength) {
-        completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
-        return;
-    }
-    Vector<String> value;
-    value.reserveInitialCapacity(valueArrayLength);
-    for (unsigned i = 0; i < valueArrayLength; ++i) {
-        if (auto keyValue = valueArray->get(i)) {
-            String key;
-            if (keyValue->asString(key))
-                value.uncheckedAppend(WTFMove(key));
-        }
-    }
-    if (!value.size()) {
-        completionHandler(CommandResult::fail(CommandResult::ErrorCode::InvalidArgument));
-        return;
-    }
-
-    m_session->elementSendKeys(elementID.value(), WTFMove(value), WTFMove(completionHandler));
+    m_session->elementSendKeys(elementID.value(), text, WTFMove(completionHandler));
 }
 
 static bool findScriptAndArgumentsOrCompleteWithError(JSON::Object& parameters, Function<void (CommandResult&&)>& completionHandler, String& script, RefPtr<JSON::Array>& arguments)

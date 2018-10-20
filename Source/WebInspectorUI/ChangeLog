@@ -1,3 +1,506 @@
+2018-08-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Do not include TreeOutlineDataGridSynchronizer.js in inspector main.
+
+        The script was removed in r235151.
+
+        * UserInterface/Main.html:
+
+2018-08-21  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove TreeOutlineDataGridSynchronizer
+        https://bugs.webkit.org/show_bug.cgi?id=188449
+        <rdar://problem/43107980>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WI.HeapAllocationsTimelineView.prototype.layout):
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WI.LayoutTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WI.NetworkTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WI.RenderingFrameTimelineView.prototype._processPendingRecords):
+        (WI.RenderingFrameTimelineView.prototype.dataGridNodeForTreeElement): Deleted.
+        * UserInterface/Views/ScriptDetailsTimelineView.js:
+        (WI.ScriptDetailsTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WI.TimelineDataGrid):
+        (WI.TimelineDataGrid.prototype.reset):
+        (WI.TimelineDataGrid.prototype.shown):
+        (WI.TimelineDataGrid.prototype.addRowInSortOrder):
+        (WI.TimelineDataGrid.prototype._refreshDirtyDataGridNodes):
+        (WI.TimelineDataGrid.prototype._sort):
+        (WI.TimelineDataGrid.prototype.treeElementForDataGridNode): Deleted.
+        (WI.TimelineDataGrid.prototype.dataGridNodeForTreeElement): Deleted.
+        * UserInterface/Views/TreeOutlineDataGridSynchronizer.js: Removed.
+
+2018-08-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ⌘G does not while find banner is focused
+        https://bugs.webkit.org/show_bug.cgi?id=188815
+        <rdar://problem/43577158>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        Allow an <input> element to be the current focus element, which is what will
+        our global KeyboardShortcut handlers will interact with. Also make sure
+        that showing the find banner for the first time still focuses it.
+
+2018-08-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r235095): duplicate actions existing in WI.CanvasSidebarPanel
+        https://bugs.webkit.org/show_bug.cgi?id=188808
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype._recordingChanged):
+        Check that the `WI.RecordingAction` is not already represented in the `WI.TreeOutline`
+        before adding it.
+
+        * UserInterface/Views/CanvasSidebarPanel.css:
+        (.sidebar > .panel.navigation.canvas > .content > .recording-content > .tree-outline .item.processing .subtitle > progress):
+        Drive-by: vertically center the <progress> shown for `WI.RecordingFrame` during processing.
+
+2018-08-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: provide default icon for all actions
+        https://bugs.webkit.org/show_bug.cgi?id=188807
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/RecordingActionTreeElement.css:
+        (.item.action > .icon):
+        (.item.action.initial-state > .icon): Deleted.
+
+2018-08-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rulers.svg is missing
+        https://bugs.webkit.org/show_bug.cgi?id=188806
+        <rdar://problem/43574273>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Images/Rulers.svg: Added.
+
+2018-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: allow breakpoints to be set for specific event listeners
+        https://bugs.webkit.org/show_bug.cgi?id=183138
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Models/EventBreakpoint.js:
+        (WI.EventBreakpoint):
+        (WI.EventBreakpoint.fromPayload): Added.
+        (WI.EventBreakpoint.prototype.get eventListener): Added.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager):
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WI.DOMTreeManager):
+        (WI.DOMTreeManager.prototype.get eventBreakpoints): Added.
+        (WI.DOMTreeManager.prototype._setDocument):
+        (WI.DOMTreeManager.prototype.setEventListenerDisabled):
+        (WI.DOMTreeManager.prototype.setBreakpointForEventListener): Added.
+        (WI.DOMTreeManager.prototype.removeBreakpointForEventListener): Added.
+        (WI.DOMTreeManager.prototype.breakpointForEventListenerId): Added.
+
+        * UserInterface/Controllers/EventBreakpointTreeController.js:
+        (WI.EventBreakpointTreeController):
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WI.EventListenerSectionGroup):
+        (WI.EventListenerSectionGroup.prototype._createDisabledToggleRow):
+        (WI.EventListenerSectionGroup.prototype._createBreakpointToggleRow): Added.
+
+        * UserInterface/Views/EventBreakpointTreeElement.js:
+        (WI.EventBreakpointTreeElement):
+        (WI.EventBreakpointTreeElement.prototype.ondelete):
+        (WI.EventBreakpointTreeElement.prototype.populateContextMenu):
+        (WI.EventBreakpointTreeElement.prototype._toggleBreakpoint):
+
+2018-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas tab: allow recording processing to be stopped midway
+        https://bugs.webkit.org/show_bug.cgi?id=185152
+
+        Reviewed by Joseph Pecoraro.
+
+        Previously, `WI.Recording` used a `WI.YieldableTask` to process every action in such a way
+        as to not block the UI. The downside to this approach was that it used a message view to
+        indicate the progress of this process, and prevented the user from viewing the `WI.Recording`
+        until that process was completed.
+
+        This patch changes `WI.Recording` to instead use `async/await` and fire events whenever a
+        `WI.RecordingAction` (and `WI.RecordingFrame`) finished processing, allowing it to be added
+        to the recording `WI.TreeOutline` and selected by the user. Additionally, a pause/resume
+        button is added to the `WI.CanvasSidebarPanel` so the user has greater control over what
+        how much of the `WI.Recording` they want to process.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Base/Utilities.js:
+        (Promise.delay)
+        Utility function for promisifying `setTimeout`.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording):
+        (WI.Recording.prototype.get processing): Added.
+        (WI.Recording.prototype.get ready): Added.
+        (WI.Recording.prototype.startProcessing): Added.
+        (WI.Recording.prototype.stopProcessing): Added.
+        (WI.Recording.prototype.async._process): Added.
+        (WI.Recording.prototype.process): Deleted.
+        (WI.Recording.prototype.async.yieldableTaskWillProcessItem): Deleted.
+        (WI.Recording.prototype.async.yieldableTaskDidFinish): Deleted.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.prototype.get ready): Added.
+        (WI.RecordingAction.prototype.async.swizzle):
+        (WI.RecordingAction.prototype.apply):
+
+        * UserInterface/Models/RecordingInitialStateAction.js:
+        (WI.RecordingInitialStateAction):
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel):
+        (WI.CanvasSidebarPanel.prototype.set recording):
+        (WI.CanvasSidebarPanel.prototype.set action):
+        (WI.CanvasSidebarPanel.prototype._recordingAdded):
+        (WI.CanvasSidebarPanel.prototype._recordingRemoved):
+        (WI.CanvasSidebarPanel.prototype._currentRepresentedObjectsDidChange):
+        (WI.CanvasSidebarPanel.prototype._treeOutlineSelectionDidChange):
+        (WI.CanvasSidebarPanel.prototype._recordingChanged):
+        (WI.CanvasSidebarPanel.prototype._recordingChanged.createPauseButton): Added.
+        (WI.CanvasSidebarPanel.prototype._recordingChanged.createResumeButton): Added.
+        (WI.CanvasSidebarPanel.prototype._createRecordingFrameTreeElement): Added.
+        (WI.CanvasSidebarPanel.prototype._createRecordingActionTreeElement): Added.
+        (WI.CanvasSidebarPanel.prototype._handleRecordingProcessedAction): Added.
+        (WI.CanvasSidebarPanel.prototype._handleRecordingStartProcessingFrame): Added.
+        * UserInterface/Views/CanvasSidebarPanel.css:
+        (.sidebar > .panel.navigation.canvas > .content > .recording-content > .tree-outline .item.processing .subtitle > progress): Added.
+        (.sidebar > .panel.navigation.canvas > .content > .recording-content > .tree-outline:matches(:focus, .force-focus) .item.processing.selected .subtitle > progress): Added.
+        (.sidebar > .panel.navigation.canvas > .content > .recording-content > .tree-outline .item.processing .subtitle::before): Added.
+        (.sidebar > .panel.navigation.canvas > .content > .recording-content > .recording-processing-options): Added.
+        (.sidebar > .panel.navigation.canvas > .content > .recording-content > .recording-processing-options > .indeterminate-progress-spinner): Added.
+        (.sidebar > .panel.navigation.canvas > .content > .recording-content > .indeterminate-progress-spinner): Deleted.
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView):
+        (WI.RecordingContentView.prototype.updateActionIndex):
+        (WI.RecordingContentView.prototype.initialLayout):
+        (WI.RecordingContentView.prototype._updateCanvasPath):
+        (WI.RecordingContentView.prototype._handleRecordingProcessedAction): Added.
+        (WI.RecordingContentView.prototype._updateProcessProgress): Deleted.
+        (WI.RecordingContentView.prototype._handleRecordingProcessedActionSwizzle): Deleted.
+        (WI.RecordingContentView.prototype._handleRecordingProcessedActionApply): Deleted.
+        * UserInterface/Views/RecordingContentView.css:
+        (.content-view:not(.tab).recording > header > .slider-container > .slider-value): Added.
+
+        * UserInterface/Views/FolderTreeElement.js:
+        (WI.FolderTreeElement):
+
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WI.GeneralTreeElement.prototype.get statusElement): Added.
+        (WI.GeneralTreeElement.prototype._updateTitleElements):
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.CanvasContentView.prototype._handleViewShaderButtonClicked):
+        (WI.CanvasContentView.prototype._handleViewRecordingButtonClicked):
+        Drive-by: `WI.Collection` doesn't have a `values()` accessor for the underlying `Set`.
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.css: Removed.
+        * UserInterface/Views/RecordingNavigationSidebarPanel.js: Removed.
+        These files are no longer used since they were "merged" into `WI.CanvasSidebarPanel`.
+
+2018-08-20  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas tab: create icons for recordings/shaders in the preview tile
+        https://bugs.webkit.org/show_bug.cgi?id=183650
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView):
+        (WI.CanvasContentView.prototype.initialLayout):
+        (WI.CanvasContentView.prototype.attached):
+        (WI.CanvasContentView.prototype._recordingStopped):
+        (WI.CanvasContentView.prototype._shaderProgramAdded):
+        (WI.CanvasContentView.prototype._shaderProgramRemoved):
+        (WI.CanvasContentView.prototype._updateViewRelatedItems):
+        (WI.CanvasContentView.prototype._handleViewShaderButtonClicked):
+        (WI.CanvasContentView.prototype._handleViewRecordingButtonClicked):
+        (WI.CanvasContentView.prototype._addRecording): Deleted.
+        (WI.CanvasContentView.prototype._handleRecordingSelectElementChange): Deleted.
+        * UserInterface/Views/CanvasOverviewContentView.css:
+        (.content-view.canvas-overview .content-view.canvas > footer > .view-related-items):
+        (.content-view.canvas-overview .content-view.canvas > footer > .view-related-items > :matches(.view-shader, .view-recording)):
+        (.content-view.canvas-overview .content-view.canvas > footer > .view-related-items > img + img):
+        (.content-view.canvas-overview .content-view.canvas > footer > .view-related-items > .view-shader):
+        (.content-view.canvas-overview .content-view.canvas > footer > .view-related-items > .view-recording):
+        (.content-view.canvas-overview .content-view.canvas > footer > .recordings): Deleted.
+        (.content-view.canvas-overview .content-view.canvas > footer > .recordings::before): Deleted.
+        (.content-view.canvas-overview .content-view.canvas > footer > .recordings > select): Deleted.
+        (.content-view.canvas-overview .content-view.canvas > footer .recordings > select:focus): Deleted.
+        Create two image buttons in the bottom left corner of each canvas tile that appear when the
+        canvas has associated shaders and/or recordings. Clicking each image button will function
+        similar to path components, in that if there is only one shader/recording, it is immediately
+        selected, whereas if there are multiple a dropdown is shown.
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype._currentRepresentedObjectsDidChange):
+        (WI.CanvasSidebarPanel.prototype._recordingChanged):
+        Drive-by: ensure that the selected recording action is properly updated when first loading a
+        recording and when scrubbing through one.
+
+2018-08-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: support breakpoints for arbitrary event names
+        https://bugs.webkit.org/show_bug.cgi?id=183118
+
+        Reviewed by Joseph Pecoraro.
+
+        Create UI for setting breakpoints on event names. Ties into renamed DOMDebugger commands,
+        specifically `setEventBreakpoint` and `removeEventBreakpoint`, that will pause execution if
+        any DOM event is fired that matches any previously registered breakpoints.
+
+        Event breakpoints are distinguished by name, and they currently apply globally, meaning
+        that only one breakpoint per event name can be registered.
+
+        Event breakpoints are created in the Debugger tab in a new "Event Breakpoints" section in
+        the Navigation sidebar. A new type of popover, EventBreakpointPopover, is used, but right
+        now all it contains is a basic text input for the event name. Similarly, a new TreeElement
+        subclass, EventBreakpointTreeElement, is used when showing the list of event listener
+        breakpoints, but all it shows now is the event name.
+
+        The majority of the logic in this patch was derived from XHR breakpoints.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        * UserInterface/Images/EventBreakpoint.svg: Added.
+
+        * UserInterface/Models/EventBreakpoint.js: Added.
+        (WI.EventBreakpoint):
+        (WI.EventBreakpoint.prototype.get eventName):
+        (WI.EventBreakpoint.prototype.get disabled):
+        (WI.EventBreakpoint.prototype.set disabled):
+        (WI.EventBreakpoint.prototype.get serializableInfo):
+        (WI.EventBreakpoint.prototype.saveIdentityToCookie):
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager):
+        (WI.DOMDebuggerManager.prototype.get eventBreakpoints): Added.
+        (WI.DOMDebuggerManager.prototype.eventBreakpointForEventName): Added.
+        (WI.DOMDebuggerManager.prototype.addEventBreakpoint): Added.
+        (WI.DOMDebuggerManager.prototype.removeEventBreakpoint): Added.
+        (WI.DOMDebuggerManager.prototype._speculativelyResolveBreakpoints):
+        (WI.DOMDebuggerManager.prototype._updateEventBreakpoint.breakpointUpdated): Added.
+        (WI.DOMDebuggerManager.prototype._updateEventBreakpoint): Added.
+        (WI.DOMDebuggerManager.prototype._resolveEventBreakpoint): Added.
+        (WI.DOMDebuggerManager.prototype._saveEventBreakpoints): Added.
+        (WI.DOMDebuggerManager.prototype._eventBreakpointDisabledStateDidChange): Added.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype._pauseReasonFromPayload):
+
+        * UserInterface/Controllers/EventBreakpointTreeController.js: Added.
+        (WI.EventBreakpointTreeController):
+        (WI.EventBreakpointTreeController.prototype.revealAndSelect):
+        (WI.EventBreakpointTreeController.prototype._eventBreakpointAdded):
+        (WI.EventBreakpointTreeController.prototype._eventBreakpointRemoved):
+        (WI.EventBreakpointTreeController.prototype._addTreeElement):
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+        (WI.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        (WI.DebuggerSidebarPanel.prototype._eventBreakpointAddedOrRemoved): Added.
+        (WI.DebuggerSidebarPanel.prototype._addEventBreakpointButtonClicked): Added.
+        (WI.DebuggerSidebarPanel.prototype.willDismissPopover):
+
+        * UserInterface/Views/EventBreakpointTreeElement.js: Added.
+        (WI.EventBreakpointTreeElement):
+        (WI.EventBreakpointTreeElement.prototype.onattach):
+        (WI.EventBreakpointTreeElement.prototype.ondetach):
+        (WI.EventBreakpointTreeElement.prototype.ondelete):
+        (WI.EventBreakpointTreeElement.prototype.onenter):
+        (WI.EventBreakpointTreeElement.prototype.onspace):
+        (WI.EventBreakpointTreeElement.prototype.populateContextMenu):
+        (WI.EventBreakpointTreeElement.prototype._statusImageElementClicked):
+        (WI.EventBreakpointTreeElement.prototype._statusImageElementFocused):
+        (WI.EventBreakpointTreeElement.prototype._statusImageElementMouseDown):
+        (WI.EventBreakpointTreeElement.prototype._toggleBreakpoint):
+        (WI.EventBreakpointTreeElement.prototype._updateStatus):
+        * UserInterface/Views/EventBreakpointTreeElement.css: Added.
+        (.breakpoint.event-listener:not(.breakpoint-paused-icon) .icon):
+
+        * UserInterface/Views/EventBreakpointPopover.js: Added.
+        (WI.EventBreakpointPopover):
+        (WI.EventBreakpointPopover.prototype.get result):
+        (WI.EventBreakpointPopover.prototype.get value):
+        (WI.EventBreakpointPopover.prototype.show):
+        (WI.EventBreakpointPopover.prototype._presentOverTargetElement):
+        * UserInterface/Views/EventBreakpointPopover.css: Added.
+        (.popover .event-listener-breakpoint-content):
+        (.popover .event-listener-breakpoint-content > input):
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WI.NavigationSidebarPanel.prototype._isTreeElementWithoutRepresentedObject):
+
+2018-08-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show Initiator information in Network Table
+        https://bugs.webkit.org/show_bug.cgi?id=188590
+        <rdar://problem/43305488>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/NetworkResourceDetailView.js:
+        (WI.NetworkResourceDetailView):
+        (WI.NetworkResourceDetailView.prototype.shown):
+        (WI.NetworkResourceDetailView.prototype.willShowWithCookie):
+        (WI.NetworkResourceDetailView.prototype._showContentViewForNavigationItem):
+        When a ResourceDetailView gets shown, it may also want to show its initial content view
+        with a cookie as the cookie may contain position highlight information.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype._showResourceDetailView):
+        (WI.NetworkTableContentView.prototype.showRepresentedObject):
+        When showing a represented object, pass the cookie information on to the detail
+        view's so that it may include the cookie when showing the final content view.
+
+        (WI.NetworkTableContentView.prototype.tablePopulateCell):
+        (WI.NetworkTableContentView.prototype._populateInitiatorCell):
+        (WI.NetworkTableContentView.prototype.initialLayout):
+        New initiator column contains a source code link to the call site.
+
+        (WI.NetworkTableContentView.prototype._generateSortComparator):
+        (WI.NetworkTableContentView.prototype._entryForResource):
+        Entry data for the initiator is a display string that can be sorted easily.
+
+2018-08-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        LayoutTest inspector/worker/debugger-pause.html sometimes times out
+        https://bugs.webkit.org/show_bug.cgi?id=188580
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Protocol/Target.js:
+        (WI.Target.prototype.get mainResource):
+        (WI.Target.prototype.set mainResource):
+        Dispatch an event when the Main Resource is set.
+
+2018-08-15  Aditya Keerthi  <akeerthi@apple.com>
+
+        [Datalist] Add button to TextFieldInputs with a datalist
+        https://bugs.webkit.org/show_bug.cgi?id=187741
+
+        Reviewed by Tim Horton.
+
+        Add keyword completion for 'list-button'.
+
+        * UserInterface/External/CodeMirror/css.js:
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2018-08-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r?): the probe sidebar doesn't show up when adding probes
+        https://bugs.webkit.org/show_bug.cgi?id=188594
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ProbeDetailsSidebarPanel.js:
+        (WI.ProbeDetailsSidebarPanel.prototype.set inspectedProbeSets):
+        (WI.ProbeDetailsSidebarPanel.prototype.initialLayout):
+        Add checks to ensure that DOM elements for each probe section exist before trying to
+        add/remove them from the sidebar. This can happen if probes are inspected before the sidebar
+        is shown for the first time.
+
+        * UserInterface/Views/ProbeSetDataGrid.js:
+        (WI.ProbeSetDataGrid):
+        (WI.ProbeSetDataGrid.columnIdentifierForProbe): Added.
+        (WI.ProbeSetDataGrid.prototype._setupProbe):
+        (WI.ProbeSetDataGrid.prototype._teardownProbe):
+        (WI.ProbeSetDataGrid.prototype._probeExpressionChanged):
+        * UserInterface/Views/ProbeSetDataGridNode.js:
+        (WI.ProbeSetDataGridNode.prototype.set frame):
+        Provide better column identifiers for each probe's `WI.DataGrid`. It's possible for the
+        numeric probe ID value to be stringified when passing it into the constructor of
+        `WI.DataGrid`, which will not match the original numeric value on later retrieval.
+
+2018-08-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table should not center rows when scrolling them into view
+        https://bugs.webkit.org/show_bug.cgi?id=188593
+        <rdar://problem/43311660>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype._handleKeyDown):
+
+2018-08-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table should handle row selection instead of the table delegate
+        https://bugs.webkit.org/show_bug.cgi?id=188534
+        <rdar://problem/43253335>
+
+        Reviewed by Joseph Pecoraro.
+
+        Row selection should be implemented by Table, rather than its delegate.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.tableShouldSelectRow):
+        (WI.NetworkTableContentView.prototype.tableCellMouseDown): Deleted.
+        Prevent selection unless the clicked cell belongs to the name column.
+
+        * UserInterface/Views/ResourceCookiesContentView.js:
+        (WI.ResourceCookiesContentView.prototype.tableShouldSelectRow):
+        Always prevent selection.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table):
+        (WI.Table.prototype._handleMouseDown):
+
+2018-08-12  Aditya Keerthi  <akeerthi@apple.com>
+
+        [macOS] Color wells should appear pressed when presenting a color picker
+        https://bugs.webkit.org/show_bug.cgi?id=188477
+
+        Reviewed by Tim Horton.
+
+        Add keyword completion for 'color-well'.
+
+        * UserInterface/External/CodeMirror/css.js:
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2018-08-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: SourceCodeTextEditor error/warning text widget is too light
+        https://bugs.webkit.org/show_bug.cgi?id=188126
+        <rdar://problem/42674963>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DarkMode.css:
+        (@media (prefers-dark-interface)):
+        (.source-code.text-editor > .CodeMirror .issue-widget.warning,): Added.
+        (.source-code.text-editor > .CodeMirror .issue-widget.error,): Added.
+
 2018-08-07  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Add another Protocol Version (iOS 12)

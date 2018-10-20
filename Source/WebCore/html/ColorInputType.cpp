@@ -104,6 +104,11 @@ bool ColorInputType::isColorControl() const
     return true;
 }
 
+bool ColorInputType::isPresentingAttachedView() const
+{
+    return !!m_chooser;
+}
+
 const AtomicString& ColorInputType::formControlType() const
 {
     return InputTypeNames::color();
@@ -185,6 +190,11 @@ void ColorInputType::detach()
     endColorChooser();
 }
 
+void ColorInputType::elementDidBlur()
+{
+    endColorChooser();
+}
+
 bool ColorInputType::shouldRespectListAttribute()
 {
     return true;
@@ -214,6 +224,8 @@ void ColorInputType::didChooseColor(const Color& color)
 void ColorInputType::didEndChooser()
 {
     m_chooser = nullptr;
+    if (element()->renderer())
+        element()->renderer()->repaint();
 }
 
 void ColorInputType::endColorChooser()
@@ -269,7 +281,7 @@ bool ColorInputType::shouldShowSuggestions() const
 #endif
 }
 
-Vector<Color> ColorInputType::suggestions() const
+Vector<Color> ColorInputType::suggestedColors() const
 {
     Vector<Color> suggestions;
 #if ENABLE(DATALIST_ELEMENT)

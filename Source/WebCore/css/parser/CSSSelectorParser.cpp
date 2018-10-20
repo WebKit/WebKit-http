@@ -68,11 +68,9 @@ CSSSelectorList CSSSelectorParser::consumeComplexSelectorList(CSSParserTokenRang
         selectorList.append(WTFMove(selector));
     }
 
-    CSSSelectorList list;
     if (m_failedParsing)
-        return list;
-    list.adoptSelectorVector(selectorList);
-    return list;
+        return { };
+    return CSSSelectorList { WTFMove(selectorList) };
 }
 
 CSSSelectorList CSSSelectorParser::consumeCompoundSelectorList(CSSParserTokenRange& range)
@@ -92,11 +90,9 @@ CSSSelectorList CSSSelectorParser::consumeCompoundSelectorList(CSSParserTokenRan
         selectorList.append(WTFMove(selector));
     }
 
-    CSSSelectorList list;
     if (m_failedParsing)
-        return list;
-    list.adoptSelectorVector(selectorList);
-    return list;
+        return { };
+    return CSSSelectorList { WTFMove(selectorList) };
 }
 
 static bool consumeLangArgumentList(std::unique_ptr<Vector<AtomicString>>& argumentList, CSSParserTokenRange& range)
@@ -534,7 +530,7 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
             DisallowPseudoElementsScope scope(this);
             std::unique_ptr<CSSSelectorList> selectorList = std::unique_ptr<CSSSelectorList>(new CSSSelectorList());
             *selectorList = consumeComplexSelectorList(block);
-            if (!selectorList->componentCount() || !block.atEnd())
+            if (!selectorList->first() || !block.atEnd())
                 return nullptr;
             selector->setSelectorList(WTFMove(selectorList));
             return selector;
@@ -563,7 +559,7 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
                 block.consumeWhitespace();
                 std::unique_ptr<CSSSelectorList> selectorList = std::unique_ptr<CSSSelectorList>(new CSSSelectorList());
                 *selectorList = consumeComplexSelectorList(block);
-                if (!selectorList->componentCount() || !block.atEnd())
+                if (!selectorList->first() || !block.atEnd())
                     return nullptr;
                 selector->setSelectorList(WTFMove(selectorList));
             }
@@ -581,7 +577,7 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
         case CSSSelector::PseudoClassMatches: {
             std::unique_ptr<CSSSelectorList> selectorList = std::unique_ptr<CSSSelectorList>(new CSSSelectorList());
             *selectorList = consumeComplexSelectorList(block);
-            if (!selectorList->componentCount() || !block.atEnd())
+            if (!selectorList->first() || !block.atEnd())
                 return nullptr;
             selector->setSelectorList(WTFMove(selectorList));
             return selector;
@@ -590,7 +586,7 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
         case CSSSelector::PseudoClassHost: {
             std::unique_ptr<CSSSelectorList> selectorList = std::unique_ptr<CSSSelectorList>(new CSSSelectorList());
             *selectorList = consumeCompoundSelectorList(block);
-            if (!selectorList->componentCount() || !block.atEnd())
+            if (!selectorList->first() || !block.atEnd())
                 return nullptr;
             selector->setSelectorList(WTFMove(selectorList));
             return selector;
@@ -631,9 +627,7 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
             block.consumeWhitespace();
             if (!innerSelector || !block.atEnd())
                 return nullptr;
-            Vector<std::unique_ptr<CSSParserSelector>> selectorVector;
-            selectorVector.append(WTFMove(innerSelector));
-            selector->adoptSelectorVector(selectorVector);
+            selector->adoptSelectorVector(Vector<std::unique_ptr<CSSParserSelector>>::from(WTFMove(innerSelector)));
             return selector;
         }
         default:

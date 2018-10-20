@@ -222,7 +222,6 @@ void WebBackForwardList::goToItem(WebBackForwardListItem& item)
     m_currentIndex = targetIndex;
 
     LOG(BackForward, "(Back/Forward) WebBackForwardList %p going to item %s, is now at index %zu", this, item.itemID().logString(), targetIndex);
-
     m_page->didChangeBackForwardList(nullptr, WTFMove(removedItems));
 }
 
@@ -433,6 +432,9 @@ BackForwardListState WebBackForwardList::backForwardListState(WTF::Function<bool
 
 void WebBackForwardList::restoreFromState(BackForwardListState backForwardListState)
 {
+    if (!m_page)
+        return;
+
     Vector<Ref<WebBackForwardListItem>> items;
     items.reserveInitialCapacity(backForwardListState.items.size());
 

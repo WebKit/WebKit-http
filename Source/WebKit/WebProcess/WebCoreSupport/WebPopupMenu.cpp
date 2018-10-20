@@ -30,9 +30,8 @@
 #include <WebCore/FrameView.h>
 #include <WebCore/PopupMenuClient.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 Ref<WebPopupMenu> WebPopupMenu::create(WebPage* page, PopupMenuClient* client)
 {
@@ -112,7 +111,7 @@ void WebPopupMenu::show(const IntRect& rect, FrameView* view, int index)
     PlatformPopupMenuData platformData;
     setUpPlatformData(pageCoordinates, platformData);
 
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPageProxy::ShowPopupMenu(pageCoordinates, m_popupClient->menuStyle().textDirection(), items, index, platformData), m_page->pageID());
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPageProxy::ShowPopupMenu(pageCoordinates, static_cast<uint64_t>(m_popupClient->menuStyle().textDirection()), items, index, platformData), m_page->pageID());
 }
 
 void WebPopupMenu::hide()

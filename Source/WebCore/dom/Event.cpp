@@ -34,48 +34,55 @@
 
 namespace WebCore {
 
+ALWAYS_INLINE Event::Event(MonotonicTime createTime, const AtomicString& type, IsTrusted isTrusted, CanBubble canBubble, IsCancelable cancelable, IsComposed composed)
+    : m_isInitialized { !type.isNull() }
+    , m_canBubble { canBubble == CanBubble::Yes }
+    , m_cancelable { cancelable == IsCancelable::Yes }
+    , m_composed { composed == IsComposed::Yes }
+    , m_propagationStopped { false }
+    , m_immediatePropagationStopped { false }
+    , m_wasCanceled { false }
+    , m_defaultHandled { false }
+    , m_isDefaultEventHandlerIgnored { false }
+    , m_isTrusted { isTrusted == IsTrusted::Yes }
+    , m_isExecutingPassiveEventListener { false }
+    , m_eventPhase { NONE }
+    , m_type { type }
+    , m_createTime { createTime }
+{
+}
+
 Event::Event(IsTrusted isTrusted)
-    : m_isTrusted(isTrusted == IsTrusted::Yes)
-    , m_createTime(MonotonicTime::now())
+    : Event { MonotonicTime::now(), { }, isTrusted, CanBubble::No, IsCancelable::No, IsComposed::No }
 {
 }
 
-Event::Event(const AtomicString& eventType, bool canBubbleArg, bool cancelableArg)
-    : m_type(eventType)
-    , m_isInitialized(true)
-    , m_canBubble(canBubbleArg)
-    , m_cancelable(cancelableArg)
-    , m_isTrusted(true)
-    , m_createTime(MonotonicTime::now())
+Event::Event(const AtomicString& eventType, CanBubble canBubble, IsCancelable isCancelable)
+    : Event { MonotonicTime::now(), eventType, IsTrusted::Yes, canBubble, isCancelable, IsComposed::No }
 {
+    ASSERT(!eventType.isNull());
 }
 
-Event::Event(const AtomicString& eventType, bool canBubbleArg, bool cancelableArg, MonotonicTime timestamp)
-    : m_type(eventType)
-    , m_isInitialized(true)
-    , m_canBubble(canBubbleArg)
-    , m_cancelable(cancelableArg)
-    , m_isTrusted(true)
-    , m_createTime(timestamp)
+Event::Event(const AtomicString& eventType, CanBubble canBubble, IsCancelable isCancelable, MonotonicTime timestamp)
+    : Event { timestamp, eventType, IsTrusted::Yes, canBubble, isCancelable, IsComposed::No }
 {
+    ASSERT(!eventType.isNull());
 }
 
 Event::Event(const AtomicString& eventType, const EventInit& initializer, IsTrusted isTrusted)
-    : m_type(eventType)
-    , m_isInitialized(true)
-    , m_canBubble(initializer.bubbles)
-    , m_cancelable(initializer.cancelable)
-    , m_composed(initializer.composed)
-    , m_isTrusted(isTrusted == IsTrusted::Yes)
-    , m_createTime(MonotonicTime::now())
+    : Event { MonotonicTime::now(), eventType, isTrusted,
+        initializer.bubbles ? CanBubble::Yes : CanBubble::No,
+        initializer.cancelable ? IsCancelable::Yes : IsCancelable::No,
+        initializer.composed ? IsComposed::Yes : IsComposed::No }
 {
+    ASSERT(!eventType.isNull());
 }
 
 Event::~Event() = default;
 
-Ref<Event> Event::create(const AtomicString& type, bool canBubble, bool cancelable)
+Ref<Event> Event::create(const AtomicString& type, CanBubble canBubble, IsCancelable isCancelable)
 {
-    return adoptRef(*new Event(type, canBubble, cancelable));
+    return adoptRef(*new Event(type, canBubble, isCancelable));
 }
 
 Ref<Event> Event::createForBindings()

@@ -29,44 +29,77 @@
 
 #include "IntersectionObserverCallback.h"
 #include "IntersectionObserverEntry.h"
+#include "LengthBox.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Variant.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+class Document;
 class Element;
 
-class IntersectionObserver : public RefCounted<IntersectionObserver> {
+struct IntersectionObserverRegistration {
+    WeakPtr<IntersectionObserver> observer;
+    std::optional<size_t> previousThresholdIndex;
+};
+
+struct IntersectionObserverData {
+    // IntersectionObservers for which the element that owns this IntersectionObserverData is the root.
+    // An IntersectionObserver without any targets is only owned by JavaScript wrappers. An
+    // IntersectionObserver with at least one target is also owned by its trackingDocument.
+    Vector<WeakPtr<IntersectionObserver>> observers;
+
+    // IntersectionObserverRegistrations for which the element that owns this IntersectionObserverData is the target.
+    Vector<IntersectionObserverRegistration> registrations;
+};
+
+class IntersectionObserver : public RefCounted<IntersectionObserver>, public CanMakeWeakPtr<IntersectionObserver> {
 public:
     struct Init {
-        RefPtr<Element> root;
+        Element* root { nullptr };
         String rootMargin;
         Variant<double, Vector<double>> threshold;
     };
 
-    static Ref<IntersectionObserver> create(Ref<IntersectionObserverCallback>&& callback, Init&& init)
-    {
-        return adoptRef(*new IntersectionObserver(WTFMove(callback), WTFMove(init)));
-    }
-    
-    Element* root() const { return m_root.get(); }
-    String rootMargin() const { return m_rootMargin; }
+    static ExceptionOr<Ref<IntersectionObserver>> create(Document&, Ref<IntersectionObserverCallback>&&, Init&&);
+
+    ~IntersectionObserver();
+
+    Document* trackingDocument() { return m_root ? &m_root->document() : m_implicitRootDocument.get(); }
+
+    Element* root() const { return m_root; }
+    String rootMargin() const;
     const Vector<double>& thresholds() const { return m_thresholds; }
+    const Vector<Element*> observationTargets() const { return m_observationTargets; }
 
     void observe(Element&);
     void unobserve(Element&);
     void disconnect();
 
-    Vector<RefPtr<IntersectionObserverEntry>> takeRecords();
+    Vector<Ref<IntersectionObserverEntry>> takeRecords();
+
+    void targetDestroyed(Element&);
+    bool hasObservationTargets() const { return m_observationTargets.size(); }
+    void rootDestroyed();
+
+    void appendQueuedEntry(Ref<IntersectionObserverEntry>&&);
+    void notify();
 
 private:
-    IntersectionObserver(Ref<IntersectionObserverCallback>&&, Init&&);
-    
-    RefPtr<Element> m_root;
-    String m_rootMargin;
+    IntersectionObserver(Document&, Ref<IntersectionObserverCallback>&&, Element* root, LengthBox&& parsedRootMargin, Vector<double>&& thresholds);
+
+    bool removeTargetRegistration(Element&);
+    void removeAllTargets();
+
+    WeakPtr<Document> m_implicitRootDocument;
+    Element* m_root;
+    LengthBox m_rootMargin;
     Vector<double> m_thresholds;
     Ref<IntersectionObserverCallback> m_callback;
+    Vector<Element*> m_observationTargets;
+    Vector<Ref<IntersectionObserverEntry>> m_queuedEntries;
 };
 
 

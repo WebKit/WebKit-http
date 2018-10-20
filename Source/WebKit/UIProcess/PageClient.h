@@ -52,6 +52,7 @@ OBJC_CLASS NSTextAlternatives;
 #endif
 
 namespace API {
+class Attachment;
 class HitTestResult;
 class Object;
 class OpenPanelParameters;
@@ -393,8 +394,8 @@ public:
     virtual void didChangeBackgroundColor() = 0;
     virtual void isPlayingAudioWillChange() = 0;
     virtual void isPlayingAudioDidChange() = 0;
-    virtual void pinnedStateWillChange() { };
-    virtual void pinnedStateDidChange() { };
+    virtual void pinnedStateWillChange() { }
+    virtual void pinnedStateDidChange() { }
 
 #if PLATFORM(MAC)
     virtual void didPerformImmediateActionHitTest(const WebHitTestResultData&, bool contentPreventsDefault, API::Object*) = 0;
@@ -403,8 +404,9 @@ public:
 
     virtual void didHandleAcceptedCandidate() = 0;
 #endif
+    virtual void didFinishProcessingAllPendingMouseEvents() = 0;
 
-    virtual void videoControlsManagerDidChange() { };
+    virtual void videoControlsManagerDidChange() { }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
     virtual WebCore::WebMediaSessionManager& mediaSessionManager() = 0;
@@ -436,8 +438,8 @@ public:
 #endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    virtual void didInsertAttachment(const String& identifier, const String& source) { }
-    virtual void didRemoveAttachment(const String& identifier) { }
+    virtual void didInsertAttachment(API::Attachment&, const String& source) { }
+    virtual void didRemoveAttachment(API::Attachment&) { }
 #endif
 };
 

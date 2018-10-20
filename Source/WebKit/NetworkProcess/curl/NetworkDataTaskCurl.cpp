@@ -147,13 +147,14 @@ void NetworkDataTaskCurl::curlDidSendData(CurlRequest&, unsigned long long total
     m_client->didSendData(totalBytesSent, totalBytesExpectedToSend);
 }
 
-void NetworkDataTaskCurl::curlDidReceiveResponse(CurlRequest&, const CurlResponse& receivedResponse)
+void NetworkDataTaskCurl::curlDidReceiveResponse(CurlRequest& request, const CurlResponse& receivedResponse)
 {
     auto protectedThis = makeRef(*this);
     if (state() == State::Canceling || state() == State::Completed || !m_client)
         return;
 
     m_response = ResourceResponse(receivedResponse);
+    m_response.setDeprecatedNetworkLoadMetrics(request.networkLoadMetrics().isolatedCopy());
 
     handleCookieHeaders(receivedResponse);
 
@@ -306,7 +307,7 @@ void NetworkDataTaskCurl::willPerformHTTPRedirection()
     });
 }
 
-void NetworkDataTaskCurl::tryHttpAuthentication(const AuthenticationChallenge& challenge)
+void NetworkDataTaskCurl::tryHttpAuthentication(AuthenticationChallenge&& challenge)
 {
     if (!m_user.isNull() && !m_password.isNull()) {
         auto persistence = m_storedCredentialsPolicy == WebCore::StoredCredentialsPolicy::Use ? WebCore::CredentialPersistenceForSession : WebCore::CredentialPersistenceNone;
@@ -338,7 +339,7 @@ void NetworkDataTaskCurl::tryHttpAuthentication(const AuthenticationChallenge& c
         }
     }
 
-    m_client->didReceiveChallenge(challenge, [this, protectedThis = makeRef(*this), challenge](AuthenticationChallengeDisposition disposition, const Credential& credential) {
+    m_client->didReceiveChallenge(AuthenticationChallenge(challenge), [this, protectedThis = makeRef(*this), challenge](AuthenticationChallengeDisposition disposition, const Credential& credential) {
         if (m_state == State::Canceling || m_state == State::Completed)
             return;
 

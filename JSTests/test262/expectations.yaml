@@ -669,12 +669,6 @@ test/built-ins/Array/prototype/slice/length-exceeding-integer-limit.js:
 test/built-ins/Array/prototype/slice/target-array-with-non-writable-property.js:
   default: 'TypeError: Attempted to assign to readonly property.'
   strict mode: 'TypeError: Attempted to assign to readonly property.'
-test/built-ins/Array/prototype/sort/S15.4.4.11_A4_T3.js:
-  default: 'Test262Error: #3: var obj = {}; obj.sort = Array.prototype.sort; obj[0] = "z"; obj[1] = "y"; obj[2] = "x"; obj.length = -4294967294; obj.sort(); obj[0] === "z". Actual: y'
-  strict mode: 'Test262Error: #3: var obj = {}; obj.sort = Array.prototype.sort; obj[0] = "z"; obj[1] = "y"; obj[2] = "x"; obj.length = -4294967294; obj.sort(); obj[0] === "z". Actual: y'
-test/built-ins/Array/prototype/sort/comparefn-nonfunction-call-throws.js:
-  default: 'Test262Error: sample.sort(null); Expected a TypeError to be thrown but no exception was thrown at all'
-  strict mode: 'Test262Error: sample.sort(null); Expected a TypeError to be thrown but no exception was thrown at all'
 test/built-ins/Array/prototype/splice/S15.4.4.12_A3_T1.js:
   default: 'Test262Error: #1: var obj = {}; obj.splice = Array.prototype.splice; obj[0] = "x"; obj[4294967295] = "y"; obj.length = 4294967296; var arr = obj.splice(4294967295,1); arr.length === 1. Actual: 0'
   strict mode: 'Test262Error: #1: var obj = {}; obj.splice = Array.prototype.splice; obj[0] = "x"; obj[4294967295] = "y"; obj.length = 4294967296; var arr = obj.splice(4294967295,1); arr.length === 1. Actual: 0'
@@ -714,33 +708,30 @@ test/built-ins/ArrayBuffer/proto-from-ctor-realm.js:
 test/built-ins/ArrayBuffer/prototype/byteLength/detached-buffer.js:
   default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
   strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
-test/built-ins/ArrayBuffer/prototype/slice/end-default-if-undefined.js:
-  default: 'Test262Error: Expected SameValue(Â«0Â», Â«2Â») to be true'
-  strict mode: 'Test262Error: Expected SameValue(Â«0Â», Â«2Â») to be true'
-test/built-ins/ArrayBuffer/prototype/slice/end-exceeds-length.js:
-  default: 'Test262Error: slice(2, 0x100000000) Expected SameValue(Â«0Â», Â«6Â») to be true'
-  strict mode: 'Test262Error: slice(2, 0x100000000) Expected SameValue(Â«0Â», Â«6Â») to be true'
-test/built-ins/ArrayBuffer/prototype/slice/species-constructor-is-undefined.js:
-  default: 'TypeError: Slice requires at least one argument.'
-  strict mode: 'TypeError: Slice requires at least one argument.'
-test/built-ins/ArrayBuffer/prototype/slice/species-is-null.js:
-  default: 'TypeError: Slice requires at least one argument.'
-  strict mode: 'TypeError: Slice requires at least one argument.'
-test/built-ins/ArrayBuffer/prototype/slice/species-is-undefined.js:
-  default: 'TypeError: Slice requires at least one argument.'
-  strict mode: 'TypeError: Slice requires at least one argument.'
+test/built-ins/ArrayBuffer/prototype/slice/species-constructor-is-not-object.js:
+  default: 'Test262Error: `constructor` value is null Expected a TypeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: `constructor` value is null Expected a TypeError to be thrown but no exception was thrown at all'
+test/built-ins/ArrayBuffer/prototype/slice/species-is-not-constructor.js:
+  default: 'Test262Error: `constructor[Symbol.species]` value is Object Expected a TypeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: `constructor[Symbol.species]` value is Object Expected a TypeError to be thrown but no exception was thrown at all'
+test/built-ins/ArrayBuffer/prototype/slice/species-is-not-object.js:
+  default: 'Test262Error: `constructor[Symbol.species]` value is Boolean Expected a TypeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: `constructor[Symbol.species]` value is Boolean Expected a TypeError to be thrown but no exception was thrown at all'
 test/built-ins/ArrayBuffer/prototype/slice/species-returns-larger-arraybuffer.js:
-  default: 'TypeError: Slice requires at least one argument.'
-  strict mode: 'TypeError: Slice requires at least one argument.'
+  default: 'Test262Error: Expected SameValue(Â«8Â», Â«10Â») to be true'
+  strict mode: 'Test262Error: Expected SameValue(Â«8Â», Â«10Â») to be true'
+test/built-ins/ArrayBuffer/prototype/slice/species-returns-not-arraybuffer.js:
+  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
+test/built-ins/ArrayBuffer/prototype/slice/species-returns-same-arraybuffer.js:
+  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
+test/built-ins/ArrayBuffer/prototype/slice/species-returns-smaller-arraybuffer.js:
+  default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
+  strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all'
 test/built-ins/ArrayBuffer/prototype/slice/species.js:
-  default: 'TypeError: Slice requires at least one argument.'
-  strict mode: 'TypeError: Slice requires at least one argument.'
-test/built-ins/ArrayBuffer/prototype/slice/start-default-if-absent.js:
-  default: 'TypeError: Slice requires at least one argument.'
-  strict mode: 'TypeError: Slice requires at least one argument.'
-test/built-ins/ArrayBuffer/prototype/slice/start-exceeds-length.js:
-  default: 'Test262Error: slice(0x100000000, 7) Expected SameValue(Â«7Â», Â«0Â») to be true'
-  strict mode: 'Test262Error: slice(0x100000000, 7) Expected SameValue(Â«7Â», Â«0Â») to be true'
+  default: 'Test262Error: Expected SameValue(Â«[object ArrayBuffer]Â», Â«undefinedÂ») to be true'
+  strict mode: 'Test262Error: Expected SameValue(Â«[object ArrayBuffer]Â», Â«undefinedÂ») to be true'
 test/built-ins/ArrayIteratorPrototype/next/detach-typedarray-in-progress.js:
   default: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
   strict mode: 'Test262Error: Expected a TypeError to be thrown but no exception was thrown at all (Testing with Float64Array.)'
@@ -861,9 +852,6 @@ test/built-ins/DataView/prototype/setUint8/detached-buffer-before-outofrange-byt
 test/built-ins/DataView/prototype/setUint8/detached-buffer.js:
   default: 'Test262Error: Expected a TypeError but got a RangeError'
   strict mode: 'Test262Error: Expected a TypeError but got a RangeError'
-test/built-ins/Date/UTC/return-value.js:
-  default: 'Test262Error: 1970 Expected SameValue(Â«NaNÂ», Â«0Â») to be true'
-  strict mode: 'Test262Error: 1970 Expected SameValue(Â«NaNÂ», Â«0Â») to be true'
 test/built-ins/Date/proto-from-ctor-realm-one.js:
   default: 'TypeError: Type error'
   strict mode: 'TypeError: Type error'

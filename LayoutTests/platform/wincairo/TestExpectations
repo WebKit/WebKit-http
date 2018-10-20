@@ -513,10 +513,6 @@ webkit.org/b/61829 fast/events/drag-image-filename.html [ Skip ]
 # textInputController.setComposition() is not implementation.
 fast/forms/input-set-composition-scroll.html [ Skip ]
 
-# Can't find variable: IntersectionObserverEntry
-intersection-observer/intersection-observer-entry-interface.html [ Failure ]
-intersection-observer/intersection-observer-interface.html [ Failure ]
-
 # Can't find variable: WritableStream
 js/dom/builtin-getter-name.html [ Failure ]
 streams/pipe-to.html [ Failure ]
@@ -850,13 +846,19 @@ imported/blink/fast/dom/Window/open-window-features-fuzz.html [ Pass Timeout ]
 
 http/tests/appcache [ Skip ]
 http/tests/blink/sendbeacon [ Skip ]
-
 http/tests/cache [ Skip ]
 http/tests/cache-storage [ Skip ]
 http/tests/canvas [ Skip ]
 http/tests/contentdispositionattachmentsandbox [ Skip ]
 http/tests/contentfiltering [ Skip ]
-http/tests/cookies [ Skip ]
+
+http/tests/cookies/same-site [ Skip ]
+
+http/tests/cookies/double-quoted-value-with-semi-colon.html [ Failure ]
+http/tests/cookies/multiple-cookies.html [ Pass Failure ]
+http/tests/cookies/private-cookie-storage.html [ Crash ]
+http/tests/cookies/sync-xhr-set-cookie-invalidates-cache.html [ Pass Failure ]
+http/tests/cookies/third-party-cookie-relaxing.html [ Failure ]
 
 http/tests/css/cross-fade-reload.html [ Timeout Pass ]
 
@@ -870,8 +872,7 @@ http/tests/frame-throttling [ Skip ]
 
 http/tests/globalhistory/history-delegate-basic-refresh-redirect.html [ Failure ]
 
-http/tests/history/back-with-fragment-change.php [ Failure ]
-
+http/tests/history [ Skip ]
 http/tests/images [ Skip ]
 http/tests/incremental [ Skip ]
 http/tests/inspector [ Skip ]
@@ -879,7 +880,6 @@ http/tests/loading [ Skip ]
 http/tests/local/blob [ Skip ]
 http/tests/local/fileapi [ Skip ]
 http/tests/local/formdata [ Skip ]
-http/tests/local/drag-over-remote-content.html [ Failure ]
 
 http/tests/media [ Skip ]
 
@@ -888,8 +888,9 @@ http/tests/mime/mime-type-sniff.html [ Skip ]
 
 http/tests/misc [ Skip ]
 
-http/tests/multipart/load-last-non-html-frame.php [ Failure ]
-http/tests/multipart/multipart-replace-non-html-content.php [ Failure ]
+[ Release ] http/tests/multipart/load-last-non-html-frame.php [ Failure ]
+[ Release ] http/tests/multipart/multipart-replace-non-html-content.php [ Failure ]
+[ Debug ] http/tests/multipart [ Skip ]
 
 http/tests/navigation [ Skip ]
 http/tests/notifications [ Skip ]
@@ -901,27 +902,29 @@ http/tests/preload [ Skip ]
 http/tests/quicklook [ Skip ]
 http/tests/security [ Skip ]
 http/tests/ssl [ Skip ]
+
+[ Debug ] http/tests/storage/callbacks-are-called-in-correct-context.html [ Skip ]
+
 http/tests/subresource-integrity [ Skip ]
 http/tests/webarchive [ Skip ]
 http/tests/webauthn [ Skip ]
 http/tests/webgl [ Skip ]
 http/tests/webrtc [ Skip ]
 
-http/tests/websocket/tests/hybi/close-event.html [ Failure ]
-http/tests/websocket/tests/hybi/close.html [ Failure ]
 http/tests/websocket/tests/hybi/contentextensions [ Failure ]
-http/tests/websocket/tests/hybi/contentextensions/block-cookies.php [ Pass ]
-http/tests/websocket/tests/hybi/contentextensions/block-cookies-worker.php [ Pass ]
+http/tests/websocket/tests/hybi/contentextensions/block-cookies.php [ Pass Failure ]
+http/tests/websocket/tests/hybi/contentextensions/block-cookies-worker.php [ Pass Failure ]
 http/tests/websocket/tests/hybi/deflate-frame-parameter.html [ Failure ]
 http/tests/websocket/tests/hybi/httponly-cookie.pl [ Failure ]
 http/tests/websocket/tests/hybi/inspector [ Skip ]
 http/tests/websocket/tests/hybi/secure-cookie-insecure-connection.pl [ Failure ]
 http/tests/websocket/tests/hybi/secure-cookie-secure-connection.pl [ Failure ]
 http/tests/websocket/tests/hybi/upgrade-simple-ws.html [ Pass Failure ]
-http/tests/websocket/tests/hybi/websocket-allowed-setting-cookie-as-third-party.html [ Failure ]
+http/tests/websocket/tests/hybi/websocket-allowed-setting-cookie-as-third-party.html [ Pass Failure ]
 http/tests/websocket/tests/hybi/websocket-blocked-from-setting-cookie-as-third-party.html [ Failure ]
-http/tests/websocket/tests/hybi/websocket-cookie-overwrite-behavior.html [ Failure ]
+http/tests/websocket/tests/hybi/websocket-cookie-overwrite-behavior.html [ Pass Failure ]
 http/tests/websocket/tests/hybi/workers/close.html [ Pass Failure ]
+http/tests/websocket/tests/hybi/workers/worker-reload.html [ Timeout Pass ]
 
 # There is not NetworkProcess in WK1, so it can't crash.
 http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
@@ -929,11 +932,42 @@ http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
 http/tests/workers/service [ Skip ]
 http/tests/workers/worker-redirect.html [ Failure ]
 
-http/tests/xmlhttprequest [ Skip ]
-http/tests/xmlhttprequest/basic-auth-load-URL-with-consecutive-slashes.html [ Pass ]
-http/tests/xmlhttprequest/failed-auth.html [ Pass ]
-http/tests/xmlhttprequest/simple-sync.html [ Pass ]
-http/tests/xmlhttprequest/xmlhttprequest-unsafe-redirect.html [ Pass ]
+http/tests/xmlhttprequest/access-control-and-redirects.html [ Failure ]
+http/tests/xmlhttprequest/access-control-basic-whitelist-request-headers.html [ Failure ]
+http/tests/xmlhttprequest/access-control-preflight-credential-async.html [ Failure ]
+http/tests/xmlhttprequest/access-control-preflight-credential-sync.html [ Failure ]
+http/tests/xmlhttprequest/access-control-preflight-not-successful.html [ Failure ]
+http/tests/xmlhttprequest/auth-reject-protection-space.html [ Failure ]
+http/tests/xmlhttprequest/basic-auth-default.html [ Failure ]
+http/tests/xmlhttprequest/basic-auth-nopassword.html [ Failure ]
+http/tests/xmlhttprequest/basic-auth-nouser.html [ Failure ]
+http/tests/xmlhttprequest/cross-origin-authorization-with-embedder.html [ Failure ]
+http/tests/xmlhttprequest/cross-origin-authorization.html [ Failure ]
+http/tests/xmlhttprequest/cross-origin-cookie-storage.html [ Failure ]
+http/tests/xmlhttprequest/cross-origin-no-authorization.html [ Failure ]
+http/tests/xmlhttprequest/logout.html [ Failure ]
+http/tests/xmlhttprequest/null-auth.php [ Failure ]
+http/tests/xmlhttprequest/re-login-async.html [ Failure ]
+http/tests/xmlhttprequest/re-login.html [ Failure ]
+http/tests/xmlhttprequest/redirect-credentials-responseURL.html [ Failure ]
+http/tests/xmlhttprequest/redirect-cross-origin-post-sync.html [ Failure ]
+http/tests/xmlhttprequest/redirect-cross-origin-sync.html [ Failure ]
+http/tests/xmlhttprequest/redirect-cross-origin-tripmine.html [ Failure ]
+http/tests/xmlhttprequest/redirections-and-user-headers.html [ Failure ]
+http/tests/xmlhttprequest/remember-bad-password.html [ Failure ]
+http/tests/xmlhttprequest/response-access-on-error.html [ Failure ]
+http/tests/xmlhttprequest/upload-onload-event.html [ Failure ]
+http/tests/xmlhttprequest/upload-onloadend-event-after-load.html [ Failure ]
+http/tests/xmlhttprequest/upload-onprogress-event.html [ Failure ]
+http/tests/xmlhttprequest/upload-progress-events.html [ Failure ]
+
+http/tests/xmlhttprequest/reentrant-cancel.html [ Timeout Pass ]
+http/tests/xmlhttprequest/reopen-encoding.html [ Timeout Pass ]
+http/tests/xmlhttprequest/upload-onabort-progressevent-attributes.html [ Timeout ]
+http/tests/xmlhttprequest/upload-onload-progressevent-attributes.html [ Timeout ]
+http/tests/xmlhttprequest/upload-onloadend-event-after-abort.html [ Timeout ]
+
+[ Debug ] http/tests/xmlhttprequest/simple-cross-origin-progress-events.html [ Skip ]
 
 http/tests/xmlviewer [ Skip ]
 
@@ -1404,6 +1438,9 @@ webkit.org/b/150949 imported/blink/fast/css/transformed-overflow-hidden-clips-fi
 # color-filters are off by default
 webkit.org/b/185076 css3/color-filters [ Skip ]
 
+# IntersectionObserver is off by default
+webkit.org/b/188613 intersection-observer [ Skip ]
+
 [ Debug ] css2.1/20110323/replaced-intrinsic-ratio-001.htm [ Pass Failure ]
 
 ################################################################################
@@ -1506,7 +1543,20 @@ editing/pasteboard/entries-api/datatransfer-items-drop-getParent2.html [ Skip ]
 editing/pasteboard/entries-api/datatransfer-items-drop-hidden-file.html [ Skip ]
 
 ###### Selection
-editing/selection/ [ Pass Failure ImageOnlyFailure ]
+editing/selection/5354455-1.html [ Failure ]
+editing/selection/context-menu-on-text.html [ Failure ]
+editing/selection/context-menu-text-selection-lookup.html [ Failure ]
+editing/selection/drag-start-event-client-x-y.html [ Failure ]
+editing/selection/extend-selection-word.html [ Failure ]
+editing/selection/home-end.html [ Failure ]
+editing/selection/move-by-word-visually-mac.html [ Failure ]
+editing/selection/move-left-right.html [ Failure ]
+editing/selection/update-selection-by-style-change.html [ ImageOnlyFailure ]
+editing/selection/user-select-all-image-with-single-click.html [ Failure ]
+editing/selection/user-select-all-selection.html [ Failure ]
+editing/selection/user-select-all-with-shift.html [ Failure ]
+editing/selection/user-select-all-with-single-click.html [ Failure ]
+[ Debug ] editing/selection/5057506.html [ Failure ]
 
 # Assertion failure in replaySavedEvents
 webkit.org/b/21796 [ Debug ] editing/pasteboard/drop-text-events.html [ Skip ]
@@ -1588,6 +1638,8 @@ webkit.org/b/150684 editing/input/reveal-caret-of-multiline-contenteditable.html
 webkit.org/b/173281 editing/style/set-foreColor-with-color-filter.html [ Skip ]
 webkit.org/b/173281 editing/style/set-backColor-with-color-filter.html [ Skip ]
 webkit.org/b/173281 editing/style/inverse-color-filter.html [ Skip ]
+
+editing/input/press-tab-during-ime-composition.html [ Failure ]
 
 ################################################################################
 ###########################   End Editing Failures   ###########################

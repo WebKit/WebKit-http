@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,8 +39,6 @@ class StructLayoutBuilder extends Visitor {
     {
         if (node.size != null)
             return;
-        if (node.typeParameters.length)
-            throw new Error("Cannot do layout for generic type: " + node);
         let oldOffset = this._offset;
         this._offset = 0;
         super.visitStructType(node);
@@ -60,12 +58,6 @@ class StructLayoutBuilder extends Visitor {
         this._offset += size;
     }
     
-    visitNativeFuncInstance(node)
-    {
-        super.visitNativeFuncInstance(node);
-        node.func.didLayoutStructsInImplementationData(node.implementationData);
-    }
-    
     visitTypeRef(node)
     {
         super.visitTypeRef(node);
@@ -76,14 +68,6 @@ class StructLayoutBuilder extends Visitor {
     {
         for (let argument of node.argumentList)
             Node.visit(argument, this);
-        let handleTypeArguments = actualTypeArguments => {
-            if (actualTypeArguments) {
-                for (let argument of actualTypeArguments)
-                    argument.visit(this);
-            }
-        };
-        handleTypeArguments(node.instantiatedActualTypeArguments);
-        Node.visit(node.nativeFuncInstance, this);
         Node.visit(node.resultType, this);
     }
 }

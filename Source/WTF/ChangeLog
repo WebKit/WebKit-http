@@ -1,3 +1,325 @@
+2018-08-21  Antti Koivisto  <antti@apple.com>
+
+        Allow creating WeakPtrs to const objects
+        https://bugs.webkit.org/show_bug.cgi?id=188785
+
+        Reviewed by Geoffrey Garen.
+
+        const Foo foo;
+        WeakPtr<const Foo> weakConstFoo = makeWeakPtr(foo);
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtrFactory::createWeakPtr const):
+
+        Add a separate factory function for const T.
+        The underlying WeakReference is kept non-const in all cases.
+
+2018-08-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Linux] Cache the memory footprint and only update it after 1 second
+        https://bugs.webkit.org/show_bug.cgi?id=188791
+
+        Reviewed by Yusuke Suzuki.
+
+        Getting the memory footprint is an expensive operation in Linux. When called multiple times, the CPU usage is
+        too much (see bug #188787). We could cache the result for at least 1 second to ensure we don't call it more than
+        once per second.
+
+        * wtf/linux/MemoryFootprintLinux.cpp:
+        (WTF::forEachLine):
+        (WTF::computeMemoryFootprint):
+        (WTF::memoryFootprint):
+
+2018-08-20  Saam barati  <sbarati@apple.com>
+
+        Inline DataView accesses into DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=188573
+        <rdar://problem/43286746>
+
+        Reviewed by Michael Saboff.
+
+        * wtf/TriState.h:
+
+2018-08-19  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [WTF] Add WTF::unalignedLoad and WTF::unalignedStore
+        https://bugs.webkit.org/show_bug.cgi?id=188716
+
+        Reviewed by Darin Adler.
+
+        While some CPUs allow unaligned accesses to memory, doing it in C++ with `reinterpret_cast<>` is
+        undefined behavior. This patch adds WTF::{unalignedLoad,unalignedStore} helper functions, which
+        can load from and store to the pointer in an unaligned manner.
+        Actual implementation uses `memcpy`. This can be optimized to direct unaligned access operations
+        in supported CPUs like x86. Even though a CPU does not support unaligned accesses, memcpy is still
+        safe and the compiler emits appropriate code.
+
+        We name these functions `unalignedLoad` and `unalignedStore` instead of `loadUnaligned` and `storeUnaligned`
+        in order to align them to `atomicLoad` and `atomicStore`.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/UnalignedAccess.h: Added.
+        (WTF::unalignedLoad):
+        (WTF::unalignedStore):
+        * wtf/text/StringCommon.h:
+        (WTF::equal):
+        (WTF::loadUnaligned): Deleted.
+
+2018-08-17  David Kilzer  <ddkilzer@apple.com>
+
+        WTF's internal std::optional implementation should release assert on all bad accesses
+        <https://webkit.org/b/187669>
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/Assertions.h:
+        (RELEASE_ASSERT_UNDER_CONSTEXPR_CONTEXT): Add macro definitions.
+        * wtf/Optional.h:
+        (std::optional::operator -> const):
+        (std::optional::operator ->):
+        (std::optional::operator * const):
+        (std::optional::operator *):
+        (std::optional::value const):
+        (std::optional::value):
+        (std::optional<T::operator-> const):
+        (std::optional<T::operator* const):
+        (std::optional<T::value const):
+        - Change ASSERT_UNDER_CONSTEXPR_CONTEXT() macros to
+          RELEASE_ASSERT_UNDER_CONSTEXPR_CONTEXT() macros.
+
+2018-08-16  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Upstream Proximity Networking (nee Wi-Fi Assertions)
+        https://bugs.webkit.org/show_bug.cgi?id=188664
+
+        Reviewed by Tim Horton.
+
+        * wtf/FeatureDefines.h: Defined ENABLE_PROXIMITY_NETWORKING to 1 on watchOS.
+
+2018-08-16  Alex Christensen  <achristensen@webkit.org>
+
+        Re-introduce assertion removed in r234890
+        https://bugs.webkit.org/show_bug.cgi?id=188611
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/text/WTFString.h:
+
+2018-08-16  Antti Koivisto  <antti@apple.com>
+
+        Use OptionSet for ActivityState::Flags
+        https://bugs.webkit.org/show_bug.cgi?id=188554
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::operator^):
+
+        Add xor operator, useful for finding changes between sets.
+
+2018-08-15  Ben Richards  <benton_richards@apple.com>
+
+        We should cache the compiled sandbox profile in a data vault
+        https://bugs.webkit.org/show_bug.cgi?id=184991
+
+        Reviewed by Ryosuke Niwa.
+
+        Added trace points for sandbox initialization and exposed functions needed for sandbox caching
+
+        * wtf/SystemTracing.h:
+        * wtf/spi/darwin/SandboxSPI.h:
+
+2018-08-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] WaylandCompositor fails to properly remove surface from its page map
+        https://bugs.webkit.org/show_bug.cgi?id=188520
+
+        Reviewed by Alex Christensen.
+
+        Add a comment pointing to CanMakeWeakPtr, since it's useful and I very nearly missed it.
+
+        * wtf/WeakPtr.h:
+
+2018-08-14  Saam barati  <sbarati@apple.com>
+
+        HashMap<Ref<P>, V> asserts when V is not zero for its empty value
+        https://bugs.webkit.org/show_bug.cgi?id=188582
+
+        Reviewed by Sam Weinig.
+
+        The issue happened when we'd fill the hash table buffer with empty values. We
+        would iterate the buffer and invoke placement new with the incoming value being the
+        empty value. For Ref, this means that, we'd call its move constructor, which calls
+        leakRef(), which asserts that the Ref's pointer is not null. We'd like to keep
+        this assert since it catches bugs where you leakRef() more than once or WTFMove
+        an already moved Ref.
+        
+        This patch fixes this issue by adding a new trait for constructing an empty
+        value. We use that in HashTable instead of directly calling placement new.
+
+        * wtf/HashTable.h:
+        (WTF::HashTableBucketInitializer<false>::initialize):
+        * wtf/HashTraits.h:
+        (WTF::GenericHashTraits::constructEmptyValue):
+        (WTF::HashTraits<Ref<P>>::constructEmptyValue):
+        (WTF::KeyValuePairHashTraits::constructEmptyValue):
+
+2018-08-14  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed, rolling out r234859.
+
+        Windows ports can't compile
+
+        Reverted changeset:
+
+        "Use a Variant instead of a union in CSSSelector"
+        https://bugs.webkit.org/show_bug.cgi?id=188559
+        https://trac.webkit.org/changeset/234859
+
+2018-08-14  Alex Christensen  <achristensen@webkit.org>
+
+        isValidCSSSelector is unsafe to be called from a non-main thread
+        https://bugs.webkit.org/show_bug.cgi?id=188581
+        <rdar://problem/40517358>
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Vector.h:
+        (WTF::minCapacity>::isolatedCopy):
+
+2018-08-14  Alex Christensen  <achristensen@webkit.org>
+
+        Use a Variant instead of a union in CSSSelector
+        https://bugs.webkit.org/show_bug.cgi?id=188559
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/Variant.h:
+        Add packing macros to make it so Variant-containing structures don't always have 7 bytes of padding per Variant.
+
+2018-08-13  Don Olmstead  <don.olmstead@sony.com>
+
+        Meaning of OptionSet::contains is unclear when used with OptionSet argument
+        https://bugs.webkit.org/show_bug.cgi?id=188501
+        <rdar://problem/43246242>
+
+        Reviewed by Simon Fraser.
+
+        MSVC is unable to compile contains using an initializer_list within a lambda.
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::contains const):
+
+2018-08-13  Antti Koivisto  <antti@apple.com>
+
+        Meaning of OptionSet::contains is unclear when used with OptionSet argument
+        https://bugs.webkit.org/show_bug.cgi?id=188501
+
+        Reviewed by Anders Carlsson.
+
+        The existing behavior is "contains any" but it is not very clear from the name.
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::contains const):
+
+        This is now for testing a single option only.
+
+        (WTF::OptionSet::containsAny const):
+        (WTF::OptionSet::containsAll const):
+
+        Add separate functions for OptionSet argument.
+
+2018-08-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r234747.
+        https://bugs.webkit.org/show_bug.cgi?id=188524
+
+        plugin processes crash on launch (Requested by smfr on
+        #webkit).
+
+        Reverted changeset:
+
+        "We should cache the compiled sandbox profile in a data vault"
+        https://bugs.webkit.org/show_bug.cgi?id=184991
+        https://trac.webkit.org/changeset/234747
+
+2018-08-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [macOS] Multiple third party apps crash due to the thread safety check in TimerBase::setNextFireTime
+        https://bugs.webkit.org/show_bug.cgi?id=188480
+
+        Reviewed by Simon Fraser.
+
+        Added the SDK version for macOS Mojave.
+
+        * wtf/spi/darwin/dyldSPI.h:
+
+2018-08-10  Antti Koivisto  <antti@apple.com>
+
+        Use OptionSet for various RenderLayer flags
+        https://bugs.webkit.org/show_bug.cgi?id=188472
+
+        Reviewed by Simon Fraser.
+
+        * wtf/MathExtras.h:
+        (hasOneBitSet):
+        (hasZeroOrOneBitsSet):
+        (hasTwoOrMoreBitsSet):
+
+        Make constexpr.
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::OptionSet):
+
+        Always use constexpr, no need for separate debug versions with C++14.
+
+2018-08-09  Ben Richards  <benton_richards@apple.com>
+
+        We should cache the compiled sandbox profile in a data vault
+        https://bugs.webkit.org/show_bug.cgi?id=184991
+
+        Reviewed by Ryosuke Niwa.
+
+        Added trace points for sandbox initialization and exposed functions needed for sandbox caching
+
+        * wtf/SystemTracing.h:
+        * wtf/spi/darwin/SandboxSPI.h:
+
+2018-08-09  Saam Barati  <sbarati@apple.com>
+
+        memoryFootprint should return size_t not optional<size_t>
+        https://bugs.webkit.org/show_bug.cgi?id=188444
+
+        Reviewed by Simon Fraser.
+
+        We're now going to return zero instead of returning nullopt on failure.
+        There was a lot of code dancing around memoryFootprint failing for no
+        good reason.
+        
+        Users of this API were previously doing this on failure:
+        - Treating it as zero (this was the most common user).
+        - Crashing.
+        - Bailing out early and not changing our memory pressure state. This change
+        has the effect that instead of not changing our memory pressure state on
+        failure, we will go back to thinking we're not under memory pressure. Since
+        we relied on this API not failing to do anything useful (like kill the process
+        or release memory), this won't change our behavior here in a meaningful way.
+
+        * wtf/MemoryFootprint.h:
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::currentMemoryUsagePolicy):
+        (WTF::MemoryPressureHandler::shrinkOrDie):
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        * wtf/cocoa/MemoryFootprintCocoa.cpp:
+        (WTF::memoryFootprint):
+        * wtf/linux/MemoryFootprintLinux.cpp:
+        (WTF::memoryFootprint):
+        * wtf/linux/MemoryPressureHandlerLinux.cpp:
+        (WTF::MemoryPressureHandler::ReliefLogger::platformMemoryUsage):
+        * wtf/win/MemoryFootprintWin.cpp:
+        (WTF::memoryFootprint):
+
 2018-08-05  Darin Adler  <darin@apple.com>
 
         [Cocoa] More tweaks and refactoring to prepare for ARC

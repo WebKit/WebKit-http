@@ -48,7 +48,7 @@ static std::optional<Exception> setMethod(ResourceRequest& request, const String
 static ExceptionOr<String> computeReferrer(ScriptExecutionContext& context, const String& referrer)
 {
     if (referrer.isEmpty())
-        return String { "no-referrer" };
+        return String { "no-referrer"_s };
 
     // FIXME: Tighten the URL parsing algorithm according https://url.spec.whatwg.org/#concept-url-parser.
     URL referrerURL = context.completeURL(referrer);
@@ -56,10 +56,10 @@ static ExceptionOr<String> computeReferrer(ScriptExecutionContext& context, cons
         return Exception { TypeError, "Referrer is not a valid URL."_s };
 
     if (referrerURL.protocolIs("about") && referrerURL.path() == "client")
-        return String { "client" };
+        return String { "client"_s };
 
     if (!(context.securityOrigin() && context.securityOrigin()->canRequest(referrerURL)))
-        return Exception { TypeError, "Referrer is not same-origin."_s };
+        return String { "client"_s };
 
     return String { referrerURL.string() };
 }
@@ -134,8 +134,6 @@ ExceptionOr<void> FetchRequest::initializeOptions(const Init& init)
         const String& method = m_request.httpMethod();
         if (method != "GET" && method != "POST" && method != "HEAD")
             return Exception { TypeError, "Method must be GET, POST or HEAD in no-cors mode."_s };
-        if (!m_options.integrity.isEmpty())
-            return Exception { TypeError, "There cannot be an integrity in no-cors mode."_s };
         m_headers->setGuard(FetchHeaders::Guard::RequestNoCors);
     }
     

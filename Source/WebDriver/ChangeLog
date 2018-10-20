@@ -1,3 +1,83 @@
+2018-08-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: do not try to set the caret when focusing non text element in send keys command
+        https://bugs.webkit.org/show_bug.cgi?id=188515
+
+        Reviewed by Brian Burg.
+
+        It causes a type error exception.
+
+        * Session.cpp:
+        (WebDriver::Session::elementSendKeys):
+
+2018-08-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: include all capabilities in the new session response
+        https://bugs.webkit.org/show_bug.cgi?id=188511
+
+        Reviewed by Brian Burg.
+
+        As expected by the tests, using the default values when the capability is not provided by the user.
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::createSession):
+
+2018-08-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: several element_send_keys tests are failing since added
+        https://bugs.webkit.org/show_bug.cgi?id=181644
+
+        Reviewed by Michael Catanzaro.
+
+        This is because we are implementing an old version of the spec that received a "value" parameter to send keys
+        command, instead of the "text" one.
+
+        14.3 Element Send Keys
+        https://w3c.github.io/webdriver/#element-send-keys
+
+        * Session.cpp:
+        (WebDriver::Session::virtualKeyForKey): Receive a single character instead of a sequence.
+        (WebDriver::Session::elementSendKeys): It now receives a String and passes every character to virtualKeyForKey.
+        (WebDriver::Session::performActions): Pass first character of sequence to virtualKeyForKey.
+        * Session.h:
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::elementSendKeys): Get text as a String, instead of value as an array.
+
+2018-08-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: do not handle prompts that appear while running scripts
+        https://bugs.webkit.org/show_bug.cgi?id=188468
+
+        Reviewed by Žan Doberšek.
+
+        This changed in the spec, we should just finish the script without handling the alert at all.
+        https://github.com/w3c/webdriver/commit/afb578090bc95718debeab6a6821da8d12b952c8
+
+        "If at any point during the algorithm a user prompt appears, abort all subsequent substeps of this algorithm,
+        and return success with data null."
+        https://w3c.github.io/webdriver/#dfn-execute-a-function-body
+
+        * Session.cpp:
+        (WebDriver::Session::executeScript):
+
+2018-08-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] WebDriver: do not use default browser arguments when browser binary has been provided
+        https://bugs.webkit.org/show_bug.cgi?id=188465
+
+        Reviewed by Žan Doberšek.
+
+        We only want to use --automation when no options or no browser binary is provided, because we fallback to
+        MiniBrowser and we know it needs --automation flag.
+
+        * glib/SessionHostGlib.cpp:
+        (WebDriver::SessionHost::launchBrowser): Handle the case of browser arguments being std::nullopt.
+        * gtk/WebDriverServiceGtk.cpp:
+        (WebDriver::WebDriverService::platformParseCapabilities const): Initialize browser arguments to std:nullopt if
+        browser binary was provided.
+        * wpe/WebDriverServiceWPE.cpp:
+        (WebDriver::WebDriverService::platformParseCapabilities const): Ditto.
+
 2018-08-03  Ms2ger  <Ms2ger@igalia.com>
 
         Fix invalid optional access in WebDriver Session::createTopLevelBrowsingContext.

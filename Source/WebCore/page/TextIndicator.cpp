@@ -50,8 +50,6 @@
 #include "SelectionRect.h"
 #endif
 
-using namespace WebCore;
-
 namespace WebCore {
 
 static bool initializeIndicator(TextIndicatorData&, Frame&, const Range&, FloatSize margin, bool indicatesCurrentSelection);
@@ -78,7 +76,7 @@ RefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextInd
     Ref<Frame> protector(*frame);
 
     VisibleSelection oldSelection = frame->selection().selection();
-    TemporarySelectionOptions temporarySelectionOptions = TemporarySelectionOptionDefault;
+    OptionSet<TemporarySelectionOption> temporarySelectionOptions;
 #if PLATFORM(IOS)
     temporarySelectionOptions |= TemporarySelectionOptionIgnoreSelectionChanges;
     temporarySelectionOptions |= TemporarySelectionOptionEnableAppearanceUpdates;

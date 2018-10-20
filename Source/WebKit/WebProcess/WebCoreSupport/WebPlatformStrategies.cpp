@@ -72,9 +72,8 @@
 #include "WebSelectionData.h"
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 void WebPlatformStrategies::initialize()
 {
@@ -271,6 +270,13 @@ long WebPlatformStrategies::setURL(const PasteboardURL& pasteboardURL, const Str
 {
     uint64_t newChangeCount;
     WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::SetPasteboardURL(pasteboardURL, pasteboardName), Messages::WebPasteboardProxy::SetPasteboardURL::Reply(newChangeCount), 0);
+    return newChangeCount;
+}
+
+long WebPlatformStrategies::setColor(const Color& color, const String& pasteboardName)
+{
+    uint64_t newChangeCount { 0 };
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::SetPasteboardColor(pasteboardName, color), Messages::WebPasteboardProxy::SetPasteboardColor::Reply(newChangeCount), 0);
     return newChangeCount;
 }
 

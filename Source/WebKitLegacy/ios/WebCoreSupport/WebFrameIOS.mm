@@ -220,7 +220,7 @@ using namespace WebCore;
         SelectionRect &coreRect = rects[i];
         WebSelectionRect *webRect = [WebSelectionRect selectionRect];
         webRect.rect = static_cast<CGRect>(coreRect.rect());
-        webRect.writingDirection = coreRect.direction() == LTR ? WKWritingDirectionLeftToRight : WKWritingDirectionRightToLeft;
+        webRect.writingDirection = coreRect.direction() == TextDirection::LTR ? WKWritingDirectionLeftToRight : WKWritingDirectionRightToLeft;
         webRect.isLineBreak = coreRect.isLineBreak();
         webRect.isFirstOnLine = coreRect.isFirstOnLine();
         webRect.isLastOnLine = coreRect.isLastOnLine();
@@ -643,7 +643,7 @@ using namespace WebCore;
             break;
     }
     FrameSelection& frameSelection = _private->coreFrame->selection();
-    frameSelection.setSelection(frameSelection.selection(), wcGranularity);
+    frameSelection.setSelection(frameSelection.selection(), { }, { }, { }, wcGranularity);
 }
 
 static inline bool isAlphaNumericCharacter(UChar32 c)

@@ -144,10 +144,22 @@ class AutoinstallImportHook(object):
     def _install_pytest(self):
         self._install("https://pypi.python.org/packages/90/e3/e075127d39d35f09a500ebb4a90afd10f9ef0a1d28a6d09abeec0e444fdd/py-1.5.2.tar.gz#md5=279ca69c632069e1b71e11b14641ca28",
                               "py-1.5.2/py")
-        self._install("https://pypi.python.org/packages/1f/f8/8cd74c16952163ce0db0bd95fdd8810cbf093c08be00e6e665ebf0dc3138/pytest-3.2.5.tar.gz#md5=6dbe9bb093883f75394a689a1426ac6f",
-                              "pytest-3.2.5/_pytest")
-        self._install("https://pypi.python.org/packages/1f/f8/8cd74c16952163ce0db0bd95fdd8810cbf093c08be00e6e665ebf0dc3138/pytest-3.2.5.tar.gz#md5=6dbe9bb093883f75394a689a1426ac6f",
-                              "pytest-3.2.5/pytest.py")
+        self._install("https://pypi.python.org/packages/11/bf/cbeb8cdfaffa9f2ea154a30ae31a9d04a1209312e2919138b4171a1f8199/pluggy-0.6.0.tar.gz",
+                              "pluggy-0.6.0/pluggy")
+        self._install("https://pypi.python.org/packages/c0/2f/6773347277d76c5ade4414a6c3f785ef27e7f5c4b0870ec7e888e66a8d83/more-itertools-4.2.0.tar.gz",
+                              "more-itertools-4.2.0/more_itertools")
+        self._install("https://pypi.python.org/packages/16/d8/bc6316cf98419719bd59c91742194c111b6f2e85abac88e496adefaf7afe/six-1.11.0.tar.gz",
+                              "six-1.11.0/six.py")
+        self._install("https://pypi.python.org/packages/a1/e1/2d9bc76838e6e6667fde5814aa25d7feb93d6fa471bf6816daac2596e8b2/atomicwrites-1.1.5.tar.gz",
+                              "atomicwrites-1.1.5/atomicwrites")
+        self._install("https://pypi.python.org/packages/94/4a/db842e7a0545de1cdb0439bb80e6e42dfe82aaeaadd4072f2263a4fbed23/funcsigs-1.0.2.tar.gz",
+                              "funcsigs-1.0.2/funcsigs")
+        self._install("https://pypi.python.org/packages/e4/ac/a04671e118b57bee87dabca1e0f2d3bda816b7a551036012d0ca24190e71/attrs-18.1.0.tar.gz",
+                              "attrs-18.1.0/src/attr")
+        self._install("https://pypi.python.org/packages/a2/ec/415d0cccc1ed41cd7fdf69ad989da16a8d13057996371004cab4bafc48f3/pytest-3.6.2.tar.gz",
+                              "pytest-3.6.2/src/_pytest")
+        self._install("https://pypi.python.org/packages/a2/ec/415d0cccc1ed41cd7fdf69ad989da16a8d13057996371004cab4bafc48f3/pytest-3.6.2.tar.gz",
+                              "pytest-3.6.2/src/pytest.py")
 
     def _install_pylint(self):
         self._ensure_autoinstalled_dir_is_in_sys_path()

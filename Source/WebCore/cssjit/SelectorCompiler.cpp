@@ -451,9 +451,6 @@ static inline FunctionType addScrollbarPseudoClassType(const CSSSelector&, Selec
 // Handle the forward :nth-child() and backward :nth-last-child().
 static FunctionType addNthChildType(const CSSSelector& selector, SelectorContext selectorContext, FragmentPositionInRootFragments positionInRootFragments, CSSSelector::PseudoClassType firstMatchAlternative, bool visitedMatchEnabled, Vector<std::pair<int, int>, 2>& simpleCases, Vector<NthChildOfSelectorInfo>& filteredCases, HashSet<unsigned>& pseudoClasses, unsigned& internalSpecificity)
 {
-    if (!selector.parseNth())
-        return FunctionType::CannotMatchAnything;
-
     int a = selector.nthA();
     int b = selector.nthB();
 
@@ -2381,7 +2378,7 @@ Assembler::Jump SelectorCodeGenerator::modulo(Assembler::ResultCondition conditi
     Assembler::RegisterID dividend = JSC::X86Registers::eax;
     RegisterAllocationType dividendAllocation = RegisterAllocationType::External;
     StackAllocator::StackReference temporaryDividendStackReference;
-    Assembler::RegisterID temporaryDividendCopy = InvalidGPRReg;
+    Assembler::RegisterID temporaryDividendCopy = JSC::InvalidGPRReg;
     if (inputDividend != dividend) {
         bool registerIsInUse = m_registerAllocator.allocatedRegisters().contains(dividend);
         if (registerIsInUse) {
@@ -2403,7 +2400,7 @@ Assembler::Jump SelectorCodeGenerator::modulo(Assembler::ResultCondition conditi
     Assembler::RegisterID remainder = JSC::X86Registers::edx;
     RegisterAllocationType remainderAllocation = RegisterAllocationType::External;
     StackAllocator::StackReference temporaryRemainderStackReference;
-    Assembler::RegisterID temporaryRemainderCopy = InvalidGPRReg;
+    Assembler::RegisterID temporaryRemainderCopy = JSC::InvalidGPRReg;
     if (inputDividend != remainder) {
         bool registerIsInUse = m_registerAllocator.allocatedRegisters().contains(remainder);
         if (registerIsInUse) {

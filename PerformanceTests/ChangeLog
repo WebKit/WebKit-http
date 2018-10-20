@@ -1,3 +1,129 @@
+2018-08-13  Jon Lee  <jonlee@apple.com>
+
+        Update MotionMark version number
+        https://bugs.webkit.org/show_bug.cgi?id=188535
+        <rdar://problem/43254078>
+
+        Reviewed by Said Abou-Hallawa.
+
+        * MotionMark/resources/strings.js: To 1.1.
+
+2018-08-13  Jon Lee  <jonlee@apple.com>
+
+        [MotionMark] Update Multiply test
+        https://bugs.webkit.org/show_bug.cgi?id=188532
+        <rdar://problem/43252151>
+
+        Reviewed by Said Abou-Hallawa.
+
+        Update Multiply test to have a larger upper limit of number of particles. Cycle through three
+        different ways of hiding an element. Add new Multiple suite that isolates those components for
+        debugging purposes.
+
+        * MotionMark/resources/debug-runner/tests.js:
+        * MotionMark/tests/dom/multiply.html: Added.
+        * MotionMark/tests/dom/resources/multiply.js: Added.
+        * MotionMark/tests/master/resources/multiply.js:
+
+2018-08-13  Jon Lee  <jonlee@apple.com>
+
+        [MotionMark] Update Leaves test
+        https://bugs.webkit.org/show_bug.cgi?id=188530
+        <rdar://problem/43251862>
+
+        Reviewed by Said Abou-Hallawa.
+
+        Update Leaves test to include opacity and scale. Add new Leaves suite that isolate those components
+        for debugging purposes.
+
+        * MotionMark/resources/debug-runner/tests.js:
+        * MotionMark/tests/dom/leaves.html:
+        * MotionMark/tests/dom/resources/leaves.js:
+        * MotionMark/tests/master/resources/leaves.js:
+
+2018-08-10  Ben Richards  <benton_richards@apple.com>
+
+        Add ability to ignore process prewarming for launch time benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=188462
+
+        Reviewed by Ryosuke Niwa.
+
+        Added a flag to the new tab benchmark that will open a blank tab before the tab to be measured in order to ignore process prewarming.
+
+        * LaunchTime/launch_time.py:
+        (DefaultLaunchTimeHandler):
+        (DefaultLaunchTimeHandler.on_receive_stop_time): Deleted.
+        (DefaultLaunchTimeHandler.on_receive_stop_signal):
+        (DefaultLaunchTimeHandler.do_HEAD):
+        (DefaultLaunchTimeHandler.do_GET):
+        (DefaultLaunchTimeHandler.do_POST):
+        (LaunchTimeBenchmark):
+        (LaunchTimeBenchmark._standard_deviation): Fixed divide by zero bug when '-n' is set to 1
+        (LaunchTimeBenchmark.open_tab): Added option to open a blank tab
+        (LaunchTimeBenchmark.run):
+        * LaunchTime/new_tab.py:
+        (NewTabBenchmark.initialize):
+        (NewTabBenchmark.run_iteration):
+        (NewTabBenchmark.will_parse_arguments):
+        (NewTabBenchmark.did_parse_arguments):
+        (NewTabBenchmark.ResponseHandler.Handler.get_test_page):
+        (NewTabBenchmark.ResponseHandler.Handler.on_receive_stop_time): Deleted.
+        (NewTabBenchmark.ResponseHandler.Handler.on_receive_stop_signal):
+        (NewTabBenchmark):
+        * LaunchTime/startup.py:
+        (StartupBenchmark.ResponseHandler.Handler.get_test_page):
+        (StartupBenchmark.ResponseHandler.Handler.on_receive_stop_time): Deleted.
+        (StartupBenchmark.ResponseHandler.Handler.on_receive_stop_signal):
+        (StartupBenchmark):
+
+2018-08-10  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r234750.
+
+        Caused 185 perf test failures.
+
+        Reverted changeset:
+
+        "Add ability to ignore process prewarming for launch time
+        benchmark"
+        https://bugs.webkit.org/show_bug.cgi?id=188462
+        https://trac.webkit.org/changeset/234750
+
+2018-08-09  Ben Richards  <benton_richards@apple.com>
+
+        Add ability to ignore process prewarming for launch time benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=188462
+
+        Reviewed by Ryosuke Niwa.
+
+        Added a flag to the new tab benchmark that will open a blank tab before the tab to be measured in order to ignore process prewarming.
+
+        * LaunchTime/launch_time.py:
+        (DefaultLaunchTimeHandler):
+        (DefaultLaunchTimeHandler.on_receive_stop_time): Deleted.
+        (DefaultLaunchTimeHandler.on_receive_stop_signal):
+        (DefaultLaunchTimeHandler.do_HEAD):
+        (DefaultLaunchTimeHandler.do_GET):
+        (DefaultLaunchTimeHandler.do_POST):
+        (LaunchTimeBenchmark):
+        (LaunchTimeBenchmark._standard_deviation): Fixed divide by zero bug when '-n' is set to 1
+        (LaunchTimeBenchmark.open_tab): Added option to open a blank tab
+        (LaunchTimeBenchmark.run):
+        * LaunchTime/new_tab.py:
+        (NewTabBenchmark.initialize):
+        (NewTabBenchmark.run_iteration):
+        (NewTabBenchmark.will_parse_arguments):
+        (NewTabBenchmark.did_parse_arguments):
+        (NewTabBenchmark.ResponseHandler.Handler.get_test_page):
+        (NewTabBenchmark.ResponseHandler.Handler.on_receive_stop_time): Deleted.
+        (NewTabBenchmark.ResponseHandler.Handler.on_receive_stop_signal):
+        (NewTabBenchmark):
+        * LaunchTime/startup.py:
+        (StartupBenchmark.ResponseHandler.Handler.get_test_page):
+        (StartupBenchmark.ResponseHandler.Handler.on_receive_stop_time): Deleted.
+        (StartupBenchmark.ResponseHandler.Handler.on_receive_stop_signal):
+        (StartupBenchmark):
+
 2018-07-26  Andy VanWagoner  <andy@vanwagoner.family>
 
         [INTL] Remove INTL sub-feature compile flags

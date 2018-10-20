@@ -139,7 +139,7 @@
     _processPoolConfiguration->setAdditionalReadAccessAllowedPaths(WTFMove(paths));
 }
 
-#if ENABLE(WIFI_ASSERTIONS)
+#if ENABLE(PROXIMITY_NETWORKING)
 - (NSUInteger)wirelessContextIdentifier
 {
     return _processPoolConfiguration->wirelessContextIdentifier();
@@ -218,15 +218,6 @@
 - (void)setSourceApplicationSecondaryIdentifier:(NSString *)sourceApplicationSecondaryIdentifier
 {
     _processPoolConfiguration->setSourceApplicationSecondaryIdentifier(sourceApplicationSecondaryIdentifier);
-}
-
-- (BOOL)allowsCellularAccess
-{
-    return YES;
-}
-
-- (void)setAllowsCellularAccess:(BOOL)allowsCellularAccess
-{
 }
 
 - (BOOL)shouldCaptureAudioInUIProcess
@@ -356,7 +347,7 @@
 
 - (id)copyWithZone:(NSZone *)zone
 {
-    return wrapper(_processPoolConfiguration->copy().leakRef());
+    return [wrapper(_processPoolConfiguration->copy()) retain];
 }
 
 - (NSString *)customWebContentServiceBundleIdentifier

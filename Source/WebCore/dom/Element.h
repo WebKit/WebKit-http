@@ -56,6 +56,10 @@ class RenderTreePosition;
 class WebAnimation;
 struct ElementStyle;
 
+#if ENABLE(INTERSECTION_OBSERVER)
+struct IntersectionObserverData;
+#endif
+
 enum SpellcheckAttributeState {
     SpellcheckAttributeTrue,
     SpellcheckAttributeFalse,
@@ -567,6 +571,11 @@ public:
     using ContainerNode::setAttributeEventListener;
     void setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);
 
+#if ENABLE(INTERSECTION_OBSERVER)
+    IntersectionObserverData& ensureIntersectionObserverData();
+    IntersectionObserverData* intersectionObserverData();
+#endif
+
     Element* findAnchorElementForLink(String& outAnchorName);
 
     ExceptionOr<Ref<WebAnimation>> animate(JSC::ExecState&, JSC::Strong<JSC::JSObject>&&, std::optional<Variant<double, KeyframeAnimationOptions>>&&);
@@ -644,6 +653,10 @@ private:
     
 #if ENABLE(TREE_DEBUGGING)
     void formatForDebugger(char* buffer, unsigned length) const override;
+#endif
+
+#if ENABLE(INTERSECTION_OBSERVER)
+    void disconnectFromIntersectionObservers();
 #endif
 
     // The cloneNode function is private so that non-virtual cloneElementWith/WithoutChildren are used instead.
@@ -823,7 +836,7 @@ template<typename... QualifiedNames>
 inline const AtomicString& Element::getAttribute(const QualifiedName& name, const QualifiedNames&... names) const
 {
     const AtomicString& value = getAttribute(name);
-    if (!value.isEmpty())
+    if (!value.isNull())
         return value;
     return getAttribute(names...);
 }

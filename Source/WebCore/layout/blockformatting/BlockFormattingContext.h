@@ -56,10 +56,13 @@ private:
     void computeHeightAndMargin(LayoutContext&, const Box&, Display::Box&) const;
 
     void computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const override;
-    void computeFloatingPosition(FloatingContext&, const Box&, Display::Box&) const;
+    void computeFloatingPosition(LayoutContext&, FloatingContext&, const Box&, Display::Box&) const;
+    void computeVerticalPositionForFloatClear(LayoutContext&, const FloatingContext&, const Box&, Display::Box&) const;
     void computeInFlowPositionedPosition(LayoutContext&, const Box&, Display::Box&) const override;
     void computeInFlowWidthAndMargin(LayoutContext&, const Box&, Display::Box&) const;
     void computeInFlowHeightAndMargin(LayoutContext&, const Box&, Display::Box&) const;
+    void computeEstimatedMarginTop(LayoutContext&, const Box&, Display::Box&) const;
+    void computeEstimatedMarginTopForAncestors(LayoutContext&, const Box&) const;
 
     FormattingContext::InstrinsicWidthConstraints instrinsicWidthConstraints(LayoutContext&, const Box&) const override;
 
@@ -86,6 +89,7 @@ private:
     class MarginCollapse {
     public:
         static LayoutUnit marginTop(const LayoutContext&, const Box&);
+        static LayoutUnit estimatedMarginTop(const LayoutContext&, const Box&);
         static LayoutUnit marginBottom(const LayoutContext&, const Box&);
 
         static bool isMarginBottomCollapsedWithParent(const LayoutContext&, const Box&);

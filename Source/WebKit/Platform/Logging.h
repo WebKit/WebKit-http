@@ -40,6 +40,7 @@ extern "C" {
 #endif
 
 #define WEBKIT2_LOG_CHANNELS(M) \
+    M(ActivityState) \
     M(BackForward) \
     M(CacheStorage) \
     M(ContextMenu) \
@@ -66,6 +67,7 @@ extern "C" {
     M(Process) \
     M(ProcessSuspension) \
     M(ProcessSwapping) \
+    M(ProximityNetworking) \
     M(RemoteLayerTree) \
     M(Resize) \
     M(ResourceLoadStatistics) \
@@ -80,7 +82,6 @@ extern "C" {
     M(VirtualMemory) \
     M(VisibleRects) \
     M(WebRTC) \
-    M(WiFiAssertions) \
 
 WEBKIT2_LOG_CHANNELS(DECLARE_LOG_CHANNEL)
 

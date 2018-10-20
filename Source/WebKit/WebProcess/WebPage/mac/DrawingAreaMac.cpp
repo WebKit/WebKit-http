@@ -34,9 +34,8 @@
 #include <WebCore/DisplayRefreshMonitorManager.h>
 #include <WebCore/RunLoopObserver.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
 
@@ -57,7 +56,7 @@ private:
     
     bool hasRequestedRefreshCallback() const override { return m_hasSentMessage; }
 
-    Ref<WebPage> m_webPage;
+    WeakPtr<WebPage> m_webPage;
     bool m_hasSentMessage { false };
     unsigned m_observerID;
     static unsigned m_counterID;
@@ -69,18 +68,25 @@ unsigned DisplayRefreshMonitorMac::m_counterID = 0;
 
 DisplayRefreshMonitorMac::DisplayRefreshMonitorMac(PlatformDisplayID displayID, WebPage& webPage)
     : DisplayRefreshMonitor(displayID)
-    , m_webPage(webPage)
+    , m_webPage(makeWeakPtr(webPage))
     , m_observerID(++m_counterID)
 {
 }
 
 DisplayRefreshMonitorMac::~DisplayRefreshMonitorMac()
 {
+    if (!m_webPage)
+        return;
+    
     m_webPage->send(Messages::WebPageProxy::StopDisplayLink(m_observerID));
 }
 
 bool DisplayRefreshMonitorMac::requestRefreshCallback()
 {
+    ASSERT(m_webPage);
+    if (!m_webPage)
+        return false;
+
     if (!isActive())
         return false;
 

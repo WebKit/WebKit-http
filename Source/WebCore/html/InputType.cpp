@@ -941,6 +941,11 @@ bool InputType::shouldAppearIndeterminate() const
     return false;
 }
 
+bool InputType::isPresentingAttachedView() const
+{
+    return false;
+}
+
 bool InputType::supportsSelectionAPI() const
 {
     return false;
@@ -1124,6 +1129,11 @@ Color InputType::valueAsColor() const
 
 void InputType::selectColor(StringView)
 {
+}
+
+Vector<Color> InputType::suggestedColors() const
+{
+    return { };
 }
 
 RefPtr<TextControlInnerTextElement> InputType::innerTextElement() const

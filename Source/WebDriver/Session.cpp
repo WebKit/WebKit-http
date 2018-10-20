@@ -1579,12 +1579,12 @@ void Session::elementClear(const String& elementID, Function<void (CommandResult
     });
 }
 
-String Session::virtualKeyForKeySequence(const String& keySequence, KeyModifier& modifier)
+String Session::virtualKeyForKey(UChar key, KeyModifier& modifier)
 {
     // §17.4.2 Keyboard Actions.
     // https://www.w3.org/TR/webdriver/#keyboard-actions
     modifier = KeyModifier::None;
-    switch (keySequence[0]) {
+    switch (key) {
     case 0xE001U:
         return "Cancel"_s;
     case 0xE002U:
@@ -1717,14 +1717,14 @@ String Session::virtualKeyForKeySequence(const String& keySequence, KeyModifier&
     return String();
 }
 
-void Session::elementSendKeys(const String& elementID, Vector<String>&& keys, Function<void (CommandResult&&)>&& completionHandler)
+void Session::elementSendKeys(const String& elementID, const String& text, Function<void (CommandResult&&)>&& completionHandler)
 {
     if (!m_toplevelBrowsingContext) {
         completionHandler(CommandResult::fail(CommandResult::ErrorCode::NoSuchWindow));
         return;
     }
 
-    handleUserPrompts([this, elementID, keys = WTFMove(keys), completionHandler = WTFMove(completionHandler)](CommandResult&& result) mutable {
+    handleUserPrompts([this, elementID, text, completionHandler = WTFMove(completionHandler)](CommandResult&& result) mutable {
         if (result.isError()) {
             completionHandler(WTFMove(result));
             return;
@@ -1732,12 +1732,14 @@ void Session::elementSendKeys(const String& elementID, Vector<String>&& keys, Fu
         // FIXME: move this to an atom.
         static const char focusScript[] =
             "function focus(element) {"
-            "    var doc = element.ownerDocument || element;"
-            "    var prevActiveElement = doc.activeElement;"
+            "    let doc = element.ownerDocument || element;"
+            "    let prevActiveElement = doc.activeElement;"
             "    if (element != prevActiveElement && prevActiveElement)"
             "        prevActiveElement.blur();"
             "    element.focus();"
-            "    if (element != prevActiveElement && element.value && element.value.length && element.setSelectionRange)"
+            "    let tagName = element.tagName.toUpperCase();"
+            "    let isTextElement = tagName === 'TEXTAREA' || (tagName === 'INPUT' && element.type === 'text');"
+            "    if (isTextElement && element.selectionEnd == 0)"
             "        element.setSelectionRange(element.value.length, element.value.length);"
             "    if (element != doc.activeElement)"
             "        throw new Error('cannot focus element');"
@@ -1751,19 +1753,21 @@ void Session::elementSendKeys(const String& elementID, Vector<String>&& keys, Fu
             parameters->setString("frameHandle"_s, m_currentBrowsingContext.value());
         parameters->setString("function"_s, focusScript);
         parameters->setArray("arguments"_s, WTFMove(arguments));
-        m_host->sendCommandToBackend("evaluateJavaScriptFunction"_s, WTFMove(parameters), [this, protectedThis = makeRef(*this), keys = WTFMove(keys), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) mutable {
+        m_host->sendCommandToBackend("evaluateJavaScriptFunction"_s, WTFMove(parameters), [this, protectedThis = makeRef(*this), text, completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) mutable {
             if (response.isError || !response.responseObject) {
                 completionHandler(CommandResult::fail(WTFMove(response.responseObject)));
                 return;
             }
 
             unsigned stickyModifiers = 0;
+            auto textLength = text.length();
             Vector<KeyboardInteraction> interactions;
-            interactions.reserveInitialCapacity(keys.size());
-            for (const auto& key : keys) {
+            interactions.reserveInitialCapacity(textLength);
+            for (unsigned i = 0; i < textLength; ++i) {
+                auto key = text[i];
                 KeyboardInteraction interaction;
                 KeyModifier modifier;
-                auto virtualKey = virtualKeyForKeySequence(key, modifier);
+                auto virtualKey = virtualKeyForKey(key, modifier);
                 if (!virtualKey.isNull()) {
                     interaction.key = virtualKey;
                     if (modifier != KeyModifier::None) {
@@ -1774,7 +1778,7 @@ void Session::elementSendKeys(const String& elementID, Vector<String>&& keys, Fu
                             interaction.type = KeyboardInteractionType::KeyRelease;
                     }
                 } else
-                    interaction.text = key;
+                    interaction.text = String(&key, 1);
                 interactions.uncheckedAppend(WTFMove(interaction));
             }
 
@@ -1859,7 +1863,7 @@ void Session::executeScript(const String& script, RefPtr<JSON::Array>&& argument
             if (response.isError || !response.responseObject) {
                 auto result = CommandResult::fail(WTFMove(response.responseObject));
                 if (result.errorCode() == CommandResult::ErrorCode::UnexpectedAlertOpen)
-                    handleUnexpectedAlertOpen(WTFMove(completionHandler));
+                    completionHandler(CommandResult::success());
                 else
                     completionHandler(WTFMove(result));
                 return;
@@ -2299,7 +2303,7 @@ void Session::performActions(Vector<Vector<Action>>&& actionsByTick, Function<vo
                         break;
                     case Action::Subtype::KeyDown: {
                         KeyModifier modifier;
-                        auto virtualKey = virtualKeyForKeySequence(action.key.value(), modifier);
+                        auto virtualKey = virtualKeyForKey(action.key.value()[0], modifier);
                         if (!virtualKey.isNull())
                             currentState.pressedVirtualKey = virtualKey;
                         else

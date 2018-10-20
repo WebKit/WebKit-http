@@ -212,6 +212,9 @@ class WinPort(ApplePort):
 
         return self._build_path('ImageDiff.exe')
 
+    def path_to_api_test_binaries(self):
+        return {binary.split('.')[0]: self._build_path(binary) for binary in ['TestWTF.exe', 'TestWebCore.exe', 'TestWebKitLegacy.exe']}
+
     def test_search_path(self):
         test_fallback_names = [path for path in self.baseline_search_path() if not path.startswith(self._webkit_baseline_path('mac'))]
         return map(self._webkit_baseline_path, test_fallback_names)
@@ -474,8 +477,6 @@ class WinCairoPort(WinPort):
     port_name = "wincairo"
 
     DEFAULT_ARCHITECTURE = 'x86_64'
-
-    TEST_PATH_SEPARATOR = os.sep
 
     def default_baseline_search_path(self):
         version_name_map = VersionNameMap.map(self.host.platform)

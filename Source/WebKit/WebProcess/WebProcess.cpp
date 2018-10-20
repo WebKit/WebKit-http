@@ -148,9 +148,6 @@
 #include <JavaScriptCore/RemoteInspector.h>
 #endif
 
-using namespace JSC;
-using namespace WebCore;
-
 // This should be less than plugInAutoStartExpirationTimeThreshold in PlugInAutoStartProvider.
 static const Seconds plugInAutoStartExpirationTimeUpdateThreshold { 29 * 24 * 60 * 60 };
 
@@ -158,6 +155,8 @@ static const Seconds plugInAutoStartExpirationTimeUpdateThreshold { 29 * 24 * 60
 static const Seconds nonVisibleProcessCleanupDelay { 10_s };
 
 namespace WebKit {
+using namespace JSC;
+using namespace WebCore;
 
 WebProcess& WebProcess::singleton()
 {
@@ -1373,7 +1372,7 @@ void WebProcess::updateCPUMonitorState(CPUMonitorUpdateReason)
 
 #endif
 
-void WebProcess::pageActivityStateDidChange(uint64_t, WebCore::ActivityState::Flags changed)
+void WebProcess::pageActivityStateDidChange(uint64_t, OptionSet<WebCore::ActivityState::Flag> changed)
 {
     if (changed & WebCore::ActivityState::IsVisible)
         updateCPUMonitorState(CPUMonitorUpdateReason::VisibilityHasChanged);

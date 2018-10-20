@@ -90,6 +90,7 @@ private:
     RefPtr<WeakReference<T>> m_ref;
 };
 
+// Note: you probably want to inherit from CanMakeWeakPtr rather than use this directly.
 template<typename T>
 class WeakPtrFactory {
     WTF_MAKE_NONCOPYABLE(WeakPtrFactory<T>);
@@ -108,6 +109,13 @@ public:
         if (!m_ref)
             m_ref = WeakReference<T>::create(&ptr);
         return { makeRef(*m_ref) };
+    }
+
+    WeakPtr<const T> createWeakPtr(const T& ptr) const
+    {
+        if (!m_ref)
+            m_ref = WeakReference<T>::create(const_cast<T*>(&ptr));
+        return { makeRef(reinterpret_cast<WeakReference<const T>&>(*m_ref)) };
     }
 
     void revokeAll()

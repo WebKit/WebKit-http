@@ -37,29 +37,22 @@ CSSSelectorList::CSSSelectorList(const CSSSelectorList& other)
     unsigned otherComponentCount = other.componentCount();
     ASSERT_WITH_SECURITY_IMPLICATION(otherComponentCount);
 
-    m_selectorArray = reinterpret_cast<CSSSelector*>(fastMalloc(sizeof(CSSSelector) * otherComponentCount));
+    m_selectorArray = makeUniqueArray<CSSSelector>(otherComponentCount);
     for (unsigned i = 0; i < otherComponentCount; ++i)
         new (NotNull, &m_selectorArray[i]) CSSSelector(other.m_selectorArray[i]);
 }
 
-CSSSelectorList::CSSSelectorList(CSSSelectorList&& other)
-    : m_selectorArray(other.m_selectorArray)
-{
-    other.m_selectorArray = nullptr;
-}
-
-void CSSSelectorList::adoptSelectorVector(Vector<std::unique_ptr<CSSParserSelector>>& selectorVector)
+CSSSelectorList::CSSSelectorList(Vector<std::unique_ptr<CSSParserSelector>>&& selectorVector)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!selectorVector.isEmpty());
 
-    deleteSelectors();
     size_t flattenedSize = 0;
     for (size_t i = 0; i < selectorVector.size(); ++i) {
         for (CSSParserSelector* selector = selectorVector[i].get(); selector; selector = selector->tagHistory())
             ++flattenedSize;
     }
     ASSERT(flattenedSize);
-    m_selectorArray = reinterpret_cast<CSSSelector*>(fastMalloc(sizeof(CSSSelector) * flattenedSize));
+    m_selectorArray = makeUniqueArray<CSSSelector>(flattenedSize);
     size_t arrayIndex = 0;
     for (size_t i = 0; i < selectorVector.size(); ++i) {
         CSSParserSelector* current = selectorVector[i].get();
@@ -82,17 +75,16 @@ void CSSSelectorList::adoptSelectorVector(Vector<std::unique_ptr<CSSParserSelect
     }
     ASSERT(flattenedSize == arrayIndex);
     m_selectorArray[arrayIndex - 1].setLastInSelectorList();
-    selectorVector.clear();
 }
 
 unsigned CSSSelectorList::componentCount() const
 {
     if (!m_selectorArray)
         return 0;
-    CSSSelector* current = m_selectorArray;
+    CSSSelector* current = m_selectorArray.get();
     while (!current->isLastInSelectorList())
         ++current;
-    return (current - m_selectorArray) + 1;
+    return (current - m_selectorArray.get()) + 1;
 }
 
 unsigned CSSSelectorList::listSize() const
@@ -100,38 +92,13 @@ unsigned CSSSelectorList::listSize() const
     if (!m_selectorArray)
         return 0;
     unsigned size = 1;
-    CSSSelector* current = m_selectorArray;
+    CSSSelector* current = m_selectorArray.get();
     while (!current->isLastInSelectorList()) {
         if (current->isLastInTagHistory())
             ++size;
         ++current;
     }
     return size;
-}
-
-CSSSelectorList& CSSSelectorList::operator=(CSSSelectorList&& other)
-{
-    deleteSelectors();
-    m_selectorArray = other.m_selectorArray;
-    other.m_selectorArray = nullptr;
-
-    return *this;
-}
-
-void CSSSelectorList::deleteSelectors()
-{
-    if (!m_selectorArray)
-        return;
-
-    CSSSelector* selectorArray = m_selectorArray;
-    m_selectorArray = nullptr;
-
-    bool isLastSelector = false;
-    for (CSSSelector* s = selectorArray; !isLastSelector; ++s) {
-        isLastSelector = s->isLastInSelectorList();
-        s->~CSSSelector();
-    }
-    fastFree(selectorArray);
 }
 
 String CSSSelectorList::selectorsText() const

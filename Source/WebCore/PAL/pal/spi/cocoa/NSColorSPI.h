@@ -29,6 +29,10 @@
 
 #import <AppKit/NSColor_Private.h>
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#import <AppKit/NSColor_UserAccent.h>
+#endif
+
 #else
 
 @interface NSColor ()
@@ -45,5 +49,21 @@
 + (NSColor *)findHighlightColor;
 + (NSColor *)placeholderTextColor;
 @end
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+typedef NS_ENUM(NSInteger, NSUserAccentColor) {
+    NSUserAccentColorRed = 0,
+    NSUserAccentColorOrange,
+    NSUserAccentColorYellow,
+    NSUserAccentColorGreen,
+    NSUserAccentColorBlue,
+    NSUserAccentColorPurple,
+    NSUserAccentColorPink,
+
+    NSUserAccentColorNoColor = -1,
+};
+
+extern "C" NSUserAccentColor NSColorGetUserAccentColor(void);
+#endif
 
 #endif

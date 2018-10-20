@@ -1,3 +1,150 @@
+2018-08-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace booleans for modifier keys in UIEventWithKeyState with OptionSet<Modifier>
+        https://bugs.webkit.org/show_bug.cgi?id=188777
+
+        Reviewed by Simon Fraser.
+
+        Create MouseEvent::create with IsSimulated set to Yes; correspoding to the last argument
+        being "true" before the code change.
+
+        Use modifiersForEvent to convert [nsEvent modifierFlags] to OptionSet<Modifier>.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2018-08-21  Daniel Bates  <dabates@apple.com>
+
+        Replace TextCheckingTypeMask with OptionSet
+        https://bugs.webkit.org/show_bug.cgi?id=188678
+
+        Reviewed by Antti Koivisto.
+
+        Currently we have code in WebEditorClient::checkTextOfParagraph() that incorrectly assumes
+        that the enumerators of TextCheckingType have a one-to-one correspondence with NSTextCheckingType.
+        (This is not the case because there is not corresponding NSTextCheckingType for TextCheckingTypeShowCorrectionPanel).
+        We now explicitly convert from OptionSet<TextCheckingType> to NSTextCheckingTypes.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::checkTextOfParagraph):
+        (WebEditorClient::shouldEraseMarkersAfterChangeSelection const):
+        (core): Fix up code style nits; compare resultType on the right-hand side instead of the
+        left as this is more readable and unncessary now that modern compilers like Clang have
+        diagnostics to catch accidental assignments when equality was intended.
+        (WebEditorClient::didCheckSucceed):
+        * WebView/WebView.mm:
+        (coreTextCheckingType):
+        (textCheckingResultFromNSTextCheckingResult):
+
+2018-08-21  Daniel Bates  <dabates@apple.com>
+
+        [iOS][WK1] Support toggling continuous spell checking from tests
+        https://bugs.webkit.org/show_bug.cgi?id=188763
+
+        Reviewed by Simon Fraser.
+
+        Move some more code out from under a !PLATFORM(IOS)-guard so as to support toggling continuous
+        spell checking from tests in iOS WebKit Legacy.
+
+        * WebCoreSupport/WebEditorClient.h:
+        (WebEditorClient::toggleContinuousSpellChecking): Deleted.
+        * WebCoreSupport/WebEditorClient.mm:
+        * WebView/WebView.h:
+        * WebView/WebView.mm:
+        (-[WebView toggleContinuousSpellChecking:]):
+        (-[WebView toggleSmartInsertDelete:]):
+
+2018-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        Add some plumbing for safe browsing
+        https://bugs.webkit.org/show_bug.cgi?id=188709
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+
+2018-08-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace canBubble and cancelable booleans in Event by enum classes
+        https://bugs.webkit.org/show_bug.cgi?id=188692
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+        * WebView/WebView.mm:
+        (-[WebView _dispatchUnloadEvent]):
+
+2018-08-16  Jer Noble  <jer.noble@apple.com>
+
+        Add Experimental Feature support for SourceBuffer.changeType()
+        https://bugs.webkit.org/show_bug.cgi?id=188626
+        <rdar://problem/43356021>
+
+        Reviewed by Eric Carlson.
+
+        Add a new WebPreference property mapping to the WebCore SourceBufferChangeTypeEnabled setting.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences sourceBufferChangeTypeEnabled]):
+        (-[WebPreferences setSourceBufferChangeTypeEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-08-16  Aditya Keerthi  <akeerthi@apple.com>
+
+        Support drag-and-drop for input[type=color]
+        https://bugs.webkit.org/show_bug.cgi?id=188464
+
+        Reviewed by Wenson Hsieh.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::setColor):
+
+2018-08-15  Tim Horton  <timothy_horton@apple.com>
+
+        Crashes in Quip under _dictionaryPopupInfoForRange, in setObject:forKey:
+        https://bugs.webkit.org/show_bug.cgi?id=188569
+        <rdar://problem/34201095>
+
+        Reviewed by Megan Gardner.
+
+        * WebView/WebImmediateActionController.mm:
+        (+[WebImmediateActionController _dictionaryPopupInfoForRange:inFrame:withLookupOptions:indicatorOptions:transition:]):
+        Speculative fix; the crashes indicate font is null, but we just checked it,
+        so it must be getting made null by convertFont:toSize:. Check again!
+
+2018-08-13  Alex Christensen  <achristensen@webkit.org>
+
+        Use a 1-byte enum class for TextDirection
+        https://bugs.webkit.org/show_bug.cgi?id=188350
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::populate):
+        (PopupMenuMac::show):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::transitionToCommittedForNewPage):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _dispatchDidReceiveTitle:]):
+
+2018-08-09  Ali Juma  <ajuma@chromium.org>
+
+        Import WPTs for IntersectionObserver
+        https://bugs.webkit.org/show_bug.cgi?id=188416
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebPreferencesPrivate.h:
+
 2018-08-08  Jonathan Bedard  <jbedard@apple.com>
 
         Follow-up build fix for r234685

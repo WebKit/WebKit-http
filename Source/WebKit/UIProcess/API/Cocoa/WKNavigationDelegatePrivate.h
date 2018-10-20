@@ -75,9 +75,6 @@ static const WKNavigationResponsePolicy _WKNavigationResponsePolicyBecomeDownloa
 
 - (void)_webView:(WKWebView *)webView renderingProgressDidChange:(_WKRenderingProgressEvents)progressEvents;
 
-- (BOOL)_webView:(WKWebView *)webView canAuthenticateAgainstProtectionSpace:(NSURLProtectionSpace *)protectionSpace WK_API_DEPRECATED_WITH_REPLACEMENT("webView:didReceiveAuthenticationChallenge:completionHandler:", macosx(10.10, 10.13.4), ios(8.0, 11.3));
-- (void)_webView:(WKWebView *)webView didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge WK_API_DEPRECATED_WITH_REPLACEMENT("webView:didReceiveAuthenticationChallenge:completionHandler:", macosx(10.10, 10.13.4), ios(8.0, 11.3));
-
 - (void)_webViewWebProcessDidCrash:(WKWebView *)webView;
 - (void)_webViewWebProcessDidBecomeResponsive:(WKWebView *)webView;
 - (void)_webViewWebProcessDidBecomeUnresponsive:(WKWebView *)webView;
@@ -91,6 +88,7 @@ static const WKNavigationResponsePolicy _WKNavigationResponsePolicyBecomeDownloa
 - (void)_webViewWillEndNavigationGesture:(WKWebView *)webView withNavigationToBackForwardListItem:(WKBackForwardListItem *)item;
 - (void)_webView:(WKWebView *)webView willSnapshotBackForwardListItem:(WKBackForwardListItem *)item;
 - (void)_webViewDidRemoveNavigationGestureSnapshot:(WKWebView *)webView WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+- (void)_webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy, _WKWebsitePolicies *))decisionHandler WK_API_DEPRECATED_WITH_REPLACEMENT("_webView:decidePolicyForNavigationAction:userInfo:decisionHandler:", macosx(10.12.3, WK_MAC_TBA), ios(10.3, WK_IOS_TBA));
 - (void)_webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction userInfo:(id <NSSecureCoding>)userInfo decisionHandler:(void (^)(WKNavigationActionPolicy, _WKWebsitePolicies *))decisionHandler WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
 - (void)_webView:(WKWebView *)webView didStartProvisionalNavigation:(WKNavigation *)navigation userInfo:(id <NSSecureCoding>)userInfo WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
 - (void)_webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error userInfo:(id <NSSecureCoding>)userInfo WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));

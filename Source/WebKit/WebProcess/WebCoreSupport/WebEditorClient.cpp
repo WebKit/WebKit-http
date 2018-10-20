@@ -61,10 +61,9 @@
 #include <WebCore/PlatformDisplay.h>
 #endif
 
+namespace WebKit {
 using namespace WebCore;
 using namespace HTMLNames;
-
-namespace WebKit {
 
 static uint64_t generateTextCheckingRequestID()
 {
@@ -160,14 +159,29 @@ bool WebEditorClient::shouldApplyStyle(StyleProperties* style, Range* range)
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
-void WebEditorClient::didInsertAttachment(const String& identifier, const String& source)
+void WebEditorClient::registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& preferredFileName, Ref<SharedBuffer>&& data)
 {
-    m_page->send(Messages::WebPageProxy::DidInsertAttachment(identifier, source));
+    m_page->send(Messages::WebPageProxy::RegisterAttachmentIdentifierFromData(identifier, contentType, preferredFileName, IPC::SharedBufferDataReference { data.ptr() }));
 }
 
-void WebEditorClient::didRemoveAttachment(const String& identifier)
+void WebEditorClient::registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& filePath)
 {
-    m_page->send(Messages::WebPageProxy::DidRemoveAttachment(identifier));
+    m_page->send(Messages::WebPageProxy::RegisterAttachmentIdentifierFromFilePath(identifier, contentType, filePath));
+}
+
+void WebEditorClient::cloneAttachmentData(const String& fromIdentifier, const String& toIdentifier)
+{
+    m_page->send(Messages::WebPageProxy::CloneAttachmentData(fromIdentifier, toIdentifier));
+}
+
+void WebEditorClient::didInsertAttachmentWithIdentifier(const String& identifier, const String& source)
+{
+    m_page->send(Messages::WebPageProxy::DidInsertAttachmentWithIdentifier(identifier, source));
+}
+
+void WebEditorClient::didRemoveAttachmentWithIdentifier(const String& identifier)
+{
+    m_page->send(Messages::WebPageProxy::DidRemoveAttachmentWithIdentifier(identifier));
 }
 
 #endif
@@ -467,7 +481,7 @@ bool WebEditorClient::shouldEraseMarkersAfterChangeSelection(WebCore::TextChecki
 {
     // This prevents erasing spelling markers on OS X Lion or later to match AppKit on these Mac OS X versions.
 #if PLATFORM(COCOA)
-    return type != TextCheckingTypeSpelling;
+    return type != TextCheckingType::Spelling;
 #else
     UNUSED_PARAM(type);
     return true;
@@ -518,12 +532,10 @@ static int32_t insertionPointFromCurrentSelection(const VisibleSelection& curren
 }
 
 #if USE(UNIFIED_TEXT_CHECKING)
-Vector<TextCheckingResult> WebEditorClient::checkTextOfParagraph(StringView stringView, WebCore::TextCheckingTypeMask checkingTypes, const VisibleSelection& currentSelection)
+Vector<TextCheckingResult> WebEditorClient::checkTextOfParagraph(StringView stringView, OptionSet<WebCore::TextCheckingType> checkingTypes, const VisibleSelection& currentSelection)
 {
     Vector<TextCheckingResult> results;
-
     m_page->sendSync(Messages::WebPageProxy::CheckTextOfParagraph(stringView.toStringWithoutCopying(), checkingTypes, insertionPointFromCurrentSelection(currentSelection)), Messages::WebPageProxy::CheckTextOfParagraph::Reply(results));
-
     return results;
 }
 #endif

@@ -60,8 +60,12 @@ private:
     bool shouldMoveRangeAfterDelete(WebCore::Range*, WebCore::Range*) final;
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    void didInsertAttachment(const String& identifier, const String& source) final;
-    void didRemoveAttachment(const String& identifier) final;
+    void registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& preferredFileName, Ref<WebCore::SharedBuffer>&&) final;
+    void registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& filePath) final;
+    void cloneAttachmentData(const String& fromIdentifier, const String& toIdentifier) final;
+    void didInsertAttachmentWithIdentifier(const String& identifier, const String& source) final;
+    void didRemoveAttachmentWithIdentifier(const String& identifier) final;
+    bool supportsClientSideAttachmentData() const final { return true; }
 #endif
 
     void didBeginEditing() final;
@@ -143,7 +147,7 @@ private:
     void checkGrammarOfString(StringView, Vector<WebCore::GrammarDetail>&, int* badGrammarLocation, int* badGrammarLength) final;
 
 #if USE(UNIFIED_TEXT_CHECKING)
-    Vector<WebCore::TextCheckingResult> checkTextOfParagraph(StringView, WebCore::TextCheckingTypeMask checkingTypes, const WebCore::VisibleSelection& currentSelection) final;
+    Vector<WebCore::TextCheckingResult> checkTextOfParagraph(StringView, OptionSet<WebCore::TextCheckingType> checkingTypes, const WebCore::VisibleSelection& currentSelection) final;
 #endif
 
     void updateSpellingUIWithGrammarString(const String&, const WebCore::GrammarDetail&) final;

@@ -69,10 +69,6 @@ public:
 
     bool shouldCaptureExtraNetworkLoadMetrics() const final;
 
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    void continueCanAuthenticateAgainstProtectionSpace(bool);
-#endif
-
     String description() const;
 
 private:
@@ -84,7 +80,7 @@ private:
 
     // NetworkDataTaskClient
     void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler&&) final;
-    void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&) final;
+    void didReceiveChallenge(WebCore::AuthenticationChallenge&&, ChallengeCompletionHandler&&) final;
     void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler&&) final;
     void didReceiveData(Ref<WebCore::SharedBuffer>&&) final;
     void didCompleteWithError(const WebCore::ResourceError&, const WebCore::NetworkLoadMetrics&) final;
@@ -95,16 +91,10 @@ private:
     void notifyDidReceiveResponse(WebCore::ResourceResponse&&, ResponseCompletionHandler&&);
     void throttleDelayCompleted();
 
-    void completeAuthenticationChallenge(ChallengeCompletionHandler&&);
-
     std::reference_wrapper<NetworkLoadClient> m_client;
     const NetworkLoadParameters m_parameters;
     CompletionHandler<void(WebCore::ResourceRequest&&)> m_redirectCompletionHandler;
     RefPtr<NetworkDataTask> m_task;
-    std::optional<WebCore::AuthenticationChallenge> m_challenge;
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    ChallengeCompletionHandler m_challengeCompletionHandler;
-#endif
     ResponseCompletionHandler m_responseCompletionHandler;
     
     struct Throttle;

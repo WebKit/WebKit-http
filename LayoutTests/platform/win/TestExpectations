@@ -122,6 +122,9 @@ webkit.org/b/74716 legacy-animation-engine/css3/filters/backdrop [ Skip ]
 # color-filters are off by default
 webkit.org/b/185076 css3/color-filters [ Skip ]
 
+# IntersectionObserver is off by default
+webkit.org/b/188613 intersection-observer [ Skip ]
+
 # TODO Should be moved to platform/mac <rdar://5621425>
 http/tests/misc/willCacheResponse-delegate-callback.html [ Skip ]
 
@@ -3161,8 +3164,8 @@ http/tests/loading/preload-img-src.html [ Failure Pass ]
 http/tests/loading/preload-img-srcset-sizes.html [ Failure Pass ]
 http/tests/loading/preload-img-test.html [ Failure Timeout Pass ]
 http/tests/loading/preload-picture-invalid.html [ Failure Pass ]
-http/tests/security/canvas-remote-read-remote-video-blocked-no-crossorigin.html [ Failure Pass ]
-http/tests/security/canvas-remote-read-remote-video-localhost.html [ Failure Pass ]
+http/tests/security/canvas-remote-read-remote-video-blocked-no-crossorigin.html [ Crash Failure Pass ]
+http/tests/security/canvas-remote-read-remote-video-localhost.html [ Crash Failure Pass ]
 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/block-loading-user-agent-image-from-non-user-agent-content.html [ Failure Pass ]
 http/tests/security/contentSecurityPolicy/video-with-http-url-allowed-by-csp-media-src-star.html [ Failure Pass ]
 http/tests/security/contentSecurityPolicy/worker-blob-inherits-csp-blocks-eval.html [ Failure Pass ]
@@ -3170,8 +3173,7 @@ http/tests/security/cross-origin-script-window-onerror-redirected.html [ Failure
 http/tests/security/isolatedWorld/number-prototype.html [ Failure Pass ]
 http/tests/security/local-video-src-from-remote.html [ Failure Pass ]
 http/tests/security/video-cross-origin-caching.html [ Crash Failure Timeout Pass ]
-http/tests/security/video-poster-cross-origin-crash2.html [ Failure Pass ]
-http/tests/websocket/tests/hybi/simple-wss.html [ Crash Timeout ]
+http/tests/security/video-poster-cross-origin-crash2.html [ Crash Failure Pass ]
 security/contentSecurityPolicy/worker-inherits-blocks-eval.html [ Failure Pass ]
 sputnik/Conformance/07_Lexical_Conventions/7.4_Comments/S7.4_A4_T2.html [ Failure Pass ]
 storage/indexeddb/database-close-private.html [ Failure Pass ]
@@ -3295,7 +3297,7 @@ http/tests/navigation/post-308-response.html [ Failure ]
 http/tests/security/XFrameOptions/x-frame-options-deny-multiple-clients.html [ Failure ]
 http/tests/security/anchor-download-allow-blob.html [ Failure ]
 http/tests/security/anchor-download-block-crossorigin.html [ Failure ]
-http/tests/security/canvas-remote-read-remote-video-redirect.html [ Failure ]
+http/tests/security/canvas-remote-read-remote-video-redirect.html [ Crash Failure ]
 http/tests/security/contentSecurityPolicy/1.1/form-action-src-allowed.html [ Failure ]
 http/tests/security/contentSecurityPolicy/1.1/form-action-src-blocked.html [ Failure ]
 http/tests/security/contentSecurityPolicy/1.1/form-action-src-default-ignored.html [ Failure ]
@@ -3328,7 +3330,7 @@ http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-inse
 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-http-to-https-script-in-iframe.html [ Failure ]
 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-https-to-http-script-in-iframe.html [ Failure ]
 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrades-mixed-content.html [ Failure ]
-http/tests/security/contentSecurityPolicy/video-redirect-blocked.html [ Failure ]
+http/tests/security/contentSecurityPolicy/video-redirect-blocked.html [ Crash Failure ]
 http/tests/security/http-0.9/iframe-blocked.html [ Failure ]
 http/tests/security/http-0.9/image-default-port-allowed.html [ Failure ]
 http/tests/security/http-0.9/image-on-HTTP-0.9-page-blocked.html [ Failure ]
@@ -3344,8 +3346,6 @@ http/tests/xmlhttprequest/if-modified-since-0.html [ Failure ]
 http/tests/xmlhttprequest/redirections-and-user-headers.html [ Failure ]
 imported/blink/storage/indexeddb/blob-basics-metadata.html [ Failure ]
 imported/blink/storage/indexeddb/empty-blob-file.html [ Failure ]
-intersection-observer/intersection-observer-entry-interface.html [ Failure ]
-intersection-observer/intersection-observer-interface.html [ Failure ]
 js/dom/constructor-length.html [ Failure ]
 js/dom/deep-recursion-test.html [ Failure ]
 js/dom/regress-157246.html [ Failure ]
@@ -3708,7 +3708,6 @@ http/tests/preload/single_download_preload_headers_charset.php [ Crash Failure P
 http/tests/security/contentSecurityPolicy/audio-redirect-allowed.html [ Crash Timeout Pass ]
 http/tests/security/contentSecurityPolicy/audio-redirect-blocked.html [ Timeout Failure Crash ]
 http/tests/security/contentSecurityPolicy/block-favicon.html [ Failure Pass ]
-http/tests/websocket/tests/hybi/workers/close-code-and-reason.html [ Crash Pass ]
 svg/animations/animations-paused-in-background-page.html [ Timeout Pass ]
 
 # FIXME: create bugs to track the following failures:
@@ -3855,8 +3854,6 @@ webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-getPa
 
 webkit.org/b/176598 http/tests/security/contentSecurityPolicy/audio-redirect-allowed2.html [ Pass Crash ]
 webkit.org/b/176606 http/tests/preload/single_download_preload_headers.php [ Pass Crash ]
-webkit.org/b/176609 http/tests/websocket/tests/hybi/close-code-and-reason.html [ Pass Crash ]
-webkit.org/b/176632 http/tests/websocket/tests/hybi/websocket-pending-activity.html [ Pass Crash ]
 
 # Web platform tests are very slow on Windows.
 webkit.org/b/176657 imported/w3c/web-platform-tests/ [ Skip ]
@@ -3872,8 +3869,6 @@ webkit.org/b/176998 pageoverlay/overlay-small-frame-paints.html [ Failure ]
 webkit.org/b/176998 storage/indexeddb/modern/idbcursor-continue-primary-key-1.html [ Timeout ]
 
 webkit.org/b/177071 fast/events/beforeunload-dom-manipulation-crash.html [ Crash ]
-
-webkit.org/b/177072 http/tests/websocket/tests/hybi/secure-cookie-secure-connection.pl [ Failure ]
 
 webkit.org/b/177109 fast/css/display-contents-style-update.html [ ImageOnlyFailure ]
 
@@ -4054,8 +4049,6 @@ webkit.org/b/183955 accessibility/row-with-aria-role-in-native-table.html [ Fail
 webkit.org/b/184133 transitions/opacity-transition-zindex.html [ Skip ]
 webkit.org/b/184133 legacy-animation-engine/transitions/opacity-transition-zindex.html [ Skip ]
 
-webkit.org/b/184134 http/tests/websocket/tests/hybi/websocket-cookie-overwrite-behavior.html [ Failure ]
-
 webkit.org/b/184482 legacy-animation-engine/compositing/animation/animation-backing.html [ Failure ]
 webkit.org/b/184482 legacy-animation-engine/compositing/animation/animation-compositing.html [ Failure ]
 webkit.org/b/184482 legacy-animation-engine/compositing/backing/backface-visibility-flip.html [ Failure ]
@@ -4161,3 +4154,18 @@ webkit.org/b/188168 fast/text/complex-first-glyph-with-initial-advance.html [ Im
 webkit.org/b/188168 fast/text/initial-advance-in-intermediate-run-complex.html [ ImageOnlyFailure ]
 
 webkit.org/b/188169 http/tests/security/canvas-remote-read-remote-video-hls.html [ Failure ]
+
+webkit.org/b/188600 editing/input/press-tab-during-ime-composition.html [ Failure ]
+
+http/tests/websocket [ Skip ]
+http/tests/security/mixedContent/websocket [ Skip ]
+imported/blink/http/tests/websocket [ Skip ]
+imported/blink/http/tests/security/mixedContent/websocket [ Skip ]
+
+editing/pasteboard/drag-and-drop-color-input-events.html [ Skip ]
+
+webkit.org/b/188853 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-video.html [ Crash Pass ]
+webkit.org/b/188853 http/tests/security/local-video-source-from-remote.html [ Crash Pass ]
+webkit.org/b/188853 http/tests/security/contentSecurityPolicy/video-redirect-allowed.html [ Crash Pass ]
+webkit.org/b/188853 http/tests/security/contentSecurityPolicy/video-redirect-allowed2.html [ Crash Pass ]
+webkit.org/b/188853 http/tests/security/contentSecurityPolicy/video-with-https-url-allowed-by-csp-media-src-star.html [ Crash Pass ]

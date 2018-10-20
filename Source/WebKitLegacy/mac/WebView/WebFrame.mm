@@ -1247,7 +1247,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     RefPtr<Range> domRange = [self _convertToDOMRange:range];
     if (domRange) {
         const VisibleSelection& newSelection = VisibleSelection(*domRange, SEL_DEFAULT_AFFINITY);
-        _private->coreFrame->selection().setSelection(newSelection, 0);
+        _private->coreFrame->selection().setSelection(newSelection, { });
         
         _private->coreFrame->editor().ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping();
     }
@@ -2337,7 +2337,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return;
-    coreFrame->loader().client().dispatchDidReceiveTitle({ title, LTR });
+    coreFrame->loader().client().dispatchDidReceiveTitle({ title, TextDirection::LTR });
 }
 
 #endif // PLATFORM(IOS)

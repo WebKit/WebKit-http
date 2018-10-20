@@ -73,32 +73,19 @@ public:
 
     constexpr OptionSet() = default;
 
-#if ASSERT_DISABLED
     constexpr OptionSet(T t)
         : m_storage(static_cast<StorageType>(t))
     {
+        ASSERT_WITH_MESSAGE(!m_storage || hasOneBitSet(m_storage), "Enumerator is not a zero or a positive power of two.");
     }
 
     constexpr OptionSet(std::initializer_list<T> initializerList)
-    {
-        for (auto& option : initializerList)
-            m_storage |= static_cast<StorageType>(option);
-    }
-#else
-    OptionSet(T t)
-        : m_storage(static_cast<StorageType>(t))
-    {
-        ASSERT_WITH_MESSAGE(!m_storage || hasOneBitSet(static_cast<StorageType>(t)), "Enumerator is not a zero or a positive power of two.");
-    }
-
-    OptionSet(std::initializer_list<T> initializerList)
     {
         for (auto& option : initializerList) {
             ASSERT_WITH_MESSAGE(hasOneBitSet(static_cast<StorageType>(option)), "Enumerator is not a positive power of two.");
             m_storage |= static_cast<StorageType>(option);
         }
     }
-#endif
 
     constexpr StorageType toRaw() const { return m_storage; }
 
@@ -109,9 +96,19 @@ public:
 
     constexpr explicit operator bool() { return !isEmpty(); }
 
-    constexpr bool contains(OptionSet optionSet) const
+    constexpr bool contains(T option) const
     {
-        return m_storage & optionSet.m_storage;
+        return containsAny(option);
+    }
+
+    constexpr bool containsAny(OptionSet optionSet) const
+    {
+        return !!(*this & optionSet);
+    }
+
+    constexpr bool containsAll(OptionSet optionSet) const
+    {
+        return (*this & optionSet) == optionSet;
     }
 
     constexpr friend bool operator==(OptionSet lhs, OptionSet rhs)
@@ -149,6 +146,11 @@ public:
     constexpr friend OptionSet operator-(OptionSet lhs, OptionSet rhs)
     {
         return fromRaw(lhs.m_storage & ~rhs.m_storage);
+    }
+
+    constexpr friend OptionSet operator^(OptionSet lhs, OptionSet rhs)
+    {
+        return fromRaw(lhs.m_storage ^ rhs.m_storage);
     }
 
 private:

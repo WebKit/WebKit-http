@@ -92,7 +92,7 @@ webkit.org/b/178272 [ Sierra ] http/tests/security/canvas-remote-read-remote-vid
 webkit.org/b/178272 [ Sierra ] http/tests/security/video-cross-origin-caching.html [ Pass Timeout ]
 
 # rdar://problem/20001985
-[ ElCapitan Sierra ] http/tests/xmlhttprequest/range-test.html [ Failure ]
+[ Sierra ] http/tests/xmlhttprequest/range-test.html [ Failure ]
 
 # rdar://problem/34716163 Breaks subsequent tests using response.xml
 [ HighSierra+ ] http/tests/xmlhttprequest/range-test.html [ Skip ]
@@ -230,9 +230,8 @@ fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
 # ShouldOpenExternalURLs not yet supported in WK1
 loader/navigation-policy [ Skip ]
 
-[ ElCapitan+ ] css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
+[ Sierra+ ] css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
 
-# This test gives a different output on ElCapitan-wk1 only.
 webkit.org/b/152178 fast/replaced/replaced-breaking.html [ Failure ]
 
 # DRT can open way more files than the DatabaseProcess with WebKitTestRunner, and the number is reasonable.
@@ -281,6 +280,8 @@ inspector/heap/getPreview.html [ Skip ]
 inspector/heap/getRemoteObject.html [ Skip ]
 inspector/unit-tests/heap-snapshot.html [ Skip ]
 inspector/unit-tests/heap-snapshot-collection-event.html [ Skip ]
+
+webkit.org/b/188708 inspector/dom-debugger/event-breakpoint-with-navigation.html [ Pass Timeout ]
 
 # These tests check ScrollAnimator events for main frame scrollbars that use native widgets in WK1.
 fast/scrolling/scroll-animator-overlay-scrollbars-clicked.html [ Skip ]
@@ -332,6 +333,7 @@ imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/hist
 # testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download-async-delegate.html [ Skip ]
+http/tests/download/convert-cached-load-to-download.html [ Skip ]
 
 webkit.org/b/156629 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html [ Pass Failure ]
 
@@ -363,9 +365,6 @@ webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
 [ Sierra+ ] accessibility/mac/document-attributes.html [ Failure ]
 [ Sierra+ ] accessibility/parent-delete.html [ Failure ]
 
-# rdar://problem/28017216
-[ ElCapitan ] fast/inline-block/003.html [ Failure ]
-
 # rdar://problem/26478296
 [ Sierra+ ] svg/hixie/text/003.html [ Failure ]
 
@@ -374,8 +373,6 @@ webkit.org/b/159893 [ Debug ] imported/w3c/web-platform-tests/XMLHttpRequest/eve
 webkit.org/b/160101 userscripts/window-onerror-for-isolated-world-3.html [ Pass Failure ]
 
 webkit.org/b/105870 [ Debug ] webaudio/audionode-connect-order.html [ Pass Crash ]
-
-webkit.org/b/160227 [ ElCapitan Debug ] inspector/memory/tracking.html [ Pass Crash ]
 
 # rdar://problem/27723718
 [ Sierra+ ] imported/blink/compositing/child-transform-with-anchor-point.html [ ImageOnlyFailure ]
@@ -399,8 +396,6 @@ http/tests/inspector/network/resource-request-headers.html [ Failure ]
 http/tests/inspector/network/resource-sizes-network.html [ Failure ]
 http/tests/inspector/network/resource-sizes-memory-cache.html [ Failure ]
 http/tests/inspector/network/har/har-page.html [ Failure ]
-
-webkit.org/b/164491 [ ElCapitan ] fast/visual-viewport/rtl-zoomed-rects.html [ Failure ]
 
 webkit.org/b/164933 http/tests/misc/link-rel-icon-beforeload.html [ Failure ]
 
@@ -609,3 +604,10 @@ webkit.org/b/187711 [ Debug ] svg/custom/linking-uri-01-b.svg [ Pass Failure ]
 
 # <rdar://problem/42920617>
 [ Mojave+ ] compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint.html [ Pass Failure ]
+
+webkit.org/b/188357 legacy-animation-engine/compositing/backing/transform-transition-from-outside-view.html [ Pass Failure ]
+webkit.org/b/188357 legacy-animation-engine/compositing/geometry/limit-layer-bounds-opacity-transition.html [ Pass Failure ]
+webkit.org/b/188357 legacy-animation-engine/compositing/layer-creation/animation-overlap-with-children.html [ Pass Failure ]
+
+# <rdar://problem/42904780>
+[ Mojave+ Release ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker.html [ Failure ]

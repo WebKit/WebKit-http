@@ -39,6 +39,7 @@
 #import "WKWebViewContentProviderRegistry.h"
 #import "WebKit2Initialize.h"
 #import "WebURLSchemeHandlerCocoa.h"
+#import "_WKApplicationManifestInternal.h"
 #import "_WKVisitedLinkStore.h"
 #import "_WKWebsiteDataStoreInternal.h"
 #import <WebCore/RuntimeApplicationChecks.h>
@@ -125,7 +126,6 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
 
 #if PLATFORM(IOS)
     LazyInitialized<RetainPtr<WKWebViewContentProviderRegistry>> _contentProviderRegistry;
-    BOOL _alwaysRunsAtForegroundPriority;
     BOOL _allowsInlineMediaPlayback;
     BOOL _inlineMediaPlaybackRequiresPlaysInlineAttribute;
     BOOL _allowsInlineMediaPlaybackAfterFullscreen;
@@ -142,18 +142,10 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
 
 #if PLATFORM(MAC)
     WKRetainPtr<WKPageGroupRef> _pageGroup;
-    double _cpuLimit;
     BOOL _showsURLsInToolTips;
     BOOL _serviceControlsEnabled;
     BOOL _imageControlsEnabled;
     BOOL _requiresUserActionForEditingControlsManager;
-#endif
-    BOOL _initialCapitalizationEnabled;
-    BOOL _waitsForPaintAfterViewDidMoveToWindow;
-    BOOL _controlledByAutomation;
-
-#if ENABLE(APPLICATION_MANIFEST)
-    RetainPtr<_WKApplicationManifest> _applicationManifest;
 #endif
 
 #if ENABLE(APPLE_PAY)
@@ -165,9 +157,7 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     BOOL _colorFilterEnabled;
     BOOL _incompleteImageBorderEnabled;
     BOOL _shouldDeferAsynchronousScriptsUntilAfterDocumentLoad;
-    BOOL _drawsBackground;
 
-    RetainPtr<NSString> _overrideContentSecurityPolicy;
     RetainPtr<NSString> _mediaContentTypesRequiringHardwareSupport;
 }
 
@@ -212,7 +202,6 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
 #endif
 
 #if PLATFORM(MAC)
-    _cpuLimit = 0;
     _printsBackgrounds = NO;
     _respectsImageOrientation = NO;
     _showsURLsInToolTips = NO;
@@ -220,8 +209,6 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     _imageControlsEnabled = NO;
     _requiresUserActionForEditingControlsManager = NO;
 #endif
-    _initialCapitalizationEnabled = YES;
-    _waitsForPaintAfterViewDidMoveToWindow = YES;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     _allowsAirPlayForMediaPlayback = YES;
@@ -253,7 +240,6 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     _colorFilterEnabled = NO;
     _incompleteImageBorderEnabled = NO;
     _shouldDeferAsynchronousScriptsUntilAfterDocumentLoad = NO;
-    _drawsBackground = YES;
 
     return self;
 }
@@ -368,16 +354,12 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     configuration->_attachmentElementEnabled = self->_attachmentElementEnabled;
     configuration->_mediaTypesRequiringUserActionForPlayback = self->_mediaTypesRequiringUserActionForPlayback;
     configuration->_mainContentUserGestureOverrideEnabled = self->_mainContentUserGestureOverrideEnabled;
-    configuration->_initialCapitalizationEnabled = self->_initialCapitalizationEnabled;
-    configuration->_waitsForPaintAfterViewDidMoveToWindow = self->_waitsForPaintAfterViewDidMoveToWindow;
-    configuration->_controlledByAutomation = self->_controlledByAutomation;
 
 #if PLATFORM(IOS)
     configuration->_allowsInlineMediaPlayback = self->_allowsInlineMediaPlayback;
     configuration->_allowsInlineMediaPlaybackAfterFullscreen = self->_allowsInlineMediaPlaybackAfterFullscreen;
     configuration->_inlineMediaPlaybackRequiresPlaysInlineAttribute = self->_inlineMediaPlaybackRequiresPlaysInlineAttribute;
     configuration->_allowsPictureInPictureMediaPlayback = self->_allowsPictureInPictureMediaPlayback;
-    configuration->_alwaysRunsAtForegroundPriority = _alwaysRunsAtForegroundPriority;
     configuration->_selectionGranularity = self->_selectionGranularity;
     configuration->_ignoresViewportScaleLimits = self->_ignoresViewportScaleLimits;
     configuration->_dragLiftDelay = self->_dragLiftDelay;
@@ -386,7 +368,6 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     configuration->_systemPreviewEnabled = self->_systemPreviewEnabled;
 #endif
 #if PLATFORM(MAC)
-    configuration->_cpuLimit = self->_cpuLimit;
     configuration->_userInterfaceDirectionPolicy = self->_userInterfaceDirectionPolicy;
     configuration->_showsURLsInToolTips = self->_showsURLsInToolTips;
     configuration->_serviceControlsEnabled = self->_serviceControlsEnabled;
@@ -403,11 +384,7 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
 #if ENABLE(APPLE_PAY)
     configuration->_applePayEnabled = self->_applePayEnabled;
 #endif
-#if ENABLE(APPLICATION_MANIFEST)
-    configuration->_applicationManifest = self->_applicationManifest;
-#endif
     configuration->_needsStorageAccessFromFileURLsQuirk = self->_needsStorageAccessFromFileURLsQuirk;
-    configuration->_overrideContentSecurityPolicy = adoptNS([self->_overrideContentSecurityPolicy copyWithZone:zone]);
 
     configuration->_mediaContentTypesRequiringHardwareSupport = adoptNS([self._mediaContentTypesRequiringHardwareSupport copyWithZone:zone]);
     configuration->_legacyEncryptedMediaAPIEnabled = self->_legacyEncryptedMediaAPIEnabled;
@@ -417,7 +394,6 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     configuration->_colorFilterEnabled = self->_colorFilterEnabled;
     configuration->_incompleteImageBorderEnabled = self->_incompleteImageBorderEnabled;
     configuration->_shouldDeferAsynchronousScriptsUntilAfterDocumentLoad = self->_shouldDeferAsynchronousScriptsUntilAfterDocumentLoad;
-    configuration->_drawsBackground = self->_drawsBackground;
 
     return configuration;
 }
@@ -665,12 +641,12 @@ static NSString *defaultApplicationNameForUserAgent()
 #if PLATFORM(IOS)
 - (BOOL)_alwaysRunsAtForegroundPriority
 {
-    return _alwaysRunsAtForegroundPriority;
+    return _pageConfiguration->alwaysRunsAtForegroundPriority();
 }
 
 - (void)_setAlwaysRunsAtForegroundPriority:(BOOL)alwaysRunsAtForegroundPriority
 {
-    _alwaysRunsAtForegroundPriority = alwaysRunsAtForegroundPriority;
+    _pageConfiguration->setAlwaysRunsAtForegroundPriority(alwaysRunsAtForegroundPriority);
 }
 
 - (BOOL)_inlineMediaPlaybackRequiresPlaysInlineAttribute
@@ -797,12 +773,12 @@ static NSString *defaultApplicationNameForUserAgent()
 
 - (BOOL)_drawsBackground
 {
-    return _drawsBackground;
+    return _pageConfiguration->drawsBackground();
 }
 
 - (void)_setDrawsBackground:(BOOL)drawsBackground
 {
-    _drawsBackground = drawsBackground;
+    _pageConfiguration->setDrawsBackground(drawsBackground);
 }
 
 - (BOOL)_requiresUserActionForVideoPlayback
@@ -843,48 +819,42 @@ static NSString *defaultApplicationNameForUserAgent()
 
 - (BOOL)_initialCapitalizationEnabled
 {
-    return _initialCapitalizationEnabled;
+    return _pageConfiguration->initialCapitalizationEnabled();
 }
 
 - (void)_setInitialCapitalizationEnabled:(BOOL)initialCapitalizationEnabled
 {
-    _initialCapitalizationEnabled = initialCapitalizationEnabled;
+    _pageConfiguration->setInitialCapitalizationEnabled(initialCapitalizationEnabled);
 }
 
 - (BOOL)_waitsForPaintAfterViewDidMoveToWindow
 {
-    return _waitsForPaintAfterViewDidMoveToWindow;
+    return _pageConfiguration->waitsForPaintAfterViewDidMoveToWindow();
 }
 
-- (void)_setWaitsForPaintAfterViewDidMoveToWindow:(BOOL)shouldSynchronize
+- (void)_setWaitsForPaintAfterViewDidMoveToWindow:(BOOL)waitsForPaintAfterViewDidMoveToWindow
 {
-    _waitsForPaintAfterViewDidMoveToWindow = shouldSynchronize;
+    _pageConfiguration->setWaitsForPaintAfterViewDidMoveToWindow(waitsForPaintAfterViewDidMoveToWindow);
 }
 
 - (BOOL)_isControlledByAutomation
 {
-    return _controlledByAutomation;
+    return _pageConfiguration->isControlledByAutomation();
 }
 
 - (void)_setControlledByAutomation:(BOOL)controlledByAutomation
 {
-    _controlledByAutomation = controlledByAutomation;
+    _pageConfiguration->setControlledByAutomation(controlledByAutomation);
 }
 
 - (_WKApplicationManifest *)_applicationManifest
 {
-#if ENABLE(APPLICATION_MANIFEST)
-    return _applicationManifest.get();
-#else
-    return nil;
-#endif
+    return wrapper(_pageConfiguration->applicationManifest());
 }
 
 - (void)_setApplicationManifest:(_WKApplicationManifest *)applicationManifest
 {
-#if ENABLE(APPLICATION_MANIFEST)
-    _applicationManifest = applicationManifest;
-#endif
+    _pageConfiguration->setApplicationManifest(applicationManifest ? applicationManifest->_applicationManifest.get() : nullptr);
 }
 
 #if PLATFORM(MAC)
@@ -940,12 +910,12 @@ static NSString *defaultApplicationNameForUserAgent()
 
 - (void)_setCPULimit:(double)cpuLimit
 {
-    _cpuLimit = cpuLimit;
+    _pageConfiguration->setCPULimit(cpuLimit);
 }
 
 - (double)_cpuLimit
 {
-    return _cpuLimit;
+    return _pageConfiguration->cpuLimit().value_or(0);
 }
 
 #endif // PLATFORM(MAC)
@@ -978,12 +948,12 @@ static NSString *defaultApplicationNameForUserAgent()
 
 - (NSString *)_overrideContentSecurityPolicy
 {
-    return _overrideContentSecurityPolicy.get();
+    return _pageConfiguration->overrideContentSecurityPolicy();
 }
 
 - (void)_setOverrideContentSecurityPolicy:(NSString *)overrideContentSecurityPolicy
 {
-    _overrideContentSecurityPolicy = adoptNS([overrideContentSecurityPolicy copy]);
+    _pageConfiguration->setOverrideContentSecurityPolicy(overrideContentSecurityPolicy);
 }
 
 - (NSString *)_mediaContentTypesRequiringHardwareSupport

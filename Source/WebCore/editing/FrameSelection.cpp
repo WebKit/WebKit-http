@@ -185,7 +185,7 @@ void FrameSelection::moveWithoutValidationTo(const Position& base, const Positio
     newSelection.setWithoutValidation(base, extent);
     newSelection.setIsDirectional(selectionHasDirection);
     AXTextStateChangeIntent newIntent = intent.type == AXTextStateChangeTypeUnknown ? AXTextStateChangeIntent(AXTextStateChangeTypeSelectionMove, AXTextSelection { AXTextSelectionDirectionDiscontiguous, AXTextSelectionGranularityUnknown, false }) : intent;
-    SetSelectionOptions options = defaultSetSelectionOptions();
+    auto options = defaultSetSelectionOptions();
     if (!shouldSetFocus)
         options |= DoNotSetFocus;
     switch (revealMode) {
@@ -291,10 +291,10 @@ void FrameSelection::setSelectionByMouseIfDifferent(const VisibleSelection& pass
     setSelection(newSelection, defaultSetSelectionOptions() | FireSelectEvent, intent, AlignCursorOnScrollIfNeeded, granularity);
 }
 
-bool FrameSelection::setSelectionWithoutUpdatingAppearance(const VisibleSelection& newSelectionPossiblyWithoutDirection, SetSelectionOptions options, CursorAlignOnScroll align, TextGranularity granularity)
+bool FrameSelection::setSelectionWithoutUpdatingAppearance(const VisibleSelection& newSelectionPossiblyWithoutDirection, OptionSet<SetSelectionOption> options, CursorAlignOnScroll align, TextGranularity granularity)
 {
-    bool closeTyping = options & CloseTyping;
-    bool shouldClearTypingStyle = options & ClearTypingStyle;
+    bool closeTyping = options.contains(CloseTyping);
+    bool shouldClearTypingStyle = options.contains(ClearTypingStyle);
 
     VisibleSelection newSelection = newSelectionPossiblyWithoutDirection;
     if (shouldAlwaysUseDirectionalSelection(m_frame))
@@ -338,7 +338,7 @@ bool FrameSelection::setSelectionWithoutUpdatingAppearance(const VisibleSelectio
 
     // Selection offsets should increase when LF is inserted before the caret in InsertLineBreakCommand. See <https://webkit.org/b/56061>.
     if (HTMLTextFormControlElement* textControl = enclosingTextFormControl(newSelection.start()))
-        textControl->selectionChanged(options & FireSelectEvent);
+        textControl->selectionChanged(options.contains(FireSelectEvent));
 
     if (!didMutateSelection)
         return false;
@@ -353,12 +353,12 @@ bool FrameSelection::setSelectionWithoutUpdatingAppearance(const VisibleSelectio
     m_xPosForVerticalArrowNavigation = NoXPosForVerticalArrowNavigation();
     selectFrameElementInParentIfFullySelected();
     m_frame->editor().respondToChangedSelection(oldSelection, options);
-    m_frame->document()->enqueueDocumentEvent(Event::create(eventNames().selectionchangeEvent, false, false));
+    m_frame->document()->enqueueDocumentEvent(Event::create(eventNames().selectionchangeEvent, Event::CanBubble::No, Event::IsCancelable::No));
 
     return true;
 }
 
-void FrameSelection::setSelection(const VisibleSelection& selection, SetSelectionOptions options, AXTextStateChangeIntent intent, CursorAlignOnScroll align, TextGranularity granularity)
+void FrameSelection::setSelection(const VisibleSelection& selection, OptionSet<SetSelectionOption> options, AXTextStateChangeIntent intent, CursorAlignOnScroll align, TextGranularity granularity)
 {
     RefPtr<Frame> protectedFrame(m_frame);
     if (!setSelectionWithoutUpdatingAppearance(selection, options, align, granularity))
@@ -633,7 +633,7 @@ void FrameSelection::willBeModified(EAlteration alter, SelectionDirection direct
     } else {
         switch (direction) {
         case DirectionRight:
-            if (directionOfSelection() == LTR)
+            if (directionOfSelection() == TextDirection::LTR)
                 baseIsStart = true;
             else
                 baseIsStart = false;
@@ -642,7 +642,7 @@ void FrameSelection::willBeModified(EAlteration alter, SelectionDirection direct
             baseIsStart = true;
             break;
         case DirectionLeft:
-            if (directionOfSelection() == LTR)
+            if (directionOfSelection() == TextDirection::LTR)
                 baseIsStart = false;
             else
                 baseIsStart = true;
@@ -718,23 +718,23 @@ VisiblePosition FrameSelection::modifyExtendingRight(TextGranularity granularity
     // The difference between modifyExtendingRight and modifyExtendingForward is:
     // modifyExtendingForward always extends forward logically.
     // modifyExtendingRight behaves the same as modifyExtendingForward except for extending character or word,
-    // it extends forward logically if the enclosing block is LTR direction,
-    // but it extends backward logically if the enclosing block is RTL direction.
+    // it extends forward logically if the enclosing block is TextDirection::LTR,
+    // but it extends backward logically if the enclosing block is TextDirection::RTL.
     switch (granularity) {
     case CharacterGranularity:
-        if (directionOfEnclosingBlock() == LTR)
+        if (directionOfEnclosingBlock() == TextDirection::LTR)
             pos = pos.next(CannotCrossEditingBoundary);
         else
             pos = pos.previous(CannotCrossEditingBoundary);
         break;
     case WordGranularity:
-        if (directionOfEnclosingBlock() == LTR)
+        if (directionOfEnclosingBlock() == TextDirection::LTR)
             pos = nextWordPositionForPlatform(pos);
         else
             pos = previousWordPosition(pos);
         break;
     case LineBoundary:
-        if (directionOfEnclosingBlock() == LTR)
+        if (directionOfEnclosingBlock() == TextDirection::LTR)
             pos = modifyExtendingForward(granularity);
         else
             pos = modifyExtendingBackward(granularity);
@@ -753,7 +753,7 @@ VisiblePosition FrameSelection::modifyExtendingRight(TextGranularity granularity
         break;
     }
 #if ENABLE(USERSELECT_ALL)
-    adjustPositionForUserSelectAll(pos, directionOfEnclosingBlock() == LTR);
+    adjustPositionForUserSelectAll(pos, directionOfEnclosingBlock() == TextDirection::LTR);
 #endif
     return pos;
 }
@@ -798,7 +798,7 @@ VisiblePosition FrameSelection::modifyExtendingForward(TextGranularity granulari
         break;
     }
 #if ENABLE(USERSELECT_ALL)
-     adjustPositionForUserSelectAll(pos, directionOfEnclosingBlock() == LTR);
+    adjustPositionForUserSelectAll(pos, directionOfEnclosingBlock() == TextDirection::LTR);
 #endif
     return pos;
 }
@@ -811,7 +811,7 @@ VisiblePosition FrameSelection::modifyMovingRight(TextGranularity granularity, b
     switch (granularity) {
     case CharacterGranularity:
         if (isRange()) {
-            if (directionOfSelection() == LTR)
+            if (directionOfSelection() == TextDirection::LTR)
                 pos = VisiblePosition(m_selection.end(), m_selection.affinity());
             else
                 pos = VisiblePosition(m_selection.start(), m_selection.affinity());
@@ -935,23 +935,23 @@ VisiblePosition FrameSelection::modifyExtendingLeft(TextGranularity granularity)
     // The difference between modifyExtendingLeft and modifyExtendingBackward is:
     // modifyExtendingBackward always extends backward logically.
     // modifyExtendingLeft behaves the same as modifyExtendingBackward except for extending character or word,
-    // it extends backward logically if the enclosing block is LTR direction,
-    // but it extends forward logically if the enclosing block is RTL direction.
+    // it extends backward logically if the enclosing block is TextDirection::LTR,
+    // but it extends forward logically if the enclosing block is TextDirection::RTL.
     switch (granularity) {
     case CharacterGranularity:
-        if (directionOfEnclosingBlock() == LTR)
+        if (directionOfEnclosingBlock() == TextDirection::LTR)
             pos = pos.previous(CannotCrossEditingBoundary);
         else
             pos = pos.next(CannotCrossEditingBoundary);
         break;
     case WordGranularity:
-        if (directionOfEnclosingBlock() == LTR)
+        if (directionOfEnclosingBlock() == TextDirection::LTR)
             pos = previousWordPosition(pos);
         else
             pos = nextWordPositionForPlatform(pos);
         break;
     case LineBoundary:
-        if (directionOfEnclosingBlock() == LTR)
+        if (directionOfEnclosingBlock() == TextDirection::LTR)
             pos = modifyExtendingBackward(granularity);
         else
             pos = modifyExtendingForward(granularity);
@@ -969,7 +969,7 @@ VisiblePosition FrameSelection::modifyExtendingLeft(TextGranularity granularity)
         break;
     }
 #if ENABLE(USERSELECT_ALL)
-    adjustPositionForUserSelectAll(pos, !(directionOfEnclosingBlock() == LTR));
+    adjustPositionForUserSelectAll(pos, !(directionOfEnclosingBlock() == TextDirection::LTR));
 #endif
     return pos;
 }
@@ -1019,7 +1019,7 @@ VisiblePosition FrameSelection::modifyExtendingBackward(TextGranularity granular
         break;
     }
 #if ENABLE(USERSELECT_ALL)
-    adjustPositionForUserSelectAll(pos, !(directionOfEnclosingBlock() == LTR));
+    adjustPositionForUserSelectAll(pos, !(directionOfEnclosingBlock() == TextDirection::LTR));
 #endif
     return pos;
 }
@@ -1032,7 +1032,7 @@ VisiblePosition FrameSelection::modifyMovingLeft(TextGranularity granularity, bo
     switch (granularity) {
     case CharacterGranularity:
         if (isRange())
-            if (directionOfSelection() == LTR)
+            if (directionOfSelection() == TextDirection::LTR)
                 pos = VisiblePosition(m_selection.start(), m_selection.affinity());
             else
                 pos = VisiblePosition(m_selection.end(), m_selection.affinity());
@@ -1154,7 +1154,7 @@ AXTextStateChangeIntent FrameSelection::textSelectionIntent(EAlteration alter, S
     bool flip = false;
     if (alter == FrameSelection::AlterationMove) {
         intent.type = AXTextStateChangeTypeSelectionMove;
-        flip = isRange() && directionOfSelection() == RTL;
+        flip = isRange() && directionOfSelection() == TextDirection::RTL;
     } else
         intent.type = AXTextStateChangeTypeSelectionExtend;
     switch (granularity) {
@@ -1375,7 +1375,7 @@ bool FrameSelection::modify(EAlteration alter, SelectionDirection direction, Tex
             setExtent(position, userTriggered);
         else {
             TextDirection textDirection = directionOfEnclosingBlock();
-            if (direction == DirectionForward || (textDirection == LTR && direction == DirectionRight) || (textDirection == RTL && direction == DirectionLeft))
+            if (direction == DirectionForward || (textDirection == TextDirection::LTR && direction == DirectionRight) || (textDirection == TextDirection::RTL && direction == DirectionLeft))
                 setEnd(position, userTriggered);
             else
                 setStart(position, userTriggered);
@@ -1965,7 +1965,7 @@ void FrameSelection::selectAll()
         return;
 
     if (selectStartTarget) {
-        auto event = Event::create(eventNames().selectstartEvent, true, true);
+        auto event = Event::create(eventNames().selectstartEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes);
         selectStartTarget->dispatchEvent(event);
         if (event->defaultPrevented())
             return;
@@ -1993,15 +1993,22 @@ bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, bool clo
         return false;
 #endif
 
+    OptionSet<SetSelectionOption> selectionOptions {  ClearTypingStyle };
+    if (closeTyping)
+        selectionOptions |= CloseTyping;
+
     if (userTriggered == UserTriggered) {
         FrameSelection trialFrameSelection;
-        trialFrameSelection.setSelection(newSelection, ClearTypingStyle | (closeTyping ? CloseTyping : 0));
+
+        trialFrameSelection.setSelection(newSelection, selectionOptions);
 
         if (!shouldChangeSelection(trialFrameSelection.selection()))
             return false;
+
+        selectionOptions |= IsUserTriggered;
     }
 
-    setSelection(newSelection, ClearTypingStyle | (closeTyping ? CloseTyping : 0) | (userTriggered == UserTriggered ? IsUserTriggered : 0));
+    setSelection(newSelection, selectionOptions);
     return true;
 }
 
@@ -2418,7 +2425,7 @@ bool FrameSelection::dispatchSelectStart()
     if (!selectStartTarget)
         return true;
 
-    auto event = Event::create(eventNames().selectstartEvent, true, true);
+    auto event = Event::create(eventNames().selectstartEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes);
     selectStartTarget->dispatchEvent(event);
     return !event->defaultPrevented();
 }
@@ -2690,7 +2697,8 @@ void FrameSelection::selectRangeOnElement(unsigned location, unsigned length, No
     resultRange->setStart(node, location);
     resultRange->setEnd(node, location + length);
     VisibleSelection selection = VisibleSelection(*resultRange, SEL_DEFAULT_AFFINITY);
-    setSelection(selection, true);
+    // FIXME: The second argument was "true" which implicitly converted to option "FireSelectEvent". Is this correct?
+    setSelection(selection, { FireSelectEvent });
 }
 
 VisibleSelection FrameSelection::wordSelectionContainingCaretSelection(const VisibleSelection& selection)

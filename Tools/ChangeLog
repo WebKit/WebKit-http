@@ -1,3 +1,2037 @@
+2018-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Roll out r235139 and r235146
+        https://bugs.webkit.org/show_bug.cgi?id=188805
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/ShouldKeepCurrentBackForwardListItemInList.cpp:
+
+2018-08-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Remove _WKAttachments and notify the UI client upon mainframe navigation
+        https://bugs.webkit.org/show_bug.cgi?id=188715
+        <rdar://problem/43541790>
+
+        Reviewed by Tim Horton.
+
+        Adds API tests to exercises cases where (1) the UI client is notified of attachment removal upon mainframe
+        navigation, and (2) the UI client is notified of attachment removal upon web content process termination.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (TestWebKitAPI::ObserveAttachmentUpdatesForScope::expectAttachmentUpdates):
+        (TestWebKitAPI::TEST):
+
+2018-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Transition ResizeReversePaginatedWebView API test from WKPageLoaderClient to WKPageNavigationClient
+        https://bugs.webkit.org/show_bug.cgi?id=188821
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Tests/WebKit/ResizeReversePaginatedWebView.cpp:
+        (TestWebKitAPI::didLayout):
+        (TestWebKitAPI::TEST):
+
+2018-08-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Call expressions shouldn't have type arguments
+        https://bugs.webkit.org/show_bug.cgi?id=188770
+
+        Reviewed by Filip Pizlo.
+
+        Call expressions only had type arguments for casts, becuase native types can have type arguments.
+        However, instead of putting those type arguments on the CallExpression, we should parse the casted
+        type as a real type and not as an identifier, which puts the type arguments in the TypeRef.
+
+        Test: casts
+
+        * WebGPUShadingLanguageRI/CallExpression.js:
+        (CallExpression):
+        (CallExpression.prototype.get name):
+        (CallExpression.resolve):
+        (CallExpression.prototype.get typeArguments): Deleted.
+        (CallExpression.prototype.becomeCast): Deleted.
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitCallExpression):
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parseConstexpr):
+        (parseTypeDef):
+        (parseLeftOperatorCall):
+        (parseCallExpression.let.parseArguments):
+        (parsePossiblePrefix):
+        (parsePossibleRelationalEquality):
+        (parseLeftLogicalExpression):
+        (parseIfStatement):
+        (parseWhile):
+        (parseFor):
+        (parseDo):
+        * WebGPUShadingLanguageRI/RemoveTypeArguments.js:
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter.prototype.visitCallExpression):
+
+2018-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Translate WebKit.LimitTitleSize API test into ObjC
+        https://bugs.webkit.org/show_bug.cgi?id=188810
+
+        Reviewed by Andy Estes.
+
+        It uses WKPageLoaderClient.didReceiveTitleForFrame which has been replaced by KVO.
+        I'm translating the test into ObjC rather than introducing a new callback to WKPageNavigationClient.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/LimitTitleSize.cpp: Removed.
+        * TestWebKitAPI/Tests/mac/LimitTitleSize.mm:
+        (TEST):
+        (-[LimitTitleSizeTestObserver observeValueForKeyPath:ofObject:change:context:]):
+        (TestWebKitAPI::TEST): Deleted.
+
+2018-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused shouldKeepCurrentBackForwardListItemInList check
+        https://bugs.webkit.org/show_bug.cgi?id=188805
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/ShouldKeepCurrentBackForwardListItemInList.cpp: Removed.
+
+2018-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Transition more API tests from WKPageLoaderClient to WKPageNavigationClient
+        https://bugs.webkit.org/show_bug.cgi?id=188813
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKit/NewFirstVisuallyNonEmptyLayout.cpp:
+        (TestWebKitAPI::didLayout):
+        (TestWebKitAPI::setPageLoaderClient):
+        * TestWebKitAPI/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutFails.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::didLayout):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutForImages.cpp:
+        (TestWebKitAPI::didLayout):
+        (TestWebKitAPI::setPageLoaderClient):
+
+2018-08-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Augment _WKAttachment SPI to handle NSFileWrappers in addition to NSData
+        https://bugs.webkit.org/show_bug.cgi?id=188496
+        <rdar://problem/43216836>
+
+        Reviewed by Tim Horton.
+
+        Adjusts existing attachment API tests. See below for more detail.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (-[TestWKWebView synchronouslyInsertAttachmentWithFileWrapper:contentType:]):
+        (-[TestWKWebView synchronouslyInsertAttachmentWithFilename:contentType:data:]):
+        (-[_WKAttachment synchronouslySetData:newContentType:newFilename:error:]):
+        (-[_WKAttachment synchronouslySetFileWrapper:newContentType:error:]):
+
+        Move off of deprecated attachment SPI, and add new helper functions to synchronously insert a new attachment or
+        update an existing attachment with a file wrapper.
+
+        (-[_WKAttachment expectRequestedDataToBe:]):
+        (TestWebKitAPI::TEST):
+
+        Add a new test to verify that file-URL-backed NSFileWrappers can be used to insert and update attachment data.
+        Also augment an existing test to check that an attachment element which has been copied and pasted within the
+        same document has a different _WKAttachment wrapper object than its duplicate, but both _WKAttachments are
+        backed by the same NSFileWrapper that was originally used to insert the attachment.
+
+        Additionally, add another macOS test to verify that dropping promised files in an attachment-element-enabled
+        editable area inserts attachment elements into the document and notifies the UI client with the inserted
+        attachment data.
+
+        (-[_WKAttachment synchronouslyRequestInfo:]): Deleted.
+        (-[_WKAttachment synchronouslyRequestData:]): Deleted.
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        (-[DragAndDropSimulator _webView:didInsertAttachment:withSource:]):
+
+        Move off of -_webView:didInsertAttachment:.
+
+        (-[DragAndDropSimulator _webView:didInsertAttachment:]): Deleted.
+
+2018-08-21  David Kilzer  <ddkilzer@apple.com>
+
+        sort-Xcode-project-file: top-level files and folders are sorted unintentionally when `mainGroup` has no name
+        <https://webkit.org/b/188755>
+
+        Reviewed by Andy Estes.
+
+        * Scripts/sort-Xcode-project-file: Fix regular expression to
+        make `mainGroup` name optional.
+
+2018-08-21  Andy VanWagoner  <andy@vanwagoner.family>
+
+        Unreviewed, add myself to committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-08-21  Antti Koivisto  <antti@apple.com>
+
+        Allow creating WeakPtrs to const objects
+        https://bugs.webkit.org/show_bug.cgi?id=188785
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp:
+        (TestWebKitAPI::Base::weakPtrFactory const):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::Base::weakPtrFactory): Deleted.
+
+2018-08-21  Per Arne Vollan  <pvollan@apple.com>
+
+        [WebGL] Contexts are not updated when display configuration changed.
+        https://bugs.webkit.org/show_bug.cgi?id=188750
+
+        Reviewed by Brent Fulgham.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::sendDisplayConfigurationChangedMessageForTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::sendDisplayConfigurationChangedMessageForTesting):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2018-08-21  John Wilander  <wilander@apple.com>
+
+        Make ResourceLoadObserver::logWebSocketLoading() handle websockets in detached frames
+        https://bugs.webkit.org/show_bug.cgi?id=188757
+        <rdar://problem/38713390>
+
+        Reviewed by Alex Christensen.
+
+        These changes add the new WebKitTestRunner function
+        isStatisticsRegisteredAsSubresourceUnder().
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::isStatisticsRegisteredAsSubresourceUnder):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::isStatisticsRegisteredAsSubresourceUnder):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2018-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Transition more API tests from WKPageLoaderClient to WKPageNavigationClient
+        https://bugs.webkit.org/show_bug.cgi?id=188797
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit/AboutBlankLoad.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/EphemeralSessionPushStateNoHistoryCallback.cpp:
+        (TestWebKitAPI::didSameDocumentNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didSameDocumentNavigationForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/FailedLoad.cpp:
+        (TestWebKitAPI::didFailProvisionalNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFailProvisionalLoadWithErrorForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/FrameMIMETypeHTML.cpp:
+        (TestWebKitAPI::didStartProvisionalNavigation):
+        (TestWebKitAPI::didCommitNavigation):
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didStartProvisionalLoadForFrame): Deleted.
+        (TestWebKitAPI::didCommitLoadForFrame): Deleted.
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/FrameMIMETypePNG.cpp:
+        (TestWebKitAPI::didStartProvisionalNavigation):
+        (TestWebKitAPI::didCommitNavigation):
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didStartProvisionalLoadForFrame): Deleted.
+        (TestWebKitAPI::didCommitLoadForFrame): Deleted.
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/LayoutMilestonesWithAllContentInFrame.cpp:
+        (TestWebKitAPI::renderingProgressDidChange):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didLayout): Deleted.
+        * TestWebKitAPI/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutFrames.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::renderingProgressDidChange):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        (TestWebKitAPI::didLayout): Deleted.
+        * TestWebKitAPI/Tests/WebKit/PageLoadBasic.cpp:
+        (TestWebKitAPI::State::State):
+        (TestWebKitAPI::didStartProvisionalNavigation):
+        (TestWebKitAPI::didCommitNavigation):
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::decidePolicyForNavigationAction):
+        (TestWebKitAPI::decidePolicyForResponse):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didStartProvisionalLoadForFrame): Deleted.
+        (TestWebKitAPI::didCommitLoadForFrame): Deleted.
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        (TestWebKitAPI::decidePolicyForNewWindowAction): Deleted.
+        * TestWebKitAPI/Tests/WebKit/PageLoadDidChangeLocationWithinPageForFrame.cpp:
+        (TestWebKitAPI::didSameDocumentNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        (TestWebKitAPI::didSameDocumentNavigationForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/PrivateBrowsingPushStateNoHistoryCallback.cpp:
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didSameDocumentNavigationForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/ReloadPageAfterCrash.cpp:
+        (TestWebKitAPI::didFinishLoad):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit/WKBundleFileHandle.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/mac/RestoreStateAfterTermination.mm:
+        (TestWebKitAPI::didFinishLoad):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/CommandBackForward.mm:
+        (WebKit2_CommandBackForwardTestWKView::SetUp):
+        (WebKit2_CommandBackForwardTestWKView::didFinishLoadForFrame): Deleted.
+
+2018-08-20  Alex Christensen  <achristensen@webkit.org>
+
+        Replace WKPageLoaderClient with WKPageNavigationClient in many API tests
+        https://bugs.webkit.org/show_bug.cgi?id=188771
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit/CloseThenTerminate.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/CookieManager.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/DeferredViewInWindowStateChange.mm:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/DidNotHandleKeyDown.cpp:
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/DidRemoveFrameFromHiearchyInPageCache.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/EventModifiers.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setClients):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/Find.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/FindMatches.mm:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/ForceRepaint.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/FrameHandle.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/Geolocation.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/HitTestResultNodeHandle.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/InjectedBundleBasic.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/LimitTitleSize.cpp:
+        (TestWebKitAPI::didFinishLoadForFrame):
+        * TestWebKitAPI/Tests/WebKit/LoadAlternateHTMLStringWithNonDirectoryURL.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::loadAlternateHTMLString):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/LoadCanceledNoServerRedirectCallback.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/LoadPageOnCrash.cpp:
+        (TestWebKitAPI::WebKit2CrashLoader::WebKit2CrashLoader):
+        (TestWebKitAPI::didFinishLoad):
+        * TestWebKitAPI/Tests/WebKit/MenuTypesForMouseEvents.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/MouseMoveAfterCrash.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutFails.cpp:
+        (TestWebKitAPI::didFinishLoadForFrame):
+        * TestWebKitAPI/Tests/WebKit/PageLoadBasic.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit/PendingAPIRequestURL.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit/ResizeWindowAfterCrash.cpp:
+        (TestWebKitAPI::didFinishLoad):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit/RestoreSessionState.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/RestoreSessionStateContainingFormData.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/ScrollPinningBehaviors.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishDocumentLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/SpacebarScrolling.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/StopLoadingDuringDidFailProvisionalLoad.cpp:
+        (TestWebKitAPI::didFailProvisionalNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFailProvisionalLoadWithErrorForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/TerminateTwice.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/TextFieldDidBeginAndEndEditing.cpp:
+        (TestWebKitAPI::WebKit2TextFieldBeginAndEditEditingTest::didFinishNavigation):
+        (TestWebKitAPI::WebKit2TextFieldBeginAndEditEditingTest::setPageLoaderClient):
+        (TestWebKitAPI::WebKit2TextFieldBeginAndEditEditingTest::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/UserMessage.cpp:
+        (TestWebKitAPI::WebKit2UserMessageRoundTripTest::didFinishNavigation):
+        (TestWebKitAPI::WebKit2UserMessageRoundTripTest::setPageLoaderClient):
+        (TestWebKitAPI::WebKit2UserMessageRoundTripTest::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/WKPageConfiguration.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/WKPageCopySessionStateWithFiltering.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/WKPageGetScaleFactorNotZero.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/WKPageIsPlayingAudio.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setUpClients):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/WKThumbnailView.mm:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/WebArchive.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/mac/AttributedSubstringForProposedRangeWithImage.mm:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/mac/ContextMenuDownload.mm:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/mac/CustomBundleParameter.mm:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/mac/EditorCommands.mm:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/mac/GetPIDAfterAbortedProcessLaunch.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKit/mac/InjectedBundleAppleEvent.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/FullscreenDelegate.mm:
+        (didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/PictureInPictureDelegate.mm:
+        (didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/Tests/mac/FirstResponderScrollingPosition.mm:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        * TestWebKitAPI/mac/WebKitAgnosticTest.mm:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+
+2018-08-21  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] Update to use libwpe-1.0.0 and WPEBackend-fdo-1.0.0
+        https://bugs.webkit.org/show_bug.cgi?id=188782
+
+        Reviewed by Michael Catanzaro.
+
+        Make the build depend on wpe-0.2, and change the Flatpak and JHBuild development
+        environments to use version 1.0.0 of libwpe and WPEBackend-fdo.
+
+        * flatpak/org.webkit.WPE.yaml: Update to use libwpe and WPEBackend-fdo version 1.0.0 from
+        release tarballs, and removed the (now unneeded) Lua and LuaJIT modules.
+        * wpe/jhbuild.modules: Ditto.
+
+2018-08-21  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [Flatpak] Update to GNOME master runtime
+        https://bugs.webkit.org/show_bug.cgi?id=188731
+
+        Reviewed by Philippe Normand.
+
+        The 3.28 runtime is pretty stale at this point. We could wait a couple weeks for the 3.30
+        runtime, but I don't think there's any need to stick with the stable runtime when we have
+        the ability to pin to a particular version of the master runtime. There are also several
+        advantages to switching to the master runtime.
+
+        * flatpak/files/httpd-autogen.sh: Removed.
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak.clean_args):
+        * flatpak/org.webkit.GTK.yaml:
+        * flatpak/org.webkit.WebKit.yaml:
+        * flatpak/patches/httpd-0001-configure-use-pkg-config-for-PCRE-detection.patch: Removed.
+        * flatpak/patches/libgcrypt-0001-Use-pkg-config-to-detect-gpg-error.patch: Removed.
+
+2018-08-20  Jonathan Bedard  <jbedard@apple.com>
+
+        WebKitTestRunner: Add watchOS entitlements
+        https://bugs.webkit.org/show_bug.cgi?id=188758
+
+        Reviewed by Tim Horton.
+
+        watchOS needs an additional entitlement to open up a socket for on-device testing.
+
+        * WebKitTestRunner/Configurations/WebKitTestRunnerApp-watchOS.entitlements: Added.
+        * WebKitTestRunner/Configurations/WebKitTestRunnerApp.xcconfig:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+
+2018-08-20  Thomas Denney  <tdenney@apple.com>
+
+        [WHLSL] Remove generics from the interpreter
+        https://bugs.webkit.org/show_bug.cgi?id=187988
+
+        Reviewed by Myles C. Maxfield.
+
+        This patch completely removes generic and protocol support from WHLSL
+        whilst adding back any features that were originally implemented with
+        generics.
+
+        Many of the changes in this patch just remove occurrences of type
+        arguments and type parameters --- although there are some cases where
+        they have been deliberately left in --- as well as removing tests only
+        relevant to those features. These changes are not listed below.
+
+        * WebGPUShadingLanguageRI/All.js: Add/remove JS dependencies
+        * WebGPUShadingLanguageRI/AutoWrapper.js:
+        (AutoWrapper.prototype.visitConstexprTypeParameter): Deleted.
+        * WebGPUShadingLanguageRI/BuiltinVectorCasts.js: Added. The built-in
+        vectors have many constructors for different scalar and vector types.
+        These were originally implemented with generics.
+        * WebGPUShadingLanguageRI/BuiltinVectorEqualityOperator.js: Adds the
+        equality operator for built-in vectors, again this was removed with
+        generics.
+        * WebGPUShadingLanguageRI/BuiltinVectorGetter.js: Added, as above.
+        Built-in vectors only support the getter and setter, and not the ander.
+        * WebGPUShadingLanguageRI/BuiltinVectorIndexGetter.js: Added.
+        * WebGPUShadingLanguageRI/BuiltinVectorIndexSetter.js: Added.
+        * WebGPUShadingLanguageRI/BuiltinVectorSetter.js: Added.
+        * WebGPUShadingLanguageRI/CallExpression.js: Adds support for
+        instantiating functions which cannot be discovered earlier in
+        preparation because their types are absent (specifically support for the
+        operator &[] for array references and the length operator for array
+        references). Previously support for these was implemented with generics.
+        (CallExpression.resolve):
+        (CallExpression.prototype.resolve):
+        (CallExpression.prototype._resolveByInstantiation):
+        (CallExpression.prototype._resolveToOperatorAnderIndexer):
+        (CallExpression.prototype._resolveToOperatorLength):
+        (CallExpression.prototype.resolveToOverload):
+        (CallExpression.prototype.becomeCast):
+        (CallExpression.prototype.toString):
+        (CallExpression):
+        * WebGPUShadingLanguageRI/CallExpressionTypeArgumentResolver.js: Added.
+        We support syntax like vector<int, 2>(a, b) for constructing vectors;
+        this new preparation step resolves them to specific constructors.
+        * WebGPUShadingLanguageRI/CallFunction.js:
+        * WebGPUShadingLanguageRI/Checker.js:
+        * WebGPUShadingLanguageRI/ConstexprFolder.js:
+        * WebGPUShadingLanguageRI/CreateLiteralType.js:
+        * WebGPUShadingLanguageRI/ExpressionFinder.js:
+        * WebGPUShadingLanguageRI/FlattenProtocolExtends.js: Removed.
+        * WebGPUShadingLanguageRI/FlattenedStructOffsetGatherer.js:
+        * WebGPUShadingLanguageRI/Func.js:
+        * WebGPUShadingLanguageRI/FuncDef.js:
+        * WebGPUShadingLanguageRI/FuncInstantiator.js: Deleted.
+        * WebGPUShadingLanguageRI/InferTypesForCall.js: Removed usage of type arguments.
+        * WebGPUShadingLanguageRI/Inline.js: Remove use of FuncInstantiator.
+        * WebGPUShadingLanguageRI/Inliner.js: Ditto.
+        * WebGPUShadingLanguageRI/Intrinsics.js:
+        * WebGPUShadingLanguageRI/Lexer.js:
+        * WebGPUShadingLanguageRI/LiteralTypeChecker.js:
+        * WebGPUShadingLanguageRI/NameContext.js:
+        (NameContext.prototype.add):
+        (NameContext.prototype.get let):
+        (NameContext.underlyingThings.prototype.else):
+        (NameContext.prototype.resolveFuncOverload):
+        * WebGPUShadingLanguageRI/NameFinder.js:
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitFunc):
+        (NameResolver.prototype.visitFuncDef):
+        (NameResolver.prototype.visitTypeDef):
+        (NameResolver.prototype.visitStructType):
+        (NameResolver.prototype.visitTypeRef):
+        (NameResolver.prototype.visitCallExpression):
+        (NameResolver.prototype.visitVectorType):
+        (NameResolver):
+        (NameResolver.prototype._visitTypeParametersAndBuildNameContext): Deleted.
+        (NameResolver.prototype.visitProtocolDecl): Deleted.
+        * WebGPUShadingLanguageRI/NativeFunc.js:
+        (NativeFunc):
+        * WebGPUShadingLanguageRI/NativeFuncInstance.js: Deleted.
+        * WebGPUShadingLanguageRI/NativeType.js:
+        (NativeType):
+        (NativeType.prototype.get name):
+        (NativeType.prototype.toString):
+        (NativeType.prototype.get typeParameters): Deleted.
+        (NativeType.prototype.instantiate): Deleted.
+        * WebGPUShadingLanguageRI/Node.js:
+        (Node.prototype.commit):
+        (Node):
+        (Node.prototype.substitute): Deleted.
+        (Node.prototype.substituteToUnification): Deleted.
+        * WebGPUShadingLanguageRI/OperatorAnderIndex.js: Added, previously
+        implemented with generics.
+        * WebGPUShadingLanguageRI/OperatorArrayRefLength.js: Ditto.
+        * WebGPUShadingLanguageRI/OperatorBool.js: Ditto.
+        * WebGPUShadingLanguageRI/Parse.js: Removed everything related to
+        generics and protocols.
+        * WebGPUShadingLanguageRI/Prepare.js: Added new stages.
+        * WebGPUShadingLanguageRI/Program.js:
+        (Program):
+        (Program.prototype.get types):
+        (Program.prototype.add):
+        (Program.prototype.get protocols): Deleted.
+        * WebGPUShadingLanguageRI/ProtocolDecl.js: Removed.
+        * WebGPUShadingLanguageRI/ProtocolRef.js: Removed.
+        * WebGPUShadingLanguageRI/RecursiveTypeChecker.js:
+        * WebGPUShadingLanguageRI/ResolveCallExpressionsWithTypeArguments.js: Added.
+        * WebGPUShadingLanguageRI/ResolveNames.js:
+        * WebGPUShadingLanguageRI/ResolveOverloadImpl.js:
+        * WebGPUShadingLanguageRI/ResolveTypeDefs.js:
+        (resolveTypeDefsInProtocols): Deleted.
+        * WebGPUShadingLanguageRI/Rewriter.js: Changes for new classes.
+        * WebGPUShadingLanguageRI/SPIRV.html:
+        * WebGPUShadingLanguageRI/SPIRVCodegen.js:
+        * WebGPUShadingLanguageRI/StandardLibrary.js: Replace old generic features.
+        * WebGPUShadingLanguageRI/StatementCloner.js: Changes for new classes.
+        (StructLayoutBuilder):
+        * WebGPUShadingLanguageRI/StructType.js:
+        * WebGPUShadingLanguageRI/SwizzleOp.js:
+        (SwizzleOp):
+        (SwizzleOp.prototype.get baseTypeName):
+        (SwizzleOp.prototype.toString):
+        (SwizzleOp.functions.):
+        (SwizzleOp.functions):
+        (SwizzleOp.prototype.instantiateImplementation):
+        (SwizzleOp.allSwizzleOperators.): Deleted.
+        (SwizzleOp.allSwizzleOperators): Deleted.
+        * WebGPUShadingLanguageRI/SynthesizeArrayOperatorLength.js: Added,
+        previously implemented with generics.
+        * WebGPUShadingLanguageRI/SynthesizeCopyConstructorOperator.js: Ditto.
+        * WebGPUShadingLanguageRI/SynthesizeDefaultConstructorOperator.js: Ditto.
+        * WebGPUShadingLanguageRI/SynthesizeEnumFunctions.js: Ditto.
+        * WebGPUShadingLanguageRI/SynthesizeOperatorBool.js: Ditto.
+        * WebGPUShadingLanguageRI/SynthesizeStructAccessors.js:
+        (synthesizeStructAccessors.setupImplementationData):
+        (synthesizeStructAccessors.createFieldType):
+        (synthesizeStructAccessors.createTypeRef):
+        (synthesizeStructAccessors.setupAnder):
+        (synthesizeStructAccessors):
+        (synthesizeStructAccessors.createTypeParameters): Deleted.
+        (synthesizeStructAccessors.): Deleted.
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js: Removed redundant tests and added new
+        tests for changed language features.
+        * WebGPUShadingLanguageRI/Type.js:
+        * WebGPUShadingLanguageRI/TypeDef.js:
+        * WebGPUShadingLanguageRI/TypeDefResolver.js:
+        * WebGPUShadingLanguageRI/TypeParameterRewriter.js: Removed.
+        * WebGPUShadingLanguageRI/TypeRef.js:
+        * WebGPUShadingLanguageRI/TypeVariable.js: Removed.
+        * WebGPUShadingLanguageRI/UnificationContext.js:
+        * WebGPUShadingLanguageRI/VectorType.js: Added.
+        * WebGPUShadingLanguageRI/Visitor.js: Changes for new classes.
+        * WebGPUShadingLanguageRI/WSL.md: Removed description of
+        generics/protocols.
+        * WebGPUShadingLanguageRI/WrapChecker.js:
+        (WrapChecker):
+        (WrapChecker.visitConstexprTypeParameter): Deleted.
+        (WrapChecker.prototype.visitFuncParameter): Deleted.
+        (WrapChecker.prototype.visitTypeVariable): Deleted.
+        * WebGPUShadingLanguageRI/index.html:
+
+2018-08-20  Thomas Denney  <tdenney@apple.com>
+
+        Added Thomas Denney to contributors.json.
+        https://bugs.webkit.org/show_bug.cgi?id=188525
+
+        Reviewed by Myles C. Maxfield.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-08-20  Bernhard M. Wiedemann  <bwiedemann@suse.de>
+
+        [GTK] Sort inspector GResource manifest to ensure reproducible builds
+        https://bugs.webkit.org/show_bug.cgi?id=188738
+
+        Reviewed by Michael Catanzaro.
+
+        * glib/generate-inspector-gresource-manifest.py:
+        (get_filenames): sort list of input files
+
+2018-08-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Paste is missing from callout bar when pasteboard only contains custom data
+        https://bugs.webkit.org/show_bug.cgi?id=184271
+        <rdar://problem/39256708>
+
+        Reviewed by Andy Estes.
+
+        This API test is failing when run against older macOS builds, where custom pasteboard
+        data is not enabled by default.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PasteMixedContent.mm:
+        (TestWebKitAPI::TEST):
+
+2018-08-20  Claudio Saavedra  <csaavedra@igalia.com>
+
+        Add WPE Debug configuration to the flakiness dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=188743
+
+        Reviewed by Michael Catanzaro.
+
+        * TestResultServer/static-dashboards/builders.jsonp:
+        * TestResultServer/static-dashboards/flakiness_dashboard_unittests.js:
+
+2018-08-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add API to throw exceptions using printf formatted strings
+        https://bugs.webkit.org/show_bug.cgi?id=188698
+
+        Reviewed by Michael Catanzaro.
+
+        Add cases to test the new API.
+
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/TestJSC.cpp:
+        (createFormattedError):
+        (createCustomFormattedError):
+        (testJSCExceptions):
+
+2018-08-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Complete the JSCException API
+        https://bugs.webkit.org/show_bug.cgi?id=188695
+
+        Reviewed by Michael Catanzaro.
+
+        Add cases to test the new API.
+
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/TestJSC.cpp:
+        (testJSCCheckSyntax):
+        (createCustomError):
+        (testJSCExceptions):
+
+2018-08-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Paste is missing from callout bar when pasteboard only contains custom data
+        https://bugs.webkit.org/show_bug.cgi?id=184271
+        <rdar://problem/39256708>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new API test to verify that on both iOS and macOS, copied custom pasteboard data can only be pasted in a
+        matching origin. Additionally verify that on iOS, the web view is capable of performing the "paste:" selector.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PasteMixedContent.mm:
+        (TestWebKitAPI::TEST):
+        (imagePath): Deleted.
+        (writeTypesAndDataToPasteboard): Deleted.
+        (setUpWebView): Deleted.
+        (markupString): Deleted.
+
+        Make this test file no longer exclusive to macOS.
+
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView synchronouslyLoadHTMLString:baseURL:]):
+
+        Tweak this helper to also take in a `baseURL`. Defaults to using the TestWebKitAPI bundle resource URL.
+
+        (-[TestWKWebView synchronouslyLoadHTMLString:]):
+
+2018-08-17  Jonathan Bedard  <jbedard@apple.com>
+
+        Add back --wtf-only to run-api-tests
+        https://bugs.webkit.org/show_bug.cgi?id=187893
+        <rdar://problem/42483983>
+
+        Reviewed by Aakash Jain.
+
+        When doing WTF development, it is not necessary to build or run all of the API
+        tests. Generally, if a user has specified a specific binary (or binaries) that
+        they are interested in testing, it is not necessary to check all API test binaries.
+
+        * Scripts/webkitpy/api_tests/manager.py:
+        (Manager._collect_tests): Only use the binaries matching the program arguments
+        when collecting tests.
+        (Manager._binaries_for_arguments): Generate a list of binaries which match the
+        program arguments.
+        (Manager.run): Pass a list binaries to check.
+        * Scripts/webkitpy/api_tests/run_api_tests.py:
+        (parse_args):
+        * Scripts/webkitpy/port/base.py:
+        (Port.check_api_test_build): If the caller specifies which API test binaries it
+        requires, only check the ones specified.
+        (Port.path_to_api_test_binaries): Allow the caller to only build the WTF API tests.
+        (Port._build_api_tests): Allow the caller to only build the WTF API tests.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.path_to_api_test_binaries):
+
+2018-08-17  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (234743) Timeouts in TestWebKitAPI.PreferredAudioBufferSize.AudioWithWebAudio and TestWebKitAPI.PreferredAudioBufferSize.WebAudio
+        https://bugs.webkit.org/show_bug.cgi?id=188470
+        <rdar://problem/43144969>
+
+        Reviewed by Alex Christensen.
+
+        On a loaded server, the WebContent process may send the "playing" message before the
+        UIProcess has a chance to register a listener for that message. Restructure the tests
+        so that the listener is registered before the page is loaded.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PreferredAudioBufferSize.mm:
+        (PreferredAudioBufferSize::runPlayingTestWithPageNamed):
+        (TEST_F):
+
+2018-08-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] [WK2] Add infrastructure to test receiving file promises on drop
+        https://bugs.webkit.org/show_bug.cgi?id=188583
+
+        Reviewed by Andy Estes.
+
+        Enable testing file promise drop handling on the WebKit2 port of macOS by introducing a subclass of
+        NSFilePromiseReceiver and implementing `-enumerateDraggingItemsWithOptions:forView:…` on TestDraggingInfo (the
+        concrete NSDraggingInfo implementation used by DragAndDropSimulator) using the mock file receiver. Also
+        introduces 3 new macOS tests. See below for more details.
+
+        A large portion of this logic is ported over from DumpRenderTree testing infrastructure added in r229297. In a
+        future patch, we should introduce a way to write code common to both API tests, WebKitTestRunner and
+        DumpRenderTree, and make this code shared among all three testing harnesses.
+
+        Tests:  DragAndDropTests.DragImageElementIntoFileUpload
+                DragAndDropTests.DragPromisedImageFileIntoFileUpload
+                DragAndDropTests.DragImageFileIntoFileUpload
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/DragAndDropTests.mm:
+        (TEST):
+
+        Drive-by fix: Replace NSMakePoint with CGPointMake.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/image-and-file-upload.html:
+
+        Add a new test page consisting of an image and a "file upload" area that updates exercises DataTransfer API to
+        load the dropped image.
+
+        * TestWebKitAPI/Tests/mac/DragAndDropTestsMac.mm:
+        (waitForConditionWithLogging):
+
+        Add a helper function to wait for a condition to evaluate to true. To make failures more informative,
+        additionally add a mechanism to log a warning message after a given timeout, if the condition has yet to be met.
+
+        (TEST):
+
+        Add new tests to exercise a few cases of file upload in WebKit, including: (1) dragging from an image element,
+        (2) dragging files written to the pasteboard as promises, and (3) files written to the pasteboard as file URLs.
+
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+
+        Surface the new functionality provided by the file promise receiver mock via two new methods on
+        DragAndDropSimulator to (1) write files as file promises to the pasteboard, and (2) write files as file paths
+        directly to the pasteboard.
+
+        * TestWebKitAPI/mac/DragAndDropSimulatorMac.mm:
+        (-[DragAndDropSimulator performDragInWebView:atLocation:withImage:pasteboard:source:]):
+        (-[DragAndDropSimulator externalPromisedFiles]):
+        (getFilePathsAndTypeIdentifiers):
+        (-[DragAndDropSimulator writePromisedFiles:]):
+        (-[DragAndDropSimulator writeFiles:]):
+        * TestWebKitAPI/mac/TestDraggingInfo.h:
+        * TestWebKitAPI/mac/TestDraggingInfo.mm:
+        (-[TestDraggingInfo initWithDragAndDropSimulator:]):
+        (-[TestDraggingInfo filePromiseReceivers]):
+        (-[TestDraggingInfo enumerateDraggingItemsWithOptions:forView:classes:searchOptions:usingBlock:]):
+
+        Implement this by invoking the given block with a TestFilePromiseReceiver. While all other classes are
+        unhandled by this testing code, WebKit only calls into this with [NSFilePromiseReceiver class], this is
+        currently sufficient for testing purposes.
+
+        * TestWebKitAPI/mac/TestFilePromiseReceiver.h: Copied from Tools/TestWebKitAPI/mac/TestDraggingInfo.h.
+        * TestWebKitAPI/mac/TestFilePromiseReceiver.mm: Added.
+        (-[TestFilePromiseReceiver initWithPromisedTypeIdentifiers:dragAndDropSimulator:]):
+        (-[TestFilePromiseReceiver fileTypes]):
+        (-[TestFilePromiseReceiver fileNames]):
+        (-[TestFilePromiseReceiver dealloc]):
+        (-[TestFilePromiseReceiver draggingSource]):
+        (-[TestFilePromiseReceiver setDraggingSource:]):
+        (fileNameWithNumericSuffix):
+        (copyFile):
+
+        Add a helper to copy a file into a destination directory. Used to implement the main functionality of our
+        NSFilePromiseReceiver subclass, which copies the files specified by test code into the directory determined by
+        WebKit.
+
+        (-[TestFilePromiseReceiver receivePromisedFilesAtDestination:options:operationQueue:reader:]):
+
+2018-08-16  Alex Christensen  <achristensen@webkit.org>
+
+        Add entitlement to MiniBrowser to allow it to communicate with com.apple.Safari.SafeBrowsing.Service
+        https://bugs.webkit.org/show_bug.cgi?id=188677
+
+        Reviewed by Tim Horton.
+
+        * MiniBrowser/MiniBrowser.entitlements:
+        SSBLookupContext lookUpURL:completionHandler: fails to communicate with its service without this entitlement
+        on released operating systems.  See <rdar://problem/42749777>
+
+2018-08-16  Jer Noble  <jer.noble@apple.com>
+
+        Add option to run-api-tests to force running of DISABLED tests.
+        https://bugs.webkit.org/show_bug.cgi?id=188674
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/webkitpy/api_tests/run_api_tests.py:
+        (parse_args):
+        * Scripts/webkitpy/api_tests/runner.py:
+        (Runner.command_for_port):
+        (_Worker._run_single_test):
+
+2018-08-16  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Separate queues for Builders and Testers - macOS High Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=188540
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/config.json: Splitted few macOS queues into builders and testers. 
+
+2018-08-16  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add build steps ArchiveTestResults, UploadTestResults and ExtractTestResults
+        https://bugs.webkit.org/show_bug.cgi?id=188666
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (ArchiveTestResults): Build step to Archive the test results.
+        (UploadTestResults): Build step to upload the archive.
+        (ExtractTestResults): Build step to unzip the archive on server and generate a link.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-tests.
+        (ExpectMasterShellCommand): Copied from other similar internal code.
+
+2018-08-16  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Separate queues for Builders and Testers - macOS Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=188516
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/config.json: Splitted macOS Sierra Release queues into builders and testers.
+        * BuildSlaveSupport/ews-build/factories.py: Used appropriate base classes for builders and testers.
+
+2018-08-16  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Win][DumpRenderTree] Remove error message for duplicated tests.
+        https://bugs.webkit.org/show_bug.cgi?id=188662
+
+        Reviewed by Per Arne Vollan.
+
+        This was added to track down an issue where the same tests appeared
+        to be run multiple times. This turned out to not be the case.
+        See https://bugs.webkit.org/show_bug.cgi?id=166760 .
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (runTest):
+
+2018-08-16  Alex Christensen  <achristensen@webkit.org>
+
+        Re-introduce assertion removed in r234890
+        https://bugs.webkit.org/show_bug.cgi?id=188611
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WTF/Vector.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-08-16  Jer Noble  <jer.noble@apple.com>
+
+        Add Experimental Feature support for SourceBuffer.changeType()
+        https://bugs.webkit.org/show_bug.cgi?id=188626
+        <rdar://problem/43356021>
+
+        Reviewed by Eric Carlson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2018-08-16  Aditya Keerthi  <akeerthi@apple.com>
+
+        Support drag-and-drop for input[type=color]
+        https://bugs.webkit.org/show_bug.cgi?id=188464
+
+        Reviewed by Wenson Hsieh.
+
+        Added five cross-platform API tests, to verify that dragging and dropping with
+        color inputs changes the value of the drop target if and only if both inputs are
+        enabled. Also tests that the change and input events are fired when changing the
+        value of a color input through drag and drop. 
+
+        Additionally, added a macOS-specific test to verify that dropping an item with
+        NSColorPboardType changes the value of the color input.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/DragAndDropTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/color-drop.html: Added.
+        * TestWebKitAPI/Tests/mac/DragAndDropTestsMac.mm:
+        (TestWebKitAPI::TEST):
+
+2018-08-16  Antti Koivisto  <antti@apple.com>
+
+        Use OptionSet for ActivityState::Flags
+        https://bugs.webkit.org/show_bug.cgi?id=188554
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/Tests/WTF/OptionSet.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-08-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] MiniBrowser: web view doesn't get the focus when new window is created
+        https://bugs.webkit.org/show_bug.cgi?id=188546
+
+        Reviewed by Michael Catanzaro.
+
+        When a new window is created, the first widget of the windo is getting the focus, the toolbar in this case. We
+        always want the WebView to grab the focus. In case of new empty tab, we want to the URL bar to be focused
+        instead. This was causing failures in WebDriver tests that create a popup window with an input element that is
+        filled with send keys command. The input element is marked as focused in the DOM, but the actual focused widget
+        is the toolbar, so key events are sent to the toolbar instead of the web view.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (webViewCreate):
+        (newTabCallback):
+        (openPrivateWindow):
+        (browser_window_get_or_create_web_view_for_automation):
+
+2018-08-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix WebDriver tests after r234839.
+
+        New pytest requires to autoinstall attrs too.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook._install_pytest):
+
+2018-08-15  Ansh Shukla  <ansh_shukla@apple.com>
+
+        NSURLAuthenticationMethodOAuth challenges are surfaced to clients in -didReceiveAuthenticationChallenge as NSURLAuthenticationMethodDefault
+        https://bugs.webkit.org/show_bug.cgi?id=186870
+        <rdar://problem/41314410>
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::toString):
+        (WTR::TestController::canAuthenticateAgainstProtectionSpace): Expose type of authentication challenge so we can test OAuth.
+        (WTR::TestController::didReceiveAuthenticationChallenge):
+
+2018-08-15  Ben Richards  <benton_richards@apple.com>
+
+        We should cache the compiled sandbox profile in a data vault
+        https://bugs.webkit.org/show_bug.cgi?id=184991
+
+        Reviewed by Ryosuke Niwa.
+
+        Added trace points for sandbox initialization
+
+        * Tracing/SystemTracePoints.plist:
+
+2018-08-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r234870.
+
+        The test introduced with this change is a flaky failure.
+
+        Reverted changeset:
+
+        "NSURLAuthenticationMethodOAuth challenges are surfaced to
+        clients in -didReceiveAuthenticationChallenge as
+        NSURLAuthenticationMethodDefault"
+        https://bugs.webkit.org/show_bug.cgi?id=186870
+        https://trac.webkit.org/changeset/234870
+
+2018-08-15  Jonathan Bedard  <jbedard@apple.com>
+
+        WebKitTestRunner should support watch devices
+        https://bugs.webkit.org/show_bug.cgi?id=188570
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/Configurations/WebKitTestRunnerApp.xcconfig:
+
+2018-08-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment SPI] Remove attachment display mode options
+        https://bugs.webkit.org/show_bug.cgi?id=188596
+
+        Reviewed by Dan Bernstein.
+
+        Remove API tests and API test helpers for verifying the behavior of in-place media attachment elements.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (-[TestWKWebView synchronouslyInsertAttachmentWithFilename:contentType:data:]):
+        (TestWebKitAPI::TEST):
+        (testVideoData): Deleted.
+        (displayOptionsWithMode): Deleted.
+        (-[TestWKWebView synchronouslyInsertAttachmentWithFilename:contentType:data:options:]): Deleted.
+
+2018-08-14  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, change my emails.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+        * Scripts/webkitpy/common/config/watchlist:
+
+2018-08-14  Saam barati  <sbarati@apple.com>
+
+        HashMap<Ref<P>, V> asserts when V is not zero for its empty value
+        https://bugs.webkit.org/show_bug.cgi?id=188582
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-08-14  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floating] Add support for negative clearance.
+        https://bugs.webkit.org/show_bug.cgi?id=188555
+
+        Reviewed by Simon Fraser.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-08-14 Sihui Liu <sihui_liu@apple.com>
+
+        Crash in WebKit::filterPreloadHSTSEntry via NetworkProcess::getHostNamesWithHSTSCache
+        https://bugs.webkit.org/show_bug.cgi?id=188576
+        <rdar://problem/43148977>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebsiteDatastore.mm: Added.
+        (TEST):
+
+2018-08-14  Alex Christensen  <achristensen@webkit.org>
+
+        isValidCSSSelector is unsafe to be called from a non-main thread
+        https://bugs.webkit.org/show_bug.cgi?id=188581
+        <rdar://problem/40517358>
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::InMemoryCompiledContentExtension::create):
+        (TestWebKitAPI::checkCompilerError):
+
+2018-08-14  Ansh Shukla  <ansh_shukla@apple.com>
+
+        NSURLAuthenticationMethodOAuth challenges are surfaced to clients in -didReceiveAuthenticationChallenge as NSURLAuthenticationMethodDefault
+        https://bugs.webkit.org/show_bug.cgi?id=186870
+        <rdar://problem/41314410>
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::toString):
+        (WTR::TestController::canAuthenticateAgainstProtectionSpace): Expose type of authentication challenge so we can test OAuth.
+        (WTR::TestController::didReceiveAuthenticationChallenge):
+
+2018-08-14  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [webkitpy][Win] LayoutTests: test names should be Unix style, separated by slash not backslash
+        https://bugs.webkit.org/show_bug.cgi?id=187973
+
+        Reviewed by Alex Christensen.
+
+        In LayoutTests, test names have been canonicalized in Unix style
+        since Bug 63597, for example 'fast/css/001.html'. But Bug 179219,
+        Bug 179572, Bug 180660, and Bug 181814 have changed to use
+        os.path.seq instead of slash if Windows Python is used.
+
+        Revert parts of those changes. Change relative_test_filename to
+        return a slash-separated test name as chromium_win.py used to do.
+
+        This change fixes all 41 test-webkitpy failures in WinCairo port.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser._parse_line): Do not convert test names with normpath.
+        * Scripts/webkitpy/port/base.py:
+        (Port.normalize_test_name): Use TEST_PATH_SEPARATOR instead of os.path.sep.
+        (Port.relative_test_filename): Replace self.host.filesystem.sep with self.TEST_PATH_SEPARATOR.
+        (Port.abspath_for_test): Replace self.TEST_PATH_SEPARATOR with self.host.filesystem.sep.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver): Use '/' instead of os.sep.
+        * Scripts/webkitpy/port/win.py:
+        (WinCairoPort): Do not override TEST_PATH_SEPARATOR.
+
+2018-08-14  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add build step to run WK1 layout-test
+        https://bugs.webkit.org/show_bug.cgi?id=188498
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunWebKit1Tests): Class to run WebKit1Tests.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-tests.
+
+2018-08-14  Patrick Griffis  <pgriffis@igalia.com>
+
+        [Flatpak] Fix --cmakeargs
+        https://bugs.webkit.org/show_bug.cgi?id=188567
+
+        Reviewed by Michael Catanzaro.
+
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak.setup_dev_env):
+
+2018-08-14  Darshan Kadu  <dkadu@igalia.com>
+
+        Enhancement request: Make export-w3c-test-changes add the PR to "See Also" links
+        https://bugs.webkit.org/show_bug.cgi?id=186140
+
+        Reviewed by Youenn Fablet.
+
+        Added an optional parameter see_also to post_comment_to_bug function and used it for adding see_also variable's content in "See Also"
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla.post_comment_to_bug):
+        Modified mock for see_also parameter
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla_mock.py:
+        (MockBugzilla.post_comment_to_bug):
+        Made following unit tests to have see_also in bug comment
+        * Scripts/webkitpy/tool/bot/flakytestreporter_unittest.py:
+        * Scripts/webkitpy/tool/bot/sheriff_unittest.py:
+        (SheriffTest.test_post_blame_comment_on_bug):
+        * Scripts/webkitpy/tool/commands/applywatchlistlocal_unittest.py:
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+        * Scripts/webkitpy/tool/commands/upload_unittest.py:
+        * Scripts/webkitpy/tool/steps/applywatchlist_unittest.py:
+        * Scripts/webkitpy/w3c/test_exporter.py:
+        (WebPlatformTestExporter.make_pull_request):
+        * Scripts/webkitpy/w3c/test_exporter_unittest.py:
+        (TestExporterTest.MockBugzilla.post_comment_to_bug):
+        (TestExporterTest.test_export):
+
+2018-08-14  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add support for max_builds parameter for workers
+        https://bugs.webkit.org/show_bug.cgi?id=188531
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        (loadBuilderConfig): Added support for max_builds.
+
+2018-08-14  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floating] Adjust vertical position with non-collapsing previous sibling margin.
+        https://bugs.webkit.org/show_bug.cgi?id=188543
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-08-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix WebDriver tests after r234839.
+
+        New pytest requires to autoinstall more_itertools and six too.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook._install_pytest):
+
+2018-08-14  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Minibrowser: Add labels for buttons
+        https://bugs.webkit.org/show_bug.cgi?id=188549
+
+        Reviewed by Carlos Garcia Campos.
+
+        So they are accessible easier (i.e. while testing WebKitGTK+ through Minibrowser in Dogtail).
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (webViewIsLoadingChanged):
+        (browserWindowSetupEditorToolbar):
+        (browser_window_init):
+
+2018-08-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix WebDriver tests after r234839.
+
+        New pytest requires to autoinstall atomicwrites too.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook._install_pytest):
+
+2018-08-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix WebDriver tests after r234839.
+
+        New pytest requires to autoinstall pluggy and funcsigs too.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook._install_pytest):
+
+2018-08-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update W3C WebDriver imported tests.
+
+        Bump pytest version to 3.6.2.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook._install_pytest):
+
+2018-08-13  Thomas Denney  <tdenney@apple.com>
+
+        Allow the substring 'me' in contributor names and email addresses
+        https://bugs.webkit.org/show_bug.cgi?id=188538
+
+        Reviewed by Tim Horton.
+
+        A test didn't permit the string "me" in email addresses or names of contributors.
+
+        * Scripts/webkitpy/common/config/committers_unittest.py:
+        (CommittersTest.test_contributors_by_fuzzy_match):
+
+2018-08-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r234812.
+        https://bugs.webkit.org/show_bug.cgi?id=188536
+
+        broke the build (Requested by ThomasDenney on #webkit).
+
+        Reverted changeset:
+
+        "Added Thomas Denney to contributors.json."
+        https://bugs.webkit.org/show_bug.cgi?id=188525
+        https://trac.webkit.org/changeset/234812
+
+2018-08-13  Sihui Liu  <sihui_liu@apple.com>
+
+        Avoid timeout resulted from calling waitUntilDone when test is not running
+        https://bugs.webkit.org/show_bug.cgi?id=188389
+
+        Reviewed by Chris Dumez.
+
+        If test is not running, we should not set the waitUntilDone flag, or it may cause subsequent tests timeout.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::waitUntilDone):
+
+2018-08-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] [macOS] Implement a mechanism to test drag and drop
+        https://bugs.webkit.org/show_bug.cgi?id=181898
+        <rdar://problem/39181698>
+
+        Reviewed by Simon Fraser.
+
+        Implements the currently stubbed DragAndDropSimulator on macOS, and introduces a new API test for r227266. See
+        comments below for more detail.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/DragAndDropTests.mm: Copied from Tools/TestWebKitAPI/mac/DragAndDropSimulatorMac.mm.
+
+        Introduce a file for cross-platform drag and drop tests, currently for iOS and macOS. Additionally add a test
+        for r227266, which was fixed earlier this year but could not be tested due to a lack of testing mechanism on
+        macOS in WebKit2.
+
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/full-page-dropzone.html: Added.
+
+        Minor tweaks to this test page to add "dragover" and "drop" event handlers.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/image-in-link-and-input.html:
+        * TestWebKitAPI/Tests/WebKitCocoa/link-in-iframe-and-input.html: Added.
+
+        Add a new test page that includes a link embedded within an iframe below a plain text input.
+
+        * TestWebKitAPI/Tests/mac/DragAndDropTestsMac.mm: Added.
+        (TEST):
+        * TestWebKitAPI/Tests/mac/LegacyDragAndDropTests.mm: Renamed from Tools/TestWebKitAPI/Tests/mac/DragAndDropPasteboardTests.mm.
+
+        Move only existing WebKit2 macOS drag and drop test (DragAndDropPasteboardTests.NumberOfValidItemsForDrop) out
+        of DragAndDropPasteboardTests.mm and into a new file, DragAndDropTestsMac.mm. Additionally, rename
+        DragAndDropPasteboardTests to LegacyDragAndDropTests, since it now only contains two legacy WebView tests for
+        drag and drop.
+
+        (+[FrameLoadCompletionListener listenerWithCompletionBlock:]):
+        (-[FrameLoadCompletionListener initWithCompletionBlock:]):
+        (-[FrameLoadCompletionListener webView:didFinishLoadForFrame:]):
+        (-[DragSource draggingSourceOperationMaskForLocal:]):
+        (-[DragInfo initWithImage:offset:pasteboard:source:destinationWindow:]):
+        (-[DragInfo lastMousePosition]):
+        (-[DragInfo setLastMousePosition:]):
+        (-[DragInfo draggingDestinationWindow]):
+        (-[DragInfo draggingSourceOperationMask]):
+        (-[DragInfo draggingLocation]):
+        (-[DragInfo draggedImageLocation]):
+        (-[DragInfo draggedImage]):
+        (-[DragInfo draggingPasteboard]):
+        (-[DragInfo draggingSource]):
+        (-[DragInfo draggingSequenceNumber]):
+        (-[DragInfo slideDraggedImageTo:]):
+        (-[DragInfo namesOfPromisedFilesDroppedAtDestination:]):
+        (-[DragInfo draggingFormation]):
+        (-[DragInfo setDraggingFormation:]):
+        (-[DragInfo animatesToDestination]):
+        (-[DragInfo setAnimatesToDestination:]):
+        (-[DragInfo numberOfValidItemsForDrop]):
+        (-[DragInfo setNumberOfValidItemsForDrop:]):
+        (-[DragInfo enumerateDraggingItemsWithOptions:forView:classes:searchOptions:usingBlock:]):
+        (-[DragInfo springLoadingHighlight]):
+        (-[DragInfo resetSpringLoading]):
+        (TestWebKitAPI::getTestImage):
+        (TestWebKitAPI::webViewAfterPerformingDragOperation):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/mac/full-page-dropzone.html: Removed.
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+
+        Flesh out some of the DragAndDropSimulator API for macOS, exposing (among other things) the drag pasteboard,
+        the current NSDraggingInfo, the initial location of the drag image, and the drag image itself.
+
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView mouseDownAtPoint:simulatePressure:]):
+        (-[TestWKWebView mouseUpAtPoint:]):
+        (-[TestWKWebView mouseMoveToPoint:withFlags:]):
+        (-[TestWKWebView sendClicksAtPoint:numberOfClicks:]):
+        (-[TestWKWebView mouseEnterAtPoint:]):
+        (-[TestWKWebView mouseExitAtPoint:]):
+        (-[TestWKWebView mouseDragToPoint:]):
+        (-[TestWKWebView _mouseEventWithType:atLocation:]):
+        (-[TestWKWebView _mouseEventWithType:atLocation:flags:timestamp:clickCount:]):
+
+        Add TestWKWebView helpers to send MouseMove, MouseEnter and MouseDrag NSEvents to the web view. Additionally,
+        rename parameter names to these helpers to make it more obvious that these locations are all in NSWindow
+        coordinates.
+
+        (-[TestWKWebView typeCharacter:]):
+
+        Drive-by style fix: put this opening brace on the beginning of the next line.
+
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        (-[DragAndDropSimulator initWithWebViewFrame:]):
+        (-[DragAndDropSimulator initWithWebViewFrame:configuration:]):
+        (-[DragAndDropSimulator webView]):
+
+        Small iOS DragAndDropSimulator adjustments for new DragAndDropSimulator interfaces.
+
+        * TestWebKitAPI/mac/DragAndDropSimulatorMac.mm:
+        (-[DragAndDropTestWKWebView initWithFrame:configuration:simulator:]):
+
+        Introduce a WKWebView subclass for testing drag and drop that overrides `-dragImage:at:offset:…`, and instead
+        allows DragAndDropSimulator to take over the drag.
+
+        (-[DragAndDropTestWKWebView dragImage:at:offset:event:pasteboard:source:slideBack:]):
+
+        Override this entry point into drag and drop code, and instead call out to the DragAndDropSimulator to
+        coordinate the drag.
+
+        (-[DragAndDropTestWKWebView waitForPendingMouseEvents]):
+
+        Helper method to wait for the web process to finish handling all in-flight mouse events.
+
+        (defaultExternalDragImage):
+
+        Set this image as the default drag image when simulating an incoming drag session from outside of the web view.
+
+        (-[DragAndDropSimulator initWithWebViewFrame:]):
+        (-[DragAndDropSimulator initWithWebViewFrame:configuration:]):
+        (-[DragAndDropSimulator flipAboutXAxisInHostWindow:]):
+
+        Helper method to flip a given point about the X axis of the window.
+
+        (-[DragAndDropSimulator locationInViewForCurrentProgress]):
+
+        Map a progress value (between 0 and 1) to a drag location.
+
+        (-[DragAndDropSimulator initialProgressForMouseDrag]):
+
+        Determines the initial progress value when initiation a drag in web content. This is the initial progress
+        required to ensure that the first mouse drag event exceeds the drag distance hysteresis and causes any drag
+        (if applicable) to begin.
+
+        (-[DragAndDropSimulator runFrom:to:]):
+        (-[DragAndDropSimulator performDragInWebView:atLocation:withImage:pasteboard:source:]):
+
+        Helper to coordinate drag updates in both the cases where we're simulating a drag session entering from outside
+        of the web view, and in the case where we've initiated a drag from the web view itself.
+
+        (-[DragAndDropSimulator webView]):
+        (-[DragAndDropSimulator setExternalDragPasteboard:]):
+        (-[DragAndDropSimulator externalDragPasteboard]):
+
+        Just like its iOS counterpart (setExternalItemProviders:), setting an external drag pasteboard on macOS puts the
+        DragAndDropSimulator in a mode that simulates a drag coming in from outside the web view, using the given
+        pasteboard.
+
+        (-[DragAndDropSimulator setExternalDragImage:]):
+        (-[DragAndDropSimulator externalDragImage]):
+
+        May be optionally set when specifying an external drag pasteboard to specify the drag image used. If no external
+        drag image is specified, falls back to the default image returned by `defaultExternalDragImage()`.
+
+        (-[DragAndDropSimulator draggingInfo]):
+        (-[DragAndDropSimulator willEndDraggingHandler]):
+        (-[DragAndDropSimulator setWillEndDraggingHandler:]):
+
+        Hook to allow tests to run logic right before performing the drop (if the current drag operation is not none) or
+        ending the drag session without performing a drag operation.
+
+        (-[DragAndDropSimulator initWithWebView:]): Deleted.
+        (-[DragAndDropSimulator dealloc]): Deleted.
+        (-[DragAndDropSimulator phase]): Deleted.
+        * TestWebKitAPI/mac/TestDraggingInfo.h: Copied from Tools/TestWebKitAPI/mac/DragAndDropSimulatorMac.mm.
+        * TestWebKitAPI/mac/TestDraggingInfo.mm: Added.
+
+        Mock object conforming to NSDraggingInfo that is passed to WKWebView when invoking -draggingUpdated:,
+        -draggingEntered: and -draggingExited:.
+
+        (-[TestDraggingInfo draggingPasteboard]):
+        (-[TestDraggingInfo setDraggingPasteboard:]):
+        (-[TestDraggingInfo draggingSource]):
+        (-[TestDraggingInfo setDraggingSource:]):
+        (-[TestDraggingInfo enumerateDraggingItemsWithOptions:forView:classes:searchOptions:usingBlock:]):
+        (-[TestDraggingInfo draggingDestinationWindow]):
+        (-[TestDraggingInfo draggedImage]):
+        (-[TestDraggingInfo setDraggedImage:]):
+        (-[TestDraggingInfo slideDraggedImageTo:]):
+        (-[TestDraggingInfo namesOfPromisedFilesDroppedAtDestination:]):
+        (-[TestDraggingInfo resetSpringLoading]):
+
+        Empty method stubs, to be implemented in the future as needed.
+
+2018-08-13  Thomas Denney  <tdenney@apple.com>
+
+        Added Thomas Denney to contributors.json.
+        https://bugs.webkit.org/show_bug.cgi?id=188525
+
+        Reviewed by Myles C. Maxfield.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-08-13  Antti Koivisto  <antti@apple.com>
+
+        Meaning of OptionSet::contains is unclear when used with OptionSet argument
+        https://bugs.webkit.org/show_bug.cgi?id=188501
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WTF/OptionSet.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-08-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r234747.
+        https://bugs.webkit.org/show_bug.cgi?id=188524
+
+        plugin processes crash on launch (Requested by smfr on
+        #webkit).
+
+        Reverted changeset:
+
+        "We should cache the compiled sandbox profile in a data vault"
+        https://bugs.webkit.org/show_bug.cgi?id=184991
+        https://trac.webkit.org/changeset/234747
+
+2018-08-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Dragging a non-editable text selection into a plain text input inserts HTML markup
+        https://bugs.webkit.org/show_bug.cgi?id=188485
+        <rdar://problem/43168784>
+
+        Reviewed by Tim Horton.
+
+        Add a new API test to verify that dropping selected non-editable rich text into a textarea inserts text as
+        expected, rather than markup.
+
+        It's somewhat interesting to note that this particular use case isn't exercised by any existing tests; the
+        closest test is DragAndDropTests.ContentEditableToTextarea, which drags a rich text selection from a
+        contenteditable element to a text area. However, due to logic in `DragController::concludeEditDrag` that handles
+        drag and drop across editable content differently than drag and drop from non-editable to editable content, the
+        bug that is fixed here doesn't surface in that existing test.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/selected-text-and-textarea.html: Added.
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+        (TestWebKitAPI::TEST):
+
+2018-08-13  Alex Christensen  <achristensen@webkit.org>
+
+        Use a 1-byte enum class for TextDirection
+        https://bugs.webkit.org/show_bug.cgi?id=188350
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Tests/WebCore/ComplexTextController.cpp:
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/StringWithDirection.cpp:
+        (WebCore::operator<<):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/CommandBackForward.mm:
+        (TEST_F):
+
+2018-08-13  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floating] Add basic clearance support
+        https://bugs.webkit.org/show_bug.cgi?id=188492
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-08-12  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Float prev/next sibling should prevent top/bottom margin collapsing with parent.
+        https://bugs.webkit.org/show_bug.cgi?id=188487
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-08-11  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Separate queues for Builders and Testers - iOS
+        https://bugs.webkit.org/show_bug.cgi?id=188396
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/config.json: Splitted iOS queues into builders and testers.
+        Also added ews121 and ews122 to match with current EWS configuration.
+        * BuildSlaveSupport/ews-build/factories.py:
+        (TestsFactory): Base classes for various Test factories.
+        (TestsFactory.getProduct): Download and extract the archive.
+
+2018-08-10  Daniel Bates  <dabates@apple.com>
+
+        webkit-patch setup-git-clone should set Git core editor to commit-log-editor
+        https://bugs.webkit.org/show_bug.cgi?id=188473
+
+        Reviewed by Ryosuke Niwa.
+
+        Have "webkit-patch setup-git-clone" set the Git core editor to "perl Tools/Scripts/commit-log-editor --regenerate-log"
+        so that the Git commit message is generated from the ChangeLog for developers that manually
+        generate their ChangeLog using prepare-ChangeLog.
+
+        * Scripts/webkitpy/tool/commands/setupgitclone.py:
+        (SetupGitClone.execute):
+
+2018-08-10  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r234749.
+
+        Caused all perf tests to fail in Sierra
+
+        Reverted changeset:
+
+        "[webkitpy][Win] LayoutTests: test names should be Unix style,
+        separated by slash not backslash"
+        https://bugs.webkit.org/show_bug.cgi?id=187973
+        https://trac.webkit.org/changeset/234749
+
+2018-08-10  David Fenton  <david_fenton@apple.com>
+
+        Timeouts in TestWebKitAPI.PreferredAudioBufferSize.AudioWithWebAudio and TestWebKitAPI.PreferredAudioBufferSize.WebAudio.
+        https://bugs.webkit.org/show_bug.cgi?id=188470.
+
+        Unreviewed test gardening, disabling the tests.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PreferredAudioBufferSize.mm:
+        (TEST_F):
+
+2018-08-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Eliminate remaining instances of "ElCapitan" from LayoutTests / Tools
+        https://bugs.webkit.org/show_bug.cgi?id=188458
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser):
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+
+2018-08-09  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [webkitpy][Win] LayoutTests: test names should be Unix style, separated by slash not backslash
+        https://bugs.webkit.org/show_bug.cgi?id=187973
+
+        Reviewed by Alex Christensen.
+
+        In LayoutTests, test names have been canonicalized in Unix style
+        since Bug 63597, for example 'fast/css/001.html'. But, Bug 179219,
+        Bug 179572, Bug 180660 and Bug 181814 have changed to use
+        os.path.seq instead of slash if Windows Python is used.
+
+        Revert parts of those changes. Change relative_test_filename to
+        return a slash sperated test name as well as chromium_win.py used
+        to do.
+
+        This change fixes all 41 test-webkitpy failures in WinCairo port.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser._parse_line): Do not convert a test name by using normpath.
+        * Scripts/webkitpy/port/base.py:
+        (Port.normalize_test_name): Use TEST_PATH_SEPARATOR instead of os.path.sep.
+        (Port.relative_test_filename): Replace self.host.filesystem.sep with self.TEST_PATH_SEPARATOR.
+        (Port.abspath_for_test): Split test_name with TEST_PATH_SEPARATOR.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver): Use '/' instead of os.sep.
+        * Scripts/webkitpy/port/win.py:
+        (WinCairoPort): Do not override TEST_PATH_SEPARATOR.
+
+2018-08-09  Thomas Denney  <tdenney@apple.com>
+
+        [WHLSL] Add individual test durations to output
+        https://bugs.webkit.org/show_bug.cgi?id=188448
+
+        Reviewed by Myles C. Maxfield.
+
+        * WebGPUShadingLanguageRI/Test.js: Add timing output.
+
+2018-08-09  Ben Richards  <benton_richards@apple.com>
+
+        We should cache the compiled sandbox profile in a data vault
+        https://bugs.webkit.org/show_bug.cgi?id=184991
+
+        Reviewed by Ryosuke Niwa.
+
+        Added trace points for sandbox initialization
+
+        * Tracing/SystemTracePoints.plist:
+
+2018-08-09  Jer Noble  <jer.noble@apple.com>
+
+        Video playback is using more power
+        https://bugs.webkit.org/show_bug.cgi?id=188452
+        <rdar://problem/42298937>
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PreferredAudioBufferSize.mm:
+        (PreferredAudioBufferSize::createView):
+        (PreferredAudioBufferSize::preferredAudioBufferSize const):
+        (TEST_F):
+
+2018-08-09  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(234640) Loading stalls in environments without SafariSafeBrowsing framework
+        https://bugs.webkit.org/show_bug.cgi?id=188453
+        <rdar://problem/43102553>
+
+        Reviewed by Chris Dumez
+
+        * TestWebKitAPI/Tests/WebKitCocoa/SafeBrowsing.mm:
+        (TEST):
+        (+[NullLookupContext sharedLookupContext]):
+        (TestWebKitAPI::TEST): Deleted.
+
+2018-08-09  Alex Christensen  <achristensen@webkit.org>
+
+        WKURLSchemeHandler crashes when sent errors with sync XHR
+        https://bugs.webkit.org/show_bug.cgi?id=188358
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKURLSchemeHandler-1.mm:
+        (-[SyncErrorScheme webView:startURLSchemeTask:]):
+        (-[SyncErrorScheme webView:stopURLSchemeTask:]):
+        (-[SyncErrorScheme webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+
+2018-08-09  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION(r234652): fast/scrolling/rtl-scrollbars-animation-property.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=188397
+
+        Reviewed by Tim Horton.
+
+        After r234652, [NSScroller preferredScrollerStyle] is called in the UI process, and we need to set the same
+        user defaults related to scrollbars in the UI process as we do in the WebProcess.
+
+        * WebKitTestRunner/mac/main.mm:
+        (setDefaultsToConsistentValuesForTesting):
+
+2018-08-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS WK2] Rename and refactor DataInteractionTests and DataInteractionSimulator
+        https://bugs.webkit.org/show_bug.cgi?id=188439
+
+        Reviewed by Andy Estes and Megan Gardner.
+
+        Refactor DataInteractionSimulator (currently used for drag and drop testing on iOS) so that it exists across
+        macOS and iOS, and rename it to DragAndDropSimulator. Additionally, rename DataInteractionTests to
+        DragAndDropTests.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm: Renamed from Tools/TestWebKitAPI/Tests/ios/DataInteractionTests.mm.
+        (testIconImage):
+        (testZIPArchive):
+        (-[UIItemProvider registerDataRepresentationForTypeIdentifier:withData:]):
+        (-[TestWKWebView editorContainsImageElement]):
+        (-[TestWKWebView editorValue]):
+        (makeCGRectValue):
+        (checkCGRectIsEqualToCGRectWithLogging):
+        (checkSelectionRectsWithLogging):
+        (checkRichTextTypePrecedesPlainTextType):
+        (checkFirstTypeIsPresentAndSecondTypeIsMissing):
+        (checkTypeIdentifierIsRegisteredAtIndex):
+        (checkEstimatedSize):
+        (checkSuggestedNameAndEstimatedSize):
+        (checkStringArraysAreEqual):
+        (checkDragCaretRectIsContainedInRect):
+        (checkJSONWithLogging):
+        (testIconImageData):
+        (runTestWithTemporaryTextFile):
+        (runTestWithTemporaryFolder):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::setUpTestWebViewForDataTransferItems):
+        (TestWebKitAPI::testDragAndDropOntoTargetElements):
+        (TestWebKitAPI::testIconImageData):
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h: Renamed from Tools/TestWebKitAPI/ios/DataInteractionSimulator.h.
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm: Renamed from Tools/TestWebKitAPI/ios/DataInteractionSimulator.mm.
+        (-[WKWebView dropInteractionDelegate]):
+        (-[WKWebView dragInteractionDelegate]):
+        (-[WKWebView dropInteraction]):
+        (-[WKWebView dragInteraction]):
+        (-[MockDragDropSession initWithItems:location:window:allowMove:]):
+        (-[MockDragDropSession allowsMoveOperation]):
+        (-[MockDragDropSession isRestrictedToDraggingApplication]):
+        (-[MockDragDropSession hasItemsConformingToTypeIdentifiers:]):
+        (-[MockDragDropSession canLoadObjectsOfClass:]):
+        (-[MockDragDropSession canLoadObjectsOfClasses:]):
+        (-[MockDragDropSession items]):
+        (-[MockDragDropSession setItems:]):
+        (-[MockDragDropSession addItems:]):
+        (-[MockDragDropSession locationInView:]):
+        (-[MockDropSession initWithProviders:location:window:allowMove:]):
+        (-[MockDropSession isLocal]):
+        (-[MockDropSession progress]):
+        (-[MockDropSession setProgressIndicatorStyle:]):
+        (-[MockDropSession progressIndicatorStyle]):
+        (-[MockDropSession operationMask]):
+        (-[MockDropSession localDragSession]):
+        (-[MockDropSession hasItemsConformingToTypeIdentifier:]):
+        (-[MockDropSession canCreateItemsOfClass:]):
+        (-[MockDropSession loadObjectsOfClass:completion:]):
+        (-[MockDragSession initWithWindow:allowMove:]):
+        (-[MockDragSession localOperationMask]):
+        (-[MockDragSession externalOperationMask]):
+        (-[MockDragSession session]):
+        (-[MockDragSession localContext]):
+        (-[MockDragSession setLocalContext:]):
+        (dragAndDropEventNames):
+        (-[DragAndDropSimulatorApplication _cancelAllTouches]):
+        (-[DragAndDropSimulator initWithWebView:]):
+        (-[DragAndDropSimulator dealloc]):
+        (-[DragAndDropSimulator _resetSimulatedState]):
+        (-[DragAndDropSimulator observedEventNames]):
+        (-[DragAndDropSimulator simulateAllTouchesCanceled:]):
+        (-[DragAndDropSimulator runFrom:to:]):
+        (-[DragAndDropSimulator runFrom:to:additionalItemRequestLocations:]):
+        (-[DragAndDropSimulator finalSelectionRects]):
+        (-[DragAndDropSimulator _concludeDropAndPerformOperationIfNecessary]):
+        (-[DragAndDropSimulator _enqueuePendingAdditionalItemRequestLocations]):
+        (-[DragAndDropSimulator _sendQueuedAdditionalItemRequest]):
+        (-[DragAndDropSimulator _advanceProgress]):
+        (-[DragAndDropSimulator _currentLocation]):
+        (-[DragAndDropSimulator _scheduleAdvanceProgress]):
+        (-[DragAndDropSimulator sourceItemProviders]):
+        (-[DragAndDropSimulator externalItemProviders]):
+        (-[DragAndDropSimulator setExternalItemProviders:]):
+        (-[DragAndDropSimulator phase]):
+        (-[DragAndDropSimulator liftPreviews]):
+        (-[DragAndDropSimulator lastKnownDragCaretRect]):
+        (-[DragAndDropSimulator waitForInputSession]):
+        (-[DragAndDropSimulator insertedAttachments]):
+        (-[DragAndDropSimulator removedAttachments]):
+        (-[DragAndDropSimulator endDataTransfer]):
+        (-[DragAndDropSimulator _webView:dataInteractionOperationWasHandled:forSession:itemProviders:]):
+        (-[DragAndDropSimulator _webView:willUpdateDataInteractionOperationToOperation:forSession:]):
+        (-[DragAndDropSimulator _webView:adjustedDataInteractionItemProvidersForItemProvider:representingObjects:additionalData:]):
+        (-[DragAndDropSimulator _webView:showCustomSheetForElement:]):
+        (-[DragAndDropSimulator _webView:willPerformDropWithSession:]):
+        (-[DragAndDropSimulator _webView:didInsertAttachment:]):
+        (-[DragAndDropSimulator _webView:didRemoveAttachment:]):
+        (-[DragAndDropSimulator _webView:focusShouldStartInputSession:]):
+        (-[DragAndDropSimulator _webView:didStartInputSession:]):
+        * TestWebKitAPI/ios/UIKitSPI.h:
+        * TestWebKitAPI/mac/DragAndDropSimulatorMac.mm: Added.
+        (-[DragAndDropSimulator initWithWebView:]):
+        (-[DragAndDropSimulator dealloc]):
+        (-[DragAndDropSimulator runFrom:to:]):
+        (-[DragAndDropSimulator insertedAttachments]):
+        (-[DragAndDropSimulator removedAttachments]):
+
+2018-08-09  Sihui Liu  <sihui_liu@apple.com>
+
+        REGRESSION (r232083): WKWebView loses first-party cookies on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=188443
+        <rdar://problem/42991584>
+
+        Reviewed by Chris Dumez.
+
+        Skip WebKit.WKHTTPCookieStoreWithoutProcessPool on iOS.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKHTTPCookieStore.mm:
+
+2018-08-09  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed follow-up fix for r234720.
+
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.close_and_remove):
+        (BindingsTests.main):
+        Return to the original approach, since this seems to be the simplest cross-platform solution.
+
+2018-08-09  Ali Juma  <ajuma@chromium.org>
+
+        Import WPTs for IntersectionObserver
+        https://bugs.webkit.org/show_bug.cgi?id=188416
+
+        Reviewed by Simon Fraser.
+
+        Enable IntersectionObserver in DumpRenderTree. 
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (setWebPreferencesForTestOptions):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2018-08-08  Ross Kirsling  <ross.kirsling@sony.com>
+
+        run-bindings-tests is not Win32-compatible
+        https://bugs.webkit.org/show_bug.cgi?id=188424
+
+        Reviewed by Fujii Hironori.
+
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.main):
+        Stop leaking file descriptors.
+        (See https://www.logilab.org/blogentry/17873 for details, though the solution here is even simpler.)
+
+2018-08-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix possible null dereference in WebBackForwardList::restoreFromState
+        https://bugs.webkit.org/show_bug.cgi?id=188418
+        <rdar://problem/42531726>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKit/RestoreSessionState.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-08-08  Ross Kirsling  <ross.kirsling@sony.com>
+
+        run-builtins-generator-tests does not correctly handle CRLFs from stderr
+        https://bugs.webkit.org/show_bug.cgi?id=188392
+
+        Reviewed by Fujii Hironori.
+
+        Background:
+        file.write converts LF to os.linesep, so if the input string contains CRLF, we end up writing CRCRLF to the file.
+
+        * Scripts/webkitpy/common/system/executive.py:
+        (Executive.run_command):
+        Normalize CRLF to LF in decoded stdout/stderr data, so that we don't return consumers a platform-specific string.
+
+2018-08-08  Aditya Keerthi  <akeerthi@apple.com>
+
+        Unreviewed, add myself to committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-08-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r234314, r234320, and r234321.
+        https://bugs.webkit.org/show_bug.cgi?id=188414
+
+        Caused email sign in issue (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changesets:
+
+        "Remove unused WKNavigationDelegatePrivate
+        decidePolicyForNavigationAction SPI"
+        https://bugs.webkit.org/show_bug.cgi?id=188077
+        https://trac.webkit.org/changeset/234314
+
+        "Fix API tests after r234314"
+        https://bugs.webkit.org/show_bug.cgi?id=188077
+        https://trac.webkit.org/changeset/234320
+
+        "Fix API tests after r234314"
+        https://bugs.webkit.org/show_bug.cgi?id=188077
+        https://trac.webkit.org/changeset/234321
+
 2018-08-08  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [iOS] fast/events/ios/contenteditable-autocapitalize.html is a flaky failure

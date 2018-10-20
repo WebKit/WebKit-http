@@ -190,12 +190,26 @@ CURL* CurlRequest::setupTransfer()
     m_curlHandle->setHeaderCallbackFunction(didReceiveHeaderCallback, this);
     m_curlHandle->setWriteCallbackFunction(didReceiveDataCallback, this);
 
-    m_curlHandle->setTimeout(Seconds(m_request.timeoutInterval()));
+    m_curlHandle->setTimeout(timeoutInterval());
 
     if (m_shouldSuspend)
         setRequestPaused(true);
 
     return m_curlHandle->handle();
+}
+
+Seconds CurlRequest::timeoutInterval() const
+{
+    // Request specific timeout interval.
+    if (m_request.timeoutInterval())
+        return Seconds { m_request.timeoutInterval() };
+
+    // Default timeout interval set by application.
+    if (m_request.defaultTimeoutInterval())
+        return Seconds { m_request.defaultTimeoutInterval() };
+
+    // Use platform default timeout interval.
+    return CurlContext::singleton().defaultTimeoutInterval();
 }
 
 // This is called to obtain HTTP POST or PUT data.
@@ -396,7 +410,7 @@ void CurlRequest::didCompleteTransfer(CURLcode result)
             client.curlDidComplete(request);
         });
     } else {
-        auto type = (result == CURLE_OPERATION_TIMEDOUT && m_request.timeoutInterval() > 0.0) ? ResourceError::Type::Timeout : ResourceError::Type::General;
+        auto type = (result == CURLE_OPERATION_TIMEDOUT && timeoutInterval()) ? ResourceError::Type::Timeout : ResourceError::Type::General;
         auto resourceError = ResourceError::httpError(result, m_request.url(), type);
         if (auto sslErrors = m_curlHandle->sslErrors())
             resourceError.setSslErrors(sslErrors);
@@ -449,6 +463,10 @@ void CurlRequest::setupPOST(ResourceRequest& request)
     m_curlHandle->enableHttpPostRequest();
 
     auto elementSize = m_formDataStream.elementSize();
+
+    if (!m_request.hasHTTPHeader(HTTPHeaderName::ContentType) && !elementSize)
+        m_curlHandle->removeRequestHeader("Content-Type"_s);
+
     if (!elementSize)
         return;
 

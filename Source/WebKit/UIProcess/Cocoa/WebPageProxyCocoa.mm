@@ -26,6 +26,7 @@
 #import "config.h"
 #import "WebPageProxy.h"
 
+#import "APIAttachment.h"
 #import "APIUIClient.h"
 #import "DataDetectionResult.h"
 #import "LoadParameters.h"
@@ -74,8 +75,11 @@ void WebPageProxy::loadRecentSearches(const String& name, Vector<WebCore::Recent
 void WebPageProxy::beginSafeBrowsingCheck(const URL& url, WebFramePolicyListenerProxy& listener)
 {
 #if HAVE(SAFE_BROWSING)
-    [[SSBLookupContext sharedLookupContext] lookUpURL:url completionHandler:BlockPtr<void(SSBLookupResult *, NSError *)>::fromCallable([listener = makeRef(listener)] (SSBLookupResult *result, NSError *error) mutable {
-        RunLoop::main().dispatch([listener = WTFMove(listener), result = retainPtr(result), error = retainPtr(error)] {
+    SSBLookupContext *context = [SSBLookupContext sharedLookupContext];
+    if (!context)
+        return listener.didReceiveSafeBrowsingResults({ });
+    [context lookUpURL:url completionHandler:BlockPtr<void(SSBLookupResult *, NSError *)>::fromCallable([listener = makeRef(listener), url = url] (SSBLookupResult *result, NSError *error) mutable {
+        RunLoop::main().dispatch([listener = WTFMove(listener), result = retainPtr(result), error = retainPtr(error), url = WTFMove(url)] {
             if (error) {
                 listener->didReceiveSafeBrowsingResults({ });
                 return;
@@ -85,7 +89,7 @@ void WebPageProxy::beginSafeBrowsingCheck(const URL& url, WebFramePolicyListener
             Vector<SafeBrowsingResult> resultsVector;
             resultsVector.reserveInitialCapacity([results count]);
             for (SSBServiceLookupResult *result in results)
-                resultsVector.uncheckedAppend({ result });
+                resultsVector.uncheckedAppend({ URL(url), result });
             listener->didReceiveSafeBrowsingResults(WTFMove(resultsVector));
         });
     }).get()];
@@ -156,5 +160,28 @@ void WebPageProxy::setDragCaretRect(const IntRect& dragCaretRect)
 #endif // PLATFORM(IOS)
 
 #endif // ENABLE(DRAG_SUPPORT)
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+void WebPageProxy::platformRegisterAttachment(Ref<API::Attachment>&& attachment, const String& preferredFileName, const IPC::DataReference& dataReference)
+{
+    auto buffer = SharedBuffer::create(dataReference.data(), dataReference.size());
+    auto fileWrapper = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:buffer->createNSData().autorelease()]);
+    [fileWrapper setPreferredFilename:preferredFileName];
+    attachment->setFileWrapper(fileWrapper.get());
+}
+
+void WebPageProxy::platformRegisterAttachment(Ref<API::Attachment>&& attachment, const String& filePath)
+{
+    auto fileWrapper = adoptNS([[NSFileWrapper alloc] initWithURL:[NSURL fileURLWithPath:filePath] options:0 error:nil]);
+    attachment->setFileWrapper(fileWrapper.get());
+}
+
+void WebPageProxy::platformCloneAttachment(Ref<API::Attachment>&& fromAttachment, Ref<API::Attachment>&& toAttachment)
+{
+    toAttachment->setFileWrapper(fromAttachment->fileWrapper());
+}
+
+#endif // ENABLE(ATTACHMENT_ELEMENT)
 
 }

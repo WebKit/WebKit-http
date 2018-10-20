@@ -359,6 +359,7 @@ enum CompositingPolicy {
     unsigned long numberOfLiveNodes();
     unsigned long numberOfLiveDocuments();
     unsigned long referencingNodeCount(Document document);
+    [Conditional=INTERSECTION_OBSERVER] unsigned long numberOfIntersectionObservers(Document document);
     WindowProxy? openDummyInspectorFrontend(DOMString url);
     void closeDummyInspectorFrontend();
     [MayThrowException] void setInspectorIsUnderTest(boolean isUnderTest);
@@ -603,6 +604,7 @@ enum CompositingPolicy {
     [Conditional=WEBGL] void failNextGPUStatusCheck(WebGLRenderingContext context);
 
     void setPageVisibility(boolean isVisible);
+    void setPageIsFocusedAndActive(boolean isFocused);
 
     [Conditional=WEB_RTC] void setH264HardwareEncoderAllowed(boolean allowed);
     [Conditional=WEB_RTC] void applyRotationForOutgoingVideoSources(RTCPeerConnection connection);
@@ -630,6 +632,7 @@ enum CompositingPolicy {
     void setConsoleMessageListener(StringCallback callback);
 
     DOMString audioSessionCategory();
+    double preferredAudioBufferSize();
 
     [Conditional=SERVICE_WORKER] Promise<boolean> hasServiceWorkerRegistration(DOMString scopeURL);
     [Conditional=SERVICE_WORKER] void terminateServiceWorker(ServiceWorker worker);

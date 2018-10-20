@@ -36,20 +36,11 @@ namespace WebCore {
 
 void JSExecState::didLeaveScriptContext(JSC::ExecState* exec)
 {
-    // While main thread has many ScriptExecutionContexts, WorkerGlobalScope and worker thread have
-    // one on one correspondence. The lifetime of MicrotaskQueue is aligned to this semantics.
-    // While main thread MicrotaskQueue is persistently held, worker's MicrotaskQueue is held by
-    // WorkerGlobalScope.
     ScriptExecutionContext* context = scriptExecutionContextFromExecState(exec);
-    if (isMainThread()) {
-        MicrotaskQueue::mainThreadQueue().performMicrotaskCheckpoint();
-        // FIXME: Promise rejection tracker is available only in non-worker environment.
-        // https://bugs.webkit.org/show_bug.cgi?id=188265
-        context->ensureRejectedPromiseTracker().processQueueSoon();
-    } else {
-        ASSERT(context->isWorkerGlobalScope());
-        static_cast<WorkerGlobalScope*>(context)->microtaskQueue().performMicrotaskCheckpoint();
-    }
+    if (!context)
+        return;
+    MicrotaskQueue::contextQueue(*context).performMicrotaskCheckpoint();
+    context->ensureRejectedPromiseTracker().processQueueSoon();
 }
 
 JSC::JSValue functionCallHandlerFromAnyThread(JSC::ExecState* exec, JSC::JSValue functionObject, JSC::CallType callType, const JSC::CallData& callData, JSC::JSValue thisValue, const JSC::ArgList& args, NakedPtr<JSC::Exception>& returnedException)

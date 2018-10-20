@@ -168,7 +168,7 @@ struct GlobalFrameIdentifier;
 struct GlobalWindowIdentifier;
 struct Highlight;
 struct KeypressCommand;
-struct PromisedBlobInfo;
+struct PromisedAttachmentInfo;
 struct TextCheckingResult;
 struct ViewportArguments;
 
@@ -228,6 +228,7 @@ class WebTouchEvent;
 class WebCredentialsMessenger;
 class RemoteLayerTreeTransaction;
 
+enum class DeviceAccessState;
 enum FindOptions : uint16_t;
 enum class DragControllerAction;
 
@@ -247,7 +248,7 @@ struct WebsitePoliciesData;
 using SnapshotOptions = uint32_t;
 using WKEventModifiers = uint32_t;
 
-class WebPage : public API::ObjectImpl<API::Object::Type::BundlePage>, public IPC::MessageReceiver, public IPC::MessageSender {
+class WebPage : public API::ObjectImpl<API::Object::Type::BundlePage>, public IPC::MessageReceiver, public IPC::MessageSender, public CanMakeWeakPtr<WebPage> {
 public:
     static Ref<WebPage> create(uint64_t pageID, WebPageCreationParameters&&);
     virtual ~WebPage();
@@ -498,8 +499,8 @@ public:
     void addPluginView(PluginView*);
     void removePluginView(PluginView*);
 
-    bool isVisible() const { return m_activityState & WebCore::ActivityState::IsVisible; }
-    bool isVisibleOrOccluded() const { return m_activityState & WebCore::ActivityState::IsVisibleOrOccluded; }
+    bool isVisible() const { return m_activityState.contains(WebCore::ActivityState::IsVisible); }
+    bool isVisibleOrOccluded() const { return m_activityState.contains(WebCore::ActivityState::IsVisibleOrOccluded); }
 
     LayerHostingMode layerHostingMode() const { return m_layerHostingMode; }
     void setLayerHostingMode(LayerHostingMode);
@@ -565,6 +566,7 @@ public:
 #if ENABLE(MEDIA_STREAM)
     UserMediaPermissionRequestManager& userMediaPermissionRequestManager() { return *m_userMediaPermissionRequestManager; }
     void prepareToSendUserMediaPermissionRequest();
+    void captureDevicesChanged(DeviceAccessState);
 #endif
 
     void elementDidFocus(WebCore::Node*);
@@ -1073,10 +1075,9 @@ public:
 #endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    void insertAttachment(const String& identifier, const WebCore::AttachmentDisplayOptions&, const String& filename, std::optional<String> contentType, const IPC::DataReference&, CallbackID);
-    void requestAttachmentInfo(const String& identifier, CallbackID);
+    void insertAttachment(const String& identifier, const WebCore::AttachmentDisplayOptions&, uint64_t fileSize, const String& fileName, std::optional<String> contentType, CallbackID);
     void setAttachmentDisplayOptions(const String& identifier, const WebCore::AttachmentDisplayOptions&, CallbackID);
-    void setAttachmentDataAndContentType(const String& identifier, const IPC::DataReference&, std::optional<String> newContentType, std::optional<String> newFilename, CallbackID);
+    void updateAttachmentAttributes(const String& identifier, uint64_t fileSize, std::optional<String> newContentType, std::optional<String> newFilename, CallbackID);
 #endif
 
 #if ENABLE(APPLICATION_MANIFEST)
@@ -1155,15 +1156,13 @@ private:
     String sourceForFrame(WebFrame*);
 
     void loadDataImpl(uint64_t navigationID, Ref<WebCore::SharedBuffer>&&, const String& MIMEType, const String& encodingName, const WebCore::URL& baseURL, const WebCore::URL& failingURL, const UserData&);
-    void loadStringImpl(uint64_t navigationID, const String&, const String& MIMEType, const WebCore::URL& baseURL, const WebCore::URL& failingURL, const UserData&);
 
     // Actions
     void tryClose();
     void platformDidReceiveLoadParameters(const LoadParameters&);
     void loadRequest(LoadParameters&&);
-    void loadData(const LoadParameters&);
-    void loadString(const LoadParameters&);
-    void loadAlternateHTMLString(const LoadParameters&);
+    void loadData(LoadParameters&&);
+    void loadAlternateHTML(const LoadParameters&);
     void navigateToPDFLinkWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
     void reload(uint64_t navigationID, uint32_t reloadOptions, SandboxExtension::Handle&&);
     void goToBackForwardItem(uint64_t navigationID, const WebCore::BackForwardItemIdentifier&, WebCore::FrameLoadType, WebCore::ShouldTreatAsContinuingLoad);
@@ -1171,7 +1170,7 @@ private:
     void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&, CallbackID);
     void updateIsInWindow(bool isInitialState = false);
     void visibilityDidChange();
-    void setActivityState(WebCore::ActivityState::Flags, ActivityStateChangeID, const Vector<CallbackID>& callbackIDs);
+    void setActivityState(OptionSet<WebCore::ActivityState::Flag>, ActivityStateChangeID, const Vector<CallbackID>& callbackIDs);
     void validateCommand(const String&, CallbackID);
     void executeEditCommand(const String&, const String&);
     void setEditable(bool);
@@ -1689,7 +1688,7 @@ private:
 
     bool m_useAsyncScrolling { false };
 
-    WebCore::ActivityState::Flags m_activityState;
+    OptionSet<WebCore::ActivityState::Flag> m_activityState;
 
     bool m_processSuppressionEnabled;
     UserActivity m_userActivity;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -121,12 +121,6 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         return result;
     }
     
-    function parseProtocolRef()
-    {
-        let protocolToken = consumeKind("identifier");
-        return new ProtocolRef(protocolToken, protocolToken.text);
-    }
-    
     function consumeEndOfTypeArgs()
     {
         let rightShift = tryConsume(">>");
@@ -134,34 +128,6 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             lexer.push(new LexerToken(lexer, rightShift, rightShift.index, rightShift.kind, ">"));
         else
             consume(">");
-    }
-    
-    function parseTypeParameters()
-    {
-        if (!test("<"))
-            return [];
-        
-        let result = [];
-        consume("<");
-        while (!test(">")) {
-            let constexpr = lexer.backtrackingScope(() => {
-                let type = parseType();
-                let name = consumeKind("identifier");
-                assertNext(",", ">", ">>");
-                return new ConstexprTypeParameter(type.origin, name.text, type);
-            });
-            if (constexpr)
-                result.push(constexpr);
-            else {
-                let name = consumeKind("identifier");
-                let protocol = tryConsume(":") ? parseProtocolRef() : null;
-                result.push(new TypeVariable(name, name.text, protocol));
-            }
-            if (!tryConsume(","))
-                break;
-        }
-        consumeEndOfTypeArgs();
-        return result;
     }
     
     function parseTerm()
@@ -222,7 +188,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     {
         let token;
         if (token = tryConsume("-"))
-            return new CallExpression(token, "operator" + token.text, [], [parseTerm()]);
+            return new CallExpression(token, "operator" + token.text, [parseTerm()]);
         let left = parseTerm();
         if (token = tryConsume("."))
             left = new DotExpression(token, left, consumeKind("identifier").text);
@@ -233,7 +199,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     {
         if (!test("<"))
             return [];
-        
+
         let result = [];
         consume("<");
         while (!test(">")) {
@@ -248,13 +214,13 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             // In the future we'll allow constexprs to do more things, and then we'll still have
             // the problem that something of the form T[1][2][3]... can either be a type or a
             // constexpr, and we can figure out in the checker which it is.
-            let typeOrVariableRef = lexer.backtrackingScope(() => {
+            let typeRef = lexer.backtrackingScope(() => {
                 let result = consumeKind("identifier");
                 assertNext(",", ">", ">>");
-                return new TypeOrVariableRef(result, result.text);
+                return new TypeRef(result, result.text);
             });
-            if (typeOrVariableRef)
-                result.push(typeOrVariableRef);
+            if (typeRef)
+                result.push(typeRef);
             else {
                 let constexpr = lexer.backtrackingScope(() => {
                     let result = parseConstexpr();
@@ -318,11 +284,10 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     {
         let origin = consume("typedef");
         let name = consumeKind("identifier").text;
-        let typeParameters = parseTypeParameters();
         consume("=");
         let type = parseType();
         consume(";");
-        return new TypeDef(origin, name, typeParameters, type);
+        return new TypeDef(origin, name, type);
     }
     
     function genericParseLeft(texts, nextParser, constructor)
@@ -339,33 +304,50 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         return genericParseLeft(
             texts, nextParser,
             (token, left, right) =>
-                new CallExpression(token, "operator" + token.text, [], [left, right]));
+                new CallExpression(token, "operator" + token.text, [left, right]));
     }
     
     function parseCallExpression()
     {
-        let name = consumeKind("identifier");
-        let typeArguments = parseTypeArguments();
-        consume("(");
-        let argumentList = [];
-        while (!test(")")) {
-            let argument = parsePossibleAssignment();
-            argumentList.push(argument);
-            if (!tryConsume(","))
-                break;
+        let parseArguments = function(origin, callName) {
+            let argumentList = [];
+            while (!test(")")) {
+                let argument = parsePossibleAssignment();
+                argumentList.push(argument);
+                if (!tryConsume(","))
+                    break;
+            }
+            consume(")");
+            return new CallExpression(origin, callName, argumentList);
         }
-        consume(")");
-        let result = new CallExpression(name, name.text, typeArguments, argumentList);
-        return result;
+
+        let name = lexer.backtrackingScope(() => {
+            let name = consumeKind("identifier");
+            consume("(");
+            return name;
+        });
+
+        if (name) {
+            let result = parseArguments(name, name.text);
+            return result;
+        } else {
+            let returnType = parseType();
+            consume("(");
+            let result = parseArguments(returnType.origin, "operator cast");
+            result.setCastData(returnType);
+            return result;
+        }
     }
     
     function isCallExpression()
     {
         return lexer.testScope(() => {
-            consumeKind("identifier");
-            parseTypeArguments();
-            consume("(");
-        });
+                consumeKind("identifier");
+                consume("(");
+            }) || lexer.testScope(() => {
+                parseType();
+                consume("(");
+            });
     }
     
     function emitIncrement(token, old, extraArg)
@@ -381,7 +363,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         if (name == "operator")
             throw new Error("Invalid name: " + name);
         
-        return new CallExpression(token, name, [], args);
+        return new CallExpression(token, name, args);
     }
     
     function finishParsingPostIncrement(token, left)
@@ -454,7 +436,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         if (test("++", "--"))
             return parsePreIncrement();
         if (token = tryConsume("+", "-", "~"))
-            return new CallExpression(token, "operator" + token.text, [], [parsePossiblePrefix()]);
+            return new CallExpression(token, "operator" + token.text, [parsePossiblePrefix()]);
         if (token = tryConsume("*"))
             return new DereferenceExpression(token, parsePossiblePrefix());
         if (token = tryConsume("&"))
@@ -463,7 +445,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             return new MakeArrayRefExpression(token, parsePossiblePrefix());
         if (token = tryConsume("!")) {
             let remainder = parsePossiblePrefix();
-            return new LogicalNot(token, new CallExpression(remainder.origin, "bool", [], [remainder]));
+            return new LogicalNot(token, new CallExpression(remainder.origin, "bool", [remainder]));
         }
         return parsePossibleSuffix();
     }
@@ -493,7 +475,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         return genericParseLeft(
             ["==", "!="], parsePossibleRelationalInequality,
             (token, left, right) => {
-                let result = new CallExpression(token, "operator==", [], [left, right]);
+                let result = new CallExpression(token, "operator==", [left, right]);
                 if (token.text == "!=")
                     result = new LogicalNot(token, result);
                 return result;
@@ -519,7 +501,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     {
         return genericParseLeft(
             texts, nextParser,
-            (token, left, right) => new LogicalExpression(token, token.text, new CallExpression(left.origin, "bool", [], [left]), new CallExpression(right.origin, "bool", [], [right])));
+            (token, left, right) => new LogicalExpression(token, token.text, new CallExpression(left.origin, "bool", [left]), new CallExpression(right.origin, "bool", [right])));
     }
     
     function parsePossibleLogicalAnd()
@@ -547,7 +529,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         let operator = tryConsume("=", "+=", "-=", "*=", "/=", "%=", "^=", "|=", "&=");
         if (!operator) {
             if (mode == "required")
-                lexer.fail("Expected assignment");
+                lexer.fail("Expected assignment: " + lexer._text.substring(lexer._index));
             return lhs;
         }
         if (operator.text == "=")
@@ -656,7 +638,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         let elseBody;
         if (tryConsume("else"))
             elseBody = parseStatement();
-        return new IfStatement(origin, new CallExpression(conditional.origin, "bool", [], [conditional]), body, elseBody);
+        return new IfStatement(origin, new CallExpression(conditional.origin, "bool", [conditional]), body, elseBody);
     }
 
     function parseWhile()
@@ -666,7 +648,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         let conditional = parseExpression();
         consume(")");
         let body = parseStatement();
-        return new WhileLoop(origin, new CallExpression(conditional.origin, "bool", [], [conditional]), body);
+        return new WhileLoop(origin, new CallExpression(conditional.origin, "bool", [conditional]), body);
     }
 
     function parseFor()
@@ -687,7 +669,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         else {
             condition = parseExpression();
             consume(";");
-            condition = new CallExpression(condition.origin, "bool", [], [condition]);
+            condition = new CallExpression(condition.origin, "bool", [condition]);
         }
         let increment;
         if (tryConsume(")"))
@@ -708,7 +690,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         consume("(");
         let conditional = parseExpression();
         consume(")");
-        return new DoWhileLoop(origin, body, new CallExpression(conditional.origin, "bool", [], [conditional]));
+        return new DoWhileLoop(origin, body, new CallExpression(conditional.origin, "bool", [conditional]));
     }
     
     function parseVariableDecls()
@@ -858,13 +840,11 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         let origin;
         let returnType;
         let name;
-        let typeParameters;
         let isCast;
         let shaderType;
         let operatorToken = tryConsume("operator");
         if (operatorToken) {
             origin = operatorToken;
-            typeParameters = parseTypeParameters();
             returnType = parseType();
             name = "operator cast";
             isCast = true;
@@ -877,44 +857,17 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             } else
                 origin = returnType.origin;
             name = parseFuncName();
-            typeParameters = parseTypeParameters();
             isCast = false;
         }
         let parameters = parseParameters();
-        return new Func(origin, name, returnType, typeParameters, parameters, isCast, shaderType);
-    }
-
-    function parseProtocolFuncDecl()
-    {
-        let func = parseFuncDecl();
-        return new ProtocolFuncDecl(func.origin, func.name, func.returnType, func.typeParameters, func.parameters, func.isCast, func.shaderType);
+        return new Func(origin, name, returnType, parameters, isCast, shaderType);
     }
     
     function parseFuncDef()
     {
         let func = parseFuncDecl();
         let body = parseBlock();
-        return new FuncDef(func.origin, func.name, func.returnType, func.typeParameters, func.parameters, body, func.isCast, func.shaderType);
-    }
-    
-    function parseProtocolDecl()
-    {
-        let origin = consume("protocol");
-        let name = consumeKind("identifier").text;
-        let result = new ProtocolDecl(origin, name);
-        if (tryConsume(":")) {
-            while (!test("{")) {
-                result.addExtends(parseProtocolRef());
-                if (!tryConsume(","))
-                    break;
-            }
-        }
-        consume("{");
-        while (!tryConsume("}")) {
-            result.add(parseProtocolFuncDecl());
-            consume(";");
-        }
-        return result;
+        return new FuncDef(func.origin, func.name, func.returnType, func.parameters, body, func.isCast, func.shaderType);
     }
     
     function parseField()
@@ -929,8 +882,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     {
         let origin = consume("struct");
         let name = consumeKind("identifier").text;
-        let typeParameters = parseTypeParameters();
-        let result = new StructType(origin, name, typeParameters);
+        let result = new StructType(origin, name);
         consume("{");
         while (!tryConsume("}"))
             result.add(parseField());
@@ -941,7 +893,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     {
         let func = parseFuncDecl();
         consume(";");
-        return new NativeFunc(func.origin, func.name, func.returnType, func.typeParameters, func.parameters, func.isCast, func.shaderType);
+        return new NativeFunc(func.origin, func.name, func.returnType, func.parameters, func.isCast, func.shaderType);
     }
     
     function parseNative()
@@ -949,9 +901,9 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         let origin = consume("native");
         if (tryConsume("typedef")) {
             let name = consumeKind("identifier");
-            let parameters = parseTypeParameters();
+            let args = parseTypeArguments();
             consume(";");
-            return new NativeType(origin, name.text, parameters);
+            return NativeType.create(origin, name.text, args);
         }
         return parseNativeFunc();
     }
@@ -985,7 +937,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         if (tryConsume(":"))
             baseType = parseType();
         else
-            baseType = new TypeRef(name, "int", []);
+            baseType = new TypeRef(name, "int");
         consume("{");
         let result = new EnumType(name, name.text, baseType);
         while (!test("}")) {
@@ -1013,8 +965,6 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             program.add(parseStructType());
         else if (token.text == "enum")
             program.add(parseEnumType());
-        else if (token.text == "protocol")
-            program.add(parseProtocolDecl());
         else
             program.add(parseFuncDef());
     }

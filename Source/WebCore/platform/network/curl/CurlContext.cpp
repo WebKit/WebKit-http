@@ -77,6 +77,11 @@ constexpr const char* EnvironmentVariableReader::sscanTemplate<signed>() { retur
 template<>
 constexpr const char* EnvironmentVariableReader::sscanTemplate<unsigned>() { return "%u"; }
 
+// ALPN Protocol ID (RFC7301) https://tools.ietf.org/html/rfc7301
+static const ASCIILiteral httpVersion10 { "http/1.0"_s };
+static const ASCIILiteral httpVersion11 { "http/1.1"_s };
+static const ASCIILiteral httpVersion2 { "h2"_s };
+
 // CurlContext -------------------------------------------------------------------
 
 CurlContext& CurlContext::singleton()
@@ -599,7 +604,14 @@ void CurlHandle::setConnectTimeout(Seconds timeout)
 
 void CurlHandle::setTimeout(Seconds timeout)
 {
-    curl_easy_setopt(m_handle, CURLOPT_TIMEOUT_MS, safeTimeValue(timeout.milliseconds()));
+    // Originally CURLOPT_TIMEOUT_MS was used here, but that is not the
+    // idle timeout, but entire duration time limit. It's not safe to specify
+    // such a time limit for communications, such as downloading.
+    // CURLOPT_LOW_SPEED_LIMIT is used instead. It enables the speed watcher
+    // and if the speed is below specified limit and last for specified duration,
+    // it invokes timeout error.
+    curl_easy_setopt(m_handle, CURLOPT_LOW_SPEED_LIMIT, 1L);
+    curl_easy_setopt(m_handle, CURLOPT_LOW_SPEED_TIME, safeTimeValue(timeout.seconds()));
 }
 
 void CurlHandle::setHeaderCallbackFunction(curl_write_callback callbackFunc, void* userData)
@@ -725,6 +737,13 @@ std::optional<NetworkLoadMetrics> CurlHandle::getNetworkLoadMetrics()
     double connect = 0.0;
     double appConnect = 0.0;
     double startTransfer = 0.0;
+    long requestHeaderSize = 0;
+    curl_off_t requestBodySize = 0;
+    long responseHeaderSize = 0;
+    curl_off_t responseBodySize = 0;
+    long version = 0;
+    char* ip = nullptr;
+    long port = 0;
 
     if (!m_handle)
         return std::nullopt;
@@ -745,6 +764,35 @@ std::optional<NetworkLoadMetrics> CurlHandle::getNetworkLoadMetrics()
     if (errorCode != CURLE_OK)
         return std::nullopt;
 
+    // FIXME: Gets total request size not just headers https://bugs.webkit.org/show_bug.cgi?id=188363
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_REQUEST_SIZE, &requestHeaderSize);
+    if (errorCode != CURLE_OK)
+        return std::nullopt;
+
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_SIZE_UPLOAD_T, &requestBodySize);
+    if (errorCode != CURLE_OK)
+        return std::nullopt;
+
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_HEADER_SIZE, &responseHeaderSize);
+    if (errorCode != CURLE_OK)
+        return std::nullopt;
+
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_SIZE_DOWNLOAD_T, &responseBodySize);
+    if (errorCode != CURLE_OK)
+        return std::nullopt;
+
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_PRIMARY_IP, &ip);
+    if (errorCode != CURLE_OK)
+        return std::nullopt;
+
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_PRIMARY_PORT, &port);
+    if (errorCode != CURLE_OK)
+        return std::nullopt;
+
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_HTTP_VERSION, &version);
+    if (errorCode != CURLE_OK)
+        return std::nullopt;
+
     NetworkLoadMetrics networkLoadMetrics;
 
     networkLoadMetrics.domainLookupStart = Seconds(0);
@@ -759,6 +807,24 @@ std::optional<NetworkLoadMetrics> CurlHandle::getNetworkLoadMetrics()
 
     networkLoadMetrics.requestStart = networkLoadMetrics.connectEnd;
     networkLoadMetrics.responseStart = Seconds(startTransfer);
+
+    networkLoadMetrics.requestHeaderBytesSent = requestHeaderSize;
+    networkLoadMetrics.requestBodyBytesSent = requestBodySize;
+    networkLoadMetrics.responseHeaderBytesReceived = responseHeaderSize;
+    networkLoadMetrics.responseBodyBytesReceived = responseBodySize;
+
+    if (ip) {
+        networkLoadMetrics.remoteAddress = String(ip);
+        if (port)
+            networkLoadMetrics.remoteAddress.append(":" + String::number(port));
+    }
+
+    if (version == CURL_HTTP_VERSION_1_0)
+        networkLoadMetrics.protocol = httpVersion10;
+    else if (version == CURL_HTTP_VERSION_1_1)
+        networkLoadMetrics.protocol = httpVersion11;
+    else if (version == CURL_HTTP_VERSION_2)
+        networkLoadMetrics.protocol = httpVersion2;
 
     return networkLoadMetrics;
 }

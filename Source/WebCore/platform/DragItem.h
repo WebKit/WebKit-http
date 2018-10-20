@@ -31,7 +31,7 @@
 #include "IntPoint.h"
 #include "IntRect.h"
 #include "PasteboardWriterData.h"
-#include "PromisedBlobInfo.h"
+#include "PromisedAttachmentInfo.h"
 
 namespace WebCore {
 
@@ -50,7 +50,7 @@ struct DragItem final {
     IntRect dragPreviewFrameInRootViewCoordinates;
 
     PasteboardWriterData data;
-    PromisedBlobInfo promisedBlob;
+    PromisedAttachmentInfo promisedAttachmentInfo;
 
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, DragItem&);
@@ -67,7 +67,11 @@ void DragItem::encode(Encoder& encoder) const
     encoder << hasIndicatorData;
     if (hasIndicatorData)
         encoder << image.indicatorData().value();
-    encoder << promisedBlob;
+    bool hasVisiblePath = image.hasVisiblePath();
+    encoder << hasVisiblePath;
+    if (hasVisiblePath)
+        encoder << image.visiblePath().value();
+    encoder << promisedAttachmentInfo;
 }
 
 template<class Decoder>
@@ -99,7 +103,17 @@ bool DragItem::decode(Decoder& decoder, DragItem& result)
             return false;
         result.image.setIndicatorData(*indicatorData);
     }
-    if (!decoder.decode(result.promisedBlob))
+    bool hasVisiblePath;
+    if (!decoder.decode(hasVisiblePath))
+        return false;
+    if (hasVisiblePath) {
+        std::optional<Path> visiblePath;
+        decoder >> visiblePath;
+        if (!visiblePath)
+            return false;
+        result.image.setVisiblePath(*visiblePath);
+    }
+    if (!decoder.decode(result.promisedAttachmentInfo))
         return false;
     return true;
 }

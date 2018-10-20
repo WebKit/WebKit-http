@@ -612,9 +612,9 @@ class WebkitFlatpak:
 
         repos = FlatpakRepos()
         self.sdk_repo = repos.add(
-            FlatpakRepo("flathub",
-                        url="https://dl.flathub.org/repo/",
-                        repo_file="https://dl.flathub.org/repo/flathub.flatpakrepo"))
+            FlatpakRepo("gnome-nightly",
+                        url="https://sdk.gnome.org/nightly/repo/",
+                        repo_file="https://sdk.gnome.org/gnome-nightly.flatpakrepo"))
 
         manifest = load_manifest(self.manifest_path)
         if not manifest:
@@ -787,7 +787,7 @@ class WebkitFlatpak:
             if self.makeargs:
                 builder.append("--makeargs=%s" % self.makeargs)
             if self.cmakeargs:
-                builder.append("--makeargs=%s" % self.cmakeargs)
+                builder.append("--cmakeargs=%s" % self.cmakeargs)
             Console.message("Building webkit")
             res = self.run_in_sandbox(*builder)
 

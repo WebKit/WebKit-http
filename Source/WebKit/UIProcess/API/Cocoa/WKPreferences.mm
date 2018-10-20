@@ -97,7 +97,7 @@
 
 - (id)copyWithZone:(NSZone *)zone
 {
-    return wrapper(_preferences->copy().leakRef());
+    return [wrapper(_preferences->copy()) retain];
 }
 
 - (CGFloat)minimumFontSize
@@ -530,7 +530,7 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
 + (NSArray<_WKExperimentalFeature *> *)_experimentalFeatures
 {
     auto features = WebKit::WebPreferences::experimentalFeatures();
-    return [wrapper(API::Array::create(WTFMove(features)).leakRef()) autorelease];
+    return wrapper(API::Array::create(WTFMove(features)));
 }
 
 - (BOOL)_isEnabledForFeature:(_WKExperimentalFeature *)feature
@@ -770,6 +770,16 @@ static WebCore::EditableLinkBehavior toEditableLinkBehavior(_WKEditableLinkBehav
 - (BOOL)_punchOutWhiteBackgroundsInDarkMode
 {
     return _preferences->punchOutWhiteBackgroundsInDarkMode();
+}
+
+- (void)_setLowPowerVideoAudioBufferSizeEnabled:(BOOL)enabled
+{
+    _preferences->setLowPowerVideoAudioBufferSizeEnabled(enabled);
+}
+
+- (BOOL)_lowPowerVideoAudioBufferSizeEnabled
+{
+    return _preferences->lowPowerVideoAudioBufferSizeEnabled();
 }
 
 #if PLATFORM(MAC)

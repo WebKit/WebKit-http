@@ -59,20 +59,62 @@ struct _JSCExceptionClass {
 };
 
 JSC_API GType
-jsc_exception_get_type        (void);
+jsc_exception_get_type              (void);
 
 JSC_API JSCException *
-jsc_exception_new             (JSCContext   *context,
-                               const char   *message);
+jsc_exception_new                   (JSCContext   *context,
+                                     const char   *message);
+
+JSC_API JSCException *
+jsc_exception_new_printf            (JSCContext   *context,
+                                     const char   *format,
+                                     ...) G_GNUC_PRINTF (2, 3);
+
+JSC_API JSCException *
+jsc_exception_new_vprintf           (JSCContext   *context,
+                                     const char   *format,
+                                     va_list       args) G_GNUC_PRINTF(2, 0);
+
+JSC_API JSCException *
+jsc_exception_new_with_name         (JSCContext   *context,
+                                     const char   *name,
+                                     const char   *message);
+
+JSC_API JSCException *
+jsc_exception_new_with_name_printf  (JSCContext   *context,
+                                     const char   *name,
+                                     const char   *format,
+                                     ...) G_GNUC_PRINTF (3, 4);
+
+JSC_API JSCException *
+jsc_exception_new_with_name_vprintf (JSCContext   *context,
+                                     const char   *name,
+                                     const char   *format,
+                                     va_list       args) G_GNUC_PRINTF (3, 0);
 
 JSC_API const char *
-jsc_exception_get_message     (JSCException *exception);
+jsc_exception_get_name              (JSCException *exception);
+
+JSC_API const char *
+jsc_exception_get_message           (JSCException *exception);
 
 JSC_API guint
-jsc_exception_get_line_number (JSCException *exception);
+jsc_exception_get_line_number       (JSCException *exception);
+
+JSC_API guint
+jsc_exception_get_column_number     (JSCException *exception);
 
 JSC_API const char *
-jsc_exception_get_source_uri  (JSCException *exception);
+jsc_exception_get_source_uri        (JSCException *exception);
+
+JSC_API const char *
+jsc_exception_get_backtrace_string  (JSCException *exception);
+
+JSC_API char *
+jsc_exception_to_string             (JSCException *exception);
+
+JSC_API char *
+jsc_exception_report                (JSCException *exception);
 
 G_END_DECLS
 

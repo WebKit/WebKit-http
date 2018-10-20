@@ -621,6 +621,16 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ControlPart e)
         m_value.valueID = CSSValueApplePayButton;
         break;
 #endif
+#if ENABLE(INPUT_TYPE_COLOR)
+    case ColorWellPart:
+        m_value.valueID = CSSValueColorWell;
+        break;
+#endif
+#if ENABLE(DATALIST_ELEMENT)
+    case ListButtonPart:
+        m_value.valueID = CSSValueListButton;
+        break;
+#endif
     }
 }
 
@@ -3150,10 +3160,10 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(TextDirection e)
 {
     m_primitiveUnitType = CSS_VALUE_ID;
     switch (e) {
-    case LTR:
+    case TextDirection::LTR:
         m_value.valueID = CSSValueLtr;
         break;
-    case RTL:
+    case TextDirection::RTL:
         m_value.valueID = CSSValueRtl;
         break;
     }
@@ -3165,15 +3175,15 @@ template<> inline CSSPrimitiveValue::operator TextDirection() const
 
     switch (m_value.valueID) {
     case CSSValueLtr:
-        return LTR;
+        return TextDirection::LTR;
     case CSSValueRtl:
-        return RTL;
+        return TextDirection::RTL;
     default:
         break;
     }
 
     ASSERT_NOT_REACHED();
-    return LTR;
+    return TextDirection::LTR;
 }
 
 template<> inline CSSPrimitiveValue::CSSPrimitiveValue(WritingMode e)

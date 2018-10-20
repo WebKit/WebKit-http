@@ -46,25 +46,25 @@ class SessionID;
 }
 
 namespace WebCore {
-class DownloadID;
 class CertificateInfo;
+class DownloadID;
 class NetworkStorageSession;
 class ProtectionSpace;
 class SecurityOrigin;
+class URL;
+enum class StoredCredentialsPolicy;
 struct SecurityOriginData;
 struct SoupNetworkProxySettings;
-enum class StoredCredentialsPolicy;
-class URL;
 }
 
 namespace WebKit {
+
 class AuthenticationManager;
-#if ENABLE(SERVER_PRECONNECT)
-class PreconnectTask;
-#endif
 class NetworkConnectionToWebProcess;
 class NetworkProcessSupplement;
+class NetworkProximityManager;
 class NetworkResourceLoader;
+class PreconnectTask;
 enum class WebsiteDataFetchOption;
 enum class WebsiteDataType;
 struct NetworkProcessCreationParameters;
@@ -80,6 +80,7 @@ class NetworkProcess : public ChildProcess, private DownloadManager::Client {
     friend NeverDestroyed<DownloadManager>;
 public:
     static NetworkProcess& singleton();
+    static constexpr ProcessType processType = ProcessType::Network;
 
     template <typename T>
     T* supplement()
@@ -97,6 +98,9 @@ public:
 
     AuthenticationManager& authenticationManager();
     DownloadManager& downloadManager();
+#if ENABLE(PROXIMITY_NETWORKING)
+    NetworkProximityManager& proximityManager();
+#endif
 
     NetworkCache::Cache* cache() { return m_cache.get(); }
 
@@ -121,13 +125,6 @@ public:
 #endif
 
     void findPendingDownloadLocation(NetworkDataTask&, ResponseCompletionHandler&&, const WebCore::ResourceResponse&);
-
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    void canAuthenticateAgainstProtectionSpace(NetworkResourceLoader&, const WebCore::ProtectionSpace&);
-#if ENABLE(SERVER_PRECONNECT)
-    void canAuthenticateAgainstProtectionSpace(PreconnectTask&, const WebCore::ProtectionSpace&);
-#endif
-#endif
 
     void prefetchDNS(const String&);
 
@@ -224,9 +221,6 @@ private:
     void downloadRequest(PAL::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedFilename);
     void resumeDownload(PAL::SessionID, DownloadID, const IPC::DataReference& resumeData, const String& path, SandboxExtension::Handle&&);
     void cancelDownload(DownloadID);
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    void continueCanAuthenticateAgainstProtectionSpace(uint64_t resourceLoadIdentifier, bool canAuthenticate);
-#endif
     void continueWillSendRequest(DownloadID, WebCore::ResourceRequest&&);
     void continueDecidePendingDownloadDestination(DownloadID, String destination, SandboxExtension::Handle&&, bool allowOverwrite);
 
@@ -250,7 +244,7 @@ private:
     void setNetworkProxySettings(const WebCore::SoupNetworkProxySettings&);
 #endif
 
-#if PLATFORM(COCOA)
+#if PLATFORM(MAC)
     static void setSharedHTTPCookieStorage(const Vector<uint8_t>& identifier);
 #endif
 
@@ -284,11 +278,7 @@ private:
     typedef HashMap<const char*, std::unique_ptr<NetworkProcessSupplement>, PtrHash<const char*>> NetworkProcessSupplementMap;
     NetworkProcessSupplementMap m_supplements;
 
-    HashMap<uint64_t, Function<void ()>> m_sandboxExtensionForBlobsCompletionHandlers;
-    HashMap<uint64_t, Ref<NetworkResourceLoader>> m_waitingNetworkResourceLoaders;
-#if ENABLE(SERVER_PRECONNECT)
-    HashMap<uint64_t, WeakPtr<PreconnectTask>> m_waitingPreconnectTasks;
-#endif
+    HashMap<uint64_t, Function<void()>> m_sandboxExtensionForBlobsCompletionHandlers;
     HashSet<PAL::SessionID> m_sessionsControlledByAutomation;
 
     HashMap<PAL::SessionID, Vector<CacheStorageParametersCallback>> m_cacheStorageParametersCallbacks;
