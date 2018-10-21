@@ -83,6 +83,11 @@ bool KeyedDecoderHaiku::decodeInt64(const String& key, int64_t& result)
     return currentMessage->FindInt64(key.utf8().data(), &result) == B_OK;
 }
 
+bool KeyedDecoderHaiku::decodeUInt64(const String& key, uint64_t& result)
+{
+    return currentMessage->FindUInt64(key.utf8().data(), &result) == B_OK;
+}
+
 bool KeyedDecoderHaiku::decodeFloat(const String& key, float& result)
 {
     return currentMessage->FindFloat(key.utf8().data(), &result) == B_OK;

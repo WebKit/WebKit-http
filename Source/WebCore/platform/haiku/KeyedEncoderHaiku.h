@@ -47,6 +47,7 @@ private:
     virtual void encodeBool(const String& key, bool) override;
     virtual void encodeUInt32(const String& key, uint32_t) override;
     virtual void encodeInt32(const String& key, int32_t) override;
+    virtual void encodeUInt64(const String& key, uint64_t) override;
     virtual void encodeInt64(const String& key, int64_t) override;
     virtual void encodeFloat(const String& key, float) override;
     virtual void encodeDouble(const String& key, double) override;

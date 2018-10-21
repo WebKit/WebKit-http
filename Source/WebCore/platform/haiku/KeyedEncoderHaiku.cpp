@@ -92,6 +92,11 @@ void KeyedEncoderHaiku::encodeInt32(const String& key, int32_t value)
     currentMessage->AddInt32(key.utf8().data(), value);
 }
 
+void KeyedEncoderHaiku::encodeUInt64(const String& key, uint64_t value)
+{
+    currentMessage->AddUInt64(key.utf8().data(), value);
+}
+
 void KeyedEncoderHaiku::encodeInt64(const String& key, int64_t value)
 {
     currentMessage->AddInt64(key.utf8().data(), value);

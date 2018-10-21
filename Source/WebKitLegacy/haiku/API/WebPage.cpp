@@ -1372,13 +1372,13 @@ void BWebPage::handleFindString(BMessage* message)
 
     WebCore::FindOptions options;
     if (!forward)
-        options |= WebCore::Backwards;
+        options.add(WebCore::Backwards);
     if (!caseSensitive)
-        options |= WebCore::CaseInsensitive;
+        options.add(WebCore::CaseInsensitive);
     if (wrapSelection)
-        options |= WebCore::WrapAround;
+        options.add(WebCore::WrapAround);
     if (startInSelection)
-        options |= WebCore::StartInSelection;
+        options.add(WebCore::StartInSelection);
 
     bool result = fMainFrame->FindString(string, options);
 

@@ -72,13 +72,13 @@ PlatformMouseEvent::PlatformMouseEvent(const BMessage* message)
 
     int32 modifiers = message->FindInt32("modifiers");
     if (modifiers & B_SHIFT_KEY)
-        m_modifiers |= PlatformEvent::Modifier::ShiftKey;
+        m_modifiers.add(PlatformEvent::Modifier::ShiftKey);
     if (modifiers & B_COMMAND_KEY)
-        m_modifiers |= PlatformEvent::Modifier::CtrlKey;
+        m_modifiers.add(PlatformEvent::Modifier::CtrlKey);
     if (modifiers & B_CONTROL_KEY)
-        m_modifiers |= PlatformEvent::Modifier::AltKey;
+        m_modifiers.add(PlatformEvent::Modifier::AltKey);
     if (modifiers & B_OPTION_KEY)
-        m_modifiers |= PlatformEvent::Modifier::MetaKey;
+        m_modifiers.add(PlatformEvent::Modifier::MetaKey);
 }
 
 } // namespace WebCore
