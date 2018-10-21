@@ -706,7 +706,6 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetXSSAuditorEnabled(preferences, false);
     WKPreferencesSetWebAudioEnabled(preferences, true);
     WKPreferencesSetMediaDevicesEnabled(preferences, true);
-    WKPreferencesSetWebRTCLegacyAPIEnabled(preferences, true);
     WKPreferencesSetWebRTCMDNSICECandidatesEnabled(preferences, false);
     WKPreferencesSetDeveloperExtrasEnabled(preferences, true);
     WKPreferencesSetJavaScriptRuntimeFlags(preferences, kWKJavaScriptRuntimeFlagsAllEnabled);
@@ -792,6 +791,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     
     WKPreferencesSetAccessibilityObjectModelEnabled(preferences, true);
     WKPreferencesSetAriaReflectionEnabled(preferences, true);
+    WKPreferencesSetCSSOMViewScrollingAPIEnabled(preferences, false);
     WKPreferencesSetMediaCapabilitiesEnabled(preferences, true);
 
     WKPreferencesSetCrossOriginWindowPolicyEnabled(preferences, true);
@@ -933,7 +933,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
     if (!m_doneResetting)
         return false;
     
-    if (resetStage == ResetStage::AfterTest && m_checkForWorldLeaks)
+    if (resetStage == ResetStage::AfterTest)
         updateLiveDocumentsAfterTest();
 
     return m_doneResetting;
@@ -941,6 +941,9 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
 
 void TestController::updateLiveDocumentsAfterTest()
 {
+    if (!m_checkForWorldLeaks)
+        return;
+
     AsyncTask([]() {
         // After each test, we update the list of live documents so that we can detect when an abandoned document first showed up.
         WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("GetLiveDocuments"));
@@ -950,6 +953,9 @@ void TestController::updateLiveDocumentsAfterTest()
 
 void TestController::checkForWorldLeaks()
 {
+    if (!m_checkForWorldLeaks || !TestController::singleton().mainWebView())
+        return;
+
     AsyncTask([]() {
         // This runs at the end of a series of tests. It clears caches, runs a GC and then fetches the list of documents.
         WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("CheckForWorldLeaks"));
@@ -959,6 +965,9 @@ void TestController::checkForWorldLeaks()
 
 void TestController::findAndDumpWorldLeaks()
 {
+    if (!m_checkForWorldLeaks)
+        return;
+
     checkForWorldLeaks();
 
     StringBuilder builder;
@@ -1387,6 +1396,10 @@ bool TestController::waitForCompletion(const WTF::Function<void ()>& function, W
 bool TestController::handleControlCommand(const char* command)
 {
     if (!strcmp("#CHECK FOR WORLD LEAKS", command)) {
+        if (!m_checkForWorldLeaks) {
+            WTFLogAlways("WebKitTestRunner asked to check for world leaks, but was not run with --world-leaks");
+            return true;
+        }
         findAndDumpWorldLeaks();
         return true;
     }
@@ -1421,7 +1434,8 @@ void TestController::run()
             if (!runTest(m_paths[i].c_str()))
                 break;
         }
-        findAndDumpWorldLeaks();
+        if (m_checkForWorldLeaks)
+            findAndDumpWorldLeaks();
     }
 }
 

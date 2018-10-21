@@ -144,7 +144,6 @@ fast/forms/week
 # Media Stream API is not fully supported.
 fast/mediastream/MediaStream-add-ended-tracks.html
 
-fast/mediastream/RTCPeerConnection-dtmf.html [ Skip ]
 fast/mediastream/RTCPeerConnection-ice.html [ Skip ]
 fast/mediastream/RTCPeerConnection-media-setup-callbacks-single-dialog.html [ Skip ]
 fast/mediastream/RTCPeerConnection-stats.html [ Skip ]
@@ -1169,7 +1168,7 @@ webkit.org/b/154709 [ Sierra+ ] legacy-animation-engine/fast/text/crash-complex-
 webkit.org/b/155092 js/arraybuffer-wrappers.html [ Pass Timeout ]
 
 webkit.org/b/155140 js/promises-tests/promises-tests-2-3-3.html [ Pass Failure ]
-webkit.org/b/187103 js/error-should-not-strong-reference-global-object.html [ Pass Failure ]
+webkit.org/b/187103 js/error-should-not-strong-reference-global-object.html [ Pass Failure Timeout ]
 
 webkit.org/b/155505 [ Sierra+ ] http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html [ Skip ]
 webkit.org/b/155505 [ Sierra+ ] http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-video.html [ Skip ]
@@ -1326,10 +1325,12 @@ media/encrypted-media/mock-MediaKeySession-update.html [ Skip ]
 
 webkit.org/b/180430 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event.html [ Skip ]
 webkit.org/b/180430 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event-mse.html [ Skip ]
+webkit.org/b/189196 media/encrypted-media/clearKey/clearKey-encrypted-webm-event-mse.html [ Skip ]
 webkit.org/b/180928 media/encrypted-media/clearKey/clearKey-message-cenc-event.html [ Skip ]
 webkit.org/b/180928 media/encrypted-media/clearKey/clearKey-message-cenc-event-mse.html [ Skip ]
 webkit.org/b/181594 media/encrypted-media/clearKey/clearKey-cenc-audio-playback-mse.html [ Skip ]
 webkit.org/b/181594 media/encrypted-media/clearKey/clearKey-cenc-video-playback-mse.html [ Skip ]
+webkit.org/b/189200 media/encrypted-media/clearKey/clearKey-webm-video-playback-mse.html [ Skip ]
 
 webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
 

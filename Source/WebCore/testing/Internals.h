@@ -371,6 +371,8 @@ public:
     uint64_t documentIdentifier(const Document&) const;
     bool isDocumentAlive(uint64_t documentIdentifier) const;
 
+    String serviceWorkerClientIdentifier(const Document&) const;
+
     RefPtr<WindowProxy> openDummyInspectorFrontend(const String& url);
     void closeDummyInspectorFrontend();
     ExceptionOr<void> setInspectorIsUnderTest(bool);
@@ -698,7 +700,6 @@ public:
     MockCredentialsMessenger& mockCredentialsMessenger() const;
 #endif
 
-    String systemPreviewRelType();
     bool isSystemPreviewLink(Element&) const;
     bool isSystemPreviewImage(Element&) const;
 
@@ -733,6 +734,8 @@ public:
 
     void notifyResourceLoadObserver();
 
+    unsigned long primaryScreenDisplayID();
+        
 private:
     explicit Internals(Document&);
     Document* contextDocument() const;

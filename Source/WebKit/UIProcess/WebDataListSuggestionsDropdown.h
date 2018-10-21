@@ -40,7 +40,7 @@ public:
         virtual ~Client() { }
 
     public:
-        virtual void didSelectOption(String&) = 0;
+        virtual void didSelectOption(const String&) = 0;
         virtual void didCloseSuggestions() = 0;
     };
 

@@ -300,13 +300,11 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/MediaDeviceInfo.idl
     Modules/mediastream/MediaDevices.idl
     Modules/mediastream/MediaStream.idl
-    Modules/mediastream/MediaStreamEvent.idl
     Modules/mediastream/MediaStreamTrack.idl
     Modules/mediastream/MediaStreamTrackEvent.idl
     Modules/mediastream/MediaTrackConstraints.idl
     Modules/mediastream/MediaTrackSupportedConstraints.idl
     Modules/mediastream/NavigatorMediaDevices.idl
-    Modules/mediastream/NavigatorUserMedia.idl
     Modules/mediastream/OverconstrainedError.idl
     Modules/mediastream/OverconstrainedErrorEvent.idl
     Modules/mediastream/RTCAnswerOptions.idl
@@ -342,7 +340,10 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/notifications/NotificationPermission.idl
     Modules/notifications/NotificationPermissionCallback.idl
 
+    Modules/paymentrequest/AddressErrors.idl
     Modules/paymentrequest/MerchantValidationEvent.idl
+    Modules/paymentrequest/MerchantValidationEventInit.idl
+    Modules/paymentrequest/PayerErrorFields.idl
     Modules/paymentrequest/PaymentAddress.idl
     Modules/paymentrequest/PaymentComplete.idl
     Modules/paymentrequest/PaymentCurrencyAmount.idl
@@ -351,6 +352,8 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/paymentrequest/PaymentDetailsModifier.idl
     Modules/paymentrequest/PaymentDetailsUpdate.idl
     Modules/paymentrequest/PaymentItem.idl
+    Modules/paymentrequest/PaymentMethodChangeEvent.idl
+    Modules/paymentrequest/PaymentMethodChangeEventInit.idl
     Modules/paymentrequest/PaymentMethodData.idl
     Modules/paymentrequest/PaymentOptions.idl
     Modules/paymentrequest/PaymentRequest.idl
@@ -359,6 +362,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/paymentrequest/PaymentResponse.idl
     Modules/paymentrequest/PaymentShippingOption.idl
     Modules/paymentrequest/PaymentShippingType.idl
+    Modules/paymentrequest/PaymentValidationErrors.idl
 
     Modules/speech/DOMWindowSpeechSynthesis.idl
     Modules/speech/SpeechSynthesis.idl
@@ -820,6 +824,7 @@ set(WebCore_NON_SVG_IDL_FILES
     page/NavigatorLanguage.idl
     page/NavigatorOnLine.idl
     page/NavigatorServiceWorker.idl
+    page/NavigatorShare.idl
     page/Performance.idl
     page/PerformanceEntry.idl
     page/PerformanceMark.idl
@@ -833,7 +838,10 @@ set(WebCore_NON_SVG_IDL_FILES
     page/PerformanceTiming.idl
     page/RemoteDOMWindow.idl
     page/Screen.idl
+    page/ScrollIntoViewOptions.idl
+    page/ScrollLogicalPosition.idl
     page/ScrollToOptions.idl
+    page/ShareData.idl
     page/VisualViewport.idl
     page/WebKitPoint.idl
     page/WindowEventHandlers.idl
@@ -1565,9 +1573,13 @@ if (USE_LIBWEBRTC)
       "${THIRDPARTY_DIR}/libwebrtc/Source/third_party/abseil-cpp")
   list(APPEND WebCore_LIBRARIES webrtc)
   list(APPEND WebCore_SOURCES
+      Modules/mediastream/libwebrtc/LibWebRTCStatsCollector.cpp
       Modules/mediastream/libwebrtc/LibWebRTCDataChannelHandler.cpp
       Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp
       Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp
+      Modules/mediastream/libwebrtc/LibWebRTCRtpReceiverBackend.cpp
+      Modules/mediastream/libwebrtc/LibWebRTCRtpSenderBackend.cpp
+      Modules/mediastream/libwebrtc/LibWebRTCUtils.cpp
       )
 endif ()
 
@@ -1837,7 +1849,6 @@ add_dependencies(WebCoreTestSupportBindings WebCore)
 # WebCore JS Builtins
 
 set(WebCore_BUILTINS_SOURCES
-    ${WEBCORE_DIR}/Modules/mediastream/NavigatorUserMedia.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnection.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnectionInternals.js
     ${WEBCORE_DIR}/Modules/streams/ByteLengthQueuingStrategy.js

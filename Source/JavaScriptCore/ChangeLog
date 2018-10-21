@@ -1,3 +1,452 @@
+2018-09-05  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r235419): DFGCFG.h is missing from JavaScriptCore Xcode project
+
+        Found using `tidy-Xcode-project-file --missing` (see Bug
+        188754).  Fix was made manually.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        (dfg/DFGCFG.h): Revert accidental change in r235419 by restoring
+        `name` and `path` values to file reference.
+
+2018-09-05  Mark Lam  <mark.lam@apple.com>
+
+        isAsyncGeneratorMethodParseMode() should check for SourceParseMode::AsyncGeneratorWrapperMethodMode.
+        https://bugs.webkit.org/show_bug.cgi?id=189292
+        <rdar://problem/38907433>
+
+        Reviewed by Saam Barati.
+
+        Previously, isAsyncGeneratorMethodParseMode() was checking for AsyncGeneratorWrapperFunctionMode
+        instead of AsyncGeneratorWrapperMethodMode.  This patch fixes it
+        to check for AsyncGeneratorWrapperMethodMode (to match what is expected as indicated
+        in the name isAsyncGeneratorMethodParseMode).
+
+        * parser/ParserModes.h:
+        (JSC::isAsyncGeneratorMethodParseMode):
+
+2018-09-04  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed indentations change.
+
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::matchBackreference):
+
+2018-09-04  Michael Saboff  <msaboff@apple.com>
+
+        JSC Build error when changing CPU type: offlineasm: No magic values found. Skipping assembly file generation
+        https://bugs.webkit.org/show_bug.cgi?id=189274
+
+        Reviewed by Saam Barati.
+
+        Put the derived file LLIntDesiredOffsets.h in an architecture specific subdirectory to make them unique.
+
+        Some I got this change mixed up with the change for r235636.  The changes to JavaScriptCore.xcodeproj/project.pbxproj
+        where landed there.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2018-09-04  Michael Saboff  <msaboff@apple.com>
+
+        YARR: JIT RegExps with back references
+        https://bugs.webkit.org/show_bug.cgi?id=180874
+
+        Reviewed by Filip Pizlo.
+
+        Implemented JIT'ed back references for all counted types.  The only type of back references
+        not handled in the JIT are 16bit matches that ignore case.  Such support would require the
+        canonicalization that is currently handled in the Yarr interpreter via a C funtion call.
+        The back reference processing for surrogate pairs is implemented by individually comparing
+        each surrogate ala memcmp.
+
+        Added a generated canonicalization table for the LChar (8bit) domain to process case
+        ignored back references.
+
+        Added macro assembler load16(ExtendedAddress) for indexed access to the canonicalization table.
+
+        Added a new JIT failure reason for forward references as the check to JIT expressions with
+        forward references we're handled synonimously those containing back references.
+
+        This change is only enabled for 64 bit platforms.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::load16):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::load16):
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+        * yarr/YarrCanonicalize.h:
+        * yarr/YarrCanonicalizeUCS2.cpp:
+        * yarr/YarrCanonicalizeUCS2.js:
+        (set characters.hex.set string_appeared_here):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::checkNotEnoughInput):
+        (JSC::Yarr::YarrGenerator::readCharacterDontDecodeSurrogates):
+        (JSC::Yarr::YarrGenerator::matchBackreference):
+        (JSC::Yarr::YarrGenerator::generateBackReference):
+        (JSC::Yarr::YarrGenerator::backtrackBackReference):
+        (JSC::Yarr::YarrGenerator::generateTerm):
+        (JSC::Yarr::YarrGenerator::backtrackTerm):
+        (JSC::Yarr::YarrGenerator::compile):
+        (JSC::Yarr::dumpCompileFailure):
+        * yarr/YarrJIT.h:
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::BackTrackInfoBackReference::beginIndex):
+        (JSC::Yarr::BackTrackInfoBackReference::matchAmountIndex):
+
+2018-09-04  Mark Lam  <mark.lam@apple.com>
+
+        Make the jsc shell print, printErr, and debug functions more robust.
+        https://bugs.webkit.org/show_bug.cgi?id=189268
+        <rdar://problem/41192690>
+
+        Reviewed by Keith Miller.
+
+        We'll now check for UTF8 conversion errors.
+
+        * jsc.cpp:
+        (cStringFromViewWithString):
+        (printInternal):
+        (functionDebug):
+
+2018-09-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Add more unused result warnings to JSC API
+        https://bugs.webkit.org/show_bug.cgi?id=189243
+
+        Reviewed by Carlos Garcia Campos.
+
+        The jsc_context_evaluate() family of functions has a (transfer full) return value, but the
+        caller may be tempted to not inspect it if uninterested in the return value. This would be
+        an error, because it must be freed.
+
+        * API/glib/JSCContext.h:
+
+2018-09-03  Mark Lam  <mark.lam@apple.com>
+
+        The watchdog sometimes fails to terminate a script.
+        https://bugs.webkit.org/show_bug.cgi?id=189227
+        <rdar://problem/39932857>
+
+        Reviewed by Saam Barati.
+
+        Consider the following scenario:
+
+        1. We have an infinite loop bytecode sequence as follows:
+
+            [  13] loop_hint
+            [  14] check_traps
+            [  15] jmp               -2(->13)
+
+        2. The VM tiers up from LLInt -> BaselineJIT -> DFG -> FTL.
+
+           Note that op_check_traps is represented as a CheckTraps node in the DFG and FTL.
+           When we're not using pollingTraps (JSC_usePollingTraps is false by default),
+           we emit no code for CheckTraps, but only record an InvalidationPoint there.
+
+        3. The watchdog fires, and invalidates all InvalidationPoints in the FTL CodeBlock.
+
+           InvalidationPoints OSR exits to the next instruction by design.  In this case,
+           that means the VM will resumes executing at the op_jmp, which jumps to the
+           op_loop_hint opcode.  At the loop_hint, the VM discovers that the function is
+           already hot, and attempts to tier up.  It immediately discovers that a replacement
+           CodeBlock is available because we still haven't jettisoned the DFG CodeBlock
+           nor the FTL CodeBlock that was previously compiled for this function.
+
+           Note that jettisoning a CodeBlock necessarily means the VM will invalidate
+           its InvalidationPoints (if the CodeBlock is DFG/FTL).  However, the reverse
+           is not true: merely invalidating the InvalidationPoints does not necessarily
+           mean that the CodeBlock is jettisoned.
+
+           VMTraps::tryInstallTrapBreakpoints() runs from a separate thread.  Hence,
+           it is only safe for it to invalidate a CodeBlock's InvalidationPoints.  It
+           is not safe for the CodeBlock to be jettisoned from another thread.  Instead,
+           the VMTraps mechanism relies on the script thread running to an op_check_traps
+           in the baseline JIT code where it will do the necessary jettisoning of optimized
+           CodeBlocks.
+
+        Since the op_check_traps never get executed, the VM will perpetually tier up in
+        the op_loop_hint, OSR exit to the op_jmp, jump to the op_loop_hint, and repeat.
+        Consequently, the watchdog fails to terminate this script.
+
+        In this patch, we fix this by making the DFG BytecodeParser emit an InvalidationPoint
+        node directly (when the VM is not configured to use polling traps).  This ensures
+        that the check traps invalidation point will OSR exit to the op_check_traps opcode
+        in the baseline JIT.
+
+        In this patch, we also change VMTraps::tryInstallTrapBreakpoints() to use
+        CallFrame::unsafeCodeBlock() instead of CallFrame::codeBlock().  This is because
+        we don't really know if the frame is properly set up.  We're just conservatively
+        probing the stack.  ASAN does not like this probing.  Using unsafeCodeBlock() here
+        will suppress the false positive ASAN complaint.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCheckTraps):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        * runtime/VMTraps.cpp:
+        (JSC::VMTraps::tryInstallTrapBreakpoints):
+
+2018-09-03  Mark Lam  <mark.lam@apple.com>
+
+        CallFrame::unsafeCallee() should use an ASAN suppressed Register::asanUnsafePointer().
+        https://bugs.webkit.org/show_bug.cgi?id=189247
+
+        Reviewed by Saam Barati.
+
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::unsafeCallee const):
+        * interpreter/Register.h:
+        (JSC::Register::asanUnsafePointer const):
+        (JSC::Register::unsafePayload const):
+
+2018-09-02  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Implement Object.fromEntries
+        https://bugs.webkit.org/show_bug.cgi?id=188481
+
+        Reviewed by Darin Adler.
+
+        Object.fromEntries becomes stage 3[1]. This patch implements it by using builtin JS.
+
+        [1]: https://tc39.github.io/proposal-object-from-entries/
+
+        * builtins/ObjectConstructor.js:
+        (fromEntries):
+        * runtime/ObjectConstructor.cpp:
+
+2018-08-24  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Function object should convert params to string before throw a parsing error
+        https://bugs.webkit.org/show_bug.cgi?id=188874
+
+        Reviewed by Darin Adler.
+
+        ToString operation onto the `body` of the Function constructor should be performed
+        before checking syntax correctness of the parameters.
+
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+
+2018-08-31  Mark Lam  <mark.lam@apple.com>
+
+        Fix exception check accounting in constructJSWebAssemblyCompileError().
+        https://bugs.webkit.org/show_bug.cgi?id=189185
+        <rdar://problem/39786007>
+
+        Reviewed by Michael Saboff.
+
+        Also add an exception check in JSWebAssemblyModule::createStub() so that we don't
+        inadvertently overwrite a pre-existing exception (if present).
+
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::createStub):
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyCompileError):
+
+2018-08-31  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: ARMv7 build fix.
+        https://bugs.webkit.org/show_bug.cgi?id=158911
+
+        Not reviewed.
+
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::patchableBranch8):
+
+2018-08-31  Mark Lam  <mark.lam@apple.com>
+
+        Fix exception check accounting in JSDataView::defineOwnProperty().
+        https://bugs.webkit.org/show_bug.cgi?id=189186
+        <rdar://problem/39786049>
+
+        Reviewed by Michael Saboff.
+
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::defineOwnProperty):
+
+2018-08-31  Mark Lam  <mark.lam@apple.com>
+
+        Add missing exception check in arrayProtoFuncLastIndexOf().
+        https://bugs.webkit.org/show_bug.cgi?id=189184
+        <rdar://problem/39785959>
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncLastIndexOf):
+
+2018-08-31  Saam barati  <sbarati@apple.com>
+
+        convertToRegExpMatchFastGlobal must use KnownString as the child use kind
+        https://bugs.webkit.org/show_bug.cgi?id=189173
+        <rdar://problem/43501645>
+
+        Reviewed by Michael Saboff.
+
+        We were crashing during validation because mayExit returned true
+        at a point in the program when we weren't allowed to exit.
+        
+        The issue was is in StrengthReduction: we end up emitting code that
+        had a StringUse on an edge after a node that did side effects and before
+        an ExitOK/bytecode number transition. However, StrenghReduction did the
+        right thing here and also emitted the type checks before the node with
+        side effects. It just did bad bookkeeping. The node we convert to needs
+        to use KnownStringUse instead of StringUse for the child edge.
+
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::convertToRegExpExecNonGlobalOrStickyWithoutChecks):
+        (JSC::DFG::Node::convertToRegExpMatchFastGlobalWithoutChecks):
+        (JSC::DFG::Node::convertToRegExpExecNonGlobalOrSticky): Deleted.
+        (JSC::DFG::Node::convertToRegExpMatchFastGlobal): Deleted.
+        * dfg/DFGNode.h:
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+
+2018-08-30  Saam barati  <sbarati@apple.com>
+
+        Switch int8_t to GPRReg in StructureStubInfo because sizeof(GPRReg) == sizeof(int8_t)
+        https://bugs.webkit.org/show_bug.cgi?id=189166
+
+        Reviewed by Mark Lam.
+
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateImpl):
+        * bytecode/GetterSetterAccessCase.cpp:
+        (JSC::GetterSetterAccessCase::emitDOMJITGetter):
+        * bytecode/InlineAccess.cpp:
+        (JSC::getScratchRegister):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::PolymorphicAccess::regenerate):
+        * bytecode/StructureStubInfo.h:
+        (JSC::StructureStubInfo::valueRegs const):
+        * jit/JITInlineCacheGenerator.cpp:
+        (JSC::JITByIdGenerator::JITByIdGenerator):
+        (JSC::JITGetByIdWithThisGenerator::JITGetByIdWithThisGenerator):
+        (JSC::JITInstanceOfGenerator::JITInstanceOfGenerator):
+
+2018-08-30  Saam barati  <sbarati@apple.com>
+
+        InlineAccess should do StringLength
+        https://bugs.webkit.org/show_bug.cgi?id=158911
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch extends InlineAccess to support StringLength. This patch also
+        fixes AccessCase::fromStructureStubInfo to support ArrayLength and StringLength.
+        I forgot to implement this for ArrayLength in the initial InlineAccess
+        implementation.  Supporting StringLength is a natural extension of the
+        InlineAccess machinery.
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::patchableBranch8):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::patchableBranch8):
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::fromStructureStubInfo):
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::printGetByIdCacheStatus):
+        * bytecode/InlineAccess.cpp:
+        (JSC::InlineAccess::dumpCacheSizesAndCrash):
+        (JSC::InlineAccess::generateSelfPropertyAccess):
+        (JSC::getScratchRegister):
+        (JSC::InlineAccess::generateSelfPropertyReplace):
+        (JSC::InlineAccess::generateArrayLength):
+        (JSC::InlineAccess::generateSelfInAccess):
+        (JSC::InlineAccess::generateStringLength):
+        * bytecode/InlineAccess.h:
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::PolymorphicAccess::regenerate):
+        * bytecode/StructureStubInfo.cpp:
+        (JSC::StructureStubInfo::initStringLength):
+        (JSC::StructureStubInfo::deref):
+        (JSC::StructureStubInfo::aboutToDie):
+        (JSC::StructureStubInfo::propagateTransitions):
+        * bytecode/StructureStubInfo.h:
+        (JSC::StructureStubInfo::baseGPR const):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+
+2018-08-30  Saam barati  <sbarati@apple.com>
+
+        CSE DataViewGet* DFG nodes
+        https://bugs.webkit.org/show_bug.cgi?id=188768
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch makes it so that we CSE DataViewGet* accesses. To do this,
+        I needed to add a third descriptor to HeapLocation to represent the
+        isLittleEndian child. This patch is neutral on compile time benchmarks,
+        and is a 50% speedup on a trivial CSE microbenchmark that I added.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGHeapLocation.h:
+        (JSC::DFG::HeapLocation::HeapLocation):
+        (JSC::DFG::HeapLocation::hash const):
+        (JSC::DFG::HeapLocation::operator== const):
+        (JSC::DFG::indexedPropertyLocForResultType):
+
+2018-08-30  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        output of toString() of Generator is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=188952
+
+        Reviewed by Saam Barati.
+
+        Function#toString does not respect generator and async generator.
+        This patch fixes them and supports all the function types.
+
+        * runtime/FunctionPrototype.cpp:
+        (JSC::functionProtoFuncToString):
+
+2018-08-29  Mark Lam  <mark.lam@apple.com>
+
+        Add some missing exception checks in JSRopeString::resolveRopeToAtomicString().
+        https://bugs.webkit.org/show_bug.cgi?id=189132
+        <rdar://problem/42513068>
+
+        Reviewed by Saam Barati.
+
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::toPropertyKey const):
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::resolveRopeToAtomicString const):
+
+2018-08-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r235432 and r235436.
+        https://bugs.webkit.org/show_bug.cgi?id=189086
+
+        Is a Swift source breaking change. (Requested by keith_miller
+        on #webkit).
+
+        Reverted changesets:
+
+        "Add nullablity attributes to JSValue"
+        https://bugs.webkit.org/show_bug.cgi?id=189047
+        https://trac.webkit.org/changeset/235432
+
+        "Add nullablity attributes to JSValue"
+        https://bugs.webkit.org/show_bug.cgi?id=189047
+        https://trac.webkit.org/changeset/235436
+
 2018-08-28  Mark Lam  <mark.lam@apple.com>
 
         Fix bit-rotted Interpreter::dumpRegisters() and move it to the VMInspector.

@@ -29,6 +29,7 @@
 
 #include "GStreamerCommon.h"
 #include "GraphicsContext.h"
+#include "GraphicsContext3D.h"
 #include "ImageGStreamer.h"
 #include "ImageOrientation.h"
 #include "IntRect.h"
@@ -51,6 +52,10 @@
 #include "GStreamerEMEUtilities.h"
 #include "SharedBuffer.h"
 #include "WebKitClearKeyDecryptorGStreamer.h"
+#endif
+
+#if ENABLE(MEDIA_SOURCE)
+#include "WebKitMediaSourceGStreamer.h"
 #endif
 
 #if ENABLE(MEDIA_STREAM) && GST_CHECK_VERSION(1, 10, 0)
@@ -137,34 +142,30 @@ GST_DEBUG_CATEGORY(webkit_media_player_debug);
 namespace WebCore {
 using namespace std;
 
-void registerWebKitGStreamerElements()
-{
-#if ENABLE(ENCRYPTED_MEDIA)
-    if (!webkitGstCheckVersion(1, 6, 1))
-        return;
-
-    GRefPtr<GstElementFactory> clearKeyDecryptorFactory = adoptGRef(gst_element_factory_find("webkitclearkey"));
-    if (!clearKeyDecryptorFactory)
-        gst_element_register(nullptr, "webkitclearkey", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
-#endif
-#if ENABLE(MEDIA_STREAM) && GST_CHECK_VERSION(1,10,0)
-    gst_element_register(nullptr, "mediastreamsrc", GST_RANK_PRIMARY, WEBKIT_TYPE_MEDIA_STREAM_SRC);
-#endif
-}
-
 bool MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements()
 {
     if (!initializeGStreamer())
         return false;
 
-    registerWebKitGStreamerElements();
-
-    GRefPtr<GstElementFactory> srcFactory = adoptGRef(gst_element_factory_find("webkitwebsrc"));
-    if (!srcFactory) {
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
         GST_DEBUG_CATEGORY_INIT(webkit_media_player_debug, "webkitmediaplayer", 0, "WebKit media player");
-        gst_element_register(0, "webkitwebsrc", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_WEB_SRC);
-    }
+#if ENABLE(ENCRYPTED_MEDIA)
+        if (webkitGstCheckVersion(1, 6, 1))
+            gst_element_register(nullptr, "webkitclearkey", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
+#endif
 
+#if ENABLE(MEDIA_STREAM) && GST_CHECK_VERSION(1, 10, 0)
+        if (webkitGstCheckVersion(1, 10, 0))
+            gst_element_register(nullptr, "mediastreamsrc", GST_RANK_PRIMARY, WEBKIT_TYPE_MEDIA_STREAM_SRC);
+#endif
+
+#if ENABLE(MEDIA_SOURCE)
+        gst_element_register(nullptr, "webkitmediasrc", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_SRC);
+#endif
+
+        gst_element_register(0, "webkitwebsrc", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_WEB_SRC);
+    });
     return true;
 }
 
@@ -783,25 +784,22 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
 
             std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), texMapFlagFromOrientation(m_videoSourceOrientation), !m_usingFallbackVideoSink);
 
-#if USE(GSTREAMER_GL)
             GLuint textureID = frameHolder->textureID();
+            std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer;
             if (textureID) {
-                std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(textureID, frameHolder->size(), frameHolder->flags(), GraphicsContext3D::RGBA);
+                layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(textureID, frameHolder->size(), frameHolder->flags(), GraphicsContext3D::RGBA);
                 layerBuffer->setUnmanagedBufferDataHolder(WTFMove(frameHolder));
-                proxy.pushNextBuffer(WTFMove(layerBuffer));
-            } else
-#endif
-            {
-                std::unique_ptr<TextureMapperPlatformLayerBuffer> buffer = proxy.getAvailableBuffer(frameHolder->size(), GL_DONT_CARE);
-                if (UNLIKELY(!buffer)) {
+            } else {
+                layerBuffer = proxy.getAvailableBuffer(frameHolder->size(), GL_DONT_CARE);
+                if (UNLIKELY(!layerBuffer)) {
                     auto texture = BitmapTextureGL::create(TextureMapperContextAttributes::get());
                     texture->reset(frameHolder->size(), frameHolder->hasAlphaChannel() ? BitmapTexture::SupportsAlpha : BitmapTexture::NoFlag);
-                    buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTFMove(texture));
+                    layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTFMove(texture));
                 }
-                frameHolder->updateTexture(buffer->textureGL());
-                buffer->setExtraFlags(texMapFlagFromOrientation(m_videoSourceOrientation) | (frameHolder->hasAlphaChannel() ? TextureMapperGL::ShouldBlend : 0));
-                proxy.pushNextBuffer(WTFMove(buffer));
+                frameHolder->updateTexture(layerBuffer->textureGL());
+                layerBuffer->setExtraFlags(texMapFlagFromOrientation(m_videoSourceOrientation) | (frameHolder->hasAlphaChannel() ? TextureMapperGL::ShouldBlend : 0));
             }
+            proxy.pushNextBuffer(WTFMove(layerBuffer));
         };
 
 #if USE(NICOSIA)
@@ -1290,7 +1288,7 @@ void MediaPlayerPrivateGStreamerBase::initializationDataEncountered(GstEvent* ev
         if (!weakThis)
             return;
 
-        GST_DEBUG("scheduling initializationDataEncountered event for %s with init data size of %" G_GSIZE_FORMAT, eventKeySystemUUID.utf8().data(), initData.sizeInBytes());
+        GST_DEBUG("scheduling initializationDataEncountered event for %s with init data size of %u", eventKeySystemUUID.utf8().data(), initData.sizeInBytes());
         GST_MEMDUMP("init datas", reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes());
         weakThis->m_player->initializationDataEncountered("cenc"_s, ArrayBuffer::create(reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes()));
     });

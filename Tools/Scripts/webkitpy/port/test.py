@@ -78,12 +78,17 @@ class TestList(object):
             test.__dict__[key] = value
         self.tests[name] = test
 
-    def add_reftest(self, name, reference_name, same_image):
+    def add_reftest(self, name, reference_name, same_image, **kwargs):
         self.add(name, actual_checksum='xxx', actual_image='XXX', is_reftest=True)
         if same_image:
             self.add(reference_name, actual_checksum='xxx', actual_image='XXX', is_reftest=True)
         else:
             self.add(reference_name, actual_checksum='yyy', actual_image='YYY', is_reftest=True)
+
+        if kwargs:
+            test = self.tests[name]
+            for key, value in kwargs.items():
+                test.__dict__[key] = value
 
     def keys(self):
         return self.tests.keys()
@@ -97,12 +102,12 @@ class TestList(object):
 #
 # These numbers may need to be updated whenever we add or delete tests.
 #
-TOTAL_TESTS = 72
+TOTAL_TESTS = 76
 TOTAL_SKIPS = 9
-TOTAL_RETRIES = 14
+TOTAL_RETRIES = 15
 
 UNEXPECTED_PASSES = 7
-UNEXPECTED_FAILURES = 17
+UNEXPECTED_FAILURES = 18
 
 
 def unit_test_list():
@@ -115,6 +120,8 @@ def unit_test_list():
     tests.add('failures/expected/timeout.html', timeout=True)
     tests.add('failures/expected/hang.html', hang=True)
     tests.add('failures/expected/missing_text.html', expected_text=None)
+    tests.add('failures/expected/leak.html', leak=True)
+    tests.add('failures/expected/flaky-leak.html', leak=True)
     tests.add('failures/expected/image.html',
               actual_image='image_fail-pngtEXtchecksum\x00checksum_fail',
               expected_image='image-pngtEXtchecksum\x00checksum-png')
@@ -176,6 +183,7 @@ layer at (0,0) size 800x34
     tests.add('failures/unexpected/skip_pass.html')
     tests.add('failures/unexpected/text.html', actual_text='text_fail-txt')
     tests.add('failures/unexpected/timeout.html', timeout=True)
+    tests.add('failures/unexpected/leak.html', leak=True)
     tests.add('http/tests/passes/text.html')
     tests.add('http/tests/passes/image.html')
     tests.add('http/tests/ssl/text.html')
@@ -213,6 +221,7 @@ layer at (0,0) size 800x34
     tests.add_reftest('passes/xhtreftest.xht', 'passes/xhtreftest-expected.html', same_image=True)
     tests.add_reftest('passes/phpreftest.php', 'passes/phpreftest-expected-mismatch.svg', same_image=False)
     tests.add_reftest('failures/expected/reftest.html', 'failures/expected/reftest-expected.html', same_image=False)
+    tests.add_reftest('failures/expected/leaky-reftest.html', 'failures/expected/leaky-reftest-expected.html', same_image=False, leak=True)
     tests.add_reftest('failures/expected/mismatch.html', 'failures/expected/mismatch-expected-mismatch.html', same_image=True)
     tests.add_reftest('failures/unexpected/reftest.html', 'failures/unexpected/reftest-expected.html', same_image=False)
     tests.add_reftest('failures/unexpected/mismatch.html', 'failures/unexpected/mismatch-expected-mismatch.html', same_image=True)
@@ -280,6 +289,9 @@ def add_unit_tests_to_mock_filesystem(filesystem):
     if not filesystem.exists(LAYOUT_TEST_DIR + '/platform/test/TestExpectations'):
         filesystem.write_text_file(LAYOUT_TEST_DIR + '/platform/test/TestExpectations', """
 Bug(test) failures/expected/crash.html [ Crash ]
+Bug(test) failures/expected/leak.html [ Leak ]
+Bug(test) failures/expected/flaky-leak.html [ Failure Leak ]
+Bug(test) failures/expected/leaky-reftest.html [ ImageOnlyFailure Leak ]
 Bug(test) failures/expected/image.html [ ImageOnlyFailure ]
 Bug(test) failures/expected/audio.html [ Failure ]
 Bug(test) failures/expected/image_checksum.html [ ImageOnlyFailure ]
@@ -590,6 +602,22 @@ class TestDriver(Driver):
             crash=test.crash or test.web_process_crash, crashed_process_name=crashed_process_name,
             crashed_pid=crashed_pid, crash_log=crash_log,
             test_time=time.time() - start_time, timeout=test.timeout, error=test.error, pid=self.pid)
+
+    def do_post_tests_work(self):
+        if not self._port.get_option('world_leaks'):
+            return None
+
+        test_world_leaks_output = """TEST: file:///test.checkout/LayoutTests/failures/expected/leak.html
+ABANDONED DOCUMENT: file:///test.checkout/LayoutTests/failures/expected/leak.html
+TEST: file:///test.checkout/LayoutTests/failures/unexpected/leak.html
+ABANDONED DOCUMENT: file:///test.checkout/LayoutTests/failures/expected/flaky-leak.html
+TEST: file:///test.checkout/LayoutTests/failures/unexpected/flaky-leak.html
+ABANDONED DOCUMENT: file:///test.checkout/LayoutTests/failures/expected/leak.html
+TEST: file:///test.checkout/LayoutTests/failures/unexpected/leak.html
+ABANDONED DOCUMENT: file:///test.checkout/LayoutTests/failures/expected/leak-subframe.html
+TEST: file:///test.checkout/LayoutTests/failures/expected/leaky-reftest.html
+ABANDONED DOCUMENT: file:///test.checkout/LayoutTests/failures/expected/leaky-reftest.html"""
+        return self._parse_world_leaks_output(test_world_leaks_output)
 
     def stop(self):
         self.started = False

@@ -77,10 +77,6 @@
 #import <wtf/SoftLinking.h>
 #import <wtf/StdLibExtras.h>
 
-#if USE(SYSTEM_PREVIEW) && USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/SystemPreviewArtwork.cpp>
-#endif
-
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK_CLASS(UIKit, UIApplication)
 SOFT_LINK_CLASS(UIKit, UIColor)
@@ -1857,6 +1853,43 @@ String RenderThemeIOS::extraDefaultStyleSheet()
 #endif
 
 #if USE(SYSTEM_PREVIEW)
+static NSBundle *arKitBundle()
+{
+    static NSBundle *arKitBundle = []() {
+#if PLATFORM(IOS_SIMULATOR)
+        dlopen("/System/Library/PrivateFrameworks/AssetViewer.framework/AssetViewer", RTLD_NOW);
+        return [NSBundle bundleForClass:NSClassFromString(@"ASVThumbnailView")];
+#else
+        return [NSBundle bundleWithURL:[NSURL fileURLWithPath:@"/System/Library/PrivateFrameworks/AssetViewer.framework"]];
+#endif
+    }();
+
+    return arKitBundle;
+}
+
+static RetainPtr<CGPDFPageRef> loadARKitPDFPage(NSString *imageName)
+{
+    NSURL *url = [arKitBundle() URLForResource:imageName withExtension:@"pdf"];
+
+    if (!url)
+        return nullptr;
+
+    auto document = adoptCF(CGPDFDocumentCreateWithURL((CFURLRef)url));
+    if (!document)
+        return nullptr;
+
+    if (!CGPDFDocumentGetNumberOfPages(document.get()))
+        return nullptr;
+
+    return CGPDFDocumentGetPage(document.get(), 1);
+}
+
+static CGPDFPageRef systemPreviewLogo()
+{
+    static CGPDFPageRef logoPage = loadARKitPDFPage(@"ARKitBadge").leakRef();
+    return logoPage;
+}
+
 void RenderThemeIOS::paintSystemPreviewBadge(Image& image, const PaintInfo& paintInfo, const FloatRect& rect)
 {
     static const int largeBadgeDimension = 70;
@@ -1990,7 +2023,6 @@ void RenderThemeIOS::paintSystemPreviewBadge(Image& image, const PaintInfo& pain
     CGContextScaleCTM(ctx, 1, -1);
     CGContextDrawImage(ctx, badgeRect, cgImage.get());
 
-#if USE(APPLE_INTERNAL_SDK)
     if (auto logo = systemPreviewLogo()) {
         CGSize pdfSize = CGPDFPageGetBoxRect(logo, kCGPDFMediaBox).size;
         CGFloat scaleX = badgeDimension / pdfSize.width;
@@ -1998,7 +2030,6 @@ void RenderThemeIOS::paintSystemPreviewBadge(Image& image, const PaintInfo& pain
         CGContextScaleCTM(ctx, scaleX, scaleY);
         CGContextDrawPDFPage(ctx, logo);
     }
-#endif
 
     CGContextFlush(ctx);
     CGContextRestoreGState(ctx);

@@ -1,0 +1,3 @@
+add_subdirectory(DumpRenderTree)
+add_subdirectory(HaikuLauncher)
+add_subdirectory(ImageDiff)

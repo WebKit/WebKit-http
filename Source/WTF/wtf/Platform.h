@@ -1006,8 +1006,9 @@
 
 #if ENABLE(YARR_JIT)
 #if CPU(ARM64) || (CPU(X86_64) && !OS(WINDOWS))
-/* Enable JIT'ing Regular Expressions that have nested parenthesis. */
+/* Enable JIT'ing Regular Expressions that have nested parenthesis and back references. */
 #define ENABLE_YARR_JIT_ALL_PARENS_EXPRESSIONS 1
+#define ENABLE_YARR_JIT_BACKREFERENCES 1
 #endif
 #endif
 
@@ -1176,11 +1177,11 @@
 #endif
 #endif
 
-#if PLATFORM(IOS) || PLATFORM(MAC) || (OS(WINDOWS) && USE(CG))
+#if PLATFORM(IOS) || PLATFORM(MAC)
 #define HAVE_AVFOUNDATION_MEDIA_SELECTION_GROUP 1
 #endif
 
-#if PLATFORM(IOS) || PLATFORM(MAC) || (OS(WINDOWS) && USE(CG))
+#if PLATFORM(IOS) || PLATFORM(MAC)
 #define HAVE_AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT 1
 #define HAVE_MEDIA_ACCESSIBILITY_FRAMEWORK 1
 #endif
@@ -1347,6 +1348,7 @@
 #if PLATFORM(MAC)
 #define HAVE_TOUCH_BAR 1
 #define HAVE_ADVANCED_SPELL_CHECKING 1
+#define USE_DICTATION_ALTERNATIVES 1
 
 #if defined(__LP64__)
 #define ENABLE_WEB_PLAYBACK_CONTROLS_MANAGER 1

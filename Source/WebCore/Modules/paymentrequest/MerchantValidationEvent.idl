@@ -25,7 +25,12 @@
 
 [
     Conditional=PAYMENT_REQUEST,
-    NoInterfaceObject,
+    Constructor(DOMString type, optional MerchantValidationEventInit eventInitDict),
+    ConstructorCallWith=Document,
+    ConstructorMayThrowException,
+    EnabledBySetting=PaymentRequest,
+    Exposed=Window,
+    SecureContext,
 ] interface MerchantValidationEvent : Event {
     readonly attribute DOMString validationURL;
     [MayThrowException] void complete(Promise<any> merchantSessionPromise);

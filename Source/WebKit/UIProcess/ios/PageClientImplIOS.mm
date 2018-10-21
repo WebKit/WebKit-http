@@ -48,12 +48,14 @@
 #import "WKWebViewContentProviderRegistry.h"
 #import "WKWebViewInternal.h"
 #import "WebContextMenuProxy.h"
+#import "WebDataListSuggestionsDropdownIOS.h"
 #import "WebEditCommandProxy.h"
 #import "WebProcessProxy.h"
 #import "_WKDownloadInternal.h"
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/PromisedAttachmentInfo.h>
+#import <WebCore/ShareData.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/ValidationBubble.h>
@@ -569,6 +571,12 @@ bool PageClientImpl::handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, API::Open
     return true;
 }
 
+bool PageClientImpl::showShareSheet(const ShareDataWithParsedURL& shareData, WTF::CompletionHandler<void(bool)>&& completionHandler)
+{
+    [m_contentView _showShareSheet:shareData completionHandler:WTFMove(completionHandler)];
+    return true;
+}
+
 void PageClientImpl::showInspectorHighlight(const WebCore::Highlight& highlight)
 {
     [m_contentView _showInspectorHighlight:highlight];
@@ -773,7 +781,7 @@ RefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy*, const We
 #if ENABLE(DATALIST_ELEMENT)
 RefPtr<WebDataListSuggestionsDropdown> PageClientImpl::createDataListSuggestionsDropdown(WebPageProxy& page)
 {
-    return nullptr;
+    return WebDataListSuggestionsDropdownIOS::create(page, m_contentView);
 }
 #endif
 

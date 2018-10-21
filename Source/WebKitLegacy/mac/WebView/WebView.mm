@@ -58,7 +58,6 @@
 #import "WebDocument.h"
 #import "WebDocumentInternal.h"
 #import "WebDownload.h"
-#import "WebDownloadInternal.h"
 #import "WebDragClient.h"
 #import "WebDynamicScrollBarsViewInternal.h"
 #import "WebEditingDelegate.h"
@@ -219,6 +218,7 @@
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <pal/spi/cf/CFUtilitiesSPI.h>
 #import <pal/spi/cocoa/NSTouchBarSPI.h>
+#import <pal/spi/cocoa/NSURLDownloadSPI.h>
 #import <pal/spi/cocoa/NSURLFileTypeMappingsSPI.h>
 #import <pal/spi/mac/NSResponderSPI.h>
 #import <pal/spi/mac/NSSpellCheckerSPI.h>
@@ -571,17 +571,17 @@ FindOptions coreOptions(WebFindOptions options)
 {
     FindOptions findOptions;
     if (options & WebFindOptionsCaseInsensitive)
-        findOptions |= CaseInsensitive;
+        findOptions.add(CaseInsensitive);
     if (options & WebFindOptionsAtWordStarts)
-        findOptions |= AtWordStarts;
+        findOptions.add(AtWordStarts);
     if (options & WebFindOptionsTreatMedialCapitalAsWordStart)
-        findOptions |= TreatMedialCapitalAsWordStart;
+        findOptions.add(TreatMedialCapitalAsWordStart);
     if (options & WebFindOptionsBackwards)
-        findOptions |= Backwards;
+        findOptions.add(Backwards);
     if (options & WebFindOptionsWrapAround)
-        findOptions |= WrapAround;
+        findOptions.add(WrapAround);
     if (options & WebFindOptionsStartInSelection)
-        findOptions |= StartInSelection;
+        findOptions.add(StartInSelection);
     return findOptions;
 }
 
@@ -2450,11 +2450,12 @@ static bool fastDocumentTeardownEnabled()
     ASSERT(URL);
     
     NSURLRequest *request = [[NSURLRequest alloc] initWithURL:URL];
-    WebDownload *download = [WebDownload _downloadWithRequest:request
-                                                     delegate:_private->downloadDelegate
-                                                    directory:nil];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    WebDownload *download = [WebDownload _downloadWithRequest:request delegate:_private->downloadDelegate directory:nil];
+#pragma clang diagnostic pop
     [request release];
-    
+
     return download;
 }
 
@@ -2938,6 +2939,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setVisualViewportEnabled([preferences visualViewportEnabled]);
     settings.setVisualViewportAPIEnabled([preferences visualViewportAPIEnabled]);
+    settings.setCSSOMViewScrollingAPIEnabled([preferences CSSOMViewScrollingAPIEnabled]);
     settings.setMediaContentTypesRequiringHardwareSupport([preferences mediaContentTypesRequiringHardwareSupport]);
 
     switch ([preferences storageBlockingPolicy]) {
@@ -3049,7 +3051,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
 #if ENABLE(WEB_RTC)
     RuntimeEnabledFeatures::sharedFeatures().setPeerConnectionEnabled([preferences peerConnectionEnabled]);
-    RuntimeEnabledFeatures::sharedFeatures().setWebRTCLegacyAPIEnabled([preferences webRTCLegacyAPIEnabled]);
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -3124,7 +3125,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setMenuItemElementEnabled([preferences menuItemElementEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setAccessibilityObjectModelEnabled([preferences accessibilityObjectModelEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setAriaReflectionEnabled([preferences ariaReflectionEnabled]);
-    RuntimeEnabledFeatures::sharedFeatures().setMediaCapabilitiesEnabled([preferences mediaCapabilitiesEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setFetchAPIKeepAliveEnabled([preferences fetchAPIKeepAliveEnabled]);
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -3169,6 +3169,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setLargeImageAsyncDecodingEnabled([preferences largeImageAsyncDecodingEnabled]);
     settings.setAnimatedImageAsyncDecodingEnabled([preferences animatedImageAsyncDecodingEnabled]);
+    settings.setMediaCapabilitiesEnabled([preferences mediaCapabilitiesEnabled]);
 
     RuntimeEnabledFeatures::sharedFeatures().setServerTimingEnabled([preferences serverTimingEnabled]);
 }

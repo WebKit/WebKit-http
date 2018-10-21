@@ -1060,16 +1060,12 @@ css3/color-filters/color-filter-caret-color.html [ Skip ]
 css3/color-filters/color-filter-ignore-semantic.html [ Skip ]
 
 # Run webrtc tests on iOS 11
-imported/w3c/web-platform-tests/webrtc [ Pass ]
-fast/events/constructors/media-stream-event-constructor.html [ Pass ]
 fast/mediastream/RTCIceCandidate.html [ Pass ]
 fast/mediastream/RTCPeerConnection-add-removeTrack.html [ Pass ]
 fast/mediastream/RTCPeerConnection-addIceCandidate.html [ Pass ]
-fast/mediastream/RTCPeerConnection-AddRemoveStream.html [ Pass ]
 fast/mediastream/RTCPeerConnection-addTrack-reuse-sender.html [ Pass ]
 fast/mediastream/RTCPeerConnection-addTransceiver.html [ Pass ]
 fast/mediastream/RTCPeerConnection-createAnswer.html [ Pass ]
-fast/mediastream/RTCPeerConnection-createOffer.html [ Pass ]
 fast/mediastream/RTCPeerConnection-datachannel.html [ Pass ]
 fast/mediastream/RTCPeerConnection-have-local-offer.html [ Pass ]
 fast/mediastream/RTCPeerConnection-have-local-pranswer.html [ Pass ]
@@ -1077,7 +1073,6 @@ fast/mediastream/RTCPeerConnection-have-remote-offer.html [ Pass ]
 fast/mediastream/RTCPeerConnection-have-remote-pranswer.html [ Pass ]
 fast/mediastream/RTCPeerConnection-inspect-answer.html [ Pass ]
 fast/mediastream/RTCPeerConnection-inspect-offer.html [ Pass ]
-fast/mediastream/RTCPeerConnection-legacy-stream-based-api.html [ Pass ]
 fast/mediastream/RTCPeerConnection-localDescription.html [ Pass ]
 fast/mediastream/RTCPeerConnection-media-setup-single-dialog.html [ Pass ]
 fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html [ Pass ]
@@ -2761,8 +2756,6 @@ webkit.org/b/124933 svg/animations/getCurrentTime-pause-unpause.html [ Pass Fail
 webkit.org/b/171760 imported/w3c/i18n/bidi/bidi-plaintext-011.html [ ImageOnlyFailure ]
 webkit.org/b/171760 imported/w3c/i18n/bidi/block-plaintext-005.html [ ImageOnlyFailure ]
 
-webkit.org/b/172019 imported/w3c/web-platform-tests/cssom-view/elementFromPoint.html [ Failure ]
-
 webkit.org/b/172547 http/tests/xmlhttprequest/xmlhttprequest-50ms-download-dispatch.html [ Failure ]
 
 webkit.org/b/172610 media/ios/autoplay-only-in-main-document.html [ Skip ]
@@ -3125,6 +3118,7 @@ webkit.org/b/186714 fast/forms/datalist/datalist-show-hide.html [ Skip ]
 webkit.org/b/186714 fast/forms/datalist/datalist-textinput-keydown.html [ Skip ]
 fast/forms/datalist/datalist-searchinput-appearance.html [ Skip ]
 fast/forms/datalist/datalist-textinput-appearance.html  [ Skip ]
+fast/forms/datalist/datalist-textinput-suggestions-order.html [ Skip ]
 
 # We are only accepting GLSL3 for macOS. 
 webkit.org/b/187982 webgl/2.0.0/conformance2/glsl3 [ Skip ]

@@ -654,6 +654,7 @@ public:
 #endif
         [NSNumber numberWithBool:NO], WebKitVisualViewportAPIEnabledPreferenceKey,
 
+        [NSNumber numberWithBool:NO], WebKitCSSOMViewScrollingAPIEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitNeedsStorageAccessFromFileURLsQuirkKey,
         [NSNumber numberWithBool:NO], WebKitAllowCrossOriginSubresourcesToAskForCredentialsKey,
 #if ENABLE(MEDIA_STREAM)
@@ -662,7 +663,6 @@ public:
 #endif
 #if ENABLE(WEB_RTC)
         [NSNumber numberWithBool:YES], WebKitPeerConnectionEnabledPreferenceKey,
-        [NSNumber numberWithBool:NO], WebKitWebRTCLegacyAPIEnabledPreferenceKey,
 #endif
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
@@ -2833,16 +2833,6 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitPeerConnectionEnabledPreferenceKey];
 }
 
-- (BOOL)webRTCLegacyAPIEnabled
-{
-    return [self _boolValueForKey:WebKitWebRTCLegacyAPIEnabledPreferenceKey];
-}
-
-- (void)setWebRTCLegacyAPIEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitWebRTCLegacyAPIEnabledPreferenceKey];
-}
-
 - (BOOL)linkPreloadEnabled
 {
     return [self _boolValueForKey:WebKitLinkPreloadEnabledPreferenceKey];
@@ -3101,6 +3091,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setVisualViewportAPIEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitVisualViewportAPIEnabledPreferenceKey];
+}
+
+- (BOOL)CSSOMViewScrollingAPIEnabled
+{
+    return [self _boolValueForKey:WebKitCSSOMViewScrollingAPIEnabledPreferenceKey];
+}
+
+- (void)setCSSOMViewScrollingAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCSSOMViewScrollingAPIEnabledPreferenceKey];
 }
 
 - (BOOL)webAnimationsEnabled

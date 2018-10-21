@@ -337,7 +337,7 @@ WebProcessPool::~WebProcessPool()
     while (!m_processes.isEmpty()) {
         auto& process = m_processes.first();
 
-        ASSERT(process->isInPrewarmedPool());
+        ASSERT(process->isPrewarmed());
         // We need to be the only one holding a reference to the pre-warmed process so that it gets destroyed.
         // WebProcessProxies currently always expect to have a WebProcessPool.
         ASSERT(process->hasOneRef());
@@ -400,20 +400,7 @@ void WebProcessPool::setLegacyCustomProtocolManagerClient(std::unique_ptr<API::C
 
 void WebProcessPool::setMaximumNumberOfProcesses(unsigned maximumNumberOfProcesses)
 {
-    // Guard against API misuse.
-    if (m_processes.size() != m_prewarmedProcessCount)
-        CRASH();
-
     m_configuration->setMaximumProcessCount(maximumNumberOfProcesses);
-}
-
-void WebProcessPool::setMaximumNumberOfPrewarmedProcesses(unsigned maximumNumberOfProcesses)
-{
-    // Guard against API misuse.
-    if (m_processes.size())
-        CRASH();
-
-    m_configuration->setMaximumPrewarmedProcessCount(maximumNumberOfProcesses);
 }
 
 void WebProcessPool::setCustomWebContentServiceBundleIdentifier(const String& customWebContentServiceBundleIdentifier)
@@ -781,14 +768,16 @@ void WebProcessPool::resolvePathsForSandboxExtensions()
     platformResolvePathsForSandboxExtensions();
 }
 
-WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDataStore, WebProcessProxy::IsInPrewarmedPool isInPrewarmedPool)
+WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDataStore, WebProcessProxy::IsPrewarmed isPrewarmed)
 {
-    auto processProxy = WebProcessProxy::create(*this, websiteDataStore, isInPrewarmedPool);
+    auto processProxy = WebProcessProxy::create(*this, websiteDataStore, isPrewarmed);
     auto& process = processProxy.get();
     initializeNewWebProcess(process, websiteDataStore);
     m_processes.append(WTFMove(processProxy));
-    if (isInPrewarmedPool == WebProcessProxy::IsInPrewarmedPool::Yes)
-        ++m_prewarmedProcessCount;
+    if (isPrewarmed == WebProcessProxy::IsPrewarmed::Yes) {
+        ASSERT(!m_prewarmedProcess);
+        m_prewarmedProcess = &process;
+    }
 
     if (m_serviceWorkerProcessesTerminationTimer.isActive())
         m_serviceWorkerProcessesTerminationTimer.stop();
@@ -798,22 +787,15 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDa
 
 RefPtr<WebProcessProxy> WebProcessPool::tryTakePrewarmedProcess(WebsiteDataStore& websiteDataStore)
 {
-    if (!m_prewarmedProcessCount)
+    if (!m_prewarmedProcess)
         return nullptr;
 
-    for (const auto& process : m_processes) {
-        if (process->isInPrewarmedPool()) {
-            --m_prewarmedProcessCount;
-            process->markIsNoLongerInPrewarmedPool();
-            if (&process->websiteDataStore() != &websiteDataStore)
-                process->send(Messages::WebProcess::AddWebsiteDataStore(websiteDataStore.parameters()), 0);
-            return process.get();
-        }
-    }
+    ASSERT(m_prewarmedProcess->isPrewarmed());
+    m_prewarmedProcess->markIsNoLongerInPrewarmedPool();
+    if (&m_prewarmedProcess->websiteDataStore() != &websiteDataStore)
+        m_prewarmedProcess->send(Messages::WebProcess::AddWebsiteDataStore(websiteDataStore.parameters()), 0);
 
-    ASSERT_NOT_REACHED();
-    m_prewarmedProcessCount = 0;
-    return nullptr;
+    return std::exchange(m_prewarmedProcess, nullptr);
 }
 
 #if PLATFORM(MAC)
@@ -1003,24 +985,15 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
 #endif
 }
 
-void WebProcessPool::warmInitialProcess()
+void WebProcessPool::prewarmProcess()
 {
-    unsigned maxPrewarmed = maximumNumberOfPrewarmedProcesses();
-    if (maxPrewarmed && m_prewarmedProcessCount >= maxPrewarmed) {
-        ASSERT(!m_processes.isEmpty());
-        return;
-    }
-
-    // FIXME: This should be removed after Safari has been patched to use setMaximumNumberOfPrewarmedProcesses
-    if (!maxPrewarmed)
-        m_configuration->setMaximumPrewarmedProcessCount(1);
-
-    if (m_processes.size() >= maximumNumberOfProcesses())
+    if (m_prewarmedProcess)
         return;
 
     if (!m_websiteDataStore)
         m_websiteDataStore = API::WebsiteDataStore::defaultDataStore().ptr();
-    createNewWebProcess(m_websiteDataStore->websiteDataStore(), WebProcessProxy::IsInPrewarmedPool::Yes);
+
+    createNewWebProcess(m_websiteDataStore->websiteDataStore(), WebProcessProxy::IsPrewarmed::Yes);
 }
 
 void WebProcessPool::enableProcessTermination()
@@ -1076,8 +1049,10 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
 {
     ASSERT(m_processes.contains(process));
 
-    if (process->isInPrewarmedPool())
-        --m_prewarmedProcessCount;
+    if (m_prewarmedProcess == process) {
+        ASSERT(m_prewarmedProcess->isPrewarmed());
+        m_prewarmedProcess = nullptr;
+    }
 
     // FIXME (Multi-WebProcess): <rdar://problem/12239765> Some of the invalidation calls of the other supplements are still necessary in multi-process mode, but they should only affect data structures pertaining to the process being disconnected.
     // Clearing everything causes assertion failures, so it's less trouble to skip that for now.
@@ -1180,8 +1155,12 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
 #endif
 
     auto page = process->createWebPage(pageClient, WTFMove(pageConfiguration));
-    if (page->preferences().processSwapOnNavigationEnabled())
+    if (page->preferences().processSwapOnCrossSiteNavigationEnabled()) {
         m_configuration->setProcessSwapsOnNavigation(true);
+        // FIXME: For now, turning on PSON from the experimental features menu also turns on
+        // automatic process warming until clients can be updated.
+        m_configuration->setIsAutomaticProcessWarmingEnabled(true);
+    }
 
     return page;
 }
@@ -1326,15 +1305,10 @@ void WebProcessPool::postMessageToInjectedBundle(const String& messageName, API:
 
 void WebProcessPool::didReachGoodTimeToPrewarm()
 {
-    unsigned maxPrewarmed = maximumNumberOfPrewarmedProcesses();
-    if (!maxPrewarmed)
+    if (!configuration().isAutomaticProcessWarmingEnabled())
         return;
 
-    if (!m_websiteDataStore)
-        m_websiteDataStore = API::WebsiteDataStore::defaultDataStore().ptr();
-
-    while (m_prewarmedProcessCount < maxPrewarmed)
-        createNewWebProcess(m_websiteDataStore->websiteDataStore(), WebProcessProxy::IsInPrewarmedPool::Yes);
+    prewarmProcess();
 }
 
 void WebProcessPool::populateVisitedLinks()
@@ -2101,12 +2075,12 @@ ServiceWorkerProcessProxy* WebProcessPool::serviceWorkerProcessProxyFromPageID(u
 
 void WebProcessPool::addProcessToOriginCacheSet(WebPageProxy& page)
 {
-    auto origin = SecurityOriginData::fromURL({ ParsedURLString, page.pageLoadState().url() });
-    auto result = m_swappedProcesses.add(origin, &page.process());
+    auto registrableDomain = toRegistrableDomain({ ParsedURLString, page.pageLoadState().url() });
+    auto result = m_swappedProcessesPerRegistrableDomain.add(registrableDomain, &page.process());
     if (!result.isNewEntry)
         result.iterator->value = &page.process();
 
-    LOG(ProcessSwapping, "(ProcessSwapping) Security origin %s just saved a cached process with pid %i", origin.debugString().utf8().data(), page.process().processIdentifier());
+    LOG(ProcessSwapping, "(ProcessSwapping) Registrable domain %s just saved a cached process with pid %i", registrableDomain.utf8().data(), page.process().processIdentifier());
     if (!result.isNewEntry)
         LOG(ProcessSwapping, "(ProcessSwapping) Note: It already had one saved");
 }
@@ -2116,19 +2090,19 @@ void WebProcessPool::removeProcessFromOriginCacheSet(WebProcessProxy& process)
     LOG(ProcessSwapping, "(ProcessSwapping) Removing process with pid %i from the origin cache set", process.processIdentifier());
 
     // FIXME: This can be very inefficient as the number of remembered origins and processes grows
-    Vector<SecurityOriginData> originsToRemove;
-    for (auto entry : m_swappedProcesses) {
+    Vector<String> registrableDomainsToRemove;
+    for (auto entry : m_swappedProcessesPerRegistrableDomain) {
         if (entry.value == &process)
-            originsToRemove.append(entry.key);
+            registrableDomainsToRemove.append(entry.key);
     }
 
-    for (auto& origin : originsToRemove)
-        m_swappedProcesses.remove(origin);
+    for (auto& registrableDomain : registrableDomainsToRemove)
+        m_swappedProcessesPerRegistrableDomain.remove(registrableDomain);
 }
 
-Ref<WebProcessProxy> WebProcessPool::processForNavigation(WebPageProxy& page, const API::Navigation& navigation, ShouldProcessSwapIfPossible shouldProcessSwapIfPossible, PolicyAction& action)
+Ref<WebProcessProxy> WebProcessPool::processForNavigation(WebPageProxy& page, const API::Navigation& navigation, ProcessSwapRequestedByClient processSwapRequestedByClient, PolicyAction& action)
 {
-    auto process = processForNavigationInternal(page, navigation, shouldProcessSwapIfPossible, action);
+    auto process = processForNavigationInternal(page, navigation, processSwapRequestedByClient, action);
 
     if (m_configuration->alwaysKeepAndReuseSwappedProcesses() && process.ptr() != &page.process()) {
         static std::once_flag onceFlag;
@@ -2138,15 +2112,15 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigation(WebPageProxy& page, co
 
         addProcessToOriginCacheSet(page);
 
-        LOG(ProcessSwapping, "(ProcessSwapping) Navigating from %s to %s, keeping around old process. Now holding on to old processes for %u origins.", page.currentURL().utf8().data(), navigation.currentRequest().url().string().utf8().data(), m_swappedProcesses.size());
+        LOG(ProcessSwapping, "(ProcessSwapping) Navigating from %s to %s, keeping around old process. Now holding on to old processes for %u origins.", page.currentURL().utf8().data(), navigation.currentRequest().url().string().utf8().data(), m_swappedProcessesPerRegistrableDomain.size());
     }
 
     return process;
 }
 
-Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API::Navigation& navigation, ShouldProcessSwapIfPossible shouldProcessSwapIfPossible, PolicyAction& action)
+Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API::Navigation& navigation, ProcessSwapRequestedByClient processSwapRequestedByClient, PolicyAction& action)
 {
-    if (!m_configuration->processSwapsOnNavigation() && shouldProcessSwapIfPossible == ShouldProcessSwapIfPossible::No)
+    if (!m_configuration->processSwapsOnNavigation() && processSwapRequestedByClient == ProcessSwapRequestedByClient::No)
         return page.process();
 
     if (page.inspectorFrontendCount() > 0)
@@ -2190,20 +2164,20 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
     }
 
     auto targetURL = navigation.currentRequest().url();
-    if (shouldProcessSwapIfPossible == ShouldProcessSwapIfPossible::No) {
+    if (processSwapRequestedByClient == ProcessSwapRequestedByClient::No) {
         if (navigation.treatAsSameOriginNavigation())
             return page.process();
 
         auto url = URL { ParsedURLString, page.pageLoadState().url() };
-        if (!url.isValid() || !targetURL.isValid() || url.isEmpty() || url.isBlankURL() || protocolHostAndPortAreEqual(url, targetURL))
+        if (!url.isValid() || !targetURL.isValid() || url.isEmpty() || url.isBlankURL() || registrableDomainsAreEqual(url, targetURL))
             return page.process();
     }
     
     if (m_configuration->alwaysKeepAndReuseSwappedProcesses()) {
-        auto origin = SecurityOriginData::fromURL(targetURL);
-        LOG(ProcessSwapping, "(ProcessSwapping) Considering re-use of a previously cached process to URL %s", origin.debugString().utf8().data());
+        auto registrableDomain = toRegistrableDomain(targetURL);
+        LOG(ProcessSwapping, "(ProcessSwapping) Considering re-use of a previously cached process for domain %s", registrableDomain.utf8().data());
 
-        if (auto* process = m_swappedProcesses.get(origin)) {
+        if (auto* process = m_swappedProcessesPerRegistrableDomain.get(registrableDomain)) {
             if (&process->websiteDataStore() == &page.websiteDataStore()) {
                 LOG(ProcessSwapping, "(ProcessSwapping) Reusing a previously cached process with pid %i to continue navigation to URL %s", process->processIdentifier(), targetURL.string().utf8().data());
 
@@ -2280,7 +2254,7 @@ void WebProcessPool::removeMockMediaDevice(const String& persistentId)
 void WebProcessPool::resetMockMediaDevices()
 {
 #if ENABLE(MEDIA_STREAM)
-    MockRealtimeMediaSource::resetDevices();
+    MockRealtimeMediaSourceCenter::resetDevices();
     sendToAllProcesses(Messages::WebProcess::ResetMockMediaDevices { });
 #endif
 }

@@ -64,19 +64,16 @@ public:
     static Position mapCoordinateToAncestor(const LayoutContext&, Position, const Container& containingBlock, const Container& ancestor);
 
 protected:
-    struct LayoutPair {
-        const Box& layoutBox;
-        Display::Box& displayBox;
+    struct BoxPair {
+        const Box& layout;
+        Display::Box& display;
     };
-    using LayoutQueue = Vector<std::unique_ptr<LayoutPair>>;
+    using LayoutQueue = Vector<std::unique_ptr<BoxPair>>;
 
     const Box& root() const { return *m_root; }
 
     virtual void computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const = 0;
     virtual void computeInFlowPositionedPosition(LayoutContext&, const Box&, Display::Box&) const = 0;
-
-    void computeFloatingHeightAndMargin(LayoutContext&, const Box&, Display::Box&) const;
-    void computeFloatingWidthAndMargin(LayoutContext&, const Box&, Display::Box&) const;
 
     void computeBorderAndPadding(LayoutContext&, const Box&, Display::Box&) const;
 

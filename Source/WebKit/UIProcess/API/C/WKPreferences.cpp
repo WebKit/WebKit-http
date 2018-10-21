@@ -1428,14 +1428,13 @@ bool WKPreferencesGetPeerConnectionEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->peerConnectionEnabled();
 }
 
-void WKPreferencesSetWebRTCLegacyAPIEnabled(WKPreferencesRef preferencesRef, bool enabled)
+void WKPreferencesSetWebRTCLegacyAPIEnabled(WKPreferencesRef, bool)
 {
-    toImpl(preferencesRef)->setWebRTCLegacyAPIEnabled(enabled);
 }
 
-bool WKPreferencesGetWebRTCLegacyAPIEnabled(WKPreferencesRef preferencesRef)
+bool WKPreferencesGetWebRTCLegacyAPIEnabled(WKPreferencesRef)
 {
-    return toImpl(preferencesRef)->webRTCLegacyAPIEnabled();
+    return false;
 }
 
 void WKPreferencesSetWebRTCMDNSICECandidatesEnabled(WKPreferencesRef preferencesRef, bool enabled)
@@ -1738,6 +1737,16 @@ bool WKPreferencesGetCustomPasteboardDataEnabled(WKPreferencesRef preferencesRef
     return toImpl(preferencesRef)->customPasteboardDataEnabled();
 }
 
+void WKPreferencesSetWebShareEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setWebShareEnabled(flag);
+}
+
+bool WKPreferencesGetWebShareEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->webShareEnabled();
+}
+
 void WKPreferencesSetDownloadAttributeEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setDownloadAttributeEnabled(flag);
@@ -1978,6 +1987,16 @@ bool WKPreferencesGetAriaReflectionEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->ariaReflectionEnabled();
 }
 
+void WKPreferencesSetCSSOMViewScrollingAPIEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setCSSOMViewScrollingAPIEnabled(flag);
+}
+
+bool WKPreferencesGetCSSOMViewScrollingAPIEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->cssOMViewScrollingAPIEnabled();
+}
+
 void WKPreferencesSetShouldAllowUserInstalledFonts(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setShouldAllowUserInstalledFonts(flag);
@@ -2060,12 +2079,12 @@ bool WKPreferencesGetColorFilterEnabled(WKPreferencesRef preferencesRef)
 
 void WKPreferencesSetProcessSwapOnNavigationEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
-    toImpl(preferencesRef)->setProcessSwapOnNavigationEnabled(flag);
+    toImpl(preferencesRef)->setProcessSwapOnCrossSiteNavigationEnabled(flag);
 }
 
 bool WKPreferencesGetProcessSwapOnNavigationEnabled(WKPreferencesRef preferencesRef)
 {
-    return toImpl(preferencesRef)->processSwapOnNavigationEnabled();
+    return toImpl(preferencesRef)->processSwapOnCrossSiteNavigationEnabled();
 }
 
 void WKPreferencesSetPunchOutWhiteBackgroundsInDarkMode(WKPreferencesRef preferencesRef, bool flag)

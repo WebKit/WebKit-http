@@ -290,6 +290,7 @@ messages -> WebPage LegacyReceiver {
 #endif
     DidChooseFilesForOpenPanel(Vector<String> fileURLs)
     DidCancelForOpenPanel()
+    DidCompleteShareSheet(bool wasGranted, uint64_t callbackID)
 #if ENABLE(SANDBOX_EXTENSIONS)
     ExtendSandboxForFilesFromOpenPanel(WebKit::SandboxExtension::HandleArray sandboxExtensions)
 #endif
@@ -511,7 +512,7 @@ messages -> WebPage LegacyReceiver {
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     InsertAttachment(String identifier, std::optional<uint64_t> fileSize, String fileName, String contentType, WebKit::CallbackID callbackID)
-    UpdateAttachmentAttributes(String identifier, std::optional<uint64_t> fileSize, String newContentType, std::optional<String> newFilename, WebKit::CallbackID callbackID)
+    UpdateAttachmentAttributes(String identifier, std::optional<uint64_t> fileSize, String contentType, String fileName, WebKit::CallbackID callbackID)
 #endif
 
 #if ENABLE(APPLICATION_MANIFEST)

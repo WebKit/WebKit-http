@@ -2209,6 +2209,18 @@ void WebPage::getPositionInformation(const InteractionInformationRequest& reques
         }
     }
 
+    // Prevent the callout bar from showing when tapping on the datalist button.
+#if ENABLE(DATALIST_ELEMENT)
+    if (is<HTMLInputElement>(*hitNode)) {
+        const HTMLInputElement& input = downcast<HTMLInputElement>(*hitNode);
+        if (input.list()) {
+            HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(request.point, HitTestRequest::ReadOnly | HitTestRequest::Active);
+            if (result.innerNode() == input.dataListButtonElement())
+                info.preventTextInteraction = true;
+        }
+    }
+#endif
+
 #if ENABLE(DATA_INTERACTION)
     info.hasSelectionAtPosition = m_page->hasSelectionAtPosition(adjustedPoint);
 #endif
@@ -2477,6 +2489,9 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         }
 #endif
 
+#if ENABLE(DATALIST_ELEMENT)
+        information.hasSuggestions = !!element.list();
+#endif
         information.inputMode = element.canonicalInputMode();
         information.isReadOnly = element.isReadOnly();
         information.value = element.value();
@@ -3013,18 +3028,6 @@ void WebPage::willStartUserTriggeredZooming()
     m_page->diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::webViewKey(), DiagnosticLoggingKeys::userZoomActionKey(), ShouldSample::No);
     m_userHasChangedPageScaleFactor = true;
 }
-
-#if ENABLE(WEBGL)
-WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame*, const URL&)
-{
-    return WebGLAllowCreation;
-}
-
-WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const URL&)
-{
-    return WebGLAllowCreation;
-}
-#endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
 void WebPage::dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue)

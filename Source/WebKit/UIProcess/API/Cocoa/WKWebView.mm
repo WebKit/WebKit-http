@@ -820,6 +820,13 @@ static void validate(WKWebViewConfiguration *configuration)
     [super dealloc];
 }
 
+- (id)valueForUndefinedKey:(NSString *)key {
+    if ([key isEqualToString:@"serverTrust"])
+        return (__bridge id)[self serverTrust];
+
+    return [super valueForUndefinedKey:key];
+}
+
 - (WKWebViewConfiguration *)configuration
 {
     return [[_configuration copy] autorelease];
@@ -961,7 +968,7 @@ static void validate(WKWebViewConfiguration *configuration)
 {
     OptionSet<WebCore::ReloadOption> reloadOptions;
     if (linkedOnOrAfter(WebKit::SDKVersion::FirstWithExpiredOnlyReloadBehavior))
-        reloadOptions |= WebCore::ReloadOption::ExpiredOnly;
+        reloadOptions.add(WebCore::ReloadOption::ExpiredOnly);
 
     return wrapper(_page->reload(reloadOptions));
 }
@@ -5931,6 +5938,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)setTimePickerValueToHour:(NSInteger)hour minute:(NSInteger)minute
 {
     [_contentView setTimePickerValueToHour:hour minute:minute];
+}
+
+- (void)_invokeShareSheetWithResolution:(BOOL)resolved
+{
+    [_contentView invokeShareSheetWithResolution:resolved];
 }
 
 - (void)selectFormAccessoryPickerRow:(int)rowIndex

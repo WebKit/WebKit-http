@@ -61,6 +61,7 @@
 #include "SessionState.h"
 #include "SessionStateConversion.h"
 #include "SessionTracker.h"
+#include "ShareSheetCallbackID.h"
 #include "ShareableBitmap.h"
 #include "UserMediaPermissionRequestManager.h"
 #include "ViewGestureGeometryCollector.h"
@@ -882,7 +883,7 @@ RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginE
 }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
-#if ENABLE(WEBGL) && !PLATFORM(COCOA)
+#if ENABLE(WEBGL) && !PLATFORM(MAC)
 WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame*, const URL&)
 {
     return WebGLAllowCreation;
@@ -3592,7 +3593,8 @@ void WebPage::didSelectDataListOption(const String& selectedOption)
 
 void WebPage::didCloseSuggestions()
 {
-    m_activeDataListSuggestionPicker->didCloseSuggestions();
+    if (m_activeDataListSuggestionPicker)
+        m_activeDataListSuggestionPicker->didCloseSuggestions();
     m_activeDataListSuggestionPicker = nullptr;
 }
 
@@ -6063,6 +6065,29 @@ void WebPage::storageAccessResponse(bool wasGranted, uint64_t contextId)
     callback(wasGranted);
 }
 #endif
+    
+static ShareSheetCallbackID nextShareSheetCallbackID()
+{
+    static ShareSheetCallbackID nextCallbackID = 0;
+    return ++nextCallbackID;
+}
+    
+void WebPage::showShareSheet(ShareDataWithParsedURL& shareData, WTF::CompletionHandler<void(bool)>&& callback)
+{
+    ShareSheetCallbackID callbackID = nextShareSheetCallbackID();
+    auto addResult = m_shareSheetResponseCallbackMap.add(callbackID, WTFMove(callback));
+    ASSERT(addResult.isNewEntry);
+    if (addResult.iterator->value)
+        send(Messages::WebPageProxy::ShowShareSheet(WTFMove(shareData), callbackID));
+    else
+        callback(false);
+}
+
+void WebPage::didCompleteShareSheet(bool wasGranted, ShareSheetCallbackID callbackID)
+{
+    auto callback = m_shareSheetResponseCallbackMap.take(callbackID);
+    callback(wasGranted);
+}
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
@@ -6073,11 +6098,11 @@ void WebPage::insertAttachment(const String& identifier, std::optional<uint64_t>
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
-void WebPage::updateAttachmentAttributes(const String& identifier, std::optional<uint64_t>&& fileSize, const String& contentType, std::optional<String>&& newFilename, CallbackID callbackID)
+void WebPage::updateAttachmentAttributes(const String& identifier, std::optional<uint64_t>&& fileSize, const String& contentType, const String& fileName, CallbackID callbackID)
 {
     if (auto attachment = attachmentElementWithIdentifier(identifier)) {
         attachment->document().updateLayout();
-        attachment->updateAttributes(WTFMove(fileSize), contentType, WTFMove(newFilename));
+        attachment->updateAttributes(WTFMove(fileSize), contentType, fileName);
     }
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }

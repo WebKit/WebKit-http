@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 
 #include "PeerConnectionBackend.h"
 #include <wtf/HashMap.h>
+#include <wtf/WeakPtr.h>
 
 namespace webrtc {
 class IceCandidateInterface;
@@ -45,7 +46,7 @@ class RealtimeIncomingVideoSource;
 class RealtimeOutgoingAudioSource;
 class RealtimeOutgoingVideoSource;
 
-class LibWebRTCPeerConnectionBackend final : public PeerConnectionBackend {
+class LibWebRTCPeerConnectionBackend final : public PeerConnectionBackend, public CanMakeWeakPtr<LibWebRTCPeerConnectionBackend> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     LibWebRTCPeerConnectionBackend(RTCPeerConnection&, LibWebRTCProvider&);
@@ -53,6 +54,10 @@ public:
 
     bool hasAudioSources() const { return m_audioSources.size(); }
     bool hasVideoSources() const { return m_videoSources.size(); }
+
+    void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&);
+
+    bool shouldOfferAllowToReceive(const char*) const;
 
 private:
     void doCreateOffer(RTCOfferOptions&&) final;
@@ -74,26 +79,22 @@ private:
     RefPtr<RTCSessionDescription> currentRemoteDescription() const final;
     RefPtr<RTCSessionDescription> pendingRemoteDescription() const final;
 
-    void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&) final;
-    RTCRtpParameters getParameters(RTCRtpSender&) const final;
-
     void emulatePlatformEvent(const String&) final { }
     void applyRotationForOutgoingVideoSources() final;
 
-    friend LibWebRTCMediaEndpoint;
+    friend class LibWebRTCMediaEndpoint;
+    friend class LibWebRTCRtpSenderBackend;
     RTCPeerConnection& connection() { return m_peerConnection; }
     void addAudioSource(Ref<RealtimeOutgoingAudioSource>&&);
     void addVideoSource(Ref<RealtimeOutgoingVideoSource>&&);
 
     void getStatsSucceeded(const DeferredPromise&, Ref<RTCStatsReport>&&);
-    void getStatsFailed(const DeferredPromise&, Exception&&);
 
-    Vector<RefPtr<MediaStream>> getRemoteStreams() const final { return m_remoteStreams; }
-    void removeRemoteStream(MediaStream*);
-    void addRemoteStream(Ref<MediaStream>&&);
+    ExceptionOr<Ref<RTCRtpSender>> addTrack(RTCRtpSender*, MediaStreamTrack&, const Vector<String>&) final;
+    void removeTrack(RTCRtpSender&) final;
 
-    bool notifyAddedTrack(RTCRtpSender&) final;
-    void notifyRemovedTrack(RTCRtpSender&) final;
+    ExceptionOr<Ref<RTCRtpTransceiver>> addTransceiver(const String&, const RTCRtpTransceiverInit&) final;
+    ExceptionOr<Ref<RTCRtpTransceiver>> addTransceiver(Ref<MediaStreamTrack>&&, const RTCRtpTransceiverInit&) final;
 
     struct VideoReceiver {
         Ref<RTCRtpReceiver> receiver;
@@ -109,16 +110,15 @@ private:
 private:
     bool isLocalDescriptionSet() const final { return m_isLocalDescriptionSet; }
 
+    Ref<RTCRtpTransceiver> completeAddTransceiver(Ref<RTCRtpSender>&&, const RTCRtpTransceiverInit&, const String& trackId, const String& trackKind);
+
     Ref<LibWebRTCMediaEndpoint> m_endpoint;
     bool m_isLocalDescriptionSet { false };
     bool m_isRemoteDescriptionSet { false };
 
-    // FIXME: Make m_remoteStreams a Vector of Ref.
-    Vector<RefPtr<MediaStream>> m_remoteStreams;
     Vector<std::unique_ptr<webrtc::IceCandidateInterface>> m_pendingCandidates;
     Vector<Ref<RealtimeOutgoingAudioSource>> m_audioSources;
     Vector<Ref<RealtimeOutgoingVideoSource>> m_videoSources;
-    HashMap<const DeferredPromise*, Ref<DeferredPromise>> m_statsPromises;
     Vector<Ref<RTCRtpReceiver>> m_pendingReceivers;
 };
 

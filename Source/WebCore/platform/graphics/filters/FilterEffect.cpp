@@ -94,6 +94,50 @@ FloatRect FilterEffect::drawingRegionOfInputImage(const IntRect& srcRect) const
     return transform.mapRect(srcRect);
 }
 
+FloatRect FilterEffect::determineFilterPrimitiveSubregion()
+{
+    // FETile, FETurbulence, FEFlood don't have input effects, take the filter region as unite rect.
+    FloatRect subregion;
+    if (unsigned numberOfInputEffects = inputEffects().size()) {
+        subregion = inputEffect(0)->determineFilterPrimitiveSubregion();
+        for (unsigned i = 1; i < numberOfInputEffects; ++i) {
+            auto inputPrimitiveSubregion = inputEffect(i)->determineFilterPrimitiveSubregion();
+            subregion.unite(inputPrimitiveSubregion);
+        }
+    } else
+        subregion = m_filter.filterRegionInUserSpace();
+
+    // After calling determineFilterPrimitiveSubregion on the target effect, reset the subregion again for <feTile>.
+    if (filterEffectType() == FilterEffectTypeTile)
+        subregion = m_filter.filterRegionInUserSpace();
+
+    auto boundaries = effectBoundaries();
+    if (hasX())
+        subregion.setX(boundaries.x());
+    if (hasY())
+        subregion.setY(boundaries.y());
+    if (hasWidth())
+        subregion.setWidth(boundaries.width());
+    if (hasHeight())
+        subregion.setHeight(boundaries.height());
+
+    setFilterPrimitiveSubregion(subregion);
+
+    auto absoluteSubregion = m_filter.absoluteTransform().mapRect(subregion);
+    auto filterResolution = m_filter.filterResolution();
+    absoluteSubregion.scale(filterResolution);
+    // Save this before clipping so we can use it to map lighting points from user space to buffer coordinates.
+    setUnclippedAbsoluteSubregion(absoluteSubregion);
+
+    // Clip every filter effect to the filter region.
+    auto absoluteScaledFilterRegion = m_filter.filterRegion();
+    absoluteScaledFilterRegion.scale(filterResolution);
+    absoluteSubregion.intersect(absoluteScaledFilterRegion);
+
+    setMaxEffectRect(absoluteSubregion);
+    return subregion;
+}
+
 FilterEffect* FilterEffect::inputEffect(unsigned number) const
 {
     ASSERT_WITH_SECURITY_IMPLICATION(number < m_inputEffects.size());
@@ -134,6 +178,8 @@ void FilterEffect::apply()
 
     determineAbsolutePaintRect();
     setResultColorSpace(m_operatingColorSpace);
+
+    LOG_WITH_STREAM(Filters, stream << "FilterEffect " << filterName() << " " << this << " apply():\n  filterPrimitiveSubregion " << m_filterPrimitiveSubregion << "\n  effectBoundaries " << m_effectBoundaries << "\n  absoluteUnclippedSubregion " << m_absoluteUnclippedSubregion << "\n  absolutePaintRect " << m_absolutePaintRect << "\n  maxEffectRect " << m_maxEffectRect << "\n  filter scale " << m_filter.filterScale() << "\n  filter resolution " << m_filter.filterResolution());
 
     if (m_absolutePaintRect.isEmpty() || ImageBuffer::sizeNeedsClamping(m_absolutePaintRect.size()))
         return;

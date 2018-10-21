@@ -37,6 +37,7 @@
 #include "EventNames.h"
 #include "JSRTCSessionDescription.h"
 #include "Logging.h"
+#include "Page.h"
 #include "RTCIceCandidate.h"
 #include "RTCPeerConnection.h"
 #include "RTCPeerConnectionIceEvent.h"
@@ -527,6 +528,21 @@ void PeerConnectionBackend::markAsNeedingNegotiation()
 
     if (m_peerConnection.signalingState() == RTCSignalingState::Stable)
         m_peerConnection.scheduleNegotiationNeededEvent();
+}
+
+ExceptionOr<Ref<RTCRtpSender>> PeerConnectionBackend::addTrack(RTCRtpSender*, MediaStreamTrack&, const Vector<String>&)
+{
+    return Exception { NotSupportedError, "Not implemented"_s };
+}
+
+ExceptionOr<Ref<RTCRtpTransceiver>> PeerConnectionBackend::addTransceiver(const String&, const RTCRtpTransceiverInit&)
+{
+    return Exception { NotSupportedError, "Not implemented"_s };
+}
+
+ExceptionOr<Ref<RTCRtpTransceiver>> PeerConnectionBackend::addTransceiver(Ref<MediaStreamTrack>&&, const RTCRtpTransceiverInit&)
+{
+    return Exception { NotSupportedError, "Not implemented"_s };
 }
 
 #if !RELEASE_LOG_DISABLED

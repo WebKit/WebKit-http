@@ -1,3 +1,63 @@
+2018-09-04  Frederic Wang  <fwang@igalia.com>
+
+        Add basic support for ScrollIntoViewOptions
+        https://bugs.webkit.org/show_bug.cgi?id=189258
+
+        Reviewed by Simon Fraser.
+
+        * DOMCoreClasses.cpp: Add ScrollIntoViewOptions header so that this file
+        can build despite the new scrollIntoView function.
+
+2018-08-31  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed Windows build fix after r235562.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchWillSubmitForm):
+
+2018-08-31  Chris Dumez  <cdumez@apple.com>
+
+        Assertion hit in ~CompletionHandler() from ~WebFrame()
+        https://bugs.webkit.org/show_bug.cgi?id=189199
+        <rdar://problem/42657233>
+
+        Reviewed by Youenn Fablet.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchWillSubmitForm):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2018-08-31  Frederic Wang  <fwang@igalia.com>
+
+        Bug 182053 - [CSSOM View] Implement standard behavior for scrollingElement
+        https://bugs.webkit.org/show_bug.cgi?id=182053
+
+        Reviewed by Simon Fraser.
+
+        Add developer flag to use standard behavior for scrolling* attributes.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::CSSOMViewScrollingAPIEnabled):
+        (WebPreferences::setCSSOMViewScrollingAPIEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2018-08-30  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Replace AVFoundationSupport.py using CMake
+        https://bugs.webkit.org/show_bug.cgi?id=182891
+
+        Reviewed by Per Arne Vollan.
+
+        Remove references to the config.h contained in WebCore as it should
+        not be accessible from outside of WebCore.
+
+        * WebKitPrefix.h:
+
 2018-08-21  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [Attachment Support] Augment _WKAttachment SPI to handle NSFileWrappers in addition to NSData

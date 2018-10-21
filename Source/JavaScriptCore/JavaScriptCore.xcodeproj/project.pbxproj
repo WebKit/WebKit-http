@@ -4773,7 +4773,7 @@
 		FEA0C4001CDD7D0E00481991 /* FunctionWhitelist.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FunctionWhitelist.cpp; sourceTree = "<group>"; };
 		FEA0C4011CDD7D0E00481991 /* FunctionWhitelist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FunctionWhitelist.h; sourceTree = "<group>"; };
 		FEA3BBA7212B655800E93AD1 /* CallFrameInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CallFrameInlines.h; sourceTree = "<group>"; };
-		FEA3BBAB212C97CB00E93AD1 /* DFGCFG.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DFGCFG.h; sourceTree = "<group>"; };
+		FEA3BBAB212C97CB00E93AD1 /* DFGCFG.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGCFG.h; path = dfg/DFGCFG.h; sourceTree = "<group>"; };
 		FEB137561BB11EEE00CD5100 /* MacroAssemblerARM64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MacroAssemblerARM64.cpp; sourceTree = "<group>"; };
 		FEB41CCB1F73284200C5481E /* ProbeFrame.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ProbeFrame.h; sourceTree = "<group>"; };
 		FEB51F6A1A97B688001F921C /* Regress141809.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Regress141809.h; path = API/tests/Regress141809.h; sourceTree = "<group>"; };
@@ -9966,7 +9966,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nmkdir -p \"${BUILT_PRODUCTS_DIR}/LLIntOffsets/\"\n\n/usr/bin/env ruby \"${SRCROOT}/offlineasm/generate_offset_extractor.rb\" \"-I${BUILT_PRODUCTS_DIR}/DerivedSources/JavaScriptCore\" \"${SRCROOT}/llint/LowLevelInterpreter.asm\" \"${BUILT_PRODUCTS_DIR}/LLIntOffsets/LLIntDesiredOffsets.h\" \"${ARCHS} C_LOOP\"\n";
+			shellScript = "set -e\n\nmkdir -p \"${BUILT_PRODUCTS_DIR}/LLIntOffsets/${CURRENT_ARCH}\"\n\n/usr/bin/env ruby \"${SRCROOT}/offlineasm/generate_offset_extractor.rb\" \"-I${BUILT_PRODUCTS_DIR}/DerivedSources/JavaScriptCore\" \"${SRCROOT}/llint/LowLevelInterpreter.asm\" \"${BUILT_PRODUCTS_DIR}/LLIntOffsets/${CURRENT_ARCH}/LLIntDesiredOffsets.h\" \"${ARCHS} C_LOOP\"\n";
 		};
 		1A02D9A81B34A882000D1522 /* Add Symlink in /System/Library/PrivateFrameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -10660,6 +10660,7 @@
 			buildSettings = {
 				HEADER_SEARCH_PATHS = (
 					"\"${BUILT_PRODUCTS_DIR}/DerivedSources/JavaScriptCore\"",
+					"\"${BUILT_PRODUCTS_DIR}/LLIntOffsets/${CURRENT_ARCH}\"",
 					"\"$(JAVASCRIPTCORE_FRAMEWORKS_DIR)/JavaScriptCore.framework/PrivateHeaders\"",
 					"$(inherited)",
 				);
@@ -10672,6 +10673,7 @@
 			buildSettings = {
 				HEADER_SEARCH_PATHS = (
 					"\"${BUILT_PRODUCTS_DIR}/DerivedSources/JavaScriptCore\"",
+					"\"${BUILT_PRODUCTS_DIR}/LLIntOffsets/${CURRENT_ARCH}\"",
 					"\"$(JAVASCRIPTCORE_FRAMEWORKS_DIR)/JavaScriptCore.framework/PrivateHeaders\"",
 					"$(inherited)",
 				);
@@ -10684,6 +10686,7 @@
 			buildSettings = {
 				HEADER_SEARCH_PATHS = (
 					"\"${BUILT_PRODUCTS_DIR}/DerivedSources/JavaScriptCore\"",
+					"\"${BUILT_PRODUCTS_DIR}/LLIntOffsets/${CURRENT_ARCH}\"",
 					"\"$(JAVASCRIPTCORE_FRAMEWORKS_DIR)/JavaScriptCore.framework/PrivateHeaders\"",
 					"$(inherited)",
 				);
@@ -10696,6 +10699,7 @@
 			buildSettings = {
 				HEADER_SEARCH_PATHS = (
 					"\"${BUILT_PRODUCTS_DIR}/DerivedSources/JavaScriptCore\"",
+					"\"${BUILT_PRODUCTS_DIR}/LLIntOffsets/${CURRENT_ARCH}\"",
 					"\"$(JAVASCRIPTCORE_FRAMEWORKS_DIR)/JavaScriptCore.framework/PrivateHeaders\"",
 					"$(inherited)",
 				);

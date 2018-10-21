@@ -86,6 +86,9 @@ public:
 
     void setCustomPasteboardDataEnabled(bool isEnabled) { m_isCustomPasteboardDataEnabled = isEnabled; }
     bool customPasteboardDataEnabled() const { return m_isCustomPasteboardDataEnabled; }
+    
+    void setWebShareEnabled(bool isEnabled) { m_isWebShareEnabled = isEnabled; }
+    bool webShareEnabled() const { return m_isWebShareEnabled; }
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     void setAttachmentElementEnabled(bool areEnabled) { m_isAttachmentElementEnabled = areEnabled; }
@@ -116,10 +119,10 @@ public:
 #endif
 
 #if ENABLE(WEB_RTC)
+    bool webRTCUnifiedPlanEnabled() const { return m_isWebRTCUnifiedPlanEnabled; }
+    void setWebRTCUnifiedPlanEnabled(bool isEnabled) { m_isWebRTCUnifiedPlanEnabled = isEnabled; }
     bool peerConnectionEnabled() const { return m_isPeerConnectionEnabled; }
     void setPeerConnectionEnabled(bool isEnabled) { m_isPeerConnectionEnabled = isEnabled; }
-    bool webRTCLegacyAPIEnabled() const { return m_webRTCLegacyAPIEnabled; }
-    void setWebRTCLegacyAPIEnabled(bool isEnabled) { m_webRTCLegacyAPIEnabled = isEnabled; }
     bool mdnsICECandidatesEnabled() const { return m_mdnsICECandidatesEnabled; }
     void setMDNSICECandidatesEnabled(bool isEnabled) { m_mdnsICECandidatesEnabled = isEnabled; }
 #endif
@@ -247,9 +250,6 @@ public:
     void setAriaReflectionEnabled(bool isEnabled) { m_ariaReflectionEnabled = isEnabled; }
     bool ariaReflectionEnabled() const { return m_ariaReflectionEnabled; }
 
-    void setMediaCapabilitiesEnabled(bool isEnabled) { m_mediaCapabilitiesEnabled = isEnabled; }
-    bool mediaCapabilitiesEnabled() const { return m_mediaCapabilitiesEnabled; }
-
     void setResourceLoadStatisticsDebugMode(bool isEnabled) { m_resourceLoadStatisticsDebugMode = isEnabled; }
     bool resourceLoadStatisticsDebugMode() const { return m_resourceLoadStatisticsDebugMode; }
 
@@ -304,6 +304,7 @@ private:
     bool m_isDirectoryUploadEnabled { false };
     bool m_areDataTransferItemsEnabled { false };
     bool m_isCustomPasteboardDataEnabled { false };
+    bool m_isWebShareEnabled { false };
     bool m_inputEventsEnabled { true };
 
 #if ENABLE(ATTACHMENT_ELEMENT)
@@ -321,8 +322,8 @@ private:
 #endif
 
 #if ENABLE(WEB_RTC)
+    bool m_isWebRTCUnifiedPlanEnabled { true };
     bool m_isPeerConnectionEnabled { true };
-    bool m_webRTCLegacyAPIEnabled { false };
     bool m_mdnsICECandidatesEnabled { false };
 #endif
 
@@ -409,7 +410,6 @@ private:
     bool m_webVREnabled { false };
     bool m_accessibilityObjectModelEnabled { false };
     bool m_ariaReflectionEnabled { true };
-    bool m_mediaCapabilitiesEnabled { false };
     bool m_resourceLoadStatisticsDebugMode { false };
     bool m_isRestrictedHTTPResponseAccess { true };
     bool m_crossOriginResourcePolicyEnabled { true };

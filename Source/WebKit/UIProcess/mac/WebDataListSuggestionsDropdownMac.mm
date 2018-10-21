@@ -77,7 +77,7 @@ static NSString * const suggestionCellReuseIdentifier = @"WKDataListSuggestionCe
 - (void)moveSelectionByDirection:(const String&)direction;
 - (void)invalidate;
 
-- (std::optional<String>)currentSelectedString;
+- (String)currentSelectedString;
 @end
 
 namespace WebKit {
@@ -106,7 +106,7 @@ void WebDataListSuggestionsDropdownMac::show(WebCore::DataListSuggestionInformat
     [m_dropdownUI showSuggestionsDropdown:this];
 }
 
-void WebDataListSuggestionsDropdownMac::didSelectOption(String& selectedOption)
+void WebDataListSuggestionsDropdownMac::didSelectOption(const String& selectedOption)
 {
     if (!m_client)
         return;
@@ -120,9 +120,9 @@ void WebDataListSuggestionsDropdownMac::selectOption()
     if (!m_client)
         return;
 
-    std::optional<String> selectedOption = [m_dropdownUI currentSelectedString];
-    if (selectedOption)
-        m_client->didSelectOption(selectedOption.value());
+    String selectedOption = [m_dropdownUI currentSelectedString];
+    if (!selectedOption.isNull())
+        m_client->didSelectOption(selectedOption);
 
     close();
 }
@@ -329,13 +329,13 @@ void WebDataListSuggestionsDropdownMac::close()
     return self;
 }
 
-- (std::optional<String>)currentSelectedString
+- (String)currentSelectedString
 {
     std::optional<size_t> selectedRow = [_table currentActiveRow];
     if (selectedRow && selectedRow.value() < _suggestions.size())
         return _suggestions.at(selectedRow.value());
 
-    return std::nullopt;
+    return String();
 }
 
 - (void)updateWithInformation:(WebCore::DataListSuggestionInformation&&)information

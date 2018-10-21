@@ -143,6 +143,20 @@ PointInContainingBlock FloatingContext::positionForFloat(const Box& layoutBox) c
     return floatBox.rectInContainingBlock().topLeft();
 }
 
+std::optional<PointInContainingBlock> FloatingContext::positionForFloatAvoiding(const Box& layoutBox) const
+{
+    ASSERT(layoutBox.establishesBlockFormattingContext());
+    ASSERT(!layoutBox.isFloatingPositioned());
+    ASSERT(!layoutBox.hasFloatClear());
+
+    if (m_floatingState.isEmpty())
+        return { };
+
+    FloatAvoider floatAvoider = { layoutBox, m_floatingState, layoutContext() };
+    floatingPosition(floatAvoider);
+    return { floatAvoider.rectInContainingBlock().topLeft() };
+}
+
 std::optional<PositionInContainingBlock> FloatingContext::verticalPositionWithClearance(const Box& layoutBox) const
 {
     ASSERT(layoutBox.hasFloatClear());
@@ -230,8 +244,11 @@ void FloatingContext::floatingPosition(FloatAvoider& floatAvoider) const
         // 2. or with the containing block's content box if there's no float to align with at this vertical position.
         floatAvoider.setHorizontalConstraints(floats.horizontalConstraints());
         floatAvoider.setVerticalConstraint(floats.verticalConstraint());
-        // Check if the box fits at this position.
-        if (!floats.intersects(floatAvoider.rect()))
+
+        // Ensure that the float avoider
+        // 1. does not overflow its containing block with the current horiztonal constraints
+        // 2. avoids floats on both sides.
+        if (!floatAvoider.overflowsContainingBlock() && !floats.intersects(floatAvoider.rect()))
             return;
 
         bottomMost = floats.bottom();

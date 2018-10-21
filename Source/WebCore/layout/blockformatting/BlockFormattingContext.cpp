@@ -66,7 +66,7 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
     // This is a post-order tree traversal layout.
     // The root container layout is done in the formatting context it lives in, not that one it creates, so let's start with the first child.
     if (auto* firstChild = formattingRoot.firstInFlowOrFloatingChild())
-        layoutQueue.append(std::make_unique<LayoutPair>(LayoutPair {*firstChild, layoutContext.createDisplayBox(*firstChild)}));
+        layoutQueue.append(std::make_unique<BoxPair>(BoxPair {*firstChild, layoutContext.createDisplayBox(*firstChild)}));
     // 1. Go all the way down to the leaf node
     // 2. Compute static position and width as we traverse down
     // 3. As we climb back on the tree, compute height and finialize position
@@ -74,9 +74,9 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
     while (!layoutQueue.isEmpty()) {
         // Traverse down on the descendants and compute width/static position until we find a leaf node.
         while (true) {
-            auto& layoutPair = *layoutQueue.last();
-            auto& layoutBox = layoutPair.layoutBox;
-            auto& displayBox = layoutPair.displayBox;
+            auto& boxPair = *layoutQueue.last();
+            auto& layoutBox = boxPair.layout;
+            auto& displayBox = boxPair.display;
 
             if (layoutBox.establishesFormattingContext()) {
                 layoutFormattingContextRoot(layoutContext, floatingContext, formattingState, layoutBox, displayBox);
@@ -86,7 +86,7 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
                 if (!layoutBox.nextInFlowOrFloatingSibling())
                     break;
                 auto* nextSibling = layoutBox.nextInFlowOrFloatingSibling();
-                layoutQueue.append(std::make_unique<LayoutPair>(LayoutPair {*nextSibling, layoutContext.createDisplayBox(*nextSibling)}));
+                layoutQueue.append(std::make_unique<BoxPair>(BoxPair {*nextSibling, layoutContext.createDisplayBox(*nextSibling)}));
                 continue;
             }
 
@@ -97,15 +97,15 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
             if (!is<Container>(layoutBox) || !downcast<Container>(layoutBox).hasInFlowOrFloatingChild())
                 break;
             auto& firstChild = *downcast<Container>(layoutBox).firstInFlowOrFloatingChild();
-            layoutQueue.append(std::make_unique<LayoutPair>(LayoutPair {firstChild, layoutContext.createDisplayBox(firstChild)}));
+            layoutQueue.append(std::make_unique<BoxPair>(BoxPair {firstChild, layoutContext.createDisplayBox(firstChild)}));
         }
 
         // Climb back on the ancestors and compute height/final position.
         while (!layoutQueue.isEmpty()) {
             // All inflow descendants (if there are any) are laid out by now. Let's compute the box's height.
-            auto layoutPair = layoutQueue.takeLast();
-            auto& layoutBox = layoutPair->layoutBox;
-            auto& displayBox = layoutPair->displayBox;
+            auto boxPair = layoutQueue.takeLast();
+            auto& layoutBox = boxPair->layout;
+            auto& displayBox = boxPair->display;
 
             LOG_WITH_STREAM(FormattingContextLayout, stream << "[Compute] -> [Height][Margin] -> for layoutBox(" << &layoutBox << ")");
             // Formatting root boxes are special-cased and they don't come here.
@@ -120,7 +120,7 @@ void BlockFormattingContext::layout(LayoutContext& layoutContext, FormattingStat
             // Move in-flow positioned children to their final position.
             placeInFlowPositionedChildren(layoutContext, container);
             if (auto* nextSibling = container.nextInFlowOrFloatingSibling()) {
-                layoutQueue.append(std::make_unique<LayoutPair>(LayoutPair {*nextSibling, layoutContext.createDisplayBox(*nextSibling)}));
+                layoutQueue.append(std::make_unique<BoxPair>(BoxPair {*nextSibling, layoutContext.createDisplayBox(*nextSibling)}));
                 break;
             }
         }
@@ -145,8 +145,15 @@ void BlockFormattingContext::layoutFormattingContextRoot(LayoutContext& layoutCo
     // Come back and finalize the root's geometry.
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[Compute] -> [Height][Margin] -> for layoutBox(" << &layoutBox << ")");
     computeHeightAndMargin(layoutContext, layoutBox, displayBox);
+
+    // Float related final positioning.
     if (layoutBox.isFloatingPositioned())
         computeFloatingPosition(layoutContext, floatingContext, layoutBox, displayBox);
+    else if (layoutBox.hasFloatClear())
+        computeVerticalPositionForFloatClear(layoutContext, floatingContext, layoutBox, displayBox);
+    else
+        computePositionToAvoidFloats(layoutContext, floatingContext, layoutBox, displayBox);
+
     // Now that we computed the root's height, we can go back and layout the out-of-flow descedants (if any).
     formattingContext->layoutOutOfFlowDescendants(layoutContext, layoutBox);
 }
@@ -158,15 +165,15 @@ void BlockFormattingContext::computeStaticPosition(LayoutContext& layoutContext,
 
 void BlockFormattingContext::computeEstimatedMarginTop(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    auto estimatedMarginTop = MarginCollapse::estimatedMarginTop(layoutContext, layoutBox);
+    auto estimatedMarginTop = Geometry::estimatedMarginTop(layoutContext, layoutBox);
     displayBox.setEstimatedMarginTop(estimatedMarginTop);
     displayBox.moveVertically(estimatedMarginTop);
 }
 
 void BlockFormattingContext::computeEstimatedMarginTopForAncestors(LayoutContext& layoutContext, const Box& layoutBox) const
 {
-    // We only need to estimate margin top for float related layout.
-    ASSERT(layoutBox.isFloatingPositioned() || layoutBox.hasFloatClear());
+    // We only need to estimate margin top for float related layout (formatting context roots avoid floats).
+    ASSERT(layoutBox.isFloatingPositioned() || layoutBox.hasFloatClear() || layoutBox.establishesBlockFormattingContext());
 
     // In order to figure out whether a box should avoid a float, we need to know the final positions of both (ignore relative positioning for now).
     // In block formatting context the final position for a normal flow box includes
@@ -204,6 +211,21 @@ void BlockFormattingContext::computeFloatingPosition(LayoutContext& layoutContex
     floatingContext.floatingState().append(layoutBox);
 }
 
+void BlockFormattingContext::computePositionToAvoidFloats(LayoutContext& layoutContext, FloatingContext& floatingContext, const Box& layoutBox, Display::Box& displayBox) const
+{
+    // Formatting context roots avoid floats.
+    ASSERT(layoutBox.establishesBlockFormattingContext());
+    ASSERT(!layoutBox.isFloatingPositioned());
+    ASSERT(!layoutBox.hasFloatClear());
+
+    if (floatingContext.floatingState().isEmpty())
+        return;
+
+    computeEstimatedMarginTopForAncestors(layoutContext, layoutBox);
+    if (auto adjustedPosition = floatingContext.positionForFloatAvoiding(layoutBox))
+        displayBox.setTopLeft(*adjustedPosition);
+}
+
 void BlockFormattingContext::computeVerticalPositionForFloatClear(LayoutContext& layoutContext, const FloatingContext& floatingContext, const Box& layoutBox, Display::Box& displayBox) const
 {
     ASSERT(layoutBox.hasFloatClear());
@@ -222,45 +244,45 @@ void BlockFormattingContext::computeInFlowPositionedPosition(LayoutContext& layo
 
 void BlockFormattingContext::computeWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
+    WidthAndMargin widthAndMargin;
+
     if (layoutBox.isInFlow())
-        return computeInFlowWidthAndMargin(layoutContext, layoutBox, displayBox);
+        widthAndMargin = Geometry::inFlowWidthAndMargin(layoutContext, layoutBox);
+    else if (layoutBox.isFloatingPositioned())
+        widthAndMargin = Geometry::floatingWidthAndMargin(layoutContext, *this, layoutBox);
+    else
+        ASSERT_NOT_REACHED();
 
-    if (layoutBox.isFloatingPositioned())
-        return computeFloatingWidthAndMargin(layoutContext, layoutBox, displayBox);
-
-    ASSERT_NOT_REACHED();
+    displayBox.setContentBoxWidth(widthAndMargin.width);
+    displayBox.moveHorizontally(widthAndMargin.margin.left);
+    displayBox.setHorizontalMargin(widthAndMargin.margin);
+    displayBox.setHorizontalNonComputedMargin(widthAndMargin.nonComputedMargin);
 }
 
 void BlockFormattingContext::computeHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
 {
-    if (layoutBox.isInFlow())
-        return computeInFlowHeightAndMargin(layoutContext, layoutBox, displayBox);
+    HeightAndMargin heightAndMargin;
+    std::optional<LayoutUnit> marginTopOffset;
 
-    if (layoutBox.isFloatingPositioned())
-        return computeFloatingHeightAndMargin(layoutContext, layoutBox, displayBox);
+    if (layoutBox.isInFlow()) {
+        heightAndMargin = Geometry::inFlowHeightAndMargin(layoutContext, layoutBox);
 
-    ASSERT_NOT_REACHED();
-}
+        // If this box has already been moved by the estimated vertical margin, no need to move it again.
+        if (!displayBox.estimatedMarginTop())
+            marginTopOffset = heightAndMargin.collapsedMargin.value_or(heightAndMargin.margin).top;
+    } else if (layoutBox.isFloatingPositioned()) {
+        heightAndMargin = Geometry::floatingHeightAndMargin(layoutContext, layoutBox);
+        ASSERT(!heightAndMargin.collapsedMargin);
 
-void BlockFormattingContext::computeInFlowHeightAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
-{
-    auto heightAndMargin = Geometry::inFlowHeightAndMargin(layoutContext, layoutBox);
+        marginTopOffset = heightAndMargin.margin.top;
+    } else
+        ASSERT_NOT_REACHED();
+
     displayBox.setContentBoxHeight(heightAndMargin.height);
-    auto marginValue = heightAndMargin.collapsedMargin.value_or(heightAndMargin.margin);
-    displayBox.setVerticalMargin(marginValue);
     displayBox.setVerticalNonCollapsedMargin(heightAndMargin.margin);
-
-    // This box has already been moved by the estimated vertical margin. No need to move it again.
-    if (!displayBox.estimatedMarginTop())
-        displayBox.moveVertically(marginValue.top);
-}
-
-void BlockFormattingContext::computeInFlowWidthAndMargin(LayoutContext& layoutContext, const Box& layoutBox, Display::Box& displayBox) const
-{
-    auto widthAndMargin = Geometry::inFlowWidthAndMargin(layoutContext, layoutBox);
-    displayBox.setContentBoxWidth(widthAndMargin.width);
-    displayBox.moveHorizontally(widthAndMargin.margin.left);
-    displayBox.setHorizontalMargin(widthAndMargin.margin);
+    displayBox.setVerticalMargin(heightAndMargin.collapsedMargin.value_or(heightAndMargin.margin));
+    if (marginTopOffset)
+        displayBox.moveVertically(*marginTopOffset);
 }
 
 FormattingContext::InstrinsicWidthConstraints BlockFormattingContext::instrinsicWidthConstraints(LayoutContext& layoutContext, const Box& layoutBox) const

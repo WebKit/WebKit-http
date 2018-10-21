@@ -757,6 +757,27 @@ const String& defaultMIMEType()
     return defaultMIMEType;
 }
 
+#if USE(SYSTEM_PREVIEW)
+const HashSet<String, ASCIICaseInsensitiveHash>& MIMETypeRegistry::getSystemPreviewMIMETypes()
+{
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> systemPreviewMIMETypes = std::initializer_list<String> {
+        // The official type: https://www.iana.org/assignments/media-types/model/vnd.usdz+zip
+        "model/vnd.usdz+zip",
+        // Unofficial, but supported because we documented them.
+        "model/usd",
+        "model/vnd.pixar.usd"
+    };
+    return systemPreviewMIMETypes;
+}
+
+bool MIMETypeRegistry::isSystemPreviewMIMEType(const String& mimeType)
+{
+    if (mimeType.isEmpty())
+        return false;
+    return getSystemPreviewMIMETypes().contains(mimeType);
+}
+#endif
+
 #if !USE(CURL)
 
 // FIXME: Not sure why it makes sense to have a cross-platform function when only CURL has the concept

@@ -138,7 +138,6 @@ fast/mediastream
 imported/w3c/web-platform-tests/mediacapture-streams
 http/tests/media/media-stream
 http/tests/ssl/media-stream
-fast/events/constructors/media-stream-event-constructor.html
 
 # WK1 does not filter response headers.
 http/wpt/loading/redirect-headers.html [ Skip ]
@@ -429,7 +428,7 @@ webkit.org/b/170877 [ Debug ] webgl/1.0.2/conformance/glsl/misc/shader-with-rese
 
 webkit.org/b/180554 imported/w3c/web-platform-tests/xhr/event-upload-progress-crossorigin.htm [ Skip ]
 
-webkit.org/b/187372 imported/w3c/web-platform-tests/IndexedDB/interfaces.any.worker.html [ Pass Timeout Slow ]
+webkit.org/b/187372 imported/w3c/web-platform-tests/IndexedDB/interfaces.any.worker.html [ Pass Timeout ]
 
 # Beacon is not supported on WK1.
 http/tests/blink/sendbeacon/ [ Skip ]
@@ -612,3 +611,5 @@ webkit.org/b/188357 legacy-animation-engine/compositing/layer-creation/animation
 
 # <rdar://problem/42904780>
 [ Mojave+ Release ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker.html [ Failure ]
+
+webkit.org/b/189087 svg/animations/animate-end-attribute-numeric-precision.html [ Pass Failure ]

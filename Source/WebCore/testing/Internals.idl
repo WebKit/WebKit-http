@@ -624,6 +624,8 @@ enum CompositingPolicy {
     unsigned long long documentIdentifier(Document document);
     boolean isDocumentAlive(unsigned long long documentIdentifier);
 
+    DOMString serviceWorkerClientIdentifier(Document document);
+
     Promise<void> clearCacheStorageMemoryRepresentation();
     Promise<DOMString> cacheStorageEngineRepresentation();
     void setResponseSizeWithPadding(FetchResponse response, unsigned long long size);
@@ -646,7 +648,6 @@ enum CompositingPolicy {
     [Conditional=APPLE_PAY] readonly attribute MockPaymentCoordinator mockPaymentCoordinator;
     [Conditional=WEB_AUTHN] readonly attribute MockCredentialsMessenger mockCredentialsMessenger;
 
-    DOMString systemPreviewRelType();
     boolean isSystemPreviewLink(Element element);
     boolean isSystemPreviewImage(Element element);
 
@@ -667,4 +668,6 @@ enum CompositingPolicy {
     unsigned long pluginCount();
 
     void notifyResourceLoadObserver();
+
+    unsigned long primaryScreenDisplayID();
 };

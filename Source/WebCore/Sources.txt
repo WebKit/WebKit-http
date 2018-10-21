@@ -159,7 +159,6 @@ Modules/mediastream/MediaDevices.cpp
 Modules/mediastream/MediaDevicesEnumerationRequest.cpp
 Modules/mediastream/MediaDevicesRequest.cpp
 Modules/mediastream/MediaStream.cpp
-Modules/mediastream/MediaStreamEvent.cpp
 Modules/mediastream/MediaStreamRegistry.cpp
 Modules/mediastream/MediaStreamTrack.cpp
 Modules/mediastream/MediaStreamTrackEvent.cpp
@@ -190,6 +189,7 @@ Modules/notifications/NotificationController.cpp
 Modules/paymentrequest/MerchantValidationEvent.cpp
 Modules/paymentrequest/PaymentAddress.cpp
 Modules/paymentrequest/PaymentHandler.cpp
+Modules/paymentrequest/PaymentMethodChangeEvent.cpp
 Modules/paymentrequest/PaymentRequest.cpp
 Modules/paymentrequest/PaymentRequestUpdateEvent.cpp
 Modules/paymentrequest/PaymentResponse.cpp
@@ -1745,6 +1745,7 @@ platform/mediastream/RealtimeMediaSourceCenter.cpp
 platform/mediastream/RealtimeMediaSourceSettings.cpp
 platform/mediastream/RealtimeOutgoingAudioSource.cpp
 platform/mediastream/RealtimeOutgoingVideoSource.cpp
+platform/mediastream/RealtimeVideoSource.cpp
 
 platform/mediastream/libwebrtc/LibWebRTCProvider.cpp
 
@@ -1753,7 +1754,6 @@ platform/mock/GeolocationClientMock.cpp
 platform/mock/MediaEngineDecodingConfigurationMock.cpp
 platform/mock/MediaEngineEncodingConfigurationMock.cpp
 platform/mock/MockRealtimeAudioSource.cpp
-platform/mock/MockRealtimeMediaSource.cpp
 platform/mock/MockRealtimeMediaSourceCenter.cpp
 platform/mock/MockRealtimeVideoSource.cpp
 platform/mock/RTCDataChannelHandlerMock.cpp
@@ -1837,10 +1837,10 @@ rendering/AutoTableLayout.cpp
 rendering/BidiRun.cpp
 rendering/BorderEdge.cpp
 rendering/BreakLines.cpp
+rendering/CSSFilter.cpp
 rendering/ClipRect.cpp
 rendering/CounterNode.cpp
 rendering/EllipsisBox.cpp
-rendering/FilterEffectRenderer.cpp
 rendering/FlexibleBoxAlgorithm.cpp
 rendering/FixedTableLayout.cpp
 rendering/FloatingObjects.cpp
@@ -1895,7 +1895,7 @@ rendering/RenderInline.cpp
 rendering/RenderLayer.cpp
 rendering/RenderLayerBacking.cpp
 rendering/RenderLayerCompositor.cpp
-rendering/RenderLayerFilterInfo.cpp
+rendering/RenderLayerFilters.cpp
 rendering/RenderLayerModelObject.cpp
 rendering/RenderLineBoxList.cpp
 rendering/RenderLineBreak.cpp
@@ -2396,6 +2396,7 @@ JSAbortController.cpp
 JSAbortSignal.cpp
 JSAbstractWorker.cpp
 JSAccessibleSetValueEvent.cpp
+JSAddressErrors.cpp
 JSAesCbcCfbParams.cpp
 JSAesCtrParams.cpp
 JSAesGcmParams.cpp
@@ -2758,12 +2759,12 @@ JSMediaSource.cpp
 JSMediaStream.cpp
 JSMediaStreamAudioDestinationNode.cpp
 JSMediaStreamAudioSourceNode.cpp
-JSMediaStreamEvent.cpp
 JSMediaStreamTrack.cpp
 JSMediaStreamTrackEvent.cpp
 JSMediaTrackConstraints.cpp
 JSMediaTrackSupportedConstraints.cpp
 JSMerchantValidationEvent.cpp
+JSMerchantValidationEventInit.cpp
 JSMessageChannel.cpp
 JSMessageEvent.cpp
 JSMessagePort.cpp
@@ -2784,8 +2785,9 @@ JSNavigatorLanguage.cpp
 JSNavigatorMediaCapabilities.cpp
 JSNavigatorMediaDevices.cpp
 JSNavigatorOnLine.cpp
+JSNavigatorShare.cpp
+JSShareData.cpp
 JSNavigatorServiceWorker.cpp
-JSNavigatorUserMedia.cpp
 JSNavigatorWebDriver.cpp
 JSNavigatorWebVR.cpp
 JSNode.cpp
@@ -2809,6 +2811,7 @@ JSPageTransitionEvent.cpp
 JSPannerNode.cpp
 JSParentNode.cpp
 JSPath2D.cpp
+JSPayerErrorFields.cpp
 JSPaymentAddress.cpp
 JSPaymentComplete.cpp
 JSPaymentCurrencyAmount.cpp
@@ -2817,6 +2820,8 @@ JSPaymentDetailsInit.cpp
 JSPaymentDetailsModifier.cpp
 JSPaymentDetailsUpdate.cpp
 JSPaymentItem.cpp
+JSPaymentMethodChangeEvent.cpp
+JSPaymentMethodChangeEventInit.cpp
 JSPaymentMethodData.cpp
 JSPaymentOptions.cpp
 JSPaymentRequest.cpp
@@ -2825,6 +2830,7 @@ JSPaymentRequestUpdateEventInit.cpp
 JSPaymentResponse.cpp
 JSPaymentShippingOption.cpp
 JSPaymentShippingType.cpp
+JSPaymentValidationErrors.cpp
 JSPbkdf2Params.cpp
 JSPerformance.cpp
 JSPerformanceEntry.cpp
@@ -3052,6 +3058,8 @@ JSSVGZoomEvent.cpp
 JSScreen.cpp
 JSScreenLuminance.cpp
 JSScriptProcessorNode.cpp
+JSScrollIntoViewOptions.cpp
+JSScrollLogicalPosition.cpp
 JSScrollToOptions.cpp
 JSSecurityPolicyViolationEvent.cpp
 JSServiceWorker.cpp

@@ -275,7 +275,6 @@ imported/w3c/web-platform-tests/xhr/send-authentication-basic-setrequestheader-e
 imported/w3c/web-platform-tests/xhr/send-authentication-competing-names-passwords.htm [ Failure ]
 imported/w3c/web-platform-tests/xhr/preserve-ua-header-on-redirect.htm [ Failure ]
 imported/w3c/web-platform-tests/xhr/setrequestheader-case-insensitive.htm [ Failure ]
-imported/w3c/web-platform-tests/xhr/send-network-error-async-events.sub.htm [ Failure ]
 http/tests/security/cross-origin-cached-images-parallel.html [ DumpJSConsoleLogInStdErr ]
 
 # textarea.animate is not supported
@@ -327,10 +326,9 @@ imported/w3c/web-platform-tests/IndexedDB/nested-cloning-large-multiple.html [ S
 imported/w3c/web-platform-tests/IndexedDB/nested-cloning-large.html [ Skip ]
 imported/w3c/web-platform-tests/IndexedDB/nested-cloning-small.html [ Skip ]
 imported/w3c/web-platform-tests/css/cssom/interfaces.html [ Pass Timeout ]
-imported/w3c/web-platform-tests/cssom-view/interfaces.html [ Pass Timeout ]
 [ Debug ] imported/w3c/web-platform-tests/css/cssom-view/interfaces.html [ Skip ]
-webkit.org/b/182292 imported/w3c/web-platform-tests/cssom-view/scrollingElement-quirks-dynamic-001.html [ ImageOnlyFailure ]
-webkit.org/b/182292 imported/w3c/web-platform-tests/cssom-view/scrollingElement-quirks-dynamic-002.html [ ImageOnlyFailure ]
+webkit.org/b/182292 imported/w3c/web-platform-tests/css/cssom-view/scrollingElement-quirks-dynamic-001.html [ ImageOnlyFailure ]
+webkit.org/b/182292 imported/w3c/web-platform-tests/css/cssom-view/scrollingElement-quirks-dynamic-002.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-ui/text-overflow-010.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-ui/text-overflow-012.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-ui/text-overflow-015.html [ ImageOnlyFailure ]
@@ -399,6 +397,11 @@ http/wpt/cross-origin-resource-policy/ [ Skip ]
 
 # testRunner.terminateNetworkProcess() only works in WebKit2
 fast/files/blob-network-process-crash.html [ Skip ]
+
+# This test is currently only relevant on mac-wk2
+fast/canvas/webgl/context-update-on-display-configuration.html [ Skip ]
+
+fast/misc/valid-primary-screen-displayID.html [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -1177,12 +1180,14 @@ webkit.org/b/172f21 imported/w3c/web-platform-tests/webrtc/getstats.html [ Failu
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-ontrack.https.html [ Skip ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription-offer.html [ Failure ]
 
+# Uses legacy WebRTC API.
+imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/setRemoteDescription.html [ Skip ]
+
 fast/mediastream/RTCPeerConnection-closed-state.html [ Skip ]
 fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html [ Skip ]
 fast/mediastream/RTCPeerConnection-more-media-to-negotiate.html [ Skip ]
 fast/mediastream/RTCPeerConnection-overloaded-operations-params.html [ Skip ]
 fast/mediastream/RTCRtpSender-replaceTrack.html [ Skip ]
-fast/mediastream/RTCPeerConnection-dtmf.html [ Failure ]
 fast/mediastream/RTCPeerConnection-inspect-offer-bundlePolicy-bundle-only.html [ Failure ]
 
 # Only iOS WK1 has testRunner.setPagePaused.
@@ -1888,7 +1893,7 @@ fast/table/colspanMinWidth-vertical.html [ Skip ]
 fast/forms/range/range-remove-on-drag.html [ Skip ]
 
 # CSSOM View module
-webkit.org/b/5991 imported/w3c/web-platform-tests/cssom-view/scrollingElement.html [ Skip ]
+webkit.org/b/5991 imported/w3c/web-platform-tests/css/cssom-view/scrollingElement.html [ Skip ]
 
 # FileAPI
 webkit.org/b/172099 imported/w3c/web-platform-tests/FileAPI/url/url_xmlhttprequest_img.html [ ImageOnlyFailure ]
@@ -2125,10 +2130,8 @@ imported/w3c/web-platform-tests/css/css-display/run-in/run-in-run-in-between-007
 imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-style-007.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-basic-007.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-grid/grid-items/percentage-size-replaced-subitems-001.html [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/css/cssom-view/scrollingElement-quirks-dynamic-002.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-position-above-right-002.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-contains-abspos-001.xht [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/css/cssom-view/scrollingElement-quirks-dynamic-001.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-multicol/zero-column-width-layout.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-abspos-between-001.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-contains-table-cell-001.xht [ ImageOnlyFailure ]
@@ -2217,6 +2220,10 @@ webkit.org/b/175609 imported/w3c/web-platform-tests/IndexedDB/idbcursor-continue
 webkit.org/b/175609 imported/w3c/web-platform-tests/IndexedDB/idbdatabase-deleteObjectStore-exception-order.htm [ Pass Failure ]
 webkit.org/b/175609 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getAllKeys.html [ Pass Failure ]
 
+webkit.org/b/189091 imported/w3c/web-platform-tests/intersection-observer/bounding-box.html [ Pass Failure ]
+webkit.org/b/189091 imported/w3c/web-platform-tests/intersection-observer/display-none.html [ Pass Failure ]
+webkit.org/b/189091 imported/w3c/web-platform-tests/intersection-observer/containing-block.html [ Pass Failure ]
+
 webkit.org/b/186848 imported/w3c/web-platform-tests/FileAPI/blob/Blob-slice.html [ Pass Failure ]
 webkit.org/b/179176 svg/wicd/test-rightsizing-a.xhtml [ Pass Failure ]
 
@@ -2232,6 +2239,3 @@ webkit.org/b/187762 http/tests/websocket/tests/hybi/websocket-cookie-overwrite-b
 webkit.org/b/187269 [ Debug ] imported/w3c/web-platform-tests/FileAPI/reading-data-section/filereader_abort.html [ Skip ]
 
 webkit.org/b/185308 legacy-animation-engine/animations/combo-transform-translate+scale.html [ Pass Failure ]
-
-# This test is currently only relevant on mac-wk2
-fast/canvas/webgl/context-update-on-display-configuration.html [ Skip ]

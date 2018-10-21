@@ -494,6 +494,15 @@ PeerConnectionEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEB_RTC)
 
+WebRTCUnifiedPlanEnabled:
+  type: bool
+  defaultValue: false
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_RTC)
+  humanReadableName: "WebRTC Unified Plan"
+  humanReadableDescription: "Use WebRTC Unified Plan"
+  category: experimental
+
 UseLegacyTextAlignPositionedElementBehavior:
   type: bool
   defaultValue: false
@@ -755,6 +764,13 @@ CustomPasteboardDataEnabled:
   defaultValue: defaultCustomPasteboardDataEnabled()
   humanReadableName: "Custom pasteboard data"
   humanReadableDescription: "Enable custom clipboard types and better security model for clipboard API."
+  webcoreBinding: RuntimeEnabledFeatures
+
+WebShareEnabled:
+  type: bool
+  defaultValue: DEFAULT_WEB_SHARE_ENABLED
+  humanReadableName: "Web Share"
+  humanReadableDescription: "Enable support for share sheet via Web Share API"
   webcoreBinding: RuntimeEnabledFeatures
 
 ViewportFitEnabled:
@@ -1031,8 +1047,10 @@ ShouldAllowUserInstalledFonts:
 
 MediaCapabilitiesEnabled:
   type: bool
-  defaultValue: false
-  webcoreBinding: RuntimeEnabledFeatures
+  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  humanReadableName: "Media Capabilities API"
+  humanReadableDescription: "Media Capabilities API"
+  category: experimental
 
 SystemPreviewEnabled:
   type: bool
@@ -1147,14 +1165,6 @@ IntersectionObserverEnabled:
   category: experimental
   condition: ENABLE(INTERSECTION_OBSERVER)
 
-WebRTCLegacyAPIEnabled:
-  type: bool
-  defaultValue: false
-  humanReadableName: "Enable Legacy WebRTC API"
-  humanReadableDescription: "Enable Legacy WebRTC API"
-  webcoreBinding: RuntimeEnabledFeatures
-  condition: ENABLE(WEB_RTC)
-
 MDNSICECandidatesEnabled:
   type: bool
   defaultValue: false
@@ -1188,6 +1198,13 @@ VisualViewportAPIEnabled:
   defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
   humanReadableName: "VisualViewportAPI"
   humanReadableDescription: "Enable Visual Viewport API"
+  category: experimental
+
+CSSOMViewScrollingAPIEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "CSSOM View Scrolling API"
+  humanReadableDescription: "Implement standard behavior for scrollLeft, scrollTop, scrollWidth, scrollHeight, scrollTo, scrollBy and scrollingElement."
   category: experimental
 
 WebAnimationsEnabled:
@@ -1301,11 +1318,11 @@ EncryptedMediaAPIEnabled:
   category: experimental
   condition: ENABLE(ENCRYPTED_MEDIA)
 
-ProcessSwapOnNavigationEnabled:
+ProcessSwapOnCrossSiteNavigationEnabled:
   type: bool
   defaultValue: false
-  humanReadableName: "Swap Processes on Navigation"
-  humanReadableDescription: "Swap WebContent processes on cross-origin navigations"
+  humanReadableName: "Swap Processes on Cross-Site Navigation"
+  humanReadableDescription: "Swap WebContent processes on cross-site navigations"
   category: experimental
   webcoreBinding: none
 

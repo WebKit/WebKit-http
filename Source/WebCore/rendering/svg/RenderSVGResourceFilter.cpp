@@ -111,7 +111,7 @@ std::unique_ptr<SVGFilterBuilder> RenderSVGResourceFilter::buildPrimitives(SVGFi
 bool RenderSVGResourceFilter::applyResource(RenderElement& renderer, const RenderStyle&, GraphicsContext*& context, OptionSet<RenderSVGResourceMode> resourceMode)
 {
     ASSERT(context);
-    ASSERT_UNUSED(resourceMode, resourceMode == RenderSVGResourceMode::ApplyToDefault);
+    ASSERT_UNUSED(resourceMode, !resourceMode);
 
     LOG(Filters, "RenderSVGResourceFilter %p applyResource renderer %p", this, &renderer);
 
@@ -178,13 +178,13 @@ bool RenderSVGResourceFilter::applyResource(RenderElement& renderer, const Rende
 
     LOG_WITH_STREAM(Filters, stream << "RenderSVGResourceFilter::applyResource\n" << *filterData->builder->lastEffect());
 
-    RenderSVGResourceFilterPrimitive::determineFilterPrimitiveSubregion(*lastEffect);
+    lastEffect->determineFilterPrimitiveSubregion();
     FloatRect subRegion = lastEffect->maxEffectRect();
     // At least one FilterEffect has a too big image size,
     // recalculate the effect sizes with new scale factors.
     if (ImageBuffer::sizeNeedsClamping(subRegion.size(), scale)) {
         filterData->filter->setFilterResolution(scale);
-        RenderSVGResourceFilterPrimitive::determineFilterPrimitiveSubregion(*lastEffect);
+        lastEffect->determineFilterPrimitiveSubregion();
     }
 
     // If the drawingRegion is empty, we have something like <g filter=".."/>.
@@ -229,7 +229,7 @@ bool RenderSVGResourceFilter::applyResource(RenderElement& renderer, const Rende
 void RenderSVGResourceFilter::postApplyResource(RenderElement& renderer, GraphicsContext*& context, OptionSet<RenderSVGResourceMode> resourceMode, const Path*, const RenderSVGShape*)
 {
     ASSERT(context);
-    ASSERT_UNUSED(resourceMode, resourceMode == RenderSVGResourceMode::ApplyToDefault);
+    ASSERT_UNUSED(resourceMode, !resourceMode);
 
     auto findResult = m_rendererFilterDataMap.find(&renderer);
     if (findResult == m_rendererFilterDataMap.end())
@@ -297,6 +297,8 @@ void RenderSVGResourceFilter::postApplyResource(RenderElement& renderer, Graphic
         }
     }
     filterData.sourceGraphicBuffer.reset();
+
+    LOG_WITH_STREAM(Filters, stream << "RenderSVGResourceFilter " << this << " postApplyResource done\n");
 }
 
 FloatRect RenderSVGResourceFilter::resourceBoundingBox(const RenderObject& object)

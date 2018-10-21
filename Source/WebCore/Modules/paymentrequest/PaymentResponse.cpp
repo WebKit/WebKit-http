@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 
 #if ENABLE(PAYMENT_REQUEST)
 
+#include "NotImplemented.h"
 #include "PaymentRequest.h"
 #include <wtf/RunLoop.h>
 
@@ -50,6 +51,17 @@ void PaymentResponse::complete(std::optional<PaymentComplete>&& result, DOMPromi
     m_completeCalled = true;
     m_request->complete(WTFMove(result));
     promise.resolve();
+}
+
+void PaymentResponse::retry(PaymentValidationErrors&&, DOMPromiseDeferred<void>&& promise)
+{
+    notImplemented();
+    promise.reject(Exception { NotSupportedError });
+}
+
+ScriptExecutionContext* PaymentResponse::scriptExecutionContext() const
+{
+    return static_cast<ActiveDOMObject&>(m_request.get()).scriptExecutionContext();
 }
 
 } // namespace WebCore

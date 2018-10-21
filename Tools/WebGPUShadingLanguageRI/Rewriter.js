@@ -167,7 +167,9 @@ class Rewriter {
 
     visitTernaryExpression(node)
     {
-        return new TernaryExpression(node.origin, node.predicate.visit(this), node.bodyExpression.visit(this), node.elseExpression.visit(this));
+        let result = new TernaryExpression(node.origin, node.predicate.visit(this), node.bodyExpression.visit(this), node.elseExpression.visit(this));
+        result.isLValue = node.isLValue;
+        return result;
     }
     
     _handlePropertyAccessExpression(result, node)
@@ -390,6 +392,12 @@ class Rewriter {
         const vecType = new VectorType(node.origin, node.name, node.typeArguments.map(argument => argument.visit(this)));
         vecType._elementType = node.elementType.visit(this);
         return vecType;
+    }
+
+    visitMatrixType(node)
+    {
+        const matType = new MatrixType(node.origin, node.name, node.typeArguments.map(argument => argument.visit(this)));
+        return matType;
     }
 }
 

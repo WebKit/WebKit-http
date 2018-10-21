@@ -99,8 +99,8 @@ namespace WebCore {
     macro(MediaKeys) \
     macro(MediaSource) \
     macro(MediaStream) \
-    macro(MediaStreamEvent) \
     macro(MediaStreamTrack) \
+    macro(MerchantValidationEvent) \
     macro(ModernMediaControls) \
     macro(NavigatorCredentials) \
     macro(NavigatorMediaDevices) \
@@ -108,6 +108,7 @@ namespace WebCore {
     macro(OffscreenCanvas) \
     macro(OffscreenCanvasRenderingContext2D) \
     macro(PaymentAddress) \
+    macro(PaymentMethodChangeEvent) \
     macro(PaymentRequest) \
     macro(PaymentRequestUpdateEvent) \
     macro(PaymentResponse) \
@@ -191,7 +192,6 @@ namespace WebCore {
     macro(WindowClient) \
     macro(WritableStream) \
     macro(XMLHttpRequest) \
-    macro(addTrack) \
     macro(appendFromJS) \
     macro(associatedReadableByteStreamController) \
     macro(autoAllocateChunkSize) \
@@ -223,8 +223,6 @@ namespace WebCore {
     macro(finishConsumingStream) \
     macro(focus) \
     macro(frames) \
-    macro(getRemoteStreams) \
-    macro(getSenders) \
     macro(getTracks) \
     macro(getUserMedia) \
     macro(header) \
@@ -268,7 +266,6 @@ namespace WebCore {
     macro(readableStreamController) \
     macro(reader) \
     macro(readyPromiseCapability) \
-    macro(removeTrack) \
     macro(response) \
     macro(responseCacheIsValid) \
     macro(retrieveResponse) \
@@ -298,7 +295,6 @@ namespace WebCore {
     macro(underlyingSource) \
     macro(view) \
     macro(visualViewport) \
-    macro(webRTCLegacyAPIEnabled) \
     macro(webkit) \
     macro(webkitAudioContext) \
     macro(webkitIDBCursor) \

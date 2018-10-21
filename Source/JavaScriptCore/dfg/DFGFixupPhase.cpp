@@ -1612,7 +1612,6 @@ private:
         case CheckTierUpInLoop:
         case CheckTierUpAtReturn:
         case CheckTierUpAndOSREnter:
-        case InvalidationPoint:
         case CheckArray:
         case CheckInBounds:
         case ConstantStoragePointer:
@@ -2119,7 +2118,7 @@ private:
                     node->setResult(NodeResultInt32);
                     break;
                 case 4:
-                    if (data.isSigned) 
+                    if (data.isSigned)
                         node->setResult(NodeResultInt32);
                     else
                         node->setResult(NodeResultInt52);
@@ -2241,6 +2240,7 @@ private:
         case FilterGetByIdStatus:
         case FilterPutByIdStatus:
         case FilterInByIdStatus:
+        case InvalidationPoint:
             break;
 #else
         default:

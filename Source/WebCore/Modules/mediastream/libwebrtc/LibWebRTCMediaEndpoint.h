@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 
 #if USE(LIBWEBRTC)
 
+#include "LibWebRTCObservers.h"
 #include "LibWebRTCProvider.h"
 #include "PeerConnectionBackend.h"
 #include "RTCRtpReceiver.h"
@@ -60,6 +61,7 @@ namespace WebCore {
 
 class LibWebRTCProvider;
 class LibWebRTCPeerConnectionBackend;
+class LibWebRTCRtpSenderBackend;
 class MediaStreamTrack;
 class RTCSessionDescription;
 
@@ -82,7 +84,7 @@ public:
     void doSetRemoteDescription(RTCSessionDescription&);
     void doCreateOffer(const RTCOfferOptions&);
     void doCreateAnswer();
-    void getStats(MediaStreamTrack*, const DeferredPromise&);
+    void getStats(MediaStreamTrack*, Ref<DeferredPromise>&&);
     std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String&, const RTCDataChannelInit&);
     bool addIceCandidate(webrtc::IceCandidateInterface& candidate) { return m_backend->AddIceCandidate(&candidate); }
 
@@ -96,9 +98,8 @@ public:
     RefPtr<RTCSessionDescription> pendingLocalDescription() const;
     RefPtr<RTCSessionDescription> pendingRemoteDescription() const;
 
-    bool addTrack(RTCRtpSender&, MediaStreamTrack&, const Vector<String>&);
-    void removeTrack(RTCRtpSender&);
-    RTCRtpParameters getRTCRtpSenderParameters(RTCRtpSender&);
+    bool addTrack(LibWebRTCRtpSenderBackend&, MediaStreamTrack&, const Vector<String>&);
+    void removeTrack(LibWebRTCRtpSenderBackend&);
 
 private:
     LibWebRTCMediaEndpoint(LibWebRTCPeerConnectionBackend&, LibWebRTCProvider&);
@@ -124,7 +125,6 @@ private:
     void addRemoteStream(webrtc::MediaStreamInterface&);
     void addRemoteTrack(rtc::scoped_refptr<webrtc::RtpReceiverInterface>&&, const std::vector<rtc::scoped_refptr<webrtc::MediaStreamInterface>>&);
     void removeRemoteStream(webrtc::MediaStreamInterface&);
-    void addDataChannel(rtc::scoped_refptr<webrtc::DataChannelInterface>&&);
 
     void OnStatsDelivered(const rtc::scoped_refptr<const webrtc::RTCStatsReport>&) final;
     void gatherStatsForLogging();
@@ -142,9 +142,6 @@ private:
         : rtc::RefCountReleaseStatus::kDroppedLastRef;
     }
 
-    bool shouldOfferAllowToReceiveAudio() const;
-    bool shouldOfferAllowToReceiveVideo() const;
-
 #if !RELEASE_LOG_DISABLED
     const Logger& logger() const final { return m_logger.get(); }
     const void* logIdentifier() const final { return m_logIdentifier; }
@@ -154,71 +151,19 @@ private:
     Seconds statsLogInterval(int64_t) const;
 #endif
 
-    class CreateSessionDescriptionObserver final : public webrtc::CreateSessionDescriptionObserver {
-    public:
-        explicit CreateSessionDescriptionObserver(LibWebRTCMediaEndpoint &endpoint) : m_endpoint(endpoint) { }
-
-        void OnSuccess(webrtc::SessionDescriptionInterface* sessionDescription) final { m_endpoint.createSessionDescriptionSucceeded(std::unique_ptr<webrtc::SessionDescriptionInterface>(sessionDescription)); }
-        void OnFailure(const std::string& error) final { m_endpoint.createSessionDescriptionFailed(error); }
-
-        void AddRef() const { m_endpoint.AddRef(); }
-        rtc::RefCountReleaseStatus Release() const { return m_endpoint.Release(); }
-
-    private:
-        LibWebRTCMediaEndpoint& m_endpoint;
-    };
-
-    class SetLocalSessionDescriptionObserver final : public webrtc::SetSessionDescriptionObserver {
-    public:
-        explicit SetLocalSessionDescriptionObserver(LibWebRTCMediaEndpoint &endpoint) : m_endpoint(endpoint) { }
-
-        void OnSuccess() final { m_endpoint.setLocalSessionDescriptionSucceeded(); }
-        void OnFailure(const std::string& error) final { m_endpoint.setLocalSessionDescriptionFailed(error); }
-
-        void AddRef() const { m_endpoint.AddRef(); }
-        rtc::RefCountReleaseStatus Release() const { return m_endpoint.Release(); }
-
-    private:
-        LibWebRTCMediaEndpoint& m_endpoint;
-    };
-
-    class SetRemoteSessionDescriptionObserver final : public webrtc::SetSessionDescriptionObserver {
-    public:
-        explicit SetRemoteSessionDescriptionObserver(LibWebRTCMediaEndpoint &endpoint) : m_endpoint(endpoint) { }
-
-        void OnSuccess() final { m_endpoint.setRemoteSessionDescriptionSucceeded(); }
-        void OnFailure(const std::string& error) final { m_endpoint.setRemoteSessionDescriptionFailed(error); }
-
-        void AddRef() const { m_endpoint.AddRef(); }
-        rtc::RefCountReleaseStatus Release() const { return m_endpoint.Release(); }
-
-    private:
-        LibWebRTCMediaEndpoint& m_endpoint;
-    };
-
-    class StatsCollector : public webrtc::RTCStatsCollectorCallback {
-    public:
-        static rtc::scoped_refptr<StatsCollector> create(Ref<LibWebRTCMediaEndpoint>&& endpoint, const DeferredPromise& promise, MediaStreamTrack* track) { return new rtc::RefCountedObject<StatsCollector>(WTFMove(endpoint), promise, track); }
-
-        StatsCollector(Ref<LibWebRTCMediaEndpoint>&&, const DeferredPromise&, MediaStreamTrack*);
-
-    private:
-        void OnStatsDelivered(const rtc::scoped_refptr<const webrtc::RTCStatsReport>&) final;
-
-        Ref<LibWebRTCMediaEndpoint> m_endpoint;
-        const DeferredPromise& m_promise;
-        String m_id;
-    };
-
     LibWebRTCPeerConnectionBackend& m_peerConnectionBackend;
     webrtc::PeerConnectionFactoryInterface& m_peerConnectionFactory;
     rtc::scoped_refptr<webrtc::PeerConnectionInterface> m_backend;
 
-    CreateSessionDescriptionObserver m_createSessionDescriptionObserver;
-    SetLocalSessionDescriptionObserver m_setLocalSessionDescriptionObserver;
-    SetRemoteSessionDescriptionObserver m_setRemoteSessionDescriptionObserver;
-    HashMap<webrtc::MediaStreamInterface*, MediaStream*> m_streams;
-    HashMap<RTCRtpSender*, rtc::scoped_refptr<webrtc::RtpSenderInterface>> m_senders;
+    friend CreateSessionDescriptionObserver<LibWebRTCMediaEndpoint>;
+    friend SetLocalSessionDescriptionObserver<LibWebRTCMediaEndpoint>;
+    friend SetRemoteSessionDescriptionObserver<LibWebRTCMediaEndpoint>;
+
+    CreateSessionDescriptionObserver<LibWebRTCMediaEndpoint> m_createSessionDescriptionObserver;
+    SetLocalSessionDescriptionObserver<LibWebRTCMediaEndpoint> m_setLocalSessionDescriptionObserver;
+    SetRemoteSessionDescriptionObserver<LibWebRTCMediaEndpoint> m_setRemoteSessionDescriptionObserver;
+
+    HashMap<webrtc::MediaStreamInterface*, RefPtr<MediaStream>> m_streams;
 
     bool m_isInitiator { false };
     Timer m_statsLogTimer;

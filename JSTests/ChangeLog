@@ -1,3 +1,150 @@
+2018-09-05  Mark Lam  <mark.lam@apple.com>
+
+        isAsyncGeneratorMethodParseMode() should check for SourceParseMode::AsyncGeneratorWrapperMethodMode.
+        https://bugs.webkit.org/show_bug.cgi?id=189292
+        <rdar://problem/38907433>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-189292.js: Added.
+
+2018-09-04  David Fenton  <david_fenton@apple.com>
+
+        Skip Test on 32-bit platforms.
+        https://bugs.webkit.org/show_bug.cgi?id=189185.
+
+        Unreviewed test gardening.
+
+        * stress/regress-189185.js:
+
+2018-09-03  Mark Lam  <mark.lam@apple.com>
+
+        The watchdog sometimes fails to terminate a script.
+        https://bugs.webkit.org/show_bug.cgi?id=189227
+        <rdar://problem/39932857>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-189227-watchdog-on-infinite-loop.js: Added.
+
+2018-09-02  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Implement Object.fromEntries
+        https://bugs.webkit.org/show_bug.cgi?id=188481
+
+        Reviewed by Darin Adler.
+
+        * stress/object-from-entries.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (shouldBe.JSON.stringify.Object.getOwnPropertyDescriptor):
+        (shouldBe.set get shouldThrow):
+
+2018-08-24  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Function object should convert params to string before throw a parsing error
+        https://bugs.webkit.org/show_bug.cgi?id=188874
+
+        Reviewed by Darin Adler.
+
+        * stress/function-body-to-string-before-parameter-syntax-check.js: Added.
+        (shouldThrow):
+
+2018-08-31  Mark Lam  <mark.lam@apple.com>
+
+        Fix exception check accounting in constructJSWebAssemblyCompileError().
+        https://bugs.webkit.org/show_bug.cgi?id=189185
+        <rdar://problem/39786007>
+
+        Reviewed by Michael Saboff.
+
+        * stress/regress-189185.js: Added.
+        (new.WebAssembly.CompileError.valueOf):
+
+2018-08-31  Mark Lam  <mark.lam@apple.com>
+
+        Fix exception check accounting in JSDataView::defineOwnProperty().
+        https://bugs.webkit.org/show_bug.cgi?id=189186
+        <rdar://problem/39786049>
+
+        Reviewed by Michael Saboff.
+
+        * stress/regress-189186.js: Added.
+
+2018-08-31  Mark Lam  <mark.lam@apple.com>
+
+        Add missing exception check in arrayProtoFuncLastIndexOf().
+        https://bugs.webkit.org/show_bug.cgi?id=189184
+        <rdar://problem/39785959>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/regress-189184.js: Added.
+
+2018-08-31  Saam barati  <sbarati@apple.com>
+
+        convertToRegExpMatchFastGlobal must use KnownString as the child use kind
+        https://bugs.webkit.org/show_bug.cgi?id=189173
+        <rdar://problem/43501645>
+
+        Reviewed by Michael Saboff.
+
+        * stress/may-exit-should-be-false-regexp-constant-folding.js: Added.
+        (foo):
+        (bar):
+
+2018-08-30  Saam barati  <sbarati@apple.com>
+
+        CSE DataViewGet* DFG nodes
+        https://bugs.webkit.org/show_bug.cgi?id=188768
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/dataview-cse.js: Added.
+        (assert):
+        (test):
+        * stress/dataview-get-cse.js: Added.
+        (assert):
+        (test1.foo):
+        (test1):
+        (test2.foo):
+        (test2):
+        (test3.foo):
+        (test3):
+        (test4.foo):
+        (test4):
+        (test5.foo):
+        (test5):
+        (test6.foo):
+        (test6):
+
+2018-08-30  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        output of toString() of Generator is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=188952
+
+        Reviewed by Saam Barati.
+
+        * stress/function-to-string.js: Added.
+        (shouldBe):
+        (shouldBe.test):
+        (test):
+        (shouldBe.async.test):
+        (async.test):
+        (shouldBe.async):
+        (async):
+        * test262/expectations.yaml:
+
+2018-08-29  Mark Lam  <mark.lam@apple.com>
+
+        Add some missing exception checks in JSRopeString::resolveRopeToAtomicString().
+        https://bugs.webkit.org/show_bug.cgi?id=189132
+        <rdar://problem/42513068>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-189132.js: Added.
+
 2018-08-27  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
 
         [WebAssembly] Parse wasm modules in a streaming fashion
