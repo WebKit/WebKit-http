@@ -68,10 +68,14 @@ class Visitor {
     
     visitTypeRef(node)
     {
+        for (let typeArgument of node.typeArguments)
+            typeArgument.visit(this);
     }
     
     visitNativeType(node)
     {
+        for (let typeArgument of node.typeArguments)
+            typeArgument.visit(this);
     }
     
     visitTypeDef(node)
@@ -157,6 +161,13 @@ class Visitor {
     visitDereferenceExpression(node)
     {
         node.ptr.visit(this);
+    }
+
+    visitTernaryExpression(node)
+    {
+        node.predicate.visit(this);
+        node.bodyExpression.visit(this);
+        node.elseExpression.visit(this);
     }
     
     _handlePropertyAccessExpression(node)
@@ -327,6 +338,7 @@ class Visitor {
     visitVectorType(node)
     {
         node.elementType.visit(this);
+        node.numElements.visit(this);
     }
 }
 

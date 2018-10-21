@@ -28,7 +28,13 @@
 
 #include "LibWebRTCMacros.h"
 #include "RTCDataChannelHandler.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 #include <webrtc/api/datachannelinterface.h>
+
+#pragma GCC diagnostic pop
 
 namespace WebCore {
 

@@ -292,7 +292,9 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
         // as a separate event in other DOM-compliant browsers like Firefox, and so we do the same.
         // FIXME: Is it okay that mouseEvent may have been mutated by scripts via initMouseEvent in dispatchEvent above?
         Ref<MouseEvent> doubleClickEvent = MouseEvent::create(eventNames().dblclickEvent,
-            mouseEvent->bubbles() ? Event::CanBubble::Yes : Event::CanBubble::No, mouseEvent->cancelable() ? Event::IsCancelable::Yes : Event::IsCancelable::No,
+            mouseEvent->bubbles() ? Event::CanBubble::Yes : Event::CanBubble::No,
+            mouseEvent->cancelable() ? Event::IsCancelable::Yes : Event::IsCancelable::No,
+            Event::IsComposed::Yes,
             mouseEvent->view(), mouseEvent->detail(),
             mouseEvent->screenX(), mouseEvent->screenY(), mouseEvent->clientX(), mouseEvent->clientY(),
             mouseEvent->modifierKeys(), mouseEvent->button(), mouseEvent->buttons(), mouseEvent->syntheticClickType(), relatedTarget);
@@ -2176,7 +2178,7 @@ void Element::childrenChanged(const ChildChange& change)
         switch (change.type) {
         case ElementInserted:
         case ElementRemoved:
-            // For elements, we notify shadowRoot in Element::insertedInto and Element::removedFrom.
+            // For elements, we notify shadowRoot in Element::insertedIntoAncestor and Element::removedFromAncestor.
             break;
         case AllChildrenRemoved:
         case AllChildrenReplaced:

@@ -44,12 +44,11 @@ public:
 
 private:
     SimulatedMouseEvent(const AtomicString& eventType, RefPtr<WindowProxy>&& view, RefPtr<Event>&& underlyingEvent, Element& target, SimulatedClickSource source)
-        : MouseEvent(eventType, CanBubble::Yes, IsCancelable::Yes, underlyingEvent ? underlyingEvent->timeStamp() : MonotonicTime::now(), WTFMove(view), /* detail */ 0,
-            { }, { }, { }, modifiersFromUnderlyingEvent(underlyingEvent), 0, 0, nullptr, 0, 0, nullptr, IsSimulated::Yes)
+        : MouseEvent(eventType, CanBubble::Yes, IsCancelable::Yes, IsComposed::Yes,
+            underlyingEvent ? underlyingEvent->timeStamp() : MonotonicTime::now(), WTFMove(view), /* detail */ 0,
+            { }, { }, { }, modifiersFromUnderlyingEvent(underlyingEvent), 0, 0, nullptr, 0, 0, nullptr, IsSimulated::Yes,
+            source == SimulatedClickSource::UserAgent ? IsTrusted::Yes : IsTrusted::No)
     {
-        if (source == SimulatedClickSource::Bindings)
-            setUntrusted();
-
         setUnderlyingEvent(underlyingEvent.get());
 
         if (is<MouseEvent>(this->underlyingEvent())) {

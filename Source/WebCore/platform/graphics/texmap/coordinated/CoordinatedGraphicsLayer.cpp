@@ -38,6 +38,7 @@
 #include "NicosiaPaintingEngine.h"
 #include "ScrollableArea.h"
 #include "TextureMapperPlatformLayerProxyProvider.h"
+#include "TiledBackingStore.h"
 #ifndef NDEBUG
 #include <wtf/SetForScope.h>
 #endif
@@ -53,11 +54,6 @@ std::unique_ptr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerFactory* facto
     return factory->createGraphicsLayer(layerType, client);
 }
 
-static CoordinatedLayerID toCoordinatedLayerID(GraphicsLayer* layer)
-{
-    return is<CoordinatedGraphicsLayer>(layer) ? downcast<CoordinatedGraphicsLayer>(*layer).id() : 0;
-}
-
 void CoordinatedGraphicsLayer::notifyFlushRequired()
 {
     if (!m_coordinator)
@@ -69,33 +65,21 @@ void CoordinatedGraphicsLayer::notifyFlushRequired()
     client().notifyFlushRequired(this);
 }
 
-void CoordinatedGraphicsLayer::didChangeLayerState()
-{
-    m_shouldSyncLayerState = true;
-    notifyFlushRequired();
-}
-
 void CoordinatedGraphicsLayer::didChangeAnimations()
 {
-    m_shouldSyncAnimations = true;
+    m_nicosia.delta.animationsChanged = true;
     notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::didChangeChildren()
 {
-    m_shouldSyncChildren = true;
+    m_nicosia.delta.childrenChanged = true;
     notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::didChangeFilters()
 {
-    m_shouldSyncFilters = true;
-    notifyFlushRequired();
-}
-
-void CoordinatedGraphicsLayer::didChangeImageBacking()
-{
-    m_shouldSyncImageBacking = true;
+    m_nicosia.delta.filtersChanged = true;
     notifyFlushRequired();
 }
 
@@ -105,8 +89,6 @@ void CoordinatedGraphicsLayer::didUpdateTileBuffers()
         return;
 
     auto repaintCount = incrementRepaintCount();
-    m_layerState.repaintCount.count = repaintCount;
-    m_layerState.repaintCountChanged = true;
     m_nicosia.repaintCounter.count = repaintCount;
     m_nicosia.delta.repaintCounterChanged = true;
 }
@@ -122,7 +104,7 @@ void CoordinatedGraphicsLayer::setShouldUpdateVisibleRect()
 
 void CoordinatedGraphicsLayer::didChangeGeometry()
 {
-    didChangeLayerState();
+    notifyFlushRequired();
     setShouldUpdateVisibleRect();
 }
 
@@ -132,28 +114,22 @@ CoordinatedGraphicsLayer::CoordinatedGraphicsLayer(Type layerType, GraphicsLayer
     , m_isPurging(false)
 #endif
     , m_shouldUpdateVisibleRect(true)
-    , m_shouldSyncLayerState(true)
-    , m_shouldSyncChildren(true)
-    , m_shouldSyncFilters(true)
-    , m_shouldSyncImageBacking(true)
-    , m_shouldSyncAnimations(true)
     , m_movingVisibleRect(false)
     , m_pendingContentsScaleAdjustment(false)
     , m_pendingVisibleRectAdjustment(false)
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    , m_shouldSyncPlatformLayer(false)
     , m_shouldUpdatePlatformLayer(false)
-#endif
     , m_coordinator(0)
     , m_compositedNativeImagePtr(0)
-    , m_platformLayer(0)
     , m_animationStartedTimer(*this, &CoordinatedGraphicsLayer::animationStartedTimerFired)
 {
-    static CoordinatedLayerID nextLayerID = 1;
+    static Nicosia::PlatformLayer::LayerID nextLayerID = 1;
     m_id = nextLayerID++;
 
     m_nicosia.layer = Nicosia::CompositionLayer::create(m_id,
         Nicosia::CompositionLayerTextureMapperImpl::createFactory());
+
+    // Enforce a complete flush on the first occasion.
+    m_nicosia.delta.value = UINT_MAX;
 }
 
 CoordinatedGraphicsLayer::~CoordinatedGraphicsLayer()
@@ -162,11 +138,24 @@ CoordinatedGraphicsLayer::~CoordinatedGraphicsLayer()
         purgeBackingStores();
         m_coordinator->detachLayer(this);
     }
-    ASSERT(!m_coordinatedImageBacking);
-    ASSERT(!m_mainBackingStore);
     ASSERT(!m_nicosia.imageBacking);
     ASSERT(!m_nicosia.backingStore);
     willBeDestroyed();
+}
+
+bool CoordinatedGraphicsLayer::isCoordinatedGraphicsLayer() const
+{
+    return true;
+}
+
+Nicosia::PlatformLayer::LayerID CoordinatedGraphicsLayer::id() const
+{
+    return m_id;
+}
+
+auto CoordinatedGraphicsLayer::primaryLayerID() const -> PlatformLayerID
+{
+    return id();
 }
 
 bool CoordinatedGraphicsLayer::setChildren(const Vector<GraphicsLayer*>& children)
@@ -229,7 +218,6 @@ void CoordinatedGraphicsLayer::setPosition(const FloatPoint& p)
         return;
 
     GraphicsLayer::setPosition(p);
-    m_layerState.positionChanged = true;
     m_nicosia.delta.positionChanged = true;
     didChangeGeometry();
 }
@@ -240,7 +228,6 @@ void CoordinatedGraphicsLayer::setAnchorPoint(const FloatPoint3D& p)
         return;
 
     GraphicsLayer::setAnchorPoint(p);
-    m_layerState.anchorPointChanged = true;
     m_nicosia.delta.anchorPointChanged = true;
     didChangeGeometry();
 }
@@ -251,7 +238,6 @@ void CoordinatedGraphicsLayer::setSize(const FloatSize& size)
         return;
 
     GraphicsLayer::setSize(size);
-    m_layerState.sizeChanged = true;
     m_nicosia.delta.sizeChanged = true;
 
     if (maskLayer())
@@ -265,7 +251,6 @@ void CoordinatedGraphicsLayer::setTransform(const TransformationMatrix& t)
         return;
 
     GraphicsLayer::setTransform(t);
-    m_layerState.transformChanged = true;
     m_nicosia.delta.transformChanged = true;
 
     didChangeGeometry();
@@ -277,7 +262,6 @@ void CoordinatedGraphicsLayer::setChildrenTransform(const TransformationMatrix& 
         return;
 
     GraphicsLayer::setChildrenTransform(t);
-    m_layerState.childrenTransformChanged = true;
     m_nicosia.delta.childrenTransformChanged = true;
 
     didChangeGeometry();
@@ -289,8 +273,6 @@ void CoordinatedGraphicsLayer::setPreserves3D(bool b)
         return;
 
     GraphicsLayer::setPreserves3D(b);
-    m_layerState.preserves3D = b;
-    m_layerState.flagsChanged = true;
     m_nicosia.delta.flagsChanged = true;
 
     didChangeGeometry();
@@ -301,8 +283,6 @@ void CoordinatedGraphicsLayer::setMasksToBounds(bool b)
     if (masksToBounds() == b)
         return;
     GraphicsLayer::setMasksToBounds(b);
-    m_layerState.masksToBounds = b;
-    m_layerState.flagsChanged = true;
     m_nicosia.delta.flagsChanged = true;
 
     didChangeGeometry();
@@ -313,11 +293,9 @@ void CoordinatedGraphicsLayer::setDrawsContent(bool b)
     if (drawsContent() == b)
         return;
     GraphicsLayer::setDrawsContent(b);
-    m_layerState.drawsContent = b;
-    m_layerState.flagsChanged = true;
     m_nicosia.delta.flagsChanged = true;
 
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setContentsVisible(bool b)
@@ -325,14 +303,12 @@ void CoordinatedGraphicsLayer::setContentsVisible(bool b)
     if (contentsAreVisible() == b)
         return;
     GraphicsLayer::setContentsVisible(b);
-    m_layerState.contentsVisible = b;
-    m_layerState.flagsChanged = true;
     m_nicosia.delta.flagsChanged = true;
 
     if (maskLayer())
         maskLayer()->setContentsVisible(b);
 
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setContentsOpaque(bool b)
@@ -341,8 +317,6 @@ void CoordinatedGraphicsLayer::setContentsOpaque(bool b)
         return;
 
     GraphicsLayer::setContentsOpaque(b);
-    m_layerState.contentsOpaque = b;
-    m_layerState.flagsChanged = true;
     m_nicosia.delta.flagsChanged = true;
 
     // Demand a repaint of the whole layer.
@@ -353,7 +327,7 @@ void CoordinatedGraphicsLayer::setContentsOpaque(bool b)
         addRepaintRect({ { }, m_size });
     }
 
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setBackfaceVisibility(bool b)
@@ -362,11 +336,9 @@ void CoordinatedGraphicsLayer::setBackfaceVisibility(bool b)
         return;
 
     GraphicsLayer::setBackfaceVisibility(b);
-    m_layerState.backfaceVisible = b;
-    m_layerState.flagsChanged = true;
     m_nicosia.delta.flagsChanged = true;
 
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setOpacity(float opacity)
@@ -375,11 +347,9 @@ void CoordinatedGraphicsLayer::setOpacity(float opacity)
         return;
 
     GraphicsLayer::setOpacity(opacity);
-    m_layerState.opacity = opacity;
-    m_layerState.opacityChanged = true;
     m_nicosia.delta.opacityChanged = true;
 
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setContentsRect(const FloatRect& r)
@@ -388,11 +358,9 @@ void CoordinatedGraphicsLayer::setContentsRect(const FloatRect& r)
         return;
 
     GraphicsLayer::setContentsRect(r);
-    m_layerState.contentsRect = r;
-    m_layerState.contentsRectChanged = true;
     m_nicosia.delta.contentsRectChanged = true;
 
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setContentsTileSize(const FloatSize& s)
@@ -401,10 +369,8 @@ void CoordinatedGraphicsLayer::setContentsTileSize(const FloatSize& s)
         return;
 
     GraphicsLayer::setContentsTileSize(s);
-    m_layerState.contentsTileSize = s;
-    m_layerState.contentsTilingChanged = true;
     m_nicosia.delta.contentsTilingChanged = true;
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setContentsTilePhase(const FloatSize& p)
@@ -413,10 +379,8 @@ void CoordinatedGraphicsLayer::setContentsTilePhase(const FloatSize& p)
         return;
 
     GraphicsLayer::setContentsTilePhase(p);
-    m_layerState.contentsTilePhase = p;
-    m_layerState.contentsTilingChanged = true;
     m_nicosia.delta.contentsTilingChanged = true;
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 static bool s_shouldSupportContentsTiling = false;
@@ -433,14 +397,9 @@ bool GraphicsLayer::supportsContentsTiling()
 
 void CoordinatedGraphicsLayer::setContentsNeedsDisplay()
 {
-#if USE(COORDINATED_GRAPHICS_THREADED)
-#if USE(NICOSIA)
+#if USE(COORDINATED_GRAPHICS_THREADED) && USE(NICOSIA)
     if (m_nicosia.contentLayer)
         m_shouldUpdatePlatformLayer = true;
-#else
-    if (m_platformLayer)
-        m_shouldUpdatePlatformLayer = true;
-#endif
 #endif
 
     notifyFlushRequired();
@@ -449,20 +408,12 @@ void CoordinatedGraphicsLayer::setContentsNeedsDisplay()
 
 void CoordinatedGraphicsLayer::setContentsToPlatformLayer(PlatformLayer* platformLayer, ContentsLayerPurpose)
 {
-#if USE(COORDINATED_GRAPHICS_THREADED)
-#if USE(NICOSIA)
+#if USE(COORDINATED_GRAPHICS_THREADED) && USE(NICOSIA)
     auto* contentLayer = downcast<Nicosia::ContentLayer>(platformLayer);
     if (m_nicosia.contentLayer != contentLayer) {
-        m_shouldSyncPlatformLayer = true;
         m_nicosia.contentLayer = contentLayer;
         m_nicosia.delta.contentLayerChanged = true;
     }
-#else
-    if (m_platformLayer != platformLayer)
-        m_shouldSyncPlatformLayer = true;
-
-    m_platformLayer = platformLayer;
-#endif
     notifyFlushRequired();
 #else
     UNUSED_PARAM(platformLayer);
@@ -506,11 +457,9 @@ void CoordinatedGraphicsLayer::setContentsToSolidColor(const Color& color)
         return;
 
     m_solidColor = color;
-    m_layerState.solidColor = color;
-    m_layerState.solidColorChanged = true;
     m_nicosia.delta.solidColorChanged = true;
 
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setShowDebugBorder(bool show)
@@ -519,12 +468,13 @@ void CoordinatedGraphicsLayer::setShowDebugBorder(bool show)
         return;
 
     GraphicsLayer::setShowDebugBorder(show);
-    m_layerState.debugVisuals.showDebugBorders = show;
-    m_layerState.debugVisualsChanged = true;
     m_nicosia.debugBorder.visible = show;
     m_nicosia.delta.debugBorderChanged = true;
 
-    didChangeLayerState();
+    if (m_nicosia.debugBorder.visible)
+        updateDebugIndicators();
+
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setShowRepaintCounter(bool show)
@@ -533,12 +483,10 @@ void CoordinatedGraphicsLayer::setShowRepaintCounter(bool show)
         return;
 
     GraphicsLayer::setShowRepaintCounter(show);
-    m_layerState.repaintCount.showRepaintCounter = show;
-    m_layerState.repaintCountChanged = true;
     m_nicosia.repaintCounter.visible = show;
     m_nicosia.delta.repaintCounterChanged = true;
 
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setContentsToImage(Image* image)
@@ -551,7 +499,7 @@ void CoordinatedGraphicsLayer::setContentsToImage(Image* image)
     m_compositedNativeImagePtr = nativeImagePtr;
 
     GraphicsLayer::setContentsToImage(image);
-    didChangeImageBacking();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setMaskLayer(GraphicsLayer* layer)
@@ -566,14 +514,10 @@ void CoordinatedGraphicsLayer::setMaskLayer(GraphicsLayer* layer)
 
     layer->setSize(size());
     layer->setContentsVisible(contentsAreVisible());
-    auto& coordinatedLayer = downcast<CoordinatedGraphicsLayer>(*layer);
-    coordinatedLayer.didChangeLayerState();
 
-    m_layerState.mask = coordinatedLayer.id();
-    m_layerState.maskChanged = true;
     m_nicosia.delta.maskChanged = true;
 
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 bool CoordinatedGraphicsLayer::shouldDirectlyCompositeImage(Image* image) const
@@ -594,10 +538,8 @@ void CoordinatedGraphicsLayer::setReplicatedByLayer(GraphicsLayer* layer)
         return;
 
     GraphicsLayer::setReplicatedByLayer(layer);
-    m_layerState.replica = toCoordinatedLayerID(layer);
-    m_layerState.replicaChanged = true;
     m_nicosia.delta.replicaChanged = true;
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setNeedsDisplay()
@@ -608,7 +550,7 @@ void CoordinatedGraphicsLayer::setNeedsDisplay()
     m_needsDisplay.completeLayer = true;
     m_needsDisplay.rects.clear();
 
-    didChangeLayerState();
+    notifyFlushRequired();
     addRepaintRect({ { }, m_size });
 }
 
@@ -635,7 +577,7 @@ void CoordinatedGraphicsLayer::setNeedsDisplayInRect(const FloatRect& initialRec
     else
         rects[0].unite(rect);
 
-    didChangeLayerState();
+    notifyFlushRequired();
     addRepaintRect(rect);
 }
 
@@ -653,134 +595,18 @@ void CoordinatedGraphicsLayer::flushCompositingState(const FloatRect& rect)
         child->flushCompositingState(rect);
 }
 
-void CoordinatedGraphicsLayer::syncChildren()
-{
-    if (!m_shouldSyncChildren)
-        return;
-    m_shouldSyncChildren = false;
-    m_layerState.childrenChanged = true;
-    m_nicosia.delta.childrenChanged = true;
-
-    m_layerState.children.clear();
-    for (auto& child : children())
-        m_layerState.children.append(toCoordinatedLayerID(child));
-}
-
-void CoordinatedGraphicsLayer::syncFilters()
-{
-    if (!m_shouldSyncFilters)
-        return;
-    m_shouldSyncFilters = false;
-
-    m_layerState.filters = GraphicsLayer::filters();
-    m_layerState.filtersChanged = true;
-    m_nicosia.delta.filtersChanged = true;
-}
-
-void CoordinatedGraphicsLayer::syncImageBacking()
-{
-    if (!m_shouldSyncImageBacking)
-        return;
-    m_shouldSyncImageBacking = false;
-
-    if (m_compositedNativeImagePtr) {
-        ASSERT(!shouldHaveBackingStore());
-        ASSERT(m_compositedImage);
-
-        bool imageInstanceReplaced = m_coordinatedImageBacking && (m_coordinatedImageBacking->id() != CoordinatedImageBacking::getCoordinatedImageBackingID(*m_compositedImage));
-        if (imageInstanceReplaced)
-            releaseImageBackingIfNeeded();
-
-        if (!m_coordinatedImageBacking) {
-            m_coordinatedImageBacking = m_coordinator->createImageBackingIfNeeded(*m_compositedImage);
-            m_coordinatedImageBacking->addHost(*this);
-            m_layerState.imageID = m_coordinatedImageBacking->id();
-        }
-
-        m_coordinatedImageBacking->markDirty();
-        m_layerState.imageChanged = true;
-    } else
-        releaseImageBackingIfNeeded();
-}
-
-void CoordinatedGraphicsLayer::syncLayerState()
-{
-    if (!m_shouldSyncLayerState)
-        return;
-    m_shouldSyncLayerState = false;
-
-    m_layerState.childrenTransform = childrenTransform();
-    m_layerState.contentsRect = contentsRect();
-    m_layerState.mask = toCoordinatedLayerID(maskLayer());
-    m_layerState.opacity = opacity();
-    m_layerState.replica = toCoordinatedLayerID(replicaLayer());
-    m_layerState.transform = transform();
-
-    m_layerState.anchorPoint = m_adjustedAnchorPoint;
-    m_layerState.pos = m_adjustedPosition;
-    m_layerState.size = m_adjustedSize;
-
-    if (m_layerState.flagsChanged) {
-        m_layerState.contentsOpaque = contentsOpaque();
-        m_layerState.drawsContent = drawsContent();
-        m_layerState.contentsVisible = contentsAreVisible();
-        m_layerState.backfaceVisible = backfaceVisibility();
-        m_layerState.masksToBounds = masksToBounds();
-        m_layerState.preserves3D = preserves3D();
-    }
-
-    if (m_layerState.debugVisualsChanged) {
-        m_layerState.debugVisuals.showDebugBorders = isShowingDebugBorder();
-        if (m_layerState.debugVisuals.showDebugBorders)
-            updateDebugIndicators();
-    }
-    if (m_layerState.repaintCountChanged)
-        m_layerState.repaintCount.showRepaintCounter = isShowingRepaintCounter();
-}
-
 void CoordinatedGraphicsLayer::setDebugBorder(const Color& color, float width)
 {
-    ASSERT(m_layerState.debugVisuals.showDebugBorders);
-    if (m_layerState.debugVisuals.debugBorderColor != color) {
-        m_layerState.debugVisuals.debugBorderColor = color;
-        m_layerState.debugVisualsChanged = true;
+    ASSERT(m_nicosia.debugBorder.visible);
+    if (m_nicosia.debugBorder.color != color) {
         m_nicosia.debugBorder.color = color;
         m_nicosia.delta.debugBorderChanged = true;
     }
 
-    if (m_layerState.debugVisuals.debugBorderWidth != width) {
-        m_layerState.debugVisuals.debugBorderWidth = width;
-        m_layerState.debugVisualsChanged = true;
+    if (m_nicosia.debugBorder.width != width) {
         m_nicosia.debugBorder.width = width;
         m_nicosia.delta.debugBorderChanged = true;
     }
-}
-
-void CoordinatedGraphicsLayer::syncAnimations()
-{
-    if (!m_shouldSyncAnimations)
-        return;
-
-    m_shouldSyncAnimations = false;
-    m_layerState.animations = m_animations.getActiveAnimations();
-    m_layerState.animationsChanged = true;
-    m_nicosia.delta.animationsChanged = true;
-}
-
-void CoordinatedGraphicsLayer::syncPlatformLayer()
-{
-    if (!m_shouldSyncPlatformLayer)
-        return;
-
-    m_shouldSyncPlatformLayer = false;
-#if USE(COORDINATED_GRAPHICS_THREADED)
-#if USE(NICOSIA)
-#else
-    m_layerState.platformLayerChanged = true;
-    if (m_platformLayer)
-        m_layerState.platformLayerProxy = m_platformLayer->proxy();
-#endif
-#endif
 }
 
 void CoordinatedGraphicsLayer::updatePlatformLayer()
@@ -789,15 +615,9 @@ void CoordinatedGraphicsLayer::updatePlatformLayer()
         return;
 
     m_shouldUpdatePlatformLayer = false;
-#if USE(COORDINATED_GRAPHICS_THREADED)
-#if USE(NICOSIA)
+#if USE(COORDINATED_GRAPHICS_THREADED) && USE(NICOSIA)
     if (m_nicosia.contentLayer)
         downcast<Nicosia::ContentLayerTextureMapperImpl>(m_nicosia.contentLayer->impl()).swapBuffersIfNeeded();
-#else
-    m_layerState.platformLayerUpdated = true;
-    if (m_platformLayer)
-        m_platformLayer->swapBuffersIfNeeded();
-#endif
 #endif
 }
 
@@ -811,16 +631,7 @@ void CoordinatedGraphicsLayer::flushCompositingStateForThisLayerOnly()
     // Sets the values.
     computePixelAlignment(m_adjustedPosition, m_adjustedSize, m_adjustedAnchorPoint, m_pixelAlignmentOffset);
 
-    // FIXME: this is commented out to immediately disable any old-way image updates.
-    // It will soon be removed in a larger cleanup.
-    // syncImageBacking();
-
-    syncLayerState();
-    syncAnimations();
     computeTransformedVisibleRect();
-    syncChildren();
-    syncFilters();
-    syncPlatformLayer();
     updatePlatformLayer();
 
     // Only unset m_movingVisibleRect after we have updated the visible rect after the animation stopped.
@@ -972,13 +783,8 @@ void CoordinatedGraphicsLayer::flushCompositingStateForThisLayerOnly()
 
 void CoordinatedGraphicsLayer::syncPendingStateChangesIncludingSubLayers()
 {
-    // FIXME: For now the best way for layer state changes to trigger an update is to use
-    // the CoordinatedGraphicsLayerClient::syncLayerState() method. This should be simplified
-    // once the m_layerState member object is removed.
-    if (m_nicosia.performLayerSync || m_layerState.hasPendingChanges()) {
-        m_coordinator->syncLayerState(m_id, m_layerState);
-        resetLayerState();
-    }
+    if (m_nicosia.performLayerSync)
+        m_coordinator->syncLayerState();
     m_nicosia.performLayerSync = false;
 
     if (maskLayer())
@@ -986,32 +792,6 @@ void CoordinatedGraphicsLayer::syncPendingStateChangesIncludingSubLayers()
 
     for (auto& child : children())
         downcast<CoordinatedGraphicsLayer>(*child).syncPendingStateChangesIncludingSubLayers();
-}
-
-void CoordinatedGraphicsLayer::resetLayerState()
-{
-    m_layerState.changeMask = 0;
-    m_layerState.tilesToCreate.clear();
-    m_layerState.tilesToRemove.clear();
-    m_layerState.tilesToUpdate.clear();
-}
-
-bool CoordinatedGraphicsLayer::imageBackingVisible()
-{
-    ASSERT(m_coordinatedImageBacking);
-    return transformedVisibleRect().intersects(IntRect(contentsRect()));
-}
-
-void CoordinatedGraphicsLayer::releaseImageBackingIfNeeded()
-{
-    if (!m_coordinatedImageBacking)
-        return;
-
-    ASSERT(m_coordinator);
-    m_coordinatedImageBacking->removeHost(*this);
-    m_coordinatedImageBacking = nullptr;
-    m_layerState.imageID = InvalidCoordinatedImageBackingID;
-    m_layerState.imageChanged = true;
 }
 
 void CoordinatedGraphicsLayer::deviceOrPageScaleFactorChanged()
@@ -1023,12 +803,6 @@ void CoordinatedGraphicsLayer::deviceOrPageScaleFactorChanged()
 float CoordinatedGraphicsLayer::effectiveContentsScale()
 {
     return selfOrAncestorHaveNonAffineTransforms() ? 1 : deviceScaleFactor() * pageScaleFactor();
-}
-
-void CoordinatedGraphicsLayer::tiledBackingStoreHasPendingTileCreation()
-{
-    setNeedsVisibleRectAdjustment();
-    notifyFlushRequired();
 }
 
 static void clampToContentsRectIfRectIsInfinite(FloatRect& rect, const FloatSize& contentsSize)
@@ -1057,36 +831,6 @@ IntRect CoordinatedGraphicsLayer::transformedVisibleRect()
     FloatRect rect = m_cachedInverseTransform.clampedBoundsOfProjectedQuad(FloatQuad(m_coordinator->visibleContentsRect()));
     clampToContentsRectIfRectIsInfinite(rect, size());
     return enclosingIntRect(rect);
-}
-
-void CoordinatedGraphicsLayer::createTile(uint32_t tileID, float scaleFactor)
-{
-    ASSERT(m_coordinator);
-    ASSERT(m_coordinator->isFlushingLayerChanges());
-
-    TileCreationInfo creationInfo;
-    creationInfo.tileID = tileID;
-    creationInfo.scale = scaleFactor;
-    m_layerState.tilesToCreate.append(creationInfo);
-}
-
-void CoordinatedGraphicsLayer::updateTile(uint32_t tileID, const SurfaceUpdateInfo& updateInfo, const IntRect& tileRect)
-{
-    ASSERT(m_coordinator);
-    ASSERT(m_coordinator->isFlushingLayerChanges());
-
-    TileUpdateInfo tileUpdateInfo;
-    tileUpdateInfo.tileID = tileID;
-    tileUpdateInfo.tileRect = tileRect;
-    tileUpdateInfo.updateInfo = updateInfo;
-    m_layerState.tilesToUpdate.append(tileUpdateInfo);
-}
-
-void CoordinatedGraphicsLayer::removeTile(uint32_t tileID)
-{
-    ASSERT(m_coordinator);
-    ASSERT(m_coordinator->isFlushingLayerChanges() || m_isPurging);
-    m_layerState.tilesToRemove.append(tileID);
 }
 
 void CoordinatedGraphicsLayer::updateContentBuffersIncludingSubLayers()
@@ -1220,8 +964,6 @@ void CoordinatedGraphicsLayer::purgeBackingStores()
 #ifndef NDEBUG
     SetForScope<bool> updateModeProtector(m_isPurging, true);
 #endif
-    m_mainBackingStore = nullptr;
-    m_previousBackingStore = nullptr;
     if (m_nicosia.backingStore) {
         auto& layerState = downcast<Nicosia::BackingStoreTextureMapperImpl>(m_nicosia.backingStore->impl()).layerState();
         layerState.isPurging = true;
@@ -1231,9 +973,7 @@ void CoordinatedGraphicsLayer::purgeBackingStores()
         m_nicosia.backingStore = nullptr;
     }
 
-    releaseImageBackingIfNeeded();
-
-    didChangeLayerState();
+    notifyFlushRequired();
 }
 
 void CoordinatedGraphicsLayer::setCoordinator(CoordinatedGraphicsLayerClient* coordinator)
@@ -1261,7 +1001,7 @@ void CoordinatedGraphicsLayer::setCoordinatorIncludingSubLayersIfNeeded(Coordina
     // flag value, so the scene won't update it and the layer won't be rendered.
     //
     // We need to update here the layer changeMask so the scene gets all the current values.
-    m_layerState.changeMask = UINT_MAX;
+    m_nicosia.delta.value = UINT_MAX;
 
     coordinator->attachLayer(this);
     for (auto& child : children())
@@ -1446,6 +1186,11 @@ void CoordinatedGraphicsLayer::resumeAnimations()
 void CoordinatedGraphicsLayer::animationStartedTimerFired()
 {
     client().notifyAnimationStarted(this, "", m_lastAnimationStartTime);
+}
+
+bool CoordinatedGraphicsLayer::usesContentsLayer() const
+{
+    return m_nicosia.contentLayer || m_compositedImage;
 }
 
 } // namespace WebCore

@@ -51,7 +51,6 @@
 #include "SmallStrings.h"
 #include "Strong.h"
 #include "StructureCache.h"
-#include "VMEntryRecord.h"
 #include "VMTraps.h"
 #include "WasmContext.h"
 #include "Watchpoint.h"
@@ -168,9 +167,12 @@ namespace DOMJIT {
 class Signature;
 }
 
+struct EntryFrame;
 struct HashTable;
 struct Instruction;
 struct ValueProfile;
+
+typedef ExecState CallFrame;
 
 struct LocalTimeOffsetCache {
     LocalTimeOffsetCache()
@@ -293,6 +295,11 @@ public:
     unsigned id() const { return m_id; }
     bool isEntered() const { return !!entryScope; }
 
+    inline CallFrame* topJSCallFrame() const;
+
+    // Global object in which execution began.
+    JS_EXPORT_PRIVATE JSGlobalObject* vmEntryGlobalObject(const CallFrame*) const;
+
 private:
     unsigned nextID();
 
@@ -302,7 +309,6 @@ private:
     RefPtr<JSLock> m_apiLock;
 #if USE(CF)
     // These need to be initialized before heap below.
-    HashSet<JSRunLoopTimer*> m_runLoopTimers;
     RetainPtr<CFRunLoopRef> m_runLoop;
 #endif
 
@@ -882,8 +888,6 @@ public:
 
 #if USE(CF)
     CFRunLoopRef runLoop() const { return m_runLoop.get(); }
-    void registerRunLoopTimer(JSRunLoopTimer*);
-    void unregisterRunLoopTimer(JSRunLoopTimer*);
     JS_EXPORT_PRIVATE void setRunLoop(CFRunLoopRef);
 #endif // USE(CF)
 

@@ -32,10 +32,17 @@
 #include "RealtimeOutgoingAudioSource.h"
 #include "RealtimeOutgoingVideoSource.h"
 #include <Timer.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 #include <webrtc/api/jsep.h>
 #include <webrtc/api/peerconnectioninterface.h>
 #include <webrtc/pc/peerconnectionfactory.h>
 #include <webrtc/pc/rtcstatscollector.h>
+
+#pragma GCC diagnostic pop
+
 #include <wtf/LoggerHelper.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -89,7 +96,7 @@ public:
     RefPtr<RTCSessionDescription> pendingLocalDescription() const;
     RefPtr<RTCSessionDescription> pendingRemoteDescription() const;
 
-    void addTrack(RTCRtpSender&, MediaStreamTrack&, const Vector<String>&);
+    bool addTrack(RTCRtpSender&, MediaStreamTrack&, const Vector<String>&);
     void removeTrack(RTCRtpSender&);
     RTCRtpParameters getRTCRtpSenderParameters(RTCRtpSender&);
 
@@ -129,8 +136,10 @@ private:
     void AddRef() const { ref(); }
     rtc::RefCountReleaseStatus Release() const
     {
+        auto result = refCount() - 1;
         deref();
-        return refCount() ? rtc::RefCountReleaseStatus::kDroppedLastRef : rtc::RefCountReleaseStatus::kOtherRefsRemained;
+        return result ? rtc::RefCountReleaseStatus::kOtherRefsRemained
+        : rtc::RefCountReleaseStatus::kDroppedLastRef;
     }
 
     bool shouldOfferAllowToReceiveAudio() const;
@@ -213,6 +222,8 @@ private:
 
     bool m_isInitiator { false };
     Timer m_statsLogTimer;
+
+    HashMap<String, rtc::scoped_refptr<webrtc::MediaStreamInterface>> m_localStreams;
 
 #if !RELEASE_LOG_DISABLED
     int64_t m_statsFirstDeliveredTimestamp { 0 };

@@ -34,5 +34,12 @@ class NormalUsePropertyResolver extends Rewriter {
     {
         return super.visitIndexExpression(node).rewriteAfterCloning();
     }
+
+    visitTernaryExpression(node)
+    {
+        let result = super.visitTernaryExpression(node);
+        result.isLValue = node.isLValue;
+        return result;
+    }
 }
 

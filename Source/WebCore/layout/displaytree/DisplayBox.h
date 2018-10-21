@@ -37,6 +37,8 @@ class RenderStyle;
 
 namespace Layout {
 class BlockFormattingContext;
+class FloatAvoider;
+class FloatBox;
 class FormattingContext;
 class FloatingContext;
 class LayoutContext;
@@ -48,6 +50,8 @@ class Box {
     WTF_MAKE_ISO_ALLOCATED(Box);
 public:
     friend class Layout::BlockFormattingContext;
+    friend class Layout::FloatAvoider;
+    friend class Layout::FloatBox;
     friend class Layout::FormattingContext;
     friend class Layout::FloatingContext;
     friend class Layout::LayoutContext;

@@ -201,6 +201,8 @@ TEST(WTF_WeakPtr, Forget)
 
 class Base {
 public:
+    Base() { }
+
     int foo()
     {
         return 0;
@@ -214,6 +216,8 @@ private:
 
 class Derived : public Base {
 public:
+    Derived() { }
+
     int foo()
     {
         return 1;

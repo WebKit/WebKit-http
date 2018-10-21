@@ -41,8 +41,13 @@ class Checker extends Visitor {
             statement.visit(this);
         }
         
-        for (let type of node.types.values())
-            doStatement(type);
+        for (let type of node.types.values()) {
+            if (type instanceof Array) {
+                for (let constituentType of type)
+                    doStatement(constituentType);
+            } else
+                doStatement(type);
+        }
         for (let funcs of node.functions.values()) {
             for (let func of funcs) {
                 this.visitFunc(func);
@@ -247,6 +252,10 @@ class Checker extends Visitor {
     {
         if (!node.type)
             throw new Error("Type reference without a type in checker: " + node + " at " + node.origin);
+        // All the structs will be visited by visitProgram() iterating through each top-level type.
+        // We don't want to recurse here because the contents of structs can refer to themselves (e.g. a linked list),
+        // and this would can an infinite loop.
+        // Typedefs can't refer to themselves because we check that in TypeDefResolver.
         if (!(node.type instanceof StructType))
             node.type.visit(this);
     }
@@ -638,6 +647,21 @@ class Checker extends Visitor {
         for (let expression of node.list)
             result = expression.visit(this);
         return result;
+    }
+
+    visitTernaryExpression(node)
+    {
+        this._requireBool(node.predicate);
+        let bodyType = node.bodyExpression.visit(this);
+        let elseType = node.elseExpression.visit(this);
+        if (!bodyType)
+            throw new Error("Ternary expression body has no type: " + node.bodyExpression);
+        if (!elseType)
+            throw new Error("Ternary expression else has no type: " + node.elseExpression);
+        if (!bodyType.equalsWithCommit(elseType))
+            throw new WTypeError("Body and else clause of ternary statement don't have the same type: " + node);
+        node.isLValue = node.bodyExpression.isLValue && node.elseExpression.isLValue;
+        return bodyType;
     }
     
     visitCallExpression(node)

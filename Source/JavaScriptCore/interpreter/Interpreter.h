@@ -64,8 +64,6 @@ namespace JSC {
     struct ProtoCallFrame;
     struct UnlinkedInstruction;
 
-    enum UnwindStart : uint8_t { UnwindFromCurrentFrame, UnwindFromCallerFrame };
-
     enum DebugHookType {
         WillExecuteProgram,
         DidExecuteProgram,
@@ -116,8 +114,8 @@ namespace JSC {
         JSValue execute(EvalExecutable*, CallFrame*, JSValue thisValue, JSScope*);
 
         void getArgumentsData(CallFrame*, JSFunction*&, ptrdiff_t& firstParameterIndex, Register*& argv, int& argc);
-        
-        NEVER_INLINE HandlerInfo* unwind(VM&, CallFrame*&, Exception*, UnwindStart);
+
+        NEVER_INLINE HandlerInfo* unwind(VM&, CallFrame*&, Exception*);
         void notifyDebuggerOfExceptionToBeThrown(VM&, CallFrame*, Exception*);
         NEVER_INLINE void debug(CallFrame*, DebugHookType);
         static String stackTraceAsString(VM&, const Vector<StackFrame>&);
@@ -126,8 +124,6 @@ namespace JSC {
         static EncodedJSValue JSC_HOST_CALL callErrorConstructor(ExecState*);
         static EncodedJSValue JSC_HOST_CALL constructWithNativeErrorConstructor(ExecState*);
         static EncodedJSValue JSC_HOST_CALL callNativeErrorConstructor(ExecState*);
-
-        JS_EXPORT_PRIVATE void dumpCallFrame(CallFrame*);
 
         void getStackTrace(JSCell* owner, Vector<StackFrame>& results, size_t framesToSkip = 0, size_t maxStackSize = std::numeric_limits<size_t>::max());
 
@@ -150,10 +146,6 @@ namespace JSC {
 
         JSValue execute(CallFrameClosure&);
 
-
-
-        void dumpRegisters(CallFrame*);
-        
         VM& m_vm;
 #if !ENABLE(JIT)
         CLoopStack m_cloopStack;

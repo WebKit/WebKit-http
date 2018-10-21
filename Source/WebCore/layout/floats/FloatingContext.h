@@ -35,6 +35,7 @@ namespace WebCore {
 
 namespace Layout {
 
+class FloatAvoider;
 class Box;
 class Container;
 class FloatingPair;
@@ -49,18 +50,13 @@ public:
 
     FloatingState& floatingState() const { return m_floatingState; }
 
-    Position positionForFloat(const Box&) const;
-    std::optional<LayoutUnit> verticalPositionWithClearance(const Box&) const;
+    PointInContainingBlock positionForFloat(const Box&) const;
+    std::optional<PositionInContainingBlock> verticalPositionWithClearance(const Box&) const;
 
 private:
     LayoutContext& layoutContext() const { return m_floatingState.layoutContext(); }
 
-    Position floatingPosition(const FloatingState::FloatItem&) const;
-
-    LayoutUnit initialVerticalPosition(const FloatingState::FloatItem&) const;
-    LayoutUnit alignWithContainingBlock(const FloatingState::FloatItem&) const;
-    LayoutUnit alignWithFloatings(const FloatingPair&, const FloatingState::FloatItem&) const;
-    Position toContainingBlock(const FloatingState::FloatItem&, Position) const;
+    void floatingPosition(FloatAvoider&) const;
 
     FloatingState& m_floatingState;
 };

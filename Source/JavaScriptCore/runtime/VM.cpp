@@ -143,6 +143,7 @@
 #include "TypeProfilerLog.h"
 #include "UnlinkedCodeBlock.h"
 #include "VMEntryScope.h"
+#include "VMInlines.h"
 #include "VMInspector.h"
 #include "VariableEnvironment.h"
 #include "WasmWorklist.h"
@@ -381,6 +382,8 @@ VM::VM(VMType vmType, HeapType heapType)
     updateSoftReservedZoneSize(Options::softReservedZoneSize());
     setLastStackTop(stack.origin());
 
+    JSRunLoopTimer::Manager::shared().registerVM(*this);
+
     // Need to be careful to keep everything consistent here
     JSLockHolder lock(this);
     AtomicStringTable* existingEntryAtomicStringTable = Thread::current().setCurrentAtomicStringTable(m_atomicStringTable);
@@ -581,6 +584,8 @@ VM::~VM()
     ASSERT(currentThreadIsHoldingAPILock());
     m_apiLock->willDestroyVM(this);
     heap.lastChanceToFinalize();
+
+    JSRunLoopTimer::Manager::shared().unregisterVM(*this);
     
     delete interpreter;
 #ifndef NDEBUG
@@ -826,15 +831,16 @@ void VM::clearSourceProviderCaches()
 
 void VM::throwException(ExecState* exec, Exception* exception)
 {
+    ASSERT(exec == topCallFrame || exec->isGlobalExec());
+    CallFrame* throwOriginFrame = exec->isGlobalExec() ? exec : topJSCallFrame();
+
     if (Options::breakOnThrow()) {
-        CodeBlock* codeBlock = exec->codeBlock();
-        dataLog("Throwing exception in call frame ", RawPointer(exec), " for code block ", codeBlock, "\n");
+        CodeBlock* codeBlock = throwOriginFrame ? throwOriginFrame->codeBlock() : nullptr;
+        dataLog("Throwing exception in call frame ", RawPointer(throwOriginFrame), " for code block ", codeBlock, "\n");
         CRASH();
     }
 
-    ASSERT(exec == topCallFrame || exec == exec->lexicalGlobalObject()->globalExec() || exec == exec->vmEntryGlobalObject()->globalExec());
-
-    interpreter->notifyDebuggerOfExceptionToBeThrown(*this, exec, exception);
+    interpreter->notifyDebuggerOfExceptionToBeThrown(*this, throwOriginFrame, exception);
 
     setException(exception);
 
@@ -1209,27 +1215,11 @@ void VM::verifyExceptionCheckNeedIsSatisfied(unsigned recursionDepth, ExceptionE
 #endif
 
 #if USE(CF)
-void VM::registerRunLoopTimer(JSRunLoopTimer* timer)
-{
-    ASSERT(runLoop());
-    ASSERT(!m_runLoopTimers.contains(timer));
-    m_runLoopTimers.add(timer);
-    timer->setRunLoop(runLoop());
-}
-
-void VM::unregisterRunLoopTimer(JSRunLoopTimer* timer)
-{
-    ASSERT(m_runLoopTimers.contains(timer));
-    m_runLoopTimers.remove(timer);
-    timer->setRunLoop(nullptr);
-}
-
 void VM::setRunLoop(CFRunLoopRef runLoop)
 {
     ASSERT(runLoop);
     m_runLoop = runLoop;
-    for (auto timer : m_runLoopTimers)
-        timer->setRunLoop(runLoop);
+    JSRunLoopTimer::Manager::shared().didChangeRunLoop(*this, runLoop);
 }
 #endif // USE(CF)
 
@@ -1261,6 +1251,17 @@ void VM::clearScratchBuffers()
     auto lock = holdLock(m_scratchBufferLock);
     for (auto* scratchBuffer : m_scratchBuffers)
         scratchBuffer->setActiveLength(0);
+}
+
+JSGlobalObject* VM::vmEntryGlobalObject(const CallFrame* callFrame) const
+{
+    if (callFrame && callFrame->isGlobalExec()) {
+        ASSERT(callFrame->callee().isCell() && callFrame->callee().asCell()->isObject());
+        ASSERT(callFrame == callFrame->lexicalGlobalObject()->globalExec());
+        return callFrame->lexicalGlobalObject();
+    }
+    ASSERT(entryScope);
+    return entryScope->globalObject();
 }
 
 } // namespace JSC

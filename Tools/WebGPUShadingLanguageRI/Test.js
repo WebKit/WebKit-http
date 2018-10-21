@@ -198,6 +198,68 @@ tests.commentParsing = function() {
         (e) => e instanceof WSyntaxError);
 }
 
+tests.ternaryExpression = function() {
+    let program = doPrep(`
+        int foo(int x)
+        {
+            return x < 3 ? 4 : 5;
+        }
+        int bar(int x)
+        {
+            int y = 1;
+            int z = 2;
+            (x < 3 ? y : z) = 7;
+            return y;
+        }
+        int baz(int x)
+        {
+            return x < 10 ? 11 : x < 12 ? 14 : 15;
+        }
+        int quux(int x)
+        {
+            return 3 < 4 ? x : 5;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [makeInt(program, 767)]), 5);
+    checkInt(program, callFunction(program, "foo", [makeInt(program, 2)]), 4);
+    checkInt(program, callFunction(program, "bar", [makeInt(program, 2)]), 7);
+    checkInt(program, callFunction(program, "bar", [makeInt(program, 8)]), 1);
+    checkInt(program, callFunction(program, "baz", [makeInt(program, 8)]), 11);
+    checkInt(program, callFunction(program, "baz", [makeInt(program, 9)]), 11);
+    checkInt(program, callFunction(program, "baz", [makeInt(program, 10)]), 14);
+    checkInt(program, callFunction(program, "baz", [makeInt(program, 11)]), 14);
+    checkInt(program, callFunction(program, "baz", [makeInt(program, 12)]), 15);
+    checkInt(program, callFunction(program, "baz", [makeInt(program, 13)]), 15);
+    checkInt(program, callFunction(program, "quux", [makeInt(program, 14)]), 14);
+    checkFail(
+        () => doPrep(`
+            int foo()
+            {
+                int x;
+                (4 < 5 ? x : 7) = 8;
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            int foo()
+            {
+                int x;
+                float y;
+                return 4 < 5 ? x : y;
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            int foo()
+            {
+                return 4 < 5 ? 6 : 7.0;
+            }
+        `),
+        (e) => e instanceof WTypeError);
+}
+
 tests.literalBool = function() {
     let program = doPrep("bool foo() { return true; }");
     checkBool(program, callFunction(program, "foo", []), true);
@@ -2881,7 +2943,7 @@ tests.shaderTypes = function()
             }
             fragment Boo bar(Foo stageIn)
             {
-                return boo();
+                return Boo();
             }
         `),
         (e) => e instanceof WTypeError);
@@ -2904,7 +2966,7 @@ tests.shaderTypes = function()
 
 tests.vectorTypeSyntax = function()
 {
-    const program = doPrep(`
+    let program = doPrep(`
         int foo2()
         {
             int2 x;
@@ -2939,7 +3001,26 @@ tests.vectorTypeSyntax = function()
     checkInt(program, callFunction(program, "foo2", []), 4);
     checkInt(program, callFunction(program, "foo3", []), 5);
     checkInt(program, callFunction(program, "foo4", []), 6);
+    checkBool(program, callFunction(program, "vec2OperatorCast", []), true);
 
+    program = doPrep(`
+        typedef i = int;
+        int foo2()
+        {
+            int2 x;
+            vector<i, 2> z = int2(3, 4);
+            x = z;
+            return x.y;
+        }
+
+        bool vec2OperatorCast()
+        {
+            int2 x = vector<i,2>(1, 2);
+            vector<i, 2> y = int2(1, 2);
+            return x == y && x.x == 1 && x.y == 2 && y.x == 1 && y.y == 2;
+        }`);
+
+    checkInt(program, callFunction(program, "foo2", []), 4);
     checkBool(program, callFunction(program, "vec2OperatorCast", []), true);
 }
 

@@ -27,8 +27,13 @@
 function resolveTypeDefsInTypes(program)
 {
     let resolver = new TypeDefResolver();
-    for (let type of program.types.values())
-        type.visit(resolver);
+    for (let type of program.types.values()) {
+        if (type instanceof Array) {
+            for (let constituentType of type)
+                constituentType.visit(resolver);
+        } else
+            type.visit(resolver);
+    }
 }
 
 function resolveTypeDefsInFunctions(program)

@@ -1,7 +1,7 @@
 include(GNUInstallDirs)
 include(VersioningUtils)
 
-SET_PROJECT_VERSION(2 21 5)
+SET_PROJECT_VERSION(2 23 0)
 set(WEBKITGTK_API_VERSION 4.0)
 
 CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 68 1 31)
@@ -19,7 +19,7 @@ set(INTROSPECTION_INSTALL_TYPELIBDIR "${LIB_INSTALL_DIR}/girepository-1.0")
 
 find_package(Cairo 1.10.2 REQUIRED)
 find_package(Fontconfig 2.8.0 REQUIRED)
-find_package(Freetype2 2.4.2 REQUIRED)
+find_package(Freetype 2.4.2 REQUIRED)
 find_package(LibGcrypt 1.6.0 REQUIRED)
 find_package(GTK3 3.6.0 REQUIRED)
 find_package(GDK3 3.6.0 REQUIRED)

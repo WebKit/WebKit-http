@@ -1,3 +1,160 @@
+2018-08-27  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [WebAssembly] Parse wasm modules in a streaming fashion
+        https://bugs.webkit.org/show_bug.cgi?id=188943
+
+        Reviewed by Mark Lam.
+
+        Add maxByteLength function to get the maximum size for T.
+
+        * wtf/LEBDecoder.h:
+        (WTF::LEBDecoder::maxByteLength):
+        (WTF::LEBDecoder::decodeUInt):
+        (WTF::LEBDecoder::decodeInt):
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build fix -- disable LTO for production builds
+
+        * Configurations/Base.xcconfig:
+
+2018-08-27  Aditya Keerthi  <akeerthi@apple.com>
+
+        Consolidate ENABLE_INPUT_TYPE_COLOR and ENABLE_INPUT_TYPE_COLOR_POPOVER
+        https://bugs.webkit.org/show_bug.cgi?id=188931
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/FeatureDefines.h: Removed ENABLE_INPUT_TYPE_COLOR_POPOVER.
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
+        LTO.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2018-08-25  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Shrink size of XMLHttpRequest
+        https://bugs.webkit.org/show_bug.cgi?id=188944
+
+        Reviewed by Saam Barati.
+
+        StringBuilder is included in XMLHttpRequest. We reduce the size of StringBuilder too
+        by reordering members.
+
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::StringBuilder):
+
+2018-08-24  Tim Horton  <timothy_horton@apple.com>
+
+        Improve unified source generator script logging and error messages
+        https://bugs.webkit.org/show_bug.cgi?id=188932
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/generate-unified-source-bundles.rb:
+        Add the ability to explain why you're getting usage() instead of just printing it.
+        Capitalize log messages, and improve the wording in a few places.
+
+2018-08-24  Antti Koivisto  <antti@apple.com>
+
+        Allow creating WeakPtrs to const objects
+        https://bugs.webkit.org/show_bug.cgi?id=188785
+
+        Reviewed by Geoff Garen.
+
+        const Foo foo;
+        WeakPtr<const Foo> weakConstFoo = makeWeakPtr(foo);
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtrFactory::createWeakPtr const):
+
+        Add a separate factory function for const T.
+        The underlying WeakReference is kept non-const in all cases.
+
+2018-08-23  David Fenton  <david_fenton@apple.com>
+
+        Unreviewed, rolling out r235129.
+
+        broke internal builds
+
+        Reverted changeset:
+
+        "Allow creating WeakPtrs to const objects"
+        https://bugs.webkit.org/show_bug.cgi?id=188785
+        https://trac.webkit.org/changeset/235129
+
+2018-08-23  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add HAVE_MALLOC_TRIM definition
+        https://bugs.webkit.org/show_bug.cgi?id=188897
+
+        Reviewed by Konstantin Tokarev.
+
+        Use HAVE(MALLOC_TRIM) check instead of __GLIBC__.
+
+        * wtf/linux/MemoryPressureHandlerLinux.cpp:
+        (WTF::MemoryPressureHandler::platformReleaseMemory):
+
+2018-08-23  Don Olmstead  <don.olmstead@sony.com>
+
+        [WTF] Add generic implementation for Memory querying
+        https://bugs.webkit.org/show_bug.cgi?id=188867
+        <rdar://problem/43630726>
+
+        Unreviewed build fix.
+
+        Adding MemoryPressureHandler::memoryMeasurementTimerFired was done
+        prematurely.
+
+        * wtf/generic/MemoryPressureHandlerGeneric.cpp:
+        (WTF::MemoryPressureHandler::memoryMeasurementTimerFired): Deleted.
+
+2018-08-22  Don Olmstead  <don.olmstead@sony.com>
+
+        [WTF] Add generic implementation for Memory querying
+        https://bugs.webkit.org/show_bug.cgi?id=188867
+
+        Reviewed by Fujii Hironori.
+
+        Moves generic implementation of MemoryPressureHandler from
+        MemoryPressureHandler.cpp into MemoryPressureHandlerGeneric
+        and generic implementation of memoryFootprint from
+        MemoryFootprintLinux.cpp to MemoryFootprintGeneric.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::install): Deleted.
+        (WTF::MemoryPressureHandler::uninstall): Deleted.
+        (WTF::MemoryPressureHandler::respondToMemoryPressure): Deleted.
+        (WTF::MemoryPressureHandler::platformReleaseMemory): Deleted.
+        (WTF::MemoryPressureHandler::ReliefLogger::platformMemoryUsage): Deleted.
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/generic/MemoryFootprintGeneric.cpp: Added.
+        (WTF::memoryFootprint):
+        * wtf/generic/MemoryPressureHandlerGeneric.cpp: Added.
+        (WTF::MemoryPressureHandler::memoryMeasurementTimerFired):
+        (WTF::MemoryPressureHandler::platformReleaseMemory):
+        (WTF::MemoryPressureHandler::install):
+        (WTF::MemoryPressureHandler::uninstall):
+        (WTF::MemoryPressureHandler::holdOff):
+        (WTF::MemoryPressureHandler::respondToMemoryPressure):
+        (WTF::MemoryPressureHandler::ReliefLogger::platformMemoryUsage):
+        * wtf/linux/CurrentProcessMemoryStatus.cpp:
+        * wtf/linux/CurrentProcessMemoryStatus.h:
+        * wtf/linux/MemoryFootprintLinux.cpp:
+        (WTF::computeMemoryFootprint):
+        (WTF::memoryFootprint):
+        * wtf/linux/MemoryPressureHandlerLinux.cpp:
+
 2018-08-21  Antti Koivisto  <antti@apple.com>
 
         Allow creating WeakPtrs to const objects

@@ -56,7 +56,7 @@ private:
     bool isSynchronous() const override { return false; }
     bool isAllowedToAskUserForCredentials() const final { return false; }
     void willSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse) override;
-    ShouldContinueDidReceiveResponse didReceiveResponse(WebCore::ResourceResponse&&) override;
+    void didReceiveResponse(WebCore::ResourceResponse&&, ResponseCompletionHandler&&) override;
     void didReceiveBuffer(Ref<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) override;
     void didFinishLoading(const WebCore::NetworkLoadMetrics&) override;
     void didFailLoading(const WebCore::ResourceError&) override;
@@ -64,7 +64,7 @@ private:
     void didComplete();
 
     Ref<Cache> m_cache;
-    GlobalFrameID m_frameID;
+    GlobalFrameID m_globalFrameID;
     RevalidationCompletionHandler m_completionHandler;
     WebCore::ResourceRequest m_originalRequest;
 

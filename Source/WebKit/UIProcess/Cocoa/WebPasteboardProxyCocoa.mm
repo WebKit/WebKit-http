@@ -35,9 +35,8 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/URL.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 void WebPasteboardProxy::getPasteboardTypes(const String& pasteboardName, Vector<String>& pasteboardTypes)
 {
@@ -205,9 +204,9 @@ void WebPasteboardProxy::readStringFromPasteboard(uint64_t index, const String& 
     value = PlatformPasteboard(pasteboardName).readString(index, pasteboardType);
 }
 
-void WebPasteboardProxy::readURLFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, String& url, String& title)
+void WebPasteboardProxy::readURLFromPasteboard(uint64_t index, const String& pasteboardName, String& url, String& title)
 {
-    url = PlatformPasteboard(pasteboardName).readURL(index, pasteboardType, title);
+    url = PlatformPasteboard(pasteboardName).readURL(index, title);
 }
 
 void WebPasteboardProxy::readBufferFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, SharedMemory::Handle& handle, uint64_t& size)

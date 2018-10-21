@@ -125,8 +125,6 @@ bool CompositingCoordinator::flushPendingLayerChanges()
     coordinatedLayer.updateContentBuffersIncludingSubLayers();
     coordinatedLayer.syncPendingStateChangesIncludingSubLayers();
 
-    flushPendingImageBackingChanges();
-
     if (m_shouldSyncFrame) {
         didSync = true;
 
@@ -163,8 +161,6 @@ bool CompositingCoordinator::flushPendingLayerChanges()
             });
 
         m_client.commitSceneState(m_state);
-
-        clearPendingStateChanges();
         m_shouldSyncFrame = false;
     }
 
@@ -191,18 +187,6 @@ double CompositingCoordinator::nextAnimationServiceTime() const
     return std::max<double>(0., MinimalTimeoutForAnimations - timestamp() + m_lastAnimationServiceTime);
 }
 
-void CompositingCoordinator::clearPendingStateChanges()
-{
-    m_state.layersToCreate.clear();
-    m_state.layersToUpdate.clear();
-    m_state.layersToRemove.clear();
-
-    m_state.imagesToCreate.clear();
-    m_state.imagesToRemove.clear();
-    m_state.imagesToUpdate.clear();
-    m_state.imagesToClear.clear();
-}
-
 void CompositingCoordinator::initializeRootCompositingLayerIfNeeded()
 {
     if (m_didInitializeRootCompositingLayer)
@@ -210,7 +194,6 @@ void CompositingCoordinator::initializeRootCompositingLayerIfNeeded()
 
     auto& rootLayer = downcast<CoordinatedGraphicsLayer>(*m_rootLayer);
     m_nicosia.state.rootLayer = rootLayer.compositionLayer();
-    m_state.rootCompositingLayer = rootLayer.id();
     m_didInitializeRootCompositingLayer = true;
     m_shouldSyncFrame = true;
 }
@@ -227,57 +210,9 @@ void CompositingCoordinator::createRootLayer(const IntSize& size)
     m_rootLayer->setSize(size);
 }
 
-void CompositingCoordinator::syncLayerState(CoordinatedLayerID id, CoordinatedGraphicsLayerState& state)
+void CompositingCoordinator::syncLayerState()
 {
     m_shouldSyncFrame = true;
-    m_state.layersToUpdate.append(std::make_pair(id, state));
-}
-
-Ref<CoordinatedImageBacking> CompositingCoordinator::createImageBackingIfNeeded(Image& image)
-{
-    CoordinatedImageBackingID imageID = CoordinatedImageBacking::getCoordinatedImageBackingID(image);
-    auto addResult = m_imageBackings.ensure(imageID, [this, &image] {
-        return CoordinatedImageBacking::create(*this, image);
-    });
-    return *addResult.iterator->value;
-}
-
-void CompositingCoordinator::createImageBacking(CoordinatedImageBackingID imageID)
-{
-    m_state.imagesToCreate.append(imageID);
-}
-
-void CompositingCoordinator::updateImageBacking(CoordinatedImageBackingID imageID, RefPtr<Nicosia::Buffer>&& buffer)
-{
-    m_shouldSyncFrame = true;
-    m_state.imagesToUpdate.append(std::make_pair(imageID, WTFMove(buffer)));
-}
-
-void CompositingCoordinator::clearImageBackingContents(CoordinatedImageBackingID imageID)
-{
-    m_shouldSyncFrame = true;
-    m_state.imagesToClear.append(imageID);
-}
-
-void CompositingCoordinator::removeImageBacking(CoordinatedImageBackingID imageID)
-{
-    if (m_isPurging)
-        return;
-
-    ASSERT(m_imageBackings.contains(imageID));
-    m_imageBackings.remove(imageID);
-
-    m_state.imagesToRemove.append(imageID);
-
-    size_t imageIDPosition = m_state.imagesToClear.find(imageID);
-    if (imageIDPosition != notFound)
-        m_state.imagesToClear.remove(imageIDPosition);
-}
-
-void CompositingCoordinator::flushPendingImageBackingChanges()
-{
-    for (auto& imageBacking : m_imageBackings.values())
-        imageBacking->update();
 }
 
 void CompositingCoordinator::notifyFlushRequired(const GraphicsLayer*)
@@ -302,7 +237,6 @@ std::unique_ptr<GraphicsLayer> CompositingCoordinator::createGraphicsLayer(Graph
     layer->setCoordinator(this);
     m_nicosia.state.layers.add(layer->compositionLayer());
     m_registeredLayers.add(layer->id(), layer);
-    m_state.layersToCreate.append(layer->id());
     layer->setNeedsVisibleRectAdjustment();
     notifyFlushRequired(layer);
     return std::unique_ptr<GraphicsLayer>(layer);
@@ -343,14 +277,6 @@ void CompositingCoordinator::detachLayer(CoordinatedGraphicsLayer* layer)
 
     m_nicosia.state.layers.remove(layer->compositionLayer());
     m_registeredLayers.remove(layer->id());
-
-    size_t index = m_state.layersToCreate.find(layer->id());
-    if (index != notFound) {
-        m_state.layersToCreate.remove(index);
-        return;
-    }
-
-    m_state.layersToRemove.append(layer->id());
     notifyFlushRequired(layer);
 }
 
@@ -359,7 +285,6 @@ void CompositingCoordinator::attachLayer(CoordinatedGraphicsLayer* layer)
     layer->setCoordinator(this);
     m_nicosia.state.layers.add(layer->compositionLayer());
     m_registeredLayers.add(layer->id(), layer);
-    m_state.layersToCreate.append(layer->id());
     layer->setNeedsVisibleRectAdjustment();
     notifyFlushRequired(layer);
 }
@@ -374,8 +299,6 @@ void CompositingCoordinator::purgeBackingStores()
 
     for (auto& registeredLayer : m_registeredLayers.values())
         registeredLayer->purgeBackingStores();
-
-    m_imageBackings.clear();
 }
 
 Nicosia::PaintingEngine& CompositingCoordinator::paintingEngine()

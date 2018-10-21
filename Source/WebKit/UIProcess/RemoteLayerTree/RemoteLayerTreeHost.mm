@@ -46,9 +46,8 @@
 #import <UIKit/UIView.h>
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 #define RELEASE_LOG_IF_ALLOWED(...) RELEASE_LOG_IF(m_drawingArea.isAlwaysOnLoggingAllowed(), ViewState, __VA_ARGS__)
 
@@ -105,11 +104,11 @@ bool RemoteLayerTreeHost::updateLayerTree(const RemoteLayerTreeTransaction& tran
         RemoteLayerTreePropertyApplier::RelatedLayerMap relatedLayers;
         if (properties.changedProperties & RemoteLayerTreeTransaction::ChildrenChanged) {
             for (auto& child : properties.children)
-                relatedLayers.set(child, getLayer(child));
+                relatedLayers.set(child, (__bridge CFTypeRef)getLayer(child));
         }
 
         if (properties.changedProperties & RemoteLayerTreeTransaction::MaskLayerChanged && properties.maskLayerID)
-            relatedLayers.set(properties.maskLayerID, getLayer(properties.maskLayerID));
+            relatedLayers.set(properties.maskLayerID, (__bridge CFTypeRef)getLayer(properties.maskLayerID));
 
         if (properties.changedProperties & RemoteLayerTreeTransaction::ClonedContentsChanged && properties.clonedLayerID)
             clonesToUpdate.append(LayerIDPair(layerID, properties.clonedLayerID));
@@ -293,7 +292,7 @@ void RemoteLayerTreeHost::detachRootLayer()
 #if HAVE(IOSURFACE)
 static void recursivelyMapIOSurfaceBackingStore(CALayer *layer)
 {
-    if (layer.contents && CFGetTypeID(layer.contents) == CAMachPortGetTypeID()) {
+    if (layer.contents && CFGetTypeID((__bridge CFTypeRef)layer.contents) == CAMachPortGetTypeID()) {
         MachSendRight port = MachSendRight::create(CAMachPortGetPort((__bridge CAMachPortRef)layer.contents));
         auto surface = WebCore::IOSurface::createFromSendRight(WTFMove(port), sRGBColorSpaceRef());
         layer.contents = surface ? surface->asLayerContents() : nil;
@@ -312,3 +311,5 @@ void RemoteLayerTreeHost::mapAllIOSurfaceBackingStore()
 }
 
 } // namespace WebKit
+
+#undef RELEASE_LOG_IF_ALLOWED

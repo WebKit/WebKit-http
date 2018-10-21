@@ -66,6 +66,13 @@ using namespace WebCore;
 @end
 #endif
 
+#if ENABLE(DRAG_SUPPORT)
+
+@interface WKView () <NSFilePromiseProviderDelegate, NSDraggingSource>
+@end
+
+#endif
+
 @implementation WKView
 
 #if WK_API_ENABLED
@@ -877,7 +884,7 @@ Some other editing-related methods still unimplemented:
 
         static SEL delegateSelector()
         {
-            return sel_registerName("_shouldLoadIconWithParameters:completionHandler:");
+            return @selector(_shouldLoadIconWithParameters:completionHandler:);
         }
 
     private:
@@ -887,7 +894,7 @@ Some other editing-related methods still unimplemented:
         {
             RetainPtr<_WKLinkIconParameters> parameters = adoptNS([[_WKLinkIconParameters alloc] _initWithLinkIcon:linkIcon]);
 
-            [m_wkView performSelector:delegateSelector() withObject:parameters.get() withObject:BlockPtr<void(IconLoadCompletionHandler)>::fromCallable([completionHandler = WTFMove(completionHandler)](IconLoadCompletionHandler loadCompletionHandler) mutable {
+            [m_wkView _shouldLoadIconWithParameters:parameters.get() completionHandler:BlockPtr<void(IconLoadCompletionHandler)>::fromCallable([completionHandler = WTFMove(completionHandler)](IconLoadCompletionHandler loadCompletionHandler) mutable {
                 ASSERT(RunLoop::isMain());
                 if (loadCompletionHandler) {
                     completionHandler([loadCompletionHandler = BlockPtr<void (NSData *)>(loadCompletionHandler)](API::Data* data, WebKit::CallbackBase::Error error) {
@@ -1024,6 +1031,11 @@ Some other editing-related methods still unimplemented:
 
 #if ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
 
+- (void)_web_didPerformDragOperation:(BOOL)handled
+{
+    UNUSED_PARAM(handled);
+}
+
 - (WKDragDestinationAction)_web_dragDestinationActionForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
 {
     return WKDragDestinationActionAny;
@@ -1083,6 +1095,30 @@ Some other editing-related methods still unimplemented:
 }
 
 #endif // HAVE(TOUCH_BAR)
+
+#if ENABLE(DRAG_SUPPORT)
+
+- (NSString *)filePromiseProvider:(NSFilePromiseProvider *)filePromiseProvider fileNameForType:(NSString *)fileType
+{
+    return _data->_impl->fileNameForFilePromiseProvider(filePromiseProvider, fileType);
+}
+
+- (void)filePromiseProvider:(NSFilePromiseProvider *)filePromiseProvider writePromiseToURL:(NSURL *)url completionHandler:(void (^)(NSError *error))completionHandler
+{
+    _data->_impl->writeToURLForFilePromiseProvider(filePromiseProvider, url, completionHandler);
+}
+
+- (NSDragOperation)draggingSession:(NSDraggingSession *)session sourceOperationMaskForDraggingContext:(NSDraggingContext)context
+{
+    return _data->_impl->dragSourceOperationMask(session, context);
+}
+
+- (void)draggingSession:(NSDraggingSession *)session endedAtPoint:(NSPoint)screenPoint operation:(NSDragOperation)operation
+{
+    _data->_impl->draggingSessionEnded(session, screenPoint, operation);
+}
+
+#endif // ENABLE(DRAG_SUPPORT)
 
 @end
 

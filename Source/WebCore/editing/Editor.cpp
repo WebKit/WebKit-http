@@ -115,7 +115,7 @@ static bool dispatchBeforeInputEvent(Element& element, const AtomicString& input
     if (!element.document().settings().inputEventsEnabled())
         return true;
 
-    auto event = InputEvent::create(eventNames().beforeinputEvent, inputType, Event::CanBubble::Yes, cancelable, element.document().windowProxy(), data, WTFMove(dataTransfer), targetRanges, 0);
+    auto event = InputEvent::create(eventNames().beforeinputEvent, inputType, cancelable, element.document().windowProxy(), data, WTFMove(dataTransfer), targetRanges, 0);
     element.dispatchEvent(event);
     return !event->defaultPrevented();
 }
@@ -127,7 +127,7 @@ static void dispatchInputEvent(Element& element, const AtomicString& inputType, 
         // but TypingCommands are special in that existing TypingCommands that are applied again fire input events *from within* the scope by calling typingAddedToOpenCommand.
         // Instead, TypingCommands should always dispatch events synchronously after the end of the scoped queue in CompositeEditCommand::apply. To work around this for the
         // time being, just revert back to calling dispatchScopedEvent.
-        element.dispatchScopedEvent(InputEvent::create(eventNames().inputEvent, inputType, Event::CanBubble::Yes, Event::IsCancelable::No,
+        element.dispatchScopedEvent(InputEvent::create(eventNames().inputEvent, inputType, Event::IsCancelable::No,
             element.document().windowProxy(), data, WTFMove(dataTransfer), targetRanges, 0));
     } else
         element.dispatchInputEvent();
@@ -390,11 +390,7 @@ static bool dispatchClipboardEvent(RefPtr<Element>&& target, ClipboardEventKind 
 
     auto dataTransfer = createDataTransferForClipboardEvent(target->document(), kind);
 
-    ClipboardEvent::Init init;
-    init.bubbles = true;
-    init.cancelable = true;
-    init.clipboardData = dataTransfer.ptr();
-    auto event = ClipboardEvent::create(eventNameForClipboardEvent(kind), init, Event::IsTrusted::Yes);
+    auto event = ClipboardEvent::create(eventNameForClipboardEvent(kind), dataTransfer.copyRef());
 
     target->dispatchEvent(event);
     bool noDefaultProcessing = event->defaultPrevented();
@@ -3880,11 +3876,11 @@ void Editor::notifyClientOfAttachmentUpdates()
     }
 }
 
-void Editor::insertAttachment(const String& identifier, const AttachmentDisplayOptions&, uint64_t fileSize, const String& fileName, std::optional<String>&& explicitContentType)
+void Editor::insertAttachment(const String& identifier, std::optional<uint64_t>&& fileSize, const String& fileName, const String& contentType)
 {
     auto attachment = HTMLAttachmentElement::create(HTMLNames::attachmentTag, document());
     attachment->setUniqueIdentifier(identifier);
-    attachment->updateAttributes(fileSize, WTFMove(explicitContentType), fileName);
+    attachment->updateAttributes(WTFMove(fileSize), contentType, fileName);
 
     auto fragmentToInsert = document().createDocumentFragment();
     fragmentToInsert->appendChild(attachment.get());

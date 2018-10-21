@@ -75,6 +75,7 @@
 #import <WebCore/Color.h>
 #import <WebCore/DataDetection.h>
 #import <WebCore/FloatQuad.h>
+#import <WebCore/InputMode.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/Pasteboard.h>
@@ -1304,7 +1305,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         minimumScale:_assistedNodeInformation.minimumScaleFactor
         maximumScale:_assistedNodeInformation.maximumScaleFactorIgnoringAlwaysScalable
         allowScaling:_assistedNodeInformation.allowsUserScalingIgnoringAlwaysScalable && !currentUserInterfaceIdiomIsPad()
-        forceScroll:[self requiresAccessoryView]];
+        forceScroll:(_assistedNodeInformation.inputMode == InputMode::None) ? !currentUserInterfaceIdiomIsPad() : [self requiresAccessoryView]];
 
     _didAccessoryTabInitiateFocus = NO;
     [self _ensureFormAccessoryView];
@@ -1315,6 +1316,9 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 {
     if (!hasAssistedNode(_assistedNodeInformation))
         return nil;
+
+    if (_assistedNodeInformation.inputMode == InputMode::None)
+        return [[UIView new] autorelease];
 
     if (!_inputPeripheral) {
         switch (_assistedNodeInformation.elementType) {
@@ -2053,6 +2057,9 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 - (BOOL)requiresAccessoryView
 {
     if ([_formInputSession accessoryViewShouldNotShow])
+        return NO;
+
+    if (_assistedNodeInformation.inputMode == InputMode::None)
         return NO;
 
     switch (_assistedNodeInformation.elementType) {
@@ -3547,24 +3554,66 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         [_traits setAutocorrectionType:_assistedNodeInformation.isAutocorrect ? UITextAutocorrectionTypeYes : UITextAutocorrectionTypeNo];
     }
 
-    switch (_assistedNodeInformation.elementType) {
-    case InputType::Phone:
+    switch (_assistedNodeInformation.inputMode) {
+    case InputMode::Unspecified:
+        switch (_assistedNodeInformation.elementType) {
+        case InputType::Phone:
+            [_traits setKeyboardType:UIKeyboardTypePhonePad];
+            break;
+        case InputType::URL:
+            [_traits setKeyboardType:UIKeyboardTypeURL];
+            break;
+        case InputType::Email:
+            [_traits setKeyboardType:UIKeyboardTypeEmailAddress];
+            break;
+        case InputType::Number:
+            [_traits setKeyboardType:UIKeyboardTypeNumbersAndPunctuation];
+            break;
+        case InputType::NumberPad:
+            [_traits setKeyboardType:UIKeyboardTypeNumberPad];
+            break;
+        case InputType::None:
+        case InputType::ContentEditable:
+        case InputType::Text:
+        case InputType::Password:
+        case InputType::TextArea:
+        case InputType::Search:
+        case InputType::Date:
+        case InputType::DateTime:
+        case InputType::DateTimeLocal:
+        case InputType::Month:
+        case InputType::Week:
+        case InputType::Time:
+        case InputType::Select:
+#if ENABLE(INPUT_TYPE_COLOR)
+        case InputType::Color:
+#endif
+            [_traits setKeyboardType:UIKeyboardTypeDefault];
+        }
+        break;
+    case InputMode::None:
+        break;
+    case InputMode::Text:
+        [_traits setKeyboardType:UIKeyboardTypeDefault];
+        break;
+    case InputMode::Telephone:
         [_traits setKeyboardType:UIKeyboardTypePhonePad];
         break;
-    case InputType::URL:
+    case InputMode::Url:
         [_traits setKeyboardType:UIKeyboardTypeURL];
         break;
-    case InputType::Email:
+    case InputMode::Email:
         [_traits setKeyboardType:UIKeyboardTypeEmailAddress];
         break;
-    case InputType::Number:
+    case InputMode::Numeric:
         [_traits setKeyboardType:UIKeyboardTypeNumbersAndPunctuation];
         break;
-    case InputType::NumberPad:
-        [_traits setKeyboardType:UIKeyboardTypeNumberPad];
+    case InputMode::Decimal:
+        [_traits setKeyboardType:UIKeyboardTypeDecimalPad];
         break;
-    default:
-        [_traits setKeyboardType:UIKeyboardTypeDefault];
+    case InputMode::Search:
+        [_traits setKeyboardType:UIKeyboardTypeWebSearch];
+        break;
     }
 
     [_traits setTextContentType:contentTypeFromFieldName(_assistedNodeInformation.autofillFieldName)];
@@ -5035,7 +5084,7 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     }];
 }
 
-- (void)_didPerformDataInteractionControllerOperation:(BOOL)handled
+- (void)_didPerformDragOperation:(BOOL)handled
 {
     RELEASE_LOG(DragAndDrop, "Finished performing drag controller operation (handled: %d)", handled);
     [[WebItemProviderPasteboard sharedInstance] decrementPendingOperationCount];
@@ -5088,10 +5137,17 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 
     RELEASE_LOG(DragAndDrop, "Drag session: %p preparing to drag blob: %s with attachment identifier: %s", session.get(), info.blobURL.string().utf8().data(), info.attachmentIdentifier.utf8().data());
 
+    NSString *utiType = info.contentType;
+    NSString *fileName = info.fileName;
+    if (auto attachment = _page->attachmentForIdentifier(info.attachmentIdentifier)) {
+        utiType = attachment->utiType();
+        fileName = attachment->fileName();
+    }
+
     auto registrationList = adoptNS([[WebItemProviderRegistrationInfoList alloc] init]);
     [registrationList setPreferredPresentationStyle:WebPreferredPresentationStyleAttachment];
-    if (!info.filename.isEmpty())
-        [registrationList setSuggestedName:info.filename];
+    if ([fileName length])
+        [registrationList setSuggestedName:fileName];
     if (numberOfAdditionalTypes == info.additionalData.size() && numberOfAdditionalTypes) {
         for (size_t index = 0; index < numberOfAdditionalTypes; ++index) {
             auto nsData = info.additionalData[index]->createNSData();
@@ -5099,7 +5155,7 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
         }
     }
 
-    [registrationList addPromisedType:info.contentType fileCallback:[session = WTFMove(session), weakSelf = WeakObjCPtr<WKContentView>(self), info] (WebItemProviderFileCallback callback) {
+    [registrationList addPromisedType:utiType fileCallback:[session = WTFMove(session), weakSelf = WeakObjCPtr<WKContentView>(self), info] (WebItemProviderFileCallback callback) {
         auto strongSelf = weakSelf.get();
         if (!strongSelf) {
             callback(nil, [NSError errorWithDomain:WKErrorDomain code:WKErrorWebViewInvalidated userInfo:nil]);

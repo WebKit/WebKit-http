@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TestOptions_h
-#define TestOptions_h
+#pragma once
 
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -61,6 +60,7 @@ struct TestOptions {
     bool enableColorFilter { false };
     bool punchOutWhiteBackgroundsInDarkMode { false };
     bool runSingly { false };
+    bool checkForWorldLeaks { false };
 
     float deviceScaleFactor { 1 };
     Vector<String> overrideLanguages;
@@ -98,7 +98,8 @@ struct TestOptions {
             || enableColorFilter != options.enableColorFilter
             || punchOutWhiteBackgroundsInDarkMode != options.punchOutWhiteBackgroundsInDarkMode
             || jscOptions != options.jscOptions
-            || runSingly != options.runSingly)
+            || runSingly != options.runSingly
+            || checkForWorldLeaks != options.checkForWorldLeaks)
             return false;
 
         return true;
@@ -111,5 +112,3 @@ struct TestOptions {
 };
 
 }
-
-#endif // TestOptions_h

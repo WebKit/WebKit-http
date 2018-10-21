@@ -715,7 +715,6 @@ runtime/CodeCache.cpp
 runtime/CodeSpecializationKind.cpp
 runtime/CommonIdentifiers.cpp
 runtime/CommonSlowPaths.cpp
-runtime/CommonSlowPathsExceptions.cpp
 runtime/CompilationResult.cpp
 tools/CompilerTimingScope.cpp
 runtime/Completion.cpp
@@ -992,7 +991,9 @@ wasm/WasmOMGPlan.cpp
 wasm/WasmOpcodeOrigin.cpp
 wasm/WasmPageCount.cpp
 wasm/WasmPlan.cpp
+wasm/WasmSectionParser.cpp
 wasm/WasmSignature.cpp
+wasm/WasmStreamingParser.cpp
 wasm/WasmTable.cpp
 wasm/WasmTable.h
 wasm/WasmThunks.cpp

@@ -1,3 +1,118 @@
+2018-08-29  David Kilzer  <ddkilzer@apple.com>
+
+        Remove empty directories from from svn.webkit.org repository
+        <https://webkit.org/b/189081>
+
+        * Source/webrtc/base: Removed.
+        * Source/webrtc/media/devices: Removed.
+        * Source/webrtc/modules/audio_conference_mixer: Removed.
+        * Source/webrtc/modules/remote_bitrate_estimator/include/mock: Removed.
+        * Source/webrtc/system_wrappers/test: Removed.
+        * Source/webrtc/test/testsupport/mac: Removed.
+        * Source/webrtc/voice_engine: Removed.
+
+2018-08-28  David Kilzer  <ddkilzer@apple.com>
+
+        [libwebrtc] Remove references to Source/webrtc/modules/audio_coding/codecs/isac/main/source/fft.h
+
+        Found by tidy-Xcode-project-file script (see Bug 188754).
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+        (Source/webrtc/modules/audio_coding/codecs/isac/main/source/fft.h):
+        Remove references to this file since it doesn't exist.
+
+2018-08-28  Youenn Fablet  <youenn@apple.com>
+
+        Reenable -Wexit-time-destructors -and Wglobal-constructors in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=189036
+
+        Reviewed by Geoffrey Garen.
+
+        Renable these compilation warnings and introduce rtc::NeverDestroyed as helper.
+
+        * Configurations/Base.xcconfig:
+        * Source/webrtc/modules/audio_processing/agc2/rnn_vad/spectral_features_internal.cc:
+        * Source/webrtc/modules/congestion_controller/bbr/bbr_network_controller.cc:
+        * Source/webrtc/modules/congestion_controller/goog_cc/goog_cc_network_control.cc:
+        * Source/webrtc/pc/peerconnection.cc:
+        * Source/webrtc/rtc_base/flags.h:
+        * Source/webrtc/rtc_base/logging.cc:
+        * Source/webrtc/rtc_base/never_destroyed.h: Added.
+        (rtc::NeverDestroyed::NeverDestroyed):
+        (rtc::NeverDestroyed::operator T&):
+        (rtc::NeverDestroyed::get):
+        (rtc::NeverDestroyed::operator const T& const):
+        (rtc::NeverDestroyed::get const):
+        (rtc::NeverDestroyed::storagePointer const):
+        (rtc::makeNeverDestroyed):
+        * Source/webrtc/rtc_base/virtualsocketserver.cc:
+        * Source/webrtc/sdk/objc/Framework/Classes/PeerConnection/RTCVideoCodec.mm:
+        * Source/webrtc/system_wrappers/source/clock.cc:
+        * Source/webrtc/system_wrappers/source/runtime_enabled_features_default.cc:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build fix -- disable LTO for production builds
+
+        * Configurations/Base.xcconfig:
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
+        LTO.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2018-08-23  youenn fablet  <youennf@gmail.com>
+
+        Remove libwebrtc unneeded .exe file.
+        Unreviewed.
+
+        * Source/webrtc/data/voice_engine/stereo_rtp_files/rtpplay.exe: Removed.
+
+2018-08-23  Youenn Fablet  <youenn@apple.com> and Alejandro G. Castro  <alex@igalia.com>
+
+        Update libwebrtc up to 984f1a80c0
+        https://bugs.webkit.org/show_bug.cgi?id=188745
+        <rdar://problem/43539177>
+
+        Reviewed by Eric Carlson.
+
+        Update libwebrtc main code.
+        Update exported symbols and related applied modifications.
+
+        * CMakeLists.txt:
+        * Configurations/libwebrtc.iOS.exp:
+        * Configurations/libwebrtc.iOSsim.exp:
+        * Configurations/libwebrtc.mac.exp:
+        * Configurations/libwebrtc.xcconfig:
+        * Source/webrtc: refreshed
+        * WebKit/0001-Updating-webrtc.patch: Added.
+        * WebKit/0001-Adapting-libwebrtc-H264-codec.patch: Removed.
+        * WebKit/0001-Disable-SIGPIPE-for-WebRTC-sockets.patch: Removed.
+        * WebKit/0001-Update-RTCVideoEncoderH264.mm-for-WebKit.patch: Removed.
+        * WebKit/0001-Using-VCP.patch: Removed.
+        * WebKit/0003-Fixing-VP8-files.patch: Removed.
+        * WebKit/0004-Removing-parameter-names-from-files-included-from-We.patch: Removed.
+        * WebKit/0005-Fix-RTC_FATAL.patch: Removed.
+        * WebKit/0006-Disabling-VP8.patch: Removed.
+        * WebKit/0007-Fix-RTC_STRINGIZE.patch: Removed.
+        * WebKit/0008-Fix-sanitizer.patch: Removed.
+        * WebKit/0009-Remove-dispatch_set_target_queue.patch: Removed.
+        * WebKit/0010-Fix-RTCVideoEncoderH264-CVPixelBuffer-leak.patch: Removed.
+        * WebKit/0011-Fix-AudioDeviceID-array-leak.patch: Removed.
+        * WebKit/0012-Add-WK-prefix-to-Objective-C-classes-and-protocols.patch: Removed.
+        * WebKit/0013-Fix-SafeSetError-use-after-move.patch: Removed.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
 2018-08-21  Youenn Fablet  <youenn@apple.com>
 
         Update some libwebrtc third party libraries as per libwebrtc 984f1a80c0c

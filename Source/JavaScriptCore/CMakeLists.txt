@@ -534,6 +534,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     heap/HeapFinalizerCallback.h
     heap/HeapInlines.h
     heap/HeapObserver.h
+    heap/HeapSnapshotBuilder.h
     heap/IncrementalSweeper.h
     heap/IsoCellSet.h
     heap/IsoSubspace.h
@@ -611,7 +612,9 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
 
     interpreter/AbstractPC.h
     interpreter/CallFrame.h
+    interpreter/CallFrameInlines.h
     interpreter/CalleeBits.h
+    interpreter/EntryFrame.h
     interpreter/FrameTracers.h
     interpreter/Register.h
     interpreter/ShadowChicken.h

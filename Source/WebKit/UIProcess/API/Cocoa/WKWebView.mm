@@ -89,11 +89,11 @@
 #import "_WKFullscreenDelegate.h"
 #import "_WKHitTestResultInternal.h"
 #import "_WKInputDelegate.h"
+#import "_WKInspectorInternal.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
 #import "_WKVisitedLinkStoreInternal.h"
 #import "_WKWebsitePoliciesInternal.h"
-#import <WebCore/AttachmentTypes.h>
 #import <WebCore/GraphicsContextCG.h>
 #import <WebCore/IOSurface.h>
 #import <WebCore/JSDOMBinding.h>
@@ -201,9 +201,16 @@ Boolean _AXSWebAccessibilityEventsEnabled();
 #endif
 #endif
 
-static HashMap<WebKit::WebPageProxy*, WKWebView *>& pageToViewMap()
+#if PLATFORM(MAC) && ENABLE(DRAG_SUPPORT)
+
+@interface WKWebView () <NSFilePromiseProviderDelegate, NSDraggingSource>
+@end
+
+#endif
+
+static HashMap<WebKit::WebPageProxy*, __unsafe_unretained WKWebView *>& pageToViewMap()
 {
-    static NeverDestroyed<HashMap<WebKit::WebPageProxy*, WKWebView *>> map;
+    static NeverDestroyed<HashMap<WebKit::WebPageProxy*, __unsafe_unretained WKWebView *>> map;
     return map;
 }
 
@@ -539,6 +546,9 @@ static void validate(WKWebViewConfiguration *configuration)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldConvertPositionStyleOnCopyKey(), WebKit::WebPreferencesStore::Value(!![_configuration _convertsPositionStyleOnCopy]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::httpEquivEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsMetaRefresh]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowUniversalAccessFromFileURLsKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowUniversalAccessFromFileURLs]));
+    pageConfiguration->setWaitsForPaintAfterViewDidMoveToWindow([_configuration _waitsForPaintAfterViewDidMoveToWindow]);
+    pageConfiguration->setDrawsBackground([_configuration _drawsBackground]);
+    pageConfiguration->setControlledByAutomation([_configuration _isControlledByAutomation]);
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::incompleteImageBorderEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _incompleteImageBorderEnabled]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldDeferAsynchronousScriptsUntilAfterDocumentLoadKey(), WebKit::WebPreferencesStore::Value(!![_configuration _shouldDeferAsynchronousScriptsUntilAfterDocumentLoad]));
 
@@ -3140,10 +3150,11 @@ static int32_t activeOrientation(WKWebView *webView)
 #endif // PLATFORM(IOS)
 
 #if ENABLE(ACCESSIBILITY_EVENTS)
+
 static void accessibilityEventsEnabledChangedCallback(CFNotificationCenterRef, void* observer, CFStringRef, const void*, CFDictionaryRef)
 {
     ASSERT(observer);
-    WKWebView* webview = static_cast<WKWebView*>(observer);
+    WKWebView *webview = (__bridge WKWebView *)observer;
     [webview _updateAccessibilityEventsEnabled];
 }
 
@@ -3152,6 +3163,7 @@ static void accessibilityEventsEnabledChangedCallback(CFNotificationCenterRef, v
     if (!isNullFunctionPointer(_AXSWebAccessibilityEventsEnabled))
         _page->updateAccessibilityEventsEnabled(_AXSWebAccessibilityEventsEnabled());
 }
+
 #endif
 
 #pragma mark OS X-specific methods
@@ -4057,6 +4069,13 @@ WEBCORE_COMMAND(yankAndSelect)
     return WKDragDestinationActionAny & ~WKDragDestinationActionLoad;
 }
 
+- (void)_web_didPerformDragOperation:(BOOL)handled
+{
+    id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)self.UIDelegate;
+    if ([uiDelegate respondsToSelector:@selector(_webView:didPerformDragOperation:)])
+        [uiDelegate _webView:self didPerformDragOperation:handled];
+}
+
 #endif
 
 - (void)_web_dismissContentRelativeChildWindows
@@ -4078,6 +4097,30 @@ WEBCORE_COMMAND(yankAndSelect)
 {
     [self _gestureEventWasNotHandledByWebCore:event];
 }
+
+#if ENABLE(DRAG_SUPPORT)
+
+- (NSString *)filePromiseProvider:(NSFilePromiseProvider *)filePromiseProvider fileNameForType:(NSString *)fileType
+{
+    return _impl->fileNameForFilePromiseProvider(filePromiseProvider, fileType);
+}
+
+- (void)filePromiseProvider:(NSFilePromiseProvider *)filePromiseProvider writePromiseToURL:(NSURL *)url completionHandler:(void (^)(NSError *error))completionHandler
+{
+    _impl->writeToURLForFilePromiseProvider(filePromiseProvider, url, completionHandler);
+}
+
+- (NSDragOperation)draggingSession:(NSDraggingSession *)session sourceOperationMaskForDraggingContext:(NSDraggingContext)context
+{
+    return _impl->dragSourceOperationMask(session, context);
+}
+
+- (void)draggingSession:(NSDraggingSession *)session endedAtPoint:(NSPoint)screenPoint operation:(NSDragOperation)operation
+{
+    _impl->draggingSessionEnded(session, screenPoint, operation);
+}
+
+#endif // ENABLE(DRAG_SUPPORT)
 
 #endif // PLATFORM(MAC)
 
@@ -4201,7 +4244,7 @@ WEBCORE_COMMAND(yankAndSelect)
 - (NSArray *)_certificateChain
 {
     if (WebKit::WebFrameProxy* mainFrame = _page->mainFrame())
-        return mainFrame->certificateInfo() ? (NSArray *)mainFrame->certificateInfo()->certificateInfo().certificateChain() : nil;
+        return mainFrame->certificateInfo() ? (__bridge NSArray *)mainFrame->certificateInfo()->certificateInfo().certificateChain() : nil;
 
     return nil;
 }
@@ -4398,30 +4441,26 @@ WEBCORE_COMMAND(yankAndSelect)
 
 - (_WKAttachment *)_insertAttachmentWithFilename:(NSString *)filename contentType:(NSString *)contentType data:(NSData *)data options:(_WKAttachmentDisplayOptions *)options completion:(void(^)(BOOL success))completionHandler
 {
+    UNUSED_PARAM(options);
     auto fileWrapper = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:data]);
     if (filename)
         [fileWrapper setPreferredFilename:filename];
-    return [self _insertAttachmentWithFileWrapper:fileWrapper.get() contentType:contentType options:options completion:completionHandler];
+    return [self _insertAttachmentWithFileWrapper:fileWrapper.get() contentType:contentType completion:completionHandler];
 }
 
 - (_WKAttachment *)_insertAttachmentWithFileWrapper:(NSFileWrapper *)fileWrapper contentType:(NSString *)contentType options:(_WKAttachmentDisplayOptions *)options completion:(void(^)(BOOL success))completionHandler
 {
+    UNUSED_PARAM(options);
+    return [self _insertAttachmentWithFileWrapper:fileWrapper contentType:contentType completion:completionHandler];
+}
+
+- (_WKAttachment *)_insertAttachmentWithFileWrapper:(NSFileWrapper *)fileWrapper contentType:(NSString *)contentType completion:(void(^)(BOOL success))completionHandler
+{
 #if ENABLE(ATTACHMENT_ELEMENT)
     auto identifier = createCanonicalUUIDString();
-    auto coreOptions = options ? options.coreDisplayOptions : WebCore::AttachmentDisplayOptions { };
     auto attachment = API::Attachment::create(identifier, *_page);
-    attachment->setFileWrapper(fileWrapper);
-
-    if (!contentType.length) {
-        if (NSString *pathExtension = (fileWrapper.filename.length ? fileWrapper.filename : fileWrapper.preferredFilename).pathExtension)
-            contentType = WebCore::MIMETypeRegistry::getMIMETypeForExtension(pathExtension);
-    }
-
-    auto fileSize = [[[fileWrapper fileAttributes] objectForKey:NSFileSize] unsignedLongLongValue];
-    if (!fileSize && fileWrapper.regularFile)
-        fileSize = fileWrapper.regularFileContents.length;
-
-    _page->insertAttachment(attachment.copyRef(), coreOptions, fileSize, [fileWrapper preferredFilename], contentType.length ? std::optional<String> { contentType } : std::nullopt, [capturedHandler = makeBlockPtr(completionHandler)] (WebKit::CallbackBase::Error error) {
+    attachment->setFileWrapperAndUpdateContentType(fileWrapper, contentType);
+    _page->insertAttachment(attachment.copyRef(), [capturedHandler = makeBlockPtr(completionHandler)] (WebKit::CallbackBase::Error error) {
         if (capturedHandler)
             capturedHandler(error == WebKit::CallbackBase::Error::None);
     });
@@ -4534,8 +4573,7 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
         void (^completionHandlerBlock)(NSData *, NSError *) = (void (^)(NSData *, NSError *))handler.get();
         if (error != WebKit::CallbackBase::Error::None) {
             // FIXME: Pipe a proper error in from the WebPageProxy.
-            RetainPtr<NSError> error = adoptNS([[NSError alloc] init]);
-            completionHandlerBlock(nil, error.get());
+            completionHandlerBlock(nil, [NSError errorWithDomain:WKErrorDomain code:static_cast<int>(error) userInfo:nil]);
         } else
             completionHandlerBlock(wrapper(*data), nil);
     });
@@ -4549,8 +4587,7 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
         void (^completionHandlerBlock)(NSData *, NSError *) = (void (^)(NSData *, NSError *))handler.get();
         if (error != WebKit::CallbackBase::Error::None) {
             // FIXME: Pipe a proper error in from the WebPageProxy.
-            RetainPtr<NSError> error = adoptNS([[NSError alloc] init]);
-            completionHandlerBlock(nil, error.get());
+            completionHandlerBlock(nil, [NSError errorWithDomain:WKErrorDomain code:static_cast<int>(error) userInfo:nil]);
         } else
             completionHandlerBlock(wrapper(*data), nil);
     });
@@ -4563,8 +4600,7 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
     _page->getContentsAsString([handler](String string, WebKit::CallbackBase::Error error) {
         if (error != WebKit::CallbackBase::Error::None) {
             // FIXME: Pipe a proper error in from the WebPageProxy.
-            RetainPtr<NSError> error = adoptNS([[NSError alloc] init]);
-            handler(nil, error.get());
+            handler(nil, [NSError errorWithDomain:WKErrorDomain code:static_cast<int>(error) userInfo:nil]);
         } else
             handler(string, nil);
     });
@@ -6442,6 +6478,20 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     _page->setDefersLoadingForTesting(defersLoading);
 }
 
+- (_WKInspector *)_inspector
+{
+    if (auto* inspector = _page->inspector())
+        return wrapper(*inspector);
+    return nil;
+}
+
+- (_WKFrameHandle *)_mainFrame
+{
+    if (auto* frame = _page->mainFrame())
+        return wrapper(API::FrameHandle::create(frame->frameID()));
+    return nil;
+}
+
 - (void)_denyNextUserMediaRequest
 {
 #if ENABLE(MEDIA_STREAM)
@@ -6563,7 +6613,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     if (!certificateInfo)
         return @[ ];
 
-    return (NSArray *)certificateInfo->certificateInfo().certificateChain() ?: @[ ];
+    return (__bridge NSArray *)certificateInfo->certificateInfo().certificateChain() ?: @[ ];
 }
 
 @end
@@ -6583,3 +6633,5 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 @end
 
 #endif // WK_API_ENABLED
+
+#undef RELEASE_LOG_IF_ALLOWED

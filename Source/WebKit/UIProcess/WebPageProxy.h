@@ -196,12 +196,6 @@ template <typename> class RectEdges;
 using FloatBoxExtent = RectEdges<float>;
 }
 
-#if ENABLE(ATTACHMENT_ELEMENT)
-namespace WebCore {
-struct AttachmentDisplayOptions;
-}
-#endif
-
 #if PLATFORM(GTK)
 typedef GtkWidget* PlatformWidget;
 #endif
@@ -628,7 +622,6 @@ public:
     void startAutoscrollAtPosition(const WebCore::FloatPoint& positionInWindow);
     void cancelAutoscroll();
 #if ENABLE(DATA_INTERACTION)
-    void didPerformDataInteractionControllerOperation(bool handled);
     void didHandleStartDataInteractionRequest(bool started);
     void didHandleAdditionalDragItemsRequest(bool added);
     void requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
@@ -923,6 +916,7 @@ public:
     void dragUpdated(WebCore::DragData&, const String& dragStorageName = String());
     void dragExited(WebCore::DragData&, const String& dragStorageName = String());
     void performDragOperation(WebCore::DragData&, const String& dragStorageName, SandboxExtension::Handle&&, SandboxExtension::HandleArray&&);
+    void didPerformDragOperation(bool handled);
 
     void didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const WebCore::IntRect& insertionRect);
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
@@ -1204,7 +1198,7 @@ public:
     void immediateActionDidCancel();
     void immediateActionDidComplete();
 
-    void* immediateActionAnimationControllerForHitTestResult(RefPtr<API::HitTestResult>, uint64_t, RefPtr<API::Object>);
+    NSObject *immediateActionAnimationControllerForHitTestResult(RefPtr<API::HitTestResult>, uint64_t, RefPtr<API::Object>);
 
     void installActivityStateChangeCompletionHandler(WTF::Function<void ()>&&);
 
@@ -1319,9 +1313,8 @@ public:
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     RefPtr<API::Attachment> attachmentForIdentifier(const String& identifier) const;
-    void insertAttachment(Ref<API::Attachment>&&, const WebCore::AttachmentDisplayOptions&, uint64_t fileSize, const String& fileName, std::optional<String> contentType, Function<void(CallbackBase::Error)>&&);
-    void setAttachmentDisplayOptions(const String& identifier, WebCore::AttachmentDisplayOptions, Function<void(CallbackBase::Error)>&&);
-    void updateAttachmentAttributes(const String& identifier, uint64_t fileSize, std::optional<String>&& newContentType, std::optional<String>&& newFilename, Function<void(CallbackBase::Error)>&&);
+    void insertAttachment(Ref<API::Attachment>&&, Function<void(CallbackBase::Error)>&&);
+    void updateAttachmentAttributes(const API::Attachment&, Function<void(CallbackBase::Error)>&&);
 #endif
 
 #if ENABLE(APPLICATION_MANIFEST)
@@ -1751,7 +1744,7 @@ private:
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    void findPlugin(const String& mimeType, uint32_t processType, const String& urlString, const String& frameURLString, const String& pageURLString, bool allowOnlyApplicationPlugins, uint64_t& pluginProcessToken, String& newMIMEType, uint32_t& pluginLoadPolicy, String& unavailabilityDescription, bool& isUnsupported);
+    void findPlugin(const String& mimeType, uint32_t processType, const String& urlString, const String& frameURLString, const String& pageURLString, bool allowOnlyApplicationPlugins, Messages::WebPageProxy::FindPlugin::DelayedReply&&);
 #endif
 
 #if USE(QUICK_LOOK)

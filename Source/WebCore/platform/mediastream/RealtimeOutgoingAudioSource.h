@@ -34,7 +34,14 @@
 #include "LibWebRTCMacros.h"
 #include "MediaStreamTrackPrivate.h"
 #include "Timer.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 #include <webrtc/api/mediastreaminterface.h>
+
+#pragma GCC diagnostic pop
+
 #include <wtf/ThreadSafeRefCounted.h>
 
 namespace webrtc {

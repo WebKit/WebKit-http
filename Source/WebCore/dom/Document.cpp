@@ -152,7 +152,9 @@
 #include "PublicSuffix.h"
 #include "RealtimeMediaSourceCenter.h"
 #include "RenderChildIterator.h"
+#include "RenderInline.h"
 #include "RenderLayerCompositor.h"
+#include "RenderLineBreak.h"
 #include "RenderTreeUpdater.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
@@ -505,6 +507,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_documentClasses(documentClasses)
     , m_eventQueue(*this)
 #if ENABLE(INTERSECTION_OBSERVER)
+    , m_intersectionObservationUpdateTimer(*this, &Document::updateIntersectionObservations)
     , m_intersectionObserversNotifyTimer(*this, &Document::notifyIntersectionObserversTimerFired)
 #endif
     , m_loadEventDelayTimer(*this, &Document::loadEventDelayTimerFired)
@@ -1876,8 +1879,11 @@ void Document::resolveStyle(ResolveStyleType type)
             frameView.layoutContext().scheduleLayout();
 
         // Usually this is handled by post-layout.
-        if (!frameView.needsLayout())
+        if (!frameView.needsLayout()) {
             frameView.frame().selection().scheduleAppearanceUpdateAfterStyleChange();
+            if (m_needsIntersectionObservationUpdate)
+                scheduleIntersectionObservationUpdate();
+        }
 
         // As a result of the style recalculation, the currently hovered element might have been
         // detached (for example, by setting display:none in the :hover style), schedule another mouseMove event
@@ -7438,10 +7444,73 @@ RefPtr<IntersectionObserver> Document::removeIntersectionObserver(IntersectionOb
     return observerRef;
 }
 
+static void computeIntersectionRects(FrameView& frameView, IntersectionObserver& observer, Element& target, FloatRect& absTargetRect, FloatRect& absIntersectionRect, FloatRect& absRootBounds)
+{
+    // FIXME: Implement intersection computation for the cross-document case.
+    if (observer.trackingDocument() != &target.document())
+        return;
+
+    auto* targetRenderer = target.renderer();
+    if (!targetRenderer)
+        return;
+
+    // FIXME: Expand localRootBounds using the observer's rootMargin.
+    FloatRect localRootBounds;
+    RenderBlock* rootRenderer;
+    if (observer.root()) {
+        if (!observer.root()->renderer() || !is<RenderBlock>(observer.root()->renderer()))
+            return;
+
+        rootRenderer = downcast<RenderBlock>(observer.root()->renderer());
+        if (!rootRenderer->isContainingBlockAncestorFor(*targetRenderer))
+            return;
+
+        if (rootRenderer->hasOverflowClip())
+            localRootBounds = rootRenderer->contentBoxRect();
+        else
+            localRootBounds = { FloatPoint(), rootRenderer->size() };
+    } else {
+        ASSERT(frameView.frame().isMainFrame());
+        rootRenderer = frameView.renderView();
+        localRootBounds = frameView.layoutViewportRect();
+    }
+
+    LayoutRect localTargetBounds;
+    if (is<RenderBox>(*targetRenderer))
+        localTargetBounds = downcast<RenderBox>(targetRenderer)->borderBoundingBox();
+    else if (is<RenderInline>(targetRenderer))
+        localTargetBounds = downcast<RenderInline>(targetRenderer)->linesBoundingBox();
+    else if (is<RenderLineBreak>(targetRenderer))
+        localTargetBounds = downcast<RenderLineBreak>(targetRenderer)->linesBoundingBox();
+
+    FloatRect rootLocalIntersectionRect = targetRenderer->computeRectForRepaint(localTargetBounds, rootRenderer);
+    rootLocalIntersectionRect.intersect(localRootBounds);
+
+    if (!rootLocalIntersectionRect.isEmpty())
+        absIntersectionRect = rootRenderer->localToAbsoluteQuad(rootLocalIntersectionRect).boundingBox();
+
+    absTargetRect = targetRenderer->localToAbsoluteQuad(FloatRect(localTargetBounds)).boundingBox();
+    absRootBounds = rootRenderer->localToAbsoluteQuad(localRootBounds).boundingBox();
+}
+
 void Document::updateIntersectionObservations()
 {
+    ASSERT(m_needsIntersectionObservationUpdate);
+    auto* frameView = view();
+    if (!frameView)
+        return;
+
+    bool needsLayout = frameView->layoutContext().isLayoutPending() || (renderView() && renderView()->needsLayout());
+    if (needsLayout || hasPendingStyleRecalc())
+        return;
+
+    m_needsIntersectionObservationUpdate = false;
+
     for (auto observer : m_intersectionObservers) {
         bool needNotify = false;
+        DOMHighResTimeStamp timestamp;
+        if (!observer->createTimestamp(timestamp))
+            continue;
         for (Element* target : observer->observationTargets()) {
             auto& targetRegistrations = target->intersectionObserverData()->registrations;
             auto index = targetRegistrations.findMatching([observer](auto& registration) {
@@ -7450,20 +7519,40 @@ void Document::updateIntersectionObservations()
             ASSERT(index != notFound);
             auto& registration = targetRegistrations[index];
 
-            // FIXME: Compute intersection of target and observer's root.
+            FloatRect absTargetRect;
+            FloatRect absIntersectionRect;
+            FloatRect absRootBounds;
+            computeIntersectionRects(*frameView, *observer, *target, absTargetRect, absIntersectionRect, absRootBounds);
+
+            // FIXME: Handle zero-area intersections (e.g., intersections involving zero-area targets).
+            bool isIntersecting = absIntersectionRect.area();
+            float intersectionRatio = isIntersecting ? absIntersectionRect.area() / absTargetRect.area() : 0;
             size_t thresholdIndex = 0;
-            double timestamp = 0;
-            std::optional<DOMRectInit> rootBounds;
-            DOMRectInit targetBoundingClientRect;
-            DOMRectInit intersectionRect;
-            double intersectionRatio = 0;
-            bool isIntersecting = false;
+            if (isIntersecting) {
+                auto& thresholds = observer->thresholds();
+                while (thresholdIndex < thresholds.size() && thresholds[thresholdIndex] <= intersectionRatio)
+                    ++thresholdIndex;
+            }
+
             if (!registration.previousThresholdIndex || thresholdIndex != registration.previousThresholdIndex) {
+                FloatRect targetBoundingClientRect = frameView->absoluteToClientRect(absTargetRect);
+                FloatRect clientIntersectionRect = isIntersecting ? frameView->absoluteToClientRect(absIntersectionRect) : FloatRect();
+
+                // FIXME: Once cross-document observation is implemented, only report root bounds if the target document and
+                // the root document are similar-origin.
+                FloatRect clientRootBounds = frameView->absoluteToClientRect(absRootBounds);
+                std::optional<DOMRectInit> reportedRootBounds = DOMRectInit({
+                    clientRootBounds.x(),
+                    clientRootBounds.y(),
+                    clientRootBounds.width(),
+                    clientRootBounds.height()
+                });
+
                 observer->appendQueuedEntry(IntersectionObserverEntry::create({
                     timestamp,
-                    rootBounds,
-                    targetBoundingClientRect,
-                    intersectionRect,
+                    reportedRootBounds,
+                    { targetBoundingClientRect.x(), targetBoundingClientRect.y(), targetBoundingClientRect.width(), targetBoundingClientRect.height() },
+                    { clientIntersectionRect.x(), clientIntersectionRect.y(), clientIntersectionRect.width(), clientIntersectionRect.height() },
                     intersectionRatio,
                     target,
                     isIntersecting,
@@ -7478,6 +7567,15 @@ void Document::updateIntersectionObservations()
 
     if (m_intersectionObserversWithPendingNotifications.size())
         m_intersectionObserversNotifyTimer.startOneShot(0_s);
+}
+
+void Document::scheduleIntersectionObservationUpdate()
+{
+    if (m_intersectionObservers.isEmpty() || m_intersectionObservationUpdateTimer.isActive())
+        return;
+
+    m_needsIntersectionObservationUpdate = true;
+    m_intersectionObservationUpdateTimer.startOneShot(0_s);
 }
 
 void Document::notifyIntersectionObserversTimerFired()

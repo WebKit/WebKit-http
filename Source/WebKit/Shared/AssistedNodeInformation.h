@@ -29,6 +29,7 @@
 #include <WebCore/AutocapitalizeTypes.h>
 #include <WebCore/Autofill.h>
 #include <WebCore/Color.h>
+#include <WebCore/InputMode.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/URL.h>
 #include <wtf/text/WTFString.h>
@@ -110,6 +111,7 @@ struct AssistedNodeInformation {
     bool insideFixedPosition { false };
     AutocapitalizeType autocapitalizeType { AutocapitalizeTypeDefault };
     InputType elementType { InputType::None };
+    WebCore::InputMode inputMode { WebCore::InputMode::Unspecified };
     String formAction;
     Vector<OptionItem> selectOptions;
     int selectedIndex { -1 };

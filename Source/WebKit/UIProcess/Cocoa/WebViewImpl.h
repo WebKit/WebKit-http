@@ -104,6 +104,7 @@ class PageConfiguration;
 
 #if ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
 - (WKDragDestinationAction)_web_dragDestinationActionForDraggingInfo:(id <NSDraggingInfo>)draggingInfo;
+- (void)_web_didPerformDragOperation:(BOOL)handled;
 #endif
 
 @optional
@@ -364,7 +365,7 @@ public:
     void prepareForDictionaryLookup();
     void setAllowsLinkPreview(bool);
     bool allowsLinkPreview() const { return m_allowsLinkPreview; }
-    void* immediateActionAnimationControllerForHitTestResult(API::HitTestResult*, uint32_t type, API::Object* userData);
+    NSObject *immediateActionAnimationControllerForHitTestResult(API::HitTestResult*, uint32_t type, API::Object* userData);
     void didPerformImmediateActionHitTest(const WebHitTestResultData&, bool contentPreventsDefault, API::Object* userData);
     void prepareForImmediateActionAnimation();
     void cancelImmediateActionAnimation();
@@ -424,6 +425,14 @@ public:
     bool performDragOperation(id <NSDraggingInfo>);
     NSView *hitTestForDragTypes(CGPoint, NSSet *types);
     void registerDraggedTypes();
+
+    NSDragOperation dragSourceOperationMask(NSDraggingSession *, NSDraggingContext);
+    void draggingSessionEnded(NSDraggingSession *, NSPoint, NSDragOperation);
+
+    NSString *fileNameForFilePromiseProvider(NSFilePromiseProvider *, NSString *fileType);
+    void writeToURLForFilePromiseProvider(NSFilePromiseProvider *, NSURL *, void(^)(NSError *));
+
+    void didPerformDragOperation(bool handled);
 #endif
 
     void startWindowDrag();
@@ -626,6 +635,10 @@ private:
 
     void handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates);
     void flushPendingMouseEventCallbacks();
+
+#if ENABLE(DRAG_SUPPORT)
+    void sendDragEndToPage(CGPoint endPoint, NSDragOperation);
+#endif
 
     WeakObjCPtr<NSView<WebViewImplDelegate>> m_view;
     std::unique_ptr<PageClient> m_pageClient;

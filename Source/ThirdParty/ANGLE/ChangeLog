@@ -1,3 +1,40 @@
+2018-08-29  David Kilzer  <ddkilzer@apple.com>
+
+        Remove empty directories from from svn.webkit.org repository
+        <https://webkit.org/b/189081>
+
+        * src/angle.xcodeproj: Removed.
+        * src/common/third_party/numerics: Removed.
+
+2018-08-28  David Kilzer  <ddkilzer@apple.com>
+
+        Move PMurHash.{cpp,h} into 'src' folder to match path on disk
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        (src/common/third_party/smhasher/src): Add folder and move
+        PMurHash.{cpp,h} into it.  This makes tidy-Xcode-project-file
+        run smoothly when updating the ANGLE project.
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build fix -- disable LTO for production builds
+
+        * Configurations/Base.xcconfig:
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
+        LTO.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
 2018-08-03  Alex Christensen  <achristensen@webkit.org>
 
         Fix spelling of "overridden"

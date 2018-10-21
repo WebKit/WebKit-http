@@ -28,7 +28,6 @@
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
-#include <WebCore/AttachmentTypes.h>
 #include <WebCore/SharedBuffer.h>
 #include <wtf/text/WTFString.h>
 
@@ -49,25 +48,14 @@ Attachment::~Attachment()
 {
 }
 
-void Attachment::setDisplayOptions(WebCore::AttachmentDisplayOptions options, Function<void(WebKit::CallbackBase::Error)>&& callback)
+void Attachment::updateAttributes(Function<void(WebKit::CallbackBase::Error)>&& callback)
 {
-    if (m_webPage)
-        m_webPage->setAttachmentDisplayOptions(m_identifier, options, WTFMove(callback));
-    else
+    if (!m_webPage) {
         callback(WebKit::CallbackBase::Error::OwnerWasInvalidated);
-}
+        return;
+    }
 
-void Attachment::updateAttributes(uint64_t fileSize, const WTF::String& newContentType, const WTF::String& newFilename, Function<void(WebKit::CallbackBase::Error)>&& callback)
-{
-    setContentType(newContentType);
-    setFilePath({ });
-
-    auto optionalNewContentType = newContentType.isNull() ? std::nullopt : std::optional<WTF::String> { newContentType };
-    auto optionalNewFilename = newFilename.isNull() ? std::nullopt : std::optional<WTF::String> { newFilename };
-    if (m_webPage)
-        m_webPage->updateAttachmentAttributes(m_identifier, fileSize, WTFMove(optionalNewContentType), WTFMove(optionalNewFilename), WTFMove(callback));
-    else
-        callback(WebKit::CallbackBase::Error::OwnerWasInvalidated);
+    m_webPage->updateAttachmentAttributes(*this, WTFMove(callback));
 }
 
 void Attachment::invalidate()
@@ -80,6 +68,25 @@ void Attachment::invalidate()
     m_fileWrapper.clear();
 #endif
 }
+
+#if !PLATFORM(COCOA)
+
+WTF::String Attachment::mimeType() const
+{
+    return m_contentType;
+}
+
+WTF::String Attachment::fileName() const
+{
+    return { };
+}
+
+std::optional<uint64_t> Attachment::fileSizeForDisplay() const
+{
+    return std::nullopt;
+}
+
+#endif // !PLATFORM(COCOA)
 
 }
 

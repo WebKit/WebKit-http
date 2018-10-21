@@ -721,7 +721,7 @@ http/tests/resourceLoadStatistics/grandfathering.html [ Pass ]
 webkit.org/b/180703 http/tests/resourceLoadStatistics/telemetry-generation.html [ Pass Failure ]
 http/tests/resourceLoadStatistics/prune-statistics.html [ Pass ]
 http/tests/resourceLoadStatistics [ Pass ]
-http/tests/websocket/construct-in-detached-frame-resource-load-statistics.html [ Pass ]
+http/tests/websocket/connection-refusal-in-frame-resource-load-statistics.html [ Pass ]
 # These are only supported behind a compile time flag in macOS High Sierra + iOS 11, and above.
 http/tests/resourceLoadStatistics/cookie-deletion.html [ Skip ]
 http/tests/resourceLoadStatistics/cookies-with-and-without-user-interaction.html [ Skip ]
@@ -738,8 +738,7 @@ http/tests/navigation/process-swap-window-open.html [ Pass ]
 http/wpt/cross-origin-resource-policy/ [ Pass ]
 
 http/tests/navigation/useragent-reload.php [ Pass ]
-webkit.org/b/187931 storage/indexeddb/modern/opendatabase-after-storage-crash.html [ Skip ]
-
+storage/indexeddb/modern/opendatabase-after-storage-crash.html [ Pass ]
 
 ### END OF (5) Progressions, expected successes that are expected failures in WebKit1.
 ########################################

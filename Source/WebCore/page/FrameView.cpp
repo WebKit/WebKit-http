@@ -2001,6 +2001,11 @@ void FrameView::viewportContentsChanged()
         if (auto* renderView = frameView.frame().contentRenderer())
             renderView->updateVisibleViewportRect(visibleRect);
     });
+
+#if ENABLE(INTERSECTION_OBSERVER)
+    if (auto* document = frame().document())
+        document->scheduleIntersectionObservationUpdate();
+#endif
 }
 
 bool FrameView::fixedElementsLayoutRelativeToFrame() const
@@ -4655,6 +4660,11 @@ FloatRect FrameView::absoluteToDocumentRect(FloatRect rect, std::optional<float>
 FloatPoint FrameView::absoluteToDocumentPoint(FloatPoint p, std::optional<float> effectiveZoom) const
 {
     return p.scaled(absoluteToDocumentScaleFactor(effectiveZoom));
+}
+
+FloatRect FrameView::absoluteToClientRect(FloatRect rect, std::optional<float> effectiveZoom) const
+{
+    return documentToClientRect(absoluteToDocumentRect(rect, effectiveZoom));
 }
 
 FloatSize FrameView::documentToClientOffset() const

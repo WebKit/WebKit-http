@@ -41,9 +41,9 @@ namespace NetworkCache {
 
 using namespace WebCore;
 
-SpeculativeLoad::SpeculativeLoad(Cache& cache, const GlobalFrameID& frameID, const ResourceRequest& request, std::unique_ptr<NetworkCache::Entry> cacheEntryForValidation, RevalidationCompletionHandler&& completionHandler)
+SpeculativeLoad::SpeculativeLoad(Cache& cache, const GlobalFrameID& globalFrameID, const ResourceRequest& request, std::unique_ptr<NetworkCache::Entry> cacheEntryForValidation, RevalidationCompletionHandler&& completionHandler)
     : m_cache(cache)
-    , m_frameID(frameID)
+    , m_globalFrameID(globalFrameID)
     , m_completionHandler(WTFMove(completionHandler))
     , m_originalRequest(request)
     , m_bufferedDataForCache(SharedBuffer::create())
@@ -52,6 +52,8 @@ SpeculativeLoad::SpeculativeLoad(Cache& cache, const GlobalFrameID& frameID, con
     ASSERT(!m_cacheEntry || m_cacheEntry->needsValidation());
 
     NetworkLoadParameters parameters;
+    parameters.webPageID = globalFrameID.first;
+    parameters.webFrameID = globalFrameID.second;
     parameters.sessionID = PAL::SessionID::defaultSessionID();
     parameters.storedCredentialsPolicy = StoredCredentialsPolicy::Use;
     parameters.contentSniffingPolicy = ContentSniffingPolicy::DoNotSniffContent;
@@ -78,7 +80,7 @@ void SpeculativeLoad::willSendRedirectedRequest(ResourceRequest&& request, Resou
     didComplete();
 }
 
-auto SpeculativeLoad::didReceiveResponse(ResourceResponse&& receivedResponse) -> ShouldContinueDidReceiveResponse
+void SpeculativeLoad::didReceiveResponse(ResourceResponse&& receivedResponse, ResponseCompletionHandler&& completionHandler)
 {
     m_response = receivedResponse;
 
@@ -87,11 +89,11 @@ auto SpeculativeLoad::didReceiveResponse(ResourceResponse&& receivedResponse) ->
 
     bool validationSucceeded = m_response.httpStatusCode() == 304; // 304 Not Modified
     if (validationSucceeded && m_cacheEntry)
-        m_cacheEntry = m_cache->update(m_originalRequest, m_frameID, *m_cacheEntry, m_response);
+        m_cacheEntry = m_cache->update(m_originalRequest, m_globalFrameID, *m_cacheEntry, m_response);
     else
         m_cacheEntry = nullptr;
 
-    return ShouldContinueDidReceiveResponse::Yes;
+    completionHandler(PolicyAction::Use);
 }
 
 void SpeculativeLoad::didReceiveBuffer(Ref<SharedBuffer>&& buffer, int reportedEncodedDataLength)

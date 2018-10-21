@@ -46,21 +46,7 @@ public:
     Result WARN_UNUSED_RETURN parse();
 
 private:
-
-#define WASM_SECTION_DECLARE_PARSER(NAME, ID, DESCRIPTION) PartialResult WARN_UNUSED_RETURN parse ## NAME();
-    FOR_EACH_KNOWN_WASM_SECTION(WASM_SECTION_DECLARE_PARSER)
-#undef WASM_SECTION_DECLARE_PARSER
-
-    PartialResult WARN_UNUSED_RETURN parseCustom(uint32_t);
-    PartialResult WARN_UNUSED_RETURN parseGlobalType(Global&);
-    PartialResult WARN_UNUSED_RETURN parseMemoryHelper(bool isImport);
-    PartialResult WARN_UNUSED_RETURN parseTableHelper(bool isImport);
-    PartialResult WARN_UNUSED_RETURN parseResizableLimits(uint32_t& initial, std::optional<uint32_t>& maximum);
-    PartialResult WARN_UNUSED_RETURN parseInitExpr(uint8_t&, uint64_t&, Type& initExprType);
-
     Ref<ModuleInformation> m_info;
-    uint32_t m_memoryCount { 0 };
-    uint32_t m_tableCount { 0 };
 };
 
 } } // namespace JSC::Wasm

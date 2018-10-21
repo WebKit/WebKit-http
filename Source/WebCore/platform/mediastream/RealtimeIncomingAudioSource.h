@@ -34,7 +34,14 @@
 
 #include "LibWebRTCMacros.h"
 #include "RealtimeMediaSource.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 #include <webrtc/api/mediastreaminterface.h>
+
+#pragma GCC diagnostic pop
+
 #include <wtf/RetainPtr.h>
 
 namespace WebCore {

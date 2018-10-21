@@ -84,8 +84,10 @@
 #import <WebCore/HTMLParserIdioms.h>
 #import <WebCore/HTMLSelectElement.h>
 #import <WebCore/HTMLTextAreaElement.h>
+#import <WebCore/HTMLTextFormControlElement.h>
 #import <WebCore/HistoryItem.h>
 #import <WebCore/HitTestResult.h>
+#import <WebCore/InputMode.h>
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/LibWebRTCProvider.h>
 #import <WebCore/MediaSessionManagerIOS.h>
@@ -2417,6 +2419,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         information.value = element.value();
         information.autofillFieldName = WebCore::toAutofillFieldName(element.autofillData().fieldName);
         information.placeholder = element.attributeWithoutSynchronization(HTMLNames::placeholderAttr);
+        information.inputMode = element.canonicalInputMode();
     } else if (is<HTMLInputElement>(*m_assistedNode)) {
         HTMLInputElement& element = downcast<HTMLInputElement>(*m_assistedNode);
         HTMLFormElement* form = element.form();
@@ -2474,6 +2477,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         }
 #endif
 
+        information.inputMode = element.canonicalInputMode();
         information.isReadOnly = element.isReadOnly();
         information.value = element.value();
         information.valueAsNumber = element.valueAsNumber();
@@ -2484,6 +2488,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
             auto& assistedElement = downcast<HTMLElement>(*m_assistedNode);
             information.isAutocorrect = assistedElement.shouldAutocorrect();
             information.autocapitalizeType = assistedElement.autocapitalizeType();
+            information.inputMode = assistedElement.canonicalInputMode();
         } else {
             information.isAutocorrect = true;
             information.autocapitalizeType = AutocapitalizeTypeDefault;

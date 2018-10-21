@@ -29,7 +29,7 @@ import traceback
 from webkitpy.api_tests.manager import Manager
 from webkitpy.common.host import Host
 from webkitpy.layout_tests.views.metered_stream import MeteredStream
-from webkitpy.port import configuration_options, platform_options
+from webkitpy.port import configuration_options, platform_options, base, win
 
 EXCEPTIONAL_EXIT_STATUS = -1
 INTERRUPT_EXIT_STATUS = -2
@@ -73,7 +73,7 @@ def run(port, options, args, logging_stream):
         stream = MeteredStream(logging_stream, options.verbose, logger=logger, number_of_columns=port.host.platform.terminal_width(), print_timestamps=options.timestamps)
         manager = Manager(port, options, stream)
 
-        result = manager.run(args)
+        result = manager.run(args, json_output=options.json_output)
         _log.debug("Testing completed, Exit status: %d" % result)
         return result
     finally:
@@ -92,6 +92,8 @@ def parse_args(args):
                              help='Enable verbose printing'),
         optparse.make_option('--timestamps', action='store_true', default=False,
                              help='Print timestamps for each logged line'),
+        optparse.make_option('--json-output', action='store', default=None,
+                             help='Save test results as JSON to file'),
     ]))
 
     option_group_definitions.append(('WebKit Options', [
@@ -104,6 +106,12 @@ def parse_args(args):
     option_group_definitions.append(('Testing Options', [
         optparse.make_option('--wtf-only', action='store_const', const='TestWTF', dest='api_binary',
                              help='Only build, check and run TestWTF'),
+        optparse.make_option('--webkit-only', action='store_const', const='TestWebKitAPI', dest='api_binary',
+                             help='Only check and run TestWebKitAPI'),
+        optparse.make_option('--web-core-only', action='store_const', const='TestWebCore', dest='api_binary',
+                             help='Only check and run TestWebCore.exe (Windows only)'),
+        optparse.make_option('--webkit-legacy-only', action='store_const', const='TestWebKitLegacy', dest='api_binary',
+                             help='Only check and run TestWebKitLegacy.exe (Windows only)'),
         optparse.make_option('-d', '--dump', action='store_true', default=False,
                              help='Dump all test names without running them'),
         optparse.make_option('--build', dest='build', action='store_true', default=True,
@@ -127,7 +135,16 @@ def parse_args(args):
                              help='Run all tests, even DISABLED tests'),
     ]))
 
-    option_parser = optparse.OptionParser(usage='%prog [options] [<path>...]')
+    option_parser = optparse.OptionParser(
+        usage='run-api-tests [options] [<test names>...]',
+        description="""By default, run-api-tests will run all API tests. It also allows the user to specify tests of the \
+format <suite>.<test> or <canonicalized binary name>.<suite>.<test>. Note that in the case where a binary is not \
+specified, one will be inferred by listing all available tests. Specifying just a binary or just a suite will cause every \
+test contained within to be run. The canonicalized binary name is the binary name with any filename extension \
+stripped. For Unix ports, these binaries are {} and {}. For Windows ports, they are {} and {}.""".format(
+            ', '.join(base.Port.API_TEST_BINARY_NAMES[:-1]), base.Port.API_TEST_BINARY_NAMES[-1],
+            ', '.join(win.WinPort.API_TEST_BINARY_NAMES[:-1]), win.WinPort.API_TEST_BINARY_NAMES[-1],
+    ))
 
     for group_name, group_options in option_group_definitions:
         option_group = optparse.OptionGroup(option_parser, group_name)

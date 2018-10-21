@@ -21,9 +21,13 @@ fast/media/mq-monochrome-live-update.html [ Pass ]
 fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
 
 [ Sierra+ ] http/tests/ssl/applepay/ [ Pass ]
+[ Sierra ] http/tests/ssl/applepay/ApplePayButtonV4.html [ Skip ]
 [ Sierra ] http/tests/ssl/applepay/ApplePayError.html [ Skip ]
 [ Sierra ] http/tests/ssl/applepay/ApplePaySessionV3.html [ Skip ]
+[ Sierra ] http/tests/ssl/applepay/ApplePaySessionV4.html [ Skip ]
 [ Sierra ] http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https.html [ Skip ]
+[ HighSierra ] http/tests/ssl/applepay/ApplePayButtonV4.html [ Skip ]
+[ HighSierra ] http/tests/ssl/applepay/ApplePaySessionV4.html [ Skip ]
 
 fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
 fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
@@ -40,23 +44,6 @@ webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpayment
 # skip in favor of tests in http/tests/paymentrequest
 imported/w3c/web-platform-tests/payment-request/payment-request-show-method.https.html [ WontFix ]
 imported/w3c/web-platform-tests/payment-request/rejects_if_not_active.https.html [ WontFix ]
-
-# skip manual payment-request tests
-imported/w3c/web-platform-tests/payment-request/algorithms-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/change-shipping-option-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/payment-response/complete-method-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/payment-response/methodName-attribute-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/payment-response/payerEmail-attribute-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/payment-response/payerName-attribute-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/payment-response/payerPhone-attribute-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/payment-response/requestId-attribute-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/payment-response/shippingAddress-attribute-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/payment-response/shippingOption-attribute-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/PaymentAddress/attributes-and-toJSON-method-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/shipping-address-changed-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/updateWith-method-pmi-handling-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/user-abort-algorithm-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/user-accepts-payment-request-algo-manual.https.html [ Skip ]
 
 http/tests/security/contentSecurityPolicy/manifest-src-allowed.html [ Pass ]
 http/tests/security/contentSecurityPolicy/manifest-src-blocked.html [ Pass ]
@@ -619,6 +606,8 @@ webkit.org/b/163702 platform/mac-wk2/plugins/muted-state.html [ Failure ]
 
 webkit.org/b/164870 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbcursor_iterating.htm [ Pass Failure ]
 
+webkit.org/b/187935 [ Release ] imported/w3c/web-platform-tests/service-workers/cache-storage/serviceworker/cache-storage-match.https.html  [ Pass Failure ]
+
 webkit.org/b/165352 fast/dom/Window/window-resize-contents.html [ Pass Timeout ]
 
 webkit.org/b/167653 http/tests/contentextensions/block-everything-unless-domain.html [ Pass Timeout ]
@@ -753,6 +742,7 @@ webkit.org/b/185994 [ Debug ] fast/text/user-installed-fonts/shadow-postscript-f
 # <rdar://problem/25010307>
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePayError.html [ Pass ]
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePaySessionV3.html [ Pass ]
+[ Mojave+ ] http/tests/ssl/applepay/ApplePaySessionV4.html [ Pass ]
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https.html [ Pass ]
 # <rdar://problem/31634451>
 [ HighSierra+ ] http/tests/resourceLoadStatistics/cookies-with-and-without-user-interaction.html [ Pass ]
@@ -817,7 +807,7 @@ webkit.org/b/182341 imported/w3c/web-platform-tests/service-workers/service-work
 
 webkit.org/b/179352 imported/w3c/web-platform-tests/service-workers/service-worker/windowclient-navigate.https.html [ Pass Failure Slow ]
 
-webkit.org/b/182849 imported/w3c/web-platform-tests/XMLHttpRequest/event-upload-progress-crossorigin.htm [ Pass Failure ]
+webkit.org/b/182849 imported/w3c/web-platform-tests/xhr/event-upload-progress-crossorigin.htm [ Pass Failure ]
 
 webkit.org/b/183164 fast/dom/Window/window-focus-self.html [ Pass Failure ]
 
@@ -848,3 +838,30 @@ webkit.org/b/183705 http/tests/workers/service/serviceworkerclients-matchAll.htt
 webkit.org/b/187658 http/tests/security/bypassing-cors-checks-for-extension-urls.html [ Pass Failure ]
 
 [ Mojave+ ] fast/canvas/webgl/context-update-on-display-configuration.html [ Pass ]
+
+# skip manual payment-request tests
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/PaymentValidationErrors/retry-shows-error-member-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/PaymentValidationErrors/retry-shows-payer-member-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/PaymentValidationErrors/retry-shows-shippingAddress-member-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/algorithms-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/change-shipping-option-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/change-shipping-option-select-last-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/payment-response/complete-method-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/payment-response/methodName-attribute-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/payment-response/onpayerdetailchange-attribute.manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/payment-response/payerEmail-attribute-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/payment-response/payerName-attribute-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/payment-response/payerPhone-attribute-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/payment-response/rejects_if_not_active-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/payment-response/requestId-attribute-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/payment-response/retry-method-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/payment-response/shippingAddress-attribute-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/payment-response/shippingOption-attribute-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/PaymentAddress/attributes-and-toJSON-method-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/shipping-address-changed-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/show-method-optional-promise-rejects-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/show-method-optional-promise-resolves-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/show-method-postmessage-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/updateWith-method-pmi-handling-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/user-abort-algorithm-manual.https.html [ Skip ]
+webkit.org/b/188985 imported/w3c/web-platform-tests/payment-request/user-accepts-payment-request-algo-manual.https.html [ Skip ]

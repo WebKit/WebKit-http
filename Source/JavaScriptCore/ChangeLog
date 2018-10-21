@@ -1,3 +1,833 @@
+2018-08-28  Mark Lam  <mark.lam@apple.com>
+
+        Fix bit-rotted Interpreter::dumpRegisters() and move it to the VMInspector.
+        https://bugs.webkit.org/show_bug.cgi?id=189059
+        <rdar://problem/40335354>
+
+        Reviewed by Saam Barati.
+
+        1. Moved Interpreter::dumpRegisters() to VMInspector::dumpRegisters().
+        2. Added $vm.dumpRegisters().
+
+            Usage: $vm.dumpRegisters(N) // dump the registers of the Nth CallFrame.
+            Usage: $vm.dumpRegisters() // dump the registers of the current CallFrame.
+
+           Note: Currently, $vm.dumpRegisters() only dump registers in the physical frame.
+           It will treat inlined frames content as registers in the bounding physical frame.
+
+           Here's an example of such a dump on a DFG frame:
+
+                Register frame: 
+
+                -----------------------------------------------------------------------------
+                            use            |   address  |                value               
+                -----------------------------------------------------------------------------
+                [r 12 arguments[  7]]      | 0x7ffeefbfd330 | 0xa                Undefined
+                [r 11 arguments[  6]]      | 0x7ffeefbfd328 | 0x10bbb3e80        Object: 0x10bbb3e80 with butterfly 0x0 (Structure 0x10bbf20d0:[Object, {}, NonArray, Proto:0x10bbb4000]), StructureID: 76
+                [r 10 arguments[  5]]      | 0x7ffeefbfd320 | 0xa                Undefined
+                [r  9 arguments[  4]]      | 0x7ffeefbfd318 | 0xa                Undefined
+                [r  8 arguments[  3]]      | 0x7ffeefbfd310 | 0xa                Undefined
+                [r  7 arguments[  2]]      | 0x7ffeefbfd308 | 0xffff0000000a5eaa Int32: 679594
+                [r  6 arguments[  1]]      | 0x7ffeefbfd300 | 0x10bbd00f0        Object: 0x10bbd00f0 with butterfly 0x8000f8248 (Structure 0x10bba4700:[Function, {name:100, prototype:101, length:102, Symbol.species:103, isArray:104}, NonArray, Proto:0x10bbd0000, Leaf]), StructureID: 160
+                [r  5           this]      | 0x7ffeefbfd2f8 | 0x10bbe0000        Object: 0x10bbe0000 with butterfly 0x8000d8808 (Structure 0x10bb35340:[global, {parseInt:100, parseFloat:101, Object:102, Function:103, Array:104, RegExp:105, RangeError:106, TypeError:107, PrivateSymbol.Object:108, PrivateSymbol.Array:109, ArrayBuffer:110, String:111, Symbol:112, Number:113, Boolean:114, Error:115, Map:116, Set:117, Promise:118, eval:119, Reflect:121, $vm:122, WebAssembly:123, debug:124, describe:125, describeArray:126, print:127, printErr:128, quit:129, gc:130, fullGC:131, edenGC:132, forceGCSlowPaths:133, gcHeapSize:134, addressOf:135, version:136, run:137, runString:138, load:139, loadString:140, readFile:141, read:142, checkSyntax:143, sleepSeconds:144, jscStack:145, readline:146, preciseTime:147, neverInlineFunction:148, noInline:149, noDFG:150, noFTL:151, numberOfDFGCompiles:153, jscOptions:154, optimizeNextInvocation:155, reoptimizationRetryCount:156, transferArrayBuffer:157, failNextNewCodeBlock:158, OSRExit:159, isFinalTier:160, predictInt32:161, isInt32:162, isPureNaN:163, fiatInt52:164, effectful42:165, makeMasquerader:166, hasCustomProperties:167, createGlobalObject:168, dumpTypesForAllVariables:169, drainMicrotasks:170, getRandomSeed:171, setRandomSeed:172, isRope:173, callerSourceOrigin:174, is32BitPlatform:175, loadModule:176, checkModuleSyntax:177, platformSupportsSamplingProfiler:178, generateHeapSnapshot:179, resetSuperSamplerState:180, ensureArrayStorage:181, startSamplingProfiler:182, samplingProfilerStackTraces:183, maxArguments:184, asyncTestStart:185, asyncTestPassed:186, WebAssemblyMemoryMode:187, console:188, $:189, $262:190, waitForReport:191, heapCapacity:192, flashHeapAccess:193, disableRichSourceInfo:194, mallocInALoop:195, totalCompileTime:196, Proxy:197, uneval:198, WScript:199, failWithMessage:200, triggerAssertFalse:201, isNaN:202, isFinite:203, escape:204, unescape:205, decodeURI:206, decodeURIComponent:207, encodeURI:208, encodeURIComponent:209, EvalError:210, ReferenceError:211, SyntaxError:212, URIError:213, JSON:214, Math:215, Int8Array:216, PrivateSymbol.Int8Array:217, Int16Array:218, PrivateSymbol.Int16Array:219, Int32Array:220, PrivateSymbol.Int32Array:221, Uint8Array:222, PrivateSymbol.Uint8Array:223, Uint8ClampedArray:224, PrivateSymbol.Uint8ClampedArray:225, Uint16Array:226, PrivateSymbol.Uint16Array:227, Uint32Array:228, PrivateSymbol.Uint32Array:229, Float32Array:230, PrivateSymbol.Float32Array:231, Float64Array:232, PrivateSymbol.Float64Array:233, DataView:234, Date:235, WeakMap:236, WeakSet:237, Intl:120, desc:238}, NonArray, Proto:0x10bbb4000, UncacheableDictionary, Leaf]), StructureID: 474
+                -----------------------------------------------------------------------------
+                [ArgumentCount]            | 0x7ffeefbfd2f0 | 7 
+                [ReturnVPC]                | 0x7ffeefbfd2f0 | 164 (line 57)
+                [Callee]                   | 0x7ffeefbfd2e8 | 0x10bb68db0        Object: 0x10bb68db0 with butterfly 0x0 (Structure 0x10bbf1c00:[Function, {}, NonArray, Proto:0x10bbd0000, Shady leaf]), StructureID: 65
+                [CodeBlock]                | 0x7ffeefbfd2e0 | 0x10bb2f8e0        __callRandomFunction#DmVXnv:[0x10bb2f8e0->0x10bbfd1e0, LLIntFunctionCall, 253]
+                [ReturnPC]                 | 0x7ffeefbfd2d8 | 0x10064d14c 
+                [CallerFrame]              | 0x7ffeefbfd2d0 | 0x7ffeefbfd380 
+                -----------------------------------------------------------------------------
+                [r -1  CalleeSaveReg]      | 0x7ffeefbfd2c8 | 0xffff000000000002 Int32: 2
+                [r -2  CalleeSaveReg]      | 0x7ffeefbfd2c0 | 0xffff000000000000 Int32: 0
+                [r -3  CalleeSaveReg]      | 0x7ffeefbfd2b8 | 0x10baf1608        
+                [r -4               ]      | 0x7ffeefbfd2b0 | 0x10bbcc000        Object: 0x10bbcc000 with butterfly 0x0 (Structure 0x10bbf1960:[JSGlobalLexicalEnvironment, {}, NonArray, Leaf]), StructureID: 59
+                [r -5               ]      | 0x7ffeefbfd2a8 | 0x10bbcc000        Object: 0x10bbcc000 with butterfly 0x0 (Structure 0x10bbf1960:[JSGlobalLexicalEnvironment, {}, NonArray, Leaf]), StructureID: 59
+                [r -6               ]      | 0x7ffeefbfd2a0 | 0xa                Undefined
+                -----------------------------------------------------------------------------
+                [r -7]                     | 0x7ffeefbfd298 | 0x10bb6fdc0        String (atomic) (identifier): length, StructureID: 4
+                [r -8]                     | 0x7ffeefbfd290 | 0x10bbb7ec0        Object: 0x10bbb7ec0 with butterfly 0x8000e0008 (Structure 0x10bbf2ae0:[Array, {}, ArrayWithContiguous, Proto:0x10bbc8080]), StructureID: 99
+                [r -9]                     | 0x7ffeefbfd288 | 0x10bbc33f0        Object: 0x10bbc33f0 with butterfly 0x8000fdda8 (Structure 0x10bbf1dc0:[Function, {name:100, length:101}, NonArray, Proto:0x10bbd0000, Leaf]), StructureID: 69
+                [r-10]                     | 0x7ffeefbfd280 | 0xffff000000000004 Int32: 4
+                [r-11]                     | 0x7ffeefbfd278 | 0x10bbb4290        Object: 0x10bbb4290 with butterfly 0x8000e8408 (Structure 0x10bb74850:[DollarVM, {abort:100, crash:101, breakpoint:102, dfgTrue:103, ftlTrue:104, cpuMfence:105, cpuRdtsc:106, cpuCpuid:107, cpuPause:108, cpuClflush:109, llintTrue:110, jitTrue:111, noInline:112, gc:113, edenGC:114, callFrame:115, codeBlockFor:116, codeBlockForFrame:117, dumpSourceFor:118, dumpBytecodeFor:119, dataLog:120, print:121, dumpCallFrame:122, dumpStack:123, dumpRegisters:124, dumpCell:125, indexingMode:126, inlineCapacity:127, value:128, getpid:129, createProxy:130, createRuntimeArray:131, createImpureGetter:132, createCustomGetterObject:133, createDOMJITNodeObject:134, createDOMJITGetterObject:135, createDOMJITGetterComplexObject:136, createDOMJITFunctionObject:137, createDOMJITCheckSubClassObject:138, createDOMJITGetterBaseJSObject:139, createBuiltin:140, getPrivateProperty:141, setImpureGetterDelegate:142, Root:143, Element:144, getElement:145, SimpleObject:146, getHiddenValue:147, setHiddenValue:148, shadowChickenFunctionsOnStack:149, setGlobalConstRedeclarationShouldNotThrow:150, findTypeForExpression:151, returnTypeFor:152, flattenDictionaryObject:153, dumpBasicBlockExecutionRanges:154, hasBasicBlockExecuted:155, basicBlockExecutionCount:156, enableDebuggerModeWhenIdle:158, disableDebuggerModeWhenIdle:159, globalObjectCount:160, globalObjectForObject:161, getGetterSetter:162, loadGetterFromGetterSetter:163, createCustomTestGetterSetter:164, deltaBetweenButterflies:165, totalGCTime:166}, NonArray, Proto:0x10bbb4000, Dictionary, Leaf]), StructureID: 306
+                [r-12]                     | 0x7ffeefbfd270 | 0x100000001        
+                [r-13]                     | 0x7ffeefbfd268 | 0x10bbc33f0        Object: 0x10bbc33f0 with butterfly 0x8000fdda8 (Structure 0x10bbf1dc0:[Function, {name:100, length:101}, NonArray, Proto:0x10bbd0000, Leaf]), StructureID: 69
+                [r-14]                     | 0x7ffeefbfd260 | 0x0                
+                [r-15]                     | 0x7ffeefbfd258 | 0x10064d14c        
+                [r-16]                     | 0x7ffeefbfd250 | 0x7ffeefbfd2d0     
+                [r-17]                     | 0x7ffeefbfd248 | 0x67ec87ee177      INVALID
+                [r-18]                     | 0x7ffeefbfd240 | 0x7ffeefbfd250     
+                -----------------------------------------------------------------------------
+
+        3. Removed dumpCallFrame() from the jsc shell.  We have the following tools that
+           we can use in its place:
+
+            $vm.dumpCallFrame()
+            $vm.dumpBytecodeFor()
+            $vm.dumpRegisters()     // Just added in this patch.
+
+        4. Also fixed a bug in BytecodeDumper: it should only access
+           CallLinkInfo::haveLastSeenCallee() only if CallLinkInfo::isDirect() is false.
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::printCallOp):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::dumpCallFrame): Deleted.
+        (JSC::DumpReturnVirtualPCFunctor::DumpReturnVirtualPCFunctor): Deleted.
+        (JSC::DumpReturnVirtualPCFunctor::operator() const): Deleted.
+        (JSC::Interpreter::dumpRegisters): Deleted.
+        * interpreter/Interpreter.h:
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionDumpCallFrame): Deleted.
+        * tools/JSDollarVM.cpp:
+        (JSC::functionDumpRegisters):
+        (JSC::JSDollarVM::finishCreation):
+        * tools/VMInspector.cpp:
+        (JSC::VMInspector::dumpRegisters):
+        * tools/VMInspector.h:
+
+2018-08-28  Keith Miller  <keith_miller@apple.com>
+
+        Add nullablity attributes to JSValue
+        https://bugs.webkit.org/show_bug.cgi?id=189047
+
+        Reviewed by Dan Bernstein.
+
+        Switch to using NS_ASSUME_NONNULL_BEGIN/END.
+
+        * API/JSValue.h:
+
+2018-08-28  Keith Miller  <keith_miller@apple.com>
+
+        Add nullablity attributes to JSValue
+        https://bugs.webkit.org/show_bug.cgi?id=189047
+
+        Reviewed by Geoffrey Garen.
+
+        * API/JSValue.h:
+
+2018-08-27  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [WebAssembly] Parse wasm modules in a streaming fashion
+        https://bugs.webkit.org/show_bug.cgi?id=188943
+
+        Reviewed by Mark Lam.
+
+        This patch adds Wasm::StreamingParser, which parses wasm binary in a streaming fashion.
+        Currently, this StreamingParser is not enabled and integrated. In subsequent patches,
+        we start integrating it into BBQPlan and dropping the old ModuleParser.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * tools/JSDollarVM.cpp:
+        (WTF::WasmStreamingParser::WasmStreamingParser):
+        (WTF::WasmStreamingParser::create):
+        (WTF::WasmStreamingParser::createStructure):
+        (WTF::WasmStreamingParser::streamingParser):
+        (WTF::WasmStreamingParser::finishCreation):
+        (WTF::functionWasmStreamingParserAddBytes):
+        (WTF::functionWasmStreamingParserFinalize):
+        (JSC::functionCreateWasmStreamingParser):
+        (JSC::JSDollarVM::finishCreation):
+        The $vm Wasm::StreamingParser object is introduced for testing purpose. Added new stress test uses
+        this interface to test streaming parser in the JSC shell.
+
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::BBQPlan):
+        (JSC::Wasm::BBQPlan::parseAndValidateModule):
+        (JSC::Wasm::BBQPlan::prepare):
+        (JSC::Wasm::BBQPlan::compileFunctions):
+        (JSC::Wasm::BBQPlan::complete):
+        (JSC::Wasm::BBQPlan::work):
+        * wasm/WasmBBQPlan.h:
+        BBQPlan has m_source, but once ModuleInformation is parsed, it is no longer necessary.
+        In subsequent patches, we will remove this, and stream the data into the BBQPlan.
+
+        * wasm/WasmFormat.h:
+        * wasm/WasmModuleInformation.cpp:
+        (JSC::Wasm::ModuleInformation::ModuleInformation):
+        * wasm/WasmModuleInformation.h:
+        One of the largest change in this patch is that ModuleInformation no longer holds source bytes,
+        since source bytes can be added in a streaming fashion. Instead of holding all the source bytes
+        in ModuleInformation, each function (ModuleInformation::functions, FunctionData) should have
+        Vector<uint8_t> for its data. This data is eventually filled by StreamingParser, and compiling
+        a function with this data can be done concurrently with StreamingParser.
+
+        (JSC::Wasm::ModuleInformation::create):
+        (JSC::Wasm::ModuleInformation::memoryCount const):
+        (JSC::Wasm::ModuleInformation::tableCount const):
+        memoryCount and tableCount should be recorded in ModuleInformation.
+
+        * wasm/WasmModuleParser.cpp:
+        (JSC::Wasm::ModuleParser::parse):
+        (JSC::Wasm::makeI32InitExpr): Deleted.
+        (JSC::Wasm::ModuleParser::parseType): Deleted.
+        (JSC::Wasm::ModuleParser::parseImport): Deleted.
+        (JSC::Wasm::ModuleParser::parseFunction): Deleted.
+        (JSC::Wasm::ModuleParser::parseResizableLimits): Deleted.
+        (JSC::Wasm::ModuleParser::parseTableHelper): Deleted.
+        (JSC::Wasm::ModuleParser::parseTable): Deleted.
+        (JSC::Wasm::ModuleParser::parseMemoryHelper): Deleted.
+        (JSC::Wasm::ModuleParser::parseMemory): Deleted.
+        (JSC::Wasm::ModuleParser::parseGlobal): Deleted.
+        (JSC::Wasm::ModuleParser::parseExport): Deleted.
+        (JSC::Wasm::ModuleParser::parseStart): Deleted.
+        (JSC::Wasm::ModuleParser::parseElement): Deleted.
+        (JSC::Wasm::ModuleParser::parseCode): Deleted.
+        (JSC::Wasm::ModuleParser::parseInitExpr): Deleted.
+        (JSC::Wasm::ModuleParser::parseGlobalType): Deleted.
+        (JSC::Wasm::ModuleParser::parseData): Deleted.
+        (JSC::Wasm::ModuleParser::parseCustom): Deleted.
+        Extract section parsing code out from ModuleParser. We create SectionParser and ModuleParser uses it.
+        SectionParser is also used by StreamingParser.
+
+        * wasm/WasmModuleParser.h:
+        (): Deleted.
+        * wasm/WasmNameSection.h:
+        (JSC::Wasm::NameSection::NameSection):
+        (JSC::Wasm::NameSection::create):
+        (JSC::Wasm::NameSection::setHash):
+        Hash calculation is deferred since all the source is not available in streaming parsing.
+
+        * wasm/WasmNameSectionParser.cpp:
+        (JSC::Wasm::NameSectionParser::parse):
+        * wasm/WasmNameSectionParser.h:
+        Use Ref<NameSection>.
+
+        * wasm/WasmOMGPlan.cpp:
+        (JSC::Wasm::OMGPlan::work):
+        Wasm::Plan no longer have m_source since data will be eventually filled in a streaming fashion.
+        OMGPlan can get data of the function by using ModuleInformation::functions.
+
+        * wasm/WasmParser.h:
+        (JSC::Wasm::Parser::source const):
+        (JSC::Wasm::Parser::length const):
+        (JSC::Wasm::Parser::offset const):
+        (JSC::Wasm::Parser::fail const):
+        (JSC::Wasm::makeI32InitExpr):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::Plan):
+        Wasm::Plan should not have all the source apriori. Streamed data will be pumped from the provider.
+
+        * wasm/WasmPlan.h:
+        * wasm/WasmSectionParser.cpp: Copied from Source/JavaScriptCore/wasm/WasmModuleParser.cpp.
+        SectionParser is extracted from ModuleParser. And it is used by both the old (currently working)
+        ModuleParser and the new StreamingParser.
+
+        (JSC::Wasm::SectionParser::parseType):
+        (JSC::Wasm::SectionParser::parseImport):
+        (JSC::Wasm::SectionParser::parseFunction):
+        (JSC::Wasm::SectionParser::parseResizableLimits):
+        (JSC::Wasm::SectionParser::parseTableHelper):
+        (JSC::Wasm::SectionParser::parseTable):
+        (JSC::Wasm::SectionParser::parseMemoryHelper):
+        (JSC::Wasm::SectionParser::parseMemory):
+        (JSC::Wasm::SectionParser::parseGlobal):
+        (JSC::Wasm::SectionParser::parseExport):
+        (JSC::Wasm::SectionParser::parseStart):
+        (JSC::Wasm::SectionParser::parseElement):
+        (JSC::Wasm::SectionParser::parseCode):
+        (JSC::Wasm::SectionParser::parseInitExpr):
+        (JSC::Wasm::SectionParser::parseGlobalType):
+        (JSC::Wasm::SectionParser::parseData):
+        (JSC::Wasm::SectionParser::parseCustom):
+        * wasm/WasmSectionParser.h: Copied from Source/JavaScriptCore/wasm/WasmModuleParser.h.
+        * wasm/WasmStreamingParser.cpp: Added.
+        (JSC::Wasm::parseUInt7):
+        (JSC::Wasm::StreamingParser::fail):
+        (JSC::Wasm::StreamingParser::StreamingParser):
+        (JSC::Wasm::StreamingParser::parseModuleHeader):
+        (JSC::Wasm::StreamingParser::parseSectionID):
+        (JSC::Wasm::StreamingParser::parseSectionSize):
+        (JSC::Wasm::StreamingParser::parseCodeSectionSize):
+        Code section in Wasm binary is specially handled compared with the other sections since it includes
+        a bunch of functions. StreamingParser extracts each function in a streaming fashion and enable
+        streaming validation / compilation of Wasm functions.
+
+        (JSC::Wasm::StreamingParser::parseFunctionSize):
+        (JSC::Wasm::StreamingParser::parseFunctionPayload):
+        (JSC::Wasm::StreamingParser::parseSectionPayload):
+        (JSC::Wasm::StreamingParser::consume):
+        (JSC::Wasm::StreamingParser::consumeVarUInt32):
+        (JSC::Wasm::StreamingParser::addBytes):
+        (JSC::Wasm::StreamingParser::failOnState):
+        (JSC::Wasm::StreamingParser::finalize):
+        * wasm/WasmStreamingParser.h: Added.
+        (JSC::Wasm::StreamingParser::addBytes):
+        (JSC::Wasm::StreamingParser::errorMessage const):
+        This is our new StreamingParser implementation. StreamingParser::consumeXXX functions get data, and
+        StreamingParser::parseXXX functions parse consumed data. The user of StreamingParser calls
+        StreamingParser::addBytes() to pump the bytes stream into the parser. And once all the data is pumped,
+        the user calls StreamingParser::finalize. StreamingParser is a state machine which feeds on the
+        incoming byte stream.
+
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::source const): Deleted.
+        All the source should not be held.
+
+        * wasm/js/JSWebAssemblyModule.h:
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::webAssemblyValidateFunc):
+
+2018-08-27  Mark Lam  <mark.lam@apple.com>
+
+        Fix exception throwing code so that topCallFrame and topEntryFrame stay true to their names.
+        https://bugs.webkit.org/show_bug.cgi?id=188577
+        <rdar://problem/42985684>
+
+        Reviewed by Saam Barati.
+
+        1. Introduced CallFrame::convertToStackOverflowFrame() which converts the current
+           (top) CallFrame (which may not have a valid callee) into a StackOverflowFrame.
+
+           The StackOverflowFrame is a sentinel frame that the low level code (exception
+           throwing code, stack visitor, and stack unwinding code) will know to skip
+           over.  The StackOverflowFrame will also have a valid JSCallee so that client
+           code can compute the globalObject or VM from this frame.
+
+           As a result, client code that throws StackOverflowErrors no longer need to
+           compute the caller frame to throw from: it just converts the top frame into
+           a StackOverflowFrame and everything should *Just Work*.
+
+        2. NativeCallFrameTracerWithRestore is now obsolete.
+
+           Instead, client code should always call convertToStackOverflowFrame() on the
+           frame before instantiating a NativeCallFrameTracer with it.
+
+           This means that topCallFrame will always point to the top CallFrame (which
+           may be a StackOverflowFrame), and topEntryFrame will always point to the top
+           EntryFrame.  We'll never temporarily point them to the previous EntryFrame
+           (which we used to do with NativeCallFrameTracerWithRestore).
+
+        3. genericUnwind() and Interpreter::unwind() will now always unwind from the top
+           CallFrame, and will know how to handle a StackOverflowFrame if they see one.
+
+           This obsoletes the UnwindStart flag.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::pauseIfNeeded):
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::callerFrame const):
+        (JSC::CallFrame::unsafeCallerFrame const):
+        (JSC::CallFrame::convertToStackOverflowFrame):
+        (JSC::CallFrame::callerFrame): Deleted.
+        (JSC::CallFrame::unsafeCallerFrame): Deleted.
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::iterate):
+        * interpreter/CallFrameInlines.h: Added.
+        (JSC::CallFrame::isStackOverflowFrame const):
+        (JSC::CallFrame::isWasmFrame const):
+        * interpreter/EntryFrame.h: Added.
+        (JSC::EntryFrame::vmEntryRecordOffset):
+        (JSC::EntryFrame::calleeSaveRegistersBufferOffset):
+        * interpreter/FrameTracers.h:
+        (JSC::NativeCallFrameTracerWithRestore::NativeCallFrameTracerWithRestore): Deleted.
+        (JSC::NativeCallFrameTracerWithRestore::~NativeCallFrameTracerWithRestore): Deleted.
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::unwind):
+        * interpreter/Interpreter.h:
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::StackVisitor):
+        * interpreter/StackVisitor.h:
+        (JSC::StackVisitor::visit):
+        (JSC::StackVisitor::topEntryFrameIsEmpty const):
+        * interpreter/VMEntryRecord.h:
+        (JSC::VMEntryRecord::callee const):
+        (JSC::EntryFrame::vmEntryRecordOffset): Deleted.
+        (JSC::EntryFrame::calleeSaveRegistersBufferOffset): Deleted.
+        * jit/AssemblyHelpers.h:
+        * jit/JITExceptions.cpp:
+        (JSC::genericUnwind):
+        * jit/JITExceptions.h:
+        * jit/JITOperations.cpp:
+        * llint/LLIntOffsetsExtractor.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CallData.cpp:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::throwArityCheckStackOverflowError):
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPathsExceptions.cpp: Removed.
+        * runtime/CommonSlowPathsExceptions.h: Removed.
+        * runtime/Completion.cpp:
+        (JSC::evaluateWithScopeExtension):
+        * runtime/JSGeneratorFunction.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::stackOverflowFrameCallee const):
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+        * runtime/VM.h:
+        * runtime/VMInlines.h:
+        (JSC::VM::topJSCallFrame const):
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build fix -- disable LTO for production builds
+
+        * Configurations/Base.xcconfig:
+
+2018-08-27  Aditya Keerthi  <akeerthi@apple.com>
+
+        Consolidate ENABLE_INPUT_TYPE_COLOR and ENABLE_INPUT_TYPE_COLOR_POPOVER
+        https://bugs.webkit.org/show_bug.cgi?id=188931
+
+        Reviewed by Wenson Hsieh.
+
+        * Configurations/FeatureDefines.xcconfig: Removed ENABLE_INPUT_TYPE_COLOR_POPOVER.
+
+2018-08-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide autocompletion for event breakpoints
+        https://bugs.webkit.org/show_bug.cgi?id=188717
+
+        Reviewed by Brian Burg.
+
+        * inspector/protocol/DOM.json:
+        Add `getSupportedEventNames` command.
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
+        LTO.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2018-08-27  Patrick Griffis  <pgriffis@igalia.com>
+
+        [GTK][JSC] Add warn_unused_result attribute to some APIs
+        https://bugs.webkit.org/show_bug.cgi?id=188983
+
+        Reviewed by Michael Catanzaro.
+
+        * API/glib/JSCValue.h:
+
+2018-08-24  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Array.prototype.reverse modifies JSImmutableButterfly
+        https://bugs.webkit.org/show_bug.cgi?id=188794
+
+        Reviewed by Saam Barati.
+
+        While Array.prototype.reverse modifies the butterfly of the given Array,
+        it does not account JSImmutableButterfly case. So it accidentally modifies
+        the content of JSImmutableButterfly.
+        This patch converts CoW arrays to writable arrays before reversing.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncReverse):
+        * runtime/JSObject.h:
+        (JSC::JSObject::ensureWritable):
+
+2018-08-24  Michael Saboff  <msaboff@apple.com>
+
+        YARR: Update UCS canonicalization tables for Unicode 11
+        https://bugs.webkit.org/show_bug.cgi?id=188928
+
+        Reviewed by Mark Lam.
+
+        Generated YarrCanonicalizeUCS2.cpp from YarrCanonicalizeUCS2.js.
+
+        This passes JavaScriptCore and test262 tests.
+
+        * yarr/YarrCanonicalizeUCS2.cpp:
+        * yarr/YarrCanonicalizeUCS2.js:
+        (printHeader):
+
+2018-08-24  Michael Saboff  <msaboff@apple.com>
+
+        YARR: JIT RegExps with non-greedy parenthesized sub patterns
+        https://bugs.webkit.org/show_bug.cgi?id=180876
+
+        Reviewed by Filip Pizlo.
+
+        Implemented the non-greedy nested parenthesis based on the prior greedy nested parenthesis work.
+        For the matching code, the greedy path was correct except that we don't try matching for the
+        non-greedy case.  Added a jump out to the term after the parenthesis and a label to perform the
+        first / next match when we backtrack.  The backtracking code needs to check to see if we have
+        tried the first match or if we can do another match.
+
+        Updated the disassembly annotations to include parenthesis capturing info, quantifier type and
+        count.  Did other minor cleanup as well.
+
+        Fixed function name typo, added missing 't' in "setUsesPaternContextBuffer()".
+
+        Updated the text in some comments, both for this change as well as accuracy for existing code.
+
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::generate):
+        (JSC::Yarr::YarrGenerator::backtrack):
+        (JSC::Yarr::YarrGenerator::opCompileParenthesesSubpattern):
+        (JSC::Yarr::YarrGenerator::compile):
+        (JSC::Yarr::dumpCompileFailure):
+        (JSC::Yarr::jitCompile):
+        * yarr/YarrJIT.h:
+        (JSC::Yarr::YarrCodeBlock::setUsesPatternContextBuffer):
+        (JSC::Yarr::YarrCodeBlock::setUsesPaternContextBuffer): Deleted.
+
+2018-08-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for dumping GC heap snapshots, and a viewer
+        https://bugs.webkit.org/show_bug.cgi?id=186416
+
+        Reviewed by Joseph Pecoraro.
+
+        Make a way to dump information about the GC heap that is useful for looking for leaked
+        or abandoned objects. This dump is obtained (on Apple platforms) via:
+            notifyutil -p com.apple.WebKit.dumpGCHeap
+        which writes a JSON file to /tmp which can then be loaded into the viewer in Tools/GCHeapInspector.
+        
+        This leverages the heap snapshot used by Web Inspector, adding an alternate format for
+        the snapshot JSON that adds additional data about objects and why they are GC roots.
+
+        SlotVisitor maintains a RootMarkReason (via SetRootMarkReasonScope) that allows
+        the HeapSnapshotBuilder to keep track of why a JSCell was treated as a GC root. For
+        objects visited via opaque roots, we record the reason why via a new out param to
+        isReachableFromOpaqueRoots().
+
+        HeapSnapshotBuilder is enhanced to produce GCDebuggingSnapshot JSON output. This contains
+        additional information including the address of the JSCell* and the wrapped object (for
+        JSDOMWrappers), the root reasons, and for some objects like JSDocument a label which can
+        be the document URL.
+
+        GCDebuggingSnapshots are always full snapshots (previous snapshots are not kept around).
+
+        * API/JSAPIWrapperObject.mm:
+        (JSAPIWrapperObjectHandleOwner::isReachableFromOpaqueRoots):
+        * API/JSManagedValue.mm:
+        (JSManagedValueHandleOwner::isReachableFromOpaqueRoots):
+        * API/glib/JSAPIWrapperObjectGLib.cpp:
+        (JSAPIWrapperObjectHandleOwner::isReachableFromOpaqueRoots):
+        * CMakeLists.txt:
+        * heap/ConservativeRoots.h:
+        (JSC::ConservativeRoots::size const):
+        (JSC::ConservativeRoots::size): Deleted.
+        * heap/Heap.cpp:
+        (JSC::Heap::addCoreConstraints):
+        * heap/HeapSnapshotBuilder.cpp:
+        (JSC::HeapSnapshotBuilder::getNextObjectIdentifier):
+        (JSC::HeapSnapshotBuilder::HeapSnapshotBuilder):
+        (JSC::HeapSnapshotBuilder::~HeapSnapshotBuilder):
+        (JSC::HeapSnapshotBuilder::buildSnapshot):
+        (JSC::HeapSnapshotBuilder::appendNode):
+        (JSC::HeapSnapshotBuilder::appendEdge):
+        (JSC::HeapSnapshotBuilder::setOpaqueRootReachabilityReasonForCell):
+        (JSC::HeapSnapshotBuilder::setWrappedObjectForCell):
+        (JSC::HeapSnapshotBuilder::previousSnapshotHasNodeForCell):
+        (JSC::snapshotTypeToString):
+        (JSC::rootTypeToString):
+        (JSC::HeapSnapshotBuilder::setLabelForCell):
+        (JSC::HeapSnapshotBuilder::descriptionForCell const):
+        (JSC::HeapSnapshotBuilder::json):
+        (JSC::HeapSnapshotBuilder::hasExistingNodeForCell): Deleted.
+        * heap/HeapSnapshotBuilder.h:
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::appendSlow):
+        * heap/SlotVisitor.h:
+        (JSC::SlotVisitor::heapSnapshotBuilder const):
+        (JSC::SlotVisitor::rootMarkReason const):
+        (JSC::SlotVisitor::setRootMarkReason):
+        (JSC::SetRootMarkReasonScope::SetRootMarkReasonScope):
+        (JSC::SetRootMarkReasonScope::~SetRootMarkReasonScope):
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::specializedVisit):
+        * heap/WeakHandleOwner.cpp:
+        (JSC::WeakHandleOwner::isReachableFromOpaqueRoots):
+        * heap/WeakHandleOwner.h:
+        * runtime/SimpleTypedArrayController.cpp:
+        (JSC::SimpleTypedArrayController::JSArrayBufferOwner::isReachableFromOpaqueRoots):
+        * runtime/SimpleTypedArrayController.h:
+        * tools/JSDollarVM.cpp:
+
+2018-08-23  Saam barati  <sbarati@apple.com>
+
+        JSRunLoopTimer may run part of a member function after it's destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=188426
+
+        Reviewed by Mark Lam.
+
+        When I was reading the JSRunLoopTimer code, I noticed that it is possible
+        to end up running timer code after the class had been destroyed.
+        
+        The issue I spotted was in this function:
+        ```
+        void JSRunLoopTimer::timerDidFire()
+        {
+            JSLock* apiLock = m_apiLock.get();
+            if (!apiLock) {
+                // Likely a buggy usage: the timer fired while JSRunLoopTimer was being destroyed.
+                return;
+            }
+            // HERE
+            std::lock_guard<JSLock> lock(*apiLock);
+            RefPtr<VM> vm = apiLock->vm();
+            if (!vm) {
+                // The VM has been destroyed, so we should just give up.
+                return;
+            }
+        
+            doWork();
+        }
+        ```
+        
+        Look at the comment 'HERE'. Let's say that the timer callback thread gets context
+        switched before grabbing the API lock. Then, some other thread destroys the VM.
+        And let's say that the VM owns (perhaps transitively) this timer. Then, the
+        timer would run code and access member variables after it was destroyed.
+        
+        This patch fixes this issue by introducing a new timer manager class. 
+        This class manages timers on a per VM basis. When a timer is scheduled,
+        this class refs the timer. It also calls the timer callback while actively
+        maintaining a +1 ref to it. So, it's no longer possible to call the timer
+        callback after the timer has been destroyed. However, calling a timer callback
+        can still race with the VM being destroyed. We continue to detect this case and
+        bail out of the callback early.
+        
+        This patch also removes a lot of duplicate code between GCActivityCallback
+        and JSRunLoopTimer.
+
+        * heap/EdenGCActivityCallback.cpp:
+        (JSC::EdenGCActivityCallback::doCollection):
+        (JSC::EdenGCActivityCallback::lastGCLength):
+        (JSC::EdenGCActivityCallback::deathRate):
+        * heap/EdenGCActivityCallback.h:
+        * heap/FullGCActivityCallback.cpp:
+        (JSC::FullGCActivityCallback::doCollection):
+        (JSC::FullGCActivityCallback::lastGCLength):
+        (JSC::FullGCActivityCallback::deathRate):
+        * heap/FullGCActivityCallback.h:
+        * heap/GCActivityCallback.cpp:
+        (JSC::GCActivityCallback::doWork):
+        (JSC::GCActivityCallback::scheduleTimer):
+        (JSC::GCActivityCallback::didAllocate):
+        (JSC::GCActivityCallback::willCollect):
+        (JSC::GCActivityCallback::cancel):
+        (JSC::GCActivityCallback::cancelTimer): Deleted.
+        (JSC::GCActivityCallback::nextFireTime): Deleted.
+        * heap/GCActivityCallback.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::reportAbandonedObjectGraph):
+        (JSC::Heap::notifyIncrementalSweeper):
+        (JSC::Heap::updateAllocationLimits):
+        (JSC::Heap::didAllocate):
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::scheduleTimer):
+        (JSC::IncrementalSweeper::doWork):
+        (JSC::IncrementalSweeper::doSweep):
+        (JSC::IncrementalSweeper::sweepNextBlock):
+        (JSC::IncrementalSweeper::startSweeping):
+        (JSC::IncrementalSweeper::stopSweeping):
+        * heap/IncrementalSweeper.h:
+        * heap/StopIfNecessaryTimer.cpp:
+        (JSC::StopIfNecessaryTimer::doWork):
+        (JSC::StopIfNecessaryTimer::scheduleSoon):
+        * heap/StopIfNecessaryTimer.h:
+        * runtime/JSRunLoopTimer.cpp:
+        (JSC::epochTime):
+        (JSC::JSRunLoopTimer::Manager::timerDidFireCallback):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::setRunLoop):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::PerVMData):
+        (JSC::JSRunLoopTimer::Manager::PerVMData::~PerVMData):
+        (JSC::JSRunLoopTimer::Manager::timerDidFire):
+        (JSC::JSRunLoopTimer::Manager::shared):
+        (JSC::JSRunLoopTimer::Manager::registerVM):
+        (JSC::JSRunLoopTimer::Manager::unregisterVM):
+        (JSC::JSRunLoopTimer::Manager::scheduleTimer):
+        (JSC::JSRunLoopTimer::Manager::cancelTimer):
+        (JSC::JSRunLoopTimer::Manager::timeUntilFire):
+        (JSC::JSRunLoopTimer::Manager::didChangeRunLoop):
+        (JSC::JSRunLoopTimer::timerDidFire):
+        (JSC::JSRunLoopTimer::JSRunLoopTimer):
+        (JSC::JSRunLoopTimer::timeUntilFire):
+        (JSC::JSRunLoopTimer::setTimeUntilFire):
+        (JSC::JSRunLoopTimer::cancelTimer):
+        (JSC::JSRunLoopTimer::setRunLoop): Deleted.
+        (JSC::JSRunLoopTimer::timerDidFireCallback): Deleted.
+        (JSC::JSRunLoopTimer::scheduleTimer): Deleted.
+        * runtime/JSRunLoopTimer.h:
+        (JSC::JSRunLoopTimer::Manager::PerVMData::PerVMData):
+        * runtime/PromiseDeferredTimer.cpp:
+        (JSC::PromiseDeferredTimer::doWork):
+        (JSC::PromiseDeferredTimer::runRunLoop):
+        (JSC::PromiseDeferredTimer::addPendingPromise):
+        (JSC::PromiseDeferredTimer::hasPendingPromise):
+        (JSC::PromiseDeferredTimer::hasDependancyInPendingPromise):
+        (JSC::PromiseDeferredTimer::cancelPendingPromise):
+        (JSC::PromiseDeferredTimer::scheduleWorkSoon):
+        * runtime/PromiseDeferredTimer.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::~VM):
+        (JSC::VM::setRunLoop):
+        (JSC::VM::registerRunLoopTimer): Deleted.
+        (JSC::VM::unregisterRunLoopTimer): Deleted.
+        * runtime/VM.h:
+        (JSC::VM::runLoop const):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::webAssemblyModuleValidateAsyncInternal):
+        (JSC::instantiate):
+        (JSC::compileAndInstantiate):
+        (JSC::webAssemblyModuleInstantinateAsyncInternal):
+        (JSC::webAssemblyCompileStreamingInternal):
+        (JSC::webAssemblyInstantiateStreamingInternal):
+
+2018-08-23  Mark Lam  <mark.lam@apple.com>
+
+        Move vmEntryGlobalObject() to VM from CallFrame.
+        https://bugs.webkit.org/show_bug.cgi?id=188900
+        <rdar://problem/43655753>
+
+        Reviewed by Michael Saboff.
+
+        Also introduced CallFrame::isGlobalExec() which makes use of one property of
+        GlobalExecs to identify them i.e. GlobalExecs have null callerFrame and returnPCs.
+        CallFrame::initGlobalExec() ensures this.
+
+        In contrast, normal CallFrames always have a callerFrame (because they must at
+        least be preceded by a VM EntryFrame) and a returnPC (at least return to the
+        VM entry glue).
+
+        * API/APIUtils.h:
+        (handleExceptionIfNeeded):
+        (setException):
+        * API/JSBase.cpp:
+        (JSEvaluateScript):
+        (JSCheckScriptSyntax):
+        * API/JSContextRef.cpp:
+        (JSGlobalContextRetain):
+        (JSGlobalContextRelease):
+        (JSGlobalContextCopyName):
+        (JSGlobalContextSetName):
+        (JSGlobalContextGetRemoteInspectionEnabled):
+        (JSGlobalContextSetRemoteInspectionEnabled):
+        (JSGlobalContextGetIncludesNativeCallStackWhenReportingExceptions):
+        (JSGlobalContextSetIncludesNativeCallStackWhenReportingExceptions):
+        (JSGlobalContextGetDebuggerRunLoop):
+        (JSGlobalContextSetDebuggerRunLoop):
+        (JSGlobalContextGetAugmentableInspectorController):
+        * API/JSValue.mm:
+        (reportExceptionToInspector):
+        * API/glib/JSCClass.cpp:
+        (jscContextForObject):
+        * API/glib/JSCContext.cpp:
+        (jsc_context_evaluate_in_object):
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::pauseIfNeeded):
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::DebuggerCallFrame::vmEntryGlobalObject const):
+        (JSC::DebuggerCallFrame::evaluateWithScopeExtension):
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::vmEntryGlobalObject): Deleted.
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::scope const):
+        (JSC::ExecState::noCaller):
+        (JSC::ExecState::isGlobalExec const):
+        * interpreter/Interpreter.cpp:
+        (JSC::notifyDebuggerOfUnwinding):
+        (JSC::Interpreter::notifyDebuggerOfExceptionToBeThrown):
+        (JSC::Interpreter::debug):
+        * runtime/CallData.cpp:
+        (JSC::profiledCall):
+        * runtime/Completion.cpp:
+        (JSC::evaluate):
+        (JSC::profiledEvaluate):
+        (JSC::evaluateWithScopeExtension):
+        (JSC::loadAndEvaluateModule):
+        (JSC::loadModule):
+        (JSC::linkAndEvaluateModule):
+        (JSC::importModule):
+        * runtime/ConstructData.cpp:
+        (JSC::profiledConstruct):
+        * runtime/Error.cpp:
+        (JSC::getStackTrace):
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+        (JSC::VM::vmEntryGlobalObject const):
+        * runtime/VM.h:
+
+2018-08-23  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Introduce Apple Pay JS v4 on iOS 12 and macOS Mojave
+        https://bugs.webkit.org/show_bug.cgi?id=188829
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-08-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: support breakpoints for timers and animation-frame events
+        https://bugs.webkit.org/show_bug.cgi?id=188778
+
+        Reviewed by Brian Burg.
+
+        * inspector/protocol/Debugger.json:
+        Add `AnimationFrame` and `Timer` types to the list of pause reasons.
+
+        * inspector/protocol/DOMDebugger.json:
+        Introduced `setEventBreakpoint` and `removeEventBreakpoint` to replace the more specific:
+         - `setEventListenerBreakpoint`
+         - `removeEventListenerBreakpoint`
+         - `setInstrumentationBreakpoint`
+         - `removeInstrumentationBreakpoint`
+        Also created an `EventBreakpointType` to enumerate the available types of event breakpoints.
+
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        (CppProtocolTypesHeaderGenerator.generate_output):
+        (CppProtocolTypesHeaderGenerator._generate_forward_declarations_for_binding_traits):
+        (CppProtocolTypesHeaderGenerator._generate_declarations_for_enum_conversion_methods):
+        (CppProtocolTypesHeaderGenerator._generate_hash_declarations): Added.
+        Generate `DefaultHash` for all `enum class` used by inspector protocols.
+
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/enum-values.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-requiring-runtime-casts.json-result:
+
+2018-08-23  Michael Saboff  <msaboff@apple.com>
+
+        YARR: Need to JIT compile a RegExp before using containsNestedSubpatterns flag
+        https://bugs.webkit.org/show_bug.cgi?id=188895
+
+        Reviewed by Mark Lam.
+
+        Found while working on another change.  This will allow processing of nested
+        parenthesis that require saved ParenContext structures.
+
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::compile):
+
+2018-08-22  Michael Saboff  <msaboff@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=188859
+        Eliminate dead code operationThrowDivideError() and operationThrowOutOfBoundsAccessError()
+
+        Rubber-stamped by Saam Barati.
+
+        Deleted these two functions.
+
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+
 2018-08-22  Mark Lam  <mark.lam@apple.com>
 
         The DFG CFGSimplification phase shouldn’t jettison a block when it’s the target of both branch directions.

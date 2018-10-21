@@ -49,9 +49,9 @@ public:
     void deref() override { RefCounted<NetworkDataTask>::deref(); }
 
 private:
-    enum class ShouldPreprocess : bool {
-        No = false,
-        Yes = true
+    enum class RequestStatus {
+        NewRequest,
+        ReusedRequest
     };
 
     NetworkDataTaskCurl(NetworkSession&, NetworkDataTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentialsPolicy, WebCore::ContentSniffingPolicy, WebCore::ContentEncodingSniffingPolicy, bool shouldClearReferrerOnHTTPSToHTTPRedirect, bool dataTaskIsForMainFrameNavigation);
@@ -62,7 +62,7 @@ private:
     void invalidateAndCancel() override;
     NetworkDataTask::State state() const override;
 
-    Ref<WebCore::CurlRequest> createCurlRequest(const WebCore::ResourceRequest&, ShouldPreprocess);
+    Ref<WebCore::CurlRequest> createCurlRequest(WebCore::ResourceRequest&&, RequestStatus = RequestStatus::NewRequest);
     void curlDidSendData(WebCore::CurlRequest&, unsigned long long, unsigned long long) override;
     void curlDidReceiveResponse(WebCore::CurlRequest&, const WebCore::CurlResponse&) override;
     void curlDidReceiveBuffer(WebCore::CurlRequest&, Ref<WebCore::SharedBuffer>&&) override;
@@ -73,6 +73,7 @@ private:
     void willPerformHTTPRedirection();
 
     void tryHttpAuthentication(WebCore::AuthenticationChallenge&&);
+    void tryProxyAuthentication(WebCore::AuthenticationChallenge&&);
     void restartWithCredential(const WebCore::Credential&);
 
     void appendCookieHeader(WebCore::ResourceRequest&);
@@ -80,7 +81,6 @@ private:
 
     State m_state { State::Suspended };
 
-    WebCore::ResourceRequest m_currentRequest;
     RefPtr<WebCore::CurlRequest> m_curlRequest;
     WebCore::ResourceResponse m_response;
     unsigned m_redirectCount { 0 };

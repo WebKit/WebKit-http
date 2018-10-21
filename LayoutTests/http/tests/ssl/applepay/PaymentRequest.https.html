@@ -55,6 +55,12 @@ async function go() {
     shouldThrow("new PaymentRequest(null, null)")
     shouldNotThrow("new PaymentRequest([validPaymentMethod()], validPaymentDetails())")
     debug("")
+    
+    debug("Testing ApplePayRequest.version")
+    debug("")
+    await logAndShouldReject("paymentMethod = validPaymentMethod(); paymentMethod.data.version = 0;", "request = new PaymentRequest([paymentMethod], validPaymentDetails()); request.show()")
+    await logAndShouldReject("paymentMethod = validPaymentMethod(); paymentMethod.data.version = 1000;", "request = new PaymentRequest([paymentMethod], validPaymentDetails()); request.show()")
+    debug("")
 
     debug("Testing ApplePayRequest.countryCode")
     debug("")
@@ -154,7 +160,6 @@ async function go() {
     await logAndShouldThrow("paymentDetails = validPaymentDetails(); paymentDetails.total = { label: 'label' };", "request = new PaymentRequest([validPaymentMethod()], paymentDetails); request.show()")
     await logAndShouldThrow("paymentDetails = validPaymentDetails(); paymentDetails.total = { label: 'label', amount: 'amount' };", "request = new PaymentRequest([validPaymentMethod()], paymentDetails); request.show()")
     await logAndShouldThrow("paymentDetails = validPaymentDetails(); paymentDetails.total = { label: 'label', amount: { currency: '', value: '0' } };", "request = new PaymentRequest([validPaymentMethod()], paymentDetails); request.show()")
-    await logAndShouldReject("paymentDetails = validPaymentDetails(); paymentDetails.total = { label: 'label', amount: { currency: 'USD', value: '0' } };", "request = new PaymentRequest([validPaymentMethod()], paymentDetails); request.show()")
     debug("")
     await logAndShouldThrow("paymentDetails = validPaymentDetails(); paymentDetails.total = { label: 'label', amount: { currency: 'USD', value:'-10.00'} };", "request = new PaymentRequest([validPaymentMethod()], paymentDetails); request.show()")
     await logAndShouldReject("paymentDetails = validPaymentDetails(); paymentDetails.total = { label: 'label', amount: { currency: 'USD', value: '10000000000.00' } };", "request = new PaymentRequest([validPaymentMethod()], paymentDetails); request.show()")

@@ -193,36 +193,45 @@ void LibWebRTCMediaEndpoint::doSetRemoteDescription(RTCSessionDescription& descr
     startLoggingStats();
 }
 
-void LibWebRTCMediaEndpoint::addTrack(RTCRtpSender& sender, MediaStreamTrack& track, const Vector<String>& mediaStreamIds)
+bool LibWebRTCMediaEndpoint::addTrack(RTCRtpSender& sender, MediaStreamTrack& track, const Vector<String>& mediaStreamIds)
 {
     ASSERT(m_backend);
 
-    std::vector<webrtc::MediaStreamInterface*> mediaStreams;
-    rtc::scoped_refptr<webrtc::MediaStreamInterface> mediaStream = nullptr;
-    if (mediaStreamIds.size()) {
-        // libwebrtc is only using the first one if any.
-        mediaStream = m_peerConnectionFactory.CreateLocalMediaStream(mediaStreamIds[0].utf8().data());
-        mediaStreams.push_back(mediaStream.get());
+    String mediaStreamId = mediaStreamIds.isEmpty() ? createCanonicalUUIDString() : mediaStreamIds[0];
+    rtc::scoped_refptr<webrtc::MediaStreamInterface> mediaStream = m_localStreams.get(mediaStreamId);
+    if (!mediaStream) {
+        mediaStream = m_peerConnectionFactory.CreateLocalMediaStream(mediaStreamId.utf8().data());
+        m_backend->AddStream(mediaStream);
+        m_localStreams.add(mediaStreamId, mediaStream);
     }
-    
+
+    std::vector<std::string> ids;
+    for (auto& id : mediaStreamIds)
+        ids.push_back(id.utf8().data());
+
     switch (track.privateTrack().type()) {
     case RealtimeMediaSource::Type::Audio: {
         auto trackSource = RealtimeOutgoingAudioSource::create(track.privateTrack());
         auto audioTrack = m_peerConnectionFactory.CreateAudioTrack(track.id().utf8().data(), trackSource.ptr());
         m_peerConnectionBackend.addAudioSource(WTFMove(trackSource));
-        m_senders.add(&sender, m_backend->AddTrack(audioTrack.get(), WTFMove(mediaStreams)));
-        return;
+        auto rtpSender = m_backend->AddTrack(audioTrack.get(), WTFMove(ids));
+        if (rtpSender.ok())
+            m_senders.add(&sender, rtpSender.MoveValue());
+        return rtpSender.ok();
     }
     case RealtimeMediaSource::Type::Video: {
         auto videoSource = RealtimeOutgoingVideoSource::create(track.privateTrack());
         auto videoTrack = m_peerConnectionFactory.CreateVideoTrack(track.id().utf8().data(), videoSource.ptr());
         m_peerConnectionBackend.addVideoSource(WTFMove(videoSource));
-        m_senders.add(&sender, m_backend->AddTrack(videoTrack.get(), WTFMove(mediaStreams)));
-        return;
+        auto rtpSender = m_backend->AddTrack(videoTrack.get(), WTFMove(ids));
+        if (rtpSender.ok())
+            m_senders.add(&sender, rtpSender.MoveValue());
+        return rtpSender.ok();
     }
     case RealtimeMediaSource::Type::None:
         ASSERT_NOT_REACHED();
     }
+    return false;
 }
 
 void LibWebRTCMediaEndpoint::removeTrack(RTCRtpSender& sender)
@@ -619,7 +628,7 @@ void LibWebRTCMediaEndpoint::OnSignalingChange(webrtc::PeerConnectionInterface::
 MediaStream& LibWebRTCMediaEndpoint::mediaStreamFromRTCStream(webrtc::MediaStreamInterface& rtcStream)
 {
     auto mediaStream = m_streams.ensure(&rtcStream, [&rtcStream, this] {
-        auto label = rtcStream.label();
+        auto label = rtcStream.id();
         auto stream = MediaStream::create(*m_peerConnectionBackend.connection().scriptExecutionContext(), MediaStreamPrivate::create({ }, fromStdString(label)));
         auto streamPointer = stream.ptr();
         m_peerConnectionBackend.addRemoteStream(WTFMove(stream));
@@ -971,7 +980,8 @@ static inline RTCRtpParameters::EncodingParameters fillEncodingParameters(const 
     if (rtcParameters.max_framerate)
         parameters.maxFramerate = *rtcParameters.max_framerate;
     parameters.rid = fromStdString(rtcParameters.rid);
-    parameters.scaleResolutionDownBy = rtcParameters.scale_resolution_down_by;
+    if (rtcParameters.scale_resolution_down_by)
+        parameters.scaleResolutionDownBy = *rtcParameters.scale_resolution_down_by;
 
     return parameters;
 }
@@ -1013,6 +1023,8 @@ static RTCRtpParameters fillRtpParameters(const webrtc::RtpParameters rtcParamet
         parameters.codecs.append(fillCodecParameters(codec));
 
     switch (rtcParameters.degradation_preference) {
+    // FIXME: Support DegradationPreference::DISABLED.
+    case webrtc::DegradationPreference::DISABLED:
     case webrtc::DegradationPreference::MAINTAIN_FRAMERATE:
         parameters.degradationPreference = RTCRtpParameters::DegradationPreference::MaintainFramerate;
         break;

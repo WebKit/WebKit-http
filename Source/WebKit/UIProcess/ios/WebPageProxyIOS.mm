@@ -61,9 +61,8 @@
 #import <wtf/text/WTFString.h>
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 void WebPageProxy::platformInitialize()
 {
@@ -1089,11 +1088,6 @@ void WebPageProxy::setIsScrollingOrZooming(bool isScrollingOrZooming)
 
 #if ENABLE(DATA_INTERACTION)
 
-void WebPageProxy::didPerformDataInteractionControllerOperation(bool handled)
-{
-    m_pageClient.didPerformDataInteractionControllerOperation(handled);
-}
-
 void WebPageProxy::didHandleStartDataInteractionRequest(bool started)
 {
     m_pageClient.didHandleStartDataInteractionRequest(started);
@@ -1131,16 +1125,12 @@ void WebPageProxy::didStartLoadForQuickLookDocumentInMainFrame(const String& fil
     static_assert(notFound + 1 == 0, "The following line assumes WTF::notFound equals -1");
     if (m_navigationClient)
         m_navigationClient->didStartLoadForQuickLookDocumentInMainFrame(fileName.substring(fileName.reverseFind('/') + 1), uti);
-    else
-        m_loaderClient->didStartLoadForQuickLookDocumentInMainFrame(fileName.substring(fileName.reverseFind('/') + 1), uti);
 }
 
 void WebPageProxy::didFinishLoadForQuickLookDocumentInMainFrame(const QuickLookDocumentData& data)
 {
     if (m_navigationClient)
         m_navigationClient->didFinishLoadForQuickLookDocumentInMainFrame(data);
-    else
-        m_loaderClient->didFinishLoadForQuickLookDocumentInMainFrame(data);
 }
 
 void WebPageProxy::didRequestPasswordForQuickLookDocumentInMainFrame(const String& fileName)

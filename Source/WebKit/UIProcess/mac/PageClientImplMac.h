@@ -217,7 +217,7 @@ private:
     void handleControlledElementIDResponse(const String&) override;
 
     void didPerformImmediateActionHitTest(const WebHitTestResultData&, bool contentPreventsDefault, API::Object*) override;
-    void* immediateActionAnimationControllerForHitTestResult(RefPtr<API::HitTestResult>, uint64_t, RefPtr<API::Object>) override;
+    NSObject *immediateActionAnimationControllerForHitTestResult(RefPtr<API::HitTestResult>, uint64_t, RefPtr<API::Object>) override;
 
     void didHandleAcceptedCandidate() override;
 
@@ -232,6 +232,10 @@ private:
 
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
     bool effectiveAppearanceIsDark() const override;
+
+#if ENABLE(DRAG_SUPPORT)
+    void didPerformDragOperation(bool handled) final;
+#endif
 
 #if WK_API_ENABLED
     NSView *inspectorAttachmentView() override;

@@ -1,7 +1,7 @@
 include(GNUInstallDirs)
 include(VersioningUtils)
 
-SET_PROJECT_VERSION(2 21 91)
+SET_PROJECT_VERSION(2 23 0)
 set(WPE_API_VERSION 0.1)
 
 CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 4 0 2)
@@ -71,7 +71,7 @@ WEBKIT_OPTION_END()
 
 find_package(Cairo 1.10.2 REQUIRED)
 find_package(Fontconfig 2.8.0 REQUIRED)
-find_package(Freetype2 2.4.2 REQUIRED)
+find_package(Freetype 2.4.2 REQUIRED)
 find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gio-unix gobject gthread gmodule)
 find_package(HarfBuzz 0.9.18 REQUIRED)
 find_package(ICU REQUIRED)

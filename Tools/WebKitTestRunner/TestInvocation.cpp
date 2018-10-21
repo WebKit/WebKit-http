@@ -101,7 +101,7 @@ void TestInvocation::setIsPixelTest(const std::string& expectedPixelHash)
     m_expectedPixelHash = expectedPixelHash;
 }
 
-double TestInvocation::shortTimeout() const
+WTF::Seconds TestInvocation::shortTimeout() const
 {
     if (!m_timeout) {
         // Running WKTR directly, without webkitpy.
@@ -112,7 +112,7 @@ double TestInvocation::shortTimeout() const
     // but it currently does. There is no way to know what a normal test's timeout is, as webkitpy only passes timeouts
     // for each test individually.
     // But there shouldn't be any observable negative consequences from this.
-    return m_timeout / 1000. / 4;
+    return m_timeout / 4;
 }
 
 bool TestInvocation::shouldLogHistoryClientCallbacks() const
@@ -137,7 +137,7 @@ WKRetainPtr<WKMutableDictionaryRef> TestInvocation::createTestSettingsDictionary
     WKDictionarySetItem(beginTestMessageBody.get(), useWaitToDumpWatchdogTimerKey.get(), useWaitToDumpWatchdogTimerValue.get());
 
     WKRetainPtr<WKStringRef> timeoutKey = adoptWK(WKStringCreateWithUTF8CString("Timeout"));
-    WKRetainPtr<WKUInt64Ref> timeoutValue = adoptWK(WKUInt64Create(m_timeout));
+    WKRetainPtr<WKUInt64Ref> timeoutValue = adoptWK(WKUInt64Create(m_timeout.milliseconds()));
     WKDictionarySetItem(beginTestMessageBody.get(), timeoutKey.get(), timeoutValue.get());
 
     WKRetainPtr<WKStringRef> dumpJSConsoleLogInStdErrKey = adoptWK(WKStringCreateWithUTF8CString("DumpJSConsoleLogInStdErr"));
@@ -187,7 +187,7 @@ end:
         WKInspectorClose(WKPageGetInspector(TestController::singleton().mainWebView()->page()));
 #endif // !PLATFORM(IOS)
 
-    if (TestController::singleton().resetStateToConsistentValues(m_options))
+    if (TestController::singleton().resetStateToConsistentValues(m_options, TestController::ResetStage::AfterTest))
         return;
 
     // The process is unresponsive, so let's start a new one.
@@ -732,24 +732,6 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
         WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
         TestController::singleton().setShouldDownloadUndisplayableMIMETypes(WKBooleanGetValue(value));
-        return;
-    }
-
-    if (WKStringIsEqualToUTF8CString(messageName, "TerminateStorageProcess")) {
-        ASSERT(!messageBody);
-        TestController::singleton().terminateStorageProcess();
-        return;
-    }
-
-    if (WKStringIsEqualToUTF8CString(messageName, "TerminateNetworkProcess")) {
-        ASSERT(!messageBody);
-        TestController::singleton().terminateNetworkProcess();
-        return;
-    }
-
-    if (WKStringIsEqualToUTF8CString(messageName, "TerminateServiceWorkerProcess")) {
-        ASSERT(!messageBody);
-        TestController::singleton().terminateServiceWorkerProcess();
         return;
     }
 
@@ -1432,6 +1414,24 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
 
     if (WKStringIsEqualToUTF8CString(messageName, "SendDisplayConfigurationChangedMessageForTesting")) {
         TestController::singleton().sendDisplayConfigurationChangedMessageForTesting();
+        return nullptr;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "TerminateStorageProcess")) {
+        ASSERT(!messageBody);
+        TestController::singleton().terminateStorageProcess();
+        return nullptr;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "TerminateNetworkProcess")) {
+        ASSERT(!messageBody);
+        TestController::singleton().terminateNetworkProcess();
+        return nullptr;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "TerminateServiceWorkerProcess")) {
+        ASSERT(!messageBody);
+        TestController::singleton().terminateServiceWorkerProcess();
         return nullptr;
     }
 

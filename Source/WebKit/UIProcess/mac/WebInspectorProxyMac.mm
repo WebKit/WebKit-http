@@ -36,16 +36,13 @@
 #import "WebInspectorUIMessages.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
+#import "_WKInspectorInternal.h"
 #import <WebCore/InspectorFrontendClientLocal.h>
 #import <WebCore/LocalizedStrings.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/text/Base64.h>
 
-
 SOFT_LINK_STAGED_FRAMEWORK(WebInspectorUI, PrivateFrameworks, A)
-
-using namespace WebCore;
-using namespace WebKit;
 
 static const NSUInteger windowStyleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable | NSWindowStyleMaskFullSizeContentView;
 
@@ -55,13 +52,13 @@ static const Seconds webViewCloseTimeout { 1_min };
 
 @interface WKWebInspectorProxyObjCAdapter () <WKInspectorViewControllerDelegate>
 
-- (instancetype)initWithWebInspectorProxy:(WebInspectorProxy*)inspectorProxy;
+- (instancetype)initWithWebInspectorProxy:(WebKit::WebInspectorProxy*)inspectorProxy;
 - (void)invalidate;
 
 @end
 
 @implementation WKWebInspectorProxyObjCAdapter {
-    WebInspectorProxy* _inspectorProxy;
+    WebKit::WebInspectorProxy* _inspectorProxy;
 }
 
 - (WKInspectorRef)inspectorRef
@@ -69,7 +66,14 @@ static const Seconds webViewCloseTimeout { 1_min };
     return toAPI(_inspectorProxy);
 }
 
-- (instancetype)initWithWebInspectorProxy:(WebInspectorProxy*)inspectorProxy
+- (_WKInspector *)inspector
+{
+    if (_inspectorProxy)
+        return wrapper(*_inspectorProxy);
+    return nil;
+}
+
+- (instancetype)initWithWebInspectorProxy:(WebKit::WebInspectorProxy*)inspectorProxy
 {
     ASSERT_ARG(inspectorProxy, inspectorProxy);
 
@@ -146,6 +150,7 @@ static const Seconds webViewCloseTimeout { 1_min };
 @end
 
 namespace WebKit {
+using namespace WebCore;
 
 void WebInspectorProxy::attachmentViewDidChange(NSView *oldView, NSView *newView)
 {

@@ -1,3 +1,1155 @@
+2018-08-29  David Kilzer  <ddkilzer@apple.com>
+
+        Remove empty directories from from svn.webkit.org repository
+        <https://webkit.org/b/189081>
+
+        * DumpRenderTree/TestNetscapePlugIn/unix: Removed.
+        * WebKitTestRunner/UIScriptContext: Removed.
+
+2018-08-29  Pablo Saavedra  <psaavedra@igalia.com>
+
+        [GTK][WPE] Add JSCOnly Release bot for Linux ARMv7 Thumb2 SoftFP
+        https://bugs.webkit.org/show_bug.cgi?id=189077
+
+        Reviewed by Michael Catanzaro.
+
+        Deployed new bot for WPE Release in Linux ARMv7 Thumb2 SoftFP
+        This bot (jsconly-linux-igalia-bot-5) will run the 'JSCOnly
+        Linux ARMv7 Thumb2 SoftFP Release' buildjob.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py:
+
+2018-08-28  Daniel Bates  <dabates@apple.com>
+
+        lldb-webkit: KeyError thrown for OptionSet
+        https://bugs.webkit.org/show_bug.cgi?id=189062
+
+        Reviewed by Simon Fraser.
+
+        For some reason lldb(1) may not retrieve the enumerator names for an enum value
+        when it calls update() on the synthetic children provider. If this occurs then
+        bail out as we cannot compute what enumerators are in the set.
+
+        * lldb/lldb_webkit.py:
+        (WTFOptionSetProvider.update):
+
+2018-08-28  Sihui Liu  <sihui_liu@apple.com>
+
+        Add error information to help debug test failure in WKNavigation.ProcessCrashDuringCallback
+        https://bugs.webkit.org/show_bug.cgi?id=189037
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebContentProcessDidTerminate.mm:
+        (TEST):
+
+2018-08-28  David Kilzer  <ddkilzer@apple.com>
+
+        Fix incorrect use of `sourceTree = "<group>";` for built products and frameworks in Xcode projects
+
+        Found by tidy-Xcode-project-file script (see Bug 188754).
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        (IOKit.framework): Use `sourceTree = "<absolute>";` to match
+        other frameworks in the project.
+        * MobileMiniBrowser/MobileMiniBrowser.xcodeproj/project.pbxproj:
+        (WebKit.framework): Use `sourceTree = BUILT_PRODUCTS_DIR;` for
+        built product instead of relative build directory path.
+        * jsc-cli/jsc-cli.xcodeproj/project.pbxproj:
+        (JavaScriptCore.framework): Ditto.
+        * lldb/lldbWebKitTester/lldbWebKitTester.xcodeproj/project.pbxproj:
+        (libWTF.a): Use `sourceTree = BUILT_PRODUCTS_DIR;` for built
+        product.
+
+2018-08-28  Alex Christensen  <achristensen@webkit.org>
+
+        Fix 32-bit Mac build.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/RestoreSessionStateWithoutNavigation.mm:
+
+2018-08-28  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION (r235391): [iOS] TestWebKitAPI.WebKit.RestoreSessionStateWithoutNavigation is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=189050
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/RestoreSessionStateWithoutNavigation.mm:
+        This test wasn't run on iOS before.  Let's re-introduce the WK_HAVE_C_SPI guard.
+
+2018-08-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] WKAttachmentTests.DropFolderAsAttachmentAndMoveByDragging encounters an exception on iOS simulator
+        https://bugs.webkit.org/show_bug.cgi?id=189049
+
+        Reviewed by Tim Horton.
+
+        Wrap an NSURL in a RetainPtr to prevent it from being freed prematurely. It seems this broke when I changed the
+        load handler from an Objective-C block that captured `folderURL` to a C++ lambda that didn't retain `folderURL`.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (simulateFolderDragWithURL):
+
+2018-08-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Remove WebCore::AttachmentDisplayOptions and friends
+        https://bugs.webkit.org/show_bug.cgi?id=189004
+
+        Reviewed by Dan Bernstein.
+
+        Move off of deprecated attachment insertion SPI.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (-[TestWKWebView synchronouslyInsertAttachmentWithFileWrapper:contentType:]):
+        (-[TestWKWebView synchronouslyInsertAttachmentWithFilename:contentType:data:]):
+        (-[_WKAttachment synchronouslySetDisplayOptions:error:]): Deleted.
+
+2018-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Teach WebKitTestRunner and DumpRenderTree about detecting world leaks
+        https://bugs.webkit.org/show_bug.cgi?id=188994
+
+        Reviewed by Tim Horton.
+        
+        This patch adds the notion of a "control command" in the protocol between webkitpy and 
+        WebKitTestRunner/DumpRenderTree. A command is simply an input string starting with a #
+        that is checked for before trying to parse the input as test URL. For now, just one
+        commmand is supported, which is "#CHECK FOR WORLD LEAKS".
+        
+        In response to the command, the tool dumps an output block in the usual pseudo-MIME-style,
+        with a trailing "#EOF". Future patches will add support to webkitpy to parse this output.
+        
+        DumpRenderTree stubs out the command, returning an empty block.
+        
+        WebKitTestRunner responds to the command by dumping the list of live documents, if it was
+        run with the --check-for-world-leaks option.
+        
+        When run with --check-for-world-leaks, WebKitTestRunner gets the list of live documents via
+        WKBundleGetLiveDocumentURLs() after every test (this allows it to detect the first test
+        that leaked a document), and keeps them in a map of document identifier to test and live document URL.
+        Then when it receives the "#CHECK FOR WORLD LEAKS" command, it calls into the bundle to
+        clear the page and memory caches, runs a GC, then posts a task (in the Document::postTaks() sense)
+        after which it requests the list of live documents for a final time, excluding any that are loaded
+        in live Frames (thus omitting the about:blank that will be loaded at this point). Documents in this
+        list are therefore leaked (or abandoned).
+        
+        Future patches will hook up webkitpy reporting for leaked documents.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (initializeGlobalsFromCommandLineOptions):
+        (handleControlCommand):
+        (runTestingServerLoop):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (handleControlCommand):
+        (main):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::postGCTask):
+        (WTR::InjectedBundle::reportLiveDocuments):
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/Options.cpp:
+        (WTR::handleOptionCheckForWorldLeaks):
+        (WTR::OptionsHandler::OptionsHandler):
+        * WebKitTestRunner/Options.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::AsyncTask::run):
+        (WTR::AsyncTask::currentTask):
+        (WTR::TestController::initialize):
+        (WTR::TestController::ensureViewSupportsOptionsForTest):
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::TestController::updateLiveDocumentsAfterTest):
+        (WTR::TestController::checkForWorldLeaks):
+        (WTR::TestController::findAndDumpWorldLeaks):
+        (WTR::TestController::willDestroyWebView):
+        (WTR::parseInputLine):
+        (WTR::TestController::waitForCompletion):
+        (WTR::TestController::handleControlCommand):
+        (WTR::TestController::runTestingServerLoop):
+        (WTR::TestController::run):
+        (WTR::TestController::didReceiveLiveDocumentsList):
+        (WTR::TestController::didReceiveMessageFromInjectedBundle):
+        * WebKitTestRunner/TestController.h:
+        (WTR::AsyncTask::AsyncTask):
+        (WTR::AsyncTask::taskComplete):
+        (WTR::TestController::AbandonedDocumentInfo::AbandonedDocumentInfo):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2018-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Fix API test after r235398
+        https://bugs.webkit.org/show_bug.cgi?id=188997
+
+        * TestWebKitAPI/Tests/WebKit/ShouldKeepCurrentBackForwardListItemInList.cpp:
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::willGoToBackForwardListItem): Deleted.
+        willGoToBackForwardListItem is unused and unsupported.  Removing its check.
+
+2018-08-27  Daniel Bates  <dabates@apple.com>
+
+        Partial revert of r235376
+        https://bugs.webkit.org/show_bug.cgi?id=189011
+
+        For now revert the unit tests added in r235376 as the following tests are failing on Apple Sierra
+        Debug and Apple High Sierra Debug bots:
+
+            lldb_webkit_unittest.TestSummaryProviders.serial_test_WTFOptionSetProvider_simple
+            lldb_webkit_unittest.TestSummaryProviders.serial_test_WTFOptionSet_SummaryProvider_simple
+
+        Will investigate offline.
+
+        * lldb/lldbWebKitTester/main.cpp:
+        (testSummaryProviders):
+        * lldb/lldb_webkit_unittest.py:
+        (TestSummaryProviders.serial_test_WTFHashSet_tablesize_and_size):
+        (TestSummaryProviders.serial_test_WTFOptionSet_SummaryProvider_empty): Deleted.
+        (TestSummaryProviders.serial_test_WTFOptionSet_SummaryProvider_simple): Deleted.
+        (TestSummaryProviders.serial_test_WTFOptionSetProvider_empty): Deleted.
+        (TestSummaryProviders.serial_test_WTFOptionSetProvider_simple): Deleted.
+
+2018-08-27  Aditya Keerthi  <akeerthi@apple.com>
+
+        Consolidate ENABLE_INPUT_TYPE_COLOR and ENABLE_INPUT_TYPE_COLOR_POPOVER
+        https://bugs.webkit.org/show_bug.cgi?id=188931
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Removed ENABLE_INPUT_TYPE_COLOR_POPOVER.
+
+2018-08-27  Justin Fan  <justin_fan@apple.com>
+
+        Add Justin Fan to list of WebKit contributors
+        https://bugs.webkit.org/show_bug.cgi?id=184431
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Convert timeout values in WebKitTestRunner to WTF::Seconds
+        https://bugs.webkit.org/show_bug.cgi?id=188987
+
+        Reviewed by Ryosuke Niwa.
+        
+        Replace various 'int' timeout values with WTF::Seconds. The timeout argument
+        comes in as milliseconds, so convert on input. When sending messages to the InjectedBundle
+        using integers, convert to and from milliseconds.
+        
+        Also do some #pragma once, and initializer cleanup.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        (WTR::InjectedBundle::beginTesting):
+        (WTR::InjectedBundle::InjectedBundle): Deleted.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::timeout):
+        (WTR::TestRunner::setCustomTimeout):
+        * WebKitTestRunner/InjectedBundle/gtk/TestRunnerGtk.cpp:
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/InjectedBundle/mac/TestRunnerMac.mm:
+        (WTR::TestRunner::invalidateWaitToDumpWatchdogTimer):
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/InjectedBundle/wpe/TestRunnerWPE.cpp:
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::TestController):
+        (WTR::parseInputLine):
+        (WTR::TestController::runTest):
+        (WTR::TestController::runUntil):
+        (WTR::TestController::didReceiveMessageFromInjectedBundle):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::shortTimeout const):
+        (WTR::TestInvocation::createTestSettingsDictionary):
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/TestOptions.h:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformRunUntil):
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::platformRunUntil):
+        * WebKitTestRunner/wpe/TestControllerWPE.cpp:
+        (WTR::TestController::platformRunUntil):
+
+2018-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Convert timeout values in WebKitTestRunner to WTF::Seconds
+        https://bugs.webkit.org/show_bug.cgi?id=188987
+
+        Reviewed by Ryosuke Niwa.
+        
+        Replace various 'int' timeout values with WTF::Seconds. The timeout argument
+        comes in as milliseconds, so convert on input. When sending messages to the InjectedBundle
+        using integers, convert to and from milliseconds.
+        
+        Also do some #pragma once, and initializer cleanup.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        (WTR::InjectedBundle::beginTesting):
+        (WTR::InjectedBundle::InjectedBundle): Deleted.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::timeout):
+        (WTR::TestRunner::setCustomTimeout):
+        * WebKitTestRunner/InjectedBundle/gtk/TestRunnerGtk.cpp:
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/InjectedBundle/mac/TestRunnerMac.mm:
+        (WTR::TestRunner::invalidateWaitToDumpWatchdogTimer):
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/InjectedBundle/wpe/TestRunnerWPE.cpp:
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::TestController):
+        (WTR::parseInputLine):
+        (WTR::TestController::runTest):
+        (WTR::TestController::runUntil):
+        (WTR::TestController::didReceiveMessageFromInjectedBundle):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::shortTimeout const):
+        (WTR::TestInvocation::createTestSettingsDictionary):
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/TestOptions.h:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformRunUntil):
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::platformRunUntil):
+        * WebKitTestRunner/wpe/TestControllerWPE.cpp:
+        (WTR::TestController::platformRunUntil):
+
+2018-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r234985/r234989) WKPageLoadHTMLString with a 16-bit String has the wrong encoding
+        https://bugs.webkit.org/show_bug.cgi?id=189002
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit/WillLoad.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2018-08-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] Exception (fileType 'dyn.agq8u' is not a valid UTI) raised when dragging an attachment whose file wrapper is a directory
+        https://bugs.webkit.org/show_bug.cgi?id=188903
+        <rdar://problem/43702993>
+
+        Reviewed by Tim Horton.
+
+        Add two API tests and adjust existing WKAttachment API tests. The new tests exercise the following scenarios, in
+        both iOS and macOS:
+        •       Dropping a folder as an attachment element, and then moving that attachment element in the document by
+                dragging and dropping.
+        •       Using WKWebView SPI to insert a folder and a file with an unknown extension, and then using more
+                _WKAttachment SPI to swap the attachments' backing file wrappers.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (runTestWithTemporaryFolder):
+
+        Add a helper function to run a test with a new folder path, created in the temporary directory and populated
+        with some sample content. This folder is deleted after running the test.
+
+        (simulateFolderDragWithURL):
+
+        Add a helper function to prepare a given DragAndDropSimulator for simulating a dragged folder from a source
+        external to the web view.
+
+        (platformCopyRichTextWithMultipleAttachments):
+        (platformCopyRichTextWithImage):
+        (platformCopyPNG):
+        (TestWebKitAPI::TEST):
+
+        Add new API tests, and adjust existing tests to reflect new -setFileWrapper:…: behavior. Specifically,
+        ChangeAttachmentDataAndFileInformation previously required that changing a _WKAttachment's NSFileWrapper would
+        preserve the previous NSFileWrapper's preferred name if the new file wrapper does not have a preferred name, but
+        this quirk is no longer supported.
+
+        Also add a few bridging casts for the eventual transition of TestWebKitAPI to ARC.
+
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+
+        Add a new hook to clear any external drag information on an existing DragAndDropSimulator. This is convenient
+        when using the same DragAndDropSimulator to perform multiple drags in a single test.
+
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        (-[DragAndDropSimulator clearExternalDragInformation]):
+        * TestWebKitAPI/mac/DragAndDropSimulatorMac.mm:
+        (-[DragAndDropSimulator clearExternalDragInformation]):
+
+2018-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Translate 4 tests using WKPageLoaderClient to ObjC
+        https://bugs.webkit.org/show_bug.cgi?id=188827
+
+        Reviewed by Tim Horton.
+
+        They use processDidBecomeUnresponsive, didChangeBackForwardList, or willGoToBackForwardListItem.
+        Rather than introduce these to WKPageNavigationClient, I just translated the tests to use WKNavigationDelegate, which already have equivalent callbacks.
+        willGoToBackForwardListItem had userData from the InjectedBundle, but nobody was using it so I did not add that to the ObjC SPI, so I don't test that unused
+        bundle functionality any more.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/ResponsivenessTimer.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit/ResponsivenessTimerDoesntFireEarly.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit/RestoreSessionStateWithoutNavigation.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit/ShouldGoToBackForwardListItem.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit/ShouldGoToBackForwardListItem_Bundle.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKitCocoa/ResponsivenessTimer.mm: Copied from Tools/TestWebKitAPI/Tests/WebKit/ResponsivenessTimer.cpp.
+        (-[ResponsivenessTimerDelegate webView:didFinishNavigation:]):
+        (-[ResponsivenessTimerDelegate _webViewWebProcessDidBecomeUnresponsive:]):
+        (TestWebKitAPI::TEST):
+        (): Deleted.
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        (TestWebKitAPI::processDidBecomeUnresponsive): Deleted.
+        (TestWebKitAPI::setPageLoaderClient): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/ResponsivenessTimerDoesntFireEarly.mm: Copied from Tools/TestWebKitAPI/Tests/WebKit/ResponsivenessTimerDoesntFireEarly.cpp.
+        (-[ResponsivenessDelegate webView:didFinishNavigation:]):
+        (-[ResponsivenessDelegate _webViewWebProcessDidBecomeUnresponsive:]):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didReceiveMessageFromInjectedBundle): Deleted.
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        (TestWebKitAPI::processDidBecomeUnresponsive): Deleted.
+        (TestWebKitAPI::setInjectedBundleClient): Deleted.
+        (TestWebKitAPI::setPageLoaderClient): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/RestoreSessionStateWithoutNavigation.mm: Copied from Tools/TestWebKitAPI/Tests/WebKit/RestoreSessionStateWithoutNavigation.cpp.
+        (-[SessionStateDelegate webView:didFinishNavigation:]):
+        (-[SessionStateDelegate _webView:backForwardListItemAdded:removed:]):
+        (TestWebKitAPI::createSessionStateData):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        (TestWebKitAPI::didChangeBackForwardListForPage): Deleted.
+        (TestWebKitAPI::setPageLoaderClient): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/ShouldGoToBackForwardListItem.mm: Copied from Tools/TestWebKitAPI/Tests/WebKit/ShouldGoToBackForwardListItem.cpp.
+        (-[BackForwardClient webView:didFinishNavigation:]):
+        (-[BackForwardClient _webView:willGoToBackForwardListItem:inPageCache:]):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        (TestWebKitAPI::willGoToBackForwardListItem): Deleted.
+        (TestWebKitAPI::setPageLoaderClient): Deleted.
+
+2018-08-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] "video.html" appears at the top level of the TestWebKitAPI Xcode project
+        https://bugs.webkit.org/show_bug.cgi?id=188989
+
+        Reviewed by Andy Estes.
+
+        Move this into the Tests/WebKit/Resources group in the project.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+2018-08-27  Thomas Denney  <tdenney@apple.com>
+
+        Avoid an exception in the interactive interpreter
+        https://bugs.webkit.org/show_bug.cgi?id=188991
+
+        Reviewed by Myles C. Maxfield.
+
+        * WebGPUShadingLanguageRI/index.html: Corrects a typo in the name of a
+        local variable
+
+2018-08-27  Thomas Denney  <tdenney@apple.com>
+
+        Allow new vector types to work with the interactive interpreter
+        https://bugs.webkit.org/show_bug.cgi?id=188988
+
+        Reviewed by Myles C. Maxfield.
+
+        * WebGPUShadingLanguageRI/FlattenedStructOffsetGatherer.js:
+        (FlattenedStructOffsetGatherer.prototype.visitTypeRef): Do not
+        unncessarily visit the type arguments of a TypeRef, as by this point
+        there are none that are relevant.
+        * WebGPUShadingLanguageRI/Intrinsics.js:
+        (Intrinsics): Treat VectorType as a primitive type.
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Add tools/scripts support for controlling LTO builds.
+
+        * Scripts/build-webkit: Add --lto-mode={none,thin,full}.
+        * Scripts/set-webkit-configuration: Add support for saving LTO
+        configuration to WebKitBuild/LTO.
+        * Scripts/webkitdirs.pm: Add support for reading configuration from
+        WebKitBuild/LTO and providing it to xcodebuild.
+        (determineLTOMode):
+        (ltoMode):
+        (XcodeOptions):
+
+2018-08-27  Daniel Bates  <dabates@apple.com>
+
+        lldb-webkit: Pretty-print OptionSet
+        https://bugs.webkit.org/show_bug.cgi?id=188936
+
+        Reviewed by Simon Fraser.
+
+        Add LLDB formatters to pretty-print an OptionSet.
+
+        * lldb/lldbWebKitTester/main.cpp:
+        (testSummaryProviders):
+        * lldb/lldb_webkit.py:
+        (__lldb_init_module):
+        (__lldb_init_module.lldb_webkit):
+        (WTFOptionSet_SummaryProvider):
+        (WTFOptionSetProvider):
+        (WTFOptionSetProvider.__init__):
+        (WTFOptionSetProvider.has_children):
+        (WTFOptionSetProvider.num_children):
+        (WTFOptionSetProvider.get_child_index):
+        (WTFOptionSetProvider.get_child_at_index):
+        (WTFOptionSetProvider.update):
+        * lldb/lldb_webkit_unittest.py:
+        (TestSummaryProviders.serial_test_WTFHashSet_tablesize_and_size):
+        (TestSummaryProviders):
+        (TestSummaryProviders.serial_test_WTFOptionSet_SummaryProvider_empty):
+        (TestSummaryProviders.serial_test_WTFOptionSet_SummaryProvider_simple):
+        (TestSummaryProviders.serial_test_WTFOptionSetProvider_empty):
+        (TestSummaryProviders.serial_test_WTFOptionSetProvider_simple):
+
+2018-08-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] [WK2] Images copied from Mail message view paste with the wrong file name in compose
+        https://bugs.webkit.org/show_bug.cgi?id=188957
+        <rdar://problem/43737715>
+
+        Reviewed by Darin Adler.
+
+        Add a new API test to verify that pasting a web archive containing several image elements with alt attributes
+        generates _WKAttachments whose names reflect those alt attributes.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (testGIFFileURL):
+        (testGIFData):
+        (TestWebKitAPI::TEST):
+
+2018-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r235367.
+
+        Broke iOS build.
+
+        Reverted changeset:
+
+        "Translate 4 tests using WKPageLoaderClient to ObjC"
+        https://bugs.webkit.org/show_bug.cgi?id=188827
+        https://trac.webkit.org/changeset/235367
+
+2018-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Fix GTK build.
+
+        * TestWebKitAPI/CMakeLists.txt:
+
+2018-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS build.
+
+        * TestWebKitAPI/PlatformWebView.h:
+
+2018-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Translate 4 tests using WKPageLoaderClient to ObjC
+        https://bugs.webkit.org/show_bug.cgi?id=188827
+
+        Reviewed by Tim Horton.
+
+        They use processDidBecomeUnresponsive, didChangeBackForwardList, or willGoToBackForwardListItem.
+        Rather than introduce these to WKPageNavigationClient, I just translated the tests to use WKNavigationDelegate, which already have equivalent callbacks.
+        willGoToBackForwardListItem had userData from the InjectedBundle, but nobody was using it so I did not add that to the ObjC SPI, so I don't test that unused
+        bundle functionality any more.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/ResponsivenessTimer.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit/ResponsivenessTimerDoesntFireEarly.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit/RestoreSessionStateWithoutNavigation.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit/ShouldGoToBackForwardListItem.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit/ShouldGoToBackForwardListItem_Bundle.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKitCocoa/ResponsivenessTimer.mm: Copied from Tools/TestWebKitAPI/Tests/WebKit/ResponsivenessTimer.cpp.
+        (-[ResponsivenessTimerDelegate webView:didFinishNavigation:]):
+        (-[ResponsivenessTimerDelegate _webViewWebProcessDidBecomeUnresponsive:]):
+        (TestWebKitAPI::TEST):
+        (): Deleted.
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        (TestWebKitAPI::processDidBecomeUnresponsive): Deleted.
+        (TestWebKitAPI::setPageLoaderClient): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/ResponsivenessTimerDoesntFireEarly.mm: Copied from Tools/TestWebKitAPI/Tests/WebKit/ResponsivenessTimerDoesntFireEarly.cpp.
+        (-[ResponsivenessDelegate webView:didFinishNavigation:]):
+        (-[ResponsivenessDelegate _webViewWebProcessDidBecomeUnresponsive:]):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didReceiveMessageFromInjectedBundle): Deleted.
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        (TestWebKitAPI::processDidBecomeUnresponsive): Deleted.
+        (TestWebKitAPI::setInjectedBundleClient): Deleted.
+        (TestWebKitAPI::setPageLoaderClient): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/RestoreSessionStateWithoutNavigation.mm: Copied from Tools/TestWebKitAPI/Tests/WebKit/RestoreSessionStateWithoutNavigation.cpp.
+        (-[SessionStateDelegate webView:didFinishNavigation:]):
+        (-[SessionStateDelegate _webView:backForwardListItemAdded:removed:]):
+        (TestWebKitAPI::createSessionStateData):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        (TestWebKitAPI::didChangeBackForwardListForPage): Deleted.
+        (TestWebKitAPI::setPageLoaderClient): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/ShouldGoToBackForwardListItem.mm: Copied from Tools/TestWebKitAPI/Tests/WebKit/ShouldGoToBackForwardListItem.cpp.
+        (-[BackForwardClient webView:didFinishNavigation:]):
+        (-[BackForwardClient _webView:willGoToBackForwardListItem:inPageCache:]):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didFinishLoadForFrame): Deleted.
+        (TestWebKitAPI::willGoToBackForwardListItem): Deleted.
+        (TestWebKitAPI::setPageLoaderClient): Deleted.
+
+2018-08-27  Keith Miller  <keith_miller@apple.com>
+
+        test262-runner -s --test-only should replace test results
+        https://bugs.webkit.org/show_bug.cgi?id=188450
+
+        Reviewed by Michael Saboff.
+
+        * Scripts/test262/Runner.pm:
+        (main):
+        (SetFailureForTest):
+        (UpdateResults):
+
+2018-08-26  Sam Weinig  <sam@webkit.org>
+
+        Using _WKRemoteObjectInterface with a protocol that inherits from a non-NSObject protocol crashes
+        https://bugs.webkit.org/show_bug.cgi?id=188958
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/RemoteObjectRegistry.h:
+        Update test protocol to have inheritance.
+
+2018-08-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Dropping and pasting images should insert inline image elements with _WKAttachments
+        https://bugs.webkit.org/show_bug.cgi?id=188933
+        <rdar://problem/43699724>
+
+        Reviewed by Darin Adler.
+
+        Rebaseline existing API tests that involve dropping or pasting image files, and additionally write some new
+        tests. These new tests exercise the following cases:
+        •       Inserting and removing newlines before an inline image with an attachment element does not cause new
+                _WKAttachments to be created and destroyed.
+        •       Pasting an image, cutting it, and then pasting it again propagates an attachment update to the UI
+                process with the original _WKAttachment.
+        •       A pasted attachment in the document can be moved around by dragging, and doing so does not cause us to
+                lose a _WKAttachment.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (-[TestWKWebView expectElementCount:tagName:]):
+        (TestWebKitAPI::TEST):
+
+        Add the new tests described above, and also adjust existing tests to check that images are dropped or pasted
+        as image elements, but still have associated attachment elements whose attachment identifiers (observed via
+        script) match that of the corresponding _WKAttachment's uniqueIdentifier in the UI process.
+
+        * TestWebKitAPI/mac/DragAndDropSimulatorMac.mm:
+        (-[DragAndDropSimulator runFrom:to:]):
+        (-[DragAndDropSimulator continueDragSession]):
+        (-[DragAndDropSimulator performDragInWebView:atLocation:withImage:pasteboard:source:]):
+
+        Teach DragAndDropSimulator on macOS to wait until the drop has been handled by the web process before returning
+        execution to the caller. This ensures that tests which involve dropping promised files as attachments aren't
+        flaky, due to how the promised data is retrieved asynchronously when performing the drop.
+
+        (-[DragAndDropSimulator _webView:didPerformDragOperation:]):
+
+2018-08-26  Lucas Forschler  <lforschler@apple.com>
+
+        Open svn.webkit.org for commits.
+
+2018-08-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unreviewed test fix after r235249
+        https://bugs.webkit.org/show_bug.cgi?id=178981
+
+        * WebGPUShadingLanguageRI/Test.js:
+
+2018-08-24  Alex Christensen  <achristensen@webkit.org>
+
+        Introduce _WKInspector
+        https://bugs.webkit.org/show_bug.cgi?id=188923
+        <rdar://problem/34657861>
+
+        Reviewed by Brian Burg.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        (-[WK2BrowserWindowController showHideWebInspector:]):
+
+2018-08-24  Jonathan Bedard  <jbedard@apple.com>
+
+        Fix handling of iOS minor versions in default_baseline_search_path
+        https://bugs.webkit.org/show_bug.cgi?id=188902
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.default_baseline_search_path): When the major version matches the major version of the CURRENT_VERSION, treat
+        it as a the CURRENT_VERSION.
+
+2018-08-24  Antti Koivisto  <antti@apple.com>
+
+        Allow creating WeakPtrs to const objects
+        https://bugs.webkit.org/show_bug.cgi?id=188785
+
+        Reviewed by Geoff Garen.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp:
+        (TestWebKitAPI::Base::weakPtrFactory const):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::Base::weakPtrFactory): Deleted.
+
+2018-08-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API to inject/register user content in isolated worlds
+        https://bugs.webkit.org/show_bug.cgi?id=188883
+
+        Reviewed by Michael Catanzaro.
+
+        Add test cases for the new API.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitUserContentManager.cpp:
+        (isStyleSheetInjectedForURLAtPath):
+        (isScriptInjectedForURLAtPath):
+        (testUserContentManagerInjectedStyleSheet):
+        (testUserContentManagerInjectedScript):
+        (UserScriptMessageTest::registerHandler):
+        (UserScriptMessageTest::unregisterHandler):
+        (UserScriptMessageTest::postMessageAndWaitUntilReceived):
+        (testUserContentManagerScriptMessageInWorldReceived):
+        (beforeAll):
+
+2018-08-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for dumping GC heap snapshots, and a viewer
+        https://bugs.webkit.org/show_bug.cgi?id=186416
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a viewer for GC heap snapshots. A snapshot JSON file can be dragged into this
+        page for inspection (or set via the 'filename' URL parameter).
+
+        For now, this page shows all objects, all roots, and the shortest path from a root
+        to all HTMLDocuments and Windows.
+
+        * GCHeapInspector/gc-heap-inspector.html: Added.
+        * GCHeapInspector/heap-analysis/HeapSnapshot.js: Copied from Source/WebInspectorUI/UserInterface/Workers/HeapSnapshot/HeapSnapshot.js.
+        * GCHeapInspector/script/interface.js: Added.
+
+2018-08-23  Alex Christensen  <achristensen@webkit.org>
+
+        Add new _webViewRequestPointerLock SPI with a completionHandler
+        https://bugs.webkit.org/show_bug.cgi?id=188907
+        <rdar://problem/35871109>
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/UIDelegate.mm:
+        (-[PointerLockDelegate _webViewRequestPointerLock:completionHandler:]):
+        (-[PointerLockDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (TEST):
+
+2018-08-23  David Fenton  <david_fenton@apple.com>
+
+        Unreviewed, rolling out r235129.
+
+        broke internal builds
+
+        Reverted changeset:
+
+        "Allow creating WeakPtrs to const objects"
+        https://bugs.webkit.org/show_bug.cgi?id=188785
+        https://trac.webkit.org/changeset/235129
+
+2018-08-23  Jonathan Bedard  <jbedard@apple.com>
+
+        API tests should output json results
+        https://bugs.webkit.org/show_bug.cgi?id=188869
+        <rdar://problem/43615652>
+
+        Reviewed by Aakash Jain.
+
+        JSON output for API tests is of the form:
+            {
+                "Failed": [{"name": <test name>, "output": <test log>}],
+                "Timedout": [...],
+                "Skipped": [...],
+                "Crashed": [...]
+            }
+        Tests which are successful are not displayed in the json output.
+
+        * Scripts/webkitpy/api_tests/manager.py:
+        (Manager.run): Print test results to provided file as a json dictionary.
+        * Scripts/webkitpy/api_tests/run_api_tests.py:
+        (run): Pass json option.
+        (parse_args): Add --json-output flag.
+
+2018-08-23  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Introduce Apple Pay JS v4 on iOS 12 and macOS Mojave
+        https://bugs.webkit.org/show_bug.cgi?id=188829
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-08-23  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WSL] Ternary expressions appear to be unimplemented
+        https://bugs.webkit.org/show_bug.cgi?id=178981
+
+        Reviewed by Saam Barati.
+
+        Implement ternary statements. These can be both lvalues and rvalues. (a ? b : c ? d : e)
+        is parsed as (a ? b : (c ? d : e)).
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/Checker.js:
+        (Checker.prototype.visitTernaryExpression):
+        * WebGPUShadingLanguageRI/Evaluator.js:
+        (Evaluator.prototype.visitTernaryExpression):
+        * WebGPUShadingLanguageRI/NormalUsePropertyResolver.js:
+        (NormalUsePropertyResolver.prototype.visitTernaryExpression):
+        (NormalUsePropertyResolver):
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parsePossibleTernaryConditional):
+        * WebGPUShadingLanguageRI/PropertyResolver.js:
+        (PropertyResolver.prototype._visitRValuesWithinLValue.RValueFinder.prototype.visitTernaryExpression):
+        (PropertyResolver.prototype._visitRValuesWithinLValue.RValueFinder):
+        (PropertyResolver.prototype._visitRValuesWithinLValue):
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter.prototype.visitTernaryExpression):
+        * WebGPUShadingLanguageRI/SPIRV.html:
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitProtocolDecl):
+        * WebGPUShadingLanguageRI/index.html:
+
+2018-08-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Assert in NetworkBlobRegistry::unregisterBlobURL after network process had terminated
+        https://bugs.webkit.org/show_bug.cgi?id=188880
+
+        Reviewed by Saam Barati.
+
+        Fixed the bug that testRunner's terminateNetworkProcess, terminateServiceWorkerProcess, and terminateStorageProcess
+        were asynchronously terminating respective processes. Do so synchronously so that we can deterministically
+        test WebKit's behavior in layout tests.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::terminateNetworkProcess):
+        (WTR::TestRunner::terminateServiceWorkerProcess):
+        (WTR::TestRunner::terminateStorageProcess):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2018-08-23  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Allow native types to have type arguments (like "vector<float, 4>")
+        https://bugs.webkit.org/show_bug.cgi?id=188773
+
+        Reviewed by Filip Pizlo.
+
+        Before this patch, it was impossible to represent "native typedef vector<float, 4>" because NativeTypes couldn't have
+        typeArguments.
+
+        Previously, the way to identify a type was strictly by name, which was represented by a string. Therefore, when something like
+        "vector<int, 3>" was parsed, it would produce a TypeRef with the name "vector" and typeArguments [TypeRef, IntLiteral]. Then,
+        there was a pass to convert the TypeRef to have the name "int3" and no typeArguments. After this transformation, each type could
+        be uniquely identified by name. That name was then matched to the string-only NativeType name.
+
+        This is okay for vectors and matrices, but it is unfortunate for textures (e.g. Texture2D<float4>) because they don't have any
+        natural string-only name. In addition, the canonicalization would have to be made aware of the fact that Texture2D<float4> is
+        the same as Texture2D<vector<float, 4>>. Similarly, an author may wish to typedef float4 to a different name.
+
+        It would be possible to mangle the names of the texture types to something unique, but then we lose information about the inner
+        type. For example, if we did this, Visitor wouldn't recurse into the float4 when encountering Texture2D<float4> because that
+        information would be lost. This could potentially make operations like programWithUnnecessaryThingsRemoved() more difficult to
+        implement in the future.
+
+        So, it would be better to have each type uniquely identified by (name, typeArguments). TypeRef will therefore also have
+        typeArguments which are used to determine which type it is referencing. After this analysis is done to determine what each
+        TypeRef is referencing, subsequent passes shouldn't care about the typeArguments and should only care about the .type field
+        which had been set - this was true even before this patch.
+
+        This means that NameContext has to aggregate types that accept typeArguments into arrays, where each array holds all the Types
+        that have the same name but different typeArguments. Then, when we need to match a TypeRef with a Type, we can ask the
+        NameContext for the appropriate array. This is the same way that function resolution works.
+
+        We can use Node.unify() to determine whether a TypeRef matches a NativeType. Eventually, this will go away, but for now, this is
+        an okay start. This works just about the same way that function overload resolution works. 
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/CallExpression.js:
+        (CallExpression.prototype.resolve):
+        * WebGPUShadingLanguageRI/CheckTypesWithArguments.js: Copied from Tools/WebGPUShadingLanguageRI/ResolveTypeDefs.js. After types
+        have been resolved, there should be no TypeRefs with name "vector" that don't have type arguments. This is just a sanity check.
+        (checkTypesWithArguments.TypeWithArgumentsChecker.prototype.visitTypeRef):
+        (checkTypesWithArguments.TypeWithArgumentsChecker):
+        (checkTypesWithArguments):
+        * WebGPUShadingLanguageRI/Checker.js:
+        (Checker.prototype.visitProgram): Program.types mirrors NameContext: it's a Map that maps strings to types. Because types with
+        typeArguments share names, this has to be updated to map strings to arrays for these types.
+        (Checker.prototype.visitTypeRef):
+        * WebGPUShadingLanguageRI/InferTypesForCall.js:
+        (inferTypesForCall): Don't know why this was here.
+        (inferTypesForTypeArguments): Same as inferTypesForCall, but this one is for matching type arguments.
+        * WebGPUShadingLanguageRI/Intrinsics.js: Adding the types. This patch also adds some scalar types like half, char, etc, but they
+        don't have any functions which accept them. Those will be tested in my next patch which adds math functions for these types. This
+        moves in the direction of matching the standard library in the spec.
+        (Intrinsics.cast):
+        (Intrinsics.bitwiseCast):
+        (Intrinsics.castToHalf):
+        (Intrinsics.):
+        (Intrinsics):
+        * WebGPUShadingLanguageRI/NameContext.js: Aggregate types with typeArguments into arrays.
+        (NameContext.prototype.add):
+        (NameContext.prototype.get let):
+        (NameContext.underlyingThings.prototype.else):
+        (NameContext.prototype.Symbol.iterator):
+        (NameContext):
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitTypeRef): Call TypeRef.resolve().
+        (NameResolver.prototype.visitCallExpression):
+        (NameResolver):
+        (NameResolver.prototype.visitVectorType): Deleted.
+        * WebGPUShadingLanguageRI/NativeType.js: NativeTypes can have type arguments now.
+        (NativeType):
+        (NativeType.prototype.get typeArguments):
+        (NativeType.prototype.toString):
+        (NativeType.create):
+        * WebGPUShadingLanguageRI/Prepare.js:
+        (let.prepare):
+        * WebGPUShadingLanguageRI/Program.js: Update to work with types aggregated into arrays.
+        (Program.prototype.add):
+        (Program.prototype.toString):
+        (Program):
+        * WebGPUShadingLanguageRI/RemoveTypeArguments.js: Removed.
+        * WebGPUShadingLanguageRI/ResolveNames.js: Update to work with types aggregated into arrays.
+        (resolveNamesInTypes):
+        * WebGPUShadingLanguageRI/ResolveOverloadImpl.js: Resolve the type overload for types with typeArguments.
+        * WebGPUShadingLanguageRI/ResolveTypeDefs.js: Update to work with types aggregated into arrays.
+        (resolveTypeDefsInTypes):
+        * WebGPUShadingLanguageRI/Rewriter.js: TypeRefs and Native/Vector types can have typeArguments.
+        (Rewriter.prototype.visitTypeRef):
+        (Rewriter.prototype.visitVectorType):
+        (Rewriter):
+        * WebGPUShadingLanguageRI/SPIRV.html:
+        * WebGPUShadingLanguageRI/StandardLibrary.js: Matches Intrinsics.
+        (bool.operator):
+        * WebGPUShadingLanguageRI/StatementCloner.js: Native types can have typeArguments.
+        (StatementCloner.prototype.visitNativeType):
+        * WebGPUShadingLanguageRI/SynthesizeDefaultConstructorOperator.js: Vector types need constructors too.
+        (synthesizeDefaultConstructorOperator.FindAllTypes.prototype.visitVectorType):
+        (synthesizeDefaultConstructorOperator.FindAllTypes):
+        (synthesizeDefaultConstructorOperator):
+        * WebGPUShadingLanguageRI/SynthesizeStructAccessors.js: No reason to distinguish between wrapping and instantiating a TypeRef.
+        (synthesizeStructAccessors.createTypeRef):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        * WebGPUShadingLanguageRI/TypeOverloadResolutionFailure.js: Copied from Tools/WebGPUShadingLanguageRI/ResolveTypeDefs.js.
+        (TypeOverloadResolutionFailure):
+        (TypeOverloadResolutionFailure.prototype.get type):
+        (TypeOverloadResolutionFailure.prototype.get reason):
+        (TypeOverloadResolutionFailure.prototype.toString):
+        * WebGPUShadingLanguageRI/TypeRef.js:
+        (TypeRef.wrap):
+        (TypeRef.prototype.resolve): Figure out which item in the possibleOverloads array matches this.
+        (TypeRef.prototype.toString):
+        (TypeRef):
+        (TypeRef.instantiate): Deleted.
+        * WebGPUShadingLanguageRI/UnificationContext.js: We need to give literals a chance to assume their preferred type. This
+        adds this facility back into the compiler (it was previously deleted).
+        (UnificationContext.prototype.verify):
+        * WebGPUShadingLanguageRI/VectorType.js: Vector types have type arguments.
+        (VectorType):
+        (VectorType.prototype.get elementType):
+        (VectorType.prototype.get numElements):
+        (VectorType.prototype.get numElementsValue):
+        (VectorType.prototype.toString):
+        * WebGPUShadingLanguageRI/Visitor.js: Iterate over the typeArguments.
+        (Visitor.prototype.visitTypeRef):
+        (Visitor.prototype.visitNativeType):
+        (Visitor.prototype.visitVectorType):
+        (Visitor):
+        * WebGPUShadingLanguageRI/index.html:
+
+2018-08-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Attachment elements don't appear in drag images on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=188823
+        <rdar://problem/43616378>
+
+        Reviewed by Tim Horton.
+
+        Adjusts a couple of existing tests to additionally verify that the drag image generated when dragging an
+        attachment element in macOS is not completely transparent.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (isCompletelyTransparent):
+        (TestWebKitAPI::TEST):
+
+2018-08-23  Jonathan Bedard  <jbedard@apple.com>
+
+        Explain test name matching in run-api-tests help
+        https://bugs.webkit.org/show_bug.cgi?id=188280
+
+        Reviewed by Ryosuke Niwa.
+
+        Improve the run-api-tests help message to explain how test
+        name matching works.
+
+        * Scripts/webkitpy/api_tests/run_api_tests.py:
+        (parse_args):
+        * Scripts/webkitpy/port/base.py:
+        (Port):
+        (Port.path_to_api_test_binaries): Make binary names a globally accessible array.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort):
+        (WinPort.path_to_api_test_binaries): Ditto.
+
+2018-08-23  Youenn Fablet  <youenn@apple.com>
+
+        Use "wpt serve" to launch WPT server
+        https://bugs.webkit.org/show_bug.cgi?id=188848
+
+        Reviewed by Ryosuke Niwa.
+
+        Use "wpt serve" provided by WPT instead of using our custom launcher.
+        This simplifies things and will avoid future breakage.
+        Further simplify web_platform_test_server.py by removing no longer needed actions.
+        - Do not copy files but use alias
+        - Do not kill main pid, which leaves subprocesses alive, use interrupt instead.
+        - Stop enumerating subprocess pids.
+
+        * Scripts/webkitpy/common/system/executive_mock.py:
+        (MockExecutive.interrupt):
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_launcher.py: Removed.
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer.__init__):
+        (WebPlatformTestServer.ports_to_forward):
+        (WebPlatformTestServer._prepare_config):
+        (WebPlatformTestServer._spawn_process):
+        (WebPlatformTestServer._stop_running_server):
+
+2018-08-23  Jonathan Bedard  <jbedard@apple.com>
+
+        run-api-tests: Add --webkit-only, --webcore-only and --webkit-legacy-only options to run WebKit, WebCore and WebKitLegacy tests 
+        https://bugs.webkit.org/show_bug.cgi?id=188262
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/api_tests/run_api_tests.py:
+        (parse_args):
+
+2018-08-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Support dragging attachment elements out as files on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=181294
+        <rdar://problem/36298801>
+
+        Reviewed by Tim Horton.
+
+        Add DragAndDropSimulator support for intercepting calls to -beginDraggingSessionWithitems:event:source:. This
+        enables us to write API tests for macOS that exercise the attachment SPI in combination with dragging attachment
+        elements.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (-[TestWKWebView attachmentElementMidPoint]):
+
+        Add a helper method local to this test suite that grabs the midpoint (in client coordinates) or the first
+        attachment element in the document.
+
+        (TestWebKitAPI::TEST):
+
+        Add a new API test to verify that dragging an attachment element on macOS produces file providers which may be
+        used to write attachment data to a path on disk. Additionally, refactor an existing API test,
+        MoveAttachmentElementAsIconByDragging, so that it runs on both iOS and macOS, to test the ability to move
+        attachment elements around in a document by using drag and drop.
+
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+        * TestWebKitAPI/mac/DragAndDropSimulatorMac.mm:
+        (-[DragAndDropTestWKWebView beginDraggingSessionWithItems:event:source:]):
+        (-[DragAndDropSimulator initWithWebViewFrame:configuration:]):
+        (-[DragAndDropSimulator dealloc]):
+        (-[DragAndDropSimulator runFrom:to:]):
+        (-[DragAndDropSimulator beginDraggingSessionInWebView:withItems:source:]):
+
+        Begin a drag session and kick off the -continueDragSession loop. Unlike -performDragInWebView:…, which spins
+        the main runloop until dragging ends, this version returns execution to the web view and schedules dragging
+        updates asynchronously. This matches AppKit behavior.
+
+        (-[DragAndDropSimulator continueDragSession]):
+
+        Increment the dragging progress amount, send a drag update to the web view, and continue scheduling calls to
+        itself until the progress reaches 1.
+
+        (-[DragAndDropSimulator performDragInWebView:atLocation:withImage:pasteboard:source:]):
+        (-[DragAndDropSimulator initializeDraggingInfo:dragImage:source:]):
+
+        Pull out common logic for creating a new TestDraggingInfo after starting a drag.
+
+        (-[DragAndDropSimulator insertedAttachments]):
+        (-[DragAndDropSimulator removedAttachments]):
+        (-[DragAndDropSimulator draggingSession]):
+        (-[DragAndDropSimulator receivePromisedFiles]):
+
+        Helper method to save promised files written to the pasteboard after a drag to the temporary directory. These
+        files are tracked by DragAndDropSimulator and automatically cleaned up after the test finishes.
+
+        (-[DragAndDropSimulator endDataTransfer]):
+
+        Add a method stub on macOS, so that MoveAttachmentElementAsIconByDragging can be made cross-platform.
+
+        (-[DragAndDropSimulator _webView:didInsertAttachment:withSource:]):
+        (-[DragAndDropSimulator _webView:didRemoveAttachment:]):
+
+        Implement method stubs to keep track of inserted or removed attachments while simulating a drag.
+
+2018-08-22  Aditya Keerthi  <akeerthi@apple.com>
+
+        [iOS] Add support for the inputmode attribute
+        https://bugs.webkit.org/show_bug.cgi?id=183621
+
+        Reviewed by Tim Horton.
+
+        Added an API test to verify that the correct UIKeyboardType is set depending on
+        the type, inputmode, and pattern specified for an input field.
+
+        * TestWebKitAPI/Tests/ios/KeyboardInputTestsIOS.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+2018-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Fix API test on Sierra after r235139
+        https://bugs.webkit.org/show_bug.cgi?id=188810
+
+        * TestWebKitAPI/Tests/mac/LimitTitleSize.mm:
+        (TEST):
+
+2018-08-22  David Kilzer  <ddkilzer@apple.com>
+
+        Move files in WebCore project to match Xcode folder structure
+        <https://webkit.org/b/188851>
+
+        Reviewed by Tim Horton.
+
+        * Scripts/extract-localizable-strings:
+        * Scripts/update-webkit-localizable-strings:
+        - Update to match new location of extract-localizable-strings.pl.
+
 2018-08-21  Alex Christensen  <achristensen@webkit.org>
 
         Roll out r235139 and r235146

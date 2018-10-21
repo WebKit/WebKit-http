@@ -157,7 +157,7 @@ private:
 
 #if ENABLE(DATALIST_ELEMENT)
     void paintListButtonForInput(const RenderObject&, GraphicsContext&, const FloatRect&);
-    void adjustListButtonStyle(StyleResolver&, RenderStyle&, const Element*) const;
+    void adjustListButtonStyle(StyleResolver&, RenderStyle&, const Element*) const final;
 #endif
 
 #if ENABLE(VIDEO)
@@ -174,14 +174,14 @@ private:
     bool paintAttachment(const RenderObject&, const PaintInfo&, const IntRect&) final;
 #endif
 
-    void drawLineForDocumentMarker(const RenderText&, GraphicsContext&, const FloatPoint& origin, float width, DocumentMarkerLineStyle) final;
-
     bool usingDarkAppearance(const RenderObject&) const final;
 
 private:
     String fileListNameForWidth(const FileList*, const FontCascade&, int width, bool multipleFilesAllowed) const final;
 
     Color systemColor(CSSValueID, OptionSet<StyleColor::Options>) const final;
+
+    CGColorRef colorForMarkerLineStyle(DocumentMarkerLineStyle, bool useDarkMode) override;
 
     ColorCache& colorCache(OptionSet<StyleColor::Options>) const final;
 

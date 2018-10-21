@@ -75,6 +75,7 @@
 #import "_WKFrameHandleInternal.h"
 #import "_WKGeolocationPositionInternal.h"
 #import "_WKHitTestResultInternal.h"
+#import "_WKInspectorInternal.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 #import "_WKUserContentWorldInternal.h"
 #import "_WKUserInitiatedActionInternal.h"
@@ -94,17 +95,17 @@ namespace API {
 
 void Object::ref()
 {
-    CFRetain(wrapper());
+    CFRetain((__bridge CFTypeRef)wrapper());
 }
 
 void Object::deref()
 {
-    CFRelease(wrapper());
+    CFRelease((__bridge CFTypeRef)wrapper());
 }
 
 static id <WKObject> allocateWKObject(Class cls, size_t size)
 {
-    return NSAllocateObject(cls, size + maximumExtraSpaceForAlignment, nullptr);
+    return class_createInstance(cls, size + maximumExtraSpaceForAlignment);
 }
 
 API::Object& Object::fromWKObjectExtraSpace(id <WKObject> obj)
@@ -233,6 +234,10 @@ void* Object::newObject(size_t size, Type type)
         break;
 #endif
 
+    case Type::Inspector:
+        wrapper = [_WKInspector alloc];
+        break;
+        
     case Type::Navigation:
         wrapper = [WKNavigation alloc];
         break;
@@ -367,7 +372,7 @@ void* Object::wrap(API::Object* object)
     if (!object)
         return nullptr;
 
-    return static_cast<void*>(object->wrapper());
+    return (__bridge void*)object->wrapper();
 }
 
 API::Object* Object::unwrap(void* object)
@@ -375,7 +380,7 @@ API::Object* Object::unwrap(void* object)
     if (!object)
         return nullptr;
 
-    return &static_cast<id <WKObject>>(object)._apiObject;
+    return &((__bridge id <WKObject>)object)._apiObject;
 }
 
 } // namespace API
