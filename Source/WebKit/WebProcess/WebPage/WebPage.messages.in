@@ -190,7 +190,8 @@ messages -> WebPage LegacyReceiver {
 
 #if PLATFORM(MAC)
     PerformDictionaryLookupOfCurrentSelection()
-    SetFont(String fontFamily, double fontSize, uint64_t fontTraits)
+    ChangeFont(WebCore::FontChanges changes)
+    ChangeFontAttributes(WebCore::FontAttributeChanges changes)
 #endif
 
     PreferencesDidChange(struct WebKit::WebPreferencesStore store)
@@ -501,7 +502,7 @@ messages -> WebPage LegacyReceiver {
 
     URLSchemeTaskDidPerformRedirection(uint64_t handlerIdentifier, uint64_t taskIdentifier, WebCore::ResourceResponse response, WebCore::ResourceRequest request)
     URLSchemeTaskDidReceiveResponse(uint64_t handlerIdentifier, uint64_t taskIdentifier, WebCore::ResourceResponse response)
-    URLSchemeTaskDidReceiveData(uint64_t handlerIdentifier, uint64_t taskIdentifier, IPC::DataReference data)
+    URLSchemeTaskDidReceiveData(uint64_t handlerIdentifier, uint64_t taskIdentifier, IPC::SharedBufferDataReference data)
     URLSchemeTaskDidComplete(uint64_t handlerIdentifier, uint64_t taskIdentifier, WebCore::ResourceError error)
 
     SetIsSuspended(bool suspended)

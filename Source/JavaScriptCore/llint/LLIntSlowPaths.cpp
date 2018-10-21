@@ -60,6 +60,7 @@
 #include "ModuleProgramCodeBlock.h"
 #include "ObjectConstructor.h"
 #include "ObjectPropertyConditionSet.h"
+#include "OpcodeInlines.h"
 #include "ProgramCodeBlock.h"
 #include "ProtoCallFrame.h"
 #include "RegExpObject.h"
@@ -205,16 +206,12 @@ void slowPathLn(const Types&... values)
 template<typename... Types>
 void slowPathLogF(const char* format, const Types&... values)
 {
-#if COMPILER(GCC_OR_CLANG)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-nonliteral"
-#pragma GCC diagnostic ignored "-Wformat-security"
-#endif
+    ALLOW_NONLITERAL_FORMAT_BEGIN
+    IGNORE_WARNINGS_BEGIN("format-security")
     if (Options::traceLLIntSlowPath())
         dataLogF(format, values...);
-#if COMPILER(GCC_OR_CLANG)
-#pragma GCC diagnostic pop
-#endif
+    IGNORE_WARNINGS_END
+    ALLOW_NONLITERAL_FORMAT_END
 }
 
 #else // not LLINT_TRACING
@@ -805,6 +802,7 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
         ArrayProfile* arrayProfile = codeBlock->getOrAddArrayProfile(codeBlock->bytecodeOffset(pc));
         arrayProfile->observeStructure(baseValue.asCell()->structure(vm));
         pc[4].u.arrayProfile = arrayProfile;
+        ASSERT(arrayProfileFor<OpGetArrayLengthShape>(pc) == arrayProfile);
 
         // Prevent the prototype cache from ever happening.
         pc[7].u.operand = 0;
@@ -941,7 +939,7 @@ static ALWAYS_INLINE JSValue getByVal(VM& vm, ExecState* exec, Instruction* pc, 
     
     if (subscript.isUInt32()) {
         uint32_t i = subscript.asUInt32();
-        ArrayProfile* arrayProfile = pc[4].u.arrayProfile;
+        ArrayProfile* arrayProfile = arrayProfileFor<OpGetByValShape>(pc);
 
         if (isJSString(baseValue)) {
             if (asString(baseValue)->canGetIndex(i)) {

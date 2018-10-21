@@ -4143,6 +4143,8 @@ webkit.org/b/188166 webanimations/accessing-current-time-after-clearing-css-anim
 webkit.org/b/188166 webanimations/setting-css-animation-none-after-clearing-effect.html [ Failure ]
 webkit.org/b/188166 webanimations/setting-css-animation-timing-property-via-style-after-clearing-effect.html [ Failure ]
 
+webkit.org/b/189468 webanimations/accelerated-transition-interrupted-on-composited-element.html [ Skip ]
+
 webkit.org/b/188167 fast/repaint/canvas-object-fit.html [ Failure ]
 
 webkit.org/b/188168 fast/text/complex-first-glyph-with-initial-advance.html [ ImageOnlyFailure ]
@@ -4174,3 +4176,5 @@ webkit.org/b/189194 http/tests/referrer-policy/same-origin/cross-origin-http.htt
 webkit.org/b/189194 http/tests/referrer-policy/strict-origin-when-cross-origin/cross-origin-http.https.html [ Failure ]
 webkit.org/b/189194 http/tests/referrer-policy/strict-origin/cross-origin-http.https.html [ Failure ]
 webkit.org/b/189194 http/tests/security/basic-auth-subresource.html [ Failure ]
+
+webkit.org/b/189550 fast/text/variations/ipc2.html [ Skip ]

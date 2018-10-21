@@ -86,7 +86,7 @@ void InlineFormattingContext::layout(LayoutContext& layoutContext, FormattingSta
         ASSERT(!layoutBox || layoutBox->isDescendantOf(formattingRoot));
     }
 
-    auto& formattingRootDisplayBox = *layoutContext.displayBoxForLayoutBox(formattingRoot);
+    auto& formattingRootDisplayBox = layoutContext.displayBoxForLayoutBox(formattingRoot);
     auto lineLeft = formattingRootDisplayBox.contentBoxLeft();
     auto lineRight = formattingRootDisplayBox.contentBoxRight();
 
@@ -102,11 +102,11 @@ void InlineFormattingContext::layout(LayoutContext& layoutContext, FormattingSta
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[End] -> inline formatting context -> layout context(" << &layoutContext << ") formatting root(" << &root() << ")");
 }
 
-void InlineFormattingContext::computeStaticPosition(LayoutContext&, const Box&, Display::Box&) const
+void InlineFormattingContext::computeStaticPosition(const LayoutContext&, const Box&) const
 {
 }
 
-void InlineFormattingContext::computeInFlowPositionedPosition(LayoutContext&, const Box&, Display::Box&) const
+void InlineFormattingContext::computeInFlowPositionedPosition(const LayoutContext&, const Box&) const
 {
 }
 

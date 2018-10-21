@@ -34,9 +34,11 @@
 
 namespace WebCore {
 
-PaymentResponse::PaymentResponse(PaymentRequest& request)
+PaymentResponse::PaymentResponse(PaymentRequest& request, DetailsFunction&& detailsFunction)
     : m_request { request }
+    , m_detailsFunction { WTFMove(detailsFunction) }
 {
+    ASSERT(m_detailsFunction);
 }
 
 PaymentResponse::~PaymentResponse() = default;

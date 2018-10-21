@@ -1011,7 +1011,7 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     // and do nothing if the return value is NO.
 
     _resigningFirstResponder = YES;
-    if (!_webView->_activeFocusedStateRetainCount) {
+    if (!_webView._retainingActiveFocusedState) {
         // We need to complete the editing operation before we blur the element.
         [_inputPeripheral endEditing];
         [_formInputSession endEditing];
@@ -1269,13 +1269,13 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     [self _cancelInteraction];
 }
 
-- (void)_overflowScrollingWillBegin
+- (void)_scrollingNodeScrollingWillBegin
 {
     [_webSelectionAssistant willStartScrollingOverflow];
     [_textSelectionAssistant willStartScrollingOverflow];    
 }
 
-- (void)_overflowScrollingDidEnd
+- (void)_scrollingNodeScrollingDidEnd
 {
     // If scrolling ends before we've received a selection update,
     // we postpone showing the selection until the update is received.
@@ -2161,6 +2161,8 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
 
+FORWARD_ACTION_TO_WKWEBVIEW(_pasteAsQuotation)
+
 #undef FORWARD_ACTION_TO_WKWEBVIEW
 
 - (void)_lookupForWebView:(id)sender
@@ -2460,6 +2462,11 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
 - (void)pasteForWebView:(id)sender
 {
     _page->executeEditCommand("paste"_s);
+}
+
+- (void)_pasteAsQuotationForWebView:(id)sender
+{
+    _page->executeEditCommand("PasteAsQuotation"_s);
 }
 
 - (void)selectForWebView:(id)sender
@@ -4210,6 +4217,8 @@ static bool isAssistableInputType(InputType type)
     if (_assistedNodeInformation.elementType == information.elementType && _assistedNodeInformation.elementRect == information.elementRect)
         return;
 
+    [_webView _resetFocusPreservationCount];
+
     _focusRequiresStrongPasswordAssistance = NO;
     if ([inputDelegate respondsToSelector:@selector(_webView:focusRequiresStrongPasswordAssistance:)])
         _focusRequiresStrongPasswordAssistance = [inputDelegate _webView:_webView focusRequiresStrongPasswordAssistance:focusedElementInfo.get()];
@@ -4340,7 +4349,7 @@ static bool isAssistableInputType(InputType type)
     if (_focusedFormControlView)
         return;
 
-    ++_webView->_activeFocusedStateRetainCount;
+    _activeFocusedStateRetainBlock = makeBlockPtr(_webView._retainActiveFocusedState);
 
     _focusedFormControlView = adoptNS([[WKFocusedFormControlView alloc] initWithFrame:_webView.bounds delegate:self]);
     [_focusedFormControlView hide:NO];
@@ -4353,7 +4362,8 @@ static bool isAssistableInputType(InputType type)
     if (!_focusedFormControlView)
         return;
 
-    --_webView->_activeFocusedStateRetainCount;
+    if (auto releaseActiveFocusState = WTFMove(_activeFocusedStateRetainBlock))
+        releaseActiveFocusState();
 
     [_focusedFormControlView removeFromSuperview];
     _focusedFormControlView = nil;
@@ -4760,20 +4770,26 @@ static bool isAssistableInputType(InputType type)
 
 #pragma mark - UITextInputMultiDocument
 
-- (void)_restoreFocusWithToken:(id <NSCopying, NSSecureCoding>)token
+- (BOOL)_restoreFocusWithToken:(id <NSCopying, NSSecureCoding>)token
 {
-    ASSERT(!_focusStateStack.isEmpty());
-    
-    if (_focusStateStack.takeLast()) {
-        ASSERT(_webView->_activeFocusedStateRetainCount);
-        --_webView->_activeFocusedStateRetainCount;
+    if (_focusStateStack.isEmpty()) {
+        ASSERT_NOT_REACHED();
+        return NO;
     }
+
+    if (_focusStateStack.takeLast())
+        [_webView _decrementFocusPreservationCount];
+
+    // FIXME: Our current behavior in -_restoreFocusWithToken: does not force the web view to become first responder
+    // by refocusing the currently focused element. As such, we return NO here so that UIKit will tell WKContentView
+    // to become first responder in the future.
+    return NO;
 }
 
 - (void)_preserveFocusWithToken:(id <NSCopying, NSSecureCoding>)token destructively:(BOOL)destructively
 {
     if (!_inputPeripheral) {
-        ++_webView->_activeFocusedStateRetainCount;
+        [_webView _incrementFocusPreservationCount];
         _focusStateStack.append(true);
     } else
         _focusStateStack.append(false);
@@ -4873,6 +4889,15 @@ static bool isAssistableInputType(InputType type)
 
     return NO;
 }
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+- (CGRect)unoccludedWindowBoundsForActionSheetAssistant:(WKActionSheetAssistant *)assistant
+{
+    UIEdgeInsets contentInset = [[_webView scrollView] adjustedContentInset];
+    CGRect rect = UIEdgeInsetsInsetRect([_webView bounds], contentInset);
+    return [_webView convertRect:rect toView:[self window]];
+}
+#endif
 
 - (RetainPtr<NSArray>)actionSheetAssistant:(WKActionSheetAssistant *)assistant decideActionsForElement:(_WKActivatedElementInfo *)element defaultActions:(RetainPtr<NSArray>)defaultActions
 {

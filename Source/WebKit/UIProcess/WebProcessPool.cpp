@@ -524,6 +524,17 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     parameters.urlSchemesRegisteredAsCORSEnabled = copyToVector(m_schemesToRegisterAsCORSEnabled);
     parameters.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest = copyToVector(m_schemesToRegisterAsCanDisplayOnlyIfCanRequest);
 
+#if ENABLE(INDEXED_DATABASE)
+    // *********
+    // IMPORTANT: Do not change the directory structure for indexed databases on disk without first consulting a reviewer from Apple (<rdar://problem/17454712>)
+    // *********
+    parameters.indexedDatabaseDirectory = m_configuration->indexedDBDatabaseDirectory();
+    if (parameters.indexedDatabaseDirectory.isEmpty())
+        parameters.indexedDatabaseDirectory = API::WebsiteDataStore::defaultDataStore()->websiteDataStore().parameters().indexedDatabaseDirectory;
+    
+    SandboxExtension::createHandleForReadWriteDirectory(parameters.indexedDatabaseDirectory, parameters.indexedDatabaseDirectoryExtensionHandle);
+#endif
+
     // Add any platform specific parameters
     platformInitializeNetworkProcess(parameters);
 
@@ -584,21 +595,11 @@ void WebProcessPool::getNetworkProcessConnection(Messages::WebProcessProxy::GetN
 
 void WebProcessPool::ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore* relevantDataStore)
 {
-    // *********
-    // IMPORTANT: Do not change the directory structure for indexed databases on disk without first consulting a reviewer from Apple (<rdar://problem/17454712>)
-    // *********
-
     if (!m_storageProcess) {
         auto parameters = m_websiteDataStore ? m_websiteDataStore->websiteDataStore().storageProcessParameters() : (relevantDataStore ? relevantDataStore->storageProcessParameters() : API::WebsiteDataStore::defaultDataStore()->websiteDataStore().storageProcessParameters());
 
         ASSERT(parameters.sessionID.isValid());
 
-#if ENABLE(INDEXED_DATABASE)
-        if (parameters.indexedDatabaseDirectory.isEmpty()) {
-            parameters.indexedDatabaseDirectory = m_configuration->indexedDBDatabaseDirectory();
-            SandboxExtension::createHandleForReadWriteDirectory(parameters.indexedDatabaseDirectory, parameters.indexedDatabaseDirectoryExtensionHandle);
-        }
-#endif
 #if ENABLE(SERVICE_WORKER)
         if (parameters.serviceWorkerRegistrationDirectory.isEmpty()) {
             parameters.serviceWorkerRegistrationDirectory = API::WebsiteDataStore::defaultServiceWorkerRegistrationDirectory();
@@ -777,6 +778,8 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDa
     if (isPrewarmed == WebProcessProxy::IsPrewarmed::Yes) {
         ASSERT(!m_prewarmedProcess);
         m_prewarmedProcess = &process;
+        
+        m_prewarmedProcess->send(Messages::WebProcess::Prewarm(), 0);
     }
 
     if (m_serviceWorkerProcessesTerminationTimer.isActive())
@@ -1157,7 +1160,7 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
     auto page = process->createWebPage(pageClient, WTFMove(pageConfiguration));
     if (page->preferences().processSwapOnCrossSiteNavigationEnabled()) {
         m_configuration->setProcessSwapsOnNavigation(true);
-        // FIXME: For now, turning on PSON from the experimental features menu also turns on
+        // FIXME: For now, turning on PSON from the debug features menu also turns on
         // automatic process warming until clients can be updated.
         m_configuration->setIsAutomaticProcessWarmingEnabled(true);
     }
@@ -1209,9 +1212,8 @@ void WebProcessPool::pageBeginUsingWebsiteDataStore(WebPageProxy& page)
         page.process().send(Messages::WebProcess::AddWebsiteDataStore(page.websiteDataStore().parameters()), 0);
         page.websiteDataStore().clearPendingCookies();
 
-#if ENABLE(INDEXED_DATABASE)
-        if (!page.websiteDataStore().resolvedIndexedDatabaseDirectory().isEmpty())
-            ensureStorageProcessAndWebsiteDataStore(&page.websiteDataStore());
+#if ENABLE(SERVICE_WORKER)
+        ensureStorageProcessAndWebsiteDataStore(&page.websiteDataStore());
 #endif
     }
 
@@ -2157,8 +2159,8 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
 
         // If the target back/forward item and the current back/forward item originated
         // in the same WebProcess then we should reuse the current WebProcess.
-        if (auto* currentItem = page.backForwardList().currentItem()) {
-            if (currentItem->itemID().processIdentifier == backForwardListItem->itemID().processIdentifier)
+        if (auto* fromItem = navigation.fromItem()) {
+            if (fromItem->itemID().processIdentifier == backForwardListItem->itemID().processIdentifier)
                 return page.process();
         }
     }

@@ -76,6 +76,7 @@ class IDBConnectionToServer;
 
 class AlternativeTextClient;
 class ApplicationCacheStorage;
+class AuthenticatorCoordinator;
 class BackForwardController;
 class BackForwardClient;
 class CacheStorageProvider;
@@ -410,6 +411,10 @@ public:
     WEBCORE_EXPORT void setPaymentCoordinator(std::unique_ptr<PaymentCoordinator>&&);
 #endif
 
+#if ENABLE(WEB_AUTHN)
+    AuthenticatorCoordinator& authenticatorCoordinator() { return m_authenticatorCoordinator.get(); }
+#endif
+
 #if ENABLE(APPLICATION_MANIFEST)
     const std::optional<ApplicationManifest>& applicationManifest() const { return m_applicationManifest; }
 #endif
@@ -686,7 +691,9 @@ private:
 
     std::optional<std::pair<MediaCanStartListener&, Document&>> takeAnyMediaCanStartListener();
 
+#if ENABLE(VIDEO)
     void playbackControlsManagerUpdateTimerFired();
+#endif
 
     Vector<Ref<PluginViewBase>> pluginViews();
 
@@ -865,7 +872,9 @@ private:
 
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
 
+#if ENABLE(VIDEO)
     Timer m_playbackControlsManagerUpdateTimer;
+#endif
 
     bool m_allowsMediaDocumentInlinePlayback { false };
     bool m_allowsPlaybackControlsForAutoplayingAudio { false };
@@ -899,6 +908,10 @@ private:
 
 #if ENABLE(APPLE_PAY)
     std::unique_ptr<PaymentCoordinator> m_paymentCoordinator;
+#endif
+
+#if ENABLE(WEB_AUTHN)
+    UniqueRef<AuthenticatorCoordinator> m_authenticatorCoordinator;
 #endif
 
 #if ENABLE(APPLICATION_MANIFEST)

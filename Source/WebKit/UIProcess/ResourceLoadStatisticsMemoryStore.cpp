@@ -46,7 +46,7 @@
 namespace WebKit {
 using namespace WebCore;
 
-constexpr unsigned statisticsModelVersion { 12 };
+constexpr unsigned statisticsModelVersion { 13 };
 constexpr unsigned maxNumberOfRecursiveCallsInRedirectTraceBack { 50 };
 constexpr Seconds minimumStatisticsProcessingInterval { 5_s };
 constexpr unsigned operatingDatesWindow { 30 };
@@ -670,6 +670,17 @@ void ResourceLoadStatisticsMemoryStore::setPrevalentResource(WebCore::ResourceLo
         ASSERT(!mapEntry->value.isPrevalentResource);
         mapEntry->value.isPrevalentResource = true;
     }
+}
+    
+String ResourceLoadStatisticsMemoryStore::dumpResourceLoadStatistics() const
+{
+    ASSERT(!RunLoop::isMain());
+
+    StringBuilder result;
+    result.appendLiteral("Resource load statistics:\n\n");
+    for (auto& mapEntry : m_resourceStatisticsMap.values())
+        result.append(mapEntry.toString());
+    return result.toString();
 }
 
 bool ResourceLoadStatisticsMemoryStore::isPrevalentResource(const String& primaryDomain) const

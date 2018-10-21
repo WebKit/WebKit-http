@@ -158,15 +158,13 @@ public:
     virtual void setInterrupted(bool, bool);
 
     const String& name() const { return m_name; }
-    void setName(const String& name) { m_name = name; }
+    void setName(String&& name) { m_name = WTFMove(name); }
 
     unsigned fitnessScore() const { return m_fitnessScore; }
 
     WEBCORE_EXPORT void addObserver(Observer&);
     WEBCORE_EXPORT void removeObserver(Observer&);
 
-    void setWidth(int);
-    void setHeight(int);
     void setSize(const IntSize&);
     const IntSize& size() const { return m_size; }
 
@@ -233,7 +231,7 @@ protected:
     bool supportsSizeAndFrameRate(std::optional<IntConstraint> width, std::optional<IntConstraint> height, std::optional<DoubleConstraint>, String&, double& fitnessDistance);
 
     virtual bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
-    virtual void applySizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
+    virtual void setSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
 
     void notifyMutedObservers() const;
     void notifyMutedChange(bool muted);

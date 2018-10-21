@@ -684,6 +684,9 @@ void Document::removedLastRef()
 #endif
         m_associatedFormControls.clear();
 
+        m_fontSelector->clearDocument();
+        m_fontSelector->unregisterForInvalidationCallbacks(*this);
+
         detachParser();
 
         // removeDetachedChildren() doesn't always unregister IDs,
@@ -1461,6 +1464,13 @@ bool Document::isBodyPotentiallyScrollable(HTMLBodyElement& body)
         && !body.computedStyle()->isOverflowVisible();
 }
 
+Element* Document::scrollingElementForAPI()
+{
+    if (inQuirksMode() && settings().CSSOMViewScrollingAPIEnabled())
+        updateLayoutIgnorePendingStylesheets();
+    return scrollingElement();
+}
+
 Element* Document::scrollingElement()
 {
     if (settings().CSSOMViewScrollingAPIEnabled()) {
@@ -1468,7 +1478,6 @@ Element* Document::scrollingElement()
         // The scrollingElement attribute, on getting, must run these steps:
         // 1. If the Document is in quirks mode, follow these substeps:
         if (inQuirksMode()) {
-            updateLayoutIgnorePendingStylesheets();
             auto* firstBody = body();
             // 1. If the HTML body element exists, and it is not potentially scrollable, return the
             // HTML body element and abort these steps.
@@ -3818,15 +3827,15 @@ void Document::pageMutedStateDidChange()
         audioProducer->pageMutedStateDidChange();
 }
 
-static bool isNodeInSubtree(Node& node, Node& container, bool amongChildrenOnly)
+static bool isNodeInSubtree(Node& node, Node& container, Document::NodeRemoval nodeRemoval)
 {
-    if (amongChildrenOnly)
+    if (nodeRemoval == Document::NodeRemoval::ChildrenOfNode)
         return node.isDescendantOf(container);
-    else
-        return &node == &container || node.isDescendantOf(container);
+
+    return &node == &container || node.isDescendantOf(container);
 }
 
-void Document::removeFocusedNodeOfSubtree(Node& node, bool amongChildrenOnly)
+void Document::adjustFocusedNodeOnNodeRemoval(Node& node, NodeRemoval nodeRemoval)
 {
     if (!m_focusedElement || pageCacheState() != NotInPageCache) // If the document is in the page cache, then we don't need to clear out the focused node.
         return;
@@ -3834,8 +3843,8 @@ void Document::removeFocusedNodeOfSubtree(Node& node, bool amongChildrenOnly)
     Element* focusedElement = node.treeScope().focusedElementInScope();
     if (!focusedElement)
         return;
-    
-    if (isNodeInSubtree(*focusedElement, node, amongChildrenOnly)) {
+
+    if (isNodeInSubtree(*focusedElement, node, nodeRemoval)) {
         // FIXME: We should avoid synchronously updating the style inside setFocusedElement.
         // FIXME: Object elements should avoid loading a frame synchronously in a post style recalc callback.
         SubframeLoadingDisabler disabler(is<ContainerNode>(node) ? &downcast<ContainerNode>(node) : nullptr);
@@ -4065,6 +4074,7 @@ void Document::setFocusNavigationStartingNode(Node* node)
         return;
     }
 
+    ASSERT(!node || node != this);
     m_focusNavigationStartingNode = node;
 }
 
@@ -4195,11 +4205,11 @@ void Document::nodeChildrenWillBeRemoved(ContainerNode& container)
 {
     ASSERT(!ScriptDisallowedScope::InMainThread::isScriptAllowed());
 
-    removeFocusedNodeOfSubtree(container, true /* amongChildrenOnly */);
-    removeFocusNavigationNodeOfSubtree(container, true /* amongChildrenOnly */);
+    adjustFocusedNodeOnNodeRemoval(container, NodeRemoval::ChildrenOfNode);
+    adjustFocusNavigationNodeOnNodeRemoval(container, NodeRemoval::ChildrenOfNode);
 
 #if ENABLE(FULLSCREEN_API)
-    removeFullScreenElementOfSubtree(container, true /* amongChildrenOnly */);
+    adjustFullScreenElementOnNodeRemoval(container, NodeRemoval::ChildrenOfNode);
 #endif
 
     for (auto* range : m_ranges)
@@ -4228,11 +4238,11 @@ void Document::nodeWillBeRemoved(Node& node)
 {
     ASSERT(!ScriptDisallowedScope::InMainThread::isScriptAllowed());
 
-    removeFocusedNodeOfSubtree(node);
-    removeFocusNavigationNodeOfSubtree(node);
+    adjustFocusedNodeOnNodeRemoval(node);
+    adjustFocusNavigationNodeOnNodeRemoval(node);
 
 #if ENABLE(FULLSCREEN_API)
-    removeFullScreenElementOfSubtree(node);
+    adjustFullScreenElementOnNodeRemoval(node);
 #endif
 
     for (auto* it : m_nodeIterators)
@@ -4256,13 +4266,14 @@ static Node* fallbackFocusNavigationStartingNodeAfterRemoval(Node& node)
     return node.previousSibling() ? node.previousSibling() : node.parentNode();
 }
 
-void Document::removeFocusNavigationNodeOfSubtree(Node& node, bool amongChildrenOnly)
+void Document::adjustFocusNavigationNodeOnNodeRemoval(Node& node, NodeRemoval nodeRemoval)
 {
     if (!m_focusNavigationStartingNode)
         return;
 
-    if (isNodeInSubtree(*m_focusNavigationStartingNode, node, amongChildrenOnly)) {
-        m_focusNavigationStartingNode = amongChildrenOnly ? &node : fallbackFocusNavigationStartingNodeAfterRemoval(node);
+    if (isNodeInSubtree(*m_focusNavigationStartingNode, node, nodeRemoval)) {
+        auto* newNode = (nodeRemoval == NodeRemoval::ChildrenOfNode) ? &node : fallbackFocusNavigationStartingNodeAfterRemoval(node);
+        m_focusNavigationStartingNode = (newNode != this) ? newNode : nullptr;
         m_focusNavigationStartingNodeIsRemoved = true;
     }
 }
@@ -6460,13 +6471,13 @@ void Document::fullScreenElementRemoved()
     webkitCancelFullScreen();
 }
 
-void Document::removeFullScreenElementOfSubtree(Node& node, bool amongChildrenOnly)
+void Document::adjustFullScreenElementOnNodeRemoval(Node& node, NodeRemoval nodeRemoval)
 {
     if (!m_fullScreenElement)
         return;
     
     bool elementInSubtree = false;
-    if (amongChildrenOnly)
+    if (nodeRemoval == NodeRemoval::ChildrenOfNode)
         elementInSubtree = m_fullScreenElement->isDescendantOf(node);
     else
         elementInSubtree = (m_fullScreenElement == &node) || m_fullScreenElement->isDescendantOf(node);
@@ -7463,21 +7474,27 @@ void Document::removeViewportDependentPicture(HTMLPictureElement& picture)
 }
 
 #if ENABLE(INTERSECTION_OBSERVER)
-void Document::addIntersectionObserver(RefPtr<IntersectionObserver>&& observer)
+void Document::addIntersectionObserver(IntersectionObserver& observer)
 {
-    ASSERT(m_intersectionObservers.find(observer) == notFound);
-    m_intersectionObservers.append(WTFMove(observer));
+    ASSERT(m_intersectionObservers.find(&observer) == notFound);
+    m_intersectionObservers.append(makeWeakPtr(&observer));
 }
 
-RefPtr<IntersectionObserver> Document::removeIntersectionObserver(IntersectionObserver& observer)
+void Document::removeIntersectionObserver(IntersectionObserver& observer)
 {
-    RefPtr<IntersectionObserver> observerRef;
-    auto index = m_intersectionObservers.find(&observer);
-    if (index != notFound) {
-        observerRef = WTFMove(m_intersectionObservers[index]);
-        m_intersectionObservers.remove(index);
-    }
-    return observerRef;
+    m_intersectionObservers.removeFirst(&observer);
+}
+
+static void expandRootBoundsWithRootMargin(FloatRect& localRootBounds, const LengthBox& rootMargin)
+{
+    FloatBoxExtent rootMarginFloatBox(
+        floatValueForLength(rootMargin.top(), localRootBounds.height()),
+        floatValueForLength(rootMargin.right(), localRootBounds.width()),
+        floatValueForLength(rootMargin.bottom(), localRootBounds.height()),
+        floatValueForLength(rootMargin.left(), localRootBounds.width())
+    );
+
+    localRootBounds.expand(rootMarginFloatBox);
 }
 
 static void computeIntersectionRects(FrameView& frameView, IntersectionObserver& observer, Element& target, FloatRect& absTargetRect, FloatRect& absIntersectionRect, FloatRect& absRootBounds)
@@ -7490,7 +7507,6 @@ static void computeIntersectionRects(FrameView& frameView, IntersectionObserver&
     if (!targetRenderer)
         return;
 
-    // FIXME: Expand localRootBounds using the observer's rootMargin.
     FloatRect localRootBounds;
     RenderBlock* rootRenderer;
     if (observer.root()) {
@@ -7510,6 +7526,8 @@ static void computeIntersectionRects(FrameView& frameView, IntersectionObserver&
         rootRenderer = frameView.renderView();
         localRootBounds = frameView.layoutViewportRect();
     }
+
+    expandRootBoundsWithRootMargin(localRootBounds, observer.rootMarginBox());
 
     LayoutRect localTargetBounds;
     if (is<RenderBox>(*targetRenderer))

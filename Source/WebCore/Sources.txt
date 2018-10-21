@@ -45,7 +45,6 @@ Modules/cache/WorkerGlobalScopeCaches.cpp
 
 Modules/credentialmanagement/BasicCredential.cpp
 Modules/credentialmanagement/CredentialsContainer.cpp
-Modules/credentialmanagement/CredentialsMessenger.cpp
 Modules/credentialmanagement/NavigatorCredentials.cpp
 
 Modules/entriesapi/ErrorCallback.cpp
@@ -247,10 +246,8 @@ Modules/webaudio/WaveShaperDSPKernel.cpp
 Modules/webaudio/WaveShaperNode.cpp
 Modules/webaudio/WaveShaperProcessor.cpp
 
-Modules/webauthn/AuthenticatorAssertionResponse.cpp
-Modules/webauthn/AuthenticatorAttestationResponse.cpp
-Modules/webauthn/AuthenticatorManager.cpp
-Modules/webauthn/AuthenticatorResponse.cpp
+Modules/webauthn/AuthenticatorCoordinator.cpp
+Modules/webauthn/AuthenticatorCoordinatorClient.cpp
 Modules/webauthn/PublicKeyCredential.cpp
 Modules/webauthn/cbor/CBORReader.cpp
 Modules/webauthn/cbor/CBORValue.cpp
@@ -429,6 +426,8 @@ bindings/js/JSNodeCustom.cpp
 bindings/js/JSNodeIteratorCustom.cpp
 bindings/js/JSNodeListCustom.cpp
 bindings/js/JSOffscreenCanvasRenderingContext2DCustom.cpp
+bindings/js/JSPaymentMethodChangeEventCustom.cpp
+bindings/js/JSPaymentResponseCustom.cpp
 bindings/js/JSPerformanceEntryCustom.cpp
 bindings/js/JSPerformanceObserverCustom.cpp
 bindings/js/JSPluginElementFunctions.cpp
@@ -873,6 +872,7 @@ editing/Editing.cpp
 editing/EditingStyle.cpp
 editing/Editor.cpp
 editing/EditorCommand.cpp
+editing/FontAttributeChanges.cpp
 editing/FormatBlockCommand.cpp
 editing/FrameSelection.cpp
 editing/HTMLInterchange.cpp
@@ -1247,6 +1247,7 @@ layout/layouttree/LayoutInlineContainer.cpp
 layout/layouttree/LayoutReplaced.cpp
 layout/layouttree/LayoutTreeBuilder.cpp
 
+loader/CanvasActivityRecord.cpp
 loader/ContentFilter.cpp
 loader/CookieJar.cpp
 loader/CrossOriginAccessControl.cpp
@@ -1416,6 +1417,7 @@ page/PerformanceTiming.cpp
 page/PerformanceUserTiming.cpp
 page/PointerLockController.cpp
 page/PrintContext.cpp
+page/ProcessWarming.cpp
 page/RemoteDOMWindow.cpp
 page/RemoteFrame.cpp
 page/ResourceUsageOverlay.cpp
@@ -1727,7 +1729,6 @@ platform/graphics/transforms/TransformState.cpp
 platform/graphics/transforms/TransformationMatrix.cpp
 platform/graphics/transforms/TranslateTransformOperation.cpp
 
-platform/mediacapabilities/MediaEngineConfiguration.cpp
 platform/mediacapabilities/MediaEngineConfigurationFactory.cpp
 
 platform/mediastream/CaptureDeviceManager.cpp
@@ -1751,8 +1752,7 @@ platform/mediastream/libwebrtc/LibWebRTCProvider.cpp
 
 platform/mock/DeviceOrientationClientMock.cpp
 platform/mock/GeolocationClientMock.cpp
-platform/mock/MediaEngineDecodingConfigurationMock.cpp
-platform/mock/MediaEngineEncodingConfigurationMock.cpp
+platform/mock/MediaEngineConfigurationFactoryMock.cpp
 platform/mock/MockRealtimeAudioSource.cpp
 platform/mock/MockRealtimeMediaSourceCenter.cpp
 platform/mock/MockRealtimeVideoSource.cpp
@@ -2821,7 +2821,6 @@ JSPaymentDetailsModifier.cpp
 JSPaymentDetailsUpdate.cpp
 JSPaymentItem.cpp
 JSPaymentMethodChangeEvent.cpp
-JSPaymentMethodChangeEventInit.cpp
 JSPaymentMethodData.cpp
 JSPaymentOptions.cpp
 JSPaymentRequest.cpp
@@ -2864,6 +2863,8 @@ JSRTCDTMFSender.cpp
 JSRTCDTMFToneChangeEvent.cpp
 JSRTCDataChannel.cpp
 JSRTCDataChannelEvent.cpp
+JSRTCDegradationPreference.cpp
+JSRTCDtxStatus.cpp
 JSRTCIceCandidate.cpp
 JSRTCIceConnectionState.cpp
 JSRTCIceGatheringState.cpp
@@ -2875,7 +2876,13 @@ JSRTCOfferOptions.cpp
 JSRTCPeerConnection.cpp
 JSRTCPeerConnectionIceEvent.cpp
 JSRTCPeerConnectionState.cpp
+JSRTCPriorityType.cpp
+JSRTCRtpCodecParameters.cpp
+JSRTCRtpEncodingParameters.cpp
+JSRTCRtpFecParameters.cpp
+JSRTCRtpHeaderExtensionParameters.cpp
 JSRTCRtpParameters.cpp
+JSRTCRtpRtxParameters.cpp
 JSRTCRtpReceiver.cpp
 JSRTCRtpSender.cpp
 JSRTCRtpTransceiver.cpp

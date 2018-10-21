@@ -8,6 +8,9 @@
             });
             
             function load() {
+                var target = document.getElementById('video');
+                target.play();
+
                 if (window.webkit !== undefined && window.webkit.messageHandlers.pictureInPictureChangeHandler !== undefined) {
                     window.webkit.messageHandlers.pictureInPictureChangeHandler.postMessage('load');
                 }
@@ -16,8 +19,8 @@
         <style>
             #video {
                 background-color: red;
-                width: 150px;
-                height: 150px;
+                width: 640px;
+                height: 480px;
             }
         </style>
     </head>

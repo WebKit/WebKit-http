@@ -27,6 +27,7 @@
 #pragma once
 
 #include "FloatPoint.h"
+#include "LengthBox.h"
 
 #if USE(CG)
 typedef struct CGRect CGRect;
@@ -49,6 +50,7 @@ typedef struct _cairo_rectangle cairo_rectangle_t;
 #endif
 
 #if PLATFORM(WIN)
+typedef struct tagRECT RECT;
 struct D2D_RECT_F;
 typedef D2D_RECT_F D2D1_RECT_F;
 #endif
@@ -111,6 +113,11 @@ public:
     void move(float dx, float dy) { m_location.move(dx, dy); }
 
     void expand(const FloatSize& size) { m_size += size; }
+    void expand(const FloatBoxExtent& box)
+    {
+        m_location.move(-box.left(), -box.top());
+        m_size.expand(box.left() + box.right(), box.top() + box.bottom());
+    }
     void expand(float dw, float dh) { m_size.expand(dw, dh); }
     void contract(const FloatSize& size) { m_size -= size; }
     void contract(float dw, float dh) { m_size.expand(-dw, -dh); }
@@ -204,6 +211,7 @@ public:
 #endif
 
 #if PLATFORM(WIN)
+    WEBCORE_EXPORT FloatRect(const RECT&);
     WEBCORE_EXPORT FloatRect(const D2D1_RECT_F&);
     WEBCORE_EXPORT operator D2D1_RECT_F() const;
 #endif

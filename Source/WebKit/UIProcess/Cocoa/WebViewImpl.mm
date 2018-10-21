@@ -80,6 +80,7 @@
 #import <WebCore/DragItem.h>
 #import <WebCore/Editor.h>
 #import <WebCore/FileSystem.h>
+#import <WebCore/FontAttributeChanges.h>
 #import <WebCore/KeypressCommand.h>
 #import <WebCore/LegacyNSPasteboardTypes.h>
 #import <WebCore/LoaderNSURLExtras.h>
@@ -92,6 +93,7 @@
 #import <WebCore/WebCoreCALayerExtras.h>
 #import <WebCore/WebCoreFullScreenPlaceholderView.h>
 #import <WebCore/WebCoreFullScreenWindow.h>
+#import <WebCore/WebCoreNSFontManagerExtras.h>
 #import <WebCore/WebPlaybackControlsManager.h>
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/AVKitSPI.h>
@@ -556,15 +558,14 @@ static const NSUInteger orderedListSegment = 2;
     [insertListControl setWidth:listControlSegmentWidth forSegment:orderedListSegment];
     insertListControl.font = [NSFont systemFontOfSize:15];
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     id segmentElement = NSAccessibilityUnignoredDescendant(insertListControl);
     NSArray *segments = [segmentElement accessibilityAttributeValue:NSAccessibilityChildrenAttribute];
     ASSERT(segments.count == 3);
     [segments[noListSegment] accessibilitySetOverrideValue:WebCore::insertListTypeNone() forAttribute:NSAccessibilityDescriptionAttribute];
     [segments[unorderedListSegment] accessibilitySetOverrideValue:WebCore::insertListTypeBulletedAccessibilityTitle() forAttribute:NSAccessibilityDescriptionAttribute];
     [segments[orderedListSegment] accessibilitySetOverrideValue:WebCore::insertListTypeNumberedAccessibilityTitle() forAttribute:NSAccessibilityDescriptionAttribute];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     self.view = insertListControl;
 
@@ -1208,6 +1209,37 @@ void WebViewImpl::updateTextTouchBar()
     }
 }
 
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+
+bool WebViewImpl::isPictureInPictureActive()
+{
+    return [m_playbackControlsManager isPictureInPictureActive];
+}
+
+void WebViewImpl::togglePictureInPicture()
+{
+    [m_playbackControlsManager togglePictureInPicture];
+}
+
+void WebViewImpl::updateMediaPlaybackControlsManager()
+{
+    if (!m_page->hasActiveVideoForControlsManager())
+        return;
+
+    if (!m_playbackControlsManager) {
+        m_playbackControlsManager = adoptNS([[WebPlaybackControlsManager alloc] init]);
+        [m_playbackControlsManager setAllowsPictureInPicturePlayback:m_page->preferences().allowsPictureInPictureMediaPlayback()];
+        [m_playbackControlsManager setCanTogglePictureInPicture:NO];
+    }
+
+    if (PlatformPlaybackSessionInterface* interface = m_page->playbackSessionManager()->controlsManagerInterface()) {
+        [m_playbackControlsManager setPlaybackSessionInterfaceMac:interface];
+        interface->updatePlaybackControlsManagerCanTogglePictureInPicture();
+    }
+}
+
+#endif // ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+
 void WebViewImpl::updateMediaTouchBar()
 {
 #if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER) && ENABLE(VIDEO_PRESENTATION_MODE)
@@ -1230,14 +1262,7 @@ void WebViewImpl::updateMediaTouchBar()
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     }
 
-    if (!m_playbackControlsManager) {
-        m_playbackControlsManager = adoptNS([[WebPlaybackControlsManager alloc] init]);
-        [m_playbackControlsManager setAllowsPictureInPicturePlayback:m_page->preferences().allowsPictureInPictureMediaPlayback()];
-        [m_playbackControlsManager setCanTogglePictureInPicture:YES];
-    }
-
-    if (PlatformPlaybackSessionInterface* interface = m_page->playbackSessionManager()->controlsManagerInterface())
-        [m_playbackControlsManager setPlaybackSessionInterfaceMac:interface];
+    updateMediaPlaybackControlsManager();
 
     [m_mediaTouchBarProvider setPlaybackControlsController:m_playbackControlsManager.get()];
     [m_mediaPlaybackControlsView setPlaybackControlsController:m_playbackControlsManager.get()];
@@ -1272,6 +1297,19 @@ void WebViewImpl::updateMediaTouchBar()
         [m_view _web_didAddMediaControlsManager:m_mediaPlaybackControlsView.get()];
 #endif
 }
+
+#if HAVE(TOUCH_BAR)
+
+bool WebViewImpl::canTogglePictureInPicture()
+{
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+    return [m_playbackControlsManager canTogglePictureInPicture];
+#else
+    return NO;
+#endif
+}
+
+#endif // HAVE(TOUCH_BAR)
 
 void WebViewImpl::forceRequestCandidatesForTesting()
 {
@@ -1638,11 +1676,10 @@ void WebViewImpl::updateWindowAndViewFrames()
         if (weakThis->m_needsViewFrameInWindowCoordinates)
             viewFrameInWindowCoordinates = [weakThis->m_view convertRect:[weakThis->m_view frame] toView:nil];
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         if (WebCore::AXObjectCache::accessibilityEnabled())
             accessibilityPosition = [[weakThis->m_view accessibilityAttributeValue:NSAccessibilityPositionAttribute] pointValue];
-#pragma clang diagnostic pop
+            ALLOW_DEPRECATED_DECLARATIONS_END
         
         weakThis->m_page->windowAndViewFramesChanged(viewFrameInWindowCoordinates, accessibilityPosition);
     });
@@ -2587,7 +2624,10 @@ static const SelectorNameMap& selectorExceptionMap()
         { @selector(pageUp:), "MovePageUp"_s },
         { @selector(pageUpAndModifySelection:), "MovePageUpAndModifySelection"_s },
         { @selector(scrollPageDown:), "ScrollPageForward"_s },
-        { @selector(scrollPageUp:), "ScrollPageBackward"_s }
+        { @selector(scrollPageUp:), "ScrollPageBackward"_s },
+#if WK_API_ENABLED
+        { @selector(_pasteAsQuotation:), "PasteAsQuotation"_s },
+#endif
     };
 
     for (auto& name : names)
@@ -2709,6 +2749,29 @@ void WebViewImpl::selectionDidChange()
     [m_view _web_editorStateDidChange];
 }
 
+#if WK_API_ENABLED
+void WebViewImpl::showShareSheet(const WebCore::ShareDataWithParsedURL& data, WTF::CompletionHandler<void(bool)>&& completionHandler, WKWebView *view)
+{
+    ASSERT(!_shareSheet);
+    if (_shareSheet)
+        return;
+    
+    ASSERT([view respondsToSelector:@selector(shareSheetDidDismiss:)]);
+    _shareSheet = adoptNS([[WKShareSheet alloc] initWithView:view]);
+    [_shareSheet setDelegate:view];
+    
+    [_shareSheet presentWithParameters:data completionHandler:WTFMove(completionHandler)];
+}
+    
+void WebViewImpl::shareSheetDidDismiss(WKShareSheet *shareSheet)
+{
+    ASSERT(_shareSheet == shareSheet);
+    
+    [_shareSheet setDelegate:nil];
+    _shareSheet = nil;
+}
+#endif
+
 void WebViewImpl::didBecomeEditable()
 {
     [m_windowVisibilityObserver startObservingFontPanel];
@@ -2732,13 +2795,42 @@ void WebViewImpl::updateFontPanelIfNeeded()
     }
 }
 
-void WebViewImpl::changeFontFromFontPanel()
+void WebViewImpl::changeFontColorFromSender(id sender)
 {
-    NSFontManager *fontManager = [NSFontManager sharedFontManager];
-    NSFont *font = [fontManager convertFont:fontManager.selectedFont];
-    if (!font)
+    if (![sender respondsToSelector:@selector(color)])
         return;
-    m_page->setFont(font.familyName, font.pointSize, font.fontDescriptor.symbolicTraits);
+
+    id color = [sender color];
+    if (![color isKindOfClass:NSColor.class])
+        return;
+
+    auto& editorState = m_page->editorState();
+    if (!editorState.isContentEditable || editorState.selectionIsNone)
+        return;
+
+    WebCore::FontAttributeChanges changes;
+    changes.setForegroundColor(WebCore::colorFromNSColor((NSColor *)color));
+    m_page->changeFontAttributes(WTFMove(changes));
+}
+
+void WebViewImpl::changeFontAttributesFromSender(id sender)
+{
+    auto& editorState = m_page->editorState();
+    if (!editorState.isContentEditable || editorState.selectionIsNone)
+        return;
+
+    m_page->changeFontAttributes(WebCore::computedFontAttributeChanges(NSFontManager.sharedFontManager, sender));
+    updateFontPanelIfNeeded();
+}
+
+void WebViewImpl::changeFontFromFontManager()
+{
+    auto& editorState = m_page->editorState();
+    if (!editorState.isContentEditable || editorState.selectionIsNone)
+        return;
+
+    m_page->changeFont(WebCore::computedFontChanges(NSFontManager.sharedFontManager));
+    updateFontPanelIfNeeded();
 }
 
 static NSMenuItem *menuItem(id <NSValidatedUserInterfaceItem> item)
@@ -3717,10 +3809,9 @@ void WebViewImpl::draggedImage(NSImage *, CGPoint endPoint, NSDragOperation oper
 
 void WebViewImpl::sendDragEndToPage(CGPoint endPoint, NSDragOperation operation)
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     NSPoint windowImageLoc = [[m_view window] convertScreenToBase:NSPointFromCGPoint(endPoint)];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     NSPoint windowMouseLoc = windowImageLoc;
 
     // Prevent queued mouseDragged events from coming after the drag and fake mouseUp event.
@@ -3998,10 +4089,9 @@ void WebViewImpl::startDrag(const WebCore::DragItem& item, const ShareableBitmap
     // The call below could release the view.
     auto protector = m_view.get();
     auto clientDragLocation = item.dragLocationInWindowCoordinates;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:NSDragPboard];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     if (auto& info = item.promisedAttachmentInfo) {
         NSString *utiType = info.contentType;
@@ -4030,10 +4120,9 @@ void WebViewImpl::startDrag(const WebCore::DragItem& item, const ShareableBitmap
     }
 
     [pasteboard setString:@"" forType:PasteboardTypes::WebDummyPboardType];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [m_view dragImage:dragNSImage.get() at:NSPointFromCGPoint(clientDragLocation) offset:NSZeroSize event:m_lastMouseDownEvent.get() pasteboard:pasteboard source:m_view.getAutoreleased() slideBack:YES];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     m_page->didStartDrag();
 }
 
@@ -4779,11 +4868,10 @@ void WebViewImpl::characterIndexForPoint(NSPoint point, void(^completionHandlerP
 
     NSWindow *window = [m_view window];
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if (window)
         point = [window convertScreenToBase:point];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     point = [m_view convertPoint:point fromView:nil];  // the point is relative to the main frame
 
     m_page->characterIndexForPointAsync(WebCore::IntPoint(point), [completionHandler](uint64_t result, WebKit::CallbackBase::Error error) {

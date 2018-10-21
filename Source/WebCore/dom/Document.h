@@ -448,7 +448,8 @@ public:
     WEBCORE_EXPORT RefPtr<Range> caretRangeFromPoint(int x, int y);
     RefPtr<Range> caretRangeFromPoint(const LayoutPoint& clientPoint);
 
-    WEBCORE_EXPORT Element* scrollingElement();
+    WEBCORE_EXPORT Element* scrollingElementForAPI();
+    Element* scrollingElement();
 
     enum ReadyState {
         Loading,
@@ -756,7 +757,10 @@ public:
     void setFocusNavigationStartingNode(Node*);
     Element* focusNavigationStartingNode(FocusDirection) const;
 
-    void removeFocusedNodeOfSubtree(Node&, bool amongChildrenOnly = false);
+    enum class NodeRemoval { Node, ChildrenOfNode };
+    void adjustFocusedNodeOnNodeRemoval(Node&, NodeRemoval = NodeRemoval::Node);
+    void adjustFocusNavigationNodeOnNodeRemoval(Node&, NodeRemoval = NodeRemoval::Node);
+
     void hoveredElementDidDetach(Element*);
     void elementInActiveChainDidDetach(Element*);
 
@@ -801,7 +805,7 @@ public:
     void nodeChildrenWillBeRemoved(ContainerNode&);
     // nodeWillBeRemoved is only safe when removing one node at a time.
     void nodeWillBeRemoved(Node&);
-    void removeFocusNavigationNodeOfSubtree(Node&, bool amongChildrenOnly = false);
+
     enum class AcceptChildOperation { Replace, InsertOrAdd };
     bool canAcceptChild(const Node& newChild, const Node* refChild, AcceptChildOperation) const;
 
@@ -1176,7 +1180,8 @@ public:
     void dispatchFullScreenChangeEvents();
     bool fullScreenIsAllowedForElement(Element*) const;
     void fullScreenElementRemoved();
-    void removeFullScreenElementOfSubtree(Node&, bool amongChildrenOnly = false);
+    void adjustFullScreenElementOnNodeRemoval(Node&, NodeRemoval = NodeRemoval::Node);
+
     WEBCORE_EXPORT bool isAnimatingFullScreen() const;
     WEBCORE_EXPORT void setAnimatingFullScreen(bool);
 
@@ -1369,8 +1374,8 @@ public:
     void removeViewportDependentPicture(HTMLPictureElement&);
 
 #if ENABLE(INTERSECTION_OBSERVER)
-    void addIntersectionObserver(RefPtr<IntersectionObserver>&&);
-    RefPtr<IntersectionObserver> removeIntersectionObserver(IntersectionObserver&);
+    void addIntersectionObserver(IntersectionObserver&);
+    void removeIntersectionObserver(IntersectionObserver&);
     unsigned numberOfIntersectionObservers() const { return m_intersectionObservers.size(); }
     void updateIntersectionObservations();
     void scheduleIntersectionObservationUpdate();
@@ -1784,7 +1789,7 @@ private:
     HashSet<HTMLPictureElement*> m_viewportDependentPictures;
 
 #if ENABLE(INTERSECTION_OBSERVER)
-    Vector<RefPtr<IntersectionObserver>> m_intersectionObservers;
+    Vector<WeakPtr<IntersectionObserver>> m_intersectionObservers;
     Vector<WeakPtr<IntersectionObserver>> m_intersectionObserversWithPendingNotifications;
 
     // FIXME: Schedule intersection observation updates in a way that fits into the HTML

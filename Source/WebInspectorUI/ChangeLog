@@ -1,3 +1,103 @@
+2018-09-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: fix test case failures in js-isLikelyStackTrace.html
+        https://bugs.webkit.org/show_bug.cgi?id=180664
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/StackTrace.js:
+        (WI.StackTrace.isLikelyStackTrace):
+        In a quick benchmark 50% of the time was rebuilding the same complex regular
+        expression over and over again. Instead just build the regex once and reset
+        it before each use.
+
+2018-09-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: imported recordings are unable to be viewed after navigation
+        https://bugs.webkit.org/show_bug.cgi?id=189208
+
+        Reviewed by Joseph Pecoraro.
+
+        Move the "Imported Recordings" folder to the top level (instead of under "Overview") so that
+        it is selectable when there are no canvases but there is an imported recording.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype._removeCanvas):
+        Null out the `source` of each `WI.Recording` for the removed `WI.Canvas`.
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView):
+        (WI.CanvasTabContentView.prototype._removeCanvas):
+        Add each `WI.Recording`for the removed `WI.Canvas` to the "Imported Recordings" folder.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView.prototype.refresh):
+        (WI.CanvasContentView.prototype.initialLayout):
+        (WI.CanvasContentView.prototype._showError):
+        Drive-by: don't recreate the error preview element if it already exists.
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype.updateRepresentedObjects): Added.
+        (WI.CanvasSidebarPanel.prototype.shown):
+        (WI.CanvasSidebarPanel.prototype._currentRepresentedObjectsDidChange): Deleted.
+
+2018-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix typo "vritualized"
+        https://bugs.webkit.org/show_bug.cgi?id=189511
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline):
+        (WI.TreeOutline.prototype.registerScrollVirtualizer):
+        (WI.TreeOutline.prototype.updateVirtualizedElements):
+
+2018-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Address some ESLint warnings
+        https://bugs.webkit.org/show_bug.cgi?id=188824
+
+        Reviewed by Matt Baker.
+
+        * .eslintrc:
+        * UserInterface/Base/Platform.js:
+        * UserInterface/Controllers/AuditManager.js:
+        * UserInterface/Controllers/BasicBlockAnnotator.js:
+        * UserInterface/Controllers/CallFrameTreeController.js:
+        * UserInterface/Controllers/HARBuilder.js:
+        * UserInterface/Models/AuditReport.js:
+        * UserInterface/Models/AuditResult.js:
+        * UserInterface/Models/AuditTestCase.js:
+        * UserInterface/Models/AuditTestSuite.js:
+        * UserInterface/Models/Cookie.js:
+        * UserInterface/Models/SourceCodePosition.js:
+        * UserInterface/Test/FrontendTestHarness.js:
+        * UserInterface/Test/TestSuite.js:
+        * UserInterface/Views/CanvasContentView.js:
+        * UserInterface/Views/CollectionContentView.js:
+        * UserInterface/Views/ContentBrowser.js:
+        * UserInterface/Views/CookieStorageContentView.js:
+        * UserInterface/Views/DataGrid.js:
+        * UserInterface/Views/DatabaseTableContentView.js:
+        * UserInterface/Views/FindBanner.js:
+        * UserInterface/Views/JSONResourceContentView.js:
+        * UserInterface/Views/LogContentView.js:
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        * UserInterface/Views/SpreadsheetTextField.js:
+        * UserInterface/Workers/Formatter/FormatterUtilities.js:
+
+2018-09-06  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Rename the -apple-pay-button-type value "checkout" to "check-out"
+        https://bugs.webkit.org/show_bug.cgi?id=189366
+        <rdar://problem/44193218>
+
+        Reviewed by Sam Weinig.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
 2018-08-31  Jamal Nasser  <xnasser@outlook.com>
 
         Added a CSS rule to DarkMode.css to fix color on sidebar toggle.

@@ -63,6 +63,7 @@
 #include "SessionTracker.h"
 #include "ShareSheetCallbackID.h"
 #include "ShareableBitmap.h"
+#include "SharedBufferDataReference.h"
 #include "UserMediaPermissionRequestManager.h"
 #include "ViewGestureGeometryCollector.h"
 #include "VisitedLinkTableController.h"
@@ -278,8 +279,8 @@
 #endif
 
 #if ENABLE(WEB_AUTHN)
-#include "WebCredentialsMessenger.h"
-#include <WebCore/AuthenticatorManager.h>
+#include "WebAuthenticatorCoordinator.h"
+#include <WebCore/AuthenticatorCoordinator.h>
 #endif
 
 namespace WebKit {
@@ -392,9 +393,6 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_userInterfaceLayoutDirection(parameters.userInterfaceLayoutDirection)
     , m_overrideContentSecurityPolicy { parameters.overrideContentSecurityPolicy }
     , m_cpuLimit(parameters.cpuLimit)
-#if ENABLE(WEB_AUTHN)
-    , m_credentialsMessenger(std::make_unique<WebCredentialsMessenger>(*this))
-#endif
 {
     ASSERT(m_pageID);
 
@@ -446,6 +444,10 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 
 #if ENABLE(APPLE_PAY)
     pageConfiguration.paymentCoordinatorClient = new WebPaymentCoordinator(*this);
+#endif
+
+#if ENABLE(WEB_AUTHN)
+    pageConfiguration.authenticatorCoordinatorClient = std::make_unique<WebAuthenticatorCoordinator>(*this);
 #endif
 
 #if ENABLE(APPLICATION_MANIFEST)
@@ -605,10 +607,6 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #endif
 #endif
 
-#if ENABLE(WEB_AUTHN)
-    WebCore::AuthenticatorManager::singleton().setMessenger(*m_credentialsMessenger);
-#endif
-
     for (auto iterator : parameters.urlSchemeHandlers)
         registerURLSchemeHandler(iterator.value, iterator.key);
 
@@ -652,7 +650,13 @@ void WebPage::enableEnumeratingAllNetworkInterfaces()
 
 void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
 {
-    ASSERT(m_drawingArea);
+    if (!m_drawingArea) {
+        m_drawingArea = DrawingArea::create(*this, parameters);
+        m_drawingArea->setPaintingEnabled(false);
+        m_drawingArea->setShouldScaleViewToFitDocument(parameters.shouldScaleViewToFitDocument);
+        m_drawingArea->updatePreferences(parameters.store);
+        m_drawingArea->setPaintingEnabled(true);
+    }
     m_drawingArea->attachDrawingArea();
 
     if (m_activityState != parameters.activityState)
@@ -1135,7 +1139,8 @@ void WebPage::enterAcceleratedCompositingMode(GraphicsLayer* layer)
 
 void WebPage::exitAcceleratedCompositingMode()
 {
-    m_drawingArea->setRootCompositingLayer(0);
+    if (m_drawingArea)
+        m_drawingArea->setRootCompositingLayer(0);
 }
 
 void WebPage::close()
@@ -1160,6 +1165,10 @@ void WebPage::close()
     }
 
     m_page->inspectorController().disconnectAllFrontends();
+
+#if ENABLE(MEDIA_STREAM)
+    m_userMediaPermissionRequestManager = nullptr;
+#endif
 
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = nullptr;
@@ -2988,12 +2997,7 @@ void WebPage::getContentsAsString(CallbackID callbackID)
 #if ENABLE(MHTML)
 void WebPage::getContentsAsMHTMLData(CallbackID callbackID)
 {
-    auto buffer = MHTMLArchive::generateMHTMLData(m_page.get());
-
-    // FIXME: Use SharedBufferDataReference.
-    IPC::DataReference dataReference;
-    dataReference = IPC::DataReference(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
-    send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
+    send(Messages::WebPageProxy::DataCallback({ MHTMLArchive::generateMHTMLData(m_page.get()) }, callbackID));
 }
 #endif
 
@@ -3021,10 +3025,10 @@ void WebPage::getSelectionAsWebArchiveData(CallbackID callbackID)
         data = LegacyWebArchive::createFromSelection(frame)->rawDataRepresentation();
 #endif
 
-    IPC::DataReference dataReference;
+    IPC::SharedBufferDataReference dataReference;
 #if PLATFORM(COCOA)
     if (data)
-        dataReference = IPC::DataReference(CFDataGetBytePtr(data.get()), CFDataGetLength(data.get()));
+        dataReference = { CFDataGetBytePtr(data.get()), static_cast<size_t>(CFDataGetLength(data.get())) };
 #endif
     send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
 }
@@ -3059,10 +3063,9 @@ void WebPage::getMainResourceDataOfFrame(uint64_t frameID, CallbackID callbackID
         }
     }
 
-    // FIXME: Use SharedBufferDataReference.
-    IPC::DataReference dataReference;
+    IPC::SharedBufferDataReference dataReference;
     if (buffer)
-        dataReference = IPC::DataReference(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
+        dataReference = { *buffer };
     send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
 }
 
@@ -3087,10 +3090,9 @@ void WebPage::getResourceDataFromFrame(uint64_t frameID, const String& resourceU
         buffer = resourceDataForFrame(frame->coreFrame(), resourceURL);
     }
 
-    // FIXME: Use SharedBufferDataReference.
-    IPC::DataReference dataReference;
+    IPC::SharedBufferDataReference dataReference;
     if (buffer)
-        dataReference = IPC::DataReference(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
+        dataReference = { *buffer };
     send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
 }
 
@@ -3104,10 +3106,10 @@ void WebPage::getWebArchiveOfFrame(uint64_t frameID, CallbackID callbackID)
     UNUSED_PARAM(frameID);
 #endif
 
-    IPC::DataReference dataReference;
+    IPC::SharedBufferDataReference dataReference;
 #if PLATFORM(COCOA)
     if (data)
-        dataReference = IPC::DataReference(CFDataGetBytePtr(data.get()), CFDataGetLength(data.get()));
+        dataReference = { CFDataGetBytePtr(data.get()), static_cast<size_t>(CFDataGetLength(data.get())) };
 #endif
     send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
 }
@@ -4344,7 +4346,7 @@ void WebPage::drawPagesToPDF(uint64_t frameID, const PrintInfo& printInfo, uint3
 {
     RetainPtr<CFMutableDataRef> pdfPageData;
     drawPagesToPDFImpl(frameID, printInfo, first, count, pdfPageData);
-    send(Messages::WebPageProxy::DataCallback(IPC::DataReference(CFDataGetBytePtr(pdfPageData.get()), CFDataGetLength(pdfPageData.get())), callbackID));
+    send(Messages::WebPageProxy::DataCallback({ CFDataGetBytePtr(pdfPageData.get()), static_cast<size_t>(CFDataGetLength(pdfPageData.get())) }, callbackID));
 }
 
 void WebPage::drawPagesToPDFImpl(uint64_t frameID, const PrintInfo& printInfo, uint32_t first, uint32_t count, RetainPtr<CFMutableDataRef>& pdfPageData)
@@ -5993,7 +5995,12 @@ void WebPage::urlSchemeTaskDidComplete(uint64_t handlerIdentifier, uint64_t task
 
 void WebPage::setIsSuspended(bool suspended)
 {
+    if (m_isSuspended == suspended)
+        return;
+
     m_isSuspended = suspended;
+    if (m_isSuspended)
+        m_drawingArea = nullptr;
 }
 
 void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remoteFrameIdentifier, GlobalWindowIdentifier&& remoteWindowIdentifier)

@@ -30,14 +30,13 @@
 
 #include "Logging.h"
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
+ALLOW_UNUSED_PARAMETERS_BEGIN
 
 #include <webrtc/api/video/i420_buffer.h>
 #include <webrtc/common_video/libyuv/include/webrtc_libyuv.h>
 #include <webrtc/sdk/WebKit/WebKitUtilities.h>
 
-#pragma clang diagnostic pop
+ALLOW_UNUSED_PARAMETERS_END
 
 #include <pal/cf/CoreMediaSoftLink.h>
 #include "CoreVideoSoftLink.h"
@@ -152,23 +151,14 @@ void RealtimeOutgoingVideoSourceCocoa::sampleBufferUpdated(MediaStreamTrackPriva
     auto pixelBuffer = static_cast<CVPixelBufferRef>(CMSampleBufferGetImageBuffer(sample.platformSample().sample.cmSampleBuffer));
     auto pixelFormatType = CVPixelBufferGetPixelFormatType(pixelBuffer);
 
-    rtc::scoped_refptr<webrtc::VideoFrameBuffer> buffer;
-    RetainPtr<CVPixelBufferRef> convertedBuffer;
-    if (pixelFormatType == kCVPixelFormatType_420YpCbCr8Planar || pixelFormatType == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
-        buffer = webrtc::pixelBufferToFrame(pixelBuffer);
-    else {
+    RetainPtr<CVPixelBufferRef> convertedBuffer = pixelBuffer;
+    if (pixelFormatType != kCVPixelFormatType_420YpCbCr8Planar && pixelFormatType != kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)
         convertedBuffer = convertToYUV(pixelBuffer);
-        buffer = webrtc::pixelBufferToFrame(convertedBuffer.get());
-    }
 
-    if (m_shouldApplyRotation && m_currentRotation != webrtc::kVideoRotation_0) {
-        // FIXME: We should make AVVideoCaptureSource handle the rotation whenever possible.
-        // This implementation is inefficient, we should rotate on the CMSampleBuffer directly instead of doing this double allocation.
-        auto rotatedBuffer = buffer->ToI420();
-        ASSERT(rotatedBuffer);
-        buffer = webrtc::I420Buffer::Rotate(*rotatedBuffer, m_currentRotation);
-    }
-    sendFrame(WTFMove(buffer));
+    if (m_shouldApplyRotation && m_currentRotation != webrtc::kVideoRotation_0)
+        convertedBuffer = rotatePixelBuffer(convertedBuffer.get(), m_currentRotation);
+
+    sendFrame(webrtc::pixelBufferToFrame(convertedBuffer.get()));
 }
 
 

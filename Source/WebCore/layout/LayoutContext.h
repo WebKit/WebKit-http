@@ -75,13 +75,13 @@ public:
     void markNeedsUpdate(const Box&, OptionSet<UpdateType>);
     bool needsUpdate(const Box&) const;
 
-    std::unique_ptr<FormattingContext> formattingContext(const Box& formattingContextRoot);
+    std::unique_ptr<FormattingContext> formattingContext(const Box& formattingContextRoot) const;
 
     FormattingState& formattingStateForBox(const Box&) const;
-    FormattingState& establishedFormattingState(const Box& formattingRoot);
+    FormattingState& establishedFormattingState(const Box& formattingRoot) const;
+    FormattingState& createFormattingStateForFormattingRootIfNeeded(const Box& formattingRoot);
 
-    Display::Box& createDisplayBox(const Box&);
-    Display::Box* displayBoxForLayoutBox(const Box& layoutBox) const { return m_layoutToDisplayBox.get(&layoutBox); }
+    Display::Box& displayBoxForLayoutBox(const Box& layoutBox) const;
 
     bool inQuirksMode() const { return m_inQuirksMode; }
     // For testing purposes only
@@ -90,10 +90,10 @@ public:
 private:
     void layoutFormattingContextSubtree(const Box&);
 
-    WeakPtr<Container> m_root;
+    WeakPtr<const Container> m_root;
     HashSet<const Container*> m_formattingContextRootListForLayout;
     HashMap<const Box*, std::unique_ptr<FormattingState>> m_formattingStates;
-    HashMap<const Box*, std::unique_ptr<Display::Box>> m_layoutToDisplayBox;
+    mutable HashMap<const Box*, std::unique_ptr<Display::Box>> m_layoutToDisplayBox;
     bool m_inQuirksMode { false };
 };
 

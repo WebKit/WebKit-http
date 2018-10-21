@@ -70,7 +70,7 @@ class LexerToken {
     
     get originString()
     {
-        return this.origin + ":" + (this.lineNumber + 1);
+        return this.origin + ":" + this.lineNumber;
     }
     
     toString()

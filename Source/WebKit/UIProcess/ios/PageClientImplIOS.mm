@@ -161,13 +161,13 @@ IntSize PageClientImpl::viewSize()
 bool PageClientImpl::isViewWindowActive()
 {
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=133098
-    return isViewVisible() || (m_webView && m_webView->_activeFocusedStateRetainCount);
+    return isViewVisible() || (m_webView && [m_webView _isRetainingActiveFocusedState]);
 }
 
 bool PageClientImpl::isViewFocused()
 {
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=133098
-    return isViewWindowActive() || (m_webView && m_webView->_activeFocusedStateRetainCount);
+    return isViewWindowActive() || (m_webView && [m_webView _isRetainingActiveFocusedState]);
 }
 
 bool PageClientImpl::isViewVisible()
@@ -657,24 +657,24 @@ void PageClientImpl::didFinishLoadingDataForCustomContentProvider(const String& 
     [m_webView _didFinishLoadingDataForCustomContentProviderWithSuggestedFilename:suggestedFilename data:data.get()];
 }
 
-void PageClientImpl::overflowScrollViewWillStartPanGesture()
+void PageClientImpl::scrollingNodeScrollViewWillStartPanGesture()
 {
     [m_contentView scrollViewWillStartPanOrPinchGesture];
 }
 
-void PageClientImpl::overflowScrollViewDidScroll()
+void PageClientImpl::scrollingNodeScrollViewDidScroll()
 {
     [m_contentView _didScroll];
 }
 
-void PageClientImpl::overflowScrollWillStartScroll()
+void PageClientImpl::scrollingNodeScrollWillStartScroll()
 {
-    [m_contentView _overflowScrollingWillBegin];
+    [m_contentView _scrollingNodeScrollingWillBegin];
 }
 
-void PageClientImpl::overflowScrollDidEndScroll()
+void PageClientImpl::scrollingNodeScrollDidEndScroll()
 {
-    [m_contentView _overflowScrollingDidEnd];
+    [m_contentView _scrollingNodeScrollingDidEnd];
 }
 
 Vector<String> PageClientImpl::mimeTypesWithCustomContentProviders()

@@ -455,6 +455,13 @@ void TestRunner::setCustomUserAgent(JSStringRef userAgent)
     WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), toWK(userAgent).get(), nullptr);
 }
 
+void TestRunner::setWebAPIStatisticsEnabled(bool enabled)
+{
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitWebAPIStatisticsEnabled"));
+    auto& injectedBundle = InjectedBundle::singleton();
+    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
+}
+
 void TestRunner::setModernMediaControlsEnabled(bool enabled)
 {
     WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitModernMediaControlsEnabled"));
@@ -1454,6 +1461,12 @@ void TestRunner::setStatisticsVeryPrevalentResource(JSStringRef hostName, bool v
 void TestRunner::statisticsCallDidSetVeryPrevalentResourceCallback()
 {
     callTestRunnerCallback(SetStatisticsVeryPrevalentResourceCallbackID);
+}
+    
+void TestRunner::dumpResourceLoadStatistics()
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("dumpResourceLoadStatistics"));
+    WKBundlePagePostSynchronousMessageForTesting(InjectedBundle::singleton().page()->page(), messageName.get(), nullptr, nullptr);
 }
 
 bool TestRunner::isStatisticsPrevalentResource(JSStringRef hostName)

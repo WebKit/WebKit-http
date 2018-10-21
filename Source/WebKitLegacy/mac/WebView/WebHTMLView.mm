@@ -95,6 +95,7 @@
 #import <WebCore/FloatRect.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/Font.h>
+#import <WebCore/FontAttributeChanges.h>
 #import <WebCore/FontCache.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoader.h>
@@ -123,6 +124,7 @@
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextUndoInsertionMarkupMac.h>
+#import <WebCore/WebCoreNSFontManagerExtras.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebNSAttributedStringExtras.h>
 #import <WebCore/markup.h>
@@ -624,10 +626,9 @@ static std::optional<NSInteger> toTag(ContextMenuAction action)
 
 - (NSView *)_web_borderView
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     return _borderView;
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 @end
@@ -1494,10 +1495,9 @@ static NSControlStateValue kit(TriState state)
 {
     NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSEventTypeMouseMoved
         location:[[self window]
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         convertScreenToBase:[NSEvent mouseLocation]]
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
         modifierFlags:[[NSApp currentEvent] modifierFlags]
         timestamp:[NSDate timeIntervalSinceReferenceDate]
         windowNumber:[[self window] windowNumber]
@@ -1538,19 +1538,17 @@ static NSControlStateValue kit(TriState state)
 #if PLATFORM(MAC)
     ASSERT(!_private->subviewsSetAside);
     ASSERT(_private->savedSubviews == nil);
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     _private->savedSubviews = _subviews;
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     // We need to keep the layer-hosting view in the subviews, otherwise the layers flash.
     if (_private->layerHostingView) {
         NSArray* newSubviews = [[NSArray alloc] initWithObjects:_private->layerHostingView, nil];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         _subviews = newSubviews;
     } else
         _subviews = nil;
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     _private->subviewsSetAside = YES;
 #endif
  }
@@ -1560,14 +1558,13 @@ static NSControlStateValue kit(TriState state)
 #if PLATFORM(MAC)
     ASSERT(_private->subviewsSetAside);
     if (_private->layerHostingView) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         [_subviews release];
         _subviews = _private->savedSubviews;
     } else {
         ASSERT(_subviews == nil);
         _subviews = _private->savedSubviews;
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
     }
     _private->savedSubviews = nil;
     _private->subviewsSetAside = NO;
@@ -2110,10 +2107,9 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
 
     NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDragged
         location:[[self window]
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         convertScreenToBase:[NSEvent mouseLocation]]
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
         modifierFlags:[[NSApp currentEvent] modifierFlags]
         timestamp:[NSDate timeIntervalSinceReferenceDate]
         windowNumber:[[self window] windowNumber]
@@ -3982,10 +3978,9 @@ static BOOL currentScrollIsBlit(NSView *clipView)
 #if PLATFORM(MAC)
     // Only do the synchronization dance if we're drawing into the window, otherwise
     // we risk disabling screen updates when no flush is pending.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if ([NSGraphicsContext currentContext] == [[self window] graphicsContext] && [webView _needsOneShotDrawingSynchronization]) {
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
         // Disable screen updates to minimize the chances of the race between the CA
         // display link and AppKit drawing causing flashes.
         [[self window] disableScreenUpdatesUntilFlush];
@@ -4217,12 +4212,11 @@ static BOOL currentScrollIsBlit(NSView *clipView)
     if (Frame* coreframe = core([self _frame]))
         coreframe->eventHandler().mouseDown(event);
 #else
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     NSInputManager *currentInputManager = [NSInputManager currentInputManager];
 
     if (![currentInputManager wantsToHandleMouseEvents] || ![currentInputManager handleMouseEvent:event]) {
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
         [_private->completionController endRevertingChange:NO moveLeft:NO];
 
         // If the web page handles the context menu event and menuForEvent: returns nil, we'll get control click events here.
@@ -4277,12 +4271,11 @@ static BOOL currentScrollIsBlit(NSView *clipView)
     // the current event prevents that from causing a problem inside WebKit or AppKit code.
     [[event retain] autorelease];
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     NSInputManager *currentInputManager = [NSInputManager currentInputManager];
     if ([currentInputManager wantsToHandleMouseEvents] && [currentInputManager handleMouseEvent:event])
         return;
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     [self retain];
 
@@ -4447,12 +4440,11 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
     [self _setMouseDownEvent:nil];
 
 #if PLATFORM(MAC)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     NSInputManager *currentInputManager = [NSInputManager currentInputManager];
     if ([currentInputManager wantsToHandleMouseEvents] && [currentInputManager handleMouseEvent:event])
         return;
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 #endif
 
     [self retain];
@@ -4804,10 +4796,9 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 - (void)_endPrintModeAndRestoreWindowAutodisplay
 {
     [self _endPrintMode];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [[self window] setAutodisplay:YES];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 - (void)_delayedEndPrintMode:(NSPrintOperation *)initiatingOperation
@@ -4842,10 +4833,9 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     // Must do this explicit display here, because otherwise the view might redisplay while the print
     // sheet was up, using printer fonts (and looking different).
     [self displayIfNeeded];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [[self window] setAutodisplay:NO];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     [[self _webView] _adjustPrintingMarginsForHeaderAndFooter];
     NSPrintOperation *printOperation = [NSPrintOperation currentOperation];
@@ -5033,10 +5023,9 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 #if PLATFORM(IOS)
         return [accTree accessibilityHitTest:point];
 #else
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         NSPoint windowCoord = [[self window] convertScreenToBase:point];
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
         return [accTree accessibilityHitTest:[self convertPoint:windowCoord fromView:nil]];
 #endif
     }
@@ -5074,10 +5063,9 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
 - (NSDictionary *)_fontAttributesFromFontPasteboard
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     NSPasteboard *fontPasteboard = [NSPasteboard pasteboardWithName:NSFontPboard];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     if (fontPasteboard == nil)
         return nil;
     NSData *data = [fontPasteboard dataForType:legacyFontPasteboardType()];
@@ -5101,10 +5089,9 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
 - (NSString *)_colorAsString:(NSColor *)color
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     NSColor *rgbColor = [color colorUsingColorSpaceName:NSDeviceRGBColorSpace];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     // FIXME: If color is non-nil and rgbColor is nil, that means we got some kind
     // of fancy color that can't be converted to RGB. Changing that to "transparent"
     // might not be great, but it's probably OK.
@@ -5281,10 +5268,9 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
     // Put RTF with font attributes on the pasteboard.
     // Maybe later we should add a pasteboard type that contains CSS text for "native" copy and paste font.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     NSPasteboard *fontPasteboard = [NSPasteboard pasteboardWithName:NSFontPboard];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     [fontPasteboard declareTypes:[NSArray arrayWithObject:legacyFontPasteboardType()] owner:nil];
     [fontPasteboard setData:[self _selectionStartFontAttributesAsRTF] forType:legacyFontPasteboardType()];
 }
@@ -5295,7 +5281,7 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
     // Read RTF with font attributes from the pasteboard.
     // Maybe later we should add a pasteboard type that contains CSS text for "native" copy and paste font.
-    [self _applyStyleToSelection:[self _styleFromFontAttributes:[self _fontAttributesFromFontPasteboard]] withUndoAction:EditActionPasteFont];
+    [self _applyStyleToSelection:[self _styleFromFontAttributes:[self _fontAttributesFromFontPasteboard]] withUndoAction:EditAction::PasteFont];
 }
 
 - (void)pasteAsRichText:(id)sender
@@ -5307,188 +5293,18 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     [self _pasteWithPasteboard:[NSPasteboard generalPasteboard] allowPlainText:NO];
 }
 
-- (NSFont *)_originalFontA
-{
-    return [[NSFontManager sharedFontManager] fontWithFamily:@"Helvetica" traits:0 weight:STANDARD_WEIGHT size:10.0f];
-}
-
-- (NSFont *)_originalFontB
-{
-    return [[NSFontManager sharedFontManager] fontWithFamily:@"Times" traits:NSFontItalicTrait weight:STANDARD_BOLD_WEIGHT size:12.0f];
-}
-
-static RetainPtr<CFStringRef> fontNameForDescription(NSString *familyName, BOOL italic, BOOL bold)
-{
-    // Find the font the same way the rendering code would later if it encountered this CSS.
-    FontDescription fontDescription;
-    fontDescription.setIsItalic(italic);
-    fontDescription.setWeight(bold ? FontSelectionValue(900) : FontSelectionValue(500));
-    RefPtr<Font> font = FontCache::singleton().fontForFamily(fontDescription, familyName);
-    return adoptCF(CTFontCopyPostScriptName(font->getCTFont()));
-}
-
-- (void)_addToStyle:(DOMCSSStyleDeclaration *)style fontA:(NSFont *)a fontB:(NSFont *)b
-{
-    // Since there's no way to directly ask NSFontManager what style change it's going to do
-    // we instead pass two "specimen" fonts to it and let it change them. We then deduce what
-    // style change it was doing by looking at what happened to each of the two fonts.
-    // So if it was making the text bold, both fonts will be bold after the fact.
-
-    if (a == nil || b == nil)
-        return;
-
-    NSFontManager *fm = [NSFontManager sharedFontManager];
-
-    NSFont *oa = [self _originalFontA];
-
-    NSString *aFamilyName = [a familyName];
-    NSString *bFamilyName = [b familyName];
-
-    int aPointSize = (int)[a pointSize];
-    int bPointSize = (int)[b pointSize];
-
-    int aWeight = [fm weightOfFont:a];
-    int bWeight = [fm weightOfFont:b];
-
-    BOOL aIsItalic = ([fm traitsOfFont:a] & NSItalicFontMask) != 0;
-    BOOL bIsItalic = ([fm traitsOfFont:b] & NSItalicFontMask) != 0;
-
-    BOOL aIsBold = aWeight > MIN_BOLD_WEIGHT;
-
-    if ([aFamilyName isEqualToString:bFamilyName]) {
-        NSString *familyNameForCSS = aFamilyName;
-
-        // The family name may not be specific enough to get us the font specified.
-        // In some cases, the only way to get exactly what we are looking for is to use
-        // the Postscript name.
-        // If we don't find a font with the same Postscript name, then we'll have to use the
-        // Postscript name to make the CSS specific enough.
-        auto fontName = fontNameForDescription(aFamilyName, aIsItalic, aIsBold);
-        auto aName = [a fontName];
-        if (!fontName || !aName || !CFEqual(fontName.get(), static_cast<CFStringRef>(aName)))
-            familyNameForCSS = aName;
-
-        // FIXME: Need more sophisticated escaping code if we want to handle family names
-        // with characters like single quote or backslash in their names.
-        [style setFontFamily:[NSString stringWithFormat:@"'%@'", familyNameForCSS]];
-    }
-
-    int soa = (int)[oa pointSize];
-    if (aPointSize == bPointSize)
-        [style setFontSize:[NSString stringWithFormat:@"%dpx", aPointSize]];
-    else if (aPointSize < soa)
-        [style _setFontSizeDelta:@"-1px"];
-    else if (aPointSize > soa)
-        [style _setFontSizeDelta:@"1px"];
-
-    // FIXME: Map to the entire range of CSS weight values.
-    if (aWeight == bWeight)
-        [style setFontWeight:aIsBold ? @"bold" : @"normal"];
-
-    if (aIsItalic == bIsItalic)
-        [style setFontStyle:aIsItalic ? @"italic" :  @"normal"];
-}
-
-- (DOMCSSStyleDeclaration *)_styleFromFontManagerOperation
-{
-    DOMCSSStyleDeclaration *style = [self _emptyStyle];
-
-    NSFontManager *fm = [NSFontManager sharedFontManager];
-
-    NSFont *oa = [self _originalFontA];
-    NSFont *ob = [self _originalFontB];    
-    [self _addToStyle:style fontA:[fm convertFont:oa] fontB:[fm convertFont:ob]];
-
-    return style;
-}
-
 - (void)changeFont:(id)sender
 {
     COMMAND_PROLOGUE
 
-    [self _applyStyleToSelection:[self _styleFromFontManagerOperation] withUndoAction:EditActionSetFont];
-}
-
-- (Ref<EditingStyle>)_styleForAttributeChange:(id)sender
-{
-    DOMCSSStyleDeclaration *style = [self _emptyStyle];
-
-    auto shadow = adoptNS([[NSShadow alloc] init]);
-    [shadow setShadowOffset:NSMakeSize(1, 1)];
-
-    NSDictionary *oa = [NSDictionary dictionaryWithObjectsAndKeys:
-        [self _originalFontA], NSFontAttributeName,
-        nil];
-    NSDictionary *ob = [NSDictionary dictionaryWithObjectsAndKeys:
-        [NSColor blackColor], NSBackgroundColorAttributeName,
-        [self _originalFontB], NSFontAttributeName,
-        [NSColor whiteColor], NSForegroundColorAttributeName,
-        shadow.get(), NSShadowAttributeName,
-        [NSNumber numberWithInt:NSUnderlineStyleSingle], NSStrikethroughStyleAttributeName,
-        [NSNumber numberWithInt:1], NSSuperscriptAttributeName,
-        [NSNumber numberWithInt:NSUnderlineStyleSingle], NSUnderlineStyleAttributeName,
-        nil];
-
-    NSDictionary *a = [sender convertAttributes:oa];
-    NSDictionary *b = [sender convertAttributes:ob];
-
-    NSColor *ca = [a objectForKey:NSBackgroundColorAttributeName];
-    NSColor *cb = [b objectForKey:NSBackgroundColorAttributeName];
-    if (ca == cb) {
-        [style setBackgroundColor:[self _colorAsString:ca]];
-    }
-
-    [self _addToStyle:style fontA:[a objectForKey:NSFontAttributeName] fontB:[b objectForKey:NSFontAttributeName]];
-
-    ca = [a objectForKey:NSForegroundColorAttributeName];
-    cb = [b objectForKey:NSForegroundColorAttributeName];
-    if (ca == cb) {
-        if (!ca)
-            ca = [NSColor blackColor];
-        [style setColor:[self _colorAsString:ca]];
-    }
-
-    NSShadow *sha = [a objectForKey:NSShadowAttributeName];
-    if (sha)
-        [style setTextShadow:[self _shadowAsString:sha]];
-    else if ([b objectForKey:NSShadowAttributeName] == nil)
-        [style setTextShadow:@"none"];
-
-    int sa = [[a objectForKey:NSSuperscriptAttributeName] intValue];
-    int sb = [[b objectForKey:NSSuperscriptAttributeName] intValue];
-    if (sa == sb) {
-        if (sa > 0)
-            [style setVerticalAlign:@"super"];
-        else if (sa < 0)
-            [style setVerticalAlign:@"sub"];
-        else
-            [style setVerticalAlign:@"baseline"];
-    }
-    
-    auto editingStyle = EditingStyle::create(core(style));
-
-    int strikeThroughA = [[a objectForKey:NSStrikethroughStyleAttributeName] intValue];
-    int strikeThroughB = [[b objectForKey:NSStrikethroughStyleAttributeName] intValue];
-    if (strikeThroughA == strikeThroughB) {
-        bool shouldRemoveStrikeThrough = strikeThroughA == NSUnderlineStyleNone;
-        editingStyle->setStrikeThroughChange(shouldRemoveStrikeThrough ? TextDecorationChange::Remove : TextDecorationChange::Add);
-    }
-
-    int ua = [[a objectForKey:NSUnderlineStyleAttributeName] intValue];
-    int ub = [[b objectForKey:NSUnderlineStyleAttributeName] intValue];
-    if (ua == ub) {
-        bool shouldRemoveUnderline = ua == NSUnderlineStyleNone;
-        editingStyle->setUnderlineChange(shouldRemoveUnderline ? TextDecorationChange::Remove : TextDecorationChange::Add);
-    }
-
-    return editingStyle;
+    [self _applyEditingStyleToSelection:computedFontChanges(NSFontManager.sharedFontManager).createEditingStyle() withUndoAction:EditAction::SetFont];
 }
 
 - (void)changeAttributes:(id)sender
 {
     COMMAND_PROLOGUE
 
-    [self _applyEditingStyleToSelection:[self _styleForAttributeChange:sender] withUndoAction:EditActionChangeAttributes];
+    [self _applyEditingStyleToSelection:computedFontAttributeChanges(NSFontManager.sharedFontManager, sender).createEditingStyle() withUndoAction:EditAction::ChangeAttributes];
 }
 
 - (DOMCSSStyleDeclaration *)_styleFromColorPanelWithSelector:(SEL)selector
@@ -5504,8 +5320,8 @@ static RetainPtr<CFStringRef> fontNameForDescription(NSString *familyName, BOOL 
 - (EditAction)_undoActionFromColorPanelWithSelector:(SEL)selector
 {
     if (selector == @selector(setBackgroundColor:))
-        return EditActionSetBackgroundColor;    
-    return EditActionSetColor;
+        return EditAction::SetBackgroundColor;
+    return EditAction::SetColor;
 }
 
 - (void)_changeCSSColorUsingSelector:(SEL)selector inRange:(DOMRange *)range
@@ -5549,8 +5365,7 @@ static RetainPtr<CFStringRef> fontNameForDescription(NSString *familyName, BOOL 
     // AppKit will have to be revised to allow this to work with anything that isn't an 
     // NSTextView. However, this might not be required for Tiger, since the background-color 
     // changing box in the font panel doesn't work in Mail (3674481), though it does in TextEdit.
-    [self _applyStyleToSelection:[self _styleFromColorPanelWithSelector:@selector(setColor:)] 
-                  withUndoAction:EditActionSetColor];
+    [self _applyStyleToSelection:[self _styleFromColorPanelWithSelector:@selector(setColor:)] withUndoAction:EditAction::SetColor];
 }
 
 #endif // PLATFORM(MAC)
@@ -6120,15 +5935,14 @@ static BOOL writingDirectionKeyBindingsEnabled()
     const Vector<KeypressCommand>& commands = parameters->event->keypressCommands();
 
     for (size_t i = 0; i < commands.size(); ++i) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         if (commands[i].commandName == "insertText:")
             [self insertText:commands[i].text];
         else if (commands[i].commandName == "noop:")
             ; // Do nothing. This case can be removed once <rdar://problem/9025012> is fixed.
         else
             [self doCommandBySelector:NSSelectorFromString(commands[i].commandName)];
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
     }
     parameters->event->keypressCommands().clear();
     parameters->shouldSaveCommands = wasSavingCommands;
@@ -6324,10 +6138,9 @@ static BOOL writingDirectionKeyBindingsEnabled()
         // If we are in a layer-backed view, we need to manually initialize the geometry for our layer.
         [viewLayer setBounds:NSRectToCGRect([_private->layerHostingView bounds])];
         [viewLayer setAnchorPoint:CGPointMake(0, [self isFlipped] ? 1 : 0)];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         CGPoint layerPosition = NSPointToCGPoint([self convertPointToBase:[_private->layerHostingView frame].origin]);
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
         [viewLayer setPosition:layerPosition];
     }
     
@@ -6457,10 +6270,9 @@ static BOOL writingDirectionKeyBindingsEnabled()
         LOG(TextInput, "textStorage -> nil");
         return nil;
     }
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     NSAttributedString *result = [self attributedSubstringFromRange:NSMakeRange(0, UINT_MAX)];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     LOG(TextInput, "textStorage -> \"%@\"", result ? [result string] : @"");
     
@@ -6939,15 +6751,14 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
     unsigned start;
     unsigned end;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if (coreFrame->editor().getCompositionSelection(start, end))
         [[NSInputManager currentInputManager] markedTextSelectionChanged:NSMakeRange(start, end - start) client:self];
     else {
         coreFrame->editor().cancelComposition();
         [[NSInputManager currentInputManager] markedTextAbandoned:self];
     }
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 #endif

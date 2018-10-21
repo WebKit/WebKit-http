@@ -54,12 +54,14 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "HTMLAttachmentElement.h"
+#include "HTMLBRElement.h"
 #include "HTMLCollection.h"
 #include "HTMLFormControlElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
+#include "HTMLQuoteElement.h"
 #include "HTMLSpanElement.h"
 #include "HitTestResult.h"
 #include "IndentOutdentCommand.h"
@@ -139,9 +141,9 @@ static String inputEventDataForEditingStyleAndAction(const StyleProperties* styl
         return { };
 
     switch (action) {
-    case EditActionSetColor:
+    case EditAction::SetColor:
         return style->getPropertyValue(CSSPropertyColor);
-    case EditActionSetWritingDirection:
+    case EditAction::SetWritingDirection:
         return style->getPropertyValue(CSSPropertyDirection);
     default:
         return { };
@@ -169,7 +171,7 @@ ClearTextCommand::ClearTextCommand(Document& document)
 
 EditAction ClearTextCommand::editingAction() const
 {
-    return EditActionDelete;
+    return EditAction::Delete;
 }
 
 void ClearTextCommand::CreateAndApply(const RefPtr<Frame> frame)
@@ -296,9 +298,9 @@ bool Editor::handleTextEvent(TextEvent& event)
             if (client()->performsTwoStepPaste(event.pastingFragment()))
                 return true;
 #endif
-            replaceSelectionWithFragment(*event.pastingFragment(), false, event.shouldSmartReplace(), event.shouldMatchStyle(), EditActionPaste, event.mailBlockquoteHandling());
+            replaceSelectionWithFragment(*event.pastingFragment(), false, event.shouldSmartReplace(), event.shouldMatchStyle(), EditAction::Paste, event.mailBlockquoteHandling());
         } else
-            replaceSelectionWithText(event.data(), false, event.shouldSmartReplace(), EditActionPaste);
+            replaceSelectionWithText(event.data(), false, event.shouldSmartReplace(), EditAction::Paste);
         return true;
     }
 
@@ -327,6 +329,7 @@ enum class ClipboardEventKind {
     Cut,
     Paste,
     PasteAsPlainText,
+    PasteAsQuotation,
     BeforeCopy,
     BeforeCut,
     BeforePaste,
@@ -341,6 +344,7 @@ static AtomicString eventNameForClipboardEvent(ClipboardEventKind kind)
         return eventNames().cutEvent;
     case ClipboardEventKind::Paste:
     case ClipboardEventKind::PasteAsPlainText:
+    case ClipboardEventKind::PasteAsQuotation:
         return eventNames().pasteEvent;
     case ClipboardEventKind::BeforeCopy:
         return eventNames().beforecopyEvent;
@@ -369,6 +373,7 @@ static Ref<DataTransfer> createDataTransferForClipboardEvent(Document& document,
         }
         FALLTHROUGH;
     case ClipboardEventKind::Paste:
+    case ClipboardEventKind::PasteAsQuotation:
         return DataTransfer::createForCopyAndPaste(document, DataTransfer::StoreMode::Readonly, Pasteboard::createForCopyAndPaste());
     case ClipboardEventKind::BeforeCopy:
     case ClipboardEventKind::BeforeCut:
@@ -629,7 +634,7 @@ void Editor::replaceSelectionWithFragment(DocumentFragment& fragment, bool selec
         return;
 
     AccessibilityReplacedText replacedText;
-    if (AXObjectCache::accessibilityEnabled() && editingAction == EditActionPaste)
+    if (AXObjectCache::accessibilityEnabled() && editingAction == EditAction::Paste)
         replacedText = AccessibilityReplacedText(selection);
 
     OptionSet<ReplaceSelectionCommand::CommandOption> options { ReplaceSelectionCommand::PreventNesting, ReplaceSelectionCommand::SanitizeFragment };
@@ -650,7 +655,7 @@ void Editor::replaceSelectionWithFragment(DocumentFragment& fragment, bool selec
     if (selection.isInPasswordField())
         return;
 
-    if (AXObjectCache::accessibilityEnabled() && editingAction == EditActionPaste) {
+    if (AXObjectCache::accessibilityEnabled() && editingAction == EditAction::Paste) {
         String text = AccessibilityObject::stringForVisiblePositionRange(command->visibleSelectionForInsertedText());
         replacedText.postTextStateChangeNotification(document().existingAXObjectCache(), AXTextEditTypePaste, text, m_frame.selection().selection());
         command->composition()->setRangeDeletedByUnapply(replacedText.replacedRange());
@@ -1384,7 +1389,7 @@ void Editor::performCutOrCopy(EditorActionSpecifier action)
         String text;
         if (AXObjectCache::accessibilityEnabled())
             text = AccessibilityObject::stringForVisiblePositionRange(m_frame.selection().selection());
-        deleteSelectionWithSmartDelete(canSmartCopyOrDelete(), EditActionCut);
+        deleteSelectionWithSmartDelete(canSmartCopyOrDelete(), EditAction::Cut);
         if (AXObjectCache::accessibilityEnabled())
             postTextStateChangeNotificationForCut(text, m_frame.selection().selection());
     }
@@ -1404,7 +1409,7 @@ void Editor::paste(Pasteboard& pasteboard)
     updateMarkersForWordsAffectedByEditing(false);
     ResourceCacheValidationSuppressor validationSuppressor(document().cachedResourceLoader());
     if (m_frame.selection().selection().isContentRichlyEditable())
-        pasteWithPasteboard(&pasteboard, true);
+        pasteWithPasteboard(&pasteboard, { PasteOption::AllowPlainText });
     else
         pasteAsPlainTextWithPasteboard(pasteboard);
 }
@@ -1417,6 +1422,40 @@ void Editor::pasteAsPlainText()
         return;
     updateMarkersForWordsAffectedByEditing(false);
     pasteAsPlainTextWithPasteboard(*Pasteboard::createForCopyAndPaste());
+}
+
+void Editor::pasteAsQuotation()
+{
+    if (!dispatchClipboardEvent(findEventTargetFromSelection(), ClipboardEventKind::PasteAsQuotation))
+        return;
+    if (!canPaste())
+        return;
+    updateMarkersForWordsAffectedByEditing(false);
+    ResourceCacheValidationSuppressor validationSuppressor(document().cachedResourceLoader());
+    auto pasteboard = Pasteboard::createForCopyAndPaste();
+    if (m_frame.selection().selection().isContentRichlyEditable())
+        pasteWithPasteboard(pasteboard.get(), { PasteOption::AllowPlainText, PasteOption::AsQuotation });
+    else
+        pasteAsPlainTextWithPasteboard(*pasteboard);
+}
+
+void Editor::quoteFragmentForPasting(DocumentFragment& fragment)
+{
+    auto blockQuote = HTMLQuoteElement::create(blockquoteTag, document());
+    blockQuote->setAttributeWithoutSynchronization(typeAttr, AtomicString("cite"));
+    blockQuote->setAttributeWithoutSynchronization(classAttr, AtomicString(ApplePasteAsQuotation));
+
+    auto childNode = fragment.firstChild();
+
+    if (childNode) {
+        while (childNode) {
+            blockQuote->appendChild(*childNode);
+            childNode = fragment.firstChild();
+        }
+    } else
+        blockQuote->appendChild(HTMLBRElement::create(document()));
+
+    fragment.appendChild(blockQuote);
 }
 
 void Editor::performDelete()
@@ -1727,7 +1766,7 @@ void Editor::setBaseWritingDirection(WritingDirection direction)
 
         auto& focusedFormElement = downcast<HTMLTextFormControlElement>(*focusedElement);
         auto directionValue = direction == LeftToRightWritingDirection ? "ltr" : "rtl";
-        auto writingDirectionInputTypeName = inputTypeNameForEditingAction(EditActionSetWritingDirection);
+        auto writingDirectionInputTypeName = inputTypeNameForEditingAction(EditAction::SetWritingDirection);
         if (!dispatchBeforeInputEvent(focusedFormElement, writingDirectionInputTypeName, directionValue))
             return;
 
@@ -1739,7 +1778,7 @@ void Editor::setBaseWritingDirection(WritingDirection direction)
 
     RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyDirection, direction == LeftToRightWritingDirection ? "ltr" : direction == RightToLeftWritingDirection ? "rtl" : "inherit", false);
-    applyParagraphStyleToSelection(style.get(), EditActionSetWritingDirection);
+    applyParagraphStyleToSelection(style.get(), EditAction::SetWritingDirection);
 }
 
 WritingDirection Editor::baseWritingDirectionForSelectionStart() const
@@ -2460,7 +2499,7 @@ void Editor::markMisspellingsAfterTypingToWord(const VisiblePosition &wordStart,
 
         if (!m_frame.editor().shouldInsertText(autocorrectedString, misspellingRange.get(), EditorInsertAction::Typed))
             return;
-        m_frame.editor().replaceSelectionWithText(autocorrectedString, false, false, EditActionInsert);
+        m_frame.editor().replaceSelectionWithText(autocorrectedString, false, false, EditAction::Insert);
 
         // Reset the charet one character further.
         m_frame.selection().moveTo(m_frame.selection().selection().end());
@@ -2818,7 +2857,7 @@ void Editor::changeBackToReplacedString(const String& replacedString)
     
     m_alternativeTextController->recordAutocorrectionResponse(AutocorrectionResponse::Reverted, replacedString, selection.get());
     TextCheckingParagraph paragraph(*selection);
-    replaceSelectionWithText(replacedString, false, false, EditActionInsert);
+    replaceSelectionWithText(replacedString, false, false, EditAction::Insert);
     auto changedRange = paragraph.subrange(paragraph.checkingStart(), replacedString.length());
     changedRange->startContainer().document().markers().addMarker(changedRange.ptr(), DocumentMarker::Replacement, String());
     m_alternativeTextController->markReversed(changedRange);
@@ -3064,7 +3103,7 @@ void Editor::transpose()
     // Insert the transposed characters.
     if (!shouldInsertText(transposed, range.get(), EditorInsertAction::Typed))
         return;
-    replaceSelectionWithText(transposed, false, false, EditActionInsert);
+    replaceSelectionWithText(transposed, false, false, EditAction::Insert);
 }
 
 void Editor::addRangeToKillRing(const Range& range, KillRingInsertionMode mode)

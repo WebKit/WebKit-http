@@ -28,6 +28,7 @@ VPATH = \
     $(WebKit2)/NetworkProcess/CustomProtocols \
     $(WebKit2)/NetworkProcess/mac \
     $(WebKit2)/NetworkProcess/webrtc \
+    $(WebKit2)/NetworkProcess/IndexedDB \
     $(WebKit2)/PluginProcess \
     $(WebKit2)/PluginProcess/mac \
     $(WebKit2)/Shared/Plugins \
@@ -36,14 +37,12 @@ VPATH = \
     $(WebKit2)/Shared/Authentication \
     $(WebKit2)/Shared/mac \
     $(WebKit2)/StorageProcess \
-    $(WebKit2)/StorageProcess/IndexedDB \
     $(WebKit2)/StorageProcess/ServiceWorker \
     $(WebKit2)/StorageProcess/mac \
     $(WebKit2)/WebProcess/ApplePay \
     $(WebKit2)/WebProcess/ApplicationCache \
     $(WebKit2)/WebProcess/Automation \
     $(WebKit2)/WebProcess/Cache \
-    $(WebKit2)/WebProcess/CredentialManagement \
     $(WebKit2)/WebProcess/Databases/IndexedDB \
     $(WebKit2)/WebProcess/FullScreen \
     $(WebKit2)/WebProcess/Geolocation \
@@ -58,6 +57,7 @@ VPATH = \
     $(WebKit2)/WebProcess/ResourceCache \
     $(WebKit2)/WebProcess/Storage \
     $(WebKit2)/WebProcess/UserContent \
+    $(WebKit2)/WebProcess/WebAuthentication \
     $(WebKit2)/WebProcess/WebCoreSupport \
     $(WebKit2)/WebProcess/WebPage \
     $(WebKit2)/WebProcess/WebPage/RemoteLayerTree \
@@ -69,7 +69,6 @@ VPATH = \
     $(WebKit2)/UIProcess/ApplePay \
     $(WebKit2)/UIProcess/Automation \
     $(WebKit2)/UIProcess/Cocoa \
-    $(WebKit2)/UIProcess/CredentialManagement \
     $(WebKit2)/UIProcess/Databases \
     $(WebKit2)/UIProcess/Downloads \
     $(WebKit2)/UIProcess/MediaStream \
@@ -80,6 +79,7 @@ VPATH = \
     $(WebKit2)/UIProcess/RemoteLayerTree \
     $(WebKit2)/UIProcess/Storage \
     $(WebKit2)/UIProcess/UserContent \
+    $(WebKit2)/UIProcess/WebAuthentication \
     $(WebKit2)/UIProcess/WebStorage \
     $(WebKit2)/UIProcess/mac \
     $(WebKit2)/UIProcess/ios \
@@ -149,8 +149,8 @@ MESSAGE_RECEIVERS = \
     WebConnection \
     WebCookieManager \
     WebCookieManagerProxy \
-    WebCredentialsMessenger \
-    WebCredentialsMessengerProxy \
+    WebAuthenticatorCoordinator \
+    WebAuthenticatorCoordinatorProxy \
     WebFullScreenManager \
     WebFullScreenManagerProxy \
     WebGeolocationManager \
@@ -295,14 +295,15 @@ WEB_PREFERENCES_TEMPLATES = \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPageUpdatePreferences.cpp.erb \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesDefinitions.h.erb \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesExperimentalFeatures.cpp.erb \
+    $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesInternalDebugFeatures.cpp.erb \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesKeys.h.erb \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesKeys.cpp.erb \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesStoreDefaultsMap.cpp.erb \
 
 #
 
-all : WebPageUpdatePreferences.cpp WebPreferencesDefinitions.h WebPreferencesExperimentalFeatures.cpp WebPreferencesKeys.h WebPreferencesKeys.cpp WebPreferencesStoreDefaultsMap.cpp
+all : WebPageUpdatePreferences.cpp WebPreferencesDefinitions.h WebPreferencesExperimentalFeatures.cpp WebPreferencesInternalDebugFeatures.cpp WebPreferencesKeys.h WebPreferencesKeys.cpp WebPreferencesStoreDefaultsMap.cpp
 
-WebPageUpdatePreferences%cpp WebPreferencesDefinitions%h WebPreferencesExperimentalFeatures%cpp WebPreferencesKeys%h WebPreferencesKeys%cpp WebPreferencesStoreDefaultsMap%cpp : $(WebKit2)/Scripts/GeneratePreferences.rb $(WEB_PREFERENCES_TEMPLATES) $(WebKit2)/Shared/WebPreferences.yaml
+WebPageUpdatePreferences%cpp WebPreferencesDefinitions%h WebPreferencesExperimentalFeatures%cpp WebPreferencesInternalDebugFeatures%cpp WebPreferencesKeys%h WebPreferencesKeys%cpp WebPreferencesStoreDefaultsMap%cpp : $(WebKit2)/Scripts/GeneratePreferences.rb $(WEB_PREFERENCES_TEMPLATES) $(WebKit2)/Shared/WebPreferences.yaml
 	$(RUBY) $< --input $(WebKit2)/Shared/WebPreferences.yaml
 

@@ -267,8 +267,8 @@
 #endif
 
 #if ENABLE(WEB_AUTHN)
-#include "AuthenticatorManager.h"
-#include "MockCredentialsMessenger.h"
+#include "AuthenticatorCoordinator.h"
+#include "MockAuthenticatorCoordinator.h"
 #endif
 
 using JSC::CallData;
@@ -549,8 +549,11 @@ Internals::Internals(Document& document)
 #endif
 
 #if ENABLE(WEB_AUTHN)
-    m_mockCredentialsMessenger = std::make_unique<MockCredentialsMessenger>(*this);
-    AuthenticatorManager::singleton().setMessenger(*m_mockCredentialsMessenger);
+    if (document.page()) {
+        auto mockAuthenticatorCoordinator = std::make_unique<MockAuthenticatorCoordinator>();
+        m_mockAuthenticatorCoordinator = makeWeakPtr(mockAuthenticatorCoordinator.get());
+        document.page()->authenticatorCoordinator().setClient(WTFMove(mockAuthenticatorCoordinator));
+    }
 #endif
 }
 
@@ -1386,6 +1389,9 @@ void Internals::emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection& connect
 
 void Internals::useMockRTCPeerConnectionFactory(const String& testCase)
 {
+    // FIXME: We should upgrade mocks to support unified plan APIs, until then use plan B in tests using mock.
+
+    ASSERT(!RuntimeEnabledFeatures::sharedFeatures().webRTCUnifiedPlanEnabled());
     if (!LibWebRTCProvider::webRTCAvailable())
         return;
 
@@ -4617,9 +4623,9 @@ MockPaymentCoordinator& Internals::mockPaymentCoordinator() const
 #endif
 
 #if ENABLE(WEB_AUTHN)
-MockCredentialsMessenger& Internals::mockCredentialsMessenger() const
+MockAuthenticatorCoordinator& Internals::mockAuthenticatorCoordinator() const
 {
-    return *m_mockCredentialsMessenger;
+    return *m_mockAuthenticatorCoordinator;
 }
 #endif
 
@@ -4709,7 +4715,7 @@ void Internals::notifyResourceLoadObserver()
     ResourceLoadObserver::shared().notifyObserver();
 }
 
-unsigned long Internals::primaryScreenDisplayID()
+unsigned Internals::primaryScreenDisplayID()
 {
 #if PLATFORM(MAC)
     return WebCore::primaryScreenDisplayID();

@@ -33,6 +33,8 @@
 
 #if ENABLE(WEB_RTC)
 
+#include "RuntimeEnabledFeatures.h"
+
 namespace WebCore {
 
 Ref<RTCRtpSender> RTCRtpSender::create(Ref<MediaStreamTrack>&& track, Vector<String>&& mediaStreamIds, std::unique_ptr<RTCRtpSenderBackend>&& backend)
@@ -48,11 +50,11 @@ Ref<RTCRtpSender> RTCRtpSender::create(String&& trackKind, Vector<String>&& medi
 }
 
 RTCRtpSender::RTCRtpSender(String&& trackKind, Vector<String>&& mediaStreamIds, std::unique_ptr<RTCRtpSenderBackend>&& backend)
-    : RTCRtpSenderReceiverBase()
-    , m_trackKind(WTFMove(trackKind))
+    : m_trackKind(WTFMove(trackKind))
     , m_mediaStreamIds(WTFMove(mediaStreamIds))
     , m_backend(WTFMove(backend))
 {
+    ASSERT(!RuntimeEnabledFeatures::sharedFeatures().webRTCUnifiedPlanEnabled() || m_backend);
 }
 
 void RTCRtpSender::setTrackToNull()
@@ -77,7 +79,7 @@ void RTCRtpSender::setTrack(Ref<MediaStreamTrack>&& track)
     m_track = WTFMove(track);
 }
 
-void RTCRtpSender::replaceTrack(RefPtr<MediaStreamTrack>&& withTrack, DOMPromiseDeferred<void>&& promise)
+void RTCRtpSender::replaceTrack(ScriptExecutionContext& context, RefPtr<MediaStreamTrack>&& withTrack, DOMPromiseDeferred<void>&& promise)
 {
     if (isStopped()) {
         promise.reject(InvalidStateError);
@@ -89,7 +91,7 @@ void RTCRtpSender::replaceTrack(RefPtr<MediaStreamTrack>&& withTrack, DOMPromise
         return;
     }
 
-    m_backend->replaceTrack(*this, WTFMove(withTrack), WTFMove(promise));
+    m_backend->replaceTrack(context, *this, WTFMove(withTrack), WTFMove(promise));
 }
 
 RTCRtpParameters RTCRtpSender::getParameters()
@@ -97,6 +99,15 @@ RTCRtpParameters RTCRtpSender::getParameters()
     if (isStopped())
         return { };
     return m_backend->getParameters();
+}
+
+void RTCRtpSender::setParameters(const RTCRtpParameters& parameters, DOMPromiseDeferred<void>&& promise)
+{
+    if (isStopped()) {
+        promise.reject(InvalidStateError);
+        return;
+    }
+    return m_backend->setParameters(parameters, WTFMove(promise));
 }
 
 } // namespace WebCore

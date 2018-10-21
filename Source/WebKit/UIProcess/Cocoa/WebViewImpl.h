@@ -59,6 +59,10 @@ OBJC_CLASS WKWindowVisibilityObserver;
 OBJC_CLASS _WKRemoteObjectRegistry;
 OBJC_CLASS _WKThumbnailView;
 
+#if WK_API_ENABLED
+OBJC_CLASS WKShareSheet;
+#endif
+
 #if HAVE(TOUCH_BAR)
 OBJC_CLASS NSCandidateListTouchBarItem;
 OBJC_CLASS NSCustomTouchBarItem;
@@ -73,6 +77,10 @@ namespace API {
 class HitTestResult;
 class Object;
 class PageConfiguration;
+}
+
+namespace WebCore {
+struct ShareDataWithParsedURL;
 }
 
 @protocol WebViewImplDelegate
@@ -313,9 +321,12 @@ public:
     id validRequestorForSendAndReturnTypes(NSString *sendType, NSString *returnType);
     void centerSelectionInVisibleArea();
     void selectionDidChange();
+    
     void didBecomeEditable();
     void updateFontPanelIfNeeded();
-    void changeFontFromFontPanel();
+    void changeFontFromFontManager();
+    void changeFontAttributesFromSender(id);
+    void changeFontColorFromSender(id);
     bool validateUserInterfaceItem(id <NSValidatedUserInterfaceItem>);
     void setEditableElementIsFocused(bool);
 
@@ -410,6 +421,9 @@ public:
 
     void setInspectorAttachmentView(NSView *);
     NSView *inspectorAttachmentView();
+    
+    void showShareSheet(const WebCore::ShareDataWithParsedURL&, WTF::CompletionHandler<void(bool)>&&, WKWebView *);
+    void shareSheetDidDismiss(WKShareSheet *);
 
     _WKRemoteObjectRegistry *remoteObjectRegistry();
 
@@ -544,6 +558,10 @@ public:
     NSTouchBar *currentTouchBar() const { return m_currentTouchBar.get(); }
     NSCandidateListTouchBarItem *candidateListTouchBarItem() const;
 #if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+    bool isPictureInPictureActive();
+    void togglePictureInPicture();
+    void updateMediaPlaybackControlsManager();
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     AVTouchBarScrubber *mediaPlaybackControlsView() const;
 #else
@@ -558,6 +576,8 @@ public:
 
     void updateTouchBarAndRefreshTextBarIdentifiers();
     void setIsCustomizingTouchBar(bool isCustomizingTouchBar) { m_isCustomizingTouchBar = isCustomizingTouchBar; };
+
+    bool canTogglePictureInPicture();
 #endif // HAVE(TOUCH_BAR)
 
     bool beginBackSwipeForTesting();
@@ -682,6 +702,10 @@ private:
 
 #if ENABLE(FULLSCREEN_API)
     RetainPtr<WKFullScreenWindowController> m_fullScreenWindowController;
+#endif
+    
+#if WK_API_ENABLED
+    RetainPtr<WKShareSheet> _shareSheet;
 #endif
 
     RetainPtr<WKWindowVisibilityObserver> m_windowVisibilityObserver;

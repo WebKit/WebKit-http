@@ -27,6 +27,7 @@
 
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 
+#include "IntSizeHash.h"
 #include "OrientationNotifier.h"
 #include "RealtimeMediaSource.h"
 #include <wtf/text/StringHash.h>
@@ -72,7 +73,7 @@ private:
     void shutdownCaptureSession();
 
     const RealtimeMediaSourceCapabilities& capabilities() const final;
-    void applySizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
+    void setSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
     void setFrameRate(double);
     const RealtimeMediaSourceSettings& settings() const final;
     void startProducingData() final;

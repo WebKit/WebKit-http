@@ -77,21 +77,23 @@ void Editor::showColorPanel()
     [[NSApplication sharedApplication] orderFrontColorPanel:nil];
 }
 
-void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText, MailBlockquoteHandling mailBlockquoteHandling)
+void Editor::pasteWithPasteboard(Pasteboard* pasteboard, OptionSet<PasteOption> options)
 {
     RefPtr<Range> range = selectedRange();
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     // FIXME: How can this hard-coded pasteboard name be right, given that the passed-in pasteboard has a name?
     client()->setInsertionPasteboard(NSGeneralPboard);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     bool chosePlainText;
-    RefPtr<DocumentFragment> fragment = webContentFromPasteboard(*pasteboard, *range, allowPlainText, chosePlainText);
+    RefPtr<DocumentFragment> fragment = webContentFromPasteboard(*pasteboard, *range, options.contains(PasteOption::AllowPlainText), chosePlainText);
+
+    if (fragment && options.contains(PasteOption::AsQuotation))
+        quoteFragmentForPasting(*fragment);
 
     if (fragment && shouldInsertFragment(*fragment, range.get(), EditorInsertAction::Pasted))
-        pasteAsFragment(fragment.releaseNonNull(), canSmartReplaceWithPasteboard(*pasteboard), false, mailBlockquoteHandling);
+        pasteAsFragment(fragment.releaseNonNull(), canSmartReplaceWithPasteboard(*pasteboard), false, options.contains(PasteOption::IgnoreMailBlockquote) ? MailBlockquoteHandling::IgnoreBlockquote : MailBlockquoteHandling::RespectBlockquote );
 
     client()->setInsertionPasteboard(String());
 }
@@ -111,18 +113,17 @@ void Editor::takeFindStringFromSelection()
 
     Vector<String> types;
     types.append(String(legacyStringPasteboardType()));
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     platformStrategies()->pasteboardStrategy()->setTypes(types, NSFindPboard);
     platformStrategies()->pasteboardStrategy()->setStringForType(m_frame.displayStringModifiedByEncoding(selectedTextForDataTransfer()), legacyStringPasteboardType(), NSFindPboard);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
-void Editor::readSelectionFromPasteboard(const String& pasteboardName, MailBlockquoteHandling mailBlockquoteHandling)
+void Editor::readSelectionFromPasteboard(const String& pasteboardName)
 {
     Pasteboard pasteboard(pasteboardName);
     if (m_frame.selection().selection().isContentRichlyEditable())
-        pasteWithPasteboard(&pasteboard, true, mailBlockquoteHandling);
+        pasteWithPasteboard(&pasteboard, { PasteOption::AllowPlainText });
     else
         pasteAsPlainTextWithPasteboard(pasteboard);
 }
@@ -169,11 +170,10 @@ void Editor::replaceNodeFromPasteboard(Node* node, const String& pasteboardName)
         return;
     }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     // FIXME: How can this hard-coded pasteboard name be right, given that the passed-in pasteboard has a name?
     client()->setInsertionPasteboard(NSGeneralPboard);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     bool chosePlainText;
     if (RefPtr<DocumentFragment> fragment = webContentFromPasteboard(pasteboard, *range, true, chosePlainText)) {
@@ -277,27 +277,6 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
     pasteboardImage.resourceMIMEType = cachedImage->response().mimeType();
 
     pasteboard.write(pasteboardImage);
-}
-
-// FIXME: Should give this function a name that makes it clear it adds resources to the document loader as a side effect.
-// Or refactor so it does not do that.
-RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard, Range& context, bool allowPlainText, bool& chosePlainText)
-{
-    WebContentReader reader(m_frame, context, allowPlainText);
-    pasteboard.read(reader);
-    chosePlainText = reader.madeFragmentFromPlainText;
-    return WTFMove(reader.fragment);
-}
-
-void Editor::applyFontStyles(const String& fontFamily, double fontSize, unsigned fontTraits)
-{
-    auto& cssValuePool = CSSValuePool::singleton();
-    Ref<MutableStyleProperties> style = MutableStyleProperties::create();
-    style->setProperty(CSSPropertyFontFamily, cssValuePool.createFontFamilyValue(fontFamily));
-    style->setProperty(CSSPropertyFontStyle, (fontTraits & NSFontItalicTrait) ? CSSValueItalic : CSSValueNormal);
-    style->setProperty(CSSPropertyFontWeight, (fontTraits & NSFontBoldTrait) ? CSSValueBold : CSSValueNormal);
-    style->setProperty(CSSPropertyFontSize, cssValuePool.createValue(fontSize, CSSPrimitiveValue::CSS_PX));
-    applyStyleToSelection(style.ptr(), EditActionSetFont);
 }
 
 } // namespace WebCore

@@ -53,8 +53,6 @@
 #import <WebCore/Device.h>
 #endif
 
-using namespace WebCore;
-
 template<typename T> class LazyInitialized {
 public:
     typedef typename WTF::GetPtrHelper<T>::PtrType PtrType;
@@ -238,7 +236,7 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     _systemPreviewEnabled = NO;
 #endif // PLATFORM(IOS)
 
-    _mediaContentTypesRequiringHardwareSupport = Settings::defaultMediaContentTypesRequiringHardwareSupport();
+    _mediaContentTypesRequiringHardwareSupport = WebCore::Settings::defaultMediaContentTypesRequiringHardwareSupport();
     _allowMediaContentTypesRequiringHardwareSupportAsFallback = YES;
 
     _colorFilterEnabled = NO;
@@ -500,8 +498,7 @@ static NSString *defaultApplicationNameForUserAgent()
     return handler ? static_cast<WebKit::WebURLSchemeHandlerCocoa*>(handler.get())->apiHandler() : nil;
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 
 - (_WKWebsiteDataStore *)_websiteDataStore
 {
@@ -513,7 +510,7 @@ static NSString *defaultApplicationNameForUserAgent()
     self.websiteDataStore = websiteDataStore ? websiteDataStore->_dataStore.get() : nullptr;
 }
 
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 #if PLATFORM(IOS)
 - (WKWebViewContentProviderRegistry *)_contentProviderRegistry

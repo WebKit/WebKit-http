@@ -222,3 +222,7 @@ WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const IntPoint&);
 
 } // namespace WebCore
 
+namespace WTF {
+template<> struct DefaultHash<WebCore::IntPoint>;
+template<> struct HashTraits<WebCore::IntPoint>;
+}

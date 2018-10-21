@@ -38,10 +38,10 @@
 #include "PaymentCurrencyAmount.h"
 #include "PaymentDetailsInit.h"
 #include "PaymentHandler.h"
+#include "PaymentMethodChangeEvent.h"
 #include "PaymentMethodData.h"
 #include "PaymentOptions.h"
 #include "PaymentRequestUpdateEvent.h"
-#include "PaymentResponse.h"
 #include "ScriptController.h"
 #include <JavaScriptCore/JSONObject.h>
 #include <JavaScriptCore/ThrowScope.h>
@@ -552,10 +552,14 @@ void PaymentRequest::shippingOptionChanged(const String& shippingOption)
     });
 }
 
-void PaymentRequest::paymentMethodChanged()
+void PaymentRequest::paymentMethodChanged(const String& methodName, PaymentMethodChangeEvent::MethodDetailsFunction&& methodDetailsFunction)
 {
-    whenDetailsSettled([this, protectedThis = makeRefPtr(this)] {
-        m_activePaymentHandler->detailsUpdated(UpdateReason::PaymentMethodChanged, { });
+    whenDetailsSettled([this, protectedThis = makeRefPtr(this), methodName, methodDetailsFunction = WTFMove(methodDetailsFunction)]() mutable {
+        auto& eventName = eventNames().paymentmethodchangeEvent;
+        if (hasEventListeners(eventName))
+            dispatchEvent(PaymentMethodChangeEvent::create(eventName, *this, methodName, WTFMove(methodDetailsFunction)));
+        else
+            m_activePaymentHandler->detailsUpdated(UpdateReason::PaymentMethodChanged, { });
     });
 }
 
@@ -678,14 +682,13 @@ void PaymentRequest::whenDetailsSettled(std::function<void()>&& callback)
     });
 }
 
-void PaymentRequest::accept(const String& methodName, JSC::Strong<JSC::JSObject>&& details, Ref<PaymentAddress>&& shippingAddress, const String& payerName, const String& payerEmail, const String& payerPhone)
+void PaymentRequest::accept(const String& methodName, PaymentResponse::DetailsFunction&& detailsFunction, Ref<PaymentAddress>&& shippingAddress, const String& payerName, const String& payerEmail, const String& payerPhone)
 {
     ASSERT(m_state == State::Interactive);
 
-    auto response = PaymentResponse::create(*this);
+    auto response = PaymentResponse::create(*this, WTFMove(detailsFunction));
     response->setRequestId(m_details.id);
     response->setMethodName(methodName);
-    response->setDetails(WTFMove(details));
 
     if (m_options.requestShipping) {
         response->setShippingAddress(shippingAddress.ptr());

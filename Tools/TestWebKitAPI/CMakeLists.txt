@@ -123,6 +123,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Lock.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Logger.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/MD5.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Markable.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/MathExtras.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/MediaTime.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/MetaAllocator.cpp
@@ -236,21 +237,12 @@ if (ENABLE_WEBKIT)
     endif ()
 endif ()
 
-if (WIN32)
-    add_definitions(-DGTEST_LINKED_AS_SHARED_LIBRARY=0)
-else ()
-    add_definitions(-DGTEST_LINKED_AS_SHARED_LIBRARY=1)
-endif ()
+get_property(gtest_DEFINITIONS GLOBAL PROPERTY gtest_DEFINITIONS)
 
-add_definitions(-DGTEST_HAS_RTTI=0
+add_definitions(
+    ${gtest_DEFINITIONS}
     -DTEST_WEBKIT2_RESOURCES_DIR=\"${TESTWEBKITAPI_DIR}/Tests/WebKit\"
 )
-
-# FIXME: This works around compatibility problems in the old version of the third-pary
-# googletest source code checkout. It should be removed once we upgrade to a newer version.
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    add_definitions(-DGTEST_HAS_TR1_TUPLE=0)
-endif ()
 
 add_executable(TestWTF
     ${test_main_SOURCES}
@@ -275,12 +267,6 @@ if (COMPILER_IS_GCC_OR_CLANG)
                                         -Wno-sign-compare
                                         -Wno-undef
                                         -Wno-unused-parameter)
-endif ()
-
-# FIXME: This works around compatibility problems in the old version of the third-pary
-# googletest source code checkout. It should be removed once we upgrade to a newer version.
-if (COMPILER_IS_CLANG)
-    add_definitions(-DGTEST_HAS_TR1_TUPLE=0)
 endif ()
 
 if (ENABLE_WEBKIT)

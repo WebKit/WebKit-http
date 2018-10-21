@@ -26,6 +26,7 @@
 #pragma once
 
 #include <algorithm>
+#include <wtf/Forward.h>
 
 #if PLATFORM(MAC) && defined __OBJC__
 #import <Foundation/NSGeometry.h>
@@ -226,3 +227,7 @@ WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const IntSize&);
 
 } // namespace WebCore
 
+namespace WTF {
+template<> struct DefaultHash<WebCore::IntSize>;
+template<> struct HashTraits<WebCore::IntSize>;
+}

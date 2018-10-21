@@ -1387,14 +1387,16 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      *                   WebKitPolicyDecisionType type)
      * {
      *     switch (type) {
-     *     case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION:
+     *     case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION: {
      *         WebKitNavigationPolicyDecision *navigation_decision = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
      *         /<!-- -->* Make a policy decision here. *<!-- -->/
      *         break;
-     *     case WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION:
+     *     }
+     *     case WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION: {
      *         WebKitNavigationPolicyDecision *navigation_decision = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
      *         /<!-- -->* Make a policy decision here. *<!-- -->/
      *         break;
+     *     }
      *     case WEBKIT_POLICY_DECISION_TYPE_RESPONSE:
      *         WebKitResponsePolicyDecision *response = WEBKIT_RESPONSE_POLICY_DECISION (decision);
      *         /<!-- -->* Make a policy decision here. *<!-- -->/
@@ -2082,8 +2084,7 @@ void webkitWebViewRunAsModal(WebKitWebView* webView)
 
 #if PLATFORM(GTK)
 // This is to suppress warnings about gdk_threads_leave and gdk_threads_enter.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     gdk_threads_leave();
 #endif
 
@@ -2091,7 +2092,7 @@ void webkitWebViewRunAsModal(WebKitWebView* webView)
 
 #if PLATFORM(GTK)
     gdk_threads_enter();
-#pragma GCC diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 #endif
 }
 

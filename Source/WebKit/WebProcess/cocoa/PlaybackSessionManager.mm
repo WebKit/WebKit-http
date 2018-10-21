@@ -154,6 +154,12 @@ void PlaybackSessionInterfaceContext::mutedChanged(bool muted)
         m_manager->mutedChanged(m_contextId, muted);
 }
 
+void PlaybackSessionInterfaceContext::isPictureInPictureSupportedChanged(bool supported)
+{
+    if (m_manager)
+        m_manager->isPictureInPictureSupportedChanged(m_contextId, supported);
+}
+
 void PlaybackSessionInterfaceContext::volumeChanged(double volume)
 {
     if (m_manager)
@@ -402,6 +408,11 @@ void PlaybackSessionManager::volumeChanged(uint64_t contextId, double volume)
     m_page->send(Messages::PlaybackSessionManagerProxy::VolumeChanged(contextId, volume));
 }
 
+void PlaybackSessionManager::isPictureInPictureSupportedChanged(uint64_t contextId, bool supported)
+{
+    m_page->send(Messages::PlaybackSessionManagerProxy::PictureInPictureSupportedChanged(contextId, supported));
+}
+
 #pragma mark Messages from PlaybackSessionManagerProxy:
 
 void PlaybackSessionManager::play(uint64_t contextId)
@@ -505,6 +516,12 @@ void PlaybackSessionManager::setVolume(uint64_t contextId, double volume)
 {
     UserGestureIndicator indicator(ProcessingUserGesture);
     ensureModel(contextId).setVolume(volume);
+}
+
+void PlaybackSessionManager::setPlayingOnSecondScreen(uint64_t contextId, bool value)
+{
+    UserGestureIndicator indicator(ProcessingUserGesture);
+    ensureModel(contextId).setPlayingOnSecondScreen(value);
 }
 
 } // namespace WebKit

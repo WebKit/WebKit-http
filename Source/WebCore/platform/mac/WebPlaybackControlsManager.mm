@@ -34,8 +34,7 @@
 #import <wtf/SoftLinking.h>
 #import <wtf/text/WTFString.h>
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnullability-completeness"
+IGNORE_CLANG_WARNINGS_BEGIN("nullability-completeness")
 SOFT_LINK_FRAMEWORK(AVKit)
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 SOFT_LINK_CLASS_OPTIONAL(AVKit, AVTouchBarMediaSelectionOption)
@@ -338,15 +337,13 @@ static RetainPtr<NSMutableArray> mediaSelectionOptions(const Vector<MediaSelecti
     return NO;
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 - (void)togglePictureInPicture
 {
     if (_playbackSessionInterfaceMac && _playbackSessionInterfaceMac->playbackSessionModel())
         _playbackSessionInterfaceMac->playbackSessionModel()->togglePictureInPicture();
 }
-#endif
 
-#pragma clang diagnostic pop
+IGNORE_CLANG_WARNINGS_END
 
 @end
 

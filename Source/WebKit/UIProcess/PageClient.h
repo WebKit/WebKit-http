@@ -36,6 +36,7 @@
 #include <WebCore/UserInterfaceLayoutDirection.h>
 #include <WebCore/ValidationBubble.h>
 #include <wtf/Forward.h>
+#include <wtf/WeakPtr.h>
 
 #if PLATFORM(COCOA)
 #include "LayerRepresentation.h"
@@ -142,7 +143,7 @@ class InstallMissingMediaPluginsPermissionRequest;
 struct ColorSpaceData;
 #endif
 
-class PageClient {
+class PageClient : public CanMakeWeakPtr<PageClient> {
 public:
     virtual ~PageClient() { }
 
@@ -358,10 +359,10 @@ public:
     virtual void disableDoubleTapGesturesDuringTapIfNecessary(uint64_t requestID) = 0;
     virtual double minimumZoomScale() const = 0;
     virtual WebCore::FloatRect documentRect() const = 0;
-    virtual void overflowScrollViewWillStartPanGesture() = 0;
-    virtual void overflowScrollViewDidScroll() = 0;
-    virtual void overflowScrollWillStartScroll() = 0;
-    virtual void overflowScrollDidEndScroll() = 0;
+    virtual void scrollingNodeScrollViewWillStartPanGesture() = 0;
+    virtual void scrollingNodeScrollViewDidScroll() = 0;
+    virtual void scrollingNodeScrollWillStartScroll() = 0;
+    virtual void scrollingNodeScrollDidEndScroll() = 0;
     virtual Vector<String> mimeTypesWithCustomContentProviders() = 0;
 
     virtual void showInspectorHighlight(const WebCore::Highlight&) = 0;

@@ -151,6 +151,12 @@ void PlaybackSessionModelContext::setVolume(double volume)
         m_manager->setVolume(m_contextId, volume);
 }
 
+void PlaybackSessionModelContext::setPlayingOnSecondScreen(bool value)
+{
+    if (m_manager)
+        m_manager->setPlayingOnSecondScreen(m_contextId, value);
+}
+
 void PlaybackSessionModelContext::playbackStartedTimeChanged(double playbackStartedTime)
 {
     m_playbackStartedTime = playbackStartedTime;
@@ -268,6 +274,13 @@ void PlaybackSessionModelContext::volumeChanged(double volume)
     m_volume = volume;
     for (auto* client : m_clients)
         client->volumeChanged(volume);
+}
+
+void PlaybackSessionModelContext::pictureInPictureSupportedChanged(bool supported)
+{
+    m_pictureInPictureSupported = supported;
+    for (auto* client : m_clients)
+        client->isPictureInPictureSupportedChanged(supported);
 }
 
 void PlaybackSessionModelContext::pictureInPictureActiveChanged(bool active)
@@ -472,6 +485,11 @@ void PlaybackSessionManagerProxy::rateChanged(uint64_t contextId, bool isPlaying
     ensureModel(contextId).rateChanged(isPlaying, rate);
 }
 
+void PlaybackSessionManagerProxy::pictureInPictureSupportedChanged(uint64_t contextId, bool supported)
+{
+    ensureModel(contextId).pictureInPictureSupportedChanged(supported);
+}
+
 void PlaybackSessionManagerProxy::pictureInPictureActiveChanged(uint64_t contextId, bool active)
 {
     ensureModel(contextId).pictureInPictureActiveChanged(active);
@@ -569,6 +587,12 @@ void PlaybackSessionManagerProxy::setMuted(uint64_t contextId, bool muted)
 void PlaybackSessionManagerProxy::setVolume(uint64_t contextId, double volume)
 {
     m_page->send(Messages::PlaybackSessionManager::SetVolume(contextId, volume), m_page->pageID());
+}
+
+void PlaybackSessionManagerProxy::setPlayingOnSecondScreen(uint64_t contextId, bool value)
+{
+    if (m_page)
+        m_page->send(Messages::PlaybackSessionManager::SetPlayingOnSecondScreen(contextId, value), m_page->pageID());
 }
 
 void PlaybackSessionManagerProxy::requestControlledElementID()

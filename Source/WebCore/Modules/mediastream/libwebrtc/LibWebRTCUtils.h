@@ -30,13 +30,24 @@
 
 namespace webrtc {
 struct RtpParameters;
+struct RtpTransceiverInit;
+
+enum class RtpTransceiverDirection;
 }
 
 namespace WebCore {
 
 struct RTCRtpParameters;
+struct RTCRtpTransceiverInit;
 
-RTCRtpParameters fillRtpParameters(const webrtc::RtpParameters&);
+enum class RTCRtpTransceiverDirection;
+
+RTCRtpParameters toRTCRtpParameters(const webrtc::RtpParameters&);
+webrtc::RtpParameters fromRTCRtpParameters(const RTCRtpParameters&);
+
+RTCRtpTransceiverDirection toRTCRtpTransceiverDirection(webrtc::RtpTransceiverDirection);
+webrtc::RtpTransceiverDirection fromRTCRtpTransceiverDirection(RTCRtpTransceiverDirection);
+webrtc::RtpTransceiverInit fromRtpTransceiverInit(const RTCRtpTransceiverInit&);
 
 inline String fromStdString(const std::string& value)
 {

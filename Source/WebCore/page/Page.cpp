@@ -24,6 +24,7 @@
 #include "AlternativeTextClient.h"
 #include "ApplicationCacheStorage.h"
 #include "ApplicationStateChangeListener.h"
+#include "AuthenticatorCoordinator.h"
 #include "BackForwardClient.h"
 #include "BackForwardController.h"
 #include "CSSAnimationController.h"
@@ -242,7 +243,9 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_userContentProvider(*WTFMove(pageConfiguration.userContentProvider))
     , m_visitedLinkStore(*WTFMove(pageConfiguration.visitedLinkStore))
     , m_sessionID(PAL::SessionID::defaultSessionID())
+#if ENABLE(VIDEO)
     , m_playbackControlsManagerUpdateTimer(*this, &Page::playbackControlsManagerUpdateTimerFired)
+#endif
     , m_isUtilityPage(isUtilityPageChromeClient(chrome().client()))
     , m_performanceMonitor(isUtilityPage() ? nullptr : std::make_unique<PerformanceMonitor>(*this))
     , m_lowPowerModeNotifier(std::make_unique<LowPowerModeNotifier>([this](bool isLowPowerModeEnabled) { handleLowModePowerChange(isLowPowerModeEnabled); }))
@@ -254,6 +257,9 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_pageOverlayController(std::make_unique<PageOverlayController>(*this))
 #if ENABLE(APPLE_PAY)
     , m_paymentCoordinator(std::make_unique<PaymentCoordinator>(*pageConfiguration.paymentCoordinatorClient))
+#endif
+#if ENABLE(WEB_AUTHN)
+    , m_authenticatorCoordinator(makeUniqueRef<AuthenticatorCoordinator>(WTFMove(pageConfiguration.authenticatorCoordinatorClient)))
 #endif
 #if ENABLE(APPLICATION_MANIFEST)
     , m_applicationManifest(pageConfiguration.applicationManifest)
@@ -1509,10 +1515,13 @@ void Page::updateIsPlayingMedia(uint64_t sourceElementID)
 
 void Page::schedulePlaybackControlsManagerUpdate()
 {
+#if ENABLE(VIDEO)
     if (!m_playbackControlsManagerUpdateTimer.isActive())
         m_playbackControlsManagerUpdateTimer.startOneShot(0_s);
+#endif
 }
 
+#if ENABLE(VIDEO)
 void Page::playbackControlsManagerUpdateTimerFired()
 {
     if (auto bestMediaElement = HTMLMediaElement::bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose::ControlsManager))
@@ -1520,6 +1529,7 @@ void Page::playbackControlsManagerUpdateTimerFired()
     else
         chrome().client().clearPlaybackControlsManager();
 }
+#endif
 
 void Page::setMuted(MediaProducer::MutedStateFlags muted)
 {

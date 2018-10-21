@@ -683,6 +683,9 @@ fast/selectors/hover-strict.html [ Skip ]
 fast/selectors/not-active-hover-quirks.html [ Skip ]
 fast/selectors/not-active-hover-strict.html [ Skip ]
 fast/shapes/shape-outside-floats/shape-outside-clip-path-selection.html [ Skip ]
+fast/shadow-dom/mouseenter-mouseleave-across-shadow-boundary.html [ Skip ]
+fast/shadow-dom/mouseenter-mouseleave-inside-shadow-tree.html [ Skip ]
+fast/shadow-dom/mouseenter-mouseleave-on-slot-parent.html [ Skip ]
 fast/table/hittest-self-painting.html [ Skip ]
 fast/text/atsui-pointtooffset-calls-cg.html [ Skip ]
 fast/text/atsui-rtl-override-selection.html [ Skip ]
@@ -2648,6 +2651,8 @@ webkit.org/b/163291 media/video-play-require-user-gesture.html
 
 webkit.org/b/163755 imported/w3c/web-platform-tests/css/css-shapes [ Skip ]
 
+webkit.org/b/5991 imported/w3c/web-platform-tests/css/cssom-view/scrolling-quirks-vs-nonquirks.html [ Failure ]
+
 # Variation fonts are not implemented earlier than iOS 11.
 fast/text/variations [ Pass Failure ImageOnlyFailure ]
 animations/font-variations [ Pass Failure ImageOnlyFailure Timeout ]
@@ -3112,6 +3117,7 @@ fast/block/block-only/margin-left-right-sizing-out-of-flow.html [ Failure ]
 fast/block/block-only/margin-left-right-sizing.html [ Failure ]
 fast/block/block-only/margin-sibling-collapse-propagated.html [ Failure ]
 fast/block/block-only/relative-auto-with-parent-offset.html [ Failure ]
+fast/block/block-only/absolute-position-min-max-height.html [ Failure ]
 
 # Datalist
 webkit.org/b/186714 fast/forms/datalist/datalist-show-hide.html [ Skip ]

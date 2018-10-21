@@ -143,6 +143,8 @@ private:
     void updateHandlePauseState(bool);
     bool isHandlePaused() const;
 
+    void updateNetworkLoadMetrics();
+
     // Download
     void writeDataToDownloadFileIfEnabled(const SharedBuffer&);
     void closeDownloadFile();
@@ -195,6 +197,7 @@ private:
 
     CertificateInfo m_certificateInfo;
     NetworkLoadMetrics m_networkLoadMetrics;
+    size_t m_totalReceivedSize { 0 };
 };
 
 } // namespace WebCore

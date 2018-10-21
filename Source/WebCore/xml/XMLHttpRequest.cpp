@@ -343,6 +343,9 @@ ExceptionOr<void> XMLHttpRequest::open(const String& method, const URL& url, boo
     if (isForbiddenMethod(method))
         return Exception { SecurityError };
 
+    if (!url.isValid())
+        return Exception { SyntaxError };
+
     if (!async && scriptExecutionContext()->isDocument()) {
         // Newer functionality is not available to synchronous requests in window contexts, as a spec-mandated
         // attempt to discourage synchronous XHR use. responseType is one such piece of functionality.
@@ -962,8 +965,6 @@ void XMLHttpRequest::didSendData(unsigned long long bytesSent, unsigned long lon
 void XMLHttpRequest::didReceiveResponse(unsigned long, const ResourceResponse& response)
 {
     m_response = response;
-    if (!m_mimeTypeOverride.isEmpty())
-        m_response.setHTTPHeaderField(HTTPHeaderName::ContentType, m_mimeTypeOverride);
 }
 
 static inline bool shouldDecodeResponse(XMLHttpRequest::ResponseType type)
@@ -1023,7 +1024,6 @@ void XMLHttpRequest::didReceiveData(const char* data, int len)
     if (readyState() < HEADERS_RECEIVED)
         changeState(HEADERS_RECEIVED);
 
-    // FIXME: Should we update "Content-Type" header field with m_mimeTypeOverride value in case it has changed since didReceiveResponse?
     if (!m_mimeTypeOverride.isEmpty())
         m_responseEncoding = extractCharsetFromMediaType(m_mimeTypeOverride);
     if (m_responseEncoding.isEmpty())

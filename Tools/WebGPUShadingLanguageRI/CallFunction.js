@@ -28,12 +28,11 @@
 function callFunction(program, name, argumentList)
 {
     let argumentTypes = argumentList.map(argument => argument.type);
-    let funcOrFailures = resolveInlinedFunction(program, name, argumentTypes, true);
-    if (!(funcOrFailures instanceof Func)) {
-        let failures = funcOrFailures;
-        throw new WTypeError("<callFunction>", "Cannot resolve function call " + name + "(" + argumentList + ")" + (failures.length ? "; tried:\n" + failures.join("\n") : ""));
-    }
-    let func = funcOrFailures;
+    let overload = program.globalNameContext.resolveFuncOverload(name, argumentTypes, null, true);
+    if (!overload.func)
+        throw new WTypeError("<callFunction>", "Cannot resolve function call " + name + "(" + argumentList + ")" + (overload.failures.length ? "; tried:\n" + overload.failures.join("\n") : ""));
+
+    const func = overload.func;
     for (let i = 0; i < func.parameters.length; ++i) {
         let type = argumentTypes[i];
         type.visit(new StructLayoutBuilder());

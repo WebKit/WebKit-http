@@ -359,6 +359,9 @@ static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOve
     // For release-logging for <rdar://problem/39281269>.
     MonotonicTime _timeOfRequestForVisibleContentRectUpdate;
     MonotonicTime _timeOfLastVisibleContentRectUpdate;
+
+    NSUInteger _focusPreservationCount;
+    NSUInteger _activeFocusedStateRetainCount;
 #endif
 #if PLATFORM(MAC)
     std::unique_ptr<WebKit::WebViewImpl> _impl;
@@ -431,6 +434,31 @@ static bool shouldAllowSettingAnyXHRHeaderFromFileURLs()
 {
     static bool shouldAllowSettingAnyXHRHeaderFromFileURLs = (WebCore::IOSApplication::isCardiogram() || WebCore::IOSApplication::isNike()) && !linkedOnOrAfter(WebKit::SDKVersion::FirstThatDisallowsSettingAnyXHRHeaderFromFileURLs);
     return shouldAllowSettingAnyXHRHeaderFromFileURLs;
+}
+
+- (void)_incrementFocusPreservationCount
+{
+    ++_focusPreservationCount;
+}
+
+- (void)_decrementFocusPreservationCount
+{
+    if (_focusPreservationCount)
+        --_focusPreservationCount;
+}
+
+- (void)_resetFocusPreservationCount
+{
+    _focusPreservationCount = 0;
+}
+
+- (BOOL)_isRetainingActiveFocusedState
+{
+    // Focus preservation count fulfills the same role as active focus state count.
+    // However, unlike active focus state, it may be reset to 0 without impacting the
+    // behavior of -_retainActiveFocusedState, and it's harmless to invoke
+    // -_decrementFocusPreservationCount after resetting the count to 0.
+    return _focusPreservationCount || _activeFocusedStateRetainCount;
 }
 
 #endif
@@ -1359,6 +1387,8 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 
     FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW)
 
+    FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW(_pasteAsQuotation)
+
     #undef FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW
 
     return [super canPerformAction:action withSender:sender];
@@ -1371,6 +1401,8 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
             return [_contentView targetForActionForWebView:action withSender:sender];
 
     FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW)
+
+    FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW(_pasteAsQuotation)
 
     #undef FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW
 
@@ -3356,7 +3388,17 @@ WEBCORE_COMMAND(yankAndSelect)
 
 - (void)changeFont:(id)sender
 {
-    _impl->changeFontFromFontPanel();
+    _impl->changeFontFromFontManager();
+}
+
+- (void)changeColor:(id)sender
+{
+    _impl->changeFontColorFromSender(sender);
+}
+
+- (void)changeAttributes:(id)sender
+{
+    _impl->changeFontAttributesFromSender(sender);
 }
 
 - (IBAction)startSpeaking:(id)sender
@@ -3999,10 +4041,9 @@ WEBCORE_COMMAND(yankAndSelect)
 
 - (id)_web_superAccessibilityAttributeValue:(NSString *)attribute
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     return [super accessibilityAttributeValue:attribute];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 - (void)_web_superDoCommandBySelector:(SEL)selector
@@ -4225,6 +4266,38 @@ WEBCORE_COMMAND(yankAndSelect)
 {
     _page->setHistoryClient(_navigationState->createHistoryClient());
     _navigationState->setHistoryDelegate(historyDelegate);
+}
+
+- (void)_updateMediaPlaybackControlsManager
+{
+#if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+    _impl->updateMediaPlaybackControlsManager();
+#endif
+}
+
+- (BOOL)_canTogglePictureInPicture
+{
+#if HAVE(TOUCH_BAR)
+    return _impl->canTogglePictureInPicture();
+#else
+    return NO;
+#endif
+}
+
+- (BOOL)_isPictureInPictureActive
+{
+#if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+    return _impl->isPictureInPictureActive();
+#else
+    return NO;
+#endif
+}
+
+- (void)_togglePictureInPicture
+{
+#if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+    _impl->togglePictureInPicture();
+#endif
 }
 
 - (NSURL *)_unreachableURL
@@ -4475,6 +4548,16 @@ WEBCORE_COMMAND(yankAndSelect)
     return wrapper(attachment);
 #else
     return nil;
+#endif
+}
+
+- (void)_pasteAsQuotation:(id)sender
+{
+#if PLATFORM(MAC)
+    _impl->executeEditCommandForSelector(_cmd);
+#else
+    if (self.usesStandardContentView)
+        [_contentView _pasteAsQuotationForWebView:sender];
 #endif
 }
 
@@ -5640,6 +5723,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)_setWindowOcclusionDetectionEnabled:(BOOL)enabled
 {
     _impl->setWindowOcclusionDetectionEnabled(enabled);
+}
+
+- (void)shareSheetDidDismiss:(WKShareSheet *)shareSheet
+{
+    _impl->shareSheetDidDismiss(shareSheet);
 }
 
 - (void)_setOverrideDeviceScaleFactor:(CGFloat)deviceScaleFactor

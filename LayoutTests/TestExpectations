@@ -1892,9 +1892,6 @@ fast/table/colspanMinWidth-vertical.html [ Skip ]
 # Test only works on iOS WK2. webkit.org/b/165535
 fast/forms/range/range-remove-on-drag.html [ Skip ]
 
-# CSSOM View module
-webkit.org/b/5991 imported/w3c/web-platform-tests/css/cssom-view/scrollingElement.html [ Skip ]
-
 # FileAPI
 webkit.org/b/172099 imported/w3c/web-platform-tests/FileAPI/url/url_xmlhttprequest_img.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/FileAPI/url/sandboxed-iframe.html [ Failure ]
@@ -2239,3 +2236,14 @@ webkit.org/b/187762 http/tests/websocket/tests/hybi/websocket-cookie-overwrite-b
 webkit.org/b/187269 [ Debug ] imported/w3c/web-platform-tests/FileAPI/reading-data-section/filereader_abort.html [ Skip ]
 
 webkit.org/b/185308 legacy-animation-engine/animations/combo-transform-translate+scale.html [ Pass Failure ]
+
+fast/gradients/conic-repeating.html [ Skip ]
+fast/gradients/conic.html [ Skip ]
+fast/gradients/conic-off-center.html [ Skip ]
+fast/gradients/conic-center-outside-box.html [ Skip ]
+fast/gradients/conic-extended-stops.html [ Skip ]
+fast/gradients/conic-from-angle.html [ Skip ]
+
+webkit.org/b/187773 http/tests/webAPIStatistics [ Skip ]
+
+webkit.org/b/46008 imported/w3c/web-platform-tests/url/failure.html [ Failure ]

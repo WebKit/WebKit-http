@@ -88,13 +88,19 @@ public:
         float endRadius;
         float aspectRatio; // For elliptical gradient, width / height.
     };
+    
+    struct ConicData {
+        FloatPoint point0;
+        float angleRadians;
+    };
 
-    using Data = Variant<LinearData, RadialData>;
+    using Data = Variant<LinearData, RadialData, ConicData>;
 
-    enum class Type { Linear, Radial };
+    enum class Type { Linear, Radial, Conic };
 
     static Ref<Gradient> create(LinearData&&);
     static Ref<Gradient> create(RadialData&&);
+    static Ref<Gradient> create(ConicData&&);
 
     WEBCORE_EXPORT ~Gradient();
 
@@ -136,6 +142,7 @@ public:
 private:
     Gradient(LinearData&&);
     Gradient(RadialData&&);
+    Gradient(ConicData&&);
 
     PlatformGradient platformGradient();
     void platformInit() { m_gradient = nullptr; }
