@@ -31,7 +31,7 @@
 
 namespace WTF {
 
-std::optional<size_t> memoryFootprint()
+size_t memoryFootprint()
 {
 	image_info info;
 	int32* cookie = NULL;

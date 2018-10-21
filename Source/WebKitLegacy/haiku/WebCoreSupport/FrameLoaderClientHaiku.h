@@ -123,7 +123,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void dispatchDecidePolicyForNewWindowAction(const NavigationAction&,
         const ResourceRequest&, FormState*, const String&, FramePolicyFunction&&) override;
     void dispatchDecidePolicyForNavigationAction(const NavigationAction&,
-                                                 const ResourceRequest&, const WebCore::ResourceResponse&, FormState*, PolicyDecisionMode, FramePolicyFunction&&) override;
+                                                 const ResourceRequest&, const WebCore::ResourceResponse&, FormState*, PolicyDecisionMode, ShouldSkipSafeBrowsingCheck, FramePolicyFunction&&) override;
     void cancelPolicyCheck() override;
 
     void dispatchUnableToImplementPolicy(const ResourceError&) override;

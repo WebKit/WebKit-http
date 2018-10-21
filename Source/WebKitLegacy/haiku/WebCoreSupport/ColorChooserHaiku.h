@@ -70,7 +70,7 @@ public:
         group->SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
 
         if (client.shouldShowSuggestions()) {
-            Vector<Color> colors = client.suggestions();
+            Vector<Color> colors = client.suggestedColors();
 
             if (colors.size() > 0) {
                 BGroupView* swatches = new BGroupView(B_HORIZONTAL);

@@ -222,6 +222,10 @@ void Pasteboard::write(const PasteboardURL& url)
     be_clipboard->Commit();
 }
 
+void Pasteboard::write(const Color&)
+{
+}
+
 void Pasteboard::writeImage(Element&, const URL&, const String&)
 {
     notImplemented();

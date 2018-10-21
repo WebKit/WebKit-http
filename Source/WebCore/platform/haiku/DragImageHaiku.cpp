@@ -187,5 +187,10 @@ DragImageRef createDragImageForLink(Element&, URL& url, const String& inLabel, T
     return 0;
 }
 
+DragImageRef createDragImageForColor(const Color&, const FloatRect&, float, Path&)
+{
+    return nullptr;
+}
+
 } // namespace WebCore
 
