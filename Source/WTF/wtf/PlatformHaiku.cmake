@@ -2,7 +2,9 @@ LIST(APPEND WTF_SOURCES
     generic/WorkQueueGeneric.cpp
     generic/RunLoopGeneric.cpp
     haiku/MainThreadHaiku.cpp
+    haiku/CurrentProcessMemoryStatus.cpp
 	haiku/MemoryFootprintHaiku.cpp
+    linux/MemoryPressureHandlerLinux.cpp
 
     OSAllocatorPosix.cpp
     ThreadingPthreads.cpp

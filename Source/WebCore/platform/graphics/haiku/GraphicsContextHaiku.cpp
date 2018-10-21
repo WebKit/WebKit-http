@@ -588,10 +588,6 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray&
 }
 
 
-void GraphicsContext::updateDocumentMarkerResources()
-{
-}
-
 void GraphicsContext::drawLineForDocumentMarker(const FloatPoint&, float /* width */, DocumentMarkerLineStyle /* style */)
 {
     if (paintingDisabled())
