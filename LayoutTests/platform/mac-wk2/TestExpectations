@@ -59,6 +59,9 @@ fast/misc/valid-primary-screen-displayID.html [ Pass ]
 
 webkit.org/b/187773 http/tests/webAPIStatistics [ Pass ]
 
+webkit.org/b/184569 storage/indexeddb/modern/transactions-stop-on-navigation.html [ Pass Failure ]
+
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -763,6 +766,7 @@ webkit.org/b/185994 [ Debug ] fast/text/user-installed-fonts/shadow-postscript-f
 [ HighSierra+ ] http/tests/resourceLoadStatistics/grandfathering.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html [ Pass ]
+[ HighSierra+ ] http/tests/resourceLoadStatistics/cap-cache-max-age-for-prevalent-resource.html [ Pass ]
 
 # Skipped in general expectations since they only work on iOS and Mac, WK2.
 http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Pass ]
@@ -782,8 +786,6 @@ webkit.org/b/178472 http/tests/resourceLoadStatistics/prevalent-resource-with-us
 webkit.org/b/176881 plugins/js-from-destroy.html [ Pass Failure ]
 
 webkit.org/b/178553 [ HighSierra Release ] imported/w3c/web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/011.html [ Skip ]
-
-webkit.org/b/177501 webrtc/video-mute.html [ Pass Timeout ]
 
 webkit.org/b/165620 [ Sierra ] http/tests/cache/disk-cache/disk-cache-request-headers.html [ Pass Failure ]
 
@@ -871,3 +873,5 @@ imported/w3c/web-platform-tests/payment-request/show-method-postmessage-manual.h
 imported/w3c/web-platform-tests/payment-request/updateWith-method-pmi-handling-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/user-abort-algorithm-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/user-accepts-payment-request-algo-manual.https.html [ Skip ]
+
+webkit.org/b/184204 [ Sierra ] http/wpt/cache-storage/cache-put-keys.https.any.worker.html [ Pass Failure ]

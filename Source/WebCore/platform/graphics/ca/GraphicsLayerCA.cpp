@@ -577,12 +577,12 @@ void GraphicsLayerCA::setReplicatedLayer(GraphicsLayer* layer)
     noteLayerPropertyChanged(ReplicatedLayerChanged);
 }
 
-void GraphicsLayerCA::setReplicatedByLayer(GraphicsLayer* layer)
+void GraphicsLayerCA::setReplicatedByLayer(RefPtr<GraphicsLayer>&& layer)
 {
     if (layer == m_replicaLayer)
         return;
 
-    GraphicsLayer::setReplicatedByLayer(layer);
+    GraphicsLayer::setReplicatedByLayer(WTFMove(layer));
     noteSublayersChanged();
     noteLayerPropertyChanged(ReplicatedLayerChanged);
 }
@@ -1947,7 +1947,7 @@ void GraphicsLayerCA::updateGeometry(float pageScaleFactor, const FloatPoint& po
     FloatSize pixelAlignmentOffset;
 
     // FIXME: figure out if we really need to pixel align the graphics layer here.
-    if (m_client.needsPixelAligment() && !WTF::isIntegral(pageScaleFactor) && m_drawsContent && !m_masksToBounds)
+    if (client().needsPixelAligment() && !WTF::isIntegral(pageScaleFactor) && m_drawsContent && !m_masksToBounds)
         computePixelAlignment(pageScaleFactor, positionRelativeToBase, scaledPosition, scaledAnchorPoint, pixelAlignmentOffset);
 
     // Update position.
@@ -2081,7 +2081,7 @@ void GraphicsLayerCA::updateContentsOpaque(float pageScaleFactor)
     bool contentsOpaque = m_contentsOpaque;
     if (contentsOpaque) {
         float contentsScale = pageScaleFactor * deviceScaleFactor();
-        if (!WTF::isIntegral(contentsScale) && !m_client.paintsOpaquelyAtNonIntegralScales(this))
+        if (!WTF::isIntegral(contentsScale) && !client().paintsOpaquelyAtNonIntegralScales(this))
             contentsOpaque = false;
     }
     
@@ -3568,7 +3568,7 @@ void GraphicsLayerCA::updateContentsScale(float pageScaleFactor)
     float contentsScale = pageScaleFactor * deviceScaleFactor();
 
     if (isPageTiledBackingLayer() && tiledBacking()) {
-        float zoomedOutScale = m_client.zoomedOutPageScaleFactor() * deviceScaleFactor();
+        float zoomedOutScale = client().zoomedOutPageScaleFactor() * deviceScaleFactor();
         tiledBacking()->setZoomedOutContentsScale(zoomedOutScale);
     }
 
@@ -4214,6 +4214,43 @@ double GraphicsLayerCA::backingStoreMemoryEstimate() const
         return 0;
 
     return m_layer->backingStoreBytesPerPixel() * size().width() * m_layer->contentsScale() * size().height() * m_layer->contentsScale();
+}
+
+static String animatedPropertyIDAsString(AnimatedPropertyID property)
+{
+    if (property == AnimatedPropertyTransform)
+        return "transform";
+    if (property == AnimatedPropertyOpacity)
+        return "opacity";
+    if (property == AnimatedPropertyBackgroundColor)
+        return "background-color";
+    if (property == AnimatedPropertyFilter)
+        return "filter";
+    if (property == AnimatedPropertyInvalid)
+        return "invalid";
+#if ENABLE(FILTERS_LEVEL_2)
+    if (property == AnimatedPropertyWebkitBackdropFilter)
+        return "backdrop-filter";
+#endif
+    return "";
+}
+
+Vector<std::pair<String, double>> GraphicsLayerCA::acceleratedAnimationsForTesting() const
+{
+    Vector<std::pair<String, double>> animations;
+
+    if (hasAnimations()) {
+        for (auto it : m_animations->runningAnimations) {
+            auto& propertyAnimations = it.value;
+            size_t numAnimations = propertyAnimations.size();
+            for (size_t i = 0; i < numAnimations; ++i) {
+                const LayerPropertyAnimation& currAnimation = propertyAnimations[i];
+                animations.append({ animatedPropertyIDAsString(currAnimation.m_property), currAnimation.m_animation->speed() });
+            }
+        }
+    }
+
+    return animations;
 }
 
 } // namespace WebCore

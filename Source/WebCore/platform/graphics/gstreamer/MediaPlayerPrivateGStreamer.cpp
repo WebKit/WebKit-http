@@ -1308,9 +1308,12 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
             GRefPtr<GstEvent> event;
             gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
             handleProtectionEvent(event.get());
-        } else if (gst_structure_has_name(structure, "decrypt-key-needed")) {
-            GST_DEBUG("decrypt-key-needed message from %s", GST_MESSAGE_SRC_NAME(message));
-            MediaPlayerPrivateGStreamerBase::dispatchCDMInstance();
+        } else if (gst_structure_has_name(structure, "drm-waiting-for-key")) {
+            GST_DEBUG("drm-waiting-for-key message from %s", GST_MESSAGE_SRC_NAME(message));
+            reportWaitingForKey();
+        } else if (gst_structure_has_name(structure, "drm-cdm-instance-needed")) {
+            GST_DEBUG("drm-cdm-instance-needed message from %s", GST_MESSAGE_SRC_NAME(message));
+            dispatchCDMInstance();
         }
 #endif
         else if (gst_structure_has_name(structure, "http-headers")) {
@@ -2349,9 +2352,28 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaE
     if (parameters.type.isEmpty())
         return result;
 
-    // spec says we should not return "probably" if the codecs string is empty
+    // Spec says we should not return "probably" if the codecs string is empty.
     if (mimeTypeSet().contains(parameters.type.containerType()))
         result = parameters.type.codecs().isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
+
+    auto containerType = parameters.type.containerType();
+    if (containerType == "video/mp4"_s || containerType == "video/webm"_s) {
+        if (mimeTypeSet().contains(containerType)) {
+            GList* videoDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO, GST_RANK_MARGINAL);
+            bool av1DecoderFound = gstRegistryHasElementForMediaType(videoDecoderFactories, "video/x-av1"_s);
+            gst_plugin_feature_list_free(videoDecoderFactories);
+            for (auto& codec : parameters.type.codecs()) {
+                if (codec.startsWith("av01"_s)) {
+                    result = av1DecoderFound ? MediaPlayer::IsSupported : MediaPlayer::IsNotSupported;
+                    break;
+                }
+                if (codec.startsWith("av1"_s)) {
+                    result = MediaPlayer::IsNotSupported;
+                    break;
+                }
+            }
+        }
+    }
 
     return extendedSupportsType(parameters, result);
 }

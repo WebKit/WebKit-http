@@ -74,6 +74,7 @@
 #include "FrameView.h"
 #include "GCObservation.h"
 #include "GridPosition.h"
+#include "HEVCUtilities.h"
 #include "HTMLAnchorElement.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLIFrameElement.h"
@@ -269,6 +270,10 @@
 #if ENABLE(WEB_AUTHN)
 #include "AuthenticatorCoordinator.h"
 #include "MockAuthenticatorCoordinator.h"
+#endif
+
+#if PLATFORM(MAC) && USE(LIBWEBRTC)
+#include <webrtc/sdk/WebKit/VideoProcessingSoftLink.h>
 #endif
 
 using JSC::CallData;
@@ -1058,6 +1063,17 @@ ExceptionOr<bool> Internals::pauseTransitionAtTimeOnPseudoElement(const String& 
         return Exception { InvalidAccessError };
 
     return frame()->animation().pauseTransitionAtTime(*pseudoElement, property, pauseTime);
+}
+
+Vector<Internals::AcceleratedAnimation> Internals::acceleratedAnimationsForElement(Element& element)
+{
+    if (!RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
+        return { };
+
+    Vector<Internals::AcceleratedAnimation> animations;
+    for (auto animationAsPair : element.document().timeline().acceleratedAnimationsForElement(element))
+        animations.append({ animationAsPair.first, animationAsPair.second });
+    return animations;
 }
 
 ExceptionOr<RefPtr<Element>> Internals::pseudoElement(Element& element, const String& pseudoId)
@@ -4722,6 +4738,20 @@ unsigned Internals::primaryScreenDisplayID()
 #else
     return 0;
 #endif
+}
+
+bool Internals::supportsVCPEncoder()
+{
+#if defined(ENABLE_VCP_ENCODER)
+    return ENABLE_VCP_ENCODER;
+#else
+    return false;
+#endif
+}
+
+std::optional<HEVCParameterSet> Internals::parseHEVCCodecParameters(const String& codecString)
+{
+    return WebCore::parseHEVCCodecParameters(codecString);
 }
 
 } // namespace WebCore

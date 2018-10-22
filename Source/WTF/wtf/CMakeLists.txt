@@ -197,6 +197,7 @@ set(WTF_PUBLIC_HEADERS
     ScopedLambda.h
     Seconds.h
     SegmentedVector.h
+    Semaphore.h
     SentinelLinkedList.h
     SetForScope.h
     SharedTask.h
@@ -301,6 +302,7 @@ set(WTF_PUBLIC_HEADERS
     text/StringHasher.h
     text/StringImpl.h
     text/StringOperators.h
+    text/StringToIntegerConversion.h
     text/StringView.h
     text/SymbolImpl.h
     text/SymbolRegistry.h

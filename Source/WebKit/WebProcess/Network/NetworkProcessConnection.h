@@ -65,7 +65,7 @@ public:
     void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void (const Vector<String>& filePaths)>&& completionHandler);
 
 #if ENABLE(INDEXED_DATABASE)
-    WebIDBConnectionToServer* existingIDBConnectionToServerForIdentifier(uint64_t identifier) { return m_webIDBConnectionsByIdentifier.get(identifier); };
+    WebIDBConnectionToServer* existingIDBConnectionToServerForIdentifier(uint64_t identifier) const { return m_webIDBConnectionsByIdentifier.get(identifier); };
     WebIDBConnectionToServer& idbConnectionToServerForSession(PAL::SessionID);
 #endif
 

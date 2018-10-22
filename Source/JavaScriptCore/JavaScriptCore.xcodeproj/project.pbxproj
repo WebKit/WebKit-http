@@ -1274,7 +1274,7 @@
 		99DA00A31BD5993100F4575C /* builtins_generator.py in Headers */ = {isa = PBXBuildFile; fileRef = 99DA009A1BD5992700F4575C /* builtins_generator.py */; settings = {ATTRIBUTES = (Private, ); }; };
 		99DA00A41BD5993100F4575C /* builtins_model.py in Headers */ = {isa = PBXBuildFile; fileRef = 99DA009B1BD5992700F4575C /* builtins_model.py */; settings = {ATTRIBUTES = (Private, ); }; };
 		99DA00A51BD5993100F4575C /* builtins_templates.py in Headers */ = {isa = PBXBuildFile; fileRef = 99DA009C1BD5992700F4575C /* builtins_templates.py */; settings = {ATTRIBUTES = (Private, ); }; };
-		99DA00A61BD5993100F4575C /* builtins.py in Headers */ = {isa = PBXBuildFile; fileRef = 99DA009D1BD5992700F4575C /* builtins.py */; settings = {ATTRIBUTES = (Private, ); }; };
+		99DA00A61BD5993100F4575C /* wkbuiltins.py in Headers */ = {isa = PBXBuildFile; fileRef = 99DA009D1BD5992700F4575C /* wkbuiltins.py */; settings = {ATTRIBUTES = (Private, ); }; };
 		99DA00A71BD5993100F4575C /* builtins_generate_combined_header.py in Headers */ = {isa = PBXBuildFile; fileRef = 99DA009E1BD5992700F4575C /* builtins_generate_combined_header.py */; settings = {ATTRIBUTES = (Private, ); }; };
 		99DA00A81BD5993100F4575C /* builtins_generate_combined_implementation.py in Headers */ = {isa = PBXBuildFile; fileRef = 99DA009F1BD5992700F4575C /* builtins_generate_combined_implementation.py */; settings = {ATTRIBUTES = (Private, ); }; };
 		99DA00A91BD5993100F4575C /* builtins_generate_separate_header.py in Headers */ = {isa = PBXBuildFile; fileRef = 99DA00A01BD5992700F4575C /* builtins_generate_separate_header.py */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1523,6 +1523,7 @@
 		AD2FCC211DB59CB200B3E736 /* WebAssemblyTablePrototype.lut.h in Headers */ = {isa = PBXBuildFile; fileRef = AD2FCC151DB59C5900B3E736 /* WebAssemblyTablePrototype.lut.h */; };
 		AD2FCC2D1DB838FD00B3E736 /* WebAssemblyPrototype.h in Headers */ = {isa = PBXBuildFile; fileRef = AD2FCC271DB838C400B3E736 /* WebAssemblyPrototype.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		AD412B341E7B2E9E008AF157 /* WasmContext.h in Headers */ = {isa = PBXBuildFile; fileRef = AD412B321E7B2E8A008AF157 /* WasmContext.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		7593C898BE714A64BE93A6E7 /* WasmContextInlines.h in Headers */ = {isa = PBXBuildFile; fileRef = A27958D7FA1142B0AC9E364D /* WasmContextInlines.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		AD4252511E5D0E14009D2A97 /* FullCodeOrigin.h in Headers */ = {isa = PBXBuildFile; fileRef = AD4252501E5D0DEB009D2A97 /* FullCodeOrigin.h */; };
 		AD4937C41DDBE6140077C807 /* AbstractModuleRecord.h in Headers */ = {isa = PBXBuildFile; fileRef = AD4937C21DDBE60A0077C807 /* AbstractModuleRecord.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		AD4937C81DDD0AAE0077C807 /* WebAssemblyModuleRecord.h in Headers */ = {isa = PBXBuildFile; fileRef = AD4937C61DDCDCF00077C807 /* WebAssemblyModuleRecord.h */; };
@@ -3266,6 +3267,7 @@
 		43AB26C51C1A52F700D82AE6 /* B3MathExtras.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = B3MathExtras.h; path = b3/B3MathExtras.h; sourceTree = "<group>"; };
 		43C392AA1C3BEB0000241F53 /* AssemblerCommon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AssemblerCommon.h; sourceTree = "<group>"; };
 		43CBA1601CAB67BA00328A5C /* udis86_udint.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = udis86_udint.h; path = disassembler/udis86/udis86_udint.h; sourceTree = "<group>"; };
+		442FBD852149D1E00073519C /* hasher.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; name = hasher.py; path = yarr/hasher.py; sourceTree = "<group>"; };
 		449097EE0F8F81B50076A327 /* FeatureDefines.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = FeatureDefines.xcconfig; sourceTree = "<group>"; };
 		451539B812DC994500EF7AC4 /* Yarr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Yarr.h; path = yarr/Yarr.h; sourceTree = "<group>"; };
 		45E12D8806A49B0F00E9DF84 /* jsc.cpp */ = {isa = PBXFileReference; fileEncoding = 30; indentWidth = 4; lastKnownFileType = sourcecode.cpp.cpp; path = jsc.cpp; sourceTree = "<group>"; tabWidth = 4; };
@@ -3595,7 +3597,7 @@
 		65C6BEE021128C3B006849C3 /* YarrDisassembler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = YarrDisassembler.h; path = yarr/YarrDisassembler.h; sourceTree = "<group>"; };
 		65C7A1710A8EAACB00FA37EA /* JSWrapperObject.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = JSWrapperObject.cpp; sourceTree = "<group>"; };
 		65C7A1720A8EAACB00FA37EA /* JSWrapperObject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = JSWrapperObject.h; sourceTree = "<group>"; };
-		65DA90461F87052A009BC546 /* generateYarrUnicodePropertyTables.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; name = generateYarrUnicodePropertyTables.py; path = Scripts/generateYarrUnicodePropertyTables.py; sourceTree = "<group>"; };
+		65DA90461F87052A009BC546 /* generateYarrUnicodePropertyTables.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; name = generateYarrUnicodePropertyTables.py; path = yarr/generateYarrUnicodePropertyTables.py; sourceTree = "<group>"; };
 		65E866ED0DD59AFA00A2B2A1 /* SourceProvider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SourceProvider.h; sourceTree = "<group>"; };
 		65EA4C99092AF9E20093D800 /* JSLock.cpp */ = {isa = PBXFileReference; fileEncoding = 30; indentWidth = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSLock.cpp; sourceTree = "<group>"; tabWidth = 8; };
 		65EA4C9A092AF9E20093D800 /* JSLock.h */ = {isa = PBXFileReference; fileEncoding = 30; indentWidth = 4; lastKnownFileType = sourcecode.c.h; path = JSLock.h; sourceTree = "<group>"; tabWidth = 8; };
@@ -3946,7 +3948,7 @@
 		99DA009A1BD5992700F4575C /* builtins_generator.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = builtins_generator.py; sourceTree = "<group>"; };
 		99DA009B1BD5992700F4575C /* builtins_model.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = builtins_model.py; sourceTree = "<group>"; };
 		99DA009C1BD5992700F4575C /* builtins_templates.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = builtins_templates.py; sourceTree = "<group>"; };
-		99DA009D1BD5992700F4575C /* builtins.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = builtins.py; sourceTree = "<group>"; };
+		99DA009D1BD5992700F4575C /* wkbuiltins.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = wkbuiltins.py; sourceTree = "<group>"; };
 		99DA009E1BD5992700F4575C /* builtins_generate_combined_header.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = builtins_generate_combined_header.py; sourceTree = "<group>"; };
 		99DA009F1BD5992700F4575C /* builtins_generate_combined_implementation.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = builtins_generate_combined_implementation.py; sourceTree = "<group>"; };
 		99DA00A01BD5992700F4575C /* builtins_generate_separate_header.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = builtins_generate_separate_header.py; sourceTree = "<group>"; };
@@ -4343,8 +4345,8 @@
 		AD2FCC261DB838C400B3E736 /* WebAssemblyPrototype.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = WebAssemblyPrototype.cpp; path = js/WebAssemblyPrototype.cpp; sourceTree = "<group>"; };
 		AD2FCC271DB838C400B3E736 /* WebAssemblyPrototype.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WebAssemblyPrototype.h; path = js/WebAssemblyPrototype.h; sourceTree = "<group>"; };
 		AD2FCC321DC4045300B3E736 /* WasmFormat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WasmFormat.cpp; sourceTree = "<group>"; };
-		AD412B311E7B2E8A008AF157 /* WasmContext.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WasmContext.cpp; sourceTree = "<group>"; };
 		AD412B321E7B2E8A008AF157 /* WasmContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WasmContext.h; sourceTree = "<group>"; };
+		A27958D7FA1142B0AC9E364D /* WasmContextInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WasmContextInlines.h; sourceTree = "<group>"; };
 		AD412B351E7B57C0008AF157 /* AllowMacroScratchRegisterUsageIf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AllowMacroScratchRegisterUsageIf.h; sourceTree = "<group>"; };
 		AD4252501E5D0DEB009D2A97 /* FullCodeOrigin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FullCodeOrigin.h; sourceTree = "<group>"; };
 		AD4252521E5D0F22009D2A97 /* FullCodeOrigin.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FullCodeOrigin.cpp; sourceTree = "<group>"; };
@@ -4403,8 +4405,8 @@
 		BC02E98B0E183E38000F9297 /* ErrorInstance.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ErrorInstance.h; sourceTree = "<group>"; };
 		BC02E9B60E1842FA000F9297 /* JSString.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSString.cpp; sourceTree = "<group>"; };
 		BC02E9B80E184545000F9297 /* GetterSetter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GetterSetter.cpp; sourceTree = "<group>"; };
-		BC0894D50FAFBA2D00001865 /* JSAPIValueWrapper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = JSAPIValueWrapper.cpp; path = ../runtime/JSAPIValueWrapper.cpp; sourceTree = "<group>"; };
-		BC0894D60FAFBA2D00001865 /* JSAPIValueWrapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = JSAPIValueWrapper.h; path = ../runtime/JSAPIValueWrapper.h; sourceTree = "<group>"; };
+		BC0894D50FAFBA2D00001865 /* JSAPIValueWrapper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSAPIValueWrapper.cpp; sourceTree = "<group>"; };
+		BC0894D60FAFBA2D00001865 /* JSAPIValueWrapper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSAPIValueWrapper.h; sourceTree = "<group>"; };
 		BC1166000E1997B1008066DD /* DateInstance.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DateInstance.cpp; sourceTree = "<group>"; };
 		BC1166010E1997B1008066DD /* DateInstance.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DateInstance.h; sourceTree = "<group>"; };
 		BC11667A0E199C05008066DD /* InternalFunction.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InternalFunction.h; sourceTree = "<group>"; };
@@ -6317,8 +6319,8 @@
 				53FD04D21D7AB187003287D3 /* WasmCallingConvention.h */,
 				526AC4B41E977C5D003500E1 /* WasmCodeBlock.cpp */,
 				526AC4B51E977C5D003500E1 /* WasmCodeBlock.h */,
-				AD412B311E7B2E8A008AF157 /* WasmContext.cpp */,
 				AD412B321E7B2E8A008AF157 /* WasmContext.h */,
+				A27958D7FA1142B0AC9E364D /* WasmContextInlines.h */,
 				E36CC9462086314F0051FFD6 /* WasmCreationMode.h */,
 				AD5C36DC1F688B5F000BCAAF /* WasmEmbedder.h */,
 				79DAE2791E03C82200B526AA /* WasmExceptionType.h */,
@@ -7131,6 +7133,7 @@
 				A718F8211178EB4B002465A7 /* create_regex_tables */,
 				65A946131C8E9F2000A7209A /* generateYarrCanonicalizeUnicode */,
 				65DA90461F87052A009BC546 /* generateYarrUnicodePropertyTables.py */,
+				442FBD852149D1E00073519C /* hasher.py */,
 				A57D23EB1891B5540031C7FA /* RegularExpression.cpp */,
 				A57D23EC1891B5540031C7FA /* RegularExpression.h */,
 				451539B812DC994500EF7AC4 /* Yarr.h */,
@@ -7823,11 +7826,11 @@
 			path = Scripts;
 			sourceTree = "<group>";
 		};
-		99DA00971BD598E000F4575C /* builtins */ = {
+		99DA00971BD598E000F4575C /* wkbuiltins */ = {
 			isa = PBXGroup;
 			children = (
 				99DA00991BD5992700F4575C /* __init__.py */,
-				99DA009D1BD5992700F4575C /* builtins.py */,
+				99DA009D1BD5992700F4575C /* wkbuiltins.py */,
 				99DA009E1BD5992700F4575C /* builtins_generate_combined_header.py */,
 				99DA009F1BD5992700F4575C /* builtins_generate_combined_implementation.py */,
 				412952731D2CF6AC00E78B89 /* builtins_generate_internals_wrapper_header.py */,
@@ -7840,7 +7843,7 @@
 				99DA009B1BD5992700F4575C /* builtins_model.py */,
 				99DA009C1BD5992700F4575C /* builtins_templates.py */,
 			);
-			path = builtins;
+			path = wkbuiltins;
 			sourceTree = "<group>";
 		};
 		A513E5CC185FB992007E95AD /* agents */ = {
@@ -8436,7 +8439,7 @@
 				DE26E9031CB5DD0500D2BE82 /* BuiltinExecutableCreator.h in Headers */,
 				A7D801A51880D66E0026C39B /* BuiltinExecutables.h in Headers */,
 				A75EE9B218AAB7E200AAD043 /* BuiltinNames.h in Headers */,
-				99DA00A61BD5993100F4575C /* builtins.py in Headers */,
+				99DA00A61BD5993100F4575C /* wkbuiltins.py in Headers */,
 				99DA00A71BD5993100F4575C /* builtins_generate_combined_header.py in Headers */,
 				99DA00A81BD5993100F4575C /* builtins_generate_combined_implementation.py in Headers */,
 				412952771D2CF6BC00E78B89 /* builtins_generate_internals_wrapper_header.py in Headers */,
@@ -9599,6 +9602,7 @@
 				53FD04D41D7AB291003287D3 /* WasmCallingConvention.h in Headers */,
 				526AC4B71E977C5D003500E1 /* WasmCodeBlock.h in Headers */,
 				AD412B341E7B2E9E008AF157 /* WasmContext.h in Headers */,
+				7593C898BE714A64BE93A6E7 /* WasmContextInlines.h in Headers */,
 				E36CC9472086314F0051FFD6 /* WasmCreationMode.h in Headers */,
 				AD5C36DD1F688B65000BCAAF /* WasmEmbedder.h in Headers */,
 				79DAE27A1E03C82200B526AA /* WasmExceptionType.h in Headers */,

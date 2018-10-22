@@ -463,10 +463,10 @@ def disable_signals(signals=[signal.SIGINT]):
 class WebkitFlatpak:
 
     @staticmethod
-    def load_from_args(args=None):
+    def load_from_args(args=None, add_help=True):
         self = WebkitFlatpak()
 
-        parser = argparse.ArgumentParser(prog="webkit-flatpak")
+        parser = argparse.ArgumentParser(prog="webkit-flatpak", add_help=add_help)
         general = parser.add_argument_group("General")
         general.add_argument('--verbose', action='store_true',
                              help='Show debug message')
@@ -504,7 +504,7 @@ class WebkitFlatpak:
         general.add_argument("-y", "--assumeyes",
                             help="Automatically answer yes for all questions.",
                             action="store_true")
-        general.add_argument('--avalaible', action='store_true', dest="check_avalaible", help='Check if required dependencies are avalaible.'),
+        general.add_argument('--available', action='store_true', dest="check_available", help='Check if required dependencies are available.'),
 
         debugoptions = parser.add_argument_group("Debugging")
         debugoptions.add_argument("--gdb", nargs="?", help="Activate gdb, passing extra args to it if wanted.")
@@ -559,7 +559,7 @@ class WebkitFlatpak:
         self.cache_path = None
         self.app_module = None
         self.flatpak_default_args = []
-        self.check_avalaible = False
+        self.check_available = False
         self.assumeyes = False
 
         # Default application to run in the sandbox
@@ -737,7 +737,7 @@ class WebkitFlatpak:
         if not self.clean_args():
             return 1
 
-        if self.check_avalaible:
+        if self.check_available:
             return 0
 
         if self.clean:
@@ -856,7 +856,7 @@ def run_in_sandbox_if_available(args):
     if not check_flatpak(verbose=False):
         return None
 
-    flatpak_runner = WebkitFlatpak.load_from_args(args)
+    flatpak_runner = WebkitFlatpak.load_from_args(args, add_help=False)
     if not flatpak_runner.clean_args():
         return None
 

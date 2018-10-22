@@ -34,30 +34,38 @@
 
 #include "MediaStreamTrack.h"
 #include "RTCRtpReceiverBackend.h"
+#include "RTCRtpSynchronizationSource.h"
 #include "ScriptWrappable.h"
 
 namespace WebCore {
 
+class PeerConnectionBackend;
 
 class RTCRtpReceiver : public RefCounted<RTCRtpReceiver>, public ScriptWrappable  {
 public:
-    static Ref<RTCRtpReceiver> create(Ref<MediaStreamTrack>&& track, std::unique_ptr<RTCRtpReceiverBackend>&& backend)
+    static Ref<RTCRtpReceiver> create(PeerConnectionBackend& connection, Ref<MediaStreamTrack>&& track, std::unique_ptr<RTCRtpReceiverBackend>&& backend)
     {
-        return adoptRef(*new RTCRtpReceiver(WTFMove(track), WTFMove(backend)));
+        return adoptRef(*new RTCRtpReceiver(connection, WTFMove(track), WTFMove(backend)));
     }
 
     void stop();
 
     void setBackend(std::unique_ptr<RTCRtpReceiverBackend>&& backend) { m_backend = WTFMove(backend); }
     RTCRtpParameters getParameters() { return m_backend ? m_backend->getParameters() : RTCRtpParameters(); }
+    Vector<RTCRtpContributingSource> getContributingSources() const { return m_backend ? m_backend->getContributingSources() : Vector<RTCRtpContributingSource> { }; }
+    Vector<RTCRtpSynchronizationSource> getSynchronizationSources() const { return m_backend ? m_backend->getSynchronizationSources() : Vector<RTCRtpSynchronizationSource> { }; }
 
     MediaStreamTrack& track() { return m_track.get(); }
 
+    RTCRtpReceiverBackend* backend() { return m_backend.get(); }
+    void getStats(Ref<DeferredPromise>&&);
+
 private:
-    RTCRtpReceiver(Ref<MediaStreamTrack>&&, std::unique_ptr<RTCRtpReceiverBackend>&&);
+    RTCRtpReceiver(PeerConnectionBackend&, Ref<MediaStreamTrack>&&, std::unique_ptr<RTCRtpReceiverBackend>&&);
 
     Ref<MediaStreamTrack> m_track;
     std::unique_ptr<RTCRtpReceiverBackend> m_backend;
+    WeakPtr<PeerConnectionBackend> m_connection;
 };
 
 } // namespace WebCore

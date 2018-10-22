@@ -1,3 +1,888 @@
+2018-09-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] fails to build on ARM arches complaining about undefined reference to `epoxy_eglMakeCurrent'
+        https://bugs.webkit.org/show_bug.cgi?id=189556
+
+        Reviewed by Konstantin Tokarev.
+
+        This is only a speculative build fix as I didn't attempt to reproduce. Explicitly link to
+        libepoxy.
+
+        * wpe/backends/CMakeLists.txt:
+
+2018-09-20  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Support testing more hardware special keys
+        https://bugs.webkit.org/show_bug.cgi?id=189793
+
+        Reviewed by Simon Fraser.
+
+        * TestRunnerShared/spi/IOKitSPI.h: Add more SPI constants.
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        (keyCodeForDOMFunctionKey): Extracted out logic from hidUsageCodeForCharacter() to return the
+        key code for the F1, F2, ..., F12 keys and extended the code to compute the key code for the
+        F13, F14, ..., F24 keys.
+        (hidUsageCodeForCharacter): Modified to call keyCodeForDOMFunctionKey().
+
+2018-09-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, remove accidentally-committed debugging changes from flatpakutils script
+
+        Aaaaaah maybe this is why changes are supposed to be reviewed.
+
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak.clean_args):
+
+2018-09-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, manually rollout our switch to master runtime
+
+        Phil wants html5-codecs, which aren't available yet here. Let's switch back to 3.28 in the
+        meantime, where we were already building GStreamer ourselves anyway. But use an updated
+        SDK revision.
+
+        * flatpak/files/httpd-autogen.sh: Added.
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak.clean_args):
+        * flatpak/org.webkit.GTK.yaml:
+        * flatpak/org.webkit.WebKit.yaml:
+        * flatpak/patches/httpd-0001-configure-use-pkg-config-for-PCRE-detection.patch: Added.
+        * flatpak/patches/libgcrypt-0001-Use-pkg-config-to-detect-gpg-error.patch: Added.
+
+2018-09-20  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE][GTK] webkit-flatpak intercepts --help for other commands
+        https://bugs.webkit.org/show_bug.cgi?id=189058
+
+        The approach of run_in_sandbox_if_available is that we basically have the
+        same set of arguments to setup the sandbox (ie. port name, build type, etc...)
+        and we can pass those args first to setup the flatpak launcher object
+        and then to the underlying script. That doesn't work well with the `--help` argument
+        as once processed it 1. prints the help (which make no sense to the user of the calling script)
+        2. exits the app - The solution is to just make sure that `--help` is not used when using
+        flatpakutils from any script that is not `webkit-flatpak` itself.
+
+        Reviewed by Michael Catanzaro.
+
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak.load_from_args):
+        (run_in_sandbox_if_available):
+
+2018-09-20  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed. Add W3C imported tests to the MSEEME watchlist.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2018-09-20  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed. Fix the Streams API watchlist.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2018-09-19  Chris Dumez  <cdumez@apple.com>
+
+        Crash under WebProcessProxy::suspendedPageWasDestroyed(WebKit::SuspendedPageProxy&)
+        https://bugs.webkit.org/show_bug.cgi?id=189721
+        <rdar://problem/44359788>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-09-19  Thomas Denney  <tdenney@apple.com>
+
+        [WHLSL] Improve test suite type safety
+        https://bugs.webkit.org/show_bug.cgi?id=189502
+
+        Reviewed by Myles C. Maxfield.
+
+        Each of the 'makeT' functions now call the relevant cast function on the
+        value before hand. The checkNumber function has also been removed and
+        its uses have been replaced with functions that also check the type.
+        Some of the arithmetic checks have been updated to reflect that the
+        casts happen outside of WHLSL evaluation. Other tests have also been
+        updated to reflect that some values cannot be precisely expressed in
+        32-bit floating point.
+
+        * WebGPUShadingLanguageRI/Casts.js:
+        (castToBool): Added.
+        (castAndCheckValue): Added.
+        (isBitwiseEquivalent): Moved from Intrinsics.js.
+        * WebGPUShadingLanguageRI/Intrinsics.js: Ditto.
+        * WebGPUShadingLanguageRI/SPIRV.html: Update depdencies.
+        * WebGPUShadingLanguageRI/Test.html: Ditto.
+        * WebGPUShadingLanguageRI/Test.js: Update makeT functions to do a cast
+        and check the result. Some tests were also updated to reflect the change
+        in the behavior of these functions.
+        * WebGPUShadingLanguageRI/index.html: Update dependencies.
+
+2018-09-19  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Add optional cap on partitioned cache max age
+        https://bugs.webkit.org/show_bug.cgi?id=189711
+        <rdar://problem/39246837>
+
+        Reviewed by Antti Koivisto and Chris Dumez.
+
+        This change adds infrastructure for layout tests of capped cache max age.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStatisticsCacheMaxAgeCap):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setStatisticsCacheMaxAgeCap):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2018-09-19  Dawei Fenton  <realdawei@apple.com>
+
+       Unreviewed. Update my email and alias in list of contributors.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-09-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Unreviewed, try #3 to fix a typo
+
+        I feel like Charlie Brown, how hard this has been for me....
+
+        * Scripts/run-minibrowser:
+        * Scripts/webkitdirs.pm:
+        (runInFlatpakIfAvailable):
+        (runInFlatpakIfAvailible): Deleted.
+
+2018-09-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Unreviewed, fix that typo in more places
+
+        It got copied into webkitdirs.pm!
+
+        * Scripts/webkitdirs.pm:
+        (runInFlatpakIfAvailible):
+        (runInFlatpakIfAvalaible): Deleted.
+
+2018-09-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Unreviewed, fix a pervasive typo in the webkit-flatpak script
+
+        * flatpak/flatpakutils.py:
+        (WebkitFlatpak.load_from_args):
+        (WebkitFlatpak.__init__):
+        (WebkitFlatpak.run):
+
+2018-09-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Unreviewed, update to latest GNOME SDK
+
+        * flatpak/org.webkit.WebKit.yaml:
+
+2018-09-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r235500.
+
+        Time to switch back to master runtime
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r235114."
+        https://bugs.webkit.org/show_bug.cgi?id=188731
+        https://trac.webkit.org/changeset/235500
+
+2018-09-19  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Add Pablo Saavedra to the list of contributors.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-09-19  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Add support for AV1 decoding
+        https://bugs.webkit.org/show_bug.cgi?id=189647
+
+        Reviewed by Žan Doberšek.
+
+        Add patches required for AV1 decoding support. They're all
+        upstream already and will be shipped in GStreamer 1.16. The aom
+        GStreamer plugin depends on the aom library for which there's no
+        official release yet.
+
+        * gstreamer/jhbuild.modules:
+        * gstreamer/patches/gst-plugins-bad-0001-aomenc-Add-support-for-10-12bit-decoding.patch: Added.
+        * gstreamer/patches/gst-plugins-bad-0002-aomenc-Handle-8-bit_depth-images-with-AOM_IMG_FMT_HI.patch: Added.
+        * gstreamer/patches/gst-plugins-good-0001-qtdemux-Detect-and-expose-CEA-608-708-Closed-Caption.patch: Added. This one is unrelated but an implicit dependency of the next one.
+        * gstreamer/patches/gst-plugins-good-0004-qtdemux-Add-initial-support-for-AV1-demuxing.patch: Added.
+        * gstreamer/patches/gst-plugins-good-0005-qtdemux-Extract-AV1-codec_data-and-put-it-in-the-cap.patch: Added.
+        * gstreamer/patches/gst-plugins-good-0006-qtdemux-Recognize-more-AV1-atoms.patch: Added.
+
+2018-09-18  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Clobbering and building occurs multiple times for iOS Simulator ports
+        https://bugs.webkit.org/show_bug.cgi?id=189702
+        <rdar://problem/44541704>
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager._set_up_run): Move build check and clobbering to run, since set up is
+        run multiple times for iOS simulator.
+        (Manager.run):
+
+2018-09-18  Chris Dumez  <cdumez@apple.com>
+
+        "DidFirstVisuallyNonEmptyLayout" callback does not get called when restoring a page from PageCache
+        https://bugs.webkit.org/show_bug.cgi?id=189681
+        <rdar://problem/44526171>
+
+        Reviewed by Alex Christensen and Zalan Bujtas.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKit/LayoutMilestonesWithAllContentInFrame.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+
+2018-09-18  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Implement mouse event modifiers
+        https://bugs.webkit.org/show_bug.cgi?id=189697
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebKitTestRunner/wpe/EventSenderProxyWPE.cpp:
+        (WTR::wkEventModifiersToWPE):
+        (WTR::EventSenderProxy::mouseDown):
+        (WTR::EventSenderProxy::mouseUp):
+
+2018-09-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use Semaphore and BinarySemaphore instead of dispatch_semaphore_t
+        https://bugs.webkit.org/show_bug.cgi?id=185339
+
+        Reviewed by Mark Lam.
+
+        * TestWebKitAPI/Tests/WTF/SynchronizedFixedQueue.cpp:
+        (TestWebKitAPI::ToUpperConverter::stopProducing):
+        (TestWebKitAPI::ToUpperConverter::stopConsuming):
+
+2018-09-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Many modern media control tests leak documents in testing
+        https://bugs.webkit.org/show_bug.cgi?id=189437
+
+        Reviewed by Darin Adler.
+        
+        In order to accurately detect leaks in media controls tests which use lots of
+        SVGImages, we have to:
+        - Fire a zero-delay timer after the postTask, in order for ImagesLoader's m_derefElementTimer
+          to clear references to elements.
+        - Have releaseCriticalMemory() call CachedResourceLoader's garbageCollectDocumentResources()
+          to drop the last handle to the CachedResource for an SVGImage.
+        - Call WKBundleReleaseMemory() after the GC and timer, since we need garbageCollectDocumentResources()
+          to run again after that timer has fired.
+        
+        This should fix most of the spurious leak reports involving SVGImage documents.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::reportLiveDocuments):
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+
+2018-09-17  Chris Dumez  <cdumez@apple.com>
+
+        PSON: window.open() with 'noopener' should only process-swap cross-site, not cross-origin
+        https://bugs.webkit.org/show_bug.cgi?id=189602
+        <rdar://problem/44430549>
+
+        Reviewed by Geoff Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-09-17  Philippe Normand  <pnormand@igalia.com>
+
+        [JHBuild] Update to GStreamer 1.14.3
+        https://bugs.webkit.org/show_bug.cgi?id=189450
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * gstreamer/jhbuild.modules: Bump GStreamer modules from 1.14.1 to 1.14.3.
+
+2018-09-17  Philippe Normand  <pnormand@igalia.com>
+
+        [JHBuild] Doesn't check sha256 sums
+        https://bugs.webkit.org/show_bug.cgi?id=189646
+
+        Reviewed by Michael Catanzaro.
+
+        * gstreamer/jhbuild.modules: Properly set the sha256: prefix on hashes.
+
+2018-09-17  Sihui Liu  <sihui_liu@apple.com>
+
+        Move IndexedDB to Network Process
+        https://bugs.webkit.org/show_bug.cgi?id=189415
+        <rdar://problem/44396973>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/IDBDeleteRecovery.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/IDBIndexUpgradeToV2.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBDatabaseProcessKill.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBMultiProcess.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBPersistence.mm:
+        (TEST):
+
+2018-09-08  Darin Adler  <darin@apple.com>
+
+        Streamline JSRetainPtr, fix leaks of JSString and JSGlobalContext
+        https://bugs.webkit.org/show_bug.cgi?id=189455
+
+        Reviewed by Keith Miller.
+
+        There is a lot of copied and pasted code for WebKit vs. Legacy WebKit
+        testing and even for macOS vs. iOS vs. Windows platform-specific code.
+        For now, this patch just makes corresponding changes to the copied code.
+        Later we might get better results by merging more code instead of having
+        all these separate copies.
+
+        * DumpRenderTree/AccessibilityController.cpp:
+        (AccessibilityController::makeWindowObject): Use the adopt function
+        instead of the special Adopt constructor of JSRetainPtr.
+
+        * DumpRenderTree/AccessibilityTextMarker.cpp: Removed unneeded include.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp: Ditto.
+        (allAttributesCallback): Don't adopt at this level; changed the
+        underlying function to return a JSRetainPtr so the adopt is right next
+        to the call to the create or copy function.
+        (attributesOfLinkedUIElementsCallback): Ditto.
+        (attributesOfDocumentLinksCallback): Ditto.
+        (attributesOfChildrenCallback): Ditto.
+        (parameterizedAttributeNamesCallback): Ditto.
+        (attributesOfColumnHeadersCallback): Ditto.
+        (attributesOfRowHeadersCallback): Ditto.
+        (attributesOfColumnsCallback): Ditto.
+        (attributesOfRowsCallback): Ditto.
+        (attributesOfVisibleCellsCallback): Ditto.
+        (attributesOfHeaderCallback): Ditto.
+        (rowIndexRangeCallback): Ditto.
+        (columnIndexRangeCallback): Ditto.
+        (rangeForLineCallback): Ditto.
+        (boundsForRangeCallback): Ditto.
+        (rangeForPositionCallback): Ditto.
+        (stringForRangeCallback): Ditto.
+        (attributedStringForRangeCallback): Ditto.
+        (uiElementCountForSearchPredicateCallback): Use the free adopt
+        function instead of the adopt member function.
+        (uiElementForSearchPredicateCallback): Ditto.
+        (selectTextWithCriteriaCallback): Don't adopt at this level.
+        (attributedStringForElementCallback): Ditto.
+        (setValueCallback): Use free adopt.
+        (stringAttributeValueCallback): Don't adopt at this level.
+        (uiElementArrayAttributeValueCallback): Ditto.
+        (uiElementAttributeValueCallback): Ditto.
+        (stringForTextMarkerRangeCallback): Ditto.
+        (attributedStringForTextMarkerRangeCallback): Ditto.
+        (attributedStringForTextMarkerRangeWithOptionsCallback): Ditto.
+        (getARIADropEffectsCallback): Ditto.
+        (getClassListCallback): Ditto.
+        (getRoleCallback): Ditto.
+        (getSubroleCallback): Ditto.
+        (getRoleDescriptionCallback): Ditto.
+        (getComputedRoleStringCallback): Ditto.
+        (getTitleCallback): Ditto.
+        (getDescriptionCallback): Ditto.
+        (getStringValueCallback): Ditto.
+        (getLanguageCallback): Ditto.
+        (getHelpTextCallback): Ditto.
+        (getOrientationCallback): Ditto.
+        (getPathDescriptionCallback): Ditto.
+        (getSelectedTextRangeCallback): Ditto.
+        (speakAsCallback): Ditto.
+        (getValueDescriptionCallback): Ditto.
+        (getAccessibilityValueCallback): Ditto.
+        (getDocumentEncodingCallback): Ditto.
+        (getDocumentURICallback): Ditto.
+        (getURLCallback): Ditto.
+        (characterAtOffsetCallback): Ditto.
+        (wordAtOffsetCallback): Ditto.
+        (lineAtOffsetCallback): Ditto.
+        (sentenceAtOffsetCallback): Ditto.
+        (stringForSelectionCallback): Ditto.
+        (getIdentifierCallback): Ditto.
+        (getTraitsCallback): Ditto.
+        (supportedActionsCallback): Ditto.
+        (mathPostscriptsDescriptionCallback): Ditto.
+        (mathPrescriptsDescriptionCallback): Ditto.
+        (AccessibilityUIElement::rangeForLine): Updated to return JSRetainPtr.
+        (AccessibilityUIElement::rangeForPosition): Ditto.
+        (AccessibilityUIElement::speakAs): Ditto.
+        (AccessibilityUIElement::pathDescription const): Ditto.
+        (AccessibilityUIElement::stringForTextMarkerRange): Ditto.
+        (AccessibilityUIElement::attributedStringForTextMarkerRange): Ditto.
+        (AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions): Ditto.
+
+        * DumpRenderTree/AccessibilityUIElement.h: Use JSRetainPtr instead of
+        raw pointers for the results of the functions that create strings.
+        The old way was difficult to get right; the functions didn't even follow
+        the create/copy naming rule.
+
+        * DumpRenderTree/Bindings/CodeGeneratorDumpRenderTree.pm:
+        (_platformTypeConstructor): Use the adopt function instead of the
+        JSRetainPtr adopt constructor. Also nullptr instead of 0.
+
+        * DumpRenderTree/GCController.cpp:
+        (GCController::makeWindowObject): Use adopt function instead of constructor.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (pathToLocalResourceCallback): Use adopt function instead of constructor.
+        (addDisallowedURLCallback): Ditto.
+        (addURLToRedirectCallback): Ditto.
+        (clearApplicationCacheForOriginCallback): Ditto.
+        (applicationCacheDiskUsageForOriginCallback): Ditto.
+        (decodeHostNameCallback): Don't adopt at this level.
+        (encodeHostNameCallback): Ditto.
+        (execCommandCallback): Use adopt instead of JSRetainPtr::adopt.
+        (findStringCallback): Use adopt function instead of constructor.
+        (isCommandEnabledCallback): Ditto.
+        (overridePreferenceCallback): Ditto.
+        (queueLoadCallback): Ditto.
+        (queueLoadHTMLStringCallback): Ditto.
+        (queueLoadingScriptCallback): Ditto.
+        (queueNonLoadingScriptCallback): Ditto.
+        (setAuthenticationPasswordCallback): Ditto.
+        (setAuthenticationUsernameCallback): Ditto.
+        (setDomainRelaxationForbiddenForURLSchemeCallback): Ditto.
+        (setMockGeolocationPositionUnavailableErrorCallback): Ditto.
+        (setPOSIXLocaleCallback): Ditto.
+        (setPersistentUserStyleSheetLocationCallback): Ditto.
+        (setUserStyleSheetLocationCallback): Ditto.
+        (setValueForUserCallback): Ditto.
+        (setWillSendRequestClearHeaderCallback): Ditto.
+        (setPageVisibilityCallback): Ditto.
+        (evaluateInWebInspectorCallback): Ditto.
+        (evaluateScriptInIsolatedWorldCallback): Ditto.
+        (evaluateScriptInIsolatedWorldAndReturnValueCallback): Ditto.
+        (addOriginAccessWhitelistEntryCallback): Ditto.
+        (removeOriginAccessWhitelistEntryCallback): Ditto.
+        (setScrollbarPolicyCallback): Ditto.
+        (addUserScriptCallback): Ditto.
+        (addUserStyleSheetCallback): Ditto.
+        (apiTestNewWindowDataLoadBaseURLCallback): Ditto.
+        (authenticateSessionCallback): Ditto.
+        (getTitleTextDirectionCallback): Ditto.
+        (getInspectorTestStubURLCallback): Ditto.
+        (simulateLegacyWebNotificationClickCallback): Ditto.
+        (setTextDirectionCallback): Ditto.
+        (grantWebNotificationPermissionCallback): Ditto.
+        (denyWebNotificationPermissionCallback): Ditto.
+        (accummulateLogsForChannel): Ditto.
+        (runUIScriptCallback): Ditto.
+        (TestRunner::makeWindowObject): Ditto.
+        (TestRunner::uiScriptDidComplete): Ditto.
+        (TestRunner::setOpenPanelFiles): Ditto.
+
+        * DumpRenderTree/TestRunner.h: Use JSRetainPtr instead of
+        raw pointers for the results of the functions that create strings.
+
+        * DumpRenderTree/ios/AccessibilityControllerIOS.mm:
+        (AccessibilityController::platformName const): Use the adopt
+        function instead of the adopt constructor.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (createEmptyJSString): Added. This helper function makes reduces the
+        repetitive code to create empty strings.
+        (concatenateAttributeAndValue): Changed to return a JSRetainPtr.
+        (AccessibilityUIElement::identifier): Ditto.
+        (AccessibilityUIElement::traits): Ditto.
+        (AccessibilityUIElement::url): Ditto.
+        (AccessibilityUIElement::speakAs): Ditto.
+        (AccessibilityUIElement::stringForSelection): Ditto.
+        (AccessibilityUIElement::stringForRange): Ditto.
+        (AccessibilityUIElement::attributedStringForRange): Ditto.
+        (AccessibilityUIElement::attributedStringForElement): Ditto.
+        (AccessibilityUIElement::pathDescription const): Ditto.
+        (AccessibilityUIElement::stringForTextMarkerRange): Ditto.
+        (AccessibilityUIElement::attributedStringForTextMarkerRange): Ditto.
+        (AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions): Ditto.
+        (AccessibilityUIElement::attributesOfLinkedUIElements): Ditto.
+        (AccessibilityUIElement::attributesOfDocumentLinks): Ditto.
+        (AccessibilityUIElement::attributesOfChildren): Ditto.
+        (AccessibilityUIElement::allAttributes): Ditto.
+        (AccessibilityUIElement::stringAttributeValue): Ditto.
+        (AccessibilityUIElement::parameterizedAttributeNames): Ditto.
+        (AccessibilityUIElement::role): Ditto.
+        (AccessibilityUIElement::subrole): Ditto.
+        (AccessibilityUIElement::roleDescription): Ditto.
+        (AccessibilityUIElement::computedRoleString): Ditto.
+        (AccessibilityUIElement::title): Ditto.
+        (AccessibilityUIElement::description): Ditto.
+        (AccessibilityUIElement::orientation const): Ditto.
+        (AccessibilityUIElement::stringValue): Ditto.
+        (AccessibilityUIElement::language): Ditto.
+        (AccessibilityUIElement::helpText const): Ditto.
+        (AccessibilityUIElement::valueDescription): Ditto.
+        (AccessibilityUIElement::ariaDropEffects const): Ditto.
+        (AccessibilityUIElement::boundsForRange): Ditto.
+        (AccessibilityUIElement::attributesOfColumnHeaders): Ditto.
+        (AccessibilityUIElement::attributesOfRowHeaders): Ditto.
+        (AccessibilityUIElement::attributesOfColumns): Ditto.
+        (AccessibilityUIElement::attributesOfRows): Ditto.
+        (AccessibilityUIElement::attributesOfVisibleCells): Ditto.
+        (AccessibilityUIElement::attributesOfHeader): Ditto.
+        (AccessibilityUIElement::rowIndexRange): Ditto.
+        (AccessibilityUIElement::columnIndexRange): Ditto.
+        (AccessibilityUIElement::selectedTextRange): Ditto.
+        (AccessibilityUIElement::accessibilityValue const): Ditto.
+        (AccessibilityUIElement::documentEncoding): Ditto.
+        (AccessibilityUIElement::documentURI): Ditto.
+        (AccessibilityUIElement::selectTextWithCriteria): Ditto.
+        (AccessibilityUIElement::classList const): Ditto.
+
+        * DumpRenderTree/mac/AccessibilityCommonMac.h: Changed the
+        createJSStringRef method to return a JSRetainPtr.
+        * DumpRenderTree/mac/AccessibilityCommonMac.mm:
+        (-[NSString createJSStringRef]): Ditto.
+        (searchPredicateParameterizedAttributeForSearchCriteria): Use the
+        adopt function instead of the adopt constructor.
+        * DumpRenderTree/mac/AccessibilityControllerMac.mm:
+        (AccessibilityController::platformName const): Ditto.
+
+        * DumpRenderTree/mac/AccessibilityNotificationHandler.mm:
+        (-[NSString createJSStringRef]): Return a JSRetainPtr.
+        (makeValueRefForValue): Updated for the above, no adopt needed here now.
+        (makeObjectRefForDictionary): Ditto.
+        (-[AccessibilityNotificationHandler _notificationReceived:]): Ditto.
+
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (createEmptyJSString): Added. This helper function makes reduces the
+        repetitive code to create empty strings.
+        (concatenateAttributeAndValue): Changed to return a JSRetainPtr.
+        (descriptionOfElements): Ditto.
+        (selectTextParameterizedAttributeForCriteria): Ditto.
+        (AccessibilityUIElement::attributesOfLinkedUIElements): Ditto.
+        (AccessibilityUIElement::attributesOfDocumentLinks): Ditto.
+        (AccessibilityUIElement::attributesOfChildren): Ditto.
+        (AccessibilityUIElement::allAttributes): Ditto.
+        (AccessibilityUIElement::stringAttributeValue): Ditto.
+        (AccessibilityUIElement::parameterizedAttributeNames): Ditto.
+        (AccessibilityUIElement::role): Ditto.
+        (AccessibilityUIElement::subrole): Ditto.
+        (AccessibilityUIElement::roleDescription): Ditto.
+        (AccessibilityUIElement::computedRoleString): Ditto.
+        (AccessibilityUIElement::title): Ditto.
+        (AccessibilityUIElement::description): Ditto.
+        (AccessibilityUIElement::orientation const): Ditto.
+        (AccessibilityUIElement::stringValue): Ditto.
+        (AccessibilityUIElement::language): Ditto.
+        (AccessibilityUIElement::helpText const): Ditto.
+        (AccessibilityUIElement::valueDescription): Ditto.
+        (AccessibilityUIElement::speakAs): Ditto.
+        (AccessibilityUIElement::classList const): Ditto.
+        (AccessibilityUIElement::ariaDropEffects const): Ditto.
+        (AccessibilityUIElement::rangeForLine): Ditto.
+        (AccessibilityUIElement::rangeForPosition): Ditto.
+        (AccessibilityUIElement::boundsForRange): Ditto.
+        (AccessibilityUIElement::stringForRange): Ditto.
+        (AccessibilityUIElement::attributedStringForRange): Ditto.
+        (AccessibilityUIElement::selectTextWithCriteria): Ditto.
+        (AccessibilityUIElement::attributesOfColumnHeaders): Ditto.
+        (AccessibilityUIElement::attributesOfRowHeaders): Ditto.
+        (AccessibilityUIElement::attributesOfColumns): Ditto.
+        (AccessibilityUIElement::attributesOfRows): Ditto.
+        (AccessibilityUIElement::attributesOfVisibleCells): Ditto.
+        (AccessibilityUIElement::attributesOfHeader): Ditto.
+        (AccessibilityUIElement::rowIndexRange): Ditto.
+        (AccessibilityUIElement::columnIndexRange): Ditto.
+        (AccessibilityUIElement::pathDescription const): Ditto.
+        (AccessibilityUIElement::selectedTextRange): Ditto.
+        (AccessibilityUIElement::accessibilityValue const): Ditto.
+        (AccessibilityUIElement::documentEncoding): Ditto.
+        (AccessibilityUIElement::documentURI): Ditto.
+        (AccessibilityUIElement::url): Ditto.
+        (AccessibilityUIElement::stringForTextMarkerRange): Ditto.
+        (createJSStringRef): Ditto.
+        (AccessibilityUIElement::attributedStringForTextMarkerRange): Ditto.
+        (AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions): Ditto.
+        (AccessibilityUIElement::supportedActions): Ditto.
+        (AccessibilityUIElement::mathPostscriptsDescription const): Ditto.
+        (AccessibilityUIElement::mathPrescriptsDescription const): Ditto.
+
+        * DumpRenderTree/mac/FrameLoadDelegate.mm:
+        (-[FrameLoadDelegate didClearWindowObjectForFrame:inIsolatedWorld:]):
+        Use the adopt function instead of the adopt constructor.
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (originsArrayToJS): Ditto.
+        (TestRunner::copyDecodedHostName): Return a JSRetainPtr.
+        (TestRunner::copyEncodedHostName): Ditto.
+        (TestRunner::pathToLocalResource): Ditto.
+        (TestRunner::queueLoad): Use adopt function instead of constructor.
+        (TestRunner::findString): Ditto.
+        (TestRunner::inspectorTestStubURL): Return a JSRetainPtr.
+
+        * DumpRenderTree/win/AccessibilityControllerWin.cpp:
+        (AccessibilityController::winNotificationReceived): Use adopt function
+        instead of adopt constructor.
+        (AccessibilityController::platformName const): Ditto.
+
+        * DumpRenderTree/win/AccessibilityUIElementWin.cpp:
+        (createEmptyJSString): Added. This helper function makes reduces the
+        repetitive code to create empty strings.
+        (AccessibilityUIElement::allAttributes): Changed to return a JSRetainPtr.
+        (AccessibilityUIElement::attributesOfLinkedUIElements): Ditto.
+        (AccessibilityUIElement::attributesOfDocumentLinks): Ditto.
+        (AccessibilityUIElement::attributesOfChildren): Ditto.
+        (AccessibilityUIElement::parameterizedAttributeNames): Ditto.
+        (AccessibilityUIElement::role): Ditto.
+        (AccessibilityUIElement::subrole): Ditto.
+        (AccessibilityUIElement::roleDescription): Ditto.
+        (AccessibilityUIElement::computedRoleString): Ditto.
+        (AccessibilityUIElement::title): Ditto.
+        (AccessibilityUIElement::description): Ditto.
+        (AccessibilityUIElement::stringValue): Ditto.
+        (AccessibilityUIElement::language): Ditto.
+        (AccessibilityUIElement::helpText const): Ditto.
+        (AccessibilityUIElement::valueDescription): Ditto.
+        (AccessibilityUIElement::ariaDropEffects const): Ditto.
+        (AccessibilityUIElement::orientation const): Ditto.
+        (AccessibilityUIElement::attributesOfColumnHeaders): Ditto.
+        (AccessibilityUIElement::attributesOfRowHeaders): Ditto.
+        (AccessibilityUIElement::attributesOfColumns): Ditto.
+        (AccessibilityUIElement::attributesOfRows): Ditto.
+        (AccessibilityUIElement::attributesOfVisibleCells): Ditto.
+        (AccessibilityUIElement::attributesOfHeader): Ditto.
+        (AccessibilityUIElement::rowIndexRange): Ditto.
+        (AccessibilityUIElement::columnIndexRange): Ditto.
+        (AccessibilityUIElement::boundsForRange): Ditto.
+        (AccessibilityUIElement::stringForRange): Ditto.
+        (AccessibilityUIElement::attributedStringForRange): Ditto.
+        (AccessibilityUIElement::selectTextWithCriteria): Ditto.
+        (AccessibilityUIElement::selectedTextRange): Ditto.
+        (AccessibilityUIElement::stringAttributeValue): Ditto.
+        (AccessibilityUIElement::accessibilityValue const): Ditto.
+        (AccessibilityUIElement::documentEncoding): Ditto.
+        (AccessibilityUIElement::documentURI): Ditto.
+        (AccessibilityUIElement::url): Ditto.
+        (AccessibilityUIElement::classList const): Ditto.
+
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::copyDecodedHostName): Changed to return a JSRetainPtr.
+        (TestRunner::copyEncodedHostName): Ditto.
+        (TestRunner::pathToLocalResource): Ditto.
+        (TestRunner::queueLoad): Ditto.
+        (TestRunner::findString): Ditto.
+        (TestRunner::inspectorTestStubURL): Ditto.
+
+        * TestRunnerShared/Bindings/JSWrapper.h:
+        (WTR::setProperty): Use adopt function instead of constructor.
+        * TestRunnerShared/UIScriptContext/UIScriptContext.cpp:
+        (UIScriptContext::UIScriptContext): Ditto.
+        (UIScriptContext::runUIScript): Ditto.
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::toDeviceOrientation): Ditto.
+
+        * TestRunnerShared/cocoa/LayoutTestSpellChecker.mm:
+        (nsTextCheckingType): Changed this function to not take an rvalue
+        reference to a JSRetainPtr since it doesn't take ownership.
+        (-[LayoutTestSpellChecker setResultsFromJSObject:inContext:]): Updated
+        for the above change.
+
+        * TestWebKitAPI/JavaScriptTest.cpp:
+        (TestWebKitAPI::javaScriptCallback): Use adopt function instead of
+        adopt member function.
+
+        * TestWebKitAPI/Tests/WebKit/WKPageIsPlayingAudio.cpp: Removed unneeded include.
+        * TestWebKitAPI/Tests/WebKitCocoa/PictureInPictureDelegate.mm: Ditto.
+        * TestWebKitAPI/Tests/mac/DOMNodeFromJSObject.mm: Use adopt function instead of
+        adopt constructor.
+        * TestWebKitAPI/Tests/mac/JSWrapperForNodeInWebFrame.mm: Ditto.
+
+        * WebKitTestRunner/InjectedBundle/AccessibilityController.cpp:
+        Removed unneeded includes.
+        * WebKitTestRunner/InjectedBundle/AccessibilityTextMarker.cpp: Ditto.
+        * WebKitTestRunner/InjectedBundle/AccessibilityTextMarkerRange.cpp: Ditto.
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp: Ditto.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/CodeGeneratorTestRunner.pm:
+        (_platformTypeConstructor): Use the adopt function instead of the
+        JSRetainPtr adopt constructor. Also nullptr instead of 0.
+
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        (WTR::arrayLength): Use adopt function instead of constructor.
+        (WTR::parseModifierArray): Ditto.
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::propertyValue): Ditto.
+        (WTR::dumpPath): Ditto.
+        (WTR::toJS): Ditto.
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::findString): Ditto.
+        (WTR::TestRunner::statisticsDidRunTelemetryCallback): Ditto.
+        (WTR::TestRunner::callDidReceiveAllStorageAccessEntriesCallback): Ditto.
+        (WTR::TestRunner::setOpenPanelFiles): Ditto.
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityControllerIOS.mm:
+        (WTR::AccessibilityController::platformName): Ditto.
+
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (-[NSString createJSStringRef]): Return a JSRetainPtr.
+        This fixes storage leaks in many functions below, which were using
+        the create function and putting the value right into a JSRetainPtr
+        without adoption.
+        (WTR::createEmptyJSString): Added. This helper function reduces the
+        repetitive code to create empty strings.
+        (WTR::concatenateAttributeAndValue): Return a JSRetainPtr.
+        (WTR::AccessibilityUIElement::attributesOfLinkedUIElements):
+        Use createEmptyJSString, fixing a storage leak due to missing adoption.
+        (WTR::AccessibilityUIElement::attributesOfDocumentLinks): Ditto.
+        (WTR::AccessibilityUIElement::attributesOfChildren): Ditto.
+        (WTR::AccessibilityUIElement::allAttributes): Ditto.
+        (WTR::AccessibilityUIElement::stringAttributeValue): Ditto.
+        (WTR::AccessibilityUIElement::parameterizedAttributeNames): Ditto.
+        (WTR::AccessibilityUIElement::role): Ditto.
+        (WTR::AccessibilityUIElement::subrole): Ditto.
+        (WTR::AccessibilityUIElement::roleDescription): Ditto.
+        (WTR::AccessibilityUIElement::computedRoleString): Ditto.
+        (WTR::AccessibilityUIElement::title): Ditto.
+        (WTR::AccessibilityUIElement::orientation const): Ditto.
+        (WTR::AccessibilityUIElement::language): Ditto.
+        (WTR::AccessibilityUIElement::valueDescription): Ditto.
+        (WTR::AccessibilityUIElement::ariaDropEffects const): Ditto.
+        (WTR::AccessibilityUIElement::boundsForRange): Ditto.
+        (WTR::AccessibilityUIElement::stringForRange): Removed unneeded null check.
+        (WTR::AccessibilityUIElement::attributedStringForRange): Ditto.
+        (WTR::AccessibilityUIElement::attributesOfColumnHeaders):
+        Use createEmptyJSString, fixing a storage leak due to missing adoption.
+        (WTR::AccessibilityUIElement::attributesOfRowHeaders): Ditto.
+        (WTR::AccessibilityUIElement::attributesOfColumns): Ditto.
+        (WTR::AccessibilityUIElement::attributesOfRows): Ditto.
+        (WTR::AccessibilityUIElement::attributesOfVisibleCells): Ditto.
+        (WTR::AccessibilityUIElement::attributesOfHeader): Ditto.
+        (WTR::AccessibilityUIElement::selectedTextRange): Ditto.
+        (WTR::AccessibilityUIElement::accessibilityValue const): Ditto.
+        (WTR::AccessibilityUIElement::documentEncoding): Ditto.
+        (WTR::AccessibilityUIElement::documentURI): Ditto.
+        (WTR::AccessibilityUIElement::stringForSelection): Removed unneeded
+        null check.
+        (WTR::AccessibilityUIElement::stringForTextMarkerRange):
+        Use createEmptyJSString, fixing a storage leak due to missing adoption.
+
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityCommonMac.h:
+        Use JSRetainPtr for the return value of createJSStringRef.
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityCommonMac.mm:
+        (-[NSString createJSStringRef]): Ditto.
+        (WTR::searchPredicateParameterizedAttributeForSearchCriteria): Use the
+        adopt function instead of the adopt constructor.
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityControllerMac.mm:
+        (WTR::AccessibilityController::platformName): Ditto
+
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityNotificationHandler.mm:
+        (-[NSString createJSStringRef]): Return a JSRetainPtr.
+        (makeValueRefForValue): Updated for above by removing adopt.
+        (makeObjectRefForDictionary): Ditto.
+        (-[AccessibilityNotificationHandler _notificationReceived:]): Ditto.
+
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::createEmptyJSString): Added. This helper function makes reduces the
+        repetitive code to create empty strings.
+        (WTR::concatenateAttributeAndValue): Return a JSRetainPtr.
+        (WTR::descriptionOfElements): Ditto.
+        (WTR::selectTextParameterizedAttributeForCriteria): Ditto.
+        (WTR::AccessibilityUIElement::accessibilityValue const): Use createEmptyJSString,
+        fixing a storage leak due to missing adoption.
+        (WTR::AccessibilityUIElement::documentEncoding): Ditto.
+        (WTR::AccessibilityUIElement::documentURI): Ditto.
+        (WTR::createJSStringRef): Return a JSRetainPtr.
+
+        * WebKitTestRunner/StringFunctions.h:
+        (WTR::toWK): Take a const& to eliminate a little bit of reference count churn.
+        (WTR::toJS): Use the adopt function instead of the constructor.
+
+2018-09-14  Dean Jackson  <dino@grorg.org>
+
+        Add Justin Michaud.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-09-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        bots should pass --clobber-old-results to run-webkit-tests
+        https://bugs.webkit.org/show_bug.cgi?id=189623
+
+        Reviewed by Aakash Jain.
+
+        In order to ensure that bots to not produce confusing results due to transient execptions,
+        or run out of space if they continually hit an exception, old layout test results should be clobbered.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunWebKitTests):
+
+2018-09-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r235954.
+
+        Breaks the watchOS build.
+
+        Reverted changeset:
+
+        "Move IndexedDB to Network Process"
+        https://bugs.webkit.org/show_bug.cgi?id=189415
+        https://trac.webkit.org/changeset/235954
+
+2018-09-13  Daniel Bates  <dabates@apple.com>
+
+        Add Copy WebKit Permalink plugin for Sublime Text
+        https://bugs.webkit.org/show_bug.cgi?id=189589
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        Port the Copy WebKit Permalink Automator service to a Sublime Text plugin. Once installed you can
+        use the plugin to copy to the Clipboard a trac.webkit.org hyperlink to the selected line in the
+        active document with or without blame annotations.
+
+        Once installed, you can Control-click (on Mac) or right-click (on Windows and Linux) on a line and
+        choose Copy WebKit Permalink or Copy WebKit Permalink to Blame from the context menu to copy to the
+        Clipboard a permanent hyperlink to the selected line without or with blame annotations, respectively.
+        On Mac you can also invoke the same functionality using the keyboard shortcuts Command + Shift + Control + C
+        and Command + Shift + Control + Option + C, respectively.
+
+        * CopyPermalink/Sublime Text/CopyWebKitPermalink/Context.sublime-menu: Added.
+        * CopyPermalink/Sublime Text/CopyWebKitPermalink/CopyWebKitPermalink.py: Added.
+        * CopyPermalink/Sublime Text/CopyWebKitPermalink/Default (OSX).sublime-keymap: Added.
+        * CopyPermalink/Sublime Text/INSTALL: Added.
+        * CopyPermalink/Xcode/Copy WebKit Permalink.workflow/Contents/Info.plist: Renamed from Tools/CopyPermalink/Copy WebKit Permalink.workflow/Contents/Info.plist.
+        * CopyPermalink/Xcode/Copy WebKit Permalink.workflow/Contents/document.wflow: Renamed from Tools/CopyPermalink/Copy WebKit Permalink.workflow/Contents/document.wflow.
+        * CopyPermalink/Xcode/INSTALL: Renamed from Tools/CopyPermalink/README.
+
+2018-09-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix WebDriver tests after r235225.
+
+        Use wpt serve command to run the http server.
+
+        * Scripts/webkitpy/webdriver_tests/webdriver_w3c_web_server.py:
+        (WebDriverW3CWebServer.__init__):
+        (WebDriverW3CWebServer.start):
+        (WebDriverW3CWebServer.stop):
+
+2018-09-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Allow to run script dialogs asynchronously in the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=189544
+
+        Reviewed by Michael Catanzaro.
+
+        Add test cases for the new API.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestUIClient.cpp:
+        (testWebViewJavaScriptDialogs):
+
 2018-09-12  Fujii Hironori  <Hironori.Fujii@sony.com>
 
         [Win][Clang][ImageDiff] Fix compilation error and warning of PlatformImageCairo.cpp

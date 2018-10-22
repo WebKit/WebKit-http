@@ -111,20 +111,21 @@ public:
     RefPtr<UserGestureToken> userGestureToken() const { return m_userGestureToken; }
 
     ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy() const { return m_shouldOpenExternalURLsPolicy; }
+    void setShouldOpenExternalURLsPolicy(ShouldOpenExternalURLsPolicy policy) {  m_shouldOpenExternalURLsPolicy = policy; }
     InitiatedByMainFrame initiatedByMainFrame() const { return m_initiatedByMainFrame; }
 
     const AtomicString& downloadAttribute() const { return m_downloadAttribute; }
 
     bool treatAsSameOriginNavigation() const { return m_treatAsSameOriginNavigation; }
 
-    void setIsCrossOriginWindowOpenNavigation(bool value) { m_isCrossOriginWindowOpenNavigation = value; }
-    bool isCrossOriginWindowOpenNavigation() const { return m_isCrossOriginWindowOpenNavigation; }
-
     void setOpener(std::optional<PageIDAndFrameIDPair>&& opener) { m_opener = WTFMove(opener); }
     const std::optional<PageIDAndFrameIDPair>& opener() const { return m_opener; }
 
     bool hasOpenedFrames() const { return m_hasOpenedFrames; }
     void setHasOpenedFrames(bool value) { m_hasOpenedFrames = value; }
+
+    bool openedViaWindowOpenWithOpener() const { return m_openedViaWindowOpenWithOpener; }
+    void setOpenedViaWindowOpenWithOpener() { m_openedViaWindowOpenWithOpener = true; }
 
     void setTargetBackForwardItem(HistoryItem&);
     const std::optional<BackForwardItemIdentifier>& targetBackForwardItemIdentifier() const { return m_targetBackForwardItemIdentifier; }
@@ -142,8 +143,8 @@ private:
     RefPtr<UserGestureToken> m_userGestureToken { UserGestureIndicator::currentUserGesture() };
     AtomicString m_downloadAttribute;
     bool m_treatAsSameOriginNavigation;
-    bool m_isCrossOriginWindowOpenNavigation { false };
     bool m_hasOpenedFrames { false };
+    bool m_openedViaWindowOpenWithOpener { false };
     std::optional<PageIDAndFrameIDPair> m_opener;
     std::optional<BackForwardItemIdentifier> m_targetBackForwardItemIdentifier;
 };

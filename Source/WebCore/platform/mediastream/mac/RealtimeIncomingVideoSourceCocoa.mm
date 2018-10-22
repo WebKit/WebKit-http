@@ -64,7 +64,7 @@ RealtimeIncomingVideoSourceCocoa::RealtimeIncomingVideoSourceCocoa(rtc::scoped_r
 {
 }
 
-static inline CVPixelBufferRef createBlackFrame(int width, int height)
+RetainPtr<CVPixelBufferRef> createBlackPixelBuffer(size_t width, size_t height)
 {
     CVPixelBufferRef pixelBuffer = nullptr;
     auto status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_420YpCbCr8Planar, nullptr, &pixelBuffer);
@@ -73,13 +73,16 @@ static inline CVPixelBufferRef createBlackFrame(int width, int height)
     status = CVPixelBufferLockBaseAddress(pixelBuffer, 0);
     ASSERT(status == noErr);
     void* data = CVPixelBufferGetBaseAddress(pixelBuffer);
+
     size_t yLength = width * height;
     memset(data, 0, yLength);
-    memset(static_cast<uint8_t*>(data) + yLength, 128, yLength / 2);
+
+    auto totalSize = CVPixelBufferGetDataSize(pixelBuffer);
+    memset(static_cast<uint8_t*>(data) + yLength, 128, totalSize - yLength);
 
     status = CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
     ASSERT(!status);
-    return pixelBuffer;
+    return adoptCF(pixelBuffer);
 }
 
 CVPixelBufferRef RealtimeIncomingVideoSourceCocoa::pixelBufferFromVideoFrame(const webrtc::VideoFrame& frame)
@@ -88,7 +91,7 @@ CVPixelBufferRef RealtimeIncomingVideoSourceCocoa::pixelBufferFromVideoFrame(con
         if (!m_blackFrame || m_blackFrameWidth != frame.width() || m_blackFrameHeight != frame.height()) {
             m_blackFrameWidth = frame.width();
             m_blackFrameHeight = frame.height();
-            m_blackFrame = adoptCF(createBlackFrame(m_blackFrameWidth, m_blackFrameHeight));
+            m_blackFrame = createBlackPixelBuffer(m_blackFrameWidth, m_blackFrameHeight);
         }
         return m_blackFrame.get();
     }

@@ -47,7 +47,7 @@ public:
     bool replaceChild(GraphicsLayer* oldChild, Ref<GraphicsLayer>&& newChild) override;
 
     void setMaskLayer(RefPtr<GraphicsLayer>&&) override;
-    void setReplicatedByLayer(GraphicsLayer*) override;
+    void setReplicatedByLayer(RefPtr<GraphicsLayer>&&) override;
     void setPosition(const FloatPoint&) override;
     void setAnchorPoint(const FloatPoint3D&) override;
     void setSize(const FloatSize&) override;

@@ -473,6 +473,24 @@ void NetworkProcess::removePrevalentDomains(PAL::SessionID sessionID, const Vect
     if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
         networkStorageSession->removePrevalentDomains(domains);
 }
+
+void NetworkProcess::setCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID, Seconds seconds, uint64_t contextId)
+{
+    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+        networkStorageSession->setCacheMaxAgeCapForPrevalentResources(Seconds { seconds });
+    else
+        ASSERT_NOT_REACHED();
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidSetCacheMaxAgeCapForPrevalentResources(contextId), 0);
+}
+
+void NetworkProcess::resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID, uint64_t contextId)
+{
+    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+        networkStorageSession->resetCacheMaxAgeCapForPrevalentResources();
+    else
+        ASSERT_NOT_REACHED();
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidResetCacheMaxAgeCapForPrevalentResources(contextId), 0);
+}
 #endif
 
 bool NetworkProcess::sessionIsControlledByAutomation(PAL::SessionID sessionID) const
@@ -616,7 +634,7 @@ void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<Websi
         CacheStorage::Engine::clearAllCaches(sessionID, [clearTasksHandler = clearTasksHandler.copyRef()] { });
 
 #if ENABLE(INDEXED_DATABASE)
-    if (websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases))
+    if (websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases) && !sessionID.isEphemeral())
         idbServer(sessionID).closeAndDeleteDatabasesModifiedSince(modifiedSince, [clearTasksHandler = clearTasksHandler.copyRef()] { });
 #endif
 
@@ -673,7 +691,7 @@ void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, Optio
     }
 
 #if ENABLE(INDEXED_DATABASE)
-    if (websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases))
+    if (websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases) && !sessionID.isEphemeral())
         idbServer(sessionID).closeAndDeleteDatabasesForOrigins(originDatas, [clearTasksHandler = clearTasksHandler.copyRef()] { });
 #endif
 
@@ -1061,9 +1079,7 @@ void NetworkProcess::addIndexedDatabaseSession(PAL::SessionID sessionID, String&
     // *********
     // IMPORTANT: Do not change the directory structure for indexed databases on disk without first consulting a reviewer from Apple (<rdar://problem/17454712>)
     // *********
-    auto addResult = m_idbDatabasePaths.ensure(sessionID, [path = indexedDatabaseDirectory] {
-        return path;
-    });
+    auto addResult = m_idbDatabasePaths.add(sessionID, indexedDatabaseDirectory);
     if (addResult.isNewEntry) {
         SandboxExtension::consumePermanently(handle);
         if (!indexedDatabaseDirectory.isEmpty())
@@ -1074,9 +1090,8 @@ void NetworkProcess::addIndexedDatabaseSession(PAL::SessionID sessionID, String&
 #endif // ENABLE(INDEXED_DATABASE)
 
 #if ENABLE(SANDBOX_EXTENSIONS)
-void NetworkProcess::getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, WTF::Function<void(SandboxExtension::HandleArray&&)>&& completionHandler)
+void NetworkProcess::getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, Function<void(SandboxExtension::HandleArray&&)>&& completionHandler)
 {
-
     static uint64_t lastRequestID;
     
     uint64_t requestID = ++lastRequestID;

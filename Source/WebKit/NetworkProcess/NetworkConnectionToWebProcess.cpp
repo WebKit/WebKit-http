@@ -509,8 +509,6 @@ void NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles(const Vector<Stri
         });
 #endif
 
-        if (!m_connection->isValid())
-            return;
         m_connection->send(Messages::NetworkProcessConnection::DidWriteBlobsToTemporaryFiles(requestIdentifier, fileNames), 0);
     });
 }

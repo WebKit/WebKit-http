@@ -458,21 +458,22 @@ bool RenderLayerBacking::needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysO
 void RenderLayerBacking::destroyGraphicsLayers()
 {
     if (m_graphicsLayer) {
+        m_graphicsLayer->setMaskLayer(nullptr);
+        m_graphicsLayer->setReplicatedByLayer(nullptr);
         willDestroyLayer(m_graphicsLayer.get());
-        m_graphicsLayer->removeFromParent();
     }
 
-    m_ancestorClippingLayer = nullptr;
-    m_contentsContainmentLayer = nullptr;
-    m_graphicsLayer = nullptr;
-    m_foregroundLayer = nullptr;
-    m_backgroundLayer = nullptr;
-    m_childContainmentLayer = nullptr;
-    m_maskLayer = nullptr;
-    m_childClippingMaskLayer = nullptr;
+    GraphicsLayer::clear(m_maskLayer);
 
-    m_scrollingLayer = nullptr;
-    m_scrollingContentsLayer = nullptr;
+    GraphicsLayer::unparentAndClear(m_ancestorClippingLayer);
+    GraphicsLayer::unparentAndClear(m_contentsContainmentLayer);
+    GraphicsLayer::unparentAndClear(m_foregroundLayer);
+    GraphicsLayer::unparentAndClear(m_backgroundLayer);
+    GraphicsLayer::unparentAndClear(m_childContainmentLayer);
+    GraphicsLayer::unparentAndClear(m_childClippingMaskLayer);
+    GraphicsLayer::unparentAndClear(m_scrollingLayer);
+    GraphicsLayer::unparentAndClear(m_scrollingContentsLayer);
+    GraphicsLayer::unparentAndClear(m_graphicsLayer);
 }
 
 void RenderLayerBacking::updateOpacity(const RenderStyle& style)
@@ -1313,32 +1314,25 @@ void RenderLayerBacking::updateInternalHierarchy()
     else if (m_ancestorClippingLayer)
         m_ancestorClippingLayer->addChild(*m_graphicsLayer);
 
-    if (m_childContainmentLayer) {
-        m_childContainmentLayer->removeFromParent();
+    if (m_childContainmentLayer)
         m_graphicsLayer->addChild(*m_childContainmentLayer);
-    }
 
     if (m_scrollingLayer) {
         auto* superlayer = m_childContainmentLayer ? m_childContainmentLayer.get() : m_graphicsLayer.get();
-        m_scrollingLayer->removeFromParent();
         superlayer->addChild(*m_scrollingLayer);
     }
 
     // The clip for child layers does not include space for overflow controls, so they exist as
     // siblings of the clipping layer if we have one. Normal children of this layer are set as
     // children of the clipping layer.
-    if (m_layerForHorizontalScrollbar) {
-        m_layerForHorizontalScrollbar->removeFromParent();
+    if (m_layerForHorizontalScrollbar)
         m_graphicsLayer->addChild(*m_layerForHorizontalScrollbar);
-    }
-    if (m_layerForVerticalScrollbar) {
-        m_layerForVerticalScrollbar->removeFromParent();
+
+    if (m_layerForVerticalScrollbar)
         m_graphicsLayer->addChild(*m_layerForVerticalScrollbar);
-    }
-    if (m_layerForScrollCorner) {
-        m_layerForScrollCorner->removeFromParent();
+
+    if (m_layerForScrollCorner)
         m_graphicsLayer->addChild(*m_layerForScrollCorner);
-    }
 }
 
 void RenderLayerBacking::resetContentsRect()
@@ -1411,8 +1405,7 @@ bool RenderLayerBacking::updateAncestorClippingLayer(bool needsAncestorClip)
         }
     } else if (hasAncestorClippingLayer()) {
         willDestroyLayer(m_ancestorClippingLayer.get());
-        m_ancestorClippingLayer->removeFromParent();
-        m_ancestorClippingLayer = nullptr;
+        GraphicsLayer::unparentAndClear(m_ancestorClippingLayer);
         layersChanged = true;
     }
     
@@ -1432,8 +1425,7 @@ bool RenderLayerBacking::updateDescendantClippingLayer(bool needsDescendantClip)
         }
     } else if (hasClippingLayer()) {
         willDestroyLayer(m_childContainmentLayer.get());
-        m_childContainmentLayer->removeFromParent();
-        m_childContainmentLayer = nullptr;
+        GraphicsLayer::unparentAndClear(m_childContainmentLayer);
         layersChanged = true;
     }
     
@@ -1490,7 +1482,7 @@ bool RenderLayerBacking::updateOverflowControlsLayers(bool needsHorizontalScroll
         }
     } else if (m_layerForHorizontalScrollbar) {
         willDestroyLayer(m_layerForHorizontalScrollbar.get());
-        m_layerForHorizontalScrollbar = nullptr;
+        GraphicsLayer::unparentAndClear(m_layerForHorizontalScrollbar);
         horizontalScrollbarLayerChanged = true;
     }
 
@@ -1503,7 +1495,7 @@ bool RenderLayerBacking::updateOverflowControlsLayers(bool needsHorizontalScroll
         }
     } else if (m_layerForVerticalScrollbar) {
         willDestroyLayer(m_layerForVerticalScrollbar.get());
-        m_layerForVerticalScrollbar = nullptr;
+        GraphicsLayer::unparentAndClear(m_layerForVerticalScrollbar);
         verticalScrollbarLayerChanged = true;
     }
 
@@ -1516,7 +1508,7 @@ bool RenderLayerBacking::updateOverflowControlsLayers(bool needsHorizontalScroll
         }
     } else if (m_layerForScrollCorner) {
         willDestroyLayer(m_layerForScrollCorner.get());
-        m_layerForScrollCorner = nullptr;
+        GraphicsLayer::unparentAndClear(m_layerForScrollCorner);
         scrollCornerLayerChanged = true;
     }
 
@@ -1603,8 +1595,7 @@ bool RenderLayerBacking::updateForegroundLayer(bool needsForegroundLayer)
         }
     } else if (m_foregroundLayer) {
         willDestroyLayer(m_foregroundLayer.get());
-        m_foregroundLayer->removeFromParent();
-        m_foregroundLayer = nullptr;
+        GraphicsLayer::unparentAndClear(m_foregroundLayer);
         layerChanged = true;
     }
 
@@ -1639,14 +1630,12 @@ bool RenderLayerBacking::updateBackgroundLayer(bool needsBackgroundLayer)
     } else {
         if (m_backgroundLayer) {
             willDestroyLayer(m_backgroundLayer.get());
-            m_backgroundLayer->removeFromParent();
-            m_backgroundLayer = nullptr;
+            GraphicsLayer::unparentAndClear(m_backgroundLayer);
             layerChanged = true;
         }
         if (m_contentsContainmentLayer) {
             willDestroyLayer(m_contentsContainmentLayer.get());
-            m_contentsContainmentLayer->removeFromParent();
-            m_contentsContainmentLayer = nullptr;
+            GraphicsLayer::unparentAndClear(m_contentsContainmentLayer);
             layerChanged = true;
             m_graphicsLayer->setAppliesPageScale(true);
         }
@@ -1682,7 +1671,7 @@ void RenderLayerBacking::updateMaskingLayer(bool hasMask, bool hasClipPath)
         if (m_maskLayer && m_maskLayer->type() != requiredLayerType) {
             m_graphicsLayer->setMaskLayer(nullptr);
             willDestroyLayer(m_maskLayer.get());
-            m_maskLayer = nullptr;
+            GraphicsLayer::clear(m_maskLayer);
         }
 
         if (!m_maskLayer) {
@@ -1695,7 +1684,7 @@ void RenderLayerBacking::updateMaskingLayer(bool hasMask, bool hasClipPath)
     } else if (m_maskLayer) {
         m_graphicsLayer->setMaskLayer(nullptr);
         willDestroyLayer(m_maskLayer.get());
-        m_maskLayer = nullptr;
+        GraphicsLayer::clear(m_maskLayer);
         layerChanged = true;
     }
 
@@ -1712,8 +1701,8 @@ void RenderLayerBacking::updateChildClippingStrategy(bool needsDescendantsClippi
             boxRect.move(contentOffsetInCompostingLayer());
             FloatRoundedRect contentsClippingRect = renderer().style().getRoundedInnerBorderFor(boxRect).pixelSnappedRoundedRectForPainting(deviceScaleFactor());
             if (clippingLayer()->setMasksToBoundsRect(contentsClippingRect)) {
-                if (m_childClippingMaskLayer) 
-                    m_childClippingMaskLayer = nullptr;
+                clippingLayer()->setMaskLayer(nullptr);
+                GraphicsLayer::clear(m_childClippingMaskLayer);
                 return;
             }
 
@@ -1728,7 +1717,7 @@ void RenderLayerBacking::updateChildClippingStrategy(bool needsDescendantsClippi
         if (m_childClippingMaskLayer) {
             if (hasClippingLayer())
                 clippingLayer()->setMaskLayer(nullptr);
-            m_childClippingMaskLayer = nullptr;
+            GraphicsLayer::clear(m_childClippingMaskLayer);
         } else 
             if (hasClippingLayer())
                 clippingLayer()->setMasksToBoundsRect(FloatRoundedRect(FloatRect(FloatPoint(), clippingLayer()->size())));
@@ -1760,8 +1749,9 @@ bool RenderLayerBacking::updateScrollingLayers(bool needsScrollingLayers)
 
         willDestroyLayer(m_scrollingLayer.get());
         willDestroyLayer(m_scrollingContentsLayer.get());
-        m_scrollingLayer = nullptr;
-        m_scrollingContentsLayer = nullptr;
+        
+        GraphicsLayer::unparentAndClear(m_scrollingLayer);
+        GraphicsLayer::unparentAndClear(m_scrollingContentsLayer);
     }
 
     m_graphicsLayer->setPaintingPhase(paintingPhaseForPrimaryLayer());

@@ -328,13 +328,16 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCPeerConnectionState.idl
     Modules/mediastream/RTCPriorityType.idl
     Modules/mediastream/RTCRtpCodecParameters.idl
+    Modules/mediastream/RTCRtpContributingSource.idl
     Modules/mediastream/RTCRtpEncodingParameters.idl
     Modules/mediastream/RTCRtpFecParameters.idl
     Modules/mediastream/RTCRtpHeaderExtensionParameters.idl
     Modules/mediastream/RTCRtpParameters.idl
     Modules/mediastream/RTCRtpReceiver.idl
     Modules/mediastream/RTCRtpRtxParameters.idl
+    Modules/mediastream/RTCRtpSendParameters.idl
     Modules/mediastream/RTCRtpSender.idl
+    Modules/mediastream/RTCRtpSynchronizationSource.idl
     Modules/mediastream/RTCRtpTransceiver.idl
     Modules/mediastream/RTCRtpTransceiverDirection.idl
     Modules/mediastream/RTCSessionDescription.idl
@@ -529,6 +532,9 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSStyleSheet.idl
     css/CSSSupportsRule.idl
     css/CSSUnknownRule.idl
+    css/DOMCSSCustomPropertyDescriptor.idl
+    css/DOMCSSNamespace.idl
+    css/DOMCSSRegisterCustomProperty.idl
     css/DOMMatrix.idl
     css/DOMMatrix2DInit.idl
     css/DOMMatrixInit.idl
@@ -539,7 +545,6 @@ set(WebCore_NON_SVG_IDL_FILES
     css/DeprecatedCSSOMRect.idl
     css/DeprecatedCSSOMValue.idl
     css/DeprecatedCSSOMValueList.idl
-    css/DOMCSSNamespace.idl
     css/ElementCSSInlineStyle.idl
     css/FontFace.idl
     css/FontFaceSet.idl
@@ -1876,7 +1881,7 @@ set(WebCore_BUILTINS_SOURCES
 )
 
 set(BUILTINS_GENERATOR_SCRIPTS
-    ${JavaScriptCore_SCRIPTS_DIR}/builtins.py
+    ${JavaScriptCore_SCRIPTS_DIR}/wkbuiltins.py
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generator.py
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_model.py
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_templates.py

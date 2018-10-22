@@ -159,7 +159,7 @@ page/scrolling/mac/ScrollingTreeStickyNode.mm
 
 platform/audio/AudioSession.cpp
 
-platform/audio/cocoa/MediaSessionManagerCocoa.cpp
+platform/audio/cocoa/MediaSessionManagerCocoa.mm
 platform/audio/cocoa/WebAudioBufferList.cpp
 
 platform/audio/ios/AudioDestinationIOS.cpp @no-unify
@@ -176,7 +176,6 @@ platform/audio/mac/AudioHardwareListenerMac.cpp
 platform/audio/mac/AudioSessionMac.cpp
 platform/audio/mac/CARingBuffer.cpp
 platform/audio/mac/FFTFrameMac.cpp
-platform/audio/mac/MediaSessionManagerMac.mm
 
 platform/cf/CFURLExtras.cpp
 platform/cf/FileSystemCF.cpp
@@ -302,8 +301,10 @@ platform/graphics/cocoa/FontCocoa.mm
 platform/graphics/cocoa/FontDescriptionCocoa.cpp
 platform/graphics/cocoa/FontFamilySpecificationCoreText.cpp
 platform/graphics/cocoa/FontPlatformDataCocoa.mm
+platform/graphics/cocoa/HEVCUtilitiesCocoa.cpp
 platform/graphics/cocoa/IOSurface.mm
 platform/graphics/cocoa/IOSurfacePoolCocoa.mm
+platform/graphics/cocoa/MediaEngineConfigurationFactoryCocoa.cpp
 platform/graphics/cocoa/WebActionDisablingCALayerDelegate.mm
 platform/graphics/cocoa/WebCoreCALayerExtras.mm
 platform/graphics/cocoa/WebCoreDecompressionSession.mm
@@ -312,6 +313,7 @@ platform/graphics/cocoa/WebGPULayer.mm
 platform/graphics/cocoa/TextTrackRepresentationCocoa.mm
 
 platform/graphics/cv/PixelBufferConformerCV.cpp
+platform/graphics/cv/PixelBufferResizer.mm
 platform/graphics/cv/TextureCacheCV.mm
 platform/graphics/cv/VideoTextureCopierCV.cpp
 

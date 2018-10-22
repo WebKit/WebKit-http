@@ -244,6 +244,14 @@ public:
     
     WEBCORE_EXPORT virtual ~GraphicsLayer();
     
+    // Unparent, clear the client, and clear the RefPtr.
+    WEBCORE_EXPORT static void unparentAndClear(RefPtr<GraphicsLayer>&);
+    // Clear the client, and clear the RefPtr, but leave parented.
+    WEBCORE_EXPORT static void clear(RefPtr<GraphicsLayer>&);
+
+    WEBCORE_EXPORT void clearClient();
+    WEBCORE_EXPORT void setClient(GraphicsLayerClient&);
+
     Type type() const { return m_type; }
 
     virtual void initialize(Type) { }
@@ -251,7 +259,7 @@ public:
     using PlatformLayerID = uint64_t;
     virtual PlatformLayerID primaryLayerID() const { return 0; }
 
-    GraphicsLayerClient& client() const { return m_client; }
+    GraphicsLayerClient& client() const { return *m_client; }
 
     // Layer name. Only used to identify layers in debug output
     const String& name() const { return m_name; }
@@ -287,7 +295,7 @@ public:
     bool isMaskLayer() const { return m_isMaskLayer; }
     
     // The given layer will replicate this layer and its children; the replica renders behind this layer.
-    WEBCORE_EXPORT virtual void setReplicatedByLayer(GraphicsLayer*);
+    WEBCORE_EXPORT virtual void setReplicatedByLayer(RefPtr<GraphicsLayer>&&);
     // Whether this layer is being replicated by another layer.
     bool isReplicated() const { return m_replicaLayer; }
     // The layer that replicates this layer (if any).
@@ -453,6 +461,8 @@ public:
     WEBCORE_EXPORT virtual void suspendAnimations(MonotonicTime);
     WEBCORE_EXPORT virtual void resumeAnimations();
 
+    virtual Vector<std::pair<String, double>> acceleratedAnimationsForTesting() const { return { }; }
+
     // Layer contents
     virtual void setContentsToImage(Image*) { }
     virtual bool shouldDirectlyCompositeImage(Image*) const { return true; }
@@ -523,8 +533,8 @@ public:
     virtual void setAppliesPageScale(bool appliesScale = true) { m_appliesPageScale = appliesScale; }
     virtual bool appliesPageScale() const { return m_appliesPageScale; }
 
-    float pageScaleFactor() const { return m_client.pageScaleFactor(); }
-    float deviceScaleFactor() const { return m_client.deviceScaleFactor(); }
+    float pageScaleFactor() const { return client().pageScaleFactor(); }
+    float deviceScaleFactor() const { return client().deviceScaleFactor(); }
     
     // Whether this layer is viewport constrained, implying that it's moved around externally from GraphicsLayer (e.g. by the scrolling tree).
     virtual void setIsViewportConstrained(bool) { }
@@ -625,7 +635,7 @@ protected:
 
     WEBCORE_EXPORT virtual void getDebugBorderInfo(Color&, float& width) const;
 
-    GraphicsLayerClient& m_client;
+    GraphicsLayerClient* m_client; // Always non-null.
     String m_name;
     
     // Offset from the owning renderer

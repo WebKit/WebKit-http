@@ -38,17 +38,18 @@ class WebProcessProxy;
 
 class SuspendedPageProxy : public CanMakeWeakPtr<SuspendedPageProxy> {
 public:
-    SuspendedPageProxy(WebPageProxy&, WebProcessProxy&, WebBackForwardListItem&);
+    SuspendedPageProxy(WebPageProxy&, Ref<WebProcessProxy>&&, WebBackForwardListItem&);
     ~SuspendedPageProxy();
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
 
     WebPageProxy& page() const { return m_page; }
-    WebProcessProxy* process() const { return m_process; }
+    WebProcessProxy* process() const { return m_process.get(); }
     const WebCore::SecurityOriginData& origin() const { return m_origin; }
 
     void webProcessDidClose(WebProcessProxy&);
     void destroyWebPageInWebProcess();
+    void tearDownDrawingAreaInWebProcess();
 
 #if !LOG_DISABLED
     const char* loggingString() const;
@@ -58,7 +59,7 @@ private:
     void didFinishLoad();
 
     WebPageProxy& m_page;
-    WebProcessProxy* m_process;
+    RefPtr<WebProcessProxy> m_process;
     WebCore::SecurityOriginData m_origin;
 
 #if !LOG_DISABLED

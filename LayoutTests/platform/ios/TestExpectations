@@ -1349,6 +1349,8 @@ webkit.org/b/180269 editing/execCommand/toggle-link-mac.html [ Failure ]
 webkit.org/b/180269 editing/execCommand/toggle-unlink-mac.html
 webkit.org/b/180269 editing/execCommand/unlink.html [ Failure ]
 
+webkit.org/b/188020 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage.html [ Pass Failure ]
+
 webkit.org/b/180275 editing/caret/color-span-inside-editable-background.html [ ImageOnlyFailure ]
 webkit.org/b/180725 editing/caret/color-span-inside-editable.html [ ImageOnlyFailure ]
 
@@ -1433,6 +1435,8 @@ webkit.org/b/181752 storage/indexeddb/modern/transaction-scheduler-6.html [ Skip
 webkit.org/b/181752 storage/indexeddb/odd-strings.html [ Skip ]
 webkit.org/b/181752 storage/indexeddb/transaction-coordination-within-database.html [ Skip ]
 webkit.org/b/181752 storage/indexeddb/transaction-starvation.html [ Skip ]
+webkit.org/b/176078 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-onnegotiationneeded.html [ Pass Failure ]
+
 
 # SVG tests that fail:
 svg/W3C-SVG-1.1-SE/text-intro-02-b.svg [ Failure ]
@@ -2653,6 +2657,9 @@ webkit.org/b/163755 imported/w3c/web-platform-tests/css/css-shapes [ Skip ]
 
 webkit.org/b/5991 imported/w3c/web-platform-tests/css/cssom-view/scrolling-quirks-vs-nonquirks.html [ Failure ]
 
+webkit.org/b/149264 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-subframe-root.html [ Failure ]
+webkit.org/b/149264 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-subframe-window.html [ Failure ]
+
 # Variation fonts are not implemented earlier than iOS 11.
 fast/text/variations [ Pass Failure ImageOnlyFailure ]
 animations/font-variations [ Pass Failure ImageOnlyFailure Timeout ]
@@ -2828,6 +2835,7 @@ http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subreso
 http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html [ Pass ]
 http/tests/storageAccess/deny-storage-access-under-opener.html [ Pass ]
 http/tests/storageAccess/grant-storage-access-under-opener.html [ Pass ]
+http/tests/resourceLoadStatistics/cap-cache-max-age-for-prevalent-resource.html [ Pass ]
 
 # Skipped in general expectations since they only work on iOS and Mac, WK2.
 http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Pass ]
@@ -3137,3 +3145,10 @@ webkit.org/b/188578 svg/custom/scrolling-embedded-svg-file-image-repaint-problem
 webkit.org/b/188762 fast/writing-mode/english-rl-text-with-spelling-marker.html [ ImageOnlyFailure ]
 
 webkit.org/b/128312 media/video-load-preload-metadata.html [ Pass Failure ]
+
+webkit.org/b/188070 imported/w3c/web-platform-tests/streams/piping/error-propagation-backward.html [ Pass Failure ]
+
+webkit.org/b/189726 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-mixed-content-to-inscope.https.html [ Pass Failure ]
+webkit.org/b/189726 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-mixed-content-to-outscope.https.html [ Pass Failure ]
+
+webkit.org/b/189727 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https.html [ Pass Failure ]

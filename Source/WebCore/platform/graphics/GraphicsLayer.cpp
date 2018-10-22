@@ -110,8 +110,20 @@ bool GraphicsLayer::supportsContentsTiling()
 }
 #endif
 
-GraphicsLayer::GraphicsLayer(Type type, GraphicsLayerClient& client)
-    : m_client(client)
+// Singleton client used for layers on which clearClient has been called.
+class EmptyGraphicsLayerClient : public GraphicsLayerClient {
+public:
+    static EmptyGraphicsLayerClient& singleton();
+};
+
+EmptyGraphicsLayerClient& EmptyGraphicsLayerClient::singleton()
+{
+    static NeverDestroyed<EmptyGraphicsLayerClient> client;
+    return client;
+}
+
+GraphicsLayer::GraphicsLayer(Type type, GraphicsLayerClient& layerClient)
+    : m_client(&layerClient)
     , m_type(type)
     , m_beingDestroyed(false)
     , m_contentsOpaque(false)
@@ -132,7 +144,7 @@ GraphicsLayer::GraphicsLayer(Type type, GraphicsLayerClient& client)
     , m_canDetachBackingStore(true)
 {
 #ifndef NDEBUG
-    m_client.verifyNotPainting();
+    client().verifyNotPainting();
 #endif
 }
 
@@ -142,17 +154,34 @@ GraphicsLayer::~GraphicsLayer()
     ASSERT(!m_parent); // willBeDestroyed should have been called already.
 }
 
+void GraphicsLayer::unparentAndClear(RefPtr<GraphicsLayer>& layer)
+{
+    if (layer) {
+        layer->removeFromParent();
+        layer->clearClient();
+        layer = nullptr;
+    }
+}
+
+void GraphicsLayer::clear(RefPtr<GraphicsLayer>& layer)
+{
+    if (layer) {
+        layer->clearClient();
+        layer = nullptr;
+    }
+}
+
 void GraphicsLayer::willBeDestroyed()
 {
     m_beingDestroyed = true;
 #ifndef NDEBUG
-    m_client.verifyNotPainting();
+    client().verifyNotPainting();
 #endif
     if (m_replicaLayer)
-        m_replicaLayer->setReplicatedLayer(0);
+        m_replicaLayer->setReplicatedLayer(nullptr);
 
     if (m_replicatedLayer)
-        m_replicatedLayer->setReplicatedByLayer(0);
+        m_replicatedLayer->setReplicatedByLayer(nullptr);
 
     if (m_maskLayer) {
         m_maskLayer->setParent(nullptr);
@@ -161,6 +190,16 @@ void GraphicsLayer::willBeDestroyed()
 
     removeAllChildren();
     removeFromParent();
+}
+
+void GraphicsLayer::clearClient()
+{
+    m_client = &EmptyGraphicsLayerClient::singleton();
+}
+
+void GraphicsLayer::setClient(GraphicsLayerClient& client)
+{
+    m_client = &client;
 }
 
 void GraphicsLayer::setParent(GraphicsLayer* layer)
@@ -198,9 +237,7 @@ void GraphicsLayer::addChild(Ref<GraphicsLayer>&& childLayer)
 {
     ASSERT(childLayer.ptr() != this);
     
-    if (childLayer->parent())
-        childLayer->removeFromParent();
-
+    childLayer->removeFromParent();
     childLayer->setParent(this);
     m_children.append(WTFMove(childLayer));
 }
@@ -209,9 +246,7 @@ void GraphicsLayer::addChildAtIndex(Ref<GraphicsLayer>&& childLayer, int index)
 {
     ASSERT(childLayer.ptr() != this);
 
-    if (childLayer->parent())
-        childLayer->removeFromParent();
-
+    childLayer->removeFromParent();
     childLayer->setParent(this);
     m_children.insert(index, WTFMove(childLayer));
 }
@@ -395,7 +430,7 @@ void GraphicsLayer::setIsInWindow(bool inWindow)
         tiledBacking->setIsInWindow(inWindow);
 }
 
-void GraphicsLayer::setReplicatedByLayer(GraphicsLayer* layer)
+void GraphicsLayer::setReplicatedByLayer(RefPtr<GraphicsLayer>&& layer)
 {
     if (m_replicaLayer == layer)
         return;
@@ -406,7 +441,7 @@ void GraphicsLayer::setReplicatedByLayer(GraphicsLayer* layer)
     if (layer)
         layer->setReplicatedLayer(this);
 
-    m_replicaLayer = layer;
+    m_replicaLayer = WTFMove(layer);
 }
 
 void GraphicsLayer::setOffsetFromRenderer(const FloatSize& offset, ShouldSetNeedsDisplay shouldSetNeedsDisplay)
@@ -445,7 +480,7 @@ void GraphicsLayer::paintGraphicsLayerContents(GraphicsContext& context, const F
     FloatRect clipRect(clip);
     clipRect.move(offset);
 
-    m_client.paintContents(this, context, m_paintingPhase, clipRect, layerPaintBehavior);
+    client().paintContents(this, context, m_paintingPhase, clipRect, layerPaintBehavior);
 }
 
 String GraphicsLayer::animationNameForTransition(AnimatedPropertyID property)
@@ -674,7 +709,7 @@ void GraphicsLayer::resetTrackedRepaints()
 
 void GraphicsLayer::addRepaintRect(const FloatRect& repaintRect)
 {
-    if (!m_client.isTrackingRepaints())
+    if (!client().isTrackingRepaints())
         return;
 
     FloatRect largestRepaintRect(FloatPoint(), m_size);
@@ -769,7 +804,7 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
     if (type() == Type::Normal && tiledBacking())
         ts << indent << "(usingTiledLayer 1)\n";
 
-    bool needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack = m_client.needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack(*this);
+    bool needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack = client().needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack(*this);
     if (m_contentsOpaque || needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack)
         ts << indent << "(contentsOpaque " << (m_contentsOpaque || needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack) << ")\n";
 
@@ -779,7 +814,7 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
     if (m_preserves3D)
         ts << indent << "(preserves3D " << m_preserves3D << ")\n";
 
-    if (m_drawsContent && m_client.shouldDumpPropertyForLayer(this, "drawsContent"))
+    if (m_drawsContent && client().shouldDumpPropertyForLayer(this, "drawsContent"))
         ts << indent << "(drawsContent " << m_drawsContent << ")\n";
 
     if (!m_contentsVisible)
@@ -790,10 +825,10 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
 
     if (behavior & LayerTreeAsTextDebug) {
         ts << indent << "(primary-layer-id " << primaryLayerID() << ")\n";
-        ts << indent << "(client " << static_cast<void*>(&m_client) << ")\n";
+        ts << indent << "(client " << static_cast<void*>(m_client) << ")\n";
     }
 
-    if (m_backgroundColor.isValid() && m_client.shouldDumpPropertyForLayer(this, "backgroundColor"))
+    if (m_backgroundColor.isValid() && client().shouldDumpPropertyForLayer(this, "backgroundColor"))
         ts << indent << "(backgroundColor " << m_backgroundColor.nameForRenderTreeAsText() << ")\n";
 
     if (behavior & LayerTreeAsTextIncludeAcceleratesDrawing && m_acceleratesDrawing)
@@ -847,7 +882,7 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
         ts << ")\n";
     }
 
-    if (behavior & LayerTreeAsTextIncludeRepaintRects && repaintRectMap().contains(this) && !repaintRectMap().get(this).isEmpty() && m_client.shouldDumpPropertyForLayer(this, "repaintRects")) {
+    if (behavior & LayerTreeAsTextIncludeRepaintRects && repaintRectMap().contains(this) && !repaintRectMap().get(this).isEmpty() && client().shouldDumpPropertyForLayer(this, "repaintRects")) {
         ts << indent << "(repaint rects\n";
         for (size_t i = 0; i < repaintRectMap().get(this).size(); ++i) {
             if (repaintRectMap().get(this)[i].isEmpty())
@@ -945,6 +980,6 @@ void showGraphicsLayerTree(const WebCore::GraphicsLayer* layer)
         return;
 
     String output = layer->layerTreeAsText(WebCore::LayerTreeAsTextShowAll);
-    fprintf(stderr, "%s\n", output.utf8().data());
+    WTFLogAlways("%s\n", output.utf8().data());
 }
 #endif

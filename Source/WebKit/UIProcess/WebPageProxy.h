@@ -94,6 +94,7 @@
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RunLoop.h>
+#include <wtf/UniqueRef.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -225,6 +226,7 @@ class PageClient;
 class RemoteLayerTreeScrollingPerformanceData;
 class RemoteLayerTreeTransaction;
 class RemoteScrollingCoordinatorProxy;
+class SecKeyProxyStore;
 class UserData;
 class ViewSnapshot;
 class VisitedLinkStore;
@@ -421,7 +423,7 @@ public:
     API::DiagnosticLoggingClient* diagnosticLoggingClient() { return m_diagnosticLoggingClient.get(); }
     void setDiagnosticLoggingClient(std::unique_ptr<API::DiagnosticLoggingClient>&&);
     void setFormClient(std::unique_ptr<API::FormClient>&&);
-    void setNavigationClient(std::unique_ptr<API::NavigationClient>&&);
+    void setNavigationClient(UniqueRef<API::NavigationClient>&&);
     void setHistoryClient(std::unique_ptr<API::HistoryClient>&&);
     void setLoaderClient(std::unique_ptr<API::LoaderClient>&&);
     void setPolicyClient(std::unique_ptr<API::PolicyClient>&&);
@@ -436,9 +438,16 @@ public:
 
     void initializeWebPage();
 
+    WeakPtr<SecKeyProxyStore> secKeyProxyStore(const WebCore::AuthenticationChallenge&);
+        
     void close();
     bool tryClose();
     bool isClosed() const { return m_isClosed; }
+
+    void setOpenedByDOM() { m_openedByDOM = true; }
+    bool openedByDOM() const { return m_openedByDOM; }
+
+    bool hasCommittedAnyProvisionalLoads() const { return m_hasCommittedAnyProvisionalLoads; }
 
     void setIsUsingHighPerformanceWebGL(bool value) { m_isUsingHighPerformanceWebGL = value; }
     bool isUsingHighPerformanceWebGL() const { return m_isUsingHighPerformanceWebGL; }
@@ -913,6 +922,7 @@ public:
 
     class PolicyDecisionSender;
     void receivedPolicyDecision(WebCore::PolicyAction, API::Navigation*, std::optional<WebsitePoliciesData>&&, Ref<PolicyDecisionSender>&&);
+    void receivedNavigationPolicyDecision(WebCore::PolicyAction, API::Navigation*, ProcessSwapRequestedByClient, WebFrameProxy&, API::WebsitePolicies*, Ref<PolicyDecisionSender>&&);
 
     void backForwardRemovedItem(const WebCore::BackForwardItemIdentifier&);
 
@@ -1417,6 +1427,7 @@ private:
     void didStartProgress();
     void didChangeProgress(double);
     void didFinishProgress();
+    void didCompletePageTransition(bool isInitialEmptyDocument);
     void setNetworkRequestsInProgress(bool);
 
     void hasInsecureContent(WebCore::HasInsecureContent&);
@@ -1502,12 +1513,7 @@ private:
     void setCanShortCircuitHorizontalWheelEvents(bool canShortCircuitHorizontalWheelEvents) { m_canShortCircuitHorizontalWheelEvents = canShortCircuitHorizontalWheelEvents; }
 
     void reattachToWebProcess();
-
-    enum class ReattachForBackForward {
-        Yes,
-        No
-    };
-    void reattachToWebProcess(Ref<WebProcessProxy>&&, API::Navigation*, ReattachForBackForward);
+    void reattachToWebProcess(Ref<WebProcessProxy>&&, API::Navigation*);
 
     RefPtr<API::Navigation> reattachToWebProcessForReload();
     RefPtr<API::Navigation> reattachToWebProcessWithItem(WebBackForwardListItem&);
@@ -1837,7 +1843,7 @@ private:
 
     std::unique_ptr<API::LoaderClient> m_loaderClient;
     std::unique_ptr<API::PolicyClient> m_policyClient;
-    std::unique_ptr<API::NavigationClient> m_navigationClient;
+    UniqueRef<API::NavigationClient> m_navigationClient;
     std::unique_ptr<API::HistoryClient> m_historyClient;
     std::unique_ptr<API::IconLoadingClient> m_iconLoadingClient;
     std::unique_ptr<API::FormClient> m_formClient;
@@ -2215,6 +2221,8 @@ private:
 #endif
 
     bool m_isUsingHighPerformanceWebGL { false };
+    bool m_openedByDOM { false };
+    bool m_hasCommittedAnyProvisionalLoads { false };
 
     HashMap<String, Ref<WebURLSchemeHandler>> m_urlSchemeHandlersByScheme;
     HashMap<uint64_t, Ref<WebURLSchemeHandler>> m_urlSchemeHandlersByIdentifier;

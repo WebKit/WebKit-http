@@ -124,6 +124,27 @@ enum CompositingPolicy {
 
 [
     ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
+    JSGenerateToJSObject,
+] dictionary HEVCParameterSet {
+    DOMString codecName;
+    unsigned short generalProfileSpace;
+    unsigned short generalProfileIDC;
+    unsigned long generalProfileCompatibilityFlags;
+    boolean generalTierFlag;
+    unsigned short generalLevelIDC;
+    sequence<unsigned short> constraintFlags;
+};
+
+[
+    ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
+    JSGenerateToJSObject,
+] dictionary AcceleratedAnimation {
+    DOMString property;
+    double speed;
+};
+
+[
+    ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
     NoInterfaceObject,
 ] interface Internals {
     DOMString address(Node node);
@@ -187,6 +208,9 @@ enum CompositingPolicy {
     // CSS Transition testing.
     [MayThrowException] boolean pauseTransitionAtTimeOnElement(DOMString propertyName, unrestricted double pauseTime, Element element);
     [MayThrowException] boolean pauseTransitionAtTimeOnPseudoElement(DOMString property, unrestricted double pauseTime, Element element, DOMString pseudoId);
+
+    // Web Animations testing.
+    sequence<AcceleratedAnimation> acceleratedAnimationsForElement(Element element);
 
     // For animations testing, we need a way to get at pseudo elements.
     [MayThrowException] Element? pseudoElement(Element element, DOMString pseudoId);
@@ -670,4 +694,8 @@ enum CompositingPolicy {
     void notifyResourceLoadObserver();
 
     unsigned long primaryScreenDisplayID();
+
+    boolean supportsVCPEncoder();
+
+    HEVCParameterSet? parseHEVCCodecParameters(DOMString codecParameters);
 };

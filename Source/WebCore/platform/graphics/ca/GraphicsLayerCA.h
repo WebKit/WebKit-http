@@ -171,6 +171,8 @@ public:
 
     WEBCORE_EXPORT TiledBacking* tiledBacking() const override;
 
+    WEBCORE_EXPORT Vector<std::pair<String, double>> acceleratedAnimationsForTesting() const final;
+
 protected:
     WEBCORE_EXPORT void setOpacityInternal(float) override;
     
@@ -287,7 +289,7 @@ private:
 
     void updateClippingStrategy(PlatformCALayer&, RefPtr<PlatformCALayer>& shapeMaskLayer, const FloatRoundedRect&);
 
-    WEBCORE_EXPORT void setReplicatedByLayer(GraphicsLayer*) override;
+    WEBCORE_EXPORT void setReplicatedByLayer(RefPtr<GraphicsLayer>&&) override;
 
     WEBCORE_EXPORT bool canThrottleLayerFlush() const override;
 

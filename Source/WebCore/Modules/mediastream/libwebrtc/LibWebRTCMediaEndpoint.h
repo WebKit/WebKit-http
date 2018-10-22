@@ -55,11 +55,11 @@ class SetSessionDescriptionObserver;
 }
 
 namespace WebCore {
-
 class LibWebRTCProvider;
 class LibWebRTCPeerConnectionBackend;
 class LibWebRTCRtpReceiverBackend;
 class LibWebRTCRtpTransceiverBackend;
+class LibWebRTCStatsCollector;
 class MediaStreamTrack;
 class RTCSessionDescription;
 
@@ -82,7 +82,9 @@ public:
     void doSetRemoteDescription(RTCSessionDescription&);
     void doCreateOffer(const RTCOfferOptions&);
     void doCreateAnswer();
-    void getStats(MediaStreamTrack*, Ref<DeferredPromise>&&);
+    void getStats(Ref<DeferredPromise>&&);
+    void getStats(webrtc::RtpReceiverInterface&, Ref<DeferredPromise>&&);
+    void getStats(webrtc::RtpSenderInterface&, Ref<DeferredPromise>&&);
     std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String&, const RTCDataChannelInit&);
     bool addIceCandidate(webrtc::IceCandidateInterface& candidate) { return m_backend->AddIceCandidate(&candidate); }
 
@@ -118,6 +120,7 @@ private:
     void OnDataChannel(rtc::scoped_refptr<webrtc::DataChannelInterface>) final;
     void OnAddTrack(rtc::scoped_refptr<webrtc::RtpReceiverInterface>, const std::vector<rtc::scoped_refptr<webrtc::MediaStreamInterface>>&) final;
     void OnTrack(rtc::scoped_refptr<webrtc::RtpTransceiverInterface>) final;
+    void OnRemoveTrack(rtc::scoped_refptr<webrtc::RtpReceiverInterface>) final;
 
     void OnRenegotiationNeeded() final;
     void OnIceConnectionChange(webrtc::PeerConnectionInterface::IceConnectionState) final;
@@ -135,6 +138,7 @@ private:
     void addRemoteTrack(rtc::scoped_refptr<webrtc::RtpReceiverInterface>&&, const std::vector<rtc::scoped_refptr<webrtc::MediaStreamInterface>>&);
     void removeRemoteStream(webrtc::MediaStreamInterface&);
     void newTransceiver(rtc::scoped_refptr<webrtc::RtpTransceiverInterface>&&);
+    void removeRemoteTrack(rtc::scoped_refptr<webrtc::RtpReceiverInterface>&&);
 
     void fireTrackEvent(Ref<RTCRtpReceiver>&&, Ref<MediaStreamTrack>&&, const std::vector<rtc::scoped_refptr<webrtc::MediaStreamInterface>>&, RefPtr<RTCRtpTransceiver>&&);
 
@@ -145,6 +149,8 @@ private:
     void gatherStatsForLogging();
     void startLoggingStats();
     void stopLoggingStats();
+
+    void getStats(Ref<DeferredPromise>&&, WTF::Function<void(rtc::scoped_refptr<LibWebRTCStatsCollector>&&)>&&);
 
     MediaStream& mediaStreamFromRTCStream(webrtc::MediaStreamInterface&);
 

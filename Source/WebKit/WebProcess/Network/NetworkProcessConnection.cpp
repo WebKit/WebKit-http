@@ -110,8 +110,7 @@ void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IP
 
 #if ENABLE(INDEXED_DATABASE)
     if (decoder.messageReceiverName() == Messages::WebIDBConnectionToServer::messageReceiverName()) {
-        auto idbConnection = m_webIDBConnectionsByIdentifier.get(decoder.destinationID());
-        if (idbConnection)
+        if (auto idbConnection = m_webIDBConnectionsByIdentifier.get(decoder.destinationID()))
             idbConnection->didReceiveMessage(connection, decoder);
         return;
     }

@@ -1271,6 +1271,10 @@ void MediaPlayer::initializationDataEncountered(const String& initDataType, RefP
     client().mediaPlayerInitializationDataEncountered(initDataType, WTFMove(initData));
 }
 
+void MediaPlayer::waitingForKey()
+{
+    client().mediaPlayerWaitingForKey();
+}
 #endif
 
 String MediaPlayer::referrer() const

@@ -304,16 +304,18 @@
         "MSEEME": {
             "filename": r"Source/WebCore/Modules/encryptedmedia/"
                         r"|Source/WebCore/Modules/mediasource/"
+                        r"|LayoutTests/imported/w3c/web-platform-tests/encrypted-media/"
+                        r"|LayoutTests/imported/w3c/web-platform-tests/media-source/"
                         r"|LayoutTests/media/encrypted-media/"
                         r"|LayoutTests/media/media-source/",
         },
         "StreamsAPI": {
             "filename": r"Source/WebCore/bindings/js/JSDOMGlobalObject\.cpp"
-                        r"Source/WebCore/bindings/js/JSReadableStreamPrivateConstructors\.(h|cpp)"
-                        r"Source/WebCore/bindings/js/WebCoreBuiltinNames\.h"
-                        r"Source/WebCore/bindings/js/WebCoreJSBuiltinInternals\.(h|cpp)"
-                        r"Source/WebCore/bindings/js/WebCoreJSBuiltins\.(h|cpp)"
-                        r"Source/WebCore/Modules/streams/"
+                        r"|Source/WebCore/bindings/js/JSReadableStreamPrivateConstructors\.(h|cpp)"
+                        r"|Source/WebCore/bindings/js/WebCoreBuiltinNames\.h"
+                        r"|Source/WebCore/bindings/js/WebCoreJSBuiltinInternals\.(h|cpp)"
+                        r"|Source/WebCore/bindings/js/WebCoreJSBuiltins\.(h|cpp)"
+                        r"|Source/WebCore/Modules/streams/"
                         r"|LayoutTests/imported/w3c/web-platform-tests/streams-api/"
                         r"|LayoutTests/streams/",
         },

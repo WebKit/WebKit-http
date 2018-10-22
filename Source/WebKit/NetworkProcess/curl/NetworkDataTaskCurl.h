@@ -28,6 +28,7 @@
 #include "CurlRequestClient.h"
 #include "NetworkDataTask.h"
 #include <WebCore/NetworkLoadMetrics.h>
+#include <WebCore/ProtectionSpace.h>
 #include <WebCore/ResourceResponse.h>
 
 namespace WebCore {
@@ -69,12 +70,14 @@ private:
     void curlDidComplete(WebCore::CurlRequest&) override;
     void curlDidFailWithError(WebCore::CurlRequest&, const WebCore::ResourceError&) override;
 
+    void invokeDidReceiveResponse();
+
     bool shouldRedirectAsGET(const WebCore::ResourceRequest&, bool crossOrigin);
     void willPerformHTTPRedirection();
 
     void tryHttpAuthentication(WebCore::AuthenticationChallenge&&);
     void tryProxyAuthentication(WebCore::AuthenticationChallenge&&);
-    void restartWithCredential(const WebCore::Credential&);
+    void restartWithCredential(const WebCore::ProtectionSpace&, const WebCore::Credential&);
 
     void appendCookieHeader(WebCore::ResourceRequest&);
     void handleCookieHeaders(const WebCore::CurlResponse&);
@@ -85,6 +88,9 @@ private:
     WebCore::ResourceResponse m_response;
     unsigned m_redirectCount { 0 };
     unsigned m_authFailureCount { 0 };
+    bool m_didChallengeEmptyCredentialForAuth { false };
+    bool m_didChallengeEmptyCredentialForProxyAuth { false };
+    MonotonicTime m_startTime;
 };
 
 } // namespace WebKit

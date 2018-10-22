@@ -1,3 +1,102 @@
+2018-09-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use Semaphore and BinarySemaphore instead of dispatch_semaphore_t
+        https://bugs.webkit.org/show_bug.cgi?id=185339
+
+        Reviewed by Mark Lam.
+
+        This patch adds WTF::Semaphore, which is based on WTF::Lock and WTF::Condition.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Semaphore.h: Added.
+        (WTF::Semaphore::Semaphore):
+        (WTF::Semaphore::signal):
+        (WTF::Semaphore::waitUntil):
+        (WTF::Semaphore::waitFor):
+        (WTF::Semaphore::wait):
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::platformInitialize):
+        * wtf/threads/BinarySemaphore.cpp:
+        (WTF::BinarySemaphore::waitUntil):
+        (WTF::BinarySemaphore::wait): Deleted.
+        * wtf/threads/BinarySemaphore.h:
+        (WTF::BinarySemaphore::waitFor):
+        (WTF::BinarySemaphore::wait):
+        Align the names of the functions to WTF::Condition.
+        Add BinarySemaphore::wait(), which is the same to waitUntil(WallTime::infinity()).
+
+2018-09-17  Jer Noble  <jer.noble@apple.com>
+
+        Add support for HEVC codec types in Media Capabilities
+        https://bugs.webkit.org/show_bug.cgi?id=189565
+
+        Reviewed by Eric Carlson.
+
+        Extract the toIntegralType template into its own header.
+
+        * wtf/CMakeLists.txt:
+        * wtf/text/StringConversion.h: Added.
+        (isCharacterAllowedInBase):
+        (toIntegralType):
+        * wtf/text/WTFString.cpp:
+
+2018-09-17  Jer Noble  <jer.noble@apple.com>
+
+        Enable USE_MEDIAREMOTE on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=189096
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Platform.h:
+
+2018-09-17  Frederic Wang  <fwang@igalia.com>
+
+        Build error in ImageBufferCG when compiled with IOSurfacePool
+        https://bugs.webkit.org/show_bug.cgi?id=189579
+
+        Reviewed by Tim Horton.
+
+        IOSurface.h might be included with different value of IOSURFACE_CANVAS_BACKING_STORE, causing
+        compilation errors when files in the same unified source do not agree on the definition.
+        This patch moves the definition of IOSURFACE_CANVAS_BACKING_STORE from ImageBufferDataCG.h
+        to Platform.h so that IOSURFACE_CANVAS_BACKING_STORE is set to the same value in all files.
+        Finally some minors changes to explicitly declare/define ImageBuffer are performed in order
+        to prevent future issues with Unified build rotating.
+
+        * wtf/Platform.h: Move definition from ImageBufferDataCG.h.
+
+2018-09-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r235990.
+
+        Introduced TestWebKitAPI.NowPlayingTest timeouts on iOS
+
+        Reverted changeset:
+
+        "Enable USE_MEDIAREMOTE on iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=189096
+        https://trac.webkit.org/changeset/235990
+
+2018-09-13  Jer Noble  <jer.noble@apple.com>
+
+        Enable USE_MEDIAREMOTE on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=189096
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Platform.h:
+
+2018-09-13  Alex Christensen  <achristensen@webkit.org>
+
+        Use a Variant instead of a union in CSSSelector
+        https://bugs.webkit.org/show_bug.cgi?id=188559
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/Variant.h:
+        Add packing macros to make it so Variant-containing structures don't always have 7 bytes of padding per Variant.
+
 2018-09-12  Guillaume Emont  <guijemont@igalia.com>
 
         Add IGNORE_WARNING_.* macros

@@ -241,15 +241,9 @@ GraphicsLayer& PageOverlayController::layerForOverlay(PageOverlay& overlay) cons
 
 void PageOverlayController::willDetachRootLayer()
 {
-    if (m_documentOverlayRootLayer) {
-        m_documentOverlayRootLayer->removeFromParent();
-        m_documentOverlayRootLayer = nullptr;
-    }
+    GraphicsLayer::unparentAndClear(m_documentOverlayRootLayer);
+    GraphicsLayer::unparentAndClear(m_viewOverlayRootLayer);
 
-    if (m_viewOverlayRootLayer) {
-        m_viewOverlayRootLayer->removeFromParent();
-        m_viewOverlayRootLayer = nullptr;
-    }
     m_initialized = false;
 }
 

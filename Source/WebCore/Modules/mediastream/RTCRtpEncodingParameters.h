@@ -29,12 +29,13 @@
 
 #include "RTCDtxStatus.h"
 #include "RTCPriorityType.h"
+#include "RTCRtpCodingParameters.h"
 #include "RTCRtpFecParameters.h"
 #include "RTCRtpRtxParameters.h"
 
 namespace WebCore {
 
-struct RTCRtpEncodingParameters {
+struct RTCRtpEncodingParameters : RTCRtpCodingParameters {
     unsigned long ssrc { 0 };
     RTCRtpRtxParameters rtx;
     RTCRtpFecParameters fec;
@@ -43,7 +44,6 @@ struct RTCRtpEncodingParameters {
     RTCPriorityType priority { RTCPriorityType::Medium };
     unsigned long maxBitrate { 0 };
     unsigned long maxFramerate { 0 };
-    String rid;
     double scaleResolutionDownBy { 1 };
 };
 

@@ -997,6 +997,7 @@ void WebProcessProxy::requestTermination(ProcessTerminationReason reason)
     if (state() == State::Terminated)
         return;
 
+    auto protectedThis = makeRef(*this);
     RELEASE_LOG_IF(m_websiteDataStore->sessionID().isAlwaysOnLoggingAllowed(), Process, "%p - WebProcessProxy::requestTermination - reason %d", this, reason);
 
     ChildProcessProxy::terminate();
@@ -1007,6 +1008,11 @@ void WebProcessProxy::requestTermination(ProcessTerminationReason reason)
     auto pages = copyToVectorOf<RefPtr<WebPageProxy>>(m_pageMap.values());
 
     shutDown();
+
+    for (auto* suspendedPage : copyToVectorOf<SuspendedPageProxy*>(m_suspendedPageMap.values()))
+        suspendedPage->webProcessDidClose(*this);
+
+    m_suspendedPageMap.clear();
 
     for (auto& page : pages)
         page->processDidTerminate(reason);

@@ -538,12 +538,12 @@ bool CoordinatedGraphicsLayer::shouldDirectlyCompositeImage(Image* image) const
     return true;
 }
 
-void CoordinatedGraphicsLayer::setReplicatedByLayer(GraphicsLayer* layer)
+void CoordinatedGraphicsLayer::setReplicatedByLayer(RefPtr<GraphicsLayer>&& layer)
 {
     if (layer == replicaLayer())
         return;
 
-    GraphicsLayer::setReplicatedByLayer(layer);
+    GraphicsLayer::setReplicatedByLayer(WTFMove(layer));
     m_nicosia.delta.replicaChanged = true;
     notifyFlushRequired();
 }

@@ -35,25 +35,26 @@
 
 namespace WebCore {
 
-EventContext::EventContext(Node* node, EventTarget* currentTarget, EventTarget* target)
-    : m_node(node)
-    , m_currentTarget(currentTarget)
-    , m_target(target)
+EventContext::EventContext(Node* node, EventTarget* currentTarget, EventTarget* target, int closedShadowDepth)
+    : m_node { node }
+    , m_currentTarget { currentTarget }
+    , m_target { target }
+    , m_closedShadowDepth { closedShadowDepth }
 {
     ASSERT(!isUnreachableNode(m_target.get()));
 }
 
 EventContext::~EventContext() = default;
 
-void EventContext::handleLocalEvents(Event& event) const
+void EventContext::handleLocalEvents(Event& event, EventInvokePhase phase) const
 {
     event.setTarget(m_target.get());
     event.setCurrentTarget(m_currentTarget.get());
     // FIXME: Consider merging handleLocalEvents and fireEventListeners.
     if (m_node)
-        m_node->handleLocalEvents(event);
+        m_node->handleLocalEvents(event, phase);
     else
-        m_currentTarget->fireEventListeners(event);
+        m_currentTarget->fireEventListeners(event, phase);
 }
 
 bool EventContext::isMouseOrFocusEventContext() const
@@ -66,18 +67,18 @@ bool EventContext::isTouchEventContext() const
     return false;
 }
 
-MouseOrFocusEventContext::MouseOrFocusEventContext(Node& node, EventTarget* currentTarget, EventTarget* target)
-    : EventContext(&node, currentTarget, target)
+MouseOrFocusEventContext::MouseOrFocusEventContext(Node& node, EventTarget* currentTarget, EventTarget* target, int closedShadowDepth)
+    : EventContext(&node, currentTarget, target, closedShadowDepth)
 {
 }
 
 MouseOrFocusEventContext::~MouseOrFocusEventContext() = default;
 
-void MouseOrFocusEventContext::handleLocalEvents(Event& event) const
+void MouseOrFocusEventContext::handleLocalEvents(Event& event, EventInvokePhase phase) const
 {
     if (m_relatedTarget)
         event.setRelatedTarget(*m_relatedTarget);
-    EventContext::handleLocalEvents(event);
+    EventContext::handleLocalEvents(event, phase);
 }
 
 bool MouseOrFocusEventContext::isMouseOrFocusEventContext() const
@@ -87,8 +88,8 @@ bool MouseOrFocusEventContext::isMouseOrFocusEventContext() const
 
 #if ENABLE(TOUCH_EVENTS)
 
-TouchEventContext::TouchEventContext(Node& node, EventTarget* currentTarget, EventTarget* target)
-    : EventContext(&node, currentTarget, target)
+TouchEventContext::TouchEventContext(Node& node, EventTarget* currentTarget, EventTarget* target, int closedShadowDepth)
+    : EventContext(&node, currentTarget, target, closedShadowDepth)
     , m_touches(TouchList::create())
     , m_targetTouches(TouchList::create())
     , m_changedTouches(TouchList::create())
@@ -97,7 +98,7 @@ TouchEventContext::TouchEventContext(Node& node, EventTarget* currentTarget, Eve
 
 TouchEventContext::~TouchEventContext() = default;
 
-void TouchEventContext::handleLocalEvents(Event& event) const
+void TouchEventContext::handleLocalEvents(Event& event, EventInvokePhase phase) const
 {
     checkReachability(m_touches);
     checkReachability(m_targetTouches);
@@ -106,7 +107,7 @@ void TouchEventContext::handleLocalEvents(Event& event) const
     touchEvent.setTouches(m_touches.ptr());
     touchEvent.setTargetTouches(m_targetTouches.ptr());
     touchEvent.setChangedTouches(m_changedTouches.ptr());
-    EventContext::handleLocalEvents(event);
+    EventContext::handleLocalEvents(event, phase);
 }
 
 bool TouchEventContext::isTouchEventContext() const

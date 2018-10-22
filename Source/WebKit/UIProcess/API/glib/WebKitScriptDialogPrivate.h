@@ -20,33 +20,15 @@
 #pragma once
 
 #include "WebKitScriptDialog.h"
-#include "WebKitWebView.h"
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
 struct _WebKitScriptDialog {
-    _WebKitScriptDialog(unsigned type, const CString& message)
-        : type(type)
-        , message(message)
-        , confirmed(false)
-    {
-    }
-
-    _WebKitScriptDialog(unsigned type, const CString& message, const CString& defaultText)
+    _WebKitScriptDialog(unsigned type, const CString& message, const CString& defaultText, Function<void(bool, const String&)>&& completionHandler)
         : type(type)
         , message(message)
         , defaultText(defaultText)
-        , confirmed(false)
-    {
-        ASSERT(type == WEBKIT_SCRIPT_DIALOG_PROMPT);
-    }
-
-    _WebKitScriptDialog(WebKitScriptDialog* dialog)
-        : type(dialog->type)
-        , message(dialog->message)
-        , defaultText(dialog->defaultText)
-        , confirmed(dialog->confirmed)
-        , text(dialog->text)
+        , completionHandler(WTFMove(completionHandler))
     {
     }
 
@@ -54,15 +36,19 @@ struct _WebKitScriptDialog {
     CString message;
     CString defaultText;
 
-    bool confirmed;
+    bool confirmed { false };
     CString text;
+
+    Function<void(bool, const String&)> completionHandler;
 
 #if PLATFORM(GTK)
     GtkWidget* nativeDialog { nullptr };
 #endif
+
+    int referenceCount { 1 };
 };
 
-void webkitScriptDialogRun(WebKitScriptDialog*, WebKitWebView*);
+WebKitScriptDialog* webkitScriptDialogCreate(unsigned type, const CString& message, const CString& defaultText, Function<void(bool, const String&)>&& completionHandler);
 bool webkitScriptDialogIsRunning(WebKitScriptDialog*);
 void webkitScriptDialogAccept(WebKitScriptDialog*);
 void webkitScriptDialogDismiss(WebKitScriptDialog*);

@@ -38,13 +38,14 @@
 
 namespace WebCore {
 
-CurlRequest::CurlRequest(const ResourceRequest&request, CurlRequestClient* client, bool shouldSuspend, bool enableMultipart, MessageQueue<Function<void()>>* messageQueue)
+CurlRequest::CurlRequest(const ResourceRequest&request, CurlRequestClient* client, ShouldSuspend shouldSuspend, EnableMultipart enableMultipart, CaptureNetworkLoadMetrics captureExtraMetrics, MessageQueue<Function<void()>>* messageQueue)
     : m_request(request.isolatedCopy())
     , m_client(client)
-    , m_shouldSuspend(shouldSuspend)
-    , m_enableMultipart(enableMultipart)
+    , m_shouldSuspend(shouldSuspend == ShouldSuspend::Yes)
+    , m_enableMultipart(enableMultipart == EnableMultipart::Yes)
     , m_formDataStream(m_request.httpBody())
     , m_messageQueue(messageQueue)
+    , m_captureExtraMetrics(captureExtraMetrics == CaptureNetworkLoadMetrics::Extended)
 {
     ASSERT(isMainThread());
 }
@@ -55,6 +56,31 @@ void CurlRequest::invalidateClient()
 
     m_client = nullptr;
     m_messageQueue = nullptr;
+}
+
+void CurlRequest::setAuthenticationScheme(ProtectionSpaceAuthenticationScheme scheme)
+{
+    switch (scheme) {
+    case ProtectionSpaceAuthenticationSchemeHTTPBasic:
+        m_authType = CURLAUTH_BASIC;
+        break;
+
+    case ProtectionSpaceAuthenticationSchemeHTTPDigest:
+        m_authType = CURLAUTH_DIGEST;
+        break;
+
+    case ProtectionSpaceAuthenticationSchemeNTLM:
+        m_authType = CURLAUTH_NTLM;
+        break;
+
+    case ProtectionSpaceAuthenticationSchemeNegotiate:
+        m_authType = CURLAUTH_NEGOTIATE;
+        break;
+
+    default:
+        m_authType = CURLAUTH_ANY;
+        break;
+    }
 }
 
 void CurlRequest::setUserPass(const String& user, const String& password)
@@ -79,6 +105,9 @@ void CurlRequest::start()
     ASSERT(isMainThread());
 
     auto url = m_request.url().isolatedCopy();
+
+    if (std::isnan(m_requestStartTime))
+        m_requestStartTime = MonotonicTime::now();
 
     if (url.isLocalFile())
         invokeDidReceiveResponseForFile(url);
@@ -183,8 +212,7 @@ CURL* CurlRequest::setupTransfer()
     }
 
     if (!m_user.isEmpty() || !m_password.isEmpty()) {
-        m_curlHandle->enableHttpAuthentication(CURLAUTH_ANY);
-        m_curlHandle->setHttpAuthUserPass(m_user, m_password);
+        m_curlHandle->setHttpAuthUserPass(m_user, m_password, m_authType);
     }
 
     m_curlHandle->setHeaderCallbackFunction(didReceiveHeaderCallback, this);
@@ -194,6 +222,8 @@ CURL* CurlRequest::setupTransfer()
 
     if (m_shouldSuspend)
         setRequestPaused(true);
+
+    m_performStartTime = MonotonicTime::now();
 
     return m_curlHandle->handle();
 }
@@ -405,7 +435,10 @@ void CurlRequest::didCompleteTransfer(CURLcode result)
         updateNetworkLoadMetrics();
 
         finalizeTransfer();
-        callClient([](CurlRequest& request, CurlRequestClient& client) {
+        callClient([this, protectedThis = makeRef(*this)](CurlRequest& request, CurlRequestClient& client) {
+            m_networkLoadMetrics.responseEnd = MonotonicTime::now() - m_requestStartTime;
+            m_networkLoadMetrics.markComplete();
+
             client.curlDidComplete(request);
         });
     } else {
@@ -638,11 +671,17 @@ bool CurlRequest::isHandlePaused() const
 
 void CurlRequest::updateNetworkLoadMetrics()
 {
-    if (auto metrics = m_curlHandle->getNetworkLoadMetrics())
+    auto domainLookupStart = m_performStartTime - m_requestStartTime;
+
+    if (auto metrics = m_curlHandle->getNetworkLoadMetrics(domainLookupStart)) {
         m_networkLoadMetrics = *metrics;
 
-    m_networkLoadMetrics.requestHeaders = m_request.httpHeaderFields();
-    m_networkLoadMetrics.responseBodyDecodedSize = m_totalReceivedSize;
+        if (m_captureExtraMetrics) {
+            m_curlHandle->addExtraNetworkLoadMetrics(m_networkLoadMetrics);
+            m_networkLoadMetrics.requestHeaders = m_request.httpHeaderFields();
+            m_networkLoadMetrics.responseBodyDecodedSize = m_totalReceivedSize;
+        }
+    }
 }
 
 void CurlRequest::enableDownloadToFile()

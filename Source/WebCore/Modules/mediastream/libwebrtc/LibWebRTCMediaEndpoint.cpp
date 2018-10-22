@@ -277,7 +277,7 @@ void LibWebRTCMediaEndpoint::doCreateAnswer()
     m_backend->CreateAnswer(&m_createSessionDescriptionObserver, nullptr);
 }
 
-void LibWebRTCMediaEndpoint::getStats(MediaStreamTrack*, Ref<DeferredPromise>&& promise)
+void LibWebRTCMediaEndpoint::getStats(Ref<DeferredPromise>&& promise, WTF::Function<void(rtc::scoped_refptr<LibWebRTCStatsCollector>&&)>&& getStatsFunction)
 {
     auto collector = LibWebRTCStatsCollector::create([promise = WTFMove(promise), protectedThis = makeRef(*this)](auto&& report) mutable {
         ASSERT(isMainThread());
@@ -287,9 +287,32 @@ void LibWebRTCMediaEndpoint::getStats(MediaStreamTrack*, Ref<DeferredPromise>&& 
         promise->resolve<IDLInterface<RTCStatsReport>>(report.releaseNonNull());
         return true;
     });
-    LibWebRTCProvider::callOnWebRTCSignalingThread([this, collector = WTFMove(collector)] {
+    LibWebRTCProvider::callOnWebRTCSignalingThread([getStatsFunction = WTFMove(getStatsFunction), collector = WTFMove(collector)]() mutable {
+        getStatsFunction(WTFMove(collector));
+    });
+}
+
+void LibWebRTCMediaEndpoint::getStats(Ref<DeferredPromise>&& promise)
+{
+    getStats(WTFMove(promise), [this](auto&& collector) {
         if (m_backend)
-            m_backend->GetStats(collector.get());
+            m_backend->GetStats(WTFMove(collector));
+    });
+}
+
+void LibWebRTCMediaEndpoint::getStats(webrtc::RtpReceiverInterface& receiver, Ref<DeferredPromise>&& promise)
+{
+    getStats(WTFMove(promise), [this, receiver = rtc::scoped_refptr<webrtc::RtpReceiverInterface>(&receiver)](auto&& collector) mutable {
+        if (m_backend)
+            m_backend->GetStats(WTFMove(receiver), WTFMove(collector));
+    });
+}
+
+void LibWebRTCMediaEndpoint::getStats(webrtc::RtpSenderInterface& sender, Ref<DeferredPromise>&& promise)
+{
+    getStats(WTFMove(promise), [this, sender = rtc::scoped_refptr<webrtc::RtpSenderInterface>(&sender)](auto&& collector)  mutable {
+        if (m_backend)
+            m_backend->GetStats(WTFMove(sender), WTFMove(collector));
     });
 }
 
@@ -445,6 +468,22 @@ void LibWebRTCMediaEndpoint::newTransceiver(rtc::scoped_refptr<webrtc::RtpTransc
     fireTrackEvent(makeRef(newTransceiver.receiver()), newTransceiver.receiver().track(), rtcReceiver->streams(), makeRef(newTransceiver));
 }
 
+void LibWebRTCMediaEndpoint::removeRemoteTrack(rtc::scoped_refptr<webrtc::RtpReceiverInterface>&& receiver)
+{
+    // FIXME: Support plan B code path.
+    if (!RuntimeEnabledFeatures::sharedFeatures().webRTCUnifiedPlanEnabled())
+        return;
+
+    auto* transceiver = m_peerConnectionBackend.existingTransceiver([&receiver](auto& transceiverBackend) {
+        auto* rtcTransceiver = transceiverBackend.rtcTransceiver();
+        return rtcTransceiver && receiver.get() == rtcTransceiver->receiver().get();
+    });
+    if (!transceiver)
+        return;
+
+    transceiver->receiver().track().source().setMuted(true);
+}
+
 template<typename T>
 std::optional<LibWebRTCMediaEndpoint::Backends> LibWebRTCMediaEndpoint::createTransceiverBackends(T&& trackOrKind, const RTCRtpTransceiverInit& init, LibWebRTCRtpSenderBackend::Source&& source)
 {
@@ -546,6 +585,14 @@ void LibWebRTCMediaEndpoint::OnTrack(rtc::scoped_refptr<webrtc::RtpTransceiverIn
     });
 }
 
+void LibWebRTCMediaEndpoint::OnRemoveTrack(rtc::scoped_refptr<webrtc::RtpReceiverInterface> receiver)
+{
+    callOnMainThread([protectedThis = makeRef(*this), receiver = WTFMove(receiver)]() mutable {
+        if (protectedThis->isStopped())
+            return;
+        protectedThis->removeRemoteTrack(WTFMove(receiver));
+    });
+}
 
 std::unique_ptr<RTCDataChannelHandler> LibWebRTCMediaEndpoint::createDataChannel(const String& label, const RTCDataChannelInit& options)
 {

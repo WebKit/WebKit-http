@@ -462,18 +462,29 @@ void WKWebsiteDataStoreStatisticsClearThroughWebsiteDataRemoval(WKWebsiteDataSto
     });
 }
 
+void WKWebsiteDataStoreSetStatisticsCacheMaxAgeCap(WKWebsiteDataStoreRef dataStoreRef, double seconds, void* context, WKWebsiteDataStoreSetStatisticsCacheMaxAgeCapFunction callback)
+{
+    WebKit::toImpl(dataStoreRef)->websiteDataStore().setCacheMaxAgeCapForPrevalentResources(Seconds { seconds }, [context, callback] {
+        callback(context);
+    });
+}
+
 void WKWebsiteDataStoreStatisticsResetToConsistentState(WKWebsiteDataStoreRef dataStoreRef, void* context, WKWebsiteDataStoreStatisticsResetToConsistentStateFunction completionHandler)
 {
-    auto* store = WebKit::toImpl(dataStoreRef)->websiteDataStore().resourceLoadStatistics();
-    if (!store)
-        return;
-
     auto callbackAggregator = CallbackAggregator::create([context, completionHandler]() {
         completionHandler(context);
     });
-    
-    store->resetParametersToDefaultValues([callbackAggregator = callbackAggregator.copyRef()] { });
-    store->scheduleClearInMemory([callbackAggregator = callbackAggregator.copyRef()] { });
+
+    auto& store = WebKit::toImpl(dataStoreRef)->websiteDataStore();
+    store.clearResourceLoadStatisticsInWebProcesses([callbackAggregator = callbackAggregator.copyRef()] { });
+    store.resetCacheMaxAgeCapForPrevalentResources([callbackAggregator = callbackAggregator.copyRef()] { });
+
+    auto* statisticsStore = store.resourceLoadStatistics();
+    if (!statisticsStore)
+        return;
+
+    statisticsStore->resetParametersToDefaultValues([callbackAggregator = callbackAggregator.copyRef()] { });
+    statisticsStore->scheduleClearInMemory([callbackAggregator = callbackAggregator.copyRef()] { });
 }
 
 void WKWebsiteDataStoreRemoveAllFetchCaches(WKWebsiteDataStoreRef dataStoreRef, void* context, WKWebsiteDataStoreRemoveFetchCacheRemovalFunction callback)

@@ -92,7 +92,7 @@ public:
     bool shouldDirectlyCompositeImage(Image*) const override;
     void setContentsToPlatformLayer(PlatformLayer*, ContentsLayerPurpose) override;
     void setMaskLayer(RefPtr<GraphicsLayer>&&) override;
-    void setReplicatedByLayer(GraphicsLayer*) override;
+    void setReplicatedByLayer(RefPtr<GraphicsLayer>&&) override;
     void setNeedsDisplay() override;
     void setNeedsDisplayInRect(const FloatRect&, ShouldClipToLayer = ClipToLayer) override;
     void setContentsNeedsDisplay() override;

@@ -496,7 +496,7 @@ PeerConnectionEnabled:
 
 WebRTCUnifiedPlanEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEB_RTC)
   humanReadableName: "WebRTC Unified Plan"
@@ -1125,6 +1125,11 @@ IsSecureContextAttributeEnabled:
   defaultValue: true
   webcoreBinding: RuntimeEnabledFeatures
 
+SourceBufferChangeTypeEnabled:
+  type: bool
+  defaultValue: true
+  condition: ENABLE(MEDIA_SOURCE)
+
 # For experimental features:
 # The type should be boolean.
 # You must provide a humanReadableName and humanReadableDescription for all experimental features. They
@@ -1270,14 +1275,6 @@ ProcessSwapOnCrossSiteNavigationEnabled:
   category: internal
   webcoreBinding: none
 
-SourceBufferChangeTypeEnabled:
-  type: bool
-  defaultValue: false
-  humanReadableName: "Media Source Codec Switching Support"
-  humanReadableDescription: "Media Source Codec Switching through changeType()"
-  category: internal
-  condition: ENABLE(MEDIA_SOURCE)
-
 ResourceLoadStatisticsDebugMode:
   type: bool
   defaultValue: false
@@ -1353,3 +1350,11 @@ WebAPIStatisticsEnabled:
   humanReadableDescription: "Enable Web API Statistics"
   webcoreBinding: RuntimeEnabledFeatures
   category: internal
+
+CSSCustomPropertiesAndValuesEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "CSS Custom Properties and Values API"
+  humanReadableDescription: "Enable CSS Custom Properties and Values API"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental

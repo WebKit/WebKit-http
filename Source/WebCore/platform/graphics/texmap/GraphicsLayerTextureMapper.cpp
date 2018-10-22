@@ -151,11 +151,11 @@ void GraphicsLayerTextureMapper::setMaskLayer(RefPtr<GraphicsLayer>&& value)
 }
 
 
-void GraphicsLayerTextureMapper::setReplicatedByLayer(GraphicsLayer* value)
+void GraphicsLayerTextureMapper::setReplicatedByLayer(RefPtr<GraphicsLayer>&& value)
 {
     if (value == replicaLayer())
         return;
-    GraphicsLayer::setReplicatedByLayer(value);
+    GraphicsLayer::setReplicatedByLayer(WTFMove(value));
     notifyChange(ReplicaLayerChange);
 }
 

@@ -158,7 +158,7 @@ void WebResourceLoadStatisticsStore::flushAndDestroyPersistentStore()
         m_memoryStore = nullptr;
         semaphore.signal();
     });
-    semaphore.wait(WallTime::infinity());
+    semaphore.wait();
 }
 
 void WebResourceLoadStatisticsStore::setResourceLoadStatisticsDebugMode(bool value, CompletionHandler<void()>&& completionHandler)
@@ -831,6 +831,20 @@ void WebResourceLoadStatisticsStore::setGrandfatheringTime(Seconds seconds)
         if (m_memoryStore)
             m_memoryStore->setGrandfatheringTime(seconds);
     });
+}
+
+void WebResourceLoadStatisticsStore::setCacheMaxAgeCap(Seconds seconds, CompletionHandler<void()>&& completionHandler)
+{
+    ASSERT(RunLoop::isMain());
+    ASSERT(seconds >= 0_s);
+    
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    if (m_websiteDataStore) {
+        m_websiteDataStore->setCacheMaxAgeCapForPrevalentResources(seconds, WTFMove(completionHandler));
+        return;
+    }
+#endif
+    completionHandler();
 }
 
 void WebResourceLoadStatisticsStore::callUpdatePrevalentDomainsToBlockCookiesForHandler(const Vector<String>& domainsToBlock, ShouldClearFirst shouldClearFirst, CompletionHandler<void()>&& completionHandler)

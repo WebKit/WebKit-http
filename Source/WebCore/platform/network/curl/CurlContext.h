@@ -251,8 +251,7 @@ public:
     void enableAcceptEncoding();
     void enableAllowedProtocols();
 
-    void enableHttpAuthentication(long);
-    void setHttpAuthUserPass(const String&, const String&);
+    void setHttpAuthUserPass(const String&, const String&, long authType = CURLAUTH_ANY);
 
     void setCACertPath(const char*);
     void setSslVerifyPeer(VerifyPeer);
@@ -282,7 +281,8 @@ public:
     std::optional<long> getHttpAuthAvail();
     std::optional<long> getProxyAuthAvail();
     std::optional<long> getHttpVersion();
-    std::optional<NetworkLoadMetrics> getNetworkLoadMetrics();
+    std::optional<NetworkLoadMetrics> getNetworkLoadMetrics(const WTF::Seconds& domainLookupStart);
+    void addExtraNetworkLoadMetrics(NetworkLoadMetrics&);
 
     int sslErrors() const;
     std::optional<CertificateInfo> certificateInfo() const;

@@ -146,6 +146,8 @@ public:
     void grantStorageAccess(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, std::optional<uint64_t> frameID, uint64_t pageID, uint64_t contextId);
     void removeAllStorageAccess(PAL::SessionID, uint64_t contextId);
     void removePrevalentDomains(PAL::SessionID, const Vector<String>& domains);
+    void setCacheMaxAgeCapForPrevalentResources(PAL::SessionID, Seconds, uint64_t contextId);
+    void resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID, uint64_t contextId);
 #endif
 
     Seconds loadThrottleLatency() const { return m_loadThrottleLatency; }
@@ -166,13 +168,9 @@ public:
     NetworkContentRuleListManager& networkContentRuleListManager() { return m_NetworkContentRuleListManager; }
 #endif
 
-    WorkQueue& queue() { return m_storageTaskQueue.get(); }
-    void postStorageTask(CrossThreadTask&&);
 #if ENABLE(INDEXED_DATABASE)
-
     WebCore::IDBServer::IDBServer& idbServer(PAL::SessionID);
-    
-    // WebCore::IDBServer::IDBBackingStoreFileHandler
+    // WebCore::IDBServer::IDBBackingStoreFileHandler.
     void prepareForAccessToTemporaryFile(const String& path) final;
     void accessToTemporaryFileComplete(const String& path) final;
 #endif
@@ -234,10 +232,6 @@ private:
     void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, WallTime modifiedSince, uint64_t callbackID);
     void deleteWebsiteDataForOrigins(PAL::SessionID, OptionSet<WebsiteDataType>, const Vector<WebCore::SecurityOriginData>& origins, const Vector<String>& cookieHostNames, const Vector<String>& HSTSCacheHostnames, uint64_t callbackID);
 
-#if ENABLE(SANDBOX_EXTENSIONS)
-    void didGetSandboxExtensionsForBlobFiles(uint64_t requestID, SandboxExtension::HandleArray&&);
-#endif
-
     void clearCachedCredentials();
 
     void setCacheStorageParameters(PAL::SessionID, uint64_t quota, String&& cacheStorageDirectory, SandboxExtension::Handle&&);
@@ -283,14 +277,19 @@ private:
     void registerURLSchemeAsCORSEnabled(const String&) const;
     void registerURLSchemeAsCanDisplayOnlyIfCanRequest(const String&) const;
 
-    // For execution on work queue thread only
-    void performNextStorageTask();
-    void ensurePathExists(const String& path);
+#if ENABLE(SANDBOX_EXTENSIONS)
+    void didGetSandboxExtensionsForBlobFiles(uint64_t requestID, SandboxExtension::HandleArray&&);
+#endif
 
 #if ENABLE(INDEXED_DATABASE)
     void addIndexedDatabaseSession(PAL::SessionID, String&, SandboxExtension::Handle&);
     HashSet<WebCore::SecurityOriginData> indexedDatabaseOrigins(const String& path);
 #endif
+
+    void postStorageTask(CrossThreadTask&&);
+    // For execution on work queue thread only.
+    void performNextStorageTask();
+    void ensurePathExists(const String& path);
 
     // Connections to WebProcesses.
     Vector<RefPtr<NetworkConnectionToWebProcess>> m_webProcessConnections;

@@ -54,6 +54,7 @@ static const HashSet<IPC::StringReference>& messageNamesToIgnoreWhileSuspended()
         messageNames.get().add("DidDestroyNavigation");
         messageNames.get().add("DidFinishDocumentLoadForFrame");
         messageNames.get().add("DidFinishProgress");
+        messageNames.get().add("DidCompletePageTransition");
         messageNames.get().add("DidFirstLayoutForFrame");
         messageNames.get().add("DidFirstVisuallyNonEmptyLayoutForFrame");
         messageNames.get().add("DidNavigateWithNavigationData");
@@ -73,9 +74,9 @@ static const HashSet<IPC::StringReference>& messageNamesToIgnoreWhileSuspended()
 }
 #endif
 
-SuspendedPageProxy::SuspendedPageProxy(WebPageProxy& page, WebProcessProxy& process, WebBackForwardListItem& item)
+SuspendedPageProxy::SuspendedPageProxy(WebPageProxy& page, Ref<WebProcessProxy>&& process, WebBackForwardListItem& item)
     : m_page(page)
-    , m_process(&process)
+    , m_process(WTFMove(process))
     , m_origin(SecurityOriginData::fromURL({ ParsedURLString, item.url() }))
 {
     item.setSuspendedPage(*this);
@@ -85,7 +86,7 @@ SuspendedPageProxy::SuspendedPageProxy(WebPageProxy& page, WebProcessProxy& proc
 
 SuspendedPageProxy::~SuspendedPageProxy()
 {
-    if (auto process = makeRefPtr(m_process)) {
+    if (auto process = m_process) {
         process->send(Messages::WebPage::SetIsSuspended(false), m_page.pageID());
         process->suspendedPageWasDestroyed(*this);
         process->processPool().unregisterSuspendedPageProxy(*this);
@@ -107,6 +108,11 @@ void SuspendedPageProxy::destroyWebPageInWebProcess()
 {
     m_process->send(Messages::WebPage::Close(), m_page.pageID());
     m_page.suspendedPageClosed(*this);
+}
+
+void SuspendedPageProxy::tearDownDrawingAreaInWebProcess()
+{
+    m_process->send(Messages::WebPage::TearDownDrawingAreaForSuspend(), m_page.pageID());
 }
 
 void SuspendedPageProxy::didFinishLoad()

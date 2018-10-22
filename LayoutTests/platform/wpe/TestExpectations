@@ -81,6 +81,10 @@ webkit.org/b/186933 webrtc/audio-muted-stats.html
 webkit.org/b/79203 fast/mediastream/mock-media-source-webaudio.html [ Timeout ]
 webkit.org/b/79203 fast/mediastream/getUserMedia-webaudio.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/MediaStream-video-element-track-stop.html [ Timeout ]
+webkit.org/b/189734 fast/mediastream/MediaStreamTrack-getCapabilities.html [ Failure ]
+webkit.org/b/189734 fast/mediastream/apply-constraints-advanced.html [ Failure ]
+webkit.org/b/189734 fast/mediastream/apply-constraints-video.html [ Failure ]
+webkit.org/b/189734 fast/mediastream/getUserMedia-default.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-dtmf.html [ Timeout ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-icecandidate-event.html [ Pass Failure Crash ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html [ Pass Failure Crash ]
@@ -593,6 +597,8 @@ webkit.org/b/188161 [ Debug ] webgl/1.0.2/conformance/context/context-lost-resto
 webkit.org/b/188162 [ Debug ] fast/canvas/webgl/texImage2D-video-flipY-false.html [ Crash ]
 webkit.org/b/188162 [ Debug ] fast/canvas/webgl/texImage2D-video-flipY-true.html [ Crash ]
 
+webkit.org/b/188000 animations/play-state-start-paused.html [ Crash ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # 6. FLAKY TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1036,11 +1042,7 @@ webkit.org/b/148940 fast/events/touch/zoomed-touch-event-pageXY.html [ Skip ]
 # Need support for internals.settings.setDeviceSupportsMouse
 fast/events/touch/scroll-without-mouse-lacks-mousemove-events.html [ Skip ]
 
-webkit.org/b/174673 fast/events/arrow-keys-on-body.html [ Failure ]
 webkit.org/b/174673 fast/events/keyboardevent-code.html [ Failure ]
-webkit.org/b/174673 fast/events/keyboardevent-key.html [ Failure ]
-webkit.org/b/174673 fast/events/key-events-in-input-button.html [ Failure ]
-webkit.org/b/174673 fast/events/key-events-in-input-text.html [ Failure ]
 
 # clickCount related failures
 webkit.org/b/174674 fast/events/click-count.html [ Failure ]
@@ -1096,7 +1098,6 @@ webkit.org/b/173419 fast/events/platform-wheelevent-paging-y-in-scrolling-div.ht
 webkit.org/b/173419 fast/events/platform-wheelevent-paging-y-in-scrolling-page.html [ Failure ]
 webkit.org/b/173419 fast/events/scroll-in-scaled-page-with-overflow-hidden.html [ Failure ]
 webkit.org/b/173419 fast/events/selectstart-by-drag.html [ Failure ]
-webkit.org/b/173419 fast/events/selectstart-by-single-click-with-shift.html [ Failure ]
 webkit.org/b/173419 fast/events/sequential-focus-navigation-starting-point.html [ Failure ]
 webkit.org/b/173419 fast/events/shadow-event-path-2.html [ Failure ]
 webkit.org/b/173419 fast/events/shadow-event-path.html [ Failure ]
@@ -1143,6 +1144,8 @@ Bug(WPE) fast/dom/HTMLDocument/hasFocus.html [ Failure ]
 webkit.org/b/78290 fast/dom/MutationObserver/end-of-task-delivery.html [ Failure ]
 Bug(WPE) fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Failure ]
 Bug(WPE) fast/dom/Range/getClientRects.html [ Failure ]
+fast/dom/navigator-detached-no-crash.html [ DumpJSConsoleLogInStdErr ]
+webkit.org/b/189664 fast/events/dblclick-event-getModifierState.html [ Timeout ]
 
 Bug(WPE) storage/indexeddb/modern/date-basic-private.html [ Failure ]
 Bug(WPE) storage/indexeddb/modern/date-basic.html [ Failure ]
@@ -1211,10 +1214,9 @@ media/encrypted-media/encrypted-media-v2-events.html [ Skip ]
 media/encrypted-media/encrypted-media-v2-syntax.html [ Skip ]
 
 #"waitingforkey" event is not supported yet
-webkit.org/b/185590 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential-readyState.https.html [ Failure ]
-webkit.org/b/185590 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential.https.html [ Failure ]
-webkit.org/b/185590 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-waitingforkey.https.html [ Failure ]
-webkit.org/b/185590 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-waiting-for-a-key.https.html [ Failure ]
+webkit.org/b/189618 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential-readyState.https.html [ Failure ]
+webkit.org/b/189618 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential.https.html [ Failure ]
+webkit.org/b/189619 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-waiting-for-a-key.https.html [ Failure ]
 
 webkit.org/b/185594 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-clear-encrypted.https.html [ Failure ]
 
@@ -1270,6 +1272,9 @@ webkit.org/b/131347 svg/custom/hidpi-masking-clipping.svg [ Failure ImageOnlyFai
 webkit.org/b/160137 svg/custom/non-scaling-stroke.svg [ Failure Pass ]
 webkit.org/b/160137 svg/custom/non-scaling-stroke-update.svg [ ImageOnlyFailure Pass ]
 webkit.org/b/112228 svg/custom/resources-css-scaled.html [ ImageOnlyFailure ]
+webkit.org/b/189739 svg/gradients/spreadMethodClose2.svg [ ImageOnlyFailure ]
+webkit.org/b/189739 svg/gradients/spreadMethodDiagonal3.svg [ ImageOnlyFailure ]
+webkit.org/b/189739 svg/gradients/spreadMethodDiagonal4.svg [ ImageOnlyFailure ]
 webkit.org/b/115440 svg/stroke/animated-non-scaling-stroke.html [ ImageOnlyFailure Pass ]
 webkit.org/b/88230 svg/stroke/non-scaling-stroke-pattern.svg [ ImageOnlyFailure Pass ]
 webkit.org/b/137096 svg/text/alt-glyph-for-surrogate-pair.svg [ ImageOnlyFailure ]
@@ -1303,8 +1308,6 @@ webkit.org/b/184295 http/wpt/loading/redirect-headers.html [ Skip ]
 webkit.org/b/185676 fullscreen/requestFullscreen-escape-key.html [ Failure ]
 webkit.org/b/185676 fullscreen/video-controls-rtl.html [ Failure ]
 webkit.org/b/185676 fullscreen/full-screen-plugin.html [ Timeout ]
-
-webkit.org/b/186035 transitions/interrupted-transition-hardware.html [ ImageOnlyFailure ]
 
 webkit.org/b/185714 js/intl-numberformat-format-to-parts.html [ Failure ]
 webkit.org/b/185714 js/intl-pluralrules.html [ Failure ]

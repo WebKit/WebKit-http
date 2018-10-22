@@ -1,3 +1,81 @@
+2018-09-19  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Optimize Array#indexOf in C++ runtime
+        https://bugs.webkit.org/show_bug.cgi?id=189507
+
+        Reviewed by Saam Barati.
+
+        * stress/array-indexof-array-prototype-trap.js: Added.
+        (shouldBe):
+        (AncestorArray.prototype.get 2):
+        (AncestorArray):
+        * stress/array-indexof-have-a-bad-time-c-runtime.js: Added.
+        (shouldBe):
+        * stress/array-indexof-hole-nan.js: Added.
+        (shouldBe):
+        (throw.new.Error):
+        * stress/array-indexof-infinity.js: Added.
+        (shouldBe):
+        (throw.new.Error):
+        * stress/array-indexof-negative-zero.js: Added.
+        (shouldBe):
+        (throw.new.Error):
+        * stress/array-indexof-own-getter.js: Added.
+        (shouldBe):
+        (throw.new.Error.get array):
+        (get array):
+        * stress/array-indexof-prototype-trap.js: Added.
+        (shouldBe):
+        (DerivedArray.prototype.get 2):
+        (DerivedArray):
+
+2018-09-19  Saam barati  <sbarati@apple.com>
+
+        AI rule for MultiPutByOffset executes its effects in the wrong order
+        https://bugs.webkit.org/show_bug.cgi?id=189757
+        <rdar://problem/43535257>
+
+        Reviewed by Michael Saboff.
+
+        * stress/multi-put-by-offset-must-filter-value-before-filtering-base.js: Added.
+        (foo):
+        (Foo):
+        (g):
+
+2018-09-17  Mark Lam  <mark.lam@apple.com>
+
+        Ensure that ForInContexts are invalidated if their loop local is over-written.
+        https://bugs.webkit.org/show_bug.cgi?id=189571
+        <rdar://problem/44402277>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-189571.js: Added.
+
+2018-09-17  Saam barati  <sbarati@apple.com>
+
+        We must convert ProfileType to CheckStructureOrEmpty instead of CheckStructure
+        https://bugs.webkit.org/show_bug.cgi?id=189676
+        <rdar://problem/39682897>
+
+        Reviewed by Michael Saboff.
+
+        * typeProfiler/check-structure-or-empty-in-fixup.js: Added.
+        (A):
+        (K):
+        (i.catch):
+
+2018-09-14  Saam barati  <sbarati@apple.com>
+
+        Don't dump OSRAvailabilityData in Graph::dump because a stale Availability may point to a Node that is already freed
+        https://bugs.webkit.org/show_bug.cgi?id=189628
+        <rdar://problem/39481690>
+
+        Reviewed by Mark Lam.
+
+        * stress/verbose-failure-dont-graph-dump-availability-already-freed.js: Added.
+        (foo):
+
 2018-09-11  Mark Lam  <mark.lam@apple.com>
 
         Test for array initialization in arrayProtoFuncSplice.

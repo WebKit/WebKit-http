@@ -35,8 +35,11 @@
 #include "NetworkRTCProvider.h"
 #include <WebCore/NetworkLoadInformation.h>
 #include <WebCore/ResourceLoadPriority.h>
-#include <pal/SessionID.h>
 #include <wtf/RefCounted.h>
+
+namespace PAL {
+class SessionID;
+}
 
 namespace WebCore {
 class BlobDataFileReference;
@@ -175,6 +178,12 @@ private:
     
     void ensureLegacyPrivateBrowsingSession();
 
+#if ENABLE(INDEXED_DATABASE)
+    // Messages handlers (Modern IDB).
+    void establishIDBConnectionToServer(PAL::SessionID, uint64_t& serverConnectionIdentifier);
+    void removeIDBConnectionToServer(uint64_t serverConnectionIdentifier);
+#endif
+
 #if USE(LIBWEBRTC)
     NetworkRTCProvider& rtcProvider();
 #endif
@@ -242,10 +251,6 @@ private:
     RefPtr<CacheStorageEngineConnection> m_cacheStorageConnection;
 
 #if ENABLE(INDEXED_DATABASE)
-    // Messages handlers (Modern IDB)
-    void establishIDBConnectionToServer(PAL::SessionID, uint64_t& serverConnectionIdentifier);
-    void removeIDBConnectionToServer(uint64_t serverConnectionIdentifier);
-    
     HashMap<uint64_t, RefPtr<WebIDBConnectionToClient>> m_webIDBConnections;
 #endif
 

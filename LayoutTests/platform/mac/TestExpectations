@@ -1127,7 +1127,6 @@ webkit.org/b/168953 [ Release ] compositing/video/video-poster.html [ Pass Failu
 webkit.org/b/148435 storage/domstorage/events/basic-body-attribute.html [ Pass Failure ]
 
 webkit.org/b/149930 fast/canvas/webgl/oes-texture-float-linear.html [ Pass Failure ]
-webkit.org/b/58766 fast/canvas/webgl/gl-teximage.html [ Pass Failure ]
 
 # Imported Blink tests which have not been investigated.
 imported/blink/compositing/video/video-controls-layer-creation-squashing.html [ Pass ImageOnlyFailure ]
@@ -1764,3 +1763,22 @@ webkit.org/b/187393 imported/w3c/web-platform-tests/2dcontext/imagebitmap/create
 [ Mojave+ ] fast/gradients/conic-center-outside-box.html [ Pass ]
 [ Mojave+ ] fast/gradients/conic-extended-stops.html [ Pass ]
 [ Mojave+ ] fast/gradients/conic-from-angle.html [ Pass ]
+[ Mojave+ ] fast/gradients/conic-repeating-last-stop.html [ Pass ]
+[ Mojave+ ] fast/gradients/conic-gradient-alpha.html [ Pass ]
+[ Mojave+ ] fast/gradients/conic-gradient-extended-stops.html [ Pass ]
+[ Mojave+ ] fast/gradients/conic-gradient.html [ Pass ]
+[ Mojave+ ] fast/gradients/conic-two-hints.html [ Pass ]
+
+webkit.org/b/185651 legacy-animation-engine/animations/play-state-in-shorthand.html [ Pass Failure ]
+
+webkit.org/b/189686 webgl/2.0.0/conformance/textures/misc/tex-image-and-sub-image-2d-with-array-buffer-view.html [ Slow ]
+
+# Flaky timeouts on mac-debug observed for webkit.org/b/189686
+webgl/2.0.0/conformance/attribs/gl-vertexattribpointer.html [ Slow ]
+webgl/2.0.0/conformance/glsl/bugs/complex-glsl-does-not-crash.html [ Slow ]
+webgl/2.0.0/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Slow ]
+webgl/2.0.0/conformance/rendering/many-draw-calls.html [ Slow ]
+webgl/2.0.0/conformance/rendering/multisample-corruption.html [ Slow ]
+webgl/2.0.0/conformance2/attribs/gl-vertexattribipointer.html [ Slow ]
+webgl/2.0.0/conformance2/state/gl-object-get-calls.html [ Slow ]
+webgl/2.0.0/conformance2/textures/misc/copy-texture-image-luma-format.html [ Slow ]
