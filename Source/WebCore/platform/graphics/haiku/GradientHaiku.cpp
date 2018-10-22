@@ -29,6 +29,7 @@
 #include "Gradient.h"
 
 #include "GraphicsContext.h"
+#include <GradientConic.h>
 #include <GradientLinear.h>
 #include <GradientRadialFocus.h>
 #include <View.h>
@@ -44,8 +45,8 @@ void Gradient::platformDestroy()
 
 PlatformGradient Gradient::platformGradient()
 {
-    if (m_gradient)
-        return m_gradient;
+	if (m_gradient)
+		return m_gradient;
 
 	m_gradient = WTF::switchOn(m_data,
 		[&] (const RadialData& data) -> BGradient* {
@@ -53,6 +54,9 @@ PlatformGradient Gradient::platformGradient()
 		},
 		[&] (const LinearData& data) -> BGradient* {
 			return new BGradientLinear(data.point0, data.point1);
+		},
+		[&] (const ConicData& data) -> BGradient* {
+			return new BGradientConic(data.point0, data.angleRadians);
 		}
 		);
 

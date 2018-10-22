@@ -45,8 +45,8 @@
 
 namespace WebCore {
 
-void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText,
-    MailBlockquoteHandling mailBlockquoteHandling)
+void Editor::pasteWithPasteboard(Pasteboard* pasteboard,
+    WTF::OptionSet<WebCore::Editor::PasteOption> options)
 {
     RefPtr<Range> range = selectedRange();
     if (!range)
@@ -54,13 +54,14 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText,
 
     bool chosePlainText;
     RefPtr<DocumentFragment> fragment = pasteboard->documentFragment(
-        m_frame, *range, allowPlainText, chosePlainText);
+        m_frame, *range, options.contains(PasteOption::AllowPlainText), chosePlainText);
 
     if (fragment && shouldInsertFragment(*fragment, range.get(),
             EditorInsertAction::Pasted))
     {
-        pasteAsFragment(*fragment, canSmartReplaceWithPasteboard(*pasteboard),
-            chosePlainText, mailBlockquoteHandling);
+        pasteAsFragment(fragment.releaseNonNull(), canSmartReplaceWithPasteboard(*pasteboard),
+            chosePlainText, options.contains(PasteOption::IgnoreMailBlockquote) ?
+				MailBlockquoteHandling::IgnoreBlockquote : MailBlockquoteHandling::RespectBlockquote);
     }
 }
 
