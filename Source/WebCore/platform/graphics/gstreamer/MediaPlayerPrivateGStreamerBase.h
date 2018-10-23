@@ -152,7 +152,6 @@ public:
     void dispatchLocalCDMInstance();
     void setWaitingForKey(bool);
     bool waitingForKey() const;
-    void reportWaitingForKey();
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);

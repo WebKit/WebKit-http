@@ -1381,19 +1381,14 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionStructure(GUniquePtr<Gst
     GST_TRACE("emitted decryption structure on pipeline, event handled %s", boolForPrinting(eventHandled));
 }
 
-void MediaPlayerPrivateGStreamerBase::reportWaitingForKey()
-{
-    GST_TRACE("waiting for key");
-    m_player->waitingForKeyChanged();
-}
-
 void MediaPlayerPrivateGStreamerBase::setWaitingForKey(bool waitingForKey)
 {
     if (waitingForKey == m_waitingForKey)
         return;
 
     m_waitingForKey = waitingForKey;
-    reportWaitingForKey();
+    GST_DEBUG("waiting for key changed %s", boolForPrinting(m_waitingForKey));
+    m_player->waitingForKeyChanged();
 }
 
 bool MediaPlayerPrivateGStreamerBase::waitingForKey() const
