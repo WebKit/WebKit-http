@@ -36,11 +36,17 @@ class Visitor {
         node.returnType.visit(this);
         for (let parameter of node.parameters)
             parameter.visit(this);
+        if (node.attributeBlock) {
+            for (let attribute of node.attributeBlock)
+                attribute.visit(this);
+        }
+        Node.visit(node.semantic, this);
     }
     
     visitFuncParameter(node)
     {
         node.type.visit(this);
+        Node.visit(node.semantic, this);
     }
     
     visitFuncDef(node)
@@ -92,6 +98,7 @@ class Visitor {
     visitField(node)
     {
         node.type.visit(this);
+        Node.visit(node.semantic, this);
     }
     
     visitEnumType(node)
@@ -346,6 +353,26 @@ class Visitor {
         node.elementType.visit(this);
         node.numRows.visit(this);
         node.numColumns.visit(this);
+    }
+
+    visitFuncNumThreadsAttribute(node)
+    {
+    }
+
+    visitBuiltInSemantic(node)
+    {
+    }
+
+    visitResourceSemantic(node)
+    {
+    }
+
+    visitStageInOutSemantic(node)
+    {
+    }
+
+    visitSpecializationConstantSemantic(node)
+    {
     }
 }
 

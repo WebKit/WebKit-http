@@ -144,6 +144,7 @@
 #import <WebCore/EventHandler.h>
 #import <WebCore/FileSystem.h>
 #import <WebCore/FocusController.h>
+#import <WebCore/FontAttributes.h>
 #import <WebCore/FontCache.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoader.h>
@@ -3066,7 +3067,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setViewportFitEnabled([preferences viewportFitEnabled]);
     settings.setConstantPropertiesEnabled([preferences constantPropertiesEnabled]);
-    settings.setCrossOriginWindowPolicySupportEnabled([preferences crossOriginWindowPolicySupportEnabled]);
 
 #if ENABLE(GAMEPAD)
     RuntimeEnabledFeatures::sharedFeatures().setGamepadsEnabled([preferences gamepadsEnabled]);
@@ -3169,6 +3169,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setMediaCapabilitiesEnabled([preferences mediaCapabilitiesEnabled]);
 
     RuntimeEnabledFeatures::sharedFeatures().setServerTimingEnabled([preferences serverTimingEnabled]);
+
+    settings.setSelectionAcrossShadowBoundariesEnabled(preferences.selectionAcrossShadowBoundariesEnabled);
 }
 
 static inline IMP getMethod(id o, SEL s)
@@ -8623,9 +8625,8 @@ FORWARD(toggleUnderline)
 
 - (NSDictionary *)typingAttributes
 {
-    Frame* coreFrame = core([self _selectedOrMainFrame]);
-    if (coreFrame)
-        return coreFrame->editor().fontAttributesForSelectionStart().autorelease();
+    if (auto* coreFrame = core([self _selectedOrMainFrame]))
+        return coreFrame->editor().fontAttributesAtSelectionStart().createDictionary().autorelease();
     
     return nil;
 }
@@ -9418,8 +9419,6 @@ bool LayerFlushController::flushLayers()
         return;
 
     _private->playbackSessionModel->setMediaElement(nullptr);
-    _private->playbackSessionInterface->invalidate();
-
     _private->playbackSessionModel = nullptr;
     _private->playbackSessionInterface = nullptr;
     [self updateTouchBar];

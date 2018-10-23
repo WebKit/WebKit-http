@@ -27,16 +27,11 @@
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
-#include <wtf/Forward.h>
-#include <wtf/Vector.h>
-
 namespace WebCore {
-
-class TimeRanges;
 
 class PlaybackSessionInterface {
 public:
-    virtual ~PlaybackSessionInterface() { };
+    virtual ~PlaybackSessionInterface() = default;
     virtual void resetMediaState() = 0;
 };
 

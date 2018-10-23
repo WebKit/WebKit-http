@@ -2169,9 +2169,6 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(Overflow e)
     case Overflow::Auto:
         m_value.valueID = CSSValueAuto;
         break;
-    case Overflow::Overlay:
-        m_value.valueID = CSSValueOverlay;
-        break;
     case Overflow::PagedX:
         m_value.valueID = CSSValueWebkitPagedX;
         break;
@@ -2192,10 +2189,9 @@ template<> inline CSSPrimitiveValue::operator Overflow() const
         return Overflow::Hidden;
     case CSSValueScroll:
         return Overflow::Scroll;
+    case CSSValueOverlay:
     case CSSValueAuto:
         return Overflow::Auto;
-    case CSSValueOverlay:
-        return Overflow::Overlay;
     case CSSValueWebkitPagedX:
         return Overflow::PagedX;
     case CSSValueWebkitPagedY:
@@ -5475,9 +5471,6 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ApplePayButtonType e)
     case ApplePayButtonType::SetUp:
         m_value.valueID = CSSValueSetUp;
         break;
-    case ApplePayButtonType::InStore:
-        m_value.valueID = CSSValueInStore;
-        break;
     case ApplePayButtonType::Donate:
         m_value.valueID = CSSValueDonate;
         break;
@@ -5509,8 +5502,6 @@ template<> inline CSSPrimitiveValue::operator ApplePayButtonType() const
         return ApplePayButtonType::Buy;
     case CSSValueSetUp:
         return ApplePayButtonType::SetUp;
-    case CSSValueInStore:
-        return ApplePayButtonType::InStore;
     case CSSValueDonate:
         return ApplePayButtonType::Donate;
 #if ENABLE(APPLE_PAY_SESSION_V4)

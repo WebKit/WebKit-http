@@ -1,3 +1,39 @@
+2018-09-28  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for cross-origin-window-policy header
+        https://bugs.webkit.org/show_bug.cgi?id=190081
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::crossOriginWindowPolicySupportEnabled):
+        (WebPreferences::setCrossOriginWindowPolicySupportEnabled):
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2018-09-27  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Turn Web Animations with CSS integration on
+        https://bugs.webkit.org/show_bug.cgi?id=184819
+        <rdar://problem/39597337>
+
+        Reviewed by Dean Jackson.
+
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+
+2018-09-21  Alex Christensen  <achristensen@webkit.org>
+
+        Use a Variant for FormDataElement
+        https://bugs.webkit.org/show_bug.cgi?id=189777
+
+        Reviewed by Chris Dumez.
+
+        * WebMutableURLRequest.cpp:
+        (WebMutableURLRequest::setHTTPBody):
+
 2018-09-17  Fujii Hironori  <Hironori.Fujii@sony.com>
 
         [Win][Clang][WebKitLegacy] error: cannot pass object of non-trivial type through variadic function

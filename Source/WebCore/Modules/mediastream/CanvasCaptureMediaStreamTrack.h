@@ -42,7 +42,7 @@ public:
     static Ref<CanvasCaptureMediaStreamTrack> create(ScriptExecutionContext&, Ref<HTMLCanvasElement>&&, std::optional<double>&& frameRequestRate);
 
     HTMLCanvasElement& canvas() { return m_canvas.get(); }
-    void requestFrame() { m_source->requestFrame(); }
+    void requestFrame() { static_cast<Source&>(source()).requestFrame(); }
 
     RefPtr<MediaStreamTrack> clone() final;
 
@@ -66,7 +66,8 @@ private:
         void startProducingData() final;
         void stopProducingData()  final;
         const RealtimeMediaSourceCapabilities& capabilities() final { return RealtimeMediaSourceCapabilities::emptyCapabilities(); }
-        const RealtimeMediaSourceSettings& settings() final { return m_settings; }
+        const RealtimeMediaSourceSettings& settings() final;
+        void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) final;
 
         void captureCanvas();
         void requestFrameTimerFired();
@@ -75,17 +76,17 @@ private:
         std::optional<double> m_frameRequestRate;
         Timer m_requestFrameTimer;
         Timer m_canvasChangedTimer;
-        RealtimeMediaSourceSettings m_settings;
+        std::optional<RealtimeMediaSourceSettings> m_currentSettings;
         HTMLCanvasElement* m_canvas;
         RefPtr<Image> m_currentImage;
     };
 
     CanvasCaptureMediaStreamTrack(ScriptExecutionContext&, Ref<HTMLCanvasElement>&&, Ref<Source>&&);
+    CanvasCaptureMediaStreamTrack(ScriptExecutionContext&, Ref<HTMLCanvasElement>&&, Ref<MediaStreamTrackPrivate>&&);
 
     bool isCanvas() const final { return true; }
 
     Ref<HTMLCanvasElement> m_canvas;
-    Ref<Source> m_source;
 };
 
 }

@@ -145,6 +145,21 @@ enum CompositingPolicy {
 
 [
     ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
+    JSGenerateToJSObject,
+] dictionary CookieData {
+    DOMString name;
+    DOMString value;
+    DOMString domain;
+    double expires;
+    boolean isHttpOnly;
+    boolean isSecure;
+    boolean isSession;
+    boolean isSameSiteLax;
+    boolean isSameSiteStrict;
+};
+
+[
+    ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
     NoInterfaceObject,
 ] interface Internals {
     DOMString address(Node node);
@@ -211,6 +226,7 @@ enum CompositingPolicy {
 
     // Web Animations testing.
     sequence<AcceleratedAnimation> acceleratedAnimationsForElement(Element element);
+    unsigned long numberOfAnimationTimelineInvalidations();
 
     // For animations testing, we need a way to get at pseudo elements.
     [MayThrowException] Element? pseudoElement(Element element, DOMString pseudoId);
@@ -664,13 +680,10 @@ enum CompositingPolicy {
     [Conditional=SERVICE_WORKER] void terminateServiceWorker(ServiceWorker worker);
     [Conditional=SERVICE_WORKER] boolean hasServiceWorkerConnection();
 
-    void testIncomingSyncIPCMessageWhileWaitingForSyncReply();
-
     [EnabledAtRuntime=WebAnimations] DOMString timelineDescription(AnimationTimeline timeline);
     [EnabledAtRuntime=WebAnimations] void pauseTimeline(AnimationTimeline timeline);
     [EnabledAtRuntime=WebAnimations] void setTimelineCurrentTime(AnimationTimeline timeline, double currentTime);
     [Conditional=APPLE_PAY] readonly attribute MockPaymentCoordinator mockPaymentCoordinator;
-    [Conditional=WEB_AUTHN] readonly attribute MockAuthenticatorCoordinator mockAuthenticatorCoordinator;
 
     boolean isSystemPreviewLink(Element element);
     boolean isSystemPreviewImage(Element element);
@@ -698,4 +711,6 @@ enum CompositingPolicy {
     boolean supportsVCPEncoder();
 
     HEVCParameterSet? parseHEVCCodecParameters(DOMString codecParameters);
+
+    sequence<CookieData> getCookies();
 };

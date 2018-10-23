@@ -89,7 +89,7 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #elif USE(CURL)
     encoder << cookiePersistentStorageFile;
 #endif
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     encoder << logCookieInformation;
 #endif
 #if ENABLE(NETWORK_CAPTURE)
@@ -113,6 +113,9 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << indexedDatabaseDirectory << indexedDatabaseDirectoryExtensionHandle;
 #endif
 
+#if ENABLE(SERVICE_WORKER)
+    encoder << serviceWorkerRegistrationDirectory << serviceWorkerRegistrationDirectoryExtensionHandle << urlSchemesServiceWorkersCanHandle << shouldDisableServiceWorkerProcessTerminationDelay;
+#endif
 }
 
 bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProcessCreationParameters& result)
@@ -219,7 +222,7 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
 #endif
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     if (!decoder.decode(result.logCookieInformation))
         return false;
 #endif
@@ -260,6 +263,23 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!indexedDatabaseDirectoryExtensionHandle)
         return false;
     result.indexedDatabaseDirectoryExtensionHandle = WTFMove(*indexedDatabaseDirectoryExtensionHandle);
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    if (!decoder.decode(result.serviceWorkerRegistrationDirectory))
+        return false;
+    
+    std::optional<SandboxExtension::Handle> serviceWorkerRegistrationDirectoryExtensionHandle;
+    decoder >> serviceWorkerRegistrationDirectoryExtensionHandle;
+    if (!serviceWorkerRegistrationDirectoryExtensionHandle)
+        return false;
+    result.serviceWorkerRegistrationDirectoryExtensionHandle = WTFMove(*serviceWorkerRegistrationDirectoryExtensionHandle);
+    
+    if (!decoder.decode(result.urlSchemesServiceWorkersCanHandle))
+        return false;
+    
+    if (!decoder.decode(result.shouldDisableServiceWorkerProcessTerminationDelay))
+        return false;
 #endif
 
     return true;

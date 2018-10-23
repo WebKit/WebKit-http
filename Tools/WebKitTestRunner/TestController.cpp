@@ -801,7 +801,6 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetCSSOMViewScrollingAPIEnabled(preferences, true);
     WKPreferencesSetMediaCapabilitiesEnabled(preferences, true);
 
-    WKPreferencesSetCrossOriginWindowPolicyEnabled(preferences, true);
     WKPreferencesSetRestrictedHTTPResponseAccess(preferences, true);
 
     WKPreferencesSetServerTimingEnabled(preferences, true);
@@ -1247,6 +1246,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.jscOptions = value;
         else if (key == "runSingly")
             testOptions.runSingly = parseBooleanTestHeaderValue(value);
+        else if (key == "shouldIgnoreMetaViewport")
+            testOptions.shouldIgnoreMetaViewport = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -3168,11 +3169,27 @@ void TestController::injectUserScript(WKStringRef)
 {
 }
 
+void TestController::addTestKeyToKeychain(const String&, const String&, const String&)
+{
+}
+
+void TestController::cleanUpKeychain(const String&)
+{
+}
+
+bool TestController::keyExistsInKeychain(const String&, const String&)
+{
+}
 #endif
 
 void TestController::sendDisplayConfigurationChangedMessageForTesting()
 {
     WKSendDisplayConfigurationChangedMessageForTesting(platformContext());
+}
+
+void TestController::setWebAuthenticationMockConfiguration(WKDictionaryRef configuration)
+{
+    WKWebsiteDataStoreSetWebAuthenticationMockConfiguration(WKContextGetWebsiteDataStore(platformContext()), configuration);
 }
 
 } // namespace WTR

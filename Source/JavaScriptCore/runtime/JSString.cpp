@@ -205,7 +205,7 @@ void JSRopeString::resolveRopeToAtomicString(ExecState* exec) const
 
     // If we resolved a string that didn't previously exist, notify the heap that we've grown.
     if (m_value.impl()->hasOneRef())
-        Heap::heap(this)->reportExtraMemoryAllocated(m_value.impl()->cost());
+        vm.heap.reportExtraMemoryAllocated(m_value.impl()->cost());
 }
 
 void JSRopeString::clearFibers() const
@@ -250,7 +250,7 @@ RefPtr<AtomicStringImpl> JSRopeString::resolveRopeToExistingAtomicString(ExecSta
     return nullptr;
 }
 
-void JSRopeString::resolveRope(ExecState* exec) const
+void JSRopeString::resolveRope(ExecState* nullOrExecForOOM) const
 {
     ASSERT(isRope());
     
@@ -267,7 +267,7 @@ void JSRopeString::resolveRope(ExecState* exec) const
             Heap::heap(this)->reportExtraMemoryAllocated(newImpl->cost());
             m_value = WTFMove(newImpl);
         } else {
-            outOfMemory(exec);
+            outOfMemory(nullOrExecForOOM);
             return;
         }
         resolveRopeInternal8NoSubstring(buffer);
@@ -281,7 +281,7 @@ void JSRopeString::resolveRope(ExecState* exec) const
         Heap::heap(this)->reportExtraMemoryAllocated(newImpl->cost());
         m_value = WTFMove(newImpl);
     } else {
-        outOfMemory(exec);
+        outOfMemory(nullOrExecForOOM);
         return;
     }
     
@@ -380,16 +380,16 @@ void JSRopeString::resolveRopeSlowCase(UChar* buffer) const
     ASSERT(buffer == position);
 }
 
-void JSRopeString::outOfMemory(ExecState* exec) const
+void JSRopeString::outOfMemory(ExecState* nullOrExecForOOM) const
 {
-    VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
     clearFibers();
     ASSERT(isRope());
     ASSERT(m_value.isNull());
-    if (exec)
-        throwOutOfMemoryError(exec, scope);
+    if (nullOrExecForOOM) {
+        VM& vm = nullOrExecForOOM->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+        throwOutOfMemoryError(nullOrExecForOOM, scope);
+    }
 }
 
 JSValue JSString::toPrimitive(ExecState*, PreferredPrimitiveType) const

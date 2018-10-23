@@ -55,7 +55,10 @@ class WebProcessPool;
     WKWebView *_webView;
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 @property (nonatomic, readonly) WKBrowsingContextController *browsingContextController;
+#pragma clang diagnostic pop
 
 @property (nonatomic, readonly) WebKit::WebPageProxy* page;
 @property (nonatomic, readonly) BOOL isAssistingNode;
@@ -85,6 +88,7 @@ class WebProcessPool;
 
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy;
 - (void)_processDidExit;
+- (void)_processWillSwap;
 - (void)_didRelaunchProcess;
 - (void)_setAcceleratedCompositingRootView:(UIView *)rootView;
 

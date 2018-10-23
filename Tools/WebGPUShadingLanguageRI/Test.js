@@ -314,6 +314,16 @@ function checkFail(callback, predicate)
     }
 }
 
+function checkTrap(program, callback, checkFunction)
+{
+    const result = callback();
+    // FIXME: Rewrite tests so that they return non-zero values in the case that they didn't trap.
+    // The check function is optional in the case of a void return type.
+    checkFunction(program, result, 0);
+    if (!Evaluator.lastInvocationDidTrap)
+        throw new Error("Did not trap");
+}
+
 let tests;
 let okToTest = false;
 
@@ -335,31 +345,22 @@ tests.ternaryExpression = function() {
         }
         test int bar(int x)
         {
-            int y = 1;
-            int z = 2;
-            (x < 3 ? y : z) = 7;
-            return y;
-        }
-        test int baz(int x)
-        {
             return x < 10 ? 11 : x < 12 ? 14 : 15;
         }
-        test int quux(int x)
+        test int baz(int x)
         {
             return 3 < 4 ? x : 5;
         }
     `);
     checkInt(program, callFunction(program, "foo", [makeInt(program, 767)]), 5);
     checkInt(program, callFunction(program, "foo", [makeInt(program, 2)]), 4);
-    checkInt(program, callFunction(program, "bar", [makeInt(program, 2)]), 7);
-    checkInt(program, callFunction(program, "bar", [makeInt(program, 8)]), 1);
-    checkInt(program, callFunction(program, "baz", [makeInt(program, 8)]), 11);
-    checkInt(program, callFunction(program, "baz", [makeInt(program, 9)]), 11);
-    checkInt(program, callFunction(program, "baz", [makeInt(program, 10)]), 14);
-    checkInt(program, callFunction(program, "baz", [makeInt(program, 11)]), 14);
-    checkInt(program, callFunction(program, "baz", [makeInt(program, 12)]), 15);
-    checkInt(program, callFunction(program, "baz", [makeInt(program, 13)]), 15);
-    checkInt(program, callFunction(program, "quux", [makeInt(program, 14)]), 14);
+    checkInt(program, callFunction(program, "bar", [makeInt(program, 8)]), 11);
+    checkInt(program, callFunction(program, "bar", [makeInt(program, 9)]), 11);
+    checkInt(program, callFunction(program, "bar", [makeInt(program, 10)]), 14);
+    checkInt(program, callFunction(program, "bar", [makeInt(program, 11)]), 14);
+    checkInt(program, callFunction(program, "bar", [makeInt(program, 12)]), 15);
+    checkInt(program, callFunction(program, "bar", [makeInt(program, 13)]), 15);
+    checkInt(program, callFunction(program, "baz", [makeInt(program, 14)]), 14);
     checkFail(
         () => doPrep(`
             int foo()
@@ -369,6 +370,39 @@ tests.ternaryExpression = function() {
             }
         `),
         (e) => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            int foo()
+            {
+                int x;
+                int y;
+                (0 < 1 ? x : y) = 42;
+                return x;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("not an LValue") != -1);
+    checkFail(
+        () => doPrep(`
+            int foo()
+            {
+                int x;
+                int y;
+                thread int* z = &(0 < 1 ? x : y);
+                return *z;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("not an LValue") != -1);
+    checkFail(
+        () => doPrep(`
+            int foo()
+            {
+                int x;
+                int y;
+                thread int[] z = @(0 < 1 ? x : y);
+                return *z;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("not an LValue") != -1);
     checkFail(
         () => doPrep(`
             int foo()
@@ -387,29 +421,6 @@ tests.ternaryExpression = function() {
             }
         `),
         (e) => e instanceof WTypeError);
-}
-
-tests.ternaryExpressionIsLValue = function() {
-    function ternaryExpressionIsLValue(node)
-    {
-        let isLValue;
-        class TernaryExpressionVisitor extends Visitor {
-            visitTernaryExpression(node)
-            {
-                isLValue = node.isLValue;
-            }
-        }
-        node.visit(new TernaryExpressionVisitor());
-        return isLValue;
-    }
-
-    let program = doPrep(`int foo() { return 0 < 1 ? 0 : 1; }`);
-    if (ternaryExpressionIsLValue(program))
-        throw new Error(`r-value ternary expression incorrectly parsed as l-value`);
-
-    program = doPrep(`void foo() { int x; int y; (0 < 1 ? x : y) = 1; }`);
-    if (!ternaryExpressionIsLValue(program))
-        throw new Error(`l-value ternary expression incorrectly parsed as r-value`);
 }
 
 tests.literalBool = function() {
@@ -435,6 +446,27 @@ tests.intSimpleMath = function() {
     program = doPrep("test int foo(int x, int y) { return x / y; }");
     checkInt(program, callFunction(program, "foo", [makeInt(program, 7), makeInt(program, 2)]), 3);
     checkInt(program, callFunction(program, "foo", [makeInt(program, 7), makeInt(program, -2)]), -3);
+}
+
+tests.incrementAndDecrement = function() {
+    let program = doPrep(`
+    test int foo1() { int x = 0; return x++; }
+    test int foo2() { int x = 0; x++; return x; }
+    test int foo3() { int x = 0; return ++x; }
+    test int foo4() { int x = 0; ++x; return x; }
+    test int foo5() { int x = 0; return x--; }
+    test int foo6() { int x = 0; x--; return x; }
+    test int foo7() { int x = 0; return --x; }
+    test int foo8() { int x = 0; --x; return x; }
+    `);
+    checkInt(program, callFunction(program, "foo1", []), 0);
+    checkInt(program, callFunction(program, "foo2", []), 1);
+    checkInt(program, callFunction(program, "foo3", []), 1);
+    checkInt(program, callFunction(program, "foo4", []), 1);
+    checkInt(program, callFunction(program, "foo5", []), 0);
+    checkInt(program, callFunction(program, "foo6", []), -1);
+    checkInt(program, callFunction(program, "foo7", []), -1);
+    checkInt(program, callFunction(program, "foo8", []), -1);
 }
 
 tests.uintSimpleMath = function() {
@@ -614,7 +646,7 @@ tests.simpleMakePtr = function()
         throw new Error("Expected 42 but got: " + value);
 }
 
-tests.threadArrayLoad = function()
+tests.threadArrayRefLoad = function()
 {
     let program = doPrep(`
         test int foo(thread int[] array)
@@ -628,7 +660,7 @@ tests.threadArrayLoad = function()
     checkInt(program, result, 89);
 }
 
-tests.threadArrayLoadIntLiteral = function()
+tests.threadArrayRefLoadIntLiteral = function()
 {
     let program = doPrep(`
         test int foo(thread int[] array)
@@ -642,7 +674,7 @@ tests.threadArrayLoadIntLiteral = function()
     checkInt(program, result, 89);
 }
 
-tests.deviceArrayLoad = function()
+tests.deviceArrayRefLoad = function()
 {
     let program = doPrep(`
         test int foo(device int[] array)
@@ -656,7 +688,7 @@ tests.deviceArrayLoad = function()
     checkInt(program, result, 89);
 }
 
-tests.threadArrayStore = function()
+tests.threadArrayRefStore = function()
 {
     let program = doPrep(`
         test void foo(thread int[] array, int value)
@@ -677,7 +709,7 @@ tests.threadArrayStore = function()
         throw new Error("Bad value stored into buffer (expected -111): " + buffer.get(0));
 }
 
-tests.deviceArrayStore = function()
+tests.deviceArrayRefStore = function()
 {
     let program = doPrep(`
         test void foo(device int[] array, int value)
@@ -698,7 +730,7 @@ tests.deviceArrayStore = function()
         throw new Error("Bad value stored into buffer (expected -111): " + buffer.get(0));
 }
 
-tests.deviceArrayStoreIntLiteral = function()
+tests.deviceArrayRefStoreIntLiteral = function()
 {
     let program = doPrep(`
         test void foo(device int[] array, int value)
@@ -717,6 +749,102 @@ tests.deviceArrayStoreIntLiteral = function()
     callFunction(program, "foo", [arrayRef, makeInt(program, -111)]);
     if (buffer.get(0) != -111)
         throw new Error("Bad value stored into buffer (expected -111): " + buffer.get(0));
+}
+
+tests.threadPointerLoad = function()
+{
+    let program = doPrep(`
+        test int foo(thread int* ptr)
+        {
+            return *ptr;
+        }
+    `);
+    let buffer = new EBuffer(1);
+    buffer.set(0, 89);
+    let result = callFunction(program, "foo", [TypedValue.box(new PtrType(externalOrigin, "thread", program.intrinsics.int), new EPtr(buffer, 0))]);
+    checkInt(program, result, 89);
+}
+
+tests.threadPointerStore = function()
+{
+    let program = doPrep(`
+        test void foo(thread int* ptr, int value)
+        {
+            *ptr = value;
+        }
+    `);
+    let buffer = new EBuffer(1);
+    buffer.set(0, 89);
+    let pointer = TypedValue.box(new PtrType(externalOrigin, "thread", program.intrinsics.int), new EPtr(buffer, 0));
+    callFunction(program, "foo", [pointer, makeInt(program, 123)]);
+    if (buffer.get(0) != 123)
+        throw new Error("Bad value stored into buffer (expected 123): " + buffer.get(0));
+    callFunction(program, "foo", [pointer, makeInt(program, 321)]);
+    if (buffer.get(0) != 321)
+        throw new Error("Bad value stored into buffer (expected 321): " + buffer.get(0));
+}
+
+tests.devicePointerLoad = function()
+{
+    let program = doPrep(`
+        test int foo(device int* ptr)
+        {
+            return *ptr;
+        }
+    `);
+    let buffer = new EBuffer(1);
+    buffer.set(0, 89);
+    let result = callFunction(program, "foo", [TypedValue.box(new PtrType(externalOrigin, "device", program.intrinsics.int), new EPtr(buffer, 0))]);
+    checkInt(program, result, 89);
+}
+
+tests.devicePointerStore = function()
+{
+    let program = doPrep(`
+        test void foo(device int* ptr, int value)
+        {
+            *ptr = value;
+        }
+    `);
+    let buffer = new EBuffer(1);
+    buffer.set(0, 89);
+    let pointer = TypedValue.box(new PtrType(externalOrigin, "device", program.intrinsics.int), new EPtr(buffer, 0));
+    callFunction(program, "foo", [pointer, makeInt(program, 123)]);
+    if (buffer.get(0) != 123)
+        throw new Error("Bad value stored into buffer (expected 123): " + buffer.get(0));
+    callFunction(program, "foo", [pointer, makeInt(program, 321)]);
+    if (buffer.get(0) != 321)
+        throw new Error("Bad value stored into buffer (expected 321): " + buffer.get(0));
+}
+
+tests.arrayLoad = function()
+{
+    let program = doPrep(`
+        typedef IntArray = int[3];
+        test int foo(IntArray a)
+        {
+            return a[0];
+        }
+        test int bar(IntArray a)
+        {
+            return a[1];
+        }
+        test int baz(IntArray a)
+        {
+            return a[2];
+        }
+    `);
+    let buffer = new EBuffer(3);
+    buffer.set(0, 89);
+    buffer.set(1, 91);
+    buffer.set(2, 103);
+    let array = new TypedValue(program.types.get("IntArray").type, new EPtr(buffer, 0));
+    let result = callFunction(program, "foo", [array]);
+    checkInt(program, result, 89);
+    result = callFunction(program, "bar", [array]);
+    checkInt(program, result, 91);
+    result = callFunction(program, "baz", [array]);
+    checkInt(program, result, 103);
 }
 
 tests.typeMismatchReturn = function()
@@ -906,9 +1034,7 @@ tests.dereferenceDefaultNull = function()
             return *p;
         }
     `);
-    checkFail(
-        () => callFunction(program, "foo", []),
-        (e) => e instanceof WTrapError);
+    checkTrap(program, () => callFunction(program, "foo", []), checkInt);
 }
 
 tests.defaultInitializedNull = function()
@@ -920,9 +1046,7 @@ tests.defaultInitializedNull = function()
             return *p;
         }
     `);
-    checkFail(
-        () => callFunction(program, "foo", []),
-        (e) => e instanceof WTrapError);
+    checkTrap(program, () => callFunction(program, "foo", []), checkInt);
 }
 
 tests.passNullToPtrMonomorphic = function()
@@ -937,9 +1061,7 @@ tests.passNullToPtrMonomorphic = function()
             return foo(null);
         }
     `);
-    checkFail(
-        () => callFunction(program, "bar", []),
-        (e) => e instanceof WTrapError);
+    checkTrap(program, () => callFunction(program, "bar", []), checkInt);
 }
 
 tests.loadNullArrayRef = function()
@@ -984,9 +1106,7 @@ tests.dereferenceDefaultNullArrayRef = function()
             return p[0u];
         }
     `);
-    checkFail(
-        () => callFunction(program, "foo", []),
-        (e) => e instanceof WTrapError);
+    checkTrap(program, () => callFunction(program, "foo", []), checkInt);
 }
 
 tests.defaultInitializedNullArrayRef = function()
@@ -998,9 +1118,7 @@ tests.defaultInitializedNullArrayRef = function()
             return p[0u];
         }
     `);
-    checkFail(
-        () => callFunction(program, "foo", []),
-        (e) => e instanceof WTrapError);
+    checkTrap(program, () => callFunction(program, "foo", []), checkInt);
 }
 
 tests.defaultInitializedNullArrayRefIntLiteral = function()
@@ -1012,9 +1130,7 @@ tests.defaultInitializedNullArrayRefIntLiteral = function()
             return p[0];
         }
     `);
-    checkFail(
-        () => callFunction(program, "foo", []),
-        (e) => e instanceof WTrapError);
+    checkTrap(program, () => callFunction(program, "foo", []), checkInt);
 }
 
 tests.passNullToPtrMonomorphicArrayRef = function()
@@ -1029,9 +1145,7 @@ tests.passNullToPtrMonomorphicArrayRef = function()
             return foo(null);
         }
     `);
-    checkFail(
-        () => callFunction(program, "bar", []),
-        (e) => e instanceof WTrapError);
+    checkTrap(program, () => callFunction(program, "bar", []), checkInt);
 }
 
 tests.returnIntLiteralUint = function()
@@ -1366,7 +1480,7 @@ tests.intOverloadResolutionReverseOrder = function()
 tests.break = function()
 {
     let program = doPrep(`
-        test int foo(int x)
+        test int foo1(int x)
         {
             while (true) {
                 x = x * 2;
@@ -1375,11 +1489,7 @@ tests.break = function()
             }
             return x;
         }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 1)]), 8);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 10)]), 20);
-    program = doPrep(`
-        test int foo(int x)
+        test int foo2(int x)
         {
             while (true) {
                 while (true) {
@@ -1391,11 +1501,38 @@ tests.break = function()
                 break;
             }
             return x;
-
+        }
+        test int foo3(int x)
+        {
+            while (true) {
+                if (x == 7) {
+                    break;
+                }
+                x = x + 1;
+            }
+            return x;
+        }
+        test int foo4(int x)
+        {
+            while (true) {
+                break;
+            }
+            return x;
+        }
+        test int foo5()
+        {
+            while (true) {
+                return 7;
+            }
         }
     `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 1)]), 7);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 10)]), 19);
+    checkInt(program, callFunction(program, "foo1", [makeInt(program, 1)]), 8);
+    checkInt(program, callFunction(program, "foo1", [makeInt(program, 10)]), 20);
+    checkInt(program, callFunction(program, "foo2", [makeInt(program, 1)]), 7);
+    checkInt(program, callFunction(program, "foo2", [makeInt(program, 10)]), 19);
+    checkInt(program, callFunction(program, "foo3", [makeInt(program, 1)]), 7);
+    checkInt(program, callFunction(program, "foo4", [makeInt(program, 1)]), 1);
+    checkInt(program, callFunction(program, "foo5", []), 7);
     checkFail(
         () => doPrep(`
             int foo(int x)
@@ -1419,38 +1556,6 @@ tests.break = function()
             }
         `),
         (e) => e instanceof WTypeError);
-    program = doPrep(`
-            test int foo(int x)
-            {
-                while (true) {
-                    if (x == 7) {
-                        break;
-                    }
-                    x = x + 1;
-                }
-                return x;
-            }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 1)]), 7);
-    program = doPrep(`
-            test int foo(int x)
-            {
-                while (true) {
-                    break;
-                }
-                return x;
-            }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 1)]), 1);
-    program = doPrep(`
-            test int foo()
-            {
-                while (true) {
-                    return 7;
-                }
-            }
-    `);
-    checkInt(program, callFunction(program, "foo", []), 7);
     checkFail(
         () => doPrep(`
             test int foo(int x)
@@ -1495,7 +1600,7 @@ tests.continue = function()
 tests.doWhile = function()
 {
     let program = doPrep(`
-        test int foo(int x)
+        test int foo1(int x)
         {
             int y = 7;
             do {
@@ -1504,11 +1609,7 @@ tests.doWhile = function()
             } while (x < 10);
             return y;
         }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 1)]), 8);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 11)]), 8);
-    program = doPrep(`
-        test int foo(int x)
+        test int foo2(int x)
         {
             int y = 7;
             do {
@@ -1517,10 +1618,7 @@ tests.doWhile = function()
             } while (y == 7);
             return y;
         }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 1)]), 8);
-    program = doPrep(`
-        test int foo(int x)
+        test int foo3(int x)
         {
             int sum = 0;
             do {
@@ -1534,13 +1632,16 @@ tests.doWhile = function()
             return sum;
         }
     `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 9)]), 19);
+    checkInt(program, callFunction(program, "foo1", [makeInt(program, 1)]), 8);
+    checkInt(program, callFunction(program, "foo1", [makeInt(program, 11)]), 8);
+    checkInt(program, callFunction(program, "foo2", [makeInt(program, 1)]), 8);
+    checkInt(program, callFunction(program, "foo3", [makeInt(program, 9)]), 19);
 }
 
 tests.forLoop = function()
 {
     let program = doPrep(`
-        test int foo(int x)
+        test int foo1(int x)
         {
             int sum = 0;
             int i;
@@ -1549,12 +1650,7 @@ tests.forLoop = function()
             }
             return sum;
         }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 3)]), 3);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 4)]), 6);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 5)]), 10);
-    program = doPrep(`
-        test int foo(int x)
+        test int foo2(int x)
         {
             int sum = 0;
             for (int i = 0; i < x; i = i + 1) {
@@ -1562,12 +1658,7 @@ tests.forLoop = function()
             }
             return sum;
         }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 3)]), 3);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 4)]), 6);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 5)]), 10);
-    program = doPrep(`
-        test int foo(int x)
+        test int foo3(int x)
         {
             int sum = 0;
             int i = 100;
@@ -1576,12 +1667,7 @@ tests.forLoop = function()
             }
             return sum;
         }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 3)]), 3);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 4)]), 6);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 5)]), 10);
-    program = doPrep(`
-        test int foo(int x)
+        test int foo4(int x)
         {
             int sum = 0;
             for (int i = 0; i < x; i = i + 1) {
@@ -1591,13 +1677,7 @@ tests.forLoop = function()
             }
             return sum;
         }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 3)]), 3);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 4)]), 6);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 5)]), 6);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 6)]), 11);
-    program = doPrep(`
-        test int foo(int x)
+        test int foo5(int x)
         {
             int sum = 0;
             for (int i = 0; i < x; i = i + 1) {
@@ -1607,14 +1687,7 @@ tests.forLoop = function()
             }
             return sum;
         }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 3)]), 3);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 4)]), 6);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 5)]), 10);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 6)]), 10);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 7)]), 10);
-    program = doPrep(`
-        test int foo(int x)
+        test int foo6(int x)
         {
             int sum = 0;
             for (int i = 0; ; i = i + 1) {
@@ -1624,14 +1697,7 @@ tests.forLoop = function()
             }
             return sum;
         }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 3)]), 3);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 4)]), 6);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 5)]), 10);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 6)]), 15);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 7)]), 21);
-    program = doPrep(`
-        test int foo(int x)
+        test int foo7(int x)
         {
             int sum = 0;
             int i = 0;
@@ -1642,14 +1708,7 @@ tests.forLoop = function()
             }
             return sum;
         }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 3)]), 3);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 4)]), 6);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 5)]), 10);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 6)]), 15);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 7)]), 21);
-    program = doPrep(`
-        test int foo(int x)
+        test int foo8(int x)
         {
             int sum = 0;
             int i = 0;
@@ -1661,12 +1720,62 @@ tests.forLoop = function()
             }
             return sum;
         }
+        test int foo9(int x)
+        {
+            for ( ; ; ) {
+                return 7;
+            }
+        }
+        test int foo10(int x)
+        {
+            for ( ; true; ) {
+                return 7;
+            }
+        }
     `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 3)]), 3);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 4)]), 6);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 5)]), 10);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 6)]), 15);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 7)]), 21);
+    checkInt(program, callFunction(program, "foo1", [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo1", [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo1", [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo2", [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo2", [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo2", [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo3", [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo3", [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo3", [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo4", [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo4", [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo4", [makeInt(program, 5)]), 6);
+    checkInt(program, callFunction(program, "foo4", [makeInt(program, 6)]), 11);
+    checkInt(program, callFunction(program, "foo5", [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo5", [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo5", [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo5", [makeInt(program, 6)]), 10);
+    checkInt(program, callFunction(program, "foo5", [makeInt(program, 7)]), 10);
+    checkInt(program, callFunction(program, "foo6", [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo6", [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo6", [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo6", [makeInt(program, 6)]), 15);
+    checkInt(program, callFunction(program, "foo6", [makeInt(program, 7)]), 21);
+    checkInt(program, callFunction(program, "foo7", [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo7", [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo7", [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo7", [makeInt(program, 6)]), 15);
+    checkInt(program, callFunction(program, "foo7", [makeInt(program, 7)]), 21);
+    checkInt(program, callFunction(program, "foo8", [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo8", [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo8", [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo8", [makeInt(program, 6)]), 15);
+    checkInt(program, callFunction(program, "foo8", [makeInt(program, 7)]), 21);
+    checkInt(program, callFunction(program, "foo9", [makeInt(program, 3)]), 7);
+    checkInt(program, callFunction(program, "foo9", [makeInt(program, 4)]), 7);
+    checkInt(program, callFunction(program, "foo9", [makeInt(program, 5)]), 7);
+    checkInt(program, callFunction(program, "foo9", [makeInt(program, 6)]), 7);
+    checkInt(program, callFunction(program, "foo9", [makeInt(program, 7)]), 7);
+    checkInt(program, callFunction(program, "foo10", [makeInt(program, 3)]), 7);
+    checkInt(program, callFunction(program, "foo10", [makeInt(program, 4)]), 7);
+    checkInt(program, callFunction(program, "foo10", [makeInt(program, 5)]), 7);
+    checkInt(program, callFunction(program, "foo10", [makeInt(program, 6)]), 7);
+    checkInt(program, callFunction(program, "foo10", [makeInt(program, 7)]), 7);
     checkFail(
         () => doPrep(`
             void foo(int x)
@@ -1678,19 +1787,6 @@ tests.forLoop = function()
             }
         `),
         (e) => e instanceof WTypeError);
-    program = doPrep(`
-        test int foo(int x)
-        {
-            for ( ; ; ) {
-                return 7;
-            }
-        }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 3)]), 7);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 4)]), 7);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 5)]), 7);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 6)]), 7);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 7)]), 7);
     checkFail(
         () => doPrep(`
             int foo(int x)
@@ -1701,19 +1797,6 @@ tests.forLoop = function()
             }
         `),
         (e) => e instanceof WTypeError);
-    program = doPrep(`
-        test int foo(int x)
-        {
-            for ( ; true; ) {
-                return 7;
-            }
-        }
-    `);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 3)]), 7);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 4)]), 7);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 5)]), 7);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 6)]), 7);
-    checkInt(program, callFunction(program, "foo", [makeInt(program, 7)]), 7);
 }
 
 tests.prefixPlusPlus = function()
@@ -2353,6 +2436,149 @@ tests.nestedSubscriptLValueEmulationSimple = function()
     checkInt(program, callFunction(program, "testSetValuesMutateValuesAndSum", []), 5565);
 }
 
+tests.nestedSubscriptWithArraysInStructs = function()
+{
+    let program = doPrep(`
+        struct Foo {
+            int[7] array;
+        }
+        int sum(Foo foo)
+        {
+            int result = 0;
+            for (uint i = 0; i < foo.array.length; i++)
+                result += foo.array[i];
+            return result;
+        }
+        struct Bar {
+            Foo[6] array;
+        }
+        int sum(Bar bar)
+        {
+            int result = 0;
+            for (uint i = 0; i < bar.array.length; i++)
+                result += sum(bar.array[i]);
+            return result;
+        }
+        struct Baz {
+            Bar[5] array;
+        }
+        int sum(Baz baz)
+        {
+            int result = 0;
+            for (uint i = 0; i < baz.array.length; i++)
+                result += sum(baz.array[i]);
+            return result;
+        }
+        void setValues(thread Baz* baz)
+        {
+            for (uint i = 0; i < baz->array.length; i++) {
+                for (uint j = 0; j < baz->array[i].array.length; j++) {
+                    for (uint k = 0; k < baz->array[i].array[j].array.length; k++)
+                        baz->array[i].array[j].array[k] = int(i + j + k);
+                }
+            }
+        }
+        test int testSetValuesAndSum()
+        {
+            Baz baz;
+            setValues(&baz);
+            return sum(baz);
+        }
+        test int testSetValuesMutateValuesAndSum()
+        {
+            Baz baz;
+            setValues(&baz);
+            for (uint i = baz.array.length; i--;) {
+                for (uint j = baz.array[i].array.length; j--;) {
+                    for (uint k = baz.array[i].array[j].array.length; k--;)
+                        baz.array[i].array[j].array[k] = baz.array[i].array[j].array[k] * int(k);
+                }
+            }
+            return sum(baz);
+        }
+    `);
+    checkInt(program, callFunction(program, "testSetValuesAndSum", []), 1575);
+    checkInt(program, callFunction(program, "testSetValuesMutateValuesAndSum", []), 5565);
+}
+
+tests.nestedSubscript = function()
+{
+    let program = doPrep(`
+        int sum(int[7] array)
+        {
+            int result = 0;
+            for (uint i = array.length; i--;)
+                result += array[i];
+            return result;
+        }
+        int sum(int[6][7] array)
+        {
+            int result = 0;
+            for (uint i = array.length; i--;)
+                result += sum(array[i]);
+            return result;
+        }
+        int sum(int[5][6][7] array)
+        {
+            int result = 0;
+            for (uint i = array.length; i--;)
+                result += sum(array[i]);
+            return result;
+        }
+        void setValues(thread int[][6][7] array)
+        {
+            for (uint i = array.length; i--;) {
+                for (uint j = array[i].length; j--;) {
+                    for (uint k = array[i][j].length; k--;)
+                        array[i][j][k] = int(i + j + k);
+                }
+            }
+        }
+        test int testSetValuesAndSum()
+        {
+            int[5][6][7] array;
+            setValues(@array);
+            return sum(array);
+        }
+        test int testSetValuesMutateValuesAndSum()
+        {
+            int[5][6][7] array;
+            setValues(@array);
+            for (uint i = array.length; i--;) {
+                for (uint j = array[i].length; j--;) {
+                    for (uint k = array[i][j].length; k--;)
+                        array[i][j][k] = array[i][j][k] * int(k);
+                }
+            }
+            return sum(array);
+        }
+    `);
+    checkInt(program, callFunction(program, "testSetValuesAndSum", []), 1575);
+    checkInt(program, callFunction(program, "testSetValuesMutateValuesAndSum", []), 5565);
+}
+
+tests.lotsOfLocalVariables = function()
+{
+    let src = "test int sum() {\n";
+    src += "    int i = 0;\n";
+    let target = 0;
+    const numVars = 50;
+    for (let i = 0; i < numVars; i++) {
+        const value = i * 3;
+        src += `   i = ${i};\n`;
+        src += `   int V${i} = (i + 3) * (i + 3);\n`;
+        target += (i + 3) * (i + 3);
+    }
+    src += "    int result = 0;\n";
+    for (let i = 0; i < numVars; i++) {
+        src += `    result += V${i};\n`;
+    }
+    src += "    return result;\n";
+    src += "}";
+    let program = doPrep(src);
+    checkInt(program, callFunction(program, "sum", []), target);
+}
+
 tests.operatorBool = function()
 {
     let program = doPrep(`
@@ -2946,133 +3172,262 @@ tests.typedefArray = function()
 
 tests.shaderTypes = function()
 {
+    doPrep(`
+        vertex float4 foo() : SV_Position {
+            return float4(0, 1, 2, 3);
+        }`);
+    doPrep(`
+        struct R {
+            float4 x : SV_Position;
+            int4 y : attribute(1);
+        }
+        vertex R foo() {
+            R z;
+            z.x = float4(1, 2, 3, 4);
+            z.y = int4(5, 6, 7, 8);
+            return z;
+        }`);
+    doPrep(`
+        struct R {
+            float4 x : SV_Position;
+            int4 y : attribute(1);
+        }
+        struct S {
+            R r;
+            float3 z : attribute(2);
+        }
+        vertex S foo() {
+            S w;
+            w.r.x = float4(1, 2, 3, 4);
+            w.r.y = int4(5, 6, 7, 8);
+            w.z = float3(9, 10, 11);
+            return w;
+        }`);
+    doPrep(`
+        vertex float4 foo(constant float* buffer : register(b0)) : SV_Position {
+            return float4(*buffer, *buffer, *buffer, *buffer);
+        }`);
+    doPrep(`
+        vertex float4 foo(constant float* buffer : register(b0, space0)) : SV_Position {
+            return float4(*buffer, *buffer, *buffer, *buffer);
+        }`);
+    doPrep(`
+        vertex float4 foo(constant float* buffer : register(b0, space1)) : SV_Position {
+            return float4(*buffer, *buffer, *buffer, *buffer);
+        }`);
+    doPrep(`
+        vertex float4 foo(constant float[] buffer : register(b0)) : SV_Position {
+            return float4(buffer[0], buffer[1], buffer[2], buffer[3]);
+        }`);
+    doPrep(`
+        vertex float4 foo(float[5] buffer : register(b0)) : SV_Position {
+            return float4(buffer[0], buffer[1], buffer[2], buffer[3]);
+        }`);
+    doPrep(`
+        vertex float4 foo(device float* buffer : register(u0)) : SV_Position {
+            return float4(*buffer, *buffer, *buffer, *buffer);
+        }`);
+    doPrep(`
+        vertex float4 foo(device float[] buffer : register(u0)) : SV_Position {
+            return float4(buffer[0], buffer[1], buffer[2], buffer[3]);
+        }`);
+    doPrep(`
+        vertex float4 foo(uint x : SV_InstanceID) : SV_Position {
+            return float4(float(x), float(x), float(x), float(x));
+        }`);
+    doPrep(`
+        fragment float4 foo(bool x : SV_IsFrontFace) : SV_Target0 {
+            return float4(1, 2, 3, 4);
+        }`);
+    doPrep(`
+        fragment float4 foo(int x : specialized) : SV_Target0 {
+            return float4(1, 2, 3, 4);
+        }`);
+    doPrep(`
+        fragment float4 foo(Texture1D<float4> t : register(t0), sampler s : register(s0)) : SV_Target0 {
+            return Sample(t, s, 0.4);
+        }`);
     checkFail(
         () => doPrep(`
-            struct Foo {
-                float4 x;
-            }
-            vertex Foo bar()
-            {
-                Foo result;
-                result.x = float4();
-                return result;
-            }
-            Foo foo() {
-                return bar();
+            vertex void foo() : SV_Position {
             }
         `),
-        (e) => e instanceof WTypeError);
+        e => e instanceof WTypeError);
     checkFail(
         () => doPrep(`
-            vertex float bar()
-            {
-                return 4.;
+            vertex float4 foo(float x : PSIZE) : SV_Position {
+                return float4(x, x, x, x);
             }
         `),
-        (e) => e instanceof WTypeError);
+        e => e instanceof WTypeError);
     checkFail(
         () => doPrep(`
-            struct Foo {
-                float4 x;
-            }
-            vertex Foo bar(device Foo* x)
-            {
-                return Foo();
+            vertex float4 foo(int x : SV_InstanceID) : SV_Position {
+                return float4(float(x), float(x), float(x), float(x));
             }
         `),
-        (e) => e instanceof WTypeError);
+        e => e instanceof WTypeError);
     checkFail(
         () => doPrep(`
-            struct Boo {
-                float4 x;
-            }
-            struct Foo {
-                float4 x;
-                device Boo* y;
-            }
-            vertex Foo bar()
-            {
-                return Foo();
+            vertex float4 foo(float x) : SV_Position {
+                return float4(x, x, x, x);
             }
         `),
-        (e) => e instanceof WTypeError);
+        e => e instanceof WTypeError);
     checkFail(
         () => doPrep(`
-            struct Foo {
-                float4 x;
-            }
-            struct Boo {
-                device Foo* y;
-            }
-            vertex Foo bar(Boo b)
-            {
-                return Foo();
+            fragment float4 foo(bool x : SV_IsFrontFace, bool y : SV_IsFrontFace) : SV_Target0 {
+                return float4(1, 2, 3, 4);
             }
         `),
-        (e) => e instanceof WTypeError);
+        e => e instanceof WTypeError);
     checkFail(
         () => doPrep(`
-            struct Foo {
-                float4 x;
+            struct R {
+                float4 x : SV_Target0;
             }
-            vertex Foo bar(device Foo* x)
-            {
-                return Foo();
+            fragment R foo(bool x : SV_IsFrontFace) : SV_Depth {
+                R y;
+                y.x = float4(1, 2, 3, 4);
+                return y;
             }
         `),
-        (e) => e instanceof WTypeError);
+        e => e instanceof WTypeError);
     checkFail(
         () => doPrep(`
-            struct Foo {
-                float4 x;
+            struct R {
+                bool x : SV_IsFrontFace;
             }
-            fragment Foo bar(Foo foo)
-            {
-                return Foo();
+            fragment float4 foo(R x : SV_SampleIndex) : SV_Target0 {
+                return float4(1, 2, 3, 4);
             }
         `),
-        (e) => e instanceof WTypeError);
+        e => e instanceof WTypeError);
     checkFail(
         () => doPrep(`
-            struct Foo {
-                float4 x;
+            struct R {
+                bool x : SV_IsFrontFace;
             }
-            fragment Foo bar(device Foo* stageIn)
-            {
-                return Foo();
+            struct S {
+                R r;
+                bool y : SV_IsFrontFace;
+            }
+            fragment float4 foo(S x) : SV_Target0 {
+                return float4(1, 2, 3, 4);
             }
         `),
-        (e) => e instanceof WTypeError);
+        e => e instanceof WTypeError);
     checkFail(
         () => doPrep(`
-            struct Boo {
-                float4 x;
+            struct R {
+                float x : SV_IsFrontFace;
             }
-            struct Foo {
-                float4 x;
-                device Boo* y;
-            }
-            fragment Boo bar(Foo stageIn)
-            {
-                return Boo();
+            fragment float4 foo(R x) : SV_Target0 {
+                return float4(1, 2, 3, 4);
             }
         `),
-        (e) => e instanceof WTypeError);
+        e => e instanceof WTypeError);
     checkFail(
         () => doPrep(`
-            struct Boo {
-                float4 x;
+            struct R {
+                float x : SV_IsFrontFace;
             }
-            struct Foo {
-                float4 x;
-                device Boo* y;
-            }
-            fragment Foo bar(Boo stageIn)
-            {
-                return Foo();
+            vertex uint foo() : SV_VertexID {
+                return 7;
             }
         `),
-        (e) => e instanceof WTypeError);
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            typedef A = thread float*;
+            vertex float4 foo(device A[] x : register(u0)) : SV_Position {
+                return float4(1, 2, 3, 4);
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            typedef A = thread float*;
+            vertex float4 foo(device A* x : register(u0)) : SV_Position {
+                return float4(1, 2, 3, 4);
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            typedef A = thread float*;
+            vertex float4 foo(A[4] x : register(u0)) : SV_Position {
+                return float4(1, 2, 3, 4);
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            enum Foo {
+                f, g
+            }
+            vertex float4 foo(Foo x : specialized) : SV_Position {
+                return float4(1, 2, 3, 4);
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            [numthreads(1, 1, 1)]
+            compute float foo() : attribute(0) {
+                return 5;
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            fragment float foo() : attribute(0) {
+                return 5;
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            vertex float foo(device float* x : attribute(0)) : attribute(0) {
+                return 5;
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            vertex float4 foo(device float* x : register(b0)) : SV_Position {
+                return float4(1, 2, 3, 4);
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            vertex float4 foo(float x : register(b0)) : SV_Position {
+                return float4(1, 2, 3, 4);
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            vertex float4 foo(device float* x : register(t0)) : SV_Position {
+                return float4(1, 2, 3, 4);
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            vertex float4 foo(Texture2D<float> x : register(b0)) : SV_Position {
+                return float4(1, 2, 3, 4);
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            vertex float4 foo(constant float[] x : register(s0)) : SV_Position {
+                return float4(1, 2, 3, 4);
+            }
+        `),
+        e => e instanceof WTypeError);
 }
 
 tests.vectorTypeSyntax = function()
@@ -3715,16 +4070,15 @@ tests.trap = function()
             trap;
         }
     `);
-    checkFail(
-        () => callFunction(program, "foo", []),
-        e => e instanceof WTrapError);
+    checkTrap(program, () => callFunction(program, "foo", []), checkInt);
     checkInt(program, callFunction(program, "foo2", [makeInt(program, 1)]), 4);
-    checkFail(
-        () => callFunction(program, "foo2", [makeInt(program, 3)]),
-        e => e instanceof WTrapError);
-    checkFail(
-        () => callFunction(program, "foo3", []),
-        e => e instanceof WTrapError);
+    checkTrap(program, () => callFunction(program, "foo2", [makeInt(program, 3)]), checkInt);
+    checkTrap(program, () => callFunction(program, "foo3", []), (progam, result, expected) => {
+        for (let i = 0; i < 4; i++) {
+            if (result.ePtr.get(i) != expected)
+                throw new Error(`Non-zero return value at offset ${i}`);
+        }
+    });
 }
 
 /*
@@ -4486,9 +4840,7 @@ tests.mutuallyRecursiveStructWithPointersBroken = function()
             return foo.bar->bar - bar.foo->foo;
         }
     `);
-    checkFail(
-        () => checkInt(program, callFunction(program, "foo", []), -511),
-        e => e instanceof WTrapError);
+    checkTrap(program, () => callFunction(program, "foo", []), checkInt);
 }
 
 tests.mutuallyRecursiveStructWithPointers = function()
@@ -5541,42 +5893,6 @@ tests.indexAnderWithArrayRef = function()
     checkInt(program, callFunction(program, "foo", []), 13);
 }
 
-tests.devicePtrPtr = function()
-{
-    checkFail(
-        () => doPrep(`
-            void foo()
-            {
-                device int** p;
-            }
-        `),
-        e => e instanceof WTypeError && e.message.indexOf("Illegal pointer to non-primitive type: int* device* device") != -1);
-}
-
-tests.threadgroupPtrPtr = function()
-{
-    checkFail(
-        () => doPrep(`
-            void foo()
-            {
-                threadgroup int** p;
-            }
-        `),
-        e => e instanceof WTypeError && e.message.indexOf("Illegal pointer to non-primitive type: int* threadgroup* threadgroup") != -1);
-}
-
-tests.constantPtrPtr = function()
-{
-    checkFail(
-        () => doPrep(`
-            void foo()
-            {
-                constant int** p;
-            }
-        `),
-        e => e instanceof WTypeError && e.message.indexOf("Illegal pointer to non-primitive type: int* constant* constant") != -1);
-}
-
 tests.andReturnedArrayRef = function()
 {
     let program = doPrep(`
@@ -5593,6 +5909,133 @@ tests.andReturnedArrayRef = function()
         }
     `);
     checkInt(program, callFunction(program, "foo", []), 354);
+}
+
+tests.shaderStages = function()
+{
+    doPrep(`
+        struct Result {
+            float4 output : SV_Target0;
+        }
+        fragment Result foo()
+        {
+            float x = 7;
+            float dx = ddx(x);
+            float dy = ddy(x);
+            Result r;
+            r.output = float4(1, 2, 3, 4);
+            return r;
+        }
+    `);
+    doPrep(`
+        [numthreads(1, 1, 1)]
+        compute void foo()
+        {
+            AllMemoryBarrierWithGroupSync();
+            DeviceMemoryBarrierWithGroupSync();
+            GroupMemoryBarrierWithGroupSync();
+        }
+    `);
+    checkFail(
+        () => doPrep(`
+            struct Result {
+                float4 output : SV_Position;
+            }
+            vertex Result foo()
+            {
+                float x = 7;
+                float dx = ddx(x);
+                float dy = ddy(x);
+                Result r;
+                r.output = float4(1, 2, 3, 4);
+                return r;
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            struct Result {
+                float4 output : SV_Position;
+            }
+            vertex Result foo()
+            {
+                AllMemoryBarrierWithGroupSync();
+                Result r;
+                r.output = float4(1, 2, 3, 4);
+                return r;
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            struct Result {
+                float4 output : SV_Target0;
+            }
+            fragment Result foo()
+            {
+                AllMemoryBarrierWithGroupSync();
+                Result r;
+                r.output = float4(1, 2, 3, 4);
+                return r;
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            struct Result {
+                float4 output : SV_Position;
+            }
+            vertex Result foo()
+            {
+                DeviceMemoryBarrierWithGroupSync();
+                Result r;
+                r.output = float4(1, 2, 3, 4);
+                return r;
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            struct Result {
+                float4 output : SV_Target0;
+            }
+            fragment Result foo()
+            {
+                DeviceMemoryBarrierWithGroupSync();
+                Result r;
+                r.output = float4(1, 2, 3, 4);
+                return r;
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            struct Result {
+                float4 output : SV_Position;
+            }
+            vertex Result foo()
+            {
+                GroupMemoryBarrierWithGroupSync();
+                Result r;
+                r.output = float4(1, 2, 3, 4);
+                return r;
+            }
+        `),
+        e => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            struct Result {
+                float4 output : SV_Target0;
+            }
+            fragment Result foo()
+            {
+                GroupMemoryBarrierWithGroupSync();
+                Result r;
+                r.output = float4(1, 2, 3, 4);
+                return r;
+            }
+        `),
+        e => e instanceof WTypeError);
 }
 
 tests.casts = function()
@@ -5637,6 +6080,592 @@ tests.casts = function()
         }
     `);
     checkInt(program, callFunction(program, "baz", [makeInt(program, 6)]), 14);
+}
+
+tests.atomics = function()
+{
+    let program = doPrep(`
+        test int foo1(int z) {
+            atomic_int x;
+            int result;
+            InterlockedAdd(&x, z, &result);
+            return result;
+        }
+        test int foo2(int z) {
+            atomic_int x;
+            int result;
+            InterlockedAdd(&x, z, &result);
+            InterlockedAdd(&x, z, &result);
+            return result;
+        }
+        test int foo3(int z) {
+            atomic_int x;
+            int result;
+            InterlockedAdd(&x, z, &result);
+            return int(x);
+        }
+        test int foo4(int z) {
+            atomic_int x;
+            int result;
+            InterlockedAdd(&x, z, &result);
+            InterlockedAdd(&x, z, &result);
+            return int(x);
+        }
+        test uint foo5(uint z) {
+            atomic_uint x;
+            uint result;
+            InterlockedAdd(&x, z, &result);
+            return result;
+        }
+        test uint foo6(uint z) {
+            atomic_uint x;
+            uint result;
+            InterlockedAdd(&x, z, &result);
+            InterlockedAdd(&x, z, &result);
+            return result;
+        }
+        test uint foo7(uint z) {
+            atomic_uint x;
+            uint result;
+            InterlockedAdd(&x, z, &result);
+            return uint(x);
+        }
+        test uint foo8(uint z) {
+            atomic_uint x;
+            uint result;
+            InterlockedAdd(&x, z, &result);
+            InterlockedAdd(&x, z, &result);
+            return uint(x);
+        }
+        test uint foo9(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedAnd(&z, y, &result);
+            return uint(z);
+        }
+        test uint foo10(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedAnd(&z, y, &result);
+            return result;
+        }
+        test int foo11(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedAnd(&z, y, &result);
+            return int(z);
+        }
+        test int foo12(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedAnd(&z, y, &result);
+            return result;
+        }
+        test uint foo13(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedExchange(&z, y, &result);
+            return uint(z);
+        }
+        test uint foo14(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedExchange(&z, y, &result);
+            return result;
+        }
+        test int foo15(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedExchange(&z, y, &result);
+            return int(z);
+        }
+        test int foo16(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedExchange(&z, y, &result);
+            return result;
+        }
+        test uint foo17(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedMax(&z, y, &result);
+            return uint(z);
+        }
+        test uint foo18(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedMax(&z, y, &result);
+            return result;
+        }
+        test int foo19(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedMax(&z, y, &result);
+            return int(z);
+        }
+        test int foo20(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedMax(&z, y, &result);
+            return result;
+        }
+        test uint foo21(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedMin(&z, y, &result);
+            return uint(z);
+        }
+        test uint foo22(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedMin(&z, y, &result);
+            return result;
+        }
+        test int foo23(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedMin(&z, y, &result);
+            return int(z);
+        }
+        test int foo24(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedMin(&z, y, &result);
+            return result;
+        }
+        test uint foo25(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedOr(&z, y, &result);
+            return uint(z);
+        }
+        test uint foo26(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedOr(&z, y, &result);
+            return result;
+        }
+        test int foo27(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedOr(&z, y, &result);
+            return int(z);
+        }
+        test int foo28(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedOr(&z, y, &result);
+            return result;
+        }
+        test uint foo29(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedXor(&z, y, &result);
+            return uint(z);
+        }
+        test uint foo30(uint x, uint y) {
+            atomic_uint z;
+            uint result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedXor(&z, y, &result);
+            return result;
+        }
+        test int foo31(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedXor(&z, y, &result);
+            return int(z);
+        }
+        test int foo32(int x, int y) {
+            atomic_int z;
+            int result;
+            InterlockedAdd(&z, x, &result);
+            InterlockedXor(&z, y, &result);
+            return result;
+        }
+        test uint foo33(uint x, uint y, uint z) {
+            atomic_uint w;
+            uint result;
+            InterlockedAdd(&w, x, &result);
+            InterlockedCompareExchange(&w, y, z, &result);
+            return uint(w);
+        }
+        test uint foo34(uint x, uint y, uint z) {
+            atomic_uint w;
+            uint result;
+            InterlockedAdd(&w, x, &result);
+            InterlockedCompareExchange(&w, y, z, &result);
+            return result;
+        }
+        test int foo35(int x, int y, int z) {
+            atomic_int w;
+            int result;
+            InterlockedAdd(&w, x, &result);
+            InterlockedCompareExchange(&w, y, z, &result);
+            return int(w);
+        }
+        test int foo36(int x, int y, int z) {
+            atomic_int w;
+            int result;
+            InterlockedAdd(&w, x, &result);
+            InterlockedCompareExchange(&w, y, z, &result);
+            return result;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo1", [makeInt(program, 6)]), 0);
+    checkInt(program, callFunction(program, "foo2", [makeInt(program, 6)]), 6);
+    checkInt(program, callFunction(program, "foo3", [makeInt(program, 6)]), 6);
+    checkInt(program, callFunction(program, "foo4", [makeInt(program, 6)]), 12);
+    checkUint(program, callFunction(program, "foo5", [makeUint(program, 6)]), 0);
+    checkUint(program, callFunction(program, "foo6", [makeUint(program, 6)]), 6);
+    checkUint(program, callFunction(program, "foo7", [makeUint(program, 6)]), 6);
+    checkUint(program, callFunction(program, "foo8", [makeUint(program, 6)]), 12);
+    checkUint(program, callFunction(program, "foo9", [makeUint(program, 3), makeUint(program, 5)]), 1);
+    checkUint(program, callFunction(program, "foo10", [makeUint(program, 3), makeUint(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo11", [makeInt(program, 3), makeInt(program, 5)]), 1);
+    checkInt(program, callFunction(program, "foo12", [makeInt(program, 3), makeInt(program, 5)]), 3);
+    checkUint(program, callFunction(program, "foo13", [makeUint(program, 3), makeUint(program, 5)]), 5);
+    checkUint(program, callFunction(program, "foo14", [makeUint(program, 3), makeUint(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo15", [makeInt(program, 3), makeInt(program, 5)]), 5);
+    checkInt(program, callFunction(program, "foo16", [makeInt(program, 3), makeInt(program, 5)]), 3);
+    checkUint(program, callFunction(program, "foo17", [makeUint(program, 3), makeUint(program, 5)]), 5);
+    checkUint(program, callFunction(program, "foo17", [makeUint(program, 5), makeUint(program, 3)]), 5);
+    checkUint(program, callFunction(program, "foo18", [makeUint(program, 3), makeUint(program, 5)]), 3);
+    checkUint(program, callFunction(program, "foo18", [makeUint(program, 5), makeUint(program, 3)]), 5);
+    checkInt(program, callFunction(program, "foo19", [makeInt(program, 3), makeInt(program, 5)]), 5);
+    checkInt(program, callFunction(program, "foo19", [makeInt(program, 5), makeInt(program, 3)]), 5);
+    checkInt(program, callFunction(program, "foo20", [makeInt(program, 3), makeInt(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo20", [makeInt(program, 5), makeInt(program, 3)]), 5);
+    checkUint(program, callFunction(program, "foo21", [makeUint(program, 3), makeUint(program, 5)]), 3);
+    checkUint(program, callFunction(program, "foo21", [makeUint(program, 5), makeUint(program, 3)]), 3);
+    checkUint(program, callFunction(program, "foo22", [makeUint(program, 3), makeUint(program, 5)]), 3);
+    checkUint(program, callFunction(program, "foo22", [makeUint(program, 5), makeUint(program, 3)]), 5);
+    checkInt(program, callFunction(program, "foo23", [makeInt(program, 3), makeInt(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo23", [makeInt(program, 5), makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo24", [makeInt(program, 3), makeInt(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo24", [makeInt(program, 5), makeInt(program, 3)]), 5);
+    checkUint(program, callFunction(program, "foo25", [makeUint(program, 3), makeUint(program, 5)]), 7);
+    checkUint(program, callFunction(program, "foo26", [makeUint(program, 3), makeUint(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo27", [makeInt(program, 3), makeInt(program, 5)]), 7);
+    checkInt(program, callFunction(program, "foo28", [makeInt(program, 3), makeInt(program, 5)]), 3);
+    checkUint(program, callFunction(program, "foo29", [makeUint(program, 3), makeUint(program, 5)]), 6);
+    checkUint(program, callFunction(program, "foo30", [makeUint(program, 3), makeUint(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo31", [makeInt(program, 3), makeInt(program, 5)]), 6);
+    checkInt(program, callFunction(program, "foo32", [makeInt(program, 3), makeInt(program, 5)]), 3);
+    checkUint(program, callFunction(program, "foo33", [makeUint(program, 3), makeUint(program, 3), makeUint(program, 5)]), 5);
+    checkUint(program, callFunction(program, "foo33", [makeUint(program, 3), makeUint(program, 4), makeUint(program, 5)]), 3);
+    checkUint(program, callFunction(program, "foo34", [makeUint(program, 3), makeUint(program, 3), makeUint(program, 5)]), 3);
+    checkUint(program, callFunction(program, "foo34", [makeUint(program, 3), makeUint(program, 4), makeUint(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo35", [makeInt(program, 3), makeInt(program, 3), makeInt(program, 5)]), 5);
+    checkInt(program, callFunction(program, "foo35", [makeInt(program, 3), makeInt(program, 4), makeInt(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo36", [makeInt(program, 3), makeInt(program, 3), makeInt(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo36", [makeInt(program, 3), makeInt(program, 4), makeInt(program, 5)]), 3);
+}
+
+tests.atomicsNull = function()
+{
+    let program = doPrep(`
+        test int foo1(int z) {
+            atomic_int x;
+            thread int* result = null;
+            InterlockedAdd(&x, z, result);
+            return int(x);
+        }
+        test int foo2(int z) {
+            atomic_int x;
+            thread int* result = null;
+            InterlockedAdd(&x, z, result);
+            InterlockedAdd(&x, z, result);
+            return int(x);
+        }
+        test uint foo3(uint z) {
+            atomic_uint x;
+            thread uint* result = null;
+            InterlockedAdd(&x, z, result);
+            return uint(x);
+        }
+        test uint foo4(uint z) {
+            atomic_uint x;
+            thread uint* result = null;
+            InterlockedAdd(&x, z, result);
+            InterlockedAdd(&x, z, result);
+            return uint(x);
+        }
+        test uint foo5(uint x, uint y) {
+            atomic_uint z;
+            thread uint* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedAnd(&z, y, result);
+            return uint(z);
+        }
+        test int foo6(int x, int y) {
+            atomic_int z;
+            thread int* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedAnd(&z, y, result);
+            return int(z);
+        }
+        test uint foo7(uint x, uint y) {
+            atomic_uint z;
+            thread uint* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedExchange(&z, y, result);
+            return uint(z);
+        }
+        test int foo8(int x, int y) {
+            atomic_int z;
+            thread int* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedExchange(&z, y, result);
+            return int(z);
+        }
+        test uint foo9(uint x, uint y) {
+            atomic_uint z;
+            thread uint* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedMax(&z, y, result);
+            return uint(z);
+        }
+        test int foo10(int x, int y) {
+            atomic_int z;
+            thread int* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedMax(&z, y, result);
+            return int(z);
+        }
+        test uint foo11(uint x, uint y) {
+            atomic_uint z;
+            thread uint* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedMin(&z, y, result);
+            return uint(z);
+        }
+        test int foo12(int x, int y) {
+            atomic_int z;
+            thread int* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedMin(&z, y, result);
+            return int(z);
+        }
+        test uint foo13(uint x, uint y) {
+            atomic_uint z;
+            thread uint* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedOr(&z, y, result);
+            return uint(z);
+        }
+        test int foo14(int x, int y) {
+            atomic_int z;
+            thread int* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedOr(&z, y, result);
+            return int(z);
+        }
+        test uint foo15(uint x, uint y) {
+            atomic_uint z;
+            thread uint* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedXor(&z, y, result);
+            return uint(z);
+        }
+        test int foo16(int x, int y) {
+            atomic_int z;
+            thread int* result = null;
+            InterlockedAdd(&z, x, result);
+            InterlockedXor(&z, y, result);
+            return int(z);
+        }
+        test uint foo17(uint x, uint y, uint z) {
+            atomic_uint w;
+            thread uint* result = null;
+            InterlockedAdd(&w, x, result);
+            InterlockedCompareExchange(&w, y, z, result);
+            return uint(w);
+        }
+        test int foo18(int x, int y, int z) {
+            atomic_int w;
+            thread int* result = null;
+            InterlockedAdd(&w, x, result);
+            InterlockedCompareExchange(&w, y, z, result);
+            return int(w);
+        }
+        test int foo19() {
+            thread atomic_int* x = null;
+            thread int* result = null;
+            InterlockedAdd(x, 1, result);
+            return 1;
+        }
+        test int foo20() {
+            thread atomic_uint* x = null;
+            thread uint* result = null;
+            InterlockedAdd(x, 1, result);
+            return 1;
+        }
+        test int foo21() {
+            thread atomic_int* x = null;
+            thread int* result = null;
+            InterlockedAnd(x, 1, result);
+            return 1;
+        }
+        test int foo22() {
+            thread atomic_uint* x = null;
+            thread uint* result = null;
+            InterlockedAnd(x, 1, result);
+            return 1;
+        }
+        test int foo23() {
+            thread atomic_int* x = null;
+            thread int* result = null;
+            InterlockedExchange(x, 1, result);
+            return 1;
+        }
+        test int foo24() {
+            thread atomic_uint* x = null;
+            thread uint* result = null;
+            InterlockedExchange(x, 1, result);
+            return 1;
+        }
+        test int foo25() {
+            thread atomic_int* x = null;
+            thread int* result = null;
+            InterlockedMax(x, 1, result);
+            return 1;
+        }
+        test int foo26() {
+            thread atomic_uint* x = null;
+            thread uint* result = null;
+            InterlockedMax(x, 1, result);
+            return 1;
+        }
+        test int foo27() {
+            thread atomic_int* x = null;
+            thread int* result = null;
+            InterlockedMin(x, 1, result);
+            return 1;
+        }
+        test int foo28() {
+            thread atomic_uint* x = null;
+            thread uint* result = null;
+            InterlockedMin(x, 1, result);
+            return 1;
+        }
+        test int foo29() {
+            thread atomic_int* x = null;
+            thread int* result = null;
+            InterlockedOr(x, 1, result);
+            return 1;
+        }
+        test int foo30() {
+            thread atomic_uint* x = null;
+            thread uint* result = null;
+            InterlockedOr(x, 1, result);
+            return 1;
+        }
+        test int foo31() {
+            thread atomic_int* x = null;
+            thread int* result = null;
+            InterlockedXor(x, 1, result);
+            return 1;
+        }
+        test int foo32() {
+            thread atomic_uint* x = null;
+            thread uint* result = null;
+            InterlockedXor(x, 1, result);
+            return 1;
+        }
+        test int foo33() {
+            thread atomic_int* x = null;
+            thread int* result = null;
+            InterlockedCompareExchange(x, 1, 2, result);
+            return 1;
+        }
+        test int foo34() {
+            thread atomic_uint* x = null;
+            thread uint* result = null;
+            InterlockedCompareExchange(x, 1, 2, result);
+            return 1;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo1", [makeInt(program, 6)]), 6);
+    checkInt(program, callFunction(program, "foo2", [makeInt(program, 6)]), 12);
+    checkUint(program, callFunction(program, "foo3", [makeUint(program, 6)]), 6);
+    checkUint(program, callFunction(program, "foo4", [makeUint(program, 6)]), 12);
+    checkUint(program, callFunction(program, "foo5", [makeUint(program, 3), makeUint(program, 5)]), 1);
+    checkInt(program, callFunction(program, "foo6", [makeInt(program, 3), makeInt(program, 5)]), 1);
+    checkUint(program, callFunction(program, "foo7", [makeUint(program, 3), makeUint(program, 5)]), 5);
+    checkInt(program, callFunction(program, "foo8", [makeInt(program, 3), makeInt(program, 5)]), 5);
+    checkUint(program, callFunction(program, "foo9", [makeUint(program, 3), makeUint(program, 5)]), 5);
+    checkUint(program, callFunction(program, "foo9", [makeUint(program, 5), makeUint(program, 3)]), 5);
+    checkInt(program, callFunction(program, "foo10", [makeInt(program, 3), makeInt(program, 5)]), 5);
+    checkInt(program, callFunction(program, "foo10", [makeInt(program, 5), makeInt(program, 3)]), 5);
+    checkUint(program, callFunction(program, "foo11", [makeUint(program, 3), makeUint(program, 5)]), 3);
+    checkUint(program, callFunction(program, "foo11", [makeUint(program, 5), makeUint(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo12", [makeInt(program, 3), makeInt(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo12", [makeInt(program, 5), makeInt(program, 3)]), 3);
+    checkUint(program, callFunction(program, "foo13", [makeUint(program, 3), makeUint(program, 5)]), 7);
+    checkInt(program, callFunction(program, "foo14", [makeInt(program, 3), makeInt(program, 5)]), 7);
+    checkUint(program, callFunction(program, "foo15", [makeUint(program, 3), makeUint(program, 5)]), 6);
+    checkInt(program, callFunction(program, "foo16", [makeInt(program, 3), makeInt(program, 5)]), 6);
+    checkUint(program, callFunction(program, "foo17", [makeUint(program, 3), makeUint(program, 3), makeUint(program, 5)]), 5);
+    checkUint(program, callFunction(program, "foo17", [makeUint(program, 3), makeUint(program, 4), makeUint(program, 5)]), 3);
+    checkInt(program, callFunction(program, "foo18", [makeInt(program, 3), makeInt(program, 3), makeInt(program, 5)]), 5);
+    checkInt(program, callFunction(program, "foo18", [makeInt(program, 3), makeInt(program, 4), makeInt(program, 5)]), 3);
+    checkTrap(program, () => callFunction(program, "foo19", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo20", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo21", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo22", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo23", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo24", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo25", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo26", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo27", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo28", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo29", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo30", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo31", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo32", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo33", []), checkInt);
+    checkTrap(program, () => callFunction(program, "foo34", []), checkInt);
+}
+
+tests.selfCasts = function()
+{
+    let program = doPrep(`
+        struct Foo {
+            int x;
+        }
+        test int foo()
+        {
+            Foo foo;
+            foo.x = 21;
+            Foo bar = Foo(foo);
+            bar.x = 42;
+            return foo.x + bar.x;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", []), 21 + 42);
 }
 
 tests.pointerToMember = function()
@@ -5898,6 +6927,256 @@ tests.arrayIndex = function() {
     checkInt(program, callFunction(program, "arrayIndexing", [ makeUint(program, 1), makeUint(program, 0) ]), 4);
     checkInt(program, callFunction(program, "arrayIndexing", [ makeUint(program, 1), makeUint(program, 1) ]), 5);
     checkInt(program, callFunction(program, "arrayIndexing", [ makeUint(program, 1), makeUint(program, 2) ]), 6);
+}
+
+tests.numThreads = function() {
+    let program = doPrep(`
+        [numthreads(3, 4, 5)]
+        compute void foo() {
+        }
+
+        struct R {
+            float4 position : SV_Position;
+        }
+        vertex R bar() {
+            R r;
+            r.position = float4(1, 2, 3, 4);
+            return r;
+        }
+    `);
+
+    if (program.functions.get("foo").length != 1)
+        throw new Error("Cannot find function named 'foo'");
+    let foo = program.functions.get("foo")[0];
+    if (foo.attributeBlock.length != 1)
+        throw new Error("'foo' doesn't have numthreads attribute");
+    if (foo.attributeBlock[0].x != 3)
+        throw new Error("'foo' numthreads x is not 3");
+    if (foo.attributeBlock[0].y != 4)
+        throw new Error("'foo' numthreads y is not 4");
+    if (foo.attributeBlock[0].z != 5)
+        throw new Error("'foo' numthreads z is not 5");
+
+    if (program.functions.get("bar").length != 1)
+        throw new Error("Cannot find function named 'bar'");
+    let bar = program.functions.get("bar")[0];
+    if (bar.attributeBlock != null)
+        throw new Error("'baz' has attribute block");
+
+    checkFail(() => doPrep(`
+        [numthreads(3, 4)]
+        compute void foo() {
+        }
+    `), e => e instanceof WSyntaxError);
+
+    checkFail(() => doPrep(`
+        []
+        compute void foo() {
+        }
+    `), e => e instanceof WSyntaxError);
+
+    checkFail(() => doPrep(`
+        [numthreads(3, 4, 5), numthreads(3, 4, 5)]
+        compute void foo() {
+        }
+    `), e => e instanceof WSyntaxError);
+
+    checkFail(() => doPrep(`
+        compute void foo() {
+        }
+    `), e => e instanceof WSyntaxError);
+
+    checkFail(() => doPrep(`
+        struct R {
+            float4 position;
+        }
+        [numthreads(3, 4, 5)]
+        vertex R baz() {
+            R r;
+            r.position = float4(1, 2, 3, 4);
+            return r;
+        }
+    `), e => e instanceof WSyntaxError);
+}
+
+tests.constantAddressSpace = function() {
+    checkFail(
+        () => doPrep(`
+            void foo(constant int* bar)
+            {
+                *bar = 0;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("constant address space") !== -1);
+    checkFail(
+        () => doPrep(`
+            void foo(constant int[] bar)
+            {
+                bar[0] = 0;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("constant address space") !== -1);
+    checkFail(
+        () => doPrep(`
+            typedef ConstantIntArrayRef = constant int[];
+            void foo(ConstantIntArrayRef[3] bar)
+            {
+                bar[0][0] = 0;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("constant address space") !== -1);
+    checkFail(
+        () => doPrep(`
+            typedef IntArray = int[3];
+            void foo(constant IntArray[] bar)
+            {
+                bar[0][0] = 0;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("constant address space") !== -1);
+    checkFail(
+        () => doPrep(`
+            typedef IntArray = int[3];
+            struct Bar {
+                IntArray baz;
+            }
+            void foo(constant Bar[] bar)
+            {
+                bar[0].baz[0] = 0;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("constant address space") !== -1);
+    checkFail(
+        () => doPrep(`
+            struct Bar {
+                int baz;
+            }
+            typedef BarArray = Bar[3];
+            void foo(constant BarArray[] bar)
+            {
+                bar[0][0].baz = 0;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("constant address space") !== -1);
+    checkFail(
+        () => doPrep(`
+            typedef IntArray = int[3];
+            struct Bar {
+                constant IntArray[] baz;
+            }
+            void foo(Bar bar)
+            {
+                bar.baz[0][0] = 0;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("constant address space") !== -1);
+    checkFail(
+        () => doPrep(`
+            typedef ConstantIntArrayRef = constant int[];
+            struct Bar {
+                ConstantIntArrayRef[3] baz;
+            }
+            void foo(Bar bar)
+            {
+                bar.baz[0][0] = 0;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("constant address space") !== -1);
+    checkFail(
+        () => doPrep(`
+            struct Bar {
+                int baz;
+            }
+            typedef ConstantBarArrayRef = constant Bar[];
+            void foo(ConstantBarArrayRef[3] bar)
+            {
+                bar[0][0].baz = 0;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("constant address space") !== -1);
+    checkFail(
+        () => doPrep(`
+            struct Bar {
+                constant int[] baz;
+            }
+            void foo(Bar[3] bar)
+            {
+                bar[0].baz[0] = 0;
+            }
+        `),
+        (e) => e instanceof WTypeError && e.message.indexOf("constant address space") !== -1);
+}
+
+tests.standardLibraryDevicePointers = function() {
+    let program = doPrep(`
+        test float foo1() {
+            float s;
+            float c;
+            sincos(0, &s, &c);
+            return c;
+        }
+        test float foo2() {
+            float s;
+            float c;
+            sincos(0, &s, &c);
+            return s;
+        }
+        test float foo3() {
+            thread float* s = null;
+            float c;
+            sincos(0, s, &c);
+            return c;
+        }
+        test float foo4() {
+            float s;
+            thread float* c = null;
+            sincos(0, &s, c);
+            return s;
+        }
+        test void foo5(device float* s) {
+            thread float* c = null;
+            sincos(0, s, c);
+        }
+        test void foo6(device float* c) {
+            thread float* s = null;
+            sincos(0, s, c);
+        }
+        test void foo7(device float* s, device float* c) {
+            sincos(0, s, c);
+        }
+        test void foo8(device float[] result) {
+            sincos(0, &result[0], &result[1]);
+        }
+    `);
+    checkFloat(program, callFunction(program, "foo1", []), 1);
+    checkFloat(program, callFunction(program, "foo2", []), 0);
+    checkFloat(program, callFunction(program, "foo3", []), 1);
+    checkFloat(program, callFunction(program, "foo4", []), 0);
+
+    let buffer = new EBuffer(2);
+    callFunction(program, "foo5", [TypedValue.box(new PtrType(externalOrigin, "device", program.intrinsics.float), new EPtr(buffer, 0))]);
+    if (buffer.get(0) != 0)
+        throw new Error("Bad value stored into buffer (expected 0): " + buffer.get(0));
+
+    callFunction(program, "foo6", [TypedValue.box(new PtrType(externalOrigin, "device", program.intrinsics.float), new EPtr(buffer, 0))]);
+    if (buffer.get(0) != 1)
+        throw new Error("Bad value stored into buffer (expected 1): " + buffer.get(0));
+    callFunction(program, "foo7", [TypedValue.box(new PtrType(externalOrigin, "device", program.intrinsics.float), new EPtr(buffer, 0)), TypedValue.box(new PtrType(externalOrigin, "device", program.intrinsics.float), new EPtr(buffer, 1))]);
+    if (buffer.get(0) != 0)
+        throw new Error("Bad value stored into buffer (expected 0): " + buffer.get(0));
+    if (buffer.get(1) != 1)
+        throw new Error("Bad value stored into buffer (expected 1): " + buffer.get(1));
+
+    buffer.set(0, 0);
+    buffer.set(1, 0);
+    let arrayRef = TypedValue.box(
+        new ArrayRefType(externalOrigin, "device", program.intrinsics.float),
+        new EArrayRef(new EPtr(buffer, 0), 2));
+    callFunction(program, "foo8", [arrayRef]);
+    if (buffer.get(0) != 0)
+        throw new Error("Bad value stored into buffer (expected 0): " + buffer.get(0));
+    if (buffer.get(1) != 1)
+        throw new Error("Bad value stored into buffer (expected 1): " + buffer.get(1));
 }
 
 function createTexturesForTesting(program)
@@ -6462,6 +7741,109 @@ tests.textureDimensions = function() {
     checkUint(program, callFunction(program, "foo43", [rwTextureDepth2DArray]), 8);
     checkUint(program, callFunction(program, "foo44", [rwTextureDepth2DArray]), 4);
     checkUint(program, callFunction(program, "foo45", [rwTextureDepth2DArray]), 2);
+}
+
+tests.textureDimensionsNull = function() {
+    let program = doPrep(`
+        test bool foo1(Texture1D<float> texture) {
+            thread uint* ptr = null;
+            uint numberOfLevels;
+            GetDimensions(texture, 0, ptr, ptr);
+            return true;
+        }
+        test bool foo2(Texture1DArray<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, 0, ptr, ptr, ptr);
+            return true;
+        }
+        test bool foo3(Texture2D<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, 0, ptr, ptr, ptr);
+            return true;
+        }
+        test bool foo4(Texture2DArray<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, 0, ptr, ptr, ptr, ptr);
+            return true;
+        }
+        test bool foo5(Texture3D<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, 0, ptr, ptr, ptr, ptr);
+            return true;
+        }
+        test bool foo6(TextureCube<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, 0, ptr, ptr, ptr);
+            return true;
+        }
+        test bool foo7(RWTexture1D<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, ptr);
+            return true;
+        }
+        test bool foo8(RWTexture1DArray<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, ptr, ptr);
+            return true;
+        }
+        test bool foo9(RWTexture2D<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, ptr, ptr);
+            return true;
+        }
+        test bool foo10(RWTexture2DArray<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, ptr, ptr, ptr);
+            return true;
+        }
+        test bool foo11(RWTexture3D<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, ptr, ptr, ptr);
+            return true;
+        }
+        test bool foo12(TextureDepth2D<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, 0, ptr, ptr, ptr);
+            return true;
+        }
+        test bool foo13(TextureDepth2DArray<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, 0, ptr, ptr, ptr, ptr);
+            return true;
+        }
+        test bool foo14(TextureDepthCube<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, 0, ptr, ptr, ptr);
+            return true;
+        }
+        test bool foo15(RWTextureDepth2D<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, ptr, ptr);
+            return true;
+        }
+        test bool foo16(RWTextureDepth2DArray<float> texture) {
+            thread uint* ptr = null;
+            GetDimensions(texture, ptr, ptr, ptr);
+            return true;
+        }
+    `);
+    let [texture1D, texture1DArray, texture2D, texture2DArray, texture3D, textureCube, rwTexture1D, rwTexture1DArray, rwTexture2D, rwTexture2DArray, rwTexture3D, textureDepth2D, textureDepth2DArray, textureDepthCube, rwTextureDepth2D, rwTextureDepth2DArray] = createTexturesForTesting(program);
+    checkBool(program, callFunction(program, "foo1", [texture1D]), true);
+    checkBool(program, callFunction(program, "foo2", [texture1DArray]), true);
+    checkBool(program, callFunction(program, "foo3", [texture2D]), true);
+    checkBool(program, callFunction(program, "foo4", [texture2DArray]), true);
+    checkBool(program, callFunction(program, "foo5", [texture3D]), true);
+    checkBool(program, callFunction(program, "foo6", [textureCube]), true);
+    checkBool(program, callFunction(program, "foo7", [rwTexture1D]), true);
+    checkBool(program, callFunction(program, "foo8", [rwTexture1DArray]), true);
+    checkBool(program, callFunction(program, "foo9", [rwTexture2D]), true);
+    checkBool(program, callFunction(program, "foo10", [rwTexture2DArray]), true);
+    checkBool(program, callFunction(program, "foo11", [rwTexture3D]), true);
+    checkBool(program, callFunction(program, "foo12", [textureDepth2D]), true);
+    checkBool(program, callFunction(program, "foo13", [textureDepth2DArray]), true);
+    checkBool(program, callFunction(program, "foo14", [textureDepthCube]), true);
+    checkBool(program, callFunction(program, "foo15", [rwTextureDepth2D]), true);
+    checkBool(program, callFunction(program, "foo16", [rwTextureDepth2DArray]), true);
 }
 
 tests.textureLoad = function() {
@@ -7806,6 +9188,270 @@ tests.textureGather = function() {
     // FIXME: Gather other components
 }
 
+tests.referenceEquality = function() {
+    let program = doPrep(`
+        test bool foo1() {
+            int x;
+            thread int* y = &x;
+            thread int* z = &x;
+            return y == z;
+        }
+        test bool foo2() {
+            int x;
+            thread int* z = &x;
+            return &x == z;
+        }
+        test bool foo3() {
+            int x;
+            thread int* y = &x;
+            return y == &x;
+        }
+        test bool foo4() {
+            int x;
+            return &x == &x;
+        }
+        test bool foo5() {
+            int x;
+            return &x != &x;
+        }
+        test bool foo6() {
+            int x = 7;
+            int y = 7;
+            return &x == &y;
+        }
+        test bool foo7() {
+            return null == null;
+        }
+        test bool foo8() {
+            int x;
+            thread int* y = &x;
+            thread int* z = &x;
+            return &y == &z;
+        }
+        test bool foo9() {
+            int x;
+            thread int* y = &x;
+            return &y == &y;
+        }
+        test bool foo10() {
+            thread int* y;
+            return null == y;
+        }
+        test bool foo11() {
+            thread int* y;
+            return y == null;
+        }
+        test bool foo12() {
+            int x;
+            thread int* y = &x;
+            return null == y;
+        }
+        test bool foo13() {
+            int x;
+            thread int* y = &x;
+            return y == null;
+        }
+        test bool foo14() {
+            int x;
+            thread int[] y = @x;
+            thread int[] z = @x;
+            return y == z;
+        }
+        test bool foo15() {
+            int x;
+            thread int[] z = @x;
+            return @x == z;
+        }
+        test bool foo16() {
+            int x;
+            thread int[] y = @x;
+            return y == @x;
+        }
+        test bool foo17() {
+            int x;
+            return @x == @x;
+        }
+        test bool foo18() {
+            int x;
+            return @x != @x;
+        }
+        test bool foo19() {
+            int x = 7;
+            int y = 7;
+            return @x == @y;
+        }
+        test bool foo21() {
+            int x;
+            thread int[] y = @x;
+            thread int[] z = @x;
+            return @y == @z;
+        }
+        test bool foo22() {
+            int x;
+            thread int[] y = @x;
+            return @y == @y;
+        }
+        test bool foo23() {
+            thread int[] y;
+            return null == y;
+        }
+        test bool foo24() {
+            thread int[] y;
+            return y == null;
+        }
+        test bool foo25() {
+            int x;
+            thread int[] y = @x;
+            return null == y;
+        }
+        test bool foo26() {
+            int x;
+            thread int[] y = @x;
+            return y == null;
+        }
+        test bool foo27() {
+            int[3] x;
+            thread int[] y = @x;
+            thread int[] z = @x;
+            return y == z;
+        }
+        test bool foo28() {
+            int[3] x;
+            thread int[] z = @x;
+            return @x == z;
+        }
+        test bool foo29() {
+            int[3] x;
+            thread int[] y = @x;
+            return y == @x;
+        }
+        test bool foo30() {
+            int[3] x;
+            return @x == @x;
+        }
+        test bool foo31() {
+            int[3] x;
+            return @x != @x;
+        }
+        test bool foo32() {
+            int[3] x;
+            x[0] = 7;
+            x[1] = 8;
+            x[2] = 9;
+            int[3] y;
+            y[0] = 7;
+            y[1] = 8;
+            y[2] = 9;
+            return @x == @y;
+        }
+        test bool foo33() {
+            int[3] x;
+            thread int[] y = @x;
+            thread int[] z = @x;
+            return @y == @z;
+        }
+        test bool foo34() {
+            int[3] x;
+            thread int[] y = @x;
+            return @y == @y;
+        }
+        test bool foo35() {
+            thread int[] y;
+            return null == y;
+        }
+        test bool foo36() {
+            thread int[] y;
+            return y == null;
+        }
+        test bool foo37() {
+            int[3] x;
+            thread int[] y = @x;
+            return null == y;
+        }
+        test bool foo38() {
+            int[3] x;
+            thread int[] y = @x;
+            return y == null;
+        }
+    `);
+    checkBool(program, callFunction(program, "foo1", []), true);
+    checkBool(program, callFunction(program, "foo2", []), true);
+    checkBool(program, callFunction(program, "foo3", []), true);
+    checkBool(program, callFunction(program, "foo4", []), true);
+    checkBool(program, callFunction(program, "foo5", []), false);
+    checkBool(program, callFunction(program, "foo6", []), false);
+    checkBool(program, callFunction(program, "foo7", []), true);
+    checkBool(program, callFunction(program, "foo8", []), false);
+    checkBool(program, callFunction(program, "foo9", []), true);
+    checkBool(program, callFunction(program, "foo10", []), true);
+    checkBool(program, callFunction(program, "foo11", []), true);
+    checkBool(program, callFunction(program, "foo12", []), false);
+    checkBool(program, callFunction(program, "foo13", []), false);
+    checkBool(program, callFunction(program, "foo14", []), true);
+    checkBool(program, callFunction(program, "foo15", []), true);
+    checkBool(program, callFunction(program, "foo16", []), true);
+    checkBool(program, callFunction(program, "foo17", []), true);
+    checkBool(program, callFunction(program, "foo18", []), false);
+    checkBool(program, callFunction(program, "foo19", []), false);
+    checkBool(program, callFunction(program, "foo21", []), false);
+    checkBool(program, callFunction(program, "foo22", []), true);
+    checkBool(program, callFunction(program, "foo23", []), true);
+    checkBool(program, callFunction(program, "foo24", []), true);
+    checkBool(program, callFunction(program, "foo25", []), false);
+    checkBool(program, callFunction(program, "foo26", []), false);
+    checkBool(program, callFunction(program, "foo27", []), true);
+    checkBool(program, callFunction(program, "foo28", []), true);
+    checkBool(program, callFunction(program, "foo29", []), true);
+    checkBool(program, callFunction(program, "foo30", []), true);
+    checkBool(program, callFunction(program, "foo31", []), false);
+    checkBool(program, callFunction(program, "foo32", []), false);
+    checkBool(program, callFunction(program, "foo33", []), false);
+    checkBool(program, callFunction(program, "foo34", []), true);
+    checkBool(program, callFunction(program, "foo35", []), true);
+    checkBool(program, callFunction(program, "foo36", []), true);
+    checkBool(program, callFunction(program, "foo37", []), false);
+    checkBool(program, callFunction(program, "foo38", []), false);
+    checkFail(
+        () => doPrep(`
+            void foo()
+            {
+                int x;
+                float y;
+                bool z = (&x == &y);
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            void foo()
+            {
+                int x;
+                thread int* y = &x;
+                bool z = (&x == &y);
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            void foo()
+            {
+                int x;
+                float y;
+                bool z = (@x == @y);
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            void foo()
+            {
+                int x;
+                thread int[] y = @x;
+                bool z = (@x == @y);
+            }
+        `),
+        (e) => e instanceof WTypeError);
+}
 
 tests.commentParsing = function() {
     let program = doPrep(`
@@ -7864,7 +9510,7 @@ tests.evaluationOrderForArguments = () => {
 
 tests.cannotCallAnotherEntryPoint = () => {
     checkFail(() => doPrep(`
-        struct Foo { int x; }
+        struct Foo { int x : attribute(0); }
         vertex Foo foo() { return bar(); }
         vertex Foo bar() { return Foo(); }
     `), e => e instanceof WTypeError && e.message.indexOf("it cannot be called from within an existing shader") !== -1);
@@ -7917,6 +9563,266 @@ tests.inliningDoesntProduceAliasingIssues = () => {
     checkInt(program, callFunction(program, "foo", []), 20);
 }
 
+tests.returnReferenceToParameter = () => {
+    let program = doPrep(`
+        test int foo(bool condition)
+        {
+            return *bar(condition, 1, 2);
+        }
+
+        thread int* bar(bool condition, int a, int b)
+        {
+            return condition ? &a : &b;
+        }
+    `);
+
+    checkInt(program, callFunction(program, "foo", [ makeBool(program, true) ]), 1);
+    checkInt(program, callFunction(program, "foo", [ makeBool(program, false) ]), 2);
+}
+
+tests.returnReferenceToParameterWithDifferentFunctions = () => {
+    let program = doPrep(`
+        test int foo()
+        {
+            return *bar(10) + *baz(20);
+        }
+
+        thread int* bar(int x)
+        {
+            return &x;
+        }
+
+        thread int* baz(int y)
+        {
+            return &y;
+        }
+    `);
+
+    checkInt(program, callFunction(program, "foo", []), 30);
+}
+
+tests.returnReferenceToSameParameter = () => {
+    let program = doPrep(`
+        test int foo()
+        {
+            return plus(bar(5), bar(7));
+        }
+
+        int plus(thread int* x, thread int* y)
+        {
+            return *x + *y;
+        }
+
+        thread int* bar(int x)
+        {
+            return &x;
+        }
+    `);
+
+    checkInt(program, callFunction(program, "foo", []), 10);
+}
+
+tests.returnReferenceToLocalVariable = () => {
+    let program = doPrep(`
+        test int foo()
+        {
+            return *bar();
+        }
+
+        thread int* bar()
+        {
+            int a = 42;
+            return &a;
+        }
+    `);
+
+    checkInt(program, callFunction(program, "foo", []), 42);
+}
+
+tests.returnReferenceToLocalVariableWithNesting = () => {
+    let program = doPrep(`
+        test int foo()
+        {
+            return *bar() + *baz();
+        }
+
+        thread int* bar()
+        {
+            int a = 20;
+            return &a;
+        }
+
+        thread int* baz()
+        {
+            int a = 22;
+            return &a;
+        }
+    `);
+
+    checkInt(program, callFunction(program, "foo", []), 42);
+}
+
+tests.convertPtrToArrayRef = () => {
+    let program = doPrep(`
+        test int foo()
+        {
+            return bar()[0];
+        }
+
+        thread int[] bar()
+        {
+            int x = 42;
+            return @(&x);
+        }
+    `);
+
+    checkInt(program, callFunction(program, "foo", []), 42);
+}
+
+tests.convertLocalVariableToArrayRef = () => {
+    let program = doPrep(`
+        test int foo()
+        {
+            return bar()[0];
+        }
+
+        thread int[] bar()
+        {
+            int x = 42;
+            return @x;
+        }
+    `);
+
+    checkInt(program, callFunction(program, "foo", []), 42);
+}
+
+tests.referenceTakenToLocalVariableInEntryPointShouldntMoveAnything = () => {
+    let program = doPrep(`
+        test int foo()
+        {
+            int a = 42;
+            thread int* b = &a;
+            return *b;
+        }
+    `);
+
+    checkInt(program, callFunction(program, "foo", []), 42);
+};
+
+tests.passingArrayToFunction = function()
+{
+    let program = doPrep(`
+        test int foo()
+        {
+            int[10] arr;
+            for (uint i = 0; i < arr.length; i++)
+                arr[i] = int(i) + 1;
+            return sum(arr);
+        }
+
+        int sum(int[10] xs)
+        {
+            int t = 0;
+            for (uint i = 0; i < xs.length; i++)
+                t = t + xs[i];
+            return t;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", []), 55);
+}
+
+tests.returnAnArrayFromAFunction = function()
+{
+    let program = doPrep(`
+        test int foo()
+        {
+            int[5] ys = bar();
+            return ys[0] + ys[1] + ys[2] + ys[3] + ys[4];
+        }
+
+        int[5] bar()
+        {
+            int[5] xs;
+            xs[0] = 1;
+            xs[1] = 2;
+            xs[2] = 3;
+            xs[3] = 4;
+            xs[4] = 5;
+            return xs;
+        }
+    `);
+}
+
+tests.copyArray = function()
+{
+    let program = doPrep(`
+        test int foo()
+        {
+            int[10] xs;
+            for (uint i = 0; i < xs.length; i++)
+                xs[i] = int(i) + 1;
+            int[10] ys = xs;
+            for (uint i = 0; i < xs.length; i++)
+                xs[i] = 0;
+            int sum = 0;
+            for (uint i = 0; i < ys.length; i++)
+                sum = sum + ys[i];
+            return sum;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", []), 55);
+}
+
+tests.settingAnArrayInsideAStruct = function()
+{
+    let program = doPrep(`
+        struct Foo {
+            int[1] array;
+        }
+        test int foo()
+        {
+            Foo foo;
+            thread Foo* bar = &foo;
+            bar->array[0] = 21;
+            return foo.array[0];
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", []), 21);
+}
+
+tests.trapBecauseOfIndexAcesss = () => {
+    const program = doPrep(`
+        test int foo()
+        {
+            int[5] array;
+            array[6] = 42;
+            return array[6];
+        }
+    `);
+    checkTrap(program, () => callFunction(program, "foo", []), checkInt);
+}
+
+tests.trapTransitively = () => {
+    const program = doPrep(`
+        test int foo()
+        {
+            willTrapTransitively();
+            return 42;
+        }
+
+        void willTrapTransitively()
+        {
+            doTrap();
+        }
+
+        void doTrap()
+        {
+            trap;
+        }
+    `);
+    checkTrap(program, () => callFunction(program, "foo", []), checkInt);
+};
+
 okToTest = true;
 
 let testFilter = /.*/; // run everything by default
@@ -7938,13 +9844,6 @@ function* doTest(testFilter)
     if (!okToTest)
         throw new Error("Test setup is incomplete.");
     let before = preciseTime();
-
-    print("Compiling standard library...");
-    const compileBefore = preciseTime();
-    yield;
-    prepare();
-    const compileAfter = preciseTime();
-    print(`    OK, took ${Math.round((compileAfter - compileBefore) * 1000)} ms`);
 
     let names = [];
     for (let s in tests)
@@ -7971,7 +9870,7 @@ function* doTest(testFilter)
     print("That took " + (after - before) * 1000 + " ms.");
 }
 
-if (!this.window) {
+if (!this.window && !this.runningInCocoaHost) {
     Error.stackTraceLimit = Infinity;
     for (let _ of doTest(testFilter)) { }
 }

@@ -25,9 +25,10 @@
 "use strict";
 
 class NativeFunc extends Func {
-    constructor(origin, name, returnType, parameters, isCast, shaderType)
+    constructor(origin, name, returnType, parameters, isCast = false, stage = null)
     {
-        super(origin, name, returnType, parameters, isCast, shaderType);
+        super(origin, name, returnType, parameters, isCast);
+        this._stage = stage;
         this.isRestricted = false;
         this.implementation = null;
         this._implementationData = null;
@@ -35,13 +36,18 @@ class NativeFunc extends Func {
     }
 
     get isNative() { return true; }
+    get stage() { return this._stage; }
 
     get implementationData() { return this._implementationData; }
     set implementationData(newImplData) { this._implementationData = newImplData; }
 
     toDeclString()
     {
-        return "native " + super.toDeclString();
+        let result = "native ";
+        if (this.stage)
+            result += `${this.stage} `;
+        result += super.toDeclString();
+        return result;
     }
 }
 

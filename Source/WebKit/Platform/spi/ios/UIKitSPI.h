@@ -247,6 +247,7 @@ typedef enum {
 - (void)activate;
 - (void)geometryChangeDone:(BOOL)keyboardVisible;
 - (void)prepareForGeometryChange;
++ (BOOL)isInHardwareKeyboardMode;
 @end
 
 @interface UIKeyboardImpl : UIView <UIKeyboardCandidateListDelegate>
@@ -997,6 +998,14 @@ typedef NSInteger UICompositingMode;
 @end
 
 #endif // USE(APPLE_INTERNAL_SDK)
+
+@interface UIPhysicalKeyboardEvent : UIPressesEvent
+@end
+
+@interface UIPhysicalKeyboardEvent ()
+- (UIPhysicalKeyboardEvent *)_cloneEvent NS_RETURNS_RETAINED;
+@property (nonatomic, readonly) CFIndex _keyCode;
+@end
 
 @interface UIColor (IPI)
 + (UIColor *)insertionPointColor;

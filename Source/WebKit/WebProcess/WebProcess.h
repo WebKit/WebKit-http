@@ -170,12 +170,12 @@ public:
 
     NetworkProcessConnection& ensureNetworkProcessConnection();
     void networkProcessConnectionClosed(NetworkProcessConnection*);
+    NetworkProcessConnection* existingNetworkProcessConnection() { return m_networkProcessConnection.get(); }
     WebLoaderStrategy& webLoaderStrategy();
 
     LibWebRTCNetwork& libWebRTCNetwork();
 
     void webToStorageProcessConnectionClosed(WebToStorageProcessConnection*);
-    WebToStorageProcessConnection* existingWebToStorageProcessConnection() { return m_webToStorageProcessConnection.get(); }
     WebToStorageProcessConnection& ensureWebToStorageProcessConnection(PAL::SessionID initialSessionID);
 
     void setCacheModel(uint32_t);
@@ -303,8 +303,6 @@ private:
     void mainThreadPing();
     void backgroundResponsivenessPing();
 
-    void syncIPCMessageWhileWaitingForSyncReplyForTesting();
-
     void didTakeAllMessagesForPort(Vector<WebCore::MessageWithMessagePorts>&& messages, uint64_t messageCallbackIdentifier, uint64_t messageBatchIdentifier);
     void checkProcessLocalPortForActivity(const WebCore::MessagePortIdentifier&, uint64_t callbackIdentifier);
     void didCheckRemotePortForActivity(uint64_t callbackIdentifier, bool hasActivity);
@@ -319,7 +317,7 @@ private:
     void setNetworkProxySettings(const WebCore::SoupNetworkProxySettings&);
 #endif
 #if ENABLE(SERVICE_WORKER)
-    void establishWorkerContextConnectionToStorageProcess(uint64_t pageGroupID, uint64_t pageID, const WebPreferencesStore&, PAL::SessionID);
+    void establishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, uint64_t pageID, const WebPreferencesStore&, PAL::SessionID);
     void registerServiceWorkerClients();
 #endif
 

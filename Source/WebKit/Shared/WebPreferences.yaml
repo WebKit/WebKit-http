@@ -432,10 +432,6 @@ ShowsURLsInToolTipsEnabled:
   defaultValue: false
   webcoreName: showsURLsInToolTips
 
-AcceleratedCompositingForOverflowScrollEnabled:
-  type: bool
-  defaultValue: false
-
 HiddenPageDOMTimerThrottlingEnabled:
   type: bool
   defaultValue: DEFAULT_HIDDEN_PAGE_DOM_TIMER_THROTTLING_ENABLED
@@ -890,10 +886,13 @@ SystemLayoutDirection:
   defaultValue: 0
   webcoreBinding: custom
 
-FrameFlattening:
-  type: uint32_t
+FrameFlatteningEnabled:
+  type: bool
   defaultValue: DEFAULT_FRAME_FLATTENING
   webcoreBinding: custom
+  humanReadableName: "Frame flattening"
+  humanReadableDescription: "Enable frame flattening, which adjusts the height of an iframe to fit its contents"
+  category: internal
 
 StandardFontFamily:
   type: String
@@ -954,6 +953,10 @@ PassiveTouchListenersAsDefaultOnDocument:
   type: bool
   defaultValue: defaultPassiveTouchListenersAsDefaultOnDocument()
   webcoreName: passiveTouchListenersAsDefaultOnDocument
+
+ShouldIgnoreMetaViewport:
+  type: bool
+  defaultValue: false
 
 # Debug Preferences
 
@@ -1067,10 +1070,6 @@ ConstantPropertiesEnabled:
   type: bool
   defaultValue: true
 
-CrossOriginWindowPolicySupportEnabled:
-  type: bool
-  defaultValue: false
-
 SubresourceIntegrityEnabled:
   type: bool
   defaultValue: true
@@ -1130,6 +1129,12 @@ SourceBufferChangeTypeEnabled:
   defaultValue: true
   condition: ENABLE(MEDIA_SOURCE)
 
+EncryptedMediaAPIEnabled:
+  type: bool
+  defaultValue: true
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(ENCRYPTED_MEDIA)
+
 # For experimental features:
 # The type should be boolean.
 # You must provide a humanReadableName and humanReadableDescription for all experimental features. They
@@ -1177,6 +1182,14 @@ VisualViewportAPIEnabled:
   humanReadableDescription: "Enable Visual Viewport API"
   category: experimental
 
+PointerEventsEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Pointer Events"
+  humanReadableDescription: "Enable Pointer Events"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+
 CSSOMViewScrollingAPIEnabled:
   type: bool
   defaultValue: false
@@ -1186,7 +1199,7 @@ CSSOMViewScrollingAPIEnabled:
 
 WebAnimationsEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  defaultValue: true
   humanReadableName: "Web Animations"
   humanReadableDescription: "Web Animations prototype"
   category: experimental
@@ -1194,7 +1207,7 @@ WebAnimationsEnabled:
 
 WebAnimationsCSSIntegrationEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  defaultValue: true
   humanReadableName: "CSS Animations via Web Animations"
   humanReadableDescription: "Expose CSS Animations and CSS Transitions through getAnimations()"
   category: experimental
@@ -1244,14 +1257,13 @@ ServerTimingEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   webcoreName: serverTimingEnabled
 
-EncryptedMediaAPIEnabled:
+CSSCustomPropertiesAndValuesEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
-  humanReadableName: "Modern Encrypted Media API"
-  humanReadableDescription: "Enable Modern Encrypted Media API"
+  defaultValue: false
+  humanReadableName: "CSS Custom Properties and Values API"
+  humanReadableDescription: "Enable CSS Custom Properties and Values API"
   webcoreBinding: RuntimeEnabledFeatures
   category: experimental
-  condition: ENABLE(ENCRYPTED_MEDIA)
 
 # For internal features:
 # The type should be boolean.
@@ -1337,7 +1349,7 @@ FullScreenEnabled:
 
 AriaReflectionEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: false
   humanReadableName: "ARIA Reflection"
   humanReadableDescription: "ARIA Reflection support"
   category: internal
@@ -1351,10 +1363,10 @@ WebAPIStatisticsEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   category: internal
 
-CSSCustomPropertiesAndValuesEnabled:
+SelectionAcrossShadowBoundariesEnabled:
   type: bool
-  defaultValue: false
-  humanReadableName: "CSS Custom Properties and Values API"
-  humanReadableDescription: "Enable CSS Custom Properties and Values API"
-  webcoreBinding: RuntimeEnabledFeatures
-  category: experimental
+  defaultValue: true
+  humanReadableName: "Selection across shadow DOM"
+  humanReadableDescription: "Allow user-initiated selection across shadow DOM boundaries"
+  category: internal
+  webcoreName: selectionAcrossShadowBoundariesEnabled

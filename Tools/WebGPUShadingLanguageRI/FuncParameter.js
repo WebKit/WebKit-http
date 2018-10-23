@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -20,30 +20,37 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 "use strict";
 
 class FuncParameter extends Value {
     // The name is optional. It's OK for it to be null!
-    constructor(origin, name, type)
+    constructor(origin, name, type, semantic = null)
     {
         super();
         this._origin = origin;
         this._name = name;
         this._type = type;
+        this._semantic = semantic;
     }
     
     get origin() { return this._origin; }
     get name() { return this._name; }
     get type() { return this._type; }
+    get semantic() { return this._semantic; }
     get varIsLValue() { return true; }
     
     toString()
     {
+        let result;
         if (!this.name)
-            return "" + this.type;
-        return this.type + " " + this.name;
+            result = "" + this.type;
+        else
+            result = this.type + " " + this.name;
+        if (this.semantic)
+            result += ": " + this.semantic;
+        return result;
     }
 }
 

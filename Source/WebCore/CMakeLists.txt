@@ -353,7 +353,6 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/paymentrequest/AddressErrors.idl
     Modules/paymentrequest/MerchantValidationEvent.idl
-    Modules/paymentrequest/MerchantValidationEventInit.idl
     Modules/paymentrequest/PayerErrorFields.idl
     Modules/paymentrequest/PaymentAddress.idl
     Modules/paymentrequest/PaymentComplete.idl
@@ -423,6 +422,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webauthn/AuthenticatorAssertionResponse.idl
     Modules/webauthn/AuthenticatorAttestationResponse.idl
     Modules/webauthn/AuthenticatorResponse.idl
+    Modules/webauthn/AuthenticatorTransport.idl
     Modules/webauthn/PublicKeyCredential.idl
     Modules/webauthn/PublicKeyCredentialCreationOptions.idl
     Modules/webauthn/PublicKeyCredentialDescriptor.idl
@@ -625,6 +625,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/OverflowEvent.idl
     dom/PageTransitionEvent.idl
     dom/ParentNode.idl
+    dom/PointerEvent.idl
     dom/PopStateEvent.idl
     dom/ProcessingInstruction.idl
     dom/ProgressEvent.idl

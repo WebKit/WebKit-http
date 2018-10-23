@@ -89,7 +89,7 @@
 #include <wtf/StringPrintStream.h>
 #include <wtf/text/UniquedStringImpl.h>
 
-#if ENABLE(JIT)
+#if ENABLE(ASSEMBLER)
 #include "RegisterAtOffsetList.h"
 #endif
 
@@ -509,7 +509,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
     if (size_t size = unlinkedCodeBlock->numberOfObjectAllocationProfiles())
         m_objectAllocationProfiles = RefCountedArray<ObjectAllocationProfile>(size);
 
-#if ENABLE(JIT)
+#if !ENABLE(C_LOOP)
     setCalleeSaveRegisters(RegisterSet::llintBaselineCalleeSaveRegisters());
 #endif
 
@@ -581,6 +581,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             break;
         }
 
+        case op_bitand:
         case op_to_this: {
             linkValueProfile(i, opLength);
             break;
@@ -2145,7 +2146,7 @@ unsigned CodeBlock::reoptimizationRetryCounter() const
 #endif // ENABLE(JIT)
 }
 
-#if ENABLE(JIT)
+#if !ENABLE(C_LOOP)
 void CodeBlock::setCalleeSaveRegisters(RegisterSet calleeSaveRegisters)
 {
     m_calleeSaveRegisters = std::make_unique<RegisterAtOffsetList>(calleeSaveRegisters);
@@ -2172,6 +2173,9 @@ size_t CodeBlock::calleeSaveSpaceAsVirtualRegisters()
 {
     return roundCalleeSaveSpaceAsVirtualRegisters(m_calleeSaveRegisters->size());
 }
+#endif
+
+#if ENABLE(JIT)
 
 void CodeBlock::countReoptimization()
 {
@@ -2572,20 +2576,19 @@ void CodeBlock::updateAllPredictionsAndCountLiveness(unsigned& numberOfLiveNonAr
     numberOfLiveNonArgumentValueProfiles = 0;
     numberOfSamplesInProfiles = 0; // If this divided by ValueProfile::numberOfBuckets equals numberOfValueProfiles() then value profiles are full.
 
-    for (unsigned i = 0; i < totalNumberOfValueProfiles(); ++i) {
-        ValueProfile& profile = getFromAllValueProfiles(i);
+    forEachValueProfile([&](ValueProfile& profile) {
         unsigned numSamples = profile.totalNumberOfSamples();
         if (numSamples > ValueProfile::numberOfBuckets)
             numSamples = ValueProfile::numberOfBuckets; // We don't want profiles that are extremely hot to be given more weight.
         numberOfSamplesInProfiles += numSamples;
         if (profile.m_bytecodeOffset < 0) {
             profile.computeUpdatedPrediction(locker);
-            continue;
+            return;
         }
         if (profile.numberOfSamples() || profile.m_prediction != SpecNone)
             numberOfLiveNonArgumentValueProfiles++;
         profile.computeUpdatedPrediction(locker);
-    }
+    });
 
     for (auto& profileBucket : m_catchProfiles) {
         profileBucket->forEach([&] (ValueProfileAndOperand& profile) {
@@ -2639,13 +2642,13 @@ bool CodeBlock::shouldOptimizeNow()
     if (Options::verboseOSR()) {
         dataLogF(
             "Profile hotness: %lf (%u / %u), %lf (%u / %u)\n",
-            (double)numberOfLiveNonArgumentValueProfiles / numberOfValueProfiles(),
-            numberOfLiveNonArgumentValueProfiles, numberOfValueProfiles(),
-            (double)numberOfSamplesInProfiles / ValueProfile::numberOfBuckets / numberOfValueProfiles(),
-            numberOfSamplesInProfiles, ValueProfile::numberOfBuckets * numberOfValueProfiles());
+            (double)numberOfLiveNonArgumentValueProfiles / numberOfNonArgumentValueProfiles(),
+            numberOfLiveNonArgumentValueProfiles, numberOfNonArgumentValueProfiles(),
+            (double)numberOfSamplesInProfiles / ValueProfile::numberOfBuckets / numberOfNonArgumentValueProfiles(),
+            numberOfSamplesInProfiles, ValueProfile::numberOfBuckets * numberOfNonArgumentValueProfiles());
     }
 
-    if ((!numberOfValueProfiles() || (double)numberOfLiveNonArgumentValueProfiles / numberOfValueProfiles() >= Options::desiredProfileLivenessRate())
+    if ((!numberOfNonArgumentValueProfiles() || (double)numberOfLiveNonArgumentValueProfiles / numberOfNonArgumentValueProfiles() >= Options::desiredProfileLivenessRate())
         && (!totalNumberOfValueProfiles() || (double)numberOfSamplesInProfiles / ValueProfile::numberOfBuckets / totalNumberOfValueProfiles() >= Options::desiredProfileFullnessRate())
         && static_cast<unsigned>(m_optimizationDelayCounter) + 1 >= Options::minimumOptimizationDelay())
         return true;
@@ -2697,8 +2700,7 @@ void CodeBlock::tallyFrequentExitSites()
 void CodeBlock::dumpValueProfiles()
 {
     dataLog("ValueProfile for ", *this, ":\n");
-    for (unsigned i = 0; i < totalNumberOfValueProfiles(); ++i) {
-        ValueProfile& profile = getFromAllValueProfiles(i);
+    forEachValueProfile([](ValueProfile& profile) {
         if (profile.m_bytecodeOffset < 0) {
             ASSERT(profile.m_bytecodeOffset == -1);
             dataLogF("   arg = %u: ", i);
@@ -2710,7 +2712,7 @@ void CodeBlock::dumpValueProfiles()
         }
         profile.dump(WTF::dataFile());
         dataLogF("\n");
-    }
+    });
     dataLog("RareCaseProfile for ", *this, ":\n");
     for (unsigned i = 0; i < numberOfRareCaseProfiles(); ++i) {
         RareCaseProfile* profile = rareCaseProfile(i);

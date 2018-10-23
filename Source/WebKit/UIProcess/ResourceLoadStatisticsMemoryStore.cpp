@@ -46,7 +46,7 @@
 namespace WebKit {
 using namespace WebCore;
 
-constexpr unsigned statisticsModelVersion { 13 };
+constexpr unsigned statisticsModelVersion { 14 };
 constexpr unsigned maxNumberOfRecursiveCallsInRedirectTraceBack { 50 };
 constexpr Seconds minimumStatisticsProcessingInterval { 5_s };
 constexpr unsigned operatingDatesWindow { 30 };
@@ -270,8 +270,10 @@ unsigned ResourceLoadStatisticsMemoryStore::recursivelyGetAllDomainsThatHaveRedi
     ASSERT(!RunLoop::isMain());
 
     if (numberOfRecursiveCalls >= maxNumberOfRecursiveCallsInRedirectTraceBack) {
-        ASSERT_NOT_REACHED();
-        WTFLogAlways("Hit %u recursive calls in redirect backtrace. Returning early.", maxNumberOfRecursiveCallsInRedirectTraceBack);
+        // Model version 14 invokes a deliberate re-classification of the whole set.
+        if (statisticsModelVersion != 14)
+            ASSERT_NOT_REACHED();
+        RELEASE_LOG(ResourceLoadStatistics, "Hit %u recursive calls in redirect backtrace. Returning early.", maxNumberOfRecursiveCallsInRedirectTraceBack);
         return numberOfRecursiveCalls;
     }
 
@@ -428,7 +430,7 @@ void ResourceLoadStatisticsMemoryStore::requestStorageAccess(String&& subFramePr
     });
 }
 
-void ResourceLoadStatisticsMemoryStore::requestStorageAccessUnderOpener(String&& primaryDomainInNeedOfStorageAccess, uint64_t openerPageID, String&& openerPrimaryDomain, bool isTriggeredByUserGesture)
+void ResourceLoadStatisticsMemoryStore::requestStorageAccessUnderOpener(String&& primaryDomainInNeedOfStorageAccess, uint64_t openerPageID, String&& openerPrimaryDomain)
 {
     ASSERT(primaryDomainInNeedOfStorageAccess != openerPrimaryDomain);
     ASSERT(!RunLoop::isMain());
@@ -439,16 +441,12 @@ void ResourceLoadStatisticsMemoryStore::requestStorageAccessUnderOpener(String&&
     auto& domainInNeedOfStorageAccessStatistic = ensureResourceStatisticsForPrimaryDomain(primaryDomainInNeedOfStorageAccess);
     auto cookiesBlockedAndPurged = shouldBlockAndPurgeCookies(domainInNeedOfStorageAccessStatistic);
 
-    // There are no cookies to get access to if the domain has its cookies blocked and did not get user interaction now.
-    if (cookiesBlockedAndPurged && !isTriggeredByUserGesture)
-        return;
-
     // The domain already has access if its cookies are not blocked.
     if (!cookiesBlockedAndPurged && !shouldBlockAndKeepCookies(domainInNeedOfStorageAccessStatistic))
         return;
 
 #if !RELEASE_LOG_DISABLED
-    RELEASE_LOG_INFO_IF(m_debugLoggingEnabled, ResourceLoadStatisticsDebug, "[Temporary combatibility fix] Storage access was granted for %{public}s under opener page from %{public}s, %{public}s user interaction in the opened window.", primaryDomainInNeedOfStorageAccess.utf8().data(), openerPrimaryDomain.utf8().data(), (isTriggeredByUserGesture ? "with" : "without"));
+    RELEASE_LOG_INFO_IF(m_debugLoggingEnabled, ResourceLoadStatisticsDebug, "[Temporary combatibility fix] Storage access was granted for %{public}s under opener page from %{public}s, with user interaction in the opened window.", primaryDomainInNeedOfStorageAccess.utf8().data(), openerPrimaryDomain.utf8().data());
 #endif
     grantStorageAccessInternal(WTFMove(primaryDomainInNeedOfStorageAccess), WTFMove(openerPrimaryDomain), std::nullopt, openerPageID, false, [](bool) { });
 }
@@ -600,7 +598,7 @@ void ResourceLoadStatisticsMemoryStore::logFrameNavigation(const String& targetP
     bool areTargetAndSourceDomainsAssociated = targetPrimaryDomain == sourcePrimaryDomain;
 
     bool statisticsWereUpdated = false;
-    if (targetHost != mainFrameHost && !(areTargetAndMainFrameDomainsAssociated || areTargetAndSourceDomainsAssociated)) {
+    if (!isMainFrame && targetHost != mainFrameHost && !(areTargetAndMainFrameDomainsAssociated || areTargetAndSourceDomainsAssociated)) {
         auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
         targetStatistics.lastSeen = ResourceLoadStatistics::reduceTimeResolution(WallTime::now());
         if (targetStatistics.subframeUnderTopFrameOrigins.add(mainFramePrimaryDomain).isNewEntry)

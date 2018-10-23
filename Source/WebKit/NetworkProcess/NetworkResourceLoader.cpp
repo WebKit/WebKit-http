@@ -58,7 +58,7 @@
 #include <WebCore/SynchronousLoaderClient.h>
 #include <wtf/RunLoop.h>
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
 #include <WebCore/NetworkStorageSession.h>
 #endif
 
@@ -112,8 +112,8 @@ NetworkResourceLoader::NetworkResourceLoader(NetworkResourceLoadParameters&& par
 
     if (originalRequest().httpBody()) {
         for (const auto& element : originalRequest().httpBody()->elements()) {
-            if (element.m_type == FormDataElement::Type::EncodedBlob)
-                m_fileReferences.appendVector(NetworkBlobRegistry::singleton().filesInBlob(connection, element.m_url));
+            if (auto* blobData = WTF::get_if<FormDataElement::EncodedBlobData>(element.data))
+                m_fileReferences.appendVector(NetworkBlobRegistry::singleton().filesInBlob(connection, blobData->url));
         }
     }
 
@@ -134,6 +134,8 @@ NetworkResourceLoader::~NetworkResourceLoader()
     ASSERT(RunLoop::isMain());
     ASSERT(!m_networkLoad);
     ASSERT(!isSynchronous() || !m_synchronousLoadData->delayedReply);
+    if (m_responseCompletionHandler)
+        m_responseCompletionHandler(PolicyAction::Ignore);
 }
 
 bool NetworkResourceLoader::canUseCache(const ResourceRequest& request) const
@@ -344,7 +346,8 @@ void NetworkResourceLoader::convertToDownload(DownloadID downloadID, const Resou
         return;
     }
 
-    NetworkProcess::singleton().downloadManager().convertNetworkLoadToDownload(downloadID, std::exchange(m_networkLoad, nullptr), WTFMove(m_fileReferences), request, response);
+    ASSERT(m_responseCompletionHandler);
+    NetworkProcess::singleton().downloadManager().convertNetworkLoadToDownload(downloadID, std::exchange(m_networkLoad, nullptr), WTFMove(m_responseCompletionHandler), WTFMove(m_fileReferences), request, response);
 }
 
 void NetworkResourceLoader::abort()
@@ -426,7 +429,7 @@ bool NetworkResourceLoader::shouldInterruptLoadForCSPFrameAncestorsOrXFrameOptio
     return false;
 }
 
-auto NetworkResourceLoader::didReceiveResponse(ResourceResponse&& receivedResponse) -> ShouldContinueDidReceiveResponse
+void NetworkResourceLoader::didReceiveResponse(ResourceResponse&& receivedResponse, ResponseCompletionHandler&& completionHandler)
 {
     RELEASE_LOG_IF_ALLOWED("didReceiveResponse: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ", httpStatusCode = %d, length = %" PRId64 ")", m_parameters.webPageID, m_parameters.webFrameID, m_parameters.identifier, receivedResponse.httpStatusCode(), receivedResponse.expectedContentLength());
 
@@ -456,11 +459,12 @@ auto NetworkResourceLoader::didReceiveResponse(ResourceResponse&& receivedRespon
             m_cacheEntryForValidation = nullptr;
     }
     if (m_cacheEntryForValidation)
-        return ShouldContinueDidReceiveResponse::Yes;
+        return completionHandler(PolicyAction::Use);
 
     if (isMainResource() && shouldInterruptLoadForCSPFrameAncestorsOrXFrameOptions(m_response)) {
-        send(Messages::WebResourceLoader::StopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied { });
-        return ShouldContinueDidReceiveResponse::No;
+        auto response = sanitizeResponseIfPossible(ResourceResponse { m_response }, ResourceResponse::SanitizationType::CrossOriginSafe);
+        send(Messages::WebResourceLoader::StopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied { response });
+        return completionHandler(PolicyAction::Ignore);
     }
 
     if (m_networkLoadChecker) {
@@ -470,21 +474,24 @@ auto NetworkResourceLoader::didReceiveResponse(ResourceResponse&& receivedRespon
                 if (protectedThis->m_networkLoad)
                     protectedThis->didFailLoading(error);
             });
-            return ShouldContinueDidReceiveResponse::No;
+            return completionHandler(PolicyAction::Ignore);
         }
     }
 
     auto response = sanitizeResponseIfPossible(ResourceResponse { m_response }, ResourceResponse::SanitizationType::CrossOriginSafe);
     if (isSynchronous()) {
         m_synchronousLoadData->response = WTFMove(response);
-        return ShouldContinueDidReceiveResponse::Yes;
+        return completionHandler(PolicyAction::Use);
     }
 
     // We wait to receive message NetworkResourceLoader::ContinueDidReceiveResponse before continuing a load for
     // a main resource because the embedding client must decide whether to allow the load.
     bool willWaitForContinueDidReceiveResponse = isMainResource();
     send(Messages::WebResourceLoader::DidReceiveResponse { response, willWaitForContinueDidReceiveResponse });
-    return willWaitForContinueDidReceiveResponse ? ShouldContinueDidReceiveResponse::No : ShouldContinueDidReceiveResponse::Yes;
+    if (willWaitForContinueDidReceiveResponse)
+        m_responseCompletionHandler = WTFMove(completionHandler);
+    else
+        completionHandler(PolicyAction::Use);
 }
 
 void NetworkResourceLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, int reportedEncodedDataLength)
@@ -532,7 +539,7 @@ void NetworkResourceLoader::didFinishLoading(const NetworkLoadMetrics& networkLo
         return;
     }
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     if (shouldLogCookieInformation())
         logCookieInformation();
 #endif
@@ -631,7 +638,7 @@ void NetworkResourceLoader::continueWillSendRedirectedRequest(ResourceRequest&& 
 void NetworkResourceLoader::didFinishWithRedirectResponse(ResourceResponse&& redirectResponse)
 {
     redirectResponse.setType(ResourceResponse::Type::Opaqueredirect);
-    didReceiveResponse(WTFMove(redirectResponse));
+    didReceiveResponse(WTFMove(redirectResponse), [] (auto) { });
 
     WebCore::NetworkLoadMetrics networkLoadMetrics;
     networkLoadMetrics.markComplete();
@@ -711,10 +718,8 @@ void NetworkResourceLoader::continueDidReceiveResponse()
         return;
     }
 
-    // FIXME: Remove this check once BlobResourceHandle implements didReceiveResponseAsync correctly.
-    // Currently, it does not wait for response, so the load is likely to finish before continueDidReceiveResponse.
-    if (m_networkLoad)
-        m_networkLoad->continueDidReceiveResponse();
+    if (m_responseCompletionHandler)
+        m_responseCompletionHandler(PolicyAction::Use);
 }
 
 void NetworkResourceLoader::didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent)
@@ -775,7 +780,8 @@ void NetworkResourceLoader::didRetrieveCacheEntry(std::unique_ptr<NetworkCache::
     auto response = entry->response();
 
     if (isMainResource() && shouldInterruptLoadForCSPFrameAncestorsOrXFrameOptions(response)) {
-        send(Messages::WebResourceLoader::StopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied { });
+        response = sanitizeResponseIfPossible(WTFMove(response), ResourceResponse::SanitizationType::CrossOriginSafe);
+        send(Messages::WebResourceLoader::StopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied { response });
         return;
     }
     if (m_networkLoadChecker) {
@@ -845,7 +851,7 @@ void NetworkResourceLoader::sendResultForCacheEntry(std::unique_ptr<NetworkCache
     }
 #endif
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     if (shouldLogCookieInformation())
         logCookieInformation();
 #endif
@@ -944,7 +950,7 @@ bool NetworkResourceLoader::shouldCaptureExtraNetworkLoadMetrics() const
     return m_connection->captureExtraNetworkLoadMetricsEnabled();
 }
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
 bool NetworkResourceLoader::shouldLogCookieInformation()
 {
     return NetworkProcess::singleton().shouldLogCookieInformation();

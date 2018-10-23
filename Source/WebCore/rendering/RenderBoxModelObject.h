@@ -241,6 +241,8 @@ public:
     void removeFromContinuationChain();
 
     virtual LayoutRect paintRectToClipOutFromBorder(const LayoutRect&) { return LayoutRect(); };
+
+    bool hasRunningAcceleratedAnimations() const;
     
 protected:
     RenderBoxModelObject(Element&, RenderStyle&&, BaseTypeFlags);

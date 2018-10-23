@@ -61,7 +61,7 @@ static const AtomicString& resourceType()
 
 RefPtr<Cache> Cache::open(const String& cachePath, OptionSet<Option> options)
 {
-    auto storage = Storage::open(cachePath, options.contains(Option::TestingMode) ? Storage::Mode::Testing : Storage::Mode::Normal);
+    auto storage = Storage::open(cachePath, options.contains(Option::TestingMode) ? Storage::Mode::AvoidRandomness : Storage::Mode::Normal);
 
     LOG(NetworkCache, "(NetworkProcess) opened cache storage, success %d", !!storage);
 
@@ -341,7 +341,7 @@ void Cache::retrieve(const WebCore::ResourceRequest& request, const GlobalFrameI
         auto entry = Entry::decodeStorageRecord(*record);
 
         std::optional<Seconds> maxAgeCap;
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
         if (auto networkStorageSession = WebCore::NetworkStorageSession::storageSession(sessionID))
             maxAgeCap = networkStorageSession->maxAgeCacheCap(request);
 #endif

@@ -37,6 +37,7 @@
 #import "GestureTypes.h"
 #import "InteractionInformationAtPosition.h"
 #import "Logging.h"
+#import "NativeWebKeyboardEvent.h"
 #import "PluginView.h"
 #import "PrintInfo.h"
 #import "RemoteLayerTreeDrawingArea.h"
@@ -191,12 +192,12 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
         }
     }
 
-    // We only set the remaining EditorState entries if the layout is done. To compute these
-    // entries, we need the layout to be done and we don't want to trigger a synchronous
-    // layout as this would be bad for performance. If we have a composition, we send everything
-    // right away as the UIProcess needs the caretRects ASAP for marked text.
-    bool frameViewHasFinishedLayout = frame.view() && !frame.view()->needsLayout();
-    if (shouldIncludePostLayoutData == IncludePostLayoutDataHint::No && !frameViewHasFinishedLayout && !frame.editor().hasComposition()) {
+    // We only set the remaining EditorState entries if layout is done as a performance optimization
+    // to avoid the need to force a synchronous layout here to compute these entries. If we
+    // have a composition or are using a hardware keyboard then we send the full editor state
+    // immediately so that the UIProcess can update UI, including the position of the caret.
+    bool needsLayout = !frame.view() || frame.view()->needsLayout();
+    if (shouldIncludePostLayoutData == IncludePostLayoutDataHint::No && needsLayout && !isInHardwareKeyboardMode() && !frame.editor().hasComposition()) {
         result.isMissingPostLayoutData = true;
         return;
     }
@@ -2749,8 +2750,15 @@ void WebPage::resetViewportDefaultConfiguration(WebFrame* frame, bool hasMobileD
         return;
     }
 
+    auto parametersForStandardFrame = [&] {
+        if (m_page->settings().shouldIgnoreMetaViewport())
+            return ViewportConfiguration::nativeWebpageParameters();
+
+        return ViewportConfiguration::webpageParameters();
+    };
+
     if (!frame) {
-        m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::webpageParameters());
+        m_viewportConfiguration.setDefaultConfiguration(parametersForStandardFrame());
         return;
     }
 
@@ -2765,7 +2773,7 @@ void WebPage::resetViewportDefaultConfiguration(WebFrame* frame, bool hasMobileD
     else if (document->isTextDocument())
         m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::textDocumentParameters());
     else
-        m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::webpageParameters());
+        m_viewportConfiguration.setDefaultConfiguration(parametersForStandardFrame());
 }
 
 void WebPage::viewportConfigurationChanged()

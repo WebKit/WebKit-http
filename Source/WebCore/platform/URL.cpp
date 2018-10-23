@@ -27,8 +27,6 @@
 #include "config.h"
 #include "URL.h"
 
-#include "DecodeEscapeSequences.h"
-#include "TextEncoding.h"
 #include "URLParser.h"
 #include <stdio.h>
 #include <unicode/uidna.h>
@@ -103,19 +101,9 @@ URL::URL(ParsedURLStringTag, const String& url)
 #endif
 }
 
-URL::URL(const URL& base, const String& relative)
+URL::URL(const URL& base, const String& relative, const URLTextEncoding* encoding)
 {
-    URLParser parser(relative, base);
-    *this = parser.result();
-}
-
-URL::URL(const URL& base, const String& relative, const TextEncoding& encoding)
-{
-    // For UTF-{7,16,32}, we want to use UTF-8 for the query part as
-    // we do when submitting a form. A form with GET method
-    // has its contents added to a URL as query params and it makes sense
-    // to be consistent.
-    URLParser parser(relative, base, encoding.encodingForFormSubmission());
+    URLParser parser(relative, base, encoding);
     *this = parser.result();
 }
 
@@ -197,9 +185,30 @@ String URL::protocolHostAndPort() const
     return result;
 }
 
+static String decodeEscapeSequencesFromParsedURL(StringView input)
+{
+    auto inputLength = input.length();
+    if (!inputLength)
+        return emptyString();
+    Vector<LChar> percentDecoded;
+    percentDecoded.reserveInitialCapacity(inputLength);
+    for (unsigned i = 0; i < inputLength; ++i) {
+        if (input[i] == '%'
+            && inputLength > 2
+            && i < inputLength - 2
+            && isASCIIHexDigit(input[i + 1])
+            && isASCIIHexDigit(input[i + 2])) {
+            percentDecoded.uncheckedAppend(toASCIIHexValue(input[i + 1], input[i + 2]));
+            i += 2;
+        } else
+            percentDecoded.uncheckedAppend(input[i]);
+    }
+    return String::fromUTF8(percentDecoded.data(), percentDecoded.size());
+}
+
 String URL::user() const
 {
-    return decodeURLEscapeSequences(m_string.substring(m_userStart, m_userEnd - m_userStart));
+    return decodeEscapeSequencesFromParsedURL(StringView(m_string).substring(m_userStart, m_userEnd - m_userStart));
 }
 
 String URL::pass() const
@@ -207,7 +216,7 @@ String URL::pass() const
     if (m_passwordEnd == m_userEnd)
         return String();
 
-    return decodeURLEscapeSequences(m_string.substring(m_userEnd + 1, m_passwordEnd - m_userEnd - 1));
+    return decodeEscapeSequencesFromParsedURL(StringView(m_string).substring(m_userEnd + 1, m_passwordEnd - m_userEnd - 1));
 }
 
 String URL::encodedUser() const
@@ -248,7 +257,7 @@ String URL::fileSystemPath() const
     if (!isValid() || !isLocalFile())
         return String();
 
-    return decodeURLEscapeSequences(path());
+    return decodeEscapeSequencesFromParsedURL(StringView(path()));
 }
 
 #endif
@@ -666,20 +675,6 @@ void URL::setPath(const String& s)
     };
     URLParser parser(makeString(StringView(m_string).left(m_hostEnd + m_portLength), percentEncodeCharacters(path, questionMarkOrNumberSign), StringView(m_string).substring(m_pathEnd)));
     *this = parser.result();
-}
-
-String decodeURLEscapeSequences(const String& string)
-{
-    if (string.isEmpty())
-        return string;
-    return decodeEscapeSequences<URLEscapeSequence>(string, UTF8Encoding());
-}
-
-String decodeURLEscapeSequences(const String& string, const TextEncoding& encoding)
-{
-    if (string.isEmpty())
-        return string;
-    return decodeEscapeSequences<URLEscapeSequence>(string, encoding);
 }
 
 #if PLATFORM(IOS)

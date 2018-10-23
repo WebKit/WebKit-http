@@ -172,7 +172,9 @@ private:
 
 @implementation WKContentView {
     std::unique_ptr<PageClientImpl> _pageClient;
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     RetainPtr<WKBrowsingContextController> _browsingContextController;
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     RetainPtr<UIView> _rootContentView;
     RetainPtr<UIView> _fixedClippingView;
@@ -275,6 +277,7 @@ private:
     }
 }
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 - (WKBrowsingContextController *)browsingContextController
 {
     if (!_browsingContextController)
@@ -282,6 +285,7 @@ private:
 
     return _browsingContextController.get();
 }
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (WKPageRef)_pageRef
 {
@@ -519,6 +523,12 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
 
     [self setShowingInspectorIndication:NO];
     [self _hideInspectorHighlight];
+}
+
+- (void)_processWillSwap
+{
+    // FIXME: Should we do something differently?
+    [self _processDidExit];
 }
 
 - (void)_didRelaunchProcess

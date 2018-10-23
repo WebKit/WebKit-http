@@ -2661,36 +2661,35 @@ ExceptionOr<RefPtr<WindowProxy>> Document::openForBindings(DOMWindow& activeWind
     return m_domWindow->open(activeWindow, firstWindow, url, name, features);
 }
 
-// FIXME: Add support for the 'type' and 'replace' parameters.
 ExceptionOr<Document&> Document::openForBindings(Document* responsibleDocument, const String&, const String&)
 {
     if (!isHTMLDocument() || m_throwOnDynamicMarkupInsertionCount)
         return Exception { InvalidStateError };
 
-    open(responsibleDocument);
+    auto result = open(responsibleDocument);
+    if (UNLIKELY(result.hasException()))
+        return result.releaseException();
+
     return *this;
 }
 
-void Document::open(Document* responsibleDocument)
+ExceptionOr<void> Document::open(Document* responsibleDocument)
 {
-    if (m_ignoreOpensDuringUnloadCount)
-        return;
+    if (responsibleDocument && !responsibleDocument->securityOrigin().isSameOriginAs(securityOrigin()))
+        return Exception { SecurityError };
 
-    if (responsibleDocument) {
-        setURL(responsibleDocument->url());
-        setCookieURL(responsibleDocument->cookieURL());
-        setSecurityOriginPolicy(responsibleDocument->securityOriginPolicy());
-    }
+    if (m_ignoreOpensDuringUnloadCount)
+        return { };
 
     if (m_frame) {
         if (ScriptableDocumentParser* parser = scriptableDocumentParser()) {
             if (parser->isParsing()) {
                 // FIXME: HTML5 doesn't tell us to check this, it might not be correct.
                 if (parser->isExecutingScript())
-                    return;
+                    return { };
 
                 if (!parser->wasCreatedByScript() && parser->hasInsertionPoint())
-                    return;
+                    return { };
             }
         }
 
@@ -2701,12 +2700,41 @@ void Document::open(Document* responsibleDocument)
     }
 
     removeAllEventListeners();
+
+    if (responsibleDocument && isFullyActive()) {
+        auto newURL = responsibleDocument->url();
+        if (responsibleDocument != this)
+            newURL.removeFragmentIdentifier();
+        setURL(newURL);
+        auto newCookieURL = responsibleDocument->cookieURL();
+        if (responsibleDocument != this)
+            newCookieURL.removeFragmentIdentifier();
+        setCookieURL(newCookieURL);
+        setSecurityOriginPolicy(responsibleDocument->securityOriginPolicy());
+    }
+
     implicitOpen();
     if (ScriptableDocumentParser* parser = scriptableDocumentParser())
         parser->setWasCreatedByScript(true);
 
     if (m_frame)
         m_frame->loader().didExplicitOpen();
+
+    return { };
+}
+
+// https://html.spec.whatwg.org/#fully-active
+bool Document::isFullyActive() const
+{
+    auto* frame = this->frame();
+    if (!frame || frame->document() != this)
+        return false;
+
+    if (frame->isMainFrame())
+        return true;
+
+    auto* parentFrame = frame->tree().parent();
+    return parentFrame && parentFrame->document() && parentFrame->document()->isFullyActive();
 }
 
 void Document::detachParser()
@@ -3010,7 +3038,7 @@ Seconds Document::timeSinceDocumentCreation() const
     return MonotonicTime::now() - m_documentCreationTime;
 }
 
-void Document::write(Document* responsibleDocument, SegmentedString&& text)
+ExceptionOr<void> Document::write(Document* responsibleDocument, SegmentedString&& text)
 {
     NestingLevelIncrementer nestingLevelIncrementer(m_writeRecursionDepth);
 
@@ -3018,17 +3046,21 @@ void Document::write(Document* responsibleDocument, SegmentedString&& text)
     m_writeRecursionIsTooDeep = (m_writeRecursionDepth > cMaxWriteRecursionDepth) || m_writeRecursionIsTooDeep;
 
     if (m_writeRecursionIsTooDeep)
-        return;
+        return { };
 
     bool hasInsertionPoint = m_parser && m_parser->hasInsertionPoint();
     if (!hasInsertionPoint && (m_ignoreOpensDuringUnloadCount || m_ignoreDestructiveWriteCount))
-        return;
+        return { };
 
-    if (!hasInsertionPoint)
-        open(responsibleDocument);
+    if (!hasInsertionPoint) {
+        auto result = open(responsibleDocument);
+        if (UNLIKELY(result.hasException()))
+            return result.releaseException();
+    }
 
     ASSERT(m_parser);
     m_parser->insert(WTFMove(text));
+    return { };
 }
 
 ExceptionOr<void> Document::write(Document* responsibleDocument, Vector<String>&& strings)
@@ -3040,9 +3072,7 @@ ExceptionOr<void> Document::write(Document* responsibleDocument, Vector<String>&
     for (auto& string : strings)
         text.append(WTFMove(string));
 
-    write(responsibleDocument, WTFMove(text));
-
-    return { };
+    return write(responsibleDocument, WTFMove(text));
 }
 
 ExceptionOr<void> Document::writeln(Document* responsibleDocument, Vector<String>&& strings)
@@ -3055,9 +3085,7 @@ ExceptionOr<void> Document::writeln(Document* responsibleDocument, Vector<String
         text.append(WTFMove(string));
 
     text.append("\n"_s);
-    write(responsibleDocument, WTFMove(text));
-
-    return { };
+    return write(responsibleDocument, WTFMove(text));
 }
 
 Seconds Document::minimumDOMTimerInterval() const
@@ -3242,17 +3270,6 @@ bool Document::canNavigate(Frame* targetFrame)
     // returning true when supplied with a 0 targetFrame.
     if (!targetFrame)
         return true;
-
-    if (m_frame != targetFrame) {
-        auto sourceCrossOriginWindowPolicy = m_frame->window() ? m_frame->window()->crossOriginWindowPolicy() : CrossOriginWindowPolicy::Allow;
-        auto destinationCrossOriginWindowPolicy = targetFrame->window() ? targetFrame->window()->crossOriginWindowPolicy() : CrossOriginWindowPolicy::Allow;
-        if (sourceCrossOriginWindowPolicy != CrossOriginWindowPolicy::Allow || destinationCrossOriginWindowPolicy != CrossOriginWindowPolicy::Allow) {
-            if (m_frame->document() && targetFrame->document() && !m_frame->document()->securityOrigin().canAccess(targetFrame->document()->securityOrigin())) {
-                printNavigationErrorMessage(targetFrame, url(), "Navigation was not allowed due to Cross-Origin-Window-Policy header."_s);
-                return false;
-            }
-        }
-    }
 
     // Cases (i), (ii) and (iii) pass the tests from the specifications but might not pass the "security origin" tests.
 
@@ -4874,7 +4891,7 @@ URL Document::completeURL(const String& url, const URL& baseURLOverride) const
     const URL& baseURL = ((baseURLOverride.isEmpty() || baseURLOverride == blankURL()) && parentDocument()) ? parentDocument()->baseURL() : baseURLOverride;
     if (!m_decoder)
         return URL(baseURL, url);
-    return URL(baseURL, url, m_decoder->encoding());
+    return URL(baseURL, url, m_decoder->encodingForURLParsing());
 }
 
 URL Document::completeURL(const String& url) const
@@ -7822,7 +7839,7 @@ void Document::hasStorageAccess(Ref<DeferredPromise>&& promise)
 {
     ASSERT(settings().storageAccessAPIEnabled());
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (m_frame && hasFrameSpecificStorageAccess()) {
         promise->resolve<IDLBoolean>(true);
         return;
@@ -7873,7 +7890,7 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& promise)
 {
     ASSERT(settings().storageAccessAPIEnabled());
     
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (m_frame && hasFrameSpecificStorageAccess()) {
         promise->resolve();
         return;
@@ -8023,7 +8040,7 @@ void Document::updateMainArticleElementAfterLayout()
     m_mainArticleElement = tallestArticle;
 }
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
 bool Document::hasFrameSpecificStorageAccess() const
 {
     return m_frame->loader().client().hasFrameSpecificStorageAccess();
@@ -8043,7 +8060,6 @@ void Document::setHasRequestedPageSpecificStorageAccessWithUserInteraction(const
 {
     m_primaryDomainRequestedPageSpecificStorageAccessWithUserInteraction = primaryDomain;
 }
-
 #endif
 
 void Document::setConsoleMessageListener(RefPtr<StringCallback>&& listener)
@@ -8092,6 +8108,12 @@ Vector<RefPtr<WebAnimation>> Document::getAnimations()
 }
 
 #if ENABLE(ATTACHMENT_ELEMENT)
+
+void Document::registerAttachmentIdentifier(const String& identifier)
+{
+    if (auto* frame = this->frame())
+        frame->editor().registerAttachmentIdentifier(identifier);
+}
 
 void Document::didInsertAttachmentElement(HTMLAttachmentElement& attachment)
 {

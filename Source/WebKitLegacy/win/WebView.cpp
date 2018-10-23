@@ -5280,11 +5280,6 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings.setVisualViewportAPIEnabled(!!enabled);
 
-    hr = prefsPrivate->crossOriginWindowPolicySupportEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
-    settings.setCrossOriginWindowPolicySupportEnabled(!!enabled);
-
     hr = prefsPrivate->CSSOMViewScrollingAPIEnabled(&enabled);
     if (FAILED(hr))
         return hr;

@@ -214,8 +214,6 @@ xssAuditorEnabled:
   initial: false
 acceleratedCompositingForFixedPositionEnabled:
   initial: defaultAcceleratedCompositingForFixedPositionEnabled
-acceleratedCompositingForOverflowScrollEnabled:
-  initial: false
 rubberBandingForSubScrollableRegionsEnabled:
   initial: true
   conditional: RUBBER_BANDING
@@ -391,6 +389,8 @@ smartInsertDeleteEnabled:
   initial: defaultSmartInsertDeleteEnabled
 selectTrailingWhitespaceEnabled:
   initial: defaultSelectTrailingWhitespaceEnabled
+selectionAcrossShadowBoundariesEnabled:
+  initial: false
 
 useLegacyBackgroundSizeShorthandBehavior:
   initial: false
@@ -655,7 +655,6 @@ imagesEnabled:
 scriptEnabled:
   initial: false
   getter: isScriptEnabled
-  onChange: scriptEnabledChanged
 pluginsEnabled:
   initial: false
   getter: arePluginsEnabled
@@ -751,9 +750,6 @@ clientCoordinatesRelativeToLayoutViewport:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
 
-crossOriginWindowPolicySupportEnabled:
-  initial: false
-
 accessibilityEventsEnabled:
   initial: true
   conditional: ACCESSIBILITY_EVENTS
@@ -762,4 +758,7 @@ incompleteImageBorderEnabled:
   initial: false
 
 shouldDeferAsynchronousScriptsUntilAfterDocumentLoad:
+  initial: false
+
+shouldIgnoreMetaViewport:
   initial: false

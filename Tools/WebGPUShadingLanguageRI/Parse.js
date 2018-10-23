@@ -29,7 +29,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     let lexer = new Lexer(origin, originKind, lineNumberOffset, text);
 
     // The hardest part of dealing with C-like languages is parsing variable declaration statements.
-    // Let's consider if this happens in WSL. Here are the valid statements in WSL that being with an
+    // Let's consider if this happens in WHLSL. Here are the valid statements in WHLSL that being with an
     // identifier, if we assume that any expression can be a standalone statement.
     //
     //     x;
@@ -1085,7 +1085,13 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         if (type instanceof WSyntaxError)
             return type;
         let name = tryConsumeKind("identifier");
-        return new FuncParameter(type.origin, name ? name.text : null, type);
+        let semantic = null;
+        if (tryConsume(":")) {
+            semantic = parseSemantic();
+            if (semantic instanceof WSyntaxError)
+                return semantic;
+        }
+        return new FuncParameter(type.origin, name ? name.text : null, type, semantic);
     }
 
     function parseParameters()
@@ -1155,13 +1161,59 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         return maybeError.text;
     }
 
+    function parseAttributeBlock()
+    {
+        let maybeError = consume("[");
+        if (maybeError instanceof WSyntaxError)
+            return maybeError;
+        maybeError = consume("numthreads");
+        if (maybeError instanceof WSyntaxError)
+            return maybeError;
+        maybeError = consume("(");
+        if (maybeError instanceof WSyntaxError)
+            return maybeError;
+        let xDimension = consumeKind("intLiteral");
+        if (xDimension instanceof WSyntaxError)
+            return xDimension;
+        let xDimensionUintVersion = xDimension.text >>> 0;
+        if (xDimensionUintVersion.toString() !== xDimension.text)
+            return fail("Numthreads X attribute is not 32-bit unsigned integer: " + xDimension.text);
+        maybeError = consume(",");
+        if (maybeError instanceof WSyntaxError)
+            return maybeError;
+        let yDimension = consumeKind("intLiteral");
+        if (yDimension instanceof WSyntaxError)
+            return yDimension;
+        let yDimensionUintVersion = yDimension.text >>> 0;
+        if (yDimensionUintVersion.toString() !== yDimension.text)
+            return fail("Numthreads Y attribute is not 32-bit unsigned integer: " + yDimension.text);
+        maybeError = consume(",");
+        if (maybeError instanceof WSyntaxError)
+            return maybeError;
+        let zDimension = consumeKind("intLiteral");
+        if (zDimension instanceof WSyntaxError)
+            return zDimension;
+        let zDimensionUintVersion = zDimension.text >>> 0;
+        if (zDimensionUintVersion.toString() !== zDimension.text)
+            return fail("Numthreads Z attribute is not 32-bit unsigned integer: " + zDimension.text);
+        maybeError = consume(")");
+        if (maybeError instanceof WSyntaxError)
+            return maybeError;
+        maybeError = consume("]");
+        if (maybeError instanceof WSyntaxError)
+            return maybeError;
+        return [new FuncNumThreadsAttribute(xDimensionUintVersion, yDimensionUintVersion, zDimensionUintVersion)];
+    }
+
     function parseFuncDecl()
     {
         let origin;
         let returnType;
         let name;
         let isCast;
-        let shaderType;
+        let shaderType = null;
+        let semantic = null;
+        let attributeBlock = null;
         let operatorToken = tryConsume("operator");
         if (operatorToken) {
             origin = operatorToken;
@@ -1171,7 +1223,15 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             name = "operator cast";
             isCast = true;
         } else {
-            shaderType = tryConsume("vertex", "fragment", "test");
+            if (test("[")) {
+                attributeBlock = parseAttributeBlock();
+                if (attributeBlock instanceof WSyntaxError)
+                    return attributeBlock;
+                shaderType = consume("compute");
+                if (shaderType instanceof WSyntaxError)
+                    return shaderType;
+            } else
+                shaderType = tryConsume("vertex", "fragment", "test");
             returnType = parseType();
             if (returnType instanceof WSyntaxError)
                 return returnType;
@@ -1188,7 +1248,12 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         let parameters = parseParameters();
         if (parameters instanceof WSyntaxError)
             return parameters;
-        return new Func(origin, name, returnType, parameters, isCast, shaderType);
+        if (tryConsume(":")) {
+            semantic = parseSemantic();
+            if (semantic instanceof WSyntaxError)
+                return semantic;
+        }
+        return new Func(origin, name, returnType, parameters, isCast, shaderType, semantic, attributeBlock);
     }
 
     function parseFuncDef()
@@ -1199,7 +1264,116 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         let body = parseBlock();
         if (body instanceof WSyntaxError)
             return body;
-        return new FuncDef(func.origin, func.name, func.returnType, func.parameters, body, func.isCast, func.shaderType);
+        return new FuncDef(func.origin, func.name, func.returnType, func.parameters, body, func.isCast, func.shaderType, func.semantic, func.attributeBlock);
+    }
+
+    function parseStageInOutSemantic()
+    {
+        let origin = consume("attribute");
+        if (origin instanceof WSyntaxError)
+            return origin;
+        let maybeError = consume("(");
+        if (maybeError instanceof WSyntaxError)
+            return maybeError;
+        let index = consumeKind("intLiteral");
+        if (index instanceof WSyntaxError)
+            return index;
+        let uintVersion = index.text >>> 0;
+        if (uintVersion.toString() !== index.text)
+            return fail("Semantic  is not 32-bit unsigned integer: " + index.text);
+        maybeError = consume(")");
+        if (maybeError instanceof WSyntaxError)
+            return maybeError;
+        return new StageInOutSemantic(origin, uintVersion);
+    }
+
+    function parseResourceSemantic()
+    {
+        let origin = consume("register");
+        if (origin instanceof WSyntaxError)
+            return origin;
+        let maybeError = consume("(");
+        if (maybeError instanceof WSyntaxError)
+            return maybeError;
+        let mode = consumeKind("identifier");
+        if (mode instanceof WSyntaxError)
+            return mode;
+        mode = mode.text;
+        if (mode[0] != "u" && mode[0] != "t" && mode[0] != "b" && mode[0] != "s")
+            return fail("register needs to be either u, t, b, or s");
+        let indexText = mode.substring(1);
+        mode = mode[0];
+        let uintVersion = indexText >>> 0;
+        if (uintVersion.toString() !== indexText)
+            return fail("Register index is not 32-bit unsigned integer: " + indexText);
+        let space = 0;
+        if (tryConsume(",")) {
+            space = consumeKind("identifier");
+            if (space instanceof WSyntaxError)
+                return space;
+            space = space.text;
+            if (space.substring(0, "space".length) != "space")
+                return fail("Second argument to register() needs to be of the form \"space0\"");
+            let spaceText = space.substring("space".length);
+            let uintVersion = spaceText >>> 0;
+            if (uintVersion.toString() !== spaceText)
+                return fail("Register index is not 32-bit unsigned integer: " + spaceText);
+            space = uintVersion;
+        }
+        maybeError = consume(")");
+        if (maybeError instanceof WSyntaxError)
+            return maybeError;
+        return new ResourceSemantic(origin, mode, uintVersion, space);
+    }
+
+    function parseSpecializationConstantSemantic()
+    {
+        let origin = consume("specialized");
+        if (origin instanceof WSyntaxError)
+            return origin;
+        return new SpecializationConstantSemantic(origin);
+    }
+
+    function parseBuiltInSemantic()
+    {
+        let origin = tryConsume("SV_InstanceID",
+                                "SV_VertexID",
+                                "PSIZE",
+                                "SV_Position",
+                                "SV_IsFrontFace",
+                                "SV_SampleIndex",
+                                "SV_InnerCoverage",
+                                "SV_Depth",
+                                "SV_Coverage",
+                                "SV_DispatchThreadID",
+                                "SV_GroupID",
+                                "SV_GroupIndex",
+                                "SV_GroupThreadID");
+        if (origin)
+            return new BuiltInSemantic(origin, origin.text);
+        origin = consumeKind("identifier");
+        if (origin instanceof WSyntaxError)
+            return origin;
+        if (origin.text.substring(0, "SV_Target".length) == "SV_Target") {
+            let indexString = origin.text.substring("SV_Target".length);
+            let uintVersion = indexString >>> 0;
+            if (uintVersion.toString() !== indexString)
+                return fail("Semantic  is not 32-bit unsigned integer: " + indexString);
+            return new BuiltInSemantic(origin, "SV_Target", uintVersion);
+        } else
+            return fail(`Unknown semantic: ${origin.text}`);
+    }
+
+    function parseSemantic()
+    {
+        if (test("attribute"))
+            return parseStageInOutSemantic();
+        else if (test("register"))
+            return parseResourceSemantic();
+        else if (test("specialized"))
+            return parseSpecializationConstantSemantic();
+        else
+            return parseBuiltInSemantic();
     }
 
     function parseField()
@@ -1210,10 +1384,16 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         let name = consumeKind("identifier");
         if (name instanceof WSyntaxError)
             return name;
+        let semantic = null;
+        if (tryConsume(":")) {
+            semantic = parseSemantic();
+            if (semantic instanceof WSyntaxError)
+                return semantic;
+        }
         let maybeError = consume(";");
         if (maybeError instanceof WSyntaxError)
             return maybeError;
-        return new Field(name, name.text, type);
+        return new Field(name, name.text, type, semantic);
     }
 
     function parseStructType()
@@ -1237,15 +1417,19 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         return result;
     }
 
-    function parseNativeFunc()
+    function parseNativeFunc(stage = null)
     {
         let func = parseFuncDecl();
         if (func instanceof WSyntaxError)
             return func;
+        if (func.attributeBlock)
+            return fail("Native function must not have attribute block");
         let maybeError = consume(";");
         if (maybeError instanceof WSyntaxError)
             return maybeError;
-        return new NativeFunc(func.origin, func.name, func.returnType, func.parameters, func.isCast, func.shaderType);
+        if (func.shaderType || func.semantic)
+            return fail("Native functions can't be entry points or have semantics.");
+        return new NativeFunc(func.origin, func.name, func.returnType, func.parameters, func.isCast, stage);
     }
 
     function parseNative()
@@ -1265,7 +1449,10 @@ function parse(program, origin, originKind, lineNumberOffset, text)
                 return maybeError;
             return NativeType.create(origin, name.text, args);
         }
-        return parseNativeFunc();
+        let stage = tryConsume("vertex", "fragment", "compute");
+        if (stage)
+            stage = stage.text;
+        return parseNativeFunc(stage);
     }
 
     function parseRestrictedFuncDef()

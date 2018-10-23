@@ -32,13 +32,13 @@ let prepare = (() => {
             let firstLineOfStandardLibrary = 28; // See StandardLibrary.js.
             parse(standardProgram, "/internal/stdlib", "native", firstLineOfStandardLibrary - 1, standardLibrary);
         }
-        
+
         let program = cloneProgram(standardProgram);
         if (arguments.length) {
             parse(program, origin, "user", lineNumberOffset, text);
             program = programWithUnnecessaryThingsRemoved(program);
         }
-        
+
         foldConstexprs(program);
 
         let nameResolver = createNameResolver(program);
@@ -53,7 +53,7 @@ let prepare = (() => {
         resolveNamesInFunctions(program, nameResolver);
         resolveTypeDefsInFunctions(program);
         checkTypesWithArguments(program);
-        
+
         check(program);
         checkLiteralTypes(program);
         resolveProperties(program);
@@ -67,8 +67,10 @@ let prepare = (() => {
         checkProgramWrapped(program);
         checkTypesWithArguments(program);
         findHighZombies(program);
+        allocateAtEntryPoints(program);
         program.visit(new StructLayoutBuilder());
-        lateCheckAndLayoutBuffers(program);
+        layoutBuffers(program);
+        checkNativeFuncStages(program);
         if (shouldInline)
             inline(program);
         return program;

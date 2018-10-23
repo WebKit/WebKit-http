@@ -383,7 +383,7 @@ WI.CSSKeywordCompletions._propertyKeywordMap = {
         "none", "first", "last", "allow-end", "force-end"
     ],
     "overflow": [
-        "hidden", "auto", "visible", "overlay", "scroll", "marquee", "-webkit-paged-x", "-webkit-paged-y"
+        "hidden", "auto", "visible", "scroll", "marquee", "-webkit-paged-x", "-webkit-paged-y"
     ],
     "-webkit-box-reflect": [
         "none", "left", "right", "above", "below"
@@ -774,7 +774,7 @@ WI.CSSKeywordCompletions._propertyKeywordMap = {
         "black", "white", "white-outline",
     ],
     "-apple-pay-button-type": [
-        "plain", "buy", "set-up", "in-store", "donate", "checkout", "book", "subscribe",
+        "plain", "buy", "set-up", "donate", "check-out", "book", "subscribe",
     ],
     "-apple-trailing-word": [
         "auto", "-webkit-partially-balanced",
@@ -1116,10 +1116,10 @@ WI.CSSKeywordCompletions._propertyKeywordMap = {
         "normal", "break-word",
     ],
     "overflow-x": [
-        "hidden", "auto", "visible", "overlay", "scroll",
+        "hidden", "auto", "visible", "scroll",
     ],
     "overflow-y": [
-        "hidden", "auto", "visible", "overlay", "scroll", "-webkit-paged-x", "-webkit-paged-y",
+        "hidden", "auto", "visible", "scroll", "-webkit-paged-x", "-webkit-paged-y",
     ],
     "pointer-events": [
         "none", "all", "auto", "visible", "visiblePainted", "visibleFill", "visibleStroke", "painted", "fill", "stroke",

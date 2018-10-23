@@ -59,7 +59,7 @@ class OSRExitCompiler;
 class SpeculativeJIT;
 }
 #endif
-#if !ENABLE(JIT)
+#if ENABLE(C_LOOP)
 namespace LLInt {
 class CLoop;
 }
@@ -147,7 +147,7 @@ class JSValue {
     friend class DFG::OSRExitCompiler;
     friend class DFG::SpeculativeJIT;
 #endif
-#if !ENABLE(JIT)
+#if ENABLE(C_LOOP)
     friend class LLInt::CLoop;
 #endif
 
@@ -259,6 +259,7 @@ public:
     double toNumber(ExecState*) const;
     
     Variant<JSBigInt*, double> toNumeric(ExecState*) const;
+    Variant<JSBigInt*, int32_t> toBigIntOrInt32(ExecState*) const;
 
     // toNumber conversion if it can be done without side effects.
     std::optional<double> toNumberFromPrimitive() const;

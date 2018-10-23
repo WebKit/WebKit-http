@@ -256,7 +256,6 @@ enum class Overflow : uint8_t {
     Hidden,
     Scroll,
     Auto,
-    Overlay,
     PagedX,
     PagedY
 };
@@ -1126,7 +1125,6 @@ enum class ApplePayButtonType : uint8_t {
     Plain,
     Buy,
     SetUp,
-    InStore,
     Donate,
 #if ENABLE(APPLE_PAY_SESSION_V4)
     CheckOut,

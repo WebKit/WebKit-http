@@ -26,6 +26,7 @@
 #include "config.h"
 #include "NetworkDataTaskSoup.h"
 
+#include "AuthenticationChallengeDisposition.h"
 #include "AuthenticationManager.h"
 #include "DataReference.h"
 #include "Download.h"
@@ -39,6 +40,7 @@
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/SharedBuffer.h>
 #include <WebCore/SoupNetworkSession.h>
+#include <WebCore/TextEncoding.h>
 #include <wtf/MainThread.h>
 #include <wtf/glib/RunLoopSourcePriority.h>
 

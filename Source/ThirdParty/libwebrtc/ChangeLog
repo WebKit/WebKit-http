@@ -1,3 +1,202 @@
+2018-09-29  Youenn Fablet  <youenn@apple.com>
+
+        Add yasm as third party tool for libwebrtc compilation
+        https://bugs.webkit.org/show_bug.cgi?id=190025
+
+        Reviewed by Eric Carlson.
+
+        Add yasm source code and build the yasm executable as it is needed for libvpx compilation.
+
+        * Source/third_party/yasm-1.3.0: Added.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2018-09-28  David Fenton  <david_fenton@apple.com>
+
+        Unreviewed, rolling out r236620.
+
+        broke internal Mac and iOS builds
+
+        Reverted changeset:
+
+        "Add yasm as third party tool for libwebrtc compilation"
+        https://bugs.webkit.org/show_bug.cgi?id=190025
+        https://trac.webkit.org/changeset/236620
+
+2018-09-28  Youenn Fablet  <youenn@apple.com>
+
+        Add yasm as third party tool for libwebrtc compilation
+        https://bugs.webkit.org/show_bug.cgi?id=190025
+
+        Reviewed by Eric Carlson.
+
+        Add yasm source code and build the yasm executable as it is needed for libvpx compilation.
+
+        * Source/third_party/yasm-1.3.0: Added.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2018-09-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r236557.
+
+        Really roll out r236557 this time because it breaks internal
+        builds.
+
+        Reverted changeset:
+
+        "Add VP8 support to WebRTC"
+        https://bugs.webkit.org/show_bug.cgi?id=189976
+        https://trac.webkit.org/changeset/236557
+
+2018-09-27  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r236558.
+        https://bugs.webkit.org/show_bug.cgi?id=190044
+
+         236557  Broke internal builds (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed build fix, remove *.o files that were committed in
+        r236557."
+        https://trac.webkit.org/changeset/236558
+
+2018-09-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed build fix, remove *.o files that were committed in r236557.
+
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/copy_sse2.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/copy_sse3.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/dequantize_mmx.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/idctllm_mmx.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/idctllm_sse2.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/iwalsh_sse2.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/loopfilter_block_sse2_x86_64.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/loopfilter_sse2.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/mfqe_sse2.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/recon_mmx.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/recon_sse2.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/subpixel_mmx.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/subpixel_sse2.asm.o: Removed.
+        * Source/third_party/libvpx/source/libvpx/vp8/common/x86/subpixel_ssse3.asm.o: Removed.
+
+2018-09-27  Youenn Fablet  <youenn@apple.com>
+
+        Add VP8 support to WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=189976
+
+        Reviewed by Eric Carlson.
+
+        Add support for conditional VP8 support for both encoding and decoding.
+        This boolean is used by WebCore based on the new VP8 runtime flag.
+
+        Compilation is done without using SSE4/AVX2 optimizations.
+
+        * Configurations/libvpx.xcconfig: Added.
+        * Configurations/libwebrtc.iOS.exp:
+        * Configurations/libwebrtc.iOSsim.exp:
+        * Configurations/libwebrtc.mac.exp:
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/libwebrtcpcrtc.xcconfig:
+        * Source/third_party/libvpx/run_yasm_webkit.py: Added.
+        * Source/third_party/libvpx/source/config/mac/x64/vpx_config.asm:
+        * Source/third_party/libvpx/source/config/mac/x64/vpx_config.h:
+        * Source/third_party/libvpx/source/config/mac/x64/vpx_dsp_rtcd.h:
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.h:
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.mm:
+        (webrtc::createWebKitEncoderFactory):
+        (webrtc::createWebKitDecoderFactory):
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCVideoCodecFactory.h:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2018-09-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r236498.
+
+        This wasn't intentionally committed
+
+        Reverted changeset:
+
+        "Import libvpx source code"
+        https://bugs.webkit.org/show_bug.cgi?id=189954
+        https://trac.webkit.org/changeset/236498
+
+2018-09-25  Youenn Fablet  <youenn@apple.com>
+
+        Import libvpx source code
+        https://bugs.webkit.org/show_bug.cgi?id=189954
+
+        Reviewed by Eric Carlson.
+
+        * Source/third_party/libvpx: Added.
+        * .gitignore: Added.
+
+2018-09-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Import libvpx source code
+        https://bugs.webkit.org/show_bug.cgi?id=189954
+
+        Another unreviewed build fix attempt.
+
+        * Source/third_party/libvpx/source/libvpx/VPX.framework: Remove unneeded folder.
+
+2018-09-25  Youenn Fablet  <youenn@apple.com>
+
+        Import libvpx source code
+        https://bugs.webkit.org/show_bug.cgi?id=189954
+
+        Unreviewed, internal build fix.
+
+        * Source/third_party/libvpx/source/libvpx/_iosbuild: Removed.
+        Folder is unneeded.
+
+2018-09-25  Youenn Fablet  <youenn@apple.com>
+
+        Import libvpx source code
+        https://bugs.webkit.org/show_bug.cgi?id=189954
+
+        Reviewed by Eric Carlson.
+
+        * Source/third_party/libvpx: Added.
+        * .gitignore: Added.
+
+2018-09-24  Youenn Fablet  <youenn@apple.com>
+
+        Enable conversion of libwebrtc internal frames as CVPixelBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=189892
+
+        Reviewed by Eric Carlson.
+
+        Renamed encoder/decoder factory creation routine.
+        Make pixelBufferFromFrame take a function to create a CVPixelBuffer
+        if the frame does not wrap one.
+        Initialize the CVPixelBuffer with libwebrtc internal frame.
+
+        * Configurations/libwebrtc.iOS.exp:
+        * Configurations/libwebrtc.iOSsim.exp:
+        * Configurations/libwebrtc.mac.exp:
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.h:
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.mm:
+        (webrtc::createWebKitEncoderFactory):
+        (webrtc::createWebKitDecoderFactory):
+        (webrtc::CopyVideoFrameToPixelBuffer):
+        (webrtc::pixelBufferFromFrame):
+        (webrtc::createVideoToolboxEncoderFactory): Deleted.
+        (webrtc::createVideoToolboxDecoderFactory): Deleted.
+
+2018-09-21  Thibault Saunier  <tsaunier@igalia.com>
+
+        [libwebrtc] Allow IP mismatch for local connections on localhost
+        https://bugs.webkit.org/show_bug.cgi?id=189828
+
+        Reviewed by Alejandro G. Castro.
+
+        The rest of the code allows it, but there was an unecessary assert
+
+        See Bug 187302
+
+        * Source/webrtc/p2p/base/tcpport.cc:
+
 2018-09-18  Youenn Fablet  <youenn@apple.com>
 
         Implement RTCRtpReceiver getContributingSources/getSynchronizationSources

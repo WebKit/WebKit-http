@@ -769,7 +769,7 @@ void CoreAudioCaptureSourceFactory::scheduleReconfiguration()
     CoreAudioSharedUnit::singleton().reconfigureAudioUnit();
 }
 
-RealtimeMediaSource::AudioCaptureFactory& CoreAudioCaptureSource::factory()
+AudioCaptureFactory& CoreAudioCaptureSource::factory()
 {
     return CoreAudioCaptureSourceFactory::singleton();
 }
@@ -888,7 +888,6 @@ void CoreAudioCaptureSource::settingsDidChange(OptionSet<RealtimeMediaSourceSett
     }
 
     m_currentSettings = std::nullopt;
-    RealtimeMediaSource::settingsDidChange(settings);
 }
 
 void CoreAudioCaptureSource::scheduleReconfiguration()

@@ -1057,6 +1057,10 @@ webkit.org/b/155947 [ Debug ] fast/loader/scroll-position-restored-on-back.html 
 webkit.org/b/155948 transitions/cancel-transition.html [ Pass Failure ]
 webkit.org/b/155948 legacy-animation-engine/transitions/cancel-transition.html [ Pass Failure ]
 
+webkit.org/b/189686 webgl/2.0.0/conformance2/textures/misc/copy-texture-image-luma-format.html [ Skip ]
+webkit.org/b/189686 webgl/2.0.0/conformance/textures/misc/tex-image-and-sub-image-2d-with-array-buffer-view.html [ Skip ]
+
+
 # <a download> does not work on iOS.
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-unset.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download.html [ Skip ]
@@ -1245,16 +1249,11 @@ webkit.org/b/181167 imported/w3c/web-platform-tests/service-workers/service-work
 
 webkit.org/b/181392 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html [ Pass Failure ]
 
-webkit.org/b/172879 webrtc/video-unmute.html [ Skip ]
-
 webkit.org/b/181957 [ Release ] http/tests/misc/resource-timing-resolution.html [ Pass Failure ]
 
 webkit.org/b/181821 fast/visual-viewport/ios/caret-after-focus-in-fixed.html [ Pass Failure ]
 
 webkit.org/b/182144 [ Debug ] webgl/1.0.3/conformance/rendering/many-draw-calls.html [ Skip ]
-
-# This is marked as Pass to see if additional logging can reveal the cause of the flakiness.
-webkit.org/b/183714 [ Debug ] http/tests/storageAccess/grant-storage-access-under-opener.html [ Pass ]
 
 webkit.org/b/183860 http/wpt/service-workers/third-party-registration.html [ Pass Timeout ]
 
@@ -1265,7 +1264,6 @@ webkit.org/b/184783 compositing/ios/overflow-scroll-touch-tiles.html [ Pass Fail
 webkit.org/b/179853 [ Debug ] imported/blink/fast/text/international-iteration-simple-text.html [ Pass Failure ]
 
 # skip manual payment-request tests
-imported/w3c/web-platform-tests/payment-request/MerchantValidationEvent/complete-method-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-call-immediate-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-duplicate-shipping-options-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-incremental-update-manual.https.html [ Skip ]
@@ -1279,7 +1277,7 @@ imported/w3c/web-platform-tests/payment-request/change-shipping-option-manual.ht
 imported/w3c/web-platform-tests/payment-request/change-shipping-option-select-last-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/complete-method-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/methodName-attribute-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/payment-response/onpayerdetailchange-attribute.manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/payment-response/onpayerdetailchange-attribute-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/payerEmail-attribute-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/payerName-attribute-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/payerPhone-attribute-manual.https.html [ Skip ]

@@ -130,8 +130,6 @@ private:
     
     void print(WebCore::Frame&) final;
 
-    void testIncomingSyncIPCMessageWhileWaitingForSyncReply() final;
-
     void exceededDatabaseQuota(WebCore::Frame&, const String& databaseName, WebCore::DatabaseDetails) final;
 
     void reachedMaxAppCacheSize(int64_t spaceNeeded) final;
@@ -363,7 +361,7 @@ private:
 
     void didInvalidateDocumentMarkerRects() final;
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void (bool)>&&) final;
     void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void (bool)>&&) final;
 #endif

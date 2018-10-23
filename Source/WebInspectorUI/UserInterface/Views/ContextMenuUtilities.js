@@ -101,13 +101,7 @@ WI.appendContextMenuItemsForURL = function(contextMenu, url, options)
     });
 
     if (WI.frameResourceManager.resourceForURL(url)) {
-        if (WI.settings.experimentalEnableSourcesTab.value) {
-            if (!WI.isShowingSourcesTab()) {
-                contextMenu.appendItem(WI.UIString("Reveal in Sources Tab"), () => {
-                    showResourceWithOptions({preferredTabType: WI.SourcesTabContentView.Type});
-                });
-            }
-        } else if (!WI.isShowingResourcesTab()) {
+        if (!WI.isShowingResourcesTab()) {
             contextMenu.appendItem(WI.UIString("Reveal in Resources Tab"), () => {
                 showResourceWithOptions({ignoreNetworkTab: true, ignoreSearchTab: true});
             });
@@ -191,8 +185,7 @@ WI.appendContextMenuItemsForDOMNode = function(contextMenu, domNode, options = {
     if (WI.domDebuggerManager.supported && isElement && !domNode.isPseudoElement() && domNode.ownerDocument) {
         contextMenu.appendSeparator();
 
-        const allowEditing = false;
-        WI.DOMBreakpointTreeController.appendBreakpointContextMenuItems(contextMenu, domNode, allowEditing);
+        WI.appendContextMenuItemsForDOMNodeBreakpoints(contextMenu, domNode);
     }
 
     contextMenu.appendSeparator();
@@ -260,4 +253,44 @@ WI.appendContextMenuItemsForDOMNode = function(contextMenu, domNode, options = {
     }
 
     contextMenu.appendSeparator();
+};
+
+WI.appendContextMenuItemsForDOMNodeBreakpoints = function(contextMenu, domNode, {allowEditing} = {})
+{
+    if (contextMenu.__domBreakpointItemsAdded)
+        return;
+
+    contextMenu.__domBreakpointItemsAdded = true;
+
+    let subMenu = contextMenu.appendSubMenuItem(WI.UIString("Break on…"));
+
+    let breakpoints = WI.domDebuggerManager.domBreakpointsForNode(domNode);
+    let keyValuePairs = breakpoints.map((breakpoint) => [breakpoint.type, breakpoint]);
+    let breakpointsByType = new Map(keyValuePairs);
+
+    for (let type of Object.values(WI.DOMBreakpoint.Type)) {
+        let label = WI.DOMBreakpointTreeElement.displayNameForType(type);
+        let breakpoint = breakpointsByType.get(type);
+
+        subMenu.appendCheckboxItem(label, function() {
+            if (breakpoint)
+                WI.domDebuggerManager.removeDOMBreakpoint(breakpoint);
+            else
+                WI.domDebuggerManager.addDOMBreakpoint(new WI.DOMBreakpoint(domNode, type));
+        }, !!breakpoint, false);
+    }
+
+    if (allowEditing) {
+        contextMenu.appendSeparator();
+
+        let shouldEnable = breakpoints.some((breakpoint) => breakpoint.disabled);
+        let label = shouldEnable ? WI.UIString("Enable Breakpoints") : WI.UIString("Disable Breakpoints");
+        contextMenu.appendItem(label, () => {
+            breakpoints.forEach((breakpoint) => breakpoint.disabled = !shouldEnable);
+        });
+
+        contextMenu.appendItem(WI.UIString("Delete Breakpoints"), function() {
+            WI.domDebuggerManager.removeDOMBreakpointsForNode(domNode);
+        });
+    }
 };

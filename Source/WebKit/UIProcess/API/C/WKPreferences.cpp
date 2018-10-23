@@ -160,14 +160,12 @@ bool WKPreferencesGetXSSAuditorEnabled(WKPreferencesRef preferencesRef)
 
 void WKPreferencesSetFrameFlatteningEnabled(WKPreferencesRef preferencesRef, bool frameFlatteningEnabled)
 {
-    // FIXME: Expose more frame flattening values.
-    toImpl(preferencesRef)->setFrameFlattening(frameFlatteningEnabled ? static_cast<uint32_t>(WebCore::FrameFlattening::FullyEnabled) : static_cast<uint32_t>(WebCore::FrameFlattening::Disabled));
+    toImpl(preferencesRef)->setFrameFlatteningEnabled(frameFlatteningEnabled);
 }
 
 bool WKPreferencesGetFrameFlatteningEnabled(WKPreferencesRef preferencesRef)
 {
-    // FIXME: Expose more frame flattening values.
-    return toImpl(preferencesRef)->frameFlattening() != static_cast<uint32_t>(WebCore::FrameFlattening::Disabled);
+    return toImpl(preferencesRef)->frameFlatteningEnabled();
 }
 
 void WKPreferencesSetPluginsEnabled(WKPreferencesRef preferencesRef, bool pluginsEnabled)
@@ -449,16 +447,6 @@ void WKPreferencesSetAcceleratedCompositingEnabled(WKPreferencesRef preferencesR
 bool WKPreferencesGetAcceleratedCompositingEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->acceleratedCompositingEnabled();
-}
-
-void WKPreferencesSetAcceleratedCompositingForOverflowScrollEnabled(WKPreferencesRef preferencesRef, bool flag)
-{
-    toImpl(preferencesRef)->setAcceleratedCompositingForOverflowScrollEnabled(flag);
-}
-
-bool WKPreferencesGetAcceleratedCompositingForOverflowScrollEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->acceleratedCompositingForOverflowScrollEnabled();
 }
 
 void WKPreferencesSetCompositingBordersVisible(WKPreferencesRef preferencesRef, bool flag)
@@ -2050,16 +2038,6 @@ void WKPreferencesSetCrossOriginResourcePolicyEnabled(WKPreferencesRef preferenc
 bool WKPreferencesGetCrossOriginResourcePolicyEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->crossOriginResourcePolicyEnabled();
-}
-
-void WKPreferencesSetCrossOriginWindowPolicyEnabled(WKPreferencesRef preferencesRef, bool enabled)
-{
-    toImpl(preferencesRef)->setCrossOriginWindowPolicySupportEnabled(enabled);
-}
-
-bool WKPreferencesGetCrossOriginWindowPolicyEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->crossOriginWindowPolicySupportEnabled();
 }
 
 void WKPreferencesSetRestrictedHTTPResponseAccess(WKPreferencesRef preferencesRef, bool flag)

@@ -225,7 +225,7 @@ void CustomElementReactionQueue::invokeAll(Element& element)
 
 inline void CustomElementReactionQueue::ElementQueue::add(Element& element)
 {
-    RELEASE_ASSERT(!m_invoking);
+    ASSERT(!m_invoking);
     // FIXME: Avoid inserting the same element multiple times.
     m_elements.append(element);
 }
@@ -234,15 +234,17 @@ inline void CustomElementReactionQueue::ElementQueue::invokeAll()
 {
     RELEASE_ASSERT(!m_invoking);
     SetForScope<bool> invoking(m_invoking, true);
-    Vector<Ref<Element>> elements;
-    elements.swap(m_elements);
-    RELEASE_ASSERT(m_elements.isEmpty());
-    for (auto& element : elements) {
-        auto* queue = element->reactionQueue();
+    unsigned originalSize = m_elements.size();
+    // It's possible for more elements to be enqueued if some IDL attributes were missing CEReactions.
+    // Invoke callbacks slightly later here instead of crashing / ignoring those cases.
+    for (unsigned i = 0; i < m_elements.size(); ++i) {
+        auto& element = m_elements[i].get();
+        auto* queue = element.reactionQueue();
         ASSERT(queue);
-        queue->invokeAll(element.get());
+        queue->invokeAll(element);
     }
-    RELEASE_ASSERT(m_elements.isEmpty());
+    ASSERT_UNUSED(originalSize, m_elements.size() == originalSize);
+    m_elements.clear();
 }
 
 inline void CustomElementReactionQueue::ElementQueue::processQueue(JSC::ExecState* state)

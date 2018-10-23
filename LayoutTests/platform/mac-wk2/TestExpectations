@@ -14,7 +14,7 @@ fast/events/autoscroll-when-zoomed.html [ Pass ]
 fast/events/autoscroll-main-document.html [ Pass ]
 
 accessibility/smart-invert.html [ Pass ]
-accessibility/smart-invert-reference.html [ Pass ]
+webkit.org/b/189818 accessibility/smart-invert-reference.html [ Pass ImageOnlyFailure ]
 fast/media/mq-inverted-colors-live-update.html [ Pass ]
 fast/media/mq-inverted-colors-live-update-in-subframes.html [ Pass ]
 fast/media/mq-monochrome-live-update.html [ Pass ]
@@ -26,6 +26,7 @@ fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
 [ Sierra ] http/tests/ssl/applepay/ApplePaySessionV3.html [ Skip ]
 [ Sierra ] http/tests/ssl/applepay/ApplePaySessionV4.html [ Skip ]
 [ Sierra ] http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https.html [ Skip ]
+[ Sierra ] http/tests/ssl/applepay/ApplePayShippingAddressChangeEventErrorsV3.https.html [ Skip ]
 [ HighSierra ] http/tests/ssl/applepay/ApplePayButtonV4.html [ Skip ]
 [ HighSierra ] http/tests/ssl/applepay/ApplePaySessionV4.html [ Skip ]
 
@@ -61,6 +62,8 @@ webkit.org/b/187773 http/tests/webAPIStatistics [ Pass ]
 
 webkit.org/b/184569 storage/indexeddb/modern/transactions-stop-on-navigation.html [ Pass Failure ]
 
+
+fast/events/inactive-window-no-mouse-event.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -709,7 +712,7 @@ http/tests/resourceLoadStatistics/user-interaction-reported-after-website-data-r
 [ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-then-navigate-cross-site-should-not-have-access.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-then-navigate-same-site-should-have-access.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/deny-storage-access-under-opener.html [ Pass ]
-[ HighSierra+ ] http/tests/storageAccess/grant-storage-access-under-opener.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/deny-storage-access-under-opener-if-auto-dismiss.html [ Pass ]
 
 # As of https://trac.webkit.org/changeset/227762 the timestampResolution is just 5 seconds which makes this test flaky
 http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html [ Skip ]
@@ -755,6 +758,7 @@ webkit.org/b/185994 [ Debug ] fast/text/user-installed-fonts/shadow-postscript-f
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePaySessionV3.html [ Pass ]
 [ Mojave+ ] http/tests/ssl/applepay/ApplePaySessionV4.html [ Pass ]
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https.html [ Pass ]
+[ HighSierra+ ] http/tests/ssl/applepay/ApplePayShippingAddressChangeEventErrorsV3.https.html [ Pass ]
 # <rdar://problem/31634451>
 [ HighSierra+ ] http/tests/resourceLoadStatistics/cookies-with-and-without-user-interaction.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/cookie-deletion.html [ Pass ]
@@ -767,6 +771,7 @@ webkit.org/b/185994 [ Debug ] fast/text/user-installed-fonts/shadow-postscript-f
 [ HighSierra+ ] http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/cap-cache-max-age-for-prevalent-resource.html [ Pass ]
+http/tests/cookies/capped-lifetime-for-cookie-set-in-js.html [ Pass ]
 
 # Skipped in general expectations since they only work on iOS and Mac, WK2.
 http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Pass ]
@@ -798,8 +803,6 @@ webkit.org/b/173742 security/contentSecurityPolicy/plugins-types-allows-youtube-
 webkit.org/b/181167 imported/w3c/web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/update.https.html [ Pass Failure ]
 
 webkit.org/b/181107 http/wpt/cache-storage/cache-put-stream.https.any.html [ Pass Failure ]
-
-webkit.org/b/172879 webrtc/video-unmute.html [ Skip ]
 
 webkit.org/b/181502 swipe/pushstate-with-manual-scrollrestoration.html [ Failure ]
 
@@ -842,7 +845,6 @@ webkit.org/b/186362 [ Release ] http/tests/resourceLoadStatistics/prevalent-reso
 webkit.org/b/186425 [ Debug ] inspector/console/webcore-logging.html [ Pass Failure ]
 
 # skip manual payment-request tests
-imported/w3c/web-platform-tests/payment-request/MerchantValidationEvent/complete-method-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-call-immediate-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-duplicate-shipping-options-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-incremental-update-manual.https.html [ Skip ]
@@ -856,7 +858,7 @@ imported/w3c/web-platform-tests/payment-request/change-shipping-option-manual.ht
 imported/w3c/web-platform-tests/payment-request/change-shipping-option-select-last-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/complete-method-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/methodName-attribute-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/payment-response/onpayerdetailchange-attribute.manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/payment-response/onpayerdetailchange-attribute-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/payerEmail-attribute-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/payerName-attribute-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/payerPhone-attribute-manual.https.html [ Skip ]
@@ -874,4 +876,15 @@ imported/w3c/web-platform-tests/payment-request/updateWith-method-pmi-handling-m
 imported/w3c/web-platform-tests/payment-request/user-abort-algorithm-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/user-accepts-payment-request-algo-manual.https.html [ Skip ]
 
-webkit.org/b/184204 [ Sierra ] http/wpt/cache-storage/cache-put-keys.https.any.worker.html [ Pass Failure ]
+webkit.org/b/189094 [ HighSierra+ ] accessibility/mac/focus-setting-selection-syncronizing-not-clearing.html [ Skip ]
+
+webkit.org/b/189598 compositing/backing/backing-store-attachment-fill-forwards-animation.html [ Pass Failure ]
+
+# Skip local authenticator tests for mac now.
+http/wpt/webauthn/public-key-credential-create-failure-local.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-create-success-local.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-get-failure-local.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-get-success-local.https.html [ Skip ]
+# The following tests require PublicKeyCredential objects. We can only produce them via local authenticators now.
+http/wpt/credential-management/credentialscontainer-store-basics.https.html [ Skip ]
+http/wpt/webauthn/idl.https.html [ Skip ]

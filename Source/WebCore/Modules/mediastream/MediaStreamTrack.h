@@ -69,6 +69,10 @@ public:
     WEBCORE_EXPORT const String& id() const;
     const String& label() const;
 
+
+    const AtomicString& contentHint() const;
+    void setContentHint(const String&);
+        
     bool enabled() const;
     void setEnabled(bool);
 
@@ -145,7 +149,9 @@ protected:
     MediaStreamTrack(ScriptExecutionContext&, Ref<MediaStreamTrackPrivate>&&);
 
     ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
-
+        
+    Ref<MediaStreamTrackPrivate> m_private;
+        
 private:
     explicit MediaStreamTrack(MediaStreamTrack&);
 
@@ -171,7 +177,7 @@ private:
     void trackEnabledChanged(MediaStreamTrackPrivate&) final;
 
     Vector<Observer*> m_observers;
-    Ref<MediaStreamTrackPrivate> m_private;
+    
 
     MediaTrackConstraints m_constraints;
     std::optional<DOMPromiseDeferred<void>> m_promise;

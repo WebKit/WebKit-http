@@ -205,8 +205,8 @@ WebProcess::WebProcess()
         parentProcessConnection()->send(Messages::WebResourceLoadStatisticsStore::ResourceLoadStatisticsUpdated(WTFMove(statistics)), 0);
     });
 
-    ResourceLoadObserver::shared().setRequestStorageAccessUnderOpenerCallback([this] (const String& domainInNeedOfStorageAccess, uint64_t openerPageID, const String& openerDomain, bool isTriggeredByUserGesture) {
-        parentProcessConnection()->send(Messages::WebResourceLoadStatisticsStore::RequestStorageAccessUnderOpener(domainInNeedOfStorageAccess, openerPageID, openerDomain, isTriggeredByUserGesture), 0);
+    ResourceLoadObserver::shared().setRequestStorageAccessUnderOpenerCallback([this] (const String& domainInNeedOfStorageAccess, uint64_t openerPageID, const String& openerDomain) {
+        parentProcessConnection()->send(Messages::WebResourceLoadStatisticsStore::RequestStorageAccessUnderOpener(domainInNeedOfStorageAccess, openerPageID, openerDomain), 0);
     });
     
     Gigacage::disableDisablingPrimitiveGigacageIfShouldBeEnabled();
@@ -251,12 +251,6 @@ void WebProcess::initializeConnection(IPC::Connection* connection)
         supplement->initializeConnection(connection);
 
     m_webConnection = WebConnectionToUIProcess::create(this);
-
-    // In order to ensure that the asynchronous messages that are used for notifying the UI process
-    // about when WebFrame objects come and go are always delivered before the synchronous policy messages,
-    // use this flag to force synchronous messages to be treated as asynchronous messages in the UI process
-    // unless when doing so would lead to a deadlock.
-    connection->setOnlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage(true);
 }
 
 void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
@@ -421,7 +415,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     JSC::Wasm::enableFastMemory();
 #endif
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     ResourceLoadObserver::shared().setShouldLogUserInteraction(parameters.shouldLogUserInteraction);
 #endif
 
@@ -1030,10 +1024,6 @@ void WebProcess::backgroundResponsivenessPing()
     parentProcessConnection()->send(Messages::WebProcessProxy::DidReceiveBackgroundResponsivenessPing(), 0);
 }
 
-void WebProcess::syncIPCMessageWhileWaitingForSyncReplyForTesting()
-{
-}
-
 void WebProcess::didTakeAllMessagesForPort(Vector<MessageWithMessagePorts>&& messages, uint64_t messageCallbackIdentifier, uint64_t messageBatchIdentifier)
 {
     WebMessagePortChannelProvider::singleton().didTakeAllMessagesForPort(WTFMove(messages), messageCallbackIdentifier, messageBatchIdentifier);
@@ -1108,7 +1098,7 @@ void WebProcess::setInjectedBundleParameters(const IPC::DataReference& value)
 static IPC::Connection::Identifier getNetworkProcessConnection(IPC::Connection& connection)
 {
     IPC::Attachment encodedConnectionIdentifier;
-    if (!connection.sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(), Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(encodedConnectionIdentifier), 0, Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply)) {
+    if (!connection.sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(), Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(encodedConnectionIdentifier), 0)) {
 #if PLATFORM(GTK) || PLATFORM(WPE)
         // GTK+ and WPE ports don't exit on send sync message failure.
         // In this particular case, the network process can be terminated by the UI process while the
@@ -1193,6 +1183,13 @@ void WebProcess::networkProcessConnectionClosed(NetworkProcessConnection* connec
     }
 #endif
 
+#if ENABLE(SERVICE_WORKER)
+    if (SWContextManager::singleton().connection()) {
+        RELEASE_LOG(ServiceWorker, "Service worker process is exiting because network process is gone");
+        _exit(EXIT_SUCCESS);
+    }
+#endif
+
     m_networkProcessConnection = nullptr;
 
     logDiagnosticMessageForNetworkProcessCrash();
@@ -1213,13 +1210,6 @@ void WebProcess::webToStorageProcessConnectionClosed(WebToStorageProcessConnecti
 {
     ASSERT(m_webToStorageProcessConnection);
     ASSERT(m_webToStorageProcessConnection == connection);
-
-#if ENABLE(SERVICE_WORKER)
-    if (SWContextManager::singleton().connection()) {
-        RELEASE_LOG(ServiceWorker, "Service worker process is exiting because its storage process is gone");
-        _exit(EXIT_SUCCESS);
-    }
-#endif
 
     m_webToStorageProcessConnection = nullptr;
 }
@@ -1709,12 +1699,12 @@ LibWebRTCNetwork& WebProcess::libWebRTCNetwork()
 }
 
 #if ENABLE(SERVICE_WORKER)
-void WebProcess::establishWorkerContextConnectionToStorageProcess(uint64_t pageGroupID, uint64_t pageID, const WebPreferencesStore& store, PAL::SessionID initialSessionID)
+void WebProcess::establishWorkerContextConnectionToNetworkProcess(uint64_t pageGroupID, uint64_t pageID, const WebPreferencesStore& store, PAL::SessionID initialSessionID)
 {
     // We are in the Service Worker context process and the call below establishes our connection to the Storage Process
     // by calling webToStorageProcessConnection. SWContextManager needs to use the same underlying IPC::Connection as the
     // WebToStorageProcessConnection for synchronization purposes.
-    auto& ipcConnection = ensureWebToStorageProcessConnection(initialSessionID).connection();
+    auto& ipcConnection = ensureNetworkProcessConnection().connection();
     SWContextManager::singleton().setConnection(std::make_unique<WebSWContextManagerConnection>(ipcConnection, pageGroupID, pageID, store));
 }
 

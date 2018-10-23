@@ -86,9 +86,7 @@ uint32_t applicationSDKVersion()
 
 bool isInWebProcess()
 {
-    static bool mainBundleIsWebProcess = [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.WebKit.WebContent.Development"]
-        || [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.WebKit.WebContent"]
-        || [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.WebProcess"];
+    static bool mainBundleIsWebProcess = [[[NSBundle mainBundle] bundleIdentifier] hasPrefix:@"com.apple.WebKit.WebContent"];
     return mainBundleIsWebProcess;
 }
 
@@ -217,6 +215,14 @@ bool IOSApplication::isDumpRenderTree()
     // may be launched, where the bundle identifier of each instance has a unique suffix.
     static bool isDumpRenderTree = applicationBundleIsEqualTo("org.webkit.DumpRenderTree"_s); // e.g. org.webkit.DumpRenderTree0
     return isDumpRenderTree;
+}
+
+bool IOSApplication::isWebKitTestRunner()
+{
+    // We use a prefix match instead of strict equality since multiple instances of WebKitTestRunner
+    // may be launched, where the bundle identifier of each instance has a unique suffix.
+    static bool isWebKitTestRunner = applicationBundleIsEqualTo("org.webkit.WebKitTestRunnerApp"_s); // e.g. org.webkit.WebKitTestRunnerApp0
+    return isWebKitTestRunner;
 }
 
 bool IOSApplication::isMobileStore()

@@ -625,7 +625,7 @@ public:
         [NSNumber numberWithBool:YES], WebKitDataTransferItemsEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitCustomPasteboardDataEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitModernMediaControlsEnabledPreferenceKey,
-        [NSNumber numberWithBool:NO], WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey,
 
 #if ENABLE(WEBGL2)
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
@@ -634,7 +634,6 @@ public:
         [NSNumber numberWithBool:NO], WebKitWebGPUEnabledPreferenceKey,
 #endif
         [NSNumber numberWithBool:NO], WebKitCacheAPIEnabledPreferenceKey,
-        [NSNumber numberWithBool:NO], WebKitCrossOriginWindowPolicySupportEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitFetchAPIEnabledPreferenceKey,
 
 #if ENABLE(STREAMS_API)
@@ -645,7 +644,7 @@ public:
         [NSNumber numberWithBool:NO], WebKitDownloadAttributeEnabledPreferenceKey,
 #endif
         [NSNumber numberWithBool:NO], WebKitDirectoryUploadEnabledPreferenceKey,
-        [NSNumber numberWithBool:NO], WebKitWebAnimationsEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitWebAnimationsEnabledPreferenceKey,
 
 #if PLATFORM(IOS)
         [NSNumber numberWithBool:NO], WebKitVisualViewportEnabledPreferenceKey,
@@ -664,6 +663,7 @@ public:
 #if ENABLE(WEB_RTC)
         [NSNumber numberWithBool:YES], WebKitPeerConnectionEnabledPreferenceKey,
 #endif
+        [NSNumber numberWithBool:NO], WebKitSelectionAcrossShadowBoundariesEnabledPreferenceKey,
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
 #endif
@@ -3013,16 +3013,6 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitCacheAPIEnabledPreferenceKey];
 }
 
-- (BOOL)crossOriginWindowPolicySupportEnabled
-{
-    return [self _boolValueForKey:WebKitCrossOriginWindowPolicySupportEnabledPreferenceKey];
-}
-
-- (void)setCrossOriginWindowPolicySupportEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitCrossOriginWindowPolicySupportEnabledPreferenceKey];
-}
-
 - (BOOL)fetchAPIEnabled
 {
     return [self _boolValueForKey:WebKitFetchAPIEnabledPreferenceKey];
@@ -3363,6 +3353,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setServerTimingEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitServerTimingEnabledPreferenceKey];
+}
+
+- (BOOL)selectionAcrossShadowBoundariesEnabled
+{
+    return [self _boolValueForKey:WebKitSelectionAcrossShadowBoundariesEnabledPreferenceKey];
+}
+
+- (void)setSelectionAcrossShadowBoundariesEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitSelectionAcrossShadowBoundariesEnabledPreferenceKey];
 }
 
 @end

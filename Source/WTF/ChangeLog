@@ -1,3 +1,313 @@
+2018-10-01  Koby Boyango  <koby.b@mce-sys.com>
+
+        [WTF][JSCONLY] Use MainThreadWin on Windows in the JSCOnly port
+        https://bugs.webkit.org/show_bug.cgi?id=190121
+
+        Reviewed by Yusuke Suzuki.
+
+        This fixes JSCOnly build on Windows after r236617.
+
+        * wtf/PlatformJSCOnly.cmake:
+
+2018-10-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r236647.
+        https://bugs.webkit.org/show_bug.cgi?id=190124
+
+        Breaking test stress/big-int-to-string.js (Requested by
+        caiolima_ on #webkit).
+
+        Reverted changeset:
+
+        "[BigInt] BigInt.proptotype.toString is broken when radix is
+        power of 2"
+        https://bugs.webkit.org/show_bug.cgi?id=190033
+        https://trac.webkit.org/changeset/236647
+
+2018-09-30  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] BigInt.proptotype.toString is broken when radix is power of 2
+        https://bugs.webkit.org/show_bug.cgi?id=190033
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/MathExtras.h:
+        (WTF::ctz32):
+
+2018-09-28  Jer Noble  <jer.noble@apple.com>
+
+        Refactoring: eliminate raw pointer usage in Fullscreen code
+        https://bugs.webkit.org/show_bug.cgi?id=188747
+        <rdar://problem/43541164>
+
+        Reviewed by Alex Christensen.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/WeakPtrContainer.h: Added.
+
+2018-09-28  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [WTF] Make isMainThread more reliable
+        https://bugs.webkit.org/show_bug.cgi?id=189880
+
+        Reviewed by Mark Lam.
+
+        isMainThread() relied on Thread::current(). This API becomes broken in Windows
+        when the Thread is about to be destroyed since TLS is already cleared. This causes
+        a bug since `isMainThread()` is called in Thread::didExit in Windows.
+
+        This patch makes this `isMainThread` more reliable in all the platforms. In Windows,
+        we use `Thread::currentID()` instead of `Thread::current()` since `Thread::currentID`
+        uses Win32 GetCurrentThreadId directly. In the other system, we use `pthread_main_np`
+        or `pthread_self` instead.
+
+        We also move `holdLock` code inside `if (shouldRemoveThreadFromThreadGroup())`. If
+        the other thread takes a mutex and destroyed, this `holdLock` waits forever. This problem
+        only happens in Windows since Windows calls TLS destructor for the main thread.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/MainThread.cpp:
+        (WTF::initializeMainThread):
+        (): Deleted.
+        (WTF::isMainThread): Deleted.
+        (WTF::isMainThreadIfInitialized): Deleted.
+        * wtf/Platform.h:
+        * wtf/PlatformMac.cmake:
+        * wtf/Threading.cpp:
+        (WTF::Thread::didExit):
+        * wtf/cocoa/MainThreadCocoa.mm: Renamed from Source/WTF/wtf/mac/MainThreadMac.mm.
+        * wtf/generic/MainThreadGeneric.cpp:
+        (WTF::initializeMainThreadPlatform):
+        (WTF::isMainThread):
+        (WTF::isMainThreadIfInitialized):
+        * wtf/win/MainThreadWin.cpp:
+        (WTF::initializeMainThreadPlatform):
+        (WTF::isMainThread):
+        (WTF::isMainThreadIfInitialized):
+
+2018-09-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r236605.
+        https://bugs.webkit.org/show_bug.cgi?id=190087
+
+        caused three API test timeouts (Requested by jernoble on
+        #webkit).
+
+        Reverted changeset:
+
+        "Refactoring: eliminate raw pointer usage in Fullscreen code"
+        https://bugs.webkit.org/show_bug.cgi?id=188747
+        https://trac.webkit.org/changeset/236605
+
+2018-09-28  Brian Burg  <bburg@apple.com>
+
+        Replace recently added line comments in Compiler.h
+        https://bugs.webkit.org/show_bug.cgi?id=190062
+        <rdar://problem/44838618>
+
+        Reviewed by Joseph Pecoraro.
+
+        This breaks some Apple-internal tooling. For now, work around it by
+        changing the comment style. On the other side, the issue will be fixed
+        more permanently by adopting the approach from r230213.
+
+        * wtf/Compiler.h: Use multiline comments.
+
+2018-09-28  Jer Noble  <jer.noble@apple.com>
+
+        Refactoring: eliminate raw pointer usage in Fullscreen code
+        https://bugs.webkit.org/show_bug.cgi?id=188747
+        <rdar://problem/43541164>
+
+        Reviewed by Alex Christensen.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/WeakPtrContainer.h: Added.
+
+2018-09-28  Koby Boyango  <koby.b@mce.systems>
+
+        [WTF] Add ExternalStringImpl, a StringImpl for user controlled buffers
+        https://bugs.webkit.org/show_bug.cgi?id=189991
+
+        Reviewed by Yusuke Suzuki.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/text/ExternalStringImpl.cpp: Added.
+        * wtf/text/ExternalStringImpl.h: Added.
+        * wtf/text/StringImpl.cpp:
+        * wtf/text/StringImpl.h:
+
+2018-09-27  Saam barati  <sbarati@apple.com>
+
+        Verify the contents of AssemblerBuffer on arm64e
+        https://bugs.webkit.org/show_bug.cgi?id=190057
+        <rdar://problem/38916630>
+
+        Reviewed by Mark Lam.
+
+        * wtf/PtrTag.h:
+        (WTF::tagInt):
+
+2018-09-27  Jer Noble  <jer.noble@apple.com>
+
+        MediaPlayer should have mediaPlayerWaitingForKeyChanged() / bool waitingForKey() accessor
+        https://bugs.webkit.org/show_bug.cgi?id=189951
+
+        Reviewed by Eric Carlson.
+
+        Templated functions should take r-value references, as they have perfect type deduction for
+        all parameter types; references, l-value references, and r-value references in template function
+        parameters have special type deduction semantics.
+        See: <https://en.cppreference.com/w/cpp/language/reference#Forwarding_references>
+
+        Previously, const reference parameters would be copied when passed into anyOf(), and containers
+        of Ref<> would generate compile errors when passed into anyOf, as they cannot be copied. Now,
+        with r-value reference types in template parameters, a const reference is mapped to a const reference,
+        a non-const reference is mapped to a non-const reference, and a r-value reference is mapped to
+        an r-value reference.
+
+        * wtf/Algorithms.h:
+        (WTF::forEach):
+        (WTF::anyOf):
+        (WTF::allOf):
+
+2018-09-25  John Wilander  <wilander@apple.com>
+
+        Change from HAVE(CFNETWORK_STORAGE_PARTITIONING) to ENABLE(RESOURCE_LOAD_STATISTICS)
+        https://bugs.webkit.org/show_bug.cgi?id=189959
+        <rdar://problem/44767642>
+
+        Reviewed by Chris Dumez.
+
+        * wtf/Platform.h:
+            Enables RESOURCE_LOAD_STATISTICS for Cocoa platforms.
+
+2018-09-24  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Rename WTF_COMPILER_GCC_OR_CLANG to WTF_COMPILER_GCC_COMPATIBLE
+        https://bugs.webkit.org/show_bug.cgi?id=189733
+
+        Reviewed by Michael Catanzaro.
+
+        Clang for Windows build enables WTF_COMPILER_CLANG and
+        WTF_COMPILER_MSVC, but disables WTF_COMPILER_GCC_OR_CLANG. It is
+        strange WTF_COMPILER_GCC_OR_CLANG is not enabled even though
+        WTF_COMPILER_CLANG is enabled. However, Clang for Windows imitates
+        MSVC, and codes for COMPILER(GCC_OR_CLANG) are for non MSVC. At
+        least at the moment, it is not feasible to define
+        WTF_COMPILER_GCC_OR_CLANG for Clang for Windows.
+
+        To solve the issue, this change renames WTF_COMPILER_GCC_OR_CLANG
+        to WTF_COMPILER_GCC_COMPATIBLE.
+
+        As an exception, I'd like to use IGNORE_WARNINGS_* macros even in
+        Clang for Windows builds.
+
+        * wtf/Assertions.cpp: Replaced COMPILER(GCC_OR_CLANG) with COMPILER(GCC_COMPATIBLE).
+        * wtf/Assertions.h: Ditto.
+        * wtf/Atomics.h: Ditto.
+        * wtf/CheckedArithmetic.h: Ditto.
+        * wtf/FastMalloc.h: Ditto.
+        * wtf/MathExtras.h: Ditto.
+        * wtf/Platform.h: Ditto.
+        * wtf/StdLibExtras.h: Ditto.
+        * wtf/Vector.h: Ditto.
+        * wtf/text/ASCIIFastPath.h: Ditto.
+        * wtf/Compiler.h:  Ditto. Replaced "COMPILER(GCC_OR_CLANG)" with "COMPILER(GCC) || COMPILER(CLANG)" of IGNORE_WARNINGS_* macros.
+
+2018-09-21  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Enable LLInt ASM interpreter on X64 and ARM64 in non JIT configuration
+        https://bugs.webkit.org/show_bug.cgi?id=189778
+
+        Reviewed by Keith Miller.
+
+        This patch adds ENABLE(C_LOOP) which indicates we use CLoop as the interpreter.
+        Previously, we used !ENABLE(JIT) for this configuration. But now, we have
+        a build configuration that has LLInt ASM interpreter (not CLoop) and !ENABLE(JIT).
+
+        We enable LLInt ASM interpreter for non JIT environment in X86_64 and ARM64 architectures.
+        And we enable ENABLE(ASSEMBLER) for non JIT environment since it offers machine register
+        information which is used for LLInt and SamplingProfiler.
+
+        * wtf/Platform.h:
+
+2018-09-21  Keith Miller  <keith_miller@apple.com>
+
+        Add Promise SPI
+        https://bugs.webkit.org/show_bug.cgi?id=189809
+
+        Reviewed by Saam Barati.
+
+        Fix issue where creating a JSContextRef off the main thread before
+        creating initializing the main thread would cause an assertion
+        failure.
+
+        * wtf/MainThread.cpp:
+        (WTF::isMainThreadIfInitialized):
+        * wtf/MainThread.h:
+        * wtf/mac/MainThreadMac.mm:
+        (WTF::isMainThreadIfInitialized):
+        * wtf/text/cf/StringImplCF.cpp:
+        (WTF::StringImpl::createCFString):
+
+2018-09-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r236359.
+
+        Broke the Windows build.
+
+        Reverted changeset:
+
+        "Add Promise SPI"
+        https://bugs.webkit.org/show_bug.cgi?id=189809
+        https://trac.webkit.org/changeset/236359
+
+2018-09-21  Keith Miller  <keith_miller@apple.com>
+
+        Add Promise SPI
+        https://bugs.webkit.org/show_bug.cgi?id=189809
+
+        Reviewed by Saam Barati.
+
+        Fix issue where creating a JSContextRef off the main thread before
+        creating initializing the main thread would cause an assertion
+        failure.
+
+        * wtf/MainThread.cpp:
+        (WTF::isMainThreadIfInitialized):
+        * wtf/MainThread.h:
+        * wtf/mac/MainThreadMac.mm:
+        (WTF::isMainThreadIfInitialized):
+        * wtf/text/cf/StringImplCF.cpp:
+        (WTF::StringImpl::createCFString):
+
+2018-09-20  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][Clang] UNUSED_PARAM(this) causes compilation error of "cannot take the address of an rvalue of type"
+        https://bugs.webkit.org/show_bug.cgi?id=189732
+
+        Reviewed by Per Arne Vollan.
+
+        Clang for Windows can't compile the MSVC workaround of
+        UNUSED_PARAM which has been introduced for Windows CE and Visual
+        Studio 10. I think it's safe just to remove it.
+
+        * wtf/Compiler.h: Removed the code for COMPILER(MSVC).
+
+2018-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r235976.
+
+        Broke ARM
+
+        Reverted changeset:
+
+        "Use a Variant instead of a union in CSSSelector"
+        https://bugs.webkit.org/show_bug.cgi?id=188559
+        https://trac.webkit.org/changeset/235976
+
 2018-09-17  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [WTF] Use Semaphore and BinarySemaphore instead of dispatch_semaphore_t

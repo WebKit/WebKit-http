@@ -25,15 +25,20 @@
 "use strict";
 
 class FuncDef extends Func {
-    constructor(origin, name, returnType, parameters, body, isCast, shaderType)
+    constructor(origin, name, returnType, parameters, body, isCast, shaderType = "", semantic = null, attributeBlock = null)
     {
-        super(origin, name, returnType, parameters, isCast, shaderType);
+        super(origin, name, returnType, parameters, isCast, shaderType, semantic, attributeBlock);
         this._body = body;
         this.isRestricted = false;
     }
 
     get body() { return this._body; }
-    
+
+    set body(newBody)
+    {
+        this._body = newBody;
+    }
+
     rewrite(rewriter)
     {
         this._returnType = this._returnType.visit(rewriter);

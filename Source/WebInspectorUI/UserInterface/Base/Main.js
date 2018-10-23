@@ -438,7 +438,6 @@ WI.contentLoaded = function()
     let productionTabClasses = [
         WI.ElementsTabContentView,
         WI.NetworkTabContentView,
-        WI.SourcesTabContentView,
         WI.DebuggerTabContentView,
         WI.ResourcesTabContentView,
         WI.TimelineTabContentView,
@@ -966,23 +965,6 @@ WI.isShowingResourcesTab = function()
     return this.tabBrowser.selectedTabContentView instanceof WI.ResourcesTabContentView;
 };
 
-WI.isShowingSourcesTab = function()
-{
-    return this.tabBrowser.selectedTabContentView instanceof WI.SourcesTabContentView;
-};
-
-WI.showSourcesTab = function(options = {})
-{
-    let tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.SourcesTabContentView);
-    if (!tabContentView)
-        tabContentView = new WI.SourcesTabContentView;
-
-    if (options.breakpointToSelect instanceof WI.Breakpoint)
-        tabContentView.revealAndSelectBreakpoint(options.breakpointToSelect);
-
-    this.tabBrowser.showTabForContentView(tabContentView);
-};
-
 WI.showStorageTab = function()
 {
     var tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.StorageTabContentView);
@@ -1368,10 +1350,7 @@ WI._dragOver = function(event)
 
 WI._debuggerDidPause = function(event)
 {
-    if (WI.settings.experimentalEnableSourcesTab.value)
-        this.showSourcesTab();
-    else
-        this.showDebuggerTab({showScopeChainSidebar: WI.settings.showScopeChainOnPause.value});
+    this.showDebuggerTab({showScopeChainSidebar: WI.settings.showScopeChainOnPause.value});
 
     this._dashboardContainer.showDashboardViewForRepresentedObject(this.dashboardManager.dashboards.debugger);
 
@@ -1766,21 +1745,9 @@ WI._moveWindowMouseDown = function(event)
     event[WI.Popover.EventPreventDismissSymbol] = true;
 
     if (WI.Platform.name === "mac") {
-        // New Mac releases can start a window drag.
-        if (WI.Platform.version.release >= 11) {
-            InspectorFrontendHost.startWindowDrag();
-            event.preventDefault();
-            return;
-        }
-
-        // Ignore dragging on the top of the toolbar on Mac if the system handles it.
-        if (WI.Platform.version.release === 10) {
-            const windowDragHandledTitleBarHeight = 22;
-            if (event.pageY < windowDragHandledTitleBarHeight) {
-                event.preventDefault();
-                return;
-            }
-        }
+        InspectorFrontendHost.startWindowDrag();
+        event.preventDefault();
+        return;
     }
 
     var lastScreenX = event.screenX;

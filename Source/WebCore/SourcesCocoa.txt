@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Apple Inc. All rights reserved.
+// Copyright (C) 2017-2018 Apple Inc. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,7 +25,6 @@ Modules/mediasession/WebMediaSessionManager.cpp
 
 Modules/plugins/QuickTimePluginReplacement.mm
 Modules/plugins/YouTubePluginReplacement.cpp
-Modules/webauthn/cocoa/LocalAuthenticator.mm
 Modules/webdatabase/cocoa/DatabaseManagerCocoa.mm
 
 accessibility/ios/AccessibilityObjectIOS.mm
@@ -79,6 +78,8 @@ editing/SmartReplaceCF.cpp
 editing/cocoa/DataDetection.mm
 editing/cocoa/EditorCocoa.mm
 editing/cocoa/FontAttributeChangesCocoa.mm
+editing/cocoa/FontAttributesCocoa.mm
+editing/cocoa/FontShadowCocoa.mm
 editing/cocoa/HTMLConverter.mm @no-unify
 editing/cocoa/WebArchiveResourceFromNSAttributedString.mm
 editing/cocoa/WebArchiveResourceWebResourceHandler.mm
@@ -194,7 +195,6 @@ platform/cocoa/FileMonitorCocoa.mm
 platform/cocoa/FileSystemCocoa.mm
 platform/cocoa/KeyEventCocoa.mm
 platform/cocoa/LocalizedStringsCocoa.mm
-platform/cocoa/LocalAuthenticationSoftLink.mm
 platform/cocoa/MIMETypeRegistryCocoa.mm
 platform/cocoa/NetworkExtensionContentFilter.mm
 platform/cocoa/ParentalControlsContentFilter.mm
@@ -293,6 +293,7 @@ platform/graphics/cg/SubimageCacheWithTimer.cpp
 platform/graphics/cg/TransformationMatrixCG.cpp
 platform/graphics/cg/UTIRegistry.cpp
 
+platform/graphics/cocoa/ColorCocoa.mm
 platform/graphics/cocoa/GraphicsContext3DCocoa.mm
 platform/graphics/cocoa/GraphicsContextCocoa.mm
 platform/graphics/cocoa/FontCacheCoreText.cpp
@@ -551,6 +552,7 @@ platform/mediastream/mac/RealtimeMediaSourceCenterMac.cpp
 platform/mediastream/mac/RealtimeOutgoingAudioSourceCocoa.cpp
 platform/mediastream/mac/RealtimeOutgoingVideoSourceCocoa.cpp
 platform/mediastream/mac/ScreenDisplayCaptureSourceMac.mm
+platform/mediastream/mac/WindowDisplayCaptureSourceMac.mm
 
 platform/audio/mac/AudioSampleDataSource.mm
 
@@ -585,6 +587,8 @@ platform/mediastream/libwebrtc/LibWebRTCProviderCocoa.cpp
 
     JSApplePayContactField.cpp
     JSApplePayError.cpp
+    JSApplePayErrorCode.cpp
+    JSApplePayErrorContactField.cpp
     JSApplePayLineItem.cpp
     JSApplePayMerchantCapability.cpp
     JSApplePayModifier.cpp

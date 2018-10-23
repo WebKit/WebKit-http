@@ -64,12 +64,12 @@ struct NetworkProcessCreationParameters;
 class WebUserContentControllerProxy;
 struct WebsiteData;
 
-class NetworkProcessProxy : public ChildProcessProxy, private ProcessThrottlerClient {
+class NetworkProcessProxy final : public ChildProcessProxy, private ProcessThrottlerClient {
 public:
-    static Ref<NetworkProcessProxy> create(WebProcessPool&);
+    explicit NetworkProcessProxy(WebProcessPool&);
     ~NetworkProcessProxy();
 
-    void getNetworkProcessConnection(Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&&);
+    void getNetworkProcessConnection(WebProcessProxy&, Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&&);
 
     DownloadProxy* createDownloadProxy(const WebCore::ResourceRequest&);
 
@@ -77,7 +77,7 @@ public:
     void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, WallTime modifiedSince, CompletionHandler<void()>&& completionHandler);
     void deleteWebsiteDataForOrigins(PAL::SessionID, OptionSet<WebKit::WebsiteDataType>, const Vector<WebCore::SecurityOriginData>& origins, const Vector<String>& cookieHostNames, const Vector<String>& HSTSCacheHostNames, CompletionHandler<void()>&&);
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     void updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID, const Vector<String>& domainsToBlock, ShouldClearFirst, CompletionHandler<void()>&&);
     void hasStorageAccessForFrame(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&& callback);
     void getAllStorageAccessEntries(PAL::SessionID, CompletionHandler<void(Vector<String>&& domains)>&&);
@@ -110,8 +110,6 @@ public:
     void removeSession(PAL::SessionID);
 
 private:
-    NetworkProcessProxy(WebProcessPool&);
-
     // ChildProcessProxy
     void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
     void connectionWillOpen(IPC::Connection&) override;
@@ -144,7 +142,7 @@ private:
     void logDiagnosticMessage(uint64_t pageID, const String& message, const String& description, WebCore::ShouldSample);
     void logDiagnosticMessageWithResult(uint64_t pageID, const String& message, const String& description, uint32_t result, WebCore::ShouldSample);
     void logDiagnosticMessageWithValue(uint64_t pageID, const String& message, const String& description, double value, unsigned significantFigures, WebCore::ShouldSample);
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     void didUpdateBlockCookies(uint64_t contextId);
     void storageAccessRequestResult(bool wasGranted, uint64_t contextId);
     void allStorageAccessEntriesResult(Vector<String>&& domains, uint64_t contextId);
@@ -162,13 +160,18 @@ private:
     void getSandboxExtensionsForBlobFiles(uint64_t requestID, const Vector<String>& paths);
 #endif
 
+#if ENABLE(SERVICE_WORKER)
+    void establishWorkerContextConnectionToNetworkProcess(WebCore::SecurityOriginData&&);
+    void establishWorkerContextConnectionToNetworkProcessForExplicitSession(WebCore::SecurityOriginData&&, PAL::SessionID);
+#endif
+
     // ProcessLauncher::Client
     void didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier) override;
 
     WebProcessPool& m_processPool;
     
     unsigned m_numPendingConnectionRequests;
-    Deque<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> m_pendingConnectionReplies;
+    Deque<std::pair<RefPtr<WebProcessProxy>, Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>> m_pendingConnectionReplies;
 
     HashMap<uint64_t, CompletionHandler<void(WebsiteData)>> m_pendingFetchWebsiteDataCallbacks;
     HashMap<uint64_t, CompletionHandler<void()>> m_pendingDeleteWebsiteDataCallbacks;

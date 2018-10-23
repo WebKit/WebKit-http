@@ -171,7 +171,7 @@ void WebFrameLoaderClient::detachedFromParent2()
     if (!webPage)
         return;
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (m_hasFrameSpecificStorageAccess) {
         WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RemoveStorageAccessForFrame(sessionID(), frameID().value(), pageID().value()), 0);
         m_hasFrameSpecificStorageAccess = false;
@@ -386,7 +386,7 @@ void WebFrameLoaderClient::dispatchDidChangeMainDocument()
 
 void WebFrameLoaderClient::dispatchWillChangeDocument(const URL& currentUrl, const URL& newUrl)
 {
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (m_frame->isMainFrame())
         return;
 
@@ -894,7 +894,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
         DownloadID downloadID;
         std::optional<WebsitePoliciesData> websitePolicies;
 
-        if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationActionSync(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), documentLoader->navigationID(), navigationActionData, originatingFrameInfoData, originatingPageID, navigationAction.resourceRequest(), request, redirectResponse, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()), shouldSkipSafeBrowsingCheck), Messages::WebPageProxy::DecidePolicyForNavigationActionSync::Reply(policyAction, newNavigationID, downloadID, websitePolicies))) {
+        if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationActionSync(m_frame->frameID(), m_frame->isMainFrame(), SecurityOriginData::fromFrame(coreFrame), documentLoader->navigationID(), navigationActionData, originatingFrameInfoData, originatingPageID, navigationAction.resourceRequest(), request, redirectResponse, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()), shouldSkipSafeBrowsingCheck), Messages::WebPageProxy::DecidePolicyForNavigationActionSync::Reply(policyAction, newNavigationID, downloadID, websitePolicies))) {
             m_frame->didReceivePolicyDecision(listenerID, PolicyAction::Ignore, 0, { }, { });
             return;
         }
@@ -1381,7 +1381,7 @@ void WebFrameLoaderClient::savePlatformDataToCachedFrame(CachedFrame* cachedFram
         return;
 
     HasInsecureContent hasInsecureContent;
-    if (webPage->sendSync(Messages::WebPageProxy::HasInsecureContent(), Messages::WebPageProxy::HasInsecureContent::Reply(hasInsecureContent), Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply))
+    if (webPage->sendSync(Messages::WebPageProxy::HasInsecureContent(), Messages::WebPageProxy::HasInsecureContent::Reply(hasInsecureContent)))
         cachedFrame->setHasInsecureContent(hasInsecureContent);
 }
 
@@ -1441,7 +1441,8 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     m_frame->coreFrame()->view()->setProhibitsScrolling(shouldDisableScrolling);
     m_frame->coreFrame()->view()->setVisualUpdatesAllowedByClient(!webPage->shouldExtendIncrementalRenderingSuppression());
 #if PLATFORM(COCOA)
-    m_frame->coreFrame()->view()->setViewExposedRect(webPage->drawingArea()->viewExposedRect());
+    if (webPage->drawingArea())
+        m_frame->coreFrame()->view()->setViewExposedRect(webPage->drawingArea()->viewExposedRect());
 #endif
 #if PLATFORM(IOS)
     m_frame->coreFrame()->view()->setDelegatesScrolling(true);

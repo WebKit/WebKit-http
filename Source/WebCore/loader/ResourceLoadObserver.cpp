@@ -63,7 +63,7 @@ void ResourceLoadObserver::setNotificationCallback(WTF::Function<void (Vector<Re
     m_notificationCallback = WTFMove(notificationCallback);
 }
 
-void ResourceLoadObserver::setRequestStorageAccessUnderOpenerCallback(WTF::Function<void(const String& domainInNeedOfStorageAccess, uint64_t openerPageID, const String& openerDomain, bool isTriggeredByUserGesture)>&& callback)
+void ResourceLoadObserver::setRequestStorageAccessUnderOpenerCallback(WTF::Function<void(const String& domainInNeedOfStorageAccess, uint64_t openerPageID, const String& openerDomain)>&& callback)
 {
     ASSERT(!m_requestStorageAccessUnderOpenerCallback);
     m_requestStorageAccessUnderOpenerCallback = WTFMove(callback);
@@ -179,12 +179,12 @@ void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Doc
     statistics.lastSeen = newTime;
     statistics.mostRecentUserInteractionTime = newTime;
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (auto* opener = document.frame()->loader().opener()) {
         if (auto* openerDocument = opener->document()) {
             if (auto* openerFrame = openerDocument->frame()) {
                 if (auto openerPageID = openerFrame->loader().client().pageID()) {
-                    requestStorageAccessUnderOpener(domain, openerPageID.value(), *openerDocument, true);
+                    requestStorageAccessUnderOpener(domain, openerPageID.value(), *openerDocument);
                 }
             }
         }
@@ -194,7 +194,7 @@ void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Doc
     m_notificationTimer.stop();
     notifyObserver();
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     if (shouldLogUserInteraction()) {
         auto counter = ++m_loggingCounter;
 #define LOCAL_LOG(str, ...) \
@@ -216,29 +216,17 @@ void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Doc
 #endif
 }
 
-void ResourceLoadObserver::logWindowCreation(const URL& popupUrl, uint64_t openerPageID, Document& openerDocument)
-{
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    requestStorageAccessUnderOpener(primaryDomain(popupUrl), openerPageID, openerDocument, false);
-#else
-    UNUSED_PARAM(popupUrl);
-    UNUSED_PARAM(openerPageID);
-    UNUSED_PARAM(openerDocument);
-#endif
-}
-
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-void ResourceLoadObserver::requestStorageAccessUnderOpener(const String& domainInNeedOfStorageAccess, uint64_t openerPageID, Document& openerDocument, bool isTriggeredByUserGesture)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+void ResourceLoadObserver::requestStorageAccessUnderOpener(const String& domainInNeedOfStorageAccess, uint64_t openerPageID, Document& openerDocument)
 {
     auto openerUrl = openerDocument.url();
     auto openerPrimaryDomain = primaryDomain(openerUrl);
     if (domainInNeedOfStorageAccess != openerPrimaryDomain
         && !openerDocument.hasRequestedPageSpecificStorageAccessWithUserInteraction(domainInNeedOfStorageAccess)
         && !equalIgnoringASCIICase(openerUrl.string(), blankURL())) {
-        m_requestStorageAccessUnderOpenerCallback(domainInNeedOfStorageAccess, openerPageID, openerPrimaryDomain, isTriggeredByUserGesture);
+        m_requestStorageAccessUnderOpenerCallback(domainInNeedOfStorageAccess, openerPageID, openerPrimaryDomain);
         // Remember user interaction-based requests since they don't need to be repeated.
-        if (isTriggeredByUserGesture)
-            openerDocument.setHasRequestedPageSpecificStorageAccessWithUserInteraction(domainInNeedOfStorageAccess);
+        openerDocument.setHasRequestedPageSpecificStorageAccessWithUserInteraction(domainInNeedOfStorageAccess);
     }
 }
 #endif

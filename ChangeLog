@@ -1,3 +1,56 @@
+2018-10-01  Caio Lima  <ticaiolima@gmail.com>
+
+        'HAVE_PTHREAD_MAIN_NP' macro redefined warning when building --jsc-only on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=190118
+
+        Reviewed by Yusuke Suzuki.
+
+        We define HAVE_PTHREAD_MAIN_NP in WTF/wtf/Platform.h when the OS is
+        Darwin. In such case, we don't need to check symbols for
+        pthread_main_np when generating build for this system.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2018-09-28  Mike Gorse  <mgorse@alum.wpi.edu>
+
+        cmake cannot run if python 2 isn't available
+        https://bugs.webkit.org/show_bug.cgi?id=190075
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitCommon.cmake: Set Python_ADDITIONAL_VERSIONS
+        to 3, so that a python3 binary will be found.
+
+2018-09-28  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [WTF] Make isMainThread more reliable
+        https://bugs.webkit.org/show_bug.cgi?id=189880
+
+        Reviewed by Mark Lam.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2018-09-21  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Enable LLInt ASM interpreter on X64 and ARM64 in non JIT configuration
+        https://bugs.webkit.org/show_bug.cgi?id=189778
+
+        Reviewed by Keith Miller.
+
+        ENABLE_SAMPLING_PROFILER does not depend on ENABLE_JIT now since it can be
+        used with LLInt ASM interpreter.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-09-21  Mike Gorse  <mgorse@suse.com>
+
+        Build tools should work when the /usr/bin/python is python3
+        https://bugs.webkit.org/show_bug.cgi?id=156674
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitCommon.cmake: Allow python 3.
+
 2018-09-20  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Update GTK+ library versions after r235362.

@@ -778,8 +778,6 @@ editing/inserting/typing-space-to-trigger-smart-link.html [ Skip ]
 editing/inserting/smart-link-when-caret-is-moved-before-URL.html [ Skip ]
 editing/inserting/smart-quote-with-all-configurations.html [ Skip ]
 
-webkit.org/b/148695 fast/shadow-dom [ Pass ]
-
 # No tab navigation support on iOS
 fast/shadow-dom/focus-on-iframe.html [ Failure ]
 webkit.org/b/116046 fast/events/sequential-focus-navigation-starting-point.html [ Skip ]
@@ -1990,18 +1988,6 @@ fast/dom/location-new-window-no-crash.html
 # <rdar://problem/19017693> ASSERTION FAILED: [[dataSource webFrame] dataSource] || [[dataSource webFrame] provisionalDataSource] in -[ResourceLoadDelegate webView:identifierForInitialRequest:fromDataSource:]
 fast/events/message-port-inactive-document.html
 
-# <rdar://problem/19551640> ASSERT([_overflowScrollViews containsObject:view] || [_overflowScrollViewsPendingInsertion containsObject:view]) fails in UIWebBrowserView.m
-compositing/overflow/iframe-inside-overflow-clipping.html
-compositing/overflow/nested-scrolling.html
-compositing/overflow/overflow-auto-with-touch-toggle.html
-compositing/overflow/overflow-auto-with-touch.html
-compositing/overflow/overflow-overlay-with-touch.html
-compositing/overflow/remove-overflow-crash.html
-compositing/overflow/scrolling-content-clip-to-viewport.html
-compositing/overflow/scrolling-without-painting.html
-compositing/overflow/textarea-scroll-touch.html
-compositing/overflow/updating-scrolling-content.html
-
 # Failures as of 01/16/2015:
 http/tests/misc/favicon-as-image.html [ Failure ]
 http/tests/misc/iframe404.html [ Failure ]
@@ -2834,8 +2820,9 @@ http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.
 http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html [ Pass ]
 http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html [ Pass ]
 http/tests/storageAccess/deny-storage-access-under-opener.html [ Pass ]
-http/tests/storageAccess/grant-storage-access-under-opener.html [ Pass ]
+http/tests/storageAccess/deny-storage-access-under-opener-if-auto-dismiss.html [ Pass ]
 http/tests/resourceLoadStatistics/cap-cache-max-age-for-prevalent-resource.html [ Pass ]
+http/tests/cookies/capped-lifetime-for-cookie-set-in-js.html [ Pass ]
 
 # Skipped in general expectations since they only work on iOS and Mac, WK2.
 http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Pass ]
@@ -3152,3 +3139,37 @@ webkit.org/b/189726 imported/w3c/web-platform-tests/service-workers/service-work
 webkit.org/b/189726 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-mixed-content-to-outscope.https.html [ Pass Failure ]
 
 webkit.org/b/189727 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https.html [ Pass Failure ]
+
+webkit.org/b/187557 media/media-fragments/TC0005.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0006.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0009.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0011.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0014.html [ Pass Failure ]
+webkit.org/b/187522 media/media-fragments/TC0015.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0024.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0035.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0036.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0037.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0038.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0039.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0051.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0052.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0053.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0054.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0055.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0059.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0072.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0078.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0079.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0085.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0086.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0087.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0088.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0089.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0090.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0091.html [ Pass Failure ]
+
+webkit.org/b/189598 compositing/backing/backing-store-attachment-fill-forwards-animation.html [ Pass Failure ]
+
+webkit.org/b/190032 animations/stop-animation-on-suspend.html [ Failure ]
+

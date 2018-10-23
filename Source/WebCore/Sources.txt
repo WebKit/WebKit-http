@@ -785,6 +785,7 @@ dom/NodeTraversal.cpp
 dom/OverflowEvent.cpp
 dom/PageTransitionEvent.cpp
 dom/PendingScript.cpp
+dom/PointerEvent.cpp
 dom/PopStateEvent.cpp
 dom/Position.cpp
 dom/PositionIterator.cpp
@@ -815,6 +816,7 @@ dom/SpectreGadget.cpp
 dom/StaticNodeList.cpp
 dom/StaticRange.cpp
 dom/StringCallback.cpp
+dom/GCReachableRef.cpp
 dom/StyledElement.cpp
 dom/TagCollection.cpp
 dom/TemplateContentDocumentFragment.cpp
@@ -1745,6 +1747,7 @@ platform/mediastream/RealtimeIncomingAudioSource.cpp
 platform/mediastream/RealtimeIncomingVideoSource.cpp
 platform/mediastream/RealtimeMediaSource.cpp
 platform/mediastream/RealtimeMediaSourceCenter.cpp
+platform/mediastream/RealtimeMediaSourceFactory.cpp
 platform/mediastream/RealtimeMediaSourceSettings.cpp
 platform/mediastream/RealtimeOutgoingAudioSource.cpp
 platform/mediastream/RealtimeOutgoingVideoSource.cpp
@@ -2426,6 +2429,7 @@ JSAudioProcessingEvent.cpp
 JSAuthenticatorAssertionResponse.cpp
 JSAuthenticatorAttestationResponse.cpp
 JSAuthenticatorResponse.cpp
+JSAuthenticatorTransport.cpp
 JSBarProp.cpp
 JSBasicCredential.cpp
 JSBeforeLoadEvent.cpp
@@ -2768,7 +2772,6 @@ JSMediaStreamTrackEvent.cpp
 JSMediaTrackConstraints.cpp
 JSMediaTrackSupportedConstraints.cpp
 JSMerchantValidationEvent.cpp
-JSMerchantValidationEventInit.cpp
 JSMessageChannel.cpp
 JSMessageEvent.cpp
 JSMessagePort.cpp
@@ -2848,6 +2851,7 @@ JSPerformanceServerTiming.cpp
 JSPerformanceTiming.cpp
 JSPeriodicWave.cpp
 JSPlaybackDirection.cpp
+JSPointerEvent.cpp
 JSPopStateEvent.cpp
 JSPositionCallback.cpp
 JSPositionError.cpp

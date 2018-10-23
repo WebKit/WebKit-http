@@ -709,13 +709,6 @@ void WebChromeClient::print(Frame& frame)
     m_page.sendSync(Messages::WebPageProxy::PrintFrame(webFrame->frameID()), Messages::WebPageProxy::PrintFrame::Reply(), Seconds::infinity(), IPC::SendSyncOption::InformPlatformProcessWillSuspend);
 }
 
-void WebChromeClient::testIncomingSyncIPCMessageWhileWaitingForSyncReply()
-{
-    bool wasHandled = false;
-    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebProcessProxy::TestIncomingSyncIPCMessageWhileWaitingForSyncReply(), Messages::WebProcessProxy::TestIncomingSyncIPCMessageWhileWaitingForSyncReply::Reply(wasHandled), 0, Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply);
-    RELEASE_ASSERT(wasHandled);
-}
-
 void WebChromeClient::exceededDatabaseQuota(Frame& frame, const String& databaseName, DatabaseDetails details)
 {
     WebFrame* webFrame = WebFrame::fromCoreFrame(frame);
@@ -1305,7 +1298,7 @@ void WebChromeClient::didInvalidateDocumentMarkerRects()
     m_page.findController().didInvalidateDocumentMarkerRects();
 }
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
 void WebChromeClient::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t, CompletionHandler<void(bool)>&& callback)
 {
     m_page.hasStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, WTFMove(callback));

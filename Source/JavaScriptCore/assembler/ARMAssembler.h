@@ -752,9 +752,10 @@ namespace JSC {
             m_buffer.putInt(NOP);
         }
 
-        static void fillNops(void* base, size_t size, bool isCopyingToExecutableMemory)
+        template <typename CopyFunction>
+        static void fillNops(void* base, size_t size, CopyFunction copy)
         {
-            UNUSED_PARAM(isCopyingToExecutableMemory);
+            UNUSED_PARAM(copy);
             RELEASE_ASSERT(!(size % sizeof(int32_t)));
 
             int32_t* ptr = static_cast<int32_t*>(base);
@@ -1164,7 +1165,7 @@ namespace JSC {
             return AL | B | (offset & BranchOffsetMask);
         }
 
-#if OS(LINUX) && COMPILER(GCC_OR_CLANG)
+#if OS(LINUX) && COMPILER(GCC_COMPATIBLE)
         static inline void linuxPageFlush(uintptr_t begin, uintptr_t end)
         {
             asm volatile(
@@ -1184,7 +1185,7 @@ namespace JSC {
 
         static void cacheFlush(void* code, size_t size)
         {
-#if OS(LINUX) && COMPILER(GCC_OR_CLANG)
+#if OS(LINUX) && COMPILER(GCC_COMPATIBLE)
             size_t page = pageSize();
             uintptr_t current = reinterpret_cast<uintptr_t>(code);
             uintptr_t end = current + size;

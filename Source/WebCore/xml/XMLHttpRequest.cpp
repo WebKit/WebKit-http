@@ -469,7 +469,7 @@ ExceptionOr<void> XMLHttpRequest::send(Document& document)
 
         // FIXME: According to XMLHttpRequest Level 2, this should use the Document.innerHTML algorithm
         // from the HTML5 specification to serialize the document.
-        m_requestEntityBody = FormData::create(UTF8Encoding().encode(createMarkup(document), UnencodableHandling::Entities));
+        m_requestEntityBody = FormData::create(UTF8Encoding().encode(serializeFragment(document, SerializedNodes::SubtreeIncludingNode), UnencodableHandling::Entities));
         if (m_upload)
             m_requestEntityBody->setAlwaysStream(true);
     }
@@ -776,12 +776,15 @@ void XMLHttpRequest::dropProtection()
     unsetPendingActivity(this);
 }
 
-ExceptionOr<void> XMLHttpRequest::overrideMimeType(const String& override)
+ExceptionOr<void> XMLHttpRequest::overrideMimeType(const String& mimeType)
 {
     if (readyState() == LOADING || readyState() == DONE)
         return Exception { InvalidStateError };
 
-    m_mimeTypeOverride = override;
+    m_mimeTypeOverride = "application/octet-stream"_s;
+    if (isValidContentType(mimeType))
+        m_mimeTypeOverride = mimeType;
+
     return { };
 }
 

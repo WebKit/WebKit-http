@@ -753,14 +753,6 @@ void FrameLoader::didBeginDocument(bool dispatch)
             if (!headerContentLanguage.isEmpty())
                 m_frame.document()->setContentLanguage(headerContentLanguage);
         }
-
-        if (m_frame.settings().crossOriginWindowPolicySupportEnabled()) {
-            String crossOriginWindowPolicyHeader = m_documentLoader->response().httpHeaderField(HTTPHeaderName::CrossOriginWindowPolicy);
-            if (!crossOriginWindowPolicyHeader.isNull()) {
-                ASSERT(m_frame.window());
-                m_frame.window()->setCrossOriginWindowPolicy(parseCrossOriginWindowPolicyHeader(crossOriginWindowPolicyHeader));
-            }
-        }
     }
 
     history().restoreDocumentState();
@@ -3122,6 +3114,7 @@ bool FrameLoader::shouldClose()
     bool shouldClose = false;
     {
         NavigationDisabler navigationDisabler(&m_frame);
+        IgnoreOpensDuringUnloadCountIncrementer ignoreOpensDuringUnloadCountIncrementer(m_frame.document());
         size_t i;
 
         for (i = 0; i < targetFrames.size(); i++) {
@@ -3229,7 +3222,6 @@ bool FrameLoader::dispatchBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLo
 
     {
         ForbidPromptsScope forbidPrompts(m_frame.page());
-        IgnoreOpensDuringUnloadCountIncrementer ignoreOpensDuringUnloadCountIncrementer(m_frame.document());
         domWindow->dispatchEvent(beforeUnloadEvent, domWindow->document());
     }
 

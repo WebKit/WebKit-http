@@ -177,6 +177,10 @@ static void webKitSettingsConstructed(GObject* object)
     WebPreferences* prefs = settings->priv->preferences.get();
     prefs->setShouldRespectImageOrientation(true);
 
+    bool mediaStreamEnabled = prefs->mediaStreamEnabled();
+    prefs->setMediaDevicesEnabled(mediaStreamEnabled);
+    prefs->setPeerConnectionEnabled(mediaStreamEnabled);
+
     settings->priv->screenDpi = WebCore::screenDPI();
     WebCore::setScreenDPIObserverHandler([settings]() {
         auto newScreenDpi = WebCore::screenDPI();
@@ -1713,8 +1717,7 @@ gboolean webkit_settings_get_enable_frame_flattening(WebKitSettings* settings)
 {
     g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
 
-    // FIXME: Expose more frame flattening values.
-    return settings->priv->preferences->frameFlattening() != static_cast<uint32_t>(WebCore::FrameFlattening::Disabled);
+    return settings->priv->preferences->frameFlatteningEnabled();
 }
 
 /**
@@ -1729,12 +1732,10 @@ void webkit_settings_set_enable_frame_flattening(WebKitSettings* settings, gbool
     g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
 
     WebKitSettingsPrivate* priv = settings->priv;
-    bool currentValue = priv->preferences->frameFlattening() != static_cast<uint32_t>(WebCore::FrameFlattening::Disabled);
-    if (currentValue == enabled)
+    if (priv->preferences->frameFlatteningEnabled() == enabled)
         return;
 
-    // FIXME: Expose more frame flattening values.
-    priv->preferences->setFrameFlattening(enabled ? static_cast<uint32_t>(WebCore::FrameFlattening::FullyEnabled) : static_cast<uint32_t>(WebCore::FrameFlattening::Disabled));
+    priv->preferences->setFrameFlatteningEnabled(enabled);
     g_object_notify(G_OBJECT(settings), "enable-frame-flattening");
 }
 

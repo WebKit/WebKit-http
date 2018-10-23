@@ -1,3 +1,80 @@
+2018-09-25  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Make AuthenticatorManager
+        https://bugs.webkit.org/show_bug.cgi?id=189279
+        <rdar://problem/44116792>
+
+        Reviewed by Chris Dumez.
+
+        It moves linking to DeviceIdentity.framework to WebKit.
+
+        * PAL.xcodeproj/project.pbxproj:
+
+2018-09-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Fix the open source iOS 12 build after r236445
+        https://bugs.webkit.org/show_bug.cgi?id=189953
+
+        Reviewed by Alex Christensen.
+
+        Introduce a single UIKit soft-linking header in PAL.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/ios/UIKitSoftLink.h: Copied from Source/WebCore/platform/graphics/cocoa/ColorCocoa.mm.
+        * pal/ios/UIKitSoftLink.mm: Copied from Source/WebCore/platform/graphics/cocoa/ColorCocoa.mm.
+
+2018-09-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Refactor Editor::fontAttributesForSelectionStart to be platform-agnostic
+        https://bugs.webkit.org/show_bug.cgi?id=189918
+        Work towards <rdar://problem/44648705>
+
+        Reviewed by Tim Horton.
+
+        Add `+_disambiguated_due_to_CIImage_colorWithCGColor:` as a UIColor SPI definition. Also, import
+        `UIColor_Private.h` directly when the Apple internal SDK is used.
+
+        * pal/spi/ios/UIKitSPI.h:
+
+2018-09-21  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed Sierra Build Fix; ensure AVVideoPerformanceMetrics are defined on Sierra.
+
+        * pal/spi/mac/AVFoundationSPI.h:
+
+2018-09-21  Jer Noble  <jer.noble@apple.com>
+
+        Move AVVideoPerformanceMetrics into AVFoundationSPI.h
+        https://bugs.webkit.org/show_bug.cgi?id=189842
+
+        Reviewed by Jon Lee.
+
+        * pal/spi/mac/AVFoundationSPI.h:
+
+2018-09-21  Jonathan Bedard  <jbedard@apple.com>
+
+        Bring up queues for iOS 12 (Build fix)
+        https://bugs.webkit.org/show_bug.cgi?id=189683
+
+        Unreviewed build fix.
+
+        * pal/spi/cocoa/QuartzCoreSPI.h: Declare setCornerRadius and continuousCorner.
+
+2018-09-20  Daniel Bates  <dabates@apple.com>
+
+        Move IOKitSPI.h from TestRunnerShared to PAL
+        https://bugs.webkit.org/show_bug.cgi?id=189804
+
+        Reviewed by Wenson Hsieh.
+
+        Towards fixing <https://bugs.webkit.org/show_bug.cgi?id=189604> move the IOKit SPI forward
+        declarations to PAL so that they can be shared by both WebKit, DumpRenderTree, and WebKitTestRunner.
+
+        No functionality changed. So, no new tests.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cocoa/IOKitSPI.h: Renamed from Tools/TestRunnerShared/spi/IOKitSPI.h.
+
 2018-09-14  Eric Carlson  <eric.carlson@apple.com>
 
         Support arbitrary video resolution in getUserMedia API

@@ -327,7 +327,7 @@
 #define WTF_CPU_NEEDS_ALIGNED_ACCESS 1
 #endif
 
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
 /* __LP64__ is not defined on 64bit Windows since it uses LLP64. Using __SIZEOF_POINTER__ is simpler. */
 #if __SIZEOF_POINTER__ == 8
 #define WTF_CPU_ADDRESS64 1
@@ -443,7 +443,7 @@
 
 /* CPU(BIG_ENDIAN) or CPU(MIDDLE_ENDIAN) or neither, as appropriate. */
 
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define WTF_CPU_BIG_ENDIAN 1
 #elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -688,6 +688,7 @@
 #define HAVE_TM_GMTOFF 1
 #define HAVE_TM_ZONE 1
 #define HAVE_TIMEGM 1
+#define HAVE_PTHREAD_MAIN_NP 1
 
 #if CPU(X86_64) || CPU(ARM64)
 #define HAVE_INT128_T 1
@@ -727,7 +728,7 @@
 #endif /* OS(DARWIN) */
 
 #if PLATFORM(COCOA)
-#define HAVE_CFNETWORK_STORAGE_PARTITIONING 1
+#define ENABLE_RESOURCE_LOAD_STATISTICS 1
 #endif
 
 #if OS(DARWIN) || OS(FUCHSIA) || OS(HAIKU) || ((OS(FREEBSD) || defined(__GLIBC__) || defined(__BIONIC__)) && (CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)))
@@ -788,6 +789,15 @@
 #if USE(JSVALUE32_64) && OS(WINDOWS)
 #undef ENABLE_JIT
 #define ENABLE_JIT 0
+#endif
+
+#if !defined(ENABLE_C_LOOP)
+#if ENABLE(JIT) \
+    || CPU(X86_64) || (CPU(ARM64) && !defined(__ILP32__))
+#define ENABLE_C_LOOP 0
+#else
+#define ENABLE_C_LOOP 1
+#endif
 #endif
 
 /* The FTL *does not* work on 32-bit platforms. Disable it even if someone asked us to enable it. */
@@ -896,7 +906,7 @@
  * In configurations other than Windows and Darwin, because layout of mcontext_t depends on standard libraries (like glibc),
  * sampling profiler is enabled if WebKit uses pthreads and glibc. */
 #if !defined(ENABLE_SAMPLING_PROFILER)
-#if ENABLE(JIT) && (OS(WINDOWS) || HAVE(MACHINE_CONTEXT))
+#if !ENABLE(C_LOOP) && (OS(WINDOWS) || HAVE(MACHINE_CONTEXT))
 #define ENABLE_SAMPLING_PROFILER 1
 #else
 #define ENABLE_SAMPLING_PROFILER 0
@@ -936,7 +946,7 @@
 /* Configure the JIT */
 #if CPU(X86) && COMPILER(MSVC)
 #define JSC_HOST_CALL __fastcall
-#elif CPU(X86) && COMPILER(GCC_OR_CLANG)
+#elif CPU(X86) && COMPILER(GCC_COMPATIBLE)
 #define JSC_HOST_CALL __attribute__ ((fastcall))
 #else
 #define JSC_HOST_CALL
@@ -975,16 +985,16 @@
 #endif
 
 /* Configure the interpreter */
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
 #define HAVE_COMPUTED_GOTO 1
 #endif
 
 /* Determine if we need to enable Computed Goto Opcodes or not: */
-#if HAVE(COMPUTED_GOTO) || ENABLE(JIT)
+#if HAVE(COMPUTED_GOTO) || !ENABLE(C_LOOP)
 #define ENABLE_COMPUTED_GOTO_OPCODES 1
 #endif
 
-#if ENABLE(JIT) && !COMPILER(MSVC) && \
+#if !ENABLE(C_LOOP) && !COMPILER(MSVC) && \
     (CPU(X86) || CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && OS(DARWIN)))
 /* This feature works by embedding the OpcodeID in the 32 bit just before the generated LLint code
    that executes each opcode. It cannot be supported by the CLoop since there's no way to embed the
@@ -1014,7 +1024,7 @@
 
 /* If either the JIT or the RegExp JIT is enabled, then the Assembler must be
    enabled as well: */
-#if ENABLE(JIT) || ENABLE(YARR_JIT)
+#if ENABLE(JIT) || ENABLE(YARR_JIT) || !ENABLE(C_LOOP)
 #if defined(ENABLE_ASSEMBLER) && !ENABLE_ASSEMBLER
 #error "Cannot enable the JIT or RegExp JIT without enabling the Assembler"
 #else

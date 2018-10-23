@@ -26,6 +26,13 @@
 WebKitBuildbot = function()
 {
     const queueInfo = {
+        "Apple Mojave Debug (Build)": {platform: Dashboard.Platform.macOSMojave, debug: true, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
+        "Apple Mojave Release (Build)": {platform: Dashboard.Platform.macOSMojave, debug: false, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
+        "Apple Mojave Debug WK1 (Tests)": {platform: Dashboard.Platform.macOSMojave, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
+        "Apple Mojave Debug WK2 (Tests)": {platform: Dashboard.Platform.macOSMojave, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
+        "Apple Mojave Release WK1 (Tests)": {platform: Dashboard.Platform.macOSMojave, debug: false, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
+        "Apple Mojave Release WK2 (Tests)": {platform: Dashboard.Platform.macOSMojave, debug: false, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
+        "Apple Mojave (Leaks)": {platform: Dashboard.Platform.macOSMojave, debug: false, leaks: true},
         "Apple High Sierra Debug (Build)": {platform: Dashboard.Platform.macOSHighSierra, debug: true, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
         "Apple High Sierra Release (Build)": {platform: Dashboard.Platform.macOSHighSierra, debug: false, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
         "Apple High Sierra Release (32-bit Build)": {platform: Dashboard.Platform.macOSHighSierra, builder: true, architecture: Buildbot.BuildArchitecture.ThirtyTwoBit},
@@ -33,7 +40,6 @@ WebKitBuildbot = function()
         "Apple High Sierra Debug WK2 (Tests)": {platform: Dashboard.Platform.macOSHighSierra, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
         "Apple High Sierra Release WK1 (Tests)": {platform: Dashboard.Platform.macOSHighSierra, debug: false, tester: true, testCategory: Buildbot.TestCategory.WebKit1},
         "Apple High Sierra Release WK2 (Tests)": {platform: Dashboard.Platform.macOSHighSierra, debug: false, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
-        "Apple High Sierra (Leaks)": {platform: Dashboard.Platform.macOSHighSierra, debug: false, leaks: true},
         "Apple High Sierra JSC": {platform: Dashboard.Platform.macOSHighSierra, heading: "JavaScript", combinedQueues: {
             "Apple High Sierra 32-bit JSC (BuildAndTest)": {heading: "32-bit JSC (BuildAndTest)"},
             "Apple High Sierra LLINT CLoop (BuildAndTest)": {heading: "LLINT CLoop (BuildAndTest)"},
@@ -52,11 +58,11 @@ WebKitBuildbot = function()
             "Apple Sierra Debug Test262 (Tests)": {heading: "Debug Test262 (Tests)"},
             "Apple Sierra Release Test262 (Tests)": {heading: "Release Test262 (Tests)"},
         }},
-        "Apple iOS 11 Release (Build)": {platform: Dashboard.Platform.iOS11Device, debug: false, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
-        "Apple iOS 11 Simulator Release (Build)": {platform: Dashboard.Platform.iOS11Simulator, debug: false, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
-        "Apple iOS 11 Simulator Release WK2 (Tests)": {platform: Dashboard.Platform.iOS11Simulator, debug: false, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
-        "Apple iOS 11 Simulator Debug (Build)": {platform: Dashboard.Platform.iOS11Simulator, debug: true, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
-        "Apple iOS 11 Simulator Debug WK2 (Tests)": {platform: Dashboard.Platform.iOS11Simulator, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
+        "Apple iOS 12 Release (Build)": {platform: Dashboard.Platform.iOS12Device, debug: false, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
+        "Apple iOS 12 Simulator Release (Build)": {platform: Dashboard.Platform.iOS12Simulator, debug: false, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
+        "Apple iOS 12 Simulator Release WK2 (Tests)": {platform: Dashboard.Platform.iOS12Simulator, debug: false, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
+        "Apple iOS 12 Simulator Debug (Build)": {platform: Dashboard.Platform.iOS12Simulator, debug: true, builder: true, architecture: Buildbot.BuildArchitecture.SixtyFourBit},
+        "Apple iOS 12 Simulator Debug WK2 (Tests)": {platform: Dashboard.Platform.iOS12Simulator, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit2},
         "Apple Win Debug (Build)": {platform: Dashboard.Platform.Windows7, debug: true, builder: true, architecture: Buildbot.BuildArchitecture.ThirtyTwoBit},
         "Apple Win Release (Build)": {platform: Dashboard.Platform.Windows7, builder: true, architecture: Buildbot.BuildArchitecture.ThirtyTwoBit},
         "Apple Win 7 Debug (Tests)": {platform: Dashboard.Platform.Windows7, debug: true, tester: true, testCategory: Buildbot.TestCategory.WebKit1},

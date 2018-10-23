@@ -117,6 +117,10 @@
 #import "WKFormColorControl.h"
 #endif
 
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKPlatformFileUploadPanel.mm>)
+#import <WebKitAdditions/WKPlatformFileUploadPanel.mm>
+#endif
+
 @interface UIEvent(UIEventInternal)
 @property (nonatomic, assign) UIKeyboardInputFlags _inputFlags;
 @end
@@ -3741,6 +3745,15 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     if (event == _uiEventBeingResent)
         return;
 
+    uint16_t keyCode;
+    BOOL isHardwareKeyboardEvent = !!event._hidEvent;
+    if (!isHardwareKeyboardEvent)
+        keyCode = 0;
+    else {
+        UIPhysicalKeyboardEvent *keyEvent = (UIPhysicalKeyboardEvent *)event;
+        keyCode = keyEvent._keyCode;
+        event = [[keyEvent _cloneEvent] autorelease]; // UIKit uses a singleton for hardware keyboard events.
+    }
     WKWebEvent *webEvent = [[[WKWebEvent alloc] initWithKeyEventType:(event._isKeyDown) ? WebEventKeyDown : WebEventKeyUp
                                                            timeStamp:event.timestamp
                                                           characters:event._modifiedInput
@@ -3748,7 +3761,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
                                                            modifiers:event._modifierFlags
                                                          isRepeating:(event._inputFlags & kUIKeyboardInputRepeat)
                                                            withFlags:event._inputFlags
-                                                             keyCode:0
+                                                             keyCode:keyCode
                                                             isTabKey:[event._modifiedInput isEqualToString:@"\t"]
                                                         characterSet:WebEventCharacterSetUnicode] autorelease];
     webEvent.uiEvent = event;
@@ -4187,6 +4200,7 @@ static bool isAssistableInputType(InputType type)
             || (_isChangingFocus && ![_focusedFormControlView isHidden])
 #else
             || _isChangingFocus
+            || isInHardwareKeyboardMode()
 #endif
 #if ENABLE(DRAG_SUPPORT)
             || _dragDropInteractionState.isPerformingDrop()
@@ -4731,7 +4745,14 @@ static bool isAssistableInputType(InputType type)
     if (_fileUploadPanel)
         return;
 
-    _fileUploadPanel = adoptNS([[WKFileUploadPanel alloc] initWithView:self]);
+    Class ownClass = self.class;
+    Class panelClass = nil;
+    if ([ownClass respondsToSelector:@selector(_fileUploadPanelClass)])
+        panelClass = [ownClass _fileUploadPanelClass];
+    if (!panelClass)
+        panelClass = [WKFileUploadPanel class];
+
+    _fileUploadPanel = adoptNS([[panelClass alloc] initWithView:self]);
     [_fileUploadPanel setDelegate:self];
     [_fileUploadPanel presentWithParameters:parameters resultListener:listener];
 }

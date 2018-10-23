@@ -1199,8 +1199,11 @@ void KeyframeEffectReadOnly::updateAcceleratedAnimationState()
     if (!m_shouldRunAccelerated)
         return;
 
-    if (!renderer())
+    if (!renderer()) {
+        if (isRunningAccelerated())
+            addPendingAcceleratedAction(AcceleratedAction::Stop);
         return;
+    }
 
     auto localTime = animation()->currentTime();
 
@@ -1225,6 +1228,11 @@ void KeyframeEffectReadOnly::updateAcceleratedAnimationState()
     if (playState == WebAnimation::PlayState::Finished) {
         if (isRunningAccelerated())
             addPendingAcceleratedAction(AcceleratedAction::Stop);
+        else {
+            m_lastRecordedAcceleratedAction = AcceleratedAction::Stop;
+            m_pendingAcceleratedActions.clear();
+            animation()->acceleratedStateDidChange();
+        }
         return;
     }
 
@@ -1237,6 +1245,8 @@ void KeyframeEffectReadOnly::updateAcceleratedAnimationState()
 
 void KeyframeEffectReadOnly::addPendingAcceleratedAction(AcceleratedAction action)
 {
+    if (action == AcceleratedAction::Stop)
+        m_pendingAcceleratedActions.clear();
     m_pendingAcceleratedActions.append(action);
     if (action != AcceleratedAction::Seek)
         m_lastRecordedAcceleratedAction = action;
@@ -1268,10 +1278,8 @@ void KeyframeEffectReadOnly::applyPendingAcceleratedActions()
         return;
 
     auto* renderer = this->renderer();
-    if (!renderer || !renderer->isComposited()) {
-        animation()->acceleratedStateDidChange();
+    if (!renderer || !renderer->isComposited())
         return;
-    }
 
     auto pendingAcceleratedActions = m_pendingAcceleratedActions;
     m_pendingAcceleratedActions.clear();
@@ -1287,6 +1295,7 @@ void KeyframeEffectReadOnly::applyPendingAcceleratedActions()
             if (!compositedRenderer->startAnimation(timeOffset, backingAnimationForCompositedRenderer().ptr(), m_blendingKeyframes)) {
                 m_shouldRunAccelerated = false;
                 m_lastRecordedAcceleratedAction = AcceleratedAction::Stop;
+                animation()->acceleratedStateDidChange();
                 return;
             }
             break;

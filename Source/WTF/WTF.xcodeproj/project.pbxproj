@@ -66,6 +66,7 @@
 		2CDED0EF18115C38004DBA70 /* RunLoopCF.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CDED0EE18115C38004DBA70 /* RunLoopCF.cpp */; };
 		2CDED0F318115C85004DBA70 /* RunLoop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CDED0F118115C85004DBA70 /* RunLoop.cpp */; };
 		3337DB9CE743410FAF076E17 /* StackTrace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 313EDEC9778E49C9BEA91CFC /* StackTrace.cpp */; };
+		50DE35F5215BB01500B979C7 /* ExternalStringImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 50DE35F3215BB01500B979C7 /* ExternalStringImpl.cpp */; };
 		515F794E1CFC9F4A00CCED93 /* CrossThreadCopier.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 515F794B1CFC9F4A00CCED93 /* CrossThreadCopier.cpp */; };
 		517F82D71FD22F3000DA3DEA /* CrossThreadTaskHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 517F82D51FD22F2F00DA3DEA /* CrossThreadTaskHandler.cpp */; };
 		51F1752B1F3D486000C74950 /* PersistentCoders.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 51F175261F3D486000C74950 /* PersistentCoders.cpp */; };
@@ -112,7 +113,7 @@
 		A8A473BA151A825B004123FF /* dtoa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A47297151A825A004123FF /* dtoa.cpp */; };
 		A8A473C3151A825B004123FF /* FastMalloc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A472A1151A825A004123FF /* FastMalloc.cpp */; };
 		A8A473D8151A825B004123FF /* HashTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A472B8151A825A004123FF /* HashTable.cpp */; };
-		A8A473E4151A825B004123FF /* MainThreadMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = A8A472C5151A825A004123FF /* MainThreadMac.mm */; };
+		A8A473E4151A825B004123FF /* MainThreadCocoa.mm in Sources */ = {isa = PBXBuildFile; fileRef = A8A472C5151A825A004123FF /* MainThreadCocoa.mm */; };
 		A8A473E5151A825B004123FF /* MainThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A472C6151A825A004123FF /* MainThread.cpp */; };
 		A8A473E9151A825B004123FF /* MD5.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A472CA151A825B004123FF /* MD5.cpp */; };
 		A8A473EC151A825B004123FF /* MetaAllocator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A472CD151A825B004123FF /* MetaAllocator.cpp */; };
@@ -338,6 +339,8 @@
 		413FE8F51F8D2EAB00F6D7D7 /* CallbackAggregator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CallbackAggregator.h; sourceTree = "<group>"; };
 		430B47871AAAAC1A001223DA /* StringCommon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StringCommon.h; sourceTree = "<group>"; };
 		46BA9EAB1F4CD61E009A2BBC /* CompletionHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CompletionHandler.h; sourceTree = "<group>"; };
+		50DE35F3215BB01500B979C7 /* ExternalStringImpl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ExternalStringImpl.cpp; sourceTree = "<group>"; };
+		50DE35F4215BB01500B979C7 /* ExternalStringImpl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ExternalStringImpl.h; sourceTree = "<group>"; };
 		513E170A1CD7D5BF00E3650B /* LoggingAccumulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoggingAccumulator.h; sourceTree = "<group>"; };
 		515F794B1CFC9F4A00CCED93 /* CrossThreadCopier.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CrossThreadCopier.cpp; sourceTree = "<group>"; };
 		515F794C1CFC9F4A00CCED93 /* CrossThreadCopier.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CrossThreadCopier.h; sourceTree = "<group>"; };
@@ -502,7 +505,7 @@
 		A8A472BC151A825A004123FF /* InlineASM.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InlineASM.h; sourceTree = "<group>"; };
 		A8A472C1151A825A004123FF /* ListHashSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ListHashSet.h; sourceTree = "<group>"; };
 		A8A472C3151A825A004123FF /* Locker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Locker.h; sourceTree = "<group>"; };
-		A8A472C5151A825A004123FF /* MainThreadMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MainThreadMac.mm; sourceTree = "<group>"; };
+		A8A472C5151A825A004123FF /* MainThreadCocoa.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MainThreadCocoa.mm; sourceTree = "<group>"; };
 		A8A472C6151A825A004123FF /* MainThread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MainThread.cpp; sourceTree = "<group>"; };
 		A8A472C7151A825B004123FF /* MainThread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MainThread.h; sourceTree = "<group>"; };
 		A8A472C9151A825B004123FF /* MathExtras.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MathExtras.h; sourceTree = "<group>"; };
@@ -606,6 +609,7 @@
 		C6F050790D9C432A99085E75 /* ASCIILiteral.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ASCIILiteral.cpp; sourceTree = "<group>"; };
 		C8F597CA2A57417FBAB92FD6 /* RandomDevice.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RandomDevice.cpp; sourceTree = "<group>"; };
 		CD00360D21501F7800F4ED4C /* StringToIntegerConversion.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = StringToIntegerConversion.h; sourceTree = "<group>"; };
+		CD2D0D10212C76E60018C784 /* WeakPtrContainer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WeakPtrContainer.h; sourceTree = "<group>"; };
 		CD5497AA15857D0300B5BC30 /* MediaTime.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MediaTime.cpp; sourceTree = "<group>"; };
 		CD5497AB15857D0300B5BC30 /* MediaTime.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MediaTime.h; sourceTree = "<group>"; };
 		CD6D9FCD1EEF3AD4008B0671 /* Algorithms.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Algorithms.h; sourceTree = "<group>"; };
@@ -1139,6 +1143,7 @@
 				0F66B2891DC97BAB004A1D3F /* WallTime.h */,
 				83ABB3C020B3823200BA3306 /* WeakObjCPtr.h */,
 				974CFC8D16A4F327006D5404 /* WeakPtr.h */,
+				CD2D0D10212C76E60018C784 /* WeakPtrContainer.h */,
 				0F3501631BB258C800F0A2A3 /* WeakRandom.h */,
 				0FE4479A1B7AAA03009498EB /* WordLock.cpp */,
 				0FE4479B1B7AAA03009498EB /* WordLock.h */,
@@ -1185,7 +1190,6 @@
 				1A428B8B1C8F89DD0051E9EB /* AppKitCompatibilityDeclarations.h */,
 				1ACADD821884480100D8B71D /* DeprecatedSymbolsUsedBySafari.mm */,
 				53534F291EC0E10E00141B2F /* MachExceptions.defs */,
-				A8A472C5151A825A004123FF /* MainThreadMac.mm */,
 			);
 			path = mac;
 			sourceTree = "<group>";
@@ -1211,6 +1215,8 @@
 				0F8F2B9B172F2594007DBDA5 /* ConversionMode.h */,
 				A8A47321151A825B004123FF /* CString.cpp */,
 				A8A47322151A825B004123FF /* CString.h */,
+				50DE35F3215BB01500B979C7 /* ExternalStringImpl.cpp */,
+				50DE35F4215BB01500B979C7 /* ExternalStringImpl.h */,
 				26147B0815DDCCDC00DDB907 /* IntegerToStringConversion.h */,
 				93AC91A718942FC400244939 /* LChar.h */,
 				1C181C811D30797C00F5FA16 /* LineBreakIteratorPoolICU.h */,
@@ -1347,6 +1353,7 @@
 				143DDE9720C8BE99007F76FA /* Entitlements.h */,
 				143DDE9520C8BC37007F76FA /* Entitlements.mm */,
 				7A6EBA3320746C34004F9C44 /* MachSendRight.cpp */,
+				A8A472C5151A825A004123FF /* MainThreadCocoa.mm */,
 				ADF2CE651E39F106006889DB /* MemoryFootprintCocoa.cpp */,
 				AD89B6B91E64150F0090707F /* MemoryPressureHandlerCocoa.mm */,
 				A30D412C1F0DE0BA00B71954 /* SoftLinking.h */,
@@ -1498,6 +1505,7 @@
 				A8A473B0151A825B004123FF /* double-conversion.cc in Sources */,
 				A8A473BA151A825B004123FF /* dtoa.cpp in Sources */,
 				143DDE9620C8BC37007F76FA /* Entitlements.mm in Sources */,
+				50DE35F5215BB01500B979C7 /* ExternalStringImpl.cpp in Sources */,
 				A8A473B3151A825B004123FF /* fast-dtoa.cc in Sources */,
 				0F7C5FB61D885CF20044F5E2 /* FastBitVector.cpp in Sources */,
 				A8A473C3151A825B004123FF /* FastMalloc.cpp in Sources */,
@@ -1518,7 +1526,7 @@
 				53534F2A1EC0E10E00141B2F /* MachExceptions.defs in Sources */,
 				7A6EBA3420746C34004F9C44 /* MachSendRight.cpp in Sources */,
 				A8A473E5151A825B004123FF /* MainThread.cpp in Sources */,
-				A8A473E4151A825B004123FF /* MainThreadMac.mm in Sources */,
+				A8A473E4151A825B004123FF /* MainThreadCocoa.mm in Sources */,
 				A8A473E9151A825B004123FF /* MD5.cpp in Sources */,
 				CD5497AC15857D0300B5BC30 /* MediaTime.cpp in Sources */,
 				ADF2CE671E39F106006889DB /* MemoryFootprintCocoa.cpp in Sources */,

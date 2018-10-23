@@ -108,7 +108,7 @@ messages -> WebPageProxy {
     # Policy messages
     DecidePolicyForResponse(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, WebCore::ResourceResponse response, WebCore::ResourceRequest request, bool canShowMIMEType, uint64_t listenerID, WebKit::UserData userData)
     DecidePolicyForNavigationActionAsync(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, struct WebKit::NavigationActionData navigationActionData, struct WebKit::FrameInfoData originatingFrameInfoData, uint64_t originatingPageID, WebCore::ResourceRequest originalRequest, WebCore::ResourceRequest request, WebCore::ResourceResponse redirectResponse, WebKit::UserData userData, enum WebCore::ShouldSkipSafeBrowsingCheck shouldSkipSafeBrowsingCheck, uint64_t listenerID)
-    DecidePolicyForNavigationActionSync(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, struct WebKit::NavigationActionData navigationActionData, struct WebKit::FrameInfoData originatingFrameInfoData, uint64_t originatingPageID, WebCore::ResourceRequest originalRequest, WebCore::ResourceRequest request, WebCore::ResourceResponse redirectResponse, WebKit::UserData userData, enum WebCore::ShouldSkipSafeBrowsingCheck shouldSkipSafeBrowsingCheck) -> (enum WebCore::PolicyAction policyAction, uint64_t newNavigationID, WebKit::DownloadID downloadID, std::optional<WebKit::WebsitePoliciesData> websitePolicies) Delayed
+    DecidePolicyForNavigationActionSync(uint64_t frameID, bool isMainFrame, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, struct WebKit::NavigationActionData navigationActionData, struct WebKit::FrameInfoData originatingFrameInfoData, uint64_t originatingPageID, WebCore::ResourceRequest originalRequest, WebCore::ResourceRequest request, WebCore::ResourceResponse redirectResponse, WebKit::UserData userData, enum WebCore::ShouldSkipSafeBrowsingCheck shouldSkipSafeBrowsingCheck) -> (enum WebCore::PolicyAction policyAction, uint64_t newNavigationID, WebKit::DownloadID downloadID, std::optional<WebKit::WebsitePoliciesData> websitePolicies) Delayed
     DecidePolicyForNewWindowAction(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, struct WebKit::NavigationActionData navigationActionData, WebCore::ResourceRequest request, String frameName, uint64_t listenerID, WebKit::UserData userData)
     UnableToImplementPolicy(uint64_t frameID, WebCore::ResourceError error, WebKit::UserData userData)
 
@@ -526,7 +526,7 @@ messages -> WebPageProxy {
     StopURLSchemeTask(uint64_t handlerIdentifier, uint64_t taskIdentifier)
     LoadSynchronousURLSchemeTask(struct WebKit::URLSchemeTaskParameters parameters) -> (WebCore::ResourceResponse response, WebCore::ResourceError error, IPC::DataReference data) Delayed
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     HasStorageAccess(String subFrameHost, String topFrameHost, uint64_t frameID, uint64_t contextID)
     RequestStorageAccess(String subFrameHost, String topFrameHost, uint64_t frameID, uint64_t contextID, bool prompt)
 #endif
@@ -534,8 +534,9 @@ messages -> WebPageProxy {
 #if ENABLE(ATTACHMENT_ELEMENT)
     RegisterAttachmentIdentifierFromData(String identifier, String contentType, String preferredFileName, IPC::SharedBufferDataReference data)
     RegisterAttachmentIdentifierFromFilePath(String identifier, String contentType, String filePath)
+    RegisterAttachmentIdentifier(String identifier)
     CloneAttachmentData(String fromIdentifier, String toIdentifier)
-    DidInsertAttachmentWithIdentifier(String identifier, String source)
+    DidInsertAttachmentWithIdentifier(String identifier, String source, bool hasEnclosingImage)
     DidRemoveAttachmentWithIdentifier(String identifier)
 #endif
 

@@ -97,7 +97,7 @@ public:
     bool isSynchronous() const override;
     bool isAllowedToAskUserForCredentials() const override { return m_isAllowedToAskUserForCredentials; }
     void willSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&&) override;
-    ShouldContinueDidReceiveResponse didReceiveResponse(WebCore::ResourceResponse&&) override;
+    void didReceiveResponse(WebCore::ResourceResponse&&, ResponseCompletionHandler&&) override;
     void didReceiveBuffer(Ref<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) override;
     void didFinishLoading(const WebCore::NetworkLoadMetrics&) override;
     void didFailLoading(const WebCore::ResourceError&) override;
@@ -111,7 +111,7 @@ public:
 
     bool isAlwaysOnLoggingAllowed() const;
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     static bool shouldLogCookieInformation();
     static void logCookieInformation(const String& label, const void* loggedObject, const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, const String& referrer, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, std::optional<uint64_t> identifier);
 #endif
@@ -159,7 +159,7 @@ private:
     void consumeSandboxExtensions();
     void invalidateSandboxExtensions();
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     void logCookieInformation() const;
 #endif
 
@@ -206,6 +206,7 @@ private:
     std::unique_ptr<NetworkCache::Entry> m_cacheEntryWaitingForContinueDidReceiveResponse;
     std::unique_ptr<NetworkLoadChecker> m_networkLoadChecker;
     bool m_shouldRestartLoad { false };
+    ResponseCompletionHandler m_responseCompletionHandler;
 
     std::optional<NetworkActivityTracker> m_networkActivityTracker;
 };

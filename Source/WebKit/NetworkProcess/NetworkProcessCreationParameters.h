@@ -104,7 +104,7 @@ struct NetworkProcessCreationParameters {
     String cookiePersistentStorageFile;
 #endif
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     bool logCookieInformation { false };
 #endif
 
@@ -130,6 +130,12 @@ struct NetworkProcessCreationParameters {
     SandboxExtension::Handle indexedDatabaseDirectoryExtensionHandle;
 #endif
 
+#if ENABLE(SERVICE_WORKER)
+    String serviceWorkerRegistrationDirectory;
+    SandboxExtension::Handle serviceWorkerRegistrationDirectoryExtensionHandle;
+    Vector<String> urlSchemesServiceWorkersCanHandle;
+    bool shouldDisableServiceWorkerProcessTerminationDelay { false };
+#endif
 };
 
 } // namespace WebKit

@@ -1338,10 +1338,12 @@ static NSDictionary *dictionaryRepresentationForEditorState(const WebKit::Editor
     return _scrollView.get();
 }
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 - (WKBrowsingContextController *)browsingContextController
 {
     return [_contentView browsingContextController];
 }
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (BOOL)becomeFirstResponder
 {
@@ -1654,15 +1656,11 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     return UIEdgeInsetsZero;
 }
 
-- (void)_processDidExit
+- (void)_processWillSwapOrDidExit
 {
-    RELEASE_LOG_IF_ALLOWED("%p -[WKWebView _processDidExit]", self);
+    // FIXME: Which ones of these need to be done in the process swap case and which ones in the exit case?
     [self _hidePasswordView];
     [self _cancelAnimatedResize];
-    [_contentView setFrame:self.bounds];
-    [_scrollView setBackgroundColor:[UIColor whiteColor]];
-    [_scrollView setContentOffset:[self _initialContentOffsetForScrollView]];
-    [_scrollView setZoomScale:1];
 
     _viewportMetaTagWidth = WebCore::ViewportArguments::ValueAuto;
     _initialScaleFactor = 1;
@@ -1693,6 +1691,25 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     _commitDidRestoreScrollPosition = NO;
 
     _avoidsUnsafeArea = YES;
+}
+
+- (void)_processWillSwap
+{
+    RELEASE_LOG_IF_ALLOWED("%p -[WKWebView _processWillSwap]", self);
+    [self _processWillSwapOrDidExit];
+}
+
+- (void)_processDidExit
+{
+    RELEASE_LOG_IF_ALLOWED("%p -[WKWebView _processDidExit]", self);
+
+    [self _processWillSwapOrDidExit];
+
+    [_contentView setFrame:self.bounds];
+    [_scrollView setBackgroundColor:[UIColor whiteColor]];
+    [_scrollView setContentOffset:[self _initialContentOffsetForScrollView]];
+    [_scrollView setZoomScale:1];
+    
 }
 
 - (void)_didRelaunchProcess
@@ -4549,6 +4566,15 @@ WEBCORE_COMMAND(yankAndSelect)
 #else
     return nil;
 #endif
+}
+
+- (_WKAttachment *)_attachmentForIdentifier:(NSString *)identifier
+{
+#if ENABLE(ATTACHMENT_ELEMENT)
+    if (auto attachment = _page->attachmentForIdentifier(identifier))
+        return wrapper(attachment);
+#endif
+    return nil;
 }
 
 - (void)_pasteAsQuotation:(id)sender

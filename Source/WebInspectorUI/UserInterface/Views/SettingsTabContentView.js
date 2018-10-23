@@ -234,32 +234,17 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
     _createExperimentalSettingsView()
     {
-        if (!(window.CanvasAgent || window.CSSAgent || window.NetworkAgent || window.LayerTreeAgent))
+        if (!(window.CanvasAgent || window.NetworkAgent || window.LayerTreeAgent))
             return;
 
         let experimentalSettingsView = new WI.SettingsView("experimental", WI.UIString("Experimental"));
-
-        if (window.CSSAgent) {
-            let stylesGroup = experimentalSettingsView.addGroup(WI.UIString("Styles Sidebar:"));
-            stylesGroup.addSetting(WI.settings.experimentalLegacyStyleEditor, WI.UIString("Legacy Style Editor"));
-            stylesGroup.addSetting(WI.settings.experimentalLegacyVisualSidebar, WI.UIString("Legacy Visual Styles Panel"));
-        }
 
         if (window.LayerTreeAgent) {
             experimentalSettingsView.addSetting(WI.UIString("Layers:"), WI.settings.experimentalEnableLayersTab, WI.UIString("Enable Layers Tab"));
             experimentalSettingsView.addSeparator();
         }
 
-        experimentalSettingsView.addSetting(WI.UIString("Sources:"), WI.settings.experimentalEnableSourcesTab, WI.UIString("Enable Sources Tab"));
-        experimentalSettingsView.addSeparator();
-
         experimentalSettingsView.addSetting(WI.UIString("User Interface:"), WI.settings.experimentalEnableNewTabBar, WI.UIString("Enable New Tab Bar"));
-        experimentalSettingsView.addSeparator();
-
-        experimentalSettingsView.addSetting(WI.UIString("Accessibility Audit:"), WI.settings.experimentalEnableAccessibilityAuditTab, WI.UIString("Enable Accessibility Audit Tab"));
-        experimentalSettingsView.addSeparator();
-
-        experimentalSettingsView.addSetting(WI.UIString("Canvas:"), WI.settings.experimentalRecordingHasVisualEffect, WI.UIString("Enable Visual Change Detection"));
         experimentalSettingsView.addSeparator();
 
         let reloadInspectorButton = document.createElement("button");
@@ -276,12 +261,8 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             });
         }
 
-        listenForChange(WI.settings.experimentalLegacyStyleEditor);
-        listenForChange(WI.settings.experimentalLegacyVisualSidebar);
         listenForChange(WI.settings.experimentalEnableLayersTab);
-        listenForChange(WI.settings.experimentalEnableSourcesTab);
         listenForChange(WI.settings.experimentalEnableNewTabBar);
-        listenForChange(WI.settings.experimentalEnableAccessibilityAuditTab);
 
         this.addSettingsView(experimentalSettingsView);
     }

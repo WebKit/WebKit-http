@@ -51,7 +51,12 @@ class TextStream;
 
 namespace WebCore {
 
-class TextEncoding;
+class URLTextEncoding {
+public:
+    virtual Vector<uint8_t> encodeForURLParsing(StringView) const = 0;
+    virtual ~URLTextEncoding() { };
+};
+
 struct URLHash;
 
 enum ParsedURLStringTag { ParsedURLString };
@@ -69,14 +74,13 @@ public:
     bool isHashTableDeletedValue() const { return string().isHashTableDeletedValue(); }
 
     // Resolves the relative URL with the given base URL. If provided, the
-    // TextEncoding is used to encode non-ASCII characers. The base URL can be
+    // URLTextEncoding is used to encode non-ASCII characers. The base URL can be
     // null or empty, in which case the relative URL will be interpreted as
     // absolute.
     // FIXME: If the base URL is invalid, this always creates an invalid
     // URL. Instead I think it would be better to treat all invalid base URLs
     // the same way we treate null and empty base URLs.
-    WEBCORE_EXPORT URL(const URL& base, const String& relative);
-    URL(const URL& base, const String& relative, const TextEncoding&);
+    WEBCORE_EXPORT URL(const URL& base, const String& relative, const URLTextEncoding* = nullptr);
 
     WEBCORE_EXPORT static URL fakeURLWithRelativePart(const String&);
     WEBCORE_EXPORT static URL fileURLWithFileSystemPath(const String&);
@@ -128,8 +132,8 @@ public:
 
     // Unlike user() and pass(), these functions don't decode escape sequences.
     // This is necessary for accurate round-tripping, because encoding doesn't encode '%' characters.
-    String encodedUser() const;
-    String encodedPass() const;
+    WEBCORE_EXPORT String encodedUser() const;
+    WEBCORE_EXPORT String encodedPass() const;
 
     WEBCORE_EXPORT String baseAsString() const;
 
@@ -217,7 +221,6 @@ private:
     friend class URLParser;
     WEBCORE_EXPORT void invalidate();
     static bool protocolIs(const String&, const char*);
-    void init(const URL&, const String&, const TextEncoding&);
     void copyToBuffer(Vector<char, 512>& buffer) const;
     unsigned hostStart() const;
 
@@ -307,12 +310,6 @@ WEBCORE_EXPORT void clearDefaultPortForProtocolMapForTesting();
 bool isValidProtocol(const String&);
 
 String mimeTypeFromDataURL(const String& url);
-
-// Unescapes the given string using URL escaping rules, given an optional
-// encoding (defaulting to UTF-8 otherwise). DANGER: If the URL has "%00"
-// in it, the resulting string will have embedded null characters!
-WEBCORE_EXPORT String decodeURLEscapeSequences(const String&);
-String decodeURLEscapeSequences(const String&, const TextEncoding&);
 
 // FIXME: This is a wrong concept to expose, different parts of a URL need different escaping per the URL Standard.
 WEBCORE_EXPORT String encodeWithURLEscapeSequences(const String&);

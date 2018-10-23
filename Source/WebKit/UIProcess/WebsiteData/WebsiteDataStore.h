@@ -37,6 +37,7 @@
 #include <wtf/OptionSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/UniqueRef.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/WorkQueue.h>
 #include <wtf/text/WTFString.h>
@@ -51,6 +52,7 @@ class SecurityOrigin;
 
 namespace WebKit {
 
+class AuthenticatorManager;
 class SecKeyProxyStore;
 class StorageManager;
 class WebPageProxy;
@@ -58,11 +60,12 @@ class WebProcessPool;
 class WebResourceLoadStatisticsStore;
 enum class WebsiteDataFetchOption;
 enum class WebsiteDataType;
+struct MockWebAuthenticationConfiguration;
 struct StorageProcessCreationParameters;
 struct WebsiteDataRecord;
 struct WebsiteDataStoreParameters;
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
 enum class StorageAccessStatus;
 enum class StorageAccessPromptStatus;
 #endif
@@ -132,7 +135,7 @@ public:
     void removeData(OptionSet<WebsiteDataType>, const Vector<WebsiteDataRecord>&, Function<void()>&& completionHandler);
     void removeDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, const Vector<String>& topPrivatelyControlledDomains, Function<void(HashSet<String>&&)>&& completionHandler);
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     void updatePrevalentDomainsToBlockCookiesFor(const Vector<String>& domainsToBlock, ShouldClearFirst, CompletionHandler<void()>&&);
     void hasStorageAccessForFrameHandler(const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool hasAccess)>&&);
     void getAllStorageAccessEntries(uint64_t pageID, CompletionHandler<void(Vector<String>&& domains)>&&);
@@ -187,6 +190,11 @@ public:
 
 #if HAVE(SEC_KEY_PROXY)
     void addSecKeyProxyStore(Ref<SecKeyProxyStore>&&);
+#endif
+
+#if ENABLE(WEB_AUTHN)
+    AuthenticatorManager& authenticatorManager() { return m_authenticatorManager.get(); }
+    void setMockWebAuthenticationConfiguration(MockWebAuthenticationConfiguration&&);
 #endif
 
 private:
@@ -246,6 +254,10 @@ private:
 
 #if HAVE(SEC_KEY_PROXY)
     Vector<Ref<SecKeyProxyStore>> m_secKeyProxyStores;
+#endif
+
+#if ENABLE(WEB_AUTHN)
+    UniqueRef<AuthenticatorManager> m_authenticatorManager;
 #endif
 };
 

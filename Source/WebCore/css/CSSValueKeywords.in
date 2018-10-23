@@ -551,7 +551,6 @@ no-close-quote
 no-open-quote
 nowrap
 open-quote
-overlay
 overline
 portrait
 pre
@@ -1153,7 +1152,7 @@ on-demand
 // normal
 multiply
 screen
-// overlay
+overlay
 darken
 lighten
 color-dodge
@@ -1335,7 +1334,6 @@ white-outline
 plain
 buy
 set-up
-in-store
 donate
 #if defined(ENABLE_APPLE_PAY_SESSION_V4) && ENABLE_APPLE_PAY_SESSION_V4
 check-out

@@ -113,6 +113,11 @@ private:
 #endif
 };
 
+// FIXME: Find a better place for this.
+#if PLATFORM(IOS)
+bool isInHardwareKeyboardMode();
+#endif
+
 } // namespace WebKit
 
 #endif // NativeWebKeyboardEvent_h

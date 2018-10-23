@@ -53,8 +53,9 @@ private:
     PaymentCoordinator& paymentCoordinator() const;
 
     ExceptionOr<ApplePaySessionPaymentRequest::TotalAndLineItems> computeTotalAndLineItems();
+    Vector<PaymentError> computeErrors(String&& error, AddressErrors&&, PayerErrorFields&&, JSC::JSObject* paymentMethodErrors) const;
 
-    ExceptionOr<void> shippingAddressUpdated(const String& error);
+    ExceptionOr<void> shippingAddressUpdated(Vector<PaymentError>&& errors);
     ExceptionOr<void> shippingOptionUpdated();
     ExceptionOr<void> paymentMethodUpdated();
 
@@ -63,13 +64,13 @@ private:
     ExceptionOr<void> show() final;
     void hide() final;
     void canMakePayment(WTF::Function<void(bool)>&& completionHandler) final;
-    ExceptionOr<void> detailsUpdated(PaymentRequest::UpdateReason, const String& error) final;
+    ExceptionOr<void> detailsUpdated(PaymentRequest::UpdateReason, String&& error, AddressErrors&&, PayerErrorFields&&, JSC::JSObject* paymentMethodErrors) final;
     ExceptionOr<void> merchantValidationCompleted(JSC::JSValue&&) final;
     void complete(std::optional<PaymentComplete>&&) final;
 
     // PaymentSession
     unsigned version() const final;
-    void validateMerchant(const URL&) final;
+    void validateMerchant(URL&&) final;
     void didAuthorizePayment(const Payment&) final;
     void didSelectShippingMethod(const ApplePaySessionPaymentRequest::ShippingMethod&) final;
     void didSelectShippingContact(const PaymentContact&) final;

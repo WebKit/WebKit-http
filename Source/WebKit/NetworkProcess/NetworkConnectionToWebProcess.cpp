@@ -36,6 +36,7 @@
 #include "NetworkMDNSRegisterMessages.h"
 #include "NetworkProcess.h"
 #include "NetworkProcessConnectionMessages.h"
+#include "NetworkProcessMessages.h"
 #include "NetworkRTCMonitorMessages.h"
 #include "NetworkRTCProviderMessages.h"
 #include "NetworkRTCSocketMessages.h"
@@ -51,6 +52,10 @@
 #include "WebErrors.h"
 #include "WebIDBConnectionToClient.h"
 #include "WebIDBConnectionToClientMessages.h"
+#include "WebSWServerConnection.h"
+#include "WebSWServerConnectionMessages.h"
+#include "WebSWServerToContextConnection.h"
+#include "WebSWServerToContextConnectionMessages.h"
 #include "WebsiteDataStore.h"
 #include "WebsiteDataStoreParameters.h"
 #include <WebCore/NetworkStorageSession.h>
@@ -74,6 +79,11 @@ NetworkConnectionToWebProcess::NetworkConnectionToWebProcess(IPC::Connection::Id
 #endif
 {
     RELEASE_ASSERT(RunLoop::isMain());
+
+    // Use this flag to force synchronous messages to be treated as asynchronous messages in the WebProcess.
+    // Otherwise, the WebProcess would process incoming synchronous IPC while waiting for a synchronous IPC
+    // reply from the Network process, which would be unsafe.
+    m_connection->setOnlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage(true);
     m_connection->open();
 }
 
@@ -85,6 +95,10 @@ NetworkConnectionToWebProcess::~NetworkConnectionToWebProcess()
 #if USE(LIBWEBRTC)
     if (m_rtcProvider)
         m_rtcProvider->close();
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    unregisterSWConnections();
 #endif
 }
 
@@ -121,6 +135,12 @@ void NetworkConnectionToWebProcess::didReceiveMessage(IPC::Connection& connectio
         return;
     }
 
+    if (decoder.messageReceiverName() == Messages::NetworkProcess::messageReceiverName()) {
+        NetworkProcess::singleton().didReceiveNetworkProcessMessage(connection, decoder);
+        return;
+    }
+
+
 #if USE(LIBWEBRTC)
     if (decoder.messageReceiverName() == Messages::NetworkRTCSocket::messageReceiverName()) {
         rtcProvider().didReceiveNetworkRTCSocketMessage(connection, decoder);
@@ -155,6 +175,21 @@ void NetworkConnectionToWebProcess::didReceiveMessage(IPC::Connection& connectio
         return;
     }
 #endif
+    
+#if ENABLE(SERVICE_WORKER)
+    if (decoder.messageReceiverName() == Messages::WebSWServerConnection::messageReceiverName()) {
+        if (auto swConnection = m_swConnections.get(makeObjectIdentifier<SWServerConnectionIdentifierType>(decoder.destinationID())))
+            swConnection->didReceiveMessage(connection, decoder);
+        return;
+    }
+    
+    if (decoder.messageReceiverName() == Messages::WebSWServerToContextConnection::messageReceiverName()) {
+        if (auto* contextConnection = NetworkProcess::singleton().connectionToContextProcessFromIPCConnection(connection)) {
+            contextConnection->didReceiveMessage(connection, decoder);
+            return;
+        }
+    }
+#endif
 
     ASSERT_NOT_REACHED();
 }
@@ -181,11 +216,30 @@ void NetworkConnectionToWebProcess::didReceiveSyncMessage(IPC::Connection& conne
         didReceiveSyncNetworkConnectionToWebProcessMessage(connection, decoder, reply);
         return;
     }
+
+#if ENABLE(SERVICE_WORKER)
+    if (decoder.messageReceiverName() == Messages::WebSWServerConnection::messageReceiverName()) {
+        if (auto swConnection = m_swConnections.get(makeObjectIdentifier<SWServerConnectionIdentifierType>(decoder.destinationID())))
+            swConnection->didReceiveSyncMessage(connection, decoder, reply);
+        return;
+    }
+#endif
+
     ASSERT_NOT_REACHED();
 }
 
-void NetworkConnectionToWebProcess::didClose(IPC::Connection&)
+void NetworkConnectionToWebProcess::didClose(IPC::Connection& connection)
 {
+#if ENABLE(SERVICE_WORKER)
+    if (RefPtr<WebSWServerToContextConnection> serverToContextConnection = NetworkProcess::singleton().connectionToContextProcessFromIPCConnection(connection)) {
+        // Service Worker process exited.
+        NetworkProcess::singleton().connectionToContextProcessWasClosed(serverToContextConnection.releaseNonNull());
+        return;
+    }
+#else
+    UNUSED_PARAM(connection);
+#endif
+
     // Protect ourself as we might be otherwise be deleted during this function.
     Ref<NetworkConnectionToWebProcess> protector(*this);
 
@@ -214,7 +268,10 @@ void NetworkConnectionToWebProcess::didClose(IPC::Connection&)
     
     m_webIDBConnections.clear();
 #endif
-
+    
+#if ENABLE(SERVICE_WORKER)
+    unregisterSWConnections();
+#endif
 }
 
 void NetworkConnectionToWebProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
@@ -397,7 +454,7 @@ void NetworkConnectionToWebProcess::cookiesForDOM(PAL::SessionID sessionID, cons
 {
     auto& networkStorageSession = storageSession(sessionID);
     std::tie(cookieString, secureCookiesAccessed) = networkStorageSession.cookiesForDOM(firstParty, sameSiteInfo, url, frameID, pageID, includeSecureCookies);
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     if (NetworkProcess::singleton().shouldLogCookieInformation())
         NetworkResourceLoader::logCookieInformation("NetworkConnectionToWebProcess::cookiesForDOM", reinterpret_cast<const void*>(this), networkStorageSession, firstParty, sameSiteInfo, url, emptyString(), frameID, pageID, std::nullopt);
 #endif
@@ -407,7 +464,7 @@ void NetworkConnectionToWebProcess::setCookiesFromDOM(PAL::SessionID sessionID, 
 {
     auto& networkStorageSession = storageSession(sessionID);
     networkStorageSession.setCookiesFromDOM(firstParty, sameSiteInfo, url, frameID, pageID, cookieString);
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     if (NetworkProcess::singleton().shouldLogCookieInformation())
         NetworkResourceLoader::logCookieInformation("NetworkConnectionToWebProcess::setCookiesFromDOM", reinterpret_cast<const void*>(this), networkStorageSession, firstParty, sameSiteInfo, url, emptyString(), frameID, pageID, std::nullopt);
 #endif
@@ -533,7 +590,7 @@ void NetworkConnectionToWebProcess::ensureLegacyPrivateBrowsingSession()
 
 void NetworkConnectionToWebProcess::removeStorageAccessForFrame(PAL::SessionID sessionID, uint64_t frameID, uint64_t pageID)
 {
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (auto* storageSession = NetworkStorageSession::storageSession(sessionID))
         storageSession->removeStorageAccessForFrame(frameID, pageID);
 #else
@@ -545,7 +602,7 @@ void NetworkConnectionToWebProcess::removeStorageAccessForFrame(PAL::SessionID s
 
 void NetworkConnectionToWebProcess::removeStorageAccessForAllFramesOnPage(PAL::SessionID sessionID, uint64_t pageID)
 {
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (auto* storageSession = NetworkStorageSession::storageSession(sessionID))
         storageSession->removeStorageAccessForAllFramesOnPage(pageID);
 #else
@@ -687,6 +744,30 @@ void NetworkConnectionToWebProcess::removeIDBConnectionToServer(uint64_t serverC
     
     auto connection = m_webIDBConnections.take(serverConnectionIdentifier);
     connection->disconnectedFromWebProcess();
+}
+#endif
+    
+#if ENABLE(SERVICE_WORKER)
+void NetworkConnectionToWebProcess::unregisterSWConnections()
+{
+    auto swConnections = WTFMove(m_swConnections);
+    for (auto& swConnection : swConnections.values()) {
+        if (swConnection)
+            swConnection->server().removeConnection(swConnection->identifier());
+    }
+}
+
+void NetworkConnectionToWebProcess::establishSWServerConnection(PAL::SessionID sessionID, SWServerConnectionIdentifier& serverConnectionIdentifier)
+{
+    auto& server = NetworkProcess::singleton().swServerForSession(sessionID);
+    auto connection = std::make_unique<WebSWServerConnection>(server, m_connection.get(), sessionID);
+    
+    serverConnectionIdentifier = connection->identifier();
+    LOG(ServiceWorker, "NetworkConnectionToWebProcess::establishSWServerConnection - %s", serverConnectionIdentifier.loggingString().utf8().data());
+
+    ASSERT(!m_swConnections.contains(serverConnectionIdentifier));
+    m_swConnections.add(serverConnectionIdentifier, makeWeakPtr(*connection));
+    server.addConnection(WTFMove(connection));
 }
 #endif
 

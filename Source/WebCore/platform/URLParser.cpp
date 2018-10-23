@@ -618,10 +618,9 @@ ALWAYS_INLINE void URLParser::utf8QueryEncode(const CodePointIterator<CharacterT
 }
 
 template<typename CharacterType>
-void URLParser::encodeQuery(const Vector<UChar>& source, const TextEncoding& encoding, CodePointIterator<CharacterType> iterator)
+void URLParser::encodeNonUTF8Query(const Vector<UChar>& source, const URLTextEncoding& encoding, CodePointIterator<CharacterType> iterator)
 {
-    // FIXME: It is unclear in the spec what to do when encoding fails. The behavior should be specified and tested.
-    auto encoded = encoding.encode(StringView(source.data(), source.size()), UnencodableHandling::URLEncodedEntities);
+    auto encoded = encoding.encodeForURLParsing(StringView(source.data(), source.size()));
     auto* data = encoded.data();
     size_t length = encoded.size();
     
@@ -881,7 +880,7 @@ void URLParser::copyASCIIStringUntil(const String& string, size_t length)
 }
 
 template<typename CharacterType>
-void URLParser::copyURLPartsUntil(const URL& base, URLPart part, const CodePointIterator<CharacterType>& iterator, bool& isUTF8Encoding)
+void URLParser::copyURLPartsUntil(const URL& base, URLPart part, const CodePointIterator<CharacterType>& iterator, const URLTextEncoding*& nonUTF8QueryEncoding)
 {
     syntaxViolation(iterator);
 
@@ -920,7 +919,7 @@ void URLParser::copyURLPartsUntil(const URL& base, URLPart part, const CodePoint
     switch (scheme(StringView(m_asciiBuffer.data(), m_url.m_schemeEnd))) {
     case Scheme::WS:
     case Scheme::WSS:
-        isUTF8Encoding = true;
+        nonUTF8QueryEncoding = nullptr;
         m_urlIsSpecial = true;
         return;
     case Scheme::File:
@@ -934,7 +933,7 @@ void URLParser::copyURLPartsUntil(const URL& base, URLPart part, const CodePoint
         return;
     case Scheme::NonSpecial:
         m_urlIsSpecial = false;
-        isUTF8Encoding = true;
+        nonUTF8QueryEncoding = nullptr;
         return;
     }
     ASSERT_NOT_REACHED();
@@ -1153,7 +1152,7 @@ ALWAYS_INLINE size_t URLParser::currentPosition(const CodePointIterator<Characte
     return iterator.codeUnitsSince(reinterpret_cast<const CharacterType*>(m_inputBegin));
 }
 
-URLParser::URLParser(const String& input, const URL& base, const TextEncoding& encoding)
+URLParser::URLParser(const String& input, const URL& base, const URLTextEncoding* nonUTF8QueryEncoding)
     : m_inputString(input)
 {
     if (input.isNull()) {
@@ -1166,10 +1165,10 @@ URLParser::URLParser(const String& input, const URL& base, const TextEncoding& e
 
     if (input.is8Bit()) {
         m_inputBegin = input.characters8();
-        parse(input.characters8(), input.length(), base, encoding);
+        parse(input.characters8(), input.length(), base, nonUTF8QueryEncoding);
     } else {
         m_inputBegin = input.characters16();
-        parse(input.characters16(), input.length(), base, encoding);
+        parse(input.characters16(), input.length(), base, nonUTF8QueryEncoding);
     }
 
     ASSERT(!m_url.m_isValid
@@ -1180,7 +1179,7 @@ URLParser::URLParser(const String& input, const URL& base, const TextEncoding& e
 #if !ASSERT_DISABLED
     if (!m_didSeeSyntaxViolation) {
         // Force a syntax violation at the beginning to make sure we get the same result.
-        URLParser parser(makeString(" ", input), base, encoding);
+        URLParser parser(makeString(" ", input), base, nonUTF8QueryEncoding);
         URL parsed = parser.result();
         if (parsed.isValid())
             ASSERT(allValuesEqual(parser.result(), m_url));
@@ -1189,13 +1188,12 @@ URLParser::URLParser(const String& input, const URL& base, const TextEncoding& e
 }
 
 template<typename CharacterType>
-void URLParser::parse(const CharacterType* input, const unsigned length, const URL& base, const TextEncoding& encoding)
+void URLParser::parse(const CharacterType* input, const unsigned length, const URL& base, const URLTextEncoding* nonUTF8QueryEncoding)
 {
-    URL_PARSER_LOG("Parsing URL <%s> base <%s> encoding <%s>", String(input, length).utf8().data(), base.string().utf8().data(), encoding.name());
+    URL_PARSER_LOG("Parsing URL <%s> base <%s>", String(input, length).utf8().data(), base.string().utf8().data());
     m_url = { };
     ASSERT(m_asciiBuffer.isEmpty());
-    
-    bool isUTF8Encoding = encoding == UTF8Encoding();
+
     Vector<UChar> queryBuffer;
 
     unsigned endIndex = length;
@@ -1288,7 +1286,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                     break;
                 case Scheme::WS:
                 case Scheme::WSS:
-                    isUTF8Encoding = true;
+                    nonUTF8QueryEncoding = nullptr;
                     m_urlIsSpecial = true;
                     if (base.protocolIs(urlScheme))
                         state = State::SpecialRelativeOrAuthority;
@@ -1310,7 +1308,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                     ++c;
                     break;
                 case Scheme::NonSpecial:
-                    isUTF8Encoding = true;
+                    nonUTF8QueryEncoding = nullptr;
                     auto maybeSlash = c;
                     advance(maybeSlash);
                     if (!maybeSlash.atEnd() && *maybeSlash == '/') {
@@ -1354,7 +1352,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 return;
             }
             if (base.m_cannotBeABaseURL && *c == '#') {
-                copyURLPartsUntil(base, URLPart::QueryEnd, c, isUTF8Encoding);
+                copyURLPartsUntil(base, URLPart::QueryEnd, c, nonUTF8QueryEncoding);
                 state = State::Fragment;
                 appendToASCIIBuffer('#');
                 ++c;
@@ -1364,7 +1362,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 state = State::Relative;
                 break;
             }
-            copyURLPartsUntil(base, URLPart::SchemeEnd, c, isUTF8Encoding);
+            copyURLPartsUntil(base, URLPart::SchemeEnd, c, nonUTF8QueryEncoding);
             appendToASCIIBuffer(':');
             state = State::File;
             break;
@@ -1414,24 +1412,23 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 ++c;
                 break;
             case '?':
-                copyURLPartsUntil(base, URLPart::PathEnd, c, isUTF8Encoding);
+                copyURLPartsUntil(base, URLPart::PathEnd, c, nonUTF8QueryEncoding);
                 appendToASCIIBuffer('?');
                 ++c;
-                if (isUTF8Encoding)
-                    state = State::UTF8Query;
-                else {
+                if (nonUTF8QueryEncoding) {
                     queryBegin = c;
                     state = State::NonUTF8Query;
-                }
+                } else
+                    state = State::UTF8Query;
                 break;
             case '#':
-                copyURLPartsUntil(base, URLPart::QueryEnd, c, isUTF8Encoding);
+                copyURLPartsUntil(base, URLPart::QueryEnd, c, nonUTF8QueryEncoding);
                 appendToASCIIBuffer('#');
                 state = State::Fragment;
                 ++c;
                 break;
             default:
-                copyURLPartsUntil(base, URLPart::PathAfterLastSlash, c, isUTF8Encoding);
+                copyURLPartsUntil(base, URLPart::PathAfterLastSlash, c, nonUTF8QueryEncoding);
                 if (currentPosition(c) && parsedDataView(currentPosition(c) - 1) != '/') {
                     appendToASCIIBuffer('/');
                     m_url.m_pathAfterLastSlash = currentPosition(c);
@@ -1444,7 +1441,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             LOG_STATE("RelativeSlash");
             if (*c == '/' || *c == '\\') {
                 ++c;
-                copyURLPartsUntil(base, URLPart::SchemeEnd, c, isUTF8Encoding);
+                copyURLPartsUntil(base, URLPart::SchemeEnd, c, nonUTF8QueryEncoding);
                 appendToASCIIBuffer("://", 3);
                 if (m_urlIsSpecial)
                     state = State::SpecialAuthorityIgnoreSlashes;
@@ -1454,7 +1451,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                     authorityOrHostBegin = c;
                 }
             } else {
-                copyURLPartsUntil(base, URLPart::PortEnd, c, isUTF8Encoding);
+                copyURLPartsUntil(base, URLPart::PortEnd, c, nonUTF8QueryEncoding);
                 appendToASCIIBuffer('/');
                 m_url.m_pathAfterLastSlash = base.m_hostEnd + base.m_portLength + 1;
                 state = State::Path;
@@ -1585,7 +1582,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             case '?':
                 syntaxViolation(c);
                 if (base.isValid() && base.protocolIs("file")) {
-                    copyURLPartsUntil(base, URLPart::PathEnd, c, isUTF8Encoding);
+                    copyURLPartsUntil(base, URLPart::PathEnd, c, nonUTF8QueryEncoding);
                     appendToASCIIBuffer('?');
                     ++c;
                 } else {
@@ -1599,17 +1596,16 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                     m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
                     m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
                 }
-                if (isUTF8Encoding)
-                    state = State::UTF8Query;
-                else {
+                if (nonUTF8QueryEncoding) {
                     queryBegin = c;
                     state = State::NonUTF8Query;
-                }
+                } else
+                    state = State::UTF8Query;
                 break;
             case '#':
                 syntaxViolation(c);
                 if (base.isValid() && base.protocolIs("file")) {
-                    copyURLPartsUntil(base, URLPart::QueryEnd, c, isUTF8Encoding);
+                    copyURLPartsUntil(base, URLPart::QueryEnd, c, nonUTF8QueryEncoding);
                     appendToASCIIBuffer('#');
                 } else {
                     appendToASCIIBuffer("///#", 4);
@@ -1628,7 +1624,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             default:
                 syntaxViolation(c);
                 if (base.isValid() && base.protocolIs("file") && shouldCopyFileURL(c))
-                    copyURLPartsUntil(base, URLPart::PathAfterLastSlash, c, isUTF8Encoding);
+                    copyURLPartsUntil(base, URLPart::PathAfterLastSlash, c, nonUTF8QueryEncoding);
                 else {
                     appendToASCIIBuffer("///", 3);
                     m_url.m_userStart = currentPosition(c) - 1;
@@ -1694,12 +1690,11 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                             syntaxViolation(c);
                             appendToASCIIBuffer("/?", 2);
                             ++c;
-                            if (isUTF8Encoding)
-                                state = State::UTF8Query;
-                            else {
+                            if (nonUTF8QueryEncoding) {
                                 queryBegin = c;
                                 state = State::NonUTF8Query;
-                            }
+                            } else
+                                state = State::UTF8Query;
                             m_url.m_pathAfterLastSlash = currentPosition(c) - 1;
                             m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
                             break;
@@ -1772,12 +1767,11 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 m_url.m_pathEnd = currentPosition(c);
                 appendToASCIIBuffer('?');
                 ++c;
-                if (isUTF8Encoding)
-                    state = State::UTF8Query;
-                else {
+                if (nonUTF8QueryEncoding) {
                     queryBegin = c;
                     state = State::NonUTF8Query;
-                }
+                } else
+                    state = State::UTF8Query;
                 break;
             }
             if (*c == '#') {
@@ -1795,12 +1789,11 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 m_url.m_pathEnd = currentPosition(c);
                 appendToASCIIBuffer('?');
                 ++c;
-                if (isUTF8Encoding)
-                    state = State::UTF8Query;
-                else {
+                if (nonUTF8QueryEncoding) {
                     queryBegin = c;
                     state = State::NonUTF8Query;
-                }
+                } else
+                    state = State::UTF8Query;
             } else if (*c == '#') {
                 m_url.m_pathEnd = currentPosition(c);
                 m_url.m_queryEnd = m_url.m_pathEnd;
@@ -1822,10 +1815,8 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 state = State::Fragment;
                 break;
             }
-            if (isUTF8Encoding)
-                utf8QueryEncode(c);
-            else
-                appendCodePoint(queryBuffer, *c);
+            ASSERT(!nonUTF8QueryEncoding);
+            utf8QueryEncode(c);
             ++c;
             break;
         case State::NonUTF8Query:
@@ -1833,7 +1824,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 LOG_STATE("NonUTF8Query");
                 ASSERT(queryBegin != CodePointIterator<CharacterType>());
                 if (*c == '#') {
-                    encodeQuery(queryBuffer, encoding, CodePointIterator<CharacterType>(queryBegin, c));
+                    encodeNonUTF8Query(queryBuffer, *nonUTF8QueryEncoding, CodePointIterator<CharacterType>(queryBegin, c));
                     m_url.m_queryEnd = currentPosition(c);
                     state = State::Fragment;
                     break;
@@ -1869,7 +1860,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         RELEASE_ASSERT_NOT_REACHED();
     case State::SpecialRelativeOrAuthority:
         LOG_FINAL_STATE("SpecialRelativeOrAuthority");
-        copyURLPartsUntil(base, URLPart::QueryEnd, c, isUTF8Encoding);
+        copyURLPartsUntil(base, URLPart::QueryEnd, c, nonUTF8QueryEncoding);
         break;
     case State::PathOrAuthority:
         LOG_FINAL_STATE("PathOrAuthority");
@@ -1890,7 +1881,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         RELEASE_ASSERT_NOT_REACHED();
     case State::RelativeSlash:
         LOG_FINAL_STATE("RelativeSlash");
-        copyURLPartsUntil(base, URLPart::PortEnd, c, isUTF8Encoding);
+        copyURLPartsUntil(base, URLPart::PortEnd, c, nonUTF8QueryEncoding);
         appendToASCIIBuffer('/');
         m_url.m_pathAfterLastSlash = m_url.m_hostEnd + m_url.m_portLength + 1;
         m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
@@ -1953,7 +1944,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
     case State::File:
         LOG_FINAL_STATE("File");
         if (base.isValid() && base.protocolIs("file")) {
-            copyURLPartsUntil(base, URLPart::QueryEnd, c, isUTF8Encoding);
+            copyURLPartsUntil(base, URLPart::QueryEnd, c, nonUTF8QueryEncoding);
             break;
         }
         syntaxViolation(c);
@@ -2048,7 +2039,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
     case State::NonUTF8Query:
         LOG_FINAL_STATE("NonUTF8Query");
         ASSERT(queryBegin != CodePointIterator<CharacterType>());
-        encodeQuery(queryBuffer, encoding, CodePointIterator<CharacterType>(queryBegin, c));
+        encodeNonUTF8Query(queryBuffer, *nonUTF8QueryEncoding, CodePointIterator<CharacterType>(queryBegin, c));
         m_url.m_queryEnd = currentPosition(c);
         break;
     case State::Fragment:
@@ -2568,11 +2559,12 @@ template<typename CharacterType> std::optional<URLParser::LCharBuffer> URLParser
         return ascii;
     }
     
-    UChar hostnameBuffer[defaultInlineBufferSize];
+    const size_t maxDomainLength = 64;
+    UChar hostnameBuffer[maxDomainLength];
     UErrorCode error = U_ZERO_ERROR;
     UIDNAInfo processingDetails = UIDNA_INFO_INITIALIZER;
-    int32_t numCharactersConverted = uidna_nameToASCII(&internationalDomainNameTranscoder(), StringView(domain).upconvertedCharacters(), domain.length(), hostnameBuffer, defaultInlineBufferSize, &processingDetails, &error);
-    ASSERT(numCharactersConverted <= static_cast<int32_t>(defaultInlineBufferSize));
+    int32_t numCharactersConverted = uidna_nameToASCII(&internationalDomainNameTranscoder(), StringView(domain).upconvertedCharacters(), domain.length(), hostnameBuffer, maxDomainLength, &processingDetails, &error);
+    ASSERT(numCharactersConverted <= static_cast<int32_t>(maxDomainLength));
 
     if (U_SUCCESS(error) && !processingDetails.errors) {
         for (int32_t i = 0; i < numCharactersConverted; ++i) {
@@ -2584,8 +2576,6 @@ template<typename CharacterType> std::optional<URLParser::LCharBuffer> URLParser
             syntaxViolation(iteratorForSyntaxViolationPosition);
         return ascii;
     }
-
-    // FIXME: Check for U_BUFFER_OVERFLOW_ERROR and retry with an allocated buffer.
     return std::nullopt;
 }
 
@@ -2755,12 +2745,11 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
         if (UNLIKELY(!isASCII(*iterator)))
             syntaxViolation(hostBegin);
 
+        if (!U_IS_UNICODE_CHAR(*iterator))
+            return false;
         uint8_t buffer[U8_MAX_LENGTH];
         int32_t offset = 0;
-        UBool error = false;
-        U8_APPEND(buffer, offset, U8_MAX_LENGTH, *iterator, error);
-        ASSERT_WITH_SECURITY_IMPLICATION(offset <= static_cast<int32_t>(sizeof(buffer)));
-        // FIXME: Check error.
+        U8_APPEND_UNSAFE(buffer, offset, *iterator);
         utf8Encoded.append(buffer, offset);
     }
     LCharBuffer percentDecoded = percentDecode(utf8Encoded.data(), utf8Encoded.size(), hostBegin);

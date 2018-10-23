@@ -23,6 +23,10 @@ webrtc [ Skip ]
 # Not supported on WK1
 media/no-fullscreen-when-hidden.html [ Skip ]
 
+# Skip pointerevents on WK1
+pointerevents [ Skip ]
+imported/w3c/web-platform-tests/pointerevents [ Skip ]
+
 # <rdar://problem/6501130> LayoutTests: Enable editing tests after we support editing
 editing/deleting/4922367.html
 editing/deleting/5126166.html
@@ -564,10 +568,8 @@ compositing/layer-creation/fixed-position-under-transform.html [ Failure ]
 compositing/layer-creation/no-compositing-for-preserve-3d.html [ Failure ]
 compositing/layer-creation/no-compositing-for-sticky.html [ Failure ]
 compositing/layer-creation/overflow-scroll-overlap.html [ Failure ]
-compositing/overflow/automatically-opt-into-composited-scrolling.html [ Failure ]
 compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants.html [ Failure ]
 compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants2.html [ Failure ]
-compositing/overflow/composited-scrolling-creates-a-stacking-container.html [ Failure ]
 compositing/overflow/composited-scrolling-paint-phases.html [ Failure ]
 compositing/overflow/content-gains-scrollbars.html [ Failure ]
 compositing/overflow/overflow-scroll.html [ Failure ]
@@ -1967,7 +1969,6 @@ webkit.org/b/180062 fast/text/user-installed-fonts [ ImageOnlyFailure ]
 http/tests/xmlhttprequest/range-test.html [ Skip ]
 
 # Skip anything related to WebAuthN
-http/tests/webauthn/ [ Skip ]
 http/wpt/credential-management/ [ Skip ]
 http/wpt/webauthn/ [ Skip ]
 imported/w3c/web-platform-tests/credential-management/ [ Skip ]

@@ -94,6 +94,8 @@ static WKWebViewConfiguration *defaultConfiguration()
         configuration = [[WKWebViewConfiguration alloc] init];
         configuration.preferences._fullScreenEnabled = YES;
         configuration.preferences._developerExtrasEnabled = YES;
+        configuration.preferences._mediaDevicesEnabled = YES;
+        configuration.preferences._mockCaptureDevicesEnabled = YES;
 
         _WKProcessPoolConfiguration *processConfiguration = [[[_WKProcessPoolConfiguration alloc] init] autorelease];
         processConfiguration.diskCacheSpeculativeValidationEnabled = ![SettingsController shared].networkCacheSpeculativeRevalidationDisabled;
@@ -109,13 +111,21 @@ static WKWebViewConfiguration *defaultConfiguration()
 #if WK_API_ENABLED
         NSArray<_WKExperimentalFeature *> *experimentalFeatures = [WKPreferences _experimentalFeatures];
         for (_WKExperimentalFeature *feature in experimentalFeatures) {
-            BOOL enabled = [[NSUserDefaults standardUserDefaults] boolForKey:feature.key];
+            BOOL enabled;
+            if ([[NSUserDefaults standardUserDefaults] objectForKey:feature.key])
+                enabled = [[NSUserDefaults standardUserDefaults] boolForKey:feature.key];
+            else
+                enabled = [feature defaultValue];
             [configuration.preferences _setEnabled:enabled forExperimentalFeature:feature];
         }
 
         NSArray<_WKInternalDebugFeature *> *internalDebugFeatures = [WKPreferences _internalDebugFeatures];
         for (_WKInternalDebugFeature *feature in internalDebugFeatures) {
-            BOOL enabled = [[NSUserDefaults standardUserDefaults] boolForKey:feature.key];
+            BOOL enabled;
+            if ([[NSUserDefaults standardUserDefaults] objectForKey:feature.key])
+                enabled = [[NSUserDefaults standardUserDefaults] boolForKey:feature.key];
+            else
+                enabled = [feature defaultValue];
             [configuration.preferences _setEnabled:enabled forInternalDebugFeature:feature];
         }
 #endif

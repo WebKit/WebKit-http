@@ -48,6 +48,7 @@
 #include "Chrome.h"
 #include "ClientOrigin.h"
 #include "ComposedTreeIterator.h"
+#include "CookieJar.h"
 #include "Cursor.h"
 #include "DOMRect.h"
 #include "DOMRectList.h"
@@ -265,11 +266,6 @@
 #if ENABLE(APPLE_PAY)
 #include "MockPaymentCoordinator.h"
 #include "PaymentCoordinator.h"
-#endif
-
-#if ENABLE(WEB_AUTHN)
-#include "AuthenticatorCoordinator.h"
-#include "MockAuthenticatorCoordinator.h"
 #endif
 
 #if PLATFORM(MAC) && USE(LIBWEBRTC)
@@ -550,14 +546,6 @@ Internals::Internals(Document& document)
     if (frame && frame->page()) {
         m_mockPaymentCoordinator = new MockPaymentCoordinator(*frame->page());
         frame->page()->setPaymentCoordinator(std::make_unique<PaymentCoordinator>(*m_mockPaymentCoordinator));
-    }
-#endif
-
-#if ENABLE(WEB_AUTHN)
-    if (document.page()) {
-        auto mockAuthenticatorCoordinator = std::make_unique<MockAuthenticatorCoordinator>();
-        m_mockAuthenticatorCoordinator = makeWeakPtr(mockAuthenticatorCoordinator.get());
-        document.page()->authenticatorCoordinator().setClient(WTFMove(mockAuthenticatorCoordinator));
     }
 #endif
 }
@@ -1074,6 +1062,13 @@ Vector<Internals::AcceleratedAnimation> Internals::acceleratedAnimationsForEleme
     for (auto animationAsPair : element.document().timeline().acceleratedAnimationsForElement(element))
         animations.append({ animationAsPair.first, animationAsPair.second });
     return animations;
+}
+
+unsigned Internals::numberOfAnimationTimelineInvalidations() const
+{
+    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
+        return frame()->document()->timeline().numberOfAnimationTimelineInvalidationsForTesting();
+    return 0;
 }
 
 ExceptionOr<RefPtr<Element>> Internals::pseudoElement(Element& element, const String& pseudoId)
@@ -4624,24 +4619,10 @@ void Internals::setTimelineCurrentTime(AnimationTimeline& timeline, double curre
     timeline.setCurrentTime(Seconds::fromMilliseconds(currentTime));
 }
 
-void Internals::testIncomingSyncIPCMessageWhileWaitingForSyncReply()
-{
-    ASSERT(contextDocument());
-    ASSERT(contextDocument()->page());
-    contextDocument()->page()->chrome().client().testIncomingSyncIPCMessageWhileWaitingForSyncReply();
-}
-
 #if ENABLE(APPLE_PAY)
 MockPaymentCoordinator& Internals::mockPaymentCoordinator() const
 {
     return *m_mockPaymentCoordinator;
-}
-#endif
-
-#if ENABLE(WEB_AUTHN)
-MockAuthenticatorCoordinator& Internals::mockAuthenticatorCoordinator() const
-{
-    return *m_mockAuthenticatorCoordinator;
 }
 #endif
 
@@ -4752,6 +4733,19 @@ bool Internals::supportsVCPEncoder()
 std::optional<HEVCParameterSet> Internals::parseHEVCCodecParameters(const String& codecString)
 {
     return WebCore::parseHEVCCodecParameters(codecString);
+}
+
+auto Internals::getCookies() const -> Vector<CookieData>
+{
+    auto* document = contextDocument();
+    if (!document)
+        return { };
+
+    Vector<Cookie> cookies;
+    getRawCookies(*document, document->cookieURL(), cookies);
+    return WTF::map(cookies, [](auto& cookie) {
+        return CookieData { cookie };
+    });
 }
 
 } // namespace WebCore

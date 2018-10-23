@@ -266,6 +266,7 @@ static RetainPtr<NSArray> filterCookies(NSArray *unfilteredCookies)
     NSUInteger count = [unfilteredCookies count];
     RetainPtr<NSMutableArray> filteredCookies = adoptNS([[NSMutableArray alloc] initWithCapacity:count]);
 
+    const NSTimeInterval secondsPerWeek = 7 * 24 * 60 * 60;
     for (NSUInteger i = 0; i < count; ++i) {
         NSHTTPCookie *cookie = (NSHTTPCookie *)[unfilteredCookies objectAtIndex:i];
 
@@ -279,6 +280,16 @@ static RetainPtr<NSArray> filterCookies(NSArray *unfilteredCookies)
         if ([cookie isHTTPOnly])
             continue;
 
+        // Cap lifetime of persistent, client-side cookies to a week.
+        if (![cookie isSessionOnly]) {
+            if (!cookie.expiresDate || cookie.expiresDate.timeIntervalSinceNow > secondsPerWeek) {
+                RetainPtr<NSMutableDictionary<NSHTTPCookiePropertyKey, id>> properties = adoptNS([[cookie properties] mutableCopy]);
+                RetainPtr<NSDate> dateInAWeek = adoptNS([[NSDate alloc] initWithTimeIntervalSinceNow:secondsPerWeek]);
+                [properties setObject:dateInAWeek.get() forKey:NSHTTPCookieExpires];
+                cookie = [NSHTTPCookie cookieWithProperties:properties.get()];
+            }
+        }
+
         [filteredCookies.get() addObject:cookie];
     }
 
@@ -287,7 +298,7 @@ static RetainPtr<NSArray> filterCookies(NSArray *unfilteredCookies)
 
 static NSArray *cookiesForURL(const NetworkStorageSession& session, const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID)
 {
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (session.shouldBlockCookies(firstParty, url, frameID, pageID))
         return nil;
 #else
@@ -396,7 +407,7 @@ void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty, const SameS
     RetainPtr<NSArray> filteredCookies = filterCookies(unfilteredCookies);
     ASSERT([filteredCookies.get() count] <= 1);
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (shouldBlockCookies(firstParty, url, frameID, pageID))
         return;
 #else
@@ -497,9 +508,12 @@ void NetworkStorageSession::deleteCookiesForHostnames(const Vector<String>& host
         return;
 
     HashMap<String, Vector<RetainPtr<NSHTTPCookie>>> cookiesByDomain;
-    for (NSHTTPCookie* cookie in cookies) {
-        auto& cookies = cookiesByDomain.add(cookie.domain, Vector<RetainPtr<NSHTTPCookie>>()).iterator->value;
-        cookies.append(cookie);
+    for (NSHTTPCookie *cookie in cookies) {
+        if (!cookie.domain)
+            continue;
+        cookiesByDomain.ensure(cookie.domain, [] {
+            return Vector<RetainPtr<NSHTTPCookie>>();
+        }).iterator->value.append(cookie);
     }
 
     for (const auto& hostname : hostnames) {

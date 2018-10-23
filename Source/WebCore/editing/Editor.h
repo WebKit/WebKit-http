@@ -81,6 +81,7 @@ class Text;
 class TextCheckerClient;
 class TextEvent;
 
+struct FontAttributes;
 struct PasteboardPlainText;
 struct PasteboardURL;
 struct TextCheckingResult;
@@ -469,10 +470,9 @@ public:
 
     WEBCORE_EXPORT const Font* fontForSelection(bool& hasMultipleFonts) const;
     WEBCORE_EXPORT static const RenderStyle* styleForSelectionStart(Frame* , Node *&nodeToRemove);
+    WEBCORE_EXPORT FontAttributes fontAttributesAtSelectionStart() const;
 
 #if PLATFORM(COCOA)
-    void getTextDecorationAttributesRespectingTypingStyle(const RenderStyle&, NSMutableDictionary*) const;
-    WEBCORE_EXPORT RetainPtr<NSDictionary> fontAttributesForSelectionStart() const;
     WEBCORE_EXPORT String stringSelectionForPasteboard();
     String stringSelectionForPasteboardWithImageAltText();
 #if !PLATFORM(IOS)
@@ -511,6 +511,7 @@ public:
     WEBCORE_EXPORT void insertAttachment(const String& identifier, std::optional<uint64_t>&& fileSize, const String& fileName, const String& contentType);
     void registerAttachmentIdentifier(const String&, const String& /* contentType */, const String& /* preferredFileName */, Ref<SharedBuffer>&&);
     void registerAttachmentIdentifier(const String&, const String& /* contentType */, const String& /* filePath */);
+    void registerAttachmentIdentifier(const String&);
     void cloneAttachmentData(const String& fromIdentifier, const String& toIdentifier);
     void didInsertAttachmentElement(HTMLAttachmentElement&);
     void didRemoveAttachmentElement(HTMLAttachmentElement&);
@@ -562,6 +563,7 @@ private:
     static RefPtr<SharedBuffer> dataInRTFDFormat(NSAttributedString *);
     static RefPtr<SharedBuffer> dataInRTFFormat(NSAttributedString *);
 #endif
+    void platformFontAttributesAtSelectionStart(FontAttributes&, const RenderStyle&) const;
 
     void scheduleEditorUIUpdate();
 

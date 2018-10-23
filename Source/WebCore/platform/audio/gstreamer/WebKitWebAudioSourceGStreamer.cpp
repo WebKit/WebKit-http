@@ -325,8 +325,10 @@ static std::optional<Vector<GRefPtr<GstBuffer>>> webKitWebAudioSrcAllocateBuffer
     priv->numberOfSamples += priv->framesToPull;
     GstClockTime duration = gst_util_uint64_scale(priv->numberOfSamples, GST_SECOND, priv->sampleRate) - timestamp;
 
-    Vector<GRefPtr<GstBuffer>> channelBufferList(priv->sources.size());
-    Vector<GstMappedBuffer> mappedBuffers(priv->sources.size());
+    Vector<GRefPtr<GstBuffer>> channelBufferList;
+    channelBufferList.reserveInitialCapacity(priv->sources.size());
+    Vector<GstMappedBuffer> mappedBuffers;
+    mappedBuffers.reserveInitialCapacity(priv->sources.size());
     for (unsigned i = 0; i < priv->sources.size(); ++i) {
         GRefPtr<GstBuffer> buffer;
         GstFlowReturn ret = gst_buffer_pool_acquire_buffer(priv->pool.get(), &buffer.outPtr(), nullptr);

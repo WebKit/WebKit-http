@@ -1805,7 +1805,7 @@ void WebPage::disabledAdaptationsDidChange(const OptionSet<DisabledAdaptations>&
 void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArguments)
 {
 #if PLATFORM(IOS)
-    if (m_viewportConfiguration.setViewportArguments(viewportArguments))
+    if (!m_page->settings().shouldIgnoreMetaViewport() && m_viewportConfiguration.setViewportArguments(viewportArguments))
         viewportConfigurationChanged();
 #endif
 
@@ -2935,7 +2935,7 @@ IntPoint WebPage::screenToRootView(const IntPoint& point)
 IntRect WebPage::rootViewToScreen(const IntRect& rect)
 {
     IntRect screenRect;
-    sendSync(Messages::WebPageProxy::RootViewToScreen(rect), Messages::WebPageProxy::RootViewToScreen::Reply(screenRect), Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply);
+    sendSync(Messages::WebPageProxy::RootViewToScreen(rect), Messages::WebPageProxy::RootViewToScreen::Reply(screenRect));
     return screenRect;
 }
     
@@ -3155,7 +3155,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setSystemLayoutDirection(static_cast<TextDirection>(store.getUInt32ValueForKey(WebPreferencesKey::systemLayoutDirectionKey())));
     settings.setJavaScriptRuntimeFlags(static_cast<RuntimeFlags>(store.getUInt32ValueForKey(WebPreferencesKey::javaScriptRuntimeFlagsKey())));
     settings.setStorageBlockingPolicy(static_cast<SecurityOrigin::StorageBlockingPolicy>(store.getUInt32ValueForKey(WebPreferencesKey::storageBlockingPolicyKey())));
-    settings.setFrameFlattening(static_cast<WebCore::FrameFlattening>(store.getUInt32ValueForKey(WebPreferencesKey::frameFlatteningKey())));
+    settings.setFrameFlattening(store.getBoolValueForKey(WebPreferencesKey::frameFlatteningEnabledKey()) ? WebCore::FrameFlattening::FullyEnabled : WebCore::FrameFlattening::Disabled);
     settings.setEditableLinkBehavior(static_cast<WebCore::EditableLinkBehavior>(store.getUInt32ValueForKey(WebPreferencesKey::editableLinkBehaviorKey())));
 #if ENABLE(DATA_DETECTION)
     settings.setDataDetectorTypes(static_cast<DataDetectorTypes>(store.getUInt32ValueForKey(WebPreferencesKey::dataDetectorTypesKey())));
@@ -5320,7 +5320,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
     if (m_viewportConfiguration.setContentsSize(coreFrame->view()->contentsSize()))
         viewportChanged = true;
 
-    if (m_viewportConfiguration.setViewportArguments(coreFrame->document()->viewportArguments()))
+    if (!m_page->settings().shouldIgnoreMetaViewport() && m_viewportConfiguration.setViewportArguments(coreFrame->document()->viewportArguments()))
         viewportChanged = true;
 
     if (viewportChanged)
@@ -5608,7 +5608,7 @@ void WebPage::sendEditorStateUpdate()
     // If that is the case, just send what we have (i.e. don't include post-layout data) and wait until the
     // next layer tree commit to compute and send the complete EditorState over.
     auto state = editorState();
-    send(Messages::WebPageProxy::EditorStateChanged(state), pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
+    send(Messages::WebPageProxy::EditorStateChanged(state), pageID());
 
     if (state.isMissingPostLayoutData) {
         m_hasPendingEditorStateUpdate = true;
@@ -5644,7 +5644,7 @@ void WebPage::sendPartialEditorStateAndSchedulePostLayoutUpdate()
     if (frame.editor().ignoreSelectionChanges())
         return;
 
-    send(Messages::WebPageProxy::EditorStateChanged(editorState(IncludePostLayoutDataHint::No)), pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
+    send(Messages::WebPageProxy::EditorStateChanged(editorState(IncludePostLayoutDataHint::No)), pageID());
 
     if (m_hasPendingEditorStateUpdate)
         return;
@@ -6033,7 +6033,6 @@ void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remote
 
     auto remoteFrame = RemoteFrame::create(WTFMove(remoteFrameIdentifier));
     auto remoteWindow = RemoteDOMWindow::create(remoteFrame.copyRef(), WTFMove(remoteWindowIdentifier));
-    remoteWindow->setCrossOriginWindowPolicy(previousWindow->crossOriginWindowPolicy());
 
     remoteFrame->setOpener(frame->coreFrame()->loader().opener());
 
@@ -6049,7 +6048,7 @@ void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remote
         close();
 }
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
 static uint64_t nextRequestStorageAccessContextId()
 {
     static uint64_t nextContextId = 0;
@@ -6119,11 +6118,12 @@ void WebPage::insertAttachment(const String& identifier, std::optional<uint64_t>
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
-void WebPage::updateAttachmentAttributes(const String& identifier, std::optional<uint64_t>&& fileSize, const String& contentType, const String& fileName, CallbackID callbackID)
+void WebPage::updateAttachmentAttributes(const String& identifier, std::optional<uint64_t>&& fileSize, const String& contentType, const String& fileName, const IPC::DataReference& enclosingImageData, CallbackID callbackID)
 {
     if (auto attachment = attachmentElementWithIdentifier(identifier)) {
         attachment->document().updateLayout();
         attachment->updateAttributes(WTFMove(fileSize), contentType, fileName);
+        attachment->updateEnclosingImageWithData(contentType, SharedBuffer::create(enclosingImageData.data(), enclosingImageData.size()));
     }
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }

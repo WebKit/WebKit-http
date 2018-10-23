@@ -81,23 +81,36 @@ inline bool isJITPC(void* pc)
     return startOfFixedExecutableMemoryPool() <= pc && pc < endOfFixedExecutableMemoryPool();
 }
 
+#if !ENABLE(FAST_JIT_PERMISSIONS) || !CPU(ARM64E)
+
 typedef void (*JITWriteSeparateHeapsFunction)(off_t, const void*, size_t);
 extern JS_EXPORT_PRIVATE JITWriteSeparateHeapsFunction jitWriteSeparateHeapsFunction;
-
 extern JS_EXPORT_PRIVATE bool useFastPermisionsJITCopy;
+
+#endif // !ENABLE(FAST_JIT_PERMISSIONS) || !CPU(ARM64E)
 
 static inline void* performJITMemcpy(void *dst, const void *src, size_t n)
 {
+#if CPU(ARM64)
+    static constexpr size_t instructionSize = sizeof(unsigned);
+    RELEASE_ASSERT(roundUpToMultipleOf<instructionSize>(dst) == dst);
+    RELEASE_ASSERT(roundUpToMultipleOf<instructionSize>(src) == src);
+#endif
     if (dst >= startOfFixedExecutableMemoryPool() && dst < endOfFixedExecutableMemoryPool()) {
+        RELEASE_ASSERT(reinterpret_cast<uint8_t*>(dst) + n <= endOfFixedExecutableMemoryPool());
 #if ENABLE(FAST_JIT_PERMISSIONS)
-        if (useFastPermisionsJITCopy) {
+#if !CPU(ARM64E)
+        if (useFastPermisionsJITCopy)
+#endif
+        {
             os_thread_self_restrict_rwx_to_rw();
             memcpy(dst, src, n);
             os_thread_self_restrict_rwx_to_rx();
             return dst;
         }
-#endif
+#endif // ENABLE(FAST_JIT_PERMISSIONS)
 
+#if !ENABLE(FAST_JIT_PERMISSIONS) || !CPU(ARM64E)
         if (jitWriteSeparateHeapsFunction) {
             // Use execute-only write thunk for writes inside the JIT region. This is a variant of
             // memcpy that takes an offset into the JIT region as its destination (first) parameter.
@@ -105,6 +118,7 @@ static inline void* performJITMemcpy(void *dst, const void *src, size_t n)
             retagCodePtr<JITThunkPtrTag, CFunctionPtrTag>(jitWriteSeparateHeapsFunction)(offset, src, n);
             return dst;
         }
+#endif
     }
 
     // Use regular memcpy for writes outside the JIT region.
@@ -145,7 +159,7 @@ private:
 
 #else
 inline bool isJITPC(void*) { return false; }
-#endif // ENABLE(JIT) && ENABLE(ASSEMBLER)
+#endif // ENABLE(ASSEMBLER)
 
 
 } // namespace JSC

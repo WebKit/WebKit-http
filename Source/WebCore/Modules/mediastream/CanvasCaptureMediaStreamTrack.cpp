@@ -42,7 +42,12 @@ Ref<CanvasCaptureMediaStreamTrack> CanvasCaptureMediaStreamTrack::create(ScriptE
 CanvasCaptureMediaStreamTrack::CanvasCaptureMediaStreamTrack(ScriptExecutionContext& context, Ref<HTMLCanvasElement>&& canvas, Ref<CanvasCaptureMediaStreamTrack::Source>&& source)
     : MediaStreamTrack(context, MediaStreamTrackPrivate::create(source.copyRef()))
     , m_canvas(WTFMove(canvas))
-    , m_source(WTFMove(source))
+{
+}
+
+CanvasCaptureMediaStreamTrack::CanvasCaptureMediaStreamTrack(ScriptExecutionContext& context, Ref<HTMLCanvasElement>&& canvas, Ref<MediaStreamTrackPrivate>&& privateTrack)
+    : MediaStreamTrack(context, WTFMove(privateTrack))
+    , m_canvas(WTFMove(canvas))
 {
 }
 
@@ -67,12 +72,6 @@ CanvasCaptureMediaStreamTrack::Source::Source(HTMLCanvasElement& canvas, std::op
     , m_canvasChangedTimer(*this, &Source::captureCanvas)
     , m_canvas(&canvas)
 {
-    m_settings.setWidth(canvas.width());
-    m_settings.setHeight(canvas.height());
-    RealtimeMediaSourceSupportedConstraints constraints;
-    constraints.setSupportsWidth(true);
-    constraints.setSupportsHeight(true);
-    m_settings.setSupportedConstraints(constraints);
 }
 
 void CanvasCaptureMediaStreamTrack::Source::startProducingData()
@@ -110,20 +109,34 @@ void CanvasCaptureMediaStreamTrack::Source::canvasDestroyed(CanvasBase& canvas)
     m_canvas = nullptr;
 }
 
+const RealtimeMediaSourceSettings& CanvasCaptureMediaStreamTrack::Source::settings()
+{
+    if (m_currentSettings)
+        return m_currentSettings.value();
+
+    RealtimeMediaSourceSupportedConstraints constraints;
+    constraints.setSupportsWidth(true);
+    constraints.setSupportsHeight(true);
+
+    RealtimeMediaSourceSettings settings;
+    settings.setWidth(m_canvas->width());
+    settings.setHeight(m_canvas->height());
+    settings.setSupportedConstraints(constraints);
+
+    m_currentSettings = WTFMove(settings);
+    return m_currentSettings.value();
+}
+
+void CanvasCaptureMediaStreamTrack::Source::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag> settings)
+{
+    if (settings.containsAny({ RealtimeMediaSourceSettings::Flag::Width, RealtimeMediaSourceSettings::Flag::Height }))
+        m_currentSettings = std::nullopt;
+}
+
 void CanvasCaptureMediaStreamTrack::Source::canvasResized(CanvasBase& canvas)
 {
     ASSERT_UNUSED(canvas, m_canvas == &canvas);
-
-    OptionSet<RealtimeMediaSourceSettings::Flag> changed;
-    if (m_canvas->width() != m_settings.width())
-        changed.add(RealtimeMediaSourceSettings::Flag::Width);
-    if (m_canvas->height() != m_settings.height())
-        changed.add(RealtimeMediaSourceSettings::Flag::Height);
-
-    m_settings.setWidth(m_canvas->width());
-    m_settings.setHeight(m_canvas->height());
-
-    settingsDidChange(changed);
+    setSize(IntSize(m_canvas->width(), m_canvas->height()));
 }
 
 void CanvasCaptureMediaStreamTrack::Source::canvasChanged(CanvasBase& canvas, const FloatRect&)
@@ -174,8 +187,8 @@ RefPtr<MediaStreamTrack> CanvasCaptureMediaStreamTrack::clone()
 {
     if (!scriptExecutionContext())
         return nullptr;
-
-    return CanvasCaptureMediaStreamTrack::create(*scriptExecutionContext(), m_canvas.copyRef(), m_source->frameRequestRate());
+    
+    return adoptRef(*new CanvasCaptureMediaStreamTrack(*scriptExecutionContext(), m_canvas.copyRef(), m_private->clone()));
 }
 
 }

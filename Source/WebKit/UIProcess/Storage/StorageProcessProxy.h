@@ -47,9 +47,9 @@ class WebProcessProxy;
 enum class WebsiteDataType;
 struct WebsiteData;
 
-class StorageProcessProxy : public ChildProcessProxy {
+class StorageProcessProxy final : public ChildProcessProxy {
 public:
-    static Ref<StorageProcessProxy> create(WebProcessPool&);
+    explicit StorageProcessProxy(WebProcessPool&);
     ~StorageProcessProxy();
 
     void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, CompletionHandler<void(WebsiteData)>&&);
@@ -61,8 +61,6 @@ public:
     void terminateForTesting();
 
 private:
-    StorageProcessProxy(WebProcessPool&);
-
     // ChildProcessProxy
     void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
     void processWillShutDown(IPC::Connection&) override;
@@ -79,10 +77,6 @@ private:
     void didFetchWebsiteData(uint64_t callbackID, const WebsiteData&);
     void didDeleteWebsiteData(uint64_t callbackID);
     void didDeleteWebsiteDataForOrigins(uint64_t callbackID);
-#if ENABLE(SERVICE_WORKER)
-    void establishWorkerContextConnectionToStorageProcess(WebCore::SecurityOriginData&&);
-    void establishWorkerContextConnectionToStorageProcessForExplicitSession(WebCore::SecurityOriginData&&, PAL::SessionID);
-#endif
 
     // ProcessLauncher::Client
     void didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier) override;

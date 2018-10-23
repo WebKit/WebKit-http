@@ -37,6 +37,7 @@
 #import "PlatformLayer.h"
 #import "RealtimeMediaSourceCenterMac.h"
 #import "RealtimeMediaSourceSettings.h"
+#import "RealtimeVideoUtilities.h"
 #import <AVFoundation/AVCaptureDevice.h>
 #import <AVFoundation/AVCaptureInput.h>
 #import <AVFoundation/AVCaptureOutput.h>
@@ -113,11 +114,15 @@ using namespace PAL;
 
 namespace WebCore {
 
+static inline OSType avVideoCapturePixelBufferFormat()
+{
+    // FIXME: Use preferedPixelBufferFormat() once rdar://problem/44391444 is fixed.
 #if PLATFORM(MAC)
-const OSType videoCaptureFormat = kCVPixelFormatType_420YpCbCr8Planar;
+    return kCVPixelFormatType_420YpCbCr8Planar;
 #else
-const OSType videoCaptureFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
+    return preferedPixelBufferFormat();
 #endif
+}
 
 static dispatch_queue_t globaVideoCaptureSerialQueue()
 {
@@ -179,7 +184,7 @@ AVVideoCaptureSource::AVVideoCaptureSource(AVCaptureDeviceTypedef* device, const
 AVVideoCaptureSource::~AVVideoCaptureSource()
 {
 #if PLATFORM(IOS)
-    RealtimeMediaSourceCenterMac::videoCaptureSourceFactory().unsetActiveSource(*this);
+    RealtimeMediaSourceCenter::singleton().videoFactory().unsetActiveSource(*this);
 #endif
     [m_objcObserver disconnect];
 
@@ -189,7 +194,6 @@ AVVideoCaptureSource::~AVVideoCaptureSource()
     [m_session removeObserver:m_objcObserver.get() forKeyPath:@"rate"];
     if ([m_session isRunning])
         [m_session stopRunning];
-
 }
 
 void AVVideoCaptureSource::startProducingData()
@@ -234,10 +238,9 @@ void AVVideoCaptureSource::commitConfiguration()
         [m_session commitConfiguration];
 }
 
-void AVVideoCaptureSource::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag> settings)
+void AVVideoCaptureSource::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>)
 {
     m_currentSettings = std::nullopt;
-    RealtimeMediaSource::settingsDidChange(settings);
 }
 
 const RealtimeMediaSourceSettings& AVVideoCaptureSource::settings()
@@ -340,7 +343,7 @@ void AVVideoCaptureSource::setSizeAndFrameRateWithPreset(IntSize requestedSize, 
                 [device() setActiveFormat:avPreset->format.get()];
 #if PLATFORM(MAC)
                 auto settingsDictionary = @{
-                    (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(videoCaptureFormat),
+                    (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(avVideoCapturePixelBufferFormat()),
                     (__bridge NSString *)kCVPixelBufferWidthKey: @(avPreset->size.width()),
                     (__bridge NSString *)kCVPixelBufferHeightKey: @(avPreset->size.height())
                 };
@@ -432,7 +435,7 @@ AVFrameRateRangeType* AVVideoCaptureSource::frameDurationForFrameRate(double rat
 bool AVVideoCaptureSource::setupCaptureSession()
 {
 #if PLATFORM(IOS)
-    RealtimeMediaSourceCenterMac::videoCaptureSourceFactory().setActiveSource(*this);
+    RealtimeMediaSourceCenter::singleton().videoFactory().setActiveSource(*this);
 #endif
 
     NSError *error = nil;
@@ -449,7 +452,7 @@ bool AVVideoCaptureSource::setupCaptureSession()
     [session() addInput:videoIn.get()];
 
     m_videoOutput = adoptNS([allocAVCaptureVideoDataOutputInstance() init]);
-    auto settingsDictionary = adoptNS([[NSMutableDictionary alloc] initWithObjectsAndKeys: [NSNumber numberWithInt:videoCaptureFormat], kCVPixelBufferPixelFormatTypeKey, nil]);
+    auto settingsDictionary = adoptNS([[NSMutableDictionary alloc] initWithObjectsAndKeys: [NSNumber numberWithInt:avVideoCapturePixelBufferFormat()], kCVPixelBufferPixelFormatTypeKey, nil]);
 
     [m_videoOutput setVideoSettings:settingsDictionary.get()];
     [m_videoOutput setAlwaysDiscardsLateVideoFrames:YES];
@@ -523,7 +526,6 @@ void AVVideoCaptureSource::processNewFrame(RetainPtr<CMSampleBufferRef> sampleBu
     if (!isProducingData() || muted())
         return;
 
-
     CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer.get());
     if (!formatDescription)
         return;
@@ -554,7 +556,7 @@ void AVVideoCaptureSource::captureOutputDidOutputSampleBufferFromConnection(AVCa
             m_pixelBufferResizer = nullptr;
 
         if (!m_pixelBufferResizer)
-            m_pixelBufferResizer = std::make_unique<PixelBufferResizer>(m_requestedSize, videoCaptureFormat);
+            m_pixelBufferResizer = std::make_unique<PixelBufferResizer>(m_requestedSize, avVideoCapturePixelBufferFormat());
     } else
         m_pixelBufferResizer = nullptr;
 

@@ -50,6 +50,7 @@
 #import <objc_runtime.h>
 #import <pal/avfoundation/MediaTimeAVFoundation.h>
 #import <pal/spi/mac/AVFoundationSPI.h>
+#import <wtf/Algorithms.h>
 #import <wtf/Deque.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
@@ -78,20 +79,6 @@ SOFT_LINK_CONSTANT(AVFoundation, AVAudioTimePitchAlgorithmVarispeed, NSString*)
 
 #define AVAudioTimePitchAlgorithmSpectral getAVAudioTimePitchAlgorithmSpectral()
 #define AVAudioTimePitchAlgorithmVarispeed getAVAudioTimePitchAlgorithmVarispeed()
-
-#pragma mark -
-#pragma mark AVVideoPerformanceMetrics
-
-@interface AVVideoPerformanceMetrics : NSObject
-- (unsigned long)totalNumberOfVideoFrames;
-- (unsigned long)numberOfDroppedVideoFrames;
-- (unsigned long)numberOfCorruptedVideoFrames;
-- (double)totalFrameDelay;
-@end
-
-@interface AVSampleBufferDisplayLayer (WebCoreAVSampleBufferDisplayLayerPrivate)
-- (AVVideoPerformanceMetrics *)videoPerformanceMetrics;
-@end
 
 #pragma mark -
 #pragma mark AVStreamSession
@@ -966,10 +953,21 @@ void MediaPlayerPrivateMediaSourceAVFObjC::attemptToDecryptWithInstance(CDMInsta
 {
 }
 
+bool MediaPlayerPrivateMediaSourceAVFObjC::waitingForKey() const
+{
+    return anyOf(m_mediaSourcePrivate->sourceBuffers(), [] (auto& sourceBuffer) {
+        return sourceBuffer->waitingForKey();
+    });
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::waitingForKeyChanged()
+{
+    m_player->waitingForKeyChanged();
+}
+
 void MediaPlayerPrivateMediaSourceAVFObjC::initializationDataEncountered(const String& initDataType, RefPtr<ArrayBuffer>&& initData)
 {
     m_player->initializationDataEncountered(initDataType, WTFMove(initData));
-    m_player->waitingForKey();
 }
 #endif
 

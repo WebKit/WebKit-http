@@ -36,6 +36,7 @@
 #include "FontCascade.h"
 #include "ImageBuffer.h"
 #include "MockMediaDevice.h"
+#include "RealtimeMediaSourceFactory.h"
 #include "RealtimeVideoSource.h"
 #include <wtf/RunLoop.h>
 
@@ -48,8 +49,6 @@ class MockRealtimeVideoSource : public RealtimeVideoSource {
 public:
 
     static CaptureSourceOrError create(const String& deviceID, const String& name, const MediaConstraints*);
-
-    static VideoCaptureFactory& factory();
 
 protected:
     MockRealtimeVideoSource(const String& deviceID, const String& name);
@@ -69,6 +68,8 @@ private:
     void startProducingData() final;
     void stopProducingData() final;
     bool isCaptureSource() const final { return true; }
+    bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
+    void setSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
 
     void generatePresets() final;
 
@@ -82,7 +83,10 @@ private:
     void delaySamples(Seconds) override;
 
     bool mockCamera() const { return WTF::holds_alternative<MockCameraProperties>(m_device.properties); }
-    bool mockScreen() const { return WTF::holds_alternative<MockDisplayProperties>(m_device.properties); }
+    bool mockDisplay() const { return WTF::holds_alternative<MockDisplayProperties>(m_device.properties); }
+    bool mockScreen() const { return mockDisplayType(CaptureDevice::DeviceType::Screen); }
+    bool mockWindow() const { return mockDisplayType(CaptureDevice::DeviceType::Window); }
+    bool mockDisplayType(CaptureDevice::DeviceType) const;
 
     float m_baseFontSize { 0 };
     float m_bipBopFontSize { 0 };

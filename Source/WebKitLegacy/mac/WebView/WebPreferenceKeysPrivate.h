@@ -174,7 +174,6 @@
 #define WebKitDataTransferItemsEnabledPreferenceKey @"WebKitDataTransferItemsEnabled"
 #define WebKitCustomPasteboardDataEnabledPreferenceKey @"WebKitCustomPasteboardDataEnabled"
 #define WebKitCacheAPIEnabledPreferenceKey @"WebKitCacheAPIEnabled"
-#define WebKitCrossOriginWindowPolicySupportEnabledPreferenceKey @"WebKitCrossOriginWindowPolicySupportEnabled"
 #define WebKitFetchAPIEnabledPreferenceKey @"WebKitFetchAPIEnabled"
 #define WebKitWritableStreamAPIEnabledPreferenceKey @"WebKitWritableStreamAPIEnabled"
 #define WebKitReadableByteStreamAPIEnabledPreferenceKey @"WebKitReadableByteStreamAPIEnabled"
@@ -262,3 +261,4 @@
 #define WebKitAriaReflectionEnabledPreferenceKey @"WebKitAriaReflectionEnabled"
 #define WebKitMediaCapabilitiesEnabledPreferenceKey @"WebKitMediaCapabilitiesEnabled"
 #define WebKitServerTimingEnabledPreferenceKey @"WebKitServerTimingEnabled"
+#define WebKitSelectionAcrossShadowBoundariesEnabledPreferenceKey @"WebKitSelectionAcrossShadowBoundariesEnabled"

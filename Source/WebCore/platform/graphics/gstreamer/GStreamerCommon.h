@@ -80,7 +80,6 @@ class GstMappedBuffer {
     WTF_MAKE_NONCOPYABLE(GstMappedBuffer);
 public:
 
-    GstMappedBuffer() = default;
     GstMappedBuffer(GstMappedBuffer&& other)
         : m_buffer(other.m_buffer)
         , m_info(other.m_info)
@@ -113,7 +112,7 @@ public:
     explicit operator bool() const { return m_isValid; }
 private:
     GstBuffer* m_buffer { nullptr };
-    GstMapInfo m_info GST_MAP_INFO_INIT;
+    GstMapInfo m_info;
     bool m_isValid { false };
 };
 

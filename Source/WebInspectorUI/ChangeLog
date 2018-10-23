@@ -1,3 +1,584 @@
+2018-09-28  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r236091): CSSKeywordCompletions.js has "checkout" instead of "check-out" as a value for -apple-pay-button-type
+        https://bugs.webkit.org/show_bug.cgi?id=190096
+
+        Reviewed by Ryosuke Niwa.
+
+        I changed "checkout" to "check-out" in r235754, but it somehow got flipped back to "checkout" in r236091.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2018-09-28  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Remove the "in-store" button type
+        https://bugs.webkit.org/show_bug.cgi?id=190079
+
+        Reviewed by Tim Horton.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2018-09-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: image resources without content are still shown when the Images folder is selected
+        https://bugs.webkit.org/show_bug.cgi?id=190072
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WI.ResourceContentView.prototype.showGenericNoContentMessage):
+        Treat paths that result in a "Resource has no content" message as a "content error".
+
+2018-09-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Hide DOM and XHR breakpoint sections when they are empty
+        https://bugs.webkit.org/show_bug.cgi?id=182406
+        <rdar://problem/37131512>
+
+        Reviewed by Joseph Pecoraro.
+
+        Combine all breakpoint sections (e.g. DOM, XHR, and Event) into the main "Breakpoints"
+        section, including all the various "+" buttons for creating different types of breakpoints.
+
+        Global breakpoints (except "All Exceptions" and "Uncaught Exceptions") are now deletable,
+        and can be re-added via the "+" button of the "Breakpoints" section. Deletable global
+        breakpoints (e.g. "Assertion Failures" and "All Requests") are able to remain visible while
+        disabled, and will only be hidden when the user specifically deletes them.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Main.html:
+
+        * UserInterface/Controllers/DOMBreakpointTreeController.js: Removed.
+        * UserInterface/Controllers/EventBreakpointTreeController.js: Removed.
+        * UserInterface/Controllers/XHRBreakpointTreeController.js: Removed.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype.get uncaughtExceptionsBreakpoint): Added.
+        (WI.DebuggerManager.prototype.get assertionFailuresBreakpoint): Added.
+        (WI.DebuggerManager.prototype.isBreakpointRemovable):
+        (WI.DebuggerManager.prototype.isBreakpointSpecial): Added.
+        (WI.DebuggerManager.prototype.isBreakpointEditable):
+        (WI.DebuggerManager.prototype.addBreakpoint):
+        (WI.DebuggerManager.prototype.removeBreakpoint):
+        (WI.DebuggerManager.prototype.initializeTarget):
+        (WI.DebuggerManager.prototype._breakpointDisabledStateDidChange):
+        (WI.DebuggerManager.prototype._updateBreakOnExceptionsState):
+        (WI.DebuggerManager.prototype.get allUncaughtExceptionsBreakpoint): Deleted.
+        (WI.DebuggerManager.prototype.get assertionsBreakpoint): Deleted.
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager.prototype.isBreakpointSpecial): Added.
+        (WI.DOMDebuggerManager.prototype.addDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype.removeDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype.addEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype.removeEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype.addXHRBreakpoint):
+        (WI.DOMDebuggerManager.prototype.removeXHRBreakpoint):
+        (WI.DOMDebuggerManager.prototype.isBreakpointRemovable): Deleted.
+        Always fire add/remove events, including for special breakpoints, so that any listeners will
+        be able to adjust accordingly. Even though special breakpoints don't get stored in the lists
+        held by each manager, we are still able to enable/disable them, and that should be reported.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+        (WI.DebuggerSidebarPanel.prototype.closed):
+        (WI.DebuggerSidebarPanel.prototype.saveStateToCookie):
+        (WI.DebuggerSidebarPanel.prototype.restoreStateFromCookie.revealAndSelect):
+        (WI.DebuggerSidebarPanel.prototype.restoreStateFromCookie):
+        (WI.DebuggerSidebarPanel.prototype.willDismissPopover):
+        (WI.DebuggerSidebarPanel.prototype._addBreakpoint):
+        (WI.DebuggerSidebarPanel.prototype._removeBreakpoint): Added.
+        (WI.DebuggerSidebarPanel.prototype._addTreeElementForSourceCodeToTreeOutline):
+        (WI.DebuggerSidebarPanel.prototype._mainResourceDidChange):
+        (WI.DebuggerSidebarPanel.prototype._breakpointRemoved):
+        (WI.DebuggerSidebarPanel.prototype._removeDebuggerTreeElement):
+        (WI.DebuggerSidebarPanel.prototype._treeSelectionDidChange):
+        (WI.DebuggerSidebarPanel.prototype._addTreeElement.comparator): Added.
+        (WI.DebuggerSidebarPanel.prototype._addTreeElement): Added.
+        (WI.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        (WI.DebuggerSidebarPanel.prototype._domBreakpointResolvedStateDidChange): Added.
+        (WI.DebuggerSidebarPanel.prototype._handleBreakpointElementAddedOrRemoved): Added.
+        (WI.DebuggerSidebarPanel.prototype._handleCreateBreakpointClicked): Added.
+        (WI.DebuggerSidebarPanel.prototype._compareTopLevelTreeElements.isSpecialBreakpoint): Deleted.
+        (WI.DebuggerSidebarPanel.prototype._compareTopLevelTreeElements): Deleted.
+        (WI.DebuggerSidebarPanel.prototype._domBreakpointAddedOrRemoved): Deleted.
+        (WI.DebuggerSidebarPanel.prototype._eventBreakpointAddedOrRemoved): Deleted.
+        (WI.DebuggerSidebarPanel.prototype._addEventBreakpointButtonClicked): Deleted.
+        (WI.DebuggerSidebarPanel.prototype._addXHRBreakpointButtonClicked): Deleted.
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node .titles): Deleted.
+        (.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node .icon): Deleted.
+        (.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node:not(:hover, .selected) .status .go-to-arrow): Deleted.
+        (.sidebar > .panel.navigation.debugger .details-section.xhr-breakpoints .item.breakpoint .subtitle): Deleted.
+        Unify the logic for adding/removing breakpoints of all types.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WI.BreakpointTreeElement):
+        (WI.BreakpointTreeElement.prototype.ondelete):
+        * UserInterface/Views/DOMBreakpointTreeElement.js:
+        (WI.DOMBreakpointTreeElement):
+        (WI.DOMBreakpointTreeElement.prototype.ondelete):
+        * UserInterface/Views/DOMNodeTreeElement.js:
+        (WI.DOMNodeTreeElement):
+        (WI.DOMNodeTreeElement.prototype.ondelete):
+        (WI.DOMNodeTreeElement.prototype.populateContextMenu):
+        * UserInterface/Views/EventBreakpointTreeElement.js:
+        (WI.EventBreakpointTreeElement):
+        (WI.EventBreakpointTreeElement.prototype.ondelete):
+        (WI.EventBreakpointTreeElement.prototype.populateContextMenu):
+        * UserInterface/Views/XHRBreakpointTreeElement.js:
+        (WI.XHRBreakpointTreeElement):
+        (WI.XHRBreakpointTreeElement.prototype.ondelete):
+        (WI.XHRBreakpointTreeElement.prototype.populateContextMenu):
+        * UserInterface/Views/XHRBreakpointTreeElement.css: Added.
+        (.breakpoint.xhr .subtitle):
+        Add/remove checks for whether the associated breakpoint can be deleted.
+
+        * UserInterface/Views/DOMNodeTreeElement.css: Added.
+        (.tree-outline .item.dom-node .titles):
+        (.tree-outline .item.dom-node .icon):
+        (.tree-outline .item.dom-node:not(:hover, .selected) .status .go-to-arrow):
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForDOMNode):
+        (WI.appendContextMenuItemsForDOMNodeBreakpoints): Added.
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype._statusImageContextmenu):
+
+        * UserInterface/Views/XHRBreakpointPopover.js:
+        (WI.XHRBreakpointPopover):
+        (WI.XHRBreakpointPopover.prototype.get breakpoint): Added.
+        (WI.XHRBreakpointPopover.prototype.show):
+        (WI.XHRBreakpointPopover.prototype.dismiss): Added.
+        (WI.XHRBreakpointPopover.prototype._createEditor):
+        (WI.XHRBreakpointPopover.prototype._updateEditor):
+        (WI.XHRBreakpointPopover.prototype.get result): Deleted.
+        (WI.XHRBreakpointPopover.prototype.get type): Deleted.
+        (WI.XHRBreakpointPopover.prototype.get value): Deleted.
+        Drive-by: remove the erroneous usage of `WI.InputPopover.Result`.
+
+2018-09-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: determine hasVisibleEffect for each RecordingAction as it's processed
+        https://bugs.webkit.org/show_bug.cgi?id=189860
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Base/Utilities.js:
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction.prototype.process.getContent):
+        (WI.RecordingAction.prototype.process):
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement.prototype.onattach):
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype._updateImageGrid):
+        Drive-by: don't attempt to show the image grid if we haven't called initialized yet.
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype._treeOutlineSelectionDidChange):
+        Drive-by: ensure that the `WI.RecordingContentView` is showing before applying the action.
+
+2018-09-26  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: new watch expression popover has light background
+        https://bugs.webkit.org/show_bug.cgi?id=190013
+        <rdar://problem/44810000>
+
+        Reviewed by Matt Baker.
+
+        Make the background dark to match the CodeMirror editor background.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.css:
+        (@media (prefers-dark-interface)):
+        (.watch-expression-editor):
+
+2018-09-21  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION(r236237): Web Inspector: DarkMode: white background in Elements and Timelines
+        https://bugs.webkit.org/show_bug.cgi?id=189852
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/Main.css:
+        (body):
+        (#main):
+
+2018-09-21  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: remove unnecessary WI.Platform.version checks
+        https://bugs.webkit.org/show_bug.cgi?id=189845
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Platform.js:
+        (osVersionMatch): Add name for macOS Mojave.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Views/Popover.js:
+        Remove old logic that's no longer needed.
+
+2018-09-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: remove setting for Sources tab
+        https://bugs.webkit.org/show_bug.cgi?id=189817
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Main.html:
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        (WI._debuggerDidPause):
+        (WI.isShowingSourcesTab): Removed.
+        (WI.showSourcesTab): Removed.
+
+        * UserInterface/Views/SourcesSidebarPanel.css: Removed.
+        * UserInterface/Views/SourcesSidebarPanel.js: Removed.
+        * UserInterface/Views/SourcesTabContentView.js: Removed.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForURL):
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.textEditorGutterContextMenu):
+
+2018-09-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Make "overflow: overlay" a synonym for "overflow: auto"
+        https://bugs.webkit.org/show_bug.cgi?id=189811
+
+        Reviewed by Zalan Bujtas.
+        
+        Remove "overlay" from the overflow values.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WI.VisualStyleDetailsPanel.prototype._populateDisplaySection):
+
+2018-09-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: hide Accessibility Audit Tab setting
+        https://bugs.webkit.org/show_bug.cgi?id=189816
+
+        Reviewed by Joseph Pecoraro.
+
+        Considering that this tab doesn't exist, there's no reason to have a setting/UI for it.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+2018-09-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: remove Legacy Style Editor
+        https://bugs.webkit.org/show_bug.cgi?id=189808
+
+        Reviewed by Joseph Pecoraro.
+
+        The Legacy Style Editor has been hidden behind an "experimental" setting for almost a year.
+        It's time that we remove it, especially since the new Style Editor is at a similar, if not
+        more advanced, state.
+
+        * .eslintrc:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+        * Localizations/en.lproj/localizedStrings.js:
+        * Tools/PrettyPrinting/index.html:
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        * UserInterface/Base/Setting.js:
+
+        * UserInterface/Base/TextUtilities.js: Removed.
+        * UserInterface/Base/Utilities.js:
+
+        * UserInterface/Views/RulesStyleDetailsPanel.css: Removed.
+        * UserInterface/Views/RulesStyleDetailsPanel.js: Removed.
+        * UserInterface/Views/CSSStyleDeclarationSection.css: Removed.
+        * UserInterface/Views/CSSStyleDeclarationSection.js: Removed.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css: Removed.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js: Removed.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype.get text):
+        (WI.CSSProperty.prototype.get synthesizedText): Deleted.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration):
+        (WI.CSSStyleDeclaration.prototype.set text):
+        (WI.CSSStyleDeclaration.prototype.resetText): Deleted.
+        (WI.CSSStyleDeclaration.prototype.get modified): Deleted.
+        (WI.CSSStyleDeclaration.prototype.generateCSSRuleString): Deleted.
+        (WI.CSSStyleDeclaration.prototype.isInspectorRule): Deleted.
+
+        * UserInterface/Models/CSSSelector.js:
+        (WI.CSSSelector.prototype.isGreaterThan): Deleted.
+
+        * UserInterface/Models/CSSRule.js:
+        (WI.CSSRule.prototype.update):
+        (WI.CSSRule.prototype.get matchedSelectors): Deleted.
+        (WI.CSSRule.prototype.get matchedSelectorText): Deleted.
+        (WI.CSSRule.prototype.hasMatchedPseudoElementSelector): Deleted.
+        (WI.CSSRule.prototype.get mediaText): Deleted.
+        (WI.CSSRule.prototype.get mostSpecificSelector): Deleted.
+        (WI.CSSRule.prototype.selectorIsGreater): Deleted.
+        (WI.CSSRule.prototype._determineMostSpecificSelector): Deleted.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype.changeRule.changeCompleted): Deleted.
+        (WI.DOMNodeStyles.prototype.changeRule.styleChanged): Deleted.
+        (WI.DOMNodeStyles.prototype.changeRule.changeText): Deleted.
+        (WI.DOMNodeStyles.prototype.changeRule.ruleSelectorChanged): Deleted.
+        (WI.DOMNodeStyles.prototype.changeRule): Deleted.
+
+        * UserInterface/Models/CSSCompletions.js:
+        (WI.CSSCompletions.prototype.isValidPropertyName):
+        (WI.CSSCompletions):
+        (WI.CSSCompletions.prototype.keySet): Deleted.
+        (WI.CSSCompletions.prototype.propertyRequiresWebkitPrefix): Deleted.
+        (WI.CSSCompletions.prototype.getClosestPropertyName): Deleted.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WI.ComputedStyleDetailsPanel.prototype.cssStyleDeclarationTextEditorStartEditingAdjacentRule): Deleted.
+
+        * UserInterface/Views/RulesStyleDetailsSidebarPanel.js:
+        (WI.RulesStyleDetailsSidebarPanel):
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyFocusMoved):
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetCSSStyleDeclarationEditorStartEditingRuleSelector): Added.
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.cssStyleDeclarationTextEditorStartEditingRuleSelector): Deleted.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .rules): Added.
+        (.sidebar > .panel.details.css-style > .content > .rules .section-header): Added.
+        (.sidebar > .panel.details.css-style > .content > .rules .section-header .node-link): Added.
+        (.sidebar > .panel.details.css-style > .content > .rules .section-header .node-link:hover): Added.
+        (.sidebar > .panel.details.css-style > .content > .rules > .message-text-view): Added.
+        (.sidebar > .panel.details.css-style > .content > .rules:not(.filter-non-matching) > .message-text-view): Added.
+        (@media (prefers-dark-interface)):
+        (.sidebar > .panel.details.css-style > .content > .rules .section-header): Added.
+        (.sidebar > .panel.details.css-style > .content > .rules .section-header .node-link:hover): Added.
+        (.spreadsheet-style-panel .section-header): Deleted.
+        (.spreadsheet-style-panel .section-header .node-link): Deleted.
+        (.spreadsheet-style-panel .section-header .node-link:hover): Deleted.
+        (.spreadsheet-style-panel .section-header): Deleted.
+        (.spreadsheet-style-panel .section-header .node-link:hover): Deleted.
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        (extendedCSSRuleStartState): Removed.
+        * UserInterface/Views/CodeMirrorFormatters.js:
+        Remove "css-rule" CodeMirror mode.
+
+        * UserInterface/Views/CodeMirrorTextMarkers.js:
+        (createCodeMirrorVariableTextMarkers): Deleted.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+2018-09-21  Mike Gorse  <mgorse@suse.com>
+
+        Build tools should work when the /usr/bin/python is python3
+        https://bugs.webkit.org/show_bug.cgi?id=156674
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/copy-user-interface-resources.pl: Use $PYTHON if set
+        in the environment.
+
+2018-09-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: remove Visual Style CSS details sidebar panel
+        https://bugs.webkit.org/show_bug.cgi?id=189807
+
+        Reviewed by Joseph Pecoraro.
+
+        The Visual Style CSS details sidebar panel has been hidden behind an "experimental" setting
+        for almost a year.  It's time that we remove it.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Main.html:
+
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WI.ElementsTabContentView):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+        * UserInterface/Images/AnimationPlayStatePaused.svg: Removed.
+        * UserInterface/Images/AnimationPlayStateRunning.svg: Removed.
+        * UserInterface/Images/ClearBoth.svg: Removed.
+        * UserInterface/Images/ClearLeft.svg: Removed.
+        * UserInterface/Images/ClearRight.svg: Removed.
+        * UserInterface/Images/FloatLeft.svg: Removed.
+        * UserInterface/Images/FloatRight.svg: Removed.
+        * UserInterface/Images/FontStyleItalic.svg: Removed.
+        * UserInterface/Images/FontStyleNormal.svg: Removed.
+        * UserInterface/Images/ListStylePositionInside.svg: Removed.
+        * UserInterface/Images/ListStylePositionOutside.svg: Removed.
+        * UserInterface/Images/TextAlignCenter.svg: Removed.
+        * UserInterface/Images/TextAlignJustify.svg: Removed.
+        * UserInterface/Images/TextAlignLeft.svg: Removed.
+        * UserInterface/Images/TextAlignRight.svg: Removed.
+        * UserInterface/Images/TextDecorationLineThrough.svg: Removed.
+        * UserInterface/Images/TextDecorationOverline.svg: Removed.
+        * UserInterface/Images/TextDecorationUnderline.svg: Removed.
+        * UserInterface/Images/TextTransformCapitalize.svg: Removed.
+        * UserInterface/Images/TextTransformLowercase.svg: Removed.
+        * UserInterface/Images/TextTransformUppercase.svg: Removed.
+        * UserInterface/Images/VisualStyleNone.svg: Removed.
+        * UserInterface/Images/VisualStylePropertyLinked.svg: Removed.
+        * UserInterface/Images/VisualStylePropertyUnlinked.svg: Removed.
+
+        * UserInterface/Views/VisualStyleBackgroundPicker.css: Removed.
+        * UserInterface/Views/VisualStyleBackgroundPicker.js: Removed.
+        * UserInterface/Views/VisualStyleBasicInput.js: Removed.
+        * UserInterface/Views/VisualStyleColorPicker.css: Removed.
+        * UserInterface/Views/VisualStyleColorPicker.js: Removed.
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.css: Removed.
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.js: Removed.
+        * UserInterface/Views/VisualStyleDetailsPanel.css: Removed.
+        * UserInterface/Views/VisualStyleDetailsPanel.js: Removed.
+        * UserInterface/Views/VisualStyleDetailsSidebarPanel.js: Removed.
+        * UserInterface/Views/VisualStyleFontFamilyListEditor.js: Removed.
+        * UserInterface/Views/VisualStyleFontFamilyTreeElement.js: Removed.
+        * UserInterface/Views/VisualStyleKeywordCheckbox.css: Removed.
+        * UserInterface/Views/VisualStyleKeywordCheckbox.js: Removed.
+        * UserInterface/Views/VisualStyleKeywordIconList.css: Removed.
+        * UserInterface/Views/VisualStyleKeywordIconList.js: Removed.
+        * UserInterface/Views/VisualStyleKeywordPicker.js: Removed.
+        * UserInterface/Views/VisualStyleNumberInputBox.css: Removed.
+        * UserInterface/Views/VisualStyleNumberInputBox.js: Removed.
+        * UserInterface/Views/VisualStylePropertyCombiner.js: Removed.
+        * UserInterface/Views/VisualStylePropertyEditor.css: Removed.
+        * UserInterface/Views/VisualStylePropertyEditor.js: Removed.
+        * UserInterface/Views/VisualStylePropertyEditorLink.css: Removed.
+        * UserInterface/Views/VisualStylePropertyEditorLink.js: Removed.
+        * UserInterface/Views/VisualStylePropertyNameInput.js: Removed.
+        * UserInterface/Views/VisualStyleRelativeNumberSlider.css: Removed.
+        * UserInterface/Views/VisualStyleRelativeNumberSlider.js: Removed.
+        * UserInterface/Views/VisualStyleSelectorSection.css: Removed.
+        * UserInterface/Views/VisualStyleSelectorSection.js: Removed.
+        * UserInterface/Views/VisualStyleSelectorTreeItem.css: Removed.
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js: Removed.
+        * UserInterface/Views/VisualStyleTabbedPropertiesRow.css: Removed.
+        * UserInterface/Views/VisualStyleTabbedPropertiesRow.js: Removed.
+        * UserInterface/Views/VisualStyleTimingEditor.css: Removed.
+        * UserInterface/Views/VisualStyleTimingEditor.js: Removed.
+        * UserInterface/Views/VisualStyleURLInput.js: Removed.
+        * UserInterface/Views/VisualStyleUnitSlider.css: Removed.
+        * UserInterface/Views/VisualStyleUnitSlider.js: Removed.
+
+        * UserInterface/Controllers/VisualStyleCompletionsController.js: Removed.
+
+2018-09-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Styles Redesign: rework Computed panel to use Spreadsheet classes
+        https://bugs.webkit.org/show_bug.cgi?id=183627
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WI.ComputedStyleDetailsPanel):
+        (WI.ComputedStyleDetailsPanel.prototype.refresh):
+        (WI.ComputedStyleDetailsPanel.prototype.applyFilter):
+        (WI.ComputedStyleDetailsPanel.prototype.spreadsheetCSSStyleDeclarationEditorShowProperty):
+        (WI.ComputedStyleDetailsPanel.prototype.initialLayout):
+        (WI.ComputedStyleDetailsPanel.prototype.filterDidChange):
+        (WI.ComputedStyleDetailsPanel.prototype._computedStyleShowAllCheckboxValueChanged):
+        (WI.ComputedStyleDetailsPanel.prototype._handlePropertiesSectionCollapsedStateChanged):
+        (WI.ComputedStyleDetailsPanel.prototype._handleVariablesSectionCollapsedStateChanged):
+        (WI.ComputedStyleDetailsPanel.prototype._handleEditorFilterApplied):
+        (WI.ComputedStyleDetailsPanel.prototype.cssStyleDeclarationTextEditorShowProperty.delegateShowProperty): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype.cssStyleDeclarationTextEditorShowProperty): Deleted.
+        Replace CSSStyleDeclarationTextEditor with SpreadsheetCSSStyleDeclarationEditor.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.initialLayout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set showsImplicitProperties):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set alwaysShowPropertyNames):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set propertyVisibilityMode):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set hideFilterNonMatchingProperties):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set sortPropertiesByName): Added.
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get propertiesToRender):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.highlightProperty):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.applyFilter):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyShowProperty):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._updateStyleLock):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get _propertiesToRender): Deleted.
+        Create setters for the "special" functionality required by the Computed panel and tie them
+        into the logic that determines what properties are rendered.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._update):
+        Create go-to arrow if the property has a shorthand version or a source code location.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js:
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.initialLayout):
+        Don't reapply the filter after refreshing, as the current panel will handle applying it.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.css:
+        (.details-section:matches(.computed-style-properties, .computed-style-box-model):not(.collapsed) > :matches(.header, .content)):
+        (.computed-style-properties .property .go-to-arrow):
+        (.computed-style-properties .property:hover .go-to-arrow):
+        (.computed-style-properties.details-section): Deleted.
+        (.details-section > .content > .group > .row .CodeMirror-code pre .go-to-arrow): Deleted.
+        (.details-section > .content > .group > .row .CodeMirror-code pre:hover .go-to-arrow): Deleted.
+        (.details-section.style-box-model:not(.collapsed) > :matches(.header, .content)): Deleted.
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section.computed-style-properties:not(.collapsed) > .header): Deleted.
+        Consolidate Computed panel styles to it's respective CSS file.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor):
+        (.spreadsheet-style-declaration-editor .property:matches(.implicit, .not-inherited) .content > *):
+        (.spreadsheet-style-declaration-editor .property.not-inherited .content > *): Deleted.
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.css:
+        (.spreadsheet-css-declaration):
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Move `css-declaration` padding variables so they can be used by SpreadsheetCSSStyleDeclarationEditor
+        without a parent SpreadsheetCSSStyleDeclarationSection.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.css:
+        (.style-spreadsheet .style-rule): Deleted.
+        (.style-spreadsheet .selector-line): Deleted.
+        (.style-spreadsheet .selector): Deleted.
+        (.style-spreadsheet :matches(.selector .matched, .selector:focus)): Deleted.
+        (.style-spreadsheet .name): Deleted.
+        (.style-spreadsheet .value): Deleted.
+        (.style-spreadsheet :matches(.selector, .name, .value)): Deleted.
+        (.style-spreadsheet :matches(.selector, .name, .value):focus): Deleted.
+        (.style-spreadsheet .selector-inline): Deleted.
+        (.style-spreadsheet .property): Deleted.
+        (.style-spreadsheet .property-disabled,): Deleted.
+        (.style-spreadsheet .property-disabled :matches(.name, .value)): Deleted.
+        (.style-spreadsheet .styles-source): Deleted.
+        (.style-spreadsheet :matches(a, .node-link)): Deleted.
+        (.style-spreadsheet :matches(a, .node-link):hover): Deleted.
+        (.style-spreadsheet .declarations): Deleted.
+        (.style-spreadsheet input[type="checkbox"]): Deleted.
+        (.style-spreadsheet input[type="checkbox"]:not(:checked)): Deleted.
+        (.style-spreadsheet .declarations:hover input[type="checkbox"]): Deleted.
+        Drive-by fix: remove styles that don't apply to anything.
+
 2018-09-19  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: move DarkMode.css rules into appropriate CSS files

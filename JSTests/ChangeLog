@@ -1,3 +1,175 @@
+2018-10-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r236647.
+        https://bugs.webkit.org/show_bug.cgi?id=190124
+
+        Breaking test stress/big-int-to-string.js (Requested by
+        caiolima_ on #webkit).
+
+        Reverted changeset:
+
+        "[BigInt] BigInt.proptotype.toString is broken when radix is
+        power of 2"
+        https://bugs.webkit.org/show_bug.cgi?id=190033
+        https://trac.webkit.org/changeset/236647
+
+2018-09-30  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] BigInt.proptotype.toString is broken when radix is power of 2
+        https://bugs.webkit.org/show_bug.cgi?id=190033
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/big-int-to-string.js:
+
+2018-09-28  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for "&"
+        https://bugs.webkit.org/show_bug.cgi?id=186228
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/big-int-bitwise-and-general.js: Added.
+        (assert):
+        (assert.sameValue):
+        * stress/big-int-bitwise-and-jit.js: Added.
+        (let.assert.sameValue):
+        (bigIntBitAnd):
+        * stress/big-int-bitwise-and-memory-stress.js: Added.
+        (assert):
+        * stress/big-int-bitwise-and-to-primitive-precedence.js: Added.
+        (assert.sameValue):
+        (let.o.Symbol.toPrimitive):
+        (catch):
+        * stress/big-int-bitwise-and-type-error.js: Added.
+        (assert):
+        (assertThrowTypeError):
+        (let.o.valueOf):
+        (o.valueOf):
+        (o.toString):
+        (o.Symbol.toPrimitive):
+        * stress/big-int-bitwise-and-wrapped-value.js: Added.
+        (assert.sameValue):
+        (testBitAnd):
+        (let.o.Symbol.toPrimitive):
+        (o.valueOf):
+        (o.toString):
+
+2018-09-28  Ross Kirsling  <ross.kirsling@sony.com>
+
+        JSC test stress/jsc-read.js doesn't support CRLF
+        https://bugs.webkit.org/show_bug.cgi?id=190063
+
+        Reviewed by Yusuke Suzuki.
+
+        In order to run this test via Windows command prompt, we can't assume that the final newline will be LF.
+
+        * stress/jsc-read.js:
+        (test):
+
+2018-09-27  Saam barati  <sbarati@apple.com>
+
+        Verify the contents of AssemblerBuffer on arm64e
+        https://bugs.webkit.org/show_bug.cgi?id=190057
+        <rdar://problem/38916630>
+
+        Reviewed by Mark Lam.
+
+        * stress/regress-189132.js:
+
+2018-09-27  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Disable test without LLInt on ARMv7
+        https://bugs.webkit.org/show_bug.cgi?id=190037
+
+        Reviewed by Mark Lam.
+
+        Test runs out of executable memory on ARMv7, do not run
+        this test without LLInt enabled.
+
+        * stress/regress-169445.js:
+
+2018-09-26  Keith Miller  <keith_miller@apple.com>
+
+        We should zero unused property storage when rebalancing array storage.
+        https://bugs.webkit.org/show_bug.cgi?id=188151
+
+        Reviewed by Michael Saboff.
+
+        * stress/splice-should-zero-property-storage-when-rebalancing.js: Added.
+
+2018-09-20  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Optimize Array#lastIndexOf
+        https://bugs.webkit.org/show_bug.cgi?id=189780
+
+        Reviewed by Saam Barati.
+
+        * stress/array-lastindexof-array-prototype-trap.js: Added.
+        (shouldBe):
+        (AncestorArray.prototype.get 2):
+        (AncestorArray):
+        * stress/array-lastindexof-have-a-bad-time-c-runtime.js: Added.
+        (shouldBe):
+        * stress/array-lastindexof-hole-nan.js: Added.
+        (shouldBe):
+        (throw.new.Error):
+        * stress/array-lastindexof-infinity.js: Added.
+        (shouldBe):
+        (throw.new.Error):
+        * stress/array-lastindexof-negative-zero.js: Added.
+        (shouldBe):
+        (throw.new.Error):
+        * stress/array-lastindexof-own-getter.js: Added.
+        (shouldBe):
+        (throw.new.Error.get array):
+        (get array):
+        * stress/array-lastindexof-prototype-trap.js: Added.
+        (shouldBe):
+        (DerivedArray.prototype.get 2):
+        (DerivedArray):
+
+2018-09-25  Saam Barati  <sbarati@apple.com>
+
+        Calls to baselineCodeBlockForOriginAndBaselineCodeBlock in operationMaterializeObjectInOSR should actually pass in the baseline CodeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=189940
+        <rdar://problem/43640987>
+
+        Reviewed by Mark Lam.
+
+        * stress/use-baseline-codeblock-materialize-osr-exit.js: Added.
+
+2018-09-24  Saam Barati  <sbarati@apple.com>
+
+        Array.prototype.indexOf fast path needs to ensure the length is still valid after performing effects
+        https://bugs.webkit.org/show_bug.cgi?id=189922
+        <rdar://problem/44651275>
+
+        Reviewed by Mark Lam.
+
+        * stress/array-indexof-fast-path-effects.js: Added.
+        * stress/array-indexof-cached-length.js: Added.
+
+2018-09-24  Saam barati  <sbarati@apple.com>
+
+        ArgumentsEliminationPhase should snip basic blocks after proven OSR exits
+        https://bugs.webkit.org/show_bug.cgi?id=189682
+        <rdar://problem/43557315>
+
+        Reviewed by Mark Lam.
+
+        * stress/arguments-elimination-will-generate-edge-without-result.js: Added.
+        (foo):
+
+2018-09-22  Saam barati  <sbarati@apple.com>
+
+        The sampling should not use Strong<CodeBlock> in its machineLocation field
+        https://bugs.webkit.org/show_bug.cgi?id=189319
+
+        Reviewed by Filip Pizlo.
+
+        * stress/sampling-profiler-richards.js: Added.
+
 2018-09-19  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
 
         [JSC] Optimize Array#indexOf in C++ runtime

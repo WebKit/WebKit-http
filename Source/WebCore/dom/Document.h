@@ -644,10 +644,10 @@ public:
     WEBCORE_EXPORT DocumentLoader* loader() const;
 
     WEBCORE_EXPORT ExceptionOr<RefPtr<WindowProxy>> openForBindings(DOMWindow& activeWindow, DOMWindow& firstDOMWindow, const String& url, const AtomicString& name, const String& features);
-    WEBCORE_EXPORT ExceptionOr<Document&> openForBindings(Document* responsibleDocument, const String& type, const String& replace);
+    WEBCORE_EXPORT ExceptionOr<Document&> openForBindings(Document* responsibleDocument, const String&, const String&);
 
     // FIXME: We should rename this at some point and give back the name 'open' to the HTML specified ones.
-    WEBCORE_EXPORT void open(Document* responsibleDocument = nullptr);
+    WEBCORE_EXPORT ExceptionOr<void> open(Document* responsibleDocument = nullptr);
     void implicitOpen();
 
     WEBCORE_EXPORT ExceptionOr<void> closeForBindings();
@@ -663,7 +663,7 @@ public:
 
     void cancelParsing();
 
-    void write(Document* responsibleDocument, SegmentedString&&);
+    ExceptionOr<void> write(Document* responsibleDocument, SegmentedString&&);
     WEBCORE_EXPORT ExceptionOr<void> write(Document* responsibleDocument, Vector<String>&&);
     WEBCORE_EXPORT ExceptionOr<void> writeln(Document* responsibleDocument, Vector<String>&&);
 
@@ -942,6 +942,8 @@ public:
     //
     const URL& firstPartyForCookies() const { return m_firstPartyForCookies; }
     void setFirstPartyForCookies(const URL& url) { m_firstPartyForCookies = url; }
+
+    bool isFullyActive() const;
 
     // The full URL corresponding to the "site for cookies" in the Same-Site Cookies spec.,
     // <https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00>. It is either
@@ -1460,9 +1462,10 @@ public:
     Vector<RefPtr<WebAnimation>> getAnimations();
         
 #if ENABLE(ATTACHMENT_ELEMENT)
+    void registerAttachmentIdentifier(const String&);
     void didInsertAttachmentElement(HTMLAttachmentElement&);
     void didRemoveAttachmentElement(HTMLAttachmentElement&);
-    WEBCORE_EXPORT RefPtr<HTMLAttachmentElement> attachmentForIdentifier(const String& identifier) const;
+    WEBCORE_EXPORT RefPtr<HTMLAttachmentElement> attachmentForIdentifier(const String&) const;
     const HashMap<String, Ref<HTMLAttachmentElement>>& attachmentElementsByIdentifier() const { return m_attachmentIdentifierToElementMap; }
 #endif
 
@@ -1478,7 +1481,7 @@ public:
     bool handlingTouchEvent() const { return m_handlingTouchEvent; }
 #endif
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     bool hasRequestedPageSpecificStorageAccessWithUserInteraction(const String& primaryDomain);
     void setHasRequestedPageSpecificStorageAccessWithUserInteraction(const String& primaryDomain);
 #endif
@@ -1492,6 +1495,7 @@ public:
     void updateMainArticleElementAfterLayout();
     bool hasMainArticleElement() const { return !!m_mainArticleElement; }
 
+    const CSSRegisteredCustomPropertySet& getCSSRegisteredCustomPropertySet() const { return m_CSSRegisteredPropertySet; }
     bool registerCSSProperty(CSSRegisteredCustomProperty&&);
 
     void setAsRunningUserScripts() { m_isRunningUserScripts = true; }
@@ -1825,7 +1829,7 @@ private:
 
     void didLogMessage(const WTFLogChannel&, WTFLogLevel, Vector<JSONLogValue>&&) final;
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     bool hasFrameSpecificStorageAccess() const;
     void setHasFrameSpecificStorageAccess(bool);
 #endif
@@ -2020,13 +2024,13 @@ private:
 
     HashSet<ApplicationStateChangeListener*> m_applicationStateChangeListeners;
     
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     String m_primaryDomainRequestedPageSpecificStorageAccessWithUserInteraction { };
 #endif
     
     std::unique_ptr<UserGestureIndicator> m_temporaryUserGesture;
 
-    HashMap<String, std::unique_ptr<CSSRegisteredCustomProperty>> m_CSSRegisteredPropertySet;
+    CSSRegisteredCustomPropertySet m_CSSRegisteredPropertySet;
 
     bool m_isRunningUserScripts { false };
 };

@@ -24,6 +24,8 @@ editing/pasteboard/drag-end-crash-accessing-item-list.html [ Pass ]
 editing/pasteboard/drag-file-promises-to-editable-element-as-URLs.html [ Pass ]
 editing/pasteboard/drag-file-promises-to-editable-element-as-attachment.html [ Pass ]
 editing/pasteboard/file-input-files-access-promise.html [ Pass ]
+fast/shadow-dom/dragging-element-with-shadow-tree.html [ Pass ]
+fast/shadow-dom/dragging-element-inside-shadow-tree.html [ Pass ]
 http/tests/security/clipboard/drag-drop-html-cross-origin-iframe-in-same-origin.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -163,6 +165,10 @@ http/wpt/webrtc [ Skip ]
 webrtc/datachannel [ Pass ]
 webrtc/datachannel/mdns-ice-candidates.html [ Skip ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription-offer.html [ Failure ]
+
+# Skip pointerevents on WK1
+pointerevents [ Skip ]
+imported/w3c/web-platform-tests/pointerevents [ Skip ]
 
 # These tests test the Shadow DOM based HTML form validation UI but Mac WK1 is using native dialogs instead.
 fast/forms/validation-message-on-listbox.html
@@ -539,7 +545,6 @@ webkit.org/b/181862 [ Debug ] http/tests/images/image-supports-video.html [ Pass
 webkit.org/b/179853 imported/blink/fast/text/international-iteration-simple-text.html [ Pass Failure ]
 
 # Skip anything related to WebAuthN
-http/tests/webauthn/ [ Skip ]
 http/wpt/credential-management/ [ Skip ]
 http/wpt/webauthn/ [ Skip ]
 imported/w3c/web-platform-tests/credential-management/ [ Skip ]
@@ -621,4 +626,7 @@ webkit.org/b/189594 imported/w3c/web-platform-tests/css/css-animations/pending-s
 webkit.org/b/188070 imported/w3c/web-platform-tests/streams/piping/error-propagation-backward.html [ Pass Failure ]
 
 # Not supported on WK1
+imported/w3c/web-platform-tests/css/css-properties-values-api/ [ Skip ]
 css-custom-properties-api [ Skip ]
+
+webkit.org/b/189908 imported/w3c/web-platform-tests/resource-timing/resource_timing.worker.html [ Failure ]

@@ -865,7 +865,6 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setAriaReflectionEnabled:YES];
     [preferences setVisualViewportAPIEnabled:YES];
     [preferences setColorFilterEnabled:YES];
-    [preferences setCrossOriginWindowPolicySupportEnabled:YES];
     [preferences setServerTimingEnabled:YES];
     [preferences setIntersectionObserverEnabled:YES];
     preferences.sourceBufferChangeTypeEnabled = YES;
@@ -990,6 +989,8 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setCacheAPIEnabled:NO];
     preferences.mediaCapabilitiesEnabled = YES;
 
+    preferences.selectionAcrossShadowBoundariesEnabled = NO;
+
     [WebPreferences _clearNetworkLoaderSession];
     [WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain];
 }
@@ -1008,6 +1009,7 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     preferences.allowCrossOriginSubresourcesToAskForCredentials = options.allowCrossOriginSubresourcesToAskForCredentials;
     preferences.webAnimationsCSSIntegrationEnabled = options.enableWebAnimationsCSSIntegration;
     preferences.colorFilterEnabled = options.enableColorFilter;
+    preferences.selectionAcrossShadowBoundariesEnabled = options.enableSelectionAcrossShadowBoundaries;
 }
 
 // Called once on DumpRenderTree startup.

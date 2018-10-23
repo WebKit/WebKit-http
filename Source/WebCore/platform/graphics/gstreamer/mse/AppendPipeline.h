@@ -27,8 +27,11 @@
 #include "MediaSourceClientGStreamerMSE.h"
 #include "SourceBufferPrivateGStreamer.h"
 
+#include <atomic>
 #include <gst/gst.h>
+#include <mutex>
 #include <wtf/Condition.h>
+#include <wtf/Threading.h>
 
 namespace WebCore {
 
@@ -61,8 +64,9 @@ public:
     // Takes ownership of caps.
     void parseDemuxerSrcPadCaps(GstCaps*);
     void appsinkCapsChanged();
-    void appsinkNewSample(GstSample*);
+    void appsinkNewSample(GRefPtr<GstSample>&&);
     void appsinkEOS();
+    void handleEndOfAppend();
     void didReceiveInitializationSegment();
     AtomicString trackId();
     void abort();
@@ -80,19 +84,28 @@ public:
     WebCore::MediaSourceStreamTypeGStreamer streamType() { return m_streamType; }
 
     void disconnectDemuxerSrcPadFromAppsinkFromAnyThread(GstPad*);
+    void appendPipelineDemuxerNoMorePadsFromAnyThread();
     void connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad*);
     void connectDemuxerSrcPadToAppsink(GstPad*);
-
-    void reportAppsrcAtLeastABufferLeft();
-    void reportAppsrcNeedDataReceived();
 
 private:
     void resetPipeline();
     void checkEndOfAppend();
-    void handleAppsrcAtLeastABufferLeft();
-    void handleAppsrcNeedDataReceived();
-    void removeAppsrcDataLeavingProbe();
-    void setAppsrcDataLeavingProbe();
+    void demuxerNoMorePads();
+
+    void consumeAppsinkAvailableSamples();
+
+    GstPadProbeReturn appsrcEndOfAppendCheckerProbe(GstPadProbeInfo*);
+
+    static void staticInitialization();
+
+    static std::once_flag s_staticInitializationFlag;
+    static GType s_endOfAppendMetaType;
+    static const GstMetaInfo* s_webKitEndOfAppendMetaInfo;
+
+    // Used only for asserting that there is only one streaming thread.
+    // Only the pointers are compared.
+    WTF::Thread* m_streamingThread;
 
     Ref<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     Ref<SourceBufferPrivateGStreamer> m_sourceBufferPrivate;
@@ -103,8 +116,6 @@ private:
 
     MediaTime m_initialDuration;
 
-    GstFlowReturn m_flowReturn;
-
     GRefPtr<GstElement> m_pipeline;
     GRefPtr<GstBus> m_bus;
     GRefPtr<GstElement> m_appsrc;
@@ -113,8 +124,13 @@ private:
     // The demuxer has one src stream only, so only one appsink is needed and linked to it.
     GRefPtr<GstElement> m_appsink;
 
-    Lock m_newSampleLock;
-    Condition m_newSampleCondition;
+    // Used to avoid unnecessary notifications per sample.
+    // It is read and written from the streaming thread and written from the main thread.
+    // The main thread must set it to false before actually pulling samples.
+    // This strategy ensures that at any time, there are at most two notifications in the bus
+    // queue, instead of it growing unbounded.
+    std::atomic_flag m_wasBusAlreadyNotifiedOfAvailableSamples;
+
     Lock m_padAddRemoveLock;
     Condition m_padAddRemoveCondition;
 
@@ -122,10 +138,6 @@ private:
     GRefPtr<GstCaps> m_demuxerSrcPadCaps;
     FloatSize m_presentationSize;
 
-    bool m_appsrcAtLeastABufferLeft;
-    bool m_appsrcNeedDataReceived;
-
-    gulong m_appsrcDataLeavingProbeId;
 #if !LOG_DISABLED
     struct PadProbeInformation m_demuxerDataEnteringPadProbeInformation;
     struct PadProbeInformation m_appsinkDataEnteringPadProbeInformation;
