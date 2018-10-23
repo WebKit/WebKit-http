@@ -75,13 +75,13 @@ void TestRunner::clearBackForwardList()
     notImplemented();
 }
 
-JSStringRef TestRunner::copyDecodedHostName(JSStringRef)
+JSRetainPtr<JSStringRef> TestRunner::copyDecodedHostName(JSStringRef)
 {
     notImplemented();
     return 0;
 }
 
-JSStringRef TestRunner::copyEncodedHostName(JSStringRef)
+JSRetainPtr<JSStringRef> TestRunner::copyEncodedHostName(JSStringRef)
 {
     notImplemented();
     return 0;
@@ -132,7 +132,7 @@ void TestRunner::forceImmediateCompletion()
     m_waitToDump = false;
 }
 
-JSStringRef TestRunner::pathToLocalResource(JSContextRef context, JSStringRef url)
+JSRetainPtr<JSStringRef> TestRunner::pathToLocalResource(JSContextRef context, JSStringRef url)
 {
     String requestedUrl(url->characters(), url->length());
     String resourceRoot;
@@ -525,7 +525,7 @@ void TestRunner::evaluateInWebInspector(JSStringRef script)
     notImplemented();
 }
 
-JSStringRef TestRunner::inspectorTestStubURL()
+JSRetainPtr<JSStringRef> TestRunner::inspectorTestStubURL()
 {
     notImplemented();
     return nullptr;
