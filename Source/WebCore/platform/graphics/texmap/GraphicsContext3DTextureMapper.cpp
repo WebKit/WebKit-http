@@ -220,40 +220,38 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, Hos
 
 GraphicsContext3D::~GraphicsContext3D()
 {
-    if (m_renderStyle == RenderDirectlyToHostWindow)
-        return;
-
-    makeContextCurrent();
-    if (m_texture)
-        ::glDeleteTextures(1, &m_texture);
+    if (m_renderStyle == RenderOffscreen) {
+        makeContextCurrent();
+        if (m_texture)
+            ::glDeleteTextures(1, &m_texture);
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    if (m_compositorTexture)
-        ::glDeleteTextures(1, &m_compositorTexture);
+        if (m_compositorTexture)
+            ::glDeleteTextures(1, &m_compositorTexture);
 #endif
 
-    if (m_attrs.antialias) {
-        ::glDeleteRenderbuffers(1, &m_multisampleColorBuffer);
-        if (m_attrs.stencil || m_attrs.depth)
-            ::glDeleteRenderbuffers(1, &m_multisampleDepthStencilBuffer);
-        ::glDeleteFramebuffers(1, &m_multisampleFBO);
-    } else if (m_attrs.stencil || m_attrs.depth) {
+        if (m_attrs.antialias) {
+            ::glDeleteRenderbuffers(1, &m_multisampleColorBuffer);
+            if (m_attrs.stencil || m_attrs.depth)
+                ::glDeleteRenderbuffers(1, &m_multisampleDepthStencilBuffer);
+            ::glDeleteFramebuffers(1, &m_multisampleFBO);
+        } else if (m_attrs.stencil || m_attrs.depth) {
 #if USE(OPENGL_ES_2)
-        if (m_depthBuffer)
-            glDeleteRenderbuffers(1, &m_depthBuffer);
+            if (m_depthBuffer)
+                glDeleteRenderbuffers(1, &m_depthBuffer);
 
-        if (m_stencilBuffer)
-            glDeleteRenderbuffers(1, &m_stencilBuffer);
+            if (m_stencilBuffer)
+                glDeleteRenderbuffers(1, &m_stencilBuffer);
 #endif
-        if (m_depthStencilBuffer)
-            ::glDeleteRenderbuffers(1, &m_depthStencilBuffer);
-    }
-    ::glDeleteFramebuffers(1, &m_fbo);
+            if (m_depthStencilBuffer)
+                ::glDeleteRenderbuffers(1, &m_depthStencilBuffer);
+        }
+        ::glDeleteFramebuffers(1, &m_fbo);
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    ::glDeleteTextures(1, &m_intermediateTexture);
+        ::glDeleteTextures(1, &m_intermediateTexture);
 #endif
-
-    if (m_vao)
-        deleteVertexArray(m_vao);
+        if (m_vao)
+            deleteVertexArray(m_vao);
+    }
 
     auto* activeContext = activeContexts().takeLast([this](auto* it) { return it == this; });
     ASSERT_UNUSED(activeContext, !!activeContext);
