@@ -2433,6 +2433,7 @@ static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeSet()
             {VideoDecoder, "video/x-flash-video", {"video/flv", "video/x-flv"}},
             {Demuxer, "video/quicktime", { }},
             {Demuxer, "video/quicktime, variant=(string)3gpp", {"video/3gpp"}},
+            {Demuxer, "video/mpegts", {"video/mp2t"}},
             {Demuxer, "application/x-3gp", { }},
             {Demuxer, "video/x-ms-asf", { }},
             {Demuxer, "audio/x-aiff", { }},
