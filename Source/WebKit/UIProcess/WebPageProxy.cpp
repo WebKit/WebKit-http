@@ -851,11 +851,6 @@ void WebPageProxy::initializeWebPage()
 
     process().send(Messages::WebProcess::CreateWebPage(m_pageID, parameters), 0);
 
-#if ENABLE(INSPECTOR_SERVER)
-    if (m_preferences->developerExtrasEnabled())
-        inspector()->enableRemoteInspection();
-#endif
-
     m_needsToFinishInitializingWebPageAfterProcessLaunch = true;
     finishInitializingWebPageAfterProcessLaunch();
 }
@@ -3313,11 +3308,6 @@ void WebPageProxy::preferencesDidChange()
 {
     if (!isValid())
         return;
-
-#if ENABLE(INSPECTOR_SERVER)
-    if (m_preferences->developerExtrasEnabled())
-        inspector()->enableRemoteInspection();
-#endif
 
     updateThrottleState();
     updateHiddenPageThrottlingAutoIncreases();

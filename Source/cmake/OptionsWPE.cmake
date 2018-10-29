@@ -72,9 +72,6 @@ endif ()
 
 include(GStreamerDependencies)
 
-# Enable the legacy inspector server.
-SET_AND_EXPOSE_TO_BUILD(ENABLE_INSPECTOR_SERVER FALSE)
-
 WEBKIT_OPTION_END()
 
 find_package(Cairo 1.10.2 REQUIRED)
