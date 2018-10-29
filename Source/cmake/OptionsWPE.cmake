@@ -125,11 +125,6 @@ if (ENABLE_ACCELERATED_2D_CANVAS)
     find_package(CairoGL 1.10.2 REQUIRED COMPONENTS cairo-egl)
 endif ()
 
-if (ENABLE_PLAYREADY)
-    add_definitions(-DUSE_PLAYREADY=1)
-    find_package(Playready REQUIRED)
-endif ()
-
 if (ENABLE_BREAKPAD)
     find_package(Breakpad REQUIRED)
     add_definitions(-DUSE_BREAKPAD=1)

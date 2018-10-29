@@ -29,7 +29,7 @@
 #include <wtf/Seconds.h>
 
 #define WEBCORE_GSTREAMER_EME_UTILITIES_CLEARKEY_UUID "58147ec8-0423-4659-92e6-f52c5ce8c3cc"
-#if USE(OPENCDM) || USE(PLAYREADY)
+#if USE(OPENCDM)
 #define WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID "9a04f079-9840-4286-ab92-e65be0885f95"
 #endif
 #if USE(OPENCDM)
@@ -49,7 +49,7 @@ public:
     static char const* s_ClearKeyUUID;
     static char const* s_ClearKeyKeySystem;
 
-#if USE(OPENCDM) || USE(PLAYREADY)
+#if USE(OPENCDM)
     static const char* s_PlayReadyUUID;
     static std::array<const char*, 2> s_PlayReadyKeySystems;
 #endif

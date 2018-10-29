@@ -63,10 +63,6 @@ class VideoTextureCopierGStreamer;
 class TextureMapperPlatformLayerProxy;
 #endif
 
-#if USE(PLAYREADY)
-class PlayreadySession;
-#endif
-
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface, public CanMakeWeakPtr<MediaPlayerPrivateGStreamerBase>
 #if USE(TEXTURE_MAPPER_GL)
 #if USE(NICOSIA)
