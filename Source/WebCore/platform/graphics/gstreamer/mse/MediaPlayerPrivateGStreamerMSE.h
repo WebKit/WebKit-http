@@ -111,8 +111,7 @@ private:
     void updatePlaybackRate() override;
     void asyncStateChangeDone() override;
 
-    // FIXME: Implement.
-    std::optional<PlatformVideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() override { return std::nullopt; }
+    std::optional<PlatformVideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() override;
     bool isTimeBuffered(const MediaTime&) const;
     bool playbackPipelineHasFutureData() const;
 
