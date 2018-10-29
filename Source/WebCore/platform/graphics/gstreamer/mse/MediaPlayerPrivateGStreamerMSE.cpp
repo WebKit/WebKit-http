@@ -729,6 +729,11 @@ bool MediaPlayerPrivateGStreamerMSE::isTimeBuffered(const MediaTime &time) const
     return result;
 }
 
+std::optional<VideoPlaybackQualityMetrics> MediaPlayerPrivateGStreamerMSE::videoPlaybackQualityMetrics()
+{
+    return VideoPlaybackQualityMetrics { decodedFrameCount(), droppedFrameCount(), 0, 0.0 };
+}
+
 bool MediaPlayerPrivateGStreamerMSE::playbackPipelineHasFutureData() const
 {
     if (!m_playbackPipeline || m_isEndReached || m_errorOccured)

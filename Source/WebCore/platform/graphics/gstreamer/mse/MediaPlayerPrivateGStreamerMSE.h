@@ -31,6 +31,7 @@
 #include "MediaSample.h"
 #include "MediaSourceGStreamer.h"
 #include "WebKitMediaSourceGStreamer.h"
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -111,7 +112,7 @@ private:
     void updatePlaybackRate() override;
     void asyncStateChangeDone() override;
 
-    // FIXME: Implement videoPlaybackQualityMetrics.
+    std::optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() final;
     bool isTimeBuffered(const MediaTime&) const;
     bool playbackPipelineHasFutureData() const;
 

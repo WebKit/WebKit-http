@@ -1133,7 +1133,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createGLAppSink()
     if (!appsink)
         return nullptr;
 
-    g_object_set(appsink, "enable-last-sample", FALSE, "emit-signals", TRUE, "max-buffers", 1, nullptr);
+    g_object_set(appsink, "enable-last-sample", FALSE, "emit-signals", TRUE, "max-buffers", 1, "qos", TRUE, nullptr);
     g_signal_connect(appsink, "new-sample", G_CALLBACK(newSampleCallback), this);
     g_signal_connect(appsink, "new-preroll", G_CALLBACK(newPrerollCallback), this);
 
