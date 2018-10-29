@@ -42,8 +42,6 @@
       href="https://github.com"/>
   <repository type="tarball" name="github-tarball"
       href="https://github.com/"/>
-  <repository type="tarball" name="pkgs.fedoraproject.org"
-      href="http://pkgs.fedoraproject.org"/>
   <repository type="tarball" name="savannah.gnu.org"
       href="http://download.savannah.gnu.org/releases/"/>
   <repository type="tarball" name="gnupg.org"
@@ -166,16 +164,7 @@
     </dependencies>
     <branch module="releases/cairo-1.14.8.tar.xz" version="1.14.8"
             repo="cairographics.org"
-            hash="sha1:c6f7b99986f93c9df78653c3e6a3b5043f65145e">
-      <patch file="cairo-egl-device-create-for-egl-surface.patch" strip="1"/>
-    </branch>
-  </autotools>
-
-  <autotools id="xkbcommon"
-             autogen-sh="configure">
-    <branch module="repo/pkgs/libxkbcommon/libxkbcommon-0.5.0.tar.xz/2e1faeafcc609c30af3a561a91e84158/libxkbcommon-0.5.0.tar.xz" version="0.5.0"
-            repo="pkgs.fedoraproject.org"
-            hash="sha1:7127993bfb69e13cdff25fb8b3c8f26ce6be5bfa"/>
+            hash="sha1:c6f7b99986f93c9df78653c3e6a3b5043f65145e"/>
   </autotools>
 
   <cmake id="libwpe">
