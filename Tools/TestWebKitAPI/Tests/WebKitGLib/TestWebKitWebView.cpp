@@ -461,7 +461,7 @@ public:
     FullScreenEvent m_event;
 };
 
-#if ENABLE(FULLSCREEN_API) && PLATFORM(GTK)
+#if ENABLE(FULLSCREEN_API)
 static void testWebViewFullScreen(FullScreenClientTest* test, gconstpointer)
 {
 #if PLATFORM(GTK)
@@ -1249,7 +1249,7 @@ void beforeAll()
     WebViewTest::add("WebKitWebView", "settings", testWebViewSettings);
     WebViewTest::add("WebKitWebView", "zoom-level", testWebViewZoomLevel);
     WebViewTest::add("WebKitWebView", "run-javascript", testWebViewRunJavaScript);
-#if ENABLE(FULLSCREEN_API) && PLATFORM(GTK)
+#if ENABLE(FULLSCREEN_API)
     FullScreenClientTest::add("WebKitWebView", "fullscreen", testWebViewFullScreen);
 #endif
     WebViewTest::add("WebKitWebView", "can-show-mime-type", testWebViewCanShowMIMEType);
