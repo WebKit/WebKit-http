@@ -49,6 +49,7 @@ static void webKitMediaCommonEncryptionDecryptorFinalize(GObject*);
 static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform*, GstPadDirection, GstCaps*, GstCaps*);
 static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseTransform*, GstBuffer*);
 static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransform*, GstEvent*);
+static gboolean webkitMediaCommonEncryptionDecryptorQueryHandler(GstBaseTransform* trans, GstPadDirection direction, GstQuery* query);
 static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(WebKitMediaCommonEncryptionDecrypt*);
 
 GST_DEBUG_CATEGORY_STATIC(webkit_media_common_encryption_decrypt_debug_category);
@@ -73,6 +74,7 @@ static void webkit_media_common_encryption_decrypt_class_init(WebKitMediaCommonE
     baseTransformClass->transform_caps = GST_DEBUG_FUNCPTR(webkitMediaCommonEncryptionDecryptTransformCaps);
     baseTransformClass->transform_ip_on_passthrough = FALSE;
     baseTransformClass->sink_event = GST_DEBUG_FUNCPTR(webkitMediaCommonEncryptionDecryptSinkEventHandler);
+    baseTransformClass->query = GST_DEBUG_FUNCPTR(webkitMediaCommonEncryptionDecryptorQueryHandler);
 
     klass->setupCipher = [](WebKitMediaCommonEncryptionDecrypt*, GstBuffer*) { return true; };
     klass->releaseCipher = [](WebKitMediaCommonEncryptionDecrypt*) { };
@@ -503,6 +505,16 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
     }
 
     return result;
+}
+
+static gboolean webkitMediaCommonEncryptionDecryptorQueryHandler(GstBaseTransform* trans, GstPadDirection, GstQuery* query)
+{
+    if (gst_structure_has_name(gst_query_get_structure(query), "any-decryptor-waiting-for-key")) {
+        WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(trans);
+        GST_TRACE_OBJECT(trans, "any-decryptor-waiting-for-key query, waitingforkey %s", boolForPrinting(priv->m_waitingForKey));
+        return priv->m_waitingForKey;
+    }
+    return FALSE;
 }
 
 static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstElement* element, GstStateChange transition)

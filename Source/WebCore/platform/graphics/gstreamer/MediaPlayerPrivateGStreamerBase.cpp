@@ -1383,7 +1383,9 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionStructure(GUniquePtr<Gst
 
 void MediaPlayerPrivateGStreamerBase::setWaitingForKey(bool waitingForKey)
 {
-    if (waitingForKey == m_waitingForKey)
+    // We bail out if values did not change or if we are requested to not wait anymore but there are still waiting decryptors.
+    GST_TRACE("waitingForKey %s, m_waitingForKey %s", boolForPrinting(waitingForKey), boolForPrinting(m_waitingForKey));
+    if (waitingForKey == m_waitingForKey || (!waitingForKey && this->waitingForKey()))
         return;
 
     m_waitingForKey = waitingForKey;
@@ -1393,7 +1395,13 @@ void MediaPlayerPrivateGStreamerBase::setWaitingForKey(bool waitingForKey)
 
 bool MediaPlayerPrivateGStreamerBase::waitingForKey() const
 {
-    return m_waitingForKey;
+    bool result { false };
+    if (m_pipeline) {
+        GRefPtr<GstQuery> query = adoptGRef(gst_query_new_custom(GST_QUERY_CUSTOM, gst_structure_new_empty("any-decryptor-waiting-for-key")));
+        result = gst_element_query(m_pipeline.get(), query.get());
+        GST_TRACE("query result %s", boolForPrinting(result));
+    }
+    return result;
 }
 #endif
 
