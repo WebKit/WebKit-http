@@ -61,8 +61,14 @@ namespace WTF {
 // we wait longer to try again (s_maximumHoldOffTime).
 // These value seems reasonable and testing verifies that it throttles frequent
 // low memory events, greatly reducing CPU usage.
+#if PLATFORM(WPE)
+// TODO: Remove holdOffTimer completely
+static const unsigned s_minimumHoldOffTime = 1;
+static const unsigned s_maximumHoldOffTime = 1;
+#else
 static const unsigned s_minimumHoldOffTime = 5;
 static const unsigned s_maximumHoldOffTime = 30;
+#endif
 static const size_t s_minimumBytesFreedToUseMinimumHoldOffTime = 1 * MB;
 static const unsigned s_holdOffMultiplier = 20;
 static const unsigned s_pollTimeSec = 1;
