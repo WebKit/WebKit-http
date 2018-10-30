@@ -364,7 +364,7 @@ MediaTime MediaPlayerPrivateGStreamer::playbackPosition() const
     double now = WTF::currentTime();
     // This cachedPosition time-to-live should be slightly lower than the maxTimeupdateEventFrequency
     // in HTMLMediaElement to prevent returning the same cached value in two consecutive updates.
-    if (m_lastQuery > -1 && ((now - m_lastQuery) < 0.175) && m_cachedPosition.isValid())
+    if (m_lastQuery > -1 && ((now - m_lastQuery) < 0.01) && m_cachedPosition.isValid())
         return m_cachedPosition;
 
     m_lastQuery = now;
