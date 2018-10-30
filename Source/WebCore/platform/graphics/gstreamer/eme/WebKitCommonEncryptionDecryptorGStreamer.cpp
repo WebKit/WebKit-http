@@ -252,6 +252,8 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
             return GST_FLOW_NOT_SUPPORTED;
         }
         GST_DEBUG_OBJECT(self, "key received, continuing");
+        priv->m_waitingForKey = false;
+        gst_element_post_message(GST_ELEMENT(self), gst_message_new_element(GST_OBJECT(self), gst_structure_new_empty("drm-key-received")));
     }
 
     unsigned ivSize;
@@ -489,13 +491,9 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
             result = TRUE;
             LockHolder locker(priv->m_mutex);
             priv->m_keyReceived = klass->attemptToDecryptWithLocalInstance(self, priv->m_initDatas.get(WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem())));
-            GST_DEBUG_OBJECT(self, "attempted to decrypt with local instance %p, key received %s, waiting for key %s", priv->m_cdmInstance.get(), WTF::boolForPrinting(priv->m_keyReceived), WTF::boolForPrinting(priv->m_waitingForKey));
-            if (priv->m_keyReceived) {
-                priv->m_waitingForKey = false;
-                gst_element_post_message(GST_ELEMENT(self), gst_message_new_element(GST_OBJECT(self), gst_structure_new_empty("drm-key-received")));
+            GST_DEBUG_OBJECT(self, "attempted to decrypt with local instance %p, key received %s", priv->m_cdmInstance.get(), WTF::boolForPrinting(priv->m_keyReceived));
+            if (priv->m_keyReceived)
                 priv->m_condition.notifyOne();
-            } else if (priv->m_waitingForKey)
-                gst_element_post_message(GST_ELEMENT(self), gst_message_new_element(GST_OBJECT(self), gst_structure_new_empty("drm-waiting-for-key")));
         }
         break;
     }
