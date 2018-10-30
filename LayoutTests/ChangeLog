@@ -1,3 +1,52 @@
+2018-10-30  Youenn Fablet  <youenn@apple.com>
+
+        LibWebRTCRtpReceiverBackend::getSynchronizationSources should use Vector::append
+        https://bugs.webkit.org/show_bug.cgi?id=191026
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-addTransceiver-expected.txt:
+        * webrtc/video-addTransceiver.html:
+
+2018-10-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: refactor code for getting properties via WI.RemoteObject
+        https://bugs.webkit.org/show_bug.cgi?id=190989
+
+        Reviewed by Matt Baker.
+
+        * http/tests/inspector/paymentrequest/payment-request-internal-properties.https.html:
+        * inspector/debugger/breakpoint-scope.html:
+        * inspector/debugger/paused-scopes.html:
+        * inspector/debugger/tail-deleted-frames-from-vm-entry.html:
+        * inspector/debugger/tail-deleted-frames.html:
+        * inspector/debugger/tail-recursion.html:
+        * inspector/model/remote-object-fake-object.html:
+        * inspector/model/remote-object-get-properties.html:
+
+2018-10-29  Justin Michaud  <justin_michaud@apple.com>
+
+        Revert r237347 registered custom properties... https://bugs.webkit.org/show_bug.cgi?id=190039
+        https://bugs.webkit.org/show_bug.cgi?id=190919
+
+        Reviewed by Michael Saboff.
+
+        * css-custom-properties-api/crash-expected.txt: Removed.
+        * css-custom-properties-api/crash.html: Removed.
+        * css-custom-properties-api/cycles-expected.txt: Removed.
+        * css-custom-properties-api/cycles.html: Removed.
+        * css-custom-properties-api/inline-expected.txt: Removed.
+        * css-custom-properties-api/inline.html: Removed.
+
+2018-10-29  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/misc/large-js-program.php as a flaky timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=190724
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
 2018-10-29  Youenn Fablet  <youenn@apple.com>
 
         Handle MDNS resolution of candidates through libwebrtc directly
