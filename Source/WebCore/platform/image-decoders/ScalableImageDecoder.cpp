@@ -172,11 +172,10 @@ template <MatchType type> int getScaledValue(const Vector<int>& scaledValues, in
 
 bool ScalableImageDecoder::frameIsCompleteAtIndex(size_t index) const
 {
-    // FIXME(176089): asking whether enough data has been appended for a decode
-    // operation to succeed should not require decoding the entire frame.
-    // This function should be implementable in a way that allows const.
-    ImageFrame* buffer = const_cast<ScalableImageDecoder*>(this)->frameBufferAtIndex(index);
-    return buffer && buffer->isComplete();
+    if (index >= m_frameBufferCache.size())
+        return false;
+
+    return m_frameBufferCache[index].isComplete();
 }
 
 bool ScalableImageDecoder::frameHasAlphaAtIndex(size_t index) const
@@ -198,9 +197,13 @@ unsigned ScalableImageDecoder::frameBytesAtIndex(size_t index, SubsamplingLevel)
 
 Seconds ScalableImageDecoder::frameDurationAtIndex(size_t index) const
 {
-    // FIXME(176089): asking for the duration of a sub-image should not require decoding
-    // the entire frame. This function should be implementable in a way that
-    // allows const.
+    if (index >= m_frameBufferCache.size())
+        return 0_s;
+
+    auto& frame = m_frameBufferCache[index];
+    if (!frame.isComplete())
+        return 0_s;
+
     ImageFrame* buffer = const_cast<ScalableImageDecoder*>(this)->frameBufferAtIndex(index);
     if (!buffer || buffer->isInvalid())
         return 0_s;
