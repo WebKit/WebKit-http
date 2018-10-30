@@ -434,7 +434,6 @@ void MediaPlayerPrivateGStreamerMSE::maybeFinishSeek()
 
 void MediaPlayerPrivateGStreamerMSE::updatePlaybackRate()
 {
-    notImplemented();
 }
 
 bool MediaPlayerPrivateGStreamerMSE::seeking() const
@@ -508,9 +507,21 @@ void MediaPlayerPrivateGStreamerMSE::seekCompleted()
         m_player->timeChanged();
 }
 
-void MediaPlayerPrivateGStreamerMSE::setRate(float)
+void MediaPlayerPrivateGStreamerMSE::setRate(float rate)
 {
-    notImplemented();
+    if (m_playbackRate == rate)
+        return;
+
+    float lastPlaybackRate = m_playbackRate;
+    m_playbackRate = rate;
+    m_player->rateChanged();
+
+    m_seekTime = currentMediaTime();
+    if (!doSeek()) {
+        m_playbackRate = lastPlaybackRate;
+        m_player->rateChanged();
+        GST_ERROR("Set rate to %f failed", m_playbackRate);
+    }
 }
 
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateGStreamerMSE::buffered() const
