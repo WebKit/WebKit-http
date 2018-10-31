@@ -1,3 +1,255 @@
+2018-10-31  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Don't reveal device IDs until the user has granted permission to capture
+        https://bugs.webkit.org/show_bug.cgi?id=191112
+        <rdar://problem/45699932>
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations: Skip http/tests/media/media-stream/enumerate-devices-source-id-persistent.html
+        and http/tests/media/media-stream/enumerate-devices-source-id.html for now, they don't make sense
+        with these changes and will be updated to pass in a future patch.
+        * fast/mediastream/MediaStreamTrack-getCapabilities.html:
+        * fast/mediastream/get-user-media-device-id-expected.txt:
+        * fast/mediastream/get-user-media-device-id.html:
+
+2018-10-31  YUHAN WU  <yuhan_wu@apple.com>
+
+        MediaRecorder should fire dataavailable event when all tracks are ended and stop() is called
+        https://bugs.webkit.org/show_bug.cgi?id=190778
+
+        Reviewed by Youenn Fablet.
+
+        These tests are used to check if MediaRecorder can generate both video and audio buffers through mock source.
+
+        * http/wpt/mediarecorder/MediaRecorder-dataavailable-expected.txt: Added.
+        * http/wpt/mediarecorder/MediaRecorder-dataavailable.html: Added.
+        * http/wpt/mediarecorder/MediaRecorder-mock-dataavailable-expected.txt: Added.
+        * http/wpt/mediarecorder/MediaRecorder-mock-dataavailable.html: Added.
+        * platform/win/TestExpectations:
+
+2018-10-31  Chris Dumez  <cdumez@apple.com>
+
+        [PSON] When process-swapping for a POST request the HTTP body gets dropped
+        https://bugs.webkit.org/show_bug.cgi?id=191046
+        <rdar://problem/45229732>
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * http/tests/misc/form-post-textplain-cross-site-expected.txt: Added.
+        * http/tests/misc/form-post-textplain-cross-site.html: Added.
+
+2018-10-30  David Kilzer  <ddkilzer@apple.com>
+
+        XSLTProcessor should limit max transform depth
+        <https://webkit.org/b/191075>
+        <rdar://problem/45531453>
+
+        Reviewed by Alex Christensen.
+
+        * fast/xsl/xslt-max-depth-expected.txt: Added.
+        * fast/xsl/xslt-max-depth.html: Added.
+
+2018-10-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: create Audit Tab
+        https://bugs.webkit.org/show_bug.cgi?id=190754
+
+        Reviewed by Matt Baker.
+
+        * inspector/audit/resources/audit-utilities.js: Added.
+        * inspector/audit/basic-expected.txt: Added.
+        * inspector/audit/basic.html: Added.
+        * inspector/audit/data-domAttributes-expected.txt: Added.
+        * inspector/audit/data-domAttributes.html: Added.
+        * inspector/audit/data-domNodes-expected.txt: Added.
+        * inspector/audit/data-domNodes.html: Added.
+        * inspector/audit/data-errors-expected.txt: Added.
+        * inspector/audit/data-errors.html: Added.
+        * inspector/model/auditTestCase-expected.txt: Added.
+        * inspector/model/auditTestCase.html: Added.
+        * inspector/model/auditTestCaseResult-expected.txt: Added.
+        * inspector/model/auditTestCaseResult.html: Added.
+        * inspector/model/auditTestGroup-expected.txt: Added.
+        * inspector/model/auditTestGroup.html: Added.
+        * inspector/model/auditTestGroupResult-expected.txt: Added.
+        * inspector/model/auditTestGroupResult.html: Added.
+        * inspector/unit-tests/promise-utilities-expected.txt: Added.
+        * inspector/unit-tests/promise-utilities.html: Added.
+
+        * inspector/audit/audit-manager-expected.txt: Removed.
+        * inspector/audit/audit-manager.html: Removed.
+        * inspector/audit/audit-report-expected.txt: Removed.
+        * inspector/audit/audit-report.html: Removed.
+        * inspector/audit/audit-test-case-expected.txt: Removed.
+        * inspector/audit/audit-test-case.html: Removed.
+        * inspector/audit/audit-test-suite-expected.txt: Removed.
+        * inspector/audit/audit-test-suite.html: Removed.
+        * inspector/audit/resources/audit-test-fixtures.js: Removed.
+
+2018-10-30  Dawei Fenton  <realdawei@apple.com>
+
+        WebGL conformance: Failures and Timeouts in suite 2.0.0/conformance
+        https://bugs.webkit.org/show_bug.cgi?id=189641
+
+        Unreviewed.
+
+        * platform/ios-wk2/TestExpectations: Mark test as [ Slow ]
+
+2018-10-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide options to WI.cssPath for more verbosity
+        https://bugs.webkit.org/show_bug.cgi?id=190987
+
+        Reviewed by Brian Burg.
+
+        * inspector/dom/domutilities-csspath.html:
+
+2018-10-30  Ali Juma  <ajuma@chromium.org>
+
+        Calling window.open("", "_self") allows working around restrictions on window.close()
+        https://bugs.webkit.org/show_bug.cgi?id=191073
+
+        Reviewed by Chris Dumez.
+
+        * fast/dom/Window/window-open-self-disallow-close-expected.txt: Added.
+        * fast/dom/Window/window-open-self-disallow-close.html: Added.
+
+2018-10-30  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement PaymentResponse.retry()
+        https://bugs.webkit.org/show_bug.cgi?id=190985
+
+        Reviewed by Daniel Bates
+
+        * http/tests/paymentrequest/payment-address-attributes-and-toJSON-method.https.html:
+        * http/tests/paymentrequest/payment-response-complete-method.https.html:
+        * http/tests/paymentrequest/payment-response-methodName-attribute.https.html:
+        * http/tests/paymentrequest/payment-response-payerEmail-attribute.https.html:
+        * http/tests/paymentrequest/payment-response-payerName-attribute.https.html:
+        * http/tests/paymentrequest/payment-response-payerPhone-attribute.https.html:
+        * http/tests/paymentrequest/payment-response-rejects-if-not-active.https-expected.txt: Added.
+        * http/tests/paymentrequest/payment-response-rejects-if-not-active.https.html: Copied from
+        imported/w3c/web-platform-tests/payment-request/payment-response/rejects_if_not_active-manual.https.html
+        and automated using internals.mockPaymentCoordinator.
+        * http/tests/paymentrequest/payment-response-retry-method.https-expected.txt: Added.
+        * http/tests/paymentrequest/payment-response-retry-method.https.html: Copied from
+        imported/w3c/web-platform-tests/payment-request/payment-response/retry-method-manual.https.html
+        and automated using internals.mockPaymentCoordinator.
+        * http/tests/paymentrequest/resources/helpers.js:
+        (setUpAndSmokeTest):
+
+2018-10-30  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] PaymentRequest.canMakePayment() should resolve to true whenever Apple Pay is available
+        https://bugs.webkit.org/show_bug.cgi?id=191039
+
+        Reviewed by Megan Gardner.
+
+        * http/tests/paymentrequest/payment-request-canmakepayment-method.https-expected.txt:
+        * http/tests/paymentrequest/payment-request-canmakepayment-method.https.html:
+
+2018-10-30  Dawei Fenton  <realdawei@apple.com>
+
+        [ Mojave Debug ] Layout Test http/tests/workers/service/self_registration.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=190828
+
+        Unreviewed.
+
+        * platform/mac-wk2/TestExpectations: Mark test as flay.
+
+2018-10-30  Sihui Liu  <sihui_liu@apple.com>
+
+        Add a deprecation warning to console for Web SQL
+        https://bugs.webkit.org/show_bug.cgi?id=190936
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline the tests that are affected by the added console message.
+
+        * fast/dom/MutationObserver/database-callback-delivery-expected.txt:
+        * fast/frames/sandboxed-iframe-storage-expected.txt:
+        * fast/history/page-cache-webdatabase-no-transaction-db-expected.txt:
+        * http/tests/security/cross-origin-websql-allowed-expected.txt:
+        * http/tests/security/cross-origin-websql-expected.txt:
+        * http/tests/security/same-origin-websql-blocked-expected.txt:
+        * http/tests/security/storage-blocking-loosened-websql-expected.txt:
+        * http/tests/security/storage-blocking-strengthened-websql-expected.txt:
+        * http/tests/storage/callbacks-are-called-in-correct-context-expected.txt:
+        * inspector/runtime/CommandLineAPI-inspect-expected.txt:
+        * js/dom/callback-function-with-handle-event-expected.txt:
+        * js/dom/exceptions-thrown-in-callbacks-expected.txt:
+        * storage/websql/alter-to-info-table-expected.txt:
+        * storage/websql/change-version-expected.txt:
+        * storage/websql/change-version-handle-reuse-expected.txt:
+        * storage/websql/change-version-no-crash-on-preflight-failure-expected.txt:
+        * storage/websql/close-during-stress-test-expected.txt:
+        * storage/websql/database-lock-after-reload-expected.txt:
+        * storage/websql/empty-statement-expected.txt:
+        * storage/websql/execute-sql-args-expected.txt:
+        * storage/websql/execute-sql-rowsAffected-expected.txt:
+        * storage/websql/executesql-accepts-only-one-statement-expected.txt:
+        * storage/websql/hash-change-with-xhr-expected.txt:
+        * storage/websql/multiple-databases-garbage-collection-expected.txt:
+        * storage/websql/multiple-transactions-expected.txt:
+        * storage/websql/multiple-transactions-on-different-handles-expected.txt:
+        * storage/websql/null-callbacks-expected.txt:
+        * storage/websql/open-database-creation-callback-expected.txt:
+        * storage/websql/open-database-creation-callback-isolated-world-expected.txt:
+        * storage/websql/open-database-empty-version-expected.txt:
+        * storage/websql/open-database-expand-quota-expected.txt:
+        * storage/websql/open-database-over-quota-expected.txt:
+        * storage/websql/open-database-set-empty-version-expected.txt:
+        * storage/websql/open-database-while-transaction-in-progress-expected.txt:
+        * storage/websql/private-browsing-noread-nowrite-expected.txt:
+        * storage/websql/read-and-write-transactions-dont-run-together-expected.txt:
+        * storage/websql/read-transactions-running-concurrently-expected.txt:
+        * storage/websql/sql-data-types-expected.txt:
+        * storage/websql/statement-error-callback-expected.txt:
+        * storage/websql/statement-error-callback-isolated-world-expected.txt:
+        * storage/websql/statement-success-callback-isolated-world-expected.txt:
+        * storage/websql/success-callback-expected.txt:
+        * storage/websql/success-callback-when-page-defers-loading-expected.txt:
+        * storage/websql/test-authorizer-expected.txt:
+        * storage/websql/transaction-callback-exception-crash-expected.txt:
+        * storage/websql/transaction-callback-isolated-world-expected.txt:
+        * storage/websql/transaction-database-expand-quota-expected.txt:
+        * storage/websql/transaction-error-callback-expected.txt:
+        * storage/websql/transaction-error-callback-isolated-world-expected.txt:
+        * storage/websql/transaction-prototype-expected.txt:
+        * storage/websql/transaction-success-callback-isolated-world-expected.txt:
+
+2018-10-30  Sihui Liu  <sihui_liu@apple.com>
+
+        IndexedDB: iteration of cursors skip records if updated or deleted
+        https://bugs.webkit.org/show_bug.cgi?id=190917
+        <rdar://problem/35250410>
+
+        Reviewed by Chris Dumez.
+
+        * storage/indexeddb/cursor-update-while-iterating-expected.txt: Added.
+        * storage/indexeddb/cursor-update-while-iterating.html: Added.
+        * storage/indexeddb/resources/cursor-update-while-iterating.js: Added.
+        (prepareDatabase):
+        (onOpenSuccess.request.onsuccess):
+        (onOpenSuccess):
+
+2018-10-28  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Implement the update animations and send events procedure
+        https://bugs.webkit.org/show_bug.cgi?id=191013
+        <rdar://problem/45620495>
+
+        Reviewed by Dean Jackson.
+
+        Several tests that broke when turning Web Animations CSS Integration on by default are now passing. In the case of one test, we had to ensure
+        that the final animation frame had been committed before terminating the test or there would be a tiny image reference issue.
+
+        * TestExpectations:
+        * fast/layers/no-clipping-overflow-hidden-added-after-transform.html:
+
 2018-10-30  Youenn Fablet  <youenn@apple.com>
 
         LibWebRTCRtpReceiverBackend::getSynchronizationSources should use Vector::append

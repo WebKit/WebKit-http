@@ -2224,3 +2224,51 @@ webkit.org/b/187762 http/tests/websocket/tests/hybi/websocket-cookie-overwrite-b
 webkit.org/b/187269 [ Debug ] imported/w3c/web-platform-tests/FileAPI/reading-data-section/filereader_abort.html [ Skip ]
 
 webkit.org/b/185308 legacy-animation-engine/animations/combo-transform-translate+scale.html [ Pass Failure ]
+
+# This newly imported test crashes in debug and flakily times out.
+webkit.org/b/189917 imported/w3c/web-platform-tests/html/webappapis/dynamic-markup-insertion/document-write/contentType.window.html [ Skip ]
+
+# These tests started to time out or fail because of our experiment to have target=_blank on anchors imply rel=noopener (https://bugs.webkit.org/show_bug.cgi?id=190481).
+imported/w3c/web-platform-tests/html/browsers/windows/auxiliary-browsing-contexts/opener-closed.html [ Skip ]
+imported/w3c/web-platform-tests/html/browsers/windows/browsing-context-names/002.html [ Failure ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping-2.html [ Skip ]
+imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping-2.html [ Skip ]
+imported/w3c/web-platform-tests/html/browsers/windows/browsing-context-names/choose-_blank-003.html [ Failure ]
+
+http/wpt/css/css-images-4/conic-gradient-parsing.html [ Skip ]
+fast/gradients/conic-repeating.html [ Skip ]
+fast/gradients/conic.html [ Skip ]
+fast/gradients/conic-off-center.html [ Skip ]
+fast/gradients/conic-center-outside-box.html [ Skip ]
+fast/gradients/conic-extended-stops.html [ Skip ]
+fast/gradients/conic-from-angle.html [ Skip ]
+fast/gradients/conic-repeating-last-stop.html [ Skip ]
+fast/gradients/conic-gradient-alpha.html [ Skip ]
+fast/gradients/conic-gradient-extended-stops.html [ Skip ]
+fast/gradients/conic-gradient.html [ Skip ]
+fast/gradients/conic-two-hints.html [ Skip ]
+
+webkit.org/b/187773 http/tests/webAPIStatistics [ Skip ]
+
+webkit.org/b/189997 imported/w3c/web-platform-tests/resource-timing/resource_timing.worker.html [ Failure ]
+
+# This is fallout from turning Web Animations on.
+webkit.org/b/190032 animations/animation-playstate-paused-style-resolution.html [ Failure ]
+webkit.org/b/190032 compositing/backing/backing-store-attachment-fill-forwards-animation.html [ Failure ]
+webkit.org/b/190032 compositing/backing/transform-transition-from-outside-view.html [ Failure ]
+webkit.org/b/190032 compositing/layer-creation/mismatched-rotated-transform-transition-overlap.html [ Failure ]
+webkit.org/b/190032 compositing/layer-creation/mismatched-transform-transition-overlap.html [ Failure ]
+webkit.org/b/190032 compositing/layer-creation/scale-rotation-transition-overlap.html [ Failure ]
+webkit.org/b/190032 compositing/layer-creation/translate-scale-transition-overlap.html [ Failure ]
+webkit.org/b/190032 compositing/layer-creation/translate-transition-overlap.html [ Failure ]
+webkit.org/b/190032 imported/w3c/web-platform-tests/css/css-logical/animation-003.tentative.html [ Failure ]
+webkit.org/b/190032 imported/w3c/web-platform-tests/css/css-scoping/keyframes-001.html [ Failure ]
+
+# FIXME: Need to implement MediaRecorder dataavailable event to support these testcases
+fast/mediacapturefromelement/CanvasCaptureMediaStream-imagebitmaprenderingcontext.html [ Skip ]
+fast/mediacapturefromelement/CanvasCaptureMediaStream-framerate-0.html [ Skip ]
+fast/mediacapturefromelement/CanvasCaptureMediaStream-capture-out-of-DOM-element.html [ Skip ]
+
+# FIXME: The behavior of navigator.mediaDevices.enumerateDevices is in flux, skip these tests for now.
+http/tests/media/media-stream/enumerate-devices-source-id-persistent.html [ Skip ]
+http/tests/media/media-stream/enumerate-devices-source-id.html [ Skip ]
