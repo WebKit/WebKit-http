@@ -124,7 +124,6 @@ WI.loaded = function()
     this.timelineManager = new WI.TimelineManager;
     this.debuggerManager = new WI.DebuggerManager;
     this.layerTreeManager = new WI.LayerTreeManager;
-    this.probeManager = new WI.ProbeManager;
     this.workerManager = new WI.WorkerManager;
     this.domDebuggerManager = new WI.DOMDebuggerManager;
     this.canvasManager = new WI.CanvasManager;
@@ -1100,10 +1099,13 @@ WI.tabContentViewClassForRepresentedObject = function(representedObject)
     }
 
     if (representedObject instanceof WI.Frame
+        || representedObject instanceof WI.FrameCollection
         || representedObject instanceof WI.Resource
+        || representedObject instanceof WI.ResourceCollection
         || representedObject instanceof WI.Script
+        || representedObject instanceof WI.ScriptCollection
         || representedObject instanceof WI.CSSStyleSheet
-        || (representedObject instanceof WI.Collection && !(representedObject instanceof WI.CanvasCollection)))
+        || representedObject instanceof WI.CSSStyleSheetCollection)
         return WI.ResourcesTabContentView;
 
     if (representedObject instanceof WI.DOMStorageObject || representedObject instanceof WI.CookieStorageObject ||

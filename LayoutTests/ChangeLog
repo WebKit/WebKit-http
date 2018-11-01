@@ -1,3 +1,645 @@
+2018-10-10  Tim Horton  <timothy_horton@apple.com>
+
+        Share more WKShareSheet code between macOS and iOS, and fix a few bugs
+        https://bugs.webkit.org/show_bug.cgi?id=190420
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/ios/share-expected.txt: Removed.
+        * fast/events/ios/share.html: Removed.
+        * fast/web-share/share.html: Added.
+        * fast/web-share/share-expected.txt: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.setShareSheetCompletesImmediatelyWithResolution):
+        (window.UIHelper.invokeShareSheetWithResolution): Deleted.
+        Move the existing share sheet test to fast/web-share so it runs on both macOS and iOS.
+
+        * fast/web-share/share-with-no-url.html: Added.
+        * fast/web-share/share-with-no-url-expected.txt: Added.
+        Add a new test that the sheet is successfully invoked even when a URL is not provided.
+
+2018-10-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: notify the frontend when a canvas has started recording via console.record
+        https://bugs.webkit.org/show_bug.cgi?id=190306
+
+        Reviewed by Brian Burg.
+
+        * inspector/canvas/recording-2d.html:
+        * inspector/canvas/recording-bitmaprenderer.html:
+        * inspector/canvas/recording-webgl-snapshots.html:
+        * inspector/canvas/recording-webgl.html:
+        * inspector/canvas/resources/recording-utilities.js:
+        (TestPage.registerInitializer.window.startRecording):
+        Wait to complete the test until the "LastFrame" event is fired, ensuring that any running
+        commands don't affect the next test case.
+
+2018-10-09  Antoine Quint  <graouts@apple.com>
+
+        Remove the frames() timing function
+        https://bugs.webkit.org/show_bug.cgi?id=190034
+        <rdar://problem/44827544>
+
+        Reviewed by Dean Jackson.
+
+        * legacy-animation-engine/transitions/frames-timing-function-expected.txt:
+        * legacy-animation-engine/transitions/transitions-parsing-expected.txt:
+        * transitions/frames-timing-function-expected.txt:
+        * transitions/transitions-parsing-expected.txt:
+
+2018-10-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: show redirect requests in Network and Timelines tabs
+        https://bugs.webkit.org/show_bug.cgi?id=150005
+        <rdar://problem/5378164>
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/network/resource-timing-expected.txt:
+        * http/tests/inspector/network/resource-timing.html:
+
+        * http/tests/inspector/network/resources/delay.php: Added.
+        * http/tests/inspector/network/resources/redirect.php: Added.
+
+2018-10-09  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION(r234620): SVGLangSpace::svgAttributeChanged() should invalidate the renderer of the SVGGeometryElement descendant only
+        https://bugs.webkit.org/show_bug.cgi?id=190411
+
+        Reviewed by Simon Fraser.
+
+        * svg/dynamic-updates/SVGStopElement-dom-xml-lang-attrr-expected.txt: Added.
+        * svg/dynamic-updates/SVGStopElement-dom-xml-lang-attrr.html: Added.
+
+2018-10-09  Chris Dumez  <cdumez@apple.com>
+
+        Anchor target should be ignored on activation when the download attribute is set
+        https://bugs.webkit.org/show_bug.cgi?id=190408
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-base-target-popup-not-allowed-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-base-target-popup-not-allowed.html: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-target-popup-not-allowed-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-target-popup-not-allowed.html: Added.
+        Add layout test coverage.
+
+        * http/tests/download/anchor-load-after-download.html:
+        * http/tests/workers/service/resources/registration-task-queue-scheduling-1.js:
+        Update existing WK2-only layout tests to call testRunner.setCanOpenWindows() since they rely on
+        opening a new window. We failed to notice the issue because these tests are not run on WK1.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+        Skip new tests on WebKit1 since the download attribute is only supported on WebKit2.
+
+2018-10-09  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, skip fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-target.html on iOS.
+
+        The download attribute is not supported on iOS yet.
+
+        * platform/ios-wk2/TestExpectations:
+
+2018-10-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: fix canvas test failures after r236952 and r236954
+        https://bugs.webkit.org/show_bug.cgi?id=190403
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/create-context-webmetal.html:
+        Fix missing parenthesis.
+
+        * inspector/canvas/resources/shaderProgram-utilities.js:
+        (createProgram):
+        (TestPage.registerInitializer.awaitProgramAdded):
+        (TestPage.registerInitializer):
+        (TestPage.registerInitializer.window.initializeTestSuite):
+        Replace the `WI.CanvasManager` events (which were removed) with listeners for events on the
+        specific `WI.Canvas`.
+
+2018-10-09  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (Safari 12): Download of Blob URL fails
+        https://bugs.webkit.org/show_bug.cgi?id=190351
+        <rdar://problem/45091181>
+
+        Reviewed by Geoffrey Garen.
+
+        Add layout test coverage.
+
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-target-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-blank-target.html: Added.
+
+2018-10-09  Youenn Fablet  <youenn@apple.com>
+
+        Add support for IceCandidate stats
+        https://bugs.webkit.org/show_bug.cgi?id=190329
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/candidate-stats-expected.txt: Added.
+        * webrtc/candidate-stats.html: Added.
+        * webrtc/routines.js:
+        * webrtc/video-stats.html:
+
+2018-10-09  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Stealing cross-origin video pixel with HLS
+        https://bugs.webkit.org/show_bug.cgi?id=190003
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/gtk/TestExpectations: Unflag now-passing test.
+
+2018-10-08  Devin Rousso  <drousso@apple.com>
+
+        Fix inspector/canvas/recording.html after r236952
+
+        Unreviewed. Test gardening.
+
+        * inspector/canvas/recording-expected.txt:
+        * inspector/canvas/recording.html:
+        Recordings default to only capturing a single frame, so add a parameter to ensure that we
+        are capturing multiple frames.
+
+2018-10-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] [WK2] Add support for text alignment and text lists in font attributes
+        https://bugs.webkit.org/show_bug.cgi?id=190342
+        <rdar://problem/44767118>
+
+        Reviewed by Tim Horton.
+
+        * editing/mac/attributed-string/attributed-string-for-typing-expected.txt:
+        * editing/mac/attributed-string/attributed-string-for-typing-with-color-filter-expected.txt:
+        * platform/mac-sierra/editing/mac/attributed-string/attributed-string-for-typing-expected.txt:
+        * platform/mac-sierra/editing/mac/attributed-string/attributed-string-for-typing-with-color-filter-expected.txt:
+
+        Rebaseline these two layout tests, now that typing attributes include an NSParagraphStyle.
+
+2018-10-08  Justin Fan  <justin_fan@apple.com>
+
+        WebGPU: Rename old WebGPU prototype to WebMetal
+        https://bugs.webkit.org/show_bug.cgi?id=190325
+        <rdar://problem/44990443>
+
+        Reviewed by Dean Jackson.
+
+        Rename WebGPU prototype files to WebMetal in preparation for implementing the new (Oct 2018) WebGPU interface.
+
+        * fast/canvas/webgpu/webgpu-runtime-flag-expected.txt: Removed.
+        * fast/canvas/webmetal/webmetal-dispatch-expected.txt: Renamed from LayoutTests/fast/canvas/webgpu/webgpu-dispatch-expected.txt.
+        * fast/canvas/webmetal/webmetal-dispatch.html: Renamed from LayoutTests/fast/canvas/webgpu/webgpu-dispatch.html.
+        * fast/canvas/webmetal/webmetal-runtime-flag-expected.txt: Added.
+        * fast/canvas/webmetal/webmetal-runtime-flag.html: Renamed from LayoutTests/fast/canvas/webgpu/webgpu-runtime-flag.html.
+        * inspector/canvas/create-context-webmetal-expected.txt: Renamed from LayoutTests/inspector/canvas/create-context-webgpu-expected.txt.
+        * inspector/canvas/create-context-webmetal.html: Renamed from LayoutTests/inspector/canvas/create-context-webgpu.html.
+        * inspector/canvas/resolveCanvasContext-webgpu-expected.txt: Removed.
+        * inspector/canvas/resolveCanvasContext-webmetal-expected.txt: Added.
+        * inspector/canvas/resolveCanvasContext-webmetal.html: Renamed from LayoutTests/inspector/canvas/resolveCanvasContext-webgpu.html.
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2018-10-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: allow multiple canvases to be recorded at the same time
+        https://bugs.webkit.org/show_bug.cgi?id=190305
+
+        Reviewed by Brian Burg.
+
+        * inspector/canvas/recording-2d.html:
+        * inspector/canvas/recording-bitmaprenderer.html:
+        * inspector/canvas/recording-expected.html:
+        * inspector/canvas/recording-webgl.html:
+        * inspector/canvas/recording.html:
+        * inspector/canvas/resources/recording-utilities.js:
+        (TestPage.registerInitializer.window.startRecording.handleRecordingProgress):
+        (TestPage.registerInitializer.window.startRecording):
+        (TestPage.registerInitializer.window.consoleRecord):
+        (TestPage.registerInitializer):
+
+2018-10-08  Dean Jackson  <dino@apple.com>
+
+        CrashTracer: backboardd at Recursion :: QuartzCore: CA::Render::Updater::prepare_sublayer0
+        https://bugs.webkit.org/show_bug.cgi?id=190376
+        <rdar://problem/44986520>
+
+        Reviewed by Tim Horton.
+
+        * compositing/layer-creation/deep-tree.html:
+
+2018-10-08  Aditya Keerthi  <akeerthi@apple.com>
+
+        Make <input type=color> a runtime enabled (on-by-default) feature
+        https://bugs.webkit.org/show_bug.cgi?id=189162
+
+        Reviewed by Wenson Hsieh and Tim Horton.
+
+        Rebaseline layout tests after enabling input type=color by default.
+
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-willValidate-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/type-change-state-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/valueMode-expected.txt:
+        * platform/ios/fast/forms/color/input-appearance-color-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/html/semantics/forms/the-form-element/form-elements-filter-expected.txt: Added.
+        * platform/ios/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/color-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+        * platform/mac/fast/selectors/read-only-read-write-input-basics-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-badInput-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-willValidate-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/selection-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/type-change-state-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/valueMode-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/readwrite-readonly-expected.txt:
+
+2018-10-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Move test expectations from ios-12 to ios directory
+        https://bugs.webkit.org/show_bug.cgi?id=189839
+
+        Unreviewed test gardening..
+
+        * platform/ios-11/http/tests/quicklook/hide-referer-on-navigation-expected.txt: Removed.
+        * platform/ios-11/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker-expected.txt: Removed.
+        * platform/ios-11/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_hkdf.https-expected.txt: Removed.
+        * platform/ios-11/platform/ios/ios/fast/text/opticalFont-expected.txt: Removed.
+        * platform/ios-11/platform/ios/ios/fast/text/opticalFontWithTextStyle-expected.txt: Removed.
+        * platform/ios-11/platform/ios/ios/fast/text/opticalFontWithWeight-expected.txt: Removed.
+        * platform/ios-11/quicklook/powerpoint-expected.txt: Removed.
+        * platform/ios-11/quicklook/powerpoint-legacy-expected.txt: Removed.
+        * platform/ios-11/quicklook/word-expected.txt: Removed.
+        * platform/ios-11/quicklook/word-legacy-expected.txt: Removed.
+        * platform/ios-11/svg/batik/text/longTextOnPath-expected.txt: Removed.
+        * platform/ios-12/TestExpectations: Removed.
+        * platform/ios/TestExpectations:
+
+2018-10-08  Truitt Savell  <tsavell@apple.com>
+
+        Attempt to fix test failure after 236915
+        https://bugs.webkit.org/show_bug.cgi?id=190352
+
+        Unreviewed Test Gardening
+
+        * platform/mac-highsierra/hkdf.https.worker-expected.txt: Removed.
+        * platform/mac/imported/w3c/canvas/2d.shadow.gradient.basic-expected.png: Removed.
+        * platform/mac/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker-expected.txt:
+
+2018-10-08  Truitt Savell  <tsavell@apple.com>
+
+        Moving files to fix failures introduced in r236915
+        https://bugs.webkit.org/show_bug.cgi?id=190352
+
+        Unreviewed test gardening 
+
+        * platform/mac-highsierra/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker-expected.txt: Copied from LayoutTests/platform/mac/hkdf.https.worker-expected.txt.
+        * platform/mac/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker-expected.txt: Renamed from LayoutTests/platform/mac/hkdf.https.worker-expected.txt.
+
+2018-10-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: group media network entries by the node that triggered the request
+        https://bugs.webkit.org/show_bug.cgi?id=189606
+        <rdar://problem/44438527>
+
+        Reviewed by Brian Burg.
+
+        * http/tests/inspector/network/resource-initiatorNode-expected.txt: Added.
+        * http/tests/inspector/network/resource-initiatorNode.html: Added.
+
+        * inspector/canvas/requestNode.html:
+        Test case no longer needed since the document is always requested once it's available.
+
+2018-10-08  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Requests should be aborted after details settle when the user cancels
+        https://bugs.webkit.org/show_bug.cgi?id=190333
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/paymentrequest/payment-request-show-method.https-expected.txt:
+        * http/tests/paymentrequest/payment-request-show-method.https.html:
+
+2018-10-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION (r235630?): [Mojave WK1] Layout test compositing/filters/opacity-change-on-filtered-paints-into-ancestor.html is a flaky image failure
+        https://bugs.webkit.org/show_bug.cgi?id=189756
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-10-08  David Fenton  <david_fenton@apple.com>
+
+        Layout Tests editing/deleting/delete-emoji.html editing/deleting/delete-emoji-1.html editing/deleting/delete-emoji-9.html are passing.
+        https://bugs.webkit.org/show_bug.cgi?id=190353
+
+        Unreviewed. Remove the tests from TestExpectations file.
+
+        * platform/mac/TestExpectations:
+
+2018-10-08  Dawei Fenton  <realdawei@apple.com>
+
+        Layout Tests editing/deleting/delete-emoji.html editing/deleting/delete-emoji-1.html editing/deleting/delete-emoji-9.html are passing.
+        https://bugs.webkit.org/show_bug.cgi?id=190353
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-10-08  Truitt Savell  <tsavell@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker.html for Mojave
+        https://bugs.webkit.org/show_bug.cgi?id=190352
+
+        Unreviewed test Gardening
+
+        * platform/mac-highsierra/hkdf.https.worker-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker-expected.txt.
+        * platform/mac/hkdf.https.worker-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.https.worker-expected.txt.
+        * platform/mac/imported/w3c/canvas/2d.shadow.gradient.basic-expected.png: Added.
+
+2018-10-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: refactor constructor of WI.Resource
+        https://bugs.webkit.org/show_bug.cgi?id=190318
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/network/har/har-basic.html:
+        * inspector/unit-tests/resource-collection.html:
+
+2018-10-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Try to unflake inspector/layers/layerTreeDidChange.html
+
+        Unreviewed. Test gardening.
+
+        * inspector/layers/layerTreeDidChange.html:
+        Force a layout early in the test to try to force layout tree
+        update events in the expected sequence.
+
+2018-10-05  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] REGRESSION (r236809): crash under AnimationTimeline::updateCSSAnimationsForElement()
+        https://bugs.webkit.org/show_bug.cgi?id=190307
+        <rdar://problem/45009901>
+
+        Reviewed by Dean Jackson.
+
+        This test was also crashing even though it should not have been using the new animation engine. Adding the
+        flag to opt into the legacy animation engine.
+
+        * legacy-animation-engine/animations/animation-shorthand-removed.html:
+
+2018-10-04  Chris Dumez  <cdumez@apple.com>
+
+        A Document / Window should lose its browsing context as soon as its iframe is removed from the document
+        https://bugs.webkit.org/show_bug.cgi?id=190282
+
+        Reviewed by Ryosuke Niwa.
+
+        Update existing layout test to reflect behavior change.
+
+        * fast/dom/Window/BarInfo-after-frame-removed.html:
+        * fast/dom/Window/dom-access-from-closure-iframe-expected.txt:
+        * fast/dom/Window/dom-access-from-closure-window-expected.txt:
+        * fast/dom/Window/dom-access-from-closure-window-with-gc-expected.txt:
+        * fast/dom/Window/resources/dom-access-from-closure-iframe-child.html:
+        * fast/dom/Window/resources/dom-access-from-closure-window-child.html:
+        * fast/events/resources/before-unload-return-string-conversion-frame.html:
+        * fast/parser/resources/set-parent-to-javascript-url.html:
+        * http/tests/media/media-stream/disconnected-frame.html:
+        * http/tests/security/contentSecurityPolicy/resources/checkDidSameOriginChildWindowLoad.js:
+        (checkDidLoad):
+        * http/tests/security/named-window-property-from-same-origin-inactive-document-expected.txt:
+        * http/tests/security/named-window-property-from-same-origin-inactive-document.html:
+        * http/tests/security/xss-DENIED-contentWindow-eval-expected.txt:
+        * http/tests/security/xss-DENIED-named-window-property-from-cross-origin-inactive-document-expected.txt:
+        * http/tests/security/xss-DENIED-named-window-property-from-cross-origin-inactive-document.html:
+
+2018-10-04  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed test gardening for WinCairo (and one cross-platform test). 
+
+        * TestExpectations:
+        Remove a cross-platform failure that seems to be passing on all platforms now.
+
+        * platform/wincairo/TestExpectations:
+        * platform/wincairo/editing/pasteboard/emacs-ctrl-k-y-001-expected.txt: Added.
+
+2018-10-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table should support multiple selection and Cmd-click behavior
+        https://bugs.webkit.org/show_bug.cgi?id=189705
+        <rdar://problem/44571170>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/table/resources/table-utilities.js: Added.
+        (TestPage.registerInitializer.InspectorTest.TableDataSource):
+        (TestPage.registerInitializer.InspectorTest.TableDataSource.prototype.get items):
+        (TestPage.registerInitializer.InspectorTest.TableDataSource.prototype.tableNumberOfRows):
+        (TestPage.registerInitializer.InspectorTest.TableDelegate):
+        (TestPage.registerInitializer.InspectorTest.TableDelegate.prototype.tableSelectionDidChange):
+        (TestPage.registerInitializer.InspectorTest.TableDelegate.prototype.tablePopulateCell):
+        (TestPage.registerInitializer.InspectorTest.createTable):
+        (TestPage.registerInitializer):
+
+        * inspector/table/table-selection-expected.txt: Added.
+        * inspector/table/table-selection.html: Added.
+        * inspector/unit-tests/index-set-expected.txt: Added.
+        * inspector/unit-tests/index-set.html: Added.
+
+2018-10-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        MutationRecord doesn't keep JS wrappers of target, addedNodes, and removedNodes alive
+        https://bugs.webkit.org/show_bug.cgi?id=190277
+
+        Reviewed by Antti Koivisto.
+
+        Added two regression tests for making sure mutation observers and mutation records keep JS wrappers
+        of the enqueued nodes alive. Also see r236799 for a previous failed attempt to add a similar test.
+
+        * fast/dom/MutationObserver/mutation-observer-keeps-js-wrappers-of-nodes-alive-expected.txt: Added.
+        * fast/dom/MutationObserver/mutation-observer-keeps-js-wrappers-of-nodes-alive.html: Added.
+        * fast/dom/MutationObserver/mutation-record-keeps-js-wrappers-of-nodes-alive-expected.txt: Added.
+        * fast/dom/MutationObserver/mutation-record-keeps-js-wrappers-of-nodes-alive.html: Added.
+
+2018-10-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: merge ProbeManager into DebuggerManager
+        https://bugs.webkit.org/show_bug.cgi?id=190225
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/debugger/debugger-test.js:
+        (TestPage.registerInitializer.InspectorTest.startTracingProbes):
+        (TestPage.registerInitializer):
+        * http/tests/inspector/resources/probe-test.js:
+        (TestPage.registerInitializer.ProtocolTest.Probe.installTracingListeners):
+        (TestPage.registerInitializer):
+
+2018-10-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: some files not listed in OpenResourceDialog
+        https://bugs.webkit.org/show_bug.cgi?id=190272
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/unit-tests/resource-query-controller-expected.txt:
+        * inspector/unit-tests/resource-query-controller.html:
+
+2018-10-04  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Move time out control from WebProcess to UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=189642
+        <rdar://problem/44476765>
+
+        Reviewed by Chris Dumez.
+
+        This patch also fixes some flaky behaviours regarding to the dirty ASN.1 decoder.
+
+        * http/wpt/webauthn/public-key-credential-create-failure-local-silent.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure-local-silent.https.html: Copied from LayoutTests/http/wpt/webauthn/public-key-credential-create-failure-local.https.html.
+        * http/wpt/webauthn/public-key-credential-create-failure-local.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-failure-local.https.html:
+        * http/wpt/webauthn/public-key-credential-create-failure.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-failure.https.html:
+        * http/wpt/webauthn/public-key-credential-get-failure-local-silent.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-get-failure-local-silent.https.html: Copied from LayoutTests/http/wpt/webauthn/public-key-credential-get-failure-local.https.html.
+        * http/wpt/webauthn/public-key-credential-get-failure-local.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure-local.https.html:
+        * http/wpt/webauthn/public-key-credential-get-failure.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure.https.html:
+        * http/wpt/webauthn/resources/util.js:
+
+2018-10-04  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r236779): Crash when changing the input element type from inside an 'input' event listener
+        https://bugs.webkit.org/show_bug.cgi?id=190252
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * fast/dom/HTMLInputElement/change-type-in-click-event-listener-expected.txt: Added.
+        * fast/dom/HTMLInputElement/change-type-in-click-event-listener.html: Added.
+        * fast/dom/HTMLInputElement/change-type-in-input-event-listener-expected.txt: Added.
+        * fast/dom/HTMLInputElement/change-type-in-input-event-listener.html: Added.
+
+2018-10-04  YUHAN WU  <yuhan_wu@apple.com>
+
+        runtime flag and IDL for MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=190018
+
+        Reviewed by Youenn Fablet and Chris Dumez.
+
+        * platform/win/TestExpectations:
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-capture-out-of-DOM-element-expected.txt:
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-framerate-0-expected.txt:
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-imagebitmaprenderingcontext-expected.txt:
+
+2018-10-04  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r236803.
+
+        Caused crashes on some bots
+
+        Reverted changeset:
+
+        "Regression(r236779): Crash when changing the input element
+        type from inside an 'input' event listener"
+        https://bugs.webkit.org/show_bug.cgi?id=190252
+        https://trac.webkit.org/changeset/236803
+
+2018-10-03  Justin Michaud  <justin_michaud@apple.com>
+
+        Registered custom properties should allow inheritance to be controlled
+        https://bugs.webkit.org/show_bug.cgi?id=190038
+
+        Reviewed by Antti Koivisto.
+
+        Add tests to check css registered custom properties with inherits. Also test
+        calc expression evaluation for inherited registered custom properties.
+
+        * css-custom-properties-api/inherits-expected.txt: Added.
+        * css-custom-properties-api/inherits.html: Added.
+        * css-custom-properties-api/length-expected.txt: Added.
+        * css-custom-properties-api/length.html: Added.
+        * css-custom-properties-api/length2-expected.txt: Added.
+        * css-custom-properties-api/length2.html: Added.
+
+2018-10-03  Youenn Fablet  <youenn@apple.com>
+
+        Add VP8 support to WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=189976
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/audio-peer-connection-g722.html:
+        * webrtc/routines.js:
+        * webrtc/video-mute-vp8-expected.txt: Added.
+        * webrtc/video-mute-vp8.html: Added.
+
+2018-09-28  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] ECDSA could not deal with invalid signature inputs
+        https://bugs.webkit.org/show_bug.cgi?id=189879
+        <rdar://problem/44701276>
+
+        Reviewed by Brent Fulgham.
+
+        * crypto/subtle/ecdsa-verify-malformed-parameters-expected.txt:
+        * crypto/subtle/ecdsa-verify-malformed-parameters.html:
+
+2018-10-03  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] REGRESSION: setting 'animation-name: none' after a 'fill: forwards' animation has completed does not revert to the unanimated style
+        https://bugs.webkit.org/show_bug.cgi?id=190257
+        <rdar://problem/41341473>
+
+        Reviewed by Dean Jackson.
+
+        Add a test that checks that an animation with fill: forwards no longer applies to an element once it's been removed.
+
+        * animations/animation-fill-forwards-removal-expected.txt: Added.
+        * animations/animation-fill-forwards-removal.html: Added.
+
+2018-10-03  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r236779): Crash when changing the input element type from inside an 'input' event listener
+        https://bugs.webkit.org/show_bug.cgi?id=190252
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * fast/dom/HTMLInputElement/change-type-in-click-event-listener-expected.txt: Added.
+        * fast/dom/HTMLInputElement/change-type-in-click-event-listener.html: Added.
+        * fast/dom/HTMLInputElement/change-type-in-input-event-listener-expected.txt: Added.
+        * fast/dom/HTMLInputElement/change-type-in-input-event-listener.html: Added.
+
+2018-10-03  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r236781.
+
+        The test added with this commit is timing out consistently.
+
+        Reverted changeset:
+
+        "GC can collect JS wrappers of nodes in the mutation records
+        waiting to be delivered"
+        https://bugs.webkit.org/show_bug.cgi?id=190115
+        https://trac.webkit.org/changeset/236781
+
 2018-10-03  Youenn Fablet  <youenn@apple.com>
 
         Enable H264 simulcast

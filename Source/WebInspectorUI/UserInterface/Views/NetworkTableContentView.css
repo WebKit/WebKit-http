@@ -40,7 +40,49 @@
     cursor: pointer;
 }
 
-.network-table .cache-type {
+.network-table .cell.dom-node.name .icon {
+    content: url(../Images/DOMElement.svg);
+}
+
+.network-table .cell.dom-node.name .disclosure {
+    width: 13px;
+    height: 13px;
+    vertical-align: -2px;
+    content: url(../Images/DisclosureTriangles.svg#closed-normal);
+    background-size: 13px 13px;
+    background-repeat: no-repeat;
+}
+
+body[dir=rtl] .network-table .cell.dom-node.name .disclosure {
+    transform: scaleX(-1);
+}
+
+.network-table:focus li.selected .cell.dom-node.name .disclosure {
+    content: url(../Images/DisclosureTriangles.svg#closed-selected);
+}
+
+.network-table .cell.dom-node.name .disclosure.expanded {
+    content: url(../Images/DisclosureTriangles.svg#open-normal);
+}
+
+.network-table:focus li.selected .cell.dom-node.name .disclosure.expanded {
+    content: url(../Images/DisclosureTriangles.svg#open-selected);
+}
+
+.network-table.grouped .data-container .cell.name {
+    --item-padding-start: 19px;
+    --item-disclosure-width: 11px;
+}
+
+.network-table.grouped .data-container .cell:not(.parent).name {
+    -webkit-padding-start: var(--item-padding-start);
+}
+
+.network-table.grouped .data-container .cell.child.name {
+    -webkit-padding-start: calc(var(--item-padding-start) + var(--item-disclosure-width));
+}
+
+.network-table li:not(.selected) .cell:matches(.cache-type, .multiple) {
     color: var(--text-color-gray-medium);
 }
 
@@ -53,6 +95,11 @@
     height: 10px;
     content: url(../Images/Locked.svg);
     -webkit-margin-end: 5px;
+}
+
+.network-table li.selected .cell.domain > .lock {
+    /* FIXME: <https://webkit.org/b/189773> Web Inspector: create special Network waterfall for media events */
+    filter: invert();
 }
 
 body[dir=ltr] .network-table .cell.name > .status {
@@ -140,9 +187,17 @@ body[dir=rtl] .network-table .cell.name > .status {
     height: 18px;
 }
 
+.waterfall .block.filler {
+    top: 9px;
+    height: 2px;
+    background-color: lightgrey;
+}
+
+.waterfall .block.redirect {
+    background-color: var(--network-redirect-color);
+}
+
 .waterfall .block.queue {
-    min-width: 3px;
-    -webkit-margin-start: -1px;
     background-color: var(--network-queue-color);
 }
 

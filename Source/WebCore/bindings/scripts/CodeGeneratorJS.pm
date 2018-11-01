@@ -1705,6 +1705,7 @@ sub NeedsRuntimeCheck
     return $context->extendedAttributes->{EnabledAtRuntime}
         || $context->extendedAttributes->{EnabledForWorld}
         || $context->extendedAttributes->{EnabledBySetting}
+        || $context->extendedAttributes->{DisabledByQuirk}
         || $context->extendedAttributes->{SecureContext}
         || $context->extendedAttributes->{ContextHasServiceWorkerScheme};
 }
@@ -3721,6 +3722,20 @@ sub GenerateRuntimeEnableConditionalString
         }
     }
 
+    if ($context->extendedAttributes->{DisabledByQuirk}) {
+        assert("Must specify value for DisabledByQuirk.") if $context->extendedAttributes->{DisabledByQuirk} eq "VALUE_IS_MISSING";
+
+        AddToImplIncludes("Document.h");
+        AddToImplIncludes("Quirks.h");
+
+        assert("DisabledByQuirk can only be used by interfaces only exposed to the Window") if $interface->extendedAttributes->{Exposed} && $interface->extendedAttributes->{Exposed} ne "Window";
+
+        my @flags = split(/&/, $context->extendedAttributes->{DisabledByQuirk});
+        foreach my $flag (@flags) {
+            push(@conjuncts, "!downcast<Document>(jsCast<JSDOMGlobalObject*>(" . $globalObjectPtr . ")->scriptExecutionContext())->quirks()." . ToMethodName($flag) . "Quirk()");
+        }
+    }
+
     if ($context->extendedAttributes->{EnabledAtRuntime}) {
         assert("Must specify value for EnabledAtRuntime.") if $context->extendedAttributes->{EnabledAtRuntime} eq "VALUE_IS_MISSING";
 
@@ -4803,8 +4818,9 @@ sub GenerateAttributeGetterBodyDefinition
         AddAdditionalArgumentsForImplementationCall(\@arguments, $interface, $attribute, "impl", "state", "thisObject");
         
         unshift(@arguments, @callWithArgs);
-        
-        my $toJSExpression = NativeToJSValueUsingReferences($attribute, $interface, "${functionName}(" . join(", ", @arguments) . ")", "*thisObject.globalObject()");
+
+        my $globalObjectReference = $attribute->isStatic ? "*jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())" : "*thisObject.globalObject()";
+        my $toJSExpression = NativeToJSValueUsingReferences($attribute, $interface, "${functionName}(" . join(", ", @arguments) . ")", $globalObjectReference);
         push(@$outputArray, "    auto& impl = thisObject.wrapped();\n") unless $attribute->isStatic or $attribute->isMapLike;
 
         if (!IsReadonly($attribute)) {
@@ -5136,7 +5152,14 @@ sub GenerateOperationBodyDefinition
 
         GenerateArgumentsCountCheck($outputArray, $operation, $interface, $indent);
         my $functionString = GenerateParametersCheck($outputArray, $operation, $interface, $functionImplementationName, $indent);
-        GenerateImplementationFunctionCall($outputArray, $operation, $interface, $functionString, $indent);
+
+        if ($operation->extendedAttributes->{ResultField}) {
+            my $resultName = $operation->extendedAttributes->{ResultField};
+            push(@$outputArray, "    auto implResult = $functionString;\n");
+            GenerateImplementationFunctionCall($outputArray, $operation, $interface, "WTFMove(implResult.$resultName)", $indent);
+        } else {
+            GenerateImplementationFunctionCall($outputArray, $operation, $interface, $functionString, $indent);
+        }
     }
 
     push(@$outputArray, "}\n\n");

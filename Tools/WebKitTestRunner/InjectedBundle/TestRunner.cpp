@@ -410,15 +410,11 @@ bool TestRunner::isCommandEnabled(JSStringRef name)
     return WKBundlePageIsEditingCommandEnabled(InjectedBundle::singleton().page()->page(), toWK(name).get());
 }
 
-void TestRunner::setCanOpenWindows(bool)
+void TestRunner::setCanOpenWindows()
 {
-    // The test plugins/get-url-with-blank-target.html requires that the embedding client forbid
-    // opening windows (by omitting a call to this function) so as to test that NPN_GetURL()
-    // with a blank target will return an error.
-    //
-    // It is not clear if we should implement this functionality or remove it and plugins/get-url-with-blank-target.html
-    // per the remark in <https://trac.webkit.org/changeset/64504/trunk/LayoutTests/platform/mac-wk2/Skipped>.
-    // For now, just ignore this setting.
+    WKRetainPtr<WKStringRef> messsageName(AdoptWK, WKStringCreateWithUTF8CString("SetCanOpenWindows"));
+    WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(true));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messsageName.get(), messageBody.get(), nullptr);
 }
 
 void TestRunner::setXSSAuditorEnabled(bool enabled)
@@ -476,9 +472,9 @@ void TestRunner::setWebGL2Enabled(bool enabled)
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
-void TestRunner::setWebGPUEnabled(bool enabled)
+void TestRunner::setWebMetalEnabled(bool enabled)
 {
-    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitWebGPUEnabled"));
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitWebMetalEnabled"));
     auto& injectedBundle = InjectedBundle::singleton();
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
@@ -2355,9 +2351,19 @@ void TestRunner::setWebAuthenticationMockConfiguration(JSValueRef configurationV
     Vector<WKRetainPtr<WKStringRef>> configurationKeys;
     Vector<WKRetainPtr<WKTypeRef>> configurationValues;
 
+    JSRetainPtr<JSStringRef> silentFailurePropertyName(Adopt, JSStringCreateWithUTF8CString("silentFailure"));
+    JSValueRef silentFailureValue = JSObjectGetProperty(context, configuration, silentFailurePropertyName.get(), 0);
+    if (!JSValueIsUndefined(context, silentFailureValue)) {
+        if (!JSValueIsBoolean(context, silentFailureValue))
+            return;
+        bool silentFailure = JSValueToBoolean(context, silentFailureValue);
+        configurationKeys.append({ AdoptWK, WKStringCreateWithUTF8CString("SilentFailure") });
+        configurationValues.append(adoptWK(WKBooleanCreate(silentFailure)).get());
+    }
+
     JSRetainPtr<JSStringRef> localPropertyName(Adopt, JSStringCreateWithUTF8CString("local"));
     JSValueRef localValue = JSObjectGetProperty(context, configuration, localPropertyName.get(), 0);
-    if (!JSValueIsNull(context, localValue)) {
+    if (!JSValueIsUndefined(context, localValue) && !JSValueIsNull(context, localValue)) {
         if (!JSValueIsObject(context, localValue))
             return;
         JSObjectRef local = JSValueToObject(context, localValue, 0);

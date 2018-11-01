@@ -104,9 +104,6 @@ static const double executablePoolReservationFraction = 0.15;
 static const double executablePoolReservationFraction = 0.25;
 #endif
 
-JS_EXPORT_PRIVATE void* taggedStartOfFixedExecutableMemoryPool;
-JS_EXPORT_PRIVATE void* taggedEndOfFixedExecutableMemoryPool;
-
 #if !ENABLE(FAST_JIT_PERMISSIONS) || !CPU(ARM64E)
 JS_EXPORT_PRIVATE bool useFastPermisionsJITCopy { false };
 JS_EXPORT_PRIVATE JITWriteSeparateHeapsFunction jitWriteSeparateHeapsFunction;
@@ -140,7 +137,19 @@ public:
         else
             reservationSize = fixedExecutableMemoryPoolSize;
         reservationSize = std::max(roundUpToMultipleOf(pageSize(), reservationSize), pageSize() * 2);
-        m_reservation = PageReservation::reserveWithGuardPages(reservationSize, OSAllocator::JSJITCodePages, EXECUTABLE_POOL_WRITABLE, true);
+
+        auto tryCreatePageReservation = [] (size_t reservationSize) {
+#if OS(LINUX)
+            // If we use uncommitted reservation, mmap operation is recorded with small page size in perf command's output.
+            // This makes the following JIT code logging broken and some of JIT code is not recorded correctly.
+            // To avoid this problem, we use committed reservation if we need perf JITDump logging.
+            if (Options::logJITCodeForPerf())
+                return PageReservation::reserveAndCommitWithGuardPages(reservationSize, OSAllocator::JSJITCodePages, EXECUTABLE_POOL_WRITABLE, true);
+#endif
+            return PageReservation::reserveWithGuardPages(reservationSize, OSAllocator::JSJITCodePages, EXECUTABLE_POOL_WRITABLE, true);
+        };
+
+        m_reservation = tryCreatePageReservation(reservationSize);
         if (m_reservation) {
             ASSERT(m_reservation.size() == reservationSize);
             void* reservationBase = m_reservation.base();
@@ -168,12 +177,17 @@ public:
             addFreshFreeSpace(reservationBase, reservationSize);
 
             void* reservationEnd = reinterpret_cast<uint8_t*>(reservationBase) + reservationSize;
-            taggedStartOfFixedExecutableMemoryPool = tagCodePtr<ExecutableMemoryPtrTag>(reservationBase);
-            taggedEndOfFixedExecutableMemoryPool = tagCodePtr<ExecutableMemoryPtrTag>(reservationEnd);
+
+            m_memoryStart = MacroAssemblerCodePtr<ExecutableMemoryPtrTag>(tagCodePtr<ExecutableMemoryPtrTag>(reservationBase));
+            m_memoryEnd = MacroAssemblerCodePtr<ExecutableMemoryPtrTag>(tagCodePtr<ExecutableMemoryPtrTag>(reservationEnd));
         }
     }
 
     virtual ~FixedVMPoolExecutableAllocator();
+
+    void* memoryStart() { return m_memoryStart.untaggedExecutableAddress(); }
+    void* memoryEnd() { return m_memoryEnd.untaggedExecutableAddress(); }
+    bool isJITPC(void* pc) { return memoryStart() <= pc && pc < memoryEnd(); }
 
 protected:
     FreeSpacePtr allocateNewSpace(size_t&) override
@@ -329,7 +343,7 @@ private:
         // asyncDisassembly option as our caller will set our pages execute only.
         return linkBuffer.finalizeCodeWithoutDisassembly<JITThunkPtrTag>();
     }
-#else // CPU(ARM64) && USE(EXECUTE_ONLY_JIT_WRITE_FUNCTION)
+#else // not CPU(ARM64) && USE(EXECUTE_ONLY_JIT_WRITE_FUNCTION)
     static void genericWriteToJITRegion(off_t offset, const void* data, size_t dataSize)
     {
         memcpy((void*)(startOfFixedWritableMemoryPool + offset), data, dataSize);
@@ -348,7 +362,7 @@ private:
         auto codePtr = MacroAssemblerCodePtr<JITThunkPtrTag>(tagCFunctionPtr<JITThunkPtrTag>(function));
         return MacroAssemblerCodeRef<JITThunkPtrTag>::createSelfManagedCodeRef(codePtr);
     }
-#endif
+#endif // CPU(ARM64) && USE(EXECUTE_ONLY_JIT_WRITE_FUNCTION)
 
 #else // OS(DARWIN) && HAVE(REMAP_JIT)
     void initializeSeparatedWXHeaps(void*, size_t, void*, size_t)
@@ -358,6 +372,8 @@ private:
 
 private:
     PageReservation m_reservation;
+    MacroAssemblerCodePtr<ExecutableMemoryPtrTag> m_memoryStart;
+    MacroAssemblerCodePtr<ExecutableMemoryPtrTag> m_memoryEnd;
 };
 
 static FixedVMPoolExecutableAllocator* allocator;
@@ -461,12 +477,10 @@ RefPtr<ExecutableMemoryHandle> ExecutableAllocator::allocate(size_t sizeInBytes,
     }
 
 #if USE(POINTER_PROFILING)
-    void* start = startOfFixedExecutableMemoryPool();
-    void* end = endOfFixedExecutableMemoryPool();
+    void* start = allocator->memoryStart();
+    void* end = allocator->memoryEnd();
     void* resultStart = result->start().untaggedPtr();
     void* resultEnd = result->end().untaggedPtr();
-    RELEASE_ASSERT(start == removeCodePtrTag(taggedStartOfFixedExecutableMemoryPool));
-    RELEASE_ASSERT(end == removeCodePtrTag(taggedEndOfFixedExecutableMemoryPool));
     RELEASE_ASSERT(start <= resultStart && resultStart < end);
     RELEASE_ASSERT(start < resultEnd && resultEnd <= end);
 #endif
@@ -495,7 +509,22 @@ void ExecutableAllocator::dumpProfile()
 }
 #endif
 
+void* startOfFixedExecutableMemoryPoolImpl()
+{
+    return allocator->memoryStart();
 }
+
+void* endOfFixedExecutableMemoryPoolImpl()
+{
+    return allocator->memoryEnd();
+}
+
+bool isJITPC(void* pc)
+{
+    return allocator && allocator->isJITPC(pc);
+}
+
+} // namespace JSC
 
 #else // !ENABLE(JIT)
 

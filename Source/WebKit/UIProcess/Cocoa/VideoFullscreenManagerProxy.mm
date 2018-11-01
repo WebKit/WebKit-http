@@ -193,7 +193,7 @@ void VideoFullscreenModelContext::setVideoLayerFrame(WebCore::FloatRect frame)
         m_manager->setVideoLayerFrame(m_contextId, frame);
 }
 
-void VideoFullscreenModelContext::setVideoLayerGravity(WebCore::VideoFullscreenModel::VideoGravity gravity)
+void VideoFullscreenModelContext::setVideoLayerGravity(WebCore::MediaPlayerEnums::VideoGravity gravity)
 {
     if (m_manager)
         m_manager->setVideoLayerGravity(m_contextId, gravity);
@@ -203,11 +203,6 @@ void VideoFullscreenModelContext::fullscreenModeChanged(WebCore::HTMLMediaElemen
 {
     if (m_manager)
         m_manager->fullscreenModeChanged(m_contextId, mode);
-}
-
-bool VideoFullscreenModelContext::isVisible() const
-{
-    return m_manager ? m_manager->isVisible() : false;
 }
 
 #if PLATFORM(IOS)
@@ -538,7 +533,7 @@ void VideoFullscreenManagerProxy::exitFullscreenWithoutAnimationToMode(uint64_t 
 }
 #endif
 
-#if PLATFORM(IOS) && ENABLE(FULLSCREEN_API)
+#if PLATFORM(IOS)
 
 void VideoFullscreenManagerProxy::setInlineRect(uint64_t contextId, const WebCore::IntRect& inlineRect, bool visible)
 {
@@ -663,7 +658,7 @@ void VideoFullscreenManagerProxy::setVideoLayerFrame(uint64_t contextId, WebCore
     }
 }
 
-void VideoFullscreenManagerProxy::setVideoLayerGravity(uint64_t contextId, WebCore::VideoFullscreenModel::VideoGravity gravity)
+void VideoFullscreenManagerProxy::setVideoLayerGravity(uint64_t contextId, WebCore::MediaPlayerEnums::VideoGravity gravity)
 {
     m_page->send(Messages::VideoFullscreenManager::SetVideoLayerGravityEnum(contextId, (unsigned)gravity), m_page->pageID());
 }
@@ -672,11 +667,6 @@ void VideoFullscreenManagerProxy::fullscreenModeChanged(uint64_t contextId, WebC
 {
     m_page->uiClient().hasVideoInPictureInPictureDidChange(m_page, mode & MediaPlayerEnums::VideoFullscreenModePictureInPicture);
     m_page->send(Messages::VideoFullscreenManager::FullscreenModeChanged(contextId, mode), m_page->pageID());
-}
-
-bool VideoFullscreenManagerProxy::isVisible() const
-{
-    return m_page->isViewVisible() && m_page->isInWindow();
 }
 
 void VideoFullscreenManagerProxy::fullscreenMayReturnToInline(uint64_t contextId)

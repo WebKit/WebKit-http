@@ -374,6 +374,8 @@ public:
     // This is useful for clearing String-based caches.
     void clearImplIfNotShared();
 
+    static constexpr unsigned MaxLength = StringImpl::MaxLength;
+
 private:
     template<typename CharacterType> void removeInternal(const CharacterType*, unsigned, unsigned);
 

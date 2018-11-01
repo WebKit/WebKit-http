@@ -1,3 +1,222 @@
+2018-10-10  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Rename createXXX to tryCreateXXX if it can return RefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=190429
+
+        Reviewed by Saam Barati.
+
+        Use `tryCreate` or new `create`. If we use new `create`, we can use Ref<> and remove null check.
+
+        * WebView/WebPDFRepresentation.mm:
+        (-[WebPDFRepresentation finishedLoadingWithDataSource:]):
+
+2018-10-08  Justin Fan  <justin_fan@apple.com>
+
+        WebGPU: Rename old WebGPU prototype to WebMetal
+        https://bugs.webkit.org/show_bug.cgi?id=190325
+        <rdar://problem/44990443>
+
+        Reviewed by Dean Jackson.
+
+        Rename WebGPU prototype files to WebMetal in preparation for implementing the new (Oct 2018) WebGPU interface.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences webMetalEnabled]):
+        (-[WebPreferences setWebMetalEnabled:]):
+        (-[WebPreferences webGPUEnabled]): Deleted.
+        (-[WebPreferences setWebGPUEnabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-10-08  Aditya Keerthi  <akeerthi@apple.com>
+
+        Make <input type=color> a runtime enabled (on-by-default) feature
+        https://bugs.webkit.org/show_bug.cgi?id=189162
+
+        Reviewed by Wenson Hsieh and Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-07  Dan Bernstein  <mitz@apple.com>
+
+        Fixed building with the latest macOS SDK
+
+        * Plugins/WebNetscapePluginPackage.mm:
+        (-[WebNetscapePluginPackage openResourceFile]):
+        (-[WebNetscapePluginPackage closeResourceFile:]):
+
+2018-10-04  Dan Bernstein  <mitz@apple.com>
+
+        More Carbon build-fixing.
+
+        * Carbon/CarbonWindowAdapter.mm:
+        (-[CarbonWindowAdapter _destroyRealWindow:]):
+        (-[CarbonWindowAdapter _growBoxRect]):
+
+2018-10-04  Dan Bernstein  <mitz@apple.com>
+
+        Retried to fix 32-bit macOS builds after r236846.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView setMarkedText:selectedRange:]):
+
+2018-10-04  Dan Bernstein  <mitz@apple.com>
+
+        Retried to fix 32-bit macOS builds after r236846.
+
+        * Carbon/HIWebView.mm:
+        (ActiveStateChanged):
+
+2018-10-04  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix 32-bit macOS builds after r236846.
+
+        * Carbon/HIWebView.mm:
+        (_NSSelectorForHICommand):
+
+2018-10-04  Dan Bernstein  <mitz@apple.com>
+
+        WebKitLegacy part of [Xcode] Update some build settings as recommended by Xcode 10
+        https://bugs.webkit.org/show_bug.cgi?id=190250
+
+        Reviewed by Andy Estes.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_COMMA, CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF,
+          CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS, and CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED.
+          Also enabled GCC_WARN_UNDECLARED_SELECTOR by deleting the line that set it to NO, which let
+          an earlier line set it to YES.
+
+        Enabling -Wundeclared-selector exposed some long-standing mistakes and required the most
+        changes below.
+
+        * DefaultDelegates/WebDefaultContextMenuDelegate.mm: Imported an internal header that
+          provides some missing method declarations.
+
+        * Misc/WebDownload.mm:
+        (-[WebDownload initWithRequest:delegate:]): Suppressed warning about this implementation of
+          a deprecated method.
+
+        * Misc/WebIconDatabase.mm: Suppressed warning around our implementation of a deprecated class.
+
+        * Misc/WebNSObjectExtras.mm: Declare a category that is implemented in this file, because
+          other code in the file uses a method from it.
+
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (-[WebBaseNetscapePluginView renewGState]): Suppressed warning about this implementation of
+          a deprecated method.
+
+        * Plugins/WebPluginController.mm:
+        (installFlip4MacPlugInWorkaroundIfNecessary): Suppressed the undeclared selector warning
+          around use of a selector that may be present in some WebKit client.
+
+        * Plugins/WebPluginDatabase.mm: Imported an internal header that provides some missing
+          method declarations.
+
+        * WebCoreSupport/PopupMenuMac.mm: Imported a header that delcares delegate methods we call
+          from here.
+
+        * WebCoreSupport/WebCachedFramePlatformData.h: Imported an internal header that provides some
+          missing method declarations.
+
+        * WebCoreSupport/WebChromeClient.mm: Imported a header that declares delegate methods we call
+          from here.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm: Imported headers that declare delegate methods we
+          call from here.
+        (WebFrameLoaderClient::setTitle): Suppressed the undeclared selector warning around use of
+          an obsolete delegate method for binary compatibility.
+        (pluginView): Ditto.
+
+        * WebCoreSupport/WebVisitedLinkStore.mm: Imported a header that declares delegate methods we
+          call from here.
+
+        * WebView/WebDeviceOrientationInternal.h: Declared -setController in a new
+          WebDeviceOrientationProviderMock protocol.
+
+        * WebView/WebDeviceOrientationProviderMock.mm:
+        (-[WebDeviceOrientationProviderMock setController:]): Moved from an internal category to the
+          main @implementation.
+
+        * WebView/WebDeviceOrientationProviderMockInternal.h: Declared that
+          WebDeviceOrientationProviderMock conforms to WebDeviceOrientationProviderMock.
+
+        * WebView/WebDynamicScrollBarsView.mm:
+        (-[WebDynamicScrollBarsView accessibilityIsIgnored]): Suppressed warning about this implementation
+          of a deprecated method.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView validateUserInterfaceItemWithoutDelegate:]): Suppressed the undeclared
+          selector warning around action methods that are not declared anywhere in WebKit.
+
+        (-[WebHTMLView dragImage:at:offset:event:pasteboard:source:slideBack:]): Suppressed warning
+          about implementing this deprecated method.
+        (-[WebHTMLView draggingSourceOperationMaskForLocal:]): Ditto.
+        (-[WebHTMLView draggedImage:endedAt:operation:]): Ditto.
+        (-[WebHTMLView namesOfPromisedFilesDroppedAtDestination:]): Ditto.
+        (-[WebHTMLView accessibilityAttributeValue:]): Ditto.
+        (-[WebHTMLView characterIndexForPoint:]): Ditto.
+        (-[WebHTMLView firstRectForCharacterRange:]): Ditto.
+        (-[WebHTMLView attributedSubstringFromRange:]): Ditto.
+        (-[WebHTMLView setMarkedText:selectedRange:]): Ditto.
+        (-[WebHTMLView doCommandBySelector:]): Ditto.
+        (-[WebHTMLView insertText:]): Ditto.
+
+        * WebView/WebHTMLViewInternal.h: Declared an internal method that’s used from another file.
+
+        * WebView/WebJSPDFDoc.mm: Imported a header that declares delegate methods we call from here.
+
+        * WebView/WebPDFView.h: Removed previewView ivar.
+
+        * WebView/WebPDFView.mm:
+          Removed declaration of FileInternal category and merged its implementation with the main
+          implementation.
+        (-[WebPDFView dealloc]): Removed previewView ivar.
+        (-[WebPDFView initWithFrame:]): Removed code to deal with PDFPreviewView, which doesn’t
+          exist in macOS versions we support.
+        (+[WebPDFView _PDFPreviewViewClass]): Deleted. PDFPreviewView doesn’t exist anymore.
+        (-[WebPDFView _canLookUpInDictionary]): Suppressed undeclared selector warning around use of
+          action methods internal to PDFKit.
+        (-[WebPDFView _lookUpInDictionaryFromMenu:]): Ditto.
+        (-[WebPDFView _menuItemsFromPDFKitForEvent:]): Ditto.
+
+        * WebView/WebUIDelegatePrivate.h: Restored declarations of the delegate methods we actually
+          call on macOS, even though in r86988 we started calling different methods on iOS.
+
+        * WebView/WebView.mm:
+        - Imported headers that declare delegate methods that we call.
+        - Removed declaration of WebFileInternal category and merged its implementation with the
+          main implementation.
+        - Many internal methods were inexplicibly implemented as part of the WebViewEditingInMail
+          category, which made them impossible to call from the main implementation. Moved those
+          into the main implementation. One of those had to be declared in a class extension,
+          because it is called from a method implemented in the WebPrivate category, and that
+          category’s implementation appears first in the file.
+
+        (-[WebView _cacheHistoryDelegateImplementations]): Suppressed undeclared selector warning
+          around use of obsolete delegate method for binary compatibility.
+
+        * WebView/WebViewInternal.h: Declared an internal method that’s used from another file.
+
+2018-10-04  YUHAN WU  <yuhan_wu@apple.com>
+
+        Runtime flag and IDL for MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=190018
+
+        Reviewed by Youenn Fablet and Chris Dumez.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences mediaRecorderEnabled]):
+        (-[WebPreferences setMediaRecorderEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
 2018-10-03  Ryosuke Niwa  <rniwa@webkit.org>
 
         Enable selectionAcrossShadowBoundariesEnabled by default in WebKitLegacy

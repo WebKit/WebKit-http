@@ -854,7 +854,7 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setFetchAPIKeepAliveEnabled:YES];
     [preferences setWebAnimationsEnabled:YES];
     [preferences setWebGL2Enabled:YES];
-    [preferences setWebGPUEnabled:YES];
+    [preferences setWebMetalEnabled:YES];
     // FIXME: AsyncFrameScrollingEnabled
     [preferences setWebAuthenticationEnabled:NO];
     [preferences setCacheAPIEnabled:NO];
@@ -869,6 +869,7 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setIntersectionObserverEnabled:YES];
     preferences.sourceBufferChangeTypeEnabled = YES;
     [preferences setCSSOMViewScrollingAPIEnabled:YES];
+    [preferences setMediaRecorderEnabled:YES];
 }
 
 // Called before each test.
@@ -970,7 +971,7 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setCustomPasteboardDataEnabled:YES];
 
     [preferences setWebGL2Enabled:YES];
-    [preferences setWebGPUEnabled:YES];
+    [preferences setWebMetalEnabled:YES];
 
     [preferences setDownloadAttributeEnabled:YES];
     [preferences setDirectoryUploadEnabled:YES];

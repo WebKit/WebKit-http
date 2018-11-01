@@ -1,3 +1,694 @@
+2018-10-10  Tim Horton  <timothy_horton@apple.com>
+
+        Share more WKShareSheet code between macOS and iOS, and fix a few bugs
+        https://bugs.webkit.org/show_bug.cgi?id=190420
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setShareSheetCompletesImmediatelyWithResolution):
+        (WTR::UIScriptController::invokeShareSheetWithResolution): Deleted.
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::setShareSheetCompletesImmediatelyWithResolution):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setShareSheetCompletesImmediatelyWithResolution):
+        (WTR::UIScriptController::invokeShareSheetWithResolution): Deleted.
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setShareSheetCompletesImmediatelyWithResolution):
+        (WTR::UIScriptController::invokeShareSheetWithResolution): Deleted.
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::setShareSheetCompletesImmediatelyWithResolution):
+        Change the testing mechanism for the share sheet such that we up-front
+        set that it should immediately return with a particular state, instead
+        of programmatically dismissing the sheet.
+
+        Otherwise, running the tests on macOS doesn't work, because we pop
+        a context menu, which spins the runloop and prevents dismissal from
+        going through.
+
+2018-10-10  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Rename createXXX to tryCreateXXX if it can return RefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=190429
+
+        Reviewed by Saam Barati.
+
+        * TestWebKitAPI/Tests/WebCore/mac/GPUBuffer.mm:
+        (TestWebKitAPI::TEST_F):
+
+2018-10-10  Chris Dumez  <cdumez@apple.com>
+
+        Regression(PSON): Assertion hit under WebPageProxy::didNavigateWithNavigationData()
+        https://bugs.webkit.org/show_bug.cgi?id=190418
+        <rdar://problem/45059769>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-10-10  Guillaume Emont  <guijemont@igalia.com>
+
+        [JSCOnly Add an armv7 JSCOnly EWS that runs tests
+        https://bugs.webkit.org/show_bug.cgi?id=190191
+
+        Reviewed by Michael Catanzaro.
+
+        * QueueStatusServer/config/queues.py:
+        * Scripts/webkitpy/common/config/ews.json:
+        * Scripts/webkitpy/common/config/ports.py:
+        (DeprecatedPort.run_javascriptcore_tests_command):
+        Add the possibility to pass arguments to run-javascriptcore-tests with
+        the JSCTESTS_OPTIONS environment variable
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        (test_ews_name):
+
+
+2018-10-09  Guillaume Emont  <guijemont@igalia.com>
+
+        Allow run-javascriptcore-tests to distribute tests between devices
+        https://bugs.webkit.org/show_bug.cgi?id=190190
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/run-jsc-stress-tests:
+        * Scripts/webkitruby/jsc-stress-test-writer-default.rb:
+        * Scripts/webkitruby/jsc-stress-test-writer-ruby.rb:
+
+2018-10-09  Dean Jackson  <dino@apple.com>
+
+        Update WHLSL to Metal tester with semantics
+        https://bugs.webkit.org/show_bug.cgi?id=190416
+        <rdar://problem/45145139>
+
+        Reviewed by Myles Maxfield.
+
+        A few small changes to the WHLSL to Metal tools:
+        - Make it compile by adding some missing JS files :)
+        - Add semantics to the default shader
+        - Add FIXMEs to the other shaders
+        - Create an in-browser test for the WHLSLToMetal codepath
+        - Fix typos in the semantics checker
+
+        * WebGPUShadingLanguageRI/Checker.js:
+        (Checker.prototype._checkSemantics.checkSemanticTypes):
+        (Checker.prototype._checkSemantics.checkSemanticForShaderType):
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Compiler.m:
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Demo shaders/Default.whlsl:
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Demo shaders/Julia.whlsl:
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Demo shaders/Mandelbrot.whlsl:
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/WHLSL Tests.xcodeproj/project.pbxproj:
+        * WebGPUShadingLanguageRI/Metal/WhlslToMsl.html: Added.
+
+2018-10-09  Jer Noble  <jer.noble@apple.com>
+
+        Crash when closing WKWebView during enter fullscreen animation
+        https://bugs.webkit.org/show_bug.cgi?id=190412
+
+        Reviewed by Brian Burg.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/CloseWebViewDuringEnterFullscreen.mm: Added.
+        (-[CloseWebViewDuringEnterFullscreenUIDelegate _webViewWillEnterFullscreen:]):
+        (-[CloseWebViewDuringEnterFullscreenUIDelegate _webViewWillExitFullscreen:]):
+        (TestWebKitAPI::TEST):
+
+2018-10-09  Chris Dumez  <cdumez@apple.com>
+
+        Anchor target should be ignored on activation when the download attribute is set
+        https://bugs.webkit.org/show_bug.cgi?id=190408
+
+        Reviewed by Geoffrey Garen.
+
+        Update WebKitTestRunner to block popups by default and add support for testRunner.setCanOpenWindows()
+        for tests that need popups. This aligns WebKitTestRunner with DumpRenderTree and allows testing
+        popup blocking.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setCanOpenWindows):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        * WebKitTestRunner/TestInvocation.h:
+
+2018-10-09  Jer Noble  <jer.noble@apple.com>
+
+        WebDriver: thrown ObjC exception under -[WKFullScreenWindowController windowDidFailToEnterFullScreen:] when session is terminated
+        https://bugs.webkit.org/show_bug.cgi?id=190098
+        <rdar://problem/42822671>
+
+        Reviewed by Brian Burg.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/CloseWebViewAfterEnterFullscreen.mm: Added.
+        (-[CloseWebViewAfterEnterFullscreenUIDelegate _webViewDidEnterFullscreen:]):
+        (-[CloseWebViewAfterEnterFullscreenUIDelegate _webViewDidExitFullscreen:]):
+        (TestWebKitAPI::TEST):
+
+2018-10-09  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Import CTAP HID message and packet structure from Chromium
+        https://bugs.webkit.org/show_bug.cgi?id=189289
+        <rdar://problem/44120310>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/FidoHidMessageTest.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2018-10-09  Chris Dumez  <cdumez@apple.com>
+
+        PSON: Doing a cross-site navigation via the URL bar does not swap process on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=190378
+        <rdar://problem/45059466>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-10-09  Jer Noble  <jer.noble@apple.com>
+
+        ISOTrackEncryptionBox returns incorrect defaultKeyID
+        https://bugs.webkit.org/show_bug.cgi?id=190368
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/ISOBox.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2018-10-09  Philippe Normand  <pnormand@igalia.com>
+
+        [JHBuild] Update to GStreamer 1.14.4
+        https://bugs.webkit.org/show_bug.cgi?id=190395
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * gstreamer/jhbuild.modules: Remove patches merged in 1.14.4 and bump version of GStreamer modules.
+        * gstreamer/patches/gst-plugins-good-0007-matroskademux-Allow-Matroska-headers-to-be-read-more.patch: Removed.
+        * gstreamer/patches/gst-plugins-good-0008-matroskademux-Refactor-track-parsing-out-from-adding.patch: Removed.
+        * gstreamer/patches/gst-plugins-good-0009-matroskademux-Parse-successive-Tracks-elements.patch: Removed.
+        * gstreamer/patches/gst-plugins-good-0010-matroskademux-Emit-no-more-pads-after-parsing-Tracks.patch: Removed.
+
+2018-10-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] API test DragAndDropTests.DropColor is failing on macOS 10.12
+        https://bugs.webkit.org/show_bug.cgi?id=190386
+
+        Reviewed by Ryosuke Niwa.
+
+        Unlike macOS 10.13 and 10.14, -[NSColor redColor] is not equivalent to a fully red color in sRGB on macOS 10.12.
+        Fix the test by dragging and dropping an NSColor that is equivalent to rgb(255, 0, 0) on all relevant versions
+        of macOS.
+
+        * TestWebKitAPI/Tests/mac/DragAndDropTestsMac.mm:
+        (TEST):
+
+2018-10-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] [WK2] Add support for text alignment and text lists in font attributes
+        https://bugs.webkit.org/show_bug.cgi?id=190342
+        <rdar://problem/44767118>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/FontAttributes.mm:
+
+        Add a new API test to check that the font attributes dictionary contains the correct NSParagraphStyles when
+        moving the selection around text inside nested list elements.
+
+        (TestWebKitAPI::checkParagraphStyles):
+
+        Add a new helper to check an NSParagraphStyle against expected results.
+
+        (TestWebKitAPI::webViewForTestingFontAttributes):
+
+        Allow each test to pass in the name of the test page to load.
+
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/nested-lists.html: Added.
+
+        Add a new test page that contains text enclosed in multiple levels of unordered and ordered lists.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/rich-text-attributes.html:
+
+        Remove `text-align: left` from one of these elements, to test for NSTextAlignmentNatural.
+
+2018-10-08  Justin Fan  <justin_fan@apple.com>
+
+        WebGPU: Rename old WebGPU prototype to WebMetal
+        https://bugs.webkit.org/show_bug.cgi?id=190325
+        <rdar://problem/44990443>
+
+        Reviewed by Dean Jackson.
+
+        Rename WebGPU prototype files to WebMetal in preparation for implementing the new (Oct 2018) WebGPU interface.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * TestWebKitAPI/Tests/WebCore/mac/GPUBuffer.mm:
+        * TestWebKitAPI/Tests/WebCore/mac/GPUCommandQueue.mm:
+        * TestWebKitAPI/Tests/WebCore/mac/GPUDevice.mm:
+        * TestWebKitAPI/Tests/WebCore/mac/GPUFunction.mm:
+        * TestWebKitAPI/Tests/WebCore/mac/GPULibrary.mm:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setWebMetalEnabled):
+        (WTR::TestRunner::setWebGPUEnabled): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2018-10-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r236941.
+        https://bugs.webkit.org/show_bug.cgi?id=190374
+
+        Causing API test failures in new test (Requested by jernoble
+        on #webkit).
+
+        Reverted changeset:
+
+        "ISOTrackEncryptionBox returns incorrect defaultKeyID"
+        https://bugs.webkit.org/show_bug.cgi?id=190368
+        https://trac.webkit.org/changeset/236941
+
+2018-10-08  Aditya Keerthi  <akeerthi@apple.com>
+
+        Make <input type=color> a runtime enabled (on-by-default) feature
+        https://bugs.webkit.org/show_bug.cgi?id=189162
+
+        Reviewed by Wenson Hsieh and Tim Horton.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-10-08  Jer Noble  <jer.noble@apple.com>
+
+        ISOTrackEncryptionBox returns incorrect defaultKeyID
+        https://bugs.webkit.org/show_bug.cgi?id=190368
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/ISOBox.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2018-10-08  Alex Christensen  <achristensen@webkit.org>
+
+        Remove WKBundleFileHandleRef
+        https://bugs.webkit.org/show_bug.cgi?id=190360
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/WKBundleFileHandle.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit/WKBundleFileHandle_Bundle.cpp: Removed.
+
+2018-10-08  Dan Bernstein  <mitz@apple.com>
+
+        Tools part of [Xcode] Update some build settings as recommended by Xcode 10
+        https://bugs.webkit.org/show_bug.cgi?id=190250
+
+        Reviewed by Anders Carlsson.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj: Let Xcode update LastUpgradeCheck.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig: Enabled CLANG_WARN_COMMA,
+          CLANG_WARN_STRICT_PROTOTYPES, CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS,
+          CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF, and CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED.
+
+        * DumpRenderTree/mac/DumpRenderTreeMac.h: Addressed the strict prototype warning.
+
+        * DumpRenderTree/mac/EditingDelegate.mm: Suppressed the deprecated implementations warning
+          around deprecated methods or categories on deprecated classes.
+        * DumpRenderTree/mac/FrameLoadDelegate.mm: Ditto.
+        (-[FrameLoadDelegate webView:windowScriptObjectAvailable:]):
+        * DumpRenderTree/mac/TestRunnerMac.mm: Ditto.
+        (-[SynchronousLoader connection:didReceiveAuthenticationChallenge:]):
+
+        * MiniBrowser/Configurations/Base.xcconfig: Enabled CLANG_WARN_COMMA,
+          CLANG_WARN_STRICT_PROTOTYPES, CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS,
+          CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF, and CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED.
+
+        * MiniBrowser/MiniBrowser.xcodeproj/project.pbxproj: Let Xcode update LastUpgradeCheck.
+
+        * MiniBrowser/mac/AppDelegate.h: Addressed the strict prototypes warning.
+        * MiniBrowser/mac/WK2BrowserWindowController.m: Removed an unused #import to avoid having to
+          address the fact that many of the WebKit C SPI headers trigger the strict prototypes warning.
+
+        * MobileMiniBrowser/Configurations/Base.xcconfig: Enabled CLANG_WARN_COMMA,
+          CLANG_WARN_STRICT_PROTOTYPES, CLANG_WARN_SUSPICIOUS_MOVE (by fixing a typo),
+          CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS, and CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF.
+
+        * MobileMiniBrowser/MobileMiniBrowser.xcodeproj/project.pbxproj: Let Xcode update
+          LastUpgradeCheck and remove the .xcconfig files from the Copy Bundle Resources build phase.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig: Enabled CLANG_WARN_COMMA,
+          CLANG_WARN_STRICT_PROTOTYPES, CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS,
+          CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF, and CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED.
+          Made the WebKit headers be treated as system headers to avoid dealing with the fact that
+          many C SPI headers trigger the strict prototypes warning.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Let Xcode update LastUpgradeCheck.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+        (-[DownloadDelegate _download:decideDestinationWithSuggestedFilename:allowOverwrite:]):
+        (-[BlobDownloadDelegate _download:decideDestinationWithSuggestedFilename:allowOverwrite:]):
+        (-[UIDownloadAsFileTestDelegate _webView:contextMenu:forElement:]):
+        (-[RedirectedDownloadDelegate _download:decideDestinationWithSuggestedFilename:allowOverwrite:]):
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsitePolicies.mm:
+        (-[CustomHeaderFieldsDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[WebsitePoliciesWebsiteDataStoreDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]):
+        * TestWebKitAPI/Tests/WebKitLegacy/ios/AudioSessionCategoryIOS.mm:
+        (-[AudioSessionCategoryUIWebViewDelegate webView:shouldStartLoadWithRequest:navigationType:]):
+        * TestWebKitAPI/Tests/WebKitLegacy/ios/SnapshotViaRenderInContext.mm:
+        (-[RenderInContextWebViewDelegate webViewDidFinishLoad:]):
+        (-[RenderInContextWebViewDelegate webView:didFailLoadWithError:]):
+        * TestWebKitAPI/Tests/ios/SetTimeoutFunction.mm:
+        (-[SetTimeoutFunctionWebViewDelegate webViewDidFinishLoad:]):
+        (-[SetTimeoutFunctionWebViewDelegate webView:didFailLoadWithError:]):
+        (-[SetTimeoutFunctionWebViewDelegate webView:shouldStartLoadWithRequest:navigationType:]):
+        * TestWebKitAPI/Tests/mac/LegacyDragAndDropTests.mm:
+        (-[DragInfo namesOfPromisedFilesDroppedAtDestination:]):
+        * TestWebKitAPI/mac/DragAndDropSimulatorMac.mm:
+        (-[DragAndDropTestWKWebView dragImage:at:offset:event:pasteboard:source:slideBack:]):
+        * TestWebKitAPI/mac/SyntheticBackingScaleFactorWindow.m:
+        (-[SyntheticBackingScaleFactorWindow IGNORE_WARNINGS_END]):
+        (-[SyntheticBackingScaleFactorWindow userSpaceScaleFactor]): Deleted.
+        * TestWebKitAPI/mac/TestDraggingInfo.mm:
+        (-[TestDraggingInfo namesOfPromisedFilesDroppedAtDestination:]):
+
+        In all of the above, suppressed the deprecated implementations warning where needed.
+
+        * WebKitTestRunner/Configurations/Base.xcconfig: Enabled ENABLE_STRICT_OBJC_MSGSEND,
+          CLANG_WARN_BOOL_CONVERSION, CLANG_WARN_COMMA, CLANG_WARN_CONSTANT_CONVERSION,
+          CLANG_WARN_EMPTY_BODY, CLANG_WARN_ENUM_CONVERSION, CLANG_WARN_INT_CONVERSION,
+          CLANG_WARN_STRICT_PROTOTYPES, CLANG_WARN_UNREACHABLE_CODE, CLANG_WARN__DUPLICATE_METHOD_MATCH,
+          GCC_WARN_UNDECLARED_SELECTOR, CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF,
+          CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED, CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS,
+          and GCC_NO_COMMON_BLOCKS.
+
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj: Let Xcode update LastUpgradeCheck.
+
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView dragImage:at:offset:event:pasteboard:source:slideBack:]): Suppressed
+          the deprecated implementations warning.
+
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::replaceTextAtRange): Addressed an int-conversion warning.
+
+2018-10-07  Yacine Bandou  <yacine.bandou@softathome.com>
+
+        [GStreamer][EME][webm] Add the WebM encrypted content support in matroskademux
+        https://bugs.webkit.org/show_bug.cgi?id=189238
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Modifications on GStreamer, tracked in GStreamer bugzilla:
+        https://bugzilla.gnome.org/show_bug.cgi?id=797231
+        https://bugzilla.gnome.org/show_bug.cgi?id=765275
+
+        * gstreamer/jhbuild.modules: Add new patches.
+        * gstreamer/patches/gstreamer-0001-protection-Add-a-new-definition-for-unspecified-syst.patch: Added.
+        * gstreamer/patches/gstreamer-0002-protection-Fix-the-string-to-define-unspecified-syst.patch: Added.
+        * gstreamer/patches/gst-plugins-good-0011-matroska-Add-the-WebM-encrypted-content-support-in-m.patch: Added.
+        * gstreamer/patches/gst-plugins-good-0012-matroskdemux-do-not-use-MapInfo.data-after-unmapping.patch: Added.
+
+2018-10-06  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Never build yasm with ASAN
+        https://bugs.webkit.org/show_bug.cgi?id=190327
+
+        Reviewed by Youenn Fablet.
+
+        * asan/asan.xcconfig: Allow targets to opt out of building with ASAN by setting
+          the WK_ASAN_DISALLOWED build setting to YES (or, actually, anything other than NO or unset).
+
+2018-10-05  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r236862): Crash under DOMWindowExtension::willDetachGlobalObjectFromFrame()
+        https://bugs.webkit.org/show_bug.cgi?id=190320
+        <rdar://problem/45044814>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKit/DOMWindowExtensionBasic.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit/DOMWindowExtensionBasic_Bundle.cpp:
+        (TestWebKitAPI::DOMWindowExtensionBasic::willDestroyGlobalObjectForDOMWindowExtension):
+
+2018-10-03  Jer Noble  <jer.noble@apple.com>
+
+        Add support for reporting "display composited video frames" through the VideoPlaybackQuality object.
+        https://bugs.webkit.org/show_bug.cgi?id=190266
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/VideoQualityDisplayCompositing.mm: Added.
+        (TestWebKitAPI::TEST):
+
+2018-10-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r236866.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Add support for reporting "display composited video frames"
+        through the VideoPlaybackQuality object."
+        https://bugs.webkit.org/show_bug.cgi?id=190266
+        https://trac.webkit.org/changeset/236866
+
+2018-10-05  Carlos Eduardo Ramalho  <cadubentzen@gmail.com>
+
+        [WPE][JSC] Use Unified Sources for Platform-specific sources
+        https://bugs.webkit.org/show_bug.cgi?id=190300
+
+        Reviewed by Yusuke Suzuki.
+
+        Currently the GTK port already used Unified Sources with the same source files.
+        As WPE has conditional code using gmodule, we need to add GLIB_GMODULE_LIBRARIES
+        to the list of libraries to link with.
+
+        * TestWebKitAPI/PlatformWPE.cmake:
+
+2018-10-05  Zach Li  <zachli@apple.com>
+
+        Expose whether WKWebProcessPlugInNodeHandle is a select element to clients
+        https://bugs.webkit.org/show_bug.cgi?id=190302
+        <rdar://problem/45031469>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/InjectedBundleNodeHandleIsSelectElement.mm: Added.
+        (-[InjectedBundleNodeHandleIsSelectElement verifySelectElementForHTMLElementTag:document:jsContext:expectedResult:failedElementTags:]):
+        (-[InjectedBundleNodeHandleIsSelectElement webProcessPlugIn:didCreateBrowserContextController:]):
+        * TestWebKitAPI/Tests/WebKitCocoa/UIDelegate.mm:
+        (-[InjectedBundleNodeHandleIsSelectElementDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (TEST):
+
+2018-10-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] [WK2] Expose some more editing SPI on WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=190232
+        <rdar://problem/44963368>
+
+        Reviewed by Tim Horton.
+
+        Adds new API tests to exercise the new SPIs.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/ios/WKWebViewEditActions.mm: Added.
+        (-[TestWKWebView querySelectorExists:]):
+        (TestWebKitAPI::webViewForEditActionTesting):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/mac/FontManagerTests.mm:
+        (-[TestWKWebView collapseToStart]): Deleted.
+        (-[TestWKWebView collapseToEnd]): Deleted.
+        (-[TestWKWebView stylePropertyAtSelectionStart:]): Deleted.
+        (-[TestWKWebView stylePropertyAtSelectionEnd:]): Deleted.
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView stylePropertyAtSelectionStart:]):
+        (-[TestWKWebView stylePropertyAtSelectionEnd:]):
+        (-[TestWKWebView collapseToStart]):
+        (-[TestWKWebView collapseToEnd]):
+
+        Pull some common testing helpers out of NSFontManager and into TestWKWebView.
+
+2018-10-04  Jer Noble  <jer.noble@apple.com>
+
+        Add support for reporting "display composited video frames" through the VideoPlaybackQuality object.
+        https://bugs.webkit.org/show_bug.cgi?id=190266
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/VideoQualityDisplayCompositing.mm: Added.
+        (TestWebKitAPI::TEST):
+
+2018-10-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] Add SPI to expose typing attributes at the current selection on WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=190119
+        <rdar://problem/44767062>
+
+        Reviewed by Tim Horton.
+
+        Add a new API test that loads a document containing various rich text styles. This test moves the selection
+        around the document and checks the last set of font attributes received via the new UI delegate hook.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/FontAttributes.mm: Added.
+        (-[FontAttributesListener _webView:didChangeFontAttributes:]):
+        (-[FontAttributesListener lastFontAttributes]):
+        (-[TestWKWebView selectElementWithIdentifier:]):
+        (-[TestWKWebView fontAttributesAfterNextPresentationUpdate]):
+        (ColorExpectation::ColorExpectation):
+        (ShadowExpectation::ShadowExpectation):
+        (checkColor):
+        (checkShadow):
+        (checkFont):
+        (webViewForTestingFontAttributes):
+        * TestWebKitAPI/Tests/WebKitCocoa/rich-text-attributes.html: Added.
+
+2018-10-04  Alan Coon  <alancoon@apple.com>
+
+        Unreviewed, add self as contributor.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-10-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Fix some font attribute conversion bugs in preparation for "Font > Styles…" support in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=190289
+        <rdar://problem/45020806>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add new API tests to exercise two corner cases when using NSFontOptions ("Font > Styles…") to change font
+        attributes at the current selection.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/TestWebKitAPI/mac/AppKitSPI.h:
+        * TestWebKitAPI/Tests/mac/FontManagerTests.mm:
+        (webViewForFontManagerTesting):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/mac/TestFontOptions.h: Copied from Source/WebCore/editing/cocoa/FontAttributesCocoa.mm.
+        * TestWebKitAPI/mac/TestFontOptions.mm: Added.
+
+        Introduce TestFontOptions, which wraps the shared NSFontOptions and swizzles `-sharedFontOptions` to return a
+        global instance of itself. TestFontOptions supports several testing helpers to add or remove font shadows,
+        foreground colors, and background colors.
+
+        (sharedFontOptionsForTesting):
+        (+[TestFontOptions sharedInstance]):
+        (-[TestFontOptions initWithFontOptions:]):
+        (-[TestFontOptions selectedAttributes]):
+        (-[TestFontOptions fontOptions]):
+        (-[TestFontOptions shadowWidth]):
+        (-[TestFontOptions setShadowWidth:]):
+        (-[TestFontOptions shadowHeight]):
+        (-[TestFontOptions setShadowHeight:]):
+        (-[TestFontOptions setShadowBlurRadius:]):
+        (-[TestFontOptions setHasShadow:]):
+        (-[TestFontOptions foregroundColor]):
+        (-[TestFontOptions setForegroundColor:]):
+        (-[TestFontOptions backgroundColor]):
+        (-[TestFontOptions setBackgroundColor:]):
+        (-[TestFontOptions _dispatchFontAttributeChanges]):
+        (-[TestFontOptions convertAttributes:]):
+        (-[TestFontOptions setSelectedAttributes:isMultiple:]):
+        (-[TestFontOptions forwardInvocation:]):
+
+2018-10-04  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Move time out control from WebProcess to UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=189642
+        <rdar://problem/44476765>
+
+        Reviewed by Chris Dumez.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setWebAuthenticationMockConfiguration):
+
+2018-10-04  YUHAN WU  <yuhan_wu@apple.com>
+
+        Runtime flag and IDL for MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=190018
+
+        Reviewed by Youenn Fablet and Chris Dumez.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+
+2018-10-04  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [LayoutTests][Win] Stop wpt server correctly.
+        https://bugs.webkit.org/show_bug.cgi?id=190248
+
+        Reviewed by Fujii Hironori.
+
+        Use signal.CTRL_C_EVENT instead of signal.SIGINT for Windows.
+        Also refactoring the detection of Windows and cygwin environment check.
+
+        * Scripts/webkitpy/common/system/executive.py:
+        (Executive.__init__): Check environment once.
+        (Executive._should_close_fds):
+        (Executive.kill_process):
+        (Executive.check_running_pid):
+        (Executive.running_pids):
+        (Executive.interrupt): Use signal.CTRL_C_EVENT for Windows.
+        (Executive.kill_all):
+        (Executive._child_process_encoding):
+        (Executive._should_encode_child_process_arguments):
+        (Executive.popen):
+        (Executive.run_in_parallel):
+
+2018-10-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Convert tests to use navigation client
+        https://bugs.webkit.org/show_bug.cgi?id=190153
+
+        Reviewed by Alex Christensen.
+
+        Convert these tests from PagePolicyClient and PageLoaderClient to PageNavigationClient.
+
+        * TestWebKitAPI/Tests/WebKit/DownloadDecideDestinationCrash.cpp:
+        (TestWebKitAPI::decidePolicyForNavigationAction):
+        (TestWebKitAPI::setPagePolicyClient):
+        * TestWebKitAPI/Tests/WebKit/ProvisionalURLAfterWillSendRequestCallback.cpp:
+        (TestWebKitAPI::didCommitNavigationCallback):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::didCommitLoadForFrame): Deleted.
+
+2018-10-03  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Let clients specify an NSFileWrapper subclassed to be used for _WKAttachment
+        https://bugs.webkit.org/show_bug.cgi?id=190270
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (TestWebKitAPI::TEST):
+
 2018-10-03  Ryosuke Niwa  <rniwa@webkit.org>
 
         Enable selectionAcrossShadowBoundariesEnabled by default in WebKitLegacy

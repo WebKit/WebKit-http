@@ -166,19 +166,9 @@ void VideoFullscreenModelVideoElement::setVideoLayerFrame(FloatRect rect)
         m_videoElement->setVideoFullscreenFrame(rect);
 }
 
-void VideoFullscreenModelVideoElement::setVideoLayerGravity(VideoFullscreenModel::VideoGravity gravity)
+void VideoFullscreenModelVideoElement::setVideoLayerGravity(MediaPlayerEnums::VideoGravity gravity)
 {
-    MediaPlayer::VideoGravity videoGravity = MediaPlayer::VideoGravityResizeAspect;
-    if (gravity == VideoFullscreenModel::VideoGravityResize)
-        videoGravity = MediaPlayer::VideoGravityResize;
-    else if (gravity == VideoFullscreenModel::VideoGravityResizeAspect)
-        videoGravity = MediaPlayer::VideoGravityResizeAspect;
-    else if (gravity == VideoFullscreenModel::VideoGravityResizeAspectFill)
-        videoGravity = MediaPlayer::VideoGravityResizeAspectFill;
-    else
-        ASSERT_NOT_REACHED();
-    
-    m_videoElement->setVideoFullscreenGravity(videoGravity);
+    m_videoElement->setVideoFullscreenGravity(gravity);
 }
 
 const Vector<AtomicString>& VideoFullscreenModelVideoElement::observedEventNames()
@@ -209,17 +199,6 @@ void VideoFullscreenModelVideoElement::removeClient(VideoFullscreenModelClient& 
 {
     ASSERT(m_clients.contains(&client));
     m_clients.remove(&client);
-}
-
-bool VideoFullscreenModelVideoElement::isVisible() const
-{
-    if (!m_videoElement)
-        return false;
-
-    if (Page* page = m_videoElement->document().page())
-        return page->isVisible();
-
-    return false;
 }
 
 void VideoFullscreenModelVideoElement::setHasVideo(bool hasVideo)

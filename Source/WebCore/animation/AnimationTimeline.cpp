@@ -276,10 +276,6 @@ void AnimationTimeline::updateCSSAnimationsForElement(Element& element, const Re
         if (auto animation = cssAnimationsByName.take(nameOfAnimationToRemove))
             cancelOrRemoveDeclarativeAnimation(animation);
     }
-
-    // Remove the map of CSSAnimations by animation name for this element if it's now empty.
-    if (cssAnimationsByName.isEmpty())
-        m_elementToCSSAnimationByName.remove(&element);
 }
 
 RefPtr<WebAnimation> AnimationTimeline::cssAnimationForElementAndProperty(Element& element, CSSPropertyID property)
@@ -477,14 +473,8 @@ void AnimationTimeline::updateCSSTransitionsForElement(Element& element, const R
 void AnimationTimeline::cancelOrRemoveDeclarativeAnimation(RefPtr<DeclarativeAnimation> animation)
 {
     ASSERT(animation);
-    if (auto* effect = animation->effect()) {
-        auto phase = effect->phase();
-        if (phase != AnimationEffectReadOnly::Phase::Idle && phase != AnimationEffectReadOnly::Phase::After) {
-            animation->cancel();
-            return;
-        }
-    }
-
+    animation->cancel();
+    animationWasRemovedFromElement(*animation, animation->target());
     removeAnimation(animation.releaseNonNull());
 }
 

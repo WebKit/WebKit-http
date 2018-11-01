@@ -31,6 +31,7 @@
 #import "AppKitSPI.h"
 #import "NSFontPanelTesting.h"
 #import "PlatformUtilities.h"
+#import "TestFontOptions.h"
 #import "TestInspectorBar.h"
 #import "TestWKWebView.h"
 #import <WebKit/WKWebViewPrivate.h>
@@ -43,11 +44,7 @@
 @property (nonatomic, readonly) NSString *selectedText;
 
 - (NSDictionary<NSString *, id> *)typingAttributes;
-- (NSString *)stylePropertyAtSelectionStart:(NSString *)propertyName;
-- (NSString *)stylePropertyAtSelectionEnd:(NSString *)propertyName;
 - (void)selectNextWord;
-- (void)collapseToStart;
-- (void)collapseToEnd;
 
 @end
 
@@ -89,40 +86,23 @@
     [self selectWord:nil];
 }
 
-- (void)collapseToStart
-{
-    [self evaluateJavaScript:@"getSelection().collapseToStart()" completionHandler:nil];
-}
-
-- (void)collapseToEnd
-{
-    [self evaluateJavaScript:@"getSelection().collapseToEnd()" completionHandler:nil];
-}
-
-- (NSString *)stylePropertyAtSelectionStart:(NSString *)propertyName
-{
-    NSString *script = [NSString stringWithFormat:@"getComputedStyle(getSelection().getRangeAt(0).startContainer.parentElement)['%@']", propertyName];
-    return [self stringByEvaluatingJavaScript:script];
-}
-
-- (NSString *)stylePropertyAtSelectionEnd:(NSString *)propertyName
-{
-    NSString *script = [NSString stringWithFormat:@"getComputedStyle(getSelection().getRangeAt(0).endContainer.parentElement)['%@']", propertyName];
-    return [self stringByEvaluatingJavaScript:script];
-}
-
 @end
 
-static RetainPtr<FontManagerTestWKWebView> webViewForFontManagerTesting(NSFontManager *fontManager)
+static RetainPtr<FontManagerTestWKWebView> webViewForFontManagerTesting(NSFontManager *fontManager, NSString *markup)
 {
     auto webView = adoptNS([[FontManagerTestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 400, 400)]);
-    [webView synchronouslyLoadHTMLString:@"<body contenteditable>"
-        "<span id='foo'>foo</span> <span id='bar'>bar</span> <span id='baz'>baz</span>"
-        "</body><script>document.body.addEventListener('input', event => lastInputEvent = event)</script>"];
+    [webView synchronouslyLoadHTMLString:markup];
     [webView stringByEvaluatingJavaScript:@"document.body.focus()"];
     [webView _setEditable:YES];
     fontManager.target = webView.get();
     return webView;
+}
+
+static RetainPtr<FontManagerTestWKWebView> webViewForFontManagerTesting(NSFontManager *fontManager)
+{
+    return webViewForFontManagerTesting(fontManager, @"<body contenteditable>"
+        "<span id='foo'>foo</span> <span id='bar'>bar</span> <span id='baz'>baz</span>"
+        "</body><script>document.body.addEventListener('input', event => lastInputEvent = event)</script>");
 }
 
 static RetainPtr<NSMenuItemCell> menuItemCellForFontAction(NSUInteger tag)
@@ -472,6 +452,48 @@ TEST(FontManagerTests, TypingAttributesAfterSubscriptAndSuperscript)
     [webView unscript:nil];
     [webView waitForNextPresentationUpdate];
     EXPECT_EQ(0, [[webView typingAttributes][NSSuperscriptAttributeName] integerValue]);
+}
+
+TEST(FontManagerTests, AddFontShadowUsingFontOptions)
+{
+    TestFontOptions *options = TestFontOptions.sharedInstance;
+    auto webView = webViewForFontManagerTesting(NSFontManager.sharedFontManager);
+
+    [webView selectWord:nil];
+    options.shadowWidth = 3;
+    options.shadowHeight = -3;
+    options.hasShadow = YES;
+
+    EXPECT_WK_STREQ("rgba(0, 0, 0, 0.333333) 3px -3px 0px", [webView stylePropertyAtSelectionStart:@"text-shadow"]);
+    [webView waitForNextPresentationUpdate];
+    NSShadow *shadow = [webView typingAttributes][NSShadowAttributeName];
+    EXPECT_EQ(shadow.shadowOffset.width, 3);
+    EXPECT_EQ(shadow.shadowOffset.height, -3);
+}
+
+TEST(FontManagerTests, AddAndRemoveColorsUsingFontOptions)
+{
+    TestFontOptions *options = TestFontOptions.sharedInstance;
+    auto webView = webViewForFontManagerTesting(NSFontManager.sharedFontManager, @"<body contenteditable>hello</body>");
+    [webView selectWord:nil];
+
+    options.backgroundColor = [NSColor colorWithRed:1 green:0 blue:0 alpha:0.2];
+    options.foregroundColor = [NSColor colorWithRed:0 green:0 blue:1 alpha:1];
+
+    EXPECT_WK_STREQ("rgb(0, 0, 255)", [webView stylePropertyAtSelectionStart:@"color"]);
+    EXPECT_WK_STREQ("rgba(255, 0, 0, 0.2)", [webView stylePropertyAtSelectionStart:@"background-color"]);
+    NSDictionary *attributes = [webView typingAttributes];
+    EXPECT_TRUE([[NSColor colorWithRed:0 green:0 blue:1 alpha:1] isEqual:attributes[NSForegroundColorAttributeName]]);
+    EXPECT_TRUE([[NSColor colorWithRed:1 green:0 blue:0 alpha:0.2] isEqual:attributes[NSBackgroundColorAttributeName]]);
+
+    options.backgroundColor = nil;
+    options.foregroundColor = nil;
+
+    EXPECT_WK_STREQ("rgb(0, 0, 0)", [webView stylePropertyAtSelectionStart:@"color"]);
+    EXPECT_WK_STREQ("rgba(0, 0, 0, 0)", [webView stylePropertyAtSelectionStart:@"background-color"]);
+    attributes = [webView typingAttributes];
+    EXPECT_NULL(attributes[NSForegroundColorAttributeName]);
+    EXPECT_NULL(attributes[NSBackgroundColorAttributeName]);
 }
 
 } // namespace TestWebKitAPI

@@ -1071,10 +1071,12 @@ static void RelinquishFocus(HIWebView* view, bool inAutodisplay)
 //
 static void ActiveStateChanged(HIWebView* view)
 {
+IGNORE_WARNINGS_BEGIN("undeclared-selector")
     if ([view->fWebView respondsToSelector:@selector(setEnabled)]) {
         [(NSControl*)view->fWebView setEnabled: IsControlEnabled(view->fViewRef)];
         HIViewSetNeedsDisplay(view->fViewRef, true);
     }
+IGNORE_WARNINGS_END
 }
 
 
@@ -1161,6 +1163,7 @@ UpdateCommandStatus(HIWebView* inView, const HICommand* inCommand)
 //
 static SEL _NSSelectorForHICommand(const HICommand* inCommand)
 {
+IGNORE_WARNINGS_BEGIN("undeclared-selector")
     switch (inCommand->commandID) {
     case kHICommandUndo:
         return @selector(undo:);
@@ -1179,6 +1182,7 @@ static SEL _NSSelectorForHICommand(const HICommand* inCommand)
     default:
         return nullptr;
     }
+IGNORE_WARNINGS_END
 
     return nullptr;
 }

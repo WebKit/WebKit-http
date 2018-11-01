@@ -190,9 +190,10 @@ messages -> WebPage LegacyReceiver {
 
 #if PLATFORM(MAC)
     PerformDictionaryLookupOfCurrentSelection()
+#endif
+
     ChangeFont(WebCore::FontChanges changes)
     ChangeFontAttributes(WebCore::FontAttributeChanges changes)
-#endif
 
     PreferencesDidChange(struct WebKit::WebPreferencesStore store)
 
@@ -208,6 +209,8 @@ messages -> WebPage LegacyReceiver {
     SetEditable(bool editable)
     ValidateCommand(String name, WebKit::CallbackID callbackID)
     ExecuteEditCommand(String name, String argument)
+
+    SetNeedsFontAttributes(bool needsFontAttributes)
 
     RequestFontAttributesAtSelectionStart(WebKit::CallbackID callbackID)
 

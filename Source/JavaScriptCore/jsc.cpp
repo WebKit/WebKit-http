@@ -90,6 +90,8 @@
 
 #if OS(WINDOWS)
 #include <direct.h>
+#include <fcntl.h>
+#include <io.h>
 #include <wtf/text/win/WCharStringExtras.h>
 #else
 #include <unistd.h>
@@ -885,7 +887,9 @@ static RefPtr<Uint8Array> fillBufferWithContentsOfFile(FILE* file)
         return nullptr;
     if (fseek(file, 0, SEEK_SET) == -1)
         return nullptr;
-    RefPtr<Uint8Array> result = Uint8Array::create(bufferCapacity);
+    auto result = Uint8Array::tryCreate(bufferCapacity);
+    if (!result)
+        return nullptr;
     size_t readSize = fread(result->data(), 1, bufferCapacity, file);
     if (readSize != static_cast<size_t>(bufferCapacity))
         return nullptr;
@@ -1231,9 +1235,8 @@ public:
 
         MemoryFootprint footprint = MemoryFootprint::now();
 
-        // Report sizes in KBytes so that values up to GB are still integers.
-        addProperty(vm, "current", jsNumber(footprint.current / 1024));
-        addProperty(vm, "peak", jsNumber(footprint.peak / 1024));
+        addProperty(vm, "current", jsNumber(footprint.current));
+        addProperty(vm, "peak", jsNumber(footprint.peak));
     }
 
     DECLARE_INFO;
@@ -2231,6 +2234,9 @@ int main(int argc, char** argv)
     // testing/debugging, as it causes the post-mortem debugger not to be invoked. We reset the
     // error mode here to work around Cygwin's behavior. See <http://webkit.org/b/55222>.
     ::SetErrorMode(0);
+
+    _setmode(_fileno(stdout), _O_BINARY);
+    _setmode(_fileno(stderr), _O_BINARY);
 
 #if defined(_DEBUG)
     _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);

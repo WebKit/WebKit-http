@@ -159,6 +159,10 @@ bool Options::isAvailable(Options::ID id, Options::Availability availability)
     if (id == useSigillCrashAnalyzerID)
         return true;
 #endif
+#if ENABLE(ASSEMBLER) && OS(LINUX)
+    if (id == logJITCodeForPerfID)
+        return true;
+#endif
     if (id == traceLLIntExecutionID)
         return !!LLINT_TRACING;
     if (id == traceLLIntSlowPathID)
@@ -572,6 +576,18 @@ void Options::initialize()
 #if HAVE(MACH_EXCEPTIONS)
             if (Options::useMachForExceptions())
                 handleSignalsWithMach();
+#endif
+
+#if ASAN_ENABLED && OS(LINUX) && ENABLE(WEBASSEMBLY_FAST_MEMORY)
+            if (Options::useWebAssemblyFastMemory()) {
+                const char* asanOptions = getenv("ASAN_OPTIONS");
+                bool okToUseWebAssemblyFastMemory = asanOptions
+                    && (strstr(asanOptions, "allow_user_segv_handler=1") || strstr(asanOptions, "handle_segv=0"));
+                if (!okToUseWebAssemblyFastMemory) {
+                    dataLogLn("WARNING: ASAN interferes with JSC signal handlers; useWebAssemblyFastMemory will be disabled.");
+                    Options::useWebAssemblyFastMemory() = false;
+                }
+            }
 #endif
         });
 }

@@ -80,9 +80,8 @@ private:
     void removeClient(WebCore::VideoFullscreenModelClient&) override;
     void requestFullscreenMode(WebCore::HTMLMediaElementEnums::VideoFullscreenMode, bool finishedWithMedia = false) override;
     void setVideoLayerFrame(WebCore::FloatRect) override;
-    void setVideoLayerGravity(VideoGravity) override;
+    void setVideoLayerGravity(WebCore::MediaPlayerEnums::VideoGravity) override;
     void fullscreenModeChanged(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) override;
-    bool isVisible() const override;
     bool hasVideo() const override { return m_hasVideo; }
     WebCore::FloatSize videoDimensions() const override { return m_videoDimensions; }
 #if PLATFORM(IOS)
@@ -174,7 +173,7 @@ private:
     void didEnterFullscreen(uint64_t contextId);
     void didCleanupFullscreen(uint64_t contextId);
     void setVideoLayerFrame(uint64_t contextId, WebCore::FloatRect);
-    void setVideoLayerGravity(uint64_t contextId, WebCore::VideoFullscreenModel::VideoGravity);
+    void setVideoLayerGravity(uint64_t contextId, WebCore::MediaPlayerEnums::VideoGravity);
     void fullscreenModeChanged(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode);
     void fullscreenMayReturnToInline(uint64_t contextId);
 

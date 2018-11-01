@@ -146,19 +146,19 @@ static NSString* normalizedStringWithAppKitCompatibilityMapping(NSString *charac
 {
     auto makeNSStringWithCharacter = [] (unichar c) { return [NSString stringWithCharacters:&c length:1]; };
 
-    if (characters == UIKeyInputUpArrow)
+    if ([characters isEqualToString:UIKeyInputUpArrow])
         return makeNSStringWithCharacter(NSUpArrowFunctionKey);
-    if (characters == UIKeyInputDownArrow)
+    if ([characters isEqualToString:UIKeyInputDownArrow])
         return makeNSStringWithCharacter(NSDownArrowFunctionKey);
-    if (characters == UIKeyInputLeftArrow)
+    if ([characters isEqualToString:UIKeyInputLeftArrow])
         return makeNSStringWithCharacter(NSLeftArrowFunctionKey);
-    if (characters == UIKeyInputRightArrow)
+    if ([characters isEqualToString:UIKeyInputRightArrow])
         return makeNSStringWithCharacter(NSRightArrowFunctionKey);
-    if (characters == UIKeyInputPageUp)
+    if ([characters isEqualToString:UIKeyInputPageUp])
         return makeNSStringWithCharacter(NSPageUpFunctionKey);
-    if (characters == UIKeyInputPageDown)
+    if ([characters isEqualToString:UIKeyInputPageDown])
         return makeNSStringWithCharacter(NSPageDownFunctionKey);
-    if (characters == UIKeyInputEscape)
+    if ([characters isEqualToString:UIKeyInputEscape])
         return @"\x1B";
     if ([characters isEqualToString:@"\x1B"]) // Num Lock / Clear
         return makeNSStringWithCharacter(NSClearLineFunctionKey);
@@ -254,28 +254,28 @@ static NSString* normalizedStringWithAppKitCompatibilityMapping(NSString *charac
 - (NSString *)_typeDescription
 {
     switch (_type) {
-        case WebEventMouseDown:
-            return @"WebEventMouseDown";
-        case WebEventMouseUp:
-            return @"WebEventMouseUp";
-        case WebEventMouseMoved:
-            return @"WebEventMouseMoved";
-        case WebEventScrollWheel:
-            return @"WebEventScrollWheel";
-        case WebEventKeyDown:
-            return @"WebEventKeyDown";
-        case WebEventKeyUp:
-            return @"WebEventKeyUp";
-        case WebEventTouchBegin:
-            return @"WebEventTouchBegin";
-        case WebEventTouchChange:
-            return @"WebEventTouchChange";
-        case WebEventTouchEnd:
-            return @"WebEventTouchEnd";
-        case WebEventTouchCancel:
-            return @"WebEventTouchCancel";
-        default:
-            ASSERT_NOT_REACHED();
+    case WebEventMouseDown:
+        return @"WebEventMouseDown";
+    case WebEventMouseUp:
+        return @"WebEventMouseUp";
+    case WebEventMouseMoved:
+        return @"WebEventMouseMoved";
+    case WebEventScrollWheel:
+        return @"WebEventScrollWheel";
+    case WebEventKeyDown:
+        return @"WebEventKeyDown";
+    case WebEventKeyUp:
+        return @"WebEventKeyUp";
+    case WebEventTouchBegin:
+        return @"WebEventTouchBegin";
+    case WebEventTouchChange:
+        return @"WebEventTouchChange";
+    case WebEventTouchEnd:
+        return @"WebEventTouchEnd";
+    case WebEventTouchCancel:
+        return @"WebEventTouchCancel";
+    default:
+        ASSERT_NOT_REACHED();
     }
     return @"Unknown";
 }
@@ -283,28 +283,28 @@ static NSString* normalizedStringWithAppKitCompatibilityMapping(NSString *charac
 - (NSString *)_modiferFlagsDescription
 {
     switch (_modifierFlags) {
-        case WebEventMouseDown:
-            return @"WebEventMouseDown";
-        case WebEventMouseUp:
-            return @"WebEventMouseUp";
-        case WebEventMouseMoved:
-            return @"WebEventMouseMoved";
-        case WebEventScrollWheel:
-            return @"WebEventScrollWheel";
-        case WebEventKeyDown:
-            return @"WebEventKeyDown";
-        case WebEventKeyUp:
-            return @"WebEventKeyUp";
-        case WebEventTouchBegin:
-            return @"WebEventTouchBegin";
-        case WebEventTouchChange:
-            return @"WebEventTouchChange";
-        case WebEventTouchEnd:
-            return @"WebEventTouchEnd";
-        case WebEventTouchCancel:
-            return @"WebEventTouchCancel";
-        default:
-            ASSERT_NOT_REACHED();
+    case WebEventMouseDown:
+        return @"WebEventMouseDown";
+    case WebEventMouseUp:
+        return @"WebEventMouseUp";
+    case WebEventMouseMoved:
+        return @"WebEventMouseMoved";
+    case WebEventScrollWheel:
+        return @"WebEventScrollWheel";
+    case WebEventKeyDown:
+        return @"WebEventKeyDown";
+    case WebEventKeyUp:
+        return @"WebEventKeyUp";
+    case WebEventTouchBegin:
+        return @"WebEventTouchBegin";
+    case WebEventTouchChange:
+        return @"WebEventTouchChange";
+    case WebEventTouchEnd:
+        return @"WebEventTouchEnd";
+    case WebEventTouchCancel:
+        return @"WebEventTouchCancel";
+    default:
+        ASSERT_NOT_REACHED();
     }
     return @"Unknown";
 }
@@ -335,18 +335,18 @@ static NSString* normalizedStringWithAppKitCompatibilityMapping(NSString *charac
 - (NSString *)_touchPhaseDescription:(WebEventTouchPhaseType)phase
 {
     switch (phase) {
-        case WebEventTouchPhaseBegan:
-            return @"WebEventTouchPhaseBegan";
-        case WebEventTouchPhaseMoved:
-            return @"WebEventTouchPhaseMoved";
-        case WebEventTouchPhaseStationary:
-            return @"WebEventTouchPhaseStationary";
-        case WebEventTouchPhaseEnded:
-            return @"WebEventTouchPhaseEnded";
-        case WebEventTouchPhaseCancelled:
-            return @"WebEventTouchPhaseCancelled";
-        default:
-            ASSERT_NOT_REACHED();
+    case WebEventTouchPhaseBegan:
+        return @"WebEventTouchPhaseBegan";
+    case WebEventTouchPhaseMoved:
+        return @"WebEventTouchPhaseMoved";
+    case WebEventTouchPhaseStationary:
+        return @"WebEventTouchPhaseStationary";
+    case WebEventTouchPhaseEnded:
+        return @"WebEventTouchPhaseEnded";
+    case WebEventTouchPhaseCancelled:
+        return @"WebEventTouchPhaseCancelled";
+    default:
+        ASSERT_NOT_REACHED();
     }
     return @"Unknown";
 }
@@ -365,22 +365,22 @@ static NSString* normalizedStringWithAppKitCompatibilityMapping(NSString *charac
 - (NSString *)_eventDescription
 {
     switch (_type) {
-        case WebEventMouseDown:
-        case WebEventMouseUp:
-        case WebEventMouseMoved:
-            return [NSString stringWithFormat:@"location: (%f, %f)", _locationInWindow.x, _locationInWindow.y];
-        case WebEventScrollWheel:
-            return [NSString stringWithFormat:@"location: (%f, %f) deltaX: %f deltaY: %f", _locationInWindow.x, _locationInWindow.y, _deltaX, _deltaY];
-        case WebEventKeyDown:
-        case WebEventKeyUp:
-            return [NSString stringWithFormat:@"chars: %@ charsNoModifiers: %@ flags: %d repeating: %d keyboardFlags: %lu keyCode %d, isTab: %d", _characters, _charactersIgnoringModifiers, _modifierFlags, _keyRepeating, static_cast<unsigned long>(_keyboardFlags), _keyCode, _tabKey];
-        case WebEventTouchBegin:
-        case WebEventTouchChange:
-        case WebEventTouchEnd:
-        case WebEventTouchCancel:
-            return [NSString stringWithFormat:@"location: (%f, %f) count: %d locations: %@ identifiers: %@ phases: %@ isGesture: %d scale: %f rotation: %f", _locationInWindow.x, _locationInWindow.y, _touchCount, [self _touchLocationsDescription:_touchLocations], [self _touchIdentifiersDescription], [self _touchPhasesDescription], (_isGesture ? 1 : 0), _gestureScale, _gestureRotation];
-        default:
-            ASSERT_NOT_REACHED();
+    case WebEventMouseDown:
+    case WebEventMouseUp:
+    case WebEventMouseMoved:
+        return [NSString stringWithFormat:@"location: (%f, %f)", _locationInWindow.x, _locationInWindow.y];
+    case WebEventScrollWheel:
+        return [NSString stringWithFormat:@"location: (%f, %f) deltaX: %f deltaY: %f", _locationInWindow.x, _locationInWindow.y, _deltaX, _deltaY];
+    case WebEventKeyDown:
+    case WebEventKeyUp:
+        return [NSString stringWithFormat:@"chars: %@ charsNoModifiers: %@ flags: %d repeating: %d keyboardFlags: %lu keyCode %d, isTab: %d", _characters, _charactersIgnoringModifiers, _modifierFlags, _keyRepeating, static_cast<unsigned long>(_keyboardFlags), _keyCode, _tabKey];
+    case WebEventTouchBegin:
+    case WebEventTouchChange:
+    case WebEventTouchEnd:
+    case WebEventTouchCancel:
+        return [NSString stringWithFormat:@"location: (%f, %f) count: %d locations: %@ identifiers: %@ phases: %@ isGesture: %d scale: %f rotation: %f", _locationInWindow.x, _locationInWindow.y, _touchCount, [self _touchLocationsDescription:_touchLocations], [self _touchIdentifiersDescription], [self _touchPhasesDescription], (_isGesture ? 1 : 0), _gestureScale, _gestureRotation];
+    default:
+        ASSERT_NOT_REACHED();
     }
     return @"Unknown";
 }

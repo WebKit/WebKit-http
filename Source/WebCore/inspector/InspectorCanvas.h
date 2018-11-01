@@ -42,7 +42,6 @@ class HTMLImageElement;
 class HTMLVideoElement;
 class ImageBitmap;
 class ImageData;
-class InstrumentingAgents;
 
 class InspectorCanvas final : public RefCounted<InspectorCanvas> {
 public:
@@ -75,7 +74,7 @@ public:
     bool singleFrame() const { return m_singleFrame; }
     void setSingleFrame(bool singleFrame) { m_singleFrame = singleFrame; }
 
-    Ref<Inspector::Protocol::Canvas::Canvas> buildObjectForCanvas(InstrumentingAgents&, bool captureBacktrace);
+    Ref<Inspector::Protocol::Canvas::Canvas> buildObjectForCanvas(bool captureBacktrace);
 
 private:
     InspectorCanvas(CanvasRenderingContext&);
@@ -117,7 +116,7 @@ private:
     MonotonicTime m_currentFrameStartTime { MonotonicTime::nan() };
     size_t m_bufferLimit { 100 * 1024 * 1024 };
     size_t m_bufferUsed { 0 };
-    bool m_singleFrame { true };
+    bool m_singleFrame { false };
 };
 
 } // namespace WebCore

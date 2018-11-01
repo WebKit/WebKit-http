@@ -1,3 +1,610 @@
+2018-10-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: notify the frontend when a canvas has started recording via console.record
+        https://bugs.webkit.org/show_bug.cgi?id=190306
+
+        Reviewed by Brian Burg.
+
+        * inspector/protocol/Canvas.json:
+        Add `recordingStarted` event.
+
+        * inspector/protocol/Recording.json:
+        Add `Initiator` enum for determining who started the recording.
+
+2018-10-10  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Rename createXXX to tryCreateXXX if it can return RefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=190429
+
+        Reviewed by Saam Barati.
+
+        Some createXXX functions can fail. But sometimes the caller does not perform error checking.
+        To make it explicit that these functions can fail, we rename these functions from createXXX
+        to tryCreateXXX. In this patch, we focus on non-JS-managed factory functions. If the factory
+        function does not fail, it should return Ref<>. Otherwise, it should be named as tryCreateXXX
+        and it should return RefPtr<>.
+
+        This patch mainly focuses on TypedArray factory functions. Previously, these functions are
+        `RefPtr<XXXArray> create(...)`. This patch changes them to `RefPtr<XXXArray> tryCreate(...)`.
+        And we also introduce `Ref<XXXArray> create(...)` function which internally performs
+        RELEASE_ASSERT on the result of `tryCreate(...)`.
+
+        And we also convert OpaqueJSString::create to OpaqueJSString::tryCreate since it can fail.
+
+        This change actually finds one place which does not perform any null checkings while it uses
+        `RefPtr<> create(...)` function.
+
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::getOwnPropertySlot):
+        (JSC::JSCallbackObject<Parent>::put):
+        (JSC::JSCallbackObject<Parent>::putByIndex):
+        (JSC::JSCallbackObject<Parent>::deleteProperty):
+        (JSC::JSCallbackObject<Parent>::callbackGetter):
+        * API/JSClassRef.h:
+        (StaticValueEntry::StaticValueEntry):
+        * API/JSContext.mm:
+        (-[JSContext evaluateScript:withSourceURL:]):
+        (-[JSContext setName:]):
+        * API/JSContextRef.cpp:
+        (JSGlobalContextCopyName):
+        (JSContextCreateBacktrace):
+        * API/JSObjectRef.cpp:
+        (JSObjectCopyPropertyNames):
+        * API/JSScriptRef.cpp:
+        * API/JSStringRef.cpp:
+        (JSStringCreateWithCharactersNoCopy):
+        * API/JSValue.mm:
+        (+[JSValue valueWithNewRegularExpressionFromPattern:flags:inContext:]):
+        (+[JSValue valueWithNewErrorFromMessage:inContext:]):
+        (+[JSValue valueWithNewSymbolFromDescription:inContext:]):
+        (performPropertyOperation):
+        (-[JSValue invokeMethod:withArguments:]):
+        (containerValueToObject):
+        (objectToValueWithoutCopy):
+        (objectToValue):
+        * API/JSValueRef.cpp:
+        (JSValueCreateJSONString):
+        (JSValueToStringCopy):
+        * API/OpaqueJSString.cpp:
+        (OpaqueJSString::tryCreate):
+        (OpaqueJSString::create): Deleted.
+        * API/OpaqueJSString.h:
+        * API/glib/JSCContext.cpp:
+        (evaluateScriptInContext):
+        * API/glib/JSCValue.cpp:
+        (jsc_value_new_string_from_bytes):
+        * ftl/FTLLazySlowPath.h:
+        (JSC::FTL::LazySlowPath::createGenerator):
+        * ftl/FTLLazySlowPathCall.h:
+        (JSC::FTL::createLazyCallGenerator):
+        * ftl/FTLOSRExit.cpp:
+        (JSC::FTL::OSRExitDescriptor::emitOSRExit):
+        (JSC::FTL::OSRExitDescriptor::emitOSRExitLater):
+        (JSC::FTL::OSRExitDescriptor::prepareOSRExitHandle):
+        * ftl/FTLOSRExit.h:
+        * ftl/FTLPatchpointExceptionHandle.cpp:
+        (JSC::FTL::PatchpointExceptionHandle::create):
+        (JSC::FTL::PatchpointExceptionHandle::createHandle):
+        * ftl/FTLPatchpointExceptionHandle.h:
+        * heap/EdenGCActivityCallback.h:
+        (JSC::GCActivityCallback::tryCreateEdenTimer):
+        (JSC::GCActivityCallback::createEdenTimer): Deleted.
+        * heap/FullGCActivityCallback.h:
+        (JSC::GCActivityCallback::tryCreateFullTimer):
+        (JSC::GCActivityCallback::createFullTimer): Deleted.
+        * heap/GCActivityCallback.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        * inspector/AsyncStackTrace.cpp:
+        (Inspector::AsyncStackTrace::create):
+        * inspector/AsyncStackTrace.h:
+        * jsc.cpp:
+        (fillBufferWithContentsOfFile):
+        * runtime/ArrayBuffer.h:
+        * runtime/GenericTypedArrayView.h:
+        * runtime/GenericTypedArrayViewInlines.h:
+        (JSC::GenericTypedArrayView<Adaptor>::create):
+        (JSC::GenericTypedArrayView<Adaptor>::tryCreate):
+        (JSC::GenericTypedArrayView<Adaptor>::createUninitialized):
+        (JSC::GenericTypedArrayView<Adaptor>::tryCreateUninitialized):
+        (JSC::GenericTypedArrayView<Adaptor>::subarray const):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::possiblySharedImpl):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::possiblySharedTypedImpl):
+        (JSC::JSGenericTypedArrayView<Adaptor>::unsharedTypedImpl):
+        * wasm/WasmMemory.cpp:
+        (JSC::Wasm::Memory::create):
+        (JSC::Wasm::Memory::tryCreate):
+        * wasm/WasmMemory.h:
+        * wasm/WasmTable.cpp:
+        (JSC::Wasm::Table::tryCreate):
+        (JSC::Wasm::Table::create): Deleted.
+        * wasm/WasmTable.h:
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::create):
+        * wasm/js/JSWebAssemblyMemory.cpp:
+        (JSC::JSWebAssemblyMemory::JSWebAssemblyMemory):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::constructJSWebAssemblyTable):
+
+2018-10-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: show redirect requests in Network and Timelines tabs
+        https://bugs.webkit.org/show_bug.cgi?id=150005
+        <rdar://problem/5378164>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Network.json:
+        Add missing fields to `ResourceTiming`.
+
+2018-10-09  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Explicitly link against gmodule where used
+        https://bugs.webkit.org/show_bug.cgi?id=190398
+
+        Reviewed by Michael Catanzaro.
+
+        * PlatformWPE.cmake:
+
+2018-10-08  Justin Fan  <justin_fan@apple.com>
+
+        WebGPU: Rename old WebGPU prototype to WebMetal
+        https://bugs.webkit.org/show_bug.cgi?id=190325
+        <rdar://problem/44990443>
+
+        Reviewed by Dean Jackson.
+
+        Rename WebGPU prototype files to WebMetal in preparation for implementing the new (Oct 2018) WebGPU interface.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * inspector/protocol/Canvas.json:
+        * inspector/scripts/codegen/generator.py:
+
+2018-10-08  Aditya Keerthi  <akeerthi@apple.com>
+
+        Make <input type=color> a runtime enabled (on-by-default) feature
+        https://bugs.webkit.org/show_bug.cgi?id=189162
+
+        Reviewed by Wenson Hsieh and Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: group media network entries by the node that triggered the request
+        https://bugs.webkit.org/show_bug.cgi?id=189606
+        <rdar://problem/44438527>
+
+        Reviewed by Brian Burg.
+
+        * inspector/protocol/Network.json:
+        Add an optional `nodeId` field to the `Initiator` object that is set it is possible to
+        determine which ancestor node triggered the load. It may not correspond directly to the node
+        with the href/src, as that url may only be used by an ancestor for loading.
+
+2018-10-07  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC][Linux] Use non-truncated name for JIT workers in Linux
+        https://bugs.webkit.org/show_bug.cgi?id=190339
+
+        Reviewed by Mark Lam.
+
+        The current thread names are meaningless in Linux environment. We do not want to
+        have truncated name in Linux: we want to have clear name in Linux. Instead, we
+        should have the name for Linux separately from the name used in the non-Linux
+        environments. This patch adds FTLWorker, DFGWorker, and JITWorker names for
+        Linux environment.
+
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::createWorklistName):
+        (JSC::DFG::Worklist::Worklist):
+        (JSC::DFG::Worklist::create):
+        (JSC::DFG::ensureGlobalDFGWorklist):
+        (JSC::DFG::ensureGlobalFTLWorklist):
+        * dfg/DFGWorklist.h:
+        * jit/JITWorklist.cpp:
+
+2018-10-07  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Name Heap threads
+        https://bugs.webkit.org/show_bug.cgi?id=190337
+
+        Reviewed by Mark Lam.
+
+        Name heap threads as "Heap Helper Thread". In Linux, we name it "HeapHelper" since
+        Linux does not accept the name longer than 15. We do not want to use the short name
+        for non-Linux environment. And we want to have clear name in Linux: truncated name
+        is not good. So, having the two names is the only way.
+
+        * heap/HeapHelperPool.cpp:
+        (JSC::heapHelperPool):
+
+2018-10-07  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Avoid creating ProgramExecutable in checkSyntax
+        https://bugs.webkit.org/show_bug.cgi?id=190332
+
+        Reviewed by Mark Lam.
+
+        uglify-js in web-tooling-benchmark executes massive number of Function constructor calls.
+        In Function constructor code, we perform checkSyntax for body and parameters. So fast checkSyntax
+        is important when the performance of Function constructor matters. Current checkSyntax code
+        unnecessarily allocates ProgramExecutable. This patch removes this allocation and improves
+        the benchmark score slightly.
+
+        Before:
+            uglify-js:  2.87 runs/s
+        After:
+            uglify-js:  2.94 runs/s
+
+        * runtime/Completion.cpp:
+        (JSC::checkSyntaxInternal):
+        (JSC::checkSyntax):
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::checkSyntax): Deleted.
+        * runtime/ProgramExecutable.h:
+
+2018-10-06  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for "|"
+        https://bugs.webkit.org/show_bug.cgi?id=186229
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch is introducing support for BigInt into bitwise "or" operator.
+        In addition, we are also introducing 2 new DFG nodes, named "ArithBitOr" and
+        "ValueBitOr", to replace "BitOr" node. The idea is to follow the
+        difference that we make on Arith<op> and Value<op>, where ArithBitOr
+        handles cases when the operands are Int32 and ValueBitOr handles
+        the remaining cases.
+
+        We are also changing op_bitor to use ValueProfile. We are using
+        ValueProfile during DFG generation to emit "ArithBitOr" when
+        outcome prediction is Int32.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::arithProfileForPC):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitBinaryOp):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::isWithinPowerOfTwo):
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::bitwiseOp):
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueBitwiseOp):
+        (JSC::DFG::SpeculativeJIT::compileBitwiseOp):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::bitOp):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueBitOr):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithBitOr):
+        (JSC::FTL::DFG::LowerDFGToB3::compileBitOr): Deleted.
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_bitor):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::bitwiseAnd):
+        (JSC::JSBigInt::bitwiseOr):
+        (JSC::JSBigInt::absoluteBitwiseOp):
+        (JSC::JSBigInt::absoluteAddOne):
+        * runtime/JSBigInt.h:
+
+2018-10-05  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Use new extra memory reporting in SparseArrayMap
+        https://bugs.webkit.org/show_bug.cgi?id=190278
+
+        Reviewed by Keith Miller.
+
+        This patch switches the extra memory reporting mechanism from deprecatedReportExtraMemory
+        to reportExtraMemoryAllocated & reportExtraMemoryVisited in SparseArrayMap.
+
+        * runtime/SparseArrayValueMap.cpp:
+        (JSC::SparseArrayValueMap::add):
+        (JSC::SparseArrayValueMap::visitChildren):
+
+2018-10-05  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC][Linux] Support Perf JITDump logging
+        https://bugs.webkit.org/show_bug.cgi?id=189893
+
+        Reviewed by Mark Lam.
+
+        This patch adds Linux `perf` command's JIT Dump support. It allows JSC to tell perf about JIT code information.
+        We add a command line option, `--logJITCodeForPerf`, which dumps `jit-%pid.dump` in the current directory.
+        By using this dump and perf.data output, we can annotate JIT code with profiling information.
+
+            $ echo "(function f() { var s = 0; for (var i = 0; i < 1000000000; i++) { s += i; } return s; })();" > test.js
+            $ perf record -k mono ../../WebKitBuild/perf/Release/bin/jsc test.js --logJITCodeForPerf=true
+            [ perf record: Woken up 1 times to write data ]
+            [ perf record: Captured and wrote 0.182 MB perf.data (4346 samples) ]
+            $ perf inject --jit -i perf.data -o perf.jit.data
+            $ perf report -i perf.jit.data
+
+        * Sources.txt:
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::finalizeCodeWithDisassemblyImpl):
+        * assembler/LinkBuffer.h:
+        (JSC::LinkBuffer::finalizeCodeWithDisassembly):
+        * assembler/PerfLog.cpp: Added.
+        (JSC::PerfLog::singleton):
+        (JSC::generateTimestamp):
+        (JSC::getCurrentThreadID):
+        (JSC::PerfLog::PerfLog):
+        (JSC::PerfLog::write):
+        (JSC::PerfLog::flush):
+        (JSC::PerfLog::log):
+        * assembler/PerfLog.h: Added.
+        * jit/ExecutableAllocator.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator):
+        * runtime/Options.cpp:
+        (JSC::Options::isAvailable):
+        * runtime/Options.h:
+
+2018-10-05  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: Build fix after r236880.
+        https://bugs.webkit.org/show_bug.cgi?id=190317
+
+        Unreviewed.
+
+        * jit/ExecutableAllocator.h:
+
+2018-10-05  Mark Lam  <mark.lam@apple.com>
+
+        performJITMemcpy() should handle the case when the executable allocator is not initialized yet.
+        https://bugs.webkit.org/show_bug.cgi?id=190317
+        <rdar://problem/45039398>
+
+        Reviewed by Saam Barati.
+
+        When SeparatedWXHeaps is in use, jitWriteThunkGenerator() will call performJITMemcpy()
+        to copy memory before the JIT fixed memory pool is initialize.  Before r236864,
+        performJITMemcpy() would just do a memcpy in that case.  We need to restore the
+        equivalent behavior.
+
+        * jit/ExecutableAllocator.cpp:
+        (JSC::isJITPC):
+        * jit/ExecutableAllocator.h:
+        (JSC::performJITMemcpy):
+
+2018-10-05  Carlos Eduardo Ramalho  <cadubentzen@gmail.com>
+
+        [WPE][JSC] Use Unified Sources for Platform-specific sources
+        https://bugs.webkit.org/show_bug.cgi?id=190300
+
+        Reviewed by Yusuke Suzuki.
+
+        Currently the GTK port already used Unified Sources with the same source files.
+        As WPE has conditional code using gmodule, we need to add GLIB_GMODULE_LIBRARIES
+        to the list of libraries to link with.
+
+        * PlatformWPE.cmake:
+        * SourcesWPE.txt: Added.
+        * shell/PlatformWPE.cmake:
+
+2018-10-05  Mike Gorse  <mgorse@alum.wpi.edu>
+
+        [GTK] build fails with python 3 if LANG and LC_TYPE are unset
+        https://bugs.webkit.org/show_bug.cgi?id=190258
+
+        Reviewed by Konstantin Tokarev.
+
+        * Scripts/cssmin.py: Set stdout to UTF-8 on python 3.
+        * Scripts/generateIntlCanonicalizeLanguage.py: Open files with
+          encoding=UTF-8 on Python 3.
+        * yarr/generateYarrCanonicalizeUnicode: Ditto.
+        * yarr/generateYarrUnicodePropertyTables.py: Ditto.
+
+2018-10-04  Mark Lam  <mark.lam@apple.com>
+
+        Move start/EndOfFixedExecutableMemoryPool pointers into the FixedVMPoolExecutableAllocator object.
+        https://bugs.webkit.org/show_bug.cgi?id=190295
+        <rdar://problem/19197193>
+
+        Reviewed by Saam Barati.
+
+        This allows us to use the tagging logic already baked into MacroAssemblerCodePtr
+        instead of needing to use our own custom version here.
+
+        * jit/ExecutableAllocator.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator):
+        (JSC::FixedVMPoolExecutableAllocator::memoryStart):
+        (JSC::FixedVMPoolExecutableAllocator::memoryEnd):
+        (JSC::FixedVMPoolExecutableAllocator::isJITPC):
+        (JSC::ExecutableAllocator::allocate):
+        (JSC::startOfFixedExecutableMemoryPoolImpl):
+        (JSC::endOfFixedExecutableMemoryPoolImpl):
+        (JSC::isJITPC):
+        * jit/ExecutableAllocator.h:
+
+2018-10-04  Mark Lam  <mark.lam@apple.com>
+
+        Disable Options::useWebAssemblyFastMemory() on linux if ASAN signal handling is not disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=190283
+        <rdar://problem/45015752>
+
+        Reviewed by Keith Miller.
+
+        * runtime/Options.cpp:
+        (JSC::Options::initialize):
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::enableFastMemory):
+
+2018-10-03  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] print() changes CRLF to CRCRLF on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=190228
+
+        Reviewed by Mark Lam.
+
+        * jsc.cpp:
+        (main):
+        Ultimately, this is just the normal behavior of printf in text mode on Windows.
+        Since we're reading in files as binary, we need to be printing out as binary too
+        (just as we do in DumpRenderTree and ImageDiff.)
+
+2018-10-03  Saam barati  <sbarati@apple.com>
+
+        lowXYZ in FTLLower should always filter the type of the incoming edge
+        https://bugs.webkit.org/show_bug.cgi?id=189939
+        <rdar://problem/44407030>
+
+        Reviewed by Michael Saboff.
+
+        For example, the FTL may know more about data flow than AI in certain programs,
+        and it needs to inform AI of these data flow properties to appease the assertion
+        we have in AI that a node must perform type checks on its child nodes.
+        
+        For example, consider this program:
+        
+        ```
+        bb#1
+        a: Phi // Let's say it has an Int32 result, so it goes into the int32 hash table in FTLLower
+        Branch(...,  #2, #3)
+        
+        bb#2
+        ArrayifyToStructure(Cell:@a) // This modifies @a to have the its previous type union the type of some structure set.
+        Jump(#3)
+        
+        bb#3
+        c: Add(Int32:@something, Int32:@a)
+        ```
+        
+        When the Add node does lowInt32() for @a, FTL lower used to just grab it
+        from the int32 hash table without filtering the AbstractValue. However,
+        the parent node is asking for a type check to happen, so we must inform
+        AI of this "type check" if we want to appease the assertion that all nodes
+        perform type checks for their edges that semantically perform type checks.
+        This patch makes it so we filter the AbstractValue in the lowXYZ even
+        if FTLLower proved the value must be XYZ.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compilePhi):
+        (JSC::FTL::DFG::LowerDFGToB3::simulatedTypeCheck):
+        (JSC::FTL::DFG::LowerDFGToB3::lowInt32):
+        (JSC::FTL::DFG::LowerDFGToB3::lowCell):
+        (JSC::FTL::DFG::LowerDFGToB3::lowBoolean):
+
+2018-10-03  Michael Saboff  <msaboff@apple.com>
+
+        Command line jsc should report memory footprint in bytes
+        https://bugs.webkit.org/show_bug.cgi?id=190267
+
+        Reviewed by Mark Lam.
+
+        Change to leave the footprint values from the system unmodified.
+
+        * jsc.cpp:
+        (JSCMemoryFootprint::finishCreation):
+
+2018-10-03  Mark Lam  <mark.lam@apple.com>
+
+        Suppress unreachable code warning for LLIntAssembly.h code.
+        https://bugs.webkit.org/show_bug.cgi?id=190263
+        <rdar://problem/44986532>
+
+        Reviewed by Saam Barati.
+
+        This is needed because LLIntAssembly.h is template generated from LowLevelInterpreter
+        asm files, and may contain dead code which are harmless, but will trip up the warning.
+        We should suppress the warning so that it doesn't break builds.
+
+        * llint/LowLevelInterpreter.cpp:
+        (JSC::CLoop::execute):
+
+2018-10-03  Dan Bernstein  <mitz@apple.com>
+
+        JavaScriptCore part of [Xcode] Update some build settings as recommended by Xcode 10
+        https://bugs.webkit.org/show_bug.cgi?id=190250
+
+        Reviewed by Alex Christensen.
+
+        * API/tests/Regress141275.mm:
+        (-[JSTEvaluator _sourcePerform]): Addressed newly-enabled CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF
+          by making the self-retaining explicit.
+
+        * API/tests/testapi.cpp:
+        (testCAPIViaCpp): Addressed newly-enabled CLANG_WARN_UNREACHABLE_CODE by breaking out of the
+          loop instead of returning from the lambda.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_COMMA, CLANG_WARN_UNREACHABLE_CODE,
+          CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS, CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF, and
+          CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Removed a duplicate reference to
+          UnlinkedFunctionExecutable.h, and let Xcode update the project file.
+
+        * assembler/MacroAssemblerPrinter.cpp:
+        (JSC::Printer::printAllRegisters): Addressed newly-enabled CLANG_WARN_COMMA by replacing
+          some commas with semicolons.
+
+2018-10-03  Mark Lam  <mark.lam@apple.com>
+
+        Make string MaxLength for all WTF and JS strings consistently equal to INT_MAX.
+        https://bugs.webkit.org/show_bug.cgi?id=190187
+        <rdar://problem/42512909>
+
+        Reviewed by Michael Saboff.
+
+        Allowing different max string lengths at each level opens up opportunities for
+        bugs to creep in.  With 2 different max length values, it is more difficult to
+        keep the story straight on how we do overflow / bounds checks at each place in
+        the code.  It's also difficult to tell if a seemingly valid check at the WTF level
+        will have bad ramifications at the JSC level.  Also, it's also not meaningful to
+        support a max length > INT_MAX.  To eliminate this class of bugs, we'll
+        standardize on a MaxLength of INT_MAX at all levels.
+
+        We'll also standardize the way we do length overflow checks on using
+        CheckedArithmetic, and add some asserts to document the assumptions of the code.
+
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        - Fix OOM error handling which crashed a test after the new MaxLength was applied.
+        * runtime/JSString.h:
+        (JSC::JSString::finishCreation):
+        (JSC::JSString::createHasOtherOwner):
+        (JSC::JSString::setLength):
+        * runtime/JSStringInlines.h:
+        (JSC::jsMakeNontrivialString):
+        * runtime/Operations.h:
+        (JSC::jsString):
+
 2018-10-03  Koby Boyango  <koby.b@mce-sys.com>
 
         [JSC] Add a C++ callable overload of objectConstructorSeal

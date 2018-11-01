@@ -157,6 +157,11 @@ namespace WebKit {
 using namespace JSC;
 using namespace WebCore;
 
+NO_RETURN static void callExit(IPC::Connection*)
+{
+    _exit(EXIT_SUCCESS);
+}
+
 WebProcess& WebProcess::singleton()
 {
     static WebProcess& process = *new WebProcess;
@@ -226,6 +231,10 @@ void WebProcess::initializeProcess(const ChildProcessInitializationParameters& p
 void WebProcess::initializeConnection(IPC::Connection* connection)
 {
     ChildProcess::initializeConnection(connection);
+
+    // We call _exit() directly from the background queue in case the main thread is unresponsive
+    // and ChildProcess::didClose() does not get called.
+    connection->setDidCloseOnConnectionWorkQueueCallback(callExit);
 
 #if !PLATFORM(GTK) && !PLATFORM(WPE)
     connection->setShouldExitOnSyncMessageSendFailure(true);
@@ -420,9 +429,14 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     RELEASE_LOG(Process, "%p - WebProcess::initializeWebProcess: Presenting process = %d", this, WebCore::presentingApplicationPID());
 }
 
-void WebProcess::prewarm()
+void WebProcess::prewarmGlobally()
 {
-    WebCore::ProcessWarming::prewarm();
+    WebCore::ProcessWarming::prewarmGlobally();
+}
+
+void WebProcess::prewarmWithDomainInformation(const WebCore::PrewarmInformation& prewarmInformation)
+{
+    WebCore::ProcessWarming::prewarmWithInformation(prewarmInformation);
 }
 
 void WebProcess::registerURLSchemeAsEmptyDocument(const String& urlScheme)
@@ -1457,6 +1471,14 @@ void WebProcess::processDidResume()
 #if PLATFORM(IOS)
     accessibilityProcessSuspendedNotification(false);
 #endif
+}
+
+void WebProcess::sendPrewarmInformation(const WebCore::URL& url)
+{
+    auto registrableDomain = toRegistrableDomain(url);
+    if (registrableDomain.isEmpty())
+        return;
+    parentProcessConnection()->send(Messages::WebProcessProxy::DidCollectPrewarmInformation(registrableDomain, WebCore::ProcessWarming::collectPrewarmInformation()), 0);
 }
 
 void WebProcess::pageDidEnterWindow(uint64_t pageID)

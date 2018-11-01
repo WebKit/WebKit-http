@@ -63,6 +63,7 @@
 #include <wtf/HashSet.h>
 #include <wtf/Logger.h>
 #include <wtf/ObjectIdentifier.h>
+#include <wtf/UniqueRef.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/text/AtomicStringHash.h>
 
@@ -155,6 +156,7 @@ class Page;
 class PlatformMouseEvent;
 class ProcessingInstruction;
 class QualifiedName;
+class Quirks;
 class Range;
 class RenderFullScreen;
 class RenderTreeBuilder;
@@ -188,7 +190,7 @@ class VisitedLinkState;
 class WebAnimation;
 class WebGL2RenderingContext;
 class WebGLRenderingContext;
-class WebGPURenderingContext;
+class WebMetalRenderingContext;
 class WindowProxy;
 class XPathEvaluator;
 class XPathExpression;
@@ -315,8 +317,8 @@ using RenderingContext = Variant<
 #if ENABLE(WEBGL2)
     RefPtr<WebGL2RenderingContext>,
 #endif
-#if ENABLE(WEBGPU)
-    RefPtr<WebGPURenderingContext>,
+#if ENABLE(WEBMETAL)
+    RefPtr<WebMetalRenderingContext>,
 #endif
     RefPtr<ImageBitmapRenderingContext>,
     RefPtr<CanvasRenderingContext2D>
@@ -564,6 +566,8 @@ public:
     WEBCORE_EXPORT Page* page() const; // can be NULL
     const Settings& settings() const { return m_settings.get(); }
     Settings& mutableSettings() { return m_settings.get(); }
+
+    const Quirks& quirks() const { return m_quirks; }
 
     float deviceScaleFactor() const;
 
@@ -1501,6 +1505,8 @@ public:
     void setAsRunningUserScripts() { m_isRunningUserScripts = true; }
     bool isRunningUserScripts() const { return m_isRunningUserScripts; }
 
+    void frameWasDisconnectedFromOwner();
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1518,9 +1524,8 @@ private:
 
     bool shouldInheritContentSecurityPolicyFromOwner() const;
 
-    void detachFromFrame() { observeFrame(nullptr); }
-
     void updateTitleElement(Element& changingTitleElement);
+    void willDetachPage() final;
     void frameDestroyed() final;
 
     void commonTeardown();
@@ -1567,6 +1572,8 @@ private:
 
     void pendingTasksTimerFired();
     bool isCookieAverse() const;
+
+    void detachFromFrame();
 
     template<CollectionType> Ref<HTMLCollection> ensureCachedCollection();
 
@@ -1627,6 +1634,8 @@ private:
     bool isBodyPotentiallyScrollable(HTMLBodyElement&);
 
     const Ref<Settings> m_settings;
+
+    UniqueRef<Quirks> m_quirks;
 
     std::unique_ptr<StyleResolver> m_userAgentShadowTreeStyleResolver;
 

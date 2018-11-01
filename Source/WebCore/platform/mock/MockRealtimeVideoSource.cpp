@@ -122,9 +122,9 @@ const RealtimeMediaSourceCapabilities& MockRealtimeVideoSource::capabilities()
     if (!m_capabilities) {
         RealtimeMediaSourceCapabilities capabilities(settings().supportedConstraints());
 
-        capabilities.setDeviceId(hashedId());
         if (mockCamera()) {
             capabilities.addFacingMode(WTF::get<MockCameraProperties>(m_device.properties).facingMode);
+            capabilities.setDeviceId(hashedId());
             updateCapabilities(capabilities);
         } else {
             capabilities.setWidth(CapabilityValueOrRange(72, 2880));
@@ -144,9 +144,10 @@ const RealtimeMediaSourceSettings& MockRealtimeVideoSource::settings()
         return m_currentSettings.value();
 
     RealtimeMediaSourceSettings settings;
-    if (mockCamera())
+    if (mockCamera()) {
         settings.setFacingMode(facingMode());
-    else {
+        settings.setDeviceId(hashedId());
+    } else {
         settings.setDisplaySurface(mockScreen() ? RealtimeMediaSourceSettings::DisplaySurfaceType::Monitor : RealtimeMediaSourceSettings::DisplaySurfaceType::Window);
         settings.setLogicalSurface(false);
     }
@@ -156,7 +157,6 @@ const RealtimeMediaSourceSettings& MockRealtimeVideoSource::settings()
     settings.setHeight(size.height());
     if (aspectRatio())
         settings.setAspectRatio(aspectRatio());
-    settings.setDeviceId(hashedId());
 
     RealtimeMediaSourceSupportedConstraints supportedConstraints;
     supportedConstraints.setSupportsDeviceId(true);
@@ -374,7 +374,7 @@ void MockRealtimeVideoSource::drawText(GraphicsContext& context)
         string = String::format("Camera: %s", camera);
         statsLocation.move(0, m_statsFontSize);
         context.drawText(statsFont, TextRun((StringView(string))), statsLocation);
-    } else {
+    } else if (!name().isNull()) {
         statsLocation.move(0, m_statsFontSize);
         context.drawText(statsFont, TextRun { name() }, statsLocation);
     }

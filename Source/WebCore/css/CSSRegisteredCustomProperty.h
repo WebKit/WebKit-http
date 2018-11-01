@@ -33,8 +33,16 @@ class CSSCustomPropertyValue;
 
 struct CSSRegisteredCustomProperty {
     const String name;
-    /* TODO syntax, inherits */
-    const RefPtr<CSSCustomPropertyValue> initialValue;
+    /* TODO syntax */
+    const bool inherits;
+
+    CSSRegisteredCustomProperty(const String& name, bool inherits, RefPtr<CSSCustomPropertyValue>&& initialValue);
+
+    const CSSCustomPropertyValue* initialValue() const { return m_initialValue.get(); }
+    RefPtr<CSSCustomPropertyValue> initialValueCopy() const;
+
+private:
+    const RefPtr<CSSCustomPropertyValue> m_initialValue;
 };
 
 using CSSRegisteredCustomPropertySet = HashMap<String, std::unique_ptr<CSSRegisteredCustomProperty>>;

@@ -85,6 +85,7 @@
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/Process.h>
+#include <WebCore/ProcessWarming.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/URLParser.h>
 #include <pal/SessionID.h>
@@ -736,7 +737,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDa
         ASSERT(!m_prewarmedProcess);
         m_prewarmedProcess = &process;
         
-        m_prewarmedProcess->send(Messages::WebProcess::Prewarm(), 0);
+        m_prewarmedProcess->send(Messages::WebProcess::PrewarmGlobally(), 0);
     }
 
     if (m_serviceWorkerProcessesTerminationTimer.isActive())
@@ -2072,6 +2073,8 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigation(WebPageProxy& page, co
 
 Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API::Navigation& navigation, ProcessSwapRequestedByClient processSwapRequestedByClient, PolicyAction& action, String& reason)
 {
+    auto& targetURL = navigation.currentRequest().url();
+
     if (!m_configuration->processSwapsOnNavigation() && processSwapRequestedByClient == ProcessSwapRequestedByClient::No) {
         reason = "Feature is disabled"_s;
         return page.process();
@@ -2089,6 +2092,7 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
 
     if (!page.process().hasCommittedAnyProvisionalLoads()) {
         reason = "Process has not yet committed any provisional loads"_s;
+        tryPrewarmWithDomainInformation(page.process(), targetURL);
         return page.process();
     }
 
@@ -2129,7 +2133,6 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
         }
     }
 
-    auto targetURL = navigation.currentRequest().url();
     if (processSwapRequestedByClient == ProcessSwapRequestedByClient::No) {
         if (navigation.treatAsSameOriginNavigation()) {
             reason = "The treatAsSameOriginNavigation flag is set"_s;
@@ -2137,12 +2140,18 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
         }
 
         bool isInitialLoadInNewWindowOpenedByDOM = page.openedByDOM() && !page.hasCommittedAnyProvisionalLoads();
-        URL url;
+        URL sourceURL;
         if (isInitialLoadInNewWindowOpenedByDOM && !navigation.requesterOrigin().isEmpty())
-            url = URL { URL(), navigation.requesterOrigin().toString() };
+            sourceURL = URL { URL(), navigation.requesterOrigin().toString() };
         else
-            url = URL { { }, page.pageLoadState().url() };
-        if (!url.isValid() || !targetURL.isValid() || url.isEmpty() || url.isBlankURL() || registrableDomainsAreEqual(url, targetURL)) {
+            sourceURL = URL { { }, page.pageLoadState().url() };
+
+        if (sourceURL.isEmpty() && page.configuration().relatedPage()) {
+            sourceURL = URL { { }, page.configuration().relatedPage()->pageLoadState().url() };
+            RELEASE_LOG(ProcessSwapping, "Using related page %p's URL as source URL for process swap decision", page.configuration().relatedPage());
+        }
+
+        if (!sourceURL.isValid() || !targetURL.isValid() || sourceURL.isEmpty() || sourceURL.isBlankURL() || registrableDomainsAreEqual(sourceURL, targetURL)) {
             reason = "Navigation is same-site"_s;
             return page.process();
         }
@@ -2173,8 +2182,12 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
     }
 
     action = PolicyAction::Suspend;
-    if (RefPtr<WebProcessProxy> process = tryTakePrewarmedProcess(page.websiteDataStore()))
+
+    if (RefPtr<WebProcessProxy> process = tryTakePrewarmedProcess(page.websiteDataStore())) {
+        tryPrewarmWithDomainInformation(*process, targetURL);
         return process.releaseNonNull();
+    }
+
     return createNewWebProcess(page.websiteDataStore());
 }
 
@@ -2246,6 +2259,27 @@ void WebProcessPool::sendDisplayConfigurationChangedMessageForTesting()
         processPool->sendToAllProcesses(Messages::WebProcess::DisplayConfigurationChanged(display, kCGDisplaySetModeFlag | kCGDisplayDesktopShapeChangedFlag));
     }
 #endif
+}
+
+void WebProcessPool::didCollectPrewarmInformation(const String& registrableDomain, const WebCore::PrewarmInformation& prewarmInformation)
+{
+    static const size_t maximumSizeToPreventUnlimitedGrowth = 100;
+    if (m_prewarmInformationPerRegistrableDomain.size() == maximumSizeToPreventUnlimitedGrowth)
+        m_prewarmInformationPerRegistrableDomain.remove(m_prewarmInformationPerRegistrableDomain.begin());
+
+    auto& value = m_prewarmInformationPerRegistrableDomain.ensure(registrableDomain, [] {
+        return std::make_unique<WebCore::PrewarmInformation>();
+    }).iterator->value;
+
+    *value = prewarmInformation;
+}
+
+void WebProcessPool::tryPrewarmWithDomainInformation(WebProcessProxy& process, const WebCore::URL& url)
+{
+    auto* prewarmInformation = m_prewarmInformationPerRegistrableDomain.get(toRegistrableDomain(url));
+    if (!prewarmInformation)
+        return;
+    process.send(Messages::WebProcess::PrewarmWithDomainInformation(*prewarmInformation), 0);
 }
 
 } // namespace WebKit

@@ -52,10 +52,6 @@
 
 using namespace WebCore;
 
-@interface WebPDFView (Secrets)
-+ (Class)_representationClassForWebFrame:(WebFrame *)webFrame;
-@end
-
 #pragma mark Constants
 
 static const float PAGE_WIDTH_INSET = 4.0f * 2.0f;
@@ -311,7 +307,7 @@ static const float PAGE_HEIGHT_INSET = 4.0f * 2.0f;
         JSGlobalContextRef ctx = JSGlobalContextCreate(0);
         JSObjectRef jsPDFDoc = makeJSPDFDoc(ctx, _dataSource);
         for (NSString *script in scripts)
-            JSEvaluateScript(ctx, OpaqueJSString::create(script).get(), jsPDFDoc, nullptr, 0, nullptr);
+            JSEvaluateScript(ctx, OpaqueJSString::tryCreate(script).get(), jsPDFDoc, nullptr, 0, nullptr);
         JSGlobalContextRelease(ctx);
     }
 }

@@ -133,6 +133,7 @@
 #include <WebCore/EventNames.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/FocusDirection.h>
+#include <WebCore/FontAttributeChanges.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/GlobalFrameIdentifier.h>
 #include <WebCore/GlobalWindowIdentifier.h>
@@ -606,6 +607,7 @@ void WebPageProxy::setUIClient(std::unique_ptr<API::UIClient>&& uiClient)
 
     m_process->send(Messages::WebPage::SetCanRunBeforeUnloadConfirmPanel(m_uiClient->canRunBeforeUnloadConfirmPanel()), m_pageID);
     setCanRunModal(m_uiClient->canRunModal());
+    setNeedsFontAttributes(m_uiClient->needsFontAttributes());
 }
 
 void WebPageProxy::setIconLoadingClient(std::unique_ptr<API::IconLoadingClient>&& iconLoadingClient)
@@ -708,7 +710,7 @@ void WebPageProxy::reattachToWebProcess()
     finishAttachingToWebProcess();
 }
 
-SuspendedPageProxy* WebPageProxy::maybeCreateSuspendedPage(WebProcessProxy& process, API::Navigation& navigation)
+SuspendedPageProxy* WebPageProxy::maybeCreateSuspendedPage(WebProcessProxy& process, API::Navigation& navigation, uint64_t mainFrameID)
 {
     ASSERT(!m_suspendedPage || m_suspendedPage->process() != &process);
 
@@ -718,7 +720,7 @@ SuspendedPageProxy* WebPageProxy::maybeCreateSuspendedPage(WebProcessProxy& proc
         return nullptr;
     }
 
-    m_suspendedPage = std::make_unique<SuspendedPageProxy>(*this, process, *currentItem);
+    m_suspendedPage = std::make_unique<SuspendedPageProxy>(*this, process, *currentItem, mainFrameID);
 
     LOG(ProcessSwapping, "WebPageProxy %" PRIu64 " created suspended page %s for process pid %i, back/forward item %s" PRIu64, pageID(), m_suspendedPage->loggingString(), process.processIdentifier(), currentItem->itemID().logString());
 
@@ -731,7 +733,7 @@ void WebPageProxy::suspendedPageClosed(SuspendedPageProxy& page)
     m_suspendedPage = nullptr;
 }
 
-void WebPageProxy::swapToWebProcess(Ref<WebProcessProxy>&& process, API::Navigation& navigation)
+void WebPageProxy::swapToWebProcess(Ref<WebProcessProxy>&& process, API::Navigation& navigation, std::optional<uint64_t> mainFrameIDInPreviousProcess)
 {
     ASSERT(!m_isClosed);
     RELEASE_LOG_IF_ALLOWED(Process, "%p WebPageProxy::swapToWebProcess\n", this);
@@ -739,7 +741,8 @@ void WebPageProxy::swapToWebProcess(Ref<WebProcessProxy>&& process, API::Navigat
     // If the process we're attaching to is kept alive solely by our current suspended page,
     // we need to maintain that by temporarily keeping the suspended page alive.
     auto currentSuspendedPage = WTFMove(m_suspendedPage);
-    m_process->suspendWebPageProxy(*this, navigation);
+    if (mainFrameIDInPreviousProcess)
+        m_process->suspendWebPageProxy(*this, navigation, *mainFrameIDInPreviousProcess);
 
     m_process = WTFMove(process);
     m_isValid = true;
@@ -750,9 +753,8 @@ void WebPageProxy::swapToWebProcess(Ref<WebProcessProxy>&& process, API::Navigat
     // already exists and already has a main frame.
     if (currentSuspendedPage && currentSuspendedPage->process() == m_process.ptr()) {
         ASSERT(!m_mainFrame);
-        ASSERT(m_mainFrameID);
-        m_mainFrame = WebFrameProxy::create(this, *m_mainFrameID);
-        m_process->frameCreated(*m_mainFrameID, *m_mainFrame);
+        m_mainFrame = WebFrameProxy::create(this, currentSuspendedPage->mainFrameID());
+        m_process->frameCreated(currentSuspendedPage->mainFrameID(), *m_mainFrame);
     }
 
     finishAttachingToWebProcess();
@@ -1733,6 +1735,30 @@ void WebPageProxy::validateCommand(const String& commandName, WTF::Function<void
     m_process->send(Messages::WebPage::ValidateCommand(commandName, callbackID), m_pageID);
 }
 
+void WebPageProxy::updateFontAttributesAfterEditorStateChange()
+{
+    m_cachedFontAttributesAtSelectionStart.reset();
+
+    if (m_editorState.isMissingPostLayoutData)
+        return;
+
+    if (auto fontAttributes = m_editorState.postLayoutData().fontAttributes) {
+        m_uiClient->didChangeFontAttributes(*fontAttributes);
+        m_cachedFontAttributesAtSelectionStart = WTFMove(fontAttributes);
+    }
+}
+
+void WebPageProxy::setNeedsFontAttributes(bool needsFontAttributes)
+{
+    if (m_needsFontAttributes == needsFontAttributes)
+        return;
+
+    m_needsFontAttributes = needsFontAttributes;
+
+    if (isValid())
+        m_process->send(Messages::WebPage::SetNeedsFontAttributes(needsFontAttributes), m_pageID);
+}
+
 bool WebPageProxy::maintainsInactiveSelection() const
 {
     // Regardless of what the client wants to do, keep selections if a local Inspector is open.
@@ -2510,22 +2536,14 @@ void WebPageProxy::continueNavigationInNewProcess(API::Navigation& navigation, R
 {
     LOG(Loading, "Continuing navigation %" PRIu64 " '%s' in a new web process", navigation.navigationID(), navigation.loggingString());
 
-    // Because we're about to tear down the drawing area and swap to a new process, this is our last opportunity to snapshot what's currently displayed before
-    // we navigate. Do the navigation snapshot now and suppress the next one since the view will be blank then.
-    // FIXME: We should be able to drop this logic if we kept displaying the previous content a while longer when we swap process on navigation.
-    recordAutomaticNavigationSnapshot();
-    suppressNextAutomaticNavigationSnapshot();
-
     Ref<WebProcessProxy> previousProcess = m_process.copyRef();
-    std::optional<uint64_t> navigatedFrameIdentifierInPreviousProcess;
-    if (m_mainFrame)
-        navigatedFrameIdentifierInPreviousProcess = m_mainFrame->frameID();
+    std::optional<uint64_t> mainFrameIDInPreviousProcess = m_mainFrame ? std::make_optional(m_mainFrame->frameID()) : std::nullopt;
 
     ASSERT(m_process.ptr() != process.ptr());
 
     processDidTerminate(ProcessTerminationReason::NavigationSwap);
 
-    swapToWebProcess(WTFMove(process), navigation);
+    swapToWebProcess(WTFMove(process), navigation, mainFrameIDInPreviousProcess);
 
     if (auto* item = navigation.targetItem()) {
         LOG(Loading, "WebPageProxy %p continueNavigationInNewProcess to back item URL %s", this, item->url().utf8().data());
@@ -2564,13 +2582,13 @@ void WebPageProxy::continueNavigationInNewProcess(API::Navigation& navigation, R
     }
 
     bool isInitialNavigationInNewWindow = openedByDOM() && !hasCommittedAnyProvisionalLoads();
-    if (!isInitialNavigationInNewWindow || !navigatedFrameIdentifierInPreviousProcess)
+    if (!isInitialNavigationInNewWindow || !mainFrameIDInPreviousProcess)
         return;
 
-    m_mainFrameWindowCreationHandler = [this, previousProcess = WTFMove(previousProcess), navigatedFrameIdentifierInPreviousProcess = *navigatedFrameIdentifierInPreviousProcess](const GlobalWindowIdentifier& windowIdentifier) {
+    m_mainFrameWindowCreationHandler = [this, previousProcess = WTFMove(previousProcess), mainFrameIDInPreviousProcess = *mainFrameIDInPreviousProcess](const GlobalWindowIdentifier& windowIdentifier) {
         ASSERT(m_mainFrame);
         GlobalFrameIdentifier navigatedFrameIdentifierInNewProcess { pageID(), m_mainFrame->frameID() };
-        previousProcess->send(Messages::WebPage::FrameBecameRemote(navigatedFrameIdentifierInPreviousProcess, navigatedFrameIdentifierInNewProcess, windowIdentifier), pageID());
+        previousProcess->send(Messages::WebPage::FrameBecameRemote(mainFrameIDInPreviousProcess, navigatedFrameIdentifierInNewProcess, windowIdentifier), pageID());
     };
 }
 
@@ -3395,7 +3413,6 @@ void WebPageProxy::didCreateMainFrame(uint64_t frameID)
     MESSAGE_CHECK(m_process->canCreateFrame(frameID));
 
     m_mainFrame = WebFrameProxy::create(this, frameID);
-    m_mainFrameID = frameID;
 
     // Add the frame to the process wide map.
     m_process->frameCreated(frameID, *m_mainFrame);
@@ -3973,8 +3990,7 @@ void WebPageProxy::didReachLayoutMilestone(uint32_t layoutMilestones)
 
     if (m_loaderClient)
         m_loaderClient->didReachLayoutMilestone(*this, static_cast<LayoutMilestones>(layoutMilestones));
-    else
-        m_navigationClient->renderingProgressDidChange(*this, static_cast<LayoutMilestones>(layoutMilestones));
+    m_navigationClient->renderingProgressDidChange(*this, static_cast<LayoutMilestones>(layoutMilestones));
 }
 
 void WebPageProxy::didDisplayInsecureContentForFrame(uint64_t frameID, const UserData& userData)
@@ -5095,6 +5111,11 @@ void WebPageProxy::setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index
     m_process->send(Messages::WebPage::SetTextForActivePopupMenu(index), m_pageID);
 }
 
+bool WebPageProxy::isProcessingKeyboardEvents() const
+{
+    return !m_keyEventQueue.isEmpty();
+}
+
 bool WebPageProxy::isProcessingMouseEvents() const
 {
     return !m_mouseEventQueue.isEmpty();
@@ -6087,7 +6108,10 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     }
 
 #if ENABLE(FULLSCREEN_API)
-    m_fullScreenManager = nullptr;
+    if (m_fullScreenManager) {
+        m_fullScreenManager->close();
+        m_fullScreenManager = nullptr;
+    }
 #endif
 
     if (m_openPanelResultListener) {
@@ -6353,6 +6377,8 @@ WebPageCreationParameters WebPageProxy::creationParameters()
 #if ENABLE(APPLICATION_MANIFEST)
     parameters.applicationManifest = m_configuration->applicationManifest() ? std::optional<WebCore::ApplicationManifest>(m_configuration->applicationManifest()->applicationManifest()) : std::nullopt;
 #endif
+
+    parameters.needsFontAttributes = m_needsFontAttributes;
 
     m_process->addWebUserContentControllerProxy(m_userContentController, parameters);
 
@@ -7042,6 +7068,22 @@ void WebPageProxy::signedPublicKeyAndChallengeString(unsigned keySizeIndex, cons
 void WebPageProxy::addMIMETypeWithCustomContentProvider(const String& mimeType)
 {
     m_process->send(Messages::WebPage::AddMIMETypeWithCustomContentProvider(mimeType), m_pageID);
+}
+
+void WebPageProxy::changeFontAttributes(WebCore::FontAttributeChanges&& changes)
+{
+    if (!isValid())
+        return;
+
+    process().send(Messages::WebPage::ChangeFontAttributes(WTFMove(changes)), m_pageID);
+}
+
+void WebPageProxy::changeFont(WebCore::FontChanges&& changes)
+{
+    if (!isValid())
+        return;
+
+    process().send(Messages::WebPage::ChangeFont(WTFMove(changes)), m_pageID);
 }
 
 #if PLATFORM(COCOA)

@@ -75,6 +75,7 @@
 #import <WebCore/Color.h>
 #import <WebCore/DataDetection.h>
 #import <WebCore/FloatQuad.h>
+#import <WebCore/FontAttributeChanges.h>
 #import <WebCore/InputMode.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/NotImplemented.h>
@@ -121,7 +122,7 @@
 #import <WebKitAdditions/WKPlatformFileUploadPanel.mm>
 #endif
 
-@interface UIEvent(UIEventInternal)
+@interface UIEvent (UIEventInternal)
 @property (nonatomic, assign) UIKeyboardInputFlags _inputFlags;
 @end
 
@@ -653,7 +654,8 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
         [self.superview addSubview:_interactionViewsContainerView.get()];
     }
 
-    _keyboardScrollingAnimator = adoptNS([[WKKeyboardScrollingAnimator alloc] initWithScrollable:self]);
+    _keyboardScrollingAnimator = adoptNS([[WKKeyboardScrollViewAnimator alloc] initWithScrollView:_webView.scrollView]);
+    [_keyboardScrollingAnimator setDelegate:self];
 
     [self.layer addObserver:self forKeyPath:@"transform" options:NSKeyValueObservingOptionInitial context:nil];
 
@@ -2083,6 +2085,8 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 {
     _page->hideValidationMessage();
 
+    [_keyboardScrollingAnimator willStartInteractiveScroll];
+
     _canSendTouchEventsAsynchronously = YES;
 }
 
@@ -2279,6 +2283,57 @@ FORWARD_ACTION_TO_WKWEBVIEW(_pasteAsQuotation)
     [[UIKeyboardImpl sharedInstance] replaceText:sender];
 }
 
+#define WEBCORE_COMMAND_FOR_WEBVIEW(command) - (void)command ## ForWebView:(id)sender { _page->executeEditCommand(#command ## _s); }
+
+WEBCORE_COMMAND_FOR_WEBVIEW(insertOrderedList);
+WEBCORE_COMMAND_FOR_WEBVIEW(insertUnorderedList);
+WEBCORE_COMMAND_FOR_WEBVIEW(indent);
+WEBCORE_COMMAND_FOR_WEBVIEW(outdent);
+WEBCORE_COMMAND_FOR_WEBVIEW(alignLeft);
+WEBCORE_COMMAND_FOR_WEBVIEW(alignRight);
+WEBCORE_COMMAND_FOR_WEBVIEW(alignCenter);
+WEBCORE_COMMAND_FOR_WEBVIEW(alignJustified);
+
+- (void)toggleStrikeThroughForWebView:(id)sender
+{
+    _page->executeEditCommand("StrikeThrough"_s);
+}
+
+- (void)increaseSizeForWebView:(id)sender
+{
+    _page->executeEditCommand("FontSizeDelta"_s, "1"_s);
+}
+
+- (void)decreaseSizeForWebView:(id)sender
+{
+    _page->executeEditCommand("FontSizeDelta"_s, "-1"_s);
+}
+
+- (void)setFontForWebView:(UIFont *)font sender:(id)sender
+{
+    WebCore::FontChanges changes;
+    changes.setFontFamily(font.familyName);
+    changes.setFontName(font.fontName);
+    changes.setFontSize(font.pointSize);
+    changes.setBold(font.traits & UIFontTraitBold);
+    changes.setItalic(font.traits & UIFontTraitItalic);
+    _page->changeFont(WTFMove(changes));
+}
+
+- (void)setFontSizeForWebView:(CGFloat)fontSize sender:(id)sender
+{
+    WebCore::FontChanges changes;
+    changes.setFontSize(fontSize);
+    _page->changeFont(WTFMove(changes));
+}
+
+- (void)setTextColorForWebView:(UIColor *)color sender:(id)sender
+{
+    _page->executeEditCommand("ForeColor"_s, WebCore::Color(color.CGColor).serialized());
+}
+
+#undef WEBCORE_COMMAND_FOR_WEBVIEW
+
 - (NSDictionary *)textStylingAtPosition:(UITextPosition *)position inDirection:(UITextStorageDirection)direction
 {
     if (!position || !_page->editorState().isContentRichlyEditable)
@@ -2329,17 +2384,21 @@ FORWARD_ACTION_TO_WKWEBVIEW(_pasteAsQuotation)
 }
 
 - (BOOL)canPerformActionForWebView:(SEL)action withSender:(id)sender
-{
-    if (action == @selector(_arrowKey:))
-        return [self isFirstResponder];
-        
+{        
     auto editorState = _page->editorState();
     if (action == @selector(_showTextStyleOptions:))
         return editorState.isContentRichlyEditable && editorState.selectionIsRange && !_showingTextStyleOptions;
     if (_showingTextStyleOptions)
         return (action == @selector(toggleBoldface:) || action == @selector(toggleItalics:) || action == @selector(toggleUnderline:));
-    if (action == @selector(toggleBoldface:) || action == @selector(toggleItalics:) || action == @selector(toggleUnderline:))
+    if (action == @selector(toggleBoldface:) || action == @selector(toggleItalics:) || action == @selector(toggleUnderline:) || action == @selector(toggleStrikeThrough:)
+        || action == @selector(insertOrderedList:) || action == @selector(insertUnorderedList:) || action == @selector(indent:) || action == @selector(outdent:)
+        || action == @selector(alignLeft:) || action == @selector(alignRight:) || action == @selector(alignCenter:) || action == @selector(alignJustified:)
+        || action == @selector(increaseSize:) || action == @selector(decreaseSize:) || action == @selector(setTextColor:sender:)
+        || action == @selector(setFont:sender:) || action == @selector(setFontSize:sender:)) {
+        // FIXME: This should be more nuanced in the future, rather than returning YES for all richly editable areas. For instance, outdent: should be disabled when the selection is already
+        // at the outermost indentation level.
         return editorState.isContentRichlyEditable;
+    }
     if (action == @selector(cut:))
         return !editorState.isInPasswordField && editorState.isContentEditable && editorState.selectionIsRange;
     
@@ -3108,44 +3167,14 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (NSArray *)keyCommands
 {
-    static NSArray* nonEditableKeyCommands = [@[
-       [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:0 action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:0 action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:0 action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:0 action:@selector(_arrowKey:)],
-       
-       [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierCommand action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierCommand action:@selector(_arrowKey:)],
-       
-       [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierShift action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierShift action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:UIKeyModifierShift action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:UIKeyModifierShift action:@selector(_arrowKey:)],
-       
-       [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierAlternate action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierAlternate action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:UIKeyModifierAlternate action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:UIKeyModifierAlternate action:@selector(_arrowKey:)],
-       
-       [UIKeyCommand keyCommandWithInput:@" " modifierFlags:0 action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:@" " modifierFlags:UIKeyModifierShift action:@selector(_arrowKey:)],
-       
-       [UIKeyCommand keyCommandWithInput:UIKeyInputPageDown modifierFlags:0 action:@selector(_arrowKey:)],
-       [UIKeyCommand keyCommandWithInput:UIKeyInputPageDown modifierFlags:0 action:@selector(_arrowKey:)],
-    ] retain];
+    if (!_page->editorState().isContentEditable)
+        return nil;
 
     static NSArray* editableKeyCommands = [@[
        [UIKeyCommand keyCommandWithInput:@"\t" modifierFlags:0 action:@selector(_nextAccessoryTab:)],
        [UIKeyCommand keyCommandWithInput:@"\t" modifierFlags:UIKeyModifierShift action:@selector(_prevAccessoryTab:)]
     ] retain];
-    
-    return (_page->editorState().isContentEditable) ? editableKeyCommands : nonEditableKeyCommands;
-}
-
-- (void)_arrowKeyForWebView:(id)sender
-{
-    UIKeyCommand* command = sender;
-    [self handleKeyEvent:command._triggeringEvent];
+    return editableKeyCommands;
 }
 
 - (void)_nextAccessoryTab:(id)sender
@@ -3438,6 +3467,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     return nil;
 }
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 - (UITextWritingDirection)baseWritingDirectionForPosition:(UITextPosition *)position inDirection:(UITextStorageDirection)direction
 {
     return UITextWritingDirectionLeftToRight;
@@ -3446,6 +3476,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 - (void)setBaseWritingDirection:(UITextWritingDirection)writingDirection forRange:(UITextRange *)range
 {
 }
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (CGRect)firstRectForRange:(UITextRange *)range
 {
@@ -3891,7 +3922,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     return NO;
 }
 
-- (BOOL)isKeyboardScrollable
+- (BOOL)isScrollableForKeyboardScrollViewAnimator:(WKKeyboardScrollViewAnimator *)animator
 {
     if (_page->editorState().isContentEditable)
         return NO;
@@ -3902,23 +3933,23 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     return YES;
 }
 
-- (CGFloat)distanceForScrollingIncrement:(ScrollingIncrement)increment
+- (CGFloat)keyboardScrollViewAnimator:(WKKeyboardScrollViewAnimator *)animator distanceForIncrement:(ScrollingIncrement)increment
 {
     switch (increment) {
     case ScrollingIncrement::Document:
-        return self.bounds.size.height;
+        return [self convertRect:self.bounds toView:_webView].size.height;
     case ScrollingIncrement::Page:
-        return WebCore::Scrollbar::pageStep(_page->unobscuredContentRect().height(), self.bounds.size.height);
+        return [self convertSize:CGSizeMake(0, WebCore::Scrollbar::pageStep(_page->unobscuredContentRect().height(), self.bounds.size.height)) toView:_webView].height;
     case ScrollingIncrement::Line:
-        return WebCore::Scrollbar::pixelsPerLineStep();
+        return [self convertSize:CGSizeMake(0, WebCore::Scrollbar::pixelsPerLineStep()) toView:_webView].height;
     }
     ASSERT_NOT_REACHED();
     return 0;
 }
 
-- (void)scrollByContentOffset:(WebCore::FloatPoint)offset animated:(BOOL)animated
+- (void)keyboardScrollViewAnimatorWillScroll:(WKKeyboardScrollViewAnimator *)animator
 {
-    [_webView _scrollByContentOffset:offset animated:animated];
+    [self willStartZoomOrScroll];
 }
 
 - (void)executeEditCommandWithCallback:(NSString *)commandName
@@ -4786,11 +4817,10 @@ static bool isAssistableInputType(InputType type)
 - (void)_showShareSheet:(const ShareDataWithParsedURL&)data completionHandler:(CompletionHandler<void(bool)>&&)completionHandler
 {
 #if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
-    ASSERT(!_shareSheet);
     if (_shareSheet)
-        return;
+        [_shareSheet dismiss];
     
-    _shareSheet = adoptNS([[WKShareSheet alloc] initWithView:self]);
+    _shareSheet = adoptNS([[WKShareSheet alloc] initWithView:_webView]);
     [_shareSheet setDelegate:self];
     
     [_shareSheet presentWithParameters:data completionHandler:WTFMove(completionHandler)];
@@ -5979,13 +6009,6 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 #endif
 }
 
-- (void)invokeShareSheetWithResolution:(BOOL)resolved
-{
-#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
-    [_shareSheet invokeShareSheetWithResolution:resolved];
-#endif
-}
-
 - (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem
 {
     if ([userInterfaceItem isEqualToString:@"actionSheet"])
@@ -6142,11 +6165,10 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
                 dataForPreview[UIPreviewDataAttachmentList] = [uiDelegate _attachmentListForWebView:_webView];
             dataForPreview[UIPreviewDataAttachmentIndex] = [NSNumber numberWithUnsignedInteger:index];
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
-            // FIXME: Replace the following NSString literal with a UIKit NSString constant.
-            dataForPreview[@"UIPreviewDataAttachmentListIsContentManaged"] = [NSNumber numberWithBool:sourceIsManaged];
-#else
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 130000
             dataForPreview[UIPreviewDataAttachmentListSourceIsManaged] = [NSNumber numberWithBool:sourceIsManaged];
+#else
+            dataForPreview[UIPreviewDataAttachmentListIsContentManaged] = [NSNumber numberWithBool:sourceIsManaged];
 #endif
         }
     }
@@ -6503,10 +6525,12 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
     return _webRect.rect;
 }
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 - (UITextWritingDirection)writingDirection
 {
     return (UITextWritingDirection)_webRect.writingDirection;
 }
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (UITextRange *)range
 {

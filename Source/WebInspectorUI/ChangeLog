@@ -1,3 +1,677 @@
+2018-10-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: notify the frontend when a canvas has started recording via console.record
+        https://bugs.webkit.org/show_bug.cgi?id=190306
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Protocol/CanvasObserver.js:
+        (WI.CanvasObserver.prototype.recordingStarted): Added.
+
+        * UserInterface/Protocol/CanvasManager.js:
+        (WI.CanvasManager.prototype.recordingStarted): Added.
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.prototype.startRecording):
+        (WI.Canvas.prototype.recordingStarted): Added.
+        (WI.Canvas.prototype.recordingFinished):
+
+2018-10-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: indent all network entries when "Group by Node" is checked
+        https://bugs.webkit.org/show_bug.cgi?id=190388
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+        (WI.NetworkTableContentView.prototype._handleGroupByDOMNodeCheckedDidChange):
+
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.network-table.grouped .data-container .cell.name): Added.
+        (.network-table.grouped .data-container .cell:not(.parent).name): Added.
+        (.network-table.grouped .data-container .cell.child.name): Added.
+        (.network-table .cell.grouped-by-node.name): Deleted.
+        (body[dir=ltr] .network-table .cell.grouped-by-node.name): Deleted.
+        (body[dir=rtl] .network-table .cell.grouped-by-node.name): Deleted.
+        Apply a padding to all nodes when the `WI.Table` is grouped.
+
+2018-10-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: show redirect requests in Network and Timelines tabs
+        https://bugs.webkit.org/show_bug.cgi?id=150005
+        <rdar://problem/5378164>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/Variables.css:
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.resourceRequestWillBeSent):
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource):
+        (WI.Resource.prototype.get redirects): Added.
+        (WI.Resource.prototype.get lastRedirectReceivedTimestamp):
+        (WI.Resource.prototype.updateForRedirectResponse):
+        Save each redirect in an array instead of just remembering the last timestamp.
+
+        * UserInterface/Models/ResourceTimingData.js:
+        (WI.ResourceTimingData):
+        (WI.ResourceTimingData.fromPayload.offsetToTimestamp):
+        (WI.ResourceTimingData.fromPayload):
+        (WI.ResourceTimingData.prototype.get redirectStart): Added.
+        (WI.ResourceTimingData.prototype.get redirectEnd): Added.
+        (WI.ResourceTimingData.prototype.get fetchStart): Added.
+        Add missing fields for `Network.types.ResourceTiming`.
+
+        * UserInterface/Models/Redirect.js: Added.
+        (WI.Redirect):
+        (WI.Redirect.prototype.get url):
+        (WI.Redirect.prototype.get requestMethod):
+        (WI.Redirect.prototype.get requestHeaders):
+        (WI.Redirect.prototype.get responseStatusCode):
+        (WI.Redirect.prototype.get responseStatusText):
+        (WI.Redirect.prototype.get responseHeaders):
+        (WI.Redirect.prototype.get timestamp):
+        (WI.Redirect.prototype.get urlComponents):
+
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView):
+        (WI.ResourceHeadersContentView.prototype.initialLayout):
+        (WI.ResourceHeadersContentView.prototype.layout):
+        (WI.ResourceHeadersContentView.prototype._refreshRedirectHeadersSections): Added.
+        (WI.ResourceHeadersContentView.prototype._resourceRequestHeadersDidChange):
+        * UserInterface/Views/ResourceHeadersContentView.css:
+        (body[dir] .resource-headers > section.summary > .details): Added.
+        (body[dir] .resource-headers > section:matches(.redirect, .headers) > .details): Added.
+        (.resource-headers .details .key):
+        (.resource-headers .summary .key):
+        (body[dir] .resource-headers > section > .details): Deleted.
+        (body[dir] .resource-headers > section.headers > .details): Deleted.
+        (.resource-headers .value): Deleted.
+        Add a request/response header section for each redirect.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph.appendBlock):
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph):
+        (WI.NetworkTableContentView.prototype._checkURLFilterAgainstResource):
+        (WI.NetworkTableContentView.prototype._waterfallPopoverContentForResource):
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.waterfall .block.redirect): Added.
+        (.waterfall .block.queue):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WI.ResourceTimelineDataGridNode.prototype._mouseoverRecordBar):
+        * UserInterface/Views/ResourceTimingBreakdownView.js:
+        (WI.ResourceTimingBreakdownView.prototype.initialLayout):
+        Add timeline/waterfall entries for total redirect time.
+
+2018-10-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas Tab: grayed out Record button in navigator is nearly invisible
+        https://bugs.webkit.org/show_bug.cgi?id=190365
+        <rdar://problem/45097739>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CanvasSidebarPanel.css:
+        (@media (prefers-dark-interface)): Added.
+        (.sidebar > .panel.navigation.canvas > .navigation-bar > .item.record-start-stop.disabled): Added.
+
+2018-10-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: fix canvas test failures after r236952 and r236954
+        https://bugs.webkit.org/show_bug.cgi?id=190403
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype._removeCanvas):
+        Clear the `shaderProgramCollection` when a `WI.Canvas` is removed so that a remove event is
+        fired for each `WI.ShaderProgram`.
+
+2018-10-08  Justin Fan  <justin_fan@apple.com>
+
+        WebGPU: Rename old WebGPU prototype to WebMetal
+        https://bugs.webkit.org/show_bug.cgi?id=190325
+        <rdar://problem/44990443>
+
+        Reviewed by Dean Jackson.
+
+        Rename WebGPU prototype files to WebMetal in preparation for implementing the new (Oct 2018) WebGPU interface.
+        For WebInspector, add WebMetal to valid enums for canvas types.
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.fromPayload):
+        (WI.Canvas.displayNameForContextType):
+
+2018-10-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Dark Mode: canvas recording glyph is black on gray
+        https://bugs.webkit.org/show_bug.cgi?id=190367
+        <rdar://problem/45099304>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CanvasOverviewContentView.css:
+        (.content-view.canvas-overview .content-view.canvas > footer .view-recording): Added.
+        (.content-view.canvas-overview .content-view.canvas > footer > .recordings::before): Deleted.
+
+2018-10-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: allow multiple canvases to be recorded at the same time
+        https://bugs.webkit.org/show_bug.cgi?id=190305
+
+        Reviewed by Brian Burg.
+
+        Moved the logic for maintaining whether a canvas is actively recording from
+        `WI.CanvasManager` to `WI.Canvas`, meaning that each canvas can now record independently of
+        every other canvas in the page. If multiple recordings are all finished simultaneously, only
+        show the first one to be recieved by the frontend.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager):
+        (WI.CanvasManager.prototype.recordingProgress):
+        (WI.CanvasManager.prototype.recordingFinished):
+        (WI.CanvasManager.prototype.programCreated):
+        (WI.CanvasManager.prototype.programDeleted):
+        (WI.CanvasManager.prototype._removeCanvas):
+        (WI.CanvasManager.prototype._mainResourceDidChange):
+        (WI.CanvasManager.prototype.get recordingCanvas): Deleted.
+        (WI.CanvasManager.prototype.startRecording): Deleted.
+        (WI.CanvasManager.prototype.stopRecording): Deleted.
+        (WI.CanvasManager.prototype._dispatchShaderProgramRemoved): Deleted.
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.prototype.get recordingFrameCount): Added.
+        (WI.Canvas.prototype.get recordingBufferUsed): Added.
+        (WI.Canvas.prototype.get recordingActive): Added.
+        (WI.Canvas.prototype.get isRecording): Deleted.
+        (WI.Canvas.prototype.startRecording): Added.
+        (WI.Canvas.prototype.stopRecording): Added.
+        (WI.Canvas.prototype.recordingProgress): Added.
+        (WI.Canvas.prototype.recordingFinished): Added.
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView.prototype.attached):
+        (WI.CanvasTabContentView.prototype.detached):
+        (WI.CanvasTabContentView.prototype._recordingImportedOrStopped):
+        (WI.CanvasTabContentView.prototype._handleSpace):
+        (WI.CanvasTabContentView):
+
+        * UserInterface/Views/CanvasOverviewContentView.css:
+        (.content-view.canvas-overview .content-view.canvas.recording-active): Added.
+        (.content-view.canvas-overview .content-view.canvas.recording-active > header): Added.
+        (.content-view.canvas-overview .content-view.canvas.recording-active > header > .titles > .title): Added.
+        (.content-view.canvas-overview .content-view.canvas.recording-active > header > .titles > .subtitle): Added.
+        (.content-view.canvas-overview .content-view.canvas.recording-active > header > .navigation-bar > .item): Added.
+        (.content-view.canvas-overview .content-view.canvas:matches(:hover, .recording-active) > header > .navigation-bar): Added.
+        (.content-view.canvas-overview .content-view.canvas:not(.recording-active) > header > .navigation-bar > .item.record-start-stop.disabled): Added.
+        (.content-view.canvas-overview .content-view.canvas:not(.recording-active) > header > .navigation-bar > .item.record-start-stop:not(.disabled):hover): Added.
+        (.content-view.canvas-overview .content-view.canvas:not(.recording-active) > header > .navigation-bar > .item.record-start-stop:not(.disabled):active): Added.
+        (.content-view.canvas-overview .content-view.canvas.recording-active > .progress-vie): Added.
+        (.content-view.canvas-overview .content-view.canvas.recording-active > .preview): Added.
+        (.content-view.canvas-overview .content-view.canvas.recording-active): Added.
+        (.content-view.canvas-overview .content-view.canvas.recording-active > header): Added.
+        (.content-view.canvas-overview .content-view.canvas.recording-active > header > .titles > .subtitle): Added.
+        (.content-view.canvas-overview .content-view.canvas.is-recording): Deleted.
+        (.content-view.canvas-overview .content-view.canvas.is-recording > header): Deleted.
+        (.content-view.canvas-overview .content-view.canvas.is-recording > header > .titles > .title): Deleted.
+        (.content-view.canvas-overview .content-view.canvas.is-recording > header > .titles > .subtitle): Deleted.
+        (.content-view.canvas-overview .content-view.canvas.is-recording > header > .navigation-bar > .item): Deleted.
+        (.content-view.canvas-overview .content-view.canvas:matches(:hover, .is-recording) > header > .navigation-bar): Deleted.
+        (.content-view.canvas-overview .content-view.canvas:not(.is-recording) > header > .navigation-bar > .item.record-start-stop.disabled): Deleted.
+        (.content-view.canvas-overview .content-view.canvas:not(.is-recording) > header > .navigation-bar > .item.record-start-stop:not(.disabled):hover): Deleted.
+        (.content-view.canvas-overview .content-view.canvas:not(.is-recording) > header > .navigation-bar > .item.record-start-stop:not(.disabled):active): Deleted.
+        (.content-view.canvas-overview .content-view.canvas.is-recording > .progress-vie): Deleted.
+        (.content-view.canvas-overview .content-view.canvas.is-recording > .preview): Deleted.
+        (.content-view.canvas-overview .content-view.canvas.is-recording): Deleted.
+        (.content-view.canvas-overview .content-view.canvas.is-recording > header): Deleted.
+        (.content-view.canvas-overview .content-view.canvas.is-recording > header > .titles > .subtitle): Deleted.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView.prototype.attached):
+        (WI.CanvasContentView.prototype.detached):
+        (WI.CanvasContentView.prototype._toggleRecording):
+        (WI.CanvasContentView.prototype._recordingProgress):
+        (WI.CanvasContentView.prototype._recordingStopped):
+        (WI.CanvasContentView.prototype._shaderProgramAdded):
+        (WI.CanvasContentView.prototype._shaderProgramRemoved):
+        (WI.CanvasContentView.prototype._updateRecordNavigationItem):
+        (WI.CanvasContentView.prototype._updateProgressView):
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel):
+        (WI.CanvasSidebarPanel.prototype.set canvas):
+        (WI.CanvasSidebarPanel.prototype._toggleRecording):
+        (WI.CanvasSidebarPanel.prototype._updateRecordNavigationItem):
+
+        * UserInterface/Views/CanvasTreeElement.js:
+        (WI.CanvasTreeElement):
+        (WI.CanvasTreeElement.prototype._updateStatus):
+
+2018-10-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: replace Range.svg icon
+        https://bugs.webkit.org/show_bug.cgi?id=190372
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/Range.svg:
+        * UserInterface/Images/RangeLarge.svg: Added.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.classNameForResource): Added.
+        Create a static function for specializing the `className` of `WI.Resource` objects.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WI.ResourceTreeElement):
+
+        * UserInterface/Views/ResourceIcons.css:
+        (.resource-icon.resource-type-ping .icon, .resource-icon.resource-type-beacon .icon, .large .resource-icon.resource-type-ping .icon, .large .resource-icon.resource-type-beacon .icon):
+        (.resource-icon.resource-type-range .icon):
+        (.large .resource-icon.resource-type-range .icon): Added.
+        Drive-by: added `.large` versions of `ping` and `beacon` icons for the
+        `WI.OpenResourceDialog` elements.
+
+2018-10-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: group media network entries by the node that triggered the request
+        https://bugs.webkit.org/show_bug.cgi?id=189606
+        <rdar://problem/44438527>
+
+        Reviewed by Brian Burg.
+
+        Introduces a `WI.NavigationItem` for changing whether network entries are grouped by the
+        node that initiated the load (if applicable). When grouped by node, a tree-like layout of
+        the table cells (including expand/collapse) is used for resources that share the same
+        initiator node. The values for the node's cell are based on it's initated resources.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager):
+        (WI.DOMManager.prototype._mainResourceDidChange): Added.
+        Whenever the frame navigates, re-request the document so that `NetworkAgent` is able to send
+        valid `nodeId` for each request's `initiatorNode`. This means that the document should
+        always be available.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.get filterNavigationItems):
+        (WI.NetworkTableContentView.prototype.closed):
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype.tableSortChanged):
+        (WI.NetworkTableContentView.prototype.tableSelectedRowChanged):
+        (WI.NetworkTableContentView.prototype.tablePopulateCell):
+        (WI.NetworkTableContentView.prototype._populateNameCell.createIconElement): Added.
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+        (WI.NetworkTableContentView.prototype._populateDomainCell.createIconAndText): Added.
+        (WI.NetworkTableContentView.prototype._populateDomainCell):
+        (WI.NetworkTableContentView.prototype._populateInitiatorCell):
+        (WI.NetworkTableContentView.prototype._populateTransferSizeCell):
+        (WI.NetworkTableContentView.prototype._generateSortComparator):
+        (WI.NetworkTableContentView.prototype._processPendingEntries):
+        (WI.NetworkTableContentView.prototype._updateEntryForResource.updateExistingEntry): Added.
+        (WI.NetworkTableContentView.prototype._updateEntryForResource):
+        (WI.NetworkTableContentView.prototype._insertResourceAndReloadTable):
+        (WI.NetworkTableContentView.prototype._entryForDOMNode): Added.
+        (WI.NetworkTableContentView.prototype._tryLinkResourceToDOMNode): Added.
+        (WI.NetworkTableContentView.prototype._uniqueValuesForDOMNodeEntry): Added.
+        (WI.NetworkTableContentView.prototype._updateFilteredEntries):
+        (WI.NetworkTableContentView.prototype._handleGroupByDOMNodeCheckedDidChange): Added.
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.network-table .cell.dom-node.name .icon): Added.
+        (.network-table .cell.dom-node.name .disclosure): Added.
+        (body[dir=rtl] .network-table .cell.dom-node.name .disclosure): Added.
+        (.network-table:focus li.selected .cell.dom-node.name .disclosure): Added.
+        (.network-table .cell.dom-node.name .disclosure.expanded): Added.
+        (.network-table:focus li.selected .cell.node.name .disclosure.expanded): Added.
+        (.network-table .cell.grouped-by-node.name): Added.
+        (body[dir=ltr] .network-table .cell.grouped-by-node.name): Added.
+        (body[dir=rtl] .network-table .cell.grouped-by-node.name): Added.
+        (.network-table li:not(.selected) .cell:matches(.cache-type, .multiple)): Added.
+        (.network-table li.selected .cell.domain > .lock): Added.
+        (.network-table .cache-type): Deleted.
+        When two resources are added that share the same `initiatorNode`, insert a node entry into
+        the `WI.Table` before the first resource entry for that node (based on the current sort).
+        This node entry is added after the resource entries are filtered, so they won't appear in
+        the default entries list.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource):
+        (WI.Resource.prototype.initiatorNode): Added.
+        (WI.Resource.prototype.requestedByteRange): Added.
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.resourceRequestWillBeSent):
+        (WI.NetworkManager.prototype.resourceRequestWasServedFromMemoryCache):
+        (WI.NetworkManager.prototype._initiatorNodeFromPayload): Added.
+
+        * UserInterface/Images/Range.svg: Added.
+        * UserInterface/Views/ResourceIcons.css:
+        (.resource-icon.resource-type-range .icon): Added.
+
+2018-10-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: clicking initiator link in Network Tab table doesn't automatically switch to Preview section
+        https://bugs.webkit.org/show_bug.cgi?id=190286
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/NetworkResourceDetailView.js:
+        (WI.NetworkResourceDetailView.prototype.shown):
+        (WI.NetworkResourceDetailView.prototype._showContentViewForNavigationItem):
+
+2018-10-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: be more specific as to what types of WI.Collection are allowed for the Resources tab
+        https://bugs.webkit.org/show_bug.cgi?id=190304
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WI.tabContentViewClassForRepresentedObject):
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WI.ResourcesTabContentView.prototype.canShowRepresentedObject):
+
+2018-10-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Open Resource Dialog should show path to resource (to disambiguate resources with same name)
+        https://bugs.webkit.org/show_bug.cgi?id=178153
+        <rdar://problem/34925686>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WI.OpenResourceDialog.prototype._populateResourceTreeOutline):
+        * UserInterface/Views/OpenResourceDialog.css:
+        (.open-resource-dialog .tree-outline.large .item .titles[data-path]): Added.
+        (.open-resource-dialog .tree-outline.large .item .titles[data-path]::after): Added.
+        (.open-resource-dialog .tree-outline.large .item .titles .title): Added.
+        (.open-resource-dialog .tree-outline.large .item .titles .subtitle): Added.
+        (.open-resource-dialog .tree-outline.large .item .titles): Deleted.
+
+2018-10-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add WebVTT MIME/file type mappings to the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=190288
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/MIMETypeUtilities.js:
+        (WI.mimeTypeForFileExtension):
+        (WI.fileExtensionForMIMEType):
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.displayNameForResource):
+        Also attempt to use the mime-type-to-extension when the `WI.Resource` is of type `Other`.
+
+2018-10-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: refactor constructor of WI.Resource
+        https://bugs.webkit.org/show_bug.cgi?id=190318
+
+        Reviewed by Joseph Pecoraro.
+
+        Reworked constructor of `WI.Resource` to use an optional object for any non-essential arguments.
+
+        Drive-by: moved some simple getters to the top of the class to save space.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource):
+
+        * UserInterface/Models/SourceMapResource.js:
+        (WI.SourceMapResource):
+
+        * UserInterface/Models/WebSocketResource.js:
+        (WI.WebSocketResource):
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.frameDidNavigate):
+        (WI.NetworkManager.prototype.resourceRequestWillBeSent):
+        (WI.NetworkManager.prototype.webSocketWillSendHandshakeRequest):
+        (WI.NetworkManager.prototype.resourceRequestWasServedFromMemoryCache):
+        (WI.NetworkManager.prototype.resourceRequestDidReceiveResponse):
+        (WI.NetworkManager.prototype._addNewResourceToFrameOrTarget):
+        (WI.NetworkManager.prototype._createFrame):
+        (WI.NetworkManager.prototype._createResource):
+
+2018-10-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: use iframe's name attribute for FrameTreeElement
+        https://bugs.webkit.org/show_bug.cgi?id=190275
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/FrameTreeElement.js:
+        (WI.FrameTreeElement.prototype.get mainTitleText): Added.
+
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WI.ResourceTreeElement.prototype.get mainTitleText): Added.
+        (WI.ResourceTreeElement.prototype._updateTitles):
+        Provide a way for subclasses to override what is used for the `mainTitle`.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WI.QuickConsole.prototype._createExecutionContextPathComponentFromFrame):
+        Update the execution context picker to match what `WI.FrameTreeElement`s show.
+
+2018-10-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r236766): Storage tab no longer updates after main frame navigation
+        https://bugs.webkit.org/show_bug.cgi?id=190298
+
+        Reviewed by Joseph Pecoraro.
+
+        Handle Cleared events from storage managers separately, so that successive
+        events during page load does not cause the Storage tab to destroy newly
+        created tree elements.
+
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WI.StorageSidebarPanel):
+        (WI.StorageSidebarPanel.prototype._closeContentViewForTreeElement):
+        (WI.StorageSidebarPanel.prototype._domStorageCleared):
+        (WI.StorageSidebarPanel.prototype._applicationCacheCleared):
+        (WI.StorageSidebarPanel.prototype._indexedDatabaseCleared):
+        (WI.StorageSidebarPanel.prototype._databaseCleared):
+        (WI.StorageSidebarPanel.prototype._storageCleared): Deleted.
+
+2018-10-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table should support multiple selection and Cmd-click behavior
+        https://bugs.webkit.org/show_bug.cgi?id=189705
+        <rdar://problem/44571170>
+
+        Reviewed by Devin Rousso.
+
+        Add multiple row selection to Table, with new methods for programmatic
+        selection (deselectRow, deselectAll), and Command-click support for
+        selecting/deselecting Table rows.
+
+        * UserInterface/Base/IndexSet.js: Added.
+        (WI.IndexSet):
+        (WI.IndexSet.prototype.get size):
+        (WI.IndexSet.prototype.get firstIndex):
+        (WI.IndexSet.prototype.get lastIndex):
+        (WI.IndexSet.prototype.add):
+        (WI.IndexSet.prototype.delete):
+        (WI.IndexSet.prototype.has):
+        (WI.IndexSet.prototype.clear):
+        (WI.IndexSet.prototype.indexGreaterThan):
+        (WI.IndexSet.prototype.indexLessThan):
+        (WI.IndexSet.prototype.Symbol.iterator):
+        (WI.IndexSet.prototype._indexClosestTo):
+        (WI.IndexSet.prototype._validateIndex):
+        Helper container for managing an ordered sequence of unique positive
+        integers, with set semantics, backed by a sorted array. Used by Table,
+        and eventually by TreeOutline.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        New files and stubs to make Table layout tests possible.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype.showRepresentedObject):
+        (WI.NetworkTableContentView.prototype.networkResourceDetailViewClose):
+        (WI.NetworkTableContentView.prototype.tableSelectionDidChange):
+        (WI.NetworkTableContentView.prototype._restoreSelectedRow):
+        (WI.NetworkTableContentView.prototype.tableSelectedRowChanged): Deleted.
+        Replace uses of `clearSelectedRow` with `deselectAll`, and updated
+        selection changed delegate.
+
+        * UserInterface/Views/Table.css:
+        (.table > .data-container > .data-list > li):
+        (.table > .data-container > .data-list > li.selected):
+        (@media (prefers-dark-interface)):
+        (.table,): Deleted.
+        Removed styles that are no longer needed after https://webkit.org/b/189766,
+        and provide a visual separation between adjacent selected rows.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table):
+        (WI.Table.prototype.get selectedRows):
+        (WI.Table.prototype.get allowsMultipleSelection):
+        (WI.Table.prototype.set allowsMultipleSelection):
+        (WI.Table.prototype.reloadData):
+        (WI.Table.prototype.selectRow):
+        (WI.Table.prototype.deselectRow):
+        (WI.Table.prototype.deselectAll):
+        (WI.Table.prototype._getOrCreateRow):
+        (WI.Table.prototype._handleMouseDown):
+        (WI.Table.prototype._deselectAllAndSelect):
+        (WI.Table.prototype._isRowSelected):
+        (WI.Table.prototype._notifySelectionDidChange):
+        (WI.Table.prototype.clearSelectedRow): Deleted.
+        Table now tracks selected rows using an IndexSet. selectRow accepts an
+        optional parameter, `extendSelection`, for adding rows to the selection.
+        _selectedRowIndex is now used to track the most recently selected row.
+        This will be the only selected row unless multiple selection is enabled,
+        in which case it is the row that has the "focus", for purposes of selecting
+        a new row using the up or down arrow keys.
+
+2018-10-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r236540): Uncaught Exception: TypeError: pauseReasonBreakpointTreeElement.removeStatusImage is not a function.
+        https://bugs.webkit.org/show_bug.cgi?id=190230
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel._removeBreakpoint):
+        Leverage existing `status` getter/setter for creating/removing the breakpoint icon element.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WI.BreakpointTreeElement):
+        (WI.BreakpointTreeElement.prototype.populateContextMenu):
+        (WI.BreakpointTreeElement.prototype._updateStatus):
+        (WI.BreakpointTreeElement.prototype.removeStatusImage): Deleted.
+
+        * UserInterface/Views/DOMBreakpointTreeElement.js:
+        (WI.DOMBreakpointTreeElement):
+        (WI.DOMBreakpointTreeElement.prototype.onattach):
+        (WI.DOMBreakpointTreeElement.prototype.ondetach):
+        (WI.DOMBreakpointTreeElement.prototype._updateStatus):
+
+        * UserInterface/Views/EventBreakpointTreeElement.js:
+        (WI.EventBreakpointTreeElement):
+        (WI.EventBreakpointTreeElement.prototype.onattach):
+        (WI.EventBreakpointTreeElement.prototype.ondetach):
+        (WI.EventBreakpointTreeElement.prototype._updateStatus):
+
+        * UserInterface/Views/XHRBreakpointTreeElement.js:
+        (WI.XHRBreakpointTreeElement):
+        (WI.XHRBreakpointTreeElement.prototype.onattach):
+        (WI.XHRBreakpointTreeElement.prototype.ondetach):
+        (WI.XHRBreakpointTreeElement.prototype._updateStatus):
+
+2018-10-04  Dan Bernstein  <mitz@apple.com>
+
+        WebInspectorUI part of [Xcode] Update some build settings as recommended by Xcode 10
+        https://bugs.webkit.org/show_bug.cgi?id=190250
+
+        Reviewed by Andy Estes.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_COMMA, CLANG_WARN_INFINITE_RECURSION,
+          CLANG_WARN_SUSPICIOUS_MOVE, CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS, and
+          CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF.
+
+        * WebInspectorUI.xcodeproj/project.pbxproj: Let Xcode update LastUpgradeCheck.
+
+2018-10-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: merge ProbeManager into DebuggerManager
+        https://bugs.webkit.org/show_bug.cgi?id=190225
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Main.html:
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype.get probeSets): Added.
+        (WI.DebuggerManager.prototype.probeForIdentifier): Added.
+        (WI.DebuggerManager.prototype.addBreakpoint):
+        (WI.DebuggerManager.prototype.removeBreakpoint):
+        (WI.DebuggerManager.prototype.didSampleProbe): Added.
+        (WI.DebuggerManager.prototype._handleBreakpointActionsDidChange): Added.
+        (WI.DebuggerManager.prototype._addProbesForBreakpoint): Added.
+        (WI.DebuggerManager.prototype._removeProbesForBreakpoint): Added.
+        (WI.DebuggerManager.prototype._updateProbesForBreakpoint): Added.
+        (WI.DebuggerManager.prototype._probeSetForBreakpoint): Added.
+        * UserInterface/Controllers/ProbeManager.js: Removed.
+
+        * UserInterface/Protocol/DebuggerObserver.js:
+        (WI.DebuggerObserver.prototype.didSampleProbe):
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype._processRecord):
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WI.BreakpointTreeElement.prototype.onattach):
+
+        * UserInterface/Views/ProbeDetailsSidebarPanel.js:
+        (WI.ProbeDetailsSidebarPanel.prototype.closed):
+        (WI.ProbeDetailsSidebarPanel.prototype.initialLayout):
+
+        * UserInterface/Views/TextResourceContentView.js:
+        (WI.TextResourceContentView):
+        (WI.TextResourceContentView.prototype.get supplementalRepresentedObjects):
+        (WI.TextResourceContentView.prototype.closed):
+
+2018-10-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: some files not listed in OpenResourceDialog
+        https://bugs.webkit.org/show_bug.cgi?id=190272
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/ResourceQueryController.js:
+        (WI.ResourceQueryController.prototype._findQueryMatches):
+        Allow the `searchIndex` to go past the end of the `searchString` to allow for backtracking
+        if the last character of `searchString` is not found in `query`.
+
+2018-10-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r236783): Uncaught Exception: Can't find variable: sourceMapURL
+        https://bugs.webkit.org/show_bug.cgi?id=190276
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype._sourceMapLoadAndParseFailed):
+
 2018-10-02  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: merge SourceMapManager into NetworkManager

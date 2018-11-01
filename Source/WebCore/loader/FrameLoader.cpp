@@ -88,6 +88,7 @@
 #include "MemoryRelease.h"
 #include "NavigationDisabler.h"
 #include "NavigationScheduler.h"
+#include "Node.h"
 #include "Page.h"
 #include "PageCache.h"
 #include "PageTransitionEvent.h"
@@ -1321,7 +1322,8 @@ void FrameLoader::loadURL(FrameLoadRequest&& frameLoadRequest, const String& ref
 
     Ref<Frame> protect(m_frame);
 
-    String frameName = frameLoadRequest.frameName();
+    // Anchor target is ignored when the download attribute is set since it will download the hyperlink rather than follow it.
+    String effectiveFrameName = frameLoadRequest.downloadAttribute().isNull() ? frameLoadRequest.frameName() : String();
     AllowNavigationToInvalidURL allowNavigationToInvalidURL = frameLoadRequest.allowNavigationToInvalidURL();
     NewFrameOpenerPolicy openerPolicy = frameLoadRequest.newFrameOpenerPolicy();
     LockHistory lockHistory = frameLoadRequest.lockHistory();
@@ -1344,7 +1346,7 @@ void FrameLoader::loadURL(FrameLoadRequest&& frameLoadRequest, const String& ref
     ASSERT(newLoadType != FrameLoadType::Same);
 
     // The search for a target frame is done earlier in the case of form submission.
-    Frame* targetFrame = isFormSubmission ? nullptr : findFrameForNavigation(frameName);
+    Frame* targetFrame = isFormSubmission ? nullptr : findFrameForNavigation(effectiveFrameName);
     if (targetFrame && targetFrame != &m_frame) {
         frameLoadRequest.setFrameName("_self");
         targetFrame->loader().loadURL(WTFMove(frameLoadRequest), referrer, newLoadType, event, WTFMove(formState), completionHandlerCaller.release());
@@ -1359,9 +1361,9 @@ void FrameLoader::loadURL(FrameLoadRequest&& frameLoadRequest, const String& ref
         action.setOpenedViaWindowOpenWithOpener();
     action.setHasOpenedFrames(!m_openedFrames.isEmpty());
 
-    if (!targetFrame && !frameName.isEmpty()) {
+    if (!targetFrame && !effectiveFrameName.isEmpty()) {
         action = action.copyWithShouldOpenExternalURLsPolicy(shouldOpenExternalURLsPolicyToApply(m_frame, frameLoadRequest));
-        policyChecker().checkNewWindowPolicy(WTFMove(action), WTFMove(request), WTFMove(formState), frameName, [this, allowNavigationToInvalidURL, openerPolicy, completionHandler = completionHandlerCaller.release()] (const ResourceRequest& request, WeakPtr<FormState>&& formState, const String& frameName, const NavigationAction& action, ShouldContinue shouldContinue) mutable {
+        policyChecker().checkNewWindowPolicy(WTFMove(action), WTFMove(request), WTFMove(formState), effectiveFrameName, [this, allowNavigationToInvalidURL, openerPolicy, completionHandler = completionHandlerCaller.release()] (const ResourceRequest& request, WeakPtr<FormState>&& formState, const String& frameName, const NavigationAction& action, ShouldContinue shouldContinue) mutable {
             continueLoadAfterNewWindowPolicy(request, formState.get(), frameName, action, shouldContinue, allowNavigationToInvalidURL, openerPolicy);
             completionHandler();
         });
@@ -1644,7 +1646,7 @@ const ResourceRequest& FrameLoader::initialRequest() const
     return activeDocumentLoader()->originalRequest();
 }
 
-bool FrameLoader::willLoadMediaElementURL(URL& url)
+bool FrameLoader::willLoadMediaElementURL(URL& url, Node& initiatorNode)
 {
 #if PLATFORM(IOS)
     // MobileStore depends on the iOS 4.0 era client delegate method because webView:resource:willSendRequest:redirectResponse:fromDataSource
@@ -1654,6 +1656,7 @@ bool FrameLoader::willLoadMediaElementURL(URL& url)
 #endif
 
     ResourceRequest request(url);
+    request.setInspectorInitiatorNodeIdentifier(InspectorInstrumentation::identifierForNode(initiatorNode));
 
     unsigned long identifier;
     ResourceError error;
@@ -3394,7 +3397,7 @@ void FrameLoader::continueLoadAfterNewWindowPolicy(const ResourceRequest& reques
         mainFrame->document()->setReferrerPolicy(frame->document()->referrerPolicy());
     }
 
-    NavigationAction newAction { *frame->document(), request, InitiatedByMainFrame::Unknown, NavigationType::Other, action.shouldOpenExternalURLsPolicy() };
+    NavigationAction newAction { *frame->document(), request, InitiatedByMainFrame::Unknown, NavigationType::Other, action.shouldOpenExternalURLsPolicy(), nullptr, action.downloadAttribute() };
     mainFrame->loader().loadWithNavigationAction(request, WTFMove(newAction), LockHistory::No, FrameLoadType::Standard, formState, allowNavigationToInvalidURL);
 }
 

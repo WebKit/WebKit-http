@@ -366,9 +366,28 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 
 @end
 
-#if !TARGET_OS_IPHONE
+#if TARGET_OS_IPHONE
+
+@interface WKWebView () <UIResponderStandardEditActions>
+- (void)alignCenter:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)alignJustified:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)alignLeft:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)alignRight:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)indent:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)insertOrderedList:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)insertUnorderedList:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)outdent:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)toggleStrikeThrough:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)setFont:(UIFont *)font sender:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)setFontSize:(CGFloat)fontSize sender:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)setTextColor:(UIColor *)color sender:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
+@end
+
+#else
+
 @interface WKWebView (WKNSTextFinderClient) <NSTextFinderClient>
 @end
+
 #endif
 
 @interface WKWebView (WKTesting)
@@ -389,8 +408,6 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 @property (nonatomic, readonly) NSString *selectFormPopoverTitle WK_API_AVAILABLE(ios(12.0));
 @property (nonatomic, readonly) NSString *formInputLabel WK_API_AVAILABLE(ios(12.0));
 - (void)setTimePickerValueToHour:(NSInteger)hour minute:(NSInteger)minute WK_API_AVAILABLE(ios(12.0));
-
-- (void)_invokeShareSheetWithResolution:(BOOL)resolved WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 - (void)applyAutocorrection:(NSString *)newString toString:(NSString *)oldString withCompletionHandler:(void (^)(void))completionHandler WK_API_AVAILABLE(ios(11.0));
 
@@ -479,6 +496,8 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 - (BOOL)_beginBackSwipeForTesting;
 - (BOOL)_completeBackSwipeForTesting;
 - (void)_setDefersLoadingForTesting:(BOOL)defersLoading;
+
+- (void)_setShareSheetCompletesImmediatelyWithResolutionForTesting:(BOOL)resolved WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @property (nonatomic, readonly) _WKInspector *_inspector WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 @property (nonatomic, readonly) _WKFrameHandle *_mainFrame WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));

@@ -60,7 +60,6 @@ WI.loaded = function()
     this.timelineManager = new WI.TimelineManager;
     this.debuggerManager = new WI.DebuggerManager;
     this.layerTreeManager = new WI.LayerTreeManager;
-    this.probeManager = new WI.ProbeManager;
     this.workerManager = new WI.WorkerManager;
     this.domDebuggerManager = new WI.DOMDebuggerManager;
     this.canvasManager = new WI.CanvasManager;
@@ -101,6 +100,14 @@ WI.unlocalizedString = (string) => string;
 WI.UIString = (string) => string;
 
 WI.indentString = () => "    ";
+
+WI.LayoutDirection = {
+    System: "system",
+    LTR: "ltr",
+    RTL: "rtl",
+};
+
+WI.resolvedLayoutDirection = () => { return InspectorFrontendHost.userInterfaceLayoutDirection(); }
 
 // Add stubs that are called by the frontend API.
 WI.updateDockedState = () => {};

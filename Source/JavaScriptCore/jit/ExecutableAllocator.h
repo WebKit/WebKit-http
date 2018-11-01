@@ -61,25 +61,22 @@ typedef WTF::MetaAllocatorHandle ExecutableMemoryHandle;
 
 #if ENABLE(JIT)
 
-extern JS_EXPORT_PRIVATE void* taggedStartOfFixedExecutableMemoryPool;
-extern JS_EXPORT_PRIVATE void* taggedEndOfFixedExecutableMemoryPool;
+JS_EXPORT_PRIVATE void* startOfFixedExecutableMemoryPoolImpl();
+JS_EXPORT_PRIVATE void* endOfFixedExecutableMemoryPoolImpl();
 
 template<typename T = void*>
 T startOfFixedExecutableMemoryPool()
 {
-    return untagCodePtr<T, ExecutableMemoryPtrTag>(taggedStartOfFixedExecutableMemoryPool);
+    return bitwise_cast<T>(startOfFixedExecutableMemoryPoolImpl());
 }
 
 template<typename T = void*>
 T endOfFixedExecutableMemoryPool()
 {
-    return untagCodePtr<T, ExecutableMemoryPtrTag>(taggedEndOfFixedExecutableMemoryPool);
+    return bitwise_cast<T>(endOfFixedExecutableMemoryPoolImpl());
 }
 
-inline bool isJITPC(void* pc)
-{
-    return startOfFixedExecutableMemoryPool() <= pc && pc < endOfFixedExecutableMemoryPool();
-}
+JS_EXPORT_PRIVATE bool isJITPC(void* pc);
 
 #if !ENABLE(FAST_JIT_PERMISSIONS) || !CPU(ARM64E)
 
@@ -96,7 +93,7 @@ static inline void* performJITMemcpy(void *dst, const void *src, size_t n)
     RELEASE_ASSERT(roundUpToMultipleOf<instructionSize>(dst) == dst);
     RELEASE_ASSERT(roundUpToMultipleOf<instructionSize>(src) == src);
 #endif
-    if (dst >= startOfFixedExecutableMemoryPool() && dst < endOfFixedExecutableMemoryPool()) {
+    if (isJITPC(dst)) {
         RELEASE_ASSERT(reinterpret_cast<uint8_t*>(dst) + n <= endOfFixedExecutableMemoryPool());
 #if ENABLE(FAST_JIT_PERMISSIONS)
 #if !CPU(ARM64E)

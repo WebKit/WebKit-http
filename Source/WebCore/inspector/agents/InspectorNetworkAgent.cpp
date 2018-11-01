@@ -45,6 +45,7 @@
 #include "FrameLoader.h"
 #include "HTTPHeaderMap.h"
 #include "HTTPHeaderNames.h"
+#include "InspectorDOMAgent.h"
 #include "InspectorTimelineAgent.h"
 #include "InstrumentingAgents.h"
 #include "JSExecState.h"
@@ -196,11 +197,17 @@ static Ref<JSON::Object> buildObjectForHeaders(const HTTPHeaderMap& headers)
 
 Ref<Inspector::Protocol::Network::ResourceTiming> InspectorNetworkAgent::buildObjectForTiming(const NetworkLoadMetrics& timing, ResourceLoader& resourceLoader)
 {
-    MonotonicTime startTime = resourceLoader.loadTiming().startTime();
-    Seconds startTimeInInspector = m_environment.executionStopwatch()->elapsedTimeSince(startTime);
+    auto& loadTiming = resourceLoader.loadTiming();
+
+    auto elapsedTimeSince = [&] (const MonotonicTime& time) {
+        return m_environment.executionStopwatch()->elapsedTimeSince(time).seconds();
+    };
 
     return Inspector::Protocol::Network::ResourceTiming::create()
-        .setStartTime(startTimeInInspector.seconds())
+        .setStartTime(elapsedTimeSince(loadTiming.startTime()))
+        .setRedirectStart(elapsedTimeSince(loadTiming.redirectStart()))
+        .setRedirectEnd(elapsedTimeSince(loadTiming.redirectEnd()))
+        .setFetchStart(elapsedTimeSince(loadTiming.fetchStart()))
         .setDomainLookupStart(timing.domainLookupStart.milliseconds())
         .setDomainLookupEnd(timing.domainLookupEnd.milliseconds())
         .setConnectStart(timing.connectStart.milliseconds())
@@ -208,6 +215,7 @@ Ref<Inspector::Protocol::Network::ResourceTiming> InspectorNetworkAgent::buildOb
         .setSecureConnectionStart(timing.secureConnectionStart.milliseconds())
         .setRequestStart(timing.requestStart.milliseconds())
         .setResponseStart(timing.responseStart.milliseconds())
+        .setResponseEnd(timing.responseEnd.milliseconds())
         .release();
 }
 
@@ -386,7 +394,7 @@ void InspectorNetworkAgent::willSendRequest(unsigned long identifier, DocumentLo
     auto protocolResourceType = InspectorPageAgent::resourceTypeJSON(type);
 
     Document* document = loader && loader->frame() ? loader->frame()->document() : nullptr;
-    auto initiatorObject = buildInitiatorObject(document);
+    auto initiatorObject = buildInitiatorObject(document, request);
 
     String url = loader ? loader->url().string() : request.url();
     m_frontendDispatcher->requestWillBeSent(requestId, frameId, loaderId, url, buildObjectForResourceRequest(request), sendTimestamp, walltime.secondsSinceEpoch().seconds(), initiatorObject, buildObjectForResourceResponse(redirectResponse, nullptr), type != InspectorPageAgent::OtherResource ? &protocolResourceType : nullptr, targetId.isEmpty() ? nullptr : &targetId);
@@ -505,9 +513,9 @@ void InspectorNetworkAgent::didFinishLoading(unsigned long identifier, DocumentL
 
     double elapsedFinishTime;
     if (resourceLoader && networkLoadMetrics.isComplete()) {
-        MonotonicTime startTime = resourceLoader->loadTiming().startTime();
-        Seconds startTimeInInspector = m_environment.executionStopwatch()->elapsedTimeSince(startTime);
-        elapsedFinishTime = (startTimeInInspector + networkLoadMetrics.responseEnd).seconds();
+        MonotonicTime fetchStart = resourceLoader->loadTiming().fetchStart();
+        Seconds fetchStartInInspector = m_environment.executionStopwatch()->elapsedTimeSince(fetchStart);
+        elapsedFinishTime = (fetchStartInInspector + networkLoadMetrics.responseEnd).seconds();
     } else
         elapsedFinishTime = timestamp();
 
@@ -566,7 +574,7 @@ void InspectorNetworkAgent::didLoadResourceFromMemoryCache(DocumentLoader* loade
 
     m_resourcesData->resourceCreated(requestId, loaderId, resource);
 
-    RefPtr<Inspector::Protocol::Network::Initiator> initiatorObject = buildInitiatorObject(loader->frame() ? loader->frame()->document() : nullptr);
+    auto initiatorObject = buildInitiatorObject(loader->frame() ? loader->frame()->document() : nullptr, resource.resourceRequest());
 
     // FIXME: It would be ideal to generate the Network.Response with the MemoryCache source
     // instead of whatever ResourceResponse::Source the CachedResources's response has.
@@ -636,7 +644,7 @@ void InspectorNetworkAgent::didScheduleStyleRecalculation(Document& document)
         m_styleRecalculationInitiator = buildInitiatorObject(&document);
 }
 
-RefPtr<Inspector::Protocol::Network::Initiator> InspectorNetworkAgent::buildInitiatorObject(Document* document)
+RefPtr<Inspector::Protocol::Network::Initiator> InspectorNetworkAgent::buildInitiatorObject(Document* document, std::optional<const ResourceRequest&> resourceRequest)
 {
     // FIXME: Worker support.
     if (!isMainThread()) {
@@ -645,23 +653,37 @@ RefPtr<Inspector::Protocol::Network::Initiator> InspectorNetworkAgent::buildInit
             .release();
     }
 
+    RefPtr<Inspector::Protocol::Network::Initiator> initiatorObject;
+
     Ref<ScriptCallStack> stackTrace = createScriptCallStack(JSExecState::currentState());
     if (stackTrace->size() > 0) {
-        auto initiatorObject = Inspector::Protocol::Network::Initiator::create()
+        initiatorObject = Inspector::Protocol::Network::Initiator::create()
             .setType(Inspector::Protocol::Network::Initiator::Type::Script)
             .release();
         initiatorObject->setStackTrace(stackTrace->buildInspectorArray());
-        return WTFMove(initiatorObject);
-    }
-
-    if (document && document->scriptableDocumentParser()) {
-        auto initiatorObject = Inspector::Protocol::Network::Initiator::create()
+    } else if (document && document->scriptableDocumentParser()) {
+        initiatorObject = Inspector::Protocol::Network::Initiator::create()
             .setType(Inspector::Protocol::Network::Initiator::Type::Parser)
             .release();
         initiatorObject->setUrl(document->url().string());
         initiatorObject->setLineNumber(document->scriptableDocumentParser()->textPosition().m_line.oneBasedInt());
-        return WTFMove(initiatorObject);
     }
+
+    auto domAgent = m_instrumentingAgents.inspectorDOMAgent();
+    if (domAgent && resourceRequest) {
+        if (auto inspectorInitiatorNodeIdentifier = resourceRequest->inspectorInitiatorNodeIdentifier()) {
+            if (!initiatorObject) {
+                initiatorObject = Inspector::Protocol::Network::Initiator::create()
+                    .setType(Inspector::Protocol::Network::Initiator::Type::Other)
+                    .release();
+            }
+
+            initiatorObject->setNodeId(*inspectorInitiatorNodeIdentifier);
+        }
+    }
+
+    if (initiatorObject)
+        return initiatorObject;
 
     if (m_isRecalculatingStyle && m_styleRecalculationInitiator)
         return m_styleRecalculationInitiator;

@@ -81,21 +81,39 @@ TestPage.registerInitializer(() => {
             return;
         }
 
+        let stopped = false;
+        let swizzled = false;
+        let lastFrame = false;
+
+        InspectorTest.awaitEvent("LastFrame")
+        .then((event) => {
+            lastFrame = true;
+
+            if (!stopped)
+                CanvasAgent.stopRecording(canvas.identifier).catch(reject);
+            else {
+                InspectorTest.evaluateInPage(`cancelActions()`).catch(reject);
+
+                if (swizzled)
+                    resolve();
+            }
+        });
+
         let bufferUsed = 0;
         let frameCount = 0;
         function handleRecordingProgress(event) {
-            InspectorTest.assert(event.data.frameCount > frameCount, "Additional frames were captured for this progress event.");
-            frameCount = event.data.frameCount;
+            InspectorTest.assert(canvas.recordingFrameCount > frameCount, "Additional frames were captured for this progress event.");
+            frameCount = canvas.recordingFrameCount;
 
-            InspectorTest.assert(event.data.bufferUsed > bufferUsed, "Total memory usage increases with each progress event.");
-            bufferUsed = event.data.bufferUsed;
+            InspectorTest.assert(canvas.recordingBufferUsed > bufferUsed, "Total memory usage increases with each progress event.");
+            bufferUsed = canvas.recordingBufferUsed;
         }
-        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingProgress, handleRecordingProgress);
+        canvas.addEventListener(WI.Canvas.Event.RecordingProgress, handleRecordingProgress);
 
-        WI.canvasManager.awaitEvent(WI.CanvasManager.Event.RecordingStopped).then((event) => {
-            WI.canvasManager.removeEventListener(WI.CanvasManager.Event.RecordingProgress, handleRecordingProgress);
+        canvas.awaitEvent(WI.Canvas.Event.RecordingStopped).then((event) => {
+            stopped = true;
 
-            InspectorTest.evaluateInPage(`cancelActions()`);
+            canvas.removeEventListener(WI.Canvas.Event.RecordingProgress, handleRecordingProgress);
 
             let recording = event.data.recording;
             InspectorTest.assert(recording.source === canvas, "Recording should be of the given canvas.");
@@ -103,26 +121,39 @@ TestPage.registerInitializer(() => {
             InspectorTest.assert(recording.source.recordingCollection.has(recording), "Recording should be in the canvas' list of recordings.");
             InspectorTest.assert(recording.frames.length === frameCount, `Recording should have ${frameCount} frames.`)
 
-            return Promise.all(recording.actions.map((action) => action.swizzle(recording))).then(() => {
+            Promise.all(recording.actions.map((action) => action.swizzle(recording))).then(() => {
+                swizzled = true;
+
                 logRecording(recording, type);
+
+                if (lastFrame) {
+                    InspectorTest.evaluateInPage(`cancelActions()`)
+                    .then(resolve, reject);
+                }
             });
-        }).then(resolve, reject);
-
-        CanvasAgent.startRecording(canvas.identifier, singleFrame, memoryLimit, (error) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            InspectorTest.evaluateInPage(`performActions()`);
         });
 
-        return canvas;
+        canvas.awaitEvent(WI.Canvas.Event.RecordingStarted).then((event) => {
+            InspectorTest.evaluateInPage(`performActions()`).catch(reject);
+        });
+
+        CanvasAgent.startRecording(canvas.identifier, singleFrame, memoryLimit).catch(reject);
     };
 
-    window.consoleRecord = function(resolve, reject) {
-        WI.canvasManager.awaitEvent(WI.CanvasManager.Event.RecordingStopped).then((event) => {
+    window.consoleRecord = function(type, resolve, reject) {
+        let canvas = getCanvas(type);
+        if (!canvas) {
+            reject(`Missing canvas with type "${type}".`);
+            return;
+        }
+
+        canvas.awaitEvent(WI.Canvas.Event.RecordingStopped).then((event) => {
             let recording = event.data.recording;
+
+            InspectorTest.assert(recording.source === canvas, "Recording should be of the given canvas.");
+            InspectorTest.assert(recording.source.contextType === type, `Recording should be of a canvas with type "${type}".`);
+            InspectorTest.assert(recording.source.recordingCollection.has(recording), "Recording should be in the canvas' list of recordings.");
+
             InspectorTest.expectEqual(recording.displayName, "TEST", "The recording should have the name \"TEST\".");
             InspectorTest.expectEqual(recording.frames.length, 1, "The recording should have one frame.");
             InspectorTest.expectEqual(recording.frames[0].actions.length, 1, "The first frame should have one action.");

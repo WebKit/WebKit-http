@@ -888,6 +888,7 @@ static NSString * const WebMarkedTextUpdatedNotification = @"WebMarkedTextUpdate
 - (void)_updateSelectionForInputManager;
 #endif
 #if PLATFORM(IOS)
+- (void)setMarkedText:(id)string selectedRange:(NSRange)newSelRange;
 - (void)doCommandBySelector:(SEL)selector;
 #endif
 @end
@@ -2900,9 +2901,10 @@ WEBCORE_COMMAND(toggleUnderline)
             return NO;
         }
     }
-
     if (action == @selector(changeSpelling:)
+IGNORE_WARNINGS_BEGIN("undeclared-selector")
             || action == @selector(_changeSpellingFromMenu:)
+IGNORE_WARNINGS_END
             || action == @selector(checkSpelling:)
             || action == @selector(complete:)
             || action == @selector(pasteFont:))
@@ -2978,8 +2980,10 @@ WEBCORE_COMMAND(toggleUnderline)
     if (action == @selector(changeDocumentBackgroundColor:))
         return [[self _webView] isEditable] && [self _canEditRichly];
 
+IGNORE_WARNINGS_BEGIN("undeclared-selector")
     if (action == @selector(_ignoreSpellingFromMenu:)
             || action == @selector(_learnSpellingFromMenu:)
+IGNORE_WARNINGS_END
             || action == @selector(takeFindStringFromSelection:))
         return [self _hasSelection];
 
@@ -4251,6 +4255,7 @@ static BOOL currentScrollIsBlit(NSView *clipView)
 #endif
 
 #if ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)dragImage:(NSImage *)dragImage
                at:(NSPoint)at
            offset:(NSSize)offset
@@ -4258,6 +4263,7 @@ static BOOL currentScrollIsBlit(NSView *clipView)
        pasteboard:(NSPasteboard *)pasteboard
            source:(id)source
         slideBack:(BOOL)slideBack
+IGNORE_WARNINGS_END
 {
     ASSERT(self == [self _topHTMLView]);
     [pasteboard setString:@"" forType:[WebHTMLView _dummyPasteboardType]];
@@ -4290,7 +4296,9 @@ static BOOL currentScrollIsBlit(NSView *clipView)
     [self release];
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (NSDragOperation)draggingSourceOperationMaskForLocal:(BOOL)isLocal
+IGNORE_WARNINGS_END
 {
     ASSERT(![self _webView] || [self _isTopHTMLView]);
     
@@ -4301,7 +4309,9 @@ static BOOL currentScrollIsBlit(NSView *clipView)
     return (NSDragOperation)page->dragController().sourceDragOperation();
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)draggedImage:(NSImage *)anImage endedAt:(NSPoint)aPoint operation:(NSDragOperation)operation
+IGNORE_WARNINGS_END
 {
     ASSERT(![self _webView] || [self _isTopHTMLView]);
     
@@ -4338,7 +4348,9 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
         && [filename _webkit_hasCaseInsensitiveSuffix:@".jpg"]);
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (NSArray *)namesOfPromisedFilesDroppedAtDestination:(NSURL *)dropDestination
+IGNORE_WARNINGS_END
 {
     NSFileWrapper *wrapper = nil;
     NSURL *draggingElementURL = nil;
@@ -4996,7 +5008,9 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     [super flagsChanged:event];
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (id)accessibilityAttributeValue:(NSString*)attributeName
+IGNORE_WARNINGS_END
 {
     if ([attributeName isEqualToString: NSAccessibilityChildrenAttribute]) {
         id accTree = [[self _frame] accessibilityRoot];
@@ -5668,6 +5682,15 @@ static BOOL writingDirectionKeyBindingsEnabled()
 
 #endif
 
+#if PLATFORM(IOS)
+- (void)markedTextUpdate:(NSNotification *)notification
+{
+    NSString *text = [notification object];
+    NSRange range = NSMakeRange(0, [text length]);
+    [self setMarkedText:text selectedRange:range];
+}
+#endif
+
 @end
 
 @implementation WebHTMLView (WebInternal)
@@ -6242,7 +6265,9 @@ static BOOL writingDirectionKeyBindingsEnabled()
 
 #if PLATFORM(MAC)
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (NSArray *)validAttributesForMarkedText
+IGNORE_WARNINGS_END
 {
     static NSArray *validAttributes = [[NSArray alloc] initWithObjects:
         NSUnderlineStyleAttributeName,
@@ -6283,7 +6308,9 @@ static BOOL writingDirectionKeyBindingsEnabled()
 
 #endif // PLATFORM(MAC)
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (NSUInteger)characterIndexForPoint:(NSPoint)thePoint
+IGNORE_WARNINGS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6307,7 +6334,9 @@ static BOOL writingDirectionKeyBindingsEnabled()
     return result;
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (NSRect)firstRectForCharacterRange:(NSRange)theRange
+IGNORE_WARNINGS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6339,7 +6368,9 @@ static BOOL writingDirectionKeyBindingsEnabled()
     return resultRect;
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (NSRange)selectedRange
+IGNORE_WARNINGS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6353,7 +6384,9 @@ static BOOL writingDirectionKeyBindingsEnabled()
     return result;
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (NSRange)markedRange
+IGNORE_WARNINGS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6369,7 +6402,9 @@ static BOOL writingDirectionKeyBindingsEnabled()
 
 #if PLATFORM(MAC)
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (NSAttributedString *)attributedSubstringFromRange:(NSRange)nsRange
+IGNORE_WARNINGS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6401,7 +6436,9 @@ static BOOL writingDirectionKeyBindingsEnabled()
 
 #endif
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (NSInteger)conversationIdentifier
+IGNORE_WARNINGS_END
 {
     return (NSInteger)self;
 }
@@ -6421,7 +6458,9 @@ static BOOL writingDirectionKeyBindingsEnabled()
     return result;
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)unmarkText
+IGNORE_WARNINGS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6466,7 +6505,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
 #endif
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)setMarkedText:(id)string selectedRange:(NSRange)newSelRange
+IGNORE_WARNINGS_END
 {
     [self _executeSavedKeypressCommands];
 
@@ -6522,16 +6563,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     coreFrame->editor().setComposition(text, underlines, newSelRange.location, NSMaxRange(newSelRange));
 }
 
-#if PLATFORM(IOS)
-- (void)markedTextUpdate:(NSNotification *)notification
-{
-    NSString *text = [notification object];
-    NSRange range = NSMakeRange(0, [text length]);
-    [self setMarkedText:text selectedRange:range];
-}
-#endif
-
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)doCommandBySelector:(SEL)selector
+IGNORE_WARNINGS_END
 {
     LOG(TextInput, "doCommandBySelector:\"%s\"", sel_getName(selector));
 
@@ -6589,7 +6623,9 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     }
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)insertText:(id)string
+IGNORE_WARNINGS_END
 {
 #if PLATFORM(MAC)
     BOOL isAttributedString = [string isKindOfClass:[NSAttributedString class]];

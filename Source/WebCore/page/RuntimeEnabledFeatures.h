@@ -181,6 +181,8 @@ public:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+    bool mediaRecorderEnabled() const { return m_isMediaRecorderEnabled; }
+    void setMediaRecorderEnabled(bool isEnabled) { m_isMediaRecorderEnabled = isEnabled; }
     bool mediaDevicesEnabled() const { return m_isMediaDevicesEnabled; }
     void setMediaDevicesEnabled(bool isEnabled) { m_isMediaDevicesEnabled = isEnabled; }
     bool mediaStreamEnabled() const { return m_isMediaStreamEnabled; }
@@ -190,6 +192,8 @@ public:
 #endif
 
 #if ENABLE(WEB_RTC)
+    bool webRTCVP8CodecEnabled() const { return m_isWebRTCVP8CodecEnabled; }
+    void setWebRTCVP8CodecEnabled(bool isEnabled) { m_isWebRTCVP8CodecEnabled = isEnabled; }
     bool webRTCUnifiedPlanEnabled() const { return m_isWebRTCUnifiedPlanEnabled; }
     void setWebRTCUnifiedPlanEnabled(bool isEnabled) { m_isWebRTCUnifiedPlanEnabled = isEnabled; }
     bool peerConnectionEnabled() const { return m_isPeerConnectionEnabled; }
@@ -201,6 +205,11 @@ public:
 #if ENABLE(LEGACY_CSS_VENDOR_PREFIXES)
     void setLegacyCSSVendorPrefixesEnabled(bool isEnabled) { m_isLegacyCSSVendorPrefixesEnabled = isEnabled; }
     bool legacyCSSVendorPrefixesEnabled() const { return m_isLegacyCSSVendorPrefixesEnabled; }
+#endif
+
+#if ENABLE(INPUT_TYPE_COLOR)
+    bool inputTypeColorEnabled() const { return m_isInputTypeColorEnabled; }
+    void setInputTypeColorEnabled(bool isEnabled) { m_isInputTypeColorEnabled = isEnabled; }
 #endif
 
 #if ENABLE(INPUT_TYPE_DATE)
@@ -243,9 +252,9 @@ public:
     bool webGL2Enabled() const { return m_isWebGL2Enabled; }
 #endif
 
-#if ENABLE(WEBGPU)
-    void setWebGPUEnabled(bool isEnabled) { m_isWebGPUEnabled = isEnabled; }
-    bool webGPUEnabled() const { return m_isWebGPUEnabled; }
+#if ENABLE(WEBMETAL)
+    void setWebMetalEnabled(bool isEnabled) { m_isWebMetalEnabled = isEnabled; }
+    bool webMetalEnabled() const { return m_isWebMetalEnabled; }
 #endif
 
 #if ENABLE(STREAMS_API)
@@ -342,12 +351,14 @@ private:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+    bool m_isMediaRecorderEnabled { false };
     bool m_isMediaDevicesEnabled { false };
     bool m_isMediaStreamEnabled { true };
     bool m_isScreenCaptureEnabled { false };
 #endif
 
 #if ENABLE(WEB_RTC)
+    bool m_isWebRTCVP8CodecEnabled { false };
     bool m_isWebRTCUnifiedPlanEnabled { true };
     bool m_isPeerConnectionEnabled { true };
     bool m_mdnsICECandidatesEnabled { false };
@@ -355,6 +366,10 @@ private:
 
 #if ENABLE(LEGACY_CSS_VENDOR_PREFIXES)
     bool m_isLegacyCSSVendorPrefixesEnabled { false };
+#endif
+
+#if ENABLE(INPUT_TYPE_COLOR)
+    bool m_isInputTypeColorEnabled { true };
 #endif
 
 #if ENABLE(INPUT_TYPE_DATE)
@@ -394,8 +409,8 @@ private:
     bool m_isWebGL2Enabled { false };
 #endif
 
-#if ENABLE(WEBGPU)
-    bool m_isWebGPUEnabled { false };
+#if ENABLE(WEBMETAL)
+    bool m_isWebMetalEnabled { false };
 #endif
 
 #if ENABLE(DOWNLOAD_ATTRIBUTE)

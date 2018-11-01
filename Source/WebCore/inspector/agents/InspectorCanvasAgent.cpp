@@ -56,8 +56,8 @@
 #include "JSWebGL2RenderingContext.h"
 #endif
 
-#if ENABLE(WEBGPU)
-#include "JSWebGPURenderingContext.h"
+#if ENABLE(WEBMETAL)
+#include "JSWebMetalRenderingContext.h"
 #endif
 
 
@@ -99,7 +99,7 @@ void InspectorCanvasAgent::enable(ErrorString&)
 
     const bool captureBacktrace = false;
     for (auto& inspectorCanvas : m_identifierToInspectorCanvas.values()) {
-        m_frontendDispatcher->canvasAdded(inspectorCanvas->buildObjectForCanvas(m_instrumentingAgents, captureBacktrace));
+        m_frontendDispatcher->canvasAdded(inspectorCanvas->buildObjectForCanvas(captureBacktrace));
 
 #if ENABLE(WEBGL)
         if (is<WebGLRenderingContextBase>(inspectorCanvas->context())) {
@@ -199,7 +199,7 @@ void InspectorCanvasAgent::requestContent(ErrorString& errorString, const String
 #endif
     }
 
-    // FIXME: <https://webkit.org/b/173621> Web Inspector: Support getting the content of WebGPU context;
+    // FIXME: <https://webkit.org/b/173621> Web Inspector: Support getting the content of WebMetal context;
     errorString = "Unsupported canvas context type"_s;
 }
 
@@ -230,9 +230,9 @@ static JSC::JSValue contextAsScriptValue(JSC::ExecState& state, CanvasRenderingC
     if (is<WebGL2RenderingContext>(context))
         return toJS(&state, deprecatedGlobalObjectForPrototype(&state), downcast<WebGL2RenderingContext>(context));
 #endif
-#if ENABLE(WEBGPU)
-    if (is<WebGPURenderingContext>(context))
-        return toJS(&state, deprecatedGlobalObjectForPrototype(&state), downcast<WebGPURenderingContext>(context));
+#if ENABLE(WEBMETAL)
+    if (is<WebMetalRenderingContext>(context))
+        return toJS(&state, deprecatedGlobalObjectForPrototype(&state), downcast<WebMetalRenderingContext>(context));
 #endif
     if (is<ImageBitmapRenderingContext>(context))
         return toJS(&state, deprecatedGlobalObjectForPrototype(&state), downcast<ImageBitmapRenderingContext>(context));
@@ -279,6 +279,8 @@ void InspectorCanvasAgent::startRecording(ErrorString& errorString, const String
         inspectorCanvas->setBufferLimit(*memoryLimit);
 
     inspectorCanvas->context().setCallTracingActive(true);
+
+    m_frontendDispatcher->recordingStarted(inspectorCanvas->identifier(), Inspector::Protocol::Recording::Initiator::Frontend);
 }
 
 void InspectorCanvasAgent::stopRecording(ErrorString& errorString, const String& canvasId)
@@ -431,7 +433,7 @@ void InspectorCanvasAgent::didCreateCanvasRenderingContext(CanvasRenderingContex
 
     if (m_enabled) {
         const bool captureBacktrace = true;
-        m_frontendDispatcher->canvasAdded(inspectorCanvas->buildObjectForCanvas(m_instrumentingAgents, captureBacktrace));
+        m_frontendDispatcher->canvasAdded(inspectorCanvas->buildObjectForCanvas(captureBacktrace));
     }
 
     m_identifierToInspectorCanvas.set(inspectorCanvas->identifier(), WTFMove(inspectorCanvas));
@@ -577,6 +579,8 @@ void InspectorCanvasAgent::consoleStartRecordingCanvas(CanvasRenderingContext& c
     }
 
     inspectorCanvas->context().setCallTracingActive(true);
+
+    m_frontendDispatcher->recordingStarted(inspectorCanvas->identifier(), Inspector::Protocol::Recording::Initiator::Console);
 }
 
 #if ENABLE(WEBGL)

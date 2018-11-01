@@ -27,6 +27,7 @@
 #include "FontCache.h"
 
 #include "Font.h"
+#include "SystemFontDatabaseCoreText.h"
 #include <pal/spi/cocoa/CoreTextSPI.h>
 
 #include <CoreText/SFNTLayoutTypes.h>
@@ -886,6 +887,8 @@ public:
 
     const InstalledFontFamily& collectionForFamily(const String& familyName)
     {
+        std::lock_guard<Lock> locker(m_descriptorMapLock);
+
         auto folded = familyName.foldCase();
         return m_familyNameToFontDescriptors.ensure(folded, [&] {
             auto familyNameString = folded.createCFString();
@@ -910,6 +913,8 @@ public:
 
     const InstalledFont& fontForPostScriptName(const AtomicString& postScriptName)
     {
+        std::lock_guard<Lock> locker(m_descriptorMapLock);
+
         const auto& folded = FontCascadeDescription::foldedFamilyName(postScriptName);
         return m_postScriptNameToFontDescriptors.ensure(folded, [&] {
             auto postScriptNameString = folded.createCFString();
@@ -931,6 +936,8 @@ public:
 
     void clear()
     {
+        std::lock_guard<Lock> locker(m_descriptorMapLock);
+
         m_familyNameToFontDescriptors.clear();
         m_postScriptNameToFontDescriptors.clear();
     }
@@ -943,6 +950,7 @@ private:
     {
     }
 
+    Lock m_descriptorMapLock;
     HashMap<String, InstalledFontFamily> m_familyNameToFontDescriptors;
     HashMap<String, InstalledFont> m_postScriptNameToFontDescriptors;
     AllowUserInstalledFonts m_allowUserInstalledFonts;
@@ -1186,7 +1194,9 @@ static void invalidateFontCache()
         return;
     }
 
-    FontDescription::invalidateCaches();
+#if USE_PLATFORM_SYSTEM_FALLBACK_LIST
+    SystemFontDatabaseCoreText::singleton().clear();
+#endif
 
     FontDatabase::singletonAllowingUserInstalledFonts().clear();
     FontDatabase::singletonDisallowingUserInstalledFonts().clear();
@@ -1260,6 +1270,9 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
 
     if (!font)
         return nullptr;
+
+    if (fontDescription.shouldAllowUserInstalledFonts() == AllowUserInstalledFonts::No)
+        m_seenFamiliesForPrewarming.add(FontCascadeDescription::foldedFamilyName(family));
 
     bool syntheticBold, syntheticOblique;
     std::tie(syntheticBold, syntheticOblique) = computeNecessarySynthesis(font.get(), fontDescription).boldObliquePair();
@@ -1497,6 +1510,31 @@ Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescripti
     std::tie(syntheticBold, syntheticOblique) = computeNecessarySynthesis(font.get(), fontDescription).boldObliquePair();
     FontPlatformData platformData(font.get(), fontDescription.computedPixelSize(), syntheticBold, syntheticOblique, fontDescription.orientation(), fontDescription.widthVariant(), fontDescription.textRenderingMode());
     return fontForPlatformData(platformData);
+}
+
+FontPrewarmInformation FontCache::collectPrewarmInformation() const
+{
+    FontPrewarmInformation fontPrewarmInformation;
+    fontPrewarmInformation = copyToVector(m_seenFamiliesForPrewarming);
+    return fontPrewarmInformation;
+}
+
+void FontCache::prewarm(const FontPrewarmInformation& fontPrewarmInformation)
+{
+    auto& families = fontPrewarmInformation;
+
+    if (families.isEmpty())
+        return;
+
+    if (!m_prewarmQueue)
+        m_prewarmQueue = WorkQueue::create("WebKit font prewarm queue");
+
+    auto& database = FontDatabase::singletonDisallowingUserInstalledFonts();
+
+    m_prewarmQueue->dispatch([&database, families = families.isolatedCopy()] {
+        for (auto& family : families)
+            database.collectionForFamily(family);
+    });
 }
 
 }

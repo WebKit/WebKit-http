@@ -78,11 +78,8 @@ void UIScriptController::doAfterVisibleContentRectUpdate(JSValueRef callback)
 void UIScriptController::replaceTextAtRange(JSStringRef text, int location, int length)
 {
 #if WK_API_ENABLED
-    if (location == -1)
-        location = NSNotFound;
-
     auto* webView = TestController::singleton().mainWebView()->platformView();
-    [webView _insertText:nsString(text) replacementRange:NSMakeRange(location, length)];
+    [webView _insertText:nsString(text) replacementRange:NSMakeRange(location == -1 ? NSNotFound : location, length)];
 #else
     UNUSED_PARAM(text);
     UNUSED_PARAM(location);
@@ -271,6 +268,16 @@ bool UIScriptController::isWindowContentViewFirstResponder() const
 {
     NSWindow *window = [TestController::singleton().mainWebView()->platformView() window];
     return [window firstResponder] == [window contentView];
+}
+
+void UIScriptController::setShareSheetCompletesImmediatelyWithResolution(bool resolved)
+{
+#if WK_API_ENABLED
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    [webView _setShareSheetCompletesImmediatelyWithResolutionForTesting:resolved];
+#else
+    UNUSED_PARAM(resolved);
+#endif
 }
 
 } // namespace WTR

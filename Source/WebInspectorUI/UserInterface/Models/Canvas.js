@@ -48,6 +48,10 @@ WI.Canvas = class Canvas extends WI.Object
         this._nextShaderProgramDisplayNumber = 1;
 
         this._requestNodePromise = null;
+
+        this._recordingState = WI.Canvas.RecordingState.Inactive;
+        this._recordingFrames = [];
+        this._recordingBufferUsed = 0;
     }
 
     // Static
@@ -70,6 +74,8 @@ WI.Canvas = class Canvas extends WI.Object
             break;
         case CanvasAgent.ContextType.WebGPU:
             contextType = WI.Canvas.ContextType.WebGPU;
+        case CanvasAgent.ContextType.WebMetal:
+            contextType = WI.Canvas.ContextType.WebMetal;
             break;
         default:
             console.error("Invalid canvas context type", payload.contextType);
@@ -97,6 +103,8 @@ WI.Canvas = class Canvas extends WI.Object
             return WI.unlocalizedString("WebGL2");
         case WI.Canvas.ContextType.WebGPU:
             return WI.unlocalizedString("WebGPU");
+        case WI.Canvas.ContextType.WebMetal:
+            return WI.unlocalizedString("WebMetal");
         default:
             console.error("Invalid canvas context type", contextType);
         }
@@ -117,10 +125,12 @@ WI.Canvas = class Canvas extends WI.Object
     get backtrace() { return this._backtrace; }
     get shaderProgramCollection() { return this._shaderProgramCollection; }
     get recordingCollection() { return this._recordingCollection; }
+    get recordingFrameCount() { return this._recordingFrames.length; }
+    get recordingBufferUsed() { return this._recordingBufferUsed; }
 
-    get isRecording()
+    get recordingActive()
     {
-        return WI.canvasManager.recordingCanvas === this;
+        return this._recordingState !== WI.Canvas.RecordingState.Inactive;
     }
 
     get memoryCost()
@@ -257,6 +267,35 @@ WI.Canvas = class Canvas extends WI.Object
         });
     }
 
+    startRecording(singleFrame)
+    {
+        CanvasAgent.startRecording(this._identifier, singleFrame, (error) => {
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            this._recordingState = WI.Canvas.RecordingState.ActiveFrontend;
+
+            // COMPATIBILITY (iOS 12.1): Canvas.event.recordingStarted did not exist yet
+            if (CanvasAgent.hasEvent("recordingStarted"))
+                return;
+
+            this._recordingFrames = [];
+            this._recordingBufferUsed = 0;
+
+            this.dispatchEventToListeners(WI.Canvas.Event.RecordingStarted);
+        });
+    }
+
+    stopRecording()
+    {
+        CanvasAgent.stopRecording(this._identifier, (error) => {
+            if (error)
+                console.error(error);
+        });
+    }
+
     saveIdentityToCookie(cookie)
     {
         if (this._cssCanvasName)
@@ -287,6 +326,59 @@ WI.Canvas = class Canvas extends WI.Object
         this.dispatchEventToListeners(WI.Canvas.Event.CSSCanvasClientNodesChanged);
     }
 
+    recordingStarted(initiator)
+    {
+        // Called from WI.CanvasManager.
+
+        if (initiator === WI.Recording.Initiator.Console)
+            this._recordingState = WI.Canvas.RecordingState.ActiveConsole;
+        else {
+            console.assert(initiator === WI.Recording.Initiator.Frontend);
+            this._recordingState = WI.Canvas.RecordingState.ActiveFrontend;
+        }
+
+        this._recordingFrames = [];
+        this._recordingBufferUsed = 0;
+
+        this.dispatchEventToListeners(WI.Canvas.Event.RecordingStarted);
+    }
+
+    recordingProgress(framesPayload, bufferUsed)
+    {
+        // Called from WI.CanvasManager.
+
+        this._recordingFrames.push(...framesPayload.map(WI.RecordingFrame.fromPayload));
+
+        this._recordingBufferUsed = bufferUsed;
+
+        this.dispatchEventToListeners(WI.Canvas.Event.RecordingProgress);
+    }
+
+    recordingFinished(recordingPayload)
+    {
+        // Called from WI.CanvasManager.
+
+        let fromConsole = this._recordingState === WI.Canvas.RecordingState.ActiveConsole;
+
+        // COMPATIBILITY (iOS 12.1): Canvas.event.recordingStarted did not exist yet
+        if (!fromConsole && !CanvasAgent.hasEvent("recordingStarted"))
+            fromConsole = !this.recordingActive;
+
+        let recording = recordingPayload ? WI.Recording.fromPayload(recordingPayload, this._recordingFrames) : null;
+        if (recording) {
+            recording.source = this;
+            recording.createDisplayName(recordingPayload.name);
+
+            this._recordingCollection.add(recording);
+        }
+
+        this._recordingState = WI.Canvas.RecordingState.Inactive;
+        this._recordingFrames = [];
+        this._recordingBufferUsed = 0;
+
+        this.dispatchEventToListeners(WI.Canvas.Event.RecordingStopped, {recording, fromConsole});
+    }
+
     nextShaderProgramDisplayNumber()
     {
         // Called from WI.ShaderProgram.
@@ -306,10 +398,20 @@ WI.Canvas.ContextType = {
     WebGL: "webgl",
     WebGL2: "webgl2",
     WebGPU: "webgpu",
+    WebMetal: "webmetal",
+};
+
+WI.Canvas.RecordingState = {
+    Inactive: "canvas-recording-state-inactive",
+    ActiveFrontend: "canvas-recording-state-active-frontend",
+    ActiveConsole: "canvas-recording-state-active-console",
 };
 
 WI.Canvas.Event = {
     MemoryChanged: "canvas-memory-changed",
     ExtensionEnabled: "canvas-extension-enabled",
     CSSCanvasClientNodesChanged: "canvas-css-canvas-client-nodes-changed",
+    RecordingStarted: "canvas-recording-started",
+    RecordingProgress: "canvas-recording-progress",
+    RecordingStopped: "canvas-recording-stopped",
 };

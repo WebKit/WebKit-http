@@ -272,8 +272,8 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 - (BOOL)forceLowPowerGPUForWebGL;
 - (void)setForceWebGLUsesLowPower:(BOOL)forceLowPower;
 
-- (BOOL)webGPUEnabled;
-- (void)setWebGPUEnabled:(BOOL)enabled;
+- (BOOL)webMetalEnabled;
+- (void)setWebMetalEnabled:(BOOL)enabled;
 
 - (BOOL)accelerated2dCanvasEnabled;
 - (void)setAccelerated2dCanvasEnabled:(BOOL)enabled;
@@ -611,6 +611,7 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 @property (nonatomic) BOOL accessibilityObjectModelEnabled;
 @property (nonatomic) BOOL ariaReflectionEnabled;
 @property (nonatomic) BOOL mediaCapabilitiesEnabled;
+@property (nonatomic) BOOL mediaRecorderEnabled;
 @property (nonatomic) BOOL allowCrossOriginSubresourcesToAskForCredentials;
 @property (nonatomic) BOOL sourceBufferChangeTypeEnabled;
 

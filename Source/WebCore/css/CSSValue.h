@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "CSSPropertyNames.h"
 #include "URLHash.h"
 #include <wtf/Function.h>
 #include <wtf/HashMap.h>
@@ -101,7 +102,6 @@ public:
     bool isShadowValue() const { return m_classType == ShadowClass; }
     bool isCubicBezierTimingFunctionValue() const { return m_classType == CubicBezierTimingFunctionClass; }
     bool isStepsTimingFunctionValue() const { return m_classType == StepsTimingFunctionClass; }
-    bool isFramesTimingFunctionValue() const { return m_classType == FramesTimingFunctionClass; }
     bool isSpringTimingFunctionValue() const { return m_classType == SpringTimingFunctionClass; }
     bool isLineBoxContainValue() const { return m_classType == LineBoxContainClass; }
     bool isCalcValue() const {return m_classType == CalculationClass; }
@@ -121,6 +121,11 @@ public:
     Ref<DeprecatedCSSOMValue> createDeprecatedCSSOMWrapper(CSSStyleDeclaration&) const;
 
     bool traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const;
+
+    // What properties does this value rely on (eg, font-size for em units)
+    void collectDirectComputationalDependencies(HashSet<CSSPropertyID>&) const;
+    // What properties in the root element does this value rely on (eg. font-size for rem units)
+    void collectDirectRootComputationalDependencies(HashSet<CSSPropertyID>&) const;
 
     bool equals(const CSSValue&) const;
     bool operator==(const CSSValue& other) const { return equals(other); }
@@ -147,7 +152,6 @@ protected:
         // Timing function classes.
         CubicBezierTimingFunctionClass,
         StepsTimingFunctionClass,
-        FramesTimingFunctionClass,
         SpringTimingFunctionClass,
 
         // Other class types.

@@ -73,6 +73,7 @@
 #include "PlatformMediaSessionManager.h"
 #include "ProgressTracker.h"
 #include "PublicSuffix.h"
+#include "Quirks.h"
 #include "RenderLayerCompositor.h"
 #include "RenderTheme.h"
 #include "RenderVideo.h"
@@ -88,6 +89,7 @@
 #include "TimeRanges.h"
 #include "UserContentController.h"
 #include "UserGestureIndicator.h"
+#include "VideoPlaybackQuality.h"
 #include <JavaScriptCore/Uint8Array.h>
 #include <limits>
 #include <pal/SessionID.h>
@@ -133,7 +135,6 @@
 #if ENABLE(MEDIA_SOURCE)
 #include "DOMWindow.h"
 #include "MediaSource.h"
-#include "VideoPlaybackQuality.h"
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -1591,7 +1592,7 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
     }
 
     URL url = initialURL;
-    if (!url.isEmpty() && !frame->loader().willLoadMediaElementURL(url)) {
+    if (!url.isEmpty() && !frame->loader().willLoadMediaElementURL(url, *this)) {
         mediaLoadingFailed(MediaPlayer::FormatError);
         return;
     }
@@ -2627,7 +2628,7 @@ bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array* initData)
 #if ENABLE(ENCRYPTED_MEDIA)
         // Only fire an error if ENCRYPTED_MEDIA is not enabled, to give clients of the 
         // "encrypted" event a chance to handle it without resulting in a synthetic error.
-        && !RuntimeEnabledFeatures::sharedFeatures().encryptedMediaAPIEnabled()
+        && (!RuntimeEnabledFeatures::sharedFeatures().encryptedMediaAPIEnabled() || document().quirks().hasBrokenEncryptedMediaAPISupportQuirk())
 #endif
         ) {
         m_error = MediaError::create(MediaError::MEDIA_ERR_ENCRYPTED);
@@ -2763,7 +2764,7 @@ void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys, Ref<DeferredPromise>&&
 
 void HTMLMediaElement::mediaPlayerInitializationDataEncountered(const String& initDataType, RefPtr<ArrayBuffer>&& initData)
 {
-    if (!RuntimeEnabledFeatures::sharedFeatures().encryptedMediaAPIEnabled())
+    if (!RuntimeEnabledFeatures::sharedFeatures().encryptedMediaAPIEnabled() || document().quirks().hasBrokenEncryptedMediaAPISupportQuirk())
         return;
 
     // https://w3c.github.io/encrypted-media/#initdata-encountered
@@ -7148,7 +7149,6 @@ void HTMLMediaElement::updateRateChangeRestrictions()
         m_mediaSession->removeBehaviorRestriction(MediaElementSession::RequireUserGestureForAudioRateChange);
 }
 
-#if ENABLE(MEDIA_SOURCE)
 RefPtr<VideoPlaybackQuality> HTMLMediaElement::getVideoPlaybackQuality()
 {
     RefPtr<DOMWindow> domWindow = document().domWindow();
@@ -7156,15 +7156,15 @@ RefPtr<VideoPlaybackQuality> HTMLMediaElement::getVideoPlaybackQuality()
 
     auto metrics = m_player ? m_player->videoPlaybackQualityMetrics() : std::nullopt;
     if (!metrics)
-        return VideoPlaybackQuality::create(timestamp, 0, 0, 0, 0);
+        return VideoPlaybackQuality::create(timestamp, { });
 
-    return VideoPlaybackQuality::create(timestamp,
-        metrics.value().totalVideoFrames + m_droppedVideoFrames,
-        metrics.value().droppedVideoFrames + m_droppedVideoFrames,
-        metrics.value().corruptedVideoFrames,
-        metrics.value().totalFrameDelay);
-}
+#if ENABLE(MEDIA_SOURCE)
+    metrics.value().totalVideoFrames += m_droppedVideoFrames;
+    metrics.value().droppedVideoFrames += m_droppedVideoFrames;
 #endif
+
+    return VideoPlaybackQuality::create(timestamp, metrics.value());
+}
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
 DOMWrapperWorld& HTMLMediaElement::ensureIsolatedWorld()

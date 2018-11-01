@@ -444,6 +444,8 @@ public:
     void unregisterSuspendedPageProxy(SuspendedPageProxy&);
     void didReachGoodTimeToPrewarm();
 
+    void didCollectPrewarmInformation(const String& registrableDomain, const WebCore::PrewarmInformation&);
+
     void screenPropertiesStateChanged();
 
     void addMockMediaDevice(const WebCore::MockMediaDevice&);
@@ -520,6 +522,8 @@ private:
 
     void addProcessToOriginCacheSet(WebPageProxy&);
     void removeProcessFromOriginCacheSet(WebProcessProxy&);
+
+    void tryPrewarmWithDomainInformation(WebProcessProxy&, const WebCore::URL&);
 
     Ref<API::ProcessPoolConfiguration> m_configuration;
 
@@ -696,6 +700,8 @@ private:
 
     HashMap<WebCore::SecurityOriginData, Vector<SuspendedPageProxy*>> m_suspendedPages;
     HashMap<String, RefPtr<WebProcessProxy>> m_swappedProcessesPerRegistrableDomain;
+
+    HashMap<String, std::unique_ptr<WebCore::PrewarmInformation>> m_prewarmInformationPerRegistrableDomain;
 };
 
 template<typename T>

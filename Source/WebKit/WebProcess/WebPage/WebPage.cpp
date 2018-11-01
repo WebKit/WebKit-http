@@ -155,6 +155,7 @@
 #include <WebCore/EventNames.h>
 #include <WebCore/File.h>
 #include <WebCore/FocusController.h>
+#include <WebCore/FontAttributeChanges.h>
 #include <WebCore/FontAttributes.h>
 #include <WebCore/FormState.h>
 #include <WebCore/Frame.h>
@@ -599,6 +600,8 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
         ServiceWorkerProvider::singleton().setMayHaveRegisteredServiceWorkers();
 #endif
 
+    m_needsFontAttributes = parameters.needsFontAttributes;
+
 #if ENABLE(WEB_RTC)
     if (!parameters.iceCandidateFilteringEnabled)
         disableICECandidateFiltering();
@@ -935,6 +938,9 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
         postLayoutData.canCopy = editor.canCopy();
         postLayoutData.canPaste = editor.canPaste();
 
+        if (m_needsFontAttributes)
+            postLayoutData.fontAttributes = editor.fontAttributesAtSelectionStart();
+
 #if PLATFORM(COCOA)
         if (result.isContentEditable && !selection.isNone()) {
             if (auto editingStyle = EditingStyle::styleAtSelectionStart(selection)) {
@@ -996,6 +1002,20 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
     m_lastEditorStateWasContentEditable = result.isContentEditable ? EditorStateIsContentEditable::Yes : EditorStateIsContentEditable::No;
 
     return result;
+}
+
+void WebPage::changeFontAttributes(WebCore::FontAttributeChanges&& changes)
+{
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+    if (frame.selection().selection().isContentEditable())
+        frame.editor().applyStyleToSelection(changes.createEditingStyle(), changes.editAction(), Editor::ColorFilterMode::InvertColor);
+}
+
+void WebPage::changeFont(WebCore::FontChanges&& changes)
+{
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+    if (frame.selection().selection().isContentEditable())
+        frame.editor().applyStyleToSelection(changes.createEditingStyle(), EditAction::SetFont, Editor::ColorFilterMode::InvertColor);
 }
 
 void WebPage::executeEditCommandWithCallback(const String& commandName, const String& argument, CallbackID callbackID)
@@ -2491,6 +2511,17 @@ void WebPage::executeEditCommand(const String& commandName, const String& argume
     executeEditingCommand(commandName, argument);
 }
 
+void WebPage::setNeedsFontAttributes(bool needsFontAttributes)
+{
+    if (m_needsFontAttributes == needsFontAttributes)
+        return;
+
+    m_needsFontAttributes = needsFontAttributes;
+
+    if (m_needsFontAttributes)
+        sendPartialEditorStateAndSchedulePostLayoutUpdate();
+}
+
 void WebPage::restoreSessionInternal(const Vector<BackForwardListItemState>& itemStates, WasRestoredByAPIRequest restoredByAPIRequest, WebBackForwardListProxy::OverwriteExistingItem overwrite)
 {
     for (const auto& itemState : itemStates) {
@@ -2842,6 +2873,8 @@ void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, Po
     if (policyAction == PolicyAction::Suspend) {
         ASSERT(frame == m_mainFrame);
         setIsSuspended(true);
+
+        WebProcess::singleton().sendPrewarmInformation(mainWebFrame()->url());
     }
     frame->didReceivePolicyDecision(listenerID, policyAction, navigationID, downloadID, WTFMove(websitePolicies));
 }
@@ -5349,10 +5382,12 @@ void WebPage::didCommitLoad(WebFrame* frame)
 
 void WebPage::didFinishLoad(WebFrame* frame)
 {
-#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     if (!frame->isMainFrame())
         return;
 
+    WebProcess::singleton().sendPrewarmInformation(frame->url());
+
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     m_readyToFindPrimarySnapshottedPlugin = true;
     LOG(Plugins, "Primary Plug-In Detection: triggering detection from didFinishLoad (marking as ready to detect).");
     m_determinePrimarySnapshottedPlugInTimer.startOneShot(0_s);

@@ -150,6 +150,7 @@
 #include "PopStateEvent.h"
 #include "ProcessingInstruction.h"
 #include "PublicSuffix.h"
+#include "Quirks.h"
 #include "RealtimeMediaSourceCenter.h"
 #include "RenderChildIterator.h"
 #include "RenderInline.h"
@@ -308,8 +309,8 @@
 #if ENABLE(WEBGL2)
 #include "WebGL2RenderingContext.h"
 #endif
-#if ENABLE(WEBGPU)
-#include "WebGPURenderingContext.h"
+#if ENABLE(WEBMETAL)
+#include "WebMetalRenderingContext.h"
 #endif
 
 
@@ -489,6 +490,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_touchEventsChangedTimer(*this, &Document::touchEventsChangedTimerFired)
 #endif
     , m_settings(frame ? Ref<Settings>(frame->settings()) : Settings::create(nullptr))
+    , m_quirks(makeUniqueRef<Quirks>(*this))
     , m_cachedResourceLoader(m_frame ? Ref<CachedResourceLoader>(m_frame->loader().activeDocumentLoader()->cachedResourceLoader()) : CachedResourceLoader::create(nullptr))
     , m_domTreeVersion(++s_globalTreeVersion)
     , m_styleScope(std::make_unique<Style::Scope>(*this))
@@ -2330,7 +2332,19 @@ void Document::frameDestroyed()
 {
     // detachFromFrame() must be called before destroying the Frame.
     RELEASE_ASSERT(!m_frame);
+
+    if (auto* window = domWindow())
+        window->frameDestroyed();
+
     FrameDestructionObserver::frameDestroyed();
+}
+
+void Document::willDetachPage()
+{
+    FrameDestructionObserver::willDetachPage();
+
+    if (domWindow() && frame())
+        InspectorInstrumentation::frameWindowDiscarded(*frame(), domWindow());
 }
 
 void Document::attachToCachedFrame(CachedFrameBase& cachedFrame)
@@ -5825,9 +5839,9 @@ std::optional<RenderingContext> Document::getCSSCanvasContext(const String& type
     if (is<WebGL2RenderingContext>(*context))
         return RenderingContext { RefPtr<WebGL2RenderingContext> { &downcast<WebGL2RenderingContext>(*context) } };
 #endif
-#if ENABLE(WEBGPU)
-    if (is<WebGPURenderingContext>(*context))
-        return RenderingContext { RefPtr<WebGPURenderingContext> { &downcast<WebGPURenderingContext>(*context) } };
+#if ENABLE(WEBMETAL)
+    if (is<WebMetalRenderingContext>(*context))
+        return RenderingContext { RefPtr<WebMetalRenderingContext> { &downcast<WebMetalRenderingContext>(*context) } };
 #endif
 
     return RenderingContext { RefPtr<CanvasRenderingContext2D> { &downcast<CanvasRenderingContext2D>(*context) } };
@@ -8248,6 +8262,22 @@ String Document::signedPublicKeyAndChallengeString(unsigned keySizeIndex, const 
 bool Document::registerCSSProperty(CSSRegisteredCustomProperty&& prop)
 {
     return m_CSSRegisteredPropertySet.add(prop.name, std::make_unique<CSSRegisteredCustomProperty>(WTFMove(prop))).isNewEntry;
+}
+
+void Document::detachFromFrame()
+{
+    observeFrame(nullptr);
+}
+
+void Document::frameWasDisconnectedFromOwner()
+{
+    if (!frame())
+        return;
+
+    if (auto* window = domWindow())
+        window->willDetachDocumentFromFrame();
+
+    detachFromFrame();
 }
 
 } // namespace WebCore

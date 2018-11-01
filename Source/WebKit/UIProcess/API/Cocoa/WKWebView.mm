@@ -263,6 +263,8 @@ static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOve
 
     WeakObjCPtr<id <_WKInputDelegate>> _inputDelegate;
 
+    std::optional<BOOL> _resolutionForShareSheetImmediateCompletionForTesting;
+
 #if PLATFORM(IOS)
     RetainPtr<_WKRemoteObjectRegistry> _remoteObjectRegistry;
 
@@ -1250,6 +1252,10 @@ static NSDictionary *dictionaryRepresentationForEditorState(const WebKit::Editor
 - (void)_didChangeEditorState
 {
     id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)self.UIDelegate;
+
+    // FIXME: We should either rename -_webView:editorStateDidChange: to clarify that it's only intended for use when testing,
+    // or remove it entirely and use -_webView:didChangeFontAttributes: instead once text alignment is supported in the set of
+    // font attributes.
     if ([uiDelegate respondsToSelector:@selector(_webView:editorStateDidChange:)])
         [uiDelegate _webView:self editorStateDidChange:dictionaryRepresentationForEditorState(_page->editorState())];
 }
@@ -1394,6 +1400,9 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 
     #undef FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW
 
+    if (action == @selector(setTextColor:sender:) || action == @selector(setFontSize:sender:) || action == @selector(setFont:sender:))
+        return self.usesStandardContentView && [_contentView canPerformActionForWebView:action withSender:sender];
+
     return [super canPerformAction:action withSender:sender];
 }
 
@@ -1410,6 +1419,21 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
     #undef FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW
 
     return [super targetForAction:action withSender:sender];
+}
+
+- (void)setFont:(UIFont *)font sender:(id)sender
+{
+    [_contentView setFontForWebView:font sender:sender];
+}
+
+- (void)setTextColor:(UIColor *)color sender:(id)sender
+{
+    [_contentView setTextColorForWebView:color sender:sender];
+}
+
+- (void)setFontSize:(CGFloat)fontSize sender:(id)sender
+{
+    [_contentView setFontSizeForWebView:fontSize sender:sender];
 }
 
 static inline CGFloat floorToDevicePixel(CGFloat input, float deviceScaleFactor)
@@ -2130,24 +2154,6 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     [_scrollView setContentOffset:([_scrollView contentOffset] + scrollViewOffsetDelta) animated:YES];
     return true;
-}
-
-- (void)_scrollByContentOffset:(WebCore::FloatPoint)contentOffsetDelta animated:(BOOL)animated
-{
-    WebCore::FloatPoint scaledOffsetDelta = contentOffsetDelta;
-    CGFloat zoomScale = contentZoomScale(self);
-    scaledOffsetDelta.scale(zoomScale);
-
-    CGPoint currentOffset = [_scrollView _isAnimatingScroll] ? [_scrollView _animatedTargetOffset] : [_scrollView contentOffset];
-    CGPoint boundedOffset = contentOffsetBoundedInValidRange(_scrollView.get(), currentOffset + scaledOffsetDelta);
-
-    if (CGPointEqualToPoint(boundedOffset, currentOffset))
-        return;
-    [_contentView willStartZoomOrScroll];
-
-    LOG_WITH_STREAM(VisibleRects, stream << "_scrollByContentOffset: scrolling to " << WebCore::FloatPoint(boundedOffset));
-
-    [_scrollView setContentOffset:boundedOffset animated:animated];
 }
 
 - (void)_zoomOutWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated
@@ -3273,7 +3279,9 @@ static void accessibilityEventsEnabledChangedCallback(CFNotificationCenterRef, v
     _impl->setFrameSize(NSSizeToCGSize(size));
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)renewGState
+IGNORE_WARNINGS_END
 {
     _impl->renewGState();
     [super renewGState];
@@ -3767,7 +3775,9 @@ WEBCORE_COMMAND(yankAndSelect)
 }
 
 #if ENABLE(DRAG_SUPPORT)
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)draggedImage:(NSImage *)image endedAt:(NSPoint)endPoint operation:(NSDragOperation)operation
+IGNORE_WARNINGS_END
 {
     _impl->draggedImage(image, NSPointToCGPoint(endPoint), operation);
 }
@@ -3858,7 +3868,9 @@ WEBCORE_COMMAND(yankAndSelect)
     return _impl->accessibilityFocusedUIElement();
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (BOOL)accessibilityIsIgnored
+IGNORE_WARNINGS_END
 {
     return _impl->accessibilityIsIgnored();
 }
@@ -3868,7 +3880,9 @@ WEBCORE_COMMAND(yankAndSelect)
     return _impl->accessibilityHitTest(NSPointToCGPoint(point));
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (id)accessibilityAttributeValue:(NSString *)attribute
+IGNORE_WARNINGS_END
 {
     return _impl->accessibilityAttributeValue(attribute);
 }
@@ -3938,7 +3952,9 @@ WEBCORE_COMMAND(yankAndSelect)
     _impl->provideDataForPasteboard(pasteboard, type);
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (NSArray *)namesOfPromisedFilesDroppedAtDestination:(NSURL *)dropDestination
+IGNORE_WARNINGS_END
 {
     return _impl->namesOfPromisedFilesDroppedAtDestination(dropDestination);
 }
@@ -4236,6 +4252,11 @@ WEBCORE_COMMAND(yankAndSelect)
 + (BOOL)handlesURLScheme:(NSString *)urlScheme
 {
     return WebCore::SchemeRegistry::isBuiltinScheme(urlScheme);
+}
+
+- (std::optional<BOOL>)_resolutionForShareSheetImmediateCompletionForTesting
+{
+    return _resolutionForShareSheetImmediateCompletionForTesting;
 }
 
 @end
@@ -6060,11 +6081,6 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     [_contentView setTimePickerValueToHour:hour minute:minute];
 }
 
-- (void)_invokeShareSheetWithResolution:(BOOL)resolved
-{
-    [_contentView invokeShareSheetWithResolution:resolved];
-}
-
 - (void)selectFormAccessoryPickerRow:(int)rowIndex
 {
     [_contentView selectFormAccessoryPickerRow:rowIndex];
@@ -6608,6 +6624,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)_setDefersLoadingForTesting:(BOOL)defersLoading
 {
     _page->setDefersLoadingForTesting(defersLoading);
+}
+
+- (void)_setShareSheetCompletesImmediatelyWithResolutionForTesting:(BOOL)resolved
+{
+    _resolutionForShareSheetImmediateCompletionForTesting = resolved;
 }
 
 - (_WKInspector *)_inspector

@@ -1,3 +1,125 @@
+2018-10-09  Mark Lam  <mark.lam@apple.com>
+
+        StringTypeAdapter constructor is not properly enforcing String::MaxLength.
+        https://bugs.webkit.org/show_bug.cgi?id=190392
+        <rdar://problem/45116210>
+
+        Reviewed by Saam Barati.
+
+        Previously, the StringTypeAdapter constructor for a UChar* string was summing the
+        unsigned length of the source string without an overflow check.  We now make that
+        length a size_t which removes this issue, and assert that it's within
+        String::MaxLength thereafter.
+
+        Also made the StringTypeAdapter constructor for a LChar* string behave in an
+        equivalent manner for consistency.  In both cases, we'll crash in a RELEASE_ASSERT
+        if the source string length exceeds String::MaxLength.
+
+        * wtf/text/StringConcatenate.h:
+
+2018-10-09  Mark Lam  <mark.lam@apple.com>
+
+        Revert temporary asserts for debugging a mysterious ASAN bot crash.
+        https://bugs.webkit.org/show_bug.cgi?id=190396
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/StackBounds.cpp:
+        (WTF::StackBounds::newThreadStackBounds):
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::checkConsistency const):
+
+2018-10-08  Aditya Keerthi  <akeerthi@apple.com>
+
+        Make <input type=color> a runtime enabled (on-by-default) feature
+        https://bugs.webkit.org/show_bug.cgi?id=189162
+
+        Reviewed by Wenson Hsieh and Tim Horton.
+
+        * wtf/FeatureDefines.h:
+
+2018-10-06  Mark Lam  <mark.lam@apple.com>
+
+        Adding some temporary asserts with data logging to debug a mysterious ASAN bot crash.
+        https://bugs.webkit.org/show_bug.cgi?id=190334
+        <rdar://problem/45071303>
+
+        Reviewed by Yusuke Suzuki.
+
+        These assertions are needed because we can't reproduce the issue locally.
+        We'll remove these asserts after the needed data has been collected from the bot.
+
+        * wtf/StackBounds.cpp:
+        (WTF::StackBounds::newThreadStackBounds):
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::checkConsistency const):
+
+2018-10-07  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Name Heap threads
+        https://bugs.webkit.org/show_bug.cgi?id=190337
+
+        Reviewed by Mark Lam.
+
+        Add a functionality naming threads of ParallelHelperPool.
+
+        * wtf/ParallelHelperPool.cpp:
+        (WTF::ParallelHelperPool::ParallelHelperPool):
+        * wtf/ParallelHelperPool.h:
+
+2018-10-06  Mark Lam  <mark.lam@apple.com>
+
+        Adding some temporary asserts to debug a mysterious ASAN bot crash.
+        https://bugs.webkit.org/show_bug.cgi?id=190331
+
+        Reviewed by Filip Pizlo.
+
+        These assertions are needed because we can't reproduce the issue locally.
+        We'll remove these asserts after the needed data has been collected from the bot.
+
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::checkConsistency const):
+
+2018-10-05  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC][Linux] Support Perf JITDump logging
+        https://bugs.webkit.org/show_bug.cgi?id=189893
+
+        Reviewed by Mark Lam.
+
+        * wtf/PageReservation.h:
+        (WTF::PageReservation::reserveAndCommitWithGuardPages):
+
+2018-10-03  Dan Bernstein  <mitz@apple.com>
+
+        WTF part of [Xcode] Update some build settings as recommended by Xcode 10
+        https://bugs.webkit.org/show_bug.cgi?id=190250
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_COMMA, CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS,
+          and CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF.
+
+        * WTF.xcodeproj/project.pbxproj: Let Xcode update LastUpgradeCheck.
+
+        * wtf/MathExtras.h:
+        (WTF::fastLog2): Addressed newly-enabled CLANG_WARN_COMMA by splitting some comma-separated
+          expressions into individual statements.
+
+2018-10-03  Mark Lam  <mark.lam@apple.com>
+
+        Make string MaxLength for all WTF and JS strings consistently equal to INT_MAX.
+        https://bugs.webkit.org/show_bug.cgi?id=190187
+        <rdar://problem/42512909>
+
+        Reviewed by Michael Saboff.
+
+        * wtf/text/StringConcatenate.h:
+        (WTF::tryMakeStringFromAdapters):
+        (WTF::sumWithOverflow): Deleted.
+        * wtf/text/StringImpl.h:
+        * wtf/text/WTFString.h:
+
 2018-10-03  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         -Wunused-variable in RenderLayer::updateScrollableAreaSet

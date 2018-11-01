@@ -630,8 +630,8 @@ public:
 #if ENABLE(WEBGL2)
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
 #endif
-#if ENABLE(WEBGPU)
-        [NSNumber numberWithBool:NO], WebKitWebGPUEnabledPreferenceKey,
+#if ENABLE(WEBMETAL)
+        [NSNumber numberWithBool:NO], WebKitWebMetalEnabledPreferenceKey,
 #endif
         [NSNumber numberWithBool:NO], WebKitCacheAPIEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitFetchAPIEnabledPreferenceKey,
@@ -659,6 +659,7 @@ public:
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMediaDevicesEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitMediaStreamEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitMediaRecorderEnabledPreferenceKey,
 #endif
 #if ENABLE(WEB_RTC)
         [NSNumber numberWithBool:YES], WebKitPeerConnectionEnabledPreferenceKey,
@@ -2108,14 +2109,14 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:forceLowPower forKey:WebKitForceWebGLUsesLowPowerPreferenceKey];
 }
 
-- (BOOL)webGPUEnabled
+- (BOOL)webMetalEnabled
 {
-    return [self _boolValueForKey:WebKitWebGPUEnabledPreferenceKey];
+    return [self _boolValueForKey:WebKitWebMetalEnabledPreferenceKey];
 }
 
-- (void)setWebGPUEnabled:(BOOL)enabled
+- (void)setWebMetalEnabled:(BOOL)enabled
 {
-    [self _setBoolValue:enabled forKey:WebKitWebGPUEnabledPreferenceKey];
+    [self _setBoolValue:enabled forKey:WebKitWebMetalEnabledPreferenceKey];
 }
 
 - (BOOL)accelerated2dCanvasEnabled
@@ -3343,6 +3344,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setMediaCapabilitiesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitMediaCapabilitiesEnabledPreferenceKey];
+}
+
+- (BOOL)mediaRecorderEnabled
+{
+    return [self _boolValueForKey:WebKitMediaRecorderEnabledPreferenceKey];
+}
+
+- (void)setMediaRecorderEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaRecorderEnabledPreferenceKey];
 }
 
 - (BOOL)serverTimingEnabled

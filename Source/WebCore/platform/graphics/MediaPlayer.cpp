@@ -1455,7 +1455,6 @@ bool MediaPlayer::ended() const
     return m_private->ended();
 }
 
-#if ENABLE(MEDIA_SOURCE)
 std::optional<VideoPlaybackQualityMetrics> MediaPlayer::videoPlaybackQualityMetrics()
 {
     if (!m_private)
@@ -1463,7 +1462,6 @@ std::optional<VideoPlaybackQualityMetrics> MediaPlayer::videoPlaybackQualityMetr
 
     return m_private->videoPlaybackQualityMetrics();
 }
-#endif
 
 void MediaPlayer::handlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType command)
 {

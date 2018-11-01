@@ -165,6 +165,7 @@ StackBounds StackBounds::newThreadStackBounds(PlatformThreadHandle thread)
     // If stack grows up, origin and bound in this code should be swapped.
     if (stackDirection() == StackDirection::Upward)
         std::swap(origin, bound);
+
     return StackBounds { origin, bound };
 }
 

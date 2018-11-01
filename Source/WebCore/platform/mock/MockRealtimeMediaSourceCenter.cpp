@@ -112,7 +112,7 @@ public:
         switch (device.type()) {
         case CaptureDevice::DeviceType::Screen:
         case CaptureDevice::DeviceType::Window:
-            return MockRealtimeVideoSource::create(String { device.persistentId() }, String { }, String { device.label() }, constraints);
+            return MockRealtimeVideoSource::create(String { device.persistentId() }, String { device.label() }, String { }, constraints);
             break;
         case CaptureDevice::DeviceType::Application:
         case CaptureDevice::DeviceType::Browser:

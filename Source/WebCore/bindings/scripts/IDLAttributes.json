@@ -181,6 +181,10 @@
             "contextsAllowed": ["interface", "dictionary", "enum", "attribute", "operation", "constant"],
             "values": ["*"]
         },
+        "DisabledByQuirk": {
+            "contextsAllowed": ["interface", "dictionary", "enum", "attribute", "operation", "constant"],
+            "values": ["*"]
+        },
         "EnabledForWorld": {
             "contextsAllowed": ["attribute", "operation"],
             "values": ["*"]
@@ -190,6 +194,9 @@
             "standard": {
                 "url": "https://heycam.github.io/webidl/#EnforceRange"
             }
+        },
+        "ResultField": {
+            "contextsAllowed": ["operation"]
         },
         "ExportMacro": {
             "contextsAllowed": ["interface", "dictionary", "enum", "callback-function"],

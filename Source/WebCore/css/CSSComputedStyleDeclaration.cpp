@@ -764,22 +764,50 @@ static LayoutUnit getOffsetUsedStyleOutOfFlowPositioned(RenderBlock& container, 
 
 static RefPtr<CSSValue> positionOffsetValue(const RenderStyle& style, CSSPropertyID propertyID, RenderObject* renderer)
 {
+    auto offset = getOffsetComputedLength(style, propertyID);
+
     // If the element is not displayed; return the "computed value".
     if (!renderer || !renderer->isBox())
-        return zoomAdjustedPixelValueForLength(getOffsetComputedLength(style, propertyID), style);
+        return zoomAdjustedPixelValueForLength(offset, style);
 
-    // We should return the "used value".
     auto& box = downcast<RenderBox>(*renderer);
     auto* containingBlock = box.containingBlock();
-    if (box.isRelativelyPositioned() || !containingBlock)
+
+    // Resolve a "computed value" percentage if the element is positioned.
+    // TODO: percentages for sticky positioning should be handled here (bug 189549).
+    if (containingBlock && offset.isPercentOrCalculated() && box.isPositioned() && !box.isStickilyPositioned()) {
+        bool isVerticalProperty;
+        if (propertyID == CSSPropertyTop || propertyID == CSSPropertyBottom)
+            isVerticalProperty = true;
+        else {
+            ASSERT(propertyID == CSSPropertyLeft || propertyID == CSSPropertyRight);
+            isVerticalProperty = false;
+        }
+        LayoutUnit containingBlockSize;
+        if (isVerticalProperty == containingBlock->isHorizontalWritingMode()) {
+            containingBlockSize = box.isOutOfFlowPositioned()
+                ? box.containingBlockLogicalHeightForPositioned(*containingBlock, false)
+                : box.containingBlockLogicalHeightForContent(ExcludeMarginBorderPadding);
+        } else {
+            containingBlockSize = box.isOutOfFlowPositioned()
+                ? box.containingBlockLogicalWidthForPositioned(*containingBlock, nullptr, false)
+                : box.containingBlockLogicalWidthForContent();
+        }
+        return zoomAdjustedPixelValue(floatValueForLength(offset, containingBlockSize), style);
+    }
+
+    // Return a "computed value" length.
+    if (!offset.isAuto())
+        return zoomAdjustedPixelValueForLength(offset, style);
+
+    // The property won't be overconstrained if its computed value is "auto", so the "used value" can be returned.
+    if (box.isRelativelyPositioned())
         return zoomAdjustedPixelValue(getOffsetUsedStyleRelative(box, propertyID), style);
-    if (renderer->isOutOfFlowPositioned())
+
+    if (containingBlock && box.isOutOfFlowPositioned())
         return zoomAdjustedPixelValue(getOffsetUsedStyleOutOfFlowPositioned(*containingBlock, box, propertyID), style);
-    // In-flow element.
-    auto offset = getOffsetComputedLength(style, propertyID);
-    if (offset.isAuto())
-        return CSSValuePool::singleton().createIdentifierValue(CSSValueAuto);
-    return zoomAdjustedPixelValueForLength(offset, style);
+
+    return CSSValuePool::singleton().createIdentifierValue(CSSValueAuto);
 }
 
 RefPtr<CSSPrimitiveValue> ComputedStyleExtractor::currentColorOrValidColor(const RenderStyle* style, const Color& color) const
@@ -1563,10 +1591,6 @@ static Ref<CSSValue> createTimingFunctionValue(const TimingFunction& timingFunct
     case TimingFunction::StepsFunction: {
         auto& function = downcast<StepsTimingFunction>(timingFunction);
         return CSSStepsTimingFunctionValue::create(function.numberOfSteps(), function.stepAtStart());
-    }
-    case TimingFunction::FramesFunction: {
-        auto& function = downcast<FramesTimingFunction>(timingFunction);
-        return CSSFramesTimingFunctionValue::create(function.numberOfFrames());
     }
     case TimingFunction::SpringFunction: {
         auto& function = downcast<SpringTimingFunction>(timingFunction);
@@ -2585,13 +2609,22 @@ RefPtr<CSSValue> ComputedStyleExtractor::customPropertyValue(const String& prope
     if (!style)
         return nullptr;
 
-    auto* value = style->customProperties().get(propertyName);
-    if (value)
-        return value;
-
     auto* registered = styledElement->document().getCSSRegisteredCustomPropertySet().get(propertyName);
-    if (registered && registered->initialValue)
-        return registered->initialValue;
+    auto* value = style->getCustomProperty(propertyName);
+
+    if (registered) {
+        // TODO this should be done based on the syntax
+        if (value && value->resolvedTypedValue())
+            return zoomAdjustedPixelValueForLength(*value->resolvedTypedValue(), *style);
+
+        if (registered->initialValue() && registered->initialValue()->resolvedTypedValue())
+            return zoomAdjustedPixelValueForLength(*registered->initialValue()->resolvedTypedValue(), *style);
+
+        return nullptr;
+    }
+
+    if (value)
+        return CSSCustomPropertyValue::create(*value);
 
     return nullptr;
 }
@@ -4087,7 +4120,7 @@ unsigned CSSComputedStyleDeclaration::length() const
     if (!style)
         return 0;
 
-    return numComputedProperties + style->customProperties().size();
+    return numComputedProperties + style->inheritedCustomProperties().size() + style->nonInheritedCustomProperties().size();
 }
 
 String CSSComputedStyleDeclaration::item(unsigned i) const
@@ -4101,15 +4134,17 @@ String CSSComputedStyleDeclaration::item(unsigned i) const
     auto* style = m_element->computedStyle(m_pseudoElementSpecifier);
     if (!style)
         return String();
-    
-    unsigned index = i - numComputedProperties;
-    
-    const auto& customProperties = style->customProperties();
-    if (index >= customProperties.size())
-        return String();
 
-    auto results = copyToVector(customProperties.keys());
-    return results.at(index);
+    const auto& inheritedCustomProperties = style->inheritedCustomProperties();
+
+    if (i < numComputedProperties + inheritedCustomProperties.size()) {
+        auto results = copyToVector(inheritedCustomProperties.keys());
+        return results.at(i - numComputedProperties);
+    }
+
+    const auto& nonInheritedCustomProperties = style->nonInheritedCustomProperties();
+    auto results = copyToVector(nonInheritedCustomProperties.keys());
+    return results.at(i - inheritedCustomProperties.size() - numComputedProperties);
 }
 
 bool ComputedStyleExtractor::propertyMatches(CSSPropertyID propertyID, const CSSValue* value)

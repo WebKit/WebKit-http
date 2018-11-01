@@ -89,7 +89,7 @@ static const int cMaxPixelDimension = 2048;
 #endif
 
 // Derived empirically: <rdar://problem/13401861>
-static const unsigned cMaxLayerTreeDepth = 250;
+static const unsigned cMaxLayerTreeDepth = 128;
 
 // About 10 screens of an iPhone 6 Plus. <rdar://problem/44532782>
 static const unsigned cMaxTotalBackdropFilterArea = 1242 * 2208 * 10;
@@ -279,21 +279,6 @@ static bool animationHasStepsTimingFunction(const KeyframeValueList& valueList, 
     for (unsigned i = 0; i < valueList.size(); ++i) {
         if (const TimingFunction* timingFunction = valueList.at(i).timingFunction()) {
             if (is<StepsTimingFunction>(timingFunction))
-                return true;
-        }
-    }
-
-    return false;
-}
-
-static bool animationHasFramesTimingFunction(const KeyframeValueList& valueList, const Animation* anim)
-{
-    if (is<FramesTimingFunction>(anim->timingFunction()))
-        return true;
-    
-    for (unsigned i = 0; i < valueList.size(); ++i) {
-        if (const TimingFunction* timingFunction = valueList.at(i).timingFunction()) {
-            if (is<FramesTimingFunction>(timingFunction))
                 return true;
         }
     }
@@ -1004,9 +989,6 @@ bool GraphicsLayerCA::animationCanBeAccelerated(const KeyframeValueList& valueLi
         return false;
 
     if (animationHasStepsTimingFunction(valueList, anim))
-        return false;
-
-    if (animationHasFramesTimingFunction(valueList, anim))
         return false;
 
     return true;

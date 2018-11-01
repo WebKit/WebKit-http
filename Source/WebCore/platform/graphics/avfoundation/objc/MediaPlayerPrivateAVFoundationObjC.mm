@@ -1764,16 +1764,16 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
         // Create an initData with the following layout:
         // [4 bytes: keyURI size], [keyURI size bytes: keyURI]
         unsigned keyURISize = keyURI.length() * sizeof(UChar);
-        RefPtr<ArrayBuffer> initDataBuffer = ArrayBuffer::create(4 + keyURISize, 1);
+        auto initDataBuffer = ArrayBuffer::create(4 + keyURISize, 1);
         unsigned byteLength = initDataBuffer->byteLength();
-        RefPtr<JSC::DataView> initDataView = JSC::DataView::create(initDataBuffer.copyRef(), 0, byteLength);
+        auto initDataView = JSC::DataView::create(initDataBuffer.copyRef(), 0, byteLength);
         initDataView->set<uint32_t>(0, keyURISize, true);
 
-        RefPtr<Uint16Array> keyURIArray = Uint16Array::create(initDataBuffer.copyRef(), 4, keyURI.length());
+        auto keyURIArray = Uint16Array::create(initDataBuffer.copyRef(), 4, keyURI.length());
         keyURIArray->setRange(StringView(keyURI).upconvertedCharacters(), keyURI.length() / sizeof(unsigned char), 0);
 
-        RefPtr<Uint8Array> initData = Uint8Array::create(WTFMove(initDataBuffer), 0, byteLength);
-        if (!player()->keyNeeded(initData.get()))
+        auto initData = Uint8Array::create(WTFMove(initDataBuffer), 0, byteLength);
+        if (!player()->keyNeeded(initData.ptr()))
             return false;
 #endif
         m_keyURIToRequestMap.set(keyURI, avRequest);
@@ -1803,7 +1803,7 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
             return false;
         }
 
-        if (!player()->keyNeeded(initData.get()))
+        if (!player()->keyNeeded(initData.ptr()))
             return false;
 
         m_keyURIToRequestMap.set(keyID, avRequest);
@@ -3255,6 +3255,36 @@ void MediaPlayerPrivateAVFoundationObjC::setShouldDisableSleep(bool flag)
     ALLOW_DEPRECATED_DECLARATIONS_END
 #else
     UNUSED_PARAM(flag);
+#endif
+}
+
+std::optional<VideoPlaybackQualityMetrics> MediaPlayerPrivateAVFoundationObjC::videoPlaybackQualityMetrics()
+{
+    if (![m_videoLayer respondsToSelector:@selector(videoPerformanceMetrics)])
+        return std::nullopt;
+
+#if PLATFORM(WATCHOS)
+    return std::nullopt;
+#else
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
+    auto metrics = [m_videoLayer videoPerformanceMetrics];
+    if (!metrics)
+        return std::nullopt;
+
+    uint32_t displayCompositedFrames = 0;
+    if ([metrics respondsToSelector:@selector(numberOfDisplayCompositedVideoFrames)])
+        displayCompositedFrames = [metrics numberOfDisplayCompositedVideoFrames];
+
+    return VideoPlaybackQualityMetrics {
+        static_cast<uint32_t>([metrics totalNumberOfVideoFrames]),
+        static_cast<uint32_t>([metrics numberOfDroppedVideoFrames]),
+        static_cast<uint32_t>([metrics numberOfCorruptedVideoFrames]),
+        [metrics totalFrameDelay],
+        displayCompositedFrames,
+    };
+#pragma clang diagnostic pop
 #endif
 }
 

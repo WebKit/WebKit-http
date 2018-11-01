@@ -459,6 +459,15 @@ UseGiantTiles:
   type: bool
   defaultValue: false
 
+MediaRecorderEnabled:
+    type: bool
+    defaultValue: false
+    webcoreBinding: RuntimeEnabledFeatures
+    condition: ENABLE(MEDIA_STREAM)
+    humanReadableName: "MediaRecorder"
+    humanReadableDescription: "MediaRecorder"
+    category: experimental
+
 MediaDevicesEnabled:
   type: bool
   defaultValue: false
@@ -490,6 +499,15 @@ WebRTCUnifiedPlanEnabled:
   condition: ENABLE(WEB_RTC)
   humanReadableName: "WebRTC Unified Plan"
   humanReadableDescription: "Use WebRTC Unified Plan"
+  category: experimental
+
+WebRTCVP8CodecEnabled:
+  type: bool
+  defaultValue: false
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_RTC)
+  humanReadableName: "WebRTC VP8 codec"
+  humanReadableDescription: "Enable WebRTC VP8 codec"
   category: experimental
 
 UseLegacyTextAlignPositionedElementBehavior:
@@ -1128,6 +1146,11 @@ EncryptedMediaAPIEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(ENCRYPTED_MEDIA)
 
+VideoQualityIncludesDisplayCompositingEnabled:
+  type: bool
+  defaultValue: false
+  condition: ENABLE(VIDEO)
+
 # For experimental features:
 # The type should be boolean.
 # You must provide a humanReadableName and humanReadableDescription for all experimental features. They
@@ -1215,14 +1238,14 @@ WebGL2Enabled:
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEBGL2)
 
-WebGPUEnabled:
+WebMetalEnabled:
   type: bool
   defaultValue: false
-  humanReadableName: "WebGPU"
-  humanReadableDescription: "WebGPU prototype"
+  humanReadableName: "WebMetal"
+  humanReadableDescription: "WebMetal prototype"
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
-  condition: ENABLE(WEBGPU)
+  condition: ENABLE(WEBMETAL)
 
 AccessibilityObjectModelEnabled:
   type: bool
@@ -1363,3 +1386,12 @@ SelectionAcrossShadowBoundariesEnabled:
   humanReadableDescription: "Allow user-initiated selection across shadow DOM boundaries"
   category: internal
   webcoreName: selectionAcrossShadowBoundariesEnabled
+
+InputTypeColorEnabled:
+  type: bool
+  defaultValue: true
+  humanReadableName: "Color Inputs"
+  humanReadableDescription: "Enable input elements of type color"
+  category: internal
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(INPUT_TYPE_COLOR)
