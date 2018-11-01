@@ -605,6 +605,7 @@ webkit.org/b/186933 webrtc/clone-audio-track.html
 webkit.org/b/186933 webrtc/audio-replace-track.html
 webkit.org/b/186933 webrtc/audio-peer-connection-webaudio.html
 webkit.org/b/186933 webrtc/audio-muted-stats.html
+webkit.org/b/186933 webrtc/getUserMedia-webaudio-autoplay.html
 
 imported/w3c/web-platform-tests/webrtc/ [ Skip ]
 http/tests/webrtc [ Skip ]
@@ -766,16 +767,6 @@ Bug(GTK) plugins/quicktime-plugin-replacement.html [ Skip ]
 
 # ENABLE(CSS_SCROLL_SNAP) is disabled.
 css3/scroll-snap [ Skip ]
-
-# TODO Animation triggers not supported
-animations/trigger-computed-style.html [ Skip ]
-legacy-animation-engine/animations/trigger-computed-style.html [ Skip ]
-animations/trigger-parsing.html [ Skip ]
-legacy-animation-engine/animations/trigger-parsing.html [ Skip ]
-animations/trigger-container-scroll-simple.html [ Skip ]
-legacy-animation-engine/animations/trigger-container-scroll-simple.html [ Skip ]
-animations/trigger-container-scroll-boundaries.html [ Skip ]
-legacy-animation-engine/animations/trigger-container-scroll-boundaries.html [ Skip ]
 
 # ENABLE(WEBVTT_REGIONS) is disabled
 webkit.org/b/109570 media/track/regions-webvtt [ Skip ]
@@ -1137,17 +1128,21 @@ fast/scrolling/scrolling-tree-includes-frame.html [ Skip ]
 # This test assumes that color on sliders is not reversed for RTL, so failing is good.
 fast/forms/range/input-appearance-range-rtl.html [ ImageOnlyFailure ]
 
-webkit.org/b/178316 imported/w3c/web-platform-tests/service-workers/cache-storage [ Skip ]
-webkit.org/b/178316 http/wpt/cache-storage [ Skip ]
-webkit.org/b/178316 http/tests/cache-storage [ Skip ]
+# Cache storage
+webkit.org/b/178316 http/wpt/cache-storage/cache-quota.any.html [ Failure ]
 
-# Service-workers implementation is not complete yet
-webkit.org/b/175419 http/tests/workers/service [ Skip ]
-webkit.org/b/175419 http/wpt/service-workers [ Failure Pass ]
-webkit.org/b/175419 http/tests/inspector/network/resource-response-service-worker.html [ Skip ]
-webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers [ Skip ]
-webkit.org/b/175419 http/wpt/service-workers/navigation-redirect-main-frame.https.html [ Skip ]
-webkit.org/b/175419 http/wpt/service-workers/third-party-registration.html [ Skip ]
+# Service-workers tests that fail, time out or crash.
+webkit.org/b/175419 http/tests/workers/service/controller-change.html [ Skip ]
+webkit.org/b/175419 http/tests/workers/service/no-page-cache-when-controlled.html [ Skip ]
+webkit.org/b/175419 http/wpt/service-workers/persistent-importScripts.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers/service-worker/activation.https.html [ Skip ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers/service-worker/claim-with-redirect.https.html [ Skip ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-within-sw.https.html [ Skip ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers/service-worker/registration-script.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers/service-worker/skip-waiting-using-registration.https.html [ Skip ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers/service-worker/skip-waiting-without-client.https.html [ Skip ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers/service-worker/skip-waiting-without-using-registration.https.html [ Skip ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers/service-worker/skip-waiting.https.html [ Skip ]
 
 # Skip anything related to WebAuthN
 http/wpt/credential-management/ [ Skip ]
@@ -1829,9 +1824,6 @@ webkit.org/b/169621 imported/w3c/web-platform-tests/IndexedDB/fire-error-event-e
 webkit.org/b/169621 imported/w3c/web-platform-tests/IndexedDB/fire-success-event-exception.html [ Pass Failure ]
 
 webkit.org/b/170337 fast/repaint/obscured-background-no-repaint.html [ Pass Failure ]
-
-webkit.org/b/171599 animations/trigger-container-scroll-empty.html [ Pass Failure ]
-webkit.org/b/171599 legacy-animation-engine/animations/trigger-container-scroll-empty.html [ Pass Failure ]
 
 webkit.org/b/171600 css3/filters/composited-during-animation-layertree.html [ Pass Failure ]
 webkit.org/b/171600 legacy-animation-engine/css3/filters/composited-during-animation-layertree.html [ Pass Failure ]
@@ -3520,8 +3512,6 @@ webkit.org/b/189343 imported/w3c/web-platform-tests/xhr/sync-no-timeout.any.work
 webkit.org/b/189344 webanimations/css-animation-effect-target-change-and-animation-removal-crash.html [ ImageOnlyFailure ]
 
 webkit.org/b/189345 http/tests/media/clearkey/collect-webkit-media-session.html [ Timeout ]
-
-webkit.org/b/189350 fast/forms/color/input-appearance-color.html [ Failure ]
 
 webkit.org/b/189567 webrtc/video-addLegacyTransceiver.html [ Failure ]
 

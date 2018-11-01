@@ -29,10 +29,10 @@ WI.WorkerTarget = class WorkerTarget extends WI.Target
     {
         super(workerId, name, WI.Target.Type.Worker, connection);
 
-        WI.frameResourceManager.adoptOrphanedResourcesForTarget(this);
+        WI.networkManager.adoptOrphanedResourcesForTarget(this);
 
         if (this.RuntimeAgent) {
-            this._executionContext = new WI.ExecutionContext(this, WI.RuntimeManager.TopLevelContextExecutionIdentifier, this.displayName, false, null);
+            this._executionContext = new WI.ExecutionContext(this, WI.RuntimeManager.TopLevelExecutionContextIdentifier, this.displayName, false, null);
             this.RuntimeAgent.enable();
             if (WI.showJavaScriptTypeInformationSetting && WI.showJavaScriptTypeInformationSetting.value)
                 this.RuntimeAgent.enableTypeProfiler();

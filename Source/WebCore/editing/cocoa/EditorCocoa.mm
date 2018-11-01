@@ -49,6 +49,7 @@
 #import "Pasteboard.h"
 #import "RenderElement.h"
 #import "RenderStyle.h"
+#import "Settings.h"
 #import "Text.h"
 #import "WebContentReader.h"
 #import "WebCoreNSURLExtras.h"
@@ -75,9 +76,8 @@ static RefPtr<SharedBuffer> archivedDataForAttributedString(NSAttributedString *
 
 String Editor::selectionInHTMLFormat()
 {
-    if (auto range = selectedRange())
-        return serializePreservingVisualAppearance(*range, nullptr, AnnotateForInterchange::Yes, ConvertBlocksToInlines::No, ResolveURLs::YesExcludingLocalFileURLsForPrivacy);
-    return { };
+    return serializePreservingVisualAppearance(m_frame.selection().selection(), ResolveURLs::YesExcludingLocalFileURLsForPrivacy,
+        m_frame.settings().selectionAcrossShadowBoundariesEnabled() ? SerializeComposedTree::Yes : SerializeComposedTree::No);
 }
 
 #if ENABLE(ATTACHMENT_ELEMENT)

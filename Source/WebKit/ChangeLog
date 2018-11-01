@@ -1,3 +1,617 @@
+2018-10-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Enable MSE by default
+        https://bugs.webkit.org/show_bug.cgi?id=190243
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * UIProcess/API/glib/WebKitSettings.cpp:
+        (webkit_settings_class_init):
+
+2018-10-02  Alex Christensen  <achristensen@webkit.org>
+
+        Deprecate WKConnection
+        https://bugs.webkit.org/show_bug.cgi?id=190147
+
+        Reviewed by Andy Estes.
+
+        * Shared/Cocoa/APIObject.mm:
+        (API::Object::newObject):
+        * UIProcess/API/Cocoa/WKConnection.h:
+        * UIProcess/API/Cocoa/WKConnection.mm:
+        (didReceiveMessage):
+        (didClose):
+        * UIProcess/API/Cocoa/WKConnectionInternal.h:
+        * UIProcess/API/Cocoa/WKProcessGroup.h:
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugIn.h:
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugIn.mm:
+
+2018-10-01  Dean Jackson  <dino@apple.com>
+
+        [macOS] Switching to discrete GPU should be done in the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=189361
+        <rdar://problem/43949622>
+
+        Reviewed by Simon Fraser.
+
+        Implement the UI-side process for triggering a GPU mux.
+
+        * Platform/Logging.h: Add a WebGL logging channel.
+
+        * SourcesCocoa.txt: Add the new files: WebSwitchingGPUClient and HighPerformanceGPUManager.
+
+        * UIProcess/Cocoa/WebProcessProxyCocoa.mm: UI process calls that use HighPerformanceGPUManager
+        to keep track of whether or not this process needs the high-performance GPU.
+        (WebKit::WebProcessProxy::requestHighPerformanceGPU):
+        (WebKit::WebProcessProxy::releaseHighPerformanceGPU):
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::~WebProcessProxy): Make sure to unregister with the HighPerformanceGPUManager
+        as the process disappears without manually removing itself (e.g. crashes).
+        * UIProcess/WebProcessProxy.h:
+        * UIProcess/WebProcessProxy.messages.in: New messages.
+
+        * UIProcess/mac/HighPerformanceGPUManager.cpp: New class that copies most of what used
+        to live in GraphicsContext3DManager. It creates a CGLPixelFormat object when it sees
+        that at least one process needs the high-performance GPU.
+        (WebKit::HighPerformanceGPUManager::singleton):
+        (WebKit::HighPerformanceGPUManager::addProcessRequiringHighPerformance):
+        (WebKit::HighPerformanceGPUManager::removeProcessRequiringHighPerformance):
+        (WebKit::HighPerformanceGPUManager::updateState):
+        * UIProcess/mac/HighPerformanceGPUManager.h: Added.
+
+        * WebKit.xcodeproj/project.pbxproj: Add new files.
+
+        * WebProcess/WebCoreSupport/mac/WebSwitchingGPUClient.cpp: Implementation of the SwitchingGPUClient for
+        WebCore, which sends messages to the UI process.
+        (WebKit::WebSwitchingGPUClient::singleton):
+        (WebKit::WebSwitchingGPUClient::requestHighPerformanceGPU):
+        (WebKit::WebSwitchingGPUClient::releaseHighPerformanceGPU):
+        * WebProcess/WebCoreSupport/mac/WebSwitchingGPUClient.h: Added.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm: Register the GPUClient.
+        (WebKit::WebProcess::platformInitializeProcess):
+
+2018-10-02  Sihui Liu  <sihui_liu@apple.com>
+
+        Fix a potential crash in NetworkProcess::deleteWebsiteDataForOrigins
+        https://bugs.webkit.org/show_bug.cgi?id=190220
+
+        Reviewed by Chris Dumez.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::deleteWebsiteDataForOrigins):
+
+2018-10-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit2] Format > Bold and Format > Italic don't toggle between bold and italic style
+        https://bugs.webkit.org/show_bug.cgi?id=179787
+        <rdar://problem/35593389>
+
+        Reviewed by Tim Horton.
+
+        Fixes the bug by relaxing our policy in WebViewImpl::updateFontManagerIfNeeded. Instead of updating only when
+        the font panel is visible, update when either the font panel is visible, or the selection is in a richly
+        editable area. In the latter case, an up-to-date NSFontManager state is needed in order for certain font
+        formatting menu items, such as bold and italic, to correctly toggle state.
+
+        Test: FontManagerTests.ToggleBoldAndItalicWithMenuItems
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (-[WKWindowVisibilityObserver observeValueForKeyPath:ofObject:change:context:]):
+        (WebKit::WebViewImpl::selectionDidChange):
+        (WebKit::WebViewImpl::updateFontManagerIfNeeded):
+
+        Rename updateFontPanelIfNeeded to updateFontManagerIfNeeded, to reflect the new behavior.
+
+        (WebKit::WebViewImpl::changeFontAttributesFromSender):
+        (WebKit::WebViewImpl::changeFontFromFontManager):
+        (WebKit::WebViewImpl::updateFontPanelIfNeeded): Deleted.
+
+2018-10-02  Alex Christensen  <achristensen@webkit.org>
+
+        Remove ParsedURLString
+        https://bugs.webkit.org/show_bug.cgi?id=190154
+
+        Reviewed by Chris Dumez.
+
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.cpp:
+        (WebKit::NetworkBlobRegistry::writeBlobToFilePath):
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles):
+        * PluginProcess/PluginControllerProxy.cpp:
+        (WebKit::PluginControllerProxy::streamWillSendRequest):
+        (WebKit::PluginControllerProxy::streamDidReceiveResponse):
+        (WebKit::PluginControllerProxy::manualStreamDidReceiveResponse):
+        * Shared/API/APIUserContentURLPattern.h:
+        (API::UserContentURLPattern::matchesURL const):
+        * Shared/WebBackForwardListItem.cpp:
+        (WebKit::WebBackForwardListItem::itemIsInSameDocument const):
+        * UIProcess/API/gtk/WebKitRemoteInspectorProtocolHandler.cpp:
+        (WebKit::RemoteInspectorProtocolHandler::handleRequest):
+        (WebKit::RemoteInspectorProtocolHandler::targetListChanged):
+        * UIProcess/Plugins/mac/PluginProcessProxyMac.mm:
+        (WebKit::PluginProcessProxy::openURL):
+        * UIProcess/SuspendedPageProxy.cpp:
+        (WebKit::SuspendedPageProxy::SuspendedPageProxy):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::loadFile):
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+        (WebKit::WebPageProxy::decidePolicyForNewWindowAction):
+        (WebKit::WebPageProxy::createNewPage):
+        (WebKit::WebPageProxy::processDidTerminate):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::addProcessToOriginCacheSet):
+        (WebKit::WebProcessPool::processForNavigationInternal):
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::processDidTerminateOrFailedToLaunch):
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::createShareMenuItem):
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::addUserScript):
+        (WebKit::InjectedBundle::addUserStyleSheet):
+        (WebKit::InjectedBundle::removeUserScript):
+        (WebKit::InjectedBundle::removeUserStyleSheet):
+        * WebProcess/Plugins/Plugin.cpp:
+        (WebKit::Plugin::Parameters::decode):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::url):
+        (WebKit::WebPlatformStrategies::readURLFromPasteboard):
+
+2018-10-01  Dean Jackson  <dino@apple.com>
+
+        Remove CSS Animation Triggers
+        https://bugs.webkit.org/show_bug.cgi?id=190175
+        <rdar://problem/44925626>
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-02  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r236662): Fix -Wformat warnings in CacheStorageEngineCaches.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=190205
+
+        Reviewed by Chris Dumez.
+
+        Passing enums to %d is not kosher, at least not according to GCC's -Wformat. Avoid it.
+
+        * NetworkProcess/cache/CacheStorageEngineCaches.cpp:
+        (WebKit::CacheStorage::Caches::initialize):
+        (WebKit::CacheStorage::Caches::readCachesFromDisk):
+        (WebKit::CacheStorage::Caches::writeCachesToDisk):
+
+2018-10-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r236624 and r236671.
+        https://bugs.webkit.org/show_bug.cgi?id=190207
+
+        The change in r236624 introduced crashes on the bots
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Refactoring: eliminate raw pointer usage in Fullscreen code"
+        https://bugs.webkit.org/show_bug.cgi?id=188747
+        https://trac.webkit.org/changeset/236624
+
+        "Unify implementation in VideoFullscreenInterfaceAVKit"
+        https://bugs.webkit.org/show_bug.cgi?id=190091
+        https://trac.webkit.org/changeset/236671
+
+2018-10-02  Antti Koivisto  <antti@apple.com>
+
+        WebPageProxy::reattachToWebProcess cleanups
+        https://bugs.webkit.org/show_bug.cgi?id=189881
+
+        Reviewed by Chris Dumez.
+
+        Change the factoring to separate swap and crash code paths into different functions.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::reattachToWebProcess):
+        (WebKit::WebPageProxy::swapToWebProcess):
+
+        Separate function for the swap case.
+
+        (WebKit::WebPageProxy::finishAttachingToWebProcess):
+
+        Factor the common parts here.
+
+        (WebKit::WebPageProxy::continueNavigationInNewProcess):
+        * UIProcess/WebPageProxy.h:
+
+2018-10-02  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Theming of authentication dialog breaks with themes other than Adwaita
+        https://bugs.webkit.org/show_bug.cgi?id=190117
+
+        Reviewed by Michael Catanzaro.
+
+        Adds the missing GTK_STYLE_CLASS_BACKGROUND to the WebKitWebViewDialog
+        widget, which was missing for GTK+ 3.20 or newer, and set the widget
+        as app-paintable to avoid the base class paint method to add an opaque
+        background.
+
+        Thanks to Benjamin Otte for the guidance to debug the theming issues.
+
+        * UIProcess/API/gtk/WebKitWebViewDialog.cpp:
+        (webkitWebViewDialogDraw): Remove the style context save/restore, it
+        is unneeded because the style classes are set at widget construction
+        time and not changed ever after.
+        (webkitWebViewDialogConstructed): Mark the widget as app-paintable to
+        avoid the base widget paint operation to fill the whole background,
+        because the dialog widget paints the translucent overlay itself; and
+        also add the missing GTK_STYLE_CLASS_BACKGROUND class at construction
+        when building against GTK+ 3.20 or newer.
+
+2018-10-02  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] RealtimeMediaSource should be able to vend hashed IDs
+        https://bugs.webkit.org/show_bug.cgi?id=190142
+        <rdar://problem/44911109>
+
+        Reviewed by Youenn Fablet.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<MediaConstraints>::encode):
+        (IPC::ArgumentCoder<MediaConstraints>::decode):
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.cpp:
+        (WebKit::UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints):
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.h:
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.messages.in:
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame):
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::Source::Source):
+        (WebKit::UserMediaCaptureManager::createCaptureSource):
+        * WebProcess/cocoa/UserMediaCaptureManager.h:
+
+2018-10-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Implement a way for the UI process to request typing attributes at the current selection
+        https://bugs.webkit.org/show_bug.cgi?id=189983
+        <rdar://problem/44648705>
+
+        Reviewed by Ryosuke Niwa.
+
+        Implements `-[WKWebView typingAttributesWithCompletionHandler:]`, which asynchronously retrieves an NSDictionary
+        containing the typing attributes at the start of the current selection. This is a new asynchronous text input
+        client hook on macOS that is needed in order to support NSInspectorBar on WKWebView.
+
+        At a high level, this patch builds on top of refactoring done in r236445 to make it possible to send typing
+        attributes from the web process to the UI process, and then adds plumbing in the WebKit2 client layer to surface
+        typing attributes to WKWebView on macOS.
+
+        Tests:  FontManagerTests.TypingAttributesAfterSubscriptAndSuperscript
+                FontManagerTests.ChangeTypingAttributesWithInspectorBar
+                FontManagerTests.ChangeAttributesWithFontEffectsBox
+
+        * Platform/spi/mac/AppKitSPI.h:
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<FontAttributes>::encode):
+        (IPC::ArgumentCoder<FontAttributes>::decode):
+
+        Implement IPC coding support for FontAttributes.
+
+        * Shared/WebCoreArgumentCoders.h:
+        * Shared/mac/ArgumentCodersMac.h:
+        * Shared/mac/ArgumentCodersMac.mm:
+        (IPC::encode):
+        (IPC::decode):
+
+        Add the ability to encode and decode UIFont. This allows Cocoa platforms to send `FontAttributes.font` over IPC
+        with a single call to IPC::encode/IPC::decode.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView typingAttributesWithCompletionHandler:]):
+
+        Add plumbing to WebViewImpl.
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::selectionDidChange):
+
+        Update the NSInspectorBar on selection change, but only if it is present and visible, and WKWebView is currently
+        first responder.
+
+        (WebKit::WebViewImpl::typingAttributesWithCompletionHandler):
+
+        Call into WebPageProxy to retrieve FontAttributes from the web process, and invoke the callback with an
+        NSDictionary constructed from the retrieved FontAttributes.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::requestFontAttributesAtSelectionStart):
+        (WebKit::WebPageProxy::fontAttributesCallback):
+
+        Add plumbing to retrieve FontAttributes from the web process at the current selection. Additionally, cache the
+        font attributes to avoid doing extra work during subsequent requests.
+
+        (WebKit::WebPageProxy::resetStateAfterProcessExited):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::cachedFontAttributesAtSelectionStart const):
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::editorStateChanged):
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::editorStateChanged):
+
+        Invalidate cached font attributes.
+
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::requestFontAttributesAtSelectionStart):
+
+        Use the currently focused frame's Editor to compute FontAttributes at the current selection, and send the
+        computed FontAttributes back to the UI process.
+
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2018-10-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: remove analyzer manager
+        https://bugs.webkit.org/show_bug.cgi?id=190162
+
+        Reviewed by Joseph Pecoraro.
+
+        * InspectorGResources.cmake:
+        Remove eslint.
+
+2018-09-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a new variant of serializePreservingVisualAppearance which takes VisibleSelection
+        https://bugs.webkit.org/show_bug.cgi?id=190108
+
+        Reviewed by Wenson Hsieh.
+
+        Adopt the new variant which directly takes VisibleSelection.
+
+        * WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp:
+        (WebKit::WebEditorClient::updateGlobalSelection):
+
+2018-10-01  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Adopt NSURLSessionCompanionProxyPreference
+        https://bugs.webkit.org/show_bug.cgi?id=190177
+        <rdar://problem/43402114>
+
+        Reviewed by Wenson Hsieh.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (WebKit::NetworkSessionCocoa::NetworkSessionCocoa):
+
+2018-10-01  Chris Dumez  <cdumez@apple.com>
+
+        [Mac] The UIProcess should listen to memory pressure signals
+        https://bugs.webkit.org/show_bug.cgi?id=190166
+
+        Reviewed by Simon Fraser.
+
+        The UIProcess should listen to memory pressure signals on Mac in order to free memory, similarly to what we already
+        do on iOS. The memory pressure handler currently discards view snapshots and prewarmed processes.
+
+        * SourcesCocoa.txt:
+        * UIProcess/Cocoa/WebMemoryPressureHandlerCocoa.h: Renamed from Source/WebKit/UIProcess/ios/WebMemoryPressureHandlerIOS.h.
+        * UIProcess/Cocoa/WebMemoryPressureHandlerCocoa.mm: Renamed from Source/WebKit/UIProcess/ios/WebMemoryPressureHandlerIOS.mm.
+        (WebKit::installMemoryPressureHandler):
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitialize):
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-10-01  Sihui Liu  <sihui_liu@apple.com>
+
+        Fix Internal iOS Build after r236690
+        https://bugs.webkit.org/show_bug.cgi?id=190171
+
+        Reviewed by Alex Christensen.
+
+        * Platform/ExtraPrivateSymbolsForTAPI.h:
+
+2018-10-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Add SPI to customize the input accessory view when focusing an element
+        https://bugs.webkit.org/show_bug.cgi?id=190152
+        <rdar://problem/42754975>
+
+        Reviewed by Dan Bernstein.
+
+        Adds SPI on WKFormInputSession to customize the input accessory view, alongside the input view. See below for
+        more details.
+
+        Test: KeyboardInputTests.CustomInputViewAndInputAccessoryView
+
+        * UIProcess/API/Cocoa/_WKFormInputSession.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKFormInputSession customInputAccessoryView]):
+        (-[WKFormInputSession setCustomInputAccessoryView:]):
+
+        Reload input views when the custom input accessory view changes.
+
+        (-[WKContentView requiresAccessoryView]):
+
+        If a custom input accessory view is specified, return YES.
+
+        (-[WKContentView inputAccessoryView]):
+
+        Return the custom input accessory view if present, and fall back to the default web form accessory view.
+
+2018-10-01  Sihui Liu  <sihui_liu@apple.com>
+
+        Remove StorageProcess
+        https://bugs.webkit.org/show_bug.cgi?id=189975
+
+        Reviewed by Geoffrey Garen.
+
+        * CMakeLists.txt:
+        * Configurations/Storage-OSX-sandbox.entitlements: Removed.
+        * Configurations/StorageService.xcconfig: Removed.
+        * Configurations/WebKit.xcconfig:
+        * DerivedSources.make:
+        * NetworkProcess/IndexedDB/WebIDBConnectionToClient.cpp:
+        (WebKit::WebIDBConnectionToClient::putOrAdd):
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::establishIDBConnectionToServer):
+        * PlatformGTK.cmake:
+        * PlatformMac.cmake:
+        * PlatformWPE.cmake:
+        * PlatformWin.cmake:
+        * Shared/ProcessExecutablePath.h:
+        * Shared/Storage/StorageProcessCreationParameters.cpp: Removed.
+        * Shared/Storage/StorageProcessCreationParameters.h: Removed.
+        * Shared/glib/ProcessExecutablePathGLib.cpp:
+        (WebKit::executablePathOfStorageProcess): Deleted.
+        * Sources.txt:
+        * SourcesCocoa.txt:
+        * SourcesGTK.txt:
+        * SourcesWPE.txt:
+        * StorageProcess/EntryPoint/mac/XPCService/StorageService/Info.plist: Removed.
+        * StorageProcess/EntryPoint/mac/XPCService/StorageServiceEntryPoint.mm: Removed.
+        * StorageProcess/EntryPoint/unix/StorageProcessMain.cpp: Removed.
+        * StorageProcess/EntryPoint/win/StorageProcessMain.cpp: Removed.
+        * StorageProcess/StorageProcess.cpp: Removed.
+        * StorageProcess/StorageProcess.h: Removed.
+        * StorageProcess/StorageProcess.messages.in: Removed.
+        * StorageProcess/StorageToWebProcessConnection.cpp: Removed.
+        * StorageProcess/StorageToWebProcessConnection.h: Removed.
+        * StorageProcess/StorageToWebProcessConnection.messages.in: Removed.
+        * StorageProcess/glib/StorageProcessMainGLib.cpp: Removed.
+        * StorageProcess/ios/StorageProcessIOS.mm: Removed.
+        * StorageProcess/mac/StorageProcessMac.mm: Removed.
+        * StorageProcess/mac/com.apple.WebKit.Storage.sb.in: Removed.
+        * StorageProcess/unix/StorageProcessMainUnix.h: Removed.
+        * StorageProcess/win/StorageProcessMainWin.cpp: Removed.
+        * StorageProcess/win/StorageProcessMainWin.h: Removed.
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextTerminateStorageProcess): Deleted.
+        (WKContextGetDatabaseProcessIdentifier): Deleted.
+        * UIProcess/API/C/WKContext.h:
+        * UIProcess/API/C/WKContextPrivate.h:
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _terminateStorageProcess]): Deleted.
+        (-[WKProcessPool _storageProcessIdentifier]): Deleted.
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+        * UIProcess/Launcher/glib/ProcessLauncherGLib.cpp:
+        (WebKit::ProcessLauncher::launchProcess):
+        * UIProcess/Launcher/win/ProcessLauncherWin.cpp:
+        (WebKit::processName):
+        * UIProcess/Storage/StorageProcessProxy.cpp: Removed.
+        * UIProcess/Storage/StorageProcessProxy.h: Removed.
+        * UIProcess/Storage/StorageProcessProxy.messages.in: Removed.
+        * UIProcess/WebContextClient.cpp:
+        (WebKit::WebContextClient::storageProcessDidCrash): Deleted.
+        * UIProcess/WebContextClient.h:
+        * UIProcess/WebContextSupplement.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::sendMemoryPressureEvent):
+        (WebKit::WebProcessPool::setAnyPageGroupMightHavePrivateBrowsingEnabled):
+        (WebKit::WebProcessPool::ensureStorageProcessAndWebsiteDataStore): Deleted.
+        (WebKit::WebProcessPool::getStorageProcessConnection): Deleted.
+        (WebKit::WebProcessPool::storageProcessCrashed): Deleted.
+        (WebKit::WebProcessPool::storageProcessIdentifier): Deleted.
+        (WebKit::WebProcessPool::terminateStorageProcessForTesting): Deleted.
+        * UIProcess/WebProcessPool.h:
+        (WebKit::WebProcessPool::sendToStorageProcess): Deleted.
+        (WebKit::WebProcessPool::sendToStorageProcessRelaunchingIfNecessary): Deleted.
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::getStorageProcessConnection): Deleted.
+        * UIProcess/WebProcessProxy.h:
+        * UIProcess/WebProcessProxy.messages.in:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::~WebsiteDataStore):
+        (WebKit::WebsiteDataStore::storageProcessParameters): Deleted.
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.h:
+        * WebProcess/Storage/WebServiceWorkerProvider.cpp:
+        * WebProcess/Storage/WebToStorageProcessConnection.cpp: Removed.
+        * WebProcess/Storage/WebToStorageProcessConnection.h: Removed.
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::establishWorkerContextConnectionToNetworkProcess):
+        (WebKit::WebProcess::webToStorageProcessConnectionClosed): Deleted.
+        (WebKit::WebProcess::ensureWebToStorageProcessConnection): Deleted.
+        * WebProcess/WebProcess.h:
+        * webkitglib-symbols.map:
+
+2018-10-01  David Quesada  <david_quesada@apple.com>
+
+        Add missing Objective-C versions of downloads SPI
+        https://bugs.webkit.org/show_bug.cgi?id=190149
+        rdar://problem/44915592
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _downloadURLRequest:]):
+        (-[WKProcessPool _resumeDownloadFromData:path:]):
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+        * UIProcess/API/Cocoa/_WKDownload.h:
+        * UIProcess/API/Cocoa/_WKDownload.mm:
+        (-[_WKDownload resumeData]):
+        * UIProcess/API/Cocoa/_WKDownloadInternal.h:
+        * UIProcess/Cocoa/DownloadClient.mm:
+            Move the DownloadProxy's WrapperTraits out of DownloadClient, and into the internal
+            header so it can be used from other classes (i.e. WKProcessPool here).
+
+2018-10-01  Alex Christensen  <achristensen@webkit.org>
+
+        Fix internal build after r236665
+        https://bugs.webkit.org/show_bug.cgi?id=189850
+
+        * UIProcess/API/Cocoa/WKNSURLAuthenticationChallenge.h:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-10-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Import a JS CBOR coder
+        https://bugs.webkit.org/show_bug.cgi?id=189877
+        <rdar://problem/44701124>
+
+        Reviewed by Chris Dumez.
+
+        Update MockWebAuthenticationConfiguration to have userCertificateBase64 and intermediateCACertificateBase64
+        as Local's memeber such that tests can pass those certificates to MockLocalConnection instead of letting it
+        holds some static ones.
+
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp:
+        (WKWebsiteDataStoreSetWebAuthenticationMockConfiguration):
+        * UIProcess/WebAuthentication/Mock/MockLocalConnection.mm:
+        (WebKit::MockLocalConnection::getAttestation const):
+        * UIProcess/WebAuthentication/Mock/MockWebAuthenticationConfiguration.h:
+
+2018-10-01  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r236512): http/tests/navigation/keyboard-events-during-provisional-navigation.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=190052
+
+        Reviewed by Ryosuke Niwa.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::sendMessage):
+        * Platform/IPC/Connection.h:
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.cpp:
+        (WKBundlePagePostMessageIgnoringFullySynchronousMode):
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::postMessageIgnoringFullySynchronousMode):
+        * WebProcess/WebPage/WebPage.h:
+
+2018-10-01  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Special keys are misidentified in DOM keyboard events
+        https://bugs.webkit.org/show_bug.cgi?id=189974
+
+        Reviewed by Wenson Hsieh.
+
+        Take the key code of WebEvent to be the key code for the new WebKeyboardEvent verbatim
+        now that we normalize the character strings of the WebEvent to account for the special
+        UIKit input strings.
+
+        * Shared/ios/WebIOSEventFactory.mm:
+        (WebIOSEventFactory::createWebKeyboardEvent):
+
 2018-10-01  Alex Christensen  <achristensen@webkit.org>
 
         Fix an internal build after r236665

@@ -534,6 +534,7 @@ public:
 #endif
 
     ExceptionOr<Ref<DOMRect>> selectionBounds();
+    void setSelectionWithoutValidation(Ref<Node> baseNode, unsigned baseOffset, RefPtr<Node> extentNode, unsigned extentOffset);
 
     ExceptionOr<bool> isPluginUnavailabilityIndicatorObscured(Element&);
     ExceptionOr<String> unavailablePluginReplacementText(Element&);
@@ -653,6 +654,7 @@ public:
 #if ENABLE(WEBGL)
     void simulateWebGLContextChanged(WebGLRenderingContext&);
     void failNextGPUStatusCheck(WebGLRenderingContext&);
+    bool hasLowAndHighPowerGPUs();
 #endif
 
     void setPageVisibility(bool isVisible);

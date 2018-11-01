@@ -248,6 +248,7 @@
 #import "WebNSPasteboardExtras.h"
 #import "WebNSPrintOperationExtras.h"
 #import "WebPDFView.h"
+#import "WebSwitchingGPUClient.h"
 #import "WebVideoFullscreenController.h"
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIndicatorWindow.h>
@@ -1406,7 +1407,9 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #if ENABLE(GAMEPAD)
         WebKitInitializeGamepadProviderIfNecessary();
 #endif
-        
+#if PLATFORM(MAC)
+        WebCore::SwitchingGPUClient::setSingleton(WebKit::WebSwitchingGPUClient::singleton());
+#endif
         DeprecatedGlobalSettings::setShouldRespectPriorityInCSSAttributeSetters(shouldRespectPriorityInCSSAttributeSetters());
 
 #if PLATFORM(IOS)
@@ -9419,6 +9422,8 @@ bool LayerFlushController::flushLayers()
         return;
 
     _private->playbackSessionModel->setMediaElement(nullptr);
+    _private->playbackSessionInterface->invalidate();
+
     _private->playbackSessionModel = nullptr;
     _private->playbackSessionInterface = nullptr;
     [self updateTouchBar];

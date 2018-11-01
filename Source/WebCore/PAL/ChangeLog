@@ -1,3 +1,35 @@
+2018-10-01  Dean Jackson  <dino@apple.com>
+
+        Remove CSS Animation Triggers
+        https://bugs.webkit.org/show_bug.cgi?id=190175
+        <rdar://problem/44925626>
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-01  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Adopt NSURLSessionCompanionProxyPreference
+        https://bugs.webkit.org/show_bug.cgi?id=190177
+        <rdar://problem/43402114>
+
+        Reviewed by Wenson Hsieh.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2018-10-01  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Special keys are misidentified in DOM keyboard events
+        https://bugs.webkit.org/show_bug.cgi?id=189974
+
+        Reviewed by Wenson Hsieh.
+
+        Forward declare or define more SPI.
+
+        * pal/spi/cocoa/IOKitSPI.h:
+        * pal/spi/ios/UIKitSPI.h:
+
 2018-09-25  Jiewen Tan  <jiewen_tan@apple.com>
 
         [WebAuthN] Make AuthenticatorManager

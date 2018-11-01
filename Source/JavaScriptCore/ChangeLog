@@ -1,3 +1,427 @@
+2018-10-03  Koby Boyango  <koby.b@mce-sys.com>
+
+        [JSC] Add a C++ callable overload of objectConstructorSeal
+        https://bugs.webkit.org/show_bug.cgi?id=190137
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/ObjectConstructor.cpp:
+        * runtime/ObjectConstructor.h:
+
+2018-10-02  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Fix Disassembler-output on ARM Thumb2
+        https://bugs.webkit.org/show_bug.cgi?id=190203
+
+        On ARMv7 with Thumb2 addresses have bit 0 set to 1 to force
+        execution in thumb mode for jumps and calls. The actual machine
+        instructions are still aligned to 2-bytes though. Use dataLocation() as
+        start address for disassembling since it unsets the thumb bit.
+        Until now the disassembler would start at the wrong address (off by 1),
+        resulting in the wrong disassembled machine instructions.
+
+        Reviewed by Mark Lam.
+
+        * disassembler/CapstoneDisassembler.cpp:
+        (JSC::tryToDisassemble):
+
+2018-10-02  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Add stub of ExecutableAllocator used when JIT is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=190215
+
+        Reviewed by Mark Lam.
+
+        When ENABLE(JIT) is disabled, we do not use JIT. But we ExecutableAllocator is still available since
+        it is guarded by ENABLE(ASSEMBLER). ENABLE(ASSEMBLER) is necessary for LLInt ASM interpreter since
+        our MacroAssembler tells machine architecture information. Eventually, we would like to decouple
+        this machine architecture information from MacroAssembler. But for now, we use ENABLE(ASSEMBLER)
+        for LLInt ASM interpreter even if JIT is disabled by ENABLE(JIT).
+
+        To ensure any executable memory allocation is not done, we add a stub of ExecutableAllocator for
+        non-JIT configurations. This does not have any functionality allocating executable memory, thus
+        any accidental operation cannot attempt to allocate executable memory if ENABLE(JIT) = OFF.
+
+        * jit/ExecutableAllocator.cpp:
+        (JSC::ExecutableAllocator::initializeAllocator):
+        (JSC::ExecutableAllocator::singleton):
+        * jit/ExecutableAllocator.h:
+        (JSC::ExecutableAllocator::isValid const):
+        (JSC::ExecutableAllocator::underMemoryPressure):
+        (JSC::ExecutableAllocator::memoryPressureMultiplier):
+        (JSC::ExecutableAllocator::dumpProfile):
+        (JSC::ExecutableAllocator::allocate):
+        (JSC::ExecutableAllocator::isValidExecutableMemory):
+        (JSC::ExecutableAllocator::committedByteCount):
+        (JSC::ExecutableAllocator::getLock const):
+        (JSC::performJITMemcpy):
+
+2018-10-01  Dean Jackson  <dino@apple.com>
+
+        Remove CSS Animation Triggers
+        https://bugs.webkit.org/show_bug.cgi?id=190175
+        <rdar://problem/44925626>
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-02  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] BigInt.proptotype.toString is broken when radix is power of 2
+        https://bugs.webkit.org/show_bug.cgi?id=190033
+
+        Reviewed by Yusuke Suzuki.
+
+        The implementation of JSBigInt::toStringToGeneric doesn't handle power
+        of 2 radix when JSBigInt length is >= 2. To handle such cases, we
+        implemented JSBigInt::toStringBasePowerOfTwo that follows the
+        algorithm that groups bits using mask of (2 ^ n) - 1 to extract every
+        digit.
+
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::toString):
+        (JSC::JSBigInt::toStringBasePowerOfTwo):
+        * runtime/JSBigInt.h:
+
+2018-10-01  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Add branchIfNaN and branchIfNotNaN
+        https://bugs.webkit.org/show_bug.cgi?id=190122
+
+        Reviewed by Mark Lam.
+
+        Add AssemblyHelpers::{branchIfNaN, branchIfNotNaN} to make code more readable.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileDoublePutByVal):
+        (JSC::DFG::SpeculativeJIT::compileDoubleRep):
+        (JSC::DFG::SpeculativeJIT::getIntTypedArrayStoreOperand):
+        (JSC::DFG::SpeculativeJIT::compileSpread):
+        (JSC::DFG::SpeculativeJIT::compileNewArray):
+        (JSC::DFG::SpeculativeJIT::speculateRealNumber):
+        (JSC::DFG::SpeculativeJIT::speculateDoubleRepReal):
+        (JSC::DFG::SpeculativeJIT::compileNormalizeMapKey):
+        (JSC::DFG::SpeculativeJIT::compileHasIndexedProperty):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::purifyNaN):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::branchIfNaN):
+        (JSC::AssemblyHelpers::branchIfNotNaN):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitGenericContiguousPutByVal):
+        (JSC::JIT::emitDoubleLoad):
+        (JSC::JIT::emitFloatTypedArrayGetByVal):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emitGenericContiguousPutByVal):
+        * wasm/js/JSToWasm.cpp:
+        (JSC::Wasm::createJSToWasmWrapper):
+
+2018-10-01  Mark Lam  <mark.lam@apple.com>
+
+        Function.toString() should also copy the source code Functions that are class definitions.
+        https://bugs.webkit.org/show_bug.cgi?id=190186
+        <rdar://problem/44733360>
+
+        Reviewed by Saam Barati.
+
+        Previously, if the Function is a class definition, functionProtoFuncToString()
+        would create a String using StringView::toStringWithoutCopying(), and use that
+        String to make a JSString.  This is not a problem if the underlying SourceProvider
+        (that backs the characters in that StringView) is immortal.  However, this is
+        not always the case in practice.
+
+        This patch fixes this issue by changing functionProtoFuncToString() to create the
+        String using StringView::toString() instead, which makes a copy of the underlying
+        characters buffer.  This detaches the resultant JSString from the SourceProvider
+        characters buffer that it was created from, and ensure that the underlying
+        characters buffer of the string will be alive for the entire lifetime of the
+        JSString.
+
+        * runtime/FunctionPrototype.cpp:
+        (JSC::functionProtoFuncToString):
+
+2018-10-01  Keith Miller  <keith_miller@apple.com>
+
+        Create a RELEASE_AND_RETURN macro for ExceptionScopes
+        https://bugs.webkit.org/show_bug.cgi?id=190163
+
+        Reviewed by Mark Lam.
+
+        The new RELEASE_AND_RETURN does all the work for cases
+        where you want to return the result of some expression
+        without explicitly checking for an exception. This is
+        much like the existing RETURN_IF_EXCEPTION macro.
+
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::newTypedArrayWithSize):
+        * interpreter/Interpreter.cpp:
+        (JSC::eval):
+        * jit/JITOperations.cpp:
+        (JSC::getByVal):
+        * jsc.cpp:
+        (functionDollarAgentReceiveBroadcast):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::setUpCall):
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        (JSC::LLInt::varargsSetup):
+        * profiler/ProfilerDatabase.cpp:
+        (JSC::Profiler::Database::toJSON const):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::hostResolveImportedModule):
+        * runtime/ArrayConstructor.cpp:
+        (JSC::constructArrayWithSizeQuirk):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::getProperty):
+        (JSC::fastJoin):
+        (JSC::arrayProtoFuncToString):
+        (JSC::arrayProtoFuncToLocaleString):
+        (JSC::arrayProtoFuncJoin):
+        (JSC::arrayProtoFuncPop):
+        (JSC::arrayProtoPrivateFuncConcatMemcpy):
+        * runtime/BigIntConstructor.cpp:
+        (JSC::toBigInt):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::opInByVal):
+        * runtime/ConstructData.cpp:
+        (JSC::construct):
+        * runtime/DateConstructor.cpp:
+        (JSC::dateParse):
+        * runtime/DatePrototype.cpp:
+        (JSC::dateProtoFuncToPrimitiveSymbol):
+        * runtime/DirectArguments.h:
+        * runtime/ErrorConstructor.cpp:
+        (JSC::Interpreter::constructWithErrorConstructor):
+        * runtime/ErrorPrototype.cpp:
+        (JSC::errorProtoFuncToString):
+        * runtime/ExceptionScope.h:
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunction):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::functionProtoFuncToString):
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::defineOwnProperty):
+        * runtime/GetterSetter.cpp:
+        (JSC::callGetter):
+        * runtime/IntlCollatorConstructor.cpp:
+        (JSC::IntlCollatorConstructorFuncSupportedLocalesOf):
+        * runtime/IntlCollatorPrototype.cpp:
+        (JSC::IntlCollatorFuncCompare):
+        (JSC::IntlCollatorPrototypeFuncResolvedOptions):
+        * runtime/IntlDateTimeFormatConstructor.cpp:
+        (JSC::IntlDateTimeFormatConstructorFuncSupportedLocalesOf):
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatFuncFormatDateTime):
+        (JSC::IntlDateTimeFormatPrototypeFuncFormatToParts):
+        (JSC::IntlDateTimeFormatPrototypeFuncResolvedOptions):
+        * runtime/IntlNumberFormatConstructor.cpp:
+        (JSC::IntlNumberFormatConstructorFuncSupportedLocalesOf):
+        * runtime/IntlNumberFormatPrototype.cpp:
+        (JSC::IntlNumberFormatFuncFormatNumber):
+        (JSC::IntlNumberFormatPrototypeFuncFormatToParts):
+        (JSC::IntlNumberFormatPrototypeFuncResolvedOptions):
+        * runtime/IntlObject.cpp:
+        (JSC::intlNumberOption):
+        * runtime/IntlObjectInlines.h:
+        (JSC::constructIntlInstanceWithWorkaroundForLegacyIntlConstructor):
+        * runtime/IntlPluralRules.cpp:
+        (JSC::IntlPluralRules::resolvedOptions):
+        * runtime/IntlPluralRulesConstructor.cpp:
+        (JSC::IntlPluralRulesConstructorFuncSupportedLocalesOf):
+        * runtime/IntlPluralRulesPrototype.cpp:
+        (JSC::IntlPluralRulesPrototypeFuncSelect):
+        (JSC::IntlPluralRulesPrototypeFuncResolvedOptions):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::defineOwnProperty):
+        (JSC::JSArray::put):
+        (JSC::JSArray::setLength):
+        (JSC::JSArray::unshiftCountWithAnyIndexingType):
+        * runtime/JSArrayBufferPrototype.cpp:
+        (JSC::arrayBufferProtoGetterFuncByteLength):
+        (JSC::sharedArrayBufferProtoGetterFuncByteLength):
+        * runtime/JSArrayInlines.h:
+        (JSC::toLength):
+        * runtime/JSBoundFunction.cpp:
+        (JSC::boundFunctionCall):
+        (JSC::boundFunctionConstruct):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::toIndex const):
+        (JSC::JSValue::toPropertyKey const):
+        (JSC::JSValue::get const):
+        (JSC::JSValue::getPropertySlot const):
+        (JSC::JSValue::getOwnPropertySlot const):
+        (JSC::JSValue::equalSlowCaseInline):
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::put):
+        (JSC::JSDataView::defineOwnProperty):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::put):
+        (JSC::JSFunction::defineOwnProperty):
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::constructGenericTypedArrayViewWithArguments):
+        (JSC::constructGenericTypedArrayView):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::set):
+        (JSC::JSGenericTypedArrayView<Adaptor>::defineOwnProperty):
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::speciesConstruct):
+        (JSC::genericTypedArrayViewProtoFuncJoin):
+        (JSC::genericTypedArrayViewPrivateFuncSubarrayCreate):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::put):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::decode):
+        (JSC::globalFuncEval):
+        (JSC::globalFuncProtoGetter):
+        * runtime/JSInternalPromise.cpp:
+        (JSC::JSInternalPromise::then):
+        * runtime/JSModuleEnvironment.cpp:
+        (JSC::JSModuleEnvironment::put):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::provideFetch):
+        (JSC::JSModuleLoader::loadAndEvaluateModule):
+        (JSC::JSModuleLoader::loadModule):
+        (JSC::JSModuleLoader::linkAndEvaluateModule):
+        (JSC::JSModuleLoader::requestImportModule):
+        (JSC::JSModuleLoader::getModuleNamespaceObject):
+        (JSC::moduleLoaderRequestedModules):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::stringify):
+        (JSC::Stringifier::toJSON):
+        (JSC::Walker::walk):
+        (JSC::JSONProtoFuncStringify):
+        * runtime/JSObject.cpp:
+        (JSC::ordinarySetSlow):
+        (JSC::JSObject::putInlineSlow):
+        (JSC::JSObject::toPrimitive const):
+        (JSC::JSObject::hasInstance):
+        (JSC::JSObject::toNumber const):
+        (JSC::JSObject::defineOwnIndexedProperty):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithArrayStorage):
+        (JSC::JSObject::putDirectIndexBeyondVectorLengthWithArrayStorage):
+        (JSC::JSObject::defineOwnNonIndexProperty):
+        * runtime/JSObject.h:
+        (JSC::JSObject::get const):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::getPropertySlot const):
+        (JSC::JSObject::putInlineForJSObject):
+        * runtime/MapConstructor.cpp:
+        (JSC::constructMap):
+        * runtime/NativeErrorConstructor.cpp:
+        (JSC::Interpreter::constructWithNativeErrorConstructor):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::constructObject):
+        (JSC::objectConstructorGetPrototypeOf):
+        (JSC::objectConstructorGetOwnPropertyDescriptor):
+        (JSC::objectConstructorGetOwnPropertyDescriptors):
+        (JSC::objectConstructorGetOwnPropertyNames):
+        (JSC::objectConstructorGetOwnPropertySymbols):
+        (JSC::objectConstructorKeys):
+        (JSC::objectConstructorDefineProperty):
+        (JSC::objectConstructorDefineProperties):
+        (JSC::objectConstructorCreate):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncToLocaleString):
+        (JSC::objectProtoFuncToString):
+        * runtime/Operations.cpp:
+        (JSC::jsAddSlowCase):
+        * runtime/Operations.h:
+        (JSC::jsString):
+        (JSC::jsLess):
+        (JSC::jsLessEq):
+        * runtime/ParseInt.h:
+        (JSC::toStringView):
+        * runtime/ProxyConstructor.cpp:
+        (JSC::constructProxyObject):
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::toStringName):
+        (JSC::performProxyGet):
+        (JSC::ProxyObject::performInternalMethodGetOwnProperty):
+        (JSC::ProxyObject::performHasProperty):
+        (JSC::ProxyObject::getOwnPropertySlotCommon):
+        (JSC::ProxyObject::performPut):
+        (JSC::ProxyObject::putByIndexCommon):
+        (JSC::performProxyCall):
+        (JSC::performProxyConstruct):
+        (JSC::ProxyObject::performDelete):
+        (JSC::ProxyObject::performPreventExtensions):
+        (JSC::ProxyObject::performIsExtensible):
+        (JSC::ProxyObject::performDefineOwnProperty):
+        (JSC::ProxyObject::performSetPrototype):
+        (JSC::ProxyObject::performGetPrototype):
+        * runtime/ReflectObject.cpp:
+        (JSC::reflectObjectConstruct):
+        (JSC::reflectObjectDefineProperty):
+        (JSC::reflectObjectGet):
+        (JSC::reflectObjectGetOwnPropertyDescriptor):
+        (JSC::reflectObjectGetPrototypeOf):
+        (JSC::reflectObjectOwnKeys):
+        (JSC::reflectObjectSet):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::constructRegExp):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::defineOwnProperty):
+        (JSC::RegExpObject::matchGlobal):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncTestFast):
+        (JSC::regExpProtoFuncExec):
+        (JSC::regExpProtoFuncToString):
+        * runtime/ScriptExecutable.cpp:
+        (JSC::ScriptExecutable::newCodeBlockFor):
+        * runtime/SetConstructor.cpp:
+        (JSC::constructSet):
+        * runtime/SparseArrayValueMap.cpp:
+        (JSC::SparseArrayValueMap::putEntry):
+        (JSC::SparseArrayEntry::put):
+        * runtime/StringConstructor.cpp:
+        (JSC::stringFromCharCode):
+        (JSC::stringFromCodePoint):
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::put):
+        (JSC::StringObject::putByIndex):
+        (JSC::StringObject::defineOwnProperty):
+        * runtime/StringPrototype.cpp:
+        (JSC::jsSpliceSubstrings):
+        (JSC::jsSpliceSubstringsWithSeparators):
+        (JSC::removeUsingRegExpSearch):
+        (JSC::replaceUsingRegExpSearch):
+        (JSC::operationStringProtoFuncReplaceRegExpEmptyStr):
+        (JSC::replaceUsingStringSearch):
+        (JSC::repeatCharacter):
+        (JSC::replace):
+        (JSC::stringProtoFuncReplaceUsingRegExp):
+        (JSC::stringProtoFuncReplaceUsingStringSearch):
+        (JSC::stringProtoFuncSplitFast):
+        (JSC::stringProtoFuncToLowerCase):
+        (JSC::stringProtoFuncToUpperCase):
+        (JSC::toLocaleCase):
+        (JSC::trimString):
+        (JSC::stringProtoFuncIncludes):
+        (JSC::builtinStringIncludesInternal):
+        (JSC::normalize):
+        (JSC::stringProtoFuncNormalize):
+        * runtime/SymbolPrototype.cpp:
+        (JSC::symbolProtoFuncToString):
+        (JSC::symbolProtoFuncValueOf):
+        * tools/JSDollarVM.cpp:
+        (WTF::functionWasmStreamingParserAddBytes):
+        (JSC::functionGetPrivateProperty):
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyCompileError):
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::constructJSWebAssemblyModule):
+        (JSC::WebAssemblyModuleConstructor::createModule):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::constructJSWebAssemblyTable):
+        * wasm/js/WebAssemblyWrapperFunction.cpp:
+        (JSC::callWebAssemblyWrapperFunction):
+
 2018-10-01  Koby Boyango  <koby.b@mce-sys.com>
 
         [JSC] Add a JSONStringify overload that receives a JSValue space

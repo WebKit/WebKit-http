@@ -694,8 +694,18 @@ void WebPageProxy::handleSynchronousMessage(IPC::Connection& connection, const S
 
 void WebPageProxy::reattachToWebProcess()
 {
-    auto process = makeRef(m_process->processPool().createNewWebProcessRespectingProcessCountLimit(m_websiteDataStore.get()));
-    reattachToWebProcess(WTFMove(process), nullptr);
+    ASSERT(!m_isClosed);
+    ASSERT(!isValid());
+    RELEASE_LOG_IF_ALLOWED(Process, "%p WebPageProxy::reattachToWebProcess\n", this);
+
+    m_process->removeWebPage(*this, m_pageID);
+    m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
+
+    auto& processPool = m_process->processPool();
+    m_process = processPool.createNewWebProcessRespectingProcessCountLimit(m_websiteDataStore.get());
+    m_isValid = true;
+
+    finishAttachingToWebProcess();
 }
 
 SuspendedPageProxy* WebPageProxy::maybeCreateSuspendedPage(WebProcessProxy& process, API::Navigation& navigation)
@@ -721,27 +731,18 @@ void WebPageProxy::suspendedPageClosed(SuspendedPageProxy& page)
     m_suspendedPage = nullptr;
 }
 
-void WebPageProxy::reattachToWebProcess(Ref<WebProcessProxy>&& process, API::Navigation* navigation)
+void WebPageProxy::swapToWebProcess(Ref<WebProcessProxy>&& process, API::Navigation& navigation)
 {
     ASSERT(!m_isClosed);
-    ASSERT(!isValid());
-
-    m_isValid = true;
+    RELEASE_LOG_IF_ALLOWED(Process, "%p WebPageProxy::swapToWebProcess\n", this);
 
     // If the process we're attaching to is kept alive solely by our current suspended page,
     // we need to maintain that by temporarily keeping the suspended page alive.
-    std::unique_ptr<SuspendedPageProxy> currentSuspendedPage;
-    if (!navigation) {
-        m_process->removeWebPage(*this, m_pageID);
-        m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
-    } else {
-        currentSuspendedPage = WTFMove(m_suspendedPage);
-        m_process->suspendWebPageProxy(*this, *navigation);
-    }
+    auto currentSuspendedPage = WTFMove(m_suspendedPage);
+    m_process->suspendWebPageProxy(*this, navigation);
 
     m_process = WTFMove(process);
-    if (m_process->state() == WebProcessProxy::State::Running)
-        m_webProcessLifetimeTracker.webPageEnteringWebProcess();
+    m_isValid = true;
 
     // If we are reattaching to a SuspendedPage, then the WebProcess' WebPage already exists and
     // WebPageProxy::didCreateMainFrame() will not be called to initialize m_mainFrame. In such
@@ -754,11 +755,18 @@ void WebPageProxy::reattachToWebProcess(Ref<WebProcessProxy>&& process, API::Nav
         m_process->frameCreated(*m_mainFrameID, *m_mainFrame);
     }
 
-    RELEASE_LOG_IF_ALLOWED(Process, "%p WebPageProxy::reattachToWebProcess\n", this);
+    finishAttachingToWebProcess();
+}
 
+void WebPageProxy::finishAttachingToWebProcess()
+{
     ASSERT(m_process->state() != ChildProcessProxy::State::Terminated);
-    if (m_process->state() == ChildProcessProxy::State::Running)
+
+    if (m_process->state() == ChildProcessProxy::State::Running) {
+        m_webProcessLifetimeTracker.webPageEnteringWebProcess();
         processDidFinishLaunching();
+    }
+
     m_process->addExistingWebPage(*this, m_pageID);
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
@@ -1024,7 +1032,7 @@ RefPtr<API::Navigation> WebPageProxy::loadFile(const String& fileURLString, cons
 
     URL resourceDirectoryURL;
     if (resourceDirectoryURLString.isNull())
-        resourceDirectoryURL = URL(ParsedURLString, "file:///"_s);
+        resourceDirectoryURL = URL({ }, "file:///"_s);
     else {
         resourceDirectoryURL = URL(URL(), resourceDirectoryURLString);
         if (!resourceDirectoryURL.isLocalFile())
@@ -1764,6 +1772,25 @@ void WebPageProxy::executeEditCommand(const String& commandName, const String& a
     m_process->send(Messages::WebPage::ExecuteEditCommand(commandName, argument), m_pageID);
 }
 
+void WebPageProxy::requestFontAttributesAtSelectionStart(Function<void(const WebCore::FontAttributes&, CallbackBase::Error)>&& callback)
+{
+    if (!isValid()) {
+        callback({ }, CallbackBase::Error::Unknown);
+        return;
+    }
+
+    auto callbackID = m_callbacks.put(WTFMove(callback), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::RequestFontAttributesAtSelectionStart(callbackID), m_pageID);
+}
+
+void WebPageProxy::fontAttributesCallback(const WebCore::FontAttributes& attributes, CallbackID callbackID)
+{
+    m_cachedFontAttributesAtSelectionStart = attributes;
+
+    if (auto callback = m_callbacks.take<FontAttributesCallback>(callbackID))
+        callback->performCallbackWithReturnValue(attributes);
+}
+
 void WebPageProxy::setEditable(bool editable)
 {
     if (editable == m_isEditable)
@@ -2498,9 +2525,7 @@ void WebPageProxy::continueNavigationInNewProcess(API::Navigation& navigation, R
 
     processDidTerminate(ProcessTerminationReason::NavigationSwap);
 
-    // FIXME: this is to fix the ASSERT(isValid()) inside reattachToWebProcess, some other way to fix this is needed.
-    m_isValid = false;
-    reattachToWebProcess(WTFMove(process), &navigation);
+    swapToWebProcess(WTFMove(process), navigation);
 
     if (auto* item = navigation.targetItem()) {
         LOG(Loading, "WebPageProxy %p continueNavigationInNewProcess to back item URL %s", this, item->url().utf8().data());
@@ -4096,7 +4121,7 @@ void WebPageProxy::decidePolicyForNavigationAction(WebFrameProxy& frame, const W
             sourceFrameInfo = API::FrameInfo::create(originatingFrameInfoData, originatingPageID ? m_process->webPage(originatingPageID) : nullptr);
 
         auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
-        bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision && destinationFrameInfo->isMainFrame() && !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url()) && navigationActionData.navigationType != WebCore::NavigationType::BackForward;
+        bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision && destinationFrameInfo->isMainFrame() && !hostsAreEqual(URL({ }, m_mainFrame->url()), request.url()) && navigationActionData.navigationType != WebCore::NavigationType::BackForward;
 
         auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), destinationFrameInfo.ptr(), std::nullopt, WTFMove(request), originalRequest.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity), mainFrameNavigation);
 
@@ -4153,7 +4178,7 @@ void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const Securi
             sourceFrameInfo = API::FrameInfo::create(*frame, frameSecurityOrigin.securityOrigin());
 
         auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
-        bool shouldOpenAppLinks = !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
+        bool shouldOpenAppLinks = !hostsAreEqual(URL({ }, m_mainFrame->url()), request.url());
         auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), nullptr, frameName, WTFMove(request), URL { }, shouldOpenAppLinks, WTFMove(userInitiatedActivity));
 
         m_navigationClient->decidePolicyForNavigationAction(*this, navigationAction.get(), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
@@ -4307,7 +4332,7 @@ void WebPageProxy::createNewPage(const FrameInfoData& originatingFrameInfoData, 
         reply(newPage->pageID(), newPage->creationParameters());
 
         WebsiteDataStore::cloneSessionData(*this, *newPage);
-        newPage->m_shouldSuppressAppLinksInNextNavigationPolicyDecision = hostsAreEqual(URL(ParsedURLString, mainFrameURL), request.url());
+        newPage->m_shouldSuppressAppLinksInNextNavigationPolicyDecision = hostsAreEqual(URL({ }, mainFrameURL), request.url());
     });
 }
     
@@ -5927,7 +5952,7 @@ void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
 
 #if PLATFORM(IOS)
     if (m_process->isUnderMemoryPressure()) {
-        String domain = WebCore::topPrivatelyControlledDomain(WebCore::URL(WebCore::ParsedURLString, currentURL()).host().toString());
+        String domain = WebCore::topPrivatelyControlledDomain(WebCore::URL({ }, currentURL()).host().toString());
         if (!domain.isEmpty())
             logDiagnosticMessageWithEnhancedPrivacy(WebCore::DiagnosticLoggingKeys::domainCausingJetsamKey(), domain, WebCore::ShouldSample::No);
     }
@@ -6190,6 +6215,7 @@ void WebPageProxy::resetStateAfterProcessExited(ProcessTerminationReason termina
     m_needsToFinishInitializingWebPageAfterProcessLaunch = false;
 
     m_editorState = EditorState();
+    m_cachedFontAttributesAtSelectionStart.reset();
 
     if (terminationReason == ProcessTerminationReason::NavigationSwap)
         pageClient().processWillSwap();

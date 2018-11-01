@@ -472,7 +472,7 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Fr
     // it's possible to have a response without a URL here
     // <rdar://problem/5454935>
     if (responseURL.isNull())
-        responseURL = URL(ParsedURLString, emptyString());
+        responseURL = URL({ }, emptyString());
 
     auto mainResource = ArchiveResource::create(utf8Buffer(markupString), responseURL, response.mimeType(), "UTF-8", frame.tree().uniqueName());
     if (!mainResource)
@@ -554,8 +554,8 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::createFromSelection(Frame* frame)
     builder.append(documentTypeString(*document));
 
     Vector<Node*> nodeList;
-    if (auto selectionRange = frame->selection().toNormalizedRange())
-        builder.append(serializePreservingVisualAppearance(*selectionRange, &nodeList, AnnotateForInterchange::Yes));
+    auto serializeComposedTree = frame->settings().selectionAcrossShadowBoundariesEnabled() ? SerializeComposedTree::Yes : SerializeComposedTree::No;
+    builder.append(serializePreservingVisualAppearance(frame->selection().selection(), ResolveURLs::No, serializeComposedTree, &nodeList));
 
     auto archive = create(builder.toString(), *frame, nodeList, nullptr);
     

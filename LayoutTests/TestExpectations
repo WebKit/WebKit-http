@@ -1211,6 +1211,7 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
 media/session [ Skip ]
 
+webrtc/simulcast-h264.html [ Slow ]
 webrtc/datachannel/multiple-connections.html [ Slow ]
 webkit.org/b/187180 webrtc/datachannel/mdns-ice-candidates.html [ Pass Failure ]
 webkit.org/b/171094 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html [ Failure ]
@@ -2880,9 +2881,6 @@ webkit.org/b/189997 imported/w3c/web-platform-tests/resource-timing/resource_tim
 # This is fallout from turning Web Animations on.
 webkit.org/b/190032 animations/animation-playstate-paused-style-resolution.html [ Failure ]
 webkit.org/b/190032 animations/fill-mode-removed.html [ Failure ]
-webkit.org/b/190032 animations/trigger-container-scroll-boundaries.html [ Failure ]
-webkit.org/b/190032 animations/trigger-container-scroll-empty.html [ Failure ]
-webkit.org/b/190032 animations/trigger-container-scroll-simple.html [ Failure ]
 webkit.org/b/190032 compositing/backing/backing-store-attachment-fill-forwards-animation.html [ Failure ]
 webkit.org/b/190032 compositing/backing/transform-transition-from-outside-view.html [ Failure ]
 webkit.org/b/190032 compositing/layer-creation/mismatched-rotated-transform-transition-overlap.html [ Failure ]

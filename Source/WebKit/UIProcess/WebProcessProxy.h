@@ -224,6 +224,11 @@ public:
     void cacheMediaMIMETypes(const Vector<String>&);
 #endif
 
+#if PLATFORM(MAC)
+    void requestHighPerformanceGPU();
+    void releaseHighPerformanceGPU();
+#endif
+
     // Called when the web process has crashed or we know that it will terminate soon.
     // Will potentially cause the WebProcessProxy object to be freed.
     void shutDown();
@@ -272,7 +277,6 @@ private:
     void getPluginProcessConnection(uint64_t pluginProcessToken, Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply&&);
 #endif
     void getNetworkProcessConnection(Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&&);
-    void getStorageProcessConnection(PAL::SessionID initialSessionID, Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply&&);
 
     bool platformIsBeingDebugged() const;
     bool shouldAllowNonValidInjectedCode() const;

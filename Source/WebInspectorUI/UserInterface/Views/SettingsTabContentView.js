@@ -210,7 +210,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         zoomEditor.addEventListener(WI.SettingEditor.Event.ValueDidChange, () => { WI.setZoomFactor(zoomEditor.value); });
         WI.settings.zoomFactor.addEventListener(WI.Setting.Event.Changed, () => { zoomEditor.value = WI.getZoomFactor().maxDecimals(2); });
 
-        if (WI.LogManager.supportsLogChannels()) {
+        if (WI.ConsoleManager.supportsLogChannels()) {
             const logLevels = [
                 [WI.LoggingChannel.Level.Off, WI.UIString("Off")],
                 [WI.LoggingChannel.Level.Basic, WI.UIString("Basic")],
@@ -221,7 +221,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
                 webrtc: WI.UIString("WebRTC Logging:"),
             };
 
-            let channels = WI.logManager.customLoggingChannels;
+            let channels = WI.consoleManager.customLoggingChannels;
             for (let channel of channels) {
                 let logEditor = generalSettingsView.addGroupWithCustomSetting(editorLabels[channel.source], WI.SettingEditor.Type.Select, {values: logLevels});
                 logEditor.value = channel.level;
@@ -238,6 +238,11 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             return;
 
         let experimentalSettingsView = new WI.SettingsView("experimental", WI.UIString("Experimental"));
+
+        if (window.CSSAgent) {
+            experimentalSettingsView.addSetting(WI.UIString("Styles Sidebar:"), WI.settings.experimentalEnableMultiplePropertiesSelection, WI.UIString("Enable Selection of Multiple Properties"));
+            experimentalSettingsView.addSeparator();
+        }
 
         if (window.LayerTreeAgent) {
             experimentalSettingsView.addSetting(WI.UIString("Layers:"), WI.settings.experimentalEnableLayersTab, WI.UIString("Enable Layers Tab"));
@@ -261,6 +266,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             });
         }
 
+        listenForChange(WI.settings.experimentalEnableMultiplePropertiesSelection);
         listenForChange(WI.settings.experimentalEnableLayersTab);
         listenForChange(WI.settings.experimentalEnableNewTabBar);
 

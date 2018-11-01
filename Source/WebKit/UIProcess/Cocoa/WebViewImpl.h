@@ -323,7 +323,7 @@ public:
     void selectionDidChange();
     
     void didBecomeEditable();
-    void updateFontPanelIfNeeded();
+    void updateFontManagerIfNeeded();
     void changeFontFromFontManager();
     void changeFontAttributesFromSender(id);
     void changeFontColorFromSender(id);
@@ -524,6 +524,7 @@ public:
     void attributedSubstringForProposedRange(NSRange, void(^)(NSAttributedString *attrString, NSRange actualRange));
     void firstRectForCharacterRange(NSRange, void(^)(NSRect firstRect, NSRange actualRange));
     void characterIndexForPoint(NSPoint, void(^)(NSUInteger));
+    void typingAttributesWithCompletionHandler(void(^)(NSDictionary<NSString *, id> *));
 
     void mouseMoved(NSEvent *);
     void mouseDown(NSEvent *);

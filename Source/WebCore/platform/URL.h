@@ -59,17 +59,11 @@ public:
 
 struct URLHash;
 
-enum ParsedURLStringTag { ParsedURLString };
-
 class URL {
 public:
     // Generates a URL which contains a null string.
     URL() { invalidate(); }
 
-    // The argument is an absolute URL string. The string is assumed to be output of URL::string() called on a valid
-    // URL object, or indiscernible from such.
-    // It is usually best to avoid repeatedly parsing a string, unless memory saving outweigh the possible slow-downs.
-    WEBCORE_EXPORT URL(ParsedURLStringTag, const String&);
     explicit URL(WTF::HashTableDeletedValueType) : m_string(WTF::HashTableDeletedValue) { }
     bool isHashTableDeletedValue() const { return string().isHashTableDeletedValue(); }
 
@@ -276,13 +270,6 @@ std::optional<URL> URL::decode(Decoder& decoder)
     return URL(URL(), string);
 }
 
-bool operator==(const URL&, const URL&);
-bool operator==(const URL&, const String&);
-bool operator==(const String&, const URL&);
-bool operator!=(const URL&, const URL&);
-bool operator!=(const URL&, const String&);
-bool operator!=(const String&, const URL&);
-
 WEBCORE_EXPORT bool equalIgnoringFragmentIdentifier(const URL&, const URL&);
 WEBCORE_EXPORT bool equalIgnoringQueryAndFragment(const URL&, const URL&);
 WEBCORE_EXPORT bool protocolHostAndPortAreEqual(const URL&, const URL&);
@@ -313,10 +300,6 @@ String mimeTypeFromDataURL(const String& url);
 
 // FIXME: This is a wrong concept to expose, different parts of a URL need different escaping per the URL Standard.
 WEBCORE_EXPORT String encodeWithURLEscapeSequences(const String&);
-
-#if PLATFORM(IOS)
-WEBCORE_EXPORT void enableURLSchemeCanonicalization(bool);
-#endif
 
 // Inlines.
 

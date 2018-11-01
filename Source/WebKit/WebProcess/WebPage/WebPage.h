@@ -1014,6 +1014,7 @@ public:
 
     void postMessage(const String& messageName, API::Object* messageBody);
     void postSynchronousMessageForTesting(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData);
+    void postMessageIgnoringFullySynchronousMode(const String& messageName, API::Object* messageBody);
 
 #if PLATFORM(GTK)
     void setInputMethodState(bool);
@@ -1203,6 +1204,8 @@ private:
     void restoreSession(const Vector<BackForwardListItemState>&);
     void didRemoveBackForwardItem(const WebCore::BackForwardItemIdentifier&);
     void updateBackForwardListForReattach(const Vector<WebKit::BackForwardListItemState>&);
+
+    void requestFontAttributesAtSelectionStart(CallbackID);
 
 #if ENABLE(REMOTE_INSPECTOR)
     void setAllowsRemoteInspection(bool);

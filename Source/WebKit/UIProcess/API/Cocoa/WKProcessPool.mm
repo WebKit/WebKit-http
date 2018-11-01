@@ -43,6 +43,7 @@
 #import "_WKAutomationDelegate.h"
 #import "_WKAutomationSessionInternal.h"
 #import "_WKDownloadDelegate.h"
+#import "_WKDownloadInternal.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 #import <WebCore/CertificateInfo.h>
 #import <WebCore/PluginData.h>
@@ -423,11 +424,6 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     _processPool->clearSupportedPlugins();
 }
 
-- (void)_terminateStorageProcess
-{
-    _processPool->terminateStorageProcessForTesting();
-}
-
 - (void)_terminateNetworkProcess
 {
     _processPool->terminateNetworkProcess();
@@ -446,11 +442,6 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 - (pid_t)_networkProcessIdentifier
 {
     return _processPool->networkProcessIdentifier();
-}
-
-- (pid_t)_storageProcessIdentifier
-{
-    return _processPool->storageProcessIdentifier();
 }
 
 - (void)_syncNetworkProcessCookies
@@ -572,6 +563,16 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     _coreLocationProvider = coreLocationProvider;
 }
 #endif // PLATFORM(IOS)
+
+- (_WKDownload *)_downloadURLRequest:(NSURLRequest *)request
+{
+    return (_WKDownload *)_processPool->download(nullptr, request)->wrapper();
+}
+
+- (_WKDownload *)_resumeDownloadFromData:(NSData *)resumeData path:(NSString *)path
+{
+    return wrapper(_processPool->resumeDownload(API::Data::createWithoutCopying(resumeData).ptr(), path));
+}
 
 @end
 

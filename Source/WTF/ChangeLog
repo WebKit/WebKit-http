@@ -1,3 +1,64 @@
+2018-10-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        -Wunused-variable in RenderLayer::updateScrollableAreaSet
+        https://bugs.webkit.org/show_bug.cgi?id=190200
+
+        Reviewed by Yusuke Suzuki.
+
+        Add a new UNUSED_VARIABLE() macro. It's the same as UNUSED_PARAM(), just named differently.
+
+        * wtf/Compiler.h:
+
+2018-10-01  Dean Jackson  <dino@apple.com>
+
+        [macOS] Switching to discrete GPU should be done in the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=189361
+        <rdar://problem/43949622>
+
+        Reviewed by Simon Fraser.
+
+        Define GL_SILENCE_DEPRECATION to avoid deprecation warnings for OpenGL.
+
+        * wtf/Platform.h:
+
+2018-10-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r236624 and r236671.
+        https://bugs.webkit.org/show_bug.cgi?id=190207
+
+        The change in r236624 introduced crashes on the bots
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Refactoring: eliminate raw pointer usage in Fullscreen code"
+        https://bugs.webkit.org/show_bug.cgi?id=188747
+        https://trac.webkit.org/changeset/236624
+
+        "Unify implementation in VideoFullscreenInterfaceAVKit"
+        https://bugs.webkit.org/show_bug.cgi?id=190091
+        https://trac.webkit.org/changeset/236671
+
+2018-10-02  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] BigInt.proptotype.toString is broken when radix is power of 2
+        https://bugs.webkit.org/show_bug.cgi?id=190033
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/MathExtras.h:
+        (WTF::ctz32):
+
+2018-10-01  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Adopt NSURLSessionCompanionProxyPreference
+        https://bugs.webkit.org/show_bug.cgi?id=190177
+        <rdar://problem/43402114>
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/FeatureDefines.h:
+
 2018-10-01  Koby Boyango  <koby.b@mce-sys.com>
 
         [WTF][JSCONLY] Use MainThreadWin on Windows in the JSCOnly port

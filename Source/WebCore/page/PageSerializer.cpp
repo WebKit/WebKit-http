@@ -105,7 +105,7 @@ private:
     void appendText(StringBuilder&, const Text&) override;
     void appendElement(StringBuilder&, const Element&, Namespaces*) override;
     void appendCustomAttributes(StringBuilder&, const Element&, Namespaces*) override;
-    void appendEndTag(const Element&) override;
+    void appendEndElement(StringBuilder&, const Element&) override;
 };
 
 PageSerializer::SerializerMarkupAccumulator::SerializerMarkupAccumulator(PageSerializer& serializer, Document& document, Vector<Node*>* nodes)
@@ -158,10 +158,10 @@ void PageSerializer::SerializerMarkupAccumulator::appendCustomAttributes(StringB
     appendAttribute(out, element, Attribute(frameOwnerURLAttributeName(frameOwner), url.string()), namespaces);
 }
 
-void PageSerializer::SerializerMarkupAccumulator::appendEndTag(const Element& element)
+void PageSerializer::SerializerMarkupAccumulator::appendEndElement(StringBuilder& out, const Element& element)
 {
     if (!shouldIgnoreElement(element))
-        MarkupAccumulator::appendEndTag(element);
+        MarkupAccumulator::appendEndElement(out, element);
 }
 
 PageSerializer::PageSerializer(Vector<PageSerializer::Resource>& resources)
@@ -322,7 +322,7 @@ URL PageSerializer::urlForBlankFrame(Frame* frame)
     if (iter != m_blankFrameURLs.end())
         return iter->value;
     String url = "wyciwyg://frame/" + String::number(m_blankFrameCounter++);
-    URL fakeURL(ParsedURLString, url);
+    URL fakeURL({ }, url);
     m_blankFrameURLs.add(frame, fakeURL);
     return fakeURL;
 }

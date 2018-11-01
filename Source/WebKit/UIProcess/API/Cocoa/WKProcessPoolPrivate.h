@@ -29,6 +29,7 @@
 #if WK_API_ENABLED
 
 @class _WKAutomationSession;
+@class _WKDownload;
 @class _WKProcessPoolConfiguration;
 @protocol _WKAutomationDelegate;
 @protocol _WKDownloadDelegate;
@@ -79,15 +80,16 @@
 
 - (void)_registerURLSchemeAsCanDisplayOnlyIfCanRequest:(NSString *)scheme WK_API_AVAILABLE(macosx(10.14), ios(12.0));
 
+- (_WKDownload *)_downloadURLRequest:(NSURLRequest *)request WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (_WKDownload *)_resumeDownloadFromData:(NSData *)resumeData path:(NSString *)path WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+
 // Test only. Should be called only while no web content processes are running.
-- (void)_terminateStorageProcess;
 - (void)_terminateNetworkProcess;
 - (void)_terminateServiceWorkerProcesses WK_API_AVAILABLE(macosx(10.14), ios(12.0));
 - (void)_disableServiceWorkerProcessTerminationDelay WK_API_AVAILABLE(macosx(10.14), ios(12.0));
 
 // Test only.
 - (pid_t)_networkProcessIdentifier WK_API_AVAILABLE(macosx(10.13), ios(11.0));
-- (pid_t)_storageProcessIdentifier WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
 
 // Test only.
 - (size_t)_webProcessCount WK_API_AVAILABLE(macosx(10.13), ios(11.0));

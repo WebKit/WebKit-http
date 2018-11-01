@@ -829,7 +829,7 @@ GstFlowReturn AppendPipeline::handleNewAppsinkSample(GstElement* appsink)
         // AppendPipeline should have only one streaming thread. Otherwise we can't detect reliably when an appends has
         // been demuxed completely.;
         g_critical("Appsink received a sample in a different thread than appsrcEndOfAppendCheckerProbe run.");
-        RELEASE_ASSERT_NOT_REACHED();
+        ASSERT_NOT_REACHED();
     }
 
     if (!m_playerPrivate || m_appendState == AppendState::Invalid) {
@@ -859,13 +859,21 @@ createOptionalParserForFormat(GstPad* demuxerSrcPad)
 
     if (!g_strcmp0(mediaType, "audio/x-opus")) {
         GstElement* opusparse = gst_element_factory_make("opusparse", parserName.get());
-        RELEASE_ASSERT(opusparse);
+        g_return_val_if_fail(opusparse, nullptr);
+        ASSERT(opusparse);
         return GRefPtr<GstElement>(opusparse);
     }
     if (!g_strcmp0(mediaType, "audio/x-vorbis")) {
         GstElement* vorbisparse = gst_element_factory_make("vorbisparse", parserName.get());
-        RELEASE_ASSERT(vorbisparse);
+        g_return_val_if_fail(vorbisparse, nullptr);
+        ASSERT(vorbisparse);
         return GRefPtr<GstElement>(vorbisparse);
+    }
+    if (!g_strcmp0(mediaType, "video/x-h264")) {
+        GstElement* h264parse = gst_element_factory_make("h264parse", parserName.get());
+        g_return_val_if_fail(h264parse, nullptr);
+        ASSERT(h264parse);
+        return GRefPtr<GstElement>(h264parse);
     }
 
     return nullptr;

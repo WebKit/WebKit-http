@@ -38,11 +38,16 @@
 namespace WebCore {
 
 RealtimeIncomingVideoSource::RealtimeIncomingVideoSource(rtc::scoped_refptr<webrtc::VideoTrackInterface>&& videoTrack, String&& videoTrackId)
-    : RealtimeMediaSource(WTFMove(videoTrackId), RealtimeMediaSource::Type::Video, String())
+    : RealtimeMediaSource(RealtimeMediaSource::Type::Video, "remote video"_s, WTFMove(videoTrackId))
     , m_videoTrack(WTFMove(videoTrack))
 {
-    setName("remote video");
     notifyMutedChange(!m_videoTrack);
+
+    RealtimeMediaSourceSupportedConstraints constraints;
+    constraints.setSupportsWidth(true);
+    constraints.setSupportsHeight(true);
+    m_currentSettings = RealtimeMediaSourceSettings { };
+    m_currentSettings->setSupportedConstraints(WTFMove(constraints));
 }
 
 void RealtimeIncomingVideoSource::startProducingData()
