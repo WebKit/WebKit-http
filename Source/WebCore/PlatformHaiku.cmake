@@ -108,6 +108,7 @@ list(APPEND WebCore_SOURCES
   platform/network/haiku/CertificateInfo.cpp
   platform/network/haiku/CookieJarHaiku.cpp
   platform/network/haiku/DNSHaiku.cpp
+  platform/network/haiku/HaikuFormDataStream.cpp
   platform/network/haiku/ProxyServerHaiku.cpp
   platform/network/haiku/ResourceHandleHaiku.cpp
   platform/network/haiku/ResourceRequestHaiku.cpp

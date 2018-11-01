@@ -34,8 +34,10 @@
 #include "ResourceHandleInternal.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include "TextEncoding.h"
 #include "WebDownload.h"
 #include "WebPage.h"
+
 #include <Directory.h>
 #include <Entry.h>
 #include <Message.h>

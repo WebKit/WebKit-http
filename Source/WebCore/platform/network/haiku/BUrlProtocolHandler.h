@@ -19,11 +19,10 @@
 #ifndef BURLPROTOCOLHANDLER_H
 #define BURLPROTOCOLHANDLER_H
 
-#include "FormData.h"
+#include "HaikuFormDataStream.h"
 #include "ResourceRequest.h"
 
 #include <support/Locker.h>
-#include <DataIO.h>
 #include <Messenger.h>
 #include <HttpRequest.h>
 #include <UrlProtocolAsynchronousListener.h>
@@ -35,31 +34,6 @@ namespace WebCore {
 class NetworkingContext;
 class ResourceHandle;
 class ResourceResponse;
-
-class BFormDataIO : public BDataIO
-{
-public:
-	BFormDataIO(FormData& form);
-	~BFormDataIO();
-	
-    ssize_t Size();
-	ssize_t Read(void* buffer, size_t size);
-	ssize_t Write(const void* buffer, size_t size);
-	
-private:
-	void _NextElement();
-    void _ParseCurrentElement();
-	
-private:
-	Vector<FormDataElement> m_formElements;
-	off_t m_currentFileSize;
-	BFile* m_currentFile;
-	off_t m_currentOffset;
-
-	int m_currentItem;
-	int m_lastItem;
-};
-
 
 class BUrlProtocolHandler : public BUrlProtocolAsynchronousListener
 {
