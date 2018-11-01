@@ -71,7 +71,7 @@ void ContextMenuClientHaiku::searchWithGoogle(const Frame* frame)
     url.append(encoded);
 
     if (Page* page = frame->page()) {
-        page->mainFrame().loader().urlSelected(URL(ParsedURLString, url),
+        page->mainFrame().loader().urlSelected(URL({ }, url),
             String("_blank"), 0, LockHistory::No, LockBackForwardList::No,
             MaybeSendReferrer, frame->document()->shouldOpenExternalURLsPolicyToPropagate());
     }
