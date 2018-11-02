@@ -31,7 +31,7 @@
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 
-typedef Vector<Ref<WebCore::HistoryItem>> HistoryItemVector;
+typedef Vector<RefPtr<WebCore::HistoryItem>> HistoryItemVector;
 typedef HashSet<RefPtr<WebCore::HistoryItem>> HistoryItemHashSet;
 
 class BackForwardList : public WebCore::BackForwardClient {
@@ -40,31 +40,31 @@ public:
     virtual ~BackForwardList();
 
     void addItem(Ref<WebCore::HistoryItem>&&) override;
-    void goBack();
-    void goForward();
-    void goToItem(WebCore::HistoryItem*) override;
-        
-    WebCore::HistoryItem* backItem();
-    WebCore::HistoryItem* currentItem();
-    WebCore::HistoryItem* forwardItem();
-    WebCore::HistoryItem* itemAtIndex(int) override;
+    //void goBack() override;
+    //void goForward() override;
+    void goToItem(WebCore::HistoryItem&) override;
 
-    void backListWithLimit(int, HistoryItemVector&);
-    void forwardListWithLimit(int, HistoryItemVector&);
+    //WebCore::HistoryItem& backItem() override;
+    //WebCore::HistoryItem& currentItem() override;
+    //WebCore::HistoryItem& forwardItem() override;
+	RefPtr<WebCore::HistoryItem> itemAtIndex(int) override;
 
-    int capacity();
-    void setCapacity(int);
-    bool enabled();
-    void setEnabled(bool);
-    int backListCount() override;
-    int forwardListCount() override;
-    bool containsItem(WebCore::HistoryItem*);
+    //void backListWithLimit(int, HistoryItemVector&) override;
+    //void forwardListWithLimit(int, HistoryItemVector&) override;
+
+    //int capacity() override;
+    //void setCapacity(int) override;
+    //bool enabled() override;
+    //void setEnabled(bool) override;
+    unsigned int backListCount(void) const override;
+    unsigned int forwardListCount(void) const override;
+    //bool containsItem(WebCore::HistoryItem*) override;
 
     void close() override;
-    bool closed();
+    //bool closed() override;
 
-    void removeItem(WebCore::HistoryItem*);
-    HistoryItemVector& entries();
+    //void removeItem(WebCore::HistoryItem&) override;
+    //HistoryItemVector& entries() override;
 
 private:
     explicit BackForwardList();

@@ -660,7 +660,7 @@ void FrameLoaderClientHaiku::updateGlobalHistoryRedirectLinks()
     updateGlobalHistory();
 }
 
-bool FrameLoaderClientHaiku::shouldGoToHistoryItem(WebCore::HistoryItem*) const
+bool FrameLoaderClientHaiku::shouldGoToHistoryItem(WebCore::HistoryItem&) const
 {
     // FIXME: Should probably be refuse to go to the item when it contains
     // form data that has already been sent or something.
@@ -895,11 +895,8 @@ bool FrameLoaderClientHaiku::canCachePage() const
 
 RefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url,
     const String& name, HTMLFrameOwnerElement& ownerElement,
-    const String& referrer, bool /*allowsScrolling*/, int /*marginWidth*/,
-    int /*marginHeight*/)
+    const String& referrer)
 {
-    // FIXME: We should apply the right property to the frameView.
-    // (scrollbar,margins)
     ASSERT(m_webFrame);
     ASSERT(m_webPage);
 

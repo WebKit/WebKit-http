@@ -103,6 +103,7 @@ LIST(APPEND WebKitLegacy_SOURCES
     haiku/WebCoreSupport/PlatformStrategiesHaiku.cpp
     haiku/WebCoreSupport/ProgressTrackerHaiku.cpp
 	haiku/WebCoreSupport/WebApplicationCache.cpp
+	haiku/WebCoreSupport/WebDiagnosticLoggingClient.cpp
     haiku/WebCoreSupport/WebVisitedLinkStore.cpp
 
     haiku/API/WebDownload.cpp

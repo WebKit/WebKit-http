@@ -27,12 +27,12 @@
 #include "TestRunner.h"
 
 #include "DumpRenderTree.h"
-//#include "DumpRenderTreeChrome.h"
 #include "JSStringUtils.h"
 #include "NotImplemented.h"
 #include "URL.h"
 #include "WorkQueue.h"
 #include "WorkQueueItem.h"
+
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <JavaScriptCore/JSStringRef.h>
 #include <JavaScriptCore/OpaqueJSString.h>
@@ -118,7 +118,7 @@ size_t TestRunner::webHistoryItemCount()
 
 void TestRunner::notifyDone()
 {
-    if (m_waitToDump && !topLoadingFrame && !WorkQueue::singleton().count())
+    if (m_waitToDump && !topLoadingFrame && !DRT::WorkQueue::singleton().count())
         dump();
     m_waitToDump = false;
     waitForPolicy = false;
@@ -127,7 +127,7 @@ void TestRunner::notifyDone()
 void TestRunner::forceImmediateCompletion()
 {
     // Same as on mac. This can be shared.
-    if (m_waitToDump && !WorkQueue::singleton().count())
+    if (m_waitToDump && !DRT::WorkQueue::singleton().count())
         dump();
     m_waitToDump = false;
 }

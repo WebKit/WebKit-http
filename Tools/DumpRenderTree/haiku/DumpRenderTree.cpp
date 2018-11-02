@@ -29,16 +29,11 @@
 #include "config.h"
 #include "DumpRenderTree.h"
 
-//#include "DumpHistoryItem.h"
-//#include "DumpRenderTreeChrome.h"
-//#include "DumpRenderTreeView.h"
 
 #include "AccessibilityController.h"
-#include <wtf/text/AtomicString.h> // FIXME EventSender not standalone ?
 #include "DumpRenderTreeClient.h"
 #include "EditingCallbacks.h"
 #include "EventSender.h"
-//#include "FontManagement.h"
 #include "Frame.h"
 #include "GCController.h"
 #include "NotImplemented.h"
@@ -67,6 +62,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <vector>
+
 
 BWebView* webView;
 BWebFrame* topLoadingFrame = 0;
@@ -397,8 +393,8 @@ static void runTest(const string& inputLine)
     resetDefaultsToConsistentValues();
     createTestRunner(testURL, expectedPixelHash);
 
-    WorkQueue::singleton().clear();
-    WorkQueue::singleton().setFrozen(false);
+	DRT::WorkQueue::singleton().clear();
+	DRT::WorkQueue::singleton().setFrozen(false);
 
     const bool isSVGW3CTest = testURL.contains("svg/W3C-SVG-1.1");
     const int width = isSVGW3CTest ? TestRunner::w3cSVGViewWidth : TestRunner::viewWidth;
@@ -550,15 +546,6 @@ bool shouldSetWaitToDumpWatchdog()
     return !waitToDumpWatchdog && useTimeoutWatchdog;
 }
 
-static void invalidateAnyPreviousWaitToDumpWatchdog()
-{
-    if (waitToDumpWatchdog) {
-        delete waitToDumpWatchdog;
-        waitToDumpWatchdog = NULL;
-    }
-    waitForPolicy = false;
-}
-
 static void sendPixelResultsEOF()
 {
     puts("#EOF");
@@ -570,12 +557,12 @@ void DumpRenderTreeApp::topLoadingFrameLoadFinished()
 {
     topLoadingFrame = 0;
 
-    WorkQueue::singleton().setFrozen(true);
+	DRT::WorkQueue::singleton().setFrozen(true);
     if (gTestRunner->waitToDump()) {
         return;
     }
 
-    if (WorkQueue::singleton().count()) {
+    if (DRT::WorkQueue::singleton().count()) {
         // FIXME should wait until the work queue is done before dumping
         // ecore_idler_add(processWork, 0 /*frame*/);
         dump();
@@ -699,7 +686,7 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         BString text = message->FindString("string");
         printf("CONSOLE MESSAGE: ");
         if (lineNumber)
-            printf("line %u: ", lineNumber);
+            printf("line %" B_PRIu32 ": ", lineNumber);
         printf("%s\n", text.String());
         fflush(stdout);
         return;

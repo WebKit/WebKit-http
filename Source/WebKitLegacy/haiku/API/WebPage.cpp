@@ -74,6 +74,7 @@
 #include "PlatformStrategiesHaiku.h"
 #include "PlatformWheelEvent.h"
 #include "PlugInClient.h"
+#include "PluginInfoProvider.h"
 #include "PointerLockController.h"
 #include "ProgressTrackerClient.h"
 #include "ProgressTrackerHaiku.h"
@@ -86,6 +87,7 @@
 #include "UserContentController.h"
 #include "WebApplicationCache.h"
 #include "WebDatabaseProvider.h"
+#include "WebDiagnosticLoggingClient.h"
 #include "WebDownload.h"
 #include "WebDownloadPrivate.h"
 #include "WebFrame.h"
@@ -146,6 +148,12 @@ enum {
     HANDLE_RESEND_NOTIFICATIONS = 'rsnt',
     HANDLE_SEND_EDITING_CAPABILITIES = 'sedc',
     HANDLE_SEND_PAGE_SOURCE = 'spsc'
+};
+
+class EmptyPluginInfoProvider final : public PluginInfoProvider {
+    void refreshPlugins() final { };
+    Vector<PluginInfo> pluginInfo(Page&, std::optional<Vector<SupportedPluginIdentifier>>&) final { return { }; }
+    Vector<PluginInfo> webVisiblePluginInfo(Page&, const URL&) final { return { }; }
 };
 
 using namespace WebCore;
@@ -233,35 +241,38 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
     // FIXME we should get this from the page settings, but they are created
     // after the page, and we need this before the page is created.
     BPath storagePath;
-    find_directory(B_USER_DATA_DIRECTORY, &storagePath);
+    find_directory(B_USER_SETTINGS_DIRECTORY, &storagePath);
 
-    storagePath.Append("LocalStorage");
+    storagePath.Append("WebKit/LocalStorage");
 
     RefPtr<WebViewGroup> viewGroup = WebViewGroup::getOrCreate("default",
         storagePath.Path());
 
     PageConfiguration pageClients(
-	makeUniqueRef<EditorClientHaiku>(this),
-	SocketProvider::create(),
+		makeUniqueRef<EditorClientHaiku>(this),
+		SocketProvider::create(),
         makeUniqueRef<LibWebRTCProvider>(),
-		CacheStorageProvider::create());
-    fillWithEmptyClients(pageClients);
-    // pluginClient
-	//validationMessageClient
-	//alternativeTextClient
-	//applicationCacheStorage
-	pageClients.backForwardClient = BackForwardList::create();
+		CacheStorageProvider::create(),
+		BackForwardList::create());
+
+	// alternativeText
     pageClients.chromeClient = new ChromeClientHaiku(this, webView);
     pageClients.contextMenuClient = new ContextMenuClientHaiku(this);
     pageClients.dragClient = new DragClientHaiku(webView);
     pageClients.inspectorClient = new InspectorClientHaiku();
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
+    pageClients.progressTrackerClient = fProgressTracker;
+	pageClients.diagnosticLoggingClient = std::make_unique<WebKit::WebDiagnosticLoggingClient>();
     pageClients.applicationCacheStorage = &WebApplicationCache::storage();
     pageClients.databaseProvider = &WebDatabaseProvider::singleton();
+	// performanceLogging
+    // pluginInClient
+    pageClients.pluginInfoProvider = adoptRef(*new EmptyPluginInfoProvider);
     pageClients.storageNamespaceProvider = &viewGroup->storageNamespaceProvider();
-    pageClients.progressTrackerClient = fProgressTracker;
     pageClients.userContentProvider = &viewGroup->userContentController();
+	// validationMessage *
     pageClients.visitedLinkStore = &viewGroup->visitedLinkStore();
+	// webGLStateTracker *
 
     fPage = new Page(WTFMove(pageClients));
 

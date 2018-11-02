@@ -152,7 +152,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void updateGlobalHistory() override;
     void updateGlobalHistoryRedirectLinks() override;
 
-    bool shouldGoToHistoryItem(HistoryItem*) const override;
+    bool shouldGoToHistoryItem(HistoryItem&) const override;
 
     bool canCachePage() const override;
     void convertMainResourceLoadToDownload(DocumentLoader*, PAL::SessionID,
@@ -199,7 +199,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void setTitle(const StringWithDirection&, const URL&) override;
 
     RefPtr<Frame> createFrame(const URL& url, const String& name, HTMLFrameOwnerElement&,
-        const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight) override;
+        const String& referrer) override;
     RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&,
         const Vector<String>&, const String&, bool) override;
     void recreatePlugin(Widget*) override { }

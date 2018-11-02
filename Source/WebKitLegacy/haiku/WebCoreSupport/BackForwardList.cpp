@@ -60,19 +60,19 @@ void BackForwardList::addItem(Ref<HistoryItem>&& newItem)
     if (m_current != NoCurrentItemIndex) {
         unsigned targetSize = m_current + 1;
         while (m_entries.size() > targetSize) {
-            Ref<HistoryItem> item = m_entries.takeLast();
-            m_entryHash.remove(item.ptr());
-            PageCache::singleton().remove(item);
+            RefPtr<HistoryItem> item = m_entries.takeLast();
+            m_entryHash.remove(item);
+            PageCache::singleton().remove(*item);
         }
     }
 
     // Toss the first item if the list is getting too big, as long as we're not using it
     // (or even if we are, if we only want 1 entry).
     if (m_entries.size() == m_capacity && (m_current || m_capacity == 1)) {
-        Ref<HistoryItem> item = WTFMove(m_entries[0]);
+        RefPtr<HistoryItem> item = WTFMove(m_entries[0]);
         m_entries.remove(0);
-        m_entryHash.remove(item.ptr());
-        PageCache::singleton().remove(item);
+        m_entryHash.remove(item);
+        PageCache::singleton().remove(*item);
         --m_current;
     }
 
@@ -81,6 +81,7 @@ void BackForwardList::addItem(Ref<HistoryItem>&& newItem)
     ++m_current;
 }
 
+#if 0
 void BackForwardList::goBack()
 {
     ASSERT(m_current > 0);
@@ -96,21 +97,23 @@ void BackForwardList::goForward()
         m_current++;
     }
 }
+#endif
 
-void BackForwardList::goToItem(HistoryItem* item)
+void BackForwardList::goToItem(HistoryItem& item)
 {
-    if (!m_entries.size() || !item)
+    if (!m_entries.size())
         return;
-        
+
     unsigned int index = 0;
     for (; index < m_entries.size(); ++index)
-        if (m_entries[index].ptr() == item)
+        if (m_entries[index] == &item)
             break;
     if (index < m_entries.size()) {
         m_current = index;
     }
 }
 
+#if 0
 HistoryItem* BackForwardList::backItem()
 {
     if (m_current && m_current != NoCurrentItemIndex)
@@ -193,33 +196,36 @@ void BackForwardList::setEnabled(bool enabled)
         setCapacity(capacity);
     }
 }
+#endif
 
-int BackForwardList::backListCount()
+unsigned int BackForwardList::backListCount() const
 {
     return m_current == NoCurrentItemIndex ? 0 : m_current;
 }
 
-int BackForwardList::forwardListCount()
+unsigned int BackForwardList::forwardListCount() const
 {
     return m_current == NoCurrentItemIndex ? 0 : (int)m_entries.size() - (m_current + 1);
 }
 
-HistoryItem* BackForwardList::itemAtIndex(int index)
+RefPtr<HistoryItem> BackForwardList::itemAtIndex(int index)
 {
     // Do range checks without doing math on index to avoid overflow.
     if (index < -static_cast<int>(m_current))
         return nullptr;
-    
+
     if (index > forwardListCount())
         return nullptr;
-        
-    return m_entries[index + m_current].ptr();
+
+    return m_entries[index + m_current];
 }
 
+#if 0
 Vector<Ref<HistoryItem>>& BackForwardList::entries()
 {
     return m_entries;
 }
+#endif
 
 void BackForwardList::close()
 {
@@ -228,6 +234,7 @@ void BackForwardList::close()
     m_closed = true;
 }
 
+# if 0
 bool BackForwardList::closed()
 {
     return m_closed;
@@ -260,3 +267,4 @@ bool BackForwardList::containsItem(HistoryItem* entry)
 {
     return m_entryHash.contains(entry);
 }
+#endif
