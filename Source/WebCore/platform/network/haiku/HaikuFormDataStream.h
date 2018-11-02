@@ -47,9 +47,7 @@ private:
 
     RefPtr<FormData> m_formData;
 
-    std::unique_ptr<Vector<char>> m_postData;
     bool m_isContentLengthUpdated { false };
-    bool m_shouldUseChunkTransfer { false };
     unsigned long long m_totalSize { 0 };
     unsigned long long m_totalReadSize { 0 };
 

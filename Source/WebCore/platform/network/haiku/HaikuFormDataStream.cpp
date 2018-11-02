@@ -48,7 +48,7 @@ ssize_t BFormDataIO::Size()
 {
     computeContentLength();
 
-    return m_shouldUseChunkTransfer;
+    return m_totalSize;
 }
 
 
