@@ -66,7 +66,6 @@ protected Q_SLOTS:
     void onIconChanged();
     void onLoadStarted();
     void onTitleChanged(const QString&);
-    void onSSLErrors(QNetworkReply*, const QList<QSslError>&);
 
 protected:
     QString addressUrl() const;

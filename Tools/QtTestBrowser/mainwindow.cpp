@@ -44,7 +44,6 @@
 #endif
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QNetworkReply>
 
 MainWindow::MainWindow()
     : m_page(new WebPage(this))
@@ -251,21 +250,4 @@ void MainWindow::onTitleChanged(const QString& title)
         setWindowTitle(QCoreApplication::applicationName());
     else
         setWindowTitle(QString::fromLatin1("%1 - %2").arg(title).arg(QCoreApplication::applicationName()));
-}
-
-void MainWindow::onSSLErrors(QNetworkReply* reply,const QList<QSslError>& errors)
-{
-    QString errorStrings = "<ul>";
-    for (const QSslError& error : errors)
-        errorStrings += "<li>" + error.errorString() + "</li>";
-    errorStrings += "</ul>";
-
-    QMessageBox sslWarningBox;
-    sslWarningBox.setText("SSL handshake problem");
-    sslWarningBox.setInformativeText(errorStrings);
-    sslWarningBox.setStandardButtons(QMessageBox::Abort | QMessageBox::Ignore);
-    sslWarningBox.setDefaultButton(QMessageBox::Abort);
-    sslWarningBox.setIcon(QMessageBox::Warning);
-    if (sslWarningBox.exec() == QMessageBox::Ignore)
-        reply->ignoreSslErrors();
 }

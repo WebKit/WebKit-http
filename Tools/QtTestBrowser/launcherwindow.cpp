@@ -1142,6 +1142,23 @@ void LauncherWindow::showUserAgentDialog()
     delete dialog;
 }
 
+void LauncherWindow::showSSLErrorConfirmation(QNetworkReply* reply, const QList<QSslError>& errors)
+{
+    QString errorStrings = "<ul>";
+    for (const QSslError& error : errors)
+        errorStrings += "<li>" + error.errorString() + "</li>";
+    errorStrings += "</ul>";
+
+    QMessageBox sslWarningBox;
+    sslWarningBox.setText("SSL handshake problem");
+    sslWarningBox.setInformativeText(errorStrings);
+    sslWarningBox.setStandardButtons(QMessageBox::Abort | QMessageBox::Ignore);
+    sslWarningBox.setDefaultButton(QMessageBox::Abort);
+    sslWarningBox.setIcon(QMessageBox::Warning);
+    if (sslWarningBox.exec() == QMessageBox::Ignore)
+        reply->ignoreSslErrors();
+}
+
 void LauncherWindow::loadURLListFromFile()
 {
     QString selectedFile;
