@@ -172,6 +172,14 @@ static inline void*& stackPointerImpl(mcontext_t& machineContext)
 {
 #if OS(DARWIN)
     return stackPointerImpl(machineContext->__ss);
+#elif OS(HAIKU)
+#if CPU(X86)
+    return reinterpret_cast<void*&>(machineContext.esp);
+#elif CPU(X86_64)
+    return reinterpret_cast<void*&>(machineContext.rsp);
+#else
+#error Unknown Architecture
+#endif
 #elif OS(FREEBSD)
 
 #if CPU(X86)
