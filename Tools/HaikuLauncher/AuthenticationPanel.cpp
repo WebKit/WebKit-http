@@ -11,7 +11,6 @@
 #include <GridLayoutBuilder.h>
 #include <GroupLayoutBuilder.h>
 #include <Message.h>
-#include <Screen.h>
 #include <SeparatorView.h>
 #include <SpaceLayoutItem.h>
 #include <StringView.h>
