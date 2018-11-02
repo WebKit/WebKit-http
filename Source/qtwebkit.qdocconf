@@ -35,3 +35,5 @@ exampledirs = WebKit/qt/docs
 imagedirs = WebKit/qt/docs
 
 depends += qtcore qtwidgets qtgui qtscript qtdoc qtprintsupport qtxml qtwebkitexamples qtquickcontrols
+
+tagfile = qtwebkit.tags
