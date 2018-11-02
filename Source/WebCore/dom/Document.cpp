@@ -35,6 +35,7 @@
 #include "CDATASection.h"
 #include "CSSAnimationController.h"
 #include "CSSFontSelector.h"
+#include "CSSPaintWorkletGlobalScope.h"
 #include "CSSStyleDeclaration.h"
 #include "CSSStyleSheet.h"
 #include "CachedCSSStyleSheet.h"
@@ -509,7 +510,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_documentClasses(documentClasses)
     , m_eventQueue(*this)
 #if ENABLE(INTERSECTION_OBSERVER)
-    , m_intersectionObservationUpdateTimer(*this, &Document::updateIntersectionObservations)
     , m_intersectionObserversNotifyTimer(*this, &Document::notifyIntersectionObserversTimerFired)
 #endif
     , m_loadEventDelayTimer(*this, &Document::loadEventDelayTimerFired)
@@ -1928,8 +1928,8 @@ void Document::resolveStyle(ResolveStyleType type)
         // Usually this is handled by post-layout.
         if (!frameView.needsLayout()) {
             frameView.frame().selection().scheduleAppearanceUpdateAfterStyleChange();
-            if (m_needsIntersectionObservationUpdate)
-                scheduleIntersectionObservationUpdate();
+            if (m_needsForcedIntersectionObservationUpdate)
+                page()->scheduleForcedIntersectionObservationUpdate(*this);
         }
 
         // As a result of the style recalculation, the currently hovered element might have been
@@ -2314,16 +2314,18 @@ void Document::didBecomeCurrentDocumentInFrame()
     // be out of sync if the DOM suspension state changed while the document was not in the frame (possibly in the
     // page cache, or simply newly created).
     if (m_frame->activeDOMObjectsAndAnimationsSuspended()) {
-        if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
-            timeline().suspendAnimations();
-        else
+        if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
+            if (auto* timeline = existingTimeline())
+                timeline->suspendAnimations();
+        } else
             m_frame->animation().suspendAnimationsForDocument(this);
         suspendScheduledTasks(ReasonForSuspension::PageWillBeSuspended);
     } else {
         resumeScheduledTasks(ReasonForSuspension::PageWillBeSuspended);
-        if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
-            timeline().resumeAnimations();
-        else
+        if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
+            if (auto* timeline = existingTimeline())
+                timeline->resumeAnimations();
+        } else
             m_frame->animation().resumeAnimationsForDocument(this);
     }
 }
@@ -2829,10 +2831,7 @@ ExceptionOr<void> Document::setBodyOrFrameset(RefPtr<HTMLElement>&& newBody)
 Location* Document::location() const
 {
     auto* window = domWindow();
-    if (!window)
-        return nullptr;
-
-    return window->location();
+    return window ? &window->location() : nullptr;
 }
 
 HTMLHeadElement* Document::head()
@@ -3554,6 +3553,54 @@ void Document::updateViewportArguments()
         page()->chrome().didReceiveDocType(*frame());
     }
 }
+
+#if ENABLE(DARK_MODE_CSS)
+static bool isColorSchemeSeparator(UChar character)
+{
+    return isASCIISpace(character) || character == ',';
+}
+
+static void processColorSchemes(StringView colorSchemes, const WTF::Function<void(StringView key)>& callback)
+{
+    unsigned length = colorSchemes.length();
+    for (unsigned i = 0; i < length; ) {
+        // Skip to first non-separator.
+        while (i < length && isColorSchemeSeparator(colorSchemes[i]))
+            ++i;
+        unsigned keyBegin = i;
+
+        // Skip to first separator.
+        while (i < length && !isColorSchemeSeparator(colorSchemes[i]))
+            ++i;
+        unsigned keyEnd = i;
+
+        if (keyBegin == keyEnd)
+            continue;
+
+        callback(colorSchemes.substring(keyBegin, keyEnd - keyBegin));
+    }
+}
+
+void Document::processSupportedColorSchemes(const String& colorSchemes)
+{
+    OptionSet<ColorSchemes> supportedColorSchemes;
+
+    processColorSchemes(colorSchemes, [&supportedColorSchemes](StringView key) {
+        if (equalLettersIgnoringASCIICase(key, "light"))
+            supportedColorSchemes.add(ColorSchemes::Light);
+        else if (equalLettersIgnoringASCIICase(key, "dark"))
+            supportedColorSchemes.add(ColorSchemes::Dark);
+    });
+
+    if (supportedColorSchemes.isEmpty())
+        supportedColorSchemes.add(ColorSchemes::Light);
+
+    m_supportedColorSchemes = supportedColorSchemes;
+
+    if (auto* page = this->page())
+        page->updateStyleAfterChangeInEnvironment();
+}
+#endif
 
 #if PLATFORM(IOS)
 
@@ -5044,9 +5091,10 @@ void Document::resume(ReasonForSuspension reason)
     ASSERT(m_frame);
     m_frame->loader().client().dispatchDidBecomeFrameset(isFrameSet());
 
-    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
-        timeline().resumeAnimations();
-    else
+    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
+        if (auto* timeline = existingTimeline())
+            timeline->resumeAnimations();  
+    } else
         m_frame->animation().resumeAnimationsForDocument(this);
 
     resumeScheduledTasks(reason);
@@ -6062,7 +6110,7 @@ void Document::enqueueHashchangeEvent(const String& oldURL, const String& newURL
 
 void Document::dispatchPopstateEvent(RefPtr<SerializedScriptValue>&& stateObject)
 {
-    dispatchWindowEvent(PopStateEvent::create(WTFMove(stateObject), m_domWindow ? m_domWindow->history() : nullptr));
+    dispatchWindowEvent(PopStateEvent::create(WTFMove(stateObject), m_domWindow ? &m_domWindow->history() : nullptr));
 }
 
 void Document::addMediaCanStartListener(MediaCanStartListener* listener)
@@ -7210,10 +7258,26 @@ bool Document::useSystemAppearance() const
 
 bool Document::useDarkAppearance() const
 {
-    bool useDarkAppearance = false;
+#if ENABLE(DARK_MODE_CSS)
+    if (m_supportedColorSchemes.contains(ColorSchemes::Dark) && !m_supportedColorSchemes.contains(ColorSchemes::Light))
+        return true;
+#endif
+
+    bool pageUsesDarkAppearance = false;
     if (Page* documentPage = page())
-        useDarkAppearance = documentPage->useDarkAppearance();
-    return useDarkAppearance;
+        pageUsesDarkAppearance = documentPage->useDarkAppearance();
+
+    if (useSystemAppearance())
+        return pageUsesDarkAppearance;
+
+#if ENABLE(DARK_MODE_CSS)
+    if (m_supportedColorSchemes.contains(ColorSchemes::Dark))
+        return pageUsesDarkAppearance;
+
+    ASSERT(m_supportedColorSchemes.contains(ColorSchemes::Light));
+#endif
+
+    return false;
 }
 
 OptionSet<StyleColor::Options> Document::styleColorOptions() const
@@ -7580,7 +7644,6 @@ static void computeIntersectionRects(FrameView& frameView, IntersectionObserver&
 
 void Document::updateIntersectionObservations()
 {
-    ASSERT(m_needsIntersectionObservationUpdate);
     auto* frameView = view();
     if (!frameView)
         return;
@@ -7589,7 +7652,7 @@ void Document::updateIntersectionObservations()
     if (needsLayout || hasPendingStyleRecalc())
         return;
 
-    m_needsIntersectionObservationUpdate = false;
+    m_needsForcedIntersectionObservationUpdate = false;
 
     for (auto observer : m_intersectionObservers) {
         bool needNotify = false;
@@ -7654,13 +7717,15 @@ void Document::updateIntersectionObservations()
         m_intersectionObserversNotifyTimer.startOneShot(0_s);
 }
 
-void Document::scheduleIntersectionObservationUpdate()
+void Document::scheduleForcedIntersectionObservationUpdate()
 {
-    if (m_intersectionObservers.isEmpty() || m_intersectionObservationUpdateTimer.isActive())
+    ASSERT(!m_intersectionObservers.isEmpty());
+    if (m_needsForcedIntersectionObservationUpdate)
         return;
 
-    m_needsIntersectionObservationUpdate = true;
-    m_intersectionObservationUpdateTimer.startOneShot(0_s);
+    m_needsForcedIntersectionObservationUpdate = true;
+    if (auto* page = this->page())
+        page->scheduleForcedIntersectionObservationUpdate(*this);
 }
 
 void Document::notifyIntersectionObserversTimerFired()
@@ -8279,5 +8344,14 @@ void Document::frameWasDisconnectedFromOwner()
 
     detachFromFrame();
 }
+
+#if ENABLE(CSS_PAINTING_API)
+CSSPaintWorkletGlobalScope& Document::ensureCSSPaintWorkletGlobalScope()
+{
+    if (!m_CSSPaintWorkletGlobalScope)
+        m_CSSPaintWorkletGlobalScope = CSSPaintWorkletGlobalScope::create();
+    return *m_CSSPaintWorkletGlobalScope;
+}
+#endif
 
 } // namespace WebCore

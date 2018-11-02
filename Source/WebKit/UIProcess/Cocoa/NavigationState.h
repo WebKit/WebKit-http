@@ -63,7 +63,7 @@ public:
     static NavigationState& fromWebPage(WebPageProxy&);
 
     UniqueRef<API::NavigationClient> createNavigationClient();
-    std::unique_ptr<API::HistoryClient> createHistoryClient();
+    UniqueRef<API::HistoryClient> createHistoryClient();
 
     RetainPtr<id <WKNavigationDelegate> > navigationDelegate();
     void setNavigationDelegate(id <WKNavigationDelegate>);
@@ -126,7 +126,7 @@ private:
 #if PLATFORM(MAC)
         void webGLLoadPolicy(WebPageProxy&, const WebCore::URL&, CompletionHandler<void(WebCore::WebGLLoadPolicy)>&&) const final;
         void resolveWebGLLoadPolicy(WebPageProxy&, const WebCore::URL&, CompletionHandler<void(WebCore::WebGLLoadPolicy)>&&) const final;
-        bool willGoToBackForwardListItem(WebPageProxy&, WebBackForwardListItem&, bool inPageCache, API::Object*) final;
+        bool willGoToBackForwardListItem(WebPageProxy&, WebBackForwardListItem&, bool inPageCache) final;
         bool didFailToInitializePlugIn(WebPageProxy&, API::Dictionary&) final;
         bool didBlockInsecurePluginVersion(WebPageProxy&, API::Dictionary&) final;
         void decidePolicyForPluginLoad(WebKit::WebPageProxy&, WebKit::PluginModuleLoadPolicy, API::Dictionary&, CompletionHandler<void(WebKit::PluginModuleLoadPolicy, const WTF::String&)>&&) final;

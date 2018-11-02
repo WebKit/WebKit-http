@@ -1097,25 +1097,10 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
     }
 }
 
-bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem* item) const
+bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem& item) const
 {
     WebView* view = getWebView(m_webFrame.get());
-    WebHistoryItem *webItem = kit(item);
-    
-    return [[view _policyDelegateForwarder] webView:view shouldGoToHistoryItem:webItem];
-}
-
-void WebFrameLoaderClient::updateGlobalHistoryItemForPage()
-{
-    HistoryItem* historyItem = 0;
-
-    if (Page* page = core(m_webFrame.get())->page()) {
-        if (!page->sessionID().isEphemeral())
-            historyItem = page->backForward().currentItem();
-    }
-
-    WebView *webView = getWebView(m_webFrame.get());
-    [webView _setGlobalHistoryItem:historyItem];
+    return [[view _policyDelegateForwarder] webView:view shouldGoToHistoryItem:kit(&item)];
 }
 
 void WebFrameLoaderClient::didDisplayInsecureContent()
@@ -1619,18 +1604,18 @@ bool WebFrameLoaderClient::canCachePage() const
     if (!page)
         return false;
     
-    BackForwardList *backForwardList = static_cast<BackForwardList*>(page->backForward().client());
-    if (!backForwardList->enabled())
+    BackForwardList& backForwardList = static_cast<BackForwardList&>(page->backForward().client());
+    if (!backForwardList.enabled())
         return false;
     
-    if (!backForwardList->capacity())
+    if (!backForwardList.capacity())
         return false;
     
     return true;
 }
 
 RefPtr<Frame> WebFrameLoaderClient::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement& ownerElement,
-    const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight)
+    const String& referrer)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     
@@ -2436,7 +2421,7 @@ void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, SharedBuffer
     // response policy decision, "Ignore" for other policy decisions).
     _frame = nullptr;
     if (auto policyFunction = std::exchange(_policyFunction, nullptr)) {
-        RELEASE_LOG_ERROR(Loading, "Client application failed to make a policy decision via WebPolicyDecisionListener, using defaultPolicy %u", _defaultPolicy);
+        RELEASE_LOG_ERROR(Loading, "Client application failed to make a policy decision via WebPolicyDecisionListener, using defaultPolicy %hhu", _defaultPolicy);
         policyFunction(_defaultPolicy);
     }
 

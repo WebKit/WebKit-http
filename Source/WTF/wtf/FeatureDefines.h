@@ -26,8 +26,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_FeatureDefines_h
-#define WTF_FeatureDefines_h
+#pragma once
 
 /* Use this file to list _all_ ENABLE() macros. Define the macros to be one of the following values:
  *  - "0" disables the feature by default. The feature can still be enabled for a specific port or environment.
@@ -409,6 +408,10 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #define ENABLE_CUSTOM_SCHEME_HANDLER 0
 #endif
 
+#if !defined(ENABLE_DARK_MODE_CSS)
+#define ENABLE_DARK_MODE_CSS 0
+#endif
+
 #if !defined(ENABLE_DASHBOARD_SUPPORT)
 #define ENABLE_DASHBOARD_SUPPORT 0
 #endif
@@ -718,5 +721,3 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #if ENABLE(WEBGL2) && !ENABLE(WEBGL)
 #error "ENABLE(WEBGL2) requires ENABLE(WEBGL)"
 #endif
-
-#endif /* WTF_FeatureDefines_h */

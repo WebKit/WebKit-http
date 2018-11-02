@@ -51,8 +51,10 @@ namespace WebCore {
     macro(Credential) \
     macro(CredentialsContainer) \
     macro(CSSAnimation) \
+    macro(CSSPaintWorkletGlobalScope) \
     macro(CSSTransition) \
     macro(CustomElementRegistry) \
+    macro(Database) \
     macro(DataTransferItem) \
     macro(DataTransferItemList) \
     macro(DocumentTimeline) \
@@ -99,6 +101,7 @@ namespace WebCore {
     macro(MediaKeySystemAccess) \
     macro(MediaKeys) \
     macro(MediaRecorder) \
+    macro(MediaRecorderErrorEvent) \
     macro(MediaSource) \
     macro(MediaStream) \
     macro(MediaStreamTrack) \
@@ -114,6 +117,10 @@ namespace WebCore {
     macro(PaymentRequest) \
     macro(PaymentRequestUpdateEvent) \
     macro(PaymentResponse) \
+    macro(SQLError) \
+    macro(SQLResultSet) \
+    macro(SQLResultSetRowList) \
+    macro(SQLTransaction) \
     macro(PerformanceEntry) \
     macro(PerformanceEntryList) \
     macro(PerformanceMark) \
@@ -124,6 +131,7 @@ namespace WebCore {
     macro(PerformanceServerTiming) \
     macro(PointerEvent) \
     macro(PublicKeyCredential) \
+    macro(RTCCertificate) \
     macro(RTCDTMFSender) \
     macro(RTCDTMFToneChangeEvent) \
     macro(RTCDataChannel) \
@@ -240,6 +248,7 @@ namespace WebCore {
     macro(makeThisTypeError) \
     macro(matchingElementInFlatTree) \
     macro(mediaStreamTrackConstraints) \
+    macro(openDatabase) \
     macro(onvrdisplayactivate) \
     macro(onvrdisplayblur) \
     macro(onvrdisplayconnect) \

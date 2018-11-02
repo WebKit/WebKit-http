@@ -176,11 +176,11 @@ class ValidationBubble;
 
 enum SelectionDirection : uint8_t;
 
-enum class AutoplayEvent;
-enum class HasInsecureContent;
-enum class NotificationDirection;
-enum class ShouldSample;
-enum class ShouldTreatAsContinuingLoad;
+enum class AutoplayEvent : uint8_t;
+enum class HasInsecureContent : uint8_t;
+enum class NotificationDirection : uint8_t;
+enum class ShouldSample : bool;
+enum class ShouldTreatAsContinuingLoad : bool;
 
 struct ApplicationManifest;
 struct BackForwardItemIdentifier;
@@ -266,7 +266,7 @@ struct WebPopupItem;
 struct URLSchemeTaskParameters;
 
 enum class ProcessSwapRequestedByClient;
-enum class UndoOrRedo;
+enum class UndoOrRedo : bool;
 
 #if USE(QUICK_LOOK)
 class QuickLookDocumentData;
@@ -428,7 +428,7 @@ public:
     void setDiagnosticLoggingClient(std::unique_ptr<API::DiagnosticLoggingClient>&&);
     void setFormClient(std::unique_ptr<API::FormClient>&&);
     void setNavigationClient(UniqueRef<API::NavigationClient>&&);
-    void setHistoryClient(std::unique_ptr<API::HistoryClient>&&);
+    void setHistoryClient(UniqueRef<API::HistoryClient>&&);
     void setLoaderClient(std::unique_ptr<API::LoaderClient>&&);
     void setPolicyClient(std::unique_ptr<API::PolicyClient>&&);
     void setInjectedBundleClient(const WKPageInjectedBundleClientBase*);
@@ -478,7 +478,7 @@ public:
     RefPtr<API::Navigation> goToBackForwardItem(WebBackForwardListItem&);
     void tryRestoreScrollPosition();
     void didChangeBackForwardList(WebBackForwardListItem* addedItem, Vector<Ref<WebBackForwardListItem>>&& removed);
-    void willGoToBackForwardListItem(const WebCore::BackForwardItemIdentifier&, bool inPageCache, const UserData&);
+    void willGoToBackForwardListItem(const WebCore::BackForwardItemIdentifier&, bool inPageCache);
 
     bool shouldKeepCurrentBackForwardListItemInList(WebBackForwardListItem&);
 
@@ -585,7 +585,7 @@ public:
 
     void dynamicViewportSizeUpdate(const WebCore::FloatSize& viewLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& unobscuredSafeAreaInsets, double targetScale, int32_t deviceOrientation, DynamicViewportSizeUpdateID);
 
-    void setViewportConfigurationViewLayoutSize(const WebCore::FloatSize&);
+    void setViewportConfigurationViewLayoutSize(const WebCore::FloatSize&, double scaleFactor);
     void setMaximumUnobscuredSize(const WebCore::FloatSize&);
     void setDeviceOrientation(int32_t);
     int32_t deviceOrientation() const { return m_deviceOrientation; }
@@ -637,6 +637,7 @@ public:
     void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, uint64_t requestID);
     void setForceAlwaysUserScalable(bool);
     bool forceAlwaysUserScalable() const { return m_forceAlwaysUserScalable; }
+    double layoutSizeScaleFactor() const { return m_viewportConfigurationLayoutSizeScaleFactor; }
     void setIsScrollingOrZooming(bool);
     void requestRectsForGranularityWithSelectionOffset(WebCore::TextGranularity, uint32_t offset, WTF::Function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)>&&);
     void requestRectsAtSelectionOffsetWithText(int32_t offset, const String&, WTF::Function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)>&&);
@@ -1566,8 +1567,8 @@ private:
     void backForwardAddItem(BackForwardListItemState&&);
     void backForwardGoToItem(const WebCore::BackForwardItemIdentifier&, SandboxExtension::Handle&);
     void backForwardItemAtIndex(int32_t index, std::optional<WebCore::BackForwardItemIdentifier>&);
-    void backForwardBackListCount(int32_t& count);
-    void backForwardForwardListCount(int32_t& count);
+    void backForwardBackListCount(uint32_t& count);
+    void backForwardForwardListCount(uint32_t& count);
     void backForwardClear();
 
     // Undo management
@@ -1860,7 +1861,7 @@ private:
     std::unique_ptr<API::LoaderClient> m_loaderClient;
     std::unique_ptr<API::PolicyClient> m_policyClient;
     UniqueRef<API::NavigationClient> m_navigationClient;
-    std::unique_ptr<API::HistoryClient> m_historyClient;
+    UniqueRef<API::HistoryClient> m_historyClient;
     std::unique_ptr<API::IconLoadingClient> m_iconLoadingClient;
     std::unique_ptr<API::FormClient> m_formClient;
     std::unique_ptr<API::UIClient> m_uiClient;
@@ -2229,6 +2230,7 @@ private:
     std::unique_ptr<NodeAssistanceArguments> m_deferredNodeAssistanceArguments;
     bool m_forceAlwaysUserScalable { false };
     WebCore::FloatSize m_viewportConfigurationViewLayoutSize;
+    double m_viewportConfigurationLayoutSizeScaleFactor { 1 };
     WebCore::FloatSize m_maximumUnobscuredSize;
 #endif
 

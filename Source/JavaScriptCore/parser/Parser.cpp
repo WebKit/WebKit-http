@@ -147,7 +147,6 @@ Parser<LexerType>::Parser(VM* vm, const SourceCode& source, JSParserBuiltinMode 
     m_token.m_location.lineStartOffset = source.startOffset();
     m_functionCache = vm->addSourceProviderCache(source.provider());
     m_expressionErrorClassifier = nullptr;
-    m_useObjectRestSpread = Options::useObjectRestSpread();
 
     ScopeRef scope = pushScope();
     scope->setSourceParseMode(parseMode);
@@ -1140,7 +1139,7 @@ template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::parseDe
             if (match(CLOSEBRACE))
                 break;
 
-            if (match(DOTDOTDOT) && m_useObjectRestSpread) {
+            if (match(DOTDOTDOT)) {
                 JSTokenLocation location = m_token.m_location;
                 next();
                 auto innerPattern = parseObjectRestBindingOrAssignmentElement(context, kind, exportType, duplicateIdentifier, bindingContext);
@@ -1273,7 +1272,7 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseForStatement(
     DepthManager statementDepth(&m_statementDepth);
     m_statementDepth++;
 
-    if (Options::useAsyncIterator() && match(AWAIT)) {
+    if (match(AWAIT)) {
         semanticFailIfFalse(currentScope()->isAsyncFunction(), "for-await-of can't be used only in async function or async generator.");
         isAwaitFor = true;
         next();
@@ -2660,7 +2659,7 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseAsyncFunction
     next();
     ParserFunctionInfo<TreeBuilder> functionInfo;
     SourceParseMode parseMode = SourceParseMode::AsyncFunctionMode;
-    if (Options::useAsyncIterator() && consume(TIMES))
+    if (consume(TIMES))
         parseMode = SourceParseMode::AsyncGeneratorWrapperFunctionMode;
 
     FunctionNameRequirements requirements = FunctionNameRequirements::Named;
@@ -2841,7 +2840,7 @@ parseMethod:
                     next();
                     if (match(OPENPAREN) || match(COLON) || match(EQUAL) || m_lexer->prevTerminator())
                         break;
-                    if (Options::useAsyncIterator() && UNLIKELY(consume(TIMES)))
+                    if (UNLIKELY(consume(TIMES)))
                         parseMode = SourceParseMode::AsyncGeneratorWrapperMethodMode;
                     else
                         parseMode = SourceParseMode::AsyncMethodMode;
@@ -3905,7 +3904,7 @@ parseProperty:
                 }
 
                 failIfTrue(m_lexer->prevTerminator(), "Expected a property name following keyword 'async'");
-                if (Options::useAsyncIterator() && UNLIKELY(consume(TIMES)))
+                if (UNLIKELY(consume(TIMES)))
                     parseMode = SourceParseMode::AsyncGeneratorWrapperMethodMode;
                 else
                     parseMode = SourceParseMode::AsyncMethodMode;
@@ -4008,17 +4007,14 @@ namedProperty:
         return context.createProperty(propertyName, node, static_cast<PropertyNode::Type>(PropertyNode::Constant | PropertyNode::Computed), PropertyNode::Unknown, complete, SuperBinding::NotNeeded, ClassElementTag::No);
     }
     case DOTDOTDOT: {
-        if (m_useObjectRestSpread) {
-            auto spreadLocation = m_token.m_location;
-            auto start = m_token.m_startPosition;
-            auto divot = m_token.m_endPosition;
-            next();
-            TreeExpression elem = parseAssignmentExpressionOrPropagateErrorClass(context);
-            failIfFalse(elem, "Cannot parse subject of a spread operation");
-            auto node = context.createObjectSpreadExpression(spreadLocation, elem, start, divot, m_lastTokenEndPosition);
-            return context.createProperty(node, PropertyNode::Spread, PropertyNode::Unknown, complete, SuperBinding::NotNeeded, ClassElementTag::No);
-        }
-        FALLTHROUGH;
+        auto spreadLocation = m_token.m_location;
+        auto start = m_token.m_startPosition;
+        auto divot = m_token.m_endPosition;
+        next();
+        TreeExpression elem = parseAssignmentExpressionOrPropagateErrorClass(context);
+        failIfFalse(elem, "Cannot parse subject of a spread operation");
+        auto node = context.createObjectSpreadExpression(spreadLocation, elem, start, divot, m_lastTokenEndPosition);
+        return context.createProperty(node, PropertyNode::Spread, PropertyNode::Unknown, complete, SuperBinding::NotNeeded, ClassElementTag::No);
     }
     default:
         failIfFalse(m_token.m_type & KeywordTokenFlag, "Expected a property name");
@@ -4338,7 +4334,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseAsyncFunctio
     next();
     SourceParseMode parseMode = SourceParseMode::AsyncFunctionMode;
 
-    if (Options::useAsyncIterator() && consume(TIMES))
+    if (consume(TIMES))
         parseMode = SourceParseMode::AsyncGeneratorWrapperFunctionMode;
 
     ParserFunctionInfo<TreeBuilder> functionInfo;

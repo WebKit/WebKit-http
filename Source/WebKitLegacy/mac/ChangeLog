@@ -1,3 +1,241 @@
+2018-10-17  Alex Christensen  <achristensen@webkit.org>
+
+        BackForwardClient needs to be able to support UIProcess-only back/forward lists
+        https://bugs.webkit.org/show_bug.cgi?id=190675
+
+        Reviewed by Chris Dumez.
+
+        * History/BackForwardList.h:
+        * History/BackForwardList.mm:
+        (BackForwardList::backItem):
+        (BackForwardList::currentItem):
+        (BackForwardList::forwardItem):
+        (BackForwardList::backListCount const):
+        (BackForwardList::forwardListCount const):
+        (BackForwardList::itemAtIndex):
+        * History/WebBackForwardList.mm:
+        (-[WebBackForwardList backItem]):
+        (-[WebBackForwardList currentItem]):
+        (-[WebBackForwardList forwardItem]):
+        (-[WebBackForwardList itemAtIndex:]):
+
+2018-10-16  Timothy Hatcher  <timothy@apple.com>
+
+        Add <meta name="supported-color-schemes"> to control what color schemes the page supports
+        https://bugs.webkit.org/show_bug.cgi?id=190526
+        rdar://problem/45230140
+
+        Reviewed by Dean Jackson.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (_WebCreateFragment): Update use of LocalDefaultSystemAppearance.
+
+2018-10-16  Justin Michaud  <justin_michaud@apple.com>
+
+        Implement feature flag and bindings for CSS Painting API
+        https://bugs.webkit.org/show_bug.cgi?id=190237
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-16  Alex Christensen  <achristensen@webkit.org>
+
+        Replace HistoryItem* with HistoryItem& where possible
+        https://bugs.webkit.org/show_bug.cgi?id=190617
+
+        Reviewed by Chris Dumez.
+
+        * History/BackForwardList.h:
+        * History/BackForwardList.mm:
+        (BackForwardList::goToItem):
+        * History/WebBackForwardList.mm:
+        (-[WebBackForwardList goToItem:]):
+        * History/WebHistoryItem.mm:
+        (WKNotifyHistoryItemChanged):
+        * History/WebHistoryItemInternal.h:
+
+2018-10-16  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused WebHistoryItem._transientPropertyForKey
+        https://bugs.webkit.org/show_bug.cgi?id=190606
+
+        Reviewed by Chris Dumez.
+
+        * History/WebHistoryItem.mm:
+        * History/WebHistoryItemPrivate.h:
+
+2018-10-15  Justin Fan  <justin_fan@apple.com>
+
+        Add WebGPU 2018 feature flag and experimental feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=190509
+
+        Reviewed by Dean Jackson.
+
+        Re-add ENABLE_WEBGPU, an experimental feature flag, and a RuntimeEnabledFeature
+        for the 2018 WebGPU prototype.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences webGPUEnabled]):
+        (-[WebPreferences setWebGPUEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS build after r237157
+
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize BackForwardClient.h
+        https://bugs.webkit.org/show_bug.cgi?id=190610
+
+        Reviewed by Chris Dumez.
+
+        * History/BackForwardList.h:
+        * History/BackForwardList.mm:
+        (BackForwardList::backListCount const):
+        (BackForwardList::forwardListCount const):
+        (BackForwardList::backListCount): Deleted.
+        (BackForwardList::forwardListCount): Deleted.
+        * History/WebBackForwardList.mm:
+        (-[WebBackForwardList init]):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::canCachePage const):
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView keyDown:keyDown:]):
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        (-[WebView _loadBackForwardListFromOtherView:]):
+        (-[WebView initWithCoder:]):
+        (-[WebView encodeWithCoder:]):
+        (-[WebView backForwardList]):
+        (-[WebView setMaintainsBackForwardList:]):
+
+2018-10-15  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for prefers-color-scheme media query
+        https://bugs.webkit.org/show_bug.cgi?id=190499
+        rdar://problem/45212025
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig: Added ENABLE_DARK_MODE_CSS.
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused WebView._globalHistoryItem
+        https://bugs.webkit.org/show_bug.cgi?id=190601
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::updateGlobalHistoryItemForPage): Deleted.
+        * WebView/WebView.mm:
+        (-[WebView _globalHistoryItem]): Deleted.
+        (-[WebView _setGlobalHistoryItem:]): Deleted.
+        * WebView/WebViewData.h:
+        * WebView/WebViewInternal.h:
+        * WebView/WebViewPrivate.h:
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused parameters from FrameLoaderClient::createFrame
+        https://bugs.webkit.org/show_bug.cgi?id=190587
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::createFrame):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused WebFrame._loadType
+        https://bugs.webkit.org/show_bug.cgi?id=190583
+
+        Reviewed by Chris Dumez.
+
+        This is unused, and this concept needs to not be exposed from WebCore to WebKitLegacy for me to fix history bugs.
+
+        * WebView/WebFrame.mm:
+        (toWebFrameLoadType): Deleted.
+        (-[WebFrame _loadType]): Deleted.
+        * WebView/WebFramePrivate.h:
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Restrict browsing context lookup by name to frames that are related to one another
+        https://bugs.webkit.org/show_bug.cgi?id=190475
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame findFrameNamed:]):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove InjectedBundle processing of back/forward lists
+        https://bugs.webkit.org/show_bug.cgi?id=190459
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::shouldGoToHistoryItem const):
+
+2018-10-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Remove Option::useAsyncIterator
+        https://bugs.webkit.org/show_bug.cgi?id=190567
+
+        Reviewed by Saam Barati.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-12  Alex Christensen  <achristensen@webkit.org>
+
+        Allow encoding of small enum classes
+        https://bugs.webkit.org/show_bug.cgi?id=190531
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (-[WebFramePolicyListener dealloc]):
+
+2018-10-11  Keith Rollin  <krollin@apple.com>
+
+        CURRENT_ARCH should not be used in Run Script phase.
+        https://bugs.webkit.org/show_bug.cgi?id=190407
+        <rdar://problem/45133556>
+
+        Reviewed by Alexey Proskuryakov.
+
+        CURRENT_ARCH is used in a number of Xcode Run Script phases. However,
+        CURRENT_ARCH is not well-defined during this phase (and may even have
+        the value "undefined") since this phase is run just once per build
+        rather than once per supported architecture. Migrate away from
+        CURRENT_ARCH in favor of ARCHS, either by iterating over ARCHS and
+        performing an operation for each value, or by picking the first entry
+        in ARCHS and using that as a representative value.
+
+        * Configurations/WebKitLegacy.xcconfig: When generating
+        WebKitLegacy.*.exp, generate both 32- and 64-bit versions for
+        macosx platforms.
+
+        * MigrateHeaders.make:
+        * migrate-headers.sh: When generating ReexportedWebCoreSymbols_*.exp,
+        generate one for each architecture in ARCHS.
+
 2018-10-10  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
 
         [JSC] Rename createXXX to tryCreateXXX if it can return RefPtr

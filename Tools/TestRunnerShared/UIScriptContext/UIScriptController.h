@@ -66,6 +66,7 @@ public:
     void doAfterVisibleContentRectUpdate(JSValueRef callback);
 
     void zoomToScale(double scale, JSValueRef callback);
+    void setViewScale(double);
 
     void simulateAccessibilitySettingsChangeNotification(JSValueRef callback);
 
@@ -139,6 +140,8 @@ public:
 
     void setDidHideKeyboardCallback(JSValueRef);
     JSValueRef didHideKeyboardCallback() const;
+
+    bool isShowingKeyboard() const;
 
     void setDidEndScrollingCallback(JSValueRef);
     JSValueRef didEndScrollingCallback() const;

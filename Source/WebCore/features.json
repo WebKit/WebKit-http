@@ -39,6 +39,15 @@
         }
     },
     {
+        "name": "CSS Animation Worklet API",
+        "status": {
+            "status": "Under Consideration"
+        },
+        "url": "https://drafts.css-houdini.org/css-animationworklet/",
+        "keywords": ["css", "houdini", "animation", "worklet"],
+        "category": "css"
+    },
+    {
         "name": "CSS Color Level 4",
         "status": {
             "status": "Supported",
@@ -108,6 +117,15 @@
         "category": "css"
     },
     {
+        "name": "CSS Layout API Level 1",
+        "status": {
+            "status": "Under Consideration"
+        },
+        "url": "https://drafts.css-houdini.org/css-layout-api/",
+        "keywords": ["css", "houdini", "layout", "worklet"],
+        "category": "css"
+    },
+    {
         "name": "CSS Media Queries Level 4",
         "url": "http://dev.w3.org/csswg/mediaqueries-4/",
         "keywords": ["css media queries", "media queries"],
@@ -116,10 +134,11 @@
     {
         "name": "CSS Painting API Level 1",
         "status": {
-            "status": "Under Consideration"
+            "status": "Under Development"
         },
-        "url": "https://drafts.css-houdini.org/css-paint-api/",
-        "keywords": ["css", "houdini"],
+        "url": "https://drafts.css-houdini.org/css-paint-api-1/",
+        "keywords": ["css", "houdini", "worklet"],
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=190217",
         "category": "css"
     },
     {
@@ -196,6 +215,16 @@
             "twitter": "@Litherum",
             "email": "mmaxfield@apple.com"
         }
+    },
+    {
+        "name": "CSS Typed OM Level 1",
+        "status": {
+            "status": "Under Consideration"
+        },
+        "url": "https://drafts.css-houdini.org/css-typed-om/",
+        "keywords": ["css", "houdini"],
+        "category": "css",
+        "description": "Exposes CSS values as typed JavaScript objects to facilitate their performant manipulation."
     },
     {
         "name": "CSS Variables",
@@ -668,6 +697,15 @@
             "twitter": "@svillarsenin",
             "email": "svillar@igalia.com"
         }
+    },
+    {
+        "name": "Worklets Level 1",
+        "status": {
+            "status": "Under Consideration"
+        },
+        "url": "https://drafts.css-houdini.org/worklets/",
+        "keywords": ["houdini", "worklet"],
+        "description": "An API for running scripts in stages of the rendering pipeline independent of the main javascript execution environment"
     }
     ],
 

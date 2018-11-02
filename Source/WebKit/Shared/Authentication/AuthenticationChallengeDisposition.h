@@ -25,11 +25,11 @@
 
 #pragma once
 
-#include <wtf/EnumTraits.h>
+#include <wtf/Forward.h>
 
 namespace WebKit {
 
-enum class AuthenticationChallengeDisposition {
+enum class AuthenticationChallengeDisposition : uint8_t {
     UseCredential,
     PerformDefaultHandling,
     Cancel,

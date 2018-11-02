@@ -156,7 +156,7 @@ void IntersectionObserver::observe(Element& target)
     auto* document = trackingDocument();
     if (!hadObservationTargets)
         document->addIntersectionObserver(*this);
-    document->scheduleIntersectionObservationUpdate();
+    document->scheduleForcedIntersectionObservationUpdate();
 }
 
 void IntersectionObserver::unobserve(Element& target)
@@ -236,10 +236,8 @@ bool IntersectionObserver::createTimestamp(DOMHighResTimeStamp& timestamp) const
     ASSERT(context->isDocument());
     auto& document = downcast<Document>(*context);
     if (auto* window = document.domWindow()) {
-        if (auto* performance = window->performance()) {
-            timestamp = performance->now();
-            return true;
-        }
+        timestamp =  window->performance().now();
+        return true;
     }
     return false;
 }

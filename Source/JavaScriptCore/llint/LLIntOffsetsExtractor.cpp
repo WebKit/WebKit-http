@@ -25,6 +25,7 @@
 
 #include "config.h"
 
+#include "ArithProfile.h"
 #include "ArrayProfile.h"
 #include "BytecodeStructs.h"
 #include "CodeBlock.h"
@@ -50,6 +51,7 @@
 #include "JumpTable.h"
 #include "LLIntOfflineAsmConfig.h"
 #include "MarkedSpace.h"
+#include "MaxFrameExtentForSlowPathCall.h"
 #include "NativeExecutable.h"
 #include "ProtoCallFrame.h"
 #include "ShadowChicken.h"
@@ -60,6 +62,7 @@
 #include "VM.h"
 #include "ValueProfile.h"
 #include "Watchdog.h"
+#include <stdio.h>
 #include <wtf/text/StringImpl.h>
 
 namespace JSC {
@@ -80,7 +83,7 @@ const int64_t* LLIntOffsetsExtractor::dummy()
 // classes friends with LLIntOffsetsExtractor, and include the header here, to get the C++
 // compiler to kindly step aside and yield to our best intentions.
 #include "LLIntDesiredOffsets.h"
-    return extractorTable;
+    return offsetExtractorTable;
 }
 
 } // namespace JSC

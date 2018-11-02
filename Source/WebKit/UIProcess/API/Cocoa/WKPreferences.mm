@@ -697,6 +697,16 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
     _preferences->setICECandidateFilteringEnabled(enabled);
 }
 
+- (void)_setSafeBrowsingEnabled:(BOOL)enabled
+{
+    _preferences->setSafeBrowsingEnabled(enabled);
+}
+
+- (BOOL)_safeBrowsingEnabled
+{
+    return _preferences->safeBrowsingEnabled();
+}
+
 - (BOOL)_webRTCLegacyAPIEnabled
 {
     return NO;
@@ -1053,16 +1063,6 @@ static WebCore::EditableLinkBehavior toEditableLinkBehavior(_WKEditableLinkBehav
     return _preferences->viewGestureDebuggingEnabled();
 }
 
-- (void)_setWebAnimationsCSSIntegrationEnabled:(BOOL)enabled
-{
-    _preferences->setWebAnimationsCSSIntegrationEnabled(enabled);
-}
-
-- (BOOL)_webAnimationsCSSIntegrationEnabled
-{
-    return _preferences->webAnimationsCSSIntegrationEnabled();
-}
-
 - (void)_setStandardFontFamily:(NSString *)family
 {
     _preferences->setStandardFontFamily(family);
@@ -1334,6 +1334,16 @@ static WebCore::EditableLinkBehavior toEditableLinkBehavior(_WKEditableLinkBehav
 - (BOOL)_videoQualityIncludesDisplayCompositingEnabled
 {
     return _preferences->videoQualityIncludesDisplayCompositingEnabled();
+}
+
+- (void)_setWebAnimationsCSSIntegrationEnabled:(BOOL)enabled
+{
+    _preferences->setWebAnimationsCSSIntegrationEnabled(enabled);
+}
+
+- (BOOL)_webAnimationsCSSIntegrationEnabled
+{
+    return _preferences->webAnimationsCSSIntegrationEnabled();
 }
 
 @end

@@ -2277,7 +2277,7 @@ void FrameLoader::open(CachedFrameBase& cachedFrame)
         m_frame.setDocument(document);
     }
 
-    document->domWindow()->resumeFromDocumentSuspension();
+    document->domWindow()->resumeFromPageCache();
 
     updateFirstPartyForCookies();
 
@@ -2436,8 +2436,7 @@ void FrameLoader::checkLoadCompleteForThisFrame()
             }
             if (shouldReset && item)
                 if (Page* page = m_frame.page()) {
-                    page->backForward().setCurrentItem(item.get());
-                    m_frame.loader().client().updateGlobalHistoryItemForPage();
+                    page->backForward().setCurrentItem(*item);
                 }
             return;
         }
@@ -3301,10 +3300,8 @@ void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest& reque
         // we only do this when punting a navigation for the target frame or top-level frame.  
         if ((isTargetItem || m_frame.isMainFrame()) && isBackForwardLoadType(policyChecker().loadType())) {
             if (Page* page = m_frame.page()) {
-                if (HistoryItem* resetItem = m_frame.mainFrame().loader().history().currentItem()) {
-                    page->backForward().setCurrentItem(resetItem);
-                    m_frame.loader().client().updateGlobalHistoryItemForPage();
-                }
+                if (HistoryItem* resetItem = m_frame.mainFrame().loader().history().currentItem())
+                    page->backForward().setCurrentItem(*resetItem);
             }
         }
         return;
@@ -3540,11 +3537,11 @@ bool FrameLoader::shouldTreatURLAsSrcdocDocument(const URL& url) const
 
 Frame* FrameLoader::findFrameForNavigation(const AtomicString& name, Document* activeDocument)
 {
-    Frame* frame = m_frame.tree().find(name);
-
     // FIXME: Eventually all callers should supply the actual activeDocument so we can call canNavigate with the right document.
     if (!activeDocument)
         activeDocument = m_frame.document();
+
+    auto* frame = m_frame.tree().find(name, activeDocument->frame() ? *activeDocument->frame() : m_frame);
 
     if (!activeDocument->canNavigate(frame))
         return nullptr;
@@ -3564,7 +3561,7 @@ void FrameLoader::loadSameDocumentItem(HistoryItem& item)
     if (FrameView* view = m_frame.view())
         view->setWasScrolledByUser(false);
 
-    history().setCurrentItem(&item);
+    history().setCurrentItem(item);
         
     // loadInSameDocument() actually changes the URL and notifies load delegates of a "fake" load
     loadInSameDocument(item.url(), item.stateObject(), false);

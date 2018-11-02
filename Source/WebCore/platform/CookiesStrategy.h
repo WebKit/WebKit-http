@@ -26,7 +26,6 @@
 #pragma once
 
 #include <pal/SessionID.h>
-#include <wtf/EnumTraits.h>
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
 
@@ -38,7 +37,7 @@ class URL;
 struct Cookie;
 struct SameSiteInfo;
 
-enum class IncludeSecureCookies { No, Yes };
+enum class IncludeSecureCookies : bool { No, Yes };
 
 class CookiesStrategy {
 public:

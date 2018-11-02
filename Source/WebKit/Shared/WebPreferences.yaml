@@ -1,3 +1,11 @@
+BlankAnchorTargetImpliesNoOpenerEnabled:
+   type: bool
+   defaultValue: true
+   webcoreBinding: RuntimeEnabledFeatures
+   humanReadableName: "Blank anchor target implies rel=noopener"
+   humanReadableDescription: "target=_blank on anchor elements implies rel=noopener"
+   category: experimental
+
 JavaScriptEnabled:
   type: bool
   defaultValue: true
@@ -45,6 +53,11 @@ DatabasesEnabled:
 XSSAuditorEnabled:
   type: bool
   defaultValue: true
+
+SafeBrowsingEnabled:
+  type: bool
+  defaultValue: false
+  webcoreBinding: none
 
 PrivateBrowsingEnabled:
   type: bool
@@ -1238,6 +1251,15 @@ WebGL2Enabled:
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEBGL2)
 
+WebGPUEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "WebGPU"
+  humanReadableDescription: "WebGPU Sketch prototype"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEBGPU)
+
 WebMetalEnabled:
   type: bool
   defaultValue: false
@@ -1278,6 +1300,32 @@ CSSCustomPropertiesAndValuesEnabled:
   defaultValue: false
   humanReadableName: "CSS Custom Properties and Values API"
   humanReadableDescription: "Enable CSS Custom Properties and Values API"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+
+DarkModeCSSEnabled:
+  type: bool
+  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  humanReadableName: "Dark Mode CSS Support"
+  humanReadableDescription: "Enable Dark Mode CSS Support"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+  condition: ENABLE(DARK_MODE_CSS)
+
+CSSPaintingAPIEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "CSS Painting API"
+  humanReadableDescription: "Enable the CSS Painting API"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+  condition: ENABLE(CSS_PAINTING_API)
+
+WebSQLDisabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Disable Web SQL"
+  humanReadableDescription: "Disable Web SQL"
   webcoreBinding: RuntimeEnabledFeatures
   category: experimental
 

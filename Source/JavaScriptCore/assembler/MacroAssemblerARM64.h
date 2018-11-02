@@ -53,9 +53,9 @@ public:
 protected:
     static const ARM64Registers::FPRegisterID fpTempRegister = ARM64Registers::q31;
     static const Assembler::SetFlags S = Assembler::S;
-    static const intptr_t maskHalfWord0 = 0xffffl;
-    static const intptr_t maskHalfWord1 = 0xffff0000l;
-    static const intptr_t maskUpperWord = 0xffffffff00000000l;
+    static const int64_t maskHalfWord0 = 0xffffl;
+    static const int64_t maskHalfWord1 = 0xffff0000l;
+    static const int64_t maskUpperWord = 0xffffffff00000000l;
 
     static constexpr size_t INSTRUCTION_SIZE = 4;
 
@@ -3758,6 +3758,23 @@ public:
     {
         m_assembler.eor<64>(dest, src, src);
     }
+
+    ALWAYS_INLINE static bool supportsDoubleToInt32ConversionUsingJavaScriptSemantics()
+    {
+#if HAVE(FJCVTZS_INSTRUCTION)
+        return true;
+#else
+        if (s_jscvtCheckState == CPUIDCheckState::NotChecked)
+            collectCPUFeatures();
+
+        return s_jscvtCheckState == CPUIDCheckState::Set;
+#endif
+    }
+
+    void convertDoubleToInt32UsingJavaScriptSemantics(FPRegisterID src, RegisterID dest)
+    {
+        m_assembler.fjcvtzs(dest, src); // This zero extends.
+    }
     
 #if ENABLE(FAST_TLS_JIT)
     // This will use scratch registers if the offset is not legal.
@@ -3992,11 +4009,6 @@ protected:
         return m_cachedMemoryTempRegister;
     }
 
-    ALWAYS_INLINE bool isInIntRange(intptr_t value)
-    {
-        return value == ((value << 32) >> 32);
-    }
-
     template<typename ImmediateType, typename rawType>
     void moveInternal(ImmediateType imm, RegisterID dest)
     {
@@ -4131,7 +4143,7 @@ protected:
             if (dest == memoryTempRegister)
                 cachedMemoryTempRegister().invalidate();
 
-            if (isInIntRange(addressDelta)) {
+            if (isInt<32>(addressDelta)) {
                 if (Assembler::canEncodeSImmOffset(addressDelta)) {
                     m_assembler.ldur<datasize>(dest,  memoryTempRegister, addressDelta);
                     return;
@@ -4168,7 +4180,7 @@ protected:
             intptr_t addressAsInt = reinterpret_cast<intptr_t>(address);
             intptr_t addressDelta = addressAsInt - currentRegisterContents;
 
-            if (isInIntRange(addressDelta)) {
+            if (isInt<32>(addressDelta)) {
                 if (Assembler::canEncodeSImmOffset(addressDelta)) {
                     m_assembler.stur<datasize>(src, memoryTempRegister, addressDelta);
                     return;

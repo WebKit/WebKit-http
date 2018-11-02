@@ -25,11 +25,11 @@
 
 #pragma once
 
-#include <wtf/EnumTraits.h>
+#include <wtf/Forward.h>
 
 namespace WebKit {
 
-enum class CoordinateSystem {
+enum class CoordinateSystem : uint8_t {
     Page = 0,
     LayoutViewport,
     VisualViewport,

@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include "CPU.h"
 #include "MacroAssembler.h"
 #include <wtf/Vector.h>
 
@@ -62,8 +63,8 @@ private:
 
     int m_startOffset;
     int m_endOffset;
-    size_t m_executionCount;
     Vector<Gap> m_gaps;
+    UCPURegister m_executionCount;
 };
 
 } // namespace JSC

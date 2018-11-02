@@ -275,14 +275,11 @@ WI.SourceCodeTextEditor = class SourceCodeTextEditor extends WI.TextEditor
         return !isNaN(lineNumber) && lineNumber > 0 && lineNumber <= this.lineCount;
     }
 
-    dialogWasDismissed(goToLineDialog)
+    dialogWasDismissedWithRepresentedObject(goToLineDialog, lineNumber)
     {
-        let lineNumber = goToLineDialog.representedObject;
         let position = new WI.SourceCodePosition(lineNumber - 1, 0);
         let range = new WI.TextRange(lineNumber - 1, 0, lineNumber, 0);
-
         this.revealPosition(position, range, false, true);
-        this.focus();
     }
 
     contentDidChange(replacedRanges, newRanges)
@@ -1426,10 +1423,10 @@ WI.SourceCodeTextEditor = class SourceCodeTextEditor extends WI.TextEditor
             return new WI.SourceCodePosition(position.lineNumber + startLine, columnNumber);
         }
 
-        // When returning offsets, convert to offsets within the SourceCode being viewed.
+        // When returning positions, convert to positions relative to the TextEditor content.
         let highlightSourceCodeRange = (startPosition, endPosition) => {
-            startPosition = fromInlineScriptPosition(startPosition).toCodeMirror();
-            endPosition = fromInlineScriptPosition(endPosition).toCodeMirror();
+            startPosition = this.originalPositionToCurrentPosition(fromInlineScriptPosition(startPosition));
+            endPosition = this.originalPositionToCurrentPosition(fromInlineScriptPosition(endPosition));
             callback({startPosition, endPosition});
         };
 

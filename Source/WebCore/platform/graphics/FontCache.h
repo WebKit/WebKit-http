@@ -36,6 +36,7 @@
 #include <array>
 #include <limits.h>
 #include <wtf/Forward.h>
+#include <wtf/ListHashSet.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/WorkQueue.h>
@@ -67,8 +68,6 @@ typedef IMLangFontLink2 IMLangFontLinkType;
 typedef IMLangFontLink IMLangFontLinkType;
 #endif
 #endif
-
-using FontPrewarmInformation = Vector<String>;
 
 // This key contains the FontDescription fields other than family that matter when fetching FontDatas (platform fonts).
 struct FontDescriptionKey {
@@ -238,8 +237,18 @@ public:
     bool shouldMockBoldSystemFontForAccessibility() const { return m_shouldMockBoldSystemFontForAccessibility; }
     void setShouldMockBoldSystemFontForAccessibility(bool shouldMockBoldSystemFontForAccessibility) { m_shouldMockBoldSystemFontForAccessibility = shouldMockBoldSystemFontForAccessibility; }
 
-    FontPrewarmInformation collectPrewarmInformation() const;
-    void prewarm(const FontPrewarmInformation&);
+    struct PrewarmInformation {
+        Vector<String> seenFamilies;
+        Vector<String> fontNamesRequiringSystemFallback;
+
+        bool isEmpty() const;
+        PrewarmInformation isolatedCopy() const;
+
+        template<class Encoder> void encode(Encoder&) const;
+        template<class Decoder> static std::optional<PrewarmInformation> decode(Decoder&);
+    };
+    PrewarmInformation collectPrewarmInformation() const;
+    void prewarm(const PrewarmInformation&);
 
 private:
     FontCache();
@@ -264,7 +273,8 @@ private:
     bool m_shouldMockBoldSystemFontForAccessibility { false };
 
 #if PLATFORM(COCOA)
-    HashSet<String> m_seenFamiliesForPrewarming;
+    ListHashSet<String> m_seenFamiliesForPrewarming;
+    ListHashSet<String> m_fontNamesRequiringSystemFallbackForPrewarming;
     RefPtr<WorkQueue> m_prewarmQueue;
 
     friend class ComplexTextController;
@@ -284,5 +294,35 @@ inline void FontCache::platformPurgeInactiveFontData()
 }
 
 #endif
+
+
+inline bool FontCache::PrewarmInformation::isEmpty() const
+{
+    return seenFamilies.isEmpty() && fontNamesRequiringSystemFallback.isEmpty();
+}
+
+inline FontCache::PrewarmInformation FontCache::PrewarmInformation::isolatedCopy() const
+{
+    return { seenFamilies.isolatedCopy(), fontNamesRequiringSystemFallback.isolatedCopy() };
+}
+
+template<class Encoder>
+void FontCache::PrewarmInformation::encode(Encoder& encoder) const
+{
+    encoder << seenFamilies;
+    encoder << fontNamesRequiringSystemFallback;
+}
+
+template<class Decoder>
+std::optional<FontCache::PrewarmInformation> FontCache::PrewarmInformation::decode(Decoder& decoder)
+{
+    PrewarmInformation prewarmInformation;
+    if (!decoder.decode(prewarmInformation.seenFamilies))
+        return { };
+    if (!decoder.decode(prewarmInformation.fontNamesRequiringSystemFallback))
+        return { };
+
+    return prewarmInformation;
+}
 
 }

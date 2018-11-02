@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef WTFString_h
-#define WTFString_h
+#pragma once
 
 // This file would be called String.h, but that conflicts with <string.h>
 // on systems without case-sensitive file systems.
@@ -666,5 +665,3 @@ using WTF::isSpaceOrNewline;
 using WTF::reverseFind;
 
 #include <wtf/text/AtomicString.h>
-
-#endif

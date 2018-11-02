@@ -41,11 +41,11 @@ enum RecordingState { "inactive", "recording", "paused" };
     // attribute EventHandler ondataavailable;
     // attribute EventHandler onpause;
     // attribute EventHandler onresume;
-    // attribute EventHandler onerror;
+    attribute EventHandler onerror;
     // readonly attribute unsigned long videoBitsPerSecond;
     // readonly attribute unsigned long audioBitsPerSecond;
 
-    // void start(optional long timeslice);
+    [MayThrowException] void start(optional long timeslice);
     // void stop();
     // void pause();
     // void resume();

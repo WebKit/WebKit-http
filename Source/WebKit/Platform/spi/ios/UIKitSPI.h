@@ -52,6 +52,7 @@
 #import <UIKit/UIPeripheralHost_Private.h>
 #import <UIKit/UIPickerContentView_Private.h>
 #import <UIKit/UIPickerView_Private.h>
+#import <UIKit/UIPopoverPresentationController_Private.h>
 #import <UIKit/UIPresentationController_Private.h>
 #import <UIKit/UIResponder_Private.h>
 #import <UIKit/UIScrollView_Private.h>
@@ -186,7 +187,6 @@ typedef enum {
 } UIKeyboardInputFlags;
 
 @interface UIEvent ()
-@property (nonatomic, readonly) UIKeyboardInputFlags _inputFlags;
 - (void *)_hidEvent;
 - (NSString *)_unmodifiedInput;
 - (NSString *)_modifiedInput;
@@ -1003,12 +1003,17 @@ typedef NSInteger UICompositingMode;
 + (UIBlurEffect *)effectWithBlurRadius:(CGFloat)blurRadius;
 @end
 
+@interface UIPopoverPresentationController ()
+@property (assign, nonatomic, setter=_setCentersPopoverIfSourceViewNotSet:, getter=_centersPopoverIfSourceViewNotSet) BOOL _centersPopoverIfSourceViewNotSet;
+@end
+
 #endif // USE(APPLE_INTERNAL_SDK)
 
 @interface UIPhysicalKeyboardEvent : UIPressesEvent
 @end
 
 @interface UIPhysicalKeyboardEvent ()
+@property (nonatomic, readonly) UIKeyboardInputFlags _inputFlags;
 - (UIPhysicalKeyboardEvent *)_cloneEvent NS_RETURNS_RETAINED;
 @property (nonatomic, readonly) CFIndex _keyCode;
 @end
@@ -1033,6 +1038,7 @@ typedef NSInteger UICompositingMode;
 - (BOOL)_canScrollY;
 - (void)_setContentOffsetWithDecelerationAnimation:(CGPoint)contentOffset;
 - (CGPoint)_adjustedContentOffsetForContentOffset:(CGPoint)contentOffset;
+- (void)_flashScrollIndicatorsPersistingPreviousFlashes:(BOOL)persisting;
 @end
 
 @interface UIPeripheralHost (IPI)

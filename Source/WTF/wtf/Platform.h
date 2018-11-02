@@ -25,8 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_Platform_h
-#define WTF_Platform_h
+#pragma once
 
 /* Include compiler specific macros */
 #include <wtf/Compiler.h>
@@ -370,11 +369,12 @@
 #include <TargetConditionals.h>
 #endif
 
-/* OS(IOS) - iOS */
-/* OS(MAC_OS_X) - Mac OS X (not including iOS) */
+/* OS(IOS_FAMILY) - iOS family, including iOSMac */
+/* OS(MAC_OS_X) - macOS (not including iOS family) */
 #if OS(DARWIN)
 #if TARGET_OS_IPHONE
 #define WTF_OS_IOS 1
+#define WTF_OS_IOS_FAMILY 1
 #elif TARGET_OS_MAC
 #define WTF_OS_MAC_OS_X 1
 #endif
@@ -517,7 +517,9 @@
 /* PLATFORM(HAIKU) */
 /* PLATFORM(MAC) */
 /* PLATFORM(IOS) */
+/* PLATFORM(IOS_FAMILY) */
 /* PLATFORM(IOS_SIMULATOR) */
+/* PLATFORM(IOS_FAMILY_SIMULATOR) */
 /* PLATFORM(WIN) */
 #if defined(BUILDING_GTK__)
 #define WTF_PLATFORM_GTK 1
@@ -531,8 +533,10 @@
 #define WTF_PLATFORM_MAC 1
 #elif OS(IOS)
 #define WTF_PLATFORM_IOS 1
+#define WTF_PLATFORM_IOS_FAMILY 1
 #if TARGET_OS_SIMULATOR
 #define WTF_PLATFORM_IOS_SIMULATOR 1
+#define WTF_PLATFORM_IOS_FAMILY_SIMULATOR 1
 #endif
 #if defined(TARGET_OS_IOSMAC) && TARGET_OS_IOSMAC
 #define WTF_PLATFORM_IOSMAC 1
@@ -542,7 +546,7 @@
 #endif
 
 /* PLATFORM(COCOA) */
-#if PLATFORM(MAC) || PLATFORM(IOS)
+#if PLATFORM(MAC) || PLATFORM(IOS_FAMILY)
 #define WTF_PLATFORM_COCOA 1
 #endif
 
@@ -624,7 +628,7 @@
 #endif
 #endif /* PLATFORM(MAC) */
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #define HAVE_NETWORK_EXTENSION 1
 #define HAVE_READLINE 1
@@ -640,7 +644,7 @@
 #define HAVE_ARM_NEON_INTRINSICS 0
 #endif
 
-#endif /* PLATFORM(IOS) */
+#endif /* PLATFORM(IOS_FAMILY) */
 
 #if PLATFORM(HAIKU)
 #define USE_HAIKU 1
@@ -721,7 +725,7 @@
 #if !PLATFORM(GTK)
 #define USE_ACCELERATE 1
 #endif
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 #define HAVE_HOSTED_CORE_ANIMATION 1
 #endif
 
@@ -765,7 +769,7 @@
 #endif
 
 #if !defined(USE_JSVALUE64) && !defined(USE_JSVALUE32_64)
-#if CPU(ADDRESS64)
+#if CPU(ADDRESS64) || CPU(ARM64)
 #define USE_JSVALUE64 1
 #else
 #define USE_JSVALUE32_64 1
@@ -774,7 +778,7 @@
 
 /* The JIT is enabled by default on all x86, x86-64, ARM & MIPS platforms except ARMv7k. */
 #if !defined(ENABLE_JIT) \
-    && (CPU(X86) || CPU(X86_64) || CPU(ARM) || (CPU(ARM64) && !defined(__ILP32__)) || CPU(MIPS)) \
+    && (CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)) \
     && !CPU(APPLE_ARMV7K)
 #define ENABLE_JIT 1
 #endif
@@ -807,7 +811,7 @@
 #endif
 
 /* The FTL is disabled on the iOS simulator, mostly for simplicity. */
-#if PLATFORM(IOS_SIMULATOR)
+#if PLATFORM(IOS_FAMILY_SIMULATOR)
 #undef ENABLE_FTL_JIT
 #define ENABLE_FTL_JIT 0
 #endif
@@ -833,7 +837,7 @@
 #define ENABLE_DFG_JIT 1
 #endif
 /* Enable the DFG JIT on ARMv7.  Only tested on iOS, Linux, and FreeBSD. */
-#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || OS(LINUX) || OS(FREEBSD))
+#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS_FAMILY) || OS(LINUX) || OS(FREEBSD))
 #define ENABLE_DFG_JIT 1
 #endif
 /* Enable the DFG JIT on ARM. */
@@ -894,7 +898,7 @@
 #endif
 
 #if !defined(ENABLE_WEBASSEMBLY)
-#if ENABLE(B3_JIT) && PLATFORM(COCOA)
+#if ENABLE(B3_JIT) && PLATFORM(COCOA) && CPU(ADDRESS64)
 #define ENABLE_WEBASSEMBLY 1
 #else
 #define ENABLE_WEBASSEMBLY 0
@@ -1064,14 +1068,18 @@
 
 /* CSS Selector JIT Compiler */
 #if !defined(ENABLE_CSS_SELECTOR_JIT)
-#if (CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS))) && ENABLE(JIT) && (OS(DARWIN) || PLATFORM(GTK) || PLATFORM(HAIKU) || PLATFORM(WPE))
+#if (CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS_FAMILY))) && ENABLE(JIT) && (OS(DARWIN) || PLATFORM(GTK) || PLATFORM(HAIKU) || PLATFORM(WPE))
 #define ENABLE_CSS_SELECTOR_JIT 1
 #else
 #define ENABLE_CSS_SELECTOR_JIT 0
 #endif
 #endif
 
-#if PLATFORM(IOS)
+#if CPU(ARM64E) && OS(DARWIN)
+#define HAVE_FJCVTZS_INSTRUCTION 1
+#endif
+
+#if PLATFORM(IOS_FAMILY)
 #if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !PLATFORM(IOSMAC)
 #define USE_QUICK_LOOK 1
 #define HAVE_APP_LINKS 1
@@ -1181,7 +1189,7 @@
 #endif
 #endif
 
-#if PLATFORM(IOS) || PLATFORM(MAC)
+#if PLATFORM(IOS_FAMILY) || PLATFORM(MAC)
 #define USE_COREMEDIA 1
 #define USE_VIDEOTOOLBOX 1
 
@@ -1192,16 +1200,16 @@
 #endif
 #endif
 
-#if PLATFORM(IOS) || PLATFORM(MAC)
+#if PLATFORM(IOS_FAMILY) || PLATFORM(MAC)
 #define HAVE_AVFOUNDATION_MEDIA_SELECTION_GROUP 1
 #endif
 
-#if PLATFORM(IOS) || PLATFORM(MAC)
+#if PLATFORM(IOS_FAMILY) || PLATFORM(MAC)
 #define HAVE_AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT 1
 #define HAVE_MEDIA_ACCESSIBILITY_FRAMEWORK 1
 #endif
 
-#if PLATFORM(IOS) || PLATFORM(MAC)
+#if PLATFORM(IOS_FAMILY) || PLATFORM(MAC)
 #define HAVE_AVFOUNDATION_LOADER_DELEGATE 1
 #endif
 
@@ -1253,7 +1261,7 @@
 #define USE_INSERTION_UNDO_GROUPING 1
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(IOS)
+#if PLATFORM(MAC) || PLATFORM(IOS_FAMILY)
 #define HAVE_AVASSETREADER 1
 #endif
 
@@ -1265,11 +1273,11 @@
 #define USE_AUDIO_SESSION 1
 #endif
 
-#if PLATFORM(COCOA) && !PLATFORM(IOS_SIMULATOR)
+#if PLATFORM(COCOA) && !PLATFORM(IOS_FAMILY_SIMULATOR)
 #define HAVE_IOSURFACE 1
 #endif
 
-#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR) && !PLATFORM(IOSMAC)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(IOS_FAMILY_SIMULATOR) && !PLATFORM(IOSMAC)
 #define HAVE_IOSURFACE_ACCELERATOR 1
 #endif
 
@@ -1316,7 +1324,7 @@
 #define USE_MEDIATOOLBOX 1
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(IOS)
+#if PLATFORM(MAC) || PLATFORM(IOS_FAMILY)
 #define USE_OS_LOG 1
 #if USE(APPLE_INTERNAL_SDK)
 #define USE_OS_STATE 1
@@ -1351,7 +1359,7 @@
 #endif
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(IOS)
+#if PLATFORM(MAC) || PLATFORM(IOS_FAMILY)
 #define USE_MEDIAREMOTE 1
 #endif
 
@@ -1395,8 +1403,6 @@
 #define HAVE_SEC_KEY_PROXY 1
 #endif
 
-#if PLATFORM(COCOA) && USE(CA) && !PLATFORM(IOS_SIMULATOR)
+#if PLATFORM(COCOA) && USE(CA) && !PLATFORM(IOS_FAMILY_SIMULATOR)
 #define USE_IOSURFACE_CANVAS_BACKING_STORE 1
 #endif
-
-#endif /* WTF_Platform_h */

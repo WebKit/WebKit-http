@@ -3110,9 +3110,9 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
         makeUniqueRef<WebEditorClient>(this),
         SocketProvider::create(),
         makeUniqueRef<LibWebRTCProvider>(),
-        WebCore::CacheStorageProvider::create()
+        WebCore::CacheStorageProvider::create(),
+        BackForwardList::create()
     );
-    configuration.backForwardClient = BackForwardList::create();
     configuration.chromeClient = new WebChromeClient(this);
     configuration.contextMenuClient = new WebContextMenuClient(this);
     configuration.dragClient = new WebDragClient(this);
@@ -3395,7 +3395,7 @@ HRESULT WebView::backForwardList(_COM_Outptr_opt_ IWebBackForwardList** list)
     if (!m_useBackForwardList)
         return E_FAIL;
  
-    *list = WebBackForwardList::createInstance(static_cast<BackForwardList*>(m_page->backForward().client()));
+    *list = WebBackForwardList::createInstance(&static_cast<BackForwardList&>(m_page->backForward().client()));
 
     return S_OK;
 }
@@ -5972,7 +5972,7 @@ HRESULT WebView::loadBackForwardListFromOtherView(_In_opt_ IWebView* otherView)
         Ref<HistoryItem> newItem = otherBackForward.itemAtIndex(i)->copy();
         if (!i) 
             newItemToGoTo = newItem.ptr();
-        backForward.client()->addItem(WTFMove(newItem));
+        backForward.client().addItem(WTFMove(newItem));
     }
     
     ASSERT(newItemToGoTo);
@@ -6742,15 +6742,6 @@ HRESULT WebView::globalHistoryItem(_COM_Outptr_opt_ IWebHistoryItem** item)
     if (!item)
         return E_POINTER;
     *item = nullptr;
-    if (!m_page)
-        return E_FAIL;
-
-    if (!m_globalHistoryItem) {
-        *item = nullptr;
-        return S_OK;
-    }
-
-    *item = WebHistoryItem::createInstance(m_globalHistoryItem.copyRef());
     return S_OK;
 }
 
@@ -7515,11 +7506,6 @@ HRESULT WebView::setHTTPPipeliningEnabled(BOOL enabled)
 {
     ResourceRequest::setHTTPPipeliningEnabled(enabled);
     return S_OK;
-}
-
-void WebView::setGlobalHistoryItem(HistoryItem* historyItem)
-{
-    m_globalHistoryItem = historyItem;
 }
 
 #if ENABLE(FULLSCREEN_API)

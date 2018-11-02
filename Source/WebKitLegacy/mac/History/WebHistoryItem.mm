@@ -109,7 +109,7 @@ static HistoryItemMap& historyItemWrappers()
     return historyItemWrappers;
 }
 
-void WKNotifyHistoryItemChanged(HistoryItem*)
+void WKNotifyHistoryItemChanged(HistoryItem&)
 {
 #if !PLATFORM(IOS)
     [[NSNotificationCenter defaultCenter]
@@ -524,16 +524,6 @@ WebHistoryItem *kit(HistoryItem* item)
 {
 }
 #endif
-
-- (id)_transientPropertyForKey:(NSString *)key
-{
-    return core(_private)->getTransientProperty(key);
-}
-
-- (void)_setTransientProperty:(id)property forKey:(NSString *)key
-{
-    core(_private)->setTransientProperty(key, property);
-}
 
 - (BOOL)lastVisitWasFailure
 {

@@ -31,7 +31,6 @@
 #include "APIError.h"
 #include "APIURL.h"
 #include "APIURLRequest.h"
-#include "InjectedBundleBackForwardListItem.h"
 #include "InjectedBundleDOMWindowExtension.h"
 #include "InjectedBundleScriptWorld.h"
 #include "WKAPICast.h"
@@ -48,6 +47,10 @@ using namespace WebCore;
 InjectedBundlePageLoaderClient::InjectedBundlePageLoaderClient(const WKBundlePageLoaderClientBase* client)
 {
     initialize(client);
+#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED > 101400
+    // Deprecated callbacks.
+    ASSERT(!m_client.shouldGoToBackForwardListItem);
+#endif
 }
 
 void InjectedBundlePageLoaderClient::willLoadURLRequest(WebPage& page, const ResourceRequest& request, API::Object* userData)
@@ -76,18 +79,6 @@ void InjectedBundlePageLoaderClient::willLoadDataRequest(WebPage& page, const Re
     }
 
     m_client.willLoadDataRequest(toAPI(&page), toAPI(request), toAPI(data.get()), toAPI(MIMEType.impl()), toAPI(encodingName.impl()), toURLRef(unreachableURL.string().impl()), toAPI(userData), m_client.base.clientInfo);
-}
-
-bool InjectedBundlePageLoaderClient::shouldGoToBackForwardListItem(WebPage& page, InjectedBundleBackForwardListItem& item, RefPtr<API::Object>& userData)
-{
-    if (!m_client.shouldGoToBackForwardListItem)
-        return true;
-
-    WKTypeRef userDataToPass = nullptr;
-    bool result = m_client.shouldGoToBackForwardListItem(toAPI(&page), toAPI(&item), &userDataToPass, m_client.base.clientInfo);
-    userData = adoptRef(toImpl(userDataToPass));
-    
-    return result;
 }
 
 void InjectedBundlePageLoaderClient::didStartProvisionalLoadForFrame(WebPage& page, WebFrame& frame, RefPtr<API::Object>& userData)

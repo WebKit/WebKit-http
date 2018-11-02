@@ -1000,6 +1000,7 @@ bool FrameView::flushCompositingStateForThisFrame(const Frame& rootFrameForFlush
 #endif
 
     renderView->compositor().flushPendingLayerChanges(&rootFrameForFlush == m_frame.ptr());
+
     return true;
 }
 
@@ -1710,10 +1711,8 @@ void FrameView::updateLayoutViewport()
             setLayoutViewportOverrideRect(LayoutRect(newOrigin, m_layoutViewportOverrideRect.value().size()));
         }
         if (frame().settings().visualViewportAPIEnabled()) {
-            if (Document* document = frame().document()) {
-                if (VisualViewport* visualViewport = document->domWindow()->visualViewport())
-                    visualViewport->update();
-            }
+            if (auto* window = frame().window())
+                window->visualViewport().update();
         }
         return;
     }
@@ -1724,10 +1723,8 @@ void FrameView::updateLayoutViewport()
         LOG_WITH_STREAM(Scrolling, stream << "layoutViewport changed to " << layoutViewportRect());
     }
     if (frame().settings().visualViewportAPIEnabled()) {
-        if (Document* document = frame().document()) {
-            if (VisualViewport* visualViewport = document->domWindow()->visualViewport())
-                visualViewport->update();
-        }
+        if (auto* window = frame().window())
+            window->visualViewport().update();
     }
 }
 
@@ -2008,8 +2005,12 @@ void FrameView::viewportContentsChanged()
     });
 
 #if ENABLE(INTERSECTION_OBSERVER)
-    if (auto* document = frame().document())
-        document->scheduleIntersectionObservationUpdate();
+    if (auto* document = frame().document()) {
+        if (document->numberOfIntersectionObservers()) {
+            if (auto* page = frame().page())
+                page->addDocumentNeedingIntersectionObservationUpdate(*document);
+        }
+    }
 #endif
 }
 

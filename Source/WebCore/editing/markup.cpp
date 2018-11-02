@@ -174,9 +174,7 @@ void removeSubresourceURLAttributes(Ref<DocumentFragment>&& fragment, WTF::Funct
 
 std::unique_ptr<Page> createPageForSanitizingWebContent()
 {
-    PageConfiguration pageConfiguration(createEmptyEditorClient(), SocketProvider::create(), LibWebRTCProvider::create(), CacheStorageProvider::create());
-
-    fillWithEmptyClients(pageConfiguration);
+    auto pageConfiguration = pageConfigurationWithEmptyClients();
     
     auto page = std::make_unique<Page>(WTFMove(pageConfiguration));
     page->settings().setMediaEnabled(false);
@@ -249,14 +247,14 @@ private:
 
     bool shouldPreserveMSOListStyleForElement(const Element&);
 
-    void appendElement(StringBuilder& out, const Element&, bool addDisplayInline, RangeFullySelectsNode);
-    void appendEndElement(StringBuilder& out, const Element&) override;
+    void appendStartTag(StringBuilder& out, const Element&, bool addDisplayInline, RangeFullySelectsNode);
+    void appendEndTag(StringBuilder& out, const Element&) override;
     void appendCustomAttributes(StringBuilder&, const Element&, Namespaces*) override;
 
     void appendText(StringBuilder& out, const Text&) override;
-    void appendElement(StringBuilder& out, const Element& element, Namespaces*) override
+    void appendStartTag(StringBuilder& out, const Element& element, Namespaces*) override
     {
-        appendElement(out, element, false, DoesFullySelectNode);
+        appendStartTag(out, element, false, DoesFullySelectNode);
     }
 
     Node* firstChild(Node& node)
@@ -347,11 +345,11 @@ void StyledMarkupAccumulator::wrapWithNode(Node& node, bool convertBlocksToInlin
 {
     StringBuilder markup;
     if (is<Element>(node))
-        appendElement(markup, downcast<Element>(node), convertBlocksToInlines && isBlock(&node), rangeFullySelectsNode);
+        appendStartTag(markup, downcast<Element>(node), convertBlocksToInlines && isBlock(&node), rangeFullySelectsNode);
     else
-        appendStartMarkup(markup, node, nullptr);
+        appendNonElementNode(markup, node, nullptr);
     m_reversedPrecedingMarkup.append(markup.toString());
-    appendEndTag(node);
+    endAppendingNode(node);
     if (m_nodes)
         m_nodes->append(&node);
 }
@@ -495,7 +493,7 @@ bool StyledMarkupAccumulator::shouldPreserveMSOListStyleForElement(const Element
     return false;
 }
 
-void StyledMarkupAccumulator::appendElement(StringBuilder& out, const Element& element, bool addDisplayInline, RangeFullySelectsNode rangeFullySelectsNode)
+void StyledMarkupAccumulator::appendStartTag(StringBuilder& out, const Element& element, bool addDisplayInline, RangeFullySelectsNode rangeFullySelectsNode)
 {
     const bool documentIsHTML = element.document().isHTMLDocument();
     const bool isSlotElement = is<HTMLSlotElement>(element);
@@ -563,12 +561,12 @@ void StyledMarkupAccumulator::appendElement(StringBuilder& out, const Element& e
     appendCloseTag(out, element);
 }
 
-void StyledMarkupAccumulator::appendEndElement(StringBuilder& out, const Element& element)
+void StyledMarkupAccumulator::appendEndTag(StringBuilder& out, const Element& element)
 {
     if (UNLIKELY(is<HTMLSlotElement>(element)))
         out.append("</span>");
     else
-        MarkupAccumulator::appendEndElement(out, element);
+        MarkupAccumulator::appendEndTag(out, element);
 }
 
 Node* StyledMarkupAccumulator::serializeNodes(const Position& start, const Position& end)
@@ -609,7 +607,7 @@ Node* StyledMarkupAccumulator::traverseNodesForSerialization(Node* startNode, No
 
         ++depth;
         if (shouldEmit)
-            appendStartTag(node);
+            startAppendingNode(node);
 
         return true;
     };
@@ -621,7 +619,7 @@ Node* StyledMarkupAccumulator::traverseNodesForSerialization(Node* startNode, No
             --depth;
         if (shouldEmit) {
             if (closing)
-                appendEndTag(node);
+                endAppendingNode(node);
             else
                 wrapWithNode(node);
         }
@@ -689,7 +687,7 @@ bool StyledMarkupAccumulator::appendNodeToPreserveMSOList(Node& node)
             m_inMSOList = false;
         else
             return false;
-        appendStartTag(commentNode);
+        startAppendingNode(commentNode);
         return true;
     }
     if (is<HTMLStyleElement>(node)) {
@@ -712,7 +710,7 @@ bool StyledMarkupAccumulator::appendNodeToPreserveMSOList(Node& node)
             return false;
 
         appendString("<head><style class=\"" WebKitMSOListQuirksStyle "\">\n<!--\n");
-        appendTextSubstring(textChild, start, msoListDefinitionsEnd - start + 3);
+        appendStringView(StringView(textChild.data()).substring(start, msoListDefinitionsEnd - start + 3));
         appendString("\n-->\n</style></head>");
 
         return true;

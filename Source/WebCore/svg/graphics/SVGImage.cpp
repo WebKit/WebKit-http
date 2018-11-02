@@ -324,7 +324,8 @@ ImageDrawResult SVGImage::draw(GraphicsContext& context, const FloatRect& dstRec
     }
 
 #if PLATFORM(MAC)
-    LocalDefaultSystemAppearance localAppearance(m_page->useSystemAppearance(), m_page->useDarkAppearance());
+    auto* document = m_page->mainFrame().document();
+    LocalDefaultSystemAppearance localAppearance(document ? document->useDarkAppearance() : false);
 #endif
 
     view->paint(context, intersection(context.clipBounds(), enclosingIntRect(srcRect)));
@@ -453,13 +454,7 @@ EncodedDataStatus SVGImage::dataChanged(bool allDataReceived)
         return EncodedDataStatus::Complete;
 
     if (allDataReceived) {
-        PageConfiguration pageConfiguration(
-            createEmptyEditorClient(),
-            SocketProvider::create(),
-            LibWebRTCProvider::create(),
-            CacheStorageProvider::create()
-        );
-        fillWithEmptyClients(pageConfiguration);
+        auto pageConfiguration = pageConfigurationWithEmptyClients();
         m_chromeClient = std::make_unique<SVGImageChromeClient>(this);
         pageConfiguration.chromeClient = m_chromeClient.get();
 

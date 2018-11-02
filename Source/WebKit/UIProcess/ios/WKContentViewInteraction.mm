@@ -56,6 +56,7 @@
 #import "WKTextInputListViewController.h"
 #import "WKTimePickerViewController.h"
 #import "WKUIDelegatePrivate.h"
+#import "WKWebEvent.h"
 #import "WKWebViewConfiguration.h"
 #import "WKWebViewConfigurationPrivate.h"
 #import "WKWebViewInternal.h"
@@ -121,24 +122,6 @@
 #if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKPlatformFileUploadPanel.mm>)
 #import <WebKitAdditions/WKPlatformFileUploadPanel.mm>
 #endif
-
-@interface UIEvent (UIEventInternal)
-@property (nonatomic, assign) UIKeyboardInputFlags _inputFlags;
-@end
-
-@interface WKWebEvent : WebEvent
-@property (nonatomic, retain) UIEvent *uiEvent;
-@end
-
-@implementation WKWebEvent
-
-- (void)dealloc
-{
-    [_uiEvent release];
-    [super dealloc];
-}
-
-@end
 
 #if PLATFORM(WATCHOS)
 
@@ -717,7 +700,7 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     _showingTextStyleOptions = NO;
 
     // FIXME: This should be called when we get notified that loading has completed.
-    [self useSelectionAssistantWithGranularity:_webView._selectionGranularity];
+    [self setUpTextSelectionAssistant];
     
     _actionSheetAssistant = adoptNS([[WKActionSheetAssistant alloc] initWithView:self]);
     [_actionSheetAssistant setDelegate:self];
@@ -2038,14 +2021,12 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     _page->handleTap(location, _layerTreeTransactionIdAtLastTouchStart);
 }
 
-- (void)useSelectionAssistantWithGranularity:(WKSelectionGranularity)selectionGranularity
+- (void)setUpTextSelectionAssistant
 {
-    _webSelectionAssistant = nil;
-
     if (!_textSelectionAssistant)
         _textSelectionAssistant = adoptNS([[UIWKTextInteractionAssistant alloc] initWithView:self]);
     else {
-        // Reset the gesture recognizers in case editibility has changed.
+        // Reset the gesture recognizers in case editability has changed.
         [_textSelectionAssistant setGestureRecognizers];
     }
 }
@@ -3794,35 +3775,13 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     if (event == _uiEventBeingResent)
         return;
 
-    uint16_t keyCode;
-    BOOL isHardwareKeyboardEvent = !!event._hidEvent;
-    if (!isHardwareKeyboardEvent)
-        keyCode = 0;
-    else {
-        UIPhysicalKeyboardEvent *keyEvent = (UIPhysicalKeyboardEvent *)event;
-        keyCode = keyEvent._keyCode;
-        event = [[keyEvent _cloneEvent] autorelease]; // UIKit uses a singleton for hardware keyboard events.
-    }
-    WKWebEvent *webEvent = [[[WKWebEvent alloc] initWithKeyEventType:(event._isKeyDown) ? WebEventKeyDown : WebEventKeyUp
-                                                           timeStamp:event.timestamp
-                                                          characters:event._modifiedInput
-                                         charactersIgnoringModifiers:event._unmodifiedInput
-                                                           modifiers:event._modifierFlags
-                                                         isRepeating:(event._inputFlags & kUIKeyboardInputRepeat)
-                                                           withFlags:event._inputFlags
-                                                             keyCode:keyCode
-                                                            isTabKey:[event._modifiedInput isEqualToString:@"\t"]
-                                                        characterSet:WebEventCharacterSetUnicode] autorelease];
-    webEvent.uiEvent = event;
+    auto webEvent = adoptNS([[WKWebEvent alloc] initWithEvent:event]);
     
-    [self handleKeyWebEvent:webEvent];    
+    [self handleKeyWebEvent:webEvent.get()];
 }
 
 - (void)handleKeyWebEvent:(::WebEvent *)theEvent
 {
-    if ([_keyboardScrollingAnimator handleKeyEvent:theEvent])
-        return;
-
     _page->handleKeyboardEvent(NativeWebKeyboardEvent(theEvent));
 }
 
@@ -3834,6 +3793,8 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (void)_didHandleKeyEvent:(::WebEvent *)event eventWasHandled:(BOOL)eventWasHandled
 {
+    [_keyboardScrollingAnimator handleKeyEvent:event];
+    
     if (auto handler = WTFMove(_keyWebEventHandler)) {
         handler(event, eventWasHandled);
         return;
@@ -3950,6 +3911,11 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 - (void)keyboardScrollViewAnimatorWillScroll:(WKKeyboardScrollViewAnimator *)animator
 {
     [self willStartZoomOrScroll];
+}
+
+- (void)keyboardScrollViewAnimatorDidFinishScrolling:(WKKeyboardScrollViewAnimator *)animator
+{
+    [_webView _didFinishScrolling];
 }
 
 - (void)executeEditCommandWithCallback:(NSString *)commandName
@@ -4153,7 +4119,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (void)_startAssistingKeyboard
 {
-    [self useSelectionAssistantWithGranularity:WKSelectionGranularityCharacter];
+    [self setUpTextSelectionAssistant];
     
     if (self.isFirstResponder && !self.suppressAssistantSelectionView)
         [_textSelectionAssistant activateSelection];
@@ -4165,7 +4131,8 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (void)_stopAssistingKeyboard
 {
-    [self useSelectionAssistantWithGranularity:_webView._selectionGranularity];
+    self.inputDelegate = nil;
+    [self setUpTextSelectionAssistant];
     
     [_textSelectionAssistant deactivateSelection];
 }

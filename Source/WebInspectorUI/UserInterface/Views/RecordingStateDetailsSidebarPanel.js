@@ -74,6 +74,13 @@ WI.RecordingStateDetailsSidebarPanel = class RecordingStateDetailsSidebarPanel e
         this.updateLayoutIfNeeded();
     }
 
+    // Protected
+
+    get scrollElement()
+    {
+        return this._dataGrid.scrollContainer;
+    }
+
     // Private
 
     _generateDetailsCanvas2D(action)
@@ -89,8 +96,9 @@ WI.RecordingStateDetailsSidebarPanel = class RecordingStateDetailsSidebarPanel e
 
         this._dataGrid.removeChildren();
 
-        console.assert(action.state);
-        if (!action.state)
+        let currentState = action.states.lastValue;
+        console.assert(currentState);
+        if (!currentState)
             return;
 
         function isColorProperty(name) {
@@ -106,12 +114,12 @@ WI.RecordingStateDetailsSidebarPanel = class RecordingStateDetailsSidebarPanel e
             return new WI.InlineSwatch(WI.InlineSwatch.Type.Color, color, readOnly);
         }
 
-        for (let name in action.state) {
+        for (let name in currentState) {
             // Skip internal state used for path debugging.
             if (name === "setPath")
                 continue;
 
-            let value = action.state[name];
+            let value = currentState[name];
             if (typeof value === "object") {
                 let isGradient = value instanceof CanvasGradient;
                 let isPattern = value instanceof CanvasPattern;

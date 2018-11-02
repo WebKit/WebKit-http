@@ -1,3 +1,863 @@
+2018-10-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237024.
+        https://bugs.webkit.org/show_bug.cgi?id=190673
+
+        "It regressed ARES6 on iOS devices by 4-8%" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "Increase executable memory pool from 64MB to 128MB for ARM64"
+        https://bugs.webkit.org/show_bug.cgi?id=190453
+        https://trac.webkit.org/changeset/237024
+
+2018-10-17  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Use WTF::Function instead of std::function
+        https://bugs.webkit.org/show_bug.cgi?id=190665
+
+        Reviewed by Keith Miller.
+
+        We should use WTF::Function as much as possible. It allocates memory from bmalloc instead of standard malloc.
+
+        * runtime/JSNativeStdFunction.h:
+
+2018-10-17  Keith Miller  <keith_miller@apple.com>
+
+        Remove debug logging from generate_offsets_extractor.rb
+        https://bugs.webkit.org/show_bug.cgi?id=190667
+
+        Reviewed by Mark Lam.
+
+        * offlineasm/generate_offset_extractor.rb:
+
+2018-10-17  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix windows build.
+
+        * offlineasm/generate_offset_extractor.rb:
+
+2018-10-17  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] More aggressively use `constexpr` in LowLevelInterpreter.asm for constant values
+        https://bugs.webkit.org/show_bug.cgi?id=190659
+
+        Reviewed by Keith Miller.
+
+        Asking the actual constant value to the JSC binary is always the best way to get the correct value.
+        The value is correctly updated once the original value is changed. We would like to encourage this
+        approach more in LowLevelInterpreter.asm.
+
+        This patch expands the coverage of this approach. We make ObservedType, ResultType, and ArithProfile
+        constexpr-friendly to produce the magic value used in LowLevelInterpreter.asm at compiling time.
+        This change allows us to easily extend ArithProfile in the future to adopt BigInt efficiently.
+
+        We additionally use `constexpr` for several constant values in LowLevelInterpreter.asm.
+
+        * assembler/MaxFrameExtentForSlowPathCall.h:
+        Use this value in LowLevelInterpreter.asm directly. We also make them constexpr. And we add CPU(ARM64E).
+
+        * bytecode/ArithProfile.h:
+        (JSC::ObservedType::ObservedType):
+        (JSC::ObservedType::sawInt32 const):
+        (JSC::ObservedType::isOnlyInt32 const):
+        (JSC::ObservedType::sawNumber const):
+        (JSC::ObservedType::isOnlyNumber const):
+        (JSC::ObservedType::sawNonNumber const):
+        (JSC::ObservedType::isOnlyNonNumber const):
+        (JSC::ObservedType::isEmpty const):
+        (JSC::ObservedType::bits const):
+        (JSC::ObservedType::withInt32 const):
+        (JSC::ObservedType::withNumber const):
+        (JSC::ObservedType::withNonNumber const):
+        (JSC::ObservedType::withoutNonNumber const):
+        (JSC::ObservedType::operator== const):
+        (JSC::ArithProfile::ArithProfile):
+        (JSC::ArithProfile::fromInt):
+        (JSC::ArithProfile::observedUnaryInt):
+        (JSC::ArithProfile::observedUnaryNumber):
+        (JSC::ArithProfile::observedBinaryIntInt):
+        (JSC::ArithProfile::observedBinaryNumberInt):
+        (JSC::ArithProfile::observedBinaryIntNumber):
+        (JSC::ArithProfile::observedBinaryNumberNumber):
+        (JSC::ArithProfile::lhsObservedType const):
+        (JSC::ArithProfile::rhsObservedType const):
+        (JSC::ArithProfile::bits const):
+        Make ObservedType and ArithProfile constexpr-friendly.
+
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        Make several ASSERTs to STATIC_ASSERTs. Remove some unnecessary checks.
+        * llint/LLIntOffsetsExtractor.cpp:
+        * llint/LowLevelInterpreter.asm:
+        Remove unused constant values. Use constexpr more and more aggressively.
+
+        * parser/ResultType.h:
+        (JSC::ResultType::ResultType):
+        (JSC::ResultType::isInt32 const):
+        (JSC::ResultType::definitelyIsNumber const):
+        (JSC::ResultType::definitelyIsString const):
+        (JSC::ResultType::definitelyIsBoolean const):
+        (JSC::ResultType::definitelyIsBigInt const):
+        (JSC::ResultType::mightBeNumber const):
+        (JSC::ResultType::isNotNumber const):
+        (JSC::ResultType::mightBeBigInt const):
+        (JSC::ResultType::isNotBigInt const):
+        (JSC::ResultType::nullType):
+        (JSC::ResultType::booleanType):
+        (JSC::ResultType::numberType):
+        (JSC::ResultType::numberTypeIsInt32):
+        (JSC::ResultType::stringOrNumberType):
+        (JSC::ResultType::addResultType):
+        (JSC::ResultType::stringType):
+        (JSC::ResultType::bigIntType):
+        (JSC::ResultType::unknownType):
+        (JSC::ResultType::forAdd):
+        (JSC::ResultType::forLogicalOp):
+        (JSC::ResultType::forBitOp):
+        (JSC::ResultType::bits const):
+        Make ResultType constexpr-friendly.
+
+        * runtime/JSCJSValue.h:
+        Use offsetof instead of OBJECT_OFFSETOF. It is OK since EncodedValueDescriptor is POD.
+        This change makes TagOffset and PayloadOffset macros constexpr-friendly while OBJECT_OFFSETOF
+        cannot be used in constexpr since it uses reinterpret_cast.
+
+2018-10-17  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed revert Fujii's revert in r237214 with new WinCairo build fix.
+
+2018-10-16  Mark Lam  <mark.lam@apple.com>
+
+        GetIndexedPropertyStorage can GC.
+        https://bugs.webkit.org/show_bug.cgi?id=190625
+        <rdar://problem/45309366>
+
+        Reviewed by Saam Barati.
+
+        This is because if the ArrayMode type is String, the DFG and FTL will be emitting
+        a call to operationResolveRope, and operationResolveRope can GC.  This patch
+        updates doesGC() to reflect this.
+
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+
+2018-10-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed, rolling out r237188, r237189, and r237197.
+
+        It breaks WinCairo Debug builds and Release LayoutTests
+
+        Reverted changesets:
+
+        https://bugs.webkit.org/show_bug.cgi?id=189708
+        https://trac.webkit.org/changeset/237188
+
+        "Unreviewed, forgot to add untracked files."
+        https://trac.webkit.org/changeset/237189
+
+        "isASTErroneous in offlineasm should de-macroify before
+        looking for Errors"
+        https://bugs.webkit.org/show_bug.cgi?id=190634
+        https://trac.webkit.org/changeset/237197
+
+2018-10-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: capture previously saved states and add them to the recording payload
+        https://bugs.webkit.org/show_bug.cgi?id=190473
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Recording.json:
+        Add `states` key to `InitialState` object.
+
+2018-10-16  Keith Miller  <keith_miller@apple.com>
+
+        isASTErroneous in offlineasm should de-macroify before looking for Errors
+        https://bugs.webkit.org/show_bug.cgi?id=190634
+
+        Reviewed by Mark Lam.
+
+        If a macro isn't usable in a configuration it might still cause us to
+        think the ast is invalid. This change runs the de-macroifier before
+        looking for errors.
+
+        Also, it adds a missing include to Printer.h.
+
+        * assembler/Printer.h:
+        * offlineasm/settings.rb:
+
+2018-10-16  Justin Michaud  <justin_michaud@apple.com>
+
+        Implement feature flag and bindings for CSS Painting API
+        https://bugs.webkit.org/show_bug.cgi?id=190237
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-16  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, forgot to add untracked files.
+
+        * llint/LLIntSettingsExtractor.cpp: Added.
+        (main):
+        * offlineasm/generate_settings_extractor.rb: Added.
+
+2018-10-16  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, reland https://bugs.webkit.org/show_bug.cgi?id=189708 with build fix.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * llint/LLIntOffsetsExtractor.cpp:
+        (JSC::LLIntOffsetsExtractor::dummy):
+        * offlineasm/generate_offset_extractor.rb:
+        * offlineasm/offsets.rb:
+        * offlineasm/settings.rb:
+
+2018-10-16  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, add missing include.
+
+        * runtime/BasicBlockLocation.h:
+
+2018-10-15  Keith Miller  <keith_miller@apple.com>
+
+        Support arm64 CPUs with a 32-bit address space
+        https://bugs.webkit.org/show_bug.cgi?id=190273
+
+        Reviewed by Michael Saboff.
+
+        This patch adds support for arm64_32 in the LLInt. In order to
+        make this work we needed to add a new type that reflects the size
+        of a cpu register. This type is called CPURegister or UCPURegister
+        for the unsigned version. Most places that used void* or intptr_t
+        to refer to a register have been changed to use this new type.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/ARM64Assembler.h:
+        (JSC::isInt):
+        (JSC::is4ByteAligned):
+        (JSC::PairPostIndex::PairPostIndex):
+        (JSC::PairPreIndex::PairPreIndex):
+        (JSC::ARM64Assembler::readPointer):
+        (JSC::ARM64Assembler::readCallTarget):
+        (JSC::ARM64Assembler::computeJumpType):
+        (JSC::ARM64Assembler::linkCompareAndBranch):
+        (JSC::ARM64Assembler::linkConditionalBranch):
+        (JSC::ARM64Assembler::linkTestAndBranch):
+        (JSC::ARM64Assembler::loadRegisterLiteral):
+        (JSC::ARM64Assembler::loadStoreRegisterPairPostIndex):
+        (JSC::ARM64Assembler::loadStoreRegisterPairPreIndex):
+        (JSC::ARM64Assembler::loadStoreRegisterPairOffset):
+        (JSC::ARM64Assembler::loadStoreRegisterPairNonTemporal):
+        (JSC::isInt7): Deleted.
+        (JSC::isInt11): Deleted.
+        * assembler/CPU.h:
+        (JSC::isAddress64Bit):
+        (JSC::isAddress32Bit):
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::shouldBlind):
+        * assembler/MacroAssemblerARM64.cpp:
+        (JSC::MacroAssemblerARM64::collectCPUFeatures):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::load):
+        (JSC::MacroAssemblerARM64::store):
+        (JSC::MacroAssemblerARM64::isInIntRange): Deleted.
+        * assembler/Printer.h:
+        * assembler/ProbeContext.h:
+        (JSC::Probe::CPUState::gpr):
+        (JSC::Probe::CPUState::spr):
+        (JSC::Probe::Context::gpr):
+        (JSC::Probe::Context::spr):
+        * b3/B3ConstPtrValue.h:
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::isArgValidForRep):
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::stackSlot const):
+        (JSC::B3::Air::Arg::special const):
+        * b3/air/testair.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::testStoreConstantPtr):
+        (JSC::B3::testInterpreter):
+        (JSC::B3::testAddShl32):
+        (JSC::B3::testLoadBaseIndexShift32):
+        * bindings/ScriptFunctionCall.cpp:
+        (Deprecated::ScriptCallArgumentHandler::appendArgument):
+        * bindings/ScriptFunctionCall.h:
+        * bytecode/CodeBlock.cpp:
+        (JSC::roundCalleeSaveSpaceAsVirtualRegisters):
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::restoreCalleeSavesFor):
+        (JSC::DFG::saveCalleeSavesFor):
+        (JSC::DFG::restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer):
+        (JSC::DFG::copyCalleeSavesToVMEntryFrameCalleeSavesBuffer):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * disassembler/UDis86Disassembler.cpp:
+        (JSC::tryToDisassembleWithUDis86):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileWeakMapGet):
+        * heap/MachineStackMarker.cpp:
+        (JSC::copyMemory):
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::returnPC const):
+        (JSC::ExecState::hasReturnPC const):
+        (JSC::ExecState::clearReturnPC):
+        (JSC::ExecState::returnPCOffset):
+        (JSC::ExecState::isGlobalExec const):
+        (JSC::ExecState::setReturnPC):
+        * interpreter/CalleeBits.h:
+        (JSC::CalleeBits::boxWasm):
+        (JSC::CalleeBits::isWasm const):
+        (JSC::CalleeBits::asWasmCallee const):
+        * interpreter/Interpreter.cpp:
+        (JSC::UnwindFunctor::copyCalleeSavesToEntryFrameCalleeSavesBuffer const):
+        * interpreter/VMEntryRecord.h:
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::clearStackFrame):
+        * jit/RegisterAtOffset.h:
+        (JSC::RegisterAtOffset::offsetAsIndex const):
+        * jit/RegisterAtOffsetList.cpp:
+        (JSC::RegisterAtOffsetList::RegisterAtOffsetList):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LLIntOfflineAsmConfig.h:
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * offlineasm/arm64.rb:
+        * offlineasm/asm.rb:
+        * offlineasm/ast.rb:
+        * offlineasm/backends.rb:
+        * offlineasm/parser.rb:
+        * offlineasm/x86.rb:
+        * runtime/BasicBlockLocation.cpp:
+        (JSC::BasicBlockLocation::dumpData const):
+        (JSC::BasicBlockLocation::emitExecuteCode const):
+        * runtime/BasicBlockLocation.h:
+        * runtime/HasOwnPropertyCache.h:
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::inplaceMultiplyAdd):
+        (JSC::JSBigInt::digitDiv):
+        * runtime/JSBigInt.h:
+        * runtime/JSObject.h:
+        * runtime/Options.cpp:
+        (JSC::jitEnabledByDefault):
+        * runtime/Options.h:
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::printTraceData):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::CFrameWalker::walk):
+        * runtime/SlowPathReturnType.h:
+        (JSC::encodeResult):
+        (JSC::decodeResult):
+        * tools/SigillCrashAnalyzer.cpp:
+        (JSC::SigillCrashAnalyzer::dumpCodeBlock):
+
+2018-10-15  Justin Fan  <justin_fan@apple.com>
+
+        Add WebGPU 2018 feature flag and experimental feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=190509
+
+        Reviewed by Dean Jackson.
+
+        Re-add ENABLE_WEBGPU, an experimental feature flag, and a RuntimeEnabledFeature
+        for the 2018 WebGPU prototype.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-15  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for prefers-color-scheme media query
+        https://bugs.webkit.org/show_bug.cgi?id=190499
+        rdar://problem/45212025
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig: Added ENABLE_DARK_MODE_CSS.
+
+2018-10-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237084, r237088, r237098, and
+        r237114.
+        https://bugs.webkit.org/show_bug.cgi?id=190602
+
+        Breaks internal builds. (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Separate configuration extraction from offset extraction"
+        https://bugs.webkit.org/show_bug.cgi?id=189708
+        https://trac.webkit.org/changeset/237084
+
+        "Gardening: Build fix after r237084."
+        https://bugs.webkit.org/show_bug.cgi?id=189708
+        https://trac.webkit.org/changeset/237088
+
+        "Gardening: Build fix after r237084."
+        https://bugs.webkit.org/show_bug.cgi?id=189708
+        https://trac.webkit.org/changeset/237098
+
+        "REGRESSION (r237084): JavaScriptCore fails to build on Linux"
+        https://trac.webkit.org/changeset/237114
+
+2018-10-15  Keith Miller  <keith_miller@apple.com>
+
+        BytecodeDumper should print all switch labels
+        https://bugs.webkit.org/show_bug.cgi?id=190596
+
+        Reviewed by Saam Barati.
+
+        Right now the bytecode dumper only prints the default target not any of the
+        non-default targets.
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+
+2018-10-15  Saam barati  <sbarati@apple.com>
+
+        Emit fjcvtzs on ARM64E on Darwin
+        https://bugs.webkit.org/show_bug.cgi?id=184023
+
+        Reviewed by Yusuke Suzuki and Filip Pizlo.
+
+        ARMv8.3 introduced the fjcvtzs instruction which does double->int32
+        conversion using the semantics defined by JavaScript:
+        http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0801g/hko1477562192868.html
+        This patch teaches JSC to use that instruction when possible.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::fjcvtzs):
+        (JSC::ARM64Assembler::fjcvtzsInsn):
+        * assembler/MacroAssemblerARM64.cpp:
+        (JSC::MacroAssemblerARM64::collectCPUFeatures):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::supportsDoubleToInt32ConversionUsingJavaScriptSemantics):
+        (JSC::MacroAssemblerARM64::convertDoubleToInt32UsingJavaScriptSemantics):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueToInt32):
+        * disassembler/ARM64/A64DOpcode.cpp:
+        * disassembler/ARM64/A64DOpcode.h:
+        (JSC::ARM64Disassembler::A64DOpcode::appendInstructionName):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::doubleToInt32):
+        * jit/JITRightShiftGenerator.cpp:
+        (JSC::JITRightShiftGenerator::generateFastPath):
+        * runtime/MathCommon.h:
+        (JSC::toInt32):
+
+2018-10-15  Saam Barati  <sbarati@apple.com>
+
+        JSArray::shiftCountWithArrayStorage is wrong when an array has holes
+        https://bugs.webkit.org/show_bug.cgi?id=190262
+        <rdar://problem/44986241>
+
+        Reviewed by Mark Lam.
+
+        We would take the fast path for shiftCountWithArrayStorage when the array
+        hasHoles(). However, the code for this was wrong. It'd incorrectly update
+        ArrayStorage::m_numValuesInVector. Since the hasHoles() for ArrayStorage
+        path is never taken in JetStream 2, this patch just removes that from
+        the fast path. Instead, we just fallback to the slow path when hasHoles().
+        If we find evidence that this matters for real use cases, we can
+        figure out a way to make the fast path work.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::shiftCountWithArrayStorage):
+
+2018-10-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237054.
+        https://bugs.webkit.org/show_bug.cgi?id=190593
+
+        "this regressed JetStream 2 by 6% on iOS" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] JSC should have "parseFunction" to optimize Function
+        constructor"
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+        https://trac.webkit.org/changeset/237054
+
+2018-10-14  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r237084): JavaScriptCore fails to build on Linux
+        <https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=10949>
+
+        * llint/LLIntSettingsExtractor.cpp: Attempt to fix build by
+        including <stdio.h>.
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Shrink more enum classes
+        https://bugs.webkit.org/show_bug.cgi?id=190540
+
+        Reviewed by Chris Dumez.
+
+        * runtime/ConsoleTypes.h:
+
+2018-10-15  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Disable DOMJIT on 32bit architecture
+        https://bugs.webkit.org/show_bug.cgi?id=190387
+
+        Reviewed by Mark Lam.
+
+        We disable DOMJIT on 32bit architecture due to exhaustion of registers.
+
+        * runtime/Options.h:
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Include EnumTraits.h less
+        https://bugs.webkit.org/show_bug.cgi?id=190535
+
+        Reviewed by Chris Dumez.
+
+        * runtime/ConsoleTypes.h:
+
+2018-10-14  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: Build fix after r237084.
+        https://bugs.webkit.org/show_bug.cgi?id=189708
+
+        Unreviewd.
+
+        * llint/LLIntOffsetsExtractor.cpp:
+
+2018-10-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Remove Option::useAsyncIterator
+        https://bugs.webkit.org/show_bug.cgi?id=190567
+
+        Reviewed by Saam Barati.
+
+        Async iterator is enabled by default at 2017-08-09. It is already shipped in several releases,
+        and we can think that it is already mature. Let's drop the option `Option::useAsyncIterator`.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitNewFunctionExpressionCommon):
+        (JSC::BytecodeGenerator::emitNewFunction):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createFunctionMetadata):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseForStatement):
+        (JSC::Parser<LexerType>::parseAsyncFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parseAsyncFunctionExpression):
+        * runtime/Options.h:
+
+2018-10-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Remove Options::useObjectRestSpread
+        https://bugs.webkit.org/show_bug.cgi?id=190568
+
+        Reviewed by Saam Barati.
+
+        Options::useObjectRestSpread is enabled by default at 2017-06-27. It is already shipped in several releases,
+        and we can think that it is mature. Let's drop Options::useObjectRestSpread() flag.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        (JSC::Parser<LexerType>::parseDestructuringPattern):
+        (JSC::Parser<LexerType>::parseProperty):
+        * parser/Parser.h:
+        * runtime/Options.h:
+
+2018-10-13  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] JSON.stringify can accept call-with-no-arguments
+        https://bugs.webkit.org/show_bug.cgi?id=190343
+
+        Reviewed by Mark Lam.
+
+        JSON.stringify can accept `JSON.stringify()` call (call-with-no-arguments) according to the spec[1].
+        Instead of throwing an error, we should take the first argument as `undefined` if it is not given.
+
+        [1]: https://tc39.github.io/ecma262/#sec-json.stringify
+
+        * runtime/JSONObject.cpp:
+        (JSC::JSONProtoFuncStringify):
+
+2018-10-12  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Gardening: Build fix after r237084.
+        https://bugs.webkit.org/show_bug.cgi?id=189708
+
+        Unreviewd.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2018-10-12  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Separate configuration extraction from offset extraction
+        https://bugs.webkit.org/show_bug.cgi?id=189708
+
+        Reviewed by Keith Miller.
+
+        Instead of generating a file with all offsets for every combination of
+        configurations, we first generate a file with only the configuration
+        indices and pass that to the offset extractor. The offset extractor then
+        only generates the offsets for valid configurations
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * llint/LLIntOffsetsExtractor.cpp:
+        (JSC::LLIntOffsetsExtractor::dummy):
+        * llint/LLIntSettingsExtractor.cpp: Added.
+        (main):
+        * offlineasm/generate_offset_extractor.rb:
+        * offlineasm/generate_settings_extractor.rb: Added.
+        * offlineasm/offsets.rb:
+        * offlineasm/settings.rb:
+
+2018-10-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r237063.
+
+        Caused layout test fast/dom/Window/window-postmessage-clone-
+        deep-array.html to fail on macOS and iOS Debug bots.
+
+        Reverted changeset:
+
+        "[JSC] Remove gcc warnings on mips and armv7"
+        https://bugs.webkit.org/show_bug.cgi?id=188598
+        https://trac.webkit.org/changeset/237063
+
+2018-10-11  Guillaume Emont  <guijemont@igalia.com>
+
+        [JSC] Remove gcc warnings on mips and armv7
+        https://bugs.webkit.org/show_bug.cgi?id=188598
+
+        Reviewed by Mark Lam.
+
+        Fix many gcc/clang warnings that are false positives, mostly alignment
+        issues.
+
+        * assembler/MacroAssemblerPrinter.cpp:
+        (JSC::Printer::printMemory):
+        Use bitwise_cast instead of reinterpret_cast.
+        * assembler/testmasm.cpp:
+        (JSC::floatOperands):
+        marked as potentially unused as it is not used on all platforms.
+        (JSC::testProbeModifiesStackValues):
+        modifiedFlags is not used on mips, so don't declare it.
+        * bytecode/CodeBlock.h:
+        Make ScriptExecutable::prepareForExecution() return an
+        std::optional<Exception*> instead of a JSObject*.
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::executeProgram):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::prepareForRepeatCall):
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeModuleProgram):
+        Update calling code for the prototype change of
+        ScriptExecutable::prepareForExecution().
+        * jit/JITOperations.cpp: Same as for Interpreter.cpp.
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::setUpCall): Same as for Interpreter.cpp.
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::dataStorage):
+        Use bitwise_cast instead of reinterpret_cast.
+        * runtime/ScriptExecutable.cpp:
+        * runtime/ScriptExecutable.h:
+        Make ScriptExecutable::prepareForExecution() return an
+        std::optional<Exception*> instead of a JSObject*.
+        * tools/JSDollarVM.cpp:
+        (JSC::codeBlockFromArg): Use bitwise_cast instead of reinterpret_cast.
+
+2018-10-11  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Use currentStackPointer more
+        https://bugs.webkit.org/show_bug.cgi?id=190503
+
+        Reviewed by Saam Barati.
+
+        * runtime/VM.cpp:
+        (JSC::VM::committedStackByteCount):
+
+2018-10-08  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] JSC should have "parseFunction" to optimize Function constructor
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        Reviewed by Mark Lam.
+
+        The current Function constructor is suboptimal. We parse the piece of the same code three times to meet
+        the spec requirement. (1) check parameters syntax, (2) check body syntax, and (3) parse the entire function.
+        And to parse 1-3 correctly, we create two strings, the parameters and the entire function. This operation
+        is really costly and ideally we should meet the above requirement by the one time parsing.
+
+        To meet the above requirement, we add a special function for Parser, parseSingleFunction. This function
+        takes `std::optional<int> functionConstructorParametersEndPosition` and check this end position is correct in the parser.
+        For example, if we run the code,
+
+            Function('/*', '*/){')
+
+        According to the spec, this should produce '/*' parameter string and '*/){' body string. And parameter
+        string should be syntax-checked by the parser, and raise the error since it is incorrect. Instead of doing
+        that, in our implementation, we first create the entire string.
+
+            function anonymous(/*) {
+                */){
+            }
+
+        And we parse it. At that time, we also pass the end position of the parameters to the parser. In the above case,
+        the position of the `function anonymous(/*)' <> is passed. And in the parser, we check that the last token
+        offset of the parameters is the given end position. This check allows us to raise the error correctly to the
+        above example while we parse the entire function only once. And we do not need to create two strings too.
+
+        This improves the performance of the Function constructor significantly. And web-tooling-benchmark/uglify-js is
+        significantly sped up (28.2%).
+
+        Before:
+            uglify-js:  2.94 runs/s
+        After:
+            uglify-js:  3.77 runs/s
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::fromGlobalCode):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseInner):
+        (JSC::Parser<LexerType>::parseSingleFunction):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseAsyncFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parsePropertyMethod):
+        (JSC::Parser<LexerType>::parseGetterSetter):
+        (JSC::Parser<LexerType>::parseFunctionExpression):
+        (JSC::Parser<LexerType>::parseAsyncFunctionExpression):
+        (JSC::Parser<LexerType>::parseArrowFunctionExpression):
+        * parser/Parser.h:
+        (JSC::Parser<LexerType>::parse):
+        (JSC::parse):
+        (JSC::parseFunctionForFunctionConstructor):
+        * parser/ParserModes.h:
+        * parser/ParserTokens.h:
+        (JSC::JSTextPosition::JSTextPosition):
+        (JSC::JSTokenLocation::JSTokenLocation): Deleted.
+        * parser/SourceCodeKey.h:
+        (JSC::SourceCodeKey::SourceCodeKey):
+        (JSC::SourceCodeKey::operator== const):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getUnlinkedGlobalCodeBlock):
+        (JSC::CodeCache::getUnlinkedGlobalFunctionExecutable):
+        * runtime/CodeCache.h:
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * runtime/FunctionExecutable.cpp:
+        (JSC::FunctionExecutable::fromGlobalCode):
+        * runtime/FunctionExecutable.h:
+
+2018-10-11  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Fix non-existent define `CPU(JSVALUE64)`
+        https://bugs.webkit.org/show_bug.cgi?id=190479
+
+        Reviewed by Yusuke Suzuki.
+
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsImpl):
+        Correct CPU(JSVALUE64) to USE(JSVALUE64).
+
+2018-10-11  Keith Rollin  <krollin@apple.com>
+
+        CURRENT_ARCH should not be used in Run Script phase.
+        https://bugs.webkit.org/show_bug.cgi?id=190407
+        <rdar://problem/45133556>
+
+        Reviewed by Alexey Proskuryakov.
+
+        CURRENT_ARCH is used in a number of Xcode Run Script phases. However,
+        CURRENT_ARCH is not well-defined during this phase (and may even have
+        the value "undefined") since this phase is run just once per build
+        rather than once per supported architecture. Migrate away from
+        CURRENT_ARCH in favor of ARCHS, either by iterating over ARCHS and
+        performing an operation for each value, or by picking the first entry
+        in ARCHS and using that as a representative value.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Store
+        LLIntDesiredOffsets.h into a directory with a name based on ARCHS
+        rather than CURRENT_ARCH.
+
+2018-10-10  Mark Lam  <mark.lam@apple.com>
+
+        Changes towards allowing use of the ASAN detect_stack_use_after_return option.
+        https://bugs.webkit.org/show_bug.cgi?id=190405
+        <rdar://problem/45131464>
+
+        Reviewed by Michael Saboff.
+
+        The ASAN detect_stack_use_after_return option checks for use of stack variables
+        after they have been freed.  It does this by allocating relevant stack variables
+        in heap memory (instead of on the stack) if the code ever takes the address of
+        those stack variables.  Unfortunately, this is a common idiom that we use to
+        compute the approximate stack pointer value.  As a result, on such ASAN runs, the
+        computed approximate stack pointer value will point into the heap instead of the
+        stack.  This breaks the VM's expectations and wreaks havoc.
+
+        To fix this, we use the newly introduced WTF::currentStackPointer() instead of
+        taking the address of stack variables.
+
+        We also need to enhance ExceptionScopes to be able to work with ASAN
+        detect_stack_use_after_return which will allocated the scope in the heap.  We
+        work around this by passing the current stack pointer of the instantiating calling
+        frame into the scope constructor, and using that for the position check in
+        ~ThrowScope() instead.
+
+        The above is only a start towards enabling ASAN detect_stack_use_after_return on
+        the VM.  There are still other issues to be resolved before we can run with this
+        ASAN option.
+
+        * runtime/CatchScope.h:
+        * runtime/ExceptionEventLocation.h:
+        (JSC::ExceptionEventLocation::ExceptionEventLocation):
+        * runtime/ExceptionScope.h:
+        (JSC::ExceptionScope::stackPosition const):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::didAcquireLock):
+        * runtime/ThrowScope.cpp:
+        (JSC::ThrowScope::~ThrowScope):
+        * runtime/ThrowScope.h:
+        * runtime/VM.h:
+        (JSC::VM::needExceptionCheck const):
+        (JSC::VM::isSafeToRecurse const):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPatternConstructor::isSafeToRecurse const):
+
+2018-10-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: create special Network waterfall for media events
+        https://bugs.webkit.org/show_bug.cgi?id=189773
+        <rdar://problem/44626605>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/DOM.json:
+        Add `didFireEvent` event that is fired when specific event listeners added by
+        `InspectorInstrumentation::addEventListenersToNode` are fired.
+
+2018-10-10  Michael Saboff  <msaboff@apple.com>
+
+        Increase executable memory pool from 64MB to 128MB for ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=190453
+
+        Reviewed by Saam Barati.
+
+        * jit/ExecutableAllocator.cpp:
+
 2018-10-10  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: notify the frontend when a canvas has started recording via console.record

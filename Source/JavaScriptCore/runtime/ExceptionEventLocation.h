@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,12 +29,14 @@ namespace JSC {
 
 struct ExceptionEventLocation {
     ExceptionEventLocation() { }
-    ExceptionEventLocation(const char* functionName, const char* file, unsigned line)
-        : functionName(functionName)
+    ExceptionEventLocation(void* stackPosition, const char* functionName, const char* file, unsigned line)
+        : stackPosition(stackPosition)
+        , functionName(functionName)
         , file(file)
         , line(line)
     { }
     
+    void* stackPosition { nullptr }; // Needed for ASAN detect_stack_use_after_return.
     const char* functionName { nullptr };
     const char* file { nullptr };
     unsigned line { 0 };

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WTF_MathExtras_h
-#define WTF_MathExtras_h
+#pragma once
 
 #include <algorithm>
 #include <cmath>
@@ -213,7 +212,7 @@ template<typename T> constexpr bool hasTwoOrMoreBitsSet(T value)
     return !hasZeroOrOneBitsSet(value);
 }
 
-template <typename T> inline unsigned getLSBSet(T value)
+template <typename T> constexpr unsigned getLSBSet(T value)
 {
     typedef typename std::make_unsigned<T>::type UnsignedT;
     unsigned result = 0;
@@ -623,5 +622,3 @@ using WTF::shuffleVector;
 using WTF::clz32;
 using WTF::clz64;
 using WTF::ctz32;
-
-#endif // #ifndef WTF_MathExtras_h

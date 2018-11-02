@@ -57,7 +57,7 @@
 #include <webrtc/p2p/base/basicpacketsocketfactory.h>
 #include <webrtc/p2p/client/basicportallocator.h>
 #include <webrtc/pc/peerconnectionfactory.h>
-#include <webrtc/system_wrappers/include/field_trial_default.h>
+#include <webrtc/system_wrappers/include/field_trial.h>
 #include <wtf/MainThread.h>
 
 namespace WebCore {
@@ -89,6 +89,8 @@ bool LibWebRTCMediaEndpoint::setConfiguration(LibWebRTCProvider& client, webrtc:
         m_backend = client.createPeerConnection(*this, WTFMove(configuration));
         return !!m_backend;
     }
+    auto oldConfiguration = m_backend->GetConfiguration();
+    configuration.certificates = oldConfiguration.certificates;
     return m_backend->SetConfiguration(WTFMove(configuration));
 }
 
@@ -277,7 +279,7 @@ void LibWebRTCMediaEndpoint::doCreateAnswer()
     ASSERT(m_backend);
 
     m_isInitiator = false;
-    m_backend->CreateAnswer(&m_createSessionDescriptionObserver, nullptr);
+    m_backend->CreateAnswer(&m_createSessionDescriptionObserver, { });
 }
 
 void LibWebRTCMediaEndpoint::getStats(Ref<DeferredPromise>&& promise, WTF::Function<void(rtc::scoped_refptr<LibWebRTCStatsCollector>&&)>&& getStatsFunction)
@@ -415,13 +417,13 @@ static inline void setExistingReceiverSourceTrack(RealtimeMediaSource& existingS
     case cricket::MEDIA_TYPE_AUDIO: {
         ASSERT(existingSource.type() == RealtimeMediaSource::Type::Audio);
         rtc::scoped_refptr<webrtc::AudioTrackInterface> audioTrack = static_cast<webrtc::AudioTrackInterface*>(rtcReceiver.track().get());
-        static_cast<RealtimeIncomingAudioSource&>(existingSource).setSourceTrack(WTFMove(audioTrack));
+        downcast<RealtimeIncomingAudioSource>(existingSource).setSourceTrack(WTFMove(audioTrack));
         return;
     }
     case cricket::MEDIA_TYPE_VIDEO: {
         ASSERT(existingSource.type() == RealtimeMediaSource::Type::Video);
         rtc::scoped_refptr<webrtc::VideoTrackInterface> videoTrack = static_cast<webrtc::VideoTrackInterface*>(rtcReceiver.track().get());
-        static_cast<RealtimeIncomingVideoSource&>(existingSource).setSourceTrack(WTFMove(videoTrack));
+        downcast<RealtimeIncomingVideoSource>(existingSource).setSourceTrack(WTFMove(videoTrack));
         return;
     }
     case cricket::MEDIA_TYPE_DATA:

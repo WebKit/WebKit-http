@@ -1265,23 +1265,17 @@ void RenderLayerCompositor::addToOverlapMapRecursive(OverlapMap& overlapMap, con
     addToOverlapMap(overlapMap, layer, layerExtent);
 
 #if !ASSERT_DISABLED
-    LayerListMutationDetector mutationChecker(const_cast<RenderLayer*>(&layer));
+    LayerListMutationDetector mutationChecker(const_cast<RenderLayer&>(layer));
 #endif
 
-    if (auto* negZOrderList = layer.negZOrderList()) {
-        for (auto* renderLayer : *negZOrderList)
-            addToOverlapMapRecursive(overlapMap, *renderLayer, &layer);
-    }
+    for (auto* renderLayer : layer.negativeZOrderLayers())
+        addToOverlapMapRecursive(overlapMap, *renderLayer, &layer);
 
-    if (auto* normalFlowList = layer.normalFlowList()) {
-        for (auto* renderLayer : *normalFlowList)
-            addToOverlapMapRecursive(overlapMap, *renderLayer, &layer);
-    }
+    for (auto* renderLayer : layer.normalFlowLayers())
+        addToOverlapMapRecursive(overlapMap, *renderLayer, &layer);
 
-    if (auto* posZOrderList = layer.posZOrderList()) {
-        for (auto* renderLayer : *posZOrderList)
-            addToOverlapMapRecursive(overlapMap, *renderLayer, &layer);
-    }
+    for (auto* renderLayer : layer.positiveZOrderLayers())
+        addToOverlapMapRecursive(overlapMap, *renderLayer, &layer);
     
     if (ancestorLayer)
         overlapMap.geometryMap().popMappingsToAncestor(ancestorLayer);
@@ -1369,40 +1363,33 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     }
 
 #if !ASSERT_DISABLED
-    LayerListMutationDetector mutationChecker(&layer);
+    LayerListMutationDetector mutationChecker(layer);
 #endif
 
     bool anyDescendantHas3DTransform = false;
 
-    if (auto* negZOrderList = layer.negZOrderList()) {
-        for (auto* renderLayer : *negZOrderList) {
-            computeCompositingRequirements(&layer, *renderLayer, overlapMap, childState, layersChanged, anyDescendantHas3DTransform);
+    for (auto* renderLayer : layer.negativeZOrderLayers()) {
+        computeCompositingRequirements(&layer, *renderLayer, overlapMap, childState, layersChanged, anyDescendantHas3DTransform);
 
-            // If we have to make a layer for this child, make one now so we can have a contents layer
-            // (since we need to ensure that the -ve z-order child renders underneath our contents).
-            if (!willBeComposited && childState.subtreeIsCompositing) {
-                // make layer compositing
-                layer.setIndirectCompositingReason(RenderLayer::IndirectCompositingReason::BackgroundLayer);
-                childState.compositingAncestor = &layer;
-                overlapMap.pushCompositingContainer();
-                // This layer is going to be composited, so children can safely ignore the fact that there's an
-                // animation running behind this layer, meaning they can rely on the overlap map testing again
-                childState.testingOverlap = true;
-                willBeComposited = true;
-            }
+        // If we have to make a layer for this child, make one now so we can have a contents layer
+        // (since we need to ensure that the -ve z-order child renders underneath our contents).
+        if (!willBeComposited && childState.subtreeIsCompositing) {
+            // make layer compositing
+            layer.setIndirectCompositingReason(RenderLayer::IndirectCompositingReason::BackgroundLayer);
+            childState.compositingAncestor = &layer;
+            overlapMap.pushCompositingContainer();
+            // This layer is going to be composited, so children can safely ignore the fact that there's an
+            // animation running behind this layer, meaning they can rely on the overlap map testing again
+            childState.testingOverlap = true;
+            willBeComposited = true;
         }
     }
     
-    if (auto* normalFlowList = layer.normalFlowList()) {
-        for (auto* renderLayer : *normalFlowList)
-            computeCompositingRequirements(&layer, *renderLayer, overlapMap, childState, layersChanged, anyDescendantHas3DTransform);
-    }
+    for (auto* renderLayer : layer.normalFlowLayers())
+        computeCompositingRequirements(&layer, *renderLayer, overlapMap, childState, layersChanged, anyDescendantHas3DTransform);
 
-    if (auto* posZOrderList = layer.posZOrderList()) {
-        ASSERT(layer.isStackingContext());
-        for (auto* renderLayer : *posZOrderList)
-            computeCompositingRequirements(&layer, *renderLayer, overlapMap, childState, layersChanged, anyDescendantHas3DTransform);
-    }
+    for (auto* renderLayer : layer.positiveZOrderLayers())
+        computeCompositingRequirements(&layer, *renderLayer, overlapMap, childState, layersChanged, anyDescendantHas3DTransform);
 
     // If we just entered compositing mode, the root will have become composited (as long as accelerated compositing is enabled).
     if (layer.isRenderViewLayer()) {
@@ -1575,27 +1562,23 @@ void RenderLayerCompositor::rebuildCompositingLayerTree(RenderLayer& layer, Vect
     auto& childList = layerBacking ? layerChildren : childLayersOfEnclosingLayer;
 
 #if !ASSERT_DISABLED
-    LayerListMutationDetector mutationChecker(&layer);
+    LayerListMutationDetector mutationChecker(layer);
 #endif
 
-    if (auto* negZOrderList = layer.negZOrderList()) {
-        for (auto* renderLayer : *negZOrderList)
-            rebuildCompositingLayerTree(*renderLayer, childList, depth + 1);
+    for (auto* renderLayer : layer.negativeZOrderLayers())
+        rebuildCompositingLayerTree(*renderLayer, childList, depth + 1);
 
-        // If a negative z-order child is compositing, we get a foreground layer which needs to get parented.
+    // If a negative z-order child is compositing, we get a foreground layer which needs to get parented.
+    if (layer.negativeZOrderLayers().size()) {
         if (layerBacking && layerBacking->foregroundLayer())
             childList.append(*layerBacking->foregroundLayer());
     }
-
-    if (auto* normalFlowList = layer.normalFlowList()) {
-        for (auto* renderLayer : *normalFlowList)
-            rebuildCompositingLayerTree(*renderLayer, childList, depth + 1);
-    }
     
-    if (auto* posZOrderList = layer.posZOrderList()) {
-        for (auto* renderLayer : *posZOrderList)
-            rebuildCompositingLayerTree(*renderLayer, childList, depth + 1);
-    }
+    for (auto* renderLayer : layer.normalFlowLayers())
+        rebuildCompositingLayerTree(*renderLayer, childList, depth + 1);
+    
+    for (auto* renderLayer : layer.positiveZOrderLayers())
+        rebuildCompositingLayerTree(*renderLayer, childList, depth + 1);
 
     if (layerBacking) {
         bool parented = false;
@@ -1827,23 +1810,17 @@ void RenderLayerCompositor::updateLayerTreeGeometry(RenderLayer& layer, int dept
     }
 
 #if !ASSERT_DISABLED
-    LayerListMutationDetector mutationChecker(&layer);
+    LayerListMutationDetector mutationChecker(layer);
 #endif
 
-    if (auto* negZOrderList = layer.negZOrderList()) {
-        for (auto* renderLayer : *negZOrderList)
-            updateLayerTreeGeometry(*renderLayer, depth + 1);
-    }
+    for (auto* renderLayer : layer.negativeZOrderLayers())
+        updateLayerTreeGeometry(*renderLayer, depth + 1);
 
-    if (auto* normalFlowList = layer.normalFlowList()) {
-        for (auto* renderLayer : *normalFlowList)
-            updateLayerTreeGeometry(*renderLayer, depth + 1);
-    }
+    for (auto* renderLayer : layer.normalFlowLayers())
+        updateLayerTreeGeometry(*renderLayer, depth + 1);
     
-    if (auto* posZOrderList = layer.posZOrderList()) {
-        for (auto* renderLayer : *posZOrderList)
-            updateLayerTreeGeometry(*renderLayer, depth + 1);
-    }
+    for (auto* renderLayer : layer.positiveZOrderLayers())
+        updateLayerTreeGeometry(*renderLayer, depth + 1);
 
     if (auto* layerBacking = layer.backing())
         layerBacking->updateAfterDescendants();
@@ -1874,23 +1851,17 @@ void RenderLayerCompositor::updateCompositingDescendantGeometry(RenderLayer& com
         return;
 
 #if !ASSERT_DISABLED
-    LayerListMutationDetector mutationChecker(&layer);
+    LayerListMutationDetector mutationChecker(layer);
 #endif
     
-    if (auto* negZOrderList = layer.negZOrderList()) {
-        for (auto* renderLayer : *negZOrderList)
-            updateCompositingDescendantGeometry(compositingAncestor, *renderLayer);
-    }
+    for (auto* renderLayer : layer.negativeZOrderLayers())
+        updateCompositingDescendantGeometry(compositingAncestor, *renderLayer);
 
-    if (auto* normalFlowList = layer.normalFlowList()) {
-        for (auto* renderLayer : *normalFlowList)
-            updateCompositingDescendantGeometry(compositingAncestor, *renderLayer);
-    }
+    for (auto* renderLayer : layer.normalFlowLayers())
+        updateCompositingDescendantGeometry(compositingAncestor, *renderLayer);
     
-    if (auto* posZOrderList = layer.posZOrderList()) {
-        for (auto* renderLayer : *posZOrderList)
-            updateCompositingDescendantGeometry(compositingAncestor, *renderLayer);
-    }
+    for (auto* renderLayer : layer.positiveZOrderLayers())
+        updateCompositingDescendantGeometry(compositingAncestor, *renderLayer);
     
     if (&layer != &compositingAncestor) {
         if (auto* layerBacking = layer.backing())
@@ -1910,24 +1881,19 @@ void RenderLayerCompositor::recursiveRepaintLayer(RenderLayer& layer)
         layer.setBackingNeedsRepaint();
 
 #if !ASSERT_DISABLED
-    LayerListMutationDetector mutationChecker(&layer);
+    LayerListMutationDetector mutationChecker(layer);
 #endif
 
     if (layer.hasCompositingDescendant()) {
-        if (auto* negZOrderList = layer.negZOrderList()) {
-            for (auto* renderLayer : *negZOrderList)
-                recursiveRepaintLayer(*renderLayer);
-        }
+        for (auto* renderLayer : layer.negativeZOrderLayers())
+            recursiveRepaintLayer(*renderLayer);
 
-        if (auto* posZOrderList = layer.posZOrderList()) {
-            for (auto* renderLayer : *posZOrderList)
-                recursiveRepaintLayer(*renderLayer);
-        }
-    }
-    if (auto* normalFlowList = layer.normalFlowList()) {
-        for (auto* renderLayer : *normalFlowList)
+        for (auto* renderLayer : layer.positiveZOrderLayers())
             recursiveRepaintLayer(*renderLayer);
     }
+
+    for (auto* renderLayer : layer.normalFlowLayers())
+        recursiveRepaintLayer(*renderLayer);
 }
 
 RenderLayer& RenderLayerCompositor::rootRenderLayer() const
@@ -2783,7 +2749,7 @@ bool RenderLayerCompositor::isRunningTransformAnimation(RenderLayerModelObject& 
 // object.
 bool RenderLayerCompositor::needsContentsCompositingLayer(const RenderLayer& layer) const
 {
-    return layer.hasNegativeZOrderList();
+    return layer.hasNegativeZOrderLayers();
 }
 
 bool RenderLayerCompositor::requiresScrollLayer(RootLayerAttachment attachment) const
@@ -2816,7 +2782,7 @@ void paintScrollbar(Scrollbar* scrollbar, GraphicsContext& context, const IntRec
 void RenderLayerCompositor::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& clip, GraphicsLayerPaintBehavior)
 {
 #if PLATFORM(MAC)
-    LocalDefaultSystemAppearance localAppearance(page().useSystemAppearance(), page().useDarkAppearance());
+    LocalDefaultSystemAppearance localAppearance(m_renderView.document().useDarkAppearance());
 #endif
 
     IntRect pixelSnappedRectForIntegralPositionedItems = snappedIntRect(LayoutRect(clip));
@@ -3532,28 +3498,22 @@ bool RenderLayerCompositor::layerHas3DContent(const RenderLayer& layer) const
     const_cast<RenderLayer&>(layer).updateLayerListsIfNeeded();
 
 #if !ASSERT_DISABLED
-    LayerListMutationDetector mutationChecker(const_cast<RenderLayer*>(&layer));
+    LayerListMutationDetector mutationChecker(const_cast<RenderLayer&>(layer));
 #endif
 
-    if (auto* negZOrderList = layer.negZOrderList()) {
-        for (auto* renderLayer : *negZOrderList) {
-            if (layerHas3DContent(*renderLayer))
-                return true;
-        }
+    for (auto* renderLayer : layer.negativeZOrderLayers()) {
+        if (layerHas3DContent(*renderLayer))
+            return true;
     }
 
-    if (auto* posZOrderList = layer.posZOrderList()) {
-        for (auto* renderLayer : *posZOrderList) {
-            if (layerHas3DContent(*renderLayer))
-                return true;
-        }
+    for (auto* renderLayer : layer.positiveZOrderLayers()) {
+        if (layerHas3DContent(*renderLayer))
+            return true;
     }
 
-    if (auto* normalFlowList = layer.normalFlowList()) {
-        for (auto* renderLayer : *normalFlowList) {
-            if (layerHas3DContent(*renderLayer))
-                return true;
-        }
+    for (auto* renderLayer : layer.normalFlowLayers()) {
+        if (layerHas3DContent(*renderLayer))
+            return true;
     }
 
     return false;

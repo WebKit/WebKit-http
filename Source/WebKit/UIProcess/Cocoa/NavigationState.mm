@@ -127,9 +127,9 @@ UniqueRef<API::NavigationClient> NavigationState::createNavigationClient()
     return makeUniqueRef<NavigationClient>(*this);
 }
     
-std::unique_ptr<API::HistoryClient> NavigationState::createHistoryClient()
+UniqueRef<API::HistoryClient> NavigationState::createHistoryClient()
 {
-    return std::make_unique<HistoryClient>(*this);
+    return makeUniqueRef<HistoryClient>(*this);
 }
 
 RetainPtr<id <WKNavigationDelegate> > NavigationState::navigationDelegate()
@@ -445,7 +445,7 @@ bool NavigationState::NavigationClient::didChangeBackForwardList(WebPageProxy&, 
     return true;
 }
 
-bool NavigationState::NavigationClient::willGoToBackForwardListItem(WebPageProxy&, WebBackForwardListItem& item, bool inPageCache, API::Object*)
+bool NavigationState::NavigationClient::willGoToBackForwardListItem(WebPageProxy&, WebBackForwardListItem& item, bool inPageCache)
 {
     if (!m_navigationState.m_navigationDelegateMethods.webViewWillGoToBackForwardListItemInPageCache)
         return false;

@@ -765,22 +765,9 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
     }
 }
 
-bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem*) const
+bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem&) const
 {
     return true;
-}
-
-void WebFrameLoaderClient::updateGlobalHistoryItemForPage()
-{
-    HistoryItem* historyItem = 0;
-    WebView* webView = m_webFrame->webView();
-
-    if (Page* page = webView->page()) {
-        if (!page->usesEphemeralSession())
-            historyItem = page->backForward().currentItem();
-    }
-
-    webView->setGlobalHistoryItem(historyItem);
 }
 
 void WebFrameLoaderClient::didDisplayInsecureContent()
@@ -1026,7 +1013,7 @@ bool WebFrameLoaderClient::canCachePage() const
 }
 
 RefPtr<Frame> WebFrameLoaderClient::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement& ownerElement,
-    const String& referrer, bool /*allowsScrolling*/, int /*marginWidth*/, int /*marginHeight*/)
+    const String& referrer)
 {
     Frame* coreFrame = core(m_webFrame);
     ASSERT(coreFrame);

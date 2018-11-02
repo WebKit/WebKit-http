@@ -135,7 +135,10 @@ window.UIHelper = class UIHelper {
         return new Promise(resolve => {
             testRunner.runUIScript(`
                 (function() {
-                    uiController.didHideKeyboardCallback = () => uiController.uiScriptComplete();
+                    if (uiController.isShowingKeyboard)
+                        uiController.didHideKeyboardCallback = () => uiController.uiScriptComplete();
+                    else
+                        uiController.uiScriptComplete();
                 })()`, resolve);
         });
     }
@@ -338,5 +341,13 @@ window.UIHelper = class UIHelper {
                 resolve(JSON.parse(jsonString));
             });
         });
+    }
+
+    static setViewScale(scale)
+    {
+        if (!this.isWebKit2())
+            return Promise.resolve();
+
+        return new Promise(resolve => testRunner.runUIScript(`uiController.setViewScale(${scale})`, resolve));
     }
 }

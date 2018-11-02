@@ -1,3 +1,1303 @@
+2018-10-17  Alex Christensen  <achristensen@webkit.org>
+
+        BackForwardClient needs to be able to support UIProcess-only back/forward lists
+        https://bugs.webkit.org/show_bug.cgi?id=190675
+
+        Reviewed by Chris Dumez.
+
+        * UIProcess/WebBackForwardList.cpp:
+        (WebKit::WebBackForwardList::itemAtIndex const):
+        (WebKit::WebBackForwardList::backListCount const):
+        (WebKit::WebBackForwardList::forwardListCount const):
+        * UIProcess/WebBackForwardList.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::backForwardBackListCount):
+        (WebKit::WebPageProxy::backForwardForwardListCount):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebPage/WebBackForwardListProxy.cpp:
+        (WebKit::WebBackForwardListProxy::itemAtIndex):
+        (WebKit::WebBackForwardListProxy::backListCount const):
+        (WebKit::WebBackForwardListProxy::forwardListCount const):
+        * WebProcess/WebPage/WebBackForwardListProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::dumpHistoryForTesting):
+
+2018-10-17  Ali Juma  <ajuma@chromium.org>
+
+        Flaky IntersectionObserver web platform tests involving style updates
+        https://bugs.webkit.org/show_bug.cgi?id=189091
+
+        Reviewed by Simon Fraser.
+
+        Add a WebPage::willDisplayPage bottleneck that gets called when flushing layers
+        or, in the non-composited case, when rendering the page into a bitmap.
+
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        (WebKit::AcceleratedDrawingArea::updateBackingStoreState):
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::layerFlushTimerFired):
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::display):
+        * WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::flushLayers):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::willDisplayPage):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::flushLayers):
+
+2018-10-16  Patrick Griffis  <pgriffis@igalia.com>
+
+        [GTK][WPE] Fix xdg-desktop-portal permissions from a sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=190619
+
+        Reviewed by Michael Catanzaro.
+
+        We have to generate a /.flatpak-info file for xdg-desktop-portal
+        to properly treat us as a sandboxed application.
+
+        * UIProcess/Launcher/glib/BubblewrapLauncher.cpp:
+        (WebKit::createSealedMemFdWithData):
+        (WebKit::argsToFd):
+        (WebKit::XDGDBusProxyLauncher::setPermissions):
+        (WebKit::createFlatpakInfo):
+        (WebKit::bubblewrapSpawn):
+
+2018-10-16  Sihui Liu  <sihui_liu@apple.com>
+
+        Add a switch for Web SQL
+        https://bugs.webkit.org/show_bug.cgi?id=190271
+
+        Reviewed by Ryosuke Niwa.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetWebSQLDisabled):
+        (WKPreferencesGetWebSQLDisabled):
+        * UIProcess/API/C/WKPreferencesRef.h:
+
+2018-10-16  Alex Christensen  <achristensen@webkit.org>
+
+        Remove InjectedBundleBackForwardList
+        https://bugs.webkit.org/show_bug.cgi?id=190640
+
+        Reviewed by Chris Dumez.
+
+        These objects are only used in testing now, so I made a replacement to be used for testing,
+        WKBundlePageDumpHistoryForTesting and WKBundleClearHistoryForTesting.
+        The existence of these objects is problematic with process swapping and the true back/forward list being in the UIProcess.
+
+        * Sources.txt:
+        * WebProcess/InjectedBundle/API/c/WKBundleBackForwardList.cpp:
+        (WKBundleBackForwardListGetTypeID):
+        (WKBundleBackForwardListCopyItemAtIndex):
+        (WKBundleBackForwardListGetBackListCount):
+        (WKBundleBackForwardListGetForwardListCount):
+        (WKBundleBackForwardListClear):
+        * WebProcess/InjectedBundle/API/c/WKBundleBackForwardList.h:
+        * WebProcess/InjectedBundle/API/c/WKBundleBackForwardListItem.cpp:
+        (WKBundleBackForwardListItemGetTypeID):
+        (WKBundleBackForwardListItemIsSame):
+        (WKBundleBackForwardListItemCopyURL):
+        (WKBundleBackForwardListItemCopyTarget):
+        (WKBundleBackForwardListItemIsTargetItem):
+        (WKBundleBackForwardListItemCopyChildren):
+        * WebProcess/InjectedBundle/API/c/WKBundleBackForwardListItem.h:
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.cpp:
+        (WKBundlePageDumpHistoryForTesting):
+        (WKBundleClearHistoryForTesting):
+        (WKBundlePageGetBackForwardList):
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.h:
+        * WebProcess/InjectedBundle/InjectedBundleBackForwardList.cpp: Removed.
+        * WebProcess/InjectedBundle/InjectedBundleBackForwardList.h: Removed.
+        * WebProcess/InjectedBundle/InjectedBundleBackForwardListItem.cpp: Removed.
+        * WebProcess/InjectedBundle/InjectedBundleBackForwardListItem.h: Removed.
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.cpp:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::~WebPage):
+        (WebKit::dumpHistoryItem):
+        (WebKit::WebPage::dumpHistoryForTesting):
+        (WebKit::WebPage::clearHistory):
+        (WebKit::WebPage::didReceiveSyncMessage):
+        (WebKit::WebPage::backForwardList): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+
+2018-10-16  Timothy Hatcher  <timothy@apple.com>
+
+        Add <meta name="supported-color-schemes"> to control what color schemes the page supports
+        https://bugs.webkit.org/show_bug.cgi?id=190526
+        rdar://problem/45230140
+
+        Reviewed by Dean Jackson.
+
+        * UIProcess/mac/WKPrintingView.mm:
+        (-[WKPrintingView drawRect:]): Update use of LocalDefaultSystemAppearance.
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        (WebKit::InjectedBundleRangeHandle::renderedImage): Ditto.
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::paintControlForLayerInContext): Ditto.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::drawRect): Ditto.
+
+2018-10-16  Justin Michaud  <justin_michaud@apple.com>
+
+        Implement feature flag and bindings for CSS Painting API
+        https://bugs.webkit.org/show_bug.cgi?id=190237
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Shared/WebPreferences.yaml:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+
+2018-10-16  Philippe Normand  <pnormand@igalia.com>
+
+        [GLib] Build error with RemoteInspector disabled
+        https://bugs.webkit.org/show_bug.cgi?id=190623
+
+        Reviewed by Michael Catanzaro.
+
+        Compilation guards added to ensure the build still works when the
+        Remote WebInspector has been disabled.
+
+        * UIProcess/API/glib/WebKitAutomationSession.cpp:
+        * UIProcess/API/glib/WebKitAutomationSessionPrivate.h:
+        * UIProcess/RemoteWebInspectorProxy.cpp:
+
+2018-10-16  Patrick Griffis  <pgriffis@igalia.com>
+
+        [GTK][WPE] Fix sandbox on distros with suid bubblewrap
+        https://bugs.webkit.org/show_bug.cgi?id=190616
+
+        Reviewed by Michael Catanzaro.
+
+        * UIProcess/Launcher/glib/BubblewrapLauncher.cpp:
+        (WebKit::bubblewrapSpawn):
+
+2018-10-16  Alex Christensen  <achristensen@webkit.org>
+
+        Replace HistoryItem* with HistoryItem& where possible
+        https://bugs.webkit.org/show_bug.cgi?id=190617
+
+        Reviewed by Chris Dumez.
+
+        * WebProcess/WebCoreSupport/SessionStateConversion.h:
+        * WebProcess/WebPage/WebBackForwardListProxy.cpp:
+        (WebKit::WK2NotifyHistoryItemChanged):
+        (WebKit::WebBackForwardListProxy::goToItem):
+        * WebProcess/WebPage/WebBackForwardListProxy.h:
+
+2018-10-16  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, another GTK build fix after r237146
+
+        * UIProcess/gtk/RemoteWebInspectorProxyGtk.cpp:
+        (WebKit::RemoteWebInspectorProxy::platformCreateFrontendPageAndWindow):
+
+2018-10-15  Justin Fan  <justin_fan@apple.com>
+
+        Add WebGPU 2018 feature flag and experimental feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=190509
+
+        Reviewed by Dean Jackson.
+
+        Re-add ENABLE_WEBGPU, an experimental feature flag, and a RuntimeEnabledFeature
+        for the 2018 WebGPU prototype.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Shared/WebPreferences.yaml:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix API tests after r237146
+
+        * Shared/WebPageGroupData.cpp:
+        (WebKit::WebPageGroupData::decode):
+        I accidentally changed the decoder.
+
+2018-10-15  Sihui Liu  <sihui_liu@apple.com>
+
+        HSTS cache entries cannot be removed by origin
+        https://bugs.webkit.org/show_bug.cgi?id=190455
+        <rdar://problem/45181322>
+
+        Reviewed by Chris Dumez.
+
+        The SPI _CFNetworkResetHSTS does not recognize url without protocol, so we need to add protocol manually.
+
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::NetworkProcess::deleteHSTSCacheForHostNames):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix GTK build, even though bots are not working right now.
+
+        * UIProcess/gtk/WebInspectorProxyGtk.cpp:
+        (WebKit::WebInspectorProxy::platformCreateFrontendPage):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix WinCairo build after r237146
+
+        * UIProcess/win/WebInspectorProxyWin.cpp:
+        (WebKit::WebInspectorProxy::platformCreateFrontendPage):
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r236512): [ Mac WK2 ] Layout Test editing/undo/undo-smart-delete-word.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=190375
+        <rdar://problem/45177807>
+
+        Reviewed by Ryosuke Niwa.
+
+        The test is doing the following:
+        > document.execCommand("Delete"); document.execCommand("Undo");
+
+        Both operation are synchronous and rely on synchronous IPC from the WebProcess to the UIProcess.
+        However, for the undo operation to succeed, the first command need to have been registered with
+        with the UIProcess via the WebPageProxy::RegisterEditCommandForUndo IPC to the UIProcess, which
+        is asynchronous.
+
+        After r236512, the UIProcess no longer processes incoming sync / async IPC in order and thus,
+        it is possible for the WebPageProxy::ExecuteUndoRedo synchronous IPC to get processed by the
+        UIProcess *before* the WebPageProxy::RegisterEditCommandForUndo asynchronous IPC for the
+        previous "Delete" command. As a result, canUndo would return false and we would fail to undo.
+
+        To address the issue, use SendOption::DispatchMessageEvenWhenWaitingForSyncReply flag when sending
+        the WebPageProxy::RegisterEditCommandForUndo IPC, so that it gets processed in order with regards
+        to surrounding synchronous IPC.
+
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::registerUndoStep):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize BackForwardClient.h
+        https://bugs.webkit.org/show_bug.cgi?id=190610
+
+        Reviewed by Chris Dumez.
+
+        * WebProcess/InjectedBundle/InjectedBundleBackForwardList.cpp:
+        (WebKit::InjectedBundleBackForwardList::clear):
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::installServiceWorker):
+        * WebProcess/WebPage/WebBackForwardListProxy.cpp:
+        (WebKit::WebBackForwardListProxy::WebBackForwardListProxy):
+        (WebKit::WebBackForwardListProxy::backListCount const):
+        (WebKit::WebBackForwardListProxy::forwardListCount const):
+        (WebKit::WebBackForwardListProxy::backListCount): Deleted.
+        (WebKit::WebBackForwardListProxy::forwardListCount): Deleted.
+        * WebProcess/WebPage/WebBackForwardListProxy.h:
+        (WebKit::WebBackForwardListProxy::create):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_cpuLimit):
+        (WebKit::WebPage::restoreSessionInternal):
+
+2018-10-15  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for prefers-color-scheme media query
+        https://bugs.webkit.org/show_bug.cgi?id=190499
+        rdar://problem/45212025
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig: Added ENABLE_DARK_MODE_CSS.
+        * Shared/WebPreferences.yaml: Added DarkModeCSSEnabled as experimental.
+
+2018-10-15  Patrick Griffis  <pgriffis@igalia.com>
+
+        Remove StorageProcess leftover
+        https://bugs.webkit.org/show_bug.cgi?id=190591
+
+        Reviewed by Michael Catanzaro.
+
+        The process was deleted.
+
+        * Shared/ChildProcess.h:
+        * Shared/mac/ChildProcessMac.mm:
+        (WebKit::processStorageClass):
+        (WebKit::sandboxDirectory):
+        * UIProcess/ChildProcessProxy.cpp:
+        (WebKit::ChildProcessProxy::getLaunchOptions):
+        * UIProcess/Launcher/ProcessLauncher.h:
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::serviceName):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused parameters of WebPageGroupData
+        https://bugs.webkit.org/show_bug.cgi?id=190600
+
+        Reviewed by Chris Dumez.
+
+        visibleToInjectedBundle and visibleToHistoryClient are both always true.
+        This removes a mysterious check in the history code.
+
+        * Shared/WebPageGroupData.cpp:
+        (WebKit::WebPageGroupData::encode const):
+        (WebKit::WebPageGroupData::decode):
+        * Shared/WebPageGroupData.h:
+        * UIProcess/WebPageGroup.cpp:
+        (WebKit::WebPageGroup::create):
+        (WebKit::pageGroupData):
+        (WebKit::WebPageGroup::WebPageGroup):
+        * UIProcess/WebPageGroup.h:
+        (WebKit::WebPageGroup::WebPageGroup):
+        (WebKit::WebPageGroup::create):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::updateGlobalHistory):
+        (WebKit::WebFrameLoaderClient::updateGlobalHistoryRedirectLinks):
+        (WebKit::WebFrameLoaderClient::setTitle):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::create):
+        (WebKit::WebPage::close):
+        * WebProcess/WebPage/WebPageGroupProxy.cpp:
+        (WebKit::WebPageGroupProxy::create):
+        * WebProcess/WebPage/WebPageGroupProxy.h:
+        (WebKit::WebPageGroupProxy::pageGroupID const):
+        (WebKit::WebPageGroupProxy::isVisibleToInjectedBundle const): Deleted.
+        (WebKit::WebPageGroupProxy::isVisibleToHistoryClient const): Deleted.
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Experiment: target=_blank on anchors should imply rel=noopener
+        https://bugs.webkit.org/show_bug.cgi?id=190481
+
+        Reviewed by Alex Christensen.
+
+        * Shared/WebPreferences.yaml:
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused parameters from FrameLoaderClient::createFrame
+        https://bugs.webkit.org/show_bug.cgi?id=190587
+
+        Reviewed by Chris Dumez.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::createFrame):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+
+2018-10-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Can't select text after dismissing the keyboard when changing focus
+        https://bugs.webkit.org/show_bug.cgi?id=190563
+        <rdar://problem/44613559>
+
+        Reviewed by Tim Horton.
+
+        In r230686, we switched from using UIWKSelectionAssistant to UIWKTextInteractionAssistant for handling selection
+        in non-editable content on iOS; as such, when an editable element loses focus, instead of switching from the
+        text interaction assistant to the web selection assistant as we've previously done, we now reset our text
+        interaction assistant by calling `-[UIWKTextInteractionAssistant setGestureRecognizers]`, which removes all of
+        the current text selection gesture recognizers from WKContentView and regenerates them by building up a tree of
+        `UITextInteraction`s and adding them to the assistant (see `-[UITextInteractionAssistant
+        addGestureRecognizersToView:]`). In particular, `_UITextSelectionForceGesture` is the gesture recognizer used to
+        trigger text selection when long pressing.
+
+        After dismissing the keyboard by tapping the "Done" button, the UITextInteractions and gesture recognizers on
+        the interaction assistant include:
+
+            <UITextInteraction>
+                …
+                <UITextIndirectNonEditableInteraction>
+                    <_UIKeyboardBasedNonEditableTextSelectionInteraction>
+                      ↳ "_UIKeyboardTextSelectionGestureForcePress" → <_UITextSelectionForceGesture>
+
+        However, after the keyboard dismisses due to an editable element losing focus, the UITextInteractions on the
+        interaction assistant look like this:
+
+            <UITextInteraction>
+                …
+                <UITextIndirectNonEditableInteraction>
+
+        Subsequently, the lack of a `_UIKeyboardBasedNonEditableTextSelectionInteraction` makes text selection by long
+        pressing impossible, since the `_UITextSelectionForceGesture` is never introduced to `WKContentView`. In UIKit,
+        `UITextIndirectNonEditableInteraction` only adds `_UIKeyboardBasedNonEditableTextSelectionInteraction` as a
+        child if the text input view — in our case, WKContentView — is missing an input delegate (see `-initWithView:`).
+        In the case where the Done button is used to dismiss the keyboard, WKContentView loses first responder, and the
+        input delegate of WKContentView is cleared out early on, before we call `-stopAssistingKeyboard`:
+
+            -[WKContentView(WKInteraction) setInputDelegate:]
+            -[UIKeyboardImpl setDelegate:force:]
+            -[UIPeripheralHost(UIKitInternal) _reloadInputViewsForResponder:]
+            -[UIResponder _finishResignFirstResponder]
+            -[UIResponder resignFirstResponder]
+            -[WKContentView(WKInteraction) resignFirstResponderForWebView]
+            -[UIKeyboardImpl dismissKeyboard]
+
+        However, in the case where the focused element is blurred, we end up clearing out the delegate in
+        `-_stopAssistingNode`, *after* we've already called `-setGestureRecognizers` on the interaction assistant. This
+        means UIKit will skip adding `_UIKeyboardBasedNonEditableTextSelectionInteraction` to the text interaction
+        assistant.
+
+            -[WKContentView(WKInteraction) setInputDelegate:]
+            -[UIKeyboardImpl setDelegate:force:]
+            -[UIPeripheralHost(UIKitInternal) _reloadInputViewsForResponder:]
+            -[UIResponder(UIResponderInputViewAdditions) reloadInputViews]
+            -[WKContentView(WKInteraction) _stopAssistingNode]
+
+        To fix this, we simply reset our `inputDelegate` earlier in `_stopAssistingKeyboard` instead of waiting until
+        we reload input views. This ensures that UIKit sets up the text interaction assistant's gestures when changing
+        focus in the same way as we would when the keyboard is dismissed via `-resignFirstResponder` (e.g. when pressing
+        the Done button).
+
+        Test: editing/selection/ios/select-text-after-changing-focus.html
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setupInteraction]):
+        (-[WKContentView setUpTextSelectionAssistant]):
+        (-[WKContentView _startAssistingKeyboard]):
+        (-[WKContentView _stopAssistingKeyboard]):
+        (-[WKContentView useSelectionAssistantWithGranularity:]): Deleted.
+
+        Additionally rename this to -setUpTextSelectionAssistant and remove the selection granularity argument. This was
+        previously used to switch between web and text interaction assistants.
+
+2018-10-15  Remy Demarest  <rdemarest@apple.com>
+
+        Web Inspector: RDM: Toolbar hidden in when Inspector is docked to side.
+        https://bugs.webkit.org/show_bug.cgi?id=190545
+        rdar://problem/44674500
+
+        Reviewed by Brian Burg.
+
+        When the inspector is placed next to the web view it uses its _topContentInset and _totalHeightOfBanners
+        to lay out the inspector so it does not underlap the window toolbar, but this technique does not work when
+        in responsive design mode because of the different attachment view. This patch fixes the issue by using
+        -[NSWindow contentLayoutRect] to figure out the height of the inspector instead of relying on the content
+        insets of the web view. This requires observing -contentLayoutRect and ensure we only observe its changes
+        when the view is actually on the screen.
+
+        * UIProcess/WebInspectorProxy.h:
+        Declare helpers to add/remove observer on the attached inspector window.
+
+        * UIProcess/mac/WKInspectorViewController.h:
+        * UIProcess/mac/WKInspectorViewController.mm:
+        (-[WKInspectorViewController inspectorWKWebView:willMoveToWindow:]):
+        (-[WKInspectorViewController inspectorWKWebViewDidMoveToWindow:]):
+
+        * UIProcess/mac/WKInspectorWKWebView.h:
+        * UIProcess/mac/WKInspectorWKWebView.mm:
+        (-[WKInspectorWKWebView viewWillMoveToWindow:]):
+        (-[WKInspectorWKWebView viewDidMoveToWindow]):
+
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (-[WKWebInspectorProxyObjCAdapter observeValueForKeyPath:ofObject:change:context:]): Update inspector layout
+        whenever the contentLayoutRect changes. Except when live resizing since the attachment view also sends
+        notifications at the same time.
+        (-[WKWebInspectorProxyObjCAdapter inspectorViewController:willMoveToWindow:]):
+        (-[WKWebInspectorProxyObjCAdapter inspectorViewControllerDidMoveToWindow:]):
+        (WebKit::WebInspectorProxy::attachmentWillMoveFromWindow): Remove the observer only if we set it up before.
+        (WebKit::WebInspectorProxy::attachmentDidMoveToWindow): Set up the observer and immediately update the frame
+        of the inspector since it just moved to its final destination.
+        (WebKit::WebInspectorProxy::inspectedViewFrameDidChange): Adjust the frame of the attached inspector based
+        on the contentLayoutRect of the window rather than the topContentInset of the web view.
+
+2018-10-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Changing view scale should zoom to initial scale if the page is already at initial scale
+        https://bugs.webkit.org/show_bug.cgi?id=190570
+        <rdar://problem/45261877>
+
+        Reviewed by Tim Horton.
+
+        r237087 added support for changing the view scale on iOS, by making it possible to let the minimum layout size
+        be a factor of the view size; this allows internal clients to change page zoom levels on iOS. Currently,
+        changing the page zoom level automatically zooms to the new initial scale only if the user has not manually
+        scaled the page before, even if the page is already at initial scale (e.g. after the user double taps to zoom on
+        a small element, and double taps again to zoom back out to initial scale).
+
+        This patch makes some minor adjustments to automatically zoom to the new initial scale after changing the view
+        scale, as long as the page was at initial scale when changing zoom levels.
+
+        Test: fast/viewport/ios/initial-scale-after-changing-view-scale.html
+
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::areEssentiallyEqualAsFloat):
+
+        Move this function further up in the file, so that we can use it in `setViewportConfigurationViewLayoutSize`.
+
+        (WebKit::WebPage::setViewportConfigurationViewLayoutSize):
+
+        If the page is near initial scale and the zoom level changes, zoom to the new initial scale.
+
+        (WebKit::WebPage::viewportConfigurationChanged):
+
+        Make this take a new enum argument that determines whether we want to zoom to initial scale as a result of the
+        viewport configuration change (`No` by default).
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Restrict browsing context lookup by name to frames that are related to one another
+        https://bugs.webkit.org/show_bug.cgi?id=190475
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::performJavaScriptURLRequest):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix assertion after r237102
+        https://bugs.webkit.org/show_bug.cgi?id=190459
+
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.cpp:
+        (WebKit::InjectedBundlePageLoaderClient::InjectedBundlePageLoaderClient):
+        Shipping Safari still uses shouldGoToBackForwardListItem, so only assert on
+        newer platforms like we do in WKPageSetPageLoaderClient.
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Shrink more enum classes
+        https://bugs.webkit.org/show_bug.cgi?id=190540
+
+        Reviewed by Chris Dumez.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/NetworkConnectionToWebProcess.messages.in:
+        * NetworkProcess/NetworkDataTask.h:
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * Shared/Authentication/AuthenticationChallengeDisposition.h:
+        * Shared/Authentication/AuthenticationManager.h:
+        * Shared/Authentication/AuthenticationManager.messages.in:
+        * Shared/DragControllerAction.h:
+        * Shared/LayerTreeContext.h:
+        * Shared/UndoOrRedo.h:
+        * UIProcess/Authentication/AuthenticationDecisionListener.h:
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/Network/NetworkProcessProxy.messages.in:
+        * UIProcess/Notifications/WebNotification.h:
+        * UIProcess/Notifications/WebNotificationManagerProxy.h:
+        * UIProcess/PageClient.h:
+        * UIProcess/UserContent/WebUserContentControllerProxy.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/forms/WKAirPlayRoutePicker.h:
+        * WebProcess/Automation/WebAutomationSessionProxy.messages.in:
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+        * WebProcess/Storage/WebSWClientConnection.messages.in:
+        * WebProcess/UserContent/InjectUserScriptImmediately.h:
+        * WebProcess/UserContent/WebUserContentController.h:
+        * WebProcess/UserContent/WebUserContentController.messages.in:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2018-10-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Add new files missing from previous commit.
+
+        * Source/cmake/FindLibseccomp.cmake: Added.
+
+2018-10-15  Patrick Griffis  <pgriffis@igalia.com>
+
+        [GTK][WPE] Implement subprocess sandboxing
+        https://bugs.webkit.org/show_bug.cgi?id=188568
+
+        Reviewed by Michael Catanzaro.
+
+        This implements sandboxing of WebKitWebProcesses.
+
+        The sandbox is opt-in at runtime as it is a behavior change.
+        See webkit_web_context_set_sandbox_enabled() and the
+        WEBKIT_FORCE_SANDBOX env var for developers.
+
+        This is Linux specific using Namespaces, Seccomp, and a DBus proxy service.
+        This introduces three new dependencies:
+
+        - bwrap executable
+        - libseccomp library
+        - xdg-dbus-proxy executable
+
+        The use of xdg-dbus-proxy will ideally be replaced once upstream DBus
+        gains the same filtering abilities which is a work in progress.
+
+        Currently the sandbox is not completed and there are a few large holes:
+
+        - Pulseaudio: The Pipewire project will solve this.
+        - DRI device access: No immediate solutions planned.
+        - Webcam device access: Pipewire will also solve this.
+        - Webprocess network access: Will require GStreamer changes.
+        - DConf access: Custom proxy planned.
+        - X11 access: Wayland solves this.
+
+        That is not an exhaustive list but are the noteworthy ones. Filesystem access
+        is still an evolving list as problems are found as is specific DBus name access.
+
+        * PlatformGTK.cmake:
+        * PlatformWPE.cmake:
+        * SourcesGTK.txt:
+        * SourcesWPE.txt:
+        * UIProcess/API/glib/WebKitWebContext.cpp:
+        (webkit_web_context_set_sandbox_enabled):
+        (webkit_web_context_get_sandbox_enabled):
+        * UIProcess/API/gtk/WebKitWebContext.h:
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0-sections.txt:
+        * UIProcess/API/wpe/WebKitWebContext.h:
+        * UIProcess/ChildProcessProxy.cpp:
+        (WebKit::ChildProcessProxy::getLaunchOptions):
+        * UIProcess/ChildProcessProxy.h:
+        (WebKit::ChildProcessProxy::platformGetLaunchOptions):
+        * UIProcess/Launcher/ProcessLauncher.h:
+        * UIProcess/Launcher/glib/BubblewrapLauncher.cpp: Added.
+        (WebKit::memfd_create):
+        (WebKit::argsToFd):
+        (WebKit::XDGDBusProxyLauncher::setAddress):
+        (WebKit::XDGDBusProxyLauncher::isRunning const):
+        (WebKit::XDGDBusProxyLauncher::path const):
+        (WebKit::XDGDBusProxyLauncher::proxyPath const):
+        (WebKit::XDGDBusProxyLauncher::setPermissions):
+        (WebKit::XDGDBusProxyLauncher::launch):
+        (WebKit::XDGDBusProxyLauncher::childSetupFunc):
+        (WebKit::XDGDBusProxyLauncher::makeProxyPath):
+        (WebKit::XDGDBusProxyLauncher::dbusAddressToPath):
+        (WebKit::bindIfExists):
+        (WebKit::bindDBusSession):
+        (WebKit::bindX11):
+        (WebKit::bindDconf):
+        (WebKit::bindWayland):
+        (WebKit::bindPulse):
+        (WebKit::bindFonts):
+        (WebKit::bindGtkData):
+        (WebKit::bindA11y):
+        (WebKit::bindPathVar):
+        (WebKit::bindGStreamerData):
+        (WebKit::bindOpenGL):
+        (WebKit::bindV4l):
+        (WebKit::bindSymlinksRealPath):
+        (WebKit::setupSeccomp):
+        (WebKit::bubblewrapSpawn):
+        * UIProcess/Launcher/glib/BubblewrapLauncher.h: Added.
+        * UIProcess/Launcher/glib/FlatpakLauncher.cpp: Added.
+        (WebKit::flatpakSpawn):
+        * UIProcess/Launcher/glib/FlatpakLauncher.h: Added.
+        * UIProcess/Launcher/glib/ProcessLauncherGLib.cpp:
+        (WebKit::isInsideFlatpak):
+        (WebKit::ProcessLauncher::launchProcess):
+        * UIProcess/Plugins/PluginProcessProxy.cpp:
+        (WebKit::PluginProcessProxy::getLaunchOptions):
+        * UIProcess/Plugins/PluginProcessProxy.h:
+        * UIProcess/Plugins/mac/PluginProcessProxyMac.mm:
+        (WebKit::PluginProcessProxy::platformGetLaunchOptionsWithAttributes):
+        * UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp:
+        (WebKit::PluginProcessProxy::platformGetLaunchOptionsWithAttributes):
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::platformGetLaunchOptions):
+        * UIProcess/WebProcessProxy.h:
+        * UIProcess/glib/WebProcessProxyGLib.cpp: Added.
+        (WebKit::WebProcessProxy::platformGetLaunchOptions):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Add a temporarily off by default preference for doing safe browsing checks
+        https://bugs.webkit.org/show_bug.cgi?id=190522
+
+        Reviewed by Chris Dumez.
+
+        Safe browsing development has taken longer than anticipated.
+        To prevent the unused possible contacting the safe browsing provider for no benefit, make this off by default for now.
+        I'll make it on by default when it's actually used.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _setSafeBrowsingEnabled:]):
+        (-[WKPreferences _safeBrowsingEnabled]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Include EnumTraits.h less
+        https://bugs.webkit.org/show_bug.cgi?id=190535
+
+        Reviewed by Chris Dumez.
+
+        * NetworkProcess/NetworkSessionCreationParameters.h:
+        * Shared/Authentication/AuthenticationChallengeDisposition.h:
+        * Shared/CoordinateSystem.h:
+        * Shared/LayerTreeContext.h:
+        * Shared/UndoOrRedo.h:
+        * Shared/WebsiteAutoplayPolicy.h:
+        * Shared/WebsitePopUpPolicy.h:
+        * UIProcess/API/APIWebsitePolicies.h:
+        * WebProcess/UserContent/InjectUserScriptImmediately.h:
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove InjectedBundle processing of back/forward lists
+        https://bugs.webkit.org/show_bug.cgi?id=190459
+
+        Reviewed by Chris Dumez.
+
+        * Shared/API/c/WKDeprecated.h:
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::willGoToBackForwardListItem):
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationClient::willGoToBackForwardListItem):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::willGoToBackForwardListItem):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageLoaderClient.h:
+        (API::InjectedBundle::PageLoaderClient::shouldGoToBackForwardListItem): Deleted.
+        * WebProcess/InjectedBundle/API/c/WKBundleBackForwardListItem.cpp:
+        (WKBundleBackForwardListItemCopyOriginalURL):
+        (WKBundleBackForwardListItemCopyTitle):
+        (WKBundleBackForwardListItemIsTargetItem):
+        (WKBundleBackForwardListItemIsInPageCache):
+        (WKBundleBackForwardListItemHasCachedPageExpired):
+        * WebProcess/InjectedBundle/API/c/WKBundleBackForwardListItem.h:
+        * WebProcess/InjectedBundle/API/c/WKBundleFileHandleRef.h:
+        * WebProcess/InjectedBundle/API/c/WKBundleFrame.h:
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.cpp:
+        (WebKit::InjectedBundlePageLoaderClient::InjectedBundlePageLoaderClient):
+        (WebKit::InjectedBundlePageLoaderClient::shouldGoToBackForwardListItem): Deleted.
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.h:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::shouldGoToHistoryItem const):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        WebPageProxy should always have a HistoryClient
+        https://bugs.webkit.org/show_bug.cgi?id=190450
+
+        Reviewed by Chris Dumez.
+
+        This will make it so we don't forget to null check it.
+        No change in behavior because the default HistoryClient does nothing.
+
+        * UIProcess/API/APIHistoryClient.h:
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::createHistoryClient):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::setHistoryClient):
+        (WebKit::WebPageProxy::didNavigateWithNavigationData):
+        (WebKit::WebPageProxy::didPerformClientRedirect):
+        (WebKit::WebPageProxy::didPerformServerRedirect):
+        (WebKit::WebPageProxy::didUpdateHistoryTitle):
+        * UIProcess/WebPageProxy.h:
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Use std::optional<size_t> for a WebBackForwardList's current index
+        https://bugs.webkit.org/show_bug.cgi?id=190448
+
+        Reviewed by Chris Dumez.
+
+        Also remove m_capacity, which was immutable.
+
+        * UIProcess/WebBackForwardList.cpp:
+        (WebKit::WebBackForwardList::WebBackForwardList):
+        (WebKit::WebBackForwardList::~WebBackForwardList):
+        (WebKit::WebBackForwardList::pageClosed):
+        (WebKit::WebBackForwardList::addItem):
+        (WebKit::WebBackForwardList::goToItem):
+        (WebKit::WebBackForwardList::currentItem const):
+        (WebKit::WebBackForwardList::backItem const):
+        (WebKit::WebBackForwardList::forwardItem const):
+        (WebKit::WebBackForwardList::itemAtIndex const):
+        (WebKit::WebBackForwardList::backListCount const):
+        (WebKit::WebBackForwardList::forwardListCount const):
+        (WebKit::WebBackForwardList::backListAsAPIArrayWithLimit const):
+        (WebKit::WebBackForwardList::forwardListAsAPIArrayWithLimit const):
+        (WebKit::WebBackForwardList::removeAllItems):
+        (WebKit::WebBackForwardList::clear):
+        (WebKit::WebBackForwardList::backForwardListState const):
+        (WebKit::WebBackForwardList::restoreFromState):
+        (WebKit::WebBackForwardList::loggingString):
+        * UIProcess/WebBackForwardList.h:
+        (WebKit::WebBackForwardList::currentIndex const): Deleted.
+
+2018-10-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Remove Option::useAsyncIterator
+        https://bugs.webkit.org/show_bug.cgi?id=190567
+
+        Reviewed by Saam Barati.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Allow SPI clients to lay out at arbitrarily scaled sizes and scale to fit the view
+        https://bugs.webkit.org/show_bug.cgi?id=190504
+        <rdar://problem/45117760>
+
+        Reviewed by Tim Horton.
+
+        Add support for _setViewScale: and _viewScale on iOS. While similar in concept to macOS, changing this property
+        on iOS uses viewport configurations to change the minimum layout size of the document and apply view scaling.
+        Setting the view scale on iOS to a value `s` multiplies the minimium layout size by a factor `1 / s`, but also
+        multiplies the initial, minimum and maximum scales by a factor of `s`. The net effect of applying this scale
+        causes the page to lay out at a larger width and shrink (or a smaller width and expand) to fit the viewport.
+
+        * Shared/WebPageCreationParameters.cpp:
+        (WebKit::WebPageCreationParameters::encode const):
+        (WebKit::WebPageCreationParameters::decode):
+        * Shared/WebPageCreationParameters.h:
+
+        Send `viewportConfigurationLayoutSizeScaleFactor` alongside `viewportConfigurationViewLayoutSize`.
+
+        (-[WKWebView _dispatchSetViewLayoutSize:]):
+        (-[WKWebView _viewScale]):
+        (-[WKWebView _setViewScale:]):
+
+        Provide a different implementation of `_setViewScale:` on iOS, by scaling the effective minimum layout size.
+        (See above for more detail).
+
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+        Add missing API availability annotations for the _viewScale property.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _setViewScale:]):
+        * UIProcess/Cocoa/WebViewImpl.mm:
+
+        Both -[WKView _setViewScale:] and -[WKWebView _setViewScale:] throw Objective C exceptions upon receiving a bad
+        argument (e.g. scale <= 0). However, logic for throwing this exception is specific to iOS in WKWebView, and
+        handled in WebViewImpl on macOS. To make this less confusing, move the exception throwing code out of
+        !PLATFORM(MAC) in WKWebView, and move the path for raising this exception in WKView on macOS from WebViewImpl to
+        WKView.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::creationParameters):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::layoutSizeScaleFactor const):
+
+        Tie the notion of "view scale" on iOS to `layoutSizeScaleFactor`. As its name suggests, this is a scale factor
+        by which we transform the layout size.
+
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::setViewportConfigurationViewLayoutSize):
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+        Plumb the layout size scale factor over to the web process, along with the layout size.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::setViewportConfigurationViewLayoutSize):
+
+2018-10-12  Alex Christensen  <achristensen@webkit.org>
+
+        Allow encoding of small enum classes
+        https://bugs.webkit.org/show_bug.cgi?id=190531
+
+        Reviewed by Tim Horton.
+
+        * NetworkProcess/NetworkLoadClient.h:
+        * Scripts/webkit/messages.py:
+        * Scripts/webkit/parser.py:
+        (parse_parameters_string):
+        * UIProcess/API/APINavigation.h:
+        * UIProcess/WebFramePolicyListenerProxy.h:
+        * UIProcess/WebNavigationState.h:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2018-10-12  Rob Buis  <rbuis@igalia.com>
+
+        Solve the confusion around blankURL() and isBlankURL() in URL
+        https://bugs.webkit.org/show_bug.cgi?id=158988
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::continueWillSendRequest):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::processForNavigationInternal):
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::logUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::clearUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::hasHadUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::setLastSeen):
+        (WebKit::WebResourceLoadStatisticsStore::setPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::setVeryPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::isPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::isVeryPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::clearPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::setGrandfathered):
+        (WebKit::WebResourceLoadStatisticsStore::isGrandfathered):
+        (WebKit::WebResourceLoadStatisticsStore::setSubframeUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUniqueRedirectTo):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUniqueRedirectFrom):
+        (WebKit::WebResourceLoadStatisticsStore::setTopFrameUniqueRedirectTo):
+        (WebKit::WebResourceLoadStatisticsStore::setTopFrameUniqueRedirectFrom):
+
+2018-10-12  Youenn Fablet  <youenn@apple.com>
+
+        Cache API tests are flaky due to file writing failing from time to time
+        https://bugs.webkit.org/show_bug.cgi?id=190321
+
+        Reviewed by Chris Dumez.
+
+        Make NetworkCache::Storage::store callback return an error in case of writing failure.
+        Use this to surface this error at Cache API level.
+
+        Minor clean-up to make Storage::clear take a completion handler.
+
+        Make also sure to create the folder before writing the file in CacheStorageEngine.
+        As can be seen from some logging, it does happen that writing the 'origin' file sometimes fail with Posix error 9,
+        which might mean the folder is not present.
+
+        Changes are covered by current tests, flaky tests like http/wpt/cache-storage/cache-put-keys.https.any.worker.html
+        will show a "failed writing data to the file system" error message.
+
+        * NetworkProcess/cache/CacheStorageEngine.cpp:
+        (WebKit::CacheStorage::Engine::writeFile):
+        * NetworkProcess/cache/CacheStorageEngine.h:
+        * NetworkProcess/cache/CacheStorageEngineCaches.cpp:
+        (WebKit::CacheStorage::Caches::storeOrigin):
+        (WebKit::CacheStorage::Caches::writeCachesToDisk):
+        (WebKit::CacheStorage::Caches::writeRecord):
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::WriteOperation::WriteOperation):
+        (WebKit::NetworkCache::Storage::dispatchWriteOperation):
+        (WebKit::NetworkCache::Storage::finishWriteOperation):
+        (WebKit::NetworkCache::Storage::store):
+        (WebKit::NetworkCache::Storage::clear):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+        (WebKit::NetworkCache::Storage::store):
+
+2018-10-11  Youenn Fablet  <youenn@apple.com>
+
+        IOS 12 - Service worker cache not shared when added to homescreen
+        https://bugs.webkit.org/show_bug.cgi?id=190269
+        <rdar://problem/45009961>
+
+        Reviewed by Alex Christensen.
+
+        NetworkProcessProxy does not always have all its stores in its hash map.
+        Make sure to check for the default web process pool store when grabbing cache storage parameters from a given session ID.
+
+        Add a way to remove the default website data for testing.
+        This is used in the new API test.
+
+        * UIProcess/API/APIWebsiteDataStore.cpp:
+        (API::WebsiteDataStore::deleteDefaultDataStoreForTesting):
+        * UIProcess/API/APIWebsiteDataStore.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (+[WKWebsiteDataStore _deleteDefaultDataStoreForTesting]):
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::retrieveCacheStorageParameters):
+
+2018-10-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Hide RenderLayer z-order and normal flow lists behind iterators
+        https://bugs.webkit.org/show_bug.cgi?id=190457
+
+        Reviewed by Zalan Bujtas.
+
+        Expose the positive z-order, negative z-order and normal flow lists
+        from RenderLayer as iterators rather than vectors of raw pointers.
+        
+        Use a lambda function to get access to the private constructor, while not having
+        to refer to the nested RenderLayer::LayerIterator class in the header.
+
+        * Shared/WebRenderLayer.cpp:
+        (WebKit::WebRenderLayer::WebRenderLayer):
+        (WebKit::WebRenderLayer::createArrayFromLayerList): Deleted.
+        * Shared/WebRenderLayer.h:
+
+2018-10-11  Tim Horton  <timothy_horton@apple.com>
+
+        iOS: Scrolling using the arrow keys doesn't show the scroll indicator like it does on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=190478
+        <rdar://problem/22194031>
+
+        Reviewed by Megan Gardner.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        Add some SPI.
+
+        * UIProcess/ios/WKKeyboardScrollingAnimator.mm:
+        (-[WKKeyboardScrollViewAnimator scrollToContentOffset:animated:]):
+        Do a persistent flash when scrolling continuously.
+
+        (-[WKKeyboardScrollViewAnimator scrollWithScrollToExtentAnimationTo:]):
+        Do a single flash when doing a scroll-to-top/bottom.
+
+2018-10-11  Tim Horton  <timothy_horton@apple.com>
+
+        Clicking on bookmarklet crashes at NavigationState::willRecordNavigationSnapshot
+        https://bugs.webkit.org/show_bug.cgi?id=190476
+        <rdar://problem/32757191>
+
+        Reviewed by Megan Gardner.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _saveBackForwardSnapshotForItem:]):
+        The WKBackForwardListItem can be nil. Then we retrieve a reference from it.
+        An Objective-C method that returns a reference is a great way to get
+        a null reference. Other code then assumes it's not null and crashes.
+        Add a nil check.
+
+2018-10-11  Tim Horton  <timothy_horton@apple.com>
+
+        Hardware keyboard arrow keys/spacebar don't scroll PDFs (works for web content)
+        https://bugs.webkit.org/show_bug.cgi?id=190495
+        <rdar://problem/22734616>
+
+        Reviewed by Andy Estes.
+
+        Hook up WKKeyboardScrollViewAnimator to the scroll view when
+        WKPDFView is installed.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        Move _inputFlags to the IPI section so we can remove it
+        from WKContentViewInteraction.
+
+        * SourcesCocoa.txt:
+        * UIProcess/ios/WKWebEvent.h:
+        * UIProcess/ios/WKWebEvent.mm:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView handleKeyEvent:]):
+        (-[WKWebEvent dealloc]): Deleted.
+        * WebKit.xcodeproj/project.pbxproj:
+        Move WKWebEvent out of WKContentViewInteraction.
+        We tend to prefer one file per class.
+        Also, move the code to make a WKWebEvent from a UIEvent into
+        -initWithEvent:, instead of being ad-hoc in WKContentViewInteraction.
+        Adopt RetainPtr for the WKWebEvent's uiEvent property.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _handleKeyUIEvent:]):
+        * UIProcess/Cocoa/WKWebViewContentProvider.h:
+        Plumb hardware keyboard events to custom content views, if they want them.
+
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView dealloc]):
+        (-[WKPDFView web_handleKeyEvent:]):
+        (-[WKPDFView web_initWithFrame:webView:mimeType:]):
+        Install a WKKeyboardScrollViewAnimator and plumb key events to it.
+
+2018-10-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Allow iOS to also control toggling Web Animations CSS Integration
+        https://bugs.webkit.org/show_bug.cgi?id=190489
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _setWebAnimationsCSSIntegrationEnabled:]):
+        (-[WKPreferences _webAnimationsCSSIntegrationEnabled]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2018-10-11  Keith Rollin  <krollin@apple.com>
+
+        CURRENT_ARCH should not be used in Run Script phase.
+        https://bugs.webkit.org/show_bug.cgi?id=190407
+        <rdar://problem/45133556>
+
+        Reviewed by Alexey Proskuryakov.
+
+        CURRENT_ARCH is used in a number of Xcode Run Script phases. However,
+        CURRENT_ARCH is not well-defined during this phase (and may even have
+        the value "undefined") since this phase is run just once per build
+        rather than once per supported architecture. Migrate away from
+        CURRENT_ARCH in favor of ARCHS, either by iterating over ARCHS and
+        performing an operation for each value, or by picking the first entry
+        in ARCHS and using that as a representative value.
+
+        * DerivedSources.make: When forming TARGET_TRIPLE_FLAGS, grab the
+        first entry in ARCHS rather than use CURRENT_ARCH.
+
+2018-10-11  Chris Dumez  <cdumez@apple.com>
+
+        Regression(PSON): Deal with the drawing area potentially being null under WebChromeClient::contentsSizeChanged()
+        https://bugs.webkit.org/show_bug.cgi?id=190474
+
+        Reviewed by Geoffrey Garen.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::contentsSizeChanged const):
+
+2018-10-11  Alejandro G. Castro  <alex@igalia.com>
+
+        [GTK][WPE] Add mediaDevices.enumerateDevices support
+        https://bugs.webkit.org/show_bug.cgi?id=185761
+
+        Reviewed by Youenn Fablet.
+
+        Implemented the enumerateDevices API using a new WebKit class
+        (DeviceIdHashSaltStorage) that generates and stores the device ids
+        hash salts per origin, used to avoid fingerprinting in the
+        webpages.
+
+        The patch also adds a new type of data for the WebsiteDataStore.
+        That way the users can call the WebsiteDataStore to show what
+        origins have hash salt generated and remove them at some point.
+
+        For the moment just GTK+ and WPE ports are using this class to
+        generate the hash salts. The patch adds code to the
+        checkUserMediaPermissionForOrigin API implementation, it was empty
+        until now for these ports. In this function we create an instance
+        of a new class WebKitDeviceInfoPermissionRequest that implements
+        the WebKitPermissionRequestIface interface, that allows the ports
+        to use the current permission managers implemented in the
+        embedders to handle this new kind of request the way they like
+        it. The default implementation is deny.
+
+        The class WebKitDeviceInfoPermissionRequest takes care of
+        contacting the DeviceIdHashSaltStorage and request/regenerate the
+        hash salts accordingly.
+
+        Persistency is still not implemented, we will add it in a
+        future patch.
+
+        * Shared/WebsiteData/WebsiteDataType.h: Added the new type of
+        webside data: DeviceIdHashSalt.
+        * Sources.txt: Added new files to compilation.
+        * SourcesGTK.txt: Ditto.
+        * SourcesWPE.txt: Ditto.
+        * UIProcess/API/glib/WebKitDeviceInfoPermissionRequest.cpp: Added
+        this class to represent a request of permission to access the
+        devices information. This is specific for glib ports and implements
+        the policies regarding the hash salts when the embedder allows or
+        denies the access using the DeviceIdHashSaltStorage class.
+        (webkitDeviceInfoPermissionRequestAllow): Get the device hash salt
+        when the origin is allowed and set it in the original request.
+        (webkitDeviceInfoPermissionRequestDeny): Regenerate the device id
+        hash salt when the user does not allow to access the device information.
+        (webkit_permission_request_interface_init):
+        (webkitDeviceInfoPermissionRequestDispose):
+        (webkit_device_info_permission_request_class_init):
+        (webkitDeviceInfoPermissionRequestCreate): Create the class using
+        the proxy request from the webprocess and a reference to the
+        DeviceIdHashSaltStorage.
+        * UIProcess/API/glib/WebKitDeviceInfoPermissionRequestPrivate.h:
+        Ditto.
+        * UIProcess/API/glib/WebKitUIClient.cpp: Added the implementation
+        for the checkUserMediaPermissionForOrigin API for the glib ports,
+        it creates the device info request and calls the permission
+        request API.
+        * UIProcess/API/glib/WebKitWebsiteData.cpp:
+        (recordContainsSupportedDataTypes): Added the DeviceIdHashSalt
+        type.
+        (toWebKitWebsiteDataTypes): Added the conversion from the WebKit
+        types to the glib types for the WebsiteDataType::DeviceIdHashSalt.
+        * UIProcess/API/glib/WebKitWebsiteDataManager.cpp:
+        (toWebsiteDataTypes): Added the conversion from the glib type
+        WEBKIT_WEBSITE_DATA_DEVICE_ID_HASH_SALT to the WebKit type.
+        (webkit_website_data_manager_remove): Make sure we remote the
+        DeviceIdHashSalt if the Cookies are selected.
+        * UIProcess/API/gtk/WebKitDeviceInfoPermissionRequest.h: Added
+        this new class that represents a permission request for the device
+        information in the GTK+ port.
+        * UIProcess/API/gtk/WebKitWebsiteData.h: Added the new type of
+        website that in the GTK+ port:
+        WEBKIT_WEBSITE_DATA_DEVICE_ID_HASH_SALT.
+        * UIProcess/API/wpe/WebKitDeviceInfoPermissionRequest.h: Added
+        this new class that represents a permission request for the device
+        information in the WPE port.
+        * UIProcess/API/wpe/WebKitWebsiteData.h: Added the new type of
+        website that in the WPE port:
+        WEBKIT_WEBSITE_DATA_DEVICE_ID_HASH_SALT.
+        * UIProcess/DeviceIdHashSaltStorage.cpp: Added this new class that
+        handles how to generate and store the hash salts inside
+        WebKit. Persistency is still not implemented, we will add it in a
+        future patch.
+        (WebKit::DeviceIdHashSaltStorage::create):
+        (WebKit::DeviceIdHashSaltStorage::deviceIdentifierHashSaltForOrigin):
+        Check the map to get the hash salt for an origin, if there is none
+        create a new random one.
+        (WebKit::DeviceIdHashSaltStorage::regenerateDeviceIdentifierHashSaltForOrigin):
+        Delete the hash salt of an origin if it already exists and create a new one.
+        (WebKit::DeviceIdHashSaltStorage::getDeviceIdHashSaltOrigins):
+        Returns the list of origins that have a hash salt generated for
+        them. It is used in the WebsiteDataStore.
+        (WebKit::DeviceIdHashSaltStorage::deleteDeviceIdHashSaltForOrigins):
+        Deletes the hash salts in the map for an origin.
+        (WebKit::DeviceIdHashSaltStorage::deleteDeviceIdHashSaltOriginsModifiedSince):
+        Delete the origins that have not been modified since a time.
+        * UIProcess/DeviceIdHashSaltStorage.h: Ditto.
+        * UIProcess/UserMediaPermissionCheckProxy.h: Remove uneeded class
+        definition.
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp: Added support to
+        return and remove the origins with a generate hash salt used to
+        generate the device ids.
+        (WebKit::WebsiteDataStore::WebsiteDataStore): Added the new
+        reference to the DeviceIdHashSaltStorage class, used to handle the
+        hash salts.
+        (WebKit::WebsiteDataStore::fetchDataAndApply): Get the list of
+        origins with a hash salts in the DeviceIdHashSaltStorage.
+        (WebKit::WebsiteDataStore::removeData): Remove the hash salts in
+        DeviceIdHashSaltStorage for an origin.
+        * UIProcess/WebsiteData/WebsiteDataStore.h: Ditto.
+        (WebKit::WebsiteDataStore::deviceIdHashSaltStorage):
+        * WebKit.xcodeproj/project.pbxproj: Added the
+        DeviceIdHashSaltStorage to the compilation.
+
+2018-10-10  Tim Horton  <timothy_horton@apple.com>
+
+        Safari crashes when attempting to share a YouTube video while in full-screen
+        https://bugs.webkit.org/show_bug.cgi?id=190456
+        <rdar://problem/45130748>
+
+        Reviewed by Wenson Hsieh.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/Cocoa/WKShareSheet.mm:
+        (-[WKShareSheet presentWithParameters:completionHandler:]):
+        Allow the share sheet to present centered, since we don't have enough
+        context to put it in a more sensible place.
+
+2018-10-10  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r236935): Layout test fast/events/ios/keyboard-scrolling-distance.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=190444
+        <rdar://problem/45110698>
+
+        Reviewed by Simon Fraser.
+
+        There's a race in WKKeyboardScrollingAnimator that's exacerbated by HIDEventGenerator
+        being much faster than a human finger. We get our "begin" events from interpretKeyEvent,
+        after the Web Content process has had its way with it, but currently the
+        back-channel "handle" events (e.g. for key up, which doesn't go to interpretKeyEvent)
+        are retrieved from handleKeyWebEvent in the UI process, which is *before*
+        the Web Content process has had a swing at it.
+
+        If you lose the race (an insanely short tap like you get from HIDEventGenerator,
+        or with a very busy Web Content process), we see handle(keyDown), handle(keyUp), begin(keyDown),
+        and get stuck scrolling!
+
+        Instead, retrieve the out-of-band "handle" events from _didHandleKeyEvent,
+        so that they're sensibly and strictly ordered with respect to the timing of interpretKeyEvent/"begin".
+
+        Also, hook up didFinishScrolling, so that UIScriptController's callbacks work correctly.
+
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView handleKeyWebEvent:]):
+        (-[WKContentView _didHandleKeyEvent:eventWasHandled:]):
+        (-[WKContentView keyboardScrollViewAnimatorDidFinishScrolling:]):
+        * UIProcess/ios/WKKeyboardScrollingAnimator.h:
+        * UIProcess/ios/WKKeyboardScrollingAnimator.mm:
+        (-[WKKeyboardScrollingAnimator handleKeyEvent:]):
+        (-[WKKeyboardScrollingAnimator displayLinkFired:]):
+        (-[WKKeyboardScrollViewAnimator setDelegate:]):
+        (-[WKKeyboardScrollViewAnimator handleKeyEvent:]):
+        (-[WKKeyboardScrollViewAnimator didFinishScrolling]):
+
 2018-10-10  Tim Horton  <timothy_horton@apple.com>
 
         Share more WKShareSheet code between macOS and iOS, and fix a few bugs

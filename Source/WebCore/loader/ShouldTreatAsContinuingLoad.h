@@ -25,11 +25,11 @@
 
 #pragma once
 
-#include <wtf/EnumTraits.h>
+#include <wtf/Forward.h>
 
 namespace WebCore {
 
-enum class ShouldTreatAsContinuingLoad { No, Yes };
+enum class ShouldTreatAsContinuingLoad : bool { No, Yes };
 
 } // namespace WebCore
 

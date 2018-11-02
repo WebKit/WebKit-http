@@ -163,7 +163,7 @@ class URL;
 class VisiblePosition;
 
 enum SyntheticClickType : int8_t;
-enum class ShouldTreatAsContinuingLoad;
+enum class ShouldTreatAsContinuingLoad : bool;
 enum class TextIndicatorPresentationTransition : uint8_t;
 
 struct BackForwardItemIdentifier;
@@ -190,7 +190,6 @@ class DownloadID;
 class FindController;
 class GamepadData;
 class GeolocationPermissionRequestManager;
-class InjectedBundleBackForwardList;
 class MediaDeviceSandboxExtensions;
 class NotificationPermissionRequestManager;
 class PDFPlugin;
@@ -229,9 +228,9 @@ class WebWheelEvent;
 class WebTouchEvent;
 class RemoteLayerTreeTransaction;
 
-enum class DeviceAccessState;
+enum class DeviceAccessState : uint8_t;
 enum FindOptions : uint16_t;
-enum class DragControllerAction;
+enum class DragControllerAction : uint8_t;
 
 struct AssistedNodeInformation;
 struct AttributedString;
@@ -270,8 +269,7 @@ public:
     void setSize(const WebCore::IntSize&);
     const WebCore::IntSize& size() const { return m_viewSize; }
     WebCore::IntRect bounds() const { return WebCore::IntRect(WebCore::IntPoint(), size()); }
-    
-    InjectedBundleBackForwardList* backForwardList();
+
     DrawingArea* drawingArea() const { return m_drawingArea.get(); }
 
 #if ENABLE(ASYNC_SCROLLING)
@@ -290,6 +288,8 @@ public:
     void willCommitLayerTree(RemoteLayerTreeTransaction&);
     void didFlushLayerTreeAtTime(MonotonicTime);
 #endif
+
+    void willDisplayPage();
 
     enum class LazyCreationPolicy { UseExistingOnly, CreateIfNeeded };
 
@@ -449,6 +449,8 @@ public:
     void setPageZoomFactor(double);
     void setPageAndTextZoomFactors(double pageZoomFactor, double textZoomFactor);
     void windowScreenDidChange(uint32_t);
+    String dumpHistoryForTesting(const String& directory);
+    void clearHistory();
 
     void accessibilitySettingsDidChange();
 #if ENABLE(ACCESSIBILITY_EVENTS)
@@ -893,7 +895,7 @@ public:
     void updateVisibilityState(bool isInitialState = false);
 
 #if PLATFORM(IOS)
-    void setViewportConfigurationViewLayoutSize(const WebCore::FloatSize&);
+    void setViewportConfigurationViewLayoutSize(const WebCore::FloatSize&, double scaleFactor);
     void setMaximumUnobscuredSize(const WebCore::FloatSize&);
     void setDeviceOrientation(int32_t);
     void setOverrideViewportArguments(const std::optional<WebCore::ViewportArguments>&);
@@ -1123,7 +1125,8 @@ private:
 
 #if PLATFORM(IOS)
     void resetViewportDefaultConfiguration(WebFrame* mainFrame, bool hasMobileDocType = false);
-    void viewportConfigurationChanged();
+    enum class ZoomToInitialScale { No, Yes };
+    void viewportConfigurationChanged(ZoomToInitialScale = ZoomToInitialScale::No);
     void updateViewportSizeForCSSViewportUnits();
 
     static void convertSelectionRectsToRootView(WebCore::FrameView*, Vector<WebCore::SelectionRect>&);
@@ -1438,7 +1441,6 @@ private:
 
     std::unique_ptr<WebCore::Page> m_page;
     RefPtr<WebFrame> m_mainFrame;
-    RefPtr<InjectedBundleBackForwardList> m_backForwardList;
 
     RefPtr<WebPageGroupProxy> m_pageGroup;
 

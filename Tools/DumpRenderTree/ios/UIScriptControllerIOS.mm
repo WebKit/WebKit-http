@@ -82,6 +82,10 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
     });
 }
 
+void UIScriptController::setViewScale(double)
+{
+}
+
 void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef)
 {
 }
@@ -228,6 +232,11 @@ void UIScriptController::keyboardAccessoryBarPrevious()
 
 void UIScriptController::applyAutocorrection(JSStringRef, JSStringRef, JSValueRef)
 {
+}
+
+bool UIScriptController::isShowingKeyboard() const
+{
+    return false;
 }
 
 double UIScriptController::minimumZoomScale() const

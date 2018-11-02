@@ -32,7 +32,6 @@
 #include "FindController.h"
 #include "FrameInfoData.h"
 #include "InjectedBundle.h"
-#include "InjectedBundleBackForwardListItem.h"
 #include "InjectedBundleDOMWindowExtension.h"
 #include "InjectedBundleNavigationAction.h"
 #include "Logging.h"
@@ -1079,7 +1078,7 @@ void WebFrameLoaderClient::finishedLoading(DocumentLoader* loader)
 void WebFrameLoaderClient::updateGlobalHistory()
 {
     WebPage* webPage = m_frame->page();
-    if (!webPage || !webPage->pageGroup()->isVisibleToHistoryClient())
+    if (!webPage)
         return;
 
     DocumentLoader* loader = m_frame->coreFrame()->loader().documentLoader();
@@ -1097,7 +1096,7 @@ void WebFrameLoaderClient::updateGlobalHistory()
 void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
 {
     WebPage* webPage = m_frame->page();
-    if (!webPage || !webPage->pageGroup()->isVisibleToHistoryClient())
+    if (!webPage)
         return;
 
     DocumentLoader* loader = m_frame->coreFrame()->loader().documentLoader();
@@ -1116,21 +1115,12 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
     }
 }
 
-bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem* item) const
+bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem& item) const
 {
     WebPage* webPage = m_frame->page();
     if (!webPage)
         return false;
-
-    RefPtr<InjectedBundleBackForwardListItem> bundleItem = InjectedBundleBackForwardListItem::create(item);
-    RefPtr<API::Object> userData;
-
-    // Ask the bundle client first
-    bool shouldGoToBackForwardListItem = webPage->injectedBundleLoaderClient().shouldGoToBackForwardListItem(*webPage, *bundleItem, userData);
-    if (!shouldGoToBackForwardListItem)
-        return false;
-
-    webPage->send(Messages::WebPageProxy::WillGoToBackForwardListItem(item->identifier(), bundleItem->isInPageCache(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+    webPage->send(Messages::WebPageProxy::WillGoToBackForwardListItem(item.identifier(), item.isInPageCache()));
     return true;
 }
 
@@ -1349,7 +1339,7 @@ void WebFrameLoaderClient::updateCachedDocumentLoader(WebCore::DocumentLoader& l
 void WebFrameLoaderClient::setTitle(const StringWithDirection& title, const URL& url)
 {
     WebPage* webPage = m_frame->page();
-    if (!webPage || !webPage->pageGroup()->isVisibleToHistoryClient())
+    if (!webPage)
         return;
 
     // FIXME: Use direction of title.
@@ -1497,7 +1487,7 @@ void WebFrameLoaderClient::convertMainResourceLoadToDownload(DocumentLoader *doc
 }
 
 RefPtr<Frame> WebFrameLoaderClient::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement& ownerElement,
-    const String& referrer, bool /*allowsScrolling*/, int /*marginWidth*/, int /*marginHeight*/)
+    const String& referrer)
 {
     auto* webPage = m_frame->page();
 

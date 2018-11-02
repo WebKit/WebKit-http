@@ -141,6 +141,7 @@ Modules/mediacapabilities/NavigatorMediaCapabilities.cpp
 Modules/mediacontrols/MediaControlsHost.cpp
 
 Modules/mediarecorder/MediaRecorder.cpp
+Modules/mediarecorder/MediaRecorderErrorEvent.cpp
 
 Modules/mediasession/HTMLMediaElementMediaSession.cpp
 Modules/mediasession/MediaRemoteControls.cpp
@@ -166,6 +167,7 @@ Modules/mediastream/MediaStreamTrackEvent.cpp
 Modules/mediastream/MediaTrackConstraints.cpp
 Modules/mediastream/NavigatorMediaDevices.cpp
 Modules/mediastream/PeerConnectionBackend.cpp
+Modules/mediastream/RTCCertificate.cpp
 Modules/mediastream/RTCController.cpp
 Modules/mediastream/RTCDTMFSender.cpp
 Modules/mediastream/RTCDTMFToneChangeEvent.cpp
@@ -181,6 +183,8 @@ Modules/mediastream/RTCSessionDescription.cpp
 Modules/mediastream/RTCTrackEvent.cpp
 Modules/mediastream/UserMediaController.cpp
 Modules/mediastream/UserMediaRequest.cpp
+
+Modules/mediastream/libwebrtc/LibWebRTCCertificateGenerator.cpp
 
 Modules/navigatorcontentutils/NavigatorContentUtils.cpp
 
@@ -374,6 +378,7 @@ bindings/js/JSDOMConvertStrings.cpp
 bindings/js/JSDOMConvertWebGL.cpp
 bindings/js/JSDOMIterator.cpp
 bindings/js/JSDeprecatedCSSOMValueCustom.cpp
+bindings/js/JSCSSPaintWorkletGlobalScopeCustom.cpp
 bindings/js/JSCallbackData.cpp
 bindings/js/JSCanvasRenderingContext2DCustom.cpp
 bindings/js/JSCustomElementInterface.cpp
@@ -599,6 +604,7 @@ css/CSSMediaRule.cpp
 css/CSSNamedImageValue.cpp
 css/CSSNamespaceRule.cpp
 css/CSSPageRule.cpp
+css/CSSPaintWorkletGlobalScope.cpp
 css/CSSPendingSubstitutionValue.cpp
 css/CSSPrimitiveValue.cpp
 css/CSSProperty.cpp
@@ -628,6 +634,7 @@ css/CSSVariableData.cpp
 css/CSSVariableReferenceValue.cpp
 css/DOMCSSNamespace.cpp
 css/DOMCSSRegisterCustomProperty.cpp
+css/DOMCSSPaintWorklet.cpp
 css/DOMMatrix.cpp
 css/DOMMatrixReadOnly.cpp
 css/DeprecatedCSSOMPrimitiveValue.cpp
@@ -2457,6 +2464,8 @@ JSCSSKeyframeRule.cpp
 JSCSSKeyframesRule.cpp
 JSCSSMediaRule.cpp
 JSCSSNamespaceRule.cpp
+JSCSSPaintCallback.cpp
+JSCSSPaintWorkletGlobalScope.cpp
 JSCSSPageRule.cpp
 JSCSSRule.cpp
 JSCSSRuleList.cpp
@@ -2529,6 +2538,7 @@ JSDocumentTimelineOptions.cpp
 JSDOMApplicationCache.cpp
 JSDOMCSSNamespace.cpp
 JSDOMCSSRegisterCustomProperty.cpp
+JSDOMCSSPaintWorklet.cpp
 JSDOMCSSCustomPropertyDescriptor.cpp
 JSDOMCache.cpp
 JSDOMCacheStorage.cpp
@@ -2772,6 +2782,7 @@ JSMediaList.cpp
 JSMediaQueryList.cpp
 JSMediaQueryListListener.cpp
 JSMediaRecorder.cpp
+JSMediaRecorderErrorEvent.cpp
 JSMediaRemoteControls.cpp
 JSMediaSession.cpp
 JSMediaSource.cpp
@@ -2877,6 +2888,7 @@ JSPublicKeyCredentialDescriptor.cpp
 JSPublicKeyCredentialRequestOptions.cpp
 JSPublicKeyCredentialType.cpp
 JSRTCAnswerOptions.cpp
+JSRTCCertificate.cpp
 JSRTCConfiguration.cpp
 JSRTCDTMFSender.cpp
 JSRTCDTMFToneChangeEvent.cpp

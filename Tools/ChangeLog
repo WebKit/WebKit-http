@@ -1,3 +1,697 @@
+2018-10-17  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Certain tags should identify their context to iOS API
+        https://bugs.webkit.org/show_bug.cgi?id=190622
+        <rdar://problem/45308194>
+
+        Reviewed by Zalan Bujtas.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::stringAttributeValue):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::stringAttributeValue):
+
+2018-10-16  Sihui Liu  <sihui_liu@apple.com>
+
+        Add a switch for Web SQL
+        https://bugs.webkit.org/show_bug.cgi?id=190271
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2018-10-16  Alex Christensen  <achristensen@webkit.org>
+
+        Remove InjectedBundleBackForwardList
+        https://bugs.webkit.org/show_bug.cgi?id=190640
+
+        Reviewed by Chris Dumez.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::dumpBackForwardListsForAllPages):
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::prepare):
+        (WTR::InjectedBundlePage::dumpHistory):
+        (WTR::hasPrefix): Deleted.
+        (WTR::compareByTargetName): Deleted.
+        (WTR::dumpBackForwardListItem): Deleted.
+        (WTR::InjectedBundlePage::dumpBackForwardList): Deleted.
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::clearBackForwardList):
+
+2018-10-16  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Unreviewed, added myself to contributors.json.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-10-16  Justin Michaud  <justin_michaud@apple.com>
+
+        Implement feature flag and bindings for CSS Painting API
+        https://bugs.webkit.org/show_bug.cgi?id=190237
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-10-16  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, GTK Ubuntu LTS Jhbuild prospective build fix
+
+        * gstreamer/jhbuild.modules:
+
+2018-10-16  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][JHBuild] Disable libmount support in glib
+
+        Rubber-stamped by Alejandro G. Castro.
+
+        This feature doesn't seem required for our setup.
+
+        * gtk/jhbuild.modules:
+
+2018-10-15  Justin Fan  <justin_fan@apple.com>
+
+        Add WebGPU 2018 feature flag and experimental feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=190509
+
+        Reviewed by Dean Jackson.
+
+        Re-add ENABLE_WEBGPU, an experimental feature flag, and a RuntimeEnabledFeature
+        for the 2018 WebGPU prototype.
+
+        * DumpRenderTree/TestOptions.cpp:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setWebPreferencesForTestOptions):
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-10-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update bot configuration for Sierra archive queues
+        https://bugs.webkit.org/show_bug.cgi?id=190605
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2018-10-15  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for prefers-color-scheme media query
+        https://bugs.webkit.org/show_bug.cgi?id=190499
+        rdar://problem/45212025
+
+        Reviewed by Dean Jackson.
+
+        * Scripts/webkitperl/FeatureList.pm: Added ENABLE_DARK_MODE_CSS as dark-mode-css.
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Added ENABLE_DARK_MODE_CSS.
+
+2018-10-15  Patrick Griffis  <pgriffis@igalia.com>
+
+        [JHBuild] Add xdg-dbus-proxy module
+        https://bugs.webkit.org/show_bug.cgi?id=190589
+
+        Reviewed by Michael Catanzaro.
+
+        * gtk/jhbuild.modules:
+
+2018-10-15  Patrick Griffis  <pgriffis@igalia.com>
+
+        [GTK] Add new sandboxing dependencies to install-dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=190588
+
+        Reviewed by Michael Catanzaro.
+
+        * gtk/install-dependencies:
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Experiment: target=_blank on anchors should imply rel=noopener
+        https://bugs.webkit.org/show_bug.cgi?id=190481
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage to make sure we can now swap process when target=_blank
+        is specified on an anchor but rel=noopener is not.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-10-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Can't select text after dismissing the keyboard when changing focus
+        https://bugs.webkit.org/show_bug.cgi?id=190563
+        <rdar://problem/44613559>
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::isShowingKeyboard const):
+
+        Add a new UIScriptController method that returns whether the keyboard is shown. See `ui-helper.js` for more
+        details.
+
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::isShowingKeyboard const):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+
+        Also rename the `isShowingKeyboard` Objective-C property to the more canonical `showingKeyboard`, with
+        `isShowingKeyboard` as the getter method.
+
+        (-[TestRunnerWKWebView _invokeShowKeyboardCallbackIfNecessary]):
+        (-[TestRunnerWKWebView _invokeHideKeyboardCallbackIfNecessary]):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::isShowingKeyboard const):
+
+2018-10-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, fix JSC tests after WebGPUShadingLanguageRI directory was removed in r237115.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests): Remove wsl-tests.yaml.
+
+2018-10-15  Christopher Reid  <chris.reid@sony.com>
+
+        [Curl][WinCairo] Add Public Suffix support to WinCairo
+        https://bugs.webkit.org/show_bug.cgi?id=183060
+
+        Reviewed by Alex Christensen.
+
+        Share mac's PublicSuffix tests with all ports.
+
+        * TestWebKitAPI/PlatformWin.cmake:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/PublicSuffix.cpp:
+        * TestWebKitAPI/Tests/mac/PublicSuffix.mm: Removed.
+
+2018-10-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Migrated WebGPUShadingLanguageRI to the W3C
+        https://bugs.webkit.org/show_bug.cgi?id=190555
+
+        Unreviewed.
+
+        Migrated to https://github.com/gpuweb/WHLSL/tree/master/Source
+
+        * WebGPUShadingLanguageRI/AddressSpace.js: Removed.
+        * WebGPUShadingLanguageRI/All.js: Removed.
+        * WebGPUShadingLanguageRI/AllocateAtEntryPoints.js: Removed.
+        * WebGPUShadingLanguageRI/AnonymousVariable.js: Removed.
+        * WebGPUShadingLanguageRI/ArrayRefType.js: Removed.
+        * WebGPUShadingLanguageRI/ArrayType.js: Removed.
+        * WebGPUShadingLanguageRI/Assignment.js: Removed.
+        * WebGPUShadingLanguageRI/AutoWrapper.js: Removed.
+        * WebGPUShadingLanguageRI/Block.js: Removed.
+        * WebGPUShadingLanguageRI/BoolLiteral.js: Removed.
+        * WebGPUShadingLanguageRI/Break.js: Removed.
+        * WebGPUShadingLanguageRI/BuiltInSemantic.js: Removed.
+        * WebGPUShadingLanguageRI/BuiltinMatrixGetter.js: Removed.
+        * WebGPUShadingLanguageRI/BuiltinMatrixSetter.js: Removed.
+        * WebGPUShadingLanguageRI/BuiltinVectorGetter.js: Removed.
+        * WebGPUShadingLanguageRI/BuiltinVectorSetter.js: Removed.
+        * WebGPUShadingLanguageRI/CallExpression.js: Removed.
+        * WebGPUShadingLanguageRI/CallFunction.js: Removed.
+        * WebGPUShadingLanguageRI/Casts.js: Removed.
+        * WebGPUShadingLanguageRI/Check.js: Removed.
+        * WebGPUShadingLanguageRI/CheckLiteralTypes.js: Removed.
+        * WebGPUShadingLanguageRI/CheckLoops.js: Removed.
+        * WebGPUShadingLanguageRI/CheckNativeFuncStages.js: Removed.
+        * WebGPUShadingLanguageRI/CheckRecursion.js: Removed.
+        * WebGPUShadingLanguageRI/CheckRecursiveTypes.js: Removed.
+        * WebGPUShadingLanguageRI/CheckReturns.js: Removed.
+        * WebGPUShadingLanguageRI/CheckTypesWithArguments.js: Removed.
+        * WebGPUShadingLanguageRI/CheckUnreachableCode.js: Removed.
+        * WebGPUShadingLanguageRI/CheckWrapped.js: Removed.
+        * WebGPUShadingLanguageRI/Checker.js: Removed.
+        * WebGPUShadingLanguageRI/CloneProgram.js: Removed.
+        * WebGPUShadingLanguageRI/CommaExpression.js: Removed.
+        * WebGPUShadingLanguageRI/ConstexprFolder.js: Removed.
+        * WebGPUShadingLanguageRI/Continue.js: Removed.
+        * WebGPUShadingLanguageRI/ConvertPtrToArrayRefExpression.js: Removed.
+        * WebGPUShadingLanguageRI/CreateLiteral.js: Removed.
+        * WebGPUShadingLanguageRI/CreateLiteralType.js: Removed.
+        * WebGPUShadingLanguageRI/DereferenceExpression.js: Removed.
+        * WebGPUShadingLanguageRI/DoWhileLoop.js: Removed.
+        * WebGPUShadingLanguageRI/DotExpression.js: Removed.
+        * WebGPUShadingLanguageRI/EArrayRef.js: Removed.
+        * WebGPUShadingLanguageRI/EBuffer.js: Removed.
+        * WebGPUShadingLanguageRI/EBufferBuilder.js: Removed.
+        * WebGPUShadingLanguageRI/EPtr.js: Removed.
+        * WebGPUShadingLanguageRI/EnumLiteral.js: Removed.
+        * WebGPUShadingLanguageRI/EnumMember.js: Removed.
+        * WebGPUShadingLanguageRI/EnumType.js: Removed.
+        * WebGPUShadingLanguageRI/EvaluationCommon.js: Removed.
+        * WebGPUShadingLanguageRI/Evaluator.js: Removed.
+        * WebGPUShadingLanguageRI/Expression.js: Removed.
+        * WebGPUShadingLanguageRI/ExpressionFinder.js: Removed.
+        * WebGPUShadingLanguageRI/ExternalOrigin.js: Removed.
+        * WebGPUShadingLanguageRI/Field.js: Removed.
+        * WebGPUShadingLanguageRI/FindHighZombies.js: Removed.
+        * WebGPUShadingLanguageRI/FlattenedStructOffsetGatherer.js: Removed.
+        * WebGPUShadingLanguageRI/FloatLiteral.js: Removed.
+        * WebGPUShadingLanguageRI/FloatLiteralType.js: Removed.
+        * WebGPUShadingLanguageRI/FoldConstexprs.js: Removed.
+        * WebGPUShadingLanguageRI/ForLoop.js: Removed.
+        * WebGPUShadingLanguageRI/Func.js: Removed.
+        * WebGPUShadingLanguageRI/FuncAttribute.js: Removed.
+        * WebGPUShadingLanguageRI/FuncDef.js: Removed.
+        * WebGPUShadingLanguageRI/FuncNumThreadsAttribute.js: Removed.
+        * WebGPUShadingLanguageRI/FuncParameter.js: Removed.
+        * WebGPUShadingLanguageRI/FunctionLikeBlock.js: Removed.
+        * WebGPUShadingLanguageRI/HighZombieFinder.js: Removed.
+        * WebGPUShadingLanguageRI/IdentityExpression.js: Removed.
+        * WebGPUShadingLanguageRI/IfStatement.js: Removed.
+        * WebGPUShadingLanguageRI/IndexExpression.js: Removed.
+        * WebGPUShadingLanguageRI/InferTypesForCall.js: Removed.
+        * WebGPUShadingLanguageRI/Inline.js: Removed.
+        * WebGPUShadingLanguageRI/Inliner.js: Removed.
+        * WebGPUShadingLanguageRI/IntLiteral.js: Removed.
+        * WebGPUShadingLanguageRI/IntLiteralType.js: Removed.
+        * WebGPUShadingLanguageRI/Intrinsics.js: Removed.
+        * WebGPUShadingLanguageRI/LayoutBuffers.js: Removed.
+        * WebGPUShadingLanguageRI/Lexer.js: Removed.
+        * WebGPUShadingLanguageRI/LexerToken.js: Removed.
+        * WebGPUShadingLanguageRI/LiteralTypeChecker.js: Removed.
+        * WebGPUShadingLanguageRI/LogicalExpression.js: Removed.
+        * WebGPUShadingLanguageRI/LogicalNot.js: Removed.
+        * WebGPUShadingLanguageRI/LoopChecker.js: Removed.
+        * WebGPUShadingLanguageRI/MakeArrayRefExpression.js: Removed.
+        * WebGPUShadingLanguageRI/MakePtrExpression.js: Removed.
+        * WebGPUShadingLanguageRI/MatrixType.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLBackend.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLCodegenAll.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLCompileResult.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLConstexprEmitter.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLFunctionDeclaration.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLFunctionDefinition.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLFunctionForwardDeclaration.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLInsertTrapParameter.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLNameMangler.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLNativeFunctionCall.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLStatementEmitter.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLTypeAttributes.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLTypeAttributesMap.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/MSLTypeUnifier.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/TypeOf.js: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/.gitignore: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/AppDelegate.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/AppDelegate.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Assets.xcassets/AppIcon.appiconset/Contents.json: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Assets.xcassets/Contents.json: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Base.lproj/Main.storyboard: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/CompileResult.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/CompileResult.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Compiler.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Compiler.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/CustomMetalView.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/CustomMetalView.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Demo shaders/Default.whlsl: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Demo shaders/Julia.whlsl: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Demo shaders/Mandelbrot.whlsl: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Info.plist: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Renderer/OffscreenRenderer.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Renderer/OffscreenRenderer.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Renderer/OnscreenRenderer.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Renderer/OnscreenRenderer.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Renderer/Renderer.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/Renderer/Renderer.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/TestCallArgument.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/TestCallArgument.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/TestDescription.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/TestDescription.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/TestFamily.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/TestFamily.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/TestFamilyRunner.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/TestFamilyRunner.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/ViewController.h: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/ViewController.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/WHLSL.entitlements: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/_SharedMetal.txt: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/Core/main.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/WHLSL Tests.xcodeproj/project.pbxproj: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/WHLSL ToyTests/Info.plist: Removed.
+        * WebGPUShadingLanguageRI/Metal/WHLSL Tests/WHLSL ToyTests/WHLSL_ToyTests.m: Removed.
+        * WebGPUShadingLanguageRI/Metal/WhlslToMsl.html: Removed.
+        * WebGPUShadingLanguageRI/Metal/WhlslToMsl.js: Removed.
+        * WebGPUShadingLanguageRI/NameContext.js: Removed.
+        * WebGPUShadingLanguageRI/NameFinder.js: Removed.
+        * WebGPUShadingLanguageRI/NameResolver.js: Removed.
+        * WebGPUShadingLanguageRI/NativeFunc.js: Removed.
+        * WebGPUShadingLanguageRI/NativeType.js: Removed.
+        * WebGPUShadingLanguageRI/Node.js: Removed.
+        * WebGPUShadingLanguageRI/NormalUsePropertyResolver.js: Removed.
+        * WebGPUShadingLanguageRI/NullLiteral.js: Removed.
+        * WebGPUShadingLanguageRI/NullType.js: Removed.
+        * WebGPUShadingLanguageRI/OperatorAnderIndexer.js: Removed.
+        * WebGPUShadingLanguageRI/OperatorArrayRefLength.js: Removed.
+        * WebGPUShadingLanguageRI/OriginKind.js: Removed.
+        * WebGPUShadingLanguageRI/OverloadResolutionFailure.js: Removed.
+        * WebGPUShadingLanguageRI/Parse.js: Removed.
+        * WebGPUShadingLanguageRI/Prepare.js: Removed.
+        * WebGPUShadingLanguageRI/Program.js: Removed.
+        * WebGPUShadingLanguageRI/ProgramWithUnnecessaryThingsRemoved.js: Removed.
+        * WebGPUShadingLanguageRI/PropertyAccessExpression.js: Removed.
+        * WebGPUShadingLanguageRI/PropertyResolver.js: Removed.
+        * WebGPUShadingLanguageRI/PtrType.js: Removed.
+        * WebGPUShadingLanguageRI/ReadModifyWriteExpression.js: Removed.
+        * WebGPUShadingLanguageRI/RecursionChecker.js: Removed.
+        * WebGPUShadingLanguageRI/RecursiveTypeChecker.js: Removed.
+        * WebGPUShadingLanguageRI/ReferenceType.js: Removed.
+        * WebGPUShadingLanguageRI/ResolveNames.js: Removed.
+        * WebGPUShadingLanguageRI/ResolveOverloadImpl.js: Removed.
+        * WebGPUShadingLanguageRI/ResolveProperties.js: Removed.
+        * WebGPUShadingLanguageRI/ResolveTypeDefs.js: Removed.
+        * WebGPUShadingLanguageRI/ResourceSemantic.js: Removed.
+        * WebGPUShadingLanguageRI/Return.js: Removed.
+        * WebGPUShadingLanguageRI/ReturnChecker.js: Removed.
+        * WebGPUShadingLanguageRI/ReturnException.js: Removed.
+        * WebGPUShadingLanguageRI/Rewriter.js: Removed.
+        * WebGPUShadingLanguageRI/SPIR-V.js: Removed.
+        * WebGPUShadingLanguageRI/SPIRV.html: Removed.
+        * WebGPUShadingLanguageRI/SPIRVCodegen.js: Removed.
+        * WebGPUShadingLanguageRI/SPIRVTypeAnalyzer.js: Removed.
+        * WebGPUShadingLanguageRI/SPIRVVariableAnalyzer.js: Removed.
+        * WebGPUShadingLanguageRI/Sampler.js: Removed.
+        * WebGPUShadingLanguageRI/Semantic.js: Removed.
+        * WebGPUShadingLanguageRI/SpecializationConstantSemantic.js: Removed.
+        * WebGPUShadingLanguageRI/StageInOutSemantic.js: Removed.
+        * WebGPUShadingLanguageRI/StandardLibrary.js: Removed.
+        * WebGPUShadingLanguageRI/StatementCloner.js: Removed.
+        * WebGPUShadingLanguageRI/StructLayoutBuilder.js: Removed.
+        * WebGPUShadingLanguageRI/StructType.js: Removed.
+        * WebGPUShadingLanguageRI/SwitchCase.js: Removed.
+        * WebGPUShadingLanguageRI/SwitchStatement.js: Removed.
+        * WebGPUShadingLanguageRI/SynthesizeArrayOperatorLength.js: Removed.
+        * WebGPUShadingLanguageRI/SynthesizeCopyConstructorOperator.js: Removed.
+        * WebGPUShadingLanguageRI/SynthesizeDefaultConstructorOperator.js: Removed.
+        * WebGPUShadingLanguageRI/SynthesizeEnumFunctions.js: Removed.
+        * WebGPUShadingLanguageRI/SynthesizeStructAccessors.js: Removed.
+        * WebGPUShadingLanguageRI/TernaryExpression.js: Removed.
+        * WebGPUShadingLanguageRI/Test.html: Removed.
+        * WebGPUShadingLanguageRI/Test.js: Removed.
+        * WebGPUShadingLanguageRI/Texture.js: Removed.
+        * WebGPUShadingLanguageRI/TextureOperations.js: Removed.
+        * WebGPUShadingLanguageRI/TrapStatement.js: Removed.
+        * WebGPUShadingLanguageRI/Type.js: Removed.
+        * WebGPUShadingLanguageRI/TypeDef.js: Removed.
+        * WebGPUShadingLanguageRI/TypeDefResolver.js: Removed.
+        * WebGPUShadingLanguageRI/TypeOverloadResolutionFailure.js: Removed.
+        * WebGPUShadingLanguageRI/TypeRef.js: Removed.
+        * WebGPUShadingLanguageRI/TypedValue.js: Removed.
+        * WebGPUShadingLanguageRI/UintLiteral.js: Removed.
+        * WebGPUShadingLanguageRI/UintLiteralType.js: Removed.
+        * WebGPUShadingLanguageRI/UnificationContext.js: Removed.
+        * WebGPUShadingLanguageRI/UnreachableCodeChecker.js: Removed.
+        * WebGPUShadingLanguageRI/Value.js: Removed.
+        * WebGPUShadingLanguageRI/VariableDecl.js: Removed.
+        * WebGPUShadingLanguageRI/VariableRef.js: Removed.
+        * WebGPUShadingLanguageRI/VectorType.js: Removed.
+        * WebGPUShadingLanguageRI/VisitingSet.js: Removed.
+        * WebGPUShadingLanguageRI/Visitor.js: Removed.
+        * WebGPUShadingLanguageRI/WLexicalError.js: Removed.
+        * WebGPUShadingLanguageRI/WSyntaxError.js: Removed.
+        * WebGPUShadingLanguageRI/WTrapError.js: Removed.
+        * WebGPUShadingLanguageRI/WTypeError.js: Removed.
+        * WebGPUShadingLanguageRI/WhileLoop.js: Removed.
+        * WebGPUShadingLanguageRI/WrapChecker.js: Removed.
+        * WebGPUShadingLanguageRI/index.html: Removed.
+        * WebGPUShadingLanguageRI/spirv.core.grammar.json: Removed.
+        * WebGPUShadingLanguageRI/wsl-tests.yaml: Removed.
+
+2018-10-15  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] Disable MSE build support on Debian and Ubuntu LTS bots
+        https://bugs.webkit.org/show_bug.cgi?id=190581
+
+        Reviewed by Michael Catanzaro.
+
+        These bots don't use JHBuild and their host GStreamer version is
+        too old for the GStreamer MSE backend. Version 1.14 is needed at least.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Use pragma once in WTF
+        https://bugs.webkit.org/show_bug.cgi?id=190527
+
+        Reviewed by Chris Dumez.
+
+        Put WorkQueue in namespace DRT so it does not conflict with WTF::WorkQueue.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (TestRunner::queueLoadHTMLString):
+        (TestRunner::queueLoadAlternateHTMLString):
+        (TestRunner::queueBackNavigation):
+        (TestRunner::queueForwardNavigation):
+        (TestRunner::queueLoadingScript):
+        (TestRunner::queueNonLoadingScript):
+        (TestRunner::queueReload):
+        * DumpRenderTree/WorkQueue.cpp:
+        (WorkQueue::singleton): Deleted.
+        (WorkQueue::WorkQueue): Deleted.
+        (WorkQueue::queue): Deleted.
+        (WorkQueue::dequeue): Deleted.
+        (WorkQueue::count): Deleted.
+        (WorkQueue::clear): Deleted.
+        (WorkQueue::processWork): Deleted.
+        * DumpRenderTree/WorkQueue.h:
+        (WorkQueue::setFrozen): Deleted.
+        * DumpRenderTree/WorkQueueItem.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (runTest):
+        * DumpRenderTree/mac/FrameLoadDelegate.mm:
+        (-[FrameLoadDelegate processWork:]):
+        (-[FrameLoadDelegate webView:locationChangeDone:forDataSource:]):
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::notifyDone):
+        (TestRunner::forceImmediateCompletion):
+        (TestRunner::queueLoad):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (runTest):
+        * DumpRenderTree/win/FrameLoadDelegate.cpp:
+        (FrameLoadDelegate::processWork):
+        (FrameLoadDelegate::locationChangeDone):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::notifyDone):
+        (TestRunner::forceImmediateCompletion):
+        (TestRunner::queueLoad):
+
+2018-10-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Remove Option::useAsyncIterator
+        https://bugs.webkit.org/show_bug.cgi?id=190567
+
+        Reviewed by Saam Barati.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-10-15  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Silence a unused-parameter warning
+
+        Unreviewed.
+        * MiniBrowser/wpe/main.cpp:
+        (decidePermissionRequest):
+
+2018-10-12  Guillaume Emont  <guijemont@igalia.com>
+
+        [Tools][webkitpy] fix handling of JSCTESTS_OPTIONS
+        https://bugs.webkit.org/show_bug.cgi?id=190537
+
+        Reviewed by Alexey Proskuryakov.
+
+        In DeprecatedPort.run_javascriptcore_tests_command() JSCTESTS_OPTIONS
+        needs to be split before adding it to the command since it is treated
+        as a list of args.
+
+        * Scripts/webkitpy/common/config/ports.py:
+        (DeprecatedPort.run_javascriptcore_tests_command):
+
+2018-10-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Allow SPI clients to lay out at arbitrarily scaled sizes and scale to fit the view
+        https://bugs.webkit.org/show_bug.cgi?id=190504
+        <rdar://problem/45117760>
+
+        Reviewed by Tim Horton.
+
+        Teach UIScriptController to set WKWebView's view scale via a new `setViewScale` method, supported in WebKit2 on
+        macOS and iOS.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setViewScale):
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::setViewScale):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setViewScale):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/UIScriptControllerCocoa.mm: Added.
+
+        Add a new file for UIScriptController methods on Cocoa platforms.
+
+        (WTR::UIScriptController::setViewScale):
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::cocoaResetStateToConsistentValues):
+
+        Ensure that _viewScale is reset to 1 after running a layout test.
+
+2018-10-12  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Rename iOS-11-Simulator-Tests-EWS to iOS-11-Simulator-WK2-Tests-EWS
+        https://bugs.webkit.org/show_bug.cgi?id=190536
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/ews-build/config.json: Renamed iOS-11-Simulator-Tests-EWS to iOS-11-Simulator-WK2-Tests-EWS.
+
+2018-10-11  Youenn Fablet  <youenn@apple.com>
+
+        IOS 12 - Service worker cache not shared when added to homescreen
+        https://bugs.webkit.org/show_bug.cgi?id=190269
+        <rdar://problem/45009961>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+        Add test to ensure that CacheStorage use the default website data store parameters.
+
+2018-10-11  Tim Horton  <timothy_horton@apple.com>
+
+        Clicking on bookmarklet crashes at NavigationState::willRecordNavigationSnapshot
+        https://bugs.webkit.org/show_bug.cgi?id=190476
+        <rdar://problem/32757191>
+
+        Reviewed by Megan Gardner.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/SnapshotStore.mm:
+        (TEST):
+        Add a test that we don't crash.
+
+2018-10-11  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r237037): Cannot use webkit-patch upload, always fails with unknown 'cc_radar'
+
+        * Scripts/webkitpy/tool/steps/options.py:
+        (Options):
+        Fix the name of the variable that the --cc-radar option writes into.
+
+2018-10-10  Dean Jackson  <dino@apple.com>
+
+        Add --cc-radar option to webkit-patch bug creation
+        https://bugs.webkit.org/show_bug.cgi?id=190451
+        <rdar://problem/45176671>
+
+        Reviewed by Antoine Quint.
+
+        Add a new command line option to automatically
+        CC radar to new or updated bugs.
+
+        * Scripts/webkitpy/tool/commands/commandtest.py:
+        (CommandsTest.assert_execute_outputs):
+        * Scripts/webkitpy/tool/commands/upload.py:
+        (CreateBug.__init__):
+        (CreateBug.execute):
+        * Scripts/webkitpy/tool/commands/upload_unittest.py:
+        (test_prepare_with_cc):
+        (test_prepare_with_radar):
+        (test_prepare_with_cc_and_radar):
+        * Scripts/webkitpy/tool/steps/createbug.py:
+        (CreateBug.options):
+        (CreateBug.run):
+        * Scripts/webkitpy/tool/steps/options.py:
+        (Options):
+
+2018-10-11  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GStreamer] Do not build gstgtk plugins
+        https://bugs.webkit.org/show_bug.cgi?id=190463
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        These plugins pull a GTK+ dependency that, at least in WPE,
+        is unnecessary. The GTK+ port doesn't need it either, as far
+        as I can tell.
+
+        * gstreamer/jhbuild.modules: Disable gstgtk plugins
+
+2018-10-11  Alejandro G. Castro  <alex@igalia.com>
+
+        [GTK][WPE] Add mediaDevices.enumerateDevices support
+        https://bugs.webkit.org/show_bug.cgi?id=185761
+
+        Reviewed by Youenn Fablet.
+
+        Added new API test for the mediaDevices.enumerateDevices:
+        usermedia-enumeratedevices-permission-check. And a new API test
+        for the WebsiteDataStore: testWebsiteDataDeviceIdHashSalt.
+
+        * MiniBrowser/gtk/main.c:
+        (gotWebsiteDataCallback): Added a new section to the about:data
+        webpage to include the information about the hash salt.
+        * TestWebKitAPI/Tests/WebKitGLib/TestUIClient.cpp:
+        (testWebViewUserMediaEnumerateDevicesPermissionCheck): Added the
+        new test checking the enumerateDevices API when permission is
+        denied and when permission is allowed for the origin.
+        (beforeAll): Defined the new test.
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebsiteData.cpp:
+        (serverCallback): Register a new URI for the enumerateDevices.
+        (testWebsiteDataConfiguration): Remove the hash salts from the
+        directories.
+        (testWebsiteDataDeviceIdHashSalt): New test cheking the
+        enumerateDevices API.
+        (beforeAll): Added the new test testWebsiteDataDeviceIdHashSalt to
+        the init structure.
+        * TestWebKitAPI/glib/WebKitGLib/WebViewTest.cpp:
+        (WebViewTest::initializeWebView): Make sure the media-stream is
+        activated in the webView.
+
+2018-10-10  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Add WinCairo to the flakiness dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=188345
+
+        Reviewed by Lucas Forschler.
+
+        * TestResultServer/static-dashboards/builders.jsonp: Regenerated by generate_builders_json.py.
+        * TestResultServer/static-dashboards/flakiness_dashboard.js: Added a new platform 'WINCAIRO'.
+
+2018-10-10  Dean Jackson  <dino@apple.com>
+
+        [WHSL -> MSL] Annotate semantics correctly in generated MSL
+        https://bugs.webkit.org/show_bug.cgi?id=190452
+        <rdar://problem/45178272>
+
+        Reviewed by Myles Maxfield.
+
+        Correctly label the appropriate semantics as [[position]]
+        and [[color(N)]].
+
+        * WebGPUShadingLanguageRI/Metal/MSLBackend.js: Identify position
+        and color attributes. Also use the semantic's index rather than
+        a counter.
+        * WebGPUShadingLanguageRI/Metal/WhlslToMsl.html: Use a <pre> for
+        output, and only include the actual shader code.
+
+2018-10-10  Ross Kirsling  <ross.kirsling@sony.com>
+
+        build-webkit --inspector-frontend shouldn't have a nonzero exit code
+        https://bugs.webkit.org/show_bug.cgi?id=190430
+
+        Reviewed by Brian Burg.
+
+        * Scripts/webkitdirs.pm:
+        (argumentsForConfiguration):
+        --inspector-frontend should only be popped off of argv by determineIsInspectorFrontend;
+        it shouldn't be re-inserted as a CLI option by argumentsForConfiguration.
+
 2018-10-10  Tim Horton  <timothy_horton@apple.com>
 
         Share more WKShareSheet code between macOS and iOS, and fix a few bugs

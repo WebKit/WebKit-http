@@ -70,7 +70,7 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, Ref<SecurityOrigin>&& origi
     , m_connectionProxy(connectionProxy)
 #endif
     , m_socketProvider(socketProvider)
-    , m_performance(Performance::create(*this, timeOrigin))
+    , m_performance(Performance::create(this, timeOrigin))
     , m_sessionID(sessionID)
 {
 #if !ENABLE(INDEXED_DATABASE)
@@ -421,7 +421,7 @@ bool WorkerGlobalScope::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vecto
 Crypto& WorkerGlobalScope::crypto()
 {
     if (!m_crypto)
-        m_crypto = Crypto::create(*this);
+        m_crypto = Crypto::create(this);
     return *m_crypto;
 }
 

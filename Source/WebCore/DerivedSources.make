@@ -205,6 +205,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediacontrols/MediaControlsHost.idl \
 	$(WebCore)/Modules/mediarecorder/BlobEvent.idl \
 	$(WebCore)/Modules/mediarecorder/MediaRecorder.idl \
+	$(WebCore)/Modules/mediarecorder/MediaRecorderErrorEvent.idl \
     $(WebCore)/Modules/mediasession/HTMLMediaElementMediaSession.idl \
     $(WebCore)/Modules/mediasession/MediaRemoteControls.idl \
     $(WebCore)/Modules/mediasession/MediaSession.idl \
@@ -230,6 +231,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/OverconstrainedError.idl \
     $(WebCore)/Modules/mediastream/OverconstrainedErrorEvent.idl \
     $(WebCore)/Modules/mediastream/RTCAnswerOptions.idl \
+    $(WebCore)/Modules/mediastream/RTCCertificate.idl \
     $(WebCore)/Modules/mediastream/RTCConfiguration.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFSender.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFToneChangeEvent.idl \
@@ -439,6 +441,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/CSSMediaRule.idl \
     $(WebCore)/css/CSSNamespaceRule.idl \
     $(WebCore)/css/CSSPageRule.idl \
+    $(WebCore)/css/CSSPaintCallback.idl \
+    $(WebCore)/css/CSSPaintWorkletGlobalScope.idl \
     $(WebCore)/css/CSSRule.idl \
     $(WebCore)/css/CSSRuleList.idl \
     $(WebCore)/css/CSSStyleDeclaration.idl \
@@ -459,6 +463,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/DOMCSSCustomPropertyDescriptor.idl \
     $(WebCore)/css/DOMCSSNamespace.idl \
     $(WebCore)/css/DOMCSSRegisterCustomProperty.idl \
+    $(WebCore)/css/DOMCSSPaintWorklet.idl \
     $(WebCore)/css/ElementCSSInlineStyle.idl \
     $(WebCore)/css/FontFace.idl \
     $(WebCore)/css/FontFaceSet.idl \
@@ -1043,7 +1048,8 @@ ifneq ($(SDKROOT),)
 endif
 
 ifeq ($(USE_LLVM_TARGET_TRIPLES_FOR_CLANG),YES)
-	TARGET_TRIPLE_FLAGS=-target $(CURRENT_ARCH)-$(LLVM_TARGET_TRIPLE_VENDOR)-$(LLVM_TARGET_TRIPLE_OS_VERSION)$(LLVM_TARGET_TRIPLE_SUFFIX)
+	WK_CURRENT_ARCH=$(word 1, $(ARCHS))
+	TARGET_TRIPLE_FLAGS=-target $(WK_CURRENT_ARCH)-$(LLVM_TARGET_TRIPLE_VENDOR)-$(LLVM_TARGET_TRIPLE_OS_VERSION)$(LLVM_TARGET_TRIPLE_SUFFIX)
 endif
 
 ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS ' | cut -d' ' -f3), 1)

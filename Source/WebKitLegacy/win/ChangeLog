@@ -1,3 +1,115 @@
+2018-10-17  Alex Christensen  <achristensen@webkit.org>
+
+        BackForwardClient needs to be able to support UIProcess-only back/forward lists
+        https://bugs.webkit.org/show_bug.cgi?id=190675
+
+        Reviewed by Chris Dumez.
+
+        * BackForwardList.cpp:
+        (BackForwardList::backItem):
+        (BackForwardList::currentItem):
+        (BackForwardList::forwardItem):
+        (BackForwardList::backListCount const):
+        (BackForwardList::forwardListCount const):
+        (BackForwardList::itemAtIndex):
+        * BackForwardList.h:
+
+2018-10-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed attempt to fix the Windows build after r237112.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::performRequest):
+
+2018-10-16  Alex Christensen  <achristensen@webkit.org>
+
+        Replace HistoryItem* with HistoryItem& where possible
+        https://bugs.webkit.org/show_bug.cgi?id=190617
+
+        Reviewed by Chris Dumez.
+
+        * BackForwardList.cpp:
+        (BackForwardList::goToItem):
+        * BackForwardList.h:
+        * WebBackForwardList.cpp:
+        (WebBackForwardList::goToItem):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build.
+
+        * WebView.cpp:
+        (WebView::loadBackForwardListFromOtherView):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix WinCairo build.
+
+        * WebView.cpp:
+        (WebView::backForwardList):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize BackForwardClient.h
+        https://bugs.webkit.org/show_bug.cgi?id=190610
+
+        Reviewed by Chris Dumez.
+
+        * BackForwardList.cpp:
+        (BackForwardList::backListCount const):
+        (BackForwardList::forwardListCount const):
+        (BackForwardList::backListCount): Deleted.
+        (BackForwardList::forwardListCount): Deleted.
+        * BackForwardList.h:
+        * WebView.cpp:
+        (WebView::initWithFrame):
+        (WebView::backForwardList):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused WebView._globalHistoryItem
+        https://bugs.webkit.org/show_bug.cgi?id=190601
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::updateGlobalHistoryItemForPage): Deleted.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebView.cpp:
+        (WebView::globalHistoryItem):
+        (WebView::setGlobalHistoryItem): Deleted.
+        * WebView.h:
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused parameters from FrameLoaderClient::createFrame
+        https://bugs.webkit.org/show_bug.cgi?id=190587
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::createFrame):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed Windows build fix after r237112.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::performRequest):
+        (WebCore::PluginView::load):
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove InjectedBundle processing of back/forward lists
+        https://bugs.webkit.org/show_bug.cgi?id=190459
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::shouldGoToHistoryItem const):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
 2018-10-02  Alex Christensen  <achristensen@webkit.org>
 
         Remove ParsedURLString

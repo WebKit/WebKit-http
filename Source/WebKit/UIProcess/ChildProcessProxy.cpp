@@ -72,14 +72,13 @@ void ChildProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchO
     case ProcessLauncher::ProcessType::Network:
         varname = "NETWORK_PROCESS_CMD_PREFIX";
         break;
-    case ProcessLauncher::ProcessType::Storage:
-        varname = "STORAGE_PROCESS_CMD_PREFIX";
-        break;
     }
     const char* processCmdPrefix = getenv(varname);
     if (processCmdPrefix && *processCmdPrefix)
         launchOptions.processCmdPrefix = String::fromUTF8(processCmdPrefix);
 #endif // ENABLE(DEVELOPER_MODE) && (PLATFORM(GTK) || PLATFORM(WPE))
+
+    platformGetLaunchOptions(launchOptions);
 }
 
 void ChildProcessProxy::connect()

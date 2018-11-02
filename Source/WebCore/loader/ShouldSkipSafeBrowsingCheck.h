@@ -25,11 +25,11 @@
 
 #pragma once
 
-#include <wtf/EnumTraits.h>
+#include <wtf/Forward.h>
 
 namespace WebCore {
 
-enum class ShouldSkipSafeBrowsingCheck { No, Yes };
+enum class ShouldSkipSafeBrowsingCheck : bool { No, Yes };
 
 }
 

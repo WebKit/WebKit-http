@@ -1011,6 +1011,7 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     preferences.webAnimationsCSSIntegrationEnabled = options.enableWebAnimationsCSSIntegration;
     preferences.colorFilterEnabled = options.enableColorFilter;
     preferences.selectionAcrossShadowBoundariesEnabled = options.enableSelectionAcrossShadowBoundaries;
+    preferences.webGPUEnabled = options.enableWebGPU;
 }
 
 // Called once on DumpRenderTree startup.
@@ -2034,7 +2035,7 @@ static void runTest(const string& inputLine)
     [prevTestBFItem release];
     prevTestBFItem = [[[[mainFrame webView] backForwardList] currentItem] retain];
 
-    auto& workQueue = WorkQueue::singleton();
+    auto& workQueue = DRT::WorkQueue::singleton();
     workQueue.clear();
     workQueue.setFrozen(false);
 

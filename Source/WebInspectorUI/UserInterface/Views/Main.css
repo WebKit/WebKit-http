@@ -279,11 +279,11 @@ body[dir=rtl] .go-to-arrow {
     transform: scaleX(-1);
 }
 
-:matches(:focus, .force-focus) .selected .go-to-arrow {
+:focus .selected .go-to-arrow {
     background-image: url(../Images/GoToArrow.svg#selected);
 }
 
-:matches(:focus, .force-focus) .selected .go-to-arrow:active {
+:focus .selected .go-to-arrow:active {
     background-image: url(../Images/GoToArrow.svg#selected-active);
 }
 
@@ -384,6 +384,10 @@ body[dir=rtl] .go-to-arrow {
 @media (prefers-dark-interface) {
     .go-to-arrow {
         filter: invert();
+    }
+
+    :focus .selected .go-to-arrow {
+        filter: unset;
     }
 
     .resource-link,

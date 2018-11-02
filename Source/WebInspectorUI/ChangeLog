@@ -1,3 +1,642 @@
+2018-10-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Quickly Open to line/column does should have caret indicating where the position is
+        https://bugs.webkit.org/show_bug.cgi?id=190643
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype.set selectedTextRange):
+        (WI.TextEditor.prototype.revealPosition):
+        Ensure that CodeMirror is focused before attempting to `setSelection`.
+        Drive-by: allow selections past the "end" of the line (since there is a `\n` or `\r`).
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.dialogWasDismissedWithRepresentedObject):
+        Remove the extra `focus` call after dismissing the `WI.GoToLineDialog` since it is now
+        handled by `WI.TextEditor` via `revealPosition`.
+
+2018-10-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ⌃G to jump to line in CSS file wipes the line
+        https://bugs.webkit.org/show_bug.cgi?id=190645
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Views/Dialog.js:
+        (WI.Dialog.prototype.dismiss):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.dialogWasDismissed): Deleted.
+        Rename the handler when dismissing a dialog with a value so that
+        it is clear this is only on a successful value and not an invalid value.
+        Dialog now only calls this delegate with a valid value. This addresses
+        exceptions seen when the GoToLineDialog was dimissed via Escape and
+        an unexpected `null` value was being handled in the delegate.
+
+        * UserInterface/Views/GoToLineDialog.js:
+        (WI.GoToLineDialog.prototype._handleKeydownEvent):
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WI.OpenResourceDialog.prototype._handleKeydownEvent):
+        Prevent default on the event whenever we dismiss the dialog.
+        Without this, the key event was also being sent to the editor.
+        In this case, that meant an "Enter" key was replacing the new
+        selection in the TextEditor with a newline!
+
+2018-10-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: capture previously saved states and add them to the recording payload
+        https://bugs.webkit.org/show_bug.cgi?id=190473
+
+        Reviewed by Joseph Pecoraro.
+
+        Instead of sending a single object of the current state of the context, send an array of
+        objects, one for each restore point. When replaying, recreate each restore point before
+        applying the selected action(s).
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording):
+        (WI.Recording.fromPayload):
+        (WI.Recording.prototype.toJSON):
+        (WI.Recording.prototype.async._process):
+        (WI.Recording.prototype.async._swizzleState): Added.
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.deriveCurrentState): Added.
+        (WI.RecordingAction.prototype.get states): Added.
+        (WI.RecordingAction.prototype.process):
+        (WI.RecordingAction.prototype.get state): Deleted.
+        Drive-by: when `process`ing, also check to see if any values in the current state changed
+        outside of those expected in `_stateModifiers` (e.g. `restore` may modify some state values).
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype._generateContentCanvas2D):
+
+        * UserInterface/Views/RecordingStateDetailsSidebarPanel.js:
+        (WI.RecordingStateDetailsSidebarPanel.prototype._generateDetailsCanvas2D):
+        Default to showing the most recent (current) state.
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView.prototype.initialLayout): Added.
+        (WI.CanvasTabContentView.prototype._addCanvas):
+        (WI.CanvasTabContentView.prototype._removeCanvas):
+        (WI.CanvasTabContentView.prototype._addRecording): Added.
+        (WI.CanvasTabContentView.prototype._recordingImportedOrStopped):
+        (WI.CanvasTabContentView.prototype._recordingAdded): Deleted.
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager):
+        (WI.CanvasManager.prototype.get importedRecordings): Added.
+        (WI.CanvasManager.prototype.importRecording):
+        Drive-by: store imported recordings on `WI.CanvasManager` so that if the Canvas tab is
+        closed we can still show the list of imported recordings.
+
+2018-10-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas recording sidebar scroll position lost after switching tabs
+        https://bugs.webkit.org/show_bug.cgi?id=190482
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/Sidebar.js:
+        (WI.Sidebar.prototype.removeSidebarPanel):
+        (WI.Sidebar.prototype.set selectedSidebarPanel):
+        Call `hidden` before setting `selected` to `false`, as that sets `display: none;` on the
+        element, which sets the `scrollTop` to `0`.
+
+        * UserInterface/Views/SidebarPanel.js:
+        (WI.SidebarPanel.prototype.shown):
+        (WI.SidebarPanel.prototype.hidden):
+        (WI.SidebarPanel.prototype.get scrollElement): Added.
+        Allow subclasses to specify the scrolling element for saving/restoring the scroll position.
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype.get scrollElement): Added.
+        * UserInterface/Views/RecordingStateDetailsSidebarPanel.js:
+        (WI.RecordingStateDetailsSidebarPanel.prototype.get scrollElement): Added.
+
+2018-10-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Should be a way to go directly from an event in the overview view to the specialized timeline for that event
+        https://bugs.webkit.org/show_bug.cgi?id=135307
+        <rdar://problem/17273966>
+
+        Reviewed by Joseph Pecoraro.
+
+        When a `WI.TimelineRecordBar` is clicked, call up the delegate chain to the overview and
+        adjust the currently selected `WI.TimelineRecordBar` among the `WI.TimelineOverviewGraph`s.
+        Similarly, selecting a `WI.DataGridNode` in any `WI.TimelineView` subclass will use the same
+        logic to select the corresponding `WI.TimelineRecordBar`.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview):
+        (WI.TimelineOverview.prototype.reset):
+        (WI.TimelineOverview.prototype._recordSelected):
+
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WI.TimelineOverviewGraph):
+        (WI.TimelineOverviewGraph.prototype.set selectedRecord):
+        (WI.TimelineOverviewGraph.prototype.get selectedRecordBar): Added.
+        (WI.TimelineOverviewGraph.prototype.set selectedRecordBar): Added.
+        (WI.TimelineOverviewGraph.prototype.timelineRecordBarClicked): Added.
+        (WI.TimelineOverviewGraph.prototype._needsSelectedRecordLayout):
+
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WI.TimelineRecordBar):
+        (WI.TimelineRecordBar.prototype.get selected): Added.
+        (WI.TimelineRecordBar.prototype.set selected): Added.
+        (WI.TimelineRecordBar.prototype._handleClick): Added.
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar.selected > .segment): Added.
+        Add a `delegate` that is notified whenever the element is clicked.
+
+        * UserInterface/Views/TimelineDataGridNode.js:
+        (WI.TimelineDataGridNode.prototype.refreshGraph.createBar):
+        * UserInterface/Views/LayoutTimelineOverviewGraph.js:
+        (WI.LayoutTimelineOverviewGraph.prototype.updateSelectedRecord):
+        (WI.LayoutTimelineOverviewGraph.prototype._updateRowLayout.createBar):
+        * UserInterface/Views/NetworkTimelineOverviewGraph.js:
+        (WI.NetworkTimelineOverviewGraph.prototype.layout.createBar):
+        * UserInterface/Views/ScriptTimelineOverviewGraph.js:
+        (WI.ScriptTimelineOverviewGraph.prototype.layout.createBar):
+        (WI.ScriptTimelineOverviewGraph.prototype.updateSelectedRecord):
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView.prototype.showTimelineViewForTimeline):
+
+2018-10-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: sequences of spaces longer than 16 don't show a dot
+        https://bugs.webkit.org/show_bug.cgi?id=190528
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        Create a new CSS rule and add it to a unique <style> whenever a whitespace sequence with
+        a length is seen for the first time.
+
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-1::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-2::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-3::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-4::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-5::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-6::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-7::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-8::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-9::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-10::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-11::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-12::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-13::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-14::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-15::before): Deleted.
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-16::before): Deleted.
+
+2018-10-15  Charles Vazac  <cvazac@gmail.com>
+
+        Web Inspector: Expose Server Timing Response Headers in Network Tab
+        https://bugs.webkit.org/show_bug.cgi?id=190440
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js: new key "Server Timing:"
+        * UserInterface/Main.html: add reference to Models/ServerTimingEntry.js
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.get serverTiming):
+        (WI.Resource.prototype.updateForResponse):
+        * UserInterface/Models/ServerTimingEntry.js: Added.
+        (WI.ServerTimingEntry):
+        (WI.ServerTimingEntry.parseHeaders): parse raw response headers into an array of ServerTimingEntry objects
+        (WI.ServerTimingEntry.parseHeaders.consumeDelimiter):
+        (WI.ServerTimingEntry.parseHeaders.consumeToken):
+        (WI.ServerTimingEntry.):
+        * UserInterface/Test.html: add reference to Models/ServerTimingEntry.js
+        * UserInterface/Views/ResourceTimingBreakdownView.js:
+        (WI.ResourceTimingBreakdownView.prototype._appendServerTimingRow): render a table row per ServerTimingEntry object
+        (WI.ResourceTimingBreakdownView.prototype.initialLayout):
+        (WI.ResourceTimingBreakdownView):
+
+2018-10-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: pseudo elements in DOM tree are too dark
+        https://bugs.webkit.org/show_bug.cgi?id=190541
+        <rdar://problem/45238443>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (@media (prefers-dark-interface)):
+        (.tree-outline.dom .html-pseudo-element):
+
+2018-10-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r233824): execution highlight range missing/incorrect in pretty printed code
+        https://bugs.webkit.org/show_bug.cgi?id=188082
+        <rdar://problem/42640580>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.textEditorExecutionHighlightRange):
+        TextEditor expects positions returned by the delegate to be relative to
+        the editor's text content, not the original source code content.
+
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype._updateExecutionRangeHighlight):
+        Convert positions to CodeMirror format here rather than in the delegate
+        method, which is a layer removed from CodeMirror.
+
+2018-10-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: unreadable text when hovering CSS properties while holding Command
+        https://bugs.webkit.org/show_bug.cgi?id=190548
+        <rdar://problem/45242098>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.meta-key-pressed .spreadsheet-css-declaration:not(.locked) :matches(.name, .value):not(.editing):hover):
+        In the light mode the color remained the same.
+
+2018-10-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: style editor warnings should not look like errors
+        https://bugs.webkit.org/show_bug.cgi?id=190569
+        <rdar://problem/45261689>
+
+        Reviewed by Matt Baker.
+
+        Make warnings in the style editor look the same as warnings in the content views.
+        Unify warning and error background color variables.
+
+        * UserInterface/Views/LogContentView.css:
+        (@media (prefers-dark-interface)):
+        (.console-error-level):
+        (.console-warning-level):
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.source-code.text-editor > .CodeMirror .warning):
+        (.source-code.text-editor > .CodeMirror .error):
+        (.source-code.text-editor > .CodeMirror .issue-widget.warning):
+        (.source-code.text-editor > .CodeMirror .issue-widget.inline.warning):
+        (.source-code.text-editor > .CodeMirror .issue-widget.error):
+        (.source-code.text-editor > .CodeMirror .issue-widget.inline.error):
+        (@media (prefers-dark-interface)):
+        (.source-code.text-editor > .CodeMirror .issue-widget):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .property.has-warning):
+        (.spreadsheet-style-declaration-editor .property.has-warning .warning):
+        (@media (prefers-dark-interface)):
+        (.spreadsheet-style-declaration-editor :matches(.name, .value).editing):
+        * UserInterface/Views/Variables.css:
+        (:root):
+        (@media (prefers-dark-interface)):
+
+2018-10-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: previews aren't removed when the parent view is hidden
+        https://bugs.webkit.org/show_bug.cgi?id=190525
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView.prototype.attached):
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype.get canvases):
+        (WI.CanvasManager.prototype.get shaderPrograms):
+        Drive-by: simplify these getters.
+
+2018-10-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Dark Mode: Highlight text in Network Headers search is too dark
+        https://bugs.webkit.org/show_bug.cgi?id=190510
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ResourceHeadersContentView.css:
+        (.resource-headers.showing-find-banner .search-highlight):
+        Use adaptive text-color.
+
+2018-10-12  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: wrong color used for "goto arrow" for selected DOM breakpoint tree element
+        https://bugs.webkit.org/show_bug.cgi?id=190180
+        <rdar://problem/44927654>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Main.css:
+        (@media (prefers-dark-interface)):
+        (:focus .selected .go-to-arrow):
+
+2018-10-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: detail view reverts to "Response" when new requests are added
+        https://bugs.webkit.org/show_bug.cgi?id=190443
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._showDetailView):
+        Return early if we are already showing a detail view for the selected object.
+
+2018-10-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: remove unused  TreeOutline style .force-focus
+        https://bugs.webkit.org/show_bug.cgi?id=190480
+        <rdar://problem/45203484>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CallFrameTreeElement.css:
+        (.tree-outline:focus .item.call-frame.selected .status > .status-image):
+        (.tree-outline:matches(:focus, .force-focus) .item.call-frame.selected .status > .status-image): Deleted.
+
+        * UserInterface/Views/CanvasSidebarPanel.css:
+        (.sidebar > .panel.navigation.canvas > .content > .recording-content > .tree-outline:focus .item.processing.selected .subtitle > progress):
+        (.sidebar > .panel.navigation.canvas > .content > .recording-content > .tree-outline:matches(:focus, .force-focus) .item.processing.selected .subtitle > progress): Deleted.
+
+        * UserInterface/Views/DataGrid.css:
+        (body[dir=ltr] .data-grid:focus tr.selected td:not(:last-child)):
+        (body[dir=rtl] .data-grid:focus tr.selected td:not(:last-child)):
+        (.data-grid:focus tr.parent.selected td.disclosure::before):
+        (.data-grid:focus tr.parent.expanded.selected td.disclosure::before):
+        (.data-grid:focus tr.selected):
+        (.data-grid:focus tr.selected td .subtitle):
+        (body:not(.window-inactive, .window-docked-inactive) .data-grid:focus tr.editable.selected .cell-content > input):
+        (@media (prefers-dark-interface)):
+        (body[dir=ltr] .data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-child)): Deleted.
+        (body[dir=rtl] .data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-child)): Deleted.
+        (.data-grid:matches(:focus, .force-focus) tr.parent.selected td.disclosure::before): Deleted.
+        (.data-grid:matches(:focus, .force-focus) tr.parent.expanded.selected td.disclosure::before): Deleted.
+        (.data-grid:matches(:focus, .force-focus) tr.selected): Deleted.
+        (.data-grid:matches(:focus, .force-focus) tr.selected td .subtitle): Deleted.
+        (body:not(.window-inactive, .window-docked-inactive) .data-grid:matches(:focus, .force-focus) tr.editable.selected .cell-content > input): Deleted.
+
+        * UserInterface/Views/Main.css:
+        (:focus .selected .go-to-arrow):
+        (:focus .selected .go-to-arrow:active):
+        (:matches(:focus, .force-focus) .selected .go-to-arrow): Deleted.
+        (:matches(:focus, .force-focus) .selected .go-to-arrow:active): Deleted.
+
+        * UserInterface/Views/ProfileView.css:
+        (.profile > .data-grid:focus tr.selected td .location):
+        (.profile > .data-grid:matches(:focus, .force-focus) tr.selected td .location): Deleted.
+
+        * UserInterface/Views/RecordingActionTreeElement.css:
+        (.tree-outline:focus .item.action.selected:not(.initial-state, .invalid) > .icon):
+        (body:not(.window-inactive, .window-docked-inactive) .tree-outline:focus .item.action.selected > .titles .parameter.swizzled,):
+        (.tree-outline:matches(:focus, .force-focus) .item.action.selected:not(.initial-state, .invalid) > .icon): Deleted.
+        (body:not(.window-inactive, .window-docked-inactive) .tree-outline:matches(:focus, .force-focus) .item.action.selected > .titles .parameter.swizzled,): Deleted.
+
+        * UserInterface/Views/ScriptDetailsTimelineView.css:
+        (.tree-outline:focus .item.selected .alternate-subtitle):
+        (.tree-outline:matches(:focus, .force-focus) .item.selected .alternate-subtitle): Deleted.
+
+        * UserInterface/Views/ShaderProgramTreeElement.css:
+        (.tree-outline:focus .item.shader-program.selected .status > img):
+        (.tree-outline:matches(:focus, .force-focus) .item.shader-program.selected .status > img): Deleted.
+
+        * UserInterface/Views/ThreadTreeElement.css:
+        (.tree-outline:focus > .item.thread.selected .status-button.resume):
+        (.tree-outline:matches(:focus, .force-focus) > .item.thread.selected .status-button.resume): Deleted.
+
+        * UserInterface/Views/TimelineRecordBar.css:
+        (:focus .selected .timeline-record-bar > .segment):
+        (:focus .selected .timeline-record-bar > .segment.inactive):
+        (body[dir=ltr] :focus .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (body[dir=rtl] :focus .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+        (:matches(:focus, .force-focus) .selected .timeline-record-bar > .segment): Deleted.
+        (:matches(:focus, .force-focus) .selected .timeline-record-bar > .segment.inactive): Deleted.
+        (body[dir=ltr] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)): Deleted.
+        (body[dir=rtl] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)): Deleted.
+
+        * UserInterface/Views/TreeElementStatusButton.css:
+        (:focus .item.selected > .status > .status-button):
+        (:matches(:focus, .force-focus) .item.selected > .status > .status-button): Deleted.
+
+        * UserInterface/Views/TreeOutline.css:
+        (.tree-outline:focus .item.selected .disclosure-button):
+        (.tree-outline:focus .item.selected.expanded .disclosure-button):
+        (.tree-outline:focus .item.selected):
+        (.tree-outline:focus .item.selected .subtitle):
+        (.tree-outline:not(.large):focus .item.selected .status .indeterminate-progress-spinner):
+        (.tree-outline:matches(:focus, .force-focus) .item.selected .disclosure-button): Deleted.
+        (.tree-outline:matches(:focus, .force-focus) .item.selected.expanded .disclosure-button): Deleted.
+        (.tree-outline:matches(:focus, .force-focus) .item.selected): Deleted.
+        (.tree-outline:matches(:focus, .force-focus) .item.selected .subtitle): Deleted.
+        (.tree-outline:not(.large):matches(:focus, .force-focus) .item.selected .status .indeterminate-progress-spinner): Deleted.
+
+2018-10-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: detail view is not re-shown after sorting the Network table
+        https://bugs.webkit.org/show_bug.cgi?id=190330
+        <rdar://problem/45089607>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._restoreSelectedRow):
+
+2018-10-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: create special Network waterfall for media events
+        https://bugs.webkit.org/show_bug.cgi?id=189773
+        <rdar://problem/44626605>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Base/Utilities.js:
+
+        * UserInterface/Protocol/DOMObserver.js:
+        (WI.DOMObserver.prototype.didFireEvent): Added.
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.prototype.didFireEvent): Added.
+        * UserInterface/Models/DOMNode.js:
+        (WI.DOMNode):
+        (WI.DOMNode.prototype.get domEvents): Added.
+        (WI.DOMNode.prototype.didFireEvent): Added.
+        (WI.DOMNode.prototype._addDOMEvent): Added.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.shown):
+        (WI.NetworkTableContentView.prototype.hidden):
+        (WI.NetworkTableContentView.prototype.closed):
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype.showRepresentedObject):
+        (WI.NetworkTableContentView.prototype.networkDetailViewClose): Added.
+        (WI.NetworkTableContentView.prototype.tableSortChanged):
+        (WI.NetworkTableContentView.prototype.tableSelectionDidChange):
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph.positionByStartOffset): Added.
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph.setWidthForDuration): Added.
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph.createDOMEventLine): Added.
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph.appendBlock):
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph):
+        (WI.NetworkTableContentView.prototype._processPendingEntries):
+        (WI.NetworkTableContentView.prototype._rowIndexForRepresentedObject): Added.
+        (WI.NetworkTableContentView.prototype._updateEntryForResource):
+        (WI.NetworkTableContentView.prototype._hideDetailView): Added.
+        (WI.NetworkTableContentView.prototype._showDetailView): Added.
+        (WI.NetworkTableContentView.prototype._positionDetailView): Added.
+        (WI.NetworkTableContentView.prototype._resourceTransferSizeDidChange):
+        (WI.NetworkTableContentView.prototype._tryLinkResourceToDOMNode):
+        (WI.NetworkTableContentView.prototype._handleNodeDidFireEvent): Added.
+        (WI.NetworkTableContentView.prototype._updateFilteredEntries):
+        (WI.NetworkTableContentView.prototype._typeFilterScopeBarSelectionChanged):
+        (WI.NetworkTableContentView.prototype._urlFilterDidChange):
+        (WI.NetworkTableContentView.prototype._restoreSelectedRow):
+        (WI.NetworkTableContentView.prototype._waterfallPopoverContent): Added.
+        (WI.NetworkTableContentView.prototype._waterfallPopoverContentForResourceEntry): Added.
+        (WI.NetworkTableContentView.prototype._waterfallPopoverContentForNodeEntry): Added.
+        (WI.NetworkTableContentView.prototype._handleResourceEntryMousedownWaterfall): Added.
+        (WI.NetworkTableContentView.prototype._handleNodeEntryMousedownWaterfall): Added.
+        (WI.NetworkTableContentView.prototype._handleMousedownWaterfall): Added.
+        (WI.NetworkTableContentView.prototype.networkResourceDetailViewClose): Deleted.
+        (WI.NetworkTableContentView.prototype._rowIndexForResource): Deleted.
+        (WI.NetworkTableContentView.prototype._hideResourceDetailView): Deleted.
+        (WI.NetworkTableContentView.prototype._showResourceDetailView): Deleted.
+        (WI.NetworkTableContentView.prototype._waterfallPopoverContentForResource): Deleted.
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.content-view.network .network-table): Added.
+        (.network-table :not(.header) .cell.waterfall .waterfall-container > .dom-event): Added.
+        (.network-table :not(.header) .cell.waterfall .waterfall-container > .dom-activity): Added.
+        (.network-table :not(.header) .cell.waterfall .waterfall-container > .dom-activity.playing): Added.
+
+        * UserInterface/Views/NetworkDOMNodeDetailView.js: Added.
+        (WI.NetworkDOMNodeDetailView):
+        (WI.NetworkDOMNodeDetailView.prototype.initialLayout):
+        (WI.NetworkDOMNodeDetailView.prototype.showContentViewForIdentifier):
+
+        * UserInterface/Views/NetworkResourceDetailView.css:
+        (.content-view.resource-details):
+        (.network-resource-detail): Deleted.
+        (.network-resource-detail .navigation-bar): Deleted.
+        (.network-resource-detail .item.close > .glyph): Deleted.
+        (.network-resource-detail .item.close > .glyph:hover): Deleted.
+        (.network-resource-detail .item.close > .glyph:active): Deleted.
+        (.network .network-resource-detail .navigation-bar .item.radio.button.text-only): Deleted.
+        (.network .network-resource-detail .navigation-bar .item.radio.button.text-only.selected): Deleted.
+        (.network-resource-detail > .content-browser): Deleted.
+        (@media (prefers-dark-interface)): Deleted.
+        * UserInterface/Views/NetworkResourceDetailView.js:
+        (WI.NetworkResourceDetailView):
+        (WI.NetworkResourceDetailView.prototype.shown):
+        (WI.NetworkResourceDetailView.prototype.headersContentViewGoToRequestData):
+        (WI.NetworkResourceDetailView.prototype.sizesContentViewGoToHeaders):
+        (WI.NetworkResourceDetailView.prototype.sizesContentViewGoToRequestBody):
+        (WI.NetworkResourceDetailView.prototype.sizesContentViewGoToResponseBody):
+        (WI.NetworkResourceDetailView.prototype.initialLayout):
+        (WI.NetworkResourceDetailView.prototype.showContentViewForIdentifier):
+        (WI.NetworkResourceDetailView.prototype.get resource): Deleted.
+        (WI.NetworkResourceDetailView.prototype.hidden): Deleted.
+        (WI.NetworkResourceDetailView.prototype.dispose): Deleted.
+        (WI.NetworkResourceDetailView.prototype.willShowWithCookie): Deleted.
+        (WI.NetworkResourceDetailView.prototype.initialLayout): Deleted.
+        (WI.NetworkResourceDetailView.prototype._showPreferredContentView): Deleted.
+        (WI.NetworkResourceDetailView.prototype._showContentViewForNavigationItem): Deleted.
+        (WI.NetworkResourceDetailView.prototype._navigationItemSelected): Deleted.
+        (WI.NetworkResourceDetailView.prototype._handleCloseButton): Deleted.
+
+        * UserInterface/Views/NetworkDetailView.js: Added.
+        (WI.NetworkDetailView):
+        (WI.NetworkDetailView.prototype.get representedObject):
+        (WI.NetworkDetailView.prototype.shown):
+        (WI.NetworkDetailView.prototype.hidden):
+        (WI.NetworkDetailView.prototype.dispose):
+        (WI.NetworkDetailView.prototype.willShowWithCookie):
+        (WI.NetworkDetailView.prototype.initialLayout):
+        (WI.NetworkDetailView.prototype.createDetailNavigationItem):
+        (WI.NetworkDetailView.prototype.detailNavigationItemForIdentifier):
+        (WI.NetworkDetailView.prototype.showContentViewForIdentifier):
+        (WI.NetworkDetailView.prototype._showPreferredContentView):
+        (WI.NetworkDetailView.prototype._navigationItemSelected):
+        (WI.NetworkDetailView.prototype._handleCloseButton):
+        * UserInterface/Views/NetworkDetailView.css: Added.
+        (.network-detail):
+        (.network-detail .navigation-bar):
+        (.network-detail .item.close > .glyph):
+        (.network-detail .item.close > .glyph:hover):
+        (.network-detail .item.close > .glyph:active):
+        (.network .network-detail .navigation-bar .item.radio.button.text-only):
+        (.network .network-detail .navigation-bar .item.radio.button.text-only.selected):
+        (.network-detail > .content-browser):
+        (@media (prefers-dark-interface)):
+        Create base class for detail views shown in the Network tab.
+
+        * UserInterface/Views/DOMNodeEventsContentView.js: Added.
+        (WI.DOMNodeEventsContentView):
+        (WI.DOMNodeEventsContentView.prototype.initialLayout):
+        (WI.DOMNodeEventsContentView.prototype.closed):
+        (WI.DOMNodeEventsContentView.prototype._handleDOMNodeDidFireEvent):
+        * UserInterface/Views/DOMNodeEventsContentView.css: Added.
+        (.dom-node-details.dom-events):
+
+        * UserInterface/Views/DOMEventsBreakdownView.js: Added.
+        (WI.DOMEventsBreakdownView):
+        (WI.DOMEventsBreakdownView.prototype.addEvent):
+        (WI.DOMEventsBreakdownView.prototype.initialLayout):
+        (WI.DOMEventsBreakdownView.prototype._populateTable.percentOfTotalTime):
+        (WI.DOMEventsBreakdownView.prototype._populateTable):
+        * UserInterface/Views/DOMEventsBreakdownView.css: Added.
+        (.waterfall-popover-content .dom-events-breakdown):
+        (.dom-events-breakdown):
+        (.dom-events-breakdown table):
+        (.dom-events-breakdown tr > :matches(th, td)):
+        (.dom-events-breakdown tbody > tr):
+        (.dom-events-breakdown .graph):
+        (.dom-events-breakdown .graph > :matches(.point, .area)):
+        (.dom-events-breakdown .graph > .point):
+        (.dom-events-breakdown .time):
+
+        * UserInterface/Views/ResourceTimingBreakdownView.css:
+        (.resource-timing-breakdown > table > tr.header:not(.total-row) > td): Added.
+        (.popover.waterfall-popover): Deleted.
+
+2018-10-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r236853): Uncaught Exception: undefined is not an object (evaluating 'entry.resource')
+        https://bugs.webkit.org/show_bug.cgi?id=190442
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.reset):
+        It's unnecessary to deselect rows in the `WI.Table` when we're about to remove them.
+
+2018-10-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: selection in network table is lost when new entries are added
+        https://bugs.webkit.org/show_bug.cgi?id=190362
+
+        Reviewed by Matt Baker.
+
+        The `_selectedRows` list is cleared each time `reloadData` is called, meaning that
+        `WI.Table` expects its "owner" to restore the selection (since it doesn't know how). As a
+        result, `WI.NetworkTableContentView` needs to call `selectRow` _after_ `reloadData` is
+        called, not before.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.tableSortChanged):
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+        (WI.NetworkTableContentView.prototype._processPendingEntries):
+        (WI.NetworkTableContentView.prototype._insertResourceAndReloadTable):
+        (WI.NetworkTableContentView.prototype._updateSort): Added.
+        (WI.NetworkTableContentView.prototype._updateFilteredEntries):
+        (WI.NetworkTableContentView.prototype._reloadTable): Added.
+        (WI.NetworkTableContentView.prototype._resetFilters):
+        (WI.NetworkTableContentView.prototype._typeFilterScopeBarSelectionChanged):
+        (WI.NetworkTableContentView.prototype._handleGroupByDOMNodeCheckedDidChange):
+        (WI.NetworkTableContentView.prototype._urlFilterDidChange):
+        (WI.NetworkTableContentView.prototype._updateSortAndFilteredEntries): Deleted.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype.reloadData):
+        Ensure that the `_selectedRowIndex` is also reset.
+
 2018-10-10  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: notify the frontend when a canvas has started recording via console.record

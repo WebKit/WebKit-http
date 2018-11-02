@@ -524,7 +524,9 @@ webkit.org/b/179775 imported/w3c/web-platform-tests/xhr/firing-events-http-no-co
 
 webkit.org/b/172044 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/open-request-queue.html [ Pass Timeout ]
 
-webkit.org/b/189731 intersection-observer/no-document-leak.html [ Pass Timeout ]
+# Not supported on WK1
+imported/w3c/web-platform-tests/intersection-observer [ Skip ]
+intersection-observer [ Skip ]
 
 webkit.org/b/180898 accessibility/mac/AOM-events.html [ Skip ]
 webkit.org/b/183023 accessibility/mac/AOM-events-all.html [ Skip ]
@@ -629,8 +631,10 @@ webkit.org/b/189594 imported/w3c/web-platform-tests/css/css-animations/pending-s
 webkit.org/b/188070 imported/w3c/web-platform-tests/streams/piping/error-propagation-backward.html [ Pass Failure ]
 
 # Not supported on WK1
+fast/css-custom-paint [ Skip ]
 imported/w3c/web-platform-tests/css/css-properties-values-api/ [ Skip ]
 css-custom-properties-api [ Skip ]
+css-dark-mode [ Skip ]
 
 webkit.org/b/189908 imported/w3c/web-platform-tests/resource-timing/resource_timing.worker.html [ Failure ]
 

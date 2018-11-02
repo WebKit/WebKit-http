@@ -35,6 +35,7 @@
 #include "WebMetalRenderPassDepthAttachmentDescriptor.h"
 
 namespace WebCore {
+using namespace JSC;
 
 JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, Ref<WebMetalRenderPassAttachmentDescriptor>&& object)
 {

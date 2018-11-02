@@ -210,11 +210,14 @@ interface UIScriptController {
     // These callbacks also work for the form accessory views.
     attribute object didShowKeyboardCallback;
     attribute object didHideKeyboardCallback;
+    readonly attribute boolean isShowingKeyboard;
 
     attribute object willBeginZoomingCallback;
     attribute object didEndZoomingCallback;
 
     void zoomToScale(double scale, object callback);
+
+    void setViewScale(double scale);
 
     void scrollToOffset(long x, long y); // Initiate an animated scroll in the UI process.
     attribute object didEndScrollingCallback;

@@ -1,3 +1,123 @@
+2018-10-17  Charlie Turner  <cturner@igalia.com>
+
+        [EME] Sanity check key ID length in the keyids init data format
+        https://bugs.webkit.org/show_bug.cgi?id=190629
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * web-platform-tests/encrypted-media/clearkey-generate-request-disallowed-input.https-expected.txt:
+        Added new baseline.
+
+2018-10-16  Youenn Fablet  <youenn@apple.com>
+
+        Support RTCConfiguration.certificates
+        https://bugs.webkit.org/show_bug.cgi?id=190603
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCCertificate-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-constructor-expected.txt:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+
+2018-10-16  Chris Dumez  <cdumez@apple.com>
+
+        window.navigator should not become null after the window loses its browsing context
+        https://bugs.webkit.org/show_bug.cgi?id=190595
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline test which is not failing differently. The last check of this test is checking that
+        navigator.serviceWorker returns null after the frame has been detached. The test has been written
+        this way because this is how Chromium behaves. However, Firefox keeps returning the
+        ServiceWorkerContainer, as we do. Also, the specification indicates the the attribute cannot
+        return null (since the attribute is not nullable):
+        - https://w3c.github.io/ServiceWorker/#navigator-serviceworker
+
+        * web-platform-tests/service-workers/service-worker/detached-context.https-expected.txt:
+
+2018-10-16  Charlie Turner  <cturner@igalia.com>
+
+        [EME] Add some ClearKey baselines for passing tests
+        https://bugs.webkit.org/show_bug.cgi?id=190579
+
+        Reviewed by Unreviewed test gardening.
+
+        * web-platform-tests/encrypted-media/clearkey-check-initdata-type.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-events-session-closed-event.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-events.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-invalid-license.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-keystatuses-multiple-sessions.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-keystatuses.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-at-same-time.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-multiple-times-with-the-same-mediakeys.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-to-multiple-video-elements.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-syntax-mediakeysession.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-mp4-syntax-mediakeysystemaccess.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-not-callable-after-createsession.https-expected.txt: Added.
+        * web-platform-tests/encrypted-media/clearkey-update-non-ascii-input.https-expected.txt: Added.
+
+2018-10-15  Youenn Fablet  <youenn@apple.com>
+
+        RTCPeerConnection.generateCertificate is not a function
+        https://bugs.webkit.org/show_bug.cgi?id=173541
+        <rdar://problem/32638029>
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCCertificate-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-generateCertificate-expected.txt:
+        * web-platform-tests/webrtc/interfaces.https-expected.txt:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+
+2018-10-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237054.
+        https://bugs.webkit.org/show_bug.cgi?id=190593
+
+        "this regressed JetStream 2 by 6% on iOS" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] JSC should have "parseFunction" to optimize Function
+        constructor"
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+        https://trac.webkit.org/changeset/237054
+
+2018-10-15  YUHAN WU  <yuhan_wu@apple.com>
+
+        Implement error handler of MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=190438
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/mediacapture-record/MediaRecorder-error-expected.txt: Added.
+        * web-platform-tests/mediacapture-record/MediaRecorder-error.html: Added.
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Window's properties such as 'location' should not become null when it loses its browsing context
+        https://bugs.webkit.org/show_bug.cgi?id=190539
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline WPT test whose output has changed.
+
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/url.window-expected.txt:
+
+2018-10-08  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] JSC should have "parseFunction" to optimize Function constructor
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        Reviewed by Mark Lam.
+
+        * web-platform-tests/html/webappapis/scripting/events/inline-event-handler-ordering-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/events/invalid-uncompiled-raw-handler-compiled-late-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-in-attribute-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-in-body-onerror-expected.txt:
+
 2018-10-10  Chris Dumez  <cdumez@apple.com>
 
         Unreviewed, rolling out r236802.

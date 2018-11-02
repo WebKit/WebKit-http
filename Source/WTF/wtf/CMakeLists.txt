@@ -197,7 +197,6 @@ set(WTF_PUBLIC_HEADERS
     ScopedLambda.h
     Seconds.h
     SegmentedVector.h
-    Semaphore.h
     SentinelLinkedList.h
     SetForScope.h
     SharedTask.h
@@ -210,6 +209,7 @@ set(WTF_PUBLIC_HEADERS
     SoftLinking.h
     Spectrum.h
     StackBounds.h
+    StackPointer.h
     StackShot.h
     StackShotProfiler.h
     StackStats.h
@@ -253,6 +253,7 @@ set(WTF_PUBLIC_HEADERS
     Variant.h
     Vector.h
     VectorTraits.h
+    WTFSemaphore.h
     WallTime.h
     WeakPtr.h
     WeakRandom.h
@@ -384,6 +385,7 @@ set(WTF_SOURCES
     Seconds.cpp
     SixCharacterHash.cpp
     StackBounds.cpp
+    StackPointer.cpp
     StackStats.cpp
     StackTrace.cpp
     StringPrintStream.cpp

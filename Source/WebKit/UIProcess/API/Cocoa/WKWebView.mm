@@ -1525,6 +1525,21 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
     _page->didLayoutForCustomContentProvider();
 }
 
+- (void)_handleKeyUIEvent:(::UIEvent *)event
+{
+    // We only want to handle key events from the hardware keyboard when we are
+    // first responder and a custom content view is installed; otherwise,
+    // WKContentView will be the first responder and expects to get key events directly.
+    if ([self isFirstResponder] && event._hidEvent) {
+        if ([_customContentView respondsToSelector:@selector(web_handleKeyEvent:)]) {
+            if ([_customContentView web_handleKeyEvent:event])
+                return;
+        }
+    }
+
+    [super _handleKeyUIEvent:event];
+}
+
 - (void)_willInvokeUIScrollViewDelegateCallback
 {
     _delayUpdateVisibleContentRects = YES;
@@ -2625,7 +2640,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         return;
 
     LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView " << _page->pageID() << " _dispatchSetViewLayoutSize:] " << viewLayoutSize << " contentZoomScale " << contentZoomScale(self));
-    _page->setViewportConfigurationViewLayoutSize(viewLayoutSize);
+    _page->setViewportConfigurationViewLayoutSize(viewLayoutSize, _page->layoutSizeScaleFactor());
     _lastSentViewLayoutSize = viewLayoutSize;
 }
 
@@ -4972,6 +4987,8 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_saveBackForwardSnapshotForItem:(WKBackForwardListItem *)item
 {
+    if (!item)
+        return;
     _page->recordNavigationSnapshot(item._item);
 }
 
@@ -5133,18 +5150,25 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (CGFloat)_viewScale
 {
+#if PLATFORM(MAC)
     return _page->viewScaleFactor();
+#else
+    return _page->layoutSizeScaleFactor();
+#endif
 }
 
 - (void)_setViewScale:(CGFloat)viewScale
 {
-#if PLATFORM(MAC)
-    _impl->setViewScale(viewScale);
-#else
     if (viewScale <= 0 || isnan(viewScale) || isinf(viewScale))
         [NSException raise:NSInvalidArgumentException format:@"View scale should be a positive number"];
 
-    _page->scaleView(viewScale);
+#if PLATFORM(MAC)
+    _impl->setViewScale(viewScale);
+#else
+    if (_page->layoutSizeScaleFactor() == viewScale)
+        return;
+
+    _page->setViewportConfigurationViewLayoutSize([self activeViewLayoutSize:self.bounds], viewScale);
 #endif
 }
 

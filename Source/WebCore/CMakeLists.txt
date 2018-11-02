@@ -38,6 +38,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/mediasession"
     "${WEBCORE_DIR}/Modules/mediasource"
     "${WEBCORE_DIR}/Modules/mediastream"
+    "${WEBCORE_DIR}/Modules/mediastream/libwebrtc"
     "${WEBCORE_DIR}/Modules/mediarecorder"
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
     "${WEBCORE_DIR}/Modules/notifications"
@@ -288,6 +289,7 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/mediarecorder/BlobEvent.idl
     Modules/mediarecorder/MediaRecorder.idl
+    Modules/mediarecorder/MediaRecorderErrorEvent.idl
 
     Modules/mediasession/HTMLMediaElementMediaSession.idl
     Modules/mediasession/MediaRemoteControls.idl
@@ -313,6 +315,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/OverconstrainedError.idl
     Modules/mediastream/OverconstrainedErrorEvent.idl
     Modules/mediastream/RTCAnswerOptions.idl
+    Modules/mediastream/RTCCertificate.idl
     Modules/mediastream/RTCConfiguration.idl
     Modules/mediastream/RTCDTMFSender.idl
     Modules/mediastream/RTCDTMFToneChangeEvent.idl
@@ -529,6 +532,8 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSKeyframesRule.idl
     css/CSSMediaRule.idl
     css/CSSNamespaceRule.idl
+    css/CSSPaintCallback.idl
+    css/CSSPaintWorkletGlobalScope.idl
     css/CSSPageRule.idl
     css/CSSRule.idl
     css/CSSRuleList.idl
@@ -539,6 +544,7 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSUnknownRule.idl
     css/DOMCSSCustomPropertyDescriptor.idl
     css/DOMCSSNamespace.idl
+    css/DOMCSSPaintWorklet.idl
     css/DOMCSSRegisterCustomProperty.idl
     css/DOMMatrix.idl
     css/DOMMatrix2DInit.idl

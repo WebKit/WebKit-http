@@ -211,6 +211,11 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
         RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(enabled);
 #endif
 
+#if ENABLE(WEBGPU)
+    if (preference == "WebKitWebGPUEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setWebGPUEnabled(enabled);
+#endif
+
 #if ENABLE(WEBMETAL)
     if (preference == "WebKitWebMetalEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setWebMetalEnabled(enabled);
@@ -250,6 +255,11 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
 
     if (preference == "CSSCustomPropertiesAndValuesEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setCSSCustomPropertiesAndValuesEnabled(enabled);
+
+#if ENABLE(CSS_PAINTING_API)
+    if (preference == "CSSPaintingAPIEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setCSSPaintingAPIEnabled(enabled);
+#endif
 
     // Map the names used in LayoutTests with the names used in WebCore::Settings and WebPreferencesStore.
 #define FOR_EACH_OVERRIDE_BOOL_PREFERENCE(macro) \

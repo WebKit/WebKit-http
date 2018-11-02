@@ -33,6 +33,7 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
         this._canvasIdentifierMap = new Map;
         this._shaderProgramIdentifierMap = new Map;
+        this._importedRecordings = new Set;
 
         if (window.CanvasAgent)
             CanvasAgent.enable();
@@ -40,14 +41,16 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
     // Public
 
+    get importedRecordings() { return this._importedRecordings; }
+
     get canvases()
     {
-        return [...this._canvasIdentifierMap.values()];
+        return Array.from(this._canvasIdentifierMap.values());
     }
 
     get shaderPrograms()
     {
-        return [...this._shaderProgramIdentifierMap.values()];
+        return Array.from(this._shaderProgramIdentifierMap.values());
     }
 
     importRecording()
@@ -74,6 +77,8 @@ WI.CanvasManager = class CanvasManager extends WI.Object
             if (extensionStart !== -1)
                 filename = filename.substring(0, extensionStart);
             recording.createDisplayName(filename);
+
+            this._importedRecordings.add(recording);
 
             this.dispatchEventToListeners(WI.CanvasManager.Event.RecordingImported, {recording});
         });

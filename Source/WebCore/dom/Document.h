@@ -88,6 +88,7 @@ class Attr;
 class CDATASection;
 class CSSCustomPropertyValue;
 class CSSFontSelector;
+class CSSPaintWorkletGlobalScope;
 class CSSStyleDeclaration;
 class CSSStyleSheet;
 class CachedCSSStyleSheet;
@@ -200,9 +201,9 @@ class XPathResult;
 template<typename> class ExceptionOr;
 
 enum CollectionType;
-enum class ShouldOpenExternalURLsPolicy;
+enum class ShouldOpenExternalURLsPolicy : uint8_t;
 
-enum class RouteSharingPolicy;
+enum class RouteSharingPolicy : uint8_t;
 
 using PlatformDisplayID = uint32_t;
 
@@ -571,8 +572,8 @@ public:
 
     float deviceScaleFactor() const;
 
-    bool useSystemAppearance() const;
-    bool useDarkAppearance() const;
+    WEBCORE_EXPORT bool useSystemAppearance() const;
+    WEBCORE_EXPORT bool useDarkAppearance() const;
 
     OptionSet<StyleColor::Options> styleColorOptions() const;
 
@@ -893,6 +894,15 @@ public:
     void processDisabledAdaptations(const String& adaptations);
     void updateViewportArguments();
     void processReferrerPolicy(const String& policy, ReferrerPolicySource);
+
+#if ENABLE(DARK_MODE_CSS)
+    enum class ColorSchemes : uint8_t {
+        Light = 1 << 0,
+        Dark = 1 << 1
+    };
+
+    void processSupportedColorSchemes(const String& colorSchemes);
+#endif
 
     // Returns the owning element in the parent document.
     // Returns 0 if this is the top level document.
@@ -1384,8 +1394,8 @@ public:
     void addIntersectionObserver(IntersectionObserver&);
     void removeIntersectionObserver(IntersectionObserver&);
     unsigned numberOfIntersectionObservers() const { return m_intersectionObservers.size(); }
+    void scheduleForcedIntersectionObservationUpdate();
     void updateIntersectionObservations();
-    void scheduleIntersectionObservationUpdate();
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -1501,6 +1511,10 @@ public:
 
     const CSSRegisteredCustomPropertySet& getCSSRegisteredCustomPropertySet() const { return m_CSSRegisteredPropertySet; }
     bool registerCSSProperty(CSSRegisteredCustomProperty&&);
+
+#if ENABLE(CSS_PAINTING_API)
+    CSSPaintWorkletGlobalScope& ensureCSSPaintWorkletGlobalScope();
+#endif
 
     void setAsRunningUserScripts() { m_isRunningUserScripts = true; }
     bool isRunningUserScripts() const { return m_isRunningUserScripts; }
@@ -1746,6 +1760,10 @@ private:
     std::unique_ptr<SVGDocumentExtensions> m_svgExtensions;
     HashSet<SVGUseElement*> m_svgUseElements;
 
+#if ENABLE(DARK_MODE_CSS)
+    OptionSet<ColorSchemes> m_supportedColorSchemes { ColorSchemes::Light };
+#endif
+
 #if ENABLE(DASHBOARD_SUPPORT)
     Vector<AnnotatedRegionValue> m_annotatedRegions;
     bool m_hasAnnotatedRegions { false };
@@ -1807,10 +1825,6 @@ private:
 #if ENABLE(INTERSECTION_OBSERVER)
     Vector<WeakPtr<IntersectionObserver>> m_intersectionObservers;
     Vector<WeakPtr<IntersectionObserver>> m_intersectionObserversWithPendingNotifications;
-
-    // FIXME: Schedule intersection observation updates in a way that fits into the HTML
-    // EventLoop. See https://bugs.webkit.org/show_bug.cgi?id=160711.
-    Timer m_intersectionObservationUpdateTimer;
     Timer m_intersectionObserversNotifyTimer;
 #endif
 
@@ -1999,7 +2013,7 @@ private:
 #endif
 
 #if ENABLE(INTERSECTION_OBSERVER)
-    bool m_needsIntersectionObservationUpdate { false };
+    bool m_needsForcedIntersectionObservationUpdate { false };
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -2040,6 +2054,10 @@ private:
     std::unique_ptr<UserGestureIndicator> m_temporaryUserGesture;
 
     CSSRegisteredCustomPropertySet m_CSSRegisteredPropertySet;
+
+#if ENABLE(CSS_PAINTING_API)
+    RefPtr<CSSPaintWorkletGlobalScope> m_CSSPaintWorkletGlobalScope;
+#endif
 
     bool m_isRunningUserScripts { false };
 };

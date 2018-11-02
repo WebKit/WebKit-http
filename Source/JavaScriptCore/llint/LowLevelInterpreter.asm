@@ -154,6 +154,8 @@ end
 # These declarations must match interpreter/JSStack.h.
 
 const PtrSize = constexpr (sizeof(void*))
+const MachineRegisterSize = constexpr (sizeof(CPURegister))
+const SlotSize = constexpr (sizeof(Register))
 
 if JSVALUE64
     const CallFrameHeaderSlots = 5
@@ -161,20 +163,19 @@ else
     const CallFrameHeaderSlots = 4
     const CallFrameAlignSlots = 1
 end
-const SlotSize = 8
 
 const JSLexicalEnvironment_variables = (sizeof JSLexicalEnvironment + SlotSize - 1) & ~(SlotSize - 1)
 const DirectArguments_storage = (sizeof DirectArguments + SlotSize - 1) & ~(SlotSize - 1)
 
-const StackAlignment = 16
-const StackAlignmentSlots = 2
+const StackAlignment = constexpr (stackAlignmentBytes())
+const StackAlignmentSlots = constexpr (stackAlignmentRegisters())
 const StackAlignmentMask = StackAlignment - 1
 
-const CallerFrameAndPCSize = 2 * PtrSize
+const CallerFrameAndPCSize = constexpr (sizeof(CallerFrameAndPC))
 
 const CallerFrame = 0
-const ReturnPC = CallerFrame + PtrSize
-const CodeBlock = ReturnPC + PtrSize
+const ReturnPC = CallerFrame + MachineRegisterSize
+const CodeBlock = ReturnPC + MachineRegisterSize
 const Callee = CodeBlock + SlotSize
 const ArgumentCount = Callee + SlotSize
 const ThisArgumentOffset = ArgumentCount + SlotSize
@@ -183,25 +184,25 @@ const CallFrameHeaderSize = ThisArgumentOffset
 
 # Some value representation constants.
 if JSVALUE64
-    const TagBitTypeOther = 0x2
-    const TagBitBool      = 0x4
-    const TagBitUndefined = 0x8
-    const ValueEmpty      = 0x0
-    const ValueFalse      = TagBitTypeOther | TagBitBool
-    const ValueTrue       = TagBitTypeOther | TagBitBool | 1
-    const ValueUndefined  = TagBitTypeOther | TagBitUndefined
-    const ValueNull       = TagBitTypeOther
-    const TagTypeNumber   = 0xffff000000000000
-    const TagMask         = TagTypeNumber | TagBitTypeOther
+    const TagBitTypeOther = constexpr TagBitTypeOther
+    const TagBitBool      = constexpr TagBitBool
+    const TagBitUndefined = constexpr TagBitUndefined
+    const ValueEmpty      = constexpr ValueEmpty
+    const ValueFalse      = constexpr ValueFalse
+    const ValueTrue       = constexpr ValueTrue
+    const ValueUndefined  = constexpr ValueUndefined
+    const ValueNull       = constexpr ValueNull
+    const TagTypeNumber   = constexpr TagTypeNumber
+    const TagMask         = constexpr TagMask
 else
-    const Int32Tag = -1
-    const BooleanTag = -2
-    const NullTag = -3
-    const UndefinedTag = -4
-    const CellTag = -5
-    const EmptyValueTag = -6
-    const DeletedValueTag = -7
-    const LowestTag = DeletedValueTag
+    const Int32Tag = constexpr JSValue::Int32Tag
+    const BooleanTag = constexpr JSValue::BooleanTag
+    const NullTag = constexpr JSValue::NullTag
+    const UndefinedTag = constexpr JSValue::UndefinedTag
+    const CellTag = constexpr JSValue::CellTag
+    const EmptyValueTag = constexpr JSValue::EmptyValueTag
+    const DeletedValueTag = constexpr JSValue::DeletedValueTag
+    const LowestTag = constexpr JSValue::LowestTag
 end
 
 # PutByIdFlags data
@@ -221,19 +222,9 @@ const PutByIdSecondaryTypeObject = constexpr PutByIdSecondaryTypeObject
 const PutByIdSecondaryTypeObjectOrOther = constexpr PutByIdSecondaryTypeObjectOrOther
 const PutByIdSecondaryTypeTop = constexpr PutByIdSecondaryTypeTop
 
-const CallOpCodeSize = 9
+const CallOpCodeSize = constexpr op_call_length
 
-if X86_64 or ARM64 or ARM64E or C_LOOP
-    const maxFrameExtentForSlowPathCall = 0
-elsif ARM or ARMv7_TRADITIONAL or ARMv7
-    const maxFrameExtentForSlowPathCall = 24
-elsif X86 or X86_WIN
-    const maxFrameExtentForSlowPathCall = 40
-elsif MIPS
-    const maxFrameExtentForSlowPathCall = 40
-elsif X86_64_WIN
-    const maxFrameExtentForSlowPathCall = 64
-end
+const maxFrameExtentForSlowPathCall = constexpr maxFrameExtentForSlowPathCall
 
 if X86_64 or X86_64_WIN or ARM64 or ARM64E
     const CalleeSaveSpaceAsVirtualRegisters = 3
@@ -253,12 +244,12 @@ const IsInvalidated = constexpr IsInvalidated
 const ShadowChickenTailMarker = constexpr ShadowChicken::Packet::tailMarkerValue
 
 # ArithProfile data
-const ArithProfileInt = 0x400000
-const ArithProfileIntInt = 0x480000
-const ArithProfileNumber = 0x800000
-const ArithProfileNumberInt = 0x880000
-const ArithProfileNumberNumber = 0x900000
-const ArithProfileIntNumber = 0x500000
+const ArithProfileInt = constexpr (ArithProfile::observedUnaryInt().bits())
+const ArithProfileNumber = constexpr (ArithProfile::observedUnaryNumber().bits())
+const ArithProfileIntInt = constexpr (ArithProfile::observedBinaryIntInt().bits())
+const ArithProfileNumberInt = constexpr (ArithProfile::observedBinaryNumberInt().bits())
+const ArithProfileIntNumber = constexpr (ArithProfile::observedBinaryIntNumber().bits())
+const ArithProfileNumberNumber = constexpr (ArithProfile::observedBinaryNumberNumber().bits())
 
 # Pointer Tags
 const BytecodePtrTag = constexpr BytecodePtrTag
@@ -294,35 +285,35 @@ if JSVALUE64
     end
 
     macro loadisFromInstruction(offset, dest)
-        loadis offset * 8[PB, PC, 8], dest
+        loadis offset * PtrSize[PB, PC, PtrSize], dest
     end
     
     macro loadpFromInstruction(offset, dest)
-        loadp offset * 8[PB, PC, 8], dest
+        loadp offset * PtrSize[PB, PC, PtrSize], dest
     end
 
     macro loadisFromStruct(offset, dest)
-        loadis offset[PB, PC, 8], dest
+        loadis offset[PB, PC, PtrSize], dest
     end
 
     macro loadpFromStruct(offset, dest)
-        loadp offset[PB, PC, 8], dest
+        loadp offset[PB, PC, PtrSize], dest
     end
 
     macro storeisToInstruction(value, offset)
-        storei value, offset * 8[PB, PC, 8]
+        storei value, offset * PtrSize[PB, PC, PtrSize]
     end
 
     macro storepToInstruction(value, offset)
-        storep value, offset * 8[PB, PC, 8]
+        storep value, offset * PtrSize[PB, PC, PtrSize]
     end
 
     macro storeisFromStruct(value, offset)
-        storei value, offset[PB, PC, 8]
+        storei value, offset[PB, PC, PtrSize]
     end
 
     macro storepFromStruct(value, offset)
-        storep value, offset[PB, PC, 8]
+        storep value, offset[PB, PC, PtrSize]
     end
 
 else
@@ -359,13 +350,8 @@ else
 end
 
 # Constants for reasoning about value representation.
-if BIG_ENDIAN
-    const TagOffset = 0
-    const PayloadOffset = 4
-else
-    const TagOffset = 4
-    const PayloadOffset = 0
-end
+const TagOffset = constexpr TagOffset
+const PayloadOffset = constexpr PayloadOffset
 
 # Constant for reasoning about butterflies.
 const IsArray                  = constexpr IsArray
@@ -420,10 +406,10 @@ const ModuleCode = constexpr ModuleCode
 const LLIntReturnPC = ArgumentCount + TagOffset
 
 # String flags.
-const HashFlags8BitBuffer = 8
+const HashFlags8BitBuffer = constexpr StringImpl::s_hashFlag8BitBuffer
 
 # Copied from PropertyOffset.h
-const firstOutOfLineOffset = 100
+const firstOutOfLineOffset = constexpr firstOutOfLineOffset
 
 # ResolveType
 const GlobalProperty = constexpr GlobalProperty
@@ -447,13 +433,6 @@ const MarkedBlockMask = ~(MarkedBlockSize - 1)
 const MarkedBlockFooterOffset = constexpr MarkedBlock::offsetOfFooter
 
 const BlackThreshold = constexpr blackThreshold
-
-# Allocation constants
-if JSVALUE64
-    const JSFinalObjectSizeClassIndex = 1
-else
-    const JSFinalObjectSizeClassIndex = 3
-end
 
 # This must match wtf/Vector.h
 const VectorBufferOffset = 0
@@ -574,7 +553,7 @@ elsif X86 or X86_WIN
     const CalleeSaveRegisterCount = 3
 end
 
-const CalleeRegisterSaveSize = CalleeSaveRegisterCount * PtrSize
+const CalleeRegisterSaveSize = CalleeSaveRegisterCount * MachineRegisterSize
 
 # VMEntryTotalFrameSize includes the space for struct VMEntryRecord and the
 # callee save registers rounded up to keep the stack aligned
@@ -697,16 +676,16 @@ macro copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(vm, temp)
         vmEntryRecord(temp, temp)
         leap VMEntryRecord::calleeSaveRegistersBuffer[temp], temp
         if ARM64 or ARM64E
-            storep csr0, [temp]
-            storep csr1, 8[temp]
-            storep csr2, 16[temp]
-            storep csr3, 24[temp]
-            storep csr4, 32[temp]
-            storep csr5, 40[temp]
-            storep csr6, 48[temp]
-            storep csr7, 56[temp]
-            storep csr8, 64[temp]
-            storep csr9, 72[temp]
+            storeq csr0, [temp]
+            storeq csr1, 8[temp]
+            storeq csr2, 16[temp]
+            storeq csr3, 24[temp]
+            storeq csr4, 32[temp]
+            storeq csr5, 40[temp]
+            storeq csr6, 48[temp]
+            storeq csr7, 56[temp]
+            storeq csr8, 64[temp]
+            storeq csr9, 72[temp]
             stored csfr0, 80[temp]
             stored csfr1, 88[temp]
             stored csfr2, 96[temp]
@@ -716,19 +695,19 @@ macro copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(vm, temp)
             stored csfr6, 128[temp]
             stored csfr7, 136[temp]
         elsif X86_64
-            storep csr0, [temp]
-            storep csr1, 8[temp]
-            storep csr2, 16[temp]
-            storep csr3, 24[temp]
-            storep csr4, 32[temp]
+            storeq csr0, [temp]
+            storeq csr1, 8[temp]
+            storeq csr2, 16[temp]
+            storeq csr3, 24[temp]
+            storeq csr4, 32[temp]
         elsif X86_64_WIN
-            storep csr0, [temp]
-            storep csr1, 8[temp]
-            storep csr2, 16[temp]
-            storep csr3, 24[temp]
-            storep csr4, 32[temp]
-            storep csr5, 40[temp]
-            storep csr6, 48[temp]
+            storeq csr0, [temp]
+            storeq csr1, 8[temp]
+            storeq csr2, 16[temp]
+            storeq csr3, 24[temp]
+            storeq csr4, 32[temp]
+            storeq csr5, 40[temp]
+            storeq csr6, 48[temp]
         end
     end
 end
@@ -739,16 +718,16 @@ macro restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(vm, temp)
         vmEntryRecord(temp, temp)
         leap VMEntryRecord::calleeSaveRegistersBuffer[temp], temp
         if ARM64 or ARM64E
-            loadp [temp], csr0
-            loadp 8[temp], csr1
-            loadp 16[temp], csr2
-            loadp 24[temp], csr3
-            loadp 32[temp], csr4
-            loadp 40[temp], csr5
-            loadp 48[temp], csr6
-            loadp 56[temp], csr7
-            loadp 64[temp], csr8
-            loadp 72[temp], csr9
+            loadq [temp], csr0
+            loadq 8[temp], csr1
+            loadq 16[temp], csr2
+            loadq 24[temp], csr3
+            loadq 32[temp], csr4
+            loadq 40[temp], csr5
+            loadq 48[temp], csr6
+            loadq 56[temp], csr7
+            loadq 64[temp], csr8
+            loadq 72[temp], csr9
             loadd 80[temp], csfr0
             loadd 88[temp], csfr1
             loadd 96[temp], csfr2
@@ -758,19 +737,19 @@ macro restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(vm, temp)
             loadd 128[temp], csfr6
             loadd 136[temp], csfr7
         elsif X86_64
-            loadp [temp], csr0
-            loadp 8[temp], csr1
-            loadp 16[temp], csr2
-            loadp 24[temp], csr3
-            loadp 32[temp], csr4
+            loadq [temp], csr0
+            loadq 8[temp], csr1
+            loadq 16[temp], csr2
+            loadq 24[temp], csr3
+            loadq 32[temp], csr4
         elsif X86_64_WIN
-            loadp [temp], csr0
-            loadp 8[temp], csr1
-            loadp 16[temp], csr2
-            loadp 24[temp], csr3
-            loadp 32[temp], csr4
-            loadp 40[temp], csr5
-            loadp 48[temp], csr6
+            loadq [temp], csr0
+            loadq 8[temp], csr1
+            loadq 16[temp], csr2
+            loadq 24[temp], csr3
+            loadq 32[temp], csr4
+            loadq 40[temp], csr5
+            loadq 48[temp], csr6
         end
     end
 end
@@ -884,9 +863,9 @@ macro prepareForTailCall(callee, temp1, temp2, temp3, callPtrTag)
     andi ~StackAlignmentMask, temp2
 
     if ARM or ARMv7_TRADITIONAL or ARMv7 or ARM64 or ARM64E or C_LOOP or MIPS
-        addp 2 * PtrSize, sp
-        subi 2 * PtrSize, temp2
-        loadp PtrSize[cfr], lr
+        addp CallerFrameAndPCSize, sp
+        subi CallerFrameAndPCSize, temp2
+        loadp CallerFrameAndPC::returnPC[cfr], lr
     else
         addp PtrSize, sp
         subi PtrSize, temp2
@@ -903,10 +882,17 @@ macro prepareForTailCall(callee, temp1, temp2, temp3, callPtrTag)
     loadp [cfr], cfr
 
 .copyLoop:
-    subi PtrSize, temp2
-    loadp [sp, temp2, 1], temp3
-    storep temp3, [temp1, temp2, 1]
-    btinz temp2, .copyLoop
+    if ARM64 and not ADDRESS64
+        subi MachineRegisterSize, temp2
+        loadq [sp, temp2, 1], temp3
+        storeq temp3, [temp1, temp2, 1]
+        btinz temp2, .copyLoop
+    else
+        subi PtrSize, temp2
+        loadp [sp, temp2, 1], temp3
+        storep temp3, [temp1, temp2, 1]
+        btinz temp2, .copyLoop
+    end
 
     move temp1, sp
     jmp callee, callPtrTag
@@ -1109,7 +1095,7 @@ macro prologue(codeBlockGetter, codeBlockSetter, osrSlowPath, traceSlowPath)
 
     if JSVALUE64
         move TagTypeNumber, tagTypeNumber
-        addp TagBitTypeOther, tagTypeNumber, tagMask
+        addq TagBitTypeOther, tagTypeNumber, tagMask
     end
 end
 
@@ -1263,7 +1249,7 @@ macro setEntryAddress(index, label)
     elsif ARM64 or ARM64E
         pcrtoaddr label, t1
         move index, t4
-        storep t1, [a0, t4, 8]
+        storep t1, [a0, t4, PtrSize]
     elsif ARM or ARMv7 or ARMv7_TRADITIONAL
         mvlbl (label - _relativePCBase), t4
         addp t4, t1, t4

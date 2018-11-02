@@ -228,6 +228,7 @@ WI.TextEditor = class TextEditor extends WI.View
     set selectedTextRange(textRange)
     {
         var position = this._codeMirrorPositionFromTextRange(textRange);
+        this.focus();
         this._codeMirror.setSelection(position.start, position.end);
     }
 
@@ -520,7 +521,7 @@ WI.TextEditor = class TextEditor extends WI.View
         let lineHandle = this._codeMirror.getLineHandle(line);
 
         if (!textRangeToSelect) {
-            let column = Number.constrain(position.columnNumber, 0, this._codeMirror.getLine(line).length - 1);
+            let column = Number.constrain(position.columnNumber, 0, this._codeMirror.getLine(line).length);
             textRangeToSelect = new WI.TextRange(line, column, line, column);
         }
 
@@ -1345,8 +1346,8 @@ WI.TextEditor = class TextEditor extends WI.View
                 end = {line: this._executionLineNumber};
             } else {
                 // Highlight the range.
-                start = range.startPosition;
-                end = range.endPosition;
+                start = range.startPosition.toCodeMirror();
+                end = range.endPosition.toCodeMirror();
             }
 
             // Ensure the marker is cleared in case there were multiple updates very quickly.

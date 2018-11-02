@@ -9663,12 +9663,13 @@ private:
         LValue index = m_out.bitAnd(mask, unmaskedIndex);
 
         LValue bucket;
+
         if (m_node->child1().useKind() == WeakMapObjectUse) {
-            static_assert(sizeof(WeakMapBucket<WeakMapBucketDataKeyValue>) == 16, "");
-            bucket = m_out.add(buffer, m_out.shl(m_out.zeroExt(index, Int64), m_out.constInt32(4)));
+            static_assert(hasOneBitSet(sizeof(WeakMapBucket<WeakMapBucketDataKeyValue>)), "Should be a power of 2");
+            bucket = m_out.add(buffer, m_out.shl(m_out.zeroExt(index, Int64), m_out.constInt32(getLSBSet(sizeof(WeakMapBucket<WeakMapBucketDataKeyValue>)))));
         } else {
-            static_assert(sizeof(WeakMapBucket<WeakMapBucketDataKey>) == 8, "");
-            bucket = m_out.add(buffer, m_out.shl(m_out.zeroExt(index, Int64), m_out.constInt32(3)));
+            static_assert(hasOneBitSet(sizeof(WeakMapBucket<WeakMapBucketDataKey>)), "Should be a power of 2");
+            bucket = m_out.add(buffer, m_out.shl(m_out.zeroExt(index, Int64), m_out.constInt32(getLSBSet(sizeof(WeakMapBucket<WeakMapBucketDataKey>)))));
         }
 
         LValue bucketKey = m_out.load64(bucket, m_heaps.WeakMapBucket_key);
@@ -14427,6 +14428,18 @@ private:
     
     LValue doubleToInt32(LValue doubleValue)
     {
+#if CPU(ARM64)
+        if (MacroAssemblerARM64::supportsDoubleToInt32ConversionUsingJavaScriptSemantics()) {
+            PatchpointValue* patchpoint = m_out.patchpoint(Int32);
+            patchpoint->append(ConstrainedValue(doubleValue, B3::ValueRep::SomeRegister));
+            patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                jit.convertDoubleToInt32UsingJavaScriptSemantics(params[1].fpr(), params[0].gpr());
+            });
+            patchpoint->effects = Effects::none();
+            return patchpoint;
+        }
+#endif
+
         if (hasSensibleDoubleToInt())
             return sensibleDoubleToInt32(doubleValue);
         

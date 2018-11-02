@@ -120,6 +120,7 @@ UIProcess/API/glib/WebKitContextMenuClient.cpp @no-unify
 UIProcess/API/glib/WebKitCookieManager.cpp @no-unify
 UIProcess/API/glib/WebKitCredential.cpp @no-unify
 UIProcess/API/glib/WebKitCustomProtocolManagerClient.cpp @no-unify
+UIProcess/API/glib/WebKitDeviceInfoPermissionRequest.cpp @no-unify
 UIProcess/API/glib/WebKitDownload.cpp @no-unify
 UIProcess/API/glib/WebKitDownloadClient.cpp @no-unify
 UIProcess/API/glib/WebKitEditorState.cpp @no-unify
@@ -176,7 +177,11 @@ UIProcess/Automation/cairo/WebAutomationSessionCairo.cpp
 
 UIProcess/Automation/wpe/WebAutomationSessionWPE.cpp
 
+UIProcess/glib/WebProcessProxyGLib.cpp
+
 UIProcess/Launcher/glib/ProcessLauncherGLib.cpp
+UIProcess/Launcher/glib/BubblewrapLauncher.cpp
+UIProcess/Launcher/glib/FlatpakLauncher.cpp
 
 UIProcess/Network/CustomProtocols/LegacyCustomProtocolManagerProxy.cpp
 

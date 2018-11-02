@@ -383,6 +383,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     : m_pageClient(makeWeakPtr(pageClient))
     , m_configuration(WTFMove(configuration))
     , m_navigationClient(makeUniqueRef<API::NavigationClient>())
+    , m_historyClient(makeUniqueRef<API::HistoryClient>())
     , m_iconLoadingClient(std::make_unique<API::IconLoadingClient>())
     , m_formClient(std::make_unique<API::FormClient>())
     , m_uiClient(std::make_unique<API::UIClient>())
@@ -563,7 +564,7 @@ void WebPageProxy::setPreferences(WebPreferences& preferences)
     preferencesDidChange();
 }
     
-void WebPageProxy::setHistoryClient(std::unique_ptr<API::HistoryClient>&& historyClient)
+void WebPageProxy::setHistoryClient(UniqueRef<API::HistoryClient>&& historyClient)
 {
     m_historyClient = WTFMove(historyClient);
 }
@@ -1293,12 +1294,12 @@ void WebPageProxy::didChangeBackForwardList(WebBackForwardListItem* added, Vecto
     m_pageLoadState.setCanGoForward(transaction, m_backForwardList->forwardItem());
 }
 
-void WebPageProxy::willGoToBackForwardListItem(const BackForwardItemIdentifier& itemID, bool inPageCache, const UserData& userData)
+void WebPageProxy::willGoToBackForwardListItem(const BackForwardItemIdentifier& itemID, bool inPageCache)
 {
     PageClientProtector protector(pageClient());
 
     if (auto* item = m_backForwardList->itemForID(itemID))
-        m_navigationClient->willGoToBackForwardListItem(*this, *item, inPageCache, m_process->transformHandlesToObjects(userData.object()).get());
+        m_navigationClient->willGoToBackForwardListItem(*this, *item, inPageCache);
 }
 
 bool WebPageProxy::shouldKeepCurrentBackForwardListItemInList(WebBackForwardListItem& item)
@@ -4113,6 +4114,9 @@ void WebPageProxy::decidePolicyForNavigationAction(WebFrameProxy& frame, const W
     UNUSED_PARAM(newNavigationID);
 #endif
 
+    if (!m_preferences->safeBrowsingEnabled())
+        shouldSkipSafeBrowsingCheck = ShouldSkipSafeBrowsingCheck::Yes;
+
     auto listener = makeRef(frame.setUpPolicyListenerProxy([this, protectedThis = makeRef(*this), frame = makeRef(frame), sender = WTFMove(sender), navigation] (WebCore::PolicyAction policyAction, API::WebsitePolicies* policies, ProcessSwapRequestedByClient processSwapRequestedByClient, Vector<Ref<SafeBrowsingResult>>&&) mutable {
         // FIXME: do something with the SafeBrowsingResults.
         receivedNavigationPolicyDecision(policyAction, navigation.get(), processSwapRequestedByClient, frame, policies, WTFMove(sender));
@@ -4270,7 +4274,7 @@ void WebPageProxy::didNavigateWithNavigationData(const WebNavigationDataStore& s
     MESSAGE_CHECK(frame);
     MESSAGE_CHECK(frame->page() == this);
 
-    if (m_historyClient && frame->isMainFrame())
+    if (frame->isMainFrame())
         m_historyClient->didNavigateWithNavigationData(*this, store);
     process().processPool().historyClient().didNavigateWithNavigationData(process().processPool(), *this, store, *frame);
 }
@@ -4289,7 +4293,7 @@ void WebPageProxy::didPerformClientRedirect(const String& sourceURLString, const
     MESSAGE_CHECK_URL(sourceURLString);
     MESSAGE_CHECK_URL(destinationURLString);
 
-    if (m_historyClient && frame->isMainFrame())
+    if (frame->isMainFrame())
         m_historyClient->didPerformClientRedirect(*this, sourceURLString, destinationURLString);
     process().processPool().historyClient().didPerformClientRedirect(process().processPool(), *this, sourceURLString, destinationURLString, *frame);
 }
@@ -4308,7 +4312,7 @@ void WebPageProxy::didPerformServerRedirect(const String& sourceURLString, const
     MESSAGE_CHECK_URL(sourceURLString);
     MESSAGE_CHECK_URL(destinationURLString);
 
-    if (m_historyClient && frame->isMainFrame())
+    if (frame->isMainFrame())
         m_historyClient->didPerformServerRedirect(*this, sourceURLString, destinationURLString);
     process().processPool().historyClient().didPerformServerRedirect(process().processPool(), *this, sourceURLString, destinationURLString, *frame);
 }
@@ -4323,7 +4327,7 @@ void WebPageProxy::didUpdateHistoryTitle(const String& title, const String& url,
 
     MESSAGE_CHECK_URL(url);
 
-    if (m_historyClient && frame->isMainFrame())
+    if (frame->isMainFrame())
         m_historyClient->didUpdateHistoryTitle(*this, title, url);
     process().processPool().historyClient().didUpdateHistoryTitle(process().processPool(), *this, title, url, *frame);
 }
@@ -4982,12 +4986,12 @@ void WebPageProxy::backForwardItemAtIndex(int32_t index, std::optional<BackForwa
         itemID = std::nullopt;
 }
 
-void WebPageProxy::backForwardBackListCount(int32_t& count)
+void WebPageProxy::backForwardBackListCount(uint32_t& count)
 {
     count = m_backForwardList->backListCount();
 }
 
-void WebPageProxy::backForwardForwardListCount(int32_t& count)
+void WebPageProxy::backForwardForwardListCount(uint32_t& count)
 {
     count = m_backForwardList->forwardListCount();
 }
@@ -6339,6 +6343,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.mimeTypesWithCustomContentProviders = pageClient().mimeTypesWithCustomContentProviders();
     parameters.ignoresViewportScaleLimits = m_forceAlwaysUserScalable;
     parameters.viewportConfigurationViewLayoutSize = m_viewportConfigurationViewLayoutSize;
+    parameters.viewportConfigurationLayoutSizeScaleFactor = m_viewportConfigurationLayoutSizeScaleFactor;
     parameters.maximumUnobscuredSize = m_maximumUnobscuredSize;
 #endif
 

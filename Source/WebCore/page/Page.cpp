@@ -215,7 +215,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
 #endif
     , m_settings(Settings::create(this))
     , m_progress(std::make_unique<ProgressTracker>(*pageConfiguration.progressTrackerClient))
-    , m_backForwardController(std::make_unique<BackForwardController>(*this, *WTFMove(pageConfiguration.backForwardClient)))
+    , m_backForwardController(std::make_unique<BackForwardController>(*this, WTFMove(pageConfiguration.backForwardClient)))
     , m_mainFrame(Frame::create(this, nullptr, pageConfiguration.loaderClientForMainFrame))
     , m_editorClient(WTFMove(pageConfiguration.editorClient))
     , m_plugInClient(pageConfiguration.plugInClient)
@@ -242,6 +242,9 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_storageNamespaceProvider(*WTFMove(pageConfiguration.storageNamespaceProvider))
     , m_userContentProvider(*WTFMove(pageConfiguration.userContentProvider))
     , m_visitedLinkStore(*WTFMove(pageConfiguration.visitedLinkStore))
+#if ENABLE(INTERSECTION_OBSERVER)
+    , m_intersectionObservationUpdateTimer(*this, &Page::updateIntersectionObservations)
+#endif
     , m_sessionID(PAL::SessionID::defaultSessionID())
 #if ENABLE(VIDEO)
     , m_playbackControlsManagerUpdateTimer(*this, &Page::playbackControlsManagerUpdateTimerFired)
@@ -979,6 +982,13 @@ void Page::didFinishLoad()
         m_performanceMonitor->didFinishLoad();
 }
 
+void Page::willDisplayPage()
+{
+#if ENABLE(INTERSECTION_OBSERVER)
+    updateIntersectionObservations();
+#endif
+}
+
 bool Page::isOnlyNonUtilityPage() const
 {
     return !isUtilityPage() && nonUtilityPageCount == 1;
@@ -1119,6 +1129,32 @@ void Page::removeActivityStateChangeObserver(ActivityStateChangeObserver& observ
 {
     m_activityStateChangeObservers.remove(&observer);
 }
+
+#if ENABLE(INTERSECTION_OBSERVER)
+void Page::addDocumentNeedingIntersectionObservationUpdate(Document& document)
+{
+    if (m_documentsNeedingIntersectionObservationUpdate.find(&document) == notFound)
+        m_documentsNeedingIntersectionObservationUpdate.append(makeWeakPtr(document));
+}
+
+void Page::updateIntersectionObservations()
+{
+    m_intersectionObservationUpdateTimer.stop();
+    for (auto document : m_documentsNeedingIntersectionObservationUpdate) {
+        if (document)
+            document->updateIntersectionObservations();
+    }
+    m_documentsNeedingIntersectionObservationUpdate.clear();
+}
+
+void Page::scheduleForcedIntersectionObservationUpdate(Document& document)
+{
+    addDocumentNeedingIntersectionObservationUpdate(document);
+    if (m_intersectionObservationUpdateTimer.isActive())
+        return;
+    m_intersectionObservationUpdateTimer.startOneShot(0_s);
+}
+#endif
 
 void Page::suspendScriptedAnimations()
 {
@@ -1699,7 +1735,8 @@ void Page::setIsVisibleInternal(bool isVisible)
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled()) {
             if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
                 forEachDocument([&] (Document& document) {
-                    document.timeline().resumeAnimations();
+                    if (auto* timeline = document.existingTimeline())
+                        timeline->resumeAnimations();
                 });
             } else
                 mainFrame().animation().resumeAnimations();
@@ -1719,7 +1756,8 @@ void Page::setIsVisibleInternal(bool isVisible)
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled()) {
             if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
                 forEachDocument([&] (Document& document) {
-                    document.timeline().suspendAnimations();
+                    if (auto* timeline = document.existingTimeline())
+                        timeline->suspendAnimations();
                 });
             } else
                 mainFrame().animation().suspendAnimations();
@@ -2077,10 +2115,12 @@ void Page::hiddenPageCSSAnimationSuspensionStateChanged()
     if (!isVisible()) {
         if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
             forEachDocument([&] (Document& document) {
-                if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
-                    document.timeline().suspendAnimations();
-                else
-                    document.timeline().resumeAnimations();
+                if (auto* timeline = document.existingTimeline()) {
+                    if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
+                        timeline->suspendAnimations();
+                    else
+                        timeline->resumeAnimations();
+                }
             });
         } else {
             if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())

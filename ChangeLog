@@ -1,3 +1,63 @@
+2018-10-16  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, GTK bots build fix
+
+        * Source/cmake/OptionsGTK.cmake: Disable Sandbox support until the
+        bots have all the needed dependencies installed.
+
+2018-10-15  Justin Fan  <justin_fan@apple.com>
+
+        Add WebGPU 2018 feature flag and experimental feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=190509
+
+        Reviewed by Dean Jackson.
+
+        Update FeatureDefines for WebGPU -> WebMetal renaming, while preserving WebGPU
+        references for 2018 WebGPU Sketch implementation.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2018-10-15  Christopher Reid  <chris.reid@sony.com>
+
+        [Curl][WinCairo] Add Public Suffix support to WinCairo
+        https://bugs.webkit.org/show_bug.cgi?id=183060
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/FindLibPSL.cmake: Added.
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2018-10-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Add new files missing from previous commit.
+
+        * Source/cmake/FindLibseccomp.cmake: Added.
+
+2018-10-15  Patrick Griffis  <pgriffis@igalia.com>
+
+        [GTK][WPE] Implement subprocess sandboxing
+        https://bugs.webkit.org/show_bug.cgi?id=188568
+
+        Reviewed by Michael Catanzaro.
+
+        Add ENABLE_BUBBLEWRAP_SANDBOX option for sandboxing.
+
+        * Source/cmake/FindLibseccomp.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-10-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Remove Option::useAsyncIterator
+        https://bugs.webkit.org/show_bug.cgi?id=190567
+
+        Reviewed by Saam Barati.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
 2018-10-08  Justin Fan  <justin_fan@apple.com>
 
         WebGPU: Rename old WebGPU prototype to WebMetal

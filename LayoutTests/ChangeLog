@@ -1,3 +1,531 @@
+2018-10-17  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Certain tags should identify their context to iOS API
+        https://bugs.webkit.org/show_bug.cgi?id=190622
+        <rdar://problem/45308194>
+
+        Reviewed by Zalan Bujtas.
+
+        * accessibility/ios-simulator/text-context-attributes.html: Added.
+        * accessibility/ios-simulator/text-context-attributes-expcted.txt: Added.
+
+2018-10-17  Ali Juma  <ajuma@chromium.org>
+
+        Flaky IntersectionObserver web platform tests involving style updates
+        https://bugs.webkit.org/show_bug.cgi?id=189091
+
+        Reviewed by Simon Fraser.
+
+        Remove expectation for tests that are no longer flaky.
+
+        Skip IntersectionObserver tests on WK1.
+
+        * TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2018-10-17  Charlie Turner  <cturner@igalia.com>
+
+        [EME] media/encrypted-media/mock-MediaKeySystemAccess.html crashes in CDM::createInstance
+        https://bugs.webkit.org/show_bug.cgi?id=190578
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/gtk/TestExpectations:
+
+2018-10-16  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r236795) Check boxes are sometimes checked when they should not be
+        https://bugs.webkit.org/show_bug.cgi?id=190651
+        <rdar://problem/45319934>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage.
+
+        * fast/dom/HTMLInputElement/checkbox-dirty-checkedness-flag-expected.txt: Added.
+        * fast/dom/HTMLInputElement/checkbox-dirty-checkedness-flag.html: Added.
+
+2018-10-16  Chris Dumez  <cdumez@apple.com>
+
+        window.performance should not become null after the window loses its browsing context
+        https://bugs.webkit.org/show_bug.cgi?id=190636
+
+        Reviewed by Ryosuke Niwa.
+
+        Extend layout test coverage.
+
+        * http/tests/dom/cross-origin-detached-window-properties-expected.txt:
+        * http/tests/dom/cross-origin-detached-window-properties.html:
+        * http/tests/dom/same-origin-detached-window-properties-expected.txt:
+        * http/tests/dom/same-origin-detached-window-properties.html:
+
+2018-10-16  Timothy Hatcher  <timothy@apple.com>
+
+        Add <meta name="supported-color-schemes"> to control what color schemes the page supports
+        https://bugs.webkit.org/show_bug.cgi?id=190526
+        rdar://problem/45230140
+
+        Reviewed by Dean Jackson.
+
+        * css-dark-mode/supported-color-schemes-expected.txt: Added.
+        * css-dark-mode/supported-color-schemes.html: Added.
+
+2018-10-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: capture previously saved states and add them to the recording payload
+        https://bugs.webkit.org/show_bug.cgi?id=190473
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/recording-2d-expected.txt:
+        * inspector/canvas/recording-2d.html:
+        * inspector/canvas/resources/recording-utilities.js:
+        (TestPage.registerInitializer):
+        (TestPage.registerInitializer.async.logRecording): Added.
+        (TestPage.registerInitializer.logRecording): Deleted.
+        * inspector/model/recording-expected.txt:
+        * inspector/model/recording.html:
+
+2018-10-16  Justin Michaud  <justin_michaud@apple.com>
+
+        Implement feature flag and bindings for CSS Painting API
+        https://bugs.webkit.org/show_bug.cgi?id=190237
+
+        Reviewed by Ryosuke Niwa.
+
+        Add basic tests for the CSS Painting API registerPaint function,
+        and test the custom bindings.
+
+        * fast/css-custom-paint/basic-expected.txt: Added.
+        * fast/css-custom-paint/basic.html: Added.
+        * fast/css-custom-paint/registerPaintBindings-expected.txt: Added.
+        * fast/css-custom-paint/registerPaintBindings.html: Added.
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2018-10-16  Per Arne Vollan  <pvollan@apple.com>
+
+        [WebVTT] Support inline WebVTT styles
+        https://bugs.webkit.org/show_bug.cgi?id=190369
+
+        Reviewed by Eric Carlson.
+
+        * media/track/captions-webvtt/css-styling.vtt: Added.
+        * media/track/captions-webvtt/no-css-styling.vtt: Added.
+        * media/track/track-cue-css-expected.html: Added.
+        * media/track/track-cue-css.html: Added.
+
+2018-10-16  Chris Dumez  <cdumez@apple.com>
+
+        window.navigator should not become null after the window loses its browsing context
+        https://bugs.webkit.org/show_bug.cgi?id=190595
+
+        Reviewed by Ryosuke Niwa.
+
+        Extend layout test coverage.
+
+        * fast/frames/detached-frame-property-expected.txt:
+        * fast/frames/detached-frame-property.html:
+        * http/tests/dom/cross-origin-detached-window-properties-expected.txt:
+        * http/tests/dom/cross-origin-detached-window-properties.html:
+        * http/tests/dom/same-origin-detached-window-properties-expected.txt:
+        * http/tests/dom/same-origin-detached-window-properties.html:
+
+2018-10-16  Charlie Turner  <cturner@igalia.com>
+
+        [EME] Multiple ClearKey tests crashing in gst_qtdemux_request_protection_context
+        https://bugs.webkit.org/show_bug.cgi?id=190577
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/gtk/TestExpectations:
+
+2018-10-15  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for prefers-color-scheme media query
+        https://bugs.webkit.org/show_bug.cgi?id=190499
+        rdar://problem/45212025
+
+        Reviewed by Dean Jackson.
+
+        * css-dark-mode/prefers-color-scheme-expected.txt: Added.
+        * css-dark-mode/prefers-color-scheme.html: Added.
+        * platform/gtk/TestExpectations: Skip css-dark-mode.
+        * platform/ios/TestExpectations: Skip css-dark-mode.
+        * platform/mac-wk1/TestExpectations: Skip css-dark-mode.
+        * platform/win/TestExpectations: Skip css-dark-mode.
+        * platform/wincairo/TestExpectations: Skip css-dark-mode.
+        * platform/wpe/TestExpectations: Skip css-dark-mode.
+
+2018-10-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Cleanup Table test utilities
+        https://bugs.webkit.org/show_bug.cgi?id=190538
+        <rdar://problem/45237730>
+
+        Reviewed by Joseph Pecoraro.
+
+        Cleanup Table test utilities by exposing removing the artificial dependency
+        between TableDelegate and TableDataSource, and exposing a cleaner set of
+        utility methods to InspectorTest. This patch changes `InspectorTest.createTable`
+        to take no parameters, and adds `InspectorTest.createTableWithDelegate` for
+        tests that need to supply a custom delegate.
+
+        * inspector/table/resources/table-utilities.js:
+        (TestPage.registerInitializer.InspectorTest.TableDataSource):
+        (TestPage.registerInitializer.InspectorTest.TableDelegate):
+        (TestPage.registerInitializer.InspectorTest.TableDelegate.prototype.tablePopulateCell):
+        (TestPage.registerInitializer.createDataSource):
+        (TestPage.registerInitializer.createTableInternal):
+        (TestPage.registerInitializer.InspectorTest.createTable):
+        (TestPage.registerInitializer.InspectorTest.createTableWithDelegate):
+        (TestPage.registerInitializer):
+
+        * inspector/table/table-selection-expected.txt:
+        Update with new test suite name.
+
+        * inspector/table/table-selection.html:
+
+2018-10-15  Charles Vazac  <cvazac@gmail.com>
+
+        Web Inspector: Expose Server Timing Response Headers in Network Tab
+        https://bugs.webkit.org/show_bug.cgi?id=190440
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/unit-tests/server-timing-entry-expected.txt:
+        * inspector/unit-tests/server-timing-entry.html:
+
+2018-10-15  Alex Christensen  <achristensen@webkit.org>
+
+        Garden WK2 tests after r237104
+        https://bugs.webkit.org/show_bug.cgi?id=190522
+
+        * platform/wk2/http/tests/navigation/keyboard-events-during-provisional-navigation-expected.txt: Removed.
+        I added  this wk2 expectation in r234658 after r234640.  r237104 effectively did the inverse of r234640,
+        so behavior is back to how it was before then.  This makes the expectations reflect such.
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Experiment: target=_blank on anchors should imply rel=noopener
+        https://bugs.webkit.org/show_bug.cgi?id=190481
+
+        Reviewed by Alex Christensen.
+
+        Update existing tests to reflect behavior change.
+
+        * TestExpectations:
+        * http/tests/navigation/no-referrer-reset.html:
+        * http/tests/security/resources/referrer-policy-redirect-link.html:
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window2-pson.html:
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window2.html:
+        * http/tests/security/xssAuditor/link-opens-new-window.html:
+
+2018-10-15  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] New shipping methods are ignored when updating after the shippingaddresschange event
+        https://bugs.webkit.org/show_bug.cgi?id=190560
+        <rdar://problem/44559075>
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/ssl/applepay/ApplePayShippingAddressChangeEventErrors.https-expected.txt:
+        * http/tests/ssl/applepay/ApplePayShippingAddressChangeEventErrors.https.html:
+
+2018-10-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Can't select text after dismissing the keyboard when changing focus
+        https://bugs.webkit.org/show_bug.cgi?id=190563
+        <rdar://problem/44613559>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test to check that the user can make a selection by long pressing after the keyboard is
+        dismissed due to changing the focused element.
+
+        * editing/selection/ios/select-text-after-changing-focus-expected.txt: Added.
+        * editing/selection/ios/select-text-after-changing-focus.html: Added.
+        * resources/ui-helper.js:
+
+        Also tweak the behavior of `UIHelper.waitForKeyboardToHide()`, so that it resolves immediately if the keyboard
+        is not shown. This allows us to ensure that tests which use `UIHelper.waitForKeyboardToHide()` are robust in the
+        case where they wait for another action to complete (e.g. a simulated tap) prior to registering a keyboard
+        hiding callback.
+
+        (window.UIHelper.waitForKeyboardToHide.return.new.Promise):
+        (window.UIHelper.waitForKeyboardToHide):
+
+2018-10-15  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Payment authorization results with ApplePayErrors should never be considered final
+        https://bugs.webkit.org/show_bug.cgi?id=190559
+        <rdar://problem/37250908>
+
+        Reviewed by Anders Carlsson.
+
+        * http/tests/ssl/applepay/ApplePaySessionFinalState.https-expected.txt: Added.
+        * http/tests/ssl/applepay/ApplePaySessionFinalState.https.html: Added.
+
+2018-10-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237054.
+        https://bugs.webkit.org/show_bug.cgi?id=190593
+
+        "this regressed JetStream 2 by 6% on iOS" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] JSC should have "parseFunction" to optimize Function
+        constructor"
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+        https://trac.webkit.org/changeset/237054
+
+2018-10-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Changing view scale should zoom to initial scale if the page is already at initial scale
+        https://bugs.webkit.org/show_bug.cgi?id=190570
+        <rdar://problem/45261877>
+
+        Reviewed by Tim Horton.
+
+        * fast/viewport/ios/initial-scale-after-changing-view-scale-expected.txt: Added.
+        * fast/viewport/ios/initial-scale-after-changing-view-scale.html: Added.
+
+        Add a new layout test to verify that:
+        1.  Changing view scale before the page scale factor is changed by the user zooms to the new initial scale.
+        2.  Changing view scale after the user changes the page scale to something different than initial scale does not
+            cause the page to zoom to the new initial scale.
+        3.  Changing view scale after the user changes the page scale factor back to initial scale causes the page to
+            zoom to the new initial scale.
+
+        * resources/basic-gestures.js:
+
+        Make a small tweak in `doubleTapToZoomAtPoint` to ensure that both single taps as well as zooming are complete
+        before invoking UIScriptController completion.
+
+        (return.new.Promise):
+
+2018-10-15  Yoshiaki Jitsukawa  <yoshiaki.jitsukawa@sony.com>
+
+        [Cairo] Incorrect rendering for 135-deg skews
+        https://bugs.webkit.org/show_bug.cgi?id=190513
+
+        Reviewed by Žan Doberšek.
+
+        * fast/transforms/skew-x-135deg-with-gradient-expected.html: Added.
+        * fast/transforms/skew-x-135deg-with-gradient.html: Added.
+        * fast/transforms/skew-y-135deg-with-gradient-expected.html: Added.
+        * fast/transforms/skew-y-135deg-with-gradient.html: Added.
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Restrict browsing context lookup by name to frames that are related to one another
+        https://bugs.webkit.org/show_bug.cgi?id=190475
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/dom/new-window-can-target-opener-expected.txt: Added.
+        * http/tests/dom/new-window-can-target-opener.html: Added.
+        * http/tests/dom/noopener-window-cannot-target-opener-expected.txt: Added.
+        * http/tests/dom/noopener-window-cannot-target-opener.html: Added.
+        * http/tests/dom/noopener-window-not-targetable-expected.txt: Added.
+        * http/tests/dom/noopener-window-not-targetable.html: Added.
+        * http/tests/dom/noopener-window-not-targetable2-expected.txt: Added.
+        * http/tests/dom/noopener-window-not-targetable2.html: Added.
+        * http/tests/dom/noreferrer-window-not-targetable-expected.txt: Added.
+        * http/tests/dom/noreferrer-window-not-targetable.html: Added.
+        * http/tests/dom/opened-window-not-targetable-after-disowning-opener-expected.txt: Added.
+        * http/tests/dom/opened-window-not-targetable-after-disowning-opener.html: Added.
+        * http/tests/dom/resources/new-window-can-target-opener-win.html: Added.
+        * http/tests/dom/resources/noopener-window-cannot-target-opener-win.html: Added.
+        Add layout test coverage.
+
+        * fast/dom/Window/a-rel-noopener-expected.txt:
+        * fast/dom/Window/area-rel-noopener-expected.txt:
+        * fast/dom/Window/resources/rel-noopener.js:
+        * http/tests/navigation/no-referrer-target-blank-expected.txt:
+        * http/tests/navigation/resources/no-referrer-helper.php:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/browsers/windows/noreferrer-window-name-expected.txt:
+        * platform/wk2/imported/w3c/web-platform-tests/html/browsers/windows/noreferrer-window-name-expected.txt:
+        Update / rebaseline existing tests to reflect behavior change.
+
+2018-10-15  YUHAN WU  <yuhan_wu@apple.com>
+
+        Implement error handler of MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=190438
+
+        Reviewed by Youenn Fablet.
+
+        Since dataavailable event has not been implemented, skip three MediaRecorder-related tests now.
+        We will need to reenable those tests once implementing the dataavailable event for MediaRecorder.
+
+        * TestExpectations:
+
+2018-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Window's properties such as 'location' should not become null when it loses its browsing context
+        https://bugs.webkit.org/show_bug.cgi?id=190539
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/dom/cross-origin-detached-window-properties-expected.txt: Added.
+        * http/tests/dom/cross-origin-detached-window-properties.html: Added.
+        * http/tests/dom/resources/post-message-to-parent-when-loaded.html: Added.
+        * http/tests/dom/same-origin-detached-window-properties-expected.txt: Added.
+        * http/tests/dom/same-origin-detached-window-properties.html: Added.
+        Add layout test coverage.
+
+        * fast/frames/detached-frame-property-expected.txt:
+        * fast/frames/detached-frame-property.html:
+        * http/tests/security/named-window-property-from-same-origin-inactive-document-expected.txt:
+        * http/tests/security/named-window-property-from-same-origin-inactive-document.html:
+        * http/tests/security/xss-DENIED-named-window-property-from-cross-origin-inactive-document-expected.txt:
+        * http/tests/security/xss-DENIED-named-window-property-from-cross-origin-inactive-document.html:
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window.html:
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window2-pson.html:
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window2.html:
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window3.html:
+        Update existing layout tests to reflect behavior change.
+
+2018-10-15  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GStreamer] MediaStream test failing since r236877
+
+        Unreviewed gardening
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-10-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Allow SPI clients to lay out at arbitrarily scaled sizes and scale to fit the view
+        https://bugs.webkit.org/show_bug.cgi?id=190504
+        <rdar://problem/45117760>
+
+        Reviewed by Tim Horton.
+
+        Add two new layout tests on iOS that change WKWebView's view scale, and measure the resulting window sizes and
+        lengths of viewport units.
+
+        * fast/viewport/ios/constant-width-viewport-after-changing-view-scale-expected.txt: Added.
+        * fast/viewport/ios/constant-width-viewport-after-changing-view-scale.html: Added.
+
+        Add a test page with a viewport meta tag that has a constant width and an explicit initial scale of 0.5.
+
+        * fast/viewport/ios/device-width-viewport-after-changing-view-scale-expected.txt: Added.
+        * fast/viewport/ios/device-width-viewport-after-changing-view-scale.html: Added.
+
+        Add a test page with a viewport meta tag at device-width, with initial scale 1.
+
+        * resources/ui-helper.js:
+        (window.UIHelper.setViewScale):
+
+        Add a convenience function that wraps a UI script invocation of `setViewScale` in a promise.
+
+        (window.UIHelper):
+
+2018-10-12  Dawei Fenton  <realdawei@apple.com>
+
+        [Mojave Wk2] Layout Test http/tests/cache/disk-cache/disk-cache-validation-attachment.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=190323
+
+        Unreviewed, mark test as Flaky.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-10-12  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test editing/pasteboard/copy-paste-across-shadow-boundaries-with-style-2.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=190520
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-10-08  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] JSC should have "parseFunction" to optimize Function constructor
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        Reviewed by Mark Lam.
+
+        * fast/dom/attribute-event-listener-errors-expected.txt:
+        * fast/events/attribute-listener-deletion-crash-expected.txt:
+        * fast/events/window-onerror-syntax-error-in-attr-expected.txt:
+        * js/dom/invalid-syntax-for-function-expected.txt:
+        * js/dom/script-start-end-locations-expected.txt:
+
+2018-10-11  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer] Support arbitrary video resolution in getUserMedia API
+        https://bugs.webkit.org/show_bug.cgi?id=189734
+
+        Implement arbitrary video resolution for the getUserMedia API in GStreamer.
+
+        Fix the MockRealtimeMediaSource device list to make devices properties match
+        test expectations.
+
+        Reactivate tests that were failling because of that.
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-10-11  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test fast/forms/fieldset/fieldset-elements-htmlcollection.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=190472
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-10-11  Alejandro G. Castro  <alex@igalia.com>
+
+        [GTK][WPE] Add mediaDevices.enumerateDevices support
+        https://bugs.webkit.org/show_bug.cgi?id=185761
+
+        Reviewed by Youenn Fablet.
+
+        Remove the failure expectation for the test
+        media-devices-enumerate-devices.html. Just for the record we have
+        also checked the following tests.
+
+        fast/mediastream/media-devices-enumerate-devices.html
+        fast/mediastream/resources/enumerate-devices-frame.html
+        http/tests/media/media-stream/enumerate-devices-source-id.html
+        http/tests/media/media-stream/enumerate-devices-source-id-persistent.html
+        http/tests/media/media-stream/resources/enumerate-devices-source-id-frame.html
+
+        * platform/gtk/TestExpectations:
+
+2018-10-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: create special Network waterfall for media events
+        https://bugs.webkit.org/show_bug.cgi?id=189773
+        <rdar://problem/44626605>
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/dom/didFireEvent-expected.txt: Added.
+        * http/tests/inspector/dom/didFireEvent.html: Added.
+
+        * inspector/unit-tests/array-utilities-expected.txt:
+        * inspector/unit-tests/array-utilities.html:
+
+2018-10-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Only report the supported WebGL version
+        https://bugs.webkit.org/show_bug.cgi?id=190434
+        <rdar://problem/45024677>
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/webgl/gl-getstring-expected.txt:
+        * fast/canvas/webgl/gl-getstring.html:
+
 2018-10-10  Tim Horton  <timothy_horton@apple.com>
 
         Share more WKShareSheet code between macOS and iOS, and fix a few bugs

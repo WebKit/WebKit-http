@@ -54,7 +54,7 @@
 #if USE(GSTREAMER)
 #include "MediaPlayerPrivateGStreamer.h"
 #define PlatformMediaEngineClassName MediaPlayerPrivateGStreamer
-#if ENABLE(VIDEO) && ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
+#if ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
 #include "MediaPlayerPrivateGStreamerMSE.h"
 #endif
 #endif // USE(GSTREAMER)
@@ -255,7 +255,7 @@ static void buildMediaEnginesVector()
         PlatformMediaEngineClassName::registerMediaEngine(addMediaEngine);
 #endif
 
-#if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
+#if USE(GSTREAMER) && ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
     if (DeprecatedGlobalSettings::isGStreamerEnabled())
         MediaPlayerPrivateGStreamerMSE::registerMediaEngine(addMediaEngine);
 #endif
@@ -545,6 +545,8 @@ void MediaPlayer::cancelLoad()
 
 void MediaPlayer::prepareToPlay()
 {
+    Ref<MediaPlayer> protectedThis(*this);
+
     m_private->prepareToPlay();
 }
 
@@ -1531,7 +1533,7 @@ void MediaPlayer::applicationDidBecomeActive()
     m_private->applicationDidBecomeActive();
 }
 
-#if ENABLE(VIDEO) && USE(AVFOUNDATION)
+#if USE(AVFOUNDATION)
 
 AVPlayer* MediaPlayer::objCAVFoundationAVPlayer() const
 {

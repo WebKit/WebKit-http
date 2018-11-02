@@ -43,6 +43,9 @@ namespace WebCore {
 class RuntimeEnabledFeatures {
     WTF_MAKE_NONCOPYABLE(RuntimeEnabledFeatures);
 public:
+    void setBlankAnchorTargetImpliesNoOpenerEnabled(bool isEnabled) { m_blankAnchorTargetImpliesNoOpenerEnabled = isEnabled; }
+    bool blankAnchorTargetImpliesNoOpenerEnabled() const { return m_blankAnchorTargetImpliesNoOpenerEnabled; }
+
     void setDisplayContentsEnabled(bool isEnabled) { m_isDisplayContentsEnabled = isEnabled; }
     bool displayContentsEnabled() const { return m_isDisplayContentsEnabled; }
 
@@ -80,6 +83,11 @@ public:
     
     void setDirectoryUploadEnabled(bool isEnabled) { m_isDirectoryUploadEnabled = isEnabled; }
     bool directoryUploadEnabled() const { return m_isDirectoryUploadEnabled; }
+
+#if ENABLE(DARK_MODE_CSS)
+    void setDarkModeCSSEnabled(bool isEnabled) { m_isDarkModeCSSEnabled = isEnabled; }
+    bool darkModeCSSEnabled() const { return m_isDarkModeCSSEnabled; }
+#endif
 
     void setDataTransferItemsEnabled(bool areEnabled) { m_areDataTransferItemsEnabled = areEnabled; }
     bool dataTransferItemsEnabled() const { return m_areDataTransferItemsEnabled; }
@@ -170,6 +178,14 @@ public:
     void setPointerEventsEnabled(bool isEnabled) { m_pointerEventsEnabled = isEnabled; }
     bool pointerEventsEnabled() const { return m_pointerEventsEnabled; }
 
+#if ENABLE(CSS_PAINTING_API)
+    void setCSSPaintingAPIEnabled(bool isEnabled) { m_CSSPaintingAPIEnabled = isEnabled; }
+    bool cssPaintingAPIEnabled() const { return m_CSSPaintingAPIEnabled; }
+#endif
+
+    void setWebSQLDisabled(bool isDisabled) { m_webSQLEnabled = !isDisabled; }
+    bool webSQLEnabled() const { return m_webSQLEnabled; }
+
 #if ENABLE(ATTACHMENT_ELEMENT)
     void setAttachmentElementEnabled(bool areEnabled) { m_isAttachmentElementEnabled = areEnabled; }
     bool attachmentElementEnabled() const { return m_isAttachmentElementEnabled; }
@@ -251,6 +267,11 @@ public:
     void setWebGL2Enabled(bool isEnabled) { m_isWebGL2Enabled = isEnabled; }
     bool webGL2Enabled() const { return m_isWebGL2Enabled; }
 #endif
+    
+#if ENABLE(WEBGPU)
+    void setWebGPUEnabled(bool isEnabled) { m_isWebGPUEnabled = isEnabled; }
+    bool webGPUEnabled() const { return m_isWebGPUEnabled; }
+#endif
 
 #if ENABLE(WEBMETAL)
     void setWebMetalEnabled(bool isEnabled) { m_isWebMetalEnabled = isEnabled; }
@@ -300,6 +321,7 @@ private:
     // Never instantiate.
     RuntimeEnabledFeatures();
 
+    bool m_blankAnchorTargetImpliesNoOpenerEnabled { true };
     bool m_areModernMediaControlsEnabled { false };
     bool m_isLinkPreloadEnabled { true };
     bool m_isLinkPrefetchEnabled { false };
@@ -341,9 +363,18 @@ private:
     bool m_webAPIStatisticsEnabled { false };
     bool m_CSSCustomPropertiesAndValuesEnabled { false };
     bool m_pointerEventsEnabled { false };
+    bool m_webSQLEnabled { true };
+
+#if ENABLE(CSS_PAINTING_API)
+    bool m_CSSPaintingAPIEnabled { false };
+#endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     bool m_isAttachmentElementEnabled { false };
+#endif
+
+#if ENABLE(DARK_MODE_CSS)
+    bool m_isDarkModeCSSEnabled { false };
 #endif
 
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
@@ -407,6 +438,10 @@ private:
 
 #if ENABLE(WEBGL2)
     bool m_isWebGL2Enabled { false };
+#endif
+    
+#if ENABLE(WEBGPU)
+    bool m_isWebGPUEnabled { false };
 #endif
 
 #if ENABLE(WEBMETAL)

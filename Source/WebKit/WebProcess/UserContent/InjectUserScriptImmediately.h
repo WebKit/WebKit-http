@@ -25,11 +25,11 @@
 
 #pragma once
 
-#include <wtf/EnumTraits.h>
+#include <wtf/Forward.h>
 
 namespace WebKit {
     
-enum class InjectUserScriptImmediately { No, Yes };
+enum class InjectUserScriptImmediately : bool { No, Yes };
     
 }
 

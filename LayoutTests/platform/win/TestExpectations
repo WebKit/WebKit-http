@@ -149,6 +149,9 @@ svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html [ Skip ]
 svg/custom/svg-allowed-in-dashboard-object.html [ Skip ]
 mathml/mathml-in-dashboard.html [ Skip ]
 
+# Dark mode not supported on Windows
+css-dark-mode [ Skip ]
+
 # TODO Accelerated overflow scrolling (ENABLE_ACCELERATED_OVERFLOW_SCROLLING) is not enabled.
 fast/repaint/overflow-scroll-touch-repaint.html [ Skip ]
 
@@ -4126,6 +4129,7 @@ imported/blink/http/tests/security/mixedContent/websocket [ Skip ]
 
 # Feature flag only enabled for wk2
 css-custom-properties-api [ Skip ]
+fast/css-custom-paint [ Skip ]
 
 editing/pasteboard/drag-and-drop-color-input-events.html [ Skip ]
 
@@ -4221,3 +4225,6 @@ imported/w3c/web-platform-tests/mediacapture-record/BlobEvent-constructor.html [
 imported/w3c/web-platform-tests/mediacapture-record/MediaRecorder-constructor.html [ Skip ]
 fast/mediacapturefromelement/CanvasCaptureMediaStream-imagebitmaprenderingcontext.html [ Skip ]
 
+webkit.org/b/190472 fast/forms/fieldset/fieldset-elements-htmlcollection.html [ Failure ]
+
+webkit.org/b/190520 editing/pasteboard/copy-paste-across-shadow-boundaries-with-style-2.html [ Crash ]

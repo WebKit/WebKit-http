@@ -55,6 +55,7 @@ static inline Vector<MockMediaDevice> defaultDevices()
                 RealtimeMediaSourceSettings::VideoFacingMode::User, {
                     { { 1280, 720 }, { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
                     { { 640, 480 },  { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
+                    { { 112, 112 },  { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
                 },
                 Color::black,
             } },
@@ -309,19 +310,19 @@ Vector<CaptureDevice>& MockRealtimeMediaSourceCenter::displayDevices()
     return displayDevices;
 }
 
-AudioCaptureFactory& MockRealtimeMediaSourceCenter::audioFactory()
+AudioCaptureFactory& MockRealtimeMediaSourceCenter::audioFactoryPrivate()
 {
     static NeverDestroyed<MockRealtimeAudioSourceFactory> factory;
     return factory.get();
 }
 
-VideoCaptureFactory& MockRealtimeMediaSourceCenter::videoFactory()
+VideoCaptureFactory& MockRealtimeMediaSourceCenter::videoFactoryPrivate()
 {
     static NeverDestroyed<MockRealtimeVideoSourceFactory> factory;
     return factory.get();
 }
 
-DisplayCaptureFactory& MockRealtimeMediaSourceCenter::displayCaptureFactory()
+DisplayCaptureFactory& MockRealtimeMediaSourceCenter::displayCaptureFactoryPrivate()
 {
     static NeverDestroyed<MockRealtimeDisplaySourceFactory> factory;
     return factory.get();

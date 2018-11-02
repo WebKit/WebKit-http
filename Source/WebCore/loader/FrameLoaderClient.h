@@ -105,7 +105,7 @@ class URL;
 class Widget;
 
 enum class PolicyDecisionMode;
-enum class ShouldSkipSafeBrowsingCheck;
+enum class ShouldSkipSafeBrowsingCheck : bool;
 
 struct StringWithDirection;
 
@@ -222,8 +222,7 @@ public:
     virtual void updateGlobalHistory() = 0;
     virtual void updateGlobalHistoryRedirectLinks() = 0;
 
-    virtual bool shouldGoToHistoryItem(HistoryItem*) const = 0;
-    virtual void updateGlobalHistoryItemForPage() { }
+    virtual bool shouldGoToHistoryItem(HistoryItem&) const = 0;
 
     // This frame has set its opener to null, disowning it for the lifetime of the frame.
     // See http://html.spec.whatwg.org/#dom-opener.
@@ -291,7 +290,7 @@ public:
     virtual bool canCachePage() const = 0;
     virtual void convertMainResourceLoadToDownload(DocumentLoader*, PAL::SessionID, const ResourceRequest&, const ResourceResponse&) = 0;
 
-    virtual RefPtr<Frame> createFrame(const URL&, const String& name, HTMLFrameOwnerElement&, const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight) = 0;
+    virtual RefPtr<Frame> createFrame(const URL&, const String& name, HTMLFrameOwnerElement&, const String& referrer) = 0;
     virtual RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool loadManually) = 0;
     virtual void recreatePlugin(Widget*) = 0;
     virtual void redirectDataToPlugin(Widget&) = 0;
