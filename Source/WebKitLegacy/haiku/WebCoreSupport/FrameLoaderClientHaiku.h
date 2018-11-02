@@ -102,7 +102,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void dispatchDidDispatchOnloadEvents() override;
     void dispatchDidReceiveServerRedirectForProvisionalLoad() override;
     void dispatchDidCancelClientRedirect() override;
-    void dispatchWillPerformClientRedirect(const URL&, double interval, WallTime fireDate) override;
+    void dispatchWillPerformClientRedirect(const URL&, double interval, WallTime fireDate, LockBackForwardList) override;
     void dispatchDidChangeLocationWithinPage() override;
     void dispatchDidPushStateWithinPage() override;
     void dispatchDidReplaceStateWithinPage() override;
