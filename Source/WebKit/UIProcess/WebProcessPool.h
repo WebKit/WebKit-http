@@ -215,6 +215,7 @@ public:
     void clearSupportedPlugins();
 
     ProcessID networkProcessIdentifier();
+    Vector<String> activePagesOriginsInWebProcessForTesting(ProcessID);
 
     WebPageGroup& defaultPageGroup() { return m_defaultPageGroup.get(); }
 
@@ -309,7 +310,7 @@ public:
     
     bool javaScriptConfigurationFileEnabled() { return m_javaScriptConfigurationFileEnabled; }
     void setJavaScriptConfigurationFileEnabled(bool flag);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void setJavaScriptConfigurationFileEnabledFromDefaults();
 #endif
 
@@ -434,14 +435,19 @@ public:
     static uint64_t registerProcessPoolCreationListener(Function<void(WebProcessPool&)>&&);
     static void unregisterProcessPoolCreationListener(uint64_t identifier);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     ForegroundWebProcessToken foregroundWebProcessToken() const { return ForegroundWebProcessToken(m_foregroundWebProcessCounter.count()); }
     BackgroundWebProcessToken backgroundWebProcessToken() const { return BackgroundWebProcessToken(m_backgroundWebProcessCounter.count()); }
 #endif
 
     Ref<WebProcessProxy> processForNavigation(WebPageProxy&, const API::Navigation&, ProcessSwapRequestedByClient, WebCore::PolicyAction&, String& reason);
-    void registerSuspendedPageProxy(SuspendedPageProxy&);
-    void unregisterSuspendedPageProxy(SuspendedPageProxy&);
+
+    // SuspendedPageProxy management.
+    void addSuspendedPageProxy(std::unique_ptr<SuspendedPageProxy>&&);
+    void removeAllSuspendedPageProxiesForPage(WebPageProxy&);
+    std::unique_ptr<SuspendedPageProxy> takeSuspendedPageProxy(SuspendedPageProxy&);
+    bool hasSuspendedPageProxyFor(WebProcessProxy&) const;
+
     void didReachGoodTimeToPrewarm();
 
     void didCollectPrewarmInformation(const String& registrableDomain, const WebCore::PrewarmInformation&);
@@ -501,11 +507,11 @@ private:
     static void languageChanged(void* context);
     void languageChanged();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     String cookieStorageDirectory() const;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     String parentBundleDirectory() const;
     String networkingCachesDirectory() const;
     String webContentCachesDirectory() const;
@@ -679,7 +685,7 @@ private:
         String uiProcessBundleResourcePath;
         String indexedDatabaseDirectory;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         String cookieStorageDirectory;
         String containerCachesDirectory;
         String containerTemporaryDirectory;
@@ -692,7 +698,7 @@ private:
     HashMap<PAL::SessionID, HashSet<WebPageProxy*>> m_sessionToPagesMap;
     RunLoop::Timer<WebProcessPool> m_serviceWorkerProcessesTerminationTimer;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     ForegroundWebProcessCounter m_foregroundWebProcessCounter;
     BackgroundWebProcessCounter m_backgroundWebProcessCounter;
     ProcessThrottler::ForegroundActivityToken m_foregroundTokenForNetworkProcess;
@@ -703,7 +709,7 @@ private:
 #endif
 #endif
 
-    HashMap<WebCore::SecurityOriginData, Vector<SuspendedPageProxy*>> m_suspendedPages;
+    Deque<std::unique_ptr<SuspendedPageProxy>> m_suspendedPages;
     HashMap<String, RefPtr<WebProcessProxy>> m_swappedProcessesPerRegistrableDomain;
 
     HashMap<String, std::unique_ptr<WebCore::PrewarmInformation>> m_prewarmInformationPerRegistrableDomain;

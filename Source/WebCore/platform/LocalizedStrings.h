@@ -153,7 +153,7 @@ namespace WebCore {
     WEBCORE_EXPORT String contextMenuItemTagInspectElement();
 #endif // ENABLE(CONTEXT_MENUS)
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     String searchMenuNoRecentSearchesText();
     String searchMenuRecentSearchesText();
     String searchMenuClearRecentSearchesText();
@@ -216,6 +216,7 @@ namespace WebCore {
     String AXAutoFillCredentialsLabel();
     String AXAutoFillContactsLabel();
     String AXAutoFillStrongPasswordLabel();
+    String AXAutoFillCreditCardLabel();
     String autoFillStrongPasswordLabel();
 
     String missingPluginText();
@@ -240,7 +241,7 @@ namespace WebCore {
     WEBCORE_EXPORT String keygenKeychainItemName(const String& host);
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     String htmlSelectMultipleItems(size_t num);
     String fileButtonChooseMediaFileLabel();
     String fileButtonChooseMultipleMediaFilesLabel();

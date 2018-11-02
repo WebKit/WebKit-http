@@ -48,7 +48,7 @@
 
 namespace WebCore {
 
-#if !PLATFORM(MAC) && !PLATFORM(IOS) && !(USE(GSTREAMER) && USE(LIBWEBRTC))
+#if !PLATFORM(MAC) && !PLATFORM(IOS_FAMILY) && !(USE(GSTREAMER) && USE(LIBWEBRTC))
 CaptureSourceOrError MockRealtimeVideoSource::create(String&& deviceID, String&& name, String&& hashSalt, const MediaConstraints* constraints)
 {
 #ifndef NDEBUG
@@ -126,6 +126,7 @@ const RealtimeMediaSourceCapabilities& MockRealtimeVideoSource::capabilities()
             capabilities.addFacingMode(WTF::get<MockCameraProperties>(m_device.properties).facingMode);
             capabilities.setDeviceId(hashedId());
             updateCapabilities(capabilities);
+            capabilities.setDeviceId(hashedId());
         } else {
             capabilities.setWidth(CapabilityValueOrRange(72, 2880));
             capabilities.setHeight(CapabilityValueOrRange(45, 1800));
@@ -159,14 +160,14 @@ const RealtimeMediaSourceSettings& MockRealtimeVideoSource::settings()
         settings.setAspectRatio(aspectRatio());
 
     RealtimeMediaSourceSupportedConstraints supportedConstraints;
-    supportedConstraints.setSupportsDeviceId(true);
     supportedConstraints.setSupportsFrameRate(true);
     supportedConstraints.setSupportsWidth(true);
     supportedConstraints.setSupportsHeight(true);
     supportedConstraints.setSupportsAspectRatio(true);
-    if (mockCamera())
+    if (mockCamera()) {
+        supportedConstraints.setSupportsDeviceId(true);
         supportedConstraints.setSupportsFacingMode(true);
-    else {
+    } else {
         supportedConstraints.setSupportsDisplaySurface(true);
         supportedConstraints.setSupportsLogicalSurface(true);
     }

@@ -398,8 +398,8 @@ void OSRExit::executeOSRExit(Context& context)
         // Compute the value recoveries.
         Operands<ValueRecovery> operands;
         Vector<UndefinedOperandSpan> undefinedOperandSpans;
-        unsigned numVariables = dfgJITCode->variableEventStream.reconstruct(codeBlock, exit.m_codeOrigin, dfgJITCode->minifiedDFG, exit.m_streamIndex, operands, &undefinedOperandSpans);
-        ptrdiff_t stackPointerOffset = -static_cast<ptrdiff_t>(numVariables) * sizeof(Register);
+        dfgJITCode->variableEventStream.reconstruct(codeBlock, exit.m_codeOrigin, dfgJITCode->minifiedDFG, exit.m_streamIndex, operands, &undefinedOperandSpans);
+        ptrdiff_t stackPointerOffset = -static_cast<ptrdiff_t>(codeBlock->jitCode()->dfgCommon()->requiredRegisterCountForExit) * sizeof(Register);
 
         exit.exitState = adoptRef(new OSRExitState(exit, codeBlock, baselineCodeBlock, operands, WTFMove(undefinedOperandSpans), recovery, stackPointerOffset, activeThreshold, adjustedThreshold, jumpTarget, arrayProfile));
 
@@ -440,10 +440,8 @@ void OSRExit::executeOSRExit(Context& context)
     do {
         auto extraInitializationLevel = static_cast<ExtraInitializationLevel>(exitState.extraInitializationLevel);
 
-        if (extraInitializationLevel == ExtraInitializationLevel::None) {
-            context.sp() = context.fp<uint8_t*>() + exitState.stackPointerOffset;
+        if (extraInitializationLevel == ExtraInitializationLevel::None)
             break;
-        }
 
         // Begin extra initilization level: SpeculationRecovery
 
@@ -499,7 +497,7 @@ void OSRExit::executeOSRExit(Context& context)
             ASSERT(exit.m_kind == BadCache || exit.m_kind == BadIndexingType);
             Structure* structure = profiledValue.asCell()->structure(vm);
             arrayProfile->observeStructure(structure);
-            arrayProfile->observeArrayMode(asArrayModes(structure->indexingType()));
+            arrayProfile->observeArrayMode(asArrayModes(structure->indexingMode()));
         }
         if (extraInitializationLevel <= ExtraInitializationLevel::ArrayProfileUpdate)
             break;

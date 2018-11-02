@@ -28,6 +28,7 @@
 
 #include "DataReference.h"
 #include "ShareableBitmap.h"
+#include "SharedBufferDataReference.h"
 #include <WebCore/AuthenticationChallenge.h>
 #include <WebCore/BlobPart.h>
 #include <WebCore/CacheQueryOptions.h>
@@ -69,6 +70,7 @@
 #include <WebCore/ScrollingCoordinator.h>
 #include <WebCore/SearchPopupMenu.h>
 #include <WebCore/SecurityOrigin.h>
+#include <WebCore/SerializedAttachmentData.h>
 #include <WebCore/ServiceWorkerClientData.h>
 #include <WebCore/ServiceWorkerClientIdentifier.h>
 #include <WebCore/ServiceWorkerData.h>
@@ -90,12 +92,12 @@
 #include "ArgumentCodersMac.h"
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include <WebCore/FloatQuad.h>
 #include <WebCore/InspectorOverlay.h>
 #include <WebCore/SelectionRect.h>
 #include <WebCore/SharedBuffer.h>
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include <WebCore/MediaPlaybackTargetContext.h>
@@ -619,7 +621,7 @@ bool ArgumentCoder<FloatRoundedRect>::decode(Decoder& decoder, FloatRoundedRect&
     return SimpleArgumentCoder<FloatRoundedRect>::decode(decoder, roundedRect);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 void ArgumentCoder<FloatQuad>::encode(Encoder& encoder, const FloatQuad& floatQuad)
 {
     SimpleArgumentCoder<FloatQuad>::encode(encoder, floatQuad);
@@ -650,7 +652,7 @@ std::optional<ViewportArguments> ArgumentCoder<ViewportArguments>::decode(Decode
         return std::nullopt;
     return WTFMove(viewportArguments);
 }
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 
 void ArgumentCoder<IntPoint>::encode(Encoder& encoder, const IntPoint& intPoint)
@@ -1160,7 +1162,7 @@ static bool decodeOptionalImage(Decoder& decoder, RefPtr<Image>& image)
     return decodeImage(decoder, image);
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 void ArgumentCoder<Cursor>::encode(Encoder& encoder, const Cursor& cursor)
 {
     encoder.encodeEnum(cursor.type());
@@ -1316,7 +1318,7 @@ bool ArgumentCoder<ResourceError>::decode(Decoder& decoder, ResourceError& resou
     return true;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 void ArgumentCoder<SelectionRect>::encode(Encoder& encoder, const SelectionRect& selectionRect)
 {
@@ -1712,7 +1714,7 @@ bool ArgumentCoder<PasteboardURL>::decode(Decoder& decoder, PasteboardURL& conte
     return true;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 void ArgumentCoder<Highlight>::encode(Encoder& encoder, const Highlight& highlight)
 {
@@ -3011,5 +3013,31 @@ std::optional<FontAttributes> ArgumentCoder<FontAttributes>::decode(Decoder& dec
 
     return attributes;
 }
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+void ArgumentCoder<SerializedAttachmentData>::encode(IPC::Encoder& encoder, const WebCore::SerializedAttachmentData& data)
+{
+    encoder << data.identifier << data.mimeType << IPC::SharedBufferDataReference { data.data.get() };
+}
+
+std::optional<SerializedAttachmentData> ArgumentCoder<WebCore::SerializedAttachmentData>::decode(IPC::Decoder& decoder)
+{
+    String identifier;
+    if (!decoder.decode(identifier))
+        return std::nullopt;
+
+    String mimeType;
+    if (!decoder.decode(mimeType))
+        return std::nullopt;
+
+    IPC::DataReference data;
+    if (!decoder.decode(data))
+        return std::nullopt;
+
+    return {{ WTFMove(identifier), WTFMove(mimeType), WebCore::SharedBuffer::create(data.data(), data.size()) }};
+}
+
+#endif // ENABLE(ATTACHMENT_ELEMENT)
 
 } // namespace IPC

@@ -153,7 +153,6 @@ fast/media/mq-prefers-reduced-motion-live-update.html [ Skip ]
 http/tests/loading/basic-auth-remove-credentials.html [ Skip ]
 http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Skip ]
 http/tests/security/strip-referrer-to-origin-for-third-party-requests-in-private-mode.html [ Skip ]
-http/tests/cookies/capped-lifetime-for-cookie-set-in-js.html [ Skip ]
 
 # ApplePay is only available on iOS (greater than iOS 10) and macOS (greater than macOS 10.12) and only for WebKit2.
 http/tests/ssl/applepay/ [ Skip ]
@@ -359,6 +358,7 @@ webkit.org/b/180240 imported/w3c/web-platform-tests/resource-timing/single-entry
 webkit.org/b/189906 imported/w3c/web-platform-tests/resource-timing/resource_timing_buffer_full_eventually.html [ Skip ]
 webkit.org/b/189905 imported/w3c/web-platform-tests/resource-timing/resource_initiator_types.html [ Pass Failure ]
 webkit.org/b/189910 imported/w3c/web-platform-tests/resource-timing/resource_timing_store_and_clear_during_callback.html [ Pass Failure ]
+webkit.org/b/190523 imported/w3c/web-platform-tests/resource-timing/resource_timing_cross_origin_redirect_chain.html [ Pass Failure ]
 
 # The follow two tests change their output each run
 imported/w3c/web-platform-tests/fetch/api/abort/general.any.html [ Skip ]
@@ -1216,7 +1216,6 @@ media/session [ Skip ]
 
 webrtc/simulcast-h264.html [ Slow ]
 webrtc/datachannel/multiple-connections.html [ Slow ]
-webkit.org/b/187180 webrtc/datachannel/mdns-ice-candidates.html [ Pass Failure ]
 webkit.org/b/171094 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html [ Failure ]
 webkit.org/b/172f21 imported/w3c/web-platform-tests/webrtc/getstats.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-ontrack.https.html [ Skip ]
@@ -1340,6 +1339,9 @@ webkit.org/b/182087 imported/w3c/web-platform-tests/css/css-multicol/multicol-sp
 webkit.org/b/182087 imported/w3c/web-platform-tests/css/css-multicol/multicol-span-all-margin-nested-firstchild-001.xht [ ImageOnlyFailure ]
 
 webkit.org/b/148884 imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection.html [ Pass Failure ]
+
+webkit.org/b/190626 imported/w3c/web-platform-tests/html/semantics/forms/the-datalist-element/datalistoptions.html [ Failure ]
+webkit.org/b/190613 imported/blink/fast/forms/datalist/slider-appearance-with-ticks-crash.html [ Crash Failure ]
 
 # Does timeout
 imported/w3c/web-platform-tests/webaudio/idlharness.https.html [ Skip ]
@@ -2053,6 +2055,7 @@ webkit.org/b/183848 imported/mozilla/css-animations/test_keyframeeffect-getkeyfr
 webkit.org/b/177440 imported/w3c/web-platform-tests/html/browsers/origin/relaxing-the-same-origin-restriction/document_domain_setter_null.tentative.html [ Pass Failure ]
 
 webkit.org/b/157068 [ Debug ] imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html [ Pass Crash ]
+webkit.org/b/157068 [ Release ] imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html [ Pass Failure ]
 
 # Application Manifest tests
 webkit.org/b/153152 http/tests/security/contentSecurityPolicy/manifest-src-allowed.html [ Skip ]
@@ -2868,6 +2871,7 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-eleme
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_nonescaping-2.html [ Skip ]
 imported/w3c/web-platform-tests/html/browsers/windows/browsing-context-names/choose-_blank-003.html [ Failure ]
 
+http/wpt/css/css-images-4/conic-gradient-parsing.html [ Skip ]
 fast/gradients/conic-repeating.html [ Skip ]
 fast/gradients/conic.html [ Skip ]
 fast/gradients/conic-off-center.html [ Skip ]
@@ -2893,15 +2897,14 @@ webkit.org/b/190032 compositing/layer-creation/mismatched-transform-transition-o
 webkit.org/b/190032 compositing/layer-creation/scale-rotation-transition-overlap.html [ Failure ]
 webkit.org/b/190032 compositing/layer-creation/translate-scale-transition-overlap.html [ Failure ]
 webkit.org/b/190032 compositing/layer-creation/translate-transition-overlap.html [ Failure ]
-webkit.org/b/190032 compositing/visible-rect/animated-from-none.html [ Failure ]
-webkit.org/b/190032 fast/animation/css-animation-resuming-when-visible-with-style-change2.html [ Failure ]
 webkit.org/b/190032 imported/w3c/web-platform-tests/css/css-logical/animation-003.tentative.html [ Failure ]
 webkit.org/b/190032 imported/w3c/web-platform-tests/css/css-scoping/keyframes-001.html [ Failure ]
-webkit.org/b/190032 imported/w3c/web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-context.html [ Failure ]
-webkit.org/b/190032 imported/w3c/web-platform-tests/web-animations/interfaces/Animatable/animate.html [ Failure ]
-webkit.org/b/190032 imported/w3c/web-platform-tests/web-animations/timing-model/animations/current-time.html [ Failure ]
 
 # FIXME: Need to implement MediaRecorder dataavailable event to support these testcases
 fast/mediacapturefromelement/CanvasCaptureMediaStream-imagebitmaprenderingcontext.html [ Skip ]
 fast/mediacapturefromelement/CanvasCaptureMediaStream-framerate-0.html [ Skip ]
 fast/mediacapturefromelement/CanvasCaptureMediaStream-capture-out-of-DOM-element.html [ Skip ]
+
+# FIXME: The behavior of navigator.mediaDevices.enumerateDevices is in flux, skip these tests for now.
+http/tests/media/media-stream/enumerate-devices-source-id-persistent.html [ Skip ]
+http/tests/media/media-stream/enumerate-devices-source-id.html [ Skip ]

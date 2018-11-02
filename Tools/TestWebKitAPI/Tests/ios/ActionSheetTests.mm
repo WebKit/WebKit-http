@@ -26,7 +26,7 @@
 #import "config.h"
 #import "Test.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "ClassMethodSwizzler.h"
 #import "InstanceMethodSwizzler.h"
@@ -90,7 +90,7 @@ static UIViewController *overrideViewControllerForFullscreenPresentation()
     return gOverrideViewControllerForFullscreenPresentation.get();
 }
 
-TEST(ActionSheetTests, DismissingActionSheetShouldNotDismissPresentingViewController)
+TEST(ActionSheetTests, DISABLED_DismissingActionSheetShouldNotDismissPresentingViewController)
 {
     IPadUserInterfaceSwizzler iPadUserInterface;
     UIApplicationInitialize();
@@ -368,4 +368,4 @@ TEST(ActionSheetTests, CopyLinkWritesURLAndPlainText)
 
 } // namespace TestWebKitAPI
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

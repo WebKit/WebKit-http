@@ -255,7 +255,6 @@ platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaStreamAVFObjC.mm @no-
 platform/graphics/avfoundation/objc/VideoFullscreenLayerManager.mm @no-unify
 
 platform/graphics/ca/GraphicsLayerCA.cpp
-platform/graphics/ca/LayerFlushScheduler.cpp
 platform/graphics/ca/LayerPool.cpp
 platform/graphics/ca/PlatformCAAnimation.cpp
 platform/graphics/ca/PlatformCALayer.cpp
@@ -263,7 +262,6 @@ platform/graphics/ca/TileController.cpp
 platform/graphics/ca/TileCoverageMap.cpp
 platform/graphics/ca/TileGrid.cpp
 platform/graphics/ca/TransformationMatrixCA.cpp
-platform/graphics/ca/cocoa/LayerFlushSchedulerMac.cpp
 platform/graphics/ca/cocoa/PlatformCAAnimationCocoa.mm
 platform/graphics/ca/cocoa/PlatformCAFiltersCocoa.mm
 platform/graphics/ca/cocoa/PlatformCALayerCocoa.mm
@@ -314,8 +312,8 @@ platform/graphics/cocoa/WebGLLayer.mm
 platform/graphics/cocoa/WebMetalLayer.mm
 platform/graphics/cocoa/TextTrackRepresentationCocoa.mm
 
+platform/graphics/cv/ImageTransferSessionVT.mm
 platform/graphics/cv/PixelBufferConformerCV.cpp
-platform/graphics/cv/PixelBufferResizer.mm
 platform/graphics/cv/TextureCacheCV.mm
 platform/graphics/cv/VideoTextureCopierCV.cpp
 
@@ -345,27 +343,27 @@ platform/graphics/mac/SimpleFontDataCoreText.cpp
 platform/graphics/mac/WebLayer.mm
 platform/graphics/mac/WebKitNSImageExtras.mm
 
-platform/graphics/metal/GPUBufferMetal.mm
-platform/graphics/metal/GPUCommandBufferMetal.mm
-platform/graphics/metal/GPUCommandQueueMetal.mm
-platform/graphics/metal/GPUComputeCommandEncoderMetal.mm
-platform/graphics/metal/GPUComputePipelineStateMetal.mm
-platform/graphics/metal/GPUDepthStencilDescriptorMetal.mm
-platform/graphics/metal/GPUDepthStencilStateMetal.mm
-platform/graphics/metal/GPUDeviceMetal.mm
-platform/graphics/metal/GPUDrawableMetal.mm
-platform/graphics/metal/GPUFunctionMetal.mm
-platform/graphics/metal/GPULibraryMetal.mm
-platform/graphics/metal/GPURenderCommandEncoderMetal.mm
-platform/graphics/metal/GPURenderPassAttachmentDescriptorMetal.mm
-platform/graphics/metal/GPURenderPassColorAttachmentDescriptorMetal.mm
-platform/graphics/metal/GPURenderPassDepthAttachmentDescriptorMetal.mm
-platform/graphics/metal/GPURenderPassDescriptorMetal.mm
-platform/graphics/metal/GPURenderPipelineColorAttachmentDescriptorMetal.mm
-platform/graphics/metal/GPURenderPipelineDescriptorMetal.mm
-platform/graphics/metal/GPURenderPipelineStateMetal.mm
-platform/graphics/metal/GPUTextureDescriptorMetal.mm
-platform/graphics/metal/GPUTextureMetal.mm
+platform/graphics/metal/GPULegacyBufferMetal.mm
+platform/graphics/metal/GPULegacyCommandBufferMetal.mm
+platform/graphics/metal/GPULegacyCommandQueueMetal.mm
+platform/graphics/metal/GPULegacyComputeCommandEncoderMetal.mm
+platform/graphics/metal/GPULegacyComputePipelineStateMetal.mm
+platform/graphics/metal/GPULegacyDepthStencilDescriptorMetal.mm
+platform/graphics/metal/GPULegacyDepthStencilStateMetal.mm
+platform/graphics/metal/GPULegacyDeviceMetal.mm
+platform/graphics/metal/GPULegacyDrawableMetal.mm
+platform/graphics/metal/GPULegacyFunctionMetal.mm
+platform/graphics/metal/GPULegacyLibraryMetal.mm
+platform/graphics/metal/GPULegacyRenderCommandEncoderMetal.mm
+platform/graphics/metal/GPULegacyRenderPassAttachmentDescriptorMetal.mm
+platform/graphics/metal/GPULegacyRenderPassColorAttachmentDescriptorMetal.mm
+platform/graphics/metal/GPULegacyRenderPassDepthAttachmentDescriptorMetal.mm
+platform/graphics/metal/GPULegacyRenderPassDescriptorMetal.mm
+platform/graphics/metal/GPULegacyRenderPipelineColorAttachmentDescriptorMetal.mm
+platform/graphics/metal/GPULegacyRenderPipelineDescriptorMetal.mm
+platform/graphics/metal/GPULegacyRenderPipelineStateMetal.mm
+platform/graphics/metal/GPULegacyTextureDescriptorMetal.mm
+platform/graphics/metal/GPULegacyTextureMetal.mm
 
 platform/graphics/opengl/Extensions3DOpenGL.cpp
 platform/graphics/opengl/Extensions3DOpenGLCommon.cpp

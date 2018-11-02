@@ -119,6 +119,7 @@
 #include "SubframeLoader.h"
 #include "SubresourceLoader.h"
 #include "TextResourceDecoder.h"
+#include "URL.h"
 #include "UserContentController.h"
 #include "UserGestureIndicator.h"
 #include "WindowFeatures.h"
@@ -140,7 +141,7 @@
 #include "DataDetection.h"
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "DocumentType.h"
 #include "ResourceLoader.h"
 #include "RuntimeApplicationChecks.h"
@@ -876,7 +877,7 @@ void FrameLoader::checkCompleted()
     m_requestedHistoryItem = nullptr;
     m_frame.document()->setReadyState(Document::Complete);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_frame.document()->url().isEmpty()) {
         // We need to update the document URL of a PDF document to be non-empty so that both back/forward history navigation
         // between PDF pages and fragment navigation works. See <rdar://problem/9544769> for more details.
@@ -1068,7 +1069,7 @@ void FrameLoader::provisionalLoadStarted()
 {
     if (m_stateMachine.firstLayoutDone())
         m_stateMachine.advanceTo(FrameLoaderStateMachine::CommittedFirstRealLoad);
-    m_frame.navigationScheduler().cancel(true);
+    m_frame.navigationScheduler().cancel(NewLoadInProgress::Yes);
     m_client.provisionalLoadStarted();
 
     if (m_frame.isMainFrame()) {
@@ -1360,6 +1361,8 @@ void FrameLoader::loadURL(FrameLoadRequest&& frameLoadRequest, const String& ref
     if (m_frame.page() && m_frame.page()->openedViaWindowOpenWithOpener())
         action.setOpenedViaWindowOpenWithOpener();
     action.setHasOpenedFrames(!m_openedFrames.isEmpty());
+    action.setLockHistory(lockHistory);
+    action.setLockBackForwardList(frameLoadRequest.lockBackForwardList());
 
     if (!targetFrame && !effectiveFrameName.isEmpty()) {
         action = action.copyWithShouldOpenExternalURLsPolicy(shouldOpenExternalURLsPolicyToApply(m_frame, frameLoadRequest));
@@ -1458,6 +1461,14 @@ void FrameLoader::load(FrameLoadRequest&& request)
     addSameSiteInfoToRequestIfNeeded(loader->request());
     applyShouldOpenExternalURLsPolicyToNewDocumentLoader(m_frame, loader, request);
 
+    if (request.shouldTreatAsContinuingLoad()) {
+        loader->setClientRedirectSourceForHistory(request.clientRedirectSourceForHistory());
+        if (request.lockBackForwardList() == LockBackForwardList::Yes) {
+            loader->setIsClientRedirect(true);
+            m_loadType = FrameLoadType::RedirectWithLockedBackForwardList;
+        }
+    }
+
     SetForScope<bool> currentLoadShouldBeTreatedAsContinuingLoadGuard(m_currentLoadShouldBeTreatedAsContinuingLoad, request.shouldTreatAsContinuingLoad());
     load(loader.get(), request.shouldSkipSafeBrowsingCheck());
 }
@@ -1495,7 +1506,7 @@ void FrameLoader::load(DocumentLoader& newDocumentLoader, ShouldSkipSafeBrowsing
         type = FrameLoadType::Same;
     } else if (shouldTreatURLAsSameAsCurrent(newDocumentLoader.unreachableURL()) && isReload(m_loadType))
         type = m_loadType;
-    else if (m_loadType == FrameLoadType::RedirectWithLockedBackForwardList && !newDocumentLoader.unreachableURL().isEmpty() && newDocumentLoader.substituteData().isValid())
+    else if (m_loadType == FrameLoadType::RedirectWithLockedBackForwardList && ((!newDocumentLoader.unreachableURL().isEmpty() && newDocumentLoader.substituteData().isValid()) || m_currentLoadShouldBeTreatedAsContinuingLoad))
         type = FrameLoadType::RedirectWithLockedBackForwardList;
     else
         type = FrameLoadType::Standard;
@@ -1545,6 +1556,11 @@ void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType t
 
     const URL& newURL = loader->request().url();
 
+    // Only the first iframe navigation or the first iframe navigation after about:blank should be reported.
+    // https://www.w3.org/TR/resource-timing-2/#resources-included-in-the-performanceresourcetiming-interface
+    if (m_shouldReportResourceTimingToParentFrame && !m_previousURL.isNull() && m_previousURL != blankURL())
+        m_shouldReportResourceTimingToParentFrame = false;
+
     // Log main frame navigation types.
     if (m_frame.isMainFrame()) {
         if (auto* page = m_frame.page()) {
@@ -1592,7 +1608,7 @@ void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType t
         }
     }
 
-    m_frame.navigationScheduler().cancel(true);
+    m_frame.navigationScheduler().cancel(NewLoadInProgress::Yes);
 
     if (m_currentLoadShouldBeTreatedAsContinuingLoad) {
         continueLoadAfterNavigationPolicy(loader->request(), formState.get(), ShouldContinue::Yes, allowNavigationToInvalidURL);
@@ -1648,7 +1664,7 @@ const ResourceRequest& FrameLoader::initialRequest() const
 
 bool FrameLoader::willLoadMediaElementURL(URL& url, Node& initiatorNode)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // MobileStore depends on the iOS 4.0 era client delegate method because webView:resource:willSendRequest:redirectResponse:fromDataSource
     // doesn't let them tell when a load request is coming from a media element. See <rdar://problem/8266916> for more details.
     if (IOSApplication::isMobileStore())
@@ -1818,7 +1834,7 @@ void FrameLoader::stopForUserCancel(bool deferCheckLoadComplete)
 
     stopAllLoaders();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Lay out immediately when stopping to immediately clear the old page if we just committed this one
     // but haven't laid out/painted yet.
     // FIXME: Is this behavior specific to iOS? Or should we expose a setting to toggle this behavior?
@@ -1970,10 +1986,10 @@ void FrameLoader::commitProvisionalLoad()
     // the redirect in its -webView:willPerformClientRedirectToURL:delay:fireDate:forFrame:.  Since we are
     // just about to commit a new page, there cannot possibly be a pending redirect at this point.
     if (m_sentRedirectNotification)
-        clientRedirectCancelledOrFinished(false);
+        clientRedirectCancelledOrFinished(NewLoadInProgress::No);
     
     if (cachedPage && cachedPage->document()) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         // FIXME: CachedPage::restore() would dispatch viewport change notification. However UIKit expects load
         // commit to happen before any changes to viewport arguments and dealing with this there is difficult.
         m_frame.page()->chrome().setDispatchViewportDataDidChangeSuppressed(true);
@@ -1995,7 +2011,7 @@ void FrameLoader::commitProvisionalLoad()
 
         dispatchDidCommitLoad(hasInsecureContent);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         m_frame.page()->chrome().setDispatchViewportDataDidChangeSuppressed(false);
         m_frame.page()->chrome().dispatchViewportPropertiesDidChange(m_frame.page()->viewportArguments());
 #endif
@@ -2026,7 +2042,7 @@ void FrameLoader::commitProvisionalLoad()
         m_frame.document()->resume(ReasonForSuspension::PageCache);
 
         // Force a layout to update view size and thereby update scrollbars.
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         if (!m_client.forceLayoutOnRestoreFromPageCache())
             m_frame.view()->forceLayout();
 #else
@@ -2158,14 +2174,14 @@ void FrameLoader::transitionToCommitted(CachedPage* cachedPage)
         m_stateMachine.advanceTo(FrameLoaderStateMachine::DisplayingInitialEmptyDocumentPostCommit);
 }
 
-void FrameLoader::clientRedirectCancelledOrFinished(bool cancelWithLoadInProgress)
+void FrameLoader::clientRedirectCancelledOrFinished(NewLoadInProgress newLoadInProgress)
 {
     // Note that -webView:didCancelClientRedirectForFrame: is called on the frame load delegate even if
     // the redirect succeeded.  We should either rename this API, or add a new method, like
     // -webView:didFinishClientRedirectForFrame:
     m_client.dispatchDidCancelClientRedirect();
 
-    if (!cancelWithLoadInProgress)
+    if (newLoadInProgress == NewLoadInProgress::No)
         m_quickRedirectComing = false;
 
     m_sentRedirectNotification = false;
@@ -2173,7 +2189,7 @@ void FrameLoader::clientRedirectCancelledOrFinished(bool cancelWithLoadInProgres
 
 void FrameLoader::clientRedirected(const URL& url, double seconds, WallTime fireDate, LockBackForwardList lockBackForwardList)
 {
-    m_client.dispatchWillPerformClientRedirect(url, seconds, fireDate);
+    m_client.dispatchWillPerformClientRedirect(url, seconds, fireDate, lockBackForwardList);
     
     // Remember that we sent a redirect notification to the frame load delegate so that when we commit
     // the next provisional load, we can send a corresponding -webView:didCancelClientRedirectForFrame:
@@ -2556,7 +2572,7 @@ void FrameLoader::didReachLayoutMilestone(LayoutMilestones milestones)
 
 void FrameLoader::didFirstLayout()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Only send layout-related delegate callbacks synchronously for the main frame to
     // avoid reentering layout for the main frame while delivering a layout-related delegate
     // callback for a subframe.
@@ -3033,7 +3049,7 @@ void FrameLoader::receivedMainResourceError(const ResourceError& error)
         // not going to use this provisional resource, as it was cancelled, notify the frame load delegate that the redirect
         // has ended.
         if (m_sentRedirectNotification)
-            clientRedirectCancelledOrFinished(false);
+            clientRedirectCancelledOrFinished(NewLoadInProgress::No);
     }
 
     checkCompleted();
@@ -3289,7 +3305,7 @@ void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest& reque
         // need to report that the client redirect was cancelled.
         // FIXME: The client should be told about ignored non-quick redirects, too.
         if (m_quickRedirectComing)
-            clientRedirectCancelledOrFinished(false);
+            clientRedirectCancelledOrFinished(NewLoadInProgress::No);
 
         setPolicyDocumentLoader(nullptr);
         checkCompleted();
@@ -3354,8 +3370,13 @@ void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest& reque
         m_loadingFromCachedPage = false;
 
         // We handle suspension by navigating forward to about:blank, which leaves us setup to navigate back to resume.
-        if (shouldContinue == ShouldContinue::ForSuspension)
+        if (shouldContinue == ShouldContinue::ForSuspension) {
+            // Make sure we do a standard load to about:blank instead of reusing whatever the load type was on process swap.
+            // For example, using a Back/Forward load to load about blank would cause the current HistoryItem's url to be
+            // overwritten with 'about:blank', which we do not want.
+            m_loadType = FrameLoadType::Standard;
             m_provisionalDocumentLoader->willContinueMainResourceLoadAfterRedirect({ blankURL() });
+        }
 
         m_provisionalDocumentLoader->startLoadingMainResource(shouldContinue);
     };
@@ -3738,7 +3759,7 @@ ResourceError FrameLoader::blockedByContentFilterError(const ResourceRequest& re
 }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 RetainPtr<CFDictionaryRef> FrameLoader::connectionProperties(ResourceLoader* loader)
 {
     return m_client.connectionProperties(loader->documentLoader(), loader->identifier());
@@ -3975,7 +3996,7 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, FrameLoadRequ
     // for the difference between the window size and the viewport size.
 
     // FIXME: We should reconcile the initialization of viewport arguments between iOS and non-IOS.
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     FloatSize viewportSize = page->chrome().pageRect().size();
     FloatRect windowRect = page->chrome().windowRect();
     if (features.x)

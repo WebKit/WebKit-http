@@ -67,7 +67,6 @@ namespace WebKit {
 class NetworkProcessProxy;
 class ObjCObjectGraph;
 class PageClient;
-class SuspendedPageProxy;
 class UserMediaCaptureManagerProxy;
 class VisitedLinkStore;
 class WebBackForwardListItem;
@@ -82,7 +81,7 @@ struct WebNavigationDataStore;
 struct WebPageCreationParameters;
 struct WebsiteData;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 enum ForegroundWebProcessCounterType { };
 typedef RefCounter<ForegroundWebProcessCounterType> ForegroundWebProcessCounter;
 typedef ForegroundWebProcessCounter::Token ForegroundWebProcessToken;
@@ -121,6 +120,8 @@ public:
     typename WebPageProxyMap::ValuesConstIteratorRange pages() const { return m_pageMap.values(); }
     unsigned pageCount() const { return m_pageMap.size(); }
     unsigned visiblePageCount() const { return m_visiblePageCounter.value(); }
+
+    Vector<String> activePagesDomainsForTesting(); // This is what is reported to ActivityMonitor.
 
     virtual bool isServiceWorkerProcess() const { return false; }
 
@@ -208,9 +209,6 @@ public:
     void didCommitProvisionalLoad() { m_hasCommittedAnyProvisionalLoads = true; }
     bool hasCommittedAnyProvisionalLoads() const { return m_hasCommittedAnyProvisionalLoads; }
 
-    void suspendWebPageProxy(WebPageProxy&, API::Navigation&, uint64_t mainFrameID);
-    void suspendedPageWasDestroyed(SuspendedPageProxy&);
-
 #if PLATFORM(WATCHOS)
     void takeBackgroundActivityTokenForFullscreenInput();
     void releaseBackgroundActivityTokenForFullscreenInput();
@@ -232,6 +230,7 @@ public:
     // Called when the web process has crashed or we know that it will terminate soon.
     // Will potentially cause the WebProcessProxy object to be freed.
     void shutDown();
+    void maybeShutDown();
 
 protected:
     static uint64_t generatePageID();
@@ -251,8 +250,6 @@ protected:
 #endif
 
 private:
-    void maybeShutDown();
-
     // IPC message handlers.
     void updateBackForwardItem(const BackForwardListItemState&);
     void didDestroyFrame(uint64_t);
@@ -361,7 +358,6 @@ private:
     HashSet<String> m_localPathsWithAssumedReadAccess;
 
     WebPageProxyMap m_pageMap;
-    HashMap<uint64_t, SuspendedPageProxy*> m_suspendedPageMap;
     WebFrameProxyMap m_frameMap;
     UserInitiatedActionMap m_userInitiatedActionMap;
 
@@ -371,7 +367,7 @@ private:
     int m_numberOfTimesSuddenTerminationWasDisabled;
     ProcessThrottler m_throttler;
     ProcessThrottler::BackgroundActivityToken m_tokenForHoldingLockedFiles;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     ForegroundWebProcessToken m_foregroundToken;
     BackgroundWebProcessToken m_backgroundToken;
 #endif

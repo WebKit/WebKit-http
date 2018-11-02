@@ -12,7 +12,7 @@
             findMediaElement();
             video.src = findMediaFile('video', '../content/test');
             waitForEvent('seeked', endTest);
-            waitForEvent('canplaythrough', function() { video.currentTime = .5; });
+            waitForEvent('canplaythrough', function() { video.currentTime = 0; });
         }
 
         setCaptionDisplayMode('Automatic');

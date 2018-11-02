@@ -127,7 +127,7 @@ using FloatBoxExtent = RectEdges<float>;
 struct KeypressCommand;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 class FloatQuad;
 class SelectionRect;
 struct Highlight;
@@ -162,6 +162,10 @@ class MediaSessionMetadata;
 
 #if ENABLE(MEDIA_STREAM)
 struct MediaConstraints;
+#endif
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+struct SerializedAttachmentData;
 #endif
 
 #if ENABLE(INDEXED_DATABASE)
@@ -258,7 +262,7 @@ template<> struct ArgumentCoder<WebCore::FloatRoundedRect> {
     static bool decode(Decoder&, WebCore::FloatRoundedRect&);
 };
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 template<> struct ArgumentCoder<WebCore::FloatQuad> {
     static void encode(Encoder&, const WebCore::FloatQuad&);
     static std::optional<WebCore::FloatQuad> decode(Decoder&);
@@ -269,7 +273,7 @@ template<> struct ArgumentCoder<WebCore::ViewportArguments> {
     static bool decode(Decoder&, WebCore::ViewportArguments&);
     static std::optional<WebCore::ViewportArguments> decode(Decoder&);
 };
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 template<> struct ArgumentCoder<WebCore::IntPoint> {
     static void encode(Encoder&, const WebCore::IntPoint&);
@@ -399,7 +403,7 @@ template<> struct ArgumentCoder<WebCore::KeypressCommand> {
 };
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 template<> struct ArgumentCoder<WebCore::SelectionRect> {
     static void encode(Encoder&, const WebCore::SelectionRect&);
     static std::optional<WebCore::SelectionRect> decode(Decoder&);
@@ -720,6 +724,15 @@ template<> struct ArgumentCoder<WebCore::FontAttributes> {
     static std::optional<WebCore::FontAttributes> decode(Decoder&);
 };
 
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+template<> struct ArgumentCoder<WebCore::SerializedAttachmentData> {
+    static void encode(Encoder&, const WebCore::SerializedAttachmentData&);
+    static std::optional<WebCore::SerializedAttachmentData> decode(Decoder&);
+};
+
+#endif // ENABLE(ATTACHMENT_ELEMENT)
+
 } // namespace IPC
 
 namespace WTF {
@@ -733,14 +746,6 @@ template<> struct EnumTraits<WebCore::ColorSpace> {
     >;
 };
 
-template<> struct EnumTraits<WebCore::HasInsecureContent> {
-    using values = EnumValues<
-        WebCore::HasInsecureContent,
-        WebCore::HasInsecureContent::No,
-        WebCore::HasInsecureContent::Yes
-    >;
-};
-
 template<> struct EnumTraits<WebCore::AutoplayEvent> {
     using values = EnumValues<
         WebCore::AutoplayEvent,
@@ -748,14 +753,6 @@ template<> struct EnumTraits<WebCore::AutoplayEvent> {
         WebCore::AutoplayEvent::DidPlayMediaPreventedFromPlaying,
         WebCore::AutoplayEvent::DidAutoplayMediaPastThresholdWithoutUserInterference,
         WebCore::AutoplayEvent::UserDidInterfereWithPlayback
-    >;
-};
-
-template<> struct EnumTraits<WebCore::ShouldSample> {
-    using values = EnumValues<
-        WebCore::ShouldSample,
-        WebCore::ShouldSample::No,
-        WebCore::ShouldSample::Yes
     >;
 };
 
@@ -805,14 +802,6 @@ template<> struct EnumTraits<WebCore::MediaSelectionOption::Type> {
         WebCore::MediaSelectionOption::Type::Regular,
         WebCore::MediaSelectionOption::Type::LegibleOff,
         WebCore::MediaSelectionOption::Type::LegibleAuto
-    >;
-};
-
-template <> struct EnumTraits<WebCore::StoredCredentialsPolicy> {
-    using values = EnumValues<
-        WebCore::StoredCredentialsPolicy,
-        WebCore::StoredCredentialsPolicy::DoNotUse,
-        WebCore::StoredCredentialsPolicy::Use
     >;
 };
 

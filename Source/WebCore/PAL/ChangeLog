@@ -1,3 +1,144 @@
+2018-10-30  Alexey Proskuryakov  <ap@apple.com>
+
+        Clean up some obsolete MAX_ALLOWED macros
+        https://bugs.webkit.org/show_bug.cgi?id=190916
+
+        Reviewed by Tim Horton.
+
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+        Behavior change here. The check didn't really make sense, pretty sure we would
+        just crash when hitting this code path on iOS.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+        * pal/spi/cocoa/PassKitSPI.h:
+        * pal/spi/mac/AVFoundationSPI.h:
+
+2018-10-29  Tim Horton  <timothy_horton@apple.com>
+
+        Modernize WebKit nibs and lprojs for localization's sake
+        https://bugs.webkit.org/show_bug.cgi?id=190911
+        <rdar://problem/45349466>
+
+        Reviewed by Dan Bernstein.
+
+        * PAL.xcodeproj/project.pbxproj:
+        English->en
+
+2018-10-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237458.
+        https://bugs.webkit.org/show_bug.cgi?id=190973
+
+        broke internal iOS builds (Requested by zalan on #webkit).
+
+        Reverted changeset:
+
+        "Adopt -setOverrideRouteSharingPolicy:routingContextUID: SPI"
+        https://bugs.webkit.org/show_bug.cgi?id=190951
+        https://trac.webkit.org/changeset/237458
+
+2018-10-26  Timothy Hatcher  <timothy@apple.com>
+
+        Use dark appearance scrollbar when page background is dark or document supports dark mode.
+        https://bugs.webkit.org/show_bug.cgi?id=190937
+        rdar://problem/41225839
+
+        Reviewed by Beth Dakin.
+
+        * pal/spi/mac/NSScrollerImpSPI.h: Added effectiveAppearanceForScrollerImp:.
+
+2018-10-26  Jer Noble  <jer.noble@apple.com>
+
+        Adopt -setOverrideRouteSharingPolicy:routingContextUID: SPI
+        https://bugs.webkit.org/show_bug.cgi?id=190951
+        <rdar://problem/45213065>
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/cocoa/AVKitSPI.h:
+
+2018-10-24  Alexey Proskuryakov  <ap@apple.com>
+
+        Clean up some obsolete macOS version guards
+        https://bugs.webkit.org/show_bug.cgi?id=190887
+
+        Reviewed by Dan Bernstein.
+
+        * pal/spi/mac/TUCallSPI.h:
+
+2018-10-24  Megan Gardner  <megan_gardner@apple.com>
+
+        Turn on Conic Gradients
+        https://bugs.webkit.org/show_bug.cgi?id=190810
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r237280.
+
+        Causes fast/box-shadow/box-shadow-with-zero-radius.html to
+        fail on iOS Simulator.
+
+        Reverted changeset:
+
+        "[CG] Adopt CG SPI for non-even cornered rounded rects"
+        https://bugs.webkit.org/show_bug.cgi?id=190155
+        https://trac.webkit.org/changeset/237280
+
+2018-10-18  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [CG] Adopt CG SPI for non-even cornered rounded rects
+        https://bugs.webkit.org/show_bug.cgi?id=190155
+
+        Reviewed by Simon Fraser.
+
+        * pal/spi/cg/CoreGraphicsSPI.h:
+
+2018-10-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Switch from PLATFORM(IOS) to PLATFORM(IOS_FAMILY)
+        https://bugs.webkit.org/show_bug.cgi?id=190729
+
+        Reviewed by Tim Horton.
+
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+        * pal/ios/UIKitSoftLink.h:
+        * pal/ios/UIKitSoftLink.mm:
+        * pal/spi/cf/CFNetworkSPI.h:
+        * pal/spi/cocoa/AVKitSPI.h:
+        * pal/spi/cocoa/CFNSURLConnectionSPI.h:
+        * pal/spi/cocoa/CoreTextSPI.h:
+        * pal/spi/cocoa/DataDetectorsCoreSPI.h:
+        * pal/spi/cocoa/IOSurfaceSPI.h:
+        * pal/spi/cocoa/LaunchServicesSPI.h:
+        * pal/spi/cocoa/NEFilterSourceSPI.h:
+        * pal/spi/cocoa/NSAttributedStringSPI.h:
+        * pal/spi/cocoa/NSKeyedArchiverSPI.h:
+        * pal/spi/cocoa/PassKitSPI.h:
+        * pal/spi/cocoa/QuartzCoreSPI.h:
+        * pal/spi/ios/DataDetectorsUISPI.h:
+        * pal/spi/ios/GraphicsServicesSPI.h:
+        * pal/spi/ios/MediaPlayerSPI.h:
+        * pal/spi/ios/MobileGestaltSPI.h:
+        * pal/spi/mac/AVFoundationSPI.h:
+        * pal/system/mac/ClockCM.mm:
+        (ClockCM::ClockCM):
+
+2018-10-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Enable the datalist element by default on iOS and macOS
+        https://bugs.webkit.org/show_bug.cgi?id=190594
+        <rdar://problem/45281159>
+
+        Reviewed by Ryosuke Niwa and Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2018-10-16  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r237163.

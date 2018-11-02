@@ -100,7 +100,7 @@ private:
 typedef OptionRange optionRange;
 typedef const char* optionString;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #define MAXIMUM_NUMBER_OF_FTL_COMPILER_THREADS 2
 #else
 #define MAXIMUM_NUMBER_OF_FTL_COMPILER_THREADS 8
@@ -303,7 +303,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     \
     v(unsigned, maximumOptimizationCandidateInstructionCount, 100000, Normal, nullptr) \
     \
-    v(unsigned, maximumFunctionForCallInlineCandidateInstructionCount, 190, Normal, nullptr) \
+    v(unsigned, maximumFunctionForCallInlineCandidateInstructionCount, 120, Normal, nullptr) \
     v(unsigned, maximumFunctionForClosureCallInlineCandidateInstructionCount, 100, Normal, nullptr) \
     v(unsigned, maximumFunctionForConstructInlineCandidateInstructionCount, 100, Normal, nullptr) \
     \

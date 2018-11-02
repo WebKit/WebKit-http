@@ -51,7 +51,7 @@
 /* FIXME: Move out the PLATFORM specific rules into platform specific files. */
 
 /* --------- Apple IOS (but not MAC) port --------- */
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #if !defined(ENABLE_AIRPLAY_PICKER)
 #if !PLATFORM(IOSMAC)
@@ -166,18 +166,18 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #endif
 
 #if !defined(ENABLE_WKLEGACYPDFVIEW)
-#if PLATFORM(IOS) && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !PLATFORM(IOSMAC) && __IPHONE_OS_VERSION_MIN_REQUIRED < 120000
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !PLATFORM(IOSMAC) && __IPHONE_OS_VERSION_MIN_REQUIRED < 120000
 #define ENABLE_WKLEGACYPDFVIEW 1
 #endif
 #endif
 
 #if !defined(ENABLE_WKPDFVIEW)
-#if PLATFORM(IOS) && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !PLATFORM(IOSMAC) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !PLATFORM(IOSMAC) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
 #define ENABLE_WKPDFVIEW 1
 #endif
 #endif
 
-#endif /* PLATFORM(IOS) */
+#endif /* PLATFORM(IOS_FAMILY) */
 
 /* --------- Apple WATCHOS port --------- */
 #if PLATFORM(WATCHOS)
@@ -398,6 +398,10 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 
 #if !defined(ENABLE_CSS_IMAGE_RESOLUTION)
 #define ENABLE_CSS_IMAGE_RESOLUTION 0
+#endif
+
+#if !defined(ENABLE_CSS_CONIC_GRADIENTS)
+#define ENABLE_CSS_CONIC_GRADIENTS 0
 #endif
 
 #if !defined(ENABLE_CURSOR_SUPPORT)

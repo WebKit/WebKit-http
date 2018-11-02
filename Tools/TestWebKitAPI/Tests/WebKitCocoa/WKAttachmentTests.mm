@@ -36,11 +36,11 @@
 #import <WebKit/WebKitPrivate.h>
 #import <wtf/RetainPtr.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <MobileCoreServices/MobileCoreServices.h>
 #endif
 
-#define USES_MODERN_ATTRIBUTED_STRING_CONVERSION ((PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300))
+#define USES_MODERN_ATTRIBUTED_STRING_CONVERSION ((PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300))
 
 #if WK_API_ENABLED && !PLATFORM(WATCHOS) && !PLATFORM(TVOS)
 
@@ -454,7 +454,7 @@ BOOL isCompletelyTransparent(NSImage *image)
 
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 typedef void(^ItemProviderDataLoadHandler)(NSData *, NSError *);
 
@@ -492,7 +492,7 @@ typedef void(^ItemProviderDataLoadHandler)(NSData *, NSError *);
 
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 void platformCopyRichTextWithMultipleAttachments()
 {
@@ -509,7 +509,7 @@ void platformCopyRichTextWithMultipleAttachments()
     NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
     [pasteboard clearContents];
     [pasteboard writeObjects:@[ richText.get() ]];
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     auto item = adoptNS([[NSItemProvider alloc] init]);
     [item registerObject:richText.get() visibility:NSItemProviderRepresentationVisibilityAll];
     [UIPasteboard generalPasteboard].itemProviders = @[ item.get() ];
@@ -529,7 +529,7 @@ void platformCopyRichTextWithImage()
     NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
     [pasteboard clearContents];
     [pasteboard writeObjects:@[ richText.get() ]];
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     auto item = adoptNS([[NSItemProvider alloc] init]);
     [item registerObject:richText.get() visibility:NSItemProviderRepresentationVisibilityAll];
     [UIPasteboard generalPasteboard].itemProviders = @[ item.get() ];
@@ -542,7 +542,7 @@ void platformCopyPNG()
     NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
     [pasteboard declareTypes:@[NSPasteboardTypePNG] owner:nil];
     [pasteboard setData:testImageData() forType:NSPasteboardTypePNG];
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
     auto item = adoptNS([[UIItemProvider alloc] init]);
     [item setPreferredPresentationStyle:UIPreferredPresentationStyleAttachment];
@@ -1462,6 +1462,52 @@ TEST(WKAttachmentTests, CustomFileWrapperSubclass)
     EXPECT_EQ([FileWrapper self], [insertedAttachments.firstObject.info.fileWrapper class]);
 }
 
+TEST(WKAttachmentTests, CopyAndPasteBetweenWebViews)
+{
+    auto file = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:testHTMLData()]);
+    [file setPreferredFilename:@"test.foobar"];
+    auto image = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:testImageData()]);
+    auto document = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:testPDFData()]);
+    auto folder = adoptNS([[NSFileWrapper alloc] initDirectoryWithFileWrappers:@{ @"image.png": image.get(), @"document.pdf": document.get() }]);
+    [folder setPreferredFilename:@"folder"];
+    auto archive = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:testZIPData()]);
+    [archive setPreferredFilename:@"archive"];
+
+    @autoreleasepool {
+        auto firstWebView = webViewForTestingAttachments();
+        [firstWebView synchronouslyInsertAttachmentWithFileWrapper:file.get() contentType:@"application/octet-stream"];
+        [firstWebView synchronouslyInsertAttachmentWithFileWrapper:folder.get() contentType:(__bridge NSString *)kUTTypeFolder];
+        [firstWebView synchronouslyInsertAttachmentWithFileWrapper:archive.get() contentType:@"application/zip"];
+        [firstWebView selectAll:nil];
+        [firstWebView _executeEditCommand:@"Copy" argument:nil completion:nil];
+    }
+
+    auto secondWebView = webViewForTestingAttachments();
+    ObserveAttachmentUpdatesForScope observer(secondWebView.get());
+    [secondWebView paste:nil];
+    [secondWebView expectElementCount:3 tagName:@"attachment"];
+    EXPECT_EQ(3U, observer.observer().inserted.count);
+
+    NSString *plainFileIdentifier = [secondWebView stringByEvaluatingJavaScript:@"document.querySelector('attachment[title^=test]').uniqueIdentifier"];
+    NSString *folderIdentifier = [secondWebView stringByEvaluatingJavaScript:@"document.querySelector('attachment[title=folder]').uniqueIdentifier"];
+    NSString *archiveIdentifier = [secondWebView stringByEvaluatingJavaScript:@"document.querySelector('attachment[title=archive]').uniqueIdentifier"];
+
+    _WKAttachmentInfo *pastedFileInfo = [secondWebView _attachmentForIdentifier:plainFileIdentifier].info;
+    _WKAttachmentInfo *pastedFolderInfo = [secondWebView _attachmentForIdentifier:folderIdentifier].info;
+    _WKAttachmentInfo *pastedArchiveInfo = [secondWebView _attachmentForIdentifier:archiveIdentifier].info;
+
+    NSDictionary<NSString *, NSFileWrapper *> *pastedFolderContents = pastedFolderInfo.fileWrapper.fileWrappers;
+    NSFileWrapper *documentFromFolder = [pastedFolderContents objectForKey:@"document.pdf"];
+    NSFileWrapper *imageFromFolder = [pastedFolderContents objectForKey:@"image.png"];
+    EXPECT_TRUE([[document regularFileContents] isEqualToData:documentFromFolder.regularFileContents]);
+    EXPECT_TRUE([[image regularFileContents] isEqualToData:imageFromFolder.regularFileContents]);
+    EXPECT_TRUE([[file regularFileContents] isEqualToData:pastedFileInfo.fileWrapper.regularFileContents]);
+    EXPECT_TRUE([[archive regularFileContents] isEqualToData:pastedArchiveInfo.fileWrapper.regularFileContents]);
+    EXPECT_WK_STREQ("application/octet-stream", pastedFileInfo.contentType);
+    EXPECT_WK_STREQ("public.directory", pastedFolderInfo.contentType);
+    EXPECT_WK_STREQ("application/zip", pastedArchiveInfo.contentType);
+}
+
 #pragma mark - Platform-specific tests
 
 #if PLATFORM(MAC)
@@ -1566,7 +1612,7 @@ TEST(WKAttachmentTestsMac, DragAttachmentAsFilePromise)
 
 #endif // PLATFORM(MAC)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 TEST(WKAttachmentTestsIOS, InsertDroppedImageAsAttachment)
 {
@@ -1775,7 +1821,7 @@ TEST(WKAttachmentTestsIOS, DragAttachmentInsertedAsData)
     [dragAndDropSimulator endDataTransfer];
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 } // namespace TestWebKitAPI
 

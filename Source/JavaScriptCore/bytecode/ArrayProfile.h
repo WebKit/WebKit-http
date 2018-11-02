@@ -58,7 +58,7 @@ const ArrayModes Uint32ArrayMode = 1 << 27;
 const ArrayModes Float32ArrayMode = 1 << 28;
 const ArrayModes Float64ArrayMode = 1 << 29;
 
-inline constexpr ArrayModes asArrayModes(IndexingType indexingMode)
+constexpr ArrayModes asArrayModes(IndexingType indexingMode)
 {
     return static_cast<unsigned>(1) << static_cast<unsigned>(indexingMode);
 }
@@ -210,6 +210,8 @@ inline bool hasSeenCopyOnWriteArray(ArrayModes arrayModes)
 }
 
 class ArrayProfile {
+    friend class CodeBlock;
+
 public:
     ArrayProfile()
         : ArrayProfile(std::numeric_limits<unsigned>::max())

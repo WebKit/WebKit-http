@@ -123,7 +123,6 @@ public:
     bool waitingForKey() const final;
 
     void waitingForKeyChanged();
-    CDMInstance* cdmInstance() const { return m_cdmInstance.get(); }
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
@@ -234,6 +233,8 @@ private:
     bool wirelessVideoPlaybackDisabled() const override { return false; }
 #endif
 
+    bool performTaskAtMediaTime(WTF::Function<void()>&&, MediaTime) final;
+
     void ensureLayer();
     void destroyLayer();
     void ensureDecompressionSession();
@@ -272,6 +273,7 @@ private:
     ALLOW_NEW_API_WITHOUT_GUARDS_END
     RetainPtr<id> m_timeJumpedObserver;
     RetainPtr<id> m_durationObserver;
+    RetainPtr<id> m_performTaskObserver;
     RetainPtr<AVStreamSession> m_streamSession;
     RetainPtr<CVPixelBufferRef> m_lastPixelBuffer;
     RetainPtr<CGImageRef> m_lastImage;
@@ -306,9 +308,6 @@ private:
     bool m_shouldPlayToTarget { false };
 #endif
     std::unique_ptr<VideoFullscreenLayerManagerObjC> m_videoFullscreenLayerManager;
-#if ENABLE(ENCRYPTED_MEDIA)
-    RefPtr<CDMInstance> m_cdmInstance;
-#endif
 };
 
 }

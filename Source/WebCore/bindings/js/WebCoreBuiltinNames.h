@@ -71,6 +71,7 @@ namespace WebCore {
     macro(GamepadEvent) \
     macro(HTMLAttachmentElement) \
     macro(HTMLAudioElement) \
+    macro(HTMLDataListElement) \
     macro(HTMLMenuItemElement) \
     macro(HTMLSlotElement) \
     macro(Headers) \
@@ -112,6 +113,7 @@ namespace WebCore {
     macro(NavigatorUserMedia) \
     macro(OffscreenCanvas) \
     macro(OffscreenCanvasRenderingContext2D) \
+    macro(PaintRenderingContext2D) \
     macro(PaymentAddress) \
     macro(PaymentMethodChangeEvent) \
     macro(PaymentRequest) \
@@ -172,6 +174,13 @@ namespace WebCore {
     macro(VisualViewport) \
     macro(WebGL2RenderingContext) \
     macro(WebGLVertexArrayObject) \
+    macro(WebGPU) \
+    macro(WebGPUAdapter) \
+    macro(WebGPUAdapterDescriptor) \
+    macro(WebGPUDevice) \
+    macro(WebGPURenderingContext) \
+    macro(WebGPUSwapChain) \
+    macro(WebGPUSwapChainDescriptor) \
     macro(WebMetalBuffer) \
     macro(WebMetalCommandBuffer) \
     macro(WebMetalCommandQueue) \
@@ -318,6 +327,7 @@ namespace WebCore {
     macro(webkitIDBRequest) \
     macro(webkitIDBTransaction) \
     macro(webkitIndexedDB) \
+    macro(webgpu) \
     macro(window) \
     macro(writing)
 

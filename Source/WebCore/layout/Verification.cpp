@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "LayoutContext.h"
+#include "LayoutFormattingState.h"
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
@@ -40,7 +40,15 @@
 namespace WebCore {
 namespace Layout {
 
-static bool outputMismatchingSimpleLineInformationIfNeeded(TextStream& stream, const LayoutContext& layoutContext, const RenderBlockFlow& blockFlow, const Container& inlineFormattingRoot)
+static bool areEssentiallyEqual(float a, LayoutUnit b)
+{
+    if (a == b.toFloat())
+        return true;
+
+    return ::abs(a - b.toFloat()) <= 4 * LayoutUnit::epsilon();
+}
+
+static bool outputMismatchingSimpleLineInformationIfNeeded(TextStream& stream, const LayoutState& layoutState, const RenderBlockFlow& blockFlow, const Container& inlineFormattingRoot)
 {
     auto* lineLayoutData = blockFlow.simpleLineLayout();
     if (!lineLayoutData) {
@@ -48,12 +56,12 @@ static bool outputMismatchingSimpleLineInformationIfNeeded(TextStream& stream, c
         return true;
     }
 
-    auto& inlineFormattingState = const_cast<LayoutContext&>(layoutContext).establishedFormattingState(inlineFormattingRoot);
+    auto& inlineFormattingState = layoutState.establishedFormattingState(inlineFormattingRoot);
     ASSERT(is<InlineFormattingState>(inlineFormattingState));
-    auto& layoutRuns = downcast<InlineFormattingState>(inlineFormattingState).layoutRuns();
+    auto& inlineRunList = downcast<InlineFormattingState>(inlineFormattingState).inlineRuns();
 
-    if (layoutRuns.size() != lineLayoutData->runCount()) {
-        stream << "Mismatching number of runs: simple runs(" << lineLayoutData->runCount() << ") layout runs(" << layoutRuns.size() << ")";
+    if (inlineRunList.size() != lineLayoutData->runCount()) {
+        stream << "Mismatching number of runs: simple runs(" << lineLayoutData->runCount() << ") inline runs(" << inlineRunList.size() << ")";
         stream.nextLine();
         return true;
     }
@@ -61,52 +69,116 @@ static bool outputMismatchingSimpleLineInformationIfNeeded(TextStream& stream, c
     auto mismatched = false;
     for (unsigned i = 0; i < lineLayoutData->runCount(); ++i) {
         auto& simpleRun = lineLayoutData->runAt(i);
-        auto& layoutRun = layoutRuns[i];
+        auto& inlineRun = inlineRunList[i];
 
-        if (simpleRun.start == layoutRun.start() && simpleRun.end == layoutRun.end() && simpleRun.logicalLeft == layoutRun.left() && simpleRun.logicalRight == layoutRun.right())
+        auto matchingRuns = areEssentiallyEqual(simpleRun.logicalLeft, inlineRun.logicalLeft()) && areEssentiallyEqual(simpleRun.logicalRight, inlineRun.logicalRight());
+        if (matchingRuns)
+            matchingRuns = (simpleRun.start == inlineRun.textContext()->start() && simpleRun.end == (inlineRun.textContext()->start() + inlineRun.textContext()->length()));
+        if (matchingRuns)
             continue;
 
-        stream << "Mismatching: simple run(" << simpleRun.start << ", " << simpleRun.end << ") (" << simpleRun.logicalLeft << ", " << simpleRun.logicalRight << ") layout run(" << layoutRun.start() << ", " << layoutRun.end() << ") (" << layoutRun.left() << ", " << layoutRun.right() << ")";
+        stream << "Mismatching: simple run(" << simpleRun.start << ", " << simpleRun.end << ") (" << simpleRun.logicalLeft << ", " << simpleRun.logicalRight << ") layout run(" << inlineRun.textContext()->start() << ", " << inlineRun.textContext()->start() + inlineRun.textContext()->length() << ") (" << inlineRun.logicalLeft() << ", " << inlineRun.logicalRight() << ")";
         stream.nextLine();
         mismatched = true;
     }
     return mismatched;
 }
 
-static bool outputMismatchingComplexLineInformationIfNeeded(TextStream& stream, const LayoutContext& layoutContext, const RenderBlockFlow& blockFlow, const Container& inlineFormattingRoot)
+static bool checkForMatchingNonTextRuns(const InlineRun& inlineRun, const WebCore::InlineBox& inlineBox)
 {
-    auto& inlineFormattingState = const_cast<LayoutContext&>(layoutContext).establishedFormattingState(inlineFormattingRoot);
+    return areEssentiallyEqual(inlineBox.logicalLeft(), inlineRun.logicalLeft()) && areEssentiallyEqual(inlineBox.logicalRight(), inlineRun.logicalRight());
+}
+
+static bool checkForMatchingTextRuns(const InlineRun& inlineRun, float logicalLeft, float logicalRight, unsigned start, unsigned end)
+{
+    return areEssentiallyEqual(logicalLeft, inlineRun.logicalLeft()) && areEssentiallyEqual(logicalRight, inlineRun.logicalRight()) && start == inlineRun.textContext()->start() && (end == (inlineRun.textContext()->start() + inlineRun.textContext()->length()));
+}
+
+static bool outputMismatchingComplexLineInformationIfNeeded(TextStream& stream, const LayoutState& layoutState, const RenderBlockFlow& blockFlow, const Container& inlineFormattingRoot)
+{
+    auto& inlineFormattingState = layoutState.establishedFormattingState(inlineFormattingRoot);
     ASSERT(is<InlineFormattingState>(inlineFormattingState));
-    auto& layoutRuns = downcast<InlineFormattingState>(inlineFormattingState).layoutRuns();
+    auto& inlineRunList = downcast<InlineFormattingState>(inlineFormattingState).inlineRuns();
+
+    // Collect inlineboxes.
+    Vector<WebCore::InlineBox*> inlineBoxes;
+    for (auto* rootLine = blockFlow.firstRootBox(); rootLine; rootLine = rootLine->nextRootBox()) {
+        for (auto* inlineBox = rootLine->firstChild(); inlineBox; inlineBox = inlineBox->nextOnLine())
+            inlineBoxes.append(inlineBox);
+    }
 
     auto mismatched = false;
-    unsigned layoutRunIndex = 0;
-    for (auto* rootLine = blockFlow.firstRootBox(); rootLine; rootLine = rootLine->nextRootBox()) {
-        for (auto* lineBox = rootLine->firstChild(); lineBox; lineBox = lineBox->nextOnLine()) {
-            if (!is<InlineTextBox>(lineBox))
-                continue;
+    unsigned runIndex = 0;
 
-            if (layoutRunIndex >= layoutRuns.size()) {
-                // FIXME: <span>foobar</span>foobar generates 2 inline text boxes while we only generate one layout run (which is much better, since it enables us to do kerning across inline elements).
-                stream << "Mismatching number of runs: layout runs(" << layoutRuns.size() << ")";
-                stream.nextLine();
-                return true;
-            }
+    if (inlineBoxes.size() != inlineRunList.size()) {
+        stream << "Warning: mismatching number of runs: inlineboxes(" << inlineBoxes.size() << ") vs. inline runs(" << inlineRunList.size() << ")";
+        stream.nextLine();
+    }
 
-            auto& layoutRun = layoutRuns[layoutRunIndex];
-            auto& inlineTextBox = downcast<InlineTextBox>(*lineBox);
-            if (inlineTextBox.start() == layoutRun.start() && inlineTextBox.end() == layoutRun.end() && inlineTextBox.logicalLeft() == layoutRun.left() && inlineTextBox.logicalRight() == layoutRun.right()) {
-                stream << "Mismatching: simple run(" << inlineTextBox.start() << ", " << inlineTextBox.end() << ") (" << inlineTextBox.logicalLeft() << ", " << inlineTextBox.logicalRight() << ") layout run(" << layoutRun.start() << ", " << layoutRun.end() << ") (" << layoutRun.left() << ", " << layoutRun.right() << ")";
-                stream.nextLine();
-                mismatched = true;
+    for (unsigned inlineBoxIndex = 0; inlineBoxIndex < inlineBoxes.size() && runIndex < inlineRunList.size(); ++inlineBoxIndex) {
+        auto* inlineBox = inlineBoxes[inlineBoxIndex];
+        auto* inlineTextBox = is<InlineTextBox>(inlineBox) ? downcast<InlineTextBox>(inlineBox) : nullptr;
+
+        auto& inlineRun = inlineRunList[runIndex];
+        auto matchingRuns = false;
+        if (inlineTextBox) {
+            matchingRuns = checkForMatchingTextRuns(inlineRun, inlineTextBox->logicalLeft(), inlineTextBox->logicalRight(), inlineTextBox->start(), inlineTextBox->end() + 1);
+
+            // <span>foobar</span>foobar generates 2 inline text boxes while we only generate one inline run.
+            // also <div>foo<img style="float: left;">bar</div> too.
+            auto inlineRunEnd = inlineRun.textContext()->start() + inlineRun.textContext()->length();
+            auto textRunMightBeExtended = !matchingRuns && inlineTextBox->end() < inlineRunEnd && inlineBoxIndex < inlineBoxes.size() - 1;
+
+            if (textRunMightBeExtended) {
+                auto logicalLeft = inlineTextBox->logicalLeft();
+                auto logicalRight = inlineTextBox->logicalRight();
+                auto start = inlineTextBox->start();
+                auto end = inlineTextBox->end() + 1;
+                auto index = ++inlineBoxIndex;
+                for (; index < inlineBoxes.size(); ++index) {
+                    auto* inlineBox = inlineBoxes[index];
+                    auto* inlineTextBox = is<InlineTextBox>(inlineBox) ? downcast<InlineTextBox>(inlineBox) : nullptr;
+                    // Can't mix different inline boxes.
+                    if (!inlineTextBox)
+                        break;
+
+                    logicalRight = inlineTextBox->logicalRight();
+                    end += (inlineTextBox->end() + 1);
+                    if (checkForMatchingTextRuns(inlineRun, logicalLeft, logicalRight, start, end)) {
+                        matchingRuns = true;
+                        inlineBoxIndex = index;
+                        break;
+                    }
+
+                    // Went too far?
+                    if (end >= inlineRunEnd)
+                        break;
+                }
             }
-            ++layoutRunIndex;
+        } else
+            matchingRuns = checkForMatchingNonTextRuns(inlineRun, *inlineBox);
+
+
+        if (!matchingRuns) {
+            stream << "Mismatching: run ";
+
+            if (inlineTextBox)
+                stream << "(" << inlineTextBox->start() << ", " << inlineTextBox->end() + 1 << ")";
+            stream << " (" << inlineBox->logicalLeft() << ", " << inlineBox->logicalRight() << ") ";
+
+            stream << "inline run ";
+            if (inlineRun.textContext())
+                stream << "(" << inlineRun.textContext()->start() << ", " << inlineRun.textContext()->start() + inlineRun.textContext()->length() << ") ";
+            stream << "(" << inlineRun.logicalLeft() << ", " << inlineRun.logicalRight() << ")";
+            stream.nextLine();
+            mismatched = true;
         }
+        ++runIndex;
     }
     return mismatched;
 }
 
-static bool outputMismatchingBlockBoxInformationIfNeeded(TextStream& stream, const LayoutContext& context, const RenderBox& renderer, const Box& layoutBox)
+static bool outputMismatchingBlockBoxInformationIfNeeded(TextStream& stream, const LayoutState& context, const RenderBox& renderer, const Box& layoutBox)
 {
     bool firstMismatchingRect = true;
     auto outputRect = [&] (const String& prefix, const LayoutRect& rendererRect, const LayoutRect& layoutRect) {
@@ -168,7 +240,7 @@ static bool outputMismatchingBlockBoxInformationIfNeeded(TextStream& stream, con
     return false;
 }
 
-static bool verifyAndOutputSubtree(TextStream& stream, const LayoutContext& context, const RenderBox& renderer, const Box& layoutBox)
+static bool verifyAndOutputSubtree(TextStream& stream, const LayoutState& context, const RenderBox& renderer, const Box& layoutBox)
 {
     auto mismtachingGeometry = outputMismatchingBlockBoxInformationIfNeeded(stream, context, renderer, layoutBox);
 
@@ -208,7 +280,7 @@ static bool verifyAndOutputSubtree(TextStream& stream, const LayoutContext& cont
     return mismtachingGeometry;
 }
 
-void LayoutContext::verifyAndOutputMismatchingLayoutTree(const RenderView& renderView) const
+void LayoutState::verifyAndOutputMismatchingLayoutTree(const RenderView& renderView) const
 {
     TextStream stream;
     auto mismatchingGeometry = verifyAndOutputSubtree(stream, *this, renderView, *m_root.get());

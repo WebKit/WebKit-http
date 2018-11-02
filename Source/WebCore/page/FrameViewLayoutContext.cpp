@@ -42,7 +42,7 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 #include "FormattingState.h"
 #include "LayoutContainer.h"
-#include "LayoutContext.h"
+#include "LayoutFormattingState.h"
 #include "LayoutTreeBuilder.h"
 #endif
 
@@ -56,11 +56,11 @@ namespace WebCore {
 static void layoutUsingFormattingContext(const RenderView& renderView)
 {
     auto initialContainingBlock = Layout::TreeBuilder::createLayoutTree(renderView);
-    auto layoutContext = std::make_unique<Layout::LayoutContext>();
-    layoutContext->initializeRoot(*initialContainingBlock, renderView.size());
-    layoutContext->setInQuirksMode(renderView.document().inQuirksMode());
-    layoutContext->updateLayout();
-    layoutContext->verifyAndOutputMismatchingLayoutTree(renderView);
+    auto layoutState = std::make_unique<Layout::LayoutState>();
+    layoutState->initializeRoot(*initialContainingBlock, renderView.size());
+    layoutState->setInQuirksMode(renderView.document().inQuirksMode());
+    layoutState->updateLayout();
+    layoutState->verifyAndOutputMismatchingLayoutTree(renderView);
 } 
 #endif
 
@@ -172,7 +172,7 @@ void FrameViewLayoutContext::layout()
     if (m_firstLayout && !frame().ownerElement())
         LOG(Layout, "FrameView %p elapsed time before first layout: %.3fs", this, document()->timeSinceDocumentCreation().value());
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (view().updateFixedPositionLayoutRect() && subtreeLayoutRoot())
         convertSubtreeLayoutToFullLayout();
 #endif

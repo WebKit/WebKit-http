@@ -140,6 +140,7 @@ Modules/mediacapabilities/NavigatorMediaCapabilities.cpp
 
 Modules/mediacontrols/MediaControlsHost.cpp
 
+Modules/mediarecorder/BlobEvent.cpp
 Modules/mediarecorder/MediaRecorder.cpp
 Modules/mediarecorder/MediaRecorderErrorEvent.cpp
 
@@ -295,6 +296,13 @@ Modules/websockets/WebSocketFrame.cpp
 Modules/websockets/WebSocketHandshake.cpp
 Modules/websockets/WorkerThreadableWebSocketChannel.cpp
 
+Modules/webgpu/DOMWindowWebGPU.cpp
+Modules/webgpu/WebGPU.cpp
+Modules/webgpu/WebGPUAdapter.cpp
+Modules/webgpu/WebGPUDevice.cpp
+Modules/webgpu/WebGPURenderingContext.cpp
+Modules/webgpu/WebGPUSwapChain.cpp
+
 Modules/webvr/NavigatorWebVR.cpp
 Modules/webvr/VRDisplay.cpp
 Modules/webvr/VRDisplayEvent.cpp
@@ -438,6 +446,7 @@ bindings/js/JSNodeCustom.cpp
 bindings/js/JSNodeIteratorCustom.cpp
 bindings/js/JSNodeListCustom.cpp
 bindings/js/JSOffscreenCanvasRenderingContext2DCustom.cpp
+bindings/js/JSPaintRenderingContext2DCustom.cpp
 bindings/js/JSPaymentMethodChangeEventCustom.cpp
 bindings/js/JSPaymentResponseCustom.cpp
 bindings/js/JSPerformanceEntryCustom.cpp
@@ -604,6 +613,7 @@ css/CSSMediaRule.cpp
 css/CSSNamedImageValue.cpp
 css/CSSNamespaceRule.cpp
 css/CSSPageRule.cpp
+css/CSSPaintImageValue.cpp
 css/CSSPaintWorkletGlobalScope.cpp
 css/CSSPendingSubstitutionValue.cpp
 css/CSSPrimitiveValue.cpp
@@ -962,6 +972,7 @@ html/ButtonInputType.cpp
 html/CanvasBase.cpp
 html/CheckboxInputType.cpp
 html/ColorInputType.cpp
+html/CustomPaintCanvas.cpp
 html/DOMFormData.cpp
 html/DOMTokenList.cpp
 html/DOMURL.cpp
@@ -1120,6 +1131,7 @@ html/canvas/CanvasRenderingContext2DBase.cpp
 html/canvas/CanvasStyle.cpp
 html/canvas/ImageBitmapRenderingContext.cpp
 html/canvas/OffscreenCanvasRenderingContext2D.cpp
+html/canvas/PaintRenderingContext2D.cpp
 html/canvas/Path2D.cpp
 html/canvas/PlaceholderRenderingContext.cpp
 html/canvas/WebMetalBuffer.cpp
@@ -1238,7 +1250,7 @@ inspector/agents/worker/WorkerRuntimeAgent.cpp
 layout/FormattingContext.cpp
 layout/FormattingContextGeometry.cpp
 layout/FormattingState.cpp
-layout/LayoutContext.cpp
+layout/LayoutFormattingState.cpp
 layout/Verification.cpp
 layout/blockformatting/BlockFormattingContext.cpp
 layout/blockformatting/BlockFormattingContextGeometry.cpp
@@ -1251,16 +1263,19 @@ layout/floats/FloatBox.cpp
 layout/floats/FloatingContext.cpp
 layout/floats/FloatingState.cpp
 layout/inlineformatting/InlineFormattingContext.cpp
+layout/inlineformatting/InlineFormattingContextGeometry.cpp
 layout/inlineformatting/InlineFormattingState.cpp
 layout/inlineformatting/InlineInvalidation.cpp
-layout/inlineformatting/textlayout/TextContentProvider.cpp
-layout/inlineformatting/textlayout/simple/SimpleTextRunGenerator.cpp
-layout/inlineformatting/textlayout/simple/SimpleLineBreaker.cpp
+layout/inlineformatting/InlineLineBreaker.cpp
+layout/inlineformatting/InlineRunProvider.cpp
+layout/inlineformatting/Line.cpp
+layout/inlineformatting/text/TextUtil.cpp
 layout/layouttree/LayoutBlockContainer.cpp
 layout/layouttree/LayoutBox.cpp
 layout/layouttree/LayoutContainer.cpp
 layout/layouttree/LayoutInlineBox.cpp
 layout/layouttree/LayoutInlineContainer.cpp
+layout/layouttree/LayoutLineBreakBox.cpp
 layout/layouttree/LayoutReplaced.cpp
 layout/layouttree/LayoutTreeBuilder.cpp
 
@@ -1607,6 +1622,7 @@ platform/graphics/Color.cpp
 platform/graphics/ColorUtilities.cpp
 platform/graphics/ComplexTextController.cpp
 platform/graphics/CrossfadeGeneratedImage.cpp
+platform/graphics/CustomPaintImage.cpp
 platform/graphics/DisplayRefreshMonitor.cpp
 platform/graphics/DisplayRefreshMonitorClient.cpp
 platform/graphics/DisplayRefreshMonitorManager.cpp
@@ -1662,6 +1678,7 @@ platform/graphics/PathUtilities.cpp
 platform/graphics/Pattern.cpp
 platform/graphics/PlatformTimeRanges.cpp
 platform/graphics/Region.cpp
+platform/graphics/RemoteVideoSample.cpp
 platform/graphics/RoundedRect.cpp
 platform/graphics/ShadowBlur.cpp
 platform/graphics/StringTruncator.cpp
@@ -1703,27 +1720,27 @@ platform/graphics/filters/SourceAlpha.cpp
 platform/graphics/filters/SourceGraphic.cpp
 platform/graphics/filters/SpotLightSource.cpp
 
-platform/graphics/gpu/GPUBuffer.cpp
-platform/graphics/gpu/GPUCommandBuffer.cpp
-platform/graphics/gpu/GPUCommandQueue.cpp
-platform/graphics/gpu/GPUComputeCommandEncoder.cpp
-platform/graphics/gpu/GPUComputePipelineState.cpp
-platform/graphics/gpu/GPUDepthStencilDescriptor.cpp
-platform/graphics/gpu/GPUDepthStencilState.cpp
-platform/graphics/gpu/GPUDevice.cpp
-platform/graphics/gpu/GPUDrawable.cpp
-platform/graphics/gpu/GPUFunction.cpp
-platform/graphics/gpu/GPULibrary.cpp
-platform/graphics/gpu/GPURenderCommandEncoder.cpp
-platform/graphics/gpu/GPURenderPassAttachmentDescriptor.cpp
-platform/graphics/gpu/GPURenderPassColorAttachmentDescriptor.cpp
-platform/graphics/gpu/GPURenderPassDepthAttachmentDescriptor.cpp
-platform/graphics/gpu/GPURenderPassDescriptor.cpp
-platform/graphics/gpu/GPURenderPipelineColorAttachmentDescriptor.cpp
-platform/graphics/gpu/GPURenderPipelineDescriptor.cpp
-platform/graphics/gpu/GPURenderPipelineState.cpp
-platform/graphics/gpu/GPUTexture.cpp
-platform/graphics/gpu/GPUTextureDescriptor.cpp
+platform/graphics/gpu/GPULegacyBuffer.cpp
+platform/graphics/gpu/GPULegacyCommandBuffer.cpp
+platform/graphics/gpu/GPULegacyCommandQueue.cpp
+platform/graphics/gpu/GPULegacyComputeCommandEncoder.cpp
+platform/graphics/gpu/GPULegacyComputePipelineState.cpp
+platform/graphics/gpu/GPULegacyDepthStencilDescriptor.cpp
+platform/graphics/gpu/GPULegacyDepthStencilState.cpp
+platform/graphics/gpu/GPULegacyDevice.cpp
+platform/graphics/gpu/GPULegacyDrawable.cpp
+platform/graphics/gpu/GPULegacyFunction.cpp
+platform/graphics/gpu/GPULegacyLibrary.cpp
+platform/graphics/gpu/GPULegacyRenderCommandEncoder.cpp
+platform/graphics/gpu/GPULegacyRenderPassAttachmentDescriptor.cpp
+platform/graphics/gpu/GPULegacyRenderPassColorAttachmentDescriptor.cpp
+platform/graphics/gpu/GPULegacyRenderPassDepthAttachmentDescriptor.cpp
+platform/graphics/gpu/GPULegacyRenderPassDescriptor.cpp
+platform/graphics/gpu/GPULegacyRenderPipelineColorAttachmentDescriptor.cpp
+platform/graphics/gpu/GPULegacyRenderPipelineDescriptor.cpp
+platform/graphics/gpu/GPULegacyRenderPipelineState.cpp
+platform/graphics/gpu/GPULegacyTexture.cpp
+platform/graphics/gpu/GPULegacyTextureDescriptor.cpp
 
 platform/graphics/iso/ISOBox.cpp
 platform/graphics/iso/ISOOriginalFormatBox.cpp
@@ -1750,6 +1767,8 @@ platform/graphics/transforms/TransformationMatrix.cpp
 platform/graphics/transforms/TranslateTransformOperation.cpp
 
 platform/mediacapabilities/MediaEngineConfigurationFactory.cpp
+
+platform/mediarecorder/MediaRecorderPrivateMock.cpp
 
 platform/mediastream/CaptureDeviceManager.cpp
 platform/mediastream/MediaConstraints.cpp
@@ -2576,6 +2595,7 @@ JSDOMWindowFetch.cpp
 JSDOMWindowIndexedDatabase.cpp
 JSDOMWindowSpeechSynthesis.cpp
 JSDOMWindowWebDatabase.cpp
+JSDOMWindowWebGPU.cpp
 JSDOMWindowWebVR.cpp
 JSDataTransfer.cpp
 JSDataTransferItem.cpp
@@ -2832,6 +2852,7 @@ JSOfflineAudioCompletionEvent.cpp
 JSOfflineAudioContext.cpp
 JSOffscreenCanvas.cpp
 JSOffscreenCanvasRenderingContext2D.cpp
+JSPaintRenderingContext2D.cpp
 JSOscillatorNode.cpp
 JSOverconstrainedError.cpp
 JSOverconstrainedErrorEvent.cpp
@@ -3160,6 +3181,13 @@ JSVisualViewport.cpp
 JSVoidCallback.cpp
 JSWaveShaperNode.cpp
 JSWebAnimation.cpp
+JSWebGPU.cpp
+JSWebGPUAdapter.cpp
+JSWebGPUAdapterDescriptor.cpp
+JSWebGPUDevice.cpp
+JSWebGPURenderingContext.cpp
+JSWebGPUSwapChain.cpp
+JSWebGPUSwapChainDescriptor.cpp
 JSWebMetalBuffer.cpp
 JSWebMetalCommandBuffer.cpp
 JSWebMetalCommandQueue.cpp
@@ -3237,6 +3265,7 @@ JSWebKitMediaKeyError.cpp
 
 #if ENABLE_ENCRYPTED_MEDIA
 
+JSMediaKeyEncryptionScheme.cpp
 JSMediaKeyMessageEvent.cpp
 JSMediaKeySession.cpp
 JSMediaKeySessionType.cpp

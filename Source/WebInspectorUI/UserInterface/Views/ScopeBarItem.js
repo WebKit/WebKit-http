@@ -25,7 +25,7 @@
 
 WI.ScopeBarItem = class ScopeBarItem extends WI.Object
 {
-    constructor(id, label, exclusive, className, hidden)
+    constructor(id, label, {className, exclusive, independent, hidden} = {})
     {
         super();
 
@@ -38,7 +38,8 @@ WI.ScopeBarItem = class ScopeBarItem extends WI.Object
 
         this._id = id;
         this._label = label;
-        this._exclusive = exclusive;
+        this._exclusive = !!exclusive;
+        this._independent = !!independent;
         this._hidden = !!hidden;
 
         this._selectedSetting = new WI.Setting("scopebaritem-" + id, false);
@@ -76,18 +77,15 @@ WI.ScopeBarItem = class ScopeBarItem extends WI.Object
 
     set selected(selected)
     {
-        this.setSelected(selected, false);
-    }
-
-    setSelected(selected, withModifier)
-    {
         if (this._selectedSetting.value === selected)
             return;
 
         this._element.classList.toggle("selected", selected);
         this._selectedSetting.value = selected;
 
-        this.dispatchEventToListeners(WI.ScopeBarItem.Event.SelectionChanged, {withModifier});
+        this.dispatchEventToListeners(WI.ScopeBarItem.Event.SelectionChanged, {
+            extendSelection: this._independent || (WI.modifierKeys.metaKey && !WI.modifierKeys.ctrlKey && !WI.modifierKeys.altKey && !WI.modifierKeys.shiftKey),
+        });
     }
 
     get hidden()
@@ -113,7 +111,7 @@ WI.ScopeBarItem = class ScopeBarItem extends WI.Object
         if (event.button !== 0)
             return;
 
-        this.setSelected(!this.selected, event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey);
+        this.selected = !this.selected;
     }
 };
 

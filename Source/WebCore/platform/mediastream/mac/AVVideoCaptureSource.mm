@@ -29,11 +29,11 @@
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 
 #import "ImageBuffer.h"
+#import "ImageTransferSessionVT.h"
 #import "IntRect.h"
 #import "Logging.h"
 #import "MediaConstraints.h"
 #import "MediaSampleAVFObjC.h"
-#import "PixelBufferResizer.h"
 #import "PlatformLayer.h"
 #import "RealtimeMediaSourceCenterMac.h"
 #import "RealtimeMediaSourceSettings.h"
@@ -78,7 +78,7 @@ SOFT_LINK_CLASS(AVFoundation, AVCaptureSession)
 
 SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeVideo, NSString *)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVCaptureSessionRuntimeErrorNotification, NSString *)
 SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVCaptureSessionWasInterruptedNotification, NSString *)
 SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVCaptureSessionInterruptionEndedNotification, NSString *)
@@ -105,7 +105,7 @@ using namespace PAL;
 -(void)removeNotificationObservers;
 -(void)captureOutput:(AVCaptureOutputType*)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnectionType*)connection;
 -(void)observeValueForKeyPath:keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 -(void)sessionRuntimeError:(NSNotification*)notification;
 -(void)beginSessionInterrupted:(NSNotification*)notification;
 -(void)endSessionInterrupted:(NSNotification*)notification;
@@ -171,7 +171,7 @@ AVVideoCaptureSource::AVVideoCaptureSource(AVCaptureDeviceTypedef* device, Strin
     , m_objcObserver(adoptNS([[WebCoreAVVideoCaptureSourceObserver alloc] initWithCallback:this]))
     , m_device(device)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     static_assert(static_cast<int>(InterruptionReason::VideoNotAllowedInBackground) == static_cast<int>(AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableInBackground), "InterruptionReason::VideoNotAllowedInBackground is not AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableInBackground as expected");
     static_assert(static_cast<int>(InterruptionReason::VideoNotAllowedInSideBySide) == AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableWithMultipleForegroundApps, "InterruptionReason::VideoNotAllowedInSideBySide is not AVCaptureSessionInterruptionReasonVideoDeviceNotAvailableWithMultipleForegroundApps as expected");
     static_assert(static_cast<int>(InterruptionReason::VideoInUse) == AVCaptureSessionInterruptionReasonVideoDeviceInUseByAnotherClient, "InterruptionReason::VideoInUse is not AVCaptureSessionInterruptionReasonVideoDeviceInUseByAnotherClient as expected");
@@ -181,7 +181,7 @@ AVVideoCaptureSource::AVVideoCaptureSource(AVCaptureDeviceTypedef* device, Strin
 
 AVVideoCaptureSource::~AVVideoCaptureSource()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     RealtimeMediaSourceCenter::singleton().videoFactory().unsetActiveSource(*this);
 #endif
     [m_objcObserver disconnect];
@@ -219,7 +219,7 @@ void AVVideoCaptureSource::stopProducingData()
         [m_session stopRunning];
 
     m_interruption = InterruptionReason::None;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     m_session = nullptr;
 #endif
 }
@@ -298,8 +298,8 @@ const RealtimeMediaSourceCapabilities& AVVideoCaptureSource::capabilities()
 
 bool AVVideoCaptureSource::prefersPreset(VideoPreset& preset)
 {
-#if PLATFORM(IOS)
-    return ![static_cast<AVVideoPreset*>(&preset)->format.get() isVideoBinned];
+#if PLATFORM(IOS_FAMILY)
+    return [static_cast<AVVideoPreset*>(&preset)->format.get() isVideoBinned];
 #else
     UNUSED_PARAM(preset);
 #endif
@@ -365,7 +365,7 @@ void AVVideoCaptureSource::setSizeAndFrameRateWithPreset(IntSize requestedSize, 
 
 static inline int sensorOrientation(AVCaptureVideoOrientation videoOrientation)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     switch (videoOrientation) {
     case AVCaptureVideoOrientationPortrait:
         return 180;
@@ -432,7 +432,7 @@ AVFrameRateRangeType* AVVideoCaptureSource::frameDurationForFrameRate(double rat
 
 bool AVVideoCaptureSource::setupCaptureSession()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     RealtimeMediaSourceCenter::singleton().videoFactory().setActiveSource(*this);
 #endif
 
@@ -480,7 +480,7 @@ void AVVideoCaptureSource::shutdownCaptureSession()
 
 void AVVideoCaptureSource::monitorOrientation(OrientationNotifier& notifier)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     notifier.addObserver(*this);
     orientationChanged(notifier.orientation());
 #else
@@ -519,54 +519,30 @@ void AVVideoCaptureSource::computeSampleRotation()
     }
 }
 
-void AVVideoCaptureSource::processNewFrame(RetainPtr<CMSampleBufferRef> sampleBuffer, RetainPtr<AVCaptureConnectionType> connection)
+void AVVideoCaptureSource::processNewFrame(Ref<MediaSample>&& sample)
 {
     if (!isProducingData() || muted())
         return;
 
-    CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer.get());
-    if (!formatDescription)
-        return;
-
-    m_buffer = sampleBuffer;
-    CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
+    m_buffer = &sample.get();
+    auto dimensions = roundedIntSize(sample->presentationSize());
     if (m_sampleRotation == MediaSample::VideoRotation::Left || m_sampleRotation == MediaSample::VideoRotation::Right)
-        std::swap(dimensions.width, dimensions.height);
+        dimensions = { dimensions.height(), dimensions.width() };
 
-    if (dimensions.width != m_width || dimensions.height != m_height) {
-        m_width = dimensions.width;
-        m_height = dimensions.height;
-        setSize({ dimensions.width, dimensions.height });
+    if (dimensions.width() != m_width || dimensions.height() != m_height) {
+        m_width = dimensions.width();
+        m_height = dimensions.height();
+        setSize(dimensions);
     }
 
-    videoSampleAvailable(MediaSampleAVFObjC::create(m_buffer.get(), m_sampleRotation, [connection isVideoMirrored]));
+    dispatchMediaSampleToObservers(WTFMove(sample));
 }
 
 void AVVideoCaptureSource::captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutputType*, CMSampleBufferRef sampleBuffer, AVCaptureConnectionType* captureConnection)
 {
-    CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer);
-    if (!formatDescription)
-        return;
-
-    CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
-    if (dimensions.width != m_requestedSize.width() || dimensions.height != m_requestedSize.height()) {
-        if (m_pixelBufferResizer && !m_pixelBufferResizer->canResizeTo(m_requestedSize))
-            m_pixelBufferResizer = nullptr;
-
-        if (!m_pixelBufferResizer)
-            m_pixelBufferResizer = std::make_unique<PixelBufferResizer>(m_requestedSize, avVideoCapturePixelBufferFormat());
-    } else
-        m_pixelBufferResizer = nullptr;
-
-    auto buffer = retainPtr(sampleBuffer);
-    if (m_pixelBufferResizer) {
-        buffer = m_pixelBufferResizer->resize(sampleBuffer);
-        if (!buffer)
-            return;
-    }
-
-    scheduleDeferredTask([this, buffer, connection = retainPtr(captureConnection)] {
-        this->processNewFrame(buffer, connection);
+    auto sample = MediaSampleAVFObjC::create(sampleBuffer, m_sampleRotation, [captureConnection isVideoMirrored]);
+    scheduleDeferredTask([this, sample = WTFMove(sample)] () mutable {
+        processNewFrame(WTFMove(sample));
     });
 }
 
@@ -612,7 +588,7 @@ void AVVideoCaptureSource::generatePresets()
     setSupportedPresets(WTFMove(presets));
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 void AVVideoCaptureSource::captureSessionRuntimeError(RetainPtr<NSError> error)
 {
     if (!m_isRunning || error.get().code != AVErrorMediaServicesWereReset)
@@ -665,7 +641,7 @@ void AVVideoCaptureSource::captureSessionEndInterruption(RetainPtr<NSNotificatio
 
 - (void)addNotificationObservers
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     ASSERT(m_callback);
 
     NSNotificationCenter* center = [NSNotificationCenter defaultCenter];
@@ -679,7 +655,7 @@ void AVVideoCaptureSource::captureSessionEndInterruption(RetainPtr<NSNotificatio
 
 - (void)removeNotificationObservers
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 #endif
 }
@@ -717,7 +693,7 @@ void AVVideoCaptureSource::captureSessionEndInterruption(RetainPtr<NSNotificatio
         m_callback->captureSessionIsRunningDidChange([newValue boolValue]);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (void)sessionRuntimeError:(NSNotification*)notification
 {
     NSError *error = notification.userInfo[AVCaptureSessionErrorKey];

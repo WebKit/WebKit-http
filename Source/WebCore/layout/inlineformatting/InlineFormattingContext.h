@@ -27,29 +27,91 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "DisplayBox.h"
 #include "FormattingContext.h"
+#include "InlineLineBreaker.h"
 #include <wtf/IsoMalloc.h>
 
 namespace WebCore {
-
 namespace Layout {
 
 class InlineFormattingState;
+class InlineRunProvider;
 
 // This class implements the layout logic for inline formatting contexts.
 // https://www.w3.org/TR/CSS22/visuren.html#inline-formatting
 class InlineFormattingContext : public FormattingContext {
     WTF_MAKE_ISO_ALLOCATED(InlineFormattingContext);
 public:
-    InlineFormattingContext(const Box& formattingContextRoot);
+    InlineFormattingContext(const Box& formattingContextRoot, FormattingState&);
 
-    void layout(LayoutContext&, FormattingState&) const override;
+    void layout() const override;
 
 private:
-    void computeStaticPosition(const LayoutContext&, const Box&) const override;
-    void computeInFlowPositionedPosition(const LayoutContext&, const Box&) const override;
+    class Line {
+    public:
+        Line(InlineFormattingState&, const Box& formattingRoot);
 
-    InstrinsicWidthConstraints instrinsicWidthConstraints(LayoutContext&, const Box&) const override;
+        void init(const Display::Box::Rect&);
+
+        void appendContent(const InlineLineBreaker::Run&);
+
+        void adjustLogicalLeft(LayoutUnit delta);
+        void adjustLogicalRight(LayoutUnit delta);
+
+        enum class LastLine { No, Yes };
+        void close(LastLine = LastLine::No);
+
+        bool hasContent() const { return m_firstRunIndex.has_value(); }
+        bool isClosed() const { return m_closed; }
+        bool isFirstLine() const { return m_isFirstLine; }
+        LayoutUnit contentLogicalRight();
+        LayoutUnit availableWidth() const { return m_availableWidth; }
+
+        LayoutUnit logicalTop() const { return m_logicalRect.top(); }
+        LayoutUnit logicalBottom() const { return m_logicalRect.bottom(); }
+
+    private:
+        void justifyRuns();
+        void computeExpansionOpportunities(const InlineLineBreaker::Run&);
+
+        struct TrailingTrimmableContent {
+            LayoutUnit width;
+            unsigned length;
+        };
+        std::optional<TrailingTrimmableContent> m_trailingTrimmableContent;
+        bool m_lastRunIsWhitespace { false };
+        bool m_lastRunCanExpand { false };
+
+        InlineFormattingState& m_formattingState;
+        const Box& m_formattingRoot;
+
+        Display::Box::Rect m_logicalRect;
+        LayoutUnit m_availableWidth;
+
+        std::optional<unsigned> m_firstRunIndex;
+        bool m_alignmentIsJustify { false };
+        bool m_isFirstLine { true };
+        bool m_closed { true };
+    };
+
+    // This class implements positioning and sizing for boxes participating in a block formatting context.
+    class Geometry : public FormattingContext::Geometry {
+    public:
+        static HeightAndMargin inlineBlockHeightAndMargin(const LayoutState&, const Box&);
+        static WidthAndMargin inlineBlockWidthAndMargin(const LayoutState&, const Box&);
+    };
+
+    void layoutInlineContent(const InlineRunProvider&) const;
+    void initializeNewLine(Line&) const;
+
+    void layoutFormattingContextRoot(const Box&) const;
+    void computeWidthAndHeightForInlineBox(const Box&) const;
+    void computeFloatPosition(const FloatingContext&, Line&, const Box&) const;
+    void computeStaticPosition(const Box&) const override;
+    void computeInFlowPositionedPosition(const Box&) const override;
+
+    InstrinsicWidthConstraints instrinsicWidthConstraints(const Box&) const override;
 };
 
 }

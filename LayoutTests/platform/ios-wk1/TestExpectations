@@ -27,6 +27,10 @@ media/no-fullscreen-when-hidden.html [ Skip ]
 pointerevents [ Skip ]
 imported/w3c/web-platform-tests/pointerevents [ Skip ]
 
+# Datalist is unsupported in WK1
+fast/forms/datalist [ WontFix ]
+imported/w3c/web-platform-tests/html/semantics/forms/the-datalist-element [ WontFix ]
+
 # <rdar://problem/6501130> LayoutTests: Enable editing tests after we support editing
 editing/deleting/4922367.html
 editing/deleting/5126166.html
@@ -1396,6 +1400,13 @@ fast/scrolling/ios/scrolling-content-clip-to-viewport.html [ Failure ]
 fast/scrolling/ios/touch-stacking.html [ Failure ]
 fast/scrolling/ios/touch-scroll-visibility-hidden.html [ Skip ]
 
+# These tests require API for finding string which is not available in WK1.
+# See https://webkit.org/b/178789#c15
+platform/ios/fast/scrolling/find-text-in-overflow-node-indicator-position-limit.html [ ImageOnlyFailure ]
+platform/ios/fast/scrolling/find-text-in-overflow-node-indicator-position.html [ ImageOnlyFailure ]
+platform/ios/fast/scrolling/find-text-in-overflow-node.html [ Failure ]
+platform/ios/fast/scrolling/find-text-in-subframe.html [ Failure ]
+
 # dumpPolicyDelegateCallbacks is not supported in DumpRenderTree
 fast/loader/iframe-src-invalid-url.html [ Skip ]
 
@@ -1976,3 +1987,5 @@ webkit.org/b/189594 imported/w3c/web-platform-tests/css/css-animations/pending-s
 # Not supported on WK1
 css-custom-properties-api [ Skip ]
 fast/css-custom-paint [ Skip ]
+
+webkit.org/b/188762 fast/writing-mode/english-rl-text-with-spelling-marker.html [ ImageOnlyFailure ]

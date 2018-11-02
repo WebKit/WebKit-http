@@ -26,10 +26,12 @@ fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
 [ Sierra ] http/tests/ssl/applepay/ApplePayError.html [ Skip ]
 [ Sierra ] http/tests/ssl/applepay/ApplePaySessionV3.html [ Skip ]
 [ Sierra ] http/tests/ssl/applepay/ApplePaySessionV4.html [ Skip ]
+[ Sierra ] http/tests/ssl/applepay/ApplePaySessionV5.html [ Skip ]
 [ Sierra ] http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https.html [ Skip ]
 [ Sierra ] http/tests/ssl/applepay/ApplePayShippingAddressChangeEventErrorsV3.https.html [ Skip ]
 [ HighSierra ] http/tests/ssl/applepay/ApplePayButtonV4.html [ Skip ]
 [ HighSierra ] http/tests/ssl/applepay/ApplePaySessionV4.html [ Skip ]
+[ HighSierra ] http/tests/ssl/applepay/ApplePaySessionV5.html [ Skip ]
 
 fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
 fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
@@ -56,6 +58,8 @@ applicationmanifest/ [ Pass ]
 webkit.org/b/187183 http/tests/security/pasteboard-file-url.html [ Pass ]
 
 [ Mojave+ ] fast/canvas/webgl/context-update-on-display-configuration.html [ Pass ]
+
+webkit.org/b/190828 [ Mojave+ Debug ]  http/tests/workers/service/self_registration.html [ Pass Failure ]
 
 fast/misc/valid-primary-screen-displayID.html [ Pass ]
 
@@ -755,6 +759,7 @@ webkit.org/b/185994 [ Debug ] fast/text/user-installed-fonts/shadow-postscript-f
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePayError.html [ Pass ]
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePaySessionV3.html [ Pass ]
 [ Mojave+ ] http/tests/ssl/applepay/ApplePaySessionV4.html [ Pass ]
+[ Mojave+ ] http/tests/ssl/applepay/ApplePaySessionV5.html [ Pass ]
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https.html [ Pass ]
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePayShippingAddressChangeEventErrorsV3.https.html [ Pass ]
 # <rdar://problem/31634451>
@@ -769,7 +774,6 @@ webkit.org/b/185994 [ Debug ] fast/text/user-installed-fonts/shadow-postscript-f
 [ HighSierra+ ] http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/cap-cache-max-age-for-prevalent-resource.html [ Pass ]
-http/tests/cookies/capped-lifetime-for-cookie-set-in-js.html [ Pass ]
 
 # Skipped in general expectations since they only work on iOS and Mac, WK2.
 http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Pass ]
@@ -842,6 +846,14 @@ webkit.org/b/186362 [ Release ] http/tests/resourceLoadStatistics/prevalent-reso
 
 webkit.org/b/186425 [ Debug ] inspector/console/webcore-logging.html [ Pass Failure ]
 
+webkit.org/b/190808 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/containing-block.html [ Pass Failure ]
+webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/bounding-box.html [ Pass Failure ]
+webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/display-none.html [ Pass Failure ]
+webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/edge-inclusive-intersection.html [ Pass Failure ]
+webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/remove-element.html [ Pass Failure ]
+webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/shadow-content.html [ Pass Failure ]
+webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/unclipped-root.html [ Pass Failure ]
+
 # skip manual payment-request tests
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-call-immediate-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-duplicate-shipping-options-manual.https.html [ Skip ]
@@ -888,3 +900,5 @@ http/wpt/webauthn/public-key-credential-get-success-local.https.html [ Skip ]
 # The following tests require PublicKeyCredential objects. We can only produce them via local authenticators now.
 http/wpt/credential-management/credentialscontainer-store-basics.https.html [ Skip ]
 http/wpt/webauthn/idl.https.html [ Skip ]
+
+webkit.org/b/183878 media/modern-media-controls/tracks-panel/tracks-panel-up-click-over-media-does-not-dimiss-media-controls-when-media-is-playing.html [ Pass Timeout ] 

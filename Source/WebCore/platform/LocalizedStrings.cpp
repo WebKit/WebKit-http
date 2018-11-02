@@ -422,7 +422,7 @@ String contextMenuItemTagInspectElement()
 
 #endif // ENABLE(CONTEXT_MENUS)
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 String searchMenuNoRecentSearchesText()
 {
@@ -439,7 +439,7 @@ String searchMenuClearRecentSearchesText()
     return WEB_UI_STRING("Clear Recent Searches", "menu item in Recent Searches menu that empties menu's contents");
 }
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 
 String AXWebAreaText()
 {
@@ -637,6 +637,11 @@ String AXAutoFillContactsLabel()
 String AXAutoFillStrongPasswordLabel()
 {
     return WEB_UI_STRING("strong password auto fill", "Label for the strong password auto fill button inside a text field.");
+}
+
+String AXAutoFillCreditCardLabel()
+{
+    return WEB_UI_STRING("credit card auto fill", "Label for the credit card auto fill button inside a text field.");
 }
 
 String autoFillStrongPasswordLabel()

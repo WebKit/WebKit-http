@@ -55,6 +55,9 @@ public:
     virtual bool isWebGL1() const { return false; }
     virtual bool isWebGL2() const { return false; }
     bool isWebGL() const { return isWebGL1() || isWebGL2(); }
+#if ENABLE(WEBGPU)
+    virtual bool isWebGPU() const { return false; }
+#endif
 #if ENABLE(WEBMETAL)
     virtual bool isWebMetal() const { return false; }
 #endif
@@ -63,6 +66,7 @@ public:
     virtual bool isBitmapRenderer() const { return false; }
     virtual bool isPlaceholder() const { return false; }
     virtual bool isOffscreen2d() const { return false; }
+    virtual bool isPaint() const { return false; }
 
     virtual void paintRenderingResultsToCanvas() {}
     virtual PlatformLayer* platformLayer() const { return 0; }
@@ -73,7 +77,7 @@ public:
 protected:
     explicit CanvasRenderingContext(CanvasBase&);
     bool wouldTaintOrigin(const CanvasPattern*);
-    bool wouldTaintOrigin(const HTMLCanvasElement*);
+    bool wouldTaintOrigin(const CanvasBase*);
     bool wouldTaintOrigin(const HTMLImageElement*);
     bool wouldTaintOrigin(const HTMLVideoElement*);
     bool wouldTaintOrigin(const ImageBitmap*);

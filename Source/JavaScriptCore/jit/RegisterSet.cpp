@@ -46,11 +46,11 @@ RegisterSet RegisterSet::stackRegisters()
 RegisterSet RegisterSet::reservedHardwareRegisters()
 {
 #if CPU(ARM64)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     return RegisterSet(ARM64Registers::x18, ARM64Registers::lr);
 #else
     return RegisterSet(ARM64Registers::lr);
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 #elif CPU(ARM_THUMB2) || CPU(ARM_TRADITIONAL)
     return RegisterSet(ARMRegisters::lr, ARMRegisters::pc);
 #else
@@ -132,7 +132,7 @@ RegisterSet RegisterSet::calleeSaveRegisters()
     result.set(ARMRegisters::r5);
     result.set(ARMRegisters::r6);
     result.set(ARMRegisters::r8);
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     result.set(ARMRegisters::r9);
 #endif
     result.set(ARMRegisters::r10);
@@ -221,12 +221,14 @@ RegisterSet RegisterSet::llintBaselineCalleeSaveRegisters()
 #if CPU(X86)
 #elif CPU(X86_64)
 #if !OS(WINDOWS)
+    result.set(GPRInfo::regCS1);
     result.set(GPRInfo::regCS2);
     ASSERT(GPRInfo::regCS3 == GPRInfo::tagTypeNumberRegister);
     ASSERT(GPRInfo::regCS4 == GPRInfo::tagMaskRegister);
     result.set(GPRInfo::regCS3);
     result.set(GPRInfo::regCS4);
 #else
+    result.set(GPRInfo::regCS3);
     result.set(GPRInfo::regCS4);
     ASSERT(GPRInfo::regCS5 == GPRInfo::tagTypeNumberRegister);
     ASSERT(GPRInfo::regCS6 == GPRInfo::tagMaskRegister);
@@ -236,6 +238,7 @@ RegisterSet RegisterSet::llintBaselineCalleeSaveRegisters()
 #elif CPU(ARM_THUMB2)
 #elif CPU(ARM_TRADITIONAL)
 #elif CPU(ARM64)
+    result.set(GPRInfo::regCS6);
     result.set(GPRInfo::regCS7);
     ASSERT(GPRInfo::regCS8 == GPRInfo::tagTypeNumberRegister);
     ASSERT(GPRInfo::regCS9 == GPRInfo::tagMaskRegister);

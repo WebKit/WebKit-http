@@ -33,7 +33,7 @@ class RenderTextControl;
 class TextControlInnerTextElement;
 class VisiblePosition;
 
-enum class AutoFillButtonType : uint8_t { None, Credentials, Contacts, StrongPassword };
+enum class AutoFillButtonType : uint8_t { None, Credentials, Contacts, StrongPassword, CreditCard };
 enum TextFieldSelectionDirection { SelectionHasNoDirection, SelectionHasForwardDirection, SelectionHasBackwardDirection };
 enum TextFieldEventBehavior { DispatchNoEvent, DispatchChangeEvent, DispatchInputAndChangeEvent };
 
@@ -93,7 +93,7 @@ public:
     String directionForFormData() const;
 
     void setTextAsOfLastFormControlChangeEvent(const String& text) { m_textAsOfLastFormControlChangeEvent = text; }
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT void hidePlaceholder();
     WEBCORE_EXPORT void showPlaceholderIfNecessary();
 #endif

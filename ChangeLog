@@ -1,3 +1,104 @@
+2018-10-30  Don Olmstead  <don.olmstead@sony.com>
+
+        [PlayStation] Enable JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=191072
+
+        Reviewed by Brent Fulgham.
+
+        Add support for building the PlayStation port through JavaScriptCore.
+
+        * CMakeLists.txt:
+        * Source/cmake/OptionsPlayStation.cmake: Added.
+
+2018-10-29  Tadeu Zagallo  <tzagallo@apple.com>
+
+        New bytecode format for JSC
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        <rdar://problem/44186758>
+
+        Reviewed by Filip Pizlo.
+
+        Disable JIT by default on 32-bit platforms
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-10-27  Charlie Turner  <cturner@igalia.com>
+
+        Make VIDEO enabled if ENCRYPTED_MEDIA is enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=190983
+
+        Unreviewed build update.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-10-27  Charlie Turner  <cturner@igalia.com>
+
+        [GTK] Enable experimental encrypted media support
+        https://bugs.webkit.org/show_bug.cgi?id=190829
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2018-10-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237479 and r237484.
+        https://bugs.webkit.org/show_bug.cgi?id=190978
+
+        broke JSC on iOS (Requested by tadeuzagallo on #webkit).
+
+        Reverted changesets:
+
+        "New bytecode format for JSC"
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        https://trac.webkit.org/changeset/237479
+
+        "Gardening: Build fix after r237479."
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        https://trac.webkit.org/changeset/237484
+
+2018-10-26  Tadeu Zagallo  <tzagallo@apple.com>
+
+        New bytecode format for JSC
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        <rdar://problem/44186758>
+
+        Reviewed by Filip Pizlo.
+
+        Disable JIT by default on 32-bit platforms
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-10-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Reenable the sandbox
+
+        Previously reviewed by, er, myself. This just reverts the sabotague as our bots should have
+        the required deps now. Hopefully.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2018-10-18  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][Clang] Do not give -Wall to clang-cl because it is treated as -Weverything
+        https://bugs.webkit.org/show_bug.cgi?id=190514
+
+        Reviewed by Michael Catanzaro.
+
+        clang-cl maps /Wall and -Wall to -Weverything which reports tons
+        of compilation warnings. Do not give -Wall option to clang-cl.
+
+        Clang processes -Wall and -Wextra options differently than GCC.
+        Clang processes all warning options in left-to-right order, while
+        GCC processes -Wall and -Wextra options first. In order to get the
+        same effect in both compilers, -Wall and -Wextra should be
+        speficied before all -Wno-* options.
+
+        * Source/cmake/WebKitCompilerFlags.cmake: Put -Wall and -Wextra
+        options before all -Wno-* options.
+        * Source/cmake/OptionsMSVC.cmake: Prepend /W4 option, instead of
+        just replacing /W3 option.
+
 2018-10-16  Philippe Normand  <pnormand@igalia.com>
 
         Unreviewed, GTK bots build fix

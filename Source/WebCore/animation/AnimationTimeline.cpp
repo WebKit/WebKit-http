@@ -55,18 +55,23 @@ AnimationTimeline::~AnimationTimeline()
 {
 }
 
-void AnimationTimeline::addAnimation(Ref<WebAnimation>&& animation)
+void AnimationTimeline::animationTimingDidChange(WebAnimation& animation)
 {
-    m_animationsWithoutTarget.add(animation.ptr());
-    m_animations.add(WTFMove(animation));
-    timingModelDidChange();
+    if (m_animations.add(&animation)) {
+        auto* timeline = animation.timeline();
+        if (timeline && timeline != this)
+            timeline->removeAnimation(animation);
+    }
 }
 
-void AnimationTimeline::removeAnimation(Ref<WebAnimation>&& animation)
+void AnimationTimeline::removeAnimation(WebAnimation& animation)
 {
-    m_animationsWithoutTarget.remove(animation.ptr());
-    m_animations.remove(WTFMove(animation));
-    timingModelDidChange();
+    ASSERT(!animation.timeline() || animation.timeline() == this);
+    m_animations.remove(&animation);
+    if (is<KeyframeEffectReadOnly>(animation.effect())) {
+        if (auto* target = downcast<KeyframeEffectReadOnly>(animation.effect())->target())
+            animationWasRemovedFromElement(animation, *target);
+    }
 }
 
 std::optional<double> AnimationTimeline::bindingsCurrentTime()
@@ -75,12 +80,6 @@ std::optional<double> AnimationTimeline::bindingsCurrentTime()
     if (!time)
         return std::nullopt;
     return secondsToWebAnimationsAPITime(*time);
-}
-
-void AnimationTimeline::setCurrentTime(Seconds currentTime)
-{
-    m_currentTime = currentTime;
-    timingModelDidChange();
 }
 
 HashMap<Element*, ListHashSet<RefPtr<WebAnimation>>>& AnimationTimeline::relevantMapForAnimation(WebAnimation& animation)
@@ -94,8 +93,6 @@ HashMap<Element*, ListHashSet<RefPtr<WebAnimation>>>& AnimationTimeline::relevan
 
 void AnimationTimeline::animationWasAddedToElement(WebAnimation& animation, Element& element)
 {
-    m_animationsWithoutTarget.remove(&animation);
-
     relevantMapForAnimation(animation).ensure(&element, [] {
         return ListHashSet<RefPtr<WebAnimation>> { };
     }).iterator->value.add(&animation);
@@ -108,7 +105,13 @@ static inline bool removeCSSTransitionFromMap(CSSTransition& transition, Element
         return false;
 
     auto& cssTransitionsByProperty = iterator->value;
-    cssTransitionsByProperty.remove(transition.property());
+
+    auto transitionIterator = cssTransitionsByProperty.find(transition.property());
+    if (transitionIterator == cssTransitionsByProperty.end() || transitionIterator->value != &transition)
+        return false;
+
+    cssTransitionsByProperty.remove(transitionIterator);
+
     if (cssTransitionsByProperty.isEmpty())
         map.remove(&element);
     return true;
@@ -116,9 +119,6 @@ static inline bool removeCSSTransitionFromMap(CSSTransition& transition, Element
 
 void AnimationTimeline::animationWasRemovedFromElement(WebAnimation& animation, Element& element)
 {
-    // This animation doesn't have a target for now.
-    m_animationsWithoutTarget.add(&animation);
-
     // First, we clear this animation from one of the m_elementToCSSAnimationsMap, m_elementToCSSTransitionsMap,
     // m_elementToAnimationsMap or m_elementToCompletedCSSTransitionByCSSPropertyID map, whichever is relevant to
     // this type of animation.
@@ -260,7 +260,8 @@ void AnimationTimeline::updateCSSAnimationsForElement(Element& element, const Re
                 // We've found the name of this animation in our list of previous animations, this means we've already
                 // created a CSSAnimation object for it and need to ensure that this CSSAnimation is backed by the current
                 // animation object for this animation name.
-                cssAnimationsByName.get(name)->setBackingAnimation(currentAnimation);
+                if (auto cssAnimation = cssAnimationsByName.get(name))
+                    cssAnimation->setBackingAnimation(currentAnimation);
             } else if (shouldConsiderAnimation(element, currentAnimation)) {
                 // Otherwise we are dealing with a new animation name and must create a CSSAnimation for it.
                 cssAnimationsByName.set(name, CSSAnimation::create(element, currentAnimation, currentStyle, afterChangeStyle));
@@ -475,22 +476,7 @@ void AnimationTimeline::cancelOrRemoveDeclarativeAnimation(RefPtr<DeclarativeAni
     ASSERT(animation);
     animation->cancel();
     animationWasRemovedFromElement(*animation, animation->target());
-    removeAnimation(animation.releaseNonNull());
-}
-
-String AnimationTimeline::description()
-{
-    TextStream stream;
-    int count = 1;
-    stream << (m_classType == DocumentTimelineClass ? "DocumentTimeline" : "AnimationTimeline") << " with " << m_animations.size() << " animations:";
-    stream << "\n";
-    for (const auto& animation : m_animations) {
-        writeIndent(stream, 1);
-        stream << count << ". " << animation->description();
-        stream << "\n";
-        count++;
-    }
-    return stream.release();
+    removeAnimation(*animation);
 }
 
 } // namespace WebCore

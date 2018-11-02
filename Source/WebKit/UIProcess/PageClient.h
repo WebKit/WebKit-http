@@ -45,6 +45,7 @@
 
 OBJC_CLASS CALayer;
 OBJC_CLASS NSFileWrapper;
+OBJC_CLASS NSSet;
 OBJC_CLASS _WKRemoteObjectRegistry;
 
 #if USE(APPKIT)
@@ -193,7 +194,7 @@ public:
 
     virtual void toolTipChanged(const String&, const String&) = 0;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // FIXME: Adopt the WKUIDelegatePrivate callback on iOS and remove this.
     virtual void decidePolicyForGeolocationPermissionRequest(WebFrameProxy&, API::SecurityOrigin&, Function<void(bool)>&) = 0;
 #endif
@@ -258,7 +259,7 @@ public:
 #if PLATFORM(MAC)
     virtual WebCore::IntRect rootViewToWindow(const WebCore::IntRect&) = 0;
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) = 0;
     virtual WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) = 0;
     virtual void didNotHandleTapAsClick(const WebCore::IntPoint&) = 0;
@@ -340,7 +341,7 @@ public:
     virtual void setEditableElementIsFocused(bool) = 0;
 #endif // PLATFORM(MAC)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual void commitPotentialTapFailed() = 0;
     virtual void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color&, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius) = 0;
 
@@ -413,7 +414,7 @@ public:
 
     virtual void videoControlsManagerDidChange() { }
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
     virtual WebCore::WebMediaSessionManager& mediaSessionManager() = 0;
 #endif
 
@@ -445,7 +446,8 @@ public:
     virtual void didInsertAttachment(API::Attachment&, const String& source) { }
     virtual void didRemoveAttachment(API::Attachment&) { }
 #if PLATFORM(COCOA)
-    virtual NSFileWrapper *allocFileWrapperInstance() { return nullptr; }
+    virtual NSFileWrapper *allocFileWrapperInstance() const { return nullptr; }
+    virtual NSSet *serializableFileWrapperClasses() const { return nullptr; }
 #endif
 #endif
 };

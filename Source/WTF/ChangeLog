@@ -1,3 +1,475 @@
+2018-10-30  Don Olmstead  <don.olmstead@sony.com>
+
+        [PlayStation] Enable JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=191072
+
+        Reviewed by Brent Fulgham.
+
+        Add platform files for the PlayStation port.
+
+        * wtf/PlatformPlayStation.cmake: Added.
+
+2018-10-30  David Kilzer  <ddkilzer@apple.com>
+
+        XSLTProcessor should limit max transform depth
+        <https://webkit.org/b/191075>
+        <rdar://problem/45531453>
+
+        Reviewed by Alex Christensen.
+
+        * wtf/cocoa/SoftLinking.h:
+        (SOFT_LINK_VARIABLE_FOR_HEADER):
+        (SOFT_LINK_VARIABLE_FOR_SOURCE):
+        - Add macros for non-constant global variables.
+
+2018-10-30  Alexey Proskuryakov  <ap@apple.com>
+
+        Clean up some obsolete MAX_ALLOWED macros
+        https://bugs.webkit.org/show_bug.cgi?id=190916
+
+        Reviewed by Tim Horton.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/PlatformMac.cmake:
+        * wtf/spi/cocoa/NSMapTableSPI.h: Removed. This was only needed for old SDKs.
+
+2018-10-29  Mark Lam  <mark.lam@apple.com>
+
+        Correctly detect string overflow when using the 'Function' constructor.
+        https://bugs.webkit.org/show_bug.cgi?id=184883
+        <rdar://problem/36320331>
+
+        Reviewed by Saam Barati.
+
+        1. Enhanced StringBuilder so that it supports 2 modes of behavior:
+           a. StringBuilder::OverflowHandler::CrashOnOverflow.
+           b. StringBuilder::OverflowHandler::RecordOverflow.
+
+           CrashOnOverflow will crash the moment an overflow or failure to allocate
+           memory is detected.
+
+           RecordOverflow will make StringBuilder::hasOverflowed() return true when an
+           overflow or failure to allocate memory is detected.  However, if the user
+           invokes toString(), toStringPreserveCapacity(), toAtomicString(), length(),
+           capacity(), isEmpty(), characters8(), or characters16(), then the StringBuilder
+           will crash regardless because these methods can only meaningfully do their
+           work and return a result if and only if the builder has not overflowed.
+
+           By default, the StringBuilder crashes on overflow (the old behavior) unless it
+           is explicitly constructed with the StringBuilder::OverflowHandler::RecordOverflow
+           enum.
+
+           Design note:
+
+           The StringBuilder can only be put in 1 of the 2 modes at the time of
+           construction.  This means that we could have implemented it as a template
+           that is parameterized on an OverflowHandler class (like CheckedArithmetic)
+           instead of using a runtime check in the ConditionalCrashOnOverflow handler.
+
+           However, I was not able to get clang to export the explicitly instantiated
+           instances (despite the methods having being decorated with WTF_EXPORT_PRIVATE).
+           Since the StringBuilder is a transient object (not stored for a long time on
+           the heap), and the runtime check of the boolean is not that costly compared
+           to other work that StringBuilder routinely does (e.g. memcpy), using the
+           new ConditionalCrashOnOverflow (which does a runtime check to determine to
+           crash or not on overflow) is fine.
+
+           When clang is able to export explicitly instantiated template methods, we can
+           templatize StringBuilder and do away with ConditionalCrashOnOverflow.
+           See https://bugs.webkit.org/show_bug.cgi?id=191050.
+
+        To support the above, we also did:
+
+        2. Enhanced all StringBuilder append and buffer allocation methods to be able to
+           fail without crashing.  This also meant that ...
+
+        3. Added tryReallocate() support to StringImpl.  tryRealloc() was added to
+           FastMalloc, and bmalloc (and related peers) to enable this.
+
+        4. Added ConditionalCrashOnOverflow, which can choose at runtime whether to behave
+           like CrashOnOverflow or RecordOverflow.
+
+        * wtf/CheckedArithmetic.h:
+        (WTF::ConditionalCrashOnOverflow::overflowed):
+        (WTF::ConditionalCrashOnOverflow::shouldCrashOnOverflow const):
+        (WTF::ConditionalCrashOnOverflow::setShouldCrashOnOverflow):
+        (WTF::ConditionalCrashOnOverflow::hasOverflowed const):
+        (WTF::ConditionalCrashOnOverflow::clearOverflow):
+        (WTF::ConditionalCrashOnOverflow::crash):
+        (WTF::RecordOverflow::overflowed):
+        (WTF::Checked::unsafeGet const):
+        * wtf/FastMalloc.cpp:
+        (WTF::tryFastRealloc):
+        * wtf/FastMalloc.h:
+        * wtf/text/StringBuilder.cpp:
+        (WTF::expandedCapacity):
+        (WTF::StringBuilder::reifyString const):
+        (WTF::StringBuilder::resize):
+        (WTF::StringBuilder::allocateBuffer):
+        (WTF::StringBuilder::allocateBufferUpConvert):
+        (WTF::StringBuilder::reallocateBuffer<LChar>):
+        (WTF::StringBuilder::reallocateBuffer<UChar>):
+        (WTF::StringBuilder::reserveCapacity):
+        (WTF::StringBuilder::appendUninitialized):
+        (WTF::StringBuilder::appendUninitializedSlow):
+        (WTF::StringBuilder::append):
+        (WTF::StringBuilder::canShrink const):
+        (WTF::StringBuilder::shrinkToFit):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::StringBuilder):
+        (WTF::StringBuilder::didOverflow):
+        (WTF::StringBuilder::hasOverflowed const):
+        (WTF::StringBuilder::crashesOnOverflow const):
+        (WTF::StringBuilder::append):
+        (WTF::StringBuilder::toString):
+        (WTF::StringBuilder::toStringPreserveCapacity const):
+        (WTF::StringBuilder::toAtomicString const):
+        (WTF::StringBuilder::length const):
+        (WTF::StringBuilder::capacity const):
+        (WTF::StringBuilder::operator[] const):
+        (WTF::StringBuilder::swap):
+        (WTF::StringBuilder::getBufferCharacters<UChar>):
+        * wtf/text/StringBuilderJSON.cpp:
+        (WTF::StringBuilder::appendQuotedJSONString):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::reallocateInternal):
+        (WTF::StringImpl::reallocate):
+        (WTF::StringImpl::tryReallocate):
+        * wtf/text/StringImpl.h:
+
+2018-10-29  Tim Horton  <timothy_horton@apple.com>
+
+        Modernize WebKit nibs and lprojs for localization's sake
+        https://bugs.webkit.org/show_bug.cgi?id=190911
+        <rdar://problem/45349466>
+
+        Reviewed by Dan Bernstein.
+
+        * WTF.xcodeproj/project.pbxproj:
+        English->en
+
+2018-10-29  Tadeu Zagallo  <tzagallo@apple.com>
+
+        New bytecode format for JSC
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        <rdar://problem/44186758>
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Forward.h: Fix WTF_LAZY_FOR_EACH_TERM on MSVC and add WTF_LAZY_HAS_REST to check whether
+        a macro was passed multiple arguments
+        * wtf/Platform.h: Force ENABLE_JIT=false on all 32-bit platforms
+        * wtf/Vector.h:
+        (WTF::minCapacity>::insertVector): Allow vectors with different overflow handlers to be passed to insertVector
+
+2018-10-28  Geoffrey Garen  <ggaren@apple.com>
+
+        HashMap should support selecting a random entry
+        https://bugs.webkit.org/show_bug.cgi?id=190814
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/HashTable.h:
+        (WTF::HashTable::random):
+        (WTF::HashTable::random const): Merge the empty and deleted checks, and
+        use more idiomatic addressing.
+
+2018-10-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237479 and r237484.
+        https://bugs.webkit.org/show_bug.cgi?id=190978
+
+        broke JSC on iOS (Requested by tadeuzagallo on #webkit).
+
+        Reverted changesets:
+
+        "New bytecode format for JSC"
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        https://trac.webkit.org/changeset/237479
+
+        "Gardening: Build fix after r237479."
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        https://trac.webkit.org/changeset/237484
+
+2018-10-26  Tadeu Zagallo  <tzagallo@apple.com>
+
+        New bytecode format for JSC
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        <rdar://problem/44186758>
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Forward.h: Fix WTF_LAZY_FOR_EACH_TERM on MSVC and add WTF_LAZY_HAS_REST to check whether
+        a macro was passed multiple arguments
+        * wtf/Platform.h: Force ENABLE_JIT=false on all 32-bit platforms
+        * wtf/Vector.h:
+        (WTF::minCapacity>::insertVector): Allow vectors with different overflow handlers to be passed to insertVector
+
+2018-10-26  Geoffrey Garen  <ggaren@apple.com>
+
+        HashMap should support selecting a random entry
+        https://bugs.webkit.org/show_bug.cgi?id=190814
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/HashTable.h:
+        (WTF::HashTable::random):
+        (WTF::HashTable::random const): Draw a new random bucket any time we
+        have a miss, to avoid bias caused by lopsided tables.
+
+2018-10-26  Antti Koivisto  <antti@apple.com>
+
+        hashSet.remove(hashSet.random()) doesn't build
+        https://bugs.webkit.org/show_bug.cgi?id=190953
+
+        Reviewed by Chris Dumez.
+
+        * wtf/HashSet.h:
+
+        Remove non-const random(). HashSet only returns const iterators (it is immutable via iterator).
+
+        * wtf/HashTable.h:
+        (WTF::HashTable::random const):
+
+        Invoke const_iterator() by using static_cast<> instead of trying to do it directly.
+
+2018-10-26  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][WTF][Media] Invalid MediaTime should be falsy
+        https://bugs.webkit.org/show_bug.cgi?id=190893
+
+        Reviewed by Jer Noble.
+
+        This patch modifies the definition of MediaTime so that invalid times
+        are evaluated to false in the context of a boolean expression.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::operator! const):
+        (WTF::MediaTime::operator bool const):
+
+2018-10-26  Keith Miller  <keith_miller@apple.com>
+
+        Some internal projects include wtf headers and build with C++11
+        https://bugs.webkit.org/show_bug.cgi?id=190791
+
+        Reviewed by Alexey Proskuryakov.
+
+        C++11 doesn't support constexpr functions that contain
+        statements. This patch removes getLSBSet set from builds before
+        C++14 to avoid this for now.
+
+        * wtf/MathExtras.h:
+        (getLSBSet):
+
+2018-10-25  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Cleanup: inline constexpr is redundant as constexpr implies inline
+        https://bugs.webkit.org/show_bug.cgi?id=190819
+
+        Reviewed by Mark Lam.
+
+        * wtf/Bitmap.h:
+        (WTF::WordType>::Bitmap):
+        * wtf/LEBDecoder.h:
+        (WTF::LEBDecoder::maxByteLength):
+        * wtf/MathExtras.h:
+        (defaultMinimumForClamp):
+        (defaultMaximumForClamp):
+        (clampToAccepting64):
+        (isLessThan):
+        (isLessThanEqual):
+        (isGreaterThan):
+        (isGreaterThanEqual):
+        (WTF::roundUpToPowerOfTwo):
+        (WTF::maskForSize):
+        * wtf/Optional.h:
+        * wtf/PtrTag.h:
+        (WTF::tagCodePtr):
+        (WTF::untagCodePtr):
+        (WTF::retagCodePtr):
+        (WTF::removeCodePtrTag):
+        * wtf/StdLibExtras.h:
+        (WTF::roundUpToMultipleOf):
+        * wtf/Variant.h:
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::operator>=):
+        (WTF::operator<=):
+        (WTF::operator>):
+        (WTF::operator<):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImplShape::StringImplShape):
+        (WTF::StringImpl::StaticStringImpl::StaticStringImpl):
+
+2018-10-25  Geoffrey Garen  <ggaren@apple.com>
+
+        HashMap should support selecting a random entry
+        https://bugs.webkit.org/show_bug.cgi?id=190814
+
+        Reviewed by Antti Koivisto.
+
+        In some cases, remove(begin()) is not quite good enough as a random
+        eviction strategy. (See https://bugs.webkit.org/show_bug.cgi?id=190792.)
+        So, let's support real random eviction.
+
+        (And by "real" I mean "pseudo".)
+
+        * wtf/HashCountedSet.h:
+        * wtf/HashMap.h:
+        * wtf/HashSet.h:
+        * wtf/ListHashSet.h:
+        (WTF::ListHashSet::random):
+        (WTF::ListHashSet::random const):
+        * wtf/LoggingHashMap.h:
+        * wtf/LoggingHashSet.h: Plumb through the random() iterator.
+
+        * wtf/HashTable.h:
+        (WTF::HashTable::random):
+        (WTF::HashTable::random const): Implement the random() iterator.
+        makeIterator() already supports starting from any bucket, so this is
+        pretty easy.
+
+        In the subtle case where we select end(), we choose to wrap around and
+        return begin(). We expect that clients don't really think of the end()
+        bucket as being in the domain of the random search. Also, we don't want
+        to annoy clients who know their tables are non-empty with needless
+        checks for end().
+
+        * wtf/RandomNumber.cpp:
+        (WTF::weakRandomUint32):
+        * wtf/RandomNumber.h: Added a free function for weak random numbers so
+        that clients that want cheap random numbers aren't required to allocate
+        storage for a WeakRandom generator.
+
+2018-10-24  Megan Gardner  <megan_gardner@apple.com>
+
+        Turn on Conic Gradients
+        https://bugs.webkit.org/show_bug.cgi?id=190810
+
+        Reviewed by Tim Horton.
+
+        * wtf/FeatureDefines.h:
+
+2018-10-24  Christopher Reid  <chris.reid@sony.com>
+
+        [Win] Add function call name information to stack traces
+        https://bugs.webkit.org/show_bug.cgi?id=190761
+
+        Reviewed by Fujii Hironori.
+
+        Add symbol information to stack traces using dbghelp.dll
+        This library will use symbols files from these sources:
+            - The current working directory
+            - The directory containing the application's executable
+            - _NT_SYMBOL_PATH environment variable
+            - _NT_ALTERNATE_SYMBOL_PATH environment variable
+
+        This functionality is currently only enabled in debug mode since dbghelp is not threadsafe.
+        The DbgHelper class attempts to synchronize calls to dbghelp.dll but external code
+        can still attempt to call the library at the same time as WebKit.
+
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformWin.cmake:
+        * wtf/StackTrace.cpp:
+        * wtf/win/DbgHelperWin.cpp: Added.
+        * wtf/win/DbgHelperWin.h: Added.
+
+2018-10-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Really prevent PLATFORM(IOS) from being used
+        https://bugs.webkit.org/show_bug.cgi?id=190813
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h: This relies on -Wundef, which we have enabled.
+
+2018-10-22  Chris Dumez  <cdumez@apple.com>
+
+        Deque's contains() and findIf() should be const
+        https://bugs.webkit.org/show_bug.cgi?id=190796
+
+        Reviewed by Antti Koivisto.
+
+        Deque's contains() and findIf() should be const as they do not modify the container.
+
+        * wtf/Deque.h:
+        (WTF::inlineCapacity>::findIf):
+        (WTF::inlineCapacity>::findIf const):
+        (WTF::inlineCapacity>::contains const):
+        (WTF::inlineCapacity>::contains): Deleted.
+
+2018-10-18  Alicia Boya García  <aboya@igalia.com>
+
+        [Media] Use nanoseconds as MaximumTimeScale
+        https://bugs.webkit.org/show_bug.cgi?id=190631
+
+        1e9 is a much more useful timescale than the previous one 2^31-1.
+        Unlike 2^31-1, which is a prime number, nanosecond scale is pretty
+        common among some formats like WebM and frameworks like GStreamer
+        where base 10 timescale is common... and it's those big timescales the
+        ones that are usually scaled up to MaximumTimeScale.
+
+        Reviewed by Jer Noble.
+
+        * wtf/MediaTime.cpp:
+
+2018-10-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove PLATFORM(IOS) for now
+        https://bugs.webkit.org/show_bug.cgi?id=190737
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h:
+
+2018-10-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Switch from PLATFORM(IOS) to PLATFORM(IOS_FAMILY)
+        https://bugs.webkit.org/show_bug.cgi?id=190729
+
+        Reviewed by Tim Horton.
+
+        * wtf/Assertions.h:
+        * wtf/FeatureDefines.h:
+        * wtf/InlineASM.h:
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::thresholdForPolicy):
+        * wtf/Platform.h:
+        * wtf/cocoa/MemoryPressureHandlerCocoa.mm:
+        (WTF::MemoryPressureHandler::install):
+        (WTF::MemoryPressureHandler::respondToMemoryPressure):
+        * wtf/spi/cocoa/NSMapTableSPI.h:
+        * wtf/spi/darwin/XPCSPI.h:
+        * wtf/text/StringCommon.h:
+        * wtf/text/TextBreakIterator.cpp:
+        * wtf/text/TextBreakIterator.h:
+        * wtf/unicode/icu/CollatorICU.cpp:
+        (WTF::copyDefaultLocale):
+
+2018-10-18  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up FrameLoader two-state enums
+        https://bugs.webkit.org/show_bug.cgi?id=190731
+
+        Reviewed by Chris Dumez.
+
+        * wtf/EnumTraits.h:
+        (WTF::isValidEnum):
+
+2018-10-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237208.
+        https://bugs.webkit.org/show_bug.cgi?id=190691
+
+        Caused the API test that was changed to failure continuously
+        (Requested by Truitt on #webkit).
+
+        Reverted changeset:
+
+        "[Media] Use nanoseconds as MaximumTimeScale"
+        https://bugs.webkit.org/show_bug.cgi?id=190631
+        https://trac.webkit.org/changeset/237208
+
 2018-10-16  Alicia Boya García  <aboya@igalia.com>
 
         [Media] Use nanoseconds as MaximumTimeScale

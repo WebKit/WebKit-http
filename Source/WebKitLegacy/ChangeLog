@@ -1,3 +1,96 @@
+2018-10-30  Alexey Proskuryakov  <ap@apple.com>
+
+        Enable InstallAPI for iOS unconditionally
+        https://bugs.webkit.org/show_bug.cgi?id=191043
+        rdar://problem/32728423
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: Added NSURLDownloadSPI.h.
+
+2018-10-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237600 and r237604.
+        https://bugs.webkit.org/show_bug.cgi?id=191086
+
+        Breaks internal iOS builds (Requested by ryanhadd_ on
+        #webkit).
+
+        Reverted changesets:
+
+        "Enable InstallAPI for iOS unconditionally"
+        https://bugs.webkit.org/show_bug.cgi?id=191043
+        https://trac.webkit.org/changeset/237600
+
+        "Build fix attempt after enabling InstallAPI for iOS."
+        https://bugs.webkit.org/show_bug.cgi?id=191043
+        https://trac.webkit.org/changeset/237604
+
+2018-10-30  Alexey Proskuryakov  <ap@apple.com>
+
+        Enable InstallAPI for iOS unconditionally
+        https://bugs.webkit.org/show_bug.cgi?id=191043
+        rdar://problem/32728423
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: Added NSURLDownloadSPI.h.
+
+2018-10-29  Tim Horton  <timothy_horton@apple.com>
+
+        Modernize WebKit nibs and lprojs for localization's sake
+        https://bugs.webkit.org/show_bug.cgi?id=190911
+        <rdar://problem/45349466>
+
+        Reviewed by Dan Bernstein.
+
+        * English.lproj/WebJavaScriptTextInputPanel.nib/designable.nib: Removed.
+        * English.lproj/WebJavaScriptTextInputPanel.nib/keyedobjects.nib: Removed.
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+        * en.lproj/WebJavaScriptTextInputPanel.xib: Added.
+        NIB->XIB, English->en
+
+2018-10-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake][Ninja][Win] midl.exe fails to create, open and write a temporary file in parallel build in Docker container
+        https://bugs.webkit.org/show_bug.cgi?id=187725
+
+        Reviewed by Michael Catanzaro.
+
+        * PlatformWin.cmake: Added USES_TERMINAL to serialize midl.exe
+        executions.
+
+2018-10-22  Sihui Liu  <sihui_liu@apple.com>
+
+        Regression (r232410): StorageTracker.db file gets unlinked while in use
+        https://bugs.webkit.org/show_bug.cgi?id=190795
+
+        Reviewed by Chris Dumez.
+
+        WK2 stopped using StorageTracker.db file in r232410 and would delete 
+        the file for safety.
+        It turned out WK1 could use the same file path, so WK2 may delete the 
+        file while WK1 is using it.
+
+        * Storage/StorageTracker.cpp:
+        (WebKit::StorageTracker::trackerDatabasePath):
+
+2018-10-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Switch from PLATFORM(IOS) to PLATFORM(IOS_FAMILY)
+        https://bugs.webkit.org/show_bug.cgi?id=190729
+
+        Reviewed by Tim Horton.
+
+        * Storage/StorageTracker.cpp:
+        (WebKit::StorageTracker::syncDeleteAllOrigins):
+        (WebKit::StorageTracker::syncDeleteOrigin):
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::loadResource):
+        (WebResourceLoadScheduler::scheduleLoad):
+        (WebResourceLoadScheduler::remove):
+        (WebResourceLoadScheduler::servePendingRequests):
+
 2018-10-11  Keith Rollin  <krollin@apple.com>
 
         CURRENT_ARCH should not be used in Run Script phase.

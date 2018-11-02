@@ -234,7 +234,7 @@ public:
 
     void handleEvent(ScriptExecutionContext&, Event& event) final
     {
-        if (!is<Node>(event.target()))
+        if (!is<Node>(event.target()) || m_domAgent.m_dispatchedEvents.contains(&event))
             return;
 
         auto* node = downcast<Node>(event.target());
@@ -242,8 +242,17 @@ public:
         if (!nodeId)
             return;
 
+        m_domAgent.m_dispatchedEvents.add(&event);
+
+        RefPtr<JSON::Object> data = JSON::Object::create();
+
+#if ENABLE(FULLSCREEN_API)
+        if (event.type() == eventNames().webkitfullscreenchangeEvent)
+            data->setBoolean("enabled"_s, !!node->document().webkitFullscreenElement());
+#endif // ENABLE(FULLSCREEN_API)
+
         auto timestamp = m_domAgent.m_environment.executionStopwatch()->elapsedTime().seconds();
-        m_domAgent.m_frontendDispatcher->didFireEvent(nodeId, event.type(), timestamp);
+        m_domAgent.m_frontendDispatcher->didFireEvent(nodeId, event.type(), timestamp, data->size() ? WTFMove(data) : nullptr);
     }
 
 private:
@@ -289,6 +298,9 @@ void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, 
 
     m_instrumentingAgents.setInspectorDOMAgent(this);
     m_document = m_pageAgent->mainFrame().document();
+
+    if (m_document)
+        addEventListenersToNode(*m_document);
 
     for (auto* mediaElement : HTMLMediaElement::allMediaElements())
         addEventListenersToNode(*mediaElement);
@@ -523,6 +535,7 @@ void InspectorDOMAgent::discardBindings()
 {
     m_documentNodeToIdMap.clear();
     m_idToNode.clear();
+    m_dispatchedEvents.clear();
     m_eventListenerEntries.clear();
     releaseDanglingNodes();
     m_childrenRequested.clear();
@@ -2138,6 +2151,11 @@ void InspectorDOMAgent::addEventListenersToNode(Node& node)
         node.addEventListener(eventName, callback.copyRef(), false);
     };
 
+#if ENABLE(FULLSCREEN_API)
+    if (is<Document>(node) || is<HTMLMediaElement>(node))
+        createEventListener(eventNames().webkitfullscreenchangeEvent);
+#endif // ENABLE(FULLSCREEN_API)
+
     if (is<HTMLMediaElement>(node)) {
         createEventListener(eventNames().abortEvent);
         createEventListener(eventNames().canplayEvent);
@@ -2404,6 +2422,11 @@ bool InspectorDOMAgent::isEventListenerDisabled(EventTarget& target, const Atomi
             return inspectorEventListener.disabled;
     }
     return false;
+}
+
+void InspectorDOMAgent::eventDidResetAfterDispatch(const Event& event)
+{
+    m_dispatchedEvents.remove(&event);
 }
 
 bool InspectorDOMAgent::hasBreakpointForEventListener(EventTarget& target, const AtomicString& eventType, EventListener& listener, bool capture)

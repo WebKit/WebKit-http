@@ -452,7 +452,7 @@ HiddenPageCSSAnimationSuspensionEnabled:
 
 LowPowerVideoAudioBufferSizeEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   webcoreBinding: DeprecatedGlobalSettings
 
 ThreadedScrollingEnabled:
@@ -516,11 +516,20 @@ WebRTCUnifiedPlanEnabled:
 
 WebRTCVP8CodecEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEB_RTC)
   humanReadableName: "WebRTC VP8 codec"
   humanReadableDescription: "Enable WebRTC VP8 codec"
+  category: experimental
+
+WebRTCH264SimulcastEnabled:
+  type: bool
+  defaultValue: true
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_RTC)
+  humanReadableName: "WebRTC H264 Simulcast"
+  humanReadableDescription: "Enable WebRTC H264 Simulcast"
   category: experimental
 
 UseLegacyTextAlignPositionedElementBehavior:
@@ -1021,7 +1030,7 @@ DisableScreenSizeOverride:
   type: bool
   defaultValue: false
   category: debug
-  condition: PLATFORM(IOS)
+  condition: PLATFORM(IOS_FAMILY)
 
 SimpleLineLayoutDebugBordersEnabled:
   type: bool
@@ -1043,14 +1052,14 @@ IgnoreViewportScalingConstraints:
   defaultValue: true
   category: debug
   webcoreBinding: none
-  condition: PLATFORM(IOS)
+  condition: PLATFORM(IOS_FAMILY)
 
 ForceAlwaysUserScalable:
   type: bool
   defaultValue: false
   category: debug
   webcoreBinding: none
-  condition: PLATFORM(IOS)
+  condition: PLATFORM(IOS_FAMILY)
 
 ResourceUsageOverlayVisible:
   type: bool
@@ -1180,13 +1189,6 @@ SpringTimingFunctionEnabled:
   humanReadableDescription: "CSS Spring Animation prototype"
   category: experimental
 
-ConicGradientsEnabled:
-  type: bool
-  defaultValue: DEFAULT_CONIC_GRADIENT_ENABLED
-  humanReadableName: "CSS Conic Gradient"
-  humanReadableDescription: "Support for CSS Conic Gradients"
-  category: experimental
-
 ImageBitmapOffscreenCanvasEnabled:
   type: bool
   defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
@@ -1236,7 +1238,7 @@ WebAnimationsEnabled:
 
 WebAnimationsCSSIntegrationEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
   humanReadableName: "CSS Animations via Web Animations"
   humanReadableDescription: "Expose CSS Animations and CSS Transitions through getAnimations()"
   category: experimental
@@ -1329,6 +1331,14 @@ WebSQLDisabled:
   webcoreBinding: RuntimeEnabledFeatures
   category: experimental
 
+ProcessSwapOnCrossSiteNavigationEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Swap Processes on Cross-Site Navigation"
+  humanReadableDescription: "Swap WebContent processes on cross-site navigations"
+  category: experimental
+  webcoreBinding: none
+
 # For internal features:
 # The type should be boolean.
 # You must provide a humanReadableName and humanReadableDescription for all debug features. They
@@ -1342,14 +1352,6 @@ ExperimentalPlugInSandboxProfilesEnabled:
   category: internal
   webcoreBinding: RuntimeEnabledFeatures
   webcoreName: experimentalPlugInSandboxProfilesEnabled
-
-ProcessSwapOnCrossSiteNavigationEnabled:
-  type: bool
-  defaultValue: false
-  humanReadableName: "Swap Processes on Cross-Site Navigation"
-  humanReadableDescription: "Swap WebContent processes on cross-site navigations"
-  category: internal
-  webcoreBinding: none
 
 ResourceLoadStatisticsDebugMode:
   type: bool
@@ -1437,9 +1439,18 @@ SelectionAcrossShadowBoundariesEnabled:
 
 InputTypeColorEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: DEFAULT_INPUT_TYPE_COLOR_ENABLED
   humanReadableName: "Color Inputs"
   humanReadableDescription: "Enable input elements of type color"
   category: internal
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(INPUT_TYPE_COLOR)
+
+DataListElementEnabled:
+  type: bool
+  defaultValue: DEFAULT_DATALIST_ELEMENT_ENABLED
+  humanReadableName: "DataList Element"
+  humanReadableDescription: "Enable datalist elements"
+  category: internal
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(DATALIST_ELEMENT)

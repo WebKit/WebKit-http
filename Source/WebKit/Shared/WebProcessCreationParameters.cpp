@@ -60,7 +60,7 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if PLATFORM(MAC)
     encoder << uiProcessCookieStorageIdentifier;
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     encoder << cookieStorageDirectoryExtensionHandle;
     encoder << containerCachesDirectoryExtensionHandle;
     encoder << containerTemporaryDirectoryExtensionHandle;
@@ -72,6 +72,7 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if ENABLE(MEDIA_STREAM)
     encoder << audioCaptureExtensionHandle;
     encoder << shouldCaptureAudioInUIProcess;
+    encoder << shouldCaptureDisplayInUIProcess;
 #endif
     encoder << shouldUseTestingNetworkSession;
     encoder << urlSchemesRegisteredAsEmptyDocument;
@@ -174,8 +175,11 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     parameters.injectedBundlePathExtensionHandle = WTFMove(*injectedBundlePathExtensionHandle);
 
-    if (!decoder.decode(parameters.additionalSandboxExtensionHandles))
+    std::optional<SandboxExtension::HandleArray> additionalSandboxExtensionHandles;
+    decoder >> additionalSandboxExtensionHandles;
+    if (!additionalSandboxExtensionHandles)
         return false;
+    parameters.additionalSandboxExtensionHandles = WTFMove(*additionalSandboxExtensionHandles);
     if (!decoder.decode(parameters.initializationUserData))
         return false;
     if (!decoder.decode(parameters.applicationCacheDirectory))
@@ -220,7 +224,7 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!decoder.decode(parameters.uiProcessCookieStorageIdentifier))
         return false;
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     
     std::optional<SandboxExtension::Handle> cookieStorageDirectoryExtensionHandle;
     decoder >> cookieStorageDirectoryExtensionHandle;
@@ -263,6 +267,8 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     parameters.audioCaptureExtensionHandle = WTFMove(*audioCaptureExtensionHandle);
 
     if (!decoder.decode(parameters.shouldCaptureAudioInUIProcess))
+        return false;
+    if (!decoder.decode(parameters.shouldCaptureDisplayInUIProcess))
         return false;
 #endif
     if (!decoder.decode(parameters.shouldUseTestingNetworkSession))

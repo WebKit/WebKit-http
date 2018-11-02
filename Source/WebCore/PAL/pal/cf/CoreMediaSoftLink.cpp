@@ -35,10 +35,10 @@
 #include <CoreVideo/CoreVideo.h>
 #endif
 
-#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED < 130000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101400)
-#define CMSAMPLEBUFFERCALL_NOESCAPE
-#else
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101400)
 #define CMSAMPLEBUFFERCALL_NOESCAPE CF_NOESCAPE
+#else
+#define CMSAMPLEBUFFERCALL_NOESCAPE
 #endif
 
 
@@ -159,22 +159,19 @@ SOFT_LINK_FUNCTION_FOR_SOURCE(PAL, CoreMedia, CMSampleBufferSetDataReady, OSStat
 SOFT_LINK_FUNCTION_FOR_SOURCE(PAL, CoreMedia, CMAudioFormatDescriptionCreate, OSStatus, (CFAllocatorRef allocator, const AudioStreamBasicDescription* asbd, size_t layoutSize, const AudioChannelLayout* layout, size_t magicCookieSize, const void* magicCookie, CFDictionaryRef extensions, CMAudioFormatDescriptionRef* outDesc), (allocator, asbd, layoutSize, layout, magicCookieSize, magicCookie, extensions, outDesc))
 SOFT_LINK_FUNCTION_FOR_SOURCE(PAL, CoreMedia, CMClockGetHostTimeClock, CMClockRef, (void), ())
 SOFT_LINK_FUNCTION_FOR_SOURCE(PAL, CoreMedia, CMClockGetTime, CMTime, (CMClockRef clock), (clock))
-
-#if PLATFORM(APPLETV) || PLATFORM(MAC) || PLATFORM(IOSMAC) || PLATFORM(WATCHOS) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED < 120000)
 SOFT_LINK_FUNCTION_FOR_SOURCE(PAL, CoreMedia, CMSampleBufferCallForEachSample, OSStatus, (CMSampleBufferRef sbuf, OSStatus (* CMSAMPLEBUFFERCALL_NOESCAPE callback)( CMSampleBufferRef sampleBuffer, CMItemCount index, void *refcon), void *refcon), (sbuf, callback, refcon))
 SOFT_LINK_FUNCTION_FOR_SOURCE(PAL, CoreMedia, CMSampleBufferCallBlockForEachSample, OSStatus, (CMSampleBufferRef sbuf, OSStatus (^ CMSAMPLEBUFFERCALL_NOESCAPE handler)(CMSampleBufferRef, CMItemCount)), (sbuf, handler))
-#endif
 
 #endif // PLATFORM(COCOA)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 SOFT_LINK_FUNCTION_FOR_SOURCE(PAL, CoreMedia, CMAudioClockCreate, OSStatus, (CFAllocatorRef allocator, CMClockRef *clockOut), (allocator, clockOut))
 SOFT_LINK_FUNCTION_FOR_SOURCE(PAL, CoreMedia, CMTimeMaximum, CMTime, (CMTime time1, CMTime time2), (time1, time2))
 SOFT_LINK_FUNCTION_FOR_SOURCE(PAL, CoreMedia, CMTimeMinimum, CMTime, (CMTime time1, CMTime time2), (time1, time2))
 SOFT_LINK_FUNCTION_FOR_SOURCE(PAL, CoreMedia, CMTimeRangeContainsTime, Boolean, (CMTimeRange range, CMTime time), (range, time))
 
 SOFT_LINK_CONSTANT_FOR_SOURCE(PAL, CoreMedia, kCMTimeIndefinite, CMTime)
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 #if PLATFORM(MAC)
 SOFT_LINK_FUNCTION_FOR_SOURCE(PAL, CoreMedia, CMAudioDeviceClockCreate, OSStatus, (CFAllocatorRef allocator, CFStringRef deviceUID, CMClockRef *clockOut), (allocator, deviceUID, clockOut))

@@ -188,7 +188,7 @@ LayoutUnit RenderView::availableLogicalHeight(AvailableLogicalHeightType) const
     if (multiColumnFlow() && multiColumnFlow()->firstMultiColumnSet())
         return multiColumnFlow()->firstMultiColumnSet()->computedColumnHeight();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Workaround for <rdar://problem/7166808>.
     if (document().isPluginDocument() && frameView().useFixedLayout())
         return frameView().fixedLayoutSize().height();
@@ -265,7 +265,7 @@ LayoutUnit RenderView::clientLogicalWidthForFixedPosition() const
     if (frameView().fixedElementsLayoutRelativeToFrame())
         return (isHorizontalWritingMode() ? frameView().visibleWidth() : frameView().visibleHeight()) / frameView().frame().frameScaleFactor();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (frameView().useCustomFixedPositionLayoutRect())
         return isHorizontalWritingMode() ? frameView().customFixedPositionLayoutRect().width() : frameView().customFixedPositionLayoutRect().height();
 #endif
@@ -282,7 +282,7 @@ LayoutUnit RenderView::clientLogicalHeightForFixedPosition() const
     if (frameView().fixedElementsLayoutRelativeToFrame())
         return (isHorizontalWritingMode() ? frameView().visibleHeight() : frameView().visibleWidth()) / frameView().frame().frameScaleFactor();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (frameView().useCustomFixedPositionLayoutRect())
         return isHorizontalWritingMode() ? frameView().customFixedPositionLayoutRect().height() : frameView().customFixedPositionLayoutRect().width();
 #endif
@@ -514,7 +514,7 @@ void RenderView::repaintViewRectangle(const LayoutRect& repaintRect) const
         if (!ownerBox)
             return;
         LayoutRect viewRect = this->viewRect();
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         // Don't clip using the visible rect since clipping is handled at a higher level on iPhone.
         LayoutRect adjustedRect = enclosingRect;
 #else
@@ -577,11 +577,11 @@ LayoutRect RenderView::visualOverflowRect() const
     return RenderBlockFlow::visualOverflowRect();
 }
 
-LayoutRect RenderView::computeRectForRepaint(const LayoutRect& rect, const RenderLayerModelObject* repaintContainer, RepaintContext context) const
+std::optional<LayoutRect> RenderView::computeVisibleRectInContainer(const LayoutRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
 {
     // If a container was specified, and was not nullptr or the RenderView,
     // then we should have found it by now.
-    ASSERT_ARG(repaintContainer, !repaintContainer || repaintContainer == this);
+    ASSERT_ARG(container, !container || container == this);
 
     if (printing())
         return rect;
@@ -600,7 +600,7 @@ LayoutRect RenderView::computeRectForRepaint(const LayoutRect& rect, const Rende
         adjustedRect.moveBy(frameView().scrollPositionRespectingCustomFixedPosition());
     
     // Apply our transform if we have one (because of full page zooming).
-    if (!repaintContainer && layer() && layer()->transform())
+    if (!container && layer() && layer()->transform())
         adjustedRect = LayoutRect(layer()->transform()->mapRect(snapRectToDevicePixels(adjustedRect, document().deviceScaleFactor())));
     return adjustedRect;
 }

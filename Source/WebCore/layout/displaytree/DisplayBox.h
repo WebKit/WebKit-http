@@ -41,7 +41,8 @@ class FloatAvoider;
 class FloatBox;
 class FormattingContext;
 class FloatingContext;
-class LayoutContext;
+class InlineFormattingContext;
+class LayoutState;
 }
 
 namespace Display {
@@ -54,7 +55,8 @@ public:
     friend class Layout::FloatBox;
     friend class Layout::FormattingContext;
     friend class Layout::FloatingContext;
-    friend class Layout::LayoutContext;
+    friend class Layout::InlineFormattingContext;
+    friend class Layout::LayoutState;
 
     Box(const RenderStyle&);
     Box(const Box&);

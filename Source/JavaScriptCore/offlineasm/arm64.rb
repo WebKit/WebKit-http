@@ -276,7 +276,7 @@ def arm64LowerLabelReferences(list)
         | node |
         if node.is_a? Instruction
             case node.opcode
-            when "loadi", "loadis", "loadp", "loadq", "loadb", "loadbs", "loadh", "loadhs"
+            when "loadi", "loadis", "loadp", "loadq", "loadb", "loadbs", "loadh", "loadhs", "leap"
                 labelRef = node.operands[0]
                 if labelRef.is_a? LabelReference
                     tmp = Tmp.new(node.codeOrigin, :gpr)
@@ -373,7 +373,7 @@ class Sequence
         result = riscLowerMalformedAddresses(result) {
             | node, address |
             case node.opcode
-            when "loadb", "loadbs", "storeb", /^bb/, /^btb/, /^cb/, /^tb/
+            when "loadb", "loadbs", "loadbsp", "storeb", /^bb/, /^btb/, /^cb/, /^tb/
                 size = 1
             when "loadh", "loadhs"
                 size = 2
@@ -484,6 +484,18 @@ def emitARM64Add(opcode, operands, kind)
     $asm.puts "#{opcode} #{arm64TACOperands(operands, kind)}"
 end
 
+def emitARM64Mul(opcode, operands, kind)
+    if operands.size == 2 and operands[0].is_a? Immediate
+        imm = operands[0].value
+        if imm > 0 and isPowerOfTwo(imm)
+            emitARM64LShift([Immediate.new(nil, Math.log2(imm).to_i), operands[1]], kind)
+            return
+        end
+    end
+
+    $asm.puts "madd #{arm64TACOperands(operands, kind)}, #{arm64GPRName('xzr', kind)}"
+end
+
 def emitARM64Unflipped(opcode, operands, kind)
     $asm.puts "#{opcode} #{arm64Operands(operands, kind)}"
 end
@@ -520,6 +532,21 @@ def emitARM64Shift(opcodeRegs, opcodeImmediate, operands, kind)
     end
     
     emitARM64TAC(opcodeRegs, operands, kind)
+end
+
+def emitARM64LShift(operands, kind)
+    emitARM64Shift("lslv", "ubfm", operands, kind) {
+        | value |
+        case kind
+        when :word
+            [32 - value, 31 - value]
+        when :ptr
+            bitSize = $currentSettings["ADDRESS64"] ? 64 : 32
+            [bitSize - value, bitSize - 1 - value]
+        when :quad
+            [64 - value, 63 - value]
+        end
+    }
 end
 
 def emitARM64Branch(opcode, operands, kind, branchOpcode)
@@ -584,21 +611,11 @@ class Instruction
         when "xorq"
             emitARM64TAC("eor", operands, :quad)
         when "lshifti"
-            emitARM64Shift("lslv", "ubfm", operands, :word) {
-                | value |
-                [32 - value, 31 - value]
-            }
+            emitARM64LShift(operands, :word)
         when "lshiftp"
-            emitARM64Shift("lslv", "ubfm", operands, :ptr) {
-                | value |
-                bitSize = $currentSettings["ADDRESS64"] ? 64 : 32
-                [bitSize - value, bitSize - 1 - value]
-            }
+            emitARM64LShift(operands, :ptr)
         when "lshiftq"
-            emitARM64Shift("lslv", "ubfm", operands, :quad) {
-                | value |
-                [64 - value, 63 - value]
-            }
+            emitARM64LShift(operands, :quad)
         when "rshifti"
             emitARM64Shift("asrv", "sbfm", operands, :word) {
                 | value |
@@ -632,11 +649,11 @@ class Instruction
                 [value, 63]
             }
         when "muli"
-            $asm.puts "madd #{arm64TACOperands(operands, :word)}, wzr"
+            emitARM64Mul('mul', operands, :word)
         when "mulp"
-            $asm.puts "madd #{arm64TACOperands(operands, :ptr)}, #{arm64GPRName('xzr', :ptr)}"
+            emitARM64Mul('mul', operands, :ptr)
         when "mulq"
-            $asm.puts "madd #{arm64TACOperands(operands, :quad)}, xzr"
+            emitARM64Mul('mul', operands, :quad)
         when "subi"
             emitARM64TAC("sub", operands, :word)
         when "subp"
@@ -669,6 +686,8 @@ class Instruction
             emitARM64Access("ldrb", "ldurb", operands[1], operands[0], :word)
         when "loadbs"
             emitARM64Access("ldrsb", "ldursb", operands[1], operands[0], :word)
+        when "loadbsp"
+            emitARM64Access("ldrsb", "ldursb", operands[1], operands[0], :ptr)
         when "storeb"
             emitARM64Unflipped("strb", operands, :word)
         when "loadh"

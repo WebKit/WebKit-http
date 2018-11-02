@@ -26,13 +26,13 @@
 #include "config.h"
 #include "WebDataListSuggestionsDropdownIOS.h"
 
-#if ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS)
+#if ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS_FAMILY)
 
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
 #import "WKFormPeripheral.h"
 #import "WKFormPopover.h"
-#import "_WKFormInputSession.h"
+#import "WebPageProxy.h"
 
 static const CGFloat maxVisibleSuggestions = 5;
 static const CGFloat suggestionsPopoverCellHeight = 44;
@@ -81,13 +81,13 @@ static NSString * const suggestionCellReuseIdentifier = @"WKDataListSuggestionCe
 
 namespace WebKit {
 
-Ref<WebDataListSuggestionsDropdownIOS> WebDataListSuggestionsDropdownIOS::create(WebDataListSuggestionsDropdown::Client& client, WKContentView *view)
+Ref<WebDataListSuggestionsDropdownIOS> WebDataListSuggestionsDropdownIOS::create(WebPageProxy& page, WKContentView *view)
 {
-    return adoptRef(*new WebDataListSuggestionsDropdownIOS(client, view));
+    return adoptRef(*new WebDataListSuggestionsDropdownIOS(page, view));
 }
 
-WebDataListSuggestionsDropdownIOS::WebDataListSuggestionsDropdownIOS(WebDataListSuggestionsDropdown::Client& client, WKContentView *view)
-    : WebDataListSuggestionsDropdown(client)
+WebDataListSuggestionsDropdownIOS::WebDataListSuggestionsDropdownIOS(WebPageProxy& page, WKContentView *view)
+    : WebDataListSuggestionsDropdown(page)
     , m_contentView(view)
 {
 }
@@ -117,15 +117,15 @@ void WebDataListSuggestionsDropdownIOS::close()
 {
     [m_suggestionsControl invalidate];
     m_suggestionsControl = nil;
-    m_client->didCloseSuggestions();
+    m_page->didCloseSuggestions();
 }
 
 void WebDataListSuggestionsDropdownIOS::didSelectOption(const String& selectedOption)
 {
-    if (!m_client)
+    if (!m_page)
         return;
 
-    m_client->didSelectOption(selectedOption);
+    m_page->didSelectOption(selectedOption);
     close();
 }
 
@@ -220,12 +220,12 @@ void WebDataListSuggestionsDropdownIOS::didSelectOption(const String& selectedOp
 {
     [super updateWithInformation:WTFMove(information)];
     if (information.activationType != WebCore::DataListSuggestionActivationType::IndicatorClicked) {
-        [[self.view _formInputSession] setCustomInputView:nil];
-        [[self.view _formInputSession] setSuggestions:[self textSuggestions]];
+        self.view.dataListTextSuggestionsInputView = nil;
+        self.view.dataListTextSuggestions = self.textSuggestions;
         return;
     }
 
-    [[self.view _formInputSession] setCustomInputView:_pickerView.get()];
+    self.view.dataListTextSuggestionsInputView = _pickerView.get();
 
     [_pickerView reloadAllComponents];
     [_pickerView selectRow:0 inComponent:0 animated:NO];
@@ -235,10 +235,10 @@ void WebDataListSuggestionsDropdownIOS::didSelectOption(const String& selectedOp
 {
     [super showSuggestionsDropdown:dropdown activationType:activationType];
     if (activationType == WebCore::DataListSuggestionActivationType::IndicatorClicked) {
-        [[self.view _formInputSession] setCustomInputView:_pickerView.get()];
+        self.view.dataListTextSuggestionsInputView = _pickerView.get();
         [_pickerView selectRow:0 inComponent:0 animated:NO];
     } else
-        [[self.view _formInputSession] setSuggestions:[self textSuggestions]];
+        self.view.dataListTextSuggestions = self.textSuggestions;
 }
 
 - (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pickerView
@@ -258,8 +258,8 @@ void WebDataListSuggestionsDropdownIOS::didSelectOption(const String& selectedOp
 
 - (void)invalidate
 {
-    if ([[self.view _formInputSession] customInputView] == _pickerView.get())
-        [[self.view _formInputSession] setCustomInputView:nil];
+    if (self.view.dataListTextSuggestionsInputView == _pickerView.get())
+        self.view.dataListTextSuggestionsInputView = nil;
 
     [_pickerView setDelegate:nil];
     [_pickerView setDataSource:nil];
@@ -307,7 +307,7 @@ void WebDataListSuggestionsDropdownIOS::didSelectOption(const String& selectedOp
 {
     [super updateWithInformation:WTFMove(information)];
     [_suggestionsViewController reloadData];
-    [[self.view _formInputSession] setSuggestions:[self textSuggestions]];
+    self.view.dataListTextSuggestions = self.textSuggestions;
 }
 
 - (void)showSuggestionsDropdown:(WebKit::WebDataListSuggestionsDropdownIOS *)dropdown activationType:(WebCore::DataListSuggestionActivationType)activationType
@@ -317,7 +317,7 @@ void WebDataListSuggestionsDropdownIOS::didSelectOption(const String& selectedOp
     _suggestionsViewController = adoptNS([[WKDataListSuggestionsViewController alloc] initWithStyle:UITableViewStylePlain]);
     [_suggestionsViewController setControl:self];
     [_suggestionsViewController reloadData];
-    [[self.view _formInputSession] setSuggestions:[self textSuggestions]];
+    self.view.dataListTextSuggestions = self.textSuggestions;
 
 ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [_popover setPopoverController:[[[UIPopoverController alloc] initWithContentViewController:_suggestionsViewController.get()] autorelease]];
@@ -335,7 +335,7 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 {
     [super didSelectOptionAtIndex:index];
     [[_popover popoverController] dismissPopoverAnimated:YES];
-    [[self.view _formInputSession] setSuggestions:@[ [WKDataListTextSuggestion textSuggestionWithInputText:[self suggestionAtIndex:index]] ]];
+    self.view.dataListTextSuggestions = @[ [WKDataListTextSuggestion textSuggestionWithInputText:[self suggestionAtIndex:index]] ];
 }
 
 @end
@@ -373,4 +373,4 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 
 @end
 
-#endif // ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS)
+#endif // ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS_FAMILY)

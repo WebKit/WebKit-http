@@ -38,8 +38,10 @@ namespace Layout {
 class BlockFormattingState : public FormattingState {
     WTF_MAKE_ISO_ALLOCATED(BlockFormattingState);
 public:
-    BlockFormattingState(Ref<FloatingState>&&, const LayoutContext&);
+    BlockFormattingState(Ref<FloatingState>&&, LayoutState&);
     virtual ~BlockFormattingState();
+
+    std::unique_ptr<FormattingContext> formattingContext(const Box& formattingContextRoot) override;
 };
 
 }

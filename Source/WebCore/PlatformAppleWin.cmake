@@ -92,7 +92,6 @@ else ()
         page/win/FrameCGWin.cpp
 
         platform/graphics/ca/GraphicsLayerCA.cpp
-        platform/graphics/ca/LayerFlushScheduler.cpp
         platform/graphics/ca/LayerPool.cpp
         platform/graphics/ca/PlatformCALayer.cpp
         platform/graphics/ca/TileController.cpp
@@ -119,6 +118,7 @@ else ()
         platform/graphics/cg/IOSurfacePool.cpp
         platform/graphics/cg/ImageBufferCG.cpp
         platform/graphics/cg/ImageBufferDataCG.cpp
+        platform/graphics/cg/ImageBufferUtilitiesCG.cpp
         platform/graphics/cg/ImageDecoderCG.cpp
         platform/graphics/cg/ImageSourceCGWin.cpp
         platform/graphics/cg/IntPointCG.cpp

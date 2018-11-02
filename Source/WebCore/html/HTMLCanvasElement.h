@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
  * Copyright (C) 2010 Torch Mobile (Beijing) Co. Ltd. All rights reserved.
  *
@@ -51,6 +51,7 @@ class ImageData;
 class MediaSample;
 class MediaStream;
 class WebGLRenderingContextBase;
+class WebGPURenderingContext;
 class WebMetalRenderingContext;
 struct UncachedString;
 
@@ -97,6 +98,11 @@ public:
     WebGLRenderingContextBase* createContextWebGL(const String&, WebGLContextAttributes&& = { });
     WebGLRenderingContextBase* getContextWebGL(const String&, WebGLContextAttributes&& = { });
 #endif
+#if ENABLE(WEBGPU)
+    static bool isWebGPUType(const String&);
+    WebGPURenderingContext* createContextWebGPU(const String&);
+    WebGPURenderingContext* getContextWebGPU(const String&);
+#endif
 #if ENABLE(WEBMETAL)
     static bool isWebMetalType(const String&);
     WebMetalRenderingContext* createContextWebMetal(const String&);
@@ -112,12 +118,12 @@ public:
     ExceptionOr<void> toBlob(ScriptExecutionContext&, Ref<BlobCallback>&&, const String& mimeType, JSC::JSValue quality);
 
     // Used for rendering
-    void didDraw(const FloatRect&);
+    void didDraw(const FloatRect&) final;
 
     void paint(GraphicsContext&, const LayoutRect&);
 
-    GraphicsContext* drawingContext() const;
-    GraphicsContext* existingDrawingContext() const;
+    GraphicsContext* drawingContext() const final;
+    GraphicsContext* existingDrawingContext() const final;
 
 #if ENABLE(MEDIA_STREAM)
     RefPtr<MediaSample> toMediaSample();
@@ -125,7 +131,7 @@ public:
 #endif
 
     ImageBuffer* buffer() const;
-    Image* copiedImage() const;
+    Image* copiedImage() const final;
     void clearCopiedImage();
     RefPtr<ImageData> getImageData();
     void makePresentationCopy();
@@ -133,9 +139,9 @@ public:
 
     SecurityOrigin* securityOrigin() const final;
 
-    AffineTransform baseTransform() const;
+    AffineTransform baseTransform() const final;
 
-    void makeRenderingResultsAvailable();
+    void makeRenderingResultsAvailable() final;
     bool hasCreatedImageBuffer() const { return m_hasCreatedImageBuffer; }
 
     bool shouldAccelerate(const IntSize&) const;

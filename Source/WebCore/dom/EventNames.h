@@ -101,6 +101,7 @@ namespace WebCore {
     macro(copy) \
     macro(cuechange) \
     macro(cut) \
+    macro(dataavailable) \
     macro(datachannel) \
     macro(dblclick) \
     macro(devicechange) \
@@ -237,6 +238,7 @@ namespace WebCore {
     macro(start) \
     macro(started) \
     macro(statechange) \
+    macro(stop) \
     macro(storage) \
     macro(submit) \
     macro(success) \

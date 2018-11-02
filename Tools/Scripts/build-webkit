@@ -120,6 +120,7 @@ Usage: $programName [options] [options to pass to build system]
   --haiku                           Build the Haiku port
   --wpe                             Build the WPE port
   --wincairo                        Build using Cairo (rather than CoreGraphics) on Windows
+  --playstation                     Build the PlayStation port
 
   --inspector-frontend              Copy Web Inspector user interface resources to the build directory
 
@@ -199,7 +200,7 @@ if (!isCMakeBuild()) {
     }
 }
 
-if ((isAppleWebKit() || isWinCairo()) && !-d "WebKitLibraries") {
+if ((isAppleWebKit() || isWinCairo() || isPlayStation()) && !-d "WebKitLibraries") {
     die "Error: No WebKitLibraries directory found. Please do a fresh checkout.\n";
 }
 
@@ -295,7 +296,7 @@ if (isCMakeBuild() && !isAnyWindows()) {
 }
 
 my $baseProductDir = baseProductDir();
-if (isAppleWinWebKit() || isWinCairo()) {
+if (isAppleWinWebKit() || isWinCairo() || isPlayStation()) {
     my @featureArgs = cmakeArgsFromFeatures(@features, !$noExperimentalFeatures);
     removeCMakeCache(@featureArgs);
 

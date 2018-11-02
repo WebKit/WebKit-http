@@ -54,8 +54,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         // FIXME: Network Timeline.
         // FIXME: Throttling.
 
-        const exclusive = true;
-        this._typeFilterScopeBarItemAll = new WI.ScopeBarItem("network-type-filter-all", WI.UIString("All"), exclusive);
+        this._typeFilterScopeBarItemAll = new WI.ScopeBarItem("network-type-filter-all", WI.UIString("All"), {exclusive: true});
         let typeFilterScopeBarItems = [this._typeFilterScopeBarItemAll];
 
         let uniqueTypes = [
@@ -122,10 +121,10 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             let toolTipForDisableResourceCache = WI.UIString("Ignore the resource cache when loading resources");
             let activatedToolTipForDisableResourceCache = WI.UIString("Use the resource cache when loading resources");
             this._disableResourceCacheNavigationItem = new WI.ActivateButtonNavigationItem("disable-resource-cache", toolTipForDisableResourceCache, activatedToolTipForDisableResourceCache, "Images/IgnoreCaches.svg", 16, 16);
-            this._disableResourceCacheNavigationItem.activated = WI.resourceCachingDisabledSetting.value;
+            this._disableResourceCacheNavigationItem.activated = WI.settings.resourceCachingDisabled.value;
 
             this._disableResourceCacheNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._toggleDisableResourceCache, this);
-            WI.resourceCachingDisabledSetting.addEventListener(WI.Setting.Event.Changed, this._resourceCachingDisabledSettingChanged, this);
+            WI.settings.resourceCachingDisabled.addEventListener(WI.Setting.Event.Changed, this._resourceCachingDisabledSettingChanged, this);
         }
 
         this._clearNetworkItemsNavigationItem = new WI.ButtonNavigationItem("clear-network-items", WI.UIString("Clear Network Items (%s)").format(WI.clearKeyboardShortcut.displayName), "Images/NavigationItemTrash.svg", 15, 15);
@@ -253,7 +252,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
         WI.Frame.removeEventListener(null, null, this);
         WI.Resource.removeEventListener(null, null, this);
-        WI.resourceCachingDisabledSetting.removeEventListener(null, null, this);
+        WI.settings.resourceCachingDisabled.removeEventListener(null, null, this);
         WI.settings.clearNetworkOnNavigate.removeEventListener(null, null, this);
         WI.networkManager.removeEventListener(WI.NetworkManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
         WI.timelineManager.persistentNetworkTimeline.removeEventListener(WI.Timeline.Event.RecordAdded, this._networkTimelineRecordAdded, this);
@@ -660,17 +659,42 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         if (domNode) {
             const domEventElementSize = 8; // Keep this in sync with `--node-waterfall-dom-event-size`.
 
-            let groupedDOMEvents = domNode.domEvents.reduce((accumulator, current) => {
-                if (!accumulator.length || (current.timestamp - accumulator.lastValue.endTimestamp) >= (domEventElementSize * secondsPerPixel)) {
-                    accumulator.push({
-                        startTimestamp: current.timestamp,
+            let groupedDOMEvents = [];
+            for (let domEvent of domNode.domEvents) {
+                if (domEvent.originator)
+                    continue;
+
+                if (!groupedDOMEvents.length || (domEvent.timestamp - groupedDOMEvents.lastValue.endTimestamp) >= (domEventElementSize * secondsPerPixel)) {
+                    groupedDOMEvents.push({
+                        startTimestamp: domEvent.timestamp,
                         domEvents: [],
                     });
                 }
-                accumulator.lastValue.endTimestamp = current.timestamp;
-                accumulator.lastValue.domEvents.push(current);
-                return accumulator;
-            }, []);
+                groupedDOMEvents.lastValue.endTimestamp = domEvent.timestamp;
+                groupedDOMEvents.lastValue.domEvents.push(domEvent);
+            }
+
+            let fullscreenDOMEvents = WI.DOMNode.getFullscreenDOMEvents(domNode.domEvents);
+            if (fullscreenDOMEvents.length) {
+                if (!fullscreenDOMEvents[0].data.enabled)
+                    fullscreenDOMEvents.unshift({timestamp: graphStartTime});
+
+                if (fullscreenDOMEvents.lastValue.data.enabled)
+                    fullscreenDOMEvents.push({timestamp: this._waterfallEndTime});
+
+                console.assert((fullscreenDOMEvents.length % 2) === 0, "Every enter/exit of fullscreen should have a corresponding exit/enter.");
+
+                for (let i = 0; i < fullscreenDOMEvents.length; i += 2) {
+                    let fullscreenElement = container.appendChild(document.createElement("div"));
+                    fullscreenElement.classList.add("dom-fullscreen");
+                    positionByStartOffset(fullscreenElement, fullscreenDOMEvents[i].timestamp);
+                    setWidthForDuration(fullscreenElement, fullscreenDOMEvents[i].timestamp, fullscreenDOMEvents[i + 1].timestamp);
+
+                    let originator = fullscreenDOMEvents[i].originator || fullscreenDOMEvents[i + 1].originator;
+                    if (originator)
+                        fullscreenElement.title = WI.UIString("Fullscreen from “%s“").format(originator.displayName);
+                }
+            }
 
             let playing = false;
 
@@ -728,7 +752,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         }
 
         let {startTime, redirectStart, redirectEnd, fetchStart, domainLookupStart, domainLookupEnd, connectStart, connectEnd, secureConnectionStart, requestStart, responseStart, responseEnd} = resource.timingData;
-        if (isNaN(startTime) || isNaN(responseEnd)) {
+        if (isNaN(startTime) || isNaN(responseEnd) || startTime >= responseEnd) {
             cell.textContent = zeroWidthSpace;
             return;
         }
@@ -744,9 +768,14 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             return;
         }
 
+        let lastEndTimestamp = NaN;
         function appendBlock(startTimestamp, endTimestamp, className) {
             if (isNaN(startTimestamp) || isNaN(endTimestamp) || endTimestamp - startTimestamp <= 0)
                 return null;
+
+            if (Math.abs(startTimestamp - lastEndTimestamp) < secondsPerPixel * 2)
+                startTimestamp = lastEndTimestamp;
+            lastEndTimestamp = endTimestamp;
 
             let block = container.appendChild(document.createElement("div"));
             block.classList.add("block", className);
@@ -1337,12 +1366,12 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
     _resourceCachingDisabledSettingChanged()
     {
-        this._disableResourceCacheNavigationItem.activated = WI.resourceCachingDisabledSetting.value;
+        this._disableResourceCacheNavigationItem.activated = WI.settings.resourceCachingDisabled.value;
     }
 
     _toggleDisableResourceCache()
     {
-        WI.resourceCachingDisabledSetting.value = !WI.resourceCachingDisabledSetting.value;
+        WI.settings.resourceCachingDisabled.value = !WI.settings.resourceCachingDisabled.value;
     }
 
     _mainResourceDidChange(event)

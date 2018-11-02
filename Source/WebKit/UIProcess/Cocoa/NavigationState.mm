@@ -96,7 +96,7 @@ NavigationState::NavigationState(WKWebView *webView)
     : m_webView(webView)
     , m_navigationDelegateMethods()
     , m_historyDelegateMethods()
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     , m_releaseActivityTimer(RunLoop::current(), this, &NavigationState::releaseNetworkActivityTokenAfterLoadCompletion)
 #endif
 {
@@ -157,6 +157,7 @@ void NavigationState::setNavigationDelegate(id <WKNavigationDelegate> delegate)
 
     m_navigationDelegateMethods.webViewNavigationDidFailProvisionalLoadInSubframeWithError = [delegate respondsToSelector:@selector(_webView:navigation:didFailProvisionalLoadInSubframe:withError:)];
     m_navigationDelegateMethods.webViewWillPerformClientRedirect = [delegate respondsToSelector:@selector(_webView:willPerformClientRedirectToURL:delay:)];
+    m_navigationDelegateMethods.webViewDidPerformClientRedirect = [delegate respondsToSelector:@selector(_webView:didPerformClientRedirectFromURL:toURL:)];
     m_navigationDelegateMethods.webViewDidCancelClientRedirect = [delegate respondsToSelector:@selector(_webViewDidCancelClientRedirect:)];
     m_navigationDelegateMethods.webViewNavigationDidFinishDocumentLoad = [delegate respondsToSelector:@selector(_webView:navigationDidFinishDocumentLoad:)];
     m_navigationDelegateMethods.webViewNavigationDidSameDocumentNavigation = [delegate respondsToSelector:@selector(_webView:navigation:didSameDocumentNavigation:)];
@@ -704,6 +705,21 @@ void NavigationState::NavigationClient::willPerformClientRedirect(WebPageProxy& 
     [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate) _webView:m_navigationState.m_webView willPerformClientRedirectToURL:url delay:delay];
 }
 
+void NavigationState::NavigationClient::didPerformClientRedirect(WebPageProxy& page, const WTF::String& sourceURLString, const WTF::String& destinationURLString)
+{
+    if (!m_navigationState.m_navigationDelegateMethods.webViewDidPerformClientRedirect)
+        return;
+
+    auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
+    if (!navigationDelegate)
+        return;
+
+    WebCore::URL sourceURL(WebCore::URL(), sourceURLString);
+    WebCore::URL destinationURL(WebCore::URL(), destinationURLString);
+
+    [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate) _webView:m_navigationState.m_webView didPerformClientRedirectFromURL:sourceURL toURL:destinationURL];
+}
+
 void NavigationState::NavigationClient::didCancelClientRedirect(WebPageProxy& page)
 {
     if (!m_navigationState.m_navigationDelegateMethods.webViewDidCancelClientRedirect)
@@ -1068,7 +1084,7 @@ void NavigationState::willChangeIsLoading()
     [m_webView willChangeValueForKey:@"loading"];
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 void NavigationState::releaseNetworkActivityToken(NetworkActivityTokenReleaseReason reason)
 {
     if (!m_activityToken)
@@ -1089,7 +1105,7 @@ void NavigationState::releaseNetworkActivityToken(NetworkActivityTokenReleaseRea
 
 void NavigationState::didChangeIsLoading()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_webView->_page->pageLoadState().isLoading()) {
         // We do not take a network activity token if a load starts after the screen has been locked.
         if ([UIApp isSuspendedUnderLock])

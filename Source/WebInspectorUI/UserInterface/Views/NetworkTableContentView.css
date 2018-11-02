@@ -182,6 +182,16 @@ body[dir=rtl] .network-table .cell.name > .status {
     overflow: hidden;
 }
 
+.network-table :not(.header) .cell.waterfall .waterfall-container > .dom-fullscreen {
+    position: absolute;
+    top: var(--dom-fullscreen-vertical-padding);
+    height: calc(100% - (var(--dom-fullscreen-vertical-padding) * 2));
+    background-color: lightgrey;
+
+    /* Half of the vertical space above any .dom-event node */
+    --dom-fullscreen-vertical-padding: calc((50% - (var(--node-waterfall-dom-event-size) / 2)) / 2);
+}
+
 .network-table .timeline-ruler > .header {
     top: calc(var(--navigation-bar-height) - var(--timeline-ruler-height));
 }
@@ -196,6 +206,37 @@ body[dir=rtl] .network-table .cell.name > .status {
     top: 8px;
     min-width: 2px;
     height: 4px;
+
+    --start-radius: 2px;
+    --end-radius: 2px;
+}
+
+body[dir=ltr] .waterfall .block {
+    border-top-left-radius: var(--start-radius);
+    border-top-right-radius: var(--end-radius);
+    border-bottom-left-radius: var(--start-radius);
+    border-bottom-right-radius: var(--end-radius);
+}
+
+body[dir=rtl] .waterfall .block {
+    border-top-left-radius: var(--end-radius);
+    border-top-right-radius: var(--start-radius);
+    border-bottom-left-radius: var(--end-radius);
+    border-bottom-right-radius: var(--start-radius);
+}
+
+.network-table .waterfall .block + .block {
+    --start-radius: 0;
+    --end-radius: 0;
+}
+
+.network-table .waterfall .block.filler + .block,
+.network-table .waterfall .block:not(.request, .response) + :matches(.request, .response) {
+    --start-radius: 2px;
+}
+
+.network-table .waterfall .block:last-child {
+    --end-radius: 2px;
 }
 
 .waterfall .block.request,

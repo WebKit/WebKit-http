@@ -83,7 +83,7 @@ public:
 
     void didFirstPaint();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     enum class NetworkActivityTokenReleaseReason { LoadCompleted, ScreenLocked };
     void releaseNetworkActivityToken(NetworkActivityTokenReleaseReason);
 #endif
@@ -98,6 +98,7 @@ private:
         void didStartProvisionalNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
         void didReceiveServerRedirectForProvisionalNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
         void willPerformClientRedirect(WebPageProxy&, const WTF::String&, double) override;
+        void didPerformClientRedirect(WebPageProxy&, const WTF::String&, const WTF::String&) override;
         void didCancelClientRedirect(WebPageProxy&) override;
         void didFailProvisionalNavigationWithError(WebPageProxy&, WebFrameProxy&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
         void didFailProvisionalLoadInSubframeWithError(WebPageProxy&, WebFrameProxy&, const WebCore::SecurityOriginData&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
@@ -176,7 +177,7 @@ private:
     void willChangeWebProcessIsResponsive() override;
     void didChangeWebProcessIsResponsive() override;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void releaseNetworkActivityTokenAfterLoadCompletion() { releaseNetworkActivityToken(NetworkActivityTokenReleaseReason::LoadCompleted); }
 #endif
 
@@ -195,6 +196,7 @@ private:
         bool webViewDidFailProvisionalNavigationWithError : 1;
         bool webViewNavigationDidFailProvisionalLoadInSubframeWithError : 1;
         bool webViewWillPerformClientRedirect : 1;
+        bool webViewDidPerformClientRedirect : 1;
         bool webViewDidCancelClientRedirect : 1;
         bool webViewDidCommitNavigation : 1;
         bool webViewNavigationDidFinishDocumentLoad : 1;
@@ -242,7 +244,7 @@ private:
         bool webViewDidUpdateHistoryTitleForURL : 1;
     } m_historyDelegateMethods;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     ProcessThrottler::BackgroundActivityToken m_activityToken;
     RunLoop::Timer<NavigationState> m_releaseActivityTimer;
 #endif

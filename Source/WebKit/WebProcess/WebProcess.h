@@ -192,6 +192,7 @@ public:
 #endif
 
     void updateActivePages();
+    void getActivePagesOriginsForTesting(Vector<String>&);
     void pageActivityStateDidChange(uint64_t pageID, OptionSet<WebCore::ActivityState::Flag> changed);
 
     void setHiddenPageDOMTimerThrottlingIncreaseLimit(int milliseconds);
@@ -203,7 +204,7 @@ public:
 
     void sendPrewarmInformation(const WebCore::URL&);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void resetAllGeolocationPermissions();
 #endif
 
@@ -233,7 +234,7 @@ public:
 
     WebCacheStorageProvider& cacheStorageProvider() { return m_cacheStorageProvider.get(); }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void accessibilityProcessSuspendedNotification(bool);
 #endif
 
@@ -394,7 +395,7 @@ private:
     RefPtr<InjectedBundle> m_injectedBundle;
 
     RefPtr<EventDispatcher> m_eventDispatcher;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     RefPtr<ViewUpdateDispatcher> m_viewUpdateDispatcher;
 #endif
     RefPtr<WebInspectorInterruptDispatcher> m_webInspectorInterruptDispatcher;

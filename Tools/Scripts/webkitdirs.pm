@@ -104,17 +104,18 @@ BEGIN {
 
 # Ports
 use constant {
-    AppleWin => "AppleWin",
-    GTK      => "GTK",
-    Haiku    => "Haiku",
-    iOS      => "iOS",
-    tvOS     => "tvOS",
-    watchOS  => "watchOS",
-    Mac      => "Mac",
-    JSCOnly  => "JSCOnly",
-    WinCairo => "WinCairo",
-    WPE      => "WPE",
-    Unknown  => "Unknown"
+    AppleWin    => "AppleWin",
+    GTK         => "GTK",
+    Haiku       => "Haiku",
+    iOS         => "iOS",
+    tvOS        => "tvOS",
+    watchOS     => "watchOS",
+    Mac         => "Mac",
+    JSCOnly     => "JSCOnly",
+    PlayStation => "PlayStation",
+    WinCairo    => "WinCairo",
+    WPE         => "WPE",
+    Unknown     => "Unknown"
 };
 
 use constant USE_OPEN_COMMAND => 1; # Used in runMacWebKitApp().
@@ -166,7 +167,6 @@ my $msBuildInstallDir;
 my $vsVersion;
 my $windowsSourceDir;
 my $winVersion;
-my $willUseVCExpressWhenBuilding = 0;
 my $vsWhereFoundInstallation;
 
 # Defined in VCSUtils.
@@ -499,6 +499,7 @@ sub argumentsForConfiguration()
     push(@args, '--wpe') if isWPE();
     push(@args, '--jsc-only') if isJSCOnly();
     push(@args, '--wincairo') if isWinCairo();
+    push(@args, '--playstation') if isPlayStation();
     return @args;
 }
 
@@ -776,7 +777,7 @@ sub determineConfigurationProductDir
     return if defined $configurationProductDir;
     determineBaseProductDir();
     determineConfiguration();
-    if (isAppleWinWebKit() || isWinCairo()) {
+    if (isAppleWinWebKit() || isWinCairo() || isPlayStation()) {
         $configurationProductDir = File::Spec->catdir($baseProductDir, $configuration);
     } else {
         if (usesPerConfigurationBuildDirectory()) {
@@ -1224,6 +1225,7 @@ sub determinePortName()
         gtk => GTK,
         haiku => Haiku,
         'jsc-only' => JSCOnly,
+        playstation => PlayStation,
         wincairo => WinCairo,
         wpe => WPE
     );
@@ -1291,6 +1293,11 @@ sub isJSCOnly()
 sub isWPE()
 {
     return portName() eq WPE;
+}
+
+sub isPlayStation()
+{
+    return portName() eq PlayStation;
 }
 
 # Determine if this is debian, ubuntu, linspire, or something similar.
@@ -1908,20 +1915,6 @@ sub setupCygwinEnv()
 
     my $programFilesPath = programFilesPath();
     my $visualStudioPath = File::Spec->catfile(visualStudioInstallDir(), qw(Common7 IDE devenv.com));
-    if (!-e $visualStudioPath) {
-        # Visual Studio not found, try VC++ Express
-        $visualStudioPath = File::Spec->catfile(visualStudioInstallDir(), qw(Common7 IDE WDExpress.exe));
-        if (! -e $visualStudioPath) {
-            print "*************************************************************\n";
-            print "Cannot find '$visualStudioPath'\n";
-            print "Please execute the file 'vcvars32.bat' from\n";
-            print "your Visual Studio 2017 installation\n";
-            print "to setup the necessary environment variables.\n";
-            print "*************************************************************\n";
-            die;
-        }
-        $willUseVCExpressWhenBuilding = 1;
-    }
 
     print "Building results into: ", baseProductDir(), "\n";
     print "WEBKIT_OUTPUTDIR is set to: ", $ENV{"WEBKIT_OUTPUTDIR"}, "\n";
@@ -1942,37 +1935,6 @@ sub setupCygwinEnv()
     }
 }
 
-sub dieIfWindowsPlatformSDKNotInstalled
-{
-    my $registry32Path = "/proc/registry/";
-    my $registry64Path = "/proc/registry64/";
-    my @windowsPlatformSDKRegistryEntries = (
-        "HKEY_LOCAL_MACHINE/SOFTWARE/Microsoft/Microsoft SDKs/Windows/v8.0A",
-        "HKEY_LOCAL_MACHINE/SOFTWARE/Microsoft/Microsoft SDKs/Windows/v8.0",
-        "HKEY_LOCAL_MACHINE/SOFTWARE/Microsoft/Microsoft SDKs/Windows/v7.1A",
-        "HKEY_LOCAL_MACHINE/SOFTWARE/Microsoft/Microsoft SDKs/Windows/v7.0A",
-        "HKEY_LOCAL_MACHINE/SOFTWARE/Microsoft/MicrosoftSDK/InstalledSDKs/D2FF9F89-8AA2-4373-8A31-C838BF4DBBE1",
-    );
-
-    # FIXME: It would be better to detect whether we are using 32- or 64-bit Windows
-    # and only check the appropriate entry. But for now we just blindly check both.
-    my $recommendedPlatformSDK = $windowsPlatformSDKRegistryEntries[0];
-
-    while (@windowsPlatformSDKRegistryEntries) {
-        my $windowsPlatformSDKRegistryEntry = shift @windowsPlatformSDKRegistryEntries;
-        return if (-e $registry32Path . $windowsPlatformSDKRegistryEntry) || (-e $registry64Path . $windowsPlatformSDKRegistryEntry);
-    }
-
-    print "*************************************************************\n";
-    print "Cannot find registry entry '$recommendedPlatformSDK'.\n";
-    print "Please download and install the Microsoft Windows SDK\n";
-    print "from <http://www.microsoft.com/en-us/download/details.aspx?id=8279>.\n\n";
-    print "Then follow step 2 in the Windows section of the \"Installing Developer\n";
-    print "Tools\" instructions at <http://www.webkit.org/building/tools.html>.\n";
-    print "*************************************************************\n";
-    die;
-}
-
 sub buildXCodeProject($$@)
 {
     my ($project, $clean, @extraOptions) = @_;
@@ -1986,10 +1948,15 @@ sub buildXCodeProject($$@)
     return system "xcodebuild", "-project", "$project.xcodeproj", @extraOptions;
 }
 
-sub usingVisualStudioExpress()
+sub getMSBuildPlatformArgument()
 {
-    setupCygwinEnv();
-    return $willUseVCExpressWhenBuilding;
+    if (isPlayStation()) {
+        return "";
+    } elsif (isWin64()) {
+        return "/p:Platform=x64";
+    } else {
+        return "/p:Platform=Win32";
+    }
 }
 
 sub buildVisualStudioProject
@@ -1999,8 +1966,6 @@ sub buildVisualStudioProject
 
     my $config = configurationForVisualStudio();
 
-    dieIfWindowsPlatformSDKNotInstalled() if $willUseVCExpressWhenBuilding;
-
     chomp($project = `cygpath -w "$project"`) if isCygwin();
 
     my $action = "/t:build";
@@ -2008,7 +1973,7 @@ sub buildVisualStudioProject
         $action = "/t:clean";
     }
 
-    my $platform = "/p:Platform=" . (isWin64() ? "x64" : "Win32");
+    my $platform = getMSBuildPlatformArgument();
     my $logPath = File::Spec->catdir($baseProductDir, $configuration);
     make_path($logPath) unless -d $logPath or $logPath eq ".";
 
@@ -2119,7 +2084,8 @@ sub runInFlatpakIfAvailable(@)
 
 sub wrapperPrefixIfNeeded()
 {
-    if (isAnyWindows() || isJSCOnly() || isHaiku()) {
+
+    if (isAnyWindows() || isHaiku() || isJSCOnly() || isPlayStation()) {
         return ();
     }
     if (isAppleCocoaWebKit()) {
@@ -2295,6 +2261,8 @@ sub generateBuildSystemFromCMakeProject
 
     push @args, "-DENABLE_ADDRESS_SANITIZER=ON" if asanIsEnabled();
 
+    push @args, '-DCMAKE_TOOLCHAIN_FILE=Platform/PlayStation' if isPlayStation();
+
     if ($willUseNinja) {
         push @args, "-G";
         if (canUseEclipseNinjaGenerator()) {
@@ -2302,10 +2270,14 @@ sub generateBuildSystemFromCMakeProject
         } else {
             push @args, "Ninja";
         }
+        push @args, "-DUSE_THIN_ARCHIVES=OFF" if isPlayStation();
     } elsif (isAnyWindows() && isWin64()) {
         push @args, '-G "Visual Studio 15 2017 Win64"';
         push @args, '-DCMAKE_GENERATOR_TOOLSET="host=x64"';
+    } elsif (isPlayStation()) {
+        push @args, '-G "Visual Studio 15"';
     }
+
     # Do not show progress of generating bindings in interactive Ninja build not to leave noisy lines on tty
     push @args, '-DSHOW_BINDINGS_GENERATION_PROGRESS=1' unless ($willUseNinja && -t STDOUT);
 

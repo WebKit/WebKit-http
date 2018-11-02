@@ -1,3 +1,1233 @@
+2018-10-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Move a few remaining global WI settings to WI.settings
+        https://bugs.webkit.org/show_bug.cgi?id=191137
+
+        Reviewed by Brian Burg.
+
+        Move and better name some of the WI.settings created in Main.js
+        to WI.settings, alongside other global settings.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        Move settings, and register for settings changes in contentLoaded.
+
+        * UserInterface/Base/Setting.js:
+        New settings, and sort values.
+
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        Update setting values for tests.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.initializeTarget):
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WI.RuntimeManager.prototype.initializeTarget):
+        * UserInterface/Models/DOMNode.js:
+        (WI.DOMNode.prototype.get children):
+        (WI.DOMNode.prototype.get nextSibling):
+        (WI.DOMNode.prototype.get previousSibling):
+        (WI.DOMNode.prototype.get childNodeCount):
+        * UserInterface/Protocol/Target.js:
+        (WI.Target.prototype.initialize):
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        (WI.DOMTreeContentView.prototype.closed):
+        (WI.DOMTreeContentView.prototype._togglePaintFlashing):
+        (WI.DOMTreeContentView.prototype._showPaintRectsSettingChanged):
+        (WI.DOMTreeContentView.prototype._showShadowDOMSettingChanged):
+        (WI.DOMTreeContentView.prototype._toggleShowsShadowDOMSetting):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline):
+        (WI.DOMTreeOutline.prototype.close):
+        (WI.DOMTreeOutline.prototype._revealAndSelectNode):
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WI.LayerTreeDetailsSidebarPanel.prototype.initialLayout):
+        (WI.LayerTreeDetailsSidebarPanel.prototype._updateDisplayWithLayers):
+        * UserInterface/Views/Layers3DContentView.js:
+        (WI.Layers3DContentView):
+        (WI.Layers3DContentView.prototype.closed):
+        (WI.Layers3DContentView.prototype._showPaintRectsSettingChanged):
+        (WI.Layers3DContentView.prototype._togglePaintFlashing):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.closed):
+        (WI.NetworkTableContentView.prototype._resourceCachingDisabledSettingChanged):
+        (WI.NetworkTableContentView.prototype._toggleDisableResourceCache):
+        * UserInterface/Views/ScriptContentView.js:
+        (WI.ScriptContentView):
+        (WI.ScriptContentView.prototype.closed):
+        (WI.ScriptContentView.prototype._contentDidPopulate):
+        (WI.ScriptContentView.prototype._enableControlFlowProfilerSettingChanged):
+        (WI.ScriptContentView.prototype._showJavaScriptTypeInformationSettingChanged):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.shown):
+        (WI.SourceCodeTextEditor.prototype._proceedPopulateWithContent):
+        (WI.SourceCodeTextEditor.prototype._setTypeTokenAnnotatorEnabledState):
+        (WI.SourceCodeTextEditor.prototype.set _basicBlockAnnotatorEnabled):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WI.TextResourceContentView):
+        (WI.TextResourceContentView.prototype.closed):
+        (WI.TextResourceContentView.prototype._contentDidPopulate):
+        (WI.TextResourceContentView.prototype._enableControlFlowProfilerSettingChanged):
+        (WI.TextResourceContentView.prototype._showJavaScriptTypeInformationSettingChanged):
+        Renamed setting.
+
+2018-10-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Styles: missing contextmenu items for links
+        https://bugs.webkit.org/show_bug.cgi?id=191021
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._renderValue):
+        (WI.SpreadsheetStyleProperty.prototype._handleLinkContextMenu): Added.
+        If the token is subtype of "link", add contextmenu items to the wrapper element.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForURL.showResourceWithOptions):
+        (WI.appendContextMenuItemsForURL):
+        Drive-by: don't assume that `options` will be provided.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-10-31  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: implement copying and deletion of multiple properties
+        https://bugs.webkit.org/show_bug.cgi?id=191037
+        <rdar://problem/45650078>
+
+        Reviewed by Brian Burg.
+
+        This patch should only work with "Enable Selection of Multiple Properties" checked. It shouldn't introduce any
+        changes when this setting is unchecked.
+
+        Mousedown on a property (1) and moving the mouse cursor to another property (2) should select properties 1, 2, and
+        all properties between them until mouseup is fired.
+
+        Once selected:
+        - Pressing Command-C should copy the selected properties.
+        - Pressing Delete should remove the properties.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype.get formattedText):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor):
+        (.multiple-properties-selection .spreadsheet-style-declaration-editor .property):
+        (.multiple-properties-selection .spreadsheet-style-declaration-editor :matches(.name, .value):not(.editing)):
+        (.multiple-properties-selection .spreadsheet-style-declaration-editor .property.selected):
+        (.multiple-properties-selection .spreadsheet-style-declaration-editor .property.selected:focus):
+        (@media (prefers-dark-interface)):
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.initialLayout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.selectProperties):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.deselectProperties):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyBlur):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyMouseEnter):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyMouseLeave):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyCopy):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._handleKeyDown):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._hasSelectedProperties):
+        Property selection is defined as two numbers: anchorIndex and focusIndex.
+        The property with focusIndex is actually focused. The focus outline is replaced by a more subtle left blue border.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.css:
+        (.spreadsheet-css-declaration.selecting,):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetCSSStyleDeclarationEditorPropertyBlur):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetCSSStyleDeclarationEditorPropertyMouseEnter):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetCSSStyleDeclarationEditorPropertyMouseLeave):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleMouseDown):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleWindowMouseUp):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleClick):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty):
+        Implement copying the same way it's done for DataGrid: by adding copyHandler property to the focused element.
+        Add `tabIndex=-1` so the property element can be focused.
+
+        (WI.SpreadsheetStyleProperty.prototype.get property):
+        (WI.SpreadsheetStyleProperty.prototype.get selected):
+        (WI.SpreadsheetStyleProperty.prototype.set selected):
+        (WI.SpreadsheetStyleProperty.prototype.remove):
+        (WI.SpreadsheetStyleProperty.prototype.updateStatus):
+        (WI.SpreadsheetStyleProperty.prototype.handleCopyEvent):
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidCommit):
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidBlur):
+        (WI.SpreadsheetStyleProperty.prototype._handleNamePaste):
+
+2018-10-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: attempt to re-link DOM nodes for imported results
+        https://bugs.webkit.org/show_bug.cgi?id=191044
+        <rdar://problem/45687364>
+
+        Reviewed by Brian Burg.
+
+        When importing a `WI.AuditTestCaseResult`, attempt to `querySelector` for each item in
+        `data.domNodes`. If a node is found, replace it with that node and show a tree instead.
+
+        * UserInterface/Models/AuditTestCase.js:
+        (WI.AuditTestCase.async fromPayload): Added.
+        (WI.AuditTestCase.fromPayload): Deleted.
+
+        * UserInterface/Models/AuditTestGroup.js:
+        (WI.AuditTestGroup.async fromPayload): Added.
+        (WI.AuditTestGroup.fromPayload): Deleted.
+
+        * UserInterface/Models/AuditTestCaseResult.js:
+        (WI.AuditTestCaseResult.async fromPayload): Added.
+        (WI.AuditTestCaseResult.fromPayload): Deleted.
+
+        * UserInterface/Models/AuditTestGroupResult.js:
+        (WI.AuditTestGroupResult.async fromPayload): Added.
+        (WI.AuditTestGroupResult.fromPayload): Deleted.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.import):
+
+2018-10-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Follow-up review comment to r237652.
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager):
+
+2018-10-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Separate target initialization from frontend initialization
+        https://bugs.webkit.org/show_bug.cgi?id=191052
+        <rdar://problem/45658384>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        (WI.performOneTimeFrontendInitializationsUsingTarget):
+        Create the targets after the rest of frontend initialization. This is a step
+        toward a frontend opening and being told about multiple targets instead of
+        knowing in advance a single target it is connected to. All backend
+        messages during frontend initialization now happen with an explicit target.
+
+        * UserInterface/Controllers/ApplicationCacheManager.js:
+        (WI.ApplicationCacheManager):
+        (WI.ApplicationCacheManager.prototype.initializeTarget):
+        (WI.ApplicationCacheManager.prototype.initialize):
+        * UserInterface/Controllers/CSSManager.js:
+        (WI.CSSManager):
+        (WI.CSSManager.prototype.initializeTarget):
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager):
+        (WI.CanvasManager.prototype.initializeTarget):
+        * UserInterface/Controllers/ConsoleManager.js:
+        (WI.ConsoleManager):
+        (WI.ConsoleManager.prototype.initializeLogChannels):
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager):
+        (WI.DOMManager.prototype.initializeTarget):
+        * UserInterface/Controllers/DOMStorageManager.js:
+        (WI.DOMStorageManager):
+        (WI.DOMStorageManager.prototype.initializeTarget):
+        * UserInterface/Controllers/DatabaseManager.js:
+        (WI.DatabaseManager):
+        (WI.DatabaseManager.prototype.initializeTarget):
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager):
+        (WI.DebuggerManager.prototype.initializeTarget):
+        (WI.DebuggerManager.restoreBreakpointsSoon): Deleted.
+        * UserInterface/Controllers/HeapManager.js:
+        (WI.HeapManager.prototype.initializeTarget):
+        * UserInterface/Controllers/IndexedDBManager.js:
+        (WI.IndexedDBManager):
+        (WI.IndexedDBManager.prototype.initializeTarget):
+        * UserInterface/Controllers/LayerTreeManager.js:
+        (WI.LayerTreeManager.prototype.initializeTarget):
+        * UserInterface/Controllers/MemoryManager.js:
+        (WI.MemoryManager.prototype.initializeTarget):
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager):
+        (WI.NetworkManager.prototype.initializeTarget):
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WI.RuntimeManager):
+        (WI.RuntimeManager.prototype.initializeTarget):
+        * UserInterface/Controllers/TargetManager.js:
+        (WI.TargetManager):
+        (WI.TargetManager.prototype.initializeTargetsWithMainTarget):
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager):
+        (WI.TimelineManager.prototype.initializeTarget):
+        (WI.TimelineManager.prototype.set enabledTimelineTypes):
+        (WI.TimelineManager.prototype._updateAutoCaptureInstruments):
+        * UserInterface/Controllers/WorkerManager.js:
+        (WI.WorkerManager):
+        (WI.WorkerManager.prototype.initializeTarget):
+        Move Target initialization out of the constructor into a top level
+        `initializeTarget` function. This will be expected to be called
+        by any target that the frontend connects to.
+
+        (WI.DebuggerManager.prototype._pauseForInternalScriptsDidChange):
+        Drive-by fix. Update all targets if the setting changes.
+
+        (WI.WorkerManager.prototype.workerCreated):
+        Call initialize on the new target.
+
+        * UserInterface/Models/CSSCompletions.js:
+        (WI.CSSCompletions.initializeCSSCompletions):
+        (WI.CSSCompletions.requestCSSCompletions): Deleted.
+        Rename requestCSSCompletions to initializeCSSCompletions to try
+        and standardize on "initialize" being used for most frontend one
+        time initialization tasks. This being one such operation that
+        only needs to be performed once on a target that supports it.
+
+        * UserInterface/Protocol/Target.js:
+        (WI.Target):
+        (WI.Target.prototype.initialize):
+        Perform explicit target initialization, such as initializing
+        the state of all backend domains / agents. This is done by asking
+        each of the managers to do initialization work for this target.
+
+        (WI.Target.prototype.get ApplicationCacheAgent):
+        (WI.Target.prototype.get CSSAgent):
+        (WI.Target.prototype.get CanvasAgent):
+        (WI.Target.prototype.get ConsoleAgent):
+        (WI.Target.prototype.get DOMAgent):
+        (WI.Target.prototype.get DOMDebuggerAgent):
+        (WI.Target.prototype.get DOMStorageAgent):
+        (WI.Target.prototype.get DatabaseAgent):
+        (WI.Target.prototype.get DebuggerAgent):
+        (WI.Target.prototype.get HeapAgent):
+        (WI.Target.prototype.get IndexedDBAgent):
+        (WI.Target.prototype.get InspectorAgent):
+        (WI.Target.prototype.get LayerTreeAgent):
+        (WI.Target.prototype.get MemoryAgent):
+        (WI.Target.prototype.get NetworkAgent):
+        (WI.Target.prototype.get PageAgent):
+        (WI.Target.prototype.get RecordingAgent):
+        (WI.Target.prototype.get RuntimeAgent):
+        (WI.Target.prototype.get ScriptProfilerAgent):
+        (WI.Target.prototype.get ServiceWorkerAgent):
+        (WI.Target.prototype.get TargetAgent):
+        (WI.Target.prototype.get TimelineAgent):
+        (WI.Target.prototype.get WorkerAgent):
+        Accessors for all of the agents on a Target.
+
+        * UserInterface/Protocol/WorkerTarget.js:
+        (WI.WorkerTarget):
+        This is now automatically done in the base class.
+
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        (WI.performOneTimeFrontendInitializationsUsingTarget):
+        New necessary top level hooks, and initialize more like Main.js.
+
+2018-10-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: show metadata for results
+        https://bugs.webkit.org/show_bug.cgi?id=190853
+        <rdar://problem/45527623>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/AuditTestCase.js:
+        (WI.AuditTestCase.prototype.async run):
+        Capture timestamps around the `RunetimeAgent.evaluate` call, as well as the URL of the page.
+
+        * UserInterface/Models/AuditTestCaseResult.js:
+        (WI.AuditTestCaseResult):
+        (WI.AuditTestCaseResult.fromPayload):
+        (WI.AuditTestCaseResult.prototype.get metadata): Added.
+        (WI.AuditTestCaseResult.prototype.toJSON):
+
+        * UserInterface/Views/AuditTestCaseContentView.js:
+        (WI.AuditTestCaseContentView.prototype.initialLayout):
+        (WI.AuditTestCaseContentView.prototype.layout):
+        * UserInterface/Views/AuditTestCaseContentView.css:
+        (.content-view.audit-test-case > header h1): Added.
+        (.content-view.audit-test-case > header h1 > img): Added.
+        (.content-view.audit-test-case > header > .metadata): Added.
+        (.content-view.audit-test-case > header > .metadata > .source > time): Added.
+        (.content-view.audit-test-case > header > .metadata > .source > a): Added.
+        (.content-view.audit-test-case > header > .metadata > .duration): Added.
+        (.content-view.audit-test-case > header > h1): Deleted.
+        (.content-view.audit-test-case > header > h1 > img): Deleted.
+        Display any metadata information where the `WI.ScopeBar` is for `WI.AuditTestGroupContentView`s.
+
+        * UserInterface/Views/AuditTestContentView.css:
+        (.content-view.audit-test > header):
+        (.content-view.audit-test > header > .information): Added.
+        * UserInterface/Views/AuditTestGroupContentView.css:
+        (.content-view.audit-test-group > header):
+        (.content-view.audit-test-group > header > .percentage-pass):
+        (.content-view.audit-test-group > header > .information): Deleted.
+        Move common CSS rules to common parent class.
+
+        * UserInterface/Base/Utilities.js:
+
+2018-10-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: create Audit Tab
+        https://bugs.webkit.org/show_bug.cgi?id=190754
+
+        Reviewed by Matt Baker.
+
+        Create an Audit tab for running audits on the inspected page. Leverage `Runtime.evaluate`
+        for running the audit tests (arbitrary JavaScript), and use the returned value to generate
+        a preview UI of the results. All tests/results can be exported/imported to formatted JSON:
+
+        `AuditTestCase` JSON:
+            {
+                "type": "test-case",
+                "name": <string>,
+                <optional> "description": <string>,
+                "test": <stringified JavaScript function>,
+            }
+
+        `AuditTestGroup` JSON:
+            {
+                "type": "test-group",
+                "name": <string>,
+                <optional> "description": <string>,
+                "tests": [...<AuditTestCase, AuditTestGroup>],
+            }
+
+        `AuditTestCaseResult` JSON:
+            {
+                "type": "test-case-result",
+                "name": <string>,
+                <optional> "description": <string>,
+                "level": <"pass", "warn", "fail", "error", "unsupported">,
+                "data": {
+                    "domNodes": [...<stringified CSS path>],
+                    "domAttributes": [...<string>],
+                    "errors": [...<string>],
+                },
+            }
+
+        `AuditTestGroupResult` JSON:
+            {
+                "type": "test-group-result",
+                "name": <string>,
+                <optional> "description": <string>,
+                "results": [...<AuditTestCaseResult, AuditTestGroupResult>],
+            }
+
+        More keys may be added in the future (especially for `AuditTestCaseResult.data`).
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager):
+        (WI.AuditManager.synthesizeError): Added.
+        (WI.AuditManager.prototype.get tests): Added.
+        (WI.AuditManager.prototype.get results): Added.
+        (WI.AuditManager.prototype.get runningState): Added.
+        (WI.AuditManager.prototype.start): Added.
+        (WI.AuditManager.prototype.stop): Added.
+        (WI.AuditManager.prototype.import): Added.
+        (WI.AuditManager.prototype.export): Added.
+        (WI.AuditManager.prototype._addTest): Added.
+        (WI.AuditManager.prototype._addResult): Added.
+        (WI.AuditManager.prototype.get testSuites): Deleted.
+        (WI.AuditManager.prototype.get reports): Deleted.
+        (WI.AuditManager.prototype.async runAuditTestByRepresentedObject): Deleted.
+        (WI.AuditManager.prototype.reportForId): Deleted.
+        (WI.AuditManager.prototype.removeAllReports): Deleted.
+        (WI.AuditManager.prototype.async _runTestCase): Deleted.
+
+        * UserInterface/Models/AuditTestBase.js: Added.
+        (WI.AuditTestBases):
+        (WI.AuditTestBases.prototype.get name):
+        (WI.AuditTestBases.prototype.get description):
+        (WI.AuditTestBases.prototype.get runningState):
+        (WI.AuditTestBases.prototype.get result):
+        (WI.AuditTestBases.prototype.async start):
+        (WI.AuditTestBases.prototype.stop):
+        (WI.AuditTestBases.prototype.clearResult):
+        (WI.AuditTestBases.prototype.saveIdentityToCookie):
+        (WI.AuditTestBases.prototype.toJSON):
+        (WI.AuditTestBases.prototype.async run):
+
+        * UserInterface/Models/AuditTestCase.js:
+        (WI.AuditTestCase):
+        (WI.AuditTestCase.fromPayload): Added.
+        (WI.AuditTestCase.prototype.toJSON): Added.
+        (WI.AuditTestCase.prototype.async run): Added.
+        (WI.AuditTestCase.prototype.async run.setLevel): Added.
+        (WI.AuditTestCase.prototype.async run.addError): Added.
+        (WI.AuditTestCase.prototype.async run.checkResultProperty.addErrorForValueType): Added.
+        (WI.AuditTestCase.prototype.async run.checkResultProperty): Added.
+        (WI.AuditTestCase.prototype.async run.async resultArrayForEach): Added.
+        (WI.AuditTestCase.prototype.get id): Deleted.
+        (WI.AuditTestCase.prototype.get name): Deleted.
+        (WI.AuditTestCase.prototype.get suite): Deleted.
+        (WI.AuditTestCase.prototype.get setup): Deleted.
+        (WI.AuditTestCase.prototype.get tearDown): Deleted.
+        (WI.AuditTestCase.prototype.get errorDetails): Deleted.
+
+        * UserInterface/Models/AuditTestGroup.js: Added.
+        (WI.AuditTestGroup):
+        (WI.AuditTestGroup.fromPayload):
+        (WI.AuditTestGroup.prototype.get tests):
+        (WI.AuditTestGroup.prototype.stop):
+        (WI.AuditTestGroup.prototype.clearResult):
+        (WI.AuditTestGroup.prototype.async run):
+        (WI.AuditTestGroup.prototype.toJSON):
+        (WI.AuditTestGroup.prototype._updateResult):
+        (WI.AuditTestGroup.prototype._handleTestCompleted):
+        (WI.AuditTestGroup.prototype._handleTestProgress):
+
+        * UserInterface/Models/AuditTestResultBase.js: Added.
+        (WI.AuditTestResultBase):
+        (WI.AuditTestResultBase.prototype.get name):
+        (WI.AuditTestResultBase.prototype.get description):
+        (WI.AuditTestResultBase.prototype.get result):
+        (WI.AuditTestResultBase.prototype.get didPass):
+        (WI.AuditTestResultBase.prototype.get didWarn):
+        (WI.AuditTestResultBase.prototype.get didFail):
+        (WI.AuditTestResultBase.prototype.get didError):
+        (WI.AuditTestResultBase.prototype.get unsupported):
+        (WI.AuditTestResultBase.prototype.saveIdentityToCookie):
+        (WI.AuditTestResultBase.prototype.toJSON):
+
+        * UserInterface/Models/AuditTestCaseResult.js: Added.
+        (WI.AuditTestCaseResult):
+        (WI.AuditTestCaseResult.fromPayload.checkArray):
+        (WI.AuditTestCaseResult.fromPayload):
+        (WI.AuditTestCaseResult.prototype.get level):
+        (WI.AuditTestCaseResult.prototype.get data):
+        (WI.AuditTestCaseResult.prototype.get didPass):
+        (WI.AuditTestCaseResult.prototype.get didWarn):
+        (WI.AuditTestCaseResult.prototype.get didFail):
+        (WI.AuditTestCaseResult.prototype.get didError):
+        (WI.AuditTestCaseResult.prototype.get unsupported):
+        (WI.AuditTestCaseResult.prototype.toJSON):
+
+        * UserInterface/Models/AuditTestGroupResult.js: Added.
+        (WI.AuditTestGroupResult):
+        (WI.AuditTestGroupResult.fromPayload):
+        (WI.AuditTestGroupResult.prototype.get results):
+        (WI.AuditTestGroupResult.prototype.get levelCounts):
+        (WI.AuditTestGroupResult.prototype.get didPass):
+        (WI.AuditTestGroupResult.prototype.get didWarn):
+        (WI.AuditTestGroupResult.prototype.get didFail):
+        (WI.AuditTestGroupResult.prototype.get didError):
+        (WI.AuditTestGroupResult.prototype.get unsupported):
+        (WI.AuditTestGroupResult.prototype.toJSON):
+
+        * UserInterface/Views/AuditTabContentView.js: Added.
+        (WI.AuditTabContentView):
+        (WI.AuditTabContentView.tabInfo):
+        (WI.AuditTabContentView.isTabAllowed):
+        (WI.AuditTabContentView.prototype.get type):
+        (WI.AuditTabContentView.prototype.get supportsSplitContentBrowser):
+        (WI.AuditTabContentView.prototype.canShowRepresentedObject):
+        (WI.AuditTabContentView.prototype.shown):
+        (WI.AuditTabContentView.prototype.hidden):
+        (WI.AuditTabContentView.prototype._handleSpace):
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js: Added.
+        (WI.AuditNavigationSidebarPanel):
+        (WI.AuditNavigationSidebarPanel.prototype.showDefaultContentView):
+        (WI.AuditNavigationSidebarPanel.prototype.initialLayout):
+        (WI.AuditNavigationSidebarPanel.prototype.closed):
+        (WI.AuditNavigationSidebarPanel.prototype._addTest):
+        (WI.AuditNavigationSidebarPanel.prototype._addResult):
+        (WI.AuditNavigationSidebarPanel.prototype._updateStartStopButtonNavigationItemState):
+        (WI.AuditNavigationSidebarPanel.prototype._handleAuditTestAdded):
+        (WI.AuditNavigationSidebarPanel.prototype._handleAuditTestCompleted):
+        (WI.AuditNavigationSidebarPanel.prototype._handleAuditTestScheduled):
+        (WI.AuditNavigationSidebarPanel.prototype._treeSelectionDidChange):
+        (WI.AuditNavigationSidebarPanel.prototype._handleStartStopButtonNavigationItemClicked):
+        (WI.AuditNavigationSidebarPanel.prototype._handleImportButtonNavigationItemClicked):
+        * UserInterface/Views/AuditNavigationSidebarPanel.css: Added.
+        (.sidebar > .panel.navigation.audit > .content):
+
+        * UserInterface/Views/AuditTreeElement.js: Added.
+        (WI.AuditTreeElement):
+        (WI.AuditTreeElement.prototype.get result):
+        (WI.AuditTreeElement.prototype.onattach):
+        (WI.AuditTreeElement.prototype.ondetach):
+        (WI.AuditTreeElement.prototype.onpopulate):
+        (WI.AuditTreeElement.prototype.populateContextMenu):
+        (WI.AuditTreeElement.prototype._start):
+        (WI.AuditTreeElement.prototype._updateLevel):
+        (WI.AuditTreeElement.prototype._showRunningSpinner):
+        (WI.AuditTreeElement.prototype._showRunningProgress):
+        (WI.AuditTreeElement.prototype._handleTestCaseCompleted):
+        (WI.AuditTreeElement.prototype._handleTestResultCleared):
+        (WI.AuditTreeElement.prototype._handleTestCaseScheduled):
+        (WI.AuditTreeElement.prototype._handleTestGroupCompleted):
+        (WI.AuditTreeElement.prototype._handleTestGroupProgress):
+        (WI.AuditTreeElement.prototype._handleTestGroupScheduled):
+        (WI.AuditTreeElement.prototype._handleStatusClick):
+        * UserInterface/Views/AuditTreeElement.css: Added.
+        (.tree-outline .item.audit > .status):
+        (.tree-outline .item.audit > .status > img):
+        (.tree-outline .item.audit:matches(.test-case, .test-group) > .status:hover > img):
+        (.tree-outline .item.audit > .status:not(:hover) > img.show-on-hover, .tree-outline .item.audit.test-group.expanded > .status:not(:hover)):
+        (.tree-outline .item.audit.test-group.expanded > .status:hover > :not(img), .tree-outline .item.audit.test-group-result.expanded > .status):
+        (.tree-outline .item.audit > .status > img.pass):
+        (.tree-outline .item.audit > .status > img.warn):
+        (.tree-outline .item.audit > .status > img.fail):
+        (.tree-outline .item.audit > .status > img.error):
+        (.tree-outline .item.audit > .status > img.unsupported):
+        (.audit.test-case .icon):
+        (.audit.test-group .icon):
+        (.audit.test-case-result .icon):
+        (.audit.test-group-result .icon):
+
+        * UserInterface/Views/AuditTestContentView.js: Added.
+        (WI.AuditTestContentView):
+        (WI.AuditTestContentView.prototype.get navigationItems):
+        (WI.AuditTestContentView.prototype.get headerView):
+        (WI.AuditTestContentView.prototype.get contentView):
+        (WI.AuditTestContentView.prototype.get supportsSave):
+        (WI.AuditTestContentView.prototype.get saveData):
+        (WI.AuditTestContentView.prototype.initialLayout):
+        (WI.AuditTestContentView.prototype.layout):
+        (WI.AuditTestContentView.prototype.shown):
+        (WI.AuditTestContentView.prototype.hidden):
+        (WI.AuditTestContentView.prototype.get placeholderElement):
+        (WI.AuditTestContentView.prototype.set placeholderElement):
+        (WI.AuditTestContentView.prototype.showRunningPlaceholder):
+        (WI.AuditTestContentView.prototype.showStoppingPlaceholder):
+        (WI.AuditTestContentView.prototype.showNoResultPlaceholder):
+        (WI.AuditTestContentView.prototype.showNoResultDataPlaceholder):
+        (WI.AuditTestContentView.prototype.showFilteredPlaceholder):
+        (WI.AuditTestContentView.prototype.hidePlaceholder):
+        (WI.AuditTestContentView.prototype.applyFilter):
+        (WI.AuditTestContentView.prototype.resetFilter):
+        (WI.AuditTestContentView.prototype._exportAudit):
+        (WI.AuditTestContentView.prototype._updateExportButtonNavigationItemState):
+        (WI.AuditTestContentView.prototype._showPlaceholder):
+        (WI.AuditTestContentView.prototype._handleExportButtonNavigationItemClicked):
+        (WI.AuditTestContentView.prototype._handleTestChanged):
+        * UserInterface/Views/AuditTestContentView.css: Added.
+        (.content-view-container > .content-view.audit-test):
+        (.content-view-container > .content-view.audit-test > header):
+        (.content-view-container > .content-view.audit-test > header h1):
+        (.content-view-container > .content-view.audit-test > header p):
+        (.content-view.audit-test):
+        (.content-view.audit-test h1):
+        (.content-view.audit-test > header):
+        (.content-view.audit-test > header p):
+        (.content-view.audit-test .audit-test.filtered, .content-view.audit-test .audit-test .message-text-view):
+        (.content-view.audit-test > section):
+        (.content-view.audit-test > section > .message-text-view):
+        (.content-view.audit-test.showing-placeholder):
+        (.content-view.audit-test.showing-placeholder > section):
+        (.content-view.audit-test.showing-placeholder > section > :not(.message-text-view)):
+        (@media (prefers-dark-interface) .content-view.audit-test):
+
+        * UserInterface/Views/AuditTestCaseContentView.js: Added.
+        (WI.AuditTestCaseContentView):
+        (WI.AuditTestCaseContentView.prototype.initialLayout):
+        (WI.AuditTestCaseContentView.prototype.layout):
+        (WI.AuditTestCaseContentView.prototype.showRunningPlaceholder):
+        * UserInterface/Views/AuditTestCaseContentView.css: Added.
+        (.content-view-container > .content-view.audit-test-case > header):
+        (.content-view-container > .content-view.audit-test-case > section > :not(.message-text-view):first-child):
+        (.content-view.audit-test-case > header > h1):
+        (.content-view.audit-test-case > header > h1 > img):
+        (.content-view.audit-test-case > section > :not(.message-text-view)):
+        (.content-view.audit-test-case > section > :not(.message-text-view):last-child):
+        (.content-view.audit-test-case > section > :not(.message-text-view) + :not(.message-text-view)):
+        (.content-view.audit-test-case > section h1):
+        (.content-view.audit-test-case > section table):
+        (.content-view.audit-test-case > section table > tr + tr > td):
+        (.content-view.audit-test-case > section table > tr > td > :not(.tree-outline)):
+        (.content-view.audit-test-case > section table > tr > td:first-child):
+        (.content-view.audit-test-case > section > .dom-nodes > table > tr > td:first-child):
+        (.content-view.audit-test-case > section code):
+        (.content-view.audit-test-case > section mark):
+
+        * UserInterface/Views/AuditTestGroupContentView.js: Added.
+        (WI.AuditTestGroupContentView):
+        (WI.AuditTestGroupContentView.prototype.initialLayout):
+        (WI.AuditTestGroupContentView.prototype.layout):
+        (WI.AuditTestGroupContentView.prototype.shown):
+        (WI.AuditTestGroupContentView.prototype.hidden):
+        (WI.AuditTestGroupContentView.prototype.applyFilter):
+        (WI.AuditTestGroupContentView.prototype.resetFilter):
+        (WI.AuditTestGroupContentView.prototype.showRunningPlaceholder):
+        (WI.AuditTestGroupContentView.prototype._subobjects):
+        (WI.AuditTestGroupContentView.prototype._updateLevelScopeBar):
+        (WI.AuditTestGroupContentView.prototype._handleTestGroupCompleted):
+        (WI.AuditTestGroupContentView.prototype._handleTestGroupProgress):
+        (WI.AuditTestGroupContentView.prototype._handleTestGroupScheduled):
+        (WI.AuditTestGroupContentView.prototype._handleLevelScopeBarSelectionChanged):
+        * UserInterface/Views/AuditTestGroupContentView.css: Added.
+        (.content-view-container > .content-view.audit-test-group > header):
+        (.content-view.audit-test-group > header):
+        (.content-view.audit-test-group.no-matches + .audit-test-group > header):
+        (.content-view.audit-test-group > header, .content-view.audit-test-group:not(.filtered):last-child > header):
+        (.content-view.audit-test-group.contains-test-case > header):
+        (.content-view.audit-test-group.contains-test-case + .audit-test-group.contains-test-case):
+        (.content-view.audit-test-group.contains-test-case:not(.contains-test-group) > section, .content-view.audit-test-group.contains-test-case.contains-test-group > section > .audit-test-case):
+        (.content-view.audit-test-group > header > .information):
+        (.content-view.audit-test-group > header > .information > p):
+        (.content-view.audit-test-group > header > nav):
+        (.content-view.audit-test-group > header > nav:empty):
+        (.content-view.audit-test-group > header > nav:not(:empty):before):
+        (.content-view.audit-test-group > header > nav > .scope-bar > li):
+        (.content-view.audit-test-group > header > nav > .scope-bar > li:not(:hover, .selected)):
+        (.content-view.audit-test-group > header > nav > .scope-bar > li:last-child):
+        (.content-view.audit-test-group > header > nav > .scope-bar > li::before):
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.pass::before):
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.warn::before):
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.fail::before):
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.error::before):
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.unsupported::before):
+        (.content-view.audit-test-group > header > .percentage-pass):
+        (.content-view.audit-test-group > header > .percentage-pass:not(:empty)::after):
+        (.content-view.audit-test-group > section > .audit-test-case:first-child, .content-view.audit-test-group > section > .audit-test-group + .audit-test-case, .content-view.audit-test-group > section > .audit-test-case + .audit-test-group):
+        (.content-view.audit-test-group > section > .audit-test-case:last-child):
+
+        * UserInterface/Views/ScopeBarItem.js:
+        (WI.ScopeBarItem):
+        (WI.ScopeBarItem.prototype.set selected):
+        * UserInterface/Views/MultipleScopeBarItem.js:
+        (WI.MultipleScopeBarItem.prototype.set selectedScopeBarItem):
+        Add an `independent` option that prevents selection changes from deselecting other
+        `WI.ScopeBarItem`s in the same `WI.ScopeBar` (`exclusive` takes precedence).
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement):
+        (WI.DOMTreeElement.prototype.highlightAttribute):
+        (WI.DOMTreeElement.prototype._buildAttributeDOM):
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom li .highlight):
+
+        * UserInterface/Views/ToggleButtonNavigationItem.js:
+        (WI.ToggleButtonNavigationItem.prototype.set toggled):
+        Also change the `label` if the `ButtonStyle` has text.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+        * UserInterface/Views/DividerNavigationItem.css:
+        (.navigation-bar .item.divider):
+
+        * UserInterface/Base/Utilities.js:
+        (Promise.chain): Added.
+
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.createFromRepresentedObject):
+        (WI.ContentView.isViewable):
+
+        * UserInterface/Main.html:
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        (WI.contentLoaded):
+
+        * UserInterface/Test.html:
+        * UserInterface/Base/Test.js:
+        (WI.loaded):
+
+        * UserInterface/Images/Audit.svg: Added.
+        * UserInterface/Images/AuditStart.svg: Added.
+        * UserInterface/Images/AuditStop.svg: Added.
+        * UserInterface/Images/AuditTestCase.svg: Added.
+        * UserInterface/Images/AuditTestCaseResult.svg: Added.
+        * UserInterface/Images/AuditTestError.svg: Added.
+        * UserInterface/Images/AuditTestFail.svg: Added.
+        * UserInterface/Images/AuditTestGroup.svg: Added.
+        * UserInterface/Images/AuditTestGroupResult.svg: Added.
+        * UserInterface/Images/AuditTestNoResult.svg: Added.
+        * UserInterface/Images/AuditTestPass.svg: Added.
+        * UserInterface/Images/AuditTestUnsupported.svg: Added.
+        * UserInterface/Images/AuditTestWarn.svg: Added.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-10-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide options to WI.cssPath for more verbosity
+        https://bugs.webkit.org/show_bug.cgi?id=190987
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/DOMUtilities.js:
+        (WI.cssPath):
+        (WI.cssPathComponent):
+        When the option `full` is true, print every attribute along with every node in the hierarchy
+        until the root is reached. This partially duplicates the effect of an XPath, but instead
+        uses CSS selectors, making it much more human readable and recognizable.
+
+2018-10-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: change WI.ColorWheel to use conic-gradient()
+        https://bugs.webkit.org/show_bug.cgi?id=189485
+
+        Reviewed by Brian Burg.
+
+        Use the ("new") HSL `WI.ColorPicker` if `conic-gradient` is supported. Otherwise, use the
+        ("old") RGB `WI.LegacyColorPicker`.
+
+        * UserInterface/Views/ColorWheel.js:
+        (WI.ColorWheel):
+        (WI.ColorWheel.prototype.set dimension):
+        (WI.ColorWheel.prototype.set brightness):
+        (WI.ColorWheel.prototype.get tintedColor):
+        (WI.ColorWheel.prototype.set tintedColor):
+        (WI.ColorWheel.prototype.get rawColor):
+        (WI.ColorWheel.prototype.get _hue): Added.
+        (WI.ColorWheel.prototype.get _saturation): Added.
+        (WI.ColorWheel.prototype._updateColorForMouseEvent):
+        (WI.ColorWheel.prototype._setCrosshairPosition):
+        (WI.ColorWheel.prototype._updateGradient): Added.
+        (WI.ColorWheel.prototype._pointInCircleForEvent.distance): Deleted.
+        (WI.ColorWheel.prototype._pointInCircleForEvent.angleFromCenterToPoint): Deleted.
+        (WI.ColorWheel.prototype._pointInCircleForEvent.pointOnCircumference): Deleted.
+        (WI.ColorWheel.prototype._pointInCircleForEvent): Deleted.
+        (WI.ColorWheel.prototype._tintedColorToPointAndBrightness): Deleted.
+        (WI.ColorWheel.prototype._drawRawCanvas): Deleted.
+        (WI.ColorWheel.prototype._colorAtPointWithBrightness): Deleted.
+        (WI.ColorWheel.prototype._drawTintedCanvas): Deleted.
+        (WI.ColorWheel.prototype._draw): Deleted.
+        * UserInterface/Views/ColorWheel.css:
+        (.color-wheel > .gradient): Added.
+        (.color-wheel > .crosshair): Added.
+
+        * UserInterface/Views/LegacyColorWheel.js: Copied from Source/WebInspectorUI/UserInterface/Views/ColorWheel.js.
+
+        * UserInterface/Views/ColorPicker.js:
+        (WI.ColorPicker):
+        (WI.ColorPicker.supportsConicGradient): Added.
+        (WI.ColorPicker.prototype._updateSliders):
+
+        * UserInterface/Models/Geometry.js:
+        (WI.Point.prototype.distance):
+
+        * UserInterface/Main.html:
+
+2018-10-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: make the layers sidebar in the Elements tab always visible
+        https://bugs.webkit.org/show_bug.cgi?id=190158
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WI.ElementsTabContentView):
+        * UserInterface/Views/SearchTabContentView.js:
+        (WI.SearchTabContentView):
+
+2018-10-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: refactor WI.ScopeBarItem for better extensibility
+        https://bugs.webkit.org/show_bug.cgi?id=190986
+
+        Reviewed by Brian Burg.
+
+        Renames `withModifier` to `extendSelection` for clarity of usage, and to allow the changes
+        in <https://webkit.org/b/190754> (adding an option to allow `WI.ScopeBarItem`s to be
+        selected without deselcting any other `WI.ScopeBarItem`s) to use the same variable.
+
+        * UserInterface/Views/ScopeBarItem.js:
+        (WI.ScopeBarItem):
+        (WI.ScopeBarItem.prototype.set selected):
+        (WI.ScopeBarItem.prototype._handleMouseDown):
+        (WI.ScopeBarItem.prototype.setSelected): Deleted.
+
+        * UserInterface/Views/ScopeBar.js:
+        (WI.ScopeBar):
+        (WI.ScopeBar.prototype._populate):
+        (WI.ScopeBar.prototype._itemSelectionDidChange):
+
+        * UserInterface/Views/MultipleScopeBarItem.js:
+        (WI.MultipleScopeBarItem.prototype.set selectedScopeBarItem):
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype._updateRecordingScopeBar):
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel):
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WI.StorageSidebarPanel):
+
+2018-10-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Flash views with red outline on initial layout
+        https://bugs.webkit.org/show_bug.cgi?id=191048
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/View.js:
+        (WI.View.prototype._layoutSubtree):
+        (WI.View.prototype._drawLayoutFlashingOutline):
+
+2018-10-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: show warning when path moves offscreen
+        https://bugs.webkit.org/show_bug.cgi?id=191016
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.deriveCurrentState):
+        (WI.RecordingAction.prototype.get isVisual):
+        (WI.RecordingAction.prototype.get warning): Added.
+        (WI.RecordingAction.prototype.process.checkInvalidCurrentAxisPoint): Added.
+        (WI.RecordingAction.prototype.process):
+        (WI.RecordingAction.prototype.get hasVisibleEffect): Deleted.
+        Replace `hasVisibleEffect` with a more general `warning` value, so that it can be used for
+        more types of warnings.
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement.prototype.onattach):
+        * UserInterface/Views/RecordingActionTreeElement.css:
+        (.item.action.visual.warning:not(.invalid) > .status > .warning): Added.
+        (.item.action.visual.no-visible-effect:not(.invalid) > .status > .warning): Deleted.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-10-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: refactor code for getting properties via WI.RemoteObject
+        https://bugs.webkit.org/show_bug.cgi?id=190989
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WI.RemoteObject.prototype.getPropertyDescriptors): Added.
+        (WI.RemoteObject.prototype.getPropertyDescriptorsAsObject): Added.
+        (WI.RemoteObject.prototype.getOwnPropertyDescriptors): Deleted.
+        (WI.RemoteObject.prototype.getAllPropertyDescriptors): Deleted.
+        (WI.RemoteObject.prototype._getPropertyDescriptors): Deleted.
+        (WI.RemoteObject.prototype.getOwnPropertyDescriptorsAsObject): Deleted.
+
+        * UserInterface/Views/ErrorObjectView.js:
+        (WI.ErrorObjectView.prototype.update):
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WI.ObjectTreePropertyTreeElement.prototype._updateChildren):
+        * UserInterface/Views/ObjectTreeView.js:
+        (WI.ObjectTreeView.prototype.update):
+
+2018-10-29  Tim Horton  <timothy_horton@apple.com>
+
+        Modernize WebKit nibs and lprojs for localization's sake
+        https://bugs.webkit.org/show_bug.cgi?id=190911
+        <rdar://problem/45349466>
+
+        Reviewed by Dan Bernstein.
+
+        * WebInspectorUI.xcodeproj/project.pbxproj:
+        English->en
+
+2018-10-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: prevent Canvas tab from listening for "space" when not visibile
+        https://bugs.webkit.org/show_bug.cgi?id=190988
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView):
+        (WI.CanvasTabContentView.prototype.shown):
+        (WI.CanvasTabContentView.prototype.hidden): Added.
+
+2018-10-27  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table should support deleting rows
+        https://bugs.webkit.org/show_bug.cgi?id=189803
+        <rdar://problem/44655709>
+
+        Reviewed by Devin Rousso.
+
+        Add methods for removing rows from a Table without reloading the data
+        source. This patch adds Table.prototype.removeRow for removing a single
+        row, and Table.prototype.removeSelectedRows for removing the entire selection.
+        The latter also attempts to select a new row, if possible, before removing
+        the selection.
+
+        * UserInterface/Base/IndexSet.js:
+        (WI.IndexSet.prototype.copy):
+
+        * UserInterface/Views/Table.js:
+        (WI.Table):
+        (WI.Table.prototype.get numberOfRows):
+        Cache the number of rows in the table data source. Invalidate cached
+        value whenever table data is reloaded. Removing rows immediately updates
+        cached value, without incurring a potentially expensive reload.
+
+        (WI.Table.prototype.reloadData):
+        (WI.Table.prototype.selectRow):
+        (WI.Table.prototype.deselectRow):
+        (WI.Table.prototype.removeRow):
+        (WI.Table.prototype.removeSelectedRows):
+        Remove the selected rows and select a new row, if possible.
+        (WI.Table.prototype._updateVisibleRows):
+        (WI.Table.prototype._handleKeyDown):
+        (WI.Table.prototype._deselectAllAndSelect):
+        Drive-by fix: should work when `rowToSelect` isn't already selected.
+        (WI.Table.prototype._removeRows):
+        Remove rows and adjust the indexes of rows that are shifted up as a result
+        of preceding rows being removed.
+
+2018-10-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: simplify some editing code checks
+        https://bugs.webkit.org/show_bug.cgi?id=190970
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WI._focusChanged):
+
+        * UserInterface/Base/Utilities.js:
+
+        * UserInterface/Views/EditingSupport.js:
+        (WI.enclosingCodeMirror): Added.
+        (WI.isBeingEdited):
+        (WI.isEventTargetAnEditableField):
+
+        * UserInterface/Views/QuickConsole.js:
+        (WI.QuickConsole):
+
+2018-10-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: undefined is not an object (evaluating 'this._classListContainer.children')
+        https://bugs.webkit.org/show_bug.cgi?id=190966
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js:
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.layout):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._classToggleButtonClicked):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._populateClassToggles):
+        Don't try to reload the class toggles if the we haven't `layout` yet, as the element won't
+        yet exist.
+
+2018-10-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas Recording loading goes significantly slower when "Frame" tree element is expanded
+        https://bugs.webkit.org/show_bug.cgi?id=190497
+
+        Reviewed by Joseph Pecoraro.
+
+        Save the `WI.TreeElement` that are in the DOM, and compare that with any `WI.TreeElement`
+        that would be added to the DOM. If all of the following are true, don't edit the DOM:
+         - no focused `WI.TreeElement` that isn't currently visible (we would scroll otherwise)
+         - the set of previously visible `WI.TreeElement`s (e.g. not used for scroll padding) has at
+           least one of the `WI.TreeElement`s that would be added from this update
+            - this means that the user hasn't scrolled beyond the padding `WI.TreeElement`
+         - there are no `WI.TreeElement`s that would be added from this update that were NOT added
+           in a previous update
+            - this covers the case that a `WI.TreeElement` is inserted in the visible area
+
+        * UserInterface/Base/Utilities.js:
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline):
+        (WI.TreeOutline.prototype.registerScrollVirtualizer):
+        (WI.TreeOutline.prototype.updateVirtualizedElements.walk):
+        (WI.TreeOutline.prototype.updateVirtualizedElements):
+
+2018-10-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Broken frontend, DOMAgent is used but does not exist
+        https://bugs.webkit.org/show_bug.cgi?id=190922
+        <rdar://problem/45569827>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.prototype.requestDocument):
+        Feature check for agents that may not exist in a JSContext.
+
+2018-10-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add corner rounding to the network timing "blocks"
+        https://bugs.webkit.org/show_bug.cgi?id=190379
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.waterfall .block):
+        (body[dir=ltr] .waterfall .block): Added.
+        (body[dir=rtl] .waterfall .block): Added.
+        (.network-table .waterfall .block + .block): Added.
+        (.network-table .waterfall .block.filler + .block, .network-table .waterfall .block:not(.request, .response) + :matches(.request, .response)): Added.
+        (.network-table .waterfall .block:last-child): Added.
+
+2018-10-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: display fullscreen enter/exit events in Timelines and Network node waterfalls
+        https://bugs.webkit.org/show_bug.cgi?id=189874
+        <rdar://problem/44700000>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Protocol/DOMObserver.js:
+        (WI.DOMObserver.prototype.didFireEvent):
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.prototype.didFireEvent):
+        Allow `data` to be passed to the frontend with `didFireEvent`.
+
+        * UserInterface/Models/DOMNode.js:
+        (WI.DOMNode):
+        (WI.DOMNode.getFullscreenDOMEvents): Added.
+        (WI.DOMNode.prototype.didFireEvent):
+        (WI.DOMNode.prototype._handleDOMNodeDidFireEvent): Added.
+        (WI.DOMNode.prototype._addDOMEvent):
+        (WI.DOMNode.prototype._shouldListenForEventListeners): Added.
+        If an event is fired on an ancestor of this node, also record that event in this node's
+        `domEvents`, including the `originator` node.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph):
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.network-table :not(.header) .cell.waterfall .waterfall-container > .dom-fullscreen): Added.
+
+        * UserInterface/Views/DOMEventsBreakdownView.js:
+        (WI.DOMEventsBreakdownView.prototype.initialLayout):
+        (WI.DOMEventsBreakdownView.prototype._populateTable):
+        * UserInterface/Views/DOMEventsBreakdownView.css:
+        (.dom-events-breakdown .graph > .area.fullscreen): Added.
+        (.dom-events-breakdown .inherited > .name, .dom-events-breakdown .inherited > .graph > .point): Added.
+        (.dom-events-breakdown:not(.has-inherited) .originator): Added.
+
+2018-10-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: more aggressively snap timing blocks together
+        https://bugs.webkit.org/show_bug.cgi?id=190439
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph.appendBlock):
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph):
+        If the time difference between the end of the previous block and the start of this block
+        would result in less than 2px of space, extend the next block back to the previous block.
+
+2018-10-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: popovers for function source code are malformed
+        https://bugs.webkit.org/show_bug.cgi?id=190859
+
+        Reviewed by Joseph Pecoraro.
+
+        Previously, the `WI.Popover` would be drawn twice: once when the
+        `WI.CodeMirrorTokenTrackingController` determines that the user has hovered on a function
+        token, and once again when the source for that function is formatted (after being retrieved).
+        In the case that the formatter is able to return the prettified source within a frame (or
+        two), the `WI.Popover` is still in the middle of animating to its new size, meaning that the
+        changes made by the formatted `update` will be overridden on the next rAF (creates a flash).
+
+        * UserInterface/Views/Popover.js:
+        (WI.Popover.prototype):
+        (WI.Popover.prototype._animateFrame.drawBackground):
+        (WI.Popover.prototype._drawBackground):
+        Add a member variable to make sure that there is only ever one rAF firing at a time.
+        Drive-by: rework the background code to only use one canvas.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype._showPopoverForFunction.didGetDetails):
+        Don't show the `WI.Popover` until the formatter has finished prettifying the function's
+        source code, as otherwise there is brief moment that the popover appears and is empty.
+
+2018-10-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION (r237232): changing resources via up/down blurs the TreeOutline in Resources
+        https://bugs.webkit.org/show_bug.cgi?id=190862
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype.set selectedTextRange):
+        Don't `focus` unless the `activeElement` is not a WebInspector element (e.g. <body>),
+        meaning that the previously focused element has been removed from the DOM and no longer
+        needs to keep the focus.
+
+2018-10-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: CSP request payload on medium.com is unreadable, should be pretty-printed
+        https://bugs.webkit.org/show_bug.cgi?id=190354
+        <rdar://problem/45090894>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype.set string.update):
+        (WI.TextEditor.prototype._attemptToDetermineMIMEType): Added.
+        If the content doesn't already have a MIME type, attempt to determine one by trying to
+        format it as "javascript" (e.g. request JSON that is simply missing a MIME type).
+
+        * UserInterface/Views/TextContentView.js:
+        (WI.TextContentView):
+        (WI.TextContentView.prototype._handleTextEditorMIMETypeChanged): Added.
+        * UserInterface/Views/TextResourceContentView.js:
+        (WI.TextResourceContentView):
+        (WI.TextResourceContentView.prototype._handleTextEditorMIMETypeChanged): Added.
+        * UserInterface/Views/ScriptContentView.js:
+        (WI.ScriptContentView):
+        (WI.ScriptContentView.prototype._handleTextEditorMIMETypeChanged): Added.
+        Enable the "Pretty Print" navigation button if the MIME type changes to something that is
+        able to be formatted.
+        Drive-by: reorder the creation of the "Pretty Print" button so that it exists if
+        `_attemptToDetermineMIMEType` finishes synchronously.
+
+2018-10-23  Devin Rousso  <drousso@apple.com>
+
+        Uncaught Exception: TypeError: null is not an object (evaluating 'mouseBlock.addEventListener')
+        https://bugs.webkit.org/show_bug.cgi?id=190766
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph):
+        When creating the `mouseBlock`, if the `startTimestamp` and `endTimestamp` are equal, we
+        don't create an element. If this is true for the total range of the `WI.Resouce` (meaning
+        its `startTime` and `responseEnd`), don't even try to create blocks.
+
+2018-10-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: "Queued NaNms" in Network tab
+        https://bugs.webkit.org/show_bug.cgi?id=190767
+        <rdar://problem/45420859>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/ResourceTimingData.js:
+        (WI.ResourceTimingData.prototype.get fetchStart):
+        If the `WI.ResourceTimingData` has no `fetchStart` use the associated `WI.Resource`'s
+        `requestSentTimestamp` (just like `startTime`).
+
+2018-10-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Open Quickly dialog doesn't show named scripts that appear in the debugger sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=190649
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WI.OpenResourceDialog.prototype.didPresentDialog):
+        (WI.OpenResourceDialog.prototype._addResourcesForTarget):
+        (WI.OpenResourceDialog.prototype._addScriptsForTarget):
+        Include non-resource named scripts from the main target in
+        the open quickly dialog.
+
+2018-10-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused member variable of DebuggerSidebarPanel
+        https://bugs.webkit.org/show_bug.cgi?id=190743
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+
 2018-10-17  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Quickly Open to line/column does should have caret indicating where the position is

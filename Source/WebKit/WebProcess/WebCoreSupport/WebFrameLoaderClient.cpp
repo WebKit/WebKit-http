@@ -30,6 +30,7 @@
 #include "DataReference.h"
 #include "DrawingArea.h"
 #include "FindController.h"
+#include "FormDataReference.h"
 #include "FrameInfoData.h"
 #include "InjectedBundle.h"
 #include "InjectedBundleDOMWindowExtension.h"
@@ -344,7 +345,7 @@ void WebFrameLoaderClient::dispatchDidCancelClientRedirect()
     webPage->send(Messages::WebPageProxy::DidCancelClientRedirectForFrame(m_frame->frameID()));
 }
 
-void WebFrameLoaderClient::dispatchWillPerformClientRedirect(const URL& url, double interval, WallTime fireDate)
+void WebFrameLoaderClient::dispatchWillPerformClientRedirect(const URL& url, double interval, WallTime fireDate, LockBackForwardList lockBackForwardList)
 {
     WebPage* webPage = m_frame->page();
     if (!webPage)
@@ -354,7 +355,7 @@ void WebFrameLoaderClient::dispatchWillPerformClientRedirect(const URL& url, dou
     webPage->injectedBundleLoaderClient().willPerformClientRedirectForFrame(*webPage, *m_frame, url, interval, fireDate);
 
     // Notify the UIProcess.
-    webPage->send(Messages::WebPageProxy::WillPerformClientRedirectForFrame(m_frame->frameID(), url.string(), interval));
+    webPage->send(Messages::WebPageProxy::WillPerformClientRedirectForFrame(m_frame->frameID(), url.string(), interval, lockBackForwardList));
 }
 
 void WebFrameLoaderClient::dispatchDidChangeLocationWithinPage()
@@ -686,7 +687,7 @@ void WebFrameLoaderClient::dispatchDidLayout()
 
     webPage->recomputeShortCircuitHorizontalWheelEventsState();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     webPage->updateSelectionAppearance();
 #endif
 
@@ -871,6 +872,8 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     if (auto& requester = navigationAction.requester())
         navigationActionData.requesterOrigin = requester->securityOrigin().data();
     navigationActionData.targetBackForwardItemIdentifier = navigationAction.targetBackForwardItemIdentifier();
+    navigationActionData.lockHistory = navigationAction.lockHistory();
+    navigationActionData.lockBackForwardList = navigationAction.lockBackForwardList();
 
     WebCore::Frame* coreFrame = m_frame->coreFrame();
     if (!coreFrame)
@@ -884,6 +887,8 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     if (!documentLoader)
         documentLoader = static_cast<WebDocumentLoader*>(coreFrame->loader().documentLoader());
 
+    navigationActionData.clientRedirectSourceForHistory = documentLoader->clientRedirectSourceForHistory();
+
     // Notify the UIProcess.
     Ref<WebFrame> protect(*m_frame);
 
@@ -893,7 +898,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
         DownloadID downloadID;
         std::optional<WebsitePoliciesData> websitePolicies;
 
-        if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationActionSync(m_frame->frameID(), m_frame->isMainFrame(), SecurityOriginData::fromFrame(coreFrame), documentLoader->navigationID(), navigationActionData, originatingFrameInfoData, originatingPageID, navigationAction.resourceRequest(), request, redirectResponse, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()), shouldSkipSafeBrowsingCheck), Messages::WebPageProxy::DecidePolicyForNavigationActionSync::Reply(policyAction, newNavigationID, downloadID, websitePolicies))) {
+        if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationActionSync(m_frame->frameID(), m_frame->isMainFrame(), SecurityOriginData::fromFrame(coreFrame), documentLoader->navigationID(), navigationActionData, originatingFrameInfoData, originatingPageID, navigationAction.resourceRequest(), request, IPC::FormDataReference { request.httpBody() }, redirectResponse, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()), shouldSkipSafeBrowsingCheck), Messages::WebPageProxy::DecidePolicyForNavigationActionSync::Reply(policyAction, newNavigationID, downloadID, websitePolicies))) {
             m_frame->didReceivePolicyDecision(listenerID, PolicyAction::Ignore, 0, { }, { });
             return;
         }
@@ -903,7 +908,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     }
 
     ASSERT(policyDecisionMode == PolicyDecisionMode::Asynchronous);
-    if (!webPage->send(Messages::WebPageProxy::DecidePolicyForNavigationActionAsync(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), documentLoader->navigationID(), navigationActionData, originatingFrameInfoData, originatingPageID, navigationAction.resourceRequest(), request, redirectResponse, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()), shouldSkipSafeBrowsingCheck, listenerID)))
+    if (!webPage->send(Messages::WebPageProxy::DecidePolicyForNavigationActionAsync(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), documentLoader->navigationID(), navigationActionData, originatingFrameInfoData, originatingPageID, navigationAction.resourceRequest(), request, IPC::FormDataReference { request.httpBody() }, redirectResponse, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()), shouldSkipSafeBrowsingCheck, listenerID)))
         m_frame->didReceivePolicyDecision(listenerID, PolicyAction::Ignore, 0, { }, { });
 }
 
@@ -1268,7 +1273,7 @@ void WebFrameLoaderClient::frameLoadCompleted()
 
 void WebFrameLoaderClient::saveViewStateToItem(HistoryItem& historyItem)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_frame->isMainFrame())
         m_frame->page()->savePageState(historyItem);
 #else
@@ -1278,7 +1283,7 @@ void WebFrameLoaderClient::saveViewStateToItem(HistoryItem& historyItem)
 
 void WebFrameLoaderClient::restoreViewState()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     Frame& frame = *m_frame->coreFrame();
     HistoryItem* currentItem = frame.loader().history().currentItem();
     if (FrameView* view = frame.view()) {
@@ -1431,10 +1436,9 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     m_frame->coreFrame()->view()->setProhibitsScrolling(shouldDisableScrolling);
     m_frame->coreFrame()->view()->setVisualUpdatesAllowedByClient(!webPage->shouldExtendIncrementalRenderingSuppression());
 #if PLATFORM(COCOA)
-    if (webPage->drawingArea())
-        m_frame->coreFrame()->view()->setViewExposedRect(webPage->drawingArea()->viewExposedRect());
+    m_frame->coreFrame()->view()->setViewExposedRect(webPage->drawingArea()->viewExposedRect());
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     m_frame->coreFrame()->view()->setDelegatesScrolling(true);
 #endif
 
@@ -1652,7 +1656,7 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
     if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
         return ObjectContentType::Frame;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // iOS can render PDF in <object>/<embed> via PDFDocumentImage.
     if (MIMETypeRegistry::isPDFOrPostScriptMIMEType(mimeType))
         return ObjectContentType::Image;

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<script src="../resources/js-test-pre.js"></script>
+
+<script>
+if (window.testRunner)
+    window.testRunner.dumpAsText();
+
+function runTest() {
+    let canvas = document.createElement("canvas");
+    let context = canvas.getContext("webgpu");
+    if (!context)
+        testFailed("Could not create WebGPU context!");
+
+    shouldBeDefined(window.webgpu);
+    window.webgpu.requestAdapter({ powerPreference: "default" }).then(adapter => {
+        if (!adapter) {
+            testFailed("Could not create default WebGPUAdapter!")
+            return;
+        }
+        let defaultDevice = adapter.createDevice();
+        if (!defaultDevice) {
+            testFailed("Could not create WebGPUDevice!");
+            return;
+        }
+    }).catch(error => {
+        testFailed(error);
+    });
+}
+
+runTest();
+
+var successfullyParsed = true;
+</script>
+
+<script src="../resources/js-test-post.js"></script>
+</html>

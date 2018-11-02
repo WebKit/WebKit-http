@@ -41,6 +41,7 @@ set(ALL_PORTS
     Haiku
     JSCOnly
     Mac
+    PlayStation
     WPE
     WinCairo
 )

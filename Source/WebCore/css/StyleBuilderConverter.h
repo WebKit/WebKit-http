@@ -106,7 +106,7 @@ public:
     static std::optional<float> convertPerspective(StyleResolver&, const CSSValue&);
     static std::optional<Length> convertMarqueeIncrement(StyleResolver&, const CSSValue&);
     static std::optional<FilterOperations> convertFilterOperations(StyleResolver&, const CSSValue&);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     static bool convertTouchCallout(StyleResolver&, const CSSValue&);
 #endif
 #if ENABLE(TOUCH_EVENTS)
@@ -1047,11 +1047,11 @@ inline GridAutoFlow StyleBuilderConverter::convertGridAutoFlow(StyleResolver&, c
     auto& first = downcast<CSSPrimitiveValue>(*list.item(0));
     auto* second = downcast<CSSPrimitiveValue>(list.item(1));
 
-    GridAutoFlow autoFlow = RenderStyle::initialGridAutoFlow();
+    GridAutoFlow autoFlow;
     switch (first.valueID()) {
     case CSSValueRow:
         if (second && second->valueID() == CSSValueDense)
-            autoFlow =  AutoFlowRowDense;
+            autoFlow = AutoFlowRowDense;
         else
             autoFlow = AutoFlowRow;
         break;
@@ -1063,10 +1063,13 @@ inline GridAutoFlow StyleBuilderConverter::convertGridAutoFlow(StyleResolver&, c
         break;
     case CSSValueDense:
         if (second && second->valueID() == CSSValueColumn)
-            return AutoFlowColumnDense;
-        return AutoFlowRowDense;
+            autoFlow = AutoFlowColumnDense;
+        else
+            autoFlow = AutoFlowRowDense;
+        break;
     default:
         ASSERT_NOT_REACHED();
+        autoFlow = RenderStyle::initialGridAutoFlow();
         break;
     }
 
@@ -1255,7 +1258,7 @@ inline FontVariationSettings StyleBuilderConverter::convertFontVariationSettings
 }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 inline bool StyleBuilderConverter::convertTouchCallout(StyleResolver&, const CSSValue& value)
 {
     return !equalLettersIgnoringASCIICase(downcast<CSSPrimitiveValue>(value).stringValue(), "none");

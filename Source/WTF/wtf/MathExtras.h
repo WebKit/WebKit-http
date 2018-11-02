@@ -124,10 +124,10 @@ inline float rad2grad(float r) { return r * 200.0f / piFloat; }
 inline float grad2rad(float g) { return g * piFloat / 200.0f; }
 
 // std::numeric_limits<T>::min() returns the smallest positive value for floating point types
-template<typename T> constexpr inline T defaultMinimumForClamp() { return std::numeric_limits<T>::min(); }
-template<> constexpr inline float defaultMinimumForClamp() { return -std::numeric_limits<float>::max(); }
-template<> constexpr inline double defaultMinimumForClamp() { return -std::numeric_limits<double>::max(); }
-template<typename T> constexpr inline T defaultMaximumForClamp() { return std::numeric_limits<T>::max(); }
+template<typename T> constexpr T defaultMinimumForClamp() { return std::numeric_limits<T>::min(); }
+template<> constexpr float defaultMinimumForClamp() { return -std::numeric_limits<float>::max(); }
+template<> constexpr double defaultMinimumForClamp() { return -std::numeric_limits<double>::max(); }
+template<typename T> constexpr T defaultMaximumForClamp() { return std::numeric_limits<T>::max(); }
 
 template<typename T> inline T clampTo(double value, T min = defaultMinimumForClamp<T>(), T max = defaultMaximumForClamp<T>())
 {
@@ -178,7 +178,7 @@ inline int clampToInteger(T x)
 
 // Explicitly accept 64bit result when clamping double value.
 // Keep in mind that double can only represent 53bit integer precisely.
-template<typename T> constexpr inline T clampToAccepting64(double value, T min = defaultMinimumForClamp<T>(), T max = defaultMaximumForClamp<T>())
+template<typename T> constexpr T clampToAccepting64(double value, T min = defaultMinimumForClamp<T>(), T max = defaultMaximumForClamp<T>())
 {
     return (value >= static_cast<double>(max)) ? max : ((value <= static_cast<double>(min)) ? min : static_cast<T>(value));
 }
@@ -212,6 +212,9 @@ template<typename T> constexpr bool hasTwoOrMoreBitsSet(T value)
     return !hasZeroOrOneBitsSet(value);
 }
 
+// FIXME: Some Darwin projects shamelessly include WTF headers and don't build with C++14... See: rdar://problem/45395767
+// Since C++11 and before don't support constexpr statements we can't mark this function constexpr.
+#if !defined(WTF_CPP_STD_VER) || WTF_CPP_STD_VER >= 14
 template <typename T> constexpr unsigned getLSBSet(T value)
 {
     typedef typename std::make_unsigned<T>::type UnsignedT;
@@ -223,6 +226,7 @@ template <typename T> constexpr unsigned getLSBSet(T value)
 
     return result;
 }
+#endif
 
 template<typename T> inline T divideRoundedUp(T a, T b)
 {
@@ -256,10 +260,10 @@ template<typename T> inline bool isGreaterThanNonZeroPowerOfTwo(T value, unsigne
     return !!((value >> 1) >> (power - 1));
 }
 
-template<typename T> constexpr inline bool isLessThan(const T& a, const T& b) { return a < b; }
-template<typename T> constexpr inline bool isLessThanEqual(const T& a, const T& b) { return a <= b; }
-template<typename T> constexpr inline bool isGreaterThan(const T& a, const T& b) { return a > b; }
-template<typename T> constexpr inline bool isGreaterThanEqual(const T& a, const T& b) { return a >= b; }
+template<typename T> constexpr bool isLessThan(const T& a, const T& b) { return a < b; }
+template<typename T> constexpr bool isLessThanEqual(const T& a, const T& b) { return a <= b; }
+template<typename T> constexpr bool isGreaterThan(const T& a, const T& b) { return a > b; }
+template<typename T> constexpr bool isGreaterThanEqual(const T& a, const T& b) { return a >= b; }
 
 #ifndef UINT64_C
 #if COMPILER(MSVC)
@@ -339,7 +343,7 @@ inline void doubleToInteger(double d, unsigned long long& value)
 namespace WTF {
 
 // From http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
-inline constexpr uint32_t roundUpToPowerOfTwo(uint32_t v)
+constexpr uint32_t roundUpToPowerOfTwo(uint32_t v)
 {
     v--;
     v |= v >> 1;
@@ -351,7 +355,7 @@ inline constexpr uint32_t roundUpToPowerOfTwo(uint32_t v)
     return v;
 }
 
-inline constexpr unsigned maskForSize(unsigned size)
+constexpr unsigned maskForSize(unsigned size)
 {
     if (!size)
         return 0;

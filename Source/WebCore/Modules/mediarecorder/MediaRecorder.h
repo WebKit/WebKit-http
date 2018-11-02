@@ -25,15 +25,25 @@
 #pragma once
 
 #if ENABLE(MEDIA_STREAM)
+
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "MediaStream.h"
+#include "MediaStreamTrackPrivate.h"
+#include <wtf/UniqueRef.h>
 
 namespace WebCore {
 
 class Document;
+class MediaRecorderPrivate;
 
-class MediaRecorder final : public ActiveDOMObject, public RefCounted<MediaRecorder>, public EventTargetWithInlineData, public CanMakeWeakPtr<MediaRecorder>, private MediaStream::Observer {
+class MediaRecorder final
+    : public ActiveDOMObject
+    , public RefCounted<MediaRecorder>
+    , public EventTargetWithInlineData
+    , public CanMakeWeakPtr<MediaRecorder>
+    , private MediaStream::Observer
+    , private MediaStreamTrackPrivate::Observer {
 public:
     enum class RecordingState { Inactive, Recording, Paused };
     
@@ -53,7 +63,8 @@ public:
     using RefCounted::ref;
     using RefCounted::deref;
     
-    ExceptionOr<void> start(std::optional<int>);
+    ExceptionOr<void> startRecording(std::optional<int>);
+    ExceptionOr<void> stopRecording();
     
 private:
     MediaRecorder(Document&, Ref<MediaStream>&&, Options&& = { });
@@ -69,15 +80,27 @@ private:
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
     
+    void stopRecordingInternal();
+    
     // MediaStream::Observer
     void didAddOrRemoveTrack() final;
+    
+    // MediaStreamTrackPrivate::Observer
+    void trackEnded(MediaStreamTrackPrivate&) final;
+    void trackMutedChanged(MediaStreamTrackPrivate&) final { };
+    void trackSettingsChanged(MediaStreamTrackPrivate&) final { };
+    void trackEnabledChanged(MediaStreamTrackPrivate&) final { };
+    void sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample&) final;
+    void audioSamplesAvailable(MediaStreamTrackPrivate&, const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) final;
     
     void scheduleDeferredTask(Function<void()>&&);
     void setNewRecordingState(RecordingState, Ref<Event>&&);
     
     Options m_options;
     Ref<MediaStream> m_stream;
+    UniqueRef<MediaRecorderPrivate> m_private;
     RecordingState m_state { RecordingState::Inactive };
+    Vector<Ref<MediaStreamTrackPrivate>> m_tracks;
     
     bool m_isActive { true };
 };

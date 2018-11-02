@@ -138,7 +138,7 @@
 #include "PointerLockController.h"
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "WKContentObservation.h"
 #include "WKContentObservationInternal.h"
 #endif
@@ -1176,8 +1176,15 @@ bool DOMWindow::offscreenBuffering() const
 
 int DOMWindow::outerHeight() const
 {
-#if PLATFORM(IOS)
-    return 0;
+#if PLATFORM(IOS_FAMILY)
+    if (!frame())
+        return 0;
+
+    auto* view = frame()->isMainFrame() ? frame()->view() : frame()->mainFrame().view();
+    if (!view)
+        return 0;
+
+    return view->frameRect().height();
 #else
     auto* frame = this->frame();
     if (!frame)
@@ -1193,8 +1200,15 @@ int DOMWindow::outerHeight() const
 
 int DOMWindow::outerWidth() const
 {
-#if PLATFORM(IOS)
-    return 0;
+#if PLATFORM(IOS_FAMILY)
+    if (!frame())
+        return 0;
+
+    auto* view = frame()->isMainFrame() ? frame()->view() : frame()->mainFrame().view();
+    if (!view)
+        return 0;
+
+    return view->frameRect().width();
 #else
     auto* frame = this->frame();
     if (!frame)
@@ -1659,7 +1673,7 @@ ExceptionOr<int> DOMWindow::setTimeout(JSC::ExecState& state, std::unique_ptr<Sc
 
 void DOMWindow::clearTimeout(int timeoutId)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (auto* frame = this->frame()) {
         Document* document = frame->document();
         if (timeoutId > 0 && document) {
@@ -1807,7 +1821,7 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, Ref<EventListene
     else if (eventType == eventNames().beforeunloadEvent && allowsBeforeUnloadListeners(this))
         addBeforeUnloadEventListener(this);
 #if ENABLE(DEVICE_ORIENTATION)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     else if ((eventType == eventNames().devicemotionEvent || eventType == eventNames().deviceorientationEvent) && document()) {
         if (isSameSecurityOriginAsMainFrame()) {
             if (eventType == eventNames().deviceorientationEvent)
@@ -1831,9 +1845,9 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, Ref<EventListene
         } else if (document())
             document()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, "Blocked attempt add device orientation listener from child frame that wasn't the same security origin as the main page."_s);
     }
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 #endif // ENABLE(DEVICE_ORIENTATION)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     else if (eventType == eventNames().scrollEvent)
         incrementScrollEventListenersCount();
 #endif
@@ -1853,7 +1867,7 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, Ref<EventListene
     return true;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 void DOMWindow::incrementScrollEventListenersCount()
 {
@@ -1879,8 +1893,8 @@ void DOMWindow::decrementScrollEventListenersCount()
 
 void DOMWindow::resetAllGeolocationPermission()
 {
-    // FIXME: Can we remove the PLATFORM(IOS)-guard?
-#if ENABLE(GEOLOCATION) && PLATFORM(IOS)
+    // FIXME: Can we remove the PLATFORM(IOS_FAMILY)-guard?
+#if ENABLE(GEOLOCATION) && PLATFORM(IOS_FAMILY)
     if (m_navigator)
         NavigatorGeolocation::from(m_navigator.get())->resetAllGeolocationPermission();
 #endif
@@ -1903,7 +1917,7 @@ bool DOMWindow::removeEventListener(const AtomicString& eventType, EventListener
     else if (eventType == eventNames().beforeunloadEvent && allowsBeforeUnloadListeners(this))
         removeBeforeUnloadEventListener(this);
 #if ENABLE(DEVICE_ORIENTATION)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     else if (eventType == eventNames().devicemotionEvent && document())
         document()->deviceMotionController()->removeDeviceEventListener(this);
     else if (eventType == eventNames().deviceorientationEvent && document())
@@ -1916,9 +1930,9 @@ bool DOMWindow::removeEventListener(const AtomicString& eventType, EventListener
         if (DeviceOrientationController* controller = DeviceOrientationController::from(page()))
             controller->removeDeviceEventListener(this);
     }
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 #endif // ENABLE(DEVICE_ORIENTATION)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     else if (eventType == eventNames().scrollEvent)
         decrementScrollEventListenersCount();
 #endif
@@ -2020,7 +2034,7 @@ void DOMWindow::removeAllEventListeners()
     EventTarget::removeAllEventListeners();
 
 #if ENABLE(DEVICE_ORIENTATION)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (Document* document = this->document()) {
         document->deviceMotionController()->removeAllDeviceEventListeners(this);
         document->deviceOrientationController()->removeAllDeviceEventListeners(this);
@@ -2030,10 +2044,10 @@ void DOMWindow::removeAllEventListeners()
         controller->removeAllDeviceEventListeners(this);
     if (DeviceOrientationController* controller = DeviceOrientationController::from(page()))
         controller->removeAllDeviceEventListeners(this);
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 #endif // ENABLE(DEVICE_ORIENTATION)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_scrollEventListenerCount) {
         m_scrollEventListenerCount = 1;
         decrementScrollEventListenersCount();
@@ -2227,7 +2241,8 @@ ExceptionOr<RefPtr<Frame>> DOMWindow::createWindow(const String& urlString, cons
         newFrame->loader().setOpener(&openerFrame);
         newFrame->page()->setOpenedViaWindowOpenWithOpener();
     }
-    newFrame->page()->setOpenedByDOM();
+    if (created)
+        newFrame->page()->setOpenedByDOM();
 
     if (newFrame->document()->domWindow()->isInsecureScriptAccess(activeWindow, completedURL))
         return windowFeatures.noopener ? RefPtr<Frame> { nullptr } : newFrame;

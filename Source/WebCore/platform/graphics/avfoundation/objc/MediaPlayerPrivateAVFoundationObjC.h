@@ -61,6 +61,7 @@ class CDMSessionAVFoundationObjC;
 class InbandMetadataTextTrackPrivateAVF;
 class MediaSelectionGroupAVFObjC;
 class PixelBufferConformerCV;
+class SharedBuffer;
 class VideoFullscreenLayerManagerObjC;
 class VideoTextureCopierCV;
 class VideoTrackPrivateAVFObjC;
@@ -166,7 +167,7 @@ private:
     void platformPause() override;
     MediaTime currentMediaTime() const override;
     void setVolume(float) override;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool supportsMuting() const override { return true; }
 #endif
     void setMuted(bool) override;
@@ -180,7 +181,7 @@ private:
     void setVideoFullscreenGravity(MediaPlayer::VideoGravity) override;
     void setVideoFullscreenMode(MediaPlayer::VideoFullscreenMode) override;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     NSArray *timedMetadata() const override;
     String accessLog() const override;
     String errorLog() const override;
@@ -310,7 +311,7 @@ private:
     void updateDisableExternalPlayback();
 #endif
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
     void setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&&) override;
     void setShouldPlayToPlaybackTarget(bool) override;
 #endif
@@ -330,6 +331,9 @@ private:
 
     AVPlayer *objCAVFoundationAVPlayer() const final { return m_avPlayer.get(); }
 
+    bool performTaskAtMediaTime(WTF::Function<void()>&&, MediaTime) final;
+
+    WeakPtrFactory<MediaPlayerPrivateAVFoundationObjC> m_weakPtrFactory;
     RetainPtr<AVURLAsset> m_avAsset;
     RetainPtr<AVPlayer> m_avPlayer;
     RetainPtr<AVPlayerItem> m_avPlayerItem;
@@ -408,6 +412,7 @@ private:
     RetainPtr<NSArray> m_currentMetaData;
     FloatSize m_cachedPresentationSize;
     MediaTime m_cachedDuration;
+    RefPtr<SharedBuffer> m_keyID;
     double m_cachedRate;
     mutable long long m_cachedTotalBytes;
     unsigned m_pendingStatusChanges;

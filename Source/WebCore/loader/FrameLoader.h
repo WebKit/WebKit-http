@@ -83,6 +83,7 @@ class SharedBuffer;
 class SubframeLoader;
 class SubstituteData;
 
+enum class NewLoadInProgress : bool;
 enum class ShouldContinue;
 enum class ShouldTreatAsContinuingLoad : bool;
 
@@ -168,10 +169,9 @@ public:
     DocumentLoader* provisionalDocumentLoader() const { return m_provisionalDocumentLoader.get(); }
     FrameState state() const { return m_state; }
 
-    void setShouldReportResourceTimingToParentFrame(bool value) { m_shouldReportResourceTimingToParentFrame = value; }
-    bool shouldReportResourceTimingToParentFrame() { return m_shouldReportResourceTimingToParentFrame; };
+    bool shouldReportResourceTimingToParentFrame() const { return m_shouldReportResourceTimingToParentFrame; };
     
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     RetainPtr<CFDictionaryRef> connectionProperties(ResourceLoader*);
 #endif
     const ResourceRequest& originalRequest() const;
@@ -280,7 +280,7 @@ public:
     void completed();
     bool allAncestorsAreComplete() const; // including this
     void clientRedirected(const URL&, double delay, WallTime fireDate, LockBackForwardList);
-    void clientRedirectCancelledOrFinished(bool cancelWithLoadInProgress);
+    void clientRedirectCancelledOrFinished(NewLoadInProgress);
 
     WEBCORE_EXPORT void setOriginalURLForDownloadRequest(ResourceRequest&);
 

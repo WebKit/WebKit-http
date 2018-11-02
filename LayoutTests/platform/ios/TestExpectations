@@ -35,10 +35,11 @@ fullscreen
 http/tests/fullscreen
 compositing/no-compositing-when-fulll-screen-is-present.html
 
-# WebGPU is not enabled on iOS Simulator.
+# WebMetal and WebGPU are not enabled on iOS Simulator.
 fast/canvas/webmetal
 inspector/canvas/create-context-webmetal.html [ Skip ]
 inspector/canvas/resolveCanvasContext-webmetal.html [ Skip ]
+webgpu [ Skip ]
 
 # Encrypted Media Extensions are not enabled
 media/encrypted-media/
@@ -1665,10 +1666,6 @@ fast/forms/color/input-color-readonly.html [ Failure ]
 fast/forms/color/input-value-sanitization-color.html [ Failure ]
 fast/forms/color/color-setrangetext.html [ Failure ]
 
-fast/forms/datalist/datalist-fallback-content.html [ ImageOnlyFailure ]
-fast/forms/datalist/datalist-nonoption-child.html [ Failure ]
-fast/forms/datalist/datalist.html [ Failure ]
-fast/forms/datalist/input-appearance-range-with-datalist-zoomed.html [ Failure ]
 fast/forms/datalist/input-list.html [ Failure ]
 fast/forms/datetime/ValidityState-rangeOverflow-datetime.html [ Failure ]
 fast/forms/datetime/ValidityState-rangeUnderflow-datetime.html [ Failure ]
@@ -1975,8 +1972,7 @@ fast/parser/residual-style-hang.html
 # <rdar://problem/19226623> ASSERT(isIdentifierStart<CharacterType>()) fails in CSSParser::parseIdentifier()
 fast/css/css-selector-text.html
 
-# <rdar://problem/19226679> ASSERT(m_isValid == valid()) fails in HTMLFormControlElement::isValidFormControlElement()
-fast/forms/datalist/datalist-child-validation.html
+webkit.org/b/190620 fast/forms/datalist/datalist-child-validation.html [ Crash Failure ]
 
 # <rdar://problem/19227549> ASSERT(!m_webFrame->_private->provisionalURL) fails in WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
 fast/forms/validation-message-user-modify.html
@@ -2821,7 +2817,6 @@ http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subreso
 http/tests/storageAccess/deny-storage-access-under-opener.html [ Pass ]
 http/tests/storageAccess/deny-storage-access-under-opener-if-auto-dismiss.html [ Pass ]
 http/tests/resourceLoadStatistics/cap-cache-max-age-for-prevalent-resource.html [ Pass ]
-http/tests/cookies/capped-lifetime-for-cookie-set-in-js.html [ Pass ]
 
 # Skipped in general expectations since they only work on iOS and Mac, WK2.
 http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Pass ]
@@ -3112,13 +3107,15 @@ fast/block/block-only/margin-left-right-sizing.html [ Failure ]
 fast/block/block-only/margin-sibling-collapse-propagated.html [ Failure ]
 fast/block/block-only/relative-auto-with-parent-offset.html [ Failure ]
 fast/block/block-only/absolute-position-min-max-height.html [ Failure ]
+fast/block/basic/inline-content-with-floating-image.html [ Failure ]
+fast/block/basic/inline-content-with-floating-images2.html [ Failure ]
+fast/inline/simple-intruding-float1.html [ Failure ]
+fast/inline/simple-intruding-floats2.html [ Failure ]
+fast/inline/simple-intruding-floats3.html [ Failure ]
 
 # Datalist
-webkit.org/b/186714 fast/forms/datalist/datalist-show-hide.html [ Skip ]
 webkit.org/b/186714 fast/forms/datalist/datalist-textinput-keydown.html [ Skip ]
-fast/forms/datalist/datalist-searchinput-appearance.html [ Skip ]
-fast/forms/datalist/datalist-textinput-appearance.html  [ Skip ]
-fast/forms/datalist/datalist-textinput-suggestions-order.html [ Skip ]
+webkit.org/b/190613 fast/forms/datalist/update-range-with-datalist.html [ Skip ]
 
 # We are only accepting GLSL3 for macOS. 
 webkit.org/b/187982 webgl/2.0.0/conformance2/glsl3 [ Skip ]
@@ -3127,8 +3124,6 @@ webkit.org/b/187982 webgl/2.0.0/conformance2/glsl3 [ Skip ]
 webkit.org/b/188285 platform/mac/media/audio-session-category-video-paused.html [ Skip ]
 
 webkit.org/b/188578 svg/custom/scrolling-embedded-svg-file-image-repaint-problem.html [ Pass Failure ]
-
-webkit.org/b/188762 fast/writing-mode/english-rl-text-with-spelling-marker.html [ ImageOnlyFailure ]
 
 webkit.org/b/128312 media/video-load-preload-metadata.html [ Pass Failure ]
 
@@ -3179,6 +3174,7 @@ system-preview [ Pass ]
 editing/selection/character-granularity-rect.html [ Pass ]
 
 # < iOS12 doesn't support the CG needed for Conic Gradients
+http/wpt/css/css-images-4/conic-gradient-parsing.html [ Pass ]
 fast/gradients/conic-repeating.html [ Pass ]
 fast/gradients/conic.html [ Pass ]
 fast/gradients/conic-off-center.html [ Pass ]
@@ -3209,3 +3205,10 @@ compositing/contents-scale/non-decomposable-matrix.html [ ImageOnlyFailure ]
 
 # <rdar://problem/41546970> REGRESSION: LayoutTest media/media-fullscreen-loop-inline.html is a flaky timeout
 media/media-fullscreen-loop-inline.html [ Pass Timeout ]
+
+webkit.org/b/187618 [ Release ] media/media-fullscreen-pause-inline.html [ Pass Failure ]
+
+# Disabled globally.
+http/tests/xmlhttprequest/gzip-content-type-no-content-encoding.html [ Pass ]
+
+webkit.org/b/173041 http/tests/websocket/tests/hybi/handshake-ok-with-legacy-sec-websocket-response-headers.html [ Pass Failure ]

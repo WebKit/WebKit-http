@@ -476,7 +476,6 @@ public:
     PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_setPrototypeAddWatchpoint;
     PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_numberPrototypeToStringWatchpoint;
 
-    bool isArrayPrototypeIndexedAccessFastAndNonObservable();
     bool isArrayPrototypeIteratorProtocolFastAndNonObservable();
     bool isMapPrototypeIteratorProtocolFastAndNonObservable();
     bool isSetPrototypeIteratorProtocolFastAndNonObservable();
@@ -963,6 +962,7 @@ protected:
 private:
     friend class LLIntOffsetsExtractor;
 
+    void fireWatchpointAndMakeAllArrayStructuresSlowPut(VM&);
     void setGlobalThis(VM&, JSObject* globalThis);
 
     JS_EXPORT_PRIVATE void init(VM&);

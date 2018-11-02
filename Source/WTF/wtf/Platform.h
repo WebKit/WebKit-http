@@ -373,7 +373,10 @@
 /* OS(MAC_OS_X) - macOS (not including iOS family) */
 #if OS(DARWIN)
 #if TARGET_OS_IPHONE
-#define WTF_OS_IOS 1
+/* FIXME (November 2018): Add WTF_OS_IOS once most patches that used it as an old
+ * version of OS(IOS_FAMILY) are no longer relevant.  It is currently defined so that
+ * attempting to use it will break the build. */
+#define WTF_OS_IOS UNDEFINED /* Please use OS(IOS_FAMILY) until a more specific macro can be added. */
 #define WTF_OS_IOS_FAMILY 1
 #elif TARGET_OS_MAC
 #define WTF_OS_MAC_OS_X 1
@@ -531,11 +534,17 @@
 /* JSCOnly does not provide PLATFORM() macro */
 #elif OS(MAC_OS_X)
 #define WTF_PLATFORM_MAC 1
-#elif OS(IOS)
-#define WTF_PLATFORM_IOS 1
+#elif OS(IOS_FAMILY)
+/* FIXME (November 2018): Add WTF_PLATFORM_IOS once most patches that used it as an old
+ * version of PLATFORM(IOS_FAMILY) are no longer relevant. It is currently defined so that
+ * attempting to use it will break the build. */
+#define WTF_PLATFORM_IOS UNDEFINED /* Please use PLATFORM(IOS_FAMILY) until a more specific macro can be added. */
 #define WTF_PLATFORM_IOS_FAMILY 1
 #if TARGET_OS_SIMULATOR
-#define WTF_PLATFORM_IOS_SIMULATOR 1
+/* FIXME (November 2018): Add WTF_PLATFORM_IOS_SIMULATOR once most patches that used it as an old
+ * version of PLATFORM(IOS_FAMILY_SIMULATOR) are no longer relevant. It is currently defined so that
+ * attempting to use it will break the build. */
+#define WTF_PLATFORM_IOS_SIMULATOR UNDEFINED /* Please use PLATFORM(IOS_FAMILY_SIMULATOR) until a more specific macro can be added. */
 #define WTF_PLATFORM_IOS_FAMILY_SIMULATOR 1
 #endif
 #if defined(TARGET_OS_IOSMAC) && TARGET_OS_IOSMAC
@@ -776,23 +785,19 @@
 #endif
 #endif /* !defined(USE_JSVALUE64) && !defined(USE_JSVALUE32_64) */
 
-/* The JIT is enabled by default on all x86, x86-64, ARM & MIPS platforms except ARMv7k. */
+/* The JIT is enabled by default on all x86-64 & ARM64 platforms. */
 #if !defined(ENABLE_JIT) \
-    && (CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)) \
+    && (CPU(X86_64) || CPU(ARM64)) \
     && !CPU(APPLE_ARMV7K)
 #define ENABLE_JIT 1
 #endif
 
-/* Cocoa ports should not use the jit on 32-bit ARM CPUs. */
-#if PLATFORM(COCOA) && (CPU(ARM) || CPU(APPLE_ARMV7K))
+/* Force C_LOOP for 32-bit builds. */
+#if USE(JSVALUE32_64)
 #undef ENABLE_JIT
 #define ENABLE_JIT 0
-#endif
-
-/* Disable the JIT for 32-bit Windows builds. */
-#if USE(JSVALUE32_64) && OS(WINDOWS)
-#undef ENABLE_JIT
-#define ENABLE_JIT 0
+#undef ENABLE_C_LOOP
+#define ENABLE_C_LOOP 1
 #endif
 
 #if !defined(ENABLE_C_LOOP)
@@ -1091,7 +1096,7 @@
 #endif
 #endif
 
-#if PLATFORM(IOS) && USE(QUICK_LOOK) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
+#if PLATFORM(IOS_FAMILY) && USE(QUICK_LOOK) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
 #define USE_SYSTEM_PREVIEW 1
 #endif
 
@@ -1382,11 +1387,11 @@
 #define USE_LIBWEBRTC 1
 #endif
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || USE(GCRYPT)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || USE(GCRYPT)
 #define HAVE_RSA_PSS 1
 #endif
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000 && !PLATFORM(APPLETV))
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000 && !PLATFORM(APPLETV))
 #define HAVE_URL_FORMATTING 1
 #endif
 
@@ -1394,11 +1399,11 @@
 #define HAVE_STACK_BOUNDS_FOR_NEW_THREAD 1
 #endif
 
-#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300)
+#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300)
 #define HAVE_AVCONTENTKEYSESSION 1
 #endif
 
-#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400)
+#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400)
 #define ENABLE_ACCESSIBILITY_EVENTS 1
 #define HAVE_SEC_KEY_PROXY 1
 #endif

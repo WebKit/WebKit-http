@@ -1962,10 +1962,9 @@ void Element::removedFromAncestor(RemovalType removalType, ContainerNode& oldPar
         document().accessSVGExtensions().removeElementFromPendingResources(this);
 
     RefPtr<Frame> frame = document().frame();
-    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
-        if (auto* timeline = document().existingTimeline())
-            timeline->elementWasRemoved(*this);
-    } else if (frame)
+    if (auto* timeline = document().existingTimeline())
+        timeline->elementWasRemoved(*this);
+    if (frame)
         frame->animation().cancelAnimations(*this);
 
 #if PLATFORM(MAC)
@@ -2653,7 +2652,7 @@ void Element::focus(bool restorePreviousSelection, FocusDirection direction)
     }
 
     SelectionRevealMode revealMode = SelectionRevealMode::Reveal;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Focusing a form element triggers animation in UIKit to scroll to the right position.
     // Calling updateFocusAppearance() would generate an unnecessary call to ScrollView::setScrollPosition(),
     // which would jump us around during this animation. See <rdar://problem/6699741>.
@@ -4032,7 +4031,7 @@ Vector<RefPtr<WebAnimation>> Element::getAnimations()
     Vector<RefPtr<WebAnimation>> animations;
     if (auto timeline = document().existingTimeline()) {
         for (auto& animation : timeline->animationsForElement(*this, AnimationTimeline::Ordering::Sorted)) {
-            if (animation->canBeListed())
+            if (animation->isRelevant())
                 animations.append(animation);
         }
     }

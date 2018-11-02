@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005, 2007, Google Inc. All rights reserved.
- * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2018 Apple Inc. All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -225,6 +225,12 @@ void* fastRealloc(void* p, size_t n)
     return result;
 }
 
+TryMallocReturnValue tryFastRealloc(void* p, size_t n)
+{
+    FAIL_IF_EXCEEDS_LIMIT(n);
+    return realloc(p, n);
+}
+
 void releaseFastMallocFreeMemory() { }
 void releaseFastMallocFreeMemoryForThisThread() { }
     
@@ -345,6 +351,12 @@ TryMallocReturnValue tryFastCalloc(size_t numElements, size_t elementSize)
     return tryFastZeroedMalloc(checkedSize.unsafeGet());
 }
     
+TryMallocReturnValue tryFastRealloc(void* object, size_t newSize)
+{
+    FAIL_IF_EXCEEDS_LIMIT(newSize);
+    return bmalloc::api::tryRealloc(object, newSize);
+}
+
 void releaseFastMallocFreeMemoryForThisThread()
 {
     bmalloc::api::scavengeThisThread();

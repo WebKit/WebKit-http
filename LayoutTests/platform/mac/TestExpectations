@@ -34,8 +34,8 @@ fast/xmlhttprequest/set-dangerous-headers-in-dashboard.html [ Pass ]
 
 http/tests/gzip-content-encoding [ Pass ]
 
-# FIXME: Mark as Pass once the fix for <rdar://problem/33822249> ships.
-http/tests/xmlhttprequest/gzip-content-type-no-content-encoding.html [ Pass Failure ]
+[ Sierra HighSierra ] http/tests/xmlhttprequest/gzip-content-type-no-content-encoding.html [ Failure ]
+[ Mojave+ ] http/tests/xmlhttprequest/gzip-content-type-no-content-encoding.html [ Pass ]
 
 fast/text/mac [ Pass ]
 webkit.org/b/181964 fast/text/mac/select-character-before-zero-width-joiner.html [ ImageOnlyFailure ]
@@ -129,8 +129,8 @@ editing/pasteboard/file-drag-to-editable.html [ Skip ]
 # EventSender::dumpFilenameBeingDragged not implemented.
 webkit.org/b/61827 fast/events/drag-image-filename.html
 
-# Datalist is not yet enabled.
-fast/forms/datalist
+# Datalist
+webkit.org/b/190620 fast/forms/datalist/datalist-child-validation.html [ Crash Failure ]
 
 # ENABLE_INPUT_TYPE_* are not enabled.
 # https://bugs.webkit.org/show_bug.cgi?id=29359
@@ -1748,6 +1748,7 @@ webkit.org/b/187393 imported/w3c/web-platform-tests/2dcontext/imagebitmap/create
 [ Mojave+ ] imported/blink/fast/text/international/vertical-positioning-with-combining-marks.html [ ImageOnlyFailure ]
 
 # < Mojave doesn't support the CG needed for Conic Gradients
+[ Mojave+ ] http/wpt/css/css-images-4/conic-gradient-parsing.html [ Pass ]
 [ Mojave+ ] fast/gradients/conic-repeating.html [ Pass ]
 [ Mojave+ ] fast/gradients/conic.html [ Pass ]
 [ Mojave+ ] fast/gradients/conic-off-center.html [ Pass ]
@@ -1773,4 +1774,12 @@ webgl/2.0.0/conformance/rendering/multisample-corruption.html [ Slow ]
 webgl/2.0.0/conformance2/attribs/gl-vertexattribipointer.html [ Slow ]
 webgl/2.0.0/conformance2/textures/misc/copy-texture-image-luma-format.html [ Slow ]
 
+webkit.org/b/190210 compositing/geometry/limit-layer-bounds-opacity-transition.html [ Pass Failure ]
 
+webkit.org/b/176929 [ Mojave+ ] imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay-with-slow-text-tracks.html [ Pass Failure ]
+
+webkit.org/b/170877 [ Debug ] webgl/1.0.2/conformance/glsl/misc/shader-with-reserved-words.html [ Pass Timeout ]
+
+webkit.org/b/190883 legacy-animation-engine/animations/suspend-resume-animation.html [ Pass Failure ]
+
+webkit.org/b/190724 [ Debug ] http/tests/misc/large-js-program.php [ Pass Timeout ]

@@ -36,7 +36,7 @@
 #import <wtf/WeakPtr.h>
 #import <wtf/text/StringView.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <WebCore/WAKAppKitStubs.h>
 #endif
 
@@ -137,7 +137,7 @@ private:
     void textDidChangeInTextArea(WebCore::Element*) final;
     void overflowScrollPositionChanged() final { };
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void startDelayingAndCoalescingContentChangeNotifications() final;
     void stopDelayingAndCoalescingContentChangeNotifications() final;
     bool hasRichlyEditableSelection() final;
@@ -165,7 +165,7 @@ private:
     void setInputMethodState(bool enabled) final;
     void requestCheckingOfString(WebCore::TextCheckingRequest&, const WebCore::VisibleSelection& currentSelection) final;
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#if PLATFORM(MAC)
     void requestCandidatesForSelection(const WebCore::VisibleSelection&) final;
     void handleRequestedCandidates(NSInteger, NSArray<NSTextCheckingResult *> *);
     void handleAcceptedCandidateWithSoftSpaces(WebCore::TextCheckingResult) final;
@@ -178,14 +178,14 @@ private:
     bool m_haveUndoRedoOperations { false };
     RefPtr<WebCore::TextCheckingRequest> m_textCheckingRequest;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool m_delayingContentChangeNotifications { false };
     bool m_hasDelayedContentChangeNotification { false };
 #endif
 
     WebCore::VisibleSelection m_lastSelectionForRequestedCandidates;
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#if PLATFORM(MAC)
     RetainPtr<NSString> m_paragraphContextForCandidateRequest;
     NSRange m_rangeForCandidates;
     NSInteger m_lastCandidateRequestSequenceNumber;
@@ -219,7 +219,7 @@ inline WebCore::EAffinity core(NSSelectionAffinity affinity)
     return WebCore::EAffinity::UPSTREAM;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 inline bool WebEditorClient::isGrammarCheckingEnabled()
 {

@@ -32,12 +32,13 @@
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
+class PaintRenderingContext2D;
 
 class CSSPaintCallback : public RefCounted<CSSPaintCallback>, public ActiveDOMCallback {
 public:
     using ActiveDOMCallback::ActiveDOMCallback;
 
-    virtual CallbackResult<void> handleEvent() = 0;
+    virtual CallbackResult<void> handleEvent(PaintRenderingContext2D&) = 0;
 
     virtual ~CSSPaintCallback()
     {

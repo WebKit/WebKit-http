@@ -72,7 +72,7 @@ WEBCORE_EXPORT bool isIAdProducer();
 
 #endif // PLATFORM(MAC)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 namespace IOSApplication {
 
@@ -85,7 +85,7 @@ bool isMobileStore();
 bool isSpringBoard();
 WEBCORE_EXPORT bool isWebApp();
 WEBCORE_EXPORT bool isWebProcess();
-bool isIBooks();
+WEBCORE_EXPORT bool isIBooks();
 bool isIBooksStorytime();
 WEBCORE_EXPORT bool isTheSecretSocietyHiddenMystery();
 WEBCORE_EXPORT bool isCardiogram();
@@ -94,7 +94,7 @@ bool isMoviStarPlus();
 
 } // IOSApplication
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 #endif // PLATFORM(COCOA)
 

@@ -41,6 +41,7 @@ class HTMLAttachmentElement final : public HTMLElement {
 public:
     static Ref<HTMLAttachmentElement> create(const QualifiedName&, Document&);
     static const String& getAttachmentIdentifier(HTMLImageElement&);
+    static URL archiveResourceURL(const String&);
 
     WEBCORE_EXPORT URL blobURL() const;
     WEBCORE_EXPORT File* file() const;
@@ -61,6 +62,7 @@ public:
     bool hasEnclosingImage() const;
 
     WEBCORE_EXPORT String attachmentTitle() const;
+    String attachmentTitleForDisplay() const;
     String attachmentType() const;
     String attachmentPath() const;
 
@@ -72,7 +74,7 @@ private:
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
     bool shouldSelectOnMouseDown() final {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         return false;
 #else
         return true;

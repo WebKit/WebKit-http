@@ -170,6 +170,10 @@ imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription-off
 pointerevents [ Skip ]
 imported/w3c/web-platform-tests/pointerevents [ Skip ]
 
+# Datalist is unsupported in WK1
+fast/forms/datalist [ WontFix ]
+imported/w3c/web-platform-tests/html/semantics/forms/the-datalist-element [ WontFix ]
+
 # These tests test the Shadow DOM based HTML form validation UI but Mac WK1 is using native dialogs instead.
 fast/forms/validation-message-on-listbox.html
 fast/forms/validation-message-on-menulist.html
@@ -468,8 +472,6 @@ webkit.org/b/175195 media/modern-media-controls/css/webkit-cursor-visibility-aut
 webkit.org/b/168265 media/modern-media-controls/forward-button/forward-button.html [ Pass Timeout ]
 webkit.org/b/182571 media/modern-media-controls/tracks-support/tracks-support-show-panel-fullscreen.html [ Pass Timeout ]
 
-webkit.org/b/173432 [ Debug ] imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html [ Pass Crash ]
-
 # Requires WK2 loading support
 http/wpt/fetch/dnt-header-after-redirection.html [ Skip ]
 http/wpt/fetch/inspect-preflight.html [ Skip ]
@@ -639,3 +641,26 @@ css-dark-mode [ Skip ]
 webkit.org/b/189908 imported/w3c/web-platform-tests/resource-timing/resource_timing.worker.html [ Failure ]
 
 webkit.org/b/189756 [ Mojave+ ] compositing/filters/opacity-change-on-filtered-paints-into-ancestor.html [ Pass ImageOnlyFailure ]
+
+# WebGPU is not supported on WK1.
+webgpu [ Skip ]
+
+webkit.org/b/189680 platform/mac/media/audio-session-category-video-paused.html [ Pass Timeout ]
+
+webkit.org/b/190627  [ Mojave+ ] compositing/masks/compositing-clip-path-change-no-repaint.html  [ Pass Failure ]
+webkit.org/b/190627  [ Mojave+ ] compositing/repaint/iframes/compositing-iframe-scroll-repaint.html  [ Pass Failure ]
+webkit.org/b/190627  [ Mojave+ ] compositing/repaint/iframes/compositing-iframe-with-fixed-background-doc-repaint.html  [ Pass Failure ]
+
+webkit.org/b/189723 http/tests/security/cross-origin-xsl-redirect-BLOCKED.html [ Pass Failure ]
+
+webkit.org/b/190350 [ Mojave ] storage/indexeddb/database-odd-names.html [ Failure ]
+
+webkit.org/b/188421 [ Sierra+ ] fast/repaint/canvas-object-fit.html [ Pass Failure ]
+
+webkit.org/b/190832 [ Debug ] fast/forms/state-restore-to-non-edited-controls.html [ Pass Failure ]
+
+webkit.org/b/190833 [ Debug ] inspector/codemirror/prettyprinting-css.html [ Slow ]
+
+webkit.org/b/190849 http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny.html [ Pass Failure ]
+
+webkit.org/b/186406 [ Mojave+ ] compositing/iframes/display-none-subframe.html [ Pass Failure ]

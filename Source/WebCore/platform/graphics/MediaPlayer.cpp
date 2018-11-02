@@ -693,7 +693,7 @@ PlatformLayer* MediaPlayer::platformLayer() const
     return m_private->platformLayer();
 }
     
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
 void MediaPlayer::setVideoFullscreenLayer(PlatformLayer* layer, WTF::Function<void()>&& completionHandler)
 {
@@ -727,7 +727,7 @@ MediaPlayer::VideoFullscreenMode MediaPlayer::fullscreenMode() const
 
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 NSArray* MediaPlayer::timedMetadata() const
 {
@@ -929,7 +929,7 @@ void MediaPlayer::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& t
 
 bool MediaPlayer::isAvailable()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (DeprecatedGlobalSettings::isAVFoundationEnabled())
         return true;
 #endif
@@ -1180,7 +1180,7 @@ void MediaPlayer::readyStateChanged()
 
 void MediaPlayer::volumeChanged(double newVolume)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     UNUSED_PARAM(newVolume);
     m_volume = m_private->volume();
 #else
@@ -1490,7 +1490,7 @@ bool MediaPlayer::doesHaveAttribute(const AtomicString& attribute, AtomicString*
     return client().doesHaveAttribute(attribute, value);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 String MediaPlayer::mediaPlayerNetworkInterfaceName() const
 {
     return client().mediaPlayerNetworkInterfaceName();
@@ -1541,6 +1541,11 @@ AVPlayer* MediaPlayer::objCAVFoundationAVPlayer() const
 }
 
 #endif
+
+bool MediaPlayer::performTaskAtMediaTime(WTF::Function<void()>&& task, MediaTime time)
+{
+    return m_private->performTaskAtMediaTime(WTFMove(task), time);
+}
 
 #if !RELEASE_LOG_DISABLED
 const Logger& MediaPlayer::mediaPlayerLogger()

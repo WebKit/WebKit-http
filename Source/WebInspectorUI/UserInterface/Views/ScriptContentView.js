@@ -45,13 +45,6 @@ WI.ScriptContentView = class ScriptContentView extends WI.ContentView
         console.assert(script.range.startLine === 0);
         console.assert(script.range.startColumn === 0);
 
-        this._textEditor = new WI.SourceCodeTextEditor(script);
-        this._textEditor.addEventListener(WI.TextEditor.Event.ExecutionLineNumberDidChange, this._executionLineNumberDidChange, this);
-        this._textEditor.addEventListener(WI.TextEditor.Event.NumberOfSearchResultsDidChange, this._numberOfSearchResultsDidChange, this);
-        this._textEditor.addEventListener(WI.TextEditor.Event.FormattingDidChange, this._textEditorFormattingDidChange, this);
-        this._textEditor.addEventListener(WI.SourceCodeTextEditor.Event.ContentWillPopulate, this._contentWillPopulate, this);
-        this._textEditor.addEventListener(WI.SourceCodeTextEditor.Event.ContentDidPopulate, this._contentDidPopulate, this);
-
         var toolTip = WI.UIString("Pretty print");
         var activatedToolTip = WI.UIString("Original formatting");
         this._prettyPrintButtonNavigationItem = new WI.ActivateButtonNavigationItem("pretty-print", toolTip, activatedToolTip, "Images/NavigationItemCurleyBraces.svg", 13, 13);
@@ -66,7 +59,7 @@ WI.ScriptContentView = class ScriptContentView extends WI.ContentView
         this._showTypesButtonNavigationItem.enabled = false;
         this._showTypesButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
 
-        WI.showJavaScriptTypeInformationSetting.addEventListener(WI.Setting.Event.Changed, this._showJavaScriptTypeInformationSettingChanged, this);
+        WI.settings.showJavaScriptTypeInformation.addEventListener(WI.Setting.Event.Changed, this._showJavaScriptTypeInformationSettingChanged, this);
 
         let toolTipCodeCoverage = WI.UIString("Fade unexecuted code");
         let activatedToolTipCodeCoverage = WI.UIString("Do not fade unexecuted code");
@@ -75,7 +68,15 @@ WI.ScriptContentView = class ScriptContentView extends WI.ContentView
         this._codeCoverageButtonNavigationItem.enabled = false;
         this._codeCoverageButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
 
-        WI.enableControlFlowProfilerSetting.addEventListener(WI.Setting.Event.Changed, this._enableControlFlowProfilerSettingChanged, this);
+        WI.settings.enableControlFlowProfiler.addEventListener(WI.Setting.Event.Changed, this._enableControlFlowProfilerSettingChanged, this);
+
+        this._textEditor = new WI.SourceCodeTextEditor(script);
+        this._textEditor.addEventListener(WI.TextEditor.Event.ExecutionLineNumberDidChange, this._executionLineNumberDidChange, this);
+        this._textEditor.addEventListener(WI.TextEditor.Event.NumberOfSearchResultsDidChange, this._numberOfSearchResultsDidChange, this);
+        this._textEditor.addEventListener(WI.TextEditor.Event.FormattingDidChange, this._textEditorFormattingDidChange, this);
+        this._textEditor.addEventListener(WI.TextEditor.Event.MIMETypeChanged, this._handleTextEditorMIMETypeChanged, this);
+        this._textEditor.addEventListener(WI.SourceCodeTextEditor.Event.ContentWillPopulate, this._contentWillPopulate, this);
+        this._textEditor.addEventListener(WI.SourceCodeTextEditor.Event.ContentDidPopulate, this._contentDidPopulate, this);
     }
 
     // Public
@@ -128,8 +129,8 @@ WI.ScriptContentView = class ScriptContentView extends WI.ContentView
     {
         super.closed();
 
-        WI.showJavaScriptTypeInformationSetting.removeEventListener(null, null, this);
-        WI.enableControlFlowProfilerSetting.removeEventListener(null, null, this);
+        WI.settings.showJavaScriptTypeInformation.removeEventListener(null, null, this);
+        WI.settings.enableControlFlowProfiler.removeEventListener(null, null, this);
 
         this._textEditor.close();
     }
@@ -222,10 +223,10 @@ WI.ScriptContentView = class ScriptContentView extends WI.ContentView
         this._prettyPrintButtonNavigationItem.enabled = this._textEditor.canBeFormatted();
 
         this._showTypesButtonNavigationItem.enabled = this._textEditor.canShowTypeAnnotations();
-        this._showTypesButtonNavigationItem.activated = WI.showJavaScriptTypeInformationSetting.value;
+        this._showTypesButtonNavigationItem.activated = WI.settings.showJavaScriptTypeInformation.value;
 
         this._codeCoverageButtonNavigationItem.enabled = this._textEditor.canShowCoverageHints();
-        this._codeCoverageButtonNavigationItem.activated = WI.enableControlFlowProfilerSetting.value;
+        this._codeCoverageButtonNavigationItem.activated = WI.settings.enableControlFlowProfiler.value;
     }
 
     _togglePrettyPrint(event)
@@ -252,17 +253,22 @@ WI.ScriptContentView = class ScriptContentView extends WI.ContentView
 
     _showJavaScriptTypeInformationSettingChanged(event)
     {
-        this._showTypesButtonNavigationItem.activated = WI.showJavaScriptTypeInformationSetting.value;
+        this._showTypesButtonNavigationItem.activated = WI.settings.showJavaScriptTypeInformation.value;
     }
 
     _enableControlFlowProfilerSettingChanged(event)
     {
-        this._codeCoverageButtonNavigationItem.activated = WI.enableControlFlowProfilerSetting.value;
+        this._codeCoverageButtonNavigationItem.activated = WI.settings.enableControlFlowProfiler.value;
     }
 
     _textEditorFormattingDidChange(event)
     {
         this._prettyPrintButtonNavigationItem.activated = this._textEditor.formatted;
+    }
+
+    _handleTextEditorMIMETypeChanged(event)
+    {
+        this._prettyPrintButtonNavigationItem.enabled = this._textEditor.canBeFormatted();
     }
 
     _executionLineNumberDidChange(event)

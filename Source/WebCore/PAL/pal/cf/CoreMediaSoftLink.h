@@ -37,10 +37,10 @@
 #define SOFTLINK_AVKIT_FRAMEWORK() SOFT_LINK_FRAMEWORK_OPTIONAL(AVKit)
 #endif
 
-#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED < 130000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101400)
-#define CMSAMPLEBUFFERCALL_NOESCAPE
-#else
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101400)
 #define CMSAMPLEBUFFERCALL_NOESCAPE CF_NOESCAPE
+#else
+#define CMSAMPLEBUFFERCALL_NOESCAPE
 #endif
 
 SOFT_LINK_FRAMEWORK_FOR_HEADER(PAL, CoreMedia)
@@ -270,18 +270,14 @@ SOFT_LINK_FUNCTION_FOR_HEADER(PAL, CoreMedia, CMClockGetHostTimeClock, CMClockRe
 SOFT_LINK_FUNCTION_FOR_HEADER(PAL, CoreMedia, CMClockGetTime, CMTime, (CMClockRef clock), (clock))
 #define CMClockGetTime  softLink_CoreMedia_CMClockGetTime
 
-#if PLATFORM(APPLETV) || PLATFORM(MAC) || PLATFORM(IOSMAC) || PLATFORM(WATCHOS) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED < 120000)
-
-SOFT_LINK_FUNCTION_FOR_HEADER(PAL, CoreMedia, CMSampleBufferCallForEachSample, OSStatus, (CMSampleBufferRef sbuf, OSStatus (* CMSAMPLEBUFFERCALL_NOESCAPE callback)( CMSampleBufferRef sampleBuffer, CMItemCount index, void *refcon), void *refcon), (sbuf, callback, refcon))
+SOFT_LINK_FUNCTION_FOR_HEADER(PAL, CoreMedia, CMSampleBufferCallForEachSample, OSStatus, (CMSampleBufferRef sbuf, OSStatus (* CMSAMPLEBUFFERCALL_NOESCAPE callback)(CMSampleBufferRef sampleBuffer, CMItemCount index, void *refcon), void *refcon), (sbuf, callback, refcon))
 #define CMSampleBufferCallForEachSample softLink_CoreMedia_CMSampleBufferCallForEachSample
 SOFT_LINK_FUNCTION_FOR_HEADER(PAL, CoreMedia, CMSampleBufferCallBlockForEachSample, OSStatus, (CMSampleBufferRef sbuf, OSStatus (^ CMSAMPLEBUFFERCALL_NOESCAPE handler)(CMSampleBufferRef, CMItemCount)), (sbuf, handler))
 #define CMSampleBufferCallBlockForEachSample softLink_CoreMedia_CMSampleBufferCallBlockForEachSample
 
-#endif
-
 #endif // PLATFORM(COCOA)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 SOFT_LINK_FUNCTION_FOR_HEADER(PAL, CoreMedia, CMAudioClockCreate, OSStatus, (CFAllocatorRef allocator, CMClockRef *clockOut), (allocator, clockOut))
 #define CMAudioClockCreate softLink_CoreMedia_CMAudioClockCreate
@@ -295,7 +291,7 @@ SOFT_LINK_FUNCTION_FOR_HEADER(PAL, CoreMedia, CMTimeRangeContainsTime, Boolean, 
 SOFT_LINK_CONSTANT_FOR_HEADER(PAL, CoreMedia, kCMTimeIndefinite, CMTime)
 #define kCMTimeIndefinite get_CoreMedia_kCMTimeIndefinite()
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 #if PLATFORM(MAC)
 

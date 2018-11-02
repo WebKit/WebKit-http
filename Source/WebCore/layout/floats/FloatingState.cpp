@@ -31,7 +31,7 @@
 #include "FormattingContext.h"
 #include "LayoutBox.h"
 #include "LayoutContainer.h"
-#include "LayoutContext.h"
+#include "LayoutFormattingState.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -41,12 +41,12 @@ WTF_MAKE_ISO_ALLOCATED_IMPL(FloatingState);
 
 FloatingState::FloatItem::FloatItem(const Box& layoutBox, const FloatingState& floatingState)
     : m_layoutBox(makeWeakPtr(layoutBox))
-    , m_absoluteDisplayBox(FormattingContext::mapBoxToAncestor(floatingState.layoutContext(), layoutBox, downcast<Container>(floatingState.root())))
+    , m_absoluteDisplayBox(FormattingContext::mapBoxToAncestor(floatingState.layoutState(), layoutBox, downcast<Container>(floatingState.root())))
 {
 }
 
-FloatingState::FloatingState(LayoutContext& layoutContext, const Box& formattingContextRoot)
-    : m_layoutContext(layoutContext)
+FloatingState::FloatingState(LayoutState& layoutState, const Box& formattingContextRoot)
+    : m_layoutState(layoutState)
     , m_formattingContextRoot(makeWeakPtr(formattingContextRoot))
 {
 }
@@ -84,6 +84,54 @@ void FloatingState::append(const Box& layoutBox)
     ASSERT(is<Container>(*m_formattingContextRoot));
 
     m_floats.append({ layoutBox, *this });
+}
+
+FloatingState::Constraints FloatingState::constraints(LayoutUnit verticalPosition, const Box& formattingContextRoot) const
+{
+    if (isEmpty())
+        return { };
+
+    // 1. Convert vertical position if this floating context is inherited.
+    // 2. Find the inner left/right floats at verticalPosition.
+    // 3. Convert left/right positions back to formattingContextRoot's cooridnate system.
+    auto coordinateMappingIsRequired = &root() != &formattingContextRoot;
+    auto adjustedPosition = Position { 0, verticalPosition };
+
+    if (coordinateMappingIsRequired)
+        adjustedPosition = FormattingContext::mapCoordinateToAncestor(m_layoutState, adjustedPosition, downcast<Container>(formattingContextRoot), downcast<Container>(root()));
+
+    Constraints constraints;
+    for (int index = m_floats.size() - 1; index >= 0; --index) {
+        auto& floatItem = m_floats[index];
+
+        if (constraints.left && floatItem.isLeftPositioned())
+            continue;
+
+        if (constraints.right && !floatItem.isLeftPositioned())
+            continue;
+
+        auto rect = floatItem.rectWithMargin();
+        if (!(rect.top() <= adjustedPosition.y && adjustedPosition.y < rect.bottom()))
+            continue;
+
+        if (floatItem.isLeftPositioned())
+            constraints.left = rect.right();
+        else
+            constraints.right = rect.left();
+
+        if (constraints.left && constraints.right)
+            break;
+    }
+
+    if (coordinateMappingIsRequired) {
+        if (constraints.left)
+            constraints.left = *constraints.left - adjustedPosition.x;
+
+        if (constraints.right)
+            constraints.right = *constraints.right - adjustedPosition.x;
+    }
+
+    return constraints;
 }
 
 std::optional<LayoutUnit> FloatingState::bottom(const Box& formattingContextRoot, Clear type) const

@@ -35,13 +35,19 @@ namespace Layout {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(InlineFormattingState);
 
-InlineFormattingState::InlineFormattingState(Ref<FloatingState>&& floatingState, const LayoutContext& layoutContext)
-    : FormattingState(WTFMove(floatingState), Type::Inline, layoutContext)
+InlineFormattingState::InlineFormattingState(Ref<FloatingState>&& floatingState, LayoutState& layoutState)
+    : FormattingState(WTFMove(floatingState), Type::Inline, layoutState)
 {
 }
 
 InlineFormattingState::~InlineFormattingState()
 {
+}
+
+std::unique_ptr<FormattingContext> InlineFormattingState::formattingContext(const Box& formattingContextRoot)
+{
+    ASSERT(formattingContextRoot.establishesInlineFormattingContext());
+    return std::make_unique<InlineFormattingContext>(formattingContextRoot, *this);
 }
 
 }

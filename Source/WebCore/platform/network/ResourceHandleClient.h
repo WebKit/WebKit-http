@@ -33,7 +33,7 @@
 #include <pal/spi/cf/CFNetworkSPI.h>
 #endif
 
-#if PLATFORM(IOS) || USE(CFURLCONNECTION)
+#if PLATFORM(IOS_FAMILY) || USE(CFURLCONNECTION)
 #include <wtf/RetainPtr.h>
 #endif
 
@@ -102,7 +102,7 @@ public:
             const char*) { return false; }
 #endif
 
-#if PLATFORM(IOS) || USE(CFURLCONNECTION)
+#if PLATFORM(IOS_FAMILY) || USE(CFURLCONNECTION)
     virtual RetainPtr<CFDictionaryRef> connectionProperties(ResourceHandle*) { return nullptr; }
 #endif
 

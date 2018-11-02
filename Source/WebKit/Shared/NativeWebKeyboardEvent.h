@@ -51,7 +51,7 @@ typedef union _GdkEvent GdkEvent;
 #include <Message.h>
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include <wtf/RetainPtr.h>
 OBJC_CLASS WebEvent;
 #endif
@@ -73,7 +73,7 @@ public:
 #elif PLATFORM(GTK)
     NativeWebKeyboardEvent(const NativeWebKeyboardEvent&);
     NativeWebKeyboardEvent(GdkEvent*, const WebCore::CompositionResults&, InputMethodFilter::EventFakedForComposition, Vector<String>&& commands);
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     NativeWebKeyboardEvent(::WebEvent *);
 #elif PLATFORM(WPE)
     NativeWebKeyboardEvent(struct wpe_input_keyboard_event*);
@@ -89,7 +89,7 @@ public:
     bool isFakeEventForComposition() const { return m_fakeEventForComposition; }
 #elif PLATFORM(HAIKU)
     const BMessage* nativeEvent() const { return m_nativeEvent; }
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     ::WebEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #elif PLATFORM(WIN)
     const MSG* nativeEvent() const { return &m_nativeEvent; }
@@ -106,7 +106,7 @@ private:
     bool m_fakeEventForComposition;
 #elif PLATFORM(HAIKU)
     BMessage* m_nativeEvent;
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     RetainPtr<::WebEvent> m_nativeEvent;
 #elif PLATFORM(WIN)
     MSG m_nativeEvent;
@@ -114,7 +114,7 @@ private:
 };
 
 // FIXME: Find a better place for this.
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 bool isInHardwareKeyboardMode();
 #endif
 

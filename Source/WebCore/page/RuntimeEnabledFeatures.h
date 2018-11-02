@@ -216,6 +216,8 @@ public:
     void setPeerConnectionEnabled(bool isEnabled) { m_isPeerConnectionEnabled = isEnabled; }
     bool mdnsICECandidatesEnabled() const { return m_mdnsICECandidatesEnabled; }
     void setMDNSICECandidatesEnabled(bool isEnabled) { m_mdnsICECandidatesEnabled = isEnabled; }
+    bool webRTCH264SimulcastEnabled() const { return m_isWebRTCH264SimulcastEnabled; }
+    void setWebRTCH264SimulcastEnabled(bool isEnabled) { m_isWebRTCH264SimulcastEnabled = isEnabled; }
 #endif
 
 #if ENABLE(LEGACY_CSS_VENDOR_PREFIXES)
@@ -226,6 +228,11 @@ public:
 #if ENABLE(INPUT_TYPE_COLOR)
     bool inputTypeColorEnabled() const { return m_isInputTypeColorEnabled; }
     void setInputTypeColorEnabled(bool isEnabled) { m_isInputTypeColorEnabled = isEnabled; }
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+    bool dataListElementEnabled() const { return m_isDataListElementEnabled; }
+    void setDataListElementEnabled(bool isEnabled) { m_isDataListElementEnabled = isEnabled; }
 #endif
 
 #if ENABLE(INPUT_TYPE_DATE)
@@ -341,7 +348,7 @@ private:
     bool m_isWebShareEnabled { false };
     bool m_inputEventsEnabled { true };
     bool m_areWebAnimationsEnabled { true };
-    bool m_isWebAnimationsCSSIntegrationEnabled { true };
+    bool m_isWebAnimationsCSSIntegrationEnabled { false };
     bool m_isImageBitmapOffscreenCanvasEnabled { true };
     bool m_isCacheAPIEnabled { false };
     bool m_isFetchAPIEnabled { true };
@@ -389,10 +396,11 @@ private:
 #endif
 
 #if ENABLE(WEB_RTC)
-    bool m_isWebRTCVP8CodecEnabled { false };
+    bool m_isWebRTCVP8CodecEnabled { true };
     bool m_isWebRTCUnifiedPlanEnabled { true };
     bool m_isPeerConnectionEnabled { true };
     bool m_mdnsICECandidatesEnabled { false };
+    bool m_isWebRTCH264SimulcastEnabled { true };
 #endif
 
 #if ENABLE(LEGACY_CSS_VENDOR_PREFIXES)
@@ -400,7 +408,11 @@ private:
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    bool m_isInputTypeColorEnabled { true };
+    bool m_isInputTypeColorEnabled { false };
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+    bool m_isDataListElementEnabled { false };
 #endif
 
 #if ENABLE(INPUT_TYPE_DATE)

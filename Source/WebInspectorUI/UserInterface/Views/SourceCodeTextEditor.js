@@ -126,7 +126,7 @@ WI.SourceCodeTextEditor = class SourceCodeTextEditor extends WI.TextEditor
     {
         super.shown();
 
-        if (WI.showJavaScriptTypeInformationSetting.value) {
+        if (WI.settings.showJavaScriptTypeInformation.value) {
             if (this._typeTokenAnnotator)
                 this._typeTokenAnnotator.resume();
             if (!this._typeTokenScrollHandler && this._typeTokenAnnotator)
@@ -136,7 +136,7 @@ WI.SourceCodeTextEditor = class SourceCodeTextEditor extends WI.TextEditor
                 this._setTypeTokenAnnotatorEnabledState(false);
         }
 
-        if (WI.enableControlFlowProfilerSetting.value) {
+        if (WI.settings.enableControlFlowProfiler.value) {
             if (this._basicBlockAnnotator)
                 this._basicBlockAnnotator.resume();
 
@@ -464,11 +464,11 @@ WI.SourceCodeTextEditor = class SourceCodeTextEditor extends WI.TextEditor
         this.string = content;
 
         this._createBasicBlockAnnotator();
-        if (WI.enableControlFlowProfilerSetting.value && this._basicBlockAnnotator)
+        if (WI.settings.enableControlFlowProfiler.value && this._basicBlockAnnotator)
             this._basicBlockAnnotatorEnabled = true;
 
         this._createTypeTokenAnnotator();
-        if (WI.showJavaScriptTypeInformationSetting.value)
+        if (WI.settings.showJavaScriptTypeInformation.value)
             this._setTypeTokenAnnotatorEnabledState(true);
 
         this._contentDidPopulate();
@@ -1875,19 +1875,19 @@ WI.SourceCodeTextEditor = class SourceCodeTextEditor extends WI.TextEditor
                 mode: "text/javascript",
                 readOnly: "nocursor",
             });
-            codeMirror.on("update", () => {
-                this._popover.update();
-            });
 
             const isModule = false;
             const indentString = WI.indentString();
             const includeSourceMapData = false;
             let workerProxy = WI.FormatterWorkerProxy.singleton();
             workerProxy.formatJavaScript(data.description, isModule, indentString, includeSourceMapData, ({formattedText}) => {
-                codeMirror.setValue(formattedText || data.description);
-            });
+                if (candidate !== this.tokenTrackingController.candidate)
+                    return;
 
-            this._showPopover(content);
+                this._showPopover(content);
+                codeMirror.setValue(formattedText || data.description);
+                this._popover.update();
+            });
         }
 
         data.target.DebuggerAgent.getFunctionDetails(data.objectId, didGetDetails.bind(this));
@@ -2098,7 +2098,7 @@ WI.SourceCodeTextEditor = class SourceCodeTextEditor extends WI.TextEditor
                 this._disableScrollEventsForTypeTokenAnnotator();
         }
 
-        WI.showJavaScriptTypeInformationSetting.value = shouldActivate;
+        WI.settings.showJavaScriptTypeInformation.value = shouldActivate;
 
         this._updateTokenTrackingControllerState();
     }
@@ -2123,7 +2123,7 @@ WI.SourceCodeTextEditor = class SourceCodeTextEditor extends WI.TextEditor
                 this._disableScrollEventsForControlFlowAnnotator();
         }
 
-        WI.enableControlFlowProfilerSetting.value = shouldActivate;
+        WI.settings.enableControlFlowProfiler.value = shouldActivate;
     }
 
     _getAssociatedScript(position)

@@ -27,12 +27,12 @@
 
 #if ENABLE(WEBMETAL)
 
-#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-class GPURenderPassAttachmentDescriptor;
+class GPULegacyRenderPassAttachmentDescriptor;
 class WebMetalTexture;
 
 class WebMetalRenderPassAttachmentDescriptor : public RefCounted<WebMetalRenderPassAttachmentDescriptor> {
@@ -54,7 +54,7 @@ protected:
     WebMetalRenderPassAttachmentDescriptor();
 
 private:
-    virtual const GPURenderPassAttachmentDescriptor& descriptor() const = 0;
+    virtual const GPULegacyRenderPassAttachmentDescriptor& descriptor() const = 0;
 
     RefPtr<WebMetalTexture> m_texture;
 };

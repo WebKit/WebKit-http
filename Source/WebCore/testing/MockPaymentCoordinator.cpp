@@ -28,6 +28,7 @@
 
 #if ENABLE(APPLE_PAY)
 
+#include "ApplePaySessionPaymentRequest.h"
 #include "MockPayment.h"
 #include "MockPaymentContact.h"
 #include "MockPaymentMethod.h"
@@ -61,7 +62,7 @@ bool MockPaymentCoordinator::supportsVersion(unsigned version)
 #elif !ENABLE(APPLE_PAY_SESSION_V4)
     static const unsigned currentVersion = 3;
 #else
-    static const unsigned currentVersion = 4;
+    static const unsigned currentVersion = 5;
 #endif
 
     return version <= currentVersion;
@@ -77,13 +78,13 @@ std::optional<String> MockPaymentCoordinator::validatedPaymentNetwork(const Stri
 
 bool MockPaymentCoordinator::canMakePayments()
 {
-    return true;
+    return m_canMakePayments;
 }
 
 void MockPaymentCoordinator::canMakePaymentsWithActiveCard(const String&, const String&, Function<void(bool)>&& completionHandler)
 {
-    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] {
-        completionHandler(true);
+    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), canMakePaymentsWithActiveCard = m_canMakePaymentsWithActiveCard] {
+        completionHandler(canMakePaymentsWithActiveCard);
     });
 }
 
@@ -209,7 +210,10 @@ void MockPaymentCoordinator::cancelPayment()
 
 void MockPaymentCoordinator::completePaymentSession(std::optional<PaymentAuthorizationResult>&& result)
 {
-    if (!isFinalStateResult(result))
+    auto isFinalState = isFinalStateResult(result);
+    m_errors = WTFMove(result->errors);
+
+    if (!isFinalState)
         return;
 
     ++hideCount;

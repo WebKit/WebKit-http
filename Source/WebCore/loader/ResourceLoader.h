@@ -64,7 +64,7 @@ public:
 
     void deliverResponseAndData(const ResourceResponse&, RefPtr<SharedBuffer>&&);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual void startLoading()
     {
         start();
@@ -212,7 +212,7 @@ private:
     void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&, CompletionHandler<void(bool)>&&) override;
 #endif
     void receivedCancellation(ResourceHandle*, const AuthenticationChallenge& challenge) override { receivedCancellation(challenge); }
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     RetainPtr<CFDictionaryRef> connectionProperties(ResourceHandle*) override;
 #endif
 #if USE(CFURLCONNECTION)

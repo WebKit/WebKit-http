@@ -199,7 +199,7 @@ EncodedDataStatus ImageDecoderCG::encodedDataStatus() const
         return EncodedDataStatus::Error;
 
     case kCGImageStatusIncomplete: {
-        if (!isAllowedImageUTI(uti))
+        if (!isSupportImageSourceType(uti))
             return EncodedDataStatus::Error;
 
         RetainPtr<CFDictionaryRef> image0Properties = adoptCF(CGImageSourceCopyPropertiesAtIndex(m_nativeDecoder.get(), 0, imageSourceOptions().get()));
@@ -213,7 +213,7 @@ EncodedDataStatus ImageDecoderCG::encodedDataStatus() const
     }
 
     case kCGImageStatusComplete:
-        if (!isAllowedImageUTI(uti))
+        if (!isSupportImageSourceType(uti))
             return EncodedDataStatus::Error;
 
         return EncodedDataStatus::Complete;
@@ -418,7 +418,7 @@ NativeImagePtr ImageDecoderCG::createFrameImageAtIndex(size_t index, Subsampling
         image = adoptCF(CGImageSourceCreateImageAtIndex(m_nativeDecoder.get(), index, options.get()));
     }
     
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // <rdar://problem/7371198> - CoreGraphics changed the default caching behaviour in iOS 4.0 to kCGImageCachingTransient
     // which caused a performance regression for us since the images had to be resampled/recreated every time we called
     // CGContextDrawImage. We now tell CG to cache the drawn images. See also <rdar://problem/14366755> -
@@ -426,7 +426,7 @@ NativeImagePtr ImageDecoderCG::createFrameImageAtIndex(size_t index, Subsampling
     ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     CGImageSetCachingFlags(image.get(), kCGImageCachingTemporary);
     ALLOW_DEPRECATED_DECLARATIONS_END
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
     
     String uti = this->uti();
     if (uti.isEmpty() || uti != "public.xbitmap-image")

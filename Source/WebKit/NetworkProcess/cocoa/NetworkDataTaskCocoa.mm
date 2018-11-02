@@ -83,7 +83,7 @@ void NetworkDataTaskCocoa::applySniffingPoliciesAndBindRequestToInferfaceIfNeede
 {
 #if !PLATFORM(MAC)
     UNUSED_PARAM(shouldContentEncodingSniff);
-#elif __MAC_OS_X_VERSION_MIN_REQUIRED < 101302
+#elif __MAC_OS_X_VERSION_MIN_REQUIRED < 101400
     shouldContentEncodingSniff = true;
 #endif
     auto& cocoaSession = static_cast<NetworkSessionCocoa&>(m_session.get());
@@ -95,7 +95,7 @@ void NetworkDataTaskCocoa::applySniffingPoliciesAndBindRequestToInferfaceIfNeede
 
     auto mutableRequest = adoptNS([nsRequest mutableCopy]);
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101302
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     if (!shouldContentEncodingSniff)
         [mutableRequest _setProperty:@(YES) forKey:(NSString *)kCFURLRequestContentDecoderSkipURLCheck];
 #endif
@@ -152,7 +152,7 @@ static void updateTaskWithFirstPartyForSameSiteCookies(NSURLSessionDataTask* tas
 {
     if (request.isSameSiteUnspecified())
         return;
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
     static NSURL *emptyURL = [[NSURL alloc] initWithString:@""];
     if ([task respondsToSelector:@selector(set_siteForCookies:)])
         task._siteForCookies = request.isSameSite() ? task.currentRequest.URL : emptyURL;

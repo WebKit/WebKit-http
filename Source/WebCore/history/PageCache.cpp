@@ -85,6 +85,11 @@ static bool canCacheFrame(Frame& frame, DiagnosticLoggingClient& diagnosticLoggi
         return false;
     }
 
+    if (frame.isMainFrame() && frameLoader.stateMachine().isDisplayingInitialEmptyDocument()) {
+        PCLOG("   -MainFrame is displaying initial empty document");
+        return false;
+    }
+
     DocumentLoader* documentLoader = frameLoader.documentLoader();
     if (!documentLoader) {
         PCLOG("   -There is no DocumentLoader object");
@@ -203,7 +208,7 @@ static bool canCachePage(Page& page)
         logPageCacheFailureDiagnosticMessage(diagnosticLoggingClient, DiagnosticLoggingKeys::isDisabledKey());
         isCacheable = false;
     }
-#if ENABLE(DEVICE_ORIENTATION) && !PLATFORM(IOS)
+#if ENABLE(DEVICE_ORIENTATION) && !PLATFORM(IOS_FAMILY)
     if (DeviceMotionController::isActiveAt(&page)) {
         PCLOG("   -Page is using DeviceMotion");
         logPageCacheFailureDiagnosticMessage(diagnosticLoggingClient, DiagnosticLoggingKeys::deviceMotionKey());

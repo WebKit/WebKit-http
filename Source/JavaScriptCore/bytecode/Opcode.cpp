@@ -30,6 +30,7 @@
 #include "config.h"
 #include "Opcode.h"
 
+#include "BytecodeStructs.h"
 #include <wtf/PrintStream.h>
 
 #if ENABLE(OPCODE_STATS)
@@ -182,6 +183,36 @@ void OpcodeStats::resetLastInstruction()
     lastOpcode = -1;
 }
 
+#endif
+
+static unsigned metadataSizes[] = {
+
+#define METADATA_SIZE(size) size,
+    FOR_EACH_BYTECODE_METADATA_SIZE(METADATA_SIZE)
+#undef METADATA_SIZE
+
+};
+
+#if CPU(NEEDS_ALIGNED_ACCESS)
+static unsigned metadataAlignments[] = {
+
+#define METADATA_ALIGNMENT(size) size,
+    FOR_EACH_BYTECODE_METADATA_ALIGNMENT(METADATA_ALIGNMENT)
+#undef METADATA_ALIGNMENT
+
+};
+#endif
+
+unsigned metadataSize(OpcodeID opcodeID)
+{
+    return metadataSizes[opcodeID];
+}
+
+#if CPU(NEEDS_ALIGNED_ACCESS)
+unsigned metadataAlignment(OpcodeID opcodeID)
+{
+    return metadataAlignments[opcodeID];
+}
 #endif
 
 } // namespace JSC

@@ -93,6 +93,7 @@ public:
     virtual bool isGradientImage() const { return false; }
     virtual bool isSVGImage() const { return false; }
     virtual bool isPDFDocumentImage() const { return false; }
+    virtual bool isCustomPaintImage() const { return false; }
 
     virtual bool currentFrameKnownToBeOpaque() const = 0;
     virtual bool isAnimated() const { return false; }
@@ -116,7 +117,7 @@ public:
     float height() const { return size().height(); }
     virtual std::optional<IntPoint> hotSpot() const { return std::nullopt; }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual FloatSize originalSize() const { return size(); }
 #endif
 

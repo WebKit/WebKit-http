@@ -90,7 +90,7 @@ public:
     virtual bool handleTouchEvent(const PlatformTouchEvent&);
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual void didStartScroll() { }
     virtual void didEndScroll() { }
     virtual void didUpdateScroll() { }
@@ -225,7 +225,7 @@ public:
     enum VisibleContentRectIncludesScrollbars { ExcludeScrollbars, IncludeScrollbars };
     enum VisibleContentRectBehavior {
         ContentsVisibleRect,
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         LegacyIOSDocumentViewRect,
         LegacyIOSDocumentVisibleRect = LegacyIOSDocumentViewRect
 #else
@@ -250,6 +250,8 @@ public:
 
     // The totalContentsSize() is equivalent to the contentsSize() plus the header and footer heights.
     WEBCORE_EXPORT IntSize totalContentsSize() const;
+
+    virtual bool useDarkAppearance() const { return false; }
 
     virtual bool shouldSuspendScrollAnimations() const { return true; }
     WEBCORE_EXPORT virtual void scrollbarStyleChanged(ScrollbarStyle /*newStyle*/, bool /*forceUpdate*/);
@@ -284,7 +286,7 @@ public:
     virtual bool scheduleAnimation() { return false; }
     void serviceScrollAnimations();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool isHorizontalScrollerPinnedToMinimumPosition() const { return !horizontalScrollbar() || scrollOffset(HorizontalScrollbar) <= 0; }
     bool isHorizontalScrollerPinnedToMaximumPosition() const { return !horizontalScrollbar() || scrollOffset(HorizontalScrollbar) >= maximumScrollOffset().x(); }
     bool isVerticalScrollerPinnedToMinimumPosition() const { return !verticalScrollbar() || scrollOffset(VerticalScrollbar) <= 0; }

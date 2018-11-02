@@ -254,7 +254,7 @@ public:
     bool elementShouldAutoComplete(HTMLInputElement&);
     void setEditingValue(HTMLInputElement&, const String&);
     void setAutofilled(HTMLInputElement&, bool enabled);
-    enum class AutoFillButtonType { None, Contacts, Credentials, StrongPassword };
+    enum class AutoFillButtonType { None, Contacts, Credentials, StrongPassword, CreditCard };
     void setShowAutoFillButton(HTMLInputElement&, AutoFillButtonType);
     AutoFillButtonType autoFillButtonType(const HTMLInputElement&);
     AutoFillButtonType lastAutoFillButtonType(const HTMLInputElement&);
@@ -698,12 +698,8 @@ public:
 #endif
 
 #if ENABLE(APPLE_PAY)
-    MockPaymentCoordinator& mockPaymentCoordinator() const;
+    MockPaymentCoordinator& mockPaymentCoordinator(Document&);
 #endif
-
-    String timelineDescription(AnimationTimeline&);
-    void pauseTimeline(AnimationTimeline&);
-    void setTimelineCurrentTime(AnimationTimeline&, double);
 
     bool isSystemPreviewLink(Element&) const;
     bool isSystemPreviewImage(Element&) const;
@@ -799,10 +795,6 @@ private:
 
     std::unique_ptr<InspectorStubFrontend> m_inspectorFrontend;
     RefPtr<CacheStorageConnection> m_cacheStorageConnection;
-
-#if ENABLE(APPLE_PAY)
-    MockPaymentCoordinator* m_mockPaymentCoordinator { nullptr };
-#endif
 };
 
 } // namespace WebCore

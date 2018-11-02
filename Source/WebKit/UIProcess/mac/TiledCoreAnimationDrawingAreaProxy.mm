@@ -26,7 +26,7 @@
 #import "config.h"
 #import "TiledCoreAnimationDrawingAreaProxy.h"
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 #import "ColorSpaceData.h"
 #import "DrawingAreaMessages.h"
@@ -51,11 +51,6 @@ TiledCoreAnimationDrawingAreaProxy::TiledCoreAnimationDrawingAreaProxy(WebPagePr
 TiledCoreAnimationDrawingAreaProxy::~TiledCoreAnimationDrawingAreaProxy()
 {
     m_callbacks.invalidate(CallbackBase::Error::OwnerWasInvalidated);
-}
-
-void TiledCoreAnimationDrawingAreaProxy::attachInWebProcess()
-{
-    m_webPageProxy.process().send(Messages::DrawingArea::Attach(), m_webPageProxy.pageID());
 }
 
 void TiledCoreAnimationDrawingAreaProxy::deviceScaleFactorDidChange()
@@ -220,4 +215,4 @@ void TiledCoreAnimationDrawingAreaProxy::dispatchPresentationCallbacksAfterFlush
 
 } // namespace WebKit
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)

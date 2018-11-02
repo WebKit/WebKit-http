@@ -66,7 +66,7 @@ class ResourceError;
 class SWServer;
 class SecurityOrigin;
 class URL;
-enum class StoredCredentialsPolicy : uint8_t;
+enum class StoredCredentialsPolicy : bool;
 struct MessageWithMessagePorts;
 struct SecurityOriginData;
 struct SoupNetworkProxySettings;
@@ -157,7 +157,8 @@ public:
     void addWebsiteDataStore(WebsiteDataStoreParameters&&);
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    void updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID, const Vector<String>& domainsToBlock, bool shouldClearFirst, uint64_t contextId);
+    void updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID, const Vector<String>& domainsToBlock, uint64_t contextId);
+    void setShouldCapLifetimeForClientSideCookies(PAL::SessionID, bool value, uint64_t contextId);
     void hasStorageAccessForFrame(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, uint64_t contextId);
     void getAllStorageAccessEntries(PAL::SessionID, uint64_t contextId);
     void grantStorageAccess(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, std::optional<uint64_t> frameID, uint64_t pageID, uint64_t contextId);
@@ -193,7 +194,7 @@ public:
 #endif
 
 #if ENABLE(SANDBOX_EXTENSIONS)
-    void getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, WTF::Function<void(SandboxExtension::HandleArray&&)>&& completionHandler);
+    void getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, CompletionHandler<void(SandboxExtension::HandleArray&&)>&&);
     void updateTemporaryFileSandboxExtensions(const Vector<String>& paths, SandboxExtension::HandleArray&);
 #endif
 
@@ -213,7 +214,7 @@ public:
     void connectionToContextProcessWasClosed(Ref<WebSWServerToContextConnection>&&);
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool parentProcessHasServiceWorkerEntitlement() const;
 #else
     bool parentProcessHasServiceWorkerEntitlement() const { return true; }
@@ -314,10 +315,6 @@ private:
     void registerURLSchemeAsCORSEnabled(const String&) const;
     void registerURLSchemeAsCanDisplayOnlyIfCanRequest(const String&) const;
 
-#if ENABLE(SANDBOX_EXTENSIONS)
-    void didGetSandboxExtensionsForBlobFiles(uint64_t requestID, SandboxExtension::HandleArray&&);
-#endif
-
 #if ENABLE(INDEXED_DATABASE)
     void addIndexedDatabaseSession(PAL::SessionID, String&, SandboxExtension::Handle&);
     HashSet<WebCore::SecurityOriginData> indexedDatabaseOrigins(const String& path);
@@ -398,7 +395,6 @@ private:
 #endif
 
     HashMap<String, RefPtr<SandboxExtension>> m_blobTemporaryFileSandboxExtensions;
-    HashMap<uint64_t, WTF::Function<void(SandboxExtension::HandleArray&&)>> m_sandboxExtensionForBlobsCompletionHandlersStorageForNetworkProcess;
     
     Deque<CrossThreadTask> m_storageTasks;
     Lock m_storageTaskMutex;

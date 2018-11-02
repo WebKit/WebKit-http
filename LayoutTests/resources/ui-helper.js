@@ -132,6 +132,9 @@ window.UIHelper = class UIHelper {
 
     static waitForKeyboardToHide()
     {
+        if (!this.isWebKit2() || !this.isIOS())
+            return Promise.resolve();
+
         return new Promise(resolve => {
             testRunner.runUIScript(`
                 (function() {
@@ -294,7 +297,7 @@ window.UIHelper = class UIHelper {
         return new Promise(resolve => {
             testRunner.runUIScript(`(() => {
                 uiController.uiScriptComplete(uiController.isShowingDataListSuggestions);
-            })()`, resolve);
+            })()`, result => resolve(result === "true" ? true : false));
         });
     }
 
@@ -349,5 +352,13 @@ window.UIHelper = class UIHelper {
             return Promise.resolve();
 
         return new Promise(resolve => testRunner.runUIScript(`uiController.setViewScale(${scale})`, resolve));
+    }
+
+    static resignFirstResponder()
+    {
+        if (!this.isWebKit2())
+            return Promise.resolve();
+
+        return new Promise(resolve => testRunner.runUIScript(`uiController.resignFirstResponder()`, resolve));
     }
 }

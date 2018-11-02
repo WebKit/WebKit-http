@@ -104,6 +104,7 @@ class SubstituteData;
 class URL;
 class Widget;
 
+enum class LockBackForwardList : bool;
 enum class PolicyDecisionMode;
 enum class ShouldSkipSafeBrowsingCheck : bool;
 
@@ -131,7 +132,7 @@ public:
     virtual std::optional<uint64_t> frameID() const = 0;
     virtual PAL::SessionID sessionID() const = 0;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Returns true if the client forced the layout.
     virtual bool forceLayoutOnRestoreFromPageCache() = 0;
 #endif
@@ -152,7 +153,7 @@ public:
 #endif
         virtual bool dispatchDidReceiveInvalidCertificate(DocumentLoader*, const CertificateInfo&, const char* message) = 0;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual RetainPtr<CFDictionaryRef> connectionProperties(DocumentLoader*, unsigned long identifier) = 0;
 #endif
 
@@ -166,7 +167,7 @@ public:
     virtual void dispatchDidReceiveServerRedirectForProvisionalLoad() = 0;
     virtual void dispatchDidChangeProvisionalURL() { }
     virtual void dispatchDidCancelClientRedirect() = 0;
-    virtual void dispatchWillPerformClientRedirect(const URL&, double interval, WallTime fireDate) = 0;
+    virtual void dispatchWillPerformClientRedirect(const URL&, double interval, WallTime fireDate, LockBackForwardList) = 0;
     virtual void dispatchDidChangeMainDocument() { }
     virtual void dispatchWillChangeDocument(const URL&, const URL&) { }
     virtual void dispatchDidNavigateWithinPage() { }
@@ -277,7 +278,7 @@ public:
     
     virtual void savePlatformDataToCachedFrame(CachedFrame*) = 0;
     virtual void transitionToCommittedFromCachedFrame(CachedFrame*) = 0;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual void didRestoreFrameHierarchyForCachedFrame() = 0;
 #endif
     virtual void transitionToCommittedForNewPage() = 0;

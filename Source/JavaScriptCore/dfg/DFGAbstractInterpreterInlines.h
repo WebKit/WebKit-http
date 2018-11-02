@@ -589,11 +589,15 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).fixTypeForRepresentation(m_graph, node);
         break;
     }
-        
+
+    case ValueSub:
     case ValueAdd: {
-        ASSERT(node->binaryUseKind() == UntypedUse);
+        DFG_ASSERT(m_graph, node, node->binaryUseKind() == UntypedUse || node->binaryUseKind() == BigIntUse);
         clobberWorld();
-        setTypeForNode(node, SpecString | SpecBytecodeNumber);
+        if (node->binaryUseKind() == BigIntUse)
+            setTypeForNode(node, SpecBigInt);
+        else
+            setTypeForNode(node, SpecString | SpecBytecodeNumber | SpecBigInt);
         break;
     }
 
@@ -2574,10 +2578,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case PhantomNewArrayWithSpread:
     case PhantomNewArrayBuffer:
     case PhantomNewRegexp:
-    case BottomValue:
-        // This claims to return bottom.
+    case BottomValue: {
+        clearForNode(node);
         break;
-        
+    }
+
     case PutHint:
         break;
         

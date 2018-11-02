@@ -253,7 +253,7 @@
 #include "IDBOpenDBRequest.h"
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "CSSFontSelector.h"
 #include "DeviceMotionClientIOS.h"
 #include "DeviceMotionController.h"
@@ -309,6 +309,9 @@
 #endif
 #if ENABLE(WEBGL2)
 #include "WebGL2RenderingContext.h"
+#endif
+#if ENABLE(WEBGPU)
+#include "WebGPURenderingContext.h"
 #endif
 #if ENABLE(WEBMETAL)
 #include "WebMetalRenderingContext.h"
@@ -513,7 +516,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_intersectionObserversNotifyTimer(*this, &Document::notifyIntersectionObserversTimerFired)
 #endif
     , m_loadEventDelayTimer(*this, &Document::loadEventDelayTimerFired)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #if ENABLE(DEVICE_ORIENTATION)
     , m_deviceMotionClient(std::make_unique<DeviceMotionClientIOS>())
     , m_deviceMotionController(std::make_unique<DeviceMotionController>(m_deviceMotionClient.get()))
@@ -557,6 +560,8 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 
     for (auto& nodeListAndCollectionCount : m_nodeListAndCollectionCounts)
         nodeListAndCollectionCount = 0;
+
+    InspectorInstrumentation::addEventListenersToNode(*this);
 }
 
 #if ENABLE(FULLSCREEN_API)
@@ -599,7 +604,7 @@ Document::~Document()
     ASSERT(!m_disabledFieldsetElementsCount);
     ASSERT(m_inDocumentShadowRoots.isEmpty());
 
-#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
     m_deviceMotionClient->deviceMotionControllerDestroyed();
     m_deviceOrientationClient->deviceOrientationControllerDestroyed();
 #endif
@@ -2554,7 +2559,7 @@ void Document::suspendDeviceMotionAndOrientationUpdates()
     if (m_areDeviceMotionAndOrientationUpdatesSuspended)
         return;
     m_areDeviceMotionAndOrientationUpdatesSuspended = true;
-#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
     if (m_deviceMotionController)
         m_deviceMotionController->suspendUpdates();
     if (m_deviceOrientationController)
@@ -2567,7 +2572,7 @@ void Document::resumeDeviceMotionAndOrientationUpdates()
     if (!m_areDeviceMotionAndOrientationUpdatesSuspended)
         return;
     m_areDeviceMotionAndOrientationUpdatesSuspended = false;
-#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
     if (m_deviceMotionController)
         m_deviceMotionController->resumeUpdates();
     if (m_deviceOrientationController)
@@ -2584,7 +2589,7 @@ bool Document::shouldBypassMainWorldContentSecurityPolicy() const
 
 void Document::platformSuspendOrStopActiveDOMObjects()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (WebThreadCountOfObservedContentModifiers() > 0) {
         if (auto* frame = this->frame()) {
             if (auto* page = frame->page())
@@ -3602,7 +3607,7 @@ void Document::processSupportedColorSchemes(const String& colorSchemes)
 }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 void Document::processFormatDetection(const String& features)
 {
@@ -5887,6 +5892,10 @@ std::optional<RenderingContext> Document::getCSSCanvasContext(const String& type
     if (is<WebGL2RenderingContext>(*context))
         return RenderingContext { RefPtr<WebGL2RenderingContext> { &downcast<WebGL2RenderingContext>(*context) } };
 #endif
+#if ENABLE(WEBGPU)
+    if (is<WebGPURenderingContext>(*context))
+        return RenderingContext { RefPtr<WebGPURenderingContext> { &downcast<WebGPURenderingContext>(*context) } };
+#endif
 #if ENABLE(WEBMETAL)
     if (is<WebMetalRenderingContext>(*context))
         return RenderingContext { RefPtr<WebMetalRenderingContext> { &downcast<WebMetalRenderingContext>(*context) } };
@@ -6130,7 +6139,7 @@ MediaCanStartListener* Document::takeAnyMediaCanStartListener()
     return m_mediaCanStartListeners.takeAny();
 }
 
-#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
 
 DeviceMotionController* Document::deviceMotionController() const
 {
@@ -7592,25 +7601,32 @@ static void expandRootBoundsWithRootMargin(FloatRect& localRootBounds, const Len
     localRootBounds.expand(rootMarginFloatBox);
 }
 
-static void computeIntersectionRects(FrameView& frameView, IntersectionObserver& observer, Element& target, FloatRect& absTargetRect, FloatRect& absIntersectionRect, FloatRect& absRootBounds)
+struct IntersectionObservationState {
+    FloatRect absoluteTargetRect;
+    FloatRect absoluteRootBounds;
+    FloatRect absoluteIntersectionRect;
+    bool isIntersecting { false };
+};
+
+static std::optional<IntersectionObservationState> computeIntersectionState(FrameView& frameView, const IntersectionObserver& observer, Element& target)
 {
     // FIXME: Implement intersection computation for the cross-document case.
     if (observer.trackingDocument() != &target.document())
-        return;
+        return std::nullopt;
 
     auto* targetRenderer = target.renderer();
     if (!targetRenderer)
-        return;
+        return std::nullopt;
 
     FloatRect localRootBounds;
     RenderBlock* rootRenderer;
     if (observer.root()) {
         if (!observer.root()->renderer() || !is<RenderBlock>(observer.root()->renderer()))
-            return;
+            return std::nullopt;
 
         rootRenderer = downcast<RenderBlock>(observer.root()->renderer());
         if (!rootRenderer->isContainingBlockAncestorFor(*targetRenderer))
-            return;
+            return std::nullopt;
 
         if (rootRenderer->hasOverflowClip())
             localRootBounds = rootRenderer->contentBoxRect();
@@ -7632,14 +7648,19 @@ static void computeIntersectionRects(FrameView& frameView, IntersectionObserver&
     else if (is<RenderLineBreak>(targetRenderer))
         localTargetBounds = downcast<RenderLineBreak>(targetRenderer)->linesBoundingBox();
 
-    FloatRect rootLocalIntersectionRect = targetRenderer->computeRectForRepaint(localTargetBounds, rootRenderer);
-    rootLocalIntersectionRect.intersect(localRootBounds);
+    OptionSet<RenderObject::VisibleRectContextOption> visibleRectOptions = { RenderObject::VisibleRectContextOption::UseEdgeInclusiveIntersection, RenderObject::VisibleRectContextOption::ApplyCompositedClips, RenderObject::VisibleRectContextOption::ApplyCompositedContainerScrolls };
+    std::optional<LayoutRect> rootLocalTargetRect = targetRenderer->computeVisibleRectInContainer(localTargetBounds, rootRenderer, { false /* hasPositionFixedDescendant */, false /* dirtyRectIsFlipped */, visibleRectOptions });
+    FloatRect rootLocalIntersectionRect = localRootBounds;
 
-    if (!rootLocalIntersectionRect.isEmpty())
-        absIntersectionRect = rootRenderer->localToAbsoluteQuad(rootLocalIntersectionRect).boundingBox();
+    IntersectionObservationState intersectionState;
+    intersectionState.isIntersecting = rootLocalTargetRect && rootLocalIntersectionRect.edgeInclusiveIntersect(*rootLocalTargetRect);
 
-    absTargetRect = targetRenderer->localToAbsoluteQuad(FloatRect(localTargetBounds)).boundingBox();
-    absRootBounds = rootRenderer->localToAbsoluteQuad(localRootBounds).boundingBox();
+    if (intersectionState.isIntersecting)
+        intersectionState.absoluteIntersectionRect = rootRenderer->localToAbsoluteQuad(rootLocalIntersectionRect).boundingBox();
+
+    intersectionState.absoluteTargetRect = targetRenderer->localToAbsoluteQuad(FloatRect(localTargetBounds)).boundingBox();
+    intersectionState.absoluteRootBounds = rootRenderer->localToAbsoluteQuad(localRootBounds).boundingBox();
+    return intersectionState;
 }
 
 void Document::updateIntersectionObservations()
@@ -7667,28 +7688,38 @@ void Document::updateIntersectionObservations()
             ASSERT(index != notFound);
             auto& registration = targetRegistrations[index];
 
-            FloatRect absTargetRect;
-            FloatRect absIntersectionRect;
-            FloatRect absRootBounds;
-            computeIntersectionRects(*frameView, *observer, *target, absTargetRect, absIntersectionRect, absRootBounds);
+            auto intersectionState = computeIntersectionState(*frameView, *observer, *target);
 
-            // FIXME: Handle zero-area intersections (e.g., intersections involving zero-area targets).
-            bool isIntersecting = absIntersectionRect.area();
-            float intersectionRatio = isIntersecting ? absIntersectionRect.area() / absTargetRect.area() : 0;
+            float intersectionRatio = 0;
             size_t thresholdIndex = 0;
-            if (isIntersecting) {
-                auto& thresholds = observer->thresholds();
-                while (thresholdIndex < thresholds.size() && thresholds[thresholdIndex] <= intersectionRatio)
-                    ++thresholdIndex;
+            if (intersectionState) {
+                if (intersectionState->isIntersecting) {
+                    float absTargetArea = intersectionState->absoluteTargetRect.area();
+                    if (absTargetArea)
+                        intersectionRatio = intersectionState->absoluteIntersectionRect.area() / absTargetArea;
+                    else
+                        intersectionRatio = 1;
+
+                    auto& thresholds = observer->thresholds();
+                    while (thresholdIndex < thresholds.size() && thresholds[thresholdIndex] <= intersectionRatio)
+                        ++thresholdIndex;
+                }
             }
 
+
             if (!registration.previousThresholdIndex || thresholdIndex != registration.previousThresholdIndex) {
-                FloatRect targetBoundingClientRect = frameView->absoluteToClientRect(absTargetRect);
-                FloatRect clientIntersectionRect = isIntersecting ? frameView->absoluteToClientRect(absIntersectionRect) : FloatRect();
+                FloatRect targetBoundingClientRect;
+                FloatRect clientIntersectionRect;
+                FloatRect clientRootBounds;
+                if (intersectionState) {
+                    targetBoundingClientRect = frameView->absoluteToClientRect(intersectionState->absoluteTargetRect);
+                    clientRootBounds = frameView->absoluteToClientRect(intersectionState->absoluteRootBounds);
+                    if (intersectionState->isIntersecting)
+                        clientIntersectionRect = frameView->absoluteToClientRect(intersectionState->absoluteIntersectionRect);
+                }
 
                 // FIXME: Once cross-document observation is implemented, only report root bounds if the target document and
                 // the root document are similar-origin.
-                FloatRect clientRootBounds = frameView->absoluteToClientRect(absRootBounds);
                 std::optional<DOMRectInit> reportedRootBounds = DOMRectInit({
                     clientRootBounds.x(),
                     clientRootBounds.y(),
@@ -7703,7 +7734,7 @@ void Document::updateIntersectionObservations()
                     { clientIntersectionRect.x(), clientIntersectionRect.y(), clientIntersectionRect.width(), clientIntersectionRect.height() },
                     intersectionRatio,
                     target,
-                    isIntersecting,
+                    intersectionState? intersectionState->isIntersecting : false,
                 }));
                 needNotify = true;
                 registration.previousThresholdIndex = thresholdIndex;
@@ -8173,24 +8204,13 @@ DocumentTimeline& Document::timeline()
 
 Vector<RefPtr<WebAnimation>> Document::getAnimations()
 {
-    // FIXME: Filter and order the list as specified (webkit.org/b/179535).
-
     // For the list of animations to be current, we need to account for any pending CSS changes,
     // such as updates to CSS Animations and CSS Transitions.
     updateStyleIfNeeded();
 
-    Vector<RefPtr<WebAnimation>> animations;
-    if (m_timeline) {
-        for (auto& animation : m_timeline->animations()) {
-            if (animation->canBeListed() && is<KeyframeEffectReadOnly>(animation->effect())) {
-                if (auto* target = downcast<KeyframeEffectReadOnly>(animation->effect())->target()) {
-                    if (target->isDescendantOf(this))
-                        animations.append(animation);
-                }
-            }
-        }
-    }
-    return animations;
+    if (m_timeline)
+        return m_timeline->getAnimations();
+    return { };
 }
 
 #if ENABLE(ATTACHMENT_ELEMENT)

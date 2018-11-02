@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Michael Emmel mike.emmel@gmail.com
  * Copyright (C) 2007 Holger Hans Peter Freyther
  * Copyright (C) 2007 Pioneer Research Center USA, Inc.
@@ -70,6 +70,10 @@ typedef const struct __CTFont* CTFontRef;
 typedef struct HFONT__* HFONT;
 interface IDWriteFont;
 interface IDWriteFontFace;
+#endif
+
+#if USE(DIRECT2D)
+#include <dwrite.h>
 #endif
 
 namespace WebCore {
@@ -221,7 +225,7 @@ public:
 
     bool isEmoji() const
     {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         return m_isEmoji;
 #else
         return false;
@@ -232,7 +236,7 @@ public:
     RefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
 #endif
 
-#if !defined(NDEBUG) || PLATFORM(HAIKU)
+#if !LOG_DISABLED || PLATFORM(HAIKU)
     String description() const;
 #endif
 
@@ -307,7 +311,8 @@ private:
     static font_family m_FallbackFixedFontFamily;
     static font_family m_FallbackStandardFontFamily;
 #endif
-#if PLATFORM(IOS)
+
+#if PLATFORM(IOS_FAMILY)
     bool m_isEmoji { false };
 #endif
 

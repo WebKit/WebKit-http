@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "AffineTransform.h"
 #include "CanvasBase.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
@@ -74,6 +75,15 @@ public:
 #endif
     RefPtr<ImageBitmap> transferToImageBitmap();
     // void convertToBlob(ImageEncodeOptions options);
+
+    GraphicsContext* drawingContext() const final { return nullptr; }
+    GraphicsContext* existingDrawingContext() const final { return nullptr; }
+
+    void makeRenderingResultsAvailable() final { }
+    void didDraw(const FloatRect&) final { }
+
+    AffineTransform baseTransform() const final { return { }; }
+    Image* copiedImage() const final { return nullptr; }
 
     using RefCounted::ref;
     using RefCounted::deref;

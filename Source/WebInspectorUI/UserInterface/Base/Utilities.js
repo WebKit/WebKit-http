@@ -118,6 +118,35 @@ Object.defineProperty(Map.prototype, "take",
     }
 });
 
+Object.defineProperty(Set.prototype, "intersects",
+{
+    value(other)
+    {
+        if (!this.size || !other.size)
+            return false;
+
+        for (let item of this) {
+            if (other.has(item))
+                return true;
+        }
+
+        return false;
+    }
+});
+
+Object.defineProperty(Set.prototype, "isSubsetOf",
+{
+    value(other)
+    {
+        for (let item of this) {
+            if (!other.has(item))
+                return false;
+        }
+
+        return true;
+    }
+});
+
 Object.defineProperty(Node.prototype, "enclosingNodeOrSelfWithClass",
 {
     value(className)
@@ -350,16 +379,6 @@ Object.defineProperty(Element.prototype, "isInsertionCaretInside",
     }
 });
 
-Object.defineProperty(Element.prototype, "removeMatchingStyleClasses",
-{
-    value(classNameRegex)
-    {
-        var regex = new RegExp("(^|\\s+)" + classNameRegex + "($|\\s+)");
-        if (regex.test(this.className))
-            this.className = this.className.replace(regex, " ");
-    }
-});
-
 Object.defineProperty(Element.prototype, "createChild",
 {
     value(elementName, className)
@@ -560,6 +579,18 @@ Object.defineProperty(String.prototype, "isUpperCase",
     value()
     {
         return String(this) === this.toUpperCase();
+    }
+});
+
+Object.defineProperty(String.prototype, "truncateStart",
+{
+    value(maxLength)
+    {
+        "use strict";
+
+        if (this.length <= maxLength)
+            return this;
+        return ellipsis + this.substr(this.length - maxLength + 1);
     }
 });
 
@@ -1350,6 +1381,17 @@ Object.defineProperty(Array.prototype, "binaryIndexOf",
     {
         var index = this.lowerBound(value, comparator);
         return index < this.length && comparator(value, this[index]) === 0 ? index : -1;
+    }
+});
+
+Object.defineProperty(Promise, "chain",
+{
+    async value(callbacks, initialValue)
+    {
+        let results = [];
+        for (let i = 0; i < callbacks.length; ++i)
+            results.push(await callbacks[i](results.lastValue || initialValue || null, i));
+        return results;
     }
 });
 

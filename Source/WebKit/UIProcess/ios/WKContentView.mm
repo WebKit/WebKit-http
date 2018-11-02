@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WKContentViewInteraction.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "APIPageConfiguration.h"
 #import "AccessibilityIOS.h"
@@ -218,7 +218,6 @@ private:
     [self addSubview:_fixedClippingView.get()];
     [_fixedClippingView addSubview:_rootContentView.get()];
 
-    [self setupInteraction];
     [self setUserInteractionEnabled:YES];
 
     self.layer.hitTestsAsOpaque = YES;
@@ -275,6 +274,14 @@ private:
 
         [self _updateForScreen:newWindow.screen];
     }
+}
+
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+
+    if (self.window)
+        [self setupInteraction];
 }
 
 ALLOW_DEPRECATED_DECLARATIONS_BEGIN
@@ -352,9 +359,6 @@ ALLOW_DEPRECATED_DECLARATIONS_END
         return;
 
     [_textSelectionAssistant deactivateSelection];
-#if !PLATFORM(IOSMAC)
-    [[_webSelectionAssistant selectionView] setHidden:YES];
-#endif
 }
 
 - (CGRect)_computeUnobscuredContentRectRespectingInputViewBounds:(CGRect)unobscuredContentRect inputViewBounds:(CGRect)inputViewBounds
@@ -710,4 +714,4 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
 
 #endif // !PLATFORM(IOSMAC)
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

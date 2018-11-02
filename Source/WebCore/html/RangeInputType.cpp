@@ -42,6 +42,7 @@
 #include "MouseEvent.h"
 #include "PlatformMouseEvent.h"
 #include "RenderSlider.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScopedEventQueue.h"
 #include "ShadowRoot.h"
 #include "SliderThumbElement.h"
@@ -134,7 +135,7 @@ bool RangeInputType::isSteppable() const
     return true;
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 void RangeInputType::handleMouseDownEvent(MouseEvent& event)
 {
@@ -159,7 +160,7 @@ void RangeInputType::handleMouseDownEvent(MouseEvent& event)
 #if ENABLE(TOUCH_EVENTS)
 void RangeInputType::handleTouchEvent(TouchEvent& event)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     typedSliderThumbElement().handleTouchEvent(event);
 #elif ENABLE(TOUCH_SLIDER)
     ASSERT(element());
@@ -368,7 +369,11 @@ String RangeInputType::sanitizeValue(const String& proposedValue) const
 
 bool RangeInputType::shouldRespectListAttribute()
 {
+#if ENABLE(DATALIST_ELEMENT)
+    return RuntimeEnabledFeatures::sharedFeatures().dataListElementEnabled();
+#else
     return InputType::themeSupportsDataListUI(this);
+#endif
 }
 
 #if ENABLE(DATALIST_ELEMENT)

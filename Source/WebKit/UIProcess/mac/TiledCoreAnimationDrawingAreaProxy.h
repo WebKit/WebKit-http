@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 #include "DrawingAreaProxy.h"
 
@@ -38,8 +38,6 @@ public:
 
 private:
     // DrawingAreaProxy
-    void attachInWebProcess() override;
-
     void deviceScaleFactorDidChange() override;
     void sizeDidChange() override;
     void colorSpaceDidChange() override;
@@ -82,4 +80,4 @@ private:
 
 SPECIALIZE_TYPE_TRAITS_DRAWING_AREA_PROXY(TiledCoreAnimationDrawingAreaProxy, DrawingAreaTypeTiledCoreAnimation)
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)

@@ -75,7 +75,7 @@
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/text/TextStream.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "SelectionRect.h"
 #endif
 
@@ -661,7 +661,7 @@ void RenderObject::addPDFURLRect(PaintInfo& paintInfo, const LayoutPoint& paintO
 
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 // This function is similar in spirit to RenderText::absoluteRectsForRange, but returns rectangles
 // which are annotated with additional state which helps iOS draw selections in its unique way.
 // No annotations are added in this class.
@@ -962,9 +962,36 @@ LayoutRect RenderObject::clippedOverflowRectForRepaint(const RenderLayerModelObj
     return LayoutRect();
 }
 
-LayoutRect RenderObject::computeRectForRepaint(const LayoutRect& rect, const RenderLayerModelObject* repaintContainer, RepaintContext context) const
+bool RenderObject::shouldApplyCompositedContainerScrollsForRepaint()
 {
-    if (repaintContainer == this)
+#if PLATFORM(IOS_FAMILY)
+    return false;
+#else
+    return true;
+#endif
+}
+
+RenderObject::VisibleRectContext RenderObject::visibleRectContextForRepaint()
+{
+    VisibleRectContext context;
+    if (shouldApplyCompositedContainerScrollsForRepaint())
+        context.m_options.add(VisibleRectContextOption::ApplyCompositedContainerScrolls);
+    return context;
+}
+
+LayoutRect RenderObject::computeRectForRepaint(const LayoutRect& rect, const RenderLayerModelObject* repaintContainer) const
+{
+    return *computeVisibleRectInContainer(rect, repaintContainer, visibleRectContextForRepaint());
+}
+
+FloatRect RenderObject::computeFloatRectForRepaint(const FloatRect& rect, const RenderLayerModelObject* repaintContainer) const
+{
+    return *computeFloatVisibleRectInContainer(rect, repaintContainer, visibleRectContextForRepaint());
+}
+
+std::optional<LayoutRect> RenderObject::computeVisibleRectInContainer(const LayoutRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
+{
+    if (container == this)
         return rect;
 
     auto* parent = this->parent();
@@ -973,14 +1000,17 @@ LayoutRect RenderObject::computeRectForRepaint(const LayoutRect& rect, const Ren
 
     LayoutRect adjustedRect = rect;
     if (parent->hasOverflowClip()) {
-        downcast<RenderBox>(*parent).applyCachedClipAndScrollPositionForRepaint(adjustedRect);
-        if (adjustedRect.isEmpty())
+        bool isEmpty = !downcast<RenderBox>(*parent).applyCachedClipAndScrollPosition(adjustedRect, container, context);
+        if (isEmpty) {
+            if (context.m_options.contains(VisibleRectContextOption::UseEdgeInclusiveIntersection))
+                return std::nullopt;
             return adjustedRect;
+        }
     }
-    return parent->computeRectForRepaint(adjustedRect, repaintContainer, context);
+    return parent->computeVisibleRectInContainer(adjustedRect, container, context);
 }
 
-FloatRect RenderObject::computeFloatRectForRepaint(const FloatRect&, const RenderLayerModelObject*, bool) const
+std::optional<FloatRect> RenderObject::computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject*, VisibleRectContext) const
 {
     ASSERT_NOT_REACHED();
     return FloatRect();
@@ -1470,7 +1500,7 @@ void RenderObject::destroy()
 
     m_bitfields.setBeingDestroyed(true);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (hasLayer())
         downcast<RenderBoxModelObject>(*this).layer()->willBeDestroyed();
 #endif

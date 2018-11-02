@@ -67,7 +67,7 @@
 #include <wtf/WeakPtr.h>
 #include <wtf/text/AtomicStringHash.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "EventTrackingRegions.h"
 #endif
 
@@ -191,6 +191,7 @@ class VisitedLinkState;
 class WebAnimation;
 class WebGL2RenderingContext;
 class WebGLRenderingContext;
+class WebGPURenderingContext;
 class WebMetalRenderingContext;
 class WindowProxy;
 class XPathEvaluator;
@@ -220,7 +221,7 @@ class Touch;
 class TouchList;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 class DeviceMotionClient;
 class DeviceMotionController;
 class DeviceOrientationClient;
@@ -317,6 +318,9 @@ using RenderingContext = Variant<
 #endif
 #if ENABLE(WEBGL2)
     RefPtr<WebGL2RenderingContext>,
+#endif
+#if ENABLE(WEBGPU)
+    RefPtr<WebGPURenderingContext>,
 #endif
 #if ENABLE(WEBMETAL)
     RefPtr<WebMetalRenderingContext>,
@@ -883,7 +887,7 @@ public:
     // specified in an HTML file.
     void processHttpEquiv(const String& equiv, const String& content, bool isInDocumentHead);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void processFormatDetection(const String&);
 
     // Called when <meta name="apple-mobile-web-app-orientations"> changes.
@@ -1225,7 +1229,7 @@ public:
 #include <WebKitAdditions/DocumentIOS.h>
 #endif
 
-#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
     DeviceMotionController* deviceMotionController() const;
     DeviceOrientationController* deviceOrientationController() const;
 #endif
@@ -1857,7 +1861,7 @@ private:
     void setHasFrameSpecificStorageAccess(bool);
 #endif
 
-#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
+#if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
     std::unique_ptr<DeviceMotionClient> m_deviceMotionClient;
     std::unique_ptr<DeviceMotionController> m_deviceMotionController;
     std::unique_ptr<DeviceOrientationClient> m_deviceOrientationClient;

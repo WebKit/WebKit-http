@@ -26,7 +26,7 @@
 #import "config.h"
 #import "UIScriptController.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "DumpRenderTreeBrowserView.h"
 #import "UIScriptContext.h"
@@ -80,6 +80,10 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
             protectedThis->context()->asyncTaskComplete(callbackID);
         }];
     });
+}
+
+void UIScriptController::resignFirstResponder()
+{
 }
 
 void UIScriptController::setViewScale(double)
@@ -385,6 +389,11 @@ JSObjectRef UIScriptController::selectionEndGrabberViewRect() const
     return nullptr;
 }
 
+bool UIScriptController::isShowingDataListSuggestions() const
+{
+    return false;
 }
 
-#endif // PLATFORM(IOS)
+}
+
+#endif // PLATFORM(IOS_FAMILY)

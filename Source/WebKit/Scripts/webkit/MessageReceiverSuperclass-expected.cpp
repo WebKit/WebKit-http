@@ -29,8 +29,53 @@
 #include "ArgumentCoders.h"
 #include "Decoder.h"
 #include "HandleMessage.h"
+#include "TestClassName.h"
+#if ENABLE(TEST_FEATURE)
+#include "TestTwoStateEnum.h"
+#endif
 #include "WebPageMessages.h"
+#include <wtf/Optional.h>
 #include <wtf/text/WTFString.h>
+
+namespace Messages {
+
+namespace WebPage {
+
+#if ENABLE(TEST_FEATURE)
+
+void TestAsyncMessage::callReply(IPC::Decoder& decoder, CompletionHandler<void(uint64_t&&)>&& completionHandler)
+{
+    std::optional<uint64_t> result;
+    decoder >> result;
+    if (!result) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+    completionHandler(WTFMove(*result));
+}
+
+void TestAsyncMessage::cancelReply(CompletionHandler<void(uint64_t&&)>&& completionHandler)
+{
+    completionHandler({ });
+}
+
+void TestAsyncMessage::send(std::unique_ptr<IPC::Encoder>&& encoder, IPC::Connection& connection, uint64_t result)
+{
+    *encoder << result;
+    connection.sendSyncReply(WTFMove(encoder));
+}
+
+#endif
+
+void TestDelayedMessage::send(std::unique_ptr<IPC::Encoder>&& encoder, IPC::Connection& connection, const std::optional<WebKit::TestClassName>& optionalReply)
+{
+    *encoder << optionalReply;
+    connection.sendSyncReply(WTFMove(encoder));
+}
+
+} // namespace WebPage
+
+} // namespace Messages
 
 namespace WebKit {
 
@@ -40,7 +85,30 @@ void WebPage::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decod
         IPC::handleMessage<Messages::WebPage::LoadURL>(decoder, this, &WebPage::loadURL);
         return;
     }
+#if ENABLE(TEST_FEATURE)
+    if (decoder.messageName() == Messages::WebPage::TestAsyncMessage::name()) {
+        IPC::handleMessageAsync<Messages::WebPage::TestAsyncMessage>(connection, decoder, this, &WebPage::testAsyncMessage);
+        return;
+    }
+#endif
     WebPageBase::didReceiveMessage(connection, decoder);
 }
 
+void WebPage::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
+{
+    if (decoder.messageName() == Messages::WebPage::TestSyncMessage::name()) {
+        IPC::handleMessage<Messages::WebPage::TestSyncMessage>(decoder, *replyEncoder, this, &WebPage::testSyncMessage);
+        return;
+    }
+    if (decoder.messageName() == Messages::WebPage::TestDelayedMessage::name()) {
+        IPC::handleMessageDelayed<Messages::WebPage::TestDelayedMessage>(connection, decoder, replyEncoder, this, &WebPage::testDelayedMessage);
+        return;
+    }
+    UNUSED_PARAM(connection);
+    UNUSED_PARAM(decoder);
+    UNUSED_PARAM(replyEncoder);
+    ASSERT_NOT_REACHED();
+}
+
 } // namespace WebKit
+

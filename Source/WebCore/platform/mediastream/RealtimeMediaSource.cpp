@@ -133,10 +133,6 @@ void RealtimeMediaSource::notifyMutedObservers() const
     });
 }
 
-void RealtimeMediaSource::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>)
-{
-}
-
 void RealtimeMediaSource::notifySettingsDidChangeObservers(OptionSet<RealtimeMediaSourceSettings::Flag> flags)
 {
     ASSERT(isMainThread());
@@ -159,6 +155,13 @@ void RealtimeMediaSource::videoSampleAvailable(MediaSample& mediaSample)
 {
     forEachObserver([&](auto& observer) {
         observer.videoSampleAvailable(mediaSample);
+    });
+}
+
+void RealtimeMediaSource::remoteVideoSampleAvailable(RemoteVideoSample&& sample)
+{
+    forEachObserver([&](auto& observer) {
+        observer.remoteVideoSampleAvailable(sample);
     });
 }
 

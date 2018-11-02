@@ -45,6 +45,7 @@
 #include "DFGCapabilities.h"
 #include "DFGDominators.h"
 #include "DFGInPlaceAbstractState.h"
+#include "DFGMayExit.h"
 #include "DFGOSRAvailabilityAnalysisPhase.h"
 #include "DFGOSRExitFuzz.h"
 #include "DirectArguments.h"
@@ -592,6 +593,9 @@ private:
             break;
         case ValueAdd:
             compileValueAdd();
+            break;
+        case ValueSub:
+            compileValueSub();
             break;
         case StrCat:
             compileStrCat();
@@ -1733,9 +1737,10 @@ private:
         AbstractValue& value = m_state.operand(data->local);
         
         DFG_ASSERT(m_graph, m_node, isConcrete(data->format), data->format);
-        DFG_ASSERT(m_graph, m_node, data->format != FlushedDouble, data->format); // This just happens to not arise for GetStacks, right now. It would be trivial to support.
         
-        if (isInt32Speculation(value.m_type))
+        if (data->format == FlushedDouble)
+            setDouble(m_out.loadDouble(addressFor(data->machineLocal)));
+        else if (isInt32Speculation(value.m_type))
             setInt32(m_out.load32(payloadFor(data->machineLocal)));
         else
             setJSValue(m_out.load64(addressFor(data->machineLocal)));
@@ -1859,15 +1864,34 @@ private:
     {
         CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
         ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
-        Instruction* instruction = &baselineCodeBlock->instructions()[m_node->origin.semantic.bytecodeIndex];
+        const Instruction* instruction = baselineCodeBlock->instructions().at(m_node->origin.semantic.bytecodeIndex).ptr();
         auto repatchingFunction = operationValueAddOptimize;
         auto nonRepatchingFunction = operationValueAdd;
         compileBinaryMathIC<JITAddGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
     }
 
+    void compileValueSub()
+    {
+        if (m_node->isBinaryUseKind(BigIntUse)) {
+            LValue left = lowBigInt(m_node->child1());
+            LValue right = lowBigInt(m_node->child2());
+            
+            LValue result = vmCall(pointerType(), m_out.operation(operationSubBigInt), m_callFrame, left, right);
+            setJSValue(result);
+            return;
+        }
+
+        CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
+        ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
+        const Instruction* instruction = baselineCodeBlock->instructions().at(m_node->origin.semantic.bytecodeIndex).ptr();
+        auto repatchingFunction = operationValueSubOptimize;
+        auto nonRepatchingFunction = operationValueSub;
+        compileBinaryMathIC<JITSubGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
+    }
+
     template <typename Generator, typename Func1, typename Func2,
         typename = std::enable_if_t<std::is_function<typename std::remove_pointer<Func1>::type>::value && std::is_function<typename std::remove_pointer<Func2>::type>::value>>
-    void compileUnaryMathIC(ArithProfile* arithProfile, Instruction* instruction, Func1 repatchingFunction, Func2 nonRepatchingFunction)
+    void compileUnaryMathIC(ArithProfile* arithProfile, const Instruction* instruction, Func1 repatchingFunction, Func2 nonRepatchingFunction)
     {
         Node* node = m_node;
 
@@ -1953,7 +1977,7 @@ private:
 
     template <typename Generator, typename Func1, typename Func2,
         typename = std::enable_if_t<std::is_function<typename std::remove_pointer<Func1>::type>::value && std::is_function<typename std::remove_pointer<Func2>::type>::value>>
-    void compileBinaryMathIC(ArithProfile* arithProfile, Instruction* instruction, Func1 repatchingFunction, Func2 nonRepatchingFunction)
+    void compileBinaryMathIC(ArithProfile* arithProfile, const Instruction* instruction, Func1 repatchingFunction, Func2 nonRepatchingFunction)
     {
         Node* node = m_node;
         
@@ -2120,7 +2144,7 @@ private:
 
             CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
             ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
-            Instruction* instruction = &baselineCodeBlock->instructions()[m_node->origin.semantic.bytecodeIndex];
+            const Instruction* instruction = baselineCodeBlock->instructions().at(m_node->origin.semantic.bytecodeIndex).ptr();
             auto repatchingFunction = operationValueSubOptimize;
             auto nonRepatchingFunction = operationValueSub;
             compileBinaryMathIC<JITSubGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
@@ -2216,7 +2240,7 @@ private:
         case UntypedUse: {
             CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
             ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
-            Instruction* instruction = &baselineCodeBlock->instructions()[m_node->origin.semantic.bytecodeIndex];
+            const Instruction* instruction = baselineCodeBlock->instructions().at(m_node->origin.semantic.bytecodeIndex).ptr();
             auto repatchingFunction = operationValueMulOptimize;
             auto nonRepatchingFunction = operationValueMul;
             compileBinaryMathIC<JITMulGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
@@ -2753,7 +2777,7 @@ private:
         DFG_ASSERT(m_graph, m_node, m_node->child1().useKind() == UntypedUse);
         CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
         ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
-        Instruction* instruction = &baselineCodeBlock->instructions()[m_node->origin.semantic.bytecodeIndex];
+        const Instruction* instruction = baselineCodeBlock->instructions().at(m_node->origin.semantic.bytecodeIndex).ptr();
         auto repatchingFunction = operationArithNegateOptimize;
         auto nonRepatchingFunction = operationArithNegate;
         compileUnaryMathIC<JITNegGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
@@ -16311,7 +16335,26 @@ private:
     {
         callPreflight();
         LValue result = m_out.call(type, function, std::forward<Args>(args)...);
-        callCheck();
+        if (mayExit(m_graph, m_node))
+            callCheck();
+        else {
+            // We can't exit due to an exception, so we also can't throw an exception.
+#ifndef NDEBUG
+            LBasicBlock crash = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+
+            LValue exception = m_out.load64(m_out.absolute(vm().addressOfException()));
+            LValue hadException = m_out.notZero64(exception);
+
+            m_out.branch(
+                hadException, rarely(crash), usually(continuation));
+
+            LBasicBlock lastNext = m_out.appendTo(crash, continuation);
+            m_out.unreachable();
+
+            m_out.appendTo(continuation, lastNext);
+#endif
+        }
         return result;
     }
     

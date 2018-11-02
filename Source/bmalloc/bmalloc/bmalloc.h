@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -63,6 +63,12 @@ inline void* memalign(size_t alignment, size_t size, HeapKind kind = HeapKind::P
     return Cache::allocate(kind, alignment, size);
 }
 
+// Returns null on failure.
+inline void* tryRealloc(void* object, size_t newSize, HeapKind kind = HeapKind::Primary)
+{
+    return Cache::tryReallocate(kind, object, newSize);
+}
+
 // Crashes on failure.
 inline void* realloc(void* object, size_t newSize, HeapKind kind = HeapKind::Primary)
 {
@@ -105,7 +111,7 @@ inline size_t availableMemory()
     return bmalloc::availableMemory();
 }
     
-#if BPLATFORM(IOS)
+#if BPLATFORM(IOS_FAMILY)
 inline size_t memoryFootprint()
 {
     return bmalloc::memoryFootprint();

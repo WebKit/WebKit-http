@@ -1,3 +1,237 @@
+2018-10-31  Tadeu Zagallo  <tzagallo@apple.com>
+
+        REGRESSION(r237547): Exception handlers should be aware of wide opcodes
+        https://bugs.webkit.org/show_bug.cgi?id=191108
+        <rdar://problem/45690700>
+
+        Reviewed by Saam Barati.
+
+        * stress/wide-op_catch.js: Added.
+        (catch):
+
+2018-10-29  Mark Lam  <mark.lam@apple.com>
+
+        Correctly detect string overflow when using the 'Function' constructor.
+        https://bugs.webkit.org/show_bug.cgi?id=184883
+        <rdar://problem/36320331>
+
+        Reviewed by Saam Barati.
+
+        I've verified that this passes on 32-bit as well.
+
+        * slowMicrobenchmarks/function-constructor-with-huge-strings.js: Added.
+
+2018-10-29  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Add support for GetStack FlushedDouble
+        https://bugs.webkit.org/show_bug.cgi?id=191012
+        <rdar://problem/45265141>
+
+        Reviewed by Saam Barati.
+
+        * stress/get-stack-double.js: Added.
+        (bar):
+        (noInline):
+
+2018-10-29  Tadeu Zagallo  <tzagallo@apple.com>
+
+        New bytecode format for JSC
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        <rdar://problem/44186758>
+
+        Reviewed by Filip Pizlo.
+
+        Add tests to ensure that the inferred inline capacity for a narrow op_new_object will be capped at 255.
+
+        * stress/maximum-inline-capacity.js: Added.
+        (test1):
+        (test3.Foo):
+        (test3):
+
+2018-10-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237479 and r237484.
+        https://bugs.webkit.org/show_bug.cgi?id=190978
+
+        broke JSC on iOS (Requested by tadeuzagallo on #webkit).
+
+        Reverted changesets:
+
+        "New bytecode format for JSC"
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        https://trac.webkit.org/changeset/237479
+
+        "Gardening: Build fix after r237479."
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        https://trac.webkit.org/changeset/237484
+
+2018-10-26  Tadeu Zagallo  <tzagallo@apple.com>
+
+        New bytecode format for JSC
+        https://bugs.webkit.org/show_bug.cgi?id=187373
+        <rdar://problem/44186758>
+
+        Reviewed by Filip Pizlo.
+
+        Add tests to ensure that the inferred inline capacity for a narrow op_new_object will be capped at 255.
+
+        * stress/maximum-inline-capacity.js: Added.
+        (test1):
+        (test3.Foo):
+        (test3):
+
+2018-10-26  Mark Lam  <mark.lam@apple.com>
+
+        Fix missing edge cases with JSGlobalObjects having a bad time.
+        https://bugs.webkit.org/show_bug.cgi?id=189028
+        <rdar://problem/45204939>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-189028.js: Added.
+
+2018-10-22  Mark Lam  <mark.lam@apple.com>
+
+        DFGAbstractValue::m_arrayModes expects IndexingMode values, not IndexingType.
+        https://bugs.webkit.org/show_bug.cgi?id=190515
+        <rdar://problem/45222379>
+
+        Rubber-stamped by Saam Barati.
+
+        Adding another test.
+
+        * stress/regress-190515-2.js: Added.
+
+2018-10-22  Mark Lam  <mark.lam@apple.com>
+
+        DFGAbstractValue::m_arrayModes expects IndexingMode values, not IndexingType.
+        https://bugs.webkit.org/show_bug.cgi?id=190515
+        <rdar://problem/45222379>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-190515.js: Added.
+
+2018-10-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237254.
+        https://bugs.webkit.org/show_bug.cgi?id=190760
+
+        "It regresses JetStream 2 by 5% on some iOS devices"
+        (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] JSC should have "parseFunction" to optimize Function
+        constructor"
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+        https://trac.webkit.org/changeset/237254
+
+2018-10-19  Saam Barati  <sbarati@apple.com>
+
+        vmCall should check if we exit before emitting an OSR exit due to exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=190740
+        <rdar://problem/45220139>
+
+        Reviewed by Mark Lam.
+
+        * stress/dont-emit-osr-exits-for-every-call-ftl.js: Added.
+        (foo):
+
+2018-10-19  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for "^"
+        https://bugs.webkit.org/show_bug.cgi?id=186235
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/big-int-bitwise-xor-general.js: Added.
+        * stress/big-int-bitwise-xor-to-primitive-precedence.js: Added.
+        * stress/big-int-bitwise-xor-type-error.js: Added.
+        * stress/big-int-bitwise-xor-wrapped-value.js: Added.
+
+2018-10-19  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueSub into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=186176
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/big-int-subtraction-jit.js:
+        * stress/value-sub-big-int-prediction-propagation.js: Added.
+        * stress/value-sub-big-int-untyped.js: Added.
+        * stress/value-sub-spec-none-case.js: Added.
+
+2018-10-18  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] JSC should have "parseFunction" to optimize Function constructor
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        Reviewed by Mark Lam.
+
+        This patch fixes the line number of syntax errors raised by the Function constructor,
+        since we now parse the final code only once. And we no longer use block statement
+        for Function constructor's parsing.
+
+        * ChakraCore/test/Function/FuncBodyES5.baseline-jsc:
+        * stress/function-cache-with-parameters-end-position.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (i.anonymous):
+        * stress/function-constructor-name.js: Added.
+        (shouldBe):
+        (GeneratorFunction):
+        (AsyncFunction.async):
+        (AsyncGeneratorFunction.async):
+        (anonymous):
+        (async.anonymous):
+        * test262/expectations.yaml:
+
+2018-10-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237242.
+        https://bugs.webkit.org/show_bug.cgi?id=190701
+
+        it breaks "stress/sampling-profiler-basic.js" (Requested by
+        caiolima on #webkit).
+
+        Reverted changeset:
+
+        "[BigInt] Add ValueSub into DFG"
+        https://bugs.webkit.org/show_bug.cgi?id=186176
+        https://trac.webkit.org/changeset/237242
+
+2018-10-17  Keith Miller  <keith_miller@apple.com>
+
+        AI does not clear Phantom allocation nodes.
+        https://bugs.webkit.org/show_bug.cgi?id=190694
+
+        Reviewed by Saam Barati.
+
+        * stress/ftl-ai-filter-phantoms-should-clear-clear-value.js: Added.
+        (Day):
+        (DaysInYear):
+        (TimeInYear):
+        (TimeFromYear):
+        (DayFromYear):
+        (InLeapYear):
+        (YearFromTime):
+        (WeekDay):
+        (DaylightSavingTA):
+        (GetSecondSundayInMarch):
+        (TimeInMonth):
+
+2018-10-17  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueSub into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=186176
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/big-int-subtraction-jit.js:
+        * stress/value-sub-big-int-prediction-propagation.js: Added.
+        * stress/value-sub-big-int-untyped.js: Added.
+
 2018-10-16  Dominik Infuehr  <dinfuehr@igalia.com>
 
         [JSC] stress/array-prototype-concat-of-long-spliced-arrays2.js times out on arm and mips

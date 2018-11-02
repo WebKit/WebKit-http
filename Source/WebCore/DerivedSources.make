@@ -59,6 +59,7 @@ VPATH = \
     $(WebCore)/Modules/webdatabase \
     $(WebCore)/Modules/webdriver \
     $(WebCore)/Modules/websockets \
+    $(WebCore)/Modules/webgpu \
     $(WebCore)/Modules/webvr \
     $(WebCore)/accessibility \
     $(WebCore)/animation \
@@ -127,6 +128,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/credentialmanagement/CredentialRequestOptions.idl \
     $(WebCore)/Modules/credentialmanagement/CredentialsContainer.idl \
     $(WebCore)/Modules/credentialmanagement/NavigatorCredentials.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeyEncryptionScheme.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeyMessageEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySession.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySessionType.idl \
@@ -365,6 +367,14 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webdatabase/SQLTransactionCallback.idl \
     $(WebCore)/Modules/webdatabase/SQLTransactionErrorCallback.idl \
     $(WebCore)/Modules/webdriver/NavigatorWebDriver.idl \
+    $(WebCore)/Modules/webgpu/DOMWindowWebGPU.idl \
+    $(WebCore)/Modules/webgpu/WebGPU.idl \
+    $(WebCore)/Modules/webgpu/WebGPUAdapter.idl \
+    $(WebCore)/Modules/webgpu/WebGPUAdapterDescriptor.idl \
+    $(WebCore)/Modules/webgpu/WebGPUDevice.idl \
+    $(WebCore)/Modules/webgpu/WebGPURenderingContext.idl \
+    $(WebCore)/Modules/webgpu/WebGPUSwapChain.idl \
+    $(WebCore)/Modules/webgpu/WebGPUSwapChainDescriptor.idl \
     $(WebCore)/Modules/websockets/CloseEvent.idl \
     $(WebCore)/Modules/websockets/WebSocket.idl \
     $(WebCore)/Modules/webvr/DOMWindowWebVR.idl \
@@ -719,6 +729,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/html/canvas/OESTextureHalfFloatLinear.idl \
     $(WebCore)/html/canvas/OESVertexArrayObject.idl \
     $(WebCore)/html/canvas/OffscreenCanvasRenderingContext2D.idl \
+	$(WebCore)/html/canvas/PaintRenderingContext2D.idl \
     $(WebCore)/html/canvas/Path2D.idl \
     $(WebCore)/html/canvas/WebGL2RenderingContext.idl \
     $(WebCore)/html/canvas/WebGLActiveInfo.idl \
@@ -1052,10 +1063,10 @@ ifeq ($(USE_LLVM_TARGET_TRIPLES_FOR_CLANG),YES)
 	TARGET_TRIPLE_FLAGS=-target $(WK_CURRENT_ARCH)-$(LLVM_TARGET_TRIPLE_VENDOR)-$(LLVM_TARGET_TRIPLE_OS_VERSION)$(LLVM_TARGET_TRIPLE_SUFFIX)
 endif
 
-ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS ' | cut -d' ' -f3), 1)
-    WTF_PLATFORM_IOS = 1
+ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS_FAMILY ' | cut -d' ' -f3), 1)
+    WTF_PLATFORM_IOS_FAMILY = 1
 else
-    WTF_PLATFORM_IOS = 0
+    WTF_PLATFORM_IOS_FAMILY = 0
 endif
 
 ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_MAC ' | cut -d' ' -f3), 1)
@@ -1074,8 +1085,8 @@ ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_F
     ENABLE_ORIENTATION_EVENTS = 1
 endif
 
-ifeq ($(WTF_PLATFORM_IOS), 1)
-FEATURE_AND_PLATFORM_DEFINES = $(FEATURE_DEFINES) WTF_PLATFORM_IOS
+ifeq ($(WTF_PLATFORM_IOS_FAMILY), 1)
+FEATURE_AND_PLATFORM_DEFINES = $(FEATURE_DEFINES) WTF_PLATFORM_IOS_FAMILY
 else ifeq ($(WTF_PLATFORM_MAC), 1)
 FEATURE_AND_PLATFORM_DEFINES = $(FEATURE_DEFINES) WTF_PLATFORM_MAC
 else
@@ -1099,7 +1110,7 @@ ifeq ($(findstring ENABLE_IOS_GESTURE_EVENTS,$(FEATURE_DEFINES)), ENABLE_IOS_GES
 ADDITIONAL_BINDING_IDLS += GestureEvent.idl
 endif
 
-ifeq ($(WTF_PLATFORM_IOS), 1)
+ifeq ($(WTF_PLATFORM_IOS_FAMILY), 1)
 ifeq ($(findstring ENABLE_IOS_TOUCH_EVENTS,$(FEATURE_DEFINES)), ENABLE_IOS_TOUCH_EVENTS)
 ADDITIONAL_BINDING_IDLS += \
     DocumentTouch.idl \
@@ -1125,7 +1136,7 @@ $(ADDITIONAL_BINDING_IDLS) : % : WebKitAdditions/%
 
 endif # MACOS
 
-ifneq ($(WTF_PLATFORM_IOS), 1)
+ifneq ($(WTF_PLATFORM_IOS_FAMILY), 1)
 JS_BINDING_IDLS += \
     $(WebCore)/dom/DocumentTouch.idl \
     $(WebCore)/dom/Touch.idl \

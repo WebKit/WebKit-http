@@ -51,6 +51,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/webauthn"
     "${WEBCORE_DIR}/Modules/webdatabase"
     "${WEBCORE_DIR}/Modules/webdriver"
+    "${WEBCORE_DIR}/Modules/webgpu"
     "${WEBCORE_DIR}/Modules/websockets"
     "${WEBCORE_DIR}/Modules/webvr"
     "${WEBCORE_DIR}/accessibility"
@@ -106,7 +107,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
     "${WEBCORE_DIR}/platform/graphics/iso"
     "${WEBCORE_DIR}/platform/graphics/opentype"
-    "${WEBCORE_DIR}/platform/graphics/texmap"
+    "${WEBCORE_DIR}/platform/mediarecorder"
     "${WEBCORE_DIR}/platform/mediastream"
     "${WEBCORE_DIR}/platform/mediastream/libwebrtc"
     "${WEBCORE_DIR}/platform/mock"
@@ -194,6 +195,7 @@ set(WebCore_IDL_INCLUDES
     Modules/streams
     Modules/webaudio
     Modules/webdatabase
+    Modules/webgpu
     Modules/websockets
     Modules/webvr
 
@@ -450,6 +452,15 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webdatabase/SQLTransactionErrorCallback.idl
 
     Modules/webdriver/NavigatorWebDriver.idl
+
+    Modules/webgpu/DOMWindowWebGPU.idl
+    Modules/webgpu/WebGPU.idl
+    Modules/webgpu/WebGPUAdapter.idl
+    Modules/webgpu/WebGPUAdapterDescriptor.idl
+    Modules/webgpu/WebGPUDevice.idl
+    Modules/webgpu/WebGPURenderingContext.idl
+    Modules/webgpu/WebGPUSwapChain.idl
+    Modules/webgpu/WebGPUSwapChainDescriptor.idl
 
     Modules/websockets/CloseEvent.idl
     Modules/websockets/WebSocket.idl
@@ -802,6 +813,7 @@ set(WebCore_NON_SVG_IDL_FILES
     html/canvas/ImageBitmapRenderingContextSettings.idl
     html/canvas/ImageSmoothingQuality.idl
     html/canvas/OffscreenCanvasRenderingContext2D.idl
+    html/canvas/PaintRenderingContext2D.idl
     html/canvas/Path2D.idl
     html/canvas/WebMetalBuffer.idl
     html/canvas/WebMetalCommandBuffer.idl
@@ -1176,6 +1188,7 @@ if (ENABLE_ENCRYPTED_MEDIA)
         html/MediaEncryptedEvent.cpp
     )
     list(APPEND WebCore_IDL_FILES
+        Modules/encryptedmedia/MediaKeyEncryptionScheme.idl
         Modules/encryptedmedia/MediaKeyMessageEvent.idl
         Modules/encryptedmedia/MediaKeySession.idl
         Modules/encryptedmedia/MediaKeySessionType.idl

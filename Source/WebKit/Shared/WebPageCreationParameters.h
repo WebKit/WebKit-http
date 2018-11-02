@@ -139,8 +139,9 @@ struct WebPageCreationParameters {
     ColorSpaceData colorSpace;
     bool useSystemAppearance;
     bool useDarkAppearance;
+    bool shouldDelayAttachingDrawingArea { false };
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WebCore::FloatSize screenSize;
     WebCore::FloatSize availableScreenSize;
     WebCore::FloatSize overrideScreenSize;

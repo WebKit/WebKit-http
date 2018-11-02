@@ -63,7 +63,7 @@ UIScriptController::UIScriptController(UIScriptContext& context)
 {
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 void UIScriptController::checkForOutstandingCallbacks()
 {
 }
@@ -214,6 +214,10 @@ void UIScriptController::setViewScale(double)
 {
 }
 
+void UIScriptController::resignFirstResponder()
+{
+}
+
 void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef)
 {
 }
@@ -229,7 +233,7 @@ void UIScriptController::playBackEventStream(JSStringRef stream, JSValueRef call
     platformPlayBackEventStream(stream, callback);
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 void UIScriptController::touchDownAtPoint(long x, long y, long touchCount, JSValueRef)
 {
 }
@@ -503,6 +507,11 @@ void UIScriptController::setShareSheetCompletesImmediatelyWithResolution(bool)
 {
 }
 
+bool UIScriptController::isShowingDataListSuggestions() const
+{
+    return false;
+}
+
 #endif // !PLATFORM(COCOA)
 
 #if !PLATFORM(MAC)
@@ -528,11 +537,6 @@ void UIScriptController::makeWindowContentViewFirstResponder()
 }
 
 bool UIScriptController::isWindowContentViewFirstResponder() const
-{
-    return false;
-}
-
-bool UIScriptController::isShowingDataListSuggestions() const
 {
     return false;
 }

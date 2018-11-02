@@ -255,7 +255,7 @@
 #include <gtk/gtk.h>
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "RemoteLayerTreeDrawingArea.h"
 #include <CoreGraphics/CoreGraphics.h>
 #include <WebCore/Icon.h>
@@ -380,7 +380,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_pageScrolledHysteresis([this](PAL::HysteresisState state) { if (state == PAL::HysteresisState::Stopped) pageStoppedScrolling(); }, pageScrollHysteresisDuration)
     , m_canRunBeforeUnloadConfirmPanel(parameters.canRunBeforeUnloadConfirmPanel)
     , m_canRunModal(parameters.canRunModal)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     , m_forceAlwaysUserScalable(parameters.ignoresViewportScaleLimits)
     , m_screenSize(parameters.screenSize)
     , m_availableScreenSize(parameters.availableScreenSize)
@@ -394,12 +394,15 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_userInterfaceLayoutDirection(parameters.userInterfaceLayoutDirection)
     , m_overrideContentSecurityPolicy { parameters.overrideContentSecurityPolicy }
     , m_cpuLimit(parameters.cpuLimit)
+#if PLATFORM(MAC)
+    , m_shouldAttachDrawingAreaOnPageTransition(parameters.shouldDelayAttachingDrawingArea)
+#endif
 {
     ASSERT(m_pageID);
 
     m_pageGroup = WebProcess::singleton().webPageGroup(parameters.pageGroupData);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     DeprecatedGlobalSettings::setShouldManageAudioSessionCategory(true);
 #endif
 
@@ -497,7 +500,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     m_page->setGroupName(m_pageGroup->identifier());
     m_page->setDeviceScaleFactor(parameters.deviceScaleFactor);
     m_page->setUserInterfaceLayoutDirection(m_userInterfaceLayoutDirection);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     m_page->setTextAutosizingWidth(parameters.textAutosizingWidth);
 #endif
 
@@ -621,7 +624,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     m_userContentController->addContentRuleLists(parameters.contentRuleLists);
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     setViewportConfigurationViewLayoutSize(parameters.viewportConfigurationViewLayoutSize, parameters.viewportConfigurationLayoutSizeScaleFactor);
     setMaximumUnobscuredSize(parameters.maximumUnobscuredSize);
 #endif
@@ -653,13 +656,27 @@ void WebPage::enableEnumeratingAllNetworkInterfaces()
 
 void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
 {
-    if (!m_drawingArea) {
+    ASSERT(m_drawingArea);
+
+    setSize(parameters.viewSize);
+
+    if (m_shouldResetDrawingArea) {
+        // Make sure we destroy the previous drawing area before constructing the new one as DrawingArea registers / unregisters
+        // itself as an IPC::MesssageReceiver in its constructor / destructor.
+        m_drawingArea = nullptr;
+        m_shouldResetDrawingArea = false;
+
         m_drawingArea = DrawingArea::create(*this, parameters);
         m_drawingArea->setPaintingEnabled(false);
         m_drawingArea->setShouldScaleViewToFitDocument(parameters.shouldScaleViewToFitDocument);
         m_drawingArea->updatePreferences(parameters.store);
         m_drawingArea->setPaintingEnabled(true);
+#if PLATFORM(MAC)
+        m_shouldAttachDrawingAreaOnPageTransition = parameters.shouldDelayAttachingDrawingArea;
+#endif
     }
+
+    setViewLayoutSize(parameters.viewLayoutSize);
 
     if (m_activityState != parameters.activityState)
         setActivityState(parameters.activityState, ActivityStateChangeAsynchronous, Vector<CallbackID>());
@@ -715,12 +732,12 @@ WebPage::~WebPage()
     for (auto* pluginView : m_pluginViews)
         pluginView->webPageDestroyed();
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (m_headerBanner)
         m_headerBanner->detachFromPage();
     if (m_footerBanner)
         m_footerBanner->detachFromPage();
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 
     webProcess.removeMessageReceiver(Messages::WebPage::messageReceiverName(), m_pageID);
 
@@ -736,7 +753,7 @@ WebPage::~WebPage()
     webPageCounter.decrement();
 #endif
     
-#if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if (PLATFORM(IOS_FAMILY) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     if (m_playbackSessionManager)
         m_playbackSessionManager->invalidate();
 
@@ -1155,8 +1172,7 @@ void WebPage::enterAcceleratedCompositingMode(GraphicsLayer* layer)
 
 void WebPage::exitAcceleratedCompositingMode()
 {
-    if (m_drawingArea)
-        m_drawingArea->setRootCompositingLayer(0);
+    m_drawingArea->setRootCompositingLayer(0);
 }
 
 void WebPage::close()
@@ -1307,6 +1323,9 @@ void WebPage::loadRequest(LoadParameters&& loadParameters)
     ShouldOpenExternalURLsPolicy externalURLsPolicy = static_cast<ShouldOpenExternalURLsPolicy>(loadParameters.shouldOpenExternalURLsPolicy);
     frameLoadRequest.setShouldOpenExternalURLsPolicy(externalURLsPolicy);
     frameLoadRequest.setShouldTreatAsContinuingLoad(loadParameters.shouldTreatAsContinuingLoad);
+    frameLoadRequest.setLockHistory(loadParameters.lockHistory);
+    frameLoadRequest.setlockBackForwardList(loadParameters.lockBackForwardList);
+    frameLoadRequest.setClientRedirectSourceForHistory(loadParameters.clientRedirectSourceForHistory);
 
     corePage()->userInputBridge().loadRequest(WTFMove(frameLoadRequest));
 
@@ -1706,7 +1725,7 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
     double totalScale = scale * viewScaleFactor();
     bool willChangeScaleFactor = totalScale != totalScaleFactor();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (willChangeScaleFactor) {
         if (!m_inDynamicSizeUpdate)
             m_dynamicSizeUpdateHistory.clear();
@@ -1842,7 +1861,7 @@ void WebPage::setUseFixedLayout(bool fixed)
         return;
     m_useFixedLayout = fixed;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     m_page->settings().setFixedElementsLayoutRelativeToFrame(fixed);
 #endif
 
@@ -1880,7 +1899,7 @@ IntSize WebPage::fixedLayoutSize() const
 
 void WebPage::disabledAdaptationsDidChange(const OptionSet<DisabledAdaptations>& disabledAdaptations)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_viewportConfiguration.setDisabledAdaptations(disabledAdaptations))
         viewportConfigurationChanged();
 #else
@@ -1890,7 +1909,7 @@ void WebPage::disabledAdaptationsDidChange(const OptionSet<DisabledAdaptations>&
 
 void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArguments)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (!m_page->settings().shouldIgnoreMetaViewport() && m_viewportConfiguration.setViewportArguments(viewportArguments))
         viewportConfigurationChanged();
 #endif
@@ -1905,7 +1924,7 @@ void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArgum
 #endif
 #endif
 
-#if !PLATFORM(IOS) && !USE(COORDINATED_GRAPHICS)
+#if !PLATFORM(IOS_FAMILY) && !USE(COORDINATED_GRAPHICS)
     UNUSED_PARAM(viewportArguments);
 #endif
 }
@@ -1981,7 +2000,7 @@ void WebPage::postInjectedBundleMessage(const String& messageName, const UserDat
     injectedBundle->didReceiveMessageToPage(this, messageName, webProcess.transformHandlesToObjects(userData.object()).get());
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 void WebPage::setHeaderPageBanner(PageBanner* pageBanner)
 {
@@ -2045,7 +2064,7 @@ void WebPage::setFooterBannerHeightForTesting(int height)
 #endif
 }
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 
 void WebPage::takeSnapshot(IntRect snapshotRect, IntSize bitmapSize, uint32_t options, CallbackID callbackID)
 {
@@ -2240,7 +2259,7 @@ RefPtr<WebImage> WebPage::snapshotNode(WebCore::Node& node, SnapshotOptions opti
 
 void WebPage::pageDidScroll()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (!m_inDynamicSizeUpdate)
         m_dynamicSizeUpdateHistory.clear();
 #endif
@@ -2493,12 +2512,12 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 
     bool handled = false;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!handled && m_headerBanner)
         handled = m_headerBanner->mouseEvent(mouseEvent);
     if (!handled && m_footerBanner)
         handled = m_footerBanner->mouseEvent(mouseEvent);
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 
     if (!handled) {
         CurrentEvent currentEvent(mouseEvent);
@@ -2604,6 +2623,14 @@ void WebPage::restoreSession(const Vector<BackForwardListItemState>& itemStates)
 void WebPage::updateBackForwardListForReattach(const Vector<WebKit::BackForwardListItemState>& itemStates)
 {
     restoreSessionInternal(itemStates, WasRestoredByAPIRequest::No, WebBackForwardListProxy::OverwriteExistingItem::Yes);
+}
+
+void WebPage::setCurrentHistoryItemForReattach(WebKit::BackForwardListItemState&& itemState)
+{
+    auto historyItem = toHistoryItem(itemState);
+    auto& historyItemRef = historyItem.get();
+    static_cast<WebBackForwardListProxy&>(corePage()->backForward().client()).addItemFromUIProcess(itemState.identifier, WTFMove(historyItem), m_pageID, WebBackForwardListProxy::OverwriteExistingItem::Yes);
+    corePage()->mainFrame().loader().history().setCurrentItem(historyItemRef);
 }
 
 void WebPage::requestFontAttributesAtSelectionStart(CallbackID callbackID)
@@ -2981,8 +3008,18 @@ void WebPage::didCompletePageTransition()
     // FIXME: Layer tree freezing should be managed entirely in the UI process side.
     setLayerTreeStateIsFrozen(false);
 
+#if PLATFORM(MAC)
     bool isInitialEmptyDocument = !m_mainFrame;
-    send(Messages::WebPageProxy::DidCompletePageTransition(isInitialEmptyDocument));
+    if (m_shouldAttachDrawingAreaOnPageTransition && !isInitialEmptyDocument) {
+        m_shouldAttachDrawingAreaOnPageTransition = false;
+        // Unfreezing the layer tree above schedules a layer flush so we delay attaching the drawing area
+        // after the next event loop iteration.
+        RunLoop::main().dispatch([this, weakThis = makeWeakPtr(*this)] {
+            if (weakThis && m_drawingArea)
+                m_drawingArea->attach();
+        });
+    }
+#endif
 }
 
 void WebPage::show()
@@ -3044,7 +3081,7 @@ IntRect WebPage::rootViewToScreen(const IntRect& rect)
     return screenRect;
 }
     
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 IntPoint WebPage::accessibilityScreenToRootView(const IntPoint& point)
 {
     IntPoint windowPoint;
@@ -3297,7 +3334,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     // FIXME: This is both a RuntimeEnabledFeatures (generated) and a setting. It should pick one.
     settings.setInteractiveFormValidationEnabled(store.getBoolValueForKey(WebPreferencesKey::interactiveFormValidationEnabledKey()));
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     m_ignoreViewportScalingConstraints = store.getBoolValueForKey(WebPreferencesKey::ignoreViewportScalingConstraintsKey());
     m_viewportConfiguration.setCanIgnoreScalingConstraints(m_ignoreViewportScalingConstraints);
     setForceAlwaysUserScalable(m_forceAlwaysUserScalable || store.getBoolValueForKey(WebPreferencesKey::forceAlwaysUserScalableKey()));
@@ -3348,7 +3385,7 @@ void WebPage::willCommitLayerTree(RemoteLayerTreeTransaction& layerTransaction)
     layerTransaction.setMinStableLayoutViewportOrigin(frameView->minStableLayoutViewportOrigin());
     layerTransaction.setMaxStableLayoutViewportOrigin(frameView->maxStableLayoutViewportOrigin());
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     layerTransaction.setScaleWasSetByUIProcess(scaleWasSetByUIProcess());
     layerTransaction.setMinimumScaleFactor(m_viewportConfiguration.minimumScale());
     layerTransaction.setMaximumScaleFactor(m_viewportConfiguration.maximumScale());
@@ -3379,7 +3416,7 @@ void WebPage::willCommitLayerTree(RemoteLayerTreeTransaction& layerTransaction)
 
 void WebPage::didFlushLayerTreeAtTime(MonotonicTime timestamp)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_oldestNonStableUpdateVisibleContentRectsTimestamp != MonotonicTime()) {
         Seconds elapsed = timestamp - m_oldestNonStableUpdateVisibleContentRectsTimestamp;
         m_oldestNonStableUpdateVisibleContentRectsTimestamp = MonotonicTime();
@@ -3429,7 +3466,7 @@ void WebPage::inspectorFrontendCountChanged(unsigned count)
     send(Messages::WebPageProxy::DidChangeInspectorFrontendCount(count));
 }
 
-#if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if (PLATFORM(IOS_FAMILY) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 PlaybackSessionManager& WebPage::playbackSessionManager()
 {
     if (!m_playbackSessionManager)
@@ -3454,7 +3491,7 @@ void WebPage::videoControlsManagerDidChange()
 
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 void WebPage::setAllowsMediaDocumentInlinePlayback(bool allows)
 {
     m_page->setAllowsMediaDocumentInlinePlayback(allows);
@@ -3773,7 +3810,7 @@ void WebPage::changeSelectedIndex(int32_t index)
     m_activePopupMenu->didChangeSelectedIndex(index);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 void WebPage::didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vector<String>& files, const String& displayString, const IPC::DataReference& iconData)
 {
     if (!m_activeOpenPanelResultListener)
@@ -3833,7 +3870,7 @@ void WebPage::didReceiveNotificationPermissionDecision(uint64_t notificationID, 
 
 #if ENABLE(MEDIA_STREAM)
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 void WebPage::prepareToSendUserMediaPermissionRequest()
 {
 }
@@ -3872,7 +3909,7 @@ void WebPage::revokeUserMediaDeviceSandboxExtensions(const Vector<String>& exten
 #endif
 #endif
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 void WebPage::advanceToNextMisspelling(bool startBeforeSelection)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
@@ -3963,7 +4000,7 @@ void WebPage::replaceSelectionWithText(Frame* frame, const String& text)
     return frame->editor().replaceSelectionWithText(text, selectReplacement, smartReplace);
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 void WebPage::clearSelection()
 {
     m_page->focusController().focusedOrMainFrame().selection().clear();
@@ -4031,7 +4068,7 @@ void WebPage::mainFrameDidLayout()
 #if PLATFORM(COCOA)
     m_viewGestureGeometryCollector->mainFrameDidLayout();
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (FrameView* frameView = mainFrameView()) {
         IntSize newContentSize = frameView->contentsSize();
         LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " mainFrameDidLayout setting content size to " << newContentSize);
@@ -5116,7 +5153,7 @@ void WebPage::resetAssistedNodeForFrame(WebFrame* frame)
     if (!m_assistedNode)
         return;
     if (frame->isMainFrame() || m_assistedNode->document().frame() == frame->coreFrame()) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         send(Messages::WebPageProxy::StopAssistingNode());
 #elif PLATFORM(MAC)
         send(Messages::WebPageProxy::SetEditableElementIsFocused(false));
@@ -5134,7 +5171,7 @@ void WebPage::elementDidFocus(WebCore::Node* node)
         m_assistedNode = node;
         m_isAssistingNodeDueToUserInteraction |= m_userIsInteracting;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #if ENABLE(FULLSCREEN_API)
         if (node->document().webkitIsFullScreen())
@@ -5166,7 +5203,7 @@ void WebPage::elementDidBlur(WebCore::Node* node)
         RefPtr<WebPage> protectedThis(this);
         callOnMainThread([protectedThis] {
             if (protectedThis->m_hasPendingBlurNotification) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
                 protectedThis->send(Messages::WebPageProxy::StopAssistingNode());
 #elif PLATFORM(MAC)
                 protectedThis->send(Messages::WebPageProxy::SetEditableElementIsFocused(false));
@@ -5350,7 +5387,7 @@ void WebPage::didCancelCheckingText(uint64_t requestID)
 
 void WebPage::willReplaceMultipartContent(const WebFrame& frame)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (!frame.isMainFrame())
         return;
 
@@ -5360,7 +5397,7 @@ void WebPage::willReplaceMultipartContent(const WebFrame& frame)
 
 void WebPage::didReplaceMultipartContent(const WebFrame& frame)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (!frame.isMainFrame())
         return;
 
@@ -5372,7 +5409,7 @@ void WebPage::didReplaceMultipartContent(const WebFrame& frame)
 
 void WebPage::didCommitLoad(WebFrame* frame)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     frame->setFirstLayerTreeTransactionIDAfterDidCommitLoad(downcast<RemoteLayerTreeDrawingArea>(*m_drawingArea).nextTransactionID());
     cancelPotentialTapInFrame(*frame);
 #endif
@@ -5404,7 +5441,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
         if (page && page->pageScaleFactor() != 1)
             scalePage(1, IntPoint());
     }
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = false;
     m_scaleWasSetByUIProcess = false;
     m_userHasChangedPageScaleFactor = false;
@@ -6117,14 +6154,10 @@ void WebPage::setIsSuspended(bool suspended)
 
     m_isSuspended = suspended;
 
-    setLayerTreeStateIsFrozen(true);
-}
-
-void WebPage::tearDownDrawingAreaForSuspend()
-{
     if (!m_isSuspended)
-        return;
-    m_drawingArea = nullptr;
+        m_shouldResetDrawingArea = true;
+
+    setLayerTreeStateIsFrozen(true);
 }
 
 void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remoteFrameIdentifier, GlobalWindowIdentifier&& remoteWindowIdentifier)

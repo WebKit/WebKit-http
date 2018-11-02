@@ -64,7 +64,7 @@ NSString *WebKitLocalCacheDefaultsKey = @"WebKitLocalCache";
 NSString *WebKitJSCJITEnabledDefaultsKey = @"WebKitJSCJITEnabledDefaultsKey";
 NSString *WebKitJSCFTLJITEnabledDefaultsKey = @"WebKitJSCFTLJITEnabledDefaultsKey";
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 static NSString *WebKitApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification = @"NSApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification";
 #endif
 
@@ -136,7 +136,7 @@ void WebProcessPool::platformInitialize()
     setLegacyCustomProtocolManagerClient(std::make_unique<LegacyCustomProtocolManagerClient>());
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 String WebProcessPool::cookieStorageDirectory() const
 {
     String path = pathForProcessContainer();
@@ -153,7 +153,7 @@ void WebProcessPool::platformResolvePathsForSandboxExtensions()
 {
     m_resolvedPaths.uiProcessBundleResourcePath = resolvePathForSandboxExtension([[NSBundle mainBundle] resourcePath]);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     m_resolvedPaths.cookieStorageDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(cookieStorageDirectory());
     m_resolvedPaths.containerCachesDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(webContentCachesDirectory());
     m_resolvedPaths.containerTemporaryDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(containerTemporaryDirectory());
@@ -179,7 +179,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.shouldSuppressMemoryPressureHandler = [defaults boolForKey:WebKitSuppressMemoryPressureHandlerDefaultsKey];
 
 #if HAVE(HOSTED_CORE_ANIMATION)
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     parameters.acceleratedCompositingPort = MachSendRight::create([CARemoteLayerServer sharedServer].serverPort);
 #endif
 #endif
@@ -191,7 +191,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.uiProcessBundleIdentifier = String([[NSBundle mainBundle] bundleIdentifier]);
     parameters.uiProcessSDKVersion = dyld_get_program_sdk_version();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (!m_resolvedPaths.cookieStorageDirectory.isEmpty())
         SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.cookieStorageDirectory, SandboxExtension::Type::ReadWrite, parameters.cookieStorageDirectoryExtensionHandle);
 
@@ -205,14 +205,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.fontWhitelist = m_fontWhitelist;
 
     if (m_bundleParameters) {
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200)
-        auto data = adoptNS([[NSMutableData alloc] init]);
-        auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
-
-        [keyedArchiver setRequiresSecureCoding:YES];
-#else
         auto keyedArchiver = secureArchiver();
-#endif
 
         @try {
             [keyedArchiver encodeObject:m_bundleParameters.get() forKey:@"parameters"];
@@ -221,9 +214,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
             LOG_ERROR("Failed to encode bundle parameters: %@", exception);
         }
 
-#if (!PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
         auto data = keyedArchiver.get().encodedData;
-#endif
 
         parameters.bundleParameterData = API::Data::createWithoutCopying(WTFMove(data));
     }
@@ -242,7 +233,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
         webRTCEnabled = [defaults boolForKey:@"ExperimentalPeerConnectionEnabled"];
 
     bool isSafari = false;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (WebCore::IOSApplication::isMobileSafari())
         isSafari = true;
 #elif PLATFORM(MAC)
@@ -286,7 +277,7 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 
     parameters.sourceApplicationBundleIdentifier = m_configuration->sourceApplicationBundleIdentifier();
     parameters.sourceApplicationSecondaryIdentifier = m_configuration->sourceApplicationSecondaryIdentifier();
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     parameters.ctDataConnectionServiceType = m_configuration->ctDataConnectionServiceType();
 #endif
 
@@ -323,7 +314,7 @@ void WebProcessPool::platformInvalidateContext()
     unregisterNotificationObservers();
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 String WebProcessPool::parentBundleDirectory() const
 {
     return [[[NSBundle mainBundle] bundlePath] stringByStandardizingPath];
@@ -374,7 +365,7 @@ String WebProcessPool::containerTemporaryDirectory() const
 }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 void WebProcessPool::setJavaScriptConfigurationFileEnabledFromDefaults()
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -396,7 +387,7 @@ bool WebProcessPool::processSuppressionEnabled() const
 
 void WebProcessPool::registerNotificationObservers()
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // Listen for enhanced accessibility changes and propagate them to the WebProcess.
     m_enhancedAccessibilityObserver = [[NSNotificationCenter defaultCenter] addObserverForName:WebKitApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification object:nil queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *note) {
         setEnhancedAccessibility([[[note userInfo] objectForKey:@"AXEnhancedUserInterface"] boolValue]);
@@ -433,12 +424,12 @@ void WebProcessPool::registerNotificationObservers()
     }];
 #endif
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 }
 
 void WebProcessPool::unregisterNotificationObservers()
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     [[NSNotificationCenter defaultCenter] removeObserver:m_enhancedAccessibilityObserver.get()];    
     [[NSNotificationCenter defaultCenter] removeObserver:m_automaticTextReplacementNotificationObserver.get()];
     [[NSNotificationCenter defaultCenter] removeObserver:m_automaticSpellingCorrectionNotificationObserver.get()];
@@ -448,7 +439,7 @@ void WebProcessPool::unregisterNotificationObservers()
 #if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     [[NSNotificationCenter defaultCenter] removeObserver:m_scrollerStyleNotificationObserver.get()];
 #endif
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 }
 
 static CFURLStorageSessionRef privateBrowsingSession()

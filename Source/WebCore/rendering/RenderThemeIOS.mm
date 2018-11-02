@@ -26,7 +26,7 @@
 #import "config.h"
 #import "RenderThemeIOS.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "BitmapImage.h"
 #import "CSSPrimitiveValue.h"
@@ -1609,12 +1609,13 @@ void RenderAttachmentInfo::buildWrappedLines(const String& text, CTFontRef font,
     // Combine it into one last line, and center-truncate it.
     CTLineRef firstRemainingLine = (CTLineRef)CFArrayGetValueAtIndex(ctLines, lineIndex);
     CFIndex remainingRangeStart = CTLineGetStringRange(firstRemainingLine).location;
-    NSRange remainingRange = NSMakeRange(remainingRangeStart, [attributedText length] - remainingRangeStart);
-    NSAttributedString *remainingString = [attributedText attributedSubstringFromRange:remainingRange];
-    RetainPtr<CTLineRef> remainingLine = adoptCF(CTLineCreateWithAttributedString((CFAttributedStringRef)remainingString));
+    CFRange remainingRange = CFRangeMake(remainingRangeStart, [attributedText length] - remainingRangeStart);
+    RetainPtr<CGPathRef> remainingPath = adoptCF(CGPathCreateWithRect(CGRectMake(0, 0, CGFLOAT_MAX, CGFLOAT_MAX), nullptr));
+    RetainPtr<CTFrameRef> remainingFrame = adoptCF(CTFramesetterCreateFrame(framesetter.get(), remainingRange, remainingPath.get(), nullptr));
     RetainPtr<NSAttributedString> ellipsisString = adoptNS([[NSAttributedString alloc] initWithString:@"\u2026" attributes:textAttributes]);
     RetainPtr<CTLineRef> ellipsisLine = adoptCF(CTLineCreateWithAttributedString((CFAttributedStringRef)ellipsisString.get()));
-    RetainPtr<CTLineRef> truncatedLine = adoptCF(CTLineCreateTruncatedLine(remainingLine.get(), attachmentWrappingTextMaximumWidth, kCTLineTruncationMiddle, ellipsisLine.get()));
+    CTLineRef remainingLine = (CTLineRef)CFArrayGetValueAtIndex(CTFrameGetLines(remainingFrame.get()), 0);
+    RetainPtr<CTLineRef> truncatedLine = adoptCF(CTLineCreateTruncatedLine(remainingLine, attachmentWrappingTextMaximumWidth, kCTLineTruncationMiddle, ellipsisLine.get()));
 
     if (!truncatedLine)
         truncatedLine = remainingLine;
@@ -1703,7 +1704,7 @@ RenderAttachmentInfo::RenderAttachmentInfo(const RenderAttachment& attachment)
 
     hasProgress = getAttachmentProgress(attachment, progress);
 
-    String title = attachment.attachmentElement().attachmentTitle();
+    String title = attachment.attachmentElement().attachmentTitleForDisplay();
     String action = attachment.attachmentElement().attributeWithoutSynchronization(actionAttr);
     String subtitle = attachment.attachmentElement().attributeWithoutSynchronization(subtitleAttr);
 
@@ -1856,7 +1857,7 @@ String RenderThemeIOS::extraDefaultStyleSheet()
 static NSBundle *arKitBundle()
 {
     static NSBundle *arKitBundle = []() {
-#if PLATFORM(IOS_SIMULATOR)
+#if PLATFORM(IOS_FAMILY_SIMULATOR)
         dlopen("/System/Library/PrivateFrameworks/AssetViewer.framework/AssetViewer", RTLD_NOW);
         return [NSBundle bundleForClass:NSClassFromString(@"ASVThumbnailView")];
 #else
@@ -2038,4 +2039,4 @@ void RenderThemeIOS::paintSystemPreviewBadge(Image& image, const PaintInfo& pain
 
 } // namespace WebCore
 
-#endif //PLATFORM(IOS)
+#endif //PLATFORM(IOS_FAMILY)

@@ -39,7 +39,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
     bool hasWebView() const final { return true; } // mainly for assertions
 
     void makeRepresentation(DocumentLoader*) final { }
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool forceLayoutOnRestoreFromPageCache() final { return false; }
 #endif
     void forceLayoutForNonHTML() final { }
@@ -60,7 +60,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
     bool canAuthenticateAgainstProtectionSpace(DocumentLoader*, unsigned long, const ProtectionSpace&) final { return false; }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     RetainPtr<CFDictionaryRef> connectionProperties(DocumentLoader*, unsigned long) final { return nullptr; }
 #endif
 
@@ -76,7 +76,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
     void dispatchDidDispatchOnloadEvents() final { }
     void dispatchDidReceiveServerRedirectForProvisionalLoad() final { }
     void dispatchDidCancelClientRedirect() final { }
-    void dispatchWillPerformClientRedirect(const URL&, double, WallTime) final { }
+    void dispatchWillPerformClientRedirect(const URL&, double, WallTime, LockBackForwardList) final { }
     void dispatchDidChangeLocationWithinPage() final { }
     void dispatchDidPushStateWithinPage() final { }
     void dispatchDidReplaceStateWithinPage() final { }
@@ -154,7 +154,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
 
     void savePlatformDataToCachedFrame(CachedFrame*) final { }
     void transitionToCommittedFromCachedFrame(CachedFrame*) final { }
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void didRestoreFrameHierarchyForCachedFrame() final { }
 #endif
     void transitionToCommittedForNewPage() final { }

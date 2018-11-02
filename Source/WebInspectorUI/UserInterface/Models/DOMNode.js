@@ -139,6 +139,20 @@ WI.DOMNode = class DOMNode extends WI.Object
         }
 
         this._domEvents = [];
+
+        if (this._shouldListenForEventListeners())
+            WI.DOMNode.addEventListener(WI.DOMNode.Event.DidFireEvent, this._handleDOMNodeDidFireEvent, this);
+    }
+
+    // Static
+
+    static getFullscreenDOMEvents(domEvents)
+    {
+        return domEvents.reduce((accumulator, current) => {
+            if (current.eventName === "webkitfullscreenchange" && current.data && (!accumulator.length || accumulator.lastValue.data.enabled !== current.data.enabled))
+                accumulator.push(current);
+            return accumulator;
+        }, []);
     }
 
     // Public
@@ -162,7 +176,7 @@ WI.DOMNode = class DOMNode extends WI.Object
         if (!this._children)
             return null;
 
-        if (WI.showShadowDOMSetting.value)
+        if (WI.settings.showShadowDOM.value)
             return this._children;
 
         if (this._filteredChildrenNeedsUpdating) {
@@ -197,7 +211,7 @@ WI.DOMNode = class DOMNode extends WI.Object
 
     get nextSibling()
     {
-        if (WI.showShadowDOMSetting.value)
+        if (WI.settings.showShadowDOM.value)
             return this._nextSibling;
 
         var node = this._nextSibling;
@@ -211,7 +225,7 @@ WI.DOMNode = class DOMNode extends WI.Object
 
     get previousSibling()
     {
-        if (WI.showShadowDOMSetting.value)
+        if (WI.settings.showShadowDOM.value)
             return this._previousSibling;
 
         var node = this._previousSibling;
@@ -229,7 +243,7 @@ WI.DOMNode = class DOMNode extends WI.Object
         if (children)
             return children.length;
 
-        if (WI.showShadowDOMSetting.value)
+        if (WI.settings.showShadowDOM.value)
             return this._childNodeCount + this._shadowRoots.length;
 
         return this._childNodeCount;
@@ -701,14 +715,26 @@ WI.DOMNode = class DOMNode extends WI.Object
         return !!this.ownerSVGElement;
     }
 
-    didFireEvent(eventName, timestamp)
+    didFireEvent(eventName, timestamp, data)
     {
         // Called from WI.DOMManager.
 
         this._addDOMEvent({
             eventName,
             timestamp: WI.timelineManager.computeElapsedTime(timestamp),
+            data,
         });
+    }
+
+    _handleDOMNodeDidFireEvent(event)
+    {
+        if (event.target === this || !event.target.isAncestor(this))
+            return;
+
+        let domEvent = Object.shallowCopy(event.data.domEvent);
+        domEvent.originator = event.target;
+
+        this._addDOMEvent(domEvent);
     }
 
     _addDOMEvent(domEvent)
@@ -716,6 +742,12 @@ WI.DOMNode = class DOMNode extends WI.Object
         this._domEvents.push(domEvent);
 
         this.dispatchEventToListeners(WI.DOMNode.Event.DidFireEvent, {domEvent});
+    }
+
+    _shouldListenForEventListeners()
+    {
+        let lowerCaseName = this.localName() || this.nodeName().toLowerCase();
+        return lowerCaseName === "video" || lowerCaseName === "audio";
     }
 
     _setAttributesPayload(attrs)

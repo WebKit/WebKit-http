@@ -51,6 +51,7 @@
 #include "RenderLayer.h"
 #include "RenderTextControlSingleLine.h"
 #include "RenderTheme.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ShadowRoot.h"
 #include "TextControlInnerElements.h"
 #include "TextEvent.h"
@@ -84,7 +85,7 @@ TextFieldInputType::~TextFieldInputType()
 bool TextFieldInputType::isKeyboardFocusable(KeyboardEvent*) const
 {
     ASSERT(element());
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (element()->isReadOnly())
         return false;
 #endif
@@ -262,7 +263,7 @@ void TextFieldInputType::handleFocusEvent(Node* oldFocusedNode, FocusDirection)
     ASSERT_UNUSED(oldFocusedNode, oldFocusedNode != element());
     if (RefPtr<Frame> frame = element()->document().frame()) {
         frame->editor().textFieldDidBeginEditing(element());
-#if ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS)
+#if ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS_FAMILY)
         if (element()->list() && m_dataListDropdownIndicator)
             m_dataListDropdownIndicator->setInlineStyleProperty(CSSPropertyDisplay, suggestions().size() ? CSSValueBlock : CSSValueNone, true);
 #endif
@@ -274,7 +275,7 @@ void TextFieldInputType::handleBlurEvent()
     InputType::handleBlurEvent();
     ASSERT(element());
     element()->endEditing();
-#if ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS)
+#if ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS_FAMILY)
     if (element()->list() && m_dataListDropdownIndicator)
         m_dataListDropdownIndicator->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone, true);
 #endif
@@ -479,6 +480,8 @@ static String autoFillButtonTypeToAccessibilityLabel(AutoFillButtonType autoFill
         return AXAutoFillCredentialsLabel();
     case AutoFillButtonType::StrongPassword:
         return AXAutoFillStrongPasswordLabel();
+    case AutoFillButtonType::CreditCard:
+        return AXAutoFillCreditCardLabel();
     case AutoFillButtonType::None:
         ASSERT_NOT_REACHED();
         return { };
@@ -492,6 +495,7 @@ static String autoFillButtonTypeToAutoFillButtonText(AutoFillButtonType autoFill
     switch (autoFillButtonType) {
     case AutoFillButtonType::Contacts:
     case AutoFillButtonType::Credentials:
+    case AutoFillButtonType::CreditCard:
         return emptyString();
     case AutoFillButtonType::StrongPassword:
         return autoFillStrongPasswordLabel();
@@ -512,6 +516,8 @@ static AtomicString autoFillButtonTypeToAutoFillButtonPseudoClassName(AutoFillBu
         return { "-webkit-credentials-auto-fill-button", AtomicString::ConstructFromLiteral };
     case AutoFillButtonType::StrongPassword:
         return { "-webkit-strong-password-auto-fill-button", AtomicString::ConstructFromLiteral };
+    case AutoFillButtonType::CreditCard:
+        return { "-webkit-credit-card-auto-fill-button", AtomicString::ConstructFromLiteral };
     case AutoFillButtonType::None:
         ASSERT_NOT_REACHED();
         return emptyAtom();
@@ -527,6 +533,8 @@ static bool isAutoFillButtonTypeChanged(const AtomicString& attribute, AutoFillB
     if (attribute == "-webkit-credentials-auto-fill-button" && autoFillButtonType != AutoFillButtonType::Credentials)
         return true;
     if (attribute == "-webkit-strong-password-auto-fill-button" && autoFillButtonType != AutoFillButtonType::StrongPassword)
+        return true;
+    if (attribute == "-webkit-credit-card-auto-fill-button" && autoFillButtonType != AutoFillButtonType::CreditCard)
         return true;
     return false;
 }
@@ -582,7 +590,7 @@ void TextFieldInputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent& 
 bool TextFieldInputType::shouldRespectListAttribute()
 {
 #if ENABLE(DATALIST_ELEMENT)
-    return true;
+    return RuntimeEnabledFeatures::sharedFeatures().dataListElementEnabled();
 #else
     return InputType::themeSupportsDataListUI(this);
 #endif
@@ -657,7 +665,7 @@ void TextFieldInputType::didSetValueByUserEdit()
     if (RefPtr<Frame> frame = element()->document().frame())
         frame->editor().textDidChangeInTextField(element());
 #if ENABLE(DATALIST_ELEMENT)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (element()->list() && m_dataListDropdownIndicator)
         m_dataListDropdownIndicator->setInlineStyleProperty(CSSPropertyDisplay, suggestions().size() ? CSSValueBlock : CSSValueNone, true);
 #endif
@@ -817,7 +825,7 @@ void TextFieldInputType::listAttributeTargetChanged()
     if (!m_dataListDropdownIndicator)
         return;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     m_dataListDropdownIndicator->setInlineStyleProperty(CSSPropertyDisplay, element()->list() ? CSSValueBlock : CSSValueNone, true);
 #endif
 }

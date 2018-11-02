@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 #import "WebNSPasteboardExtras.h"
 
@@ -113,9 +113,7 @@ static NSArray *_writableTypesForImageWithArchive (void)
         WebURLNamePboardType,
         legacyStringPasteboardType(),
         legacyFilenamesPasteboardType(),
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
         legacyFilesPromisePasteboardType(),
-#endif
         nil];
 }
 
@@ -214,13 +212,13 @@ static NSArray *_writableTypesForImageWithArchive (void)
     if (containsImage && [subresources count] > 0) {
         WebResource *subresource = [subresources objectAtIndex:0];
         NSString *subresourceMIMEType = [subresource MIMEType];
-        if (MIMETypeRegistry::isSupportedImageResourceMIMEType(subresourceMIMEType) || MIMETypeRegistry::isPDFOrPostScriptMIMEType(subresourceMIMEType))
+        if (MIMETypeRegistry::isSupportedImageMIMEType(subresourceMIMEType) || MIMETypeRegistry::isPDFOrPostScriptMIMEType(subresourceMIMEType))
             resource = subresource;
     }
     ASSERT(resource != nil);
     
-    ASSERT(!containsImage || MIMETypeRegistry::isSupportedImageResourceMIMEType([resource MIMEType]) || MIMETypeRegistry::isPDFOrPostScriptMIMEType([resource MIMEType]));
-    if (!containsImage || MIMETypeRegistry::isSupportedImageResourceMIMEType([resource MIMEType]) || MIMETypeRegistry::isPDFOrPostScriptMIMEType([resource MIMEType]))
+    ASSERT(!containsImage || MIMETypeRegistry::isSupportedImageMIMEType([resource MIMEType]) || MIMETypeRegistry::isPDFOrPostScriptMIMEType([resource MIMEType]));
+    if (!containsImage || MIMETypeRegistry::isSupportedImageMIMEType([resource MIMEType]) || MIMETypeRegistry::isPDFOrPostScriptMIMEType([resource MIMEType]))
         [self _web_writeFileWrapperAsRTFDAttachment:[resource _fileWrapperRepresentation]];
     
 }
@@ -318,4 +316,4 @@ static CachedImage* imageFromElement(DOMElement *domElement)
 
 @end
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)

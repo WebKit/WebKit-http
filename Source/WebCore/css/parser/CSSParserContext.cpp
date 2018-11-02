@@ -43,7 +43,7 @@ CSSParserContext::CSSParserContext(CSSParserMode mode, const URL& baseURL)
     : baseURL(baseURL)
     , mode(mode)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // FIXME: Force the site specific quirk below to work on iOS. Investigating other site specific quirks
     // to see if we can enable the preference all together is to be handled by:
     // <rdar://problem/8493309> Investigate Enabling Site Specific Quirks in MobileSafari and UIWebView
@@ -67,12 +67,11 @@ CSSParserContext::CSSParserContext(const Document& document, const URL& sheetBas
 #endif
     springTimingFunctionEnabled = document.settings().springTimingFunctionEnabled();
     constantPropertiesEnabled = document.settings().constantPropertiesEnabled();
-    conicGradientsEnabled = document.settings().conicGradientsEnabled();
     colorFilterEnabled = document.settings().colorFilterEnabled();
     deferredCSSParserEnabled = document.settings().deferredCSSParserEnabled();
     useSystemAppearance = document.page() ? document.page()->useSystemAppearance() : false;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // FIXME: Force the site specific quirk below to work on iOS. Investigating other site specific quirks
     // to see if we can enable the preference all together is to be handled by:
     // <rdar://problem/8493309> Investigate Enabling Site Specific Quirks in MobileSafari and UIWebView
@@ -94,7 +93,6 @@ bool operator==(const CSSParserContext& a, const CSSParserContext& b)
         && a.useLegacyBackgroundSizeShorthandBehavior == b.useLegacyBackgroundSizeShorthandBehavior
         && a.springTimingFunctionEnabled == b.springTimingFunctionEnabled
         && a.constantPropertiesEnabled == b.constantPropertiesEnabled
-        && a.conicGradientsEnabled == b.conicGradientsEnabled
         && a.colorFilterEnabled == b.colorFilterEnabled
         && a.deferredCSSParserEnabled == b.deferredCSSParserEnabled
         && a.hasDocumentSecurityOrigin == b.hasDocumentSecurityOrigin
