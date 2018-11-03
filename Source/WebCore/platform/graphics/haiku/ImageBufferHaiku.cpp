@@ -288,20 +288,31 @@ static inline void convertToInternalData(const uint8* sourceRows, unsigned sourc
 
 static RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBufferData& imageData, const IntSize& size, bool premultiplied)
 {
-    RefPtr<Uint8ClampedArray> result = Uint8ClampedArray::createUninitialized(rect.width() * rect.height() * 4);
-	if (!result)
+    // The area can overflow if the rect is too big.
+    Checked<unsigned, RecordOverflow> area = 4;
+    area *= rect.width();
+    area *= rect.height();
+    if (area.hasOverflowed())
+        return nullptr;
+
+    RefPtr<Uint8ClampedArray> result
+		= Uint8ClampedArray::tryCreateUninitialized(area.unsafeGet());
+	if (!result) {
 		return nullptr;
+	}
 
-    // If the destination image is larger than the source image, the outside
-    // regions need to be transparent. This way is simply, although with a
-    // a slight overhead for the inside region.
-    if (rect.x() < 0 || rect.y() < 0 || rect.maxX() > size.width() || rect.maxY() > size.height())
+    // Can overflow, as we are adding 2 ints.
+    int endx = 0;
+    if (!WTF::safeAdd(rect.x(), rect.width(), endx))
+        return nullptr;
+
+    // Can overflow, as we are adding 2 ints.
+    int endy = 0;
+    if (!WTF::safeAdd(rect.y(), rect.height(), endy))
+        return nullptr;
+
+    if (rect.x() < 0 || rect.y() < 0 || endx > size.width() || endy > size.height())
         result->zeroFill();
-
-    // If the requested image is outside the source image, we can return at
-    // this point.
-    if (rect.x() > size.width() || rect.y() > size.height() || rect.maxX() < 0 || rect.maxY() < 0)
-        return result;
 
     // Normalize the dest rectangle to not write before the allocated space,
     // when there are negative coordinates
@@ -311,9 +322,10 @@ static RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBu
         destx = -originx;
         originx = 0;
     }
-    int endx = rect.maxX();
+
     if (endx > size.width())
         endx = size.width();
+    int numColumns = endx - originx;
 
     int originy = rect.y();
     int desty = 0;
@@ -321,12 +333,17 @@ static RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBu
         desty = -originy;
         originy = 0;
     }
-    int endy = rect.maxY();
+
     if (endy > size.height())
         endy = size.height();
+    int numRows = endy - originy;
+
+    // Nothing will be copied, so just return the result.
+    if (numColumns <= 0 || numRows <= 0)
+        return result;
 
     // Now we know there must be an intersection rect which we need to extract.
-    BRect sourceRect(0, 0, size.width() - 1, size.height() - 1);
+    BRect sourceRect(0, 0, numColumns - 1, numRows - 1);
     sourceRect = BRect(rect) & sourceRect;
 
     unsigned destBytesPerRow = 4 * rect.width();
@@ -341,10 +358,8 @@ static RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBu
     // intersection rect.
     sourceRows += (int)sourceRect.left * 4 + (int)sourceRect.top * sourceBytesPerRow;
 
-    unsigned rows = sourceRect.IntegerHeight() + 1;
-    unsigned columns = sourceRect.IntegerWidth() + 1;
     convertFromInternalData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
-        rows, columns, premultiplied);
+        numRows, numColumns, premultiplied);
 
     return result;
 }
