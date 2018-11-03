@@ -116,6 +116,8 @@
 #include <wtf/Assertions.h>
 #include <wtf/Threading.h>
 
+#include <gcrypt.h>
+
 /*
      The basic idea here is to dispatch all public methods to the BLooper
      to which the handler is attached (should be the be_app), such that
@@ -168,8 +170,16 @@ BMessenger BWebPage::sDownloadListener;
     WebCore::initializeLogChannelsIfNecessary();
 #endif
     PlatformStrategiesHaiku::initialize();
-    //WebKitInitializeWebDatabasesIfNecessary();
-    //MemoryPressureHandler::singleton().install();
+
+#if USE(GCRYPT)
+	// Call gcry_check_version() before any other libgcrypt call, ignoring the
+	// returned version string.
+	gcry_check_version(nullptr);
+
+	// Pre-allocate 16kB of secure memory and finish the initialization.
+	gcry_control(GCRYCTL_INIT_SECMEM, 16384, nullptr);
+	gcry_control(GCRYCTL_INITIALIZATION_FINISHED, nullptr);
+#endif
 
     ScriptController::initializeThreading();
     WTF::initializeMainThread();
