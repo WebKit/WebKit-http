@@ -148,7 +148,7 @@ private:
 
     BWebPage* m_page;
 
-    typedef Deque<WebCore::UndoStep*> UndoManagerStack;
+    typedef Deque<RefPtr<WebCore::UndoStep>> UndoManagerStack;
     UndoManagerStack m_undoStack;
     UndoManagerStack m_redoStack;
 

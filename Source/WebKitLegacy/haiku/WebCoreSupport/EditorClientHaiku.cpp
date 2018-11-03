@@ -258,8 +258,7 @@ bool EditorClientHaiku::canRedo() const
 void EditorClientHaiku::undo()
 {
     if (canUndo()) {
-        RefPtr<WebCore::UndoStep> step(*(--m_undoStack.end()));
-        m_undoStack.remove(--m_undoStack.end());
+        RefPtr<WebCore::UndoStep> step(m_undoStack.takeLast());
         // unapply will call us back to push this step onto the redo stack.
         step->unapply();
     }
@@ -268,8 +267,7 @@ void EditorClientHaiku::undo()
 void EditorClientHaiku::redo()
 {
     if (canRedo()) {
-        RefPtr<WebCore::UndoStep> step(*(--m_redoStack.end()));
-        m_redoStack.remove(--m_redoStack.end());
+        RefPtr<WebCore::UndoStep> step(m_redoStack.takeLast());
 
         ASSERT(!m_isInRedo);
         m_isInRedo = true;
