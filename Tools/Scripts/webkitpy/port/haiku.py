@@ -133,8 +133,8 @@ class HaikuPort(Port):
     def _path_to_lighttpd_env(self):
         return "/bin/env"
 
-    def check_sys_deps(self, needs_http):
-        return super(HaikuPort, self).check_sys_deps(needs_http) and self._driver_class().check_driver(self)
+    def check_sys_deps(self):
+        return super(HaikuPort, self).check_sys_deps() and self._driver_class().check_driver(self)
 
     def build_webkit_command(self, build_style=None):
         command = super(HaikuPort, self).build_webkit_command(build_style)
