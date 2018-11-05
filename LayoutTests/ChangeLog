@@ -1,3 +1,111 @@
+2018-11-05  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer][WebRTC] Error out when simulcast is activated
+        https://bugs.webkit.org/show_bug.cgi?id=190678
+
+        Reviewed by Philippe Normand.
+
+        Implementing it is not for now yet.
+        Tests for simulcast have been disabled as they now fail (instead of crashing).
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-11-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening. Updating or adding various baselines. Also
+        adding new failure expectations for tests that need a closer look.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/fast/block/basic/child-block-level-box-with-height-percent-expected.txt: Added.
+        * platform/wpe/fast/block/basic/height-percentage-simple-expected.txt: Added.
+        * platform/wpe/fast/block/basic/inline-content-with-floating-image-expected.txt: Added.
+        * platform/wpe/fast/block/basic/inline-content-with-floating-images2-expected.txt: Added.
+        * platform/wpe/fast/block/basic/quirk-mode-percent-height-expected.txt: Added.
+        * platform/wpe/fast/history: Added.
+        * platform/wpe/fast/history/page-cache-webdatabase-pending-transaction-expected.txt: Added.
+        * platform/wpe/fast/inline-block/14498-positionForCoordinates-expected.txt:
+        * platform/wpe/fast/inline/simple-inline-block-expected.txt: Added.
+        * platform/wpe/fast/inline/simple-intruding-float1-expected.txt: Added.
+        * platform/wpe/fast/inline/simple-intruding-floats2-expected.txt: Added.
+        * platform/wpe/fast/inline/simple-intruding-floats3-expected.txt: Added.
+        * platform/wpe/fast/inline/simple-shrink-to-fit-inline-block-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance/canvas/drawingbuffer-test-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance/context/context-attributes-alpha-depth-stencil-antialias-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance/context/context-hidden-alpha-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance/extensions/get-extension-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance/extensions/oes-texture-half-float-with-image-data-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance/glsl/misc/shaders-with-invariance-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance/rendering/multisample-corruption-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance2/buffers/bound-buffer-size-change-test-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance2/extensions/promoted-extensions-in-shaders-expected.txt:
+
+2018-11-04  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Add support for percentage height in quirks mode.
+        https://bugs.webkit.org/show_bug.cgi?id=191232
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/basic/quirk-mode-percent-height-expected.txt: Added.
+        * fast/block/basic/quirk-mode-percent-height.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-11-04  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BCF] Add support for block level non-replaced inflow height percentage
+        https://bugs.webkit.org/show_bug.cgi?id=191229
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/basic/child-block-level-box-with-height-percent-expected.txt: Added.
+        * fast/block/basic/child-block-level-box-with-height-percent.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-11-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: capture changes to <canvas> that would affect the recorded context
+        https://bugs.webkit.org/show_bug.cgi?id=190854
+
+        Reviewed by Matt Baker.
+
+        * inspector/canvas/recording-2d-expected.txt:
+        * inspector/canvas/recording-2d.html:
+        * inspector/canvas/recording-bitmaprenderer-expected.txt:
+        * inspector/canvas/recording-bitmaprenderer.html:
+        * inspector/canvas/recording-webgl-expected.txt:
+        * inspector/canvas/recording-webgl.html:
+
+2018-11-03  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] PaymentResponse.retry()'s errorFields should be optional
+        https://bugs.webkit.org/show_bug.cgi?id=191212
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/paymentrequest/payment-response-retry-method.https-expected.txt:
+        * http/tests/paymentrequest/payment-response-retry-method.https.html:
+
+2018-11-02  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Resolve percentage height values.
+        https://bugs.webkit.org/show_bug.cgi?id=191224
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/basic/height-percentage-simple-expected.txt: Added.
+        * fast/block/basic/height-percentage-simple.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-11-03  Youenn Fablet  <youenn@apple.com>
+
+        Refresh WPT webrtc tests
+        https://bugs.webkit.org/show_bug.cgi?id=191133
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations:
+
 2018-11-03  Eric Carlson  <eric.carlson@apple.com>
 
         [MediaStream] enumerateDevices should not expose devices that are not available to getUserMedia
