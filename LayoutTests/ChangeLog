@@ -1,3 +1,251 @@
+2018-11-06  Youenn Fablet  <youenn@apple.com>
+
+        Make sure RTCIceCandidateStats address is undefined for host and peer reflexive case
+        https://bugs.webkit.org/show_bug.cgi?id=191263
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/datachannel/getStats-no-prflx-remote-candidate-expected.txt: Added.
+        * webrtc/datachannel/getStats-no-prflx-remote-candidate.html: Added.
+
+2018-11-06  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-tracks.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=191278
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations:
+
+2018-11-06  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer][WebRTC] Implement black frame generation
+        https://bugs.webkit.org/show_bug.cgi?id=190684
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Avoiding webrtc/video-mute-vp8.html to crash but it still fails because
+        we are missing the canvas bridging code.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-11-06  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Update all tests to match the latest API changes
+        https://bugs.webkit.org/show_bug.cgi?id=191302
+        <rdar://problem/41000438>
+
+        Reviewed by Dean Jackson.
+
+        * TestExpectations:
+        * platform/ios/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/mac/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+        * webanimations/css-animations.html:
+        * webanimations/left-and-opacity-animation-yields-no-compositing.html:
+        * webanimations/opacity-animation-no-longer-composited-upon-completion.html:
+        * webanimations/width-and-opacity-separate-animation-yields-no-compositing.html:
+
+2018-11-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening. Handle a bunch of test failures under the
+        directories containing imported W3C wpt tests. A few test expectations
+        are added, but mostly the corresponding baselines are provided.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/http/tests/dom: Added.
+        * platform/wpe/http/tests/dom/same-origin-detached-window-properties-expected.txt: Added.
+        * platform/wpe/http/wpt: Added.
+        * platform/wpe/http/wpt/mediarecorder: Added.
+        * platform/wpe/http/wpt/mediarecorder/MediaRecorder-dataavailable-expected.txt: Added.
+        * platform/wpe/http/wpt/mediarecorder/MediaRecorder-mock-dataavailable-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-generate-request-disallowed-input.https-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-encrypted-clear.https-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-reset-src-after-setmediakeys.https-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/idlharness.https-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/hidden-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/text-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/mimesniff: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/mimesniff/mime-types: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/mimesniff/mime-types/charset-parameter.window-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/extension: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/extension/pointerevent_touch-action-verification-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-illegal-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-verification-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/service-workers: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/service-workers/service-worker: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-within-sw-manual.https-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/service-workers/service-worker/fetch-frame-resource.https-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/shadow-dom: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/shadow-dom/input-element-list-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/xhr/formdata-blob-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/xhr/formdata-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/xhr/getallresponseheaders-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/xhr/getresponseheader.any-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/xhr/getresponseheader.any.worker-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/xhr/setrequestheader-content-type-expected.txt:
+
+2018-11-06  Frederic Wang  <fwang@igalia.com>
+
+        Overlay with -webkit-overflow-scrolling:touch doesn't become scrollable after added text makes it taller
+        https://bugs.webkit.org/show_bug.cgi?id=158342
+
+        Reviewed by Simon Fraser.
+
+        Add a test to ensure the change of scrolling status is reflected in the layer and scrolling
+        trees. This test should also ASSERT in debug mode without the associated code change.
+
+        * fast/scrolling/ios/update-scroll-coordinated-status-expected.txt: Added.
+        * fast/scrolling/ios/update-scroll-coordinated-status.html: Added.
+
+2018-11-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Swatch appears squished and off-center in inputs of type color
+        https://bugs.webkit.org/show_bug.cgi?id=191279
+        <rdar://problem/45816319>
+
+        Reviewed by Tim Horton.
+
+        * fast/forms/color/color-input-uses-color-well-appearance-expected-mismatch.html: Added.
+        * fast/forms/color/color-input-uses-color-well-appearance.html: Added.
+
+        Add a test to verify that setting `-webkit-appearance: textfield;` on a color input causes the color input to
+        render differently from a color input with a default appearance.
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios/TestExpectations:
+
+        In the WebKit2 port of iOS, enable a handful of color input tests that are currently disabled.
+
+        * platform/ios/fast/forms/color/input-appearance-color-expected.txt:
+
+        Rebaseline an existing test on iOS.
+
+2018-11-05  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] An audio track should be muted when capture is interrupted by the OS.
+        https://bugs.webkit.org/show_bug.cgi?id=191283
+         <rdar://problem/45773103>
+
+        Reviewed by Jon Lee.
+
+        * fast/mediastream/media-stream-track-interrupted-expected.txt: Added.
+        * fast/mediastream/media-stream-track-interrupted.html: Added.
+
+2018-11-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Parsing support for text-underline-offset and text-decoration-thickness
+        https://bugs.webkit.org/show_bug.cgi?id=191242
+
+        Reviewed by Simon Fraser.
+
+        * fast/css3-text/css3-text-decoration/getComputedStyle/getComputedStyle-text-underline-position-expected.txt:
+        * fast/css3-text/css3-text-decoration/getComputedStyle/getComputedStyle-text-underline-position.html: Update the
+        test for the new grammar of text-underline-position
+        * fast/css3-text/css3-text-decoration/text-decoration-thickness-parse-expected.txt: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-thickness-parse.html: Added.
+        * fast/css3-text/css3-text-decoration/text-underline-offset-parse-expected.txt: Added.
+        * fast/css3-text/css3-text-decoration/text-underline-offset-parse.html: Added.
+
+2018-11-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Spelling dots are drawn in the wrong place
+        https://bugs.webkit.org/show_bug.cgi?id=190764
+
+        Reviewed by Dean Jackson.
+
+        * editing/spelling/resources/VerySmallDescentAhem.ttf: Added. In order to test repaint rects,
+              this is a version of Ahem with a very small descent, so that the dots don't intersect
+              with the text itself.
+        * editing/spelling/spelling-dots-position-2-expected-mismatch.html: Added.
+        * editing/spelling/spelling-dots-position-2.html: Added. Make sure dots are painted in the
+              correct vertical place.
+        * editing/spelling/spelling-dots-position-3-expected-mismatch.html: Added.
+        * editing/spelling/spelling-dots-position-3.html: Added. Make sure dots are painted in the
+              correct vertical place.
+        * editing/spelling/spelling-dots-position-expected.html: Added.
+        * editing/spelling/spelling-dots-position.html: Added. Make sure dots are not painted in
+              the wrong place.
+        * editing/spelling/spelling-dots-repaint-expected.html: Added.
+        * editing/spelling/spelling-dots-repaint.html: Added. Test repaint by drawing an element
+              with spelling dots, and then deleting the element from the document. The spelling
+              dots should be removed too.
+        * fast/writing-mode/english-bt-text-with-spelling-marker-expected.html:
+        * fast/writing-mode/english-bt-text-with-spelling-marker.html: Update the test to compensate
+              for new spelling dot positions.
+
+2018-11-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-tracks.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=191278
+
+        Unreviewed test gardening.
+
+        * TestExpectations: Mark test as flaky.
+
+2018-11-05  Chris Dumez  <cdumez@apple.com>
+
+        Crash under DOMWindow::postMessageTimerFired()
+        https://bugs.webkit.org/show_bug.cgi?id=191217
+        <rdar://problem/40888466>
+
+        Reviewed by Geoffrey Garen.
+
+        Add layout test coverage.
+
+        * fast/dom/Window/remove-frame-in-message-event-handler-expected.txt: Added.
+        * fast/dom/Window/remove-frame-in-message-event-handler.html: Added.
+
+2018-11-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Changing view scale sometimes does not zoom the page to the new initial scale when the page is zoomed in when ignoring meta viewport
+        https://bugs.webkit.org/show_bug.cgi?id=191226
+        <rdar://problem/45781765>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test that sets the view scale to several values greater than or equal to 1 and verifies that
+        the minimum scale and resulting scroll view scale are exactly the same as the view scale, when (1) the "ignores
+        meta viewport" preference is enabled, and (2) the viewport is forced to be always scalable.
+
+        * fast/viewport/ios/minimum-scale-after-changing-view-scale-expected.txt: Added.
+        * fast/viewport/ios/minimum-scale-after-changing-view-scale.html: Added.
+
+2018-11-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table selection should not require that rows be in the cache
+        https://bugs.webkit.org/show_bug.cgi?id=190993
+        <rdar://problem/45613812>
+
+        Reviewed by Devin Rousso.
+
+        Add a test that a table row that is not in the cache can be selected/deselected.
+
+        * inspector/table/table-selection-expected.txt:
+        * inspector/table/table-selection.html:
+
+2018-11-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: show save/restore stack for recorded 2D Canvases
+        https://bugs.webkit.org/show_bug.cgi?id=175283
+        <rdar://problem/34040756>
+
+        Reviewed by Matt Baker.
+
+        * inspector/canvas/recording-2d.html:
+        * inspector/canvas/resources/recording-utilities.js:
+        (TestPage.registerInitializer.log):
+        (TestPage.registerInitializer.async logRecording):
+
 2018-11-05  Thibault Saunier  <tsaunier@igalia.com>
 
         [GStreamer][WebRTC] Error out when simulcast is activated
