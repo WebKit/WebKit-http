@@ -60,6 +60,7 @@ class PeerConnectionFactoryInterface;
 namespace WebCore {
 
 class LibWebRTCAudioModule;
+struct RTCRtpCapabilities;
 
 enum class MDNSRegisterError { NotImplemented, BadParameter, DNSSD, Internal, Timeout };
 
@@ -109,6 +110,9 @@ public:
     virtual void disableNonLocalhostConnections() { m_disableNonLocalhostConnections = true; }
 
     rtc::RTCCertificateGenerator& certificateGenerator();
+
+    std::optional<RTCRtpCapabilities> receiverCapabilities(const String& kind);
+    std::optional<RTCRtpCapabilities> senderCapabilities(const String& kind);
 
 protected:
     LibWebRTCProvider() = default;
