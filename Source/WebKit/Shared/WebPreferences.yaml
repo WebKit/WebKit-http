@@ -530,6 +530,15 @@ WebRTCH264SimulcastEnabled:
   humanReadableDescription: "Enable WebRTC H264 Simulcast"
   category: experimental
 
+WebRTCMDNSICECandidatesEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "WebRTC mDNS ICE candidates"
+  humanReadableDescription: "Enable WebRTC mDNS ICE candidates"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+  condition: ENABLE(WEB_RTC)
+
 UseLegacyTextAlignPositionedElementBehavior:
   type: bool
   defaultValue: false
@@ -1182,15 +1191,6 @@ IntersectionObserverEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   category: experimental
   condition: ENABLE(INTERSECTION_OBSERVER)
-
-MDNSICECandidatesEnabled:
-  type: bool
-  defaultValue: false
-  humanReadableName: "Enable MDNS ICE candidates"
-  humanReadableDescription: "Enable MDNS ICE candidates"
-  webcoreBinding: RuntimeEnabledFeatures
-  category: experimental
-  condition: ENABLE(WEB_RTC)
 
 FetchAPIKeepAliveEnabled:
   type: bool

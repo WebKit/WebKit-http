@@ -1,5 +1,213 @@
 2018-11-06  Youenn Fablet  <youenn@apple.com>
 
+        Make mDNS ICE Candidate an experimental flag again
+        https://bugs.webkit.org/show_bug.cgi?id=191262
+
+        Reviewed by Dean Jackson.
+
+        * webrtc/datachannel/mdns-ice-candidates.html:
+
+2018-11-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Implement text-underline-offset and text-decoration-thickness
+        https://bugs.webkit.org/show_bug.cgi?id=190774
+
+        Reviewed by Dean Jackson.
+
+        * animations/text-decoration-thickness-expected.txt: Added.
+        * animations/text-decoration-thickness.html: Added.
+        * animations/text-underline-offset-expected.txt: Added.
+        * animations/text-underline-offset.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-2-expected-mismatch.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-2.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-3-expected-mismatch.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-3.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-auto-length-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-auto-length.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-baseline-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-baseline.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-expected-mismatch.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-from-font-auto-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-from-font-auto.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-from-font-length-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-from-font-length.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-repaint-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-repaint.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-under-auto-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-under-auto.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-under-length-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset-under-length.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-offset.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-thickness-length-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-thickness-length.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-thickness-repaint-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-thickness-repaint.html: Added.
+
+2018-11-06  Dean Jackson  <dino@apple.com>
+
+        Add some basic pointer events tests
+        https://bugs.webkit.org/show_bug.cgi?id=191336
+        <rdar://problem/45858574>
+
+        Reviewed by Wenson Hsieh.
+
+        Generate some fake touches for pointer events testing.
+
+        * fast/events/pointer/ios/drag-gives-pointerdown-pointermove-pointerup-expected.txt: Added.
+        * fast/events/pointer/ios/drag-gives-pointerdown-pointermove-pointerup.html: Added.
+        * fast/events/pointer/ios/tap-gives-pointerdown-pointerup-expected.txt: Added.
+        * fast/events/pointer/ios/tap-gives-pointerdown-pointerup.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-11-06  Timothy Hatcher  <timothy@apple.com>
+
+        Skip css-dark-mode tests on older macOS platforms
+        https://bugs.webkit.org/show_bug.cgi?id=191334
+
+        Reviewed by Brian Burg.
+
+        * platform/mac-highsierra/css-dark-mode/prefers-color-scheme-expected.txt: Removed.
+        * platform/mac-highsierra/css-dark-mode/supported-color-schemes-expected.txt: Removed.
+        * platform/mac-sierra/css-dark-mode/prefers-color-scheme-expected.txt: Removed.
+        * platform/mac-sierra/css-dark-mode/supported-color-schemes-expected.txt: Removed.
+        * platform/mac/TestExpectations: Skip css-dark-mode for Sierra and HighSierra.
+
+2018-11-06  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Remove cap on partitioned cache max age if it matches a network reload (redirect-only)
+        https://bugs.webkit.org/show_bug.cgi?id=189760
+        <rdar://problem/44612242>
+
+        Reviewed by Youenn Fablet and Antti Koivisto.
+
+        * http/tests/resourceLoadStatistics/cap-cache-max-age-for-prevalent-resource-expected.txt:
+        * http/tests/resourceLoadStatistics/cap-cache-max-age-for-prevalent-resource.html:
+            The test now performs:
+            - an initial Fetch request with a permanent redirect to ID 1234. Capped max age.
+            - a second Fetch request with a permanent redirect to ID 4321. Capped max age.
+            - a third Fetch request with a permanent redirect to and empty ID. Capped max age.
+            - a fourth Fetch request with a permanent redirect to and empty ID. Max age cap removed.
+            - a fifth Fetch request with a permanent redirect to and empty ID. Regular cache hit.
+        * http/tests/resourceLoadStatistics/resources/cached-permanent-redirect.php:
+            Now returns an HTTP 500 if the request contains validation headers.
+
+2018-11-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Spelling dots are drawn in the wrong place
+        https://bugs.webkit.org/show_bug.cgi?id=190764
+
+        Reviewed by Dean Jackson.
+
+        * editing/spelling/resources/VerySmallDescentAhem.ttf: Added. In order to test repaint rects,
+              this is a version of Ahem with a very small descent, so that the dots don't intersect
+              with the text itself.
+        * editing/spelling/spelling-dots-position-2-expected-mismatch.html: Added.
+        * editing/spelling/spelling-dots-position-2.html: Added. Make sure dots are painted in the
+              correct vertical place.
+        * editing/spelling/spelling-dots-position-3-expected-mismatch.html: Added.
+        * editing/spelling/spelling-dots-position-3.html: Added. Make sure dots are painted in the
+              correct vertical place.
+        * editing/spelling/spelling-dots-position-expected.html: Added.
+        * editing/spelling/spelling-dots-position.html: Added. Make sure dots are not painted in
+              the wrong place.
+        * editing/spelling/spelling-dots-repaint-expected.html: Added.
+        * editing/spelling/spelling-dots-repaint.html: Added. Test repaint by drawing an element
+              with spelling dots, and then deleting the element from the document. The spelling
+              dots should be removed too.
+        * fast/writing-mode/english-bt-text-with-spelling-marker-expected.html:
+        * fast/writing-mode/english-bt-text-with-spelling-marker.html: Update the test to compensate
+              for new spelling dot positions.
+
+2018-11-06  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Unreviewed layout test gardening.
+
+        * platform/wincairo/TestExpectations:
+
+2018-11-06  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION (r230523): Caps lock indicator not shown in password field
+        https://bugs.webkit.org/show_bug.cgi?id=190056
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestExpectations:
+        * fast/events/detect-caps-lock-expected.txt: Added.
+        * fast/events/detect-caps-lock.html: Added.
+        * platform/mac/TestExpectations:
+
+2018-11-06  Ali Juma  <ajuma@chromium.org>
+
+        IntersectionObserver doesn't keep target's JS wrapper alive
+        https://bugs.webkit.org/show_bug.cgi?id=190235
+
+        Reviewed by Ryosuke Niwa.
+
+        Add test coverage.
+
+        Update test that depends on a target getting GC'd to call takeRecords() since
+        targets with pending entries are no logner GC'd.
+
+        * intersection-observer/intersection-observer-entry-keeps-js-wrapper-of-target-alive-expected.txt: Added.
+        * intersection-observer/intersection-observer-entry-keeps-js-wrapper-of-target-alive.html: Added.
+        * intersection-observer/intersection-observer-keeps-js-wrapper-of-target-alive-expected.txt: Added.
+        * intersection-observer/intersection-observer-keeps-js-wrapper-of-target-alive.html: Added.
+        * intersection-observer/root-element-deleted.html:
+        * intersection-observer/target-deleted-expected.txt: Added.
+        * intersection-observer/target-deleted.html: Added.
+
+2018-11-06  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] User should not be prompted again after denying getDisplayMedia request
+        https://bugs.webkit.org/show_bug.cgi?id=191227
+        <rdar://problem/45784512>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/GetDisplayMedia.mm:
+        (-[GetDisplayMediaUIDelegate _webView:requestUserMediaAuthorizationForDevices:url:mainFrameURL:decisionHandler:]):
+        (TestWebKitAPI::GetDisplayMediaTest::promptForCapture):
+        (TestWebKitAPI::TEST_F):
+
+2018-11-06  Timothy Hatcher  <timothy@apple.com>
+
+        <picture> container doesn't update when prefers-color-scheme media query changes
+        https://bugs.webkit.org/show_bug.cgi?id=190913
+        rdar://problem/45608456
+
+        Reviewed by Dean Jackson.
+
+        * css-dark-mode/prefers-color-scheme-picture-element-expected.txt: Added.
+        * css-dark-mode/prefers-color-scheme-picture-element.html: Added.
+        * platform/mac-highsierra/css-dark-mode/prefers-color-scheme-picture-element-expected.txt: Added.
+        * platform/mac-sierra/css-dark-mode/prefers-color-scheme-picture-element-expected.txt: Added.
+
+2018-11-06  Alex Christensen  <achristensen@webkit.org>
+
+        Fix tests after r237863
+        https://bugs.webkit.org/show_bug.cgi?id=191315
+
+        Reviewed by Chris Dumez.
+
+        * platform/mac-wk2/http/tests/navigation: Added.
+        * platform/mac-wk2/http/tests/navigation/keyboard-events-during-provisional-navigation-expected.txt: Copied from LayoutTests/http/tests/navigation/keyboard-events-during-provisional-navigation-expected.txt.
+        This test is timing related, and I need to update its WK2 expectations every time I enable or disable safe browsing checks during navigation.
+        See r237149.
+
+2018-11-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r237834.
+
+        Tests for this change crash on iOS Simulator
+
+        Reverted changeset:
+
+        "Spelling dots are drawn in the wrong place"
+        https://bugs.webkit.org/show_bug.cgi?id=190764
+        https://trac.webkit.org/changeset/237834
+
+2018-11-06  Youenn Fablet  <youenn@apple.com>
+
         Make sure RTCIceCandidateStats address is undefined for host and peer reflexive case
         https://bugs.webkit.org/show_bug.cgi?id=191263
 

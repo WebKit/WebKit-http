@@ -1440,12 +1440,12 @@ bool WKPreferencesGetPeerConnectionEnabled(WKPreferencesRef preferencesRef)
 
 void WKPreferencesSetWebRTCMDNSICECandidatesEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
-    toImpl(preferencesRef)->setMDNSICECandidatesEnabled(enabled);
+    toImpl(preferencesRef)->setWebRTCMDNSICECandidatesEnabled(enabled);
 }
 
 bool WKPreferencesGetWebRTCMDNSICECandidatesEnabled(WKPreferencesRef preferencesRef)
 {
-    return toImpl(preferencesRef)->mDNSICECandidatesEnabled();
+    return toImpl(preferencesRef)->webRTCMDNSICECandidatesEnabled();
 }
 
 void WKPreferencesSetSpatialNavigationEnabled(WKPreferencesRef preferencesRef, bool enabled)
