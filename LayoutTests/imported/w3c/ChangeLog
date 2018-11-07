@@ -1,3 +1,239 @@
+2018-11-06  Youenn Fablet  <youenn@apple.com>
+
+        Support onremovetrack for RTCPeerConnection removed tracks
+        https://bugs.webkit.org/show_bug.cgi?id=191299
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-tracks.https-expected.txt:
+
+2018-11-06  Javier Fernandez  <jfernandez@igalia.com>
+
+        CSS grid elements with justify-content: space-around have extra whitespace, sometimes a lot
+        https://bugs.webkit.org/show_bug.cgi?id=191308
+
+        Reviewed by Dean Jackson.
+
+        Imported WPT to cover the behavior changes added in this patch.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-001.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-002.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-003-expected.txt: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-003.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-004-expected.txt: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-content-distribution-must-account-for-track-sizing-004.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/w3c-import.log:
+
+2018-11-06  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-tracks.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=191278
+
+        Reviewed by Eric Carlson.
+
+        Updating test according upstreamed WPT.
+        Rebased test accordingly.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-tracks.https-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-tracks.https.html:
+
+2018-11-06  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Account for CSS zoom when computing client rects
+        https://bugs.webkit.org/show_bug.cgi?id=191282
+
+        Reviewed by Simon Fraser.
+
+        Update expectation for test case that now passes.
+
+        * web-platform-tests/intersection-observer/bounding-box-expected.txt:
+
+2018-11-06  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Update all tests to match the latest API changes
+        https://bugs.webkit.org/show_bug.cgi?id=191302
+        <rdar://problem/41000438>
+
+        Reviewed by Dean Jackson.
+
+        * web-platform-tests/css-timing-1/cubic-bezier-timing-functions-output.html:
+        * web-platform-tests/web-animations/META.yml: Added.
+        * web-platform-tests/web-animations/README.md: Added.
+        * web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property.html:
+        * web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/addition-per-property.html:
+        * web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property.html:
+        * web-platform-tests/web-animations/animation-model/animation-types/property-list.js:
+        * web-platform-tests/web-animations/animation-model/animation-types/property-types.js:
+        * web-platform-tests/web-animations/animation-model/combining-effects/applying-the-composited-result-expected.txt: Added.
+        * web-platform-tests/web-animations/animation-model/combining-effects/applying-the-composited-result.html: Added.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-interval-distance-expected.txt: Added.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-interval-distance.html: Added.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-iteration-composite-operation.html:
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animatable/animate.html:
+        * web-platform-tests/web-animations/interfaces/Animatable/getAnimations.html:
+        * web-platform-tests/web-animations/interfaces/Animation/cancel.html:
+        * web-platform-tests/web-animations/interfaces/Animation/constructor.html:
+        * web-platform-tests/web-animations/interfaces/Animation/effect.html:
+        * web-platform-tests/web-animations/interfaces/Animation/finish-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/finish.html: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/finished.html:
+        * web-platform-tests/web-animations/interfaces/Animation/idlharness-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/idlharness.html: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/idlharness.window.js: Added.
+        * web-platform-tests/web-animations/interfaces/Animation/onfinish.html:
+        * web-platform-tests/web-animations/interfaces/Animation/playbackRate-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/playbackRate.html: Removed.
+        * web-platform-tests/web-animations/interfaces/Animation/ready.html:
+        * web-platform-tests/web-animations/interfaces/AnimationEffect/getComputedTiming-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/interfaces/AnimationEffectTiming/getComputedTiming-expected.txt.
+        * web-platform-tests/web-animations/interfaces/AnimationEffect/getComputedTiming.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/interfaces/AnimationEffectTiming/getComputedTiming.html.
+        * web-platform-tests/web-animations/interfaces/AnimationEffect/updateTiming-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffect/updateTiming.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/delay-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/delay.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/direction-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/direction.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/duration-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/duration.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/easing-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/easing.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/endDelay-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/endDelay.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/fill-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/fill.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/idlharness-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/idlharness.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterationStart-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterationStart.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterations-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterations.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationPlaybackEvent/idlharness-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationPlaybackEvent/idlharness.html: Removed.
+        * web-platform-tests/web-animations/interfaces/AnimationPlaybackEvent/idlharness.window.js: Added.
+        * web-platform-tests/web-animations/interfaces/Document/getAnimations-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Document/getAnimations.html:
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/idlharness-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/idlharness.html: Removed.
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/idlharness.window.js: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/composite.html:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/constructor-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/constructor.html:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/copy-constructor-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/copy-constructor.html:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/idlharness-expected.txt: Removed.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/idlharness.html: Removed.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/idlharness.window.js: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/iterationComposite.html:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001.html:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/setKeyframes-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/setKeyframes.html:
+        * web-platform-tests/web-animations/resources/keyframe-tests.js:
+        * web-platform-tests/web-animations/resources/timing-tests.js: Added.
+        * web-platform-tests/web-animations/resources/timing-utils.js: Added.
+        * web-platform-tests/web-animations/testcommon.js:
+        * web-platform-tests/web-animations/timing-model/animation-effects/phases-and-states.html:
+        * web-platform-tests/web-animations/timing-model/animations/canceling-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/canceling-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/finishing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/finishing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/pausing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/pausing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/play-states-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/play-states.html:
+        * web-platform-tests/web-animations/timing-model/animations/playing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/playing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation.html:
+        * web-platform-tests/web-animations/timing-model/animations/seamlessly-updating-the-playback-rate-of-an-animation-expected.txt: Added.
+        * web-platform-tests/web-animations/timing-model/animations/seamlessly-updating-the-playback-rate-of-an-animation.html: Added.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-current-time-of-an-animation-expected.txt: Added.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-current-time-of-an-animation.html: Added.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-playback-rate-of-an-animation-expected.txt: Added.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-playback-rate-of-an-animation.html: Added.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-start-time-of-an-animation-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-animation-start-time-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-start-time-of-an-animation.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-animation-start-time.html.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-target-effect-of-an-animation-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-target-effect-of-an-animation-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-target-effect-of-an-animation.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-target-effect-of-an-animation.html.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-timeline-of-an-animation-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-timeline-of-an-animation-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/setting-the-timeline-of-an-animation.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/set-the-timeline-of-an-animation.html.
+        * web-platform-tests/web-animations/timing-model/animations/the-current-time-of-an-animation-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/current-time-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/the-current-time-of-an-animation.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/web-animations/timing-model/animations/current-time.html.
+        * web-platform-tests/web-animations/timing-model/animations/updating-the-finished-state-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/updating-the-finished-state.html:
+        * web-platform-tests/web-animations/timing-model/timelines/document-timelines.html:
+        * web-platform-tests/web-animations/timing-model/timelines/update-and-send-events-expected.txt: Added.
+        * web-platform-tests/web-animations/timing-model/timelines/update-and-send-events.html: Added.
+
+2018-11-06  Rob Buis  <rbuis@igalia.com>
+
+        Some minor X-Content-Type-Options parsing issues
+        https://bugs.webkit.org/show_bug.cgi?id=191107
+
+        Reviewed by Darin Adler.
+
+        Update improved result.
+
+        * web-platform-tests/fetch/nosniff/parsing-nosniff-expected.txt:
+
+2018-11-05  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Update WPTs to the latest upstream version
+        https://bugs.webkit.org/show_bug.cgi?id=191274
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/intersection-observer/bounding-box-expected.txt:
+        * web-platform-tests/intersection-observer/bounding-box.html:
+        * web-platform-tests/intersection-observer/target-in-different-window-expected.txt: Added.
+        * web-platform-tests/intersection-observer/target-in-different-window.html: Added.
+        * web-platform-tests/intersection-observer/w3c-import.log:
+
+2018-11-05  Chris Dumez  <cdumez@apple.com>
+
+        Resync html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=191214
+
+        Reviewed by Geoff Garen.
+
+        Resync html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name WPT tests from
+        upstream c583bcd7eb.
+
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/creating_browsing_context_test_01-expected.txt:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/creating_browsing_context_test_01.html:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/no_window_open_when_term_nesting_level_nonzero.window-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/no_window_open_when_term_nesting_level_nonzero.window.html: Added.
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/no_window_open_when_term_nesting_level_nonzero.window.js: Added.
+        (test.frame.contentWindow.onpagehide):
+        (test.frame.contentDocument.onvisibilitychange):
+        (test.frame.contentWindow.onbeforeunload):
+        (test.frame.contentWindow.onunload):
+        (test):
+        (async_test):
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/non_automated/w3c-import.log:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/open-features-tokenization-noopener-expected.txt:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/open-features-tokenization-noopener.html:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/resources/message-opener.html:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/resources/w3c-import.log:
+        * web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/w3c-import.log:
+
+2018-11-05  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Fix isIntersecting computation when 0 is not a threshold
+        https://bugs.webkit.org/show_bug.cgi?id=191210
+
+        Reviewed by Simon Fraser.
+
+        Update expectation for test that now passes.
+
+        * web-platform-tests/intersection-observer/initial-observation-with-threshold-expected.txt:
+
 2018-11-04  Youenn Fablet  <youenn@apple.com>
 
         IDB should allow storing RTCCertificate
