@@ -1397,9 +1397,14 @@ bool MediaPlayerPrivateGStreamerBase::waitingForKey() const
 {
     bool result { false };
     if (m_pipeline) {
-        GRefPtr<GstQuery> query = adoptGRef(gst_query_new_custom(GST_QUERY_CUSTOM, gst_structure_new_empty("any-decryptor-waiting-for-key")));
-        result = gst_element_query(m_pipeline.get(), query.get());
-        GST_TRACE("query result %s", boolForPrinting(result));
+        GstState state;
+        gst_element_get_state(m_pipeline.get(), &state, nullptr, 0);
+        if (state >= GST_STATE_PAUSED) {
+            GRefPtr<GstQuery> query = adoptGRef(gst_query_new_custom(GST_QUERY_CUSTOM, gst_structure_new_empty("any-decryptor-waiting-for-key")));
+            result = gst_element_query(m_pipeline.get(), query.get());
+            GST_TRACE("query result %s, on %s", boolForPrinting(result), gst_element_state_get_name(state));
+        } else
+            GST_WARNING("pipeline on %s, not ready for effective decryptor queries", gst_element_state_get_name(state));
     }
     return result;
 }
