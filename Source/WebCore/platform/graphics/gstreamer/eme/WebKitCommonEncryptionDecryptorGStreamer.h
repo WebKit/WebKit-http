@@ -67,6 +67,7 @@ struct _WebKitMediaCommonEncryptionDecryptClass {
 };
 
 RefPtr<WebCore::CDMInstance> webKitMediaCommonEncryptionDecryptCDMInstance(WebKitMediaCommonEncryptionDecrypt*);
+bool webKitMediaCommonEncryptionDecryptIsWaitingForKey(WebKitMediaCommonEncryptionDecrypt*);
 
 G_END_DECLS
 

@@ -543,4 +543,11 @@ RefPtr<WebCore::CDMInstance> webKitMediaCommonEncryptionDecryptCDMInstance(WebKi
     return priv->m_cdmInstance;
 }
 
+bool webKitMediaCommonEncryptionDecryptIsWaitingForKey(WebKitMediaCommonEncryptionDecrypt* self)
+{
+    WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
+    LockHolder locker(priv->m_mutex);
+    return priv->m_waitingForKey;
+}
+
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
