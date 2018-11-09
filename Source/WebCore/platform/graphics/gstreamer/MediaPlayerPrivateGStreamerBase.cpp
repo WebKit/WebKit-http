@@ -841,6 +841,9 @@ void MediaPlayerPrivateGStreamerBase::clearCurrentBuffer()
     GST_DEBUG("Flushing video sample");
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
 
+    if (!m_sample)
+        return;
+
     // Replace by a new sample having only the caps, so this dummy sample is still useful to get the dimensions.
     // This prevents resizing problems when the video changes its quality and a DRAIN is performed.
     const GstStructure* info = gst_sample_get_info(m_sample.get());
