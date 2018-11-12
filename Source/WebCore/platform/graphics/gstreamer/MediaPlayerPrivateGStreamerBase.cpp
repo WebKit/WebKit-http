@@ -50,6 +50,7 @@
 #if ENABLE(ENCRYPTED_MEDIA)
 #include "CDMInstance.h"
 #include "SharedBuffer.h"
+#include "WebKitCommonEncryptionDecryptorGStreamer.h"
 #if USE(OPENCDM)
 #include "CDMOpenCDM.h"
 #include "WebKitOpenCDMDecryptorGStreamer.h"
@@ -1395,32 +1396,36 @@ void MediaPlayerPrivateGStreamerBase::setWaitingForKey(bool waitingForKey)
 
 bool MediaPlayerPrivateGStreamerBase::waitingForKey() const
 {
-    bool result { false };
-    if (m_pipeline) {
-        GstState state;
-        gst_element_get_state(m_pipeline.get(), &state, nullptr, 0);
-        if (state >= GST_STATE_PAUSED) {
-            GRefPtr<GstQuery> query = adoptGRef(gst_query_new_custom(GST_QUERY_CUSTOM, gst_structure_new_empty("any-decryptor-waiting-for-key")));
-            result = gst_element_query(m_pipeline.get(), query.get());
-            GST_TRACE("query result %s, on %s", boolForPrinting(result), gst_element_state_get_name(state));
-        } else if (state >= GST_STATE_READY) {
-            // Running a query is more straightforward but it only works when the pipeline is set up and running, otherwise we need to inspect it and ask the decryptors manually.
-            GUniquePtr<GstIterator> iterator(gst_bin_iterate_recurse(GST_BIN(m_pipeline.get())));
-            GstIteratorResult iteratorResult;
-            do {
-                iteratorResult = gst_iterator_fold(iterator.get(), [](const GValue *item, GValue *, gpointer) -> gboolean {
-                    GstElement* element = GST_ELEMENT(g_value_get_object(item));
-                    return !WEBKIT_IS_MEDIA_CENC_DECRYPT(element) || !webKitMediaCommonEncryptionDecryptIsWaitingForKey(WEBKIT_MEDIA_CENC_DECRYPT(element));
-                }, nullptr, nullptr);
-                if (iteratorResult == GST_ITERATOR_RESYNC)
-                    gst_iterator_resync(iterator.get());
-            } while (iteratorResult == GST_ITERATOR_RESYNC);
-            if (iteratorResult == GST_ITERATOR_ERROR)
-                GST_WARNING("iterator returned an error");
-            result = iteratorResult == GST_ITERATOR_OK;
-            GST_TRACE("iterator result %d, waiting %s", iteratorResult, boolForPrinting(result));
-        }
+    if (!m_pipeline)
+        return false;
+
+    GstState state;
+    gst_element_get_state(m_pipeline.get(), &state, nullptr, 0);
+
+    bool result = false;
+    GRefPtr<GstQuery> query = adoptGRef(gst_query_new_custom(GST_QUERY_CUSTOM, gst_structure_new_empty("any-decryptor-waiting-for-key")));
+    if (state >= GST_STATE_PAUSED) {
+        result = gst_element_query(m_pipeline.get(), query.get());
+        GST_TRACE("query result %s, on %s", boolForPrinting(result), gst_element_state_get_name(state));
+    } else if (state >= GST_STATE_READY) {
+        // Running a query in the pipeline is easier but it only works when the pipeline is set up and running, otherwise we need to inspect it and ask the decryptors directly.
+        GUniquePtr<GstIterator> iterator(gst_bin_iterate_recurse(GST_BIN(m_pipeline.get())));
+        GstIteratorResult iteratorResult;
+        do {
+            iteratorResult = gst_iterator_fold(iterator.get(), [](const GValue *item, GValue *, gpointer data) -> gboolean {
+                GstElement* element = GST_ELEMENT(g_value_get_object(item));
+                GstQuery* query = GST_QUERY(data);
+                return !WEBKIT_IS_MEDIA_CENC_DECRYPT(element) || !gst_element_query(element, query);
+            }, nullptr, query.get());
+            if (iteratorResult == GST_ITERATOR_RESYNC)
+                gst_iterator_resync(iterator.get());
+        } while (iteratorResult == GST_ITERATOR_RESYNC);
+        if (iteratorResult == GST_ITERATOR_ERROR)
+            GST_WARNING("iterator returned an error");
+        result = iteratorResult == GST_ITERATOR_OK;
+        GST_TRACE("iterator result %d, waiting %s", iteratorResult, boolForPrinting(result));
     }
+
     return result;
 }
 #endif

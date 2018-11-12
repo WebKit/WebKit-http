@@ -151,7 +151,7 @@ public:
     void initializationDataEncountered(const InitData&);
     void dispatchLocalCDMInstance();
     void setWaitingForKey(bool);
-    bool waitingForKey() const;
+    bool waitingForKey() const override;
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
