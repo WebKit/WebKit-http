@@ -33,13 +33,15 @@
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringHash.h>
 
+using WebCore::CDMInstance;
+
 #define WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_MEDIA_CENC_DECRYPT, WebKitMediaCommonEncryptionDecryptPrivate))
 struct _WebKitMediaCommonEncryptionDecryptPrivate {
     bool m_keyReceived { false };
     bool m_waitingForKey { false };
     Lock m_mutex;
     Condition m_condition;
-    RefPtr<WebCore::CDMInstance> m_cdmInstance;
+    RefPtr<CDMInstance> m_cdmInstance;
     WTF::HashMap<String, WebCore::InitData> m_initDatas;
     Vector<GRefPtr<GstEvent>> m_pendingProtectionEvents;
     uint32_t m_currentEvent { 0 };
@@ -106,7 +108,7 @@ static void webKitMediaCommonEncryptionDecryptorFinalize(GObject* object)
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
-static void webKitMediaCommonEncryptionDecryptorPrivClearStateWithInstance(WebKitMediaCommonEncryptionDecryptPrivate* priv, WebCore::CDMInstance* cdmInstance)
+static void webKitMediaCommonEncryptionDecryptorPrivClearStateWithInstance(WebKitMediaCommonEncryptionDecryptPrivate* priv, CDMInstance* cdmInstance)
 {
     ASSERT(priv);
     ASSERT(priv->m_mutex.isLocked());
@@ -461,7 +463,7 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
     case GST_EVENT_CUSTOM_DOWNSTREAM_OOB: {
         const GstStructure* structure = gst_event_get_structure(event);
         if (gst_structure_has_name(structure, "drm-cdm-instance-attached")) {
-            WebCore::CDMInstance* cdmInstance = nullptr;
+            CDMInstance* cdmInstance = nullptr;
             gst_structure_get(structure, "cdm-instance", G_TYPE_POINTER, &cdmInstance, nullptr);
             gst_event_unref(event);
             result = TRUE;
@@ -475,7 +477,7 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
             } else
                 GST_TRACE_OBJECT(self, "ignoring cdm-instance %p, we already have it", cdmInstance);
         } else if (gst_structure_has_name(structure, "drm-cdm-instance-detached")) {
-            WebCore::CDMInstance* cdmInstance = nullptr;
+            CDMInstance* cdmInstance = nullptr;
             gst_structure_get(structure, "cdm-instance", G_TYPE_POINTER, &cdmInstance, nullptr);
             gst_event_unref(event);
             result = TRUE;
@@ -551,7 +553,7 @@ static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstE
     return result;
 }
 
-RefPtr<WebCore::CDMInstance> webKitMediaCommonEncryptionDecryptCDMInstance(WebKitMediaCommonEncryptionDecrypt* self)
+RefPtr<CDMInstance> webKitMediaCommonEncryptionDecryptCDMInstance(WebKitMediaCommonEncryptionDecrypt* self)
 {
     WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
     ASSERT(priv->m_mutex.isLocked());
