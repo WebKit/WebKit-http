@@ -237,7 +237,7 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     virtual void mediaPlayerInitializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&) { }
-    virtual void mediaPlayerWaitingForKey() { }
+    virtual void mediaPlayerWaitingForKeyChanged() { }
 #endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -569,7 +569,8 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void initializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&);
-    void waitingForKey();
+    void waitingForKeyChanged();
+    bool waitingForKey() const;
 #endif
 
     String referrer() const;

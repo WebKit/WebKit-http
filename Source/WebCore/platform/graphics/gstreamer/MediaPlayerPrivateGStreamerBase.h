@@ -150,7 +150,8 @@ public:
     void handleProtectionEvents(const Vector<GstEvent*>&);
     void initializationDataEncountered(const InitData&);
     void dispatchLocalCDMInstance();
-    void reportWaitingForKey();
+    void setWaitingForKey(bool);
+    bool waitingForKey() const override;
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
@@ -282,6 +283,7 @@ protected:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     RefPtr<const CDMInstance> m_cdmInstance;
+    bool m_waitingForKey { false };
 #endif
 };
 
