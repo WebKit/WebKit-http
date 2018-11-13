@@ -1361,42 +1361,6 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-void MediaPlayerPrivateGStreamerBase::initializationDataEncountered(GstEvent* event)
-{
-    // FIXME: Inform that we are waiting for a key.
-    const char* eventKeySystemUUID = nullptr;
-    GstBuffer* data = nullptr;
-    gst_event_parse_protection(event, &eventKeySystemUUID, &data, nullptr);
-
-    // Check if the system key of the protection event is the same of the CDM instance.
-    // For example: we can receive a new Widevine protection event but the CDM instance initialized with
-    // Playready, so we ignore this event.
-    if (m_cdmInstance && g_strcmp0(GStreamerEMEUtilities::keySystemToUuid(m_cdmInstance->keySystem()), eventKeySystemUUID)) {
-        GST_DEBUG("The protection event with UUID %s is ignored because it isn't supported by the CDM %s", eventKeySystemUUID, m_cdmInstance->keySystem().utf8().data());
-        return;
-    }
-
-    GstMappedBuffer dataMapped(data, GST_MAP_READ);
-    if (!dataMapped) {
-        GST_WARNING("cannot map %s protection data", eventKeySystemUUID);
-        return;
-    }
-
-    GST_TRACE("init data encountered for %s of size %" G_GSIZE_FORMAT, eventKeySystemUUID, dataMapped.size());
-    GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(dataMapped.data()), dataMapped.size());
-    InitData initData(reinterpret_cast<const uint8_t*>(dataMapped.data()), dataMapped.size());
-
-    String eventKeySystemUUIDString = eventKeySystemUUID;
-    RunLoop::main().dispatch([weakThis = makeWeakPtr(*this), eventKeySystemUUID = eventKeySystemUUIDString, initData] {
-        if (!weakThis)
-            return;
-
-        GST_DEBUG("scheduling initializationDataEncountered event for %s with init data size of %" G_GSIZE_FORMAT, eventKeySystemUUID.utf8().data(), initData.sizeInBytes());
-        GST_MEMDUMP("init datas", reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes());
-        weakThis->m_player->initializationDataEncountered("cenc"_s, ArrayBuffer::create(reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes()));
-    });
-}
-
 void MediaPlayerPrivateGStreamerBase::handleProtectionStructure(const GstStructure* structure)
 {
     GRefPtr<GstBuffer> data;
@@ -1459,31 +1423,37 @@ void MediaPlayerPrivateGStreamerBase::initializationDataEncountered(const InitDa
 void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(CDMInstance& instance)
 {
     ASSERT(isMainThread());
-    GST_DEBUG("CDM instance %p set", &instance);
-    m_cdmInstance = &instance;
-    dispatchLocalCDMInstance();
-}
 
-void MediaPlayerPrivateGStreamerBase::dispatchLocalCDMInstance()
-{
-    ASSERT(isMainThread());
+    if (m_cdmInstance == &instance)
+        return;
 
-    if (!m_cdmInstance) {
-        GST_DEBUG("no CDM instance yet, not dispatching anything");
+    if (!m_pipeline) {
+        GST_ERROR("no pipeline yet");
+        ASSERT_NOT_REACHED();
         return;
     }
 
-    GST_DEBUG("CDM instance %p dispatched", m_cdmInstance.get());
-    dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_new("drm-cdm-instance-attached", "cdm-instance", G_TYPE_POINTER, m_cdmInstance.get(), nullptr)));
+    m_cdmInstance = &instance;
+
+    GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-cdm-instance", FALSE));
+    GstStructure* contextStructure = gst_context_writable_structure(context.get());
+    gst_structure_set(contextStructure, "cdm-instance", G_TYPE_POINTER, m_cdmInstance.get(), nullptr);
+    gst_element_set_context(GST_ELEMENT(m_pipeline.get()), context.get());
+
+    GST_LOG("CDM instance %p dispatched as context", m_cdmInstance.get());
 }
 
 void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(CDMInstance& instance)
 {
     ASSERT(isMainThread());
+#ifndef NDEBUG
     ASSERT(m_cdmInstance.get() == &instance);
+#else
+    UNUSED_PARAM(instance);
+#endif
     GST_DEBUG("detaching CDM instance %p, dispatching event", m_cdmInstance.get());
     m_cdmInstance = nullptr;
-    dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_new("drm-cdm-instance-detached", "cdm-instance", G_TYPE_POINTER, &instance, nullptr)));
+    // FIXME: properly detach instance from the decryptors.
 }
 
 void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(CDMInstance& instance)

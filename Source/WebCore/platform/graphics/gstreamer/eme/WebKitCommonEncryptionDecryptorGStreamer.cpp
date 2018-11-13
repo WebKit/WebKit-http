@@ -54,6 +54,7 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
 static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseTransform*, GstBuffer*);
 static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransform*, GstEvent*);
 static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(WebKitMediaCommonEncryptionDecrypt*);
+static bool webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(WebKitMediaCommonEncryptionDecrypt*);
 
 GST_DEBUG_CATEGORY_STATIC(webkit_media_common_encryption_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_common_encryption_decrypt_debug_category
@@ -106,20 +107,6 @@ static void webKitMediaCommonEncryptionDecryptorFinalize(GObject* object)
 
     priv->~WebKitMediaCommonEncryptionDecryptPrivate();
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
-}
-
-static void webKitMediaCommonEncryptionDecryptorPrivClearStateWithInstance(WebKitMediaCommonEncryptionDecryptPrivate* priv, CDMInstance* cdmInstance)
-{
-    ASSERT(priv);
-    ASSERT(priv->m_mutex.isLocked());
-
-    // If this is the first CDM instance that has been set, do not
-    // clear out the old init datas, since doing so will trigger an
-    // invalid repeated onEncrypted event.
-    if (priv->m_cdmInstance)
-        priv->m_initDatas.clear();
-    priv->m_cdmInstance = cdmInstance;
-    priv->m_keyReceived = false;
 }
 
 static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform* base, GstPadDirection direction, GstCaps* caps, GstCaps* filter)
@@ -180,7 +167,7 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
 
             WebKitMediaCommonEncryptionDecryptPrivate* priv = self->priv;
             LockHolder locker(priv->m_mutex);
-            if (priv->m_cdmInstance)
+            if (webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self))
                 gst_structure_set(outgoingStructure.get(),
                     "protection-system", G_TYPE_STRING, WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()), nullptr);
         }
@@ -346,12 +333,32 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     return GST_FLOW_OK;
 }
 
+static bool webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(WebKitMediaCommonEncryptionDecrypt* self)
+{
+    WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
+
+    ASSERT(priv->m_mutex.isLocked());
+
+    if (!priv->m_cdmInstance) {
+        GRefPtr<GstContext> context = adoptGRef(gst_element_get_context(GST_ELEMENT(self), "drm-cdm-instance"));
+        if (context) {
+            priv->m_cdmInstance = reinterpret_cast<CDMInstance*>(g_value_get_pointer(gst_structure_get_value(gst_context_get_structure(context.get()), "cdm-instance")));
+            GST_DEBUG_OBJECT(self, "received new CDMInstance %p", priv->m_cdmInstance.get());
+        }
+    }
+
+    GST_TRACE_OBJECT(self, "CDMInstance available %s", boolForPrinting(priv->m_cdmInstance.get()));
+    return priv->m_cdmInstance;
+}
+
 static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(WebKitMediaCommonEncryptionDecrypt* self)
 {
     WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
     WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
 
     ASSERT(priv->m_mutex.isLocked());
+
+    bool isCDMInstanceAvailable = webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self);
 
     WebCore::InitData concatenatedInitDatas;
     for (auto& event : priv->m_pendingProtectionEvents) {
@@ -361,7 +368,7 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
 
         GST_TRACE_OBJECT(self, "handling protection event %u for %s", GST_EVENT_SEQNUM(event.get()), eventKeySystemUUID);
 
-        if (priv->m_cdmInstance && g_strcmp0(eventKeySystemUUID, WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()))) {
+        if (isCDMInstanceAvailable && g_strcmp0(eventKeySystemUUID, WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()))) {
             GST_TRACE_OBJECT(self, "protection event for a different key system");
             continue;
         }
@@ -372,7 +379,7 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
         }
 
         WebCore::InitData initData;
-        if (priv->m_cdmInstance)
+        if (isCDMInstanceAvailable)
             initData = priv->m_initDatas.get(WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()));
 
         priv->m_currentEvent = GST_EVENT_SEQNUM(event.get());
@@ -390,9 +397,9 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
             GST_MEMDUMP_OBJECT(self, "init data", mappedBuffer.data(), mappedBuffer.size());
             priv->m_initDatas.set(eventKeySystemUUID, initData);
 
-            priv->m_keyReceived = priv->m_cdmInstance && !klass->handleInitData(self, initData);
+            priv->m_keyReceived = isCDMInstanceAvailable && !klass->handleInitData(self, initData);
             if (!priv->m_keyReceived) {
-                if (priv->m_cdmInstance) {
+                if (isCDMInstanceAvailable) {
                     GST_DEBUG_OBJECT(self, "posting event and considering key not received");
                     gst_element_post_message(GST_ELEMENT(self), gst_message_new_element(GST_OBJECT(self),
                         gst_structure_new("drm-initialization-data-encountered", "init-data", GST_TYPE_BUFFER, buffer, "key-system-uuid", G_TYPE_STRING, eventKeySystemUUID, nullptr)));
@@ -415,7 +422,7 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
 
     priv->m_pendingProtectionEvents.clear();
 
-    if (!priv->m_cdmInstance && !concatenatedInitDatas.isEmpty()) {
+    if (!isCDMInstanceAvailable && !concatenatedInitDatas.isEmpty()) {
         GRefPtr<GstBuffer> buffer = adoptGRef(gst_buffer_new_allocate(nullptr, concatenatedInitDatas.sizeInBytes(), nullptr));
         WebCore::GstMappedBuffer mappedBuffer(buffer.get(), GST_MAP_WRITE);
         if (!mappedBuffer) {
@@ -446,15 +453,10 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
 
         LockHolder locker(priv->m_mutex);
         priv->m_pendingProtectionEvents.append(event);
-        if (priv->m_cdmInstance)
+        if (webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self))
             webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(self);
-        else {
+        else
             GST_DEBUG_OBJECT(self, "protection event buffer kept for later because we have no CDMInstance yet");
-            if (priv->m_pendingProtectionEvents.size() == 1) {
-                GST_DEBUG_OBJECT(self, "requesting CDM instance");
-                gst_element_post_message(GST_ELEMENT(self), gst_message_new_element(GST_OBJECT(self), gst_structure_new_empty("drm-cdm-instance-needed")));
-            }
-        }
 
         result = TRUE;
         gst_event_unref(event);
@@ -462,36 +464,11 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
     }
     case GST_EVENT_CUSTOM_DOWNSTREAM_OOB: {
         const GstStructure* structure = gst_event_get_structure(event);
-        if (gst_structure_has_name(structure, "drm-cdm-instance-attached")) {
-            CDMInstance* cdmInstance = nullptr;
-            gst_structure_get(structure, "cdm-instance", G_TYPE_POINTER, &cdmInstance, nullptr);
-            gst_event_unref(event);
-            result = TRUE;
-            ASSERT(cdmInstance);
-            LockHolder locker(priv->m_mutex);
-            if (priv->m_cdmInstance != cdmInstance) {
-                GST_INFO_OBJECT(self, "got new CDMInstance %p attached (ours was %p), clearing state", cdmInstance, priv->m_cdmInstance.get());
-                webKitMediaCommonEncryptionDecryptorPrivClearStateWithInstance(priv, cdmInstance);
-                if (!priv->m_pendingProtectionEvents.isEmpty())
-                    webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(self);
-            } else
-                GST_TRACE_OBJECT(self, "ignoring cdm-instance %p, we already have it", cdmInstance);
-        } else if (gst_structure_has_name(structure, "drm-cdm-instance-detached")) {
-            CDMInstance* cdmInstance = nullptr;
-            gst_structure_get(structure, "cdm-instance", G_TYPE_POINTER, &cdmInstance, nullptr);
-            gst_event_unref(event);
-            result = TRUE;
-            ASSERT(cdmInstance);
-            LockHolder locker(priv->m_mutex);
-            if (priv->m_cdmInstance == cdmInstance) {
-                webKitMediaCommonEncryptionDecryptorPrivClearStateWithInstance(priv, nullptr);
-                GST_INFO_OBJECT(self, "our cdm-instance %p was detached, state cleared", cdmInstance);
-            } else
-                GST_TRACE_OBJECT(self, "cdm-instance %p detached, ignored since ours was %p", cdmInstance, priv->m_cdmInstance.get());
-        } else if (gst_structure_has_name(structure, "drm-attempt-to-decrypt-with-local-instance")) {
+        if (gst_structure_has_name(structure, "drm-attempt-to-decrypt-with-local-instance")) {
             gst_event_unref(event);
             result = TRUE;
             LockHolder locker(priv->m_mutex);
+            RELEASE_ASSERT(webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self));
             priv->m_keyReceived = klass->attemptToDecryptWithLocalInstance(self, priv->m_initDatas.get(WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem())));
             GST_DEBUG_OBJECT(self, "attempted to decrypt with local instance %p, key received %s, waiting for key %s", priv->m_cdmInstance.get(), WTF::boolForPrinting(priv->m_keyReceived), WTF::boolForPrinting(priv->m_waitingForKey));
             if (priv->m_keyReceived) {
@@ -557,7 +534,7 @@ RefPtr<CDMInstance> webKitMediaCommonEncryptionDecryptCDMInstance(WebKitMediaCom
 {
     WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
     ASSERT(priv->m_mutex.isLocked());
-    return priv->m_cdmInstance;
+    return webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self) ? priv->m_cdmInstance : nullptr;
 }
 
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
