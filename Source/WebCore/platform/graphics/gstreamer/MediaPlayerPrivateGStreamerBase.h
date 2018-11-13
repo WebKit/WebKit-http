@@ -149,7 +149,6 @@ public:
     void handleProtectionStructure(const GstStructure*);
     void handleProtectionEvents(const Vector<GstEvent*>&);
     void initializationDataEncountered(const InitData&);
-    void dispatchLocalCDMInstance();
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);

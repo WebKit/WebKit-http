@@ -1388,31 +1388,37 @@ void MediaPlayerPrivateGStreamerBase::initializationDataEncountered(const InitDa
 void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(const CDMInstance& instance)
 {
     ASSERT(isMainThread());
-    GST_DEBUG("CDM instance %p set", &instance);
-    m_cdmInstance = &instance;
-    dispatchLocalCDMInstance();
-}
 
-void MediaPlayerPrivateGStreamerBase::dispatchLocalCDMInstance()
-{
-    ASSERT(isMainThread());
+    if (m_cdmInstance == &instance)
+        return;
 
-    if (!m_cdmInstance) {
-        GST_DEBUG("no CDM instance yet, not dispatching anything");
+    if (!m_pipeline) {
+        GST_ERROR("no pipeline yet");
+        ASSERT_NOT_REACHED();
         return;
     }
 
-    GST_DEBUG("CDM instance %p dispatched", m_cdmInstance.get());
-    dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_new("drm-cdm-instance-attached", "cdm-instance", G_TYPE_POINTER, m_cdmInstance.get(), nullptr)));
+    m_cdmInstance = &instance;
+
+    GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-cdm-instance", FALSE));
+    GstStructure* contextStructure = gst_context_writable_structure(context.get());
+    gst_structure_set(contextStructure, "cdm-instance", G_TYPE_POINTER, m_cdmInstance.get(), nullptr);
+    gst_element_set_context(GST_ELEMENT(m_pipeline.get()), context.get());
+
+    GST_LOG("CDM instance %p dispatched as context", m_cdmInstance.get());
 }
 
 void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(const CDMInstance& instance)
 {
     ASSERT(isMainThread());
+#ifndef NDEBUG
     ASSERT(m_cdmInstance.get() == &instance);
+#else
+    UNUSED_PARAM(instance);
+#endif
     GST_DEBUG("detaching CDM instance %p, dispatching event", m_cdmInstance.get());
     m_cdmInstance = nullptr;
-    dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_new("drm-cdm-instance-detached", "cdm-instance", G_TYPE_POINTER, &instance, nullptr)));
+    // FIXME: properly detach instance from the decryptors.
 }
 
 void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInstance& instance)
