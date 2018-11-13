@@ -43,7 +43,7 @@ struct _WebKitMediaCommonEncryptionDecryptPrivate {
     Condition m_condition;
     RefPtr<CDMInstance> m_cdmInstance;
     WTF::HashMap<String, WebCore::InitData> m_initDatas;
-    Vector<GRefPtr<GstEvent>> m_pendingProtectionEvents;
+    Vector<GRefPtr<GstEvent>> m_protectionEvents;
     uint32_t m_currentEvent { 0 };
     bool m_isFlushing { false };
 };
@@ -53,7 +53,7 @@ static void webKitMediaCommonEncryptionDecryptorFinalize(GObject*);
 static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform*, GstPadDirection, GstCaps*, GstCaps*);
 static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseTransform*, GstBuffer*);
 static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransform*, GstEvent*);
-static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(WebKitMediaCommonEncryptionDecrypt*);
+static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMediaCommonEncryptionDecrypt*);
 static bool webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(WebKitMediaCommonEncryptionDecrypt*);
 
 GST_DEBUG_CATEGORY_STATIC(webkit_media_common_encryption_decrypt_debug_category);
@@ -215,7 +215,7 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     if (streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList)) {
         unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
         for (unsigned i = 0; i < streamEncryptionEventsListSize; ++i)
-            priv->m_pendingProtectionEvents.append(GRefPtr<GstEvent>(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i)))));
+            priv->m_protectionEvents.append(GRefPtr<GstEvent>(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i)))));
         gst_structure_remove_field(protectionMeta->info, "stream-encryption-events");
         if (!gst_structure_n_fields(protectionMeta->info)) {
             GST_ERROR_OBJECT(self, "buffer %p did not have enough protection meta-data", buffer);
@@ -223,8 +223,8 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
         }
     }
 
-    if (!priv->m_pendingProtectionEvents.isEmpty())
-        webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(self);
+    if (!priv->m_protectionEvents.isEmpty())
+        webkitMediaCommonEncryptionDecryptProcessProtectionEvents(self);
 
     // The key might not have been received yet. Wait for it.
     if (!priv->m_keyReceived) {
@@ -351,7 +351,7 @@ static bool webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(WebKitMedia
     return priv->m_cdmInstance;
 }
 
-static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(WebKitMediaCommonEncryptionDecrypt* self)
+static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMediaCommonEncryptionDecrypt* self)
 {
     WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
     WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
@@ -361,7 +361,7 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
     bool isCDMInstanceAvailable = webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self);
 
     WebCore::InitData concatenatedInitDatas;
-    for (auto& event : priv->m_pendingProtectionEvents) {
+    for (auto& event : priv->m_protectionEvents) {
         GstBuffer* buffer = nullptr;
         const char* eventKeySystemUUID = nullptr;
         gst_event_parse_protection(event.get(), &eventKeySystemUUID, &buffer, nullptr);
@@ -420,7 +420,7 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
         }
     }
 
-    priv->m_pendingProtectionEvents.clear();
+    priv->m_protectionEvents.clear();
 
     if (!isCDMInstanceAvailable && !concatenatedInitDatas.isEmpty()) {
         GRefPtr<GstBuffer> buffer = adoptGRef(gst_buffer_new_allocate(nullptr, concatenatedInitDatas.sizeInBytes(), nullptr));
@@ -452,12 +452,7 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
         GST_TRACE_OBJECT(self, "received protection event %u for %s", GST_EVENT_SEQNUM(event), systemId);
 
         LockHolder locker(priv->m_mutex);
-        priv->m_pendingProtectionEvents.append(event);
-        if (webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self))
-            webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(self);
-        else
-            GST_DEBUG_OBJECT(self, "protection event buffer kept for later because we have no CDMInstance yet");
-
+        priv->m_protectionEvents.append(event);
         result = TRUE;
         gst_event_unref(event);
         break;
