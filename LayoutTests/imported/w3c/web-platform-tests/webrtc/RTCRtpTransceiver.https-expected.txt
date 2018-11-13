@@ -10,7 +10,7 @@ FAIL checkAddTransceiverWithOfferToReceiveAudio assert_equals: expected "[{curre
 FAIL checkAddTransceiverWithOfferToReceiveVideo assert_equals: expected "[{currentDirection:null,direction:\"recvonly\",mid:null,receiver:{track:{kind:\"video\"}},sender:{track:null},stopped:false}]" but got "[]"
 FAIL checkAddTransceiverWithOfferToReceiveBoth assert_equals: expected "[{currentDirection:null,direction:\"recvonly\",mid:null,receiver:{track:{kind:\"audio\"}},sender:{track:null},stopped:false},{currentDirection:null,direction:\"recvonly\",mid:null,receiver:{track:{kind:\"video\"}},sender:{track:null},stopped:false}]" but got "[]"
 PASS checkAddTransceiverWithSetRemoteOfferSending 
-FAIL checkAddTransceiverWithSetRemoteOfferNoSend assert_equals: expected "[{currentDirection:null,direction:\"recvonly\",receiver:{track:{kind:\"audio\"}},sender:{track:null},stopped:false}]" but got "[]"
+PASS checkAddTransceiverWithSetRemoteOfferNoSend 
 PASS checkAddTransceiverBadKind 
 FAIL checkNoMidOffer promise_test: Unhandled rejection with value: object "InvalidAccessError: Failed to set remote offer sdp: The BUNDLE group contains MID:0 matching no m= section."
 PASS checkSetDirection 
