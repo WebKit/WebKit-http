@@ -12,7 +12,7 @@ FAIL checkAddTransceiverWithOfferToReceiveBoth assert_equals: expected "[{curren
 FAIL checkAddTransceiverWithSetRemoteOfferSending assert_equals: expected "[{streams:[{id:\"117b0a30-7f2b-4595-8183-98bd8a7599bb\"}],track:{}}]" but got "[{streams:[],track:{}}]"
 FAIL checkAddTransceiverWithSetRemoteOfferNoSend assert_equals: expected "[{currentDirection:null,direction:\"recvonly\",receiver:{track:{kind:\"audio\"}},sender:{track:null},stopped:false}]" but got "[]"
 PASS checkAddTransceiverBadKind 
-FAIL checkNoMidOffer promise_test: Unhandled rejection with value: object "OperationError: Failed to set remote offer sdp: The BUNDLE group contains MID:0 matching no m= section."
+FAIL checkNoMidOffer promise_test: Unhandled rejection with value: object "InvalidAccessError: Failed to set remote offer sdp: The BUNDLE group contains MID:0 matching no m= section."
 PASS checkSetDirection 
 PASS checkCurrentDirection 
 PASS checkSendrecvWithNoSendTrack 
