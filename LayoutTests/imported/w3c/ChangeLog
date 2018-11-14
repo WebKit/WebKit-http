@@ -1,3 +1,70 @@
+2018-11-14  Youenn Fablet  <youenn@apple.com>
+
+        Add support for transport and peerConnection stats
+        https://bugs.webkit.org/show_bug.cgi?id=191592
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-getStats.https-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpReceiver-getStats.https-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpSender-getStats.https-expected.txt:
+        * web-platform-tests/webrtc/getstats-expected.txt:
+
+2018-11-13  Youenn Fablet  <youenn@apple.com>
+
+        RTCPeerConnection.getTransceivers is not always exposing all transceivers
+        https://bugs.webkit.org/show_bug.cgi?id=191589
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCRtpTransceiver.https-expected.txt:
+
+2018-11-13  Youenn Fablet  <youenn@apple.com>
+
+        Refresh WPT webrtc tests to ToT
+        https://bugs.webkit.org/show_bug.cgi?id=191564
+
+        Reviewed by Eric Carlson.
+
+        Also remove QUIC specific tests that are not related to webrtc-pc.
+        * resources/import-expectations.json:
+        * web-platform-tests/webrtc: refreshed.
+
+2018-11-12  Rob Buis  <rbuis@igalia.com>
+
+        Content-Type parameter values should allow empty quoted strings
+        https://bugs.webkit.org/show_bug.cgi?id=191388
+
+        Reviewed by Dean Jackson.
+
+        Include improved expected test result and updated mime-type test:
+        https://github.com/whatwg/mimesniff/pull/79
+
+        * web-platform-tests/mimesniff/mime-types/charset-parameter.window-expected.txt:
+        * web-platform-tests/mimesniff/mime-types/parsing.any-expected.txt:
+        * web-platform-tests/mimesniff/mime-types/parsing.any.worker-expected.txt:
+        * web-platform-tests/mimesniff/mime-types/resources/mime-types.json:
+        * web-platform-tests/xhr/overridemimetype-blob-expected.txt:
+
+2018-11-12  Sihui Liu  <sihui_liu@apple.com>
+
+        imported/w3c/web-platform-tests/IndexedDB/keygenerator-explicit.html crashing on iOS device
+        https://bugs.webkit.org/show_bug.cgi?id=191500
+
+        Reviewed by Dean Jackson.
+
+        * web-platform-tests/IndexedDB/keygenerator-explicit-expected.txt:
+
+2018-11-12  Youenn Fablet  <youenn@apple.com>
+
+        Support setting stream ids when adding a transceiver
+        https://bugs.webkit.org/show_bug.cgi?id=191307
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-transceivers.https-expected.txt:
+        * web-platform-tests/webrtc/RTCRtpTransceiver.https-expected.txt:
+
 2018-11-12  Eric Carlson  <eric.carlson@apple.com>
 
         Require <iframe allow="display"> for an iframe to use getDisplayMedia
