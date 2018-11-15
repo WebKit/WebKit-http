@@ -29,7 +29,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-pkg_check_modules(WAYLAND wayland-client>=1.2 wayland-server)
+pkg_check_modules(WAYLAND wayland-client wayland-server wayland-egl)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Wayland REQUIRED_VARS WAYLAND_LIBRARIES
