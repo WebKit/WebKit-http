@@ -1,3 +1,135 @@
+2018-11-15  Youenn Fablet  <youenn@apple.com>
+
+        Update RTCPeerConnection JS built-ins to be closer to specWe
+        https://bugs.webkit.org/show_bug.cgi?id=191665
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations:
+
+2018-11-15  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r238220.
+
+        * platform/gtk/TestExpectations:
+
+2018-11-14  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Add support for in-flow positioned inline boxes.
+        https://bugs.webkit.org/show_bug.cgi?id=191672
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/simple-inline-inflow-positioned-expected.txt: Added.
+        * fast/inline/simple-inline-inflow-positioned.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-11-15  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r238178): fast/forms/access-key-mutated.html and fast/forms/access-key-case-insensitive.html are timing out
+        https://bugs.webkit.org/show_bug.cgi?id=191642
+
+        Reviewed by Zalan Bujtas.
+
+        * TestExpectations: Unskip
+        * platform/mac-wk2/TestExpectations: Unskip
+        * platform/mac-wk2/accessibility/mac/selection-notification-focus-change-expected.txt:
+
+        Rebase. Focus timings depends on layout timings.
+
+2018-11-15  Antti Koivisto  <antti@apple.com>
+
+        Remove fonts from CSSFontFaceSet safely
+        https://bugs.webkit.org/show_bug.cgi?id=191676
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/font-face-set-remove-safely-expected.txt: Added.
+        * fast/text/font-face-set-remove-safely.html: Added.
+
+2018-11-14  Timothy Hatcher  <timothy@apple.com>
+
+        Default the view background color and text color to different values when in dark mode.
+        https://bugs.webkit.org/show_bug.cgi?id=191607
+        rdar://problem/46045854
+
+        Reviewed by Dean Jackson.
+
+        * css-dark-mode/default-colors-expected.txt: Added.
+        * css-dark-mode/default-colors.html: Added.
+        * inspector/css/shadow-scoped-style-expected.txt: Rebaseline.
+        * platform/mac/printing/width-overflow-expected.txt: Rebaseline.
+
+2018-11-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Layout test fast/layers/no-clipping-overflow-hidden-added-after-transform.html is a flaky failure on EWS bots
+        https://bugs.webkit.org/show_bug.cgi?id=191658
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Mark this test as flaky on Sierra Release WK2 to reduce the number of retries on mac-wk2-ews.
+
+2018-11-14  Timothy Hatcher  <timothy@apple.com>
+
+        Update prefers-color-scheme media query matching based on GitHub issue #3278.
+        https://bugs.webkit.org/show_bug.cgi?id=191654
+        rdar://problem/46074307
+
+        Reviewed by Simon Fraser.
+
+        * css-dark-mode/prefers-color-scheme-expected.txt: Rebaseline.
+        * css-dark-mode/prefers-color-scheme.html: Updates to better match the spec.
+
+2018-11-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: send a call stack with each action instead of an array of call frames
+        https://bugs.webkit.org/show_bug.cgi?id=191628
+
+        Reviewed by Dean Jackson.
+
+        * inspector/model/recording.html:
+
+2018-11-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, move a skip expectation to a more specific file.
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Keep Web Inspector window alive across process swaps (PSON) (Remote Inspector)
+        https://bugs.webkit.org/show_bug.cgi?id=191494
+        <rdar://problem/45469854>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/unit-tests/target-manager.html:
+        WI.targets has switched to being an array instead of a set.
+
+2018-11-14  Truitt Savell  <tsavell@apple.com>
+
+        [ Sierra Release WK2 ] Layout Test fast/workers/worker-cloneport.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=191644.
+
+        Unreviewed test Gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-11-14  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r238178): fast/forms/access-key-mutated.html and fast/forms/access-key-case-insensitive.html are timing out
+        https://bugs.webkit.org/show_bug.cgi?id=191642
+
+        * TestExpectations: Additionally skip accessibility/mac/selection-notification-focus-change.html
+
+2018-11-14  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r238178): fast/forms/access-key-mutated.html and fast/forms/access-key-case-insensitive.html are timing out
+        https://bugs.webkit.org/show_bug.cgi?id=191642
+
+        * TestExpectations: Skipping for now.
+
 2018-11-12  Youenn Fablet  <youenn@apple.com>
 
         Support setting stream ids when adding a transceiver
