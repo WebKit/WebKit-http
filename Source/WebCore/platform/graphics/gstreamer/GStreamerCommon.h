@@ -30,7 +30,6 @@
 
 namespace WebCore {
 
-using GstEventSeqNum = uint32_t;
 class IntSize;
 
 inline bool webkitGstCheckVersion(guint major, guint minor, guint micro)
@@ -82,9 +81,6 @@ inline GstClockTime toGstClockTime(const MediaTime &mediaTime)
     return static_cast<GstClockTime>(toGstUnsigned64Time(mediaTime));
 }
 
-bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* capsString);
-}
-
 class GstMappedBuffer {
     WTF_MAKE_NONCOPYABLE(GstMappedBuffer);
 public:
@@ -94,7 +90,7 @@ public:
         m_isValid = gst_buffer_map(m_buffer, &m_info, flags);
     }
     // Unfortunately, GST_MAP_READWRITE is defined out of line from the MapFlags
-    // enum, and C++ is careful to not implicity convert it to an enum.
+    // enum as an int, and C++ is careful to not implicity convert it to an enum.
     explicit GstMappedBuffer(GstBuffer* buffer, int flags)
         : GstMappedBuffer(buffer, static_cast<GstMapFlags>(flags)) { }
 
@@ -113,5 +109,11 @@ private:
     GstMapInfo m_info;
     bool m_isValid { false };
 };
+
+bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* capsString);
+void connectSimpleBusMessageCallback(GstElement *pipeline);
+void disconnectSimpleBusMessageCallback(GstElement *pipeline);
+
+}
 
 #endif // USE(GSTREAMER)

@@ -304,7 +304,7 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     keyIDBuffer = gst_value_get_buffer(value);
 #ifndef GST_DISABLE_GST_DEBUG
     if (gst_debug_category_get_threshold(GST_CAT_DEFAULT) >= GST_LEVEL_MEMDUMP) {
-        GstMappedBuffer mappedKeyID(keyIDBuffer, GST_MAP_READ);
+        WebCore::GstMappedBuffer mappedKeyID(keyIDBuffer, GST_MAP_READ);
         if (!mappedKeyID) {
             GST_ERROR_OBJECT(self, "failed to map key ID buffer");
             return GST_FLOW_NOT_SUPPORTED;
@@ -374,7 +374,7 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
         priv->m_currentEvent = GST_EVENT_SEQNUM(event.get());
 
         if (initData.isEmpty() || gst_buffer_memcmp(buffer, 0, initData.characters8(), initData.sizeInBytes())) {
-            GstMappedBuffer mappedBuffer(buffer, GST_MAP_READ);
+            WebCore::GstMappedBuffer mappedBuffer(buffer, GST_MAP_READ);
             if (!mappedBuffer) {
                 GST_WARNING_OBJECT(self, "cannot map protection data");
                 continue;
@@ -413,7 +413,7 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
 
     if (!priv->m_cdmInstance && !concatenatedInitDatas.isEmpty()) {
         GRefPtr<GstBuffer> buffer = adoptGRef(gst_buffer_new_allocate(nullptr, concatenatedInitDatas.sizeInBytes(), nullptr));
-        GstMappedBuffer mappedBuffer(buffer.get(), GST_MAP_WRITE);
+        WebCore::GstMappedBuffer mappedBuffer(buffer.get(), GST_MAP_WRITE);
         if (!mappedBuffer) {
             GST_WARNING_OBJECT(self, "cannot map writable init data");
             return;
