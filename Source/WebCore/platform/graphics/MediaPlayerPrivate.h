@@ -241,7 +241,6 @@ public:
     virtual void cdmInstanceAttached(const CDMInstance&) { }
     virtual void cdmInstanceDetached(const CDMInstance&) { }
     virtual void attemptToDecryptWithInstance(const CDMInstance&) { }
-    virtual bool waitingForKey() const { return false; }
 #endif
 
 #if ENABLE(VIDEO_TRACK)
