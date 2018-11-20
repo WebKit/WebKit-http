@@ -150,7 +150,6 @@ public:
     void handleProtectionEvents(const Vector<GstEvent*>&);
     void initializationDataEncountered(const InitData&);
     void dispatchLocalCDMInstance();
-    void reportWaitingForKey();
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);

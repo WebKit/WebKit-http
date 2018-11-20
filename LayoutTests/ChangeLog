@@ -1,17 +1,3 @@
-2018-09-18  Xabier Rodriguez Calvar  <calvaris@igalia.com>
-
-        [EME][GStreamer] The current EME implementation doesn't support the waitingforkey event
-        https://bugs.webkit.org/show_bug.cgi?id=185590
-
-        Reviewed by Philippe Normand.
-
-        Updated status of
-        imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-waitingforkey.https
-        and expectations.
-
-        * platform/wpe/TestExpectations:
-        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-waitingforkey.https-expected.txt:
-
 2017-09-26  Antti Koivisto  <antti@apple.com>
 
         REGRESSION (222040): Google Maps Street View CrashTracer: [USER] com.apple.WebKit.WebContent.Development at com.apple.WebCore: WebCore::PropertyWrapperAcceleratedTransform::blend const + 92
