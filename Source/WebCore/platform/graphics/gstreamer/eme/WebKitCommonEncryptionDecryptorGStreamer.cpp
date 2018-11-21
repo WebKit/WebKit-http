@@ -344,8 +344,12 @@ static bool webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(WebKitMedia
     if (!priv->m_cdmInstance) {
         GRefPtr<GstContext> context = adoptGRef(gst_element_get_context(GST_ELEMENT(self), "drm-cdm-instance"));
         if (context) {
-            priv->m_cdmInstance = reinterpret_cast<CDMInstance*>(g_value_get_pointer(gst_structure_get_value(gst_context_get_structure(context.get()), "cdm-instance")));
-            GST_DEBUG_OBJECT(self, "received new CDMInstance %p", priv->m_cdmInstance.get());
+            const GValue* value = gst_structure_get_value(gst_context_get_structure(context.get()), "cdm-instance");
+            priv->m_cdmInstance = value ? reinterpret_cast<CDMInstance*>(g_value_get_pointer(value)) : nullptr;
+            if (priv->m_cdmInstance)
+                GST_DEBUG_OBJECT(self, "received new CDMInstance %p", priv->m_cdmInstance.get());
+            else
+                GST_TRACE_OBJECT(self, "former instance was detached");
         }
     }
 
@@ -533,7 +537,8 @@ static void webKitMediaCommonEncryptionDecryptorSetContext(GstElement* element, 
     WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
 
     if (gst_context_has_context_type(context, "drm-cdm-instance")) {
-        priv->m_cdmInstance = reinterpret_cast<CDMInstance*>(g_value_get_pointer(gst_structure_get_value(gst_context_get_structure(context), "cdm-instance")));
+        const GValue* value = gst_structure_get_value(gst_context_get_structure(context), "cdm-instance");
+        priv->m_cdmInstance = value ? reinterpret_cast<CDMInstance*>(g_value_get_pointer(value)) : nullptr;
         GST_DEBUG_OBJECT(self, "received new CDMInstance %p", priv->m_cdmInstance.get());
         return;
     }

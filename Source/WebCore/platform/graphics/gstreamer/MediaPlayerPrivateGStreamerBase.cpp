@@ -1451,9 +1451,11 @@ void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(CDMInstance& instance)
 #else
     UNUSED_PARAM(instance);
 #endif
-    GST_DEBUG("detaching CDM instance %p, dispatching event", m_cdmInstance.get());
+    GST_DEBUG("detaching CDM instance %p, setting empty context", m_cdmInstance.get());
     m_cdmInstance = nullptr;
-    // FIXME: properly detach instance from the decryptors.
+
+    GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-cdm-instance", FALSE));
+    gst_element_set_context(GST_ELEMENT(m_pipeline.get()), context.get());
 }
 
 void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(CDMInstance& instance)
