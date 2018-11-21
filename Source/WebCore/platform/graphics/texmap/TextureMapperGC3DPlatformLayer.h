@@ -39,6 +39,7 @@ public:
 
     bool makeContextCurrent();
     PlatformGraphicsContext3D platformContext();
+    GLContext* glContext();
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
     RefPtr<TextureMapperPlatformLayerProxy> proxy() const override;
