@@ -31,6 +31,8 @@
 
 namespace WebCore {
 
+static std::unique_ptr<GLContext> s_windowContext;
+
 TextureMapperGC3DPlatformLayer::TextureMapperGC3DPlatformLayer(GraphicsContext3D& context, GraphicsContext3D::RenderStyle renderStyle, HostWindow* hostWindow)
     : m_context(context)
     , m_renderStyle(renderStyle)
@@ -40,7 +42,8 @@ TextureMapperGC3DPlatformLayer::TextureMapperGC3DPlatformLayer(GraphicsContext3D
         m_glContext = GLContext::createOffscreenContext(&PlatformDisplay::sharedDisplayForCompositing());
         break;
     case GraphicsContext3D::RenderDirectlyToHostWindow:
-        m_glContext = GLContext::createContextForWindow(reinterpret_cast<GLNativeWindowType>(hostWindow->nativeWindowID()), &PlatformDisplay::sharedDisplayForCompositing());
+        if (!s_windowContext)
+            s_windowContext = GLContext::createContextForWindow(reinterpret_cast<GLNativeWindowType>(hostWindow->nativeWindowID()), &PlatformDisplay::sharedDisplayForCompositing());
         break;
     }
 
@@ -57,16 +60,20 @@ TextureMapperGC3DPlatformLayer::~TextureMapperGC3DPlatformLayer()
 #endif
 }
 
+GLContext* TextureMapperGC3DPlatformLayer::glContext()
+{
+    ASSERT((m_glContext && m_renderStyle == GraphicsContext3D::RenderOffscreen) || (s_windowContext && m_renderStyle == GraphicsContext3D::RenderDirectlyToHostWindow));
+    return m_renderStyle == GraphicsContext3D::RenderOffscreen ? m_glContext.get() : s_windowContext.get();
+}
+
 bool TextureMapperGC3DPlatformLayer::makeContextCurrent()
 {
-    ASSERT(m_glContext);
-    return m_glContext->makeContextCurrent();
+    return glContext()->makeContextCurrent();
 }
 
 PlatformGraphicsContext3D TextureMapperGC3DPlatformLayer::platformContext()
 {
-    ASSERT(m_glContext);
-    return m_glContext->platformContext();
+    return glContext()->platformContext();
 }
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -78,7 +85,7 @@ RefPtr<TextureMapperPlatformLayerProxy> TextureMapperGC3DPlatformLayer::proxy() 
 void TextureMapperGC3DPlatformLayer::swapBuffersIfNeeded()
 {
     if (m_renderStyle == GraphicsContext3D::RenderDirectlyToHostWindow) {
-        m_glContext->swapBuffers();
+        glContext()->swapBuffers();
         return;
     }
 
@@ -101,20 +108,18 @@ void TextureMapperGC3DPlatformLayer::swapBuffersIfNeeded()
 #else
 void TextureMapperGC3DPlatformLayer::paintToTextureMapper(TextureMapper& textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
-    ASSERT(m_glContext);
-
     m_context.markLayerComposited();
 
 #if USE(TEXTURE_MAPPER_GL)
     if (m_context.m_attrs.antialias && m_context.m_state.boundFBO == m_context.m_multisampleFBO) {
         GLContext* previousActiveContext = GLContext::current();
-        if (previousActiveContext != m_glContext.get())
+        if (previousActiveContext != glContext())
             m_context.makeContextCurrent();
 
         m_context.resolveMultisamplingIfNecessary();
         ::glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context.m_state.boundFBO);
 
-        if (previousActiveContext && previousActiveContext != m_glContext.get())
+        if (previousActiveContext && previousActiveContext != glContext())
             previousActiveContext->makeContextCurrent();
     }
 
