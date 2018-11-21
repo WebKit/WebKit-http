@@ -49,6 +49,7 @@ struct _WebKitMediaCommonEncryptionDecryptPrivate {
 };
 
 static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstElement*, GstStateChange transition);
+static void webKitMediaCommonEncryptionDecryptorSetContext(GstElement*, GstContext*);
 static void webKitMediaCommonEncryptionDecryptorFinalize(GObject*);
 static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform*, GstPadDirection, GstCaps*, GstCaps*);
 static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseTransform*, GstBuffer*);
@@ -72,6 +73,7 @@ static void webkit_media_common_encryption_decrypt_class_init(WebKitMediaCommonE
 
     GstElementClass* elementClass = GST_ELEMENT_CLASS(klass);
     elementClass->change_state = GST_DEBUG_FUNCPTR(webKitMediaCommonEncryptionDecryptorChangeState);
+    elementClass->set_context = GST_DEBUG_FUNCPTR(webKitMediaCommonEncryptionDecryptorSetContext);
 
     GstBaseTransformClass* baseTransformClass = GST_BASE_TRANSFORM_CLASS(klass);
     baseTransformClass->transform_ip = GST_DEBUG_FUNCPTR(webkitMediaCommonEncryptionDecryptTransformInPlace);
@@ -523,6 +525,20 @@ static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstE
     // Add post-transition code here.
 
     return result;
+}
+
+static void webKitMediaCommonEncryptionDecryptorSetContext(GstElement* element, GstContext* context)
+{
+    WebKitMediaCommonEncryptionDecrypt* self = WEBKIT_MEDIA_CENC_DECRYPT(element);
+    WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
+
+    if (gst_context_has_context_type(context, "drm-cdm-instance")) {
+        priv->m_cdmInstance = reinterpret_cast<CDMInstance*>(g_value_get_pointer(gst_structure_get_value(gst_context_get_structure(context), "cdm-instance")));
+        GST_DEBUG_OBJECT(self, "received new CDMInstance %p", priv->m_cdmInstance.get());
+        return;
+    }
+
+    GST_ELEMENT_CLASS(parent_class)->set_context(element, context);
 }
 
 RefPtr<CDMInstance> webKitMediaCommonEncryptionDecryptCDMInstance(WebKitMediaCommonEncryptionDecrypt* self)
