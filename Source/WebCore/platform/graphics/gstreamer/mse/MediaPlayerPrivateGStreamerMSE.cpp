@@ -636,7 +636,9 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
             }
             else
 #endif
-            if (!seeking() && !buffering && !m_paused && m_playbackRate) {
+            if (!isTimeBuffered(currentMediaTime()) && !playbackPipelineHasFutureData()) {
+                m_readyState = MediaPlayer::HaveMetadata;
+            } else if (!seeking() && !buffering && !m_paused && m_playbackRate) {
                 GST_DEBUG("[Buffering] Restarting playback.");
                 changePipelineState(GST_STATE_PLAYING);
             }
