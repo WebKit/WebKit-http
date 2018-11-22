@@ -2389,12 +2389,32 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     m_videoSink = gst_element_factory_make( "db410csink", "optimized vsink");
     g_object_set(m_pipeline.get(), "video-sink", m_videoSink.get(), nullptr);
 #endif    
+
+#if PLATFORM(BCM_NEXUS)
+    m_videoSink = gst_element_factory_make( "brcmvideosink", "brcmvideosink");
+    g_object_set(m_pipeline.get(), "video-sink", m_videoSink.get(), nullptr);
     
-#if !USE(WESTEROS_SINK) && !USE(FUSION_SINK)
+    GValue window_set = {0, };
+    static char str[40];
+    snprintf(str, 40, "%d,%d,%d,%d", 0,0, 1280, 720);
+
+    g_value_init(&window_set, G_TYPE_STRING);
+    g_value_set_static_string(&window_set, str);
+    g_object_set(m_videoSink.get(), "window_set", str, nullptr);
+    g_object_set(m_videoSink.get(), "zorder", 0, nullptr);
+
+    GstElement* audioSink = gst_element_factory_make( "brcmaudiosink", "brcmaudiosink");
+    g_object_set(m_pipeline.get(), "audio-sink", audioSink, nullptr);
+
+#endif
+
+#if !USE(WESTEROS_SINK) && !USE(FUSION_SINK) && !PLATFORM(BCM_NEXUS)
+
     g_object_set(m_pipeline.get(), "audio-sink", createAudioSink(), nullptr);
 #endif
     configurePlaySink();
 
+#if !PLATFORM(BCM_NEXUS)
     // On 1.4.2 and newer we use the audio-filter property instead.
     // See https://bugzilla.gnome.org/show_bug.cgi?id=735748 for
     // the reason for using >= 1.4.2 instead of >= 1.4.0.
@@ -2406,6 +2426,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
         else
             g_object_set(m_pipeline.get(), "audio-filter", scale, nullptr);
     }
+#endif
 
     if (!m_renderingCanBeAccelerated) {
         // If not using accelerated compositing, let GStreamer handle
