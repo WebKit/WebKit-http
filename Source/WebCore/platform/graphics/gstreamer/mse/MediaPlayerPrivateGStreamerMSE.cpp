@@ -363,6 +363,16 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
         return m_seeking;
     }
 
+#if PLATFORM(BCM_NEXUS)
+    // When performing bufferedSeek, if the state is still playing, make it paused
+    // Seek will trigger state_change to Playing again
+    getStateResult = gst_element_get_state(m_pipeline.get(), &state, &newState, 0);
+    GST_DEBUG("StateResult:%d CurrentState:%s NewState:%s",getStateResult, gst_element_state_get_name(state), gst_element_state_get_name(newState));
+    if (state == GST_STATE_PLAYING) {
+        gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
+    }
+#endif
+
     GST_DEBUG("We can seek now");
 
     MediaTime startTime = seekTime, endTime = MediaTime::invalidTime();
