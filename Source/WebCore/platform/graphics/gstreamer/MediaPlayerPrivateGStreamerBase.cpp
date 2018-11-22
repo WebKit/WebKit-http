@@ -1289,6 +1289,15 @@ unsigned MediaPlayerPrivateGStreamerBase::droppedFrameCount() const
     guint64 framesDropped = 0;
     if (m_fpsSink)
         g_object_get(m_fpsSink.get(), "frames-dropped", &framesDropped, nullptr);
+
+#if PLATFORM(BCM_NEXUS)
+    GstElement* videoSink = nullptr;
+    videoSink = findVideoSink(m_pipeline.get());
+    if (videoSink) {
+        g_object_get(videoSink, "frames-dropped", &framesDropped, nullptr);
+        GST_DEBUG("frames dropped: %llu",  framesDropped);
+    }
+#endif
     return static_cast<unsigned>(framesDropped);
 }
 
