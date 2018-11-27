@@ -1237,7 +1237,8 @@ void MediaPlayerPrivateGStreamer::processBufferingStats(GstMessage* message)
 
     GST_DEBUG("[Buffering] Buffering: %d%%.", m_bufferingPercentage);
 
-    updateStates();
+    if (m_bufferingPercentage == 100)
+        updateStates();
 }
 
 #if ENABLE(VIDEO_TRACK) && USE(GSTREAMER_MPEGTS)
