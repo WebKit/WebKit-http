@@ -1405,18 +1405,22 @@ void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(const CDMInstance& ins
     gst_structure_set(contextStructure, "cdm-instance", G_TYPE_POINTER, m_cdmInstance.get(), nullptr);
     gst_element_set_context(GST_ELEMENT(m_pipeline.get()), context.get());
 
-    GST_LOG("CDM instance %p dispatched as context", m_cdmInstance.get());
+    GST_DEBUG_OBJECT(m_pipeline.get(), "CDM instance %p dispatched as context", m_cdmInstance.get());
 }
 
 void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(const CDMInstance& instance)
 {
     ASSERT(isMainThread());
-#ifndef NDEBUG
-    ASSERT(m_cdmInstance.get() == &instance);
-#else
-    UNUSED_PARAM(instance);
-#endif
-    GST_DEBUG("detaching CDM instance %p, setting empty context", m_cdmInstance.get());
+
+    if (m_cdmInstance != &instance) {
+        GST_WARNING("passed CDMInstance %p is different from stored one %p", &instance, m_cdmInstance.get());
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    ASSERT(m_pipeline);
+
+    GST_DEBUG_OBJECT(m_pipeline.get(), "detaching CDM instance %p, setting empty context", m_cdmInstance.get());
     m_cdmInstance = nullptr;
 
     GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-cdm-instance", FALSE));

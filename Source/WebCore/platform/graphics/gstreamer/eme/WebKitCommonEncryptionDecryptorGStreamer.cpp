@@ -335,6 +335,11 @@ static bool webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(WebKitMedia
 
     if (!priv->m_cdmInstance) {
         GRefPtr<GstContext> context = adoptGRef(gst_element_get_context(GST_ELEMENT(self), "drm-cdm-instance"));
+        // According to the GStreamer documentation, if we can't find the context, we should run a downstream query, then an upstream one and then send a bus
+        // message. In this case that does not make a lot of sense since only the app (player) answers it, meaning that no query is going to solve it. A message
+        // could be helpful but the player sets the context as soon as it gets the CDMInstance and if it does not have it, we have no way of asking for one as it is
+        // something provided by crossplatform code. This means that we won't be able to answer the bus request in any way either. Summing up, neither queries nor bus
+        // requests are useful here.
         if (context) {
             const GValue* value = gst_structure_get_value(gst_context_get_structure(context.get()), "cdm-instance");
             priv->m_cdmInstance = value ? reinterpret_cast<CDMInstance*>(g_value_get_pointer(value)) : nullptr;
@@ -505,6 +510,7 @@ static void webKitMediaCommonEncryptionDecryptorSetContext(GstElement* element, 
 
     if (gst_context_has_context_type(context, "drm-cdm-instance")) {
         const GValue* value = gst_structure_get_value(gst_context_get_structure(context), "cdm-instance");
+        LockHolder locker(priv->m_mutex);
         priv->m_cdmInstance = value ? reinterpret_cast<CDMInstance*>(g_value_get_pointer(value)) : nullptr;
         GST_DEBUG_OBJECT(self, "received new CDMInstance %p", priv->m_cdmInstance.get());
         return;
@@ -519,5 +525,4 @@ RefPtr<CDMInstance> webKitMediaCommonEncryptionDecryptCDMInstance(WebKitMediaCom
     ASSERT(priv->m_mutex.isLocked());
     return webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self) ? priv->m_cdmInstance : nullptr;
 }
-
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
