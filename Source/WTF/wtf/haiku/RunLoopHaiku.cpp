@@ -29,9 +29,21 @@
 #include <Application.h>
 #include <Handler.h>
 #include <MessageRunner.h>
+#include <errno.h>
 #include <stdio.h>
 
 namespace WTF {
+
+
+struct RunLoopDispatchHandler {
+	RunLoopDispatchHandler(Function<void()>&& f)
+		: function(WTFMove(f))
+	{}
+	~RunLoopDispatchHandler() { delete runner; }
+
+	BMessageRunner* runner;
+	Function<void()>&& function;
+};
 
 
 class LoopHandler: public BHandler
@@ -46,8 +58,17 @@ class LoopHandler: public BHandler
         void MessageReceived(BMessage* message)
         {
             if (message->what == 'loop')
-                m_loop->performWork();
-            else
+                m_loop->iterate();
+			else if (message->what == 'tmrf') {
+				RunLoop::TimerBase* timer
+					= (RunLoop::TimerBase*)message->GetPointer("timer");
+				timer->fired();
+			} else if (message->what == 'daft') {
+				RunLoopDispatchHandler* handler
+					= (RunLoopDispatchHandler*)message->GetPointer("handler");
+				handler->function();
+				delete handler;
+			} else
                 BHandler::MessageReceived(message);
         }
 
@@ -59,7 +80,6 @@ class LoopHandler: public BHandler
 RunLoop::RunLoop()
 {
     m_handler = new LoopHandler(this);
-    be_app->AddHandler(m_handler);
 }
 
 RunLoop::~RunLoop()
@@ -69,12 +89,28 @@ RunLoop::~RunLoop()
 
 void RunLoop::run()
 {
-    // TODO ???
+	BLooper* looper = BLooper::LooperForThread(find_thread(NULL));
+	bool newLooper = false;
+	if (!looper) {
+		looper = new BLooper();
+		newLooper = true;
+	} else if (looper != be_app) {
+		fprintf(stderr, "Add handler to existing RunLoop looper\n");
+	}
+	looper->LockLooper();
+	looper->AddHandler(current().m_handler);
+	looper->UnlockLooper();
+
+	if (newLooper)
+		looper->Loop();
 }
 
 void RunLoop::stop()
 {
-    be_app->RemoveHandler(m_handler);
+	m_handler->LockLooper();
+	BLooper* looper = m_handler->Looper();
+    looper->RemoveHandler(m_handler);
+	looper->Unlock();
 }
 
 void RunLoop::wakeUp()
@@ -93,10 +129,18 @@ RunLoop::TimerBase::~TimerBase()
     stop();
 }
 
-void RunLoop::TimerBase::start(double nextFireInterval, bool repeat)
+void RunLoop::TimerBase::start(Seconds nextFireInterval, bool repeat)
 {
-    m_messageRunner = new BMessageRunner(m_runLoop.m_handler,
-        new BMessage('loop'), nextFireInterval * 1000, repeat ? -1 : 1);
+	if (m_messageRunner) {
+		delete m_messageRunner;
+		m_messageRunner = nullptr;
+	}
+
+	BMessage* message = new BMessage('tmrf');
+	message->AddPointer("timer", this);
+
+   	m_messageRunner = new BMessageRunner(m_runLoop->m_handler,
+       	message, nextFireInterval.microseconds(), repeat ? -1 : 1);
 }
 
 bool RunLoop::TimerBase::isActive() const
@@ -109,6 +153,22 @@ void RunLoop::TimerBase::stop()
 {
     delete m_messageRunner;
     m_messageRunner = NULL;
+}
+
+void RunLoop::iterate()
+{
+	RunLoop::current().performWork();
+}
+
+void RunLoop::dispatchAfter(Seconds delay, Function<void()>&& function)
+{
+	BMessage* message = new BMessage('daft');
+	BMessageRunner* runner = new BMessageRunner(m_handler, NULL, 0, 0);
+	struct RunLoopDispatchHandler* handler = new RunLoopDispatchHandler(WTFMove(function));
+	handler->runner = runner;
+	message->AddPointer("handler", &handler);
+
+	runner->StartSending(m_handler, message, delay.microseconds(), 1);
 }
 
 }

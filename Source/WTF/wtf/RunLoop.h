@@ -40,6 +40,11 @@
 #include <wtf/glib/GRefPtr.h>
 #endif
 
+#if USE(HAIKU_EVENT_LOOP)
+class BHandler;
+class BMessageRunner;
+#endif
+
 namespace WTF {
 
 class RunLoop : public FunctionDispatcher {
@@ -68,12 +73,12 @@ public:
     WTF_EXPORT_PRIVATE GMainContext* mainContext() const { return m_mainContext.get(); }
 #endif
 
-#if USE(GENERIC_EVENT_LOOP)
+#if USE(GENERIC_EVENT_LOOP) || USE(HAIKU_EVENT_LOOP)
     // Run the single iteration of the RunLoop. It consumes the pending tasks and expired timers, but it won't be blocked.
     WTF_EXPORT_PRIVATE static void iterate();
 #endif
 
-#if USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)
+#if USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP) || USE(HAIKU_EVENT_LOOP)
     WTF_EXPORT_PRIVATE void dispatchAfter(Seconds, Function<void()>&&);
 #endif
 
@@ -123,6 +128,8 @@ public:
         GRefPtr<GSource> m_source;
         bool m_isRepeating { false };
         Seconds m_fireInterval { 0 };
+#elif USE(HAIKU_EVENT_LOOP)
+		BMessageRunner* m_messageRunner;
 #elif USE(GENERIC_EVENT_LOOP)
         bool isActive(const AbstractLocker&) const;
         void stop(const AbstractLocker&);
@@ -178,6 +185,8 @@ private:
     GRefPtr<GMainContext> m_mainContext;
     Vector<GRefPtr<GMainLoop>> m_mainLoops;
     GRefPtr<GSource> m_source;
+#elif USE(HAIKU_EVENT_LOOP)
+	BHandler* m_handler;
 #elif USE(GENERIC_EVENT_LOOP)
     void schedule(Ref<TimerBase::ScheduledTask>&&);
     void schedule(const AbstractLocker&, Ref<TimerBase::ScheduledTask>&&);

@@ -1359,6 +1359,9 @@
 #elif PLATFORM(COCOA)
 /* OS X and IOS. Use CoreFoundation & GCD abstraction. */
 #define USE_COCOA_EVENT_LOOP 1
+#elif PLATFORM(HAIKU)
+/* BHandler-based implementation to cooperate with BApplication native events */
+#define USE_HAIKU_EVENT_LOOP 1
 #else
 #define USE_GENERIC_EVENT_LOOP 1
 #endif
