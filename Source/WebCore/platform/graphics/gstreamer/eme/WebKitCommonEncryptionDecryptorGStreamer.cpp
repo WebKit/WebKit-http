@@ -43,6 +43,7 @@ struct _WebKitMediaCommonEncryptionDecryptPrivate {
     WTF::HashMap<String, WebCore::InitData> m_initDatas;
     Vector<GRefPtr<GstEvent>> m_pendingProtectionEvents;
     uint32_t m_currentEvent { 0 };
+    bool m_isFlushing { false };
 };
 
 static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstElement*, GstStateChange transition);
@@ -243,13 +244,14 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
             GST_ERROR_OBJECT(self, "can't process key requests in less than PAUSED state");
             return GST_FLOW_NOT_SUPPORTED;
         }
-        // Send "decrypt-key-needed" message to the application in order to resend the key if it is available in the application.
-        ASSERT(!priv->m_waitingForKey);
-        priv->m_waitingForKey = true;
-        gst_element_post_message(GST_ELEMENT(self), gst_message_new_element(GST_OBJECT(self), gst_structure_new_empty("drm-waiting-for-key")));
-        if (!priv->m_condition.waitFor(priv->m_mutex, WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT, [priv] { return priv->m_keyReceived; })) {
-            GST_ERROR_OBJECT(self, "key not available");
-            return GST_FLOW_NOT_SUPPORTED;
+        if (!priv->m_condition.waitFor(priv->m_mutex, WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT, [priv] { return priv->m_keyReceived || priv->m_isFlushing; })) {
+            if (priv->m_isFlushing) {
+                GST_DEBUG_OBJECT(self, "flushing");
+                return GST_FLOW_FLUSHING;
+            } else {
+                GST_ERROR_OBJECT(self, "key not available");
+                return GST_FLOW_NOT_SUPPORTED;
+            }
         }
         GST_DEBUG_OBJECT(self, "key received, continuing");
     }
@@ -498,6 +500,27 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
         }
         break;
     }
+    case GST_EVENT_FLUSH_START: {
+        {
+            LockHolder locker(priv->m_mutex);
+            ASSERT(!priv->m_isFlushing);
+            priv->m_isFlushing = true;
+            GST_DEBUG_OBJECT(self, "flushing");
+            priv->m_condition.notifyOne();
+        }
+        result = GST_BASE_TRANSFORM_CLASS(parent_class)->sink_event(trans, event);
+        break;
+    }
+    case GST_EVENT_FLUSH_STOP: {
+        {
+            LockHolder locker(priv->m_mutex);
+            ASSERT(priv->m_isFlushing);
+            priv->m_isFlushing = false;
+            GST_DEBUG_OBJECT(self, "flushing done");
+        }
+        result = GST_BASE_TRANSFORM_CLASS(parent_class)->sink_event(trans, event);
+        break;
+    }
     default:
         result = GST_BASE_TRANSFORM_CLASS(parent_class)->sink_event(trans, event);
         break;
@@ -514,6 +537,7 @@ static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstE
     switch (transition) {
     case GST_STATE_CHANGE_PAUSED_TO_READY:
         GST_DEBUG_OBJECT(self, "PAUSED->READY");
+        priv->m_isFlushing = false;
         priv->m_condition.notifyOne();
         break;
     default:
