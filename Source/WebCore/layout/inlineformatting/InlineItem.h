@@ -43,22 +43,47 @@ public:
     const Box& layoutBox() const { return m_layoutBox; }
     const RenderStyle& style() const { return m_layoutBox.style(); }
     String textContent() const;
+    // DetachingRule indicates whether the inline element needs to be wrapped in a dediceted run or break from previous/next runs.
+    // <span>start</span><span style="position: relative;"> middle </span><span>end</span>
+    // input to line breaking -> <start middle end>
+    // output of line breaking (considering infinite constraint) -> <start middle end>
+    // due to the in-flow positioning, the final runs are: <start>< middle ><end>
+    // "start" -> n/a
+    // " middle " -> BreakAtStart and BreakAtEnd
+    // "end" -> n/a
+    //
+    // <span>parent </span><span style="padding: 10px;">start<span> middle </span>end</span><span> parent</span>
+    // input to line breaking -> <parent start middle end parent>
+    // output of line breaking (considering infinite constraint) -> <parent start middle end parent>
+    // due to padding, final runs -> <parent><start middle end><parent>
+    // "parent" -> n/a
+    // "start" -> BreakAtStart
+    // " middle " -> n/a
+    // "end" -> BreakAtEnd
+    // "parent" -> n/a
+    enum class DetachingRule {
+        BreakAtStart = 1 << 0,
+        BreakAtEnd = 1 << 1
+    };
+    void addDetachingRule(OptionSet<DetachingRule> detachingRule) { m_detachingRules.add(detachingRule); }
+    OptionSet<DetachingRule> detachingRules() const { return m_detachingRules; }
+
+    // Non-breakable start/end marks margin/padding/border space (even when it does not directly come from the associated layout box)
+    // <span style="padding: 5px"><span>nested content with padding parent</span</span>
+    // <nested content with padding parent> inline run has 5px non-breakable start/end.
+    LayoutUnit nonBreakableStart() const { return m_nonBreakableStart; }
+    LayoutUnit nonBreakableEnd() const { return m_nonBreakableEnd; }
+    void addNonBreakableStart(LayoutUnit value) { m_nonBreakableStart += value; }
+    void addNonBreakableEnd(LayoutUnit value) { m_nonBreakableEnd += value; }
 
 private:
     const Box& m_layoutBox;
+    OptionSet<DetachingRule> m_detachingRules;
+    LayoutUnit m_nonBreakableStart;
+    LayoutUnit m_nonBreakableEnd;
 };
 
-// FIXME: Fix HashSet/ListHashSet to support smart pointer types.
-struct InlineItemHashFunctions {
-    static unsigned hash(const std::unique_ptr<InlineItem>& key) { return PtrHash<InlineItem*>::hash(key.get()); }
-    static bool equal(const std::unique_ptr<InlineItem>& a, const std::unique_ptr<InlineItem>& b) { return a.get() == b.get(); }
-};
-
-struct InlineItemHashTranslator {
-    static unsigned hash(const InlineItem& key) { return PtrHash<const InlineItem*>::hash(&key); }
-    static bool equal(const std::unique_ptr<InlineItem>& a, const InlineItem& b) { return a.get() == &b; }
-};
-using InlineContent = ListHashSet<std::unique_ptr<InlineItem>, InlineItemHashFunctions>;
+using InlineContent = ListHashSet<std::unique_ptr<InlineItem>>;
 
 inline InlineItem::InlineItem(const Box& layoutBox)
     : m_layoutBox(layoutBox)

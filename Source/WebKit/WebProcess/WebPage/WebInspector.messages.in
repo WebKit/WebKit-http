@@ -23,6 +23,7 @@
 messages -> WebInspector {
     Show()
     Close()
+    Reopen()
 
     SetAttached(bool attached)
 
@@ -40,5 +41,5 @@ messages -> WebInspector {
     StartElementSelection()
     StopElementSelection()
 
-    SendMessageToBackend(String message)
+    SetFrontendConnection(IPC::Attachment connectionIdentifier)
 }

@@ -151,6 +151,9 @@ class URL;
 - (void)_transliterateChinese:(id)sender;
 - (void)replace:(id)sender;
 
+- (void)_nextAccessoryTab:(id)sender;
+- (void)_previousAccessoryTab:(id)sender;
+
 - (void)_incrementFocusPreservationCount;
 - (void)_decrementFocusPreservationCount;
 - (void)_resetFocusPreservationCount;
@@ -164,6 +167,7 @@ class URL;
 @property (nonatomic, readonly) WKSelectionGranularity _selectionGranularity;
 
 @property (nonatomic, readonly) BOOL _allowsDoubleTapGestures;
+@property (nonatomic, readonly) BOOL _stylusTapGestureShouldCreateEditableImage;
 @property (nonatomic, readonly) BOOL _haveSetObscuredInsets;
 @property (nonatomic, readonly) UIEdgeInsets _computedObscuredInset;
 @property (nonatomic, readonly) UIEdgeInsets _computedUnobscuredSafeAreaInset;

@@ -86,6 +86,13 @@ String formatLocalizedString(String format, ...)
 #endif
 }
 
+#if !USE(CF)
+String localizedString(const char* key)
+{
+    return String::fromUTF8(key, strlen(key));
+}
+#endif
+
 #if ENABLE(CONTEXT_MENUS)
 
 static String truncatedStringForLookupMenuItem(const String& original)
@@ -391,12 +398,12 @@ String contextMenuItemTagToggleMediaLoop()
 
 String contextMenuItemTagEnterVideoFullscreen()
 {
-    return WEB_UI_STRING("Enter Full Screen", "Video Enter Fullscreen context menu item");
+    return WEB_UI_STRING("Enter Full Screen", "Video Enter Full Screen context menu item");
 }
 
 String contextMenuItemTagExitVideoFullscreen()
 {
-    return WEB_UI_STRING_KEY("Exit Full Screen", "Exit Full Screen (context menu)", "Video Exit Fullscreen context menu item");
+    return WEB_UI_STRING_KEY("Exit Full Screen", "Exit Full Screen (context menu)", "Video Exit Full Screen context menu item");
 }
 #endif
 
@@ -419,6 +426,13 @@ String contextMenuItemTagInspectElement()
 {
     return WEB_UI_STRING_WITH_MNEMONIC("Inspect Element", "Inspect _Element", "Inspect Element context menu item");
 }
+
+#if !PLATFORM(COCOA)
+String contextMenuItemTagSearchWeb()
+{
+    return WEB_UI_STRING_WITH_MNEMONIC("Search the Web", "_Search the Web", "Search the Web context menu item");
+}
+#endif
 
 #endif // ENABLE(CONTEXT_MENUS)
 
@@ -798,7 +812,7 @@ String localizedMediaControlElementHelpText(const String& name)
     if (name == "SeekForwardButton")
         return WEB_UI_STRING("seek quickly forward", "accessibility help text for fast forward button");
     if (name == "FullscreenButton")
-        return WEB_UI_STRING("Play movie in fullscreen mode", "accessibility help text for enter fullscreen button");
+        return WEB_UI_STRING("Play movie in full screen mode", "accessibility help text for enter full screen button");
     if (name == "ShowClosedCaptionsButton")
         return WEB_UI_STRING("start displaying closed captions", "accessibility help text for show closed captions button");
     if (name == "HideClosedCaptionsButton")
@@ -1057,7 +1071,7 @@ String formControlDoneButtonTitle()
 
 String formControlCancelButtonTitle()
 {
-    return WEB_UI_STRING("Cancel", "Title of the Cancel button for zoomed form controls.");
+    return WEB_UI_STRING("Cancel", "Cancel");
 }
 
 String formControlHideButtonTitle()
@@ -1095,6 +1109,13 @@ String datePickerYearLabelTitle()
     return WEB_UI_STRING_KEY("YEAR", "YEAR (Date picker for extra zoom mode)", "Year label in date picker");
 }
 
+#endif
+
+#if USE(SOUP)
+String unacceptableTLSCertificate()
+{
+    return WEB_UI_STRING("Unacceptable TLS certificate", "Unacceptable TLS certificate error");
+}
 #endif
 
 } // namespace WebCore

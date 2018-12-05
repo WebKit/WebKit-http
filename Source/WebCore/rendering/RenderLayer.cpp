@@ -405,7 +405,7 @@ void RenderLayer::addChild(RenderLayer& child, RenderLayer* beforeChild)
     if (child.isSelfPaintingLayer() || child.hasSelfPaintingLayerDescendant())
         setAncestorChainHasSelfPaintingLayerDescendant();
 
-    if (compositor().inCompositingMode())
+    if (compositor().hasContentCompositingLayers())
         setDescendantsNeedCompositingRequirementsTraversal();
 
     if (child.hasDescendantNeedingCompositingRequirementsTraversal() || child.needsCompositingRequirementsTraversal())
@@ -451,7 +451,7 @@ void RenderLayer::removeChild(RenderLayer& oldChild)
     if (oldChild.isSelfPaintingLayer() || oldChild.hasSelfPaintingLayerDescendant())
         dirtyAncestorChainHasSelfPaintingLayerDescendantStatus();
 
-    if (compositor().inCompositingMode())
+    if (compositor().hasContentCompositingLayers())
         setDescendantsNeedCompositingRequirementsTraversal();
 
 #if ENABLE(CSS_COMPOSITING)
@@ -696,7 +696,7 @@ void RenderLayer::rebuildZOrderLists()
 
 void RenderLayer::rebuildZOrderLists(std::unique_ptr<Vector<RenderLayer*>>& posZOrderList, std::unique_ptr<Vector<RenderLayer*>>& negZOrderList)
 {
-    bool includeHiddenLayers = compositor().inCompositingMode();
+    bool includeHiddenLayers = compositor().usesCompositing();
     for (RenderLayer* child = firstChild(); child; child = child->nextSibling()) {
         if (!isReflectionLayer(*child))
             child->collectLayers(includeHiddenLayers, posZOrderList, negZOrderList);
@@ -1515,7 +1515,15 @@ bool RenderLayer::updateLayerPosition()
         localPoint += inlineBoundingBoxOffset;
     } else if (RenderBox* box = renderBox()) {
         // FIXME: Is snapping the size really needed here for the RenderBox case?
-        setSize(snappedIntRect(box->frameRect()).size());
+        auto newSize = snappedIntRect(box->frameRect()).size();
+        if (newSize != size()) {
+            if (is<RenderWidget>(*box) && downcast<RenderWidget>(*box).requiresAcceleratedCompositing()) {
+                // Trigger RenderLayerCompositor::requiresCompositingForFrame() which depends on the contentBoxRect size.
+                setNeedsPostLayoutCompositingUpdate();
+            }
+            setSize(newSize);
+        }
+        
         box->applyTopLeftLocationOffset(localPoint);
     }
 
@@ -1569,7 +1577,7 @@ bool RenderLayer::updateLayerPosition()
     positionOrOffsetChanged |= location() != localPoint;
     setLocation(localPoint);
     
-    if (positionOrOffsetChanged && compositor().inCompositingMode()) {
+    if (positionOrOffsetChanged && compositor().hasContentCompositingLayers()) {
         if (isComposited())
             setNeedsCompositingGeometryUpdate();
         // This layer's position can affect the location of a composited descendant (which may be a sibling in z-order),
@@ -2422,7 +2430,7 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
     frame.eventHandler().dispatchFakeMouseMoveEventSoonInQuad(quadForFakeMouseMoveEvent);
 
     bool requiresRepaint = true;
-    if (compositor().inCompositingMode() && usesCompositedScrolling()) {
+    if (usesCompositedScrolling()) {
         setNeedsCompositingGeometryUpdate();
         setDescendantsNeedUpdateBackingAndHierarchyTraversal();
         requiresRepaint = false;
@@ -2500,7 +2508,7 @@ void RenderLayer::scrollRectToVisible(const LayoutRect& absoluteRect, bool insid
         RenderBox* box = renderBox();
         ASSERT(box);
         LayoutRect localExposeRect(box->absoluteToLocalQuad(FloatQuad(FloatRect(absoluteRect))).boundingBox());
-        LayoutRect layerBounds(0, 0, box->clientWidth(), box->clientHeight());
+        LayoutRect layerBounds(0_lu, 0_lu, box->clientWidth(), box->clientHeight());
         LayoutRect revealRect = getRectToExpose(layerBounds, localExposeRect, insideFixed, options.alignX, options.alignY);
 
         ScrollOffset clampedScrollOffset = clampScrollOffset(scrollOffset() + toIntSize(roundedIntRect(revealRect).location()));
@@ -2572,7 +2580,7 @@ void RenderLayer::scrollRectToVisible(const LayoutRect& absoluteRect, bool insid
 
 void RenderLayer::updateCompositingLayersAfterScroll()
 {
-    if (compositor().inCompositingMode()) {
+    if (compositor().hasContentCompositingLayers()) {
         // Our stacking container is guaranteed to contain all of our descendants that may need
         // repositioning, so update compositing layers from there.
         if (RenderLayer* compositingAncestor = stackingContext()->enclosingCompositingLayer()) {
@@ -2747,7 +2755,7 @@ void RenderLayer::resize(const PlatformMouseEvent& evt, const LayoutSize& oldOff
             styledElement->setInlineStyleProperty(CSSPropertyMarginLeft, renderer->marginLeft() / zoomFactor, CSSPrimitiveValue::CSS_PX);
             styledElement->setInlineStyleProperty(CSSPropertyMarginRight, renderer->marginRight() / zoomFactor, CSSPrimitiveValue::CSS_PX);
         }
-        LayoutUnit baseWidth = renderer->width() - (isBoxSizingBorder ? LayoutUnit() : renderer->horizontalBorderAndPaddingExtent());
+        LayoutUnit baseWidth = renderer->width() - (isBoxSizingBorder ? 0_lu : renderer->horizontalBorderAndPaddingExtent());
         baseWidth = baseWidth / zoomFactor;
         styledElement->setInlineStyleProperty(CSSPropertyWidth, roundToInt(baseWidth + difference.width()), CSSPrimitiveValue::CSS_PX);
     }
@@ -2758,7 +2766,7 @@ void RenderLayer::resize(const PlatformMouseEvent& evt, const LayoutSize& oldOff
             styledElement->setInlineStyleProperty(CSSPropertyMarginTop, renderer->marginTop() / zoomFactor, CSSPrimitiveValue::CSS_PX);
             styledElement->setInlineStyleProperty(CSSPropertyMarginBottom, renderer->marginBottom() / zoomFactor, CSSPrimitiveValue::CSS_PX);
         }
-        LayoutUnit baseHeight = renderer->height() - (isBoxSizingBorder ? LayoutUnit() : renderer->verticalBorderAndPaddingExtent());
+        LayoutUnit baseHeight = renderer->height() - (isBoxSizingBorder ? 0_lu : renderer->verticalBorderAndPaddingExtent());
         baseHeight = baseHeight / zoomFactor;
         styledElement->setInlineStyleProperty(CSSPropertyHeight, roundToInt(baseHeight + difference.height()), CSSPrimitiveValue::CSS_PX);
     }
@@ -2796,8 +2804,8 @@ IntRect RenderLayer::visibleContentRectInternal(VisibleContentRectIncludesScroll
     if (showsOverflowControls() && scrollbarInclusion == IncludeScrollbars)
         scrollbarSpace = scrollbarIntrusion();
     
-    // FIXME: This seems wrong: m_layerSize includes borders. Can we just use the ScrollableArea implementation?
-    return IntRect(scrollPosition(), IntSize(std::max(0, m_layerSize.width() - scrollbarSpace.width()), std::max(0, m_layerSize.height() - scrollbarSpace.height())));
+    auto visibleSize = this->visibleSize();
+    return { scrollPosition(), { std::max(0, visibleSize.width() - scrollbarSpace.width()), std::max(0, visibleSize.height() - scrollbarSpace.height()) } };
 }
 
 IntSize RenderLayer::overhangAmount() const
@@ -3571,8 +3579,15 @@ void RenderLayer::updateScrollInfoAfterLayout()
     if (originalScrollOffset != scrollOffset())
         scrollToOffsetWithoutAnimation(IntPoint(scrollOffset()));
 
-    if (isComposited())
+    if (isComposited()) {
         setNeedsCompositingGeometryUpdate();
+        setNeedsCompositingConfigurationUpdate();
+    }
+
+#if PLATFORM(IOS_FAMILY)
+    if (canUseAcceleratedTouchScrolling())
+        setNeedsPostLayoutCompositingUpdate();
+#endif
 
     updateScrollSnapState();
 }
@@ -3756,7 +3771,7 @@ void RenderLayer::paintResizer(GraphicsContext& context, const LayoutPoint& pain
         GraphicsContextStateSaver stateSaver(context);
         context.clip(absRect);
         LayoutRect largerCorner = absRect;
-        largerCorner.setSize(LayoutSize(largerCorner.width() + LayoutUnit::fromPixel(1), largerCorner.height() + LayoutUnit::fromPixel(1)));
+        largerCorner.setSize(LayoutSize(largerCorner.width() + 1_lu, largerCorner.height() + 1_lu));
         context.setStrokeColor(Color(makeRGB(217, 217, 217)));
         context.setStrokeThickness(1.0f);
         context.setFillColor(Color::transparent);
@@ -6628,7 +6643,7 @@ void showLayerTree(const WebCore::RenderObject* renderer)
 static void outputPaintOrderTreeLegend(TextStream& stream)
 {
     stream.nextLine();
-    stream << "(S)tacking Context, (N)ormal flow only, (O)verflow clip, (A)lpha (opacity or mask), has (B)lend mode, (I)solates blending, (T)ransform-ish, (F)ilter, Fi(X)ed position, (C)omposited\n"
+    stream << "(S)tacking Context, (N)ormal flow only, (O)verflow clip, (A)lpha (opacity or mask), has (B)lend mode, (I)solates blending, (T)ransform-ish, (F)ilter, Fi(X)ed position, (C)omposited, (c)omposited descendant\n"
         "Dirty (z)-lists, Dirty (n)ormal flow lists\n"
         "Descendant needs overlap (t)raversal, Descendant needs (b)acking or hierarchy update, All descendants need (r)equirements traversal, All (s)ubsequent layers need requirements traversal, All descendants need (h)ierarchy traversal\n"
         "Needs compositing paint order update on (s)ubsequent layers, Needs compositing paint (o)rder children update, "
@@ -6655,6 +6670,7 @@ static void outputPaintOrderTreeRecursive(TextStream& stream, const WebCore::Ren
     stream << (layer.hasFilter() ? "F" : "-");
     stream << (layer.renderer().isFixedPositioned() ? "X" : "-");
     stream << (layer.isComposited() ? "C" : "-");
+    stream << (layer.hasCompositingDescendant() ? "c" : "-");
 
     stream << " ";
 
@@ -6686,7 +6702,7 @@ static void outputPaintOrderTreeRecursive(TextStream& stream, const WebCore::Ren
 
     auto layerRect = layer.rect();
 
-    stream << &layer << " " << layerRect;
+    stream << &layer << " " << layerRect << " " << layer.name();
     stream.nextLine();
 
     const_cast<WebCore::RenderLayer&>(layer).updateLayerListsIfNeeded();

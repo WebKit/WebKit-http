@@ -102,15 +102,15 @@ enum class MailBlockquoteHandling {
 class HTMLAttachmentElement;
 #endif
 
-enum TemporarySelectionOption : uint8_t {
-    // Scroll to reveal the selection.
-    TemporarySelectionOptionRevealSelection = 1 << 0,
+enum class TemporarySelectionOption : uint8_t {
+    RevealSelection = 1 << 0,
+    DoNotSetFocus = 1 << 1,
 
     // Don't propagate selection changes to the client layer.
-    TemporarySelectionOptionIgnoreSelectionChanges = 1 << 1,
+    IgnoreSelectionChanges = 1 << 2,
 
     // Force the render tree to update selection state. Only respected on iOS.
-    TemporarySelectionOptionEnableAppearanceUpdates = 1 << 2
+    EnableAppearanceUpdates = 1 << 3,
 };
 
 class TemporarySelectionChange {
@@ -119,6 +119,8 @@ public:
     ~TemporarySelectionChange();
 
 private:
+    void setSelection(const VisibleSelection&);
+
     Ref<Frame> m_frame;
     OptionSet<TemporarySelectionOption> m_options;
     bool m_wasIgnoringSelectionChanges;
@@ -436,8 +438,11 @@ public:
     void textDidChangeInTextArea(Element*);
     WEBCORE_EXPORT WritingDirection baseWritingDirectionForSelectionStart() const;
 
-    WEBCORE_EXPORT void replaceSelectionWithFragment(DocumentFragment&, bool selectReplacement, bool smartReplace, bool matchStyle, EditAction = EditAction::Insert, MailBlockquoteHandling = MailBlockquoteHandling::RespectBlockquote);
-    WEBCORE_EXPORT void replaceSelectionWithText(const String&, bool selectReplacement, bool smartReplace, EditAction = EditAction::Insert);
+    enum class SelectReplacement : bool { No, Yes };
+    enum class SmartReplace : bool { No, Yes };
+    enum class MatchStyle : bool { No, Yes };
+    WEBCORE_EXPORT void replaceSelectionWithFragment(DocumentFragment&, SelectReplacement, SmartReplace, MatchStyle, EditAction = EditAction::Insert, MailBlockquoteHandling = MailBlockquoteHandling::RespectBlockquote);
+    WEBCORE_EXPORT void replaceSelectionWithText(const String&, SelectReplacement, SmartReplace, EditAction = EditAction::Insert);
     WEBCORE_EXPORT bool selectionStartHasMarkerFor(DocumentMarker::MarkerType, int from, int length) const;
     void updateMarkersForWordsAffectedByEditing(bool onlyHandleWordsContainingSelection);
     void deletedAutocorrectionAtPosition(const Position&, const String& originalString);
@@ -526,6 +531,8 @@ public:
     void getPasteboardTypesAndDataForAttachment(Element&, Vector<String>& outTypes, Vector<RefPtr<SharedBuffer>>& outData);
 #endif
 #endif
+
+    WEBCORE_EXPORT void insertEditableImage();
 
 private:
     Document& document() const;

@@ -50,6 +50,7 @@
 #include "WebBackForwardListProxy.h"
 #include "WebURLSchemeHandler.h"
 #include "WebUserContentController.h"
+#include <JavaScriptCore/InspectorFrontendChannel.h>
 #include <WebCore/ActivityState.h>
 #include <WebCore/DictionaryPopupInfo.h>
 #include <WebCore/DisabledAdaptations.h>
@@ -104,6 +105,10 @@
 #include <WebKitAdditions/PlatformTouchEventIOS.h>
 #elif ENABLE(TOUCH_EVENTS)
 #include <WebCore/PlatformTouchEvent.h>
+#endif
+
+#if ENABLE(DATA_DETECTION)
+#include <WebCore/DataDetection.h>
 #endif
 
 #if ENABLE(MAC_GESTURE_EVENTS)
@@ -235,6 +240,7 @@ enum class DragControllerAction : uint8_t;
 
 struct AssistedNodeInformation;
 struct AttributedString;
+struct DataDetectionResult;
 struct BackForwardListItemState;
 struct EditorState;
 struct InteractionInformationAtPosition;
@@ -299,7 +305,6 @@ public:
     RemoteWebInspectorUI* remoteInspectorUI();
     bool isInspectorPage() { return !!m_inspectorUI || !!m_remoteInspectorUI; }
 
-    void setHasLocalInspectorFrontend(bool);
     void inspectorFrontendCountChanged(unsigned);
 
 #if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
@@ -408,6 +413,8 @@ public:
 #endif
 
     bool findStringFromInjectedBundle(const String&, FindOptions);
+    void findStringMatchesFromInjectedBundle(const String&, FindOptions);
+    void replaceStringMatchesFromInjectedBundle(const Vector<uint32_t>& matchIndices, const String& replacementText, bool selectionOnly);
 
     WebFrame* mainWebFrame() const { return m_mainFrame.get(); }
 
@@ -647,6 +654,7 @@ public:
     void updateSelectionAppearance();
     void getSelectionContext(CallbackID);
     void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, uint64_t requestID);
+    void handleStylusSingleTapAtPoint(const WebCore::IntPoint&, uint64_t requestID);
     void getRectsForGranularityWithSelectionOffset(uint32_t, int32_t, CallbackID);
     void getRectsAtSelectionOffsetWithText(int32_t, const String&, CallbackID);
     void storeSelectionForAccessibility(bool);
@@ -676,7 +684,16 @@ public:
 
     bool hasRichlyEditableSelection() const;
 
-    void setLayerTreeStateIsFrozen(bool);
+    enum class LayerTreeFreezeReason {
+        PageTransition          = 1 << 0,
+        BackgroundApplication   = 1 << 1,
+        ProcessSuspended        = 1 << 2,
+        PageSuspended           = 1 << 3,
+        Printing                = 1 << 4,
+    };
+    void freezeLayerTree(LayerTreeFreezeReason);
+    void unfreezeLayerTree(LayerTreeFreezeReason);
+
     void markLayersVolatile(WTF::Function<void (bool)>&& completionHandler = { });
     void cancelMarkLayersVolatile();
 
@@ -990,6 +1007,8 @@ public:
 
 #if ENABLE(DATA_DETECTION)
     void setDataDetectionResults(NSArray *);
+    void detectDataInAllFrames(uint64_t, CompletionHandler<void(const DataDetectionResult&)>&&);
+    void removeDataDetectedLinks(CompletionHandler<void(const DataDetectionResult&)>&&);
 #endif
 
     unsigned extendIncrementalRenderingSuppression();
@@ -1043,7 +1062,7 @@ public:
     bool isControlledByAutomation() const;
     void setControlledByAutomation(bool);
 
-    void connectInspector(const String& targetId);
+    void connectInspector(const String& targetId, Inspector::FrontendChannel::ConnectionType);
     void disconnectInspector(const String& targetId);
     void sendMessageToTargetBackend(const String& targetId, const String& message);
 
@@ -1166,6 +1185,7 @@ private:
     bool executeKeypressCommandsInternal(const Vector<WebCore::KeypressCommand>&, WebCore::KeyboardEvent*);
 #endif
 
+    void updateDrawingAreaLayerTreeFreezeState();
     bool markLayersVolatileImmediatelyIfPossible();
     void layerVolatilityTimerFired();
     void callVolatilityCompletionHandlers(bool succeeded);
@@ -1304,6 +1324,7 @@ private:
     void selectFindMatch(uint32_t matchIndex);
     void hideFindUI();
     void countStringMatches(const String&, uint32_t findOptions, uint32_t maxMatchCount);
+    void replaceMatches(const Vector<uint32_t>& matchIndices, const String& replacementText, bool selectionOnly, CallbackID);
 
 #if USE(COORDINATED_GRAPHICS)
     void sendViewportAttributesChanged(const WebCore::ViewportArguments&);
@@ -1461,7 +1482,7 @@ private:
 
     WebCore::IntSize m_viewSize;
     std::unique_ptr<DrawingArea> m_drawingArea;
-    bool m_shouldResetDrawingArea { false };
+    bool m_shouldResetDrawingAreaAfterSuspend { false };
 
     HashSet<PluginView*> m_pluginViews;
     bool m_hasSeenPlugin { false };
@@ -1759,6 +1780,7 @@ private:
     HashMap<uint64_t, uint64_t> m_applicationManifestFetchCallbackMap;
 #endif
 
+    OptionSet<LayerTreeFreezeReason> m_LayerTreeFreezeReasons;
     bool m_isSuspended { false };
     bool m_needsFontAttributes { false };
 #if PLATFORM(MAC)

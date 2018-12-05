@@ -243,25 +243,38 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         let experimentalSettingsView = new WI.SettingsView("experimental", WI.UIString("Experimental"));
 
         if (window.CSSAgent) {
-            experimentalSettingsView.addSetting(WI.UIString("Styles Sidebar:"), WI.settings.experimentalEnableMultiplePropertiesSelection, WI.UIString("Enable Selection of Multiple Properties"));
+            let group = experimentalSettingsView.addGroup(WI.UIString("Styles Sidebar:"));
+            group.addSetting(WI.settings.experimentalEnableMultiplePropertiesSelection, WI.UIString("Enable Selection of Multiple Properties"));
+            group.addSetting(WI.settings.experimentalEnableComputedStyleCascades, WI.UIString("Enable Computed Style Cascades"));
             experimentalSettingsView.addSeparator();
         }
 
+        let layerTabEnabled = window.LayerTreeAgent && WI.settings.experimentalEnableLayersTab.value;
         if (window.LayerTreeAgent) {
             experimentalSettingsView.addSetting(WI.UIString("Layers:"), WI.settings.experimentalEnableLayersTab, WI.UIString("Enable Layers Tab"));
             experimentalSettingsView.addSeparator();
         }
 
+        let auditTabEnabled = WI.settings.experimentalEnableAuditTab.value;
         experimentalSettingsView.addSetting(WI.UIString("Audit:"), WI.settings.experimentalEnableAuditTab, WI.UIString("Enable Audit Tab"));
         experimentalSettingsView.addSeparator();
 
         experimentalSettingsView.addSetting(WI.UIString("User Interface:"), WI.settings.experimentalEnableNewTabBar, WI.UIString("Enable New Tab Bar"));
         experimentalSettingsView.addSeparator();
 
-        // FIXME: Reload Web Inspector does not work with MultiplexingBackendTarget.
         let reloadInspectorButton = document.createElement("button");
         reloadInspectorButton.textContent = WI.UIString("Reload Web Inspector");
-        reloadInspectorButton.addEventListener("click", () => { window.location.reload(); });
+        reloadInspectorButton.addEventListener("click", (event) => {
+            // Force a copy so that WI.Setting sees it as a new value.
+            let newTabs = WI._openTabsSetting.value.slice();
+            if (!layerTabEnabled && window.LayerTreeAgent && WI.settings.experimentalEnableLayersTab.value)
+                newTabs.push(WI.LayersTabContentView.Type);
+            if (!auditTabEnabled && WI.settings.experimentalEnableAuditTab.value)
+                newTabs.push(WI.AuditTabContentView.Type);
+            WI._openTabsSetting.value = newTabs;
+
+            InspectorFrontendHost.reopen();
+        });
 
         let reloadInspectorContainerElement = experimentalSettingsView.addCenteredContainer(reloadInspectorButton, WI.UIString("for changes to take effect"));
         reloadInspectorContainerElement.classList.add("hidden");
@@ -274,6 +287,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         }
 
         listenForChange(WI.settings.experimentalEnableMultiplePropertiesSelection);
+        listenForChange(WI.settings.experimentalEnableComputedStyleCascades);
         listenForChange(WI.settings.experimentalEnableLayersTab);
         listenForChange(WI.settings.experimentalEnableAuditTab);
         listenForChange(WI.settings.experimentalEnableNewTabBar);

@@ -1,3 +1,59 @@
+2018-11-26  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake] Remove ENABLE_ACCESSIBILITY CMake variable
+        https://bugs.webkit.org/show_bug.cgi?id=191831
+
+        Reviewed by Michael Catanzaro.
+
+        ENABLE_ACCESSIBILITY is a bit confusing name because there is no
+        such ENABLE_ACCESSIBILITY macros in C++ source files.
+
+        * Source/cmake/OptionsGTK.cmake: Removed ENABLE_ACCESSIBILITY.
+        * Source/cmake/OptionsWPE.cmake: Ditto.
+        * Source/cmake/OptionsWin.cmake: Ditto.
+        * Source/cmake/WebKitFeatures.cmake: Ditto.
+
+2018-11-26  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] [2.22.0] Fails to build in armel
+        https://bugs.webkit.org/show_bug.cgi?id=188862
+
+        Disable the JIT and enable C_LOOP on ARM CPUs without Thumb2
+        support.
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-11-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.23.1 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-11-21  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable JIT on ARM/Linux
+        https://bugs.webkit.org/show_bug.cgi?id=191548
+
+        Reviewed by Yusuke Suzuki.
+
+        Enable JIT by default on ARMv7/Linux after it was disabled with
+        recent bytcode format change.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-11-16  Don Olmstead  <don.olmstead@sony.com>
+
+        Add USE(LIBWPE) to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=191401
+
+        Reviewed by Michael Catanzaro.
+
+        Exposes USE_LIBWPE to the build.
+
+        * Source/cmake/OptionsWPE.cmake:
+
 2018-11-12  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add HTTPS git remote to ReadMe.md

@@ -32,6 +32,7 @@
 #include "WebInspectorProxy.h"
 #include "WebPageGroup.h"
 #include "WebPageProxy.h"
+#include <WebCore/CertificateInfo.h>
 #include <WebCore/NotImplemented.h>
 
 namespace WebKit {
@@ -54,6 +55,9 @@ void RemoteWebInspectorProxy::invalidate()
 void RemoteWebInspectorProxy::load(const String& debuggableType, const String& backendCommandsURL)
 {
     createFrontendPageAndWindow();
+
+    m_debuggableType = debuggableType;
+    m_backendCommandsURL = backendCommandsURL;
 
     m_inspectorPage->process().send(Messages::RemoteWebInspectorUI::Initialize(debuggableType, backendCommandsURL), m_inspectorPage->pageID());
     m_inspectorPage->loadRequest(URL(URL(), WebInspectorProxy::inspectorPageURL()));
@@ -90,6 +94,14 @@ void RemoteWebInspectorProxy::frontendDidClose()
     closeFrontendPageAndWindow();
 }
 
+void RemoteWebInspectorProxy::reopen()
+{
+    ASSERT(!m_debuggableType.isEmpty());
+
+    closeFrontendPageAndWindow();
+    load(m_debuggableType, m_backendCommandsURL);
+}
+
 void RemoteWebInspectorProxy::bringToFront()
 {
     platformBringToFront();
@@ -113,6 +125,11 @@ void RemoteWebInspectorProxy::startWindowDrag()
 void RemoteWebInspectorProxy::openInNewTab(const String& url)
 {
     platformOpenInNewTab(url);
+}
+
+void RemoteWebInspectorProxy::showCertificate(const CertificateInfo& certificateInfo)
+{
+    platformShowCertificate(certificateInfo);
 }
 
 void RemoteWebInspectorProxy::sendMessageToBackend(const String& message)
@@ -160,6 +177,7 @@ void RemoteWebInspectorProxy::platformSave(const String&, const String&, bool, b
 void RemoteWebInspectorProxy::platformAppend(const String&, const String&) { }
 void RemoteWebInspectorProxy::platformStartWindowDrag() { }
 void RemoteWebInspectorProxy::platformOpenInNewTab(const String&) { }
+void RemoteWebInspectorProxy::platformShowCertificate(const CertificateInfo&) { }
 void RemoteWebInspectorProxy::platformCloseFrontendPageAndWindow() { }
 #endif
 

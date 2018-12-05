@@ -1,3 +1,314 @@
+2018-11-27  Saam barati  <sbarati@apple.com>
+
+        r238510 broke scopes of size zero
+        https://bugs.webkit.org/show_bug.cgi?id=192033
+        <rdar://problem/46281734>
+
+        Reviewed by Keith Miller.
+
+        * stress/r238510-bad-loop.js: Added.
+        (foo):
+
+2018-11-27  Mark Lam  <mark.lam@apple.com>
+
+        [Re-landing] NaNs read from Wasm code needs to be be purified.
+        https://bugs.webkit.org/show_bug.cgi?id=191056
+        <rdar://problem/45660341>
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/regress/regress-191056.js: Added.
+
+2018-11-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r238509.
+
+        Causes JSC tests to fail on iOS.
+
+        Reverted changeset:
+
+        "NaNs read from Wasm code needs to be be purified."
+        https://bugs.webkit.org/show_bug.cgi?id=191056
+        https://trac.webkit.org/changeset/238509
+
+2018-11-26  Caio Lima  <ticaiolima@gmail.com>
+
+        Re-introduce op_bitnot
+        https://bugs.webkit.org/show_bug.cgi?id=190923
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/bit-not-must-generate.js: Added.
+        * stress/bitwise-not-no-int32.js: Added.
+
+2018-11-26  Saam barati  <sbarati@apple.com>
+
+        InPlaceAbstractState::endBasicBlock rule for SetLocal should filter the value based on the flush format
+        https://bugs.webkit.org/show_bug.cgi?id=191956
+        <rdar://problem/45665806>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/end-basic-block-set-local-should-filter-type.js: Added.
+        (bar):
+        (foo):
+
+2018-11-26  Saam barati  <sbarati@apple.com>
+
+        Object allocation sinking phase needs to iterate each scope offset instead of just iterating the symbol table's hashmap when handling an activation
+        https://bugs.webkit.org/show_bug.cgi?id=191958
+        <rdar://problem/46221877>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/object-allocation-sinking-phase-needs-to-write-to-each-scope-offset.js: Added.
+        (x):
+        (foo):
+
+2018-11-26  Mark Lam  <mark.lam@apple.com>
+
+        NaNs read from Wasm code needs to be be purified.
+        https://bugs.webkit.org/show_bug.cgi?id=191056
+        <rdar://problem/45660341>
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/regress/regress-191056.js: Added.
+
+2018-11-26  Michael Saboff  <msaboff@apple.com>
+
+        32-bit JSC test failure: stress/regexp-compile-oom.js
+        https://bugs.webkit.org/show_bug.cgi?id=191375
+
+        Reviewed by Mark Lam.
+
+        Disabled the test for 32 bit platforms.
+
+        * stress/regexp-compile-oom.js:
+
+2018-11-26  Tadeu Zagallo  <tzagallo@apple.com>
+
+        ASSERTION FAILED: m_outOfLineJumpTargets.contains(bytecodeOffset)
+        https://bugs.webkit.org/show_bug.cgi?id=191716
+        <rdar://problem/45723878>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-187373.js: Added.
+        (async.fn):
+
+2018-11-21  Saam barati  <sbarati@apple.com>
+
+        DFGSpeculativeJIT should not &= exitOK with mayExit(node)
+        https://bugs.webkit.org/show_bug.cgi?id=191897
+        <rdar://problem/45871998>
+
+        Reviewed by Mark Lam.
+
+        * stress/exitok-is-not-the-same-as-mayExit.js: Added.
+        (bar):
+        (foo):
+
+2018-11-21  Saam barati  <sbarati@apple.com>
+
+        Fix assertion in KnownCellUse inside SpeculativeJIT::speculate
+        https://bugs.webkit.org/show_bug.cgi?id=191895
+        <rdar://problem/46167406>
+
+        Reviewed by Mark Lam.
+
+        * stress/known-cell-use-needs-type-check-assertion.js: Added.
+        (foo):
+        (bar):
+
+2018-11-21  Mark Lam  <mark.lam@apple.com>
+
+        Creating a wasm memory that is bigger than the ArrayBuffer limit but smaller than the spec limit should throw OOME not RangeError.
+        https://bugs.webkit.org/show_bug.cgi?id=191776
+        <rdar://problem/46152851>
+
+        Reviewed by Saam Barati.
+
+        * stress/big-wasm-memory-grow-no-max.js:
+        * stress/big-wasm-memory-grow.js:
+        * stress/big-wasm-memory.js:
+        - updated these to expect an OutOfMemoryError.
+
+        * wasm/regress/wasm-memory-requested-more-than-MAX_ARRAY_BUFFER_SIZE-2.js: Added.
+        (Binary.prototype.emit_u8):
+        (Binary.prototype.emit_u32v):
+        (Binary.prototype.emit_header):
+        (Binary.prototype.emit_section):
+        (Binary):
+        (WasmModuleBuilder):
+        (WasmModuleBuilder.prototype.addMemory):
+        (WasmModuleBuilder.prototype.toArray):
+        (WasmModuleBuilder.prototype.toBuffer):
+        (WasmModuleBuilder.prototype.instantiate):
+        (catch):
+        * wasm/regress/wasm-memory-requested-more-than-MAX_ARRAY_BUFFER_SIZE.js: Added.
+        (catch):
+
+2018-11-21  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] JSBigInt::createWithLength should throw when length is greater than JSBigInt::maxLength
+        https://bugs.webkit.org/show_bug.cgi?id=190836
+
+        Reviewed by Saam Barati and Yusuke Suzuki.
+
+        * stress/big-int-out-of-memory-tests.js: Added.
+
+2018-11-20  Mark Lam  <mark.lam@apple.com>
+
+        Remove invalid assertion in VMTraps::SignalSender's SignalAction.
+        https://bugs.webkit.org/show_bug.cgi?id=191856
+        <rdar://problem/46089992>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/regress-191856.js: Added.
+        - this test is skipped for now until we have a fix for webkit.org/b/191855.
+
+2018-11-21  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable JIT on ARM/Linux
+        https://bugs.webkit.org/show_bug.cgi?id=191548
+
+        Reviewed by Yusuke Suzuki.
+
+        Disable test on system with limited memory. Program was killed by
+        the OS before the exception was thrown.
+
+        * slowMicrobenchmarks/function-constructor-with-huge-strings.js:
+
+2018-11-20  Saam barati  <sbarati@apple.com>
+
+        Merging an IC variant may lead to the IC status containing overlapping structure sets
+        https://bugs.webkit.org/show_bug.cgi?id=191869
+        <rdar://problem/45403453>
+
+        Reviewed by Mark Lam.
+
+        * stress/merging-ic-variants-should-bail-if-structures-overlap.js: Added.
+
+2018-11-19  Mark Lam  <mark.lam@apple.com>
+
+        globalFuncImportModule() should return a promise when it clears exceptions.
+        https://bugs.webkit.org/show_bug.cgi?id=191792
+        <rdar://problem/46090763>
+
+        Reviewed by Michael Saboff.
+
+        * stress/global-import-function-should-return-a-promise-when-clearing-exceptions.js: Added.
+
+2018-11-19  Guillaume Emont  <guijemont@igalia.com>
+
+        Skip new memory-hungry tests on memory limited devices
+
+        Unreviewed gardening.
+
+        * stress/big-wasm-memory-grow-no-max.js:
+        * stress/big-wasm-memory-grow.js:
+        * stress/big-wasm-memory.js:
+
+2018-11-18  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, rolling in the rest of r237254
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        * ChakraCore/test/Function/FuncBodyES5.baseline-jsc:
+        * stress/function-cache-with-parameters-end-position.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (i.anonymous):
+        * stress/function-constructor-name.js: Added.
+        (shouldBe):
+        (GeneratorFunction):
+        (AsyncFunction.async):
+        (AsyncGeneratorFunction.async):
+        (anonymous):
+        (async.anonymous):
+        * test262/expectations.yaml:
+
+2018-11-16  Filip Pizlo  <fpizlo@apple.com>
+
+        All users of ArrayBuffer should agree on the same max size
+        https://bugs.webkit.org/show_bug.cgi?id=191771
+
+        Reviewed by Mark Lam.
+
+        * stress/big-wasm-memory-grow-no-max.js: Added.
+        (foo):
+        (catch):
+        * stress/big-wasm-memory-grow.js: Added.
+        (foo):
+        (catch):
+        * stress/big-wasm-memory.js: Added.
+        (foo):
+        (catch):
+
+2018-11-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, make some more tests not crash my computer by only running on instance of it. These tests do not need to
+        run for each JSC config since they're regression tests for runtime bugs.
+
+        * stress/json-stringified-overflow-2.js:
+        * stress/json-stringified-overflow.js:
+
+2018-11-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, make some tests not crash my computer by only running on instance of it. These tests do not need to run for each JSC
+        config since they're regression tests for runtime bugs.
+
+        * stress/large-unshift-splice.js:
+        * stress/regress-185888.js:
+
+2018-11-16  Saam Barati  <sbarati@apple.com>
+
+        KnownCellUse should also have SpecCellCheck as its type filter
+        https://bugs.webkit.org/show_bug.cgi?id=191729
+        <rdar://problem/45872852>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/known-cell-type-check-should-allow-empty-value-to-flow-through.js: Added.
+        (C):
+
+2018-11-16  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Fix assertion failure on BytecodeGenerator::recordOpcode
+        https://bugs.webkit.org/show_bug.cgi?id=191724
+        <rdar://problem/45724395>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-187373-2.js: Added.
+        (foo):
+
+2018-11-15  Mark Lam  <mark.lam@apple.com>
+
+        RegExpObject's collectMatches should not be using JSArray::push to fill in its match results.
+        https://bugs.webkit.org/show_bug.cgi?id=191730
+        <rdar://problem/46048517>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-187006.js: Removed.
+          - this test is invalid because its sole purpose is to test for the non-spec
+            compliant behavior that we just fixed.
+
+        * stress/regress-191730.js: Added.
+
+2018-11-15  Mark Lam  <mark.lam@apple.com>
+
+        RegExp operations should not take fast patch if lastIndex is not numeric.
+        https://bugs.webkit.org/show_bug.cgi?id=191731
+        <rdar://problem/46017305>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-191731.js: Added.
+
 2018-11-13  Saam Barati  <sbarati@apple.com>
 
         TypeProfileLog::processLogEntries should stash away any pending exceptions and re-apply them to the VM

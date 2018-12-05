@@ -178,6 +178,10 @@ private:
     void showPlaybackTargetPicker(bool hasVideo, WebCore::RouteSharingPolicy, const String&) final;
 
     Seconds eventThrottlingDelay() final;
+
+    void associateEditableImageWithAttachment(WebCore::GraphicsLayer::EmbeddedViewID, const String& attachmentID) final;
+    void didCreateEditableImage(WebCore::GraphicsLayer::EmbeddedViewID) final;
+    void didDestroyEditableImage(WebCore::GraphicsLayer::EmbeddedViewID) final;
 #endif
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -366,8 +370,6 @@ private:
     void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void (bool)>&&) final;
     void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void (bool)>&&) final;
 #endif
-
-    bool isViewVisible() final;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

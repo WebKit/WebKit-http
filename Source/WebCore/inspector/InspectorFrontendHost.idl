@@ -36,8 +36,12 @@
 ] interface InspectorFrontendHost {
     void loaded();
     void closeWindow();
+    void reopen();
     void bringToFront();
     void inspectedURLChanged(DOMString newURL);
+
+    readonly attribute boolean supportsShowCertificate;
+    boolean showCertificate(DOMString serializedCertificate);
 
     void setZoomFactor(unrestricted float zoom);
     float zoomFactor();

@@ -25,13 +25,11 @@
 
 WI.NetworkDOMNodeDetailView = class NetworkDOMNodeDetailView extends WI.NetworkDetailView
 {
-    constructor(domNode, delegate, {startTimestamp} = {})
+    constructor(domNode, delegate)
     {
         console.assert(domNode instanceof WI.DOMNode);
 
         super(domNode, delegate);
-
-        this._startTimestamp = startTimestamp || 0;
 
         this.element.classList.add("dom-node");
 
@@ -56,9 +54,7 @@ WI.NetworkDOMNodeDetailView = class NetworkDOMNodeDetailView extends WI.NetworkD
         switch (identifier) {
         case "dom-events":
             if (!this._domEventsContentView) {
-                this._domEventsContentView = new WI.DOMNodeEventsContentView(this.representedObject, {
-                    startTimestamp: this._startTimestamp,
-                });
+                this._domEventsContentView = new WI.DOMNodeEventsContentView(this.representedObject);
             }
             this._contentBrowser.showContentView(this._domEventsContentView, this._contentViewCookie);
             break;

@@ -50,7 +50,10 @@ bool SVGGlyphRefElement::hasValidGlyphElement(String& glyphName) const
 {
     // FIXME: We only support xlink:href so far.
     // https://bugs.webkit.org/show_bug.cgi?id=64787
-    return is<SVGGlyphElement>(targetElementFromIRIString(getAttribute(SVGNames::hrefAttr, XLinkNames::hrefAttr), document(), &glyphName));
+    // No need to support glyphRef referencing another node inside a shadow tree.
+    auto target = targetElementFromIRIString(getAttribute(SVGNames::hrefAttr, XLinkNames::hrefAttr), document());
+    glyphName = target.identifier;
+    return is<SVGGlyphElement>(target.element);
 }
 
 static float parseFloat(const AtomicString& value)

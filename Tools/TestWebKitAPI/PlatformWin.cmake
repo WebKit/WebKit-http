@@ -86,7 +86,6 @@ else ()
         CoreGraphics${DEBUG_SUFFIX}
         CoreText${DEBUG_SUFFIX}
         QuartzCore${DEBUG_SUFFIX}
-        WebKitSystemInterface${DEBUG_SUFFIX}
         WebKitQuartzCoreAdditions${DEBUG_SUFFIX}
         libdispatch${DEBUG_SUFFIX}
         libexslt${DEBUG_SUFFIX}
@@ -188,6 +187,12 @@ if (ENABLE_WEBKIT)
         ${TESTWEBKITAPI_DIR}/win/PlatformWebViewWin.cpp
         ${TESTWEBKITAPI_DIR}/win/UtilitiesWin.cpp
     )
+
+    if (${WTF_PLATFORM_WIN_CAIRO})
+        list(APPEND test_webkit_api_SOURCES
+            ${TESTWEBKITAPI_DIR}/Tests/WebKit/curl/Certificates.cpp
+        )
+    endif ()
 
     add_library(TestWebKitLib SHARED
         ${TESTWEBKITAPI_DIR}/win/main.cpp

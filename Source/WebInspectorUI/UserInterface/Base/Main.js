@@ -138,7 +138,16 @@ WI.loaded = function()
 
     // Create settings.
     this._showingSplitConsoleSetting = new WI.Setting("showing-split-console", false);
-    this._openTabsSetting = new WI.Setting("open-tab-types", ["elements", "network", "debugger", "resources", "timeline", "storage", "canvas", "console"]);
+    this._openTabsSetting = new WI.Setting("open-tab-types", [
+        WI.ElementsTabContentView.Type,
+        WI.NetworkTabContentView.Type,
+        WI.DebuggerTabContentView.Type,
+        WI.ResourcesTabContentView.Type,
+        WI.TimelineTabContentView.Type,
+        WI.StorageTabContentView.Type,
+        WI.CanvasTabContentView.Type,
+        WI.ConsoleTabContentView.Type,
+    ]);
     this._selectedTabIndexSetting = new WI.Setting("selected-tab-index", 0);
 
     // State.
@@ -1584,8 +1593,7 @@ WI._contextMenuRequested = function(event)
         proposedContextMenu = WI.ContextMenu.createFromEvent(event);
         proposedContextMenu.appendSeparator();
         proposedContextMenu.appendItem(WI.unlocalizedString("Reload Web Inspector"), () => {
-            // FIXME: Reload Web Inspector does not work with MultiplexingBackendTarget.
-            window.location.reload();
+            InspectorFrontendHost.reopen();
         });
 
         let protocolSubMenu = proposedContextMenu.appendSubMenuItem(WI.unlocalizedString("Protocol Debugging"), null, false);
@@ -2253,8 +2261,7 @@ WI.setLayoutDirection = function(value)
     if (WI.resolvedLayoutDirection() === WI.LayoutDirection.LTR && this._dockConfiguration === WI.DockConfiguration.Left)
         this._dockRight();
 
-    // FIXME: Reload Web Inspector does not work with MultiplexingBackendTarget.
-    window.location.reload();
+    InspectorFrontendHost.reopen();
 };
 
 WI._showTabAtIndex = function(i, event)

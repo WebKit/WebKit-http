@@ -1,3 +1,1138 @@
+2018-11-28  Keith Rollin  <krollin@apple.com>
+
+        Remove Postprocess Headers dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=192023
+        <rdar://problem/46283377>
+
+        Reviewed by Mark Lam.
+
+        JavaScriptCore's Xcode Postprocess Headers build phase used to have a
+        dependency on a specific handful of files. In r234227, the script used
+        in this phase (postprocess-headers.sh) was completely rewritten to
+        operate on *all* files in JSC's Public and Private headers directories
+        instead of just this handful. This rewrite makes the previous
+        dependency specification insufficient, leading to incorrect
+        incremental builds if the right files weren't touched. Address this by
+        removing the dependencies completely. This will cause
+        postprocess-headers.sh to always be executed, even when none of its
+        files are touch. Running this script all the time is OK, since it has
+        built-in protections against unnecessarily touching files that haven't
+        changed.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2018-11-27  Mark Lam  <mark.lam@apple.com>
+
+        ENABLE_FAST_JIT_PERMISSIONS should be false for iosmac.
+        https://bugs.webkit.org/show_bug.cgi?id=192055
+        <rdar://problem/46288783>
+
+        Reviewed by Saam Barati.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-11-27  Saam barati  <sbarati@apple.com>
+
+        r238510 broke scopes of size zero
+        https://bugs.webkit.org/show_bug.cgi?id=192033
+        <rdar://problem/46281734>
+
+        Reviewed by Keith Miller.
+
+        In r238510, I wrote the loop like this: 
+        `for (ScopeOffset offset { 0 }; offset <= symbolTable->maxScopeOffset(); offset += 1)`
+        
+        This breaks for scopes of size zero because maxScopeOffset() will be UINT_MAX.
+        
+        This patch fixes this by writing the loop as:
+        `for (unsigned offset = 0; offset < symbolTable->scopeSize(); ++offset)`
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2018-11-27  Mark Lam  <mark.lam@apple.com>
+
+        ASSERTION FAILED: capacity && isPageAligned(capacity) in JSC::CLoopStack::CLoopStack(JSC::VM&).
+        https://bugs.webkit.org/show_bug.cgi?id=192018
+
+        Reviewed by Saam Barati.
+
+        This assertion failed because the regress-191579.js test was specifying
+        --maxPerThreadStackUsage=400000 i.e. it was running with a stack size that is not
+        page aligned.  Given that the user can specify any arbitrary stack size, and the
+        CLoop stack expects to be page aligned, we'll just round up the requested capacity
+        to the next page alignment.
+
+        * interpreter/CLoopStack.cpp:
+        (JSC::CLoopStack::CLoopStack):
+
+2018-11-27  Mark Lam  <mark.lam@apple.com>
+
+        [Re-landing] NaNs read from Wasm code needs to be be purified.
+        https://bugs.webkit.org/show_bug.cgi?id=191056
+        <rdar://problem/45660341>
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+
+2018-11-27  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add support for forcing color scheme appearance in DOM tree.
+        https://bugs.webkit.org/show_bug.cgi?id=191820
+        rdar://problem/46153172
+
+        Reviewed by Devin Rousso.
+
+        * inspector/protocol/Page.json: Added setForcedAppearance.
+        Also added the defaultAppearanceDidChange event and Appearance enum.
+
+2018-11-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r238509.
+
+        Causes JSC tests to fail on iOS.
+
+        Reverted changeset:
+
+        "NaNs read from Wasm code needs to be be purified."
+        https://bugs.webkit.org/show_bug.cgi?id=191056
+        https://trac.webkit.org/changeset/238509
+
+2018-11-27  Mark Lam  <mark.lam@apple.com>
+
+        Introducing a ENABLE_SEPARATED_WX_HEAP macro.
+        https://bugs.webkit.org/show_bug.cgi?id=192013
+        <rdar://problem/45494310>
+
+        Reviewed by Keith Miller.
+
+        This makes the code a little more readable.
+
+        I put the definition of ENABLE_SEPARATED_WX_HEAP in JSC's config.h instead of
+        Platform.h because ENABLE_SEPARATED_WX_HEAP is only needed inside JSC.  Also,
+        ENABLE_SEPARATED_WX_HEAP depends on ENABLE(FAST_JIT_PERMISSIONS), which is only
+        defined for JSC.
+
+        * config.h:
+        * jit/ExecutableAllocator.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator):
+        (JSC::FixedVMPoolExecutableAllocator::initializeSeparatedWXHeaps):
+        * jit/ExecutableAllocator.h:
+        (JSC::performJITMemcpy):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2018-11-26  Caio Lima  <ticaiolima@gmail.com>
+
+        Re-introduce op_bitnot
+        https://bugs.webkit.org/show_bug.cgi?id=190923
+
+        Reviewed by Yusuke Suzuki.
+
+        With the introduction of BigInt as a new type, we can't emit bitwise
+        not as `x ^ -1` anymore, because this is incompatible with the new type.
+        Based on that, this Patch is adding `op_bitnot` as a new operation
+        into LLInt, as well as introducing ArithBitNot node into DFG to support
+        JIT compilation of such opcode. We will use the ValueProfile of this
+        intruction in the future to generate better code when its operand
+        is not Int32.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::not32):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::not32):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::not32):
+        * bytecode/BytecodeList.rb:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        * bytecode/Opcode.h:
+        (JSC::padOpcodeName):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitUnaryOp):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::UnaryPlusNode::emitBytecode):
+        (JSC::BitwiseNotNode::emitBytecode): Deleted.
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileBitwiseNot):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithBitNot):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompileSlowCases):
+        * jit/JIT.h:
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_bitnot):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * offlineasm/cloop.rb:
+        * parser/NodeConstructors.h:
+        (JSC::BitwiseNotNode::BitwiseNotNode):
+        * parser/Nodes.h:
+        * parser/ResultType.h:
+        (JSC::ResultType::bigIntOrInt32Type):
+        (JSC::ResultType::forBitOp):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+
+2018-11-26  Saam barati  <sbarati@apple.com>
+
+        InPlaceAbstractState::endBasicBlock rule for SetLocal should filter the value based on the flush format
+        https://bugs.webkit.org/show_bug.cgi?id=191956
+        <rdar://problem/45665806>
+
+        Reviewed by Yusuke Suzuki.
+
+        This is a similar bug to what Keith fixed in r232134. The issue is if we have
+        a program like this:
+        
+        a: JSConstant(jsNumber(0))
+        b: SetLocal(Int32:@a, loc1, FlushedInt32)
+        c: ArrayifyToStructure(Cell:@a)
+        d: Jump(...)
+        
+        At the point in the program right after the Jump, a GetLocal for loc1
+        would return whatever the ArrayifyToStructure resulting type is. This breaks
+        the invariant that a GetLocal must return a value that is a subtype of its
+        FlushFormat. InPlaceAbstractState::endBasicBlock will know if a SetLocal is
+        the final node touching a local slot. If so, it'll see if any nodes later
+        in the block may have refined the type of the value stored in that slot. If
+        so, endBasicBlock() further refines the type to ensure that any GetLocals
+        loading from the same slot will result in having this more refined type.
+        However, we must ensure that this logic only considers types within the
+        hierarchy of the variable access data's FlushFormat, otherwise, we may
+        break the invariant that a GetLocal's type is a subtype of its FlushFormat.
+
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::endBasicBlock):
+
+2018-11-26  Saam barati  <sbarati@apple.com>
+
+        Object allocation sinking phase needs to iterate each scope offset instead of just iterating the symbol table's hashmap when handling an activation
+        https://bugs.webkit.org/show_bug.cgi?id=191958
+        <rdar://problem/46221877>
+
+        Reviewed by Yusuke Suzuki.
+
+        There may be more entries in an activation than unique variables
+        in a symbol table's hashmap. For example, if you have two parameters
+        to a function, and they both are the same name, and the function
+        uses eval, we'll end up with two scope slots, but only a single
+        entry in the hashmap in the symbol table. Object allocation sinking
+        phase was previously iterating over the hashmap, assuming these
+        values were equivalent. This is wrong in the above case. Instead,
+        we need to iterate over each scope offset.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        * runtime/GenericOffset.h:
+        (JSC::GenericOffset::operator+=):
+        (JSC::GenericOffset::operator-=):
+
+2018-11-26  Mark Lam  <mark.lam@apple.com>
+
+        NaNs read from Wasm code needs to be be purified.
+        https://bugs.webkit.org/show_bug.cgi?id=191056
+        <rdar://problem/45660341>
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+
+2018-11-26  Tadeu Zagallo  <tzagallo@apple.com>
+
+        ASSERTION FAILED: m_outOfLineJumpTargets.contains(bytecodeOffset)
+        https://bugs.webkit.org/show_bug.cgi?id=191716
+        <rdar://problem/45723878>
+
+        Reviewed by Saam Barati.
+
+        After https://bugs.webkit.org/show_bug.cgi?id=187373, when updating
+        jump targets during generatorification, we only stored the new jump
+        target when it changed. However, the out-of-line jump targets are
+        cleared at the beginning of the pass, so we need to store it
+        unconditionally.
+
+        * bytecode/PreciseJumpTargetsInlines.h:
+        (JSC::extractStoredJumpTargetsForInstruction):
+        (JSC::updateStoredJumpTargetsForInstruction):
+
+2018-11-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Enable drag and drop support for iOSMac
+        https://bugs.webkit.org/show_bug.cgi?id=191818
+        <rdar://problem/43907454>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-11-22  Mark Lam  <mark.lam@apple.com>
+
+        Make the jsc shell's dumpException() more robust against long exception strings.
+        https://bugs.webkit.org/show_bug.cgi?id=191910
+        <rdar://problem/46212980>
+
+        Reviewed by Michael Saboff.
+
+        This only affects the dumping of the exception string in the jsc shell due to
+        unhandled exceptions or exceptions at shell boot time before any JS code is
+        running.
+
+        * jsc.cpp:
+        (dumpException):
+
+2018-11-21  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Drop ARM_TRADITIONAL support in LLInt, baseline JIT, and DFG
+        https://bugs.webkit.org/show_bug.cgi?id=191675
+
+        Reviewed by Mark Lam.
+
+        We no longer maintain ARM_TRADITIONAL LLInt and JIT in JSC. This architecture will use
+        CLoop instead. This patch removes ARM_TRADITIONAL support in LLInt and JIT.
+
+        Discussed in https://lists.webkit.org/pipermail/webkit-dev/2018-October/030220.html.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * assembler/ARMAssembler.cpp: Removed.
+        * assembler/ARMAssembler.h: Removed.
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::linkCode):
+        (JSC::LinkBuffer::dumpCode):
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::patchableBranch32):
+        * assembler/MacroAssemblerARM.cpp: Removed.
+        * assembler/MacroAssemblerARM.h: Removed.
+        * assembler/PerfLog.cpp:
+        * assembler/PerfLog.h:
+        * assembler/ProbeContext.h:
+        (JSC::Probe::CPUState::pc):
+        (JSC::Probe::CPUState::fp):
+        (JSC::Probe::CPUState::sp):
+        * assembler/testmasm.cpp:
+        (JSC::isPC):
+        (JSC::testProbeModifiesStackPointer):
+        (JSC::testProbeModifiesStackValues):
+        * bytecode/InlineAccess.h:
+        (JSC::InlineAccess::sizeForPropertyAccess):
+        (JSC::InlineAccess::sizeForPropertyReplace):
+        (JSC::InlineAccess::sizeForLengthAccess):
+        * dfg/DFGSpeculativeJIT.h:
+        * disassembler/CapstoneDisassembler.cpp:
+        (JSC::tryToDisassemble):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::debugCall):
+        * jit/AssemblyHelpers.h:
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsImpl):
+        (JSC::CCallHelpers::prepareForTailCallSlow):
+        * jit/CallFrameShuffler.cpp:
+        (JSC::CallFrameShuffler::prepareForTailCall):
+        * jit/HostCallReturnValue.cpp:
+        * jit/JITMathIC.h:
+        (JSC::isProfileEmpty):
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::reservedHardwareRegisters):
+        (JSC::RegisterSet::calleeSaveRegisters):
+        (JSC::RegisterSet::llintBaselineCalleeSaveRegisters):
+        (JSC::RegisterSet::dfgCalleeSaveRegisters):
+        * jit/Repatch.cpp:
+        (JSC::forceICFailure):
+        * jit/ThunkGenerators.cpp:
+        (JSC::nativeForGenerator):
+        * llint/LLIntOfflineAsmConfig.h:
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * offlineasm/arm.rb:
+        * offlineasm/backends.rb:
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::generateEnter):
+        (JSC::Yarr::YarrGenerator::generateReturn):
+
+2018-11-21  Saam barati  <sbarati@apple.com>
+
+        DFGSpeculativeJIT should not &= exitOK with mayExit(node)
+        https://bugs.webkit.org/show_bug.cgi?id=191897
+        <rdar://problem/45871998>
+
+        Reviewed by Mark Lam.
+
+        exitOK is a statement about it being legal to exit. mayExit() is about being
+        conservative and returning false only if an OSR exit *could never* happen.
+        mayExit() tries to be as smart as possible to see if it can return false.
+        It can't return false if a runtime exit *could* happen. However, there is
+        code in the compiler where mayExit() returns false (because it uses data
+        generated from AI about type checks being proved), but the code we emit in the
+        compiler backend unconditionally generates an OSR exit, even if that exit may
+        never execute. For example, let's say we have this IR:
+        
+        SomeNode(Boolean:@input)
+        
+        And we always emit code like this as a way of emitting a boolean type check:
+        
+        jump L1 if input == true
+        jump L1 if input == false
+        emit an OSR exit
+        
+        In such a program, when we generate the above OSR exit, in a validationEnabled()
+        build, and if @input is proved to be a boolean, we'll end up crashing because we
+        have the bogus assertion saying !exitOK. This is one reason why things are cleaner
+        if we don't conflate mayExit() with exitOK.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCurrentBlock):
+
+2018-11-21  Saam barati  <sbarati@apple.com>
+
+        Fix assertion in KnownCellUse inside SpeculativeJIT::speculate
+        https://bugs.webkit.org/show_bug.cgi?id=191895
+        <rdar://problem/46167406>
+
+        Reviewed by Mark Lam.
+
+        We were asserting that the input edge should have type SpecCell but it should
+        really be SpecCellCheck since the type filter for KnownCellUse is SpecCellCheck.
+        
+        This patch cleans up that assertion code by joining a bunch of cases into a
+        single function call which grabs the type filter for the edge UseKind and
+        asserts that the incoming edge meets the type filter criteria.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::speculate):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::speculate):
+
+2018-11-21  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Use ProtoCallFrame::numberOfRegisters instead of raw number `4`
+        https://bugs.webkit.org/show_bug.cgi?id=191877
+
+        Reviewed by Sam Weinig.
+
+        Instead of hard-coding `4` into LowLevelInterpreter, use ProtoCallFrame::numberOfRegisters.
+
+        * interpreter/ProtoCallFrame.h:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2018-11-21  Mark Lam  <mark.lam@apple.com>
+
+        Creating a wasm memory that is bigger than the ArrayBuffer limit but smaller than the spec limit should throw OOME not RangeError.
+        https://bugs.webkit.org/show_bug.cgi?id=191776
+        <rdar://problem/46152851>
+
+        Reviewed by Saam Barati.
+
+        * wasm/WasmMemory.cpp:
+        (JSC::Wasm::Memory::tryCreate):
+        - return nullptr if the requested bytes exceed MAX_ARRAY_BUFFER_SIZE.
+          The clients will already do a null check and throw an OutOfMemoryError if needed.
+        (JSC::Wasm::Memory::grow):
+        - throw OOME if newPageCount.bytes() > MAX_ARRAY_BUFFER_SIZE.
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        - throw OOME if newPageCount.bytes() > MAX_ARRAY_BUFFER_SIZE.
+
+2018-11-21  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] JSBigInt::createWithLength should throw when length is greater than JSBigInt::maxLength
+        https://bugs.webkit.org/show_bug.cgi?id=190836
+
+        Reviewed by Saam Barati and Yusuke Suzuki.
+
+        In this patch we are creating a new method called `JSBigInt::createWithLengthUnchecked`
+        where we allocate a BigInt trusting the length received as argument.
+        With this additional method, we now check if length passed to
+        `JSBigInt::tryCreateWithLength` is not greater than JSBigInt::maxLength.
+        When the length is greater than JSBigInt::maxLength, we then throw OOM
+        exception.
+        This required us to change the interface of some JSBigInt operations to
+        receive `ExecState*` instead of `VM&`. We changed only operations that
+        can throw because of OOM.
+        We beleive that this approach of throwing instead of finishing the
+        execution abruptly is better because JS programs can catch such
+        exception and handle this issue properly.
+
+        * dfg/DFGOperations.cpp:
+        * jit/JITOperations.cpp:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::createZero):
+        (JSC::JSBigInt::tryCreateWithLength):
+        (JSC::JSBigInt::createWithLengthUnchecked):
+        (JSC::JSBigInt::createFrom):
+        (JSC::JSBigInt::multiply):
+        (JSC::JSBigInt::divide):
+        (JSC::JSBigInt::copy):
+        (JSC::JSBigInt::unaryMinus):
+        (JSC::JSBigInt::remainder):
+        (JSC::JSBigInt::add):
+        (JSC::JSBigInt::sub):
+        (JSC::JSBigInt::bitwiseAnd):
+        (JSC::JSBigInt::bitwiseOr):
+        (JSC::JSBigInt::bitwiseXor):
+        (JSC::JSBigInt::absoluteAdd):
+        (JSC::JSBigInt::absoluteSub):
+        (JSC::JSBigInt::absoluteDivWithDigitDivisor):
+        (JSC::JSBigInt::absoluteDivWithBigIntDivisor):
+        (JSC::JSBigInt::absoluteLeftShiftAlwaysCopy):
+        (JSC::JSBigInt::absoluteBitwiseOp):
+        (JSC::JSBigInt::absoluteAddOne):
+        (JSC::JSBigInt::absoluteSubOne):
+        (JSC::JSBigInt::toStringGeneric):
+        (JSC::JSBigInt::rightTrim):
+        (JSC::JSBigInt::allocateFor):
+        (JSC::JSBigInt::createWithLength): Deleted.
+        * runtime/JSBigInt.h:
+        * runtime/Operations.cpp:
+        (JSC::jsAddSlowCase):
+        * runtime/Operations.h:
+        (JSC::jsSub):
+        (JSC::jsMul):
+
+2018-11-20  Mark Lam  <mark.lam@apple.com>
+
+        Remove invalid assertion in VMTraps::SignalSender's SignalAction.
+        https://bugs.webkit.org/show_bug.cgi?id=191856
+        <rdar://problem/46089992>
+
+        Reviewed by Yusuke Suzuki.
+
+        The ASSERT(vm.traps().needTrapHandling()) assertion in SignalSender's SigAction
+        function is invalid because we can't be sure that the trap has been handled yet
+        by the time the trap fires.  This is because the main thread may also check traps
+        (in LLInt, baseline JIT and VM runtime code).  There's a race to handle the trap.
+        Hence, the SigAction cannot assume that the trap still needs handling by the time
+        it is executed.  This patch removed the invalid assertion.
+
+        Also renamed m_trapSet to m_condition because it is a AutomaticThreadCondition,
+        and all the ways it is used is as a condvar.  The m_trapSet name doesn't seem
+        appropriate nor meaningful.
+
+        * runtime/VMTraps.cpp:
+        (JSC::VMTraps::tryInstallTrapBreakpoints):
+        - Added a !needTrapHandling() check as an optimization: there's no need to install
+          VMTrap breakpoints if someone already beat us to handling the trap (remember,
+          the main thread is racing against the VMTraps signalling thread to handle the
+          trap too).  We only need to install the VMTraps breakpoints if we need DFG/FTL
+          compiled code to deopt so that they can check and handle pending traps.  If the
+          trap has already been handled, it's better to not deopt any DFG/FTL functions.
+
+        (JSC::VMTraps::willDestroyVM):
+        (JSC::VMTraps::fireTrap):
+        (JSC::VMTraps::VMTraps):
+        * runtime/VMTraps.h:
+
+2018-11-21  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable JIT on ARM/Linux
+        https://bugs.webkit.org/show_bug.cgi?id=191548
+
+        Reviewed by Yusuke Suzuki.
+
+        Enable JIT by default on ARMv7/Linux after it was disabled with
+        recent bytcode format change.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::getICStatusMap):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::metadata):
+        * bytecode/InByIdStatus.cpp:
+        (JSC::InByIdStatus::computeFor):
+        * bytecode/Instruction.h:
+        (JSC::Instruction::cast):
+        * bytecode/MetadataTable.h:
+        (JSC::MetadataTable::forEach):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFor):
+        (JSC::PutByIdStatus::hasExitSite): Deleted.
+        * bytecode/PutByIdStatus.h:
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * generator/Argument.rb:
+        * generator/Opcode.rb:
+        * jit/GPRInfo.h:
+        * jit/JIT.h:
+        * jit/JITArithmetic32_64.cpp:
+        (JSC::JIT::emit_compareAndJump):
+        (JSC::JIT::emit_compareUnsignedAndJump):
+        (JSC::JIT::emit_compareUnsigned):
+        (JSC::JIT::emit_compareAndJumpSlow):
+        (JSC::JIT::emit_op_unsigned):
+        (JSC::JIT::emit_op_inc):
+        (JSC::JIT::emit_op_dec):
+        (JSC::JIT::emitBinaryDoubleOp):
+        (JSC::JIT::emit_op_mod):
+        (JSC::JIT::emitSlow_op_mod):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::emitPutCallResult):
+        (JSC::JIT::emit_op_ret):
+        (JSC::JIT::emitSlow_op_call):
+        (JSC::JIT::emitSlow_op_tail_call):
+        (JSC::JIT::emitSlow_op_call_eval):
+        (JSC::JIT::emitSlow_op_call_varargs):
+        (JSC::JIT::emitSlow_op_tail_call_varargs):
+        (JSC::JIT::emitSlow_op_tail_call_forward_arguments):
+        (JSC::JIT::emitSlow_op_construct_varargs):
+        (JSC::JIT::emitSlow_op_construct):
+        (JSC::JIT::emit_op_call):
+        (JSC::JIT::emit_op_tail_call):
+        (JSC::JIT::emit_op_call_eval):
+        (JSC::JIT::emit_op_call_varargs):
+        (JSC::JIT::emit_op_tail_call_varargs):
+        (JSC::JIT::emit_op_tail_call_forward_arguments):
+        (JSC::JIT::emit_op_construct_varargs):
+        (JSC::JIT::emit_op_construct):
+        (JSC::JIT::compileSetupFrame):
+        (JSC::JIT::compileCallEval):
+        (JSC::JIT::compileCallEvalSlowCase):
+        (JSC::JIT::compileOpCall):
+        (JSC::JIT::compileOpCallSlowCase):
+        (JSC::JIT::compileSetupVarargsFrame): Deleted.
+        * jit/JITInlines.h:
+        (JSC::JIT::updateTopCallFrame):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_catch):
+        (JSC::JIT::emitSlow_op_loop_hint):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_mov):
+        (JSC::JIT::emit_op_end):
+        (JSC::JIT::emit_op_jmp):
+        (JSC::JIT::emit_op_new_object):
+        (JSC::JIT::emitSlow_op_new_object):
+        (JSC::JIT::emit_op_overrides_has_instance):
+        (JSC::JIT::emit_op_instanceof):
+        (JSC::JIT::emit_op_instanceof_custom):
+        (JSC::JIT::emitSlow_op_instanceof):
+        (JSC::JIT::emitSlow_op_instanceof_custom):
+        (JSC::JIT::emit_op_is_empty):
+        (JSC::JIT::emit_op_is_undefined):
+        (JSC::JIT::emit_op_is_boolean):
+        (JSC::JIT::emit_op_is_number):
+        (JSC::JIT::emit_op_is_cell_with_type):
+        (JSC::JIT::emit_op_is_object):
+        (JSC::JIT::emit_op_to_primitive):
+        (JSC::JIT::emit_op_set_function_name):
+        (JSC::JIT::emit_op_not):
+        (JSC::JIT::emit_op_jfalse):
+        (JSC::JIT::emit_op_jtrue):
+        (JSC::JIT::emit_op_jeq_null):
+        (JSC::JIT::emit_op_jneq_null):
+        (JSC::JIT::emit_op_jneq_ptr):
+        (JSC::JIT::emit_op_eq):
+        (JSC::JIT::emitSlow_op_eq):
+        (JSC::JIT::emit_op_jeq):
+        (JSC::JIT::emitSlow_op_jeq):
+        (JSC::JIT::emit_op_neq):
+        (JSC::JIT::emitSlow_op_neq):
+        (JSC::JIT::emit_op_jneq):
+        (JSC::JIT::emitSlow_op_jneq):
+        (JSC::JIT::compileOpStrictEq):
+        (JSC::JIT::emit_op_stricteq):
+        (JSC::JIT::emit_op_nstricteq):
+        (JSC::JIT::compileOpStrictEqJump):
+        (JSC::JIT::emit_op_jstricteq):
+        (JSC::JIT::emit_op_jnstricteq):
+        (JSC::JIT::emitSlow_op_jstricteq):
+        (JSC::JIT::emitSlow_op_jnstricteq):
+        (JSC::JIT::emit_op_eq_null):
+        (JSC::JIT::emit_op_neq_null):
+        (JSC::JIT::emit_op_throw):
+        (JSC::JIT::emit_op_to_number):
+        (JSC::JIT::emit_op_to_string):
+        (JSC::JIT::emit_op_to_object):
+        (JSC::JIT::emit_op_catch):
+        (JSC::JIT::emit_op_identity_with_profile):
+        (JSC::JIT::emit_op_get_parent_scope):
+        (JSC::JIT::emit_op_switch_imm):
+        (JSC::JIT::emit_op_switch_char):
+        (JSC::JIT::emit_op_switch_string):
+        (JSC::JIT::emit_op_debug):
+        (JSC::JIT::emit_op_enter):
+        (JSC::JIT::emit_op_get_scope):
+        (JSC::JIT::emit_op_create_this):
+        (JSC::JIT::emit_op_to_this):
+        (JSC::JIT::emit_op_check_tdz):
+        (JSC::JIT::emit_op_has_structure_property):
+        (JSC::JIT::privateCompileHasIndexedProperty):
+        (JSC::JIT::emit_op_has_indexed_property):
+        (JSC::JIT::emitSlow_op_has_indexed_property):
+        (JSC::JIT::emit_op_get_direct_pname):
+        (JSC::JIT::emit_op_enumerator_structure_pname):
+        (JSC::JIT::emit_op_enumerator_generic_pname):
+        (JSC::JIT::emit_op_profile_type):
+        (JSC::JIT::emit_op_log_shadow_chicken_prologue):
+        (JSC::JIT::emit_op_log_shadow_chicken_tail):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_put_getter_by_id):
+        (JSC::JIT::emit_op_put_setter_by_id):
+        (JSC::JIT::emit_op_put_getter_setter_by_id):
+        (JSC::JIT::emit_op_put_getter_by_val):
+        (JSC::JIT::emit_op_put_setter_by_val):
+        (JSC::JIT::emit_op_del_by_id):
+        (JSC::JIT::emit_op_del_by_val):
+        (JSC::JIT::emit_op_get_by_val):
+        (JSC::JIT::emitGetByValWithCachedId):
+        (JSC::JIT::emitSlow_op_get_by_val):
+        (JSC::JIT::emit_op_put_by_val_direct):
+        (JSC::JIT::emit_op_put_by_val):
+        (JSC::JIT::emitGenericContiguousPutByVal):
+        (JSC::JIT::emitArrayStoragePutByVal):
+        (JSC::JIT::emitPutByValWithCachedId):
+        (JSC::JIT::emitSlow_op_put_by_val):
+        (JSC::JIT::emit_op_try_get_by_id):
+        (JSC::JIT::emitSlow_op_try_get_by_id):
+        (JSC::JIT::emit_op_get_by_id_direct):
+        (JSC::JIT::emitSlow_op_get_by_id_direct):
+        (JSC::JIT::emit_op_get_by_id):
+        (JSC::JIT::emitSlow_op_get_by_id):
+        (JSC::JIT::emit_op_get_by_id_with_this):
+        (JSC::JIT::emitSlow_op_get_by_id_with_this):
+        (JSC::JIT::emit_op_put_by_id):
+        (JSC::JIT::emitSlow_op_put_by_id):
+        (JSC::JIT::emit_op_in_by_id):
+        (JSC::JIT::emitSlow_op_in_by_id):
+        (JSC::JIT::emit_op_resolve_scope):
+        (JSC::JIT::emit_op_get_from_scope):
+        (JSC::JIT::emitSlow_op_get_from_scope):
+        (JSC::JIT::emit_op_put_to_scope):
+        (JSC::JIT::emitSlow_op_put_to_scope):
+        (JSC::JIT::emit_op_get_from_arguments):
+        (JSC::JIT::emit_op_put_to_arguments):
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::vmCalleeSaveRegisters):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/SamplingProfiler.cpp:
+        (JSC::tryGetBytecodeIndex):
+
+2018-11-20  Saam barati  <sbarati@apple.com>
+
+        Merging an IC variant may lead to the IC status containing overlapping structure sets
+        https://bugs.webkit.org/show_bug.cgi?id=191869
+        <rdar://problem/45403453>
+
+        Reviewed by Mark Lam.
+
+        When merging two IC variant lists, we may end up in a world where we have
+        overlapping structure sets. We defend against this when we append a new
+        variant, but we should also defend against it once we merge in a new variant.
+        
+        Consider this case with MultiPutByOffset, where we merge two PutByIdStatuses
+        together, P1 and P2.
+        
+        Let's consider these structures:
+        s1 = {}
+        s2 = {p: 0}
+        s3 = {p: 0, p2: 1}
+        
+        P1 contains these variants:
+        Transition: [s1 => s2]
+        Replace: [s2, s3]
+        
+        P2 contains:
+        Replace: [s2]
+        
+        Because of the ordering of the variants, we may end up combining
+        P2's replace into P1's transition, forming this new list:
+        Transition: [(s1, s2) => s2]
+        Replace: [s2, s3]
+        
+        Obviously the ideal thing here is to have some ordering when we merge
+        in variants to choose the most ideal option. It'd be ideal for P2's
+        Replace to be merged into P1's replace.
+        
+        If we notice that this is super important, we can implement some kind
+        of ordering. None of our tests (until this patch) stress this. This patch
+        just makes it so we defend against this crazy scenario by falling back
+        to the slow path gracefully. This prevents us from emitting invalid
+        IR in FTL->B3 lowering by creating a switch with two case labels being
+        identical values.
+
+        * bytecode/ICStatusUtils.h:
+        (JSC::appendICStatusVariant):
+
+2018-11-20  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        REGRESSION(r238039) WebCore::JSDOMGlobalObject::createStructure is using JSC::Structure::create without including StructureInlines.h
+        https://bugs.webkit.org/show_bug.cgi?id=191626
+        <rdar://problem/46161064>
+
+        Unreviewed adding comment for my change r238366.
+
+        * runtime/Structure.h: Added a comment for Structure::create.
+
+2018-11-19  Mark Lam  <mark.lam@apple.com>
+
+        globalFuncImportModule() should return a promise when it clears exceptions.
+        https://bugs.webkit.org/show_bug.cgi?id=191792
+        <rdar://problem/46090763>
+
+        Reviewed by Michael Saboff.
+
+        If we're clearing the exceptions in a CatchScope, then it means that we've handled
+        the exception, and is able to proceed in a normal manner.  Hence, we should not
+        return the empty JSValue in this case: instead, we should return a Promise as
+        expected by import's API.
+
+        The only time when we can't return a promise is when we fail to create a Promise.
+        In that case, we should be propagating the exception.
+
+        Hence, globalFuncImportModule() contains a ThrowScope (for propagating the
+        exception that arises from failure to create the Promise) wrapping a CatchScope
+        (for catching any exception that arises from failure to execute the import).
+
+        Also fixed similar issues, and some exception check issues in JSModuleLoader and
+        the jsc shell.
+
+        * jsc.cpp:
+        (GlobalObject::moduleLoaderImportModule):
+        (GlobalObject::moduleLoaderFetch):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncImportModule):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::loadAndEvaluateModule):
+        (JSC::JSModuleLoader::loadModule):
+        (JSC::JSModuleLoader::requestImportModule):
+        (JSC::JSModuleLoader::importModule):
+        (JSC::JSModuleLoader::resolve):
+        (JSC::JSModuleLoader::fetch):
+        (JSC::moduleLoaderParseModule):
+        (JSC::moduleLoaderResolveSync):
+
+2018-11-19  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to disable JIT in a WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=191822
+        <rdar://problem/28119360>
+
+        Reviewed by Geoffrey Garen.
+
+        * jit/ExecutableAllocator.cpp:
+        (JSC::jitDisabled):
+        (JSC::allowJIT):
+        (JSC::ExecutableAllocator::setJITEnabled):
+        * jit/ExecutableAllocator.h:
+        (JSC::ExecutableAllocator::setJITEnabled):
+
+2018-11-19  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [MSVC] X86Assembler.h(108): error C2666: 'WebCore::operator -': 7 overloads have similar conversions
+        https://bugs.webkit.org/show_bug.cgi?id=189467
+        <rdar://problem/44290945>
+
+        Reviewed by Mark Lam.
+
+        This issue has happened several times. And, it seems that it will
+        take more time for Microsoft to fix the MSVC bug. We need a
+        effective workaround not to repeat this issue until they fix MSVC.
+
+        Remove ": int8_t" of RegisterID only for COMPILER(MSVC).
+
+        * assembler/X86Assembler.h: Added JSC_X86_ASM_REGISTER_ID_ENUM_BASE_TYPE macro.
+
+2018-11-19  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [WebAssembly] I64 arguments / return value check should be moved from callWebAssemblyFunction to JSToWasm wrapper
+        https://bugs.webkit.org/show_bug.cgi?id=190512
+
+        Reviewed by Keith Miller.
+
+        This patch moves I64 arguments / return value check from callWebAssemblyFunction to JSToWasm wrapper. Since this
+        check can be done when compiling the function, we should encode the result into the generated wrapper instead of
+        checking every time we call callWebAssemblyFunction. This change is also one of the steps removing callWebAssemblyFunction
+        entirely.
+
+        * wasm/WasmExceptionType.h:
+        * wasm/js/JSToWasm.cpp:
+        (JSC::Wasm::createJSToWasmWrapper):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+        * wasm/js/WebAssemblyWrapperFunction.cpp:
+        (JSC::callWebAssemblyWrapperFunction):
+
+2018-11-12  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Consider removing double load for accessing the instructions from LLInt
+        https://bugs.webkit.org/show_bug.cgi?id=190932
+
+        Reviewed by Mark Lam.
+
+        Changing InstructionStream to RefCountedArray like structure involves so much changes
+        including BytecodeGraph, PreciseJumpTargets etc. Instead, CodeBlock simply hold a raw
+        pointer to the InstructionStream's data. Since InstructionStream is not changed
+        anymore, this pointer is valid while CodeBlock is live.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        * bytecode/CodeBlock.h:
+        * bytecode/InstructionStream.h:
+        (JSC::InstructionStream::rawPointer const):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2018-11-18  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        REGRESSION(r238039) WebCore::JSDOMGlobalObject::createStructure is using JSC::Structure::create without including StructureInlines.h
+        https://bugs.webkit.org/show_bug.cgi?id=191626
+
+        Reviewed by Yusuke Suzuki.
+
+        JSC::Structure::create is used everywhere. It should be defined in
+        Structure.h, not in StructureInlines.h.
+
+        * runtime/Structure.h:
+        (JSC::Structure::create): Moved.
+        * runtime/StructureInlines.h: Moved JSC::Structure::create.
+
+2018-11-18  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, rolling in the rest of r237254
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        * parser/ParserModes.h:
+        * parser/ParserTokens.h:
+        (JSC::JSTextPosition::JSTextPosition):
+        (JSC::JSTokenLocation::JSTokenLocation): Deleted.
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getUnlinkedGlobalFunctionExecutable):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+
+2018-11-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: add button to show system certificate dialog
+        https://bugs.webkit.org/show_bug.cgi?id=191458
+        <rdar://problem/45977019>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Network.json:
+        Add `getSerializedCertificate` command.
+
+2018-11-17  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Fix build with disabled DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=191256
+
+        Reviewed by Yusuke Suzuki.
+
+        Fix compilation errors and warnings with both DFG and FTL
+        disabled at compile-time.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::getICStatusMap):
+        * bytecode/InByIdStatus.cpp:
+        (JSC::InByIdStatus::computeFor):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFor):
+        (JSC::PutByIdStatus::hasExitSite): Deleted.
+        * bytecode/PutByIdStatus.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_catch):
+
+2018-11-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Keep Web Inspector window alive across process swaps (PSON) (Local Inspector)
+        https://bugs.webkit.org/show_bug.cgi?id=191740
+        <rdar://problem/45470897>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InspectorFrontendChannel.h:
+        Expose EnumTraits for ConnectionType for WebKit IPC messages.
+
+2018-11-16  Filip Pizlo  <fpizlo@apple.com>
+
+        All users of ArrayBuffer should agree on the same max size
+        https://bugs.webkit.org/show_bug.cgi?id=191771
+
+        Reviewed by Mark Lam.
+
+        Array buffers cannot be larger than 0x7fffffff, because otherwise loading typedArray.length in the DFG/FTL would produce
+        a uint32 or would require a signedness check, neither of which sounds reasonable. It's better to just bound their max size
+        instead.
+
+        * runtime/ArrayBuffer.cpp:
+        (JSC::ArrayBufferContents::ArrayBufferContents):
+        (JSC::ArrayBufferContents::tryAllocate):
+        (JSC::ArrayBufferContents::transferTo):
+        (JSC::ArrayBufferContents::copyTo):
+        (JSC::ArrayBufferContents::shareWith):
+        * runtime/ArrayBuffer.h:
+        * wasm/WasmMemory.cpp:
+        (JSC::Wasm::Memory::tryCreate):
+        (JSC::Wasm::Memory::grow):
+        * wasm/WasmPageCount.h:
+
+2018-11-16  Saam Barati  <sbarati@apple.com>
+
+        KnownCellUse should also have SpecCellCheck as its type filter
+        https://bugs.webkit.org/show_bug.cgi?id=191729
+        <rdar://problem/45872852>
+
+        Reviewed by Filip Pizlo.
+
+        We write transformations in the compiler like this where we emit edges with
+        KnownCellUse if we know we're inserting code at a point where we're dominated
+        by a Cell check:
+        
+        a: SomeValue
+        b: Something(Cell:@a)
+        c: SomethingElse(@b)
+        d: CheckNotEmpty(@a)
+        
+        =>
+        
+        a: SomeValue
+        b: Something(Cell:@a)
+        e: RandomOtherThing(KnownCellUse:@a)
+        c: SomethingElse(@b)
+        d: CheckNotEmpty(@a)
+        
+        However, doing this used to lead to subtly incorrect programs since KnownCellUse
+        did not allow the empty value to flow through it. We used to end up incorrectly
+        deleting @d in the above program. We fix this, we make KnownCellUse allow the empty
+        value to flow through.
+
+        * dfg/DFGUseKind.h:
+        (JSC::DFG::typeFilterFor):
+
+2018-11-16  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Fix assertion failure on BytecodeGenerator::recordOpcode
+        https://bugs.webkit.org/show_bug.cgi?id=191724
+        <rdar://problem/45724395>
+
+        Reviewed by Saam Barati.
+
+        Since https://bugs.webkit.org/show_bug.cgi?id=187373, we were not
+        restoring m_lastInstruction after patching the bytecode when
+        finalizing StructureForInContexts, only m_lastOpcodeID, which led to
+        the assertion failure.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::StructureForInContext::finalize):
+
+2018-11-15  Mark Lam  <mark.lam@apple.com>
+
+        RegExpObject's collectMatches should not be using JSArray::push to fill in its match results.
+        https://bugs.webkit.org/show_bug.cgi?id=191730
+        <rdar://problem/46048517>
+
+        Reviewed by Saam Barati.
+
+        According to the spec https://www.ecma-international.org/ecma-262/9.0/index.html#sec-regexp.prototype-@@match,
+        the RegExp match results are filled in using the spec's CreateDataProperty()
+        function which does not consult the prototype for setters.  JSArray:push()
+        consults the prototype for setters.  We should be using putDirectIndex() instead.
+
+        * runtime/RegExpObjectInlines.h:
+        (JSC::collectMatches):
+
+2018-11-15  Mark Lam  <mark.lam@apple.com>
+
+        RegExp operations should not take fast patch if lastIndex is not numeric.
+        https://bugs.webkit.org/show_bug.cgi?id=191731
+        <rdar://problem/46017305>
+
+        Reviewed by Saam Barati.
+
+        This is because if lastIndex is an object with a valueOf() method, it can execute
+        arbitrary code which may have side effects, and side effects are not permitted by
+        the RegExp fast paths.
+
+        * builtins/RegExpPrototype.js:
+        (globalPrivate.hasObservableSideEffectsForRegExpMatch):
+        (overriddenName.string_appeared_here.search):
+        (globalPrivate.hasObservableSideEffectsForRegExpSplit):
+        (intrinsic.RegExpTestIntrinsic.test):
+        * builtins/StringPrototype.js:
+        (globalPrivate.hasObservableSideEffectsForStringReplace):
+
+2018-11-15  Keith Rollin  <krollin@apple.com>
+
+        Delete old .xcfilelist files
+        https://bugs.webkit.org/show_bug.cgi?id=191669
+        <rdar://problem/46081994>
+
+        Reviewed by Chris Dumez.
+
+        .xcfilelist files were created and added to the Xcode project files in
+        https://trac.webkit.org/changeset/238008/webkit. However, they caused
+        build issues and they were removed from the Xcode projects in
+        https://trac.webkit.org/changeset/238055/webkit. This check-in removes
+        the files from the repository altogether. They'll ultimately be
+        replaced with new files with names that indicate whether the
+        associated files are inputs to the Run Script phase or are files
+        created by the Run Script phase.
+
+        * DerivedSources.xcfilelist: Removed.
+        * UnifiedSources.xcfilelist: Removed.
+
+2018-11-14  Keith Rollin  <krollin@apple.com>
+
+        Move scripts for Derived and Unified Sources to external files
+        https://bugs.webkit.org/show_bug.cgi?id=191670
+        <rdar://problem/46082278>
+
+        Reviewed by Keith Miller.
+
+        Move the scripts in the Generate Derived Sources and Generate Unified
+        Sources Run Script phases from the Xcode projects to external shell
+        script files. Then invoke those scripts from the Run Script phases.
+        This refactoring is being performed to support later work that will
+        invoke these scripts in other contexts.
+
+        The scripts were maintained as-is when making the move. I did a little
+        reformatting and added 'set -e' to the top of each file, but that's
+        it.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Scripts/generate-derived-sources.sh: Added.
+        * Scripts/generate-unified-sources.sh: Added.
+
 2018-11-14  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Pass Inspector::FrontendChannel as a reference connect/disconnect methods

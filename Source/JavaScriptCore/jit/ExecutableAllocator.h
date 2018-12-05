@@ -78,13 +78,13 @@ T endOfFixedExecutableMemoryPool()
 
 JS_EXPORT_PRIVATE bool isJITPC(void* pc);
 
-#if !ENABLE(FAST_JIT_PERMISSIONS) || !CPU(ARM64E)
+#if ENABLE(SEPARATED_WX_HEAP)
 
 typedef void (*JITWriteSeparateHeapsFunction)(off_t, const void*, size_t);
 extern JS_EXPORT_PRIVATE JITWriteSeparateHeapsFunction jitWriteSeparateHeapsFunction;
 extern JS_EXPORT_PRIVATE bool useFastPermisionsJITCopy;
 
-#endif // !ENABLE(FAST_JIT_PERMISSIONS) || !CPU(ARM64E)
+#endif // ENABLE(SEPARATED_WX_HEAP)
 
 static inline void* performJITMemcpy(void *dst, const void *src, size_t n)
 {
@@ -96,7 +96,7 @@ static inline void* performJITMemcpy(void *dst, const void *src, size_t n)
     if (isJITPC(dst)) {
         RELEASE_ASSERT(reinterpret_cast<uint8_t*>(dst) + n <= endOfFixedExecutableMemoryPool());
 #if ENABLE(FAST_JIT_PERMISSIONS)
-#if !CPU(ARM64E)
+#if ENABLE(SEPARATED_WX_HEAP)
         if (useFastPermisionsJITCopy)
 #endif
         {
@@ -107,7 +107,7 @@ static inline void* performJITMemcpy(void *dst, const void *src, size_t n)
         }
 #endif // ENABLE(FAST_JIT_PERMISSIONS)
 
-#if !ENABLE(FAST_JIT_PERMISSIONS) || !CPU(ARM64E)
+#if ENABLE(SEPARATED_WX_HEAP)
         if (jitWriteSeparateHeapsFunction) {
             // Use execute-only write thunk for writes inside the JIT region. This is a variant of
             // memcpy that takes an offset into the JIT region as its destination (first) parameter.
@@ -140,6 +140,8 @@ public:
 #else
     static void dumpProfile() { }
 #endif
+    
+    JS_EXPORT_PRIVATE static void setJITEnabled(bool);
 
     RefPtr<ExecutableMemoryHandle> allocate(size_t sizeInBytes, void* ownerUID, JITCompilationEffort);
 
@@ -173,6 +175,8 @@ public:
 
     RefPtr<ExecutableMemoryHandle> allocate(size_t, void*, JITCompilationEffort) { return nullptr; }
 
+    static void setJITEnabled(bool) { };
+    
     bool isValidExecutableMemory(const AbstractLocker&, void*) { return false; }
 
     static size_t committedByteCount() { return 0; }

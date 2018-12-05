@@ -1580,33 +1580,23 @@ void Document::updateTitleFromTitleElement()
 
 void Document::setTitle(const String& title)
 {
-    if (!m_titleElement) {
-        if (isHTMLDocument() || isXHTMLDocument()) {
+    auto* element = documentElement();
+    if (is<SVGSVGElement>(element)) {
+        if (!m_titleElement) {
+            m_titleElement = SVGTitleElement::create(SVGNames::titleTag, *this);
+            element->insertBefore(*m_titleElement, element->firstChild());
+        }
+        m_titleElement->setTextContent(title);
+    } else if (is<HTMLElement>(element)) {
+        if (!m_titleElement) {
             auto* headElement = head();
             if (!headElement)
                 return;
             m_titleElement = HTMLTitleElement::create(HTMLNames::titleTag, *this);
             headElement->appendChild(*m_titleElement);
-        } else if (isSVGDocument()) {
-            auto* element = documentElement();
-            if (!is<SVGSVGElement>(element))
-                return;
-            m_titleElement = SVGTitleElement::create(SVGNames::titleTag, *this);
-            element->insertBefore(*m_titleElement, element->firstChild());
         }
-    } else if (!isHTMLDocument() && !isXHTMLDocument() && !isSVGDocument()) {
-        // FIXME: What exactly is the point of this? This seems like a strange moment
-        // in time to demote something from being m_titleElement, when setting the
-        // value of the title attribute. Do we have test coverage for this?
-        m_titleElement = nullptr;
+        m_titleElement->setTextContent(title);
     }
-
-    if (is<HTMLTitleElement>(m_titleElement.get()))
-        downcast<HTMLTitleElement>(*m_titleElement).setTextContent(title);
-    else if (is<SVGTitleElement>(m_titleElement.get()))
-        downcast<SVGTitleElement>(*m_titleElement).setTextContent(title);
-    else
-        updateTitle({ title, TextDirection::LTR });
 }
 
 template<typename> struct TitleTraits;
@@ -1804,6 +1794,9 @@ void Document::scheduleStyleRecalc()
 
     ASSERT(childNeedsStyleRecalc() || m_pendingStyleRecalcShouldForce);
 
+    // FIXME: Why on earth is this here? This is clearly misplaced.
+    invalidateAccessKeyMap();
+
     auto shouldThrottleStyleRecalc = [&] {
         if (m_pendingStyleRecalcShouldForce)
             return false;
@@ -1817,9 +1810,6 @@ void Document::scheduleStyleRecalc()
     if (shouldThrottleStyleRecalc())
         return;
 
-    // FIXME: Why on earth is this here? This is clearly misplaced.
-    invalidateAccessKeyMap();
-    
     m_styleRecalcTimer.startOneShot(0_s);
 
     InspectorInstrumentation::didScheduleStyleRecalculation(*this);
@@ -3633,6 +3623,9 @@ void Document::processSupportedColorSchemes(const String& colorSchemes)
 
     m_supportedColorSchemes = supportedColorSchemes;
     m_allowsColorSchemeTransformations = allowsTransformations;
+
+    if (auto* frameView = view())
+        frameView->recalculateBaseBackgroundColor();
 
     if (auto* page = this->page())
         page->updateStyleAfterChangeInEnvironment();
@@ -6208,31 +6201,81 @@ bool Document::fullScreenIsAllowedForElement(Element* element) const
 
 void Document::requestFullScreenForElement(Element* element, FullScreenCheckType checkType)
 {
-    do {
-        if (!element)
-            element = documentElement();
- 
-        // 1. If any of the following conditions are true, terminate these steps and queue a task to fire
-        // an event named fullscreenerror with its bubbles attribute set to true on the context object's 
-        // node document:
+    if (!element)
+        element = documentElement();
 
+    auto failedPreflights = [this](auto element) mutable {
+        m_fullScreenErrorEventTargetQueue.append(WTFMove(element));
+        m_fullScreenTaskQueue.enqueueTask([this] {
+            dispatchFullScreenChangeEvents();
+        });
+    };
+
+    // 1. If any of the following conditions are true, terminate these steps and queue a task to fire
+    // an event named fullscreenerror with its bubbles attribute set to true on the context object's
+    // node document:
+
+    // This algorithm is not allowed to show a pop-up:
+    //   An algorithm is allowed to show a pop-up if, in the task in which the algorithm is running, either:
+    //   - an activation behavior is currently being processed whose click event was trusted, or
+    //   - the event listener for a trusted click event is being handled.
+    if (!UserGestureIndicator::processingUserGesture()) {
+        failedPreflights(WTFMove(element));
+        return;
+    }
+
+    // We do not allow pressing the Escape key as a user gesture to enter fullscreen since this is the key
+    // to exit fullscreen.
+    if (UserGestureIndicator::currentUserGesture()->gestureType() == UserGestureType::EscapeKey) {
+        addConsoleMessage(MessageSource::Security, MessageLevel::Error, "The Escape key may not be used as a user gesture to enter fullscreen"_s);
+        failedPreflights(WTFMove(element));
+        return;
+    }
+
+    // There is a previously-established user preference, security risk, or platform limitation.
+    if (!page() || !page()->settings().fullScreenEnabled()) {
+        failedPreflights(WTFMove(element));
+        return;
+    }
+
+    bool hasKeyboardAccess = true;
+    if (!page()->chrome().client().supportsFullScreenForElement(*element, hasKeyboardAccess)) {
+        // The new full screen API does not accept a "flags" parameter, so fall back to disallowing
+        // keyboard input if the chrome client refuses to allow keyboard input.
+        hasKeyboardAccess = false;
+
+        if (!page()->chrome().client().supportsFullScreenForElement(*element, hasKeyboardAccess)) {
+            failedPreflights(WTFMove(element));
+            return;
+        }
+    }
+
+    m_fullScreenTaskQueue.enqueueTask([this, element = makeRefPtr(element), checkType, hasKeyboardAccess, failedPreflights] () mutable {
         // Don't allow fullscreen if document is hidden.
-        if (!page() || !page()->chrome().client().isViewVisible())
-            break;
+        if (hidden()) {
+            failedPreflights(WTFMove(element));
+            return;
+        }
 
         // The context object is not in a document.
-        if (!element->isConnected())
-            break;
+        if (!element->isConnected()) {
+            failedPreflights(WTFMove(element));
+            return;
+        }
 
         // The context object's node document, or an ancestor browsing context's document does not have
         // the fullscreen enabled flag set.
-        if (checkType == EnforceIFrameAllowFullScreenRequirement && !fullScreenIsAllowedForElement(element))
-            break;
+        if (checkType == EnforceIFrameAllowFullScreenRequirement && !fullScreenIsAllowedForElement(element.get())) {
+            failedPreflights(WTFMove(element));
+            return;
+        }
 
         // The context object's node document fullscreen element stack is not empty and its top element
         // is not an ancestor of the context object.
-        if (!m_fullScreenElementStack.isEmpty() && !m_fullScreenElementStack.last()->contains(element))
-            break;
+        if (!m_fullScreenElementStack.isEmpty() && !m_fullScreenElementStack.last()->contains(element.get())) {
+            failedPreflights(WTFMove(element));
+            return;
+        }
 
         // A descendant browsing context's document has a non-empty fullscreen element stack.
         bool descendentHasNonEmptyStack = false;
@@ -6242,35 +6285,9 @@ void Document::requestFullScreenForElement(Element* element, FullScreenCheckType
                 break;
             }
         }
-        if (descendentHasNonEmptyStack)
-            break;
-
-        // This algorithm is not allowed to show a pop-up:
-        //   An algorithm is allowed to show a pop-up if, in the task in which the algorithm is running, either:
-        //   - an activation behavior is currently being processed whose click event was trusted, or
-        //   - the event listener for a trusted click event is being handled.
-        if (!UserGestureIndicator::processingUserGesture())
-            break;
-
-        // We do not allow pressing the Escape key as a user gesture to enter fullscreen since this is the key
-        // to exit fullscreen.
-        if (UserGestureIndicator::currentUserGesture()->gestureType() == UserGestureType::EscapeKey) {
-            addConsoleMessage(MessageSource::Security, MessageLevel::Error, "The Escape key may not be used as a user gesture to enter fullscreen"_s);
-            break;
-        }
-
-        // There is a previously-established user preference, security risk, or platform limitation.
-        if (!page() || !page()->settings().fullScreenEnabled())
-            break;
-
-        bool hasKeyboardAccess = true;
-        if (!page()->chrome().client().supportsFullScreenForElement(*element, hasKeyboardAccess)) {
-            // The new full screen API does not accept a "flags" parameter, so fall back to disallowing
-            // keyboard input if the chrome client refuses to allow keyboard input.
-            hasKeyboardAccess = false;
-
-            if (!page()->chrome().client().supportsFullScreenForElement(*element, hasKeyboardAccess))
-                break;
+        if (descendentHasNonEmptyStack) {
+            failedPreflights(WTFMove(element));
+            return;
         }
 
         // 2. Let doc be element's node document. (i.e. "this")
@@ -6299,7 +6316,7 @@ void Document::requestFullScreenForElement(Element* element, FullScreenCheckType
             // stack, and queue a task to fire an event named fullscreenchange with its bubbles attribute
             // set to true on the document.
             if (!followingDoc) {
-                currentDoc->pushFullscreenElementStack(element);
+                currentDoc->pushFullscreenElementStack(element.get());
                 addDocumentToFullScreenChangeEventQueue(currentDoc);
                 continue;
             }
@@ -6322,18 +6339,12 @@ void Document::requestFullScreenForElement(Element* element, FullScreenCheckType
         // 5. Return, and run the remaining steps asynchronously.
         // 6. Optionally, perform some animation.
         m_areKeysEnabledInFullScreen = hasKeyboardAccess;
-        m_fullScreenTaskQueue.enqueueTask([this, element = makeRefPtr(element)] {
+        m_fullScreenTaskQueue.enqueueTask([this, element = WTFMove(element)] {
             if (auto page = this->page())
-                page->chrome().client().enterFullScreenForElement(*element);
+                page->chrome().client().enterFullScreenForElement(*element.get());
         });
 
         // 7. Optionally, display a message indicating how the user can exit displaying the context object fullscreen.
-        return;
-    } while (0);
-
-    m_fullScreenErrorEventTargetQueue.append(element ? element : documentElement());
-    m_fullScreenTaskQueue.enqueueTask([this] {
-        dispatchFullScreenChangeEvents();
     });
 }
 
@@ -7125,18 +7136,22 @@ DocumentParserYieldToken::~DocumentParserYieldToken()
         parser->didEndYieldingParser();
 }
 
-static RenderElement* nearestCommonHoverAncestor(RenderElement* obj1, RenderElement* obj2)
+static Element* findNearestCommonComposedAncestor(Element* elementA, Element* elementB)
 {
-    if (!obj1 || !obj2)
+    if (!elementA || !elementB)
         return nullptr;
 
-    for (RenderElement* currObj1 = obj1; currObj1; currObj1 = currObj1->hoverAncestor()) {
-        for (RenderElement* currObj2 = obj2; currObj2; currObj2 = currObj2->hoverAncestor()) {
-            if (currObj1 == currObj2)
-                return currObj1;
-        }
-    }
+    if (elementA == elementB)
+        return elementA;
 
+    HashSet<Element*> ancestorChain;
+    for (auto* element = elementA; element; element = element->parentElementInComposedTree())
+        ancestorChain.add(element);
+
+    for (auto* element = elementB; element; element = element->parentElementInComposedTree()) {
+        if (ancestorChain.contains(element))
+            return element;
+    }
     return nullptr;
 }
 
@@ -7197,26 +7212,21 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
 
     m_hoveredElement = newHoveredElement;
 
-    // We have two different objects. Fetch their renderers.
-    RenderElement* oldHoverObj = oldHoveredElement ? oldHoveredElement->renderer() : nullptr;
-    RenderElement* newHoverObj = newHoveredElement ? newHoveredElement->renderer() : nullptr;
-
-    // Locate the common ancestor render object for the two renderers.
-    RenderElement* ancestor = nearestCommonHoverAncestor(oldHoverObj, newHoverObj);
+    auto* commonAncestor = findNearestCommonComposedAncestor(oldHoveredElement.get(), newHoveredElement);
 
     Vector<RefPtr<Element>, 32> elementsToRemoveFromChain;
     Vector<RefPtr<Element>, 32> elementsToAddToChain;
 
-    if (oldHoverObj != newHoverObj) {
+    if (oldHoveredElement != newHoveredElement) {
         for (auto* element = oldHoveredElement.get(); element; element = element->parentElementInComposedTree()) {
-            if (ancestor && ancestor->element() == element)
+            if (element == commonAncestor)
                 break;
             if (!mustBeInActiveChain || element->inActiveChain())
                 elementsToRemoveFromChain.append(element);
         }
         // Unset hovered nodes in sub frame documents if the old hovered node was a frame owner.
         if (is<HTMLFrameOwnerElement>(oldHoveredElement)) {
-            if (Document* contentDocument = downcast<HTMLFrameOwnerElement>(*oldHoveredElement).contentDocument())
+            if (auto* contentDocument = downcast<HTMLFrameOwnerElement>(*oldHoveredElement).contentDocument())
                 contentDocument->updateHoverActiveState(request, nullptr);
         }
     }
@@ -7233,7 +7243,7 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
     for (auto& element : elementsToAddToChain) {
         if (allowActiveChanges)
             element->setActive(true);
-        if (ancestor && element == ancestor->element())
+        if (element == commonAncestor)
             sawCommonAncestor = true;
         if (!sawCommonAncestor) {
             // Elements after the common hover ancestor does not change hover state, but are iterated over because they may change active state.

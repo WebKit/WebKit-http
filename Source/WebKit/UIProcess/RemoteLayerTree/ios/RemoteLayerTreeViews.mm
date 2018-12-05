@@ -91,9 +91,7 @@
 
 - (NSString *)description
 {
-    NSString *viewDescription = [super description];
-    NSString *webKitDetails = [NSString stringWithFormat:@" layerID = %llu \"%@\"", WebKit::RemoteLayerTreeHost::layerID(self.layer), self.layer.name ? self.layer.name : @""];
-    return [viewDescription stringByAppendingString:webKitDetails];
+    return WebKit::RemoteLayerTreeNode::appendLayerDescription(super.description, self.layer);
 }
 
 @end
@@ -160,9 +158,7 @@
 
 - (NSString *)description
 {
-    NSString *viewDescription = [super description];
-    NSString *webKitDetails = [NSString stringWithFormat:@" layerID = %llu \"%@\"", WebKit::RemoteLayerTreeHost::layerID(self.layer), self.layer.name ? self.layer.name : @""];
-    return [viewDescription stringByAppendingString:webKitDetails];
+    return WebKit::RemoteLayerTreeNode::appendLayerDescription(super.description, self.layer);
 }
 
 @end
@@ -177,9 +173,7 @@
 
 - (NSString *)description
 {
-    NSString *viewDescription = [super description];
-    NSString *webKitDetails = [NSString stringWithFormat:@" layerID = %llu \"%@\"", WebKit::RemoteLayerTreeHost::layerID(self.layer), self.layer.name ? self.layer.name : @""];
-    return [viewDescription stringByAppendingString:webKitDetails];
+    return WebKit::RemoteLayerTreeNode::appendLayerDescription(super.description, self.layer);
 }
 
 @end
@@ -202,6 +196,18 @@
 @end
 
 @implementation WKEmbeddedView
+
+- (instancetype)initWithEmbeddedViewID:(WebCore::GraphicsLayer::EmbeddedViewID)embeddedViewID
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    _embeddedViewID = embeddedViewID;
+
+    return self;
+}
+
 @end
 
 #endif // PLATFORM(IOS_FAMILY)

@@ -1,3 +1,165 @@
+2018-11-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Modernize version checks for same site cookie support
+        https://bugs.webkit.org/show_bug.cgi?id=192054
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2018-11-27  Mark Lam  <mark.lam@apple.com>
+
+        ENABLE_FAST_JIT_PERMISSIONS should be false for iosmac.
+        https://bugs.webkit.org/show_bug.cgi?id=192055
+        <rdar://problem/46288783>
+
+        Reviewed by Saam Barati.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-11-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Modernize the check for async _saveCookies existence
+        https://bugs.webkit.org/show_bug.cgi?id=191987
+
+        Reviewed by Dean Jackson.
+
+        * pal/spi/cf/CFNetworkSPI.h: Also removed a check around _socketStreamProperties,
+        which exists everywhere.
+
+2018-11-27  Jer Noble  <jer.noble@apple.com>
+
+        Adopt -setOverrideRouteSharingPolicy:routingContextUID: SPI
+        https://bugs.webkit.org/show_bug.cgi?id=190951
+        <rdar://problem/45213065>
+
+        Further follow-up build fix; add ASSUME_NONNULL macros to SPI declaration.
+
+        * pal/spi/cocoa/AVKitSPI.h:
+
+2018-11-27  Jer Noble  <jer.noble@apple.com>
+
+        Adopt -setOverrideRouteSharingPolicy:routingContextUID: SPI
+        https://bugs.webkit.org/show_bug.cgi?id=190951
+        <rdar://problem/45213065>
+
+        Follow-up build fix when building against older SDKs.
+
+        * pal/spi/cocoa/AVKitSPI.h:
+
+2018-11-26  Jer Noble  <jer.noble@apple.com>
+
+        Adopt -setOverrideRouteSharingPolicy:routingContextUID: SPI
+        https://bugs.webkit.org/show_bug.cgi?id=190951
+        <rdar://problem/45213065>
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/cocoa/AVKitSPI.h:
+
+2018-11-26  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Make it easier to encode NSObjects
+        https://bugs.webkit.org/show_bug.cgi?id=191948
+
+        Reviewed by Dean Jackson.
+
+        * pal/spi/cocoa/PassKitSPI.h: Declared some classes that secretly conform to NSSecureCoding.
+
+2018-11-24  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] SOFT_LINK_CLASS_FOR_{HEADER,SOURCE} should generate a more concise getter function
+        https://bugs.webkit.org/show_bug.cgi?id=191899
+
+        Reviewed by Dean Jackson.
+
+        * pal/cocoa/PassKitSoftLink.h:
+        * pal/ios/UIKitSoftLink.h:
+
+2018-11-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Enable drag and drop support for iOSMac
+        https://bugs.webkit.org/show_bug.cgi?id=191818
+        <rdar://problem/43907454>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-11-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] [WebKit2] Add support for replacing find-in-page text matches
+        https://bugs.webkit.org/show_bug.cgi?id=191786
+        <rdar://problem/45813871>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add `-replaceMatches:withString:inSelectionOnly:resultCollector:`.
+
+        * pal/spi/mac/NSTextFinderSPI.h:
+
+2018-11-21  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Create a soft-linking file for PassKit
+        https://bugs.webkit.org/show_bug.cgi?id=191875
+        <rdar://problem/46203215>
+
+        Reviewed by Myles Maxfield.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/PlatformMac.cmake:
+        * pal/cocoa/PassKitSoftLink.h: Added.
+        * pal/cocoa/PassKitSoftLink.mm: Added. Used _WITH_EXPORT soft-linking macros in order to
+        make the PAL soft-linking symbols visible to WebKit.
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2018-11-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Remove all usages of UIItemProvider, UIItemProviderReading, and related classes
+        https://bugs.webkit.org/show_bug.cgi?id=191819
+
+        Reviewed by Dan Bernstein.
+
+        Replace UIItemProvider (and related classes) with NSItemProvider.
+
+        * pal/spi/ios/UIKitSPI.h:
+
+2018-11-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Reduce the use of WKSI library calls: CFNetwork
+        https://bugs.webkit.org/show_bug.cgi?id=191718
+        <rdar://problem/46108732>
+
+        Reviewed by Alex Christensen.
+
+        Add necessary declarations for CFNetwork SPI needed by the Apple Windows build.
+
+        * pal/PlatformAppleWin.cmake:
+        * pal/spi/cf/CFNetworkSPI.h:
+        * pal/spi/cf/CFNetworkSPIWin.cpp: Added.
+
+2018-11-16  Chris Dumez  <cdumez@apple.com>
+
+        [Mac] Regression: WebContent process's display name is no longer set
+        https://bugs.webkit.org/show_bug.cgi?id=191722
+        <rdar://problem/45960550>
+
+        Reviewed by Per Arne Vollan.
+
+        * pal/spi/cocoa/LaunchServicesSPI.h:
+
+2018-11-15  Brent Fulgham  <bfulgham@apple.com>
+
+        Additional Windows build fix after r238253.
+
+        * pal/spi/cg/CoreGraphicsSPI.h:
+
+2018-11-15  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix after removing some WKSI calls on Windows.
+
+        * pal/spi/cg/CoreGraphicsSPI.h:
+
 2018-11-11  Daniel Bates  <dabates@apple.com>
 
         [iOS] Draw caps lock indicator in password fields

@@ -21,7 +21,6 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
 
-NetworkProcess/cache/NetworkCacheCodersCocoa.cpp
 NetworkProcess/cache/NetworkCacheDataCocoa.mm
 NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm
 
@@ -123,6 +122,7 @@ Shared/Authentication/cocoa/AuthenticationManagerCocoa.mm
 
 Shared/Cocoa/APIDataCocoa.mm
 Shared/Cocoa/APIObject.mm
+Shared/Cocoa/ArgumentCodersCocoa.mm
 Shared/Cocoa/ChildProcessCocoa.mm
 Shared/Cocoa/CompletionHandlerCallChecker.mm
 Shared/Cocoa/DataDetectionResult.mm
@@ -295,9 +295,9 @@ UIProcess/API/mac/WKView.mm
 
 UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm
 
-UIProcess/ApplePay/ios/WebPaymentCoordinatorProxyIOS.mm @no-unify
+UIProcess/ApplePay/ios/WebPaymentCoordinatorProxyIOS.mm
 
-UIProcess/ApplePay/mac/WebPaymentCoordinatorProxyMac.mm @no-unify
+UIProcess/ApplePay/mac/WebPaymentCoordinatorProxyMac.mm
 
 UIProcess/Authentication/cocoa/AuthenticationChallengeProxyCocoa.mm
 UIProcess/Authentication/cocoa/SecKeyProxyStore.mm
@@ -368,8 +368,8 @@ UIProcess/ios/fullscreen/WKFullScreenViewController.mm
 UIProcess/ios/fullscreen/WKFullScreenWindowControllerIOS.mm
 
 UIProcess/ios/DragDropInteractionState.mm
+UIProcess/ios/EditableImageController.mm
 UIProcess/ios/InputViewUpdateDeferrer.mm
-UIProcess/ios/LayerRepresentation.mm
 UIProcess/ios/PageClientImplIOS.mm
 UIProcess/ios/ProcessAssertionIOS.mm
 UIProcess/ios/ResourceLoadStatisticsPersistentStorageIOS.mm
@@ -447,6 +447,7 @@ UIProcess/RemoteLayerTree/ios/ScrollingTreeScrollingNodeDelegateIOS.mm
 
 UIProcess/RemoteLayerTree/RemoteLayerTreeDrawingAreaProxy.mm
 UIProcess/RemoteLayerTree/RemoteLayerTreeHost.mm
+UIProcess/RemoteLayerTree/RemoteLayerTreeNode.mm
 UIProcess/RemoteLayerTree/RemoteLayerTreeScrollingPerformanceData.mm
 UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.cpp
 UIProcess/RemoteLayerTree/RemoteScrollingTree.cpp
@@ -556,3 +557,7 @@ WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeContext.mm
 WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDisplayRefreshMonitor.mm
 WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDrawingArea.mm @no-unify
 WebProcess/WebPage/RemoteLayerTree/RemoteScrollingCoordinator.mm
+
+// Derived Sources
+
+EditableImageControllerMessageReceiver.cpp

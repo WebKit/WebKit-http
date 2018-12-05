@@ -211,21 +211,48 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
 #endif
 }
 
-void WebProcess::initializeProcessName(const ChildProcessInitializationParameters& parameters)
+void WebProcess::initializeProcessName(const ChildProcessInitializationParameters&)
 {
-#if !PLATFORM(IOS_FAMILY)
-    NSString *applicationName;
-    if (parameters.extraInitializationData.get("inspector-process"_s) == "1")
-        applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Inspector", "Visible name of Web Inspector's web process. The argument is the application name."), (NSString *)parameters.uiProcessName];
-#if ENABLE(SERVICE_WORKER)
-    else if (parameters.extraInitializationData.get("service-worker-process"_s) == "1")
-        applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Service Worker (%@)", "Visible name of Service Worker process. The argument is the application name."), (NSString *)parameters.uiProcessName, (NSString *)parameters.extraInitializationData.get("security-origin"_s)];
-#endif
-    else
-        applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Content", "Visible name of the web process. The argument is the application name."), (NSString *)parameters.uiProcessName];
-    _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey, (CFStringRef)applicationName, nullptr);
+#if PLATFORM(MAC)
+    updateProcessName();
 #endif
 }
+
+#if PLATFORM(MAC)
+void WebProcess::updateProcessName()
+{
+    NSString *applicationName;
+    switch (m_processType) {
+    case ProcessType::Inspector:
+        applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Inspector", "Visible name of Web Inspector's web process. The argument is the application name."), (NSString *)m_uiProcessName];
+        break;
+    case ProcessType::ServiceWorker:
+        applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Service Worker (%@)", "Visible name of Service Worker process. The argument is the application name."), (NSString *)m_uiProcessName, (NSString *)m_securityOrigin];
+        break;
+    case ProcessType::PrewarmedWebContent:
+        applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Content (Prewarmed)", "Visible name of the web process. The argument is the application name."), (NSString *)m_uiProcessName];
+        break;
+    case ProcessType::WebContent:
+        applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Content", "Visible name of the web process. The argument is the application name."), (NSString *)m_uiProcessName];
+        break;
+    }
+
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
+        // Note that it is important for _RegisterApplication() to have been called before setting the display name.
+        auto error = _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey, (CFStringRef)applicationName, nullptr);
+        ASSERT(!error);
+        if (error) {
+            RELEASE_LOG_ERROR(Process, "Failed to set the display name of the WebContent process, error code: %ld", static_cast<long>(error));
+            return;
+        }
+#if !ASSERT_DISABLED
+        // It is possible for _LSSetApplicationInformationItem() to return 0 and yet fail to set the display name so we make sure the display name has actually been set.
+        String actualApplicationName = adoptCF((CFStringRef)_LSCopyApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey)).get();
+        ASSERT(!actualApplicationName.isEmpty());
+#endif
+    });
+}
+#endif // PLATFORM(MAC)
 
 static void registerWithAccessibility()
 {
@@ -324,7 +351,7 @@ void WebProcess::registerWithStateDumper()
 }
 #endif
 
-void WebProcess::platformInitializeProcess(const ChildProcessInitializationParameters&)
+void WebProcess::platformInitializeProcess(const ChildProcessInitializationParameters& parameters)
 {
 #if PLATFORM(MAC)
 #if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
@@ -336,13 +363,35 @@ void WebProcess::platformInitializeProcess(const ChildProcessInitializationParam
     CGSShutdownServerConnections();
 
     SwitchingGPUClient::setSingleton(WebSwitchingGPUClient::singleton());
+
+    // This is necessary so that we are able to set the process' display name.
+    _RegisterApplication(nullptr, nullptr);
+
 #else
+
     if (![NSApp isRunning]) {
         // This call is needed when the WebProcess is not running the NSApplication event loop.
         // Otherwise, calling enableSandboxStyleFileQuarantine() will fail.
         launchServicesCheckIn();
     }
 #endif // ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+
+    if (parameters.extraInitializationData.get("inspector-process"_s) == "1")
+        m_processType = ProcessType::Inspector;
+#if ENABLE(SERVICE_WORKER)
+    else if (parameters.extraInitializationData.get("service-worker-process"_s) == "1") {
+        m_processType = ProcessType::ServiceWorker;
+        m_securityOrigin = parameters.extraInitializationData.get("security-origin"_s);
+    }
+#endif
+    else if (parameters.extraInitializationData.get("is-prewarmed"_s) == "1")
+        m_processType = ProcessType::PrewarmedWebContent;
+    else
+        m_processType = ProcessType::WebContent;
+
+    m_uiProcessName = parameters.uiProcessName;
+#else
+    UNUSED_PARAM(parameters);
 #endif // PLATFORM(MAC)
 
     registerWithAccessibility();
@@ -465,15 +514,17 @@ void WebProcess::updateActivePages()
 #endif
 }
 
-void WebProcess::getActivePagesOriginsForTesting(Vector<String>& activeOrigins)
+void WebProcess::getActivePagesOriginsForTesting(CompletionHandler<void(Vector<String>&&)>&& completionHandler)
 {
 #if PLATFORM(MAC)
     auto activeOriginsAsNSStrings = activePagesOrigins(m_pageMap);
-    activeOrigins.reserveCapacity([activeOriginsAsNSStrings count]);
+    Vector<String> activeOrigins;
+    activeOrigins.reserveInitialCapacity([activeOriginsAsNSStrings count]);
     for (NSString* activeOrigin in activeOriginsAsNSStrings.get())
         activeOrigins.uncheckedAppend(activeOrigin);
+    completionHandler(WTFMove(activeOrigins));
 #else
-    UNUSED_PARAM(activeOrigins);
+    completionHandler({ });
 #endif
 }
 

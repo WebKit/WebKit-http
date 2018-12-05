@@ -64,12 +64,13 @@ String CSSCursorImageValue::customCSSText() const
     return result.toString();
 }
 
+// FIXME: Should this function take a TreeScope instead?
 SVGCursorElement* CSSCursorImageValue::updateCursorElement(const Document& document)
 {
     if (!m_originalURL.hasFragmentIdentifier())
         return nullptr;
 
-    auto* element = SVGURIReference::targetElementFromIRIString(m_originalURL, document);
+    auto element = SVGURIReference::targetElementFromIRIString(m_originalURL, document).element;
     if (!is<SVGCursorElement>(element))
         return nullptr;
 

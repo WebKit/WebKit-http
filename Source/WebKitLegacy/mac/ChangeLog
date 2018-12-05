@@ -1,3 +1,115 @@
+2018-11-27  Mark Lam  <mark.lam@apple.com>
+
+        ENABLE_FAST_JIT_PERMISSIONS should be false for iosmac.
+        https://bugs.webkit.org/show_bug.cgi?id=192055
+        <rdar://problem/46288783>
+
+        Reviewed by Saam Barati.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-11-25  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to insert editable images with a gesture
+        https://bugs.webkit.org/show_bug.cgi?id=191937
+
+        Reviewed by Wenson Hsieh.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+        Add a undo name.
+
+2018-11-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] Fix a few localizable string descriptions in WebEditCommandProxy.cpp and WebEditorClient.mm
+        https://bugs.webkit.org/show_bug.cgi?id=191945
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
+2018-11-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Enable drag and drop support for iOSMac
+        https://bugs.webkit.org/show_bug.cgi?id=191818
+        <rdar://problem/43907454>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-11-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Address post-review feedback after r238438
+        https://bugs.webkit.org/show_bug.cgi?id=191913
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame setSelectedDOMRange:affinity:closeTyping:]):
+        (-[WebFrame _replaceSelectionWithFragment:selectReplacement:smartReplace:matchStyle:]):
+        * WebView/WebView.mm:
+        (-[WebView setSelectedDOMRange:affinity:]):
+
+2018-11-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: "Reload Web Inspector" button no longer partially works
+        https://bugs.webkit.org/show_bug.cgi?id=191773
+        <rdar://problem/46139932>
+
+        Reviewed by Devin Rousso.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::reopen):
+
+2018-11-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: add button to show system certificate dialog
+        https://bugs.webkit.org/show_bug.cgi?id=191458
+        <rdar://problem/45977019>
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::showCertificate): Added.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2018-11-15  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r238244.
+
+        Caused High Sierra test runs to fail early with 50 crashes and
+        casued 25 API failures.
+
+        Reverted changeset:
+
+        "[css-logical] Implement flow-relative margin, padding and
+        border shorthands"
+        https://bugs.webkit.org/show_bug.cgi?id=188697
+        https://trac.webkit.org/changeset/238244
+
+2018-11-15  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-logical] Implement flow-relative margin, padding and border shorthands
+        https://bugs.webkit.org/show_bug.cgi?id=188697
+
+        Reviewed by Simon Fraser and Antti Koivisto.
+
+        Add CSSLogicalEnabled runtime flag.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences cssLogicalEnabled]):
+        (-[WebPreferences setCSSLogicalEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
 2018-11-14  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Pass Inspector::FrontendChannel as a reference connect/disconnect methods

@@ -77,11 +77,13 @@ class AudioTrackList;
 class AudioTrackPrivate;
 class Blob;
 class DOMException;
+class DOMWrapperWorld;
 class DeferredPromise;
 class Event;
 class HTMLSourceElement;
 class HTMLTrackElement;
 class InbandTextTrackPrivate;
+class JSDOMGlobalObject;
 class MediaController;
 class MediaControls;
 class MediaControlsHost;
@@ -93,6 +95,7 @@ class MediaSession;
 class MediaSource;
 class MediaStream;
 class RenderMedia;
+class ScriptController;
 class ScriptExecutionContext;
 class SourceBuffer;
 class TextTrackList;
@@ -737,6 +740,7 @@ private:
 
     double mediaPlayerRequestedPlaybackRate() const final;
     VideoFullscreenMode mediaPlayerFullscreenMode() const final { return fullscreenMode(); }
+    bool mediaPlayerIsVideoFullscreenStandby() const final { return m_videoFullscreenStandby; }
     bool mediaPlayerShouldDisableSleep() const final { return shouldDisableSleep() == SleepType::Display; }
     bool mediaPlayerShouldCheckHardwareSupport() const final;
     const Vector<ContentType>& mediaContentTypesRequiringHardwareSupport() const final;
@@ -899,6 +903,9 @@ private:
     void updateCaptionContainer();
     void ensureMediaControlsShadowRoot();
 
+    using JSSetupFunction = WTF::Function<bool(JSDOMGlobalObject&, JSC::ExecState&, ScriptController&, DOMWrapperWorld&)>;
+    bool setupAndCallJS(const JSSetupFunction&);
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void prepareForDocumentSuspension() final;
     void resumeFromDocumentSuspension() final;
@@ -955,6 +962,7 @@ private:
     GenericTaskQueue<Timer> m_pauseAfterDetachedTaskQueue;
     GenericTaskQueue<Timer> m_resourceSelectionTaskQueue;
     GenericTaskQueue<Timer> m_visibilityChangeTaskQueue;
+    GenericTaskQueue<Timer> m_fullscreenTaskQueue;
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 

@@ -80,10 +80,7 @@ end
 macro dispatchAfterCall(size, op, dispatch)
     loadi ArgumentCount + TagOffset[cfr], PC
     loadp CodeBlock[cfr], PB
-    # FIXME: cleanup double load
-    # https://bugs.webkit.org/show_bug.cgi?id=190932
-    loadp CodeBlock::m_instructions[PB], PB
-    loadp [PB], PB
+    loadp CodeBlock::m_instructionsRawPointer[PB], PB
     unpoison(_g_CodeBlockPoison, PB, t1)
     get(size, op, dst, t1)
     storeq r0, [cfr, t1, 8]
@@ -204,7 +201,7 @@ macro doVMEntry(makeCall)
 
 .stackHeightOK:
     move t3, sp
-    move 4, t3
+    move (constexpr ProtoCallFrame::numberOfRegisters), t3
 
 .copyHeaderLoop:
     # Copy the CodeBlock/Callee/ArgumentCount/|this| from protoCallFrame into the callee frame.
@@ -632,10 +629,7 @@ macro functionArityCheck(doneLabel, slowPath)
 .continue:
     # Reload CodeBlock and reset PC, since the slow_path clobbered them.
     loadp CodeBlock[cfr], t1
-    # FIXME: cleanup double load
-    # https://bugs.webkit.org/show_bug.cgi?id=190932
-    loadp CodeBlock::m_instructions[t1], PB
-    loadp [PB], PB
+    loadp CodeBlock::m_instructionsRawPointer[t1], PB
     unpoison(_g_CodeBlockPoison, PB, t2)
     move 0, PC
     jmp doneLabel
@@ -1117,17 +1111,25 @@ bitOp(rshift, OpRshift,
 bitOp(urshift, OpUrshift,
     macro (left, right) urshifti left, right end)
 
+bitOpProfiled(bitand, OpBitand,
+    macro (left, right) andi left, right end)
+
+bitOpProfiled(bitor, OpBitor,
+    macro (left, right) ori left, right end)
 
 bitOp(bitxor, OpBitxor,
     macro (left, right) xori left, right end)
 
-
-bitOpProfiled(bitand, OpBitand,
-    macro (left, right) andi left, right end)
-
-
-bitOpProfiled(bitor, OpBitor,
-    macro (left, right) ori left, right end)
+llintOpWithProfile(op_bitnot, OpBitnot, macro (size, get, dispatch, return)
+    get(operand, t0)
+    loadConstantOrVariableInt32(size, t0, t3, .opBitNotSlow)
+    noti t3
+    orq tagTypeNumber, t3
+    return(t3)
+.opBitNotSlow:
+    callSlowPath(_slow_path_bitnot)
+    dispatch()
+end)
 
 
 llintOp(op_overrides_has_instance, OpOverridesHasInstance, macro (size, get, dispatch)
@@ -1913,7 +1915,7 @@ llintOpWithJump(op_switch_imm, OpSwitchImm, macro (size, get, jump, dispatch)
     loadConstantOrVariable(size, t2, t1)
     loadp CodeBlock[cfr], t2
     loadp CodeBlock::m_rareData[t2], t2
-    muli sizeof SimpleJumpTable, t3    # FIXME: would be nice to peephole this!
+    muli sizeof SimpleJumpTable, t3
     loadp CodeBlock::RareData::m_switchJumpTables + VectorBufferOffset[t2], t2
     addp t3, t2
     bqb t1, tagTypeNumber, .opSwitchImmNotInt
@@ -2056,10 +2058,7 @@ commonOp(llint_op_catch, macro() end, macro (size)
     restoreStackPointerAfterCall()
 
     loadp CodeBlock[cfr], PB
-    # FIXME: cleanup double load
-    # https://bugs.webkit.org/show_bug.cgi?id=190932
-    loadp CodeBlock::m_instructions[PB], PB
-    loadp [PB], PB
+    loadp CodeBlock::m_instructionsRawPointer[PB], PB
     unpoison(_g_CodeBlockPoison, PB, t2)
     loadp VM::targetInterpreterPCForThrow[t3], PC
     subp PB, PC

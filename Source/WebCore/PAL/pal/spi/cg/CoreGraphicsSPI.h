@@ -291,6 +291,11 @@ void CGPathAddUnevenCornersRoundedRect(CGMutablePathRef, const CGAffineTransform
 CGFontCache* CGFontCacheGetLocalCache();
 void CGFontCacheSetShouldAutoExpire(CGFontCache*, bool);
 void CGFontCacheSetMaxSize(CGFontCache*, size_t);
+void CGContextSetFontSmoothingContrast(CGContextRef, CGFloat);
+void CGContextSetFontSmoothingStyle(CGContextRef, uint32_t);
+uint32_t CGContextGetFontSmoothingStyle(CGContextRef);
+void CGContextSetShouldUsePlatformNativeGlyphs(CGContextRef, bool);
+void CGContextSetFocusRingWithColor(CGContextRef, CGFloat blur, CGColorRef, const CGRect *clipRect, CFDictionaryRef options);
 #endif
 
 #if PLATFORM(MAC)

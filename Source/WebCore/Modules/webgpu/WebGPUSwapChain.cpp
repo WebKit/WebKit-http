@@ -28,7 +28,7 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WebGPUDevice.h"
+#include "GPUTextureFormatEnum.h"
 
 namespace WebCore {
 
@@ -39,7 +39,14 @@ void WebGPUSwapChain::configure(Descriptor&& descriptor)
     if (descriptor.device)
         m_swapChain->setDevice(descriptor.device->device());
 
+    m_swapChain->setFormat(descriptor.format);
+
     reshape(descriptor.width, descriptor.height);
+}
+
+RefPtr<WebGPUTexture> WebGPUSwapChain::getNextTexture()
+{
+    return WebGPUTexture::create(m_swapChain->getNextTexture());
 }
 
 void WebGPUSwapChain::present()

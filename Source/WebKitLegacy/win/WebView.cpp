@@ -187,7 +187,8 @@
 #if USE(CFURLCONNECTION)
 #include <CFNetwork/CFURLCachePriv.h>
 #include <CFNetwork/CFURLProtocolPriv.h>
-#include <WebKitSystemInterface/WebKitSystemInterface.h>
+#include <WebCore/CFURLExtras.h>
+#include <pal/spi/cf/CFNetworkSPI.h>
 #elif USE(CURL)
 #include <WebCore/CurlCacheManager.h>
 #endif
@@ -506,7 +507,7 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
 
 #if USE(CFURLCONNECTION)
     RetainPtr<CFURLCacheRef> cfurlCache = adoptCF(CFURLCacheCopySharedURLCache());
-    RetainPtr<CFStringRef> cfurlCacheDirectory = adoptCF(wkCopyFoundationCacheDirectory(0));
+    RetainPtr<CFStringRef> cfurlCacheDirectory = adoptCF(_CFURLCacheCopyCacheDirectory(cfurlCache.get()));
     if (!cfurlCacheDirectory) {
         RetainPtr<CFPropertyListRef> preference = adoptCF(CFPreferencesCopyAppValue(WebKitLocalCacheDefaultsKey, WebPreferences::applicationId()));
         if (preference && (CFStringGetTypeID() == CFGetTypeID(preference.get())))
@@ -3720,7 +3721,7 @@ static void systemParameterChanged(WPARAM parameter)
 {
 #if USE(CG)
     if (parameter == SPI_SETFONTSMOOTHING || parameter == SPI_SETFONTSMOOTHINGTYPE || parameter == SPI_SETFONTSMOOTHINGCONTRAST || parameter == SPI_SETFONTSMOOTHINGORIENTATION)
-        wkSystemFontSmoothingChanged();
+        FontCascade::systemFontSmoothingChanged();
 #endif
 }
 

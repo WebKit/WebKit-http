@@ -35,6 +35,7 @@
 #include "WebView.h"
 #include <JavaScriptCore/InspectorAgentBase.h>
 #include <WebCore/BString.h>
+#include <WebCore/CertificateInfo.h>
 #include <WebCore/Element.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/FrameView.h>
@@ -269,6 +270,14 @@ void WebInspectorFrontendClient::closeWindow()
     destroyInspectorView();
 }
 
+void WebInspectorFrontendClient::reopen()
+{
+    destroyInspectorView();
+
+    if (Page* inspectedPage = m_inspectedWebView->page())
+        inspectedPage->inspectorController().show();
+}
+
 void WebInspectorFrontendClient::attachWindow(DockSide)
 {
     if (m_attached)
@@ -335,6 +344,11 @@ void WebInspectorFrontendClient::inspectedURLChanged(const String& newURL)
 {
     m_inspectedURL = newURL;
     updateWindowTitle();
+}
+
+void WebInspectorFrontendClient::showCertificate(const CertificateInfo&)
+{
+    notImplemented();
 }
 
 void WebInspectorFrontendClient::closeWindowWithoutNotifications()

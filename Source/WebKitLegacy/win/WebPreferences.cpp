@@ -33,7 +33,6 @@
 #if USE(CG)
 #include <CoreGraphics/CoreGraphics.h>
 #include <WebCore/CACFLayerTreeHost.h>
-#include <WebKitSystemInterface/WebKitSystemInterface.h>
 #endif
 
 #include <CoreFoundation/CoreFoundation.h>
@@ -1271,7 +1270,7 @@ HRESULT WebPreferences::setFontSmoothing(FontSmoothingType smoothingType)
     if (smoothingType == FontSmoothingTypeWindows)
         smoothingType = FontSmoothingTypeMedium;
 #if USE(CG)
-    wkSetFontSmoothingLevel((int)smoothingType);
+    FontCascade::setFontSmoothingLevel((int)smoothingType);
 #endif
     return S_OK;
 }
@@ -1288,7 +1287,7 @@ HRESULT WebPreferences::setFontSmoothingContrast(float contrast)
 {
     setFloatValue(WebKitFontSmoothingContrastPreferenceKey, contrast);
 #if USE(CG)
-    wkSetFontSmoothingContrast(contrast);
+    FontCascade::setFontSmoothingContrast(contrast);
 #endif
     return S_OK;
 }

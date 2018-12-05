@@ -208,6 +208,13 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
         }
     }
 
+    resetFilter()
+    {
+        this._scopeBar.resetToDefault();
+
+        super.resetFilter();
+    }
+
     hasCustomFilters()
     {
         console.assert(this._scopeBar.selectedItems.length === 1);
@@ -457,7 +464,7 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
         if (!this.selected)
             return;
 
-        let treeElement = event.data.selectedElement;
+        let treeElement = this.contentTreeOutline.selectedTreeElement;
         if (!treeElement)
             return;
 

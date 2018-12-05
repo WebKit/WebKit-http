@@ -28,10 +28,20 @@
 #if USE(APPLE_INTERNAL_SDK)
 
 #import <PencilKit/PencilKit.h>
+#import <PencilKit/PKDrawing_Private.h>
 
 #else
 
 @interface PKCanvasView : UIView
+
+@property (nonatomic, getter=isFingerDrawingEnabled) BOOL fingerDrawingEnabled;
+
+@end
+
+@interface PKDrawing : NSObject
+
+- (NSData *)serialize;
+
 @end
 
 #endif

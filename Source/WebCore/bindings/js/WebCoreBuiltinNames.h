@@ -180,11 +180,15 @@ namespace WebCore {
     macro(WebGPU) \
     macro(WebGPUAdapter) \
     macro(WebGPUDevice) \
+    macro(WebGPUCommandBuffer) \
+    macro(WebGPUQueue) \
     macro(WebGPURenderingContext) \
     macro(WebGPURenderPipeline) \
     macro(WebGPUShaderStage) \
     macro(WebGPUShaderModule) \
     macro(WebGPUSwapChain) \
+    macro(WebGPUTexture) \
+    macro(WebGPUTextureView) \
     macro(WebMetalBuffer) \
     macro(WebMetalCommandBuffer) \
     macro(WebMetalCommandQueue) \

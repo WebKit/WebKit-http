@@ -88,7 +88,7 @@ macro dispatchAfterCall(size, op, dispatch)
 end
 
 macro cCall2(function)
-    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
+    if ARMv7 or MIPS
         call function
     elsif X86 or X86_WIN
         subp 8, sp
@@ -112,7 +112,7 @@ macro cCall2Void(function)
 end
 
 macro cCall4(function)
-    if ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
+    if ARMv7 or MIPS
         call function
     elsif X86 or X86_WIN
         push a3
@@ -174,15 +174,11 @@ macro doVMEntry(makeCall)
         addp CallFrameAlignSlots * SlotSize, sp, t3
         andp ~StackAlignmentMask, t3
         subp t3, CallFrameAlignSlots * SlotSize, sp
-    elsif ARM or ARMv7 or ARMv7_TRADITIONAL
+    elsif ARMv7
         addp CallFrameAlignSlots * SlotSize, sp, t3
         clrbp t3, StackAlignmentMask, t3
-        if ARMv7
-            subp t3, CallFrameAlignSlots * SlotSize, t3
-            move t3, sp
-        else
-            subp t3, CallFrameAlignSlots * SlotSize, sp
-        end
+        subp t3, CallFrameAlignSlots * SlotSize, t3
+        move t3, sp
     end
 
     loadi ProtoCallFrame::paddedArgCount[protoCallFrame], t4
@@ -214,7 +210,7 @@ macro doVMEntry(makeCall)
 
 .stackHeightOK:
     move t3, sp
-    move 4, t3
+    move (constexpr ProtoCallFrame::numberOfRegisters), t3
 
 .copyHeaderLoop:
     subi 1, t3
@@ -678,10 +674,7 @@ macro functionArityCheck(doneLabel, slowPath)
 .continue:
     # Reload CodeBlock and PC, since the slow_path clobbered it.
     loadp CodeBlock[cfr], t1
-    # FIXME: cleanup double load
-    # https://bugs.webkit.org/show_bug.cgi?id=190932
-    loadp CodeBlock::m_instructions[t1], PC
-    loadp [PC], PC
+    loadp CodeBlock::m_instructionsRawPointer[t1], PC
     jmp doneLabel
 end
 
@@ -1171,8 +1164,19 @@ bitOpProfiled(bitand, OpBitand,
     macro (left, right) andi left, right end)
 
 bitOpProfiled(bitor, OpBitor,
-        macro (left, right) ori left, right end)
+    macro (left, right) ori left, right end)
 
+llintOpWithProfile(op_bitnot, OpBitnot, macro (size, get, dispatch, return)
+    get(operand, t0)
+    loadConstantOrVariable(size, t0, t2, t3)
+    bineq t2, Int32Tag, .opBitNotSlow
+    noti t3
+    return (Int32Tag, t3)
+
+ .opBitNotSlow:
+    callSlowPath(_slow_path_bitnot)
+    dispatch()
+end)
 
 llintOp(op_overrides_has_instance, OpOverridesHasInstance, macro (size, get, dispatch)
     get(dst, t3)
@@ -1818,7 +1822,7 @@ llintOpWithJump(op_switch_imm, OpSwitchImm, macro (size, get, jump, dispatch)
     loadConstantOrVariable(size, t2, t1, t0)
     loadp CodeBlock[cfr], t2
     loadp CodeBlock::m_rareData[t2], t2
-    muli sizeof SimpleJumpTable, t3   # FIXME: would be nice to peephole this!
+    muli sizeof SimpleJumpTable, t3
     loadp CodeBlock::RareData::m_switchJumpTables + VectorBufferOffset[t2], t2
     addp t3, t2
     bineq t1, Int32Tag, .opSwitchImmNotInt
@@ -2038,7 +2042,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         andp MarkedBlockMask, t3
         loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t3], t3
         addp 8, sp
-    elsif ARM or ARMv7 or ARMv7_TRADITIONAL or C_LOOP or MIPS
+    elsif ARMv7 or C_LOOP or MIPS
         if MIPS
         # calling convention says to save stack space for 4 first registers in
         # all cases. To match our 16-byte alignment, that means we need to
@@ -2105,7 +2109,7 @@ macro internalFunctionCallTrampoline(offsetOfFunction)
         andp MarkedBlockMask, t3
         loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t3], t3
         addp 8, sp
-    elsif ARM or ARMv7 or ARMv7_TRADITIONAL or C_LOOP or MIPS
+    elsif ARMv7 or C_LOOP or MIPS
         subp 8, sp # align stack pointer
         # t1 already contains the Callee.
         andp MarkedBlockMask, t1

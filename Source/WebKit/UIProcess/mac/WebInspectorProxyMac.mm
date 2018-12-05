@@ -37,6 +37,9 @@
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
 #import "_WKInspectorInternal.h"
+#import <SecurityInterface/SFCertificatePanel.h>
+#import <SecurityInterface/SFCertificateView.h>
+#import <WebCore/CertificateInfo.h>
 #import <WebCore/InspectorFrontendClientLocal.h>
 #import <WebCore/LocalizedStrings.h>
 #import <wtf/SoftLinking.h>
@@ -208,23 +211,6 @@ void WebInspectorProxy::attachmentDidMoveToWindow(NSWindow *newWindow)
         [newWindow addObserver:m_objCAdapter.get() forKeyPath:@"contentLayoutRect" options:0 context:kWindowContentLayoutObserverContext];
         inspectedViewFrameDidChange();
     }
-}
-
-void WebInspectorProxy::setInspectorWindowFrame(WKRect& frame)
-{
-    if (m_isAttached)
-        return;
-
-    [m_inspectorWindow setFrame:NSMakeRect(frame.origin.x, frame.origin.y, frame.size.width, frame.size.height) display:YES];
-}
-
-WKRect WebInspectorProxy::inspectorWindowFrame()
-{
-    if (m_isAttached)
-        return WKRectMake(0, 0, 0, 0);
-
-    NSRect frame = m_inspectorWindow.get().frame;
-    return WKRectMake(frame.origin.x, frame.origin.y, frame.size.width, frame.size.height);
 }
 
 void WebInspectorProxy::updateInspectorWindowTitle() const
@@ -420,6 +406,35 @@ void WebInspectorProxy::platformInspectedURLChanged(const String& urlString)
     m_urlString = urlString;
 
     updateInspectorWindowTitle();
+}
+
+void WebInspectorProxy::platformShowCertificate(const CertificateInfo& certificateInfo)
+{
+    ASSERT(!certificateInfo.isEmpty());
+
+    RetainPtr<SFCertificatePanel> certificatePanel = adoptNS([[SFCertificatePanel alloc] init]);
+
+    NSWindow *window;
+    if (m_inspectorWindow)
+        window = m_inspectorWindow.get();
+    else
+        window = [[m_inspectorViewController webView] window];
+
+    if (!window)
+        window = [NSApp keyWindow];
+
+#if HAVE(SEC_TRUST_SERIALIZATION)
+    [certificatePanel beginSheetForWindow:window modalDelegate:nil didEndSelector:NULL contextInfo:nullptr trust:certificateInfo.trust() showGroup:YES];
+#else
+    [certificatePanel beginSheetForWindow:window modalDelegate:nil didEndSelector:NULL contextInfo:nullptr certificates:(NSArray *)certificateInfo.certificateChain() showGroup:YES];
+#endif
+
+    // This must be called after the trust panel has been displayed, because the certificateView doesn't exist beforehand.
+    SFCertificateView *certificateView = [certificatePanel certificateView];
+    [certificateView setDisplayTrust:YES];
+    [certificateView setEditableTrust:NO];
+    [certificateView setDisplayDetails:YES];
+    [certificateView setDetailsDisclosed:YES];
 }
 
 void WebInspectorProxy::platformSave(const String& suggestedURL, const String& content, bool base64Encoded, bool forceSaveDialog)

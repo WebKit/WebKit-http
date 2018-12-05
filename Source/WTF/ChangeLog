@@ -1,3 +1,197 @@
+2018-11-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove another OS version check from NetworkDataTaskCocoa.mm
+        https://bugs.webkit.org/show_bug.cgi?id=192046
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+
+2018-11-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Modernize version checks for same site cookie support
+        https://bugs.webkit.org/show_bug.cgi?id=192054
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h:
+
+2018-11-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Modernize the check for async _saveCookies existence
+        https://bugs.webkit.org/show_bug.cgi?id=191987
+
+        Reviewed by Dean Jackson.
+
+        * wtf/Platform.h: Added a specific macro for this. Not changing the behavior here,
+        although it seems very likely that we want to do the same on other iOS family OSes.
+
+2018-11-26  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][Clang] SOFT_LINK reports warning: implicit conversion between pointer-to-function and pointer-to-object is a Microsoft extension [-Wmicrosoft-cast]
+        https://bugs.webkit.org/show_bug.cgi?id=191960
+
+        Reviewed by Alex Christensen.
+
+        * wtf/win/SoftLinking.h: Do reinterpret_cast<void*> a function
+        pointer argument of EncodePointer. Changed the type of stored
+        function pointer returned by EncodePointer.
+
+2018-11-26  Sam Weinig  <sam@webkit.org>
+
+        Streamline ListHashSet use in floating object code
+        https://bugs.webkit.org/show_bug.cgi?id=191957
+
+        Reviewed by Alex Christensen.
+
+        * wtf/ListHashSet.h:
+        Reverses the order of the template arguments for the find() and contains()
+        overload that allow specifying a hash translator to allow the compiler to
+        deduce type T. This simplifies call sites and matches other WTF containers.
+
+2018-11-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        CRASH() should call abort() except on Darwin and in developer builds
+        https://bugs.webkit.org/show_bug.cgi?id=184408
+
+        Reviewed by Daniel Bates.
+
+        CRASH() should call abort() except on Darwin and in developer builds, as discussed on
+        webkit-dev. This should be slightly nicer than dereferencing 0xbadbeef.
+
+        On Darwin, CRASH() uses a breakpoint trap, which seems to corrupt the stack on Linux, so we
+        can't do that.
+
+        Continue to call WTFCrash() in developer mode, and make no changes to WTFCrash(), since it
+        is reportedly useful in nightmare scenarios where core dumps are unavailable.
+
+        We also have to define CRASH_UNDER_CONSTEXPR_CONTEXT(). It's a bit odd that it's possible to
+        use a non-constexpr function here, but it works. Currently this macro uses WTFCrash(), which
+        is also non-constexpr.
+
+        * wtf/Assertions.h:
+
+2018-11-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r238469.
+
+        Broke the build
+
+        Reverted changeset:
+
+        "CRASH() should call abort() except on Darwin and in developer
+        builds"
+        https://bugs.webkit.org/show_bug.cgi?id=184408
+        https://trac.webkit.org/changeset/238469
+
+2018-11-24  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] SOFT_LINK_CLASS_FOR_{HEADER,SOURCE} should generate a more concise getter function
+        https://bugs.webkit.org/show_bug.cgi?id=191899
+
+        Reviewed by Dean Jackson.
+
+        Currently, SOFT_LINK_CLASS_FOR_HEADER declares a class getter function that includes the
+        framework name. For example, NSView would have a class getter named
+        namespace::get_AppKit_NSViewClass().
+
+        Including the framework name in the getter is unnecessary. Objective-C classes already exist
+        in a global namespace, so there is no need to disambiguate class names by framework. This
+        patch elides the framework name from the getter function. For example, NSView would now have
+        a getter named namespace::getNSViewClass().
+
+        * wtf/cocoa/SoftLinking.h:
+
+2018-11-24  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        CRASH() should call abort() except on Darwin and in developer builds
+        https://bugs.webkit.org/show_bug.cgi?id=184408
+
+        Reviewed by Daniel Bates.
+
+        CRASH() should call abort() except on Darwin and in developer builds, as discussed on
+        webkit-dev. This should be slightly nicer than dereferencing 0xbadbeef.
+
+        On Darwin, CRASH() uses a breakpoint trap, which seems to corrupt the stack on Linux, so we
+        can't do that.
+
+        Continue to call WTFCrash() in developer mode, and make no changes to WTFCrash(), since it
+        is reportedly useful in nightmare scenarios where core dumps are unavailable.
+
+        * wtf/Assertions.h:
+
+2018-11-23  Sam Weinig  <sam@webkit.org>
+
+        Add raw pointer overloads to ListHashSet via SmartPtr specialized functions
+        https://bugs.webkit.org/show_bug.cgi?id=191936
+
+        Reviewed by Zalan Bujtas.
+
+        Adds overloads for find, contains, insertBefore and remove that take raw pointers
+        when the value type V of a ListHashSet is true for the predicate IsSmartPtr<V>::value.
+        This brings the interface to ListHashSet closer inline with HashSet, HashMap and HashCountedSet
+        which already have this functionality. Like in the other collections, this is especially
+        useful when using std::unique_ptr<> as the value, since there would be no way to pass it
+        to these functions. One difference between this set of overloads is the inclusion of insertBefore,
+        which is unique to ListHashSet. As would be expected, this specialization only changes the first
+        parameter, the one that needs to be found, to support a raw pointer.  
+
+        * wtf/ListHashSet.h:
+        (WTF::U>::find):
+        (WTF::U>::find const):
+        (WTF::U>::contains const):
+        (WTF::U>::insertBefore):
+        (WTF::U>::remove):
+
+2018-11-21  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Drop ARM_TRADITIONAL support in LLInt, baseline JIT, and DFG
+        https://bugs.webkit.org/show_bug.cgi?id=191675
+
+        Reviewed by Mark Lam.
+
+        * wtf/InlineASM.h:
+        * wtf/Platform.h:
+
+2018-11-21  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Create a soft-linking file for PassKit
+        https://bugs.webkit.org/show_bug.cgi?id=191875
+        <rdar://problem/46203215>
+
+        Reviewed by Myles Maxfield.
+
+        * wtf/Platform.h: Defined USE_PASSKIT.
+        * wtf/cocoa/SoftLinking.h: Added _WITH_EXPORT variants of SOFT_LINK_FRAMEWORK_FOR_SOURCE,
+        SOFT_LINK_PRIVATE_FRAMEWORK_FOR_SOURCE, SOFT_LINK_CLASS_FOR_SOURCE,
+        SOFT_LINK_FUNCTION_FOR_SOURCE, and SOFT_LINK_CONSTANT_FOR_SOURCE.
+
+2018-11-21  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable JIT on ARM/Linux
+        https://bugs.webkit.org/show_bug.cgi?id=191548
+
+        Reviewed by Yusuke Suzuki.
+
+        Enable JIT by default on ARMv7/Linux after it was disabled with
+        recent bytcode format change.
+
+        * wtf/Platform.h:
+
+2018-11-14  Keith Rollin  <krollin@apple.com>
+
+        Fix #end vs. #endif typo.
+        https://bugs.webkit.org/show_bug.cgi?id=191668
+        <rdar://problem/46081704>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Source/WebCore/SourcesCocoa.txt had a #end that should have been a
+        #endif. Fix this, an add a check to generate-unified-source-bundles.rb
+        to detect similar typos.
+
+        * Scripts/generate-unified-source-bundles.rb:
+
 2018-11-12  Mark Lam  <mark.lam@apple.com>
 
         Add OOM detection to StringPrototype's substituteBackreferences().

@@ -449,6 +449,26 @@ bool WKBundlePageFindString(WKBundlePageRef pageRef, WKStringRef target, WKFindO
     return toImpl(pageRef)->findStringFromInjectedBundle(toWTFString(target), toFindOptions(findOptions));
 }
 
+void WKBundlePageFindStringMatches(WKBundlePageRef pageRef, WKStringRef target, WKFindOptions findOptions)
+{
+    toImpl(pageRef)->findStringMatchesFromInjectedBundle(toWTFString(target), toFindOptions(findOptions));
+}
+
+void WKBundlePageReplaceStringMatches(WKBundlePageRef pageRef, WKArrayRef matchIndicesRef, WKStringRef replacementText, bool selectionOnly)
+{
+    auto* matchIndices = toImpl(matchIndicesRef);
+
+    Vector<uint32_t> indices;
+    indices.reserveInitialCapacity(matchIndices->size());
+
+    auto numberOfMatchIndices = matchIndices->size();
+    for (size_t i = 0; i < numberOfMatchIndices; ++i) {
+        if (auto* indexAsObject = matchIndices->at<API::UInt64>(i))
+            indices.uncheckedAppend(indexAsObject->value());
+    }
+    toImpl(pageRef)->replaceStringMatchesFromInjectedBundle(indices, toWTFString(replacementText), selectionOnly);
+}
+
 WKImageRef WKBundlePageCreateSnapshotWithOptions(WKBundlePageRef pageRef, WKRect rect, WKSnapshotOptions options)
 {
     RefPtr<WebImage> webImage = toImpl(pageRef)->scaledSnapshotWithOptions(toIntRect(rect), 1, toSnapshotOptions(options));

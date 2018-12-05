@@ -666,6 +666,9 @@ static void validate(WKWebViewConfiguration *configuration)
     [_scrollView setInternalDelegate:self];
     [_scrollView setBouncesZoom:YES];
 
+    if ([_configuration _editableImagesEnabled])
+        [_scrollView panGestureRecognizer].allowedTouchTypes = @[ @(UITouchTypeDirect) ];
+
     _avoidsUnsafeArea = YES;
     [self _updateScrollViewInsetAdjustmentBehavior];
 
@@ -1315,6 +1318,11 @@ static NSDictionary *dictionaryRepresentationForEditorState(const WebKit::Editor
 #pragma mark iOS-specific methods
 
 #if PLATFORM(IOS_FAMILY)
+
+- (BOOL)_contentViewIsFirstResponder
+{
+    return self._currentContentView.isFirstResponder;
+}
 
 - (_WKDragInteractionPolicy)_dragInteractionPolicy
 {
@@ -2435,6 +2443,11 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     // Since we'll enable double tap zoom whenever we're not at the actual
     // initial scale, this simply becomes a test of the current scale against 1.
     return !areEssentiallyEqualAsFloat(contentZoomScale(self), 1);
+}
+
+- (BOOL)_stylusTapGestureShouldCreateEditableImage
+{
+    return [_configuration _editableImagesEnabled];
 }
 
 #pragma mark - UIScrollViewDelegate
@@ -4089,6 +4102,11 @@ IGNORE_WARNINGS_END
     [[self _ensureTextFinderClient] findMatchesForString:targetString relativeToMatch:relativeMatch findOptions:findOptions maxResults:maxResults resultCollector:resultCollector];
 }
 
+- (void)replaceMatches:(NSArray *)matches withString:(NSString *)replacementString inSelectionOnly:(BOOL)selectionOnly resultCollector:(void (^)(NSUInteger replacementCount))resultCollector
+{
+    [[self _ensureTextFinderClient] replaceMatches:matches withString:replacementString inSelectionOnly:selectionOnly resultCollector:resultCollector];
+}
+
 - (NSView *)documentContainerView
 {
     return self;
@@ -4559,6 +4577,18 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
     _page->process().terminate();
 }
 
+#if PLATFORM(MAC)
+- (NSView *)_safeBrowsingWarning
+{
+    return _impl->safeBrowsingWarning();
+}
+#else
+- (UIView *)_safeBrowsingWarning
+{
+    return _safeBrowsingWarning.get();
+}
+#endif
+
 - (WKNavigation *)_reloadWithoutContentBlockers
 {
     return wrapper(_page->reload(WebCore::ReloadOption::DisableContentBlockers));
@@ -4735,14 +4765,20 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
     return true;
 }
 
-- (void)_showSafeBrowsingWarningWithTitle:(NSString *)title warning:(NSString *)warning details:(NSAttributedString *)details completionHandler:(void(^)(NSURL *))completionHandler
+- (void)_showSafeBrowsingWarningWithTitle:(NSString *)title warning:(NSString *)warning details:(NSAttributedString *)details completionHandler:(void(^)(BOOL))completionHandler
 {
     auto safeBrowsingWarning = WebKit::SafeBrowsingWarning::create(title, warning, details);
     auto wrapper = [completionHandler = makeBlockPtr(completionHandler)] (Variant<WebKit::ContinueUnsafeLoad, WebCore::URL>&& variant) {
-        switchOn(variant, [&] (WebKit::ContinueUnsafeLoad) {
-            completionHandler(nil);
-        }, [&] (WebCore::URL url) {
-            completionHandler(url);
+        switchOn(variant, [&] (WebKit::ContinueUnsafeLoad continueUnsafeLoad) {
+            switch (continueUnsafeLoad) {
+            case WebKit::ContinueUnsafeLoad::Yes:
+                return completionHandler(YES);
+            case WebKit::ContinueUnsafeLoad::No:
+                return completionHandler(NO);
+            }
+        }, [&] (WebCore::URL) {
+            ASSERT_NOT_REACHED();
+            completionHandler(NO);
         });
     };
 #if PLATFORM(MAC)
@@ -4755,6 +4791,18 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 + (NSURL *)_confirmMalwareSentinel
 {
     return WebKit::SafeBrowsingWarning::confirmMalwareSentinel();
+}
+
++ (NSURL *)_visitUnsafeWebsiteSentinel
+{
+    return WebKit::SafeBrowsingWarning::visitUnsafeWebsiteSentinel();
+}
+
+- (void)_isJITEnabled:(void(^)(BOOL))completionHandler
+{
+    _page->isJITEnabled([completionHandler = makeBlockPtr(completionHandler)] (bool enabled) {
+        completionHandler(enabled);
+    });
 }
 
 - (void)_evaluateJavaScriptWithoutUserGesture:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler
@@ -4841,6 +4889,9 @@ static inline OptionSet<WebCore::LayoutMilestone> layoutMilestones(_WKRenderingP
 
     if (events & _WKRenderingProgressEventDidRenderSignificantAmountOfText)
         milestones.add(WebCore::DidRenderSignificantAmountOfText);
+
+    if (events & _WKRenderingProgressEventFirstMeaningfulPaint)
+        milestones.add(WebCore::DidFirstMeaningfulPaint);
 
     return milestones;
 }
@@ -5397,9 +5448,38 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _page->setMuted(coreState);
 }
 
+- (void)_removeDataDetectedLinks:(dispatch_block_t)completion
+{
+#if ENABLE(DATA_DETECTION)
+    _page->removeDataDetectedLinks([completion = makeBlockPtr(completion), page = makeWeakPtr(_page.get())] (auto& result) {
+        if (page)
+            page->setDataDetectionResult(result);
+        if (completion)
+            completion();
+    });
+#else
+    UNUSED_PARAM(completion);
+#endif
+}
+
 #pragma mark iOS-specific methods
 
 #if PLATFORM(IOS_FAMILY)
+
+- (void)_detectDataWithTypes:(WKDataDetectorTypes)types completionHandler:(dispatch_block_t)completion
+{
+#if ENABLE(DATA_DETECTION)
+    _page->detectDataInAllFrames(fromWKDataDetectorTypes(types), [completion = makeBlockPtr(completion), page = makeWeakPtr(_page.get())] (auto& result) {
+        if (page)
+            page->setDataDetectionResult(result);
+        if (completion)
+            completion();
+    });
+#else
+    UNUSED_PARAM(types);
+    UNUSED_PARAM(completion);
+#endif
+}
 
 #if ENABLE(FULLSCREEN_API)
 - (void)removeFromSuperview
@@ -6340,7 +6420,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 - (NSDictionary *)_propertiesOfLayerWithID:(unsigned long long)layerID
 {
-    CALayer* layer = asLayer(downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).layerWithIDForTesting(layerID));
+    CALayer* layer = downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).layerWithIDForTesting(layerID);
     if (!layer)
         return nil;
 
@@ -6783,18 +6863,6 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 {
     _resolutionForShareSheetImmediateCompletionForTesting = resolved;
 }
-
-#if PLATFORM(MAC)
-- (NSView *)_safeBrowsingWarningForTesting
-{
-    return _impl->safeBrowsingWarning();
-}
-#else
-- (UIView *)_safeBrowsingWarningForTesting
-{
-    return _safeBrowsingWarning.get();
-}
-#endif
 
 - (_WKInspector *)_inspector
 {

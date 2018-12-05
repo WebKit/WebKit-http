@@ -220,6 +220,7 @@ public:
     ExceptionOr<void> setFormControlStateOfPreviousHistoryItem(const Vector<String>&);
 
     ExceptionOr<Ref<DOMRect>> absoluteCaretBounds();
+    ExceptionOr<bool> isCaretBlinkingSuspended();
 
     Ref<DOMRect> boundingBox(Element&);
 
@@ -245,6 +246,8 @@ public:
     ExceptionOr<Ref<DOMRect>> visualViewportRect();
 
     ExceptionOr<void> setViewIsTransparent(bool);
+
+    ExceptionOr<String> viewBaseBackgroundColor();
     ExceptionOr<void> setViewBaseBackgroundColor(const String& colorValue);
 
     ExceptionOr<void> setPagination(const String& mode, int gap, int pageLength);
@@ -781,6 +784,8 @@ public:
         }
     };
     Vector<CookieData> getCookies() const;
+
+    void setAlwaysAllowLocalWebarchive() const;
 
 private:
     explicit Internals(Document&);

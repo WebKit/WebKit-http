@@ -199,6 +199,9 @@ void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOpt
 
     launchOptions.nonValidInjectedCodeAllowed = shouldAllowNonValidInjectedCode();
 
+    if (isPrewarmed())
+        launchOptions.extraInitializationData.add("is-prewarmed"_s, "1"_s);
+
     if (processPool().shouldMakeNextWebProcessLaunchFailForTesting()) {
         processPool().setShouldMakeNextWebProcessLaunchFailForTesting(false);
         launchOptions.shouldMakeProcessLaunchFailForTesting = true;
@@ -450,6 +453,8 @@ void WebProcessProxy::markIsNoLongerInPrewarmedPool()
     m_isPrewarmed = false;
     RELEASE_ASSERT(m_processPool);
     m_processPool.setIsWeak(IsWeak::No);
+
+    send(Messages::WebProcess::MarkIsNoLongerPrewarmed(), 0);
 }
 
 void WebProcessProxy::removeWebPage(WebPageProxy& webPage, uint64_t pageID)
@@ -1216,6 +1221,11 @@ void WebProcessProxy::isResponsive(WTF::Function<void(bool isWebProcessResponsiv
     send(Messages::WebProcess::MainThreadPing(), 0);
 }
 
+bool WebProcessProxy::isJITEnabled() const
+{
+    return processPool().configuration().isJITEnabled();
+}
+
 void WebProcessProxy::didReceiveMainThreadPing()
 {
     responsivenessTimer().stop();
@@ -1404,11 +1414,9 @@ void WebProcessProxy::didCollectPrewarmInformation(const String& domain, const W
     processPool().didCollectPrewarmInformation(domain, prewarmInformation);
 }
 
-Vector<String> WebProcessProxy::activePagesDomainsForTesting()
+void WebProcessProxy::activePagesDomainsForTesting(CompletionHandler<void(Vector<String>&&)>&& completionHandler)
 {
-    Vector<String> activeDomains;
-    sendSync(Messages::WebProcess::GetActivePagesOriginsForTesting(), Messages::WebProcess::GetActivePagesOriginsForTesting::Reply(activeDomains), 0);
-    return activeDomains;
+    connection()->sendWithAsyncReply(Messages::WebProcess::GetActivePagesOriginsForTesting(), WTFMove(completionHandler));
 }
 
 #if PLATFORM(WATCHOS)

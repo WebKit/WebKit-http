@@ -94,19 +94,18 @@ void SVGFEImageElement::buildPendingResource()
     if (!isConnected())
         return;
 
-    String id;
-    auto target = makeRefPtr(SVGURIReference::targetElementFromIRIString(href(), document(), &id));
-    if (!target) {
-        if (id.isEmpty())
+    auto target = SVGURIReference::targetElementFromIRIString(href(), treeScope());
+    if (!target.element) {
+        if (target.identifier.isEmpty())
             requestImageResource();
         else {
-            document().accessSVGExtensions().addPendingResource(id, this);
+            document().accessSVGExtensions().addPendingResource(target.identifier, this);
             ASSERT(hasPendingResources());
         }
-    } else if (target->isSVGElement()) {
+    } else if (target.element->isSVGElement()) {
         // Register us with the target in the dependencies map. Any change of hrefElement
         // that leads to relayout/repainting now informs us, so we can react to it.
-        document().accessSVGExtensions().addElementReferencingTarget(this, downcast<SVGElement>(target.get()));
+        document().accessSVGExtensions().addElementReferencingTarget(this, downcast<SVGElement>(target.element.get()));
     }
 
     invalidate();
@@ -190,7 +189,7 @@ RefPtr<FilterEffect> SVGFEImageElement::build(SVGFilterBuilder*, Filter& filter)
 {
     if (m_cachedImage)
         return FEImage::createWithImage(filter, m_cachedImage->imageForRenderer(renderer()), preserveAspectRatio());
-    return FEImage::createWithIRIReference(filter, document(), href(), preserveAspectRatio());
+    return FEImage::createWithIRIReference(filter, treeScope(), href(), preserveAspectRatio());
 }
 
 void SVGFEImageElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const

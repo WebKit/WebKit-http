@@ -144,8 +144,6 @@ public:
     bool updateCompositingLayersAfterStyleChange();
     void updateCompositingLayersAfterLayout();
 
-    void clearBackingStores();
-
     // Called when changes to the GraphicsLayer hierarchy have to be synchronized with
     // content rendered via the normal painting path.
     void setNeedsOneShotDrawingSynchronization();
@@ -160,7 +158,6 @@ public:
     uint64_t scrollLayerID() const;
     ScrollableArea* scrollableAreaForScrollLayerID(uint64_t) const;
 
-    bool hasCompositedContent() const;
     WEBCORE_EXPORT void enterCompositingMode();
     WEBCORE_EXPORT bool isEnclosedInCompositingLayer() const;
 
@@ -179,6 +176,9 @@ public:
     void prepareForDetach();
     void detachCustomScrollbars();
     WEBCORE_EXPORT void recalculateScrollbarOverlayStyle();
+#if ENABLE(DARK_MODE_CSS)
+    void recalculateBaseBackgroundColor();
+#endif
 
     void clear();
     void resetLayoutMilestones();
@@ -191,7 +191,7 @@ public:
 
     WEBCORE_EXPORT Color baseBackgroundColor() const;
     WEBCORE_EXPORT void setBaseBackgroundColor(const Color&);
-    WEBCORE_EXPORT void updateBackgroundRecursively(const Color&, bool);
+    WEBCORE_EXPORT void updateBackgroundRecursively(bool);
 
     enum ExtendedBackgroundModeFlags {
         ExtendedBackgroundModeNone          = 0,

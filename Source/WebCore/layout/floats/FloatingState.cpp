@@ -86,7 +86,7 @@ void FloatingState::append(const Box& layoutBox)
     m_floats.append({ layoutBox, *this });
 }
 
-FloatingState::Constraints FloatingState::constraints(LayoutUnit verticalPosition, const Box& formattingContextRoot) const
+FloatingState::Constraints FloatingState::constraints(PositionInContextRoot verticalPosition, const Box& formattingContextRoot) const
 {
     if (isEmpty())
         return { };
@@ -95,7 +95,7 @@ FloatingState::Constraints FloatingState::constraints(LayoutUnit verticalPositio
     // 2. Find the inner left/right floats at verticalPosition.
     // 3. Convert left/right positions back to formattingContextRoot's cooridnate system.
     auto coordinateMappingIsRequired = &root() != &formattingContextRoot;
-    auto adjustedPosition = Position { 0, verticalPosition };
+    auto adjustedPosition = Point { 0, verticalPosition };
 
     if (coordinateMappingIsRequired)
         adjustedPosition = FormattingContext::mapCoordinateToAncestor(m_layoutState, adjustedPosition, downcast<Container>(formattingContextRoot), downcast<Container>(root()));
@@ -115,9 +115,9 @@ FloatingState::Constraints FloatingState::constraints(LayoutUnit verticalPositio
             continue;
 
         if (floatItem.isLeftPositioned())
-            constraints.left = rect.right();
+            constraints.left = PositionInContextRoot { rect.right() };
         else
-            constraints.right = rect.left();
+            constraints.right = PositionInContextRoot { rect.left() };
 
         if (constraints.left && constraints.right)
             break;
@@ -125,23 +125,23 @@ FloatingState::Constraints FloatingState::constraints(LayoutUnit verticalPositio
 
     if (coordinateMappingIsRequired) {
         if (constraints.left)
-            constraints.left = *constraints.left - adjustedPosition.x;
+            constraints.left = PositionInContextRoot { *constraints.left - adjustedPosition.x };
 
         if (constraints.right)
-            constraints.right = *constraints.right - adjustedPosition.x;
+            constraints.right = PositionInContextRoot { *constraints.right - adjustedPosition.x };
     }
 
     return constraints;
 }
 
-std::optional<LayoutUnit> FloatingState::bottom(const Box& formattingContextRoot, Clear type) const
+std::optional<PositionInContextRoot> FloatingState::bottom(const Box& formattingContextRoot, Clear type) const
 {
     if (m_floats.isEmpty())
         return { };
 
     // TODO: Currently this is only called once for each formatting context root with floats per layout.
     // Cache the value if we end up calling it more frequently (and update it at append/remove).
-    std::optional<LayoutUnit> bottom;
+    std::optional<PositionInContextRoot> bottom;
     for (auto& floatItem : m_floats) {
         // Ignore floats from other formatting contexts when the floating state is inherited.
         if (!floatItem.inFormattingContext(formattingContextRoot))
@@ -153,10 +153,10 @@ std::optional<LayoutUnit> FloatingState::bottom(const Box& formattingContextRoot
 
         auto floatsBottom = floatItem.rectWithMargin().bottom();
         if (bottom) {
-            bottom = std::max(*bottom, floatsBottom);
+            bottom = std::max<PositionInContextRoot>(*bottom, { floatsBottom });
             continue;
         }
-        bottom = floatsBottom;
+        bottom = PositionInContextRoot { floatsBottom };
     }
     return bottom;
 }

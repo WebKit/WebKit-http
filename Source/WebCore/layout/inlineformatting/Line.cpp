@@ -25,7 +25,6 @@
 
 #include "config.h"
 #include "InlineFormattingContext.h"
-#include "InlineFormattingState.h"
 #include "InlineRunProvider.h"
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
@@ -33,17 +32,14 @@
 namespace WebCore {
 namespace Layout {
 
-InlineFormattingContext::Line::Line(InlineFormattingState& formattingState)
-    : m_formattingState(formattingState)
+void InlineFormattingContext::Line::init(const LayoutPoint& topLeft, LayoutUnit availableWidth, LayoutUnit minimalHeight)
 {
-}
+    m_logicalRect.setTopLeft(topLeft);
+    m_logicalRect.setWidth(availableWidth);
+    m_logicalRect.setHeight(minimalHeight);
+    m_availableWidth = availableWidth;
 
-void InlineFormattingContext::Line::init(const Display::Box::Rect& logicalRect)
-{
-    m_logicalRect = logicalRect;
-    m_availableWidth = logicalRect.width();
-
-    m_firstRunIndex = { };
+    m_inlineRuns.clear();
     m_lastRunType = { };
     m_lastRunCanExpand = false;
     m_trailingTrimmableContent = { };
@@ -57,12 +53,8 @@ void InlineFormattingContext::Line::adjustLogicalLeft(LayoutUnit delta)
     m_availableWidth -= delta;
     m_logicalRect.shiftLeftTo(m_logicalRect.left() + delta);
 
-    if (!m_firstRunIndex)
-        return;
-
-    auto& inlineRuns = m_formattingState.inlineRuns();
-    for (auto runIndex = *m_firstRunIndex; runIndex < inlineRuns.size(); ++runIndex)
-        inlineRuns[runIndex].moveHorizontally(delta);
+    for (auto& inlineRun : m_inlineRuns)
+        inlineRun.moveHorizontally(delta);
 }
 
 void InlineFormattingContext::Line::adjustLogicalRight(LayoutUnit delta)
@@ -80,80 +72,72 @@ static bool isTrimmableContent(const InlineRunProvider::Run& inlineRun)
 
 LayoutUnit InlineFormattingContext::Line::contentLogicalRight() const
 {
-    if (!m_firstRunIndex.has_value())
+    if (m_inlineRuns.isEmpty())
         return m_logicalRect.left();
 
-    return m_formattingState.inlineRuns().last().logicalRight();
+    return m_inlineRuns.last().logicalRight();
 }
 
-void InlineFormattingContext::Line::appendContent(const InlineLineBreaker::Run& run)
+void InlineFormattingContext::Line::appendContent(const InlineRunProvider::Run& run, const LayoutSize& runSize)
 {
     ASSERT(!isClosed());
 
-    auto& content = run.content;
-
     // Append this text run to the end of the last text run, if the last run is continuous.
     std::optional<InlineRun::TextContext> textRun;
-    if (content.isText()) {
-        auto textContext = content.textContext();
+    if (run.isText()) {
+        auto textContext = run.textContext();
         auto runLength = textContext->isCollapsed() ? 1 : textContext->length();
         textRun = InlineRun::TextContext { textContext->start(), runLength };
     }
 
-    auto requiresNewInlineRun = !hasContent() || !content.isText() || !m_lastRunCanExpand;
+    auto requiresNewInlineRun = !hasContent() || !run.isText() || !m_lastRunCanExpand;
     if (requiresNewInlineRun) {
         // FIXME: This needs proper baseline handling
-        auto inlineRun = InlineRun { { logicalTop(), contentLogicalRight(), run.width, logicalBottom() - logicalTop() }, content.inlineItem() };
+        auto inlineRun = InlineRun { { logicalTop(), contentLogicalRight(), runSize.width(), runSize.height() }, run.inlineItem() };
         if (textRun)
             inlineRun.setTextContext({ textRun->start(), textRun->length() });
-        m_formattingState.appendInlineRun(inlineRun);
+        m_inlineRuns.append(inlineRun);
+        m_logicalRect.setHeight(std::max(runSize.height(), m_logicalRect.height()));
     } else {
         // Non-text runs always require new inline run.
         ASSERT(textRun);
-        auto& inlineRun = m_formattingState.inlineRuns().last();
-        inlineRun.setWidth(inlineRun.width() + run.width);
+        auto& inlineRun = m_inlineRuns.last();
+        ASSERT(runSize.height() == inlineRun.logicalHeight());
+        inlineRun.setLogicalWidth(inlineRun.logicalWidth() + runSize.width());
         inlineRun.textContext()->setLength(inlineRun.textContext()->length() + textRun->length());
     }
 
-    m_availableWidth -= run.width;
-    m_lastRunType = content.type();
-    m_lastRunCanExpand = content.isText() && !content.textContext()->isCollapsed();
-    m_firstRunIndex = m_firstRunIndex.value_or(m_formattingState.inlineRuns().size() - 1);
+    m_availableWidth -= runSize.width();
+    m_lastRunType = run.type();
+    m_lastRunCanExpand = run.isText() && !run.textContext()->isCollapsed();
     m_trailingTrimmableContent = { };
-    if (isTrimmableContent(content))
-        m_trailingTrimmableContent = TrailingTrimmableContent { run.width, textRun->length() };
+    if (isTrimmableContent(run))
+        m_trailingTrimmableContent = TrailingTrimmableContent { runSize.width(), textRun->length() };
 }
 
-InlineFormattingContext::Line::RunRange InlineFormattingContext::Line::close()
+void InlineFormattingContext::Line::close()
 {
     auto trimTrailingContent = [&]{
 
         if (!m_trailingTrimmableContent)
             return;
 
-        auto& lastInlineRun = m_formattingState.inlineRuns().last();
-        lastInlineRun.setWidth(lastInlineRun.width() - m_trailingTrimmableContent->width);
+        auto& lastInlineRun = m_inlineRuns.last();
+        lastInlineRun.setLogicalWidth(lastInlineRun.logicalWidth() - m_trailingTrimmableContent->width);
         lastInlineRun.textContext()->setLength(lastInlineRun.textContext()->length() - m_trailingTrimmableContent->length);
 
-        if (!lastInlineRun.textContext()->length()) {
-            if (*m_firstRunIndex == m_formattingState.inlineRuns().size() - 1)
-                m_firstRunIndex = { };
-            m_formattingState.inlineRuns().removeLast();
-        }
+        if (!lastInlineRun.textContext()->length())
+            m_inlineRuns.removeLast();
         m_availableWidth += m_trailingTrimmableContent->width;
         m_trailingTrimmableContent = { };
     };
 
     if (!hasContent())
-        return { };
+        return;
 
     trimTrailingContent();
     m_isFirstLine = false;
     m_closed = true;
-
-    if (!m_firstRunIndex)
-        return { };
-    return { m_firstRunIndex, m_formattingState.inlineRuns().size() - 1 };
 }
 
 }

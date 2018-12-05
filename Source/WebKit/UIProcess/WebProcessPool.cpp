@@ -511,6 +511,10 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     String parentBundleDirectory = this->parentBundleDirectory();
     if (!parentBundleDirectory.isEmpty())
         SandboxExtension::createHandle(parentBundleDirectory, SandboxExtension::Type::ReadOnly, parameters.parentBundleDirectoryExtensionHandle);
+
+#if ENABLE(INDEXED_DATABASE)
+    SandboxExtension::createHandleForTemporaryFile(emptyString(), SandboxExtension::Type::ReadWrite, parameters.indexedDatabaseTempBlobDirectoryExtensionHandle);
+#endif
 #endif
 
     parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
@@ -566,6 +570,12 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     if (withWebsiteDataStore) {
         m_networkProcess->addSession(makeRef(*withWebsiteDataStore));
         withWebsiteDataStore->clearPendingCookies();
+    }
+
+    // Make sure the network process knows about all the sessions that have been registered before it started.
+    for (auto& sessionID : m_sessionToPagesMap.keys()) {
+        if (auto* websiteDataStore = WebsiteDataStore::existingNonDefaultDataStoreForSessionID(sessionID))
+            m_networkProcess->addSession(*websiteDataStore);
     }
 
     if (m_websiteDataStore)
@@ -950,17 +960,26 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
 #endif
 }
 
-void WebProcessPool::prewarmProcess()
+void WebProcessPool::prewarmProcess(MayCreateDefaultDataStore mayCreateDefaultDataStore)
 {
     if (m_prewarmedProcess)
         return;
 
-    auto* websiteDataStore = m_websiteDataStore.get();
-    if (!websiteDataStore)
-        websiteDataStore = API::WebsiteDataStore::defaultDataStore().ptr();
+    auto* websiteDataStore = m_websiteDataStore ? &m_websiteDataStore->websiteDataStore() : nullptr;
+    if (!websiteDataStore) {
+        if (!m_processes.isEmpty())
+            websiteDataStore = &m_processes.last()->websiteDataStore();
+        else if (mayCreateDefaultDataStore == MayCreateDefaultDataStore::Yes || API::WebsiteDataStore::defaultDataStoreExists())
+            websiteDataStore = &API::WebsiteDataStore::defaultDataStore()->websiteDataStore();
+        else {
+            RELEASE_LOG(PerformanceLogging, "Unable to prewarming a WebProcess because we could not find a usable data store");
+            return;
+        }
+    }
+    ASSERT(websiteDataStore);
 
     RELEASE_LOG(PerformanceLogging, "Prewarming a WebProcess for performance");
-    createNewWebProcess(websiteDataStore->websiteDataStore(), WebProcessProxy::IsPrewarmed::Yes);
+    createNewWebProcess(*websiteDataStore, WebProcessProxy::IsPrewarmed::Yes);
 }
 
 void WebProcessPool::enableProcessTermination()
@@ -1266,7 +1285,7 @@ void WebProcessPool::postMessageToInjectedBundle(const String& messageName, API:
 
 void WebProcessPool::didReachGoodTimeToPrewarm()
 {
-    if (!configuration().isAutomaticProcessWarmingEnabled())
+    if (!configuration().isAutomaticProcessWarmingEnabled() || !configuration().processSwapsOnNavigation())
         return;
 
     if (MemoryPressureHandler::singleton().isUnderMemoryPressure()) {
@@ -1275,7 +1294,7 @@ void WebProcessPool::didReachGoodTimeToPrewarm()
         return;
     }
 
-    prewarmProcess();
+    prewarmProcess(MayCreateDefaultDataStore::No);
 }
 
 void WebProcessPool::populateVisitedLinks()
@@ -1324,13 +1343,13 @@ ProcessID WebProcessPool::networkProcessIdentifier()
     return m_networkProcess->processIdentifier();
 }
 
-Vector<String> WebProcessPool::activePagesOriginsInWebProcessForTesting(ProcessID pid)
+void WebProcessPool::activePagesOriginsInWebProcessForTesting(ProcessID pid, CompletionHandler<void(Vector<String>&&)>&& completionHandler)
 {
     for (auto& process : m_processes) {
         if (process->processIdentifier() == pid)
-            return process->activePagesDomainsForTesting();
+            return process->activePagesDomainsForTesting(WTFMove(completionHandler));
     }
-    return { };
+    completionHandler({ });
 }
 
 void WebProcessPool::setAlwaysUsesComplexTextCodePath(bool alwaysUseComplexText)
@@ -2094,6 +2113,13 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigation(WebPageProxy& page, co
 {
     auto process = processForNavigationInternal(page, navigation, processSwapRequestedByClient, reason);
 
+    // We are process-swapping so automatic process prewarming would be beneficial if the client has not explicitly enabled / disabled it.
+    bool doingAnAutomaticProcessSwap = processSwapRequestedByClient == ProcessSwapRequestedByClient::No && process.ptr() != &page.process();
+    if (doingAnAutomaticProcessSwap && !configuration().wasAutomaticProcessWarmingSetByClient() && !configuration().clientWouldBenefitFromAutomaticProcessPrewarming()) {
+        RELEASE_LOG(PerformanceLogging, "Automatically turning on process prewarming because the client would benefit from it");
+        configuration().setClientWouldBenefitFromAutomaticProcessPrewarming(true);
+    }
+
     if (m_configuration->alwaysKeepAndReuseSwappedProcesses() && process.ptr() != &page.process()) {
         static std::once_flag onceFlag;
         std::call_once(onceFlag, [] {
@@ -2114,12 +2140,6 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
 
     if (!m_configuration->processSwapsOnNavigation() && processSwapRequestedByClient == ProcessSwapRequestedByClient::No) {
         reason = "Feature is disabled"_s;
-        return page.process();
-    }
-
-    // FIXME: We should support process swap with a local web inspector.
-    if (page.hasLocalInspectorFrontend()) {
-        reason = "A Local Web Inspector frontend is connected"_s;
         return page.process();
     }
 

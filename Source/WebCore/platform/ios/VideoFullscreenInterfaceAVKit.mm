@@ -333,6 +333,12 @@ static VideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullScre
 
 - (void)setVideoGravity:(NSString *)videoGravity
 {
+#if PLATFORM(IOSMAC)
+    // FIXME<rdar://46011230>: remove this #if once this radar lands.
+    if (!videoGravity)
+        videoGravity = getAVLayerVideoGravityResizeAspect();
+#endif
+
     _videoGravity = videoGravity;
     
     if (![_avPlayerController delegate])
@@ -541,6 +547,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)stopPictureInPicture;
 
 - (BOOL)playerViewControllerShouldHandleDoneButtonTap:(AVPlayerViewController *)playerViewController;
+- (void)setWebKitOverrideRouteSharingPolicy:(NSUInteger)routeSharingPolicy routingContextUID:(NSString *)routingContextUID;
 @end
 NS_ASSUME_NONNULL_END
 
@@ -572,6 +579,16 @@ NS_ASSUME_NONNULL_END
         return [_delegate playerViewController:playerViewController shouldExitFullScreenWithReason:AVPlayerViewControllerExitFullScreenReasonDoneButtonTapped];
 
     return YES;
+}
+
+- (void)setWebKitOverrideRouteSharingPolicy:(NSUInteger)routeSharingPolicy routingContextUID:(NSString *)routingContextUID
+{
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
+    if ([_avPlayerViewController respondsToSelector:@selector(setWebKitOverrideRouteSharingPolicy:routingContextUID:)])
+        [_avPlayerViewController setWebKitOverrideRouteSharingPolicy:routeSharingPolicy routingContextUID:routingContextUID];
+#pragma clang diagnostic pop
 }
 
 - (void)enterFullScreenAnimated:(BOOL)animated completionHandler:(void (^)(BOOL success, NSError * __nullable error))completionHandler
@@ -758,8 +775,16 @@ void VideoFullscreenInterfaceAVKit::setVideoFullscreenModel(VideoFullscreenModel
 
     m_videoFullscreenModel = model;
 
-    if (m_videoFullscreenModel)
+    if (m_videoFullscreenModel) {
         m_videoFullscreenModel->addClient(*this);
+        m_videoFullscreenModel->requestRouteSharingPolicyAndContextUID([this, protectedThis = makeRefPtr(this)] (RouteSharingPolicy policy, String contextUID) {
+            m_routeSharingPolicy = policy;
+            m_routingContextUID = contextUID;
+
+            if (m_playerViewController && !m_routingContextUID.isEmpty())
+                [m_playerViewController setWebKitOverrideRouteSharingPolicy:(NSUInteger)m_routeSharingPolicy routingContextUID:m_routingContextUID];
+        });
+    }
 
     hasVideoChanged(m_videoFullscreenModel ? m_videoFullscreenModel->hasVideo() : false);
     videoDimensionsChanged(m_videoFullscreenModel ? m_videoFullscreenModel->videoDimensions() : FloatSize());
@@ -778,6 +803,9 @@ void VideoFullscreenInterfaceAVKit::hasVideoChanged(bool hasVideo)
 
 void VideoFullscreenInterfaceAVKit::videoDimensionsChanged(const FloatSize& videoDimensions)
 {
+    if (videoDimensions.isZero())
+        return;
+    
     WebAVPlayerLayer *playerLayer = (WebAVPlayerLayer *)[m_playerLayerView playerLayer];
 
     [playerLayer setVideoDimensions:videoDimensions];
@@ -1220,6 +1248,8 @@ void VideoFullscreenInterfaceAVKit::doSetup()
     [m_playerViewController setDelegate:m_playerViewControllerDelegate.get()];
     [m_playerViewController setAllowsPictureInPicturePlayback:m_allowsPictureInPicturePlayback];
     [playerController() setPictureInPicturePossible:m_allowsPictureInPicturePlayback];
+    if (!m_routingContextUID.isEmpty())
+        [m_playerViewController setWebKitOverrideRouteSharingPolicy:(NSUInteger)m_routeSharingPolicy routingContextUID:m_routingContextUID];
 
 #if PLATFORM(WATCHOS)
     m_viewController = videoFullscreenModel()->createVideoFullscreenViewController(m_playerViewController.get().avPlayerViewController);

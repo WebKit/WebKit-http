@@ -238,6 +238,7 @@ enum CompositingPolicy {
     [MayThrowException] void setFormControlStateOfPreviousHistoryItem(sequence<DOMString> values);
 
     [MayThrowException] DOMRect absoluteCaretBounds();
+    [MayThrowException] boolean isCaretBlinkingSuspended();
 
     DOMRect boundingBox(Element element);
 
@@ -263,6 +264,8 @@ enum CompositingPolicy {
     [MayThrowException] DOMRect visualViewportRect();
 
     [MayThrowException] void setViewIsTransparent(boolean trnasparent);
+
+    [MayThrowException] DOMString viewBaseBackgroundColor();
     [MayThrowException] void setViewBaseBackgroundColor(DOMString colorValue);
 
     [MayThrowException] void setPagination(DOMString mode, long gap, optional long pageLength = 0);
@@ -720,4 +723,6 @@ enum CompositingPolicy {
     HEVCParameterSet? parseHEVCCodecParameters(DOMString codecParameters);
 
     sequence<CookieData> getCookies();
+
+    void setAlwaysAllowLocalWebarchive();
 };

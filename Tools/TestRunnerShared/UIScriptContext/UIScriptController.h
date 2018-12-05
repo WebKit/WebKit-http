@@ -89,8 +89,9 @@ public:
 
     void enterText(JSStringRef);
     void typeCharacterUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
-    void keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
-    void keyUpUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
+
+    void keyDown(JSStringRef character, JSValueRef modifierArray);
+    void toggleCapsLock(JSValueRef callback);
 
     void keyboardAccessoryBarNext();
     void keyboardAccessoryBarPrevious();
@@ -199,6 +200,8 @@ public:
     void drawSquareInEditableImage();
     long numberOfStrokesInEditableImage();
 
+    JSObjectRef attachmentInfo(JSStringRef attachmentIdentifier);
+
 private:
     UIScriptController(UIScriptContext&);
     
@@ -221,6 +224,10 @@ private:
     JSObjectRef objectFromRect(const WebCore::FloatRect&) const;
 
     UIScriptContext* m_context;
+
+#if PLATFORM(MAC)
+    bool m_capsLockOn { false };
+#endif
 };
 
 }

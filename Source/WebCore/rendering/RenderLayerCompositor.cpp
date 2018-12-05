@@ -370,7 +370,7 @@ void RenderLayerCompositor::cacheAcceleratedCompositingFlagsAfterLayout()
 
 bool RenderLayerCompositor::updateCompositingPolicy()
 {
-    if (!inCompositingMode())
+    if (!usesCompositing())
         return false;
 
     auto currentPolicy = m_compositingPolicy;
@@ -632,12 +632,6 @@ void RenderLayerCompositor::updateCompositingLayersTimerFired()
     updateCompositingLayers(CompositingUpdateType::AfterLayout);
 }
 
-bool RenderLayerCompositor::hasAnyAdditionalCompositedLayers(const RenderLayer& rootLayer) const
-{
-    int layerCount = m_compositedLayerCount + page().pageOverlayController().overlayCount();
-    return layerCount > (rootLayer.isComposited() ? 1 : 0);
-}
-
 void RenderLayerCompositor::cancelCompositingLayerUpdate()
 {
     m_updateCompositingLayersTimer.stop();
@@ -646,7 +640,7 @@ void RenderLayerCompositor::cancelCompositingLayerUpdate()
 // Returns true on a successful update.
 bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType updateType, RenderLayer* updateRoot)
 {
-    LOG_WITH_STREAM(Compositing, stream << "RenderLayerCompositor " << this << " updateCompositingLayers " << updateType << " root " << updateRoot);
+    LOG_WITH_STREAM(Compositing, stream << "RenderLayerCompositor " << this << " updateCompositingLayers " << updateType << " contentLayersCount " << m_contentLayersCount);
 
 #if ENABLE(TREE_DEBUGGING)
     if (compositingLogEnabled())
@@ -739,7 +733,7 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
             appendDocumentOverlayLayers(childList);
             // Even when childList is empty, don't drop out of compositing mode if there are
             // composited layers that we didn't hit in our traversal (e.g. because of visibility:hidden).
-            if (childList.isEmpty() && !hasAnyAdditionalCompositedLayers(*updateRoot))
+            if (childList.isEmpty() && !needsCompositingForContentOrOverlays())
                 destroyRootLayer();
             else if (m_rootContentLayer)
                 m_rootContentLayer->setChildren(WTFMove(childList));
@@ -766,7 +760,7 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
     if (compositingLogEnabled()) {
         LOG(Compositing, "RenderLayerCompositor::updateCompositingLayers - post");
         showPaintOrderTree(m_renderView.layer());
-        LOG(Compositing, "RenderLayerCompositor::updateCompositingLayers - GraphicsLayers post");
+        LOG(Compositing, "RenderLayerCompositor::updateCompositingLayers - GraphicsLayers post, contentLayersCount %d", m_contentLayersCount);
         showGraphicsLayerTree(m_rootContentLayer.get());
     }
 #endif
@@ -897,7 +891,7 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
 
     // If we just entered compositing mode, the root will have become composited (as long as accelerated compositing is enabled).
     if (layer.isRenderViewLayer()) {
-        if (inCompositingMode() && m_hasAcceleratedCompositing)
+        if (usesCompositing() && m_hasAcceleratedCompositing)
             willBeComposited = true;
     }
     
@@ -967,7 +961,7 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     // to be composited, then we can drop out of compositing mode altogether. However, don't drop out of compositing mode
     // if there are composited layers that we didn't hit in our traversal (e.g. because of visibility:hidden).
     RequiresCompositingData rootLayerQueryData;
-    if (layer.isRenderViewLayer() && !childState.subtreeIsCompositing && !requiresCompositingLayer(layer, rootLayerQueryData) && !m_forceCompositingMode && !hasAnyAdditionalCompositedLayers(layer)) {
+    if (layer.isRenderViewLayer() && !childState.subtreeIsCompositing && !requiresCompositingLayer(layer, rootLayerQueryData) && !m_forceCompositingMode && !needsCompositingForContentOrOverlays()) {
         // Don't drop out of compositing on iOS, because we may flash. See <rdar://problem/8348337>.
 #if !PLATFORM(IOS_FAMILY)
         enableCompositingMode(false);
@@ -1176,29 +1170,35 @@ void RenderLayerCompositor::updateBackingAndHierarchy(RenderLayer& layer, Vector
     // to the compositing child list of an enclosing layer.
     Vector<Ref<GraphicsLayer>> layerChildren;
     auto& childList = layerBacking ? layerChildren : childLayersOfEnclosingLayer;
-    // FIXME: why the !layerBacking check?
-    bool requireDescendantTraversal = !layerBacking || layer.needsCompositingLayerConnection() || layer.hasDescendantNeedingUpdateBackingOrHierarchyTraversal() || !updateLevel.isEmpty();
+
+    bool requireDescendantTraversal = layer.hasDescendantNeedingUpdateBackingOrHierarchyTraversal()
+        || (layer.hasCompositingDescendant() && (!layerBacking || layer.needsCompositingLayerConnection() || !updateLevel.isEmpty()));
 
 #if !ASSERT_DISABLED
     LayerListMutationDetector mutationChecker(layer);
 #endif
     
-    if (requireDescendantTraversal) {
-        for (auto* renderLayer : layer.negativeZOrderLayers())
-            updateBackingAndHierarchy(*renderLayer, childList, updateLevel, depth + 1);
-
-            // If a negative z-order child is compositing, we get a foreground layer which needs to get parented.
+    auto appendForegroundLayerIfNecessary = [&] () {
+        // If a negative z-order child is compositing, we get a foreground layer which needs to get parented.
         if (layer.negativeZOrderLayers().size()) {
             if (layerBacking && layerBacking->foregroundLayer())
                 childList.append(*layerBacking->foregroundLayer());
         }
+    };
+
+    if (requireDescendantTraversal) {
+        for (auto* renderLayer : layer.negativeZOrderLayers())
+            updateBackingAndHierarchy(*renderLayer, childList, updateLevel, depth + 1);
+
+        appendForegroundLayerIfNecessary();
 
         for (auto* renderLayer : layer.normalFlowLayers())
             updateBackingAndHierarchy(*renderLayer, childList, updateLevel, depth + 1);
         
         for (auto* renderLayer : layer.positiveZOrderLayers())
             updateBackingAndHierarchy(*renderLayer, childList, updateLevel, depth + 1);
-    }
+    } else
+        appendForegroundLayerIfNecessary();
 
     if (layerBacking) {
         if (requireDescendantTraversal) {
@@ -1240,13 +1240,27 @@ void RenderLayerCompositor::appendDocumentOverlayLayers(Vector<Ref<GraphicsLayer
     childList.append(WTFMove(overlayHost));
 }
 
+bool RenderLayerCompositor::needsCompositingForContentOrOverlays() const
+{
+    return m_contentLayersCount + page().pageOverlayController().overlayCount();
+}
+
+void RenderLayerCompositor::layerBecameComposited(const RenderLayer& layer)
+{
+    if (&layer != m_renderView.layer())
+        ++m_contentLayersCount;
+}
+
 void RenderLayerCompositor::layerBecameNonComposited(const RenderLayer& layer)
 {
     // Inform the inspector that the given RenderLayer was destroyed.
+    // FIXME: "destroyed" is a misnomer.
     InspectorInstrumentation::renderLayerDestroyed(&page(), layer);
 
-    ASSERT(m_compositedLayerCount > 0);
-    --m_compositedLayerCount;
+    if (&layer != m_renderView.layer()) {
+        ASSERT(m_contentLayersCount > 0);
+        --m_contentLayersCount;
+    }
 }
 
 #if !LOG_DISABLED
@@ -1362,7 +1376,7 @@ void RenderLayerCompositor::layerStyleChanged(StyleDifference diff, RenderLayer&
     if (queryData.reevaluateAfterLayout)
         layer.setNeedsPostLayoutCompositingUpdate();
 
-    if (diff >= StyleDifference::LayoutPositionedMovementOnly && inCompositingMode()) {
+    if (diff >= StyleDifference::LayoutPositionedMovementOnly && hasContentCompositingLayers()) {
         layer.setNeedsPostLayoutCompositingUpdate();
         layer.setNeedsCompositingGeometryUpdate();
     }
@@ -1386,6 +1400,10 @@ void RenderLayerCompositor::layerStyleChanged(StyleDifference diff, RenderLayer&
                 layer.setNeedsCompositingGeometryUpdate();
         }
     }
+
+    // This is necessary to get iframe layers hooked up in response to scheduleInvalidateStyleAndLayerComposition().
+    if (diff == StyleDifference::RecompositeLayer && layer.isComposited() && is<RenderWidget>(layer.renderer()))
+        layer.setNeedsCompositingConfigurationUpdate();
 
     if (diff >= StyleDifference::RecompositeLayer && oldStyle) {
         if (oldStyle->transform() != newStyle.transform()) {
@@ -1549,7 +1567,7 @@ bool RenderLayerCompositor::updateBacking(RenderLayer& layer, RequiresCompositin
 
     if (layerChanged && is<RenderWidget>(layer.renderer())) {
         auto* innerCompositor = frameContentsCompositor(&downcast<RenderWidget>(layer.renderer()));
-        if (innerCompositor && innerCompositor->inCompositingMode())
+        if (innerCompositor && innerCompositor->usesCompositing())
             innerCompositor->updateRootLayerAttachment();
     }
     
@@ -1903,7 +1921,7 @@ String RenderLayerCompositor::layerTreeAsText(LayerTreeFlags flags)
 
     // Dump an empty layer tree only if the only composited layer is the main frame's tiled backing,
     // so that tests expecting us to drop out of accelerated compositing when there are no layers succeed.
-    if (!hasAnyAdditionalCompositedLayers(rootRenderLayer()) && documentUsesTiledBacking() && !(layerTreeBehavior & LayerTreeAsTextIncludeTileCaches))
+    if (!hasContentCompositingLayers() && documentUsesTiledBacking() && !(layerTreeBehavior & LayerTreeAsTextIncludeTileCaches))
         layerTreeText = emptyString();
 
     // The true root layer is not included in the dump, so if we want to report
@@ -1926,7 +1944,7 @@ RenderLayerCompositor* RenderLayerCompositor::frameContentsCompositor(RenderWidg
 bool RenderLayerCompositor::parentFrameContentLayers(RenderWidget* renderer)
 {
     auto* innerCompositor = frameContentsCompositor(renderer);
-    if (!innerCompositor || !innerCompositor->inCompositingMode() || innerCompositor->rootLayerAttachment() != RootLayerAttachedViaEnclosingFrame)
+    if (!innerCompositor || !innerCompositor->usesCompositing() || innerCompositor->rootLayerAttachment() != RootLayerAttachedViaEnclosingFrame)
         return false;
     
     auto* layer = renderer->layer();
@@ -1987,7 +2005,7 @@ void RenderLayerCompositor::setIsInWindow(bool isInWindow)
 {
     LOG(Compositing, "RenderLayerCompositor %p setIsInWindow %d", this, isInWindow);
 
-    if (!inCompositingMode())
+    if (!usesCompositing())
         return;
 
     if (auto* rootLayer = rootGraphicsLayer()) {
@@ -2069,7 +2087,7 @@ bool RenderLayerCompositor::needsToBeComposited(const RenderLayer& layer, Requir
     if (!canBeComposited(layer))
         return false;
 
-    return requiresCompositingLayer(layer, queryData) || layer.mustCompositeForIndirectReasons() || (inCompositingMode() && layer.isRenderViewLayer());
+    return requiresCompositingLayer(layer, queryData) || layer.mustCompositeForIndirectReasons() || (usesCompositing() && layer.isRenderViewLayer());
 }
 
 // Note: this specifies whether the RL needs a compositing layer for intrinsic reasons.
@@ -2266,7 +2284,7 @@ OptionSet<CompositingReason> RenderLayerCompositor::reasonsForCompositing(const 
         break;
     }
 
-    if (inCompositingMode() && renderer.layer()->isRenderViewLayer())
+    if (usesCompositing() && renderer.layer()->isRenderViewLayer())
         reasons.add(CompositingReason::Root);
 
     return reasons;
@@ -2426,7 +2444,7 @@ bool RenderLayerCompositor::requiresCompositingForAnimation(RenderLayerModelObje
     const AnimationBase::RunningState activeAnimationState = AnimationBase::Running | AnimationBase::Paused;
     auto& animController = renderer.animation();
     return (animController.isRunningAnimationOnRenderer(renderer, CSSPropertyOpacity, activeAnimationState)
-        && (inCompositingMode() || (m_compositingTriggers & ChromeClient::AnimatedOpacityTrigger)))
+        && (usesCompositing() || (m_compositingTriggers & ChromeClient::AnimatedOpacityTrigger)))
         || animController.isRunningAnimationOnRenderer(renderer, CSSPropertyFilter, activeAnimationState)
 #if ENABLE(FILTERS_LEVEL_2)
         || animController.isRunningAnimationOnRenderer(renderer, CSSPropertyWebkitBackdropFilter, activeAnimationState)
@@ -3209,7 +3227,7 @@ bool RenderLayerCompositor::viewHasTransparentBackground(Color* backgroundColor)
 // be on the body which has no RenderLayer.
 void RenderLayerCompositor::rootOrBodyStyleChanged(RenderElement& renderer, const RenderStyle* oldStyle)
 {
-    if (!inCompositingMode())
+    if (!usesCompositing())
         return;
 
     Color oldBackgroundColor;
@@ -3226,7 +3244,7 @@ void RenderLayerCompositor::rootOrBodyStyleChanged(RenderElement& renderer, cons
 
 void RenderLayerCompositor::rootBackgroundColorOrTransparencyChanged()
 {
-    if (!inCompositingMode())
+    if (!usesCompositing())
         return;
 
     Color backgroundColor;

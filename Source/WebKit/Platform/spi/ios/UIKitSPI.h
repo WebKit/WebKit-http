@@ -91,7 +91,6 @@
 
 #if ENABLE(DRAG_SUPPORT)
 #import <UIKit/NSItemProvider+UIKitAdditions_Private.h>
-#import <UIKit/UIItemProvider_Private.h>
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
@@ -158,7 +157,8 @@ typedef NS_ENUM(NSInteger, UIPreviewItemType) {
 @end
 
 WTF_EXTERN_C_BEGIN
-typedef struct __IOHIDEvent * IOHIDEventRef;
+typedef struct __IOHIDEvent* IOHIDEventRef;
+typedef struct __GSKeyboard* GSKeyboardRef;
 WTF_EXTERN_C_END
 
 @interface UIApplication ()
@@ -168,6 +168,7 @@ WTF_EXTERN_C_END
 - (BOOL)isSuspendedUnderLock;
 - (void)_enqueueHIDEvent:(IOHIDEventRef)event;
 - (void)_handleHIDEvent:(IOHIDEventRef)event;
+- (void)handleKeyUIEvent:(UIEvent *)event;
 @end
 
 typedef NS_ENUM(NSInteger, UIDatePickerPrivateMode)  {
@@ -198,7 +199,6 @@ typedef enum {
 - (void *)_hidEvent;
 - (NSString *)_unmodifiedInput;
 - (NSString *)_modifiedInput;
-- (NSInteger)_modifierFlags;
 - (BOOL)_isKeyDown;
 @end
 
@@ -933,9 +933,6 @@ typedef enum {
 
 #if ENABLE(DRAG_SUPPORT)
 
-@interface UIItemProvider : NSItemProvider
-@end
-
 WTF_EXTERN_C_BEGIN
 
 NSTimeInterval _UIDragInteractionDefaultLiftDelay(void);
@@ -1023,9 +1020,12 @@ typedef NSInteger UICompositingMode;
 @end
 
 @interface UIPhysicalKeyboardEvent ()
-@property (nonatomic, readonly) UIKeyboardInputFlags _inputFlags;
++ (UIPhysicalKeyboardEvent *)_eventWithInput:(NSString *)input inputFlags:(UIKeyboardInputFlags)flags;
+- (void)_setHIDEvent:(IOHIDEventRef)event keyboard:(GSKeyboardRef)gsKeyboard;
 - (UIPhysicalKeyboardEvent *)_cloneEvent NS_RETURNS_RETAINED;
+@property (nonatomic, readonly) UIKeyboardInputFlags _inputFlags;
 @property (nonatomic, readonly) CFIndex _keyCode;
+@property (nonatomic, readonly) NSInteger _gsModifierFlags;
 @end
 
 @interface UIColor (IPI)

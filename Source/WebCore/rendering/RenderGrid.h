@@ -46,7 +46,6 @@ public:
 };
 
 enum GridAxisPosition {GridAxisStart, GridAxisEnd, GridAxisCenter};
-enum GridAxis { GridRowAxis, GridColumnAxis };
 
 class RenderGrid final : public RenderBlock {
     WTF_MAKE_ISO_ALLOCATED(RenderGrid);
@@ -57,7 +56,7 @@ public:
     Element& element() const { return downcast<Element>(nodeForNonAnonymous()); }
 
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0_lu) override;
 
     bool avoidsFloats() const override { return true; }
     bool canDropAnonymousBlockChild() const override { return false; }
@@ -75,6 +74,10 @@ public:
     LayoutUnit gridItemOffset(GridTrackSizingDirection) const;
 
     void updateGridAreaLogicalSize(RenderBox&, LayoutSize) const;
+    bool isBaselineAlignmentForChild(const RenderBox&) const;
+    bool isBaselineAlignmentForChild(const RenderBox&, GridAxis) const;
+
+    StyleSelfAlignmentData selfAlignmentForChild(GridAxis, const RenderBox&, const RenderStyle* = nullptr) const;
 
     StyleContentAlignmentData contentAlignment(GridTrackSizingDirection) const;
 
@@ -90,7 +93,6 @@ private:
     bool isRenderGrid() const override { return true; }
     void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const override;
 
-    StyleSelfAlignmentData selfAlignmentForChild(GridAxis, const RenderBox&, const RenderStyle* = nullptr) const;
     bool selfAlignmentChangedToStretch(GridAxis, const RenderStyle& oldStyle, const RenderStyle& newStyle, const RenderBox&) const;
     bool selfAlignmentChangedFromStretch(GridAxis, const RenderStyle& oldStyle, const RenderStyle& newStyle, const RenderBox&) const;
 
@@ -98,8 +100,6 @@ private:
 
     bool explicitGridDidResize(const RenderStyle&) const;
     bool namedGridLinesDefinitionDidChange(const RenderStyle&) const;
-
-    std::optional<LayoutUnit> computeIntrinsicLogicalContentHeightUsing(Length logicalHeightLength, std::optional<LayoutUnit> intrinsicContentHeight, LayoutUnit borderAndPadding) const override;
 
     unsigned computeAutoRepeatTracksCount(GridTrackSizingDirection, std::optional<LayoutUnit> availableSize) const;
 
@@ -125,7 +125,7 @@ private:
     void layoutPositionedObject(RenderBox&, bool relayoutChildren, bool fixedPositionObjectsOnly) override;
 
     void computeTrackSizesForDefiniteSize(GridTrackSizingDirection, LayoutUnit availableSpace);
-    void computeTrackSizesForIndefiniteSize(GridTrackSizingAlgorithm&, GridTrackSizingDirection, LayoutUnit& minIntrinsicSize, LayoutUnit& maxIntrinsicSize) const;
+    void computeTrackSizesForIndefiniteSize(GridTrackSizingAlgorithm&, GridTrackSizingDirection, LayoutUnit* minIntrinsicSize = nullptr, LayoutUnit* maxIntrinsicSize = nullptr) const;
     LayoutUnit computeTrackBasedLogicalHeight() const;
 
     void repeatTracksSizingIfNeeded(LayoutUnit availableSpaceForColumns, LayoutUnit availableSpaceForRows);
@@ -173,6 +173,9 @@ private:
     std::optional<int> inlineBlockBaseline(LineDirectionMode) const final;
     bool isInlineBaselineAlignedChild(const RenderBox&) const;
 
+    LayoutUnit columnAxisBaselineOffsetForChild(const RenderBox&) const;
+    LayoutUnit rowAxisBaselineOffsetForChild(const RenderBox&) const;
+
     LayoutUnit gridGap(GridTrackSizingDirection) const;
     LayoutUnit gridGap(GridTrackSizingDirection, std::optional<LayoutUnit> availableSize) const;
 
@@ -195,10 +198,8 @@ private:
     OutOfFlowPositionsMap m_outOfFlowItemColumn;
     OutOfFlowPositionsMap m_outOfFlowItemRow;
 
-    std::optional<LayoutUnit> m_minContentHeight;
-    std::optional<LayoutUnit> m_maxContentHeight;
-
     bool m_hasAnyOrthogonalItem {false};
+    bool m_baselineItemsCached {false};
 };
 
 } // namespace WebCore

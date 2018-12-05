@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2013, 2015 Apple Inc.  All rights reserved.
+ * Copyright (C) 2007-2018 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,7 +37,6 @@ WI.TreeOutline = class TreeOutline extends WI.Object
         this.element.addEventListener("contextmenu", this._handleContextmenu.bind(this));
 
         this.children = [];
-        this.selectedTreeElement = null;
         this._childrenListNode = this.element;
         this._childrenListNode.removeChildren();
         this._knownTreeElements = [];
@@ -55,6 +54,14 @@ WI.TreeOutline = class TreeOutline extends WI.Object
         this._customIndent = false;
         this._selectable = selectable;
 
+        this._cachedNumberOfDescendents = 0;
+        this._selectionController = new WI.SelectionController(this);
+        this._treeElementIndexCache = new Map;
+
+        this._itemWasSelectedByUser = false;
+        this._processingSelectionControllerSelectionDidChange = false;
+        this._suppressNextSelectionDidChangeEvent = false;
+
         this._virtualizedVisibleTreeElements = null;
         this._virtualizedAttachedTreeElements = null;
         this._virtualizedScrollContainer = null;
@@ -64,6 +71,7 @@ WI.TreeOutline = class TreeOutline extends WI.Object
 
         this._childrenListNode.tabIndex = 0;
         this._childrenListNode.addEventListener("keydown", this._treeKeyDown.bind(this), true);
+        this._childrenListNode.addEventListener("mousedown", this._handleMouseDown.bind(this));
 
         WI.TreeOutline._generateStyleRulesIfNeeded();
 
@@ -72,6 +80,57 @@ WI.TreeOutline = class TreeOutline extends WI.Object
     }
 
     // Public
+
+    get allowsEmptySelection()
+    {
+        return this._selectionController.allowsEmptySelection;
+    }
+
+    set allowsEmptySelection(flag)
+    {
+        this._selectionController.allowsEmptySelection = flag;
+    }
+
+    get allowsMultipleSelection()
+    {
+        return this._selectionController.allowsMultipleSelection;
+    }
+
+    set allowsMultipleSelection(flag)
+    {
+        this._selectionController.allowsMultipleSelection = flag;
+    }
+
+    get selectedTreeElement()
+    {
+        let selectedIndex = this._selectionController.lastSelectedItem;
+        return this._treeElementAtIndex(selectedIndex) || null;
+    }
+
+    set selectedTreeElement(treeElement)
+    {
+        if (treeElement) {
+            let index = this._indexOfTreeElement(treeElement);
+            this._selectionController.selectItem(index);
+        } else
+            this._selectionController.deselectAll();
+    }
+
+    get selectedTreeElements()
+    {
+        if (this.allowsMultipleSelection) {
+            let treeElements = [];
+            for (let index of this._selectionController.selectedItems)
+                treeElements.push(this._treeElementAtIndex(index));
+            return treeElements;
+        }
+
+        let selectedTreeElement = this.selectedTreeElement;
+        if (selectedTreeElement)
+            return [selectedTreeElement];
+
+        return [];
+    }
 
     get hidden()
     {
@@ -242,6 +301,9 @@ WI.TreeOutline = class TreeOutline extends WI.Object
 
         if (isFirstChild && this.expanded)
             this.expand();
+
+        let insertionIndex = this.treeOutline._indexOfTreeElement(child.previousSibling) || 0;
+        this.treeOutline._selectionController.didInsertItem(insertionIndex);
     }
 
     removeChildAtIndex(childIndex, suppressOnDeselect, suppressSelectSibling)
@@ -272,6 +334,7 @@ WI.TreeOutline = class TreeOutline extends WI.Object
         if (treeOutline) {
             treeOutline._forgetTreeElement(child);
             treeOutline._forgetChildrenRecursive(child);
+            treeOutline._selectionController.didRemoveItem(childIndex);
         }
 
         child._detach();
@@ -378,6 +441,9 @@ WI.TreeOutline = class TreeOutline extends WI.Object
 
     _rememberTreeElement(element)
     {
+        this._treeElementIndexCache.clear();
+        this._cachedNumberOfDescendents++;
+
         if (!this._knownTreeElements[element.identifier])
             this._knownTreeElements[element.identifier] = [];
 
@@ -392,6 +458,9 @@ WI.TreeOutline = class TreeOutline extends WI.Object
 
     _forgetTreeElement(element)
     {
+        this._treeElementIndexCache.clear();
+        this._cachedNumberOfDescendents--;
+
         if (this.selectedTreeElement === element) {
             element.deselect(true);
             this.selectedTreeElement = null;
@@ -523,24 +592,15 @@ WI.TreeOutline = class TreeOutline extends WI.Object
         if (event.target !== this._childrenListNode)
             return;
 
-        if (!this.selectedTreeElement || event.shiftKey || event.metaKey || event.ctrlKey)
+        if (!this.selectedTreeElement || event.commandOrControlKey)
             return;
 
         let isRTL = WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL;
 
         var handled = false;
         var nextSelectedElement;
-        if (event.keyIdentifier === "Up" && !event.altKey) {
-            nextSelectedElement = this.selectedTreeElement.traversePreviousTreeElement(true);
-            while (nextSelectedElement && !nextSelectedElement.selectable)
-                nextSelectedElement = nextSelectedElement.traversePreviousTreeElement(true);
-            handled = nextSelectedElement ? true : false;
-        } else if (event.keyIdentifier === "Down" && !event.altKey) {
-            nextSelectedElement = this.selectedTreeElement.traverseNextTreeElement(true);
-            while (nextSelectedElement && !nextSelectedElement.selectable)
-                nextSelectedElement = nextSelectedElement.traverseNextTreeElement(true);
-            handled = nextSelectedElement ? true : false;
-        } else if ((!isRTL && event.keyIdentifier === "Left") || (isRTL && event.keyIdentifier === "Right")) {
+
+        if ((!isRTL && event.keyIdentifier === "Left") || (isRTL && event.keyIdentifier === "Right")) {
             if (this.selectedTreeElement.expanded) {
                 if (event.altKey)
                     this.selectedTreeElement.collapseRecursively();
@@ -576,8 +636,10 @@ WI.TreeOutline = class TreeOutline extends WI.Object
                 }
             }
         } else if (event.keyCode === 8 /* Backspace */ || event.keyCode === 46 /* Delete */) {
-            if (this.selectedTreeElement.ondelete)
-                handled = this.selectedTreeElement.ondelete();
+            for (let treeElement of this.selectedTreeElements) {
+                if (treeElement.ondelete && treeElement.ondelete())
+                    handled = true;
+            }
             if (!handled && this.treeOutline.ondelete)
                 handled = this.treeOutline.ondelete(this.selectedTreeElement);
         } else if (isEnterKey(event)) {
@@ -591,6 +653,9 @@ WI.TreeOutline = class TreeOutline extends WI.Object
             if (!handled && this.treeOutline.onspace)
                 handled = this.treeOutline.onspace(this.selectedTreeElement);
         }
+
+        if (!handled)
+            handled = this._selectionController.handleKeyDown(event);
 
         if (nextSelectedElement) {
             nextSelectedElement.reveal();
@@ -762,7 +827,95 @@ WI.TreeOutline = class TreeOutline extends WI.Object
             this._virtualizedScrollContainer.scrollTop = (firstItem + extraRows) * this._virtualizedTreeItemHeight;
     }
 
+    // SelectionController delegate
+
+    selectionControllerNumberOfItems(controller)
+    {
+        return this._cachedNumberOfDescendents;
+    }
+
+    selectionControllerSelectionDidChange(controller, deselectedItems, selectedItems)
+    {
+        this._processingSelectionControllerSelectionDidChange = true;
+
+        for (let index of deselectedItems) {
+            let treeElement = this._treeElementAtIndex(index);
+            console.assert(treeElement, "Missing TreeElement for deselected index " + index);
+            if (treeElement) {
+                treeElement.listItemElement.classList.remove("selected");
+                if (!this._suppressNextSelectionDidChangeEvent)
+                    treeElement.deselect();
+            }
+        }
+
+        for (let index of selectedItems) {
+            let treeElement = this._treeElementAtIndex(index);
+            console.assert(treeElement, "Missing TreeElement for selected index " + index);
+            if (treeElement) {
+                treeElement.listItemElement.classList.add("selected");
+                if (!this._suppressNextSelectionDidChangeEvent)
+                    treeElement.select();
+            }
+        }
+
+        this._processingSelectionControllerSelectionDidChange = false;
+
+        this._dispatchSelectionDidChangeEvent();
+    }
+
+    selectionControllerNextSelectableIndex(controller, index)
+    {
+        let treeElement = this._treeElementAtIndex(index);
+        if (!treeElement)
+            return NaN;
+
+        const skipUnrevealed = true;
+        const stayWithin = null;
+        const dontPopulate = true;
+
+        while (treeElement = treeElement.traverseNextTreeElement(skipUnrevealed, stayWithin, dontPopulate)) {
+            if (treeElement.selectable)
+                return this._indexOfTreeElement(treeElement);
+        }
+
+        return NaN;
+    }
+
+    selectionControllerPreviousSelectableIndex(controller, index)
+    {
+        let treeElement = this._treeElementAtIndex(index);
+        if (!treeElement)
+            return NaN;
+
+        const skipUnrevealed = true;
+        const stayWithin = null;
+        const dontPopulate = true;
+
+        while (treeElement = treeElement.traversePreviousTreeElement(skipUnrevealed, stayWithin, dontPopulate)) {
+            if (treeElement.selectable)
+                return this._indexOfTreeElement(treeElement);
+        }
+
+        return NaN;
+    }
+
     // Protected
+
+    selectTreeElementInternal(treeElement, suppressNotification = false, selectedByUser = false)
+    {
+        if (this._processingSelectionControllerSelectionDidChange)
+            return;
+
+        this._itemWasSelectedByUser = selectedByUser;
+        this._suppressNextSelectionDidChangeEvent = suppressNotification;
+
+        if (this.allowsRepeatSelection && this.selectedTreeElement === treeElement) {
+            this._dispatchSelectionDidChangeEvent();
+            return;
+        }
+
+        this.selectedTreeElement = treeElement;
+    }
 
     treeElementFromEvent(event)
     {
@@ -859,6 +1012,93 @@ WI.TreeOutline = class TreeOutline extends WI.Object
 
         let contextMenu = WI.ContextMenu.createFromEvent(event);
         this.populateContextMenu(contextMenu, event, treeElement);
+    }
+
+    _handleMouseDown(event)
+    {
+        let treeElement = this.treeElementFromEvent(event);
+        if (!treeElement || !treeElement.selectable)
+            return;
+
+        if (treeElement.isEventWithinDisclosureTriangle(event)) {
+            event.preventDefault();
+            return;
+        }
+
+        if (!treeElement.canSelectOnMouseDown(event)) {
+            event.preventDefault();
+            return;
+        }
+
+        let index = this._indexOfTreeElement(treeElement);
+        if (isNaN(index))
+            return;
+
+        this._selectionController.handleItemMouseDown(index, event);
+    }
+
+    _indexOfTreeElement(treeElement)
+    {
+        function previousElement(element) {
+            if (element.previousSibling) {
+                element = element.previousSibling;
+                if (element.children.length)
+                    element = element.children.lastValue;
+            } else
+                element = element.parent && element.parent.root ? null : element.parent;
+            return element;
+        }
+
+        let index = 0;
+        let current = treeElement;
+        while (current) {
+            let closestIndex = this._treeElementIndexCache.get(current);
+            if (!isNaN(closestIndex)) {
+                index += closestIndex;
+                break;
+            }
+
+            current = previousElement(current);
+            if (current)
+                index++;
+        }
+
+        if (!this._treeElementIndexCache.has(treeElement))
+            this._treeElementIndexCache.set(treeElement, index);
+
+        return index;
+    }
+
+    _treeElementAtIndex(index)
+    {
+        const skipUnrevealed = false;
+        const stayWithin = null;
+        const dontPopulate = true;
+
+        let current = 0;
+        let treeElement = this.children[0];
+        while (treeElement) {
+            if (current === index)
+                return treeElement;
+
+            treeElement = treeElement.traverseNextTreeElement(skipUnrevealed, stayWithin, dontPopulate);
+            ++current;
+        }
+
+        return null;
+    }
+
+    _dispatchSelectionDidChangeEvent()
+    {
+        let selectedByUser = this._itemWasSelectedByUser;
+        this._itemWasSelectedByUser = false;
+
+        if (this._suppressNextSelectionDidChangeEvent) {
+            this._suppressNextSelectionDidChangeEvent = false;
+            return;
+        }
+
+        this.dispatchEventToListeners(WI.TreeOutline.Event.SelectionDidChange, {selectedByUser});
     }
 };
 

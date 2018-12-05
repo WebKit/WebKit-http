@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-CertificateInfo::CertificateInfo(int verificationError, Vector<Certificate>&& certificateChain)
+CertificateInfo::CertificateInfo(int verificationError, CertificateChain&& certificateChain)
     : m_verificationError(verificationError)
     , m_certificateChain(WTFMove(certificateChain))
 {
@@ -43,7 +43,7 @@ CertificateInfo CertificateInfo::isolatedCopy() const
     return { m_verificationError, crossThreadCopy(m_certificateChain) };
 }
 
-CertificateInfo::Certificate CertificateInfo::makeCertificate(const char* buffer, size_t size)
+CertificateInfo::Certificate CertificateInfo::makeCertificate(const uint8_t* buffer, size_t size)
 {
     Certificate certificate;
     certificate.append(buffer, size);

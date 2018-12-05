@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -282,6 +282,9 @@ RefPtr<Memory> Memory::tryCreate(PageCount initial, PageCount maximum, WTF::Func
     const size_t initialBytes = initial.bytes();
     const size_t maximumBytes = maximum ? maximum.bytes() : 0;
 
+    if (initialBytes > MAX_ARRAY_BUFFER_SIZE)
+        return nullptr; // Client will throw OOMError.
+
     if (maximum && !maximumBytes) {
         // User specified a zero maximum, initial size must also be zero.
         RELEASE_ASSERT(!initialBytes);
@@ -372,8 +375,10 @@ Expected<PageCount, Memory::GrowFailReason> Memory::grow(PageCount delta)
         return makeUnexpected(GrowFailReason::InvalidDelta);
     
     const Wasm::PageCount newPageCount = oldPageCount + delta;
-    if (!newPageCount)
+    if (!newPageCount || !newPageCount.isValid())
         return makeUnexpected(GrowFailReason::InvalidGrowSize);
+    if (newPageCount.bytes() > MAX_ARRAY_BUFFER_SIZE)
+        return makeUnexpected(GrowFailReason::OutOfMemory);
 
     auto success = [&] () {
         m_growSuccessCallback(GrowSuccessTag, oldPageCount, newPageCount);
@@ -395,6 +400,7 @@ Expected<PageCount, Memory::GrowFailReason> Memory::grow(PageCount delta)
         return makeUnexpected(GrowFailReason::WouldExceedMaximum);
 
     size_t desiredSize = newPageCount.bytes();
+    RELEASE_ASSERT(desiredSize <= MAX_ARRAY_BUFFER_SIZE);
     RELEASE_ASSERT(desiredSize > m_size);
     size_t extraBytes = desiredSize - m_size;
     RELEASE_ASSERT(extraBytes);

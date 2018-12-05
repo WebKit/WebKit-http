@@ -42,6 +42,7 @@ OBJC_CLASS WebNodeHighlighter;
 OBJC_CLASS WebView;
 
 namespace WebCore {
+class CertificateInfo;
 class Frame;
 class Page;
 }
@@ -116,6 +117,7 @@ public:
 
     void bringToFront() override;
     void closeWindow() override;
+    void reopen() override;
 
     void attachWindow(DockSide) override;
     void detachWindow() override;
@@ -124,6 +126,7 @@ public:
     void setAttachedWindowWidth(unsigned height) override;
 
     void inspectedURLChanged(const String& newURL) override;
+    void showCertificate(const WebCore::CertificateInfo&) override;
 
 private:
     void updateWindowTitle() const;

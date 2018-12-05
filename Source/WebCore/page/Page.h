@@ -278,6 +278,8 @@ public:
     bool tabKeyCyclesThroughElements() const { return m_tabKeyCyclesThroughElements; }
 
     WEBCORE_EXPORT bool findString(const String&, FindOptions, DidWrap* = nullptr);
+    WEBCORE_EXPORT uint32_t replaceRangesWithText(const Vector<Ref<Range>>& rangesToReplace, const String& replacementText, bool selectionOnly);
+    WEBCORE_EXPORT uint32_t replaceSelectionWithText(const String& replacementText);
 
     WEBCORE_EXPORT RefPtr<Range> rangeOfString(const String&, Range*, FindOptions);
 
@@ -358,6 +360,8 @@ public:
     
     WEBCORE_EXPORT bool useDarkAppearance() const;
     WEBCORE_EXPORT void setUseDarkAppearance(bool);
+    bool defaultUseDarkAppearance() const { return m_useDarkAppearance; }
+    void setUseDarkAppearanceOverride(std::optional<bool>);
 
 #if ENABLE(TEXT_AUTOSIZING)
     float textAutosizingWidth() const { return m_textAutosizingWidth; }
@@ -791,6 +795,7 @@ private:
     
     bool m_useSystemAppearance { false };
     bool m_useDarkAppearance { false };
+    std::optional<bool> m_useDarkAppearanceOverride;
 
 #if ENABLE(TEXT_AUTOSIZING)
     float m_textAutosizingWidth { 0 };

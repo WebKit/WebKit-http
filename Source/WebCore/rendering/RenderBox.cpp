@@ -369,6 +369,10 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
             setNeedsLayoutAndPrefWidthsRecalc();
         }
 
+#if ENABLE(DARK_MODE_CSS)
+        view().frameView().recalculateBaseBackgroundColor();
+#endif
+
         view().frameView().recalculateScrollbarOverlayStyle();
         
         const Pagination& pagination = view().frameView().pagination();
@@ -1161,7 +1165,7 @@ LayoutUnit RenderBox::adjustContentBoxLogicalHeightForBoxSizing(std::optional<La
     LayoutUnit result = height.value();
     if (style().boxSizing() == BoxSizing::BorderBox)
         result -= borderAndPaddingLogicalHeight();
-    return std::max(LayoutUnit(), result);
+    return std::max(0_lu, result);
 }
 
 // Hit Testing
@@ -1797,24 +1801,24 @@ LayoutRect RenderBox::clipRect(const LayoutPoint& location, RenderFragmentContai
 
     if (!style().clipLeft().isAuto()) {
         LayoutUnit c = valueForLength(style().clipLeft(), borderBoxRect.width());
-        clipRect.move(c, 0);
-        clipRect.contract(c, 0);
+        clipRect.move(c, 0_lu);
+        clipRect.contract(c, 0_lu);
     }
 
     // We don't use the fragment-specific border box's width and height since clip offsets are (stupidly) specified
     // from the left and top edges. Therefore it's better to avoid constraining to smaller widths and heights.
 
     if (!style().clipRight().isAuto())
-        clipRect.contract(width() - valueForLength(style().clipRight(), width()), 0);
+        clipRect.contract(width() - valueForLength(style().clipRight(), width()), 0_lu);
 
     if (!style().clipTop().isAuto()) {
         LayoutUnit c = valueForLength(style().clipTop(), borderBoxRect.height());
-        clipRect.move(0, c);
-        clipRect.contract(0, c);
+        clipRect.move(0_lu, c);
+        clipRect.contract(0_lu, c);
     }
 
     if (!style().clipBottom().isAuto())
-        clipRect.contract(0, height() - valueForLength(style().clipBottom(), height()));
+        clipRect.contract(0_lu, height() - valueForLength(style().clipBottom(), height()));
 
     return clipRect;
 }
@@ -1824,7 +1828,7 @@ LayoutUnit RenderBox::shrinkLogicalWidthToAvoidFloats(LayoutUnit childMarginStar
     RenderFragmentContainer* containingBlockFragment = nullptr;
     LayoutUnit logicalTopPosition = logicalTop();
     if (fragment) {
-        LayoutUnit offsetFromLogicalTopOfFragment = fragment ? fragment->logicalTopForFragmentedFlowContent() - offsetFromLogicalTopOfFirstPage() : LayoutUnit();
+        LayoutUnit offsetFromLogicalTopOfFragment = fragment ? fragment->logicalTopForFragmentedFlowContent() - offsetFromLogicalTopOfFirstPage() : 0_lu;
         logicalTopPosition = std::max(logicalTopPosition, logicalTopPosition + offsetFromLogicalTopOfFragment);
         containingBlockFragment = cb.clampToStartAndEndFragments(fragment);
     }
@@ -1869,7 +1873,7 @@ LayoutUnit RenderBox::containingBlockLogicalWidthForContent() const
 
     if (RenderBlock* cb = containingBlock())
         return cb->availableLogicalWidth();
-    return LayoutUnit();
+    return 0_lu;
 }
 
 LayoutUnit RenderBox::containingBlockLogicalHeightForContent(AvailableLogicalHeightType heightType) const
@@ -1881,7 +1885,7 @@ LayoutUnit RenderBox::containingBlockLogicalHeightForContent(AvailableLogicalHei
 
     if (RenderBlock* cb = containingBlock())
         return cb->availableLogicalHeight(heightType);
-    return LayoutUnit();
+    return 0_lu;
 }
 
 LayoutUnit RenderBox::containingBlockLogicalWidthForContentInFragment(RenderFragmentContainer* fragment) const
@@ -1906,7 +1910,7 @@ LayoutUnit RenderBox::containingBlockAvailableLineWidthInFragment(RenderFragment
     RenderFragmentContainer* containingBlockFragment = nullptr;
     LayoutUnit logicalTopPosition = logicalTop();
     if (fragment) {
-        LayoutUnit offsetFromLogicalTopOfFragment = fragment ? fragment->logicalTopForFragmentedFlowContent() - offsetFromLogicalTopOfFirstPage() : LayoutUnit();
+        LayoutUnit offsetFromLogicalTopOfFragment = fragment ? fragment->logicalTopForFragmentedFlowContent() - offsetFromLogicalTopOfFirstPage() : 0_lu;
         logicalTopPosition = std::max(logicalTopPosition, logicalTopPosition + offsetFromLogicalTopOfFragment);
         containingBlockFragment = cb->clampToStartAndEndFragments(fragment);
     }
@@ -2400,8 +2404,8 @@ void RenderBox::computeLogicalWidthInFragment(LogicalExtentComputedValues& compu
 
 LayoutUnit RenderBox::fillAvailableMeasure(LayoutUnit availableLogicalWidth) const
 {
-    LayoutUnit marginStart = 0;
-    LayoutUnit marginEnd = 0;
+    LayoutUnit marginStart;
+    LayoutUnit marginEnd;
     return fillAvailableMeasure(availableLogicalWidth, marginStart, marginEnd);
 }
 
@@ -2417,8 +2421,8 @@ LayoutUnit RenderBox::computeIntrinsicLogicalWidthUsing(Length logicalWidthLengt
     if (logicalWidthLength.type() == FillAvailable)
         return std::max(borderAndPadding, fillAvailableMeasure(availableLogicalWidth));
 
-    LayoutUnit minLogicalWidth = 0;
-    LayoutUnit maxLogicalWidth = 0;
+    LayoutUnit minLogicalWidth;
+    LayoutUnit maxLogicalWidth;
     computeIntrinsicLogicalWidths(minLogicalWidth, maxLogicalWidth);
 
     if (logicalWidthLength.type() == MinContent)
@@ -2452,8 +2456,8 @@ LayoutUnit RenderBox::computeLogicalWidthInFragmentUsing(SizeType widthType, Len
     if (logicalWidth.isIntrinsic())
         return computeIntrinsicLogicalWidthUsing(logicalWidth, availableLogicalWidth, borderAndPaddingLogicalWidth());
 
-    LayoutUnit marginStart = 0;
-    LayoutUnit marginEnd = 0;
+    LayoutUnit marginStart;
+    LayoutUnit marginEnd;
     LayoutUnit logicalWidthResult = fillAvailableMeasure(availableLogicalWidth, marginStart, marginEnd);
 
     if (shrinkToAvoidFloats() && cb.containsFloats())
@@ -2795,7 +2799,7 @@ LayoutUnit RenderBox::computeLogicalHeightWithoutLayout() const
     // FIXME:: We should probably return something other than just
     // border + padding, but for now we have no good way to do anything else
     // without layout, so we just use that.
-    LogicalExtentComputedValues computedValues = computeLogicalHeight(borderAndPaddingLogicalHeight(), LayoutUnit());
+    LogicalExtentComputedValues computedValues = computeLogicalHeight(borderAndPaddingLogicalHeight(), 0_lu);
     return computedValues.m_extent;
 }
 
@@ -2827,7 +2831,7 @@ std::optional<LayoutUnit> RenderBox::computeIntrinsicLogicalContentHeightUsing(L
     if (logicalHeightLength.isFillAvailable())
         return containingBlock()->availableLogicalHeight(ExcludeMarginBorderPadding) - borderAndPadding;
     ASSERT_NOT_REACHED();
-    return LayoutUnit(0);
+    return 0_lu;
 }
 
 std::optional<LayoutUnit> RenderBox::computeContentAndScrollbarLogicalHeightUsing(SizeType heightType, const Length& height, std::optional<LayoutUnit> intrinsicContentHeight) const
@@ -2904,7 +2908,7 @@ std::optional<LayoutUnit> RenderBox::computePercentageLogicalHeight(const Length
     bool skippedAutoHeightContainingBlock = false;
     RenderBlock* cb = containingBlock();
     const RenderBox* containingBlockChild = this;
-    LayoutUnit rootMarginBorderPaddingHeight = 0;
+    LayoutUnit rootMarginBorderPaddingHeight;
     bool isHorizontal = isHorizontalWritingMode();
     while (cb && !is<RenderView>(*cb) && skipContainingBlockForPercentHeightCalculation(*cb, isHorizontal != cb->isHorizontalWritingMode())) {
         if (cb->isBody() || cb->isDocumentElementRenderer())
@@ -2935,7 +2939,7 @@ std::optional<LayoutUnit> RenderBox::computePercentageLogicalHeight(const Length
     if (!availableHeight)
         return availableHeight;
 
-    LayoutUnit result = valueForLength(height, availableHeight.value() - rootMarginBorderPaddingHeight + (isTable() && isOutOfFlowPositioned() ? cb->paddingBefore() + cb->paddingAfter() : LayoutUnit()));
+    LayoutUnit result = valueForLength(height, availableHeight.value() - rootMarginBorderPaddingHeight + (isTable() && isOutOfFlowPositioned() ? cb->paddingBefore() + cb->paddingAfter() : 0_lu));
     
     // |overrideContentLogicalHeight| is the maximum height made available by the
     // cell to its percent height children when we decide they can determine the
@@ -2946,7 +2950,7 @@ std::optional<LayoutUnit> RenderBox::computePercentageLogicalHeight(const Length
     bool subtractBorderAndPadding = isTable() || (is<RenderTableCell>(*cb) && !skippedAutoHeightContainingBlock && cb->hasOverrideContentLogicalHeight());
     if (subtractBorderAndPadding) {
         result -= borderAndPaddingLogicalHeight();
-        return std::max(LayoutUnit(), result);
+        return std::max(0_lu, result);
     }
     return result;
 }
@@ -2979,7 +2983,7 @@ LayoutUnit RenderBox::computeReplacedLogicalWidthUsing(SizeType widthType, Lengt
         case MinContent:
         case MaxContent: {
             // MinContent/MaxContent don't need the availableLogicalWidth argument.
-            LayoutUnit availableLogicalWidth = 0;
+            LayoutUnit availableLogicalWidth;
             return computeIntrinsicLogicalWidthUsing(logicalWidth, availableLogicalWidth, borderAndPaddingLogicalWidth()) - borderAndPaddingLogicalWidth();
         }
         case FitContent:
@@ -2997,7 +3001,7 @@ LayoutUnit RenderBox::computeReplacedLogicalWidthUsing(SizeType widthType, Lengt
                 return computeIntrinsicLogicalWidthUsing(logicalWidth, cw, borderAndPaddingLogicalWidth()) - borderAndPaddingLogicalWidth();
             if (cw > 0 || (!cw && (containerLogicalWidth.isFixed() || containerLogicalWidth.isPercentOrCalculated())))
                 return adjustContentBoxLogicalWidthForBoxSizing(minimumValueForLength(logicalWidth, cw));
-            return LayoutUnit();
+            return 0_lu;
         }
         case Intrinsic:
         case MinIntrinsic:
@@ -3562,7 +3566,7 @@ void RenderBox::computePositionedLogicalWidthUsing(SizeType widthType, Length lo
     // converted to the static position already
     ASSERT(!(logicalLeft.isAuto() && logicalRight.isAuto()));
 
-    LayoutUnit logicalLeftValue = 0;
+    LayoutUnit logicalLeftValue;
 
     const LayoutUnit containerRelativeLogicalWidth = containingBlockLogicalWidthForPositioned(containerBlock, nullptr, false);
 
@@ -3901,7 +3905,7 @@ void RenderBox::computePositionedLogicalHeightUsing(SizeType heightType, Length 
 
     const LayoutUnit containerRelativeLogicalWidth = containingBlockLogicalWidthForPositioned(containerBlock, nullptr, false);
 
-    LayoutUnit logicalTopValue = 0;
+    LayoutUnit logicalTopValue;
 
     bool logicalHeightIsAuto = logicalHeightLength.isAuto();
     bool logicalTopIsAuto = logicalTop.isAuto();
@@ -4083,8 +4087,8 @@ void RenderBox::computePositionedLogicalWidthReplaced(LogicalExtentComputedValue
      *    ('rtl'), set 'margin-left' ('margin-right') to zero and solve for
      *    'margin-right' ('margin-left').
     \*-----------------------------------------------------------------------*/
-    LayoutUnit logicalLeftValue = 0;
-    LayoutUnit logicalRightValue = 0;
+    LayoutUnit logicalLeftValue;
+    LayoutUnit logicalRightValue;
 
     if (marginLogicalLeft.isAuto() && marginLogicalRight.isAuto()) {
         // 'left' and 'right' cannot be 'auto' due to step 3
@@ -4244,8 +4248,8 @@ void RenderBox::computePositionedLogicalHeightReplaced(LogicalExtentComputedValu
      *    'auto', solve the equation under the extra constraint that the two
      *    margins must get equal values.
     \*-----------------------------------------------------------------------*/
-    LayoutUnit logicalTopValue = 0;
-    LayoutUnit logicalBottomValue = 0;
+    LayoutUnit logicalTopValue;
+    LayoutUnit logicalBottomValue;
 
     if (marginBefore.isAuto() && marginAfter.isAuto()) {
         // 'top' and 'bottom' cannot be 'auto' due to step 2 and 3 combined.
@@ -4326,7 +4330,7 @@ LayoutRect RenderBox::localCaretRect(InlineBox* box, unsigned caretOffset, Layou
     bool ltr = box ? box->isLeftToRightDirection() : style().isLeftToRightDirection();
 
     if ((!caretOffset) ^ ltr)
-        rect.move(LayoutSize(width() - caretWidth, 0));
+        rect.move(LayoutSize(width() - caretWidth, 0_lu));
 
     if (box) {
         const RootInlineBox& rootBox = box->root();
@@ -4402,9 +4406,9 @@ VisiblePosition RenderBox::positionForPoint(const LayoutPoint& point, const Rend
             || renderer.style().visibility() != Visibility::Visible)
             continue;
 
-        LayoutUnit top = renderer.borderTop() + renderer.paddingTop() + (is<RenderTableRow>(*this) ? LayoutUnit() : renderer.y());
+        LayoutUnit top = renderer.borderTop() + renderer.paddingTop() + (is<RenderTableRow>(*this) ? 0_lu : renderer.y());
         LayoutUnit bottom = top + renderer.contentHeight();
-        LayoutUnit left = renderer.borderLeft() + renderer.paddingLeft() + (is<RenderTableRow>(*this) ? LayoutUnit() : renderer.x());
+        LayoutUnit left = renderer.borderLeft() + renderer.paddingLeft() + (is<RenderTableRow>(*this) ? 0_lu : renderer.x());
         LayoutUnit right = left + renderer.contentWidth();
         
         if (point.x() <= right && point.x() >= left && point.y() <= top && point.y() >= bottom) {

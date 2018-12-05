@@ -454,6 +454,7 @@ class SimulatedDevice(object):
         BOOTED = 3
         SHUTTING_DOWN = 4
 
+    NUM_INSTALL_RETRIES = 5
     NAME_FOR_STATE = [
         'CREATING',
         'SHUTDOWN',
@@ -500,7 +501,7 @@ class SimulatedDevice(object):
 
         if self.device_type.software_variant == 'iOS':
             home_screen_service = 'com.apple.springboard.services'
-        elif self.device_type.software_version == 'watchOS':
+        elif self.device_type.software_variant == 'watchOS':
             home_screen_service = 'com.apple.carousel.sessionservice'
         else:
             _log.debug('{} has no service to check if the device is usable'.format(self.device_type.software_variant))
@@ -544,7 +545,18 @@ class SimulatedDevice(object):
                 SimulatedDeviceManager.INITIALIZED_DEVICES.remove(device)
 
     def install_app(self, app_path, env=None):
-        return not self.executive.run_command(['xcrun', 'simctl', 'install', self.udid, app_path], return_exit_code=True)
+        # Even after carousel is running, it takes a few seconds for watchOS to allow installs.
+        for i in xrange(self.NUM_INSTALL_RETRIES):
+            exit_code = self.executive.run_command(['xcrun', 'simctl', 'install', self.udid, app_path], return_exit_code=True)
+            if exit_code == 0:
+                return True
+
+            # Return code 204 indicates that the device is booting, a retry may be successful.
+            if exit_code == 204:
+                time.sleep(5)
+                continue
+            return False
+        return False
 
     # FIXME: Increase timeout for <rdar://problem/31331576>
     def launch_app(self, bundle_id, args, env=None, timeout=300):

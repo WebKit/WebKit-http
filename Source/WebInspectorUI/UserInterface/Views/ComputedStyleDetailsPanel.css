@@ -38,3 +38,26 @@
 .computed-style-properties .property:hover .go-to-arrow {
     display: initial;
 }
+
+.computed-with-traces .computed-style-properties {
+    --disclosure-button-size: 15px;
+}
+
+.computed-with-traces .details-section.computed-style-properties:not(.collapsed) > :matches(.header, .content) {
+    background-color: hsl(0, 0%, 97%);
+}
+
+.computed-with-traces .details-section.computed-style-properties > .content {
+    font: 12px -webkit-system-font, sans-serif;
+}
+
+.computed-with-traces .computed-style-properties .property .go-to-arrow {
+    width: var(--disclosure-button-size);
+    height: var(--disclosure-button-size);
+}
+
+@media (prefers-dark-interface) {
+    .computed-with-traces .details-section.computed-style-properties:not(.collapsed) > :matches(.header, .content) {
+        background-color: var(--background-color);
+    }
+}

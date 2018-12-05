@@ -860,7 +860,7 @@ public:
     Metadata& metadata(OpcodeID opcodeID, unsigned metadataID)
     {
         ASSERT(m_metadata);
-        return reinterpret_cast<Metadata*>(m_metadata->get(opcodeID))[metadataID];
+        return bitwise_cast<Metadata*>(m_metadata->get(opcodeID))[metadataID];
     }
 
     size_t metadataSizeInBytes()
@@ -949,8 +949,9 @@ private:
     WriteBarrier<ExecutableToCodeBlockEdge> m_ownerEdge;
     Poisoned<CodeBlockPoison, VM*> m_poisonedVM;
 
-    unsigned m_instructionCount { 0 };
     const InstructionStream* m_instructions;
+    const void* m_instructionsRawPointer { nullptr };
+    unsigned m_instructionCount { 0 };
     VirtualRegister m_thisRegister;
     VirtualRegister m_scopeRegister;
     mutable CodeBlockHash m_hash;

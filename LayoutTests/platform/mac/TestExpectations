@@ -589,6 +589,15 @@ webkit.org/b/112176 compositing/overflow/updating-scrolling-content.html [ Failu
 webkit.org/b/112176 fast/canvas/canvas-composite-alpha.html [ Failure Pass ]
 webkit.org/b/112176 fast/canvas/webgl/read-pixels-test.html [ Failure Pass ]
 
+# Baseline Alignment tests affected by 1px diff failures only on Mac and iOS platforms
+webkit.org/b/170293 fast/css-grid-layout/grid-align-baseline-vertical.html [ Failure ]
+webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-03.html [ ImageOnlyFailure ]
+webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-04.html [ ImageOnlyFailure ]
+webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-vertical-rl-05.html [ ImageOnlyFailure ]
+webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-vertical-rl-04.html [ ImageOnlyFailure ]
+webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-06.html [ ImageOnlyFailure ]
+webkit.org/b/170293 fast/css-grid-layout/grid-self-baseline-07.html [ ImageOnlyFailure ]
+
 # The following ref-test appears to fail on EWS bots as well.
 webkit.org/b/112176 fast/css/sticky/inline-sticky-abspos-child.html [ ImageOnlyFailure Pass ]
 webkit.org/b/112176 fast/css/sticky/inline-sticky.html [ ImageOnlyFailure Pass ]
@@ -948,8 +957,6 @@ imported/w3c/web-platform-tests/media-source/mediasource-trackdefault.html [ Ski
 imported/w3c/web-platform-tests/media-source/mediasource-trackdefaultlist.html [ Skip ]
 
 ## --- End W3C Imported Media Source Tests
-
-webkit.org/b/187484 imported/w3c/web-platform-tests/service-workers/service-worker/update-after-navigation-fetch-event.https.html [ Pass Failure ]
 
 # This test times out.
 media/media-source/media-source-seek-complete.html [ Timeout ]
@@ -1759,7 +1766,8 @@ webkit.org/b/187393 imported/w3c/web-platform-tests/2dcontext/imagebitmap/create
 [ Mojave+ ] fast/gradients/conic-two-hints.html [ Pass ]
 
 # Dark Mode is Mojave and later.
-[ Sierra HighSierra ] css-dark-mode [ Skip ]
+[ Mojave+ ] css-dark-mode [ Pass ]
+[ Mojave+ ] inspector/css/force-page-appearance.html [ Pass ]
 
 webkit.org/b/185651 legacy-animation-engine/animations/play-state-in-shorthand.html [ Pass Failure ]
 

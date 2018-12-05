@@ -45,6 +45,7 @@
 #include "CacheStorageProvider.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
+#include "CertificateInfo.h"
 #include "Chrome.h"
 #include "ClientOrigin.h"
 #include "ComposedTreeIterator.h"
@@ -306,9 +307,11 @@ private:
     void attachWindow(DockSide) final { }
     void detachWindow() final { }
     void closeWindow() final;
+    void reopen() final { }
     void bringToFront() final { }
     String localizedStringsURL() final { return String(); }
     void inspectedURLChanged(const String&) final { }
+    void showCertificate(const CertificateInfo&) final { }
     void setAttachedWindowHeight(unsigned) final { }
     void setAttachedWindowWidth(unsigned) final { }
 
@@ -1479,6 +1482,15 @@ ExceptionOr<Ref<DOMRect>> Internals::absoluteCaretBounds()
 
     return DOMRect::create(document->frame()->selection().absoluteCaretBounds());
 }
+    
+ExceptionOr<bool> Internals::isCaretBlinkingSuspended()
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return Exception { InvalidAccessError };
+    
+    return document->frame()->selection().isCaretBlinkingSuspended();
+}
 
 Ref<DOMRect> Internals::boundingBox(Element& element)
 {
@@ -1678,9 +1690,16 @@ ExceptionOr<void> Internals::setViewIsTransparent(bool transparent)
     Document* document = contextDocument();
     if (!document || !document->view())
         return Exception { InvalidAccessError };
-    Color backgroundColor = transparent ? Color::transparent : Color::white;
-    document->view()->updateBackgroundRecursively(backgroundColor, transparent);
+    document->view()->updateBackgroundRecursively(transparent);
     return { };
+}
+
+ExceptionOr<String> Internals::viewBaseBackgroundColor()
+{
+    Document* document = contextDocument();
+    if (!document || !document->view())
+        return Exception { InvalidAccessError };
+    return document->view()->baseBackgroundColor().cssText();
 }
 
 ExceptionOr<void> Internals::setViewBaseBackgroundColor(const String& colorValue)
@@ -4803,6 +4822,14 @@ auto Internals::getCookies() const -> Vector<CookieData>
     return WTF::map(cookies, [](auto& cookie) {
         return CookieData { cookie };
     });
+}
+
+void Internals::setAlwaysAllowLocalWebarchive() const
+{
+    auto* document = contextDocument();
+    if (!document)
+        return;
+    document->setAlwaysAllowLocalWebarchive();
 }
 
 } // namespace WebCore

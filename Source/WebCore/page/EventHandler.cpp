@@ -510,8 +510,10 @@ bool EventHandler::updateSelectionForMouseDownDispatchingSelectStart(Node* targe
     if (Position::nodeIsUserSelectNone(targetNode))
         return false;
 
-    if (!dispatchSelectStart(targetNode))
+    if (!dispatchSelectStart(targetNode)) {
+        m_mouseDownMayStartSelect = false;
         return false;
+    }
 
     if (selection.isRange())
         m_selectionInitiationState = ExtendedSelection;
@@ -953,14 +955,20 @@ void EventHandler::updateSelectionForMouseDrag(const HitTestResult& hitTestResul
 
     // Special case to limit selection to the containing block for SVG text.
     // FIXME: Isn't there a better non-SVG-specific way to do this?
-    if (Node* selectionBaseNode = newSelection.base().deprecatedNode())
-        if (RenderObject* selectionBaseRenderer = selectionBaseNode->renderer())
-            if (selectionBaseRenderer->isSVGText())
+    if (Node* selectionBaseNode = newSelection.base().deprecatedNode()) {
+        if (RenderObject* selectionBaseRenderer = selectionBaseNode->renderer()) {
+            if (selectionBaseRenderer->isSVGText()) {
                 if (target->renderer()->containingBlock() != selectionBaseRenderer->containingBlock())
                     return;
+            }
+        }
+    }
 
-    if (m_selectionInitiationState == HaveNotStartedSelection && !dispatchSelectStart(target))
+
+    if (m_selectionInitiationState == HaveNotStartedSelection && !dispatchSelectStart(target)) {
+        m_mouseDownMayStartSelect = false;
         return;
+    }
 
     if (m_selectionInitiationState != ExtendedSelection) {
         // Always extend selection here because it's caused by a mouse drag
@@ -2598,8 +2606,8 @@ bool EventHandler::dispatchMouseEvent(const AtomicString& eventType, Node* targe
     // from the user interface of Windows, where pushing a button moves focus to the button.
 
     // Walk up the DOM tree to search for an element to focus.
-    Element* element;
-    for (element = m_elementUnderMouse.get(); element; element = element->parentOrShadowHostElement()) {
+    RefPtr<Element> element;
+    for (element = m_elementUnderMouse.get(); element; element = element->parentElementInComposedTree()) {
         if (element->isMouseFocusable())
             break;
     }
@@ -2622,7 +2630,7 @@ bool EventHandler::dispatchMouseEvent(const AtomicString& eventType, Node* targe
 
     // If focus shift is blocked, we eat the event.
     auto* page = m_frame.page();
-    if (page && !page->focusController().setFocusedElement(element, m_frame))
+    if (page && !page->focusController().setFocusedElement(element.get(), m_frame))
         return false;
 
     return true;
@@ -2877,6 +2885,9 @@ bool EventHandler::sendContextMenuEvent(const PlatformMouseEvent& event)
     if (!view)
         return false;
 
+    // Caret blinking is normally un-suspended in handleMouseReleaseEvent, but we
+    // won't receive that event once the context menu is up.
+    m_frame.selection().setCaretBlinkingSuspended(false);
     // Clear mouse press state to avoid initiating a drag while context menu is up.
     m_mousePressed = false;
     bool swallowEvent;

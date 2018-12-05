@@ -1,3 +1,115 @@
+2018-11-26  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Clang][WebKitLegacy][Win] MarshallingHelpers.h(65,47): warning: extra qualification on member 'windowsEpochAbsoluteTime' [-Wmicrosoft-extra-qualification]
+        https://bugs.webkit.org/show_bug.cgi?id=191959
+
+        Reviewed by Alex Christensen.
+
+        * MarshallingHelpers.h: Removed extra "MarshallingHelpers::" of windowsEpochAbsoluteTime declaration.
+
+2018-11-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Reduce the use of WKSI library calls: CoreAnimation
+        https://bugs.webkit.org/show_bug.cgi?id=191777
+        <rdar://problem/46140542>
+
+        Reviewed by Zalan Bujtas.
+
+        Update the Windows build of WebKit to refer to the SPI headers, rather than WebKitSystemInterface.
+        Move a small amount of glue code from WKSI to WebCore, and remove any includes or link
+        directives for WebKitSystemInterface.lib.
+
+        * FullscreenVideoController.cpp:
+        * WebKitGraphics.cpp:
+        * WebPreferences.cpp:
+
+2018-11-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Address post-review feedback after r238438
+        https://bugs.webkit.org/show_bug.cgi?id=191913
+
+        Reviewed by Ryosuke Niwa.
+
+        * AccessibleTextImpl.cpp:
+        (AccessibleText::replaceText):
+
+2018-11-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: "Reload Web Inspector" button no longer partially works
+        https://bugs.webkit.org/show_bug.cgi?id=191773
+        <rdar://problem/46139932>
+
+        Reviewed by Devin Rousso.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::reopen):
+        * WebCoreSupport/WebInspectorClient.h:
+
+2018-11-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: add button to show system certificate dialog
+        https://bugs.webkit.org/show_bug.cgi?id=191458
+        <rdar://problem/45977019>
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::showCertificate): Added.
+
+2018-11-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Reduce the use of WKSI library calls: CFNetwork
+        https://bugs.webkit.org/show_bug.cgi?id=191718
+        <rdar://problem/46108732>
+
+        Reviewed by Alex Christensen.
+
+        Remove custom WKSI CFNetwork calls, since the SPI is already documented in PAL. Just
+        make the same calls on Windows, like we did for iOS and macOS back in 2017.
+
+        * WebCache.cpp:
+        (WebCache::cacheFolder):
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        * WebError.cpp:
+        (WebError::localizedDescription):
+        (WebError::sslPeerCertificate):
+        * WebURLResponse.cpp:
+        (WebURLResponse::sslPeerCertificate):
+        (WebURLResponse::certificateDictionary const):
+        * WebView.cpp:
+        (WebView::setCacheModel):
+
+2018-11-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Reduce the use of WKSI library calls: Font Handling
+        https://bugs.webkit.org/show_bug.cgi?id=191701
+        <rdar://problem/46104809>
+
+        Reviewed by Myles C. Maxfield.
+
+        Update to use the old font handling routines moved from WKSI to FontCascade.
+
+        * WebPreferences.cpp:
+        (WebPreferences::setFontSmoothing):
+        (WebPreferences::setFontSmoothingContrast):
+        * WebView.cpp:
+        (systemParameterChanged):
+
+2018-11-14  Timothy Hatcher  <timothy@apple.com>
+
+        Default the view background color and text color to different values when in dark mode.
+        https://bugs.webkit.org/show_bug.cgi?id=191607
+        rdar://problem/46045854
+
+        Reviewed by Dean Jackson.
+
+        * WebFrame.cpp:
+        (WebFrame::updateBackground): Drop backgroundColor.
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::transitionToCommittedForNewPage): Drop backgroundColor.
+
 2018-11-14  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Pass Inspector::FrontendChannel as a reference connect/disconnect methods

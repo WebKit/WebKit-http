@@ -659,11 +659,11 @@ void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
 
     setSize(parameters.viewSize);
 
-    if (m_shouldResetDrawingArea) {
+    if (m_shouldResetDrawingAreaAfterSuspend) {
         // Make sure we destroy the previous drawing area before constructing the new one as DrawingArea registers / unregisters
         // itself as an IPC::MesssageReceiver in its constructor / destructor.
         m_drawingArea = nullptr;
-        m_shouldResetDrawingArea = false;
+        m_shouldResetDrawingAreaAfterSuspend = false;
 
         m_drawingArea = DrawingArea::create(*this, parameters);
         m_drawingArea->setPaintingEnabled(false);
@@ -673,6 +673,7 @@ void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
 #if PLATFORM(MAC)
         m_shouldAttachDrawingAreaOnPageTransition = parameters.shouldDelayAttachingDrawingArea;
 #endif
+        unfreezeLayerTree(LayerTreeFreezeReason::PageSuspended);
     }
 
     setViewLayoutSize(parameters.viewLayoutSize);
@@ -2327,13 +2328,23 @@ const WebEvent* WebPage::currentEvent()
     return g_currentEvent;
 }
 
-void WebPage::setLayerTreeStateIsFrozen(bool frozen)
+void WebPage::freezeLayerTree(LayerTreeFreezeReason reason)
 {
-    auto* drawingArea = this->drawingArea();
-    if (!drawingArea)
-        return;
+    m_LayerTreeFreezeReasons.add(reason);
+    updateDrawingAreaLayerTreeFreezeState();
+}
 
-    drawingArea->setLayerTreeStateIsFrozen(frozen || m_isSuspended);
+void WebPage::unfreezeLayerTree(LayerTreeFreezeReason reason)
+{
+    m_LayerTreeFreezeReasons.remove(reason);
+    updateDrawingAreaLayerTreeFreezeState();
+}
+
+void WebPage::updateDrawingAreaLayerTreeFreezeState()
+{
+    if (!m_drawingArea)
+        return;
+    m_drawingArea->setLayerTreeStateIsFrozen(!!m_LayerTreeFreezeReasons);
 }
 
 void WebPage::callVolatilityCompletionHandlers(bool succeeded)
@@ -2777,9 +2788,9 @@ void WebPage::setControlledByAutomation(bool controlled)
     m_page->setControlledByAutomation(controlled);
 }
 
-void WebPage::connectInspector(const String& targetId)
+void WebPage::connectInspector(const String& targetId, Inspector::FrontendChannel::ConnectionType connectionType)
 {
-    m_inspectorTargetController->connectInspector(targetId);
+    m_inspectorTargetController->connectInspector(targetId, connectionType);
 }
 
 void WebPage::disconnectInspector(const String& targetId)
@@ -2815,9 +2826,8 @@ void WebPage::setDrawsBackground(bool drawsBackground)
     m_drawsBackground = drawsBackground;
 
     if (FrameView* frameView = mainFrameView()) {
-        Color backgroundColor = drawsBackground ? Color::white : Color::transparent;
         bool isTransparent = !drawsBackground;
-        frameView->updateBackgroundRecursively(backgroundColor, isTransparent);
+        frameView->updateBackgroundRecursively(isTransparent);
     }
 
     m_drawingArea->pageBackgroundTransparencyChanged();
@@ -3007,7 +3017,7 @@ void WebPage::continueWillSubmitForm(uint64_t frameID, uint64_t listenerID)
 
 void WebPage::didStartPageTransition()
 {
-    setLayerTreeStateIsFrozen(true);
+    freezeLayerTree(LayerTreeFreezeReason::PageTransition);
 
 #if PLATFORM(MAC)
     bool hasPreviouslyFocusedDueToUserInteraction = m_hasEverFocusedElementDueToUserInteractionSincePageTransition;
@@ -3031,8 +3041,7 @@ void WebPage::didStartPageTransition()
 
 void WebPage::didCompletePageTransition()
 {
-    // FIXME: Layer tree freezing should be managed entirely in the UI process side.
-    setLayerTreeStateIsFrozen(false);
+    unfreezeLayerTree(LayerTreeFreezeReason::PageTransition);
 
 #if PLATFORM(MAC)
     bool isInitialEmptyDocument = !m_mainFrame;
@@ -3386,13 +3395,42 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 }
 
 #if ENABLE(DATA_DETECTION)
+
 void WebPage::setDataDetectionResults(NSArray *detectionResults)
 {
     DataDetectionResult dataDetectionResult;
     dataDetectionResult.results = detectionResults;
     send(Messages::WebPageProxy::SetDataDetectionResult(dataDetectionResult));
 }
-#endif
+
+void WebPage::removeDataDetectedLinks(CompletionHandler<void(const DataDetectionResult&)>&& completionHandler)
+{
+    for (auto frame = makeRefPtr(&m_page->mainFrame()); frame; frame = frame->tree().traverseNext()) {
+        auto document = makeRefPtr(frame->document());
+        if (!document)
+            continue;
+
+        DataDetection::removeDataDetectedLinksInDocument(*document);
+        frame->setDataDetectionResults(nullptr);
+    }
+    completionHandler({ m_page->mainFrame().dataDetectionResults() });
+}
+
+void WebPage::detectDataInAllFrames(uint64_t types, CompletionHandler<void(const DataDetectionResult&)>&& completionHandler)
+{
+    auto dataDetectorTypes = static_cast<WebCore::DataDetectorTypes>(types);
+    for (auto frame = makeRefPtr(&m_page->mainFrame()); frame; frame = frame->tree().traverseNext()) {
+        auto document = makeRefPtr(frame->document());
+        if (!document)
+            continue;
+
+        RefPtr<Range> range = Range::create(*document, Position { document.get(), Position::PositionIsBeforeChildren }, Position { document.get(), Position::PositionIsAfterChildren });
+        frame->setDataDetectionResults(DataDetection::detectContentInRange(range, dataDetectorTypes, m_dataDetectionContext.get()));
+    }
+    completionHandler({ m_page->mainFrame().dataDetectionResults() });
+}
+
+#endif // ENABLE(DATA_DETECTION)
 
 #if PLATFORM(COCOA)
 void WebPage::willCommitLayerTree(RemoteLayerTreeTransaction& layerTransaction)
@@ -3485,11 +3523,6 @@ RemoteWebInspectorUI* WebPage::remoteInspectorUI()
     if (!m_remoteInspectorUI)
         m_remoteInspectorUI = RemoteWebInspectorUI::create(*this);
     return m_remoteInspectorUI.get();
-}
-
-void WebPage::setHasLocalInspectorFrontend(bool hasLocalFrontend)
-{
-    send(Messages::WebPageProxy::SetHasLocalInspectorFrontend(hasLocalFrontend));
 }
 
 void WebPage::inspectorFrontendCountChanged(unsigned count)
@@ -3797,6 +3830,16 @@ bool WebPage::findStringFromInjectedBundle(const String& target, FindOptions opt
     return m_page->findString(target, core(options));
 }
 
+void WebPage::findStringMatchesFromInjectedBundle(const String& target, FindOptions options)
+{
+    findController().findStringMatches(target, options, 0);
+}
+
+void WebPage::replaceStringMatchesFromInjectedBundle(const Vector<uint32_t>& matchIndices, const String& replacementText, bool selectionOnly)
+{
+    findController().replaceMatches(matchIndices, replacementText, selectionOnly);
+}
+
 void WebPage::findString(const String& string, uint32_t options, uint32_t maxMatchCount)
 {
     findController().findString(string, static_cast<FindOptions>(options), maxMatchCount);
@@ -3825,6 +3868,12 @@ void WebPage::hideFindUI()
 void WebPage::countStringMatches(const String& string, uint32_t options, uint32_t maxMatchCount)
 {
     findController().countStringMatches(string, static_cast<FindOptions>(options), maxMatchCount);
+}
+
+void WebPage::replaceMatches(const Vector<uint32_t>& matchIndices, const String& replacementText, bool selectionOnly, CallbackID callbackID)
+{
+    auto numberOfReplacements = findController().replaceMatches(matchIndices, replacementText, selectionOnly);
+    send(Messages::WebPageProxy::UnsignedCallback(numberOfReplacements, callbackID));
 }
 
 void WebPage::didChangeSelectedIndexForActivePopupMenu(int32_t newIndex)
@@ -4026,9 +4075,7 @@ void WebPage::didSelectItemFromActiveContextMenu(const WebContextMenuItemData& i
 
 void WebPage::replaceSelectionWithText(Frame* frame, const String& text)
 {
-    bool selectReplacement = true;
-    bool smartReplace = false;
-    return frame->editor().replaceSelectionWithText(text, selectReplacement, smartReplace);
+    return frame->editor().replaceSelectionWithText(text, WebCore::Editor::SelectReplacement::Yes, WebCore::Editor::SmartReplace::No);
 }
 
 #if !PLATFORM(IOS_FAMILY)
@@ -4424,7 +4471,8 @@ void WebPage::beginPrinting(uint64_t frameID, const PrintInfo& printInfo)
     if (!m_printContext)
         m_printContext = std::make_unique<PrintContext>(coreFrame);
 
-    drawingArea()->setLayerTreeStateIsFrozen(true);
+    freezeLayerTree(LayerTreeFreezeReason::Printing);
+
     m_printContext->begin(printInfo.availablePaperWidth, printInfo.availablePaperHeight);
 
     float fullPageHeight;
@@ -4438,7 +4486,8 @@ void WebPage::beginPrinting(uint64_t frameID, const PrintInfo& printInfo)
 
 void WebPage::endPrinting()
 {
-    drawingArea()->setLayerTreeStateIsFrozen(false);
+    unfreezeLayerTree(LayerTreeFreezeReason::Printing);
+
     m_printContext = nullptr;
 }
 
@@ -6185,10 +6234,11 @@ void WebPage::setIsSuspended(bool suspended)
 
     m_isSuspended = suspended;
 
-    if (!m_isSuspended)
-        m_shouldResetDrawingArea = true;
-
-    setLayerTreeStateIsFrozen(true);
+    if (m_isSuspended) {
+        // Unfrozen on drawing area reset.
+        freezeLayerTree(LayerTreeFreezeReason::PageSuspended);
+    } else
+        m_shouldResetDrawingAreaAfterSuspend = true;
 }
 
 void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remoteFrameIdentifier, GlobalWindowIdentifier&& remoteWindowIdentifier)

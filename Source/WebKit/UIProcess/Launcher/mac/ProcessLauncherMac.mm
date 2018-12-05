@@ -173,6 +173,10 @@ void ProcessLauncher::launchProcess()
 
     // FIXME: Switch to xpc_connection_set_bootstrap once it's available everywhere we need.
     auto bootstrapMessage = adoptOSObject(xpc_dictionary_create(nullptr, nullptr, 0));
+    
+    if (m_client && !m_client->isJITEnabled())
+        xpc_dictionary_set_bool(bootstrapMessage.get(), "disable-jit", true);
+
     xpc_dictionary_set_string(bootstrapMessage.get(), "message-name", "bootstrap");
 
     xpc_dictionary_set_mach_send(bootstrapMessage.get(), "server-port", listeningPort);
@@ -241,7 +245,9 @@ void ProcessLauncher::launchProcess()
     ref();
     xpc_connection_send_message_with_reply(m_xpcConnection.get(), bootstrapMessage.get(), dispatch_get_main_queue(), ^(xpc_object_t reply) {
         // Errors are handled in the event handler.
-        if (xpc_get_type(reply) != XPC_TYPE_ERROR) {
+        // It is possible for this block to be called after the error event handler, in which case we're no longer
+        // launching and we already took care of cleaning things up.
+        if (isLaunching() && xpc_get_type(reply) != XPC_TYPE_ERROR) {
             ASSERT(xpc_get_type(reply) == XPC_TYPE_DICTIONARY);
             ASSERT(!strcmp(xpc_dictionary_get_string(reply, "message-name"), "process-finished-launching"));
 

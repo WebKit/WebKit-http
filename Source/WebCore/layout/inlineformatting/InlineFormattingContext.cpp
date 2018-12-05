@@ -38,6 +38,7 @@
 #include "LayoutInlineBox.h"
 #include "LayoutInlineContainer.h"
 #include "Logging.h"
+#include "Textutil.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/text/TextStream.h>
 
@@ -58,7 +59,7 @@ void InlineFormattingContext::layout() const
 
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[Start] -> inline formatting context -> formatting root(" << &root() << ")");
 
-    InlineRunProvider inlineRunProvider(inlineFormattingState());
+    InlineRunProvider inlineRunProvider;
     collectInlineContent(inlineRunProvider);
     // Compute width/height for non-text content.
     for (auto& inlineRun : inlineRunProvider.runs()) {
@@ -94,7 +95,7 @@ void InlineFormattingContext::initializeNewLine(Line& line) const
     // Check for intruding floats and adjust logical left/available width for this line accordingly.
     auto& floatingState = formattingState().floatingState();
     if (!floatingState.isEmpty()) {
-        auto floatConstraints = floatingState.constraints(lineLogicalTop, formattingRoot);
+        auto floatConstraints = floatingState.constraints({ lineLogicalTop }, formattingRoot);
         // Check if these constraints actually put limitation on the line.
         if (floatConstraints.left && *floatConstraints.left <= formattingRootDisplayBox.contentBoxLeft())
             floatConstraints.left = { };
@@ -116,21 +117,13 @@ void InlineFormattingContext::initializeNewLine(Line& line) const
         }
     }
 
-    Display::Box::Rect logicalRect;
-    logicalRect.setTop(lineLogicalTop);
-    logicalRect.setLeft(lineLogicalLeft);
-    logicalRect.setWidth(availableWidth);
-    logicalRect.setHeight(formattingRoot.style().computedLineHeight());
-
-    line.init(logicalRect);
+    line.init({ lineLogicalLeft, lineLogicalTop }, availableWidth, formattingRoot.style().computedLineHeight());
 }
 
 void InlineFormattingContext::splitInlineRunIfNeeded(const InlineRun& inlineRun, InlineRuns& splitRuns) const
 {
-    if (!inlineRun.overlapsMultipleInlineItems())
-        return;
-
     ASSERT(inlineRun.textContext());
+    ASSERT(inlineRun.overlapsMultipleInlineItems());
     // In certain cases, a run can overlap multiple inline elements like this:
     // <span>normal text content</span><span style="position: relative; left: 10px;">but this one needs a dedicated run</span><span>end of text</span>
     // The content above generates one long run <normal text contentbut this one needs dedicated runend of text>
@@ -140,140 +133,137 @@ void InlineFormattingContext::splitInlineRunIfNeeded(const InlineRun& inlineRun,
     // 2. either find an inline item that needs a dedicated run or we reach the end of the run
     // 3. Create dedicate inline runs.
     auto& inlineContent = inlineFormattingState().inlineContent();
-    auto textUtil = TextUtil { inlineContent };
-
-    auto split=[&](const auto& inlineItem, auto startPosition, auto length, auto contentStart) {
-        auto width = textUtil.width(inlineItem, startPosition, length, contentStart);
-
-        auto run = InlineRun { { inlineRun.logicalTop(), contentStart, width, inlineRun.height() }, inlineItem };
-        run.setTextContext({ startPosition, length });
-        splitRuns.append(run);
-        return contentStart + width;
-    };
-
     auto contentStart = inlineRun.logicalLeft();
     auto startPosition = inlineRun.textContext()->start();
     auto remaningLength = inlineRun.textContext()->length();
 
-    unsigned uncommittedLength = 0;
-    InlineItem* firstUncommittedInlineItem = nullptr;
-    for (auto iterator = inlineContent.find<const InlineItem&, InlineItemHashTranslator>(inlineRun.inlineItem()); iterator != inlineContent.end() && remaningLength > 0; ++iterator) {
+    struct Uncommitted {
+        const InlineItem* firstInlineItem { nullptr };
+        const InlineItem* lastInlineItem { nullptr };
+        unsigned length { 0 };
+    };
+    std::optional<Uncommitted> uncommitted;
+
+    auto commit = [&] {
+        if (!uncommitted)
+            return;
+
+        contentStart += uncommitted->firstInlineItem->nonBreakableStart();
+
+        auto runWidth = Geometry::runWidth(inlineContent, *uncommitted->firstInlineItem, startPosition, uncommitted->length, contentStart);
+        auto run = InlineRun { { inlineRun.logicalTop(), contentStart, runWidth, inlineRun.logicalHeight() }, *uncommitted->firstInlineItem };
+        run.setTextContext({ startPosition, uncommitted->length });
+        splitRuns.append(run);
+
+        contentStart += runWidth + uncommitted->lastInlineItem->nonBreakableEnd();
+        remaningLength -= uncommitted->length;
+
+        startPosition = 0;
+        uncommitted = { };
+    };
+
+    for (auto iterator = inlineContent.find(const_cast<InlineItem*>(&inlineRun.inlineItem())); iterator != inlineContent.end() && remaningLength > 0; ++iterator) {
         auto& inlineItem = **iterator;
+
+        // Skip all non-inflow boxes (floats, out-of-flow positioned elements). They don't participate in the inline run context.
+        if (!inlineItem.layoutBox().isInFlow())
+            continue;
 
         auto currentLength = [&] {
             return std::min(remaningLength, inlineItem.textContent().length() - startPosition);
         };
 
-        // 1. Inline element does not require run breaking -> add current inline element to uncommitted. Jump to the next element.
+        // 1. Break before/after -> requires dedicated run -> commit what we've got so far and also commit the current inline element as a separate inline run.
         // 2. Break at the beginning of the inline element -> commit what we've got so far. Current element becomes the first uncommitted.
         // 3. Break at the end of the inline element -> commit what we've got so far including the current element.
-        // 4. Break before/after -> requires dedicated run -> commit what we've got so far and also commit the current inline element as a separate inline run.
-        auto detachingRules = inlineFormattingState().detachingRules(inlineItem.layoutBox());
+        // 4. Inline element does not require run breaking -> add current inline element to uncommitted. Jump to the next element.
+        auto detachingRules = inlineItem.detachingRules();
 
         // #1
-        if (!detachingRules) {
-            uncommittedLength += currentLength();
-            firstUncommittedInlineItem = !firstUncommittedInlineItem ? &inlineItem : firstUncommittedInlineItem;
+        if (detachingRules.containsAll({ InlineItem::DetachingRule::BreakAtStart, InlineItem::DetachingRule::BreakAtEnd })) {
+            commit();
+            uncommitted = Uncommitted { &inlineItem, &inlineItem, currentLength() };
+            commit();
             continue;
         }
-
-        auto commit = [&] {
-            if (!firstUncommittedInlineItem)
-                return;
-
-            contentStart = split(*firstUncommittedInlineItem, startPosition, uncommittedLength, contentStart);
-
-            remaningLength -= uncommittedLength;
-            startPosition = 0;
-            uncommittedLength = 0;
-            firstUncommittedInlineItem = nullptr;
-        };
 
         // #2
-        if (*detachingRules == InlineFormattingState::DetachingRule::BreakAtStart) {
+        if (detachingRules.contains(InlineItem::DetachingRule::BreakAtStart))
             commit();
-            firstUncommittedInlineItem = &inlineItem;
-            uncommittedLength = currentLength();
-            continue;
-        }
+
+        // Add current inline item to uncommitted.
+        // #3 and #4
+        if (!uncommitted)
+            uncommitted = Uncommitted { &inlineItem, &inlineItem, 0 };
+        uncommitted->length += currentLength();
+        uncommitted->lastInlineItem = &inlineItem;
 
         // #3
-        if (*detachingRules == InlineFormattingState::DetachingRule::BreakAtEnd) {
-            ASSERT(firstUncommittedInlineItem);
-            uncommittedLength += currentLength();
+        if (detachingRules.contains(InlineItem::DetachingRule::BreakAtEnd))
             commit();
-            continue;
-        }
-
-        // #4
-        commit();
-        firstUncommittedInlineItem = &inlineItem;
-        uncommittedLength = currentLength();
-        commit();
     }
-
     // Either all inline elements needed dedicated runs or neither of them.
     if (!remaningLength || remaningLength == inlineRun.textContext()->length())
         return;
 
-    ASSERT(remaningLength == uncommittedLength);
-    split(*firstUncommittedInlineItem, startPosition, uncommittedLength, contentStart);
+    commit();
 }
 
-void InlineFormattingContext::postProcessInlineRuns(Line& line, IsLastLine isLastLine, Line::RunRange runRange) const
+void InlineFormattingContext::createFinalRuns(Line& line) const
 {
     auto& inlineFormattingState = this->inlineFormattingState();
-    Geometry::alignRuns(inlineFormattingState, root().style().textAlign(), line, runRange, isLastLine);
-
-    auto& inlineRuns = inlineFormattingState.inlineRuns();
-    ASSERT(*runRange.lastRunIndex < inlineRuns.size());
-
-    auto runIndex = *runRange.firstRunIndex;
-    auto& lastInlineRun = inlineRuns[*runRange.lastRunIndex];
-    while (runIndex < inlineRuns.size()) {
-        auto& inlineRun = inlineRuns[runIndex];
-        auto isLastRunInRange = &inlineRun == &lastInlineRun;
-
-        InlineRuns splitRuns;
-        splitInlineRunIfNeeded(inlineRun, splitRuns);
-        if (!splitRuns.isEmpty()) {
-            ASSERT(splitRuns.size() > 1);
-            // Replace the continous run with new ones.
-            // Reuse the original one.
-            auto& firstRun = splitRuns.first();
-            inlineRun.setWidth(firstRun.width());
-            inlineRun.textContext()->setLength(firstRun.textContext()->length());
-            splitRuns.remove(0);
-            // Insert the rest.
+    for (auto& inlineRun : line.runs()) {
+        if (inlineRun.overlapsMultipleInlineItems()) {
+            InlineRuns splitRuns;
+            splitInlineRunIfNeeded(inlineRun, splitRuns);
             for (auto& splitRun : splitRuns)
-                inlineRuns.insert(++runIndex, splitRun);
+                inlineFormattingState.appendInlineRun(splitRun);
+
+            if (!splitRuns.isEmpty())
+                continue;
         }
 
-        if (isLastRunInRange)
-            break;
+        auto finalRun = [&] {
+            auto& inlineItem = inlineRun.inlineItem();
+            if (inlineItem.detachingRules().isEmpty())
+                return inlineRun;
 
-        ++runIndex;
+            InlineRun adjustedRun = inlineRun;
+            auto width = inlineRun.logicalWidth() - inlineItem.nonBreakableStart() - inlineItem.nonBreakableEnd();
+            adjustedRun.setLogicalLeft(inlineRun.logicalLeft() + inlineItem.nonBreakableStart());
+            adjustedRun.setLogicalWidth(width);
+            return adjustedRun;
+        };
+
+        inlineFormattingState.appendInlineRun(finalRun());
     }
+}
+
+void InlineFormattingContext::postProcessInlineRuns(Line& line, IsLastLine isLastLine) const
+{
+    Geometry::alignRuns(root().style().textAlign(), line, isLastLine);
+    auto firstRunIndex = inlineFormattingState().inlineRuns().size();
+    createFinalRuns(line);
+
+    placeInFlowPositionedChildren(firstRunIndex);
 }
 
 void InlineFormattingContext::closeLine(Line& line, IsLastLine isLastLine) const
 {
-    auto runRange = line.close();
-    ASSERT(!runRange.firstRunIndex || runRange.lastRunIndex);
-
-    if (!runRange.firstRunIndex)
+    line.close();
+    if (!line.hasContent())
         return;
 
-    postProcessInlineRuns(line, isLastLine, runRange);
+    postProcessInlineRuns(line, isLastLine);
 }
 
-void InlineFormattingContext::appendContentToLine(Line& line, const InlineLineBreaker::Run& run) const
+void InlineFormattingContext::appendContentToLine(Line& line, const InlineRunProvider::Run& run, const LayoutSize& runSize) const
 {
     auto lastRunType = line.lastRunType();
-    line.appendContent(run);
+    line.appendContent(run, runSize);
 
     if (root().style().textAlign() == TextAlignMode::Justify)
-        Geometry::computeExpansionOpportunities(inlineFormattingState(), run.content, lastRunType.value_or(InlineRunProvider::Run::Type::NonWhitespace));
+        Geometry::computeExpansionOpportunities(line, run, lastRunType.value_or(InlineRunProvider::Run::Type::NonWhitespace));
 }
 
 void InlineFormattingContext::layoutInlineContent(const InlineRunProvider& inlineRunProvider) const
@@ -282,7 +272,7 @@ void InlineFormattingContext::layoutInlineContent(const InlineRunProvider& inlin
     auto& inlineFormattingState = this->inlineFormattingState();
     auto floatingContext = FloatingContext { inlineFormattingState.floatingState() };
 
-    Line line(inlineFormattingState);
+    Line line;
     initializeNewLine(line);
 
     InlineLineBreaker lineBreaker(layoutState, inlineFormattingState.inlineContent(), inlineRunProvider.runs());
@@ -297,7 +287,7 @@ void InlineFormattingContext::layoutInlineContent(const InlineRunProvider& inlin
             computeFloatPosition(floatingContext, line, floatBox);
             inlineFormattingState.floatingState().append(floatBox);
 
-            auto floatBoxWidth = layoutState.displayBoxForLayoutBox(floatBox).width();
+            auto floatBoxWidth = layoutState.displayBoxForLayoutBox(floatBox).marginBox().width();
             // Shrink availble space for current line and move existing inline runs.
             floatBox.isLeftFloatingPositioned() ? line.adjustLogicalLeft(floatBoxWidth) : line.adjustLogicalRight(floatBoxWidth);
 
@@ -322,8 +312,11 @@ void InlineFormattingContext::layoutInlineContent(const InlineRunProvider& inlin
             }
          }
 
-        if (generatesInlineRun)
-            appendContentToLine(line, *run);
+        if (generatesInlineRun) {
+            auto width = run->width;
+            auto height = run->content.isText() ? LayoutUnit(root().style().computedLineHeight()) : layoutState.displayBoxForLayoutBox(run->content.inlineItem().layoutBox()).height(); 
+            appendContentToLine(line, run->content, { width, height });
+        }
 
         if (isLastRun)
             closeLine(line, IsLastLine::No);
@@ -372,18 +365,19 @@ void InlineFormattingContext::computeHeightAndMargin(const Box& layoutBox) const
     displayBox.setVerticalMargin(heightAndMargin.collapsedMargin.value_or(heightAndMargin.margin));
 }
 
-void InlineFormattingContext::layoutFormattingContextRoot(const Box& layoutBox) const
+void InlineFormattingContext::layoutFormattingContextRoot(const Box& root) const
 {
-    ASSERT(layoutBox.isFloatingPositioned() || layoutBox.isInlineBlockBox());
+    ASSERT(root.isFloatingPositioned() || root.isInlineBlockBox());
 
-    auto& layoutState = this->layoutState();
-    auto& formattingState = layoutState.createFormattingStateForFormattingRootIfNeeded(layoutBox);
-    computeBorderAndPadding(layoutBox);
-    computeWidthAndMargin(layoutBox);
+    computeBorderAndPadding(root);
+    computeWidthAndMargin(root);
     // Swich over to the new formatting context (the one that the root creates).
-    formattingState.formattingContext(layoutBox)->layout();
+    auto formattingContext = layoutState().createFormattingStateForFormattingRootIfNeeded(root).formattingContext(root);
+    formattingContext->layout();
     // Come back and finalize the root's height and margin.
-    computeHeightAndMargin(layoutBox);
+    computeHeightAndMargin(root);
+    // Now that we computed the root's height, we can go back and layout the out-of-flow descedants (if any).
+    formattingContext->layoutOutOfFlowDescendants(root);
 }
 
 void InlineFormattingContext::computeWidthAndHeightForReplacedInlineBox(const Box& layoutBox) const
@@ -409,8 +403,28 @@ void InlineFormattingContext::computeFloatPosition(const FloatingContext& floati
     displayBox.setTopLeft(floatingContext.positionForFloat(floatBox));
 }
 
-void InlineFormattingContext::computeStaticPosition(const Box&) const
+void InlineFormattingContext::placeInFlowPositionedChildren(unsigned fistRunIndex) const
 {
+    auto& inlineRuns = inlineFormattingState().inlineRuns();
+    for (auto runIndex = fistRunIndex; runIndex < inlineRuns.size(); ++runIndex) {
+        auto& inlineRun = inlineRuns[runIndex];
+
+        auto positionOffset = [&](auto& layoutBox) {
+            // FIXME: Need to figure out whether in-flow offset should stick. This might very well be temporary.
+            std::optional<LayoutSize> offset;
+            for (auto* box = &layoutBox; box != &root(); box = box->parent()) {
+                if (!box->isInFlowPositioned())
+                    continue;
+                offset = offset.value_or(LayoutSize()) + Geometry::inFlowPositionedPositionOffset(layoutState(), *box);
+            }
+            return offset;
+        };
+
+        if (auto offset = positionOffset(inlineRun.inlineItem().layoutBox())) {
+            inlineRun.moveVertically(offset->height());
+            inlineRun.moveHorizontally(offset->width());
+        }
+    }
 }
 
 void InlineFormattingContext::collectInlineContentForSubtree(const Box& root, InlineRunProvider& inlineRunProvider) const
@@ -418,15 +432,26 @@ void InlineFormattingContext::collectInlineContentForSubtree(const Box& root, In
     // Collect inline content recursively and set breaking rules for the inline elements (for paddings, margins, positioned element etc).
     auto& inlineFormattingState = this->inlineFormattingState();
 
+    auto createAndAppendInlineItem = [&] {
+        auto inlineItem = std::make_unique<InlineItem>(root);
+        inlineRunProvider.append(*inlineItem);
+        inlineFormattingState.inlineContent().add(WTFMove(inlineItem));
+    };
+
     if (root.establishesFormattingContext() && &root != &(this->root())) {
+        createAndAppendInlineItem();
+        auto& inlineRun = *inlineFormattingState.inlineContent().last();
+
+        auto horizontalMargins = Geometry::computedNonCollapsedHorizontalMarginValue(layoutState(), root);
+        inlineRun.addDetachingRule({ InlineItem::DetachingRule::BreakAtStart, InlineItem::DetachingRule::BreakAtEnd });
+        inlineRun.addNonBreakableStart(horizontalMargins.left);
+        inlineRun.addNonBreakableEnd(horizontalMargins.right);
         // Skip formatting root subtree. They are not part of this inline formatting context.
-        inlineRunProvider.append(root);
-        inlineFormattingState.addDetachingRule(root, { InlineFormattingState::DetachingRule::BreakAtStart, InlineFormattingState::DetachingRule::BreakAtEnd });
         return;
     }
 
     if (!is<Container>(root)) {
-        inlineRunProvider.append(root);
+        createAndAppendInlineItem();
         return;
     }
 
@@ -437,6 +462,10 @@ void InlineFormattingContext::collectInlineContentForSubtree(const Box& root, In
         child = child->nextInFlowOrFloatingSibling();
     }
 
+    // FIXME: Revisit this when we figured out how inline boxes fit the display tree.
+    auto padding = Geometry::computedPadding(layoutState(), root);
+    auto border = Geometry::computedBorder(layoutState(), root);
+    auto horizontalMargins = Geometry::computedNonCollapsedHorizontalMarginValue(layoutState(), root);
     // Setup breaking boundaries for this subtree.
     auto* lastDescendantInlineBox = inlineFormattingState.lastInlineItem();
     // Empty container?
@@ -444,13 +473,15 @@ void InlineFormattingContext::collectInlineContentForSubtree(const Box& root, In
         return;
 
     auto rootBreaksAtStart = [&] {
-        // FIXME: add padding-inline-start, margin-inline-start etc.
-        return false;
+        if (&root == &(this->root()))
+            return false;
+        return (padding && padding->horizontal.left) || border.horizontal.left || horizontalMargins.left || root.isPositioned();
     };
 
     auto rootBreaksAtEnd = [&] {
-        // FIXME: add padding-inline-end, margin-inline-end etc.
-        return false;
+        if (&root == &(this->root()))
+            return false;
+        return (padding && padding->horizontal.right) || border.horizontal.right || horizontalMargins.right || root.isPositioned();
     };
 
     if (rootBreaksAtStart()) {
@@ -458,17 +489,26 @@ void InlineFormattingContext::collectInlineContentForSubtree(const Box& root, In
         auto& inlineContent = inlineFormattingState.inlineContent();
 
         if (lastInlineBoxBeforeContainer) {
-            auto iterator = inlineContent.find<const InlineItem&, InlineItemHashTranslator>(*lastInlineBoxBeforeContainer);
+            auto iterator = inlineContent.find(lastInlineBoxBeforeContainer);
             firstDescendantInlineBox = (*++iterator).get();
         } else
             firstDescendantInlineBox = inlineContent.first().get();
 
         ASSERT(firstDescendantInlineBox);
-        inlineFormattingState.addDetachingRule(firstDescendantInlineBox->layoutBox(), InlineFormattingState::DetachingRule::BreakAtStart);
+        firstDescendantInlineBox->addDetachingRule(InlineItem::DetachingRule::BreakAtStart);
+        auto startOffset = border.horizontal.left + horizontalMargins.left;
+        if (padding)
+            startOffset += padding->horizontal.left;
+        firstDescendantInlineBox->addNonBreakableStart(startOffset);
     }
 
-    if (rootBreaksAtEnd())
-        inlineFormattingState.addDetachingRule(lastDescendantInlineBox->layoutBox(), InlineFormattingState::DetachingRule::BreakAtEnd);
+    if (rootBreaksAtEnd()) {
+        lastDescendantInlineBox->addDetachingRule(InlineItem::DetachingRule::BreakAtEnd);
+        auto endOffset = border.horizontal.right + horizontalMargins.right;
+        if (padding)
+            endOffset += padding->horizontal.right;
+        lastDescendantInlineBox->addNonBreakableEnd(endOffset);
+    }
 }
 
 void InlineFormattingContext::collectInlineContent(InlineRunProvider& inlineRunProvider) const
@@ -483,7 +523,7 @@ FormattingContext::InstrinsicWidthConstraints InlineFormattingContext::instrinsi
         return *instrinsicWidthConstraints;
 
     auto& inlineFormattingState = this->inlineFormattingState();
-    InlineRunProvider inlineRunProvider(inlineFormattingState);
+    InlineRunProvider inlineRunProvider;
     collectInlineContent(inlineRunProvider);
 
     // Compute width for non-text content.

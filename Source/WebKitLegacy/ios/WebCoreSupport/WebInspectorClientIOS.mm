@@ -34,6 +34,7 @@
 #import "WebInspector.h"
 #import "WebNodeHighlighter.h"
 #import "WebViewInternal.h"
+#import <WebCore/CertificateInfo.h>
 #import <WebCore/InspectorController.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/Page.h>
@@ -124,12 +125,14 @@ void WebInspectorFrontendClient::frontendLoaded() { }
 String WebInspectorFrontendClient::localizedStringsURL() { return String(); }
 void WebInspectorFrontendClient::bringToFront() { }
 void WebInspectorFrontendClient::closeWindow() { }
+void WebInspectorFrontendClient::reopen() { }
 void WebInspectorFrontendClient::attachWindow(DockSide) { }
 void WebInspectorFrontendClient::detachWindow() { }
 void WebInspectorFrontendClient::setAttachedWindowHeight(unsigned) { }
 void WebInspectorFrontendClient::setAttachedWindowWidth(unsigned) { }
 void WebInspectorFrontendClient::startWindowDrag() { }
 void WebInspectorFrontendClient::inspectedURLChanged(const String&) { }
+void WebInspectorFrontendClient::showCertificate(const CertificateInfo&) { }
 void WebInspectorFrontendClient::updateWindowTitle() const { }
 void WebInspectorFrontendClient::save(const String&, const String&, bool, bool) { }
 void WebInspectorFrontendClient::append(const String&, const String&) { }

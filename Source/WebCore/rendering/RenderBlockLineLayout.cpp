@@ -471,7 +471,7 @@ static inline void setLogicalWidthForTextRun(RootInlineBox* lineBox, BidiRun* ru
             glyphOverflow.computeBounds = true; 
     }
     
-    LayoutUnit hyphenWidth = 0;
+    LayoutUnit hyphenWidth;
     if (downcast<InlineTextBox>(*run->box()).hasHyphen())
         hyphenWidth = measureHyphenWidth(renderer, font, &fallbackFonts);
 
@@ -1413,7 +1413,7 @@ void RenderBlockFlow::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, I
                 if (layoutState.usesRepaintBounds())
                     layoutState.updateRepaintRangeFromBox(lineBox);
                 
-                LayoutUnit adjustment = 0;
+                LayoutUnit adjustment;
                 bool overflowsFragment = false;
                 
                 layoutState.marginInfo().setAtBeforeSideOfBlock(false);
@@ -1457,7 +1457,7 @@ void RenderBlockFlow::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, I
             auto it = floatingObjectSet.begin();
             auto end = floatingObjectSet.end();
             if (auto* lastFloat = layoutState.floatList().lastFloat()) {
-                auto lastFloatIterator = floatingObjectSet.find<FloatingObject&, FloatingObjectHashTranslator>(*lastFloat);
+                auto lastFloatIterator = floatingObjectSet.find(lastFloat);
                 ASSERT(lastFloatIterator != end);
                 ++lastFloatIterator;
                 it = lastFloatIterator;
@@ -1609,8 +1609,8 @@ void RenderBlockFlow::linkToEndLineIfNeeded(LineLayoutState& layoutState)
             trailingFloatsLineBox->alignBoxesInBlockDirection(blockLogicalHeight, textBoxDataMap, verticalPositionCache);
             trailingFloatsLineBox->setLineTopBottomPositions(blockLogicalHeight, blockLogicalHeight, blockLogicalHeight, blockLogicalHeight);
             trailingFloatsLineBox->setPaginatedLineWidth(availableLogicalWidthForContent(blockLogicalHeight));
-            LayoutRect logicalLayoutOverflow(0, blockLogicalHeight, 1, bottomLayoutOverflow - blockLogicalHeight);
-            LayoutRect logicalVisualOverflow(0, blockLogicalHeight, 1, bottomVisualOverflow - blockLogicalHeight);
+            LayoutRect logicalLayoutOverflow(0_lu, blockLogicalHeight, 1_lu, bottomLayoutOverflow - blockLogicalHeight);
+            LayoutRect logicalVisualOverflow(0_lu, blockLogicalHeight, 1_lu, bottomVisualOverflow - blockLogicalHeight);
             trailingFloatsLineBox->setOverflowFromLogicalRects(logicalLayoutOverflow, logicalVisualOverflow, trailingFloatsLineBox->lineTop(), trailingFloatsLineBox->lineBottom());
             if (layoutState.fragmentedFlow())
                 updateFragmentForLine(trailingFloatsLineBox);
@@ -1620,7 +1620,7 @@ void RenderBlockFlow::linkToEndLineIfNeeded(LineLayoutState& layoutState)
         auto it = floatingObjectSet.begin();
         auto end = floatingObjectSet.end();
         if (auto* lastFloat = layoutState.floatList().lastFloat()) {
-            auto lastFloatIterator = floatingObjectSet.find<FloatingObject&, FloatingObjectHashTranslator>(*lastFloat);
+            auto lastFloatIterator = floatingObjectSet.find(lastFloat);
             ASSERT(lastFloatIterator != end);
             ++lastFloatIterator;
             it = lastFloatIterator;
@@ -1789,7 +1789,7 @@ RootInlineBox* RenderBlockFlow::determineStartPosition(LineLayoutState& layoutSt
     if (!layoutState.isFullLayout()) {
         // Paginate all of the clean lines.
         bool paginated = view().frameView().layoutContext().layoutState() && view().frameView().layoutContext().layoutState()->isPaginated();
-        LayoutUnit paginationDelta = 0;
+        LayoutUnit paginationDelta;
         auto floatsIterator = floats.begin();
         auto end = floats.end();
         for (currentLine = firstRootBox(); currentLine && !currentLine->isDirty(); currentLine = currentLine->nextRootBox()) {
@@ -2080,7 +2080,7 @@ void RenderBlockFlow::addOverflowFromInlineChildren()
         SimpleLineLayout::collectFlowOverflow(*this, *layout);
         return;
     }
-    LayoutUnit endPadding = hasOverflowClip() ? paddingEnd() : LayoutUnit();
+    LayoutUnit endPadding = hasOverflowClip() ? paddingEnd() : 0_lu;
     // FIXME: Need to find another way to do this, since scrollbars could show when we don't want them to.
     if (hasOverflowClip() && !endPadding && element() && element()->isRootEditableElement() && style().isLeftToRightDirection())
         endPadding = 1;

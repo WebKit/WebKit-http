@@ -737,6 +737,8 @@ WebAuthenticationEnabled:
   humanReadableName: "Web Authentication"
   humanReadableDescription: "Enable Web Authentication support"
   webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+  condition: ENABLE(WEB_AUTHN)
 
 ModernMediaControlsEnabled:
   type: bool
@@ -866,12 +868,6 @@ PasswordEchoDuration:
   type: double
   defaultValue: 2
   webcoreName: passwordEchoDurationInSeconds
-
-# FIXME: 
-FontSmoothingLevel:
-  type: uint32_t
-  defaultValue: FontSmoothingLevelMedium
-  webcoreBinding: none
 
 LayoutFallbackWidth:
   type: uint32_t
@@ -1323,7 +1319,7 @@ CSSCustomPropertiesAndValuesEnabled:
 
 DarkModeCSSEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  defaultValue: true
   humanReadableName: "Dark Mode CSS Support"
   humanReadableDescription: "Enable Dark Mode CSS Support"
   webcoreBinding: RuntimeEnabledFeatures
@@ -1349,7 +1345,7 @@ WebSQLDisabled:
 
 ProcessSwapOnCrossSiteNavigationEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_PROCESS_SWAP_ON_CROSS_SITE_NAVIGATION_ENABLED
   humanReadableName: "Swap Processes on Cross-Site Navigation"
   humanReadableDescription: "Swap WebContent processes on cross-site navigations"
   category: experimental

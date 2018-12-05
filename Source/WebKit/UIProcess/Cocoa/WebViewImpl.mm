@@ -1477,6 +1477,8 @@ void WebViewImpl::handleProcessSwapOrExit()
 void WebViewImpl::processWillSwap()
 {
     handleProcessSwapOrExit();
+    if (m_gestureController)
+        m_gestureController->disconnectFromProcess();
 }
 
 void WebViewImpl::processDidExit()
@@ -1492,6 +1494,9 @@ void WebViewImpl::pageClosed()
 
 void WebViewImpl::didRelaunchProcess()
 {
+    if (m_gestureController)
+        m_gestureController->connectToProcess();
+
     accessibilityRegisterUIProcessTokens();
 }
 
@@ -1519,7 +1524,11 @@ void WebViewImpl::setBackgroundColor(NSColor *backgroundColor)
 NSColor *WebViewImpl::backgroundColor() const
 {
     if (!m_backgroundColor)
+#if ENABLE(DARK_MODE_CSS)
+        return [NSColor controlBackgroundColor];
+#else
         return [NSColor whiteColor];
+#endif
     return m_backgroundColor.get();
 }
 
@@ -1758,11 +1767,7 @@ void WebViewImpl::setDrawingAreaSize(CGSize size)
 
 void WebViewImpl::updateLayer()
 {
-    bool draws = drawsBackground();
-    if (!draws || !m_backgroundColor)
-        [m_view layer].backgroundColor = CGColorGetConstantColor(draws ? kCGColorWhite : kCGColorClear);
-    else
-        [m_view layer].backgroundColor = [m_backgroundColor CGColor];
+    [m_view layer].backgroundColor = drawsBackground() ? [backgroundColor() CGColor] : CGColorGetConstantColor(kCGColorClear);
 }
 
 void WebViewImpl::drawRect(CGRect rect)

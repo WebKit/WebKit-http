@@ -303,8 +303,9 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, CodeBlock
     , m_unlinkedCode(*other.vm(), this, other.m_unlinkedCode.get())
     , m_ownerExecutable(*other.vm(), this, other.m_ownerExecutable.get())
     , m_poisonedVM(other.m_poisonedVM)
-    , m_instructionCount(other.m_instructionCount)
     , m_instructions(other.m_instructions)
+    , m_instructionsRawPointer(other.m_instructionsRawPointer)
+    , m_instructionCount(other.m_instructionCount)
     , m_thisRegister(other.m_thisRegister)
     , m_scopeRegister(other.m_scopeRegister)
     , m_hash(other.m_hash)
@@ -369,6 +370,7 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecut
     , m_ownerExecutable(*vm, this, ownerExecutable)
     , m_poisonedVM(vm)
     , m_instructions(&unlinkedCodeBlock->instructions())
+    , m_instructionsRawPointer(m_instructions->rawPointer())
     , m_thisRegister(unlinkedCodeBlock->thisRegister())
     , m_scopeRegister(unlinkedCodeBlock->scopeRegister())
     , m_source(WTFMove(sourceProvider))
@@ -564,6 +566,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         LINK(OpToThis, profile)
         LINK(OpBitand, profile)
         LINK(OpBitor, profile)
+        LINK(OpBitnot, profile)
 
         LINK(OpGetById, profile, hitCountForLLIntCaching)
 
@@ -1387,6 +1390,7 @@ void CodeBlock::getICStatusMap(const ConcurrentJSLocker&, ICStatusMap& result)
             result.add(callLinkInfo->codeOrigin(), ICStatus()).iterator->value.callLinkInfo = callLinkInfo;
         for (ByValInfo* byValInfo : m_byValInfos)
             result.add(CodeOrigin(byValInfo->bytecodeIndex), ICStatus()).iterator->value.byValInfo = byValInfo;
+#if ENABLE(DFG_JIT)
         if (JITCode::isOptimizingJIT(jitType())) {
             DFG::CommonData* dfgCommon = m_jitCode->dfgCommon();
             for (auto& pair : dfgCommon->recordedStatuses.calls)
@@ -1398,6 +1402,7 @@ void CodeBlock::getICStatusMap(const ConcurrentJSLocker&, ICStatusMap& result)
             for (auto& pair : dfgCommon->recordedStatuses.ins)
                 result.add(pair.first, ICStatus()).iterator->value.inStatus = pair.second.get();
         }
+#endif
     }
 #else
     UNUSED_PARAM(result);

@@ -192,7 +192,7 @@ public:
 #endif
 
     void updateActivePages();
-    void getActivePagesOriginsForTesting(Vector<String>&);
+    void getActivePagesOriginsForTesting(CompletionHandler<void(Vector<String>&&)>&&);
     void pageActivityStateDidChange(uint64_t pageID, OptionSet<WebCore::ActivityState::Flag> changed);
 
     void setHiddenPageDOMTimerThrottlingIncreaseLimit(int milliseconds);
@@ -203,6 +203,8 @@ public:
     void processDidResume();
 
     void sendPrewarmInformation(const WebCore::URL&);
+
+    void isJITEnabled(CompletionHandler<void(bool)>&&);
 
 #if PLATFORM(IOS_FAMILY)
     void resetAllGeolocationPermissions();
@@ -258,12 +260,17 @@ private:
 
     void markAllLayersVolatile(WTF::Function<void(bool)>&& completionHandler);
     void cancelMarkAllLayersVolatile();
-    void setAllLayerTreeStatesFrozen(bool);
+
+    void freezeAllLayerTrees();
+    void unfreezeAllLayerTrees();
+
     void processSuspensionCleanupTimerFired();
 
     void clearCachedCredentials();
 
     void platformTerminate();
+
+    void markIsNoLongerPrewarmed();
 
     void registerURLSchemeAsEmptyDocument(const String&);
     void registerURLSchemeAsSecure(const String&) const;
@@ -381,6 +388,7 @@ private:
     void didReceiveSyncWebProcessMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
 #if PLATFORM(MAC)
+    void updateProcessName();
     void setScreenProperties(const WebCore::ScreenProperties&);
 #if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     void scrollerStylePreferenceChanged(bool useOverlayScrollbars);
@@ -456,6 +464,11 @@ private:
 #if PLATFORM(MAC)
     std::unique_ptr<WebCore::CPUMonitor> m_cpuMonitor;
     std::optional<double> m_cpuLimit;
+
+    enum class ProcessType { Inspector, ServiceWorker, PrewarmedWebContent, WebContent };
+    ProcessType m_processType { ProcessType::WebContent };
+    String m_uiProcessName;
+    String m_securityOrigin;
 #endif
 
     HashMap<WebCore::UserGestureToken *, uint64_t> m_userGestureTokens;

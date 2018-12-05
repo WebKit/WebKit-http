@@ -30,6 +30,7 @@
 #include "FocusDirection.h"
 #include "FrameLoader.h"
 #include "GraphicsContext.h"
+#include "GraphicsLayer.h"
 #include "HTMLMediaElementEnums.h"
 #include "HostWindow.h"
 #include "Icon.h"
@@ -489,7 +490,9 @@ public:
 
     virtual String signedPublicKeyAndChallengeString(unsigned, const String&, const URL&) const { return emptyString(); }
 
-    virtual bool isViewVisible() { return true; }
+    virtual void associateEditableImageWithAttachment(GraphicsLayer::EmbeddedViewID, const String&) { }
+    virtual void didCreateEditableImage(GraphicsLayer::EmbeddedViewID) { }
+    virtual void didDestroyEditableImage(GraphicsLayer::EmbeddedViewID) { }
 
 protected:
     virtual ~ChromeClient() = default;

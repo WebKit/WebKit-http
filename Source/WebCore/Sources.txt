@@ -301,14 +301,17 @@ Modules/websockets/WebSocketHandshake.cpp
 Modules/websockets/WorkerThreadableWebSocketChannel.cpp
 
 Modules/webgpu/DOMWindowWebGPU.cpp
-Modules/webgpu/GPUDevice.cpp
 Modules/webgpu/WebGPU.cpp
 Modules/webgpu/WebGPUAdapter.cpp
+Modules/webgpu/WebGPUCommandBuffer.cpp
 Modules/webgpu/WebGPUDevice.cpp
+Modules/webgpu/WebGPUQueue.cpp
 Modules/webgpu/WebGPURenderingContext.cpp
 Modules/webgpu/WebGPURenderPipeline.cpp
 Modules/webgpu/WebGPUShaderModule.cpp
 Modules/webgpu/WebGPUSwapChain.cpp
+Modules/webgpu/WebGPUTexture.cpp
+Modules/webgpu/WebGPUTextureView.cpp
 
 Modules/webvr/NavigatorWebVR.cpp
 Modules/webvr/VRDisplay.cpp
@@ -911,6 +914,7 @@ editing/FrameSelection.cpp
 editing/HTMLInterchange.cpp
 editing/InsertNestedListCommand.cpp
 editing/IndentOutdentCommand.cpp
+editing/InsertEditableImageCommand.cpp
 editing/InsertIntoTextNodeCommand.cpp
 editing/InsertLineBreakCommand.cpp
 editing/InsertListCommand.cpp
@@ -1415,6 +1419,7 @@ page/DeviceController.cpp
 page/DiagnosticLoggingKeys.cpp
 page/DisabledAdaptations.cpp
 page/DragController.cpp
+page/EditableImageReference.cpp
 page/EventHandler.cpp
 page/EventSource.cpp
 page/FocusController.cpp
@@ -1667,6 +1672,7 @@ platform/graphics/GraphicsLayerTransform.cpp
 platform/graphics/GraphicsLayerUpdater.cpp
 platform/graphics/GraphicsTypes.cpp
 platform/graphics/HEVCUtilities.cpp
+platform/graphics/Icon.cpp
 platform/graphics/Image.cpp
 platform/graphics/ImageBuffer.cpp
 platform/graphics/ImageDecoder.cpp
@@ -1729,27 +1735,28 @@ platform/graphics/filters/SourceAlpha.cpp
 platform/graphics/filters/SourceGraphic.cpp
 platform/graphics/filters/SpotLightSource.cpp
 
-platform/graphics/gpu/GPULegacyBuffer.cpp
-platform/graphics/gpu/GPULegacyCommandBuffer.cpp
-platform/graphics/gpu/GPULegacyCommandQueue.cpp
-platform/graphics/gpu/GPULegacyComputeCommandEncoder.cpp
-platform/graphics/gpu/GPULegacyComputePipelineState.cpp
-platform/graphics/gpu/GPULegacyDepthStencilDescriptor.cpp
-platform/graphics/gpu/GPULegacyDepthStencilState.cpp
-platform/graphics/gpu/GPULegacyDevice.cpp
-platform/graphics/gpu/GPULegacyDrawable.cpp
-platform/graphics/gpu/GPULegacyFunction.cpp
-platform/graphics/gpu/GPULegacyLibrary.cpp
-platform/graphics/gpu/GPULegacyRenderCommandEncoder.cpp
-platform/graphics/gpu/GPULegacyRenderPassAttachmentDescriptor.cpp
-platform/graphics/gpu/GPULegacyRenderPassColorAttachmentDescriptor.cpp
-platform/graphics/gpu/GPULegacyRenderPassDepthAttachmentDescriptor.cpp
-platform/graphics/gpu/GPULegacyRenderPassDescriptor.cpp
-platform/graphics/gpu/GPULegacyRenderPipelineColorAttachmentDescriptor.cpp
-platform/graphics/gpu/GPULegacyRenderPipelineDescriptor.cpp
-platform/graphics/gpu/GPULegacyRenderPipelineState.cpp
-platform/graphics/gpu/GPULegacyTexture.cpp
-platform/graphics/gpu/GPULegacyTextureDescriptor.cpp
+platform/graphics/gpu/GPUDevice.cpp
+platform/graphics/gpu/legacy/GPULegacyBuffer.cpp
+platform/graphics/gpu/legacy/GPULegacyCommandBuffer.cpp
+platform/graphics/gpu/legacy/GPULegacyCommandQueue.cpp
+platform/graphics/gpu/legacy/GPULegacyComputeCommandEncoder.cpp
+platform/graphics/gpu/legacy/GPULegacyComputePipelineState.cpp
+platform/graphics/gpu/legacy/GPULegacyDepthStencilDescriptor.cpp
+platform/graphics/gpu/legacy/GPULegacyDepthStencilState.cpp
+platform/graphics/gpu/legacy/GPULegacyDevice.cpp
+platform/graphics/gpu/legacy/GPULegacyDrawable.cpp
+platform/graphics/gpu/legacy/GPULegacyFunction.cpp
+platform/graphics/gpu/legacy/GPULegacyLibrary.cpp
+platform/graphics/gpu/legacy/GPULegacyRenderCommandEncoder.cpp
+platform/graphics/gpu/legacy/GPULegacyRenderPassAttachmentDescriptor.cpp
+platform/graphics/gpu/legacy/GPULegacyRenderPassColorAttachmentDescriptor.cpp
+platform/graphics/gpu/legacy/GPULegacyRenderPassDepthAttachmentDescriptor.cpp
+platform/graphics/gpu/legacy/GPULegacyRenderPassDescriptor.cpp
+platform/graphics/gpu/legacy/GPULegacyRenderPipelineColorAttachmentDescriptor.cpp
+platform/graphics/gpu/legacy/GPULegacyRenderPipelineDescriptor.cpp
+platform/graphics/gpu/legacy/GPULegacyRenderPipelineState.cpp
+platform/graphics/gpu/legacy/GPULegacyTexture.cpp
+platform/graphics/gpu/legacy/GPULegacyTextureDescriptor.cpp
 
 platform/graphics/iso/ISOBox.cpp
 platform/graphics/iso/ISOOriginalFormatBox.cpp
@@ -1894,6 +1901,7 @@ rendering/FlexibleBoxAlgorithm.cpp
 rendering/FixedTableLayout.cpp
 rendering/FloatingObjects.cpp
 rendering/Grid.cpp
+rendering/GridBaselineAlignment.cpp
 rendering/GridLayoutFunctions.cpp
 rendering/GridTrackSizingAlgorithm.cpp
 rendering/HitTestLocation.cpp
@@ -3208,7 +3216,9 @@ JSWebAnimation.cpp
 JSWebGPU.cpp
 JSWebGPUAdapter.cpp
 JSWebGPUAdapterDescriptor.cpp
+JSWebGPUCommandBuffer.cpp
 JSWebGPUDevice.cpp
+JSWebGPUQueue.cpp
 JSWebGPUPipelineDescriptorBase.cpp
 JSWebGPUPipelineStageDescriptor.cpp
 JSWebGPURenderingContext.cpp
@@ -3218,6 +3228,9 @@ JSWebGPUShaderModule.cpp
 JSWebGPUShaderModuleDescriptor.cpp
 JSWebGPUShaderStage.cpp
 JSWebGPUSwapChain.cpp
+JSWebGPUTexture.cpp
+JSWebGPUTextureFormatEnum.cpp
+JSWebGPUTextureView.cpp
 JSWebMetalBuffer.cpp
 JSWebMetalCommandBuffer.cpp
 JSWebMetalCommandQueue.cpp

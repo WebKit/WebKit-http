@@ -10,6 +10,7 @@ tiled-drawing/ios [ Skip ]
 fast/visual-viewport/tiled-drawing [ Pass ]
 swipe [ Pass ]
 fast/web-share [ Pass ]
+editing/find [ Pass ]
 
 fast/events/autoscroll-when-zoomed.html [ Pass ]
 fast/events/autoscroll-main-document.html [ Pass ]
@@ -67,6 +68,10 @@ webkit.org/b/187773 http/tests/webAPIStatistics [ Pass ]
 webkit.org/b/184569 storage/indexeddb/modern/transactions-stop-on-navigation.html [ Pass Failure ]
 
 [ Mojave+ ] fast/events/detect-caps-lock.html [ Pass ]
+[ Mojave+ ] fast/forms/auto-fill-button/caps-lock-indicator-should-be-visible-after-hiding-auto-fill-strong-password-button.html [ Pass ]
+[ Mojave+ ] fast/forms/auto-fill-button/caps-lock-indicator-should-not-be-visible-when-auto-fill-strong-password-button-is-visible.html [ Pass ]
+[ Mojave+ ] fast/forms/password-scrolled-after-caps-lock-toggled.html [ Pass ]
+[ Mojave+ ] fast/repaint/placeholder-after-caps-lock-hidden.html [ Pass ]
 
 fast/events/inactive-window-no-mouse-event.html [ Pass ]
 
@@ -129,6 +134,7 @@ fast/events/drag-and-drop.html
 fast/events/drag-and-drop-link.html
 fast/events/drag-and-drop-link-fast-multiple-times-does-not-crash.html
 fast/events/drag-and-drop-link-containing-block.html
+fast/events/drag-image-with-border-image.html
 fast/events/drag-in-frames.html
 fast/events/drag-parent-node.html
 fast/events/draggable-div-nodata.html
@@ -846,8 +852,6 @@ webkit.org/b/184937 transitions/opacity-transition-zindex.html [ Skip ]
 
 webkit.org/b/186362 [ Release ] http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html [ Skip ]
 
-webkit.org/b/186425 [ Debug ] inspector/console/webcore-logging.html [ Pass Failure ]
-
 webkit.org/b/190808 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/containing-block.html [ Pass Failure ]
 webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/bounding-box.html [ Pass Failure ]
 webkit.org/b/191002 [ Debug ] imported/w3c/web-platform-tests/intersection-observer/display-none.html [ Pass Failure ]
@@ -906,7 +910,5 @@ http/wpt/webauthn/idl.https.html [ Skip ]
 webkit.org/b/183878 media/modern-media-controls/tracks-panel/tracks-panel-up-click-over-media-does-not-dimiss-media-controls-when-media-is-playing.html [ Pass Timeout ] 
 
 webkit.org/b/191644 [ Sierra ] fast/workers/worker-cloneport.html [ Pass Failure ]
-
-webkit.org/b/191642 accessibility/mac/selection-notification-focus-change.html [ Skip ]
 
 webkit.org/b/191658 [ Sierra Release ] fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Pass ImageOnlyFailure ]

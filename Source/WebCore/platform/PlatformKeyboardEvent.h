@@ -174,7 +174,7 @@ namespace WebCore {
         PlatformKeyboardEvent(BMessage*);
 #endif
 
-#if PLATFORM(WPE)
+#if USE(LIBWPE)
         static String keyValueForWPEKeyCode(unsigned);
         static String keyCodeForHardwareKeyCode(unsigned);
         static String keyIdentifierForWPEKeyCode(unsigned);

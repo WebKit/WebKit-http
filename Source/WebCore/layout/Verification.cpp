@@ -34,6 +34,7 @@
 #include "LayoutContainer.h"
 #include "LayoutTreeBuilder.h"
 #include "RenderBox.h"
+#include "RenderInline.h"
 #include "RenderView.h"
 #include <wtf/text/TextStream.h>
 
@@ -86,12 +87,56 @@ static bool outputMismatchingSimpleLineInformationIfNeeded(TextStream& stream, c
 
 static bool checkForMatchingNonTextRuns(const InlineRun& inlineRun, const WebCore::InlineBox& inlineBox)
 {
-    return areEssentiallyEqual(inlineBox.logicalLeft(), inlineRun.logicalLeft()) && areEssentiallyEqual(inlineBox.logicalRight(), inlineRun.logicalRight());
+    return areEssentiallyEqual(inlineBox.logicalLeft(), inlineRun.logicalLeft())
+        && areEssentiallyEqual(inlineBox.logicalRight(), inlineRun.logicalRight())
+        && areEssentiallyEqual(inlineBox.logicalHeight(), inlineRun.logicalHeight());
 }
 
-static bool checkForMatchingTextRuns(const InlineRun& inlineRun, float logicalLeft, float logicalRight, unsigned start, unsigned end)
+static bool checkForMatchingTextRuns(const InlineRun& inlineRun, float logicalLeft, float logicalRight, unsigned start, unsigned end, float logicalHeight)
 {
-    return areEssentiallyEqual(logicalLeft, inlineRun.logicalLeft()) && areEssentiallyEqual(logicalRight, inlineRun.logicalRight()) && start == inlineRun.textContext()->start() && (end == (inlineRun.textContext()->start() + inlineRun.textContext()->length()));
+    return areEssentiallyEqual(logicalLeft, inlineRun.logicalLeft())
+        && areEssentiallyEqual(logicalRight, inlineRun.logicalRight())
+        && start == inlineRun.textContext()->start()
+        && (end == (inlineRun.textContext()->start() + inlineRun.textContext()->length()))
+        && areEssentiallyEqual(logicalHeight, inlineRun.logicalHeight());
+}
+
+static void collectFlowBoxSubtree(const InlineFlowBox& flowbox, Vector<WebCore::InlineBox*>& inlineBoxes)
+{
+    auto* inlineBox = flowbox.firstLeafChild();
+    auto* lastLeafChild = flowbox.lastLeafChild();
+    while (inlineBox) {
+        inlineBoxes.append(inlineBox);
+        if (inlineBox == lastLeafChild)
+            break;
+        inlineBox = inlineBox->nextLeafChild();
+    }
+}
+
+static void collectInlineBoxes(const RenderBlockFlow& root, Vector<WebCore::InlineBox*>& inlineBoxes)
+{
+    for (auto* rootLine = root.firstRootBox(); rootLine; rootLine = rootLine->nextRootBox()) {
+        for (auto* inlineBox = rootLine->firstChild(); inlineBox; inlineBox = inlineBox->nextOnLine()) {
+            if (!is<InlineFlowBox>(inlineBox)) {
+                inlineBoxes.append(inlineBox);
+                continue;
+            }
+            collectFlowBoxSubtree(downcast<InlineFlowBox>(*inlineBox), inlineBoxes);
+        }
+    }
+}
+
+static LayoutUnit resolveForRelativePositionIfNeeded(const InlineTextBox& inlineTextBox)
+{
+    LayoutUnit xOffset;
+    auto* parent = inlineTextBox.parent();
+    while (is<InlineFlowBox>(parent)) {
+        auto& renderer = parent->renderer();
+        if (renderer.isInFlowPositioned())
+            xOffset = downcast<RenderInline>(renderer).offsetForInFlowPosition().width();
+        parent = parent->parent();
+    }
+    return xOffset;
 }
 
 static bool outputMismatchingComplexLineInformationIfNeeded(TextStream& stream, const LayoutState& layoutState, const RenderBlockFlow& blockFlow, const Container& inlineFormattingRoot)
@@ -102,10 +147,7 @@ static bool outputMismatchingComplexLineInformationIfNeeded(TextStream& stream, 
 
     // Collect inlineboxes.
     Vector<WebCore::InlineBox*> inlineBoxes;
-    for (auto* rootLine = blockFlow.firstRootBox(); rootLine; rootLine = rootLine->nextRootBox()) {
-        for (auto* inlineBox = rootLine->firstChild(); inlineBox; inlineBox = inlineBox->nextOnLine())
-            inlineBoxes.append(inlineBox);
-    }
+    collectInlineBoxes(blockFlow, inlineBoxes);
 
     auto mismatched = false;
     unsigned runIndex = 0;
@@ -122,7 +164,12 @@ static bool outputMismatchingComplexLineInformationIfNeeded(TextStream& stream, 
         auto& inlineRun = inlineRunList[runIndex];
         auto matchingRuns = false;
         if (inlineTextBox) {
-            matchingRuns = checkForMatchingTextRuns(inlineRun, inlineTextBox->logicalLeft(), inlineTextBox->logicalRight(), inlineTextBox->start(), inlineTextBox->end() + 1);
+            auto xOffset = resolveForRelativePositionIfNeeded(*inlineTextBox);
+            matchingRuns = checkForMatchingTextRuns(inlineRun, inlineTextBox->logicalLeft() + xOffset,
+                inlineTextBox->logicalRight() + xOffset,
+                inlineTextBox->start(),
+                inlineTextBox->end() + 1,
+                inlineTextBox->logicalHeight());
 
             // <span>foobar</span>foobar generates 2 inline text boxes while we only generate one inline run.
             // also <div>foo<img style="float: left;">bar</div> too.
@@ -130,8 +177,8 @@ static bool outputMismatchingComplexLineInformationIfNeeded(TextStream& stream, 
             auto textRunMightBeExtended = !matchingRuns && inlineTextBox->end() < inlineRunEnd && inlineBoxIndex < inlineBoxes.size() - 1;
 
             if (textRunMightBeExtended) {
-                auto logicalLeft = inlineTextBox->logicalLeft();
-                auto logicalRight = inlineTextBox->logicalRight();
+                auto logicalLeft = inlineTextBox->logicalLeft() + xOffset;
+                auto logicalRight = inlineTextBox->logicalRight() + xOffset;
                 auto start = inlineTextBox->start();
                 auto end = inlineTextBox->end() + 1;
                 auto index = ++inlineBoxIndex;
@@ -142,9 +189,10 @@ static bool outputMismatchingComplexLineInformationIfNeeded(TextStream& stream, 
                     if (!inlineTextBox)
                         break;
 
-                    logicalRight = inlineTextBox->logicalRight();
+                    auto xOffset = resolveForRelativePositionIfNeeded(*inlineTextBox);
+                    logicalRight = inlineTextBox->logicalRight() + xOffset;
                     end += (inlineTextBox->end() + 1);
-                    if (checkForMatchingTextRuns(inlineRun, logicalLeft, logicalRight, start, end)) {
+                    if (checkForMatchingTextRuns(inlineRun, logicalLeft, logicalRight, start, end, inlineTextBox->logicalHeight())) {
                         matchingRuns = true;
                         inlineBoxIndex = index;
                         break;
@@ -164,12 +212,12 @@ static bool outputMismatchingComplexLineInformationIfNeeded(TextStream& stream, 
 
             if (inlineTextBox)
                 stream << "(" << inlineTextBox->start() << ", " << inlineTextBox->end() + 1 << ")";
-            stream << " (" << inlineBox->logicalLeft() << ", " << inlineBox->logicalRight() << ") ";
+            stream << " (" << inlineBox->logicalLeft() << ", " << inlineBox->logicalRight() << ") (" << inlineBox->logicalWidth() << "x" << inlineBox->logicalHeight() << ")";
 
             stream << "inline run ";
             if (inlineRun.textContext())
                 stream << "(" << inlineRun.textContext()->start() << ", " << inlineRun.textContext()->start() + inlineRun.textContext()->length() << ") ";
-            stream << "(" << inlineRun.logicalLeft() << ", " << inlineRun.logicalRight() << ")";
+            stream << "(" << inlineRun.logicalLeft() << ", " << inlineRun.logicalRight() << ") (" << inlineRun.logicalWidth() << "x" << inlineRun.logicalHeight() << ")";
             stream.nextLine();
             mismatched = true;
         }
@@ -283,12 +331,12 @@ static bool verifyAndOutputSubtree(TextStream& stream, const LayoutState& contex
 void LayoutState::verifyAndOutputMismatchingLayoutTree(const RenderView& renderView) const
 {
     TextStream stream;
-    auto mismatchingGeometry = verifyAndOutputSubtree(stream, *this, renderView, *m_root.get());
+    auto mismatchingGeometry = verifyAndOutputSubtree(stream, *this, renderView, initialContainingBlock());
     if (!mismatchingGeometry)
         return;
 #if ENABLE(TREE_DEBUGGING)
     showRenderTree(&renderView);
-    showLayoutTree(*m_root.get(), this);
+    showLayoutTree(initialContainingBlock(), this);
 #endif
     WTFLogAlways("%s", stream.release().utf8().data());
     ASSERT_NOT_REACHED();

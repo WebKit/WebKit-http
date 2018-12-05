@@ -267,12 +267,14 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
 
         let emptyContentPlaceholderElement = this._createEmptyContentPlaceholderIfNeeded(treeOutline, message);
         if (emptyContentPlaceholderElement.parentNode)
-            return;
+            return emptyContentPlaceholderElement;
 
         let emptyContentPlaceholderParentElement = treeOutline.element.parentNode;
         emptyContentPlaceholderParentElement.appendChild(emptyContentPlaceholderElement);
 
         this._updateContentOverflowShadowVisibility();
+
+        return emptyContentPlaceholderElement;
     }
 
     hideEmptyContentPlaceholder(treeOutline)
@@ -304,6 +306,11 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
     updateFilter()
     {
         this._updateFilter();
+    }
+
+    resetFilter()
+    {
+        this._filterBar.clear();
     }
 
     shouldFilterPopulate()
@@ -511,8 +518,16 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
                 return;
             }
 
+            let message = WI.createMessageTextView(WI.UIString("No Filter Results"));
+
+            let buttonElement = message.appendChild(document.createElement("button"));
+            buttonElement.textContent = WI.UIString("Clear Filters");
+            buttonElement.addEventListener("click", () => {
+                this.resetFilter();
+            });
+
             // All top level tree elements are hidden, so filtering hid everything. Show a message.
-            this.showEmptyContentPlaceholder(WI.UIString("No Filter Results"), treeOutline);
+            this.showEmptyContentPlaceholder(message, treeOutline);
             this._emptyFilterResults.set(treeOutline, true);
         }
 
@@ -725,7 +740,7 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
         if (emptyContentPlaceholderElement)
             return emptyContentPlaceholderElement;
 
-        emptyContentPlaceholderElement = WI.createMessageTextView(message);
+        emptyContentPlaceholderElement = message instanceof Node ? message : WI.createMessageTextView(message);
         this._emptyContentPlaceholderElements.set(treeOutline, emptyContentPlaceholderElement);
 
         return emptyContentPlaceholderElement;

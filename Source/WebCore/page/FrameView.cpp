@@ -416,6 +416,18 @@ void FrameView::recalculateScrollbarOverlayStyle()
         setScrollbarOverlayStyle(computedOverlayStyle);
 }
 
+#if ENABLE(DARK_MODE_CSS)
+void FrameView::recalculateBaseBackgroundColor()
+{
+    bool usingDarkAppearance = useDarkAppearance();
+    if (m_usesDarkAppearance == usingDarkAppearance)
+        return;
+
+    m_usesDarkAppearance = usingDarkAppearance;
+    updateBackgroundRecursively(m_isTransparent);
+}
+#endif
+
 void FrameView::clear()
 {
     setCanBlitOnScroll(true);
@@ -838,18 +850,6 @@ void FrameView::updateCompositingLayersAfterLayout()
     renderView->compositor().updateCompositingLayers(CompositingUpdateType::AfterLayout);
 }
 
-void FrameView::clearBackingStores()
-{
-    RenderView* renderView = this->renderView();
-    if (!renderView)
-        return;
-
-    RenderLayerCompositor& compositor = renderView->compositor();
-    ASSERT(compositor.inCompositingMode());
-    compositor.enableCompositingMode(false);
-    compositor.clearBackingForAllLayers();
-}
-
 GraphicsLayer* FrameView::layerForScrolling() const
 {
     RenderView* renderView = this->renderView();
@@ -1147,13 +1147,6 @@ void FrameView::handleDeferredScrollbarsUpdateAfterDirectionChange()
 
     updateScrollbars(scrollPosition());
     positionScrollbarLayers();
-}
-    
-bool FrameView::hasCompositedContent() const
-{
-    if (RenderView* renderView = this->renderView())
-        return renderView->compositor().inCompositingMode();
-    return false;
 }
 
 // Sometimes (for plug-ins) we need to eagerly go into compositing mode.
@@ -1902,7 +1895,7 @@ LayoutRect FrameView::rectForViewportConstrainedObjects(const LayoutRect& visibl
     // We impose an lower limit on the size (so an upper limit on the scale) of
     // the rect used to position fixed objects so that they don't crowd into the
     // center of the screen at larger scales.
-    const LayoutUnit maxContentWidthForZoomThreshold = LayoutUnit::fromPixel(1024);
+    const LayoutUnit maxContentWidthForZoomThreshold = 1024_lu;
     float zoomedOutScale = frameScaleFactor * visibleContentRect.width() / std::min(maxContentWidthForZoomThreshold, totalContentsSize.width());
     float constraintThresholdScale = 1.5 * zoomedOutScale;
     float maxPostionedObjectsRectScale = std::min(frameScaleFactor, constraintThresholdScale);
@@ -2402,9 +2395,17 @@ void FrameView::contentsResized()
 
 void FrameView::delegatesScrollingDidChange()
 {
-    // When we switch to delgatesScrolling mode, we should destroy the scrolling/clipping layers in RenderLayerCompositor.
-    if (hasCompositedContent())
-        clearBackingStores();
+    RenderView* renderView = this->renderView();
+    if (!renderView)
+        return;
+
+    RenderLayerCompositor& compositor = renderView->compositor();
+    // When we switch to delegatesScrolling mode, we should destroy the scrolling/clipping layers in RenderLayerCompositor.
+    if (compositor.usesCompositing()) {
+        ASSERT(compositor.usesCompositing());
+        compositor.enableCompositingMode(false);
+        compositor.clearBackingForAllLayers();
+    }
 }
 
 #if USE(COORDINATED_GRAPHICS)
@@ -2463,6 +2464,11 @@ void FrameView::scrollOffsetChangedViaPlatformWidgetImpl(const ScrollOffset& old
     updateCompositingLayersAfterScrolling();
     repaintSlowRepaintObjects();
     scrollPositionChanged(scrollPositionFromOffset(oldOffset), scrollPositionFromOffset(newOffset));
+    
+    if (auto* renderView = this->renderView()) {
+        if (renderView->usesCompositing())
+            renderView->compositor().didChangeVisibleRect();
+    }
 }
 
 // These scroll positions are affected by zooming.
@@ -2994,8 +3000,14 @@ void FrameView::setBaseBackgroundColor(const Color& backgroundColor)
     renderView()->compositor().rootBackgroundColorOrTransparencyChanged();
 }
 
-void FrameView::updateBackgroundRecursively(const Color& backgroundColor, bool transparent)
+void FrameView::updateBackgroundRecursively(bool transparent)
 {
+#if ENABLE(DARK_MODE_CSS)
+    Color backgroundColor = transparent ? Color::transparent : RenderTheme::singleton().systemColor(CSSValueAppleSystemControlBackground, styleColorOptions());
+#else
+    Color backgroundColor = transparent ? Color::transparent : Color::white;
+#endif
+
     for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr())) {
         if (FrameView* view = frame->view()) {
             view->setTransparent(transparent);
@@ -4606,7 +4618,7 @@ void FrameView::forceLayoutForPagination(const FloatSize& pageSize, const FloatS
             LayoutUnit docLogicalHeight = horizontalWritingMode ? updatedDocumentRect.height() : updatedDocumentRect.width();
             LayoutUnit docLogicalTop = horizontalWritingMode ? updatedDocumentRect.y() : updatedDocumentRect.x();
             LayoutUnit docLogicalRight = horizontalWritingMode ? updatedDocumentRect.maxX() : updatedDocumentRect.maxY();
-            LayoutUnit clippedLogicalLeft = 0;
+            LayoutUnit clippedLogicalLeft;
             if (!renderView->style().isLeftToRightDirection())
                 clippedLogicalLeft = docLogicalRight - pageLogicalWidth;
             LayoutRect overflow(clippedLogicalLeft, docLogicalTop, pageLogicalWidth, docLogicalHeight);
@@ -5155,6 +5167,8 @@ void FrameView::fireLayoutRelatedMilestonesIfNeeded()
     // If the layout was done with pending sheets, we are not in fact visually non-empty yet.
     if (m_isVisuallyNonEmpty && m_firstVisuallyNonEmptyLayoutCallbackPending) {
         m_firstVisuallyNonEmptyLayoutCallbackPending = false;
+        addPaintPendingMilestones(DidFirstMeaningfulPaint);
+
         if (requestedMilestones & DidFirstVisuallyNonEmptyLayout)
             milestonesAchieved.add(DidFirstVisuallyNonEmptyLayout);
     }
@@ -5186,6 +5200,11 @@ void FrameView::firePaintRelatedMilestonesIfNeeded()
     if (m_milestonesPendingPaint & DidFirstPaintAfterSuppressedIncrementalRendering) {
         if (page->requestedLayoutMilestones() & DidFirstPaintAfterSuppressedIncrementalRendering)
             milestonesAchieved.add(DidFirstPaintAfterSuppressedIncrementalRendering);
+    }
+
+    if (m_milestonesPendingPaint & DidFirstMeaningfulPaint) {
+        if (page->requestedLayoutMilestones() & DidFirstMeaningfulPaint)
+            milestonesAchieved.add(DidFirstMeaningfulPaint);
     }
 
     m_milestonesPendingPaint = { };

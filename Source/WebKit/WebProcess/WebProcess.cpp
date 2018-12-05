@@ -429,6 +429,16 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     RELEASE_LOG(Process, "%p - WebProcess::initializeWebProcess: Presenting process = %d", this, WebCore::presentingApplicationPID());
 }
 
+void WebProcess::markIsNoLongerPrewarmed()
+{
+#if PLATFORM(MAC)
+    ASSERT(m_processType == ProcessType::PrewarmedWebContent);
+    m_processType = ProcessType::WebContent;
+
+    updateProcessName();
+#endif
+}
+
 void WebProcess::prewarmGlobally()
 {
     WebCore::ProcessWarming::prewarmGlobally();
@@ -920,6 +930,11 @@ void WebProcess::resetPluginLoadClientPolicies(const HashMap<WTF::String, HashMa
 #endif
 }
 
+void WebProcess::isJITEnabled(CompletionHandler<void(bool)>&& completionHandler)
+{
+    completionHandler(JSC::VM::canUseJIT());
+}
+
 void WebProcess::clearPluginClientPolicies()
 {
 #if ENABLE(NETSCAPE_PLUGIN_API) && PLATFORM(MAC)
@@ -1328,8 +1343,9 @@ void WebProcess::updateActivePages()
 {
 }
 
-void WebProcess::getActivePagesOriginsForTesting(Vector<String>&)
+void WebProcess::getActivePagesOriginsForTesting(CompletionHandler<void(Vector<String>&&)>&& completionHandler)
 {
+    completionHandler({ });
 }
 
 void WebProcess::updateCPULimit()
@@ -1363,7 +1379,7 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
     if (!m_suppressMemoryPressureHandler)
         MemoryPressureHandler::singleton().releaseMemory(Critical::Yes, Synchronous::Yes);
 
-    setAllLayerTreeStatesFrozen(true);
+    freezeAllLayerTrees();
     
 #if PLATFORM(COCOA)
     destroyRenderingResources();
@@ -1411,7 +1427,7 @@ void WebProcess::prepareToSuspend()
 void WebProcess::cancelPrepareToSuspend()
 {
     RELEASE_LOG(ProcessSuspension, "%p - WebProcess::cancelPrepareToSuspend()", this);
-    setAllLayerTreeStatesFrozen(false);
+    unfreezeAllLayerTrees();
 
 #if PLATFORM(IOS_FAMILY)
     accessibilityProcessSuspendedNotification(false);
@@ -1459,18 +1475,24 @@ void WebProcess::cancelMarkAllLayersVolatile()
         page->cancelMarkLayersVolatile();
 }
 
-void WebProcess::setAllLayerTreeStatesFrozen(bool frozen)
+void WebProcess::freezeAllLayerTrees()
 {
     for (auto& page : m_pageMap.values())
-        page->setLayerTreeStateIsFrozen(frozen);
+        page->freezeLayerTree(WebPage::LayerTreeFreezeReason::ProcessSuspended);
 }
-    
+
+void WebProcess::unfreezeAllLayerTrees()
+{
+    for (auto& page : m_pageMap.values())
+        page->unfreezeLayerTree(WebPage::LayerTreeFreezeReason::ProcessSuspended);
+}
+
 void WebProcess::processDidResume()
 {
     RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processDidResume()", this);
 
     cancelMarkAllLayersVolatile();
-    setAllLayerTreeStatesFrozen(false);
+    unfreezeAllLayerTrees();
     
 #if PLATFORM(IOS_FAMILY)
     accessibilityProcessSuspendedNotification(false);

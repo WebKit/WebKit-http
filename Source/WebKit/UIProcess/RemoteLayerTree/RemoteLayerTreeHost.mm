@@ -38,7 +38,6 @@
 #import <WebCore/GraphicsContextCG.h>
 #import <WebCore/IOSurface.h>
 #import <WebCore/PlatformLayer.h>
-#import <WebCore/WebActionDisablingCALayerDelegate.h>
 #import <WebCore/WebCoreCALayerExtras.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
 
@@ -69,24 +68,25 @@ bool RemoteLayerTreeHost::updateLayerTree(const RemoteLayerTreeTransaction& tran
     if (!m_drawingArea)
         return false;
 
-    for (const auto& createdLayer : transaction.createdLayers()) {
-        const RemoteLayerTreeTransaction::LayerProperties* properties = transaction.changedLayerProperties().get(createdLayer.layerID);
-        createLayer(createdLayer, properties);
-    }
+    for (const auto& createdLayer : transaction.createdLayers())
+        createLayer(createdLayer);
 
     bool rootLayerChanged = false;
-    LayerOrView *rootLayer = getLayer(transaction.rootLayerID());
+    auto* rootNode = nodeForID(transaction.rootLayerID());
     
-    if (!rootLayer)
+    if (!rootNode)
         RELEASE_LOG_IF_ALLOWED("%p RemoteLayerTreeHost::updateLayerTree - failed to find root layer with ID %llu", this, transaction.rootLayerID());
 
-    if (m_rootLayer != rootLayer) {
-        m_rootLayer = rootLayer;
+    if (m_rootNode != rootNode) {
+        m_rootNode = rootNode;
         rootLayerChanged = true;
     }
 
-    typedef std::pair<GraphicsLayer::PlatformLayerID, GraphicsLayer::PlatformLayerID> LayerIDPair;
-    Vector<LayerIDPair> clonesToUpdate;
+    struct LayerAndClone {
+        GraphicsLayer::PlatformLayerID layerID;
+        GraphicsLayer::PlatformLayerID cloneLayerID;
+    };
+    Vector<LayerAndClone> clonesToUpdate;
 
 #if PLATFORM(MAC) || PLATFORM(IOSMAC)
     // Can't use the iOS code on macOS yet: rdar://problem/31247730
@@ -99,36 +99,23 @@ bool RemoteLayerTreeHost::updateLayerTree(const RemoteLayerTreeTransaction& tran
         auto layerID = changedLayer.key;
         const RemoteLayerTreeTransaction::LayerProperties& properties = *changedLayer.value;
 
-        LayerOrView *layer = getLayer(layerID);
-        ASSERT(layer);
+        auto* node = nodeForID(layerID);
+        ASSERT(node);
 
-        RemoteLayerTreePropertyApplier::RelatedLayerMap relatedLayers;
-        if (properties.changedProperties & RemoteLayerTreeTransaction::ChildrenChanged) {
-            for (auto& child : properties.children)
-                relatedLayers.set(child, (__bridge CFTypeRef)getLayer(child));
-        }
+        if (properties.changedProperties.contains(RemoteLayerTreeTransaction::ClonedContentsChanged) && properties.clonedLayerID)
+            clonesToUpdate.append({ layerID, properties.clonedLayerID });
 
-        if (properties.changedProperties & RemoteLayerTreeTransaction::MaskLayerChanged && properties.maskLayerID)
-            relatedLayers.set(properties.maskLayerID, (__bridge CFTypeRef)getLayer(properties.maskLayerID));
-
-        if (properties.changedProperties & RemoteLayerTreeTransaction::ClonedContentsChanged && properties.clonedLayerID)
-            clonesToUpdate.append(LayerIDPair(layerID, properties.clonedLayerID));
+        RemoteLayerTreePropertyApplier::applyProperties(*node, this, properties, m_nodes, layerContentsType);
 
         if (m_isDebugLayerTreeHost) {
-            RemoteLayerTreePropertyApplier::applyProperties(layer, this, properties, relatedLayers, layerContentsType);
-
-            if (properties.changedProperties & RemoteLayerTreeTransaction::BorderWidthChanged)
-                asLayer(layer).borderWidth = properties.borderWidth / indicatorScaleFactor;
-            asLayer(layer).masksToBounds = false;
-        } else
-            RemoteLayerTreePropertyApplier::applyProperties(layer, this, properties, relatedLayers, layerContentsType);
+            if (properties.changedProperties.contains(RemoteLayerTreeTransaction::BorderWidthChanged))
+                node->layer().borderWidth = properties.borderWidth / indicatorScaleFactor;
+            node->layer().masksToBounds = false;
+        }
     }
     
-    for (const auto& layerPair : clonesToUpdate) {
-        LayerOrView *layer = getLayer(layerPair.first);
-        LayerOrView *clonedLayer = getLayer(layerPair.second);
-        asLayer(layer).contents = asLayer(clonedLayer).contents;
-    }
+    for (const auto& layerAndClone : clonesToUpdate)
+        layerForID(layerAndClone.layerID).contents = layerForID(layerAndClone.cloneLayerID).contents;
 
     for (auto& destroyedLayer : transaction.destroyedLayers())
         layerWillBeRemoved(destroyedLayer);
@@ -136,17 +123,17 @@ bool RemoteLayerTreeHost::updateLayerTree(const RemoteLayerTreeTransaction& tran
     // Drop the contents of any layers which were unparented; the Web process will re-send
     // the backing store in the commit that reparents them.
     for (auto& newlyUnreachableLayerID : transaction.layerIDsWithNewlyUnreachableBackingStore())
-        asLayer(getLayer(newlyUnreachableLayerID)).contents = nullptr;
+        layerForID(newlyUnreachableLayerID).contents = nullptr;
 
     return rootLayerChanged;
 }
 
-LayerOrView *RemoteLayerTreeHost::getLayer(GraphicsLayer::PlatformLayerID layerID) const
+RemoteLayerTreeNode* RemoteLayerTreeHost::nodeForID(GraphicsLayer::PlatformLayerID layerID) const
 {
     if (!layerID)
-        return nil;
+        return nullptr;
 
-    return m_layers.get(layerID).get();
+    return m_nodes.get(layerID);
 }
 
 void RemoteLayerTreeHost::layerWillBeRemoved(WebCore::GraphicsLayer::PlatformLayerID layerID)
@@ -163,7 +150,7 @@ void RemoteLayerTreeHost::layerWillBeRemoved(WebCore::GraphicsLayer::PlatformLay
         m_layerToEmbeddedViewMap.remove(embeddedViewIter);
     }
 
-    m_layers.remove(layerID);
+    m_nodes.remove(layerID);
 }
 
 void RemoteLayerTreeHost::animationDidStart(WebCore::GraphicsLayer::PlatformLayerID layerID, CAAnimation *animation, MonotonicTime startTime)
@@ -171,7 +158,7 @@ void RemoteLayerTreeHost::animationDidStart(WebCore::GraphicsLayer::PlatformLaye
     if (!m_drawingArea)
         return;
 
-    CALayer *layer = asLayer(getLayer(layerID));
+    CALayer *layer = layerForID(layerID);
     if (!layer)
         return;
 
@@ -192,7 +179,7 @@ void RemoteLayerTreeHost::animationDidEnd(WebCore::GraphicsLayer::PlatformLayerI
     if (!m_drawingArea)
         return;
 
-    CALayer *layer = asLayer(getLayer(layerID));
+    CALayer *layer = layerForID(layerID);
     if (!layer)
         return;
 
@@ -215,44 +202,55 @@ void RemoteLayerTreeHost::detachFromDrawingArea()
 
 void RemoteLayerTreeHost::clearLayers()
 {
-    for (auto& idLayer : m_layers) {
-        m_animationDelegates.remove(idLayer.key);
-#if PLATFORM(IOS_FAMILY)
-        [idLayer.value.get() removeFromSuperview];
-#else
-        [asLayer(idLayer.value.get()) removeFromSuperlayer];
-#endif
+    for (auto& keyAndNode : m_nodes) {
+        m_animationDelegates.remove(keyAndNode.key);
+        keyAndNode.value->detachFromParent();
     }
 
-    m_layers.clear();
+    m_nodes.clear();
     m_embeddedViews.clear();
     m_layerToEmbeddedViewMap.clear();
-    m_rootLayer = nullptr;
+    m_rootNode = nullptr;
 }
 
-LayerOrView* RemoteLayerTreeHost::layerWithIDForTesting(uint64_t layerID) const
+CALayer *RemoteLayerTreeHost::layerWithIDForTesting(uint64_t layerID) const
 {
-    return getLayer(layerID);
+    return layerForID(layerID);
 }
 
-static NSString* const WKLayerIDPropertyKey = @"WKLayerID";
-
-void RemoteLayerTreeHost::setLayerID(CALayer *layer, WebCore::GraphicsLayer::PlatformLayerID layerID)
+CALayer *RemoteLayerTreeHost::layerForID(WebCore::GraphicsLayer::PlatformLayerID layerID) const
 {
-    [layer setValue:[NSNumber numberWithUnsignedLongLong:layerID] forKey:WKLayerIDPropertyKey];
+    auto* node = nodeForID(layerID);
+    if (!node)
+        return nil;
+    return node->layer();
 }
 
-WebCore::GraphicsLayer::PlatformLayerID RemoteLayerTreeHost::layerID(CALayer* layer)
+CALayer *RemoteLayerTreeHost::rootLayer() const
 {
-    return [[layer valueForKey:WKLayerIDPropertyKey] unsignedLongLongValue];
+    if (!m_rootNode)
+        return nil;
+    return m_rootNode->layer();
+}
+
+void RemoteLayerTreeHost::createLayer(const RemoteLayerTreeTransaction::LayerCreationProperties& properties)
+{
+    ASSERT(!m_nodes.contains(properties.layerID));
+
+    auto node = makeNode(properties);
+
+    m_nodes.add(properties.layerID, WTFMove(node));
 }
 
 #if !PLATFORM(IOS_FAMILY)
-LayerOrView *RemoteLayerTreeHost::createLayer(const RemoteLayerTreeTransaction::LayerCreationProperties& properties, const RemoteLayerTreeTransaction::LayerProperties*)
+std::unique_ptr<RemoteLayerTreeNode> RemoteLayerTreeHost::makeNode(const RemoteLayerTreeTransaction::LayerCreationProperties& properties)
 {
-    RetainPtr<CALayer>& layer = m_layers.add(properties.layerID, nullptr).iterator->value;
-
-    ASSERT(!layer);
+    auto makeWithLayer = [&] (RetainPtr<CALayer> layer) {
+        return std::make_unique<RemoteLayerTreeNode>(properties.layerID, WTFMove(layer));
+    };
+    auto makeAdoptingLayer = [&] (CALayer* layer) {
+        return makeWithLayer(adoptNS(layer));
+    };
 
     switch (properties.type) {
     case PlatformCALayer::LayerTypeLayer:
@@ -264,51 +262,43 @@ LayerOrView *RemoteLayerTreeHost::createLayer(const RemoteLayerTreeTransaction::
     case PlatformCALayer::LayerTypeTiledBackingTileLayer:
     case PlatformCALayer::LayerTypeScrollingLayer:
     case PlatformCALayer::LayerTypeEditableImageLayer:
-        layer = adoptNS([[CALayer alloc] init]);
-        break;
+        return RemoteLayerTreeNode::createWithPlainLayer(properties.layerID);
+
     case PlatformCALayer::LayerTypeTransformLayer:
-        layer = adoptNS([[CATransformLayer alloc] init]);
-        break;
+        return makeAdoptingLayer([[CATransformLayer alloc] init]);
+
     case PlatformCALayer::LayerTypeBackdropLayer:
     case PlatformCALayer::LayerTypeLightSystemBackdropLayer:
     case PlatformCALayer::LayerTypeDarkSystemBackdropLayer:
 #if ENABLE(FILTERS_LEVEL_2)
-        layer = adoptNS([[CABackdropLayer alloc] init]);
+        return makeAdoptingLayer([[CABackdropLayer alloc] init]);
 #else
         ASSERT_NOT_REACHED();
-        layer = adoptNS([[CALayer alloc] init]);
+        return RemoteLayerTreeNode::createWithPlainLayer(properties.layerID);
 #endif
-        break;
     case PlatformCALayer::LayerTypeCustom:
     case PlatformCALayer::LayerTypeAVPlayerLayer:
     case PlatformCALayer::LayerTypeContentsProvidedLayer:
-        if (!m_isDebugLayerTreeHost)
-            layer = [CALayer _web_renderLayerWithContextID:properties.hostingContextID];
-        else
-            layer = adoptNS([[CALayer alloc] init]);
-        break;
+        if (m_isDebugLayerTreeHost)
+            return RemoteLayerTreeNode::createWithPlainLayer(properties.layerID);
+        return makeWithLayer([CALayer _web_renderLayerWithContextID:properties.hostingContextID]);
+
     case PlatformCALayer::LayerTypeShapeLayer:
-        layer = adoptNS([[CAShapeLayer alloc] init]);
-        break;
+        return makeAdoptingLayer([[CAShapeLayer alloc] init]);
+            
     default:
         ASSERT_NOT_REACHED();
+        return nullptr;
     }
-
-    [layer setDelegate:[WebActionDisablingCALayerDelegate shared]];
-    setLayerID(layer.get(), properties.layerID);
-
-    return layer.get();
 }
 #endif
 
 void RemoteLayerTreeHost::detachRootLayer()
 {
-#if PLATFORM(IOS_FAMILY)
-    [m_rootLayer removeFromSuperview];
-#else
-    [asLayer(m_rootLayer) removeFromSuperlayer];
-#endif
-    m_rootLayer = nullptr;
+    if (!m_rootNode)
+        return;
+    m_rootNode->detachFromParent();
+    m_rootNode = nullptr;
 }
 
 #if HAVE(IOSURFACE)
@@ -328,7 +318,7 @@ static void recursivelyMapIOSurfaceBackingStore(CALayer *layer)
 void RemoteLayerTreeHost::mapAllIOSurfaceBackingStore()
 {
 #if HAVE(IOSURFACE)
-    recursivelyMapIOSurfaceBackingStore(asLayer(m_rootLayer));
+    recursivelyMapIOSurfaceBackingStore(rootLayer());
 #endif
 }
 

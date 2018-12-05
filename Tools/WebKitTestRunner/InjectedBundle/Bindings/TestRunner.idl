@@ -146,6 +146,8 @@ interface TestRunner {
 
     // Text search testing.
     boolean findString(DOMString target, object optionsArray);
+    void findStringMatchesInPage(DOMString target, object optionsArray);
+    void replaceFindMatchesAtIndices(object matchIndicesArray, DOMString replacementText, boolean selectionOnly);
 
     // Evaluating script in a special context.
     [PassContext] void evaluateScriptInIsolatedWorld(unsigned long worldID, DOMString script);
@@ -359,6 +361,4 @@ interface TestRunner {
     void addTestKeyToKeychain(DOMString privateKeyBase64, DOMString attrLabel, DOMString applicationTagBase64);
     void cleanUpKeychain(DOMString attrLabel);
     boolean keyExistsInKeychain(DOMString attrLabel, DOMString applicationTagBase64);
-
-    void toggleCapsLock();
 };

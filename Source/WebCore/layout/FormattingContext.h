@@ -59,8 +59,8 @@ public:
     virtual InstrinsicWidthConstraints instrinsicWidthConstraints() const = 0;
 
     static Display::Box mapBoxToAncestor(const LayoutState&, const Box&, const Container& ancestor);
-    static Position mapTopLeftToAncestor(const LayoutState&, const Box&, const Container& ancestor);
-    static Position mapCoordinateToAncestor(const LayoutState&, Position, const Container& containingBlock, const Container& ancestor);
+    static Point mapTopLeftToAncestor(const LayoutState&, const Box&, const Container& ancestor);
+    static Point mapCoordinateToAncestor(const LayoutState&, Point, const Container& containingBlock, const Container& ancestor);
 
 protected:
     using LayoutQueue = Vector<const Box*>;
@@ -68,8 +68,6 @@ protected:
     FormattingState& formattingState() const;
     LayoutState& layoutState() const;
     const Box& root() const { return *m_root; }
-
-    virtual void computeStaticPosition(const Box&) const = 0;
 
     void computeBorderAndPadding(const Box&) const;
 

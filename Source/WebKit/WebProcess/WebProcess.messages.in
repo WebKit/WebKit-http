@@ -128,8 +128,9 @@ messages -> WebProcess LegacyReceiver {
     CheckProcessLocalPortForActivity(struct WebCore::MessagePortIdentifier port, uint64_t callbackIdentifier)
     MessagesAvailableForPort(struct WebCore::MessagePortIdentifier port)
 
+    MarkIsNoLongerPrewarmed()
     UpdateActivePages()
-    GetActivePagesOriginsForTesting() -> (Vector<String> activeOrigins) LegacySync
+    GetActivePagesOriginsForTesting() -> (Vector<String> activeOrigins) Async
 
 #if PLATFORM(MAC)
     SetScreenProperties(struct WebCore::ScreenProperties screenProperties)
@@ -139,6 +140,8 @@ messages -> WebProcess LegacyReceiver {
     DisplayWasRefreshed(uint32_t displayID)
 #endif
 #endif
+
+    IsJITEnabled() -> (bool enabled) Async
 
 #if PLATFORM(COCOA)
     SetMediaMIMETypes(Vector<String> types)

@@ -157,6 +157,8 @@ public:
 
     // Text search testing.
     bool findString(JSStringRef, JSValueRef optionsArray);
+    void findStringMatchesInPage(JSStringRef, JSValueRef optionsArray);
+    void replaceFindMatchesAtIndices(JSValueRef matchIndices, JSStringRef replacementText, bool selectionOnly);
 
     // Local storage
     void clearAllDatabases();
@@ -479,8 +481,6 @@ public:
     void addTestKeyToKeychain(JSStringRef privateKeyBase64, JSStringRef attrLabel, JSStringRef applicationTagBase64);
     void cleanUpKeychain(JSStringRef attrLabel);
     bool keyExistsInKeychain(JSStringRef attrLabel, JSStringRef applicationTagBase64);
-
-    void toggleCapsLock();
 
 private:
     TestRunner();

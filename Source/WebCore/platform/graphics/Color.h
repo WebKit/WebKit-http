@@ -309,6 +309,7 @@ public:
     WEBCORE_EXPORT Color& operator=(Color&&);
 
     friend bool operator==(const Color& a, const Color& b);
+    friend bool equalIgnoringSemanticColor(const Color& a, const Color& b);
 
     static bool isBlackColor(const Color&);
     static bool isWhiteColor(const Color&);
@@ -410,6 +411,11 @@ inline bool operator==(const Color& a, const Color& b)
 inline bool operator!=(const Color& a, const Color& b)
 {
     return !(a == b);
+}
+
+inline bool equalIgnoringSemanticColor(const Color& a, const Color& b)
+{
+    return (a.m_colorData.rgbaAndFlags & ~Color::isSemanticRBGAColorBit) == (b.m_colorData.rgbaAndFlags & ~Color::isSemanticRBGAColorBit);
 }
 
 inline uint8_t roundAndClampColorChannel(int value)

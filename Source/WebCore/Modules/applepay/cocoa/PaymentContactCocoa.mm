@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,21 +30,13 @@
 
 #import "ApplePayPaymentContact.h"
 #import <Contacts/Contacts.h>
-#import <pal/spi/cocoa/PassKitSPI.h>
+#import <pal/cocoa/PassKitSoftLink.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/text/StringBuilder.h>
 
 SOFT_LINK_FRAMEWORK(Contacts)
 SOFT_LINK_CLASS(Contacts, CNMutablePostalAddress)
 SOFT_LINK_CLASS(Contacts, CNPhoneNumber)
-
-#if PLATFORM(MAC)
-SOFT_LINK_PRIVATE_FRAMEWORK(PassKit)
-#else
-SOFT_LINK_FRAMEWORK(PassKit)
-#endif
-
-SOFT_LINK_CLASS(PassKit, PKContact)
 
 namespace WebCore {
 
@@ -106,7 +98,7 @@ static void setSubAdministrativeArea(CNMutablePostalAddress *address, NSString *
 
 static RetainPtr<PKContact> convert(unsigned version, const ApplePayPaymentContact& contact)
 {
-    auto result = adoptNS([allocPKContactInstance() init]);
+    auto result = adoptNS([PAL::allocPKContactInstance() init]);
 
     NSString *familyName = nil;
     NSString *phoneticFamilyName = nil;
@@ -216,6 +208,15 @@ static ApplePayPaymentContact convert(unsigned version, PKContact *contact)
     return result;
 }
 
+PaymentContact::PaymentContact() = default;
+
+PaymentContact::PaymentContact(RetainPtr<PKContact>&& pkContact)
+    : m_pkContact { WTFMove(pkContact) }
+{
+}
+
+PaymentContact::~PaymentContact() = default;
+
 PaymentContact PaymentContact::fromApplePayPaymentContact(unsigned version, const ApplePayPaymentContact& contact)
 {
     return PaymentContact(convert(version, contact).get());
@@ -224,6 +225,11 @@ PaymentContact PaymentContact::fromApplePayPaymentContact(unsigned version, cons
 ApplePayPaymentContact PaymentContact::toApplePayPaymentContact(unsigned version) const
 {
     return convert(version, m_pkContact.get());
+}
+
+PKContact *PaymentContact::pkContact() const
+{
+    return m_pkContact.get();
 }
 
 }

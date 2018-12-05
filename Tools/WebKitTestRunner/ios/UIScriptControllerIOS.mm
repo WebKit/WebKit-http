@@ -42,6 +42,14 @@
 #import <WebCore/FloatRect.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKit/WebKit.h>
+#import <wtf/SoftLinking.h>
+
+SOFT_LINK_FRAMEWORK(UIKit)
+SOFT_LINK_CLASS(UIKit, UIPhysicalKeyboardEvent)
+
+@interface UIPhysicalKeyboardEvent (UIPhysicalKeyboardEventHack)
+@property (nonatomic, assign) NSInteger _modifierFlags;
+@end
 
 namespace WTR {
 
@@ -340,28 +348,90 @@ void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef characte
     }];
 }
 
-void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
+static unsigned arrayLength(JSContextRef context, JSObjectRef array)
 {
-    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
-
-    // Assumes that the keyboard is already shown.
-    [[HIDEventGenerator sharedHIDEventGenerator] keyDown:toWTFString(toWK(character)) completionBlock:^{
-        if (!m_context)
-            return;
-        m_context->asyncTaskComplete(callbackID);
-    }];
+    auto lengthString = adopt(JSStringCreateWithUTF8CString("length"));
+    if (auto lengthValue = JSObjectGetProperty(context, array, lengthString.get(), nullptr))
+        return static_cast<unsigned>(JSValueToNumber(context, lengthValue, nullptr));
+    return 0;
 }
 
-void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
+static UIKeyModifierFlags parseModifier(JSStringRef modifier)
 {
-    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    if (JSStringIsEqualToUTF8CString(modifier, "altKey"))
+        return UIKeyModifierAlternate;
+    if (JSStringIsEqualToUTF8CString(modifier, "capsLockKey"))
+        return UIKeyModifierAlphaShift;
+    if (JSStringIsEqualToUTF8CString(modifier, "ctrlKey"))
+        return UIKeyModifierControl;
+    if (JSStringIsEqualToUTF8CString(modifier, "metaKey"))
+        return UIKeyModifierCommand;
+    if (JSStringIsEqualToUTF8CString(modifier, "shiftKey"))
+        return UIKeyModifierShift;
+    return 0;
+}
 
-    // Assumes that the keyboard is already shown.
-    [[HIDEventGenerator sharedHIDEventGenerator] keyUp:toWTFString(toWK(character)) completionBlock:^{
-        if (!m_context)
-            return;
-        m_context->asyncTaskComplete(callbackID);
-    }];
+static UIKeyModifierFlags parseModifierArray(JSContextRef context, JSValueRef arrayValue)
+{
+    if (!arrayValue)
+        return 0;
+
+    // The value may either be a string with a single modifier or an array of modifiers.
+    if (JSValueIsString(context, arrayValue)) {
+        auto string = adopt(JSValueToStringCopy(context, arrayValue, nullptr));
+        return parseModifier(string.get());
+    }
+
+    if (!JSValueIsObject(context, arrayValue))
+        return 0;
+    JSObjectRef array = const_cast<JSObjectRef>(arrayValue);
+    unsigned length = arrayLength(context, array);
+    UIKeyModifierFlags modifiers = 0;
+    for (unsigned i = 0; i < length; ++i) {
+        JSValueRef exception = nullptr;
+        JSValueRef value = JSObjectGetPropertyAtIndex(context, array, i, &exception);
+        if (exception)
+            continue;
+        auto string = adopt(JSValueToStringCopy(context, value, &exception));
+        if (exception)
+            continue;
+        modifiers |= parseModifier(string.get());
+    }
+    return modifiers;
+}
+
+static UIPhysicalKeyboardEvent *createUIPhysicalKeyboardEvent(const String& hidInputString, const String& uiEventInputString, UIKeyModifierFlags modifierFlags, bool isKeyDown)
+{
+    auto* keyboardEvent = [getUIPhysicalKeyboardEventClass() _eventWithInput:uiEventInputString inputFlags:(UIKeyboardInputFlags)0];
+    keyboardEvent._modifierFlags = modifierFlags;
+    auto hidEvent = createHIDKeyEvent(hidInputString, keyboardEvent.timestamp, isKeyDown);
+    [keyboardEvent _setHIDEvent:hidEvent.get() keyboard:nullptr];
+    return keyboardEvent;
+}
+
+void UIScriptController::keyDown(JSStringRef character, JSValueRef modifierArray)
+{
+    // Character can be either a single Unicode code point or the name of a special key (e.g. "downArrow").
+    // createHIDKeyEvent() knows how to map these special keys to the appropriate keycode.
+    //
+    // FIXME: The UIEvent input string for special keys (e.g. "downArrow") should either be a UIKeyInput*
+    // string constant or an ASCII control character. In practice the input string for a special key is
+    // ambiguious (e.g. F5 and F6 have the same string - the ASCII DLE character) and hence it is effectively
+    // ignored in favor of key identification by keycode. So, we just take the empty string as the input string
+    // for a special key.
+    String inputString = toWTFString(toWK(character));
+    String uiEventInputString = inputString.length() > 1 ? emptyString() : inputString;
+    auto modifierFlags = parseModifierArray(m_context->jsContext(), modifierArray);
+
+    // Note that UIKit will call -release on the passed UIPhysicalKeyboardEvent.
+
+    // Key down
+    auto* keyboardEvent = createUIPhysicalKeyboardEvent(inputString, uiEventInputString, modifierFlags, true /* isKeyDown */);
+    [[UIApplication sharedApplication] handleKeyUIEvent:keyboardEvent];
+
+    // Key up
+    keyboardEvent = createUIPhysicalKeyboardEvent(inputString, uiEventInputString, modifierFlags, false /* isKeyDown */);
+    [[UIApplication sharedApplication] handleKeyUIEvent:keyboardEvent];
 }
 
 void UIScriptController::dismissFormAccessoryView()
@@ -835,7 +905,7 @@ void UIScriptController::drawSquareInEditableImage()
     Class pkStrokeClass = NSClassFromString(@"PKStroke");
 
     PKCanvasView *canvasView = findEditableImageCanvas();
-    RetainPtr<PKDrawing> drawing = adoptNS([[pkDrawingClass alloc] init]);
+    RetainPtr<PKDrawing> drawing = canvasView.drawing ?: adoptNS([[pkDrawingClass alloc] init]);
     RetainPtr<CGPathRef> path = adoptCF(CGPathCreateWithRect(CGRectMake(0, 0, 50, 50), NULL));
     RetainPtr<PKInk> ink = [pkInkClass inkWithType:0 color:UIColor.greenColor weight:100.0];
     RetainPtr<PKStroke> stroke = adoptNS([[pkStrokeClass alloc] _initWithPath:path.get() ink:ink.get() inputScale:1]);
@@ -853,6 +923,31 @@ long UIScriptController::numberOfStrokesInEditableImage()
 #else
     return 0;
 #endif
+}
+
+void UIScriptController::toggleCapsLock(JSValueRef callback)
+{
+    // FIXME: Implement for iOS. See <https://bugs.webkit.org/show_bug.cgi?id=191815>.
+    doAsyncTask(callback);
+}
+
+JSObjectRef UIScriptController::attachmentInfo(JSStringRef jsAttachmentIdentifier)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+
+    auto attachmentIdentifier = toWTFString(toWK(jsAttachmentIdentifier));
+    _WKAttachment *attachment = [webView _attachmentForIdentifier:attachmentIdentifier];
+    _WKAttachmentInfo *attachmentInfo = attachment.info;
+
+    NSDictionary *attachmentInfoDictionary = @{
+        @"id": attachmentIdentifier,
+        @"name": attachmentInfo.name,
+        @"contentType": attachmentInfo.contentType,
+        @"filePath": attachmentInfo.filePath,
+        @"size": @(attachmentInfo.data.length),
+    };
+
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:attachmentInfoDictionary inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
 }
 
 }

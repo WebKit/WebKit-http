@@ -46,6 +46,9 @@
 /* Visible name of the web process. The argument is the application name. */
 "%@ Web Content" = "%@ Web Content";
 
+/* Visible name of the web process. The argument is the application name. */
+"%@ Web Content (Prewarmed)" = "%@ Web Content (Prewarmed)";
+
 /* Visible name of Web Inspector's web process. The argument is the application name. */
 "%@ Web Inspector" = "%@ Web Inspector";
 
@@ -124,7 +127,7 @@
 /* Option in segmented control for inserting a bulleted list in text editing */
 "Bulleted list" = "Bulleted list";
 
-/* Title of the Cancel button for zoomed form controls. */
+/* Cancel */
 "Cancel" = "Cancel";
 
 /* Title for Cancel button label in button bar */
@@ -178,8 +181,17 @@
 /* WebKitErrorCannotShowMIMEType description */
 "Content with specified MIME type can’t be shown" = "Content with specified MIME type can’t be shown";
 
+/* Continue */
+"Continue" = "Continue";
+
 /* Media Controls context menu item */
 "Controls" = "Controls";
+
+/* Undo action name */
+"Convert to Ordered List (Undo action name)" = "Convert to Ordered List";
+
+/* Undo action name */
+"Convert to Unordered List (Undo action name)" = "Convert to Unordered List";
 
 /* Copy context menu item */
 "Copy" = "Copy";
@@ -247,7 +259,7 @@
 /* Undo action name */
 "Drag (Undo action name)" = "Drag";
 
-/* Video Enter Fullscreen context menu item */
+/* Video Enter Full Screen context menu item */
 "Enter Full Screen" = "Enter Full Screen";
 
 /* menu item */
@@ -271,10 +283,10 @@
 /* Button for exiting full screen when in full screen media playback */
 "Exit Full Screen" = "Exit Full Screen";
 
-/* Fullscreen Deceptive Website Exit Action */
-"Exit Full Screen (Element Fullscreen)" = "Exit Full Screen";
+/* Full Screen Deceptive Website Exit Action */
+"Exit Full Screen (Element Full Screen)" = "Exit Full Screen";
 
-/* Video Exit Fullscreen context menu item */
+/* Video Exit Full Screen context menu item */
 "Exit Full Screen (context menu)" = "Exit Full Screen";
 
 /* menu item */
@@ -344,6 +356,9 @@
 "Indent (Undo action name)" = "Indent";
 
 /* Undo action name */
+"Insert Drawing (Undo action name)" = "Insert Drawing";
+
+/* Undo action name */
 "Insert List (Undo action name)" = "Insert List";
 
 /* Inspect Element context menu item */
@@ -352,7 +367,7 @@
 /* Validation message for input form controls with a value not matching type */
 "Invalid value" = "Invalid value";
 
-/* Fullscreen Deceptive Website Warning Sheet Title */
+/* Full Screen Deceptive Website Warning Sheet Title */
 "It looks like you are typing while in full screen" = "It looks like you are typing while in full screen";
 
 /* Italic context menu item */
@@ -538,8 +553,8 @@
 /* Media Play context menu item */
 "Play" = "Play";
 
-/* accessibility help text for enter fullscreen button */
-"Play movie in fullscreen mode" = "Play movie in fullscreen mode";
+/* accessibility help text for enter full screen button */
+"Play movie in full screen mode" = "Play movie in full screen mode";
 
 /* Label text to be used if plugin host process has crashed */
 "Plug-in Failure" = "Plug-in Failure";
@@ -583,11 +598,11 @@
 /* Search in Spotlight context menu item */
 "Search in Spotlight" = "Search in Spotlight";
 
+/* Search the Web context menu item */
+"Search the Web" = "Search the Web";
+
 /* Search with search provider context menu item with provider name inserted */
 "Search with %@" = "Search with %@";
-
-/* Search with Google context menu item */
-"Search with Google" = "Search with Google";
 
 /* Validation message for required file inputs that have no value */
 "Select a file" = "Select a file";
@@ -676,8 +691,8 @@
 /* Start speaking context menu item */
 "Start Speaking" = "Start Speaking";
 
-/* Fullscreen Deceptive Website Stay Action */
-"Stay in Full Screen (Element Fullscreen)" = "Stay in Full Screen";
+/* Full Screen Deceptive Website Stay Action */
+"Stay in Full Screen (Element Full Screen)" = "Stay in Full Screen";
 
 /* Stop context menu item */
 "Stop" = "Stop";
@@ -802,11 +817,14 @@
 /* Undo action name */
 "Typing (Undo action name)" = "Typing";
 
-/* Fullscreen Deceptive Website Warning Sheet Content Text */
+/* Full Screen Deceptive Website Warning Sheet Content Text */
 "Typing is not allowed in full screen websites. “%@” may be showing a fake keyboard to trick you into disclosing personal or financial information." = "Typing is not allowed in full screen websites. “%@” may be showing a fake keyboard to trick you into disclosing personal or financial information.";
 
 /* accessibility role description for a URL field. */
 "URL field" = "URL field";
+
+/* Unacceptable TLS certificate error */
+"Unacceptable TLS certificate" = "Unacceptable TLS certificate";
 
 /* Underline context menu item */
 "Underline" = "Underline";

@@ -161,7 +161,7 @@ void RenderMathMLRoot::computePreferredLogicalWidths()
         return;
     }
 
-    LayoutUnit preferredWidth = 0;
+    LayoutUnit preferredWidth;
     if (rootType() == RootType::SquareRoot) {
         preferredWidth += m_radicalOperator.maxPreferredWidth();
         setPreferredLogicalWidthsDirty(true);
@@ -273,7 +273,7 @@ void RenderMathMLRoot::paint(PaintInfo& info, const LayoutPoint& paintOffset)
 
     // We draw the radical operator.
     LayoutPoint radicalOperatorTopLeft = paintOffset + location();
-    LayoutUnit horizontalOffset = 0;
+    LayoutUnit horizontalOffset;
     if (rootType() == RootType::RootWithIndex) {
         auto horizontal = horizontalParameters();
         horizontalOffset = horizontal.kernBeforeDegree + getIndex().logicalWidth() + horizontal.kernAfterDegree;
@@ -290,12 +290,12 @@ void RenderMathMLRoot::paint(PaintInfo& info, const LayoutPoint& paintOffset)
     info.context().setStrokeThickness(ruleThickness);
     info.context().setStrokeStyle(SolidStroke);
     info.context().setStrokeColor(style().visitedDependentColorWithColorFilter(CSSPropertyColor));
-    LayoutPoint ruleOffsetFrom = paintOffset + location() + LayoutPoint(0, m_radicalOperatorTop + ruleThickness / 2);
+    LayoutPoint ruleOffsetFrom = paintOffset + location() + LayoutPoint(0_lu, m_radicalOperatorTop + ruleThickness / 2);
     LayoutPoint ruleOffsetTo = ruleOffsetFrom;
     horizontalOffset += m_radicalOperator.width();
-    ruleOffsetFrom.move(mirrorIfNeeded(horizontalOffset), 0);
+    ruleOffsetFrom.move(mirrorIfNeeded(horizontalOffset), 0_lu);
     horizontalOffset += m_baseWidth;
-    ruleOffsetTo.move(mirrorIfNeeded(horizontalOffset), 0);
+    ruleOffsetTo.move(mirrorIfNeeded(horizontalOffset), 0_lu);
     info.context().drawLine(ruleOffsetFrom, ruleOffsetTo);
 }
 

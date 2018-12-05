@@ -151,11 +151,7 @@ void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef characte
 {
 }
 
-void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
-{
-}
-
-void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
+void UIScriptController::keyDown(JSStringRef, JSValueRef)
 {
 }
 
@@ -424,6 +420,16 @@ void UIScriptController::drawSquareInEditableImage()
 long UIScriptController::numberOfStrokesInEditableImage()
 {
     return 0;
+}
+
+void UIScriptController::toggleCapsLock(JSValueRef callback)
+{
+    doAsyncTask(callback);
+}
+
+JSObjectRef UIScriptController::attachmentInfo(JSStringRef)
+{
+    return nullptr;
 }
 
 }

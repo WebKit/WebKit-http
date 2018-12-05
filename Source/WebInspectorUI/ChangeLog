@@ -1,3 +1,762 @@
+2018-11-27  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Elements tab should allow selecting/deleting multiple DOM nodes
+        https://bugs.webkit.org/show_bug.cgi?id=192059
+        <rdar://problem/46294827>
+
+        Reviewed by Devin Rousso.
+
+        Enable multiple DOM node selection in the DOMTreeContentView.
+
+        * UserInterface/Controllers/SelectionController.js:
+        (WI.SelectionController):
+        (WI.SelectionController.prototype.get allowsEmptySelection):
+        (WI.SelectionController.prototype.set allowsEmptySelection):
+        Allow clients to control whether the last selected item can be deselected.
+        (WI.SelectionController.prototype.deselectItem):
+        (WI.SelectionController.prototype.didInsertItem):
+        Rewritten to prevent infinite loop.
+        (WI.SelectionController.prototype.didRemoveItem):
+        (WI.SelectionController.prototype._updateSelectedItems):
+        (WI.SelectionController.prototype._adjustIndexesAfter): Deleted.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.updateSelectionArea):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype.updateSelection):
+        Updating the selection area DOM element should not assume that only one
+        TreeElement is selected at a time.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.get allowsEmptySelection):
+        (WI.TreeOutline.prototype.set allowsEmptySelection):
+        (WI.TreeOutline.prototype.set selectedTreeElement):
+        (WI.TreeOutline.prototype.get selectedTreeElements):
+        (WI.TreeOutline.prototype._treeKeyDown):
+
+        * UserInterface/Views/TreeOutlineGroup.js:
+        (WI.TreeOutlineGroup):
+        (WI.TreeOutlineGroup.prototype._removeConflictingTreeSelections):
+        Eliminate use of `TreeElement.prototype.deselect`.
+
+2018-11-27  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TreeOutline should re-use multiple-selection logic from Table
+        https://bugs.webkit.org/show_bug.cgi?id=191483
+        <rdar://problem/45953305>
+
+        Reviewed by Devin Rousso.
+
+        Update TreeOutline to use SelectionController. Adopting SelectionController
+        in TreeOutline is not as straightforward as it was in Table. Selected items
+        are tracked by index, and TreeElement lacks an explicit index. As a consequence
+        TreeElement indexes are calcualted as needed and cached. The cache is cleared
+        whenever an element is added or removed.
+
+        * UserInterface/Controllers/SelectionController.js:
+        (WI.SelectionController.prototype.didInsertItem):
+        (WI.SelectionController.prototype.didRemoveItem):
+        (WI.SelectionController.prototype.handleKeyDown):
+        Drive-by syntax error fix.
+        (WI.SelectionController.prototype._adjustIndexesAfter):
+        (WI.SelectionController):
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.canSelectOnMouseDown):
+        (WI.DOMTreeElement.prototype.selectOnMouseDown): Deleted.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype._onmousedown):
+        Item selection is now handled by SelectionController.
+
+        * UserInterface/Views/ShaderProgramTreeElement.js:
+        (WI.ShaderProgramTreeElement.prototype.canSelectOnMouseDown):
+        (WI.ShaderProgramTreeElement.prototype.selectOnMouseDown): Deleted.
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.prototype.canSelectOnMouseDown):
+        (WI.TreeElement.prototype._attach):
+        (WI.TreeElement.prototype.select):
+        (WI.TreeElement.prototype.deselect):
+        Route item selection through the parent TreeOutline, in order to go though
+        the TreeOutline's SelectionController.
+
+        (WI.TreeElement.treeElementMouseDown): Deleted.
+        Moved handler to TreeOutline, which owns the SelectionController that
+        needs to respond to mouse events.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline):
+        (WI.TreeOutline.prototype.get allowsMultipleSelection):
+        (WI.TreeOutline.prototype.set allowsMultipleSelection):
+        (WI.TreeOutline.prototype.get selectedTreeElement):
+        (WI.TreeOutline.prototype.set selectedTreeElement):
+        (WI.TreeOutline.prototype.insertChild):
+        (WI.TreeOutline.prototype.removeChildAtIndex):
+        (WI.TreeOutline.prototype._rememberTreeElement):
+        (WI.TreeOutline.prototype._forgetTreeElement):
+        (WI.TreeOutline.prototype._treeKeyDown):
+        (WI.TreeOutline.prototype.selectionControllerNumberOfItems):
+        (WI.TreeOutline.prototype.selectionControllerSelectionDidChange):
+        (WI.TreeOutline.prototype.selectionControllerNextSelectableIndex):
+        (WI.TreeOutline.prototype.selectionControllerPreviousSelectableIndex):
+        (WI.TreeOutline.prototype.selectTreeElementInternal):
+        (WI.TreeOutline._generateStyleRulesIfNeeded._indexOfTreeElement.previousElement):
+        (WI.TreeOutline._generateStyleRulesIfNeeded):
+
+2018-11-27  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Experimental Computed panel is unreadable in Dark Mode
+        https://bugs.webkit.org/show_bug.cgi?id=192053
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.css:
+        (@media (prefers-dark-interface)):
+        (.computed-with-traces .details-section.computed-style-properties:not(.collapsed) > :matches(.header, .content)):
+        * UserInterface/Views/ComputedStyleSection.css:
+        (.computed-style-section .computed-property-item.expanded):
+        (.computed-style-section .computed-property-item.expanded + .computed-property-item):
+        (@media (prefers-dark-interface)):
+
+2018-11-27  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Computed panel: allow to expand properties to show list of overridden values
+        https://bugs.webkit.org/show_bug.cgi?id=191984
+
+        Reviewed by Devin Rousso.
+
+        Introduce the new experimental Computed Style Cascades.
+
+        Each property now can expand to show a list of overridden values, their corresponding
+        selectors, and source locations.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Main.html:
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype.get uniqueOrderedStyles):
+        Move `uniqueOrderedStyles` function unmodified from SpreadsheetRulesStyleDetailsPanel so it can be used by ComputedStyleDetailsPanel, too.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.css:
+        (.computed-with-traces .computed-style-properties):
+        (.computed-with-traces .details-section.computed-style-properties:not(.collapsed) > :matches(.header, .content)):
+        (.computed-with-traces .details-section.computed-style-properties > .content):
+        (.computed-with-traces .computed-style-properties .property .go-to-arrow):
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WI.ComputedStyleDetailsPanel.prototype.refresh):
+        (WI.ComputedStyleDetailsPanel.prototype.applyFilter):
+        (WI.ComputedStyleDetailsPanel.prototype.focusFirstSection):
+        (WI.ComputedStyleDetailsPanel.prototype.initialLayout):
+        (WI.ComputedStyleDetailsPanel.prototype._computePropertyTraces):
+        (WI.ComputedStyleDetailsPanel.prototype._computedStyleShowAllCheckboxValueChanged):
+        (WI.ComputedStyleDetailsPanel.prototype._handlePropertiesSectionCollapsedStateChanged):
+        (WI.ComputedStyleDetailsPanel.prototype._handleEditorFilterApplied):
+        (WI.ComputedStyleDetailsPanel):
+        Use the new Computed section (WI.ComputedStyleSection) only when it's enabled in the experimental settings.
+        Otherwise, use the current Computed section.
+
+        * UserInterface/Views/ComputedStyleDetailsSidebarPanel.js:
+        (WI.ComputedStyleDetailsSidebarPanel):
+
+        * UserInterface/Views/ComputedStyleSection.css: Added.
+        (.computed-style-section):
+        (.computed-style-section .computed-property-item):
+        (.computed-style-section .computed-property-item.expanded):
+        (.computed-style-section .computed-property-item.expanded + .computed-property-item):
+        (.computed-style-section .computed-property-item .disclosure-button):
+        (.computed-style-section .computed-property-item .property-traces):
+        (.computed-style-section .computed-property-item.expanded .property-traces):
+        (.computed-style-section .computed-property-item.expanded .disclosure-button):
+        (.computed-style-section .computed-property-item .property-trace-item):
+        (.computed-style-section .computed-property-item .property-trace-item .property.overridden .value):
+        (.computed-style-section .property-trace-item-left,):
+        (.computed-style-section .property-trace-item-right):
+        (.computed-style-section .computed-property-item .property-trace-item .value):
+        (.computed-style-section .property .value):
+        (.computed-style-section .computed-property-item .property):
+        (.computed-style-section .computed-property-item .property .name):
+        (.computed-style-section .computed-property-item .property-trace-item .selector):
+        (.computed-style-section .computed-property-item .origin):
+        (.computed-style-section .computed-property-item .go-to-link):
+        (.computed-style-section .property-trace-item .property .name,):
+        (.computed-style-section .property-trace-item .property .value + span):
+        (.computed-style-properties.details-section > .content,):
+
+        * UserInterface/Views/ComputedStyleSection.js: Added.
+        (WI.ComputedStyleSection):
+        (WI.ComputedStyleSection.prototype.get style):
+        (WI.ComputedStyleSection.prototype.set style):
+        (WI.ComputedStyleSection.prototype.get styleTraces):
+        (WI.ComputedStyleSection.prototype.set styleTraces):
+        (WI.ComputedStyleSection.prototype.set showsImplicitProperties):
+        (WI.ComputedStyleSection.prototype.set alwaysShowPropertyNames):
+        (WI.ComputedStyleSection.prototype.set propertyVisibilityMode):
+        (WI.ComputedStyleSection.prototype.set hideFilterNonMatchingProperties):
+        (WI.ComputedStyleSection.prototype.get propertiesToRender):
+        (WI.ComputedStyleSection.prototype.layout):
+        (WI.ComputedStyleSection.prototype.detached):
+        (WI.ComputedStyleSection.prototype.hidden):
+        (WI.ComputedStyleSection.prototype.applyFilter):
+        (WI.ComputedStyleSection.prototype.spreadsheetStylePropertyShowProperty):
+        (WI.ComputedStyleSection.prototype._createTrace):
+        (WI.ComputedStyleSection.prototype._handlePropertiesChanged):
+
+        * UserInterface/Views/ExpandableView.js: Added.
+        (WI.ExpandableView):
+        (WI.ExpandableView.prototype.get element):
+        (WI.ExpandableView.prototype._onDisclosureButtonClick):
+        (WI.ExpandableView.prototype._update):
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.initialLayout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.layout):
+        Replace `_renderOrigin` with WI.StyleOriginView so it could be used by WI.ComputedStyleSection.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.layout):
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.update):
+        (WI.SpreadsheetStyleProperty.prototype._isEditable):
+        (WI.SpreadsheetStyleProperty.prototype._createInlineSwatch):
+        Introduce `readOnly` option so WI.SpreadsheetStyleProperty could be used by WI.ComputedStyleSection.
+
+        * UserInterface/Views/StyleOriginView.js: Added.
+        (WI.StyleOriginView):
+
+2018-11-27  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add support for forcing color scheme appearance in DOM tree.
+        https://bugs.webkit.org/show_bug.cgi?id=191820
+        rdar://problem/46153172
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+        * UserInterface/Controllers/CSSManager.js:
+        (WI.CSSManager):
+        (WI.CSSManager.prototype.get defaultAppearance): Added.
+        (WI.CSSManager.prototype.get forcedAppearance): Added.
+        (WI.CSSManager.prototype.set forcedAppearance): Added.
+        (WI.CSSManager.prototype.canForceAppearance): Added.
+        (WI.CSSManager.prototype.defaultAppearanceDidChange): Added.
+        * UserInterface/Images/Appearance.svg: Added.
+        * UserInterface/Protocol/PageObserver.js:
+        (WI.PageObserver.prototype.defaultAppearanceChanged): Added.
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        (WI.DOMTreeContentView.prototype.get navigationItems):
+        (WI.DOMTreeContentView.prototype._defaultAppearanceDidChange): Added.
+        (WI.DOMTreeContentView.prototype._toggleAppearance): Added.
+
+2018-11-27  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Cookies table needs copy keyboard shortcut and context menu support
+        https://bugs.webkit.org/show_bug.cgi?id=191482
+        <rdar://problem/45953002>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WI.CookieStorageContentView.prototype.handleCopyEvent):
+        (WI.CookieStorageContentView.prototype.tableCellContextMenuClicked):
+        As with Delete, if the target row is selected, all selected rows are copied.
+        Otherwise only the target row is copied. This distinction will be surfaced
+        in the UI in https://webkit.org/b/191095.
+
+        (WI.CookieStorageContentView.prototype.tablePopulateCell):
+        (WI.CookieStorageContentView.prototype._cookiesAtIndexes):
+        (WI.CookieStorageContentView.prototype._formatCookiesAsText):
+        (WI.CookieStorageContentView.prototype._formatCookiePropertyForColumn):
+        (WI.CookieStorageContentView):
+        Break Cookie property formatting into a helper method, which is used for
+        formatting Table cells and creating plain text for the clipboard.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype.get columns):
+
+2018-11-27  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table selection should be handled by a SelectionController
+        https://bugs.webkit.org/show_bug.cgi?id=191977
+        <rdar://problem/46253093>
+
+        Reviewed by Devin Rousso.
+
+        Add a SelectionController class, which manages an IndexSet of selected
+        items, and provides operations for adding and removing items from the
+        selection. Complex behaviors such as shift-clicking to select a range of
+        items, and updating the selection using the keyboard, are forwarded to
+        the controller using special-purpose methods that accept DOM Event objects.
+
+        * UserInterface/Base/Utilities.js:
+
+        * UserInterface/Controllers/SelectionController.js: Added.
+        (WI.SelectionController):
+        (WI.SelectionController.prototype.get delegate):
+        (WI.SelectionController.prototype.get lastSelectedItem):
+        (WI.SelectionController.prototype.get selectedItems):
+        (WI.SelectionController.prototype.get allowsMultipleSelection):
+        (WI.SelectionController.prototype.set allowsMultipleSelection):
+        (WI.SelectionController.prototype.get numberOfItems):
+        (WI.SelectionController.prototype.hasSelectedItem):
+        (WI.SelectionController.prototype.selectItem):
+        (WI.SelectionController.prototype.deselectItem):
+        (WI.SelectionController.prototype.selectAll):
+        (WI.SelectionController.prototype.deselectAll):
+        (WI.SelectionController.prototype.removeSelectedItems):
+        (WI.SelectionController.prototype.reset):
+        (WI.SelectionController.prototype.didRemoveItem):
+        (WI.SelectionController.prototype.handleKeyDown):
+        (WI.SelectionController.prototype.handleItemMouseDown.normalizeRange):
+        (WI.SelectionController.prototype.handleItemMouseDown):
+        (WI.SelectionController.prototype._deselectAllAndSelect):
+        (WI.SelectionController.prototype._selectItemsFromArrowKey):
+        (WI.SelectionController.prototype._nextSelectableIndex):
+        (WI.SelectionController.prototype._previousSelectableIndex):
+        (WI.SelectionController.prototype._updateSelectedItems):
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+
+        * UserInterface/Views/Table.js:
+        (WI.Table):
+        (WI.Table.prototype.get selectedRow):
+        (WI.Table.prototype.get selectedRows):
+        (WI.Table.prototype.get allowsMultipleSelection):
+        (WI.Table.prototype.set allowsMultipleSelection):
+        (WI.Table.prototype.isRowSelected):
+        (WI.Table.prototype.reloadData):
+        (WI.Table.prototype.selectRow):
+        (WI.Table.prototype.deselectRow):
+        (WI.Table.prototype.selectAll):
+        (WI.Table.prototype.deselectAll):
+        (WI.Table.prototype.removeRow):
+        (WI.Table.prototype.removeSelectedRows):
+        (WI.Table.prototype.selectionControllerSelectionDidChange):
+        (WI.Table.prototype.selectionControllerNumberOfItems):
+        (WI.Table.prototype.selectionControllerNextSelectableIndex):
+        (WI.Table.prototype.selectionControllerPreviousSelectableIndex):
+        (WI.Table.prototype._handleKeyDown):
+        (WI.Table.prototype._handleMouseDown):
+        (WI.Table.prototype._removeRows):
+        (WI.Table.prototype._toggleSelectedRowStyle):
+        (WI.Table.prototype._selectRowsFromArrowKey): Deleted.
+        (WI.Table.prototype._handleMouseDown.normalizeRange): Deleted.
+        (WI.Table.prototype._deselectAllAndSelect): Deleted.
+        (WI.Table.prototype._notifySelectionDidChange): Deleted.
+        (WI.Table.prototype._updateSelectedRows): Deleted.
+
+2018-11-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: "No Filter Results" in navigation sidebar should have a button to clear filters
+        https://bugs.webkit.org/show_bug.cgi?id=191916
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WI.NavigationSidebarPanel.prototype.resetFilter): Added.
+        (WI.NavigationSidebarPanel.prototype._checkForEmptyFilterResults.checkTreeOutlineForEmptyFilterResults):
+
+        * UserInterface/Views/FilterBar.js:
+        (WI.FilterBar.prototype.clear):
+
+        * UserInterface/Views/FilterBarButton.js:
+        (WI.FilterBarButton.prototype.toggle):
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel.prototype.resetFilter): Added.
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WI.StorageSidebarPanel.prototype.resetFilter): Added.
+
+        * UserInterface/Views/AuditTestContentView.js:
+        (WI.AuditTestContentView.prototype.showFilteredPlaceholder):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._showEmptyFilterResultsMessage):
+
+        * UserInterface/Views/Main.css:
+        (.message-text-view > .message + button): Added.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-11-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: automatically add to tab bar when the experimental setting is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=191659
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        Drive-by: use existing constants instead of hard-coded strings for consistency.
+
+2018-11-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: add Media timeline
+        https://bugs.webkit.org/show_bug.cgi?id=191625
+
+        Reviewed by Matt Baker.
+
+        Add a new timeline to Timelines for media related events (e.g. event/fullscreen/low-power).
+        Mimics what is visible by using the same instrumentation points as the Network tab when
+        "Group Media Requests" is enabled.
+
+        * UserInterface/Models/MediaInstrument.js: Added.
+        (WI.MediaInstrument):
+        (WI.MediaInstrument.supported):
+        (WI.MediaInstrument.prototype.get timelineRecordType):
+        (WI.MediaInstrument.prototype.startInstrumentation):
+        (WI.MediaInstrument.prototype.stopInstrumentation):
+
+        * UserInterface/Models/MediaTimelineRecord.js: Added.
+        (WI.MediaTimelineRecord):
+        (WI.MediaTimelineRecord.prototype.get eventType):
+        (WI.MediaTimelineRecord.prototype.get domNode):
+        (WI.MediaTimelineRecord.prototype.get domEvent):
+        (WI.MediaTimelineRecord.prototype.get isLowPower):
+        (WI.MediaTimelineRecord.prototype.get displayName):
+        (WI.MediaTimelineRecord.prototype.saveIdentityToCookie):
+
+        * UserInterface/Views/MediaTimelineDataGridNode.js: Added.
+        (WI.MediaTimelineDataGridNode):
+        (WI.MediaTimelineDataGridNode.prototype.get records):
+        (WI.MediaTimelineDataGridNode.prototype.get data):
+        (WI.MediaTimelineDataGridNode.prototype.createCellContent):
+        (WI.MediaTimelineDataGridNode.prototype.iconClassNames):
+        (WI.MediaTimelineDataGridNode.prototype.filterableDataForColumn):
+
+        * UserInterface/Views/MediaTimelineOverviewGraph.js: Added.
+        (WI.MediaTimelineOverviewGraph):
+        (WI.MediaTimelineOverviewGraph.prototype.reset):
+        (WI.MediaTimelineOverviewGraph.prototype.shown):
+        (WI.MediaTimelineOverviewGraph.prototype.hidden):
+        (WI.MediaTimelineOverviewGraph.prototype.layout):
+        (WI.MediaTimelineOverviewGraph.prototype.updateSelectedRecord):
+        (WI.MediaTimelineOverviewGraph.prototype._handleRecordAdded):
+        * UserInterface/Views/MediaTimelineOverviewGraph.css: Added.
+        (.timeline-overview-graph.media > .timeline-record-bar):
+        (.timeline-overview-graph.media > .timeline-record-bar > .segment):
+
+        * UserInterface/Views/MediaTimelineView.js: Added.
+        (WI.MediaTimelineView):
+        (WI.MediaTimelineView.prototype.get secondsPerPixel):
+        (WI.MediaTimelineView.prototype.get selectionPathComponents):
+        (WI.MediaTimelineView.prototype.closed):
+        (WI.MediaTimelineView.prototype.reset):
+        (WI.MediaTimelineView.prototype.dataGridSortComparator.compareDOMNodes):
+        (WI.MediaTimelineView.prototype.dataGridSortComparator.):
+        (WI.MediaTimelineView.prototype.dataGridSortComparator):
+        (WI.MediaTimelineView.prototype.layout):
+        (WI.MediaTimelineView.prototype._processPendingRecords):
+        (WI.MediaTimelineView.prototype._handleRecordAdded):
+        (WI.MediaTimelineView.prototype._handleSelectionPathComponentSiblingSelected):
+        * UserInterface/Views/MediaTimelineView.css: Added.
+        (.timeline-view.media > .data-grid):
+
+        * UserInterface/Views/DOMEventsBreakdownView.js:
+        (WI.DOMEventsBreakdownView.prototype.layout):
+        * UserInterface/Views/DOMNodeEventsContentView.js:
+        (WI.DOMNodeEventsContentView.prototype.initialLayout):
+        * UserInterface/Views/NetworkDOMNodeDetailView.js:
+        (WI.NetworkDOMNodeDetailView):
+        (WI.NetworkDOMNodeDetailView.prototype.showContentViewForIdentifier):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.get filterNavigationItems):
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph):
+        (WI.NetworkTableContentView.prototype._showDetailView):
+        (WI.NetworkTableContentView.prototype._waterfallPopoverContentForNodeEntry):
+        Remove passing of `startTimestamp` to `WI.DOMEventsBreakdownView`, as we should be showing
+        absolute timestamps for each event, not relative to the start of the recording.
+
+        * UserInterface/Views/TimelineIcons.css:
+        (.media-icon .icon): Added.
+        (.dom-event-record .icon): Added.
+        (.dom-event-record.fullscreen .icon): Added.
+        (.low-power-record .icon): Added.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.availableTimelineTypes):
+        (WI.TimelineManager.prototype.capturingStarted):
+        (WI.TimelineManager.prototype.capturingStopped):
+        (WI.TimelineManager.prototype._updateAutoCaptureInstruments):
+        (WI.TimelineManager.prototype._handleDOMNodeDidFireEvent): Added.
+        (WI.TimelineManager.prototype._handleDOMNodeLowPowerChanged): Added.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WI.TimelineRuler.prototype.clearMarkers):
+        (WI.TimelineRuler.prototype._handleClick):
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview.prototype._timelineRulerMouseClicked):
+        * UserInterface/Models/TimelineRecording.js:
+        (WI.TimelineRecording.prototype.reset):
+        (WI.TimelineRecording.prototype.addEventMarker):
+        (WI.TimelineRecording.prototype.addRecord):
+        (WI.TimelineRecording.prototype._keyForRecord):
+        Drive-by: rework the logic for "click" event pass-through to the graph underneath.
+
+        * UserInterface/Models/Instrument.js:
+        (WI.Instrument.createForTimelineType):
+
+        * UserInterface/Models/TimelineRecord.js:
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView.displayNameForTimelineType):
+        (WI.TimelineTabContentView.iconClassNameForTimelineType):
+        (WI.TimelineTabContentView.genericClassNameForTimelineType):
+        (WI.TimelineTabContentView.iconClassNameForRecord):
+        (WI.TimelineTabContentView.displayNameForRecord):
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar.timeline-record-type-media > .segment): Added.
+
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.createFromRepresentedObject):
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WI.TimelineOverviewGraph.createForTimeline):
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WI.ScriptTimelineRecord.EventType.displayName):
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Images/DOMEvent.svg: Added.
+        * UserInterface/Images/DOMEventFullscreen.svg: Added.
+        * UserInterface/Images/LowPower.svg: Added.
+        * UserInterface/Images/MediaInstrument.svg: Added.
+
+2018-11-25  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove parameters from TreeOutline SelectionDidChange event
+        https://bugs.webkit.org/show_bug.cgi?id=191770
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/CallFrameTreeController.js:
+        (WI.CallFrameTreeController.prototype._treeSelectionDidChange):
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel):
+        (WI.CanvasSidebarPanel.prototype._treeSelectionDidChange):
+        (WI.CanvasSidebarPanel.prototype._treeOutlineSelectionDidChange): Deleted.
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView.prototype._canvasTreeOutlineSelectionDidChange):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WI.OpenResourceDialog.prototype._treeSelectionDidChange):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WI.SearchSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WI.StorageSidebarPanel._treeSelectionDidChange):
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WI.TimelineDataGrid.prototype._popoverCallStackTreeSelectionDidChange):
+        (WI.TimelineDataGrid):
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView.prototype._recordingsTreeSelectionDidChange):
+        Use `event.target.selectedTreeElement` instead of `event.data.selectedElement`.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview.prototype._timelinesTreeSelectionDidChange):
+        (WI.TimelineOverview.prototype._timelinesTreeSelectionDidChange.updateGraphSelectedState): Deleted.
+        Refactor away the single place `event.data.deselectedElement` was used.
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.prototype.select):
+        (WI.TreeElement.prototype.deselect):
+        Remove `selectedElement` and `deselectedElement` from event data.
+
+2018-11-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: removing and re-adding the tab will duplicate tests
+        https://bugs.webkit.org/show_bug.cgi?id=191843
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.loadStoredTests):
+        If we already have tests, don't attempt to load any stored tests.
+
+2018-11-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: "Reload Web Inspector" button no longer partially works
+        https://bugs.webkit.org/show_bug.cgi?id=191773
+        <rdar://problem/46139932>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Debug/UncaughtExceptionReporter.js:
+        (sheetElement.innerHTML):
+        * UserInterface/Views/SettingsTabContentView.js:
+
+2018-11-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: add button to show system certificate dialog
+        https://bugs.webkit.org/show_bug.cgi?id=191458
+        <rdar://problem/45977019>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.supportsShowCertificate): Added.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.showCertificate): Added.
+
+        * UserInterface/Views/ResourceSecurityContentView.js:
+        (WI.ResourceSecurityContentView.prototype._refreshCetificateSection):
+        * UserInterface/Views/ResourceSecurityContentView.css:
+        (.resource-security .details > .show-certificate > .key): Added.
+        (.resource-security .details > .show-certificate > .key > .error): Added.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-11-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: add default tests
+        https://bugs.webkit.org/show_bug.cgi?id=191758
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.loadStoredTests):
+        (WI.AuditManager.prototype.addDefaultTestsIfNeeded): Added.
+        If there are no previously saved tests in the database, automatically add the default set.
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel.prototype._addTest):
+        (WI.AuditNavigationSidebarPanel.prototype._addResult):
+        (WI.AuditNavigationSidebarPanel.prototype._handleAuditTestRemoved):
+        * UserInterface/Views/AuditNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.audit.has-results:not(.has-tests) > .content > .message-text-view): Added.
+        (.sidebar > .panel.navigation.audit.has-results:not(.has-tests) > .content > .message-text-view > .message): Added.
+        (.sidebar > .panel.navigation.audit.has-results:not(.has-tests) > .content > .message-text-view > button): Added.
+        When the last test is removed, show a placeholder message that allows the user to re-add the
+        default set of tests.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WI.NavigationSidebarPanel.prototype.showEmptyContentPlaceholder):
+        (WI.NavigationSidebarPanel.prototype._createEmptyContentPlaceholderIfNeeded):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-11-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: minor style improvements
+        https://bugs.webkit.org/show_bug.cgi?id=191727
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager):
+        (WI.AuditManager.prototype._handleFrameMainResourceDidChange): Added.
+        Clear test results when the main frame navigates, but don't clear the saved results.
+
+        * UserInterface/Models/AuditTestCase.js:
+        (WI.AuditTestCase.prototype.async run):
+        * UserInterface/Models/AuditTestCaseResult.js:
+        (WI.AuditTestCaseResult):
+        (WI.AuditTestCaseResult.async fromPayload):
+        (WI.AuditTestCaseResult.prototype.get resolvedDOMNodes): Added.
+        (WI.AuditTestCaseResult.prototype.toJSON):
+        Capture the full CSS path for any returned DOM nodes when the test finishes running, so that
+        if the node moves around the path isn't modified as well.
+
+        * UserInterface/Views/AuditTestCaseContentView.js:
+        (WI.AuditTestCaseContentView.prototype.layout):
+        Always show the URL for the test when viewing a saved result.
+
+        * UserInterface/Views/AuditTestContentView.css:
+        (.content-view-container > .content-view.audit-test > header p):
+        (.content-view.audit-test > header):
+        * UserInterface/Views/AuditTestCaseContentView.css:
+        (.content-view.audit-test-case > header): Added.
+        (.content-view.audit-test-case > header h1 > img):
+        (.content-view.audit-test-case > header > .metadata > .source): Added.
+        (.content-view.audit-test-case > header > .metadata > .duration):
+        (.content-view.audit-test-case > section table > tr > td:first-child):
+        * UserInterface/Views/AuditTestGroupContentView.css:
+        (.content-view.audit-test-group > header):
+        Horizontally align items in the header for visual consistency.
+
+2018-11-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include default filtering of InspectorBackend.dumpInspectorProtocolMessages with multi target backend
+        https://bugs.webkit.org/show_bug.cgi?id=191785
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Debug/Bootstrap.js:
+        (dumpMessagesCurrentState):
+        (applyDumpMessagesState):
+        (WI.runBootstrapOperations):
+        Include tri-state for the logs button.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.set filterMultiplexingBackendInspectorProtocolMessages):
+        (InspectorBackendClass.prototype.get filterMultiplexingBackendInspectorProtocolMessages):
+        (InspectorBackendClass.prototype._startOrStopAutomaticTracing):
+        Add new filtering state (the Setting already got added in the past).
+
+        * UserInterface/Protocol/LoggingProtocolTracer.js:
+        (WI.LoggingProtocolTracer):
+        (WI.LoggingProtocolTracer.prototype.set filterMultiplexingBackend):
+        (WI.LoggingProtocolTracer.prototype.get filterMultiplexingBackend):
+        (WI.LoggingProtocolTracer.prototype._processEntry):
+        Perform new filtering.
+
+2018-11-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Keep Web Inspector window alive across process swaps (PSON) (Local Inspector)
+        https://bugs.webkit.org/show_bug.cgi?id=191740
+        <rdar://problem/45470897>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/Connection.js:
+        (InspectorBackend.Connection.prototype._dispatchResponse):
+        Hide the TargetAgent does not exist message. This is necessary so that WebKitLegacy
+        tests don't include this line in output each test.
+
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        (WI.resetMainExecutionContext):
+        (WI.performOneTimeFrontendInitializationsUsingTarget):
+        Behave more like Main.js and initialize a MultiplexingBackendTarget when the
+        TargetAgent is available.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.runAfterPendingDispatches):
+        Use the main target, a.k.a. the page connection. The backend target's
+        messages don't have any responses, so this was effectively not waiting
+        at all.
+
+2018-11-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TreeOutline shouldn't select first child of an expanded element on right arrow key
+        https://bugs.webkit.org/show_bug.cgi?id=191766
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype._treeKeyDown):
+
 2018-11-14  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Table should recalculate scrollable height when resized

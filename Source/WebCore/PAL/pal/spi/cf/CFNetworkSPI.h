@@ -50,6 +50,20 @@
 #include <CFNetwork/CFURLResponsePriv.h>
 #include <CFNetwork/CFURLStorageSession.h>
 
+#if PLATFORM(WIN)
+
+WTF_EXTERN_C_BEGIN
+
+CFN_EXPORT CFStringRef _CFNetworkErrorGetLocalizedDescription(CFIndex);
+
+extern const CFStringRef _kCFWindowsSSLLocalCert;
+extern const CFStringRef _kCFStreamPropertyWindowsSSLCertInfo;
+extern const CFStringRef _kCFWindowsSSLPeerCert;
+
+WTF_EXTERN_C_END
+
+#endif
+
 // FIXME: Remove the defined(__OBJC__)-guard once we fix <rdar://problem/19033610>.
 #if defined(__OBJC__) && PLATFORM(COCOA)
 #import <CFNetwork/CFNSURLConnection.h>
@@ -123,7 +137,9 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 - (id)_initWithCFHTTPCookieStorage:(CFHTTPCookieStorageRef)cfStorage;
 - (CFHTTPCookieStorageRef)_cookieStorage;
 - (void)_saveCookies;
+#if HAVE(FOUNDATION_WITH_SAVE_COOKIES_WITH_COMPLETION_HANDLER)
 - (void)_saveCookies:(dispatch_block_t) completionHandler;
+#endif
 @end
 
 @interface NSURLConnection ()
@@ -190,8 +206,10 @@ typedef NS_ENUM(NSInteger, NSURLSessionCompanionProxyPreference) {
 - (NSDictionary *)_timingData;
 @property (readwrite, copy) NSString *_pathToDownloadTaskFile;
 @property (copy) NSString *_storagePartitionIdentifier;
+#if HAVE(FOUNDATION_WITH_SAME_SITE_COOKIE_SUPPORT)
 @property (nullable, readwrite, retain) NSURL *_siteForCookies;
 @property (readwrite) BOOL _isTopLevelNavigation;
+#endif
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
 @property (nonatomic, assign) BOOL _preconnect;
 #endif
@@ -358,10 +376,8 @@ WTF_EXTERN_C_END
 @end
 
 @interface NSURLSessionConfiguration ()
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
 // FIXME: Remove this once rdar://problem/40650244 is in a build.
 @property (copy) NSDictionary *_socketStreamProperties;
-#endif
 @end
 
 @interface NSURLSessionTask ()

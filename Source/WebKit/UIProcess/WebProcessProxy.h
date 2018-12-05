@@ -94,7 +94,7 @@ typedef RefCounter<BackgroundWebProcessCounterType> BackgroundWebProcessCounter;
 typedef BackgroundWebProcessCounter::Token BackgroundWebProcessToken;
 #endif
 
-class WebProcessProxy : public ChildProcessProxy, public ResponsivenessTimer::Client, public ThreadSafeRefCounted<WebProcessProxy>, private ProcessThrottlerClient {
+class WebProcessProxy : public ChildProcessProxy, public ResponsivenessTimer::Client, public ThreadSafeRefCounted<WebProcessProxy>, public CanMakeWeakPtr<WebProcessProxy>, private ProcessThrottlerClient {
 public:
     typedef HashMap<uint64_t, RefPtr<WebFrameProxy>> WebFrameProxyMap;
     typedef HashMap<uint64_t, WebPageProxy*> WebPageProxyMap;
@@ -110,7 +110,7 @@ public:
 
     WebConnection* webConnection() const { return m_webConnection.get(); }
 
-    WebProcessPool& processPool() { ASSERT(m_processPool); return *m_processPool.get(); }
+    WebProcessPool& processPool() const { ASSERT(m_processPool); return *m_processPool.get(); }
 
     // FIXME: WebsiteDataStores should be made per-WebPageProxy throughout WebKit2
     WebsiteDataStore& websiteDataStore() const { return m_websiteDataStore.get(); }
@@ -125,7 +125,7 @@ public:
     unsigned pageCount() const { return m_pageMap.size(); }
     unsigned visiblePageCount() const { return m_visiblePageCounter.value(); }
 
-    Vector<String> activePagesDomainsForTesting(); // This is what is reported to ActivityMonitor.
+    void activePagesDomainsForTesting(CompletionHandler<void(Vector<String>&&)>&&); // This is what is reported to ActivityMonitor.
 
     virtual bool isServiceWorkerProcess() const { return false; }
 
@@ -258,6 +258,8 @@ protected:
     void cacheMediaMIMETypesInternal(const Vector<String>&);
 #endif
 
+    bool isJITEnabled() const final;
+    
 private:
     // IPC message handlers.
     void updateBackForwardItem(const BackForwardListItemState&);

@@ -190,7 +190,7 @@ def forward_declarations_and_headers(receiver):
     ])
 
     for message in receiver.messages:
-        if message.reply_parameters != None and message.has_attribute(DELAYED_ATTRIBUTE):
+        if message.reply_parameters != None:
             headers.add('<wtf/ThreadSafeRefCounted.h>')
             types_by_namespace['IPC'].update([('class', 'Connection')])
 
@@ -390,6 +390,7 @@ def headers_for_type(type):
         'JSC::MessageLevel': ['<JavaScriptCore/ConsoleTypes.h>'],
         'JSC::MessageSource': ['<JavaScriptCore/ConsoleTypes.h>'],
         'Inspector::InspectorTargetType': ['<JavaScriptCore/InspectorTarget.h>'],
+        'Inspector::FrontendChannel::ConnectionType': ['<JavaScriptCore/InspectorFrontendChannel.h>'],
         'MonotonicTime': ['<wtf/MonotonicTime.h>'],
         'Seconds': ['<wtf/Seconds.h>'],
         'WallTime': ['<wtf/WallTime.h>'],
@@ -565,7 +566,10 @@ def generate_message_handler(file):
                     result.append('    std::optional<%s> %s;\n' % (x.type, x.name))
                     result.append('    decoder >> %s;\n' % x.name)
                     result.append('    if (!%s) {\n        ASSERT_NOT_REACHED();\n        return;\n    }\n' % x.name)
-                result.append('    completionHandler(WTFMove(*%s));\n}\n\n' % (', *'.join(x.name for x in message.reply_parameters)))
+                result.append('    completionHandler(')
+                if len(message.reply_parameters):
+                    result.append('WTFMove(*%s)' % ('), WTFMove(*'.join(x.name for x in message.reply_parameters)))
+                result.append(');\n}\n\n')
                 result.append('void %s::cancelReply(CompletionHandler<void(%s)>&& completionHandler)\n{\n    completionHandler(' % move_parameters)
                 result.append(', '.join(['{ }' for x in message.reply_parameters]))
                 result.append(');\n}\n\n')

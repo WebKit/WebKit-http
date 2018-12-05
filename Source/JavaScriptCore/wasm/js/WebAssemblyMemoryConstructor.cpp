@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -72,6 +72,8 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyMemory(ExecState* exec
         RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
         if (!Wasm::PageCount::isValid(size))
             return JSValue::encode(throwException(exec, throwScope, createRangeError(exec, "WebAssembly.Memory 'initial' page count is too large"_s)));
+        if (Wasm::PageCount(size).bytes() > MAX_ARRAY_BUFFER_SIZE)
+            return JSValue::encode(throwException(exec, throwScope, createOutOfMemoryError(exec)));
         initialPageCount = Wasm::PageCount(size);
     }
 

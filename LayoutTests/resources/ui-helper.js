@@ -54,18 +54,22 @@ window.UIHelper = class UIHelper {
         return UIHelper.activateAt(x, y);
     }
 
-    static keyDown(key)
+    static keyDown(key, modifiers=[])
     {
         if (!this.isWebKit2() || !this.isIOS()) {
-            eventSender.keyDown(key);
+            eventSender.keyDown(key, modifiers);
             return Promise.resolve();
         }
 
         return new Promise((resolve) => {
-            testRunner.runUIScript(`
-                uiController.keyDownUsingHardwareKeyboard("downArrow", function() {
-                    uiController.uiScriptComplete("Done");
-                });`, resolve);
+            testRunner.runUIScript(`uiController.keyDown("${key}", ${JSON.stringify(modifiers)});`, resolve);
+        });
+    }
+
+    static toggleCapsLock()
+    {
+        return new Promise((resolve) => {
+            testRunner.runUIScript(`uiController.toggleCapsLock(() => uiController.uiScriptComplete('Done'));`, resolve);
         });
     }
 
@@ -448,6 +452,20 @@ window.UIHelper = class UIHelper {
             testRunner.runUIScript(`(() => {
                 uiController.uiScriptComplete(uiController.numberOfStrokesInEditableImage);
             })()`, numberAsString => resolve(parseInt(numberAsString, 10)))
+        });
+    }
+
+    static attachmentInfo(attachmentIdentifier)
+    {
+        if (!this.isWebKit2())
+            return Promise.resolve();
+
+        return new Promise(resolve => {
+            testRunner.runUIScript(`(() => {
+                uiController.uiScriptComplete(JSON.stringify(uiController.attachmentInfo('${attachmentIdentifier}')));
+            })()`, jsonString => {
+                resolve(JSON.parse(jsonString));
+            })
         });
     }
 }

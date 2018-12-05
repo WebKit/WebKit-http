@@ -877,11 +877,10 @@ private:
             writes.add(ActivationScopePLoc, LazyNode(node->child1().node()));
             {
                 SymbolTable* symbolTable = node->castOperand<SymbolTable*>();
-                ConcurrentJSLocker locker(symbolTable->m_lock);
                 LazyNode initialValue(m_graph.freeze(node->initializationValueForActivation()));
-                for (auto iter = symbolTable->begin(locker), end = symbolTable->end(locker); iter != end; ++iter) {
+                for (unsigned offset = 0; offset < symbolTable->scopeSize(); ++offset) {
                     writes.add(
-                        PromotedLocationDescriptor(ClosureVarPLoc, iter->value.scopeOffset().offset()),
+                        PromotedLocationDescriptor(ClosureVarPLoc, offset),
                         initialValue);
                 }
             }

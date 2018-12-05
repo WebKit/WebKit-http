@@ -206,6 +206,7 @@ JSValueRef UIScriptController::didHideKeyboardCallback() const
 }
 
 #if !PLATFORM(COCOA)
+
 void UIScriptController::zoomToScale(double, JSValueRef)
 {
 }
@@ -235,8 +236,12 @@ JSObjectRef UIScriptController::calendarType() const
 {
     return nullptr;
 }
-    
-#endif
+
+void UIScriptController::toggleCapsLock(JSValueRef)
+{
+}
+
+#endif // !PLATFORM(COCOA)
 
 void UIScriptController::playBackEventStream(JSStringRef stream, JSValueRef callback)
 {
@@ -296,11 +301,7 @@ void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef, JSValue
 {
 }
 
-void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef, JSValueRef)
-{
-}
-
-void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef, JSValueRef)
+void UIScriptController::keyDown(JSStringRef, JSValueRef)
 {
 }
 
@@ -498,6 +499,11 @@ void UIScriptController::drawSquareInEditableImage()
 long UIScriptController::numberOfStrokesInEditableImage()
 {
     return 0;
+}
+
+JSObjectRef UIScriptController::attachmentInfo(JSStringRef)
+{
+    return nullptr;
 }
 
 #endif

@@ -1,3 +1,1129 @@
+2018-11-27  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, test gardening
+
+        Add a time out parameter to the following test cases such that WebAuthN requests will timeout
+        themselves instead of letting the wpt wrapper or test runner kill them.
+
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https.html:
+        * platform/mac-wk2/TestExpectations:
+
+2018-11-27  Chris Dumez  <cdumez@apple.com>
+
+        Resync service-workers web platform tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=192035
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        * tests-options.json:
+
+2018-11-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Momentum scrolling ends at the wrong place when a scrolling overflow element has a non-zero border
+        https://bugs.webkit.org/show_bug.cgi?id=191322
+
+        Reviewed by Dean Jackson.
+
+        * fast/scrolling/momentum-scroll-with-borders-expected.txt: Added.
+        * fast/scrolling/momentum-scroll-with-borders.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-11-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Composited and tiled layers fail to update on scrolling in WebView
+        https://bugs.webkit.org/show_bug.cgi?id=191821
+        rdar://problem/46009272
+
+        Reviewed by Zalan Bujtas.
+        
+        Tests for backing store attachment, and tile coverage before and after scrolling.
+
+        * compositing/backing/backing-store-attachment-scroll-expected.txt: Added.
+        * compositing/backing/backing-store-attachment-scroll.html: Added.
+        * compositing/tiling/tile-coverage-on-scroll-expected.txt: Added.
+        * compositing/tiling/tile-coverage-on-scroll.html: Added.
+        * platform/mac-wk1/compositing/tiling/tile-coverage-on-scroll-expected.txt: Added. Root isn't tiled on WK1, so different result.
+
+2018-11-27  Daniel Bates  <dabates@apple.com>
+
+        Fix test timeout following  <https://trac.webkit.org/changeset/238545>
+        (https://bugs.webkit.org/show_bug.cgi?id=191969)
+
+        Actually call HTMLInputElement.setSelectionRange().
+
+        * fast/forms/auto-fill-button/caps-lock-indicator-should-be-visible-after-hiding-auto-fill-strong-password-button-expected.html:
+
+2018-11-27  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add support for forcing color scheme appearance in DOM tree.
+        https://bugs.webkit.org/show_bug.cgi?id=191820
+        rdar://problem/46153172
+
+        Reviewed by Devin Rousso.
+
+        * TestExpectations: Skip dark mode tests on other platforms.
+        * inspector/css/force-page-appearance-expected.txt: Added.
+        * inspector/css/force-page-appearance.html: Added.
+        * platform/mac/TestExpectations: Expect dark mode tests to pass on Mojave and later.
+
+2018-11-27  Tim Horton  <timothy_horton@apple.com>
+
+        Serialize and deserialize editable image strokes
+        https://bugs.webkit.org/show_bug.cgi?id=192002
+        <rdar://problem/30900149>
+
+        Reviewed by Dean Jackson.
+
+        * editing/images/paste-editable-image-expected.txt: Added.
+        * editing/images/paste-editable-image.html: Added.
+        Add a test that we can copy and paste and editable image and
+        continue to edit it, and are affecting a different attachment than the original.
+
+2018-11-16  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Disallow loading webarchives as iframes
+        https://bugs.webkit.org/show_bug.cgi?id=191728
+        <rdar://problem/45524528>
+
+        Reviewed by Youenn Fablet.
+
+        * platform/mac-wk1/webarchive/loading/test-loading-archive-subresource-expected.txt: Added.
+        * platform/mac/fast/loader/webarchive-encoding-respected.html:
+        * webarchive/loading/cache-expired-subresource.html:
+        * webarchive/loading/mainresource-null-mimetype-crash.html:
+        * webarchive/loading/missing-data.html:
+        * webarchive/loading/resources/test-loading-archive-main.webarchive: Copied from LayoutTests/webarchive/loading/test-loading-archive.html.
+        * webarchive/loading/test-loading-archive-subresource-expected.txt: Added.
+        * webarchive/loading/test-loading-archive-subresource-null-mimetype.html:
+        * webarchive/loading/test-loading-archive-subresource.html: Copied from LayoutTests/webarchive/loading/test-loading-archive.html.
+        * webarchive/loading/test-loading-archive.html:
+        * webarchive/loading/test-loading-top-archive-expected.txt: Added.
+        * webarchive/loading/test-loading-top-archive.html: Added.
+
+2018-11-27  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test svg/text/monospace-text-size-in-img.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=192011
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-11-27  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test fast/inline/simple-inline-with-out-of-flow-descendant.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=192010
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-11-26  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r238078): Do not draw caps lock indicator when Strong Password button is shown
+        https://bugs.webkit.org/show_bug.cgi?id=191969
+        <rdar://problem/46247569>
+
+        Reviewed by Dean Jackson.
+
+        Add tests to ensure that we show or hide the caps lock indicator depending on whether the
+        Strong Password button is visible.
+
+        * TestExpectations: Skip the tests below on all platforms. We will selectively enable them on Mac.
+        * fast/forms/auto-fill-button/caps-lock-indicator-should-be-visible-after-hiding-auto-fill-strong-password-button-expected.html: Added.
+        * fast/forms/auto-fill-button/caps-lock-indicator-should-be-visible-after-hiding-auto-fill-strong-password-button.html: Added.
+        * fast/forms/auto-fill-button/caps-lock-indicator-should-not-be-visible-when-auto-fill-strong-password-button-is-visible-expected.html: Added.
+        * fast/forms/auto-fill-button/caps-lock-indicator-should-not-be-visible-when-auto-fill-strong-password-button-is-visible.html: Added.
+        * platform/mac-wk2/TestExpectations: Mark the tests above as PASS so that we run them.
+
+2018-11-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r238357.
+
+        One of the layout tests added with this change is failing on Mojave.
+
+        Reverted changeset:
+        "REGRESSION (r238078): Do not draw caps lock indicator when Strong Password button is shown"
+        https://bugs.webkit.org/show_bug.cgi?id=191969
+        https://trac.webkit.org/changeset/238513
+
+2018-11-26  Tim Horton  <timothy_horton@apple.com>
+
+        Insert <attachment> elements under editable images to make their backing data accessible
+        https://bugs.webkit.org/show_bug.cgi?id=191844
+        <rdar://problem/30900149>
+
+        Reviewed by Simon Fraser.
+
+        * editing/images/editable-image-creates-attachment-expected.txt: Added.
+        * editing/images/editable-image-creates-attachment.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.attachmentInfo):
+        (window.UIHelper):
+
+2018-11-26  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r237738): Command Down Arrow doesn't scroll to the end of a page anymore
+        https://bugs.webkit.org/show_bug.cgi?id=191967
+        <rdar://problem/45976390>
+
+        Reviewed by Tim Horton.
+
+        Add tests to ensure that Command + Down Arrow and Command + Up Arrow scroll to the end of
+        the page and the top of the page, respectively.
+
+        * fast/scrolling/ios/key-command-scroll-to-bottom-expected.html: Added.
+        * fast/scrolling/ios/key-command-scroll-to-bottom.html: Added.
+        * fast/scrolling/ios/key-command-scroll-to-top-expected.html: Added.
+        * fast/scrolling/ios/key-command-scroll-to-top.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.keyDown): Pass the modifiers array to EventSender.keyDown() to make
+        this function work on Mac.
+
+2018-11-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        SVG use element inside a shadow tree cannot reference an element in the same tree
+        https://bugs.webkit.org/show_bug.cgi?id=174977
+        <rdar://problem/33665636>
+
+        Reviewed by Zalan Bujtas.
+
+        Added tests for specifying a fragment URL to refer to other elements within shadow trees.
+
+        This patch doesn't add a test for updating a fragment URL of linearGradient and radialGradient
+        since it doesn't work at all even outside shadow trees. See webkit.org/b/191934.
+
+        * fast/shadow-dom/svg-animate-href-change-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-animate-href-change-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-animate-href-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-animate-href-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-feimage-href-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-feimage-href-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-linear-gradient-href-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-linear-gradient-href-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-mpath-href-change-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-mpath-href-change-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-mpath-href-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-mpath-href-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-radial-gradient-href-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-radial-gradient-href-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-text-path-href-change-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-text-path-href-change-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-text-path-href-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-text-path-href-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-thref-href-change-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-thref-href-change-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-thref-href-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-thref-href-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-use-href-change-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-use-href-change-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-use-href-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-use-href-in-shadow-tree.html: Added.
+
+2018-11-26  Daniel Bates  <dabates@apple.com>
+
+        Caret disappears at end of password field when caps lock indicator is shown; password field
+        not scrolled when caps lock indicator is shown
+        https://bugs.webkit.org/show_bug.cgi?id=191164
+        <rdar://problem/45738179>
+
+        Reviewed by Dean Jackson.
+
+        Add a test to ensure that we scroll the password field when caps lock is toggled.
+
+        * TestExpectations: Skip the test on all platforms as we only support toggling Caps Lock in
+        WebKit2 on Mac at the moment.
+        * fast/forms/password-scrolled-after-caps-lock-toggled-expected.txt: Added.
+        * fast/forms/password-scrolled-after-caps-lock-toggled.html: Added.
+        * platform/mac-wk2/TestExpectations: Mark the test as PASS so that we run it.
+
+2018-11-26  Daniel Bates  <dabates@apple.com>
+
+        Placeholder text is not repainted after caps lock indicator is hidden
+        https://bugs.webkit.org/show_bug.cgi?id=191968
+        <rdar://problem/46247234>
+
+        Substitute UIHelper.toggleCapsLock() for testRunner.toggleCapsLock() as the former replaces
+        the latter following r238512.
+
+        * fast/repaint/placeholder-after-caps-lock-hidden.html:
+
+2018-11-26  Daniel Bates  <dabates@apple.com>
+
+        Placeholder text is not repainted after caps lock indicator is hidden
+        https://bugs.webkit.org/show_bug.cgi?id=191968
+        <rdar://problem/46247234>
+
+        Reviewed by Zalan Bujtas.
+
+        Add a test to ensure to that the placeholder text is repainted when the caps lock indicator is hidden.
+
+        * TestExpectations: Skip the test on all platforms as we only support toggling Caps Lock in
+        WebKit2 on Mac at the moment.
+        * fast/repaint/placeholder-after-caps-lock-hidden.html: Added.
+        * platform/mac-wk2/TestExpectations: Mark the test as PASS so that we run it.
+
+2018-11-26  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r238078): Do not draw caps lock indicator when Strong Password button is shown
+        https://bugs.webkit.org/show_bug.cgi?id=191969
+        <rdar://problem/46247569>
+
+        Reviewed by Dean Jackson.
+
+        Add tests to ensure that we show or hide the caps lock indicator depending on whether the
+        Strong Password button is visible.
+
+        * TestExpectations: Skip the tests below on all platforms. We will selectively enable them on Mac.
+        * fast/forms/auto-fill-button/caps-lock-indicator-should-be-visible-when-after-hiding-auto-fill-strong-password-button-expected.html: Added.
+        * fast/forms/auto-fill-button/caps-lock-indicator-should-be-visible-when-after-hiding-auto-fill-strong-password-button.html: Added.
+        * fast/forms/auto-fill-button/caps-lock-indicator-should-not-be-visible-when-auto-fill-strong-password-button-is-visible-expected.html: Added.
+        * fast/forms/auto-fill-button/caps-lock-indicator-should-not-be-visible-when-auto-fill-strong-password-button-is-visible.html: Added.
+        * platform/mac-wk2/TestExpectations: Mark the tests above as PASS so that we run them.
+
+2018-11-26  Daniel Bates  <dabates@apple.com>
+
+        Move testRunner.toggleCapsLock() to uiController
+        https://bugs.webkit.org/show_bug.cgi?id=191972
+
+        Reviewed by Tim Horton.
+
+        Updated existing test to use UIHelper.toggleCapsLock(), which calls uiController.toggleCapsLock(),
+        now that testRunner.toggleCapsLock() was removed.
+
+        * fast/events/detect-caps-lock.html:
+        * resources/ui-helper.js:
+        (window.UIHelper.toggleCapsLock): Added. Convenience function to call uiController.toggleCapsLock()
+        and return a Promise that is resolved once the UIProcess has dispatched the NSEvent to simulate
+        pressing the caps lock key.
+
+2018-11-26  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed rebaseline after r238493.
+
+        * platform/ios/fast/inline/inline-content-with-float-and-margin-expected.txt: Added.
+
+2018-11-26  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed test gardening after r238280.
+
+        * fast/content-observation/click-event-suppression-on-content-change.html:
+
+2018-11-26  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed rebaseline after r238460.
+
+        * platform/ios/fast/inline/inline-content-with-image-simple-expected.txt: Added.
+
+2018-11-25  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Use float box's margin box to adjust the line constraints.
+        https://bugs.webkit.org/show_bug.cgi?id=191961
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/inline-content-with-float-and-margin-expected.txt: Added.
+        * fast/inline/inline-content-with-float-and-margin.html: Added.
+
+2018-11-26  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Fix grid container sizing under min-content height
+        https://bugs.webkit.org/show_bug.cgi?id=191889
+
+        Reviewed by Javier Fernandez.
+
+        Update tests results to the new behavior.
+        Also modified a little bit the test to keep them in sync with Blink versions.
+
+        * fast/css-grid-layout/grid-track-sizing-with-orthogonal-flows-expected.txt:
+        * fast/css-grid-layout/grid-track-sizing-with-orthogonal-flows.html:
+        * fast/css-grid-layout/maximize-tracks-definite-indefinite-height.html:
+
+2018-11-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, rebaseline webgpu/queue-creation.html.
+
+        * webgpu/queue-creation-expected.txt:
+
+2018-11-25  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to insert editable images with a gesture
+        https://bugs.webkit.org/show_bug.cgi?id=191937
+
+        Reviewed by Wenson Hsieh.
+
+        * editing/images/basic-editable-image-from-execCommand-expected.txt: Added.
+        * editing/images/basic-editable-image-from-execCommand.html: Added.
+        Add a test that ensures that editable images also work when
+        inserted via the editor command.
+
+        * editing/images/redo-insert-editable-image-maintains-strokes-expected.txt: Added.
+        * editing/images/redo-insert-editable-image-maintains-strokes.html: Added.
+        Add a test that ensures that strokes are maintained when re-doing an
+        un-done editable image insertion.
+
+        * editing/images/undo-insert-editable-image-expected.txt: Added.
+        * editing/images/undo-insert-editable-image.html: Added.
+        Add a test that ensures that the selection stays in a sensible place
+        when undoing and redoing editable image insertion.
+
+2018-11-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (r236785): Nullptr crash in StyledMarkupAccumulator::traverseNodesForSerialization
+        https://bugs.webkit.org/show_bug.cgi?id=191921
+
+        Reviewed by Dean Jackson.
+
+        Added a regression test.
+
+        * editing/pasteboard/copy-paste-across-shadow-boundaries-5-expected.txt: Added.
+        * editing/pasteboard/copy-paste-across-shadow-boundaries-5.html: Added.
+        * platform/ios/editing/pasteboard/copy-paste-across-shadow-boundaries-5-expected.txt: Added.
+
+2018-11-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Updating href on textPath doesn't update its rendering
+        https://bugs.webkit.org/show_bug.cgi?id=191920
+
+        Reviewed by Dean Jackson.
+
+        Added a ref test.
+
+        * svg/text/textpath-reference-update-expected.html: Added.
+        * svg/text/textpath-reference-update.html: Added.
+
+2018-11-23  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Add support for variable height runs.
+        https://bugs.webkit.org/show_bug.cgi?id=191925
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/inline-content-with-image-simple-expected.txt: Added.
+        * fast/inline/inline-content-with-image-simple.html: Added.
+
+2018-11-23  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Implement Baseline Alignment for grid items
+        https://bugs.webkit.org/show_bug.cgi?id=145566
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Most of the baseline realated tests pass now; just a few still fail because of unrelated bugs.
+
+        * TestExpectations: Removed several entries, related to the baseline tests that are now passing.
+        * fast/css-grid-layout/grid-align-baseline-expected.txt:
+        * fast/css-grid-layout/grid-align-baseline-vertical-expected.txt:
+        * fast/css-grid-layout/grid-baseline-expected.html:
+        * fast/css-grid-layout/grid-baseline-margins-expected.html:
+        * fast/css-grid-layout/grid-baseline-margins.html:
+        * fast/css-grid-layout/grid-baseline-must-respect-grid-order-expected.txt:
+        * fast/css-grid-layout/grid-baseline-must-respect-grid-order.html:
+        * fast/css-grid-layout/grid-baseline.html:
+        * fast/css-grid-layout/grid-self-baseline-and-flex-tracks-with-indefinite-container-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-self-baseline-and-flex-tracks-with-indefinite-container-crash.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-and-flexible-tracks-should-not-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-self-baseline-and-flexible-tracks-should-not-crash.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-and-item-relayout-should-not-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-self-baseline-and-item-relayout-should-not-crash.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-and-relative-sized-items-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-self-baseline-and-relative-sized-items-crash.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-and-relative-sized-tracks-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-self-baseline-and-relative-sized-tracks-crash.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-followed-by-item-style-change-should-not-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-self-baseline-followed-by-item-style-change-should-not-crash.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-two-dimensional-expected.txt:
+        * fast/css-grid-layout/grid-self-baseline-two-dimensional.html:
+
+2018-11-22  Dean Jackson  <dino@apple.com>
+
+        Implement WebGPUQueue and device.getQueue()
+        https://bugs.webkit.org/show_bug.cgi?id=191911
+        <rdar://problem/46214871>
+
+        Reviewed by Antoine Quint.
+
+        WPT-style test for queue creation.
+
+        * webgpu/queue-creation-expected.txt: Added.
+        * webgpu/queue-creation.html: Added.
+
+2018-11-22  Frederic Wang  <fwang@igalia.com>
+
+        Improve fast/scrolling/scrolling-tree-includes-frame.html
+        https://bugs.webkit.org/show_bug.cgi?id=191912
+
+        These are small improvements to scrolling-tree-includes-frame.html:
+        - Run doTest() after the iframe is loaded and use waitUntilDone/notifyDone for more reliable timing.
+        - Use iframe@srcdoc instead of iframe@src and put the content of the iframe document in its own line.
+        - Move the iframe style in a separate <style> tag and ensure the iframe is really positioned at (0,0)
+        with no extra margin/padding/border.
+        - Remove unnecessary id="frame"
+        The test expectation is not changed.
+
+        Reviewed by Antonio Gomes.
+
+        * fast/scrolling/scrolling-tree-includes-frame.html:
+
+2018-11-22  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Offset formatting context root runs with horizontal margins.
+        https://bugs.webkit.org/show_bug.cgi?id=191900
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/inline-content-and-nested-formatting-root-with-margin-left-right-expected.txt: Added.
+        * fast/inline/inline-content-and-nested-formatting-root-with-margin-left-right.html: Added.
+
+2018-11-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Extremely small monospace text size when SVG is included as an img
+        https://bugs.webkit.org/show_bug.cgi?id=191834
+
+        Reviewed by Myles C. Maxfield.
+        
+        The test has an x offset in the text transform to work around a different bug
+        with text position (webkit.org/b/191871).
+
+        * svg/text/monospace-text-size-in-img-expected.html: Added.
+        * svg/text/monospace-text-size-in-img.html: Added.
+
+2018-11-22  Javier Fernandez  <jfernandez@igalia.com>
+
+        Tables with vertical-lr writing-mode doesn't apply correctly vertical-align: baseline
+        https://bugs.webkit.org/show_bug.cgi?id=191881
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Tests to verify that columns of a vertical-lr table vertically aligned by baseline work like
+        in the case of horizontal tables.
+        Also added tests to verify flexbox baseline alignment works as expected in vertical-lr mode.
+
+        The vertical-align-table-baseline.html test has been rebaselined due to the new behavior.
+
+        * fast/writing-mode/vertical-align-table-baseline-latin-expected.html: Added.
+        * fast/writing-mode/vertical-align-table-baseline-latin.html: Added.
+        * fast/writing-mode/vertical-align-flex-baseline-expected.html: Added.
+        * fast/writing-mode/vertical-align-flex-baseline-html: Added.
+        * platform/gtk/fast/writing-mode/vertical-align-table-baseline-expected.txt: Rebaseline.
+        * platform/gtk/fast/writing-mode/vertical-align-table-baseline-expected.png: Rebaseline.
+        * platform/win/fast/writing-mode/vertical-align-table-baseline-expected.txt: Rebaseline.
+        * platform/win/fast/writing-mode/vertical-align-table-baseline-expected.png: Rebaseline.
+
+2018-11-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] [WebKit2] Add support for replacing find-in-page text matches
+        https://bugs.webkit.org/show_bug.cgi?id=191786
+        <rdar://problem/45813871>
+
+        Reviewed by Ryosuke Niwa.
+
+        Introduce a `LayoutTests/editing/find` directory to contain tests around `FindController`, and add 7 new layout
+        tests. These are currently enabled only for WebKit2 on macOS and iOS.
+
+        * TestExpectations:
+        * editing/find/find-and-replace-adjacent-words-expected.txt: Added.
+        * editing/find/find-and-replace-adjacent-words.html: Added.
+
+        Test find-and-replace with adjacent words.
+
+        * editing/find/find-and-replace-at-editing-boundary-expected.txt: Added.
+        * editing/find/find-and-replace-at-editing-boundary.html: Added.
+
+        Test find-and-replace when one of the find matches straddles an editing boundary. In this case, we verify that
+        the replacement does not occur, since only part of the word would be replaced.
+
+        * editing/find/find-and-replace-basic-expected.txt: Added.
+        * editing/find/find-and-replace-basic.html: Added.
+
+        Add a basic test that exercises a single text replacement, and "replace all".
+
+        * editing/find/find-and-replace-in-subframes-expected.txt: Added.
+        * editing/find/find-and-replace-in-subframes.html: Added.
+
+        Test find-and-replace when some of the matches are in editable content in subframes. This test additionally
+        contains matches in shadow content (in this case, text fields) within both the main document and the subframe,
+        and verifies that text replacement reaches these elements as well.
+
+        * editing/find/find-and-replace-no-matches-expected.txt: Added.
+        * editing/find/find-and-replace-no-matches.html: Added.
+
+        Test find-and-replace when no replacement matches are specified. In this case, we fall back to inserting the
+        replacement text at the current selection.
+
+        * editing/find/find-and-replace-noneditable-matches-expected.txt: Added.
+        * editing/find/find-and-replace-noneditable-matches.html: Added.
+
+        Test find-and-replace when some of the matches to replace are noneditable, others are editable, and others are
+        editable but are nested within noneditable elements (i.e. `contenteditable=false`). In this case, "replace all"
+        should still replace all fully editable matches.
+
+        * editing/find/find-and-replace-replacement-text-input-events-expected.txt: Added.
+        * editing/find/find-and-replace-replacement-text-input-events.html: Added.
+
+        Tests that find-and-replace emits input events of `inputType` "insertReplacementText", except when inserting
+        replacement text at a caret selection.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-11-21  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Horizontal margins should be considered as non-breakable space
+        https://bugs.webkit.org/show_bug.cgi?id=191894
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/inline-content-with-margin-left-right-expected.txt: Added.
+        * fast/inline/inline-content-with-margin-left-right.html: Added.
+
+2018-11-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Mutation observers doesn't get notified of character data mutation made by the parser
+        https://bugs.webkit.org/show_bug.cgi?id=191874
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test.
+
+        * fast/dom/MutationObserver/observe-parser-character-data-change-expected.txt: Added.
+        * fast/dom/MutationObserver/observe-parser-character-data-change.html: Added.
+
+2018-11-21  Zalan Bujtas <zalan@apple.com>
+
+        [LFC][IFC] Border should be considered as non-breakable space
+        https://bugs.webkit.org/show_bug.cgi?id=191891
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/inline-content-with-border-left-right-expected.txt: Added.
+        * fast/inline/inline-content-with-border-left-right.html: Added.
+
+2018-11-21  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=191887
+
+        * platform/gtk/TestExpectations:
+
+2018-11-21  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Take nonBreakableStart/End into use.
+        https://bugs.webkit.org/show_bug.cgi?id=191873
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/inline-content-with-padding-left-right-expected.txt: Added.
+        * fast/inline/inline-content-with-padding-left-right.html: Added.
+
+2018-11-20  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Input element gains focus when a selectstart event listener on document prevents the default action
+        https://bugs.webkit.org/show_bug.cgi?id=191714
+        <rdar://problem/46174389>
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test.
+
+        * fast/events/selectstart-prevent-default-should-not-focus-input-expected.txt: Added.
+        * fast/events/selectstart-prevent-default-should-not-focus-input.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-11-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Click on node assigned to slot in button's shadow cause loss of button focus
+        https://bugs.webkit.org/show_bug.cgi?id=191694
+        <rdar://problem/46107920>
+
+        Reviewed by Wenson Hsieh.
+
+        Added a regression test.
+
+        * fast/shadow-dom/focus-slot-parent-expected.txt: Added.
+        * fast/shadow-dom/focus-slot-parent.html: Added.
+
+2018-11-19  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Begin implementing WebGPUTexture, WebGPUTextureView, and WebGPUTextureFormatEnum, and WebGPUSwapChain::configure upgrades
+        https://bugs.webkit.org/show_bug.cgi?id=191794
+
+        Reviewed by Dean Jackson.
+
+        Did some refactoring to better share code among tests, and added basic functionality test for 
+        WebGPUTextures and WebGPUTextureView, to be fleshed out when their descriptor objects are implemented. 
+
+        * webgpu/command-buffers.html: Refactored to use basic-webgpu-functions.js.
+        * webgpu/js/basic-webgpu-functions.js: Added.
+        (vertex.Vertex.vertex_main): The basic MSL code has been moved into this file.
+        (fragment.float4.fragment_main):
+        (runWebGPUTests): Creates a WebGPURenderingContext on a default canvas and runs its provided functions.
+        (async.runWebGPUTestsOnCanvas): 
+        (async.setUpContexts): Tests proper creation of a basic WebGPURenderingContext.
+        (setUpModule): Creates a basic WebGPUShaderModule.
+        (setUpPipelineDescriptor): Creates a basic WebGPURenderPipelineDescriptor.
+        (setUpPipeline): Creates a basic WebGPURenderPipeline.
+        (render):
+        * webgpu/js/set-up-webgpu-contexts.js: Moved into basic-webgpu-functions.js.
+        * webgpu/render-pipelines-expected.txt:
+        * webgpu/render-pipelines.html: Refactored to use basic-webgpu-functions.js.
+        * webgpu/shader-modules.html: Refactored to use basic-webgpu-functions.js.
+        * webgpu/textures-textureviews-expected.txt: Added.
+        * webgpu/textures-textureviews.html: Added.
+        * webgpu/webgpu-basics.html: Refactored to use basic-webgpu-functions.js.
+
+2018-11-19  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Dragging image with a border-image larger than the image element crashes
+        https://bugs.webkit.org/show_bug.cgi?id=191817
+        <rdar://problem/46159222>
+
+        Reviewed by Ryosuke Niwa.
+
+        Verifies that an image that meets the pathological criteria described in Source/WebCore/ChangeLog can still be
+        dragged and dropped into an editable area.
+
+        * fast/events/drag-image-with-border-image.html: Added.
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+        Enable this test only in WebKit1.
+
+2018-11-18  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, rolling in the rest of r237254
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        * fast/dom/attribute-event-listener-errors-expected.txt:
+        * fast/events/attribute-listener-deletion-crash-expected.txt:
+        * fast/events/window-onerror-syntax-error-in-attr-expected.txt:
+        * js/dom/invalid-syntax-for-function-expected.txt:
+        * js/dom/script-start-end-locations-expected.txt:
+
+2018-11-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: add button to show system certificate dialog
+        https://bugs.webkit.org/show_bug.cgi?id=191458
+        <rdar://problem/45977019>
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/network/getSerializedCertificate-expected.txt: Added.
+        * http/tests/inspector/network/getSerializedCertificate.html: Added.
+
+        * platform/gtk/TestExpectations:
+        * platform/wincairo/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-11-17  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] InlineFormattingState::addDetachingRule should accumulate rules.
+        https://bugs.webkit.org/show_bug.cgi?id=191801
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/simple-inline-with-out-of-flow-descendant2-expected.txt: Added.
+        * fast/inline/simple-inline-with-out-of-flow-descendant2.html: Added.
+
+2018-11-17  Jonathan Hammer  <jonathan@e3software.com>
+
+        Caret stops blinking after context menu shown
+        https://bugs.webkit.org/show_bug.cgi?id=191715
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/events/contextmenu-dismiss-blink-caret-expected.txt: Added.
+        * fast/events/contextmenu-dismiss-blink-caret.html: Added.
+
+2018-11-16  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] event.isPrimary doesn't always represent the oldest active touch
+        https://bugs.webkit.org/show_bug.cgi?id=191752
+        <rdar://problem/46129270>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test that checks that adding a touch after another existing touch does not make it be
+        the primary touch, but that removing the first touch makes the second touch become the primary touch.
+
+        To do this we add a new ui.sequence() method that allows a series of touch actions to be performed
+        in a linear sequence. The test author can create a finger and call various actions on it, currently
+        begin(), move() and end().
+
+        When these actions are processed, we compute all "stationary" actions for each part of the sequence
+        so that we can provide this to the uiController.sendEventStream() function.
+
+        Finally, we add a way to track events received by the target and assert that the events that were
+        received match those that were expected.
+
+        * pointerevents/ios/pointer-events-is-primary-expected.txt: Added.
+        * pointerevents/ios/pointer-events-is-primary.html: Added.
+        * pointerevents/utils.js:
+        (prototype.handleEvent):
+        (prototype.assertMatchesEvents):
+        (const.ui.new.UIController):
+        (const.ui.new.UIController.prototype.finger):
+        (const.ui.new.UIController.prototype.pinchOut):
+        (const.ui.new.UIController.prototype.sequence):
+        (const.ui.new.UIController.prototype._runEvents):
+        (prototype.begin):
+        (prototype.move):
+        (prototype.end):
+        (prototype.stationary):
+        (prototype._action):
+
+2018-11-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: minor style improvements
+        https://bugs.webkit.org/show_bug.cgi?id=191727
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/audit/resources/audit-utilities.js:
+
+2018-11-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Keep Web Inspector window alive across process swaps (PSON) (Local Inspector)
+        https://bugs.webkit.org/show_bug.cgi?id=191740
+        <rdar://problem/45470897>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/unit-tests/target-manager-expected.txt:
+        * inspector/unit-tests/target-manager.html:
+        Update test to pass in both a MultiplexingBackendTarget and DirectBackendTarget world.
+
+2018-11-16  Jeremy Jones  <jeremyj@apple.com>
+
+        Include AirPlay destination name in AirPlay placard.
+        https://bugs.webkit.org/show_bug.cgi?id=191574
+        rdar://problem/45536144
+
+        Reviewed by Eric Carlson.
+
+        Updated tests for string changes.
+
+        * media/modern-media-controls/airplay-placard/airplay-placard-expected.txt:
+        * media/modern-media-controls/airplay-placard/airplay-placard.html:
+
+2018-11-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION (r232376): Layout Test inspector/console/webcore-logging.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=186425
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Remove flaky expectation.
+
+2018-11-16  Sihui Liu  <sihui_liu@apple.com>
+
+        Storing blobs in IDB on iOS: "Error preparing blob/file"
+        https://bugs.webkit.org/show_bug.cgi?id=188438
+        <rdar://problem/43097279>
+
+        Reviewed by Alex Christensen.
+
+        Three IDB blob tests are passing on iOS device now.
+
+        * platform/ios-device/TestExpectations:
+
+2018-11-16  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] 2 subsequent taps are required to trigger certain tasks on the desktop version of YouTube.com
+        https://bugs.webkit.org/show_bug.cgi?id=191712
+        <rdar://problem/45612900>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/click-instead-of-hover-simple-expected.txt: Added.
+        * fast/events/touch/ios/click-instead-of-hover-simple.html: Added.
+
+2018-11-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Add support for out-of-flow positioned boxes
+        https://bugs.webkit.org/show_bug.cgi?id=191726
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/simple-inline-with-out-of-flow-descendant-expected.txt: Added.
+        * fast/inline/simple-inline-with-out-of-flow-descendant.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-11-16  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer][MediaStream] Handle track addition and removal
+        https://bugs.webkit.org/show_bug.cgi?id=191599
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * fast/mediastream/MediaStream-video-element-remove-track-expected.txt: Added.
+        * fast/mediastream/MediaStream-video-element-remove-track.html: Added.
+
+2018-11-16  Antoine Quint  <graouts@apple.com>
+
+        PointerEvents should not require touch event listeners to be registered
+        https://bugs.webkit.org/show_bug.cgi?id=191333
+        <rdar://problem/45857523>
+
+        Reviewed by Dean Jackson.
+
+        Add two iOS tests that check that we dispatch pointer events when only those events are registered
+        and that we correctly account for calls to preventDefault(). To support pointer events test, we add
+        a new utility where we will be adding user interaction functions that should allow these tests to be
+        submitted to the WPT repository provided browsers implement their own versions of the UIController.
+
+        * TestExpectations:
+        * pointerevents/ios/pointer-events-dispatch-on-touch-expected.txt: Added.
+        * pointerevents/ios/pointer-events-dispatch-on-touch.html: Added.
+        * pointerevents/ios/pointer-events-prevent-default-expected.txt: Added.
+        * pointerevents/ios/pointer-events-prevent-default.html: Added.
+        * pointerevents/utils.js: Added.
+
+2018-11-15  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Do not get stuck in indeterminate content observation state.
+        https://bugs.webkit.org/show_bug.cgi?id=191719
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/stuck-with-hover-state-expected.txt: Added.
+        * fast/events/touch/ios/stuck-with-hover-state.html: Added.
+
+2018-11-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Add layout test for iframe contents disappearing on view unparent/reparent
+        https://bugs.webkit.org/show_bug.cgi?id=191725
+
+        Reviewed by Alex Christensen.
+        
+        This test tests the changes made in r238229.
+
+        * compositing/iframes/remove-reinsert-webview-with-iframe-expected.txt: Added.
+        * compositing/iframes/remove-reinsert-webview-with-iframe.html: Added.
+        * platform/ios/compositing/iframes/remove-reinsert-webview-with-iframe-expected.txt: Added.
+        * platform/mac-wk1/compositing/iframes/remove-reinsert-webview-with-iframe-expected.txt: Added.
+
+2018-11-15  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r238090) Composited iframes that resize from zero don't show
+        https://bugs.webkit.org/show_bug.cgi?id=191733
+        rdar://problem/46107764
+
+        Reviewed by Zalan Bujtas.
+
+        * compositing/iframes/resize-from-zero-size-expected.txt: Added.
+        * compositing/iframes/resize-from-zero-size.html: Added.
+
+2018-11-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Overlay with -webkit-overflow-scrolling:touch doesn't become scrollable after added text makes it taller
+        https://bugs.webkit.org/show_bug.cgi?id=158342
+        rdar://problem/26652811
+
+        Reviewed by Zalan Bujtas.
+
+        Patch partly by Frédéric Wang.
+
+        Add a test to check that scrollability of composited/non-composited overflow divs is properly
+        updated. This test used to fail and assert before #238090. A second test with nested divs
+        stills exhibit the issue and is fixed by the present commit.
+
+        * fast/scrolling/ios/change-scrollability-on-content-resize-expected.txt: Added.
+        * fast/scrolling/ios/change-scrollability-on-content-resize-nested-expected.txt: Added.
+        * fast/scrolling/ios/change-scrollability-on-content-resize-nested.html: Added.
+        * fast/scrolling/ios/change-scrollability-on-content-resize.html: Added.
+
+2018-11-15  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r238244.
+
+        Caused High Sierra test runs to fail early with 50 crashes and
+        casued 25 API failures.
+
+        Reverted changeset:
+
+        "[css-logical] Implement flow-relative margin, padding and
+        border shorthands"
+        https://bugs.webkit.org/show_bug.cgi?id=188697
+        https://trac.webkit.org/changeset/238244
+
+2018-11-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        imported/w3c/web-platform-tests/encoding tests take > 30 minutes to run on debug bots
+        https://bugs.webkit.org/show_bug.cgi?id=191720
+
+        Unreviewed test gardening.
+
+        * TestExpectations: Skip the directory on debug.
+
+2018-11-15  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r238038): [iOS] Layout test fast/forms/ios/validation-bubble-dismiss-on-tap.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=191710
+        <rdar://problem/46104093>
+
+        Reviewed by Simon Fraser.
+
+        There is a small amount of time after we ask to show the popover before the popover is actually shown on screen.
+        During this period, clicks are eaten and not reported to the view. For this reason, we keep tapping until the
+        popup is dismissed.
+
+        * fast/forms/ios/validation-bubble-dismiss-on-tap-expected.txt:
+        * fast/forms/ios/validation-bubble-dismiss-on-tap.html:
+
+2018-11-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Use a real nonce for CTAPHID_INIT
+        https://bugs.webkit.org/show_bug.cgi?id=191533
+        <rdar://problem/46103502>
+
+        Reviewed by Brent Fulgham.
+
+        * http/wpt/webauthn/ctap-hid-failure.https-expected.txt:
+        * http/wpt/webauthn/ctap-hid-failure.https.html:
+        * http/wpt/webauthn/ctap-hid-success.https-expected.txt:
+        * http/wpt/webauthn/ctap-hid-success.https.html:
+
+2018-11-15  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] WebGPUCommandBuffer prototype
+        https://bugs.webkit.org/show_bug.cgi?id=191663
+
+        Reviewed by Dean Jackson.
+
+        Begin implementation of WebGPUCommandBuffers as well as GPUQueues (MTLCommandBuffer, MTLCommandQueue).
+
+        New testing for WebGPUCommandBuffers, to be fleshed out when WebGPUCommandBufferDescriptors
+        are added to the specification.
+
+        * webgpu/command-buffers-expected.txt: Added.
+        * webgpu/command-buffers.html: Basic functionality, with more stress tests to be added when the spec is updated.
+        * webgpu/webgpu-basics.html: Updated to create the command buffer used by later rendering operations.
+
+2018-11-15  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-logical] Implement flow-relative margin, padding and border shorthands
+        https://bugs.webkit.org/show_bug.cgi?id=188697
+
+        Reviewed by Simon Fraser and Antti Koivisto.
+
+        Add tests checking that CSS properties disabled behind runtime flags
+        are not exposed.
+
+        * platform/ios/webexposed/css-properties-as-js-properties-expected.txt: Added.
+        * platform/ios/webexposed/css-property-listing-expected.txt: Added.
+        * platform/mac/webexposed/css-properties-as-js-properties-expected.txt: Added.
+        * platform/mac/webexposed/css-property-listing-expected.txt: Added.
+        * platform/win/webexposed/css-properties-as-js-properties-expected.txt: Added.
+        * platform/win/webexposed/css-property-listing-expected.txt: Added.
+        * webexposed/css-properties-as-js-properties-expected.txt: Added.
+        * webexposed/css-properties-as-js-properties.html: Added.
+        * webexposed/css-properties-behind-flags-expected.txt: Added.
+        * webexposed/css-properties-behind-flags.html: Added.
+        * webexposed/css-property-listing-expected.txt: Added.
+        * webexposed/css-property-listing.html: Added.
+
+2018-11-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-11-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] UserHandle can be null
+        https://bugs.webkit.org/show_bug.cgi?id=191521
+
+        Reviewed by Alex Christensen.
+
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https.html:
+
+2018-11-15  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Shift + Tab does not focus previous field
+        https://bugs.webkit.org/show_bug.cgi?id=191596
+        <rdar://problem/45892053>
+
+        Reviewed by Wenson Hsieh.
+
+        Add tests to ensure that we do not regress the tab and shift + tab key commands.
+
+        * fast/events/ios/focus-tab-next-field-expected.txt: Added.
+        * fast/events/ios/focus-tab-next-field.html: Added.
+        * fast/events/ios/focus-tab-previous-field-expected.txt: Added.
+        * fast/events/ios/focus-tab-previous-field.html: Added.
+        * platform/ios-wk1/TestExpectations: Skip test focus-tab-previous-field.html in Legacy WebKit as
+        we do not support testing key commands with modifier keys.
+        * resources/ui-helper.js:
+        (window.UIHelper.keyDown): Updated to support taking an optional array of modifiers (defaults: [])
+        and use the new infrastructure to generate a key down event for the specified character.
+
+2018-11-15  Youenn Fablet  <youenn@apple.com>
+
+        Update RTCPeerConnection JS built-ins to be closer to specWe
+        https://bugs.webkit.org/show_bug.cgi?id=191665
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations:
+
+2018-11-15  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r238220.
+
+        * platform/gtk/TestExpectations:
+
+2018-11-14  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Add support for in-flow positioned inline boxes.
+        https://bugs.webkit.org/show_bug.cgi?id=191672
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/simple-inline-inflow-positioned-expected.txt: Added.
+        * fast/inline/simple-inline-inflow-positioned.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-11-15  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r238178): fast/forms/access-key-mutated.html and fast/forms/access-key-case-insensitive.html are timing out
+        https://bugs.webkit.org/show_bug.cgi?id=191642
+
+        Reviewed by Zalan Bujtas.
+
+        * TestExpectations: Unskip
+        * platform/mac-wk2/TestExpectations: Unskip
+        * platform/mac-wk2/accessibility/mac/selection-notification-focus-change-expected.txt:
+
+        Rebase. Focus timings depends on layout timings.
+
+2018-11-15  Antti Koivisto  <antti@apple.com>
+
+        Remove fonts from CSSFontFaceSet safely
+        https://bugs.webkit.org/show_bug.cgi?id=191676
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/font-face-set-remove-safely-expected.txt: Added.
+        * fast/text/font-face-set-remove-safely.html: Added.
+
+2018-11-14  Timothy Hatcher  <timothy@apple.com>
+
+        Default the view background color and text color to different values when in dark mode.
+        https://bugs.webkit.org/show_bug.cgi?id=191607
+        rdar://problem/46045854
+
+        Reviewed by Dean Jackson.
+
+        * css-dark-mode/default-colors-expected.txt: Added.
+        * css-dark-mode/default-colors.html: Added.
+        * inspector/css/shadow-scoped-style-expected.txt: Rebaseline.
+        * platform/mac/printing/width-overflow-expected.txt: Rebaseline.
+
 2018-11-14  Ryan Haddad  <ryanhaddad@apple.com>
 
         Layout test fast/layers/no-clipping-overflow-hidden-added-after-transform.html is a flaky failure on EWS bots

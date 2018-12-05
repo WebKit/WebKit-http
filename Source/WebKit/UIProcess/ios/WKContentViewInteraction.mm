@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -691,6 +691,12 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     [_twoFingerSingleTapGestureRecognizer setDelegate:self];
     [self addGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
 
+    _stylusSingleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_stylusSingleTapRecognized:)]);
+    [_stylusSingleTapGestureRecognizer setNumberOfTapsRequired:1];
+    [_stylusSingleTapGestureRecognizer setDelegate:self];
+    [_stylusSingleTapGestureRecognizer setAllowedTouchTypes:@[ @(UITouchTypePencil) ]];
+    [self addGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
+
 #if HAVE(LINK_PREVIEW)
     [self _registerPreview];
 #endif
@@ -778,6 +784,9 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     [_twoFingerSingleTapGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
 
+    [_stylusSingleTapGestureRecognizer setDelegate:nil];
+    [self removeGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
+
     _layerTreeTransactionIdAtLastTouchStart = 0;
 
 #if ENABLE(DATA_INTERACTION)
@@ -834,6 +843,7 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     [self removeGestureRecognizer:_nonBlockingDoubleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
+    [self removeGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
 #if PLATFORM(IOSMAC)
     [self removeGestureRecognizer:_hoverGestureRecognizer.get()];
 #endif
@@ -848,6 +858,7 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     [self addGestureRecognizer:_nonBlockingDoubleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
+    [self addGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
 #if PLATFORM(IOSMAC)
     [self addGestureRecognizer:_hoverGestureRecognizer.get()];
 #endif
@@ -1896,6 +1907,15 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     _page->handleTwoFingerTapAtPoint(roundedIntPoint(gestureRecognizer.centroid), ++_latestTapID);
 }
 
+- (void)_stylusSingleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
+{
+    if (!_webView._stylusTapGestureShouldCreateEditableImage)
+        return;
+
+    ASSERT(gestureRecognizer == _stylusSingleTapGestureRecognizer);
+    _page->handleStylusSingleTapAtPoint(roundedIntPoint(gestureRecognizer.location), ++_latestTapID);
+}
+
 - (void)_longPressRecognized:(UILongPressGestureRecognizer *)gestureRecognizer
 {
     ASSERT(gestureRecognizer == _longPressGestureRecognizer);
@@ -2440,7 +2460,12 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
 }
 
 - (BOOL)canPerformActionForWebView:(SEL)action withSender:(id)sender
-{        
+{
+    if (action == @selector(_nextAccessoryTab:))
+        return hasAssistedNode(_assistedNodeInformation) && _assistedNodeInformation.hasNextNode;
+    if (action == @selector(_previousAccessoryTab:))
+        return hasAssistedNode(_assistedNodeInformation) && _assistedNodeInformation.hasPreviousNode;
+
     auto editorState = _page->editorState();
     if (action == @selector(_showTextStyleOptions:))
         return editorState.isContentRichlyEditable && editorState.selectionIsRange && !_showingTextStyleOptions;
@@ -3218,18 +3243,18 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
         return nil;
 
     static NSArray* editableKeyCommands = [@[
-       [UIKeyCommand keyCommandWithInput:@"\t" modifierFlags:0 action:@selector(_nextAccessoryTab:)],
-       [UIKeyCommand keyCommandWithInput:@"\t" modifierFlags:UIKeyModifierShift action:@selector(_prevAccessoryTab:)]
+        [UIKeyCommand keyCommandWithInput:@"\t" modifierFlags:0 action:@selector(_nextAccessoryTab:)],
+        [UIKeyCommand keyCommandWithInput:@"\t" modifierFlags:UIKeyModifierShift action:@selector(_previousAccessoryTab:)]
     ] retain];
     return editableKeyCommands;
 }
 
-- (void)_nextAccessoryTab:(id)sender
+- (void)_nextAccessoryTabForWebView:(id)sender
 {
     [self accessoryTab:YES];
 }
 
-- (void)_prevAccessoryTab:(id)sender
+- (void)_previousAccessoryTabForWebView:(id)sender
 {
     [self accessoryTab:NO];
 }
@@ -3817,8 +3842,6 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 - (void)_handleKeyUIEvent:(::UIEvent *)event
 {
     bool isHardwareKeyboardEvent = !!event._hidEvent;
-    if (isHardwareKeyboardEvent && ((UIPhysicalKeyboardEvent *)event)._inputFlags & kUIKeyboardInputModifierFlagsChanged)
-        _page->updateCurrentModifierState();
 
     // We only want to handle key event from the hardware keyboard when we are
     // first responder and we are not interacting with editable content.
@@ -3854,7 +3877,8 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (void)_didHandleKeyEvent:(::WebEvent *)event eventWasHandled:(BOOL)eventWasHandled
 {
-    [_keyboardScrollingAnimator handleKeyEvent:event];
+    if (!(event.keyboardFlags & WebEventKeyboardInputModifierFlagsChanged))
+        [_keyboardScrollingAnimator handleKeyEvent:event];
     
     if (auto handler = WTFMove(_keyWebEventHandler)) {
         handler(event, eventWasHandled);
@@ -5299,18 +5323,17 @@ static UIDropOperation dropOperationForWebCoreDragOperation(DragOperation operat
     _dragDropInteractionState = { };
 }
 
-static NSArray<UIItemProvider *> *extractItemProvidersFromDragItems(NSArray<UIDragItem *> *dragItems)
+static NSArray<NSItemProvider *> *extractItemProvidersFromDragItems(NSArray<UIDragItem *> *dragItems)
 {
-    NSMutableArray<UIItemProvider *> *providers = [NSMutableArray array];
+    NSMutableArray<NSItemProvider *> *providers = [NSMutableArray array];
     for (UIDragItem *item in dragItems) {
-        RetainPtr<UIItemProvider> provider = item.itemProvider;
-        if (provider)
-            [providers addObject:provider.get()];
+        if (NSItemProvider *provider = item.itemProvider)
+            [providers addObject:provider];
     }
     return providers;
 }
 
-static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDropSession> session)
+static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDropSession> session)
 {
     return extractItemProvidersFromDragItems(session.items);
 }
@@ -5486,7 +5509,7 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 
 - (NSArray<UIDragItem *> *)_itemsForBeginningOrAddingToSessionWithRegistrationList:(WebItemProviderRegistrationInfoList *)registrationList stagedDragSource:(const DragSourceState&)stagedDragSource
 {
-    UIItemProvider *defaultItemProvider = registrationList.itemProvider;
+    NSItemProvider *defaultItemProvider = registrationList.itemProvider;
     if (!defaultItemProvider)
         return @[ ];
 
@@ -5506,7 +5529,7 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
         adjustedItemProviders = @[ defaultItemProvider ];
 
     NSMutableArray *dragItems = [NSMutableArray arrayWithCapacity:adjustedItemProviders.count];
-    for (UIItemProvider *itemProvider in adjustedItemProviders) {
+    for (NSItemProvider *itemProvider in adjustedItemProviders) {
         auto item = adoptNS([[UIDragItem alloc] initWithItemProvider:itemProvider]);
         [item _setPrivateLocalContext:@(stagedDragSource.itemIdentifier)];
         [dragItems addObject:item.autorelease()];
@@ -5770,7 +5793,7 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 
 - (void)dropInteraction:(UIDropInteraction *)interaction performDrop:(id <UIDropSession>)session
 {
-    NSArray <UIItemProvider *> *itemProviders = extractItemProvidersFromDropSession(session);
+    NSArray <NSItemProvider *> *itemProviders = extractItemProvidersFromDropSession(session);
     id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
     if ([uiDelegate respondsToSelector:@selector(_webView:performDataInteractionOperationWithItemProviders:)]) {
         if ([uiDelegate _webView:_webView performDataInteractionOperationWithItemProviders:itemProviders])

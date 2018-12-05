@@ -28,6 +28,7 @@
 
 #if WK_API_ENABLED
 
+#import "ClassMethodSwizzler.h"
 #import "TestNavigationDelegate.h"
 #import "Utilities.h"
 
@@ -75,6 +76,72 @@ SOFT_LINK_CLASS(UIKit, UIWindow)
     }];
     TestWebKitAPI::Util::run(&done);
     return success;
+}
+
+- (NSArray<NSString *> *)tagsInBody
+{
+    return [self objectByEvaluatingJavaScript:@"Array.from(document.body.getElementsByTagName('*')).map(e => e.tagName)"];
+}
+
+- (void)expectElementTagsInOrder:(NSArray<NSString *> *)tagNames
+{
+    auto remainingTags = adoptNS([tagNames mutableCopy]);
+    NSArray<NSString *> *tagsInBody = self.tagsInBody;
+    for (NSString *tag in tagsInBody.reverseObjectEnumerator) {
+        if ([tag isEqualToString:[remainingTags lastObject]])
+            [remainingTags removeLastObject];
+        if (![remainingTags count])
+            break;
+    }
+    EXPECT_EQ([remainingTags count], 0U);
+    if ([remainingTags count])
+        NSLog(@"Expected to find ordered tags: %@ in: %@", tagNames, tagsInBody);
+}
+
+- (void)expectElementCount:(NSInteger)count querySelector:(NSString *)querySelector
+{
+    NSString *script = [NSString stringWithFormat:@"document.querySelectorAll('%@').length", querySelector];
+    EXPECT_EQ(count, [self stringByEvaluatingJavaScript:script].integerValue);
+}
+
+- (void)expectElementTag:(NSString *)tagName toComeBefore:(NSString *)otherTagName
+{
+    [self expectElementTagsInOrder:@[tagName, otherTagName]];
+}
+
+- (id)objectByEvaluatingJavaScript:(NSString *)script
+{
+    bool isWaitingForJavaScript = false;
+    RetainPtr<id> evalResult;
+    [self _evaluateJavaScriptWithoutUserGesture:script completionHandler:[&] (id result, NSError *error) {
+        evalResult = result;
+        isWaitingForJavaScript = true;
+        EXPECT_TRUE(!error);
+        if (error)
+            NSLog(@"Encountered error: %@ while evaluating script: %@", error, script);
+    }];
+    TestWebKitAPI::Util::run(&isWaitingForJavaScript);
+    return evalResult.autorelease();
+}
+
+- (id)objectByEvaluatingJavaScriptWithUserGesture:(NSString *)script
+{
+    bool isWaitingForJavaScript = false;
+    RetainPtr<id> evalResult;
+    [self evaluateJavaScript:script completionHandler:[&] (id result, NSError *error) {
+        evalResult = result;
+        isWaitingForJavaScript = true;
+        EXPECT_TRUE(!error);
+        if (error)
+            NSLog(@"Encountered error: %@ while evaluating script: %@", error, script);
+    }];
+    TestWebKitAPI::Util::run(&isWaitingForJavaScript);
+    return evalResult.autorelease();
+}
+
+- (NSString *)stringByEvaluatingJavaScript:(NSString *)script
+{
+    return [NSString stringWithFormat:@"%@", [self objectByEvaluatingJavaScript:script]];
 }
 
 @end
@@ -185,6 +252,9 @@ NSEventMask __simulated_forceClickAssociatedEventsMask(id self, SEL _cmd)
 @implementation TestWKWebView {
     RetainPtr<TestWKWebViewHostWindow> _hostWindow;
     RetainPtr<TestMessageHandler> _testHandler;
+#if PLATFORM(IOS_FAMILY)
+    std::unique_ptr<TestWebKitAPI::ClassMethodSwizzler> _sharedCalloutBarSwizzler;
+#endif
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -198,6 +268,15 @@ NSEventMask __simulated_forceClickAssociatedEventsMask(id self, SEL _cmd)
     return [self initWithFrame:frame configuration:configuration addToWindow:YES];
 }
 
+#if PLATFORM(IOS_FAMILY)
+
+static UICalloutBar *suppressUICalloutBar()
+{
+    return nil;
+}
+
+#endif
+
 - (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration addToWindow:(BOOL)addToWindow
 {
     self = [super initWithFrame:frame configuration:configuration];
@@ -206,6 +285,11 @@ NSEventMask __simulated_forceClickAssociatedEventsMask(id self, SEL _cmd)
 
     if (addToWindow)
         [self _setUpTestWindow:frame];
+
+#if PLATFORM(IOS_FAMILY)
+    // FIXME: Remove this workaround once <https://webkit.org/b/175204> is fixed.
+    _sharedCalloutBarSwizzler = std::make_unique<TestWebKitAPI::ClassMethodSwizzler>([UICalloutBar class], @selector(sharedCalloutBar), reinterpret_cast<IMP>(suppressUICalloutBar));
+#endif
 
     return self;
 }
@@ -269,26 +353,6 @@ NSEventMask __simulated_forceClickAssociatedEventsMask(id self, SEL _cmd)
 {
     [self loadTestPageNamed:pageName];
     [self _test_waitForDidFinishNavigation];
-}
-
-- (id)objectByEvaluatingJavaScript:(NSString *)script
-{
-    bool isWaitingForJavaScript = false;
-    RetainPtr<id> evalResult;
-    [self _evaluateJavaScriptWithoutUserGesture:script completionHandler:[&] (id result, NSError *error) {
-        evalResult = result;
-        isWaitingForJavaScript = true;
-        EXPECT_TRUE(!error);
-        if (error)
-            NSLog(@"Encountered error: %@ while evaluating script: %@", error, script);
-    }];
-    TestWebKitAPI::Util::run(&isWaitingForJavaScript);
-    return evalResult.autorelease();
-}
-
-- (NSString *)stringByEvaluatingJavaScript:(NSString *)script
-{
-    return [NSString stringWithFormat:@"%@", [self objectByEvaluatingJavaScript:script]];
 }
 
 - (void)waitForMessage:(NSString *)message
