@@ -822,6 +822,7 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
 #endif
 
     _hasSetUpInteractions = NO;
+    _suppressSelectionAssistantReasons = { };
 }
 
 - (void)_removeDefaultGestureRecognizers
@@ -1342,16 +1343,18 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 
 - (void)_displayFormNodeInputView
 {
-    // In case user scaling is force enabled, do not use that scaling when zooming in with an input field.
-    // Zooming above the page's default scale factor should only happen when the user performs it.
-    [self _zoomToFocusRect:_assistedNodeInformation.elementRect
-        selectionRect:_didAccessoryTabInitiateFocus ? IntRect() : _assistedNodeInformation.selectionRect
-        insideFixed:_assistedNodeInformation.insideFixedPosition
-        fontSize:_assistedNodeInformation.nodeFontSize
-        minimumScale:_assistedNodeInformation.minimumScaleFactor
-        maximumScale:_assistedNodeInformation.maximumScaleFactorIgnoringAlwaysScalable
-        allowScaling:_assistedNodeInformation.allowsUserScalingIgnoringAlwaysScalable && !currentUserInterfaceIdiomIsPad()
-        forceScroll:(_assistedNodeInformation.inputMode == InputMode::None) ? !currentUserInterfaceIdiomIsPad() : [self requiresAccessoryView]];
+    if (!_suppressSelectionAssistantReasons.contains(FocusedElementIsTransparent)) {
+        // In case user scaling is force enabled, do not use that scaling when zooming in with an input field.
+        // Zooming above the page's default scale factor should only happen when the user performs it.
+        [self _zoomToFocusRect:_assistedNodeInformation.elementRect
+            selectionRect:_didAccessoryTabInitiateFocus ? IntRect() : _assistedNodeInformation.selectionRect
+            insideFixed:_assistedNodeInformation.insideFixedPosition
+            fontSize:_assistedNodeInformation.nodeFontSize
+            minimumScale:_assistedNodeInformation.minimumScaleFactor
+            maximumScale:_assistedNodeInformation.maximumScaleFactorIgnoringAlwaysScalable
+            allowScaling:_assistedNodeInformation.allowsUserScalingIgnoringAlwaysScalable && !currentUserInterfaceIdiomIsPad()
+            forceScroll:(_assistedNodeInformation.inputMode == InputMode::None) ? !currentUserInterfaceIdiomIsPad() : [self requiresAccessoryView]];
+    }
 
     _didAccessoryTabInitiateFocus = NO;
     [self _ensureFormAccessoryView];
@@ -1734,7 +1737,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (BOOL)canShowNonEmptySelectionView
 {
-    if (self.suppressAssistantSelectionView)
+    if (_suppressSelectionAssistantReasons)
         return NO;
 
     auto& state = _page->editorState();
@@ -1744,6 +1747,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 - (BOOL)hasSelectablePositionAtPoint:(CGPoint)point
 {
     if (!_webView.configuration._textInteractionGesturesEnabled)
+        return NO;
+
+    if (_suppressSelectionAssistantReasons)
         return NO;
 
     if (_inspectorNodeSearchEnabled)
@@ -1769,6 +1775,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (!_webView.configuration._textInteractionGesturesEnabled)
         return NO;
 
+    if (_suppressSelectionAssistantReasons)
+        return NO;
+
     InteractionInformationRequest request(roundedIntPoint(point));
     if (![self ensurePositionInformationIsUpToDate:request])
         return NO;
@@ -1778,6 +1787,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 - (BOOL)textInteractionGesture:(UIWKGestureType)gesture shouldBeginAtPoint:(CGPoint)point
 {
     if (!_webView.configuration._textInteractionGesturesEnabled)
+        return NO;
+
+    if (_suppressSelectionAssistantReasons)
         return NO;
 
     InteractionInformationRequest request(roundedIntPoint(point));
@@ -2194,8 +2206,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     }
 
 FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
-
-FORWARD_ACTION_TO_WKWEBVIEW(_pasteAsQuotation)
+FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
 
 #undef FORWARD_ACTION_TO_WKWEBVIEW
 
@@ -2251,6 +2262,11 @@ FORWARD_ACTION_TO_WKWEBVIEW(_pasteAsQuotation)
     return (NSString *)_page->editorState().postLayoutData().wordAtSelection;
 }
 
+- (void)makeTextWritingDirectionNaturalForWebView:(id)sender
+{
+    _page->executeEditCommand("makeTextWritingDirectionNatural"_s);
+}
+
 - (BOOL)isReplaceAllowed
 {
     return _page->editorState().postLayoutData().isReplaceAllowed;
@@ -2285,18 +2301,38 @@ FORWARD_ACTION_TO_WKWEBVIEW(_pasteAsQuotation)
     [[UIKeyboardImpl sharedInstance] replaceText:sender];
 }
 
-#define WEBCORE_COMMAND_FOR_WEBVIEW(command) - (void)command ## ForWebView:(id)sender { _page->executeEditCommand(#command ## _s); }
-
+#define WEBCORE_COMMAND_FOR_WEBVIEW(command) \
+    - (void)_ ## command ## ForWebView:(id)sender { _page->executeEditCommand(#command ## _s); } \
+    - (void)command ## ForWebView:(id)sender { [self _ ## command ## ForWebView:sender]; }
 WEBCORE_COMMAND_FOR_WEBVIEW(insertOrderedList);
 WEBCORE_COMMAND_FOR_WEBVIEW(insertUnorderedList);
+WEBCORE_COMMAND_FOR_WEBVIEW(insertNestedOrderedList);
+WEBCORE_COMMAND_FOR_WEBVIEW(insertNestedUnorderedList);
 WEBCORE_COMMAND_FOR_WEBVIEW(indent);
 WEBCORE_COMMAND_FOR_WEBVIEW(outdent);
 WEBCORE_COMMAND_FOR_WEBVIEW(alignLeft);
 WEBCORE_COMMAND_FOR_WEBVIEW(alignRight);
 WEBCORE_COMMAND_FOR_WEBVIEW(alignCenter);
 WEBCORE_COMMAND_FOR_WEBVIEW(alignJustified);
+WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
+#undef WEBCORE_COMMAND_FOR_WEBVIEW
 
-- (void)toggleStrikeThroughForWebView:(id)sender
+- (void)_increaseListLevelForWebView:(id)sender
+{
+    _page->increaseListLevel();
+}
+
+- (void)_decreaseListLevelForWebView:(id)sender
+{
+    _page->decreaseListLevel();
+}
+
+- (void)_changeListTypeForWebView:(id)sender
+{
+    _page->changeListType();
+}
+
+- (void)_toggleStrikeThroughForWebView:(id)sender
 {
     _page->executeEditCommand("StrikeThrough"_s);
 }
@@ -2311,7 +2347,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(alignJustified);
     _page->executeEditCommand("FontSizeDelta"_s, "-1"_s);
 }
 
-- (void)setFontForWebView:(UIFont *)font sender:(id)sender
+- (void)_setFontForWebView:(UIFont *)font sender:(id)sender
 {
     WebCore::FontChanges changes;
     changes.setFontFamily(font.familyName);
@@ -2322,19 +2358,37 @@ WEBCORE_COMMAND_FOR_WEBVIEW(alignJustified);
     _page->changeFont(WTFMove(changes));
 }
 
-- (void)setFontSizeForWebView:(CGFloat)fontSize sender:(id)sender
+- (void)_setFontSizeForWebView:(CGFloat)fontSize sender:(id)sender
 {
     WebCore::FontChanges changes;
     changes.setFontSize(fontSize);
     _page->changeFont(WTFMove(changes));
 }
 
-- (void)setTextColorForWebView:(UIColor *)color sender:(id)sender
+- (void)_setTextColorForWebView:(UIColor *)color sender:(id)sender
 {
     _page->executeEditCommand("ForeColor"_s, WebCore::Color(color.CGColor).serialized());
 }
 
-#undef WEBCORE_COMMAND_FOR_WEBVIEW
+- (void)toggleStrikeThroughForWebView:(id)sender
+{
+    [self _toggleStrikeThroughForWebView:sender];
+}
+
+- (void)setFontForWebView:(UIFont *)font sender:(id)sender
+{
+    [self _setFontForWebView:font sender:sender];
+}
+
+- (void)setFontSizeForWebView:(CGFloat)fontSize sender:(id)sender
+{
+    [self _setFontSizeForWebView:fontSize sender:sender];
+}
+
+- (void)setTextColorForWebView:(UIColor *)color sender:(id)sender
+{
+    [self _setTextColorForWebView:color sender:sender];
+}
 
 - (NSDictionary *)textStylingAtPosition:(UITextPosition *)position inDirection:(UITextStorageDirection)direction
 {
@@ -2392,11 +2446,17 @@ WEBCORE_COMMAND_FOR_WEBVIEW(alignJustified);
         return editorState.isContentRichlyEditable && editorState.selectionIsRange && !_showingTextStyleOptions;
     if (_showingTextStyleOptions)
         return (action == @selector(toggleBoldface:) || action == @selector(toggleItalics:) || action == @selector(toggleUnderline:));
-    if (action == @selector(toggleBoldface:) || action == @selector(toggleItalics:) || action == @selector(toggleUnderline:) || action == @selector(toggleStrikeThrough:)
-        || action == @selector(insertOrderedList:) || action == @selector(insertUnorderedList:) || action == @selector(indent:) || action == @selector(outdent:)
+    // FIXME: Some of the following checks should be removed once internal clients move to the underscore-prefixed versions.
+    if (action == @selector(toggleBoldface:) || action == @selector(toggleItalics:) || action == @selector(toggleUnderline:) || action == @selector(_toggleStrikeThrough:)
+        || action == @selector(_alignLeft:) || action == @selector(_alignRight:) || action == @selector(_alignCenter:) || action == @selector(_alignJustified:)
+        || action == @selector(_setTextColor:sender:) || action == @selector(_setFont:sender:) || action == @selector(_setFontSize:sender:)
+        || action == @selector(_insertOrderedList:) || action == @selector(_insertUnorderedList:) || action == @selector(_insertNestedOrderedList:) || action == @selector(_insertNestedUnorderedList:)
+        || action == @selector(_increaseListLevel:) || action == @selector(_decreaseListLevel:) || action == @selector(_changeListType:) || action == @selector(_indent:) || action == @selector(_outdent:)
+        || action == @selector(increaseSize:) || action == @selector(decreaseSize:)
+        || action == @selector(toggleStrikeThrough:) || action == @selector(insertOrderedList:) || action == @selector(insertUnorderedList:) || action == @selector(indent:) || action == @selector(outdent:)
         || action == @selector(alignLeft:) || action == @selector(alignRight:) || action == @selector(alignCenter:) || action == @selector(alignJustified:)
-        || action == @selector(increaseSize:) || action == @selector(decreaseSize:) || action == @selector(setTextColor:sender:)
-        || action == @selector(setFont:sender:) || action == @selector(setFontSize:sender:)) {
+        || action == @selector(setTextColor:sender:) || action == @selector(setFont:sender:) || action == @selector(setFontSize:sender:)
+        || action == @selector(makeTextWritingDirectionNatural:)) {
         // FIXME: This should be more nuanced in the future, rather than returning YES for all richly editable areas. For instance, outdent: should be disabled when the selection is already
         // at the outermost indentation level.
         return editorState.isContentRichlyEditable;
@@ -2404,7 +2464,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(alignJustified);
     if (action == @selector(cut:))
         return !editorState.isInPasswordField && editorState.isContentEditable && editorState.selectionIsRange;
     
-    if (action == @selector(paste:)) {
+    if (action == @selector(paste:) || action == @selector(_pasteAsQuotation:) || action == @selector(_pasteAndMatchStyle:) || action == @selector(pasteAndMatchStyle:)) {
         if (editorState.selectionIsNone || !editorState.isContentEditable)
             return NO;
         UIPasteboard *pasteboard = [UIPasteboard generalPasteboard];
@@ -3756,9 +3816,13 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (void)_handleKeyUIEvent:(::UIEvent *)event
 {
+    bool isHardwareKeyboardEvent = !!event._hidEvent;
+    if (isHardwareKeyboardEvent && ((UIPhysicalKeyboardEvent *)event)._inputFlags & kUIKeyboardInputModifierFlagsChanged)
+        _page->updateCurrentModifierState();
+
     // We only want to handle key event from the hardware keyboard when we are
     // first responder and we are not interacting with editable content.
-    if ([self isFirstResponder] && event._hidEvent && !_page->editorState().isContentEditable) {
+    if ([self isFirstResponder] && isHardwareKeyboardEvent && !_page->editorState().isContentEditable) {
         [self handleKeyEvent:event];
         return;
     }
@@ -3823,7 +3887,6 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     static const unsigned kWebBackspaceKey = 0x0008;
     static const unsigned kWebReturnKey = 0x000D;
     static const unsigned kWebDeleteKey = 0x007F;
-    static const unsigned kWebDeleteForwardKey = 0xF728;
     static const unsigned kWebSpaceKey = 0x20;
 
     if (event.keyboardFlags & WebEventKeyboardInputModifierFlagsChanged)
@@ -3867,10 +3930,6 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
             return YES;
         }
         break;
-
-    case kWebDeleteForwardKey:
-        _page->executeEditCommand("deleteForward"_s);
-        return YES;
 
     default:
         if (contentEditable && isCharEvent) {
@@ -3925,6 +3984,26 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     _page->executeEditCommand(commandName, { }, [view](WebKit::CallbackBase::Error) {
         [view endSelectionChange];
     });
+}
+
+- (void)_deleteByWord
+{
+    [self executeEditCommandWithCallback:@"deleteWordBackward"];
+}
+
+- (void)_deleteToStartOfLine
+{
+    [self executeEditCommandWithCallback:@"deleteToBeginningOfLine"];
+}
+
+- (void)_deleteToEndOfLine
+{
+    [self executeEditCommandWithCallback:@"deleteToEndOfLine"];
+}
+
+- (void)_deleteForwardAndNotify:(BOOL)notify
+{
+    [self executeEditCommandWithCallback:@"deleteForward"];
 }
 
 - (UITextInputArrowKeyHistory *)_moveUp:(BOOL)extending withHistory:(UITextInputArrowKeyHistory *)history
@@ -4121,7 +4200,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 {
     [self setUpTextSelectionAssistant];
     
-    if (self.isFirstResponder && !self.suppressAssistantSelectionView)
+    if (self.isFirstResponder && !_suppressSelectionAssistantReasons)
         [_textSelectionAssistant activateSelection];
 
 #if !PLATFORM(WATCHOS)
@@ -4206,6 +4285,11 @@ static bool isAssistableInputType(InputType type)
 
     if ([inputDelegate respondsToSelector:@selector(_webView:decidePolicyForFocusedElement:)])
         startInputSessionPolicy = [inputDelegate _webView:_webView decidePolicyForFocusedElement:focusedElementInfo.get()];
+
+    if (information.elementIsTransparent)
+        [self _beginSuppressingSelectionAssistantForReason:FocusedElementIsTransparent];
+    else
+        [self _stopSuppressingSelectionAssistantForReason:FocusedElementIsTransparent];
 
     switch (startInputSessionPolicy) {
     case _WKFocusStartsInputSessionPolicyAuto:
@@ -4349,6 +4433,8 @@ static bool isAssistableInputType(InputType type)
         [_webView _scheduleVisibleContentRectUpdate];
 
     [_webView didEndFormControlInteraction];
+
+    [self _stopSuppressingSelectionAssistantForReason:FocusedElementIsTransparent];
 }
 
 - (void)updateCurrentAssistedNodeInformation:(Function<void(bool didUpdate)>&&)callback
@@ -4681,8 +4767,17 @@ static bool isAssistableInputType(InputType type)
 
 - (void)_updateChangedSelection:(BOOL)force
 {
-    if (!_selectionNeedsUpdate || _page->editorState().isMissingPostLayoutData)
+    auto& state = _page->editorState();
+    if (state.isMissingPostLayoutData)
         return;
+
+    auto& postLayoutData = state.postLayoutData();
+    if (hasAssistedNode(_assistedNodeInformation)) {
+        if (postLayoutData.elementIsTransparent)
+            [self _beginSuppressingSelectionAssistantForReason:FocusedElementIsTransparent];
+        else
+            [self _stopSuppressingSelectionAssistantForReason:FocusedElementIsTransparent];
+    }
 
     WKSelectionDrawingInfo selectionDrawingInfo(_page->editorState());
     if (force || selectionDrawingInfo != _lastSelectionDrawingInfo) {
@@ -4704,11 +4799,10 @@ static bool isAssistableInputType(InputType type)
         }
     }
 
-    auto& state = _page->editorState();
-    if (!state.isMissingPostLayoutData && state.postLayoutData().isStableStateUpdate && _needsDeferredEndScrollingSelectionUpdate && _page->inStableState()) {
+    if (postLayoutData.isStableStateUpdate && _needsDeferredEndScrollingSelectionUpdate && _page->inStableState()) {
         [[self selectionInteractionAssistant] showSelectionCommands];
 
-        if (!self.suppressAssistantSelectionView)
+        if (!_suppressSelectionAssistantReasons)
             [_textSelectionAssistant activateSelection];
 
         [_textSelectionAssistant didEndScrollingOverflow];
@@ -4717,23 +4811,26 @@ static bool isAssistableInputType(InputType type)
     }
 }
 
-- (BOOL)suppressAssistantSelectionView
+- (BOOL)_shouldSuppressSelectionCommands
 {
-    return _suppressAssistantSelectionView;
+    return !!_suppressSelectionAssistantReasons;
 }
 
-- (void)setSuppressAssistantSelectionView:(BOOL)suppressAssistantSelectionView
+- (void)_beginSuppressingSelectionAssistantForReason:(SuppressSelectionAssistantReason)reason
 {
-    if (_suppressAssistantSelectionView == suppressAssistantSelectionView)
-        return;
+    bool wasSuppressingSelectionAssistant = !!_suppressSelectionAssistantReasons;
+    _suppressSelectionAssistantReasons.add(reason);
 
-    _suppressAssistantSelectionView = suppressAssistantSelectionView;
-    if (!_textSelectionAssistant)
-        return;
-
-    if (suppressAssistantSelectionView)
+    if (!wasSuppressingSelectionAssistant)
         [_textSelectionAssistant deactivateSelection];
-    else
+}
+
+- (void)_stopSuppressingSelectionAssistantForReason:(SuppressSelectionAssistantReason)reason
+{
+    bool wasSuppressingSelectionAssistant = !!_suppressSelectionAssistantReasons;
+    _suppressSelectionAssistantReasons.remove(reason);
+
+    if (wasSuppressingSelectionAssistant && !_suppressSelectionAssistantReasons)
         [_textSelectionAssistant activateSelection];
 }
 
@@ -5245,7 +5342,7 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     } completion:^(BOOL completed) {
         [visibleContentViewSnapshot removeFromSuperview];
         [UIView animateWithDuration:0.25 animations:^() {
-            [protectedSelf setSuppressAssistantSelectionView:NO];
+            [protectedSelf _stopSuppressingSelectionAssistantForReason:DropAnimationIsRunning];
             [unselectedContentSnapshot setAlpha:0];
         } completion:^(BOOL completed) {
             [unselectedContentSnapshot removeFromSuperview];
@@ -5262,7 +5359,7 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
         [self.webViewUIDelegate _webView:_webView dataInteractionOperationWasHandled:handled forSession:dropSession itemProviders:[WebItemProviderPasteboard sharedInstance].itemProviders];
 
     if (!_isAnimatingConcludeEditDrag)
-        self.suppressAssistantSelectionView = NO;
+        [self _stopSuppressingSelectionAssistantForReason:DropAnimationIsRunning];
 
     CGPoint global;
     CGPoint client;
@@ -5711,7 +5808,7 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
         retainedSelf->_page->performDragOperation(capturedDragData, "data interaction pasteboard", WTFMove(sandboxExtensionHandle), WTFMove(sandboxExtensionForUpload));
 
         retainedSelf->_visibleContentViewSnapshot = [retainedSelf snapshotViewAfterScreenUpdates:NO];
-        [retainedSelf setSuppressAssistantSelectionView:YES];
+        [retainedSelf _beginSuppressingSelectionAssistantForReason:DropAnimationIsRunning];
         [UIView performWithoutAnimation:[retainedSelf] {
             [retainedSelf->_visibleContentViewSnapshot setFrame:[retainedSelf bounds]];
             [retainedSelf addSubview:retainedSelf->_visibleContentViewSnapshot.get()];

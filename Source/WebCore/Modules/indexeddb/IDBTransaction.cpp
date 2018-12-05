@@ -92,10 +92,9 @@ IDBTransaction::IDBTransaction(IDBDatabase& database, const IDBTransactionInfo& 
         auto* context = scriptExecutionContext();
         ASSERT(context);
 
-        RefPtr<IDBTransaction> self;
         JSC::VM& vm = context->vm();
-        vm.whenIdle([self, this]() {
-            deactivate();
+        vm.whenIdle([protectedThis = makeRef(*this)]() {
+            protectedThis->deactivate();
         });
 
         establishOnServer();
@@ -378,8 +377,9 @@ void IDBTransaction::scheduleOperation(RefPtr<IDBClient::TransactionOperation>&&
     ASSERT(!m_transactionOperationMap.contains(operation->identifier()));
     ASSERT(&m_database->originThread() == &Thread::current());
 
+    auto identifier = operation->identifier();
     m_pendingTransactionOperationQueue.append(operation);
-    m_transactionOperationMap.set(operation->identifier(), WTFMove(operation));
+    m_transactionOperationMap.set(identifier, WTFMove(operation));
 
     schedulePendingOperationTimer();
 }

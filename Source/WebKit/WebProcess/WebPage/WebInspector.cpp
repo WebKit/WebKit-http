@@ -100,12 +100,16 @@ void WebInspector::openFrontendConnection(bool underTest)
     m_frontendConnection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
     m_frontendConnection->open();
 
+    m_page->setHasLocalInspectorFrontend(true);
+
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::CreateInspectorPage(connectionClientPort, canAttachWindow(), underTest), m_page->pageID());
 #endif
 }
 
 void WebInspector::closeFrontendConnection()
 {
+    m_page->setHasLocalInspectorFrontend(false);
+
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::DidClose(), m_page->pageID());
 
     // If we tried to close the frontend before it was created, then no connection exists yet.
@@ -141,7 +145,7 @@ void WebInspector::close()
     if (!m_frontendConnection)
         return;
 
-    m_page->corePage()->inspectorController().disconnectFrontend(this);
+    m_page->corePage()->inspectorController().disconnectFrontend(*this);
     closeFrontendConnection();
 }
 

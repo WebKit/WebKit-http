@@ -68,7 +68,6 @@
 #include <fstream>
 #include <stdlib.h>
 #include <string>
-#include <unistd.h>
 #include <wtf/AutodrainedPool.h>
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/HexNumber.h>
@@ -84,6 +83,14 @@
 #if PLATFORM(COCOA)
 #include <WebKit/WKContextPrivateMac.h>
 #include <WebKit/WKPagePrivateMac.h>
+#endif
+
+#if PLATFORM(WIN)
+#include <direct.h>
+#define getcwd _getcwd
+#define PATH_MAX _MAX_PATH
+#else
+#include <unistd.h>
 #endif
 
 namespace WTR {
@@ -476,6 +483,9 @@ WKRetainPtr<WKPageConfigurationRef> TestController::generatePageConfiguration(WK
     WKContextUseTestingNetworkSession(m_context.get());
     WKContextSetCacheModel(m_context.get(), kWKCacheModelDocumentBrowser);
 
+    auto* websiteDataStore = WKContextGetWebsiteDataStore(m_context.get());
+    WKWebsiteDataStoreSetCacheStoragePerOriginQuota(websiteDataStore, 400 * 1024);
+    
     platformInitializeContext();
 
     WKContextInjectedBundleClientV1 injectedBundleClient = {
@@ -872,7 +882,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
     // some other code doing this, it should probably be responsible for cleanup too.
     resetPreferencesToConsistentValues(options);
 
-#if !PLATFORM(COCOA) && !PLATFORM(WPE)
+#if PLATFORM(GTK)
     WKTextCheckerContinuousSpellCheckingEnabledStateChanged(true);
 #endif
 
@@ -1091,8 +1101,15 @@ static WKURLRef createTestURL(const char* pathOrURL)
     if (!length)
         return 0;
 
+#if PLATFORM(WIN)
+    const char separator = '\\';
+    bool isAbsolutePath = false;
+    if (strlen(pathOrURL) >= 3 && pathOrURL[1] == ':' && pathOrURL[2] == separator)
+        isAbsolutePath = true;
+#else
     const char separator = '/';
     bool isAbsolutePath = pathOrURL[0] == separator;
+#endif
     const char* filePrefix = "file://";
     static const size_t prefixLength = strlen(filePrefix);
 
@@ -1239,6 +1256,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.shouldIgnoreMetaViewport = parseBooleanTestHeaderValue(value);
         else if (key == "spellCheckingDots")
             testOptions.shouldShowSpellCheckingDots = parseBooleanTestHeaderValue(value);
+        else if (key == "enableEditableImages")
+            testOptions.enableEditableImages = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }

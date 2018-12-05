@@ -501,25 +501,10 @@ void PaymentRequest::canMakePayment(Document& document, CanMakePaymentPromise&& 
         return;
     }
 
-    auto scope = DECLARE_CATCH_SCOPE(document.execState()->vm());
     for (auto& paymentMethod : m_serializedMethodData) {
-        auto data = parse(document, paymentMethod.serializedData);
-        ASSERT(!!scope.exception() == data.hasException());
-        if (data.hasException()) {
-            scope.clearException();
-            continue;
-        }
-
         auto handler = PaymentHandler::create(document, *this, paymentMethod.identifier);
         if (!handler)
             continue;
-
-        auto exception = handler->convertData(data.releaseReturnValue());
-        ASSERT(!!scope.exception() == exception.hasException());
-        if (exception.hasException()) {
-            scope.clearException();
-            continue;
-        }
 
         handler->canMakePayment([promise = WTFMove(promise)](bool canMakePayment) mutable {
             promise.resolve(canMakePayment);
@@ -704,11 +689,12 @@ void PaymentRequest::accept(const String& methodName, PaymentResponse::DetailsFu
 
     bool isRetry = m_response;
     if (!isRetry) {
-        m_response = PaymentResponse::create(scriptExecutionContext(), *this, WTFMove(detailsFunction));
+        m_response = PaymentResponse::create(scriptExecutionContext(), *this);
         m_response->setRequestId(m_details.id);
     }
 
     m_response->setMethodName(methodName);
+    m_response->setDetailsFunction(WTFMove(detailsFunction));
     m_response->setShippingAddress(m_options.requestShipping ? shippingAddress.ptr() : nullptr);
     m_response->setShippingOption(m_options.requestShipping ? m_shippingOption : String { });
     m_response->setPayerName(m_options.requestPayerName ? payerName : String { });

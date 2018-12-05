@@ -3747,7 +3747,51 @@ static RefPtr<CSSValue> consumeTextEmphasisPosition(CSSParserTokenRange& range)
         list->append(CSSValuePool::singleton().createIdentifierValue(leftRightValueID));
     return list;
 }
-    
+
+#if ENABLE(DARK_MODE_CSS)
+
+static RefPtr<CSSValue> consumeSupportedColorSchemes(CSSParserTokenRange& range)
+{
+    if (isAuto(range.peek().id()))
+        return consumeIdent(range);
+
+    Vector<CSSValueID, 3> identifiers;
+
+    while (!range.atEnd()) {
+        if (range.peek().type() != IdentToken)
+            return nullptr;
+
+        CSSValueID id = range.peek().id();
+
+        switch (id) {
+        case CSSValueAuto:
+            // Auto is only allowed as a single value, and was handled earlier.
+            // Don't allow it in the list.
+            return nullptr;
+
+        case CSSValueOnly:
+        case CSSValueLight:
+        case CSSValueDark:
+            if (!identifiers.appendIfNotContains(id))
+                return nullptr;
+            break;
+
+        default:
+            // Unknown identifiers are allowed and ignored.
+            break;
+        }
+
+        range.consumeIncludingWhitespace();
+    }
+
+    RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
+    for (auto id : identifiers)
+        list->append(CSSValuePool::singleton().createIdentifierValue(id));
+    return list;
+}
+
+#endif
+
 #if ENABLE(DASHBOARD_SUPPORT)
 
 static RefPtr<CSSValue> consumeWebkitDashboardRegion(CSSParserTokenRange& range, CSSParserMode mode)
@@ -4024,9 +4068,9 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
     case CSSPropertyOrphans:
     case CSSPropertyWidows:
         return consumePositiveInteger(m_range);
-    case CSSPropertyWebkitTextDecorationColor:
+    case CSSPropertyTextDecorationColor:
         return consumeColor(m_range, m_context.mode);
-    case CSSPropertyWebkitTextDecorationSkip:
+    case CSSPropertyTextDecorationSkip:
         return consumeTextDecorationSkip(m_range);
     case CSSPropertyWebkitTextStrokeWidth:
         return consumeTextStrokeWidth(m_range, m_context.mode);
@@ -4078,7 +4122,6 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
     case CSSPropertyTextShadow: // CSS2 property, dropped in CSS2.1, back in CSS3, so treat as CSS3
     case CSSPropertyBoxShadow:
     case CSSPropertyWebkitBoxShadow:
-    case CSSPropertyWebkitSvgShadow:
         return consumeShadow(m_range, m_context.mode, property == CSSPropertyBoxShadow || property == CSSPropertyWebkitBoxShadow);
     case CSSPropertyFilter:
 #if ENABLE(FILTERS_LEVEL_2)
@@ -4091,7 +4134,7 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
         return consumeFilter(m_range, m_context, AllowedFilterFunctions::ColorFilters);
     case CSSPropertyTextDecoration:
     case CSSPropertyWebkitTextDecorationsInEffect:
-    case CSSPropertyWebkitTextDecorationLine:
+    case CSSPropertyTextDecorationLine:
         return consumeTextDecorationLine(m_range);
     case CSSPropertyWebkitTextEmphasisStyle:
         return consumeTextEmphasisStyle(m_range);
@@ -4289,6 +4332,12 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
         return consumeWebkitAspectRatio(m_range);
     case CSSPropertyWebkitTextEmphasisPosition:
         return consumeTextEmphasisPosition(m_range);
+#if ENABLE(DARK_MODE_CSS)
+    case CSSPropertySupportedColorSchemes:
+        if (!RuntimeEnabledFeatures::sharedFeatures().darkModeCSSEnabled())
+            return nullptr;
+        return consumeSupportedColorSchemes(m_range);
+#endif
 #if ENABLE(DASHBOARD_SUPPORT)
     case CSSPropertyWebkitDashboardRegion:
         return consumeWebkitDashboardRegion(m_range, m_context.mode);

@@ -39,7 +39,6 @@
 #include "WorkerRuntimeAgent.h"
 #include "WorkerThread.h"
 #include "WorkerToPageFrontendChannel.h"
-#include <JavaScriptCore/InspectorAgent.h>
 #include <JavaScriptCore/InspectorAgentBase.h>
 #include <JavaScriptCore/InspectorBackendDispatcher.h>
 #include <JavaScriptCore/InspectorFrontendChannel.h>
@@ -69,21 +68,18 @@ WorkerInspectorController::WorkerInspectorController(WorkerGlobalScope& workerGl
 
     auto workerContext = workerAgentContext();
 
-    auto inspectorAgent = std::make_unique<InspectorAgent>(workerContext);
     auto heapAgent = std::make_unique<WebHeapAgent>(workerContext);
     auto consoleAgent = std::make_unique<WorkerConsoleAgent>(workerContext, heapAgent.get());
 
-    m_instrumentingAgents->setInspectorAgent(inspectorAgent.get());
     m_instrumentingAgents->setWebConsoleAgent(consoleAgent.get());
 
-    m_agents.append(WTFMove(inspectorAgent));
     m_agents.append(std::make_unique<WorkerRuntimeAgent>(workerContext));
     m_agents.append(std::make_unique<WorkerDebuggerAgent>(workerContext));
     m_agents.append(WTFMove(consoleAgent));
     m_agents.append(WTFMove(heapAgent));
 
     if (CommandLineAPIHost* commandLineAPIHost = m_injectedScriptManager->commandLineAPIHost())
-        commandLineAPIHost->init(m_instrumentingAgents->inspectorAgent(), m_instrumentingAgents->webConsoleAgent(), nullptr, nullptr, nullptr);
+        commandLineAPIHost->init(nullptr, m_instrumentingAgents->webConsoleAgent(), nullptr, nullptr, nullptr);
 }
 
 WorkerInspectorController::~WorkerInspectorController()
@@ -118,7 +114,7 @@ void WorkerInspectorController::connectFrontend()
     m_executionStopwatch->start();
 
     m_forwardingChannel = std::make_unique<WorkerToPageFrontendChannel>(m_workerGlobalScope);
-    m_frontendRouter->connectFrontend(m_forwardingChannel.get());
+    m_frontendRouter->connectFrontend(*m_forwardingChannel.get());
     m_agents.didCreateFrontendAndBackend(&m_frontendRouter.get(), &m_backendDispatcher.get());
 }
 
@@ -134,7 +130,7 @@ void WorkerInspectorController::disconnectFrontend(Inspector::DisconnectReason r
     });
 
     m_agents.willDestroyFrontendAndBackend(reason);
-    m_frontendRouter->disconnectFrontend(m_forwardingChannel.get());
+    m_frontendRouter->disconnectFrontend(*m_forwardingChannel.get());
     m_forwardingChannel = nullptr;
 }
 

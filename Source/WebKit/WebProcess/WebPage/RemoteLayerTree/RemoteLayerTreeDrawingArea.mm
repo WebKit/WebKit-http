@@ -185,7 +185,7 @@ void RemoteLayerTreeDrawingArea::setLayerTreeStateIsFrozen(bool isFrozen)
 
     if (!m_isFlushingSuspended && m_hasDeferredFlush) {
         m_hasDeferredFlush = false;
-        scheduleCompositingLayerFlush();
+        scheduleInitialDeferredPaint();
     }
 }
 
@@ -273,6 +273,16 @@ void RemoteLayerTreeDrawingArea::scheduleCompositingLayerFlushImmediately()
     m_layerFlushTimer.startOneShot(0_s);
 }
 
+void RemoteLayerTreeDrawingArea::scheduleInitialDeferredPaint()
+{
+    ASSERT(!m_isFlushingSuspended);
+    m_flushingInitialDeferredPaint = true;
+
+    if (m_layerFlushTimer.isActive())
+        return;
+    scheduleCompositingLayerFlushImmediately();
+}
+
 void RemoteLayerTreeDrawingArea::scheduleCompositingLayerFlush()
 {
     if (m_isFlushingSuspended) {
@@ -328,6 +338,13 @@ void RemoteLayerTreeDrawingArea::flushLayers()
         return;
     }
 
+    if (m_flushingInitialDeferredPaint) {
+        m_flushingInitialDeferredPaint = false;
+        // Reschedule the flush timer for the second paint if painting is being throttled.
+        if (m_isThrottlingLayerFlushes)
+            scheduleCompositingLayerFlush();
+    }
+
     RELEASE_ASSERT(!m_pendingBackingStoreFlusher || m_pendingBackingStoreFlusher->hasFlushed());
 
     RemoteLayerBackingStoreCollection& backingStoreCollection = m_remoteLayerTreeContext->backingStoreCollection();
@@ -370,7 +387,7 @@ void RemoteLayerTreeDrawingArea::flushLayers()
     m_webPage.willCommitLayerTree(layerTransaction);
 
     layerTransaction.setNewlyReachedLayoutMilestones(m_pendingNewlyReachedLayoutMilestones);
-    m_pendingNewlyReachedLayoutMilestones = 0;
+    m_pendingNewlyReachedLayoutMilestones = { };
 
     layerTransaction.setActivityStateChangeID(m_activityStateChangeID);
     m_activityStateChangeID = ActivityStateChangeAsynchronous;
@@ -506,9 +523,9 @@ void RemoteLayerTreeDrawingArea::addTransactionCallbackID(CallbackID callbackID)
     scheduleCompositingLayerFlush();
 }
 
-bool RemoteLayerTreeDrawingArea::dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones layoutMilestones)
+bool RemoteLayerTreeDrawingArea::dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone> layoutMilestones)
 {
-    m_pendingNewlyReachedLayoutMilestones |= layoutMilestones;
+    m_pendingNewlyReachedLayoutMilestones.add(layoutMilestones);
     return true;
 }
 

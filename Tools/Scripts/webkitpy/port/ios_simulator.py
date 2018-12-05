@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2017 Apple Inc. All rights reserved.
+# Copyright (C) 2014-2018 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -24,6 +24,7 @@ import logging
 
 from webkitpy.common.memoized import memoized
 from webkitpy.common.version import Version
+from webkitpy.port.config import apple_additions
 from webkitpy.port.ios import IOSPort
 from webkitpy.xcode.device_type import DeviceType
 from webkitpy.xcode.simulated_device import DeviceRequest, SimulatedDeviceManager
@@ -36,12 +37,14 @@ class IOSSimulatorPort(IOSPort):
     port_name = "ios-simulator"
 
     FUTURE_VERSION = 'future'
-    ARCHITECTURES = ['x86_64', 'x86']
+    ARCHITECTURES = ['x86_64', 'i386']
     DEFAULT_ARCHITECTURE = 'x86_64'
+
+    DEVICE_MANAGER = SimulatedDeviceManager
 
     DEFAULT_DEVICE_CLASS = 'iPhone SE'
     CUSTOM_DEVICE_CLASSES = ['iPad', 'iPhone 7']
-    SDK = 'iphonesimulator'
+    SDK = apple_additions().get_sdk('iphonesimulator') if apple_additions() else 'iphonesimulator'
 
     def __init__(self, host, port_name, **kwargs):
         super(IOSSimulatorPort, self).__init__(host, port_name, **kwargs)
@@ -49,9 +52,6 @@ class IOSSimulatorPort(IOSPort):
         optional_device_class = self.get_option('device_class')
         self._device_class = optional_device_class if optional_device_class else self.DEFAULT_DEVICE_CLASS
         _log.debug('IOSSimulatorPort _device_class is %s', self._device_class)
-
-    def _device_for_worker_number_map(self):
-        return SimulatedDeviceManager.INITIALIZED_DEVICES
 
     @staticmethod
     def _version_from_name(name):
@@ -79,11 +79,6 @@ class IOSSimulatorPort(IOSPort):
                 return num_booted_sims
         return SimulatedDeviceManager.max_supported_simulators(self.host)
 
-    def _build_driver_flags(self):
-        archs = ['ARCHS=i386'] if self.architecture() == 'x86' else []
-        sdk = ['--sdk', 'iphonesimulator']
-        return archs + sdk
-
     def _set_device_class(self, device_class):
         self._device_class = device_class if device_class else self.DEFAULT_DEVICE_CLASS
 
@@ -91,8 +86,7 @@ class IOSSimulatorPort(IOSPort):
         self._set_device_class(device_class)
         device_type = DeviceType.from_string(self._device_class, self.ios_version())
 
-        _log.debug('')
-        _log.debug('creating devices for {}'.format(device_type))
+        _log.debug('\nCreating devices for {}'.format(device_type))
 
         request = DeviceRequest(
             device_type,
@@ -128,10 +122,6 @@ class IOSSimulatorPort(IOSPort):
                 env['__XPC_MallocStackLogging'] = '1'
                 env['MallocScribble'] = '1'
                 env['__XPC_MallocScribble'] = '1'
-            if self.get_option('guard_malloc'):
-                self._append_value_colon_separated(env, 'DYLD_INSERT_LIBRARIES', '/usr/lib/libgmalloc.dylib')
-                self._append_value_colon_separated(env, '__XPC_DYLD_INSERT_LIBRARIES', '/usr/lib/libgmalloc.dylib')
-        env['XML_CATALOG_FILES'] = ''  # work around missing /etc/catalog <rdar://problem/4292995>
         return env
 
     def operating_system(self):

@@ -33,6 +33,7 @@
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSPropertyNames.h"
 #include "CachedResourceLoader.h"
+#include "ChangeListTypeCommand.h"
 #include "ClipboardEvent.h"
 #include "CompositionEvent.h"
 #include "CreateLinkCommand.h"
@@ -804,7 +805,7 @@ RefPtr<Node> Editor::insertOrderedList()
     if (!canEditRichly())
         return nullptr;
         
-    RefPtr<Node> newList = InsertListCommand::insertList(document(), InsertListCommand::OrderedList);
+    auto newList = InsertListCommand::insertList(document(), InsertListCommand::Type::OrderedList);
     revealSelectionAfterEditingOperation();
     return newList;
 }
@@ -814,7 +815,7 @@ RefPtr<Node> Editor::insertUnorderedList()
     if (!canEditRichly())
         return nullptr;
         
-    RefPtr<Node> newList = InsertListCommand::insertList(document(), InsertListCommand::UnorderedList);
+    auto newList = InsertListCommand::insertList(document(), InsertListCommand::Type::UnorderedList);
     revealSelectionAfterEditingOperation();
     return newList;
 }
@@ -1474,6 +1475,12 @@ void Editor::performDelete()
     // clear the "start new kill ring sequence" setting, because it was set to true
     // when the selection was updated by deleting the range
     setStartNewKillRingSequence(false);
+}
+
+void Editor::changeSelectionListType()
+{
+    if (auto type = ChangeListTypeCommand::listConversionType(document()))
+        ChangeListTypeCommand::create(document(), *type)->apply();
 }
 
 void Editor::simplifyMarkup(Node* startNode, Node* endNode)

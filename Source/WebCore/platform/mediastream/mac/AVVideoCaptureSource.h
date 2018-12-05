@@ -57,9 +57,6 @@ public:
 
     WEBCORE_EXPORT static VideoCaptureFactory& factory();
 
-    int32_t width() const { return m_width; }
-    int32_t height() const { return m_height; }
-
     enum class InterruptionReason { None, VideoNotAllowedInBackground, AudioInUse, VideoInUse, VideoNotAllowedInSideBySide };
     void captureSessionBeginInterruption(RetainPtr<NSNotification>);
     void captureSessionEndInterruption(RetainPtr<NSNotification>);
@@ -69,6 +66,7 @@ public:
     void captureSessionIsRunningDidChange(bool);
     void captureSessionRuntimeError(RetainPtr<NSError>);
     void captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutput*, CMSampleBufferRef, AVCaptureConnection*);
+    void captureDeviceSuspendedDidChange();
 
 private:
     AVVideoCaptureSource(AVCaptureDevice*, String&& id, String&& hashSalt);
@@ -112,9 +110,6 @@ private:
     RetainPtr<AVCaptureVideoDataOutput> m_videoOutput;
     std::unique_ptr<ImageTransferSessionVT> m_imageTransferSession;
 
-    IntSize m_requestedSize;
-    int32_t m_width { 0 };
-    int32_t m_height { 0 };
     int m_sensorOrientation { 0 };
     int m_deviceOrientation { 0 };
     MediaSample::VideoRotation m_sampleRotation { MediaSample::VideoRotation::None };

@@ -1,3 +1,21 @@
+2018-11-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add HTTPS git remote to ReadMe.md
+        https://bugs.webkit.org/show_bug.cgi?id=191561
+
+        Reviewed by Zalan Bujtas.
+
+        * ReadMe.md:
+
+2018-11-12  Takashi Komori  <Takashi.Komori@sony.com>
+
+        Resurrect WebKitTestRunner for Windows port
+        https://bugs.webkit.org/show_bug.cgi?id=189257
+
+        Reviewed by Fujii Hironori.
+
+        * Source/cmake/OptionsWin.cmake:
+
 2018-11-07  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [Linux] Use memfd_create when available in SharedMemory implementation

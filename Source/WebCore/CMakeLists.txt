@@ -68,6 +68,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/crypto/keys"
     "${WEBCORE_DIR}/crypto/parameters"
     "${WEBCORE_DIR}/css/parser"
+    "${WEBCORE_DIR}/css/typedom"
     "${WEBCORE_DIR}/cssjit"
     "${WEBCORE_DIR}/dom/default"
     "${WEBCORE_DIR}/dom/messageports"
@@ -202,6 +203,8 @@ set(WebCore_IDL_INCLUDES
     Modules/webvr
 
     bindings/js
+
+    css/typedom
 
     html/canvas
     html/shadow
@@ -441,6 +444,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webauthn/PublicKeyCredentialDescriptor.idl
     Modules/webauthn/PublicKeyCredentialRequestOptions.idl
     Modules/webauthn/PublicKeyCredentialType.idl
+    Modules/webauthn/UserVerificationRequirement.idl
 
     Modules/webdatabase/DOMWindowWebDatabase.idl
     Modules/webdatabase/Database.idl
@@ -552,6 +556,7 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSMediaRule.idl
     css/CSSNamespaceRule.idl
     css/CSSPaintCallback.idl
+    css/CSSPaintSize.idl
     css/CSSPageRule.idl
     css/CSSRule.idl
     css/CSSRuleList.idl
@@ -583,6 +588,13 @@ set(WebCore_NON_SVG_IDL_FILES
     css/StyleMedia.idl
     css/StyleSheet.idl
     css/StyleSheetList.idl
+
+    css/typedom/CSSNumericValue.idl
+    css/typedom/CSSStyleValue.idl
+    css/typedom/CSSUnitValue.idl
+    css/typedom/CSSUnparsedValue.idl
+    css/typedom/StylePropertyMapReadOnly.idl
+
     css/WebKitCSSMatrix.idl
     css/WebKitCSSViewportRule.idl
 

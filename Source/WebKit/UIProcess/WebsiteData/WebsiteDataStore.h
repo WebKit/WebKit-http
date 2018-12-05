@@ -46,6 +46,10 @@
 #include <pal/spi/cf/CFNetworkSPI.h>
 #endif
 
+#if USE(CURL)
+#include <WebCore/CurlProxySettings.h>
+#endif
+
 namespace WebCore {
 class SecurityOrigin;
 }
@@ -73,8 +77,6 @@ enum class StorageAccessPromptStatus;
 #if ENABLE(NETSCAPE_PLUGIN_API)
 struct PluginModuleInfo;
 #endif
-
-enum class ShouldCapLifetimeForClientSideCookies { No, Yes };
 
 class WebsiteDataStore : public RefCounted<WebsiteDataStore>, public WebProcessLifetimeObserver, public Identified<WebsiteDataStore>, public CanMakeWeakPtr<WebsiteDataStore>  {
 public:
@@ -138,7 +140,7 @@ public:
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void updatePrevalentDomainsToBlockCookiesFor(const Vector<String>& domainsToBlock, CompletionHandler<void()>&&);
-    void setShouldCapLifetimeForClientSideCookies(ShouldCapLifetimeForClientSideCookies, CompletionHandler<void()>&&);
+    void setAgeCapForClientSideCookies(std::optional<Seconds>, CompletionHandler<void()>&&);
     void hasStorageAccessForFrameHandler(const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool hasAccess)>&&);
     void getAllStorageAccessEntries(uint64_t pageID, CompletionHandler<void(Vector<String>&& domains)>&&);
     void grantStorageAccessHandler(const String& resourceDomain, const String& firstPartyDomain, std::optional<uint64_t> frameID, uint64_t pageID, CompletionHandler<void(bool wasGranted)>&&);
@@ -187,7 +189,13 @@ public:
     void setProxyConfiguration(CFDictionaryRef configuration) { m_proxyConfiguration = configuration; }
     CFDictionaryRef proxyConfiguration() { return m_proxyConfiguration.get(); }
 #endif
-    
+
+#if USE(CURL)
+    void platformSetParameters(WebsiteDataStoreParameters&);
+    void setNetworkProxySettings(WebCore::CurlProxySettings&&);
+    const WebCore::CurlProxySettings& networkProxySettings() const { return m_proxySettings; }
+#endif
+
     static void allowWebsiteDataRecordsForAllOrigins();
 
 #if HAVE(SEC_KEY_PROXY)
@@ -252,8 +260,13 @@ private:
     RetainPtr<CFHTTPCookieStorageRef> m_cfCookieStorage;
     RetainPtr<CFDictionaryRef> m_proxyConfiguration;
 #endif
+
+#if USE(CURL)
+    WebCore::CurlProxySettings m_proxySettings;
+#endif
+
     HashSet<WebCore::Cookie> m_pendingCookies;
-    
+
     String m_boundInterfaceIdentifier;
     AllowsCellularAccess m_allowsCellularAccess { AllowsCellularAccess::Yes };
 

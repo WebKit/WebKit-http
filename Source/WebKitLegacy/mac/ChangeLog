@@ -1,3 +1,190 @@
+2018-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pass Inspector::FrontendChannel as a reference connect/disconnect methods
+        https://bugs.webkit.org/show_bug.cgi?id=191612
+
+        Reviewed by Matt Baker.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController destroyInspectorView]):
+
+2018-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Keep Web Inspector window alive across process swaps (PSON) (Remote Inspector)
+        https://bugs.webkit.org/show_bug.cgi?id=191494
+        <rdar://problem/45469854>
+
+        Reviewed by Devin Rousso.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        WebKitLegacy will still have remote inspection of the Page directly.
+
+2018-11-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Make compositing updates incremental
+        https://bugs.webkit.org/show_bug.cgi?id=90342
+
+        Reviewed by Antti Koivisto.
+
+        Fix spelling error.
+
+        * WebView/WebView.mm:
+        (-[WebView _setMediaLayer:forPluginView:]):
+
+2018-11-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement a new edit command to change the enclosing list type
+        https://bugs.webkit.org/show_bug.cgi?id=191487
+        <rdar://problem/45955922>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add undo/redo edit action strings for ConvertToOrderedList and ConvertToUnorderedList.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
+2018-11-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Draw caps lock indicator in password fields
+        https://bugs.webkit.org/show_bug.cgi?id=190565
+        <rdar://problem/45262343>
+
+        Reviewed by Dean Jackson.
+
+        Update the caps lock state when a hardware keyboard is attached or detached.
+
+        * WebView/WebHTMLView.mm:
+        (hardwareKeyboardAvailabilityChangedCallback): Added.
+        (-[WebHTMLView initWithFrame:]): Register for hardware keyboard availability changed notifications.
+        (-[WebHTMLView dealloc]): Unregister from hardware keyboard availability changed notifications.
+
+2018-11-11  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix a fixme: rename wtfObjcMsgSend to wtfObjCMsgSend
+        https://bugs.webkit.org/show_bug.cgi?id=191492
+
+        Reviewed by Alex Christensen.
+
+        * Carbon/HIWebView.mm:
+        * Misc/WebNSFileManagerExtras.mm:
+        * Misc/WebNSURLExtras.mm:
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        * Plugins/WebBasePluginPackage.mm:
+        * Plugins/WebPluginContainerCheck.mm:
+        * WebCoreSupport/WebCachedFramePlatformData.h:
+        * WebCoreSupport/WebDeviceOrientationClient.mm:
+        * WebView/WebDelegateImplementationCaching.mm:
+        * WebView/WebHTMLView.mm:
+        * WebView/WebPDFRepresentation.mm:
+        * WebView/WebPolicyDelegate.mm:
+        * WebView/WebView.mm:
+
+2018-11-10  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix a fixme: rename wtfObjcMsgSend to wtfObjCMsgSend
+        https://bugs.webkit.org/show_bug.cgi?id=191492
+
+        Reviewed by Alex Christensen.
+
+        * Carbon/HIWebView.mm:
+        (UpdateCommandStatus):
+        * Misc/WebNSFileManagerExtras.mm:
+        * Misc/WebNSURLExtras.mm:
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        * Plugins/WebBasePluginPackage.mm:
+        * Plugins/WebPluginContainerCheck.mm:
+        (-[WebPluginContainerCheck _continueWithPolicy:]):
+        * WebCoreSupport/WebCachedFramePlatformData.h:
+        (WebCachedFramePlatformData::clear):
+        * WebCoreSupport/WebDeviceOrientationClient.mm:
+        (WebDeviceOrientationClient::getProvider const):
+        * WebView/WebDelegateImplementationCaching.mm:
+        (CallDelegate):
+        (CallDelegateReturningBoolean):
+        (CallResourceLoadDelegateReturningBoolean):
+        (CallFormDelegate):
+        (CallFormDelegateReturningBoolean):
+        * WebView/WebHTMLView.mm:
+        * WebView/WebPDFRepresentation.mm:
+        * WebView/WebPolicyDelegate.mm:
+        (-[WebPolicyDecisionListener _usePolicy:]):
+        * WebView/WebView.mm:
+
+2018-11-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r238047.
+
+        Introduced layout test failures on iOS simulator.
+
+        Reverted changeset:
+
+        "[iOS] Draw caps lock indicator in password fields"
+        https://bugs.webkit.org/show_bug.cgi?id=190565
+        https://trac.webkit.org/changeset/238047
+
+2018-11-09  Antti Koivisto  <antti@apple.com>
+
+        Use OptionSet for layout milestones
+        https://bugs.webkit.org/show_bug.cgi?id=191470
+
+        Reviewed by Dean Jackson.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidReachLayoutMilestone):
+        * WebView/WebView.mm:
+        (coreLayoutMilestones):
+        (kitLayoutMilestones):
+        (-[WebView _cacheFrameLoadDelegateImplementations]):
+        * WebView/WebViewInternal.h:
+
+2018-11-09  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Draw caps lock indicator in password fields
+        https://bugs.webkit.org/show_bug.cgi?id=190565
+        <rdar://problem/45262343>
+
+        Reviewed by Dean Jackson.
+
+        Update the caps lock state when a hardware keyboard is attached or detached.
+
+        * WebView/WebHTMLView.mm:
+        (hardwareKeyboardAvailabilityChangedCallback): Added.
+        (-[WebHTMLView initWithFrame:]): Register for hardware keyboard availability changed notifications.
+        (-[WebHTMLView dealloc]): Unregister from hardware keyboard availability changed notifications.
+
+2018-11-09  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Pressing forward delete key in text field does nothing and we should not invoke an editor
+        action when forward delete is pressed outside a text field
+        https://bugs.webkit.org/show_bug.cgi?id=190566
+        <rdar://problem/45262367>
+
+        Reviewed by Wenson Hsieh.
+
+        Remove dead code. UIKit ceased sending us a character string with 0xF728 for the forward delete
+        key many years ago. We will need to fix up iOS Legacy WebKit support for the forward delete key
+        in UIKit. We may revist this decision once <rdar://problem/45772078> is fixed.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _handleEditingKeyEvent:]):
+
+2018-11-08  Megan Gardner  <megan_gardner@apple.com>
+
+        Adopt Reveal Framework to replace Lookup
+        https://bugs.webkit.org/show_bug.cgi?id=191097
+        <rdar://problem/45924508>
+
+        Reviewed by Tim Horton.
+
+        Pass in what it needed to clear the textIndicators. This is better than
+        the current notification structure.
+
+        * WebView/WebView.mm:
+        (-[WebView _animationControllerForDictionaryLookupPopupInfo:]):
+        (-[WebView _prepareForDictionaryLookup]):
+
 2018-11-06  Justin Fan  <justin_fan@apple.com>
 
         [WebGPU] Experimental prototype for WebGPURenderPipeline and WebGPUSwapChain

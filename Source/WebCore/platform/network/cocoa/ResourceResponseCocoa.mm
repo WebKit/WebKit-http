@@ -77,9 +77,7 @@ void ResourceResponse::disableLazyInitialization()
 
 CertificateInfo ResourceResponse::platformCertificateInfo() const
 {
-    ASSERT(m_nsResponse || source() == Source::ServiceWorker || source() == Source::ApplicationCache);
     CFURLResponseRef cfResponse = [m_nsResponse _CFURLResponse];
-
     if (!cfResponse)
         return { };
 
@@ -98,7 +96,11 @@ CertificateInfo ResourceResponse::platformCertificateInfo() const
         return { };
 
     if (trustResultType == kSecTrustResultInvalid) {
+        // FIXME: This is deprecated <rdar://problem/45894288>.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         result = SecTrustEvaluate(trust, &trustResultType);
+#pragma clang diagnostic pop
         if (result != errSecSuccess)
             return { };
     }

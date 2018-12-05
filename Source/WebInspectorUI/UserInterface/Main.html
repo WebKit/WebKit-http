@@ -164,6 +164,7 @@
     <link rel="stylesheet" href="Views/ResourceDetailsSidebarPanel.css">
     <link rel="stylesheet" href="Views/ResourceHeadersContentView.css">
     <link rel="stylesheet" href="Views/ResourceIcons.css">
+    <link rel="stylesheet" href="Views/ResourceSecurityContentView.css">
     <link rel="stylesheet" href="Views/ResourceSizesContentView.css">
     <link rel="stylesheet" href="Views/ResourceSidebarPanel.css">
     <link rel="stylesheet" href="Views/ResourceTimelineDataGridNode.css">
@@ -267,6 +268,7 @@
 
     <script src="Base/WebInspector.js"></script>
     <script src="Base/Platform.js"></script>
+    <script src="Base/DebuggableType.js"></script>
     <script src="Base/IndexSet.js"></script>
     <script src="Base/LinkedList.js"></script>
     <script src="Base/ListMultimap.js"></script>
@@ -296,7 +298,10 @@
     <script src="Protocol/RemoteObject.js"></script>
     <script src="Protocol/Target.js"></script>
 
-    <script src="Protocol/MainTarget.js"></script>
+    <script src="Protocol/DirectBackendTarget.js"></script>
+    <script src="Protocol/MultiplexingBackendTarget.js"></script>
+    <script src="Protocol/JavaScriptContextTarget.js"></script>
+    <script src="Protocol/PageTarget.js"></script>
     <script src="Protocol/WorkerTarget.js"></script>
 
     <script src="Protocol/ApplicationCacheObserver.js"></script>
@@ -315,6 +320,7 @@
     <script src="Protocol/PageObserver.js"></script>
     <script src="Protocol/RuntimeObserver.js"></script>
     <script src="Protocol/ScriptProfilerObserver.js"></script>
+    <script src="Protocol/TargetObserver.js"></script>
     <script src="Protocol/TimelineObserver.js"></script>
     <script src="Protocol/WorkerObserver.js"></script>
 
@@ -724,6 +730,7 @@
     <script src="Views/ResourceDetailsSection.js"></script>
     <script src="Views/ResourceDetailsSidebarPanel.js"></script>
     <script src="Views/ResourceHeadersContentView.js"></script>
+    <script src="Views/ResourceSecurityContentView.js"></script>
     <script src="Views/ResourceSidebarPanel.js"></script>
     <script src="Views/ResourceSizesContentView.js"></script>
     <script src="Views/ResourceTimelineDataGridNode.js"></script>

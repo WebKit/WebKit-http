@@ -65,6 +65,7 @@ private:
     void setLayerTreeStateIsFrozen(bool) override;
     bool layerTreeStateIsFrozen() const override;
     void setRootCompositingLayer(WebCore::GraphicsLayer*) override;
+    void scheduleInitialDeferredPaint() override;
     void scheduleCompositingLayerFlush() override;
     void scheduleCompositingLayerFlushImmediately() override;
 
@@ -85,9 +86,9 @@ private:
 
     void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
 
-    bool dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones) override;
+    bool dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone>) override;
 
-    bool flushLayers();
+    void flushLayers();
 
     // Message handlers.
     void updateGeometry(const WebCore::IntSize& viewSize, bool flushSynchronously, const WTF::MachSendRight& fencePort) override;
@@ -129,6 +130,12 @@ private:
     void invalidateLayerFlushRunLoopObserver();
     void scheduleLayerFlushRunLoopObserver();
 
+    bool adjustLayerFlushThrottling(WebCore::LayerFlushThrottleState::Flags) override;
+    bool layerFlushThrottlingIsActive() const override;
+
+    void startLayerFlushThrottlingTimer();
+    void layerFlushThrottlingTimerFired();
+
     bool m_layerTreeStateIsFrozen;
 
     std::unique_ptr<LayerHostingContext> m_layerHostingContext;
@@ -163,10 +170,16 @@ private:
     WebCore::IntSize m_lastViewSizeForScaleToFit;
     WebCore::IntSize m_lastDocumentSizeForScaleToFit;
 
-    WebCore::LayoutMilestones m_pendingNewlyReachedLayoutMilestones { 0 };
+    OptionSet<WebCore::LayoutMilestone> m_pendingNewlyReachedLayoutMilestones;
     Vector<CallbackID> m_pendingCallbackIDs;
 
     std::unique_ptr<WebCore::RunLoopObserver> m_layerFlushRunLoopObserver;
+
+    bool m_isThrottlingLayerFlushes { false };
+    bool m_isLayerFlushThrottlingTemporarilyDisabledForInteraction { false };
+    bool m_hasPendingFlush { false };
+
+    WebCore::Timer m_layerFlushThrottlingTimer;
 };
 
 } // namespace WebKit

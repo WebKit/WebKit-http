@@ -1,3 +1,1217 @@
+2018-11-14  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to show a safe browsing warning
+        https://bugs.webkit.org/show_bug.cgi?id=191604
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/SafeBrowsing.mm:
+        (TEST):
+
+2018-11-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] A few drag and drop tests are crashing after r238146
+        https://bugs.webkit.org/show_bug.cgi?id=191617
+
+        Reviewed by Dean Jackson.
+
+        Augment these crashing tests to verify that selection commands are suppressed during drop over editable elements
+        via more robust means. These tests currently hit an assertion when revealing the callout bar too early, because
+        TestWebKitAPI is not a UI application (see <https://webkit.org/b/190401>).
+
+        Instead of relying on this other bug, directly ask the text input whether it is suppressing selection commands
+        during a drop, and remember the answer via DragAndDropSimulator.
+
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+        (TestWebKitAPI::TEST):
+
+        Add to the existing tests that started failing after r238146.
+
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView textInputContentView]):
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        (-[DragAndDropSimulator _resetSimulatedState]):
+        (-[DragAndDropSimulator _webView:dataInteractionOperationWasHandled:forSession:itemProviders:]):
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+2018-11-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] [WebKit2] Hook up some more editing actions (-pasteAndMatchStyle:, -makeTextWritingDirectionNatural:)
+        https://bugs.webkit.org/show_bug.cgi?id=191605
+        <rdar://problem/45813991>
+
+        Reviewed by Dean Jackson.
+
+        Adds two new API tests to exercise -_pasteAndMatchStyle: and -makeTextWritingDirectionNatural:.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (-[TestWKWebView _synchronouslyExecuteEditCommand:argument:]): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewEditActions.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+
+        Pull `-_synchronouslyExecuteEditCommand:argument:` out of WKAttachmentTests and into shared code, in a new
+        category on WKWebView declared in TestWKWebView. Also, fix an unrelated typo in a nearby category.
+
+        (-[WKWebView _synchronouslyExecuteEditCommand:argument:]):
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+2018-11-14  Chris Dumez  <cdumez@apple.com>
+
+        WebKit.ApplicationManifestBasic API test is failing when enabling PSON
+        https://bugs.webkit.org/show_bug.cgi?id=191602
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-11-14  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Refactor port code for devices
+        https://bugs.webkit.org/show_bug.cgi?id=191568
+        <rdar://problem/46005821>
+
+        Reviewed by Alex Christensen.
+
+        watchOS and iOS device ports share many characteristics in testing, mostly due
+        to the fact that both are devices.
+
+        * Scripts/webkitpy/port/device_port.py: Added.
+        (DevicePort): Add base class that all simulated/physical device ports share.
+        (DevicePort.__init__):
+        (DevicePort.driver_cmd_line_for_logging): Moved from iOS port.
+        (DevicePort._generate_all_test_configurations): Ditto.
+        (DevicePort.child_processes): Ditto.
+        (DevicePort.driver_name): Ditto.
+        (DevicePort.target_host): Generalize worker access to attached devices and
+        simulated devices based on the device manager.
+        (DevicePort.devices): Return a list of all devices associated with this port.
+        (DevicePort._create_devices):
+        (DevicePort._build_driver_flags): Moved from iOSSimulatorPort/iOSDevicePort.
+        (DevicePort._install): Moved from iOS port.
+        (DevicePort.setup_test_run): Ditto.
+        (DevicePort.clean_up_test_run): Ditto.
+        (DevicePort.did_spawn_worker): Ditto.
+        (DevicePort.setup_environ_for_server): Ditto.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort):
+        (IOSPort._device_for_worker_number_map): Replaced by DevicePort.devices().
+        (IOSPort.driver_cmd_line_for_logging): Moved to DevicePort.
+        (IOSPort.driver_name): Ditto.
+        (IOSPort._generate_all_test_configurations): Ditto.
+        (IOSPort.child_processes): Ditto.
+        (IOSPort._testing_device): Ditto.
+        (IOSPort.target_host): Ditto.
+        (IOSPort._create_devices): Ditto.
+        (IOSPort.setup_test_run): Ditto.
+        (IOSPort.clean_up_test_run): Ditto.
+        (IOSPort.did_spawn_worker): Ditto.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort): IOSDevicePort uses a device manager from apple_additions.
+        (IOSDevicePort._look_for_all_crash_logs_in_log_dir): Use DevicePort.devices().
+        (IOSDevicePort._get_crash_log): Ditto.
+        (IOSDevicePort.ios_version): Ditto.
+        (IOSDevicePort._create_devices): Ditto.
+        (IOSDevicePort._device_for_worker_number_map): Replaced by DevicePort.devices().
+        (IOSSimulatorPort._build_driver_flags): Moved to DevicePort.
+        * Scripts/webkitpy/port/ios_device_unittest.py:
+        (IOSDeviceTest.test_get_crash_log):
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort): IOSSimulatorPort uses the SimulatedDeviceManager.
+        (IOSSimulatorPort._create_devices): Clean up logging statement.
+        (IOSSimulatorPort.setup_environ_for_server): Some of environment set-up is shared
+        across all devices.
+        (IOSSimulatorPort._device_for_worker_number_map): Replaced by DevicePort.devices().
+        (IOSSimulatorPort._build_driver_flags): Moved to DevicePort.
+        * Scripts/webkitpy/port/ios_simulator_unittest.py:
+        (IOSSimulatorTest.test_32bit):
+        (IOSSimulatorTest.test_64bit):
+
+2018-11-14  Chris Dumez  <cdumez@apple.com>
+
+        WebKit.WKHTTPCookieStoreWithoutProcessPool API test is failing with process prewarming is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=191624
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKHTTPCookieStore.mm:
+        (runWKHTTPCookieStoreWithoutProcessPool):
+        (TEST):
+
+2018-11-13  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Support CTAP HID authenticators on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=188623
+        <rdar://problem/43353777>
+
+        Reviewed by Brent Fulgham and Chris Dumez.
+
+        This patch adds support for the mock testing and entitlements to allow minibrowser to talk
+        to hid devices.
+
+        * MiniBrowser/MiniBrowser.entitlements:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setWebAuthenticationMockConfiguration):
+
+2018-11-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebKit.GeolocationTransitionToLowAccuracy API crashes when enabling PSON
+        https://bugs.webkit.org/show_bug.cgi?id=191616
+
+        Reviewed by Chris Dumez.
+
+        The crash was caused by WKView in autorelease pool invoking stopUpdatingCallback after
+        GeolocationTransitionToLowAccuracyStateTracker in the stack had been destroyed,
+        resulting in the use-after-free.
+
+        Made the tests more robust by clearing geolocation provider before exiting each test
+        since we can't really prevent WKView from entering an autorelease pool.
+
+        Also made WebKit.GeolocationTransitionToLowAccuracy wait for the success callback
+        instead of simply the end of the navigation so that the test would continue to work
+        even if a web content process was created for the second web view (lowAccuracyWebView)
+
+        * TestWebKitAPI/Tests/WebKit/Geolocation.cpp:
+        (TestWebKitAPI::setupGeolocationProvider): Moved "*" to match the WebKit coding style guideline.
+        (TestWebKitAPI::clearGeolocationProvider): Added.
+        (TestWebKitAPI::runJavaScriptAlert): Added.
+        (TestWebKitAPI::didFinishNavigation): Deleted.
+        * TestWebKitAPI/Tests/WebKit/geolocationWatchPosition.html:
+
+2018-11-13  Chris Dumez  <cdumez@apple.com>
+
+        WKProcessPool.InitialWarmedProcessUsed API is failing with PSON enabled
+        https://bugs.webkit.org/show_bug.cgi?id=191618
+
+        Reviewed by Ryosuke Niwa.
+
+        Update API test to explicitly disable automatic process prewarning since it is testing
+        manual prewarming.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessPreWarming.mm:
+        (TEST):
+
+2018-11-13  Chris Dumez  <cdumez@apple.com>
+
+        Several Service Worker API tests are failing when enabling PSON
+        https://bugs.webkit.org/show_bug.cgi?id=191619
+
+        Reviewed by Youenn Fablet.
+
+        Update tests to use _webProcessCountIgnoringPrewarmed instead of _webProcessCount so that they are
+        not impacted by process prewarming.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+
+2018-11-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Do not show selection UI for editable elements with opacity near zero
+        https://bugs.webkit.org/show_bug.cgi?id=191442
+        <rdar://problem/45958625>
+
+        Reviewed by Simon Fraser.
+
+        Add a couple of new testing helpers to UIScriptController.
+
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::textSelectionRangeRects const):
+        (WTR::UIScriptController::selectionCaretViewRect const):
+        (WTR::UIScriptController::selectionRangeViewRects const):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::textSelectionRangeRects const):
+
+        Rename `selectionRangeViewRects` to `textSelectionRangeRects`. This allows us to draw a distinction between
+        `textSelectionRangeRects`/`textSelectionCaretRect`, which retrieve information about selection rects known
+        to the text interaction assistant, and `selectionCaretViewRect`/`selectionRangeViewRects`, which retrieve the
+        actual frames of the selection views used to draw overlaid selection UI. This difference is important in the
+        new layout tests added in this patch, which only suppress caret rendering (i.e. selection views remain hidden).
+
+        Also, drive-by fix a leaked `NSMutableArray`.
+
+        (WTR::UIScriptController::selectionStartGrabberViewRect const):
+        (WTR::UIScriptController::selectionEndGrabberViewRect const):
+        (WTR::UIScriptController::selectionCaretViewRect const):
+        (WTR::UIScriptController::selectionRangeViewRects const):
+
+        Testing helpers to grab the frames of caret and selection views, in WKContentView's coordinate space. These
+        rects are also clamped to WKContentView bounds.
+
+2018-11-13  Daniel Bates  <dabates@apple.com>
+
+        Consolidate WebKit UIKitSPI.h and UIKitTestSPI.h
+        https://bugs.webkit.org/show_bug.cgi?id=173341
+        <rdar://problem/32752890>
+
+        Reviewed by Simon Fraser.
+
+        There is little value to making a distinction between forward declarations
+        of UIKit SPI needed in the WebKit layer and just for testing. Moreover,
+        the contents of these two headers can conflict with each other following
+        r218275 as DumpRenderTree includes both headers. Instead we should remove
+        UIKitTestSPI.h and have WebKitTestRunner include the WebKit variant, UIKitSPI.h.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        * TestRunnerShared/spi/UIKitTestSPI.h: Removed.
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        * WebKitTestRunner/ios/GeneratedTouchesDebugWindow.mm:
+        * WebKitTestRunner/ios/HIDEventGenerator.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        * WebKitTestRunner/ios/mainIOS.mm:
+
+2018-11-13  Takashi Komori  <Takashi.Komori@sony.com>
+
+        Remove WebKitTestRunnerLib's build warnings.
+        https://bugs.webkit.org/show_bug.cgi?id=191580
+
+        Reviewed by Fujii Hironori.
+
+        Include cmakeconfig.h in precompiled header.
+
+        * WebKitTestRunner/WebKitTestRunnerPrefix.h:
+
+2018-11-12  Darshan Kadu  <darsh7807@gmail.com>
+
+        Implement Cache API support for WPE/GTK
+        https://bugs.webkit.org/show_bug.cgi?id=178316
+
+        Reviewed by Michael Catanzaro.
+
+        Called WKWebsiteDataStoreSetCacheStoragePerOriginQuota function to set the cache limit to 400 * 1200
+        on all the platforms in TestController.cpp. Also, removed the setCacheStoragePerOriginQuota call from TestControllerCocoa.mm
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::generatePageConfiguration):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+
+2018-11-12  Christopher Reid  <chris.reid@sony.com>
+
+        [Curl] Reject entire cookie if the domain fails a tailmatch.
+        https://bugs.webkit.org/show_bug.cgi?id=191406
+
+        Reviewed by Youenn Fablet.
+
+        Added unittests for Curl cookie implementation.
+
+        * TestWebKitAPI/Tests/WebCore/curl/Cookies.cpp:
+        (TestWebKitAPI::Curl::CurlCookies::RejectTailmatchFailureDomain):
+
+2018-11-12  Alex Christensen  <achristensen@webkit.org>
+
+        [iOS] Implement safe browsing in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=191441
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/SafeBrowsing.mm:
+        (checkTitleAndClick):
+        (TEST):
+
+2018-11-12  Basuke Suzuki  <basuke.suzuki@sony.com>
+
+        [Curl] Add API Test for Curl cookie backend.
+        https://bugs.webkit.org/show_bug.cgi?id=191493
+
+        Reviewed by Youenn Fablet.
+
+        Add unit test to TestWebCore.
+
+        * TestWebKitAPI/PlatformWin.cmake:
+        * TestWebKitAPI/Tests/WebCore/curl/Cookies.cpp: Added.
+
+2018-11-12  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to edit images inline
+        https://bugs.webkit.org/show_bug.cgi?id=191352
+        <rdar://problem/30107985>
+
+        Reviewed by Dean Jackson.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformCreateWebView):
+        Add a test option to enable editable images.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::drawSquareInEditableImage):
+        (WTR::UIScriptController::numberOfStrokesInEditableImage):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::drawSquareInEditableImage):
+        (WTR::UIScriptController::numberOfStrokesInEditableImage):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * TestRunnerShared/spi/PencilKitTestSPI.h: Added.
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::findEditableImageCanvas):
+        (WTR::UIScriptController::drawSquareInEditableImage):
+        (WTR::UIScriptController::numberOfStrokesInEditableImage):
+        Add the ability to draw on a PKCanvasView that is a subview of the WKWebView,
+        and also to retrieve the number of strokes currently on the PKCanvasView.
+        Currently this just takes the first canvas; we might need to make it
+        take an identifier or something in the future if we need tests with multiple
+        canvases. The indirect testing mechanism is required because PKCanvasView
+        can currently not actually paint its strokes in the Simulator.
+
+2018-11-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [MediaStream] Screen capture should be an experimental feature on OSX only
+        https://bugs.webkit.org/show_bug.cgi?id=191552
+
+        Unreviewed test gardening.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/GetDisplayMedia.mm: Only run these tests on macOS.
+
+2018-11-12  Don Olmstead  <don.olmstead@sony.com>
+
+        Shipped PNGs include bad profiles: iCCP: known incorrect sRGB profile
+        https://bugs.webkit.org/show_bug.cgi?id=189230
+        <rdar://problem/44050379>
+
+        Reviewed by Joseph Pecoraro.
+
+        Runs all png images through zopflipng. This results in a smaller file
+        size and takes care of this issue as a byproduct.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/images/favicon-green.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/images/favicon-red.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/ElCapitan.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/ElCapitan@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/GTK.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/GTK@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/HighSierra.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/HighSierra@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS10.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS10@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS10Simulator.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS10Simulator@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS11.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS11@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS11Simulator.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS11Simulator@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS12.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS12@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS12Simulator.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS12Simulator@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS9.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS9@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS9Simulator.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS9Simulator@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOSDevice.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOSDevice@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOSSimulator.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOSSimulator@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Mavericks.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Mavericks@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Mojave.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Mojave@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/MountainLion.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/MountainLion@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/PlatformRing.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/PlatformRing@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Sierra.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Sierra@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/WPE.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/WPE@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Windows10.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Windows10@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Windows7.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Windows7@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Windows8.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Windows8@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/WindowsXP.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/WindowsXP@2x.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Yosemite.png:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Yosemite@2x.png:
+
+2018-11-12  Tim Horton  <timothy_horton@apple.com>
+
+        Modernize WebKit Tools Xcode projects for localization's sake
+        https://bugs.webkit.org/show_bug.cgi?id=191495
+
+        Reviewed by Alexey Proskuryakov.
+
+        * ContentExtensionTester/ContentExtensionTester.xcodeproj/project.pbxproj:
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * EditingHistory/EditingHistory.xcodeproj/project.pbxproj:
+        * FontWithFeatures/FontWithFeatures.xcodeproj/project.pbxproj:
+        * ImageDiff/ImageDiff.xcodeproj/project.pbxproj:
+        * MiniBrowser/MiniBrowser.xcodeproj/project.pbxproj:
+        * MobileMiniBrowser/MobileMiniBrowser.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * WebEditingTester/WebEditingTester.xcodeproj/project.pbxproj:
+        * WebKitLauncher/WebKitLauncher.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * lldb/lldbWebKitTester/lldbWebKitTester.xcodeproj/project.pbxproj:
+        These are less important because they're not localized, but since
+        I made the style checker complain, it now complains any time anyone
+        touches any of these projects... so upgrade them.
+
+2018-11-12  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Check for specific process instead of using data migrator
+        https://bugs.webkit.org/show_bug.cgi?id=191551
+        <rdar://problem/45993156>
+
+        Rubber-stamped by Aakash Jain.
+
+        It's possible for the data migrator process to be stuck, but for a simulator to be
+        usable. Use device-specific processes to detect when a device is usable.
+
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDeviceManager._wait_until_device_is_usable):
+        (SimulatedDeviceManager):
+        (SimulatedDeviceManager.initialize_devices): Explicitly wait until a device is usable
+        since this implies that a device is booted.
+        (SimulatedDeviceManager.swap): Ditto.
+        (SimulatedDevice.is_usable): Check that a device is booted and that a device-specific
+        process indicating the device is usable can be found.
+        (SimulatedDeviceManager.wait_until_data_migration_is_done): Deleted.
+        * Scripts/webkitpy/xcode/simulated_device_unittest.py: Update simctl_json so that
+        it triggers the logic in is_usable()
+
+2018-11-12  Takashi Komori  <Takashi.Komori@sony.com>
+
+        Resurrect WebKitTestRunner for Windows port
+        https://bugs.webkit.org/show_bug.cgi?id=189257
+
+        Reviewed by Fujii Hironori.
+
+        Implement WebKitTestRunner for WinCairo.
+
+        * PlatformWin.cmake:
+        * Scripts/build-webkittestrunner:
+        * WebKitTestRunner/CMakeLists.txt:
+        * WebKitTestRunner/EventSenderProxy.h:
+        * WebKitTestRunner/InjectedBundle/AccessibilityController.cpp:
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/InjectedBundleMain.cpp:
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::rangeToStr):
+        (WTR::InjectedBundlePage::dumpDOMAsWebArchive):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::TestRunner):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/InjectedBundle/win/AccessibilityControllerWin.cpp: Added.
+        (WTR::AccessibilityController::resetToConsistentState):
+        (WTR::AccessibilityController::accessibleElementById):
+        (WTR::AccessibilityController::platformName):
+        (WTR::AccessibilityController::rootElement):
+        (WTR::AccessibilityController::focusedElement):
+        (WTR::AccessibilityController::addNotificationListener):
+        (WTR::AccessibilityController::removeNotificationListener):
+        * WebKitTestRunner/InjectedBundle/win/AccessibilityUIElementWin.cpp: Added.
+        (WTR::AccessibilityUIElement::AccessibilityUIElement):
+        (WTR::AccessibilityUIElement::~AccessibilityUIElement):
+        (WTR::AccessibilityUIElement::isEqual):
+        (WTR::AccessibilityUIElement::getChildren):
+        (WTR::AccessibilityUIElement::getChildrenWithRange):
+        (WTR::AccessibilityUIElement::childrenCount):
+        (WTR::AccessibilityUIElement::elementAtPoint):
+        (WTR::AccessibilityUIElement::indexOfChild):
+        (WTR::AccessibilityUIElement::childAtIndex):
+        (WTR::AccessibilityUIElement::linkedUIElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaOwnsElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaFlowToElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaControlsElementAtIndex):
+        (WTR::AccessibilityUIElement::disclosedRowAtIndex):
+        (WTR::AccessibilityUIElement::rowAtIndex):
+        (WTR::AccessibilityUIElement::selectedChildAtIndex const):
+        (WTR::AccessibilityUIElement::selectedChildrenCount const):
+        (WTR::AccessibilityUIElement::selectedRowAtIndex):
+        (WTR::AccessibilityUIElement::titleUIElement):
+        (WTR::AccessibilityUIElement::parentElement):
+        (WTR::AccessibilityUIElement::disclosedByRow):
+        (WTR::AccessibilityUIElement::attributesOfLinkedUIElements):
+        (WTR::AccessibilityUIElement::attributesOfDocumentLinks):
+        (WTR::AccessibilityUIElement::attributesOfChildren):
+        (WTR::AccessibilityUIElement::allAttributes):
+        (WTR::AccessibilityUIElement::stringAttributeValue):
+        (WTR::AccessibilityUIElement::numberAttributeValue):
+        (WTR::AccessibilityUIElement::uiElementArrayAttributeValue const):
+        (WTR::AccessibilityUIElement::rowHeaders const):
+        (WTR::AccessibilityUIElement::columnHeaders const):
+        (WTR::AccessibilityUIElement::uiElementAttributeValue const):
+        (WTR::AccessibilityUIElement::boolAttributeValue):
+        (WTR::AccessibilityUIElement::isAttributeSettable):
+        (WTR::AccessibilityUIElement::isAttributeSupported):
+        (WTR::AccessibilityUIElement::parameterizedAttributeNames):
+        (WTR::AccessibilityUIElement::role):
+        (WTR::AccessibilityUIElement::subrole):
+        (WTR::AccessibilityUIElement::roleDescription):
+        (WTR::AccessibilityUIElement::computedRoleString):
+        (WTR::AccessibilityUIElement::title):
+        (WTR::AccessibilityUIElement::description):
+        (WTR::AccessibilityUIElement::orientation const):
+        (WTR::AccessibilityUIElement::stringValue):
+        (WTR::AccessibilityUIElement::language):
+        (WTR::AccessibilityUIElement::helpText const):
+        (WTR::AccessibilityUIElement::x):
+        (WTR::AccessibilityUIElement::y):
+        (WTR::AccessibilityUIElement::width):
+        (WTR::AccessibilityUIElement::height):
+        (WTR::AccessibilityUIElement::clickPointX):
+        (WTR::AccessibilityUIElement::clickPointY):
+        (WTR::AccessibilityUIElement::intValue const):
+        (WTR::AccessibilityUIElement::minValue):
+        (WTR::AccessibilityUIElement::maxValue):
+        (WTR::AccessibilityUIElement::valueDescription):
+        (WTR::AccessibilityUIElement::insertionPointLineNumber):
+        (WTR::AccessibilityUIElement::isPressActionSupported):
+        (WTR::AccessibilityUIElement::isIncrementActionSupported):
+        (WTR::AccessibilityUIElement::isDecrementActionSupported):
+        (WTR::AccessibilityUIElement::isEnabled):
+        (WTR::AccessibilityUIElement::isRequired const):
+        (WTR::AccessibilityUIElement::isFocused const):
+        (WTR::AccessibilityUIElement::isSelected const):
+        (WTR::AccessibilityUIElement::isSelectedOptionActive const):
+        (WTR::AccessibilityUIElement::isExpanded const):
+        (WTR::AccessibilityUIElement::isChecked const):
+        (WTR::AccessibilityUIElement::isIndeterminate const):
+        (WTR::AccessibilityUIElement::hierarchicalLevel const):
+        (WTR::AccessibilityUIElement::speakAs):
+        (WTR::AccessibilityUIElement::ariaIsGrabbed const):
+        (WTR::AccessibilityUIElement::ariaDropEffects const):
+        (WTR::AccessibilityUIElement::lineForIndex):
+        (WTR::AccessibilityUIElement::rangeForLine):
+        (WTR::AccessibilityUIElement::rangeForPosition):
+        (WTR::AccessibilityUIElement::boundsForRange):
+        (WTR::AccessibilityUIElement::stringForRange):
+        (WTR::AccessibilityUIElement::attributedStringForRange):
+        (WTR::AccessibilityUIElement::attributedStringRangeIsMisspelled):
+        (WTR::AccessibilityUIElement::uiElementCountForSearchPredicate):
+        (WTR::AccessibilityUIElement::uiElementForSearchPredicate):
+        (WTR::AccessibilityUIElement::selectTextWithCriteria):
+        (WTR::AccessibilityUIElement::attributesOfColumnHeaders):
+        (WTR::AccessibilityUIElement::attributesOfRowHeaders):
+        (WTR::AccessibilityUIElement::attributesOfColumns):
+        (WTR::AccessibilityUIElement::attributesOfRows):
+        (WTR::AccessibilityUIElement::attributesOfVisibleCells):
+        (WTR::AccessibilityUIElement::attributesOfHeader):
+        (WTR::AccessibilityUIElement::rowCount):
+        (WTR::AccessibilityUIElement::columnCount):
+        (WTR::AccessibilityUIElement::indexInTable):
+        (WTR::AccessibilityUIElement::rowIndexRange):
+        (WTR::AccessibilityUIElement::columnIndexRange):
+        (WTR::AccessibilityUIElement::cellForColumnAndRow):
+        (WTR::AccessibilityUIElement::horizontalScrollbar const):
+        (WTR::AccessibilityUIElement::verticalScrollbar const):
+        (WTR::AccessibilityUIElement::selectedTextRange):
+        (WTR::AccessibilityUIElement::setSelectedTextRange):
+        (WTR::AccessibilityUIElement::increment):
+        (WTR::AccessibilityUIElement::decrement):
+        (WTR::AccessibilityUIElement::showMenu):
+        (WTR::AccessibilityUIElement::press):
+        (WTR::AccessibilityUIElement::setSelectedChild const):
+        (WTR::AccessibilityUIElement::setSelectedChildAtIndex const):
+        (WTR::AccessibilityUIElement::removeSelectionAtIndex const):
+        (WTR::AccessibilityUIElement::clearSelectedChildren const):
+        (WTR::AccessibilityUIElement::accessibilityValue const):
+        (WTR::AccessibilityUIElement::documentEncoding):
+        (WTR::AccessibilityUIElement::documentURI):
+        (WTR::AccessibilityUIElement::url):
+        (WTR::AccessibilityUIElement::addNotificationListener):
+        (WTR::AccessibilityUIElement::removeNotificationListener):
+        (WTR::AccessibilityUIElement::isFocusable const):
+        (WTR::AccessibilityUIElement::isSelectable const):
+        (WTR::AccessibilityUIElement::isMultiSelectable const):
+        (WTR::AccessibilityUIElement::isVisible const):
+        (WTR::AccessibilityUIElement::isOffScreen const):
+        (WTR::AccessibilityUIElement::isCollapsed const):
+        (WTR::AccessibilityUIElement::isIgnored const):
+        (WTR::AccessibilityUIElement::isSingleLine const):
+        (WTR::AccessibilityUIElement::isMultiLine const):
+        (WTR::AccessibilityUIElement::hasPopup const):
+        (WTR::AccessibilityUIElement::takeFocus):
+        (WTR::AccessibilityUIElement::takeSelection):
+        (WTR::AccessibilityUIElement::addSelection):
+        (WTR::AccessibilityUIElement::removeSelection):
+        (WTR::AccessibilityUIElement::lineTextMarkerRangeForTextMarker):
+        (WTR::AccessibilityUIElement::textMarkerRangeForElement):
+        (WTR::AccessibilityUIElement::textMarkerRangeLength):
+        (WTR::AccessibilityUIElement::previousTextMarker):
+        (WTR::AccessibilityUIElement::nextTextMarker):
+        (WTR::AccessibilityUIElement::stringForTextMarkerRange):
+        (WTR::AccessibilityUIElement::textMarkerRangeForMarkers):
+        (WTR::AccessibilityUIElement::startTextMarkerForTextMarkerRange):
+        (WTR::AccessibilityUIElement::endTextMarkerForTextMarkerRange):
+        (WTR::AccessibilityUIElement::endTextMarkerForBounds):
+        (WTR::AccessibilityUIElement::startTextMarkerForBounds):
+        (WTR::AccessibilityUIElement::textMarkerForPoint):
+        (WTR::AccessibilityUIElement::accessibilityElementForTextMarker):
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRange):
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions):
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRangeContainsAttribute):
+        (WTR::AccessibilityUIElement::indexForTextMarker):
+        (WTR::AccessibilityUIElement::isTextMarkerValid):
+        (WTR::AccessibilityUIElement::textMarkerForIndex):
+        (WTR::AccessibilityUIElement::startTextMarker):
+        (WTR::AccessibilityUIElement::endTextMarker):
+        (WTR::AccessibilityUIElement::setSelectedVisibleTextRange):
+        (WTR::AccessibilityUIElement::scrollToMakeVisible):
+        (WTR::AccessibilityUIElement::scrollToGlobalPoint):
+        (WTR::AccessibilityUIElement::scrollToMakeVisibleWithSubFocus):
+        (WTR::AccessibilityUIElement::supportedActions const):
+        (WTR::AccessibilityUIElement::pathDescription const):
+        (WTR::AccessibilityUIElement::mathPostscriptsDescription const):
+        (WTR::AccessibilityUIElement::mathPrescriptsDescription const):
+        (WTR::AccessibilityUIElement::classList const):
+        (WTR::AccessibilityUIElement::characterAtOffset):
+        (WTR::AccessibilityUIElement::wordAtOffset):
+        (WTR::AccessibilityUIElement::lineAtOffset):
+        (WTR::AccessibilityUIElement::sentenceAtOffset):
+        * WebKitTestRunner/InjectedBundle/win/ActivateFontsWin.cpp: Copied from Tools/WebKitTestRunner/InjectedBundle/InjectedBundleMain.cpp.
+        (WTR::activateFonts):
+        (WTR::installFakeHelvetica):
+        (WTR::uninstallFakeHelvetica):
+        * WebKitTestRunner/InjectedBundle/win/InjectedBundleWin.cpp: Copied from Tools/WebKitTestRunner/InjectedBundle/InjectedBundleMain.cpp.
+        (WTR::InjectedBundle::platformInitialize):
+        * WebKitTestRunner/InjectedBundle/win/TestRunnerInjectedBundlePrefix.cpp: Added.
+        * WebKitTestRunner/InjectedBundle/win/TestRunnerInjectedBundlePrefix.h: Copied from Tools/WebKitTestRunner/InjectedBundle/InjectedBundleMain.cpp.
+        * WebKitTestRunner/InjectedBundle/win/TestRunnerWin.cpp: Copied from Tools/WebKitTestRunner/InjectedBundle/InjectedBundleMain.cpp.
+        (WTR::TestRunner::pathToLocalResource):
+        (WTR::TestRunner::inspectorTestStubURL):
+        (WTR::TestRunner::invalidateWaitToDumpWatchdogTimer):
+        (WTR::TestRunner::platformInitialize):
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        (WTR::TestRunner::installFakeHelvetica):
+        * WebKitTestRunner/PlatformWebView.h:
+        * WebKitTestRunner/PlatformWin.cmake: Added.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::createTestURL):
+        * WebKitTestRunner/TestInvocation.cpp:
+        * WebKitTestRunner/WebKitTestRunnerPrefix.h:
+        * WebKitTestRunner/win/EventSenderProxyWin.cpp: Added.
+        (WTR::EventSenderProxy::EventSenderProxy):
+        (WTR::EventSenderProxy::~EventSenderProxy):
+        (WTR::EventSenderProxy::mouseDown):
+        (WTR::EventSenderProxy::mouseUp):
+        (WTR::EventSenderProxy::mouseMoveTo):
+        (WTR::EventSenderProxy::mouseScrollBy):
+        (WTR::EventSenderProxy::mouseScrollByWithWheelAndMomentumPhases):
+        (WTR::EventSenderProxy::continuousMouseScrollBy):
+        (WTR::EventSenderProxy::leapForward):
+        (WTR::EventSenderProxy::keyDown):
+        * WebKitTestRunner/win/PlatformWebViewWin.cpp: Added.
+        (WTR::registerWindowClass):
+        (WTR::PlatformWebView::PlatformWebView):
+        (WTR::PlatformWebView::~PlatformWebView):
+        (WTR::PlatformWebView::resizeTo):
+        (WTR::PlatformWebView::page):
+        (WTR::PlatformWebView::focus):
+        (WTR::PlatformWebView::windowFrame):
+        (WTR::PlatformWebView::setWindowFrame):
+        (WTR::PlatformWebView::didInitializeClients):
+        (WTR::PlatformWebView::addChromeInputField):
+        (WTR::PlatformWebView::removeChromeInputField):
+        (WTR::PlatformWebView::addToWindow):
+        (WTR::PlatformWebView::removeFromWindow):
+        (WTR::PlatformWebView::setWindowIsKey):
+        (WTR::PlatformWebView::makeWebViewFirstResponder):
+        (WTR::generateCairoSurfaceFromBitmap):
+        (WTR::PlatformWebView::windowSnapshotImage):
+        (WTR::PlatformWebView::changeWindowScaleIfNeeded):
+        (WTR::PlatformWebView::setNavigationGesturesEnabled):
+        (WTR::PlatformWebView::forceWindowFramesChanged):
+        (WTR::PlatformWebView::drawsBackground const):
+        (WTR::PlatformWebView::setDrawsBackground):
+        * WebKitTestRunner/win/TestControllerWin.cpp: Added.
+        (WTR::exceptionFilter):
+        (WTR::runRunLoopUntil):
+        (WTR::TestController::notifyDone):
+        (WTR::TestController::setHidden):
+        (WTR::TestController::platformInitialize):
+        (WTR::TestController::platformPreferences):
+        (WTR::TestController::platformDestroy):
+        (WTR::toWK):
+        (WTR::TestController::platformInitializeContext):
+        (WTR::TestController::platformRunUntil):
+        (WTR::TestController::platformDidCommitLoadForFrame):
+        (WTR::TestController::initializeInjectedBundlePath):
+        (WTR::TestController::initializeTestPluginDirectory):
+        (WTR::TestController::runModal):
+        (WTR::TestController::platformContext):
+        (WTR::TestController::platformLibraryPathForTesting):
+        (WTR::TestController::platformConfigureViewForTest):
+        (WTR::TestController::platformResetPreferencesToConsistentValues):
+        (WTR::TestController::updatePlatformSpecificTestOptionsForTest const):
+        * WebKitTestRunner/win/WebKitTestRunnerPrefix.cpp: Added.
+        * WebKitTestRunner/win/main.cpp: Copied from Tools/WebKitTestRunner/InjectedBundle/InjectedBundleMain.cpp.
+        (dllLauncherEntryPoint):
+
+2018-11-12  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][GStreamer] Introduce AbortableTaskQueue
+        https://bugs.webkit.org/show_bug.cgi?id=190902
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Tests for AbortableTaskQueue are included.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WebCore/AbortableTaskQueue.cpp: Added.
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::FancyResponse::FancyResponse):
+        (TestWebKitAPI::FancyResponse::operator=):
+        (TestWebKitAPI::DeterministicScheduler::DeterministicScheduler):
+        (TestWebKitAPI::DeterministicScheduler::ThreadContext::ThreadContext):
+        (TestWebKitAPI::DeterministicScheduler::ThreadContext::waitMyTurn):
+        (TestWebKitAPI::DeterministicScheduler::ThreadContext::yieldToThread):
+
+2018-11-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        run-bindings-tests is timing out in some WinCairo bots
+        https://bugs.webkit.org/show_bug.cgi?id=191348
+
+        Reviewed by Alex Christensen.
+
+        BuildBot kills run-bindings-tests if it outputs nothing for 20
+        minutes. run-bindings-tests runs very slowly in WinCairo Docker,
+        and it takes more than 30 minutes to finish. And, Windows Python
+        buffers the progress output.
+
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.detect_changes): Call sys.stdout.flush() after the
+        test case result is output.
+
+2018-11-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement a new edit command to change the enclosing list type
+        https://bugs.webkit.org/show_bug.cgi?id=191487
+        <rdar://problem/45955922>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new API test to verify that `-[WKWebView _changeListType:]` is hooked up to the corresponding editing
+        command in WebCore. See the new layout test for a test that exercises more nuanced corner cases.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewEditActions.mm:
+        (-[TestWKWebView setPosition:offset:]):
+        (-[TestWKWebView setBase:baseOffset:extent:extentOffset:]):
+        (TestWebKitAPI::webViewForEditActionTestingWithPageNamed):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/editable-nested-lists.html: Added.
+
+2018-11-11  Dan Bernstein  <mitz@apple.com>
+
+        ProcessPoolConfiguration::copy() doesn’t copy m_customWebContentServiceBundleIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=191514
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKProcessPoolConfiguration.mm: Added.
+        (TEST):
+
+2018-11-11  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix a fixme: rename wtfObjcMsgSend to wtfObjCMsgSend
+        https://bugs.webkit.org/show_bug.cgi?id=191492
+
+        Reviewed by Alex Christensen.
+
+        Update file name.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        * WebKitTestRunner/InjectedBundle/cocoa/ActivateFontsCocoa.mm:
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+
+2018-11-10  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix a fixme: rename wtfObjcMsgSend to wtfObjCMsgSend
+        https://bugs.webkit.org/show_bug.cgi?id=191492
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        * WebKitTestRunner/InjectedBundle/cocoa/ActivateFontsCocoa.mm:
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+
+2018-11-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r238065.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Make it possible to edit images inline"
+        https://bugs.webkit.org/show_bug.cgi?id=191352
+        https://trac.webkit.org/changeset/238065
+
+2018-11-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] API test /webkit/WebKitSettings/webkit-settings is failing
+        https://bugs.webkit.org/show_bug.cgi?id=191221
+
+        Unreviewed, fix a typo from the previous patch. After disabling the setting, we should test
+        that it is disabled, but we're testing that it is enabled, because I failed to update this
+        line.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitSettings.cpp:
+        (testWebKitSettings):
+
+2018-11-10  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to edit images inline
+        https://bugs.webkit.org/show_bug.cgi?id=191352
+        <rdar://problem/30107985>
+
+        Reviewed by Dean Jackson.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformCreateWebView):
+        Add a test option to enable editable images.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::drawSquareInEditableImage):
+        (WTR::UIScriptController::numberOfStrokesInEditableImage):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::drawSquareInEditableImage):
+        (WTR::UIScriptController::numberOfStrokesInEditableImage):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * TestRunnerShared/spi/PencilKitTestSPI.h: Added.
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::findEditableImageCanvas):
+        (WTR::UIScriptController::drawSquareInEditableImage):
+        (WTR::UIScriptController::numberOfStrokesInEditableImage):
+        Add the ability to draw on a PKCanvasView that is a subview of the WKWebView,
+        and also to retrieve the number of strokes currently on the PKCanvasView.
+        Currently this just takes the first canvas; we might need to make it
+        take an identifier or something in the future if we need tests with multiple
+        canvases. The indirect testing mechanism is required because PKCanvasView
+        can currently not actually paint its strokes in the Simulator.
+
+2018-11-09  Chris Dumez  <cdumez@apple.com>
+
+        Suspended page persists even after back/forward list item is gone
+        https://bugs.webkit.org/show_bug.cgi?id=191488
+        <rdar://problem/45953006>
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-11-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] Implement SPI on WKWebView to increase and decrease list levels
+        https://bugs.webkit.org/show_bug.cgi?id=191471
+        <rdar://problem/45952472>
+
+        Reviewed by Tim Horton.
+
+        Add an API test to ensure that list levels can be incremented and decremented via WKWebView SPI.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewEditActions.mm:
+        (TestWebKitAPI::webViewForEditActionTesting):
+        (TestWebKitAPI::TEST):
+
+2018-11-09  Basuke Suzuki  <basuke.suzuki@sony.com>
+
+        [Curl][WebKit] Implement Proxy configuration API.
+        https://bugs.webkit.org/show_bug.cgi?id=189053
+
+        Reviewed by Youenn Fablet.
+
+        Added Proxy Settings dialog to call newly added API.
+
+        * MiniBrowser/win/BrowserWindow.h:
+        * MiniBrowser/win/Common.cpp:
+        (askProxySettings):
+        (askCredential):
+        (authDialogProc): Deleted.
+        * MiniBrowser/win/Common.h:
+        * MiniBrowser/win/DialogHelper.h: Added.
+        (Dialog::run):
+        (Dialog::doalogProc):
+        (Dialog::handle):
+        (Dialog::setup):
+        (Dialog::update):
+        (Dialog::validate):
+        (Dialog::updateOkButton):
+        (Dialog::command):
+        (Dialog::ok):
+        (Dialog::cancel):
+        (Dialog::close):
+        (Dialog::hDlg):
+        (Dialog::item):
+        (Dialog::setEnabled):
+        (Dialog::setText):
+        (Dialog::getText):
+        (Dialog::getTextLength):
+        (Dialog::RadioGroup::RadioGroup):
+        (Dialog::RadioGroup::set):
+        (Dialog::RadioGroup::get):
+        (Dialog::radioGroup):
+        * MiniBrowser/win/MainWindow.cpp:
+        (MainWindow::WndProc):
+        * MiniBrowser/win/MiniBrowserLib.rc:
+        * MiniBrowser/win/MiniBrowserLibResource.h:
+        * MiniBrowser/win/WebKitBrowserWindow.cpp:
+        (createWKURL):
+        (WebKitBrowserWindow::WebKitBrowserWindow):
+        (WebKitBrowserWindow::updateProxySettings):
+        (WebKitBrowserWindow::loadURL):
+        (WebKitBrowserWindow::loadHTMLString):
+        (WebKitBrowserWindow::openProxySettings):
+        * MiniBrowser/win/WebKitBrowserWindow.h:
+        * MiniBrowser/win/WebKitLegacyBrowserWindow.cpp:
+        (WebKitLegacyBrowserWindow::openProxySettings):
+        * MiniBrowser/win/WebKitLegacyBrowserWindow.h:
+
+2018-11-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] Introduce WKWebView SPI to insert nested ordered and unordered lists
+        https://bugs.webkit.org/show_bug.cgi?id=191410
+        <rdar://problem/45898610>
+
+        Reviewed by Dean Jackson.
+
+        Move WKWebViewEditActions from iOS to WebKitCocoa, and enable the relevant WKWebViewEditActions tests on macOS.
+        Additionally, add new API tests to verify that `-_pasteAsQuotation:` and `-_insertNested(Un)OrderedList:` are
+        hooked up to their respective editing commands.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewEditActions.mm: Renamed from Tools/TestWebKitAPI/Tests/ios/WKWebViewEditActions.mm.
+        (-[TestWKWebView querySelectorExists:]):
+        (-[TestWKWebView insertString:]):
+
+        Add a helper method to insert a piece of text. This abstracts platform differences between iOS and macOS, by
+        invoking the WKWebView directly on macOS and calling on the content view on iOS.
+
+        (TestWebKitAPI::webViewForEditActionTesting):
+        (TestWebKitAPI::TEST):
+
+2018-11-09  Philippe Normand  <pnormand@igalia.com>
+
+        [Flatpak] Refactoring and drive-by fixes
+        https://bugs.webkit.org/show_bug.cgi?id=191421
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitdirs.pm:
+        (inFlatpakSandbox): Flatpak now has a /.flatpak-info file when in
+        the sandbox, so rely on this.
+        * flatpak/flatpakutils.py:
+        (expand_manifest): Pass explicit keywords to load_manifest() and
+        remove unused local variable.
+        (WebkitFlatpak.clean_args): Move hard-coded sdk/runtime infos to the manifest file.
+        (WebkitFlatpak.run_in_sandbox): Add support for extra environment variables.
+        (WebkitFlatpak.setup_dev_env): Stop build at final app. Refactor
+        build_type handling a bit.
+        * flatpak/org.webkit.CommonModules.yaml: Added.
+        * flatpak/org.webkit.WPE.yaml: wpebackend upstream was renamed to libwpe.
+        * flatpak/org.webkit.WebKit.yaml: Move common dependencies
+        declaration to CommonModules, so it can be reused later when we
+        add support for building extra libraries depending on WPE.
+
+2018-11-08  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+onal supported image formats
+        https://bugs.webkit.org/show_bug.cgi?id=190454
+
+        Reviewed by Simon Fraser.
+
+        Test opening a TGA image in WebView which is not allowed by default. The
+        TGA format will be allowed through WKWebViewConfiguration.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/100x100-red.tga: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/400x400-green.png: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/AdditionalSupportedImageTypes.mm: Added.
+        (runTest):
+        (TEST):
+
+2018-11-08  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, a proper build fix for r237983
+
+        Don't include header PublicKeyCredential.h in CtapResponseTest.cpp.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/CtapRequestTest.cpp: Renamed from Tools/TestWebKitAPI/Tests/WebCore/mac/CtapRequestTest.cpp.
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/CtapResponseTest.cpp: Renamed from Tools/TestWebKitAPI/Tests/WebCore/mac/CtapResponseTest.cpp.
+        (TestWebKitAPI::getTestCorruptedSignResponse):
+        (TestWebKitAPI::getTestCredentialRawIdBytes):
+        (TestWebKitAPI::convertToVector):
+        (TestWebKitAPI::TEST):
+
+2018-11-08  Keith Rollin  <krollin@apple.com>
+
+        Create .xcfilelist files
+        https://bugs.webkit.org/show_bug.cgi?id=191324
+        <rdar://problem/45852819>
+
+        Reviewed by Alex Christensen.
+
+        As part of preparing for enabling XCBuild, create and use .xcfilelist
+        files. These files are using during Run Script build phases in an
+        Xcode project. If a Run Script build phase produces new files that are
+        used later as inputs to subsequent build phases, XCBuild needs to know
+        about these files. These files can be either specified in an "output
+        files" section of the Run Script phase editor, or in .xcfilelist files
+        that are associated with the Run Script build phase.
+
+        This patch takes the second approach. It consists of three sets of changes:
+
+        - Modify the DerivedSources.make files to have a
+          'print_all_generated_files" target that produces a list of the files
+          they create.
+
+        - Create a shell script that produces .xcfilelist files from the
+          output of the previous step, as well as for the files created in the
+          Generate Unified Sources build steps.
+
+        - Add the new .xcfilelist files to the associated projects.
+
+        Note that, with these changes, the Xcode workspace and projects can no
+        longer be fully loaded into Xcode 9. Xcode will attempt to load the
+        projects that have .xcfilelist files associated with them, but will
+        fail and display a placeholder for those projects instead. It's
+        expected that all developers are using Xcode 10 by now and that not
+        being able to load into Xcode 9 is not a practical issue. Keep in mind
+        that this is strictly an IDE issue, and that the projects can still be
+        built with `xcodebuild`.
+
+        Also note that the shell script that creates the .xcfilelist files can
+        also be used to verify that the set of files that's currently checked
+        in is up-to-date. This checking can be used as part of a check-in hook
+        or part of check-webkit-style to sooner catch cases where the
+        .xcfilelist files need to be regenerated.
+
+        * DumpRenderTree/DerivedSources.make:
+        * DumpRenderTree/DerivedSources.xcfilelist: Added.
+        * Scripts/generate-xcfilelists: Added.
+        * WebKitTestRunner/DerivedSources.make:
+        * WebKitTestRunner/DerivedSources.xcfilelist: Added.
+
+2018-11-08  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, a quick build fix for r237983
+
+        Temporarily make CtapRequestTest.cpp/CtapResponseTest.cpp to mac only to avoid iOS build failures.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj
+        * TestWebKitAPI/Tests/WebCore/mac/CtapRequestTest.cpp: Renamed from Tools/TestWebKitAPI/Tests/WebCore/CtapRequestTest.cpp.
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/mac/CtapResponseTest.cpp: Renamed from Tools/TestWebKitAPI/Tests/WebCore/CtapResponseTest.cpp.
+        (TestWebKitAPI::getTestCorruptedSignResponse):
+        (TestWebKitAPI::getTestCredentialRawIdBytes):
+        (TestWebKitAPI::convertToVector):
+        (TestWebKitAPI::TEST):
+
+2018-11-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Fix steps_unittest.py failures related to recent Win10/Win7 changes
+        https://bugs.webkit.org/show_bug.cgi?id=191290
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py: Update expected results.
+
+2018-11-08  Dean Jackson  <dino@apple.com>
+
+        Add a String literal that returns a String
+        https://bugs.webkit.org/show_bug.cgi?id=191425
+        <rdar://problem/45914556>
+
+        Reviewed by Sam Weinig.
+
+        Test _str.
+
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-11-08  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Generalize trailing SDK specifier (Part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=191275
+        <rdar://problem/45703660>
+
+        Rubber-stamped by Aakash Jain.
+
+        Re-landing this change, configuration issues have been resolved.
+
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort): Use normalized SDK.
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort): Use normalized SDK.
+        (IOSSimulatorPort._build_driver_flags): Use platform SDK in build driver flags.
+
+2018-11-08  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Import CTAP device request/response converters from Chromium
+        https://bugs.webkit.org/show_bug.cgi?id=190784
+        <rdar://problem/45460333>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/CBORValueTest.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/CtapRequestTest.cpp: Added.
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/CtapResponseTest.cpp: Added.
+        (TestWebKitAPI::getTestCorruptedSignResponse):
+        (TestWebKitAPI::getTestCredentialRawIdBytes):
+        (TestWebKitAPI::convertToVector):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/FidoTestData.h: Added.
+
+2018-11-07  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add support to BigInt into ValueAdd
+        https://bugs.webkit.org/show_bug.cgi?id=186177
+
+        Reviewed by Keith Miller.
+
+        * Scripts/run-jsc-benchmarks:
+
+2018-11-07  Sihui Liu  <sihui_liu@apple.com>
+
+        RELEASE_ASSERT(!m_hardClosedForUserDelete) fails in WebCore::IDBServer::UniqueIDBDatabase::invokeOperationAndTransactionTimer
+        https://bugs.webkit.org/show_bug.cgi?id=191326
+        <rdar://problem/45769269>
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBUserDelete.html: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBUserDelete.mm: Added.
+        (-[IndexedDBUserDeleteMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TEST):
+
 2018-11-07  Daniel Bates  <dabates@apple.com>
 
         Override +[UIKeyboard isInHardwareKeyboardMode] in WebKitTestRunner and DumpRenderTree

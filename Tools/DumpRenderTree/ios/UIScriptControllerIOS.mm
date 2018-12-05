@@ -309,7 +309,7 @@ void UIScriptController::platformClearAllCallbacks()
 {
 }
 
-JSObjectRef UIScriptController::selectionRangeViewRects() const
+JSObjectRef UIScriptController::textSelectionRangeRects() const
 {
     return nullptr;
 }
@@ -389,6 +389,16 @@ JSObjectRef UIScriptController::selectionEndGrabberViewRect() const
     return nullptr;
 }
 
+JSObjectRef UIScriptController::selectionCaretViewRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::selectionRangeViewRects() const
+{
+    return nullptr;
+}
+
 bool UIScriptController::isShowingDataListSuggestions() const
 {
     return false;
@@ -405,6 +415,15 @@ void UIScriptController::setDefaultCalendarType(JSStringRef calendarIdentifier)
 
 void UIScriptController::overridePreference(JSStringRef, JSStringRef)
 {
+}
+
+void UIScriptController::drawSquareInEditableImage()
+{
+}
+
+long UIScriptController::numberOfStrokesInEditableImage()
+{
+    return 0;
 }
 
 }

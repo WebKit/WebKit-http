@@ -273,6 +273,7 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
     , m_forcedStackingContext(rendererLayerModelObject.isMedia())
     , m_zOrderListsDirty(false)
     , m_normalFlowListDirty(true)
+    , m_hadNegativeZOrderList(false)
     , m_inResizeMode(false)
     , m_scrollDimensionsDirty(true)
     , m_hasSelfPaintingLayerDescendant(false)
@@ -286,6 +287,7 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
     , m_visibleDescendantStatusDirty(false)
     , m_hasVisibleDescendant(false)
     , m_registeredScrollableArea(false)
+    , m_isFixedIntersectingViewport(false)
     , m_3DTransformedDescendantStatusDirty(true)
     , m_has3DTransformedDescendant(false)
     , m_hasCompositingDescendant(false)
@@ -371,8 +373,8 @@ RenderLayer::~RenderLayer()
     clearBacking(true);
 
     // Layer and all its children should be removed from the tree before destruction.
-    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(renderer().renderTreeBeingDestroyed() || !m_parent);
-    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(renderer().renderTreeBeingDestroyed() || !m_first);
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(renderer().renderTreeBeingDestroyed() || !parent());
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(renderer().renderTreeBeingDestroyed() || !firstChild());
 }
 
 void RenderLayer::addChild(RenderLayer& child, RenderLayer* beforeChild)
@@ -402,6 +404,15 @@ void RenderLayer::addChild(RenderLayer& child, RenderLayer* beforeChild)
 
     if (child.isSelfPaintingLayer() || child.hasSelfPaintingLayerDescendant())
         setAncestorChainHasSelfPaintingLayerDescendant();
+
+    if (compositor().inCompositingMode())
+        setDescendantsNeedCompositingRequirementsTraversal();
+
+    if (child.hasDescendantNeedingCompositingRequirementsTraversal() || child.needsCompositingRequirementsTraversal())
+        child.setAncestorsHaveCompositingDirtyFlag(Compositing::HasDescendantNeedingRequirementsTraversal);
+
+    if (child.hasDescendantNeedingUpdateBackingOrHierarchyTraversal() || child.needsUpdateBackingOrHierarchyTraversal())
+        child.setAncestorsHaveCompositingDirtyFlag(Compositing::HasDescendantNeedingBackingOrHierarchyTraversal);
 
 #if ENABLE(CSS_COMPOSITING)
     if (child.hasBlendMode() || (child.hasNotIsolatedBlendingDescendants() && !child.isolatesBlending()))
@@ -439,6 +450,9 @@ void RenderLayer::removeChild(RenderLayer& oldChild)
 
     if (oldChild.isSelfPaintingLayer() || oldChild.hasSelfPaintingLayerDescendant())
         dirtyAncestorChainHasSelfPaintingLayerDescendantStatus();
+
+    if (compositor().inCompositingMode())
+        setDescendantsNeedCompositingRequirementsTraversal();
 
 #if ENABLE(CSS_COMPOSITING)
     if (oldChild.hasBlendMode() || (oldChild.hasNotIsolatedBlendingDescendants() && !oldChild.isolatesBlending()))
@@ -529,6 +543,7 @@ static bool canCreateStackingContext(const RenderLayer& layer)
         || renderer.isPositioned() // Note that this only creates stacking context in conjunction with explicit z-index.
         || renderer.hasReflection()
         || renderer.style().hasIsolation()
+        || !renderer.style().hasAutoZIndex()
 #if PLATFORM(IOS_FAMILY)
         || layer.canUseAcceleratedTouchScrolling()
 #endif
@@ -545,14 +560,13 @@ bool RenderLayer::shouldBeNormalFlowOnly() const
         || renderer().isVideo()
         || renderer().isEmbeddedObject()
         || renderer().isRenderIFrame()
+        || (renderer().isRenderImage() && downcast<RenderImage>(renderer()).isEditableImage())
         || (renderer().style().specifiesColumns() && !isRenderViewLayer())
         || renderer().isInFlowRenderFragmentedFlow();
 }
 
 bool RenderLayer::shouldBeStackingContext() const
 {
-    // Non-auto z-index always implies stacking context here, because StyleResolver::adjustRenderStyle already adjusts z-index
-    // based on positioning and other criteria.
     return !renderer().style().hasAutoZIndex() || isRenderViewLayer() || isForcedStackingContext();
 }
 
@@ -599,9 +613,19 @@ void RenderLayer::setParent(RenderLayer* parent)
         compositor().layerWasAdded(*m_parent, *this);
 }
 
+RenderLayer* RenderLayer::stackingContext() const
+{
+    auto* layer = parent();
+    while (layer && !layer->isStackingContext())
+        layer = layer->parent();
+
+    ASSERT(!layer || layer->isStackingContext());
+    return layer;
+}
+
 void RenderLayer::dirtyZOrderLists()
 {
-    ASSERT(m_layerListMutationAllowed);
+    ASSERT(layerListMutationAllowed());
     ASSERT(isStackingContext());
 
     if (m_posZOrderList)
@@ -610,8 +634,9 @@ void RenderLayer::dirtyZOrderLists()
         m_negZOrderList->clear();
     m_zOrderListsDirty = true;
 
-    if (!renderer().renderTreeBeingDestroyed())
-        compositor().setCompositingLayersNeedRebuild();
+    // FIXME: Ideally, we'd only dirty if the lists changed.
+    if (hasCompositingDescendant())
+        setNeedsCompositingPaintOrderChildrenUpdate();
 }
 
 void RenderLayer::dirtyStackingContextZOrderLists()
@@ -622,14 +647,14 @@ void RenderLayer::dirtyStackingContextZOrderLists()
 
 void RenderLayer::dirtyNormalFlowList()
 {
-    ASSERT(m_layerListMutationAllowed);
+    ASSERT(layerListMutationAllowed());
 
     if (m_normalFlowList)
         m_normalFlowList->clear();
     m_normalFlowListDirty = true;
 
-    if (!renderer().renderTreeBeingDestroyed())
-        compositor().setCompositingLayersNeedRebuild();
+    if (hasCompositingDescendant())
+        setNeedsCompositingPaintOrderChildrenUpdate();
 }
 
 void RenderLayer::updateNormalFlowList()
@@ -637,7 +662,7 @@ void RenderLayer::updateNormalFlowList()
     if (!m_normalFlowListDirty)
         return;
 
-    ASSERT(m_layerListMutationAllowed);
+    ASSERT(layerListMutationAllowed());
 
     for (RenderLayer* child = firstChild(); child; child = child->nextSibling()) {
         // Ignore non-overflow layers and reflections.
@@ -653,10 +678,20 @@ void RenderLayer::updateNormalFlowList()
 
 void RenderLayer::rebuildZOrderLists()
 {
-    ASSERT(m_layerListMutationAllowed);
+    ASSERT(layerListMutationAllowed());
     ASSERT(isDirtyStackingContext());
     rebuildZOrderLists(m_posZOrderList, m_negZOrderList);
     m_zOrderListsDirty = false;
+    
+    bool hasNegativeZOrderList = m_negZOrderList && m_negZOrderList->size();
+    // Having negative z-order lists affect whether a compositing layer needs a foreground layer.
+    // Ideally we'd only trigger this when having z-order children changes, but we blow away the old z-order
+    // lists on dirtying so we don't know the old state.
+    if (hasNegativeZOrderList != m_hadNegativeZOrderList) {
+        m_hadNegativeZOrderList = hasNegativeZOrderList;
+        if (isComposited())
+            setNeedsCompositingConfigurationUpdate();
+    }
 }
 
 void RenderLayer::rebuildZOrderLists(std::unique_ptr<Vector<RenderLayer*>>& posZOrderList, std::unique_ptr<Vector<RenderLayer*>>& negZOrderList)
@@ -701,6 +736,15 @@ void RenderLayer::collectLayers(bool includeHiddenLayers, std::unique_ptr<Vector
             if (!isReflectionLayer(*child))
                 child->collectLayers(includeHiddenLayers, positiveZOrderList, negativeZOrderList);
         }
+    }
+}
+
+void RenderLayer::setAncestorsHaveCompositingDirtyFlag(Compositing flag)
+{
+    for (auto* layer = paintOrderParent(); layer; layer = layer->paintOrderParent()) {
+        if (layer->m_compositingDirtyBits.contains(flag))
+            break;
+        layer->m_compositingDirtyBits.add(flag);
     }
 }
 
@@ -765,11 +809,13 @@ RenderLayerCompositor& RenderLayer::compositor() const
 
 void RenderLayer::contentChanged(ContentChangeType changeType)
 {
-    if ((changeType == CanvasChanged || changeType == VideoChanged || changeType == FullScreenChanged || changeType == ImageChanged) && compositor().updateLayerCompositingState(*this))
-        compositor().setCompositingLayersNeedRebuild();
+    if (changeType == CanvasChanged || changeType == VideoChanged || changeType == FullScreenChanged || (isComposited() && changeType == ImageChanged)) {
+        setNeedsPostLayoutCompositingUpdate();
+        setNeedsCompositingConfigurationUpdate();
+    }
 
-    if (m_backing)
-        m_backing->contentChanged(changeType);
+    if (auto* backing = this->backing())
+        backing->contentChanged(changeType);
 }
 
 bool RenderLayer::canRender3DTransforms() const
@@ -879,11 +925,6 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, OptionSet
     if (m_reflection)
         m_reflection->layout();
 
-    // Clear the IsCompositingUpdateRoot flag once we've found the first compositing layer in this update.
-    bool isUpdateRoot = flags.contains(IsCompositingUpdateRoot);
-    if (isComposited())
-        flags.remove(IsCompositingUpdateRoot);
-
     if (renderer().isInFlowRenderFragmentedFlow()) {
         updatePagination();
         flags.add(UpdatePagination);
@@ -898,15 +939,6 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, OptionSet
     for (RenderLayer* child = firstChild(); child; child = child->nextSibling())
         child->updateLayerPositions(geometryMap, flags);
 
-    if ((flags & UpdateCompositingLayers) && isComposited()) {
-        OptionSet<RenderLayerBacking::UpdateAfterLayoutFlags> updateFlags;
-        if (flags & NeedsFullRepaintInBacking)
-            updateFlags.add(RenderLayerBacking::UpdateAfterLayoutFlags::NeedsFullRepaint);
-        if (isUpdateRoot)
-            updateFlags.add(RenderLayerBacking::UpdateAfterLayoutFlags::IsUpdateRoot);
-        backing()->updateAfterLayout(updateFlags);
-    }
-        
     // With all our children positioned, now update our marquee if we need to.
     if (m_marquee) {
         // FIXME: would like to use SetForScope<> but it doesn't work with bitfields.
@@ -915,6 +947,17 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, OptionSet
         m_marquee->updateMarqueePosition();
         m_updatingMarqueePosition = oldUpdatingMarqueePosition;
     }
+
+    if (renderer().isOutOfFlowPositioned() && renderer().style().position() == PositionType::Fixed && renderer().settings().acceleratedCompositingForFixedPositionEnabled()) {
+        bool intersectsViewport = compositor().fixedLayerIntersectsViewport(*this);
+        if (intersectsViewport != m_isFixedIntersectingViewport) {
+            m_isFixedIntersectingViewport = intersectsViewport;
+            setNeedsPostLayoutCompositingUpdate();
+        }
+    }
+
+    if (isComposited())
+        backing()->updateAfterLayout(flags.contains(NeedsFullRepaintInBacking));
 
     if (geometryMap)
         geometryMap->popMappingsToAncestor(parent());
@@ -1139,8 +1182,11 @@ void RenderLayer::updateTransform()
         makeMatrixRenderable(*m_transform, canRender3DTransforms());
     }
 
-    if (had3DTransform != has3DTransform())
+    if (had3DTransform != has3DTransform()) {
         dirty3DTransformedDescendantStatus();
+        // Having a 3D transform affects whether enclosing perspective and preserve-3d layers composite, so trigger an update.
+        setNeedsPostLayoutCompositingUpdateOnAncestors();
+    }
 }
 
 TransformationMatrix RenderLayer::currentTransform(RenderStyle::ApplyTransformOrigin applyOrigin) const
@@ -1522,6 +1568,16 @@ bool RenderLayer::updateLayerPosition()
     
     positionOrOffsetChanged |= location() != localPoint;
     setLocation(localPoint);
+    
+    if (positionOrOffsetChanged && compositor().inCompositingMode()) {
+        if (isComposited())
+            setNeedsCompositingGeometryUpdate();
+        // This layer's position can affect the location of a composited descendant (which may be a sibling in z-order),
+        // so trigger a descendant walk from the paint-order parent.
+        if (auto* paintParent = paintOrderParent())
+            paintParent->setDescendantsNeedUpdateBackingAndHierarchyTraversal();
+    }
+
     return positionOrOffsetChanged;
 }
 
@@ -1566,16 +1622,6 @@ FloatPoint RenderLayer::perspectiveOrigin() const
 
     return FloatPoint(floatValueForLength(style.perspectiveOriginX(), borderBox.width()),
                       floatValueForLength(style.perspectiveOriginY(), borderBox.height()));
-}
-
-RenderLayer* RenderLayer::stackingContext() const
-{
-    RenderLayer* layer = parent();
-    while (layer && !layer->isStackingContext())
-        layer = layer->parent();
-
-    ASSERT(!layer || layer->isStackingContext());
-    return layer;
 }
 
 static inline bool isContainerForPositioned(RenderLayer& layer, PositionType position)
@@ -1660,11 +1706,6 @@ RenderLayer* RenderLayer::enclosingTransformedAncestor() const
     return curr;
 }
 
-static inline const RenderLayer* compositingContainer(const RenderLayer& layer)
-{
-    return layer.isNormalFlowOnly() ? layer.parent() : layer.stackingContext();
-}
-
 inline bool RenderLayer::shouldRepaintAfterLayout() const
 {
     if (m_repaintStatus == NeedsNormalRepaint)
@@ -1686,7 +1727,7 @@ RenderLayer* RenderLayer::enclosingCompositingLayer(IncludeSelfOrNot includeSelf
     if (includeSelf == IncludeSelf && isComposited())
         return const_cast<RenderLayer*>(this);
 
-    for (const RenderLayer* curr = compositingContainer(*this); curr; curr = compositingContainer(*curr)) {
+    for (const RenderLayer* curr = paintOrderParent(); curr; curr = curr->paintOrderParent()) {
         if (curr->isComposited())
             return const_cast<RenderLayer*>(curr);
     }
@@ -1699,7 +1740,7 @@ RenderLayer* RenderLayer::enclosingCompositingLayerForRepaint(IncludeSelfOrNot i
     if (includeSelf == IncludeSelf && compositedWithOwnBackingStore(*this))
         return const_cast<RenderLayer*>(this);
 
-    for (const RenderLayer* curr = compositingContainer(*this); curr; curr = compositingContainer(*curr)) {
+    for (const RenderLayer* curr = paintOrderParent(); curr; curr = curr->paintOrderParent()) {
         if (compositedWithOwnBackingStore(*curr))
             return const_cast<RenderLayer*>(curr);
     }
@@ -1788,7 +1829,7 @@ RenderLayer* RenderLayer::clippingRootForPainting() const
         if (current->isRenderViewLayer())
             return const_cast<RenderLayer*>(current);
 
-        current = compositingContainer(*current);
+        current = current->paintOrderParent();
         ASSERT(current);
         if (current->transform() || compositedWithOwnBackingStore(*current))
             return const_cast<RenderLayer*>(current);
@@ -2326,8 +2367,10 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
     
     if (m_scrollPosition == newPosition) {
 #if PLATFORM(IOS_FAMILY)
-        if (m_requiresScrollBoundsOriginUpdate)
+        if (m_requiresScrollBoundsOriginUpdate) {
+            setNeedsCompositingGeometryUpdate();
             updateCompositingLayersAfterScroll();
+        }
 #endif
         return;
     }
@@ -2352,6 +2395,11 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
             // positions. Updating layer positions requires a full walk of up-to-date RenderLayers, and
             // in this case we're still updating their positions; we'll update compositing layers later
             // when that completes.
+            if (usesCompositedScrolling()) {
+                setNeedsCompositingGeometryUpdate();
+                setDescendantsNeedUpdateBackingAndHierarchyTraversal();
+            }
+
             updateCompositingLayersAfterScroll();
         }
 
@@ -2374,8 +2422,11 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
     frame.eventHandler().dispatchFakeMouseMoveEventSoonInQuad(quadForFakeMouseMoveEvent);
 
     bool requiresRepaint = true;
-    if (compositor().inCompositingMode() && usesCompositedScrolling())
+    if (compositor().inCompositingMode() && usesCompositedScrolling()) {
+        setNeedsCompositingGeometryUpdate();
+        setDescendantsNeedUpdateBackingAndHierarchyTraversal();
         requiresRepaint = false;
+    }
 
     // Just schedule a full repaint of our object.
     if (requiresRepaint)
@@ -2527,8 +2578,11 @@ void RenderLayer::updateCompositingLayersAfterScroll()
         if (RenderLayer* compositingAncestor = stackingContext()->enclosingCompositingLayer()) {
             if (usesCompositedScrolling())
                 compositor().updateCompositingLayers(CompositingUpdateType::OnCompositedScroll, compositingAncestor);
-            else
+            else {
+                // FIXME: would be nice to only dirty layers whose positions were affected by scrolling.
+                compositingAncestor->setDescendantsNeedUpdateBackingAndHierarchyTraversal();
                 compositor().updateCompositingLayers(CompositingUpdateType::OnScroll, compositingAncestor);
+            }
         }
     }
 }
@@ -3517,10 +3571,8 @@ void RenderLayer::updateScrollInfoAfterLayout()
     if (originalScrollOffset != scrollOffset())
         scrollToOffsetWithoutAnimation(IntPoint(scrollOffset()));
 
-    // Composited scrolling may need to be enabled or disabled if the amount of overflow changed.
-    // FIXME: this should just dirty the layer and updateLayerPositions should do stuff.
-    if (compositor().updateLayerCompositingState(*this))
-        compositor().setCompositingLayersNeedRebuild();
+    if (isComposited())
+        setNeedsCompositingGeometryUpdate();
 
     updateScrollSnapState();
 }
@@ -4198,7 +4250,6 @@ void RenderLayer::paintLayerContents(GraphicsContext& context, const LayerPainti
     if (localPaintFlags & PaintLayerPaintingRootBackgroundOnly && !renderer().isRenderView() && !renderer().isDocumentElementRenderer())
         return;
 
-    // Ensure our lists are up-to-date.
     updateLayerListsIfNeeded();
 
     LayoutSize offsetFromRoot = offsetFromAncestor(paintingInfo.rootLayer);
@@ -4791,8 +4842,6 @@ bool RenderLayer::hitTest(const HitTestRequest& request, const HitTestLocation& 
     ASSERT(isSelfPaintingLayer() || hasSelfPaintingLayerDescendant());
     ASSERT(!renderer().view().needsLayout());
     
-    updateLayerListsIfNeeded();
-
     ASSERT(!isRenderFragmentedFlow());
     LayoutRect hitTestArea = renderer().view().documentRect();
     if (!request.ignoreClipping()) {
@@ -4935,6 +4984,8 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
                                        const LayoutRect& hitTestRect, const HitTestLocation& hitTestLocation, bool appliedTransform,
                                        const HitTestingTransformState* transformState, double* zOffset)
 {
+    updateLayerListsIfNeeded();
+
     if (!isSelfPaintingLayer() && !hasSelfPaintingLayerDescendant())
         return nullptr;
 
@@ -4958,7 +5009,6 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
     }
 
     // Ensure our lists and 3d status are up-to-date.
-    updateCompositingAndLayerListsIfNeeded();
     update3DTransformedDescendantStatus();
 
     RefPtr<HitTestingTransformState> localTransformState;
@@ -5727,6 +5777,14 @@ FloatRect RenderLayer::absoluteBoundingBoxForPainting() const
     return snapRectToDevicePixels(boundingBox(rootLayer, offsetFromAncestor(rootLayer)), renderer().document().deviceScaleFactor());
 }
 
+LayoutRect RenderLayer::overlapBounds() const
+{
+    if (overlapBoundsIncludeChildren())
+        return calculateLayerBounds(this, { }, defaultCalculateLayerBoundsFlags() | IncludeFilterOutsets);
+    
+    return localBoundingBox();
+}
+
 LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, const LayoutSize& offsetFromRoot, OptionSet<CalculateLayerBoundsFlag> flags) const
 {
     if (!isSelfPaintingLayer())
@@ -5808,10 +5866,7 @@ LayoutRect RenderLayer::calculateLayerBounds(const RenderLayer* ancestorLayer, c
     for (auto* childLayer : normalFlowLayers())
         computeLayersUnion(*childLayer);
 
-    // FIXME: We can optimize the size of the composited layers, by not enlarging
-    // filtered areas with the outsets if we know that the filter is going to render in hardware.
-    // https://bugs.webkit.org/show_bug.cgi?id=81239
-    if (flags & IncludeLayerFilterOutsets)
+    if (flags.contains(IncludeFilterOutsets) || (flags.contains(IncludePaintedFilterOutsets) && paintsWithFilters()))
         renderer().style().filterOutsets().expandRect(unionBounds);
 
     if ((flags & IncludeSelfTransform) && paintsWithTransform(PaintBehavior::Normal)) {
@@ -5956,7 +6011,7 @@ bool RenderLayer::backgroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect)
     // FIXME: Remove this check.
     // This function should not be called when layer-lists are dirty.
     // It is somehow getting triggered during style update.
-    if (m_zOrderListsDirty || m_normalFlowListDirty)
+    if (zOrderListsDirty() || normalFlowListDirty())
         return false;
 
     // Table painting is special; a table paints its sections.
@@ -5998,17 +6053,6 @@ bool RenderLayer::listBackgroundIsKnownToBeOpaqueInRect(const LayerList& list, c
             return true;
     }
     return false;
-}
-
-void RenderLayer::updateCompositingAndLayerListsIfNeeded()
-{
-    if (compositor().inCompositingMode()) {
-        if (isDirtyStackingContext() || m_normalFlowListDirty)
-            compositor().updateCompositingLayers(CompositingUpdateType::OnHitTest, this);
-        return;
-    }
-
-    updateLayerListsIfNeeded();
 }
 
 void RenderLayer::repaintIncludingDescendants()
@@ -6066,6 +6110,7 @@ bool RenderLayer::shouldBeSelfPaintingLayer() const
         || renderer().isCanvas()
         || renderer().isVideo()
         || renderer().isEmbeddedObject()
+        || (renderer().isRenderImage() && downcast<RenderImage>(renderer()).isEditableImage())
         || renderer().isRenderIFrame()
         || renderer().isInFlowRenderFragmentedFlow();
 }
@@ -6583,8 +6628,11 @@ void showLayerTree(const WebCore::RenderObject* renderer)
 static void outputPaintOrderTreeLegend(TextStream& stream)
 {
     stream.nextLine();
-    stream << "(S)tacking Context, (N)ormal flow only, (O)verflow clip, (A)lpha (opacity or mask), (T)ransform-ish, (F)ilter, Fi(X)ed position, (C)omposited\n"
-        "Dirty (z)-lists, Dirty (n)ormal flow lists";
+    stream << "(S)tacking Context, (N)ormal flow only, (O)verflow clip, (A)lpha (opacity or mask), has (B)lend mode, (I)solates blending, (T)ransform-ish, (F)ilter, Fi(X)ed position, (C)omposited\n"
+        "Dirty (z)-lists, Dirty (n)ormal flow lists\n"
+        "Descendant needs overlap (t)raversal, Descendant needs (b)acking or hierarchy update, All descendants need (r)equirements traversal, All (s)ubsequent layers need requirements traversal, All descendants need (h)ierarchy traversal\n"
+        "Needs compositing paint order update on (s)ubsequent layers, Needs compositing paint (o)rder children update, "
+        "Needs post-(l)ayout update, Needs compositing (g)eometry update, (k)ids need geometry update, Needs compositing (c)onfig update, Needs compositing layer conne(x)ion update";
     stream.nextLine();
 }
 
@@ -6601,6 +6649,8 @@ static void outputPaintOrderTreeRecursive(TextStream& stream, const WebCore::Ren
     stream << (layer.isNormalFlowOnly() ? "N" : "-");
     stream << (layer.renderer().hasOverflowClip() ? "O" : "-");
     stream << (layer.isTransparent() ? "A" : "-");
+    stream << (layer.hasBlendMode() ? "B" : "-");
+    stream << (layer.isolatesBlending() ? "I" : "-");
     stream << (layer.renderer().hasTransformRelatedProperty() ? "T" : "-");
     stream << (layer.hasFilter() ? "F" : "-");
     stream << (layer.renderer().isFixedPositioned() ? "X" : "-");
@@ -6610,6 +6660,25 @@ static void outputPaintOrderTreeRecursive(TextStream& stream, const WebCore::Ren
 
     stream << (layer.zOrderListsDirty() ? "z" : "-");
     stream << (layer.normalFlowListDirty() ? "n" : "-");
+
+    stream << " ";
+
+    stream << (layer.hasDescendantNeedingCompositingRequirementsTraversal() ? "t" : "-");
+    stream << (layer.hasDescendantNeedingUpdateBackingOrHierarchyTraversal() ? "b" : "-");
+    stream << (layer.descendantsNeedCompositingRequirementsTraversal() ? "r" : "-");
+    stream << (layer.subsequentLayersNeedCompositingRequirementsTraversal() ? "s" : "-");
+    stream << (layer.descendantsNeedUpdateBackingAndHierarchyTraversal() ? "h" : "-");
+
+    stream << " ";
+
+    stream << (layer.needsCompositingPaintOrderChildrenUpdate() ? "o" : "-");
+    stream << (layer.needsPostLayoutCompositingUpdate() ? "l" : "-");
+    stream << (layer.needsCompositingGeometryUpdate() ? "g" : "-");
+    stream << (layer.childrenNeedCompositingGeometryUpdate() ? "k" : "-");
+    stream << (layer.needsCompositingConfigurationUpdate() ? "c" : "-");
+    stream << (layer.needsCompositingLayerConnection() ? "x" : "-");
+
+    stream << " ";
 
     outputIdent(stream, depth);
 

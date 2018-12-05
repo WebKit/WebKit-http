@@ -60,6 +60,7 @@
 #include "HTMLMediaElement.h"
 #include "HistoryController.h"
 #include "HistoryItem.h"
+#include "InspectorClient.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
 #include "LibWebRTCProvider.h"
@@ -294,7 +295,8 @@ Page::Page(PageConfiguration&& pageConfiguration)
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
-    m_inspectorDebuggable->init();
+    if (m_inspectorController->inspectorClient() && m_inspectorController->inspectorClient()->allowRemoteInspectionToPageDirectly())
+        m_inspectorDebuggable->init();
 #endif
 
 #if PLATFORM(COCOA)
@@ -879,8 +881,11 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin, bool inStable
     m_pageScaleFactor = scale;
 
     if (!m_settings->delegatesPageScaling()) {
-        if (document->renderView())
-            document->renderView()->setNeedsLayout();
+        if (auto* renderView = document->renderView()) {
+            renderView->setNeedsLayout();
+            if (renderView->hasLayer() && renderView->layer()->isComposited())
+                renderView->layer()->setNeedsCompositingGeometryUpdate();
+        }
 
         document->resolveStyle(Document::ResolveStyleType::Rebuild);
 
@@ -1893,15 +1898,15 @@ void Page::remoteInspectorInformationDidChange() const
 }
 #endif
 
-void Page::addLayoutMilestones(LayoutMilestones milestones)
+void Page::addLayoutMilestones(OptionSet<LayoutMilestone> milestones)
 {
     // In the future, we may want a function that replaces m_layoutMilestones instead of just adding to it.
-    m_requestedLayoutMilestones |= milestones;
+    m_requestedLayoutMilestones.add(milestones);
 }
 
-void Page::removeLayoutMilestones(LayoutMilestones milestones)
+void Page::removeLayoutMilestones(OptionSet<LayoutMilestone> milestones)
 {
-    m_requestedLayoutMilestones &= ~milestones;
+    m_requestedLayoutMilestones.remove(milestones);
 }
 
 Color Page::pageExtendedBackgroundColor() const
@@ -1923,7 +1928,7 @@ static const double gMaximumUnpaintedAreaRatio = 0.04;
 
 bool Page::isCountingRelevantRepaintedObjects() const
 {
-    return m_isCountingRelevantRepaintedObjects && (m_requestedLayoutMilestones & DidHitRelevantRepaintedObjectsAreaThreshold);
+    return m_isCountingRelevantRepaintedObjects && m_requestedLayoutMilestones.contains(DidHitRelevantRepaintedObjectsAreaThreshold);
 }
 
 void Page::startCountingRelevantRepaintedObjects()

@@ -55,7 +55,7 @@ WI.appendContextMenuItemsForSourceCode = function(contextMenu, sourceCodeOrLocat
     contextMenu.appendItem(WI.UIString("Save File"), () => {
         sourceCode.requestContent().then(() => {
             const forceSaveAs = true;
-            WI.saveDataToFile({
+            WI.FileUtilities.save({
                 url: sourceCode.url || "",
                 content: sourceCode.content
             }, forceSaveAs);
@@ -168,16 +168,14 @@ WI.appendContextMenuItemsForDOMNode = function(contextMenu, domNode, options = {
                 });
             }
 
-            function didGetProperty(error, result, wasThrown) {
-                if (error || result.type !== "function")
-                    return;
-
-                DebuggerAgent.getFunctionDetails(result.objectId, didGetFunctionDetails);
-                result.release();
-            }
-
             WI.RemoteObject.resolveNode(domNode).then((remoteObject) => {
-                remoteObject.getProperty("constructor", didGetProperty);
+                remoteObject.getProperty("constructor", (error, result, wasThrown) => {
+                    if (error)
+                        return;
+                    if (result.type === "function")
+                        remoteObject.target.DebuggerAgent.getFunctionDetails(result.objectId, didGetFunctionDetails);
+                    result.release();
+                });
                 remoteObject.release();
             });
         });
@@ -240,7 +238,7 @@ WI.appendContextMenuItemsForDOMNode = function(contextMenu, domNode, options = {
                     Number.zeroPad(date.getSeconds(), 2),
                 ];
                 let filename = WI.UIString("Screen Shot %s-%s-%s at %s.%s.%s").format(...values);
-                WI.saveDataToFile({
+                WI.FileUtilities.save({
                     url: encodeURI(`web-inspector:///${filename}.png`),
                     content: parseDataURL(dataURL).data,
                     base64Encoded: true,

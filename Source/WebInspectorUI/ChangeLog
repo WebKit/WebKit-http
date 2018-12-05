@@ -1,3 +1,1023 @@
+2018-11-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table should recalculate scrollable height when resized
+        https://bugs.webkit.org/show_bug.cgi?id=191328
+        <rdar://problem/45854412>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._hideDetailView):
+        Force table columns to layout after hiding the detail view.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table):
+        (WI.Table.prototype.showColumn):
+        Call `_resizeColumnsAndFiller` instead of `resize`. The latter also cleared
+        `_cachedWidth`, which isn't unnecessary since the width hasn't changed.
+
+        (WI.Table.prototype.layout):
+        previously `_resizeColumnsAndFiller` always occurred after `_updateVisibleRows`,
+        it was just a matter of whether the cached width and height were cleared first.
+        That now happens in `sizeDidChange`.
+
+        (WI.Table.prototype.sizeDidChange):
+        (WI.Table.prototype._updateVisibleRows):
+        (WI.Table.prototype.resize): Deleted.
+        Internally this cleared the cached width and height, which moved to `sizeDidChange`.
+        Externally this was used by NetworkTableContentView to force columns to
+        layout after hiding the details view. Calling `updateLayout` on the table
+        accomplishes the same thing using the standard View API.
+
+        (WI.Table.prototype._resizeColumnsAndFiller):
+        Only update the cached width, since the height will already have been
+        updated. The number of rows doesn't change during this method, so that
+        check was removed.
+
+2018-11-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r236540): Debugger: breakpoints are sorted alphabetically instead of numerically
+        https://bugs.webkit.org/show_bug.cgi?id=191560
+
+        Reviewed by Joseph Pecoraro.
+
+        When sorting breakpoints, if the `WI.TreeElement`s being compared both contain instances of
+        `WI.Breakpoint`, sort by `WI.SourceCodeLocation` instead of title.
+
+        We only do this for `WI.Breakpoint` because they are the only debuggable item that has a
+        `WI.SourceCodeLocation` (e.g. `WI.EventBreakpoint` is just an event name string).
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._addTreeElement):
+        (WI.DebuggerSidebarPanel.prototype._compareBreakpointTreeElements): Added.
+        (WI.DebuggerSidebarPanel.prototype._addIssue):
+        (WI.DebuggerSidebarPanel.prototype._addTreeElement.comparator): Deleted.
+        (WI.DebuggerSidebarPanel.prototype._compareTreeElements): Deleted.
+
+2018-11-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: shift-clicking on a property should extend selection
+        https://bugs.webkit.org/show_bug.cgi?id=191575
+        <rdar://problem/46012855>
+
+        Reviewed by Devin Rousso.
+
+        When there's at least one property is selected, Shift-clicking another property should extend the selection.
+        Pressing Up or Down keys while holding Shift also extends the selection.
+
+        Remove unnecessary `_startedSelection`. Use `hasSelectedProperties` and `_isMousePressed` instead.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        `_isMousePressed` was set to `true` by mistake, causing numerous assertion fails.
+
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set focusIndex):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.hasSelectedProperties): Renamed from _hasSelectedProperties.
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.extendSelectedProperties): Added.
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyMouseLeave): Removed.
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyCopy):
+
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._handleKeyDown):
+        Implement Shift-ArrowUp/ArrowDown keys.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetCSSStyleDeclarationEditorPropertyBlur):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetCSSStyleDeclarationEditorPropertyMouseLeave): Removed.
+        This was only used to set _startedSelection.
+
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleMouseDown):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleWindowClick):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleClick):
+        Remove _startedSelection and use hasSelectedProperties method instead.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty):
+        Remove spreadsheetStylePropertyMouseLeave since it is no longer used.
+
+2018-11-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: send a call stack with each action instead of an array of call frames
+        https://bugs.webkit.org/show_bug.cgi?id=191628
+
+        Reviewed by Dean Jackson.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording.prototype.async swizzle):
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction.fromPayload):
+        (WI.RecordingAction.prototype.async swizzle):
+
+2018-11-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add drag+drop for importing Audits and Recordings
+        https://bugs.webkit.org/show_bug.cgi?id=191566
+
+        Reviewed by Joseph Pecoraro.
+
+        Reorganize the file loading logic for the Audit and Canvas tabs/managers. Add "drop" event
+        handlers to the tabs that add and show the corresponding object for the imported data.
+
+        * UserInterface/Views/AuditTabContentView.js:
+        (WI.AuditTabContentView):
+        (WI.AuditTabContentView.prototype._handleDragOver): Added.
+        (WI.AuditTabContentView.prototype._handleDrop): Added.
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView):
+        (WI.CanvasTabContentView.prototype._addCanvas):
+        (WI.CanvasTabContentView.prototype._recordingImportedOrStopped):
+        (WI.CanvasTabContentView.prototype._handleDragOver): Added.
+        (WI.CanvasTabContentView.prototype._handleDrop): Added.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.async processJSON): Added.
+        (WI.AuditManager.prototype.export):
+        (WI.AuditManager.prototype.import): Deleted.
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype.processJSON): Added.
+        (WI.CanvasManager.prototype.importRecording): Deleted.
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel):
+        (WI.AuditNavigationSidebarPanel.prototype.showDefaultContentView):
+        (WI.AuditNavigationSidebarPanel.prototype._handleImportButtonNavigationItemClicked):
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel):
+        (WI.CanvasSidebarPanel.prototype._handleImportButtonNavigationItemClicked): Added.
+        (WI.CanvasSidebarPanel.prototype._recordingChanged):
+        (WI.CanvasSidebarPanel.prototype._updateRecordNavigationItem):
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView):
+        (WI.CanvasOverviewContentView.prototype._handleImportButtonNavigationItemClicked): Added.
+
+        * UserInterface/Base/FileUtilities.js:
+        (WI.FileUtilities.save): Added.
+        (WI.FileUtilities.importText): Added.
+        (WI.FileUtilities.importJSON): Added.
+        (WI.FileUtilities.async readText): Added.
+        (WI.FileUtilities.async readJSON): Added.
+        (WI.saveDataToFile): Deleted.
+        (WI.loadDataFromFile): Deleted.
+        * UserInterface/Base/Main.js:
+        (WI._contextMenuRequested):
+        (WI._save):
+        (WI._saveAs):
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForSourceCode):
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype._handleContextMenuEvent):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._exportHAR):
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype._exportRecording):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._save):
+        Move file related functions into a static class container.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include target identifier in protocol logging
+        https://bugs.webkit.org/show_bug.cgi?id=191478
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Protocol/Connection.js:
+        (InspectorBackend.Connection.prototype._dispatchResponse):
+        (InspectorBackend.Connection.prototype._dispatchEvent):
+        (InspectorBackend.Connection.prototype._sendMessageToBackend):
+        Call tracer log methods with the connection.
+
+        * UserInterface/Debug/CapturingProtocolTracer.js:
+        * UserInterface/Protocol/ProtocolTracer.js:
+        * UserInterface/Protocol/LoggingProtocolTracer.js:
+        (WI.LoggingProtocolTracer):
+        (WI.LoggingProtocolTracer.prototype.logFrontendException):
+        (WI.LoggingProtocolTracer.prototype.logFrontendRequest):
+        (WI.LoggingProtocolTracer.prototype.logWillHandleResponse):
+        (WI.LoggingProtocolTracer.prototype.logDidHandleResponse):
+        (WI.LoggingProtocolTracer.prototype.logDidHandleEvent):
+        Include the connection in log methods.
+
+        (WI.LoggingProtocolTracer.prototype.logProtocolError):
+        Removed, this is never called.
+                
+        (WI.LoggingProtocolTracer.prototype._processEntry):
+        Include the target identifier in entry messages.
+
+2018-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Keep Web Inspector window alive across process swaps (PSON) (Remote Inspector)
+        https://bugs.webkit.org/show_bug.cgi?id=191494
+        <rdar://problem/45469854>
+
+        Reviewed by Devin Rousso.
+
+        This starts introducing multi-target support into the Web Inspector frontend.
+        Specifically a backend connection that is persistent, but has the ability to
+        connect to and transition between Page targets received through that backend
+        connection.
+
+        This patch introduces the concept of a "Backend Target" which is the single
+        connection that the frontend contains to a backend. The old way of connecting
+        directly to a target is still supported. In that case the frontend constructs
+        a DirectBackendTarget for the debuggable type the frontend was spawns for.
+        However, if the frontend opens and has a TargetAgent, then it is likely
+        connected to a multi-target supporting backend and instead constructs a
+        MultiplexingBackendTarget, and will receive further information about
+        sub-targets to connect to. The only sub-target at the moment is a Page
+        sub-target.
+
+        As part of bringing up multi-target support this adds a few measures to
+        handle situations where the frontend is playing fast and loose with agents.
+        When the frontend does `FooAgent.method` it intends that to be performed
+        on the "main" target being debugged. Likewise when the frontend loops
+        over targets it expects them to be the debuggable targets. This patch
+        profiles a new implementation of `WI.mainTarget` and `WI.targets` to
+        match the assumptions being made by the frontend.
+
+          - In a direct-target world, there is a single target which
+            should be used for global agents and in WI.targets.
+
+          - In a multi-target world, the page target is the one that
+            should be used for global agents and WI.targets is the list
+            of sub-targets (excluding the MultiplexingBackendTarget).
+
+        In a multi-target world, there are now commonly two Targets. The
+        MultiplexingBackendTarget and a PageTarget sub-target. In the future
+        this may include more targets, such as ServiceWorkers, DedicatedWorkers,
+        and perhaps even frames.
+
+        In a multi-target world, the frontend is immediately told about targets
+        as soon as it opens (via Target.targetCreated). In order to support
+        this, frontend initialization happens without a main target being available.
+        So this makes a few small changes to frontend initialization to perform
+        a bit of work once we know what the main target is.
+
+        During a page transition the frontend is told to destroy existing targets
+        and is soon after told about any new page targets (via Target.targetDestroyed
+        and Target.targetCreated). The frontend special cases this page transition.
+        It expects only one Page target to be alive at any time, accessible through
+        WI.pageTarget. When a page transition happens the WI.pageTarget changes, and
+        the frontend performs a bit of work to prepare the UI to handle the transition:
+        `<Manager>.transitionPageTarget` / WI.Notification.TransitionPageTarget.
+        For the most part the UI behaves fine as long once there are main frame
+        change and main resource change events, but those other events allow
+        the frontend to respond to the specific page transition cases.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        (WI.initializeBackendTarget):
+        (WI.initializePageTarget):
+        (WI.transitionPageTarget):
+        (WI.terminatePageTarget):
+        (WI.resetMainExecutionContext):
+        (WI.redirectGlobalAgentsToConnection):
+        (WI.contentLoaded):
+        New global functions for target initialization
+        and page transitioning.
+
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        (WI.initializeBackendTarget):
+        (WI.initializePageTarget):
+        (WI.transitionPageTarget):
+        (WI.terminatePageTarget):
+        (WI.resetMainExecutionContext):
+        (WI.redirectGlobalAgentsToConnection):
+        New global functions for target initialization.
+        Tests continue to be a direct connection to the Page.
+
+        * UserInterface/Protocol/TargetObserver.js:
+        (WI.TargetObserver.prototype.targetCreated):
+        (WI.TargetObserver.prototype.targetDestroyed):
+        (WI.TargetObserver.prototype.dispatchMessageFromTarget):
+        New observer goes to the manager.
+
+        * UserInterface/Controllers/TargetManager.js:
+        (WI.TargetManager):
+        (WI.TargetManager.prototype.get targets):
+        (WI.TargetManager.prototype.get allTargets):
+        (WI.TargetManager.prototype.targetForIdentifier):
+        (WI.TargetManager.prototype.targetCreated):
+        (WI.TargetManager.prototype.targetDestroyed):
+        (WI.TargetManager.prototype.dispatchMessageFromTarget):
+        (WI.TargetManager.prototype.createMultiplexingBackendTarget):
+        (WI.TargetManager.prototype.createDirectBackendTarget):
+        (WI.TargetManager.prototype._addTarget):
+        (WI.TargetManager.prototype._removeTarget):
+        (WI.TargetManager.prototype._createTarget):
+        (WI.TargetManager.prototype._checkAndHandlePageTargetTransition):
+        (WI.TargetManager.prototype._checkAndHandlePageTargetTermination):
+        (WI.TargetManager.prototype.addTarget): Deleted.
+        (WI.TargetManager.prototype.removeTarget): Deleted.
+        (WI.TargetManager.prototype.initializeMainTarget): Deleted.
+        TargetManager is where we handle creating and destroying targets
+        and their connections. In order to simplify things a bit we make
+        `WI.targets`, which goes through `get targets()` an array instead
+        of a Set. And this includes only the sub-targets.
+
+        * UserInterface/Controllers/WorkerManager.js:
+        (WI.WorkerManager.prototype.workerCreated):
+        (WI.WorkerManager.prototype.workerTerminated):
+        Workers are still special-target-like things that multiplex through
+        WorkerAgent instead of TargetAgent. We'd like to promote these to
+        be full targets in the future.
+
+        * UserInterface/Protocol/DirectBackendTarget.js: Renamed from Source/WebInspectorUI/UserInterface/Protocol/MainTarget.js.
+        (WI.DirectBackendTarget):
+        (WI.DirectBackendTarget.connectionInfoForDebuggable):
+        (WI.DirectBackendTarget.prototype.get mainResource):
+        (WI.DirectBackendTarget.prototype.set mainResource):
+        This is the only "MainTarget" class. It is the backend target for a direct connection.
+
+        * UserInterface/Protocol/MultiplexingBackendTarget.js:
+        (WI.MultiplexingBackendTarget):
+        (WI.MultiplexingBackendTarget.prototype.initialize):
+        (WI.MultiplexingBackendTarget.prototype.get name):
+        (WI.MultiplexingBackendTarget.prototype.get executionContext):
+        (WI.MultiplexingBackendTarget.prototype.get mainResource):
+        This is the new backend target for a multi-target connection.
+        We don't expect it to be treated like other targets, so we don't
+        expect anyone to ask it for resources/executionContext/name info.
+
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WI.TargetManager.prototype.evaluateInInspectedWindow):
+        This can be triggered by watch expressions before any target, and
+        therefore execution context, is available. Just return null, when
+        an execution context is available those clients will try again.
+
+        * UserInterface/Debug/Bootstrap.js:
+        Provide an WI.isEngineeringBuild boolean that can be used for various
+        debugging features.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        New resources.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.dispatch):
+        (InspectorBackendClass.prototype.runAfterPendingDispatches):
+        (InspectorBackend.Agent):
+        `InspectorBackend.mainConnection` was renamed `InspectorBackend.backendConnection`.
+
+        * UserInterface/Protocol/Connection.js:
+        (InspectorBackend.Connection):
+        (InspectorBackend.Connection.prototype._dispatchResponse):
+        (InspectorBackend.Connection.prototype._sendCommandToBackendWithCallback):
+        (InspectorBackend.Connection.prototype._sendCommandToBackendExpectingPromise):
+        (InspectorBackend.BackendConnection):
+        (InspectorBackend.BackendConnection.prototype.sendMessageToBackend):
+        (InspectorBackend.WorkerConnection):
+        (InspectorBackend.TargetConnection):
+        (InspectorBackend.TargetConnection.sendMessageToBackend):
+        Use a global sequence id to make filtering a bit easier in protocol tracing.
+        TargetConnection is identical to WorkerConnection except it uses TargetAgent
+        instead of WorkerAgent to perform multiplexing.
+
+        * UserInterface/Protocol/JavaScriptContextTarget.js:
+        (WI.JavaScriptContextTarget):
+        * UserInterface/Protocol/PageTarget.js:
+        (WI.PageTarget):
+        (WI.PageTarget.prototype.get displayName):
+        Specialized target types.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+        (WI.DebuggerSidebarPanel.prototype._targetAdded):
+        (WI.DebuggerSidebarPanel.prototype._targetRemoved):
+        (WI.DebuggerSidebarPanel.prototype._updateCallStackTreeOutline):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype._targetAdded):
+        (WI.SourceCodeTextEditor.prototype._targetRemoved):
+        (WI.SourceCodeTextEditor.prototype._callFramesDidChange):
+        (WI.SourceCodeTextEditor.prototype._updateThreadIndicatorWidget):
+        (WI.SourceCodeTextEditor.prototype._reinsertAllThreadIndicators):
+        * UserInterface/Views/QuickConsole.js:
+        (WI.QuickConsole.prototype.initializeMainExecutionContextPathComponent):
+        (WI.QuickConsole.prototype._targetAdded):
+        (WI.QuickConsole.prototype._targetRemoved):
+        We make target added get called with all targets, including the
+        MultiplexingBackendTarget and PageTargets, both of which would
+        not have happened before. Before it was only WorkerTargets. Make
+        these sites a little more robust for the type of target they expect
+        to be able to handle.
+
+        * UserInterface/Base/Object.js:
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager):
+        (WI.DOMManager.prototype.transitionPageTarget):
+        (WI.DOMManager.prototype.requestDocument):
+        (WI.DOMManager.prototype._setDocument):
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager):
+        (WI.NetworkManager.prototype.transitionPageTarget):
+        (WI.NetworkManager.prototype.executionContextCreated):
+        (WI.NetworkManager.prototype._processMainFrameResourceTreePayload):
+        * UserInterface/Models/DefaultDashboard.js:
+        (WI.DefaultDashboard):
+        (WI.DefaultDashboard.prototype._mainResourceDidChange):
+        (WI.DefaultDashboard.prototype._transitionPageTarget):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype._mainResourceDidChange):
+        (WI.NetworkTableContentView.prototype._transitionPageTarget):
+        Special case handling when performing a page transition.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        * UserInterface/Debug/UncaughtExceptionReporter.js:
+        Document reloads are not supported right now.
+
+2018-11-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: don't start with auto-capture enabled
+        https://bugs.webkit.org/show_bug.cgi?id=191553
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView.prototype._setRecordingAutoCaptureFrameCount):
+        (WI.CanvasOverviewContentView.prototype._updateRecordingAutoCaptureInputElementSize):
+        (WI.CanvasOverviewContentView.prototype._handleRecordingAutoCaptureInput):
+        * UserInterface/Views/CanvasOverviewContentView.css:
+        (.navigation-bar > .item.canvas-recording-auto-capture > label > input):
+
+2018-11-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network Graphs are missing minimum sizes, might have no graph at all
+        https://bugs.webkit.org/show_bug.cgi?id=191208
+
+        Reviewed by Joseph Pecoraro.
+
+        `WI.NetworkTableContentView` used to rely on the `WI.timelineManager.persistentNetworkTimeline`
+        for events when a new resource is added. It also listened for `WI.Frame.Event.MainResourceDidChange`
+        on it's own, which was also listened to by `WI.timelineManager.persistentNetworkTimeline`.
+        Due to the order in which these listeners are added, the new main resource would get added
+        to the `WI.timelineManager.persistentNetworkTimeline` (and the `WI.NetworkTableContentView`
+        shortly after), and right after that the `WI.NetworkTableContentView` would reset the graph
+        in it's own listener for `WI.Frame.Event.MainResourceDidChange`.
+
+        This patch removes `WI.timelineManager.persistentNetworkTimeline` and instead makes it so
+        that `WI.NetworkTableContentView` listens for resource added and main frame changed events
+        on its own (similar to other views that follow this pattern), ensuring that there are no
+        event races.
+
+        Also relaxes the "requirement" that prevented 0 width blocks from being drawn, allowing
+        requests served from memory/disk to appear in the graph (their time is effectively 0).
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.closed):
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph):
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph.appendBlock):
+        (WI.NetworkTableContentView.prototype._updateWaterfallTimeRange): Added.
+        (WI.NetworkTableContentView.prototype._resourceLoadingDidFinish):
+        (WI.NetworkTableContentView.prototype._resourceLoadingDidFail):
+        (WI.NetworkTableContentView.prototype._handleResourceAdded): Added.
+        (WI.NetworkTableContentView.prototype._insertResourceAndReloadTable):
+        (WI.NetworkTableContentView.prototype._handleNodeDidFireEvent):
+        (WI.NetworkTableContentView.prototype._handleNodeLowPowerChanged):
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.network-table .waterfall .block:matches(.mouse-tracking, .filler) + .block:not(.mouse-tracking, .filler)): Added.
+        (.network-table .waterfall .block.filler + .block): Deleted.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager):
+        (WI.TimelineManager.prototype._mainResourceDidChange):
+        (WI.TimelineManager.prototype._resourceWasAdded):
+        (WI.TimelineManager.prototype.get persistentNetworkTimeline): Deleted.
+
+2018-11-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table should support select all (Cmd-A)
+        https://bugs.webkit.org/show_bug.cgi?id=190299
+        <rdar://problem/45029170>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype.selectAll):
+        (WI.Table.prototype._handleKeyDown):
+
+2018-11-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table with no selection should select the first/last row on down/up arrow key
+        https://bugs.webkit.org/show_bug.cgi?id=190100
+        <rdar://problem/44879243>
+
+        Reviewed by Devin Rousso.
+
+        Pressing the up or down arrow key when nothing is selected should select
+        the last or first row, respectively. After selecting the row make sure
+        it is visible by calling the new Table method `revealRow`.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype.revealRow):
+        (WI.Table.prototype._handleKeyDown):
+        (WI.Table.prototype._selectRowsFromArrowKey):
+
+2018-11-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Command-A should select all properties
+        https://bugs.webkit.org/show_bug.cgi?id=191435
+        <rdar://problem/45921373>
+
+        Reviewed by Devin Rousso.
+
+        When focused on a style property, Command-A on Mac (Control-A on other platforms)
+        should select all properties of the style rule.
+
+        * UserInterface/Base/Utilities.js:
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.selectProperties):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._handleKeyDown):
+
+2018-11-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: show secure certificate details per-request
+        https://bugs.webkit.org/show_bug.cgi?id=191447
+        <rdar://problem/30019476>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.resourceRequestWasServedFromMemoryCache):
+        (WI.NetworkManager.prototype.resourceRequestDidReceiveResponse):
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.get responseSecurity): Added.
+        (WI.Resource.prototype.get loadedSecurely): Added.
+        (WI.Resource.prototype.updateForResponse):
+
+        * UserInterface/Views/NetworkResourceDetailView.js:
+        (WI.NetworkResourceDetailView):
+        (WI.NetworkResourceDetailView.prototype.initialLayout):
+        (WI.NetworkResourceDetailView.prototype.showContentViewForIdentifier):
+        * UserInterface/Views/NetworkResourceDetailView.css:
+        (.content-view.resource-details .go-to-arrow): Added.
+        (.content-view.resource-details.showing-find-banner .search-highlight): Added.
+
+        * UserInterface/Views/ResourceSecurityContentView.js: Added.
+        (WI.ResourceSecurityContentView):
+        (WI.ResourceSecurityContentView.prototype.initialLayout):
+        (WI.ResourceSecurityContentView.prototype.layout):
+        (WI.ResourceSecurityContentView.prototype.closed):
+        (WI.ResourceSecurityContentView.prototype.get supportsSearch):
+        (WI.ResourceSecurityContentView.prototype.get numberOfSearchResults):
+        (WI.ResourceSecurityContentView.prototype.get hasPerformedSearch):
+        (WI.ResourceSecurityContentView.prototype.set automaticallyRevealFirstSearchResult):
+        (WI.ResourceSecurityContentView.prototype.performSearch):
+        (WI.ResourceSecurityContentView.prototype.searchCleared):
+        (WI.ResourceSecurityContentView.prototype.revealPreviousSearchResult):
+        (WI.ResourceSecurityContentView.prototype.revealNextSearchResult):
+        (WI.ResourceSecurityContentView.prototype._refreshCetificateSection):
+        (WI.ResourceSecurityContentView.prototype._perfomSearchOnKeyValuePairs):
+        (WI.ResourceSecurityContentView.prototype._revealSearchResult):
+        (WI.ResourceSecurityContentView.prototype._handleResourceResponseReceived):
+        * UserInterface/Views/ResourceSecurityContentView.css: Added.
+        (body[dir] .resource-security > section.certificate > .details):
+        (.resource-security .details .key):
+        (.resource-security .dns-name + .dns-name > .key,):
+        (.resource-security .show-more):
+        (@media (prefers-dark-interface) body[dir] .resource-security > section.certificate > .details):
+        (@media (prefers-dark-interface) .resource-security .details .key):
+
+        * UserInterface/Views/ResourceCookiesContentView.js:
+        (WI.ResourceCookiesContentView.prototype._refreshRequestCookiesSection):
+        (WI.ResourceCookiesContentView.prototype._refreshResponseCookiesSection):
+        (WI.ResourceCookiesContentView.prototype._markIncompleteSectionWithMessage): Deleted.
+        (WI.ResourceCookiesContentView.prototype._markIncompleteSectionWithLoadingIndicator): Deleted.
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView.prototype._refreshSummarySection):
+        (WI.ResourceHeadersContentView.prototype._refreshRedirectHeadersSections):
+        (WI.ResourceHeadersContentView.prototype._refreshRequestHeadersSection):
+        (WI.ResourceHeadersContentView.prototype._refreshResponseHeadersSection):
+        (WI.ResourceHeadersContentView.prototype._refreshQueryStringSection):
+        (WI.ResourceHeadersContentView.prototype._refreshRequestDataSection):
+        (WI.ResourceHeadersContentView.prototype._markIncompleteSectionWithMessage): Deleted.
+        (WI.ResourceHeadersContentView.prototype._markIncompleteSectionWithLoadingIndicator): Deleted.
+        (WI.ResourceHeadersContentView.prototype._appendKeyValuePair): Deleted.
+        * UserInterface/Views/ResourceHeadersContentView.css:
+        (.resource-headers .h1-status > .key,):
+        (body[dir] .resource-headers > section.error > .details): Deleted.
+        (.resource-headers > section.error .key): Deleted.
+        (.resource-headers .details): Deleted.
+        (.resource-headers .details .pair): Deleted.
+        (body[dir=rtl] .resource-headers .details .pair): Deleted.
+        (.resource-headers .details .key): Deleted.
+        (.resource-headers .value): Deleted.
+        (.resource-headers .go-to-arrow): Deleted.
+        (.resource-headers.showing-find-banner .search-highlight): Deleted.
+        * UserInterface/Views/ResourceDetailsSection.js:
+        (WI.ResourceDetailsSection.prototype.markIncompleteSectionWithMessage): Added.
+        (WI.ResourceDetailsSection.prototype.markIncompleteSectionWithLoadingIndicator): Added.
+        (WI.ResourceDetailsSection.prototype.appendKeyValuePair): Added.
+        * UserInterface/Views/ResourceDetailsSection.css:
+        (.resource-details > section > .details): Added.
+        (.resource-details > section > .details > .pair): Added.
+        (body[dir=rtl] .resource-details > section > .details > .pair): Added.
+        (.resource-details > section > .details > .pair > .key): Added.
+        (.resource-details > section > .details > .pair > .value): Added.
+        (body[dir] .resource-details > section.error > .details): Added.
+        (.resource-details > section.error > .details > .pair > .key): Added.
+        Move commonly used functions/styles from container classes onto this object.
+
+        * UserInterface/Main.html:
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-11-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table should support shift-extending the row selection
+        https://bugs.webkit.org/show_bug.cgi?id=189718
+        <rdar://problem/44577942>
+
+        Reviewed by Devin Rousso.
+
+        Allow the table selection to be extended by shift-clicking a row, or by
+        holding shift and pressing either the up or down arrow key. If both command
+        and shift are pressed, shift is ignored. The selection behavior is modeled
+        after AppKit's NSTableView.
+
+        * UserInterface/Base/IndexSet.js:
+        (WI.IndexSet.prototype.addRange):
+        (WI.IndexSet.prototype.deleteRange):
+        (WI.IndexSet.prototype.equals):
+        (WI.IndexSet.prototype.difference):
+
+        * UserInterface/Views/Table.js:
+        (WI.Table):
+        (WI.Table.prototype.set allowsMultipleSelection):
+        (WI.Table.prototype.reloadData):
+        (WI.Table.prototype.selectRow):
+        (WI.Table.prototype.deselectRow):
+        (WI.Table.prototype._handleKeyDown):
+        Holding shift and pressing either the up or down arrow key extends the
+        selection to the next unselected row adjacent to the anchor row, or causes
+        the anchor row to be deselected, decreasing the selection. The table chooses
+        the action to take based on the direction of movement (up or down), and
+        the currently selected rows.
+
+        (WI.Table.prototype._selectRowsFromArrowKey):
+        (WI.Table.prototype._handleMouseDown.normalizeRange):
+        (WI.Table.prototype._handleMouseDown):
+        Clicking a row while holding down shift extends the selection to include
+        the rows between the anchor row (exclusive) and clicked row (inclusive).
+        The anchor row is equal to the value of `_selectedRowIndex` prior to
+        clicking a new row.
+
+        (WI.Table.prototype._deselectAllAndSelect):
+        (WI.Table.prototype._removeRows):
+        (WI.Table.prototype._toggleSelectedRowStyle):
+        (WI.Table.prototype._updateSelectedRows):
+        Helper method for updating the selection to the specified rows, and updating
+        DOM styles for rows that are added to or removed from the selection.
+
+2018-11-12  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: inline swatches don't work when Multiple Properties Selection is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=191165
+        <rdar://problem/45737972>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._createInlineSwatch):
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField):
+        `click` is fired after `mouseup` and inline swatches are activated by `click` event.
+        Changing this to `click` allows swatches to activate before editing starts.
+
+        (WI.SpreadsheetTextField.prototype._handleMouseDown):
+        Clicking on the field that is being edited should't restart editing. It should move the text caret.
+
+2018-11-12  Don Olmstead  <don.olmstead@sony.com>
+
+        Shipped PNGs include bad profiles: iCCP: known incorrect sRGB profile
+        https://bugs.webkit.org/show_bug.cgi?id=189230
+        <rdar://problem/44050379>
+
+        Reviewed by Joseph Pecoraro.
+
+        Runs all png images through zopflipng. This results in a smaller file
+        size and takes care of this issue as a byproduct.
+
+        * UserInterface/Images/ApplicationCache.png:
+        * UserInterface/Images/ApplicationCache@2x.png:
+        * UserInterface/Images/ApplicationCacheManifest.png:
+        * UserInterface/Images/ApplicationCacheManifest@2x.png:
+        * UserInterface/Images/Breakpoint.png:
+        * UserInterface/Images/Breakpoint@2x.png:
+        * UserInterface/Images/BreakpointInactive.png:
+        * UserInterface/Images/BreakpointInactive@2x.png:
+        * UserInterface/Images/ClippingCSS.png:
+        * UserInterface/Images/ClippingCSS@2x.png:
+        * UserInterface/Images/ClippingCSSLarge.png:
+        * UserInterface/Images/ClippingCSSLarge@2x.png:
+        * UserInterface/Images/ClippingGeneric.png:
+        * UserInterface/Images/ClippingGeneric@2x.png:
+        * UserInterface/Images/ClippingGenericLarge.png:
+        * UserInterface/Images/ClippingGenericLarge@2x.png:
+        * UserInterface/Images/ClippingJS.png:
+        * UserInterface/Images/ClippingJS@2x.png:
+        * UserInterface/Images/ClippingJSLarge.png:
+        * UserInterface/Images/ClippingJSLarge@2x.png:
+        * UserInterface/Images/ColorIcon.png:
+        * UserInterface/Images/ColorIcon@2x.png:
+        * UserInterface/Images/Cookie.png:
+        * UserInterface/Images/Cookie@2x.png:
+        * UserInterface/Images/Database.png:
+        * UserInterface/Images/Database@2x.png:
+        * UserInterface/Images/DatabaseTable.png:
+        * UserInterface/Images/DatabaseTable@2x.png:
+        * UserInterface/Images/DocumentCSS.png:
+        * UserInterface/Images/DocumentCSS@2x.png:
+        * UserInterface/Images/DocumentCSSLarge.png:
+        * UserInterface/Images/DocumentCSSLarge@2x.png:
+        * UserInterface/Images/DocumentFont.png:
+        * UserInterface/Images/DocumentFont@2x.png:
+        * UserInterface/Images/DocumentFontLarge.png:
+        * UserInterface/Images/DocumentFontLarge@2x.png:
+        * UserInterface/Images/DocumentGL.png:
+        * UserInterface/Images/DocumentGL@2x.png:
+        * UserInterface/Images/DocumentGeneric.png:
+        * UserInterface/Images/DocumentGeneric@2x.png:
+        * UserInterface/Images/DocumentGenericLarge.png:
+        * UserInterface/Images/DocumentGenericLarge@2x.png:
+        * UserInterface/Images/DocumentImage.png:
+        * UserInterface/Images/DocumentImage@2x.png:
+        * UserInterface/Images/DocumentImageLarge.png:
+        * UserInterface/Images/DocumentImageLarge@2x.png:
+        * UserInterface/Images/DocumentJS.png:
+        * UserInterface/Images/DocumentJS@2x.png:
+        * UserInterface/Images/DocumentJSLarge.png:
+        * UserInterface/Images/DocumentJSLarge@2x.png:
+        * UserInterface/Images/DocumentMarkup.png:
+        * UserInterface/Images/DocumentMarkup@2x.png:
+        * UserInterface/Images/DocumentMarkupLarge.png:
+        * UserInterface/Images/DocumentMarkupLarge@2x.png:
+        * UserInterface/Images/FolderGeneric.png:
+        * UserInterface/Images/FolderGeneric@2x.png:
+        * UserInterface/Images/GradientStop.png:
+        * UserInterface/Images/GradientStop@2x.png:
+        * UserInterface/Images/GradientStopSelected.png:
+        * UserInterface/Images/GradientStopSelected@2x.png:
+        * UserInterface/Images/HoverMenuButton.png:
+        * UserInterface/Images/HoverMenuButton@2x.png:
+        * UserInterface/Images/InstructionPointer.png:
+        * UserInterface/Images/InstructionPointer@2x.png:
+        * UserInterface/Images/LocalStorage.png:
+        * UserInterface/Images/LocalStorage@2x.png:
+        * UserInterface/Images/SessionStorage.png:
+        * UserInterface/Images/SessionStorage@2x.png:
+        * UserInterface/Images/SliderThumb.png:
+        * UserInterface/Images/SliderThumb@2x.png:
+        * UserInterface/Images/SliderThumbPressed.png:
+        * UserInterface/Images/SliderThumbPressed@2x.png:
+        * UserInterface/Images/WebSocket.png:
+        * UserInterface/Images/WebSocket@2x.png:
+        * UserInterface/Images/WebSocketLarge.png:
+        * UserInterface/Images/WebSocketLarge@2x.png:
+        * UserInterface/Images/WorkerScript.png:
+        * UserInterface/Images/WorkerScript@2x.png:
+        * UserInterface/Images/WorkerScriptLarge.png:
+        * UserInterface/Images/WorkerScriptLarge@2x.png:
+
+2018-11-12  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Pressing Tab or Enter should start editing focused property
+        https://bugs.webkit.org/show_bug.cgi?id=191510
+        <rdar://problem/45970897>
+
+        Reviewed by Dean Jackson.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._handleKeyDown):
+
+2018-11-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Start moving toward better multi-target support
+        https://bugs.webkit.org/show_bug.cgi?id=191345
+
+        Reviewed by Devin Rousso.
+
+        This change continues the move toward better multi-target support
+        by explicitly using explicit target agents in more places, and
+        converting generalized feature checks into target agnostic versions
+        that use the new InspectorBackend.domains, which does not vary based
+        on the connected targets / debuggable type.
+
+        I also audited uses of RuntimeAgent, ConsoleAgent, and DebuggerAgent
+        for better multi-target support since these agents should already
+        have complete multi-target support.
+
+        * UserInterface/Protocol/Target.js:
+        (WI.Target.prototype.initialize):
+        Move explicitly to target.Agent feature checks with a known target.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype.initializeTarget):
+        (WI.DebuggerManager.prototype._pauseForInternalScriptsDidChange):
+        Move explicitly to target.DebuggerAgent for feature checks with a known target.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.initializeTarget):
+        Move explicitly to target.NetworkAgent for feature checks with a known target.
+
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WI.RuntimeManager.prototype.initializeTarget):
+        (WI.RuntimeManager.prototype.saveResult):
+        * UserInterface/Protocol/RemoteObject.js:
+        (WI.RemoteObject.prototype.updatePreview):
+        (WI.RemoteObject.prototype.getDisplayablePropertyDescriptors):
+        (WI.RemoteObject.prototype.deprecatedGetDisplayableProperties):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype._createTypeTokenAnnotator):
+        (WI.SourceCodeTextEditor.prototype._createBasicBlockAnnotator):
+        Move explicitly to target.RuntimeAgent for feature checks with a known target.
+
+        * UserInterface/Models/CSSCompletions.js:
+        (WI.CSSCompletions.initializeCSSCompletions):
+        Move explicitly to target.CSSAgent for feature checks with a known target.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        Use the DebuggerAgent from the target associated with the DOMNode's
+        remote object instead of assuming the main target.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView):
+        Update the ConsoleAgent setting on all targets that support it.
+
+        * UserInterface/Views/BreakpointActionView.js:
+        (WI.BreakpointActionView):
+        All backends support BreakpointActionType, the assertion can go away.
+
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype.get navigationItems):
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView.prototype.get navigationItems):
+        Include additional `window.FooAgent` checks for these since they will need
+        to be revisited in the future.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.get domains):
+        (InspectorBackendClass.prototype.activateDomain):
+        Expose InspectorBackend.domains.<Domain> for feature checking.
+
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        (WI.BreakpointPopoverController.prototype._createPopoverContent):
+        * UserInterface/Controllers/CSSManager.js:
+        (WI.CSSManager):
+        (WI.CSSManager.prototype._mainResourceDidChange):
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype._attemptAutoCapturingForFrame):
+        (WI.TimelineManager.prototype._updateAutoCaptureInstruments):
+        (WI.TimelineManager):
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.prototype.startRecording):
+        (WI.Canvas.prototype.recordingFinished):
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WI.ScriptSyntaxTree.functionReturnDivot):
+        * UserInterface/Protocol/DebuggerObserver.js:
+        (WI.DebuggerObserver):
+        * UserInterface/Protocol/NetworkObserver.js:
+        (WI.NetworkObserver.prototype.requestWillBeSent):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+        (WI.DebuggerSidebarPanel.prototype._handleCreateBreakpointClicked):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WI.NetworkTimelineView):
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WI.ResourceDetailsSidebarPanel.prototype._refreshRequestAndResponse):
+        * UserInterface/Views/WebSocketContentView.js:
+        (WI.WebSocketContentView):
+        (WI.NetworkManager.prototype.webSocketWillSendHandshakeRequest):
+        (WI.DebuggerManager.prototype.debuggerDidResume):
+        Feature check in a target agnostic way.
+
+2018-11-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: ResourceQueryController should early return when query is longer than search string
+        https://bugs.webkit.org/show_bug.cgi?id=191436
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/ResourceQueryController.js:
+
+        * UserInterface/Models/ResourceQueryMatch.js:
+        (WI.ResourceQueryMatch):
+        Drive-by fixes.
+
+2018-11-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Uncaught Exception: undefined is not an object (evaluating 'treeElement.parent.removeChild')
+        https://bugs.webkit.org/show_bug.cgi?id=191454
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel.prototype._scriptsCleared):
+        This was intending to iterate the Map's values, which are tree elements.
+
+2018-11-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Potential for watch expressions to never show results
+        https://bugs.webkit.org/show_bug.cgi?id=191438
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WI.ScopeChainDetailsSidebarPanel.prototype._generateWatchExpressionsSection):
+        If there was no object don't bail, continue and resolve the Promise.
+        In this case we can fallback to show `undefined`. This code might not be
+        reachable right now, but is wrong as is.
+
+2018-11-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Debugger Popover does not work when paused in Worker
+        https://bugs.webkit.org/show_bug.cgi?id=191342
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptExpression.populate):
+        (WI.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptExpression):
+        When receiving the result of the popover evaluation associate the RemoteObject with
+        the target we used to evaluate (such as the Debugger call frame), not the target
+        associated with the editor.
+
+2018-11-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Restrict domains at the target level instead of only at the window level
+        https://bugs.webkit.org/show_bug.cgi?id=191344
+
+        Reviewed by Devin Rousso.
+
+        With this change the list of agents available on the target should accurately
+        reflect the domains that target supports. We should start moving in the direction
+        that if we are checking for, or using, a feature, we should ideally be using
+        code that looks like `target.FooAgent.method` and not `window.FooAgent` or
+        an unprefixed `FooAgent`. More changes to follow.
+
+        * UserInterface/Controllers/AppControllerBase.js:
+        * UserInterface/Base/DebuggableType.js: Added.
+        Extract debuggable type enum out into its own file loaded early on.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        Load DebuggableType.js.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.initializeTarget):
+        With these changes target.ServiceWorker is only exposed on a ServiceWorker target.
+
+        * UserInterface/Protocol/Connection.js:
+        (InspectorBackend.WorkerConnection):
+        With these changes Target.js restricts the domains exposed on the Target so just
+        clone all of the agents (we don't need to do anything special).
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.activateDomain):
+        Update supported domains per-type. If there is no explicit availability
+        then the domain is supported on all types.
+
+        (InspectorBackendClass.prototype.supportedDomainsForDebuggableType):
+        Get supported domains per-type.
+
+        (InspectorBackendClass.prototype.get workerSupportedDomains): Deleted.
+        (InspectorBackendClass.prototype.workerSupportedDomain): Deleted.
+        workerSupportedDomains is now unnecessary.
+
+        * UserInterface/Protocol/Target.js:
+        (WI.Target.prototype._supportedDomainsForTargetType):
+        Restrict supported domains for this target based on its type.
+
+        * UserInterface/Protocol/Legacy/10.3/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/11.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/11.3/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/12.0/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-10.3.json:
+        * Versions/Inspector-iOS-11.0.json:
+        * Versions/Inspector-iOS-11.3.json:
+        * Versions/Inspector-iOS-12.0.json:
+        Regenerate protocol files now that workerSupportedDomains is unnecessary
+        and explicit availability has been added to other domains.
+
+2018-11-07  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION(r236705): Web Inspector: wrong text color for selected DataGrid row
+        https://bugs.webkit.org/show_bug.cgi?id=191405
+        <rdar://problem/45893283>
+
+        Reviewed by Matt Baker.
+
+        Selection background color for both Dark Mode mode and Light Mode is dark blue.
+        The text color for both cases should be white.
+
+        * UserInterface/Views/DataGrid.css:
+        (body:not(.window-inactive, .window-docked-inactive) .data-grid:focus tr.editable.selected .cell-content > input):
+
 2018-11-07  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Fix "Javascript" => "JavaScript" enum in protocol generated objects

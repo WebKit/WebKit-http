@@ -1,3 +1,137 @@
+2018-11-12  Mark Lam  <mark.lam@apple.com>
+
+        Add OOM detection to StringPrototype's substituteBackreferences().
+        https://bugs.webkit.org/show_bug.cgi?id=191563
+        <rdar://problem/45720428>
+
+        Reviewed by Saam Barati.
+
+        Enhanced StringBuilder::toString() to skip the shrinkToFit(), reifyString(), and
+        the hasOverflowed() check if m_string is not null.  When m_string is not null,
+        the StringBuilder either only has a single String in m_string (with m_buffer being 
+        null), or reifyString() has already been called (resulting in a non-null m_string
+        with a possibly non-null m_buffer).
+
+        We can skip the overflow check because:
+        1. if the StringBuilder only has a single String, then there cannot be an overflow.
+        2. if reifyString() has already been called, then the hasOverflowed() checked has
+           already been done because every code path that calls reifyString() first does
+           the hasOverflowed() check.
+
+        We can skip shrinkToFit() because it only applies to m_buffer.
+        1. if the StringBuilder only has a single String, then there's no m_buffer to shrink.
+        2. if reifyString() has already been called, then we either came down
+           a. the toString() path with a null m_string previously, where we would have
+              already called shrinkToFit() before reifyString(), or
+           b. the toStringPreserveCapacity() path where we don't want to shrinkToFit().
+
+        We can skip reifyString() because:
+        1. if the StringBuilder only has a single String, then the string is already reified.
+        2. if reifyString() has been already called, then the string is already reified.
+
+        Note that if m_string is the null string and m_buffer is null, reifyString() will
+        replace it with the empty string.  For this reason, we cannot solely check for
+        !m_buffer because we need to reify the null string into the empty string.
+
+        Note also that if m_string is null and m_buffer is non-null, reifyString() will
+        create a String and set m_string to it.  However, m_buffer remains non-null.
+        For this reason, we cannot assert !m_buffer alone when m_string is non-null.
+        We add a m_isReified flag (only when assertions are enabled) to track the reified
+        case where both m_buffer and m_string are non-null.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::reifyString const):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::toString):
+
+2018-11-10  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix a fixme: rename wtfObjcMsgSend to wtfObjCMsgSend
+        https://bugs.webkit.org/show_bug.cgi?id=191492
+
+        Reviewed by Alex Christensen.
+
+        Because renaming ObjcRuntimeExtras.h to ObjCRuntimeExtras.h only changes
+        the cases, some systems have issues with applying this patch.
+
+        To work around the problem, the change is made is two patches, first rename to
+        WTFObjCRuntimeExtras.h, then back to ObjCRuntimeExtras.h.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/WTFObjCRuntimeExtras.h: Renamed from Source/WTF/wtf/ObjcRuntimeExtras.h.
+        (wtfObjCMsgSend):
+
+2018-11-09  Keith Miller  <keith_miller@apple.com>
+
+        LLInt VectorSizeOffset should be based on offset extraction
+        https://bugs.webkit.org/show_bug.cgi?id=191468
+
+        Reviewed by Yusuke Suzuki.
+
+        Make things friends with LLIntOffsetsExtractor.
+
+        * wtf/RefCountedArray.h:
+        * wtf/Vector.h:
+
+2018-11-09  Jim Mason  <jmason@ibinx.com>
+
+        [WTF] Changes in bug 188867 break non-Linux Unix builds
+        https://bugs.webkit.org/show_bug.cgi?id=191380
+
+        The intention of 188867 was to split out platform-specific
+        heap query/release code.  Any unsupported platform
+        would use a generic, no-op stub.  However, wtf/PlatformGTK.cmake
+        ended up sending all non-Linux platforms through the Linux
+        implementation, which breaks the build for those platforms.
+        This includes any user of the GTK target which is not Linux,
+        such as the *BSDs, Solaris, etc.
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/PlatformGTK.cmake: Updated to include Linux-specific
+        code only for Linux; all other platforms use the generic stub.
+
+2018-11-06  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed mbmalloc target from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=191313
+
+        Reviewed by Saam Barati.
+
+        For benchmarking, WTF::fastMalloc is no longer meaningfully different
+        from bmalloc. (And bmalloc has its own mbmalloc target.)
+
+        * Configurations/mbmalloc.xcconfig: Removed.
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/mbmalloc.cpp: Removed.
+
+2018-11-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Re-add PLATFORM(IOS), now with the strict meaning
+        https://bugs.webkit.org/show_bug.cgi?id=191281
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h: No change in behavior. Some of the macros look a bit weird
+        when expanded, it might be that the values are incorrect for some flavors of iOS family.
+
+2018-11-08  Dean Jackson  <dino@apple.com>
+
+        Add a String literal that returns a String
+        https://bugs.webkit.org/show_bug.cgi?id=191425
+        <rdar://problem/45914556>
+
+        Reviewed by Sam Weinig.
+
+        Add a new String literal, _str, that will return a String type.
+        This is useful when ""_s won't work, such as for things that
+        don't take an ASCIILiteral directly e.g. ExceptionOr<String>
+        or Variants.
+
+        * wtf/text/WTFString.h:
+        (WTF::StringLiterals::operator _str): Added.
+
 2018-11-06  Justin Fan  <justin_fan@apple.com>
 
         [WebGPU] Experimental prototype for WebGPURenderPipeline and WebGPUSwapChain

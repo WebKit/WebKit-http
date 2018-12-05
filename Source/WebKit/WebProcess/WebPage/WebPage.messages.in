@@ -106,13 +106,17 @@ messages -> WebPage LegacyReceiver {
     StartAutoscrollAtPosition(WebCore::FloatPoint positionInWindow)
     CancelAutoscroll()
     RequestAssistedNodeInformation(WebKit::CallbackID callbackID)
+    HardwareKeyboardAvailabilityChanged()
 #endif
 
     SetControlledByAutomation(bool controlled)
 
+    ConnectInspector(String targetId)
+    DisconnectInspector(String targetId)
+    SendMessageToTargetBackend(String targetId, String message)
+
 #if ENABLE(REMOTE_INSPECTOR)
-    SetAllowsRemoteInspection(bool allow)
-    SetRemoteInspectionNameOverride(String name)
+    SetIndicating(bool indicating);
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -211,6 +215,10 @@ messages -> WebPage LegacyReceiver {
     ValidateCommand(String name, WebKit::CallbackID callbackID)
     ExecuteEditCommand(String name, String argument)
 
+    IncreaseListLevel()
+    DecreaseListLevel()
+    ChangeListType()
+
     SetNeedsFontAttributes(bool needsFontAttributes)
 
     RequestFontAttributesAtSelectionStart(WebKit::CallbackID callbackID)
@@ -235,7 +243,7 @@ messages -> WebPage LegacyReceiver {
 
     SetUseFixedLayout(bool fixed)
     SetFixedLayoutSize(WebCore::IntSize size)
-    ListenForLayoutMilestones(uint32_t milestones)
+    ListenForLayoutMilestones(OptionSet<WebCore::LayoutMilestone> layoutMilestones)
     SetSuppressScrollbarAnimations(bool suppressAnimations)
 
     SetEnableVerticalRubberBanding(bool enableVerticalRubberBanding)

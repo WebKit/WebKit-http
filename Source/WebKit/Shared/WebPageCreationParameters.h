@@ -37,7 +37,7 @@
 #include <WebCore/Color.h>
 #include <WebCore/FloatSize.h>
 #include <WebCore/IntSize.h>
-#include <WebCore/LayoutMilestones.h>
+#include <WebCore/LayoutMilestone.h>
 #include <WebCore/MediaProducer.h>
 #include <WebCore/Pagination.h>
 #include <WebCore/ScrollTypes.h>
@@ -130,11 +130,6 @@ struct WebPageCreationParameters {
 
     bool controlledByAutomation;
 
-#if ENABLE(REMOTE_INSPECTOR)
-    bool allowsRemoteInspection;
-    String remoteInspectionNameOverride;
-#endif
-
 #if PLATFORM(MAC)
     ColorSpaceData colorSpace;
     bool useSystemAppearance;
@@ -154,13 +149,14 @@ struct WebPageCreationParameters {
 #endif
 #if PLATFORM(COCOA)
     bool smartInsertDeleteEnabled;
+    Vector<String> additionalSupportedImageTypes;
 #endif
     bool appleMailPaginationQuirkEnabled;
     bool appleMailLinesClampEnabled;
     bool shouldScaleViewToFitDocument;
 
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection;
-    WebCore::LayoutMilestones observedLayoutMilestones;
+    OptionSet<WebCore::LayoutMilestone> observedLayoutMilestones;
 
     String overrideContentSecurityPolicy;
     std::optional<double> cpuLimit;

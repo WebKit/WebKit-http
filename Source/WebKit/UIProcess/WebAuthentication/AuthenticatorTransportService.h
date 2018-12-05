@@ -54,7 +54,7 @@ public:
     virtual ~AuthenticatorTransportService() = default;
 
     // This operation is guaranteed to execute asynchronously.
-    void startDiscovery() const;
+    void startDiscovery();
 
 protected:
     explicit AuthenticatorTransportService(Observer&);
@@ -62,7 +62,7 @@ protected:
     Observer* observer() const { return m_observer.get(); }
 
 private:
-    virtual void startDiscoveryInternal() const = 0;
+    virtual void startDiscoveryInternal() = 0;
 
     WeakPtr<Observer> m_observer;
 };

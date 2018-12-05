@@ -40,6 +40,8 @@ list(APPEND WebKit_SOURCES
 
     UIProcess/API/C/WKViewportAttributes.cpp
 
+    UIProcess/API/C/curl/WKWebsiteDataStoreRefCurl.cpp
+
     UIProcess/API/C/win/WKView.cpp
 
     UIProcess/API/win/APIWebsiteDataStoreWin.cpp
@@ -47,6 +49,8 @@ list(APPEND WebKit_SOURCES
     UIProcess/Launcher/win/ProcessLauncherWin.cpp
 
     UIProcess/WebStorage/StorageManager.cpp
+
+    UIProcess/WebsiteData/curl/WebsiteDataStoreCurl.cpp
 
     UIProcess/WebsiteData/win/WebsiteDataStoreWin.cpp
 
@@ -105,6 +109,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/Shared/unix"
     "${WEBKIT_DIR}/Shared/win"
     "${WEBKIT_DIR}/UIProcess/API/C/cairo"
+    "${WEBKIT_DIR}/UIProcess/API/C/curl"
     "${WEBKIT_DIR}/UIProcess/API/C/win"
     "${WEBKIT_DIR}/UIProcess/API/cpp/win"
     "${WEBKIT_DIR}/UIProcess/API/win"
@@ -190,12 +195,14 @@ WEBKIT_WRAP_SOURCELIST(${WebKit_SOURCES})
 set(WebKit_FORWARDING_HEADERS_DIRECTORIES
     Shared/API/c
 
+    Shared/API/c/cairo
     Shared/API/c/cf
     Shared/API/c/win
 
     UIProcess/API/C
     UIProcess/API/cpp
 
+    UIProcess/API/C/curl
     UIProcess/API/C/win
 
     WebProcess/InjectedBundle/API/c

@@ -33,6 +33,7 @@
 #if PLATFORM(IOS_FAMILY)
 @class _WKActivatedElementInfo;
 @protocol UITextInputMultiDocument;
+@protocol UITextInputPrivate;
 #endif
 
 @interface WKWebView (AdditionalDeclarations)
@@ -44,6 +45,10 @@
 - (void)subscript:(id)sender;
 - (void)unscript:(id)sender;
 #endif
+@end
+
+@interface WKWebView (TestWebKitAPI)
+- (BOOL)_synchronouslyExecuteEditCommand:(NSString *)command argument:(NSString *)argument;
 @end
 
 @interface TestMessageHandler : NSObject <WKScriptMessageHandler>
@@ -72,7 +77,7 @@
 
 #if PLATFORM(IOS_FAMILY)
 @interface TestWKWebView (IOSOnly)
-@property (nonatomic, readonly) UIView <UITextInput, UITextInputMultiDocument> *textInputContentView;
+@property (nonatomic, readonly) UIView <UITextInputPrivate, UITextInputMultiDocument> *textInputContentView;
 @property (nonatomic, readonly) RetainPtr<NSArray> selectionRectsAfterPresentationUpdate;
 @property (nonatomic, readonly) CGRect caretViewRectInContentCoordinates;
 @property (nonatomic, readonly) NSArray<NSValue *> *selectionViewRectsInContentCoordinates;

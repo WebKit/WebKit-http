@@ -29,7 +29,7 @@
 #if USE(CURL)
 
 #include "Cookie.h"
-#include "CookieJarCurlDatabase.h"
+#include "CookieJarCurl.h"
 #include "CookieJarDB.h"
 #include "CookieRequestHeaderFieldProxy.h"
 #include "CurlContext.h"
@@ -57,7 +57,7 @@ static String defaultCookieJarPath()
 NetworkStorageSession::NetworkStorageSession(PAL::SessionID sessionID, NetworkingContext* context)
     : m_sessionID(sessionID)
     , m_context(context)
-    , m_cookieStorage(makeUniqueRef<CookieJarCurlDatabase>())
+    , m_cookieStorage(makeUniqueRef<CookieJarCurl>())
     , m_cookieDatabase(makeUniqueRef<CookieJarDB>(defaultCookieJarPath()))
 {
 }
@@ -71,7 +71,7 @@ NetworkingContext* NetworkStorageSession::context() const
     return m_context.get();
 }
 
-void NetworkStorageSession::setCookieDatabase(UniqueRef<CookieJarDB>&& cookieDatabase) const
+void NetworkStorageSession::setCookieDatabase(UniqueRef<CookieJarDB>&& cookieDatabase)
 {
     m_cookieDatabase = WTFMove(cookieDatabase);
 }
@@ -191,6 +191,11 @@ std::pair<String, bool> NetworkStorageSession::cookieRequestHeaderFieldValue(con
 std::pair<String, bool> NetworkStorageSession::cookieRequestHeaderFieldValue(const CookieRequestHeaderFieldProxy& headerFieldProxy) const
 {
     return cookieStorage().cookieRequestHeaderFieldValue(*this, headerFieldProxy.firstParty, headerFieldProxy.sameSiteInfo, headerFieldProxy.url, headerFieldProxy.frameID, headerFieldProxy.pageID, headerFieldProxy.includeSecureCookies);
+}
+
+void NetworkStorageSession::setProxySettings(CurlProxySettings&& proxySettings)
+{
+    CurlContext::singleton().setProxySettings(WTFMove(proxySettings));
 }
 
 } // namespace WebCore

@@ -47,8 +47,8 @@ public:
     String url() const final;
     bool hasLocalDebugger() const final;
 
-    void connect(Inspector::FrontendChannel*, bool isAutomaticConnection = false, bool immediatelyPause = false) final;
-    void disconnect(Inspector::FrontendChannel*) final;
+    void connect(Inspector::FrontendChannel&, bool isAutomaticConnection = false, bool immediatelyPause = false) final;
+    void disconnect(Inspector::FrontendChannel&) final;
     void dispatchMessageFromRemote(const String& message) final;
     void setIndicating(bool) final;
 
@@ -58,7 +58,6 @@ public:
 private:
     Page& m_page;
     String m_nameOverride;
-    bool m_forcedDeveloperExtrasEnabled { false };
 };
 
 } // namespace WebCore

@@ -287,7 +287,7 @@ void TextDecorationPainter::paintTextDecoration(const TextRun& textRun, const Fl
         if (m_decorations.contains(TextDecoration::Underline)) {
             float textDecorationBaseFontSize = 16;
             auto defaultGap = m_lineStyle.computedFontSize() / textDecorationBaseFontSize;
-            int offset = computeUnderlineOffset(m_lineStyle.textUnderlinePosition(), m_lineStyle.textUnderlineOffset(), m_lineStyle.fontMetrics(), m_inlineTextBox, defaultGap);
+            float offset = computeUnderlineOffset(m_lineStyle.textUnderlinePosition(), m_lineStyle.textUnderlineOffset(), m_lineStyle.fontMetrics(), m_inlineTextBox, defaultGap);
             float wavyOffset = m_styles.underlineStyle == TextDecorationStyle::Wavy ? m_wavyOffset : 0;
             FloatRect rect(localOrigin, FloatSize(m_width, textDecorationThickness));
             rect.move(0, offset + wavyOffset);
@@ -315,7 +315,7 @@ void TextDecorationPainter::paintTextDecoration(const TextRun& textRun, const Fl
 static Color decorationColor(const RenderStyle& style)
 {
     // Check for text decoration color first.
-    Color result = style.visitedDependentColorWithColorFilter(CSSPropertyWebkitTextDecorationColor);
+    Color result = style.visitedDependentColorWithColorFilter(CSSPropertyTextDecorationColor);
     if (result.isValid())
         return result;
     if (style.hasPositiveStrokeWidth()) {

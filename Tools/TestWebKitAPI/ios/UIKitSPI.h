@@ -79,6 +79,7 @@ WTF_EXTERN_C_END
 - (UITextInputTraits *)textInputTraits;
 - (void)insertTextSuggestion:(UITextSuggestion *)textSuggestion;
 - (void)handleKeyWebEvent:(WebEvent *)theEvent withCompletionHandler:(void (^)(WebEvent *, BOOL))completionHandler;
+- (BOOL)_shouldSuppressSelectionCommands;
 @end
 
 @protocol UITextInputMultiDocument <NSObject>
@@ -162,6 +163,7 @@ WTF_EXTERN_C_END
 
 @interface UIResponder (UIKitSPI)
 - (UIResponder *)firstResponder;
+- (void)makeTextWritingDirectionNatural:(id)sender;
 @end
 
 @interface UIKeyboard ()

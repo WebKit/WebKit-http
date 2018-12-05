@@ -63,6 +63,7 @@ private:
 
     WebCore::GraphicsLayerFactory* graphicsLayerFactory() override;
     void setRootCompositingLayer(WebCore::GraphicsLayer*) override;
+    void scheduleInitialDeferredPaint() override;
     void scheduleCompositingLayerFlush() override;
     void scheduleCompositingLayerFlushImmediately() override;
     void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
@@ -79,6 +80,8 @@ private:
     bool supportsAsyncScrolling() override { return true; }
 
     void setLayerTreeStateIsFrozen(bool) override;
+    bool layerTreeStateIsFrozen() const override { return m_isFlushingSuspended; }
+    bool layerFlushThrottlingIsActive() const override { return m_isThrottlingLayerFlushes && m_layerFlushTimer.isActive(); }
 
     void forceRepaint() override;
     bool forceRepaintAsync(CallbackID) override { return false; }
@@ -106,11 +109,12 @@ private:
 
     bool adjustLayerFlushThrottling(WebCore::LayerFlushThrottleState::Flags) override;
 
-    bool dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones) override;
+    bool dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone>) override;
 
     void updateScrolledExposedRect();
     void updateRootLayers();
 
+    void flushInitialDeferredPaint();
     void flushLayers();
 
     WebCore::TiledBacking* mainFrameTiledBacking() const;
@@ -147,6 +151,7 @@ private:
     WebCore::Timer m_layerFlushTimer;
     bool m_isFlushingSuspended { false };
     bool m_hasDeferredFlush { false };
+    bool m_flushingInitialDeferredPaint { false };
     bool m_isThrottlingLayerFlushes { false };
     bool m_isLayerFlushThrottlingTemporarilyDisabledForInteraction { false };
     bool m_isInitialThrottledLayerFlush { false };
@@ -165,7 +170,7 @@ private:
     Vector<RemoteLayerTreeTransaction::TransactionCallbackID> m_pendingCallbackIDs;
     ActivityStateChangeID m_activityStateChangeID { ActivityStateChangeAsynchronous };
 
-    WebCore::LayoutMilestones m_pendingNewlyReachedLayoutMilestones { 0 };
+    OptionSet<WebCore::LayoutMilestone> m_pendingNewlyReachedLayoutMilestones;
 
     WebCore::GraphicsLayer* m_contentLayer { nullptr };
     WebCore::GraphicsLayer* m_viewOverlayRootLayer { nullptr };

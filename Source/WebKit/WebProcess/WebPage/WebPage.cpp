@@ -104,6 +104,7 @@
 #include "WebOpenPanelResultListener.h"
 #include "WebPageCreationParameters.h"
 #include "WebPageGroupProxy.h"
+#include "WebPageInspectorTargetController.h"
 #include "WebPageMessages.h"
 #include "WebPageOverlay.h"
 #include "WebPageProxyMessages.h"
@@ -246,6 +247,7 @@
 #include "VideoFullscreenManager.h"
 #include "WKStringCF.h"
 #include <WebCore/LegacyWebArchive.h>
+#include <WebCore/UTIRegistry.h>
 #include <wtf/MachSendRight.h>
 #endif
 
@@ -370,6 +372,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_resourceLoadClient(std::make_unique<API::InjectedBundle::ResourceLoadClient>())
     , m_uiClient(std::make_unique<API::InjectedBundle::PageUIClient>())
     , m_findController(makeUniqueRef<FindController>(this))
+    , m_inspectorTargetController(std::make_unique<WebPageInspectorTargetController>(*this))
     , m_userContentController(WebUserContentController::getOrCreate(parameters.userContentControllerID))
 #if ENABLE(GEOLOCATION)
     , m_geolocationPermissionRequestManager(makeUniqueRef<GeolocationPermissionRequestManager>(*this))
@@ -489,11 +492,6 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 
     m_page->setControlledByAutomation(parameters.controlledByAutomation);
 
-#if ENABLE(REMOTE_INSPECTOR)
-    m_page->setRemoteInspectionAllowed(parameters.allowsRemoteInspection);
-    m_page->setRemoteInspectionNameOverride(parameters.remoteInspectionNameOverride);
-#endif
-
     m_page->setCanStartMedia(false);
     m_mayStartMediaWhenInWindow = parameters.mayStartMediaWhenInWindow;
 
@@ -555,7 +553,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     setMuted(parameters.muted);
 
     // We use the DidFirstVisuallyNonEmptyLayout milestone to determine when to unfreeze the layer tree.
-    m_page->addLayoutMilestones(DidFirstLayout | DidFirstVisuallyNonEmptyLayout);
+    m_page->addLayoutMilestones({ DidFirstLayout, DidFirstVisuallyNonEmptyLayout });
 
     auto& webProcess = WebProcess::singleton();
     webProcess.addMessageReceiver(Messages::WebPage::messageReceiverName(), m_pageID, *this);
@@ -595,6 +593,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #if PLATFORM(COCOA)
     m_page->settings().setContentDispositionAttachmentSandboxEnabled(true);
     setSmartInsertDeleteEnabled(parameters.smartInsertDeleteEnabled);
+    WebCore::setAdditionalSupportedImageTypes(parameters.additionalSupportedImageTypes);
 #endif
 
 #if ENABLE(SERVICE_WORKER)
@@ -1148,6 +1147,21 @@ void WebPage::setEditable(bool editable)
     }
 }
 
+void WebPage::increaseListLevel()
+{
+    m_page->focusController().focusedOrMainFrame().editor().increaseSelectionListLevel();
+}
+
+void WebPage::decreaseListLevel()
+{
+    m_page->focusController().focusedOrMainFrame().editor().decreaseSelectionListLevel();
+}
+
+void WebPage::changeListType()
+{
+    m_page->focusController().focusedOrMainFrame().editor().changeSelectionListType();
+}
+
 bool WebPage::isEditingCommandEnabled(const String& commandName)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
@@ -1556,8 +1570,8 @@ void WebPage::scrollMainFrameIfNotAtMaxScrollPosition(const IntSize& scrollOffse
 void WebPage::drawRect(GraphicsContext& graphicsContext, const IntRect& rect)
 {
 #if PLATFORM(MAC)
-    auto* document = m_mainFrame->coreFrame()->document();
-    LocalDefaultSystemAppearance localAppearance(document ? document->useDarkAppearance() : false);
+    FrameView* mainFrameView = m_page->mainFrame().view();
+    LocalDefaultSystemAppearance localAppearance(mainFrameView ? mainFrameView->useDarkAppearance() : false);
 #endif
 
     GraphicsContextStateSaver stateSaver(graphicsContext);
@@ -1929,11 +1943,11 @@ void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArgum
 #endif
 }
 
-void WebPage::listenForLayoutMilestones(uint32_t milestones)
+void WebPage::listenForLayoutMilestones(OptionSet<WebCore::LayoutMilestone> milestones)
 {
     if (!m_page)
         return;
-    m_page->addLayoutMilestones(static_cast<LayoutMilestones>(milestones));
+    m_page->addLayoutMilestones(milestones);
 }
 
 void WebPage::setSuppressScrollbarAnimations(bool suppressAnimations)
@@ -2763,6 +2777,21 @@ void WebPage::setControlledByAutomation(bool controlled)
     m_page->setControlledByAutomation(controlled);
 }
 
+void WebPage::connectInspector(const String& targetId)
+{
+    m_inspectorTargetController->connectInspector(targetId);
+}
+
+void WebPage::disconnectInspector(const String& targetId)
+{
+    m_inspectorTargetController->disconnectInspector(targetId);
+}
+
+void WebPage::sendMessageToTargetBackend(const String& targetId, const String& message)
+{
+    m_inspectorTargetController->sendMessageToTargetBackend(targetId, message);
+}
+
 void WebPage::insertNewlineInQuotedContent()
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
@@ -2772,14 +2801,9 @@ void WebPage::insertNewlineInQuotedContent()
 }
 
 #if ENABLE(REMOTE_INSPECTOR)
-void WebPage::setAllowsRemoteInspection(bool allow)
+void WebPage::setIndicating(bool indicating)
 {
-    m_page->setRemoteInspectionAllowed(allow);
-}
-
-void WebPage::setRemoteInspectionNameOverride(const String& name)
-{
-    m_page->setRemoteInspectionNameOverride(name);
+    m_page->inspectorController().setIndicating(indicating);
 }
 #endif
 
@@ -3461,6 +3485,11 @@ RemoteWebInspectorUI* WebPage::remoteInspectorUI()
     if (!m_remoteInspectorUI)
         m_remoteInspectorUI = RemoteWebInspectorUI::create(*this);
     return m_remoteInspectorUI.get();
+}
+
+void WebPage::setHasLocalInspectorFrontend(bool hasLocalFrontend)
+{
+    send(Messages::WebPageProxy::SetHasLocalInspectorFrontend(hasLocalFrontend));
 }
 
 void WebPage::inspectorFrontendCountChanged(unsigned count)
@@ -6028,7 +6057,7 @@ void WebPage::removeAllUserContent()
     m_userContentController->removeAllUserContent();
 }
 
-void WebPage::dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones milestones)
+void WebPage::dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone> milestones)
 {
     RefPtr<API::Object> userData;
     injectedBundleLoaderClient().didReachLayoutMilestone(*this, milestones, userData);

@@ -47,7 +47,6 @@ webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpayment
 
 # skip in favor of tests in http/tests/paymentrequest
 imported/w3c/web-platform-tests/payment-request/payment-request-abort-method.https.html [ WontFix ]
-imported/w3c/web-platform-tests/payment-request/payment-request-canmakepayment-method.https.html [ WontFix ]
 imported/w3c/web-platform-tests/payment-request/payment-request-show-method.https.html [ WontFix ]
 imported/w3c/web-platform-tests/payment-request/rejects_if_not_active.https.html [ WontFix ]
 
@@ -67,8 +66,11 @@ webkit.org/b/187773 http/tests/webAPIStatistics [ Pass ]
 
 webkit.org/b/184569 storage/indexeddb/modern/transactions-stop-on-navigation.html [ Pass Failure ]
 
+[ Mojave+ ] fast/events/detect-caps-lock.html [ Pass ]
 
 fast/events/inactive-window-no-mouse-event.html [ Pass ]
+
+fast/animation/request-animation-frame-in-two-pages.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -902,3 +904,9 @@ http/wpt/credential-management/credentialscontainer-store-basics.https.html [ Sk
 http/wpt/webauthn/idl.https.html [ Skip ]
 
 webkit.org/b/183878 media/modern-media-controls/tracks-panel/tracks-panel-up-click-over-media-does-not-dimiss-media-controls-when-media-is-playing.html [ Pass Timeout ] 
+
+webkit.org/b/191644 [ Sierra ] fast/workers/worker-cloneport.html [ Pass Failure ]
+
+webkit.org/b/191642 accessibility/mac/selection-notification-focus-change.html [ Skip ]
+
+webkit.org/b/191658 [ Sierra Release ] fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Pass ImageOnlyFailure ]

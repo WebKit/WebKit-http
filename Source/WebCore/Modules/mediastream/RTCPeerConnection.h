@@ -51,6 +51,7 @@
 
 namespace WebCore {
 
+class MediaStream;
 class MediaStreamTrack;
 class PeerConnectionBackend;
 class RTCController;
@@ -62,8 +63,10 @@ class RTCStatsCallback;
 struct RTCAnswerOptions;
 struct RTCOfferOptions;
 struct RTCRtpParameters;
+
 struct RTCRtpTransceiverInit {
-    RTCRtpTransceiverDirection direction;
+    RTCRtpTransceiverDirection direction { RTCRtpTransceiverDirection::Sendrecv };
+    Vector<RefPtr<MediaStream>> streams;
 };
 
 class RTCPeerConnection final
@@ -125,9 +128,12 @@ public:
     void addInternalTransceiver(Ref<RTCRtpTransceiver>&& transceiver) { m_transceiverSet->append(WTFMove(transceiver)); }
 
     // 5.1 RTCPeerConnection extensions
-    const Vector<std::reference_wrapper<RTCRtpSender>>& getSenders() const { return m_transceiverSet->senders(); }
-    const Vector<std::reference_wrapper<RTCRtpReceiver>>& getReceivers() const { return m_transceiverSet->receivers(); }
-    const Vector<RefPtr<RTCRtpTransceiver>>& getTransceivers() const { return m_transceiverSet->list(); }
+    const Vector<std::reference_wrapper<RTCRtpSender>>& getSenders() const;
+    const Vector<std::reference_wrapper<RTCRtpReceiver>>& getReceivers() const;
+    const Vector<RefPtr<RTCRtpTransceiver>>& getTransceivers() const;
+
+    const Vector<std::reference_wrapper<RTCRtpSender>>& currentSenders() const { return m_transceiverSet->senders(); }
+    const Vector<RefPtr<RTCRtpTransceiver>>& currentTransceivers() const { return m_transceiverSet->list(); }
 
     ExceptionOr<Ref<RTCRtpSender>> addTrack(Ref<MediaStreamTrack>&&, const Vector<std::reference_wrapper<MediaStream>>&);
     ExceptionOr<void> removeTrack(RTCRtpSender&);

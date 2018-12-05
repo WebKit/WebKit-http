@@ -112,7 +112,6 @@ public:
     void setTimeToLiveUserInteraction(Seconds);
     void setMinimumTimeBetweenDataRecordsRemoval(Seconds);
     void setGrandfatheringTime(Seconds);
-    void setCacheMaxAgeCap(Seconds);
     void setResourceLoadStatisticsDebugMode(bool);
     bool isDebugModeEnabled() const { return m_debugModeEnabled; };
     void setPrevalentResourceForDebugMode(const String& domain);
@@ -128,6 +127,8 @@ public:
     bool hasHadUserInteraction(const String& primaryDomain);
 
     void setLastSeen(const String& primaryDomain, Seconds);
+
+    void didCreateNetworkProcess();
 
 private:
     static bool shouldBlockAndKeepCookies(const WebCore::ResourceLoadStatistics&);
@@ -151,6 +152,10 @@ private:
     void pruneStatisticsIfNeeded();
     WebCore::ResourceLoadStatistics& ensureResourceStatisticsForPrimaryDomain(const String&);
     Vector<String> topPrivatelyControlledDomainsToRemoveWebsiteDataFor();
+    void setCacheMaxAgeCap(Seconds);
+    void updateCacheMaxAgeCap();
+    void setAgeCapForClientSideCookies(Seconds);
+    void updateClientSideCookiesAgeCap();
 
 #if PLATFORM(COCOA)
     void registerUserDefaultsIfNeeded();
@@ -162,6 +167,8 @@ private:
         std::optional<Seconds> timeToLiveUserInteraction;
         Seconds minimumTimeBetweenDataRecordsRemoval { 1_h };
         Seconds grandfatheringTime { 24_h * 7 };
+        Seconds cacheMaxAgeCapTime { 24_h * 7 };
+        Seconds clientSideCookiesAgeCapTime { 24_h * 7 };
         bool shouldNotifyPagesWhenDataRecordsWereScanned { false };
         bool shouldClassifyResourcesBeforeDataRecordsRemoval { true };
         bool shouldSubmitTelemetry { true };

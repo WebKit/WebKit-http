@@ -202,9 +202,11 @@ namespace WebCore {
         ID2D1GeometrySink* activePath() const { return m_activePath.get(); }
         void appendGeometry(ID2D1Geometry*);
         void createGeometryWithFillMode(WindRule, COMPtr<ID2D1GeometryGroup>&) const;
-        void drawDidComplete() const;
+        void drawDidComplete();
 
         HRESULT initializePathState();
+        void openFigureAtCurrentPointIfNecessary();
+        void closeAnyOpenGeometries();
 #endif
 
 #ifndef NDEBUG
@@ -216,6 +218,7 @@ namespace WebCore {
         COMPtr<ID2D1GeometryGroup> m_path;
         COMPtr<ID2D1PathGeometry> m_activePathGeometry;
         COMPtr<ID2D1GeometrySink> m_activePath;
+        size_t m_openFigureCount { 0 };
 #else
         PlatformPathPtr m_path { nullptr };
 #endif

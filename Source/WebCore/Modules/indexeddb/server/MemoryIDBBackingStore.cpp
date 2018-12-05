@@ -205,7 +205,7 @@ IDBError MemoryIDBBackingStore::clearObjectStore(const IDBResourceIdentifier& tr
 
     ASSERT_UNUSED(transactionIdentifier, m_transactions.contains(transactionIdentifier));
 
-#if !LOG_DISABLED
+#ifndef NDEBUG
     auto transaction = m_transactions.get(transactionIdentifier);
     ASSERT(transaction->isWriting());
 #endif
@@ -555,8 +555,9 @@ void MemoryIDBBackingStore::registerObjectStore(Ref<MemoryObjectStore>&& objectS
     ASSERT(!m_objectStoresByIdentifier.contains(objectStore->info().identifier()));
     ASSERT(!m_objectStoresByName.contains(objectStore->info().name()));
 
+    auto identifier = objectStore->info().identifier();
     m_objectStoresByName.set(objectStore->info().name(), &objectStore.get());
-    m_objectStoresByIdentifier.set(objectStore->info().identifier(), WTFMove(objectStore));
+    m_objectStoresByIdentifier.set(identifier, WTFMove(objectStore));
 }
 
 void MemoryIDBBackingStore::unregisterObjectStore(MemoryObjectStore& objectStore)

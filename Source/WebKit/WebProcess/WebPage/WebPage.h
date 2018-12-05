@@ -205,27 +205,28 @@ class WebContextMenuItemData;
 class WebDataListSuggestionPicker;
 class WebDocumentLoader;
 class WebEvent;
+class PlaybackSessionManager;
+class VideoFullscreenManager;
 class WebFrame;
 class WebFullScreenManager;
+class WebGestureEvent;
 class WebImage;
 class WebInspector;
 class WebInspectorClient;
 class WebInspectorUI;
-class WebGestureEvent;
 class WebKeyboardEvent;
-class WebURLSchemeHandlerProxy;
 class WebMouseEvent;
 class WebNotificationClient;
 class WebOpenPanelResultListener;
 class WebPageGroupProxy;
+class WebPageInspectorTargetController;
 class WebPageOverlay;
-class PlaybackSessionManager;
 class WebPopupMenu;
+class WebTouchEvent;
+class WebURLSchemeHandlerProxy;
 class WebUndoStep;
 class WebUserContentController;
-class VideoFullscreenManager;
 class WebWheelEvent;
-class WebTouchEvent;
 class RemoteLayerTreeTransaction;
 
 enum class DeviceAccessState : uint8_t;
@@ -298,6 +299,7 @@ public:
     RemoteWebInspectorUI* remoteInspectorUI();
     bool isInspectorPage() { return !!m_inspectorUI || !!m_remoteInspectorUI; }
 
+    void setHasLocalInspectorFrontend(bool);
     void inspectorFrontendCountChanged(unsigned);
 
 #if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
@@ -469,7 +471,7 @@ public:
     bool setFixedLayoutSize(const WebCore::IntSize&);
     WebCore::IntSize fixedLayoutSize() const;
 
-    void listenForLayoutMilestones(uint32_t /* LayoutMilestones */);
+    void listenForLayoutMilestones(OptionSet<WebCore::LayoutMilestone>);
 
     void setSuppressScrollbarAnimations(bool);
     
@@ -913,6 +915,8 @@ public:
 
     bool platformPrefersTextLegibilityBasedZoomScaling() const;
     const WebCore::ViewportConfiguration& viewportConfiguration() const { return m_viewportConfiguration; }
+
+    void hardwareKeyboardAvailabilityChanged();
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -1032,12 +1036,16 @@ public:
     void addUserStyleSheet(const String& source, WebCore::UserContentInjectedFrames);
     void removeAllUserContent();
 
-    void dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones);
+    void dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone>);
 
     void didRestoreScrollPosition();
 
     bool isControlledByAutomation() const;
     void setControlledByAutomation(bool);
+
+    void connectInspector(const String& targetId);
+    void disconnectInspector(const String& targetId);
+    void sendMessageToTargetBackend(const String& targetId, const String& message);
 
     void insertNewlineInQuotedContent();
 
@@ -1184,6 +1192,10 @@ private:
     void executeEditCommand(const String&, const String&);
     void setEditable(bool);
 
+    void increaseListLevel();
+    void decreaseListLevel();
+    void changeListType();
+
     void setNeedsFontAttributes(bool);
 
     void mouseEvent(const WebMouseEvent&);
@@ -1216,8 +1228,7 @@ private:
     void requestFontAttributesAtSelectionStart(CallbackID);
 
 #if ENABLE(REMOTE_INSPECTOR)
-    void setAllowsRemoteInspection(bool);
-    void setRemoteInspectionNameOverride(const String&);
+    void setIndicating(bool);
 #endif
 
     void setDrawsBackground(bool);
@@ -1552,6 +1563,7 @@ private:
     RefPtr<WebInspector> m_inspector;
     RefPtr<WebInspectorUI> m_inspectorUI;
     RefPtr<RemoteWebInspectorUI> m_remoteInspectorUI;
+    std::unique_ptr<WebPageInspectorTargetController> m_inspectorTargetController;
 
 #if (PLATFORM(IOS_FAMILY) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     RefPtr<PlaybackSessionManager> m_playbackSessionManager;

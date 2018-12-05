@@ -176,6 +176,9 @@ public:
         return locateEnclosingFragmentedFlow();
     }
 
+    WEBCORE_EXPORT bool useDarkAppearance() const;
+    OptionSet<StyleColor::Options> styleColorOptions() const;
+
 #ifndef NDEBUG
     void setHasAXObject(bool flag) { m_hasAXObject = flag; }
     bool hasAXObject() const { return m_hasAXObject; }
@@ -793,6 +796,8 @@ public:
     void resetFragmentedFlowStateOnRemoval();
     void initializeFragmentedFlowStateOnInsertion();
     virtual void insertedIntoTree();
+
+    WEBCORE_EXPORT bool isTransparentRespectingParentFrames() const;
 
 protected:
     //////////////////////////////////////////

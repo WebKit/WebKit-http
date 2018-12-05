@@ -817,17 +817,17 @@ String Document::compatMode() const
 
 void Document::resetLinkColor()
 {
-    m_linkColor = StyleColor::colorFromKeyword(CSSValueWebkitLink, styleColorOptions());
+    m_linkColor = StyleColor::colorFromKeyword(CSSValueWebkitLink, styleColorOptions(nullptr));
 }
 
 void Document::resetVisitedLinkColor()
 {
-    m_visitedLinkColor = StyleColor::colorFromKeyword(CSSValueWebkitLink, styleColorOptions() | StyleColor::Options::ForVisitedLink);
+    m_visitedLinkColor = StyleColor::colorFromKeyword(CSSValueWebkitLink, styleColorOptions(nullptr) | StyleColor::Options::ForVisitedLink);
 }
 
 void Document::resetActiveLinkColor()
 {
-    m_activeLinkColor = StyleColor::colorFromKeyword(CSSValueWebkitActivelink, styleColorOptions());
+    m_activeLinkColor = StyleColor::colorFromKeyword(CSSValueWebkitActivelink, styleColorOptions(nullptr));
 }
 
 DOMImplementation& Document::implementation()
@@ -1803,6 +1803,19 @@ void Document::scheduleStyleRecalc()
         return;
 
     ASSERT(childNeedsStyleRecalc() || m_pendingStyleRecalcShouldForce);
+
+    auto shouldThrottleStyleRecalc = [&] {
+        if (m_pendingStyleRecalcShouldForce)
+            return false;
+        if (!view() || !view()->isVisuallyNonEmpty())
+            return false;
+        if (!page() || !page()->chrome().client().layerFlushThrottlingIsActive())
+            return false;
+        return true;
+    };
+
+    if (shouldThrottleStyleRecalc())
+        return;
 
     // FIXME: Why on earth is this here? This is clearly misplaced.
     invalidateAccessKeyMap();
@@ -3031,6 +3044,8 @@ bool Document::shouldScheduleLayout()
         return false;
     if (styleScope().hasPendingSheetsBeforeBody())
         return false;
+    if (page() && page()->chrome().client().layerFlushThrottlingIsActive() && view() && view()->isVisuallyNonEmpty())
+        return false;
 
     return true;
 }
@@ -3590,18 +3605,34 @@ static void processColorSchemes(StringView colorSchemes, const WTF::Function<voi
 void Document::processSupportedColorSchemes(const String& colorSchemes)
 {
     OptionSet<ColorSchemes> supportedColorSchemes;
+    bool allowsTransformations = true;
+    bool autoEncountered = false;
 
-    processColorSchemes(colorSchemes, [&supportedColorSchemes](StringView key) {
+    processColorSchemes(colorSchemes, [&](StringView key) {
+        if (equalLettersIgnoringASCIICase(key, "auto")) {
+            supportedColorSchemes = { };
+            allowsTransformations = true;
+            autoEncountered = true;
+            return;
+        }
+
+        if (autoEncountered)
+            return;
+
         if (equalLettersIgnoringASCIICase(key, "light"))
             supportedColorSchemes.add(ColorSchemes::Light);
         else if (equalLettersIgnoringASCIICase(key, "dark"))
             supportedColorSchemes.add(ColorSchemes::Dark);
+        else if (equalLettersIgnoringASCIICase(key, "only"))
+            allowsTransformations = false;
     });
 
-    if (supportedColorSchemes.isEmpty())
+    // If the value was just "only", that is synonymous for "only light".
+    if (supportedColorSchemes.isEmpty() && !allowsTransformations)
         supportedColorSchemes.add(ColorSchemes::Light);
 
     m_supportedColorSchemes = supportedColorSchemes;
+    m_allowsColorSchemeTransformations = allowsTransformations;
 
     if (auto* page = this->page())
         page->updateStyleAfterChangeInEnvironment();
@@ -7177,21 +7208,9 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
     Vector<RefPtr<Element>, 32> elementsToAddToChain;
 
     if (oldHoverObj != newHoverObj) {
-        // If the old hovered element is not nil but it's renderer is, it was probably detached as part of the :hover style
-        // (for instance by setting display:none in the :hover pseudo-class). In this case, the old hovered element (and its ancestors)
-        // must be updated, to ensure it's normal style is re-applied.
-        if (oldHoveredElement && !oldHoverObj) {
-            for (Element* element = oldHoveredElement.get(); element; element = element->parentElementInComposedTree()) {
-                if (!mustBeInActiveChain || element->inActiveChain())
-                    elementsToRemoveFromChain.append(element);
-            }
-        }
-
-        // The old hover path only needs to be cleared up to (and not including) the common ancestor;
-        for (RenderElement* curr = oldHoverObj; curr && curr != ancestor; curr = curr->hoverAncestor()) {
-            Element* element = curr->element();
-            if (!element)
-                continue;
+        for (auto* element = oldHoveredElement.get(); element; element = element->parentElementInComposedTree()) {
+            if (ancestor && ancestor->element() == element)
+                break;
             if (!mustBeInActiveChain || element->inActiveChain())
                 elementsToRemoveFromChain.append(element);
         }
@@ -7202,11 +7221,7 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
         }
     }
 
-    // Now set the hover state for our new object up to the root.
-    for (RenderElement* curr = newHoverObj; curr; curr = curr->hoverAncestor()) {
-        Element* element = curr->element();
-        if (!element)
-            continue;
+    for (auto* element = newHoveredElement; element; element = element->parentElementInComposedTree()) {
         if (!mustBeInActiveChain || element->inActiveChain())
             elementsToAddToChain.append(element);
     }
@@ -7281,11 +7296,23 @@ bool Document::useSystemAppearance() const
     return useSystemAppearance;
 }
 
-bool Document::useDarkAppearance() const
+bool Document::useDarkAppearance(const RenderStyle* style) const
 {
 #if ENABLE(DARK_MODE_CSS)
-    if (m_supportedColorSchemes.contains(ColorSchemes::Dark) && !m_supportedColorSchemes.contains(ColorSchemes::Light))
+    OptionSet<ColorSchemes> supportedColorSchemes;
+
+    // Use the style's supported color schemes, if supplied.
+    if (style)
+        supportedColorSchemes = style->supportedColorSchemes().colorSchemes();
+
+    // Fallback to the document's supported color schemes if style was empty (auto).
+    if (supportedColorSchemes.isEmpty())
+        supportedColorSchemes = m_supportedColorSchemes;
+
+    if (supportedColorSchemes.contains(ColorSchemes::Dark) && !supportedColorSchemes.contains(ColorSchemes::Light))
         return true;
+#else
+    UNUSED_PARAM(style);
 #endif
 
     bool pageUsesDarkAppearance = false;
@@ -7296,21 +7323,19 @@ bool Document::useDarkAppearance() const
         return pageUsesDarkAppearance;
 
 #if ENABLE(DARK_MODE_CSS)
-    if (m_supportedColorSchemes.contains(ColorSchemes::Dark))
+    if (supportedColorSchemes.contains(ColorSchemes::Dark))
         return pageUsesDarkAppearance;
-
-    ASSERT(m_supportedColorSchemes.contains(ColorSchemes::Light));
 #endif
 
     return false;
 }
 
-OptionSet<StyleColor::Options> Document::styleColorOptions() const
+OptionSet<StyleColor::Options> Document::styleColorOptions(const RenderStyle* style) const
 {
     OptionSet<StyleColor::Options> options;
     if (useSystemAppearance())
         options.add(StyleColor::Options::UseSystemAppearance);
-    if (useDarkAppearance())
+    if (useDarkAppearance(style))
         options.add(StyleColor::Options::UseDarkAppearance);
     return options;
 }

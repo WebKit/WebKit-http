@@ -28,7 +28,9 @@
 #if ENABLE(CSS_PAINTING_API)
 
 #include "ActiveDOMCallback.h"
+#include "CSSPaintSize.h"
 #include "CallbackResult.h"
+#include "StylePropertyMapReadOnly.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -38,7 +40,7 @@ class CSSPaintCallback : public RefCounted<CSSPaintCallback>, public ActiveDOMCa
 public:
     using ActiveDOMCallback::ActiveDOMCallback;
 
-    virtual CallbackResult<void> handleEvent(PaintRenderingContext2D&) = 0;
+    virtual CallbackResult<void> handleEvent(PaintRenderingContext2D&, CSSPaintSize&, StylePropertyMapReadOnly&, const Vector<String>&) = 0;
 
     virtual ~CSSPaintCallback()
     {

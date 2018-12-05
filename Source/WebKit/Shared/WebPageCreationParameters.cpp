@@ -74,10 +74,6 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << mimeTypesWithCustomContentProviders;
     encoder << controlledByAutomation;
 
-#if ENABLE(REMOTE_INSPECTOR)
-    encoder << allowsRemoteInspection;
-    encoder << remoteInspectionNameOverride;
-#endif
 #if PLATFORM(MAC)
     encoder << colorSpace;
     encoder << useSystemAppearance;
@@ -97,12 +93,13 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
 #endif
 #if PLATFORM(COCOA)
     encoder << smartInsertDeleteEnabled;
+    encoder << additionalSupportedImageTypes;
 #endif
     encoder << appleMailPaginationQuirkEnabled;
     encoder << appleMailLinesClampEnabled;
     encoder << shouldScaleViewToFitDocument;
     encoder.encodeEnum(userInterfaceLayoutDirection);
-    encoder.encodeEnum(observedLayoutMilestones);
+    encoder << observedLayoutMilestones;
     encoder << overrideContentSecurityPolicy;
     encoder << cpuLimit;
     encoder << urlSchemeHandlers;
@@ -230,13 +227,6 @@ std::optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::
     if (!decoder.decode(parameters.controlledByAutomation))
         return std::nullopt;
 
-#if ENABLE(REMOTE_INSPECTOR)
-    if (!decoder.decode(parameters.allowsRemoteInspection))
-        return std::nullopt;
-    if (!decoder.decode(parameters.remoteInspectionNameOverride))
-        return std::nullopt;
-#endif
-
 #if PLATFORM(MAC)
     if (!decoder.decode(parameters.colorSpace))
         return std::nullopt;
@@ -272,6 +262,8 @@ std::optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::
 #if PLATFORM(COCOA)
     if (!decoder.decode(parameters.smartInsertDeleteEnabled))
         return std::nullopt;
+    if (!decoder.decode(parameters.additionalSupportedImageTypes))
+        return std::nullopt;
 #endif
 
     if (!decoder.decode(parameters.appleMailPaginationQuirkEnabled))
@@ -285,7 +277,7 @@ std::optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::
 
     if (!decoder.decodeEnum(parameters.userInterfaceLayoutDirection))
         return std::nullopt;
-    if (!decoder.decodeEnum(parameters.observedLayoutMilestones))
+    if (!decoder.decode(parameters.observedLayoutMilestones))
         return std::nullopt;
 
     if (!decoder.decode(parameters.overrideContentSecurityPolicy))

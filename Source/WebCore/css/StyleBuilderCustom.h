@@ -106,7 +106,6 @@ public:
     DECLARE_PROPERTY_CUSTOM_HANDLERS(WebkitMaskBoxImageRepeat);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(WebkitMaskBoxImageSlice);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(WebkitMaskBoxImageWidth);
-    DECLARE_PROPERTY_CUSTOM_HANDLERS(WebkitSvgShadow);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(WebkitTextEmphasisStyle);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(Zoom);
 
@@ -142,6 +141,10 @@ public:
     static void applyValueWritingMode(StyleResolver&, CSSValue&);
     static void applyValueAlt(StyleResolver&, CSSValue&);
     static void applyValueWillChange(StyleResolver&, CSSValue&);
+
+#if ENABLE(DARK_MODE_CSS)
+    static void applyValueSupportedColorSchemes(StyleResolver&, CSSValue&);
+#endif
 
     static void applyValueStrokeWidth(StyleResolver&, CSSValue&);
     static void applyValueStrokeColor(StyleResolver&, CSSValue&);
@@ -828,6 +831,14 @@ inline void StyleBuilderCustom::applyValueWebkitTextZoom(StyleResolver& styleRes
     styleResolver.state().setFontDirty(true);
 }
 
+#if ENABLE(DARK_MODE_CSS)
+inline void StyleBuilderCustom::applyValueSupportedColorSchemes(StyleResolver& styleResolver, CSSValue& value)
+{
+    styleResolver.style()->setSupportedColorSchemes(StyleBuilderConverter::convertSupportedColorSchemes(styleResolver, value));
+    styleResolver.style()->setHasExplicitlySetSupportedColorSchemes(true);
+}
+#endif
+
 template<CSSPropertyID property>
 inline void StyleBuilderCustom::applyTextOrBoxShadowValue(StyleResolver& styleResolver, CSSValue& value)
 {
@@ -1334,43 +1345,6 @@ inline void StyleBuilderCustom::applyValueStroke(StyleResolver& styleResolver, C
         paintType = url.isEmpty() ? SVGPaintType::RGBColor : SVGPaintType::URIRGBColor;
     }
     svgStyle.setStrokePaint(paintType, color, url, styleResolver.applyPropertyToRegularStyle(), styleResolver.applyPropertyToVisitedLinkStyle());
-}
-
-inline void StyleBuilderCustom::applyInitialWebkitSvgShadow(StyleResolver& styleResolver)
-{
-    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
-    svgStyle.setShadow(nullptr);
-}
-
-inline void StyleBuilderCustom::applyInheritWebkitSvgShadow(StyleResolver& styleResolver)
-{
-    SVGRenderStyle& svgStyle = styleResolver.style()->accessSVGStyle();
-    const SVGRenderStyle& svgParentStyle = styleResolver.parentStyle()->svgStyle();
-    svgStyle.setShadow(svgParentStyle.shadow() ? std::make_unique<ShadowData>(*svgParentStyle.shadow()) : nullptr);
-}
-
-inline void StyleBuilderCustom::applyValueWebkitSvgShadow(StyleResolver& styleResolver, CSSValue& value)
-{
-    auto& svgStyle = styleResolver.style()->accessSVGStyle();
-    if (is<CSSPrimitiveValue>(value)) {
-        ASSERT(downcast<CSSPrimitiveValue>(value).valueID() == CSSValueNone);
-        svgStyle.setShadow(nullptr);
-        return;
-    }
-
-    auto& shadowValue = downcast<CSSShadowValue>(*downcast<CSSValueList>(value).itemWithoutBoundsCheck(0));
-    IntPoint location(shadowValue.x->computeLength<int>(styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f)),
-        shadowValue.y->computeLength<int>(styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f)));
-    int blur = shadowValue.blur ? shadowValue.blur->computeLength<int>(styleResolver.state().cssToLengthConversionData().copyWithAdjustedZoom(1.0f)) : 0;
-    Color color;
-    if (shadowValue.color)
-        color = styleResolver.colorFromPrimitiveValue(*shadowValue.color);
-
-    // -webkit-svg-shadow does should not have a spread or style
-    ASSERT(!shadowValue.spread);
-    ASSERT(!shadowValue.style);
-
-    svgStyle.setShadow(std::make_unique<ShadowData>(location, blur, 0, Normal, false, color.isValid() ? color : Color::transparent));
 }
 
 inline void StyleBuilderCustom::applyInitialContent(StyleResolver& styleResolver)

@@ -69,27 +69,14 @@ bool PageDebuggable::hasLocalDebugger() const
     return m_page.inspectorController().hasLocalFrontend();
 }
 
-void PageDebuggable::connect(Inspector::FrontendChannel* channel, bool isAutomaticConnection, bool immediatelyPause)
+void PageDebuggable::connect(FrontendChannel& channel, bool isAutomaticConnection, bool immediatelyPause)
 {
-    if (!m_page.settings().developerExtrasEnabled()) {
-        m_forcedDeveloperExtrasEnabled = true;
-        m_page.settings().setDeveloperExtrasEnabled(true);
-    } else
-        m_forcedDeveloperExtrasEnabled = false;
-
-    InspectorController& inspectorController = m_page.inspectorController();
-    inspectorController.connectFrontend(channel, isAutomaticConnection, immediatelyPause);
+    m_page.inspectorController().connectFrontend(channel, isAutomaticConnection, immediatelyPause);
 }
 
-void PageDebuggable::disconnect(Inspector::FrontendChannel* channel)
+void PageDebuggable::disconnect(FrontendChannel& channel)
 {
-    InspectorController& inspectorController = m_page.inspectorController();
-    inspectorController.disconnectFrontend(channel);
-
-    if (m_forcedDeveloperExtrasEnabled) {
-        m_forcedDeveloperExtrasEnabled = false;
-        m_page.settings().setDeveloperExtrasEnabled(false);
-    }
+    m_page.inspectorController().disconnectFrontend(channel);
 }
 
 void PageDebuggable::dispatchMessageFromRemote(const String& message)

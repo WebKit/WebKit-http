@@ -189,7 +189,8 @@ AVVideoCaptureSource::~AVVideoCaptureSource()
     if (!m_session)
         return;
 
-    [m_session removeObserver:m_objcObserver.get() forKeyPath:@"rate"];
+    [m_session removeObserver:m_objcObserver.get() forKeyPath:@"running"];
+    [m_device removeObserver:m_objcObserver.get() forKeyPath:@"suspended"];
     if ([m_session isRunning])
         [m_session stopRunning];
 }
@@ -331,8 +332,6 @@ void AVVideoCaptureSource::setSizeAndFrameRateWithPreset(IntSize requestedSize, 
 
     ASSERT(avPreset->format);
 
-    m_requestedSize = requestedSize;
-
     NSError *error = nil;
     [m_session beginConfiguration];
     @try {
@@ -402,7 +401,8 @@ bool AVVideoCaptureSource::setupSession()
         return true;
 
     m_session = adoptNS([allocAVCaptureSessionInstance() init]);
-    [m_session addObserver:m_objcObserver.get() forKeyPath:@"rate" options:NSKeyValueObservingOptionNew context:(void *)nil];
+    [m_session addObserver:m_objcObserver.get() forKeyPath:@"running" options:NSKeyValueObservingOptionNew context:(void *)nil];
+    [m_device addObserver:m_objcObserver.get() forKeyPath:@"suspended" options:NSKeyValueObservingOptionNew context:(void *)nil];
 
     [m_session beginConfiguration];
     bool success = setupCaptureSession();
@@ -474,8 +474,6 @@ bool AVVideoCaptureSource::setupCaptureSession()
 void AVVideoCaptureSource::shutdownCaptureSession()
 {
     m_buffer = nullptr;
-    m_width = 0;
-    m_height = 0;
 }
 
 void AVVideoCaptureSource::monitorOrientation(OrientationNotifier& notifier)
@@ -525,16 +523,6 @@ void AVVideoCaptureSource::processNewFrame(Ref<MediaSample>&& sample)
         return;
 
     m_buffer = &sample.get();
-    auto dimensions = roundedIntSize(sample->presentationSize());
-    if (m_sampleRotation == MediaSample::VideoRotation::Left || m_sampleRotation == MediaSample::VideoRotation::Right)
-        dimensions = { dimensions.height(), dimensions.width() };
-
-    if (dimensions.width() != m_width || dimensions.height() != m_height) {
-        m_width = dimensions.width();
-        m_height = dimensions.height();
-        setSize(dimensions);
-    }
-
     dispatchMediaSampleToObservers(WTFMove(sample));
 }
 
@@ -555,6 +543,19 @@ void AVVideoCaptureSource::captureSessionIsRunningDidChange(bool state)
         m_isRunning = state;
         notifyMutedChange(!m_isRunning);
     });
+}
+
+void AVVideoCaptureSource::captureDeviceSuspendedDidChange()
+{
+#if !PLATFORM(IOS_FAMILY)
+    scheduleDeferredTask([this] {
+        auto isSuspended = [m_device isSuspended];
+        if (isSuspended == muted())
+            return;
+
+        notifyMutedChange(isSuspended);
+    });
+#endif
 }
 
 bool AVVideoCaptureSource::interrupted() const
@@ -678,8 +679,8 @@ void AVVideoCaptureSource::captureSessionEndInterruption(RetainPtr<NSNotificatio
 
     id newValue = [change valueForKey:NSKeyValueChangeNewKey];
 
-#if !LOG_DISABLED
     bool willChange = [[change valueForKey:NSKeyValueChangeNotificationIsPriorKey] boolValue];
+#if !LOG_DISABLED
 
     if (willChange)
         LOG(Media, "WebCoreAVVideoCaptureSourceObserver::observeValueForKeyPath(%p) - will change, keyPath = %s", self, [keyPath UTF8String]);
@@ -689,8 +690,10 @@ void AVVideoCaptureSource::captureSessionEndInterruption(RetainPtr<NSNotificatio
     }
 #endif
 
-    if ([keyPath isEqualToString:@"running"])
+    if (!willChange && [keyPath isEqualToString:@"running"])
         m_callback->captureSessionIsRunningDidChange([newValue boolValue]);
+    if (!willChange && [keyPath isEqualToString:@"suspended"])
+        m_callback->captureDeviceSuspendedDidChange();
 }
 
 #if PLATFORM(IOS_FAMILY)

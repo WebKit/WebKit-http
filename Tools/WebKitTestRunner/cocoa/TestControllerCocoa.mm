@@ -69,7 +69,6 @@ void initializeWebViewConfiguration(const char* libraryPath, WKStringRef injecte
     WKCookieManagerSetStorageAccessAPIEnabled(WKContextGetCookieManager(context), true);
 
     WKWebsiteDataStore* poolWebsiteDataStore = (__bridge WKWebsiteDataStore *)WKContextGetWebsiteDataStore((__bridge WKContextRef)globalWebViewConfiguration.processPool);
-    [poolWebsiteDataStore _setCacheStoragePerOriginQuota: 400 * 1024];
     if (libraryPath) {
         String cacheStorageDirectory = String(libraryPath) + '/' + "CacheStorage";
         [poolWebsiteDataStore _setCacheStorageDirectory: cacheStorageDirectory];
@@ -154,10 +153,13 @@ void TestController::platformCreateWebView(WKPageConfigurationRef, const TestOpt
 #endif
 
     if (options.enableAttachmentElement)
-        [copiedConfiguration _setAttachmentElementEnabled: YES];
+        [copiedConfiguration _setAttachmentElementEnabled:YES];
 
     if (options.enableColorFilter)
-        [copiedConfiguration _setColorFilterEnabled: YES];
+        [copiedConfiguration _setColorFilterEnabled:YES];
+
+    if (options.enableEditableImages)
+        [copiedConfiguration _setEditableImagesEnabled:YES];
 
     if (options.applicationManifest.length()) {
         auto manifestPath = [NSString stringWithUTF8String:options.applicationManifest.c_str()];

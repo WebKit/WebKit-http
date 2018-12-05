@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformWebView_h
-#define PlatformWebView_h
+#pragma once
 
 #include "TestOptions.h"
 
@@ -49,7 +48,6 @@ typedef RetainPtr<CGImageRef> PlatformImage;
 typedef struct _GtkWidget GtkWidget;
 typedef WKViewRef PlatformWKView;
 typedef GtkWidget* PlatformWindow;
-typedef cairo_surface_t *PlatformImage;
 #elif PLATFORM(HAIKU)
 class BWebView;
 class BWindow;
@@ -61,6 +59,14 @@ class HeadlessViewBackend;
 }
 typedef WKViewRef PlatformWKView;
 typedef WPEToolingBackends::HeadlessViewBackend* PlatformWindow;
+#elif PLATFORM(WIN)
+#include <cairo.h>
+class TestRunnerWindow;
+typedef HWND PlatformWindow;
+typedef WKViewRef PlatformWKView;
+#endif
+
+#if USE(CAIRO)
 typedef cairo_surface_t* PlatformImage;
 #endif
 
@@ -130,5 +136,3 @@ private:
 };
 
 } // namespace WTR
-
-#endif // PlatformWebView_h

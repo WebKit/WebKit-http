@@ -41,6 +41,7 @@
 #include <WebCore/JSRange.h>
 #include <WebCore/Page.h>
 #include <WebCore/Range.h>
+#include <WebCore/RenderView.h>
 #include <WebCore/VisibleSelection.h>
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
@@ -124,7 +125,7 @@ RefPtr<WebImage> InjectedBundleRangeHandle::renderedImage(SnapshotOptions option
         return nullptr;
 
 #if PLATFORM(MAC)
-    LocalDefaultSystemAppearance localAppearance(ownerDocument.useDarkAppearance());
+    LocalDefaultSystemAppearance localAppearance(frameView->useDarkAppearance());
 #endif
 
     Ref<Frame> protector(*frame);

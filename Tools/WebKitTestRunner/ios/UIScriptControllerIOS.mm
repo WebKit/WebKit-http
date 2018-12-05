@@ -29,11 +29,12 @@
 #if PLATFORM(IOS_FAMILY)
 
 #import "HIDEventGenerator.h"
+#import "PencilKitTestSPI.h"
 #import "PlatformWebView.h"
 #import "StringFunctions.h"
 #import "TestController.h"
 #import "TestRunnerWKWebView.h"
-#import "UIKitTestSPI.h"
+#import "UIKitSPI.h"
 #import "UIScriptContext.h"
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <JavaScriptCore/OpaqueJSString.h>
@@ -506,14 +507,14 @@ JSObjectRef UIScriptController::contentVisibleRect() const
     return m_context->objectFromRect(rect);
 }
 
-JSObjectRef UIScriptController::selectionRangeViewRects() const
+JSObjectRef UIScriptController::textSelectionRangeRects() const
 {
-    NSMutableArray *selectionRects = [[NSMutableArray alloc] init];
+    auto selectionRects = adoptNS([[NSMutableArray alloc] init]);
     NSArray *rects = TestController::singleton().mainWebView()->platformView()._uiTextSelectionRects;
     for (NSValue *rect in rects)
-        [selectionRects addObject:toNSDictionary([rect CGRectValue])];
+        [selectionRects addObject:toNSDictionary(rect.CGRectValue)];
 
-    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:selectionRects inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:selectionRects.get() inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
 }
 
 JSObjectRef UIScriptController::textSelectionCaretRect() const
@@ -527,6 +528,7 @@ JSObjectRef UIScriptController::selectionStartGrabberViewRect() const
     UIView *contentView = [webView valueForKeyPath:@"_currentContentView"];
     UIView *selectionRangeView = [contentView valueForKeyPath:@"interactionAssistant.selectionView.rangeView"];
     auto frameInContentCoordinates = [selectionRangeView convertRect:[[selectionRangeView valueForKeyPath:@"startGrabber"] frame] toView:contentView];
+    frameInContentCoordinates = CGRectIntersection(contentView.bounds, frameInContentCoordinates);
     auto jsContext = m_context->jsContext();
     return JSValueToObject(jsContext, [JSValue valueWithObject:toNSDictionary(frameInContentCoordinates) inContext:[JSContext contextWithJSGlobalContextRef:jsContext]].JSValueRef, nullptr);
 }
@@ -537,8 +539,33 @@ JSObjectRef UIScriptController::selectionEndGrabberViewRect() const
     UIView *contentView = [webView valueForKeyPath:@"_currentContentView"];
     UIView *selectionRangeView = [contentView valueForKeyPath:@"interactionAssistant.selectionView.rangeView"];
     auto frameInContentCoordinates = [selectionRangeView convertRect:[[selectionRangeView valueForKeyPath:@"endGrabber"] frame] toView:contentView];
+    frameInContentCoordinates = CGRectIntersection(contentView.bounds, frameInContentCoordinates);
     auto jsContext = m_context->jsContext();
     return JSValueToObject(jsContext, [JSValue valueWithObject:toNSDictionary(frameInContentCoordinates) inContext:[JSContext contextWithJSGlobalContextRef:jsContext]].JSValueRef, nullptr);
+}
+
+JSObjectRef UIScriptController::selectionCaretViewRect() const
+{
+    WKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    UIView *contentView = [webView valueForKeyPath:@"_currentContentView"];
+    UIView *caretView = [contentView valueForKeyPath:@"interactionAssistant.selectionView.caretView"];
+    auto rectInContentViewCoordinates = CGRectIntersection([caretView convertRect:caretView.bounds toView:contentView], contentView.bounds);
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:toNSDictionary(rectInContentViewCoordinates) inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+}
+
+JSObjectRef UIScriptController::selectionRangeViewRects() const
+{
+    WKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    UIView *contentView = [webView valueForKeyPath:@"_currentContentView"];
+    UIView *rangeView = [contentView valueForKeyPath:@"interactionAssistant.selectionView.rangeView"];
+    auto rectsAsDictionaries = adoptNS([[NSMutableArray alloc] init]);
+    NSArray *textRectInfoArray = [rangeView valueForKeyPath:@"rects"];
+    for (id textRectInfo in textRectInfoArray) {
+        NSValue *rectValue = [textRectInfo valueForKeyPath:@"rect"];
+        auto rangeRectInContentViewCoordinates = [rangeView convertRect:rectValue.CGRectValue toView:contentView];
+        [rectsAsDictionaries addObject:toNSDictionary(CGRectIntersection(rangeRectInContentViewCoordinates, contentView.bounds))];
+    }
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:rectsAsDictionaries.get() inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
 }
 
 JSObjectRef UIScriptController::inputViewBounds() const
@@ -781,6 +808,51 @@ bool UIScriptController::isShowingDataListSuggestions() const
         *stop = YES;
     });
     return foundDataListSuggestionsPickerView;
+}
+
+#if HAVE(PENCILKIT)
+static PKCanvasView *findEditableImageCanvas()
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    Class pkCanvasViewClass = NSClassFromString(@"PKCanvasView");
+    __block PKCanvasView *canvasView = nil;
+    forEachViewInHierarchy(webView.window, ^(UIView *subview, BOOL *stop) {
+        if (![subview isKindOfClass:pkCanvasViewClass])
+            return;
+
+        canvasView = (PKCanvasView *)subview;
+        *stop = YES;
+    });
+    return canvasView;
+}
+#endif
+
+void UIScriptController::drawSquareInEditableImage()
+{
+#if HAVE(PENCILKIT)
+    Class pkDrawingClass = NSClassFromString(@"PKDrawing");
+    Class pkInkClass = NSClassFromString(@"PKInk");
+    Class pkStrokeClass = NSClassFromString(@"PKStroke");
+
+    PKCanvasView *canvasView = findEditableImageCanvas();
+    RetainPtr<PKDrawing> drawing = adoptNS([[pkDrawingClass alloc] init]);
+    RetainPtr<CGPathRef> path = adoptCF(CGPathCreateWithRect(CGRectMake(0, 0, 50, 50), NULL));
+    RetainPtr<PKInk> ink = [pkInkClass inkWithType:0 color:UIColor.greenColor weight:100.0];
+    RetainPtr<PKStroke> stroke = adoptNS([[pkStrokeClass alloc] _initWithPath:path.get() ink:ink.get() inputScale:1]);
+    [drawing _addStroke:stroke.get()];
+
+    [canvasView setDrawing:drawing.get()];
+#endif
+}
+
+long UIScriptController::numberOfStrokesInEditableImage()
+{
+#if HAVE(PENCILKIT)
+    PKCanvasView *canvasView = findEditableImageCanvas();
+    return canvasView.drawing._allStrokes.count;
+#else
+    return 0;
+#endif
 }
 
 }

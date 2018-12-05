@@ -29,12 +29,13 @@
 #include "ContainerNode.h"
 #include "FrameViewLayoutContext.h"
 #include "GraphicsContext.h"
-#include "LayoutMilestones.h"
+#include "LayoutMilestone.h"
 #include "LayoutRect.h"
 #include "Pagination.h"
 #include "PaintPhase.h"
 #include "RenderPtr.h"
 #include "ScrollView.h"
+#include "StyleColor.h"
 #include "TiledBacking.h"
 #include <memory>
 #include <wtf/Forward.h>
@@ -393,7 +394,7 @@ public:
     
     WEBCORE_EXPORT void updateLayoutAndStyleIfNeededRecursive();
 
-    void incrementVisuallyNonEmptyCharacterCount(unsigned);
+    void incrementVisuallyNonEmptyCharacterCount(const String&);
     void incrementVisuallyNonEmptyPixelCount(const IntSize&);
     void updateIsVisuallyNonEmpty();
     void updateSignificantRenderedTextMilestoneIfNeeded();
@@ -509,7 +510,8 @@ public:
     bool isHandlingWheelEvent() const final;
     bool shouldSetCursor() const;
 
-    bool useDarkAppearance() const final;
+    WEBCORE_EXPORT bool useDarkAppearance() const final;
+    OptionSet<StyleColor::Options> styleColorOptions() const;
 
     // FIXME: Remove this method once plugin loading is decoupled from layout.
     void flushAnyPendingPostLayoutTasks();
@@ -592,10 +594,10 @@ public:
     void updateTiledBackingAdaptiveSizing();
     TiledBacking::Scrollability computeScrollability() const;
 
-    void addPaintPendingMilestones(LayoutMilestones);
+    void addPaintPendingMilestones(OptionSet<LayoutMilestone>);
     void firePaintRelatedMilestonesIfNeeded();
     void fireLayoutRelatedMilestonesIfNeeded();
-    LayoutMilestones milestonesPendingPaint() const { return m_milestonesPendingPaint; }
+    OptionSet<LayoutMilestone> milestonesPendingPaint() const { return m_milestonesPendingPaint; }
 
     bool visualUpdatesAllowedByClient() const { return m_visualUpdatesAllowedByClient; }
     WEBCORE_EXPORT void setVisualUpdatesAllowedByClient(bool);
@@ -735,6 +737,10 @@ private:
     void unobscuredContentSizeChanged() final;
 #endif
 
+#if ENABLE(DARK_MODE_CSS)
+    RenderObject* rendererForSupportedColorSchemes() const;
+#endif
+
     bool usesCompositedScrolling() const final;
     bool usesAsyncScrolling() const final;
     bool usesMockScrollAnimator() const final;
@@ -826,6 +832,9 @@ private:
     bool m_firstLayoutCallbackPending;
 
     bool m_isTransparent;
+#if ENABLE(DARK_MODE_CSS)
+    bool m_usesDarkAppearance { false };
+#endif
     Color m_baseBackgroundColor;
     IntSize m_lastViewportSize;
     float m_lastZoomFactor;
@@ -870,7 +879,7 @@ private:
     bool m_isVisuallyNonEmpty;
     bool m_firstVisuallyNonEmptyLayoutCallbackPending;
 
-    unsigned m_renderTextCountForVisuallyNonEmptyCharacters;
+    unsigned m_textRendererCountForVisuallyNonEmptyCharacters { 0 };
     bool m_renderedSignificantAmountOfText;
     bool m_significantRenderedTextMilestonePending;
 
@@ -914,7 +923,7 @@ private:
     int m_headerHeight;
     int m_footerHeight;
 
-    LayoutMilestones m_milestonesPendingPaint;
+    OptionSet<LayoutMilestone> m_milestonesPendingPaint;
 
     static const unsigned visualCharacterThreshold = 200;
     static const unsigned visualPixelThreshold = 32 * 32;
@@ -936,18 +945,6 @@ private:
 
     FrameViewLayoutContext m_layoutContext;
 };
-
-inline void FrameView::incrementVisuallyNonEmptyCharacterCount(unsigned count)
-{
-    if (m_isVisuallyNonEmpty && m_renderedSignificantAmountOfText)
-        return;
-    m_visuallyNonEmptyCharacterCount += count;
-    ++m_renderTextCountForVisuallyNonEmptyCharacters;
-    if (!m_isVisuallyNonEmpty && m_visuallyNonEmptyCharacterCount > visualCharacterThreshold)
-        updateIsVisuallyNonEmpty();
-    if (!m_renderedSignificantAmountOfText)
-        updateSignificantRenderedTextMilestoneIfNeeded();
-}
 
 inline void FrameView::incrementVisuallyNonEmptyPixelCount(const IntSize& size)
 {

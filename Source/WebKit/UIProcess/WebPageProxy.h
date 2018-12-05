@@ -126,10 +126,6 @@ OBJC_CLASS _WKRemoteObjectRegistry;
 #include <WebCore/WebMediaSessionManagerClient.h>
 #endif
 
-#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-#include "DisplayLink.h"
-#endif
-
 #if ENABLE(MEDIA_SESSION)
 namespace WebCore {
 class MediaSessionMetadata;
@@ -248,7 +244,9 @@ class WebKeyboardEvent;
 class WebURLSchemeHandler;
 class WebMouseEvent;
 class WebOpenPanelResultListenerProxy;
+class WebPageDebuggable;
 class WebPageGroup;
+class WebPageInspectorController;
 class WebProcessProxy;
 class WebUserContentControllerProxy;
 class WebWheelEvent;
@@ -382,17 +380,33 @@ public:
 
     WebInspectorProxy* inspector() const;
 
+    bool hasLocalInspectorFrontend() const { return m_inspectorHasLocalFrontend; }
+    void setHasLocalInspectorFrontend(bool hasLocalFrontend) { m_inspectorHasLocalFrontend = hasLocalFrontend; }
+
     void didChangeInspectorFrontendCount(unsigned count) { m_inspectorFrontendCount = count; }
     unsigned inspectorFrontendCount() const { return m_inspectorFrontendCount; }
 
     bool isControlledByAutomation() const { return m_controlledByAutomation; }
     void setControlledByAutomation(bool);
 
+    WebPageInspectorController& inspectorController() { return *m_inspectorController; }
+
+#if PLATFORM(IOS_FAMILY)
+    void showInspectorIndication();
+    void hideInspectorIndication();
+#endif
+
+    void createInspectorTarget(const String& targetId, Inspector::InspectorTargetType);
+    void destroyInspectorTarget(const String& targetId);
+    void sendMessageToInspectorFrontend(const String& targetId, const String& message);
+
 #if ENABLE(REMOTE_INSPECTOR)
-    bool allowsRemoteInspection() const { return m_allowsRemoteInspection; }
+    void setIndicating(bool);
+    bool allowsRemoteInspection() const;
     void setAllowsRemoteInspection(bool);
-    String remoteInspectionNameOverride() const { return m_remoteInspectionNameOverride; }
+    String remoteInspectionNameOverride() const;
     void setRemoteInspectionNameOverride(const String&);
+    void remoteInspectorInformationDidChange();
 #endif
 
 #if ENABLE(FULLSCREEN_API)
@@ -545,6 +559,10 @@ public:
     bool hasSelectedRange() const { return m_editorState.selectionIsRange; }
     bool isContentEditable() const { return m_editorState.isContentEditable; }
 
+    void increaseListLevel();
+    void decreaseListLevel();
+    void changeListType();
+
     std::optional<WebCore::FontAttributes> cachedFontAttributesAtSelectionStart() const { return m_cachedFontAttributesAtSelectionStart; }
 
 #if PLATFORM(COCOA)
@@ -645,6 +663,7 @@ public:
     void storeSelectionForAccessibility(bool);
     void startAutoscrollAtPosition(const WebCore::FloatPoint& positionInWindow);
     void cancelAutoscroll();
+    void hardwareKeyboardAvailabilityChanged();
 #if ENABLE(DATA_INTERACTION)
     void didHandleStartDataInteractionRequest(bool started);
     void didHandleAdditionalDragItemsRequest(bool added);
@@ -813,7 +832,7 @@ public:
     bool alwaysShowsHorizontalScroller() const { return m_alwaysShowsHorizontalScroller; }
     bool alwaysShowsVerticalScroller() const { return m_alwaysShowsVerticalScroller; }
 
-    void listenForLayoutMilestones(WebCore::LayoutMilestones);
+    void listenForLayoutMilestones(OptionSet<WebCore::LayoutMilestone>);
 
     bool hasHorizontalScrollbar() const { return m_mainFrameHasHorizontalScrollbar; }
     bool hasVerticalScrollbar() const { return m_mainFrameHasVerticalScrollbar; }
@@ -1287,7 +1306,7 @@ public:
     void clearWheelEventTestTrigger();
     void callAfterNextPresentationUpdate(WTF::Function<void (CallbackBase::Error)>&&);
 
-    void didReachLayoutMilestone(uint32_t layoutMilestones);
+    void didReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone>);
 
     void didRestoreScrollPosition();
 
@@ -1360,14 +1379,12 @@ public:
 
     WebCore::IntRect syncRootViewToScreen(const WebCore::IntRect& viewRect);
 
-#if PLATFORM(COCOA)
-    Vector<String> mediaMIMETypes();
-#endif
-
 #if ENABLE(DATALIST_ELEMENT)
     void didSelectOption(const String&);
     void didCloseSuggestions();
 #endif
+
+    void updateCurrentModifierState();
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
@@ -1536,6 +1553,7 @@ private:
     RefPtr<API::Navigation> reattachToWebProcessForReload();
     RefPtr<API::Navigation> reattachToWebProcessWithItem(WebBackForwardListItem&);
 
+    void loadDataWithNavigation(API::Navigation&, const IPC::DataReference&, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
     void loadRequestWithNavigation(API::Navigation&, WebCore::ResourceRequest&&, WebCore::ShouldOpenExternalURLsPolicy, API::Object* userData, WebCore::ShouldTreatAsContinuingLoad);
 
     void requestNotificationPermission(uint64_t notificationID, const String& originString);
@@ -1738,9 +1756,6 @@ private:
     void showInspectorHighlight(const WebCore::Highlight&);
     void hideInspectorHighlight();
 
-    void showInspectorIndication();
-    void hideInspectorIndication();
-
     void enableInspectorNodeSearch();
     void disableInspectorNodeSearch();
     void assistedNodeInformationCallback(const AssistedNodeInformation&, CallbackID);
@@ -1828,6 +1843,9 @@ private:
 
     void stopAllURLSchemeTasks();
 
+    void clearInspectorTargets();
+    void createInspectorTargets();
+
 #if ENABLE(ATTACHMENT_ELEMENT)
     void registerAttachmentIdentifierFromData(const String&, const String& contentType, const String& preferredFileName, const IPC::DataReference&);
     void registerAttachmentIdentifierFromFilePath(const String&, const String& contentType, const String& filePath);
@@ -1845,13 +1863,6 @@ private:
     Ref<API::Attachment> ensureAttachment(const String& identifier);
     void invalidateAllAttachments();
 #endif
-
-#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-    void startDisplayLink(unsigned observerID);
-    void stopDisplayLink(unsigned observerID);
-#endif
-
-    void updateCurrentModifierState();
 
     void reportPageLoadResult(const WebCore::ResourceError& = { });
 
@@ -2024,7 +2035,7 @@ private:
     bool m_alwaysShowsHorizontalScroller { false };
     bool m_alwaysShowsVerticalScroller { false };
 
-    WebCore::LayoutMilestones m_observedLayoutMilestones { 0 };
+    OptionSet<WebCore::LayoutMilestone> m_observedLayoutMilestones;
 
     bool m_suppressScrollbarAnimations { false };
 
@@ -2105,11 +2116,8 @@ private:
 
     bool m_controlledByAutomation { false };
 
-#if ENABLE(REMOTE_INSPECTOR)
-    bool m_allowsRemoteInspection { true };
-    String m_remoteInspectionNameOverride;
-#endif
     unsigned m_inspectorFrontendCount { 0 };
+    bool m_inspectorHasLocalFrontend { false };
 
 #if PLATFORM(COCOA)
     bool m_isSmartInsertDeleteEnabled { false };
@@ -2256,9 +2264,10 @@ private:
 #if ENABLE(ATTACHMENT_ELEMENT)
     HashMap<String, Ref<API::Attachment>> m_attachmentIdentifierToAttachmentMap;
 #endif
-        
-#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-    std::unique_ptr<DisplayLink> m_displayLink;
+
+    const std::unique_ptr<WebPageInspectorController> m_inspectorController;
+#if ENABLE(REMOTE_INSPECTOR)
+    const std::unique_ptr<WebPageDebuggable> m_inspectorDebuggable;
 #endif
 
     std::optional<SpellDocumentTag> m_spellDocumentTag;

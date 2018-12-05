@@ -42,10 +42,13 @@
 #import "Logging.h"
 #import "NavigationState.h"
 #import "ObjCObjectGraph.h"
+#import "PageClient.h"
 #import "RemoteLayerTreeScrollingPerformanceData.h"
 #import "RemoteLayerTreeTransaction.h"
 #import "RemoteObjectRegistry.h"
 #import "RemoteObjectRegistryMessages.h"
+#import "SafeBrowsingWarning.h"
+#import "StringUtilities.h"
 #import "UIDelegate.h"
 #import "UserMediaProcessManager.h"
 #import "VersionChecks.h"
@@ -152,6 +155,7 @@
 #import <WebCore/WebSQLiteDatabaseTrackerClient.h>
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
+#import <pal/spi/ios/GraphicsServicesSPI.h>
 #import <wtf/cocoa/Entitlements.h>
 
 #define RELEASE_LOG_IF_ALLOWED(...) RELEASE_LOG_IF(_page && _page->isAlwaysOnLoggingAllowed(), ViewState, __VA_ARGS__)
@@ -255,6 +259,13 @@ static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOve
 }
 #endif
 
+#define FORWARD_ACTION_TO_WKCONTENTVIEW(_action) \
+    - (void)_action:(id)sender \
+    { \
+        if (self.usesStandardContentView) \
+            [_contentView _action ## ForWebView:sender]; \
+    }
+
 @implementation WKWebView {
     std::unique_ptr<WebKit::NavigationState> _navigationState;
     std::unique_ptr<WebKit::UIDelegate> _uiDelegate;
@@ -265,6 +276,7 @@ static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOve
     WeakObjCPtr<id <_WKInputDelegate>> _inputDelegate;
 
     std::optional<BOOL> _resolutionForShareSheetImmediateCompletionForTesting;
+    RetainPtr<WKSafeBrowsingWarning> _safeBrowsingWarning;
 
 #if PLATFORM(IOS_FAMILY)
     RetainPtr<_WKRemoteObjectRegistry> _remoteObjectRegistry;
@@ -569,6 +581,8 @@ static void validate(WKWebViewConfiguration *configuration)
             pageConfiguration->setPageGroup(WebKit::WebPageGroup::create(configuration._groupIdentifier).ptr());
     }
 
+    pageConfiguration->setAdditionalSupportedImageTypes(WebKit::webCoreStringVectorFromNSStringArray([_configuration _additionalSupportedImageTypes]));
+
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::suppressesIncrementalRenderingKey(), WebKit::WebPreferencesStore::Value(!![_configuration suppressesIncrementalRendering]));
 
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldRespectImageOrientationKey(), WebKit::WebPreferencesStore::Value(!![_configuration _respectsImageOrientation]));
@@ -634,6 +648,8 @@ static void validate(WKWebViewConfiguration *configuration)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowMediaContentTypesRequiringHardwareSupportAsFallbackKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowMediaContentTypesRequiringHardwareSupportAsFallback]));
 
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::colorFilterEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _colorFilterEnabled]));
+
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::editableImagesEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _editableImagesEnabled]));
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::legacyEncryptedMediaAPIEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _legacyEncryptedMediaAPIEnabled]));
@@ -702,6 +718,8 @@ static void validate(WKWebViewConfiguration *configuration)
 
     [[_configuration _contentProviderRegistry] addPage:*_page];
     _page->setForceAlwaysUserScalable([_configuration ignoresViewportScaleLimits]);
+
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)(self), hardwareKeyboardAvailabilityChangedCallback, (CFStringRef)[NSString stringWithUTF8String:kGSEventHardwareKeyboardAvailabilityChangedNotification], nullptr, CFNotificationSuspensionBehaviorCoalesce);
 #endif
 
 #if PLATFORM(MAC)
@@ -839,6 +857,8 @@ static void validate(WKWebViewConfiguration *configuration)
     [[_configuration _contentProviderRegistry] removePage:*_page];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [_scrollView setInternalDelegate:nil];
+
+    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)(self), (CFStringRef)[NSString stringWithUTF8String:kGSEventHardwareKeyboardAvailabilityChangedNotification], nullptr);
 #endif
 
 #if ENABLE(ACCESSIBILITY_EVENTS)
@@ -1259,6 +1279,21 @@ static NSDictionary *dictionaryRepresentationForEditorState(const WebKit::Editor
         [uiDelegate _webView:self editorStateDidChange:dictionaryRepresentationForEditorState(_page->editorState())];
 }
 
+- (void)_showSafeBrowsingWarning:(const WebKit::SafeBrowsingWarning&)warning completionHandler:(CompletionHandler<void(Variant<WebKit::ContinueUnsafeLoad, WebCore::URL>&&)>&&)completionHandler
+{
+    _safeBrowsingWarning = adoptNS([[WKSafeBrowsingWarning alloc] initWithFrame:self.bounds safeBrowsingWarning:warning completionHandler:[weakSelf = WeakObjCPtr<WKWebView>(self), completionHandler = WTFMove(completionHandler)] (auto&& result) mutable {
+        if (auto strongSelf = weakSelf.get())
+            [std::exchange(strongSelf->_safeBrowsingWarning, nullptr) removeFromSuperview];
+        completionHandler(WTFMove(result));
+    }]);
+    [self addSubview:_safeBrowsingWarning.get()];
+}
+
+- (void)_clearSafeBrowsingWarning
+{
+    [std::exchange(_safeBrowsingWarning, nullptr) removeFromSuperview];
+}
+
 #if ENABLE(ATTACHMENT_ELEMENT)
 
 - (void)_didInsertAttachment:(API::Attachment&)attachment withSource:(NSString *)source
@@ -1335,6 +1370,7 @@ static NSDictionary *dictionaryRepresentationForEditorState(const WebKit::Editor
 
 - (void)layoutSubviews
 {
+    [_safeBrowsingWarning setFrame:self.bounds];
     [super layoutSubviews];
     [self _frameOrBoundsChanged];
 }
@@ -1376,16 +1412,7 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     return [super resignFirstResponder];
 }
 
-#define FORWARD_ACTION_TO_WKCONTENTVIEW(_action) \
-    - (void)_action:(id)sender \
-    { \
-        if (self.usesStandardContentView) \
-            [_contentView _action ## ForWebView:sender]; \
-    }
-
 FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
-
-#undef FORWARD_ACTION_TO_WKCONTENTVIEW
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
 {
@@ -1394,13 +1421,15 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
             return self.usesStandardContentView && [_contentView canPerformActionForWebView:action withSender:sender];
 
     FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW)
-
-    FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW(_pasteAsQuotation)
+    FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW)
+    FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW(setTextColor:sender)
+    FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW(setFontSize:sender)
+    FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW(setFont:sender)
+    FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW(_setTextColor:sender)
+    FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW(_setFontSize:sender)
+    FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW(_setFont:sender)
 
     #undef FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW
-
-    if (action == @selector(setTextColor:sender:) || action == @selector(setFontSize:sender:) || action == @selector(setFont:sender:))
-        return self.usesStandardContentView && [_contentView canPerformActionForWebView:action withSender:sender];
 
     return [super canPerformAction:action withSender:sender];
 }
@@ -1412,8 +1441,13 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
             return [_contentView targetForActionForWebView:action withSender:sender];
 
     FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW)
-
-    FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW(_pasteAsQuotation)
+    FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW)
+    FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW(setTextColor:sender)
+    FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW(setFontSize:sender)
+    FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW(setFont:sender)
+    FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW(_setTextColor:sender)
+    FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW(_setFontSize:sender)
+    FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW(_setFont:sender)
 
     #undef FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW
 
@@ -3099,6 +3133,13 @@ static int32_t activeOrientation(WKWebView *webView)
     [self _keyboardChangedWithInfo:notification.userInfo adjustScrollView:YES];
 }
 
+static void hardwareKeyboardAvailabilityChangedCallback(CFNotificationCenterRef, void* observer, CFStringRef, const void*, CFDictionaryRef)
+{
+    ASSERT(observer);
+    WKWebView *webView = (__bridge WKWebView *)observer;
+    webView._page->hardwareKeyboardAvailabilityChanged();
+}
+
 - (void)_windowDidRotate:(NSNotification *)notification
 {
     if (!_overridesInterfaceOrientation)
@@ -3290,6 +3331,7 @@ static void accessibilityEventsEnabledChangedCallback(CFNotificationCenterRef, v
 - (void)setFrameSize:(NSSize)size
 {
     [super setFrameSize:size];
+    [_safeBrowsingWarning setFrame:self.bounds];
     _impl->setFrameSize(NSSizeToCGSize(size));
 }
 
@@ -4277,6 +4319,71 @@ IGNORE_WARNINGS_END
 
 @implementation WKWebView (WKPrivate)
 
+#if PLATFORM(MAC)
+
+#define WEBCORE_PRIVATE_COMMAND(command) - (void)_##command:(id)sender { _page->executeEditCommand(#command ## _s); }
+
+WEBCORE_PRIVATE_COMMAND(alignCenter)
+WEBCORE_PRIVATE_COMMAND(alignJustified)
+WEBCORE_PRIVATE_COMMAND(alignLeft)
+WEBCORE_PRIVATE_COMMAND(alignRight)
+WEBCORE_PRIVATE_COMMAND(insertOrderedList)
+WEBCORE_PRIVATE_COMMAND(insertUnorderedList)
+WEBCORE_PRIVATE_COMMAND(insertNestedOrderedList)
+WEBCORE_PRIVATE_COMMAND(insertNestedUnorderedList)
+WEBCORE_PRIVATE_COMMAND(indent)
+WEBCORE_PRIVATE_COMMAND(outdent)
+WEBCORE_PRIVATE_COMMAND(pasteAsQuotation)
+WEBCORE_PRIVATE_COMMAND(pasteAndMatchStyle)
+
+#undef WEBCORE_PRIVATE_COMMAND
+
+- (void)_toggleStrikeThrough:(id)sender
+{
+    _page->executeEditCommand("strikethrough"_s);
+}
+
+- (void)_increaseListLevel:(id)sender
+{
+    _page->increaseListLevel();
+}
+
+- (void)_decreaseListLevel:(id)sender
+{
+    _page->decreaseListLevel();
+}
+
+- (void)_changeListType:(id)sender
+{
+    _page->changeListType();
+}
+
+#endif // PLATFORM(MAC)
+
+#if PLATFORM(IOS_FAMILY)
+
+FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
+
+- (void)_setFont:(UIFont *)font sender:(id)sender
+{
+    if (self.usesStandardContentView)
+        [_contentView setFontForWebView:font sender:sender];
+}
+
+- (void)_setFontSize:(CGFloat)fontSize sender:(id)sender
+{
+    if (self.usesStandardContentView)
+        [_contentView setFontSizeForWebView:fontSize sender:sender];
+}
+
+- (void)_setTextColor:(UIColor *)color sender:(id)sender
+{
+    if (self.usesStandardContentView)
+        [_contentView setTextColorForWebView:color sender:sender];
+}
+
+#endif // PLATFORM(IOS_FAMILY)
+
 - (BOOL)_isEditable
 {
     return _page->isEditable();
@@ -4623,19 +4730,31 @@ IGNORE_WARNINGS_END
     return nil;
 }
 
-- (void)_pasteAsQuotation:(id)sender
++ (BOOL)_handlesSafeBrowsing
 {
+    return true;
+}
+
+- (void)_showSafeBrowsingWarningWithTitle:(NSString *)title warning:(NSString *)warning details:(NSAttributedString *)details completionHandler:(void(^)(NSURL *))completionHandler
+{
+    auto safeBrowsingWarning = WebKit::SafeBrowsingWarning::create(title, warning, details);
+    auto wrapper = [completionHandler = makeBlockPtr(completionHandler)] (Variant<WebKit::ContinueUnsafeLoad, WebCore::URL>&& variant) {
+        switchOn(variant, [&] (WebKit::ContinueUnsafeLoad) {
+            completionHandler(nil);
+        }, [&] (WebCore::URL url) {
+            completionHandler(url);
+        });
+    };
 #if PLATFORM(MAC)
-    _impl->executeEditCommandForSelector(_cmd);
+    _impl->showSafeBrowsingWarning(safeBrowsingWarning, WTFMove(wrapper));
 #else
-    if (self.usesStandardContentView)
-        [_contentView _pasteAsQuotationForWebView:sender];
+    [self _showSafeBrowsingWarning:safeBrowsingWarning completionHandler:WTFMove(wrapper)];
 #endif
 }
 
-+ (BOOL)_handlesSafeBrowsing
++ (NSURL *)_confirmMalwareSentinel
 {
-    return DEFAULT_SAFE_BROWSING_ENABLED;
+    return WebKit::SafeBrowsingWarning::confirmMalwareSentinel();
 }
 
 - (void)_evaluateJavaScriptWithoutUserGesture:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler
@@ -4698,30 +4817,30 @@ IGNORE_WARNINGS_END
     return _page->pageLoadState().networkRequestsInProgress();
 }
 
-static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEvents events)
+static inline OptionSet<WebCore::LayoutMilestone> layoutMilestones(_WKRenderingProgressEvents events)
 {
-    WebCore::LayoutMilestones milestones = 0;
+    OptionSet<WebCore::LayoutMilestone> milestones;
 
     if (events & _WKRenderingProgressEventFirstLayout)
-        milestones |= WebCore::DidFirstLayout;
+        milestones.add(WebCore::DidFirstLayout);
 
     if (events & _WKRenderingProgressEventFirstVisuallyNonEmptyLayout)
-        milestones |= WebCore::DidFirstVisuallyNonEmptyLayout;
+        milestones.add(WebCore::DidFirstVisuallyNonEmptyLayout);
 
     if (events & _WKRenderingProgressEventFirstPaintWithSignificantArea)
-        milestones |= WebCore::DidHitRelevantRepaintedObjectsAreaThreshold;
+        milestones.add(WebCore::DidHitRelevantRepaintedObjectsAreaThreshold);
 
     if (events & _WKRenderingProgressEventReachedSessionRestorationRenderTreeSizeThreshold)
-        milestones |= WebCore::ReachedSessionRestorationRenderTreeSizeThreshold;
+        milestones.add(WebCore::ReachedSessionRestorationRenderTreeSizeThreshold);
 
     if (events & _WKRenderingProgressEventFirstLayoutAfterSuppressedIncrementalRendering)
-        milestones |= WebCore::DidFirstLayoutAfterSuppressedIncrementalRendering;
+        milestones.add(WebCore::DidFirstLayoutAfterSuppressedIncrementalRendering);
 
     if (events & _WKRenderingProgressEventFirstPaintAfterSuppressedIncrementalRendering)
-        milestones |= WebCore::DidFirstPaintAfterSuppressedIncrementalRendering;
+        milestones.add(WebCore::DidFirstPaintAfterSuppressedIncrementalRendering);
 
     if (events & _WKRenderingProgressEventDidRenderSignificantAmountOfText)
-        milestones |= WebCore::DidRenderSignificantAmountOfText;
+        milestones.add(WebCore::DidRenderSignificantAmountOfText);
 
     return milestones;
 }
@@ -6011,6 +6130,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 @end
 
+#undef FORWARD_ACTION_TO_WKCONTENTVIEW
 
 @implementation WKWebView (WKTesting)
 
@@ -6672,7 +6792,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 #else
 - (UIView *)_safeBrowsingWarningForTesting
 {
-    return nil;
+    return _safeBrowsingWarning.get();
 }
 #endif
 

@@ -955,7 +955,11 @@ static bool rareInheritedDataChangeRequiresRepaint(const StyleRareInheritedData&
     return first.userModify != second.userModify
         || first.userSelect != second.userSelect
         || first.appleColorFilter != second.appleColorFilter
-        || first.imageRendering != second.imageRendering;
+        || first.imageRendering != second.imageRendering
+#if ENABLE(DARK_MODE_CSS)
+        || first.supportedColorSchemes != second.supportedColorSchemes
+#endif
+    ;
 }
 
 bool RenderStyle::changeRequiresRepaint(const RenderStyle& other, OptionSet<StyleDifferenceContextSensitiveProperty>& changedContextSensitiveProperties) const
@@ -1847,7 +1851,7 @@ Color RenderStyle::colorIncludingFallback(CSSPropertyID colorProperty, bool visi
     case CSSPropertyColumnRuleColor:
         result = visitedLink ? visitedLinkColumnRuleColor() : columnRuleColor();
         break;
-    case CSSPropertyWebkitTextDecorationColor:
+    case CSSPropertyTextDecorationColor:
         // Text decoration color fallback is handled in RenderObject::decorationColor.
         return visitedLink ? visitedLinkTextDecorationColor() : textDecorationColor();
     case CSSPropertyWebkitTextEmphasisColor:
@@ -1885,7 +1889,7 @@ Color RenderStyle::visitedDependentColor(CSSPropertyID colorProperty) const
     Color visitedColor = colorIncludingFallback(colorProperty, true);
 
     // Text decoration color validity is preserved (checked in RenderObject::decorationColor).
-    if (colorProperty == CSSPropertyWebkitTextDecorationColor)
+    if (colorProperty == CSSPropertyTextDecorationColor)
         return visitedColor;
 
     // FIXME: Technically someone could explicitly specify the color transparent, but for now we'll just

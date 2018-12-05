@@ -1,3 +1,1306 @@
+2018-11-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Layout test fast/layers/no-clipping-overflow-hidden-added-after-transform.html is a flaky failure on EWS bots
+        https://bugs.webkit.org/show_bug.cgi?id=191658
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Mark this test as flaky on Sierra Release WK2 to reduce the number of retries on mac-wk2-ews.
+
+2018-11-14  Timothy Hatcher  <timothy@apple.com>
+
+        Update prefers-color-scheme media query matching based on GitHub issue #3278.
+        https://bugs.webkit.org/show_bug.cgi?id=191654
+        rdar://problem/46074307
+
+        Reviewed by Simon Fraser.
+
+        * css-dark-mode/prefers-color-scheme-expected.txt: Rebaseline.
+        * css-dark-mode/prefers-color-scheme.html: Updates to better match the spec.
+
+2018-11-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: send a call stack with each action instead of an array of call frames
+        https://bugs.webkit.org/show_bug.cgi?id=191628
+
+        Reviewed by Dean Jackson.
+
+        * inspector/model/recording.html:
+
+2018-11-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, move a skip expectation to a more specific file.
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Keep Web Inspector window alive across process swaps (PSON) (Remote Inspector)
+        https://bugs.webkit.org/show_bug.cgi?id=191494
+        <rdar://problem/45469854>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/unit-tests/target-manager.html:
+        WI.targets has switched to being an array instead of a set.
+
+2018-11-14  Truitt Savell  <tsavell@apple.com>
+
+        [ Sierra Release WK2 ] Layout Test fast/workers/worker-cloneport.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=191644.
+
+        Unreviewed test Gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-11-14  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r238178): fast/forms/access-key-mutated.html and fast/forms/access-key-case-insensitive.html are timing out
+        https://bugs.webkit.org/show_bug.cgi?id=191642
+
+        * TestExpectations: Additionally skip accessibility/mac/selection-notification-focus-change.html
+
+2018-11-14  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r238178): fast/forms/access-key-mutated.html and fast/forms/access-key-case-insensitive.html are timing out
+        https://bugs.webkit.org/show_bug.cgi?id=191642
+
+        * TestExpectations: Skipping for now.
+
+2018-11-14  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION (WEBPROCESS_WINDOWSERVER_BLOCKING): requestAnimationFrame Stops Completing
+        https://bugs.webkit.org/show_bug.cgi?id=190884
+
+        Reviewed by Dean Jackson.
+
+        * TestExpectations:
+        * fast/animation/request-animation-frame-in-two-pages-expected.txt: Added.
+        * fast/animation/request-animation-frame-in-two-pages.html: Added.
+        * platform/mac-wk2/TestExpectations:
+
+2018-11-14  Youenn Fablet  <youenn@apple.com>
+
+        Calling removeTrack on different RTCPeerConnection should throw InvalidAccessError
+        https://bugs.webkit.org/show_bug.cgi?id=191603
+
+        Reviewed by Chris Dumez.
+
+        Removed obsolete test.
+
+        * fast/mediastream/RTCPeerConnection-add-removeTrack-expected.txt:
+        * fast/mediastream/RTCPeerConnection-add-removeTrack.html:
+
+2018-11-14  Youenn Fablet  <youenn@apple.com>
+
+        Add support for transport and peerConnection stats
+        https://bugs.webkit.org/show_bug.cgi?id=191592
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/video-stats.html:
+
+2018-11-14  Ali Juma  <ajuma@chromium.org>
+
+        Transform of composited layer not updated when layer also needs repaint
+        https://bugs.webkit.org/show_bug.cgi?id=191598
+
+        Reviewed by Simon Fraser.
+
+        * compositing/geometry/transform-and-repaint-updates-geometry-expected.html: Added.
+        * compositing/geometry/transform-and-repaint-updates-geometry.html: Added.
+
+2018-11-13  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Support CTAP HID authenticators on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=188623
+        <rdar://problem/43353777>
+
+        Reviewed by Brent Fulgham and Chris Dumez.
+
+        * http/wpt/webauthn/ctap-hid-failure.https-expected.txt: Added.
+        * http/wpt/webauthn/ctap-hid-failure.https.html: Added.
+        * http/wpt/webauthn/ctap-hid-success.https-expected.txt: Added.
+        * http/wpt/webauthn/ctap-hid-success.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure-hid-silent.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure-hid-silent.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure-hid.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure-hid.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-get-failure-hid-silent.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-get-failure-hid-silent.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-get-failure-hid.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-get-failure-hid.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https.html: Added.
+        * http/wpt/webauthn/resources/util.js:
+        * platform/ios-wk2/TestExpectations:
+
+2018-11-13  Timothy Hatcher  <timothy@apple.com>
+
+        Use a light scrollbar for transparent web views in dark mode.
+        https://bugs.webkit.org/show_bug.cgi?id=191559
+        rdar://problem/46000489
+
+        Reviewed by Dean Jackson.
+
+        * css-dark-mode/supported-color-schemes-scrollbar-expected.txt: Added.
+        * css-dark-mode/supported-color-schemes-scrollbar.html: Added.
+
+2018-11-13  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Unreviewed layout test gardening.
+
+        * platform/wincairo/TestExpectations:
+
+2018-11-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Do not show selection UI for editable elements with opacity near zero
+        https://bugs.webkit.org/show_bug.cgi?id=191442
+        <rdar://problem/45958625>
+
+        Reviewed by Simon Fraser.
+
+        Add 5 new layout tests. See below for more details.
+
+        * editing/selection/character-granularity-rect.html:
+
+        Adjust for a renamed UIScriptController function.
+
+        * editing/selection/ios/do-not-zoom-to-focused-hidden-contenteditable-expected.txt: Added.
+        * editing/selection/ios/do-not-zoom-to-focused-hidden-contenteditable.html: Added.
+
+        Add a test to verify that we don't zoom to fit the focused element, if the focused element is completely
+        transparent.
+
+        * editing/selection/ios/hide-selection-after-hiding-contenteditable-expected.txt: Added.
+        * editing/selection/ios/hide-selection-after-hiding-contenteditable.html: Added.
+
+        Add a test to verify that selection UI is hidden after making an editable root transparent, and shown again when
+        the editable root becomes opaque.
+
+        * editing/selection/ios/hide-selection-in-contenteditable-nested-transparency-expected.txt: Added.
+        * editing/selection/ios/hide-selection-in-contenteditable-nested-transparency.html: Added.
+
+        Add a test to verify that transparency applied on an editable root via nested transparent containers causes
+        selection UI to be suppressed.
+
+        * editing/selection/ios/hide-selection-in-hidden-contenteditable-expected.txt: Added.
+        * editing/selection/ios/hide-selection-in-hidden-contenteditable-frame-expected.txt: Added.
+        * editing/selection/ios/hide-selection-in-hidden-contenteditable-frame.html: Added.
+
+        Add a test to verify that selection UI is suppressed when an editable element inside a subframe is focused. This
+        test checks that the caret, selection rects and selection handle views are not shown, and additionally verifies
+        that the selection in a hidden contenteditable area cannot be changed via tap gesture.
+
+        * editing/selection/ios/hide-selection-in-hidden-contenteditable.html: Added.
+
+        Same test as above, but in a regular editable element in the main document instead of a subframe.
+
+        * resources/ui-helper.js:
+        (window.UIHelper.getUISelectionRects.return.new.Promise.):
+        (window.UIHelper.getUISelectionRects.return.new.Promise):
+        (window.UIHelper.getUISelectionRects):
+        (window.UIHelper.getUICaretViewRect.return.new.Promise.):
+        (window.UIHelper.getUICaretViewRect.return.new.Promise):
+        (window.UIHelper.getUICaretViewRect):
+
+        Add new UIHelper wrapper methods. See Tools/ChangeLog for more detail.
+
+2018-11-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table should support select all (Cmd-A)
+        https://bugs.webkit.org/show_bug.cgi?id=190299
+        <rdar://problem/45029170>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/table/table-selection-expected.txt:
+        * inspector/table/table-selection.html:
+        Add tests that `selectAll` works when multiple selection is enabled,
+        and does nothing when multiple selection is disabled.
+
+2018-11-13  Timothy Hatcher  <timothy@apple.com>
+
+        Treat supported-color-schemes as the second highest priority property.
+        https://bugs.webkit.org/show_bug.cgi?id=191556
+        rdar://problem/46000076
+
+        Reviewed by Dean Jackson.
+
+        * css-dark-mode/supported-color-schemes-priority-expected.txt: Added.
+        * css-dark-mode/supported-color-schemes-priority.html: Added.
+
+2018-11-13  Youenn Fablet  <youenn@apple.com>
+
+        Refresh WPT webrtc tests to ToT
+        https://bugs.webkit.org/show_bug.cgi?id=191564
+
+        Reviewed by Eric Carlson.
+
+        Refresh webrtc tests
+
+        * tests-options.json:
+
+2018-11-12  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Don't schedule animation frames or update style while an accelerated animation is running
+        https://bugs.webkit.org/show_bug.cgi?id=191542
+        <rdar://problem/45356027>
+
+        Reviewed by Simon Fraser.
+
+        Add a test that checks that we make only minimal style updates and still dispatch events while an accelerated animation is running.
+
+        * animations/no-style-recalc-during-accelerated-animation-expected.txt: Added.
+        * animations/no-style-recalc-during-accelerated-animation.html: Added.
+        * fast/layers/no-clipping-overflow-hidden-added-after-transform-expected.html:
+        * fast/layers/no-clipping-overflow-hidden-added-after-transform.html: Change the colors to avoid a tiny ImageOnlyFailure.
+        * platform/win/TestExpectations: Mark some regressions tracked by webkit.org/b/191584.
+
+2018-11-12  Darshan Kadu  <darsh7807@gmail.com>
+
+        Implement Cache API support for WPE/GTK
+        https://bugs.webkit.org/show_bug.cgi?id=178316
+
+        Reviewed by Michael Catanzaro.
+
+        Removed the http/wpt/cache-storage/cache-quota.any.html from the TestExpectations which 
+        were marked faliure.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-11-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: show secure certificate details per-request
+        https://bugs.webkit.org/show_bug.cgi?id=191447
+        <rdar://problem/30019476>
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/network/resource-response-security-expected.txt: Added.
+        * http/tests/inspector/network/resource-response-security.html: Added.
+
+        * platform/gtk/TestExpectations:
+        * platform/wincairo/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-11-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table should support shift-extending the row selection
+        https://bugs.webkit.org/show_bug.cgi?id=189718
+        <rdar://problem/44577942>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/unit-tests/index-set-expected.txt:
+        * inspector/unit-tests/index-set.html:
+        Add tests for new IndexSet methods `addRange`, `deleteRange`, `equals`, and `difference`.
+
+2018-11-12  Zalan Bujtas  <zalan@apple.com>
+
+        Do not collapse the soon-to-be-parent anon block when we shuffle around the marker item renderer.
+        https://bugs.webkit.org/show_bug.cgi?id=191554
+        <rdar://problem/45825265>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/inline/marker-list-item-move-should-not-crash-expected.txt: Added.
+        * fast/inline/marker-list-item-move-should-not-crash.html: Added.
+
+2018-11-12  Sihui Liu  <sihui_liu@apple.com>
+
+        imported/w3c/web-platform-tests/IndexedDB/keygenerator-explicit.html crashing on iOS device
+        https://bugs.webkit.org/show_bug.cgi?id=191500
+
+        Reviewed by Dean Jackson.
+
+        The test should not crash now.
+
+        * platform/ios-device/TestExpectations:
+
+2018-11-12  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to edit images inline
+        https://bugs.webkit.org/show_bug.cgi?id=191352
+        <rdar://problem/30107985>
+
+        Reviewed by Dean Jackson.
+
+        * TestExpectations:
+        * editing/images/basic-editable-image-expected.txt: Added.
+        * editing/images/basic-editable-image.html: Added.
+        * editing/images/reparent-editable-image-maintains-strokes-expected.txt: Added.
+        * editing/images/reparent-editable-image-maintains-strokes.html: Added.
+        * platform/ios-wk2/TestExpectations:
+        * resources/ui-helper.js:
+        (window.UIHelper.drawSquareInEditableImage):
+        (window.UIHelper.numberOfStrokesInEditableImage):
+        (window.UIHelper):
+        Add tests that we can find and draw in editable images, and that if
+        the element is moved around in the DOM, it persists its strokes.
+
+2018-11-12  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Import additional grid layout tests and update TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=191515
+
+        Reviewed by Dean Jackson.
+
+        Imported several tests from Blink and update TextExpectaions.
+
+        * TestExpectations: Adding specific bugs for the expected failures.
+        * fast/css-grid-layout/changing-content-property-on-nested-grid-should-not-crash-expected.txt: Added.
+        * fast/css-grid-layout/changing-content-property-on-nested-grid-should-not-crash.html: Added.
+        * fast/css-grid-layout/column-property-should-not-apply-on-grid-container-expected.html: Added.
+        * fast/css-grid-layout/column-property-should-not-apply-on-grid-container.html: Added.
+        * fast/css-grid-layout/crash-large-positions-expected.txt: Added.
+        * fast/css-grid-layout/crash-large-positions.html: Added.
+        * fast/css-grid-layout/fixed-width-intrinsic-width-should-exclude-scrollbar-width-in-grid-expected.txt: Added.
+        * fast/css-grid-layout/fixed-width-intrinsic-width-should-exclude-scrollbar-width-in-grid.html: Added.
+        * fast/css-grid-layout/floating-not-effect-on-grid-items-expected.txt: Added.
+        * fast/css-grid-layout/floating-not-effect-on-grid-items.html: Added.
+        * fast/css-grid-layout/grid-align-baseline-expected.txt: Added.
+        * fast/css-grid-layout/grid-align-baseline-vertical-expected.txt: Added.
+        * fast/css-grid-layout/grid-align-baseline-vertical.html: Added.
+        * fast/css-grid-layout/grid-align-baseline.html: Added.
+        * fast/css-grid-layout/grid-auto-repeat-inherit-initial-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-auto-repeat-inherit-initial-crash.html: Added.
+        * fast/css-grid-layout/grid-auto-repeat-positioned-container-expected.html: Added.
+        * fast/css-grid-layout/grid-auto-repeat-positioned-container.html: Added.
+        * fast/css-grid-layout/grid-automatic-minimum-intrinsic-aspect-ratio-expected.txt: Added.
+        * fast/css-grid-layout/grid-automatic-minimum-intrinsic-aspect-ratio.html: Added.
+        * fast/css-grid-layout/grid-container-percentage-columns-expected.txt:
+        * fast/css-grid-layout/grid-container-percentage-columns.html:
+        * fast/css-grid-layout/grid-container-percentage-rows-expected.txt: Added.
+        * fast/css-grid-layout/grid-container-percentage-rows.html: Added.
+        * fast/css-grid-layout/grid-container-scroll-accounts-for-auto-margin-expected.html: Added.
+        * fast/css-grid-layout/grid-container-scroll-accounts-for-auto-margin.html: Added.
+        * fast/css-grid-layout/grid-container-scroll-accounts-for-sizing-expected.html:
+        * fast/css-grid-layout/grid-container-scroll-accounts-for-sizing.html:
+        * fast/css-grid-layout/grid-container-width-should-include-scroll-bar-width-expected.txt: Added.
+        * fast/css-grid-layout/grid-container-width-should-include-scroll-bar-width.html: Added.
+        * fast/css-grid-layout/grid-crash-huge-margins-and-min-height-max-content-expected.txt: Added.
+        * fast/css-grid-layout/grid-crash-huge-margins-and-min-height-max-content.html: Added.
+        * fast/css-grid-layout/grid-crash-out-of-flow-positioned-element-expected.txt: Added.
+        * fast/css-grid-layout/grid-crash-out-of-flow-positioned-element.html: Added.
+        * fast/css-grid-layout/grid-crash-remove-positioned-item-expected.txt:
+        * fast/css-grid-layout/grid-crash-remove-positioned-item.html:
+        * fast/css-grid-layout/grid-item-before-anonymous-child-crash-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-before-anonymous-child-crash.html: Added.
+        * fast/css-grid-layout/grid-item-border-overflow-paint-expected.html: Added.
+        * fast/css-grid-layout/grid-item-border-overflow-paint.html: Added.
+        * fast/css-grid-layout/grid-item-change-alignment-from-stretch-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-change-alignment-from-stretch.html: Added.
+        * fast/css-grid-layout/grid-item-grid-container-percentage-rows-expected.html: Added.
+        * fast/css-grid-layout/grid-item-grid-container-percentage-rows.html: Added.
+        * fast/css-grid-layout/grid-item-overflow-expected.html: Added.
+        * fast/css-grid-layout/grid-item-overflow-paint-expected.html: Added.
+        * fast/css-grid-layout/grid-item-overflow-paint.html: Added.
+        * fast/css-grid-layout/grid-item-overflow.html: Added.
+        * fast/css-grid-layout/grid-item-paddings-and-writing-modes-expected.html: Added.
+        * fast/css-grid-layout/grid-item-paddings-and-writing-modes.html: Added.
+        * fast/css-grid-layout/grid-item-scroll-position-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-scroll-position.html: Added.
+        * fast/css-grid-layout/grid-margins-not-collapse-expected.html: Added.
+        * fast/css-grid-layout/grid-margins-not-collapse.html: Added.
+        * fast/css-grid-layout/grid-painting-item-overflow-expected.html: Added.
+        * fast/css-grid-layout/grid-painting-item-overflow.html: Added.
+        * fast/css-grid-layout/grid-painting-items-only-once-expected.html: Added.
+        * fast/css-grid-layout/grid-painting-items-only-once.html: Added.
+        * fast/css-grid-layout/grid-painting-respect-dom-order-expected.html: Added.
+        * fast/css-grid-layout/grid-painting-respect-dom-order.html: Added.
+        * fast/css-grid-layout/grid-painting-rtl-expected.html: Added.
+        * fast/css-grid-layout/grid-painting-rtl.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-01-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-01.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-02-b-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-02-b.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-02-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-02.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-03-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-03.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-04-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-04.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-05-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-05.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-06-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-06.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-07-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-07.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-01-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-01.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-02-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-02.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-03-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-03.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-04-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-04.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-05-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-05.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-06-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-06.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-07-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-horiz-07.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-two-dimensional-expected.txt: Added.
+        * fast/css-grid-layout/grid-self-baseline-two-dimensional.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-01-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-01.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-02-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-02.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-03-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-03.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-04-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-04.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-05-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-05.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-06-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-06.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-07-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-lr-07.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-01-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-01.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-02-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-02.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-03-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-03.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-04-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-04.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-05-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-05.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-06-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-06.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-07-expected.html: Added.
+        * fast/css-grid-layout/grid-self-baseline-vertical-rl-07.html: Added.
+        * fast/css-grid-layout/grid-shorthands-style-format-expected.txt: Added.
+        * fast/css-grid-layout/grid-shorthands-style-format.html: Added.
+        * fast/css-grid-layout/grid-strict-ordering-crash-2-expected.txt: Added.
+        * fast/css-grid-layout/grid-strict-ordering-crash-2.html: Added.
+        * fast/css-grid-layout/named-grid-areas-dynamic-with-media-query-expected.html: Added.
+        * fast/css-grid-layout/named-grid-areas-dynamic-with-media-query.html: Added.
+        * fast/css-grid-layout/negative-growth-share-as-infinity-crash-expected.txt: Added.
+        * fast/css-grid-layout/negative-growth-share-as-infinity-crash.html: Added.
+        * fast/css-grid-layout/painting-item-marginbox-overflowing-grid-area-expected.html: Added.
+        * fast/css-grid-layout/painting-item-marginbox-overflowing-grid-area.html: Added.
+        * fast/css-grid-layout/positioned-grid-container-item-percentage-size-expected.html: Added.
+        * fast/css-grid-layout/positioned-grid-container-item-percentage-size.html: Added.
+        * fast/css-grid-layout/positioned-grid-container-percentage-tracks-expected.txt: Added.
+        * fast/css-grid-layout/positioned-grid-container-percentage-tracks.html: Added.
+        * fast/css-grid-layout/preferred-width-computed-after-layout-expected.txt: Added.
+        * fast/css-grid-layout/preferred-width-computed-after-layout.html: Added.
+        * fast/css-grid-layout/quirks-mode-percent-resolution-grid-item-expected.txt: Added.
+        * fast/css-grid-layout/quirks-mode-percent-resolution-grid-item.html: Added.
+        * fast/css-grid-layout/resources/blue-100x50.png: Added.
+        * fast/css-grid-layout/resources/grid-definitions-parsing-utils.js:
+        (testGridPositionDefinitionsValues):
+        * fast/css-grid-layout/scrolled-grid-painting-expected.html: Added.
+        * fast/css-grid-layout/scrolled-grid-painting-overflow-expected.html: Added.
+        * fast/css-grid-layout/scrolled-grid-painting-overflow.html: Added.
+        * fast/css-grid-layout/scrolled-grid-painting.html: Added.
+        * fast/css-grid-layout/setting-node-properties-to-null-during-layout-should-not-crash-expected.txt: Added.
+        * fast/css-grid-layout/setting-node-properties-to-null-during-layout-should-not-crash.html: Added.
+        * fast/css-grid-layout/stale-grid-layout-2-expected.txt: Added.
+        * fast/css-grid-layout/stale-grid-layout-expected.txt: Added.
+        * fast/css-grid-layout/vertical-align-do-not-effect-grid-items-expected.html: Added.
+        * fast/css-grid-layout/vertical-align-do-not-effect-grid-items.html: Added.
+
+2018-11-12  Youenn Fablet  <youenn@apple.com>
+
+        RealtimeOutgoing A/V sources should observe their sources only if having a sink
+        https://bugs.webkit.org/show_bug.cgi?id=191490
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/remove-track-expected.txt:
+        * webrtc/remove-track.html:
+        Add tests and fixed some flakiness issues on existing tests in the file.
+
+2018-11-12  Youenn Fablet  <youenn@apple.com>
+
+        Support setting stream ids when adding a transceiver
+        https://bugs.webkit.org/show_bug.cgi?id=191307
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations:
+
+2018-11-12  Antti Koivisto  <antti@apple.com>
+
+        Support dynamic pseudo-classes on elements with display: contents
+        https://bugs.webkit.org/show_bug.cgi?id=181640
+        <rdar://problem/36605415>
+
+        Reviewed by Dean Jackson.
+
+        * fast/css/display-contents-hover-active-expected.txt: Added.
+        * fast/css/display-contents-hover-active.html: Added.
+
+2018-11-12  Simon Fraser  <simon.fraser@apple.com>
+
+        feFlood with alpha color doesn't work correctly
+        https://bugs.webkit.org/show_bug.cgi?id=163666
+
+        Reviewed by Zalan Bujtas.
+
+        * svg/filters/feFlood-with-alpha-color-expected.html: Added.
+        * svg/filters/feFlood-with-alpha-color.html: Added.
+
+2018-11-12  Eric Carlson  <eric.carlson@apple.com>
+
+        Require <iframe allow="display"> for an iframe to use getDisplayMedia
+        https://bugs.webkit.org/show_bug.cgi?id=191505
+        <rdar://problem/45968811>
+
+        Reviewed by Jer Noble.
+
+        * http/tests/media/media-stream/enumerate-devices-iframe-allow-attribute-expected.txt:
+        * http/tests/media/media-stream/get-display-media-iframe-allow-attribute-expected.txt: Added.
+        * http/tests/media/media-stream/get-display-media-iframe-allow-attribute.html: Added.
+        * http/tests/media/media-stream/resources/get-display-media-devices-iframe.html: Added.
+        * http/tests/ssl/media-stream/get-user-media-different-host-expected.txt:
+        * http/tests/ssl/media-stream/get-user-media-nested-expected.txt:
+
+2018-11-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Make compositing updates incremental
+        https://bugs.webkit.org/show_bug.cgi?id=90342
+
+        Reviewed by Antti Koivisto.
+
+        Add some new tests for issues discovered during development.
+        
+        Filter tests get new results because composited layer bounds are no longer affected
+        by pixel-moving filters. 
+
+        * compositing/filters/sw-layer-overlaps-hw-shadow-expected.txt:
+        * compositing/filters/sw-nested-shadow-overlaps-hw-nested-shadow-expected.txt:
+        * compositing/filters/sw-shadow-overlaps-hw-layer-expected.txt:
+        * compositing/filters/sw-shadow-overlaps-hw-shadow-expected.txt:
+        * compositing/geometry/stacking-context-change-layer-reparent-expected.html: Added.
+        * compositing/geometry/stacking-context-change-layer-reparent.html: Added.
+        * compositing/layer-creation/change-to-overlap-expected.txt: Added.
+        * compositing/layer-creation/change-to-overlap.html: Added.
+        * compositing/updates/no-updates-in-non-composited-iframe-expected.txt: Added.
+        * compositing/updates/no-updates-in-non-composited-iframe.html: Added.
+        * compositing/updates/resources/non-composited.html: Added.
+        * compositing/video/video-clip-change-src.html: This test was timing-sensitive; the behavior differed bases on whether we
+        happened to do a compositing flush between the first and second video load.
+        * platform/mac-wk1/TestExpectations: Mark compositing/layer-creation/fixed-overlap-extent.html as flakey; it depends on the
+        timing of various AppKit-related things that aren't consistent.
+
+2018-11-12  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Frame re-ordering can cause iframes to never be enqueued
+        https://bugs.webkit.org/show_bug.cgi?id=191485
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-dropped-iframe-expected.txt: Added.
+        * media/media-source/media-source-dropped-iframe.html: Added.
+
+2018-11-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement a new edit command to change the enclosing list type
+        https://bugs.webkit.org/show_bug.cgi?id=191487
+        <rdar://problem/45955922>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new layout test to verify that the list change type editing command can be used to swap between enclosing
+        ordered and unordered lists. Also exercises undo, redo, changing list types under `pre` and `table` elements,
+        and handling selection within nested list elements.
+
+        * editing/execCommand/change-list-type-expected.txt: Added.
+        * editing/execCommand/change-list-type.html: Added.
+
+2018-11-11  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Import additional grid layout test from the WPT suite
+        https://bugs.webkit.org/show_bug.cgi?id=191369
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        New Grid Layout tests from the WPT suite.
+
+        * TestExpectations: Added bugs and ImageOnlyFailure for 3 tests that are failing.
+
+2018-11-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Draw caps lock indicator in password fields
+        https://bugs.webkit.org/show_bug.cgi?id=190565
+        <rdar://problem/45262343>
+
+        Unreviewed.
+
+        Update expected results now that iOS supports showing the caps lock indictor.
+
+        * platform/ios/fast/css/text-overflow-input-expected.txt:
+        * platform/ios/fast/forms/basic-inputs-expected.txt:
+        * platform/ios/fast/forms/input-appearance-height-expected.txt:
+        * platform/ios/fast/forms/input-value-expected.txt:
+        * platform/ios/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/ios/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt:
+
+2018-11-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Address post-review comments after r237955
+        https://bugs.webkit.org/show_bug.cgi?id=191496
+
+        Reviewed by Darin Adler.
+
+        * fast/css3-text/css3-text-decoration/text-underline-negative-expected.html:
+
+2018-11-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove support for -webkit-svg-shadow
+        https://bugs.webkit.org/show_bug.cgi?id=187429
+
+        Reviewed by Dean Jackson.
+
+        -webkit-svg-shadow was a non-standard hack for online iWork, and they no longer use it,
+        so remove it. No other browser supports it, and chromestatus say it's used on less than
+        0.000001% of pages.
+
+        * css3/blending/svg-blend-layer-shadow.html: Removed.
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css/getComputedStyle/resources/property-names.js:
+        * fast/repaint/moving-shadow-on-container-expected.png: Removed.
+        * fast/repaint/moving-shadow-on-container.html: Removed.
+        * fast/repaint/moving-shadow-on-path-expected.txt: Removed.
+        * fast/repaint/moving-shadow-on-path.html: Removed.
+        * legacy-animation-engine/fast/css/getComputedStyle/resources/property-names.js:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/css3/blending/svg-blend-layer-shadow-expected.png: Removed.
+        * platform/gtk/css3/blending/svg-blend-layer-shadow-expected.txt: Removed.
+        * platform/gtk/fast/repaint/moving-shadow-on-container-expected.txt: Removed.
+        * platform/gtk/fast/repaint/moving-shadow-on-path-expected.png: Removed.
+        * platform/gtk/svg/css/arrow-with-shadow-expected.png: Removed.
+        * platform/gtk/svg/css/composite-shadow-example-expected.png: Removed.
+        * platform/gtk/svg/css/composite-shadow-example-expected.txt: Removed.
+        * platform/gtk/svg/css/composite-shadow-text-expected.png: Removed.
+        * platform/gtk/svg/css/composite-shadow-text-expected.txt: Removed.
+        * platform/gtk/svg/css/composite-shadow-with-opacity-expected.png: Removed.
+        * platform/gtk/svg/css/composite-shadow-with-opacity-expected.txt: Removed.
+        * platform/gtk/svg/css/group-with-shadow-expected.png: Removed.
+        * platform/gtk/svg/css/shadow-changes-expected.png: Removed.
+        * platform/gtk/svg/css/shadow-changes-expected.txt: Removed.
+        * platform/gtk/svg/css/stars-with-shadow-expected.png: Removed.
+        * platform/gtk/svg/custom/simple-text-double-shadow-expected.txt: Removed.
+        * platform/gtk/svg/custom/transform-with-shadow-and-gradient-expected.png: Removed.
+        * platform/gtk/svg/custom/transform-with-shadow-and-gradient-expected.txt: Removed.
+        * platform/gtk/svg/filters/shadow-on-filter-expected.png: Removed.
+        * platform/gtk/svg/filters/shadow-on-rect-with-filter-expected.png: Removed.
+        * platform/gtk/svg/repaint/repaint-webkit-svg-shadow-expected.png: Removed.
+        * platform/ios/TestExpectations:
+        * platform/ios/css3/blending/svg-blend-layer-shadow-expected.txt: Removed.
+        * platform/ios/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/ios/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/ios/svg/css/composite-shadow-example-expected.txt: Removed.
+        * platform/ios/svg/css/composite-shadow-text-expected.txt: Removed.
+        * platform/ios/svg/css/composite-shadow-with-opacity-expected.txt: Removed.
+        * platform/ios/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/ios/svg/css/group-with-shadow-expected.txt: Removed.
+        * platform/ios/svg/css/shadow-changes-expected.txt: Removed.
+        * platform/ios/svg/css/stars-with-shadow-expected.txt: Removed.
+        * platform/ios/svg/custom/transform-with-shadow-and-gradient-expected.txt: Removed.
+        * platform/mac-sierra/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/mac-sierra/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/mac-sierra/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/mac/TestExpectations:
+        * platform/mac/css3/blending/svg-blend-layer-shadow-expected.png: Removed.
+        * platform/mac/css3/blending/svg-blend-layer-shadow-expected.txt: Removed.
+        * platform/mac/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/mac/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/mac/fast/repaint/moving-shadow-on-container-expected.txt: Removed.
+        * platform/mac/fast/repaint/moving-shadow-on-path-expected.png: Removed.
+        * platform/mac/fast/repaint/moving-shadow-on-path-expected.txt: Removed.
+        * platform/mac/svg/css/arrow-with-shadow-expected.png: Removed.
+        * platform/mac/svg/css/circle-in-mask-with-shadow-expected.png: Removed.
+        * platform/mac/svg/css/clippath-with-shadow-expected.png: Removed.
+        * platform/mac/svg/css/composite-shadow-example-expected.png: Removed.
+        * platform/mac/svg/css/composite-shadow-text-expected.txt: Removed.
+        * platform/mac/svg/css/composite-shadow-with-opacity-expected.png: Removed.
+        * platform/mac/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/mac/svg/css/group-with-shadow-expected.png: Removed.
+        * platform/mac/svg/css/group-with-shadow-expected.txt: Removed.
+        * platform/mac/svg/css/mask-with-shadow-expected.png: Removed.
+        * platform/mac/svg/css/path-with-shadow-expected.png: Removed.
+        * platform/mac/svg/css/shadow-and-opacity-expected.png: Removed.
+        * platform/mac/svg/css/shadow-changes-expected.png: Removed.
+        * platform/mac/svg/css/shadow-changes-expected.txt: Removed.
+        * platform/mac/svg/css/shadow-with-large-radius-expected.png: Removed.
+        * platform/mac/svg/css/shadow-with-negative-offset-expected.png: Removed.
+        * platform/mac/svg/css/stars-with-shadow-expected.png: Removed.
+        * platform/mac/svg/css/stars-with-shadow-expected.txt: Removed.
+        * platform/mac/svg/custom/simple-text-double-shadow-expected.png: Removed.
+        * platform/mac/svg/custom/simple-text-double-shadow-expected.txt: Removed.
+        * platform/mac/svg/custom/transform-with-shadow-and-gradient-expected.png: Removed.
+        * platform/mac/svg/custom/transform-with-shadow-and-gradient-expected.txt: Removed.
+        * platform/mac/svg/filters/shadow-on-filter-expected.png: Removed.
+        * platform/mac/svg/filters/shadow-on-rect-with-filter-expected.png: Removed.
+        * platform/mac/svg/repaint/repaint-webkit-svg-shadow-expected.png: Removed.
+        * platform/win/TestExpectations:
+        * platform/win/css3/blending/svg-blend-layer-shadow-expected.txt: Removed.
+        * platform/win/fast/repaint/moving-shadow-on-container-expected.txt: Removed.
+        * platform/win/fast/repaint/moving-shadow-on-path-expected.txt: Removed.
+        * platform/win/svg/css/composite-shadow-text-expected.txt: Removed.
+        * platform/win/svg/css/group-with-shadow-expected.txt: Removed.
+        * platform/win/svg/css/shadow-changes-expected.txt: Removed.
+        * platform/win/svg/custom/simple-text-double-shadow-expected.txt: Removed.
+        * platform/wincairo/fast/repaint/moving-shadow-on-container-expected.txt: Removed.
+        * platform/wincairo/fast/repaint/moving-shadow-on-path-expected.png: Removed.
+        * platform/wincairo/svg/css/composite-shadow-text-expected.txt: Removed.
+        * platform/wincairo/svg/css/shadow-changes-expected.txt: Removed.
+        * platform/wincairo/svg/custom/transform-with-shadow-and-gradient-expected.txt: Removed.
+        * platform/wpe/svg/css/composite-shadow-text-expected.txt: Removed.
+        * platform/wpe/svg/css/shadow-changes-expected.txt: Removed.
+        * platform/wpe/svg/css/stars-with-shadow-expected.txt: Removed.
+        * platform/wpe/svg/custom/simple-text-double-shadow-expected.txt: Removed.
+        * platform/wpe/svg/custom/transform-with-shadow-and-gradient-expected.txt: Removed.
+        * svg/css/arrow-with-shadow-expected.txt: Removed.
+        * svg/css/arrow-with-shadow.svg: Removed.
+        * svg/css/circle-in-mask-with-shadow-expected.png: Removed.
+        * svg/css/circle-in-mask-with-shadow-expected.txt: Removed.
+        * svg/css/circle-in-mask-with-shadow.svg: Removed.
+        * svg/css/clippath-with-shadow-expected.png: Removed.
+        * svg/css/clippath-with-shadow-expected.txt: Removed.
+        * svg/css/clippath-with-shadow.svg: Removed.
+        * svg/css/composite-shadow-example-expected.txt: Removed.
+        * svg/css/composite-shadow-example.html: Removed.
+        * svg/css/composite-shadow-text-expected.png: Removed.
+        * svg/css/composite-shadow-text.svg: Removed.
+        * svg/css/composite-shadow-with-opacity-expected.txt: Removed.
+        * svg/css/composite-shadow-with-opacity.html: Removed.
+        * svg/css/getComputedStyle-basic-expected.txt:
+        * svg/css/group-with-shadow-expected.txt: Removed.
+        * svg/css/group-with-shadow.svg: Removed.
+        * svg/css/mask-with-shadow-expected.txt: Removed.
+        * svg/css/mask-with-shadow.svg: Removed.
+        * svg/css/parent-shadow-offscreen-expected.svg: Removed.
+        * svg/css/parent-shadow-offscreen.svg: Removed.
+        * svg/css/path-with-shadow-expected.png: Removed.
+        * svg/css/path-with-shadow-expected.txt: Removed.
+        * svg/css/path-with-shadow.svg: Removed.
+        * svg/css/root-shadow-offscreen-expected.svg: Removed.
+        * svg/css/root-shadow-offscreen.svg: Removed.
+        * svg/css/shadow-and-opacity-expected.txt: Removed.
+        * svg/css/shadow-and-opacity.svg: Removed.
+        * svg/css/shadow-changes.svg: Removed.
+        * svg/css/shadow-with-large-radius-expected.png: Removed.
+        * svg/css/shadow-with-large-radius-expected.txt: Removed.
+        * svg/css/shadow-with-large-radius.svg: Removed.
+        * svg/css/shadow-with-negative-offset-expected.png: Removed.
+        * svg/css/shadow-with-negative-offset-expected.txt: Removed.
+        * svg/css/shadow-with-negative-offset.svg: Removed.
+        * svg/css/stars-with-shadow-expected.txt: Removed.
+        * svg/css/stars-with-shadow.html: Removed.
+        * svg/custom/simple-text-double-shadow-expected.png: Removed.
+        * svg/custom/simple-text-double-shadow-expected.txt: Removed.
+        * svg/custom/simple-text-double-shadow.svg: Removed.
+        * svg/custom/transform-with-shadow-and-gradient.svg: Removed.
+        * svg/filters/shadow-on-filter-expected.txt: Removed.
+        * svg/filters/shadow-on-filter.svg: Removed.
+        * svg/filters/shadow-on-rect-with-filter-expected.txt: Removed.
+        * svg/filters/shadow-on-rect-with-filter.svg: Removed.
+        * svg/repaint/repaint-webkit-svg-shadow-container-expected.txt: Removed.
+        * svg/repaint/repaint-webkit-svg-shadow-container.html: Removed.
+        * svg/repaint/repaint-webkit-svg-shadow-expected.txt: Removed.
+        * svg/repaint/repaint-webkit-svg-shadow.svg: Removed.
+
+2018-11-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r238065.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Make it possible to edit images inline"
+        https://bugs.webkit.org/show_bug.cgi?id=191352
+        https://trac.webkit.org/changeset/238065
+
+2018-11-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix typo in r238066.
+
+        * accessibility/ios-simulator/form-control-validation-message.html:
+
+2018-11-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed attempt to deflake accessibility/ios-simulator/form-control-validation-message.html
+
+        * accessibility/ios-simulator/form-control-validation-message.html:
+
+2018-11-10  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to edit images inline
+        https://bugs.webkit.org/show_bug.cgi?id=191352
+        <rdar://problem/30107985>
+
+        Reviewed by Dean Jackson.
+
+        * TestExpectations:
+        * editing/images/basic-editable-image-expected.txt: Added.
+        * editing/images/basic-editable-image.html: Added.
+        * editing/images/reparent-editable-image-maintains-strokes-expected.txt: Added.
+        * editing/images/reparent-editable-image-maintains-strokes.html: Added.
+        * platform/ios-wk2/TestExpectations:
+        * resources/ui-helper.js:
+        (window.UIHelper.drawSquareInEditableImage):
+        (window.UIHelper.numberOfStrokesInEditableImage):
+        (window.UIHelper):
+        Add tests that we can find and draw in editable images, and that if
+        the element is moved around in the DOM, it persists its strokes.
+
+2018-11-09  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix Test Expectations for Reveal Test
+        https://bugs.webkit.org/show_bug.cgi?id=191476
+
+        Unreviewed test gardening.
+
+        Put the test expectation in the correct location to deal with
+        the different behaviour old platforms.
+
+        * platform/mac/editing/mac/selection/context-menu-select-editability-expected.txt: Renamed from LayoutTests/platform/mac-highsierra/editing/mac/selection/context-menu-select-editability-expected.txt.
+
+2018-11-09  Tim Horton  <timothy_horton@apple.com>
+
+        Normal-flow-only flex items don't correctly respect z-index
+        https://bugs.webkit.org/show_bug.cgi?id=191486
+
+        Reviewed by Simon Fraser.
+
+        * css3/flexbox/z-index-with-normal-flow-only-expected.html: Added.
+        * css3/flexbox/z-index-with-normal-flow-only.html: Added.
+        Add a test that a <canvas> with z-index 50 correctly stacks below
+        a <canvas> that is a flex-item with z-index 100.
+
+2018-11-09  Jer Noble  <jer.noble@apple.com>
+
+        SourceBuffer throws an error when appending a second init segment after changeType().
+        https://bugs.webkit.org/show_bug.cgi?id=191474
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-changetype-second-init-expected.txt: Added.
+        * media/media-source/media-source-changetype-second-init.html: Added.
+
+2018-11-09  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] canMakePayment() should not consider serialized payment method data
+        https://bugs.webkit.org/show_bug.cgi?id=191432
+
+        Reviewed by Dean Jackson.
+
+        * http/tests/paymentrequest/payment-request-canmakepayment-method.https-expected.txt:
+        * http/tests/paymentrequest/payment-request-canmakepayment-method.https.html: Updated with
+        changes from imported/w3c/web-platform-tests/payment-request/. Modified two tests to use
+        user_activation_test() rather than test_driver.bless().
+        * http/tests/paymentrequest/payment-request-show-method.https-expected.txt:
+        * http/tests/paymentrequest/payment-request-show-method.https.html: Now that canMakePayment
+        does not convert payment method data, added a test that ensures show() rejects with a
+        TypeError when Apple Pay's payment method data is invalid.
+        * platform/ios-wk2/TestExpectations: Un-skipped payment-request-canmakepayment-method.https.html.
+        * platform/mac-wk2/TestExpectations: Ditto.
+
+2018-11-09  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] PaymentResponse.details should be updated when the user accepts a rpayment retry
+        https://bugs.webkit.org/show_bug.cgi?id=191440
+
+        Reviewed by Dean Jackson.
+
+        * http/tests/paymentrequest/payment-response-retry-method.https-expected.txt:
+        * http/tests/paymentrequest/payment-response-retry-method.https.html:
+
+2018-11-09  Chris Dumez  <cdumez@apple.com>
+
+        HTML form validation bubble disappears
+        https://bugs.webkit.org/show_bug.cgi?id=191418
+
+        Reviewed by Simon Fraser.
+
+        Add API test coverage and update existing tests to use form-validation.js and
+        avoid code duplication.
+
+        * fast/forms/form-validation.js: Added.
+        (getValidationBubbleContents):
+        (getValidationBubble.return.new.Promise.):
+        (getValidationBubble):
+        * fast/forms/ios/validation-bubble-dismiss-on-tap-expected.txt:
+        * fast/forms/ios/validation-bubble-dismiss-on-tap.html:
+        * fast/forms/navigation-dismisses-validation-bubbles-expected.txt: Renamed from LayoutTests/http/tests/navigation/navigation-dismisses-validation-bubbles-expected.txt.
+        * fast/forms/navigation-dismisses-validation-bubbles.html: Renamed from LayoutTests/http/tests/navigation/navigation-dismisses-validation-bubbles.html.
+        * fast/forms/resources/check-validation-bubble-not-visible.html: Renamed from LayoutTests/http/tests/navigation/resources/check-validation-bubble-not-visible.html.
+        * fast/forms/scroll-into-view-and-show-validation-message-expected.txt: Added.
+        * fast/forms/scroll-into-view-and-show-validation-message.html: Added.
+        * fast/forms/validation-bubble-disappears-when-input-detached-expected.txt:
+        * fast/forms/validation-bubble-disappears-when-input-detached.html:
+        * fast/forms/validation-bubble-disappears-when-input-moved-expected.txt:
+        * fast/forms/validation-bubble-disappears-when-input-moved.html:
+        * fast/forms/validation-bubble-disappears-when-input-no-longer-visible-expected.txt:
+        * fast/forms/validation-bubble-disappears-when-input-no-longer-visible.html:
+        * fast/forms/validation-bubble-escape-key-dismiss-expected.txt:
+        * fast/forms/validation-bubble-escape-key-dismiss.html:
+        * fast/forms/validation-custom-message-expected.txt:
+        * fast/forms/validation-custom-message.html:
+        * fast/forms/validation-message-detached-iframe-expected.txt:
+        * fast/forms/validation-message-detached-iframe.html:
+        * fast/forms/validation-message-detached-iframe2-expected.txt:
+        * fast/forms/validation-message-detached-iframe2.html:
+        * fast/forms/validation-message-minimum-font-size-expected.txt:
+        * fast/forms/validation-message-minimum-font-size.html:
+        * fast/forms/validation-messages-expected.txt:
+        * fast/forms/validation-messages.html:
+        * platform/gtk/TestExpectations:
+        * platform/ios-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2018-11-09  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Fix failing imported/w3c/web-platform-tests/media-source/mediasource-changetype-play.html test
+        https://bugs.webkit.org/show_bug.cgi?id=191396
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/imported/w3c/web-platform-tests/media-source/mediasource-changetype-play-expected.txt:
+        * platform/mac-sierra/imported/w3c/web-platform-tests/media-source/mediasource-changetype-play-expected.txt:
+
+2018-11-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Clean up test expectations after r237942
+        https://bugs.webkit.org/show_bug.cgi?id=191448
+
+        Unreviewed test gardening.
+
+        Add test expectation files for Sierra WK1.
+
+        * platform/mac-sierra-wk1/compositing/repaint/iframes/compositing-iframe-scroll-repaint-expected.txt: Added.
+        * platform/mac-sierra-wk1/compositing/repaint/iframes/compositing-iframe-with-fixed-background-doc-repaint-expected.txt: Added.
+
+2018-11-09  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Pressing forward delete key in text field does nothing and we should not invoke an editor
+        action when forward delete is pressed outside a text field
+        https://bugs.webkit.org/show_bug.cgi?id=190566
+        <rdar://problem/45262367>
+
+        Reviewed by Wenson Hsieh.
+
+        Add a test to ensure that pressing the forward delete key deletes the next character.
+
+        * fast/events/ios/forward-delete-in-editable-expected.txt: Added.
+        * fast/events/ios/forward-delete-in-editable.html: Added.
+
+2018-11-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r236365): [GTK] Many form-related tests are failing
+        https://bugs.webkit.org/show_bug.cgi?id=189993
+
+        Reviewed by Michael Catanzaro.
+
+        Remove expectations for tests that are passing now.
+
+        * platform/gtk/TestExpectations:
+
+2018-11-08  Megan Gardner  <megan_gardner@apple.com>
+
+        Adopt Reveal Framework to replace Lookup
+        https://bugs.webkit.org/show_bug.cgi?id=191097
+
+        Reviewed by Tim Horton.
+
+        Reveal selects spaces instead of adjacent words, no matter how interesting they are. 
+        Update the tests to show this, and change the expections for previous platforms.
+
+        * editing/mac/selection/context-menu-select-editability-expected.txt:
+        * editing/mac/selection/context-menu-select-editability.html:
+        * platform/mac-highsierra/editing/mac/selection/context-menu-select-editability-expected.txt: Copied from LayoutTests/editing/mac/selection/context-menu-select-editability-expected.txt.
+
+2018-11-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Clean up test expectations after r237942
+        https://bugs.webkit.org/show_bug.cgi?id=191448
+
+        Unreviewed test gardening.
+
+        Add High Sierra specific expectation files for three tests, rebaseline one for Mojave, and remove failure expectations.
+
+        * platform/mac-highsierra-wk1/compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint-expected.txt: Copied from LayoutTests/platform/mac-wk1/compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint-expected.txt.
+        * platform/mac-highsierra-wk1/compositing/repaint/iframes/compositing-iframe-scroll-repaint-expected.txt: Added.
+        * platform/mac-highsierra-wk1/compositing/repaint/iframes/compositing-iframe-with-fixed-background-doc-repaint-expected.txt: Added.
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk1/compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint-expected.txt:
+
+2018-11-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [Mojave WK1] Layout test fast/events/detect-caps-lock.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=191424
+
+        Unreviewed test gardening.
+
+        Update expectations since this test is only expected to run on WK2.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-11-08  Ross Kirsling  <ross.kirsling@sony.com>
+
+        U+180E is no longer a whitespace character
+        https://bugs.webkit.org/show_bug.cgi?id=191415
+
+        Reviewed by Saam Barati.
+
+        * js/ToNumber-expected.txt:
+        * js/parseFloat-expected.txt:
+        * js/script-tests/ToNumber.js:
+        * js/script-tests/parseFloat.js:
+        Update tests and expectations.
+
+        * sputnik/Conformance/09_Type_Conversion/9.3_ToNumber/9.3.1_ToNumber_from_String/S9.3.1_A2-expected.txt:
+        * sputnik/Conformance/09_Type_Conversion/9.3_ToNumber/9.3.1_ToNumber_from_String/S9.3.1_A3_T1-expected.txt:
+        * sputnik/Conformance/09_Type_Conversion/9.3_ToNumber/9.3.1_ToNumber_from_String/S9.3.1_A3_T2-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.10_RegExp/15.10.2/15.10.2.12_CharacterClassEscape/S15.10.2.12_A1_T1-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.10_RegExp/15.10.2/15.10.2.12_CharacterClassEscape/S15.10.2.12_A2_T1-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.2/15.1.2.2_parseInt/S15.1.2.2_A2_T10-expected.txt:
+        * sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.2/15.1.2.3_parseFloat/S15.1.2.3_A2_T10-expected.txt:
+        * sputnik/Unicode/Unicode_410/S15.10.2.12_A1_T6-expected.txt:
+        * sputnik/Unicode/Unicode_410/S15.10.2.12_A2_T6-expected.txt:
+        * sputnik/Unicode/Unicode_410/S7.2_A1.6_T1-expected.txt:
+        * sputnik/Unicode/Unicode_500/S15.10.2.12_A1_T6-expected.txt:
+        * sputnik/Unicode/Unicode_500/S15.10.2.12_A2_T6-expected.txt:
+        * sputnik/Unicode/Unicode_500/S7.2_A1.6_T1-expected.txt:
+        * sputnik/Unicode/Unicode_510/S15.10.2.12_A1_T6-expected.txt:
+        * sputnik/Unicode/Unicode_510/S15.10.2.12_A2_T6-expected.txt:
+        * sputnik/Unicode/Unicode_510/S7.2_A1.6_T1-expected.txt:
+        Let outdated sputnik checks fail.
+
+2018-11-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unprefix text-decoration CSS3 properties
+        https://bugs.webkit.org/show_bug.cgi?id=127193
+
+        Reviewed by Dean Jackson.
+
+        * fast/css3-text/css3-text-decoration/unprefix-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/unprefix.html: Added.
+
+2018-11-08  Timothy Hatcher  <timothy@apple.com>
+
+        Add experimental support for a `supported-color-schemes` CSS property.
+        https://bugs.webkit.org/show_bug.cgi?id=191319
+        rdar://problem/45852261
+
+        Reviewed by Dean Jackson.
+
+        * css-dark-mode/parse-supported-color-schemes-expected.txt: Added.
+        * css-dark-mode/parse-supported-color-schemes.html: Added.
+        * css-dark-mode/supported-color-schemes-css-expected.txt: Added.
+        * css-dark-mode/supported-color-schemes-css.html: Added.
+
+2018-11-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Sierra Release WK2] Layout Test media/track/track-cue-css.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=191200
+
+        Unreviewed, speculative fix for test flakiness.
+
+        * media/track/track-cue-css-expected.html:
+        * media/track/track-cue-css.html:
+
+2018-11-08  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Use DeviceIdHashSaltStorage to generate device ID hash salt
+        https://bugs.webkit.org/show_bug.cgi?id=190825
+        <rdar://problem/45486085>
+
+        Update enumerate-devices-source-id to expect the same device to have the same ID in all
+        iframes, remove enumerate-devices-source-id-persistent because the logic was faulty.
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations: Unskip http/tests/media/media-stream/enumerate-devices-source-id.html
+        * http/tests/media/media-stream/enumerate-devices-source-id-expected.txt:
+        * http/tests/media/media-stream/enumerate-devices-source-id-persistent-expected.txt: Removed.
+        * http/tests/media/media-stream/enumerate-devices-source-id-persistent.html: Removed.
+        * http/tests/media/media-stream/enumerate-devices-source-id.html:
+
+2018-11-08  Jonathan Hammer  <jonathan@e3software.com>
+
+        Plain text drag in contenteditable is always DragOperationCopy, never DragOperationMove
+        https://bugs.webkit.org/show_bug.cgi?id=191228
+        <rdar://problem/45786830>
+
+        Reviewed by Wenson Hsieh.
+
+        A test that checks that dragging plain text in a contenteditable element results
+        in the text being moved and not copied. Only applies to WK1. Test skipped on
+        WK2 because WK2 EventSender does not support drag events. Test also skipped on 
+        AppleWin because drag and drop doesn't work correctly in DRT (according to the 
+        TestExpectations file).
+
+        * fast/events/drag-and-drop-move-not-copy-expected.txt: Added.
+        * fast/events/drag-and-drop-move-not-copy.html: Added.
+        * platform/win/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2018-11-08  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=191404
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/block/basic/height-percentage-simple-expected.txt: Added.
+        * platform/gtk/fast/inline/simple-inline-block-expected.txt: Added.
+        * platform/gtk/fast/inline/simple-intruding-float1-expected.txt: Added.
+        * platform/gtk/fast/inline/simple-intruding-floats2-expected.txt: Added.
+        * platform/gtk/fast/inline/simple-shrink-to-fit-inline-block-expected.txt: Added.
+
+2018-11-07  Justin Michaud  <justin_michaud@apple.com>
+
+        CSS Painting API should pass size, arguments and input properties to paint callback
+        https://bugs.webkit.org/show_bug.cgi?id=191309
+
+        Reviewed by Chris Dumez.
+
+        * fast/css-custom-paint/properties-expected.html: Added.
+        * fast/css-custom-paint/properties.html: Added.
+        * fast/css-custom-paint/worklet.html:
+
+2018-11-07  Zalan Bujtas  <zalan@apple.com>
+
+        Click and touch event listeners on the body don't work
+        https://bugs.webkit.org/show_bug.cgi?id=191392
+        <rdar://problem/5844416>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/click-handler-on-body-simple-expected.txt: Added.
+        * fast/events/click-handler-on-body-simple.html: Added.
+        * fast/events/touch/touch-handler-on-body-simple-expected.txt: Added.
+        * fast/events/touch/touch-handler-on-body-simple.html: Added.
+
+2018-11-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add an editing command for creating and inserting child lists
+        https://bugs.webkit.org/show_bug.cgi?id=191335
+        <rdar://problem/45814050>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new layout tests that exercise the "InsertNested(Un)orderedList" editing commands in several scenarios
+        including undo, redo, executing the edit command with a ranged selection, outdenting to decrease list level,
+        inserting lists in and around tables and table cells, and inserting lists in and around pre elements.
+
+        * editing/execCommand/insert-nested-lists-expected.txt: Added.
+        * editing/execCommand/insert-nested-lists-in-table-expected.txt: Added.
+        * editing/execCommand/insert-nested-lists-in-table.html: Added.
+        * editing/execCommand/insert-nested-lists-with-pre-expected.txt: Added.
+        * editing/execCommand/insert-nested-lists-with-pre.html: Added.
+        * editing/execCommand/insert-nested-lists.html: Added.
+
+2018-11-07  Chris Dumez  <cdumez@apple.com>
+
+        ASSERT(renderer()) under HTMLTextAreaElement::updateValue()
+        https://bugs.webkit.org/show_bug.cgi?id=191391
+        <rdar://problem/34219633>
+
+        Reviewed by Geoffrey Garen.
+
+        Add layout test coverage. I have verified that this test passes in Firefox and Chrome.
+        It used to crash before this change in debug.
+
+        * editing/inserting/inset-html-textarea-without-renderer-expected.txt: Added.
+        * editing/inserting/inset-html-textarea-without-renderer.html: Added.
+
+2018-11-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Positioned text underline can look like a strike-through
+        https://bugs.webkit.org/show_bug.cgi?id=191341
+
+        Reviewed by Simon Fraser.
+
+        * fast/css3-text/css3-text-decoration/text-underline-negative-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-underline-negative.html: Added.
+
+2018-11-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Dotted underlines that skip descenders are invisible
+        https://bugs.webkit.org/show_bug.cgi?id=191403
+
+        Reviewed by Simon Fraser.
+
+        * fast/css3-text/css3-text-decoration/text-underline-style-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-underline-style.html: Added.
+
+2018-11-07  Andy Estes  <aestes@apple.com>
+
+        Crash in WebCore::PaymentRequest::canMakePayment when Apple Pay payment method data is missing
+        https://bugs.webkit.org/show_bug.cgi?id=191331
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/paymentrequest/payment-request-canmakepayment-method.https.html:
+
+2018-11-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Revert 237849: it breaks MotionMark
+        https://bugs.webkit.org/show_bug.cgi?id=191398
+
+        Reviewed by Simon Fraser.
+
+        * fast/scrolling/ios/update-scroll-coordinated-status-expected.txt: Removed.
+        * fast/scrolling/ios/update-scroll-coordinated-status.html: Removed.
+
+2018-11-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Some WK1 repaint tests are flakey
+        https://bugs.webkit.org/show_bug.cgi?id=190627
+
+        Reviewed by Zalan Bujtas.
+        
+        New baseline.
+
+        * compositing/masks/compositing-clip-path-change-no-repaint-expected.txt:
+
+2018-11-07  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Unreviewed layout test gardening.
+
+        * platform/wincairo/TestExpectations:
+
+2018-11-07  Dean Jackson  <dino@apple.com>
+
+        [iOS] WebGL leaks exact GPU type
+        https://bugs.webkit.org/show_bug.cgi?id=191393
+        <rdar://problem/45788297>
+
+        Reviewed by Tim Horton.
+
+        A test that checks that when the GPU vendor is Apple we're
+        returning a generic renderer name.
+
+        * fast/canvas/webgl/hide-some-renderer-info-expected.txt: Added.
+        * fast/canvas/webgl/hide-some-renderer-info.html: Added.
+
+2018-11-07  Ali Juma  <ajuma@chromium.org>
+
+        IntersectionObserver GC-dependent tests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=191387
+
+        Reviewed by Chris Dumez.
+
+        Make these tests more robust by triggering GC repeatedly inside a setInterval(). Having only a single call to
+        GC is potentially flaky, since that call will early-out and return immediately if a GC is already underway.
+
+        * intersection-observer/root-element-deleted.html:
+        * intersection-observer/target-deleted.html:
+
 2018-11-07  Dan Bernstein  <mitz@apple.com>
 
         Add a pseudoclass that matches img elements that are backed by an attachment

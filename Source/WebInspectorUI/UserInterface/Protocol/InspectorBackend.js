@@ -40,7 +40,10 @@ InspectorBackendClass = class InspectorBackendClass
         this._defaultTracer = new WI.LoggingProtocolTracer;
         this._activeTracers = [this._defaultTracer];
 
-        this._workerSupportedDomains = [];
+        this._supportedDomainsForDebuggableType = new Map;
+
+        for (let debuggableType of Object.values(WI.DebuggableType))
+            this._supportedDomainsForDebuggableType.set(debuggableType, []);
 
         WI.settings.autoLogProtocolMessages.addEventListener(WI.Setting.Event.Changed, this._startOrStopAutomaticTracing, this);
         WI.settings.autoLogTimeStats.addEventListener(WI.Setting.Event.Changed, this._startOrStopAutomaticTracing, this);
@@ -55,7 +58,12 @@ InspectorBackendClass = class InspectorBackendClass
 
     // Public
 
-    get workerSupportedDomains() { return this._workerSupportedDomains; }
+    // This should be used for feature checking if something exists in the protocol
+    // regardless of whether or not the domain is active for a specific target.
+    get domains()
+    {
+        return this._agents;
+    }
 
     // It's still possible to set this flag on InspectorBackend to just
     // dump protocol traffic as it happens. For more complex uses of
@@ -149,17 +157,25 @@ InspectorBackendClass = class InspectorBackendClass
 
     dispatch(message)
     {
-        InspectorBackend.mainConnection.dispatch(message);
+        InspectorBackend.backendConnection.dispatch(message);
     }
 
     runAfterPendingDispatches(script)
     {
         // FIXME: Should this respect pending dispatches in all connections?
-        InspectorBackend.mainConnection.runAfterPendingDispatches(script);
+        InspectorBackend.backendConnection.runAfterPendingDispatches(script);
     }
 
     activateDomain(domainName, activationDebuggableTypes)
     {
+        let supportedDebuggableTypes = activationDebuggableTypes || Object.values(WI.DebuggableType);
+        for (let debuggableType of supportedDebuggableTypes)
+            this._supportedDomainsForDebuggableType.get(debuggableType).push(domainName);
+
+        // FIXME: For proper multi-target support we should eliminate all uses of
+        // `window.FooAgent` and `unprefixed FooAgent` in favor of either:
+        //   - Per-target: `target.FooAgent`
+        //   - Global feature check: `InspectorBackend.domains.Foo`
         if (!activationDebuggableTypes || activationDebuggableTypes.includes(InspectorFrontendHost.debuggableType())) {
             let agent = this._agents[domainName];
             agent.activate();
@@ -169,9 +185,11 @@ InspectorBackendClass = class InspectorBackendClass
         return null;
     }
 
-    workerSupportedDomain(domainName)
+    supportedDomainsForDebuggableType(type)
     {
-        this._workerSupportedDomains.push(domainName);
+        console.assert(Object.values(WI.DebuggableType).includes(type), "Unknown debuggable type", type);
+
+        return this._supportedDomainsForDebuggableType.get(type);
     }
 
     // Private
@@ -202,7 +220,7 @@ InspectorBackend.Agent = class InspectorBackendAgent
         this._domainName = domainName;
 
         // Default connection is the main connection.
-        this._connection = InspectorBackend.mainConnection;
+        this._connection = InspectorBackend.backendConnection;
         this._dispatcher = null;
 
         // Agents are always created, but are only useable after they are activated.

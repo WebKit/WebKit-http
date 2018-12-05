@@ -29,7 +29,7 @@
 #import "WKSharedAPICast.h"
 #import "WKStringCF.h"
 #import <JavaScriptCore/RegularExpression.h>
-#import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/text/StringBuilder.h>
 
@@ -81,5 +81,16 @@ NSString *formattedPhoneNumberString(NSString *)
 }
 
 #endif // ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(MAC)
+
+Vector<String> webCoreStringVectorFromNSStringArray(NSArray<NSString *> *nsStringArray)
+{
+    Vector<String> stringVector;
+    stringVector.reserveInitialCapacity([nsStringArray count]);
+
+    for (NSString *nsString in nsStringArray)
+        stringVector.uncheckedAppend(nsString);
+
+    return stringVector;
+}
 
 }

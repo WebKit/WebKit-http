@@ -231,7 +231,7 @@
 #import <wtf/Assertions.h>
 #import <wtf/HashTraits.h>
 #import <wtf/MainThread.h>
-#import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/ProcessPrivilege.h>
 #import <wtf/RAMSize.h>
 #import <wtf/RefCountedLeakCounter.h>
@@ -358,7 +358,7 @@ SOFT_LINK_CLASS(AVKit, AVFunctionBarScrubber)
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 #endif // HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !ENABLE(REVEAL)
 SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUNotificationPopoverWillClose, NSString *)
 #endif
 
@@ -600,14 +600,19 @@ FindOptions coreOptions(WebFindOptions options)
     return findOptions;
 }
 
-LayoutMilestones coreLayoutMilestones(WebLayoutMilestones milestones)
+OptionSet<WebCore::LayoutMilestone> coreLayoutMilestones(WebLayoutMilestones milestones)
 {
-    return (milestones & WebDidFirstLayout ? DidFirstLayout : 0)
-        | (milestones & WebDidFirstVisuallyNonEmptyLayout ? DidFirstVisuallyNonEmptyLayout : 0)
-        | (milestones & WebDidHitRelevantRepaintedObjectsAreaThreshold ? DidHitRelevantRepaintedObjectsAreaThreshold : 0);
+    OptionSet<WebCore::LayoutMilestone> layoutMilestone;
+    if (milestones & WebDidFirstLayout)
+        layoutMilestone.add(DidFirstLayout);
+    if (milestones & WebDidFirstVisuallyNonEmptyLayout)
+        layoutMilestone.add(DidFirstVisuallyNonEmptyLayout);
+    if (milestones & WebDidHitRelevantRepaintedObjectsAreaThreshold)
+        layoutMilestone.add(DidHitRelevantRepaintedObjectsAreaThreshold);
+    return layoutMilestone;
 }
 
-WebLayoutMilestones kitLayoutMilestones(LayoutMilestones milestones)
+WebLayoutMilestones kitLayoutMilestones(OptionSet<WebCore::LayoutMilestone> milestones)
 {
     return (milestones & DidFirstLayout ? WebDidFirstLayout : 0)
         | (milestones & DidFirstVisuallyNonEmptyLayout ? WebDidFirstVisuallyNonEmptyLayout : 0)
@@ -3299,14 +3304,14 @@ static inline IMP getMethod(id o, SEL s)
     // for backwards compatibility.
     Page* page = core(self);
     if (page) {
-        unsigned milestones = DidFirstLayout;
+        OptionSet<WebCore::LayoutMilestone> milestones { DidFirstLayout };
 #if PLATFORM(IOS_FAMILY)
-        milestones |= DidFirstVisuallyNonEmptyLayout;
+        milestones.add(DidFirstVisuallyNonEmptyLayout);
 #else
         if (cache->didFirstVisuallyNonEmptyLayoutInFrameFunc)
-            milestones |= DidFirstVisuallyNonEmptyLayout;
+            milestones.add(DidFirstVisuallyNonEmptyLayout);
 #endif
-        page->addLayoutMilestones(static_cast<LayoutMilestones>(milestones));
+        page->addLayoutMilestones(milestones);
     }
 }
 
@@ -4184,7 +4189,7 @@ IGNORE_WARNINGS_END
         
         if (layerForWidget->contentsLayerForMedia() != layer) {
             layerForWidget->setContentsToPlatformLayer(layer, GraphicsLayer::ContentsLayerPurpose::Media);
-            // We need to make sure the layer hierachy change is applied immediately.
+            // We need to make sure the layer hierarchy change is applied immediately.
             if (mainCoreFrame->view())
                 mainCoreFrame->view()->flushCompositingStateIncludingSubframes();
             return YES;
@@ -9531,6 +9536,8 @@ bool LayerFlushController::flushLayers()
         [self _setTextIndicator:textIndicator withLifetime:TextIndicatorWindowLifetime::Permanent];
     }, [self](FloatRect rectInRootViewCoordinates) {
         return [self _convertRectFromRootView:rectInRootViewCoordinates];
+    }, [self]() {
+        [self _clearTextIndicatorWithAnimation:TextIndicatorWindowDismissalAnimation::FadeOut];
     });
 }
 
@@ -9578,9 +9585,12 @@ bool LayerFlushController::flushLayers()
         return;
 
     _private->hasInitializedLookupObserver = YES;
-
+    
+#if !ENABLE(REVEAL)
     if (canLoadLUNotificationPopoverWillClose())
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
+#endif // !ENABLE(REVEAL)
+    
 }
 
 - (void)_showDictionaryLookupPopup:(const DictionaryPopupInfo&)dictionaryPopupInfo
@@ -9597,10 +9607,12 @@ bool LayerFlushController::flushLayers()
     });
 }
 
+#if !ENABLE(REVEAL)
 - (void)_dictionaryLookupPopoverWillClose:(NSNotification *)notification
 {
     [self _clearTextIndicatorWithAnimation:TextIndicatorWindowDismissalAnimation::FadeOut];
 }
+#endif // ENABLE(REVEAL)
 
 #endif // PLATFORM(MAC)
 

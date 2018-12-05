@@ -259,6 +259,10 @@ Modules/webauthn/PublicKeyCredential.cpp
 Modules/webauthn/cbor/CBORReader.cpp
 Modules/webauthn/cbor/CBORValue.cpp
 Modules/webauthn/cbor/CBORWriter.cpp
+Modules/webauthn/fido/AuthenticatorGetInfoResponse.cpp
+Modules/webauthn/fido/AuthenticatorSupportedOptions.cpp
+Modules/webauthn/fido/DeviceRequestConverter.cpp
+Modules/webauthn/fido/DeviceResponseConverter.cpp
 Modules/webauthn/fido/FidoConstants.cpp
 Modules/webauthn/fido/FidoHidMessage.cpp
 Modules/webauthn/fido/FidoHidPacket.cpp
@@ -379,6 +383,7 @@ bindings/js/JSBlobCustom.cpp
 bindings/js/JSCSSRuleCustom.cpp
 bindings/js/JSCSSRuleListCustom.cpp
 bindings/js/JSCSSStyleDeclarationCustom.cpp
+bindings/js/JSCSSStyleValueCustom.cpp
 bindings/js/JSDOMConvertDate.cpp
 bindings/js/JSDOMConvertNumbers.cpp
 bindings/js/JSDOMConvertStrings.cpp
@@ -888,6 +893,7 @@ editing/AppendNodeCommand.cpp
 editing/ApplyBlockElementCommand.cpp
 editing/ApplyStyleCommand.cpp
 editing/BreakBlockquoteCommand.cpp
+editing/ChangeListTypeCommand.cpp
 editing/CompositeEditCommand.cpp
 editing/CreateLinkCommand.cpp
 editing/DeleteFromTextNodeCommand.cpp
@@ -903,6 +909,7 @@ editing/FontAttributeChanges.cpp
 editing/FormatBlockCommand.cpp
 editing/FrameSelection.cpp
 editing/HTMLInterchange.cpp
+editing/InsertNestedListCommand.cpp
 editing/IndentOutdentCommand.cpp
 editing/InsertIntoTextNodeCommand.cpp
 editing/InsertLineBreakCommand.cpp
@@ -1552,6 +1559,7 @@ platform/Process.cpp
 platform/ReferrerPolicy.cpp
 platform/RemoteCommandListener.cpp
 platform/RuntimeApplicationChecks.cpp
+platform/SSLKeyGenerator.cpp
 platform/SchemeRegistry.cpp
 platform/ScrollAnimator.cpp
 platform/ScrollView.cpp
@@ -2488,7 +2496,12 @@ JSCSSKeyframeRule.cpp
 JSCSSKeyframesRule.cpp
 JSCSSMediaRule.cpp
 JSCSSNamespaceRule.cpp
+JSCSSNumericValue.cpp
 JSCSSPaintCallback.cpp
+JSCSSPaintSize.cpp
+JSCSSStyleValue.cpp
+JSCSSUnitValue.cpp
+JSCSSUnparsedValue.cpp
 JSPaintWorkletGlobalScope.cpp
 JSWorklet.cpp
 JSWorkletGlobalScope.cpp
@@ -3157,6 +3170,7 @@ JSStorage.cpp
 JSStorageEvent.cpp
 JSStringCallback.cpp
 JSStyleMedia.cpp
+JSStylePropertyMapReadOnly.cpp
 JSStyleSheet.cpp
 JSStyleSheetList.cpp
 JSSubtleCrypto.cpp
@@ -3171,6 +3185,7 @@ JSTreeWalker.cpp
 JSUIEvent.cpp
 JSUIEventInit.cpp
 JSURLSearchParams.cpp
+JSUserVerificationRequirement.cpp
 JSVRDisplay.cpp
 JSVRDisplayCapabilities.cpp
 JSVRDisplayEvent.cpp

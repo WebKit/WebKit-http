@@ -56,13 +56,11 @@ bool LocalService::isAvailable()
 #endif
 }
 
-void LocalService::startDiscoveryInternal() const
+void LocalService::startDiscoveryInternal()
 {
-    if (!platformStartDiscovery())
+    if (!platformStartDiscovery() || !observer())
         return;
-
-    if (observer())
-        observer()->authenticatorAdded(LocalAuthenticator::create(createLocalConnection()));
+    observer()->authenticatorAdded(LocalAuthenticator::create(createLocalConnection()));
 }
 
 bool LocalService::platformStartDiscovery() const

@@ -130,14 +130,22 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         this._clearNetworkItemsNavigationItem = new WI.ButtonNavigationItem("clear-network-items", WI.UIString("Clear Network Items (%s)").format(WI.clearKeyboardShortcut.displayName), "Images/NavigationItemTrash.svg", 15, 15);
         this._clearNetworkItemsNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, () => { this.reset(); });
 
+        WI.Target.addEventListener(WI.Target.Event.ResourceAdded, this._handleResourceAdded, this);
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
+        WI.Frame.addEventListener(WI.Frame.Event.ResourceWasAdded, this._handleResourceAdded, this);
         WI.Resource.addEventListener(WI.Resource.Event.LoadingDidFinish, this._resourceLoadingDidFinish, this);
         WI.Resource.addEventListener(WI.Resource.Event.LoadingDidFail, this._resourceLoadingDidFail, this);
         WI.Resource.addEventListener(WI.Resource.Event.TransferSizeDidChange, this._resourceTransferSizeDidChange, this);
         WI.networkManager.addEventListener(WI.NetworkManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
-        WI.timelineManager.persistentNetworkTimeline.addEventListener(WI.Timeline.Event.RecordAdded, this._networkTimelineRecordAdded, this);
 
         this._needsInitialPopulate = true;
+
+        // FIXME: This is working around the order of events. Normal page navigation
+        // triggers a MainResource change and then a MainFrame change. Page Transition
+        // triggers a MainFrame change then a MainResource change.
+        this._transitioningPageTarget = false;
+        
+        WI.notifications.addEventListener(WI.Notification.TransitionPageTarget, this._transitionPageTarget, this);
     }
 
     // Static
@@ -250,12 +258,12 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         this._hidePopover();
         this._hideDetailView();
 
+        WI.Target.removeEventListener(null, null, this);
         WI.Frame.removeEventListener(null, null, this);
         WI.Resource.removeEventListener(null, null, this);
         WI.settings.resourceCachingDisabled.removeEventListener(null, null, this);
         WI.settings.clearNetworkOnNavigate.removeEventListener(null, null, this);
         WI.networkManager.removeEventListener(WI.NetworkManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
-        WI.timelineManager.persistentNetworkTimeline.removeEventListener(WI.Timeline.Event.RecordAdded, this._networkTimelineRecordAdded, this);
 
         super.closed();
     }
@@ -763,7 +771,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         }
 
         let {startTime, redirectStart, redirectEnd, fetchStart, domainLookupStart, domainLookupEnd, connectStart, connectEnd, secureConnectionStart, requestStart, responseStart, responseEnd} = resource.timingData;
-        if (isNaN(startTime) || isNaN(responseEnd) || startTime >= responseEnd) {
+        if (isNaN(startTime) || isNaN(responseEnd) || startTime > responseEnd) {
             cell.textContent = zeroWidthSpace;
             return;
         }
@@ -781,7 +789,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
         let lastEndTimestamp = NaN;
         function appendBlock(startTimestamp, endTimestamp, className) {
-            if (isNaN(startTimestamp) || isNaN(endTimestamp) || endTimestamp - startTimestamp <= 0)
+            if (isNaN(startTimestamp) || isNaN(endTimestamp))
                 return null;
 
             if (Math.abs(startTimestamp - lastEndTimestamp) < secondsPerPixel * 2)
@@ -807,8 +815,9 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         // Super small visualization.
         let totalWidth = (responseEnd - startTime) / secondsPerPixel;
         if (totalWidth <= 3) {
-            appendBlock(startTime, requestStart, "queue");
-            appendBlock(startTime, responseEnd, "response");
+            let twoPixels = secondsPerPixel * 2;
+            appendBlock(startTime, startTime + twoPixels, "queue");
+            appendBlock(startTime + twoPixels, startTime + (2 * twoPixels), "response");
             return;
         }
 
@@ -1111,6 +1120,15 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
     // Private
 
+    _updateWaterfallTimeRange(startTimestamp, endTimestamp)
+    {
+        if (isNaN(this._waterfallStartTime) || startTimestamp < this._waterfallStartTime)
+            this._waterfallStartTime = startTimestamp;
+
+        if (isNaN(this._waterfallEndTime) || endTimestamp > this._waterfallEndTime)
+            this._waterfallEndTime = endTimestamp;
+    }
+
     _updateWaterfallTimelineRuler()
     {
         if (!this._waterfallTimelineRuler)
@@ -1279,7 +1297,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         this._detailView.hidden();
         this._detailView = null;
 
-        this._table.resize();
+        this._table.updateLayout(WI.View.LayoutReason.Resize);
         this._table.reloadVisibleColumnCells(this._waterfallColumn);
     }
 
@@ -1401,6 +1419,13 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
         this.reset();
 
+        if (this._transitioningPageTarget) {
+            this._transitioningPageTarget = false;
+            this._needsInitialPopulate = true;
+            this._populateWithInitialResourcesIfNeeded();
+            return;
+        }
+
         this._insertResourceAndReloadTable(frame.mainResource);
     }
 
@@ -1414,10 +1439,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         let resource = event.target;
         this._pendingUpdates.push(resource);
 
-        if (resource.firstTimestamp < this._waterfallStartTime)
-            this._waterfallStartTime = resource.firstTimestamp;
-        if (resource.timingData.responseEnd > this._waterfallEndTime)
-            this._waterfallEndTime = resource.timingData.responseEnd;
+        this._updateWaterfallTimeRange(resource.firstTimestamp, resource.timingData.responseEnd);
 
         if (this._hasURLFilter())
             this._checkURLFilterAgainstResource(resource);
@@ -1430,10 +1452,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         let resource = event.target;
         this._pendingUpdates.push(resource);
 
-        if (resource.firstTimestamp < this._waterfallStartTime)
-            this._waterfallStartTime = resource.firstTimestamp;
-        if (resource.timingData.responseEnd > this._waterfallEndTime)
-            this._waterfallEndTime = resource.timingData.responseEnd;
+        this._updateWaterfallTimeRange(resource.firstTimestamp, resource.timingData.responseEnd);
 
         if (this._hasURLFilter())
             this._checkURLFilterAgainstResource(resource);
@@ -1469,16 +1488,9 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         this._table.reloadCell(rowIndex, "transferSize");
     }
 
-    _networkTimelineRecordAdded(event)
+    _handleResourceAdded(event)
     {
-        let resourceTimelineRecord = event.data.record;
-        console.assert(resourceTimelineRecord instanceof WI.ResourceTimelineRecord);
-
-        let resource = resourceTimelineRecord.resource;
-        if (isNaN(this._waterfallStartTime))
-            this._waterfallStartTime = this._waterfallEndTime = resource.firstTimestamp;
-
-        this._insertResourceAndReloadTable(resource);
+        this._insertResourceAndReloadTable(event.data.resource);
     }
 
     _isDefaultSort()
@@ -1488,6 +1500,8 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
     _insertResourceAndReloadTable(resource)
     {
+        this._updateWaterfallTimeRange(resource.firstTimestamp, resource.timingData.responseEnd);
+
         if (!this._table || !(WI.tabBrowser.selectedTabContentView instanceof WI.NetworkTabContentView)) {
             this._pendingInsertions.push(resource);
             this.needsLayout();
@@ -1609,8 +1623,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
         this._pendingUpdates.push(domNode);
 
-        if (domEvent.timestamp > this._waterfallEndTime)
-            this._waterfallEndTime = domEvent.timestamp + (this._waterfallTimelineRuler.secondsPerPixel * 10);
+        this._updateWaterfallTimeRange(NaN, domEvent.timestamp + (this._waterfallTimelineRuler.secondsPerPixel * 10));
 
         this.needsLayout();
     }
@@ -1622,8 +1635,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
         this._pendingUpdates.push(domNode);
 
-        if (timestamp > this._waterfallEndTime)
-            this._waterfallEndTime = timestamp + (this._waterfallTimelineRuler.secondsPerPixel * 10);
+        this._updateWaterfallTimeRange(NaN, timestamp + (this._waterfallTimelineRuler.secondsPerPixel * 10));
 
         this.needsLayout();
     }
@@ -1870,7 +1882,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             let mainFrame = WI.networkManager.mainFrame;
             let archiveName = mainFrame.mainResource.urlComponents.host || mainFrame.mainResource.displayName || "Archive";
             let url = "web-inspector:///" + encodeURI(archiveName) + ".har";
-            WI.saveDataToFile({
+            WI.FileUtilities.save({
                 url,
                 content: JSON.stringify(har, null, 2),
                 forceSaveAs: true,
@@ -1993,5 +2005,10 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
     _tableWaterfallColumnDidChangeWidth(event)
     {
         this._table.reloadVisibleColumnCells(this._waterfallColumn);
+    }
+
+    _transitionPageTarget(event)
+    {
+        this._transitioningPageTarget = true;
     }
 };

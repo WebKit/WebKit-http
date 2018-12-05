@@ -38,6 +38,7 @@ WI.NetworkManager = class NetworkManager extends WI.Object
         this._webSocketIdentifierToURL = new Map;
 
         this._waitingForMainFrameResourceTreePayload = true;
+        this._transitioningPageTarget = false;
 
         this._sourceMapURLMap = new Map;
         this._downloadingSourceMaps = new Set;
@@ -55,24 +56,25 @@ WI.NetworkManager = class NetworkManager extends WI.Object
             target.PageAgent.getResourceTree(this._processMainFrameResourceTreePayload.bind(this));
         }
 
-        // FIXME: ServiceWorkerAgent should only be exposed in the "serviceworker" target type.
-        // Currently it is exposed to "web" targets. Work around this by only using the
-        // ServiceWorker domain if there is no Page domain.
-        if (target.ServiceWorkerAgent && !target.PageAgent)
+        if (target.ServiceWorkerAgent)
             target.ServiceWorkerAgent.getInitializationInfo(this._processServiceWorkerConfiguration.bind(this));
 
         if (target.NetworkAgent) {
             target.NetworkAgent.enable();
 
             // COMPATIBILITY (iOS 10.3): Network.setDisableResourceCaching did not exist.
-            if (NetworkAgent.setResourceCachingDisabled) {
-                if (WI.settings.resourceCachingDisabled && WI.settings.resourceCachingDisabled.value)
-                    target.NetworkAgent.setResourceCachingDisabled(true);
-            }
+            if (target.NetworkAgent.setResourceCachingDisabled)
+                target.NetworkAgent.setResourceCachingDisabled(WI.settings.resourceCachingDisabled.value);
         }
 
         if (target.type === WI.Target.Type.Worker)
             this.adoptOrphanedResourcesForTarget(target);
+    }
+
+    transitionPageTarget()
+    {
+        this._transitioningPageTarget = true;
+        this._waitingForMainFrameResourceTreePayload = true;
     }
 
     // Public
@@ -299,7 +301,7 @@ WI.NetworkManager = class NetworkManager extends WI.Object
             return;
 
         // COMPATIBILITY(iOS 10.3): `walltime` did not exist in 10.3 and earlier.
-        if (!NetworkAgent.hasEventParameter("webSocketWillSendHandshakeRequest", "walltime")) {
+        if (!InspectorBackend.domains.Network.hasEventParameter("webSocketWillSendHandshakeRequest", "walltime")) {
             request = arguments[2];
             walltime = NaN;
         }
@@ -424,7 +426,7 @@ WI.NetworkManager = class NetworkManager extends WI.Object
             initiatorSourceCodeLocation: this._initiatorSourceCodeLocationFromPayload(initiator),
             initiatorNode: this._initiatorNodeFromPayload(initiator),
         });
-        resource.updateForResponse(cachedResourcePayload.url, response.mimeType, cachedResourcePayload.type, response.headers, response.status, response.statusText, elapsedTime, response.timing, responseSource);
+        resource.updateForResponse(cachedResourcePayload.url, response.mimeType, cachedResourcePayload.type, response.headers, response.status, response.statusText, elapsedTime, response.timing, responseSource, response.security);
         resource.increaseSize(cachedResourcePayload.bodySize, elapsedTime);
         resource.increaseTransferSize(cachedResourcePayload.bodySize);
         resource.setCachedResponseBodySize(cachedResourcePayload.bodySize);
@@ -486,7 +488,7 @@ WI.NetworkManager = class NetworkManager extends WI.Object
         if (response.fromDiskCache)
             resource.legacyMarkServedFromDiskCache();
 
-        resource.updateForResponse(response.url, response.mimeType, type, response.headers, response.status, response.statusText, elapsedTime, response.timing, response.source);
+        resource.updateForResponse(response.url, response.mimeType, type, response.headers, response.status, response.statusText, elapsedTime, response.timing, response.source, response.security);
     }
 
     resourceRequestDidReceiveData(requestIdentifier, dataLength, encodedDataLength, timestamp)
@@ -567,13 +569,14 @@ WI.NetworkManager = class NetworkManager extends WI.Object
     {
         // Called from WI.RuntimeObserver.
 
-        var frame = this.frameForIdentifier(contextPayload.frameId);
+        let frame = this.frameForIdentifier(contextPayload.frameId);
         console.assert(frame);
         if (!frame)
             return;
 
-        var displayName = contextPayload.name || frame.mainResource.displayName;
-        var executionContext = new WI.ExecutionContext(WI.mainTarget, contextPayload.id, displayName, contextPayload.isPageContext, frame);
+        let displayName = contextPayload.name || frame.mainResource.displayName;
+        let target = frame.mainResource.target;
+        let executionContext = new WI.ExecutionContext(target, contextPayload.id, displayName, contextPayload.isPageContext, frame);
         frame.addExecutionContext(executionContext);
     }
 
@@ -784,6 +787,14 @@ WI.NetworkManager = class NetworkManager extends WI.Object
 
         if (this._mainFrame !== oldMainFrame)
             this._mainFrameDidChange(oldMainFrame);
+
+        // Emulate a main resource change within this page even though we are swapping out main frames.
+        // This is because many managers listen only for main resource change events to perform work,
+        // but they don't listen for main frame changes.
+        if (this._transitioningPageTarget) {
+            this._transitioningPageTarget = false;
+            this._mainFrame._dispatchMainResourceDidChangeEvent(oldMainFrame.mainResource);
+        }
     }
 
     _createFrame(payload)

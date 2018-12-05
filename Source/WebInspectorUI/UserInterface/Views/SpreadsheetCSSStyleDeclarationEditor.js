@@ -320,6 +320,11 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
         this.needsLayout();
     }
 
+    hasSelectedProperties()
+    {
+        return !isNaN(this._anchorIndex) && !isNaN(this._focusIndex);
+    }
+
     selectProperties(anchorIndex, focusIndex)
     {
         console.assert(anchorIndex < this._propertyViews.length, `anchorIndex (${anchorIndex}) is greater than the last property index (${this._propertyViews.length})`);
@@ -342,8 +347,15 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
             propertyView.selected = isSelected;
         }
 
+        this._suppressBlur = true;
         let property = this._propertyViews[focusIndex];
         property.element.focus();
+        this._suppressBlur = false;
+    }
+
+    extendSelectedProperties(focusIndex)
+    {
+        this.selectProperties(this._anchorIndex, focusIndex);
     }
 
     deselectProperties()
@@ -390,11 +402,6 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
     spreadsheetStylePropertyMouseEnter(event, property)
     {
         this._delegate.spreadsheetCSSStyleDeclarationEditorPropertyMouseEnter(event, property);
-    }
-
-    spreadsheetStylePropertyMouseLeave(event, property)
-    {
-        this._delegate.spreadsheetCSSStyleDeclarationEditorPropertyMouseLeave(event, property);
     }
 
     spreadsheetStylePropertyFocusMoved(propertyView, {direction, willRemoveProperty})
@@ -453,7 +460,7 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
 
     spreadsheetStylePropertyCopy(event)
     {
-        if (!this._hasSelectedProperties())
+        if (!this.hasSelectedProperties())
             return;
 
         let formattedProperties = [];
@@ -497,20 +504,26 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
 
     _handleKeyDown(event)
     {
+        if (!this.hasSelectedProperties() || !this._propertyViews.length)
+            return;
+
         if (event.key === "ArrowUp" || event.key === "ArrowDown") {
             let delta = event.key === "ArrowUp" ? -1 : 1;
             let focusIndex = Number.constrain(this._focusIndex + delta, 0, this._propertyViews.length - 1);
 
-            // Blur event deselects all properties.
-            this._suppressBlur = true;
-            this.selectProperties(focusIndex, focusIndex);
-            this._suppressBlur = false;
+            if (event.shiftKey)
+                this.extendSelectedProperties(focusIndex);
+            else
+                this.selectProperties(focusIndex, focusIndex);
 
             event.stop();
+        } else if (event.key === "Tab" || event.key === "Enter") {
+            let property = this._propertyViews[this._focusIndex];
+            if (property && property.enabled) {
+                event.stop();
+                property.nameTextField.startEditing();
+            }
         } else if (event.key === "Backspace") {
-            if (!this._hasSelectedProperties())
-                return;
-
             let [startIndex, endIndex] = this.selectionRange;
 
             let propertyIndexToSelect = NaN;
@@ -524,18 +537,12 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
             for (let i = endIndex; i >= startIndex; i--)
                 this._propertyViews[i].remove();
 
-            if (!isNaN(propertyIndexToSelect)) {
-                this._suppressBlur = true;
+            if (!isNaN(propertyIndexToSelect))
                 this.selectProperties(propertyIndexToSelect, propertyIndexToSelect);
-                this._suppressBlur = false;
-            }
 
             event.stop();
 
-        } else if ((event.code === "Space" && !event.shiftKey && !event.metaKey && !event.ctrlKey) || (event.key === "/" && (event.metaKey || event.ctrlKey) && !event.shiftKey)) {
-            if (!this._hasSelectedProperties())
-                return;
-
+        } else if ((event.code === "Space" && !event.shiftKey && !event.metaKey && !event.ctrlKey) || (event.key === "/" && event.commandOrControlKey && !event.shiftKey)) {
             let [startIndex, endIndex] = this.selectionRange;
 
             // Toggle the first selected property and set this state to all selected properties.
@@ -547,15 +554,15 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
                 propertyView.update();
             }
 
-            event.preventDefault();
+            event.stop();
+
+        } else if (event.key === "a" && event.commandOrControlKey) {
+
+            this.selectProperties(0, this._propertyViews.length - 1);
+            event.stop();
 
         } else if (event.key === "Esc")
             this.deselectProperties();
-    }
-
-    _hasSelectedProperties()
-    {
-        return !isNaN(this._anchorIndex) && !isNaN(this._focusIndex);
     }
 
     _editablePropertyAfter(propertyIndex)

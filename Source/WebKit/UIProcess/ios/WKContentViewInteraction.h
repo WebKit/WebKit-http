@@ -50,6 +50,7 @@
 #import <WebCore/FloatQuad.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/Forward.h>
+#import <wtf/OptionSet.h>
 #import <wtf/Vector.h>
 #import <wtf/WeakObjCPtr.h>
 #import <wtf/text/WTFString.h>
@@ -132,9 +133,34 @@ typedef std::pair<WebKit::InteractionInformationRequest, InteractionInformationC
     M(alignLeft) \
     M(alignRight) \
     M(alignCenter) \
-    M(alignJustified)
+    M(alignJustified) \
+    M(pasteAndMatchStyle) \
+    M(makeTextWritingDirectionNatural)
+
+#define FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(M) \
+    M(_alignCenter) \
+    M(_alignJustified) \
+    M(_alignLeft) \
+    M(_alignRight) \
+    M(_indent) \
+    M(_outdent) \
+    M(_toggleStrikeThrough) \
+    M(_insertOrderedList) \
+    M(_insertUnorderedList) \
+    M(_insertNestedOrderedList) \
+    M(_insertNestedUnorderedList) \
+    M(_increaseListLevel) \
+    M(_decreaseListLevel) \
+    M(_changeListType) \
+    M(_pasteAsQuotation) \
+    M(_pasteAndMatchStyle)
 
 namespace WebKit {
+
+enum SuppressSelectionAssistantReason : uint8_t {
+    FocusedElementIsTransparent = 1 << 0,
+    DropAnimationIsRunning = 1 << 1
+};
 
 struct WKSelectionDrawingInfo {
     enum class SelectionType { None, Plugin, Range };
@@ -189,7 +215,7 @@ struct WKAutoCorrectionData {
 #endif
 
     RetainPtr<UIWKTextInteractionAssistant> _textSelectionAssistant;
-    BOOL _suppressAssistantSelectionView;
+    OptionSet<WebKit::SuppressSelectionAssistantReason> _suppressSelectionAssistantReasons;
 
     RetainPtr<UITextInputTraits> _traits;
     RetainPtr<UIWebFormAccessory> _formAccessoryView;
@@ -317,7 +343,6 @@ struct WKAutoCorrectionData {
 @property (nonatomic, readonly) const WebKit::WKAutoCorrectionData& autocorrectionData;
 @property (nonatomic, readonly) const WebKit::AssistedNodeInformation& assistedNodeInformation;
 @property (nonatomic, readonly) UIWebFormAccessory *formAccessoryView;
-@property (nonatomic) BOOL suppressAssistantSelectionView;
 @property (nonatomic, readonly) UITextInputAssistantItem *inputAssistantItemForWebView;
 
 #if ENABLE(DATALIST_ELEMENT)
@@ -339,7 +364,7 @@ struct WKAutoCorrectionData {
 #define DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW(_action) \
     - (void)_action ## ForWebView:(id)sender;
 FOR_EACH_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
-DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW(_pasteAsQuotation)
+FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 #undef DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW
 
 - (void)setFontForWebView:(UIFont *)fontFamily sender:(id)sender;

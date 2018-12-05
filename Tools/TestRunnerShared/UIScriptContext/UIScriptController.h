@@ -159,10 +159,12 @@ public:
 
     JSObjectRef contentVisibleRect() const;
     
-    JSObjectRef selectionRangeViewRects() const;
+    JSObjectRef textSelectionRangeRects() const;
     JSObjectRef textSelectionCaretRect() const;
     JSObjectRef selectionStartGrabberViewRect() const;
     JSObjectRef selectionEndGrabberViewRect() const;
+    JSObjectRef selectionCaretViewRect() const;
+    JSObjectRef selectionRangeViewRects() const;
     JSObjectRef calendarType() const;
     void setDefaultCalendarType(JSStringRef calendarIdentifier);
     JSObjectRef inputViewBounds() const;
@@ -193,6 +195,9 @@ public:
     void firstResponderSuppressionForWebView(bool);
     void makeWindowContentViewFirstResponder();
     bool isWindowContentViewFirstResponder() const;
+
+    void drawSquareInEditableImage();
+    long numberOfStrokesInEditableImage();
 
 private:
     UIScriptController(UIScriptContext&);

@@ -142,17 +142,23 @@ const HashSet<String, ASCIICaseInsensitiveHash>& MIMETypeRegistry::supportedImag
 
 #if USE(CG)
 #ifndef NDEBUG
-    // Esnure supportedImageMIMETypes() is in sync with supportedDefaultImageSourceTypes().
+    // Esnure supportedImageMIMETypes() is in sync with defaultSupportedImageTypes().
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
-        for (auto& imageSourceType : supportedDefaultImageSourceTypes()) {
-            auto mimeType = MIMETypeForImageSourceType(imageSourceType);
+        for (auto& imageType : defaultSupportedImageTypes()) {
+            auto mimeType = MIMETypeForImageType(imageType);
             ASSERT_IMPLIES(!mimeType.isEmpty(), supportedImageMIMETypes.get().contains(mimeType));
         }
     });
 #endif
 #endif
     return supportedImageMIMETypes;
+}
+
+HashSet<String, ASCIICaseInsensitiveHash>& MIMETypeRegistry::additionalSupportedImageMIMETypes()
+{
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> additionalSupportedImageMIMETypes;
+    return additionalSupportedImageMIMETypes;
 }
 
 static const HashSet<String, ASCIICaseInsensitiveHash>& supportedImageMIMETypesForEncoding()
@@ -164,7 +170,7 @@ static const HashSet<String, ASCIICaseInsensitiveHash>& supportedImageMIMETypesF
         CFIndex count = CFArrayGetCount(supportedTypes.get());
         for (CFIndex i = 0; i < count; i++) {
             CFStringRef supportedType = reinterpret_cast<CFStringRef>(CFArrayGetValueAtIndex(supportedTypes.get(), i));
-            String mimeType = MIMETypeForImageSourceType(supportedType);
+            String mimeType = MIMETypeForImageType(supportedType);
             if (!mimeType.isEmpty())
                 supportedImageMIMETypesForEncoding.add(mimeType);
         }
@@ -497,7 +503,8 @@ bool MIMETypeRegistry::isSupportedImageMIMEType(const String& mimeType)
 {
     if (mimeType.isEmpty())
         return false;
-    return supportedImageMIMETypes().contains(getNormalizedMIMEType(mimeType));
+    String normalizedMIMEType = getNormalizedMIMEType(mimeType);
+    return supportedImageMIMETypes().contains(normalizedMIMEType) || additionalSupportedImageMIMETypes().contains(normalizedMIMEType);
 }
 
 bool MIMETypeRegistry::isSupportedImageVideoOrSVGMIMEType(const String& mimeType)

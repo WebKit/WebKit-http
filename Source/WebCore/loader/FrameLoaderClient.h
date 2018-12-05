@@ -31,7 +31,7 @@
 
 #include "CertificateInfo.h"
 #include "FrameLoaderTypes.h"
-#include "LayoutMilestones.h"
+#include "LayoutMilestone.h"
 #include "LinkIcon.h"
 #include <functional>
 #include <wtf/Forward.h>
@@ -189,7 +189,7 @@ public:
 #endif
 
     virtual void dispatchDidLayout() { }
-    virtual void dispatchDidReachLayoutMilestone(LayoutMilestones) { }
+    virtual void dispatchDidReachLayoutMilestone(OptionSet<LayoutMilestone>) { }
 
     virtual Frame* dispatchCreatePage(const NavigationAction&) = 0;
     virtual void dispatchShow() = 0;

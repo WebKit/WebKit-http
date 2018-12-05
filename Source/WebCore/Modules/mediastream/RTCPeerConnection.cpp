@@ -131,7 +131,10 @@ ExceptionOr<void> RTCPeerConnection::removeTrack(RTCRtpSender& sender)
     INFO_LOG(LOGIDENTIFIER);
 
     if (isClosed())
-        return Exception { InvalidStateError };
+        return Exception { InvalidStateError, "RTCPeerConnection is closed"_s };
+
+    if (!sender.isCreatedBy(*m_backend))
+        return Exception { InvalidAccessError, "RTCPeerConnection did not create the given sender"_s };
 
     bool shouldAbort = true;
     RTCRtpTransceiver* senderTransceiver = nullptr;
@@ -637,6 +640,24 @@ void RTCPeerConnection::generateCertificate(JSC::ExecState& state, AlgorithmIden
     }
     auto& document = downcast<Document>(*JSC::jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext());
     PeerConnectionBackend::generateCertificate(document, parameters.returnValue(), WTFMove(promise));
+}
+
+const Vector<std::reference_wrapper<RTCRtpSender>>& RTCPeerConnection::getSenders() const
+{
+    m_backend->collectTransceivers();
+    return m_transceiverSet->senders();
+}
+
+const Vector<std::reference_wrapper<RTCRtpReceiver>>& RTCPeerConnection::getReceivers() const
+{
+    m_backend->collectTransceivers();
+    return m_transceiverSet->receivers();
+}
+
+const Vector<RefPtr<RTCRtpTransceiver>>& RTCPeerConnection::getTransceivers() const
+{
+    m_backend->collectTransceivers();
+    return m_transceiverSet->list();
 }
 
 #if !RELEASE_LOG_DISABLED

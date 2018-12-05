@@ -955,11 +955,12 @@ void WebProcessPool::prewarmProcess()
     if (m_prewarmedProcess)
         return;
 
-    if (!m_websiteDataStore)
-        m_websiteDataStore = API::WebsiteDataStore::defaultDataStore().ptr();
+    auto* websiteDataStore = m_websiteDataStore.get();
+    if (!websiteDataStore)
+        websiteDataStore = API::WebsiteDataStore::defaultDataStore().ptr();
 
     RELEASE_LOG(PerformanceLogging, "Prewarming a WebProcess for performance");
-    createNewWebProcess(m_websiteDataStore->websiteDataStore(), WebProcessProxy::IsPrewarmed::Yes);
+    createNewWebProcess(websiteDataStore->websiteDataStore(), WebProcessProxy::IsPrewarmed::Yes);
 }
 
 void WebProcessPool::enableProcessTermination()
@@ -1125,12 +1126,7 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
 #endif
 
     auto page = process->createWebPage(pageClient, WTFMove(pageConfiguration));
-    if (page->preferences().processSwapOnCrossSiteNavigationEnabled()) {
-        m_configuration->setProcessSwapsOnNavigation(true);
-        // FIXME: For now, turning on PSON from the debug features menu also turns on
-        // automatic process warming until clients can be updated.
-        m_configuration->setIsAutomaticProcessWarmingEnabled(true);
-    }
+    m_configuration->setProcessSwapsOnNavigationFromExperimentalFeatures(page->preferences().processSwapOnCrossSiteNavigationEnabled());
 
     return page;
 }
@@ -2121,8 +2117,9 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
         return page.process();
     }
 
-    if (page.inspectorFrontendCount() > 0) {
-        reason = "A Web Inspector frontend is connected"_s;
+    // FIXME: We should support process swap with a local web inspector.
+    if (page.hasLocalInspectorFrontend()) {
+        reason = "A Local Web Inspector frontend is connected"_s;
         return page.process();
     }
 
@@ -2248,7 +2245,7 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
     return createNewWebProcess(page.websiteDataStore());
 }
 
-void WebProcessPool::addSuspendedPageProxy(std::unique_ptr<SuspendedPageProxy>&& suspendedPage)
+void WebProcessPool::addSuspendedPage(std::unique_ptr<SuspendedPageProxy>&& suspendedPage)
 {
     if (m_suspendedPages.size() >= m_maxSuspendedPageCount)
         m_suspendedPages.removeFirst();
@@ -2256,21 +2253,30 @@ void WebProcessPool::addSuspendedPageProxy(std::unique_ptr<SuspendedPageProxy>&&
     m_suspendedPages.append(WTFMove(suspendedPage));
 }
 
-void WebProcessPool::removeAllSuspendedPageProxiesForPage(WebPageProxy& page)
+void WebProcessPool::removeAllSuspendedPagesForPage(WebPageProxy& page)
 {
     m_suspendedPages.removeAllMatching([&page](auto& suspendedPage) {
         return &suspendedPage->page() == &page;
     });
 }
 
-std::unique_ptr<SuspendedPageProxy> WebProcessPool::takeSuspendedPageProxy(SuspendedPageProxy& suspendedPage)
+std::unique_ptr<SuspendedPageProxy> WebProcessPool::takeSuspendedPage(SuspendedPageProxy& suspendedPage)
 {
     return m_suspendedPages.takeFirst([&suspendedPage](auto& item) {
         return item.get() == &suspendedPage;
     });
 }
 
-bool WebProcessPool::hasSuspendedPageProxyFor(WebProcessProxy& process) const
+void WebProcessPool::removeSuspendedPage(SuspendedPageProxy& suspendedPage)
+{
+    auto it = m_suspendedPages.findIf([&suspendedPage](auto& item) {
+        return item.get() == &suspendedPage;
+    });
+    if (it != m_suspendedPages.end())
+        m_suspendedPages.remove(it);
+}
+
+bool WebProcessPool::hasSuspendedPageFor(WebProcessProxy& process) const
 {
     return m_suspendedPages.findIf([&process](auto& suspendedPage) {
         return &suspendedPage->process() == &process;

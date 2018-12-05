@@ -627,6 +627,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     inspector/InspectorFrontendChannel.h
     inspector/InspectorFrontendRouter.h
     inspector/InspectorProtocolTypes.h
+    inspector/InspectorTarget.h
     inspector/PerGlobalObjectWrapperWorld.h
     inspector/ScriptArguments.h
     inspector/ScriptBreakpoint.h
@@ -642,6 +643,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     inspector/agents/InspectorHeapAgent.h
     inspector/agents/InspectorRuntimeAgent.h
     inspector/agents/InspectorScriptProfilerAgent.h
+    inspector/agents/InspectorTargetAgent.h
 
     inspector/augmentable/AugmentableInspectorControllerClient.h
 
@@ -692,6 +694,8 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
 
     llint/LLIntOpcode.h
 
+    parser/Lexer.h
+    parser/ParserArena.h
     parser/ParserError.h
     parser/ParserModes.h
     parser/ParserTokens.h
@@ -1081,6 +1085,8 @@ set(JavaScriptCore_INSPECTOR_DOMAINS
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Recording.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Runtime.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/ScriptProfiler.json
+    ${JAVASCRIPTCORE_DIR}/inspector/protocol/Security.json
+    ${JAVASCRIPTCORE_DIR}/inspector/protocol/Target.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Timeline.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Worker.json
 )

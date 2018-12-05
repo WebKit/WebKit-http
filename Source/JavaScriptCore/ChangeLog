@@ -1,3 +1,692 @@
+2018-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pass Inspector::FrontendChannel as a reference connect/disconnect methods
+        https://bugs.webkit.org/show_bug.cgi?id=191612
+
+        Reviewed by Matt Baker.
+
+        * inspector/InspectorFrontendRouter.cpp:
+        (Inspector::FrontendRouter::connectFrontend):
+        (Inspector::FrontendRouter::disconnectFrontend):
+        * inspector/InspectorFrontendRouter.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::connectFrontend):
+        (Inspector::JSGlobalObjectInspectorController::disconnectFrontend):
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/remote/RemoteControllableTarget.h:
+        * inspector/remote/cocoa/RemoteConnectionToTargetCocoa.mm:
+        (Inspector::RemoteConnectionToTarget::setup):
+        (Inspector::RemoteConnectionToTarget::close):
+        * inspector/remote/glib/RemoteConnectionToTargetGlib.cpp:
+        (Inspector::RemoteConnectionToTarget::setup):
+        (Inspector::RemoteConnectionToTarget::close):
+        * runtime/JSGlobalObjectDebuggable.cpp:
+        (JSC::JSGlobalObjectDebuggable::connect):
+        (JSC::JSGlobalObjectDebuggable::disconnect):
+        * runtime/JSGlobalObjectDebuggable.h:
+
+2018-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Keep Web Inspector window alive across process swaps (PSON) (Remote Inspector)
+        https://bugs.webkit.org/show_bug.cgi?id=191494
+        <rdar://problem/45469854>
+
+        Reviewed by Devin Rousso.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        New domain and resources.
+
+        * inspector/protocol/Target.json: Added.
+        New protocol domain, modeled after Worker.json, to allow for
+        multiplexing between different targets.
+
+        * inspector/InspectorTarget.h:
+        Each target will instantiate an InspectorTarget and must
+        provide an identifier, type, and means of connecting/disconnecting
+        to a frontend channel.
+
+        * inspector/agents/InspectorTargetAgent.cpp: Added.
+        (Inspector::InspectorTargetAgent::InspectorTargetAgent):
+        (Inspector::InspectorTargetAgent::didCreateFrontendAndBackend):
+        (Inspector::InspectorTargetAgent::willDestroyFrontendAndBackend):
+        (Inspector::InspectorTargetAgent::exists):
+        (Inspector::InspectorTargetAgent::initialized):
+        (Inspector::InspectorTargetAgent::sendMessageToTarget):
+        (Inspector::InspectorTargetAgent::sendMessageFromTargetToFrontend):
+        (Inspector::targetTypeToProtocolType):
+        (Inspector::buildTargetInfoObject):
+        (Inspector::InspectorTargetAgent::targetCreated):
+        (Inspector::InspectorTargetAgent::targetTerminated):
+        (Inspector::InspectorTargetAgent::connectToTargets):
+        (Inspector::InspectorTargetAgent::disconnectFromTargets):
+        * inspector/agents/InspectorTargetAgent.h: Added.
+        TargetAgent holds a list of targets, and connects/disconnects to each
+        of the targets when a frontend connects/disconnects.
+
+        * inspector/scripts/codegen/generator.py:
+        Better enum casing of ServiceWorker.
+
+2018-11-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, rolling in CodeCache in r237254
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        Land the CodeCache part without adding an additional hash value.
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::fromGlobalCode):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * parser/SourceCodeKey.h:
+        (JSC::SourceCodeKey::SourceCodeKey):
+        (JSC::SourceCodeKey::operator== const):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getUnlinkedGlobalCodeBlock):
+        (JSC::CodeCache::getUnlinkedGlobalFunctionExecutable):
+        * runtime/CodeCache.h:
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * runtime/FunctionExecutable.cpp:
+        (JSC::FunctionExecutable::fromGlobalCode):
+        * runtime/FunctionExecutable.h:
+
+2018-11-13  Saam Barati  <sbarati@apple.com>
+
+        ProxyObject should check for VMInquiry and return early before throwing a stack overflow exception
+        https://bugs.webkit.org/show_bug.cgi?id=191601
+
+        Reviewed by Mark Lam.
+
+        This doesn't fix any bugs today, but it may reduce future bugs. It was
+        always weird that ProxyObject::getOwnPropertySlot with VMInquiry might
+        throw a stack overflow error instead of just returning false like it
+        normally does when VMInquiry is passed in.
+
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::getOwnPropertySlotCommon):
+
+2018-11-13  Saam Barati  <sbarati@apple.com>
+
+        TypeProfileLog::processLogEntries should stash away any pending exceptions and re-apply them to the VM
+        https://bugs.webkit.org/show_bug.cgi?id=191600
+
+        Reviewed by Mark Lam.
+
+        processLogEntries will call into calculatedClassName, which will clear
+        any exceptions it encounters (it assumes that they're stack overflow exceptions).
+        However, this code may be called when an exception is already pending on the 
+        VM (e.g, when we throw an exception in the DFG, we compile an OSR exit
+        offramp, which may compile a baseline codeblock, which will process
+        the type profiler log). To get around this, processLogEntires should stash
+        away and re-apply any pending exceptions.
+
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * dfg/DFGOperations.cpp:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        * jit/JIT.cpp:
+        (JSC::JIT::doMainThreadPreparationBeforeCompile):
+        * jit/JITOperations.cpp:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/TypeProfilerLog.cpp:
+        (JSC::TypeProfilerLog::processLogEntries):
+        * runtime/TypeProfilerLog.h:
+        * runtime/VM.cpp:
+        (JSC::VM::dumpTypeProfilerData):
+        * runtime/VM.h:
+        (JSC::VM::DeferExceptionScope::DeferExceptionScope):
+        * tools/JSDollarVM.cpp:
+        (JSC::functionFindTypeForExpression):
+        (JSC::functionReturnTypeFor):
+
+2018-11-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r238132.
+
+        The test added with this change is timing out on Debug JSC
+        bots.
+
+        Reverted changeset:
+
+        "[BigInt] JSBigInt::createWithLength should throw when length
+        is greater than JSBigInt::maxLength"
+        https://bugs.webkit.org/show_bug.cgi?id=190836
+        https://trac.webkit.org/changeset/238132
+
+2018-11-12  Mark Lam  <mark.lam@apple.com>
+
+        Add OOM detection to StringPrototype's substituteBackreferences().
+        https://bugs.webkit.org/show_bug.cgi?id=191563
+        <rdar://problem/45720428>
+
+        Reviewed by Saam Barati.
+
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * runtime/StringPrototype.cpp:
+        (JSC::substituteBackreferencesSlow):
+        (JSC::substituteBackreferencesInline):
+        (JSC::substituteBackreferences):
+        (JSC::replaceUsingRegExpSearch):
+        (JSC::replaceUsingStringSearch):
+        * runtime/StringPrototype.h:
+
+2018-11-13  Mark Lam  <mark.lam@apple.com>
+
+        LLIntSlowPath's llint_loop_osr and llint_replace should set the topCallFrame.
+        https://bugs.webkit.org/show_bug.cgi?id=191579
+        <rdar://problem/45942472>
+
+        Reviewed by Saam Barati.
+
+        Both of these functions do a lot of work.  It would be good for the topCallFrame
+        to be correct should we need to throw an exception.
+
+        For example, we've observed the following crash trace:
+
+          * frame #0: WTFCrash() at Assertions.cpp:253
+            frame #1: ...
+            frame #2: JSC::StructureIDTable::get(this=0x00006040000162f0, structureID=1874583248) at StructureIDTable.h:129
+            frame #3: JSC::VM::getStructure(this=0x0000604000016210, id=4022066896) at VM.h:705
+            frame #4: JSC::JSCell::structure(this=0x00007ffeefbbde30, vm=0x0000604000016210) const at JSCellInlines.h:125
+            frame #5: JSC::JSCell::classInfo(this=0x00007ffeefbbde30, vm=0x0000604000016210) const at JSCellInlines.h:335
+            frame #6: JSC::JSCell::inherits(this=0x00007ffeefbbde30, vm=0x0000604000016210, info=0x0000000105eaf020) const at JSCellInlines.h:302
+            frame #7: JSC::JSObject* JSC::jsCast<JSC::JSObject*, JSC::JSCell>(from=0x00007ffeefbbde30) at JSCast.h:36
+            frame #8: JSC::asObject(cell=0x00007ffeefbbde30) at JSObject.h:1299
+            frame #9: JSC::asObject(value=JSValue @ 0x00007ffeefbba380) at JSObject.h:1304
+            frame #10: JSC::Register::object(this=0x00007ffeefbbdd58) const at JSObject.h:1514
+            frame #11: JSC::ExecState::jsCallee(this=0x00007ffeefbbdd40) const at CallFrame.h:107
+            frame #12: JSC::ExecState::isStackOverflowFrame(this=0x00007ffeefbbdd40) const at CallFrameInlines.h:36
+            frame #13: JSC::StackVisitor::StackVisitor(this=0x00007ffeefbba860, startFrame=0x00007ffeefbbdd40, vm=0x0000631000000800) at StackVisitor.cpp:52
+            frame #14: JSC::StackVisitor::StackVisitor(this=0x00007ffeefbba860, startFrame=0x00007ffeefbbdd40, vm=0x0000631000000800) at StackVisitor.cpp:41
+            frame #15: void JSC::StackVisitor::visit<(JSC::StackVisitor::EmptyEntryFrameAction)0, JSC::Interpreter::getStackTrace(JSC::JSCell*, WTF::Vector<JSC::StackFrame, 0ul, WTF::CrashOnOverflow, 16ul>&, unsigned long, unsigned long)::$_3>(startFrame=0x00007ffeefbbdd40, vm=0x0000631000000800, functor=0x00007ffeefbbaa60)::$_3 const&) at StackVisitor.h:147
+            frame #16: JSC::Interpreter::getStackTrace(this=0x0000602000005db0, owner=0x000062d00020cbe0, results=0x00006020000249d0, framesToSkip=0, maxStackSize=1) at Interpreter.cpp:437
+            frame #17: JSC::getStackTrace(exec=0x000062d00002c048, vm=0x0000631000000800, obj=0x000062d00020cbe0, useCurrentFrame=true) at Error.cpp:170
+            frame #18: JSC::ErrorInstance::finishCreation(this=0x000062d00020cbe0, exec=0x000062d00002c048, vm=0x0000631000000800, message=0x00007ffeefbbb800, useCurrentFrame=true) at ErrorInstance.cpp:119
+            frame #19: JSC::ErrorInstance::create(exec=0x000062d00002c048, vm=0x0000631000000800, structure=0x000062d0000f5730, message=0x00007ffeefbbb800, appender=0x0000000000000000, type=TypeNothing, useCurrentFrame=true)(WTF::String const&, WTF::String const&, JSC::RuntimeType, JSC::ErrorInstance::SourceTextWhereErrorOccurred), JSC::RuntimeType, bool) at ErrorInstance.h:49
+            frame #20: JSC::createRangeError(exec=0x000062d00002c048, globalObject=0x000062d00002c000, message=0x00007ffeefbbb800, appender=0x0000000000000000)(WTF::String const&, WTF::String const&, JSC::RuntimeType, JSC::ErrorInstance::SourceTextWhereErrorOccurred)) at Error.cpp:68
+            frame #21: JSC::createRangeError(exec=0x000062d00002c048, globalObject=0x000062d00002c000, message=0x00007ffeefbbb800) at Error.cpp:316
+            frame #22: JSC::createStackOverflowError(exec=0x000062d00002c048, globalObject=0x000062d00002c000) at ExceptionHelpers.cpp:77
+            frame #23: JSC::createStackOverflowError(exec=0x000062d00002c048) at ExceptionHelpers.cpp:72
+            frame #24: JSC::throwStackOverflowError(exec=0x000062d00002c048, scope=0x00007ffeefbbbaa0) at ExceptionHelpers.cpp:335
+            frame #25: JSC::ProxyObject::getOwnPropertySlotCommon(this=0x000062d000200e40, exec=0x000062d00002c048, propertyName=PropertyName @ 0x00007ffeefbbba80, slot=0x00007ffeefbbc720) at ProxyObject.cpp:372
+            frame #26: JSC::ProxyObject::getOwnPropertySlot(object=0x000062d000200e40, exec=0x000062d00002c048, propertyName=PropertyName @ 0x00007ffeefbbbd40, slot=0x00007ffeefbbc720) at ProxyObject.cpp:395
+            frame #27: JSC::JSObject::getNonIndexPropertySlot(this=0x000062d000200e40, exec=0x000062d00002c048, propertyName=PropertyName @ 0x00007ffeefbbbea0, slot=0x00007ffeefbbc720) at JSObjectInlines.h:150
+            frame #28: bool JSC::JSObject::getPropertySlot<false>(this=0x000062d000200e40, exec=0x000062d00002c048, propertyName=PropertyName @ 0x00007ffeefbbc320, slot=0x00007ffeefbbc720) at JSObject.h:1424
+            frame #29: JSC::JSObject::calculatedClassName(object=0x000062d000200e40) at JSObject.cpp:535
+            frame #30: JSC::Structure::toStructureShape(this=0x000062d000007410, value=JSValue @ 0x00007ffeefbbcae0, sawPolyProtoStructure=0x00007ffeefbbcf60) at Structure.cpp:1142
+            frame #31: JSC::TypeProfilerLog::processLogEntries(this=0x000060400000a950, reason=0x00007ffeefbbd5c0) at TypeProfilerLog.cpp:89
+            frame #32: JSC::JIT::doMainThreadPreparationBeforeCompile(this=0x0000619000034da0) at JIT.cpp:951
+            frame #33: JSC::JITWorklist::Plan::Plan(this=0x0000619000034d80, codeBlock=0x000062d0001d88c0, loopOSREntryBytecodeOffset=0) at JITWorklist.cpp:43
+            frame #34: JSC::JITWorklist::Plan::Plan(this=0x0000619000034d80, codeBlock=0x000062d0001d88c0, loopOSREntryBytecodeOffset=0) at JITWorklist.cpp:42
+            frame #35: JSC::JITWorklist::compileLater(this=0x0000616000001b80, codeBlock=0x000062d0001d88c0, loopOSREntryBytecodeOffset=0) at JITWorklist.cpp:256
+            frame #36: JSC::LLInt::jitCompileAndSetHeuristics(codeBlock=0x000062d0001d88c0, exec=0x00007ffeefbbde30, loopOSREntryBytecodeOffset=0) at LLIntSlowPaths.cpp:391
+            frame #37: llint_replace(exec=0x00007ffeefbbde30, pc=0x00006040000161ba) at LLIntSlowPaths.cpp:516
+            frame #38: llint_entry at LowLevelInterpreter64.asm:98
+            frame #39: vmEntryToJavaScript at LowLevelInterpreter64.asm:296
+            ...
+
+        This crash occurred because StackVisitor was seeing an invalid topCallFrame while
+        trying to capture the Error stack while throwing a StackOverflowError below
+        llint_replace.  While in this specific example, it is questionable whether we
+        should be executing JS code below TypeProfilerLog::processLogEntries(), it is
+        correct to have set the topCallFrame in llint_replace.  We do this by calling
+        LLINT_BEGIN_NO_SET_PC() at the top of llint_replace.
+
+        We also do the same for llint_osr.
+        
+        Note: both of these LLInt slow path functions are called with a fully initialized
+        CallFrame.  Hence, there's no issue with setting topCallFrame to their CallFrames
+        for these functions.
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+
+2018-11-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] JSBigInt::createWithLength should throw when length is greater than JSBigInt::maxLength
+        https://bugs.webkit.org/show_bug.cgi?id=190836
+
+        Reviewed by Saam Barati.
+
+        In this patch we are creating a new method called `JSBigInt::createWithLengthUnchecked`
+        where we allocate a BigInt trusting the length received as argument.
+        With this additional method, we now check if length passed to
+        `JSBigInt::createWithLength` is not greater than JSBigInt::maxLength.
+        When the length is greater than maxLength, we then throw OOM
+        exception.
+        This required change the interface of some JSBigInt operations to
+        receive `ExecState*` instead of `VM&`. We changed only operations that
+        can throw because of OOM.
+        We beleive that this approach of throwing instead of finishing the
+        execution abruptly is better because JS programs can catch such
+        exception and handle this issue properly.
+
+        * dfg/DFGOperations.cpp:
+        * jit/JITOperations.cpp:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::createZero):
+        (JSC::JSBigInt::tryCreateWithLength):
+        (JSC::JSBigInt::createWithLengthUnchecked):
+        (JSC::JSBigInt::createFrom):
+        (JSC::JSBigInt::multiply):
+        (JSC::JSBigInt::divide):
+        (JSC::JSBigInt::copy):
+        (JSC::JSBigInt::unaryMinus):
+        (JSC::JSBigInt::remainder):
+        (JSC::JSBigInt::add):
+        (JSC::JSBigInt::sub):
+        (JSC::JSBigInt::bitwiseAnd):
+        (JSC::JSBigInt::bitwiseOr):
+        (JSC::JSBigInt::bitwiseXor):
+        (JSC::JSBigInt::absoluteAdd):
+        (JSC::JSBigInt::absoluteSub):
+        (JSC::JSBigInt::absoluteDivWithDigitDivisor):
+        (JSC::JSBigInt::absoluteDivWithBigIntDivisor):
+        (JSC::JSBigInt::absoluteLeftShiftAlwaysCopy):
+        (JSC::JSBigInt::absoluteBitwiseOp):
+        (JSC::JSBigInt::absoluteAddOne):
+        (JSC::JSBigInt::absoluteSubOne):
+        (JSC::JSBigInt::toStringGeneric):
+        (JSC::JSBigInt::rightTrim):
+        (JSC::JSBigInt::allocateFor):
+        (JSC::JSBigInt::createWithLength): Deleted.
+        * runtime/JSBigInt.h:
+        * runtime/Operations.cpp:
+        (JSC::jsAddSlowCase):
+        * runtime/Operations.h:
+        (JSC::jsSub):
+        (JSC::jsMul):
+
+2018-11-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: show secure certificate details per-request
+        https://bugs.webkit.org/show_bug.cgi?id=191447
+        <rdar://problem/30019476>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add Security domain to hold security related protocol types.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * inspector/protocol/Network.json:
+        * inspector/protocol/Security.json: Added.
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator):
+
+2018-11-12  Saam barati  <sbarati@apple.com>
+
+        Unreviewed. Rollout 238026: It caused ~8% JetStream 2 regressions on some iOS devices
+        https://bugs.webkit.org/show_bug.cgi?id=191555
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::fromGlobalCode):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * parser/SourceCodeKey.h:
+        (JSC::SourceCodeKey::SourceCodeKey):
+        (JSC::SourceCodeKey::operator== const):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getUnlinkedGlobalCodeBlock):
+        (JSC::CodeCache::getUnlinkedGlobalFunctionExecutable):
+        * runtime/CodeCache.h:
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * runtime/FunctionExecutable.cpp:
+        (JSC::FunctionExecutable::fromGlobalCode):
+        * runtime/FunctionExecutable.h:
+
+2018-11-11  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix a fixme: rename wtfObjcMsgSend to wtfObjCMsgSend
+        https://bugs.webkit.org/show_bug.cgi?id=191492
+
+        Reviewed by Alex Christensen.
+
+        Rename file.
+
+        * API/JSValue.mm:
+
+2018-11-10  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix a fixme: rename wtfObjcMsgSend to wtfObjCMsgSend
+        https://bugs.webkit.org/show_bug.cgi?id=191492
+
+        Reviewed by Alex Christensen.
+
+        * API/JSValue.mm:
+
+2018-11-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, silence -Wunused-variable warning
+
+        * bytecode/Opcode.h:
+        (JSC::padOpcodeName):
+
+2018-11-09  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build fix after https://bugs.webkit.org/show_bug.cgi?id=191324
+
+        Remove the use of .xcfilelists until their side-effects are better
+        understood.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2018-11-09  Keith Miller  <keith_miller@apple.com>
+
+        LLInt VectorSizeOffset should be based on offset extraction
+        https://bugs.webkit.org/show_bug.cgi?id=191468
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch also adds some usings to LLIntOffsetsExtractor that
+        make it possible to use the bare names of Vector/RefCountedArray
+        in offsets extraction.
+
+        * llint/LLIntOffsetsExtractor.cpp:
+        * llint/LowLevelInterpreter.asm:
+
+2018-11-09  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, rolling in CodeCache in r237254
+        https://bugs.webkit.org/show_bug.cgi?id=190340
+
+        Land the CodeCache part, which uses DefaultHash<>::Hash instead of computeHash.
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::fromGlobalCode):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * parser/SourceCodeKey.h:
+        (JSC::SourceCodeKey::SourceCodeKey):
+        (JSC::SourceCodeKey::operator== const):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getUnlinkedGlobalCodeBlock):
+        (JSC::CodeCache::getUnlinkedGlobalFunctionExecutable):
+        * runtime/CodeCache.h:
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * runtime/FunctionExecutable.cpp:
+        (JSC::FunctionExecutable::fromGlobalCode):
+        * runtime/FunctionExecutable.h:
+
+2018-11-08  Keith Miller  <keith_miller@apple.com>
+
+        put_by_val opcodes need to add the number tag as a 64-bit register
+        https://bugs.webkit.org/show_bug.cgi?id=191456
+
+        Reviewed by Saam Barati.
+
+        Previously the LLInt would add it as a pointer sized value. That is
+        wrong if pointer size is less 64-bits.
+
+        * llint/LowLevelInterpreter64.asm:
+
+2018-11-08  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] isStrWhiteSpace seems redundant with Lexer<UChar>::isWhiteSpace
+        https://bugs.webkit.org/show_bug.cgi?id=191439
+
+        Reviewed by Saam Barati.
+
+        * CMakeLists.txt:
+        * runtime/ParseInt.h:
+        (JSC::isStrWhiteSpace):
+        Define isStrWhiteSpace in terms of isWhiteSpace and isLineTerminator.
+
+2018-11-08  Michael Saboff  <msaboff@apple.com>
+
+        Options::useRegExpJIT() should use jitEnabledByDefault() just like useJIT()
+        https://bugs.webkit.org/show_bug.cgi?id=191444
+
+        Reviewed by Saam Barati.
+
+        * runtime/Options.h:
+
+2018-11-08  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] UDis86Disassembler.cpp: warning: format specifies type 'unsigned long' but the argument has type 'uintptr_t' (aka 'unsigned long long')
+        https://bugs.webkit.org/show_bug.cgi?id=191416
+
+        Reviewed by Saam Barati.
+
+        * disassembler/UDis86Disassembler.cpp:
+        (JSC::tryToDisassembleWithUDis86): Use PRIxPTR for uintptr_t.
+
+2018-11-08  Keith Rollin  <krollin@apple.com>
+
+        Create .xcfilelist files
+        https://bugs.webkit.org/show_bug.cgi?id=191324
+        <rdar://problem/45852819>
+
+        Reviewed by Alex Christensen.
+
+        As part of preparing for enabling XCBuild, create and use .xcfilelist
+        files. These files are using during Run Script build phases in an
+        Xcode project. If a Run Script build phase produces new files that are
+        used later as inputs to subsequent build phases, XCBuild needs to know
+        about these files. These files can be either specified in an "output
+        files" section of the Run Script phase editor, or in .xcfilelist files
+        that are associated with the Run Script build phase.
+
+        This patch takes the second approach. It consists of three sets of changes:
+
+        - Modify the DerivedSources.make files to have a
+          'print_all_generated_files" target that produces a list of the files
+          they create.
+
+        - Create a shell script that produces .xcfilelist files from the
+          output of the previous step, as well as for the files created in the
+          Generate Unified Sources build steps.
+
+        - Add the new .xcfilelist files to the associated projects.
+
+        Note that, with these changes, the Xcode workspace and projects can no
+        longer be fully loaded into Xcode 9. Xcode will attempt to load the
+        projects that have .xcfilelist files associated with them, but will
+        fail and display a placeholder for those projects instead. It's
+        expected that all developers are using Xcode 10 by now and that not
+        being able to load into Xcode 9 is not a practical issue. Keep in mind
+        that this is strictly an IDE issue, and that the projects can still be
+        built with `xcodebuild`.
+
+        Also note that the shell script that creates the .xcfilelist files can
+        also be used to verify that the set of files that's currently checked
+        in is up-to-date. This checking can be used as part of a check-in hook
+        or part of check-webkit-style to sooner catch cases where the
+        .xcfilelist files need to be regenerated.
+
+        * DerivedSources.make:
+        * DerivedSources.xcfilelist: Added.
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * UnifiedSources.xcfilelist: Added.
+
+2018-11-08  Ross Kirsling  <ross.kirsling@sony.com>
+
+        U+180E is no longer a whitespace character
+        https://bugs.webkit.org/show_bug.cgi?id=191415
+
+        Reviewed by Saam Barati.
+
+        Mongolian Vowel Separator stopped being a valid whitespace character as of ES2016.
+        (https://github.com/tc39/ecma262/pull/300)
+
+        * parser/Lexer.h:
+        (JSC::Lexer<UChar>::isWhiteSpace):
+        * runtime/ParseInt.h:
+        (JSC::isStrWhiteSpace):
+        * yarr/create_regex_tables:
+
+2018-11-08  Keith Miller  <keith_miller@apple.com>
+
+        jitEnabledByDefault() should be on useJIT not useBaselineJIT
+        https://bugs.webkit.org/show_bug.cgi?id=191434
+
+        Reviewed by Saam Barati.
+
+        * runtime/Options.h:
+
+2018-11-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Restrict domains at the target level instead of only at the window level
+        https://bugs.webkit.org/show_bug.cgi?id=191344
+
+        Reviewed by Devin Rousso.
+
+        * inspector/protocol/Console.json:
+        * inspector/protocol/Debugger.json:
+        * inspector/protocol/Heap.json:
+        * inspector/protocol/Runtime.json:
+        Remove workerSupported as it is now no longer necessary. It is implied
+        by availability being empty (meaning it is supported everywhere).
+
+        * inspector/protocol/Inspector.json:
+        * inspector/protocol/ScriptProfiler.json:
+        Restrict to "javascript" and "web" debuggables, not available in workers.
+
+        * inspector/protocol/Worker.json:
+        Cleanup, remove empty types list.
+        
+        * inspector/protocol/Recording.json:
+        Cleanup, only expose this in the "web" domain for now.
+
+        * inspector/scripts/codegen/generate_js_backend_commands.py:
+        (JSBackendCommandsGenerator.generate_domain):
+        * inspector/scripts/codegen/models.py:
+        (Protocol.parse_domain):
+        Allow a list of debuggable types. Add "worker" even though it is unused
+        since that is a type we would want to allow or consider.
+
+        (Domain.__init__):
+        (Domains):
+        Remove now unnecessary workerSupported code.
+        Allow availability on a domain with only types.
+
+        * inspector/scripts/tests/generic/expected/worker-supported-domains.json-result: Removed.
+        * inspector/scripts/tests/generic/worker-supported-domains.json: Removed.
+
+2018-11-07  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Consider removing double load for accessing the MetadataTable from LLInt
+        https://bugs.webkit.org/show_bug.cgi?id=190933
+
+        Reviewed by Keith Miller.
+
+        This patch removes double load for accesses to MetadataTable from LLInt.
+        MetadataTable is now specially RefCounted class, which has interesting memory layout.
+        When refcount becomes 0, MetadataTable asks UnlinkedMetadataTable to destroy itself.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::estimatedSize):
+        (JSC::CodeBlock::visitChildren):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::metadata):
+        * bytecode/CodeBlockInlines.h:
+        (JSC::CodeBlock::forEachValueProfile):
+        (JSC::CodeBlock::forEachArrayProfile):
+        (JSC::CodeBlock::forEachArrayAllocationProfile):
+        (JSC::CodeBlock::forEachObjectAllocationProfile):
+        (JSC::CodeBlock::forEachLLIntCallLinkInfo):
+        * bytecode/MetadataTable.cpp:
+        (JSC::MetadataTable::MetadataTable):
+        (JSC::MetadataTable::~MetadataTable):
+        (JSC::MetadataTable::sizeInBytes):
+        * bytecode/MetadataTable.h:
+        (JSC::MetadataTable::get):
+        (JSC::MetadataTable::forEach):
+        (JSC::MetadataTable::ref const):
+        (JSC::MetadataTable::deref const):
+        (JSC::MetadataTable::refCount const):
+        (JSC::MetadataTable::hasOneRef const):
+        (JSC::MetadataTable::buffer):
+        (JSC::MetadataTable::linkingData const):
+        (JSC::MetadataTable::getImpl):
+        * bytecode/UnlinkedMetadataTable.h:
+        (JSC::UnlinkedMetadataTable::buffer const):
+        * bytecode/UnlinkedMetadataTableInlines.h:
+        (JSC::UnlinkedMetadataTable::UnlinkedMetadataTable):
+        (JSC::UnlinkedMetadataTable::~UnlinkedMetadataTable):
+        (JSC::UnlinkedMetadataTable::addEntry):
+        (JSC::UnlinkedMetadataTable::sizeInBytes):
+        (JSC::UnlinkedMetadataTable::finalize):
+        (JSC::UnlinkedMetadataTable::link):
+        (JSC::UnlinkedMetadataTable::unlink):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+
+2018-11-07  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add support to BigInt into ValueAdd
+        https://bugs.webkit.org/show_bug.cgi?id=186177
+
+        Reviewed by Keith Miller.
+
+        We are adding a very primitive specialization case of BigInts into ValueAdd.
+        When compiling a speculated version of this node to BigInt, we are currently
+        calling 'operationAddBigInt', a function that expects only BigInts as
+        parameter and effectly add numbers using JSBigInt::add. To properly
+        speculate BigInt operands, we changed ArithProfile to observe when
+        its result is a BigInt. With this new observation, we are able to identify
+        when ValueAdd results into a String or BigInt.
+
+        Here are some numbers for this specialization running
+        microbenchmarks:
+
+        big-int-simple-add                   21.5411+-1.1096  ^  15.3502+-0.7027  ^ definitely 1.4033x faster
+        big-int-add-prediction-propagation   13.7762+-0.5578  ^  10.8117+-0.5330  ^ definitely 1.2742x faster
+
+        * bytecode/ArithProfile.cpp:
+        (JSC::ArithProfile::emitObserveResult):
+        (JSC::ArithProfile::shouldEmitSetNonNumeric const):
+        (JSC::ArithProfile::shouldEmitSetBigInt const):
+        (JSC::ArithProfile::emitSetNonNumeric const):
+        (JSC::ArithProfile::emitSetBigInt const):
+        (WTF::printInternal):
+        (JSC::ArithProfile::shouldEmitSetNonNumber const): Deleted.
+        (JSC::ArithProfile::emitSetNonNumber const): Deleted.
+        * bytecode/ArithProfile.h:
+        (JSC::ArithProfile::observedUnaryInt):
+        (JSC::ArithProfile::observedUnaryNumber):
+        (JSC::ArithProfile::observedBinaryIntInt):
+        (JSC::ArithProfile::observedBinaryNumberInt):
+        (JSC::ArithProfile::observedBinaryIntNumber):
+        (JSC::ArithProfile::observedBinaryNumberNumber):
+        (JSC::ArithProfile::didObserveNonInt32 const):
+        (JSC::ArithProfile::didObserveNonNumeric const):
+        (JSC::ArithProfile::didObserveBigInt const):
+        (JSC::ArithProfile::setObservedNonNumeric):
+        (JSC::ArithProfile::setObservedBigInt):
+        (JSC::ArithProfile::observeResult):
+        (JSC::ArithProfile::didObserveNonNumber const): Deleted.
+        (JSC::ArithProfile::setObservedNonNumber): Deleted.
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::makeSafe):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::mayHaveNonNumericResult):
+        (JSC::DFG::Node::mayHaveBigIntResult):
+        (JSC::DFG::Node::mayHaveNonNumberResult): Deleted.
+        * dfg/DFGNodeFlags.cpp:
+        (JSC::DFG::dumpNodeFlags):
+        * dfg/DFGNodeFlags.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueAdd):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueAdd):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::updateArithProfileForUnaryArithOp):
+        (JSC::updateArithProfileForBinaryArithOp):
+
 2018-11-07  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Fix "Javascript" => "JavaScript" enum in protocol generated objects

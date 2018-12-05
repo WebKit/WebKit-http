@@ -980,6 +980,8 @@ webkit.org/b/168050 fast/zooming/client-rect-in-fixed-zoomed.html [ Skip ]
 webkit.org/b/168050 fast/zooming/uiscript-zooming.html [ Skip ]
 
 # Skip tests expecting native HTML form validation popover
+webkit.org/b/167579 fast/forms/scroll-into-view-and-show-validation-message.html [ Skip ]
+webkit.org/b/167579 fast/forms/navigation-dismisses-validation-bubbles.html [ Skip ]
 webkit.org/b/167579 fast/forms/validation-bubble-disappears-when-input-detached.html [ Skip ]
 webkit.org/b/167579 fast/forms/validation-bubble-disappears-when-input-moved.html [ Skip ]
 webkit.org/b/167579 fast/forms/validation-bubble-disappears-when-input-no-longer-visible.html [ Skip ]
@@ -987,7 +989,6 @@ webkit.org/b/167579 fast/forms/validation-custom-message.html [ Skip ]
 webkit.org/b/167579 fast/forms/validation-message-detached-iframe.html [ Skip ]
 webkit.org/b/167579 fast/forms/validation-message-detached-iframe2.html [ Skip ]
 webkit.org/b/167579 fast/forms/validation-messages.html [ Skip ]
-webkit.org/b/167579 http/tests/navigation/navigation-dismisses-validation-bubbles.html [ Skip ]
 webkit.org/b/167579 fast/forms/validation-bubble-escape-key-dismiss.html [ Skip ]
 webkit.org/b/167579 fast/forms/validation-message-minimum-font-size.html [ Skip ]
 
@@ -1115,9 +1116,6 @@ fast/scrolling/scrolling-tree-includes-frame.html [ Skip ]
 
 # This test assumes that color on sliders is not reversed for RTL, so failing is good.
 fast/forms/range/input-appearance-range-rtl.html [ ImageOnlyFailure ]
-
-# Cache storage
-webkit.org/b/178316 http/wpt/cache-storage/cache-quota.any.html [ Failure ]
 
 # Service-workers tests that fail, time out or crash.
 webkit.org/b/175419 http/tests/workers/service/controller-change.html [ Skip ]
@@ -1976,6 +1974,7 @@ webkit.org/b/186750 imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_key
 webkit.org/b/186750 imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_pbkdf2_short_long.https.html [ Pass Failure ]
 
 webkit.org/b/186847 http/tests/inspector/network/resource-sizes-memory-cache.html [ Pass Failure ]
+webkit.org/b/191497 http/tests/inspector/network/resource-response-security.html [ Skip ]
 
 webkit.org/b/186851 imported/w3c/web-platform-tests/xhr/formdata.htm [ Pass Failure ]
 webkit.org/b/186851 imported/w3c/web-platform-tests/xhr/formdata-blob.htm [ Pass Failure ]
@@ -2403,13 +2402,8 @@ webkit.org/b/191009 webrtc/video-mute-vp8.html [ Failure ]
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # Fail on 32-bit release builders
-webkit.org/b/84857 fast/repaint/moving-shadow-on-container.html [ Failure Pass ]
-webkit.org/b/84857 fast/repaint/moving-shadow-on-path.html [ Failure Pass ]
 webkit.org/b/80210 security/block-test.html [ Failure Pass ]
 webkit.org/b/62204 svg/W3C-SVG-1.1/paths-data-03-f.svg [ Failure Pass ]
-Bug(GTK) svg/css/composite-shadow-example.html [ Failure Pass ]
-Bug(GTK) svg/css/composite-shadow-with-opacity.html [ Failure Pass ]
-Bug(GTK) svg/css/stars-with-shadow.html [ Failure Pass ]
 
 # Fails on 64-bit release and debug builders
 webkit.org/b/89099 svg/transforms/transformed-text-fill-pattern.html [ ImageOnlyFailure Pass ]
@@ -3531,11 +3525,6 @@ webkit.org/b/189739 svg/gradients/spreadMethodClose2.svg [ ImageOnlyFailure ]
 webkit.org/b/189739 svg/gradients/spreadMethodDiagonal3.svg [ ImageOnlyFailure ]
 webkit.org/b/189739 svg/gradients/spreadMethodDiagonal4.svg [ ImageOnlyFailure ]
 
-webkit.org/b/189993 http/tests/fileapi/xhr-send-form-data-filename-escaping.html [ Failure ]
-webkit.org/b/189993 http/tests/fileapi/xhr-send-form-data-mimetype-normalization.html [ Failure ]
-webkit.org/b/189993 http/tests/local/formdata/send-form-data-constructed-from-form-using-open-panel.html [ Failure ]
-webkit.org/b/189993 http/tests/misc/form-blob-challenge.html [ Failure ]
-
 webkit.org/b/189994 fast/files/xhr-response-blob.html [ Failure ]
 
 webkit.org/b/189995 imported/w3c/web-platform-tests/mediacapture-streams/MediaStream-MediaElement-srcObject.https.html [ Failure ]
@@ -3591,6 +3580,12 @@ webkit.org/b/191004 media/track/track-cue-missing.html [ Failure ]
 webkit.org/b/191005 webgpu/webgpu-enabled.html [ Failure ]
 
 webkit.org/b/191006 webrtc/simulcast-h264.html [ Failure ]
+
+webkit.org/b/191400 fast/block/basic/child-block-level-box-with-height-percent.html [ Failure ]
+webkit.org/b/191400 fast/block/basic/inline-content-with-floating-images2.html [ Failure ]
+webkit.org/b/191400 fast/block/basic/quirk-mode-percent-height.html [ Failure ]
+
+webkit.org/b/191402 fast/css/has-attachment.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

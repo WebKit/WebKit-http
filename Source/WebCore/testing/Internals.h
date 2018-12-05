@@ -244,6 +244,7 @@ public:
     ExceptionOr<Ref<DOMRect>> layoutViewportRect();
     ExceptionOr<Ref<DOMRect>> visualViewportRect();
 
+    ExceptionOr<void> setViewIsTransparent(bool);
     ExceptionOr<void> setViewBaseBackgroundColor(const String& colorValue);
 
     ExceptionOr<void> setPagination(const String& mode, int gap, int pageLength);
@@ -314,6 +315,7 @@ public:
     void setAutomaticSpellingCorrectionEnabled(bool);
 
     void handleAcceptedCandidate(const String& candidate, unsigned location, unsigned length);
+    void changeSelectionListType();
 
     bool isOverwriteModeEnabled();
     void toggleOverwriteModeEnabled();
@@ -346,6 +348,9 @@ public:
     ExceptionOr<String> layerTreeAsText(Document&, unsigned short flags) const;
     ExceptionOr<uint64_t> layerIDForElement(Element&);
     ExceptionOr<String> repaintRectsAsText() const;
+
+    ExceptionOr<String> scrollbarOverlayStyle() const;
+
     ExceptionOr<String> scrollingStateTreeAsText() const;
     ExceptionOr<String> mainThreadScrollingReasons() const;
     ExceptionOr<Ref<DOMRectList>> nonFastScrollableRects() const;

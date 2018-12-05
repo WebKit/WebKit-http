@@ -225,7 +225,10 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             for (let channel of channels) {
                 let logEditor = generalSettingsView.addGroupWithCustomSetting(editorLabels[channel.source], WI.SettingEditor.Type.Select, {values: logLevels});
                 logEditor.value = channel.level;
-                logEditor.addEventListener(WI.SettingEditor.Event.ValueDidChange, () => { ConsoleAgent.setLoggingChannelLevel(channel.source, logEditor.value); });
+                logEditor.addEventListener(WI.SettingEditor.Event.ValueDidChange, () => {
+                    for (let target of WI.targets)
+                        target.ConsoleAgent.setLoggingChannelLevel(channel.source, logEditor.value);
+                });
             }
         }
 
@@ -255,6 +258,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         experimentalSettingsView.addSetting(WI.UIString("User Interface:"), WI.settings.experimentalEnableNewTabBar, WI.UIString("Enable New Tab Bar"));
         experimentalSettingsView.addSeparator();
 
+        // FIXME: Reload Web Inspector does not work with MultiplexingBackendTarget.
         let reloadInspectorButton = document.createElement("button");
         reloadInspectorButton.textContent = WI.UIString("Reload Web Inspector");
         reloadInspectorButton.addEventListener("click", () => { window.location.reload(); });

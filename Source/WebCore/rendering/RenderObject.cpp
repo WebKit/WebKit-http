@@ -1514,6 +1514,35 @@ void RenderObject::destroy()
     delete this;
 }
 
+bool RenderObject::isTransparentRespectingParentFrames() const
+{
+    static const double minimumVisibleOpacity = 0.01;
+
+    float currentOpacity = 1;
+    auto* layer = enclosingLayer();
+    while (layer) {
+        auto& layerRenderer = layer->renderer();
+        currentOpacity *= layerRenderer.style().opacity();
+        if (currentOpacity < minimumVisibleOpacity)
+            return true;
+
+        auto* parentLayer = layer->parent();
+        if (!parentLayer) {
+            if (!is<RenderView>(layerRenderer))
+                return false;
+
+            auto& enclosingFrame = downcast<RenderView>(layerRenderer).view().frame();
+            if (enclosingFrame.isMainFrame())
+                return false;
+
+            if (auto *frameOwnerRenderer = enclosingFrame.ownerElement()->renderer())
+                parentLayer = frameOwnerRenderer->enclosingLayer();
+        }
+        layer = parentLayer;
+    }
+    return false;
+}
+
 Position RenderObject::positionForPoint(const LayoutPoint& point)
 {
     // FIXME: This should just create a Position object instead (webkit.org/b/168566). 
@@ -1799,6 +1828,16 @@ VisiblePosition RenderObject::createVisiblePosition(const Position& position) co
 CursorDirective RenderObject::getCursor(const LayoutPoint&, Cursor&) const
 {
     return SetCursorBasedOnStyle;
+}
+
+bool RenderObject::useDarkAppearance() const
+{
+    return document().useDarkAppearance(&style());
+}
+
+OptionSet<StyleColor::Options> RenderObject::styleColorOptions() const
+{
+    return document().styleColorOptions(&style());
 }
 
 bool RenderObject::canUpdateSelectionOnRootLineBoxes()

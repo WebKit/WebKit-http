@@ -2049,7 +2049,7 @@ sub isCachedArgumentfileOutOfDate($@)
 
 sub inFlatpakSandbox()
 {
-    if (-f "/usr/manifest.json") {
+    if (-f "/.flatpak-info") {
         return 1;
     }
 

@@ -56,7 +56,7 @@ XSSAuditorEnabled:
 
 SafeBrowsingEnabled:
   type: bool
-  defaultValue: DEFAULT_SAFE_BROWSING_ENABLED
+  defaultValue: true
   webcoreBinding: none
 
 PrivateBrowsingEnabled:
@@ -497,7 +497,10 @@ ScreenCaptureEnabled:
   type: bool
   defaultValue: false
   webcoreBinding: RuntimeEnabledFeatures
-  condition: ENABLE(MEDIA_STREAM)
+  condition: ENABLE(MEDIA_STREAM) && PLATFORM(MAC)
+  humanReadableName: "ScreenCapture"
+  humanReadableDescription: "Enable ScreenCapture"
+  category: experimental
 
 PeerConnectionEnabled:
   type: bool
@@ -1182,6 +1185,10 @@ VideoQualityIncludesDisplayCompositingEnabled:
   defaultValue: false
   condition: ENABLE(VIDEO)
 
+EditableImagesEnabled:
+  type: bool
+  defaultValue: false
+
 # For experimental features:
 # The type should be boolean.
 # You must provide a humanReadableName and humanReadableDescription for all experimental features. They
@@ -1208,7 +1215,7 @@ ImageBitmapOffscreenCanvasEnabled:
 
 IntersectionObserverEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   humanReadableName: "Intersection Observer"
   humanReadableDescription: "Enable Intersection Observer support"
   webcoreBinding: RuntimeEnabledFeatures
@@ -1239,7 +1246,7 @@ CSSOMViewScrollingAPIEnabled:
 
 WebAnimationsEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
   humanReadableName: "Web Animations"
   humanReadableDescription: "Web Animations prototype"
   category: experimental

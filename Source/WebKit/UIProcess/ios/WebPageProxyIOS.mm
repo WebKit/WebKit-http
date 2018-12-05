@@ -380,7 +380,7 @@ void WebPageProxy::didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction& 
     pageClient().didCommitLayerTree(layerTreeTransaction);
 
     // FIXME: Remove this special mechanism and fold it into the transaction's layout milestones.
-    if ((m_observedLayoutMilestones & WebCore::ReachedSessionRestorationRenderTreeSizeThreshold) && !m_hitRenderTreeSizeThreshold
+    if (m_observedLayoutMilestones.contains(WebCore::ReachedSessionRestorationRenderTreeSizeThreshold) && !m_hitRenderTreeSizeThreshold
         && exceedsRenderTreeSizeSizeThreshold(m_sessionRestorationRenderTreeSize, layerTreeTransaction.renderTreeSize())) {
         m_hitRenderTreeSizeThreshold = true;
         didReachLayoutMilestone(WebCore::ReachedSessionRestorationRenderTreeSizeThreshold);
@@ -1087,6 +1087,12 @@ void WebPageProxy::setIsScrollingOrZooming(bool isScrollingOrZooming)
     // bubble if we're supposed to.
     if (!m_isScrollingOrZooming && m_validationBubble)
         m_validationBubble->show();
+}
+
+void WebPageProxy::hardwareKeyboardAvailabilityChanged()
+{
+    updateCurrentModifierState();
+    m_process->send(Messages::WebPage::HardwareKeyboardAvailabilityChanged(), m_pageID);
 }
 
 #if ENABLE(DATA_INTERACTION)

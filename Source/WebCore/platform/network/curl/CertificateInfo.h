@@ -25,12 +25,13 @@
 
 #pragma once
 
+#include "CertificateInfoBase.h"
 #include "NotImplemented.h"
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
-class CertificateInfo {
+class CertificateInfo : public CertificateInfoBase {
 public:
     using Certificate = Vector<uint8_t>;
 
@@ -43,6 +44,10 @@ public:
     const Vector<Certificate>& certificateChain() const { return m_certificateChain; }
 
     bool containsNonRootSHA1SignedCertificate() const { notImplemented(); return false; }
+
+    std::optional<SummaryInfo> summaryInfo() const { notImplemented(); return std::nullopt; }
+
+    bool isEmpty() const { return m_certificateChain.isEmpty(); }
 
     static Certificate makeCertificate(const char*, size_t);
 

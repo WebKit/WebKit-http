@@ -261,7 +261,7 @@ void RenderBox::styleWillChange(StyleDifference diff, const RenderStyle& newStyl
         if (diff >= StyleDifference::Repaint && (isDocumentElementRenderer() || isBody())) {
             view().repaintRootContents();
             if (oldStyle->hasEntirelyFixedBackground() != newStyle.hasEntirelyFixedBackground())
-                view().compositor().rootFixedBackgroundsChanged();
+                view().compositor().rootLayerConfigurationChanged();
         }
         
         // When a layout hint happens and an object's position style changes, we have to do a layout
@@ -1207,7 +1207,7 @@ void RenderBox::paintRootBoxFillLayers(const PaintInfo& paintInfo)
     auto color = style.visitedDependentColor(CSSPropertyBackgroundColor);
 
     CompositeOperator compositeOp = CompositeSourceOver;
-    if (document().settings().punchOutWhiteBackgroundsInDarkMode() && Color::isWhiteColor(color) && theme().usingDarkAppearance(*this))
+    if (document().settings().punchOutWhiteBackgroundsInDarkMode() && Color::isWhiteColor(color) && useDarkAppearance())
         compositeOp = CompositeDestinationOut;
 
     paintFillLayers(paintInfo, style.colorByApplyingColorFilter(color), style.backgroundLayers(), view().backgroundRect(), BackgroundBleedNone, compositeOp, rootBackgroundRenderer);
@@ -1341,7 +1341,7 @@ void RenderBox::paintBackground(const PaintInfo& paintInfo, const LayoutRect& pa
     Color backgroundColor = style().visitedDependentColor(CSSPropertyBackgroundColor);
 
     CompositeOperator compositeOp = CompositeSourceOver;
-    if (document().settings().punchOutWhiteBackgroundsInDarkMode() && Color::isWhiteColor(backgroundColor) && theme().usingDarkAppearance(*this))
+    if (document().settings().punchOutWhiteBackgroundsInDarkMode() && Color::isWhiteColor(backgroundColor) && useDarkAppearance())
         compositeOp = CompositeDestinationOut;
 
     paintFillLayers(paintInfo, style().colorByApplyingColorFilter(backgroundColor), style().backgroundLayers(), paintRect, bleedAvoidance, compositeOp);

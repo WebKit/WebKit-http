@@ -1171,10 +1171,10 @@ static bool shouldApplyPropertyInParseOrder(CSSPropertyID propertyID)
     case CSSPropertyWebkitBoxShadow:
     case CSSPropertyBoxShadow:
     case CSSPropertyWebkitTextDecoration:
-    case CSSPropertyWebkitTextDecorationLine:
-    case CSSPropertyWebkitTextDecorationStyle:
-    case CSSPropertyWebkitTextDecorationColor:
-    case CSSPropertyWebkitTextDecorationSkip:
+    case CSSPropertyTextDecorationLine:
+    case CSSPropertyTextDecorationStyle:
+    case CSSPropertyTextDecorationColor:
+    case CSSPropertyTextDecorationSkip:
     case CSSPropertyTextUnderlinePosition:
     case CSSPropertyTextUnderlineOffset:
     case CSSPropertyTextDecorationThickness:
@@ -1379,6 +1379,11 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         applyCascadedProperties(CSSPropertyWebkitRubyPosition, CSSPropertyWebkitRubyPosition, applyState);
         adjustStyleForInterCharacterRuby();
 
+#if ENABLE(DARK_MODE_CSS)
+        // Supported color schemes can affect resolved colors, so we need to apply that property before any color properties.
+        applyCascadedProperties(CSSPropertySupportedColorSchemes, CSSPropertySupportedColorSchemes, applyState);
+#endif
+
         applyCascadedProperties(firstCSSProperty, lastHighPriorityProperty, applyState);
 
         // If our font got dirtied, update it now.
@@ -1398,11 +1403,15 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
     cascade.addImportantMatches(matchResult, matchResult.ranges.firstUserRule, matchResult.ranges.lastUserRule, applyInheritedOnly);
     cascade.addImportantMatches(matchResult, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, applyInheritedOnly);
 
-
     ApplyCascadedPropertyState applyState { this, &cascade, &matchResult };
 
     applyCascadedProperties(CSSPropertyWebkitRubyPosition, CSSPropertyWebkitRubyPosition, applyState);
     adjustStyleForInterCharacterRuby();
+
+#if ENABLE(DARK_MODE_CSS)
+    // Supported color schemes can affect resolved colors, so we need to apply that property before any color properties.
+    applyCascadedProperties(CSSPropertySupportedColorSchemes, CSSPropertySupportedColorSchemes, applyState);
+#endif
 
     applyCascadedProperties(firstCSSProperty, lastHighPriorityProperty, applyState);
 
@@ -1463,7 +1472,7 @@ inline bool isValidVisitedLinkProperty(CSSPropertyID id)
     case CSSPropertyColor:
     case CSSPropertyOutlineColor:
     case CSSPropertyColumnRuleColor:
-    case CSSPropertyWebkitTextDecorationColor:
+    case CSSPropertyTextDecorationColor:
     case CSSPropertyWebkitTextEmphasisColor:
     case CSSPropertyWebkitTextFillColor:
     case CSSPropertyWebkitTextStrokeColor:
@@ -1841,14 +1850,14 @@ Color StyleResolver::colorFromPrimitiveValue(const CSSPrimitiveValue& value, boo
     case CSSValueWebkitActivelink:
         return document().activeLinkColor();
     case CSSValueWebkitFocusRingColor:
-        return RenderTheme::focusRingColor(document().styleColorOptions());
+        return RenderTheme::focusRingColor(document().styleColorOptions(m_state.style()));
     case CSSValueCurrentcolor:
         // Color is an inherited property so depending on it effectively makes the property inherited.
         // FIXME: Setting the flag as a side effect of calling this function is a bit oblique. Can we do better?
         m_state.style()->setHasExplicitlyInheritedProperties();
         return m_state.style()->color();
     default:
-        return StyleColor::colorFromKeyword(identifier, document().styleColorOptions());
+        return StyleColor::colorFromKeyword(identifier, document().styleColorOptions(m_state.style()));
     }
 }
 

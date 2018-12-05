@@ -77,7 +77,7 @@
 #import <pal/spi/mac/NSCellSPI.h>
 #import <pal/spi/mac/NSSharingServicePickerSPI.h>
 #import <wtf/MathExtras.h>
-#import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/StdLibExtras.h>
 #import <wtf/text/StringBuilder.h>
@@ -297,7 +297,7 @@ RenderThemeMac::RenderThemeMac()
 
 NSView *RenderThemeMac::documentViewFor(const RenderObject& o) const
 {
-    LocalDefaultSystemAppearance localAppearance(usingDarkAppearance(o));
+    LocalDefaultSystemAppearance localAppearance(o.useDarkAppearance());
     ControlStates states(extractControlStatesForRenderer(o));
     return ThemeMac::ensuredView(&o.view().frameView(), states);
 }
@@ -632,7 +632,7 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
         // Special handling for links and other system colors when the system appearance is desired.
         auto systemAppearanceColor = [] (Color& color, SEL selector) -> Color {
             if (!color.isValid()) {
-                auto systemColor = wtfObjcMsgSend<NSColor *>([NSColor class], selector);
+                auto systemColor = wtfObjCMsgSend<NSColor *>([NSColor class], selector);
                 color = semanticColorFromNSColor(systemColor);
             }
 
@@ -815,7 +815,7 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
         };
 
         if (auto selector = selectCocoaColor()) {
-            if (auto color = wtfObjcMsgSend<NSColor *>([NSColor class], selector))
+            if (auto color = wtfObjCMsgSend<NSColor *>([NSColor class], selector))
                 return semanticColorFromNSColor(color);
         }
 
@@ -1713,7 +1713,7 @@ void RenderThemeMac::adjustMenuListStyle(StyleResolver& styleResolver, RenderSty
     // Set the foreground color to black or gray when we have the aqua look.
     Color c = Color::darkGray;
     if (e) {
-        OptionSet<StyleColor::Options> options = e->document().styleColorOptions();
+        OptionSet<StyleColor::Options> options = e->document().styleColorOptions(&style);
         c = !e->isDisabledFormControl() ? systemColor(CSSValueButtontext, options) : systemColor(CSSValueGraytext, options);
     }
     style.setColor(c);
@@ -1800,7 +1800,7 @@ void RenderThemeMac::setPopupButtonCellState(const RenderObject& o, const IntSiz
 
 void RenderThemeMac::paintCellAndSetFocusedElementNeedsRepaintIfNecessary(NSCell* cell, const RenderObject& renderer, const PaintInfo& paintInfo, const FloatRect& rect)
 {
-    LocalDefaultSystemAppearance localAppearance(usingDarkAppearance(renderer));
+    LocalDefaultSystemAppearance localAppearance(renderer.useDarkAppearance());
     bool shouldDrawFocusRing = isFocused(renderer) && renderer.style().outlineStyleIsAuto() == OutlineIsAuto::On;
     bool shouldUseImageBuffer = renderer.style().effectiveZoom() != 1 || renderer.page().pageScaleFactor() != 1;
     bool shouldDrawCell = true;
@@ -1882,7 +1882,7 @@ bool RenderThemeMac::paintSliderThumb(const RenderObject& o, const PaintInfo& pa
         ? sliderThumbVertical()
         : sliderThumbHorizontal();
 
-    LocalDefaultSystemAppearance localAppearance(usingDarkAppearance(o));
+    LocalDefaultSystemAppearance localAppearance(o.useDarkAppearance());
 
     LocalCurrentGraphicsContext localContext(paintInfo.context());
 
@@ -2340,11 +2340,6 @@ void RenderThemeMac::adjustSliderThumbSize(RenderStyle& style, const Element*) c
         style.setWidth(Length(static_cast<int>(sliderThumbWidth * zoomLevel), Fixed));
         style.setHeight(Length(static_cast<int>(sliderThumbHeight * zoomLevel), Fixed));
     }
-}
-
-bool RenderThemeMac::shouldHaveCapsLockIndicator(const HTMLInputElement& element) const
-{
-    return element.isPasswordField();
 }
 
 NSPopUpButtonCell* RenderThemeMac::popupButton() const
@@ -2993,11 +2988,6 @@ bool RenderThemeMac::paintAttachment(const RenderObject& renderer, const PaintIn
 }
 
 #endif // ENABLE(ATTACHMENT_ELEMENT)
-
-bool RenderThemeMac::usingDarkAppearance(const RenderObject& o) const
-{
-    return o.document().useDarkAppearance();
-}
 
 } // namespace WebCore
 
