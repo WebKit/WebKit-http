@@ -26,6 +26,8 @@
 #ifndef CertificateInfo_h
 #define CertificateInfo_h
 
+#include "CertificateInfoBase.h"
+#include "NotImplemented.h"
 #include <support/Locker.h>
 #include <Certificate.h>
 
@@ -34,12 +36,14 @@ namespace WebCore {
 class ResourceError;
 class ResourceResponse;
 
-class CertificateInfo {
+class CertificateInfo : public CertificateInfoBase {
 public:
     CertificateInfo();
     explicit CertificateInfo(const BCertificate& certificate)
         : m_certificate(&certificate)
     { }
+
+    std::optional<SummaryInfo> summaryInfo() const { notImplemented(); return std::nullopt; }
 
     const BCertificate& certificate() const { return *m_certificate; }
 

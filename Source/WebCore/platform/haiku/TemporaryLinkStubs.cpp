@@ -48,16 +48,6 @@ Vector<char> loadResourceIntoArray(const char*)
 
 namespace WebCore {
 
-String signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String &challengeString, const URL &url)
-{
-    return String();
-}
-
-void getSupportedKeySizes(Vector<String>&)
-{
-    notImplemented();
-}
-
 float userIdleTime()
 {
 	// This is for example used to determine if Pages are to be released from the PageCache...
