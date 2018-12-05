@@ -80,7 +80,7 @@ void AcceleratedSurfaceWPE::finalize()
 uint64_t AcceleratedSurfaceWPE::window() const
 {
     ASSERT(m_backend);
-    return static_cast<uint64_t>(wpe_renderer_backend_egl_target_get_native_window(m_backend));
+    return reinterpret_cast<uint64_t>(wpe_renderer_backend_egl_target_get_native_window(m_backend));
 }
 
 uint64_t AcceleratedSurfaceWPE::surfaceID() const
