@@ -32,13 +32,18 @@ namespace WebCore {
 
 std::unique_ptr<WebGPURenderingContext> WebGPURenderingContext::create(CanvasBase& canvas)
 {
-    auto context = std::unique_ptr<WebGPURenderingContext>(new WebGPURenderingContext(canvas));
+    auto swapChain = GPUSwapChain::create();
+
+    if (!swapChain)
+        return nullptr;
+
+    auto context = std::unique_ptr<WebGPURenderingContext>(new WebGPURenderingContext(canvas, WTFMove(swapChain)));
     context->suspendIfNeeded();
     return context;
 }
 
-WebGPURenderingContext::WebGPURenderingContext(CanvasBase& canvas)
-    : WebGPUSwapChain(canvas)
+WebGPURenderingContext::WebGPURenderingContext(CanvasBase& canvas, RefPtr<GPUSwapChain>&& swapChain)
+    : WebGPUSwapChain(canvas, WTFMove(swapChain))
 {
 }
 

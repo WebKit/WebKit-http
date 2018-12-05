@@ -66,7 +66,6 @@ BEGIN {
        &chdirWebKit
        &checkFrameworks
        &cmakeArgsFromFeatures
-       &cmakeBasedPortArguments
        &currentSVNRevision
        &debugSafari
        &executableProductDir
@@ -2387,12 +2386,6 @@ sub cmakeArgsFromFeatures(\@;$)
         }
     }
     return @args;
-}
-
-
-sub cmakeBasedPortArguments()
-{
-    return ();
 }
 
 sub cmakeBasedPortName()

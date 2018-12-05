@@ -198,6 +198,8 @@ void Font::platformInit()
     m_fontMetrics.setLineGap(lineGap);
     m_fontMetrics.setXHeight(xHeight);
     m_fontMetrics.setLineSpacing(lineSpacing);
+    m_fontMetrics.setUnderlinePosition(-CTFontGetUnderlinePosition(m_platformData.font()));
+    m_fontMetrics.setUnderlineThickness(CTFontGetUnderlineThickness(m_platformData.font()));
 }
 
 void Font::platformCharWidthInit()
@@ -595,6 +597,20 @@ float Font::platformWidthForGlyph(Glyph glyph) const
             CTFontGetUnsummedAdvancesForGlyphsAndStyle(m_platformData.ctFont(), orientation, style, &glyph, &advance, 1);
     }
     return advance.width + m_syntheticBoldOffset;
+}
+
+Path Font::platformPathForGlyph(Glyph glyph) const
+{
+    auto result = adoptCF(CTFontCreatePathForGlyph(platformData().ctFont(), glyph, nullptr));
+    auto syntheticBoldOffset = this->syntheticBoldOffset();
+    if (syntheticBoldOffset) {
+        auto newPath = adoptCF(CGPathCreateMutable());
+        CGPathAddPath(newPath.get(), nullptr, result.get());
+        auto translation = CGAffineTransformMakeTranslation(syntheticBoldOffset, 0);
+        CGPathAddPath(newPath.get(), &translation, result.get());
+        return newPath;
+    }
+    return adoptCF(CGPathCreateMutableCopy(result.get()));
 }
 
 bool Font::platformSupportsCodePoint(UChar32 character) const

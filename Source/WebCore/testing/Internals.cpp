@@ -121,6 +121,7 @@
 #include "PageCache.h"
 #include "PageOverlay.h"
 #include "PathUtilities.h"
+#include "PlatformKeyboardEvent.h"
 #include "PlatformMediaSessionManager.h"
 #include "PlatformScreen.h"
 #include "PlatformStrategies.h"
@@ -4512,6 +4513,12 @@ void Internals::setMediaStreamTrackIdentifier(MediaStreamTrack& track, String&& 
 {
     track.setIdForTesting(WTFMove(id));
 }
+
+void Internals::setMediaStreamSourceInterrupted(MediaStreamTrack& track, bool interrupted)
+{
+    track.source().setInterruptedForTesting(interrupted);
+}
+
 #endif
 
 String Internals::audioSessionCategory() const
@@ -4728,6 +4735,11 @@ unsigned Internals::primaryScreenDisplayID()
 #else
     return 0;
 #endif
+}
+
+bool Internals::capsLockIsOn()
+{
+    return WebCore::PlatformKeyboardEvent::currentCapsLockState();
 }
 
 bool Internals::supportsVCPEncoder()

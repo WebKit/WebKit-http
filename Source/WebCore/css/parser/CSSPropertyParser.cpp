@@ -37,6 +37,7 @@
 #include "CSSContentDistributionValue.h"
 #include "CSSCursorImageValue.h"
 #include "CSSCustomIdentValue.h"
+#include "CSSCustomPropertyValue.h"
 #include "CSSFontFaceSrcValue.h"
 #include "CSSFontFeatureValue.h"
 #if ENABLE(VARIATION_FONTS)
@@ -73,8 +74,10 @@
 #include "RuntimeEnabledFeatures.h"
 #include "SVGPathByteStream.h"
 #include "SVGPathUtilities.h"
+#include "StyleBuilderConverter.h"
 #include "StylePropertyShorthand.h"
 #include "StylePropertyShorthandFunctions.h"
+#include "StyleResolver.h"
 #include <bitset>
 #include <memory>
 #include <wtf/text/StringBuilder.h>
@@ -213,12 +216,13 @@ CSSPropertyID cssPropertyID(StringView string)
     
 using namespace CSSPropertyParserHelpers;
 
-CSSPropertyParser::CSSPropertyParser(const CSSParserTokenRange& range, const CSSParserContext& context, Vector<CSSProperty, 256>* parsedProperties)
+CSSPropertyParser::CSSPropertyParser(const CSSParserTokenRange& range, const CSSParserContext& context, Vector<CSSProperty, 256>* parsedProperties, bool consumeWhitespace)
     : m_range(range)
     , m_context(context)
     , m_parsedProperties(parsedProperties)
 {
-    m_range.consumeWhitespace();
+    if (consumeWhitespace)
+        m_range.consumeWhitespace();
 }
 
 void CSSPropertyParser::addProperty(CSSPropertyID property, CSSPropertyID currentShorthand, Ref<CSSValue>&& value, bool important, bool implicit)
@@ -278,6 +282,27 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, con
     return value;
 }
 
+bool CSSPropertyParser::canParseTypedCustomPropertyValue(const String& syntax, const CSSParserTokenRange& tokens, const CSSParserContext& context)
+{
+    CSSPropertyParser parser(tokens, context, nullptr);
+    return parser.canParseTypedCustomPropertyValue(syntax);
+}
+
+RefPtr<CSSCustomPropertyValue> CSSPropertyParser::parseTypedCustomPropertyValue(const String& name, const String& syntax, const CSSParserTokenRange& tokens, const StyleResolver& styleResolver, const CSSParserContext& context)
+{
+    CSSPropertyParser parser(tokens, context, nullptr, false);
+    RefPtr<CSSCustomPropertyValue> value = parser.parseTypedCustomPropertyValue(name, syntax, styleResolver);
+    if (!value || !parser.m_range.atEnd())
+        return nullptr;
+    return value;
+}
+
+void CSSPropertyParser::collectParsedCustomPropertyValueDependencies(const String& syntax, bool isRoot, HashSet<CSSPropertyID>& dependencies, const CSSParserTokenRange& tokens, const CSSParserContext& context)
+{
+    CSSPropertyParser parser(tokens, context, nullptr);
+    parser.collectParsedCustomPropertyValueDependencies(syntax, isRoot, dependencies);
+}
+
 static bool isLegacyBreakProperty(CSSPropertyID propertyID)
 {
     switch (propertyID) {
@@ -320,7 +345,7 @@ bool CSSPropertyParser::parseValueStart(CSSPropertyID propertyID, bool important
     }
 
     if (CSSVariableParser::containsValidVariableReferences(originalRange, m_context)) {
-        RefPtr<CSSVariableReferenceValue> variable = CSSVariableReferenceValue::create(CSSVariableData::create(originalRange));
+        RefPtr<CSSVariableReferenceValue> variable = CSSVariableReferenceValue::create(originalRange);
 
         if (isShorthand) {
             RefPtr<CSSPendingSubstitutionValue> pendingValue = CSSPendingSubstitutionValue::create(propertyID, variable.releaseNonNull());
@@ -2312,6 +2337,20 @@ static RefPtr<CSSValue> consumeBorderRadiusCorner(CSSParserTokenRange& range, CS
     return createPrimitiveValuePair(parsedValue1.releaseNonNull(), parsedValue2.releaseNonNull(), Pair::IdenticalValueEncoding::Coalesce);
 }
 
+static RefPtr<CSSValue> consumeTextUnderlineOffset(CSSParserTokenRange& range, CSSParserMode cssParserMode)
+{
+    if (auto value = consumeIdent<CSSValueAuto>(range))
+        return value;
+    return consumeLength(range, cssParserMode, ValueRangeAll);
+}
+
+static RefPtr<CSSValue> consumeTextDecorationThickness(CSSParserTokenRange& range, CSSParserMode cssParserMode)
+{
+    if (auto value = consumeIdent<CSSValueAuto, CSSValueFromFont>(range))
+        return value;
+    return consumeLength(range, cssParserMode, ValueRangeAll);
+}
+
 static RefPtr<CSSPrimitiveValue> consumeVerticalAlign(CSSParserTokenRange& range, CSSParserMode cssParserMode)
 {
     RefPtr<CSSPrimitiveValue> parsedValue = consumeIdentRange(range, CSSValueBaseline, CSSValueWebkitBaselineMiddle);
@@ -3886,7 +3925,6 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
     case CSSPropertyMinHeight:
     case CSSPropertyWidth:
     case CSSPropertyHeight:
-    case CSSPropertyCustom: // FIXME: parsing a registered custom property should be based on its syntax.
         return consumeWidthOrHeight(m_range, m_context, UnitlessQuirk::Allow);
     case CSSPropertyMinInlineSize:
     case CSSPropertyMinBlockSize:
@@ -4141,9 +4179,13 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
         return consumeInteger(m_range, 0);
     case CSSPropertyOrder:
         return consumeInteger(m_range);
-    case CSSPropertyWebkitTextUnderlinePosition:
-        // auto | alphabetic | [ under || [ left | right ] ], but we only support auto | alphabetic | under for now
-        return consumeIdent<CSSValueAuto, CSSValueUnder, CSSValueAlphabetic>(m_range);
+    case CSSPropertyTextUnderlinePosition:
+        // auto | [ [ under | from-font ] || [ left | right ] ], but we only support auto | under | from-font for now
+        return consumeIdent<CSSValueAuto, CSSValueUnder, CSSValueFromFont>(m_range);
+    case CSSPropertyTextUnderlineOffset:
+        return consumeTextUnderlineOffset(m_range, m_context.mode);
+    case CSSPropertyTextDecorationThickness:
+        return consumeTextDecorationThickness(m_range, m_context.mode);
     case CSSPropertyVerticalAlign:
         return consumeVerticalAlign(m_range, m_context.mode);
     case CSSPropertyShapeOutside:
@@ -4254,6 +4296,64 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
     default:
         return nullptr;
     }
+}
+
+bool CSSPropertyParser::canParseTypedCustomPropertyValue(const String& syntax)
+{
+    if (syntax != "*") {
+        m_range.consumeWhitespace();
+
+        // First check for keywords
+        CSSValueID id = m_range.peek().id();
+        if (id == CSSValueInherit || id == CSSValueInitial || id == CSSValueRevert)
+            return true;
+
+        auto localRange = m_range;
+        while (!localRange.atEnd()) {
+            auto id = localRange.consume().functionId();
+            if (id == CSSValueVar || id == CSSValueEnv)
+                return true; // For variables, we just permit everything
+        }
+
+        auto primitiveVal = consumeWidthOrHeight(m_range, m_context);
+        if (primitiveVal && primitiveVal->isPrimitiveValue() && m_range.atEnd())
+            return true;
+        return false;
+    }
+
+    return true;
+}
+
+void CSSPropertyParser::collectParsedCustomPropertyValueDependencies(const String& syntax, bool isRoot, HashSet<CSSPropertyID>& dependencies)
+{
+    if (syntax != "*") {
+        m_range.consumeWhitespace();
+        auto primitiveVal = consumeWidthOrHeight(m_range, m_context);
+        if (!m_range.atEnd())
+            return;
+        if (primitiveVal && primitiveVal->isPrimitiveValue()) {
+            primitiveVal->collectDirectComputationalDependencies(dependencies);
+            if (isRoot)
+                primitiveVal->collectDirectRootComputationalDependencies(dependencies);
+        }
+    }
+}
+
+RefPtr<CSSCustomPropertyValue> CSSPropertyParser::parseTypedCustomPropertyValue(const String& name, const String& syntax, const StyleResolver& styleResolver)
+{
+    if (syntax != "*") {
+        m_range.consumeWhitespace();
+        auto primitiveVal = consumeWidthOrHeight(m_range, m_context);
+        if (primitiveVal && primitiveVal->isPrimitiveValue())
+            return CSSCustomPropertyValue::createSyntaxLength(name, StyleBuilderConverter::convertLength(styleResolver, *primitiveVal));
+    } else {
+        auto propertyValue = CSSCustomPropertyValue::createSyntaxAll(name, CSSVariableData::create(m_range));
+        while (!m_range.atEnd())
+            m_range.consume();
+        return { WTFMove(propertyValue) };
+    }
+
+    return nullptr;
 }
 
 static RefPtr<CSSValueList> consumeFontFaceUnicodeRange(CSSParserTokenRange& range)

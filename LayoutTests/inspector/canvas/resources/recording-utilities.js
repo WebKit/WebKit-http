@@ -1,12 +1,11 @@
 TestPage.registerInitializer(() => {
     function log(object, indent) {
-        for (let key of Object.keys(object)) {
-            let value = object[key];
+        for (let [name, value] of object) {
             if (typeof value === "string")
                 value = sanitizeURL(value);
             else if (Array.isArray(value) && value[0] instanceof DOMMatrix)
                 value[0] = [value[0].a, value[0].b, value[0].c, value[0].d, value[0].e, value[0].f];
-            InspectorTest.log(indent + key + ": " + JSON.stringify(value));
+            InspectorTest.log(indent + name + ": " + JSON.stringify(value));
         }
     }
 
@@ -14,17 +13,17 @@ TestPage.registerInitializer(() => {
         InspectorTest.log("initialState:");
 
         InspectorTest.log("  attributes:");
-        log(recording.initialState.attributes, "    ");
+        log(Object.entries(recording.initialState.attributes), "    ");
 
         let currentState = recording.initialState.states.lastValue;
         if (currentState) {
             InspectorTest.log("  current state:");
-            let swizzledState = await recording._swizzleState(currentState);
-            log(swizzledState, "    ");
+            let state = await WI.RecordingState.swizzleInitialState(recording, currentState);
+            log(state, "    ");
         }
 
         InspectorTest.log("  parameters:");
-        log(recording.initialState.parameters, "    ");
+        log(Object.entries(recording.initialState.parameters), "    ");
 
         InspectorTest.log("  content: " + JSON.stringify(recording.initialState.content));
 
@@ -83,7 +82,7 @@ TestPage.registerInitializer(() => {
         return canvases[0];
     };
 
-    window.startRecording = function(type, resolve, reject, {singleFrame, memoryLimit} = {}) {
+    window.startRecording = function(type, resolve, reject, {frameCount, memoryLimit} = {}) {
         let canvas = getCanvas(type);
         if (!canvas) {
             reject(`Missing canvas with type "${type}".`);
@@ -110,10 +109,10 @@ TestPage.registerInitializer(() => {
         });
 
         let bufferUsed = 0;
-        let frameCount = 0;
+        let recordingFrameCount = 0;
         function handleRecordingProgress(event) {
-            InspectorTest.assert(canvas.recordingFrameCount > frameCount, "Additional frames were captured for this progress event.");
-            frameCount = canvas.recordingFrameCount;
+            InspectorTest.assert(canvas.recordingFrameCount > recordingFrameCount, "Additional frames were captured for this progress event.");
+            recordingFrameCount = canvas.recordingFrameCount;
 
             InspectorTest.assert(canvas.recordingBufferUsed > bufferUsed, "Total memory usage increases with each progress event.");
             bufferUsed = canvas.recordingBufferUsed;
@@ -129,7 +128,10 @@ TestPage.registerInitializer(() => {
             InspectorTest.assert(recording.source === canvas, "Recording should be of the given canvas.");
             InspectorTest.assert(recording.source.contextType === type, `Recording should be of a canvas with type "${type}".`);
             InspectorTest.assert(recording.source.recordingCollection.has(recording), "Recording should be in the canvas' list of recordings.");
-            InspectorTest.assert(recording.frames.length === frameCount, `Recording should have ${frameCount} frames.`)
+            InspectorTest.assert(recording.frames.length === recordingFrameCount, `Recording should have ${recordingFrameCount} frames.`)
+
+            if (frameCount)
+                InspectorTest.assert(recording.frames.length === frameCount, `Recording frame count should match the provided value ${frameCount}.`)
 
             Promise.all(recording.actions.map((action) => action.swizzle(recording))).then(() => {
                 swizzled = true;
@@ -148,7 +150,7 @@ TestPage.registerInitializer(() => {
             InspectorTest.evaluateInPage(`performActions()`).catch(reject);
         });
 
-        CanvasAgent.startRecording(canvas.identifier, singleFrame, memoryLimit).catch(reject);
+        CanvasAgent.startRecording(canvas.identifier, frameCount, memoryLimit).catch(reject);
     };
 
     window.consoleRecord = function(type, resolve, reject) {

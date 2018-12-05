@@ -67,6 +67,7 @@
 #include "HTMLScriptElement.h"
 #include "HTMLStyleElement.h"
 #include "HTMLTemplateElement.h"
+#include "HTMLVideoElement.h"
 #include "HitTestResult.h"
 #include "InspectorClient.h"
 #include "InspectorController.h"
@@ -96,6 +97,7 @@
 #include "Text.h"
 #include "TextNodeTraversal.h"
 #include "Timer.h"
+#include "VideoPlaybackQuality.h"
 #include "WebInjectedScriptManager.h"
 #include "XPathResult.h"
 #include "markup.h"
@@ -282,6 +284,9 @@ InspectorDOMAgent::InspectorDOMAgent(WebAgentContext& context, InspectorPageAgen
     , m_backendDispatcher(Inspector::DOMBackendDispatcher::create(context.backendDispatcher, this))
     , m_pageAgent(pageAgent)
     , m_overlay(overlay)
+#if ENABLE(VIDEO)
+    , m_mediaMetricsTimer(*this, &InspectorDOMAgent::mediaMetricsTimerFired)
+#endif
 {
 }
 
@@ -299,11 +304,13 @@ void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, 
     m_instrumentingAgents.setInspectorDOMAgent(this);
     m_document = m_pageAgent->mainFrame().document();
 
+#if ENABLE(VIDEO)
     if (m_document)
         addEventListenersToNode(*m_document);
 
     for (auto* mediaElement : HTMLMediaElement::allMediaElements())
         addEventListenersToNode(*mediaElement);
+#endif
 
     if (m_nodeToFocus)
         focusNode();
@@ -2145,6 +2152,7 @@ int InspectorDOMAgent::identifierForNode(Node& node)
 
 void InspectorDOMAgent::addEventListenersToNode(Node& node)
 {
+#if ENABLE(VIDEO)
     auto callback = EventFiredCallback::create(*this);
 
     auto createEventListener = [&] (const AtomicString& eventName) {
@@ -2160,25 +2168,26 @@ void InspectorDOMAgent::addEventListenersToNode(Node& node)
         createEventListener(eventNames().abortEvent);
         createEventListener(eventNames().canplayEvent);
         createEventListener(eventNames().canplaythroughEvent);
-        createEventListener(eventNames().durationchangeEvent);
         createEventListener(eventNames().emptiedEvent);
         createEventListener(eventNames().endedEvent);
-        createEventListener(eventNames().errorEvent);
         createEventListener(eventNames().loadeddataEvent);
         createEventListener(eventNames().loadedmetadataEvent);
         createEventListener(eventNames().loadstartEvent);
         createEventListener(eventNames().pauseEvent);
         createEventListener(eventNames().playEvent);
         createEventListener(eventNames().playingEvent);
-        createEventListener(eventNames().ratechangeEvent);
         createEventListener(eventNames().seekedEvent);
         createEventListener(eventNames().seekingEvent);
         createEventListener(eventNames().stalledEvent);
         createEventListener(eventNames().suspendEvent);
-        createEventListener(eventNames().timeupdateEvent);
-        createEventListener(eventNames().volumechangeEvent);
         createEventListener(eventNames().waitingEvent);
+
+        if (!m_mediaMetricsTimer.isActive())
+            m_mediaMetricsTimer.start(0_s, 1_s / 15.);
     }
+#else
+    UNUSED_PARAM(node);
+#endif // ENABLE(VIDEO)
 }
 
 void InspectorDOMAgent::didInsertDOMNode(Node& node)
@@ -2446,6 +2455,51 @@ int InspectorDOMAgent::idForEventListener(EventTarget& target, const AtomicStrin
     }
     return 0;
 }
+
+#if ENABLE(VIDEO)
+void InspectorDOMAgent::mediaMetricsTimerFired()
+{
+    // FIXME: remove metrics information for any media element when it's destroyed
+
+    if (HTMLMediaElement::allMediaElements().isEmpty()) {
+        if (m_mediaMetricsTimer.isActive())
+            m_mediaMetricsTimer.stop();
+        m_mediaMetrics.clear();
+        return;
+    }
+
+    for (auto* mediaElement : HTMLMediaElement::allMediaElements()) {
+        if (!is<HTMLVideoElement>(mediaElement) || !mediaElement->isPlaying())
+            continue;
+
+        auto videoPlaybackQuality = mediaElement->getVideoPlaybackQuality();
+        unsigned displayCompositedVideoFrames = videoPlaybackQuality->displayCompositedVideoFrames();
+
+        auto iterator = m_mediaMetrics.find(mediaElement);
+        if (iterator == m_mediaMetrics.end()) {
+            m_mediaMetrics.set(mediaElement, MediaMetrics(displayCompositedVideoFrames));
+            continue;
+        }
+
+        bool isLowPower = (displayCompositedVideoFrames - iterator->value.displayCompositedFrames) > 0;
+        if (iterator->value.isLowPower != isLowPower) {
+            iterator->value.isLowPower = isLowPower;
+
+            int nodeId = pushNodePathToFrontend(mediaElement);
+            if (nodeId) {
+                auto timestamp = m_environment.executionStopwatch()->elapsedTime().seconds();
+                m_frontendDispatcher->videoLowPowerChanged(nodeId, timestamp, iterator->value.isLowPower);
+            }
+        }
+
+        iterator->value.displayCompositedFrames = displayCompositedVideoFrames;
+    }
+
+    m_mediaMetrics.removeIf([&] (auto& entry) {
+        return !HTMLMediaElement::allMediaElements().contains(entry.key);
+    });
+}
+#endif
 
 Node* InspectorDOMAgent::nodeForPath(const String& path)
 {

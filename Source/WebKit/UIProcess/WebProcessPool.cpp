@@ -125,7 +125,6 @@ using namespace WebCore;
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, processPoolCounter, ("WebProcessPool"));
 
 const Seconds serviceWorkerTerminationDelay { 5_s };
-const unsigned maximumSuspendedPagesCount { 3 };
 
 static uint64_t generateListenerIdentifier()
 {
@@ -301,6 +300,8 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
 #endif
 
     notifyThisWebProcessPoolWasCreated();
+
+    updateMaxSuspendedPageCount();
 }
 
 WebProcessPool::~WebProcessPool()
@@ -1470,9 +1471,24 @@ void WebProcessPool::registerURLSchemeAsCanDisplayOnlyIfCanRequest(const String&
     sendToNetworkingProcess(Messages::NetworkProcess::RegisterURLSchemeAsCanDisplayOnlyIfCanRequest(urlScheme));
 }
 
+void WebProcessPool::updateMaxSuspendedPageCount()
+{
+    unsigned dummy = 0;
+    Seconds dummyInterval;
+    unsigned pageCacheSize = 0;
+    calculateMemoryCacheSizes(m_configuration->cacheModel(), dummy, dummy, dummy, dummyInterval, pageCacheSize);
+
+    m_maxSuspendedPageCount = pageCacheSize;
+
+    while (m_suspendedPages.size() > m_maxSuspendedPageCount)
+        m_suspendedPages.removeFirst();
+}
+
 void WebProcessPool::setCacheModel(CacheModel cacheModel)
 {
     m_configuration->setCacheModel(cacheModel);
+    updateMaxSuspendedPageCount();
+
     sendToAllProcesses(Messages::WebProcess::SetCacheModel(cacheModel));
 
     if (m_networkProcess)
@@ -1614,6 +1630,13 @@ void WebProcessPool::terminateServiceWorkerProcesses()
 void WebProcessPool::syncNetworkProcessCookies()
 {
     ensureNetworkProcess().syncAllCookies();
+}
+
+void WebProcessPool::setIDBPerOriginQuota(uint64_t quota)
+{
+#if ENABLE(INDEXED_DATABASE)
+    ensureNetworkProcess().send(Messages::NetworkProcess::SetIDBPerOriginQuota(quota), 0);
+#endif
 }
 
 void WebProcessPool::allowSpecificHTTPSCertificateForHost(const WebCertificateInfo* certificate, const String& host)
@@ -2071,9 +2094,9 @@ void WebProcessPool::removeProcessFromOriginCacheSet(WebProcessProxy& process)
         m_swappedProcessesPerRegistrableDomain.remove(registrableDomain);
 }
 
-Ref<WebProcessProxy> WebProcessPool::processForNavigation(WebPageProxy& page, const API::Navigation& navigation, ProcessSwapRequestedByClient processSwapRequestedByClient, PolicyAction& action, String& reason)
+Ref<WebProcessProxy> WebProcessPool::processForNavigation(WebPageProxy& page, const API::Navigation& navigation, ProcessSwapRequestedByClient processSwapRequestedByClient, String& reason)
 {
-    auto process = processForNavigationInternal(page, navigation, processSwapRequestedByClient, action, reason);
+    auto process = processForNavigationInternal(page, navigation, processSwapRequestedByClient, reason);
 
     if (m_configuration->alwaysKeepAndReuseSwappedProcesses() && process.ptr() != &page.process()) {
         static std::once_flag onceFlag;
@@ -2089,7 +2112,7 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigation(WebPageProxy& page, co
     return process;
 }
 
-Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API::Navigation& navigation, ProcessSwapRequestedByClient processSwapRequestedByClient, PolicyAction& action, String& reason)
+Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API::Navigation& navigation, ProcessSwapRequestedByClient processSwapRequestedByClient, String& reason)
 {
     auto& targetURL = navigation.currentRequest().url();
 
@@ -2135,7 +2158,6 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
 
     if (auto* backForwardListItem = navigation.targetItem()) {
         if (auto* suspendedPage = backForwardListItem->suspendedPage()) {
-            action = PolicyAction::Suspend;
             reason = "Using target back/forward item's process"_s;
             return suspendedPage->process();
         }
@@ -2179,8 +2201,8 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
     } else
         reason = "Process swap was requested by the client"_s;
     
+    auto registrableDomain = toRegistrableDomain(targetURL);
     if (m_configuration->alwaysKeepAndReuseSwappedProcesses()) {
-        auto registrableDomain = toRegistrableDomain(targetURL);
         LOG(ProcessSwapping, "(ProcessSwapping) Considering re-use of a previously cached process for domain %s", registrableDomain.utf8().data());
 
         if (auto* process = m_swappedProcessesPerRegistrableDomain.get(registrableDomain)) {
@@ -2190,15 +2212,33 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
                 // FIXME: Architecturally we do not currently support multiple WebPage's with the same ID in a given WebProcess.
                 // In the case where this WebProcess has a SuspendedPageProxy for this WebPage, we can throw it away to support
                 // WebProcess re-use.
-                // In the future it would be great to refactor-out this limitation.
-                page.process().processPool().removeAllSuspendedPageProxiesForPage(page);
+                // In the future it would be great to refactor-out this limitation (https://bugs.webkit.org/show_bug.cgi?id=191166).
+                m_suspendedPages.removeAllMatching([&](auto& suspendedPage) {
+                    return &suspendedPage->page() == &page && &suspendedPage->process() == process;
+                });
 
                 return makeRef(*process);
             }
         }
     }
 
-    action = PolicyAction::Suspend;
+    // Check if we have a suspended page for the given registrable domain and use its process if we do, for performance reasons.
+    auto it = m_suspendedPages.findIf([&](auto& suspendedPage) {
+        return suspendedPage->registrableDomain() == registrableDomain;
+    });
+    if (it != m_suspendedPages.end()) {
+        Ref<WebProcessProxy> process = (*it)->process();
+
+        // FIXME: If the SuspendedPage is for this page, then we need to destroy the suspended page as we do not support having
+        // multiple WebPages with the same ID in a given WebProcess currently (https://bugs.webkit.org/show_bug.cgi?id=191166).
+        if (&(*it)->page() == &page)
+            m_suspendedPages.remove(it);
+
+        if (&process->websiteDataStore() != &page.websiteDataStore())
+            process->send(Messages::WebProcess::AddWebsiteDataStore(page.websiteDataStore().parameters()), 0);
+
+        return process;
+    }
 
     if (RefPtr<WebProcessProxy> process = tryTakePrewarmedProcess(page.websiteDataStore())) {
         tryPrewarmWithDomainInformation(*process, targetURL);
@@ -2210,7 +2250,7 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
 
 void WebProcessPool::addSuspendedPageProxy(std::unique_ptr<SuspendedPageProxy>&& suspendedPage)
 {
-    if (m_suspendedPages.size() >= maximumSuspendedPagesCount)
+    if (m_suspendedPages.size() >= m_maxSuspendedPageCount)
         m_suspendedPages.removeFirst();
 
     m_suspendedPages.append(WTFMove(suspendedPage));

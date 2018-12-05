@@ -45,6 +45,8 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         this._isGetter = false;
         this._isVisual = false;
 
+        this._contextReplacer = null;
+
         this._states = [];
         this._stateModifiers = new Set;
 
@@ -84,7 +86,10 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         let prototype = WI.RecordingAction._prototypeForType(type);
         if (!prototype)
             return false;
-        return typeof Object.getOwnPropertyDescriptor(prototype, name).value === "function";
+        let propertyDescriptor = Object.getOwnPropertyDescriptor(prototype, name);
+        if (!propertyDescriptor)
+            return false;
+        return typeof propertyDescriptor.value === "function";
     }
 
     static constantNameForParameter(type, name, value, index, count)
@@ -123,54 +128,8 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         let prototype = WI.RecordingAction._prototypeForType(type);
         for (let key in prototype) {
             let descriptor = Object.getOwnPropertyDescriptor(prototype, key);
-            if (descriptor.value === value)
+            if (descriptor && descriptor.value === value)
                 return key;
-        }
-
-        return null;
-    }
-
-    static deriveCurrentState(type, context)
-    {
-        if (type === WI.Recording.Type.Canvas2D) {
-            let matrix = context.getTransform();
-
-            let state = {};
-
-            if (WI.ImageUtilities.supportsCanvasPathDebugging()) {
-                state.currentX = context.currentX;
-                state.currentY = context.currentY;
-            }
-
-            state.direction = context.direction;
-            state.fillStyle = context.fillStyle;
-            state.font = context.font;
-            state.globalAlpha = context.globalAlpha;
-            state.globalCompositeOperation = context.globalCompositeOperation;
-            state.imageSmoothingEnabled = context.imageSmoothingEnabled;
-            state.imageSmoothingQuality = context.imageSmoothingQuality;
-            state.lineCap = context.lineCap;
-            state.lineDash = context.getLineDash();
-            state.lineDashOffset = context.lineDashOffset;
-            state.lineJoin = context.lineJoin;
-            state.lineWidth = context.lineWidth;
-            state.miterLimit = context.miterLimit;
-            state.shadowBlur = context.shadowBlur;
-            state.shadowColor = context.shadowColor;
-            state.shadowOffsetX = context.shadowOffsetX;
-            state.shadowOffsetY = context.shadowOffsetY;
-            state.strokeStyle = context.strokeStyle;
-            state.textAlign = context.textAlign;
-            state.textBaseline = context.textBaseline;
-            state.transform = [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f];
-            state.webkitImageSmoothingEnabled = context.webkitImageSmoothingEnabled;
-            state.webkitLineDash = context.webkitLineDash;
-            state.webkitLineDashOffset = context.webkitLineDashOffset;
-
-            if (WI.ImageUtilities.supportsCanvasPathDebugging())
-                state.setPath = [context.getPath()];
-
-            return state;
         }
 
         return null;
@@ -198,6 +157,7 @@ WI.RecordingAction = class RecordingAction extends WI.Object
     get isFunction() { return this._isFunction; }
     get isGetter() { return this._isGetter; }
     get isVisual() { return this._isVisual; }
+    get contextReplacer() { return this._contextReplacer; }
     get states() { return this._states; }
     get stateModifiers() { return this._stateModifiers; }
     get warning() { return this._warning; }
@@ -255,7 +215,7 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         }
 
         if (recording.type === WI.Recording.Type.Canvas2D) {
-            let currentState = WI.RecordingAction.deriveCurrentState(recording.type, context);
+            let currentState = WI.RecordingState.fromContext(recording.type, context, {source: this});
             console.assert(currentState);
 
             if (this.name === "save")
@@ -268,10 +228,11 @@ WI.RecordingAction = class RecordingAction extends WI.Object
 
             let lastState = null;
             if (lastAction) {
-                lastState = lastAction.states.lastValue;
-                for (let key in currentState) {
-                    if (!(key in lastState) || (currentState[key] !== lastState[key] && !Object.shallowEqual(currentState[key], lastState[key])))
-                        this._stateModifiers.add(key);
+                let previousState = lastAction.states.lastValue;
+                for (let [name, value] of currentState) {
+                    let previousValue = previousState.get(name);
+                    if (value !== previousValue && !Object.shallowEqual(value, previousValue))
+                        this._stateModifiers.add(name);
                 }
             }
 
@@ -330,18 +291,31 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         if (this._payloadSnapshot >= 0)
             this._snapshot = snapshot;
 
-        this._isFunction = WI.RecordingAction.isFunctionForType(recording.type, this._name);
-        this._isGetter = !this._isFunction && !this._parameters.length;
+        if (recording.type === WI.Recording.Type.Canvas2D || recording.type === WI.Recording.Type.CanvasBitmapRenderer || recording.type === WI.Recording.Type.CanvasWebGL) {
+            if (this._name === "width" || this._name === "height") {
+                this._contextReplacer = "canvas";
+                this._isFunction = false;
+                this._isGetter = !this._parameters.length;
+                this._isVisual = !this._isGetter;
+            }
 
-        let visualNames = WI.RecordingAction._visualNames[recording.type];
-        this._isVisual = visualNames ? visualNames.has(this._name) : false;
+            // FIXME: <https://webkit.org/b/180833>
+        }
 
-        if (this._valid) {
-            let prototype = WI.RecordingAction._prototypeForType(recording.type);
-            if (prototype && !(name in prototype)) {
-                this.markInvalid();
+        if (!this._contextReplacer) {
+            this._isFunction = WI.RecordingAction.isFunctionForType(recording.type, this._name);
+            this._isGetter = !this._isFunction && !this._parameters.length;
 
-                WI.Recording.synthesizeError(WI.UIString("“%s” is invalid.").format(name));
+            let visualNames = WI.RecordingAction._visualNames[recording.type];
+            this._isVisual = visualNames ? visualNames.has(this._name) : false;
+
+            if (this._valid) {
+                let prototype = WI.RecordingAction._prototypeForType(recording.type);
+                if (prototype && !(name in prototype)) {
+                    this.markInvalid();
+
+                    WI.Recording.synthesizeError(WI.UIString("“%s” is invalid.").format(name));
+                }
             }
         }
 
@@ -375,6 +349,10 @@ WI.RecordingAction = class RecordingAction extends WI.Object
 
         try {
             let name = options.nameOverride || this._name;
+
+            if (this._contextReplacer)
+                context = context[this._contextReplacer];
+
             if (this.isFunction)
                 context[name](...this._parameters);
             else {

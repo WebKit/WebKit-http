@@ -1,3 +1,89 @@
+2018-11-06  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Experimental prototype for WebGPURenderPipeline and WebGPUSwapChain
+        https://bugs.webkit.org/show_bug.cgi?id=191291
+
+        Reviewed by Myles Maxfield.
+
+        Properly disable WEBGPU on all non-Metal platforms for now.
+
+        * wtf/Platform.h:
+
+2018-11-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Cache glyph paths and share underline skipping code between all the ports
+        https://bugs.webkit.org/show_bug.cgi?id=191239
+
+        Reviewed by Alex Christensen.
+
+        Remove CSS3_TEXT_DECORATION_SKIP_INK. It's now interoperable and part of the Web Platform.
+
+        * wtf/Platform.h:
+
+2018-11-05  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable LLInt on ARMv7/Linux
+        https://bugs.webkit.org/show_bug.cgi?id=191190
+
+        Reviewed by Yusuke Suzuki.
+
+        After enabling the new bytecode format in r237547, C_LOOP was
+        forced on all 32-bit platforms. Now enable LLInt again on
+        ARMv7-Thumb2/Linux by default.
+
+        * wtf/Platform.h:
+
+2018-11-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] Use C++14, not C++17
+        https://bugs.webkit.org/show_bug.cgi?id=191101
+
+        Reviewed by Alex Christensen.
+
+        * wtf/StdLibExtras.h: Use _MSVC_LANG to check C++ language version
+        instead of _MSC_FULL_VER.
+
+2018-11-02  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Experimental prototype for MSL shaders
+        https://bugs.webkit.org/show_bug.cgi?id=191084
+
+        Reviewed by Dean Jackson.
+
+        Disabling WebGPU on non-Cocoa platforms and iOS Simulator.
+
+        * wtf/Platform.h:
+
+2018-11-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Replace CommonRandom SPI with API
+        https://bugs.webkit.org/show_bug.cgi?id=191178
+        <rdar://problem/45722391>
+
+        Reviewed by Brent Fulgham.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/RandomDevice.cpp:
+        (WTF::RandomDevice::cryptographicallyRandomValues):
+        * wtf/spi/darwin/CommonCryptoSPI.h: Removed.
+
+2018-11-01  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Rename <wtf/unicode/UTF8.h> to <wtf/unicode/UTF8Conversion.h> in order to avoid conflicting with ICU's unicode/utf8.h
+        https://bugs.webkit.org/show_bug.cgi?id=189693
+
+        Reviewed by Yusuke Suzuki.
+
+        * WTF.xcodeproj/project.pbxproj: Replaced unicode/UTF8.{cpp,h} with unicode/UTF8Conversion.{cpp,h}.
+        * wtf/CMakeLists.txt: Ditto.
+        * wtf/text/AtomicStringImpl.cpp: Replaced <wtf/unicode/UTF8.h> with <wtf/unicode/UTF8Conversion.h>.
+        * wtf/text/StringImpl.cpp: Ditto.
+        * wtf/text/StringView.cpp: Ditto.
+        * wtf/text/WTFString.cpp: Ditto.
+        * wtf/unicode/UTF8Conversion.cpp: Renamed from Source/WTF/wtf/unicode/UTF8.cpp.
+        * wtf/unicode/UTF8Conversion.h: Renamed from Source/WTF/wtf/unicode/UTF8.h.
+
 2018-10-30  Don Olmstead  <don.olmstead@sony.com>
 
         [PlayStation] Enable JavaScriptCore

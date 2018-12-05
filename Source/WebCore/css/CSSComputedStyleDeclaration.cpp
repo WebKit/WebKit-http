@@ -215,7 +215,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitTextDecorationStyle,
     CSSPropertyWebkitTextDecorationColor,
     CSSPropertyWebkitTextDecorationSkip,
-    CSSPropertyWebkitTextUnderlinePosition,
+    CSSPropertyTextUnderlinePosition,
     CSSPropertyTextIndent,
     CSSPropertyTextRendering,
     CSSPropertyTextShadow,
@@ -1802,6 +1802,24 @@ static Ref<CSSValue> renderTextDecorationSkipFlagsToCSSValue(OptionSet<TextDecor
     return CSSValuePool::singleton().createExplicitInitialValue();
 }
 
+static Ref<CSSValue> textUnderlineOffsetToCSSValue(const TextUnderlineOffset& textUnderlineOffset)
+{
+    if (textUnderlineOffset.isAuto())
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueAuto);
+    ASSERT(textUnderlineOffset.isLength());
+    return CSSValuePool::singleton().createValue(textUnderlineOffset.lengthValue(), CSSPrimitiveValue::CSS_PX);
+}
+
+static Ref<CSSValue> textDecorationThicknessToCSSValue(const TextDecorationThickness& textDecorationThickness)
+{
+    if (textDecorationThickness.isAuto())
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueAuto);
+    if (textDecorationThickness.isFromFont())
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueFromFont);
+    ASSERT(textDecorationThickness.isLength());
+    return CSSValuePool::singleton().createValue(textDecorationThickness.lengthValue(), CSSPrimitiveValue::CSS_PX);
+}
+
 static Ref<CSSValue> renderEmphasisPositionFlagsToCSSValue(OptionSet<TextEmphasisPosition> textEmphasisPosition)
 {
     ASSERT(!((textEmphasisPosition & TextEmphasisPosition::Over) && (textEmphasisPosition & TextEmphasisPosition::Under)));
@@ -2612,21 +2630,23 @@ RefPtr<CSSValue> ComputedStyleExtractor::customPropertyValue(const String& prope
     auto* registered = styledElement->document().getCSSRegisteredCustomPropertySet().get(propertyName);
     auto* value = style->getCustomProperty(propertyName);
 
-    if (registered) {
-        // TODO this should be done based on the syntax
-        if (value && value->resolvedTypedValue())
-            return zoomAdjustedPixelValueForLength(*value->resolvedTypedValue(), *style);
+    if (registered && !value)
+        return registered->initialValueCopy();
 
-        if (registered->initialValue() && registered->initialValue()->resolvedTypedValue())
-            return zoomAdjustedPixelValueForLength(*registered->initialValue()->resolvedTypedValue(), *style);
-
+    if (!value)
         return nullptr;
-    }
 
-    if (value)
+    auto visitor = WTF::makeVisitor([&](const Ref<CSSVariableReferenceValue>&) {
+        ASSERT_NOT_REACHED();
+        return RefPtr<CSSValue>();
+    }, [&](const CSSValueID&) {
         return CSSCustomPropertyValue::create(*value);
-
-    return nullptr;
+    }, [&](const Ref<CSSVariableData>&) {
+        return CSSCustomPropertyValue::create(*value);
+    }, [&](const Length& value) {
+        return zoomAdjustedPixelValueForLength(value, *style);
+    });
+    return WTF::visit(visitor, value->value());
 }
 
 String ComputedStyleExtractor::customPropertyText(const String& propertyName)
@@ -3329,8 +3349,12 @@ RefPtr<CSSValue> ComputedStyleExtractor::valueForPropertyinStyle(const RenderSty
             return currentColorOrValidColor(&style, style.textDecorationColor());
         case CSSPropertyWebkitTextDecorationSkip:
             return renderTextDecorationSkipFlagsToCSSValue(style.textDecorationSkip());
-        case CSSPropertyWebkitTextUnderlinePosition:
+        case CSSPropertyTextUnderlinePosition:
             return cssValuePool.createValue(style.textUnderlinePosition());
+        case CSSPropertyTextUnderlineOffset:
+            return textUnderlineOffsetToCSSValue(style.textUnderlineOffset());
+        case CSSPropertyTextDecorationThickness:
+            return textDecorationThicknessToCSSValue(style.textDecorationThickness());
         case CSSPropertyWebkitTextDecorationsInEffect:
             return renderTextDecorationFlagsToCSSValue(style.textDecorationsInEffect());
         case CSSPropertyWebkitTextFillColor:

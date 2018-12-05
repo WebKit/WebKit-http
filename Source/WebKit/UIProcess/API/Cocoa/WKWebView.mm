@@ -64,6 +64,7 @@
 #import "WKNavigationInternal.h"
 #import "WKPreferencesInternal.h"
 #import "WKProcessPoolInternal.h"
+#import "WKSafeBrowsingWarning.h"
 #import "WKSharedAPICast.h"
 #import "WKSnapshotConfiguration.h"
 #import "WKUIDelegate.h"
@@ -731,9 +732,7 @@ static void validate(WKWebViewConfiguration *configuration)
 
     _iconLoadingDelegate = std::make_unique<WebKit::IconLoadingDelegate>(self);
 
-#if PLATFORM(IOS_FAMILY)
     [self _setUpSQLiteDatabaseTrackerClient];
-#endif
 
     for (auto& pair : pageConfiguration->urlSchemeHandlers())
         _page->setURLSchemeHandlerForScheme(WebKit::WebURLSchemeHandlerCocoa::create(static_cast<WebKit::WebURLSchemeHandlerCocoa&>(pair.value.get()).apiHandler()), pair.key);
@@ -4533,6 +4532,11 @@ IGNORE_WARNINGS_END
 {
 }
 
+- (UITextInputAssistantItem *)inputAssistantItem
+{
+    return [_contentView inputAssistantItemForWebView];
+}
+
 #endif
 
 - (NSData *)_sessionStateData
@@ -4627,6 +4631,11 @@ IGNORE_WARNINGS_END
     if (self.usesStandardContentView)
         [_contentView _pasteAsQuotationForWebView:sender];
 #endif
+}
+
++ (BOOL)_handlesSafeBrowsing
+{
+    return DEFAULT_SAFE_BROWSING_ENABLED;
 }
 
 - (void)_evaluateJavaScriptWithoutUserGesture:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler
@@ -6654,6 +6663,18 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 {
     _resolutionForShareSheetImmediateCompletionForTesting = resolved;
 }
+
+#if PLATFORM(MAC)
+- (NSView *)_safeBrowsingWarningForTesting
+{
+    return _impl->safeBrowsingWarning();
+}
+#else
+- (UIView *)_safeBrowsingWarningForTesting
+{
+    return nil;
+}
+#endif
 
 - (_WKInspector *)_inspector
 {

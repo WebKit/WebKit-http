@@ -39,6 +39,9 @@ function load() {
     createProgram("webgl");
     linkProgram("vertex-shader", "fragment-shader");
 
+    context.canvas.width = 2;
+    context.canvas.height = 2;
+
     buffer = context.createBuffer();
     framebuffer = context.createFramebuffer();
     uniformLocation = context.getUniformLocation(program, "test");
@@ -484,6 +487,14 @@ function performActions() {
             context.viewport(1, 2, 3, 4);
         },
         () => {
+            context.canvas.width;
+            context.canvas.width = 2;
+        },
+        () => {
+            context.canvas.height;
+            context.canvas.height = 2;
+        },
+        () => {
             TestPage.dispatchEventToFrontend("LastFrame");
         },
     ];
@@ -513,7 +524,7 @@ function test() {
         name: "Canvas.recordingWebGL.singleFrame",
         description: "Check that the recording is stopped after a single frame.",
         test(resolve, reject) {
-            startRecording(WI.Canvas.ContextType.WebGL, resolve, reject, {singleFrame: true});
+            startRecording(WI.Canvas.ContextType.WebGL, resolve, reject, {frameCount: 1});
         },
     });
 
@@ -521,7 +532,7 @@ function test() {
         name: "Canvas.recordingWebGL.multipleFrames",
         description: "Check that recording data is serialized correctly for multiple frames.",
         test(resolve, reject) {
-            startRecording(WI.Canvas.ContextType.WebGL, resolve, reject, {singleFrame: false});
+            startRecording(WI.Canvas.ContextType.WebGL, resolve, reject);
         },
     });
 

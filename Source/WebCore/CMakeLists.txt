@@ -19,9 +19,10 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/Modules/airplay"
-    "${WEBCORE_DIR}/Modules/beacon"
     "${WEBCORE_DIR}/Modules/applepay"
     "${WEBCORE_DIR}/Modules/applepay/paymentrequest"
+    "${WEBCORE_DIR}/Modules/applicationmanifest"
+    "${WEBCORE_DIR}/Modules/beacon"
     "${WEBCORE_DIR}/Modules/cache"
     "${WEBCORE_DIR}/Modules/credentialmanagement"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
@@ -34,12 +35,12 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/indexeddb/server"
     "${WEBCORE_DIR}/Modules/indexeddb/shared"
     "${WEBCORE_DIR}/Modules/mediacapabilities"
-    "${WEBCORE_DIR}/Modules/mediacontrols/"
+    "${WEBCORE_DIR}/Modules/mediacontrols"
+    "${WEBCORE_DIR}/Modules/mediarecorder"
     "${WEBCORE_DIR}/Modules/mediasession"
     "${WEBCORE_DIR}/Modules/mediasource"
     "${WEBCORE_DIR}/Modules/mediastream"
     "${WEBCORE_DIR}/Modules/mediastream/libwebrtc"
-    "${WEBCORE_DIR}/Modules/mediarecorder"
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
     "${WEBCORE_DIR}/Modules/notifications"
     "${WEBCORE_DIR}/Modules/paymentrequest"
@@ -136,6 +137,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/workers/service"
     "${WEBCORE_DIR}/workers/service/context"
     "${WEBCORE_DIR}/workers/service/server"
+    "${WEBCORE_DIR}/worklets"
     "${WEBCORE_DIR}/xml"
     "${WEBCORE_DIR}/xml/parser"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
@@ -337,6 +339,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCPeerConnectionIceEvent.idl
     Modules/mediastream/RTCPeerConnectionState.idl
     Modules/mediastream/RTCPriorityType.idl
+    Modules/mediastream/RTCRtpCapabilities.idl
     Modules/mediastream/RTCRtpCodecParameters.idl
     Modules/mediastream/RTCRtpContributingSource.idl
     Modules/mediastream/RTCRtpEncodingParameters.idl
@@ -458,9 +461,15 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webgpu/WebGPUAdapter.idl
     Modules/webgpu/WebGPUAdapterDescriptor.idl
     Modules/webgpu/WebGPUDevice.idl
+    Modules/webgpu/WebGPUPipelineDescriptorBase.idl
+    Modules/webgpu/WebGPUPipelineStageDescriptor.idl
+    Modules/webgpu/WebGPURenderPipeline.idl
+    Modules/webgpu/WebGPURenderPipelineDescriptor.idl
     Modules/webgpu/WebGPURenderingContext.idl
+    Modules/webgpu/WebGPUShaderModule.idl
+    Modules/webgpu/WebGPUShaderModuleDescriptor.idl
+    Modules/webgpu/WebGPUShaderStage.idl
     Modules/webgpu/WebGPUSwapChain.idl
-    Modules/webgpu/WebGPUSwapChainDescriptor.idl
 
     Modules/websockets/CloseEvent.idl
     Modules/websockets/WebSocket.idl
@@ -484,17 +493,16 @@ set(WebCore_NON_SVG_IDL_FILES
     accessibility/AriaAttributes.idl
 
     animation/Animatable.idl
-    animation/AnimationEffectReadOnly.idl
-    animation/AnimationEffectTiming.idl
-    animation/AnimationEffectTimingProperties.idl
-    animation/AnimationEffectTimingReadOnly.idl
+    animation/AnimationEffect.idl
+    animation/EffectTiming.idl
     animation/AnimationPlaybackEvent.idl
     animation/AnimationPlaybackEventInit.idl
     animation/AnimationTimeline.idl
     animation/CSSAnimation.idl
     animation/CSSTransition.idl
     animation/CompositeOperation.idl
-    animation/ComputedTimingProperties.idl
+    animation/CompositeOperationOrAuto.idl
+    animation/ComputedEffectTiming.idl
     animation/DocumentTimeline.idl
     animation/DocumentTimelineOptions.idl
     animation/FillMode.idl
@@ -502,7 +510,7 @@ set(WebCore_NON_SVG_IDL_FILES
     animation/KeyframeAnimationOptions.idl
     animation/KeyframeEffect.idl
     animation/KeyframeEffectOptions.idl
-    animation/KeyframeEffectReadOnly.idl
+    animation/OptionalEffectTiming.idl
     animation/PlaybackDirection.idl
     animation/WebAnimation.idl
 
@@ -544,7 +552,6 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSMediaRule.idl
     css/CSSNamespaceRule.idl
     css/CSSPaintCallback.idl
-    css/CSSPaintWorkletGlobalScope.idl
     css/CSSPageRule.idl
     css/CSSRule.idl
     css/CSSRuleList.idl
@@ -912,6 +919,10 @@ set(WebCore_NON_SVG_IDL_FILES
     workers/service/ServiceWorkerRegistration.idl
     workers/service/ServiceWorkerUpdateViaCache.idl
     workers/service/ServiceWorkerWindowClient.idl
+
+    worklets/PaintWorkletGlobalScope.idl
+    worklets/Worklet.idl
+    worklets/WorkletGlobalScope.idl
 
     xml/DOMParser.idl
     xml/XMLHttpRequest.idl
@@ -1691,6 +1702,8 @@ set(WINDOW_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DOMWindowConstructor
 set(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/WorkerGlobalScopeConstructors.idl)
 set(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DedicatedWorkerGlobalScopeConstructors.idl)
 set(SERVICEWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/ServiceWorkerGlobalScopeConstructors.idl)
+set(WORKLETGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/WorkletGlobalScopeConstructors.idl)
+set(PAINTWORKLETGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/PaintWorkletGlobalScopeConstructors.idl)
 
 WEBKIT_FRAMEWORK_DECLARE(WebCore)
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
@@ -1870,7 +1883,9 @@ GENERATE_BINDINGS(WebCoreBindings
         --windowConstructorsFile ${WINDOW_CONSTRUCTORS_FILE}
         --workerGlobalScopeConstructorsFile ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
         --dedicatedWorkerGlobalScopeConstructorsFile ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-        --serviceWorkerGlobalScopeConstructorsFile ${SERVICEWORKERGLOBALSCOPE_CONSTRUCTORS_FILE})
+        --serviceWorkerGlobalScopeConstructorsFile ${SERVICEWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
+        --workletGlobalScopeConstructorsFile ${WORKLETGLOBALSCOPE_CONSTRUCTORS_FILE}
+        --paintWorkletGlobalScopeConstructorsFile ${PAINTWORKLETGLOBALSCOPE_CONSTRUCTORS_FILE})
 
 GENERATE_BINDINGS(WebCoreTestSupportBindings
     OUTPUT_SOURCE WebCoreTestSupport_SOURCES

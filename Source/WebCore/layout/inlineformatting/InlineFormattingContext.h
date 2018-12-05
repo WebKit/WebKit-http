@@ -99,19 +99,22 @@ private:
     class Geometry : public FormattingContext::Geometry {
     public:
         static HeightAndMargin inlineBlockHeightAndMargin(const LayoutState&, const Box&);
-        static WidthAndMargin inlineBlockWidthAndMargin(const LayoutState&, const Box&);
+        static WidthAndMargin inlineBlockWidthAndMargin(LayoutState&, const Box&);
     };
 
     void layoutInlineContent(const InlineRunProvider&) const;
     void initializeNewLine(Line&) const;
 
     void layoutFormattingContextRoot(const Box&) const;
-    void computeWidthAndHeightForInlineBox(const Box&) const;
+    void computeWidthAndHeightForReplacedInlineBox(const Box&) const;
+    void computeHeightAndMargin(const Box&) const;
+    void computeWidthAndMargin(const Box&) const;
     void computeFloatPosition(const FloatingContext&, Line&, const Box&) const;
     void computeStaticPosition(const Box&) const override;
     void computeInFlowPositionedPosition(const Box&) const override;
 
-    InstrinsicWidthConstraints instrinsicWidthConstraints(const Box&) const override;
+    void collectInlineContent(InlineRunProvider&) const;
+    InstrinsicWidthConstraints instrinsicWidthConstraints() const override;
 };
 
 }

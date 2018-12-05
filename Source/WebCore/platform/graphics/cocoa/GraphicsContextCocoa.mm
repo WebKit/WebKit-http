@@ -32,6 +32,7 @@
 #import "IntRect.h"
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/mac/NSGraphicsSPI.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/StdLibExtras.h>
 
 #if USE(APPKIT)
@@ -41,6 +42,7 @@
 #if PLATFORM(IOS_FAMILY)
 #import "Color.h"
 #import "WKGraphics.h"
+#import <pal/spi/ios/UIKitSPI.h>
 #endif
 
 #if PLATFORM(MAC)
@@ -181,10 +183,57 @@ static inline void setPatternPhaseInUserSpace(CGContextRef context, CGPoint phas
     CGContextSetPatternPhase(context, CGSizeMake(phase.x, phase.y));
 }
 
-// FIXME: We need to keep this function since it is referenced by DrawLineForDocumentMarker::apply().
-void GraphicsContext::drawLineForDocumentMarker(const FloatPoint&, float, DocumentMarkerLineStyle)
+static CGColorRef colorForMarkerLineStyle(DocumentMarkerLineStyle::Mode style, bool useDarkMode)
 {
-    // Cocoa platforms use RenderTheme::drawLineForDocumentMarker() to paint the platform document markers.
+    switch (style) {
+    // Red
+    case DocumentMarkerLineStyle::Mode::Spelling:
+        return cachedCGColor(useDarkMode ? Color { 255, 140, 140, 217 } : Color { 255, 59, 48, 191 });
+    // Blue
+    case DocumentMarkerLineStyle::Mode::DictationAlternatives:
+    case DocumentMarkerLineStyle::Mode::TextCheckingDictationPhraseWithAlternatives:
+    case DocumentMarkerLineStyle::Mode::AutocorrectionReplacement:
+        return cachedCGColor(useDarkMode ? Color { 40, 145, 255, 217 } : Color { 0, 122, 255, 191 });
+    // Green
+    case DocumentMarkerLineStyle::Mode::Grammar:
+        return cachedCGColor(useDarkMode ? Color { 50, 215, 75, 217 } : Color { 25, 175, 50, 191 });
+    }
+}
+
+void GraphicsContext::drawDotsForDocumentMarker(const FloatRect& rect, DocumentMarkerLineStyle style)
+{
+    if (paintingDisabled())
+        return;
+
+    // We want to find the number of full dots, so we're solving the equations:
+    // dotDiameter = height
+    // dotDiameter / dotGap = 13.247 / 9.457
+    // numberOfGaps = numberOfDots - 1
+    // dotDiameter * numberOfDots + dotGap * numberOfGaps = width
+
+    auto width = rect.width();
+    auto dotDiameter = rect.height();
+    auto dotGap = dotDiameter * 9.457 / 13.247;
+    auto numberOfDots = (width + dotGap) / (dotDiameter + dotGap);
+    auto numberOfWholeDots = static_cast<unsigned>(numberOfDots);
+    auto numberOfWholeGaps = numberOfWholeDots - 1;
+
+    // Center the dots
+    auto offset = (width - (dotDiameter * numberOfWholeDots + dotGap * numberOfWholeGaps)) / 2;
+
+    auto circleColor = colorForMarkerLineStyle(style.mode, style.shouldUseDarkAppearance);
+
+    CGContextRef platformContext = this->platformContext();
+    CGContextStateSaver stateSaver { platformContext };
+    CGContextSetFillColorWithColor(platformContext, circleColor);
+    for (unsigned i = 0; i < numberOfWholeDots; ++i) {
+        auto location = rect.location();
+        location.move(offset + i * (dotDiameter + dotGap), 0);
+        auto size = FloatSize(dotDiameter, dotDiameter);
+        CGContextAddEllipseInRect(platformContext, FloatRect(location, size));
+    }
+    CGContextSetCompositeOperation(platformContext, kCGCompositeSover);
+    CGContextFillPath(platformContext);
 }
 
 } // namespace WebCore

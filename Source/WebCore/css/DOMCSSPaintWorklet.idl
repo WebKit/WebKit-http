@@ -27,6 +27,5 @@
     EnabledAtRuntime=CSSPaintingAPI,
     Conditional=CSS_PAINTING_API,
 ] partial interface DOMCSSNamespace {
-    // FIXME: This is not actually part of the spec, and should be replaced when worklets are implemented
-    [ImplementedAs=ensurePaintWorkletGlobalScope,CallWith=Document] static readonly attribute CSSPaintWorkletGlobalScope paintWorkletGlobalScope;
+    [ImplementedAs=ensurePaintWorklet,CallWith=Document] static readonly attribute Worklet paintWorklet;
 };

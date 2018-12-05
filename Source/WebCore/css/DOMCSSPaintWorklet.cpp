@@ -28,16 +28,17 @@
 
 #if ENABLE(CSS_PAINTING_API)
 
-#include "CSSPaintWorkletGlobalScope.h"
 #include "DOMCSSNamespace.h"
 #include "Document.h"
+#include "Worklet.h"
+
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-CSSPaintWorkletGlobalScope& DOMCSSPaintWorklet::ensurePaintWorkletGlobalScope(Document& document)
+Worklet& DOMCSSPaintWorklet::ensurePaintWorklet(Document& document)
 {
-    return document.ensureCSSPaintWorkletGlobalScope();
+    return document.ensurePaintWorklet();
 }
 
 DOMCSSPaintWorklet* DOMCSSPaintWorklet::from(DOMCSSNamespace& css)

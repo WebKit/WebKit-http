@@ -42,6 +42,7 @@
 #include "RTCIceCandidate.h"
 #include "RTCPeerConnection.h"
 #include "RTCPeerConnectionIceEvent.h"
+#include "RTCRtpCapabilities.h"
 #include "RuntimeEnabledFeatures.h"
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringConcatenateNumbers.h>
@@ -57,6 +58,18 @@ static std::unique_ptr<PeerConnectionBackend> createNoPeerConnectionBackend(RTCP
 }
 
 CreatePeerConnectionBackend PeerConnectionBackend::create = createNoPeerConnectionBackend;
+
+std::optional<RTCRtpCapabilities> PeerConnectionBackend::receiverCapabilities(ScriptExecutionContext&, const String&)
+{
+    ASSERT_NOT_REACHED();
+    return { };
+}
+
+std::optional<RTCRtpCapabilities> PeerConnectionBackend::senderCapabilities(ScriptExecutionContext&, const String&)
+{
+    ASSERT_NOT_REACHED();
+    return { };
+}
 #endif
 
 PeerConnectionBackend::PeerConnectionBackend(RTCPeerConnection& peerConnection)
@@ -406,7 +419,7 @@ void PeerConnectionBackend::newICECandidate(String&& sdp, String&& mid, unsigned
     if (sdp.find(" host ", 0) != notFound) {
         // FIXME: We might need to clear all pending candidates when setting again local description.
         m_pendingICECandidates.append(PendingICECandidate { String { sdp }, WTFMove(mid), sdpMLineIndex, WTFMove(serverURL) });
-        if (RuntimeEnabledFeatures::sharedFeatures().mdnsICECandidatesEnabled()) {
+        if (RuntimeEnabledFeatures::sharedFeatures().webRTCMDNSICECandidatesEnabled()) {
             auto ipAddress = extractIPAddres(sdp);
             // We restrict to IPv4 candidates for now.
             if (ipAddress.contains('.'))
@@ -517,7 +530,7 @@ ExceptionOr<Ref<RTCRtpTransceiver>> PeerConnectionBackend::addTransceiver(Ref<Me
 void PeerConnectionBackend::generateCertificate(Document& document, const CertificateInformation& info, DOMPromiseDeferred<IDLInterface<RTCCertificate>>&& promise)
 {
 #if USE(LIBWEBRTC)
-    LibWebRTCCertificateGenerator::generateCertificate(document.page()->libWebRTCProvider(), info, WTFMove(promise));
+    LibWebRTCCertificateGenerator::generateCertificate(document.securityOrigin(), document.page()->libWebRTCProvider(), info, WTFMove(promise));
 #else
     UNUSED_PARAM(document);
     UNUSED_PARAM(expires);

@@ -34,10 +34,12 @@ RealtimeOutgoingAudioSourceLibWebRTC::RealtimeOutgoingAudioSourceLibWebRTC(Ref<M
 {
     m_adapter = adoptGRef(gst_adapter_new()),
     m_sampleConverter = nullptr;
+    observeSource();
 }
 
 RealtimeOutgoingAudioSourceLibWebRTC::~RealtimeOutgoingAudioSourceLibWebRTC()
 {
+    unobserveSource();
     if (m_sampleConverter)
         g_clear_pointer(&m_sampleConverter, gst_audio_converter_free);
 }

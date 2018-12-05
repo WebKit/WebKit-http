@@ -32,9 +32,7 @@ namespace WebCore {
 
 #define WEBCORE_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
     macro(Animation) \
-    macro(AnimationEffectReadOnly) \
-    macro(AnimationEffectTiming) \
-    macro(AnimationEffectTimingReadOnly) \
+    macro(AnimationEffect) \
     macro(AnimationPlaybackEvent) \
     macro(AnimationTimeline) \
     macro(ApplePaySession) \
@@ -51,7 +49,6 @@ namespace WebCore {
     macro(Credential) \
     macro(CredentialsContainer) \
     macro(CSSAnimation) \
-    macro(CSSPaintWorkletGlobalScope) \
     macro(CSSTransition) \
     macro(CustomElementRegistry) \
     macro(Database) \
@@ -92,7 +89,6 @@ namespace WebCore {
     macro(IntersectionObserver) \
     macro(IntersectionObserverEntry) \
     macro(KeyframeEffect) \
-    macro(KeyframeEffectReadOnly) \
     macro(MediaCapabilities) \
     macro(MediaCapabilitiesInfo) \
     macro(MediaEncryptedEvent) \
@@ -123,6 +119,7 @@ namespace WebCore {
     macro(SQLResultSet) \
     macro(SQLResultSetRowList) \
     macro(SQLTransaction) \
+    macro(PaintWorkletGlobalScope) \
     macro(PerformanceEntry) \
     macro(PerformanceEntryList) \
     macro(PerformanceMark) \
@@ -176,11 +173,12 @@ namespace WebCore {
     macro(WebGLVertexArrayObject) \
     macro(WebGPU) \
     macro(WebGPUAdapter) \
-    macro(WebGPUAdapterDescriptor) \
     macro(WebGPUDevice) \
     macro(WebGPURenderingContext) \
+    macro(WebGPURenderPipeline) \
+    macro(WebGPUShaderStage) \
+    macro(WebGPUShaderModule) \
     macro(WebGPUSwapChain) \
-    macro(WebGPUSwapChainDescriptor) \
     macro(WebMetalBuffer) \
     macro(WebMetalCommandBuffer) \
     macro(WebMetalCommandQueue) \
@@ -210,6 +208,8 @@ namespace WebCore {
     macro(WebKitMediaKeys) \
     macro(WebSocket) \
     macro(WindowClient) \
+    macro(Worklet) \
+    macro(WorkletGlobalScope) \
     macro(WritableStream) \
     macro(XMLHttpRequest) \
     macro(appendFromJS) \

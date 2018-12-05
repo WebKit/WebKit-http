@@ -1,3 +1,4 @@
+//@ skip if not $jitTests
 //@ defaultQuickRun
 
 // Copyright 2006-2008 the V8 project authors. All rights reserved.

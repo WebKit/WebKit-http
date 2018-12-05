@@ -40,7 +40,7 @@
 
 namespace WebCore {
 
-class AnimationEffectReadOnly;
+class AnimationEffect;
 class AnimationPlaybackEvent;
 class AnimationTimeline;
 class Document;
@@ -49,8 +49,8 @@ class RenderStyle;
 
 class WebAnimation : public RefCounted<WebAnimation>, public CanMakeWeakPtr<WebAnimation>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
-    static Ref<WebAnimation> create(Document&, AnimationEffectReadOnly*);
-    static Ref<WebAnimation> create(Document&, AnimationEffectReadOnly*, AnimationTimeline*);
+    static Ref<WebAnimation> create(Document&, AnimationEffect*);
+    static Ref<WebAnimation> create(Document&, AnimationEffect*, AnimationTimeline*);
     ~WebAnimation();
 
     virtual bool isDeclarativeAnimation() const { return false; }
@@ -60,8 +60,8 @@ public:
     const String& id() const { return m_id; }
     void setId(const String& id) { m_id = id; }
 
-    AnimationEffectReadOnly* effect() const { return m_effect.get(); }
-    void setEffect(RefPtr<AnimationEffectReadOnly>&&);
+    AnimationEffect* effect() const { return m_effect.get(); }
+    void setEffect(RefPtr<AnimationEffect>&&);
     AnimationTimeline* timeline() const { return m_timeline.get(); }
     virtual void setTimeline(RefPtr<AnimationTimeline>&&);
 
@@ -69,8 +69,8 @@ public:
     ExceptionOr<void> setCurrentTime(std::optional<Seconds>);
 
     enum class Silently { Yes, No };
-    double playbackRate() const { return m_playbackRate; }
-    void setPlaybackRate(double, Silently silently = Silently::No );
+    double playbackRate() const { return m_playbackRate + 0; }
+    void setPlaybackRate(double);
 
     enum class PlayState { Idle, Running, Paused, Finished };
     PlayState playState() const;
@@ -87,6 +87,7 @@ public:
     void cancel(Silently);
     ExceptionOr<void> finish();
     ExceptionOr<void> play();
+    void updatePlaybackRate(double);
     ExceptionOr<void> pause();
     ExceptionOr<void> reverse();
 
@@ -109,7 +110,7 @@ public:
     void applyPendingAcceleratedActions();
 
     bool isRelevant() const { return m_isRelevant; }
-    void effectTimingPropertiesDidChange();
+    void effectTimingDidChange();
     void suspendEffectInvalidation();
     void unsuspendEffectInvalidation();
     void setSuspended(bool);
@@ -148,21 +149,24 @@ private:
     void runPendingPauseTask();
     void runPendingPlayTask();
     void resetPendingTasks(Silently = Silently::No);
-    void setEffectInternal(RefPtr<AnimationEffectReadOnly>&&, bool = false);
+    void setEffectInternal(RefPtr<AnimationEffect>&&, bool = false);
     void setTimelineInternal(RefPtr<AnimationTimeline>&&);
     bool isEffectInvalidationSuspended() { return m_suspendCount; }
     bool computeRelevance();
     void updateRelevance();
     void invalidateEffect();
+    double effectivePlaybackRate() const;
+    void applyPendingPlaybackRate();
 
     String m_id;
-    RefPtr<AnimationEffectReadOnly> m_effect;
+    RefPtr<AnimationEffect> m_effect;
     RefPtr<AnimationTimeline> m_timeline;
     std::optional<Seconds> m_previousCurrentTime;
     std::optional<Seconds> m_startTime;
     std::optional<Seconds> m_holdTime;
     int m_suspendCount { 0 };
     double m_playbackRate { 1 };
+    std::optional<double> m_pendingPlaybackRate;
     bool m_isStopped { false };
     bool m_isSuspended { false };
     bool m_finishNotificationStepsMicrotaskPending;

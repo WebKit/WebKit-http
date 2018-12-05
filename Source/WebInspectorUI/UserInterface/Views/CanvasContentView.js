@@ -149,6 +149,8 @@ WI.CanvasContentView = class CanvasContentView extends WI.ContentView
 
         if (this._errorElement)
             this._showError();
+
+        this._updateProgressView();
     }
 
     layout()
@@ -285,13 +287,28 @@ WI.CanvasContentView = class CanvasContentView extends WI.ContentView
 
     _refreshPixelSize()
     {
-        this._pixelSize = null;
+        let updatePixelSize = (size) => {
+            if (this._pixelSize && size.width === this._pixelSize.width && size.height === this._pixelSize.height)
+                return;
 
-        this.representedObject.requestSize().then((size) => {
             this._pixelSize = size;
-            this._updatePixelSize();
-        }).catch((error) => {
-            this._updatePixelSize();
+
+            if (this._pixelSizeElement) {
+                if (this._pixelSize)
+                    this._pixelSizeElement.textContent = `${this._pixelSize.width} ${multiplicationSign} ${this._pixelSize.height}`;
+                else
+                    this._pixelSizeElement.textContent = emDash;
+            }
+
+            this.refresh();
+        };
+
+        this.representedObject.requestSize()
+        .then((size) => {
+            updatePixelSize(size);
+        })
+        .catch((error) => {
+            updatePixelSize(null);
         });
     }
 
@@ -347,17 +364,6 @@ WI.CanvasContentView = class CanvasContentView extends WI.ContentView
         }
     }
 
-    _updatePixelSize()
-    {
-        if (!this._pixelSizeElement)
-            return;
-
-        if (this._pixelSize)
-            this._pixelSizeElement.textContent = `${this._pixelSize.width} ${multiplicationSign} ${this._pixelSize.height}`;
-        else
-            this._pixelSizeElement.textContent = emDash;
-    }
-
     _updateRecordNavigationItem()
     {
         if (!this._recordButtonNavigationItem)
@@ -371,6 +377,9 @@ WI.CanvasContentView = class CanvasContentView extends WI.ContentView
 
     _updateProgressView()
     {
+        if (!this._previewContainerElement)
+            return;
+
         if (!this.representedObject.recordingActive) {
             if (this._progressView && this._progressView.parentView) {
                 this.removeSubview(this._progressView);
@@ -398,6 +407,9 @@ WI.CanvasContentView = class CanvasContentView extends WI.ContentView
 
     _updateViewRelatedItems()
     {
+        if (!this._viewRelatedItemsContainer)
+            return;
+
         this._viewRelatedItemsContainer.removeChildren();
 
         if (this.representedObject.shaderProgramCollection.size)

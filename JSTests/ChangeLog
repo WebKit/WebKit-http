@@ -1,3 +1,171 @@
+2018-11-07  Tadeu Zagallo  <tzagallo@apple.com>
+
+        REGRESSION(r237547): Test failures on 32-bit JSC since the JIT was disabled
+        https://bugs.webkit.org/show_bug.cgi?id=191184
+
+        Reviewed by Saam Barati.
+
+        Most tests were failing due to timeouts, since they are too slow to
+        run on CLoop. The exceptions are:
+
+        proxy-get-set-correct-receiver.js: Had to reduce the recursion depth not to overflow on CLoop
+        dont-crash-on-stack-overflow-when-parsing-builtin.js and
+        dont-crash-on-stack-overflow-when-parsing-default-constructor.js: had
+        to change the stack size since CLoop requires it to be page aligned.
+
+        * microbenchmarks/array-push-1.js:
+        * microbenchmarks/array-push-2.js:
+        * microbenchmarks/elidable-new-object-dag.js:
+        * microbenchmarks/elidable-new-object-roflcopter.js:
+        * microbenchmarks/elidable-new-object-tree.js:
+        * microbenchmarks/getter-richards.js:
+        * microbenchmarks/sinkable-new-object-dag.js:
+        * microbenchmarks/string-concat-long-convert.js:
+        * microbenchmarks/typed-array-get-set-by-val-profiling.js:
+        * slowMicrobenchmarks/array-push-3.js:
+        * slowMicrobenchmarks/large-map-iteration-with-additions.js:
+        * slowMicrobenchmarks/spread-small-array.js:
+        * slowMicrobenchmarks/undefined-property-access.js:
+        * stress/activation-sink-default-value-tdz-error.js:
+        * stress/activation-sink-default-value.js:
+        * stress/activation-sink-osrexit-default-value-tdz-error.js:
+        * stress/activation-sink-osrexit-default-value.js:
+        * stress/activation-sink-osrexit.js:
+        * stress/activation-sink.js:
+        * stress/allow-math-ic-b3-code-duplication.js:
+        * stress/array-push-multiple-int32.js:
+        * stress/arrowfunction-activation-sink-osrexit-default-value-tdz-error.js:
+        * stress/arrowfunction-lexical-this-activation-sink-osrexit.js:
+        * stress/arrowfunction-lexical-this-activation-sink.js:
+        * stress/dont-crash-on-stack-overflow-when-parsing-builtin.js:
+        * stress/dont-crash-on-stack-overflow-when-parsing-default-constructor.js:
+        * stress/elide-new-object-dag-then-exit.js:
+        * stress/materialize-regexp-cyclic.js:
+        * stress/new-regex-inline.js:
+        * stress/op_add.js:
+        * stress/op_bitand.js:
+        * stress/op_bitor.js:
+        * stress/op_bitxor.js:
+        * stress/op_div-ConstVar.js:
+        * stress/op_div-VarConst.js:
+        * stress/op_div-VarVar.js:
+        * stress/op_lshift-ConstVar.js:
+        * stress/op_lshift-VarConst.js:
+        * stress/op_lshift-VarVar.js:
+        * stress/op_mod-ConstVar.js:
+        * stress/op_mod-VarConst.js:
+        * stress/op_mod-VarVar.js:
+        * stress/op_mul-ConstVar.js:
+        * stress/op_mul-VarConst.js:
+        * stress/op_mul-VarVar.js:
+        * stress/op_rshift-ConstVar.js:
+        * stress/op_rshift-VarConst.js:
+        * stress/op_rshift-VarVar.js:
+        * stress/op_sub-ConstVar.js:
+        * stress/op_sub-VarConst.js:
+        * stress/op_sub-VarVar.js:
+        * stress/op_urshift-ConstVar.js:
+        * stress/op_urshift-VarConst.js:
+        * stress/op_urshift-VarVar.js:
+        * stress/proxy-get-set-correct-receiver.js:
+        * stress/regress-179562.js:
+        * stress/rest-parameter-many-arguments.js:
+        * stress/sampling-profiler-richards.js:
+        * stress/splay-flash-access-1ms.js:
+        * stress/tailCallForwardArguments.js:
+        * stress/typed-array-get-by-val-profiling.js:
+        * typeProfiler/getter-richards.js:
+
+2018-11-06  Michael Saboff  <msaboff@apple.com>
+
+        Multiple stress/regexp-compile-oom.js tests are failing on High Sierra Debug and Release JSC testers.
+        https://bugs.webkit.org/show_bug.cgi?id=191271
+
+        Reviewed by Saam Barati.
+
+        Added more test cases and made all test cases run with the same deeply recursive stack
+        instead of finding that same point for each test case.
+
+        * stress/regexp-compile-oom.js:
+        (prototype.runTest):
+        (recurseAndTest):
+        (testList.push.new.TestAndExpectedException):
+
+2018-11-05  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed build fix for linux.
+
+        * stress/regexp-compile-oom.js: Disabled for non-darwin OSes.
+
+2018-11-02  Michael Saboff  <msaboff@apple.com>
+
+        Rolling in r237753 with unreviewed build fix.
+
+        Fixed issues with DECLARE_THROW_SCOPE placement.
+
+2018-11-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r237753.
+
+        Introduced JSC test failures
+
+        Reverted changeset:
+
+        "Running out of stack space not properly handled in
+        RegExp::compile() and its callers"
+        https://bugs.webkit.org/show_bug.cgi?id=191206
+        https://trac.webkit.org/changeset/237753
+
+2018-11-02  Michael Saboff  <msaboff@apple.com>
+
+        Running out of stack space not properly handled in RegExp::compile() and its callers
+        https://bugs.webkit.org/show_bug.cgi?id=191206
+
+        Reviewed by Filip Pizlo.
+
+        New regression test.
+
+        * stress/regexp-compile-oom.js: Added.
+        (recurseAndTest):
+
+2018-11-01  Guillaume Emont  <guijemont@igalia.com>
+
+        Skip tests on arm/mips that time out now we're running on CLoop
+
+        Unreviewed gardening.
+
+        Since the JIT is temporarily disabled on 32-bit platforms, these tests
+        time out on the bots and need to be disabled. There's more tests
+        disabled on arm because the timeout is longer on the mips bot (as the
+        device is slower to start with), so many of the tests don't time out
+        there.
+
+        * microbenchmarks/getter-richards.js: disable on arm and mips.
+        * stress/op_add.js: disable on arm.
+        * stress/op_bitand.js: disable on arm.
+        * stress/op_bitor.js: disable on arm.
+        * stress/op_bitxor.js: disable on arm.
+        * stress/op_lshift-ConstVar.js: disable on arm.
+        * stress/op_lshift-VarConst.js: disable on arm.
+        * stress/op_lshift-VarVar.js: disable on arm.
+        * stress/op_mod-ConstVar.js: disable on arm.
+        * stress/op_mod-VarConst.js: disable on arm.
+        * stress/op_mod-VarVar.js: disable on arm.
+        * stress/op_mul-ConstVar.js: disable on arm.
+        * stress/op_mul-VarConst.js: disable on arm.
+        * stress/op_mul-VarVar.js: disable on arm.
+        * stress/op_rshift-ConstVar.js: disable on arm.
+        * stress/op_rshift-VarConst.js: disable on arm.
+        * stress/op_rshift-VarVar.js: disable on arm.
+        * stress/op_sub-ConstVar.js: disable on arm.
+        * stress/op_sub-VarConst.js: disable on arm.
+        * stress/op_sub-VarVar.js: disable on arm.
+        * stress/op_urshift-ConstVar.js: disable on arm.
+        * stress/op_urshift-VarConst.js: disable on arm.
+        * stress/op_urshift-VarVar.js: disable on arm.
+        * stress/spread-forward-call-varargs-stack-overflow.js: disable on arm.
+        * stress/value-to-boolean.js: disable on arm and mips.
+
 2018-10-31  Tadeu Zagallo  <tzagallo@apple.com>
 
         REGRESSION(r237547): Exception handlers should be aware of wide opcodes

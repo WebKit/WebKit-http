@@ -30,13 +30,93 @@
 
 #include "FloatingState.h"
 #include "FormattingState.h"
+#include "InlineFormattingState.h"
 
 namespace WebCore {
 namespace Layout {
 
+static inline bool isHeightAuto(const Box& layoutBox)
+{
+    // 10.5 Content height: the 'height' property
+    //
+    // The percentage is calculated with respect to the height of the generated box's containing block.
+    // If the height of the containing block is not specified explicitly (i.e., it depends on content height),
+    // and this element is not absolutely positioned, the used height is calculated as if 'auto' was specified.
+
+    auto height = layoutBox.style().logicalHeight();
+    if (height.isAuto())
+        return true;
+
+    if (height.isPercent()) {
+        if (layoutBox.isOutOfFlowPositioned())
+            return false;
+
+        return !layoutBox.containingBlock()->style().logicalHeight().isFixed();
+    }
+
+    return false;
+}
+
+std::optional<LayoutUnit> FormattingContext::Geometry::computedHeightValue(const LayoutState& layoutState, const Box& layoutBox, HeightType heightType)
+{
+    auto& style = layoutBox.style();
+    auto height = heightType == HeightType::Normal ? style.logicalHeight() : heightType == HeightType::Min ? style.logicalMinHeight() : style.logicalMaxHeight();
+    if (height.isUndefined() || height.isAuto())
+        return { };
+
+    if (height.isFixed())
+        return { height.value() };
+
+    std::optional<LayoutUnit> containingBlockHeightValue;
+    if (layoutBox.isOutOfFlowPositioned()) {
+        // Containing block's height is already computed since we layout the out-of-flow boxes as the last step.
+        containingBlockHeightValue = layoutState.displayBoxForLayoutBox(*layoutBox.containingBlock()).height();
+    } else {
+        auto computedHeightValueForQuirksMode = [&]() -> LayoutUnit {
+            // In quirks mode, we go and travers the containing block chain to find a block level box with fixed height value, even if it means leaving
+            // the current formatting context. FIXME: surely we need to do some tricks here when block direction support is added.
+            auto* containingBlock = layoutBox.containingBlock();
+            LayoutUnit bodyAndDocumentVerticalMarginsPaddingsAndBorders;
+            while (containingBlock) {
+                auto containingBlockHeight = containingBlock->style().logicalHeight();
+                if (containingBlockHeight.isFixed())
+                    return containingBlockHeight.value() - bodyAndDocumentVerticalMarginsPaddingsAndBorders;
+
+                // If the only fixed value box we find is the ICB, then ignore the body and the document (vertical) margin, padding and border. So much quirkiness.
+                // -and it's totally insane because now we freely travel across formatting context boundaries and computed margins are nonexistent.
+                if (containingBlock->isBodyBox() || containingBlock->isDocumentBox()) {
+                    auto& displayBox = layoutState.displayBoxForLayoutBox(*containingBlock);
+
+                    auto verticalMargins = computedNonCollapsedVerticalMarginValue(layoutState, *containingBlock);
+                    auto verticalPaddings = displayBox.paddingTop().value_or(0) + displayBox.paddingBottom().value_or(0);
+                    auto verticalBorders = displayBox.borderTop() + displayBox.borderBottom();
+                    bodyAndDocumentVerticalMarginsPaddingsAndBorders += verticalMargins.top + verticalMargins.bottom + verticalPaddings + verticalBorders;
+                }
+
+                containingBlock = containingBlock->containingBlock();
+            }
+            // Initial containing block has to have a height.
+            return layoutState.displayBoxForLayoutBox(layoutBox.initialContainingBlock()).contentBox().height() - bodyAndDocumentVerticalMarginsPaddingsAndBorders;
+        };
+
+        if (layoutState.inQuirksMode())
+            containingBlockHeightValue = computedHeightValueForQuirksMode();
+        else {
+            auto containingBlockHeight = layoutBox.containingBlock()->style().logicalHeight();
+            if (containingBlockHeight.isFixed())
+                containingBlockHeightValue = { containingBlockHeight.value() };
+        }
+    }
+
+    if (!containingBlockHeightValue)
+        return { };
+
+    return valueForLength(height, *containingBlockHeightValue);
+}
+
 static LayoutUnit contentHeightForFormattingContextRoot(const LayoutState& layoutState, const Box& layoutBox)
 {
-    ASSERT(layoutBox.style().logicalHeight().isAuto() && (layoutBox.establishesFormattingContext() || layoutBox.isDocumentBox()));
+    ASSERT(isHeightAuto(layoutBox) && (layoutBox.establishesFormattingContext() || layoutBox.isDocumentBox()));
 
     // 10.6.7 'Auto' heights for block formatting context roots
 
@@ -50,14 +130,22 @@ static LayoutUnit contentHeightForFormattingContextRoot(const LayoutState& layou
     if (!is<Container>(layoutBox) || !downcast<Container>(layoutBox).hasInFlowOrFloatingChild())
         return 0;
 
+    LayoutUnit top;
+    LayoutUnit bottom;
     auto& formattingRootContainer = downcast<Container>(layoutBox);
-    if (formattingRootContainer.establishesInlineFormattingContext())
-        return 0;
-
-    auto& firstDisplayBox = layoutState.displayBoxForLayoutBox(*formattingRootContainer.firstInFlowChild());
-    auto& lastDisplayBox = layoutState.displayBoxForLayoutBox(*formattingRootContainer.lastInFlowChild());
-    auto top = firstDisplayBox.rectWithMargin().top();
-    auto bottom = lastDisplayBox.rectWithMargin().bottom();
+    if (formattingRootContainer.establishesInlineFormattingContext()) {
+        // This is temp and will be replaced by the correct display box once inline runs move over to the display tree.
+        auto& inlineRuns = downcast<InlineFormattingState>(layoutState.establishedFormattingState(layoutBox)).inlineRuns();
+        if (!inlineRuns.isEmpty()) {
+            top = inlineRuns[0].logicalTop();
+            bottom =  inlineRuns.last().logicalBottom();
+        }
+    } else if (formattingRootContainer.establishesBlockFormattingContext() || layoutBox.isDocumentBox()) {
+        auto& firstDisplayBox = layoutState.displayBoxForLayoutBox(*formattingRootContainer.firstInFlowChild());
+        auto& lastDisplayBox = layoutState.displayBoxForLayoutBox(*formattingRootContainer.lastInFlowChild());
+        top = firstDisplayBox.rectWithMargin().top();
+        bottom = lastDisplayBox.rectWithMargin().bottom();
+    }
 
     auto* formattingContextRoot = &layoutBox;
     // TODO: The document renderer is not a formatting context root by default at all. Need to find out what it is.
@@ -99,48 +187,13 @@ std::optional<LayoutUnit> FormattingContext::Geometry::fixedValue(const Length& 
 // the percentage value is treated as '0' (for 'min-height') or 'none' (for 'max-height').
 std::optional<LayoutUnit> FormattingContext::Geometry::computedMaxHeight(const LayoutState& layoutState, const Box& layoutBox)
 {
-    auto maxHeight = layoutBox.style().logicalMaxHeight();
-    if (maxHeight.isUndefined() || maxHeight.isAuto())
-        return { };
-
-    if (maxHeight.isFixed())
-        return { maxHeight.value() };
-
-    std::optional<LayoutUnit> containingBlockHeightValue;
-    auto height = layoutBox.containingBlock()->style().logicalHeight();
-    if (height.isFixed())
-        containingBlockHeightValue = { height.value() };
-    else if (layoutBox.isOutOfFlowPositioned()) {
-        // Containing block's height is already computed.
-        containingBlockHeightValue = layoutState.displayBoxForLayoutBox(*layoutBox.containingBlock()).height();
-    }
-
-    if (containingBlockHeightValue)
-        return valueForLength(maxHeight, *containingBlockHeightValue);
-
-    return { };
+    return computedHeightValue(layoutState, layoutBox, HeightType::Max);
 }
 
 std::optional<LayoutUnit> FormattingContext::Geometry::computedMinHeight(const LayoutState& layoutState, const Box& layoutBox)
 {
-    auto minHeight = layoutBox.style().logicalMinHeight();
-    if (minHeight.isUndefined() || minHeight.isAuto())
-        return { };
-
-    if (minHeight.isFixed())
-        return { minHeight.value() };
-
-    std::optional<LayoutUnit> containingBlockHeightValue;
-    auto height = layoutBox.containingBlock()->style().logicalHeight();
-    if (height.isFixed())
-        containingBlockHeightValue = { height.value() };
-    else if (layoutBox.isOutOfFlowPositioned()) {
-        // Containing block's height is already computed.
-        containingBlockHeightValue = layoutState.displayBoxForLayoutBox(*layoutBox.containingBlock()).height();
-    }
-
-    if (containingBlockHeightValue)
-        return valueForLength(minHeight, *containingBlockHeightValue);
+    if (auto minHeightValue = computedHeightValue(layoutState, layoutBox, HeightType::Min))
+        return minHeightValue;
 
     return { 0 };
 }
@@ -199,9 +252,11 @@ static LayoutUnit staticHorizontalPositionForOutOfFlowPositioned(const LayoutSta
     return left;
 }
 
-LayoutUnit FormattingContext::Geometry::shrinkToFitWidth(LayoutState& layoutState, const FormattingContext& formattingContext, const Box& layoutBox)
+LayoutUnit FormattingContext::Geometry::shrinkToFitWidth(LayoutState& layoutState, const Box& formattingRoot)
 {
-    LOG_WITH_STREAM(FormattingContextLayout, stream << "[Width] -> shrink to fit -> unsupported -> width(" << LayoutUnit { } << "px) layoutBox: " << &layoutBox << ")");
+    LOG_WITH_STREAM(FormattingContextLayout, stream << "[Width] -> shrink to fit -> unsupported -> width(" << LayoutUnit { } << "px) layoutBox: " << &formattingRoot << ")");
+    ASSERT(formattingRoot.establishesFormattingContext());
+
     // Calculation of the shrink-to-fit width is similar to calculating the width of a table cell using the automatic table layout algorithm.
     // Roughly: calculate the preferred width by formatting the content without breaking lines other than where explicit line breaks occur,
     // and also calculate the preferred minimum width, e.g., by trying all possible line breaks. CSS 2.2 does not define the exact algorithm.
@@ -209,8 +264,9 @@ LayoutUnit FormattingContext::Geometry::shrinkToFitWidth(LayoutState& layoutStat
     // 'padding-left', 'padding-right', 'border-right-width', 'margin-right', and the widths of any relevant scroll bars.
 
     // Then the shrink-to-fit width is: min(max(preferred minimum width, available width), preferred width).
-    auto availableWidth = layoutState.displayBoxForLayoutBox(*layoutBox.containingBlock()).width();
-    auto instrinsicWidthConstraints = formattingContext.instrinsicWidthConstraints(layoutBox);
+    auto availableWidth = layoutState.displayBoxForLayoutBox(*formattingRoot.containingBlock()).width();
+    auto& formattingState = layoutState.createFormattingStateForFormattingRootIfNeeded(formattingRoot);
+    auto instrinsicWidthConstraints = formattingState.formattingContext(formattingRoot)->instrinsicWidthConstraints();
     return std::min(std::max(instrinsicWidthConstraints.minimum, availableWidth), instrinsicWidthConstraints.maximum);
 }
 
@@ -250,7 +306,7 @@ VerticalGeometry FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeomet
 
     auto top = computedValueIfNotAuto(style.logicalTop(), containingBlockWidth);
     auto bottom = computedValueIfNotAuto(style.logicalBottom(), containingBlockWidth);
-    auto height = computedValueIfNotAuto(usedHeight ? Length { usedHeight.value(), Fixed } : style.logicalHeight(), containingBlockHeight);
+    auto height = usedHeight ? usedHeight.value() : computedHeightValue(layoutState, layoutBox, HeightType::Normal);
     auto marginTop = computedValueIfNotAuto(style.marginTop(), containingBlockWidth);
     auto marginBottom = computedValueIfNotAuto(style.marginBottom(), containingBlockWidth);
     auto paddingTop = displayBox.paddingTop().value_or(0);
@@ -330,7 +386,7 @@ VerticalGeometry FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeomet
     return { *top, *bottom, { *height, { *marginTop, *marginBottom }, { } } };
 }
 
-HorizontalGeometry FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry(LayoutState& layoutState, const FormattingContext& formattingContext, const Box& layoutBox, std::optional<LayoutUnit> usedWidth)
+HorizontalGeometry FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry(LayoutState& layoutState, const Box& layoutBox, std::optional<LayoutUnit> usedWidth)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned() && !layoutBox.replaced());
     
@@ -439,7 +495,7 @@ HorizontalGeometry FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGe
 
     if (!left && !width && right) {
         // #1
-        width = shrinkToFitWidth(layoutState, formattingContext, layoutBox);
+        width = shrinkToFitWidth(layoutState, layoutBox);
         left = containingBlockWidth - (*marginLeft + borderLeft + paddingLeft + *width + paddingRight  + borderRight + *marginRight + *right);
     } else if (!left && !right && width) {
         // #2
@@ -453,7 +509,7 @@ HorizontalGeometry FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGe
         }
     } else if (!width && !right && left) {
         // #3
-        width = shrinkToFitWidth(layoutState, formattingContext, layoutBox);
+        width = shrinkToFitWidth(layoutState, layoutBox);
         right = containingBlockWidth - (*left + *marginLeft + borderLeft + paddingLeft + *width + paddingRight + borderRight + *marginRight);
     } else if (!left && width && right) {
         // #4
@@ -663,7 +719,7 @@ HeightAndMargin FormattingContext::Geometry::complicatedCases(const LayoutState&
     auto& containingBlockDisplayBox = layoutState.displayBoxForLayoutBox(containingBlock);
     auto containingBlockWidth = containingBlockDisplayBox.contentBoxWidth();
 
-    auto height = fixedValue(usedHeight ? Length { usedHeight.value(), Fixed } : style.logicalHeight());
+    auto height = usedHeight ? usedHeight.value() : computedHeightValue(layoutState, layoutBox, HeightType::Normal);
     auto marginTop = computedValueIfNotAuto(style.marginTop(), containingBlockWidth);
     auto marginBottom = computedValueIfNotAuto(style.marginBottom(), containingBlockWidth);
 
@@ -672,10 +728,8 @@ HeightAndMargin FormattingContext::Geometry::complicatedCases(const LayoutState&
     marginBottom = marginBottom.value_or(0);
     // #2
     if (!height) {
-        if (style.logicalHeight().isAuto())
-            height = contentHeightForFormattingContextRoot(layoutState, layoutBox);
-        else
-            ASSERT_NOT_IMPLEMENTED_YET();
+        ASSERT(isHeightAuto(layoutBox));
+        height = contentHeightForFormattingContextRoot(layoutState, layoutBox);
     }
 
     ASSERT(height);
@@ -686,7 +740,7 @@ HeightAndMargin FormattingContext::Geometry::complicatedCases(const LayoutState&
     return HeightAndMargin { *height, { *marginTop, *marginBottom }, { } };
 }
 
-WidthAndMargin FormattingContext::Geometry::floatingNonReplacedWidthAndMargin(LayoutState& layoutState, const FormattingContext& formattingContext, const Box& layoutBox, std::optional<LayoutUnit> usedWidth)
+WidthAndMargin FormattingContext::Geometry::floatingNonReplacedWidthAndMargin(LayoutState& layoutState, const Box& layoutBox, std::optional<LayoutUnit> usedWidth)
 {
     ASSERT(layoutBox.isFloatingPositioned() && !layoutBox.replaced());
 
@@ -703,7 +757,7 @@ WidthAndMargin FormattingContext::Geometry::floatingNonReplacedWidthAndMargin(La
     // #2
     auto width = computedValueIfNotAuto(usedWidth ? Length { usedWidth.value(), Fixed } : layoutBox.style().logicalWidth(), containingBlockWidth);
     if (!width)
-        width = shrinkToFitWidth(layoutState, formattingContext, layoutBox);
+        width = shrinkToFitWidth(layoutState, layoutBox);
 
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[Width][Margin] -> floating non-replaced -> width(" << *width << "px) margin(" << margin.left << "px, " << margin.right << "px) -> layoutBox(" << &layoutBox << ")");
     return WidthAndMargin { *width, margin, margin };
@@ -742,12 +796,12 @@ VerticalGeometry FormattingContext::Geometry::outOfFlowVerticalGeometry(const La
     return outOfFlowReplacedVerticalGeometry(layoutState, layoutBox, usedHeight);
 }
 
-HorizontalGeometry FormattingContext::Geometry::outOfFlowHorizontalGeometry(LayoutState& layoutState, const FormattingContext& formattingContext, const Box& layoutBox, std::optional<LayoutUnit> usedWidth)
+HorizontalGeometry FormattingContext::Geometry::outOfFlowHorizontalGeometry(LayoutState& layoutState, const Box& layoutBox, std::optional<LayoutUnit> usedWidth)
 {
     ASSERT(layoutBox.isOutOfFlowPositioned());
 
     if (!layoutBox.replaced())
-        return outOfFlowNonReplacedHorizontalGeometry(layoutState, formattingContext, layoutBox, usedWidth);
+        return outOfFlowNonReplacedHorizontalGeometry(layoutState, layoutBox, usedWidth);
     return outOfFlowReplacedHorizontalGeometry(layoutState, layoutBox, usedWidth);
 }
 
@@ -760,12 +814,12 @@ HeightAndMargin FormattingContext::Geometry::floatingHeightAndMargin(const Layou
     return floatingReplacedHeightAndMargin(layoutState, layoutBox, usedHeight);
 }
 
-WidthAndMargin FormattingContext::Geometry::floatingWidthAndMargin(LayoutState& layoutState, const FormattingContext& formattingContext, const Box& layoutBox, std::optional<LayoutUnit> usedWidth)
+WidthAndMargin FormattingContext::Geometry::floatingWidthAndMargin(LayoutState& layoutState, const Box& layoutBox, std::optional<LayoutUnit> usedWidth)
 {
     ASSERT(layoutBox.isFloatingPositioned());
 
     if (!layoutBox.replaced())
-        return floatingNonReplacedWidthAndMargin(layoutState, formattingContext, layoutBox, usedWidth);
+        return floatingNonReplacedWidthAndMargin(layoutState, layoutBox, usedWidth);
     return floatingReplacedWidthAndMargin(layoutState, layoutBox, usedWidth);
 }
 
@@ -789,12 +843,9 @@ HeightAndMargin FormattingContext::Geometry::inlineReplacedHeightAndMargin(const
     auto& style = layoutBox.style();
     auto replaced = layoutBox.replaced();
 
-    auto height = fixedValue(usedHeight ? Length { usedHeight.value(), Fixed } : style.logicalHeight());
-    auto heightIsAuto = !usedHeight && style.logicalHeight().isAuto();
+    auto height = usedHeight ? usedHeight.value() : computedHeightValue(layoutState, layoutBox, HeightType::Normal);
+    auto heightIsAuto = !usedHeight && isHeightAuto(layoutBox);
     auto widthIsAuto = style.logicalWidth().isAuto();
-
-    if (!height && !heightIsAuto)
-        ASSERT_NOT_IMPLEMENTED_YET();
 
     if (heightIsAuto && widthIsAuto && replaced->hasIntrinsicHeight()) {
         // #2
@@ -868,10 +919,8 @@ WidthAndMargin FormattingContext::Geometry::inlineReplacedWidthAndMargin(const L
     auto nonComputedMarginRight = computedValueIfNotAuto(style.marginRight(), containingBlockWidth).value_or(0);
     auto width = computedValueIfNotAuto(usedWidth ? Length { usedWidth.value(), Fixed } : style.logicalWidth(), containingBlockWidth);
 
-    auto heightIsAuto = style.logicalHeight().isAuto();
-    auto height = fixedValue(style.logicalHeight());
-    if (!height && !heightIsAuto)
-        ASSERT_NOT_IMPLEMENTED_YET();
+    auto heightIsAuto = isHeightAuto(layoutBox);
+    auto height = computedHeightValue(layoutState, layoutBox, HeightType::Normal);
 
     if (!width && heightIsAuto && replaced->hasIntrinsicWidth()) {
         // #1

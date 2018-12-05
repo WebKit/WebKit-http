@@ -31,6 +31,7 @@ fast/viewport/ios [ Skip ]
 fast/visual-viewport/ios/ [ Skip ]
 fast/events/ios [ Skip ]
 fast/events/watchos [ Skip ]
+fast/events/pointer/ios [ Skip ]
 fast/events/touch/ios [ Skip ]
 fast/history/ios [ Skip ]
 fast/scrolling/ios [ Skip ]
@@ -216,6 +217,11 @@ webkit.org/b/188246 imported/w3c/web-platform-tests/service-workers/service-work
 # Console log lines may appear in a different order so we silence them.
 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-weird.html [ DumpJSConsoleLogInStdErr ]
+
+# Newly imported WPT tests that are timing out.
+imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-origin-idna.sub.window.html [ Skip ]
+imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location_assign.html [ Skip ]
+imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/per-global.window.html [ Skip ]
 
 # Line number in the console logging may change so we silence it to avoid flakiness.
 http/tests/security/frame-loading-via-document-write.html [ DumpJSConsoleLogInStdErr ]
@@ -417,6 +423,8 @@ fast/canvas/webgl/context-update-on-display-configuration.html [ Skip ]
 
 fast/misc/valid-primary-screen-displayID.html [ Skip ]
 
+fast/events/detect-caps-lock.html [ Skip ]
+
 # This test currently only works for mac-wk2
 fast/events/inactive-window-no-mouse-event.html [ Skip ]
 
@@ -483,8 +491,6 @@ webkit.org/b/126166 [ Debug ] js/dfg-uint32array-overflow-values.html [ Skip ]
 fast/harness/sample-fail-mismatch-reftest.html [ WontFix ImageOnlyFailure ]
 
 webkit.org/b/127697 fast/writing-mode/ruby-text-logical-left.html [ Skip ]
-
-webkit.org/b/83618 fast/dom/inline-event-attributes-release.html [ Failure ]
 
 webkit.org/b/129057 media/controls-styling-strict.html [ Pass Failure ]
 
@@ -1218,8 +1224,10 @@ webrtc/simulcast-h264.html [ Slow ]
 webrtc/datachannel/multiple-connections.html [ Slow ]
 webkit.org/b/171094 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html [ Failure ]
 webkit.org/b/172f21 imported/w3c/web-platform-tests/webrtc/getstats.html [ Failure ]
-imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-ontrack.https.html [ Skip ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription-offer.html [ Failure ]
+imported/w3c/web-platform-tests/webrtc/RTCRtpTransceiver.https.html [ Failure ]
+# Skip timing out test
+imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription-tracks.https.html [ Skip ]
 
 # Uses legacy WebRTC API.
 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/setRemoteDescription.html [ Skip ]
@@ -2036,16 +2044,9 @@ webkit.org/b/177997 webgl/1.0.2/conformance/textures/copy-tex-image-2d-formats.h
 
 webkit.org/b/179069 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/sandbox_032.htm [ Pass Failure ]
 
-webkit.org/b/181116 imported/w3c/web-platform-tests/web-animations/interfaces/Animation/finished.html [ Pass Failure ]
-webkit.org/b/181120 imported/w3c/web-platform-tests/web-animations/interfaces/Animation/onfinish.html [ Pass Failure ]
 webkit.org/b/181121 imported/w3c/web-platform-tests/web-animations/timing-model/animations/updating-the-finished-state.html [ Pass Failure ]
-webkit.org/b/181122 imported/w3c/web-platform-tests/web-animations/interfaces/AnimationEffectTiming/endDelay.html [ Pass Failure ]
-webkit.org/b/181123 imported/w3c/web-platform-tests/web-animations/interfaces/Animation/finish.html [ Pass Failure ]
-webkit.org/b/181888 imported/w3c/web-platform-tests/web-animations/timing-model/animation-effects/current-iteration.html [ Pass Failure ]
 
 webkit.org/b/183836 imported/mozilla/css-animations/test_animations-dynamic-changes.html [ Pass Failure Timeout ]
-webkit.org/b/183837 imported/mozilla/css-transitions/test_document-get-animations.html [ Pass Failure Timeout ]
-webkit.org/b/183840 imported/mozilla/css-animations/test_document-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183844 imported/mozilla/css-animations/test_element-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183846 imported/mozilla/css-transitions/test_pseudoElement-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183847 imported/mozilla/css-animations/test_event-order.html [ Pass Failure Timeout ]

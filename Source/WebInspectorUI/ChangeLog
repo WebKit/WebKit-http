@@ -1,3 +1,498 @@
+2018-11-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix "Javascript" => "JavaScript" enum in protocol generated objects
+        https://bugs.webkit.org/show_bug.cgi?id=191340
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.fromPayload):
+        Insert a missing break statement for the WebGPU case.
+
+        * UserInterface/Models/MemoryTimelineRecord.js:
+        (WI.MemoryTimelineRecord.memoryCategoriesFromProtocol):
+        Use new enum name.
+
+        * UserInterface/Protocol/Legacy/10.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/10.3/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/11.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/11.3/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/12.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.3/InspectorBackendCommands.js:
+        Update enums with new generator.
+
+2018-11-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: Web Inspector: Popovers drawing incorrectly in Network Tab (clicking between a few items)
+        https://bugs.webkit.org/show_bug.cgi?id=191323
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/Popover.js:
+        (WI.Popover.prototype._drawBackground):
+        Save and restore the context state between updates. Something
+        was affecting the clearRect, making it so that it didn't actually
+        clear the entire rect each time.
+
+2018-11-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: turn off Start button when all tests are removed
+        https://bugs.webkit.org/show_bug.cgi?id=191235
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel.prototype._handleAuditTestRemoved):
+
+2018-11-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Table selection should not require that rows be in the cache
+        https://bugs.webkit.org/show_bug.cgi?id=190993
+        <rdar://problem/45613812>
+
+        Reviewed by Devin Rousso.
+
+        Deselecting a table row shouldn't depend on it being in the cache. This
+        allows us to implement select all, and other kinds of bulk selection
+        actions that affect rows that haven't been revealed.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype.deselectRow):
+
+2018-11-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: show save/restore stack for recorded 2D Canvases
+        https://bugs.webkit.org/show_bug.cgi?id=175283
+        <rdar://problem/34040756>
+
+        Reviewed by Matt Baker.
+
+        Instead of using plain objects for holding the `WI.Recording`'s state, use a model object
+        so that more data can be passed around. When visualizing the state, show any previously
+        saved states in a `WI.DetailsSection` underneath the current state. If there are no saved
+        states (meaning there is only the current state), don't use a `WI.DetailsSection`.
+
+        * UserInterface/Models/RecordingState.js: Added.
+        (WI.RecordingState):
+        (WI.RecordingState.fromContext):
+        (WI.RecordingState.async swizzleInitialState):
+        (WI.RecordingState.prototype.get source):
+        (WI.RecordingState.prototype.has):
+        (WI.RecordingState.prototype.get return):
+        (WI.RecordingState.prototype.toJSON):
+        (WI.RecordingState.prototype.[Symbol.iterator]):
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording.prototype.async _process):
+        (WI.Recording.prototype.async _swizzleState): Deleted.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction.prototype.process):
+        (WI.RecordingAction.deriveCurrentState): Deleted.
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype._generateContentCanvas2D):
+
+        * UserInterface/Views/RecordingStateDetailsSidebarPanel.js:
+        (WI.RecordingStateDetailsSidebarPanel):
+        (WI.RecordingStateDetailsSidebarPanel.prototype.get scrollElement):
+        (WI.RecordingStateDetailsSidebarPanel.prototype.sizeDidChange): Added.
+        (WI.RecordingStateDetailsSidebarPanel.prototype._generateDetailsCanvas2D):
+        (WI.RecordingStateDetailsSidebarPanel.prototype._generateDetailsCanvas2D.isColorProperty): Deleted.
+        (WI.RecordingStateDetailsSidebarPanel.prototype._generateDetailsCanvas2D.createInlineSwatch): Deleted.
+        * UserInterface/Views/RecordingStateDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.recording-state > .content .details-section > .header .source): Added.
+        (.sidebar > .panel.details.recording-state > .content .data-grid tr.modified): Added.
+        (.sidebar > .panel.details.recording-state > .content .data-grid tr:not(.selected).non-standard .name-column): Added.
+        (.sidebar > .panel.details.recording-state > .content .data-grid tr:not(.selected) .unavailable): Added.
+        (.sidebar > .panel.details.recording-state > .content .data-grid .inline-swatch): Added.
+        (.sidebar > .panel.details.recording-state > .content > .data-grid tr.modified): Deleted.
+        (.sidebar > .panel.details.recording-state > .content > .data-grid tr:not(.selected).non-standard): Deleted.
+        (.sidebar > .panel.details.recording-state > .content > .data-grid tr:not(.selected) .unavailable): Deleted.
+        (.sidebar > .panel.details.recording-state > .content > .data-grid .inline-swatch): Deleted.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-11-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: capture changes to <canvas> that would affect the recorded context
+        https://bugs.webkit.org/show_bug.cgi?id=190854
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.isFunctionForType):
+        (WI.RecordingAction.constantNameForParameter):
+        (WI.RecordingAction.prototype.get contextReplacer): Added.
+        (WI.RecordingAction.prototype.async.swizzle):
+        (WI.RecordingAction.prototype.apply):
+        Create a constant list of actions for each recording type that need to replace the context
+        with a different value before being applied (e.g. `width` should be applied to the
+        `context`'s `canvas` instead of directly to the `context`).
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype._generateContentCanvas2D.actionModifiesPath): Added.
+        (WI.RecordingContentView.prototype._generateContentCanvas2D):
+        (WI.RecordingContentView._actionModifiesPath): Deleted.
+        Generate the path context after the actions are applied to the preview context so that the
+        final width/height are known and can be used. This is needed because changing the
+        width/height causes the content to be erased.
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement._generateDOM):
+        (WI.RecordingActionTreeElement._classNameForAction):
+        * UserInterface/Views/RecordingActionTreeElement.css:
+        (.tree-outline:focus .item.action.selected:not(.invalid, .initial-state, .has-context-replacer) > .icon): Added.
+        (.item.action > .titles .context-replacer::after): Added.
+        (.item.action.has-context-replacer > .icon): Added.
+        (@media (prefers-dark-interface) .item.action:not(.invalid, .initial-state, .has-context-replacer) > .icon): Added.
+        (.tree-outline:focus .item.action.selected:not(.initial-state, .invalid) > .icon): Deleted.
+        (@media (prefers-dark-interface) .item.action:not(.initial-state) > .icon): Deleted.
+        (@media (prefers-dark-interface) .tree-outline:not(.hide-disclosure-buttons) .item.action:not(.initial-state, .parent) > .icon): Deleted.
+        Add the context replacer text to the beginning of the action's name if it exists.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView.prototype._refreshPixelSize):
+        (WI.CanvasContentView.prototype._updatePixelSize): Deleted.
+        Update preview image when the canvas' size changes.
+
+2018-11-02  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: support multiple selection/deletion of cookie records
+        https://bugs.webkit.org/show_bug.cgi?id=66381
+        <rdar://problem/19281525>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WI.CookieStorageContentView):
+        (WI.CookieStorageContentView.prototype.get scrollableElements):
+        (WI.CookieStorageContentView.prototype.tableNumberOfRows):
+        (WI.CookieStorageContentView.prototype.tableSortChanged):
+        (WI.CookieStorageContentView.prototype.tableCellContextMenuClicked):
+        (WI.CookieStorageContentView.prototype.tableDidRemoveRows):
+        (WI.CookieStorageContentView.prototype.tablePopulateCell):
+        (WI.CookieStorageContentView.prototype.initialLayout):
+        (WI.CookieStorageContentView.prototype._generateSortComparator):
+        (WI.CookieStorageContentView.prototype._refreshButtonClicked):
+        (WI.CookieStorageContentView.prototype._reloadCookies):
+        (WI.CookieStorageContentView.prototype._updateSort):
+        (WI.CookieStorageContentView.prototype._handleTableKeyDown):
+        (WI.CookieStorageContentView.prototype.update): Deleted.
+        (WI.CookieStorageContentView.prototype._rebuildTable): Deleted.
+        (WI.CookieStorageContentView.prototype._sortDataGrid.localeCompare): Deleted.
+        (WI.CookieStorageContentView.prototype._sortDataGrid.numberCompare): Deleted.
+        (WI.CookieStorageContentView.prototype._sortDataGrid.expiresCompare): Deleted.
+        (WI.CookieStorageContentView.prototype._sortDataGrid): Deleted.
+        (WI.CookieStorageContentView.prototype._deleteCallback): Deleted.
+        Replace DataGrid with Table. The content view serves as the table
+        delegate and data source, and handles delete and backspace key events
+        to allow deleting the selected cookies. Cookies may also be deleted from
+        the table context menu and a new button in the navigation bar.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype.isRowSelected):
+        (WI.Table.prototype.selectRow):
+        (WI.Table.prototype.deselectRow):
+        (WI.Table.prototype.removeRow):
+        (WI.Table.prototype._getOrCreateRow):
+        (WI.Table.prototype._handleMouseDown):
+        (WI.Table.prototype._removeRows):
+        (WI.Table.prototype._isRowSelected): Deleted.
+        Make `isSelectedRow` public. It is more convenient and efficient than
+        calling `Table.prototype.selectedRows.includes(rowIndex)`.
+
+2018-11-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: View: introduce a didLayoutSubtree
+        https://bugs.webkit.org/show_bug.cgi?id=191176
+
+        Reviewed by Matt Baker.
+
+        Introduce logic to allow subclasses of `WI.View` to perform logic after every `WI.View` in
+        their subtree has finished `layout`.
+
+        * UserInterface/Views/View.js:
+        (WI.View.prototype.didLayoutSubtree): Added.
+        (WI.View.prototype._layoutSubtree):
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.layout):
+        (WI.NetworkTableContentView.prototype.didLayoutSubtree): Added.
+
+2018-11-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: remove unnecessary media event tracking
+        https://bugs.webkit.org/show_bug.cgi?id=191174
+
+        Reviewed by Joseph Pecoraro.
+
+        Renames "Group by Node" to "Group Media Requests" for clarity.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype.showRepresentedObject):
+        (WI.NetworkTableContentView.prototype.networkDetailViewClose):
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph.createDOMEventLine):
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph):
+        (WI.NetworkTableContentView.prototype.layout):
+        (WI.NetworkTableContentView.prototype._entryForDOMNode):
+        (WI.NetworkTableContentView.prototype._handleGroupByDOMNodeCheckedDidChange):
+        (WI.NetworkTableContentView.prototype._restoreSelectedRow):
+        (WI.NetworkTableContentView.prototype._handleResourceEntryMousedownWaterfall):
+        (WI.NetworkTableContentView.prototype._handleNodeEntryMousedownWaterfall):
+        (WI.NetworkTableContentView.prototype._handleMousedownWaterfall):
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.network-table .data-container .cell.name .range): Added.
+        (.network-table .data-container .cell.name .range::before): Added.
+        (.network-table:focus .data-container li.selected .cell.name .range): Added.
+        (@media (prefers-dark-interface) .network-table .data-container .cell.name .range): Added.
+        Always display the "Byte Range" title as a "subtitle", regardless of the media requests
+        setting being toggled.
+        Drive-by: update the position of the waterfall popover whenever the time range changes.
+        Drive-by: close the details view if a node is selected and the media requests setting is
+        turned off.
+
+        * UserInterface/Views/Popover.js:
+        (WI.Popover.prototype.resize): Added.
+        (WI.Popover.prototype.handleEvent):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-11-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: TypeError: null is not an object (evaluating 'mouseBlock.addEventListener')
+        https://bugs.webkit.org/show_bug.cgi?id=191020
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WI.TimelineRuler):
+        Since `undefined` is not a number, it isn't less than `0`, which caused us to divide by
+        `undefined` (equivalent to dividing by `0`), resulting in `NaN`.
+
+2018-11-01  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Uncaught Exception: TypeError: undefined is not an object (evaluating 'WI.modifierKeys.metaKey') (at ScopeBarItem.js:87:67)
+        https://bugs.webkit.org/show_bug.cgi?id=191173
+
+        Reviewed by Devin Rousso.
+
+        WI.modifierKeys was accessed before it was initialized. Move it from WI.contentLoaded to WI.loaded,
+        which happens before WI.contentLoaded.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        (WI.contentLoaded):
+
+2018-11-01  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION(r237652): Web Inspector: dumpInspectorProtocolMessages is always enabled
+        https://bugs.webkit.org/show_bug.cgi?id=191161
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.get dumpInspectorProtocolMessages):
+
+2018-11-01  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Toggle selected properties by pressing Space or Command+/
+        https://bugs.webkit.org/show_bug.cgi?id=181145
+        <rdar://problem/36203388>
+
+        Reviewed by Brian Burg.
+
+        Pressing Space key or Command-/ toggles (comments out or uncomments) selected properties.
+
+        This patch only works with "Enable Selection of Multiple Properties" checked. It shouldn't introduce any
+        changes when this setting is unchecked.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get selectionRange):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.selectProperties):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyCopy):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._handleKeyDown):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty):
+        (WI.SpreadsheetStyleProperty.prototype.update): Renamed from _update.
+        (WI.SpreadsheetStyleProperty.prototype.updateStatus):
+        (WI.SpreadsheetStyleProperty.prototype.applyFilter):
+        (WI.SpreadsheetStyleProperty.prototype.handleCopyEvent):
+        Make `update` method public. No other changes were made.
+
+2018-10-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: create a setting for auto-recording newly created contexts
+        https://bugs.webkit.org/show_bug.cgi?id=190856
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.supportsRecordingAutoCapture): Added.
+        (WI.CanvasManager.prototype.setRecordingAutoCaptureFrameCount): Added.
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.prototype.startRecording):
+        (WI.Canvas.prototype.recordingStarted):
+        (WI.Canvas.prototype.recordingFinished):
+
+        * UserInterface/Models/Recording.js:
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView):
+        (WI.CanvasOverviewContentView.prototype.get navigationItems):
+        (WI.CanvasOverviewContentView.prototype.initialLayout): Added.
+        (WI.CanvasOverviewContentView.prototype.attached):
+        (WI.CanvasOverviewContentView.prototype.detached):
+        (WI.CanvasOverviewContentView.prototype._setRecordingAutoCaptureFrameCount): Added.
+        (WI.CanvasOverviewContentView.prototype._updateRecordingAutoCaptureInputElementSize): Added.
+        (WI.CanvasOverviewContentView.prototype._handleRecordingAutoCaptureInput): Added.
+        (WI.CanvasOverviewContentView.prototype._handleRecordingAutoCaptureCheckedDidChange): Added.
+        (WI.CanvasOverviewContentView.prototype._handleCanvasRecordingAutoCaptureEnabledChanged): Added.
+        (WI.CanvasOverviewContentView.prototype._handleCanvasRecordingAutoCaptureFrameCountChanged): Added.
+        * UserInterface/Views/CanvasOverviewContentView.css:
+        (.navigation-bar > .item.canvas-recording-auto-capture > label): Added.
+        (.navigation-bar > .item.canvas-recording-auto-capture > label > input): Added.
+        (.navigation-bar > .item.canvas-recording-auto-capture > label > input::-webkit-inner-spin-button): Added.
+        (.popover-content > .tree-outline .item.recording > .icon): Deleted.
+        (.popover-content > .tree-outline .item.recording:hover): Deleted.
+        (.popover-content > .tree-outline .item.recording:hover > .icon): Deleted.
+        Drive-by: removed unused CSS rules.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView.prototype.initialLayout):
+        (WI.CanvasContentView.prototype._updateProgressView):
+        (WI.CanvasContentView.prototype._updateViewRelatedItems):
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView.prototype._recordingImportedOrStopped):
+
+        * UserInterface/Views/CheckboxNavigationItem.js:
+        (WI.CheckboxNavigationItem):
+        (WI.CheckboxNavigationItem.prototype._handleLabelClick): Added.
+
+        * UserInterface/Base/Setting.js:
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-10-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: display low-power enter/exit events in Timelines and Network node waterfalls
+        https://bugs.webkit.org/show_bug.cgi?id=190641
+        <rdar://problem/45319049>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/DOMObserver.js:
+        (WI.DOMObserver.prototype.videoLowPowerChanged): Added.
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.prototype.videoLowPowerChanged): Added.
+
+        * UserInterface/Models/DOMNode.js:
+        (WI.DOMNode):
+        (WI.DOMNode.prototype.get lowPowerRanges): Added.
+        (WI.DOMNode.prototype.videoLowPowerChanged): Added.
+        (WI.DOMNode.prototype.canEnterLowPowerMode): Added.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateDomainCell):
+        (WI.NetworkTableContentView.prototype._tryLinkResourceToDOMNode):
+        (WI.NetworkTableContentView.prototype._handleNodeLowPowerChanged): Added.
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.network-table :not(.header) .cell.waterfall .waterfall-container > .area):
+        (.network-table :not(.header) .cell.waterfall .waterfall-container > .area.dom-fullscreen): Added.
+        (.network-table :not(.header) .cell.waterfall .waterfall-container > .area.low-power): Added.
+        (.network-table :not(.header) .cell.waterfall .waterfall-container > .dom-fullscreen): Deleted.
+
+        * UserInterface/Views/DOMNodeEventsContentView.js:
+        (WI.DOMNodeEventsContentView):
+        (WI.DOMNodeEventsContentView.prototype.initialLayout):
+        (WI.DOMNodeEventsContentView.prototype.closed): Deleted.
+        (WI.DOMNodeEventsContentView.prototype._handleDOMNodeDidFireEvent): Deleted.
+
+        * UserInterface/Views/DOMEventsBreakdownView.js:
+        (WI.DOMEventsBreakdownView):
+        (WI.DOMEventsBreakdownView.prototype.initialLayout):
+        (WI.DOMEventsBreakdownView.prototype.layout): Added.
+        (WI.DOMEventsBreakdownView.prototype._handleDOMNodeDidFireEvent): Added.
+        (WI.DOMEventsBreakdownView.prototype._handleDOMNodeLowPowerChanged): Added.
+        (WI.DOMEventsBreakdownView.prototype.addEvent): Deleted.
+        (WI.DOMEventsBreakdownView.prototype._populateTable.percentOfTotalTime): Deleted.
+        (WI.DOMEventsBreakdownView.prototype._populateTable): Deleted.
+        * UserInterface/Views/DOMEventsBreakdownView.css:
+        (.dom-events-breakdown .graph > .area): Added.
+        (.dom-events-breakdown .graph > .area.fullscreen):
+        (.dom-events-breakdown .graph > .area.low-power): Added.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-10-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: save imported audits across WebInspector sessions
+        https://bugs.webkit.org/show_bug.cgi?id=190858
+        <rdar://problem/45527625>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/ObjectStore.js: Added.
+        (WI.ObjectStore):
+        (WI.ObjectStore.supported):
+        (WI.ObjectStore._open):
+        (WI.ObjectStore.get _databaseName):
+        (WI.ObjectStore.prototype.associateObject):
+        (WI.ObjectStore.prototype.async getAll):
+        (WI.ObjectStore.prototype.async add):
+        (WI.ObjectStore.prototype.async addObject):
+        (WI.ObjectStore.prototype.async delete):
+        (WI.ObjectStore.prototype.async deleteObject):
+        (WI.ObjectStore.prototype._resolveKeyPath):
+        (WI.ObjectStore.prototype.async _operation.listener):
+        (WI.ObjectStore.prototype.async _operation):
+        Wrapper for a global `IndexedDB` instance for all of WebInspector (per level). Instances of
+        `WI.ObjectStore` are able to control a given `IDBObjectStore` using a promise-based API.
+
+        *NOTE*: due to the constraint that `IDBObjectStore`s are only able to be created when the
+        owner `IndexedDB` is "upgrade"d, all `WI.ObjectStore` must be declared before the database
+        is opened for the first time. Additionally, any time a new `WI.ObjectStore` is added, the
+        `version` needs to be incremented to ensure that the "upgrade" event fires.
+
+        To use any of the `*Object` functions, one must implement a `toJSON` on the object provided.
+        This is so that `WI.ObjectStore` is able to add the resulting identifier value to the owner
+        object while storing its `toJSON` value in the IndexedDB (e.g. for objects that have cycles).
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.import):
+        (WI.AuditManager.prototype.loadStoredTests): Added.
+        (WI.AuditManager.prototype.removeTest): Added.
+        (WI.AuditManager.prototype._addTest):
+
+        * UserInterface/Views/AuditTabContentView.js:
+        (WI.AuditTabContentView.prototype.initialLayout): Added.
+        Attempt to load stored audits when the Audit tab is first shown (lazy-load).
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel.prototype.initialLayout):
+        (WI.AuditNavigationSidebarPanel.prototype._handleAuditTestRemoved): Added.
+
+        * UserInterface/Views/AuditTreeElement.js:
+        (WI.AuditTreeElement.prototype.ondelete):
+        Only allow top-level audits to be deleted, as that is what matches the `WI.ObjectStore`.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+
 2018-10-31  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Move a few remaining global WI settings to WI.settings

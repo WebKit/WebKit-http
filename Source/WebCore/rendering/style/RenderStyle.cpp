@@ -536,14 +536,11 @@ inline bool RenderStyle::changeAffectsVisualOverflow(const RenderStyle& other) c
         return true;
 
     if (m_inheritedFlags.textDecorations != other.m_inheritedFlags.textDecorations
-        || m_visualData->textDecoration != other.m_visualData->textDecoration
-        || m_rareNonInheritedData->textDecorationStyle != other.m_rareNonInheritedData->textDecorationStyle) {
-        // Underlines are always drawn outside of their textbox bounds when text-underline-position: under;
-        // is specified. We can take an early out here.
-        if (textUnderlinePosition() == TextUnderlinePosition::Under
-            || other.textUnderlinePosition() == TextUnderlinePosition::Under)
-            return true;
-        return visualOverflowForDecorations(*this, nullptr) != visualOverflowForDecorations(other, nullptr);
+        || m_rareNonInheritedData->textDecorationStyle != other.m_rareNonInheritedData->textDecorationStyle
+        || m_rareInheritedData->textDecorationThickness != other.m_rareInheritedData->textDecorationThickness
+        || m_rareInheritedData->textUnderlineOffset != other.m_rareInheritedData->textUnderlineOffset
+        || m_rareInheritedData->textUnderlinePosition != other.m_rareInheritedData->textUnderlinePosition) {
+        return true;
     }
 
     if (hasOutlineInVisualOverflow() != other.hasOutlineInVisualOverflow())
@@ -2297,89 +2294,6 @@ bool RenderStyle::hasReferenceFilterOnly() const
         return false;
     auto& filterOperations = m_rareNonInheritedData->filter->operations;
     return filterOperations.size() == 1 && filterOperations.at(0)->type() == FilterOperation::REFERENCE;
-}
-
-void RenderStyle::checkVariablesInCustomProperties(const CSSRegisteredCustomPropertySet& registeredProperties, const RenderStyle* parentStyle, const StyleResolver& styleResolver)
-{
-    bool shouldUpdateInherited = m_rareInheritedData->customProperties->containsVariables || m_rareInheritedData->customProperties->containsUnresolvedRegisteredProperties;
-    bool shouldUpdateNonInherited = m_rareNonInheritedData->customProperties->containsVariables || m_rareNonInheritedData->customProperties->containsUnresolvedRegisteredProperties;
-    auto* inheritedPropertyData = shouldUpdateInherited ? &m_rareInheritedData.access().customProperties.access() : nullptr;
-    auto* nonInheritedPropertyData = shouldUpdateNonInherited ? &m_rareNonInheritedData.access().customProperties.access() : nullptr;
-
-    HashSet<AtomicString> invalidProperties;
-
-    for (auto* customPropertyData : { inheritedPropertyData, nonInheritedPropertyData }) {
-        if (!customPropertyData)
-            continue;
-
-        // Our first pass checks the variables for validity and replaces any properties that became
-        // invalid with empty values.
-        auto& customProperties = customPropertyData->values;
-        for (auto& entry : customProperties) {
-            if (!entry.value->containsVariables())
-                continue;
-            HashSet<AtomicString> seenProperties;
-            entry.value->checkVariablesForCycles(entry.key, *this, seenProperties, invalidProperties);
-        }
-
-        auto invalidValue = CSSCustomPropertyValue::createInvalid();
-
-        // Now insert invalid values, or defaults if the property is registered.
-        if (!invalidProperties.isEmpty()) {
-            for (auto& property : invalidProperties) {
-                if (!customProperties.contains(property))
-                    continue;
-                
-                const RefPtr<CSSCustomPropertyValue>* parentProperty = nullptr;
-                if (parentStyle) {
-                    auto iterator = parentStyle->inheritedCustomProperties().find(property);
-                    if (iterator != parentStyle->inheritedCustomProperties().end() && iterator.get() && iterator.get()->value)
-                        parentProperty = &iterator.get()->value;
-                }
-
-                auto* registered = registeredProperties.get(property);
-
-                if (registered && registered->inherits && parentProperty)
-                    customProperties.set(property, parentProperty->copyRef());
-                else if (registered && registered->initialValue())
-                    customProperties.set(property, registered->initialValueCopy());
-                else
-                    customProperties.set(property, invalidValue.copyRef());
-            }
-        }
-
-        // Now that all of the properties have been tested for validity and replaced with
-        // invalid values if they failed, we can perform variable substitution on the valid values.
-        Vector<Ref<CSSCustomPropertyValue>> resolvedValues;
-        for (auto entry : customProperties) {
-            if (!entry.value->containsVariables())
-                continue;
-            entry.value->resolveVariableReferences(registeredProperties, resolvedValues, *this);
-        }
-
-        // With all results computed, we can now mutate our table to eliminate the variables and
-        // hold the final values. This way when we inherit, we don't end up resubstituting variables, etc.
-        for (auto& resolvedValue : resolvedValues)
-            customProperties.set(resolvedValue->name(), resolvedValue.copyRef());
-
-        // Finally we can resolve registered custom properties to their typed values.
-        for (auto& entry : customProperties) {
-            auto& name = entry.value->name();
-            auto* registered = registeredProperties.get(name);
-
-            if (!registered)
-                continue;
-
-            auto primitiveVal = styleResolver.resolvedVariableValue(CSSPropertyCustom, *entry.value);
-            if (!primitiveVal || !primitiveVal->isPrimitiveValue())
-                entry.value = invalidValue.copyRef();
-            else
-                entry.value->setResolvedTypedValue(StyleBuilderConverter::convertLength(styleResolver, *primitiveVal));
-        }
-
-        customPropertyData->containsVariables = false;
-        customPropertyData->containsUnresolvedRegisteredProperties = false;
-    }
 }
 
 float RenderStyle::outlineWidth() const

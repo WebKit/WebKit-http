@@ -28,14 +28,17 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WebGPUSwapChainDescriptor.h"
+#include "WebGPUDevice.h"
 
 namespace WebCore {
 
 WebGPUSwapChain::~WebGPUSwapChain() = default;
 
-void WebGPUSwapChain::configure(const WebGPUSwapChainDescriptor& descriptor)
+void WebGPUSwapChain::configure(Descriptor&& descriptor)
 {
+    if (descriptor.device)
+        m_swapChain->setDevice(descriptor.device->device());
+
     reshape(descriptor.width, descriptor.height);
 }
 
@@ -46,13 +49,12 @@ void WebGPUSwapChain::present()
 
 void WebGPUSwapChain::reshape(int width, int height)
 {
-    m_width = width;
-    m_height = height;
+    m_swapChain->reshape(width, height);
 }
 
 void WebGPUSwapChain::markLayerComposited()
 {
-    // FIXME: Unimplemented stub.
+    m_swapChain->present();
 }
 
 } // namespace WebCore

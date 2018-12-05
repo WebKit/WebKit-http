@@ -378,6 +378,13 @@ void TestRunner::disallowIncreaseForApplicationCacheQuota()
     m_disallowIncreaseForApplicationCacheQuota = true;
 }
 
+void TestRunner::setIDBPerOriginQuota(uint64_t quota)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetIDBPerOriginQuota"));
+    WKRetainPtr<WKUInt64Ref> messageBody(AdoptWK, WKUInt64Create(quota));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
+}
+
 static inline JSValueRef stringArrayToJS(JSContextRef context, WKArrayRef strings)
 {
     const size_t count = WKArrayGetSize(strings);
@@ -431,9 +438,9 @@ void TestRunner::setMediaDevicesEnabled(bool enabled)
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
-void TestRunner::setMDNSICECandidatesEnabled(bool enabled)
+void TestRunner::setWebRTCMDNSICECandidatesEnabled(bool enabled)
 {
-    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitMDNSICECandidatesEnabled"));
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitWebRTCMDNSICECandidatesEnabled"));
     auto& injectedBundle = InjectedBundle::singleton();
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
@@ -2504,6 +2511,12 @@ bool TestRunner::keyExistsInKeychain(JSStringRef attrLabel, JSStringRef applicat
     WKTypeRef returnData = 0;
     WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), &returnData);
     return WKBooleanGetValue(static_cast<WKBooleanRef>(returnData));
+}
+
+void TestRunner::toggleCapsLock()
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("ToggleCapsLock"));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), nullptr, nullptr);
 }
 
 } // namespace WTR

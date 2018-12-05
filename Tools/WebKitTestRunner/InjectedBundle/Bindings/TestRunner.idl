@@ -133,6 +133,9 @@ interface TestRunner {
     attribute double databaseDefaultQuota;
     attribute double databaseMaxQuota;
 
+    // IndexedDB API
+    void setIDBPerOriginQuota(unsigned long long quota);
+
     // Application Cache API
     void clearAllApplicationCaches();
     void setAppCacheMaximumSize(unsigned long long size);
@@ -322,7 +325,7 @@ interface TestRunner {
     // Open panel
     void setOpenPanelFiles(object filesArray);
 
-    void setMDNSICECandidatesEnabled(boolean value);
+    void setWebRTCMDNSICECandidatesEnabled(boolean value);
     void setWebRTCUnifiedPlanEnabled(boolean value);
     void setCustomUserAgent(DOMString userAgent);
 
@@ -356,4 +359,6 @@ interface TestRunner {
     void addTestKeyToKeychain(DOMString privateKeyBase64, DOMString attrLabel, DOMString applicationTagBase64);
     void cleanUpKeychain(DOMString attrLabel);
     boolean keyExistsInKeychain(DOMString attrLabel, DOMString applicationTagBase64);
+
+    void toggleCapsLock();
 };

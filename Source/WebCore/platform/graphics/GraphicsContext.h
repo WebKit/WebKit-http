@@ -77,10 +77,6 @@ class Font;
 class GlyphBuffer;
 #endif
 
-const int cMisspellingLineThickness = 3;
-const int cMisspellingLinePatternWidth = 4;
-const int cMisspellingLinePatternGapWidth = 1;
-
 class AffineTransform;
 class FloatRoundedRect;
 class Gradient;
@@ -113,12 +109,15 @@ enum StrokeStyle {
     WavyStroke,
 };
 
-enum class DocumentMarkerLineStyle : uint8_t {
-    TextCheckingDictationPhraseWithAlternatives,
-    Spelling,
-    Grammar,
-    AutocorrectionReplacement,
-    DictationAlternatives
+struct DocumentMarkerLineStyle {
+    enum class Mode : uint8_t {
+        TextCheckingDictationPhraseWithAlternatives,
+        Spelling,
+        Grammar,
+        AutocorrectionReplacement,
+        DictationAlternatives
+    } mode;
+    bool shouldUseDarkAppearance { false };
 };
 
 namespace DisplayList {
@@ -423,10 +422,10 @@ public:
     };
     FloatRect roundToDevicePixels(const FloatRect&, RoundingMode = RoundAllSides);
 
-    FloatRect computeUnderlineBoundsForText(const FloatPoint&, float width, bool printing);
-    WEBCORE_EXPORT void drawLineForText(const FloatPoint&, float width, bool printing, bool doubleLines = false, StrokeStyle = SolidStroke);
-    void drawLinesForText(const FloatPoint&, const DashArray& widths, bool printing, bool doubleLines = false, StrokeStyle = SolidStroke);
-    void drawLineForDocumentMarker(const FloatPoint&, float width, DocumentMarkerLineStyle);
+    FloatRect computeUnderlineBoundsForText(const FloatRect&, bool printing);
+    WEBCORE_EXPORT void drawLineForText(const FloatRect&, bool printing, bool doubleLines = false, StrokeStyle = SolidStroke);
+    void drawLinesForText(const FloatPoint&, float thickness, const DashArray& widths, bool printing, bool doubleLines = false, StrokeStyle = SolidStroke);
+    void drawDotsForDocumentMarker(const FloatRect&, DocumentMarkerLineStyle);
 
     WEBCORE_EXPORT void beginTransparencyLayer(float opacity);
     WEBCORE_EXPORT void endTransparencyLayer();
@@ -631,7 +630,7 @@ private:
 
     void platformFillRoundedRect(const FloatRoundedRect&, const Color&);
 
-    FloatRect computeLineBoundsAndAntialiasingModeForText(const FloatPoint&, float width, bool printing, Color&);
+    FloatRect computeLineBoundsAndAntialiasingModeForText(const FloatRect&, bool printing, Color&);
 
     float dashedLineCornerWidthForStrokeWidth(float) const;
     float dashedLinePatternWidthForStrokeWidth(float) const;

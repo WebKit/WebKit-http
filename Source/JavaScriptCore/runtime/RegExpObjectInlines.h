@@ -85,6 +85,7 @@ inline JSValue RegExpObject::execInline(ExecState* exec, JSGlobalObject* globalO
     JSArray* array =
         createRegExpMatchesArray(vm, globalObject, string, input, regExp, lastIndex, result);
     if (!array) {
+        RETURN_IF_EXCEPTION(scope, { });
         scope.release();
         if (globalOrSticky)
             setLastIndex(exec, 0);
@@ -110,8 +111,10 @@ inline MatchResult RegExpObject::matchInline(
     String input = string->value(exec);
     RETURN_IF_EXCEPTION(scope, { });
 
-    if (!regExp->global() && !regExp->sticky())
+    if (!regExp->global() && !regExp->sticky()) {
+        scope.release();
         return regExpConstructor->performMatch(vm, regExp, string, input, 0);
+    }
 
     unsigned lastIndex = getRegExpObjectLastIndexAsUnsigned(exec, this, input);
     EXCEPTION_ASSERT(!scope.exception() || (lastIndex == UINT_MAX));
@@ -119,6 +122,7 @@ inline MatchResult RegExpObject::matchInline(
         return MatchResult::failed();
     
     MatchResult result = regExpConstructor->performMatch(vm, regExp, string, input, lastIndex);
+    RETURN_IF_EXCEPTION(scope, { });
     scope.release();
     setLastIndex(exec, result.end);
     return result;
@@ -146,6 +150,7 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     MatchResult result = constructor->performMatch(vm, regExp, string, s, 0);
+    RETURN_IF_EXCEPTION(scope, { });
     if (!result)
         return jsNull();
     
@@ -166,6 +171,10 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
         if (!length)
             end = fixEnd(end);
         result = constructor->performMatch(vm, regExp, string, s, end);
+        if (UNLIKELY(scope.exception())) {
+            hasException = true;
+            return;
+        }
     };
     
     do {
@@ -190,6 +199,7 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
                 // OOM! On the other hand, if this loop concludes that the result is small enough,
                 // then the iterate() loop below will overwrite the cached result anyway.
                 result = constructor->performMatch(vm, regExp, string, s, end);
+                RETURN_IF_EXCEPTION(scope, { });
             } while (result);
             
             // OK, we have a sensible number of matches. Now we can create them for reals.

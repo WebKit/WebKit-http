@@ -26,6 +26,7 @@
 #include "config.h"
 #include "SimpleLineLayout.h"
 
+#include "DocumentMarkerController.h"
 #include "FontCache.h"
 #include "Frame.h"
 #include "GraphicsContext.h"
@@ -200,7 +201,7 @@ static AvoidanceReasonFlags canUseForStyle(const RenderStyle& style, IncludeReas
     AvoidanceReasonFlags reasons = { };
     if (style.textOverflow() == TextOverflow::Ellipsis)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasTextOverflow, reasons, includeReasons);
-    if ((style.textDecorationsInEffect() & TextDecoration::Underline) && style.textUnderlinePosition() == TextUnderlinePosition::Under)
+    if ((style.textDecorationsInEffect() & TextDecoration::Underline) && (style.textUnderlinePosition() != TextUnderlinePosition::Auto || !style.textUnderlineOffset().isAuto() || !style.textDecorationThickness().isAuto()))
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasUnsupportedUnderlineDecoration, reasons, includeReasons);
     // Non-visible overflow should be pretty easy to support.
     if (style.overflowX() != Overflow::Visible || style.overflowY() != Overflow::Visible)
@@ -313,6 +314,9 @@ AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow& flow, IncludeRea
         if (child->selectionState() != RenderObject::SelectionNone)
             SET_REASON_AND_RETURN_IF_NEEDED(FlowChildIsSelected, reasons, includeReasons);
         if (is<RenderText>(*child)) {
+            const auto& renderText = downcast<RenderText>(*child);
+            if (!renderText.document().markers().markersFor(renderText.textNode()).isEmpty())
+                SET_REASON_AND_RETURN_IF_NEEDED(FlowIncludesDocumentMarkers, reasons, includeReasons);
             child = child->nextSibling();
             continue;
         }

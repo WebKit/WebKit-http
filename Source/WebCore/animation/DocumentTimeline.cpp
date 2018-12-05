@@ -27,14 +27,19 @@
 #include "DocumentTimeline.h"
 
 #include "AnimationPlaybackEvent.h"
+#include "CSSAnimation.h"
 #include "CSSPropertyAnimation.h"
+#include "CSSTransition.h"
 #include "DOMWindow.h"
 #include "DeclarativeAnimation.h"
 #include "Document.h"
+#include "DocumentAnimationScheduler.h"
 #include "GraphicsLayer.h"
 #include "KeyframeEffect.h"
 #include "Microtasks.h"
+#include "Node.h"
 #include "Page.h"
+#include "PseudoElement.h"
 #include "RenderElement.h"
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
@@ -81,20 +86,108 @@ void DocumentTimeline::detachFromDocument()
     m_document = nullptr;
 }
 
+static inline bool compareDeclarativeAnimationOwningElementPositionsInDocumentTreeOrder(Element* lhsOwningElement, Element* rhsOwningElement)
+{
+    // With regard to pseudo-elements, the sort order is as follows:
+    //     - element
+    //     - ::before
+    //     - ::after
+    //     - element children
+    
+    // We could be comparing two pseudo-elements that are hosted on the same element.
+    if (is<PseudoElement>(lhsOwningElement) && is<PseudoElement>(rhsOwningElement)) {
+        auto* lhsPseudoElement = downcast<PseudoElement>(lhsOwningElement);
+        auto* rhsPseudoElement = downcast<PseudoElement>(rhsOwningElement);
+        if (lhsPseudoElement->hostElement() == rhsPseudoElement->hostElement())
+            return lhsPseudoElement->isBeforePseudoElement();
+    }
+
+    // Or comparing a pseudo-element that is compared to another non-pseudo element, in which case
+    // we want to see if it's hosted on that other element, and if not use its host element to compare.
+    if (is<PseudoElement>(lhsOwningElement)) {
+        auto* lhsHostElement = downcast<PseudoElement>(lhsOwningElement)->hostElement();
+        if (rhsOwningElement == lhsHostElement)
+            return false;
+        lhsOwningElement = lhsHostElement;
+    }
+
+    if (is<PseudoElement>(rhsOwningElement)) {
+        auto* rhsHostElement = downcast<PseudoElement>(rhsOwningElement)->hostElement();
+        if (lhsOwningElement == rhsHostElement)
+            return true;
+        rhsOwningElement = rhsHostElement;
+    }
+
+    return lhsOwningElement->compareDocumentPosition(*rhsOwningElement) & Node::DOCUMENT_POSITION_FOLLOWING;
+}
+
 Vector<RefPtr<WebAnimation>> DocumentTimeline::getAnimations() const
 {
     ASSERT(m_document);
 
-    // FIXME: Filter and order the list as specified (webkit.org/b/179535).
-    Vector<RefPtr<WebAnimation>> animations;
-    for (const auto& animation : m_animations) {
-        if (animation->isRelevant() && is<KeyframeEffectReadOnly>(animation->effect())) {
-            if (auto* target = downcast<KeyframeEffectReadOnly>(animation->effect())->target()) {
-                if (target->isDescendantOf(*m_document))
-                    animations.append(animation);
-            }
-        }
+    Vector<RefPtr<WebAnimation>> cssTransitions;
+    Vector<RefPtr<WebAnimation>> cssAnimations;
+    Vector<RefPtr<WebAnimation>> webAnimations;
+
+    // First, let's get all qualifying animations in their right group.
+    for (const auto& animation : m_allAnimations) {
+        if (!animation->isRelevant() || animation->timeline() != this || !is<KeyframeEffect>(animation->effect()))
+            continue;
+
+        auto* target = downcast<KeyframeEffect>(animation->effect())->target();
+        if (!target || !target->isDescendantOf(*m_document))
+            continue;
+
+        if (is<CSSTransition>(animation) && downcast<CSSTransition>(animation)->owningElement())
+            cssTransitions.append(animation);
+        else if (is<CSSAnimation>(animation) && downcast<CSSAnimation>(animation)->owningElement())
+            cssAnimations.append(animation);
+        else
+            webAnimations.append(animation);
     }
+
+    // Now sort CSS Transitions by their composite order.
+    std::sort(cssTransitions.begin(), cssTransitions.end(), [](auto& lhs, auto& rhs) {
+        // https://drafts.csswg.org/css-transitions-2/#animation-composite-order
+        auto* lhsTransition = downcast<CSSTransition>(lhs.get());
+        auto* rhsTransition = downcast<CSSTransition>(rhs.get());
+
+        auto* lhsOwningElement = lhsTransition->owningElement();
+        auto* rhsOwningElement = rhsTransition->owningElement();
+
+        // If the owning element of A and B differs, sort A and B by tree order of their corresponding owning elements.
+        if (lhsOwningElement != rhsOwningElement)
+            return compareDeclarativeAnimationOwningElementPositionsInDocumentTreeOrder(lhsOwningElement, rhsOwningElement);
+
+        // Otherwise, if A and B have different transition generation values, sort by their corresponding transition generation in ascending order.
+        if (lhsTransition->generationTime() != rhsTransition->generationTime())
+            return lhsTransition->generationTime() < rhsTransition->generationTime();
+
+        // Otherwise, sort A and B in ascending order by the Unicode codepoints that make up the expanded transition property name of each transition
+        // (i.e. without attempting case conversion and such that ‘-moz-column-width’ sorts before ‘column-width’).
+        return lhsTransition->transitionProperty().utf8() < rhsTransition->transitionProperty().utf8();
+    });
+
+    // Now sort CSS Animations by their composite order.
+    std::sort(cssAnimations.begin(), cssAnimations.end(), [](auto& lhs, auto& rhs) {
+        // https://drafts.csswg.org/css-animations-2/#animation-composite-order
+        auto* lhsOwningElement = downcast<CSSAnimation>(lhs.get())->owningElement();
+        auto* rhsOwningElement = downcast<CSSAnimation>(rhs.get())->owningElement();
+
+        // If the owning element of A and B differs, sort A and B by tree order of their corresponding owning elements.
+        if (lhsOwningElement != rhsOwningElement)
+            return compareDeclarativeAnimationOwningElementPositionsInDocumentTreeOrder(lhsOwningElement, rhsOwningElement);
+
+        // Otherwise, sort A and B based on their position in the computed value of the animation-name property of the (common) owning element.
+        // In our case, this matches the time at which the animations were created and thus their relative position in m_allAnimations.
+        return false;
+    });
+
+    // Finally, we can concatenate the sorted CSS Transitions, CSS Animations and Web Animations in their relative composite order.
+    Vector<RefPtr<WebAnimation>> animations;
+    animations.appendRange(cssTransitions.begin(), cssTransitions.end());
+    animations.appendRange(cssAnimations.begin(), cssAnimations.end());
+    animations.appendRange(webAnimations.begin(), webAnimations.end());
     return animations;
 }
 
@@ -271,6 +364,7 @@ void DocumentTimeline::updateAnimationsAndSendEvents()
     // 1. Update the current time of all timelines associated with doc passing now as the timestamp.
 
     Vector<RefPtr<WebAnimation>> animationsToRemove;
+    Vector<RefPtr<CSSTransition>> completedTransitions;
 
     for (auto& animation : m_animations) {
         if (animation->timeline() != this) {
@@ -285,6 +379,12 @@ void DocumentTimeline::updateAnimationsAndSendEvents()
 
         if (!animation->isRelevant() && !animation->needsTick())
             animationsToRemove.append(animation);
+
+        if (!animation->needsTick() && is<CSSTransition>(animation) && animation->playState() == WebAnimation::PlayState::Finished) {
+            auto* transition = downcast<CSSTransition>(animation.get());
+            if (transition->owningElement())
+                completedTransitions.append(transition);
+        }
     }
 
     // 2. Perform a microtask checkpoint.
@@ -316,7 +416,26 @@ void DocumentTimeline::updateAnimationsAndSendEvents()
     for (auto& animation : animationsToRemove)
         removeAnimation(*animation);
 
+    // Now that animations that needed removal have been removed, let's update the list of completed transitions.
+    // This needs to happen after dealing with the list of animations to remove as the animation may have been
+    // removed from the list of completed transitions otherwise.
+    for (auto& completedTransition : completedTransitions)
+        transitionDidComplete(completedTransition);
+
     applyPendingAcceleratedAnimations();
+}
+
+void DocumentTimeline::transitionDidComplete(RefPtr<CSSTransition> transition)
+{
+    ASSERT(transition);
+    removeAnimation(*transition);
+    if (is<KeyframeEffect>(transition->effect())) {
+        if (auto* target = downcast<KeyframeEffect>(transition->effect())->target()) {
+            m_elementToCompletedCSSTransitionByCSSPropertyID.ensure(target, [] {
+                return HashMap<CSSPropertyID, RefPtr<CSSTransition>> { };
+            }).iterator->value.set(transition->property(), transition);
+        }
+    }
 }
 
 bool DocumentTimeline::computeExtentOfAnimation(RenderElement& renderer, LayoutRect& bounds) const
@@ -324,13 +443,13 @@ bool DocumentTimeline::computeExtentOfAnimation(RenderElement& renderer, LayoutR
     if (!renderer.element())
         return true;
 
-    KeyframeEffectReadOnly* matchingEffect = nullptr;
+    KeyframeEffect* matchingEffect = nullptr;
     for (const auto& animation : animationsForElement(*renderer.element())) {
         auto* effect = animation->effect();
-        if (is<KeyframeEffectReadOnly>(effect)) {
-            auto* keyframeEffect = downcast<KeyframeEffectReadOnly>(effect);
+        if (is<KeyframeEffect>(effect)) {
+            auto* keyframeEffect = downcast<KeyframeEffect>(effect);
             if (keyframeEffect->animatedProperties().contains(CSSPropertyTransform))
-                matchingEffect = downcast<KeyframeEffectReadOnly>(effect);
+                matchingEffect = downcast<KeyframeEffect>(effect);
         }
     }
 
@@ -350,7 +469,7 @@ bool DocumentTimeline::isRunningAnimationOnRenderer(RenderElement& renderer, CSS
         if (playState != WebAnimation::PlayState::Running && playState != WebAnimation::PlayState::Paused)
             continue;
         auto* effect = animation->effect();
-        if (is<KeyframeEffectReadOnly>(effect) && downcast<KeyframeEffectReadOnly>(effect)->animatedProperties().contains(property))
+        if (is<KeyframeEffect>(effect) && downcast<KeyframeEffect>(effect)->animatedProperties().contains(property))
             return true;
     }
 
@@ -367,8 +486,8 @@ bool DocumentTimeline::isRunningAcceleratedAnimationOnRenderer(RenderElement& re
         if (playState != WebAnimation::PlayState::Running && playState != WebAnimation::PlayState::Paused)
             continue;
         auto* effect = animation->effect();
-        if (is<KeyframeEffectReadOnly>(effect)) {
-            auto* keyframeEffect = downcast<KeyframeEffectReadOnly>(effect);
+        if (is<KeyframeEffect>(effect)) {
+            auto* keyframeEffect = downcast<KeyframeEffect>(effect);
             if (keyframeEffect->isRunningAccelerated() && keyframeEffect->animatedProperties().contains(property))
                 return true;
         }
@@ -383,8 +502,8 @@ std::unique_ptr<RenderStyle> DocumentTimeline::animatedStyleForRenderer(RenderEl
 
     if (auto* element = renderer.element()) {
         for (const auto& animation : animationsForElement(*element)) {
-            if (is<KeyframeEffectReadOnly>(animation->effect()))
-                downcast<KeyframeEffectReadOnly>(animation->effect())->getAnimatedStyle(result);
+            if (is<KeyframeEffect>(animation->effect()))
+                downcast<KeyframeEffect>(animation->effect())->getAnimatedStyle(result);
         }
     }
 
@@ -410,8 +529,8 @@ void DocumentTimeline::animationAcceleratedRunningStateDidChange(WebAnimation& a
 {
     m_acceleratedAnimationsPendingRunningStateChange.add(&animation);
 
-    if (is<KeyframeEffectReadOnly>(animation.effect())) {
-        if (auto* target = downcast<KeyframeEffectReadOnly>(animation.effect())->target())
+    if (is<KeyframeEffect>(animation.effect())) {
+        if (auto* target = downcast<KeyframeEffect>(animation.effect())->target())
             updateListOfElementsWithRunningAcceleratedAnimationsForElement(*target);
     }
 }
@@ -421,7 +540,7 @@ void DocumentTimeline::updateListOfElementsWithRunningAcceleratedAnimationsForEl
     auto animations = animationsForElement(element);
     bool runningAnimationsForElementAreAllAccelerated = !animations.isEmpty();
     for (const auto& animation : animations) {
-        if (is<KeyframeEffectReadOnly>(animation->effect()) && !downcast<KeyframeEffectReadOnly>(animation->effect())->isRunningAccelerated()) {
+        if (is<KeyframeEffect>(animation->effect()) && !downcast<KeyframeEffect>(animation->effect())->isRunningAccelerated()) {
             runningAnimationsForElementAreAllAccelerated = false;
             break;
         }
@@ -442,8 +561,8 @@ void DocumentTimeline::applyPendingAcceleratedAnimations()
     for (auto& animation : acceleratedAnimationsPendingRunningStateChange) {
         if (!hasForcedLayout) {
             auto* effect = animation->effect();
-            if (is<KeyframeEffectReadOnly>(effect))
-                hasForcedLayout |= downcast<KeyframeEffectReadOnly>(effect)->forceLayoutIfNeeded();
+            if (is<KeyframeEffect>(effect))
+                hasForcedLayout |= downcast<KeyframeEffect>(effect)->forceLayoutIfNeeded();
         }
         animation->applyPendingAcceleratedActions();
     }
@@ -457,8 +576,8 @@ bool DocumentTimeline::resolveAnimationsForElement(Element& element, RenderStyle
         animation->resolve(targetStyle);
         if (!hasNonAcceleratedAnimations) {
             if (auto* effect = animation->effect()) {
-                if (is<KeyframeEffectReadOnly>(effect)) {
-                    auto* keyframeEffect = downcast<KeyframeEffectReadOnly>(effect);
+                if (is<KeyframeEffect>(effect)) {
+                    auto* keyframeEffect = downcast<KeyframeEffect>(effect);
                     for (auto cssPropertyId : keyframeEffect->animatedProperties()) {
                         if (!CSSPropertyAnimation::animationOfPropertyIsAccelerated(cssPropertyId)) {
                             hasNonAcceleratedAnimations = true;

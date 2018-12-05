@@ -145,6 +145,7 @@
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MediaStreamRequest.h>
 #include <WebCore/PerformanceLoggingClient.h>
+#include <WebCore/PlatformEvent.h>
 #include <WebCore/PublicSuffix.h>
 #include <WebCore/RenderEmbeddedObject.h>
 #include <WebCore/ResourceLoadStatistics.h>
@@ -1561,6 +1562,9 @@ void WebPageProxy::dispatchActivityStateChange()
     if (changed)
         LOG_WITH_STREAM(ActivityState, stream << "WebPageProxy " << pageID() << " dispatchActivityStateChange: state changed from " << previousActivityState << " to " << m_activityState);
 
+    if ((changed & ActivityState::WindowIsActive) && isViewWindowActive())
+        updateCurrentModifierState();
+
     if ((m_potentiallyChangedActivityStateFlags & ActivityState::IsVisible) && isViewVisible())
         viewIsBecomingVisible();
 
@@ -2496,25 +2500,24 @@ void WebPageProxy::receivedNavigationPolicyDecision(PolicyAction policyAction, A
         if (policies->websiteDataStore())
             changeWebsiteDataStore(policies->websiteDataStore()->websiteDataStore());
     }
-    
+
+    Ref<WebProcessProxy> processForNavigation = process();
     if (policyAction == PolicyAction::Use && frame.isMainFrame()) {
         String reason;
-        auto proposedProcess = process().processPool().processForNavigation(*this, *navigation, processSwapRequestedByClient, policyAction, reason);
+        processForNavigation = process().processPool().processForNavigation(*this, *navigation, processSwapRequestedByClient, reason);
         ASSERT(!reason.isNull());
-        
-        if (proposedProcess.ptr() != &process()) {
-            RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "%p - WebPageProxy::decidePolicyForNavigationAction, swapping process %i with process %i for navigation, reason: %{public}s", this, processIdentifier(), proposedProcess->processIdentifier(), reason.utf8().data());
-            LOG(ProcessSwapping, "(ProcessSwapping) Switching from process %i to new process (%i) for navigation %" PRIu64 " '%s'", processIdentifier(), proposedProcess->processIdentifier(), navigation->navigationID(), navigation->loggingString());
-            
-            RunLoop::main().dispatch([this, protectedThis = makeRef(*this), navigation = makeRef(*navigation), proposedProcess = WTFMove(proposedProcess)]() mutable {
-                continueNavigationInNewProcess(navigation, WTFMove(proposedProcess));
-            });
+        if (processForNavigation.ptr() != &process()) {
+            policyAction = PolicyAction::Suspend;
+            RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "%p - WebPageProxy::decidePolicyForNavigationAction, swapping process %i with process %i for navigation, reason: %{public}s", this, processIdentifier(), processForNavigation->processIdentifier(), reason.utf8().data());
+            LOG(ProcessSwapping, "(ProcessSwapping) Switching from process %i to new process (%i) for navigation %" PRIu64 " '%s'", processIdentifier(), processForNavigation->processIdentifier(), navigation->navigationID(), navigation->loggingString());
         } else
             RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "%p - WebPageProxy::decidePolicyForNavigationAction, keep using process %i for navigation, reason: %{public}s", this, processIdentifier(), reason.utf8().data());
     }
-    
+
     receivedPolicyDecision(policyAction, navigation, WTFMove(data), WTFMove(sender));
 
+    if (processForNavigation.ptr() != &process())
+        continueNavigationInNewProcess(*navigation, WTFMove(processForNavigation));
 }
 
 void WebPageProxy::receivedPolicyDecision(PolicyAction action, API::Navigation* navigation, std::optional<WebsitePoliciesData>&& websitePolicies, Ref<PolicyDecisionSender>&& sender)
@@ -4135,9 +4138,39 @@ void WebPageProxy::decidePolicyForNavigationAction(WebFrameProxy& frame, const W
     if (!m_preferences->safeBrowsingEnabled())
         shouldSkipSafeBrowsingCheck = ShouldSkipSafeBrowsingCheck::Yes;
 
-    auto listener = makeRef(frame.setUpPolicyListenerProxy([this, protectedThis = makeRef(*this), frame = makeRef(frame), sender = WTFMove(sender), navigation] (WebCore::PolicyAction policyAction, API::WebsitePolicies* policies, ProcessSwapRequestedByClient processSwapRequestedByClient, Vector<Ref<SafeBrowsingResult>>&&) mutable {
-        // FIXME: do something with the SafeBrowsingResults.
-        receivedNavigationPolicyDecision(policyAction, navigation.get(), processSwapRequestedByClient, frame, policies, WTFMove(sender));
+    auto listener = makeRef(frame.setUpPolicyListenerProxy([this, protectedThis = makeRef(*this), frame = makeRef(frame), sender = WTFMove(sender), navigation] (WebCore::PolicyAction policyAction, API::WebsitePolicies* policies, ProcessSwapRequestedByClient processSwapRequestedByClient, Vector<Ref<SafeBrowsingResult>>&& safeBrowsingResults) mutable {
+        
+        auto completionHandler = [this, protectedThis = protectedThis.copyRef(), frame = frame.copyRef(), sender = WTFMove(sender), navigation = WTFMove(navigation), processSwapRequestedByClient, policies = makeRefPtr(policies)] (PolicyAction policyAction) mutable {
+            receivedNavigationPolicyDecision(policyAction, navigation.get(), processSwapRequestedByClient, frame, policies.get(), WTFMove(sender));
+        };
+
+        if (!m_pageClient)
+            return completionHandler(policyAction);
+
+        m_pageClient->clearSafeBrowsingWarning();
+
+        for (auto& result : safeBrowsingResults) {
+            if (!result->needsSafeBrowsingWarning())
+                continue;
+            m_pageClient->showSafeBrowsingWarning(result, [protectedThis = WTFMove(protectedThis), completionHandler = WTFMove(completionHandler), policyAction] (auto&& result) mutable {
+                switchOn(result, [&] (const URL& url) {
+                    completionHandler(PolicyAction::Ignore);
+                    protectedThis->loadRequest({ url });
+                }, [&] (ContinueUnsafeLoad continueUnsafeLoad) {
+                    switch (continueUnsafeLoad) {
+                    case ContinueUnsafeLoad::No:
+                        completionHandler(PolicyAction::Ignore);
+                        break;
+                    case ContinueUnsafeLoad::Yes:
+                        completionHandler(policyAction);
+                        break;
+                    }
+                });
+            });
+            return;
+        }
+        completionHandler(policyAction);
+
     }, shouldSkipSafeBrowsingCheck == ShouldSkipSafeBrowsingCheck::Yes ? ShouldExpectSafeBrowsingResult::No : ShouldExpectSafeBrowsingResult::Yes));
     if (shouldSkipSafeBrowsingCheck == ShouldSkipSafeBrowsingCheck::No)
         beginSafeBrowsingCheck(request.url(), listener);
@@ -8094,6 +8127,14 @@ void WebPageProxy::setDefersLoadingForTesting(bool defersLoading)
 void WebPageProxy::getIsViewVisible(bool& result)
 {
     result = isViewVisible();
+}
+
+void WebPageProxy::updateCurrentModifierState()
+{
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    auto modifiers = PlatformKeyboardEvent::currentStateOfModifierKeys();
+    m_process->send(Messages::WebPage::UpdateCurrentModifierState(modifiers), m_pageID);
+#endif
 }
 
 } // namespace WebKit

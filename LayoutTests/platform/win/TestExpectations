@@ -133,6 +133,7 @@ webkit.org/b/185076 css3/color-filters [ Skip ]
 
 # IntersectionObserver is off by default
 webkit.org/b/188613 intersection-observer [ Skip ]
+webkit.org/b/188613 http/tests/intersection-observer [ Skip ]
 
 # TODO Should be moved to platform/mac <rdar://5621425>
 http/tests/misc/willCacheResponse-delegate-callback.html [ Skip ]
@@ -209,6 +210,7 @@ http/tests/xmlhttprequest/upload-onprogress-event.html [ Skip ]
 fast/files [ Skip ]
 http/tests/fileapi [ Skip ]
 fast/forms/file/recover-file-input-in-unposted-form.html [ Skip ]
+http/tests/misc/form-submit-file-cross-site.html [ Skip ]
 http/tests/xmlhttprequest/post-blob-content-type-async.html [ Skip ]
 http/tests/xmlhttprequest/post-blob-content-type-sync.html [ Skip ]
 webkit.org/b/29287 http/tests/local/fileapi/ [ Skip ]
@@ -623,6 +625,7 @@ webkit.org/b/35013 svg/zoom/text/ [ Skip ]
 
 # TODO Attachment elements do not provide a custom renderer
 webkit.org/b/142260 fast/attachment [ Skip ]
+webkit.org/b/142260 fast/css/has-attachment.html [ Skip ]
 
 # TODO APNG is not supported
 webkit.org/b/142731 fast/images/animated-png.html [ Skip ]
@@ -2523,7 +2526,7 @@ fast/frames/frame-navigation.html [ Skip ]
 
 fast/text/atsui-pointtooffset-calls-cg.html [ Pass Failure ]
 fast/text/international/hindi-whitespace.html [ Failure ]
-fast/text/international/khmer-selection.html [ Failure ]
+fast/text/international/khmer-selection.html [ Failure Crash ]
 webkit.org/b/140231 fast/text/international/plane2.html [ Failure ]
 webkit.org/b/35973 fast/multicol/hit-test-above-or-below.html [ Failure ]
 webkit.org/b/49769 fast/dom/HTMLProgressElement/progress-element-with-child-crash.html [ Failure ]
@@ -4232,3 +4235,20 @@ webkit.org/b/190520 editing/pasteboard/copy-paste-across-shadow-boundaries-with-
 
 # WebGPU is not supported on Windows
 webgpu [ Skip ]
+
+webkit.org/b/191194 fast/block/basic/inline-content-with-floating-image.html [ Failure ]
+webkit.org/b/191194 fast/block/basic/inline-content-with-floating-images2.html [ Failure ]
+webkit.org/b/191194 fast/dom/inline-event-attributes-release.html [ Failure ]
+webkit.org/b/191194 fast/inline/simple-inline-block.html [ Failure ]
+webkit.org/b/191194 fast/inline/simple-intruding-float1.html [ Failure ]
+webkit.org/b/191194 fast/inline/simple-intruding-floats2.html [ Failure ]
+webkit.org/b/191194 fast/inline/simple-intruding-floats3.html [ Failure ]
+webkit.org/b/191194 fast/inline/simple-shrink-to-fit-inline-block.html [ Failure ]
+
+webkit.org/b/191366 fast/block/basic/child-block-level-box-with-height-percent.html [ Failure ]
+webkit.org/b/191366 fast/block/basic/height-percentage-simple.html [ Failure ]
+webkit.org/b/191366 fast/block/basic/quirk-mode-percent-height.html [ Failure ]
+
+webkit.org/b/191368 fast/text/stroking-decorations.html [ Crash ]
+webkit.org/b/191368 imported/blink/fast/text/international/complex-text-trailing-space.html [ Crash ]
+webkit.org/b/191368 imported/blink/fast/text/sub-pixel/complex-text-preferred-width.html [ Crash ]

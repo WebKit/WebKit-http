@@ -1,3 +1,725 @@
+2018-11-07  Daniel Bates  <dabates@apple.com>
+
+        Override +[UIKeyboard isInHardwareKeyboardMode] in WebKitTestRunner and DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=190141
+
+        Reviewed by Darin Adler.
+
+        Directly use +[UIKeyboard isInHardwareKeyboardMode]. We will override this class method
+        in DumpRenderTree and WebKitTestRunner to always return NO so as to make test runs
+        deterministic regardless of whether a hardware keyboard is attached.
+
+        * Shared/NativeWebKeyboardEvent.h:
+        * Shared/ios/NativeWebKeyboardEventIOS.mm:
+        (WebKit::isInHardwareKeyboardMode): Deleted.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _startAssistingNode:userIsInteracting:blurPreviousNode:changingActivityState:userObject:]):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::platformEditorState const):
+
+2018-11-07  Zamiul Haque  <zhaque@apple.com>
+
+        Force a gregorian calendar to show for credit card expiration date inputs
+        (autocomplete='cc-exp'*) regardless of default system settings.
+        https://bugs.webkit.org/show_bug.cgi?id=191096
+        rdar://problem/42640256
+
+        Reviewed by Tim Horton.
+
+        Added some plumbing code to expose the calendar identifier of the calendar used by a
+        presented date picker. Added shouldPresentGregorianCalendar:, to be used for
+        determining what property values a date input control must present a Gregorian
+        calendar for.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView formInputPeripheral]):
+        * UIProcess/ios/forms/WKFormInputControl.mm:
+
+2018-11-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK/WPE build when memfd is not available after r237922.
+
+        * Platform/unix/SharedMemoryUnix.cpp:
+        (WebKit::createSharedMemory):
+
+2018-11-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Linux] Use memfd_create when available in SharedMemory implementation
+        https://bugs.webkit.org/show_bug.cgi?id=189741
+
+        Reviewed by Michael Catanzaro.
+
+        If memfd is available, use it instead of shm_open.
+
+        * Platform/unix/SharedMemoryUnix.cpp:
+        (WebKit::createSharedMemory): Helper to create the shared memory, trying first with memfd and falling back to
+        shm if it's not available.
+        (WebKit::SharedMemory::create): Use createSharedMemory() helper.
+
+2018-11-06  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Experimental prototype for WebGPURenderPipeline and WebGPUSwapChain
+        https://bugs.webkit.org/show_bug.cgi?id=191291
+
+        Reviewed by Myles Maxfield.
+
+        Properly disable WEBGPU on all non-Metal platforms for now.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-11-06  Youenn Fablet  <youenn@apple.com>
+
+        Make mDNS ICE Candidate an experimental flag again
+        https://bugs.webkit.org/show_bug.cgi?id=191262
+
+        Reviewed by Dean Jackson.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetWebRTCMDNSICECandidatesEnabled):
+        (WKPreferencesGetWebRTCMDNSICECandidatesEnabled):
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+
+2018-11-06  Suresh Koppisetty  <skoppisetty@apple.com>
+
+        Don’t use the main queue to create an XPC connection.
+        https://bugs.webkit.org/show_bug.cgi?id=191160
+        <rdar://problem/45736262>
+
+        Reviewed by Geoffrey Garen.
+
+        Don't use the main queue to create an XPC connection. xpc_connection_set_bootstrap does
+        dispatch_mach_send_barrier_f on this queue which delays the sending of the subsequent
+        bootstrap message (sent to launchd for launching a new target process) when the main queue is busy.
+
+        Now that the XPC connection runs on the default concurrent queue, errorHandler could be invoked
+        by any thread. The job of errorHandler is to dispatch errorHandlerImpl to the main thread,
+        where errorHandlerImpl is responsible for the actual handling of errors if any.
+
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::ProcessLauncher::launchProcess):
+
+2018-11-06  Brian Burg  <bburg@apple.com>
+
+        Add missing iOS availability macro to _WKAutomationSessionConfiguration
+        https://bugs.webkit.org/show_bug.cgi?id=191320
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/_WKAutomationSessionConfiguration.h:
+
+2018-11-06  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Remove cap on partitioned cache max age if it matches a network reload (redirect-only)
+        https://bugs.webkit.org/show_bug.cgi?id=189760
+        <rdar://problem/44612242>
+
+        Reviewed by Youenn Fablet and Antti Koivisto.
+
+        When a redirect cache entry for a prevalent resource reaches its max
+        age cap, it is loaded again from the network and the network response
+        is compared with what's in the cache. If it's a match, the cache entry
+        is fully accepted. If not, a new capped cache entry is created.
+
+        This feature is still off by default.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::canUseCachedRedirect const):
+            Now checks the new member m_cacheEntryForMaxAgeCapValidation.
+        (WebKit::NetworkResourceLoader::retrieveCacheEntry):
+            New case handled for entry->hasReachedPrevalentResourceAgeCap().
+        (WebKit::NetworkResourceLoader::validateCacheEntryForMaxAgeCapValidation):
+            This is where the new logic compares the incoming redirect with the
+            cached one. If they match, an uncapped entry is allowed to be stored.
+            If they don't match, a new capped entry will be stored.
+        (WebKit::NetworkResourceLoader::willSendRedirectedRequest):
+            Now calls the new
+            NetworkResourceLoader::validateCacheEntryForMaxAgeCapValidation()
+            function.
+        * NetworkProcess/NetworkResourceLoader.h:
+            Added the m_cacheEntryForMaxAgeCapValidation member.
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::makeUseDecision):
+            Restored to previous behavior which means
+            UseDecision::NoDueToPrevalentResourceAgeCap was removed.
+        (WebKit::NetworkCache::Cache::retrieve):
+            Restored to previous behavior.
+        (WebKit::NetworkCache::Cache::storeRedirect):
+            Now takes the optional maxAgeCap and caps the entry's max age if it's set.
+        (WebKit::NetworkCache::hasReachedPrevalentResourceAgeCap): Deleted.
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheEntry.cpp:
+        (WebKit::NetworkCache::Entry::encodeAsStorageRecord const):
+            Now encodes m_maxAgeCap.
+        (WebKit::NetworkCache::Entry::decodeStorageRecord):
+            Now decodes m_maxAgeCap.
+        (WebKit::NetworkCache::Entry::hasReachedPrevalentResourceAgeCap const):
+            Added.
+        (WebKit::NetworkCache::Entry::capMaxAge):
+            Added.
+        * NetworkProcess/cache/NetworkCacheEntry.h:
+            Added the optional m_maxAgeCap.
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::willSendRedirectedRequest):
+            Now gets the optional max age cap from the NetworkStorageSession and sends it
+            to Cache::storeRedirect().
+        * NetworkProcess/cache/NetworkCacheStatistics.cpp:
+        (WebKit::NetworkCache::cachedEntryReuseFailureToDiagnosticKey):
+            Removed handling of UseDecision::NoDueToPrevalentResourceAgeCap.
+
+2018-11-06  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION (r230523): Caps lock indicator not shown in password field
+        https://bugs.webkit.org/show_bug.cgi?id=190056
+
+        Reviewed by Ryosuke Niwa.
+
+        Update cached modifier state in the WebProcess when WebKit::WebPage::keyEvent is called, and
+        when the window becomes active.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::dispatchActivityStateChange):
+        (WebKit::WebPageProxy::updateCurrentModifierState):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::keyEvent):
+        (WebKit::WebPage::updateCurrentModifierState):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2018-11-06  Alex Christensen  <achristensen@webkit.org>
+
+        Add ObjC SPI equivalent of WKContextHandlesSafeBrowsing
+        https://bugs.webkit.org/show_bug.cgi?id=191329
+
+        Reviewed by Tim Horton.
+
+        Like WKContextHandlesSafeBrowsing, this is so I can make one change in WebKit and enable safe browsing
+        in WKWebView and disable it in Safari at the same time without broken revisions between landing two changes
+        in two repositories.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (+[WKWebView handlesSafeBrowsing]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2018-11-06  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] User should not be prompted again after denying getDisplayMedia request
+        https://bugs.webkit.org/show_bug.cgi?id=191227
+        <rdar://problem/45784512>
+
+        Reviewed by Youenn Fablet.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::userMediaAccessWasDenied):
+        (WebKit::UserMediaPermissionRequestManagerProxy::wasRequestDenied):
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame):
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+2018-11-06  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [MediaStream] User should not be prompted again after denying getDisplayMedia request
+        https://bugs.webkit.org/show_bug.cgi?id=191227
+        <rdar://problem/45784512>
+
+        Unreviewed build fix of ports not ENABLE(MEDIA_STREAM).
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp: Define getRequestAction only if ENABLE(MEDIA_STREAM).
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h: Ditto.
+
+2018-11-03  Alex Christensen  <achristensen@webkit.org>
+
+        [Mac] Implement safe browsing in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=188871
+
+        Reviewed by Tim Horton.
+
+        * Platform/spi/Cocoa/SafeBrowsingSPI.h:
+        * Resources/SafeBrowsing.xcassets: Added.
+        * Resources/SafeBrowsing.xcassets/Contents.json: Added.
+        * Resources/SafeBrowsing.xcassets/WKSafeBrowsingWarningBackground.colorset: Added.
+        * Resources/SafeBrowsing.xcassets/WKSafeBrowsingWarningBackground.colorset/Contents.json: Added.
+        * Resources/SafeBrowsing.xcassets/WKSafeBrowsingWarningText.colorset: Added.
+        * Resources/SafeBrowsing.xcassets/WKSafeBrowsingWarningText.colorset/Contents.json: Added.
+        * Resources/SafeBrowsing.xcassets/WKSafeBrowsingWarningTitle.colorset: Added.
+        * Resources/SafeBrowsing.xcassets/WKSafeBrowsingWarningTitle.colorset/Contents.json: Added.
+        * Shared/WebPreferences.yaml:
+        * Shared/WebPreferencesDefaultValues.h:
+        * UIProcess/API/C/mac/WKContextPrivateMac.mm:
+        (WKContextHandlesSafeBrowsing):
+        * UIProcess/Cocoa/SafeBrowsingResultCocoa.mm:
+        (WebKit::malwareDetailsBase):
+        (WebKit::learnMore):
+        (WebKit::reportAnErrorBase):
+        (WebKit::localizedProvider):
+        (WebKit::SafeBrowsingResult::SafeBrowsingResult):
+        * UIProcess/Cocoa/WKSafeBrowsingWarning.h: Added.
+        * UIProcess/Cocoa/WKSafeBrowsingWarning.mm: Added.
+        (confirmMalwareSentinel):
+        (visitUnsafeWebsiteSentinel):
+        (colorNamed):
+        (replace):
+        (addLinkAndReplace):
+        (-[WKSafeBrowsingExclamationPoint drawRect:]):
+        (-[WKSafeBrowsingExclamationPoint intrinsicContentSize]):
+        (reportAnErrorURL):
+        (malwareDetailsURL):
+        (titleText):
+        (warningText):
+        (detailsText):
+        (-[WKSafeBrowsingWarning initWithFrame:safeBrowsingResult:completionHandler:]):
+        (-[WKSafeBrowsingWarning dealloc]):
+        (-[WKSafeBrowsingWarning goBackClicked]):
+        (-[WKSafeBrowsingWarning clickedOnLink:]):
+        (-[WKSafeBrowsingWarning showDetailsClicked]):
+        (+[WKSafeBrowsingTextView viewWithAttributedString:linkTarget:]):
+        (+[WKSafeBrowsingTextView viewWithString:]):
+        (-[WKSafeBrowsingTextView intrinsicContentSize]):
+        (-[WKSafeBrowsingTextView clickedOnLink:atIndex:]):
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::showSafeBrowsingWarning):
+        (WebKit::WebViewImpl::clearSafeBrowsingWarning):
+        (WebKit::WebViewImpl::setFrameSize):
+        * UIProcess/PageClient.h:
+        (WebKit::PageClient::showSafeBrowsingWarning):
+        (WebKit::PageClient::clearSafeBrowsingWarning):
+        * UIProcess/SafeBrowsingResult.h:
+        (WebKit::SafeBrowsingResult::url const):
+        (WebKit::SafeBrowsingResult::provider const):
+        (WebKit::SafeBrowsingResult::localizedProviderName const):
+        (WebKit::SafeBrowsingResult::malwareDetailsURLBase const):
+        (WebKit::SafeBrowsingResult::reportAnErrorURLBase const):
+        (WebKit::SafeBrowsingResult::learnMoreURL const):
+        (WebKit::SafeBrowsingResult::needsSafeBrowsingWarning const):
+        (WebKit::SafeBrowsingResult::isKnownToBeUnsafe const): Deleted.
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::showSafeBrowsingWarning):
+        (WebKit::PageClientImpl::clearSafeBrowsingWarning):
+        * UIProcess/mac/PageClientImplMac.h:
+        * UIProcess/mac/PageClientImplMac.mm:
+        (WebKit::PageClientImpl::setImpl):
+        (WebKit::PageClientImpl::showSafeBrowsingWarning):
+        (WebKit::PageClientImpl::clearSafeBrowsingWarning):
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-11-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Remove BackingStore, BackingStoreCairo implementation files from build
+        https://bugs.webkit.org/show_bug.cgi?id=191269
+
+        Reviewed by Michael Catanzaro.
+
+        * SourcesWPE.txt: Drop the BackingStore.cpp and BackingStoreCairo.cpp
+        files from the WPE build. These are not used at all in WPE configuration
+        as they are only used by the GTK+ port for non-AC functionality.
+
+2018-11-05  Chris Dumez  <cdumez@apple.com>
+
+        Use same limit for page cache and suspended pages
+        https://bugs.webkit.org/show_bug.cgi?id=191266
+
+        Reviewed by Geoffrey Garen.
+
+        Use same limit for page cache and suspended pages as they serve the same purpose.
+
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _maximumSuspendedPageCount]):
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::updateMaxSuspendedPageCount):
+        (WebKit::WebProcessPool::setCacheModel):
+        (WebKit::WebProcessPool::addSuspendedPageProxy):
+        * UIProcess/WebProcessPool.h:
+
+2018-11-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Allow WKWebView clients to customize bar button item groups in the accessory view when editing
+        https://bugs.webkit.org/show_bug.cgi?id=191240
+        <rdar://problem/44872806>
+
+        Reviewed by Tim Horton.
+
+        Allow WKWebView clients to override WKContentView's default input assistant item by plumbing the call to
+        `-inputAssistantItem` through `-[WKWebView inputAssistantItem]`, such that if a client asks WKWebView for its
+        input assistant item and changes its leading or trailing bar button groups, the changes will be reflected by
+        WKContentView; additionally, this allows clients to achieve the same effect by overriding `-inputAssistantItem`
+        on WKWebView.
+
+        Test:   KeyboardInputTests.ModifyInputAssistantItemBarButtonGroups
+                KeyboardInputTests.OverrideInputAssistantItemBarButtonGroups
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView inputAssistantItem]):
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView inputAssistantItem]):
+
+        Route the call to `[super inputAssistantItem]` through `-[WKWebView inputAssistantItem]`, so that the input
+        assistant item may be overridden via WKWebView.
+
+        (-[WKContentView inputAssistantItemForWebView]):
+
+2018-11-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r237785.
+
+        Introduced layout test and API test failures on macOS and iOS.
+
+        Reverted changeset:
+
+        "[iOS] Issue initial paint soon after the visuallyNonEmpty
+        milestone is fired."
+        https://bugs.webkit.org/show_bug.cgi?id=191078
+        https://trac.webkit.org/changeset/237785
+
+2018-11-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237784 and r237788.
+        https://bugs.webkit.org/show_bug.cgi?id=191270
+
+        Caused mediastream layout test failures (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "[MediaStream] User should not be prompted again after denying
+        getDisplayMedia request"
+        https://bugs.webkit.org/show_bug.cgi?id=191227
+        https://trac.webkit.org/changeset/237784
+
+        "[MediaStream] User should not be prompted again after denying
+        getDisplayMedia request"
+        https://bugs.webkit.org/show_bug.cgi?id=191227
+        https://trac.webkit.org/changeset/237788
+
+2018-11-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [MediaStream] User should not be prompted again after denying getDisplayMedia request
+        https://bugs.webkit.org/show_bug.cgi?id=191227
+        <rdar://problem/45784512>
+
+        Unreviewed build fix of ports not ENABLE(MEDIA_STREAM).
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp: Define getRequestAction only if ENABLE(MEDIA_STREAM).
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h: Ditto.
+
+2018-11-04  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Issue initial paint soon after the visuallyNonEmpty milestone is fired.
+        https://bugs.webkit.org/show_bug.cgi?id=191078
+        <rdar://problem/45736178>
+
+        Reviewed by Antti Koivisto.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::layerFlushThrottlingIsActive const):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        (WebKit::AcceleratedDrawingArea::scheduleInitialDeferredPaint):
+        * WebProcess/WebPage/AcceleratedDrawingArea.h:
+        * WebProcess/WebPage/DrawingArea.h:
+        (WebKit::DrawingArea::layerFlushThrottlingIsActive const):
+        * WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDrawingArea.h:
+        * WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::RemoteLayerTreeDrawingArea):
+        (WebKit::RemoteLayerTreeDrawingArea::setLayerTreeStateIsFrozen):
+        (WebKit::RemoteLayerTreeDrawingArea::initialDeferredPaint):
+        (WebKit::RemoteLayerTreeDrawingArea::scheduleInitialDeferredPaint):
+        (WebKit::RemoteLayerTreeDrawingArea::scheduleCompositingLayerFlush):
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.h:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::scheduleInitialDeferredPaint):
+
+2018-11-04  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] User should not be prompted again after denying getDisplayMedia request
+        https://bugs.webkit.org/show_bug.cgi?id=191227
+        <rdar://problem/45784512>
+
+        Reviewed by Youenn Fablet.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::userMediaAccessWasDenied):
+        (WebKit::UserMediaPermissionRequestManagerProxy::wasRequestDenied):
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame):
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+2018-11-03  Alex Christensen  <achristensen@webkit.org>
+
+        Mac production builds should sign the network process xpc service with entitlements
+        https://bugs.webkit.org/show_bug.cgi?id=191209
+        <rdar://problem/45377609>
+
+        Reviewed by Geoff Garen.
+
+        * Configurations/Network-OSX.entitlements: Copied from Configurations/Network-OSX-sandbox.entitlements.
+        * Configurations/NetworkService.xcconfig:
+        Set CODE_SIGN_ENTITLEMENTS_COCOA_TOUCH_NO like we do for the web process,
+        except with the corresponoding network process entitlements file.
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _networkProcessHasEntitlementForTesting:]):
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::networkProcessHasEntitlementForTesting):
+        * UIProcess/WebProcessPool.h:
+        * WebKit.xcodeproj/project.pbxproj:
+        Add infrastructure to test that the network process actually has an entitlement.
+
+2018-11-03  Philippe Normand  <pnormand@igalia.com>
+
+        [WPE] Add the WebKitVersion.h header
+        https://bugs.webkit.org/show_bug.cgi?id=191015
+        <rdar://problem/45647211>
+
+        Reviewed by Michael Catanzaro.
+
+        * PlatformWPE.cmake: Install the generated header as well.
+
+2018-11-02  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r237761.
+
+        Makes most API tests timeout and WK2 tests crash
+
+        Reverted changeset:
+
+        "Mac production builds should sign the network process xpc
+        service with entitlements"
+        https://bugs.webkit.org/show_bug.cgi?id=191209
+        https://trac.webkit.org/changeset/237761
+
+2018-11-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, attempt to fix the build with recent SDKs.
+
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.mm:
+        (WebKit::XPCServiceExit):
+
+2018-11-02  Alex Christensen  <achristensen@webkit.org>
+
+        Mac production builds should sign the network process xpc service with entitlements
+        https://bugs.webkit.org/show_bug.cgi?id=191209
+        <rdar://problem/45377609>
+
+        Reviewed by Geoff Garen.
+
+        * Configurations/NetworkService.xcconfig:
+        Set CODE_SIGN_ENTITLEMENTS_COCOA_TOUCH_NO like we do for the web process,
+        except with the corresponoding network process entitlements file.
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _networkProcessHasEntitlementForTesting:]):
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::networkProcessHasEntitlementForTesting):
+        * UIProcess/WebProcessPool.h:
+        Add infrastructure to test that the network process actually has an entitlement.
+
+2018-11-02  Daniel Bates  <dabates@apple.com>
+
+        [iOS] WebKit should dispatch DOM events when a modifier key is pressed
+        https://bugs.webkit.org/show_bug.cgi?id=190487
+
+        Reviewed by Tim Horton.
+
+        Add support for modifier flags change events dispatched by UIKit.
+
+        * Shared/ios/WebIOSEventFactory.mm:
+        (modifiersForEvent): Update for renamed enumerations.
+        (WebIOSEventFactory::createWebKeyboardEvent): Modifier keys do not have an associated
+        character and do not participate in key repeat.
+        * UIProcess/Automation/ios/WebAutomationSessionIOS.mm:
+        (WebKit::WebAutomationSession::platformSimulateKeyboardInteraction): Update for renamed enumerations.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _interpretKeyEvent:isCharEvent:]): Return NO if the event represents a
+        modifier flags change to allow the default handling.
+        * UIProcess/ios/WKKeyboardScrollingAnimator.mm:
+        (-[WKKeyboardScrollingAnimator keyboardScrollForEvent:]): Update for renamed enumerations.
+
+2018-11-02  Chris Dumez  <cdumez@apple.com>
+
+        [PSON] Reuse SuspendedPages' process when possible, for performance
+        https://bugs.webkit.org/show_bug.cgi?id=191166
+
+        Reviewed by Geoffrey Garen.
+
+        When process-swapping check if there is an existing SuspendedPage for the domain we're going to.
+        If there is, use this SuspendedPage's process for the navigation instead of a fresh new process.
+        This change should be beneficial for performance as it:
+        - Avoids spinning up a new process (CPU & memory cost)
+        - Likely better leverages caches since this process already loaded this domain in the past
+
+        Due to current limitations, using a SuspendedPage's proxy may consume the SuspendedPage, which
+        means that it can no longer be used for PageCache on history navigations. We need to do this when
+        the SuspendedPageProxy in question was created for the current WebPageProxy because:
+        - This SuspendedPageProxy's process already has a suspended WebPage with this WebPageProxy's pageID
+        and
+        - We do not currently support having more than one WebPage with a given pageID within a single
+          WebProcess.
+
+        * UIProcess/SuspendedPageProxy.cpp:
+        (WebKit::SuspendedPageProxy::SuspendedPageProxy):
+        * UIProcess/SuspendedPageProxy.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::processForNavigationInternal):
+
+2018-11-01  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Rename <wtf/unicode/UTF8.h> to <wtf/unicode/UTF8Conversion.h> in order to avoid conflicting with ICU's unicode/utf8.h
+        https://bugs.webkit.org/show_bug.cgi?id=189693
+
+        Reviewed by Yusuke Suzuki.
+
+        * Shared/API/APIString.h: Replaced <wtf/unicode/UTF8.h> with <wtf/unicode/UTF8Conversion.h>.
+
+2018-11-01  Daniel Bates  <dabates@apple.com>
+
+        Cleanup: Extraneous platform guarding of -_setUpSQLiteDatabaseTrackerClient
+        https://bugs.webkit.org/show_bug.cgi?id=191124
+
+        Reviewed by Tim Horton.
+
+        Remove the platform guard around the call to -_setUpSQLiteDatabaseTrackerClient as the
+        implementation of that message is already guarded.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+
+2018-11-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, attempt to fix the build with recent SDKs.
+
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.h:
+        (WebKit::XPCServiceInitializer):
+
+2018-11-01  Sihui Liu  <sihui_liu@apple.com>
+
+        Add a storage limit for IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=190598
+        <rdar://problem/44654715>
+
+        Reviewed by Chris Dumez.
+
+        Add SPI for testing.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::NetworkProcess):
+        (WebKit::NetworkProcess::idbServer):
+        (WebKit::NetworkProcess::setIDBPerOriginQuota):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextSetIDBPerOriginQuota):
+        * UIProcess/API/C/WKContextPrivate.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::setIDBPerOriginQuota):
+        * UIProcess/WebProcessPool.h:
+
+2018-11-01  Chris Dumez  <cdumez@apple.com>
+
+        [PSON] WebPageProxy::receivedNavigationPolicyDecision() should not schedule the new load asynchronously when process-swapping
+        https://bugs.webkit.org/show_bug.cgi?id=191076
+
+        Reviewed by Geoffrey Garen.
+
+        WebPageProxy::receivedNavigationPolicyDecision() should not schedule the new load asynchronously when process-swapping.
+        The client can request a new load synchronously after answering the policy decision, in which case we'd end up loading
+        the wrong URL.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::receivedNavigationPolicyDecision):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::processForNavigation):
+        (WebKit::WebProcessPool::processForNavigationInternal):
+        * UIProcess/WebProcessPool.h:
+
+2018-11-01  Chris Dumez  <cdumez@apple.com>
+
+        [PSON] Unable to submit a file in FormData cross-site
+        https://bugs.webkit.org/show_bug.cgi?id=191138
+
+        Reviewed by Alex Christensen.
+
+        When PSON is enabled, we are unable to submit a file in FormData cross-site. Although we encode the
+        request body over IPC since r237639, we're missing the right sandbox extensions for its to work for
+        files.
+
+        Update FormDataReference encoder to pass along the necessary sandbox extensions for files in the
+        FormData, and have its decoder consume those extensions so that the recipient has access to those
+        files. Also update LoadParameters's IPC encoder / decoder to encoder an IPC::FormDataReference
+        (which encodes both FormData and sandbox extensions) instead of a FormData.
+
+        * Platform/IPC/FormDataReference.h:
+        (IPC::FormDataReference::encode const):
+        (IPC::FormDataReference::decode):
+        * Shared/LoadParameters.cpp:
+        (WebKit::LoadParameters::encode const):
+        (WebKit::LoadParameters::decode):
+
+2018-11-01  Claudio Saavedra  <csaavedra@igalia.com>
+
+        ERROR: ResourceLoadStatisticsPersistentStorage: Unable to delete statistics file
+        https://bugs.webkit.org/show_bug.cgi?id=191152
+
+        Reviewed by Chris Dumez.
+
+        The statistics file is not created unconditionally, so
+        make sure it exists before logging an error.
+
+        * UIProcess/ResourceLoadStatisticsPersistentStorage.cpp:
+        (WebKit::ResourceLoadStatisticsPersistentStorage::clear):
+        Check that the file exists before logging an error.
+
+2018-11-01  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GLIB] Silent a build warning when not using Wayland
+
+        Unreviewed.
+
+        * UIProcess/Launcher/glib/BubblewrapLauncher.cpp:
+
+2018-11-01  Frederic Wang  <fwang@igalia.com>
+
+        [WebAuthN] Make AuthenticatorManager
+        https://bugs.webkit.org/show_bug.cgi?id=189279
+
+        Unreviewed build fix.
+
+        * UIProcess/WebAuthentication/Cocoa/LocalConnection.h: Add missing headers.
+
+2018-10-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        API test WKAttachmentTests.CopyAndPasteBetweenWebViews fails on macOS 10.13
+        https://bugs.webkit.org/show_bug.cgi?id=191114
+        <rdar://problem/45700410>
+
+        Reviewed by Dean Jackson.
+
+        Followup to r237648: also make sure that we insecurely unarchive NSFileWrapper on platforms that don't support
+        secure archiving of file wrappers.
+
+        * UIProcess/API/Cocoa/APIAttachmentCocoa.mm:
+        (API::Attachment::updateFromSerializedRepresentation):
+
+2018-10-31  Dean Jackson  <dino@apple.com>
+
+        Forward original fragment identifier into System Preview
+        https://bugs.webkit.org/show_bug.cgi?id=191141
+        <rdar://problem/45717542>
+
+        Reviewed by Wenson Hsieh.
+
+        If the URL used by the page includes a fragment identifier, use
+        it when telling QuickLook to open a local file.
+
+        * UIProcess/Cocoa/DownloadClient.mm:
+        (WebKit::DownloadClient::didFinish): Append original fragment identifier
+        to the destination URL.
+
 2018-10-31  Zalan Bujtas  <zalan@apple.com>
 
         [iOS] Do not paint tap highlight unless it is above a certain threshold

@@ -306,7 +306,7 @@ window.UIHelper = class UIHelper {
         return new Promise(resolve => {
             testRunner.runUIScript(`(() => {
                 uiController.uiScriptComplete(uiController.zoomScale);
-            })()`, resolve);
+            })()`, scaleAsString => resolve(parseFloat(scaleAsString)));
         });
     }
 
@@ -346,6 +346,31 @@ window.UIHelper = class UIHelper {
         });
     }
 
+    static calendarType()
+    {
+        if (!this.isWebKit2())
+            return Promise.resolve();
+
+        return new Promise(resolve => {
+            testRunner.runUIScript(`(() => {
+                uiController.doAfterNextStablePresentationUpdate(() => {
+                    uiController.uiScriptComplete(JSON.stringify(uiController.calendarType));
+                })
+            })()`, jsonString => {
+                resolve(JSON.parse(jsonString));
+            });
+        });
+    }
+
+    static setDefaultCalendarType(calendarIdentifier)
+    {
+        if (!this.isWebKit2())
+            return Promise.resolve();
+
+        return new Promise(resolve => testRunner.runUIScript(`uiController.setDefaultCalendarType('${calendarIdentifier}')`, resolve));
+
+    }
+
     static setViewScale(scale)
     {
         if (!this.isWebKit2())
@@ -360,5 +385,17 @@ window.UIHelper = class UIHelper {
             return Promise.resolve();
 
         return new Promise(resolve => testRunner.runUIScript(`uiController.resignFirstResponder()`, resolve));
+    }
+
+    static minimumZoomScale()
+    {
+        if (!this.isWebKit2())
+            return Promise.resolve();
+
+        return new Promise(resolve => {
+            testRunner.runUIScript(`(() => {
+                uiController.uiScriptComplete(uiController.minimumZoomScale);
+            })()`, scaleAsString => resolve(parseFloat(scaleAsString)))
+        });
     }
 }

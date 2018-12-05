@@ -261,8 +261,6 @@ public:
     virtual void paintSystemPreviewBadge(Image&, const PaintInfo&, const FloatRect&);
 #endif
 
-    virtual void drawLineForDocumentMarker(const RenderText&, GraphicsContext&, const FloatPoint& origin, float width, DocumentMarkerLineStyle);
-
     virtual bool usingDarkAppearance(const RenderObject&) const { return false; }
 
 protected:
@@ -347,10 +345,6 @@ protected:
 
 #if ENABLE(DATALIST_ELEMENT)
     virtual void adjustListButtonStyle(StyleResolver&, RenderStyle&, const Element*) const;
-#endif
-
-#if ENABLE(INPUT_TYPE_COLOR)
-    virtual bool platformUsesColorWellAppearance() const { return true; }
 #endif
 
     virtual void adjustProgressBarStyle(StyleResolver&, RenderStyle&, const Element*) const;

@@ -203,7 +203,35 @@ void TestController::platformRunUntil(bool& done, WTF::Seconds timeout)
         [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:endDate];
 }
 
-void TestController::cocoaResetStateToConsistentValues()
+ClassMethodSwizzler::ClassMethodSwizzler(Class cls, SEL originalSelector, IMP implementation)
+    : m_method(class_getClassMethod(objc_getMetaClass(NSStringFromClass(cls).UTF8String), originalSelector))
+    , m_originalImplementation(method_setImplementation(m_method, implementation))
+{
+}
+
+ClassMethodSwizzler::~ClassMethodSwizzler()
+{
+    method_setImplementation(m_method, m_originalImplementation);
+}
+    
+static NSCalendar *swizzledCalendar()
+{
+    return [NSCalendar calendarWithIdentifier:TestController::singleton().getOverriddenCalendarIdentifier().get()];
+}
+    
+RetainPtr<NSString> TestController::getOverriddenCalendarIdentifier() const
+{
+    return m_overriddenCalendarIdentifier;
+}
+
+void TestController::setDefaultCalendarType(NSString *identifier)
+{
+    m_overriddenCalendarIdentifier = identifier;
+    if (!m_calendarSwizzler)
+        m_calendarSwizzler = std::make_unique<ClassMethodSwizzler>([NSCalendar class], @selector(currentCalendar), reinterpret_cast<IMP>(swizzledCalendar));
+}
+    
+void TestController::cocoaResetStateToConsistentValues(const TestOptions& options)
 {
 #if WK_API_ENABLED
     __block bool doneRemoving = false;
@@ -213,10 +241,18 @@ void TestController::cocoaResetStateToConsistentValues()
     platformRunUntil(doneRemoving, noTimeout);
     [[_WKUserContentExtensionStore defaultStore] _removeAllContentExtensions];
 
+
+    m_calendarSwizzler = nullptr;
+    m_overriddenCalendarIdentifier = nil;
+    
     if (auto* webView = mainWebView()) {
         TestRunnerWKWebView *platformView = webView->platformView();
         [platformView.configuration.userContentController _removeAllUserContentFilters];
         platformView._viewScale = 1;
+
+        // Toggle on before the test, and toggle off after the test.
+        if (options.shouldShowSpellCheckingDots)
+            [platformView toggleContinuousSpellChecking:nil];
     }
 #endif
 }
@@ -350,5 +386,24 @@ bool TestController::keyExistsInKeychain(const String& attrLabel, const String& 
 #endif
     return false;
 }
+
+#if PLATFORM(MAC)
+void TestController::toggleCapsLock()
+{
+    m_capsLockOn = !m_capsLockOn;
+    NSEvent *fakeEvent = [NSEvent keyEventWithType:NSEventTypeFlagsChanged
+        location:NSZeroPoint
+        modifierFlags:m_capsLockOn ? NSEventModifierFlagCapsLock : 0
+        timestamp:0
+        windowNumber:[mainWebView()->platformWindow() windowNumber]
+        context:nullptr
+        characters:@""
+        charactersIgnoringModifiers:@""
+        isARepeat:NO
+        keyCode:57];
+    
+    [mainWebView()->platformWindow() sendEvent:fakeEvent];
+}
+#endif
 
 } // namespace WTR

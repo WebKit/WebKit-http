@@ -1016,6 +1016,11 @@ void RenderThemeIOS::adjustButtonStyle(StyleResolver& selector, RenderStyle& sty
 {
     RenderTheme::adjustButtonStyle(selector, style, element);
 
+#if ENABLE(INPUT_TYPE_COLOR)
+    if (style.appearance() == ColorWellPart)
+        return;
+#endif
+
     // Set padding: 0 1.0em; on buttons.
     // CSSPrimitiveValue::computeLengthInt only needs the element's style to calculate em lengths.
     // Since the element might not be in a document, just pass nullptr for the root element style
@@ -1416,20 +1421,6 @@ String RenderThemeIOS::mediaControlsBase64StringForIconNameAndType(const String&
 }
 
 #endif // ENABLE(VIDEO)
-
-CGColorRef RenderThemeIOS::colorForMarkerLineStyle(DocumentMarkerLineStyle style, bool)
-{
-    switch (style) {
-    case DocumentMarkerLineStyle::Spelling:
-        return [getUIColorClass() systemRedColor].CGColor;
-    case DocumentMarkerLineStyle::DictationAlternatives:
-    case DocumentMarkerLineStyle::TextCheckingDictationPhraseWithAlternatives:
-    case DocumentMarkerLineStyle::AutocorrectionReplacement:
-        return [getUIColorClass() systemBlueColor].CGColor;
-    case DocumentMarkerLineStyle::Grammar:
-        return [getUIColorClass() systemGreenColor].CGColor;
-    }
-}
 
 Color RenderThemeIOS::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::Options> options) const
 {

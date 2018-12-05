@@ -91,7 +91,7 @@ static RetainPtr<NSURL> clientRedirectDestinationURL;
 @end
 
 @interface PSONNavigationDelegate : NSObject <WKNavigationDelegate> {
-    @public WKNavigationActionPolicy navigationActionPolicyToUse;
+    @public void (^decidePolicyForNavigationAction)(WKNavigationAction *, void (^)(WKNavigationActionPolicy));
 }
 @end
 
@@ -100,7 +100,6 @@ static RetainPtr<NSURL> clientRedirectDestinationURL;
 - (instancetype) init
 {
     self = [super init];
-    navigationActionPolicyToUse = WKNavigationActionPolicyAllow;
     return self;
 }
 
@@ -120,7 +119,10 @@ static RetainPtr<NSURL> clientRedirectDestinationURL;
 {
     ++numberOfDecidePolicyCalls;
     seenPIDs.add([webView _webProcessIdentifier]);
-    decisionHandler(navigationActionPolicyToUse);
+    if (decidePolicyForNavigationAction)
+        decidePolicyForNavigationAction(navigationAction, decisionHandler);
+    else
+        decisionHandler(WKNavigationActionPolicyAllow);
 }
 
 - (void)webView:(WKWebView *)webView didReceiveServerRedirectForProvisionalNavigation:(WKNavigation *)navigation
@@ -442,6 +444,44 @@ TEST(ProcessSwap, Basic)
     EXPECT_EQ(numberOfDecidePolicyCalls, 3);
 }
 
+TEST(ProcessSwap, LoadAfterPolicyDecision)
+{
+    auto processPoolConfiguration = adoptNS([[_WKProcessPoolConfiguration alloc] init]);
+    processPoolConfiguration.get().processSwapsOnNavigation = YES;
+    processPoolConfiguration.get().prewarmsProcessesAutomatically = YES;
+    auto processPool = adoptNS([[WKProcessPool alloc] _initWithConfiguration:processPoolConfiguration.get()]);
+
+    auto webViewConfiguration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [webViewConfiguration setProcessPool:processPool.get()];
+    auto handler = adoptNS([[PSONScheme alloc] init]);
+    [webViewConfiguration setURLSchemeHandler:handler.get() forURLScheme:@"PSON"];
+
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:webViewConfiguration.get()]);
+    auto navigationDelegate = adoptNS([[PSONNavigationDelegate alloc] init]);
+    [webView setNavigationDelegate:navigationDelegate.get()];
+
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/main1.html"]];
+    [webView loadRequest:request];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    navigationDelegate->decidePolicyForNavigationAction = ^(WKNavigationAction *, void (^decisionHandler)(WKNavigationActionPolicy)) {
+        decisionHandler(WKNavigationActionPolicyAllow);
+
+        // Synchronously navigate again right after answering the policy delegate for the previous navigation.
+        navigationDelegate->decidePolicyForNavigationAction = nil;
+        NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/main2.html"]];
+        [webView loadRequest:request];
+    };
+
+    request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.apple.com/main.html"]];
+    [webView loadRequest:request];
+
+    while (![[[webView URL] absoluteString] isEqualToString:@"pson://www.webkit.org/main2.html"])
+        TestWebKitAPI::Util::spinRunLoop();
+}
+
 TEST(ProcessSwap, NoSwappingForeTLDPlus2)
 {
     auto processPoolConfiguration = adoptNS([[_WKProcessPoolConfiguration alloc] init]);
@@ -479,7 +519,6 @@ TEST(ProcessSwap, NoSwappingForeTLDPlus2)
     EXPECT_EQ(numberOfDecidePolicyCalls, 2);
 }
 
-// We currently keep 3 suspended pages around so we can go back 3 times and use the page cache for each load.
 TEST(ProcessSwap, Back)
 {
     auto processPoolConfiguration = adoptNS([[_WKProcessPoolConfiguration alloc] init]);
@@ -500,6 +539,8 @@ TEST(ProcessSwap, Back)
     auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:webViewConfiguration.get()]);
     auto delegate = adoptNS([[PSONNavigationDelegate alloc] init]);
     [webView setNavigationDelegate:delegate.get()];
+
+    EXPECT_GT([processPool _maximumSuspendedPageCount], 0U);
 
     NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/main.html"]];
     [webView loadRequest:request];
@@ -556,31 +597,30 @@ TEST(ProcessSwap, Back)
     done = false;
 
     auto pidAfterSecondBackNavigation = [webView _webProcessIdentifier];
-    EXPECT_EQ(applePID, pidAfterSecondBackNavigation);
+    if ([processPool _maximumSuspendedPageCount] > 1)
+        EXPECT_EQ(applePID, pidAfterSecondBackNavigation);
+    else {
+        EXPECT_NE(applePID, pidAfterSecondBackNavigation);
+        EXPECT_NE(googlePID, pidAfterSecondBackNavigation);
+    }
 
-    [webView goBack]; // Back to webkit.org.
 
-    TestWebKitAPI::Util::run(&receivedMessage);
-    receivedMessage = false;
-    TestWebKitAPI::Util::run(&done);
-    done = false;
-
-    auto pidAfterThirdBackNavigation = [webView _webProcessIdentifier];
-    EXPECT_EQ(webkitPID, pidAfterThirdBackNavigation);
-
-    // 7 loads, 7 decidePolicy calls (e.g. any load that performs a process swap should not have generated an
+    // 6 loads, 6 decidePolicy calls (e.g. any load that performs a process swap should not have generated an
     // additional decidePolicy call as a result of the process swap)
-    EXPECT_EQ(7, numberOfDecidePolicyCalls);
+    EXPECT_EQ(6, numberOfDecidePolicyCalls);
 
-    EXPECT_EQ(6u, [receivedMessages count]);
+    EXPECT_EQ(5u, [receivedMessages count]);
     EXPECT_WK_STREQ(@"PageShow called. Persisted: false, and window.history.state is: null", receivedMessages.get()[0]);
     EXPECT_WK_STREQ(@"PageShow called. Persisted: false, and window.history.state is: null", receivedMessages.get()[1]);
     EXPECT_WK_STREQ(@"PageShow called. Persisted: false, and window.history.state is: null", receivedMessages.get()[2]);
     EXPECT_WK_STREQ(@"PageShow called. Persisted: true, and window.history.state is: onloadCalled", receivedMessages.get()[3]);
-    EXPECT_WK_STREQ(@"PageShow called. Persisted: true, and window.history.state is: onloadCalled", receivedMessages.get()[4]);
-    EXPECT_WK_STREQ(@"PageShow called. Persisted: true, and window.history.state is: onloadCalled", receivedMessages.get()[5]);
 
-    EXPECT_EQ(4u, seenPIDs.size());
+    // The number of suspended pages we keep around is determined at runtime.
+    if ([processPool _maximumSuspendedPageCount] > 1) {
+        EXPECT_WK_STREQ(@"PageShow called. Persisted: true, and window.history.state is: onloadCalled", receivedMessages.get()[4]);
+        EXPECT_EQ(4u, seenPIDs.size());
+    } else
+        EXPECT_EQ(5u, seenPIDs.size());
 }
 
 #if PLATFORM(MAC)
@@ -1305,7 +1345,8 @@ static void runClientSideRedirectTest(ShouldEnablePSON shouldEnablePSON)
     EXPECT_FALSE(didPerformClientRedirect);
 
     auto pidAfterBackNavigation = [webView _webProcessIdentifier];
-    EXPECT_EQ(webkitPID, pidAfterBackNavigation);
+    if ([processPool _maximumSuspendedPageCount] > 1)
+        EXPECT_EQ(webkitPID, pidAfterBackNavigation);
 
     // Validate Back/Forward list.
     currentItem = backForwardList.currentItem;
@@ -1480,7 +1521,7 @@ TEST(ProcessSwap, SessionStorage)
     TestWebKitAPI::Util::run(&done);
     done = false;
 
-    auto pid1 = [webView _webProcessIdentifier];
+    auto webkitPID = [webView _webProcessIdentifier];
 
     request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.apple.com/main.html"]];
     [webView loadRequest:request];
@@ -1488,7 +1529,10 @@ TEST(ProcessSwap, SessionStorage)
     TestWebKitAPI::Util::run(&done);
     done = false;
 
-    auto pid2 = [webView _webProcessIdentifier];
+    auto applePID = [webView _webProcessIdentifier];
+
+    // Verify the web pages are in different processes
+    EXPECT_NE(webkitPID, applePID);
 
     request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/main.html"]];
     [webView loadRequest:request];
@@ -1498,17 +1542,65 @@ TEST(ProcessSwap, SessionStorage)
     TestWebKitAPI::Util::run(&done);
     done = false;
 
-    auto pid3 = [webView _webProcessIdentifier];
-
-    // Verify the web pages are in different processes
-    EXPECT_NE(pid1, pid2);
-    EXPECT_NE(pid1, pid3);
-    EXPECT_NE(pid2, pid3);
+    // We should have gone back to the webkit.org process for this load since we reuse SuspendedPages' process when possible.
+    EXPECT_EQ(webkitPID, [webView _webProcessIdentifier]);
 
     // Verify the sessionStorage values were as expected
     EXPECT_EQ([receivedMessages count], 2u);
     EXPECT_TRUE([receivedMessages.get()[0] isEqualToString:@""]);
     EXPECT_TRUE([receivedMessages.get()[1] isEqualToString:@"I exist!"]);
+}
+
+TEST(ProcessSwap, ReuseSuspendedProcess)
+{
+    auto processPoolConfiguration = adoptNS([[_WKProcessPoolConfiguration alloc] init]);
+    [processPoolConfiguration setProcessSwapsOnNavigation:YES];
+    auto processPool = adoptNS([[WKProcessPool alloc] _initWithConfiguration:processPoolConfiguration.get()]);
+
+    auto webViewConfiguration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [webViewConfiguration setProcessPool:processPool.get()];
+    auto handler = adoptNS([[PSONScheme alloc] init]);
+    [webViewConfiguration setURLSchemeHandler:handler.get() forURLScheme:@"PSON"];
+
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:webViewConfiguration.get()]);
+    auto delegate = adoptNS([[PSONNavigationDelegate alloc] init]);
+    [webView setNavigationDelegate:delegate.get()];
+
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/main1.html"]];
+    [webView loadRequest:request];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    auto webkitPID = [webView _webProcessIdentifier];
+
+    request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.apple.com/main1.html"]];
+    [webView loadRequest:request];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    auto applePID = [webView _webProcessIdentifier];
+
+    EXPECT_NE(webkitPID, applePID);
+
+    request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/main2.html"]];
+    [webView loadRequest:request];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    // We should have gone back to the webkit.org process for this load since we reuse SuspendedPages' process when possible.
+    EXPECT_EQ(webkitPID, [webView _webProcessIdentifier]);
+
+    request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.apple.com/main2.html"]];
+    [webView loadRequest:request];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    // We should have gone back to the apple.com process for this load since we reuse SuspendedPages' process when possible.
+    EXPECT_EQ(applePID, [webView _webProcessIdentifier]);
 }
 
 static const char* mainFramesOnlyMainFrame = R"PSONRESOURCE(
@@ -1564,7 +1656,7 @@ TEST(ProcessSwap, MainFramesOnly)
     EXPECT_EQ(1u, seenPIDs.size());
 }
 
-TEST(ProcessSwap, ThreePreviousProcessesRemains)
+TEST(ProcessSwap, SuspendedPageLimit)
 {
     auto processPoolConfiguration = adoptNS([[_WKProcessPoolConfiguration alloc] init]);
     [processPoolConfiguration setProcessSwapsOnNavigation:YES];
@@ -1578,6 +1670,9 @@ TEST(ProcessSwap, ThreePreviousProcessesRemains)
     auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:webViewConfiguration.get()]);
     auto delegate = adoptNS([[PSONNavigationDelegate alloc] init]);
     [webView setNavigationDelegate:delegate.get()];
+
+    auto maximumSuspendedPageCount = [processPool _maximumSuspendedPageCount];
+    EXPECT_GT(maximumSuspendedPageCount, 0U);
 
     NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/main.html"]];
     [webView loadRequest:request];
@@ -1612,8 +1707,8 @@ TEST(ProcessSwap, ThreePreviousProcessesRemains)
     // Navigations to 5 different domains, we expect to have seen 5 different PIDs
     EXPECT_EQ(5u, seenPIDs.size());
 
-    // But only 4 of those processes should still be alive (1 visible, 3 suspended).
-    EXPECT_EQ(4u, [processPool _webProcessCountIgnoringPrewarmed]);
+    // But not all of those processes should still be alive (1 visible, maximumSuspendedPageCount suspended).
+    EXPECT_EQ([processPool _webProcessCountIgnoringPrewarmed], (1U + maximumSuspendedPageCount));
 }
 
 TEST(ProcessSwap, PageCache1)
@@ -2304,7 +2399,9 @@ TEST(ProcessSwap, APIControlledProcessSwapping)
 
     // Navigating from the above URL to this URL normally should not process swap,
     // but we'll explicitly ask for a swap.
-    navigationDelegate->navigationActionPolicyToUse = _WKNavigationActionPolicyAllowInNewProcess;
+    navigationDelegate->decidePolicyForNavigationAction = ^(WKNavigationAction *, void (^decisionHandler)(WKNavigationActionPolicy)) {
+        decisionHandler(_WKNavigationActionPolicyAllowInNewProcess);
+    };
     [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webit.org/3"]]];
     TestWebKitAPI::Util::run(&done);
     done = false;

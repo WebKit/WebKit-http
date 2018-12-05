@@ -38,6 +38,7 @@
 #include "Page.h"
 #include "RTCIceCandidate.h"
 #include "RTCPeerConnection.h"
+#include "RTCRtpCapabilities.h"
 #include "RTCRtpReceiver.h"
 #include "RTCSessionDescription.h"
 #include "RealtimeIncomingAudioSource.h"
@@ -65,6 +66,22 @@ static std::unique_ptr<PeerConnectionBackend> createLibWebRTCPeerConnectionBacke
 
 CreatePeerConnectionBackend PeerConnectionBackend::create = createLibWebRTCPeerConnectionBackend;
 
+std::optional<RTCRtpCapabilities> PeerConnectionBackend::receiverCapabilities(ScriptExecutionContext& context, const String& kind)
+{
+    auto* page = downcast<Document>(context).page();
+    if (!page)
+        return { };
+    return page->libWebRTCProvider().receiverCapabilities(kind);
+}
+
+std::optional<RTCRtpCapabilities> PeerConnectionBackend::senderCapabilities(ScriptExecutionContext& context, const String& kind)
+{
+    auto* page = downcast<Document>(context).page();
+    if (!page)
+        return { };
+    return page->libWebRTCProvider().senderCapabilities(kind);
+}
+
 LibWebRTCPeerConnectionBackend::LibWebRTCPeerConnectionBackend(RTCPeerConnection& peerConnection, LibWebRTCProvider& provider)
     : PeerConnectionBackend(peerConnection)
     , m_endpoint(LibWebRTCMediaEndpoint::create(*this, provider))
@@ -88,6 +105,19 @@ static inline webrtc::PeerConnectionInterface::BundlePolicy bundlePolicyfromConf
     return webrtc::PeerConnectionInterface::kBundlePolicyMaxCompat;
 }
 
+static inline webrtc::PeerConnectionInterface::RtcpMuxPolicy rtcpMuxPolicyfromConfiguration(const MediaEndpointConfiguration& configuration)
+{
+    switch (configuration.rtcpMuxPolicy) {
+    case RTCPMuxPolicy::Negotiate:
+        return webrtc::PeerConnectionInterface::kRtcpMuxPolicyNegotiate;
+    case RTCPMuxPolicy::Require:
+        return webrtc::PeerConnectionInterface::kRtcpMuxPolicyRequire;
+    }
+
+    ASSERT_NOT_REACHED();
+    return webrtc::PeerConnectionInterface::kRtcpMuxPolicyRequire;
+}
+
 static inline webrtc::PeerConnectionInterface::IceTransportsType iceTransportPolicyfromConfiguration(const MediaEndpointConfiguration& configuration)
 {
     switch (configuration.iceTransportPolicy) {
@@ -107,6 +137,7 @@ static webrtc::PeerConnectionInterface::RTCConfiguration configurationFromMediaE
 
     rtcConfiguration.type = iceTransportPolicyfromConfiguration(configuration);
     rtcConfiguration.bundle_policy = bundlePolicyfromConfiguration(configuration);
+    rtcConfiguration.rtcp_mux_policy = rtcpMuxPolicyfromConfiguration(configuration);
 
     for (auto& server : configuration.iceServers) {
         webrtc::PeerConnectionInterface::IceServer iceServer;
@@ -455,6 +486,11 @@ ExceptionOr<Ref<RTCRtpTransceiver>> LibWebRTCPeerConnectionBackend::addTransceiv
         return Exception { InvalidAccessError, "Unable to add track"_s };
 
     return completeAddTransceiver(WTFMove(sender), init, track->id(), track->kind());
+}
+
+void LibWebRTCPeerConnectionBackend::setSenderSourceFromTrack(LibWebRTCRtpSenderBackend& sender, MediaStreamTrack& track)
+{
+    m_endpoint->setSenderSourceFromTrack(sender, track);
 }
 
 static inline LibWebRTCRtpTransceiverBackend& backendFromRTPTransceiver(RTCRtpTransceiver& transceiver)

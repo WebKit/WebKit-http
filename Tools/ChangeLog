@@ -1,3 +1,921 @@
+2018-11-07  Daniel Bates  <dabates@apple.com>
+
+        Override +[UIKeyboard isInHardwareKeyboardMode] in WebKitTestRunner and DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=190141
+
+        Reviewed by Darin Adler.
+
+        Override +[UIKeyboard isInHardwareKeyboardMode] to always return NO so as to make test
+        runs deterministic regardless of whether a hardware keyboard is attached.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (overrideIsInHardwareKeyboardMode): Added.
+        (prepareConsistentTestingEnvironment):
+        * TestRunnerShared/spi/UIKitTestSPI.h: Forward declare SPI.
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (overrideIsInHardwareKeyboardMode): Added.
+        (WTR::TestController::platformInitialize):
+
+2018-11-07  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed, rolling out r237913.
+
+        Breaks running tests on Mac without iOS SDK installed
+
+        Reverted changeset:
+
+        "webkitpy: Generalize trailing SDK specifier (Part 2)"
+        https://bugs.webkit.org/show_bug.cgi?id=191275
+        https://trac.webkit.org/changeset/237913
+
+2018-11-07  Zamiul Haque  <zhaque@apple.com>
+
+        Force a gregorian calendar to show for credit card expiration date inputs
+        (autocomplete='cc-exp'*) regardless of default system settings.
+        https://bugs.webkit.org/show_bug.cgi?id=191096
+        rdar://problem/42640256
+
+        Reviewed by Tim Horton.
+
+        Implemented simulateForeignDefaultCalendar and calendarType to be used
+        for changing the default calendar returned by the system (ie. [NSCalendar
+        currentCalendar]) and getting the calendar type identifier of a presented date
+        picker.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::isShowingDataListSuggestions const):
+        (WTR::UIScriptController::calendarType const):
+        (WTR::UIScriptController::setDefaultCalendarType):
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::calendarType const):
+        (WTR::UIScriptController::setDefaultCalendarType):
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::selectionEndGrabberViewRect const):
+        (WTR::UIScriptController::calendarType const): Deleted.
+        * WebKitTestRunner/TestController.cpp:
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/UIScriptControllerCocoa.mm:
+        (WTR::UIScriptController::calendarType const):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::swizzledCalendar):
+        (WTR::TestController::getOverriddenCalendarIdentifier const):
+        (WTR::TestController::setDefaultCalendarType):
+        (WTR::TestController::cocoaResetStateToConsistentValues):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::selectionEndGrabberViewRect const):
+        (WTR::UIScriptController::calendarType const): Deleted.
+
+2018-11-06  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Boot a single worker for custom devices
+        https://bugs.webkit.org/show_bug.cgi?id=191312
+        <rdar://problem/45848717>
+
+        Rubber-stamped by Aakash Jain.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.run): Custom devices only run a hand-full of tests. Booting multiple
+        simulators is expensive and unneeded for these tests.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort. child_processes): No reason to memoize this call, and it prevents
+        overriding the number of child processes when booting custom devices.
+
+2018-11-06  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Generalize trailing SDK specifier (Part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=191275
+        <rdar://problem/45703660>
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort): Use normalized SDK.
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort): Use normalized SDK.
+        (IOSSimulatorPort._build_driver_flags): Use platform SDK in build driver flags.
+
+2018-11-06  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Experimental prototype for WebGPURenderPipeline and WebGPUSwapChain
+        https://bugs.webkit.org/show_bug.cgi?id=191291
+
+        Reviewed by Myles Maxfield.
+
+        Properly disable WEBGPU on all non-Metal platforms for now.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-11-06  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add URL configuration for OpenSource EWS Django app
+        https://bugs.webkit.org/show_bug.cgi?id=191132
+
+        Rubber-stamped by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews-app/urls.py: Added entry for ews.urls.
+        * BuildSlaveSupport/ews-app/ews/urls.py: Added.
+
+2018-11-06  Youenn Fablet  <youenn@apple.com>
+
+        Make mDNS ICE Candidate an experimental flag again
+        https://bugs.webkit.org/show_bug.cgi?id=191262
+
+        Reviewed by Dean Jackson.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setWebRTCMDNSICECandidatesEnabled):
+        (WTR::TestRunner::setMDNSICECandidatesEnabled): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2018-11-06  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add views for OpenSource EWS Django app
+        https://bugs.webkit.org/show_bug.cgi?id=191131
+
+        Rubber-stamped by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/views/index.py: Added.
+        * BuildSlaveSupport/ews-app/ews/views/patch.py:
+        * BuildSlaveSupport/ews-app/ews/views/results.py: Added.
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py: Added.
+
+2018-11-06  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add models for OpenSource EWS Django app
+        https://bugs.webkit.org/show_bug.cgi?id=191123
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/models/__init__.py:
+        * BuildSlaveSupport/ews-app/ews/models/buildermappings.py: Added.
+        * BuildSlaveSupport/ews-app/ews/models/builds.py: Added.
+        * BuildSlaveSupport/ews-app/ews/models/patch.py:
+        * BuildSlaveSupport/ews-app/ews/models/steps.py: Added.
+
+2018-11-06  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Fix Invalid HTTP_HOST header
+        https://bugs.webkit.org/show_bug.cgi?id=191325
+
+        Reviewed by Lucas Forschler.
+
+        Changing ALLOWED_HOSTS to * as the landing page should be publicly accessible.
+
+        * BuildSlaveSupport/ews-app/ews-app/settings.py:
+
+2018-11-06  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Rename EWS_app to ews-app - part 2
+        https://bugs.webkit.org/show_bug.cgi?id=191317
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/EWS_app: Removed.
+        * BuildSlaveSupport/ews-app/ews-app: Moved from BuildSlaveSupport/ews-app/EWS_app.
+        * BuildSlaveSupport/ews-app/ews-app/settings.py:
+        * BuildSlaveSupport/ews-app/ews-app/urls.py:
+        * BuildSlaveSupport/ews-app/ews-app/wsgi.py:
+        * BuildSlaveSupport/ews-app/manage.py:
+
+2018-11-06  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Rename EWS_app to ews-app - part 1
+        https://bugs.webkit.org/show_bug.cgi?id=191317
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/EWS_app: Removed.
+        * BuildSlaveSupport/ews-app: Moved from BuildSlaveSupport/EWS_app.
+
+2018-11-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Spelling dots are drawn in the wrong place
+        https://bugs.webkit.org/show_bug.cgi?id=190764
+
+        Reviewed by Dean Jackson.
+
+        Previously, it was impossible for WebKitTestRunner to draw spelling dots. This patch adds support for a header
+        at the top of test files, of the form <!-- webkit-test-runner [ spellCheckingDots=true ] --> which will cause
+        dots to be drawn.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        (WTR::TestController::platformResetStateToConsistentValues):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::cocoaResetStateToConsistentValues):
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.h:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+
+2018-11-06  Don Olmstead  <don.olmstead@sony.com>
+
+        Feature flags not present for Visual Studio when using build-webkit
+        https://bugs.webkit.org/show_bug.cgi?id=191288
+
+        Reviewed by Fujii Hironori.
+
+        Passes feature flags to Visual studio builds within build-webkit.
+        Removes cmakeBasedPortArguments as it is no longer in use.
+
+        * Scripts/build-jsc:
+        * Scripts/build-webkit:
+        * Scripts/webkitdirs.pm:
+        (cmakeBasedPortArguments): Deleted.
+
+2018-11-06  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION (r230523): Caps lock indicator not shown in password field
+        https://bugs.webkit.org/show_bug.cgi?id=190056
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::toggleCapsLock):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::toggleCapsLock):
+
+2018-11-06  Sihui Liu  <sihui_liu@apple.com>
+
+        IndexedDB: WAL file keeps growing
+        https://bugs.webkit.org/show_bug.cgi?id=191294
+        <rdar://problem/41333493>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBTempFileSize-1.html: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBTempFileSize-2.html: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBTempFileSize.mm: Added.
+        (-[IndexedDBFileSizeMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TEST):
+
+2018-11-06  Alex Christensen  <achristensen@webkit.org>
+
+        Fix tests after r237863
+        https://bugs.webkit.org/show_bug.cgi?id=191315
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        With the timing change of r237863, the WKWebView progressed further than before when loading main.html so it completed before main2.html.
+        This test was meant to test that main2.html does eventually load, and it doesn't matter if main.html loads before it.  I updated the test
+        to verify that main2.html eventually loads, making this test less timing dependent.
+
+2018-11-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r237834.
+
+        Tests for this change crash on iOS Simulator
+
+        Reverted changeset:
+
+        "Spelling dots are drawn in the wrong place"
+        https://bugs.webkit.org/show_bug.cgi?id=190764
+        https://trac.webkit.org/changeset/237834
+
+2018-11-05  Alex Christensen  <achristensen@webkit.org>
+
+        [Mac] Implement safe browsing in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=188871
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/SafeBrowsing.mm:
+        (-[SafeBrowsingNavigationDelegate webView:didCommitNavigation:]):
+        (+[TestServiceLookupResult resultWithProvider:phishing:malware:unwantedSoftware:]):
+        (-[TestLookupContext lookUpURL:completionHandler:]):
+        (simpleURL):
+        (safeBrowsingView):
+        (TEST):
+        (-[SafeBrowsingNavigationDelegate webView:didFinishNavigation:]): Deleted.
+        (+[TestServiceLookupResult resultWithProvider:phishing:malware:unwantedSoftware:knownToBeUnsafe:]): Deleted.
+        (-[TestServiceLookupResult isKnownToBeUnsafe]): Deleted.
+        * TestWebKitAPI/Utilities.h:
+
+2018-11-05  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Generalize trailing SDK specifier (Part 1)
+        https://bugs.webkit.org/show_bug.cgi?id=191275
+        <rdar://problem/45703660>
+
+        Reviewed by Lucas Forschler.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo.available_sdks): List all installed SDKs with version numbers stripped out.
+        * Scripts/webkitpy/common/system/platforminfo_unittest.py:
+        (TestPlatformInfo):
+        (TestPlatformInfo.test_available_sdks):
+
+2018-11-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Spelling dots are drawn in the wrong place
+        https://bugs.webkit.org/show_bug.cgi?id=190764
+
+        Reviewed by Dean Jackson.
+
+        Previously, it was impossible for WebKitTestRunner to draw spelling dots. This patch adds support for a header
+        at the top of test files, of the form <!-- webkit-test-runner [ spellCheckingDots=true ] --> which will cause
+        dots to be drawn.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        (WTR::TestController::platformResetStateToConsistentValues):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::cocoaResetStateToConsistentValues):
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.h:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+
+2018-11-05  Chris Dumez  <cdumez@apple.com>
+
+        Use same limit for page cache and suspended pages
+        https://bugs.webkit.org/show_bug.cgi?id=191266
+
+        Reviewed by Geoffrey Garen.
+
+        Update API tests accordingly.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-11-05  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [style] Exclude style check for auto generated files.
+        https://bugs.webkit.org/show_bug.cgi?id=191118
+
+        Reviewed by Eric Carlson.
+
+        Some files checked in to the repository are generated by other tools. In this patch,
+        "MiniBrowserLibResource.h" is the file generated and managed by resource editor of
+        VisualStudio.
+
+        There's no need to check these files because it's not practical to fix the style errors
+        or it's hard to maintain those fixes.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (is_generated_file):
+        (CppChecker.check):
+
+2018-11-05  Thibault Saunier  <tsaunier@igalia.com>
+
+        [Flatpak] Build libx264 as it is the h264 encoder we support in WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=190680
+
+        Reviewed by Philippe Normand.
+
+        * flatpak/org.webkit.WebKit.yaml:
+
+2018-11-05  Daniel Bates  <dabates@apple.com>
+
+        [lldb-webkit] Fix formatting nits in Document and Frame summary strings
+        https://bugs.webkit.org/show_bug.cgi?id=191094
+
+        Reviewed by Andy Estes.
+
+        Format boolean as 1/0 when printing Frame summary to be consistent with the formatting of
+        booleans in other summary strings, substitute "inMainFrame" for "isMainFrame" in the printed
+        Document summary and add closing brace '}' to both Frame and Document summary strings to make
+        them look pretty.
+
+        * lldb/lldb_webkit.py:
+        (WebCoreFrame_SummaryProvider):
+        (WebCoreDocument_SummaryProvider):
+
+2018-11-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Allow WKWebView clients to customize bar button item groups in the accessory view when editing
+        https://bugs.webkit.org/show_bug.cgi?id=191240
+        <rdar://problem/44872806>
+
+        Reviewed by Tim Horton.
+
+        Add new API tests to verify that setting leading and trailing bar button groups on WKWebView sets the first
+        responder's (i.e. WKContentView's) leading and trailing bar button groups, and that this can also be achieved by
+        overriding `-[WKWebView inputAssistantItem]`.
+
+        * TestWebKitAPI/Tests/ios/KeyboardInputTestsIOS.mm:
+        (-[InputAssistantItemTestingWebView fakeLeadingBarButtonItemAction]):
+        (-[InputAssistantItemTestingWebView fakeTrailingBarButtonItemAction]):
+        (+[InputAssistantItemTestingWebView barButtonIcon]):
+        (+[InputAssistantItemTestingWebView leadingItemsForWebView:]):
+        (+[InputAssistantItemTestingWebView trailingItemsForWebView:]):
+        (-[InputAssistantItemTestingWebView inputAssistantItem]):
+        (TestWebKitAPI::TEST):
+
+2018-11-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Changing view scale sometimes does not zoom the page to the new initial scale when the page is zoomed in when ignoring meta viewport
+        https://bugs.webkit.org/show_bug.cgi?id=191226
+        <rdar://problem/45781765>
+
+        Reviewed by Tim Horton.
+
+        Add a missing check for `shouldIgnoreMetaViewport` when comparing TestOptions, to ensure that "ignore meta
+        viewport" state doesn't unexpectedly persist after running a layout test that ignores meta viewport.
+
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2018-11-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237784 and r237788.
+        https://bugs.webkit.org/show_bug.cgi?id=191270
+
+        Caused mediastream layout test failures (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "[MediaStream] User should not be prompted again after denying
+        getDisplayMedia request"
+        https://bugs.webkit.org/show_bug.cgi?id=191227
+        https://trac.webkit.org/changeset/237784
+
+        "[MediaStream] User should not be prompted again after denying
+        getDisplayMedia request"
+        https://bugs.webkit.org/show_bug.cgi?id=191227
+        https://trac.webkit.org/changeset/237788
+
+2018-11-05  Lucas Forschler  <lforschler@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=191268
+        Remove unused bots.
+
+        rubber-stamped by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+
+2018-11-05  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] API test runner fails to respect default build type
+        https://bugs.webkit.org/show_bug.cgi?id=190247
+
+        Reviewed by Carlos Garcia Campos.
+
+        Problem is it's looking for a release build, even though I've run set-webkit-configuration
+        --debug. It should look for a debug build unless I explicitly pass --release.
+
+        * glib/api_test_runner.py:
+        (TestRunner.__init__):
+
+2018-11-05  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer][WebRTC] Add webrtcencoder bin to cleanup and refactor the way we set encoders
+        https://bugs.webkit.org/show_bug.cgi?id=190674
+
+        Reviewed by Philippe Normand.
+
+        webrtcencoder is a simple GstBin with a set of well known GStreamer encoders which
+        it can use to implement encoding for different formats exposing a trimmed down unified API.
+
+        It also adds proper handling of H264 profiles.
+
+        The added files follow GStreamer coding style as we aim at upstreaming the element
+        in the future.
+
+        Reviewed by Philippe Normand.
+
+        * Scripts/webkitpy/style/checker.py:
+
+2018-11-05  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] API test /webkit/WebKitSettings/webkit-settings is failing
+        https://bugs.webkit.org/show_bug.cgi?id=191221
+
+        Reviewed by Carlos Garcia Campos.
+
+        This test ensures that MSE is disabled by default, but we now enable it by default, so
+        reverse the semantics of the test.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitSettings.cpp:
+        (testWebKitSettings):
+
+2018-11-05  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r237031): [GTK] Test /webkit/WebKitWebView/settings is failing
+        https://bugs.webkit.org/show_bug.cgi?id=191225
+
+        Reviewed by Alejandro G. Castro.
+
+        Fix a memory leak causing this test to fail.
+
+        * TestWebKitAPI/glib/WebKitGLib/WebViewTest.cpp:
+        (WebViewTest::initializeWebView):
+
+2018-11-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [webkitpy] Support WPE in the run-web-platform-tests script
+        https://bugs.webkit.org/show_bug.cgi?id=191183
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/w3c/wpt_runner.py:
+        (parse_args): Support `--wpe` as an argument that specifies WPE as the
+        target port. Additionally, the `--display-server` flag now accepts
+        `headless` as a valid value, enabling the WPE WebDriver to run in
+        headless mode.
+
+2018-11-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] Use C++14, not C++17
+        https://bugs.webkit.org/show_bug.cgi?id=191101
+
+        Reviewed by Alex Christensen.
+
+        std::basic_string::data() returns a read-only const buffer in
+        C++14.
+
+        * MiniBrowser/win/WebKitBrowserWindow.cpp:
+        (createString): Use std::vector instead of std::wstring.
+        (createUTF8String): Use std::vector instead of std::string.
+
+2018-11-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] Fold common UIScriptController functionality on macOS and iOS into UIScriptControllerCocoa.mm
+        https://bugs.webkit.org/show_bug.cgi?id=191231
+
+        Reviewed by Simon Fraser.
+
+        Moves some UIScriptController method implementations specific to iOS and macOS into UIScriptControllerCocoa, so
+        it can be shared between iOS-family and macOS platforms. See below for more details.
+
+        No change in behavior.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::overridePreference):
+
+        Add a method stub for DumpRenderTree.
+
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        * WebKitTestRunner/UIScriptControllerCocoa.mm:
+        (WTR::UIScriptController::doAsyncTask):
+        (WTR::UIScriptController::setShareSheetCompletesImmediatelyWithResolution):
+
+        Unify these method implementations.
+
+        (WTR::UIScriptController::removeViewFromWindow):
+        (WTR::UIScriptController::addViewToWindow):
+
+        Move the macOS implementation to UIScriptControllerCocoa. On iOS, this method currently only adds the web view
+        to the window, and does not attempt to invoke the given completion block; additionally, invoking the completion
+        block after a presentation update (as done on macOS) causes pageoverlay/overlay-remove-reinsert-view.html to
+        begin failing consistently. This patch does not attempt to change behavior, but adds a FIXME describing this.
+
+        (WTR::UIScriptController::overridePreference):
+        (WTR::UIScriptController::findString):
+        (WTR::UIScriptController::contentsOfUserInterfaceItem const):
+
+        Move these from UIScriptControllerMac to UIScriptControllerCocoa, so that it is now implemented on iOS as well.
+
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::doAsyncTask): Deleted.
+        (WTR::UIScriptController::setShareSheetCompletesImmediatelyWithResolution): Deleted.
+        (WTR::UIScriptController::contentsOfUserInterfaceItem const): Deleted.
+        (WTR::UIScriptController::findString): Deleted.
+        (WTR::UIScriptController::removeViewFromWindow): Deleted.
+        (WTR::UIScriptController::addViewToWindow): Deleted.
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::doAsyncTask): Deleted.
+        (WTR::UIScriptController::contentsOfUserInterfaceItem const): Deleted.
+        (WTR::UIScriptController::overridePreference): Deleted.
+        (WTR::UIScriptController::findString): Deleted.
+        (WTR::UIScriptController::removeViewFromWindow): Deleted.
+        (WTR::UIScriptController::addViewToWindow): Deleted.
+        (WTR::UIScriptController::setShareSheetCompletesImmediatelyWithResolution): Deleted.
+
+2018-11-04  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] User should not be prompted again after denying getDisplayMedia request
+        https://bugs.webkit.org/show_bug.cgi?id=191227
+        <rdar://problem/45784512>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/GetDisplayMedia.mm:
+        (-[GetDisplayMediaUIDelegate _webView:requestUserMediaAuthorizationForDevices:url:mainFrameURL:decisionHandler:]):
+        (TestWebKitAPI::GetDisplayMediaTest::promptForCapture):
+        (TestWebKitAPI::TEST_F):
+
+2018-11-04  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Add support for percentage height in quirks mode.
+        https://bugs.webkit.org/show_bug.cgi?id=191232
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-11-04  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BCF] Add support for block level non-replaced inflow height percentage
+        https://bugs.webkit.org/show_bug.cgi?id=191229
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-11-02  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Resolve percentage height values.
+        https://bugs.webkit.org/show_bug.cgi?id=191224
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-11-03  Alex Christensen  <achristensen@webkit.org>
+
+        Mac production builds should sign the network process xpc service with entitlements
+        https://bugs.webkit.org/show_bug.cgi?id=191209
+        <rdar://problem/45377609>
+
+        Reviewed by Geoff Garen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/NetworkProcess.mm: Added.
+        (TEST):
+
+2018-11-02  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r237761.
+
+        Makes most API tests timeout and WK2 tests crash
+
+        Reverted changeset:
+
+        "Mac production builds should sign the network process xpc
+        service with entitlements"
+        https://bugs.webkit.org/show_bug.cgi?id=191209
+        https://trac.webkit.org/changeset/237761
+
+2018-11-02  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed API test gardening
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2018-11-02  Justin Michaud  <justin_michaud@apple.com>
+
+        Add new global object and preliminary Worklets support for CSS painting api
+        https://bugs.webkit.org/show_bug.cgi?id=190979
+
+        Reviewed by Chris Dumez.
+
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.generate_supplemental_dependency):
+        (BindingsTests.main):
+
+2018-11-02  Alex Christensen  <achristensen@webkit.org>
+
+        Mac production builds should sign the network process xpc service with entitlements
+        https://bugs.webkit.org/show_bug.cgi?id=191209
+        <rdar://problem/45377609>
+
+        Reviewed by Geoff Garen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/NetworkProcess.mm: Added.
+        (TEST):
+
+2018-11-02  Lucas Forschler  <lforschler@apple.com>
+
+        Add Windows 10 archive bots
+        https://bugs.webkit.org/show_bug.cgi?id=190964
+        
+        This Change updates the Apple Windows Buildbot configuration.
+        - Add Windows 10 specific builders and testers for release and debug.
+        - Refactor Windows -> Windows 7.
+        - Remove Windows 7 Debug.
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2018-11-02  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][WPE] Enable GST_DEBUG_NO_COLOR environment variable pass-through
+
+        Rubber-stamped by Michael Catanzaro.
+
+        This variable is useful to get rid of shell color escapes in tests stderr files.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.setup_environ_for_server):
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort.setup_environ_for_server):
+
+2018-11-02  Aakash Jain  <aakash_jain@apple.com>
+
+        Add Basic Django web app for OpenSource EWS
+        https://bugs.webkit.org/show_bug.cgi?id=191091
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/EWS_app/manage.py: Added, auto-generated by Django.
+        * BuildSlaveSupport/EWS_app/EWS_app/__init__.py: Added, auto-generated by Django.
+        * BuildSlaveSupport/EWS_app/EWS_app/settings.py: Added, auto-generated by Django.
+        * BuildSlaveSupport/EWS_app/EWS_app/urls.py: Added, auto-generated by Django.
+        * BuildSlaveSupport/EWS_app/EWS_app/wsgi.py: Added, auto-generated by Django.
+        * BuildSlaveSupport/EWS_app/ews/__init__.py: Added.
+        * BuildSlaveSupport/EWS_app/ews/admin.py: Added, auto-generated by Django.
+        * BuildSlaveSupport/EWS_app/ews/apps.py: Added, auto-generated by Django.
+        * BuildSlaveSupport/EWS_app/ews/migrations/__init__.py: Added.
+        * BuildSlaveSupport/EWS_app/ews/tests.py: Added, auto-generated by Django.
+        * BuildSlaveSupport/EWS_app/ews/models/__init__.py: Added.
+        * BuildSlaveSupport/EWS_app/ews/models/patch.py: Added.
+        * BuildSlaveSupport/EWS_app/ews/views/__init__.py: Added.
+        * BuildSlaveSupport/EWS_app/ews/views/patch.py: Added.
+
+2018-11-02  Daniel Bates  <dabates@apple.com>
+
+        [iOS] WebKit should dispatch DOM events when a modifier key is pressed
+        https://bugs.webkit.org/show_bug.cgi?id=190487
+
+        Reviewed by Tim Horton.
+
+        Update the code for renamed enumerations. For WebKitTestRunner, removed comment that does not
+        match my observations when using the simulator to simulate iOS 12 and add support for testing
+        right-hand side modifiers.
+
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (modifierFlags):
+        (-[EventSendingController keyDown:withModifiers:withLocation:]):
+        (-[EventSendingController setTouchModifier:value:]):
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        (hidUsageCodeForCharacter):
+
+2018-11-02  Chris Dumez  <cdumez@apple.com>
+
+        [PSON] Reuse SuspendedPages' process when possible, for performance
+        https://bugs.webkit.org/show_bug.cgi?id=191166
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-11-02  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Add support for intrinsic width calculation
+        https://bugs.webkit.org/show_bug.cgi?id=191144
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-11-01  Philippe Normand  <pnormand@igalia.com>
+
+        [Apache] Self-signed SSL certificate RSA key is considered too weak
+        https://bugs.webkit.org/show_bug.cgi?id=191156
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitpy/common/system/pemfile.py:
+
+2018-11-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed follow-up to r237678.
+
+        * wpe/jhbuild.modules: The patch element apparently has to be a child
+        of the branch in order for Jhbuild to properly detect and apply the
+        patch file.
+
+2018-11-01  Ross Kirsling  <ross.kirsling@sony.com>
+
+        build-jsc --wincairo should update WinCairo libraries
+        https://bugs.webkit.org/show_bug.cgi?id=191170
+
+        Reviewed by Fujii Hironori.
+
+        * Scripts/build-jsc:
+
+2018-11-01  John Wilander  <wilander@apple.com>
+
+        In WebCore::ResourceLoadObserver, use document.sessionID().isEphemeral() when possible and check for page existence when not
+        https://bugs.webkit.org/show_bug.cgi?id=191119
+        <rdar://problem/44176965>
+
+        Reviewed by Chris Dumez.
+
+        This is an API test for a WebKitLegacy WebView that is first closed and then
+        JavaScript is handed a keyboard event.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitLegacy/mac/ClosingWebView.mm: Added.
+        (-[ClosingWebViewThenSendingItAKeyDownEventLoadDelegate webView:didFinishLoadForFrame:]):
+        (-[KeyboardEventListener handleEvent:]):
+        (TestWebKitAPI::TEST):
+
+2018-11-01  Sihui Liu  <sihui_liu@apple.com>
+
+        Add a storage limit for IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=190598
+        <rdar://problem/44654715>
+
+        Reviewed by Chris Dumez.
+
+        Add API for testing.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (setIDBPerOriginQuotaCallback):
+        (TestRunner::staticFunctions):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::setIDBPerOriginQuota):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::setIDBPerOriginQuota):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setIDBPerOriginQuota):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setIDBPerOriginQuota):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2018-11-01  Chris Dumez  <cdumez@apple.com>
+
+        [PSON] WebPageProxy::receivedNavigationPolicyDecision() should not schedule the new load asynchronously when process-swapping
+        https://bugs.webkit.org/show_bug.cgi?id=191076
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        (-[PSONNavigationDelegate init]):
+        (-[PSONNavigationDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+
+2018-11-01  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Fix build with VIDEO and WEB_AUDIO disabled
+        https://bugs.webkit.org/show_bug.cgi?id=191147
+        <rdar://problem/45726710>
+
+        Unreviewed build fix.
+
+        This adds the missing compilation guards in the WPE MiniBrowser.
+
+        * MiniBrowser/wpe/main.cpp:
+        (main): Condition GST includes and calls.
+
+2018-10-31  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Add support for inline-block elements.
+        https://bugs.webkit.org/show_bug.cgi?id=191143
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-11-01  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Add missing libsoup patch to jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=191149
+
+        Reviewed by Žan Doberšek.
+
+        * wpe/jhbuild.modules:
+        * wpe/patches/libsoup-soup-socket-fix-critical-warning-when-the-peer-certi.patch: Added.
+
+2018-11-01  Claudio Saavedra  <csaavedra@igalia.com>
+
+        Fix build with VIDEO and WEB_AUDIO disabled
+        https://bugs.webkit.org/show_bug.cgi?id=191147
+
+        Reviewed by Philippe Normand.
+
+        * MiniBrowser/gtk/main.c:
+        (main): Condition GST includes and calls
+
+2018-10-31  Justin Michaud  <justin_michaud@apple.com>
+
+        Add Justin Michaud to the list of WebKit Committers
+        https://bugs.webkit.org/show_bug.cgi?id=191142
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
 2018-10-31  Guillaume Emont  <guijemont@igalia.com>
 
         Don't run JIT tests on 32-bit platforms

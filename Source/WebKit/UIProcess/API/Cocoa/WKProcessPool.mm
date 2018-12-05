@@ -506,6 +506,11 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 #endif
 }
 
+- (NSUInteger)_maximumSuspendedPageCount
+{
+    return _processPool->maxSuspendedPageCount();
+}
+
 - (size_t)_serviceWorkerProcessCount
 {
 #if ENABLE(SERVICE_WORKER)
@@ -582,6 +587,11 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     for (auto& origin : activePagesOrigins)
         [array addObject:(NSString *)origin];
     return [array autorelease];
+}
+
+- (BOOL)_networkProcessHasEntitlementForTesting:(NSString *)entitlement
+{
+    return _processPool->networkProcessHasEntitlementForTesting(entitlement);
 }
 
 @end

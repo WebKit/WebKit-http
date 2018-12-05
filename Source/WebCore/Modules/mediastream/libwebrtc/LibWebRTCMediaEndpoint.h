@@ -110,6 +110,8 @@ public:
     std::optional<Backends> addTransceiver(MediaStreamTrack&, const RTCRtpTransceiverInit&);
     std::unique_ptr<LibWebRTCRtpTransceiverBackend> transceiverBackendFromSender(LibWebRTCRtpSenderBackend&);
 
+    void setSenderSourceFromTrack(LibWebRTCRtpSenderBackend&, MediaStreamTrack&);
+
 private:
     LibWebRTCMediaEndpoint(LibWebRTCPeerConnectionBackend&, LibWebRTCProvider&);
 
@@ -163,6 +165,8 @@ private:
         : rtc::RefCountReleaseStatus::kDroppedLastRef;
     }
 
+    std::pair<LibWebRTCRtpSenderBackend::Source, rtc::scoped_refptr<webrtc::MediaStreamTrackInterface>> createSourceAndRTCTrack(MediaStreamTrack&);
+
 #if !RELEASE_LOG_DISABLED
     const Logger& logger() const final { return m_logger.get(); }
     const void* logIdentifier() const final { return m_logIdentifier; }
@@ -184,7 +188,8 @@ private:
     SetLocalSessionDescriptionObserver<LibWebRTCMediaEndpoint> m_setLocalSessionDescriptionObserver;
     SetRemoteSessionDescriptionObserver<LibWebRTCMediaEndpoint> m_setRemoteSessionDescriptionObserver;
 
-    HashMap<webrtc::MediaStreamInterface*, RefPtr<MediaStream>> m_streams;
+    HashMap<String, RefPtr<MediaStream>> m_remoteStreamsById;
+    HashMap<MediaStreamTrack*, Vector<String>> m_remoteStreamsFromRemoteTrack;
 
     bool m_isInitiator { false };
     Timer m_statsLogTimer;

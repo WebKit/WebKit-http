@@ -92,6 +92,7 @@ class WebPageProxy;
 @class WebEvent;
 @class WKActionSheetAssistant;
 @class WKFocusedFormControlView;
+@class WKFormInputControl;
 @class WKFormInputSession;
 @class WKInspectorNodeSearchGestureRecognizer;
 
@@ -317,6 +318,7 @@ struct WKAutoCorrectionData {
 @property (nonatomic, readonly) const WebKit::AssistedNodeInformation& assistedNodeInformation;
 @property (nonatomic, readonly) UIWebFormAccessory *formAccessoryView;
 @property (nonatomic) BOOL suppressAssistantSelectionView;
+@property (nonatomic, readonly) UITextInputAssistantItem *inputAssistantItemForWebView;
 
 #if ENABLE(DATALIST_ELEMENT)
 @property (nonatomic, strong) UIView <WKFormControl> *dataListTextSuggestionsInputView;
@@ -421,6 +423,7 @@ DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW(_pasteAsQuotation)
 @property (nonatomic, readonly) NSString *textContentTypeForTesting;
 @property (nonatomic, readonly) NSString *selectFormPopoverTitle;
 @property (nonatomic, readonly) NSString *formInputLabel;
+@property (nonatomic, readonly) WKFormInputControl *formInputControl;
 
 @end
 

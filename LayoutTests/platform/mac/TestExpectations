@@ -40,6 +40,8 @@ http/tests/gzip-content-encoding [ Pass ]
 fast/text/mac [ Pass ]
 webkit.org/b/181964 fast/text/mac/select-character-before-zero-width-joiner.html [ ImageOnlyFailure ]
 
+[ Mojave+ ] fast/events/detect-caps-lock.html [ Pass ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -1760,6 +1762,9 @@ webkit.org/b/187393 imported/w3c/web-platform-tests/2dcontext/imagebitmap/create
 [ Mojave+ ] fast/gradients/conic-gradient-extended-stops.html [ Pass ]
 [ Mojave+ ] fast/gradients/conic-gradient.html [ Pass ]
 [ Mojave+ ] fast/gradients/conic-two-hints.html [ Pass ]
+
+# Dark Mode is Mojave and later.
+[ Sierra HighSierra ] css-dark-mode [ Skip ]
 
 webkit.org/b/185651 legacy-animation-engine/animations/play-state-in-shorthand.html [ Pass Failure ]
 

@@ -1660,12 +1660,6 @@ fast/forms/autofocus-opera-003.html [ Failure ]
 fast/forms/button-inner-block-reuse.html [ Failure ]
 fast/forms/button-with-float.html [ ImageOnlyFailure ]
 
-# <input type=color> is not supported on iOS.
-fast/forms/color/input-color-onchange-event.html [ Failure ]
-fast/forms/color/input-color-readonly.html [ Failure ]
-fast/forms/color/input-value-sanitization-color.html [ Failure ]
-fast/forms/color/color-setrangetext.html [ Failure ]
-
 fast/forms/datalist/input-list.html [ Failure ]
 fast/forms/datetime/ValidityState-rangeOverflow-datetime.html [ Failure ]
 fast/forms/datetime/ValidityState-rangeUnderflow-datetime.html [ Failure ]
@@ -1936,6 +1930,7 @@ fast/body-propagation/overflow/001.html
 fast/borders/0px-borders.html
 fast/box-decoration-break/box-decoration-break-rendering.html
 fast/box-shadow/border-radius-big.html
+fast/box-shadow/box-shadow-with-zero-radius.html [ ImageOnlyFailure ]
 
 # <rdar://problem/19226186> ASSERT(m_mainThreadLoader) fails in WorkerThreadableLoader::MainThreadBridge::MainThreadBridge()
 fast/workers/stress-js-execution.html
@@ -3112,6 +3107,11 @@ fast/block/basic/inline-content-with-floating-images2.html [ Failure ]
 fast/inline/simple-intruding-float1.html [ Failure ]
 fast/inline/simple-intruding-floats2.html [ Failure ]
 fast/inline/simple-intruding-floats3.html [ Failure ]
+fast/inline/simple-inline-block.html [ Failure ]
+fast/inline/simple-shrink-to-fit-inline-block.html [ Failure ]
+fast/block/basic/height-percentage-simple.html [ Failure ]
+fast/block/basic/child-block-level-box-with-height-percent.html [ Failure ]
+fast/block/basic/quirk-mode-percent-height.html [ Failure ]
 
 # Datalist
 webkit.org/b/186714 fast/forms/datalist/datalist-textinput-keydown.html [ Skip ]
@@ -3212,3 +3212,9 @@ webkit.org/b/187618 [ Release ] media/media-fullscreen-pause-inline.html [ Pass 
 http/tests/xmlhttprequest/gzip-content-type-no-content-encoding.html [ Pass ]
 
 webkit.org/b/173041 http/tests/websocket/tests/hybi/handshake-ok-with-legacy-sec-websocket-response-headers.html [ Pass Failure ]
+
+# WK2 spelling dot test infrastructure isn't hooked up on iOS
+webkit.org/b/190764 editing/spelling/spelling-dots-repaint.html [ Skip ]
+webkit.org/b/190764 editing/spelling/spelling-dots-position.html [ Skip ]
+webkit.org/b/190764 editing/spelling/spelling-dots-position-2.html [ Skip ]
+webkit.org/b/190764 editing/spelling/spelling-dots-position-3.html [ Skip ]

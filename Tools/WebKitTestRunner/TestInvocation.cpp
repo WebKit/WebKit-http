@@ -1414,6 +1414,13 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
         return result;
     }
 
+    if (WKStringIsEqualToUTF8CString(messageName, "SetIDBPerOriginQuota")) {
+        ASSERT(WKGetTypeID(messageBody) == WKUInt64GetTypeID());
+        WKUInt64Ref quota = static_cast<WKUInt64Ref>(messageBody);
+        TestController::singleton().setIDBPerOriginQuota(WKUInt64GetValue(quota));
+        return nullptr;
+    }
+
     if (WKStringIsEqualToUTF8CString(messageName, "InjectUserScript")) {
         ASSERT(WKGetTypeID(messageBody) == WKStringGetTypeID());
         WKStringRef script = static_cast<WKStringRef>(messageBody);
@@ -1495,6 +1502,13 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
         WKRetainPtr<WKTypeRef> result(AdoptWK, WKBooleanCreate(keyExistsInKeychain));
         return result;
     }
+
+#if PLATFORM(MAC)
+    if (WKStringIsEqualToUTF8CString(messageName, "ToggleCapsLock")) {
+        TestController::singleton().toggleCapsLock();
+        return nullptr;
+    }
+#endif
 
     ASSERT_NOT_REACHED();
     return nullptr;

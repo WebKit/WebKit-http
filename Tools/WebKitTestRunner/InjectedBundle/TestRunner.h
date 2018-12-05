@@ -134,7 +134,7 @@ public:
     void setAllowsAnySSLCertificate(bool);
     void setEncryptedMediaAPIEnabled(bool);
     void setMediaDevicesEnabled(bool);
-    void setMDNSICECandidatesEnabled(bool);
+    void setWebRTCMDNSICECandidatesEnabled(bool);
     void setWebRTCUnifiedPlanEnabled(bool);
     void setCustomUserAgent(JSStringRef);
     void setWebAPIStatisticsEnabled(bool);
@@ -176,6 +176,9 @@ public:
     void clearDOMCaches();
     bool hasDOMCache(JSStringRef origin);
     uint64_t domCacheSize(JSStringRef origin);
+
+    // IndexedDB
+    void setIDBPerOriginQuota(uint64_t);
 
     // Failed load condition testing
     void forceImmediateCompletion();
@@ -476,6 +479,8 @@ public:
     void addTestKeyToKeychain(JSStringRef privateKeyBase64, JSStringRef attrLabel, JSStringRef applicationTagBase64);
     void cleanUpKeychain(JSStringRef attrLabel);
     bool keyExistsInKeychain(JSStringRef attrLabel, JSStringRef applicationTagBase64);
+
+    void toggleCapsLock();
 
 private:
     TestRunner();

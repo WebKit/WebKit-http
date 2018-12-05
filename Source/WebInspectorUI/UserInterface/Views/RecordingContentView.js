@@ -64,27 +64,6 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
         }
     }
 
-    // Static
-
-    static _actionModifiesPath(recordingAction)
-    {
-        switch (recordingAction.name) {
-        case "arc":
-        case "arcTo":
-        case "beginPath":
-        case "bezierCurveTo":
-        case "closePath":
-        case "ellipse":
-        case "lineTo":
-        case "moveTo":
-        case "quadraticCurveTo":
-        case "rect":
-            return true;
-        }
-
-        return false;
-    }
-
     // Public
 
     get navigationItems()
@@ -241,50 +220,19 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
             let saveCount = 0;
             snapshot.context.save();
 
+            for (let attribute in snapshot.attributes)
+                snapshot.element[attribute] = snapshot.attributes[attribute];
+
             if (snapshot.content) {
                 snapshot.context.clearRect(0, 0, snapshot.element.width, snapshot.element.height);
                 snapshot.context.drawImage(snapshot.content, 0, 0);
             }
 
             for (let state of snapshot.states) {
-                for (let name in state) {
-                    if (!(name in snapshot.context))
-                        continue;
-
-                    // Skip internal state used for path debugging.
-                    if (name === "currentX" || name === "currentY")
-                        continue;
-
-                    try {
-                        if (WI.RecordingAction.isFunctionForType(this.representedObject.type, name))
-                            snapshot.context[name](...state[name]);
-                        else
-                            snapshot.context[name] = state[name];
-                    } catch {
-                        delete state[name];
-                    }
-                }
+                state.apply(this.representedObject.type, snapshot.context);
 
                 ++saveCount;
                 snapshot.context.save();
-            }
-
-            let shouldDrawCanvasPath = showCanvasPath && indexOfLastBeginPathAction <= to;
-            if (shouldDrawCanvasPath) {
-                if (!this._pathContext) {
-                    let pathCanvas = document.createElement("canvas");
-                    pathCanvas.classList.add("path");
-                    this._pathContext = pathCanvas.getContext("2d");
-                }
-
-                this._pathContext.canvas.width = snapshot.element.width;
-                this._pathContext.canvas.height = snapshot.element.height;
-                this._pathContext.clearRect(0, 0, snapshot.element.width, snapshot.element.height);
-
-                this._pathContext.save();
-
-                this._pathContext.fillStyle = "hsla(0, 0%, 100%, 0.75)";
-                this._pathContext.fillRect(0, 0, snapshot.element.width, snapshot.element.height);
             }
 
             let lastPathPoint = {};
@@ -299,8 +247,46 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
                 }
 
                 actions[i].apply(snapshot.context);
+            }
 
-                if (shouldDrawCanvasPath && i >= indexOfLastBeginPathAction && WI.RecordingContentView._actionModifiesPath(actions[i])) {
+            if (showCanvasPath && indexOfLastBeginPathAction <= to) {
+                if (!this._pathContext) {
+                    let pathCanvas = document.createElement("canvas");
+                    pathCanvas.classList.add("path");
+                    this._pathContext = pathCanvas.getContext("2d");
+                }
+
+                this._pathContext.canvas.width = snapshot.element.width;
+                this._pathContext.canvas.height = snapshot.element.height;
+                this._pathContext.clearRect(0, 0, snapshot.element.width, snapshot.element.height);
+
+                this._pathContext.save();
+
+                this._pathContext.fillStyle = "hsla(0, 0%, 100%, 0.75)";
+                this._pathContext.fillRect(0, 0, snapshot.element.width, snapshot.element.height);
+
+                function actionModifiesPath(action) {
+                    switch (action.name) {
+                    case "arc":
+                    case "arcTo":
+                    case "beginPath":
+                    case "bezierCurveTo":
+                    case "closePath":
+                    case "ellipse":
+                    case "lineTo":
+                    case "moveTo":
+                    case "quadraticCurveTo":
+                    case "rect":
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                for (let i = indexOfLastBeginPathAction; i <= to; ++i) {
+                    if (!actionModifiesPath(actions[i]))
+                        continue;
+
                     lastPathPoint = {x: this._pathContext.currentX, y: this._pathContext.currentY};
 
                     if (i === indexOfLastBeginPathAction)
@@ -326,9 +312,7 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
 
                     this._pathContext.stroke();
                 }
-            }
 
-            if (shouldDrawCanvasPath) {
                 this._pathContext.restore();
                 this._previewContainer.appendChild(this._pathContext.canvas);
             } else if (this._pathContext)
@@ -358,10 +342,16 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
             if (lastSnapshotIndex < 0) {
                 snapshot.content = this._initialContent;
                 snapshot.states = actions[0].states;
+                snapshot.attributes = Object.shallowCopy(initialState.attributes);
             } else {
-                snapshot.content = this._snapshots[lastSnapshotIndex].content;
-                snapshot.states = this._snapshots[lastSnapshotIndex].states;
-                startIndex = this._snapshots[lastSnapshotIndex].index;
+                let lastSnapshot = this._snapshots[lastSnapshotIndex];
+                snapshot.content = lastSnapshot.content;
+                snapshot.states = lastSnapshot.states;
+                snapshot.attributes = {};
+                for (let attribute in initialState.attributes)
+                    snapshot.attributes[attribute] = lastSnapshot.element[attribute];
+
+                startIndex = lastSnapshot.index;
             }
 
             applyActions(startIndex, snapshot.index - 1);

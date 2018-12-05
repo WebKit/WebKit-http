@@ -100,6 +100,7 @@
 - (void)_syncNetworkProcessCookies WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 - (void)_makeNextWebProcessLaunchFailForTesting WK_API_AVAILABLE(macosx(10.14), ios(12.0));
 - (void)_makeNextNetworkProcessLaunchFailForTesting WK_API_AVAILABLE(macosx(10.14), ios(12.0));
+- (NSUInteger)_maximumSuspendedPageCount WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 // Test only. Returns web processes running web pages (does not include web processes running service workers)
 - (size_t)_webPageContentProcessCount WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
@@ -114,6 +115,7 @@
 - (void)_registerURLSchemeServiceWorkersCanHandle:(NSString *)scheme WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
 - (void)_setMaximumNumberOfProcesses:(NSUInteger)value WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
 - (NSArray<NSString *> *)_getActivePagesOriginsInWebProcessForTesting:(pid_t)pid WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (BOOL)_networkProcessHasEntitlementForTesting:(NSString *)entitlement WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @property (nonatomic, getter=_isCookieStoragePartitioningEnabled, setter=_setCookieStoragePartitioningEnabled:) BOOL _cookieStoragePartitioningEnabled WK_API_DEPRECATED("Partitioned cookies are no longer supported", macosx(10.12.3, WK_MAC_TBA), ios(10.3, WK_IOS_TBA));
 @property (nonatomic, getter=_isStorageAccessAPIEnabled, setter=_setStorageAccessAPIEnabled:) BOOL _storageAccessAPIEnabled WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));

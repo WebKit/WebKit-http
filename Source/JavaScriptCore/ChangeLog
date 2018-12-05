@@ -1,3 +1,372 @@
+2018-11-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix "Javascript" => "JavaScript" enum in protocol generated objects
+        https://bugs.webkit.org/show_bug.cgi?id=191340
+
+        Reviewed by Devin Rousso.
+
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::messageSourceValue):
+        Use new enum name.
+
+        * inspector/scripts/codegen/generator.py:
+        Correct the casing of "JavaScript".
+
+2018-11-07  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Align wide opcodes in the instruction stream
+        https://bugs.webkit.org/show_bug.cgi?id=191254
+
+        Reviewed by Keith Miller.
+
+        Pad the bytecode with nops to ensure that wide opcodes are 4-byte
+        aligned on platforms that don't like unaligned memory access.
+
+        For that, add a new type to represent jump targets, BoundLabel, which
+        delays computing the offset in case we need to emit nops for padding.
+        Extra padding is also emitted before op_yield and at the of each
+        BytecodeWriter fragment, to ensure that the bytecode remains aligned
+        after the rewriting.
+
+        As a side effect, we can longer guarantee that the point immediately
+        before emitting an opcode is the start of that opcode, since nops
+        might be emitted in between if the opcode needs to be wide. To fix
+        that, we only take the offset of opcodes after they have been emitted,
+        using `m_lastInstruction.offset()`.
+
+        * bytecode/BytecodeDumper.h:
+        (JSC::BytecodeDumper::dumpValue):
+        * bytecode/BytecodeGeneratorification.cpp:
+        (JSC::BytecodeGeneratorification::run):
+        * bytecode/BytecodeList.rb:
+        * bytecode/BytecodeRewriter.h:
+        (JSC::BytecodeRewriter::Fragment::align):
+        (JSC::BytecodeRewriter::insertFragmentBefore):
+        (JSC::BytecodeRewriter::insertFragmentAfter):
+        * bytecode/Fits.h:
+        * bytecode/InstructionStream.h:
+        (JSC::InstructionStreamWriter::ref):
+        * bytecode/PreciseJumpTargetsInlines.h:
+        (JSC::updateStoredJumpTargetsForInstruction):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::Label::setLocation):
+        (JSC::BoundLabel::target):
+        (JSC::BoundLabel::saveTarget):
+        (JSC::BoundLabel::commitTarget):
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::recordOpcode):
+        (JSC::BytecodeGenerator::alignWideOpcode):
+        (JSC::BytecodeGenerator::emitProfileControlFlow):
+        (JSC::BytecodeGenerator::emitResolveScope):
+        (JSC::BytecodeGenerator::emitGetFromScope):
+        (JSC::BytecodeGenerator::emitPutToScope):
+        (JSC::BytecodeGenerator::emitGetById):
+        (JSC::BytecodeGenerator::emitDirectGetById):
+        (JSC::BytecodeGenerator::emitPutById):
+        (JSC::BytecodeGenerator::emitDirectPutById):
+        (JSC::BytecodeGenerator::emitGetByVal):
+        (JSC::BytecodeGenerator::emitCreateThis):
+        (JSC::BytecodeGenerator::beginSwitch):
+        (JSC::BytecodeGenerator::endSwitch):
+        (JSC::BytecodeGenerator::emitRequireObjectCoercible):
+        (JSC::BytecodeGenerator::emitYieldPoint):
+        (JSC::BytecodeGenerator::emitToThis):
+        (JSC::Label::bind): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::recordOpcode): Deleted.
+        * bytecompiler/Label.h:
+        (JSC::BoundLabel::BoundLabel):
+        (JSC::BoundLabel::operator int):
+        (JSC::Label::bind):
+        * generator/Opcode.rb:
+
+2018-11-07  Tadeu Zagallo  <tzagallo@apple.com>
+
+        REGRESSION(r237547): Test failures on 32-bit JSC since the JIT was disabled
+        https://bugs.webkit.org/show_bug.cgi?id=191184
+
+        Reviewed by Saam Barati.
+
+        Fix API test on CLoop: we can only disable the LLInt when the JIT is enabled.
+
+        * API/tests/PingPongStackOverflowTest.cpp:
+        (testPingPongStackOverflow):
+
+2018-11-06  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Experimental prototype for WebGPURenderPipeline and WebGPUSwapChain
+        https://bugs.webkit.org/show_bug.cgi?id=191291
+
+        Reviewed by Myles Maxfield.
+
+        Properly disable WEBGPU on all non-Metal platforms for now.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-11-06  Keith Rollin  <krollin@apple.com>
+
+        Adjust handling of Include paths that need quoting
+        https://bugs.webkit.org/show_bug.cgi?id=191314
+        <rdar://problem/45849143>
+
+        Reviewed by Dan Bernstein.
+
+        There are several places in the JavaScriptCore Xcode project where the
+        paths defined in HEADER_SEARCH_PATHS are quoted. That is, the
+        definitions look like:
+
+            HEADER_SEARCH_PATHS = (
+                "\"${BUILT_PRODUCTS_DIR}/DerivedSources/JavaScriptCore\"",
+                "\"${BUILT_PRODUCTS_DIR}/LLIntOffsets/${ARCHS}\"",
+                "\"$(JAVASCRIPTCORE_FRAMEWORKS_DIR)/JavaScriptCore.framework/PrivateHeaders\"",
+                "$(inherited)",
+            );
+
+        The idea here is presumably to have the resulting $(CPP) command have
+        -I options where the associated paths are themselves quoted,
+        protecting against space characters in the paths.
+
+        This approach to quote management can break under Xcode 9. If
+        .xcfilelist files are added to the project, the 'objectVersion' value
+        in the Xcode project file is changed from 46 to 51. If a project with
+        objectVersion=51 is presented to Xcode 9 (as can happen when we build
+        for older OS's), it produces build lines where the quotes are escaped,
+        thereby becoming part of the path. The build then fails because a
+        search for a file normally found in a directory called "Foo" will be
+        looked for in "\"Foo\"", which doesn't exist.
+
+        Simply removing the escaped quotes from the HEADER_SEARCH_PATHS
+        definition doesn't work, leading to paths that need quoting due to
+        space characters but that don't get this quoting (the part of the path
+        after the space appears to simply go missing).
+
+        Removing the escaped quotes from the HEADER_SEARCH_PATHS and moving
+        the definitions to the .xcconfig fixes this problem.
+
+        * Configurations/ToolExecutable.xcconfig:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2018-11-06  Michael Saboff  <msaboff@apple.com>
+
+        Multiple stress/regexp-compile-oom.js tests are failing on High Sierra Debug and Release JSC testers.
+        https://bugs.webkit.org/show_bug.cgi?id=191271
+
+        Reviewed by Saam Barati.
+
+        Fixed use of ThrowScope my adding release() calls.  Found a few places where we needed
+        RETURN_IF_EXCEPTION().  After some code inspections determined that we need to cover the
+        exception bubbling for String.match() with a global RegExp as well as String.replace()
+        and String.search().
+
+        * runtime/RegExpObjectInlines.h:
+        (JSC::RegExpObject::matchInline):
+        (JSC::collectMatches):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncSearchFast):
+        * runtime/StringPrototype.cpp:
+        (JSC::removeUsingRegExpSearch):
+        (JSC::replaceUsingRegExpSearch):
+
+2018-11-05  Don Olmstead  <don.olmstead@sony.com>
+
+        Fix typos in closing ENABLE guards
+        https://bugs.webkit.org/show_bug.cgi?id=191273
+
+        Reviewed by Keith Miller.
+
+        * ftl/FTLForOSREntryJITCode.h:
+        * ftl/FTLJITCode.h:
+        * jsc.cpp:
+        * wasm/WasmMemoryInformation.h:
+        * wasm/WasmPageCount.h:
+
+2018-11-05  Keith Miller  <keith_miller@apple.com>
+
+        Make static_asserts in APICast into bitwise_cast
+        https://bugs.webkit.org/show_bug.cgi?id=191272
+
+        Reviewed by Filip Pizlo.
+
+        * API/APICast.h:
+        (toJS):
+        (toJSForGC):
+        (toRef):
+
+2018-11-05  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable LLInt on ARMv7/Linux
+        https://bugs.webkit.org/show_bug.cgi?id=191190
+
+        Reviewed by Yusuke Suzuki.
+
+        After enabling the new bytecode format in r237547, C_LOOP was
+        forced on all 32-bit platforms. Now enable LLInt again on
+        ARMv7-Thumb2/Linux.
+
+        This adds a callee-saved register in ARMv7/Linux for the metadataTable and
+        stores/restores it on LLInt function calls. It also introduces the globaladdr-
+        instruction for the ARM-offlineasm to access the opcode-table.
+
+        * jit/GPRInfo.h:
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::llintBaselineCalleeSaveRegisters):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * offlineasm/arm.rb:
+        * offlineasm/asm.rb:
+        * offlineasm/instructions.rb:
+
+2018-11-05  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][Clang][JSC] JIT::is64BitType reports "warning: explicit specialization cannot have a storage class"
+        https://bugs.webkit.org/show_bug.cgi?id=191146
+
+        Reviewed by Yusuke Suzuki.
+
+        * jit/JIT.h: Changed is64BitType from a template class method to a
+        template inner class.
+
+2018-11-02  Keith Miller  <keith_miller@apple.com>
+
+        Assert JSValues can fit into a pointer when API casting
+        https://bugs.webkit.org/show_bug.cgi?id=191220
+
+        Reviewed by Michael Saboff.
+
+        * API/APICast.h:
+        (toJS):
+        (toJSForGC):
+        (toRef):
+
+2018-11-02  Michael Saboff  <msaboff@apple.com>
+
+        Rolling in r237753 with unreviewed build fix.
+
+        Fixed issues with DECLARE_THROW_SCOPE placement.
+
+2018-11-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r237753.
+
+        Introduced JSC test failures
+
+        Reverted changeset:
+
+        "Running out of stack space not properly handled in
+        RegExp::compile() and its callers"
+        https://bugs.webkit.org/show_bug.cgi?id=191206
+        https://trac.webkit.org/changeset/237753
+
+2018-11-02  Michael Saboff  <msaboff@apple.com>
+
+        Running out of stack space not properly handled in RegExp::compile() and its callers
+        https://bugs.webkit.org/show_bug.cgi?id=191206
+
+        Reviewed by Filip Pizlo.
+
+        Eliminated two RELEASE_ASSERT_NOT_REACHED() for errors returned by Yarr parsing code.  Bubbled those errors
+        up to where they are turned into the appropriate exceptions in matchInline().  If the errors are not due
+        to syntax, we reset the RegExp state in case the parsing is tried with a smaller stack.
+
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+        * runtime/RegExp.h:
+        * runtime/RegExpInlines.h:
+        (JSC::RegExp::compileIfNecessary):
+        (JSC::RegExp::matchInline):
+        (JSC::RegExp::compileIfNecessaryMatchOnly):
+        * runtime/RegExpObjectInlines.h:
+        (JSC::RegExpObject::execInline):
+        * yarr/YarrErrorCode.h:
+        (JSC::Yarr::hasHardError):
+
+2018-11-02  Keith Miller  <keith_miller@apple.com>
+
+        API should use wrapper object if address is 32-bit
+        https://bugs.webkit.org/show_bug.cgi?id=191203
+
+        Reviewed by Filip Pizlo.
+
+        * API/APICast.h:
+        (toJS):
+        (toJSForGC):
+        (toRef):
+
+2018-11-02  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Metadata should not be copyable
+        https://bugs.webkit.org/show_bug.cgi?id=191193
+
+        Reviewed by Keith Miller.
+
+        We should only ever hold references to the entry in the metadata table.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finalizeLLIntInlineCaches):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * generator/Metadata.rb:
+
+2018-11-02  Tadeu Zagallo  <tzagallo@apple.com>
+
+        REGRESSION(r237547): Exception handlers should be aware of wide opcodes when JIT is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=191175
+
+        Reviewed by Keith Miller.
+
+        https://bugs.webkit.org/show_bug.cgi?id=191108 did not handle the case where JIT is not enabled
+
+        * jit/JITExceptions.cpp:
+        (JSC::genericUnwind):
+        * llint/LLIntData.h:
+        (JSC::LLInt::getWideCodePtr):
+
+2018-11-01  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Rename <wtf/unicode/UTF8.h> to <wtf/unicode/UTF8Conversion.h> in order to avoid conflicting with ICU's unicode/utf8.h
+        https://bugs.webkit.org/show_bug.cgi?id=189693
+
+        Reviewed by Yusuke Suzuki.
+
+        * API/JSClassRef.cpp: Replaced <wtf/unicode/UTF8.h> with <wtf/unicode/UTF8Conversion.h>.
+        * API/JSStringRef.cpp: Ditto.
+        * runtime/JSGlobalObjectFunctions.cpp: Ditto.
+        * wasm/WasmParser.h: Ditto.
+
+2018-11-01  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, JavaScriptCore should only guarantee to produce a
+        modulemap if we are building for iOSMac.
+
+        * Configurations/JavaScriptCore.xcconfig:
+
+2018-10-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: create a setting for auto-recording newly created contexts
+        https://bugs.webkit.org/show_bug.cgi?id=190856
+
+        Reviewed by Brian Burg.
+
+        * inspector/protocol/Canvas.json:
+        Add `setRecordingAutoCaptureFrameCount` command for setting the number of frames to record
+        immediately after a context is created.
+
+        * inspector/protocol/Recording.json:
+        Add `creation` value for `Initiator` enum.
+
+2018-10-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: display low-power enter/exit events in Timelines and Network node waterfalls
+        https://bugs.webkit.org/show_bug.cgi?id=190641
+        <rdar://problem/45319049>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/DOM.json:
+        Add `videoLowPowerChanged` event that is fired when `InspectorDOMAgent` is able to determine
+        whether a video element's low power state has changed.
+
 2018-10-31  Tadeu Zagallo  <tzagallo@apple.com>
 
         Adjust inlining threshold for new bytecode format

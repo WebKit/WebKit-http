@@ -216,6 +216,7 @@ public:
 
     ProcessID networkProcessIdentifier();
     Vector<String> activePagesOriginsInWebProcessForTesting(ProcessID);
+    bool networkProcessHasEntitlementForTesting(const String&);
 
     WebPageGroup& defaultPageGroup() { return m_defaultPageGroup.get(); }
 
@@ -280,6 +281,8 @@ public:
     void disableServiceWorkerProcessTerminationDelay();
 
     void syncNetworkProcessCookies();
+
+    void setIDBPerOriginQuota(uint64_t);
 
     void setShouldMakeNextWebProcessLaunchFailForTesting(bool value) { m_shouldMakeNextWebProcessLaunchFailForTesting = value; }
     bool shouldMakeNextWebProcessLaunchFailForTesting() const { return m_shouldMakeNextWebProcessLaunchFailForTesting; }
@@ -440,13 +443,14 @@ public:
     BackgroundWebProcessToken backgroundWebProcessToken() const { return BackgroundWebProcessToken(m_backgroundWebProcessCounter.count()); }
 #endif
 
-    Ref<WebProcessProxy> processForNavigation(WebPageProxy&, const API::Navigation&, ProcessSwapRequestedByClient, WebCore::PolicyAction&, String& reason);
+    Ref<WebProcessProxy> processForNavigation(WebPageProxy&, const API::Navigation&, ProcessSwapRequestedByClient, String& reason);
 
     // SuspendedPageProxy management.
     void addSuspendedPageProxy(std::unique_ptr<SuspendedPageProxy>&&);
     void removeAllSuspendedPageProxiesForPage(WebPageProxy&);
     std::unique_ptr<SuspendedPageProxy> takeSuspendedPageProxy(SuspendedPageProxy&);
     bool hasSuspendedPageProxyFor(WebProcessProxy&) const;
+    unsigned maxSuspendedPageCount() const { return m_maxSuspendedPageCount; }
 
     void didReachGoodTimeToPrewarm();
 
@@ -472,7 +476,7 @@ private:
     void platformInitializeWebProcess(WebProcessCreationParameters&);
     void platformInvalidateContext();
 
-    Ref<WebProcessProxy> processForNavigationInternal(WebPageProxy&, const API::Navigation&, ProcessSwapRequestedByClient, WebCore::PolicyAction&, String& reason);
+    Ref<WebProcessProxy> processForNavigationInternal(WebPageProxy&, const API::Navigation&, ProcessSwapRequestedByClient, String& reason);
 
     RefPtr<WebProcessProxy> tryTakePrewarmedProcess(WebsiteDataStore&);
 
@@ -535,6 +539,8 @@ private:
     void removeProcessFromOriginCacheSet(WebProcessProxy&);
 
     void tryPrewarmWithDomainInformation(WebProcessProxy&, const WebCore::URL&);
+
+    void updateMaxSuspendedPageCount();
 
     Ref<API::ProcessPoolConfiguration> m_configuration;
 
@@ -710,6 +716,8 @@ private:
 #endif
 
     Deque<std::unique_ptr<SuspendedPageProxy>> m_suspendedPages;
+    unsigned m_maxSuspendedPageCount { 0 };
+
     HashMap<String, RefPtr<WebProcessProxy>> m_swappedProcessesPerRegistrableDomain;
 
     HashMap<String, std::unique_ptr<WebCore::PrewarmInformation>> m_prewarmInformationPerRegistrableDomain;

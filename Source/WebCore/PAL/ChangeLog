@@ -1,3 +1,34 @@
+2018-11-06  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Experimental prototype for WebGPURenderPipeline and WebGPUSwapChain
+        https://bugs.webkit.org/show_bug.cgi?id=191291
+
+        Reviewed by Myles Maxfield.
+
+        Properly disable WEBGPU on all non-Metal platforms for now.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-11-02  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Normalize character string based on key code
+        https://bugs.webkit.org/show_bug.cgi?id=191120
+
+        Reviewed by Tim Horton.
+
+        Remove forward declarations that are no longer needed now that we check key code.
+
+        * pal/spi/ios/UIKitSPI.h:
+
+2018-11-01  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [CG] Adopt CG SPI for non-even cornered rounded rects
+        https://bugs.webkit.org/show_bug.cgi?id=190155
+
+        Reviewed by Simon Fraser.
+
+        * pal/spi/cg/CoreGraphicsSPI.h:
+
 2018-10-30  Alexey Proskuryakov  <ap@apple.com>
 
         Clean up some obsolete MAX_ALLOWED macros

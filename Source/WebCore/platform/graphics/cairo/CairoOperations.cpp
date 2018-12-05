@@ -1023,7 +1023,7 @@ void drawLine(PlatformContextCairo& platformContext, const FloatPoint& point1, c
         cairo_set_antialias(cairoContext, CAIRO_ANTIALIAS_DEFAULT);
 }
 
-void drawLinesForText(PlatformContextCairo& platformContext, const FloatPoint& point, const DashArray& widths, bool printing, bool doubleUnderlines, const Color& color, float strokeThickness)
+void drawLinesForText(PlatformContextCairo& platformContext, const FloatPoint& point, float strokeThickness, const DashArray& widths, bool printing, bool doubleUnderlines, const Color& color)
 {
     Color modifiedColor = color;
     FloatRect bounds = computeLineBoundsAndAntialiasingModeForText(platformContext, point, widths.last(), printing, modifiedColor, strokeThickness);
@@ -1049,21 +1049,21 @@ void drawLinesForText(PlatformContextCairo& platformContext, const FloatPoint& p
     cairo_restore(cr);
 }
 
-void drawLineForDocumentMarker(PlatformContextCairo& platformContext, const FloatPoint& origin, float width, DocumentMarkerLineStyle style)
+void drawDotsForDocumentMarker(PlatformContextCairo& platformContext, const FloatRect& rect, DocumentMarkerLineStyle style)
 {
-    if (style != DocumentMarkerLineStyle::Spelling
-        && style != DocumentMarkerLineStyle::Grammar)
+    if (style.mode != DocumentMarkerLineStyle::Mode::Spelling
+        && style.mode != DocumentMarkerLineStyle::Mode::Grammar)
         return;
 
     cairo_t* cr = platformContext.cr();
     cairo_save(cr);
 
-    if (style == DocumentMarkerLineStyle::Spelling)
+    if (style.mode == DocumentMarkerLineStyle::Mode::Spelling)
         cairo_set_source_rgb(cr, 1, 0, 0);
-    else if (style == DocumentMarkerLineStyle::Grammar)
+    else if (style.mode == DocumentMarkerLineStyle::Mode::Grammar)
         cairo_set_source_rgb(cr, 0, 1, 0);
 
-    drawErrorUnderline(cr, origin.x(), origin.y(), width, cMisspellingLineThickness);
+    drawErrorUnderline(cr, rect.x(), rect.y(), rect.width(), rect.height());
     cairo_restore(cr);
 }
 

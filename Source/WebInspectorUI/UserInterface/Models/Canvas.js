@@ -74,6 +74,7 @@ WI.Canvas = class Canvas extends WI.Object
             break;
         case CanvasAgent.ContextType.WebGPU:
             contextType = WI.Canvas.ContextType.WebGPU;
+            break;
         case CanvasAgent.ContextType.WebMetal:
             contextType = WI.Canvas.ContextType.WebMetal;
             break;
@@ -269,7 +270,7 @@ WI.Canvas = class Canvas extends WI.Object
 
     startRecording(singleFrame)
     {
-        CanvasAgent.startRecording(this._identifier, singleFrame, (error) => {
+        let handleStartRecording = (error) => {
             if (error) {
                 console.error(error);
                 return;
@@ -285,7 +286,19 @@ WI.Canvas = class Canvas extends WI.Object
             this._recordingBufferUsed = 0;
 
             this.dispatchEventToListeners(WI.Canvas.Event.RecordingStarted);
-        });
+        };
+
+        // COMPATIBILITY (iOS 12.1): `frameCount` did not exist yet.
+        if (CanvasAgent.startRecording.supports("singleFrame")) {
+            CanvasAgent.startRecording(this._identifier, singleFrame, handleStartRecording);
+            return;
+        }
+
+        if (singleFrame) {
+            const frameCount = 1;
+            CanvasAgent.startRecording(this._identifier, frameCount, handleStartRecording);
+        } else
+            CanvasAgent.startRecording(this._identifier, handleStartRecording);
     }
 
     stopRecording()
@@ -330,10 +343,12 @@ WI.Canvas = class Canvas extends WI.Object
     {
         // Called from WI.CanvasManager.
 
-        if (initiator === WI.Recording.Initiator.Console)
+        if (initiator === RecordingAgent.Initiator.Console)
             this._recordingState = WI.Canvas.RecordingState.ActiveConsole;
+        else if (initiator === RecordingAgent.Initiator.AutoCapture)
+            this._recordingState = WI.Canvas.RecordingState.ActiveAutoCapture;
         else {
-            console.assert(initiator === WI.Recording.Initiator.Frontend);
+            console.assert(initiator === RecordingAgent.Initiator.Frontend);
             this._recordingState = WI.Canvas.RecordingState.ActiveFrontend;
         }
 
@@ -358,11 +373,11 @@ WI.Canvas = class Canvas extends WI.Object
     {
         // Called from WI.CanvasManager.
 
-        let fromConsole = this._recordingState === WI.Canvas.RecordingState.ActiveConsole;
+        let initiatedByUser = this._recordingState === WI.Canvas.RecordingState.ActiveFrontend;
 
         // COMPATIBILITY (iOS 12.1): Canvas.event.recordingStarted did not exist yet
-        if (!fromConsole && !CanvasAgent.hasEvent("recordingStarted"))
-            fromConsole = !this.recordingActive;
+        if (!initiatedByUser && !CanvasAgent.hasEvent("recordingStarted"))
+            initiatedByUser = !!this.recordingActive;
 
         let recording = recordingPayload ? WI.Recording.fromPayload(recordingPayload, this._recordingFrames) : null;
         if (recording) {
@@ -376,7 +391,7 @@ WI.Canvas = class Canvas extends WI.Object
         this._recordingFrames = [];
         this._recordingBufferUsed = 0;
 
-        this.dispatchEventToListeners(WI.Canvas.Event.RecordingStopped, {recording, fromConsole});
+        this.dispatchEventToListeners(WI.Canvas.Event.RecordingStopped, {recording, initiatedByUser});
     }
 
     nextShaderProgramDisplayNumber()
@@ -405,6 +420,7 @@ WI.Canvas.RecordingState = {
     Inactive: "canvas-recording-state-inactive",
     ActiveFrontend: "canvas-recording-state-active-frontend",
     ActiveConsole: "canvas-recording-state-active-console",
+    ActiveAutoCapture: "canvas-recording-state-active-auto-capture",
 };
 
 WI.Canvas.Event = {
