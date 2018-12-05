@@ -108,5 +108,12 @@ bool FontCascade::canExpandAroundIdeographsInComplexText()
     return false;
 }
 
+Path Font::platformPathForGlyph(Glyph glyph) const
+{
+	notImplemented();
+	
+	return Path();
+}
+
 } // namespace WebCore
 

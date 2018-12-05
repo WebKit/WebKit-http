@@ -561,16 +561,12 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width,
     m_data->view()->PopState();
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool /*printing*/, bool /* doubleLines */, WebCore::StrokeStyle)
+void GraphicsContext::drawLineForText(const FloatRect& rect, bool printing, bool doubleLines, WebCore::StrokeStyle)
 {
-    if (paintingDisabled())
-        return;
-
-    FloatPoint endPoint = origin + FloatSize(width, 0);
-    drawLine(IntPoint(origin), IntPoint(endPoint));
+    drawLinesForText(rect.location(), rect.height(), DashArray { rect.width(), 0 }, printing, doubleLines);
 }
 
-void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleUnderlines, WebCore::StrokeStyle)
+void GraphicsContext::drawLinesForText(const FloatPoint& point, float, const DashArray& widths, bool printing, bool doubleUnderlines, WebCore::StrokeStyle)
 {
     if (paintingDisabled())
         return;
@@ -582,18 +578,19 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray&
     // TODO in Cairo, these are not lines, but filled rectangle? Whats the thickness?
     for (size_t i = 0; i < widths.size(); i += 2)
     {
-        drawLineForText(FloatPoint(point.x() + widths[i], point.y()),
-            widths[i+1] - widths[i], printing, doubleUnderlines);
+        drawLine(
+			FloatPoint(point.x() + widths[i], point.y()),
+			FloatPoint(point.x() + widths[i+1], point.y()));
     }
 }
 
-
-void GraphicsContext::drawLineForDocumentMarker(const FloatPoint&, float /* width */, DocumentMarkerLineStyle /* style */)
+void GraphicsContext::drawDotsForDocumentMarker(WebCore::FloatRect const&,
+	WebCore::DocumentMarkerLineStyle)
 {
     if (paintingDisabled())
         return;
 
-    notImplemented();
+	notImplemented();
 }
 
 FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMode /* mode */)
