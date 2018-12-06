@@ -29,6 +29,10 @@
 #include "CertificateInfoBase.h"
 #include "NotImplemented.h"
 #include <support/Locker.h>
+#include <wtf/persistence/PersistentCoders.h>
+#include <wtf/persistence/PersistentDecoder.h>
+#include <wtf/persistence/PersistentEncoder.h>
+
 #include <Certificate.h>
 
 namespace WebCore {
@@ -52,5 +56,24 @@ private:
 };
 
 } // namespace WebCore
+
+namespace WTF {
+namespace Persistence {
+
+template<> struct Coder<WebCore::CertificateInfo> {
+    static void encode(Encoder& encoder, const WebCore::CertificateInfo& certificateInfo)
+    {
+        notImplemented();
+    }
+
+    static bool decode(Decoder& decoder, WebCore::CertificateInfo& certificateInfo)
+    {
+        notImplemented();
+        return false;
+    }
+};
+
+} // namespace WTF::Persistence
+} // namespace WTF
 
 #endif // CertificateInfo_h

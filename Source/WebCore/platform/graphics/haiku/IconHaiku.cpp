@@ -30,17 +30,6 @@
 
 namespace WebCore {
 
-Icon::~Icon()
-{
-    notImplemented();
-}
-
-RefPtr<Icon> Icon::createIconForFiles(const Vector<String>& filenames)
-{
-    notImplemented();
-    return 0;
-}
-
 void Icon::paint(GraphicsContext&, const FloatRect&)
 {
     notImplemented();

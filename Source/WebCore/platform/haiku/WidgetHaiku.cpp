@@ -67,20 +67,6 @@ Widget::Widget(PlatformWidget widget)
     init(widget);
 }
 
-Widget::~Widget()
-{
-}
-
-IntRect Widget::frameRect() const
-{
-    return m_frame;
-}
-
-void Widget::setFrameRect(const IntRect& rect)
-{
-    m_frame = rect;
-}
-
 void Widget::setFocus(bool focused)
 {
     AutoPlatformWidgetLocker locker(topLevelPlatformWidget());
@@ -119,16 +105,6 @@ void Widget::hide()
     AutoPlatformWidgetLocker locker(platformWidget());
     if (locker.isLocked() && !platformWidget()->IsHidden())
         platformWidget()->Hide();
-}
-
-void Widget::paint(GraphicsContext&, IntRect const&, Widget::SecurityOriginPaintPolicy)
-{
-    notImplemented();
-}
-
-void Widget::setIsSelected(bool)
-{
-    notImplemented();
 }
 
 } // namespace WebCore

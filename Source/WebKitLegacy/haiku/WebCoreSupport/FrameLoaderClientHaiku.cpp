@@ -866,9 +866,7 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
     IntSize size = IntSize(bounds.IntegerWidth() + 1, bounds.IntegerHeight() + 1);
 
     bool transparent = m_webFrame->IsTransparent();
-    Color backgroundColor = transparent ? WebCore::Color::transparent : WebCore::Color::white;
-
-    frame->createView(size, backgroundColor, transparent, {}, {});
+    frame->createView(size, transparent, {}, {});
 
     frame->view()->setTopLevelPlatformWidget(m_webPage->WebView());
 }
