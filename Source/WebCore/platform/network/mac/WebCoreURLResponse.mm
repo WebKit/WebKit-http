@@ -92,6 +92,7 @@ static CFDictionaryRef createExtensionToMIMETypeMap()
         CFSTR("me"),
         CFSTR("mesh"),
         CFSTR("mif"),
+        CFSTR("mjs"),
         CFSTR("movie"),
         CFSTR("mp2"),
         CFSTR("mpga"),
@@ -211,6 +212,7 @@ static CFDictionaryRef createExtensionToMIMETypeMap()
         CFSTR("application/x-troff-me"),
         CFSTR("model/mesh"),
         CFSTR("application/vnd.mif"),
+        CFSTR("application/javascript"),
         CFSTR("video/x-sgi-movie"),
         CFSTR("audio/mpeg"),
         CFSTR("audio/mpeg"),
@@ -329,12 +331,11 @@ void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse, bool isMainResourceL
 
 static bool schemeWasUpgradedDueToDynamicHSTS(NSURLRequest *request)
 {
-#if !USE(CFNETWORK_IGNORE_HSTS)
+#if HAVE(CFNETWORK_WITH_IGNORE_HSTS)
+    return [request _schemeWasUpgradedDueToDynamicHSTS];
+#else
     UNUSED_PARAM(request);
     return false;
-#else
-    return [request respondsToSelector:@selector(_schemeWasUpgradedDueToDynamicHSTS)]
-        && [request _schemeWasUpgradedDueToDynamicHSTS];
 #endif
 }
 

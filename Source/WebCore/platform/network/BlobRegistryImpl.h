@@ -33,14 +33,13 @@
 
 #include "BlobData.h"
 #include "BlobRegistry.h"
-#include "URLHash.h"
 #include <wtf/HashMap.h>
+#include <wtf/URLHash.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class URL;
 class ResourceHandle;
 class ResourceHandleClient;
 class ResourceRequest;
@@ -70,7 +69,7 @@ private:
 
     unsigned long long blobSize(const URL&) override;
 
-    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void (const Vector<String>& filePaths)>&& completionHandler) override;
+    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, CompletionHandler<void(Vector<String>&& filePaths)>&&) override;
 
     struct BlobForFileWriting {
         String blobURL;

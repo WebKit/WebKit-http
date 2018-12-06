@@ -27,6 +27,8 @@ from webkitpy.common.memoized import memoized
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port.darwin import DarwinPort
 from webkitpy.port.simulator_process import SimulatorProcess
+from webkitpy.xcode.device_type import DeviceType
+from webkitpy.xcode.simulated_device import DeviceRequest
 
 
 _log = logging.getLogger(__name__)
@@ -35,6 +37,8 @@ _log = logging.getLogger(__name__)
 class DevicePort(DarwinPort):
 
     DEVICE_MANAGER = None
+    DEFAULT_DEVICE_TYPE = None
+    NO_DEVICE_MANAGER = 'No device manager found for port'
 
     def __init__(self, *args, **kwargs):
         super(DevicePort, self).__init__(*args, **kwargs)
@@ -83,9 +87,6 @@ class DevicePort(DarwinPort):
             return []
         return self.DEVICE_MANAGER.INITIALIZED_DEVICES
 
-    def _create_devices(self, device_class):
-        raise NotImplementedError
-
     # Despite their names, these flags do not actually get passed all the way down to webkit-build.
     def _build_driver_flags(self):
         return ['--sdk', self.SDK] + (['ARCHS=%s' % self.architecture()] if self.architecture() else [])
@@ -105,8 +106,32 @@ class DevicePort(DarwinPort):
             if not device.install_dylibs(self._build_path()):
                 raise RuntimeError('Failed to install dylibs at {} on device {}'.format(self._build_path(), device.udid))
 
-    def setup_test_run(self, device_class=None):
-        self._create_devices(device_class)
+    def setup_test_run(self, device_type=None):
+        if not self.DEVICE_MANAGER:
+            raise RuntimeError(self.NO_DEVICE_MANAGER)
+
+        device_type = device_type if device_type else self.DEFAULT_DEVICE_TYPE
+        device_type = DeviceType(
+            hardware_family=device_type.hardware_family,
+            hardware_type=device_type.hardware_type,
+            software_version=self.device_version(),
+            software_variant=device_type.software_variant,
+        )
+        _log.debug('\nCreating devices for {}'.format(device_type))
+
+        request = DeviceRequest(
+            device_type,
+            use_booted_simulator=not self.get_option('dedicated_simulators', False),
+            use_existing_simulator=False,
+            allow_incomplete_match=True,
+        )
+        self.DEVICE_MANAGER.initialize_devices([request] * self.child_processes(), self.host)
+
+        if not self.devices():
+            raise RuntimeError('No devices are available for testing')
+        if self.default_child_processes() < self.child_processes():
+            raise RuntimeError('To few connected devices for {} processes'.format(self.child_processes()))
+
         self._install()
 
         for i in xrange(self.child_processes()):
@@ -160,3 +185,6 @@ class DevicePort(DarwinPort):
             self._append_value_colon_separated(env, '__XPC_DYLD_INSERT_LIBRARIES', '/usr/lib/libgmalloc.dylib')
         env['XML_CATALOG_FILES'] = ''  # work around missing /etc/catalog <rdar://problem/4292995>
         return env
+
+    def device_version(self):
+        raise NotImplementedError

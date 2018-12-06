@@ -32,9 +32,7 @@
 #import "Image.h"
 #import "Pasteboard.h"
 #import "SharedBuffer.h"
-#import "URL.h"
 #import "UTIUtilities.h"
-#import "WebCoreNSURLExtras.h"
 #import "WebItemProviderPasteboard.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <UIKit/UIColor.h>
@@ -44,6 +42,8 @@
 #import <pal/spi/ios/UIKitSPI.h>
 #import <wtf/ListHashSet.h>
 #import <wtf/SoftLinking.h>
+#import <wtf/URL.h>
+#import <wtf/cocoa/NSURLExtras.h>
 #import <wtf/text/StringHash.h>
 
 #define PASTEBOARD_SUPPORTS_ITEM_PROVIDERS (PLATFORM(IOS_FAMILY) && !(PLATFORM(WATCHOS) || PLATFORM(APPLETV)))
@@ -154,6 +154,7 @@ PasteboardItemInfo PlatformPasteboard::informationForItemAtIndex(int index)
 #if PASTEBOARD_SUPPORTS_PRESENTATION_STYLE_AND_TEAM_DATA
     info.preferredPresentationStyle = pasteboardItemPresentationStyle(itemProvider.preferredPresentationStyle);
 #endif
+    info.containsFileURLAndFileUploadContent = itemProvider.web_containsFileURLAndFileUploadContent;
     info.suggestedFileName = itemProvider.suggestedName;
     for (NSString *typeIdentifier in itemProvider.registeredTypeIdentifiers) {
         CFStringRef cfTypeIdentifier = (CFStringRef)typeIdentifier;
@@ -350,14 +351,21 @@ void PlatformPasteboard::write(const PasteboardWebContent& content)
 {
     auto representationsToRegister = adoptNS([[WebItemProviderRegistrationInfoList alloc] init]);
 
+#if !PLATFORM(IOSMAC)
     [representationsToRegister addData:[webIOSPastePboardType dataUsingEncoding:NSUTF8StringEncoding] forType:webIOSPastePboardType];
+#endif
 
     ASSERT(content.clientTypes.size() == content.clientData.size());
     for (size_t i = 0, size = content.clientTypes.size(); i < size; ++i)
         [representationsToRegister addData:content.clientData[i]->createNSData().get() forType:content.clientTypes[i]];
 
-    if (content.dataInWebArchiveFormat)
-        [representationsToRegister addData:content.dataInWebArchiveFormat->createNSData().get() forType:WebArchivePboardType];
+    if (content.dataInWebArchiveFormat) {
+        auto webArchiveData = content.dataInWebArchiveFormat->createNSData();
+#if !PLATFORM(IOSMAC)
+        [representationsToRegister addData:webArchiveData.get() forType:WebArchivePboardType];
+#endif
+        [representationsToRegister addData:webArchiveData.get() forType:(__bridge NSString *)kUTTypeWebArchive];
+    }
 
     if (content.dataInAttributedStringFormat) {
         NSAttributedString *attributedString = unarchivedObjectOfClassesFromData([NSSet setWithObject:[NSAttributedString class]], content.dataInAttributedStringFormat->createNSData().get());
@@ -413,7 +421,7 @@ void PlatformPasteboard::write(const PasteboardImage& pasteboardImage)
     auto& pasteboardURL = pasteboardImage.url;
     if (NSURL *nsURL = pasteboardURL.url) {
 #if NSURL_SUPPORTS_TITLE
-        nsURL._title = pasteboardURL.title.isEmpty() ? userVisibleString(pasteboardURL.url) : (NSString *)pasteboardURL.title;
+        nsURL._title = pasteboardURL.title.isEmpty() ? WTF::userVisibleString(pasteboardURL.url) : (NSString *)pasteboardURL.title;
 #endif
         [representationsToRegister addRepresentingObject:nsURL];
     }
@@ -523,6 +531,9 @@ Vector<String> PlatformPasteboard::typesSafeForDOMToReadAndWrite(const String& o
             if (domTypeAsString == "text/uri-list") {
                 BOOL ableToDetermineProtocolOfPasteboardURL = ![m_pasteboard isKindOfClass:[WebItemProviderPasteboard class]];
                 if (ableToDetermineProtocolOfPasteboardURL && stringForType(kUTTypeURL).isEmpty())
+                    continue;
+
+                if ([[m_pasteboard pasteboardTypes] containsObject:(__bridge NSString *)kUTTypeFileURL])
                     continue;
             }
             domPasteboardTypes.add(WTFMove(domTypeAsString));

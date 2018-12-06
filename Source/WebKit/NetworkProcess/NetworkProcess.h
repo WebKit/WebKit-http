@@ -66,7 +66,6 @@ class ProtectionSpace;
 class ResourceError;
 class SWServer;
 class SecurityOrigin;
-class URL;
 enum class StoredCredentialsPolicy : bool;
 struct MessageWithMessagePorts;
 struct SecurityOriginData;
@@ -169,16 +168,10 @@ public:
     void resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID, uint64_t contextId);
 #endif
 
-    Seconds loadThrottleLatency() const { return m_loadThrottleLatency; }
-
     using CacheStorageParametersCallback = CompletionHandler<void(const String&, uint64_t quota)>;
     void cacheStorageParameters(PAL::SessionID, CacheStorageParametersCallback&&);
 
-    void preconnectTo(const WebCore::URL&, WebCore::StoredCredentialsPolicy);
-
-#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
-    bool shouldLogCookieInformation() const { return m_logCookieInformation; }
-#endif
+    void preconnectTo(const URL&, WebCore::StoredCredentialsPolicy);
 
     void setSessionIsControlledByAutomation(PAL::SessionID, bool);
     bool sessionIsControlledByAutomation(PAL::SessionID) const;
@@ -280,6 +273,9 @@ private:
     void downloadRequest(PAL::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedFilename);
     void resumeDownload(PAL::SessionID, DownloadID, const IPC::DataReference& resumeData, const String& path, SandboxExtension::Handle&&);
     void cancelDownload(DownloadID);
+#if PLATFORM(COCOA)
+    void publishDownloadProgress(DownloadID, const URL&, SandboxExtension::Handle&&);
+#endif
     void continueWillSendRequest(DownloadID, WebCore::ResourceRequest&&);
     void continueDecidePendingDownloadDestination(DownloadID, String destination, SandboxExtension::Handle&&, bool allowOverwrite);
 
@@ -293,7 +289,7 @@ private:
     void syncAllCookies();
     void didSyncAllCookies();
 
-    void writeBlobToFilePath(const WebCore::URL&, const String& path, SandboxExtension::Handle&&, uint64_t requestID);
+    void writeBlobToFilePath(const URL&, const String& path, SandboxExtension::Handle&&, CompletionHandler<void(bool)>&&);
 
 #if USE(SOUP)
     void setIgnoreTLSErrors(bool);
@@ -361,10 +357,6 @@ private:
     bool m_suppressMemoryPressureHandler { false };
     bool m_diskCacheIsDisabledForTesting;
     bool m_canHandleHTTPSServerTrustEvaluation;
-    Seconds m_loadThrottleLatency;
-#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
-    bool m_logCookieInformation { false };
-#endif
 
     RefPtr<NetworkCache::Cache> m_cache;
 

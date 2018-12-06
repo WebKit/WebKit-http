@@ -98,6 +98,15 @@ static NSData *testZIPArchive()
 
 @end
 
+static void loadTestPageAndEnsureInputSession(DragAndDropSimulator *simulator, NSString *testPageName)
+{
+    TestWKWebView *webView = [simulator webView];
+    simulator.allowsFocusToStartInputSession = YES;
+    [webView becomeFirstResponder];
+    [webView synchronouslyLoadTestPageNamed:testPageName];
+    [simulator ensureInputSession];
+}
+
 static NSValue *makeCGRectValue(CGFloat x, CGFloat y, CGFloat width, CGFloat height)
 {
     return [NSValue valueWithCGRect:CGRectMake(x, y, width, height)];
@@ -341,8 +350,7 @@ TEST(DragAndDropTests, ContentEditableToContentEditable)
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
     auto simulator = adoptNS([[DragAndDropSimulator alloc] initWithWebView:webView.get()]);
 
-    [webView loadTestPageNamed:@"autofocus-contenteditable"];
-    [simulator waitForInputSession];
+    loadTestPageAndEnsureInputSession(simulator.get(), @"autofocus-contenteditable");
     [simulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
 
     EXPECT_TRUE([simulator suppressedSelectionCommandsDuringDrop]);
@@ -362,8 +370,7 @@ TEST(DragAndDropTests, ContentEditableToTextarea)
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
     auto simulator = adoptNS([[DragAndDropSimulator alloc] initWithWebView:webView.get()]);
 
-    [webView loadTestPageNamed:@"contenteditable-and-textarea"];
-    [simulator waitForInputSession];
+    loadTestPageAndEnsureInputSession(simulator.get(), @"contenteditable-and-textarea");
     [simulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
 
     EXPECT_TRUE([simulator suppressedSelectionCommandsDuringDrop]);
@@ -394,8 +401,7 @@ TEST(DragAndDropTests, ContentEditableMoveParagraphs)
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
     auto simulator = adoptNS([[DragAndDropSimulator alloc] initWithWebView:webView.get()]);
 
-    [webView loadTestPageNamed:@"two-paragraph-contenteditable"];
-    [simulator waitForInputSession];
+    loadTestPageAndEnsureInputSession(simulator.get(), @"two-paragraph-contenteditable");
     [simulator runFrom:CGPointMake(100, 50) to:CGPointMake(250, 450)];
 
     NSString *finalTextContent = [webView stringByEvaluatingJavaScript:@"editor.textContent"];
@@ -425,8 +431,7 @@ TEST(DragAndDropTests, TextAreaToInput)
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
     auto simulator = adoptNS([[DragAndDropSimulator alloc] initWithWebView:webView.get()]);
 
-    [webView loadTestPageNamed:@"textarea-to-input"];
-    [simulator waitForInputSession];
+    loadTestPageAndEnsureInputSession(simulator.get(), @"textarea-to-input");
     [simulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
 
     EXPECT_TRUE([simulator suppressedSelectionCommandsDuringDrop]);
@@ -440,8 +445,7 @@ TEST(DragAndDropTests, SinglePlainTextWordTypeIdentifiers)
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
     auto simulator = adoptNS([[DragAndDropSimulator alloc] initWithWebView:webView.get()]);
 
-    [webView loadTestPageNamed:@"textarea-to-input"];
-    [simulator waitForInputSession];
+    loadTestPageAndEnsureInputSession(simulator.get(), @"textarea-to-input");
     [webView stringByEvaluatingJavaScript:@"source.value = 'pneumonoultramicroscopicsilicovolcanoconiosis'"];
     [webView stringByEvaluatingJavaScript:@"source.selectionStart = 0"];
     [webView stringByEvaluatingJavaScript:@"source.selectionEnd = source.value.length"];
@@ -463,8 +467,7 @@ TEST(DragAndDropTests, SinglePlainTextURLTypeIdentifiers)
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
     auto simulator = adoptNS([[DragAndDropSimulator alloc] initWithWebView:webView.get()]);
 
-    [webView loadTestPageNamed:@"textarea-to-input"];
-    [simulator waitForInputSession];
+    loadTestPageAndEnsureInputSession(simulator.get(), @"textarea-to-input");
     [webView stringByEvaluatingJavaScript:@"source.value = 'https://webkit.org/'"];
     [webView stringByEvaluatingJavaScript:@"source.selectionStart = 0"];
     [webView stringByEvaluatingJavaScript:@"source.selectionEnd = source.value.length"];
@@ -1643,8 +1646,8 @@ TEST(DragAndDropTests, DataTransferGetDataWhenDroppingImageWithFileURL)
 
     // File URLs should never be exposed directly to web content, so DataTransfer.getData should return an empty string here.
     checkJSONWithLogging([webView stringByEvaluatingJavaScript:@"output.value"], @{
-        @"dragover": @{ @"Files": @"", @"text/uri-list": @"" },
-        @"drop": @{ @"Files": @"", @"text/uri-list": @"" }
+        @"dragover": @{ @"Files": @"" },
+        @"drop": @{ @"Files": @"" }
     });
 }
 
@@ -1767,6 +1770,29 @@ TEST(DragAndDropTests, DataTransferSuppressGetDataDueToPresenceOfTextFile)
     EXPECT_WK_STREQ("", [webView stringByEvaluatingJavaScript:@"htmlData.textContent"]);
     EXPECT_WK_STREQ("(FILE, text/plain)", [webView stringByEvaluatingJavaScript:@"items.textContent"]);
     EXPECT_WK_STREQ("('hello.txt', text/plain)", [webView stringByEvaluatingJavaScript:@"files.textContent"]);
+}
+
+TEST(DragAndDropTests, DataTransferExposePlainTextWithFileURLAsFile)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"DataTransfer"];
+    auto simulator = adoptNS([[DragAndDropSimulator alloc] initWithWebView:webView.get()]);
+
+    auto itemProvider = adoptNS([[NSItemProvider alloc] init]);
+    NSData *urlAsData = [@"file:///some/file/path.txt" dataUsingEncoding:NSUTF8StringEncoding];
+    [itemProvider registerDataRepresentationForTypeIdentifier:(__bridge NSString *)kUTTypeFileURL withData:urlAsData];
+    [itemProvider registerDataRepresentationForTypeIdentifier:(__bridge NSString *)kUTTypeURL withData:urlAsData];
+    [itemProvider registerObject:@"Hello world" visibility:NSItemProviderRepresentationVisibilityAll];
+
+    [simulator setExternalItemProviders:@[ itemProvider.get() ]];
+    [simulator runFrom:CGPointZero to:CGPointMake(50, 100)];
+
+    EXPECT_WK_STREQ("Files", [webView stringByEvaluatingJavaScript:@"types.textContent"]);
+    EXPECT_WK_STREQ("", [webView stringByEvaluatingJavaScript:@"textData.textContent"]);
+    EXPECT_WK_STREQ("", [webView stringByEvaluatingJavaScript:@"urlData.textContent"]);
+    EXPECT_WK_STREQ("", [webView stringByEvaluatingJavaScript:@"htmlData.textContent"]);
+    EXPECT_WK_STREQ("(FILE, text/plain)", [webView stringByEvaluatingJavaScript:@"items.textContent"]);
+    EXPECT_WK_STREQ("('text.txt', text/plain)", [webView stringByEvaluatingJavaScript:@"files.textContent"]);
 }
 
 TEST(DragAndDropTests, DataTransferGetDataCannotReadPrivateArbitraryTypes)

@@ -1,3 +1,55 @@
+2018-12-01  Don Olmstead  <don.olmstead@sony.com>
+
+        Cleanup WebKit Features
+        https://bugs.webkit.org/show_bug.cgi?id=192262
+
+        Reviewed by Michael Catanzaro.
+
+        Removes unused ENABLE flags from the listing in WebKitFeatures.cmake
+        and any other associated code. Synced the options in FeatureList.pm to
+        the feature listing. Sorts the ENABLE flags.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2018-11-30  Don Olmstead  <don.olmstead@sony.com>
+
+        Rename ENABLE_SUBTLE_CRYPTO to ENABLE_WEB_CRYPTO
+        https://bugs.webkit.org/show_bug.cgi?id=192197
+
+        Reviewed by Jiewen Tan.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-11-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Automatically disable JIT and enable USE_SYSTEM_MALLOC on unfamiliar architectures
+        https://bugs.webkit.org/show_bug.cgi?id=186722
+
+        Reviewed by Žan Doberšek.
+
+        Time for part #2! This change was defeated for GTK and WPE by the code that makes the
+        options public. We have three options: (a) duplicate the architecture check currently in
+        WebKitFeatures.cmake in both OptionsGTK.cmake and OptionsWPE.cmake, (b) rely on the result
+        of that check in OptionsGTK.cmake and OptionsWPE.cmake by using ENABLE_JIT_DEFAULT and
+        USE_SYSTEM_MALLOC_DEFAULT, a fragile encapsulation violation, or (c) just make the options
+        private. They have been public up until now because they needed to be turned off on
+        unsupported architectures. But now they are off by default and enabled only for particular
+        whitelisted architectures, so they shouldn't be needed anymore.
+
+        Note we have to hide ENABLE_SAMPLING_PROFILER as well, since it needs to match the value of
+        ENABLE_JIT. Again, this is handled properly in WebKitFeatures.cmake, and defeated here in
+        OptionsGTK.cmake. (This is not a problem for WPE.)
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
 2018-11-26  Fujii Hironori  <Hironori.Fujii@sony.com>
 
         [CMake] Remove ENABLE_ACCESSIBILITY CMake variable

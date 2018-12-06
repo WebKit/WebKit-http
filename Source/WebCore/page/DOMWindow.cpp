@@ -101,7 +101,7 @@
 #include "StyleResolver.h"
 #include "StyleScope.h"
 #include "SuddenTermination.h"
-#include "URL.h"
+#include <wtf/URL.h>
 #include "UserGestureIndicator.h"
 #include "VisualViewport.h"
 #include "WebKitPoint.h"
@@ -1678,10 +1678,10 @@ void DOMWindow::clearTimeout(int timeoutId)
         Document* document = frame->document();
         if (timeoutId > 0 && document) {
             DOMTimer* timer = document->findTimeout(timeoutId);
-            if (timer && WebThreadContainsObservedContentModifier(timer)) {
-                WebThreadRemoveObservedContentModifier(timer);
+            if (timer && WebThreadContainsObservedDOMTimer(timer)) {
+                WebThreadRemoveObservedDOMTimer(timer);
 
-                if (!WebThreadCountOfObservedContentModifiers()) {
+                if (!WebThreadCountOfObservedDOMTimers()) {
                     if (Page* page = frame->page())
                         page->chrome().client().observedContentChange(*frame);
                 }
@@ -2186,7 +2186,7 @@ String DOMWindow::crossDomainAccessErrorMessage(const DOMWindow& activeWindow, I
 
 bool DOMWindow::isInsecureScriptAccess(DOMWindow& activeWindow, const String& urlString)
 {
-    if (!protocolIsJavaScript(urlString))
+    if (!WTF::protocolIsJavaScript(urlString))
         return false;
 
     // If this DOMWindow isn't currently active in the Frame, then there's no
@@ -2237,10 +2237,9 @@ ExceptionOr<RefPtr<Frame>> DOMWindow::createWindow(const String& urlString, cons
     if (!newFrame)
         return RefPtr<Frame> { nullptr };
 
-    if (!windowFeatures.noopener) {
+    if (!windowFeatures.noopener)
         newFrame->loader().setOpener(&openerFrame);
-        newFrame->page()->setOpenedViaWindowOpenWithOpener();
-    }
+
     if (created)
         newFrame->page()->setOpenedByDOM();
 

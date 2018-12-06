@@ -39,13 +39,24 @@ typedef enum
     WKContentIndeterminateChange    = 1
 }   WKContentChange;
 
+WEBCORE_EXPORT void WKStartObservingContentChanges(void);
 WEBCORE_EXPORT void WKStopObservingContentChanges(void);
-WEBCORE_EXPORT void WKBeginObservingContentChanges(bool allowsIntedeterminateChanges);
+
+WEBCORE_EXPORT void WKStartObservingDOMTimerScheduling(void);
+WEBCORE_EXPORT void WKStopObservingDOMTimerScheduling(void);
+WEBCORE_EXPORT bool WKIsObservingDOMTimerScheduling(void);
+
+WEBCORE_EXPORT void WKStartObservingStyleRecalcScheduling(void);
+WEBCORE_EXPORT void WKStopObservingStyleRecalcScheduling(void);
+WEBCORE_EXPORT bool WKIsObservingStyleRecalcScheduling(void);
+
+WEBCORE_EXPORT void WKSetShouldObserveNextStyleRecalc(bool);
+WEBCORE_EXPORT bool WKShouldObserveNextStyleRecalc(void);
 
 WEBCORE_EXPORT WKContentChange WKObservedContentChange(void);
 
-WEBCORE_EXPORT int WebThreadCountOfObservedContentModifiers(void);
-WEBCORE_EXPORT void WebThreadClearObservedContentModifiers(void);
+WEBCORE_EXPORT int WebThreadCountOfObservedDOMTimers(void);
+WEBCORE_EXPORT void WebThreadClearObservedDOMTimers(void);
 
 #ifdef __cplusplus
 }

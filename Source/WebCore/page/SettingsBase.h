@@ -34,7 +34,7 @@
 #include "StorageMap.h"
 #include "TextFlags.h"
 #include "Timer.h"
-#include "URL.h"
+#include <wtf/URL.h>
 #include "WritingMode.h"
 #include <JavaScriptCore/RuntimeFlags.h>
 #include <unicode/uscript.h>
@@ -206,6 +206,10 @@ protected:
     float m_oneLineTextMultiplierCoefficient { defaultOneLineTextMultiplierCoefficient };
     float m_multiLineTextMultiplierCoefficient { defaultMultiLineTextMultiplierCoefficient };
     float m_maxTextAutosizingScaleIncrease { defaultMaxTextAutosizingScaleIncrease };
+#endif
+
+#if USE(APPLE_INTERNAL_SDK)
+#include <WebKitAdditions/SettingsAdditions.h>
 #endif
 };
 

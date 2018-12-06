@@ -130,7 +130,6 @@ public:
 
 #if PLATFORM(GTK)
     explicit PlatformWheelEvent(GdkEventScroll*);
-    FloatPoint swipeVelocity() const;
 #endif
 
 #if PLATFORM(HAIKU)
@@ -159,6 +158,7 @@ public:
     PlatformWheelEventPhase momentumPhase() const { return m_momentumPhase; }
     bool isEndOfNonMomentumScroll() const;
     bool isTransitioningToMomentumScroll() const;
+    FloatPoint swipeVelocity() const;
 #endif
 
 #if PLATFORM(WIN)
@@ -217,10 +217,6 @@ inline bool PlatformWheelEvent::isEndOfMomentumScroll() const
     return m_phase == PlatformWheelEventPhaseNone && m_momentumPhase == PlatformWheelEventPhaseEnded;
 }
 
-#endif
-
-#if PLATFORM(COCOA) || PLATFORM(GTK)
-
 inline bool PlatformWheelEvent::isEndOfNonMomentumScroll() const
 {
     return m_phase == PlatformWheelEventPhaseEnded && m_momentumPhase == PlatformWheelEventPhaseNone;
@@ -230,6 +226,13 @@ inline bool PlatformWheelEvent::isTransitioningToMomentumScroll() const
 {
     return m_phase == PlatformWheelEventPhaseNone && m_momentumPhase == PlatformWheelEventPhaseBegan;
 }
-#endif
+
+inline FloatPoint PlatformWheelEvent::swipeVelocity() const
+{
+    // The swiping velocity is stored in the deltas of the event declaring it.
+    return isTransitioningToMomentumScroll() ? FloatPoint(m_wheelTicksX, m_wheelTicksY) : FloatPoint();
+}
+
+#endif // ENABLE(ASYNC_SCROLLING)
 
 } // namespace WebCore

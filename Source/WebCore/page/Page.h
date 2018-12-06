@@ -136,7 +136,6 @@ class Settings;
 class SocketProvider;
 class StorageNamespace;
 class StorageNamespaceProvider;
-class URL;
 class UserContentProvider;
 class ValidationMessageClient;
 class ActivityStateChangeObserver;
@@ -203,8 +202,8 @@ public:
     bool openedByDOM() const;
     void setOpenedByDOM();
 
-    bool openedViaWindowOpenWithOpener() const { return m_openedViaWindowOpenWithOpener; }
-    void setOpenedViaWindowOpenWithOpener() { m_openedViaWindowOpenWithOpener = true; }
+    bool openedByDOMWithOpener() const { return m_openedByDOMWithOpener; }
+    void setOpenedByDOMWithOpener() { m_openedByDOMWithOpener = true; }
 
     WEBCORE_EXPORT void goToItem(HistoryItem&, FrameLoadType, ShouldTreatAsContinuingLoad);
 
@@ -767,7 +766,7 @@ private:
     int m_subframeCount { 0 };
     String m_groupName;
     bool m_openedByDOM { false };
-    bool m_openedViaWindowOpenWithOpener { false };
+    bool m_openedByDOMWithOpener { false };
 
     bool m_tabKeyCyclesThroughElements { true };
     bool m_defersLoading { false };
@@ -812,7 +811,7 @@ private:
     String m_userStyleSheetPath;
     mutable String m_userStyleSheet;
     mutable bool m_didLoadUserStyleSheet { false };
-    mutable time_t m_userStyleSheetModificationTime { 0 };
+    mutable std::optional<WallTime> m_userStyleSheetModificationTime;
 
     String m_captionUserPreferencesStyleSheet;
 

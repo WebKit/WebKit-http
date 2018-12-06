@@ -28,12 +28,16 @@
 #import "RemoteLayerTreeHost.h"
 #import "RemoteLayerTreeViews.h"
 
+OBJC_CLASS PKCanvasView;
+
 @interface WKDrawingView : WKEmbeddedView <WKNativelyInteractible>
 
 - (instancetype)initWithEmbeddedViewID:(WebCore::GraphicsLayer::EmbeddedViewID)embeddedViewID webPageProxy:(WebKit::WebPageProxy&)webPageProxy;
 
 - (NSData *)PNGRepresentation;
 - (void)loadDrawingFromPNGRepresentation:(NSData *)PNGData;
+
+@property (nonatomic, readonly) PKCanvasView *canvasView;
 
 @end
 

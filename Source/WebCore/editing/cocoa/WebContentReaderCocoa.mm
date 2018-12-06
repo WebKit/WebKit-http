@@ -34,6 +34,8 @@
 #import "Document.h"
 #import "DocumentFragment.h"
 #import "DocumentLoader.h"
+#import "Editor.h"
+#import "EditorClient.h"
 #import "File.h"
 #import "FileSystem.h"
 #import "Frame.h"
@@ -56,7 +58,6 @@
 #import "Settings.h"
 #import "SocketProvider.h"
 #import "TypedElementDescendantIterator.h"
-#import "URLParser.h"
 #import "UTIUtilities.h"
 #import "WebArchiveResourceFromNSAttributedString.h"
 #import "WebArchiveResourceWebResourceHandler.h"
@@ -64,6 +65,7 @@
 #import "markup.h"
 #import <pal/spi/cocoa/NSAttributedStringSPI.h>
 #import <wtf/SoftLinking.h>
+#import <wtf/URLParser.h>
 
 #if PLATFORM(MAC)
 #include "LocalDefaultSystemAppearance.h"
@@ -85,7 +87,14 @@ SOFT_LINK(WebKitLegacy, _WebCreateFragment, void, (WebCore::Document& document, 
 
 namespace WebCore {
 
-#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300)
+#if PLATFORM(IOSMAC)
+
+static FragmentAndResources createFragment(Frame&, NSAttributedString *)
+{
+    return { };
+}
+
+#elif (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300)
 
 static NSDictionary *attributesForAttributedStringConversion()
 {
@@ -304,7 +313,7 @@ static void replaceRichContentWithAttachments(Frame& frame, DocumentFragment& fr
 
         auto name = image.attributeWithoutSynchronization(HTMLNames::altAttr);
         if (name.isEmpty())
-            name = URLParser { resourceURLString }.result().lastPathComponent();
+            name = URL({ }, resourceURLString).lastPathComponent();
         if (name.isEmpty())
             name = AtomicString("media");
 
@@ -322,7 +331,7 @@ static void replaceRichContentWithAttachments(Frame& frame, DocumentFragment& fr
         if (resource == urlToResourceMap.end())
             continue;
 
-        auto name = URLParser { resourceURLString }.result().lastPathComponent();
+        auto name = URL({ }, resourceURLString).lastPathComponent();
         if (name.isEmpty())
             name = AtomicString("file");
 
@@ -534,7 +543,7 @@ bool WebContentReader::readWebArchive(SharedBuffer& buffer)
     String sanitizedMarkup = sanitizeMarkupWithArchive(frame, *frame.document(), *result, msoListQuirksForMarkup(), [&] (const String& type) {
         return frame.loader().client().canShowMIMETypeAsHTML(type);
     });
-    fragment = createFragmentFromMarkup(*frame.document(), sanitizedMarkup, blankURL(), DisallowScriptingAndPluginContent);
+    fragment = createFragmentFromMarkup(*frame.document(), sanitizedMarkup, WTF::blankURL(), DisallowScriptingAndPluginContent);
 
     if (!fragment)
         return false;

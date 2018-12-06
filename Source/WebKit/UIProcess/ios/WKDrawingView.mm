@@ -29,14 +29,9 @@
 #if HAVE(PENCILKIT)
 
 #import "EditableImageController.h"
-#import "PencilKitSPI.h"
+#import "PencilKitSoftLink.h"
 #import <wtf/OSObjectPtr.h>
 #import <wtf/RetainPtr.h>
-
-SOFT_LINK_PRIVATE_FRAMEWORK(PencilKit);
-SOFT_LINK_CLASS(PencilKit, PKCanvasView);
-SOFT_LINK_CLASS(PencilKit, PKDrawing);
-SOFT_LINK_CLASS(PencilKit, PKImageRenderer);
 
 @interface WKDrawingView () <PKCanvasViewDelegate>
 @end
@@ -44,8 +39,10 @@ SOFT_LINK_CLASS(PencilKit, PKImageRenderer);
 @implementation WKDrawingView {
     RetainPtr<PKCanvasView> _pencilView;
 
+#if !PLATFORM(IOS_FAMILY_SIMULATOR)
     OSObjectPtr<dispatch_queue_t> _renderQueue;
     RetainPtr<PKImageRenderer> _renderer;
+#endif
 
     WeakPtr<WebKit::WebPageProxy> _webPageProxy;
 }
@@ -58,7 +55,7 @@ SOFT_LINK_CLASS(PencilKit, PKImageRenderer);
 
     _webPageProxy = makeWeakPtr(webPageProxy);
 
-    _pencilView = adoptNS([allocPKCanvasViewInstance() initWithFrame:CGRectZero]);
+    _pencilView = adoptNS([WebKit::allocPKCanvasViewInstance() initWithFrame:CGRectZero]);
 
     [_pencilView setFingerDrawingEnabled:NO];
     [_pencilView setUserInteractionEnabled:YES];
@@ -75,50 +72,64 @@ SOFT_LINK_CLASS(PencilKit, PKImageRenderer);
     if (!CGRectEqualToRect([_pencilView frame], self.bounds)) {
         [_pencilView setFrame:self.bounds];
 
+#if !PLATFORM(IOS_FAMILY_SIMULATOR)
         // The renderer is instantiated for a particular size output; if
         // the size changes, we need to re-create the renderer.
         _renderer = nil;
+#endif
 
         [self invalidateAttachment];
     }
 }
 
-- (NSData *)PNGRepresentation
+static UIImage *emptyImage()
 {
+    UIGraphicsBeginImageContext(CGSizeMake(1, 1));
+    CGContextClearRect(UIGraphicsGetCurrentContext(), CGRectMake(0, 0, 1, 1));
+    UIImage *resultImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return resultImage;
+}
+
+- (UIImage *)renderedDrawing
+{
+#if PLATFORM(IOS_FAMILY_SIMULATOR)
+    // PKImageRenderer currently doesn't work in the simulator. In order to
+    // allow strokes to persist regardless (mostly for testing), we'll
+    // synthesize an empty 1x1 image.
+    return emptyImage();
+#else
     if (!self.bounds.size.width || !self.bounds.size.height || !self.window.screen.scale)
-        return nil;
+        return emptyImage();
 
     if (!_renderQueue)
         _renderQueue = adoptOSObject(dispatch_queue_create("com.apple.WebKit.WKDrawingView.Rendering", DISPATCH_QUEUE_SERIAL));
 
     if (!_renderer)
-        _renderer = adoptNS([allocPKImageRendererInstance() initWithSize:self.bounds.size scale:self.window.screen.scale renderQueue:_renderQueue.get()]);
-
-    auto* drawing = [_pencilView drawing];
+        _renderer = adoptNS([WebKit::allocPKImageRendererInstance() initWithSize:self.bounds.size scale:self.window.screen.scale renderQueue:_renderQueue.get()]);
 
     __block RetainPtr<UIImage> resultImage;
-#if PLATFORM(IOS_FAMILY_SIMULATOR)
-    // PKImageRenderer currently doesn't work in the simulator. In order to
-    // allow strokes to persist regardless (mostly for testing), we'll
-    // synthesize an empty 1x1 image.
-    UIGraphicsBeginImageContext(CGSizeMake(1, 1));
-    CGContextClearRect(UIGraphicsGetCurrentContext(), CGRectMake(0, 0, 1, 1));
-    resultImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-#else
-    [_renderer renderDrawing:drawing completion:^(UIImage *image) {
+
+    [_renderer renderDrawing:[_pencilView drawing] completion:^(UIImage *image) {
         resultImage = image;
     }];
-#endif
 
     // FIXME: Ideally we would not synchronously wait for this rendering,
     // but NSFileWrapper requires data synchronously, and our clients expect
     // an NSFileWrapper to be available synchronously.
     dispatch_sync(_renderQueue.get(), ^{ });
 
+    return resultImage.get();
+#endif
+}
+
+- (NSData *)PNGRepresentation
+{
+    RetainPtr<UIImage> image = [self renderedDrawing];
     RetainPtr<NSMutableData> PNGData = adoptNS([[NSMutableData alloc] init]);
     RetainPtr<CGImageDestinationRef> imageDestination = adoptCF(CGImageDestinationCreateWithData((__bridge CFMutableDataRef)PNGData.get(), kUTTypePNG, 1, nil));
-    NSString *base64Drawing = [[drawing serialize] base64EncodedStringWithOptions:0];
+    NSString *base64Drawing = [[[_pencilView drawing] serialize] base64EncodedStringWithOptions:0];
     NSDictionary *properties = nil;
     if (base64Drawing) {
         // FIXME: We should put this somewhere less user-facing than the EXIF User Comment field.
@@ -129,7 +140,7 @@ SOFT_LINK_CLASS(PencilKit, PKImageRenderer);
         };
     }
     CGImageDestinationSetProperties(imageDestination.get(), (__bridge CFDictionaryRef)properties);
-    CGImageDestinationAddImage(imageDestination.get(), [resultImage CGImage], (__bridge CFDictionaryRef)properties);
+    CGImageDestinationAddImage(imageDestination.get(), [image CGImage], (__bridge CFDictionaryRef)properties);
     CGImageDestinationFinalize(imageDestination.get());
 
     return PNGData.autorelease();
@@ -145,7 +156,7 @@ SOFT_LINK_CLASS(PencilKit, PKImageRenderer);
     if (!base64Drawing)
         return;
     RetainPtr<NSData> drawingData = adoptNS([[NSData alloc] initWithBase64EncodedString:base64Drawing options:0]);
-    RetainPtr<PKDrawing> drawing = adoptNS([allocPKDrawingInstance() initWithData:drawingData.get() error:nil]);
+    RetainPtr<PKDrawing> drawing = adoptNS([WebKit::allocPKDrawingInstance() initWithData:drawingData.get() error:nil]);
     [_pencilView setDrawing:drawing.get()];
 }
 
@@ -161,6 +172,11 @@ SOFT_LINK_CLASS(PencilKit, PKImageRenderer);
     auto& page = *_webPageProxy;
 
     page.editableImageController().invalidateAttachmentForEditableImage(self.embeddedViewID);
+}
+
+- (PKCanvasView *)canvasView
+{
+    return _pencilView.get();
 }
 
 @end

@@ -77,6 +77,7 @@ editing/SelectionRectGatherer.cpp
 editing/SmartReplaceCF.cpp
 
 editing/cocoa/DataDetection.mm
+editing/cocoa/DictionaryLookup.mm
 editing/cocoa/EditorCocoa.mm
 editing/cocoa/FontAttributeChangesCocoa.mm
 editing/cocoa/FontAttributesCocoa.mm
@@ -90,7 +91,6 @@ editing/ios/DictationCommandIOS.cpp
 editing/ios/EditorIOS.mm
 
 editing/mac/AlternativeTextUIController.mm
-editing/mac/DictionaryLookup.mm
 editing/mac/DictionaryLookupLegacy.mm
 editing/mac/EditorMac.mm
 editing/mac/FrameSelectionMac.mm
@@ -180,7 +180,6 @@ platform/audio/mac/AudioSessionMac.cpp
 platform/audio/mac/CARingBuffer.cpp
 platform/audio/mac/FFTFrameMac.cpp
 
-platform/cf/CFURLExtras.cpp
 platform/cf/FileSystemCF.cpp
 platform/cf/KeyedDecoderCF.cpp
 platform/cf/KeyedEncoderCF.cpp
@@ -188,7 +187,6 @@ platform/cf/MainThreadSharedTimerCF.cpp
 platform/cf/MediaAccessibilitySoftLink.cpp
 platform/cf/RunLoopObserver.cpp
 platform/cf/SharedBufferCF.cpp
-platform/cf/URLCF.cpp
 
 platform/cocoa/ContentFilterUnblockHandlerCocoa.mm @no-unify
 platform/cocoa/CoreVideoSoftLink.cpp
@@ -213,6 +211,7 @@ platform/cocoa/ThemeCocoa.mm
 platform/cocoa/UserAgentCocoa.mm
 platform/cocoa/VideoFullscreenModelVideoElement.mm
 platform/cocoa/VideoToolboxSoftLink.cpp
+platform/cocoa/WebCoreAdditions.mm @no-unify
 platform/cocoa/WebCoreNSErrorExtras.mm
 
 platform/gamepad/cocoa/GameControllerGamepad.mm
@@ -320,7 +319,9 @@ platform/graphics/cv/VideoTextureCopierCV.cpp
 
 platform/graphics/gpu/cocoa/GPUCommandBufferMetal.mm
 platform/graphics/gpu/cocoa/GPUDeviceMetal.mm
+platform/graphics/gpu/cocoa/GPUProgrammablePassEncoderMetal.mm
 platform/graphics/gpu/cocoa/GPUQueueMetal.mm
+platform/graphics/gpu/cocoa/GPURenderPassEncoderMetal.mm
 platform/graphics/gpu/cocoa/GPURenderPipelineMetal.mm
 platform/graphics/gpu/cocoa/GPUShaderModuleMetal.mm
 platform/graphics/gpu/cocoa/GPUSwapChainMetal.mm
@@ -464,7 +465,6 @@ platform/mac/StringUtilities.mm
 platform/mac/SuddenTermination.mm
 platform/mac/ThemeMac.mm
 platform/mac/ThreadCheck.mm @no-unify
-platform/mac/URLMac.mm
 platform/mac/UserActivityMac.mm
 platform/mac/UserAgentMac.mm
 platform/mac/ValidationBubbleMac.mm

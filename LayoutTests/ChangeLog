@@ -1,3 +1,505 @@
+2018-12-03  Truitt Savell  <tsavell@apple.com>
+
+        Modify unexpected new line in test after https://trac.webkit.org/changeset/238765/webkit
+        https://bugs.webkit.org/show_bug.cgi?id=192201
+
+        Unreviewed Test Gardening.
+
+        * platform/ios/compositing/scrolling/overflow-scrolling-layers-are-self-painting-expected.txt:
+
+2018-12-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] 'devicechange' event when more capture device information are revealed.
+        https://bugs.webkit.org/show_bug.cgi?id=192268
+
+        Reviewed by Youenn Fablet.
+
+        * fast/mediastream/device-change-event-2.html: Fix bogus title.
+        * fast/mediastream/enumerate-devices-change-event-expected.txt: Added.
+        * fast/mediastream/enumerate-devices-change-event.html: Added.
+
+2018-12-03  Guillaume Emont  <guijemont@igalia.com>
+
+        Gardening: unskip marsaglia.js on arm
+
+        Unreviewed Test Gardening.
+
+        Bug 192152 has been fixed by r238778, so this test should not time out
+        any more.
+
+        * js/slow-stress/script-tests/marsaglia.js:
+
+2018-12-03  Yacine Bandou  <yacine.bandou@softathome.com>
+
+        [EME][ClearKey] Add layout test for dynamic change of key and video resolution
+        https://bugs.webkit.org/show_bug.cgi?id=191926
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+       Add new layout tests in order to test the playback of ClearKey encrypted video content with
+       a change of key and resolution during decoding.
+       The test starts by playing a ClearKey video with a resolution of 240p, then, in the third second,
+       the resolution of the video will change to 480p with a new ClearKey key.
+
+        * media/content/encrypted/segments/VideoClearKeyCenc-seg-240-0.mp4: Added.
+        * media/content/encrypted/segments/VideoClearKeyCenc-seg-240-1.mp4: Added.
+        * media/content/encrypted/segments/VideoClearKeyCenc-seg-240-2.mp4: Added.
+        * media/content/encrypted/segments/VideoClearKeyCenc-seg-240-3.mp4: Added.
+        * media/content/encrypted/segments/VideoClearKeyCenc-seg-480-0.mp4: Added.
+        * media/content/encrypted/segments/VideoClearKeyCenc-seg-480-4.mp4: Added.
+        * media/content/encrypted/segments/VideoClearKeyCenc-seg-480-5.mp4: Added.
+        * media/content/encrypted/segments/VideoClearKeyCenc-seg-480-6.mp4: Added.
+        * media/encrypted-media/clearKey/clearKey-cenc-video-playback-mse-multikey-expected.txt: Added.
+        * media/encrypted-media/clearKey/clearKey-cenc-video-playback-mse-multikey.html: Added.
+        * media/encrypted-media/medias-enc.js:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-11-30  Youenn Fablet  <youenn@apple.com>
+
+        Test that CSS subresource loading are exposed to resource timing in case of a CORS loaded CSS stylesheet but not imported stylesheets
+        https://bugs.webkit.org/show_bug.cgi?id=192232
+
+        Reviewed by Dean Jackson.
+
+        * http/tests/security/cross-origin-clean-css-resource-timing-expected.txt: Added.
+        * http/tests/security/cross-origin-clean-css-resource-timing.html: Added.
+        * http/tests/security/resources/loading-subresources.php: Added.
+
+2018-11-30  Truitt Savell  <tsavell@apple.com>
+
+        Rebaseline test after https://trac.webkit.org/changeset/238725/webkit
+        https://bugs.webkit.org/show_bug.cgi?id=192201
+
+        Unreviewed Test Gardening.
+
+        * platform/ios/compositing/scrolling/overflow-scrolling-layers-are-self-painting-expected.txt: Added.
+
+2018-11-30  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] WebGPUQueue::submit and WebGPURenderingContext::present() implementation
+        https://bugs.webkit.org/show_bug.cgi?id=192254
+
+        Reviewed by Dean Jackson.
+
+        Update webgpu-basics to render an image into canvas. Also added ref-test that draws 
+        a green square onto a canvas using WebGPU; reference uses 2D canvas.
+
+        * webgpu/js/basic-webgpu-functions.js:
+        (render):
+        * webgpu/simple-triangle-strip-expected.html: Added.
+        * webgpu/simple-triangle-strip.html: Added.
+        * webgpu/webgpu-basics.html:
+
+2018-11-30  Zalan Bujtas  <zalan@apple.com>
+
+        Can’t use RalphLauren.com on iPad because hover menus don’t stay up
+        https://bugs.webkit.org/show_bug.cgi?id=192236
+        <rdar://problem/45792118>
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/events/touch/ios/hover-when-style-change-is-async-expected.txt: Added.
+        * fast/events/touch/ios/hover-when-style-change-is-async.html: Added.
+
+2018-11-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ShadowRoot should have styleSheets property
+        https://bugs.webkit.org/show_bug.cgi?id=191311
+        <rdar://problem/46333290>
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test for testing that the JS wrapper of a StyleSheetList does not get collected
+        as long as its shadow root is alive.
+
+        * fast/shadow-dom/shadowroot-stylesheets-wrapper-gc-expected.txt: Added.
+        * fast/shadow-dom/shadowroot-stylesheets-wrapper-gc.html: Added.
+
+2018-11-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Replace "auto fill" with "AutoFill" in some localizable strings
+        https://bugs.webkit.org/show_bug.cgi?id=192233
+        <rdar://problem/46311614>
+
+        Reviewed by Chris Fleizach.
+
+        Rebaseline a test.
+
+        * accessibility/auto-fill-types-expected.txt:
+
+2018-11-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: replace all unicode characters with the escaped character code
+        https://bugs.webkit.org/show_bug.cgi?id=192216
+        <rdar://problem/46275637>
+
+        Reviewed by Brian Burg.
+
+        * inspector/audit/data-domAttributes-expected.txt:
+        * inspector/audit/data-domNodes-expected.txt:
+        * inspector/audit/data-errors-expected.txt:
+
+2018-11-30  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Flesh out WebGPURenderPassDescriptor to match the WebGPU IDL
+        https://bugs.webkit.org/show_bug.cgi?id=192213
+
+        Reviewed by Dean Jackson.
+
+        Updating some tests to match the updated WebGPURenderPassDescriptor. 
+
+        * webgpu/js/basic-webgpu-functions.js:
+        (render):
+        * webgpu/render-command-encoding.html:
+        * webgpu/render-passes.html:
+
+2018-11-30  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Compute min/maxHeight margins only when they are needed.
+        https://bugs.webkit.org/show_bug.cgi?id=192223
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/collapsed-margin-with-min-height-expected.txt: Added.
+        * fast/block/block-only/collapsed-margin-with-min-height.html: Added.
+
+2018-11-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Stop running tests without complex text enforced
+
+        Rebaseline tests. Part 3.
+
+2018-11-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Stop running tests without complex text enforced
+
+        Rebaseline tests. Part 2.
+
+2018-11-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Stop running tests without complex text enforced
+
+        Rebaseline tests. Part 1.
+
+2018-11-29  Frederic Wang  <fwang@igalia.com>
+
+        Separate paint and scroll offsets for RenderLayerBacking::m_scrollingContentsLayer
+        https://bugs.webkit.org/show_bug.cgi?id=183040
+
+        Reviewed by Simon Fraser.
+
+        Update expectations containing layer trees of RenderLayerBacking::m_scrollingContentsLayer, to separate offsetFromRenderer and
+        scrollOffset. We have OLD offsetFromRenderer = NEW offsetFromRenderer - scrollOffset.
+
+        * compositing/ios/overflow-scroll-touch-tiles-expected.txt:
+        * fast/scrolling/ios/overflow-scroll-touch-expected.txt:
+        * fast/scrolling/ios/subpixel-overflow-scrolling-with-ancestor-expected.txt:
+        * platform/ios/compositing/overflow/scrolling-without-painting-expected.txt:
+        * platform/ios/compositing/overflow/textarea-scroll-touch-expected.txt:
+        * platform/ios/compositing/rtl/rtl-scrolling-with-transformed-descendants-expected.txt:
+        * platform/ios/fast/scrolling/ios/overflow-scrolling-ancestor-clip-expected.txt:
+        * platform/ios/fast/scrolling/ios/overflow-scrolling-ancestor-clip-size-expected.txt:
+        * platform/ios/fast/scrolling/ios/textarea-scroll-touch-expected.txt:
+
+2018-11-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Overflow scrolling layers need to be self-painting
+        https://bugs.webkit.org/show_bug.cgi?id=192201
+
+        Reviewed by Dean Jackson.
+
+        * compositing/scrolling/overflow-scrolling-layers-are-self-painting-expected.txt: Added.
+        * compositing/scrolling/overflow-scrolling-layers-are-self-painting.html: Added.
+
+2018-11-29  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] DeviceIdHashSaltStorage should use iframe and top level documents
+        https://bugs.webkit.org/show_bug.cgi?id=192182
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/media/media-stream/enumerate-devices-source-id-expected.txt:
+        * http/tests/media/media-stream/enumerate-devices-source-id.html:
+        * http/tests/media/media-stream/resources/enumerate-devices-source-id-frame.html:
+
+2018-11-29  Christopher Reid  <chris.reid@sony.com>
+
+        [Win] listDirectory in FileSystemWin.cpp should not skip all directories
+        https://bugs.webkit.org/show_bug.cgi?id=192042
+
+        Reviewed by Fujii Hironori.
+
+        Enable storage tests on WinCairo and adding initial test expectations.
+
+        * platform/wincairo/TestExpectations:
+
+2018-11-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r238680.
+
+        Caused existing webrtc layout tests to fail an assertion.
+
+        Reverted changeset:
+
+        "A sender created through addTransceiver and populated using
+        addTrack should have its source set"
+        https://bugs.webkit.org/show_bug.cgi?id=192136
+        https://trac.webkit.org/changeset/238680
+
+2018-11-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION (r238090): [ MacOS WK1 ] Layout Test imported/blink/compositing/squashing/squashing-into-ancestor-painted-layer.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=191639
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations: Mark test as flaky.
+
+2018-11-29  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC][Quirk] Body and html height stretching.
+        https://bugs.webkit.org/show_bug.cgi?id=192154
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/body-height-with-auto-html-height-quirk-expected.txt: Added.
+        * fast/block/block-only/body-height-with-auto-html-height-quirk.html: Added.
+        * fast/block/block-only/body-height-with-auto-html-height-quirk2-expected.txt: Added.
+        * fast/block/block-only/body-height-with-auto-html-height-quirk2.html: Added.
+        * fast/block/block-only/body-height-with-non-auto-html-height-quirk-expected.txt: Added.
+        * fast/block/block-only/body-height-with-non-auto-html-height-quirk.html: Added.
+        * fast/block/block-only/body-height-with-non-auto-html-height-quirk2-expected.txt: Added.
+        * fast/block/block-only/body-height-with-non-auto-html-height-quirk2.html: Added.
+
+2018-11-29  Youenn Fablet  <youenn@apple.com>
+
+        CSS subresource loads should not be observable from resource timing if the stylesheet is opaque
+        https://bugs.webkit.org/show_bug.cgi?id=192132
+
+        Reviewed by Ryosuke Niwa.
+
+        * http/tests/security/clean-origin-css-exposed-resource-timing-expected.txt: Added.
+        * http/tests/security/clean-origin-css-exposed-resource-timinge-timing.html: Added.
+        * http/tests/security/cross-origin-css-resource-timing-expected.txt: Added.
+        * http/tests/security/cross-origin-css-resource-timing.html: Added.
+        * http/tests/security/resources/loading-subresources.css: Added.
+        * http/tests/security/resources/imported-loading-subresources.css: Added.
+
+2018-11-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Executing "insertunorderedlist" while selecting a contenteditable element inside a shadow dom hangs the browser
+        https://bugs.webkit.org/show_bug.cgi?id=184049
+        <rdar://problem/38931033>
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test for executing InsertUnorderedList inside a shadow tree.
+
+        * editing/execCommand/insert-ordered-list-in-shadow-tree-expected.txt: Added.
+        * editing/execCommand/insert-ordered-list-in-shadow-tree.html: Added.
+
+2018-11-29  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] WebGPURenderPassEncoder::setPipeline, draw, and endPass prototypes
+        https://bugs.webkit.org/show_bug.cgi?id=192134
+
+        Reviewed by Dean Jackson.
+
+        Updating the basic rendering test with more commands, and a prototype WPT-based test for WebGPURenderCommandEncoder's
+        new functionality.
+
+        * webgpu/js/basic-webgpu-functions.js:
+        (render):
+        * webgpu/render-command-encoding-expected.txt: Added.
+        * webgpu/render-command-encoding.html: Added.
+        * webgpu/render-passes.html:
+
+2018-11-29  Justin Michaud  <justin_michaud@apple.com>
+
+        CSS Painting API should pass 'this' correctly to paint callback, and repaint when properties change.
+        https://bugs.webkit.org/show_bug.cgi?id=191443
+
+        Reviewed by Dean Jackson.
+
+        * fast/css-custom-paint/animate-expected.html: Added.
+        * fast/css-custom-paint/animate-repaint-expected.txt: Added.
+        * fast/css-custom-paint/animate-repaint.html: Added.
+        * fast/css-custom-paint/animate.html: Added.
+        * fast/css-custom-paint/constructor-expected.html: Added.
+        * fast/css-custom-paint/constructor.html: Added.
+        * fast/css-custom-paint/leaks-expected.txt: Added.
+        * fast/css-custom-paint/leaks.html: Added.
+        * fast/css-custom-paint/properties.html:
+        * fast/css-custom-paint/resources/leaks-frame.html: Added.
+        * platform/mac/fast/css-custom-paint/raf-leak-expected.txt: Added.
+
+2018-11-29  Youenn Fablet  <youenn@apple.com>
+
+        A sender created through addTransceiver and populated using addTrack should have its source set
+        https://bugs.webkit.org/show_bug.cgi?id=192136
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-replace-track-expected.txt:
+        * webrtc/video-replace-track.html:
+
+2018-11-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, skip three datalist tests that are marked as flaky crashes.
+
+        * TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-11-29  Sihui Liu  <sihui_liu@apple.com>
+
+        IndexedDB: breaks if binary data (Uint8Array) and autoIncrement key in store
+        https://bugs.webkit.org/show_bug.cgi?id=185869
+        <rdar://problem/40453623>
+
+        Reviewed by Geoffrey Garen.
+
+        * storage/indexeddb/objectstore-autoincrement-expected.txt:
+        * storage/indexeddb/objectstore-autoincrement-private-expected.txt:
+        * storage/indexeddb/resources/objectstore-autoincrement.js:
+        (getLincolnAfterInjectedKeySuccess):
+        (putBobSuccess):
+        (getBobSuccess):
+        (addLincolnWithExplicitKeySuccess):
+        (putAbrahamSuccess):
+
+2018-11-29  Sihui Liu  <sihui_liu@apple.com>
+
+        Unexpected constructor / instanceof  behavior when retrieving indexedDB data in an iframe
+        https://bugs.webkit.org/show_bug.cgi?id=185906
+        <rdar://problem/40583100>
+
+        Reviewed by Geoffrey Garen.
+
+        * storage/indexeddb/instanceof-iframe-expected.txt: Added.
+        * storage/indexeddb/instanceof-iframe.html: Added.
+        * storage/indexeddb/resources/instanceof-iframe.js: Added.
+        (test.else.shouldBe):
+        (test.else.shouldBeTrue):
+        (test.else.shouldBeFalse):
+        (test.else.evalAndLog):
+        (test):
+        (callback):
+
+2018-11-28  Dean Jackson  <dino@apple.com>
+
+        [ES Modules] Allow .mjs content when loaded from file://
+        https://bugs.webkit.org/show_bug.cgi?id=192100
+        <rdar://problem/46320065>
+
+        Reviewed by Sam Weinig.
+
+        Test for both import() function and the import statement loading
+        from .mjs files.
+
+        * js/dom/modules/import-mjs-module-expected.txt: Added.
+        * js/dom/modules/import-mjs-module.html: Added.
+        * js/dom/modules/resources/module-simple-A.mjs: Added.
+        * js/dom/modules/resources/module-simple-B.mjs: Added.
+        * platform/win/TestExpectations: Skip this on Windows. Just wait for Windows
+          to recognise the extension.
+
+2018-11-29  Guillaume Emont  <guijemont@igalia.com>
+
+        Gardening: skip test that newly times out on Armv7
+
+        Unreviewed Test Gardening.
+
+        * js/slow-stress/script-tests/marsaglia.js: skip on arm/linux
+
+2018-11-29  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r238665.
+
+        * platform/gtk/TestExpectations:
+
+2018-11-28  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Updating href on linearGradient and radialGradient doesn't update its rendering
+        https://bugs.webkit.org/show_bug.cgi?id=191934
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/svg-linear-gradient-dynamic-update-href-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-linear-gradient-dynamic-update-href-in-shadow-tree.html: Added.
+        * fast/shadow-dom/svg-radial-gradient-dynamic-update-href-in-shadow-tree-expected.html: Added.
+        * fast/shadow-dom/svg-radial-gradient-dynamic-update-href-in-shadow-tree.html: Added.
+        * svg/dynamic-updates/SVGLinearGradientElement-svgdom-href-prop-expected.html: Added.
+        * svg/dynamic-updates/SVGLinearGradientElement-svgdom-href-prop.html: Added.
+        * svg/dynamic-updates/SVGRadialGradientElement-svgdom-href-prop-expected.html: Added.
+        * svg/dynamic-updates/SVGRadialGradientElement-svgdom-href-prop.html: Added.
+
+2018-11-28  Truitt Savell  <tsavell@apple.com>
+
+        [ Mojave WK1 ] Layout Test fast/images/animated-image-different-dest-size.html fast/images/animated-image-loop-count.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=190383
+
+        Unreviewed Test Gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-11-28  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Begin implementation of WebGPURenderPassEncoder and barebones WebGPURenderPassDescriptor
+        https://bugs.webkit.org/show_bug.cgi?id=191990
+
+        Reviewed by Dean Jackson.
+
+        Add tests to ensure proper WebGPURenderPassEncoder creation. To be updated as WebGPURenderPassDescriptor is updated.
+
+        * webgpu/js/basic-webgpu-functions.js:
+        (render):
+        * webgpu/render-passes-expected.txt: Added.
+        * webgpu/render-passes.html: Added.
+
+2018-11-28  Rob Buis  <rbuis@igalia.com>
+
+        [XHR] Document.lastModified doesn't work for non-rendered documents
+        https://bugs.webkit.org/show_bug.cgi?id=179375
+
+        Reviewed by Alexey Proskuryakov.
+
+        Unskip responsexml-document-properties.htm since the dynamic message is gone.
+
+        * TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-11-28  Frederic Wang  <fwang@igalia.com>
+
+        [iOS Simulator Release WK2] media/no-fullscreen-when-hidden.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=192088
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations: Mark media/no-fullscreen-when-hidden.html as flaky.
+
+2018-11-28  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        Allow WebKit clients to specify a minimum effective width for layout.
+        https://bugs.webkit.org/show_bug.cgi?id=191499
+        <rdar://problem/45362678>
+
+        Reviewed by Wenson Hsieh.
+
+        Add two new tests. The first test verifies if we ignore meta viewport, setting a different effective width value
+        will change the layout width of the page. The second test verifies if we don't ignore meta viewport, we will always
+        respect that (980pt) and setting a different effective width value won't change the layout width. 
+
+
+        * fast/viewport/ios/ipad/viewport-overriden-by-minimum-effective-width-if-ignore-meta-viewport-expected.txt: Added.
+        * fast/viewport/ios/ipad/viewport-overriden-by-minimum-effective-width-if-ignore-meta-viewport.html: Added.
+        * fast/viewport/ios/ipad/viewport-unchanged-by-minimum-effective-width-if-not-ignore-meta-viewport-expected.txt: Added.
+        * fast/viewport/ios/ipad/viewport-unchanged-by-minimum-effective-width-if-not-ignore-meta-viewport.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.setMinimumEffectiveWidth): Add a helper method to set the minimum effective width from a test.
+        (window.UIHelper):
+
 2018-11-27  Jiewen Tan  <jiewen_tan@apple.com>
 
         Unreviewed, test gardening

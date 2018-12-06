@@ -102,8 +102,8 @@ public:
     WebKit::WebBackForwardListItem* fromItem() const { return m_fromItem.get(); }
     std::optional<WebCore::FrameLoadType> backForwardFrameLoadType() const { return m_backForwardFrameLoadType; }
 
-    void appendRedirectionURL(const WebCore::URL&);
-    Vector<WebCore::URL> takeRedirectChain() { return WTFMove(m_redirectChain); }
+    void appendRedirectionURL(const WTF::URL&);
+    Vector<WTF::URL> takeRedirectChain() { return WTFMove(m_redirectChain); }
 
     bool wasUserInitiated() const { return !!m_lastNavigationAction.userGestureTokenIdentifier; }
 
@@ -118,8 +118,7 @@ public:
 
     bool treatAsSameOriginNavigation() const { return m_lastNavigationAction.treatAsSameOriginNavigation; }
     bool hasOpenedFrames() const { return m_lastNavigationAction.hasOpenedFrames; }
-    bool openedViaWindowOpenWithOpener() const { return m_lastNavigationAction.openedViaWindowOpenWithOpener; }
-    const std::optional<std::pair<uint64_t, uint64_t>>& opener() const { return m_lastNavigationAction.opener; }
+    bool openedByDOMWithOpener() const { return m_lastNavigationAction.openedByDOMWithOpener; }
     const WebCore::SecurityOriginData& requesterOrigin() const { return m_lastNavigationAction.requesterOrigin; }
 
     WebCore::LockHistory lockHistory() const { return m_lastNavigationAction.lockHistory; }
@@ -152,7 +151,7 @@ private:
     WebCore::ResourceRequest m_originalRequest;
     WebCore::ResourceRequest m_currentRequest;
     std::optional<WebCore::ProcessIdentifier> m_currentRequestProcessIdentifier;
-    Vector<WebCore::URL> m_redirectChain;
+    Vector<WTF::URL> m_redirectChain;
 
     RefPtr<WebKit::WebBackForwardListItem> m_targetItem;
     RefPtr<WebKit::WebBackForwardListItem> m_fromItem;

@@ -1,3 +1,135 @@
+2018-12-02  Zalan Bujtas  <zalan@apple.com>
+
+        Add a runtime feature flag for LayoutFormattingContext.
+        https://bugs.webkit.org/show_bug.cgi?id=192280
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-12-01  Alexey Proskuryakov  <ap@apple.com>
+
+        Modernize version check for _suppressedAutoAddedHTTPHeaders
+        https://bugs.webkit.org/show_bug.cgi?id=192175
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cf/CFNetworkSPI.h: Curiously, it was forward declared twice, for no
+        apparent reason.
+
+2018-11-30  Don Olmstead  <don.olmstead@sony.com>
+
+        Rename ENABLE_SUBTLE_CRYPTO to ENABLE_WEB_CRYPTO
+        https://bugs.webkit.org/show_bug.cgi?id=192197
+
+        Reviewed by Jiewen Tan.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * pal/PlatformGTK.cmake:
+        * pal/PlatformWPE.cmake:
+
+2018-11-30  Alexey Proskuryakov  <ap@apple.com>
+
+        Move USE_CFNETWORK_IGNORE_HSTS to its proper place
+        https://bugs.webkit.org/show_bug.cgi?id=192173
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2018-11-29  David Quesada  <david_quesada@apple.com>
+
+        Add SPI to publish NSProgress on active downloads
+        https://bugs.webkit.org/show_bug.cgi?id=192021
+        rdar://problem/44405661
+
+        Reviewed by Alex Christensen.
+
+        Add an SPI header for NSProgress's publishing and unpublishing methods. In older
+        SDKs, these methods are explicitly unavailable on platforms other than macOS,
+        with underscore-prefixed versions available as SPI. In newer SDKs, the unprefixed
+        versions are SPI and the prefixed versions are deprecated.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cocoa/NSProgressSPI.h:
+
+2018-11-29  Megan Gardner  <megan_gardner@apple.com>
+
+        Move Lookup Code for better cross platform usage
+        https://bugs.webkit.org/show_bug.cgi?id=191732
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/mac/LookupSPI.h:
+        * pal/spi/mac/RevealSPI.h:
+
+2018-11-29  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] Tell AirPlay picker when a file has video
+        https://bugs.webkit.org/show_bug.cgi?id=192155
+
+        Reviewed by Jer Noble.
+
+        * pal/spi/ios/MediaPlayerSPI.h:
+
+2018-11-29  Alexey Proskuryakov  <ap@apple.com>
+
+        Modernize the check for kCFURLRequestContentDecoderSkipURLCheck existence
+        https://bugs.webkit.org/show_bug.cgi?id=192041
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2018-11-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r238678.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Move Lookup Code for better cross platform usage"
+        https://bugs.webkit.org/show_bug.cgi?id=191732
+        https://trac.webkit.org/changeset/238678
+
+2018-11-29  Megan Gardner  <megan_gardner@apple.com>
+
+        Move Lookup Code for better cross platform usage
+        https://bugs.webkit.org/show_bug.cgi?id=191732
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/mac/LookupSPI.h:
+        * pal/spi/mac/RevealSPI.h:
+
+2018-11-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r238653 and r238656.
+        https://bugs.webkit.org/show_bug.cgi?id=192130
+
+        Breaks iOS build (Requested by smfr on #webkit).
+
+        Reverted changesets:
+
+        "Move Lookup Code for better cross platform usage"
+        https://bugs.webkit.org/show_bug.cgi?id=191732
+        https://trac.webkit.org/changeset/238653
+
+        "Attempt to fix the iOS build by only including RevealSPI.h
+        when it's needed."
+        https://trac.webkit.org/changeset/238656
+
+2018-11-15  Megan Gardner  <megan_gardner@apple.com>
+
+        Move Lookup Code for better cross platform usage
+        https://bugs.webkit.org/show_bug.cgi?id=191732
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/mac/LookupSPI.h:
+        * pal/spi/mac/RevealSPI.h:
+
 2018-11-28  Alexey Proskuryakov  <ap@apple.com>
 
         Modernize version checks for same site cookie support

@@ -417,21 +417,6 @@ void WebPage::sendComplexTextInputToPlugin(uint64_t, const String&)
     notImplemented();
 }
 
-void WebPage::performDictionaryLookupAtLocation(const FloatPoint&)
-{
-    notImplemented();
-}
-
-void WebPage::performDictionaryLookupForSelection(Frame&, const VisibleSelection&, TextIndicatorPresentationTransition)
-{
-    notImplemented();
-}
-
-void WebPage::performDictionaryLookupForRange(Frame&, Range&, NSDictionary *, TextIndicatorPresentationTransition)
-{
-    notImplemented();
-}
-
 bool WebPage::performNonEditingBehaviorForSelector(const String&, WebCore::KeyboardEvent*)
 {
     notImplemented();
@@ -550,11 +535,13 @@ void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::F
     IntPoint roundedAdjustedPoint = roundedIntPoint(location);
     Frame& mainframe = m_page->mainFrame();
 
-    WKBeginObservingContentChanges(true);
+    WKStartObservingContentChanges();
+    WKStartObservingDOMTimerScheduling();
 
     mainframe.eventHandler().mouseMoved(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, false, false, false, false, WallTime::now(), WebCore::ForceAtClick, WebCore::NoTap));
     mainframe.document()->updateStyleIfNeeded();
 
+    WKStopObservingDOMTimerScheduling();
     WKStopObservingContentChanges();
 
     m_pendingSyntheticClickNode = nullptr;
@@ -760,6 +747,8 @@ void WebPage::handleTwoFingerTapAtPoint(const WebCore::IntPoint& point, uint64_t
 
 void WebPage::handleStylusSingleTapAtPoint(const WebCore::IntPoint& point, uint64_t requestID)
 {
+    SetForScope<bool> userIsInteractingChange { m_userIsInteracting, true };
+
     auto& frame = m_page->focusController().focusedOrMainFrame();
 
     auto pointInDocument = frame.view()->rootViewToContents(point);
@@ -784,8 +773,8 @@ void WebPage::handleStylusSingleTapAtPoint(const WebCore::IntPoint& point, uint6
 
     auto range = Range::create(*frame.document(), position, position);
     frame.selection().setSelectedRange(range.ptr(), position.affinity(), WebCore::FrameSelection::ShouldCloseTyping::Yes, UserTriggered);
-    frame.editor().insertEditableImage();
-    resetAssistedNodeForFrame(m_mainFrame.get());
+    auto image = frame.editor().insertEditableImage();
+    frame.document()->setFocusedElement(image.get());
 }
 
 void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint& position)
@@ -2068,6 +2057,8 @@ static inline bool isAssistableElement(Element& node)
         return true;
     if (is<HTMLTextAreaElement>(node))
         return true;
+    if (is<HTMLImageElement>(node) && downcast<HTMLImageElement>(node).hasEditableImageAttribute())
+        return true;
     if (is<HTMLInputElement>(node)) {
         HTMLInputElement& inputElement = downcast<HTMLInputElement>(node);
         // FIXME: This laundry list of types is not a good way to factor this. Need a suitable function on HTMLInputElement itself.
@@ -2532,6 +2523,9 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         information.value = element.value();
         information.valueAsNumber = element.valueAsNumber();
         information.autofillFieldName = WebCore::toAutofillFieldName(element.autofillData().fieldName);
+    } else if (is<HTMLImageElement>(*m_assistedNode) && downcast<HTMLImageElement>(*m_assistedNode).hasEditableImageAttribute()) {
+        information.elementType = InputType::Drawing;
+        information.embeddedViewID = downcast<HTMLImageElement>(*m_assistedNode).editableImageViewID();
     } else if (m_assistedNode->hasEditableStyle()) {
         information.elementType = InputType::ContentEditable;
         if (is<HTMLElement>(*m_assistedNode)) {
@@ -2562,15 +2556,15 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     return WTF::areEssentiallyEqual(a, b);
 }
 
-void WebPage::setViewportConfigurationViewLayoutSize(const FloatSize& size, double scaleFactor)
+void WebPage::setViewportConfigurationViewLayoutSize(const FloatSize& size, double scaleFactor, double minimumEffectiveDeviceWidth)
 {
-    LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " setViewportConfigurationViewLayoutSize " << size << " scaleFactor " << scaleFactor);
+    LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " setViewportConfigurationViewLayoutSize " << size << " scaleFactor " << scaleFactor << " minimumEffectiveDeviceWidth " << minimumEffectiveDeviceWidth);
 
     ZoomToInitialScale shouldZoomToInitialScale = ZoomToInitialScale::No;
     if (m_viewportConfiguration.layoutSizeScaleFactor() != scaleFactor && areEssentiallyEqualAsFloat(m_viewportConfiguration.initialScale(), pageScaleFactor()))
         shouldZoomToInitialScale = ZoomToInitialScale::Yes;
 
-    if (m_viewportConfiguration.setViewLayoutSize(size, scaleFactor))
+    if (m_viewportConfiguration.setViewLayoutSize(size, scaleFactor, minimumEffectiveDeviceWidth))
         viewportConfigurationChanged(shouldZoomToInitialScale);
 }
 

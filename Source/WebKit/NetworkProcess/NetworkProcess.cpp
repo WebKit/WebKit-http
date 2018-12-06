@@ -76,13 +76,13 @@
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/Settings.h>
-#include <WebCore/URLParser.h>
 #include <pal/SessionID.h>
 #include <wtf/Algorithms.h>
 #include <wtf/CallbackAggregator.h>
 #include <wtf/OptionSet.h>
 #include <wtf/ProcessPrivilege.h>
 #include <wtf/RunLoop.h>
+#include <wtf/URLParser.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
 
@@ -92,10 +92,6 @@
 
 #include "NetworkCache.h"
 #include "NetworkCacheCoders.h"
-
-#if ENABLE(NETWORK_CAPTURE)
-#include "NetworkCaptureManager.h"
-#endif
 
 #if PLATFORM(COCOA)
 #include "NetworkSessionCocoa.h"
@@ -292,7 +288,6 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     AtomicString::init();
 
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
-    m_loadThrottleLatency = parameters.loadThrottleLatency;
     if (!m_suppressMemoryPressureHandler) {
         auto& memoryPressureHandler = MemoryPressureHandler::singleton();
         memoryPressureHandler.setLowMemoryHandler([this] (Critical critical, Synchronous) {
@@ -301,12 +296,6 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
         memoryPressureHandler.install();
     }
 
-#if ENABLE(NETWORK_CAPTURE)
-    NetworkCapture::Manager::singleton().initialize(
-        parameters.recordReplayMode,
-        parameters.recordReplayCacheLocation);
-#endif
-
     m_diskCacheIsDisabledForTesting = parameters.shouldUseTestingNetworkSession;
 
     m_diskCacheSizeOverride = parameters.diskCacheSizeOverride;
@@ -314,16 +303,8 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 
     setCanHandleHTTPSServerTrustEvaluation(parameters.canHandleHTTPSServerTrustEvaluation);
 
-    // FIXME: instead of handling this here, a message should be sent later (scales to multiple sessions)
-    if (parameters.privateBrowsingEnabled)
-        RemoteNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters::legacyPrivateSessionParameters());
-
     if (parameters.shouldUseTestingNetworkSession)
         NetworkStorageSession::switchToNewTestingSession();
-
-#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
-    m_logCookieInformation = parameters.logCookieInformation;
-#endif
 
     SessionTracker::setSession(PAL::SessionID::defaultSessionID(), NetworkSession::create(NetworkSessionCreationParameters()));
 
@@ -487,18 +468,18 @@ void NetworkProcess::destroySession(PAL::SessionID sessionID)
 #endif
 }
 
-void NetworkProcess::writeBlobToFilePath(const WebCore::URL& url, const String& path, SandboxExtension::Handle&& handleForWriting, uint64_t requestID)
+void NetworkProcess::writeBlobToFilePath(const URL& url, const String& path, SandboxExtension::Handle&& handleForWriting, CompletionHandler<void(bool)>&& completionHandler)
 {
     auto extension = SandboxExtension::create(WTFMove(handleForWriting));
     if (!extension) {
-        parentProcessConnection()->send(Messages::NetworkProcessProxy::DidWriteBlobToFilePath(false, requestID), 0);
+        completionHandler(false);
         return;
     }
 
     extension->consume();
-    NetworkBlobRegistry::singleton().writeBlobToFilePath(url, path, [this, extension = WTFMove(extension), requestID] (bool success) {
+    NetworkBlobRegistry::singleton().writeBlobToFilePath(url, path, [extension = WTFMove(extension), completionHandler = WTFMove(completionHandler)] (bool success) mutable {
         extension->revoke();
-        parentProcessConnection()->send(Messages::NetworkProcessProxy::DidWriteBlobToFilePath(success, requestID), 0);
+        completionHandler(success);
     });
 }
 
@@ -824,6 +805,13 @@ void NetworkProcess::cancelDownload(DownloadID downloadID)
     downloadManager().cancelDownload(downloadID);
 }
 
+#if PLATFORM(COCOA)
+void NetworkProcess::publishDownloadProgress(DownloadID downloadID, const URL& url, SandboxExtension::Handle&& sandboxExtensionHandle)
+{
+    downloadManager().publishDownloadProgress(downloadID, url, WTFMove(sandboxExtensionHandle));
+}
+#endif
+
 void NetworkProcess::continueWillSendRequest(DownloadID downloadID, WebCore::ResourceRequest&& request)
 {
     downloadManager().continueWillSendRequest(downloadID, WTFMove(request));
@@ -931,10 +919,6 @@ void NetworkProcess::logDiagnosticMessageWithValue(uint64_t webPageID, const Str
 
 void NetworkProcess::terminate()
 {
-#if ENABLE(NETWORK_CAPTURE)
-    NetworkCapture::Manager::singleton().terminate();
-#endif
-
     platformTerminate();
     ChildProcess::terminate();
 }
@@ -1037,7 +1021,7 @@ void NetworkProcess::setCacheStorageParameters(PAL::SessionID sessionID, uint64_
         callback(String { cacheStorageDirectory }, quota);
 }
 
-void NetworkProcess::preconnectTo(const WebCore::URL& url, WebCore::StoredCredentialsPolicy storedCredentialsPolicy)
+void NetworkProcess::preconnectTo(const URL& url, WebCore::StoredCredentialsPolicy storedCredentialsPolicy)
 {
 #if ENABLE(SERVER_PRECONNECT)
     NetworkLoadParameters parameters;

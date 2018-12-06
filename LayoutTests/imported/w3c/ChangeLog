@@ -1,3 +1,122 @@
+2018-11-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ShadowRoot should have styleSheets property
+        https://bugs.webkit.org/show_bug.cgi?id=191311
+
+        Reviewed by Antti Koivisto.
+
+        Rebaselined the tests.
+
+        * web-platform-tests/css/css-scoping/stylesheet-title-002-expected.txt: Rebaselined. The test now
+        doesn't throw but fails with the actual check the test is intending to check.
+        * web-platform-tests/css/cssom/selectorText-modification-restyle-002-expected.txt: Rebaselined
+        now that all test cases pass.
+        * web-platform-tests/shadow-dom/ShadowRoot-interface-expected.txt: Ditto.
+
+2018-11-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update web-platform-tests/shadow-dom
+        https://bugs.webkit.org/show_bug.cgi?id=192137
+
+        Reviewed by Antti Koivisto.
+
+        Re-imported the shadow DOM tests from wpt.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/shadow-dom/ShadowRoot-interface.html:
+        * web-platform-tests/shadow-dom/event-dispatch-order.tentative-expected.txt: Added.
+        * web-platform-tests/shadow-dom/event-dispatch-order.tentative.html: Added.
+        * web-platform-tests/shadow-dom/input-type-radio-expected.txt: Added.
+        * web-platform-tests/shadow-dom/input-type-radio.html: Added.
+        * web-platform-tests/shadow-dom/resources/shadow-dom.js:
+        (dispatchEventWithLog):
+        (assert_event_path_equals):
+        * web-platform-tests/shadow-dom/slots-outside-shadow-dom-expected.txt: Added.
+        * web-platform-tests/shadow-dom/slots-outside-shadow-dom.html: Added.
+        * web-platform-tests/shadow-dom/w3c-import.log:
+
+2018-11-29  Youenn Fablet  <youenn@apple.com>
+
+        Updating a service worker during a navigation load sometimes makes the load fail
+        https://bugs.webkit.org/show_bug.cgi?id=191986
+        <rdar://problem/46259790>
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/resources/trickle.py: Added.
+        (main):
+        * web-platform-tests/service-workers/service-worker/resources/update-fetch-worker.py: Added.
+        (main):
+        * web-platform-tests/service-workers/service-worker/update-on-navigation.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/update-on-navigation.https.html: Added.
+
+2018-11-29  Rob Buis  <rbuis@igalia.com>
+
+        Import fetch/api/cors tests
+        https://bugs.webkit.org/show_bug.cgi?id=192092
+
+        Reviewed by Frédéric Wang.
+
+        Import to most recent checkout since some old
+        tests like cors-multiple-origins.js were incorrect.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/fetch/api/cors/cors-expose-star-worker.html: Removed.
+        * web-platform-tests/fetch/api/cors/cors-expose-star.html: Removed.
+        * web-platform-tests/fetch/api/cors/cors-expose-star.sub.any-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/fetch/api/cors/cors-expose-star-expected.txt.
+        * web-platform-tests/fetch/api/cors/cors-expose-star.sub.any.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-expose-star.sub.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/fetch/api/cors/cors-expose-star.js.
+        (sharedHeaders.string_appeared_here.promise_test):
+        (string_appeared_here.promise_test):
+        * web-platform-tests/fetch/api/cors/cors-expose-star.sub.any.worker-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/fetch/api/cors/cors-expose-star-worker-expected.txt.
+        * web-platform-tests/fetch/api/cors/cors-expose-star.sub.any.worker.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-filtering-worker.html: Removed.
+        * web-platform-tests/fetch/api/cors/cors-filtering.html: Removed.
+        * web-platform-tests/fetch/api/cors/cors-filtering.sub.any-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/fetch/api/cors/cors-filtering-expected.txt.
+        * web-platform-tests/fetch/api/cors/cors-filtering.sub.any.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-filtering.sub.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/fetch/api/cors/cors-filtering.js.
+        (corsFilter):
+        (corsExposeFilter):
+        * web-platform-tests/fetch/api/cors/cors-filtering.sub.any.worker-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/fetch/api/cors/cors-filtering-worker-expected.txt.
+        * web-platform-tests/fetch/api/cors/cors-filtering.sub.any.worker.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins-worker-expected.txt: Removed.
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins-worker.html: Removed.
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins.html: Removed.
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins.js: Removed.
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins.sub.any-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/fetch/api/cors/cors-multiple-origins-expected.txt.
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins.sub.any.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins.sub.any.js: Added.
+        (corsMultipleOrigins):
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins.sub.any.worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins.sub.any.worker.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight-not-cors-safelisted.any-expected.txt: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight-not-cors-safelisted.any.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight-not-cors-safelisted.any.js: Added.
+        (runTests):
+        * web-platform-tests/fetch/api/cors/cors-preflight-not-cors-safelisted.any.worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight-not-cors-safelisted.any.worker.html: Added.
+        * web-platform-tests/fetch/api/cors/cors-preflight.any.js:
+        (headerNames): Deleted.
+        (): Deleted.
+        (corsPreflight): Deleted.
+        * web-platform-tests/fetch/api/cors/resources/corspreflight.js: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight.any.js.
+        (headerNames):
+        (corsPreflight):
+        * web-platform-tests/fetch/api/cors/resources/not-cors-safelisted.json: Added.
+        * web-platform-tests/fetch/api/cors/resources/w3c-import.log: Added.
+        * web-platform-tests/fetch/api/cors/sandboxed-iframe-expected.txt: Added.
+        * web-platform-tests/fetch/api/cors/sandboxed-iframe.html: Added.
+        * web-platform-tests/fetch/api/cors/w3c-import.log:
+
+2018-11-28  Rob Buis  <rbuis@igalia.com>
+
+        [XHR] Document.lastModified doesn't work for non-rendered documents
+        https://bugs.webkit.org/show_bug.cgi?id=179375
+
+        Reviewed by Alexey Proskuryakov.
+
+        * web-platform-tests/xhr/responsexml-document-properties-expected.txt:
+
 2018-11-28  Ali Juma  <ajuma@chromium.org>
 
         Intersection Observer: rootMargin: '' gives weird results

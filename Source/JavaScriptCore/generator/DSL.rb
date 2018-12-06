@@ -99,13 +99,12 @@ module DSL
 
     def self.write_bytecodes(bytecode_list, bytecodes_filename)
         GeneratedFile::create(bytecodes_filename, bytecode_list) do |template|
-            template.prefix = "#pragma once"
+            template.prefix = "#pragma once\n"
             num_opcodes = @sections.map(&:opcodes).flatten.size
             template.body = <<-EOF
-                #{@sections.map { |s| s.header_helpers(num_opcodes) }.join("\n")}
-
-                #define FOR_EACH_BYTECODE_STRUCT(macro) \\
-                #{opcodes_for(:emit_in_structs_file).map { |op| "macro(#{op.capitalized_name}) \\" }.join("\n")}
+#{@sections.map { |s| s.header_helpers(num_opcodes) }.join("\n")}
+#define FOR_EACH_BYTECODE_STRUCT(macro) \\
+#{opcodes_for(:emit_in_structs_file).map { |op| "    macro(#{op.capitalized_name}) \\" }.join("\n")}
             EOF
         end
     end
@@ -115,26 +114,24 @@ module DSL
             opcodes = opcodes_for(:emit_in_structs_file)
 
             template.prefix = <<-EOF
-            #pragma once
+#pragma once
 
-            #include "ArithProfile.h"
-            #include "BytecodeDumper.h"
-            #include "BytecodeGenerator.h"
-            #include "Fits.h"
-            #include "GetByIdMetadata.h"
-            #include "Instruction.h"
-            #include "Opcode.h"
-            #include "ToThisStatus.h"
+#include "ArithProfile.h"
+#include "BytecodeDumper.h"
+#include "BytecodeGenerator.h"
+#include "Fits.h"
+#include "GetByIdMetadata.h"
+#include "Instruction.h"
+#include "Opcode.h"
+#include "ToThisStatus.h"
 
-            namespace JSC {
-            EOF
+namespace JSC {
+EOF
 
             template.body = <<-EOF
-            #{opcodes.map(&:struct).join("\n")}
-
-            #{Opcode.dump_bytecode(opcodes)}
-            EOF
-
+#{opcodes.map(&:struct).join("\n")}
+#{Opcode.dump_bytecode(opcodes)}
+EOF
             template.suffix = "} // namespace JSC"
         end
     end
@@ -153,9 +150,9 @@ module DSL
         opcodes = opcodes_for(:emit_in_structs_file)
 
         GeneratedFile::create(indices_filename, bytecode_list) do |template|
-            template.prefix = "namespace JSC {"
+            template.prefix = "namespace JSC {\n"
             template.body = opcodes.map(&:struct_indices).join("\n")
-            template.suffix = "} // namespace JSC"
+            template.suffix = "\n} // namespace JSC"
         end
     end
 

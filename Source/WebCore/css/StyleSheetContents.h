@@ -22,10 +22,10 @@
 
 #include "CSSParserContext.h"
 #include "CachePolicy.h"
-#include "URL.h"
 #include <wtf/Function.h>
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
+#include <wtf/URL.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -143,6 +143,9 @@ public:
     void removedFromMemoryCache();
 
     void shrinkToFit();
+
+    void setAsOpaque() { m_parserContext.isContentOpaque = true; }
+    bool isContentOpaque() const { return m_parserContext.isContentOpaque; }
 
 private:
     WEBCORE_EXPORT StyleSheetContents(StyleRuleImport* ownerRule, const String& originalURL, const CSSParserContext&);

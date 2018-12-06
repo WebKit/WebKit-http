@@ -29,8 +29,9 @@
     EnabledAtRuntime=WebGPU,
     ImplementationLacksVTable
 ] interface WebGPUCommandBuffer {
-/* Not Yet Implemented
     WebGPURenderPassEncoder beginRenderPass(WebGPURenderPassDescriptor descriptor);
+
+/* Not Yet Implemented
     WebGPUComputePassEncoder beginComputePass();
 
     // Commands allowed outside of "passes"

@@ -1,3 +1,303 @@
+2018-11-30  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: resource combining should be more robust against missing WebKitAdditions
+        https://bugs.webkit.org/show_bug.cgi?id=192255
+        <rdar://problem/46042879>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/copy-user-interface-resources.pl:
+        (combineOrStripResourcesForWebKitAdditions):
+
+2018-11-30  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Jumping from Computed to Styles should select property
+        https://bugs.webkit.org/show_bug.cgi?id=192198
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .property.highlighted): Deleted.
+        (@keyframes style-property-highlight): Deleted.
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.highlightProperty):
+        Remove unnecessary `__propertyView` property.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.detached):
+        (WI.SpreadsheetStyleProperty.prototype.highlight): Deleted.
+
+2018-11-30  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION(r238599): Multiple Selection: selecting a breakpoint will change the selection to it's parent on the first click
+        https://bugs.webkit.org/show_bug.cgi?id=192093
+        <rdar://problem/46318466>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.prototype.select):
+        TreeElement shouldn't manage the TreeOutline's selection barrier.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline):
+        (WI.TreeOutline.prototype.get processingSelectionChange):
+        (WI.TreeOutline.prototype.selectionControllerSelectionDidChange):
+        (WI.TreeOutline.prototype.selectTreeElementInternal):
+        The selection re-entry barrier `processingSelectionChange` should be
+        managed internally by TreeOutline, and exposed as a read-only property.
+        Fix a bug where the barrier was cleared before dispatching the change
+        notification, which can cause re-entry as a side effect.
+
+2018-11-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Settings: reload button needs horizontal spacing
+        https://bugs.webkit.org/show_bug.cgi?id=192231
+        <rdar://problem/46274363>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings > .settings-view > .container button):
+        (.content-view.settings > .settings-view > .container > .title):
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor input[type="checkbox"]):
+        (body[dir=ltr] .content-view.settings > .settings-view > .container > .title): Deleted.
+        (body[dir=rtl] .content-view.settings > .settings-view > .container > .title): Deleted.
+        (body[dir=ltr] .content-view.settings > .settings-view > .container > .editor-group > .editor input[type="checkbox"]): Deleted.
+        (body[dir=rtl] .content-view.settings > .settings-view > .container > .editor-group > .editor input[type="checkbox"]): Deleted.
+        Drive-by: replace `dir=*` attribute rules with `-webkit-margin-*` properties.
+
+2018-11-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exception opening Web Inspector to Debugger Tab
+        https://bugs.webkit.org/show_bug.cgi?id=192174
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.runAfterPendingDispatches):
+        Dispatch the callback with a timeout if there is no backend target yet
+        so it doesn't get lost.
+
+        * UserInterface/Protocol/Connection.js:
+        (InspectorBackend.Connection.prototype.runAfterPendingDispatches):
+        Change the ambiguous name "script" to the more familiar "callback".
+
+2018-11-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: replace all unicode characters with the escaped character code
+        https://bugs.webkit.org/show_bug.cgi?id=192216
+        <rdar://problem/46275637>
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        * UserInterface/Debug/UncaughtExceptionReporter.js:
+        * UserInterface/Models/AuditTestCase.js:
+        * UserInterface/Models/Canvas.js:
+        * UserInterface/Models/RecordingAction.js:
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        * UserInterface/Views/AuditTestCaseContentView.js:
+        * UserInterface/Views/AuditTestContentView.js:
+        * UserInterface/Views/AuditTestGroupContentView.js:
+        * UserInterface/Views/CallFrameView.js:
+        * UserInterface/Views/CanvasContentView.js:
+        * UserInterface/Views/CanvasOverviewContentView.css:
+        * UserInterface/Views/ConsoleMessageView.css:
+        * UserInterface/Views/ContextMenuUtilities.js:
+        * UserInterface/Views/DOMEventsBreakdownView.js:
+        * UserInterface/Views/DataGrid.css:
+        * UserInterface/Views/DataGrid.js:
+        * UserInterface/Views/DatabaseTableContentView.js:
+        * UserInterface/Views/DebuggerDashboardView.css:
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        * UserInterface/Views/ErrorObjectView.js:
+        * UserInterface/Views/EventBreakpointPopover.js:
+        * UserInterface/Views/InlineSwatch.js:
+        * UserInterface/Views/LayerTreeDataGridNode.js:
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        * UserInterface/Views/Layers3DContentView.js:
+        * UserInterface/Views/LayoutTimelineDataGridNode.js:
+        * UserInterface/Views/NetworkTableContentView.css:
+        * UserInterface/Views/NetworkTableContentView.js:
+        * UserInterface/Views/ObjectPreviewView.js:
+        * UserInterface/Views/ProfileDataGridNode.js:
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        * UserInterface/Views/ScriptDetailsTimelineView.css:
+        * UserInterface/Views/TextEditor.css:
+        * UserInterface/Views/TreeOutline.css:
+
+2018-11-29  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: RTL: disclosure triangles should be flipped and aligned right
+        https://bugs.webkit.org/show_bug.cgi?id=192089
+        <rdar://problem/46316753>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ComputedStyleSection.css:
+        (.computed-style-section .computed-property-item .disclosure-button):
+        (body[dir=rtl] .computed-style-section .computed-property-item .disclosure-button):
+
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-message.expandable .console-top-level-message::before):
+        (body[dir=rtl] .console-message.expandable .console-top-level-message::before):
+
+        * UserInterface/Views/ErrorObjectView.css:
+        (.error-object > .formatted-error::before):
+        (body[dir=rtl] .error-object > .formatted-error::before):
+        (.error-object .content):
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-group-title::before):
+        (body[dir=ltr] .console-group-title::before):
+        (body[dir=rtl] .console-group-title::before):
+
+        * UserInterface/Views/ObjectTreeView.css:
+        (body[dir=rtl] .object-tree > :matches(.title, .object-preview)::before):
+
+        * UserInterface/Views/TypeTreeElement.css:
+        (body[dir=rtl] .item.type-tree-element.parent > .disclosure-button):
+
+2018-11-28  Dean Jackson  <dino@apple.com>
+
+        [ES Modules] Allow .mjs content when loaded from file://
+        https://bugs.webkit.org/show_bug.cgi?id=192100
+        <rdar://problem/46320065>
+
+        Reviewed by Sam Weinig.
+
+        Add a mapping from .mjs to application/javascript.
+
+        * UserInterface/Base/MIMETypeUtilities.js:
+        (WI.mimeTypeForFileExtension):
+
+2018-11-29  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Elements: selecting more than one DOM node causes the scope highlight to contrast
+        https://bugs.webkit.org/show_bug.cgi?id=192118
+        <rdar://problem/46325664>
+
+        Reviewed by Devin Rousso.
+
+        Use an alpha blended border for the "selected" DOM scope highlight,
+        matching the "hovered" scope highlight.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom li.selected + ol.children.expanded):
+
+2018-11-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: REGRESSION(?): all "Show *" develop menu items cause the page to crash
+        https://bugs.webkit.org/show_bug.cgi?id=192016
+        <rdar://problem/46284417>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        (WI.initializeBackendTarget):
+        (WI.contentLoaded):
+        (WI.whenTargetsAvailable):
+        Don't evaluate any InspectorFrontendAPI commands until the frontend
+        has initialized a main target and the user interface.
+
+2018-11-28  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: enable selection of multiple properties by default
+        https://bugs.webkit.org/show_bug.cgi?id=192109
+        <rdar://problem/46323565>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+        Remove the checkbox.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .property):
+        (.spreadsheet-style-declaration-editor :matches(.name, .value):not(.editing)):
+        (.spreadsheet-style-declaration-editor .property.selected):
+        (.spreadsheet-style-declaration-editor .property.selected:focus):
+        (.multiple-properties-selection .spreadsheet-style-declaration-editor .property): Deleted.
+        (.multiple-properties-selection .spreadsheet-style-declaration-editor :matches(.name, .value):not(.editing)): Deleted.
+        (.multiple-properties-selection .spreadsheet-style-declaration-editor .property.selected): Deleted.
+        (.multiple-properties-selection .spreadsheet-style-declaration-editor .property.selected:focus): Deleted.
+        Remove `.multiple-properties-selection` class.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.initialLayout):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleMouseDown):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._createInlineSwatch):
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField):
+        (WI.SpreadsheetTextField.prototype._handleFocus): Deleted.
+
+2018-11-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: empty results folder is shown after clearing filters
+        https://bugs.webkit.org/show_bug.cgi?id=192106
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel.prototype.applyFiltersToTreeElement): Added.
+
+2018-11-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove unused DataGrid and TreeOutline code
+        https://bugs.webkit.org/show_bug.cgi?id=191622
+        <rdar://problem/46052014>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/CanvasDetailsSidebarPanel.js:
+        (WI.CanvasDetailsSidebarPanel.prototype.initialLayout):
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.insertChildElement):
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline):
+        (WI.DOMTreeOutline.prototype.update):
+
+        * UserInterface/Views/DataGrid.js:
+        (WI.DataGrid.prototype.removeChildrenRecursive): Deleted.
+
+        * UserInterface/Views/DataGridNode.js:
+        (WI.DataGridNode.prototype.removeChildren):
+        (WI.DataGridNode.prototype.removeChildrenRecursive): Deleted.
+
+        * UserInterface/Views/ErrorObjectView.css:
+        (.error-object:not(.expanded) .content):
+        (.error-object .content):
+        (.error-object:not(.expanded) .tree-outline): Deleted.
+        (.error-object .tree-outline): Deleted.
+
+        * UserInterface/Views/ErrorObjectView.js:
+        (WI.ErrorObjectView):
+        (WI.ErrorObjectView.prototype.get treeOutline): Deleted.
+        Use a simple container since TreeOutline features aren't used,
+        and remove unused property `treeOutline`.
+
+        * UserInterface/Views/RecordingTraceDetailsSidebarPanel.js:
+        (WI.RecordingTraceDetailsSidebarPanel):
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.prototype.removeChildren):
+        (WI.TreeElement.prototype.removeChildrenRecursive): Deleted.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline):
+        (WI.TreeOutline.prototype.removeChildrenRecursive): Deleted.
+        (WI.TreeOutline.prototype.reattachIfIndexChanged): Deleted.
+        Removed `element` parameter now that the only use case has been removed.
+
 2018-11-27  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Elements tab should allow selecting/deleting multiple DOM nodes

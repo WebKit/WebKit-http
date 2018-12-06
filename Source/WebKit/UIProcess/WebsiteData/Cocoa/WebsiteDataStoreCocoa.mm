@@ -51,11 +51,21 @@ static Vector<WebsiteDataStore*>& dataStoresWithStorageManagers()
     return dataStoresWithStorageManagers;
 }
 
+static NSString * const WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey = @"WebKitNetworkLoadThrottleLatencyMilliseconds";
+
 WebsiteDataStoreParameters WebsiteDataStore::parameters()
 {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
 
     resolveDirectoriesIfNecessary();
+
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
+    static NSString * const WebKitLogCookieInformationDefaultsKey = @"WebKitLogCookieInformation";
+    bool shouldLogCookieInformation = [defaults boolForKey:WebKitLogCookieInformationDefaultsKey];
+#else
+    bool shouldLogCookieInformation = false;
+#endif
 
     WebsiteDataStoreParameters parameters;
     parameters.networkSessionParameters = {
@@ -65,6 +75,8 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
         m_proxyConfiguration,
         m_configuration.sourceApplicationBundleIdentifier,
         m_configuration.sourceApplicationSecondaryIdentifier,
+        shouldLogCookieInformation,
+        Seconds { [defaults integerForKey:WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey] / 1000. }
     };
 
     auto cookieFile = resolvedCookieStorageFile();

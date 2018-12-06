@@ -41,7 +41,6 @@ NetworkProcessCreationParameters::NetworkProcessCreationParameters()
 
 void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 {
-    encoder << privateBrowsingEnabled;
     encoder.encodeEnum(cacheModel);
     encoder << diskCacheSizeOverride;
     encoder << canHandleHTTPSServerTrustEvaluation;
@@ -65,7 +64,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #endif
     encoder << shouldSuppressMemoryPressureHandler;
     encoder << shouldUseTestingNetworkSession;
-    encoder << loadThrottleLatency;
     encoder << urlSchemesRegisteredForCustomProtocols;
     encoder << presentingApplicationPID;
 #if PLATFORM(COCOA)
@@ -92,13 +90,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #elif USE(CURL)
     encoder << cookiePersistentStorageFile;
 #endif
-#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
-    encoder << logCookieInformation;
-#endif
-#if ENABLE(NETWORK_CAPTURE)
-    encoder << recordReplayMode;
-    encoder << recordReplayCacheLocation;
-#endif
 
     encoder << urlSchemesRegisteredAsSecure;
     encoder << urlSchemesRegisteredAsBypassingContentSecurityPolicy;
@@ -123,8 +114,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 
 bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProcessCreationParameters& result)
 {
-    if (!decoder.decode(result.privateBrowsingEnabled))
-        return false;
     if (!decoder.decodeEnum(result.cacheModel))
         return false;
     if (!decoder.decode(result.diskCacheSizeOverride))
@@ -184,8 +173,6 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
     if (!decoder.decode(result.shouldUseTestingNetworkSession))
         return false;
-    if (!decoder.decode(result.loadThrottleLatency))
-        return false;
     if (!decoder.decode(result.urlSchemesRegisteredForCustomProtocols))
         return false;
     if (!decoder.decode(result.presentingApplicationPID))
@@ -230,18 +217,6 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
 #elif USE(CURL)
     if (!decoder.decode(result.cookiePersistentStorageFile))
-        return false;
-#endif
-
-#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
-    if (!decoder.decode(result.logCookieInformation))
-        return false;
-#endif
-
-#if ENABLE(NETWORK_CAPTURE)
-    if (!decoder.decode(result.recordReplayMode))
-        return false;
-    if (!decoder.decode(result.recordReplayCacheLocation))
         return false;
 #endif
 

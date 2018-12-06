@@ -33,6 +33,10 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
 
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WebPaymentCoordinatorProxyAdditions.h>
+#endif
+
 namespace IPC {
 class DataReference;
 }
@@ -43,7 +47,6 @@ class Payment;
 class PaymentContact;
 class PaymentMerchantSession;
 class PaymentMethod;
-class URL;
 }
 
 OBJC_CLASS NSObject;
@@ -61,7 +64,7 @@ public:
     ~WebPaymentCoordinatorProxy();
 
     void didCancelPaymentSession();
-    void validateMerchant(const WebCore::URL&);
+    void validateMerchant(const URL&);
     void didAuthorizePayment(const WebCore::Payment&);
     void didSelectShippingMethod(const WebCore::ApplePaySessionPaymentRequest::ShippingMethod&);
     void didSelectShippingContact(const WebCore::PaymentContact&);
@@ -99,7 +102,7 @@ private:
     bool platformCanMakePayments();
     void platformCanMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler);
     void platformOpenPaymentSetup(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler);
-    void platformShowPaymentUI(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::ApplePaySessionPaymentRequest&, WTF::Function<void (bool)>&& completionHandler);
+    void platformShowPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLs, const WebCore::ApplePaySessionPaymentRequest&, WTF::Function<void(bool)>&& completionHandler);
     void platformCompleteMerchantValidation(const WebCore::PaymentMerchantSession&);
     void platformCompleteShippingMethodSelection(const std::optional<WebCore::ShippingMethodUpdate>&);
     void platformCompleteShippingContactSelection(const std::optional<WebCore::ShippingContactUpdate>&);
@@ -149,6 +152,13 @@ private:
     uint64_t m_showPaymentUIRequestSeed { 0 };
     RetainPtr<NSWindow> m_sheetWindow;
     RetainPtr<NSObject *> m_sheetWindowWillCloseObserver;
+#endif
+    
+#if defined(WEBPAYMENTCOORDINATORPROXY_ADDITIONS)
+WEBPAYMENTCOORDINATORPROXY_ADDITIONS
+#undef WEBPAYMENTCOORDINATORPROXY_ADDITIONS
+#else
+    void finishConstruction(WebPaymentCoordinatorProxy&) { }
 #endif
 };
 

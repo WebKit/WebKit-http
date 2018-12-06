@@ -51,7 +51,6 @@ struct NetworkProcessCreationParameters {
     void encode(IPC::Encoder&) const;
     static bool decode(IPC::Decoder&, NetworkProcessCreationParameters&);
 
-    bool privateBrowsingEnabled { false };
     CacheModel cacheModel { CacheModelDocumentViewer };
     int64_t diskCacheSizeOverride { -1 };
     bool canHandleHTTPSServerTrustEvaluation { true };
@@ -105,15 +104,6 @@ struct NetworkProcessCreationParameters {
     WebCore::SoupNetworkProxySettings proxySettings;
 #elif USE(CURL)
     String cookiePersistentStorageFile;
-#endif
-
-#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
-    bool logCookieInformation { false };
-#endif
-
-#if ENABLE(NETWORK_CAPTURE)
-    String recordReplayMode;
-    String recordReplayCacheLocation;
 #endif
 
     Vector<String> urlSchemesRegisteredAsSecure;

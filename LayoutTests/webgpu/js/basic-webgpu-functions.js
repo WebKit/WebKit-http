@@ -137,5 +137,38 @@ function render() {
         return;
     }
 
-    // FIXME: Rest of rendering commands to follow.
+    // FIXME: Default a loadOp, and storeOp in the implementation for now.
+    const colorAttachmentDescriptor = {
+        attachment : textureView,
+        clearColor : { r: 0.35, g: 0.65, b: 0.85, a: 1.0 }
+    }
+
+    let renderPassDescriptor = {
+        colorAttachments : [colorAttachmentDescriptor]
+    }
+
+    let renderPassEncoder = commandBuffer.beginRenderPass(renderPassDescriptor);
+    if (!renderPassEncoder) {
+        testFailed("Could not create WebGPURenderPassEncoder!");
+        return;
+    }
+
+    renderPassEncoder.setPipeline(renderPipeline);
+
+    // Note that we didn't attach any buffers - the shader is generating the vertices for us.
+    renderPassEncoder.draw(3, 1, 0, 0);
+    let commandBufferEnd = renderPassEncoder.endPass();
+    if (!commandBufferEnd) {
+        testFailed("Unable to create WebGPUCommandBuffer from WeGPURenderPassEncoder::endPass!");
+        return;
+    }
+
+    const queue = defaultDevice.getQueue();
+    if (!queue) {
+        testFailed("Unable to create default WebGPUQueue!");
+        return;
+    }
+    queue.submit([commandBufferEnd]);
+
+    context.present();
 }

@@ -53,7 +53,6 @@ OBJC_CLASS WKInspectorViewController;
 
 namespace WebCore {
 class CertificateInfo;
-class URL;
 }
 
 namespace WebKit {
@@ -100,6 +99,7 @@ public:
     void hide();
     void close();
     void closeForCrash();
+    void reopen();
 
     void reset();
     void updateForNewPageProcess(WebPageProxy*);
@@ -156,7 +156,7 @@ public:
     static String inspectorPageURL();
     static String inspectorTestPageURL();
     static String inspectorBaseURL();
-    static bool isMainOrTestInspectorPage(const WebCore::URL&);
+    static bool isMainOrTestInspectorPage(const URL&);
 
     static const unsigned minimumWindowWidth;
     static const unsigned minimumWindowHeight;
@@ -254,6 +254,7 @@ private:
     bool m_elementSelectionActive { false };
     bool m_ignoreElementSelectionChange { false };
     bool m_isOpening { false };
+    bool m_isActiveFrontend { false };
 
     AttachmentSide m_attachmentSide {AttachmentSide::Bottom};
 

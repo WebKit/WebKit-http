@@ -74,11 +74,11 @@
 #include "StyleProperties.h"
 #include "TextIterator.h"
 #include "TypedElementDescendantIterator.h"
-#include "URL.h"
-#include "URLParser.h"
 #include "VisibleSelection.h"
 #include "VisibleUnits.h"
 #include <wtf/StdLibExtras.h>
+#include <wtf/URL.h>
+#include <wtf/URLParser.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -162,7 +162,7 @@ void removeSubresourceURLAttributes(Ref<DocumentFragment>&& fragment, WTF::Funct
         for (const Attribute& attribute : element.attributesIterator()) {
             // FIXME: This won't work for srcset.
             if (element.attributeContainsURL(attribute) && !attribute.value().isEmpty()) {
-                URL url = URLParser { attribute.value() }.result();
+                URL url({ }, attribute.value());
                 if (shouldRemoveURL(url))
                     attributesToRemove.append({ element, attribute.name() });
             }
@@ -273,15 +273,8 @@ private:
     
     Node* nextSkippingChildren(Node& node)
     {
-        if (UNLIKELY(m_useComposedTree)) {
-            if (auto* sibling = nextSiblingInComposedTreeIgnoringUserAgentShadow(node))
-                return sibling;
-            for (auto* ancestor = node.parentInComposedTree(); ancestor; ancestor = ancestor->parentInComposedTree()) {
-                if (auto* sibling = nextSiblingInComposedTreeIgnoringUserAgentShadow(*ancestor))
-                    return sibling;
-            }
-            return nullptr;
-        }
+        if (UNLIKELY(m_useComposedTree))
+            return nextSkippingChildrenInComposedTreeIgnoringUserAgentShadow(node);
         return NodeTraversal::nextSkippingChildren(node);
     }
 
@@ -1036,7 +1029,7 @@ Ref<DocumentFragment> createFragmentFromMarkup(Document& document, const String&
 
     fragment->parseHTML(markup, fakeBody.ptr(), parserContentPolicy);
     restoreAttachmentElementsInFragment(fragment);
-    if (!baseURL.isEmpty() && baseURL != blankURL() && baseURL != document.baseURL())
+    if (!baseURL.isEmpty() && baseURL != WTF::blankURL() && baseURL != document.baseURL())
         completeURLs(fragment.ptr(), baseURL);
 
     return fragment;

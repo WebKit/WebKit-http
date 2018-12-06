@@ -29,6 +29,7 @@
 #if PLATFORM(IOS_FAMILY)
 
 #import "APIUIClient.h"
+#import "EditableImageController.h"
 #import "EditingRange.h"
 #import "InputViewUpdateDeferrer.h"
 #import "Logging.h"
@@ -46,6 +47,7 @@
 #import "WKFormInputControl.h"
 #import "WKFormSelectControl.h"
 #import "WKImagePreviewViewController.h"
+#import "WKInkPickerControl.h"
 #import "WKInspectorNodeSearchGestureRecognizer.h"
 #import "WKNSURLExtras.h"
 #import "WKPreviewActionItemIdentifiers.h"
@@ -89,7 +91,6 @@
 #import <WebCore/ShareData.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/VisibleSelection.h>
-#import <WebCore/WebCoreNSURLExtras.h>
 #import <WebCore/WebEvent.h>
 #import <WebKit/WebSelectionRect.h> // FIXME: WK2 should not include WebKit headers!
 #import <pal/spi/cg/CoreGraphicsSPI.h>
@@ -100,6 +101,7 @@
 #import <wtf/SetForScope.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/WeakObjCPtr.h>
+#import <wtf/cocoa/NSURLExtras.h>
 #import <wtf/text/TextStream.h>
 
 #if ENABLE(DRAG_SUPPORT)
@@ -112,6 +114,7 @@
 #if PLATFORM(IOSMAC)
 #import "NativeWebMouseEvent.h"
 #import <UIKit/UIHoverGestureRecognizer.h>
+#import <UIKit/_UILookupGestureRecognizer.h>
 #import <pal/spi/ios/GraphicsServicesSPI.h>
 #endif
 
@@ -487,6 +490,9 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     case WebKit::InputType::Select:
         _type = WKInputTypeSelect;
         break;
+    case WebKit::InputType::Drawing:
+        _type = WKInputTypeDrawing;
+        break;
 #if ENABLE(INPUT_TYPE_COLOR)
     case WebKit::InputType::Color:
         _type = WKInputTypeColor;
@@ -649,6 +655,11 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     _hoverGestureRecognizer = adoptNS([[UIHoverGestureRecognizer alloc] initWithTarget:self action:@selector(_hoverGestureRecognizerChanged:)]);
     [_hoverGestureRecognizer setDelegate:self];
     [self addGestureRecognizer:_hoverGestureRecognizer.get()];
+    
+    _lookupGestureRecognizer = adoptNS([[_UILookupGestureRecognizer alloc] initWithTarget:self action:@selector(_lookupGestureRecognized:)]);
+    [_lookupGestureRecognizer setDelegate:self];
+    [self addGestureRecognizer:_lookupGestureRecognizer.get()];
+    
 #endif
 
     _singleTapGestureRecognizer = adoptNS([[WKSyntheticClickTapGestureRecognizer alloc] initWithTarget:self action:@selector(_singleTapCommited:)]);
@@ -759,6 +770,9 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
 #if PLATFORM(IOSMAC)
     [_hoverGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_hoverGestureRecognizer.get()];
+    
+    [_lookupGestureRecognizer setDelegate:nil];
+    [self removeGestureRecognizer:_lookupGestureRecognizer.get()];
 #endif
 
     [_singleTapGestureRecognizer setDelegate:nil];
@@ -846,6 +860,7 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     [self removeGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
 #if PLATFORM(IOSMAC)
     [self removeGestureRecognizer:_hoverGestureRecognizer.get()];
+    [self removeGestureRecognizer:_lookupGestureRecognizer.get()];
 #endif
 }
 
@@ -861,6 +876,7 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     [self addGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
 #if PLATFORM(IOSMAC)
     [self addGestureRecognizer:_hoverGestureRecognizer.get()];
+    [self addGestureRecognizer:_lookupGestureRecognizer.get()];
 #endif
 }
 
@@ -1034,6 +1050,9 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
         didBecomeFirstResponder = [super becomeFirstResponder];
     }
 
+    if (didBecomeFirstResponder)
+        _page->activityStateDidChange(WebCore::ActivityState::IsFocused);
+
     if (didBecomeFirstResponder && [self canShowNonEmptySelectionView])
         [_textSelectionAssistant activateSelection];
 
@@ -1063,6 +1082,9 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     _inputViewUpdateDeferrer = nullptr;
 
     bool superDidResign = [super resignFirstResponder];
+
+    if (superDidResign)
+        _page->activityStateDidChange(WebCore::ActivityState::IsFocused);
 
     _resigningFirstResponder = NO;
 
@@ -1335,12 +1357,13 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 #if ENABLE(INPUT_TYPE_COLOR)
     case InputType::Color:
 #endif
-        return !currentUserInterfaceIdiomIsPad();
     case InputType::Date:
     case InputType::Month:
     case InputType::DateTimeLocal:
     case InputType::Time:
         return !currentUserInterfaceIdiomIsPad();
+    case InputType::Drawing:
+        return YES;
     default:
         return !_assistedNodeInformation.isReadOnly;
     }
@@ -1389,6 +1412,14 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         case InputType::Color:
             _inputPeripheral = adoptNS([[WKFormColorControl alloc] initWithView:self]);
             break;
+#endif
+        case InputType::Drawing:
+#if HAVE(PENCILKIT)
+            _inputPeripheral = adoptNS([[WKInkPickerControl alloc] initWithDrawingView:_page->editableImageController().editableImage(_assistedNodeInformation.embeddedViewID)->drawingView.get()]);
+            break;
+#else
+            ASSERT_NOT_REACHED();
+            return [[UIView new] autorelease];
 #endif
         default:
             _inputPeripheral = adoptNS([[WKFormInputControl alloc] initWithView:self]);
@@ -1461,6 +1492,10 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     if ([gestureRecognizer isKindOfClass:[UIHoverGestureRecognizer class]] || [otherGestureRecognizer isKindOfClass:[UIHoverGestureRecognizer class]])
         return YES;
+    
+    if (([gestureRecognizer isKindOfClass:[_UILookupGestureRecognizer class]] && [otherGestureRecognizer isKindOfClass:[UILongPressGestureRecognizer class]]) || ([otherGestureRecognizer isKindOfClass:[UILongPressGestureRecognizer class]] && [gestureRecognizer isKindOfClass:[_UILookupGestureRecognizer class]]))
+        return YES;
+
 #endif
     if (isSamePair(gestureRecognizer, otherGestureRecognizer, _highlightLongPressGestureRecognizer.get(), _textSelectionAssistant.get().forcePressGesture))
         return YES;
@@ -2168,6 +2203,8 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     case InputType::Color:
 #endif
         return !currentUserInterfaceIdiomIsPad();
+    case InputType::Drawing:
+        return YES;
     }
 }
 
@@ -3748,6 +3785,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         case InputType::Week:
         case InputType::Time:
         case InputType::Select:
+        case InputType::Drawing:
 #if ENABLE(INPUT_TYPE_COLOR)
         case InputType::Color:
 #endif
@@ -4276,6 +4314,7 @@ static bool isAssistableInputType(InputType type)
     case InputType::Week:
     case InputType::Time:
     case InputType::Select:
+    case InputType::Drawing:
 #if ENABLE(INPUT_TYPE_COLOR)
     case InputType::Color:
 #endif
@@ -4920,7 +4959,7 @@ static bool isAssistableInputType(InputType type)
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000 && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
     if (!_airPlayRoutePicker)
         _airPlayRoutePicker = adoptNS([[WKAirPlayRoutePicker alloc] init]);
-    [_airPlayRoutePicker showFromView:self routeSharingPolicy:routeSharingPolicy routingContextUID:routingContextUID];
+    [_airPlayRoutePicker showFromView:self routeSharingPolicy:routeSharingPolicy routingContextUID:routingContextUID hasVideo:hasVideo];
 #else
     if (!_airPlayRoutePicker)
         _airPlayRoutePicker = adoptNS([[WKAirPlayRoutePicker alloc] initWithView:self]);
@@ -5066,7 +5105,7 @@ static bool isAssistableInputType(InputType type)
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant shareElementWithURL:(NSURL *)url rect:(CGRect)boundingRect
 {
     if (_textSelectionAssistant)
-        [_textSelectionAssistant showShareSheetFor:userVisibleString(url) fromRect:boundingRect];
+        [_textSelectionAssistant showShareSheetFor:WTF::userVisibleString(url) fromRect:boundingRect];
 }
 
 #if HAVE(APP_LINKS)
@@ -6051,6 +6090,12 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 #endif // PLATFORM(WATCHOS)
 
 #if PLATFORM(IOSMAC)
+- (void)_lookupGestureRecognized:(UIGestureRecognizer *)gestureRecognizer
+{
+    NSPoint locationInViewCoordinates = [gestureRecognizer locationInView:self];
+    _page->performDictionaryLookupAtLocation(WebCore::FloatPoint(locationInViewCoordinates));
+}
+
 - (void)_hoverGestureRecognizerChanged:(UIGestureRecognizer *)gestureRecognizer
 {
     if (!_page->isValid())
@@ -6352,7 +6397,7 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
 
     NSURL *targetURL = controller.previewData[UIPreviewDataLink];
     URL coreTargetURL = targetURL;
-    bool isValidURLForImagePreview = !coreTargetURL.isEmpty() && (WebCore::protocolIsInHTTPFamily(coreTargetURL) || WebCore::protocolIs(coreTargetURL, "data"));
+    bool isValidURLForImagePreview = !coreTargetURL.isEmpty() && (WTF::protocolIsInHTTPFamily(coreTargetURL) || WTF::protocolIs(coreTargetURL, "data"));
 
     if ([_previewItemController type] == UIPreviewItemTypeLink) {
         _highlightLongPressCanClick = NO;

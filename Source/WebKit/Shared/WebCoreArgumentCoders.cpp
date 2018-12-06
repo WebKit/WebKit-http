@@ -79,11 +79,11 @@
 #include <WebCore/TextIndicator.h>
 #include <WebCore/TimingFunction.h>
 #include <WebCore/TransformationMatrix.h>
-#include <WebCore/URL.h>
 #include <WebCore/UserStyleSheet.h>
 #include <WebCore/ViewportArguments.h>
 #include <WebCore/WindowFeatures.h>
 #include <pal/SessionID.h>
+#include <wtf/URL.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
 
@@ -1622,11 +1622,11 @@ bool ArgumentCoder<DatabaseDetails>::decode(Decoder& decoder, DatabaseDetails& d
     if (!decoder.decode(currentUsage))
         return false;
 
-    double creationTime;
+    std::optional<WallTime> creationTime;
     if (!decoder.decode(creationTime))
         return false;
 
-    double modificationTime;
+    std::optional<WallTime> modificationTime;
     if (!decoder.decode(modificationTime))
         return false;
 

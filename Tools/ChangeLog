@@ -1,3 +1,764 @@
+2018-12-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOSMac] Unable to upload non-image files using drag and drop in WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=192283
+        <rdar://problem/46399461>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new API test to check that an item provider which contains plain text data and a file URL (but is not
+        marked as an attachment) is still treated as an attachment upon drop. Furthermore, verify that "text/uri-list"
+        does not expose the actual file URL written to the item provider.
+
+        Additionally, rebaseline an existing API test to remove an extraneous "text/uri-list" type that appears in
+        `DataTransfer.types`, but whose data is inaccessible via `getData` anyways.
+
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+
+2018-12-01  Don Olmstead  <don.olmstead@sony.com>
+
+        Cleanup WebKit Features
+        https://bugs.webkit.org/show_bug.cgi?id=192262
+
+        Reviewed by Michael Catanzaro.
+
+        Removes obsolete ENABLE options and variable names. Syncs the option's
+        descriptions with what is present in WebKitFeatures.cmake. Sorts the
+        options based on the associated define.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2018-12-01  Chris Dumez  <cdumez@apple.com>
+
+        [PSON] process-swapping may occur even though opener has handle to openee
+        https://bugs.webkit.org/show_bug.cgi?id=192277
+
+        Reviewed by Antti Koivisto.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-12-01  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed, rolling out r238764.
+
+        Breaks existing layout tests
+
+        Reverted changeset:
+
+        "webkitpy: Support unicode in MeteredStream"
+        https://bugs.webkit.org/show_bug.cgi?id=192260
+        https://trac.webkit.org/changeset/238764
+
+2018-12-01  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Move URL tests from TestWebKitAPI to TestWTF
+        https://bugs.webkit.org/show_bug.cgi?id=192275
+
+        Reviewed by Keith Miller.
+
+        Since URL is moved from WebCore to WTF, we also move tests for them from TestWebKitAPI (TestWebCore) to TestWTF.
+        But we still have some tests in TestWebCore since only WebCore implements TextEncoding. That part is now decoupled
+        from URLParser tests and new URLParserTextEncoding.cpp is created.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/PlatformWPE.cmake:
+        * TestWebKitAPI/PlatformWin.cmake:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/URL.cpp: Renamed from Tools/TestWebKitAPI/Tests/WebCore/URL.cpp.
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WTF/URLParser.cpp: Renamed from Tools/TestWebKitAPI/Tests/WebCore/URLParser.cpp.
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WTF/cocoa/URLExtras.mm: Renamed from Tools/TestWebKitAPI/Tests/WebCore/cocoa/URLExtras.mm.
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/URLParserTextEncoding.cpp: Added.
+        (TestWebKitAPI::ExpectedParts::isInvalid const):
+        (TestWebKitAPI::eq):
+        (TestWebKitAPI::insertTabAtLocation):
+        (TestWebKitAPI::invalidParts):
+        (TestWebKitAPI::checkURL):
+        (TestWebKitAPI::TEST_F):
+
+2018-11-30  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed LFC passing test list update.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-11-30  Alex Christensen  <achristensen@webkit.org>
+
+        Move URL from WebCore to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=190234
+
+        Reviewed by Keith Miller.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        * TestWebKitAPI/Tests/WebCore/SecurityOrigin.cpp:
+        * TestWebKitAPI/Tests/WebCore/URL.cpp:
+        (TestWebKitAPI::createURL):
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::checkURL):
+        (TestWebKitAPI::checkRelativeURL):
+        (TestWebKitAPI::checkURLDifferences):
+        (TestWebKitAPI::checkRelativeURLDifferences):
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        * TestWebKitAPI/Tests/WebCore/YouTubePluginReplacement.cpp:
+        * TestWebKitAPI/Tests/WebCore/cocoa/URLExtras.mm:
+        (TestWebKitAPI::originalDataAsString):
+        (TestWebKitAPI::userVisibleString):
+        (TestWebKitAPI::literalURL):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/LoadAlternateHTMLString.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/LoadInvalidURLRequest.mm:
+        (literalURL):
+        * TestWebKitAPI/Tests/WebKitGLib/TestCookieManager.cpp:
+        * TestWebKitAPI/Tests/mac/LoadInvalidURLRequest.mm:
+        (-[LoadInvalidURLWebFrameLoadDelegate webView:didFailProvisionalLoadWithError:forFrame:]):
+        * TestWebKitAPI/Tests/mac/SSLKeyGenerator.mm:
+        * TestWebKitAPI/win/PlatformUtilitiesWin.cpp:
+        (TestWebKitAPI::Util::createURLForResource):
+        * lldb/lldb_webkit.py:
+        (__lldb_init_module):
+        (WTFURL_SummaryProvider):
+        (WTFURLProvider):
+        (WebCoreURL_SummaryProvider): Deleted.
+        (WebCoreURLProvider): Deleted.
+        (WebCoreURLProvider.__init__): Deleted.
+        (WebCoreURLProvider.to_string): Deleted.
+
+2018-11-30  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Support unicode in MeteredStream
+        https://bugs.webkit.org/show_bug.cgi?id=192260
+
+        Reviewed by Stephanie Lewis.
+
+        It's possible that the test runner returns unicode characters to be logged when
+        running layout tests.
+
+        * Scripts/webkitpy/layout_tests/views/metered_stream.py:
+        (MeteredStream.write): Message written to metered stream should be unicode.
+        * Scripts/webkitpy/layout_tests/views/metered_stream_unittest.py:
+        (RegularTest.test_unicode):
+
+2018-11-30  Jonathan Bedard  <jbedard@apple.com>
+
+        REGRESSION (r238749): run-api-tests dies with AttributeError: 'IOSSimulatorPort' object has no attribute 'DEFAULT_DEVICE_CLASS'
+        https://bugs.webkit.org/show_bug.cgi?id=192257
+        <rdar://problem/46384671>
+
+        Reviewed by Stephanie Lewis.
+
+        Follow-up fix for r238749.
+
+        * Scripts/webkitpy/api_tests/manager.py:
+        (Manager._initialize_devices): Use DEFAULT_DEVICE_TYPE instead of DEFAULT_DEVICE_CLASS.
+
+2018-11-30  Chris Dumez  <cdumez@apple.com>
+
+        [PSON] We are sometimes swapping processes even though there is an opened window with an opener link to us
+        https://bugs.webkit.org/show_bug.cgi?id=192242
+
+        Reviewed by Geoffrey Garen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-11-30  Don Olmstead  <don.olmstead@sony.com>
+
+        Rename ENABLE_SUBTLE_CRYPTO to ENABLE_WEB_CRYPTO
+        https://bugs.webkit.org/show_bug.cgi?id=192197
+
+        Reviewed by Jiewen Tan.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-11-30  Dean Jackson  <dino@apple.com>
+
+        Add first-class support for .mjs files in jsc binary
+        https://bugs.webkit.org/show_bug.cgi?id=192190
+        <rdar://problem/46375715>
+
+        Reviewed by Keith Miller.
+
+        Add .mjs files to the regexp looking for all JS files.
+
+        * Scripts/run-jsc-stress-tests:
+
+2018-11-30  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Use DeviceType instead of str to represent device class
+        https://bugs.webkit.org/show_bug.cgi?id=192160
+        <rdar://problem/46344845>
+
+        Rubber-stamped by Aakash Jain.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager._custom_device_for_test): Use DeviceTypes instead of strings to represent device type.
+        (Manager._set_up_run): Do not set _options.device_class, use device_type instead of device_class.
+        (Manager.run): Use device_type instead of device_class.
+        (Manager._print_expectations_for_subset): Ditto.
+        (Manager.print_expectations): Ditto.
+        * Scripts/webkitpy/layout_tests/controllers/manager_unittest.py:
+        (ManagerTest.test_uses_custom_device): Use DeviceType and actual device definition.
+        * Scripts/webkitpy/layout_tests/views/printing.py:
+        (Printer.print_workers_and_shards): Outputting the device suffix doesn't really help, and means
+        device type needs to be passed around.
+        * Scripts/webkitpy/port/apple.py:
+        (ApplePort.setup_test_run): Use device_type instead of device_class.
+        * Scripts/webkitpy/port/base.py:
+        (Port):
+        (Port.setup_test_run): Use device_type instead of device_class.
+        * Scripts/webkitpy/port/device_port.py:
+        (DevicePort):
+        (DevicePort.setup_test_run): Receive device_type as DeviceType object.
+        (DevicePort._create_devices): Deleted.
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.setup_test_run): Use device_type instead of device_class.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort):
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort):
+        (IOSSimulatorPort.__init__): Deleted.
+        (IOSSimulatorPort._set_device_class): Deleted.
+        * Scripts/webkitpy/port/test.py:
+        * Scripts/webkitpy/port/watch.py:
+        (WatchPort):
+        * Scripts/webkitpy/port/watch_simulator.py:
+        (WatchSimulatorPort):
+        (WatchSimulatorPort.__init__): Deleted.
+        (WatchSimulatorPort._set_device_class): Deleted.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.setup_test_run): Use device_type instead of device_class.
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDeviceManager._disambiguate_device_type): Using the existing devices for this is
+        a problem if no such device exists yet. Use the _device_identifier_to_name dictionary instead
+        since this should have hardware types in the device names.
+
+2018-11-30  David Quesada  <david_quesada@apple.com>
+
+        -[WKProcessPool _downloadURLRequest:] should allow specifying the initiating web view
+        https://bugs.webkit.org/show_bug.cgi?id=192212
+        rdar://problem/46363706
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/DownloadProgress.mm:
+        (-[DownloadProgressTestRunner startDownload:expectedLength:]):
+
+2018-11-30  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Compute min/maxHeight margins only when they are needed.
+        https://bugs.webkit.org/show_bug.cgi?id=192223
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-11-30  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC][MarginCollapsing] Do not use computed display box values for border and padding
+        https://bugs.webkit.org/show_bug.cgi?id=192214
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-11-30  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GTK][MiniBrowser] Handle Device Info permission requests
+        https://bugs.webkit.org/show_bug.cgi?id=191585
+
+        Reviewed by Carlos Garcia Campos.
+
+        * MiniBrowser/gtk/BrowserTab.c:
+        (permissionRequestDataNew):
+        (permissionRequestDataFree):
+        (permissionRequestDialogResponse):
+        (decidePermissionRequest):
+        (browserTabConstructed):
+
+2018-11-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Stop running tests without complex text enforced
+
+        We have enforced complex text in GTK+ for one release cycle without noticing any major issue nor performance
+        regression.
+
+        * WebKitTestRunner/gtk/main.cpp:
+        (main):
+
+2018-11-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r238635): Dragging a text selection within WKWebView causes the selection highlight to get into a bad state
+        https://bugs.webkit.org/show_bug.cgi?id=192165
+        <rdar://problem/46346682>
+
+        Reviewed by Daniel Bates.
+
+        Fixes 11 API tests that started failing or timing out after r238635. See below for more details.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewEditActions.mm:
+        (TestWebKitAPI::webViewForEditActionTesting):
+        (TestWebKitAPI::webViewForEditActionTestingWithPageNamed):
+
+        Ensure that the web view becomes first responder before executing edit actions.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/autofocus-contenteditable.html:
+        * TestWebKitAPI/Tests/WebKitCocoa/contenteditable-and-textarea.html:
+
+        Tweak these tests to allow selected content to overflow the width of the web view. Without this change,
+        ContentEditableToContentEditable and ContentEditableToTextarea will sometimes fail because the content causes
+        the body to scroll horizontally, so we miss the drop destination.
+
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+        (loadTestPageAndEnsureInputSession):
+
+        Add a new helper to load a test page with a given name, become first responder, and wait until an input session
+        starts. Use this in various drag and drop tests to reduce code duplication.
+
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        (-[DragAndDropSimulator initWithWebView:]):
+        (-[DragAndDropSimulator _resetSimulatedState]):
+        (-[DragAndDropSimulator _concludeDropAndPerformOperationIfNecessary]):
+        (-[DragAndDropSimulator _advanceProgress]):
+
+        To more accurately emulate UIKit behavior, begin focus preservation when starting a drag, and attempt to clear
+        the focus preservation token when the drag session ends. This allows us to simulate and test the scenario that
+        regressed with r238635.
+
+        (-[DragAndDropSimulator ensureInputSession]):
+        (-[DragAndDropSimulator _webView:didStartInputSession:]):
+        (-[DragAndDropSimulator waitForInputSession]): Deleted.
+
+        Refactored into -ensureInputSession. Instead of assuming that an input session has not yet been started, simply
+        wait for an input session to start if needed.
+
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+        Add a new SPI declaration.
+
+2018-11-29  Tim Horton  <timothy_horton@apple.com>
+
+        Inform clients when editable image attachment backing data changes
+        https://bugs.webkit.org/show_bug.cgi?id=192206
+        <rdar://problem/46350277>
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (-[AttachmentUpdateObserver init]):
+        (-[AttachmentUpdateObserver dataInvalidated]):
+        (-[AttachmentUpdateObserver _webView:didInvalidateDataForAttachment:]):
+        (TestWebKitAPI::ObserveAttachmentUpdatesForScope::expectAttachmentInvalidation):
+        (webViewForTestingAttachments):
+        (TestWebKitAPI::forEachViewInHierarchy):
+        (TestWebKitAPI::findEditableImageCanvas):
+        (TestWebKitAPI::drawSquareInEditableImage):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/PencilKitTestSPI.h: Added.
+        Add a test ensuring that we get an invalidation callback when an editable image is changed.
+
+2018-11-29  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        REGRESSION(r238445)[Buildbot] Unknown builder 'GTK Linux 32-bit Release' in scheduler 'trunk'
+        https://bugs.webkit.org/show_bug.cgi?id=192143
+
+        Reviewed by Philippe Normand.
+
+        Buildbot can't start since r238445.
+
+        > Configuration Errors:
+        >   Unknown builder 'GTK Linux 32-bit Release' in scheduler 'trunk'
+        >   Unknown builder 'GTK Linux ARM Release' in scheduler 'trunk'
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json: Removed deprecated builders.
+
+2018-11-29  David Quesada  <david_quesada@apple.com>
+
+        Add SPI to publish NSProgress on active downloads
+        https://bugs.webkit.org/show_bug.cgi?id=192021
+        rdar://problem/44405661
+
+        Reviewed by Alex Christensen.
+
+        Add API tests to exercise the progress-publishing functionality in a variety of scenarios.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/DownloadProgress.mm: Added.
+        (+[DownloadProgressTestProtocol registerProtocolForTestRunner:]):
+        (+[DownloadProgressTestProtocol unregisterProtocol]):
+        (+[DownloadProgressTestProtocol canInitWithRequest:]):
+        (+[DownloadProgressTestProtocol canonicalRequestForRequest:]):
+        (+[DownloadProgressTestProtocol requestIsCacheEquivalent:toRequest:]):
+        (-[DownloadProgressTestProtocol startLoading]):
+        (-[DownloadProgressTestProtocol stopLoading]):
+        (-[DownloadProgressTestRunner init]):
+        (-[DownloadProgressTestRunner startLoadingWithProtocol:]):
+        (-[DownloadProgressTestRunner tearDown]):
+        (-[DownloadProgressTestRunner _didGetProgress:]):
+        (-[DownloadProgressTestRunner _didLoseProgress]):
+        (-[DownloadProgressTestRunner subscribeAndWaitForProgress]):
+        (-[DownloadProgressTestRunner waitToLoseProgress]):
+        (-[DownloadProgressTestRunner startDownload:expectedLength:]):
+        (-[DownloadProgressTestRunner publishProgress]):
+        (-[DownloadProgressTestRunner receiveData:]):
+        (-[DownloadProgressTestRunner finishDownloadTask]):
+        (-[DownloadProgressTestRunner failDownloadTask]):
+        (-[DownloadProgressTestRunner waitForDownloadDidCreateDestination]):
+        (-[DownloadProgressTestRunner waitForDownloadFinished]):
+        (-[DownloadProgressTestRunner waitForDownloadCanceled]):
+        (-[DownloadProgressTestRunner waitForDownloadFailed]):
+        (-[DownloadProgressTestRunner waitForUpdatedCompletedUnitCount]):
+        (-[DownloadProgressTestRunner observeValueForKeyPath:ofObject:change:context:]):
+        (-[DownloadProgressTestRunner webView:decidePolicyForNavigationResponse:decisionHandler:]):
+        (-[DownloadProgressTestRunner webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[DownloadProgressTestRunner _downloadDidStart:]):
+        (-[DownloadProgressTestRunner _download:didCreateDestination:]):
+        (-[DownloadProgressTestRunner _downloadDidFinish:]):
+        (-[DownloadProgressTestRunner _downloadDidCancel:]):
+        (-[DownloadProgressTestRunner _download:didFailWithError:]):
+        (-[DownloadProgressTestRunner _download:decideDestinationWithSuggestedFilename:completionHandler:]):
+        (TEST):
+
+2018-11-29  Alexey Proskuryakov  <ap@apple.com>
+
+        Exception in bot watcher's dashboard if a hidden platform in no longer configured for display
+        https://bugs.webkit.org/show_bug.cgi?id=185527
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (updateHiddenPlatforms):
+
+2018-11-29  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC][Quirk] Body and html height stretching.
+        https://bugs.webkit.org/show_bug.cgi?id=192154
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-11-29  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Unify device creation
+        https://bugs.webkit.org/show_bug.cgi?id=192158
+        <rdar://problem/46344757>
+
+        Reviewed by Lucas Forschler.
+
+        * Scripts/webkitpy/port/device_port.py:
+        (DevicePort):
+        (DevicePort.setup_test_run): Use DEVICE_MANAGER to create devices based on the specified device class.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort): Add DEFAULT_DEVICE_CLASS.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort):
+        (IOSDevicePort._create_devices): Deleted.
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort._create_devices): Deleted.
+        * Scripts/webkitpy/port/watch.py:
+        (WatchPort): Add DEFAULT_DEVICE_CLASS.
+        * Scripts/webkitpy/port/watch_device.py:
+        (WatchDevicePort):
+        (WatchDevicePort._create_devices): Deleted.
+        * Scripts/webkitpy/port/watch_simulator.py:
+        (WatchSimulatorPort._create_devices): Deleted.
+        * Scripts/webkitpy/xcode/device_type_unittest.py:
+        (DeviceTypeTest.test_from_string): Test that DeviceTypes without hardware types can be constructed
+        from strings.
+
+2018-11-29  Jonathan Bedard  <jbedard@apple.com>
+
+        EWS iOS-sim bots sometimes fails to shutdown simulator
+        https://bugs.webkit.org/show_bug.cgi?id=191864
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDevice._shut_down): Increase time to wait for simulated device to
+        shut down, ignore exit code indicating a device is already shut down.
+
+2018-11-29  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Unify ios_version/watchos_version code
+        https://bugs.webkit.org/show_bug.cgi?id=192153
+        <rdar://problem/46343642>
+
+        Reviewed by Lucas Forschler.
+
+        Treating watchOS and iOS versions differently makes it harder to share code between the similar ports.
+
+        * Scripts/webkitpy/port/device_port.py:
+        (DevicePort):
+        (DevicePort.device_version): Added.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.default_baseline_search_path): Use device_version() instead of ios_version().
+        (IOSPort.ios_version): Deleted.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort.device_version): Renamed from ios_version().
+        (IOSDevicePort.ios_version): Deleted.
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort.device_version): Renamed from ios_version().
+        (IOSSimulatorPort.default_child_processes.booted_ios_devices_filter): Use device_version() instead of ios_version().
+        (IOSSimulatorPort._create_devices): Ditto.
+        (IOSSimulatorPort.check_sys_deps): Ditto.
+        (IOSSimulatorPort.ios_version): Deleted.
+        * Scripts/webkitpy/port/watch.py:
+        (WatchPort.default_baseline_search_path): Use device_version() instead of watchos_version().
+        (WatchPort.watchos_version): Deleted.
+        * Scripts/webkitpy/port/watch_device.py:
+        (WatchDevicePort.device_version): Renamed from watchos_version().
+        (WatchDevicePort.watchos_version): Deleted.
+        * Scripts/webkitpy/port/watch_simulator.py:
+        (WatchSimulatorPort.device_version): Renamed from watchos_version().
+        (WatchSimulatorPort.default_child_processes.filter_booted_watchos_devices): Use device_version() instead of watchos_version().
+        (WatchSimulatorPort._create_devices): Ditto.
+        (WatchSimulatorPort.check_sys_deps): Ditto.
+        (WatchSimulatorPort.watchos_version): Deleted.
+
+2018-11-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOSMac] Dropping text selections from web content into editable elements crashes the web process
+        https://bugs.webkit.org/show_bug.cgi?id=192113
+        <rdar://problem/46323701>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a test to verify that, when dropping an item with both "com.apple.webarchive" and "public.utf8-plain-text"
+        representations, the higher fidelity web archive data is used when handling the drop.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/DragAndDropTests.mm:
+
+2018-11-28  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Fetch bugs from Bugzilla and submit to Buildbot
+        https://bugs.webkit.org/show_bug.cgi?id=191947
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/fetcher.py: Added.
+
+2018-11-28  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS API test after r238585
+        https://bugs.webkit.org/show_bug.cgi?id=192022
+
+        * TestWebKitAPI/Tests/WebKitCocoa/SafeBrowsing.mm:
+        (TEST):
+        On iOS, a safe browsing warning over a WKWebView with frame of {0, 0, 0, 0} has a size of {0, 0}, which is fine.
+        The test was added to catch a bug on Mac platforms, so testing it only on Mac will catch any regression.
+
+2018-11-28  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Configure python logging
+        https://bugs.webkit.org/show_bug.cgi?id=192005
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/__init__.py: Configured logging.
+
+2018-11-28  Keith Rollin  <krollin@apple.com>
+
+        Update generate-{derived,unified}-sources scripts to support generating .xcfilelist files
+        https://bugs.webkit.org/show_bug.cgi?id=192031
+        <rdar://problem/46286816>
+
+        Reviewed by Alex Christensen.
+
+        The Generate Derived Sources and Generate Unified Sources build phases
+        in Xcode need to have their inputs and outputs specified. This
+        specification will come in the form of .xcfilelist files that will be
+        attached to these build phases. There is one .xcfilelist file that
+        lists the input file and one that lists the output files. As part of
+        this work, the various generate-{derived,unified}-sources scripts that
+        are executed in these Generate build phases are modified to help in
+        the creation of these .xcfilelist files. In particular, they can now
+        be invoked with command-line parameters. These parameters are then
+        used to alter the normal execution of these scripts, causing them to
+        produce the .xcfilelist files as opposed to actually generating the
+        files that are listed in those files.
+
+        * DumpRenderTree/Scripts/generate-derived-sources.sh:
+        * WebKitTestRunner/Scripts/generate-derived-sources.sh:
+
+2018-11-28  Keith Rollin  <krollin@apple.com>
+
+        Revert print_all_generated_files work in r238008; tighten up target specifications
+        https://bugs.webkit.org/show_bug.cgi?id=192025
+        <rdar://problem/46284301>
+
+        Reviewed by Alex Christensen.
+
+        In r238008, I added a facility for DerivedSources.make makefiles to
+        print out the list of files that they generate. This output was used
+        in the generation of .xcfilelist files used to specify the output of
+        the associated Generate Derived Sources build phases in Xcode. This
+        approach worked, but it meant that people would need to follow a
+        specific convention to keep this mechanism working.
+
+        Instead of continuing this approach, I'm going to implement a new
+        facility based on the output of `make` when passed the -d flag (which
+        prints dependency information). This new mechanism is completely
+        automatic and doesn't need maintainers to follow a convention. To that
+        end, remove most of the work performed in r238008 that supports the
+        print_all_generated_files target.
+
+        At the same time, it's important for the sets of targets and their
+        dependencies to be complete and correct. Therefore, also include
+        changes to bring those up-to-date. As part of that, you'll see
+        prevalent use of a particular technique. Here's an example:
+
+            BYTECODE_FILES = \
+                Bytecodes.h \
+                BytecodeIndices.h \
+                BytecodeStructs.h \
+                InitBytecodes.asm \
+            #
+            BYTECODE_FILES_PATTERNS = $(subst .,%,$(BYTECODE_FILES))
+
+            all : $(BYTECODE_FILES)
+
+            $(BYTECODE_FILES_PATTERNS): $(wildcard $(JavaScriptCore)/generator/*.rb) $(JavaScriptCore)/bytecode/BytecodeList.rb
+                ...
+
+        These lines indicate a set of generated files (those specified in
+        BYTECODE_FILES). These files are generated by the BytecodeList.rb
+        tool. But, as opposed to the normal rule where a single foo.output is
+        generated by foo.input plus some additional dependencies, this rule
+        produces multiple output files from a tool whose connection to the
+        output files is not immediately clear. A special approach is needed
+        where a single rule produces multiple output files. The normal way to
+        implement this is to use an .INTERMEDIATE target. However, we used
+        this approach in the past and ran into a problem with it, addressing
+        it with an alternate approach in r210507. The above example shows this
+        approach. The .'s in the list of target files are replaced with %'s,
+        and the result is used as the left side of the dependency rule.
+
+        * DumpRenderTree/DerivedSources.make:
+        * WebKitTestRunner/DerivedSources.make:
+
+2018-11-28  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add support to get list of Bugzilla patches needing review
+        https://bugs.webkit.org/show_bug.cgi?id=191942
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/common/bugzilla.py:
+        (Bugzilla.get_list_of_patches_needing_reviews): Get list of patches needing review.
+        (BugzillaBeautifulSoup.fetch_attachment_ids_from_review_queue): Copied from Tools/Scripts/webkitpy/common/net/bugzilla/bugzilla.py
+        (BugzillaBeautifulSoup._load_query): Ditto.
+        (BugzillaBeautifulSoup._parse_attachment_ids_request_query): Ditto.
+
+2018-11-28  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Page not defocused when Find-in-page becomes first responder
+        https://bugs.webkit.org/show_bug.cgi?id=192084
+        <rdar://problem/46146777>
+
+        Reviewed by Tim Horton.
+
+        Add tests for both Mac and iOS to ensure that when finding a string on the page
+        that we do not start an input session if a match is found in an <input> and the
+        WKWebView is not the first responder.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewFindString.mm: Added.
+        (-[WKWebViewFindStringInputDelegate _webView:didStartInputSession:]):
+        (-[WKWebViewFindStringFindDelegate findString]):
+        (-[WKWebViewFindStringFindDelegate _webView:didCountMatches:forString:]):
+        (-[WKWebViewFindStringFindDelegate _webView:didFindMatches:forString:withMatchIndex:]):
+        (-[WKWebViewFindStringFindDelegate _webView:didFailToFindString:]):
+        (returnNo):
+        (returnYes):
+        (viewIsFirstResponder):
+        (TestWebKitAPI::TEST):
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::PlatformWebView): Make the view the first responder before the
+        window key. This matches the ordering used in PlatformWebView::focus(). No behavior change.
+
+2018-11-28  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add BeautifulSoup
+        https://bugs.webkit.org/show_bug.cgi?id=191994
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/thirdparty: Added.
+        * BuildSlaveSupport/ews-app/ews/thirdparty/BeautifulSoup.py: Added.
+        * BuildSlaveSupport/ews-app/ews/thirdparty/__init__.py: Added.
+
+2018-11-28  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add support to download Patch from Bugzilla
+        https://bugs.webkit.org/show_bug.cgi?id=191943
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/common/bugzilla.py: Added.
+        (Bugzilla.retrieve_attachment): Retreives the attachment from Bugzilla and saves to disk.
+        (Bugzilla._fetch_attachment_json):
+        (Bugzilla.file_path_for_patch):
+        * BuildSlaveSupport/ews-app/ews/common/util.py: Added.
+        (fetch_data_from_url): Method to fetch data from given url.
+        * BuildSlaveSupport/ews-app/ews/config.py:
+
+2018-11-28  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add methods to update Patch fields
+        https://bugs.webkit.org/show_bug.cgi?id=191931
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/models/patch.py:
+        (Patch.set_sent_to_buildbot):
+        (Patch.set_bug_id):
+        (Patch.set_obsolete):
+
+2018-11-28  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        Allow WebKit clients to specify a minimum effective width for layout.
+        https://bugs.webkit.org/show_bug.cgi?id=191499
+        <rdar://problem/45362678>
+
+        Reviewed by Wenson Hsieh.
+
+        Allow UIScriptController to set WKWebView's minimum effective width with a new `setMinimumEffectiveWidth` method.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setMinimumEffectiveWidth):
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::setViewScale):
+        (WTR::UIScriptController::setMinimumEffectiveWidth):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setMinimumEffectiveWidth):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/UIScriptControllerCocoa.mm:
+        (WTR::UIScriptController::setMinimumEffectiveWidth):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::cocoaResetStateToConsistentValues):
+
+2018-11-28  Lucas Forschler  <lforschler@apple.com>
+
+        Fix webkitbot hi command.
+        https://bugs.webkit.org/show_bug.cgi?id=192080
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/bot/irc_command.py:
+        (Hi.execute):
+
 2018-11-28  Zalan Bujtas  <zalan@apple.com>
 
         [LFC][Quirk] Use non-collapsed vertical margin values when the container is stretched to the size of the ICB.

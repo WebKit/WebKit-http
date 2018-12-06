@@ -36,28 +36,65 @@
 
 WKContentChange _WKContentChange                    = WKContentNoChange;
 bool            _WKObservingContentChanges          = false;
-bool            _WKObservingIndeterminateChanges    = false;
-
+bool            _WKObservingDOMTimerScheduling      = false;
+bool            _WKObservingStyleRecalScheduling    = false;
+bool            _WKObservingNextStyleRecalc         = false;
 
 bool WKObservingContentChanges(void)
 {
     return _WKObservingContentChanges;
 }
 
-void WKStopObservingContentChanges(void)
-{
-    _WKObservingContentChanges = false;
-    _WKObservingIndeterminateChanges = false;
-}
-
-void WKBeginObservingContentChanges(bool allowsIntedeterminateChanges)
+void WKStartObservingContentChanges()
 {
     _WKContentChange = WKContentNoChange;
     _WKObservingContentChanges = true;
-    
-    _WKObservingIndeterminateChanges = allowsIntedeterminateChanges;
-    if (_WKObservingIndeterminateChanges)
-        WebThreadClearObservedContentModifiers();
+}
+
+void WKStopObservingContentChanges(void)
+{
+    _WKObservingContentChanges = false;
+}
+
+void WKStartObservingDOMTimerScheduling(void)
+{
+    _WKObservingDOMTimerScheduling = true;
+    WebThreadClearObservedDOMTimers();
+}
+
+void WKStopObservingDOMTimerScheduling(void)
+{
+    _WKObservingDOMTimerScheduling = false;
+}
+
+bool WKIsObservingDOMTimerScheduling(void)
+{
+    return _WKObservingDOMTimerScheduling;
+}
+
+void WKStartObservingStyleRecalcScheduling(void)
+{
+    _WKObservingStyleRecalScheduling = true;
+}
+
+void WKStopObservingStyleRecalcScheduling(void)
+{
+    _WKObservingStyleRecalScheduling = false;
+}
+
+bool WKIsObservingStyleRecalcScheduling(void)
+{
+    return _WKObservingStyleRecalScheduling;
+}
+
+void WKSetShouldObserveNextStyleRecalc(bool observe)
+{
+    _WKObservingNextStyleRecalc = observe;
+}
+
+bool WKShouldObserveNextStyleRecalc(void)
+{
+    return _WKObservingNextStyleRecalc;
 }
 
 WKContentChange WKObservedContentChange(void)
@@ -65,49 +102,62 @@ WKContentChange WKObservedContentChange(void)
     return _WKContentChange;
 }
 
-void WKSetObservedContentChange(WKContentChange aChange)
+void WKSetObservedContentChange(WKContentChange change)
 {
-    if (aChange > _WKContentChange && (_WKObservingIndeterminateChanges || aChange != WKContentIndeterminateChange)) {
-        _WKContentChange = aChange;
-        if (_WKContentChange == WKContentVisibilityChange)
-            WebThreadClearObservedContentModifiers();
+    // We've already have a definite answer.
+    if (_WKContentChange == WKContentVisibilityChange)
+        return;
+
+    if (change == WKContentVisibilityChange) {
+        _WKContentChange = change;
+        // Don't need to listen to DOM timers/style recalcs anymore.
+        WebThreadClearObservedDOMTimers();
+        _WKObservingNextStyleRecalc = false;
+        return;
     }
+
+    if (change == WKContentIndeterminateChange) {
+        _WKContentChange = change;
+        return;
+    }
+    ASSERT_NOT_REACHED();
 }
 
-static HashMap<void *, void *> * WebThreadGetObservedContentModifiers()
+using DOMTimerList = HashSet<void*>;
+static DOMTimerList& WebThreadGetObservedDOMTimers()
 {
     ASSERT(WebThreadIsLockedOrDisabled());
-    typedef HashMap<void *, void *> VoidVoidMap;
-    static NeverDestroyed<VoidVoidMap> observedContentModifiers;
-    return &observedContentModifiers.get();
+    static NeverDestroyed<DOMTimerList> observedDOMTimers;
+    return observedDOMTimers;
 }
 
-int WebThreadCountOfObservedContentModifiers(void)
+int WebThreadCountOfObservedDOMTimers(void)
 {
-    return WebThreadGetObservedContentModifiers()->size();
+    return WebThreadGetObservedDOMTimers().size();
 }
 
-void WebThreadClearObservedContentModifiers()
+void WebThreadClearObservedDOMTimers()
 {
-    WebThreadGetObservedContentModifiers()->clear();
+    WebThreadGetObservedDOMTimers().clear();
 }
 
-bool WebThreadContainsObservedContentModifier(void * aContentModifier)
+bool WebThreadContainsObservedDOMTimer(void* timer)
 {
-    return WebThreadGetObservedContentModifiers()->contains(aContentModifier);
+    return WebThreadGetObservedDOMTimers().contains(timer);
 }
 
-void WebThreadAddObservedContentModifier(void * aContentModifier)
+void WebThreadAddObservedDOMTimer(void* timer)
 {
-    if (_WKContentChange != WKContentVisibilityChange && _WKObservingIndeterminateChanges)
-        WebThreadGetObservedContentModifiers()->set(aContentModifier, aContentModifier);
+    ASSERT(_WKObservingDOMTimerScheduling);
+    if (_WKContentChange != WKContentVisibilityChange)
+        WebThreadGetObservedDOMTimers().add(timer);
 }
 
-void WebThreadRemoveObservedContentModifier(void * aContentModifier)
+void WebThreadRemoveObservedDOMTimer(void* timer)
 {
-    WebThreadGetObservedContentModifiers()->remove(aContentModifier);
+    WebThreadGetObservedDOMTimers().remove(timer);
     // Force reset the content change flag when the last observed content modifier is removed. We should not be in indeterminate state anymore.
-    if (WebThreadCountOfObservedContentModifiers())
+    if (WebThreadCountOfObservedDOMTimers())
         return;
     if (WKObservedContentChange() != WKContentIndeterminateChange)
         return;

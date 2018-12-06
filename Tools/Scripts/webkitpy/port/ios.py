@@ -30,6 +30,7 @@ from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port.config import apple_additions
 from webkitpy.port.device_port import DevicePort
 from webkitpy.port.simulator_process import SimulatorProcess
+from webkitpy.xcode.device_type import DeviceType
 
 _log = logging.getLogger(__name__)
 
@@ -38,6 +39,8 @@ class IOSPort(DevicePort):
     port_name = "ios"
 
     CURRENT_VERSION = Version(12)
+    # FIXME: This is not a clear way to do this (although it works) https://bugs.webkit.org/show_bug.cgi?id=192160
+    DEFAULT_DEVICE_TYPE = DeviceType(software_variant='iOS')
 
     def __init__(self, host, port_name, **kwargs):
         super(IOSPort, self).__init__(host, port_name, **kwargs)
@@ -56,10 +59,10 @@ class IOSPort(DevicePort):
             wk_string = 'wk2'
 
         versions_to_fallback = []
-        if self.ios_version().major == self.CURRENT_VERSION.major:
+        if self.device_version().major == self.CURRENT_VERSION.major:
             versions_to_fallback = [self.CURRENT_VERSION]
-        elif self.ios_version():
-            temp_version = Version(self.ios_version().major)
+        elif self.device_version():
+            temp_version = Version(self.device_version().major)
             while temp_version != self.CURRENT_VERSION:
                 versions_to_fallback.append(Version.from_iterable(temp_version))
                 if temp_version < self.CURRENT_VERSION:
@@ -109,6 +112,3 @@ class IOSPort(DevicePort):
 
     def test_expectations_file_position(self):
         return 4
-
-    def ios_version(self):
-        raise NotImplementedError

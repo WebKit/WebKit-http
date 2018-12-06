@@ -46,12 +46,12 @@
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/ResourceResponse.h>
 #import <WebCore/SharedBuffer.h>
-#import <WebCore/URL.h>
 #import <WebCore/WebCoreURLResponse.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/ProcessPrivilege.h>
+#import <wtf/URL.h>
 
 using namespace WebKit;
 
@@ -162,7 +162,7 @@ static WebCore::NetworkLoadPriority toNetworkLoadPriority(float priority)
     completionHandler(WebCore::createHTTPBodyNSInputStream(*body).get());
 }
 
-#if USE(CFNETWORK_IGNORE_HSTS)
+#if HAVE(CFNETWORK_WITH_IGNORE_HSTS)
 static NSURLRequest* downgradeRequest(NSURLRequest *request)
 {
     NSMutableURLRequest *nsMutableRequest = [[request mutableCopy] autorelease];
@@ -199,7 +199,7 @@ static bool ignoreHSTS(NSURLRequest *request)
 
 static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURLRequest *request, bool shouldIgnoreHSTS)
 {
-#if USE(CFNETWORK_IGNORE_HSTS)
+#if HAVE(CFNETWORK_WITH_IGNORE_HSTS)
     if ([request.URL.scheme isEqualToString:@"https"] && shouldIgnoreHSTS && ignoreHSTS(request)) {
         // The request was upgraded for some other reason than HSTS.
         // Don't ignore HSTS to avoid the risk of another downgrade.
@@ -229,7 +229,7 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
         auto completionHandlerCopy = Block_copy(completionHandler);
 
         bool shouldIgnoreHSTS = false;
-#if USE(CFNETWORK_IGNORE_HSTS)
+#if HAVE(CFNETWORK_WITH_IGNORE_HSTS)
         shouldIgnoreHSTS = schemeWasUpgradedDueToDynamicHSTS(request) && WebCore::NetworkStorageSession::storageSession(_session->sessionID())->shouldBlockCookies(request, networkDataTask->frameID(), networkDataTask->pageID());
         if (shouldIgnoreHSTS) {
             request = downgradeRequest(request);
@@ -262,7 +262,7 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
 
     if (auto* networkDataTask = [self existingTask:task]) {
         bool shouldIgnoreHSTS = false;
-#if USE(CFNETWORK_IGNORE_HSTS)
+#if HAVE(CFNETWORK_WITH_IGNORE_HSTS)
         shouldIgnoreHSTS = schemeWasUpgradedDueToDynamicHSTS(request) && WebCore::NetworkStorageSession::storageSession(_session->sessionID())->shouldBlockCookies(request, networkDataTask->frameID(), networkDataTask->pageID());
         if (shouldIgnoreHSTS) {
             request = downgradeRequest(request);
@@ -348,7 +348,7 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
             if (credential.persistence() == WebCore::CredentialPersistenceForSession && authenticationChallenge.protectionSpace().isPasswordBased()) {
 
                 WebCore::Credential nonPersistentCredential(credential.user(), credential.password(), WebCore::CredentialPersistenceNone);
-                WebCore::URL urlToStore;
+                URL urlToStore;
                 if (authenticationChallenge.failureResponse().httpStatusCode() == 401)
                     urlToStore = authenticationChallenge.failureResponse().url();
                 if (auto storageSession = WebCore::NetworkStorageSession::storageSession(sessionID))
@@ -644,6 +644,10 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkSessionCreationParameters&& para
     : NetworkSession(parameters.sessionID)
     , m_boundInterfaceIdentifier(parameters.boundInterfaceIdentifier)
     , m_proxyConfiguration(parameters.proxyConfiguration)
+    , m_shouldLogCookieInformation(parameters.shouldLogCookieInformation)
+    , m_loadThrottleLatency(parameters.loadThrottleLatency)
+    , m_sourceApplicationBundleIdentifier(parameters.sourceApplicationBundleIdentifier)
+    , m_sourceApplicationSecondaryIdentifier(parameters.sourceApplicationSecondaryIdentifier)
 {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
 
@@ -655,10 +659,9 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkSessionCreationParameters&& para
 
     NSURLSessionConfiguration *configuration = configurationForSessionID(m_sessionID);
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+#if USE(CFNETWORK_AUTO_ADDED_HTTP_HEADER_SUPPRESSION)
     // Without this, CFNetwork would sometimes add a Content-Type header to our requests (rdar://problem/34748470).
-    if ([configuration respondsToSelector:@selector(_suppressedAutoAddedHTTPHeaders)])
-        configuration._suppressedAutoAddedHTTPHeaders = [NSSet setWithObject:@"Content-Type"];
+    configuration._suppressedAutoAddedHTTPHeaders = [NSSet setWithObject:@"Content-Type"];
 #endif
 
     if (parameters.allowsCellularAccess == AllowsCellularAccess::No)

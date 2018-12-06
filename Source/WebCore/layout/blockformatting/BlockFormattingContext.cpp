@@ -354,15 +354,21 @@ void BlockFormattingContext::computeHeightAndMargin(const Box& layoutBox) const
 
     auto heightAndMargin = compute({ });
     if (auto maxHeight = Geometry::computedMaxHeight(layoutState, layoutBox)) {
-        auto maxHeightAndMargin = compute(maxHeight);
-        if (heightAndMargin.height > maxHeightAndMargin.height)
-            heightAndMargin = maxHeightAndMargin;
+        if (heightAndMargin.height > *maxHeight) {
+            auto maxHeightAndMargin = compute(maxHeight);
+            // Used height should remain the same.
+            ASSERT((layoutState.inQuirksMode() && (layoutBox.isBodyBox() || layoutBox.isDocumentBox())) || maxHeightAndMargin.height == *maxHeight);
+            heightAndMargin = { *maxHeight, maxHeightAndMargin.margin, maxHeightAndMargin.collapsedMargin };
+        }
     }
 
     if (auto minHeight = Geometry::computedMinHeight(layoutState, layoutBox)) {
-        auto minHeightAndMargin = compute(minHeight);
-        if (heightAndMargin.height < minHeightAndMargin.height)
-            heightAndMargin = minHeightAndMargin;
+        if (heightAndMargin.height < *minHeight) {
+            auto minHeightAndMargin = compute(minHeight);
+            // Used height should remain the same.
+            ASSERT((layoutState.inQuirksMode() && (layoutBox.isBodyBox() || layoutBox.isDocumentBox())) || minHeightAndMargin.height == *minHeight);
+            heightAndMargin = { *minHeight, minHeightAndMargin.margin, minHeightAndMargin.collapsedMargin };
+        }
     }
 
     auto& displayBox = layoutState.displayBoxForLayoutBox(layoutBox);
@@ -407,12 +413,13 @@ FormattingContext::InstrinsicWidthConstraints BlockFormattingContext::instrinsic
             auto skipDescendants = formattingState.instrinsicWidthConstraints(childBox) || !Geometry::instrinsicWidthConstraintsNeedChildrenWidth(childBox) || childBox.establishesFormattingContext();
 
             if (skipDescendants) {
+                InstrinsicWidthConstraints instrinsicWidthConstraints;
                 if (!Geometry::instrinsicWidthConstraintsNeedChildrenWidth(childBox))
-                    formattingState.setInstrinsicWidthConstraints(childBox, Geometry::instrinsicWidthConstraints(layoutState, childBox));
+                    instrinsicWidthConstraints = Geometry::instrinsicWidthConstraints(layoutState, childBox);
                 else if (childBox.establishesFormattingContext())
-                    formattingState.setInstrinsicWidthConstraints(childBox, formattingState.formattingContext(childBox)->instrinsicWidthConstraints());
+                    instrinsicWidthConstraints = layoutState.createFormattingStateForFormattingRootIfNeeded(childBox).formattingContext(childBox)->instrinsicWidthConstraints();
+                formattingState.setInstrinsicWidthConstraints(childBox, instrinsicWidthConstraints);
 
-                ASSERT(formattingState.instrinsicWidthConstraints(childBox));
                 queue.removeLast();
                 if (!childBox.nextInFlowOrFloatingSibling())
                     break;

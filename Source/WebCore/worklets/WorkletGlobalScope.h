@@ -32,35 +32,40 @@
 #include "ExceptionOr.h"
 #include "ScriptExecutionContext.h"
 #include "ScriptSourceCode.h"
-#include "URL.h"
 #include "WorkerEventQueue.h"
 
 #include <JavaScriptCore/ConsoleMessage.h>
 #include <JavaScriptCore/RuntimeFlags.h>
 #include <pal/SessionID.h>
-#include <wtf/UniqueRef.h>
+#include <wtf/URL.h>
+#include <wtf/ObjectIdentifier.h>
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
 class WorkletScriptController;
 class ScriptSourceCode;
 
+enum WorkletGlobalScopeIdentifierType { };
+using WorkletGlobalScopeIdentifier = ObjectIdentifier<WorkletGlobalScopeIdentifierType>;
+
 class WorkletGlobalScope : public RefCounted<WorkletGlobalScope>, public ScriptExecutionContext, public EventTargetWithInlineData {
 public:
-    ~WorkletGlobalScope();
+    virtual ~WorkletGlobalScope();
+
+    using WorkletGlobalScopesSet = HashSet<const WorkletGlobalScope*>;
+    WEBCORE_EXPORT static WorkletGlobalScopesSet& allWorkletGlobalScopesSet();
 
     virtual bool isPaintWorkletGlobalScope() const { return false; }
 
     const URL& url() const final { return m_code.url(); }
     String origin() const final;
-    const String& identifier() const { return m_identifier; }
 
     void evaluate();
 
     using RefCounted::ref;
     using RefCounted::deref;
 
-    WorkletScriptController& script() { return m_script.get(); }
+    WorkletScriptController* script() { return m_script.get(); }
 
     void addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&&) final;
 
@@ -74,11 +79,15 @@ public:
 
     JSC::RuntimeFlags jsRuntimeFlags() const { return m_jsRuntimeFlags; }
 
+    virtual void prepareForDestruction();
+
 protected:
     WorkletGlobalScope(Document&, ScriptSourceCode&&);
+    WorkletGlobalScope(const WorkletGlobalScope&) = delete;
+    WorkletGlobalScope(WorkletGlobalScope&&) = delete;
 
-    Document* responsableDocument() { return m_document.get(); }
-    const Document* responsableDocument() const { return m_document.get(); }
+    Document* responsibleDocument() { return m_document.get(); }
+    const Document* responsibleDocument() const { return m_document.get(); }
 
 private:
 #if ENABLE(INDEXED_DATABASE)
@@ -105,7 +114,7 @@ private:
     EventTarget* errorEventTarget() final { return this; }
     EventQueue& eventQueue() const final { ASSERT_NOT_REACHED(); return m_eventQueue; }
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
     bool wrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) final { RELEASE_ASSERT_NOT_REACHED(); return false; }
     bool unwrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) final { RELEASE_ASSERT_NOT_REACHED(); return false; }
 #endif
@@ -118,10 +127,9 @@ private:
     WeakPtr<Document> m_document;
 
     PAL::SessionID m_sessionID;
-    UniqueRef<WorkletScriptController> m_script;
+    std::unique_ptr<WorkletScriptController> m_script;
 
     Ref<SecurityOrigin> m_topOrigin;
-    String m_identifier;
 
     // FIXME: This is not implemented properly, it just satisfies the compiler.
     // https://bugs.webkit.org/show_bug.cgi?id=191136

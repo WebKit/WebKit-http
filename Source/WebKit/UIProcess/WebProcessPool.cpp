@@ -87,7 +87,6 @@
 #include <WebCore/Process.h>
 #include <WebCore/ProcessWarming.h>
 #include <WebCore/ResourceRequest.h>
-#include <WebCore/URLParser.h>
 #include <pal/SessionID.h>
 #include <wtf/Language.h>
 #include <wtf/MainThread.h>
@@ -95,6 +94,7 @@
 #include <wtf/ProcessPrivilege.h>
 #include <wtf/RunLoop.h>
 #include <wtf/Scope.h>
+#include <wtf/URLParser.h>
 #include <wtf/WallTime.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -480,8 +480,6 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
         m_websiteDataStore->websiteDataStore().clearPendingCookies();
     }
 
-    parameters.privateBrowsingEnabled = WebPreferences::anyPagesAreUsingPrivateBrowsing();
-
     parameters.cacheModel = cacheModel();
     parameters.diskCacheSizeOverride = m_configuration->diskCacheSizeOverride();
     parameters.canHandleHTTPSServerTrustEvaluation = m_canHandleHTTPSServerTrustEvaluation;
@@ -557,6 +555,9 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
 
     // Initialize the network process.
     m_networkProcess->send(Messages::NetworkProcess::InitializeNetworkProcess(parameters), 0);
+
+    if (WebPreferences::anyPagesAreUsingPrivateBrowsing())
+        m_networkProcess->send(Messages::NetworkProcess::AddWebsiteDataStore(WebsiteDataStoreParameters::legacyPrivateSessionParameters()), 0);
 
 #if PLATFORM(COCOA)
     m_networkProcess->send(Messages::NetworkProcess::SetQOS(networkProcessLatencyQOS(), networkProcessThroughputQOS()), 0);
@@ -2156,14 +2157,8 @@ Ref<WebProcessProxy> WebProcessPool::processForNavigationInternal(WebPageProxy& 
 
     // FIXME: We should support process swap when a window has been opened via window.open() without 'noopener'.
     // The issue is that the opener has a handle to the WindowProxy.
-    if (navigation.openedViaWindowOpenWithOpener() && !m_configuration->processSwapsOnWindowOpenWithOpener()) {
-        reason = "Browsing context been opened via window.open() without 'noopener'"_s;
-        return page.process();
-    }
-
-    // FIXME: We should support process swap when a window has an opener.
-    if (navigation.opener() && !m_configuration->processSwapsOnWindowOpenWithOpener()) {
-        reason = "Browsing context has an opener"_s;
+    if (navigation.openedByDOMWithOpener() && !m_configuration->processSwapsOnWindowOpenWithOpener()) {
+        reason = "Browsing context been opened by DOM without 'noopener'"_s;
         return page.process();
     }
 
@@ -2360,7 +2355,7 @@ void WebProcessPool::didCollectPrewarmInformation(const String& registrableDomai
     *value = prewarmInformation;
 }
 
-void WebProcessPool::tryPrewarmWithDomainInformation(WebProcessProxy& process, const WebCore::URL& url)
+void WebProcessPool::tryPrewarmWithDomainInformation(WebProcessProxy& process, const URL& url)
 {
     auto* prewarmInformation = m_prewarmInformationPerRegistrableDomain.get(toRegistrableDomain(url));
     if (!prewarmInformation)

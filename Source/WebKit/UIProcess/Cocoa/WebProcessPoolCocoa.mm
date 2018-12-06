@@ -75,15 +75,9 @@ static NSString * const WebKit2HTTPSProxyDefaultsKey = @"WebKit2HTTPSProxy";
 static NSString * const WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey = @"WebKitNetworkCacheEfficacyLoggingEnabled";
 
 static NSString * const WebKitSuppressMemoryPressureHandlerDefaultsKey = @"WebKitSuppressMemoryPressureHandler";
-static NSString * const WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey = @"WebKitNetworkLoadThrottleLatencyMilliseconds";
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
 static NSString * const WebKitLogCookieInformationDefaultsKey = @"WebKitLogCookieInformation";
-#endif
-
-#if ENABLE(NETWORK_CAPTURE)
-static NSString * const WebKitRecordReplayModeDefaultsKey = @"WebKitRecordReplayMode";
-static NSString * const WebKitRecordReplayCacheLocationDefaultsKey = @"WebKitRecordReplayCacheLocation";
 #endif
 
 namespace WebKit {
@@ -221,11 +215,6 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     }
     parameters.networkATSContext = adoptCF(_CFNetworkCopyATSContext());
 
-#if PLATFORM(MAC)
-    ASSERT(parameters.uiProcessCookieStorageIdentifier.isEmpty());
-    ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
-    parameters.uiProcessCookieStorageIdentifier = identifyingDataFromCookieStorage([[NSHTTPCookieStorage sharedHTTPCookieStorage] _cookieStorage]);
-#endif
 #if ENABLE(MEDIA_STREAM)
     // Allow microphone access if either preference is set because WebRTC requires microphone access.
     bool mediaDevicesEnabled = m_defaultPageGroup->preferences().mediaDevicesEnabled();
@@ -283,7 +272,6 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 #endif
 
     parameters.shouldSuppressMemoryPressureHandler = [defaults boolForKey:WebKitSuppressMemoryPressureHandlerDefaultsKey];
-    parameters.loadThrottleLatency = Seconds { [defaults integerForKey:WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey] / 1000. };
 
 #if PLATFORM(MAC)
     ASSERT(parameters.uiProcessCookieStorageIdentifier.isEmpty());
@@ -293,17 +281,6 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 
     parameters.storageAccessAPIEnabled = storageAccessAPIEnabled();
     parameters.suppressesConnectionTerminationOnSystemChange = m_configuration->suppressesConnectionTerminationOnSystemChange();
-
-#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
-    parameters.logCookieInformation = [defaults boolForKey:WebKitLogCookieInformationDefaultsKey];
-#endif
-
-#if ENABLE(NETWORK_CAPTURE)
-    parameters.recordReplayMode = [defaults stringForKey:WebKitRecordReplayModeDefaultsKey];
-    parameters.recordReplayCacheLocation = [defaults stringForKey:WebKitRecordReplayCacheLocationDefaultsKey];
-    if (parameters.recordReplayCacheLocation.isEmpty())
-        parameters.recordReplayCacheLocation = parameters.diskCacheDirectory;
-#endif
 
 #if ENABLE(PROXIMITY_NETWORKING)
     parameters.wirelessContextIdentifier = m_configuration->wirelessContextIdentifier();

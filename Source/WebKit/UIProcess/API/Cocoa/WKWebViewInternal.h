@@ -72,10 +72,6 @@ class WebPageProxy;
 struct PrintInfo;
 }
 
-namespace WebCore {
-class URL;
-}
-
 @class WKWebViewContentProviderRegistry;
 @class WKPasswordView;
 @class _WKFrameHandle;
@@ -181,9 +177,10 @@ class URL;
 #if ENABLE(ATTACHMENT_ELEMENT)
 - (void)_didRemoveAttachment:(API::Attachment&)attachment;
 - (void)_didInsertAttachment:(API::Attachment&)attachment withSource:(NSString *)source;
+- (void)_didInvalidateDataForAttachment:(API::Attachment&)attachment;
 #endif
 
-- (void)_showSafeBrowsingWarning:(const WebKit::SafeBrowsingWarning&)warning completionHandler:(CompletionHandler<void(Variant<WebKit::ContinueUnsafeLoad, WebCore::URL>&&)>&&)completionHandler;
+- (void)_showSafeBrowsingWarning:(const WebKit::SafeBrowsingWarning&)warning completionHandler:(CompletionHandler<void(Variant<WebKit::ContinueUnsafeLoad, URL>&&)>&&)completionHandler;
 - (void)_clearSafeBrowsingWarning;
 
 - (std::optional<BOOL>)_resolutionForShareSheetImmediateCompletionForTesting;

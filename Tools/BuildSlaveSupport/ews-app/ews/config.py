@@ -23,6 +23,9 @@
 import os
 
 BUG_SERVER_HOST = 'bugs.webkit.org'
+BUG_SERVER_URL = 'https://{}/'.format(BUG_SERVER_HOST)
+PATCH_FOLDER = '/tmp/'
+
 BUILDBOT_SERVER_HOST = 'ews-build.webkit-uat.org'
 BUILDBOT_SERVER_PORT = '5555'
 BUILDBOT_PB_USERNAME = os.getenv('BUILDBOT_PB_USERNAME', 'sampleuser')

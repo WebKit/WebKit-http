@@ -176,7 +176,7 @@ public:
 
     WEBCORE_EXPORT void copyURL(const URL&, const String& title);
     void copyURL(const URL&, const String& title, Pasteboard&);
-    PasteboardWriterData::URL pasteboardWriterURL(const URL&, const String& title);
+    PasteboardWriterData::URLData pasteboardWriterURL(const URL&, const String& title);
 #if !PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT void copyImage(const HitTestResult&);
 #endif
@@ -532,7 +532,7 @@ public:
 #endif
 #endif
 
-    WEBCORE_EXPORT void insertEditableImage();
+    WEBCORE_EXPORT RefPtr<HTMLImageElement> insertEditableImage();
 
 private:
     Document& document() const;

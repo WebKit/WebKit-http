@@ -220,6 +220,8 @@ private:
 
         growCapacity(alignedSize + size);
 
+        std::memset(m_buffer.get() + m_bufferSize, 0, alignedSize - m_bufferSize);
+
         m_bufferSize = alignedSize + size;
         m_bufferPointer = m_buffer.get() + m_bufferSize;
 
@@ -283,7 +285,7 @@ static void encodeFormDataElement(HistoryEntryDataEncoder& encoder, const HTTPBo
 
         encoder << element.fileStart;
         encoder << element.fileLength.value_or(-1);
-        encoder << element.expectedFileModificationTime.value_or(std::numeric_limits<double>::quiet_NaN());
+        encoder << element.expectedFileModificationTime.value_or(WallTime::nan()).secondsSinceEpoch().value();
         break;
 
     case HTTPBody::Element::Type::Blob:
@@ -825,11 +827,10 @@ static void decodeFormDataElement(HistoryEntryDataDecoder& decoder, HTTPBody::El
             formDataElement.fileLength = fileLength;
         }
 
-
         double expectedFileModificationTime;
         decoder >> expectedFileModificationTime;
-        if (expectedFileModificationTime != std::numeric_limits<double>::quiet_NaN())
-            formDataElement.expectedFileModificationTime = expectedFileModificationTime;
+        if (!std::isnan(expectedFileModificationTime))
+            formDataElement.expectedFileModificationTime = WallTime::fromRawSeconds(expectedFileModificationTime);
 
         break;
     }
@@ -1133,7 +1134,7 @@ bool decodeLegacySessionState(const uint8_t* bytes, size_t size, SessionState& s
     }
 
     if (auto provisionalURLString = dynamic_cf_cast<CFStringRef>(CFDictionaryGetValue(sessionStateDictionary, provisionalURLKey))) {
-        sessionState.provisionalURL = WebCore::URL(WebCore::URL(), provisionalURLString);
+        sessionState.provisionalURL = URL(URL(), provisionalURLString);
         if (!sessionState.provisionalURL.isValid())
             return false;
     }

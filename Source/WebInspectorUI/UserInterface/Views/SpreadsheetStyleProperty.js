@@ -43,11 +43,6 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         this._nameTextField = null;
         this._valueTextField = null;
 
-        if (!this._readOnly) {
-            // This is only needed to navigate from Computed to the corresponding property in the Styles panel.
-            this._property.__propertyView = this;
-        }
-
         this._selected = false;
         this._hasInvalidVariableValue = false;
 
@@ -55,7 +50,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         property.addEventListener(WI.CSSProperty.Event.OverriddenStatusChanged, this.updateStatus, this);
         property.addEventListener(WI.CSSProperty.Event.Changed, this.updateStatus, this);
 
-        if (WI.settings.experimentalEnableMultiplePropertiesSelection.value && this._isEditable()) {
+        if (this._isEditable()) {
             this._element.tabIndex = -1;
 
             this._element.addEventListener("blur", (event) => {
@@ -99,8 +94,6 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
     detached()
     {
-        this._property.__propertyView = null;
-
         if (this._nameTextField)
             this._nameTextField.detached();
 
@@ -114,11 +107,6 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             this._nameTextField.element.blur();
         else if (this._valueTextField && this._valueTextField.editing)
             this._valueTextField.element.blur();
-    }
-
-    highlight()
-    {
-        this._element.classList.add("highlighted");
     }
 
     remove(replacement = null)
@@ -472,13 +460,10 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         tokenElement.append(swatch.element, innerElement);
 
         // Prevent the value from editing when clicking on the swatch.
-        if (WI.settings.experimentalEnableMultiplePropertiesSelection.value) {
-            swatch.element.addEventListener("click", (event) => {
-                if (this._swatchActive)
-                    event.stop();
-            });
-        } else
-            swatch.element.addEventListener("mousedown", (event) => { event.stop(); });
+        swatch.element.addEventListener("click", (event) => {
+            if (this._swatchActive)
+                event.stop();
+        });
 
         return tokenElement;
     }

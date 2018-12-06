@@ -28,11 +28,11 @@
 
 WI.TreeOutline = class TreeOutline extends WI.Object
 {
-    constructor(element, selectable = true)
+    constructor(selectable = true)
     {
         super();
 
-        this.element = element || document.createElement("ol");
+        this.element = document.createElement("ol");
         this.element.classList.add(WI.TreeOutline.ElementStyleClassName);
         this.element.addEventListener("contextmenu", this._handleContextmenu.bind(this));
 
@@ -59,7 +59,7 @@ WI.TreeOutline = class TreeOutline extends WI.Object
         this._treeElementIndexCache = new Map;
 
         this._itemWasSelectedByUser = false;
-        this._processingSelectionControllerSelectionDidChange = false;
+        this._processingSelectionChange = false;
         this._suppressNextSelectionDidChangeEvent = false;
 
         this._virtualizedVisibleTreeElements = null;
@@ -131,6 +131,8 @@ WI.TreeOutline = class TreeOutline extends WI.Object
 
         return [];
     }
+
+    get processingSelectionChange() { return this._processingSelectionChange; }
 
     get hidden()
     {
@@ -389,54 +391,6 @@ WI.TreeOutline = class TreeOutline extends WI.Object
         }
 
         this.children = [];
-    }
-
-    removeChildrenRecursive(suppressOnDeselect)
-    {
-        let childrenToRemove = this.children;
-        let child = this.children[0];
-        while (child) {
-            if (child.children.length)
-                childrenToRemove = childrenToRemove.concat(child.children);
-            child = child.traverseNextTreeElement(false, this, true);
-        }
-
-        for (let child of childrenToRemove) {
-            child.deselect(suppressOnDeselect);
-
-            let treeOutline = child.treeOutline;
-            if (treeOutline)
-                treeOutline._forgetTreeElement(child);
-
-            child._detach();
-            child.children = [];
-            child.treeOutline = null;
-            child.parent = null;
-            child.nextSibling = null;
-            child.previousSibling = null;
-
-            if (treeOutline)
-                treeOutline.dispatchEventToListeners(WI.TreeOutline.Event.ElementRemoved, {element: child});
-        }
-
-        this.children = [];
-    }
-
-    reattachIfIndexChanged(treeElement, insertionIndex)
-    {
-        if (this.children[insertionIndex] === treeElement)
-            return;
-
-        let wasSelected = treeElement.selected;
-
-        console.assert(!treeElement.parent || treeElement.parent === this);
-        if (treeElement.parent === this)
-            this.removeChild(treeElement);
-
-        this.insertChild(treeElement, insertionIndex);
-
-        if (wasSelected)
-            treeElement.select();
     }
 
     _rememberTreeElement(element)
@@ -836,7 +790,7 @@ WI.TreeOutline = class TreeOutline extends WI.Object
 
     selectionControllerSelectionDidChange(controller, deselectedItems, selectedItems)
     {
-        this._processingSelectionControllerSelectionDidChange = true;
+        this._processingSelectionChange = true;
 
         for (let index of deselectedItems) {
             let treeElement = this._treeElementAtIndex(index);
@@ -858,9 +812,9 @@ WI.TreeOutline = class TreeOutline extends WI.Object
             }
         }
 
-        this._processingSelectionControllerSelectionDidChange = false;
-
         this._dispatchSelectionDidChangeEvent();
+
+        this._processingSelectionChange = false;
     }
 
     selectionControllerNextSelectableIndex(controller, index)
@@ -903,7 +857,7 @@ WI.TreeOutline = class TreeOutline extends WI.Object
 
     selectTreeElementInternal(treeElement, suppressNotification = false, selectedByUser = false)
     {
-        if (this._processingSelectionControllerSelectionDidChange)
+        if (this._processingSelectionChange)
             return;
 
         this._itemWasSelectedByUser = selectedByUser;

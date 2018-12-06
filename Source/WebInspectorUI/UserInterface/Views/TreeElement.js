@@ -62,7 +62,6 @@ WI.TreeElement = class TreeElement extends WI.Object
     removeChild() { return WI.TreeOutline.prototype.removeChild.apply(this, arguments); }
     removeChildAtIndex() { return WI.TreeOutline.prototype.removeChildAtIndex.apply(this, arguments); }
     removeChildren() { return WI.TreeOutline.prototype.removeChildren.apply(this, arguments); }
-    removeChildrenRecursive() { return WI.TreeOutline.prototype.removeChildrenRecursive.apply(this, arguments); }
     selfOrDescendant() { return WI.TreeOutline.prototype.selfOrDescendant.apply(this, arguments); }
 
     get arrowToggleWidth()
@@ -515,15 +514,11 @@ WI.TreeElement = class TreeElement extends WI.Object
         if (!treeOutline)
             return;
 
-        treeOutline.processingSelectionChange = true;
-
         this.selected = true;
         treeOutline.selectTreeElementInternal(this, suppressOnSelect, selectedByUser);
 
         if (!suppressOnSelect && this.onselect)
             this.onselect(this, selectedByUser);
-
-        treeOutline.processingSelectionChange = false;
 
         let treeOutlineGroup = WI.TreeOutlineGroup.groupForTreeOutline(treeOutline);
         if (!treeOutlineGroup)

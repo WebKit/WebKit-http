@@ -1,3 +1,299 @@
+2018-12-03  Mark Lam  <mark.lam@apple.com>
+
+        Fix the bytecode code generator scripts to pretty print BytecodeStructs.h and BytecodeIndices.h.
+        https://bugs.webkit.org/show_bug.cgi?id=192271
+
+        Reviewed by Keith Miller.
+
+        This makes the generated code style compliant and human readable.
+
+        * generator/Argument.rb:
+        * generator/DSL.rb:
+        * generator/Fits.rb:
+        * generator/Metadata.rb:
+        * generator/Opcode.rb:
+
+2018-12-02  Zalan Bujtas  <zalan@apple.com>
+
+        Add a runtime feature flag for LayoutFormattingContext.
+        https://bugs.webkit.org/show_bug.cgi?id=192280
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-12-02  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement support for "<<" and ">>"
+        https://bugs.webkit.org/show_bug.cgi?id=186233
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch is introducing the support for BigInt into lshift and
+        rshift into LLint and Baseline layers.
+
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::createWithLength):
+        (JSC::JSBigInt::leftShift):
+        (JSC::JSBigInt::signedRightShift):
+        (JSC::JSBigInt::leftShiftByAbsolute):
+        (JSC::JSBigInt::rightShiftByAbsolute):
+        (JSC::JSBigInt::rightShiftByMaximum):
+        (JSC::JSBigInt::toShiftAmount):
+        * runtime/JSBigInt.h:
+
+2018-12-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Heap.h refers to the non-existent HeapStatistics
+        https://bugs.webkit.org/show_bug.cgi?id=187882
+
+        Reviewed by Keith Miller.
+        
+        Just remove the "friend class HeapStatistics".
+
+        * heap/Heap.h:
+
+2018-11-29  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Keep TypeMaybeBigInt small
+        https://bugs.webkit.org/show_bug.cgi?id=192203
+
+        Reviewed by Saam Barati.
+
+        As BigInt is being implemented, more and more bytecodes start returning BigInt.
+        It means that ResultType of these bytecodes include TypeMaybeBigInt. However,
+        TypeMaybeBigInt was large number 0x20, leading to wide instruction since ResultType
+        easily becomes larger than 32 (e.g. TypeInt32 | TypeMaybeBigInt == 33).
+
+        This patch sorts the numbers of TypeMaybeXXX based on the frequency of appearance in
+        the code.
+
+        * parser/ResultType.h:
+
+2018-11-30  Dean Jackson  <dino@apple.com>
+
+        Try to fix Windows build by using strcmp instead of strcasecmp.
+
+        * jsc.cpp:
+        (isMJSFile):
+
+2018-11-30  Mark Lam  <mark.lam@apple.com>
+
+        Fix the bytecode code generator scripts to pretty print Bytecodes.h.
+        https://bugs.webkit.org/show_bug.cgi?id=192258
+
+        Reviewed by Keith Miller.
+
+        This makes Bytecodes.h more human readable.
+
+        * generator/DSL.rb:
+        * generator/Section.rb:
+
+2018-11-30  Mark Lam  <mark.lam@apple.com>
+
+        Add the generator directory to the Xcode project.
+        https://bugs.webkit.org/show_bug.cgi?id=192252
+
+        Reviewed by Michael Saboff.
+
+        This is so that we can work with these bytecode class generator files easily in Xcode.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2018-11-30  Don Olmstead  <don.olmstead@sony.com>
+
+        Rename ENABLE_SUBTLE_CRYPTO to ENABLE_WEB_CRYPTO
+        https://bugs.webkit.org/show_bug.cgi?id=192197
+
+        Reviewed by Jiewen Tan.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-11-30  Dean Jackson  <dino@apple.com>
+
+        Add first-class support for .mjs files in jsc binary
+        https://bugs.webkit.org/show_bug.cgi?id=192190
+        <rdar://problem/46375715>
+
+        Reviewed by Keith Miller.
+
+        Treat files with a .mjs extension as a module, regardless
+        of whether or not the --module-file argument was given.
+
+        * jsc.cpp:
+        (printUsageStatement): Update usage.
+        (isMJSFile): Helper to look for .mjs extensions.
+        (CommandLine::parseArguments): Pick the appropriate script type.
+
+2018-11-30  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Implement ValueBitXor into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=190264
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch is splitting the BitXor node into ArithBitXor and
+        ValueBitXor. This is necessary due the introduction of
+        BigInt, since BitXor operations now can result into Int32 or BigInt.
+        In such case, we use ArithBitXor when operands are Int and fallback to
+        ValueBitXor when operands are anything else. In the case of
+        ValueBitXor, we speculate BigInt when op1 and op2 are predicted as
+        BigInt as well. BigInt specialization consist into call
+        `operationBigIntBitXor` function, that calls JSBigInt::bitXor.
+
+        * bytecode/BytecodeList.rb:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::arithProfileForPC):
+        * bytecode/Opcode.h:
+        (JSC::padOpcodeName):
+        * bytecompiler/BytecodeGenerator.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::isWithinPowerOfTwo):
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueBitwiseOp):
+        (JSC::DFG::SpeculativeJIT::compileBitwiseOp):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::bitOp):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueBitXor):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithBitXor):
+        (JSC::FTL::DFG::LowerDFGToB3::compileBitXor): Deleted.
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_bitxor):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+
+2018-11-29  Justin Michaud  <justin_michaud@apple.com>
+
+        CSS Painting API should pass 'this' correctly to paint callback, and repaint when properties change.
+        https://bugs.webkit.org/show_bug.cgi?id=191443
+
+        Reviewed by Dean Jackson.
+
+        Export the simpler construct() method for use in WebCore.
+
+        * runtime/ConstructData.h:
+
+2018-11-28  Mark Lam  <mark.lam@apple.com>
+
+        ENABLE_SEPARATED_WX_HEAP needs to be defined in Platform.h.
+        https://bugs.webkit.org/show_bug.cgi?id=192110
+        <rdar://problem/46317746>
+
+        Reviewed by Saam Barati.
+
+        * config.h:
+
+2018-11-28  Keith Rollin  <krollin@apple.com>
+
+        Update generate-{derived,unified}-sources scripts to support generating .xcfilelist files
+        https://bugs.webkit.org/show_bug.cgi?id=192031
+        <rdar://problem/46286816>
+
+        Reviewed by Alex Christensen.
+
+        The Generate Derived Sources and Generate Unified Sources build phases
+        in Xcode need to have their inputs and outputs specified. This
+        specification will come in the form of .xcfilelist files that will be
+        attached to these build phases. There is one .xcfilelist file that
+        lists the input file and one that lists the output files. As part of
+        this work, the various generate-{derived,unified}-sources scripts that
+        are executed in these Generate build phases are modified to help in
+        the creation of these .xcfilelist files. In particular, they can now
+        be invoked with command-line parameters. These parameters are then
+        used to alter the normal execution of these scripts, causing them to
+        produce the .xcfilelist files as opposed to actually generating the
+        files that are listed in those files.
+
+        * Scripts/generate-derived-sources.sh:
+        * Scripts/generate-unified-sources.sh:
+
+2018-11-28  Keith Rollin  <krollin@apple.com>
+
+        Revert print_all_generated_files work in r238008; tighten up target specifications
+        https://bugs.webkit.org/show_bug.cgi?id=192025
+        <rdar://problem/46284301>
+
+        Reviewed by Alex Christensen.
+
+        In r238008, I added a facility for DerivedSources.make makefiles to
+        print out the list of files that they generate. This output was used
+        in the generation of .xcfilelist files used to specify the output of
+        the associated Generate Derived Sources build phases in Xcode. This
+        approach worked, but it meant that people would need to follow a
+        specific convention to keep this mechanism working.
+
+        Instead of continuing this approach, I'm going to implement a new
+        facility based on the output of `make` when passed the -d flag (which
+        prints dependency information). This new mechanism is completely
+        automatic and doesn't need maintainers to follow a convention. To that
+        end, remove most of the work performed in r238008 that supports the
+        print_all_generated_files target.
+
+        At the same time, it's important for the sets of targets and their
+        dependencies to be complete and correct. Therefore, also include
+        changes to bring those up-to-date. As part of that, you'll see
+        prevalent use of a particular technique. Here's an example:
+
+            BYTECODE_FILES = \
+                Bytecodes.h \
+                BytecodeIndices.h \
+                BytecodeStructs.h \
+                InitBytecodes.asm \
+            #
+            BYTECODE_FILES_PATTERNS = $(subst .,%,$(BYTECODE_FILES))
+
+            all : $(BYTECODE_FILES)
+
+            $(BYTECODE_FILES_PATTERNS): $(wildcard $(JavaScriptCore)/generator/*.rb) $(JavaScriptCore)/bytecode/BytecodeList.rb
+                ...
+
+        These lines indicate a set of generated files (those specified in
+        BYTECODE_FILES). These files are generated by the BytecodeList.rb
+        tool. But, as opposed to the normal rule where a single foo.output is
+        generated by foo.input plus some additional dependencies, this rule
+        produces multiple output files from a tool whose connection to the
+        output files is not immediately clear. A special approach is needed
+        where a single rule produces multiple output files. The normal way to
+        implement this is to use an .INTERMEDIATE target. However, we used
+        this approach in the past and ran into a problem with it, addressing
+        it with an alternate approach in r210507. The above example shows this
+        approach. The .'s in the list of target files are replaced with %'s,
+        and the result is used as the left side of the dependency rule.
+
+        * DerivedSources.make:
+
 2018-11-28  Keith Rollin  <krollin@apple.com>
 
         Remove Postprocess Headers dependencies

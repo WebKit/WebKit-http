@@ -35,6 +35,7 @@ NetworkProcess/NetworkProcessPlatformStrategies.cpp
 NetworkProcess/NetworkResourceLoadParameters.cpp
 NetworkProcess/NetworkResourceLoader.cpp
 NetworkProcess/NetworkSession.cpp
+NetworkProcess/NetworkSessionCreationParameters.cpp
 NetworkProcess/NetworkSocketStream.cpp
 NetworkProcess/PingLoad.cpp
 NetworkProcess/PreconnectTask.cpp
@@ -69,13 +70,6 @@ NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp
 NetworkProcess/cache/NetworkCacheStatistics.cpp
 NetworkProcess/cache/NetworkCacheStorage.cpp
 NetworkProcess/cache/NetworkCacheSubresourcesEntry.cpp
-
-NetworkProcess/capture/NetworkCaptureEvent.cpp
-NetworkProcess/capture/NetworkCaptureManager.cpp
-NetworkProcess/capture/NetworkCaptureRecorder.cpp
-NetworkProcess/capture/NetworkCaptureReplayer.cpp
-NetworkProcess/capture/NetworkCaptureResource.cpp
-NetworkProcess/capture/NetworkDataTaskReplay.cpp
 
 NetworkProcess/webrtc/NetworkMDNSRegister.cpp
 

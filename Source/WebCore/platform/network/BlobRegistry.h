@@ -31,16 +31,13 @@
 
 #pragma once
 
-#include <functional>
 #include <wtf/Forward.h>
-#include <wtf/Function.h>
 
 namespace WebCore {
 
 class BlobDataFileReference;
 class BlobPart;
 class BlobRegistry;
-class URL;
 
 WEBCORE_EXPORT BlobRegistry& blobRegistry();
 
@@ -67,7 +64,7 @@ public:
 
     virtual unsigned long long blobSize(const URL&) = 0;
 
-    virtual void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, WTF::Function<void (const Vector<String>& filePaths)>&& completionHandler) = 0;
+    virtual void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, CompletionHandler<void(Vector<String>&& filePaths)>&&) = 0;
 
     virtual bool isBlobRegistryImpl() const { return false; }
 
