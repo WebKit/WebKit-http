@@ -34,7 +34,7 @@
 #include <SQLiteStatement.h>
 #include <SQLiteTransaction.h>
 #include <platform/SharedBuffer.h>
-#include <platform/URL.h>
+#include <wtf/URL.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>

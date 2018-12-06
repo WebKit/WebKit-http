@@ -46,7 +46,7 @@
 #include "RenderObject.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
-#include "URL.h"
+#include "wtf/URL.h"
 #include "WebFramePrivate.h"
 #include "WebPage.h"
 #include "markup.h"
@@ -114,22 +114,22 @@ void BWebFrame::SetListener(const BMessenger& listener)
 
 void BWebFrame::LoadURL(BString urlString)
 {
-    WebCore::URL url;
+    WTF::URL url;
     if (BEntry(urlString.String()).Exists()) {
         url.setProtocol("file");
         url.setPath(urlString);
     } else
-		url = WebCore::URL(WebCore::URL(), urlString.Trim());
+		url = WTF::URL(WTF::URL(), urlString.Trim());
 
 	if (!url.isValid()) {
         BString fixedUrl("http://");
         fixedUrl << urlString.Trim();
-		url = WebCore::URL(WebCore::URL(), fixedUrl);
+		url = WTF::URL(WTF::URL(), fixedUrl);
 	}
     LoadURL(url);
 }
 
-void BWebFrame::LoadURL(WebCore::URL url)
+void BWebFrame::LoadURL(WTF::URL url)
 {
 	if (url.isEmpty())
 		return;

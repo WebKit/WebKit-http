@@ -74,7 +74,7 @@ void WebDownloadPrivate::didReceiveResponseAsync(ResourceHandle*, ResourceRespon
     	if (!response.suggestedFilename().isEmpty())
             m_filename = response.suggestedFilename();
         else {
-        	WebCore::URL url(response.url());
+        	WTF::URL url(response.url());
             url.setQuery(String());
             url.removeFragmentIdentifier();
             m_filename = WebCore::decodeURLEscapeSequences(url.lastPathComponent()).utf8().data();

@@ -609,7 +609,7 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
             BString mimeType = message->FindString("mimeType");
             BString url = message->FindString("url");
             printf("%s has MIME type %s\n",
-                WebCore::URL({ }, url).lastPathComponent().utf8().data(),
+                WTF::URL({ }, url).lastPathComponent().utf8().data(),
                 mimeType.String());
         }
         break;

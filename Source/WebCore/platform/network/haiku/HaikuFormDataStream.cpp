@@ -191,10 +191,9 @@ std::optional<size_t> BFormDataIO::readFromBlob(const FormDataElement::EncodedBl
 		// Open the file if not done yet
 		if (m_fileHandle == FileSystem::invalidPlatformFileHandle)
 		{
-			time_t fileModificationTime;
-			if (FileSystem::isValidFileTime(blobItem.file()->expectedModificationTime())
-					&& FileSystem::getFileModificationTime(blobItem.file()->path(), fileModificationTime)
-					&& fileModificationTime == static_cast<time_t>(blobItem.file()->expectedModificationTime()))
+			std::optional<WallTime> fileModificationTime = FileSystem::getFileModificationTime(blobItem.file()->path());
+			if (fileModificationTime
+					&& fileModificationTime == blobItem.file()->expectedModificationTime())
 				m_fileHandle = FileSystem::openFile(blobItem.file()->path(), FileSystem::FileOpenMode::Read);
 
 			// FIXME the blob can specify an offset and chunk size inside the file

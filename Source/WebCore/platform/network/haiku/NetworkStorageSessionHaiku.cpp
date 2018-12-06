@@ -36,7 +36,7 @@
 #include "NetworkingContext.h"
 #include "NotImplemented.h"
 #include "ResourceHandle.h"
-#include "URL.h"
+#include "wtf/URL.h"
 
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>

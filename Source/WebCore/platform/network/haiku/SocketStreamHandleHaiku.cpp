@@ -27,7 +27,7 @@ THE SOFTWARE.
 #include "SocketStreamHandleImpl.h"
 #include "SocketStreamError.h"
 
-#include "URL.h"
+#include "wtf/URL.h"
 #include "Logging.h"
 #include "NotImplemented.h"
 #include "SocketStreamHandleClient.h"

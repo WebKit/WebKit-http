@@ -33,7 +33,7 @@
 
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
-#include "URL.h"
+#include "wtf/URL.h"
 #include "ResourceResponse.h"
 #include <Messenger.h>
 #include <unicode/uidna.h>
@@ -123,7 +123,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void dispatchDecidePolicyForNewWindowAction(const NavigationAction&,
         const ResourceRequest&, FormState*, const String&, FramePolicyFunction&&) override;
     void dispatchDecidePolicyForNavigationAction(const NavigationAction&,
-                                                 const ResourceRequest&, const WebCore::ResourceResponse&, FormState*, PolicyDecisionMode, ShouldSkipSafeBrowsingCheck, FramePolicyFunction&&) override;
+                                                 const ResourceRequest&, const WebCore::ResourceResponse&, FormState*, PolicyDecisionMode, FramePolicyFunction&&) override;
     void cancelPolicyCheck() override;
 
     void dispatchUnableToImplementPolicy(const ResourceError&) override;

@@ -26,15 +26,15 @@
  */
 
 #include "config.h"
-#include "URL.h"
+#include "wtf/URL.h"
 
 #include <String.h>
 #include <wtf/text/CString.h>
 
 #include <Url.h>
-#include "URLParser.h"
+#include "wtf/URLParser.h"
 
-namespace WebCore {
+namespace WTF {
 
 URL::URL(const BUrl& url)
 {

@@ -29,7 +29,7 @@
 #include "DumpRenderTree.h"
 #include "JSStringUtils.h"
 #include "NotImplemented.h"
-#include "URL.h"
+#include "wtf/URL.h"
 #include "WorkQueue.h"
 #include "WorkQueueItem.h"
 

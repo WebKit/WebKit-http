@@ -44,6 +44,9 @@ class DumpRenderTreeClient;
 class Frame;
 class FrameLoaderClientHaiku;
 class HTMLFrameOwnerElement;
+}
+
+namespace WTF {
 class URL;
 }
 
@@ -122,7 +125,7 @@ private:
 									WebFramePrivate* data);
 								~BWebFrame();
 
-			void				LoadURL(WebCore::URL);
+			void				LoadURL(WTF::URL);
 			WebCore::Frame*		Frame() const;
 
             BWebFrame*          AddChild(BWebPage* page, BString name,

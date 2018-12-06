@@ -37,7 +37,7 @@ BUrlRequest* ResourceRequest::toNetworkRequest(BUrlContext* context)
     BUrlRequest* request = BUrlProtocolRoster::MakeRequest(url());
 
     if (!request) {
-        m_url = blankURL(); // This tells the ResourceLoader we failed.
+        m_url = WTF::blankURL(); // This tells the ResourceLoader we failed.
         return NULL;
     }
 

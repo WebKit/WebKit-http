@@ -31,7 +31,7 @@
 #include "DocumentFragment.h"
 #include "Editor.h"
 #include "Frame.h"
-#include "URL.h"
+#include "wtf/URL.h"
 #include "NotImplemented.h"
 #include "TextResourceDecoder.h"
 #include "markup.h"

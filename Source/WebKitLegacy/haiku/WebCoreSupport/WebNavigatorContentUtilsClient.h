@@ -30,7 +30,7 @@
 
 #include <NavigatorContentUtilsClient.h>
 #include <wtf/text/WTFString.h>
-#include "platform/URL.h"
+#include "wtf/URL.h"
 
 using namespace WebCore;
 

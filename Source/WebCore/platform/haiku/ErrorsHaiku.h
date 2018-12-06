@@ -33,7 +33,6 @@ namespace WebCore {
 class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
-class URL;
 
 static const char errorDomainNetwork[] = "WebKitNetworkError";
 static const char errorDomainPolicy[] = "WebKitPolicyError";

@@ -28,7 +28,7 @@
 #include <List.h>
 #include <Size.h>
 
-#include "URL.h"
+#include "wtf/URL.h"
 #include <FindOptions.h>
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSStringRef.h>

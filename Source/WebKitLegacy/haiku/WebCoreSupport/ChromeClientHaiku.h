@@ -32,7 +32,7 @@
 #include "ChromeClient.h"
 #include "FloatRect.h"
 #include "NotImplemented.h"
-#include "URL.h"
+#include "wtf/URL.h"
 
 #include <Entry.h>
 

@@ -33,7 +33,7 @@
 
 #include "config.h"
 
-#include "URL.h"
+#include "wtf/URL.h"
 #include "NotImplemented.h"
 #include "SSLKeyGenerator.h"
 #include <InterfaceDefs.h>

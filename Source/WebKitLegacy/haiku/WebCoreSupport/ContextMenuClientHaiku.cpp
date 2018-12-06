@@ -38,7 +38,7 @@
 #include "NotImplemented.h"
 #include "Page.h"
 #include "ResourceRequest.h"
-#include "URL.h"
+#include "wtf/URL.h"
 #include "WebPage.h"
 
 

@@ -155,7 +155,7 @@ enum {
 class EmptyPluginInfoProvider final : public PluginInfoProvider {
     void refreshPlugins() final { };
     Vector<PluginInfo> pluginInfo(Page&, std::optional<Vector<SupportedPluginIdentifier>>&) final { return { }; }
-    Vector<PluginInfo> webVisiblePluginInfo(Page&, const URL&) final { return { }; }
+	Vector<PluginInfo> webVisiblePluginInfo(Page&, const URL&) final { return { }; }
 };
 
 using namespace WebCore;
