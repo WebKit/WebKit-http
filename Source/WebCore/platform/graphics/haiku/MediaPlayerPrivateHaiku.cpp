@@ -66,11 +66,13 @@ MediaPlayerPrivate::MediaPlayerPrivate(MediaPlayer* player)
 
 MediaPlayerPrivate::~MediaPlayerPrivate()
 {
-    cancelLoad();
-
     delete m_soundPlayer;
-    delete m_mediaFile;
+
+	m_mediaLock.Lock();
+
+    cancelLoad();
     delete m_frameBuffer;
+	m_mediaLock.Unlock();
 }
 
 #if ENABLE(MEDIA_SOURCE)
@@ -87,13 +89,10 @@ void MediaPlayerPrivate::load(const String& url)
         m_soundPlayer->Stop(false);
     delete m_soundPlayer;
 
+	m_mediaLock.Lock();
     cancelLoad();
 
-    // Deleting the BMediaFile release the tracks
-    m_audioTrack = nullptr;
-    m_videoTrack = nullptr;
-    delete m_mediaFile;
-    m_mediaFile = nullptr;
+	m_mediaLock.Unlock();
 
     // TODO we need more detailed info from the BMediaFile to accurately report
     // the m_readyState and the m_networkState to WebKit. The API will need to
@@ -120,8 +119,12 @@ void MediaPlayerPrivate::load(const String& url)
 
 void MediaPlayerPrivate::cancelLoad()
 {
+	m_mediaLock.Lock();
     delete m_mediaFile;
     m_mediaFile = nullptr;
+	m_audioTrack = nullptr;
+	m_videoTrack = nullptr;
+	m_mediaLock.Unlock();
 }
 
 void MediaPlayerPrivate::prepareToPlay()
@@ -134,24 +137,32 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
 {
     MediaPlayerPrivate* player = (MediaPlayerPrivate*)cookie;
 
-    // TODO handle the case where there is a video, but no audio track.
-    player->m_currentTime = player->m_audioTrack->CurrentTime() / 1000000.f;
+	if (!player->m_mediaLock.Lock())
+		return;
 
-    int64 size64;
-    if (player->m_audioTrack->ReadFrames(buffer, &size64) != B_OK)
-    {
-        // Notify that we're done playing...
-        player->m_currentTime = player->m_audioTrack->Duration() / 1000000.f;
-        player->m_soundPlayer->Stop(false);
+    // Deleting the BMediaFile release the tracks
+    if (player->m_audioTrack) {
+		// TODO handle the case where there is a video, but no audio track.
+		player->m_currentTime = player->m_audioTrack->CurrentTime() / 1000000.f;
 
-        WeakPtr<MediaPlayerPrivate> p = player->m_holder.createWeakPtr(*player);
-        callOnMainThread([p] {
-            MediaPlayerPrivate* player = p.get();
-            if (player == NULL)
-                return;
-            player->m_player->timeChanged();
-        });
-    }
+		int64 size64;
+		if (player->m_audioTrack->ReadFrames(buffer, &size64) != B_OK)
+		{
+			// Notify that we're done playing...
+			player->m_currentTime = player->m_audioTrack->Duration() / 1000000.f;
+			player->m_soundPlayer->Stop(false);
+
+			WeakPtr<MediaPlayerPrivate> p = player->m_holder.createWeakPtr(*player);
+			callOnMainThread([p] {
+				MediaPlayerPrivate* player = p.get();
+				if (player == NULL)
+                	return;
+				player->m_player->timeChanged();
+			});
+
+			player->m_audioTrack = nullptr;
+    	}
+	}
 
     if (player->m_videoTrack) {
         if (player->m_videoTrack->CurrentTime() 
@@ -159,8 +170,10 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
         {
             // Decode a video frame and show it on screen
             int64 count;
-            player->m_videoTrack->ReadFrames(player->m_frameBuffer->Bits(),
-                &count);
+            if (player->m_videoTrack->ReadFrames(player->m_frameBuffer->Bits(),
+                &count) != B_OK) {
+				player->m_videoTrack = nullptr;
+			}
 
             WeakPtr<MediaPlayerPrivate> p = player->m_holder.createWeakPtr(*player);
             callOnMainThread([p] {
@@ -171,6 +184,7 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
             });
         }
     }
+	player->m_mediaLock.Unlock();
 }
 
 void MediaPlayerPrivate::play()

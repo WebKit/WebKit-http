@@ -25,6 +25,7 @@
 
 #include <wtf/WeakPtr.h>
 
+#include <Locker.h>
 #include <ObjectList.h>
 #include <UrlProtocolAsynchronousListener.h>
 
@@ -103,6 +104,7 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface {
         BSoundPlayer* m_soundPlayer;
         BBitmap* m_frameBuffer;
         WeakPtrFactory<MediaPlayerPrivate> m_holder;
+		BLocker m_mediaLock;
 
         MediaPlayer* m_player;
         MediaPlayer::NetworkState m_networkState;
