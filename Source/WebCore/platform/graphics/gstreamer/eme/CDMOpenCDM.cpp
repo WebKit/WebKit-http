@@ -289,8 +289,14 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
 
     String sessionIdAsString = sessionIdByInitData(initData);
     if (!sessionIdAsString.isEmpty()) {
-        GST_DEBUG("session %s already created, bailing out", sessionIdAsString.utf8().data());
-        callback(WTFMove(rawInitData), sessionIdAsString, false, Failed);
+        auto session = lookupSession(sessionIdAsString);
+        if (session->isValid()){
+            GST_DEBUG("session %s exists and is valid, we can return now", sessionIdAsString.utf8().data());
+            callback(session->message(), sessionIdAsString, session->needsIndividualization(), Succeeded);
+        } else {
+            GST_WARNING("existing session %s is invalid, bailing out", sessionIdAsString.utf8().data());
+            callback(WTFMove(rawInitData), sessionIdAsString, false, Failed);
+        }
         return;
     }
 
