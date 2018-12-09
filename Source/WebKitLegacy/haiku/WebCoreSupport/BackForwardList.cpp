@@ -81,24 +81,6 @@ void BackForwardList::addItem(Ref<HistoryItem>&& newItem)
     ++m_current;
 }
 
-#if 0
-void BackForwardList::goBack()
-{
-    ASSERT(m_current > 0);
-    if (m_current > 0) {
-        m_current--;
-    }
-}
-
-void BackForwardList::goForward()
-{
-    ASSERT(m_current < m_entries.size() - 1);
-    if (m_current < m_entries.size() - 1) {
-        m_current++;
-    }
-}
-#endif
-
 void BackForwardList::goToItem(HistoryItem& item)
 {
     if (!m_entries.size())
@@ -113,90 +95,6 @@ void BackForwardList::goToItem(HistoryItem& item)
     }
 }
 
-#if 0
-HistoryItem* BackForwardList::backItem()
-{
-    if (m_current && m_current != NoCurrentItemIndex)
-        return m_entries[m_current - 1].ptr();
-    return nullptr;
-}
-
-HistoryItem* BackForwardList::currentItem()
-{
-    if (m_current != NoCurrentItemIndex)
-        return m_entries[m_current].ptr();
-    return nullptr;
-}
-
-HistoryItem* BackForwardList::forwardItem()
-{
-    if (m_entries.size() && m_current < m_entries.size() - 1)
-        return m_entries[m_current + 1].ptr();
-    return nullptr;
-}
-
-void BackForwardList::backListWithLimit(int limit, Vector<Ref<HistoryItem>>& list)
-{
-    list.clear();
-    if (m_current != NoCurrentItemIndex) {
-        unsigned first = std::max(static_cast<int>(m_current) - limit, 0);
-        for (; first < m_current; ++first)
-            list.append(m_entries[first].get());
-    }
-}
-
-void BackForwardList::forwardListWithLimit(int limit, Vector<Ref<HistoryItem>>& list)
-{
-    ASSERT(limit > -1);
-    list.clear();
-    if (!m_entries.size())
-        return;
-        
-    unsigned lastEntry = m_entries.size() - 1;
-    if (m_current < lastEntry) {
-        int last = std::min(m_current + limit, lastEntry);
-        limit = m_current + 1;
-        for (; limit <= last; ++limit)
-            list.append(m_entries[limit].get());
-    }
-}
-
-int BackForwardList::capacity()
-{
-    return m_capacity;
-}
-
-void BackForwardList::setCapacity(int size)
-{    
-    while (size < static_cast<int>(m_entries.size())) {
-        Ref<HistoryItem> item = m_entries.takeLast();
-        m_entryHash.remove(item.ptr());
-        PageCache::singleton().remove(item);
-    }
-
-    if (!size)
-        m_current = NoCurrentItemIndex;
-    else if (m_current > m_entries.size() - 1) {
-        m_current = m_entries.size() - 1;
-    }
-    m_capacity = size;
-}
-
-bool BackForwardList::enabled()
-{
-    return m_enabled;
-}
-
-void BackForwardList::setEnabled(bool enabled)
-{
-    m_enabled = enabled;
-    if (!enabled) {
-        int capacity = m_capacity;
-        setCapacity(0);
-        setCapacity(capacity);
-    }
-}
-#endif
 
 unsigned int BackForwardList::backListCount() const
 {
@@ -205,7 +103,7 @@ unsigned int BackForwardList::backListCount() const
 
 unsigned int BackForwardList::forwardListCount() const
 {
-    return m_current == NoCurrentItemIndex ? 0 : (int)m_entries.size() - (m_current + 1);
+    return m_current == NoCurrentItemIndex ? 0 : m_entries.size() - m_current - 1;
 }
 
 RefPtr<HistoryItem> BackForwardList::itemAtIndex(int index)
@@ -214,18 +112,12 @@ RefPtr<HistoryItem> BackForwardList::itemAtIndex(int index)
     if (index < -static_cast<int>(m_current))
         return nullptr;
 
-    if (index > forwardListCount())
+    if (index > static_cast<int>(forwardListCount()))
         return nullptr;
 
     return m_entries[index + m_current];
 }
 
-#if 0
-Vector<Ref<HistoryItem>>& BackForwardList::entries()
-{
-    return m_entries;
-}
-#endif
 
 void BackForwardList::close()
 {
@@ -234,37 +126,3 @@ void BackForwardList::close()
     m_closed = true;
 }
 
-# if 0
-bool BackForwardList::closed()
-{
-    return m_closed;
-}
-
-void BackForwardList::removeItem(HistoryItem* item)
-{
-    if (!item)
-        return;
-    
-    for (unsigned i = 0; i < m_entries.size(); ++i) {
-        if (m_entries[i].ptr() == item) {
-            m_entries.remove(i);
-            m_entryHash.remove(item);
-            if (m_current == NoCurrentItemIndex || m_current < i)
-                break;
-            if (m_current > i)
-                m_current--;
-            else {
-                size_t count = m_entries.size();
-                if (m_current >= count)
-                    m_current = count ? count - 1 : NoCurrentItemIndex;
-            }
-            break;
-        }
-    }
-}
-
-bool BackForwardList::containsItem(HistoryItem* entry)
-{
-    return m_entryHash.contains(entry);
-}
-#endif
