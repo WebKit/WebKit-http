@@ -449,7 +449,7 @@ const Cursor& grabbingCursor()
     return c;
 }
 
-#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WIN)
+#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WIN) && !PLATFORM(HAIKU)
 void Cursor::ensurePlatformCursor() const
 {
     notImplemented();
