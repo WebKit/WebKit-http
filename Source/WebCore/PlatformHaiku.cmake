@@ -126,7 +126,7 @@ list(APPEND WebCore_SOURCES
   platform/text/haiku/StringHaiku.cpp
 )
 
-if (ENABLE_SUBTLE_CRYPTO)
+if (ENABLE_WEB_CRYPTO)
     list(APPEND WebCore_SOURCES
         crypto/CryptoAlgorithm.cpp
         crypto/CryptoAlgorithmRegistry.cpp

@@ -201,7 +201,7 @@ endif()
 add_definitions(-DUSE_TEXTURE_MAPPER=1)
 add_definitions(-DUSE_COORDINATED_GRAPHICS=0)
 
-if (ENABLE_SUBTLE_CRYPTO)
+if (ENABLE_WEB_CRYPTO)
     find_package(Libtasn1 REQUIRED)
     if (NOT LIBTASN1_FOUND)
         message(FATAL_ERROR "libtasn1 is required to enable Web Crypto API support.")
