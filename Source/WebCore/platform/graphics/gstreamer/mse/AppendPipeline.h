@@ -140,6 +140,7 @@ private:
 
     bool m_appsrcAtLeastABufferLeft;
     bool m_appsrcNeedDataReceived;
+    bool m_firstTrackDetected;
 
     gulong m_appsrcDataLeavingProbeId;
 #if !LOG_DISABLED

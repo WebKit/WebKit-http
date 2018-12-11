@@ -180,6 +180,7 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
     , m_busAlreadyNotifiedOfAvailablesamples(false)
     , m_appsrcAtLeastABufferLeft(false)
     , m_appsrcNeedDataReceived(false)
+    , m_firstTrackDetected(false)
     , m_appsrcDataLeavingProbeId(0)
     , m_appendState(AppendState::NotStarted)
     , m_abortPending(false)
@@ -703,13 +704,10 @@ void AppendPipeline::appsinkCapsChanged()
     if (!caps)
         return;
 
-    // This means that we're right after a new track has appeared. Otherwise, it's a caps change inside the same track.
-    bool previousCapsWereNull = !m_appsinkCaps;
-
     if (m_appsinkCaps != caps) {
         m_appsinkCaps = WTFMove(caps);
         if (m_playerPrivate)
-            m_playerPrivate->trackDetected(this, m_track, previousCapsWereNull);
+            m_playerPrivate->trackDetected(this, m_track, !m_firstTrackDetected);
         gst_element_set_state(m_pipeline.get(), GST_STATE_PLAYING);
     }
 }
@@ -1198,8 +1196,10 @@ void AppendPipeline::connectDemuxerSrcPadToAppsink(GstPad* demuxerSrcPad)
     }
 
     m_appsinkCaps = WTFMove(caps);
-    if (m_playerPrivate)
-        m_playerPrivate->trackDetected(this, m_track, true);
+    if (m_playerPrivate) {
+        m_playerPrivate->trackDetected(this, m_track, !m_firstTrackDetected);
+        m_firstTrackDetected = true;
+    }
 
     m_padAddRemoveCondition.notifyOne();
 }
