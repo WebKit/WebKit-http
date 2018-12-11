@@ -182,7 +182,7 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
 {
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(self);
 
-    GstMappedBuffer mappedIV(ivBuffer, GST_MAP_READ);
+    WebCore::GstMappedBuffer mappedIV(ivBuffer, GST_MAP_READ);
     if (!mappedIV) {
         GST_ERROR_OBJECT(self, "Failed to map IV");
         return false;
@@ -190,13 +190,13 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
 
     GST_MEMDUMP_OBJECT(self, "IV for sample", mappedIV.data(), mappedIV.size());
 
-    GstMappedBuffer mappedBuffer(buffer, GST_MAP_READWRITE);
+    WebCore::GstMappedBuffer mappedBuffer(buffer, GST_MAP_READWRITE);
     if (!mappedBuffer) {
         GST_ERROR_OBJECT(self, "Failed to map buffer");
         return false;
     }
 
-    GstMappedBuffer mappedKeyID(keyIDBuffer, GST_MAP_READ);
+    WebCore::GstMappedBuffer mappedKeyID(keyIDBuffer, GST_MAP_READ);
     if (!mappedKeyID) {
         GST_ERROR_OBJECT(self, "Failed to map key ID buffer");
         return false;
@@ -204,7 +204,7 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
 
     int errorCode;
     if (subSamplesBuffer) {
-        GstMappedBuffer mappedSubSamples(subSamplesBuffer, GST_MAP_READ);
+        WebCore::GstMappedBuffer mappedSubSamples(subSamplesBuffer, GST_MAP_READ);
         if (!mappedSubSamples) {
             GST_ERROR_OBJECT(self, "Failed to map subsample buffer");
             return false;
