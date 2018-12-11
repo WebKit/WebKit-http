@@ -12,6 +12,7 @@ file(MAKE_DIRECTORY ${FORWARDING_HEADERS_WPE_DOM_DIR})
 
 configure_file(wpe/wpe-webkit.pc.in ${CMAKE_BINARY_DIR}/wpe-webkit-${WPE_API_VERSION}.pc @ONLY)
 configure_file(wpe/wpe-web-extension.pc.in ${CMAKE_BINARY_DIR}/wpe-web-extension-${WPE_API_VERSION}.pc @ONLY)
+configure_file(wpe/wpe-webkit-deprecated.pc.in ${CMAKE_BINARY_DIR}/wpe-webkit-deprecated-${WPE_API_VERSION}.pc @ONLY)
 
 add_definitions(-DWEBKIT2_COMPILATION)
 
@@ -471,7 +472,7 @@ if (EXPORT_DEPRECATED_WEBKIT2_C_API)
     )
 
     install(FILES ${WPE_INSTALLED_WEBKIT_HEADERS}
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE/WebKit"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-webkit-deprecated-${WPE_API_VERSION}/WPE/WebKit"
         COMPONENT "Development"
     )
 
@@ -480,7 +481,7 @@ if (EXPORT_DEPRECATED_WEBKIT2_C_API)
     )
 
     install(FILES ${WPE_INSTALLED_HEADERS}
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-webkit-deprecated-${WPE_API_VERSION}/WPE"
         COMPONENT "Development"
     )
 endif()
@@ -491,6 +492,7 @@ install(TARGETS WPEInjectedBundle
 
 install(FILES "${CMAKE_BINARY_DIR}/wpe-webkit-${WPE_API_VERSION}.pc"
               "${CMAKE_BINARY_DIR}/wpe-web-extension-${WPE_API_VERSION}.pc"
+              "${CMAKE_BINARY_DIR}/wpe-webkit-deprecated-${WPE_API_VERSION}.pc"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
         COMPONENT "Development"
 )

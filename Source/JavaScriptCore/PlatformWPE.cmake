@@ -33,7 +33,7 @@ install(FILES ${JavaScriptCore_INSTALLED_HEADERS}
 )
 
 install(FILES ${JavaScriptCore_PUBLIC_FRAMEWORK_HEADERS}
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE/JavaScriptCore"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-webkit-deprecated-${WPE_API_VERSION}/WPE/JavaScriptCore"
     COMPONENT "Development"
 )
 
