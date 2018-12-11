@@ -164,7 +164,7 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
     	}
 	}
 
-    if (player->m_videoTrack) {
+    if (player->m_videoTrack && player->m_audioTrack) {
         if (player->m_videoTrack->CurrentTime() 
             < player->m_audioTrack->CurrentTime())
         {
