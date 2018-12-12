@@ -68,10 +68,6 @@ static Deque<GraphicsContext3D*, MaxActiveContexts>& activeContexts()
 
 RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes attributes, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
 {
-    // This implementation doesn't currently support rendering directly to the HostWindow.
-    if (renderStyle == RenderDirectlyToHostWindow)
-        return nullptr;
-
     static bool initialized = false;
     static bool success = true;
     if (!initialized) {

@@ -840,12 +840,13 @@ void WebGLRenderingContextBase::addActivityStateChangeObserverIfNecessary()
 {
     // We are only interested in visibility changes for contexts
     // that are using the high-performance GPU.
-    if (!isHighPerformanceContext(m_context))
-        return;
-
     auto* canvas = htmlCanvas();
     if (!canvas)
         return;
+
+    if (!isHighPerformanceContext(m_context) && !canvas->document().frame()->settings().nonCompositedWebGLEnabled())
+        return;
+
 
     if (!canvas->document().frame()->settings().nonCompositedWebGLEnabled())
         return;
