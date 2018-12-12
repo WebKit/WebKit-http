@@ -10,7 +10,7 @@ CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 4 1 2)
 # CMAKE_INSTALL_* variables that are populated by the GNUInstallDirs macro.
 set(LIB_INSTALL_DIR "${CMAKE_INSTALL_FULL_LIBDIR}" CACHE PATH "Absolute path to library installation directory")
 set(EXEC_INSTALL_DIR "${CMAKE_INSTALL_FULL_BINDIR}" CACHE PATH "Absolute path to executable installation directory")
-set(LIBEXEC_INSTALL_DIR "${CMAKE_INSTALL_FULL_LIBEXECDIR}/wpe-webkit-${WPE_API_VERSION}" CACHE PATH "Absolute path to install executables executed by the library")
+set(LIBEXEC_INSTALL_DIR "${CMAKE_INSTALL_FULL_BINDIR}" CACHE PATH "Absolute path to install executables executed by the library")
 
 WEBKIT_OPTION_BEGIN()
 
