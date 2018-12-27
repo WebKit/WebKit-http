@@ -90,7 +90,8 @@ void QtPageClient::pageDidRequestScroll(const IntPoint& pos)
 
 void QtPageClient::processDidExit()
 {
-    QQuickWebViewPrivate::get(m_webView)->processDidCrash();
+    // TODO: Do we need this signal?
+    // QQuickWebViewPrivate::get(m_webView)->processDidExit();
 }
 
 void QtPageClient::didRelaunchProcess()
