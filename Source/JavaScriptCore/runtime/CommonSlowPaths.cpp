@@ -534,13 +534,7 @@ SLOW_PATH_DECL(slow_path_sub)
         THROW(createTypeError(exec, "Invalid mix of BigInt and other type in subtraction."));
     }
 
-#if CPU(MIPS) && defined(__GLIBC__)
-    // on MIPS, the GLIBC version of the softfp double substraction sometimes
-    // returns impure NaNs
-    JSValue result = jsNumber(purifyNaN(WTF::get<double>(leftNumeric) - WTF::get<double>(rightNumeric)));
-#else
     JSValue result = jsNumber(WTF::get<double>(leftNumeric) - WTF::get<double>(rightNumeric));
-#endif
     RETURN_WITH_PROFILING(result, {
         updateArithProfileForBinaryArithOp(exec, pc, result, left, right);
     });
