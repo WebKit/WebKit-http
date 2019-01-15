@@ -39,10 +39,8 @@ IncludeFile.processIncludeOptions()
 inputFlnm = ARGV.shift
 outputFlnm = ARGV.shift
 
-validBackends = ARGV.shift
-if validBackends
-    includeOnlyBackends(validBackends.split(","))
-end
+validBackends = canonicalizeBackendNames(ARGV.shift.split(/,/))
+includeOnlyBackends(validBackends)
 
 def emitMagicNumber
     OFFSET_MAGIC_NUMBERS.each {
