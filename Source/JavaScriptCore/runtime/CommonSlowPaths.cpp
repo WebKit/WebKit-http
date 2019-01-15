@@ -592,13 +592,7 @@ SLOW_PATH_DECL(slow_path_mod)
     
     double a = WTF::get<double>(leftNumeric);
     double b = WTF::get<double>(rightNumeric);
-#if CPU(MIPS)
-    // When passed a NaN as parameter, fmod() tends to return an impure NaN on
-    // MIPS (both with uclibc and glibc).
-    RETURN(jsNumber(purifyNaN(fmod(a, b))));
-#else
     RETURN(jsNumber(jsMod(a, b)));
-#endif
 }
 
 SLOW_PATH_DECL(slow_path_pow)
