@@ -1527,16 +1527,12 @@ public:
 
     void memoryFence()
     {
-        m_assembler.memoryFence();
+        m_assembler.dmbSY();
     }
 
     void storeFence()
     {
-#if WTF_ARM_ARCH_AT_LEAST(7)
         m_assembler.dmbISHST();
-#else
-        m_assembler.arm6MemFence();
-#endif
     }
 
     template<PtrTag resultTag, PtrTag locationTag>
