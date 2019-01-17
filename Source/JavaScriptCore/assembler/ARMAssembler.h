@@ -767,22 +767,19 @@ namespace JSC {
                 *ptr++ = insn;
         }
 
-#if WTF_ARM_ARCH_AT_LEAST(7)
-        void dmbSY()
+        void memoryFence()
         {
+#if WTF_ARM_ARCH_AT_LEAST(7)
             m_buffer.putInt(DMB_SY);
+#else
+            m_buffer.putInt(ARM6_MEMFENCE);
+#endif
         }
 
         void dmbISHST()
         {
             m_buffer.putInt(DMB_ISHST);
         }
-#else
-        void arm6MemFence()
-        {
-            m_buffer.putInt(ARM6_MEMFENCE);
-        }
-#endif
 
         void bx(int rm, Condition cc = AL)
         {
