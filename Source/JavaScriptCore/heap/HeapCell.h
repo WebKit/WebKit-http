@@ -27,12 +27,6 @@
 
 #include "DestructionMode.h"
 
-#if COMPILER(GCC_OR_CLANG)
-#define HEAPCELL_ALIGNMENT __attribute__ ((aligned (sizeof(void*))))
-#else
-#define HEAPCELL_ALIGNMENT
-#endif
-
 namespace JSC {
 
 class CellContainer;
@@ -45,7 +39,7 @@ struct CellAttributes;
 
 static constexpr unsigned minimumDistanceBetweenCellsFromDifferentOrigins = sizeof(void*) == 8 ? 304 : 288;
 
-class HEAPCELL_ALIGNMENT HeapCell {
+class HeapCell {
 public:
     enum Kind : int8_t {
         JSCell,
