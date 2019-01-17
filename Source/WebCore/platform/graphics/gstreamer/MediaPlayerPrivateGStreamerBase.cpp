@@ -1513,11 +1513,6 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionStructure(GUniquePtr<Gst
     GST_TRACE("emitted decryption structure on pipeline, event handled %s", boolForPrinting(eventHandled));
 }
 
-void MediaPlayerPrivateGStreamerBase::reportWaitingForKey()
-{
-    GST_TRACE("waiting for key");
-    m_player->waitingForKey();
-}
 #endif
 
 bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem, const String& mimeType)

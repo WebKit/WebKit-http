@@ -154,7 +154,6 @@ public:
     void initializationDataEncountered(const InitData&);
     void dispatchLocalCDMInstance();
     void initializationDataEncountered(GstEvent*);
-    void reportWaitingForKey();
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
