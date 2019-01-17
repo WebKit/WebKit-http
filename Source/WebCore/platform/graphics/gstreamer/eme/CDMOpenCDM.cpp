@@ -294,15 +294,20 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
 
     String sessionIdAsString = sessionIdByInitData(initData);
     if (!sessionIdAsString.isEmpty()) {
-        GST_DEBUG("session %s already created, bailing out", sessionIdAsString.utf8().data());
-        callback(WTFMove(rawInitData), sessionIdAsString, false, Failed);
+        auto session = lookupSession(sessionIdAsString);
+        if (session->isValid()) {
+            GST_DEBUG("session %s exists and is valid, we can return now", sessionIdAsString.utf8().data());
+            callback(session->message(), sessionIdAsString, session->needsIndividualization(), Succeeded);
+        } else {
+            GST_WARNING("existing session %s is invalid, bailing out", sessionIdAsString.utf8().data());
+            callback(WTFMove(rawInitData), sessionIdAsString, false, Failed);
+        }
         return;
     }
 
     // FIXME: Why do we have this weirdness here? It looks like this is a way to reference count on the OpenCDM object.
     media::OpenCdm openCDM(m_openCDM);
-    // FIXME: I don't know what this needs to compile.
-    std::string sessionId = { }; //openCDM.CreateSession(m_mimeType, reinterpret_cast<const uint8_t*>(rawInitData->data()), rawInitData->size(), openCDMLicenseType(licenseType));
+    std::string sessionId = openCDM.CreateSession(m_mimeType, reinterpret_cast<const uint8_t*>(rawInitData->data()), rawInitData->size(), !rawCustomData->isEmpty() ? reinterpret_cast<const uint8_t*>(rawCustomData->data()) : nullptr, rawCustomData->size(), openCDMLicenseType(licenseType));
 
     if (sessionId.empty()) {
         GST_ERROR("could not create session id");
