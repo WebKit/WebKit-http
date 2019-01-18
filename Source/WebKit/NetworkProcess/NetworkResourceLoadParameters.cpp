@@ -26,10 +26,7 @@
 #include "config.h"
 #include "NetworkResourceLoadParameters.h"
 
-#include "ArgumentCoders.h"
-#include "DataReference.h"
 #include "WebCoreArgumentCoders.h"
-#include <WebCore/SecurityOriginData.h>
 
 namespace WebKit {
 using namespace WebCore;
@@ -77,13 +74,11 @@ void NetworkResourceLoadParameters::encode(IPC::Encoder& encoder) const
     encoder.encodeEnum(storedCredentialsPolicy);
     encoder.encodeEnum(clientCredentialPolicy);
     encoder.encodeEnum(shouldPreconnectOnly);
-    encoder << shouldFollowRedirects;
     encoder << shouldClearReferrerOnHTTPSToHTTPRedirect;
     encoder << defersLoading;
     encoder << needsCertificateInfo;
     encoder << isMainFrameNavigation;
     encoder << maximumBufferingTime;
-    encoder << derivedCachedDataTypesToRetrieve;
 
     encoder << static_cast<bool>(sourceOrigin);
     if (sourceOrigin)
@@ -161,8 +156,6 @@ bool NetworkResourceLoadParameters::decode(IPC::Decoder& decoder, NetworkResourc
         return false;
     if (!decoder.decodeEnum(result.shouldPreconnectOnly))
         return false;
-    if (!decoder.decode(result.shouldFollowRedirects))
-        return false;
     if (!decoder.decode(result.shouldClearReferrerOnHTTPSToHTTPRedirect))
         return false;
     if (!decoder.decode(result.defersLoading))
@@ -172,8 +165,6 @@ bool NetworkResourceLoadParameters::decode(IPC::Decoder& decoder, NetworkResourc
     if (!decoder.decode(result.isMainFrameNavigation))
         return false;
     if (!decoder.decode(result.maximumBufferingTime))
-        return false;
-    if (!decoder.decode(result.derivedCachedDataTypesToRetrieve))
         return false;
 
     bool hasSourceOrigin;

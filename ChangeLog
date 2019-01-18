@@ -1,3 +1,115 @@
+2018-12-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [FreeType] Add initial implementation of variation fonts
+        https://bugs.webkit.org/show_bug.cgi?id=192151
+
+        Reviewed by Michael Catanzaro.
+
+        Enable variation fonts in GTK+ port when required dependencies are available.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2018-12-12  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed manual rollout of r239100-r239102 and r239116
+        https://bugs.webkit.org/show_bug.cgi?id=192151
+        <rdar://problem/46655586>
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2018-12-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [FreeType] Add initial implementation of variation fonts
+        https://bugs.webkit.org/show_bug.cgi?id=192151
+
+        Reviewed by Michael Catanzaro.
+
+        Enable variation fonts in GTK+ port when required dependencies are available.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2018-12-10  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add ENABLE_RESOURCE_LOAD_STATISTICS to WebKitFeatures.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=192574
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-12-10  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Add test262-results directory to .gitignore.
+        https://bugs.webkit.org/show_bug.cgi?id=192547
+
+        Reviewed by Dean Jackson.
+
+        * .gitignore:
+
+2018-12-06  Carlos Eduardo Ramalho  <cadubentzen@gmail.com>
+
+        [GStreamer] -DENABLE_VIDEO=ON -DENABLE_OPENGL=OFF still tries to build GstreamerGL
+        https://bugs.webkit.org/show_bug.cgi?id=191998
+
+        Reviewed by Philippe Normand.
+
+        Fix compilation with -DENABLE_VIDEO=ON and -DENABLE_OPENGL=OFF due to GStreamerGL.
+
+        * Source/cmake/GStreamerDependencies.cmake: "DEFINED ENABLE_OPENGL" is always false because ENABLE_OPENGL
+        is not a CMake variable (WEBKIT_OPTION_DEFINE macro does not define ENABLE_OPENGL variable per se, but other
+        variables and appends it to a list).
+        * Source/cmake/OptionsGTK.cmake: GStreamerDefinitions.cmake was included twice by mistake. Second should be GStreamerDependencies.cmake.
+
+2018-12-06  Carlos Eduardo Ramalho  <cadubentzen@gmail.com>
+
+        REGRESSION(r231043): [GTK] Undefined references to WebCore::LayerRepresentation::* with -DENABLE_OPENGL=OFF builds
+        https://bugs.webkit.org/show_bug.cgi?id=191997
+
+        Reviewed by Philippe Normand.
+
+        Fix build with -DENABLE_OPENGL=OFF and -DENABLE_VIDEO=OFF
+
+        * Source/cmake/OptionsGTK.cmake: make ENABLE_ASYNC_SCROLLING depend on ENABLE_OPENGL
+
+2018-12-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [PlayStation] Enable WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=192384
+
+        Reviewed by Brent Fulgham.
+
+        Adds CMake options for building WebCore on PlayStation.
+
+        * Source/cmake/FindLibPSL.cmake:
+        * Source/cmake/FindNghttp2.cmake: Copied from Source/cmake/FindWPE.cmake.
+        * Source/cmake/FindPixman.cmake: Added.
+        * Source/cmake/FindWPE.cmake:
+        * Source/cmake/OptionsPlayStation.cmake:
+
+2018-12-04  Carlos Eduardo Ramalho  <cadubentzen@gmail.com>
+
+        [WPE] Add gtk-doc
+        https://bugs.webkit.org/show_bug.cgi?id=178900
+
+        Reviewed by Michael Catanzaro.
+
+        Add gtk-doc to WPE port. This patch tries to reuse as much code from
+        WebKitGTK+ as possible.
+
+        * Source/PlatformGTK.cmake: include GtkDoc.cmake instead of defining macro.
+        * Source/PlatformWPE.cmake: Added documentation generation.
+        * Source/cmake/GtkDoc.cmake: Added.
+        * Source/cmake/OptionsWPE.cmake: Added ENABLE_GTKDOC build option and added pkg-config path variables.
+
+2018-12-03  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Sync feature defines
+        https://bugs.webkit.org/show_bug.cgi?id=191167
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
 2018-12-01  Don Olmstead  <don.olmstead@sony.com>
 
         Cleanup WebKit Features

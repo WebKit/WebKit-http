@@ -178,6 +178,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case ToThis:
     case CreateThis:
     case ObjectCreate:
+    case ObjectKeys:
     case GetCallee:
     case SetCallee:
     case GetArgumentCountIncludingThis:
@@ -233,6 +234,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case ValueNegate:
     case ValueAdd:
     case ValueSub:
+    case ValueMul:
+    case ValueDiv:
     case TryGetById:
     case DeleteById:
     case DeleteByVal:
@@ -314,6 +317,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case NewArrayWithSpread:
     case Spread:
     case NewRegexp:
+    case NewSymbol:
     case ProfileType:
     case ProfileControlFlow:
     case CheckTypeInfoFlags:

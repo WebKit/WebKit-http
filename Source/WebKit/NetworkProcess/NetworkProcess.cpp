@@ -52,7 +52,6 @@
 #include "SessionTracker.h"
 #include "StatisticsData.h"
 #include "WebCookieManager.h"
-#include "WebCoreArgumentCoders.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcessPoolMessages.h"
 #include "WebSWOriginStore.h"
@@ -74,17 +73,12 @@
 #include <WebCore/RuntimeApplicationChecks.h>
 #include <WebCore/SchemeRegistry.h>
 #include <WebCore/SecurityOriginData.h>
-#include <WebCore/SecurityOriginHash.h>
-#include <WebCore/Settings.h>
-#include <pal/SessionID.h>
 #include <wtf/Algorithms.h>
 #include <wtf/CallbackAggregator.h>
 #include <wtf/OptionSet.h>
 #include <wtf/ProcessPrivilege.h>
 #include <wtf/RunLoop.h>
-#include <wtf/URLParser.h>
 #include <wtf/text/AtomicString.h>
-#include <wtf/text/CString.h>
 
 #if ENABLE(SEC_ITEM_SHIM)
 #include "SecItemShim.h"
@@ -298,7 +292,6 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 
     m_diskCacheIsDisabledForTesting = parameters.shouldUseTestingNetworkSession;
 
-    m_diskCacheSizeOverride = parameters.diskCacheSizeOverride;
     setCacheModel(static_cast<uint32_t>(parameters.cacheModel));
 
     setCanHandleHTTPSServerTrustEvaluation(parameters.canHandleHTTPSServerTrustEvaluation);
@@ -864,9 +857,6 @@ void NetworkProcess::setCacheModel(uint32_t cm)
         diskFreeSize /= KB * 1000;
         calculateURLCacheSizes(cacheModel, diskFreeSize, urlCacheMemoryCapacity, urlCacheDiskCapacity);
     }
-
-    if (m_diskCacheSizeOverride >= 0)
-        urlCacheDiskCapacity = m_diskCacheSizeOverride;
 
     if (m_cache)
         m_cache->setCapacity(urlCacheDiskCapacity);

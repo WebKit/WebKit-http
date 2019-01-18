@@ -597,6 +597,9 @@ private:
         case ValueSub:
             compileValueSub();
             break;
+        case ValueMul:
+            compileValueMul();
+            break;
         case StrCat:
             compileStrCat();
             break;
@@ -609,6 +612,9 @@ private:
             break;
         case ArithMul:
             compileArithMul();
+            break;
+        case ValueDiv:
+            compileValueDiv();
             break;
         case ArithDiv:
             compileArithDiv();
@@ -860,11 +866,17 @@ private:
         case ObjectCreate:
             compileObjectCreate();
             break;
+        case ObjectKeys:
+            compileObjectKeys();
+            break;
         case NewObject:
             compileNewObject();
             break;
         case NewStringObject:
             compileNewStringObject();
+            break;
+        case NewSymbol:
+            compileNewSymbol();
             break;
         case NewArray:
             compileNewArray();
@@ -1904,6 +1916,25 @@ private:
         compileBinaryMathIC<JITSubGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
     }
 
+    void compileValueMul()
+    {
+        if (m_node->isBinaryUseKind(BigIntUse)) {
+            LValue left = lowBigInt(m_node->child1());
+            LValue right = lowBigInt(m_node->child2());
+            
+            LValue result = vmCall(Int64, m_out.operation(operationMulBigInt), m_callFrame, left, right);
+            setJSValue(result);
+            return;
+        }
+
+        CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
+        ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
+        const Instruction* instruction = baselineCodeBlock->instructions().at(m_node->origin.semantic.bytecodeIndex).ptr();
+        auto repatchingFunction = operationValueMulOptimize;
+        auto nonRepatchingFunction = operationValueMul;
+        compileBinaryMathIC<JITMulGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
+    }
+
     template <typename Generator, typename Func1, typename Func2,
         typename = std::enable_if_t<std::is_function<typename std::remove_pointer<Func1>::type>::value && std::is_function<typename std::remove_pointer<Func2>::type>::value>>
     void compileUnaryMathIC(ArithProfile* arithProfile, const Instruction* instruction, Func1 repatchingFunction, Func2 nonRepatchingFunction)
@@ -2252,20 +2283,24 @@ private:
             break;
         }
 
-        case UntypedUse: {
-            CodeBlock* baselineCodeBlock = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic);
-            ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
-            const Instruction* instruction = baselineCodeBlock->instructions().at(m_node->origin.semantic.bytecodeIndex).ptr();
-            auto repatchingFunction = operationValueMulOptimize;
-            auto nonRepatchingFunction = operationValueMul;
-            compileBinaryMathIC<JITMulGenerator>(arithProfile, instruction, repatchingFunction, nonRepatchingFunction);
-            break;
-        }
-
         default:
             DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
         }
+    }
+
+    void compileValueDiv()
+    {
+        if (m_node->isBinaryUseKind(BigIntUse)) {
+            LValue left = lowBigInt(m_node->child1());
+            LValue right = lowBigInt(m_node->child2());
+            
+            LValue result = vmCall(pointerType(), m_out.operation(operationDivBigInt), m_callFrame, left, right);
+            setJSValue(result);
+            return;
+        }
+
+        emitBinarySnippet<JITDivGenerator, NeedScratchFPR>(operationValueDiv);
     }
 
     void compileArithDiv()
@@ -2323,11 +2358,6 @@ private:
         case DoubleRepUse: {
             setDouble(m_out.doubleDiv(
                 lowDouble(m_node->child1()), lowDouble(m_node->child2())));
-            break;
-        }
-
-        case UntypedUse: {
-            emitBinarySnippet<JITDivGenerator, NeedScratchFPR>(operationValueDiv);
             break;
         }
 
@@ -2855,7 +2885,7 @@ private:
     {
         if (m_node->child1().useKind() == UntypedUse) {
             LValue operand = lowJSValue(m_node->child1());
-            LValue result = vmCall(pointerType(), m_out.operation(operationValueBitNot), m_callFrame, operand);
+            LValue result = vmCall(Int64, m_out.operation(operationValueBitNot), m_callFrame, operand);
             setJSValue(result);
             return;
         }
@@ -5470,6 +5500,75 @@ private:
         setInt32(m_out.phi(Int32, zeroLengthResult, nonZeroLengthResult));
     }
 
+    void compileObjectKeys()
+    {
+        switch (m_node->child1().useKind()) {
+        case ObjectUse: {
+            if (m_graph.isWatchingHavingABadTimeWatchpoint(m_node)) {
+                LBasicBlock notNullCase = m_out.newBlock();
+                LBasicBlock rareDataCase = m_out.newBlock();
+                LBasicBlock notNullCacheCase = m_out.newBlock();
+                LBasicBlock useCacheCase = m_out.newBlock();
+                LBasicBlock slowButArrayBufferCase = m_out.newBlock();
+                LBasicBlock slowCase = m_out.newBlock();
+                LBasicBlock continuation = m_out.newBlock();
+
+                LValue object = lowObject(m_node->child1());
+                LValue structure = loadStructure(object);
+                LValue previousOrRareData = m_out.loadPtr(structure, m_heaps.Structure_previousOrRareData);
+                m_out.branch(m_out.notNull(previousOrRareData), unsure(notNullCase), unsure(slowCase));
+
+                LBasicBlock lastNext = m_out.appendTo(notNullCase, rareDataCase);
+                m_out.branch(
+                    m_out.notEqual(m_out.load32(previousOrRareData, m_heaps.JSCell_structureID), m_out.constInt32(m_graph.m_vm.structureStructure->structureID())),
+                    unsure(rareDataCase), unsure(slowCase));
+
+                m_out.appendTo(rareDataCase, notNullCacheCase);
+                LValue cachedOwnKeys = m_out.loadPtr(previousOrRareData, m_heaps.StructureRareData_cachedOwnKeys);
+                m_out.branch(m_out.notNull(cachedOwnKeys), unsure(notNullCacheCase), unsure(slowCase));
+
+                m_out.appendTo(notNullCacheCase, useCacheCase);
+                m_out.branch(m_out.notEqual(cachedOwnKeys, weakPointer(m_graph.m_vm.sentinelImmutableButterfly.get())), unsure(useCacheCase), unsure(slowCase));
+
+                m_out.appendTo(useCacheCase, slowButArrayBufferCase);
+                JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
+                RegisteredStructure arrayStructure = m_graph.registerStructure(globalObject->arrayStructureForIndexingTypeDuringAllocation(CopyOnWriteArrayWithContiguous));
+                LValue fastArray = allocateObject<JSArray>(arrayStructure, m_out.addPtr(cachedOwnKeys, JSImmutableButterfly::offsetOfData()), slowButArrayBufferCase);
+                ValueFromBlock fastResult = m_out.anchor(fastArray);
+                m_out.jump(continuation);
+
+                m_out.appendTo(slowButArrayBufferCase, slowCase);
+                LValue slowArray = vmCall(Int64, m_out.operation(operationNewArrayBuffer), m_callFrame, weakStructure(arrayStructure), cachedOwnKeys);
+                ValueFromBlock slowButArrayBufferResult = m_out.anchor(slowArray);
+                m_out.jump(continuation);
+
+                m_out.appendTo(slowCase, continuation);
+                VM& vm = this->vm();
+                LValue slowResultValue = lazySlowPath(
+                    [=, &vm] (const Vector<Location>& locations) -> RefPtr<LazySlowPath::Generator> {
+                        return createLazyCallGenerator(vm,
+                            operationObjectKeysObject, locations[0].directGPR(), locations[1].directGPR());
+                    },
+                    object);
+                ValueFromBlock slowResult = m_out.anchor(slowResultValue);
+                m_out.jump(continuation);
+
+                m_out.appendTo(continuation, lastNext);
+                setJSValue(m_out.phi(pointerType(), fastResult, slowButArrayBufferResult, slowResult));
+                break;
+            }
+            setJSValue(vmCall(Int64, m_out.operation(operationObjectKeysObject), m_callFrame, lowObject(m_node->child1())));
+            break;
+        }
+        case UntypedUse:
+            setJSValue(vmCall(Int64, m_out.operation(operationObjectKeys), m_callFrame, lowJSValue(m_node->child1())));
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            break;
+        }
+    }
+
     void compileObjectCreate()
     {
         switch (m_node->child1().useKind()) {
@@ -5523,7 +5622,17 @@ private:
         m_out.appendTo(continuation, lastNext);
         setJSValue(m_out.phi(pointerType(), fastResult, slowResult));
     }
-    
+
+    void compileNewSymbol()
+    {
+        if (!m_node->child1()) {
+            setJSValue(vmCall(pointerType(), m_out.operation(operationNewSymbol), m_callFrame));
+            return;
+        }
+        ASSERT(m_node->child1().useKind() == KnownStringUse);
+        setJSValue(vmCall(pointerType(), m_out.operation(operationNewSymbolWithDescription), m_callFrame, lowString(m_node->child1())));
+    }
+
     void compileNewArray()
     {
         // First speculate appropriately on all of the children. Do this unconditionally up here
@@ -13578,7 +13687,7 @@ private:
             
             // Implements the following control flow structure:
             // if (value is cell) {
-            //     if (value is string)
+            //     if (value is string or value is BigInt)
             //         result = !!value->length
             //     else {
             //         do evil things for masquerades-as-undefined
@@ -13593,8 +13702,9 @@ private:
             // }
             
             LBasicBlock cellCase = m_out.newBlock();
-            LBasicBlock stringCase = m_out.newBlock();
             LBasicBlock notStringCase = m_out.newBlock();
+            LBasicBlock stringOrBigIntCase = m_out.newBlock();
+            LBasicBlock notStringOrBigIntCase = m_out.newBlock();
             LBasicBlock notCellCase = m_out.newBlock();
             LBasicBlock int32Case = m_out.newBlock();
             LBasicBlock notInt32Case = m_out.newBlock();
@@ -13606,18 +13716,23 @@ private:
             
             m_out.branch(isCell(value, provenType(edge)), unsure(cellCase), unsure(notCellCase));
             
-            LBasicBlock lastNext = m_out.appendTo(cellCase, stringCase);
+            LBasicBlock lastNext = m_out.appendTo(cellCase, notStringCase);
             m_out.branch(
                 isString(value, provenType(edge) & SpecCell),
-                unsure(stringCase), unsure(notStringCase));
+                unsure(stringOrBigIntCase), unsure(notStringCase));
             
-            m_out.appendTo(stringCase, notStringCase);
-            LValue nonEmptyString = m_out.notZero32(
-                m_out.load32NonNegative(value, m_heaps.JSString_length));
-            results.append(m_out.anchor(nonEmptyString));
+            m_out.appendTo(notStringCase, stringOrBigIntCase);
+            m_out.branch(
+                isBigInt(value, provenType(edge) & (SpecCell - SpecString)),
+                unsure(stringOrBigIntCase), unsure(notStringOrBigIntCase));
+
+            m_out.appendTo(stringOrBigIntCase, notStringOrBigIntCase);
+            LValue nonZeroCell = m_out.notZero32(
+                m_out.load32NonNegative(value, m_heaps.JSBigIntOrString_length));
+            results.append(m_out.anchor(nonZeroCell));
             m_out.jump(continuation);
             
-            m_out.appendTo(notStringCase, notCellCase);
+            m_out.appendTo(notStringOrBigIntCase, notCellCase);
             LValue isTruthyObject;
             if (masqueradesAsUndefinedWatchpointIsStillValid())
                 isTruthyObject = m_out.booleanTrue;
@@ -14199,6 +14314,8 @@ private:
         //         }
         //     } else if (is string) {
         //         return string
+        //     } else if (is bigint) {
+        //         return bigint
         //     } else {
         //         return symbol
         //     }
@@ -14211,6 +14328,10 @@ private:
         // } else {
         //     return undefined
         // }
+        //
+        // FIXME: typeof Symbol should be more frequently seen than BigInt.
+        // We should change the order of type detection based on this frequency.
+        // https://bugs.webkit.org/show_bug.cgi?id=192650
         
         LBasicBlock cellCase = m_out.newBlock();
         LBasicBlock objectCase = m_out.newBlock();
@@ -14221,6 +14342,8 @@ private:
         LBasicBlock unreachable = m_out.newBlock();
         LBasicBlock notObjectCase = m_out.newBlock();
         LBasicBlock stringCase = m_out.newBlock();
+        LBasicBlock notStringCase = m_out.newBlock();
+        LBasicBlock bigIntCase = m_out.newBlock();
         LBasicBlock symbolCase = m_out.newBlock();
         LBasicBlock notCellCase = m_out.newBlock();
         LBasicBlock numberCase = m_out.newBlock();
@@ -14270,10 +14393,18 @@ private:
         m_out.appendTo(notObjectCase, stringCase);
         m_out.branch(
             isString(value, provenType(child) & (SpecCell - SpecObject)),
-            unsure(stringCase), unsure(symbolCase));
+            unsure(stringCase), unsure(notStringCase));
         
-        m_out.appendTo(stringCase, symbolCase);
+        m_out.appendTo(stringCase, notStringCase);
         functor(TypeofType::String);
+
+        m_out.appendTo(notStringCase, bigIntCase);
+        m_out.branch(
+            isBigInt(value, provenType(child) & (SpecCell - SpecObject - SpecString)),
+            unsure(bigIntCase), unsure(symbolCase));
+
+        m_out.appendTo(bigIntCase, symbolCase);
+        functor(TypeofType::BigInt);
         
         m_out.appendTo(symbolCase, notCellCase);
         functor(TypeofType::Symbol);
@@ -15607,6 +15738,15 @@ private:
         if (LValue proven = isProvenValue(type & SpecCell, ~SpecBigInt))
             return proven;
         return m_out.notEqual(
+            m_out.load32(cell, m_heaps.JSCell_structureID),
+            m_out.constInt32(vm().bigIntStructure->id()));
+    }
+
+    LValue isBigInt(LValue cell, SpeculatedType type = SpecFullTop)
+    {
+        if (LValue proven = isProvenValue(type & SpecCell, SpecBigInt))
+            return proven;
+        return m_out.equal(
             m_out.load32(cell, m_heaps.JSCell_structureID),
             m_out.constInt32(vm().bigIntStructure->id()));
     }

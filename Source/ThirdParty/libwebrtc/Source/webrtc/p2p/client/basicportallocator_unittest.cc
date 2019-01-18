@@ -38,7 +38,6 @@
 
 using rtc::IPAddress;
 using rtc::SocketAddress;
-using rtc::Thread;
 
 #define MAYBE_SKIP_IPV4                        \
   if (!rtc::HasIPv4Enabled()) {                \
@@ -147,15 +146,15 @@ class BasicPortAllocatorTestBase : public testing::Test,
         // must be called.
         nat_factory_(vss_.get(), kNatUdpAddr, kNatTcpAddr),
         nat_socket_factory_(new rtc::BasicPacketSocketFactory(&nat_factory_)),
-        stun_server_(TestStunServer::Create(Thread::Current(), kStunAddr)),
-        relay_server_(Thread::Current(),
+        stun_server_(TestStunServer::Create(rtc::Thread::Current(), kStunAddr)),
+        relay_server_(rtc::Thread::Current(),
                       kRelayUdpIntAddr,
                       kRelayUdpExtAddr,
                       kRelayTcpIntAddr,
                       kRelayTcpExtAddr,
                       kRelaySslTcpIntAddr,
                       kRelaySslTcpExtAddr),
-        turn_server_(Thread::Current(), kTurnUdpIntAddr, kTurnUdpExtAddr),
+        turn_server_(rtc::Thread::Current(), kTurnUdpIntAddr, kTurnUdpExtAddr),
         candidate_allocation_done_(false) {
     ServerAddresses stun_servers;
     stun_servers.insert(kStunAddr);
@@ -2258,7 +2257,7 @@ TEST_F(BasicPortAllocatorTest, HostCandidateAddressIsReplacedByHostname) {
   AddTurnServers(kTurnUdpIntIPv6Addr, kTurnTcpIntIPv6Addr);
 
   ASSERT_EQ(&network_manager_, allocator().network_manager());
-  network_manager_.CreateMDnsResponder();
+  network_manager_.CreateMdnsResponder();
   AddInterface(kClientAddr);
   ASSERT_TRUE(CreateSession(ICE_CANDIDATE_COMPONENT_RTP));
   session_->StartGettingPorts();

@@ -782,11 +782,11 @@ public:
     Element* cssTarget() const { return m_cssTarget; }
     static ptrdiff_t cssTargetMemoryOffset() { return OBJECT_OFFSETOF(Document, m_cssTarget); }
 
-    WEBCORE_EXPORT void scheduleForcedStyleRecalc();
+    WEBCORE_EXPORT void scheduleFullStyleRebuild();
     void scheduleStyleRecalc();
     void unscheduleStyleRecalc();
     bool hasPendingStyleRecalc() const;
-    bool hasPendingForcedStyleRecalc() const;
+    bool hasPendingFullStyleRebuild() const;
 
     void registerNodeListForInvalidation(LiveNodeList&);
     void unregisterNodeListForInvalidation(LiveNodeList&);
@@ -1522,8 +1522,8 @@ public:
 
 #if ENABLE(CSS_PAINTING_API)
     Worklet& ensurePaintWorklet();
-    PaintWorkletGlobalScope* paintWorkletGlobalScope() { return m_paintWorkletGlobalScope.get(); }
-    void setPaintWorkletGlobalScope(Ref<PaintWorkletGlobalScope>&&);
+    PaintWorkletGlobalScope* paintWorkletGlobalScopeForName(const String& name);
+    void setPaintWorkletGlobalScopeForName(const String& name, Ref<PaintWorkletGlobalScope>&&);
 #endif
 
     void setAsRunningUserScripts() { m_isRunningUserScripts = true; }
@@ -1993,7 +1993,7 @@ private:
     bool m_visuallyOrdered { false };
     bool m_bParsing { false }; // FIXME: rename
 
-    bool m_pendingStyleRecalcShouldForce { false };
+    bool m_needsFullStyleRebuild { false };
     bool m_inStyleRecalc { false };
     bool m_closeAfterStyleRecalc { false };
     bool m_inRenderTreeUpdate { false };
@@ -2072,7 +2072,7 @@ private:
 
 #if ENABLE(CSS_PAINTING_API)
     RefPtr<Worklet> m_paintWorklet;
-    RefPtr<PaintWorkletGlobalScope> m_paintWorkletGlobalScope;
+    HashMap<String, Ref<PaintWorkletGlobalScope>> m_paintWorkletGlobalScopes;
 #endif
 
     bool m_isRunningUserScripts { false };

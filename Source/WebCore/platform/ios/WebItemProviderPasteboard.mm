@@ -66,22 +66,31 @@ static BOOL typeConformsToTypes(NSString *type, NSArray *conformsToTypes)
 
 - (BOOL)web_containsFileURLAndFileUploadContent
 {
-    BOOL containsFileURL = NO;
-    BOOL containsContentForFileUpload = NO;
     for (NSString *identifier in self.registeredTypeIdentifiers) {
-        if (UTTypeConformsTo((__bridge CFStringRef)identifier, kUTTypeFileURL)) {
-            containsFileURL = YES;
-            continue;
-        }
+        if (UTTypeConformsTo((__bridge CFStringRef)identifier, kUTTypeFileURL))
+            return self.web_fileUploadContentTypes.count;
+    }
+    return NO;
+}
 
+- (NSArray<NSString *> *)web_fileUploadContentTypes
+{
+    auto types = adoptNS([NSMutableArray new]);
+    for (NSString *identifier in self.registeredTypeIdentifiers) {
         if (UTTypeConformsTo((__bridge CFStringRef)identifier, kUTTypeURL))
             continue;
 
-        containsContentForFileUpload |= typeConformsToTypes(identifier, Pasteboard::supportedFileUploadPasteboardTypes());
-        if (containsContentForFileUpload && containsFileURL)
-            return YES;
+        if ([identifier isEqualToString:@"com.apple.mapkit.map-item"]) {
+            // This type conforms to "public.content", yet the corresponding data is only a serialization of MKMapItem and isn't suitable for file uploads.
+            // Ignore over this type representation for the purposes of file uploads, in favor of "public.vcard" data.
+            continue;
+        }
+
+        if (typeConformsToTypes(identifier, Pasteboard::supportedFileUploadPasteboardTypes()))
+            [types addObject:identifier];
     }
-    return NO;
+
+    return types.autorelease();
 }
 
 @end
@@ -627,35 +636,27 @@ static Class classForTypeIdentifier(NSString *typeIdentifier, NSString *&outType
     return _changeCount;
 }
 
-- (NSURL *)preferredFileUploadURLAtIndex:(NSUInteger)index fileType:(NSString **)outFileType
+- (NSArray<NSURL *> *)fileUploadURLsAtIndex:(NSUInteger)index fileTypes:(NSArray<NSString *> **)outFileTypes
 {
-    if (outFileType)
-        *outFileType = nil;
+    auto fileTypes = adoptNS([NSMutableArray new]);
+    auto fileURLs = adoptNS([NSMutableArray new]);
 
     if (index >= _loadResults.size())
-        return nil;
+        return @[ ];
 
     auto result = _loadResults[index];
     if (![result canBeRepresentedAsFileUpload])
-        return nil;
+        return @[ ];
 
-    NSItemProvider *itemProvider = [result itemProvider];
-    for (NSString *registeredTypeIdentifier in itemProvider.registeredTypeIdentifiers) {
-        // Search for the highest fidelity non-private type identifier we loaded from the item provider.
-        if (!UTTypeIsDeclared((__bridge CFStringRef)registeredTypeIdentifier) && !UTTypeIsDynamic((__bridge CFStringRef)registeredTypeIdentifier))
-            continue;
-
-        for (NSString *loadedTypeIdentifier in [result loadedTypeIdentifiers]) {
-            if (!UTTypeConformsTo((__bridge CFStringRef)registeredTypeIdentifier, (__bridge CFStringRef)loadedTypeIdentifier))
-                continue;
-
-            if (outFileType)
-                *outFileType = loadedTypeIdentifier;
-            return [result fileURLForType:loadedTypeIdentifier];
+    for (NSString *contentType in [result itemProvider].web_fileUploadContentTypes) {
+        if (NSURL *url = [result fileURLForType:contentType]) {
+            [fileTypes addObject:contentType];
+            [fileURLs addObject:url];
         }
     }
 
-    return nil;
+    *outFileTypes = fileTypes.autorelease();
+    return fileURLs.autorelease();
 }
 
 - (NSArray<NSURL *> *)allDroppedFileURLs
@@ -670,20 +671,21 @@ static Class classForTypeIdentifier(NSString *typeIdentifier, NSString *&outType
 
 - (NSInteger)numberOfFiles
 {
-    NSArray *supportedFileTypes = Pasteboard::supportedFileUploadPasteboardTypes();
     NSInteger numberOfFiles = 0;
     for (NSItemProvider *itemProvider in _itemProviders.get()) {
 #if !PLATFORM(IOSMAC)
+        // First, check if the source has explicitly indicated that this item should or should not be treated as an attachment.
         if (itemProvider.preferredPresentationStyle == UIPreferredPresentationStyleInline)
             continue;
-#endif
 
-        for (NSString *identifier in itemProvider.registeredTypeIdentifiers) {
-            if (!typeConformsToTypes(identifier, supportedFileTypes))
-                continue;
+        if (itemProvider.preferredPresentationStyle == UIPreferredPresentationStyleAttachment) {
             ++numberOfFiles;
-            break;
+            continue;
         }
+#endif
+        // Otherwise, fall back to examining the item's registered type identifiers.
+        if (itemProvider.web_fileUploadContentTypes.count)
+            ++numberOfFiles;
     }
     return numberOfFiles;
 }

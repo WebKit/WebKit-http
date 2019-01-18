@@ -55,12 +55,6 @@ FLATPAK_REQ = [
 scriptdir = os.path.abspath(os.path.dirname(__file__))
 _log = logging.getLogger(__name__)
 
-os.environ["FLATPAK_USER_DIR"] = os.environ.get("WEBKIT_FLATPAK_USER_DIR", os.path.realpath(os.path.join(scriptdir, "../../WebKitBuild", "UserFlatpak")))
-try:
-    os.makedirs(os.environ["FLATPAK_USER_DIR"])
-except OSError as e:
-    pass
-
 
 class Colors:
     HEADER = "\033[95m"
@@ -576,6 +570,12 @@ class WebkitFlatpak:
         self.icc_version = None
 
     def clean_args(self):
+        os.environ["FLATPAK_USER_DIR"] = os.environ.get("WEBKIT_FLATPAK_USER_DIR", os.path.realpath(os.path.join(scriptdir, "../../WebKitBuild", "UserFlatpak")))
+        try:
+            os.makedirs(os.environ["FLATPAK_USER_DIR"])
+        except OSError as e:
+            pass
+
         configure_logging(logging.DEBUG if self.verbose else logging.INFO)
         _log.debug("Using flatpak user dir: %s" % os.environ["FLATPAK_USER_DIR"])
 
@@ -755,11 +755,11 @@ class WebkitFlatpak:
         return 0
 
     def run(self):
-        if not self.clean_args():
-            return 1
-
         if self.check_available:
             return 0
+
+        if not self.clean_args():
+            return 1
 
         if self.clean:
             if os.path.exists(self.flatpak_build_path):

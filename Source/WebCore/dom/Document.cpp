@@ -1780,9 +1780,9 @@ Ref<TreeWalker> Document::createTreeWalker(Node& root, unsigned long whatToShow,
     return TreeWalker::create(root, whatToShow, WTFMove(filter));
 }
 
-void Document::scheduleForcedStyleRecalc()
+void Document::scheduleFullStyleRebuild()
 {
-    m_pendingStyleRecalcShouldForce = true;
+    m_needsFullStyleRebuild = true;
     scheduleStyleRecalc();
 }
 
@@ -1793,19 +1793,19 @@ void Document::scheduleStyleRecalc()
     if (m_styleRecalcTimer.isActive() || pageCacheState() != NotInPageCache)
         return;
 
-    ASSERT(childNeedsStyleRecalc() || m_pendingStyleRecalcShouldForce);
+    ASSERT(childNeedsStyleRecalc() || m_needsFullStyleRebuild);
 
 #if PLATFORM(IOS_FAMILY)
-    if (WKIsObservingStyleRecalcScheduling())
+    if (WKIsObservingStyleRecalcScheduling()) {
+        LOG_WITH_STREAM(ContentObservation, stream << "Document(" << this << ")::scheduleStyleRecalc: register this style recalc schedule and observe when it fires.");
         WKSetObservedContentChange(WKContentIndeterminateChange);
+    }
 #endif
 
     // FIXME: Why on earth is this here? This is clearly misplaced.
     invalidateAccessKeyMap();
 
     auto shouldThrottleStyleRecalc = [&] {
-        if (m_pendingStyleRecalcShouldForce)
-            return false;
         if (!view() || !view()->isVisuallyNonEmpty())
             return false;
         if (!page() || !page()->chrome().client().layerFlushThrottlingIsActive())
@@ -1826,17 +1826,17 @@ void Document::unscheduleStyleRecalc()
     ASSERT(!childNeedsStyleRecalc());
 
     m_styleRecalcTimer.stop();
-    m_pendingStyleRecalcShouldForce = false;
+    m_needsFullStyleRebuild = false;
 }
 
 bool Document::hasPendingStyleRecalc() const
 {
-    return m_styleRecalcTimer.isActive() && !m_inStyleRecalc;
+    return needsStyleRecalc() && !m_inStyleRecalc;
 }
 
-bool Document::hasPendingForcedStyleRecalc() const
+bool Document::hasPendingFullStyleRebuild() const
 {
-    return m_styleRecalcTimer.isActive() && m_pendingStyleRecalcShouldForce;
+    return hasPendingStyleRecalc() && m_needsFullStyleRebuild;
 }
 
 void Document::resolveStyle(ResolveStyleType type)
@@ -1892,7 +1892,7 @@ void Document::resolveStyle(ResolveStyleType type)
 
         m_inStyleRecalc = true;
 
-        if (m_pendingStyleRecalcShouldForce)
+        if (m_needsFullStyleRebuild)
             type = ResolveStyleType::Rebuild;
 
         if (type == ResolveStyleType::Rebuild) {
@@ -1992,7 +1992,7 @@ bool Document::needsStyleRecalc() const
     if (pageCacheState() != NotInPageCache)
         return false;
 
-    if (m_pendingStyleRecalcShouldForce)
+    if (m_needsFullStyleRebuild)
         return true;
 
     if (childNeedsStyleRecalc())
@@ -2037,6 +2037,7 @@ bool Document::updateStyleIfNeeded()
 #if PLATFORM(IOS_FAMILY)
     auto observingContentChange = WKShouldObserveNextStyleRecalc();
     if (observingContentChange) {
+        LOG_WITH_STREAM(ContentObservation, stream << "Document(" << this << ")::scheduleStyleRecalc: start observing content change.");
         WKSetShouldObserveNextStyleRecalc(false);
         WKStartObservingContentChanges();
     }
@@ -2048,12 +2049,16 @@ bool Document::updateStyleIfNeeded()
 
 #if PLATFORM(IOS_FAMILY)
     if (observingContentChange) {
+        LOG_WITH_STREAM(ContentObservation, stream << "Document(" << this << ")::scheduleStyleRecalc: stop observing content change.");
         WKStopObservingContentChanges();
 
         auto inDeterminedState = WKObservedContentChange() == WKContentVisibilityChange || !WebThreadCountOfObservedDOMTimers();  
         if (inDeterminedState) {
+            LOG_WITH_STREAM(ContentObservation, stream << "Document(" << this << ")::scheduleStyleRecalc: notify the pending synthetic click handler.");
             if (auto* page = this->page())
                 page->chrome().client().observedContentChange(*frame());
+        } else {
+            LOG_WITH_STREAM(ContentObservation, stream << "Document(" << this << ")::scheduleStyleRecalc: can't decided it yet.");
         }
     }
 #endif
@@ -2094,7 +2099,7 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
         m_ignorePendingStylesheets = true;
         // FIXME: This should just invalidate elements with missing styles.
         if (m_hasNodesWithMissingStyle)
-            scheduleForcedStyleRecalc();
+            scheduleFullStyleRebuild();
     }
 
     updateLayout();
@@ -2295,7 +2300,7 @@ void Document::invalidateMatchedPropertiesCacheAndForceStyleRecalc()
         resolver->invalidateMatchedPropertiesCache();
     if (pageCacheState() != NotInPageCache || !renderView())
         return;
-    scheduleForcedStyleRecalc();
+    scheduleFullStyleRebuild();
 }
 
 void Document::didClearStyleResolver()
@@ -2557,10 +2562,9 @@ void Document::prepareForDestruction()
 #endif
 
 #if ENABLE(CSS_PAINTING_API)
-    if (m_paintWorkletGlobalScope) {
-        m_paintWorkletGlobalScope->prepareForDestruction();
-        m_paintWorkletGlobalScope = nullptr;
-    }
+    for (auto& scope : m_paintWorkletGlobalScopes.values())
+        scope->prepareForDestruction();
+    m_paintWorkletGlobalScopes.clear();
 #endif
 
     m_hasPreparedForDestruction = true;
@@ -2627,6 +2631,7 @@ void Document::platformSuspendOrStopActiveDOMObjects()
 {
 #if PLATFORM(IOS_FAMILY)
     if (WebThreadCountOfObservedDOMTimers() > 0) {
+        LOG_WITH_STREAM(ContentObservation, stream << "Document::platformSuspendOrStopActiveDOMObjects: remove registered timers.");
         if (auto* frame = this->frame()) {
             if (auto* page = frame->page())
                 page->chrome().client().clearContentChangeObservers(*frame);
@@ -5458,7 +5463,7 @@ void Document::setDesignMode(InheritedBool value)
 {
     m_designMode = value;
     for (Frame* frame = m_frame; frame && frame->document(); frame = frame->tree().traverseNext(m_frame))
-        frame->document()->scheduleForcedStyleRecalc();
+        frame->document()->scheduleFullStyleRebuild();
 }
 
 String Document::designMode() const
@@ -6581,7 +6586,7 @@ void Document::webkitDidExitFullScreenForElement(Element*)
     unwrapFullScreenRenderer(m_fullScreenRenderer.get(), m_fullScreenElement.get());
 
     m_fullScreenElement = nullptr;
-    scheduleForcedStyleRecalc();
+    scheduleFullStyleRebuild();
 
     // When webkitCancelFullScreen is called, we call webkitExitFullScreen on the topDocument(). That
     // means that the events will be queued there. So if we have no events here, start the timer on
@@ -6684,7 +6689,7 @@ void Document::setAnimatingFullScreen(bool flag)
 
     if (m_fullScreenElement && m_fullScreenElement->isDescendantOf(*this)) {
         m_fullScreenElement->invalidateStyleForSubtree();
-        scheduleForcedStyleRecalc();
+        scheduleFullStyleRebuild();
     }
 }
 
@@ -6701,7 +6706,7 @@ void Document::setFullscreenControlsHidden(bool flag)
 
     if (m_fullScreenElement && m_fullScreenElement->isDescendantOf(*this)) {
         m_fullScreenElement->invalidateStyleForSubtree();
-        scheduleForcedStyleRecalc();
+        scheduleFullStyleRebuild();
     }
 }
 
@@ -7810,7 +7815,7 @@ void Document::updateIntersectionObservations()
 
     m_needsForcedIntersectionObservationUpdate = false;
 
-    for (auto observer : m_intersectionObservers) {
+    for (const auto& observer : m_intersectionObservers) {
         bool needNotify = false;
         DOMHighResTimeStamp timestamp;
         if (!observer->createTimestamp(timestamp))
@@ -7899,7 +7904,7 @@ void Document::scheduleForcedIntersectionObservationUpdate()
 
 void Document::notifyIntersectionObserversTimerFired()
 {
-    for (auto observer : m_intersectionObserversWithPendingNotifications) {
+    for (const auto& observer : m_intersectionObserversWithPendingNotifications) {
         if (observer)
             observer->notify();
     }
@@ -8511,9 +8516,15 @@ Worklet& Document::ensurePaintWorklet()
     return *m_paintWorklet;
 }
 
-void Document::setPaintWorkletGlobalScope(Ref<PaintWorkletGlobalScope>&& scope)
+PaintWorkletGlobalScope* Document::paintWorkletGlobalScopeForName(const String& name)
 {
-    m_paintWorkletGlobalScope = WTFMove(scope);
+    return m_paintWorkletGlobalScopes.get(name);
+}
+
+void Document::setPaintWorkletGlobalScopeForName(const String& name, Ref<PaintWorkletGlobalScope>&& scope)
+{
+    auto addResult = m_paintWorkletGlobalScopes.add(name, WTFMove(scope));
+    ASSERT_UNUSED(addResult, addResult);
 }
 #endif
 

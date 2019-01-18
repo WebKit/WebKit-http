@@ -148,6 +148,9 @@ bool ViewGestureController::canSwipeInDirection(SwipeDirection direction) const
 void ViewGestureController::didStartProvisionalLoadForMainFrame()
 {
     m_snapshotRemovalTracker.resume();
+
+    if (auto provisionalLoadCallback = WTFMove(m_provisionalLoadCallback))
+        provisionalLoadCallback();
 }
 
 void ViewGestureController::didFirstVisuallyNonEmptyLayoutForMainFrame()
@@ -268,10 +271,8 @@ String ViewGestureController::SnapshotRemovalTracker::eventsDescription(Events e
 
 void ViewGestureController::SnapshotRemovalTracker::log(const String& log) const
 {
-#if !LOG_DISABLED
     auto sinceStart = MonotonicTime::now() - m_startTime;
-#endif
-    LOG(ViewGestures, "Swipe Snapshot Removal (%0.2f ms) - %s", sinceStart.milliseconds(), log.utf8().data());
+    RELEASE_LOG(ViewGestures, "Swipe Snapshot Removal (%0.2f ms) - %{public}s", sinceStart.milliseconds(), log.utf8().data());
 }
     
 void ViewGestureController::SnapshotRemovalTracker::resume()

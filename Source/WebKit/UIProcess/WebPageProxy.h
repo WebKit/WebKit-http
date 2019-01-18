@@ -178,6 +178,7 @@ enum class HasInsecureContent : bool;
 enum class NotificationDirection : uint8_t;
 enum class ShouldSample : bool;
 enum class ShouldTreatAsContinuingLoad : bool;
+enum class WritingDirection : uint8_t;
 
 struct ApplicationManifest;
 struct BackForwardItemIdentifier;
@@ -360,6 +361,8 @@ public:
 
     WebsiteDataStore& websiteDataStore() { return m_websiteDataStore; }
     void changeWebsiteDataStore(WebsiteDataStore&);
+
+    void addPreviouslyVisitedPath(const String&);
 
 #if ENABLE(DATA_DETECTION)
     NSArray *dataDetectionResults() { return m_dataDetectionResults.get(); }
@@ -562,6 +565,8 @@ public:
     void increaseListLevel();
     void decreaseListLevel();
     void changeListType();
+
+    void setBaseWritingDirection(WebCore::WritingDirection);
 
     std::optional<WebCore::FontAttributes> cachedFontAttributesAtSelectionStart() const { return m_cachedFontAttributesAtSelectionStart; }
 
@@ -970,7 +975,7 @@ public:
     void performDragOperation(WebCore::DragData&, const String& dragStorageName, SandboxExtension::Handle&&, SandboxExtension::HandleArray&&);
     void didPerformDragOperation(bool handled);
 
-    void didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const WebCore::IntRect& insertionRect);
+    void didPerformDragControllerAction(uint64_t dragOperation, WebCore::DragHandlingMethod, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const WebCore::IntRect& insertionRect);
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
     void didStartDrag();
     void dragCancelled();
@@ -1026,6 +1031,7 @@ public:
 
 #if ENABLE(DRAG_SUPPORT)
     WebCore::DragOperation currentDragOperation() const { return m_currentDragOperation; }
+    WebCore::DragHandlingMethod currentDragHandlingMethod() const { return m_currentDragHandlingMethod; }
     bool currentDragIsOverFileInput() const { return m_currentDragIsOverFileInput; }
     unsigned currentDragNumberOfFilesToBeAccepted() const { return m_currentDragNumberOfFilesToBeAccepted; }
     WebCore::IntRect currentDragCaretRect() const { return m_currentDragCaretRect; }
@@ -1386,6 +1392,8 @@ public:
 
     void setDefersLoadingForTesting(bool);
 
+    bool isPageOpenedByDOMShowingInitialEmptyDocument() const;
+
     WebCore::IntRect syncRootViewToScreen(const WebCore::IntRect& viewRect);
 
 #if ENABLE(DATALIST_ELEMENT)
@@ -1411,7 +1419,7 @@ private:
     void updateThrottleState();
     void updateHiddenPageThrottlingAutoIncreases();
 
-    bool suspendCurrentPageIfPossible(API::Navigation&, std::optional<uint64_t> mainFrameID);
+    bool suspendCurrentPageIfPossible(API::Navigation&, std::optional<uint64_t> mainFrameID, ProcessSwapRequestedByClient);
 
     enum class ResetStateReason {
         PageInvalidated,
@@ -1559,7 +1567,9 @@ private:
     void setCanShortCircuitHorizontalWheelEvents(bool canShortCircuitHorizontalWheelEvents) { m_canShortCircuitHorizontalWheelEvents = canShortCircuitHorizontalWheelEvents; }
 
     void reattachToWebProcess();
-    void swapToWebProcess(Ref<WebProcessProxy>&&, API::Navigation&, std::optional<uint64_t> mainFrameIDInPreviousProcess, CompletionHandler<void()>&&);
+    void swapToWebProcess(Ref<WebProcessProxy>&&, std::unique_ptr<SuspendedPageProxy>&&, ShouldDelayAttachingDrawingArea);
+    void didFailToSuspendAfterProcessSwap();
+    void didSuspendAfterProcessSwap();
 
     void finishAttachingToWebProcess(ShouldDelayAttachingDrawingArea = ShouldDelayAttachingDrawingArea::No);
 
@@ -1765,6 +1775,7 @@ private:
 
     void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, const UserData&);
     void stopAssistingNode();
+    void didReceiveEditorStateUpdateAfterFocus();
 
     void showInspectorHighlight(const WebCore::Highlight&);
     void hideInspectorHighlight();
@@ -1843,6 +1854,10 @@ private:
     void stopURLSchemeTask(uint64_t handlerIdentifier, uint64_t taskIdentifier);
     void loadSynchronousURLSchemeTask(URLSchemeTaskParameters&&, Messages::WebPageProxy::LoadSynchronousURLSchemeTask::DelayedReply&&);
 
+    bool checkURLReceivedFromCurrentOrPreviousWebProcess(const String&);
+    bool checkURLReceivedFromCurrentOrPreviousWebProcess(const URL&);
+    void willAcquireUniversalFileReadSandboxExtension();
+
     void handleAutoFillButtonClick(const UserData&);
 
     void didResignInputElementStrongPasswordAppearance(const UserData&);
@@ -1878,7 +1893,7 @@ private:
 
     void reportPageLoadResult(const WebCore::ResourceError& = { });
 
-    void continueNavigationInNewProcess(API::Navigation&, Ref<WebProcessProxy>&&);
+    void continueNavigationInNewProcess(API::Navigation&, std::unique_ptr<SuspendedPageProxy>&&, Ref<WebProcessProxy>&&, ProcessSwapRequestedByClient);
 
     void setNeedsFontAttributes(bool);
     void updateFontAttributesAfterEditorStateChange();
@@ -2147,6 +2162,7 @@ private:
     // Current drag destination details are delivered as an asynchronous response,
     // so we preserve them to be used when the next dragging delegate call is made.
     WebCore::DragOperation m_currentDragOperation { WebCore::DragOperationNone };
+    WebCore::DragHandlingMethod m_currentDragHandlingMethod { WebCore::DragHandlingMethod::None };
     bool m_currentDragIsOverFileInput { false };
     unsigned m_currentDragNumberOfFilesToBeAccepted { 0 };
     WebCore::IntRect m_currentDragCaretRect;
@@ -2252,6 +2268,7 @@ private:
 
 #if PLATFORM(IOS_FAMILY)
     std::unique_ptr<NodeAssistanceArguments> m_deferredNodeAssistanceArguments;
+    bool m_waitingForPostLayoutEditorStateUpdateAfterFocusingElement { false };
     bool m_forceAlwaysUserScalable { false };
     WebCore::FloatSize m_viewportConfigurationViewLayoutSize;
     double m_viewportConfigurationLayoutSizeScaleFactor { 1 };
@@ -2284,11 +2301,13 @@ private:
     std::optional<SpellDocumentTag> m_spellDocumentTag;
 
     std::optional<MonotonicTime> m_pageLoadStart;
+    HashSet<String> m_previouslyVisitedPaths;
 
     RunLoop::Timer<WebPageProxy> m_resetRecentCrashCountTimer;
     unsigned m_recentCrashCount { 0 };
 
     bool m_needsFontAttributes { false };
+    bool m_mayHaveUniversalFileReadSandboxExtension { false };
 
 #if HAVE(PENCILKIT)
     std::unique_ptr<EditableImageController> m_editableImageController;

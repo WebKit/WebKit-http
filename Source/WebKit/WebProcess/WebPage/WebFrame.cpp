@@ -255,17 +255,11 @@ void WebFrame::invalidatePolicyListener()
 
 void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action, uint64_t navigationID, DownloadID downloadID, std::optional<WebsitePoliciesData>&& websitePolicies)
 {
-    if (!m_coreFrame)
+    if (!m_coreFrame || !m_policyListenerID || listenerID != m_policyListenerID || !m_policyFunction) {
+        if (action == PolicyAction::Suspend)
+            page()->send(Messages::WebPageProxy::DidFailToSuspendAfterProcessSwap());
         return;
-
-    if (!m_policyListenerID)
-        return;
-
-    if (listenerID != m_policyListenerID)
-        return;
-
-    if (!m_policyFunction)
-        return;
+    }
 
     FramePolicyFunction function = WTFMove(m_policyFunction);
     bool forNavigationAction = m_policyFunctionForNavigationAction == ForNavigationAction::Yes;
@@ -281,7 +275,16 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action
             documentLoader->setNavigationID(navigationID);
     }
 
+    bool shouldSuspend = false;
+    if (action == PolicyAction::Suspend) {
+        shouldSuspend = true;
+        action = PolicyAction::Ignore;
+    }
+
     function(action);
+
+    if (shouldSuspend)
+        page()->suspendForProcessSwap();
 }
 
 void WebFrame::startDownload(const WebCore::ResourceRequest& request, const String& suggestedName)
@@ -802,11 +805,11 @@ void WebFrame::setTextDirection(const String& direction)
         return;
 
     if (direction == "auto")
-        m_coreFrame->editor().setBaseWritingDirection(NaturalWritingDirection);
+        m_coreFrame->editor().setBaseWritingDirection(WritingDirection::Natural);
     else if (direction == "ltr")
-        m_coreFrame->editor().setBaseWritingDirection(LeftToRightWritingDirection);
+        m_coreFrame->editor().setBaseWritingDirection(WritingDirection::LeftToRight);
     else if (direction == "rtl")
-        m_coreFrame->editor().setBaseWritingDirection(RightToLeftWritingDirection);
+        m_coreFrame->editor().setBaseWritingDirection(WritingDirection::RightToLeft);
 }
 
 void WebFrame::documentLoaderDetached(uint64_t navigationID)

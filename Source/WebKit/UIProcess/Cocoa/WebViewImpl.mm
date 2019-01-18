@@ -61,8 +61,10 @@
 #import "WKImmediateActionController.h"
 #import "WKPrintingView.h"
 #import "WKSafeBrowsingWarning.h"
+#import "WKShareSheet.h"
 #import "WKTextInputWindowController.h"
 #import "WKViewLayoutStrategy.h"
+#import "WKWebViewInternal.h"
 #import "WKWebViewPrivate.h"
 #import "WebBackForwardList.h"
 #import "WebEditCommandProxy.h"
@@ -1498,6 +1500,7 @@ void WebViewImpl::didRelaunchProcess()
         m_gestureController->connectToProcess();
 
     accessibilityRegisterUIProcessTokens();
+    windowDidChangeScreen(); // Make sure DisplayID is set.
 }
 
 void WebViewImpl::setDrawsBackground(bool drawsBackground)

@@ -228,6 +228,8 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+#include "MediaRecorder.h"
+#include "MediaRecorderPrivateMock.h"
 #include "MediaStream.h"
 #include "MockRealtimeMediaSourceCenter.h"
 #endif
@@ -1471,6 +1473,16 @@ void Internals::applyRotationForOutgoingVideoSources(RTCPeerConnection& connecti
 void Internals::setMockMediaCaptureDevicesEnabled(bool enabled)
 {
     WebCore::DeprecatedGlobalSettings::setMockCaptureDevicesEnabled(enabled);
+}
+
+static std::unique_ptr<MediaRecorderPrivate> createRecorderMockSource()
+{
+    return std::unique_ptr<MediaRecorderPrivateMock>(new MediaRecorderPrivateMock);
+}
+
+void Internals::setCustomPrivateRecorderCreator()
+{
+    WebCore::MediaRecorder::setCustomPrivateRecorderCreator(createRecorderMockSource);
 }
 
 #endif
@@ -4338,13 +4350,13 @@ void Internals::setBaseWritingDirection(BaseWritingDirection direction)
         if (auto* frame = document->frame()) {
             switch (direction) {
             case BaseWritingDirection::Ltr:
-                frame->editor().setBaseWritingDirection(LeftToRightWritingDirection);
+                frame->editor().setBaseWritingDirection(WritingDirection::LeftToRight);
                 break;
             case BaseWritingDirection::Rtl:
-                frame->editor().setBaseWritingDirection(RightToLeftWritingDirection);
+                frame->editor().setBaseWritingDirection(WritingDirection::RightToLeft);
                 break;
             case BaseWritingDirection::Natural:
-                frame->editor().setBaseWritingDirection(NaturalWritingDirection);
+                frame->editor().setBaseWritingDirection(WritingDirection::Natural);
                 break;
             }
         }
@@ -4379,6 +4391,28 @@ bool Internals::pageHasPointerLock() const
     return controller.element() && !controller.lockPending();
 }
 #endif
+
+void Internals::markContextAsInsecure()
+{
+    auto* document = contextDocument();
+    if (!document)
+        return;
+
+    document->securityOrigin().setIsPotentiallyTrustworthy(false);
+}
+
+void Internals::postTask(RefPtr<VoidCallback>&& callback)
+{
+    auto* document = contextDocument();
+    if (!document) {
+        callback->handleEvent();
+        return;
+    }
+
+    document->postTask([callback = WTFMove(callback)](ScriptExecutionContext&) {
+        callback->handleEvent();
+    });
+}
 
 Vector<String> Internals::accessKeyModifiers() const
 {
@@ -4531,27 +4565,6 @@ void Internals::videoSampleAvailable(MediaSample& sample)
     else
         m_nextTrackFramePromise->reject(imageData.exception().code());
     m_nextTrackFramePromise = std::nullopt;
-}
-
-ExceptionOr<void> Internals::setMediaDeviceState(const String& id, const String& property, bool value)
-{
-    auto* document = contextDocument();
-    if (!document)
-        return Exception { InvalidAccessError, "No context document"_s };
-
-    if (!equalLettersIgnoringASCIICase(property, "enabled"))
-        return Exception { InvalidAccessError, makeString("\"" + property, "\" is not a valid property for this method.") };
-
-    auto salt = document->deviceIDHashSalt();
-    CaptureDevice device = RealtimeMediaSourceCenter::singleton().captureDeviceWithUniqueID(id, salt);
-    if (!device)
-        return Exception { InvalidAccessError, makeString("device with ID \"" + id, "\" not found.") };
-
-    auto result = RealtimeMediaSourceCenter::singleton().setDeviceEnabled(device.persistentId(), value);
-    if (result.hasException())
-        return result.releaseException();
-
-    return { };
 }
 
 void Internals::delayMediaStreamTrackSamples(MediaStreamTrack& track, float delay)

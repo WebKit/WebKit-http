@@ -10,10 +10,14 @@
 
 #include "modules/rtp_rtcp/source/rtp_header_extensions.h"
 
+#include <string.h>
+#include <cmath>
+
 #include "modules/rtp_rtcp/include/rtp_cvo.h"
 #include "modules/rtp_rtcp/source/byte_io.h"
+// TODO(bug:9855) Move kNoSpatialIdx from vp9_globals.h to common_constants
+#include "modules/video_coding/codecs/interface/common_constants.h"
 #include "rtc_base/checks.h"
-#include "rtc_base/logging.h"
 
 namespace webrtc {
 // Absolute send time in RTP streams.
@@ -428,6 +432,135 @@ bool FrameMarkingExtension::Write(rtc::ArrayView<uint8_t> data,
     data[2] = frame_marking.tl0_pic_idx;
   }
   return true;
+}
+
+// HDR Metadata.
+//
+// RTP header extension to carry HDR metadata.
+// Float values are upscaled by a static factor and transmitted as integers.
+//
+//    0                   1                   2                   3
+//    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2
+//   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//   |       ID      |     length    |                 luminance_max   |
+//   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//   |               |                  luminance_min                  |
+//   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//   |              mastering_metadata.primary_r.x and .y              |
+//   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//   |              mastering_metadata.primary_g.x and .y              |
+//   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//   |              mastering_metadata.primary_b.x and .y              |
+//   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//   |                mastering_metadata.white.x and .y                |
+//   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//   |                     max_content_light_level                     |
+//   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+//   |                  max_frame_average_light_level                  |
+//   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+constexpr RTPExtensionType HdrMetadataExtension::kId;
+constexpr uint8_t HdrMetadataExtension::kValueSizeBytes;
+constexpr const char HdrMetadataExtension::kUri[];
+
+bool HdrMetadataExtension::Parse(rtc::ArrayView<const uint8_t> data,
+                                 HdrMetadata* hdr_metadata) {
+  RTC_DCHECK(hdr_metadata);
+  if (data.size() != kValueSizeBytes)
+    return false;
+
+  size_t offset = 0;
+  offset += ParseLuminance(data.data() + offset,
+                           &hdr_metadata->mastering_metadata.luminance_max,
+                           kLuminanceMaxDenominator);
+  offset += ParseLuminance(data.data() + offset,
+                           &hdr_metadata->mastering_metadata.luminance_min,
+                           kLuminanceMinDenominator);
+  offset += ParseChromaticity(data.data() + offset,
+                              &hdr_metadata->mastering_metadata.primary_r);
+  offset += ParseChromaticity(data.data() + offset,
+                              &hdr_metadata->mastering_metadata.primary_g);
+  offset += ParseChromaticity(data.data() + offset,
+                              &hdr_metadata->mastering_metadata.primary_b);
+  offset += ParseChromaticity(data.data() + offset,
+                              &hdr_metadata->mastering_metadata.white_point);
+  // TODO(kron): Do we need 32 bit here or is it enough with 16 bits?
+  // Also, what resolution is needed?
+  hdr_metadata->max_content_light_level =
+      ByteReader<uint32_t>::ReadBigEndian(data.data() + offset);
+  offset += 4;
+  hdr_metadata->max_frame_average_light_level =
+      ByteReader<uint32_t>::ReadBigEndian(data.data() + offset);
+  RTC_DCHECK_EQ(kValueSizeBytes, offset + 4);
+  return true;
+}
+
+bool HdrMetadataExtension::Write(rtc::ArrayView<uint8_t> data,
+                                 const HdrMetadata& hdr_metadata) {
+  RTC_DCHECK_EQ(data.size(), kValueSizeBytes);
+  size_t offset = 0;
+  offset += WriteLuminance(data.data() + offset,
+                           hdr_metadata.mastering_metadata.luminance_max,
+                           kLuminanceMaxDenominator);
+  offset += WriteLuminance(data.data() + offset,
+                           hdr_metadata.mastering_metadata.luminance_min,
+                           kLuminanceMinDenominator);
+  offset += WriteChromaticity(data.data() + offset,
+                              hdr_metadata.mastering_metadata.primary_r);
+  offset += WriteChromaticity(data.data() + offset,
+                              hdr_metadata.mastering_metadata.primary_g);
+  offset += WriteChromaticity(data.data() + offset,
+                              hdr_metadata.mastering_metadata.primary_b);
+  offset += WriteChromaticity(data.data() + offset,
+                              hdr_metadata.mastering_metadata.white_point);
+
+  // TODO(kron): Do we need 32 bit here or is it enough with 16 bits?
+  // Also, what resolution is needed?
+  ByteWriter<uint32_t>::WriteBigEndian(data.data() + offset,
+                                       hdr_metadata.max_content_light_level);
+  offset += 4;
+  ByteWriter<uint32_t>::WriteBigEndian(
+      data.data() + offset, hdr_metadata.max_frame_average_light_level);
+  RTC_DCHECK_EQ(kValueSizeBytes, offset + 4);
+  return true;
+}
+
+size_t HdrMetadataExtension::ParseChromaticity(
+    const uint8_t* data,
+    HdrMasteringMetadata::Chromaticity* p) {
+  uint16_t chromaticity_x_scaled = ByteReader<uint16_t>::ReadBigEndian(data);
+  uint16_t chromaticity_y_scaled =
+      ByteReader<uint16_t>::ReadBigEndian(data + 2);
+  p->x = static_cast<float>(chromaticity_x_scaled) / kChromaticityDenominator;
+  p->y = static_cast<float>(chromaticity_y_scaled) / kChromaticityDenominator;
+  return 4;  // Return number of bytes read.
+}
+
+size_t HdrMetadataExtension::ParseLuminance(const uint8_t* data,
+                                            float* f,
+                                            int denominator) {
+  uint32_t luminance_scaled = ByteReader<uint32_t, 3>::ReadBigEndian(data);
+  *f = static_cast<float>(luminance_scaled) / denominator;
+  return 3;  // Return number of bytes read.
+}
+
+size_t HdrMetadataExtension::WriteChromaticity(
+    uint8_t* data,
+    const HdrMasteringMetadata::Chromaticity& p) {
+  RTC_DCHECK_GE(p.x, 0.0f);
+  RTC_DCHECK_GE(p.y, 0.0f);
+  ByteWriter<uint16_t>::WriteBigEndian(
+      data, std::round(p.x * kChromaticityDenominator));
+  ByteWriter<uint16_t>::WriteBigEndian(
+      data + 2, std::round(p.y * kChromaticityDenominator));
+  return 4;  // Return number of bytes written.
+}
+
+size_t HdrMetadataExtension::WriteLuminance(uint8_t* data,
+                                            float f,
+                                            int denominator) {
+  RTC_DCHECK_GE(f, 0.0f);
+  ByteWriter<uint32_t, 3>::WriteBigEndian(data, std::round(f * denominator));
+  return 3;  // Return number of bytes written.
 }
 
 bool BaseRtpStringExtension::Parse(rtc::ArrayView<const uint8_t> data,

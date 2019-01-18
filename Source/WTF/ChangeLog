@@ -1,3 +1,208 @@
+2018-12-13  David Kilzer  <ddkilzer@apple.com>
+
+        clang-tidy: Fix unnecessary parameter copies in ParallelHelperPool.cpp
+        <https://webkit.org/b/192666>
+        <rdar://problem/46697952>
+
+        Reviewed by Alex Christensen.
+
+        * wtf/ParallelHelperPool.cpp:
+        (WTF::ParallelHelperClient::ParallelHelperClient): Use rvalue
+        reference and WTFMove().
+        (WTF::ParallelHelperClient::setTask): Ditto.
+        (WTF::ParallelHelperClient::runTaskInParallel): Ditto.
+        (WTF::ParallelHelperClient::runTask): Use const reference.
+        * wtf/ParallelHelperPool.h: Update declarations to match
+        implementations.
+
+2018-12-12  Alex Christensen  <achristensen@webkit.org>
+
+        Implement safe browsing in WebKit on WatchOS
+        https://bugs.webkit.org/show_bug.cgi?id=192641
+        <rdar://problem/46376188>
+
+        Reviewed by Geoff Garen.
+
+        * wtf/Platform.h:
+        WatchOS has safe browsing, too!
+
+2018-12-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][Clang] Fix compilation warnings of WTF
+        https://bugs.webkit.org/show_bug.cgi?id=192583
+
+        Reviewed by Alex Christensen.
+
+        clang-cl reports the following warnings.
+
+        > [92/206] Building CXX object Source\WTF\wtf\CMakeFiles\WTF.dir\StackBounds.cpp.obj
+        > ..\..\Source\WTF\wtf\StackBounds.cpp(163,48):  warning: missing field 'AllocationBase' initializer [-Wmissing-field-initializers]
+        >     MEMORY_BASIC_INFORMATION stackOrigin = { 0 };
+        >                                                ^
+        > 1 warning generated.
+        > [160/206] Building CXX object Source\WTF\wtf\CMakeFiles\WTF.dir\win\RunLoopWin.cpp.obj
+        > ..\..\Source\WTF\wtf\win\RunLoopWin.cpp(34,54):  warning: ISO C++11 does not allow conversion from string literal to 'const LPWSTR' (aka 'wchar_t *const') [-Wwritable-strings]
+        > static const LPWSTR kRunLoopMessageWindowClassName = L"RunLoopMessageWindow";
+        >                                                      ^
+        > ..\..\Source\WTF\wtf\win\RunLoopWin.cpp(86,32):  warning: missing field 'lpfnWndProc' initializer [-Wmissing-field-initializers]
+        >     WNDCLASS windowClass = { 0 };
+        >                                ^
+        > 2 warnings generated.
+        > [175/206] Building CXX object Source\WTF\wtf\CMakeFiles\WTF.dir\DateMath.cpp.obj
+        > ..\..\Source\WTF\wtf\DateMath.cpp(125,20):  warning: unused function 'getLocalTime' [-Wunused-function]
+        > static inline void getLocalTime(const time_t* localTime, struct tm* localTM)
+        >                    ^
+        > 1 warning generated.
+
+        * wtf/DateMath.cpp:
+        (WTF::getLocalTime): Defined only if used.
+        * wtf/StackBounds.cpp:
+        (WTF::StackBounds::currentThreadStackBoundsInternal): Initialize stackOrigin with '{ }'.
+        * wtf/win/RunLoopWin.cpp: Change the type of kRunLoopMessageWindowClassName to LPCWSTR.
+        (WTF::RunLoop::registerRunLoopMessageWindowClass): Initialize windowClass with '{ }'.
+
+2018-12-11  Andy Estes  <aestes@apple.com>
+
+        Introduce makeBlockPtr for lambdas
+        https://bugs.webkit.org/show_bug.cgi?id=192594
+
+        Reviewed by Alex Christensen.
+
+        BlockPtr<...>::fromCallable is cumbersome because it requires repeating the callable's
+        signature as a class template argument. This patch introduces an overload of makeBlockPtr
+        that deduces the correct BlockPtr instantiation from a lambda's operator() signature.
+
+        * wtf/BlockPtr.h:
+        (WTF::makeBlockPtr):
+
+        Adopted makeBlockPtr.
+
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        (WTF::WorkQueue::concurrentApply):
+
+2018-12-10  Don Olmstead  <don.olmstead@sony.com>
+
+        Move ENABLE_RESOURCE_LOAD_STATISTICS to FeatureDefines.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=192573
+
+        Reviewed by Simon Fraser.
+
+        Remove ENABLE_RESOURCE_LOAD_STATISTICS from Platform.h and instead rely
+        on it being set in FeatureDefines.xcconfig.
+
+        * wtf/Platform.h:
+
+2018-12-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Move ENABLE_SEC_ITEM_SHIM out of WebKit's config.h
+        https://bugs.webkit.org/show_bug.cgi?id=192428
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h:
+
+2018-12-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Move more macros out of WebKit's config.h
+        https://bugs.webkit.org/show_bug.cgi?id=192430
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h:
+
+2018-12-09  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, fix build failure on GCC 8.2, part 2
+
+        Add RefCountedArray::assign, and use it instead of operator= internally.
+        We should have operator=(const RefCountedArray&) since it will be automatically generated
+        if we do not have correct implementation here.
+
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::operator=):
+        (WTF::RefCountedArray::assign):
+
+2018-12-09  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, fix build failure on GCC 8.2
+
+        We remove operator=<PtrTraits> call since it is not necessary.
+        This is a workaround. It seems that GCC 8.2 fails to parse this specialization.
+
+        * wtf/RefCountedArray.h:
+
+2018-12-08  Darin Adler  <darin@apple.com>
+
+        Fix stray-semicolon warning seen with a new version of clang in Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=192534
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/Lock.h: Removed an unneeded semicolon.
+
+2018-12-08  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WTF] Debug build fails due conflicting abort() method
+        https://bugs.webkit.org/show_bug.cgi?id=192491
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Assertions.h: Use namespaced std::abort() insted of plain abort() to avoid clashes
+        inside classes which have an ::abort() method, but only when __cplusplus is defined to
+        allow inclusion of the header in plain C sources.
+
+2018-12-07  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add optional variants of SOFT_LINK_CLASS_FOR_SOURCE
+        https://bugs.webkit.org/show_bug.cgi?id=192498
+
+        Reviewed by Tim Horton.
+
+        Added SOFT_LINK_CLASS_FOR_SOURCE_OPTIONAL and SOFT_LINK_CLASS_FOR_SOURCE_OPTIONAL_WITH_EXPORT,
+        which behave like their non-optional variants but do not require their classes to exist.
+
+        * wtf/cocoa/SoftLinking.h:
+
+2018-12-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Move USE_NEW_THEME out of WebCore's config.h
+        https://bugs.webkit.org/show_bug.cgi?id=192426
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h:
+
+2018-12-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Move URLSoup back to WebCore after r238771
+        https://bugs.webkit.org/show_bug.cgi?id=192306
+
+        Reviewed by Michael Catanzaro.
+
+        In r238771 URL was moved from WebCore to WTF, including the soup implementation. Unfortunately that added
+        libsoup as a new dependency of libjavascriptcoregtk.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformWPE.cmake:
+        * wtf/URL.h:
+        * wtf/glib/URLGLib.cpp: Copied from Source/WTF/wtf/glib/URLSoup.cpp.
+
+2018-12-03  Don Olmstead  <don.olmstead@sony.com>
+
+        Fix some unused parameter warnings
+        https://bugs.webkit.org/show_bug.cgi?id=192336
+
+        Reviewed by Fujii Hironori.
+
+        * wtf/StackTrace.cpp:
+        (WTFGetBacktrace):
+        (WTF::StackTrace::demangle):
+        * wtf/generic/MemoryPressureHandlerGeneric.cpp:
+        (WTF::MemoryPressureHandler::holdOff):
+        (WTF::MemoryPressureHandler::respondToMemoryPressure):
+
 2018-12-01  Alexey Proskuryakov  <ap@apple.com>
 
         Modernize version check for _suppressedAutoAddedHTTPHeaders

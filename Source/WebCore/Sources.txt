@@ -303,6 +303,7 @@ Modules/websockets/WorkerThreadableWebSocketChannel.cpp
 Modules/webgpu/DOMWindowWebGPU.cpp
 Modules/webgpu/WebGPU.cpp
 Modules/webgpu/WebGPUAdapter.cpp
+Modules/webgpu/WebGPUBuffer.cpp
 Modules/webgpu/WebGPUCommandBuffer.cpp
 Modules/webgpu/WebGPUDevice.cpp
 Modules/webgpu/WebGPUQueue.cpp
@@ -388,7 +389,6 @@ bindings/js/JSBlobCustom.cpp
 bindings/js/JSCSSRuleCustom.cpp
 bindings/js/JSCSSRuleListCustom.cpp
 bindings/js/JSCSSStyleDeclarationCustom.cpp
-bindings/js/JSCSSStyleValueCustom.cpp
 bindings/js/JSDOMConvertDate.cpp
 bindings/js/JSDOMConvertNumbers.cpp
 bindings/js/JSDOMConvertStrings.cpp
@@ -469,6 +469,7 @@ bindings/js/JSReadableStreamSourceCustom.cpp
 bindings/js/JSRemoteDOMWindowBase.cpp
 bindings/js/JSRemoteDOMWindowCustom.cpp
 bindings/js/JSSVGPathSegCustom.cpp
+bindings/js/JSSVGViewSpecCustom.cpp
 bindings/js/JSStyleSheetCustom.cpp
 bindings/js/JSServiceWorkerClientCustom.cpp
 bindings/js/JSServiceWorkerGlobalScopeCustom.cpp
@@ -478,6 +479,7 @@ bindings/js/JSTextTrackCustom.cpp
 bindings/js/JSTextTrackListCustom.cpp
 bindings/js/JSTrackCustom.cpp
 bindings/js/JSTreeWalkerCustom.cpp
+bindings/js/JSTypedOMCSSStyleValueCustom.cpp
 bindings/js/JSVideoTrackCustom.cpp
 bindings/js/JSVideoTrackListCustom.cpp
 bindings/js/JSWebAnimationCustom.cpp
@@ -1264,7 +1266,7 @@ layout/FormattingContext.cpp
 layout/FormattingContextGeometry.cpp
 layout/FormattingContextQuirks.cpp
 layout/FormattingState.cpp
-layout/LayoutFormattingState.cpp
+layout/LayoutState.cpp
 layout/Verification.cpp
 layout/blockformatting/BlockFormattingContext.cpp
 layout/blockformatting/BlockFormattingContextGeometry.cpp
@@ -1917,7 +1919,6 @@ rendering/InlineIterator.cpp
 rendering/InlineTextBox.cpp
 rendering/LayoutDisallowedScope.cpp
 rendering/LayoutRepainter.cpp
-rendering/LayoutState.cpp
 rendering/MarkedText.cpp
 rendering/OrderIterator.cpp
 rendering/PointerEventsHitRules.cpp
@@ -1956,6 +1957,7 @@ rendering/RenderLayerBacking.cpp
 rendering/RenderLayerCompositor.cpp
 rendering/RenderLayerFilters.cpp
 rendering/RenderLayerModelObject.cpp
+rendering/RenderLayoutState.cpp
 rendering/RenderLineBoxList.cpp
 rendering/RenderLineBreak.cpp
 rendering/RenderListBox.cpp
@@ -2342,6 +2344,7 @@ svg/graphics/filters/SVGFilterBuilder.cpp
 
 svg/properties/SVGAnimatedPathSegListPropertyTearOff.cpp
 svg/properties/SVGAnimatedProperty.cpp
+svg/properties/SVGAttributeOwnerProxy.cpp
 
 workers/AbstractWorker.cpp
 workers/DedicatedWorkerGlobalScope.cpp
@@ -2501,17 +2504,18 @@ JSBlobPropertyBag.cpp
 JSByteLengthQueuingStrategy.cpp
 JSCDATASection.cpp
 JSCSSFontFaceRule.cpp
+JSTypedOMCSSImageValue.cpp
+JSTypedOMCSSNumericValue.cpp
+JSTypedOMCSSStyleValue.cpp
+JSTypedOMCSSUnitValue.cpp
+JSTypedOMCSSUnparsedValue.cpp
 JSCSSImportRule.cpp
 JSCSSKeyframeRule.cpp
 JSCSSKeyframesRule.cpp
 JSCSSMediaRule.cpp
 JSCSSNamespaceRule.cpp
-JSCSSNumericValue.cpp
 JSCSSPaintCallback.cpp
 JSCSSPaintSize.cpp
-JSCSSStyleValue.cpp
-JSCSSUnitValue.cpp
-JSCSSUnparsedValue.cpp
 JSPaintWorkletGlobalScope.cpp
 JSWorklet.cpp
 JSWorkletGlobalScope.cpp
@@ -3218,9 +3222,15 @@ JSWebAnimation.cpp
 JSWebGPU.cpp
 JSWebGPUAdapter.cpp
 JSWebGPUAdapterDescriptor.cpp
+JSWebGPUBuffer.cpp
+JSWebGPUBufferDescriptor.cpp
+JSWebGPUBufferUsage.cpp
 JSWebGPUCommandBuffer.cpp
 JSWebGPUColor.cpp
 JSWebGPUDevice.cpp
+JSWebGPUIndexFormat.cpp
+JSWebGPUInputStateDescriptor.cpp
+JSWebGPUInputStepMode.cpp
 JSWebGPUQueue.cpp
 JSWebGPUPipelineDescriptorBase.cpp
 JSWebGPUPipelineStageDescriptor.cpp
@@ -3233,11 +3243,13 @@ JSWebGPURenderPipeline.cpp
 JSWebGPURenderPipelineDescriptor.cpp
 JSWebGPUShaderModule.cpp
 JSWebGPUShaderModuleDescriptor.cpp
-JSWebGPUShaderStage.cpp
 JSWebGPUSwapChain.cpp
 JSWebGPUTexture.cpp
 JSWebGPUTextureFormatEnum.cpp
 JSWebGPUTextureView.cpp
+JSWebGPUVertexAttributeDescriptor.cpp
+JSWebGPUVertexFormat.cpp
+JSWebGPUVertexInputDescriptor.cpp
 JSWebMetalBuffer.cpp
 JSWebMetalCommandBuffer.cpp
 JSWebMetalCommandQueue.cpp

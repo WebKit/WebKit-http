@@ -161,11 +161,11 @@ public:
     WEBCORE_EXPORT void setForceSynchronousScrollLayerPositionUpdates(bool);
 
     // These virtual functions are currently unique to the threaded scrolling architecture. 
-    // Their meaningful implementations are in ScrollingCoordinatorMac.
     virtual void commitTreeStateIfNeeded() { }
     virtual bool requestScrollPositionUpdate(FrameView&, const IntPoint&) { return false; }
     virtual bool handleWheelEvent(FrameView&, const PlatformWheelEvent&) { return true; }
-    virtual ScrollingNodeID attachToStateTree(ScrollingNodeType, ScrollingNodeID newNodeID, ScrollingNodeID /*parentID*/) { return newNodeID; }
+    virtual ScrollingNodeID attachToStateTree(ScrollingNodeType, ScrollingNodeID newNodeID, ScrollingNodeID /*parentID*/, size_t /*childIndex*/ = notFound) { return newNodeID; }
+
     virtual void detachFromStateTree(ScrollingNodeID) { }
     virtual void clearStateTree() { }
 
@@ -189,8 +189,8 @@ public:
 #endif
     };
 
-    virtual void updateFrameScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, GraphicsLayer* /*counterScrollingLayer*/, GraphicsLayer* /*insetClipLayer*/, const ScrollingGeometry* = nullptr) { }
-    virtual void updateOverflowScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, const ScrollingGeometry* = nullptr) { }
+    virtual void updateFrameScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, GraphicsLayer* /*counterScrollingLayer*/, GraphicsLayer* /*insetClipLayer*/, const ScrollingGeometry&) { }
+    virtual void updateOverflowScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, const ScrollingGeometry&) { }
     virtual void reconcileViewportConstrainedLayerPositions(ScrollingNodeID, const LayoutRect&, ScrollingLayerPositionAction) { }
     virtual String scrollingStateTreeAsText(ScrollingStateTreeAsTextBehavior = ScrollingStateTreeAsTextBehaviorNormal) const;
     virtual bool isRubberBandInProgress() const { return false; }
@@ -198,8 +198,8 @@ public:
     virtual void updateScrollSnapPropertiesWithFrameView(const FrameView&) { }
     virtual void setScrollPinningBehavior(ScrollPinningBehavior) { }
 
-    // Generated a unique id for scroll layers.
-    ScrollingNodeID uniqueScrollLayerID();
+    // Generated a unique id for scrolling nodes.
+    ScrollingNodeID uniqueScrollingNodeID();
 
     enum MainThreadScrollingReasonFlags {
         ForcedOnMainThread                                          = 1 << 0,

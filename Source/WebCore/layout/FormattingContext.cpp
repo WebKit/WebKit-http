@@ -33,7 +33,7 @@
 #include "LayoutBox.h"
 #include "LayoutContainer.h"
 #include "LayoutDescendantIterator.h"
-#include "LayoutFormattingState.h"
+#include "LayoutState.h"
 #include "Logging.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/text/TextStream.h>
@@ -115,11 +115,13 @@ void FormattingContext::computeOutOfFlowVerticalGeometry(const Box& layoutBox) c
     }
 
     auto& displayBox = layoutState.displayBoxForLayoutBox(layoutBox);
-    displayBox.setTop(verticalGeometry.top + verticalGeometry.heightAndMargin.margin.top);
-    displayBox.setContentBoxHeight(verticalGeometry.heightAndMargin.height);
+    // Margins of absolutely positioned boxes do not collapse
     ASSERT(!verticalGeometry.heightAndMargin.collapsedMargin);
-    displayBox.setVerticalMargin(verticalGeometry.heightAndMargin.margin);
-    displayBox.setVerticalNonCollapsedMargin(verticalGeometry.heightAndMargin.margin);
+    auto nonCollapsedVerticalMargins = verticalGeometry.heightAndMargin.usedMarginValues();
+    displayBox.setTop(verticalGeometry.top + nonCollapsedVerticalMargins.top);
+    displayBox.setContentBoxHeight(verticalGeometry.heightAndMargin.height);
+    displayBox.setVerticalMargin(nonCollapsedVerticalMargins);
+    displayBox.setVerticalNonCollapsedMargin(nonCollapsedVerticalMargins);
 }
 
 void FormattingContext::computeBorderAndPadding(const Box& layoutBox) const
@@ -154,7 +156,7 @@ void FormattingContext::layoutOutOfFlowDescendants(const Box& layoutBox) const
         computeBorderAndPadding(layoutBox);
         computeOutOfFlowHorizontalGeometry(layoutBox);
 
-        layoutState.createFormattingStateForFormattingRootIfNeeded(layoutBox).formattingContext(layoutBox)->layout();
+        layoutState.createFormattingStateForFormattingRootIfNeeded(layoutBox).createFormattingContext(layoutBox)->layout();
 
         computeOutOfFlowVerticalGeometry(layoutBox);
         layoutOutOfFlowDescendants(layoutBox);

@@ -25,15 +25,12 @@
 
 #pragma once
 
-#include "NetworkContentRuleListManager.h"
-#include "NetworkResourceLoadParameters.h"
-#include <WebCore/ContentSecurityPolicyClient.h>
+#include <WebCore/ContentExtensionActions.h>
 #include <WebCore/NetworkLoadInformation.h>
 #include <WebCore/ResourceError.h>
-#include <WebCore/SecurityPolicyViolationEvent.h>
 #include <wtf/CompletionHandler.h>
 #include <wtf/Expected.h>
-#include <wtf/WeakPtr.h>
+#include <wtf/Variant.h>
 
 namespace WebCore {
 class ContentSecurityPolicy;
@@ -42,23 +39,25 @@ struct ContentSecurityPolicyClient;
 
 namespace WebKit {
 
-class NetworkConnectionToWebProcess;
 class NetworkCORSPreflightChecker;
 
 class NetworkLoadChecker : public CanMakeWeakPtr<NetworkLoadChecker> {
 public:
-    NetworkLoadChecker(WebCore::FetchOptions&&, PAL::SessionID, uint64_t pageID, uint64_t frameID, WebCore::HTTPHeaderMap&&, URL&&, RefPtr<WebCore::SecurityOrigin>&&, WebCore::PreflightPolicy, String&& referrer, bool shouldCaptureExtraNetworkLoadMetrics = false);
-    ~NetworkLoadChecker();
+    enum class LoadType : bool { MainFrame, Other };
 
-    using RequestOrError = Expected<WebCore::ResourceRequest, WebCore::ResourceError>;
-    using ValidationHandler = CompletionHandler<void(RequestOrError&&)>;
-    void check(WebCore::ResourceRequest&&, WebCore::ContentSecurityPolicyClient*, ValidationHandler&&);
+    NetworkLoadChecker(WebCore::FetchOptions&&, PAL::SessionID, uint64_t pageID, uint64_t frameID, WebCore::HTTPHeaderMap&&, URL&&, RefPtr<WebCore::SecurityOrigin>&&, WebCore::PreflightPolicy, String&& referrer, bool shouldCaptureExtraNetworkLoadMetrics = false, LoadType requestLoadType = LoadType::Other);
+    ~NetworkLoadChecker();
 
     struct RedirectionTriplet {
         WebCore::ResourceRequest request;
         WebCore::ResourceRequest redirectRequest;
         WebCore::ResourceResponse redirectResponse;
     };
+
+    using RequestOrRedirectionTripletOrError = Variant<WebCore::ResourceRequest, RedirectionTriplet, WebCore::ResourceError>;
+    using ValidationHandler = CompletionHandler<void(RequestOrRedirectionTripletOrError&&)>;
+    void check(WebCore::ResourceRequest&&, WebCore::ContentSecurityPolicyClient*, ValidationHandler&&);
+
     using RedirectionRequestOrError = Expected<RedirectionTriplet, WebCore::ResourceError>;
     using RedirectionValidationHandler = CompletionHandler<void(RedirectionRequestOrError&&)>;
     void checkRedirection(WebCore::ResourceRequest&& request, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse, WebCore::ContentSecurityPolicyClient*, RedirectionValidationHandler&&);
@@ -94,13 +93,14 @@ private:
     bool isAllowedByContentSecurityPolicy(const WebCore::ResourceRequest&, WebCore::ContentSecurityPolicyClient*);
 
     void continueCheckingRequest(WebCore::ResourceRequest&&, ValidationHandler&&);
+    void continueCheckingRequestOrDoSyntheticRedirect(WebCore::ResourceRequest&& originalRequest, WebCore::ResourceRequest&& currentRequest, ValidationHandler&&);
 
     bool doesNotNeedCORSCheck(const URL&) const;
     void checkCORSRequest(WebCore::ResourceRequest&&, ValidationHandler&&);
     void checkCORSRedirectedRequest(WebCore::ResourceRequest&&, ValidationHandler&&);
     void checkCORSRequestWithPreflight(WebCore::ResourceRequest&&, ValidationHandler&&);
 
-    RequestOrError accessControlErrorForValidationHandler(String&&);
+    RequestOrRedirectionTripletOrError accessControlErrorForValidationHandler(String&&);
 
 #if ENABLE(CONTENT_EXTENSIONS)
     struct ContentExtensionResult {
@@ -111,6 +111,11 @@ private:
     using ContentExtensionCallback = CompletionHandler<void(ContentExtensionResultOrError)>;
     void processContentExtensionRulesForLoad(WebCore::ResourceRequest&&, ContentExtensionCallback&&);
 #endif
+
+#if ENABLE(HTTPS_UPGRADE)
+    void applyHTTPSUpgradeIfNeeded(WebCore::ResourceRequest&) const;
+#endif // ENABLE(HTTPS_UPGRADE)
+
     WebCore::FetchOptions m_options;
     WebCore::StoredCredentialsPolicy m_storedCredentialsPolicy;
     PAL::SessionID m_sessionID;
@@ -139,10 +144,7 @@ private:
     bool m_shouldCaptureExtraNetworkLoadMetrics { false };
     WebCore::NetworkLoadInformation m_loadInformation;
 
-#if ENABLE(HTTPS_UPGRADE)
-    static bool applyHTTPSUpgradeIfNeeded(WebCore::ResourceRequest&);
-#endif // ENABLE(HTTPS_UPGRADE)
-
+    LoadType m_requestLoadType;
 };
 
 }

@@ -25,9 +25,9 @@
 
 #pragma once
 
-#if ENABLE(CSS_PAINTING_API)
+#if ENABLE(CSS_TYPED_OM)
 
-#include "CSSStyleValue.h"
+#include "TypedOMCSSStyleValue.h"
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -36,20 +36,20 @@ namespace WebCore {
 
 class StylePropertyMapReadOnly : public RefCounted<StylePropertyMapReadOnly> {
 public:
-    static Ref<StylePropertyMapReadOnly> create(HashMap<String, Ref<CSSStyleValue>>&& map)
+    static Ref<StylePropertyMapReadOnly> create(HashMap<String, Ref<TypedOMCSSStyleValue>>&& map)
     {
         return adoptRef(*new StylePropertyMapReadOnly(WTFMove(map)));
     }
 
-    CSSStyleValue* get(String property) const { return m_map.get(property); }
+    TypedOMCSSStyleValue* get(String property) const { return m_map.get(property); }
 
 private:
-    explicit StylePropertyMapReadOnly(HashMap<String, Ref<CSSStyleValue>>&& map)
+    explicit StylePropertyMapReadOnly(HashMap<String, Ref<TypedOMCSSStyleValue>>&& map)
         : m_map(WTFMove(map))
     {
     }
 
-    HashMap<String, Ref<CSSStyleValue>> m_map;
+    HashMap<String, Ref<TypedOMCSSStyleValue>> m_map;
 };
 
 } // namespace WebCore

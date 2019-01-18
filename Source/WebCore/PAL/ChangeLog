@@ -1,3 +1,80 @@
+2018-12-11  Justin Michaud  <justin_michaud@apple.com>
+
+        Implement feature flag for CSS Typed OM
+        https://bugs.webkit.org/show_bug.cgi?id=192610
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-12-11  Andy Estes  <aestes@apple.com>
+
+        Introduce makeBlockPtr for lambdas
+        https://bugs.webkit.org/show_bug.cgi?id=192594
+
+        Reviewed by Alex Christensen.
+
+        Adopted makeBlockPtr.
+
+        * pal/Logging.cpp:
+        (PAL::registerNotifyCallback):
+
+2018-12-10  Don Olmstead  <don.olmstead@sony.com>
+
+        Move ENABLE_RESOURCE_LOAD_STATISTICS to FeatureDefines.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=192573
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-12-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239023.
+        https://bugs.webkit.org/show_bug.cgi?id=192571
+
+        Speculative rollout due to broken perf test (Requested by
+        deanj on #webkit).
+
+        Reverted changeset:
+
+        "Enable HTTP and HTTPS proxies on iOS and make it a property
+        of the NSURLSession"
+        https://bugs.webkit.org/show_bug.cgi?id=192374
+        https://trac.webkit.org/changeset/239023
+
+2018-12-10  Darin Adler  <darin@apple.com>
+
+        [macOS] MSHCreateMIGServerSource invocation does not handle send/receive rights correctly
+        https://bugs.webkit.org/show_bug.cgi?id=192533
+        rdar://problem/45732710
+
+        Reviewed by Anders Carlsson.
+
+        * pal/spi/mac/HIServicesSPI.h: Added kMSHDoNotCreateSendRightOption.
+
+2018-12-09  Saam barati  <sbarati@apple.com>
+
+        Enable HTTP and HTTPS proxies on iOS and make it a property of the NSURLSession
+        https://bugs.webkit.org/show_bug.cgi?id=192374
+        <rdar://problem/46506286>
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+        Remove the now-unused SPI declaration.
+
+2018-12-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [PlayStation] Enable WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=192384
+
+        Reviewed by Brent Fulgham.
+
+        Implements PAL for the PlayStation platform.
+
+        * pal/PlatformPlayStation.cmake: Added.
+
 2018-12-02  Zalan Bujtas  <zalan@apple.com>
 
         Add a runtime feature flag for LayoutFormattingContext.

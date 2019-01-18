@@ -43,25 +43,17 @@
 #include "WebPageMessages.h"
 #include "WebResourceLoaderMessages.h"
 #include "WebsiteDataStoreParameters.h"
-#include <JavaScriptCore/ConsoleTypes.h>
 #include <WebCore/BlobDataFileReference.h>
 #include <WebCore/CertificateInfo.h>
 #include <WebCore/ContentSecurityPolicy.h>
 #include <WebCore/DiagnosticLoggingKeys.h>
-#include <WebCore/HTTPHeaderNames.h>
 #include <WebCore/HTTPParsers.h>
 #include <WebCore/NetworkLoadMetrics.h>
 #include <WebCore/NetworkStorageSession.h>
-#include <WebCore/ProtectionSpace.h>
 #include <WebCore/SameSiteInfo.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SharedBuffer.h>
-#include <WebCore/SynchronousLoaderClient.h>
 #include <wtf/RunLoop.h>
-
-#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
-#include <WebCore/NetworkStorageSession.h>
-#endif
 
 #if USE(QUICK_LOOK)
 #include <WebCore/PreviewLoader.h>
@@ -119,7 +111,8 @@ NetworkResourceLoader::NetworkResourceLoader(NetworkResourceLoadParameters&& par
     }
 
     if (synchronousReply || parameters.shouldRestrictHTTPResponseAccess) {
-        m_networkLoadChecker = std::make_unique<NetworkLoadChecker>(FetchOptions { m_parameters.options }, m_parameters.sessionID, m_parameters.webPageID, m_parameters.webFrameID, HTTPHeaderMap { m_parameters.originalRequestHeaders }, URL { m_parameters.request.url() }, m_parameters.sourceOrigin.copyRef(), m_parameters.preflightPolicy, originalRequest().httpReferrer(), shouldCaptureExtraNetworkLoadMetrics());
+        NetworkLoadChecker::LoadType requestLoadType = isMainFrameLoad() ? NetworkLoadChecker::LoadType::MainFrame : NetworkLoadChecker::LoadType::Other;
+        m_networkLoadChecker = std::make_unique<NetworkLoadChecker>(FetchOptions { m_parameters.options }, m_parameters.sessionID, m_parameters.webPageID, m_parameters.webFrameID, HTTPHeaderMap { m_parameters.originalRequestHeaders }, URL { m_parameters.request.url() }, m_parameters.sourceOrigin.copyRef(), m_parameters.preflightPolicy, originalRequest().httpReferrer(), shouldCaptureExtraNetworkLoadMetrics(), requestLoadType);
         if (m_parameters.cspResponseHeaders)
             m_networkLoadChecker->setCSPResponseHeaders(ContentSecurityPolicyResponseHeaders { m_parameters.cspResponseHeaders.value() });
 #if ENABLE(CONTENT_EXTENSIONS)
@@ -187,20 +180,26 @@ void NetworkResourceLoader::start()
 
     if (m_networkLoadChecker) {
         m_networkLoadChecker->check(ResourceRequest { originalRequest() }, this, [this] (auto&& result) {
-            if (!result.has_value()) {
-                if (!result.error().isCancellation())
-                    this->didFailLoading(result.error());
-                return;
-            }
+            WTF::switchOn(result,
+                [this] (ResourceError& error) {
+                    if (!error.isCancellation())
+                        this->didFailLoading(error);
+                },
+                [this] (NetworkLoadChecker::RedirectionTriplet& triplet) {
+                    this->m_isWaitingContinueWillSendRequestForCachedRedirect = true;
+                    this->willSendRedirectedRequest(WTFMove(triplet.request), WTFMove(triplet.redirectRequest), WTFMove(triplet.redirectResponse));
+                    RELEASE_LOG_IF_ALLOWED("NetworkResourceLoader: synthetic redirect sent because request URL was modified.");
+                },
+                [this] (ResourceRequest& request) {
+                    if (this->canUseCache(request)) {
+                        RELEASE_LOG_IF_ALLOWED("start: Checking cache for resource (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ", isMainResource = %d, isSynchronous = %d)", m_parameters.webPageID, m_parameters.webFrameID, m_parameters.identifier, this->isMainResource(), this->isSynchronous());
+                        this->retrieveCacheEntry(request);
+                        return;
+                    }
 
-            auto currentRequest = result.value();
-            if (this->canUseCache(currentRequest)) {
-                RELEASE_LOG_IF_ALLOWED("start: Checking cache for resource (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ", isMainResource = %d, isSynchronous = %d)", m_parameters.webPageID, m_parameters.webFrameID, m_parameters.identifier, this->isMainResource(), this->isSynchronous());
-                this->retrieveCacheEntry(currentRequest);
-                return;
-            }
-
-            this->startNetworkLoad(WTFMove(result.value()), FirstLoad::Yes);
+                    this->startNetworkLoad(WTFMove(request), FirstLoad::Yes);
+                }
+            );
         });
         return;
     }
@@ -508,9 +507,8 @@ void NetworkResourceLoader::didReceiveResponse(ResourceResponse&& receivedRespon
 
 void NetworkResourceLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, int reportedEncodedDataLength)
 {
-    if (!m_numBytesReceived) {
+    if (!m_numBytesReceived)
         RELEASE_LOG_IF_ALLOWED("didReceiveBuffer: Started receiving data (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_parameters.webPageID, m_parameters.webFrameID, m_parameters.identifier);
-    }
     m_numBytesReceived += buffer->size();
 
     ASSERT(!m_cacheEntryForValidation);
@@ -526,7 +524,6 @@ void NetworkResourceLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, int rep
     // FIXME: At least on OS X Yosemite we always get -1 from the resource handle.
     unsigned encodedDataLength = reportedEncodedDataLength >= 0 ? reportedEncodedDataLength : buffer->size();
 
-    m_bytesReceived += buffer->size();
     if (m_bufferedData) {
         m_bufferedData->append(buffer.get());
         m_bufferedDataEncodedDataLength += encodedDataLength;
@@ -749,7 +746,8 @@ void NetworkResourceLoader::continueWillSendRequest(ResourceRequest&& newRequest
 void NetworkResourceLoader::continueDidReceiveResponse()
 {
     if (m_cacheEntryWaitingForContinueDidReceiveResponse) {
-        continueProcessingCachedEntryAfterDidReceiveResponse(WTFMove(m_cacheEntryWaitingForContinueDidReceiveResponse));
+        sendResultForCacheEntry(WTFMove(m_cacheEntryWaitingForContinueDidReceiveResponse));
+        cleanup(LoadResult::Success);
         return;
     }
 
@@ -840,41 +838,10 @@ void NetworkResourceLoader::didRetrieveCacheEntry(std::unique_ptr<NetworkCache::
 
     if (needsContinueDidReceiveResponseMessage)
         m_cacheEntryWaitingForContinueDidReceiveResponse = WTFMove(entry);
-    else
-        continueProcessingCachedEntryAfterDidReceiveResponse(WTFMove(entry));
-}
-
-void NetworkResourceLoader::continueProcessingCachedEntryAfterDidReceiveResponse(std::unique_ptr<NetworkCache::Entry> entry)
-{
-    if (entry->sourceStorageRecord().bodyHash && !m_parameters.derivedCachedDataTypesToRetrieve.isEmpty()) {
-        auto bodyHash = *entry->sourceStorageRecord().bodyHash;
-        auto* entryPtr = entry.release();
-        auto retrieveCount = m_parameters.derivedCachedDataTypesToRetrieve.size();
-
-        for (auto& type : m_parameters.derivedCachedDataTypesToRetrieve) {
-            NetworkCache::DataKey key { originalRequest().cachePartition(), type, bodyHash };
-            m_cache->retrieveData(key, [loader = makeRef(*this), entryPtr, type, retrieveCount] (const uint8_t* data, size_t size) mutable {
-                loader->m_retrievedDerivedDataCount++;
-                bool retrievedAll = loader->m_retrievedDerivedDataCount == retrieveCount;
-                std::unique_ptr<NetworkCache::Entry> entry(retrievedAll ? entryPtr : nullptr);
-                if (loader->hasOneRef())
-                    return;
-                if (data) {
-                    IPC::DataReference dataReference(data, size);
-                    loader->send(Messages::WebResourceLoader::DidRetrieveDerivedData(type, dataReference));
-                }
-                if (retrievedAll) {
-                    loader->sendResultForCacheEntry(WTFMove(entry));
-                    loader->cleanup(LoadResult::Success);
-                }
-            });
-        }
-        return;
+    else {
+        sendResultForCacheEntry(WTFMove(entry));
+        cleanup(LoadResult::Success);
     }
-
-    sendResultForCacheEntry(WTFMove(entry));
-
-    cleanup(LoadResult::Success);
 }
 
 void NetworkResourceLoader::sendResultForCacheEntry(std::unique_ptr<NetworkCache::Entry> entry)

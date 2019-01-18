@@ -39,7 +39,7 @@ namespace WebKit {
 
 using namespace WebCore;
 
-PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, WTF::CompletionHandler<void(const ResourceError&, const ResourceResponse&)>&& completionHandler)
+PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, CompletionHandler<void(const ResourceError&, const ResourceResponse&)>&& completionHandler)
     : m_parameters(WTFMove(parameters))
     , m_completionHandler(WTFMove(completionHandler))
     , m_timeoutTimer(*this, &PingLoad::timeoutTimerFired)
@@ -57,11 +57,18 @@ PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, WTF::CompletionHa
     m_timeoutTimer.startOneShot(60000_s);
 
     m_networkLoadChecker->check(ResourceRequest { m_parameters.request }, nullptr, [this] (auto&& result) {
-        if (!result.has_value()) {
-            this->didFinish(result.error());
-            return;
-        }
-        this->loadRequest(WTFMove(result.value()));
+        WTF::switchOn(result,
+            [this] (ResourceError& error) {
+                this->didFinish(error);
+            },
+            [] (NetworkLoadChecker::RedirectionTriplet& triplet) {
+                // We should never send a synthetic redirect for PingLoads.
+                ASSERT_NOT_REACHED();
+            },
+            [this] (ResourceRequest& request) {
+                this->loadRequest(WTFMove(request));
+            }
+        );
     });
 }
 

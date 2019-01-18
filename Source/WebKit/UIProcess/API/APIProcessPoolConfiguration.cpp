@@ -47,20 +47,20 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::createWithLegacyOptions(
     return configuration;
 }
 
-Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::createWithWebsiteDataStoreConfiguration(const WebKit::WebsiteDataStore::Configuration& legacyConfiguration)
+Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::createWithWebsiteDataStoreConfiguration(const WebKit::WebsiteDataStoreConfiguration& legacyConfiguration)
 {
     auto configuration = ProcessPoolConfiguration::create();
 
-    configuration->m_applicationCacheDirectory = legacyConfiguration.applicationCacheDirectory;
-    configuration->m_applicationCacheFlatFileSubdirectoryName = legacyConfiguration.applicationCacheFlatFileSubdirectoryName;
-    configuration->m_diskCacheDirectory = legacyConfiguration.networkCacheDirectory;
-    configuration->m_mediaCacheDirectory = legacyConfiguration.mediaCacheDirectory;
+    configuration->m_applicationCacheDirectory = legacyConfiguration.applicationCacheDirectory();
+    configuration->m_applicationCacheFlatFileSubdirectoryName = legacyConfiguration.applicationCacheFlatFileSubdirectoryName();
+    configuration->m_diskCacheDirectory = legacyConfiguration.networkCacheDirectory();
+    configuration->m_mediaCacheDirectory = legacyConfiguration.mediaCacheDirectory();
     configuration->m_indexedDBDatabaseDirectory = WebsiteDataStore::legacyDefaultIndexedDBDatabaseDirectory();
-    configuration->m_localStorageDirectory = legacyConfiguration.localStorageDirectory;
-    configuration->m_mediaKeysStorageDirectory = legacyConfiguration.mediaKeysStorageDirectory;
-    configuration->m_resourceLoadStatisticsDirectory = legacyConfiguration.resourceLoadStatisticsDirectory;
-    configuration->m_webSQLDatabaseDirectory = legacyConfiguration.webSQLDatabaseDirectory;
-    configuration->m_javaScriptConfigurationDirectory = legacyConfiguration.javaScriptConfigurationDirectory;
+    configuration->m_localStorageDirectory = legacyConfiguration.localStorageDirectory();
+    configuration->m_mediaKeysStorageDirectory = legacyConfiguration.mediaKeysStorageDirectory();
+    configuration->m_resourceLoadStatisticsDirectory = legacyConfiguration.resourceLoadStatisticsDirectory();
+    configuration->m_webSQLDatabaseDirectory = legacyConfiguration.webSQLDatabaseDirectory();
+    configuration->m_javaScriptConfigurationDirectory = legacyConfiguration.javaScriptConfigurationDirectory();
 
     return configuration;
 }
@@ -92,7 +92,6 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::copy()
     copy->m_cacheModel = this->m_cacheModel;
     copy->m_diskCacheDirectory = this->m_diskCacheDirectory;
     copy->m_diskCacheSpeculativeValidationEnabled = this->m_diskCacheSpeculativeValidationEnabled;
-    copy->m_diskCacheSizeOverride = this->m_diskCacheSizeOverride;
     copy->m_applicationCacheDirectory = this->m_applicationCacheDirectory;
     copy->m_applicationCacheFlatFileSubdirectoryName = this->m_applicationCacheFlatFileSubdirectoryName;
     copy->m_mediaCacheDirectory = this->m_mediaCacheDirectory;
@@ -110,8 +109,6 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::copy()
     copy->m_ignoreSynchronousMessagingTimeoutsForTesting = this->m_ignoreSynchronousMessagingTimeoutsForTesting;
     copy->m_attrStyleEnabled = this->m_attrStyleEnabled;
     copy->m_overrideLanguages = this->m_overrideLanguages;
-    copy->m_sourceApplicationBundleIdentifier = this->m_sourceApplicationBundleIdentifier;
-    copy->m_sourceApplicationSecondaryIdentifier = this->m_sourceApplicationSecondaryIdentifier;
     copy->m_alwaysRunsAtBackgroundPriority = this->m_alwaysRunsAtBackgroundPriority;
     copy->m_shouldTakeUIBackgroundAssertion = this->m_shouldTakeUIBackgroundAssertion;
     copy->m_shouldCaptureAudioInUIProcess = this->m_shouldCaptureAudioInUIProcess;

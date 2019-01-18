@@ -283,7 +283,7 @@ static String localStorageDatabasePath(WebPreferences* preferences)
     return toString(localStorageDatabasePath);
 }
 
-class PreferencesChangedOrRemovedObserver : public IWebNotificationObserver {
+class PreferencesChangedOrRemovedObserver final : public IWebNotificationObserver {
 public:
     static PreferencesChangedOrRemovedObserver* sharedInstance();
 
@@ -1786,7 +1786,7 @@ void WebView::onMenuCommand(WPARAM wParam, LPARAM lParam)
     HMENU hMenu = reinterpret_cast<HMENU>(lParam);
     unsigned index = static_cast<unsigned>(wParam);
 
-    MENUITEMINFO menuItemInfo = { 0 };
+    MENUITEMINFO menuItemInfo { };
     menuItemInfo.cbSize = sizeof(menuItemInfo);
     menuItemInfo.fMask = MIIM_STRING;
     ::GetMenuItemInfo(hMenu, index, true, &menuItemInfo);
@@ -1998,7 +1998,7 @@ bool WebView::gesture(WPARAM wParam, LPARAM lParam)
 
     HGESTUREINFO gestureHandle = reinterpret_cast<HGESTUREINFO>(lParam);
     
-    GESTUREINFO gi = {0};
+    GESTUREINFO gi { };
     gi.cbSize = sizeof(GESTUREINFO);
 
     if (!GetGestureInfoPtr()(gestureHandle, reinterpret_cast<PGESTUREINFO>(&gi)))
@@ -2485,7 +2485,7 @@ void WebView::setShouldInvertColors(bool shouldInvertColors)
         m_layerTreeHost->setShouldInvertColors(shouldInvertColors);
 #endif
 
-    RECT windowRect = {0};
+    RECT windowRect { };
     frameRect(&windowRect);
 
     // repaint expects logical pixels, so rescale here.
@@ -3192,7 +3192,7 @@ void WebView::initializeToolTipWindow()
     if (!m_toolTipHwnd)
         return;
 
-    TOOLINFO info = {0};
+    TOOLINFO info { };
     info.cbSize = sizeof(info);
     info.uFlags = TTF_IDISHWND | TTF_SUBCLASS ;
     info.uId = reinterpret_cast<UINT_PTR>(m_viewWindow);
@@ -3214,7 +3214,7 @@ void WebView::setToolTip(const String& toolTip)
     m_toolTip = toolTip;
 
     if (!m_toolTip.isEmpty()) {
-        TOOLINFO info = {0};
+        TOOLINFO info { };
         info.cbSize = sizeof(info);
         info.uFlags = TTF_IDISHWND;
         info.uId = reinterpret_cast<UINT_PTR>(m_viewWindow);
@@ -7386,7 +7386,7 @@ void WebView::flushPendingGraphicsLayerChanges()
 }
 #endif
 
-class EnumTextMatches : public IEnumTextMatches
+class EnumTextMatches final : public IEnumTextMatches
 {
     long m_ref;
     UINT m_index;
@@ -7577,7 +7577,7 @@ void WebView::fullScreenClientDidExitFullScreen()
 void WebView::fullScreenClientForceRepaint()
 {
     ASSERT(m_fullscreenController);
-    RECT windowRect = {0};
+    RECT windowRect { };
     frameRect(&windowRect);
     repaint(windowRect, true /*contentChanged*/, true /*immediate*/, false /*contentOnly*/);
     m_fullscreenController->repaintCompleted();

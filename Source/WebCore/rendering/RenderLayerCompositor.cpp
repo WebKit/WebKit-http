@@ -666,9 +666,20 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
     if (!m_compositing && (m_forceCompositingMode || (isMainFrameCompositor() && page().pageOverlayController().overlayCount())))
         enableCompositingMode(true);
 
+    bool isPageScroll = !updateRoot || updateRoot == &rootRenderLayer();
     updateRoot = &rootRenderLayer();
 
     if (updateType == CompositingUpdateType::OnScroll || updateType == CompositingUpdateType::OnCompositedScroll) {
+        // We only get here if we didn't scroll on the scrolling thread, so this update needs to re-position viewport-constrained layers.
+        if (m_renderView.settings().acceleratedCompositingForFixedPositionEnabled() && isPageScroll) {
+            if (auto* viewportConstrainedObjects = m_renderView.frameView().viewportConstrainedObjects()) {
+                for (auto* renderer : *viewportConstrainedObjects) {
+                    if (auto* layer = renderer->layer())
+                        layer->setNeedsCompositingGeometryUpdate();
+                }
+            }
+        }
+
         // Scrolling can affect overlap. FIXME: avoid for page scrolling.
         updateRoot->setDescendantsNeedCompositingRequirementsTraversal();
     }
@@ -975,8 +986,8 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     // during post-order traversal (e.g. for clipping).
     if (updateBacking(layer, queryData, CompositingChangeRepaintNow, willBeComposited ? BackingRequired::Yes : BackingRequired::No)) {
         layer.setNeedsCompositingLayerConnection();
-        // Child layers need to get a geometry update to recompute their position. FIXME: Ideally we'd only dirty direct children.
-        layer.setDescendantsNeedUpdateBackingAndHierarchyTraversal();
+        // Child layers need to get a geometry update to recompute their position.
+        layer.setChildrenNeedCompositingGeometryUpdate();
         // The composited bounds of enclosing layers depends on which descendants are composited, so they need a geometry update.
         layer.setNeedsCompositingGeometryUpdateOnAncestors();
     }
@@ -1173,6 +1184,8 @@ void RenderLayerCompositor::updateBackingAndHierarchy(RenderLayer& layer, Vector
 
     bool requireDescendantTraversal = layer.hasDescendantNeedingUpdateBackingOrHierarchyTraversal()
         || (layer.hasCompositingDescendant() && (!layerBacking || layer.needsCompositingLayerConnection() || !updateLevel.isEmpty()));
+    
+    bool requiresChildRebuild = layerBacking && layer.needsCompositingLayerConnection() && !layer.hasCompositingDescendant();
 
 #if !ASSERT_DISABLED
     LayerListMutationDetector mutationChecker(layer);
@@ -1197,11 +1210,11 @@ void RenderLayerCompositor::updateBackingAndHierarchy(RenderLayer& layer, Vector
         
         for (auto* renderLayer : layer.positiveZOrderLayers())
             updateBackingAndHierarchy(*renderLayer, childList, updateLevel, depth + 1);
-    } else
+    } else if (requiresChildRebuild)
         appendForegroundLayerIfNecessary();
 
     if (layerBacking) {
-        if (requireDescendantTraversal) {
+        if (requireDescendantTraversal || requiresChildRebuild) {
             bool parented = false;
             if (is<RenderWidget>(layer.renderer()))
                 parented = parentFrameContentLayers(&downcast<RenderWidget>(layer.renderer()));
@@ -1225,7 +1238,7 @@ void RenderLayerCompositor::updateBackingAndHierarchy(RenderLayer& layer, Vector
 
         childLayersOfEnclosingLayer.append(*layerBacking->childForSuperlayers());
 
-        layerBacking->updateAfterDescendants(); // FIXME: validate.
+        layerBacking->updateAfterDescendants();
     }
     
     layer.clearUpdateBackingOrHierarchyTraversalState();
@@ -1366,6 +1379,7 @@ void RenderLayerCompositor::layerStyleChanged(StyleDifference diff, RenderLayer&
     
     bool layerChanged = updateBacking(layer, queryData, CompositingChangeRepaintNow);
     if (layerChanged) {
+        layer.setChildrenNeedCompositingGeometryUpdate();
         layer.setNeedsCompositingLayerConnection();
         layer.setSubsequentLayersNeedCompositingRequirementsTraversal();
         // Ancestor layers that composited for indirect reasons (things listed in styleChangeMayAffectIndirectCompositingReasons()) need to get updated.
@@ -3824,7 +3838,7 @@ ScrollingNodeID RenderLayerCompositor::attachScrollingNode(RenderLayer& layer, S
     LayerScrollCoordinationRole role = scrollCoordinationRoleForNodeType(nodeType);
     ScrollingNodeID nodeID = backing->scrollingNodeIDForRole(role);
     if (!nodeID)
-        nodeID = scrollingCoordinator->uniqueScrollLayerID();
+        nodeID = scrollingCoordinator->uniqueScrollingNodeID();
 
     nodeID = scrollingCoordinator->attachToStateTree(nodeType, nodeID, parentNodeID);
     if (!nodeID)
@@ -3858,10 +3872,21 @@ void RenderLayerCompositor::detachScrollCoordinatedLayer(RenderLayer& layer, Opt
 void RenderLayerCompositor::updateScrollCoordinationForThisFrame(ScrollingNodeID parentNodeID)
 {
     auto* scrollingCoordinator = this->scrollingCoordinator();
-    ASSERT(scrollingCoordinator->coordinatesScrollingForFrameView(m_renderView.frameView()));
+    FrameView& frameView = m_renderView.frameView();
+    ASSERT(scrollingCoordinator->coordinatesScrollingForFrameView(frameView));
 
     ScrollingNodeID nodeID = attachScrollingNode(*m_renderView.layer(), m_renderView.frame().isMainFrame() ? MainFrameScrollingNode : SubframeScrollingNode, parentNodeID);
-    scrollingCoordinator->updateFrameScrollingNode(nodeID, m_scrollLayer.get(), m_rootContentLayer.get(), fixedRootBackgroundLayer(), clipLayer());
+    ScrollingCoordinator::ScrollingGeometry scrollingGeometry;
+    // FIXME(https://webkit.org/b/172917): Pass parentRelativeScrollableRect?
+    scrollingGeometry.scrollOrigin = frameView.scrollOrigin();
+    scrollingGeometry.scrollableAreaSize = frameView.visibleContentRect().size();
+    scrollingGeometry.contentSize = frameView.totalContentsSize();
+    scrollingGeometry.reachableContentSize = frameView.totalContentsSize();
+#if ENABLE(CSS_SCROLL_SNAP)
+    frameView.updateSnapOffsets();
+    scrollingCoordinator->updateScrollSnapPropertiesWithFrameView(frameView);
+#endif
+    scrollingCoordinator->updateFrameScrollingNode(nodeID, m_scrollLayer.get(), m_rootContentLayer.get(), fixedRootBackgroundLayer(), clipLayer(), scrollingGeometry);
 }
 
 void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, OptionSet<LayerScrollCoordinationRole> reasons, OptionSet<ScrollingNodeChangeFlags> changes)
@@ -3940,6 +3965,7 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Opt
                 return;
 
             ScrollingCoordinator::ScrollingGeometry scrollingGeometry;
+            // FIXME(https://webkit.org/b/172917): Pass parentRelativeScrollableRect?
             scrollingGeometry.scrollOrigin = layer.scrollOrigin();
             scrollingGeometry.scrollPosition = layer.scrollPosition();
             scrollingGeometry.scrollableAreaSize = layer.visibleSize();
@@ -3960,7 +3986,7 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Opt
 
             LOG(Compositing, "Registering Scrolling scrolling node %" PRIu64 " (layer %" PRIu64 ") as child of %" PRIu64, nodeID, backing->graphicsLayer()->primaryLayerID(), parentNodeID);
 
-            scrollingCoordinator->updateOverflowScrollingNode(nodeID, backing->scrollingLayer(), backing->scrollingContentsLayer(), &scrollingGeometry);
+            scrollingCoordinator->updateOverflowScrollingNode(nodeID, backing->scrollingLayer(), backing->scrollingContentsLayer(), scrollingGeometry);
         }
     } else
         detachScrollCoordinatedLayer(layer, Scrolling);

@@ -32,12 +32,14 @@
 #import "TestNavigationDelegate.h"
 #import "TestWKWebView.h"
 #import <WebKit/WKNavigationDelegate.h>
+#import <WebKit/WKUIDelegatePrivate.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <wtf/RetainPtr.h>
 
 static bool committedNavigation;
+static bool warningShown;
 
-@interface SafeBrowsingNavigationDelegate : NSObject <WKNavigationDelegate>
+@interface SafeBrowsingNavigationDelegate : NSObject <WKNavigationDelegate, WKUIDelegatePrivate>
 @end
 
 @implementation SafeBrowsingNavigationDelegate
@@ -45,6 +47,11 @@ static bool committedNavigation;
 - (void)webView:(WKWebView *)webView didCommitNavigation:(null_unspecified WKNavigation *)navigation
 {
     committedNavigation = true;
+}
+
+- (void)_webViewDidShowSafeBrowsingWarning:(WKWebView *)webView
+{
+    warningShown = true;
 }
 
 @end
@@ -145,7 +152,7 @@ static NSURL *resourceURL(NSString *resource)
 
 TEST(SafeBrowsing, Preference)
 {
-    TestWebKitAPI::ClassMethodSwizzler swizzler(objc_getClass("SSBLookupContext"), @selector(sharedLookupContext), [TestLookupContext methodForSelector:@selector(sharedLookupContext)]);
+    ClassMethodSwizzler swizzler(objc_getClass("SSBLookupContext"), @selector(sharedLookupContext), [TestLookupContext methodForSelector:@selector(sharedLookupContext)]);
 
     __block bool done = false;
     auto delegate = adoptNS([TestNavigationDelegate new]);
@@ -168,14 +175,17 @@ TEST(SafeBrowsing, Preference)
 
 static RetainPtr<WKWebView> safeBrowsingView()
 {
-    TestWebKitAPI::ClassMethodSwizzler swizzler(objc_getClass("SSBLookupContext"), @selector(sharedLookupContext), [TestLookupContext methodForSelector:@selector(sharedLookupContext)]);
+    ClassMethodSwizzler swizzler(objc_getClass("SSBLookupContext"), @selector(sharedLookupContext), [TestLookupContext methodForSelector:@selector(sharedLookupContext)]);
 
     static auto delegate = adoptNS([SafeBrowsingNavigationDelegate new]);
     auto webView = adoptNS([WKWebView new]);
     [webView setNavigationDelegate:delegate.get()];
+    [webView setUIDelegate:delegate.get()];
     [webView loadRequest:[NSURLRequest requestWithURL:resourceURL(@"simple")]];
+    EXPECT_FALSE(warningShown);
     while (![webView _safeBrowsingWarning])
         TestWebKitAPI::Util::spinRunLoop();
+    EXPECT_TRUE(warningShown);
 #if !PLATFORM(MAC)
     [[webView _safeBrowsingWarning] didMoveToWindow];
 #endif
@@ -269,7 +279,7 @@ TEST(SafeBrowsing, ShowWarningSPI)
 
 TEST(SafeBrowsing, MissingFramework)
 {
-    TestWebKitAPI::ClassMethodSwizzler swizzler(objc_getClass("SSBLookupContext"), @selector(sharedLookupContext), [NullLookupContext methodForSelector:@selector(sharedLookupContext)]);
+    ClassMethodSwizzler swizzler(objc_getClass("SSBLookupContext"), @selector(sharedLookupContext), [NullLookupContext methodForSelector:@selector(sharedLookupContext)]);
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 800, 600)]);
     [webView synchronouslyLoadTestPageNamed:@"simple"];
 }

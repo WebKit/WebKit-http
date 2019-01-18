@@ -39,9 +39,7 @@ namespace WebCore {
 ScrollingStateNode::ScrollingStateNode(ScrollingNodeType nodeType, ScrollingStateTree& scrollingStateTree, ScrollingNodeID nodeID)
     : m_nodeType(nodeType)
     , m_nodeID(nodeID)
-    , m_changedProperties(0)
     , m_scrollingStateTree(scrollingStateTree)
-    , m_parent(nullptr)
 {
 }
 
@@ -52,11 +50,10 @@ ScrollingStateNode::ScrollingStateNode(const ScrollingStateNode& stateNode, Scro
     , m_nodeID(stateNode.scrollingNodeID())
     , m_changedProperties(stateNode.changedProperties())
     , m_scrollingStateTree(adoptiveTree)
-    , m_parent(nullptr)
 {
     if (hasChangedProperty(ScrollLayer))
         setLayer(stateNode.layer().toRepresentation(adoptiveTree.preferredLayerRepresentation()));
-    scrollingStateTree().addNode(this);
+    scrollingStateTree().addNode(*this);
 }
 
 ScrollingStateNode::~ScrollingStateNode() = default;
@@ -98,6 +95,26 @@ void ScrollingStateNode::appendChild(Ref<ScrollingStateNode>&& childNode)
     if (!m_children)
         m_children = std::make_unique<Vector<RefPtr<ScrollingStateNode>>>();
     m_children->append(WTFMove(childNode));
+}
+
+void ScrollingStateNode::insertChild(Ref<ScrollingStateNode>&& childNode, size_t index)
+{
+    childNode->setParent(this);
+
+    if (!m_children) {
+        ASSERT(!index);
+        m_children = std::make_unique<Vector<RefPtr<ScrollingStateNode>>>();
+    }
+
+    m_children->insert(index, WTFMove(childNode));
+}
+
+size_t ScrollingStateNode::indexOfChild(ScrollingStateNode& childNode) const
+{
+    if (!m_children)
+        return notFound;
+
+    return m_children->find(&childNode);
 }
 
 void ScrollingStateNode::reconcileLayerPositionForViewportRect(const LayoutRect& viewportRect, ScrollingLayerPositionAction action)

@@ -30,7 +30,7 @@
 #include "FloatingState.h"
 #include "FormattingContext.h"
 #include "LayoutBox.h"
-#include "LayoutFormattingState.h"
+#include "LayoutState.h"
 #include "LayoutUnit.h"
 #include <wtf/IsoMalloc.h>
 
@@ -46,7 +46,7 @@ class FormattingState {
 public:
     virtual ~FormattingState();
 
-    virtual std::unique_ptr<FormattingContext>formattingContext(const Box& formattingContextRoot) = 0;
+    virtual std::unique_ptr<FormattingContext> createFormattingContext(const Box& formattingContextRoot) = 0;
 
     FloatingState& floatingState() const { return m_floatingState; }
 

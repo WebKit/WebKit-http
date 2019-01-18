@@ -6,6 +6,12 @@ BlankAnchorTargetImpliesNoOpenerEnabled:
    humanReadableDescription: "target=_blank on anchor elements implies rel=noopener"
    category: experimental
 
+DeviceOrientationEventEnabled:
+  type: bool
+  defaultValue: true
+  condition: ENABLE(DEVICE_ORIENTATION)
+  webcoreName: deviceOrientationEventEnabled
+
 JavaScriptEnabled:
   type: bool
   defaultValue: true
@@ -1335,6 +1341,15 @@ CSSPaintingAPIEnabled:
   category: experimental
   condition: ENABLE(CSS_PAINTING_API)
 
+CSSTypedOMEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "CSS Typed OM"
+  humanReadableDescription: "Enable the CSS Typed OM"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+  condition: ENABLE(CSS_TYPED_OM)
+
 WebSQLDisabled:
   type: bool
   defaultValue: false
@@ -1474,3 +1489,20 @@ LayoutFormattingContextEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+CaptureAudioInUIProcessEnabled:
+  type: bool
+  defaultValue: DEFAULT_CAPTURE_AUDIO_IN_UIPROCESS
+  humanReadableName: "Capture audio in UIProcess"
+  humanReadableDescription: "Enable audio capture in UIProcess"
+  category: internal
+  webcoreBinding: none
+  condition: ENABLE(MEDIA_STREAM)
+
+CaptureVideoInUIProcessEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Capture video in UIProcess"
+  humanReadableDescription: "Enable video capture in UIProcess"
+  category: internal
+  webcoreBinding: none
+  condition: ENABLE(MEDIA_STREAM)

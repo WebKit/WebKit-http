@@ -1500,17 +1500,17 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
 
     if (!valueIsSameAsBefore) {
         if (name == HTMLNames::idAttr) {
-            if (!oldValue.isEmpty())
-                treeScope().idTargetObserverRegistry().notifyObservers(*oldValue.impl());
-            if (!newValue.isEmpty())
-                treeScope().idTargetObserverRegistry().notifyObservers(*newValue.impl());
-
             AtomicString oldId = elementData()->idForStyleResolution();
             AtomicString newId = makeIdForStyleResolution(newValue, document().inQuirksMode());
             if (newId != oldId) {
                 Style::IdChangeInvalidation styleInvalidation(*this, oldId, newId);
                 elementData()->setIdForStyleResolution(newId);
             }
+
+            if (!oldValue.isEmpty())
+                treeScope().idTargetObserverRegistry().notifyObservers(*oldValue.impl());
+            if (!newValue.isEmpty())
+                treeScope().idTargetObserverRegistry().notifyObservers(*newValue.impl());
         } else if (name == classAttr)
             classAttributeChanged(newValue);
         else if (name == HTMLNames::nameAttr)
@@ -1774,7 +1774,7 @@ void Element::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 
 #if ENABLE(INTERSECTION_OBSERVER)
     if (auto* observerData = intersectionObserverData()) {
-        for (auto observer : observerData->observers) {
+        for (const auto& observer : observerData->observers) {
             if (observer->hasObservationTargets()) {
                 oldDocument.removeIntersectionObserver(*observer);
                 newDocument.addIntersectionObserver(*observer);
@@ -2999,7 +2999,7 @@ bool Element::needsStyleInvalidation() const
         return false;
     if (styleValidity() >= Style::Validity::SubtreeInvalid)
         return false;
-    if (document().hasPendingForcedStyleRecalc())
+    if (document().hasPendingFullStyleRebuild())
         return false;
 
     return true;
@@ -3392,11 +3392,11 @@ void Element::disconnectFromIntersectionObservers()
     if (!observerData)
         return;
 
-    for (auto& registration : observerData->registrations)
+    for (const auto& registration : observerData->registrations)
         registration.observer->targetDestroyed(*this);
     observerData->registrations.clear();
 
-    for (auto observer : observerData->observers)
+    for (const auto& observer : observerData->observers)
         observer->rootDestroyed();
     observerData->observers.clear();
 }

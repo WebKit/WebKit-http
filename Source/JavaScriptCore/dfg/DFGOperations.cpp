@@ -248,6 +248,25 @@ EncodedJSValue JIT_OPERATION operationToThisStrict(ExecState* exec, EncodedJSVal
     return JSValue::encode(JSValue::decode(encodedOp).toThis(exec, StrictMode));
 }
 
+JSArray* JIT_OPERATION operationObjectKeys(ExecState* exec, EncodedJSValue encodedObject)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSObject* object = JSValue::decode(encodedObject).toObject(exec);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    scope.release();
+    return ownPropertyKeys(exec, object, PropertyNameMode::Strings, DontEnumPropertiesMode::Exclude);
+}
+
+JSArray* JIT_OPERATION operationObjectKeysObject(ExecState* exec, JSObject* object)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    return ownPropertyKeys(exec, object, PropertyNameMode::Strings, DontEnumPropertiesMode::Exclude);
+}
+
 JSCell* JIT_OPERATION operationObjectCreate(ExecState* exec, EncodedJSValue encodedPrototype)
 {
     VM& vm = exec->vm();
@@ -1322,6 +1341,28 @@ JSCell* JIT_OPERATION operationSubBigInt(ExecState* exec, JSCell* op1, JSCell* o
     return JSBigInt::sub(exec, leftOperand, rightOperand);
 }
 
+JSCell* JIT_OPERATION operationMulBigInt(ExecState* exec, JSCell* op1, JSCell* op2)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    JSBigInt* leftOperand = jsCast<JSBigInt*>(op1);
+    JSBigInt* rightOperand = jsCast<JSBigInt*>(op2);
+
+    return JSBigInt::multiply(exec, leftOperand, rightOperand);
+}
+    
+JSCell* JIT_OPERATION operationDivBigInt(ExecState* exec, JSCell* op1, JSCell* op2)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+    
+    JSBigInt* leftOperand = jsCast<JSBigInt*>(op1);
+    JSBigInt* rightOperand = jsCast<JSBigInt*>(op2);
+    
+    return JSBigInt::divide(exec, leftOperand, rightOperand);
+}
+
 JSCell* JIT_OPERATION operationBitAndBigInt(ExecState* exec, JSCell* op1, JSCell* op2)
 {
     VM* vm = &exec->vm();
@@ -2217,6 +2258,22 @@ JSString* JIT_OPERATION operationSingleCharacterString(ExecState* exec, int32_t 
     NativeCallFrameTracer tracer(&vm, exec);
     
     return jsSingleCharacterString(exec, static_cast<UChar>(character));
+}
+
+Symbol* JIT_OPERATION operationNewSymbol(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    return Symbol::create(vm);
+}
+
+Symbol* JIT_OPERATION operationNewSymbolWithDescription(ExecState* exec, JSString* description)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    return Symbol::create(exec, description);
 }
 
 JSCell* JIT_OPERATION operationNewStringObject(ExecState* exec, JSString* string, Structure* structure)

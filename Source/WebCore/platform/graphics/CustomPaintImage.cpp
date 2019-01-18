@@ -29,10 +29,9 @@
 #if ENABLE(CSS_PAINTING_API)
 
 #include "CSSComputedStyleDeclaration.h"
+#include "CSSImageValue.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPropertyParser.h"
-#include "CSSUnitValue.h"
-#include "CSSUnparsedValue.h"
 #include "CustomPaintCanvas.h"
 #include "GraphicsContext.h"
 #include "ImageBitmap.h"
@@ -40,6 +39,9 @@
 #include "JSCSSPaintCallback.h"
 #include "PaintRenderingContext2D.h"
 #include "RenderElement.h"
+#include "TypedOMCSSImageValue.h"
+#include "TypedOMCSSUnitValue.h"
+#include "TypedOMCSSUnparsedValue.h"
 #include <JavaScriptCore/ConstructData.h>
 
 namespace WebCore {
@@ -60,17 +62,15 @@ ImageDrawResult CustomPaintImage::doCustomPaint(GraphicsContext& destContext, co
     if (!m_element || !m_element->element() || !m_paintDefinition)
         return ImageDrawResult::DidNothing;
 
-    JSC::JSValue paintConstructor(m_paintDefinition->paintConstructor);
+    JSC::JSValue paintConstructor = m_paintDefinition->paintConstructor;
 
     if (!paintConstructor)
         return ImageDrawResult::DidNothing;
 
-    auto& paintCallback = m_paintDefinition->paintCallback.get();
-
     ASSERT(!m_element->needsLayout());
     ASSERT(!m_element->element()->document().needsStyleRecalc());
 
-    JSCSSPaintCallback& callback = static_cast<JSCSSPaintCallback&>(paintCallback);
+    JSCSSPaintCallback& callback = static_cast<JSCSSPaintCallback&>(m_paintDefinition->paintCallback.get());
     auto* scriptExecutionContext = callback.scriptExecutionContext();
     if (!scriptExecutionContext)
         return ImageDrawResult::DidNothing;
@@ -82,7 +82,7 @@ ImageDrawResult CustomPaintImage::doCustomPaint(GraphicsContext& destContext, co
         return ImageDrawResult::DidNothing;
     auto context = contextOrException.releaseReturnValue();
 
-    HashMap<String, Ref<CSSStyleValue>> propertyValues;
+    HashMap<String, Ref<TypedOMCSSStyleValue>> propertyValues;
     ComputedStyleExtractor extractor(m_element->element());
 
     for (auto& name : m_inputProperties) {
@@ -97,15 +97,17 @@ ImageDrawResult CustomPaintImage::doCustomPaint(GraphicsContext& destContext, co
         }
 
         if (!value) {
-            propertyValues.add(name, CSSUnparsedValue::create(emptyString()));
+            propertyValues.add(name, TypedOMCSSUnparsedValue::create(emptyString()));
             continue;
         }
 
         // FIXME: Properly reify all length values.
         if (is<CSSPrimitiveValue>(*value) && downcast<CSSPrimitiveValue>(*value).primitiveType() == CSSPrimitiveValue::CSS_PX)
-            propertyValues.add(name, CSSUnitValue::create(downcast<CSSPrimitiveValue>(*value).doubleValue(), "px"));
+            propertyValues.add(name, TypedOMCSSUnitValue::create(downcast<CSSPrimitiveValue>(*value).doubleValue(), "px"));
+        else if (is<CSSImageValue>(*value))
+            propertyValues.add(name, TypedOMCSSImageValue::create(downcast<CSSImageValue>(*value), *m_element));
         else
-            propertyValues.add(name, CSSUnparsedValue::create(value->cssText()));
+            propertyValues.add(name, TypedOMCSSUnparsedValue::create(value->cssText()));
     }
 
     auto size = CSSPaintSize::create(destSize.width(), destSize.height());
@@ -118,22 +120,18 @@ ImageDrawResult CustomPaintImage::doCustomPaint(GraphicsContext& destContext, co
 
     auto& state = *globalObject.globalExec();
     JSC::ArgList noArgs;
-    JSC::JSValue thisObject = { JSC::construct(&state, WTFMove(paintConstructor), noArgs, "Failed to construct paint class") };
+    JSC::JSValue thisObject = { JSC::construct(&state, paintConstructor, noArgs, "Failed to construct paint class") };
 
     if (UNLIKELY(scope.exception())) {
         reportException(&state, scope.exception());
         return ImageDrawResult::DidNothing;
     }
 
-    auto result = paintCallback.handleEvent(WTFMove(thisObject), *context, size, propertyMap, m_arguments);
+    auto result = callback.handleEvent(WTFMove(thisObject), *context, size, propertyMap, m_arguments);
     if (result.type() != CallbackResultType::Success)
         return ImageDrawResult::DidNothing;
 
-    auto image = canvas->copiedImage();
-    if (!image)
-        return ImageDrawResult::DidNothing;
-
-    destContext.drawImage(*image, FloatPoint());
+    canvas->replayDisplayList(&destContext);
 
     return ImageDrawResult::DidDraw;
 }

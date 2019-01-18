@@ -30,16 +30,20 @@
 #include "WebGPUProgrammablePassEncoder.h"
 
 #include <wtf/RefPtr.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
 class GPUProgrammablePassEncoder;
 class GPURenderPassEncoder;
+class WebGPUBuffer;
 
 class WebGPURenderPassEncoder final : public WebGPUProgrammablePassEncoder {
 public:
-    static Ref<WebGPURenderPassEncoder> create(Ref<WebGPUCommandBuffer>&&, Ref<GPURenderPassEncoder>&&);
+    static RefPtr<WebGPURenderPassEncoder> create(Ref<WebGPUCommandBuffer>&&, Ref<GPURenderPassEncoder>&&);
 
+    // FIXME: Last argument should be Vector<unsigned long>. Why is the generated code incorrectly assuming the IDL wants a sequence<unsigned int>?
+    void setVertexBuffers(unsigned long, Vector<RefPtr<WebGPUBuffer>>&&, Vector<unsigned>&&);
     void draw(unsigned long, unsigned long, unsigned long, unsigned long);
 
 private:

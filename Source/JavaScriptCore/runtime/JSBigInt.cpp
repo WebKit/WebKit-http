@@ -65,7 +65,6 @@ const ClassInfo JSBigInt::s_info =
 JSBigInt::JSBigInt(VM& vm, Structure* structure, unsigned length)
     : Base(vm, structure)
     , m_length(length)
-    , m_sign(false)
 { }
 
 void JSBigInt::initialize(InitializationType initType)
@@ -230,12 +229,6 @@ String JSBigInt::toString(ExecState* exec, unsigned radix)
         return toStringBasePowerOfTwo(exec, this, radix);
 
     return toStringGeneric(exec, this, radix);
-}
-
-inline bool JSBigInt::isZero()
-{
-    ASSERT(length() || !sign());
-    return length() == 0;
 }
 
 // Multiplies {this} with {factor} and adds {summand} to the result.
@@ -1818,6 +1811,7 @@ inline void JSBigInt::setDigit(unsigned n, Digit value)
     ASSERT(n < length());
     dataStorage()[n] = value;
 }
+
 JSObject* JSBigInt::toObject(ExecState* exec, JSGlobalObject* globalObject) const
 {
     return BigIntObject::create(exec->vm(), globalObject, const_cast<JSBigInt*>(this));

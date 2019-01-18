@@ -184,7 +184,7 @@ WI.DOMTreeOutline = class DOMTreeOutline extends WI.TreeOutline
             this._revealAndSelectNode(selectedNode, true);
     }
 
-    updateSelection()
+    updateSelectionArea()
     {
         // This will miss updating selection areas used for the hovered tree element and
         // and those used to show forced pseudo class indicators, but this should be okay.
@@ -250,6 +250,9 @@ WI.DOMTreeOutline = class DOMTreeOutline extends WI.TreeOutline
             delete: new WI.ContextSubMenuItem(contextMenu, WI.UIString("Delete")),
         };
 
+        if (treeElement.selected && this.selectedTreeElements.length > 1)
+            subMenus.delete.appendItem(WI.UIString("Nodes"), () => { this.ondelete(); }, !this._editable);
+
         if (tag && treeElement._populateTagContextMenu)
             treeElement._populateTagContextMenu(contextMenu, event, subMenus);
         else if (textNode && treeElement._populateTextContextMenu)
@@ -268,6 +271,46 @@ WI.DOMTreeOutline = class DOMTreeOutline extends WI.TreeOutline
 
     adjustCollapsedRange()
     {
+    }
+
+    ondelete()
+    {
+        if (!this._editable)
+            return false;
+
+        let selectedTreeElements = this.selectedTreeElements;
+        this._selectionController.removeSelectedItems();
+
+        let levelMap = new Map;
+
+        function getLevel(treeElement) {
+            let level = levelMap.get(treeElement);
+            if (isNaN(level)) {
+                level = 0;
+                let current = treeElement;
+                while (current = current.parent)
+                    level++;
+                levelMap.set(treeElement, level);
+            }
+            return level;
+        }
+
+        // Sort in descending order by node level. This ensures that child nodes
+        // are removed before their ancestors.
+        selectedTreeElements.sort((a, b) => getLevel(b) - getLevel(a));
+
+        // Track removed elements, since the opening and closing tags for the
+        // same WI.DOMNode can both be selected.
+        let removedTreeElements = new Set;
+
+        for (let treeElement of selectedTreeElements) {
+            if (removedTreeElements.has(treeElement))
+                continue;
+            removedTreeElements.add(treeElement)
+            treeElement.remove();
+        }
+
+        return true;
     }
 
     // Private

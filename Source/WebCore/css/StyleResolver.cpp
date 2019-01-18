@@ -1720,13 +1720,14 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value, ApplyCascad
         state.style()->setHasExplicitlyInheritedProperties();
 
 #if ENABLE(CSS_PAINTING_API)
-    if (is<CSSPaintImageValue>(*valueToApply) && document().paintWorkletGlobalScope()) {
-        // FIXME: This should use the "document paint registration map" from the spec, once it is implemented.
-        auto& paintWorklet = *document().paintWorkletGlobalScope();
-        auto locker = holdLock(paintWorklet.paintDefinitionLock());
-        if (auto* registration = paintWorklet.paintDefinitionMap().get(downcast<CSSPaintImageValue>(*valueToApply).name())) {
-            for (auto& property : registration->inputProperties)
-                state.style()->addCustomPaintWatchProperty(property);
+    if (is<CSSPaintImageValue>(*valueToApply)) {
+        auto& name = downcast<CSSPaintImageValue>(*valueToApply).name();
+        if (auto* paintWorklet = document().paintWorkletGlobalScopeForName(name)) {
+            auto locker = holdLock(paintWorklet->paintDefinitionLock());
+            if (auto* registration = paintWorklet->paintDefinitionMap().get(name)) {
+                for (auto& property : registration->inputProperties)
+                    state.style()->addCustomPaintWatchProperty(property);
+            }
         }
     }
 #endif
@@ -1864,7 +1865,7 @@ Color StyleResolver::colorFromPrimitiveValue(const CSSPrimitiveValue& value, boo
     case CSSValueWebkitActivelink:
         return document().activeLinkColor();
     case CSSValueWebkitFocusRingColor:
-        return RenderTheme::focusRingColor(document().styleColorOptions(m_state.style()));
+        return RenderTheme::singleton().focusRingColor(document().styleColorOptions(m_state.style()));
     case CSSValueCurrentcolor:
         // Color is an inherited property so depending on it effectively makes the property inherited.
         // FIXME: Setting the flag as a side effect of calling this function is a bit oblique. Can we do better?

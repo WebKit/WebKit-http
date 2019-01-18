@@ -189,7 +189,7 @@ public:
     const String& injectedBundlePath() const { return m_configuration->injectedBundlePath(); }
 
     DownloadProxy* download(WebPageProxy* initiatingPage, const WebCore::ResourceRequest&, const String& suggestedFilename = { });
-    DownloadProxy* resumeDownload(const API::Data* resumeData, const String& path);
+    DownloadProxy* resumeDownload(WebPageProxy* initiatingPage, const API::Data* resumeData, const String& path);
 
     void setInjectedBundleInitializationUserData(RefPtr<API::Object>&& userData) { m_injectedBundleInitializationUserData = WTFMove(userData); }
 
@@ -445,7 +445,7 @@ public:
     BackgroundWebProcessToken backgroundWebProcessToken() const { return BackgroundWebProcessToken(m_backgroundWebProcessCounter.count()); }
 #endif
 
-    Ref<WebProcessProxy> processForNavigation(WebPageProxy&, const API::Navigation&, ProcessSwapRequestedByClient, String& reason);
+    void processForNavigation(WebPageProxy&, const API::Navigation&, ProcessSwapRequestedByClient, CompletionHandler<void(Ref<WebProcessProxy>&&, SuspendedPageProxy*, const String&)>&&);
 
     // SuspendedPageProxy management.
     void addSuspendedPage(std::unique_ptr<SuspendedPageProxy>&&);
@@ -479,7 +479,7 @@ private:
     void platformInitializeWebProcess(WebProcessCreationParameters&);
     void platformInvalidateContext();
 
-    Ref<WebProcessProxy> processForNavigationInternal(WebPageProxy&, const API::Navigation&, ProcessSwapRequestedByClient, String& reason);
+    void processForNavigationInternal(WebPageProxy&, const API::Navigation&, ProcessSwapRequestedByClient, CompletionHandler<void(Ref<WebProcessProxy>&&, SuspendedPageProxy*, const String&)>&&);
 
     RefPtr<WebProcessProxy> tryTakePrewarmedProcess(WebsiteDataStore&);
 

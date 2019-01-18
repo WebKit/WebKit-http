@@ -1253,6 +1253,7 @@ public:
     void compileNumberToStringWithValidRadixConstant(Node*);
     void compileNumberToStringWithValidRadixConstant(Node*, int32_t radix);
     void compileNewStringObject(Node*);
+    void compileNewSymbol(Node*);
     
     void compileNewTypedArrayWithSize(Node*);
     
@@ -1354,7 +1355,9 @@ public:
     void compileArithSub(Node*);
     void compileValueNegate(Node*);
     void compileArithNegate(Node*);
+    void compileValueMul(Node*);
     void compileArithMul(Node*);
+    void compileValueDiv(Node*);
     void compileArithDiv(Node*);
     void compileArithFRound(Node*);
     void compileArithMod(Node*);
@@ -1476,6 +1479,7 @@ public:
     void compileNewArrayWithSize(Node*);
     void compileNewTypedArray(Node*);
     void compileToThis(Node*);
+    void compileObjectKeys(Node*);
     void compileObjectCreate(Node*);
     void compileCreateThis(Node*);
     void compileNewObject(Node*);

@@ -58,6 +58,7 @@ namespace WebCore {
     macro(Credential) \
     macro(CredentialsContainer) \
     macro(CSSAnimation) \
+    macro(CSSImageValue) \
     macro(CSSNumericValue) \
     macro(CSSPaintSize) \
     macro(CSSStyleValue) \
@@ -188,18 +189,22 @@ namespace WebCore {
     macro(WebGLVertexArrayObject) \
     macro(WebGPU) \
     macro(WebGPUAdapter) \
-    macro(WebGPUDevice) \
+    macro(WebGPUBuffer) \
+    macro(WebGPUBufferUsage) \
     macro(WebGPUCommandBuffer) \
+    macro(WebGPUDevice) \
+    macro(WebGPUIndexFormat) \
+    macro(WebGPUInputStepMode) \
     macro(WebGPUQueue) \
     macro(WebGPUProgrammablePassEncoder) \
     macro(WebGPURenderingContext) \
     macro(WebGPURenderPassEncoder) \
     macro(WebGPURenderPipeline) \
-    macro(WebGPUShaderStage) \
     macro(WebGPUShaderModule) \
     macro(WebGPUSwapChain) \
     macro(WebGPUTexture) \
     macro(WebGPUTextureView) \
+    macro(WebGPUVertexFormat) \
     macro(WebMetalBuffer) \
     macro(WebMetalCommandBuffer) \
     macro(WebMetalCommandQueue) \

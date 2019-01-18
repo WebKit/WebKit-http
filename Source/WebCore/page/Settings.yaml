@@ -224,6 +224,8 @@ webGLEnabled:
   initial: false
 webGLErrorsToConsoleEnabled:
   initial: true
+unhandledPromiseRejectionToConsoleEnabled:
+  initial: true
 forceSoftwareWebGLRendering:
   initial: false
 forceWebGLUsesLowPower:
@@ -742,6 +744,11 @@ touchEventEmulationEnabled:
   initial: false
   getter: isTouchEventEmulationEnabled
   conditional: TOUCH_EVENTS
+
+deviceOrientationEventEnabled:
+  type: bool
+  initial: true
+  conditional: DEVICE_ORIENTATION
 
 shouldEnableTextAutosizingBoost:
   type: bool

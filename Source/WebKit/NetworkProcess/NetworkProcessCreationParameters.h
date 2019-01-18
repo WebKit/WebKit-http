@@ -26,7 +26,6 @@
 #pragma once
 
 #include "CacheModel.h"
-#include "NetworkSessionCreationParameters.h"
 #include "SandboxExtension.h"
 #include <WebCore/Cookie.h>
 #include <wtf/ProcessID.h>
@@ -52,7 +51,6 @@ struct NetworkProcessCreationParameters {
     static bool decode(IPC::Decoder&, NetworkProcessCreationParameters&);
 
     CacheModel cacheModel { CacheModelDocumentViewer };
-    int64_t diskCacheSizeOverride { -1 };
     bool canHandleHTTPSServerTrustEvaluation { true };
 
     String diskCacheDirectory;
@@ -83,8 +81,6 @@ struct NetworkProcessCreationParameters {
 #if PLATFORM(COCOA)
     String uiProcessBundleIdentifier;
     uint32_t uiProcessSDKVersion { 0 };
-    String sourceApplicationBundleIdentifier;
-    String sourceApplicationSecondaryIdentifier;
 #if PLATFORM(IOS_FAMILY)
     String ctDataConnectionServiceType;
 #endif

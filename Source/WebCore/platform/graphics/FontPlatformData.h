@@ -40,7 +40,7 @@
 
 #if USE(FREETYPE)
 #include "FcUniquePtr.h"
-#include "HarfBuzzFace.h"
+#include "HbUniquePtr.h"
 #include "RefPtrFontconfig.h"
 #include <memory>
 #endif
@@ -133,10 +133,7 @@ public:
 #endif
 
 #if USE(FREETYPE)
-#if USE(CAIRO)
-    FontPlatformData(cairo_font_face_t*, const FontDescription&, bool syntheticBold, bool syntheticOblique);
-#endif
-    FontPlatformData(FcPattern*, const FontDescription&);
+    FontPlatformData(cairo_font_face_t*, FcPattern*, float size, bool fixedWidth, bool syntheticBold, bool syntheticOblique, FontOrientation);
     FontPlatformData(const FontPlatformData&);
     FontPlatformData(FontPlatformData&&) = default;
     FontPlatformData& operator=(const FontPlatformData&);
@@ -196,8 +193,10 @@ public:
 #endif
 
 #if USE(FREETYPE)
-    HarfBuzzFace& harfBuzzFace() const;
+    HbUniquePtr<hb_font_t> createOpenTypeMathHarfBuzzFont() const;
     bool hasCompatibleCharmap() const;
+    FcPattern* fcPattern() const;
+    bool isFixedWidth() const { return m_fixedWidth; }
 #endif
 
     unsigned hash() const;
@@ -288,7 +287,6 @@ private:
 #if USE(FREETYPE)
 #if USE(CAIRO)
     RefPtr<FcPattern> m_pattern;
-    mutable std::unique_ptr<HarfBuzzFace> m_harfBuzzFace;
 #endif
 #endif
 

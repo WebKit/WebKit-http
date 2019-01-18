@@ -1,3 +1,186 @@
+2018-12-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueDiv into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=186178
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/big-int-div-jit-osr.js: Added.
+        * stress/big-int-div-jit-untyped.js: Added.
+        * stress/value-div-fixup-int32-big-int.js: Added.
+
+2018-12-10  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Optimize Object.keys by caching own keys results in StructureRareData
+        https://bugs.webkit.org/show_bug.cgi?id=190047
+
+        Reviewed by Keith Miller.
+
+        * stress/object-keys-cached-zero.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-keys-changed-attribute.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-keys-changed-index.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-keys-changed.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-keys-indexed-non-cache.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-keys-overrides-get-property-names.js: Added.
+        (shouldBe):
+        (test):
+        (noInline):
+
+2018-12-12  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [DFG][FTL] Add NewSymbol
+        https://bugs.webkit.org/show_bug.cgi?id=192620
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/symbol-creation.js: Added.
+        (test):
+        * stress/symbol-description-identity.js: Added.
+        (shouldBe):
+        (test):
+        * stress/symbol-identity.js: Added.
+        (shouldBe):
+        (test):
+        * stress/symbol-with-description-throw-error.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (test):
+        (object.toString):
+
+2018-12-12  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [BigInt] Implement DFG/FTL typeof for BigInt
+        https://bugs.webkit.org/show_bug.cgi?id=192619
+
+        Reviewed by Keith Miller.
+
+        * stress/big-int-boolean-proven-type.js: Added.
+        (assert):
+        (bool):
+        * stress/big-int-type-of-proven-type-non-constant-including-symbol.js: Added.
+        (assert):
+        (typeOf):
+        (i.switch):
+        * stress/big-int-type-of-proven-type-non-constant.js: Added.
+        (assert):
+        (typeOf):
+        * stress/big-int-type-of.js:
+        (typeOf):
+        (func):
+
+2018-12-10  Mark Lam  <mark.lam@apple.com>
+
+        PropertyAttribute needs a CustomValue bit.
+        https://bugs.webkit.org/show_bug.cgi?id=191993
+        <rdar://problem/46264467>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-191993.js: Added.
+
+2018-12-10  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueMul into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=186175
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/big-int-mul-jit-osr.js: Added.
+        * stress/big-int-mul-jit-untyped.js: Added.
+        * stress/value-mul-fixup-int32-big-int.js: Added.
+
+2018-12-06  Keith Miller  <keith_miller@apple.com>
+
+        stress/big-wasm-memory tests failing on 32-bit JSC bot
+        https://bugs.webkit.org/show_bug.cgi?id=192020
+
+        Reviewed by Saam Barati.
+
+        Not every platform has WebAssembly, e.g. 32-bit, so we should exit
+        the wasm stress tests if the WebAssembly object does not exist.
+
+        * stress/big-wasm-memory-grow-no-max.js:
+        (test.foo):
+        (test):
+        (foo): Deleted.
+        (catch): Deleted.
+        * stress/big-wasm-memory-grow.js:
+        (test.foo):
+        (test):
+        (foo): Deleted.
+        (catch): Deleted.
+        * stress/big-wasm-memory.js:
+        (test.foo):
+        (test):
+        (foo): Deleted.
+        (catch): Deleted.
+
+2018-12-05  Mark Lam  <mark.lam@apple.com>
+
+        speculationFromCell() should speculate non-Identifier strings as SpecString instead of SpecStringVar.
+        https://bugs.webkit.org/show_bug.cgi?id=192441
+        <rdar://problem/46480355>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-192441.js: Added.
+
+2018-12-04  Mark Lam  <mark.lam@apple.com>
+
+        DFG's StrengthReduction phase should not reduce Construct into DirectContruct when the executable does not have constructAbility.
+        https://bugs.webkit.org/show_bug.cgi?id=192386
+        <rdar://problem/46445516>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-192386.js: Added.
+
+2018-12-04  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Support logic operations
+        https://bugs.webkit.org/show_bug.cgi?id=179903
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/big-int-branch-usage.js: Added.
+        * stress/big-int-logical-and.js: Added.
+        * stress/big-int-logical-not.js: Added.
+        * stress/big-int-logical-or.js: Added.
+
+2018-12-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r238833.
+
+        Breaks macOS and iOS debug builds.
+
+        Reverted changeset:
+
+        "[ESNext][BigInt] Support logic operations"
+        https://bugs.webkit.org/show_bug.cgi?id=179903
+        https://trac.webkit.org/changeset/238833
+
+2018-12-03  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Support logic operations
+        https://bugs.webkit.org/show_bug.cgi?id=179903
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/big-int-branch-usage.js: Added.
+        * stress/big-int-logical-and.js: Added.
+        * stress/big-int-logical-not.js: Added.
+        * stress/big-int-logical-or.js: Added.
+
 2018-12-02  Caio Lima  <ticaiolima@gmail.com>
 
         [ESNext][BigInt] Implement support for "<<" and ">>"

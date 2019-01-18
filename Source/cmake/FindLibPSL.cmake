@@ -54,12 +54,9 @@ if (LIBPSL_INCLUDE_DIRS)
     endif ()
 endif ()
 
-if ("${LibPSL_FIND_VERSION}" VERSION_GREATER "${LIBPSL_VERSION}")
-    message(FATAL_ERROR "Required version (" ${LibPSL_FIND_VERSION} ") is higher than found version (" ${LIBPSL_VERSION} ")")
-endif ()
-
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(LIBPSL REQUIRED_VARS LIBPSL_INCLUDE_DIRS LIBPSL_LIBRARIES)
+find_package_handle_standard_args(LibPSL REQUIRED_VARS LIBPSL_INCLUDE_DIRS LIBPSL_LIBRARIES
+                                         VERSION_VAR LIBPSL_VERSION)
 
 mark_as_advanced(
     LIBPSL_INCLUDE_DIRS

@@ -507,6 +507,7 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     void setMockMediaCaptureDevicesEnabled(bool);
+    void setCustomPrivateRecorderCreator();
 #endif
 
 #if ENABLE(WEB_RTC)
@@ -677,7 +678,6 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     void setCameraMediaStreamTrackOrientation(MediaStreamTrack&, int orientation);
-    ExceptionOr<void> setMediaDeviceState(const String& id, const String& property, bool value);
     unsigned long trackAudioSampleCount() const { return m_trackAudioSampleCount; }
     unsigned long trackVideoSampleCount() const { return m_trackVideoSampleCount; }
     void observeMediaStreamTrack(MediaStreamTrack&);
@@ -714,6 +714,9 @@ public:
 
     bool isSystemPreviewLink(Element&) const;
     bool isSystemPreviewImage(Element&) const;
+
+    void postTask(RefPtr<VoidCallback>&&);
+    void markContextAsInsecure();
 
     bool usingAppleInternalSDK() const;
 

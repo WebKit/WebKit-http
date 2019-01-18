@@ -46,7 +46,7 @@ class ProcessPoolConfiguration final : public ObjectImpl<Object::Type::ProcessPo
 public:
     static Ref<ProcessPoolConfiguration> create();
     static Ref<ProcessPoolConfiguration> createWithLegacyOptions();
-    static Ref<ProcessPoolConfiguration> createWithWebsiteDataStoreConfiguration(const WebKit::WebsiteDataStore::Configuration&);
+    static Ref<ProcessPoolConfiguration> createWithWebsiteDataStoreConfiguration(const WebKit::WebsiteDataStoreConfiguration&);
 
     explicit ProcessPoolConfiguration();
     virtual ~ProcessPoolConfiguration();
@@ -75,9 +75,6 @@ public:
 
     WebKit::CacheModel cacheModel() const { return m_cacheModel; }
     void setCacheModel(WebKit::CacheModel cacheModel) { m_cacheModel = cacheModel; }
-
-    int64_t diskCacheSizeOverride() const { return m_diskCacheSizeOverride; }
-    void setDiskCacheSizeOverride(int64_t size) { m_diskCacheSizeOverride = size; }
 
     const WTF::String& applicationCacheDirectory() const { return m_applicationCacheDirectory; }
     void setApplicationCacheDirectory(const WTF::String& applicationCacheDirectory) { m_applicationCacheDirectory = applicationCacheDirectory; }
@@ -131,12 +128,6 @@ public:
 
     const Vector<WTF::String>& overrideLanguages() const { return m_overrideLanguages; }
     void setOverrideLanguages(Vector<WTF::String>&& languages) { m_overrideLanguages = WTFMove(languages); }
-
-    const WTF::String& sourceApplicationBundleIdentifier() const { return m_sourceApplicationBundleIdentifier; }
-    void setSourceApplicationBundleIdentifier(const WTF::String& sourceApplicationBundleIdentifier) { m_sourceApplicationBundleIdentifier = sourceApplicationBundleIdentifier; }
-
-    const WTF::String& sourceApplicationSecondaryIdentifier() const { return m_sourceApplicationSecondaryIdentifier; }
-    void setSourceApplicationSecondaryIdentifier(const WTF::String& sourceApplicationSecondaryIdentifier) { m_sourceApplicationSecondaryIdentifier = sourceApplicationSecondaryIdentifier; }
     
     bool alwaysRunsAtBackgroundPriority() const { return m_alwaysRunsAtBackgroundPriority; }
     void setAlwaysRunsAtBackgroundPriority(bool alwaysRunsAtBackgroundPriority) { m_alwaysRunsAtBackgroundPriority = alwaysRunsAtBackgroundPriority; }
@@ -146,6 +137,9 @@ public:
 
     bool shouldCaptureAudioInUIProcess() const { return m_shouldCaptureAudioInUIProcess; }
     void setShouldCaptureAudioInUIProcess(bool shouldCaptureAudioInUIProcess) { m_shouldCaptureAudioInUIProcess = shouldCaptureAudioInUIProcess; }
+
+    bool shouldCaptureVideoInUIProcess() const { return m_shouldCaptureVideoInUIProcess; }
+    void setShouldCaptureVideoInUIProcess(bool shouldCaptureVideoInUIProcess) { m_shouldCaptureVideoInUIProcess = shouldCaptureVideoInUIProcess; }
 
     bool shouldCaptureDisplayInUIProcess() const { return m_shouldCaptureDisplayInUIProcess; }
     void setShouldCaptureDisplayInUIProcess(bool shouldCaptureDisplayInUIProcess) { m_shouldCaptureDisplayInUIProcess = shouldCaptureDisplayInUIProcess; }
@@ -193,7 +187,6 @@ private:
     unsigned m_maximumProcessCount { 0 };
     bool m_diskCacheSpeculativeValidationEnabled { false };
     WebKit::CacheModel m_cacheModel { WebKit::CacheModelPrimaryWebBrowser };
-    int64_t m_diskCacheSizeOverride { -1 };
 
     WTF::String m_applicationCacheDirectory;
     WTF::String m_applicationCacheFlatFileSubdirectoryName;
@@ -213,11 +206,10 @@ private:
     bool m_ignoreSynchronousMessagingTimeoutsForTesting { false };
     bool m_attrStyleEnabled { false };
     Vector<WTF::String> m_overrideLanguages;
-    WTF::String m_sourceApplicationBundleIdentifier;
-    WTF::String m_sourceApplicationSecondaryIdentifier;
     bool m_alwaysRunsAtBackgroundPriority { false };
     bool m_shouldTakeUIBackgroundAssertion { true };
     bool m_shouldCaptureAudioInUIProcess { false };
+    bool m_shouldCaptureVideoInUIProcess { false };
     bool m_shouldCaptureDisplayInUIProcess { DEFAULT_CAPTURE_DISPLAY_IN_UI_PROCESS };
     ProcessID m_presentingApplicationPID { getCurrentProcessID() };
     std::optional<bool> m_processSwapsOnNavigationFromClient;

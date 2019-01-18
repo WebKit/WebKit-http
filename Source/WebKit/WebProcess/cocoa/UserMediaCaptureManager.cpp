@@ -37,6 +37,7 @@
 #include <WebCore/CaptureDevice.h>
 #include <WebCore/ImageTransferSessionVT.h>
 #include <WebCore/MediaConstraints.h>
+#include <WebCore/MockRealtimeMediaSourceCenter.h>
 #include <WebCore/RealtimeMediaSourceCenter.h>
 #include <WebCore/RemoteVideoSample.h>
 #include <WebCore/WebAudioBufferList.h>
@@ -131,11 +132,18 @@ public:
     {
         ASSERT(type() == Type::Video);
 
-        auto videoSampleSize = IntSize(m_settings.width(), m_settings.height());
-        if (videoSampleSize.isEmpty())
-            videoSampleSize = remoteSample.size();
+        auto remoteSampleSize = remoteSample.size();
+        setIntrinsicSize(remoteSampleSize);
 
-        if (!m_imageTransferSession)
+        auto videoSampleSize = IntSize(m_settings.width(), m_settings.height());
+        if (videoSampleSize.isZero())
+            videoSampleSize = remoteSampleSize;
+        else if (!videoSampleSize.height())
+            videoSampleSize.setHeight(videoSampleSize.width() * (remoteSampleSize.height() / static_cast<double>(remoteSampleSize.width())));
+        else if (!videoSampleSize.width())
+            videoSampleSize.setWidth(videoSampleSize.height() * (remoteSampleSize.width() / static_cast<double>(remoteSampleSize.height())));
+
+        if (!m_imageTransferSession || m_imageTransferSession->pixelFormat() != remoteSample.videoFormat())
             m_imageTransferSession = ImageTransferSessionVT::create(remoteSample.videoFormat());
 
         if (!m_imageTransferSession) {
@@ -205,8 +213,9 @@ UserMediaCaptureManager::UserMediaCaptureManager(WebProcess& process)
 
 UserMediaCaptureManager::~UserMediaCaptureManager()
 {
-    RealtimeMediaSourceCenter::unsetAudioFactory(*this);
-    RealtimeMediaSourceCenter::unsetDisplayCaptureFactory(*this);
+    RealtimeMediaSourceCenter::singleton().unsetAudioCaptureFactory(*this);
+    RealtimeMediaSourceCenter::singleton().unsetDisplayCaptureFactory(*this);
+    RealtimeMediaSourceCenter::singleton().unsetVideoCaptureFactory(*this);
     m_process.removeMessageReceiver(Messages::UserMediaCaptureManager::messageReceiverName());
 }
 
@@ -217,10 +226,16 @@ const char* UserMediaCaptureManager::supplementName()
 
 void UserMediaCaptureManager::initialize(const WebProcessCreationParameters& parameters)
 {
+    MockRealtimeMediaSourceCenter::singleton().setMockAudioCaptureEnabled(!parameters.shouldCaptureAudioInUIProcess);
+    MockRealtimeMediaSourceCenter::singleton().setMockVideoCaptureEnabled(!parameters.shouldCaptureVideoInUIProcess);
+    MockRealtimeMediaSourceCenter::singleton().setMockDisplayCaptureEnabled(!parameters.shouldCaptureDisplayInUIProcess);
+
     if (parameters.shouldCaptureAudioInUIProcess)
-        RealtimeMediaSourceCenter::setAudioFactory(*this);
+        RealtimeMediaSourceCenter::singleton().setAudioCaptureFactory(*this);
+    if (parameters.shouldCaptureVideoInUIProcess)
+        RealtimeMediaSourceCenter::singleton().setVideoCaptureFactory(*this);
     if (parameters.shouldCaptureDisplayInUIProcess)
-        RealtimeMediaSourceCenter::setDisplayCaptureFactory(*this);
+        RealtimeMediaSourceCenter::singleton().setDisplayCaptureFactory(*this);
 }
 
 WebCore::CaptureSourceOrError UserMediaCaptureManager::createCaptureSource(const CaptureDevice& device, String&& hashSalt, const WebCore::MediaConstraints* constraints)

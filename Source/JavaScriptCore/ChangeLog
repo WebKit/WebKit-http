@@ -1,3 +1,656 @@
+2018-12-13  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: remove DOM.BackendNodeId and associated commands/events
+        https://bugs.webkit.org/show_bug.cgi?id=192478
+
+        Reviewed by Matt Baker.
+
+        * inspector/protocol/DOM.json:
+
+2018-12-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueDiv into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=186178
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch is introducing a new node type called ValueDiv. This node
+        is responsible to handle Untyped and Bigint specialization of division
+        operator, while the ArithDiv variant handles Number/Boolean cases.
+
+        BigInt specialization generates following speedup into simple
+        benchmark:
+
+                                  noSpec                 changes
+
+        big-int-simple-div    10.6013+-0.4682    ^    8.4518+-0.0943   ^ definitely 1.2543x faster
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::makeDivSafe):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupArithDiv):
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::arithNodeFlags):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueDiv):
+        (JSC::DFG::SpeculativeJIT::compileArithDiv):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGValidate.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueDiv):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithDiv):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithBitNot):
+
+2018-12-13  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, build fix after r239153, part 2
+        https://bugs.webkit.org/show_bug.cgi?id=190047
+
+        * runtime/StructureRareDataInlines.h:
+        (JSC::StructureRareData::cachedOwnKeys const):
+
+2018-12-13  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, build fix after r239153
+        https://bugs.webkit.org/show_bug.cgi?id=190047
+
+        * runtime/StructureRareDataInlines.h:
+        (JSC::StructureRareData::cachedOwnKeys const):
+
+2018-12-10  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Optimize Object.keys by caching own keys results in StructureRareData
+        https://bugs.webkit.org/show_bug.cgi?id=190047
+
+        Reviewed by Keith Miller.
+
+        Object.keys is one of the most frequently used function in web-tooling-benchmarks (WTB).
+        Object.keys is dominant in lebab of WTB, and frequently called in babel and others.
+        Since our Structure knows the shape of JSObject, we can cache the result of Object.keys
+        in Structure (StructureRareData) as we cache JSPropertyNameEnumerator in StructureRareData.
+
+        This patch caches the result of Object.keys in StructureRareData. The cached array is created
+        as JSImmutableButterfly. And Object.keys creates CoW from this data. Currently, the lifetime
+        strategy of this JSImmutableButterfly is the same to cached JSPropertyNameEnumerator. It is
+        referenced from Structure, and collected when Structure is collected.
+
+        This improves several benchmarks in SixSpeed.
+
+                                        baseline                  patched
+
+            object-assign.es5      350.1710+-3.6303     ^    226.0368+-4.7558        ^ definitely 1.5492x faster
+            for-of-object.es6      269.1941+-3.3430     ^    127.9317+-2.3875        ^ definitely 2.1042x faster
+
+        And it improves WTB lebab by 11.8%.
+
+            Before: lebab:  6.10 runs/s
+            After:  lebab:  6.82 runs/s
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::convertToNewArrayBuffer):
+        * dfg/DFGNode.h:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileObjectKeys):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileObjectKeys):
+        * runtime/Intrinsic.cpp:
+        (JSC::intrinsicName):
+        * runtime/Intrinsic.h:
+        * runtime/JSImmutableButterfly.h:
+        (JSC::JSImmutableButterfly::createSentinel):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ownPropertyKeys):
+        * runtime/Structure.cpp:
+        (JSC::Structure::canCachePropertyNameEnumerator const):
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::setCachedOwnKeys):
+        (JSC::Structure::cachedOwnKeys const):
+        (JSC::Structure::canCacheOwnKeys const):
+        * runtime/StructureRareData.cpp:
+        (JSC::StructureRareData::visitChildren):
+        (JSC::StructureRareData::cachedPropertyNameEnumerator const): Deleted.
+        (JSC::StructureRareData::setCachedPropertyNameEnumerator): Deleted.
+        * runtime/StructureRareData.h:
+        * runtime/StructureRareDataInlines.h:
+        (JSC::StructureRareData::cachedPropertyNameEnumerator const):
+        (JSC::StructureRareData::setCachedPropertyNameEnumerator):
+        (JSC::StructureRareData::cachedOwnKeys const):
+        (JSC::StructureRareData::cachedOwnKeysConcurrently const):
+        (JSC::StructureRareData::setCachedOwnKeys):
+        (JSC::StructureRareData::previousID const): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2018-12-12  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [DFG][FTL] Add NewSymbol
+        https://bugs.webkit.org/show_bug.cgi?id=192620
+
+        Reviewed by Saam Barati.
+
+        This patch introduces NewSymbol DFG node into DFG and FTL tiers. The main goal of this patch is not optimize
+        NewSymbol code faster. Rather than that, this patch intends to offer SpecSymbol type information into DFG's
+        data flow to optimize generated code in FTL backend.
+
+        We add NewSymbol DFG node, which may take an argument. If an argument is not given, NewSymbol is for `Symbol()`.
+        If an argument is given, ToString is emitted to this argument before passing it to NewSymbol. So NewSymbol node
+        itself does not perform any type checks. ToString performs effects, but NewSymbol doesn't have any side observable
+        effects. So we can decouple Symbol(description) call into NewSymbol(ToString(description)).
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleConstantInternalFunction):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGClobbersExitState.cpp:
+        (JSC::DFG::clobbersExitState):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGMayExit.cpp:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewSymbol):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewSymbol):
+
+2018-12-12  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [BigInt] Implement DFG/FTL typeof for BigInt
+        https://bugs.webkit.org/show_bug.cgi?id=192619
+
+        Reviewed by Keith Miller.
+
+        This patch implements typeof for BigInt in DFG and FTL. Our DFG and FTL tiers now correctly consider about BigInt
+        in the code generated for typeof.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::boolify): We add (SpecCell - SpecString) type filter for proven type since isString
+        check is already performed here.
+        (JSC::FTL::DFG::LowerDFGToB3::buildTypeOf): We use (SpecCell - SpecObject - SpecString) type filter for proven type
+        since String and Object are already checked here. If we know the proven type does not include Symbol type here, we
+        can omit the code for Symbol type.
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitTypeOf):
+
+2018-12-11  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [BigInt] Simplify boolean context evaluation by leveraging JSString::offsetOfLength() == JSBigInt::offsetOfLength()
+        https://bugs.webkit.org/show_bug.cgi?id=192615
+
+        Reviewed by Saam Barati.
+
+        JSString and JSBigInt have similar concept in terms of the implementation.
+        Both are immutable, JSCells, and have length information. m_length is located
+        just after JSCell header part, we can ensure `JSString::offsetOfLength() == JSBigInt::offsetOfLength()`,
+        and it allows us to optimize the boolean context evaluation.
+
+        This patch leverages the above information to reduce the code size for the boolean context evaluation.
+
+        * ftl/FTLAbstractHeapRepository.cpp:
+        (JSC::FTL::AbstractHeapRepository::AbstractHeapRepository):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::boolify):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitConvertValueToBoolean):
+        (JSC::AssemblyHelpers::branchIfValue):
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::JSBigInt):
+        (JSC::JSBigInt::offsetOfLength): Deleted.
+        * runtime/JSBigInt.h:
+
+2018-12-11  Justin Michaud  <justin_michaud@apple.com>
+
+        Implement feature flag for CSS Typed OM
+        https://bugs.webkit.org/show_bug.cgi?id=192610
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-12-10  Don Olmstead  <don.olmstead@sony.com>
+
+        Move ENABLE_RESOURCE_LOAD_STATISTICS to FeatureDefines.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=192573
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-12-10  Mark Lam  <mark.lam@apple.com>
+
+        PropertyAttribute needs a CustomValue bit.
+        https://bugs.webkit.org/show_bug.cgi?id=191993
+        <rdar://problem/46264467>
+
+        Reviewed by Saam Barati.
+
+        This is because GetByIdStatus needs to distinguish CustomValue properties from
+        other types, and its only means of doing so is via the property's attributes.
+        Previously, there's nothing in the property's attributes that can indicate that
+        the property is a CustomValue.
+
+        We fix this by doing the following:
+
+        1. Added a PropertyAttribute::CustomValue bit.
+        2. Added a PropertyAttribute::CustomAccessorOrValue convenience bit mask that is
+           CustomAccessor | CustomValue.
+
+        3. Since CustomGetterSetter properties are only set via JSObject::putDirectCustomAccessor(),
+           we added a check in JSObject::putDirectCustomAccessor() to see if the attributes
+           bits include PropertyAttribute::CustomAccessor.  If not, then the property
+           must be a CustomValue, and we'll add the PropertyAttribute::CustomValue bit
+           to the attributes bits.
+
+           This ensures that the property attributes is sufficient to tell us if the
+           property contains a CustomGetterSetter.
+
+        4. Updated all checks for PropertyAttribute::CustomAccessor to check for
+           PropertyAttribute::CustomAccessorOrValue instead if their intent is to check
+           for the presence of a CustomGetterSetter as opposed to checking specifically
+           for one that is used as a CustomAccessor.
+
+           This includes all the Structure transition code that needs to capture the
+           attributes change when a CustomValue has been added.
+
+        5. Filtered out the PropertyAttribute::CustomValue bit in PropertyDescriptor.
+           The fact that we're using a CustomGetterSetter as a CustomValue should remain
+           invisible to the descriptor.  This is because the descriptor should describe
+           a CustomValue no differently from a plain value.
+
+        6. Added some asserts to ensure that property attributes are as expected, and to
+           document some invariants.
+
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFromLLInt):
+        (JSC::GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback):
+        (JSC::GetByIdStatus::computeFor):
+        * bytecode/InByIdStatus.cpp:
+        (JSC::InByIdStatus::computeForStubInfoWithoutExitSiteFeedback):
+        * bytecode/PropertyCondition.cpp:
+        (JSC::PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint const):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFor):
+        * runtime/JSFunction.cpp:
+        (JSC::getCalculatedDisplayName):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putDirectCustomAccessor):
+        (JSC::JSObject::putDirectNonIndexAccessor):
+        (JSC::JSObject::putDirectIndexSlowOrBeyondVectorLength):
+        * runtime/JSObject.h:
+        (JSC::JSObject::putDirectIndex):
+        (JSC::JSObject::fillCustomGetterPropertySlot):
+        (JSC::JSObject::putDirect):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::putDirectInternal):
+        * runtime/PropertyDescriptor.cpp:
+        (JSC::PropertyDescriptor::setDescriptor):
+        (JSC::PropertyDescriptor::setCustomDescriptor):
+        (JSC::PropertyDescriptor::setAccessorDescriptor):
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::setCustomGetterSetter):
+
+2018-12-10  Mark Lam  <mark.lam@apple.com>
+
+        LinkBuffer::copyCompactAndLinkCode() needs to be aware of ENABLE(SEPARATED_WX_HEAP).
+        https://bugs.webkit.org/show_bug.cgi?id=192569
+        <rdar://problem/45615617>
+
+        Reviewed by Saam Barati.
+
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::copyCompactAndLinkCode):
+
+2018-12-10  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueMul into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=186175
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch is adding a new DFG node called ValueMul. This node is
+        responsible to handle multiplication operations that can result into
+        non-number values. We emit such node during DFGByteCodeParser when the
+        operands are not numbers. During FixupPhase, we change this
+        operation to ArithMul if we can speculate Number/Boolean operands.
+
+        The BigInt specialization shows a small progression:
+
+                                noSpec                changes
+
+        big-int-simple-mul  18.8090+-1.0435  ^  17.4305+-0.2673  ^ definitely 1.0791x faster
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::makeSafe):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupMultiplication):
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::arithNodeFlags):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueMul):
+        (JSC::DFG::SpeculativeJIT::compileArithMul):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGValidate.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueMul):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithMul):
+
+2018-12-08  Mark Lam  <mark.lam@apple.com>
+
+        Reduce size of PropertySlot and PutPropertySlot.
+        https://bugs.webkit.org/show_bug.cgi?id=192526
+
+        Reviewed by Keith Miller.
+
+        With some minor adjustments, we can reduce the size of PropertySlot from 80 bytes
+        (19 padding bytes) to 64 bytes (3 padding bytes), and PutPropertySlot from 40
+        bytes (4 padding bytes) to 32 bytes (0 padding bytes but with 6 unused bits).
+        These measurements are for a 64-bit build.
+
+        * runtime/PropertySlot.h:
+        * runtime/PutPropertySlot.h:
+        (JSC::PutPropertySlot::PutPropertySlot):
+
+2018-12-08  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Record right offset with aligned wide instructions
+        https://bugs.webkit.org/show_bug.cgi?id=192006
+
+        Reviewed by Yusuke Suzuki.
+
+        Aligning bytecode instructions inserts nops into the instruction stream.
+        Emitting an instruction did not record the actual start of the instruction with
+        aligned instructions, but the nop just before the actual instruction. This was
+        problematic with the StaticPropertyAnalyzer that used the wrong instruction offset.
+
+        * bytecode/InstructionStream.h:
+        (JSC::InstructionStream::MutableRef::clone):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::alignWideOpcode):
+        (JSC::BytecodeGenerator::emitCreateThis):
+        (JSC::BytecodeGenerator::emitNewObject):
+        * generator/Opcode.rb:
+
+2018-12-07  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Align the metadata table on all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=192050
+        <rdar://problem/46312674>
+
+        Reviewed by Mark Lam.
+
+        Although certain platforms don't require the metadata to be aligned,
+        values were being concurrently read and written to ValueProfiles,
+        which caused crashes since these operations are not atomic on unaligned
+        addresses.
+
+        * bytecode/Opcode.cpp:
+        (JSC::metadataAlignment):
+        * bytecode/Opcode.h:
+        * bytecode/UnlinkedMetadataTableInlines.h:
+        (JSC::UnlinkedMetadataTable::finalize):
+
+2018-12-05  Mark Lam  <mark.lam@apple.com>
+
+        speculationFromCell() should speculate non-Identifier strings as SpecString instead of SpecStringVar.
+        https://bugs.webkit.org/show_bug.cgi?id=192441
+        <rdar://problem/46480355>
+
+        Reviewed by Saam Barati.
+
+        This is because a regular String (non-Identifier) can be converted into an
+        Identifier.  During DFG/FTL compilation, AbstractValue::checkConsistency() may
+        expect a value to be of type SpecStringVar, but the mutator thread may have
+        converted the string into an Identifier.  This creates a race where
+        AbstractValue::checkConsistency() may fail because it sees a SpecStringIdent when
+        it expects the a SpecStringVar.  
+
+        The fix is to speculate non-Identifier strings as type SpecString which allows it
+        to be SpecStringVar or SpecStringIndent.
+
+        * bytecode/SpeculatedType.cpp:
+        (JSC::speculationFromCell):
+
+2018-12-04  Mark Lam  <mark.lam@apple.com>
+
+        DFG's StrengthReduction phase should not reduce Construct into DirectContruct when the executable does not have constructAbility.
+        https://bugs.webkit.org/show_bug.cgi?id=192386
+        <rdar://problem/46445516>
+
+        Reviewed by Saam Barati.
+
+        This violates an invariant documented by a RELEASE_ASSERT in operationLinkDirectCall().
+
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+
+2018-12-04  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Support logic operations
+        https://bugs.webkit.org/show_bug.cgi?id=179903
+
+        Reviewed by Yusuke Suzuki.
+
+        We are introducing in this patch the ToBoolean support for JSBigInt.
+        With this change, we can implement the correct behavior of BigInt as
+        operand of logical opertions. During JIT genertion into DFG and FTL,
+        we are using JSBigInt::m_length to verify if the number is 0n or not,
+        following the same approach used by JSString. This is also safe in the case
+        of BigInt, because only 0n has m_length == 0.
+
+        We are not including BigInt speculation into Branch nodes in this
+        patch, but the plan is to implement it in further patches.
+
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::boolify):
+        (JSC::FTL::DFG::LowerDFGToB3::isBigInt):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitConvertValueToBoolean):
+        (JSC::AssemblyHelpers::branchIfValue):
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::isZero const):
+        (JSC::JSBigInt::offsetOfLength):
+        (JSC::JSBigInt::toBoolean const):
+        (JSC::JSBigInt::isZero): Deleted.
+        * runtime/JSBigInt.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::toBoolean const):
+        (JSC::JSCell::pureToBoolean const):
+
+2018-12-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: tests should support async operations
+        https://bugs.webkit.org/show_bug.cgi?id=192171
+        <rdar://problem/46423562>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add `awaitPromise` command for executing a callback when a Promise gets settled.
+
+        Drive-by: allow `wasThrown` to be optional, instead of expecting it to always have a value.
+
+        * inspector/protocol/Runtime.json:
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.prototype.awaitPromise): Added.
+
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::evaluate):
+        (Inspector::InjectedScript::awaitPromise): Added.
+        (Inspector::InjectedScript::callFunctionOn):
+        (Inspector::InjectedScript::evaluateOnCallFrame):
+
+        * inspector/InjectedScriptBase.h:
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::makeEvalCall):
+        (Inspector::InjectedScriptBase::makeAsyncCall): Added.
+        (Inspector::InjcetedScriptBase::checkCallResult): Added.
+        (Inspector::InjcetedScriptBase::checkAsyncCallResult): Added.
+
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::evaluate):
+        (Inspector::InspectorRuntimeAgent::awaitPromise):
+        (Inspector::InspectorRuntimeAgent::callFunctionOn):
+
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::evaluateOnCallFrame):
+
+2018-12-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r238833.
+
+        Breaks macOS and iOS debug builds.
+
+        Reverted changeset:
+
+        "[ESNext][BigInt] Support logic operations"
+        https://bugs.webkit.org/show_bug.cgi?id=179903
+        https://trac.webkit.org/changeset/238833
+
+2018-12-03  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Support logic operations
+        https://bugs.webkit.org/show_bug.cgi?id=179903
+
+        Reviewed by Yusuke Suzuki.
+
+        We are introducing in this patch the ToBoolean support for JSBigInt.
+        With this change, we can implement the correct behavior of BigInt as
+        operand of logical opertions. During JIT genertion into DFG and FTL,
+        we are using JSBigInt::m_length to verify if the number is 0n or not,
+        following the same approach used by JSString. This is also safe in the case
+        of BigInt, because only 0n has m_length == 0.
+
+        We are not including BigInt speculation into Branch nodes in this
+        patch, but the plan is to implement it in further patches.
+
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::boolify):
+        (JSC::FTL::DFG::LowerDFGToB3::isBigInt):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitConvertValueToBoolean):
+        (JSC::AssemblyHelpers::branchIfValue):
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::isZero const):
+        (JSC::JSBigInt::offsetOfLength):
+        (JSC::JSBigInt::toBoolean const):
+        (JSC::JSBigInt::isZero): Deleted.
+        * runtime/JSBigInt.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::toBoolean const):
+        (JSC::JSCell::pureToBoolean const):
+
+2018-12-03  Keith Rollin  <krollin@apple.com>
+
+        Add .xcfilelist files
+        https://bugs.webkit.org/show_bug.cgi?id=192082
+        <rdar://problem/46312533>
+
+        Reviewed by Brent Fulgham.
+
+        Add .xcfilelist files for Generate Derived Sources and Generate
+        Unified Sources build phases in Xcode. These are just being staged for
+        now; they'll be added to the Xcode projects later.
+
+        * DerivedSources-input.xcfilelist: Added.
+        * DerivedSources-output.xcfilelist: Added.
+        * UnifiedSources-input.xcfilelist: Added.
+        * UnifiedSources-output.xcfilelist: Added.
+
 2018-12-03  Mark Lam  <mark.lam@apple.com>
 
         Fix the bytecode code generator scripts to pretty print BytecodeStructs.h and BytecodeIndices.h.

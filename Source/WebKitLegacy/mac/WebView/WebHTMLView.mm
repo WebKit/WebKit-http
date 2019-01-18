@@ -3881,7 +3881,7 @@ static BOOL currentScrollIsBlit(NSView *clipView)
     if (Frame* frame = core([self _frame])) {
         if (frame->document() && frame->document()->pageCacheState() != Document::NotInPageCache)
             return;
-        frame->document()->scheduleForcedStyleRecalc();
+        frame->document()->scheduleFullStyleRebuild();
     }
 }
 
@@ -4976,8 +4976,11 @@ static RefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
     if (callSuper)
         [super keyDown:event];
-    else
+    else {
+#if PLATFORM(MAC)
         [NSCursor setHiddenUntilMouseMoves:YES];
+#endif
+    }
 }
 
 - (void)keyUp:(WebEvent *)event
@@ -5281,9 +5284,11 @@ IGNORE_WARNINGS_END
         if (Frame* frame = core([self _frame]))
             ret = frame->eventHandler().keyEvent(event);
 
-    if (ret)
+    if (ret) {
+#if PLATFORM(MAC)
         [NSCursor setHiddenUntilMouseMoves:YES];
-    else
+#endif
+    } else
         ret = [self _handleStyleKeyEquivalent:event] || [super performKeyEquivalent:event];
 
     [self release];
@@ -5520,18 +5525,18 @@ IGNORE_WARNINGS_END
     if (!coreFrame)
         return;
 
-    WritingDirection direction = RightToLeftWritingDirection;
+    auto direction = WritingDirection::RightToLeft;
     switch (coreFrame->editor().baseWritingDirectionForSelectionStart()) {
-        case LeftToRightWritingDirection:
-            break;
-        case RightToLeftWritingDirection:
-            direction = LeftToRightWritingDirection;
-            break;
-        // The writingDirectionForSelectionStart method will never return "natural". It
-        // will always return a concrete direction. So, keep the compiler happy, and assert not reached.
-        case NaturalWritingDirection:
-            ASSERT_NOT_REACHED();
-            break;
+    case WritingDirection::LeftToRight:
+        break;
+    case WritingDirection::RightToLeft:
+        direction = WritingDirection::LeftToRight;
+        break;
+    // The writingDirectionForSelectionStart method will never return "natural". It
+    // will always return a concrete direction. So, keep the compiler happy, and assert not reached.
+    case WritingDirection::Natural:
+        ASSERT_NOT_REACHED();
+        break;
     }
 
     if (Frame* coreFrame = core([self _frame]))
@@ -5552,7 +5557,7 @@ IGNORE_WARNINGS_END
     ASSERT(writingDirection != NSWritingDirectionNatural);
 
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->editor().setBaseWritingDirection(writingDirection == NSWritingDirectionLeftToRight ? LeftToRightWritingDirection : RightToLeftWritingDirection);
+        coreFrame->editor().setBaseWritingDirection(writingDirection == NSWritingDirectionLeftToRight ? WritingDirection::LeftToRight : WritingDirection::RightToLeft);
 }
 
 static BOOL writingDirectionKeyBindingsEnabled()
@@ -5573,7 +5578,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
     }
 
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->editor().setBaseWritingDirection(direction == NSWritingDirectionLeftToRight ? LeftToRightWritingDirection : RightToLeftWritingDirection);
+        coreFrame->editor().setBaseWritingDirection(direction == NSWritingDirectionLeftToRight ? WritingDirection::LeftToRight : WritingDirection::RightToLeft);
 }
 
 - (void)makeBaseWritingDirectionLeftToRight:(id)sender
@@ -6082,13 +6087,19 @@ static BOOL writingDirectionKeyBindingsEnabled()
         WebEvent *event = platformEvent->event();
         if (event.keyboardFlags & WebEventKeyboardInputModifierFlagsChanged)
             return NO;
-        if (![[self _webView] isEditable] && event.isTabKey) 
+
+        WebView *webView = [self _webView];
+        if (!webView.isEditable && event.isTabKey)
             return NO;
-        
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000
+        if (event.type == WebEventKeyDown && [webView._UIKitDelegateForwarder handleKeyCommandForCurrentEvent])
+            return YES;
+#endif
+
         NSString *s = [event characters];
         if (!s.length)
             return NO;
-        WebView* webView = [self _webView];
         switch ([s characterAtIndex:0]) {
         case kWebBackspaceKey:
         case kWebDeleteKey:
@@ -7019,6 +7030,13 @@ static CGImageRef selectionImage(Frame* frame, bool forceBlackText)
     LOG(Timing, "creating attributed string from selection took %f seconds.", duration);
 #endif
     return attributedString;
+}
+
+- (NSAttributedString *)_legacyAttributedStringFrom:(DOMNode*)startContainer offset:(int)startOffset to:(DOMNode*)endContainer offset:(int)endOffset
+{
+    return attributedStringBetweenStartAndEnd(
+        Position { core(startContainer), startOffset, Position::PositionIsOffsetInAnchor },
+        Position { core(endContainer), endOffset, Position::PositionIsOffsetInAnchor });
 }
 
 - (NSAttributedString *)attributedString

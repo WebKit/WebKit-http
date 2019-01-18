@@ -42,7 +42,6 @@ NetworkProcessCreationParameters::NetworkProcessCreationParameters()
 void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 {
     encoder.encodeEnum(cacheModel);
-    encoder << diskCacheSizeOverride;
     encoder << canHandleHTTPSServerTrustEvaluation;
     encoder << diskCacheDirectory;
     encoder << diskCacheDirectoryExtensionHandle;
@@ -69,8 +68,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if PLATFORM(COCOA)
     encoder << uiProcessBundleIdentifier;
     encoder << uiProcessSDKVersion;
-    encoder << sourceApplicationBundleIdentifier;
-    encoder << sourceApplicationSecondaryIdentifier;
 #if PLATFORM(IOS_FAMILY)
     encoder << ctDataConnectionServiceType;
 #endif
@@ -115,8 +112,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProcessCreationParameters& result)
 {
     if (!decoder.decodeEnum(result.cacheModel))
-        return false;
-    if (!decoder.decode(result.diskCacheSizeOverride))
         return false;
     if (!decoder.decode(result.canHandleHTTPSServerTrustEvaluation))
         return false;
@@ -181,10 +176,6 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!decoder.decode(result.uiProcessBundleIdentifier))
         return false;
     if (!decoder.decode(result.uiProcessSDKVersion))
-        return false;
-    if (!decoder.decode(result.sourceApplicationBundleIdentifier))
-        return false;
-    if (!decoder.decode(result.sourceApplicationSecondaryIdentifier))
         return false;
 #if PLATFORM(IOS_FAMILY)
     if (!decoder.decode(result.ctDataConnectionServiceType))

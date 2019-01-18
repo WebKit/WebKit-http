@@ -229,7 +229,7 @@ class SimulatedDeviceManager(object):
     @staticmethod
     def _get_device_identifier_for_type(device_type):
         for type_id, type_name in SimulatedDeviceManager._device_identifier_to_name.iteritems():
-            if type_name == '{} {}'.format(device_type.hardware_family, device_type.hardware_type):
+            if type_name.lower() == '{} {}'.format(device_type.hardware_family.lower(), device_type.hardware_type.lower()):
                 return type_id
         return None
 
@@ -323,6 +323,20 @@ class SimulatedDeviceManager(object):
         device.platform_device.booted_by_script = True
         host.executive.run_command([SimulatedDeviceManager.xcrun, 'simctl', 'boot', device.udid])
         SimulatedDeviceManager.INITIALIZED_DEVICES.append(device)
+
+    @staticmethod
+    def device_count_for_type(device_type, host=SystemHost(), use_booted_simulator=True, **kwargs):
+        if not host.platform.is_mac():
+            return 0
+
+        if SimulatedDeviceManager.device_by_filter(lambda device: device.platform_device.is_booted_or_booting(), host=host) and use_booted_simulator:
+            filter = lambda device: device.platform_device.is_booted_or_booting() and device.platform_device.device_type in device_type
+            return len(SimulatedDeviceManager.device_by_filter(filter, host=host))
+
+        for name in SimulatedDeviceManager._device_identifier_to_name.itervalues():
+            if DeviceType.from_string(name) in device_type:
+                return SimulatedDeviceManager.max_supported_simulators(host)
+        return 0
 
     @staticmethod
     def initialize_devices(requests, host=SystemHost(), name_base='Managed', simulator_ui=True, timeout=SIMULATOR_BOOT_TIMEOUT, **kwargs):

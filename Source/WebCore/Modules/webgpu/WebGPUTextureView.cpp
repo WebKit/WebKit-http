@@ -30,9 +30,9 @@
 
 namespace WebCore {
 
-Ref<WebGPUTextureView> WebGPUTextureView::create(Ref<GPUTexture>&& view)
+RefPtr<WebGPUTextureView> WebGPUTextureView::create(Ref<GPUTexture>&& view)
 {
-    return adoptRef(*new WebGPUTextureView(WTFMove(view)));
+    return adoptRef(new WebGPUTextureView(WTFMove(view)));
 }
 
 WebGPUTextureView::WebGPUTextureView(Ref<GPUTexture>&& view)

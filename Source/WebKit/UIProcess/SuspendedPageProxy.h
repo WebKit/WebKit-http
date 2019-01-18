@@ -26,6 +26,7 @@
 #pragma once
 
 #include "Connection.h"
+#include "ProcessThrottler.h"
 #include "WebBackForwardListItem.h"
 #include <WebCore/SecurityOriginData.h>
 #include <wtf/RefCounted.h>
@@ -46,14 +47,16 @@ public:
     uint64_t mainFrameID() const { return m_mainFrameID; }
     const String& registrableDomain() const { return m_registrableDomain; }
 
-    void unsuspend(CompletionHandler<void()>&&);
+    void waitUntilReadyToUnsuspend(CompletionHandler<void(SuspendedPageProxy*)>&&);
+    void unsuspend();
 
 #if !LOG_DISABLED
     const char* loggingString() const;
 #endif
 
 private:
-    void didFinishLoad();
+    void didSuspend();
+    void didFailToSuspend();
 
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
@@ -67,7 +70,10 @@ private:
     bool m_isSuspended { true };
 
     bool m_finishedSuspending { false };
-    CompletionHandler<void()> m_finishedSuspendingHandler;
+    CompletionHandler<void(SuspendedPageProxy*)> m_readyToUnsuspendHandler;
+#if PLATFORM(IOS_FAMILY)
+    ProcessThrottler::BackgroundActivityToken m_suspensionToken;
+#endif
 };
 
 } // namespace WebKit

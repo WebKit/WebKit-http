@@ -184,6 +184,7 @@
 #include <WebCore/MouseEvent.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
+#include <WebCore/PageCache.h>
 #include <WebCore/PageConfiguration.h>
 #include <WebCore/PingLoader.h>
 #include <WebCore/PlatformKeyboardEvent.h>
@@ -219,6 +220,7 @@
 #include <WebCore/VisiblePosition.h>
 #include <WebCore/VisibleUnits.h>
 #include <WebCore/WebGLStateTracker.h>
+#include <WebCore/WritingDirection.h>
 #include <WebCore/markup.h>
 #include <pal/SessionID.h>
 #include <wtf/ProcessID.h>
@@ -378,7 +380,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_geolocationPermissionRequestManager(makeUniqueRef<GeolocationPermissionRequestManager>(*this))
 #endif
 #if ENABLE(MEDIA_STREAM)
-    , m_userMediaPermissionRequestManager { std::make_unique<UserMediaPermissionRequestManager>(*this) }
+    , m_userMediaPermissionRequestManager { makeUniqueRef<UserMediaPermissionRequestManager>(*this) }
 #endif
     , m_pageScrolledHysteresis([this](PAL::HysteresisState state) { if (state == PAL::HysteresisState::Stopped) pageStoppedScrolling(); }, pageScrollHysteresisDuration)
     , m_canRunBeforeUnloadConfirmPanel(parameters.canRunBeforeUnloadConfirmPanel)
@@ -388,6 +390,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_screenSize(parameters.screenSize)
     , m_availableScreenSize(parameters.availableScreenSize)
     , m_overrideScreenSize(parameters.overrideScreenSize)
+    , m_deviceOrientation(parameters.deviceOrientation)
 #endif
     , m_layerVolatilityTimer(*this, &WebPage::layerVolatilityTimerFired)
     , m_activityState(parameters.activityState)
@@ -1163,6 +1166,11 @@ void WebPage::changeListType()
     m_page->focusController().focusedOrMainFrame().editor().changeSelectionListType();
 }
 
+void WebPage::setBaseWritingDirection(WritingDirection direction)
+{
+    m_page->focusController().focusedOrMainFrame().editor().setBaseWritingDirection(direction);
+}
+
 bool WebPage::isEditingCommandEnabled(const String& commandName)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
@@ -1214,7 +1222,7 @@ void WebPage::close()
     m_page->inspectorController().disconnectAllFrontends();
 
 #if ENABLE(MEDIA_STREAM)
-    m_userMediaPermissionRequestManager = nullptr;
+    m_userMediaPermissionRequestManager->clear();
 #endif
 
 #if ENABLE(FULLSCREEN_API)
@@ -1302,6 +1310,27 @@ void WebPage::tryClose()
 void WebPage::sendClose()
 {
     send(Messages::WebPageProxy::ClosePage(false));
+}
+
+void WebPage::suspendForProcessSwap()
+{
+    auto failedToSuspend = [this, protectedThis = makeRef(*this)] {
+        close();
+        send(Messages::WebPageProxy::DidFailToSuspendAfterProcessSwap());
+    };
+
+    auto* currentHistoryItem = m_mainFrame->coreFrame()->loader().history().currentItem();
+    if (!currentHistoryItem) {
+        failedToSuspend();
+        return;
+    }
+
+    if (!PageCache::singleton().addIfCacheable(*currentHistoryItem, corePage())) {
+        failedToSuspend();
+        return;
+    }
+
+    send(Messages::WebPageProxy::DidSuspendAfterProcessSwap());
 }
 
 void WebPage::loadURLInFrame(URL&& url, uint64_t frameID)
@@ -1925,7 +1954,7 @@ void WebPage::disabledAdaptationsDidChange(const OptionSet<DisabledAdaptations>&
 void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArguments)
 {
 #if PLATFORM(IOS_FAMILY)
-    if (!m_page->settings().shouldIgnoreMetaViewport() && m_viewportConfiguration.setViewportArguments(viewportArguments))
+    if (m_viewportConfiguration.setViewportArguments(viewportArguments))
         viewportConfigurationChanged();
 #endif
 
@@ -3613,7 +3642,7 @@ NotificationPermissionRequestManager* WebPage::notificationPermissionRequestMana
 void WebPage::performDragControllerAction(DragControllerAction action, const IntPoint& clientPosition, const IntPoint& globalPosition, uint64_t draggingSourceOperationMask, WebSelectionData&& selection, uint32_t flags)
 {
     if (!m_page) {
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, false, 0, { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }));
         return;
     }
 
@@ -3621,12 +3650,12 @@ void WebPage::performDragControllerAction(DragControllerAction action, const Int
     switch (action) {
     case DragControllerAction::Entered: {
         DragOperation resolvedDragOperation = m_page->dragController().dragEntered(dragData);
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), { }));
         return;
     }
     case DragControllerAction::Updated: {
         DragOperation resolvedDragOperation = m_page->dragController().dragEntered(dragData);
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), { }));
         return;
     }
     case DragControllerAction::Exited:
@@ -3644,24 +3673,24 @@ void WebPage::performDragControllerAction(DragControllerAction action, const Int
 void WebPage::performDragControllerAction(DragControllerAction action, const WebCore::DragData& dragData, SandboxExtension::Handle&& sandboxExtensionHandle, SandboxExtension::HandleArray&& sandboxExtensionsHandleArray)
 {
     if (!m_page) {
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, false, 0, { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }));
         return;
     }
 
     switch (action) {
     case DragControllerAction::Entered: {
         DragOperation resolvedDragOperation = m_page->dragController().dragEntered(dragData);
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), m_page->dragCaretController().caretRectInRootViewCoordinates()));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), m_page->dragCaretController().caretRectInRootViewCoordinates()));
         return;
     }
     case DragControllerAction::Updated: {
         DragOperation resolvedDragOperation = m_page->dragController().dragUpdated(dragData);
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), m_page->dragCaretController().caretRectInRootViewCoordinates()));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), m_page->dragCaretController().caretRectInRootViewCoordinates()));
         return;
     }
     case DragControllerAction::Exited:
         m_page->dragController().dragExited(dragData);
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, false, 0, { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }));
         return;
         
     case DragControllerAction::PerformDragOperation: {
@@ -3971,9 +4000,9 @@ void WebPage::didCompleteMediaDeviceEnumeration(uint64_t userMediaID, const Vect
     m_userMediaPermissionRequestManager->didCompleteMediaDeviceEnumeration(userMediaID, devices, WTFMove(deviceIdentifierHashSalt), originHasPersistentAccess);
 }
 
-void WebPage::captureDevicesChanged(DeviceAccessState accessState)
+void WebPage::captureDevicesChanged()
 {
-    m_userMediaPermissionRequestManager->captureDevicesChanged(accessState);
+    m_userMediaPermissionRequestManager->captureDevicesChanged();
 }
 
 #if ENABLE(SANDBOX_EXTENSIONS)
@@ -5540,7 +5569,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
     if (m_viewportConfiguration.setContentsSize(coreFrame->view()->contentsSize()))
         viewportChanged = true;
 
-    if (!m_page->settings().shouldIgnoreMetaViewport() && m_viewportConfiguration.setViewportArguments(coreFrame->document()->viewportArguments()))
+    if (m_viewportConfiguration.setViewportArguments(coreFrame->document()->viewportArguments()))
         viewportChanged = true;
 
     if (viewportChanged)

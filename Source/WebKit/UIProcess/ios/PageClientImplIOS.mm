@@ -578,6 +578,11 @@ void PageClientImpl::stopAssistingNode()
     [m_contentView _stopAssistingNode];
 }
 
+void PageClientImpl::didReceiveEditorStateUpdateAfterFocus()
+{
+    [m_contentView _didReceiveEditorStateUpdateAfterFocus];
+}
+
 void PageClientImpl::showPlaybackTargetPicker(bool hasVideo, const IntRect& elementRect, WebCore::RouteSharingPolicy policy, const String& contextUID)
 {
     [m_contentView _showPlaybackTargetPicker:hasVideo fromRect:elementRect routeSharingPolicy:policy routingContextUID:contextUID];
@@ -838,7 +843,7 @@ void PageClientImpl::didChangeDataInteractionCaretRect(const IntRect& previousCa
 #if USE(QUICK_LOOK)
 void PageClientImpl::requestPasswordForQuickLookDocument(const String& fileName, WTF::Function<void(const String&)>&& completionHandler)
 {
-    auto passwordHandler = BlockPtr<void (NSString *)>::fromCallable([completionHandler = WTFMove(completionHandler)](NSString *password) {
+    auto passwordHandler = makeBlockPtr([completionHandler = WTFMove(completionHandler)](NSString *password) {
         completionHandler(password);
     });
 

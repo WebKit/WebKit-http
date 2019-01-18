@@ -63,6 +63,7 @@ namespace JSC { namespace FTL {
     macro(JSArrayBufferView_length, JSArrayBufferView::offsetOfLength()) \
     macro(JSArrayBufferView_mode, JSArrayBufferView::offsetOfMode()) \
     macro(JSArrayBufferView_vector, JSArrayBufferView::offsetOfVector()) \
+    macro(JSBigIntOrString_length, JSBigInt::offsetOfLength()) \
     macro(JSCell_cellState, JSCell::cellStateOffset()) \
     macro(JSCell_header, 0) \
     macro(JSCell_indexingTypeAndMisc, JSCell::indexingTypeAndMiscOffset()) \
@@ -83,7 +84,6 @@ namespace JSC { namespace FTL {
     macro(JSPropertyNameEnumerator_indexLength, JSPropertyNameEnumerator::indexedLengthOffset()) \
     macro(JSScope_next, JSScope::offsetOfNext()) \
     macro(JSString_flags, JSString::offsetOfFlags()) \
-    macro(JSString_length, JSString::offsetOfLength()) \
     macro(JSString_value, JSString::offsetOfValue()) \
     macro(JSSymbolTableObject_symbolTable, JSSymbolTableObject::offsetOfSymbolTable()) \
     macro(JSWrapperObject_internalValue, JSWrapperObject::internalValueOffset()) \
@@ -116,8 +116,10 @@ namespace JSC { namespace FTL {
     macro(Structure_globalObject, Structure::globalObjectOffset()) \
     macro(Structure_indexingModeIncludingHistory, Structure::indexingModeIncludingHistoryOffset()) \
     macro(Structure_inlineCapacity, Structure::inlineCapacityOffset()) \
+    macro(Structure_previousOrRareData, Structure::previousOrRareDataOffset()) \
     macro(Structure_prototype, Structure::prototypeOffset()) \
     macro(Structure_structureID, Structure::structureIDOffset()) \
+    macro(StructureRareData_cachedOwnKeys, StructureRareData::offsetOfCachedOwnKeys()) \
     macro(HashMapImpl_capacity, HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfCapacity()) \
     macro(HashMapImpl_buffer,  HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfBuffer()) \
     macro(HashMapImpl_head,  HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfHead()) \
@@ -177,6 +179,8 @@ public:
     AbstractHeap& JSCell_freeListNext;
     AbstractHeap& ArrayStorage_publicLength;
     AbstractHeap& ArrayStorage_vectorLength;
+    AbstractHeap& JSBigInt_length;
+    AbstractHeap& JSString_length;
     
 #define INDEXED_ABSTRACT_HEAP_DECLARATION(name, offset, size) IndexedAbstractHeap name;
     FOR_EACH_INDEXED_ABSTRACT_HEAP(INDEXED_ABSTRACT_HEAP_DECLARATION)

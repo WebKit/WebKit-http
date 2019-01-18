@@ -375,9 +375,15 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/WebGPU.idl \
     $(WebCore)/Modules/webgpu/WebGPUAdapter.idl \
     $(WebCore)/Modules/webgpu/WebGPUAdapterDescriptor.idl \
+    $(WebCore)/Modules/webgpu/WebGPUBuffer.idl \
+    $(WebCore)/Modules/webgpu/WebGPUBufferDescriptor.idl \
+    $(WebCore)/Modules/webgpu/WebGPUBufferUsage.idl \
     $(WebCore)/Modules/webgpu/WebGPUColor.idl \
     $(WebCore)/Modules/webgpu/WebGPUCommandBuffer.idl \
     $(WebCore)/Modules/webgpu/WebGPUDevice.idl \
+    $(WebCore)/Modules/webgpu/WebGPUIndexFormat.idl \
+    $(WebCore)/Modules/webgpu/WebGPUInputStateDescriptor.idl \
+    $(WebCore)/Modules/webgpu/WebGPUInputStepMode.idl \
     $(WebCore)/Modules/webgpu/WebGPUQueue.idl \
     $(WebCore)/Modules/webgpu/WebGPUPipelineDescriptorBase.idl \
     $(WebCore)/Modules/webgpu/WebGPUPipelineStageDescriptor.idl \
@@ -390,11 +396,13 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/WebGPURenderingContext.idl \
     $(WebCore)/Modules/webgpu/WebGPUShaderModule.idl \
     $(WebCore)/Modules/webgpu/WebGPUShaderModuleDescriptor.idl \
-    $(WebCore)/Modules/webgpu/WebGPUShaderStage.idl \
     $(WebCore)/Modules/webgpu/WebGPUSwapChain.idl \
     $(WebCore)/Modules/webgpu/WebGPUTexture.idl \
     $(WebCore)/Modules/webgpu/WebGPUTextureFormatEnum.idl \
     $(WebCore)/Modules/webgpu/WebGPUTextureView.idl \
+	$(WebCore)/Modules/webgpu/WebGPUVertexAttributeDescriptor.idl \
+    $(WebCore)/Modules/webgpu/WebGPUVertexFormat.idl \
+	$(WebCore)/Modules/webgpu/WebGPUVertexInputDescriptor.idl \
     $(WebCore)/Modules/websockets/CloseEvent.idl \
     $(WebCore)/Modules/websockets/WebSocket.idl \
     $(WebCore)/Modules/webvr/DOMWindowWebVR.idl \
@@ -502,11 +510,12 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/StyleMedia.idl \
     $(WebCore)/css/StyleSheet.idl \
     $(WebCore)/css/StyleSheetList.idl \
-    $(WebCore)/css/typedom/CSSNumericValue.idl \
-    $(WebCore)/css/typedom/CSSStyleValue.idl \
-    $(WebCore)/css/typedom/CSSUnitValue.idl \
-    $(WebCore)/css/typedom/CSSUnparsedValue.idl \
     $(WebCore)/css/typedom/StylePropertyMapReadOnly.idl \
+	$(WebCore)/css/typedom/TypedOMCSSImageValue.idl \
+    $(WebCore)/css/typedom/TypedOMCSSNumericValue.idl \
+    $(WebCore)/css/typedom/TypedOMCSSStyleValue.idl \
+    $(WebCore)/css/typedom/TypedOMCSSUnitValue.idl \
+    $(WebCore)/css/typedom/TypedOMCSSUnparsedValue.idl \
     $(WebCore)/css/WebKitCSSMatrix.idl \
     $(WebCore)/css/WebKitCSSViewportRule.idl \
     $(WebCore)/dom/AbortController.idl \

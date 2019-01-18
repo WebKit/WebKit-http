@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "api/create_peerconnection_factory.h"
 #include "api/video_codecs/builtin_video_decoder_factory.h"
 #include "api/video_codecs/builtin_video_encoder_factory.h"
 #include "modules/audio_processing/include/audio_processing.h"

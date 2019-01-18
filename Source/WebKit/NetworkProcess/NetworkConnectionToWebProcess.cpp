@@ -26,13 +26,10 @@
 #include "config.h"
 #include "NetworkConnectionToWebProcess.h"
 
-#include "BlobDataFileReferenceWithSandboxExtension.h"
 #include "CacheStorageEngineConnectionMessages.h"
 #include "DataReference.h"
 #include "NetworkBlobRegistry.h"
 #include "NetworkCache.h"
-#include "NetworkConnectionToWebProcessMessages.h"
-#include "NetworkLoad.h"
 #include "NetworkMDNSRegisterMessages.h"
 #include "NetworkProcess.h"
 #include "NetworkProcessConnectionMessages.h"
@@ -57,10 +54,8 @@
 #include "WebSWServerConnectionMessages.h"
 #include "WebSWServerToContextConnection.h"
 #include "WebSWServerToContextConnectionMessages.h"
-#include "WebsiteDataStore.h"
 #include "WebsiteDataStoreParameters.h"
 #include <WebCore/NetworkStorageSession.h>
-#include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SameSiteInfo.h>
 #include <WebCore/SecurityPolicy.h>
@@ -546,12 +541,6 @@ void NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles(const Vector<Stri
             file->revokeFileAccess();
         completionHandler(WTFMove(fileNames));
     });
-}
-
-void NetworkConnectionToWebProcess::storeDerivedDataToCache(const WebKit::NetworkCache::DataKey& dataKey, const IPC::DataReference& data)
-{
-    if (auto* cache = NetworkProcess::singleton().cache())
-        cache->storeData(dataKey, data.data(), data.size());
 }
 
 void NetworkConnectionToWebProcess::setCaptureExtraNetworkLoadMetricsEnabled(bool enabled)

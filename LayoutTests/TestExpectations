@@ -15,6 +15,7 @@ accessibility/win [ Skip ]
 displaylists [ Skip ]
 editing/mac [ Skip ]
 editing/caret/ios [ Skip ]
+editing/input/ios [ Skip ]
 editing/find [ Skip ]
 editing/pasteboard/gtk [ Skip ]
 editing/selection/ios [ Skip ]
@@ -263,7 +264,6 @@ imported/w3c/web-platform-tests/fetch/api/basic/scheme-about.any.worker.html [ D
 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-mode-worker.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-to-dataurl.html [ DumpJSConsoleLogInStdErr ]
 
-webkit.org/b/181901 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-response-taint.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/registration-security-error.https.html [ DumpJSConsoleLogInStdErr ]
@@ -617,7 +617,6 @@ webkit.org/b/191461 imported/w3c/web-platform-tests/css/css-grid/grid-items/perc
 webkit.org/b/191462 imported/w3c/web-platform-tests/css/css-grid/grid-items/percentage-size-replaced-subitems-001.html [ ImageOnlyFailure ]
 webkit.org/b/191463 imported/w3c/web-platform-tests/css/css-grid/grid-items/explicitly-sized-grid-item-as-table.html
 webkit.org/b/191627 imported/w3c/web-platform-tests/css/css-grid/alignment/grid-self-baseline-not-applied-if-sizing-cyclic-dependency-001.html [ Failure ]
-webkit.org/b/191473 fast/css-grid-layout/grid-crash-out-of-flow-positioned-element.html [ Crash ]
 webkit.org/b/149890 fast/css-grid-layout/grid-shorthands-style-format.html [ Failure ]
 webkit.org/b/191506 fast/css-grid-layout/grid-item-scroll-position.html [ Failure ]
 webkit.org/b/191507 fast/css-grid-layout/positioned-grid-container-percentage-tracks.html [ Failure ]
@@ -762,7 +761,6 @@ imported/w3c/web-platform-tests/resource-timing/test_resource_timing.html [ Pass
 webkit.org/b/168357 http/wpt/resource-timing/rt-initiatorType-media.html [ Failure ]
 webkit.org/b/168448 http/wpt/resource-timing/rt-shared-resource-in-frames.html [ Pass Failure ]
 webkit.org/b/168448 http/wpt/resource-timing/rt-shared-resource-in-workers.html [ Pass Failure ]
-webkit.org/b/171511 http/wpt/resource-timing/rt-revalidate-requests.html [ Pass Failure ]
 
 webkit.org/b/161312 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/document-without-browsing-context.html [ Failure Pass ]
 
@@ -2817,7 +2815,6 @@ imported/w3c/web-platform-tests/css/css-display/run-in/run-in-run-in-between-004
 imported/w3c/web-platform-tests/css/css-text-decor/text-emphasis-position-above-left-001.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-listitem-between-003.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-basic-010.xht [ ImageOnlyFailure ]
-imported/w3c/web-platform-tests/css/css-scoping/shadow-disabled-sheet-001.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-run-in-between-003.xht [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-multicol/multicol-breaking-003.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-display/run-in/run-in-contains-table-caption-001.xht [ ImageOnlyFailure ]

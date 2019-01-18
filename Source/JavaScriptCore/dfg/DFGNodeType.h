@@ -174,6 +174,8 @@ namespace JSC { namespace DFG {
     macro(ValueAdd, NodeResultJS | NodeMustGenerate) \
     \
     macro(ValueSub, NodeResultJS | NodeMustGenerate) \
+    macro(ValueMul, NodeResultJS | NodeMustGenerate) \
+    macro(ValueDiv, NodeResultJS | NodeMustGenerate) \
     \
     /* Add of values that always convers its inputs to strings. May have two or three kids. */\
     macro(StrCat, NodeResultJS | NodeMustGenerate) \
@@ -263,6 +265,7 @@ namespace JSC { namespace DFG {
     macro(ParseInt, NodeMustGenerate | NodeResultJS) \
     macro(GetPrototypeOf, NodeMustGenerate | NodeResultJS) \
     macro(ObjectCreate, NodeMustGenerate | NodeResultJS) \
+    macro(ObjectKeys, NodeMustGenerate | NodeResultJS) \
     \
     /* Atomics object functions. */\
     macro(AtomicsAdd, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
@@ -335,6 +338,8 @@ namespace JSC { namespace DFG {
     macro(NewArrayBuffer, NodeResultJS) \
     macro(NewTypedArray, NodeResultJS | NodeMustGenerate) \
     macro(NewRegexp, NodeResultJS) \
+    macro(NewSymbol, NodeResultJS) \
+    macro(NewStringObject, NodeResultJS) \
     /* Rest Parameter */\
     macro(GetRestLength, NodeResultInt32) \
     macro(CreateRest, NodeResultJS | NodeMustGenerate) \
@@ -379,7 +384,6 @@ namespace JSC { namespace DFG {
     macro(CallStringConstructor, NodeResultJS | NodeMustGenerate) \
     macro(NumberToStringWithRadix, NodeResultJS | NodeMustGenerate) \
     macro(NumberToStringWithValidRadixConstant, NodeResultJS) \
-    macro(NewStringObject, NodeResultJS) \
     macro(MakeRope, NodeResultJS) \
     macro(InByVal, NodeResultBoolean | NodeMustGenerate) \
     macro(InById, NodeResultBoolean | NodeMustGenerate) \

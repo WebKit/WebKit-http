@@ -650,6 +650,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ValueNegate:
     case ValueAdd:
     case ValueSub:
+    case ValueMul:
+    case ValueDiv:
     case SetFunctionName:
     case GetDynamicVar:
     case PutDynamicVar:
@@ -666,6 +668,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case CreateThis:
     case InstanceOf:
     case StringValueOf:
+    case ObjectKeys:
         read(World);
         write(Heap);
         return;
@@ -1527,9 +1530,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         }
     }
 
-
     case NewObject:
     case NewRegexp:
+    case NewSymbol:
     case NewStringObject:
     case PhantomNewObject:
     case MaterializeNewObject:

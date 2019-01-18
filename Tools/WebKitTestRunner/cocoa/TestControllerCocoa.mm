@@ -171,6 +171,9 @@ void TestController::platformCreateWebView(WKPageConfigurationRef, const TestOpt
 
     if (options.punchOutWhiteBackgroundsInDarkMode)
         m_mainWebView->setDrawsBackground(false);
+
+    if (options.editable)
+        m_mainWebView->setEditable(true);
 #else
     m_mainWebView = std::make_unique<PlatformWebView>(globalWebViewConfiguration, options);
 #endif
@@ -205,17 +208,6 @@ void TestController::platformRunUntil(bool& done, WTF::Seconds timeout)
         [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:endDate];
 }
 
-ClassMethodSwizzler::ClassMethodSwizzler(Class cls, SEL originalSelector, IMP implementation)
-    : m_method(class_getClassMethod(objc_getMetaClass(NSStringFromClass(cls).UTF8String), originalSelector))
-    , m_originalImplementation(method_setImplementation(m_method, implementation))
-{
-}
-
-ClassMethodSwizzler::~ClassMethodSwizzler()
-{
-    method_setImplementation(m_method, m_originalImplementation);
-}
-    
 static NSCalendar *swizzledCalendar()
 {
     return [NSCalendar calendarWithIdentifier:TestController::singleton().getOverriddenCalendarIdentifier().get()];

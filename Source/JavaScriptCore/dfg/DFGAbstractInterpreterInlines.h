@@ -43,6 +43,7 @@
 #include "Operations.h"
 #include "PutByIdStatus.h"
 #include "StringObject.h"
+#include "StructureRareDataInlines.h"
 #include <wtf/BooleanLattice.h>
 #include <wtf/CheckedArithmetic.h>
 
@@ -854,6 +855,15 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
+    case ValueMul: {
+        clobberWorld();
+        if (node->binaryUseKind() == BigIntUse)
+            setTypeForNode(node, SpecBigInt);
+        else
+            setTypeForNode(node, SpecBytecodeNumber | SpecBigInt);
+        break;
+    }
+
     case ArithMul: {
         JSValue left = forNode(node->child1()).value();
         JSValue right = forNode(node->child2()).value();
@@ -897,10 +907,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 typeOfDoubleProduct(
                     forNode(node->child1()).m_type, forNode(node->child2()).m_type));
             break;
-        case UntypedUse:
-            clobberWorld();
-            setNonCellTypeForNode(node, SpecBytecodeNumber);
-            break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
             break;
@@ -908,6 +914,15 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
+    case ValueDiv: {
+        clobberWorld();
+        if (node->binaryUseKind() == BigIntUse)
+            setTypeForNode(node, SpecBigInt);
+        else
+            setTypeForNode(node, SpecBytecodeNumber | SpecBigInt);
+        break;
+    }
+
     case ArithDiv: {
         JSValue left = forNode(node->child1()).value();
         JSValue right = forNode(node->child2()).value();
@@ -935,10 +950,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setNonCellTypeForNode(node, 
                 typeOfDoubleQuotient(
                     forNode(node->child1()).m_type, forNode(node->child2()).m_type));
-            break;
-        case UntypedUse:
-            clobberWorld();
-            setNonCellTypeForNode(node, SpecBytecodeNumber);
             break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
@@ -2419,6 +2430,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         setForNode(node, node->structure());
         break;
     }
+
+    case NewSymbol: {
+        setForNode(node, m_vm.symbolStructure.get());
+        break;
+    }
             
     case NewArray:
         ASSERT(node->indexingMode() == node->indexingType()); // Copy on write arrays should only be created by NewArrayBuffer.
@@ -2562,6 +2578,30 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         if (node->child1().useKind() == UntypedUse)
             clobberWorld();
         setTypeForNode(node, SpecFinalObject);
+        break;
+    }
+
+    case ObjectKeys: {
+        if (node->child1().useKind() == ObjectUse) {
+            auto& structureSet = forNode(node->child1()).m_structure;
+            if (structureSet.isFinite() && structureSet.size() == 1) {
+                RegisteredStructure structure = structureSet.onlyStructure();
+                if (auto* rareData = structure->rareDataConcurrently()) {
+                    auto* immutableButterfly = rareData->cachedOwnKeysConcurrently();
+                    if (immutableButterfly && immutableButterfly != m_vm.sentinelImmutableButterfly.get()) {
+                        if (m_graph.isWatchingHavingABadTimeWatchpoint(node)) {
+                            m_state.setFoundConstants(true);
+                            didFoldClobberWorld();
+                            setTypeForNode(node, SpecArray);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        clobberWorld();
+        setTypeForNode(node, SpecArray);
         break;
     }
 

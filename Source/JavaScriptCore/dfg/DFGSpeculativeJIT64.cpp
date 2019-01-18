@@ -2209,6 +2209,15 @@ void SpeculativeJIT::compile(Node* node)
         compileArithMul(node);
         break;
 
+    case ValueMul:
+        compileValueMul(node);
+        break;
+
+    case ValueDiv: {
+        compileValueDiv(node);
+        break;
+    }
+
     case ArithDiv: {
         compileArithDiv(node);
         break;
@@ -3343,6 +3352,11 @@ void SpeculativeJIT::compile(Node* node)
         compileNewStringObject(node);
         break;
     }
+
+    case NewSymbol: {
+        compileNewSymbol(node);
+        break;
+    }
         
     case NewArray: {
         compileNewArray(node);
@@ -3392,6 +3406,11 @@ void SpeculativeJIT::compile(Node* node)
 
     case ObjectCreate: {
         compileObjectCreate(node);
+        break;
+    }
+
+    case ObjectKeys: {
+        compileObjectKeys(node);
         break;
     }
 

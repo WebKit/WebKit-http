@@ -1,3 +1,119 @@
+2018-12-12  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][Clang][WebKitLegacy] warning: expected a qualified name after 'typename' of COMEnumVariant and COMPropertyBag
+        https://bugs.webkit.org/show_bug.cgi?id=192617
+
+        Reviewed by Alex Christensen.
+
+        * COMEnumVariant.h:
+        (COMEnumVariant<ContainerType>::adopt): Removed 'typename' from non dependent names.
+        (COMEnumVariant<ContainerType>::createInstance): Ditto.
+        (COMEnumVariant<ContainerType>::Next): Prepend 'typename' for dependent names.
+        * COMPropertyBag.h:
+        (HashType>::createInstance): Removed 'typename' from non dependent names.
+        (HashType>::adopt): Ditto.
+        (HashType>::Read): Replaced dependent name 'HashMapType::const_iterator' with 'auto'.
+        (HashType>::GetPropertyInfo): Ditto.
+
+2018-12-12  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][Clang][WebKitLegacy] WebFrame.cpp: warning: delete called on non-final 'WebFrame' that has virtual functions but non-virtual destructor [-Wdelete-non-virtual-dtor]
+        https://bugs.webkit.org/show_bug.cgi?id=192618
+
+        Reviewed by Alex Christensen.
+
+        Classes which implement COM interface usually doesn't need the
+        virtual destructor because it has Release() virtual method to
+        destruct itself.
+
+        Marked 'final' such classes to suppress clang-cl's compilation
+        warnings.
+
+        * COMEnumVariant.h:
+        * COMPropertyBag.h:
+        * DefaultDownloadDelegate.h:
+        * DefaultPolicyDelegate.h:
+        * MemoryStream.h:
+        * WebActionPropertyBag.h:
+        * WebApplicationCache.h:
+        * WebArchive.h:
+        * WebBackForwardList.h:
+        * WebCache.h:
+        * WebCoreStatistics.h:
+        * WebCoreSupport/WebEditorClient.cpp:
+        * WebCoreSupport/WebInspectorDelegate.h:
+        * WebDataSource.h:
+        * WebDatabaseManager.cpp:
+        * WebDatabaseManager.h:
+        * WebDownload.h:
+        * WebDropSource.h:
+        * WebElementPropertyBag.h:
+        * WebError.h:
+        * WebFrame.cpp:
+        * WebFrame.h:
+        * WebFramePolicyListener.h:
+        * WebGeolocationPolicyListener.h:
+        * WebGeolocationPosition.h:
+        * WebHTMLRepresentation.h:
+        * WebHistory.h:
+        * WebHistoryItem.h:
+        * WebInspector.h:
+        * WebJavaScriptCollector.h:
+        * WebKitClassFactory.h:
+        * WebKitMessageLoop.h:
+        * WebKitStatistics.h:
+        * WebMutableURLRequest.h:
+        * WebNavigationData.h:
+        * WebNotification.h:
+        * WebNotificationCenter.h:
+        * WebPreferences.h:
+        * WebResource.h:
+        * WebScriptWorld.h:
+        * WebSecurityOrigin.h:
+        * WebSerializedJSValue.h:
+        * WebTextRenderer.h:
+        * WebURLAuthenticationChallenge.h:
+        * WebURLAuthenticationChallengeSender.h:
+        * WebURLCredential.h:
+        * WebURLProtectionSpace.h:
+        * WebURLResponse.h:
+        * WebUserContentURLPattern.h:
+        * WebView.cpp:
+        * WebView.h:
+        * WebWorkersPrivate.h:
+
+2018-12-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][Clang] Fix warning -Wmissing-field-initializers
+        https://bugs.webkit.org/show_bug.cgi?id=192584
+
+        Reviewed by Yusuke Suzuki.
+
+        Initialize a struct with '{ }' instead of '= {0}'.
+
+        * WebKitMessageLoop.cpp:
+        (WebKitMessageLoop::run):
+        * WebView.cpp:
+        (WebView::onMenuCommand):
+        (WebView::gesture):
+        (WebView::setShouldInvertColors):
+        (WebView::initializeToolTipWindow):
+        (WebView::setToolTip):
+        (WebView::fullScreenClientForceRepaint):
+
+2018-12-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Turn WritingDirection into an enum class
+        https://bugs.webkit.org/show_bug.cgi?id=192401
+        Work towards <rdar://problem/42075638>
+
+        Reviewed by Dan Bernstein.
+
+        Change WritingDirection from an enum to an enum class. No change in behavior.
+
+        * WebFrame.cpp:
+        (WebFrame::setTextDirection):
+
 2018-12-03  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
 
         Use WallTime for file time

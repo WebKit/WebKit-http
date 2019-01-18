@@ -321,6 +321,8 @@ webkit.org/b/167321 tiled-drawing/scrolling/scroll-snap/scroll-snap-proximity-ma
 
 webkit.org/b/148408 tiled-drawing/scrolling/root-overflow-with-mousewheel.html [ Pass Failure Timeout ]
 
+webkit.org/b/192529 fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolling-layers-state.html [ Pass Failure ]
+
 webkit.org/b/139820 fast/frames/lots-of-objects.html [ Pass Timeout ]
 webkit.org/b/139820 fast/frames/lots-of-iframes.html [ Pass Timeout ]
 
@@ -820,8 +822,6 @@ webkit.org/b/181750 imported/w3c/web-platform-tests/service-workers/service-work
 
 webkit.org/b/181839 [ Debug ] inspector/debugger/breakpoint-action-log.html [ Pass Timeout ]
 
-webkit.org/b/181957 [ Release ] http/tests/misc/resource-timing-resolution.html [ Pass Failure ]
-
 webkit.org/b/181835 webrtc/captureCanvas-webrtc.html [ Pass Timeout ]
 
 webkit.org/b/177663 media/W3C/video/events/event_progress_manual.html [ Pass Failure ]
@@ -895,8 +895,6 @@ imported/w3c/web-platform-tests/payment-request/user-accepts-payment-request-alg
 webkit.org/b/189094 [ HighSierra+ ] accessibility/mac/focus-setting-selection-syncronizing-not-clearing.html [ Skip ]
 
 webkit.org/b/189598 compositing/backing/backing-store-attachment-fill-forwards-animation.html [ Pass Failure ]
-
-webkit.org/b/190323 http/tests/cache/disk-cache/disk-cache-validation-attachment.html [ Pass Failure ]
 
 # Skip local authenticator tests for mac now.
 http/wpt/webauthn/public-key-credential-create-failure-local.https.html [ Skip ]

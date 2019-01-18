@@ -35,9 +35,9 @@
 #include "InlineRunProvider.h"
 #include "LayoutBox.h"
 #include "LayoutContainer.h"
-#include "LayoutFormattingState.h"
 #include "LayoutInlineBox.h"
 #include "LayoutInlineContainer.h"
+#include "LayoutState.h"
 #include "Logging.h"
 #include "Textutil.h"
 #include <wtf/IsoMallocInlines.h>
@@ -362,8 +362,8 @@ void InlineFormattingContext::computeHeightAndMargin(const Box& layoutBox) const
 
     auto& displayBox = layoutState.displayBoxForLayoutBox(layoutBox);
     displayBox.setContentBoxHeight(heightAndMargin.height);
-    displayBox.setVerticalNonCollapsedMargin(heightAndMargin.margin);
-    displayBox.setVerticalMargin(heightAndMargin.collapsedMargin.value_or(heightAndMargin.margin));
+    displayBox.setVerticalNonCollapsedMargin(heightAndMargin.nonCollapsedMargin);
+    displayBox.setVerticalMargin(heightAndMargin.usedMarginValues());
 }
 
 void InlineFormattingContext::layoutFormattingContextRoot(const Box& root) const
@@ -373,7 +373,7 @@ void InlineFormattingContext::layoutFormattingContextRoot(const Box& root) const
     computeBorderAndPadding(root);
     computeWidthAndMargin(root);
     // Swich over to the new formatting context (the one that the root creates).
-    auto formattingContext = layoutState().createFormattingStateForFormattingRootIfNeeded(root).formattingContext(root);
+    auto formattingContext = layoutState().createFormattingStateForFormattingRootIfNeeded(root).createFormattingContext(root);
     formattingContext->layout();
     // Come back and finalize the root's height and margin.
     computeHeightAndMargin(root);

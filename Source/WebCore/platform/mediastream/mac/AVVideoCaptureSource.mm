@@ -35,7 +35,7 @@
 #import "MediaConstraints.h"
 #import "MediaSampleAVFObjC.h"
 #import "PlatformLayer.h"
-#import "RealtimeMediaSourceCenterMac.h"
+#import "RealtimeMediaSourceCenter.h"
 #import "RealtimeMediaSourceSettings.h"
 #import "RealtimeVideoUtilities.h"
 #import <AVFoundation/AVCaptureDevice.h>
@@ -182,7 +182,7 @@ AVVideoCaptureSource::AVVideoCaptureSource(AVCaptureDeviceTypedef* device, Strin
 AVVideoCaptureSource::~AVVideoCaptureSource()
 {
 #if PLATFORM(IOS_FAMILY)
-    RealtimeMediaSourceCenter::singleton().videoFactory().unsetActiveSource(*this);
+    RealtimeMediaSourceCenter::singleton().videoCaptureFactory().unsetActiveSource(*this);
 #endif
     [m_objcObserver disconnect];
 
@@ -342,7 +342,8 @@ void AVVideoCaptureSource::setSizeAndFrameRateWithPreset(IntSize requestedSize, 
                 auto settingsDictionary = @{
                     (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(avVideoCapturePixelBufferFormat()),
                     (__bridge NSString *)kCVPixelBufferWidthKey: @(avPreset->size.width()),
-                    (__bridge NSString *)kCVPixelBufferHeightKey: @(avPreset->size.height())
+                    (__bridge NSString *)kCVPixelBufferHeightKey: @(avPreset->size.height()),
+                    (__bridge NSString *)kCVPixelBufferIOSurfacePropertiesKey : @{ }
                 };
                 [m_videoOutput setVideoSettings:settingsDictionary];
 #endif
@@ -433,7 +434,7 @@ AVFrameRateRangeType* AVVideoCaptureSource::frameDurationForFrameRate(double rat
 bool AVVideoCaptureSource::setupCaptureSession()
 {
 #if PLATFORM(IOS_FAMILY)
-    RealtimeMediaSourceCenter::singleton().videoFactory().setActiveSource(*this);
+    RealtimeMediaSourceCenter::singleton().videoCaptureFactory().setActiveSource(*this);
 #endif
 
     NSError *error = nil;

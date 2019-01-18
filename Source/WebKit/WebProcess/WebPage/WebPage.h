@@ -167,8 +167,10 @@ class TextCheckingRequest;
 class VisiblePosition;
 
 enum SyntheticClickType : int8_t;
+enum class DragHandlingMethod : uint8_t;
 enum class ShouldTreatAsContinuingLoad : bool;
 enum class TextIndicatorPresentationTransition : uint8_t;
+enum class WritingDirection : uint8_t;
 
 struct BackForwardItemIdentifier;
 struct CompositionUnderline;
@@ -233,7 +235,6 @@ class WebUserContentController;
 class WebWheelEvent;
 class RemoteLayerTreeTransaction;
 
-enum class DeviceAccessState : uint8_t;
 enum FindOptions : uint16_t;
 enum class DragControllerAction : uint8_t;
 
@@ -449,6 +450,8 @@ public:
     void clearMainFrameName();
     void sendClose();
 
+    void suspendForProcessSwap();
+
     void sendSetWindowFrame(const WebCore::FloatRect&);
 
     double textZoomFactor() const;
@@ -575,9 +578,9 @@ public:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    UserMediaPermissionRequestManager& userMediaPermissionRequestManager() { return *m_userMediaPermissionRequestManager; }
+    UserMediaPermissionRequestManager& userMediaPermissionRequestManager() { return m_userMediaPermissionRequestManager; }
     void prepareToSendUserMediaPermissionRequest();
-    void captureDevicesChanged(DeviceAccessState);
+    void captureDevicesChanged();
 #endif
 
     void elementDidFocus(WebCore::Node*);
@@ -1215,6 +1218,8 @@ private:
     void decreaseListLevel();
     void changeListType();
 
+    void setBaseWritingDirection(WebCore::WritingDirection);
+
     void setNeedsFontAttributes(bool);
 
     void mouseEvent(const WebMouseEvent&);
@@ -1623,7 +1628,7 @@ private:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    std::unique_ptr<UserMediaPermissionRequestManager> m_userMediaPermissionRequestManager;
+    UniqueRef<UserMediaPermissionRequestManager> m_userMediaPermissionRequestManager;
 #endif
 
     std::unique_ptr<WebCore::PrintContext> m_printContext;

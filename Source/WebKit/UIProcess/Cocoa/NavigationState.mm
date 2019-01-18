@@ -374,7 +374,7 @@ void NavigationState::NavigationClient::decidePolicyForPluginLoad(WebKit::WebPag
     }
 
     auto checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), @selector(_webView:decidePolicyForPluginLoadWithCurrentPolicy:pluginInfo:completionHandler:));
-    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView decidePolicyForPluginLoadWithCurrentPolicy:wkPluginModuleLoadPolicy(currentPluginLoadPolicy) pluginInfo:wrapper(pluginInformation) completionHandler:BlockPtr<void(_WKPluginModuleLoadPolicy, NSString *)>::fromCallable([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)](_WKPluginModuleLoadPolicy policy, NSString *unavailabilityDescription) mutable {
+    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView decidePolicyForPluginLoadWithCurrentPolicy:wkPluginModuleLoadPolicy(currentPluginLoadPolicy) pluginInfo:wrapper(pluginInformation) completionHandler:makeBlockPtr([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)](_WKPluginModuleLoadPolicy policy, NSString *unavailabilityDescription) mutable {
         if (checker->completionHandlerHasBeenCalled())
             return;
         checker->didCallCompletionHandler();
@@ -406,7 +406,7 @@ void NavigationState::NavigationClient::webGLLoadPolicy(WebPageProxy&, const URL
 
     auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
     auto checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), @selector(_webView:webGLLoadPolicyForURL:decisionHandler:));
-    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView webGLLoadPolicyForURL:(NSURL *)url decisionHandler:BlockPtr<void(_WKWebGLLoadPolicy)>::fromCallable([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)](_WKWebGLLoadPolicy policy) mutable {
+    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView webGLLoadPolicyForURL:(NSURL *)url decisionHandler:makeBlockPtr([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)](_WKWebGLLoadPolicy policy) mutable {
         if (checker->completionHandlerHasBeenCalled())
             return;
         checker->didCallCompletionHandler();
@@ -423,7 +423,7 @@ void NavigationState::NavigationClient::resolveWebGLLoadPolicy(WebPageProxy&, co
     
     auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
     auto checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), @selector(_webView:resolveWebGLLoadPolicyForURL:decisionHandler:));
-    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView resolveWebGLLoadPolicyForURL:(NSURL *)url decisionHandler:BlockPtr<void(_WKWebGLLoadPolicy)>::fromCallable([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)](_WKWebGLLoadPolicy policy) mutable {
+    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView resolveWebGLLoadPolicyForURL:(NSURL *)url decisionHandler:makeBlockPtr([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)](_WKWebGLLoadPolicy policy) mutable {
         if (checker->completionHandlerHasBeenCalled())
             return;
         checker->didCallCompletionHandler();
@@ -547,6 +547,8 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
                 if (subframeNavigation)
                     [NSException raise:NSInvalidArgumentException format:@"_WKWebsitePolicies.websiteDataStore must be nil for subframe navigations."];
             }
+            if (!apiWebsitePolicies->customUserAgent().isNull() && subframeNavigation)
+                [NSException raise:NSInvalidArgumentException format:@"_WKWebsitePolicies.customUserAgent must be nil for subframe navigations."];
         }
 
         switch (actionPolicy) {
@@ -577,7 +579,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
     };
     
     if (delegateHasWebsitePolicies) {
-        auto decisionHandler = BlockPtr<void(WKNavigationActionPolicy, _WKWebsitePolicies *)>::fromCallable(WTFMove(decisionHandlerWithPolicies));
+        auto decisionHandler = makeBlockPtr(WTFMove(decisionHandlerWithPolicies));
         if (m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionUserInfoDecisionHandlerWebsitePolicies)
             [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) userInfo:userInfo ? static_cast<id <NSSecureCoding>>(userInfo->wrapper()) : nil decisionHandler:decisionHandler.get()];
         else {
@@ -589,7 +591,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
         auto decisionHandlerWithoutPolicies = [decisionHandlerWithPolicies = WTFMove(decisionHandlerWithPolicies)] (WKNavigationActionPolicy actionPolicy) mutable {
             decisionHandlerWithPolicies(actionPolicy, nil);
         };
-        [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) decisionHandler:BlockPtr<void(WKNavigationActionPolicy)>::fromCallable(WTFMove(decisionHandlerWithoutPolicies)).get()];
+        [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) decisionHandler:makeBlockPtr(WTFMove(decisionHandlerWithoutPolicies)).get()];
     }
 }
 
@@ -642,7 +644,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationResponse(WebPag
         return;
 
     auto checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), @selector(webView:decidePolicyForNavigationResponse:decisionHandler:));
-    [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationResponse:wrapper(navigationResponse) decisionHandler:BlockPtr<void(WKNavigationResponsePolicy)>::fromCallable([localListener = WTFMove(listener), checker = WTFMove(checker)](WKNavigationResponsePolicy responsePolicy) {
+    [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationResponse:wrapper(navigationResponse) decisionHandler:makeBlockPtr([localListener = WTFMove(listener), checker = WTFMove(checker)](WKNavigationResponsePolicy responsePolicy) {
         if (checker->completionHandlerHasBeenCalled())
             return;
         checker->didCallCompletionHandler();
@@ -895,7 +897,7 @@ void NavigationState::NavigationClient::didReceiveAuthenticationChallenge(WebPag
         return authenticationChallenge.listener().completeChallenge(WebKit::AuthenticationChallengeDisposition::PerformDefaultHandling);
 
     auto checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), @selector(webView:didReceiveAuthenticationChallenge:completionHandler:));
-    [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) webView:m_navigationState.m_webView didReceiveAuthenticationChallenge:wrapper(authenticationChallenge) completionHandler:BlockPtr<void(NSURLSessionAuthChallengeDisposition, NSURLCredential *)>::fromCallable([challenge = makeRef(authenticationChallenge), checker = WTFMove(checker)](NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential) {
+    [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) webView:m_navigationState.m_webView didReceiveAuthenticationChallenge:wrapper(authenticationChallenge) completionHandler:makeBlockPtr([challenge = makeRef(authenticationChallenge), checker = WTFMove(checker)](NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential) {
         if (checker->completionHandlerHasBeenCalled())
             return;
         checker->didCallCompletionHandler();
@@ -1224,6 +1226,15 @@ void NavigationState::willChangeWebProcessIsResponsive()
 void NavigationState::didChangeWebProcessIsResponsive()
 {
     [m_webView didChangeValueForKey:@"_webProcessIsResponsive"];
+}
+
+void NavigationState::didSwapWebProcesses()
+{
+#if PLATFORM(IOS_FAMILY)
+    // Transfer our background assertion from the old process to the new one.
+    if (m_activityToken)
+        m_activityToken = m_webView->_page->process().throttler().backgroundActivityToken();
+#endif
 }
 
 } // namespace WebKit

@@ -37,6 +37,7 @@
 // Frame loading
 
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller didStartProvisionalLoadForFrame:(WKWebProcessPlugInFrame *)frame;
+- (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller willStartProvisionalLoadForFrame:(WKWebProcessPlugInFrame *)frame completionHandler:(void(^)(void))completionHandler;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller didReceiveServerRedirectForProvisionalLoadForFrame:(WKWebProcessPlugInFrame *)frame;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller didCommitLoadForFrame:(WKWebProcessPlugInFrame *)frame;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller didFinishDocumentLoadForFrame:(WKWebProcessPlugInFrame *)frame;
@@ -52,6 +53,7 @@
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller didLayoutForFrame:(WKWebProcessPlugInFrame *)frame;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller renderingProgressDidChange:(_WKRenderingProgressEvents)events;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller didFirstVisuallyNonEmptyLayoutForFrame:(WKWebProcessPlugInFrame *)frame;
+- (_WKRenderingProgressEvents)webProcessPlugInBrowserContextControllerRenderingProgressEvents:(WKWebProcessPlugInBrowserContextController *)controller;
 
 // Resource loading
 

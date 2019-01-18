@@ -117,8 +117,12 @@ public:
     static WebProcessProxy* processForIdentifier(WebCore::ProcessIdentifier);
     static WebPageProxy* webPage(uint64_t pageID);
     Ref<WebPageProxy> createWebPage(PageClient&, Ref<API::PageConfiguration>&&);
-    void addExistingWebPage(WebPageProxy&, uint64_t pageID);
-    void removeWebPage(WebPageProxy&, uint64_t pageID);
+
+    enum class BeginsUsingDataStore : bool { No, Yes };
+    void addExistingWebPage(WebPageProxy&, uint64_t pageID, BeginsUsingDataStore);
+
+    enum class EndsUsingDataStore : bool { No, Yes };
+    void removeWebPage(WebPageProxy&, uint64_t pageID, EndsUsingDataStore);
 
     typename WebPageProxyMap::ValuesConstIteratorRange pages() const { return m_pageMap.values(); }
     unsigned pageCount() const { return m_pageMap.size(); }
@@ -149,7 +153,7 @@ public:
     void updateTextCheckerState();
 
     void willAcquireUniversalFileReadSandboxExtension() { m_mayHaveUniversalFileReadSandboxExtension = true; }
-    void assumeReadAccessToBaseURL(const String&);
+    void assumeReadAccessToBaseURL(WebPageProxy&, const String&);
     bool hasAssumedReadAccessToURL(const URL&) const;
 
     bool checkURLReceivedFromWebProcess(const String&);

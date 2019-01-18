@@ -22,64 +22,28 @@
 #include "config.h"
 
 #if ENABLE(MEDIA_STREAM) && USE(LIBWEBRTC)
-#include "RealtimeMediaSourceCenterLibWebRTC.h"
+#include "RealtimeMediaSourceCenter.h"
 
 #include "GStreamerAudioCaptureSource.h"
 #include "GStreamerCaptureDevice.h"
-#include "GStreamerCaptureDeviceManager.h"
 #include "GStreamerVideoCaptureSource.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
 
-RealtimeMediaSourceCenterLibWebRTC& RealtimeMediaSourceCenterLibWebRTC::singleton()
-{
-    ASSERT(isMainThread());
-    static NeverDestroyed<RealtimeMediaSourceCenterLibWebRTC> center;
-    return center;
-}
-
-RealtimeMediaSourceCenter& RealtimeMediaSourceCenter::platformCenter()
-{
-    return RealtimeMediaSourceCenterLibWebRTC::singleton();
-}
-
-RealtimeMediaSourceCenterLibWebRTC::RealtimeMediaSourceCenterLibWebRTC()
-{
-}
-
-RealtimeMediaSourceCenterLibWebRTC::~RealtimeMediaSourceCenterLibWebRTC()
-{
-}
-
-AudioCaptureFactory& RealtimeMediaSourceCenterLibWebRTC::audioFactoryPrivate()
+AudioCaptureFactory& RealtimeMediaSourceCenter::defaultAudioCaptureFactory()
 {
     return GStreamerAudioCaptureSource::factory();
 }
 
-VideoCaptureFactory& RealtimeMediaSourceCenterLibWebRTC::videoFactoryPrivate()
+VideoCaptureFactory& RealtimeMediaSourceCenter::defaultVideoCaptureFactory()
 {
     return GStreamerVideoCaptureSource::factory();
 }
 
-DisplayCaptureFactory& RealtimeMediaSourceCenterLibWebRTC::displayCaptureFactoryPrivate()
+DisplayCaptureFactory& RealtimeMediaSourceCenter::defaultDisplayCaptureFactory()
 {
     return GStreamerVideoCaptureSource::displayFactory();
-}
-
-CaptureDeviceManager& RealtimeMediaSourceCenterLibWebRTC::audioCaptureDeviceManager()
-{
-    return GStreamerAudioCaptureDeviceManager::singleton();
-}
-
-CaptureDeviceManager& RealtimeMediaSourceCenterLibWebRTC::videoCaptureDeviceManager()
-{
-    return GStreamerVideoCaptureDeviceManager::singleton();
-}
-
-CaptureDeviceManager& RealtimeMediaSourceCenterLibWebRTC::displayCaptureDeviceManager()
-{
-    return GStreamerDisplayCaptureDeviceManager::singleton();
 }
 
 } // namespace WebCore

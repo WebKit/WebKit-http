@@ -57,11 +57,6 @@ WI.AuditNavigationSidebarPanel = class AuditNavigationSidebarPanel extends WI.Na
 
         this.contentTreeOutline.allowsRepeatSelection = false;
 
-        this._resultsFolderTreeElement = new WI.FolderTreeElement(WI.UIString("Results"));
-        this.contentTreeOutline.appendChild(this._resultsFolderTreeElement);
-        this._resultsFolderTreeElement.hidden = true;
-        this._resultsFolderTreeElement.expand();
-
         let navigationBar = new WI.NavigationBar;
 
         this._startStopButtonNavigationItem = new WI.ToggleButtonNavigationItem("audit-start-stop", WI.UIString("Start"), WI.UIString("Stop"), "Images/AuditStart.svg", "Images/AuditStop.svg", 13, 13);
@@ -83,8 +78,9 @@ WI.AuditNavigationSidebarPanel = class AuditNavigationSidebarPanel extends WI.Na
         for (let test of WI.auditManager.tests)
             this._addTest(test);
 
-        for (let result of WI.auditManager.results)
-            this._addResult(result);
+        WI.auditManager.results.forEach((result, i) => {
+            this._addResult(result, i);
+        });
 
         WI.auditManager.addEventListener(WI.AuditManager.Event.TestAdded, this._handleAuditTestAdded, this);
         WI.auditManager.addEventListener(WI.AuditManager.Event.TestCompleted, this._handleAuditTestCompleted, this);
@@ -101,12 +97,12 @@ WI.AuditNavigationSidebarPanel = class AuditNavigationSidebarPanel extends WI.Na
         WI.auditManager.removeEventListener(null, null, this);
     }
 
-    applyFiltersToTreeElement(treeElement)
+    updateFilter()
     {
-        super.applyFiltersToTreeElement(treeElement);
+        super.updateFilter();
 
-        if (treeElement === this._resultsFolderTreeElement && !WI.auditManager.results.length)
-            this._resultsFolderTreeElement.hidden = true;
+        if (!this.hasActiveFilters)
+            this._updateNoAuditsPlaceholder();
     }
 
     // Private
@@ -117,9 +113,13 @@ WI.AuditNavigationSidebarPanel = class AuditNavigationSidebarPanel extends WI.Na
 
         this._updateStartStopButtonNavigationItemState();
 
-        this.contentTreeOutline.insertChild(new WI.AuditTreeElement(test), this.contentTreeOutline.children.indexOf(this._resultsFolderTreeElement));
+        let treeElement = new WI.AuditTreeElement(test);
 
-        this._resultsFolderTreeElement.hidden = !this._resultsFolderTreeElement.children.length;
+        if (this._resultsFolderTreeElement) {
+            this.contentTreeOutline.insertChild(treeElement, this.contentTreeOutline.children.indexOf(this._resultsFolderTreeElement));
+            this._resultsFolderTreeElement.hidden = !this._resultsFolderTreeElement.children.length;
+        } else
+            this.contentTreeOutline.appendChild(treeElement);
 
         this.hideEmptyContentPlaceholder();
     }
@@ -130,7 +130,12 @@ WI.AuditNavigationSidebarPanel = class AuditNavigationSidebarPanel extends WI.Na
 
         this._updateStartStopButtonNavigationItemState();
 
-        this._resultsFolderTreeElement.hidden = false;
+        if (!this._resultsFolderTreeElement) {
+            this._resultsFolderTreeElement = new WI.FolderTreeElement(WI.UIString("Results"));
+            this.contentTreeOutline.appendChild(this._resultsFolderTreeElement);
+        }
+
+        this._resultsFolderTreeElement.expand();
 
         let resultFolderTreeElement = new WI.FolderTreeElement(WI.UIString("Run %d").format(index + 1));
         if (result instanceof WI.AuditTestResultBase) {
@@ -147,6 +152,30 @@ WI.AuditNavigationSidebarPanel = class AuditNavigationSidebarPanel extends WI.Na
     {
         this._startStopButtonNavigationItem.toggled = WI.auditManager.runningState !== WI.AuditManager.RunningState.Inactive;
         this._startStopButtonNavigationItem.enabled = WI.auditManager.tests.length && WI.auditManager.runningState !== WI.AuditManager.RunningState.Stopping;
+    }
+
+    _updateNoAuditsPlaceholder()
+    {
+        if (WI.auditManager.tests.length)
+            return;
+
+        let contentPlaceholder = WI.createMessageTextView(WI.UIString("No Audits"));
+
+        let defaultButtonElement = contentPlaceholder.appendChild(document.createElement("button"));
+        defaultButtonElement.textContent = WI.UIString("Add Default Audits");
+        defaultButtonElement.addEventListener("click", () => {
+            WI.auditManager.addDefaultTestsIfNeeded();
+        });
+
+        contentPlaceholder = this.showEmptyContentPlaceholder(contentPlaceholder);
+
+        if (WI.auditManager.results.length) {
+            console.assert(this.contentTreeOutline.children[0] === this._resultsFolderTreeElement);
+
+            // Move the placeholder to be the first element in the content area, where it will
+            // be styled such that only the button is visible.
+            this.contentView.element.insertBefore(contentPlaceholder, this.contentView.element.firstChild);
+        }
     }
 
     _handleAuditTestAdded(event)
@@ -168,27 +197,8 @@ WI.AuditNavigationSidebarPanel = class AuditNavigationSidebarPanel extends WI.Na
 
         this.element.classList.toggle("has-tests", !!WI.auditManager.tests.length);
 
-        if (!WI.auditManager.tests.length) {
-            let contentPlaceholder = WI.createMessageTextView(WI.UIString("No audits"));
-
-            let defaultButtonElement = contentPlaceholder.appendChild(document.createElement("button"));
-            defaultButtonElement.textContent = WI.UIString("Add Default Audits");
-            defaultButtonElement.addEventListener("click", () => {
-                WI.auditManager.addDefaultTestsIfNeeded();
-            });
-
-            contentPlaceholder = this.showEmptyContentPlaceholder(contentPlaceholder);
-
-            if (WI.auditManager.results.length) {
-                console.assert(this.contentTreeOutline.children[0] === this._resultsFolderTreeElement);
-
-                // Move the placeholder to be the first element in the content area, where it will
-                // be styled such that only the button is visible.
-                this.contentView.element.insertBefore(contentPlaceholder, this.contentView.element.firstChild);
-            }
-        }
-
         this._updateStartStopButtonNavigationItemState();
+        this._updateNoAuditsPlaceholder();
     }
 
     _handleAuditTestScheduled(event)

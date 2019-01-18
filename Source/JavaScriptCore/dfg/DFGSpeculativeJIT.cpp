@@ -4778,6 +4778,63 @@ void SpeculativeJIT::compileMathIC(Node* node, JITUnaryMathIC<Generator>* mathIC
     return;
 }
 
+void SpeculativeJIT::compileValueMul(Node* node)
+{
+    Edge& leftChild = node->child1();
+    Edge& rightChild = node->child2();
+
+    if (leftChild.useKind() == BigIntUse && rightChild.useKind() == BigIntUse) {
+        SpeculateCellOperand left(this, leftChild);
+        SpeculateCellOperand right(this, rightChild);
+        GPRReg leftGPR = left.gpr();
+        GPRReg rightGPR = right.gpr();
+
+        speculateBigInt(leftChild, leftGPR);
+        speculateBigInt(rightChild, rightGPR);
+
+        flushRegisters();
+        GPRFlushedCallResult result(this);
+        GPRReg resultGPR = result.gpr();
+
+        callOperation(operationMulBigInt, resultGPR, leftGPR, rightGPR);
+
+        m_jit.exceptionCheck();
+        cellResult(resultGPR, node);
+        return;
+    }
+
+    if (isKnownNotNumber(leftChild.node()) || isKnownNotNumber(rightChild.node())) {
+        JSValueOperand left(this, leftChild);
+        JSValueOperand right(this, rightChild);
+        JSValueRegs leftRegs = left.jsValueRegs();
+        JSValueRegs rightRegs = right.jsValueRegs();
+
+        flushRegisters();
+        JSValueRegsFlushedCallResult result(this);
+        JSValueRegs resultRegs = result.regs();
+        callOperation(operationValueMul, resultRegs, leftRegs, rightRegs);
+        m_jit.exceptionCheck();
+
+        jsValueResult(resultRegs, node);
+        return;
+    }
+
+    bool needsScratchGPRReg = true;
+#if USE(JSVALUE64)
+    bool needsScratchFPRReg = false;
+#else
+    bool needsScratchFPRReg = true;
+#endif
+
+    CodeBlock* baselineCodeBlock = m_jit.graph().baselineCodeBlockFor(node->origin.semantic);
+    ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
+    const Instruction* instruction = baselineCodeBlock->instructions().at(node->origin.semantic.bytecodeIndex).ptr();
+    JITMulIC* mulIC = m_jit.codeBlock()->addJITMulIC(arithProfile, instruction);
+    auto repatchingFunction = operationValueMulOptimize;
+    auto nonRepatchingFunction = operationValueMul;
+
+    compileMathIC(node, mulIC, needsScratchGPRReg, needsScratchFPRReg, repatchingFunction, nonRepatchingFunction);
+}
 
 void SpeculativeJIT::compileArithMul(Node* node)
 {
@@ -4917,49 +4974,135 @@ void SpeculativeJIT::compileArithMul(Node* node)
         return;
     }
 
-    case UntypedUse: {
-        Edge& leftChild = node->child1();
-        Edge& rightChild = node->child2();
-
-        if (isKnownNotNumber(leftChild.node()) || isKnownNotNumber(rightChild.node())) {
-            JSValueOperand left(this, leftChild);
-            JSValueOperand right(this, rightChild);
-            JSValueRegs leftRegs = left.jsValueRegs();
-            JSValueRegs rightRegs = right.jsValueRegs();
-
-            flushRegisters();
-            JSValueRegsFlushedCallResult result(this);
-            JSValueRegs resultRegs = result.regs();
-            callOperation(operationValueMul, resultRegs, leftRegs, rightRegs);
-            m_jit.exceptionCheck();
-
-            jsValueResult(resultRegs, node);
-            return;
-        }
-
-#if USE(JSVALUE64)
-        bool needsScratchGPRReg = true;
-        bool needsScratchFPRReg = false;
-#else
-        bool needsScratchGPRReg = true;
-        bool needsScratchFPRReg = true;
-#endif
-
-        CodeBlock* baselineCodeBlock = m_jit.graph().baselineCodeBlockFor(node->origin.semantic);
-        ArithProfile* arithProfile = baselineCodeBlock->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
-        const Instruction* instruction = baselineCodeBlock->instructions().at(node->origin.semantic.bytecodeIndex).ptr();
-        JITMulIC* mulIC = m_jit.codeBlock()->addJITMulIC(arithProfile, instruction);
-        auto repatchingFunction = operationValueMulOptimize;
-        auto nonRepatchingFunction = operationValueMul;
-        
-        compileMathIC(node, mulIC, needsScratchGPRReg, needsScratchFPRReg, repatchingFunction, nonRepatchingFunction);
-        return;
-    }
-
     default:
         RELEASE_ASSERT_NOT_REACHED();
         return;
     }
+}
+
+void SpeculativeJIT::compileValueDiv(Node* node)
+{
+    Edge& leftChild = node->child1();
+    Edge& rightChild = node->child2();
+
+    if (leftChild.useKind() == BigIntUse && rightChild.useKind() == BigIntUse) {
+        SpeculateCellOperand left(this, leftChild);
+        SpeculateCellOperand right(this, rightChild);
+        GPRReg leftGPR = left.gpr();
+        GPRReg rightGPR = right.gpr();
+
+        speculateBigInt(leftChild, leftGPR);
+        speculateBigInt(rightChild, rightGPR);
+
+        flushRegisters();
+        GPRFlushedCallResult result(this);
+        GPRReg resultGPR = result.gpr();
+
+        callOperation(operationDivBigInt, resultGPR, leftGPR, rightGPR);
+
+        m_jit.exceptionCheck();
+        cellResult(resultGPR, node);
+        return;
+    }
+
+    if (isKnownNotNumber(leftChild.node()) || isKnownNotNumber(rightChild.node())) {
+        JSValueOperand left(this, leftChild);
+        JSValueOperand right(this, rightChild);
+        JSValueRegs leftRegs = left.jsValueRegs();
+        JSValueRegs rightRegs = right.jsValueRegs();
+
+        flushRegisters();
+        JSValueRegsFlushedCallResult result(this);
+        JSValueRegs resultRegs = result.regs();
+        callOperation(operationValueDiv, resultRegs, leftRegs, rightRegs);
+        m_jit.exceptionCheck();
+
+        jsValueResult(resultRegs, node);
+        return;
+    }
+
+    std::optional<JSValueOperand> left;
+    std::optional<JSValueOperand> right;
+
+    JSValueRegs leftRegs;
+    JSValueRegs rightRegs;
+
+    FPRTemporary leftNumber(this);
+    FPRTemporary rightNumber(this);
+    FPRReg leftFPR = leftNumber.fpr();
+    FPRReg rightFPR = rightNumber.fpr();
+    FPRTemporary fprScratch(this);
+    FPRReg scratchFPR = fprScratch.fpr();
+
+#if USE(JSVALUE64)
+    GPRTemporary result(this);
+    JSValueRegs resultRegs = JSValueRegs(result.gpr());
+    GPRTemporary scratch(this);
+    GPRReg scratchGPR = scratch.gpr();
+#else
+    GPRTemporary resultTag(this);
+    GPRTemporary resultPayload(this);
+    JSValueRegs resultRegs = JSValueRegs(resultPayload.gpr(), resultTag.gpr());
+    GPRReg scratchGPR = resultTag.gpr();
+#endif
+
+    SnippetOperand leftOperand(m_state.forNode(leftChild).resultType());
+    SnippetOperand rightOperand(m_state.forNode(rightChild).resultType());
+
+    if (leftChild->isInt32Constant())
+        leftOperand.setConstInt32(leftChild->asInt32());
+#if USE(JSVALUE64)
+    else if (leftChild->isDoubleConstant())
+        leftOperand.setConstDouble(leftChild->asNumber());
+#endif
+
+    if (leftOperand.isConst()) {
+        // The snippet generator only supports 1 argument as a constant.
+        // Ignore the rightChild's const-ness.
+    } else if (rightChild->isInt32Constant())
+        rightOperand.setConstInt32(rightChild->asInt32());
+#if USE(JSVALUE64)
+    else if (rightChild->isDoubleConstant())
+        rightOperand.setConstDouble(rightChild->asNumber());
+#endif
+
+    RELEASE_ASSERT(!leftOperand.isConst() || !rightOperand.isConst());
+
+    if (!leftOperand.isConst()) {
+        left.emplace(this, leftChild);
+        leftRegs = left->jsValueRegs();
+    }
+    if (!rightOperand.isConst()) {
+        right.emplace(this, rightChild);
+        rightRegs = right->jsValueRegs();
+    }
+
+    JITDivGenerator gen(leftOperand, rightOperand, resultRegs, leftRegs, rightRegs,
+        leftFPR, rightFPR, scratchGPR, scratchFPR);
+    gen.generateFastPath(m_jit);
+
+    ASSERT(gen.didEmitFastPath());
+    gen.endJumpList().append(m_jit.jump());
+
+    gen.slowPathJumpList().link(&m_jit);
+    silentSpillAllRegisters(resultRegs);
+
+    if (leftOperand.isConst()) {
+        leftRegs = resultRegs;
+        m_jit.moveValue(leftChild->asJSValue(), leftRegs);
+    }
+    if (rightOperand.isConst()) {
+        rightRegs = resultRegs;
+        m_jit.moveValue(rightChild->asJSValue(), rightRegs);
+    }
+
+    callOperation(operationValueDiv, resultRegs, leftRegs, rightRegs);
+
+    silentFillAllRegisters();
+    m_jit.exceptionCheck();
+
+    gen.endJumpList().link(&m_jit);
+    jsValueResult(resultRegs, node);
 }
 
 void SpeculativeJIT::compileArithDiv(Node* node)
@@ -5094,111 +5237,6 @@ void SpeculativeJIT::compileArithDiv(Node* node)
         
         doubleResult(result.fpr(), node);
         break;
-    }
-
-    case UntypedUse: {
-        Edge& leftChild = node->child1();
-        Edge& rightChild = node->child2();
-
-        if (isKnownNotNumber(leftChild.node()) || isKnownNotNumber(rightChild.node())) {
-            JSValueOperand left(this, leftChild);
-            JSValueOperand right(this, rightChild);
-            JSValueRegs leftRegs = left.jsValueRegs();
-            JSValueRegs rightRegs = right.jsValueRegs();
-
-            flushRegisters();
-            JSValueRegsFlushedCallResult result(this);
-            JSValueRegs resultRegs = result.regs();
-            callOperation(operationValueDiv, resultRegs, leftRegs, rightRegs);
-            m_jit.exceptionCheck();
-
-            jsValueResult(resultRegs, node);
-            return;
-        }
-
-        std::optional<JSValueOperand> left;
-        std::optional<JSValueOperand> right;
-
-        JSValueRegs leftRegs;
-        JSValueRegs rightRegs;
-
-        FPRTemporary leftNumber(this);
-        FPRTemporary rightNumber(this);
-        FPRReg leftFPR = leftNumber.fpr();
-        FPRReg rightFPR = rightNumber.fpr();
-        FPRTemporary fprScratch(this);
-        FPRReg scratchFPR = fprScratch.fpr();
-
-#if USE(JSVALUE64)
-        GPRTemporary result(this);
-        JSValueRegs resultRegs = JSValueRegs(result.gpr());
-        GPRTemporary scratch(this);
-        GPRReg scratchGPR = scratch.gpr();
-#else
-        GPRTemporary resultTag(this);
-        GPRTemporary resultPayload(this);
-        JSValueRegs resultRegs = JSValueRegs(resultPayload.gpr(), resultTag.gpr());
-        GPRReg scratchGPR = resultTag.gpr();
-#endif
-
-        SnippetOperand leftOperand(m_state.forNode(leftChild).resultType());
-        SnippetOperand rightOperand(m_state.forNode(rightChild).resultType());
-
-        if (leftChild->isInt32Constant())
-            leftOperand.setConstInt32(leftChild->asInt32());
-#if USE(JSVALUE64)
-        else if (leftChild->isDoubleConstant())
-            leftOperand.setConstDouble(leftChild->asNumber());
-#endif
-
-        if (leftOperand.isConst()) {
-            // The snippet generator only supports 1 argument as a constant.
-            // Ignore the rightChild's const-ness.
-        } else if (rightChild->isInt32Constant())
-            rightOperand.setConstInt32(rightChild->asInt32());
-#if USE(JSVALUE64)
-        else if (rightChild->isDoubleConstant())
-            rightOperand.setConstDouble(rightChild->asNumber());
-#endif
-
-        RELEASE_ASSERT(!leftOperand.isConst() || !rightOperand.isConst());
-
-        if (!leftOperand.isConst()) {
-            left.emplace(this, leftChild);
-            leftRegs = left->jsValueRegs();
-        }
-        if (!rightOperand.isConst()) {
-            right.emplace(this, rightChild);
-            rightRegs = right->jsValueRegs();
-        }
-
-        JITDivGenerator gen(leftOperand, rightOperand, resultRegs, leftRegs, rightRegs,
-            leftFPR, rightFPR, scratchGPR, scratchFPR);
-        gen.generateFastPath(m_jit);
-
-        ASSERT(gen.didEmitFastPath());
-        gen.endJumpList().append(m_jit.jump());
-
-        gen.slowPathJumpList().link(&m_jit);
-        silentSpillAllRegisters(resultRegs);
-
-        if (leftOperand.isConst()) {
-            leftRegs = resultRegs;
-            m_jit.moveValue(leftChild->asJSValue(), leftRegs);
-        }
-        if (rightOperand.isConst()) {
-            rightRegs = resultRegs;
-            m_jit.moveValue(rightChild->asJSValue(), rightRegs);
-        }
-
-        callOperation(operationValueDiv, resultRegs, leftRegs, rightRegs);
-
-        silentFillAllRegisters();
-        m_jit.exceptionCheck();
-
-        gen.endJumpList().link(&m_jit);
-        jsValueResult(resultRegs, node);
-        return;
     }
 
     default:
@@ -9629,6 +9667,32 @@ void SpeculativeJIT::compileNewStringObject(Node* node)
     cellResult(resultGPR, node);
 }
 
+void SpeculativeJIT::compileNewSymbol(Node* node)
+{
+    if (!node->child1()) {
+        flushRegisters();
+        GPRFlushedCallResult result(this);
+        GPRReg resultGPR = result.gpr();
+        callOperation(operationNewSymbol, resultGPR);
+        m_jit.exceptionCheck();
+        cellResult(resultGPR, node);
+        return;
+    }
+
+
+    ASSERT(node->child1().useKind() == KnownStringUse);
+    SpeculateCellOperand operand(this, node->child1());
+
+    GPRReg stringGPR = operand.gpr();
+
+    flushRegisters();
+    GPRFlushedCallResult result(this);
+    GPRReg resultGPR = result.gpr();
+    callOperation(operationNewSymbolWithDescription, resultGPR, stringGPR);
+    m_jit.exceptionCheck();
+    cellResult(resultGPR, node);
+}
+
 void SpeculativeJIT::compileNewTypedArrayWithSize(Node* node)
 {
     JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
@@ -12299,6 +12363,94 @@ void SpeculativeJIT::compileToThis(Node* node)
     addSlowPathGenerator(slowPathCall(slowCases, this, function, tempRegs, thisValueRegs));
 
     jsValueResult(tempRegs, node);
+}
+
+void SpeculativeJIT::compileObjectKeys(Node* node)
+{
+    switch (node->child1().useKind()) {
+    case ObjectUse: {
+        if (m_graph.isWatchingHavingABadTimeWatchpoint(node)) {
+            SpeculateCellOperand object(this, node->child1());
+            GPRTemporary structure(this);
+            GPRTemporary scratch(this);
+            GPRTemporary scratch2(this);
+            GPRTemporary scratch3(this);
+            GPRTemporary result(this);
+
+            GPRReg objectGPR = object.gpr();
+            GPRReg structureGPR = structure.gpr();
+            GPRReg scratchGPR = scratch.gpr();
+            GPRReg scratch2GPR = scratch2.gpr();
+            GPRReg scratch3GPR = scratch3.gpr();
+            GPRReg resultGPR = result.gpr();
+
+            speculateObject(node->child1(), objectGPR);
+
+            CCallHelpers::JumpList slowCases;
+            m_jit.emitLoadStructure(*m_jit.vm(), objectGPR, structureGPR, scratchGPR);
+            m_jit.loadPtr(CCallHelpers::Address(structureGPR, Structure::previousOrRareDataOffset()), scratchGPR);
+
+            slowCases.append(m_jit.branchTestPtr(CCallHelpers::Zero, scratchGPR));
+            slowCases.append(m_jit.branch32(CCallHelpers::Equal, CCallHelpers::Address(scratchGPR, JSCell::structureIDOffset()), TrustedImm32(bitwise_cast<int32_t>(m_jit.vm()->structureStructure->structureID()))));
+
+            m_jit.loadPtr(CCallHelpers::Address(scratchGPR, StructureRareData::offsetOfCachedOwnKeys()), scratchGPR);
+
+            slowCases.append(m_jit.branchTestPtr(CCallHelpers::Zero, scratchGPR));
+            slowCases.append(m_jit.branchPtr(CCallHelpers::Equal, scratchGPR, TrustedImmPtr::weakPointer(m_jit.graph(), m_jit.vm()->sentinelImmutableButterfly.get())));
+
+            MacroAssembler::JumpList slowButArrayBufferCases;
+
+            JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
+            RegisteredStructure arrayStructure = m_jit.graph().registerStructure(globalObject->arrayStructureForIndexingTypeDuringAllocation(CopyOnWriteArrayWithContiguous));
+
+            m_jit.move(scratchGPR, scratch3GPR);
+            m_jit.addPtr(TrustedImmPtr(JSImmutableButterfly::offsetOfData()), scratchGPR);
+
+            emitAllocateJSObject<JSArray>(resultGPR, TrustedImmPtr(arrayStructure), scratchGPR, structureGPR, scratch2GPR, slowButArrayBufferCases);
+
+            addSlowPathGenerator(slowPathCall(slowButArrayBufferCases, this, operationNewArrayBuffer, resultGPR, arrayStructure, scratch3GPR));
+
+            addSlowPathGenerator(slowPathCall(slowCases, this, operationObjectKeysObject, resultGPR, objectGPR));
+
+            cellResult(resultGPR, node);
+            break;
+        }
+
+        SpeculateCellOperand object(this, node->child1());
+
+        GPRReg objectGPR = object.gpr();
+
+        speculateObject(node->child1(), objectGPR);
+
+        flushRegisters();
+        GPRFlushedCallResult result(this);
+        GPRReg resultGPR = result.gpr();
+        callOperation(operationObjectKeysObject, resultGPR, objectGPR);
+        m_jit.exceptionCheck();
+
+        cellResult(resultGPR, node);
+        break;
+    }
+
+    case UntypedUse: {
+        JSValueOperand object(this, node->child1());
+
+        JSValueRegs objectRegs = object.jsValueRegs();
+
+        flushRegisters();
+        GPRFlushedCallResult result(this);
+        GPRReg resultGPR = result.gpr();
+        callOperation(operationObjectKeys, resultGPR, objectRegs);
+        m_jit.exceptionCheck();
+
+        cellResult(resultGPR, node);
+        break;
+    }
+
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        break;
+    }
 }
 
 void SpeculativeJIT::compileObjectCreate(Node* node)

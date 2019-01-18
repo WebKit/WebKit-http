@@ -2434,7 +2434,7 @@ static inline bool hasValidStyleForProperty(Element& element, CSSPropertyID prop
 {
     if (element.styleValidity() != Style::Validity::Valid)
         return false;
-    if (element.document().hasPendingForcedStyleRecalc())
+    if (element.document().hasPendingFullStyleRebuild())
         return false;
     if (!element.document().childNeedsStyleRecalc())
         return true;
@@ -2638,7 +2638,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::customPropertyValue(const String& prope
     if (!value)
         return nullptr;
 
-    auto visitor = WTF::makeVisitor([&](const Ref<CSSVariableReferenceValue>&) {
+    return WTF::switchOn(value->value(), [&](const Ref<CSSVariableReferenceValue>&) {
         ASSERT_NOT_REACHED();
         return RefPtr<CSSValue>();
     }, [&](const CSSValueID&) {
@@ -2647,8 +2647,9 @@ RefPtr<CSSValue> ComputedStyleExtractor::customPropertyValue(const String& prope
         return CSSCustomPropertyValue::create(*value);
     }, [&](const Length& value) {
         return zoomAdjustedPixelValueForLength(value, *style);
+    }, [&](const Ref<StyleImage>&) {
+        return CSSCustomPropertyValue::create(*value);
     });
-    return WTF::visit(visitor, value->value());
 }
 
 String ComputedStyleExtractor::customPropertyText(const String& propertyName)

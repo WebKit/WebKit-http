@@ -1,3 +1,92 @@
+2018-12-10  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest removes spaces from content-types before processing
+        https://bugs.webkit.org/show_bug.cgi?id=8644
+
+        Reviewed by Chris Dumez.
+
+        Update improved test expectations.
+
+        * web-platform-tests/mimesniff/mime-types/parsing.any-expected.txt:
+        * web-platform-tests/mimesniff/mime-types/parsing.any.worker-expected.txt:
+
+2018-12-05  Youenn Fablet  <youenn@apple.com>
+
+        [iOS] Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=189727
+        <rdar://problem/44584993>
+
+        Reviewed by Chris Dumez.
+
+        Make the test more deterministic and output more test to ease debugging.
+
+        * web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https.html:
+        * web-platform-tests/service-workers/service-worker/resources/fetch-cors-xhr-iframe.html:
+
+2018-12-05  Frederic Wang  <fwang@igalia.com>
+
+        Import css overscroll behavior WPT test
+        https://bugs.webkit.org/show_bug.cgi?id=192397
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-overscroll-behavior/META.yml: Added.
+        * web-platform-tests/css/css-overscroll-behavior/inheritance-expected.txt: Added.
+        * web-platform-tests/css/css-overscroll-behavior/inheritance.html: Added.
+        * web-platform-tests/css/css-overscroll-behavior/w3c-import.log: Added.
+
+2018-12-05  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][GStreamer] Remove the AppendPipeline state machine
+        https://bugs.webkit.org/show_bug.cgi?id=192204
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Added a test checking that initialization segments with invalid codec
+        identifiers are flagged as errors.
+
+        * web-platform-tests/media-source/mediasource-invalid-codec-expected.txt: Added.
+        * web-platform-tests/media-source/mediasource-invalid-codec.html: Added.
+        * web-platform-tests/media-source/mp4/invalid-codec.mp4: Added.
+        * web-platform-tests/media-source/webm/invalid-codec.webm: Added.
+
+2018-12-05  Rob Buis  <rbuis@igalia.com>
+
+        [Mac] HEAD requests changed to GET after 301, 302, and 303 redirections (http/tests/xmlhttprequest/head-redirection.html)
+        https://bugs.webkit.org/show_bug.cgi?id=114965
+
+        Reviewed by Frédéric Wang.
+
+        Update test expectations.
+
+        * web-platform-tests/fetch/api/redirect/redirect-method-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-method-worker-expected.txt:
+
+2018-12-05  Rob Buis  <rbuis@igalia.com>
+
+        Align with Fetch on data: URLs
+        https://bugs.webkit.org/show_bug.cgi?id=182325
+
+        Reviewed by Alex Christensen.
+
+        Update improved test expectations.
+
+        * web-platform-tests/fetch/api/basic/scheme-data.any-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-data.any.worker-expected.txt:
+
+2018-11-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        title attribute on style & link elements should be ignored inside a shadow tree
+        https://bugs.webkit.org/show_bug.cgi?id=191297
+
+        Reviewed by Antti Koivisto.
+
+        Rebaseline the test case that's now passing.
+
+        * web-platform-tests/css/css-scoping/stylesheet-title-002-expected.txt:
+
 2018-11-30  Ryosuke Niwa  <rniwa@webkit.org>
 
         ShadowRoot should have styleSheets property

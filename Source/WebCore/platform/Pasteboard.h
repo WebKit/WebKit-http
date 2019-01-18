@@ -141,6 +141,7 @@ public:
 #if PLATFORM(COCOA)
     virtual bool readWebArchive(SharedBuffer&) = 0;
     virtual bool readFilePaths(const Vector<String>&) = 0;
+    virtual bool readVirtualContactFile(const String& filePath, const URL&, const String& urlTitle) = 0;
     virtual bool readHTML(const String&) = 0;
     virtual bool readRTFD(SharedBuffer&) = 0;
     virtual bool readRTF(SharedBuffer&) = 0;
@@ -291,7 +292,7 @@ private:
         DidNotReadType,
         PasteboardWasChangedExternally
     };
-    ReaderResult readPasteboardWebContentDataForType(PasteboardWebContentReader&, PasteboardStrategy&, NSString *type, int itemIndex);
+    ReaderResult readPasteboardWebContentDataForType(PasteboardWebContentReader&, PasteboardStrategy&, NSString *type, int itemIndex, const PasteboardItemInfo&);
 #endif
 
 #if PLATFORM(WIN)

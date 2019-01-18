@@ -39,6 +39,7 @@
 #include "WebProcessConnection.h"
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
+#include <unistd.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ProcessPrivilege.h>
@@ -48,9 +49,9 @@
 #include <crt_externs.h>
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+
+using namespace WebCore;
 
 NO_RETURN static void callExit(IPC::Connection*)
 {

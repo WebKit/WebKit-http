@@ -37,6 +37,7 @@ WI.SelectionController = class SelectionController extends WI.Object
         this._lastSelectedIndex = NaN;
         this._shiftAnchorIndex = NaN;
         this._selectedIndexes = new WI.IndexSet;
+        this._suppressSelectionDidChange = false;
 
         console.assert(this._delegate.selectionControllerNumberOfItems, "SelectionController delegate must implement selectionControllerNumberOfItems.");
         console.assert(this._delegate.selectionControllerNextSelectableIndex, "SelectionController delegate must implement selectionControllerNextSelectableIndex.");
@@ -86,6 +87,9 @@ WI.SelectionController = class SelectionController extends WI.Object
     {
         console.assert(!extendSelection || this._allowsMultipleSelection, "Cannot extend selection with multiple selection disabled.");
         console.assert(index >= 0 && index < this.numberOfItems);
+
+        if (!this._allowsMultipleSelection)
+            extendSelection = false;
 
         if (this.hasSelectedItem(index)) {
             if (!extendSelection)
@@ -173,19 +177,19 @@ WI.SelectionController = class SelectionController extends WI.Object
 
         // Try selecting the item following the selection.
         let lastSelectedIndex = this._selectedIndexes.lastIndex;
-        let indexToSelect = lastSelectedIndex + 1;
-        if (indexToSelect === this.numberOfItems) {
+        let indexToSelect = this._nextSelectableIndex(lastSelectedIndex);
+        if (isNaN(indexToSelect)) {
             // If no item exists after the last item in the selection, try selecting
             // a deselected item (hole) within the selection.
             let firstSelectedIndex = this._selectedIndexes.firstIndex;
             if (lastSelectedIndex - firstSelectedIndex > numberOfSelectedItems) {
-                indexToSelect = this._selectedIndexes.firstIndex + 1;
+                indexToSelect = this._nextSelectableIndex(firstSelectedIndex);
                 while (this._selectedIndexes.has(indexToSelect))
-                    indexToSelect++;
+                    indexToSelect = this._nextSelectableIndex(firstSelectedIndex);
             } else {
                 // If the selection contains no holes, try selecting the item
                 // preceding the selection.
-                indexToSelect = firstSelectedIndex > 0 ? firstSelectedIndex - 1 : NaN;
+                indexToSelect = firstSelectedIndex > 0 ? this._previousSelectableIndex(firstSelectedIndex) : NaN;
             }
         }
 
@@ -203,22 +207,70 @@ WI.SelectionController = class SelectionController extends WI.Object
     {
         let current = this._selectedIndexes.lastIndex;
         while (current >= index) {
-            this._selectedIndexes.delete(index);
-            this._selectedIndexes.add(index + 1);
+            this._selectedIndexes.delete(current);
+            this._selectedIndexes.add(current + 1);
 
             current = this._selectedIndexes.indexLessThan(current);
         }
     }
 
-    didRemoveItem(index)
+    didRemoveItems(indexes)
     {
-        if (this.hasSelectedItem(index))
-            this.deselectItem(index);
+        console.assert(indexes instanceof WI.IndexSet);
 
-        while (index = this._selectedIndexes.indexGreaterThan(index)) {
-            this._selectedIndexes.delete(index);
-            this._selectedIndexes.add(index - 1);
+        if (!this._selectedIndexes.size)
+            return;
+
+        let firstRemovedIndex = indexes.firstIndex;
+        if (this._selectedIndexes.lastIndex < firstRemovedIndex)
+            return;
+
+        let newSelectedIndexes = new WI.IndexSet;
+
+        let lastRemovedIndex = indexes.lastIndex;
+        if (this._selectedIndexes.firstIndex < lastRemovedIndex) {
+            let removedCount = 0;
+            let removedIndex = firstRemovedIndex;
+
+            this._suppressSelectionDidChange = true;
+
+            // Adjust the selected indexes that are in the range between the
+            // first and last removed index (inclusive).
+            for (let current = this._selectedIndexes.firstIndex; current < lastRemovedIndex; current = this._selectedIndexes.indexGreaterThan(current)) {
+                if (this.hasSelectedItem(current)) {
+                    this.deselectItem(current);
+                    removedCount++;
+                    continue;
+                }
+
+                while (removedIndex < current) {
+                    removedCount++;
+                    removedIndex = indexes.indexGreaterThan(removedIndex);
+                }
+
+                let newIndex = current - removedCount;
+                newSelectedIndexes.add(newIndex);
+
+                if (this._lastSelectedIndex === current)
+                    this._lastSelectedIndex = newIndex;
+                if (this._shiftAnchorIndex === current)
+                    this._shiftAnchorIndex = newIndex;
+            }
+
+            this._suppressSelectionDidChange = false;
         }
+
+        let removedCount = indexes.size;
+        let current = lastRemovedIndex;
+        while (current = this._selectedIndexes.indexGreaterThan(current))
+            newSelectedIndexes.add(current - removedCount);
+
+        if (this._lastSelectedIndex > lastRemovedIndex)
+            this._lastSelectedIndex -= removedCount;
+        if (this._shiftAnchorIndex > lastRemovedIndex)
+            this._shiftAnchorIndex -= removedCount;
+
+        this._selectedIndexes = newSelectedIndexes;
     }
 
     handleKeyDown(event)
@@ -383,7 +435,7 @@ WI.SelectionController = class SelectionController extends WI.Object
         let oldSelectedIndexes = this._selectedIndexes.copy();
         this._selectedIndexes = indexes;
 
-        if (!this._delegate.selectionControllerSelectionDidChange)
+        if (this._suppressSelectionDidChange || !this._delegate.selectionControllerSelectionDidChange)
             return;
 
         let deselectedItems = oldSelectedIndexes.difference(indexes);

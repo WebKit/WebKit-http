@@ -74,6 +74,7 @@ inline CapabilityLevel canCompile(Node* node)
     case GetButterfly:
     case NewObject:
     case NewStringObject:
+    case NewSymbol:
     case NewArray:
     case NewArrayWithSpread:
     case Spread:
@@ -93,6 +94,8 @@ inline CapabilityLevel canCompile(Node* node)
     case ValueNegate:
     case ValueAdd:
     case ValueSub:
+    case ValueMul:
+    case ValueDiv:
     case StrCat:
     case ArithAdd:
     case ArithClz32:
@@ -198,6 +201,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CallObjectConstructor:
     case CallStringConstructor:
     case ObjectCreate:
+    case ObjectKeys:
     case MakeRope:
     case NewArrayWithSize:
     case TryGetById:

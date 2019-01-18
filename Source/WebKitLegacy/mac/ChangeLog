@@ -1,3 +1,139 @@
+2018-12-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make TextInputController.legacyAttributedString take DOM nodes and offsets
+        https://bugs.webkit.org/show_bug.cgi?id=192653
+
+        Reviewed by Wenson Hsieh.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _legacyAttributedStringFrom:offset:to:offset:]):
+
+2018-12-11  Justin Michaud  <justin_michaud@apple.com>
+
+        Implement feature flag for CSS Typed OM
+        https://bugs.webkit.org/show_bug.cgi?id=192610
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-12-11  Tim Horton  <timothy_horton@apple.com>
+
+        WebCore shouldn't have a Objective-C class named NSCursor
+        https://bugs.webkit.org/show_bug.cgi?id=192602
+        <rdar://problem/46615532>
+
+        Reviewed by Wenson Hsieh.
+
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView keyDown:keyDown:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView keyDown:]):
+        (-[WebHTMLView performKeyEquivalent:]):
+        Only use NSCursor on macOS.
+
+2018-12-10  Don Olmstead  <don.olmstead@sony.com>
+
+        Move ENABLE_RESOURCE_LOAD_STATISTICS to FeatureDefines.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=192573
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-12-10  Antti Koivisto  <antti@apple.com>
+
+        Rename "forced style recalc" to "full style rebuild"
+        https://bugs.webkit.org/show_bug.cgi?id=192572
+
+        Reviewed by Zalan Bujtas.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView setNeedsToApplyStyles:]):
+
+2018-12-10  Darin Adler  <darin@apple.com>
+
+        [macOS] MSHCreateMIGServerSource invocation does not handle send/receive rights correctly
+        https://bugs.webkit.org/show_bug.cgi?id=192533
+        rdar://problem/45732710
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WebKit::NetscapePluginHostProxy::NetscapePluginHostProxy): Pass kMSHDoNotCreateSendRightOption.
+
+2018-12-10  Darin Adler  <darin@apple.com>
+
+        [macOS] Use mach_port_mod_refs instead of mach_port_destroy
+        https://bugs.webkit.org/show_bug.cgi?id=192532
+        rdar://problem/45731047
+
+        Reviewed by Chris Dumez.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::hostForPlugin): Use mach_port_mod_refs.
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WebKit::NetscapePluginHostProxy::~NetscapePluginHostProxy): Ditto.
+
+2018-12-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Turn WritingDirection into an enum class
+        https://bugs.webkit.org/show_bug.cgi?id=192401
+        Work towards <rdar://problem/42075638>
+
+        Reviewed by Dan Bernstein.
+
+        Change WritingDirection from an enum to an enum class. No change in behavior.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView toggleBaseWritingDirection:]):
+        (-[WebHTMLView changeBaseWritingDirection:]):
+        (-[WebHTMLView _changeBaseWritingDirectionTo:]):
+
+2018-12-03  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKWebProcessPlugInLoadDelegate SPI willStartProvisionalLoadForFrame with a completion handler
+        https://bugs.webkit.org/show_bug.cgi?id=192272
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidStartProvisionalLoad):
+
+2018-12-03  Jer Noble  <jer.noble@apple.com>
+
+        Get rid of old, dead Mac video fullscreen code.
+        https://bugs.webkit.org/show_bug.cgi?id=192315
+
+        Reviewed by Eric Carlson.
+
+        The Mac-only WebVideoFullscreenController and WebVideoFullscreenHUDWindowController depend upon QTKit, which
+        is no longer supported in the Mac port.
+
+        * WebView/WebVideoFullscreenController.h: Removed.
+        * WebView/WebVideoFullscreenController.mm: Removed.
+        * WebView/WebVideoFullscreenHUDWindowController.h: Removed.
+        * WebView/WebVideoFullscreenHUDWindowController.mm: Removed.
+        * WebView/WebView.mm:
+        (-[WebView _enterVideoFullscreenForVideoElement:mode:]):
+        (-[WebView _exitVideoFullscreen]):
+
+2018-12-03  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Do not handle key events that are key commands
+        https://bugs.webkit.org/show_bug.cgi?id=191608
+        <rdar://problem/46046013>
+
+        Reviewed by Ryosuke Niwa.
+
+        A key down event may be associated with a key command. If it is then we want to execute the
+        key command instead of inserting or deleting text. We need to ask UIKit to handle the current
+        event as a key command to find out.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _handleEditingKeyEvent:]):
+
 2018-12-02  Zalan Bujtas  <zalan@apple.com>
 
         Add a runtime feature flag for LayoutFormattingContext.

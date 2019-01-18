@@ -34,7 +34,7 @@
 #include "FloatingState.h"
 #include "LayoutBox.h"
 #include "LayoutContainer.h"
-#include "LayoutFormattingState.h"
+#include "LayoutState.h"
 #include "Logging.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/text/TextStream.h>
@@ -134,7 +134,7 @@ void BlockFormattingContext::layoutFormattingContextRoot(FloatingContext& floati
 
     precomputeVerticalPositionForFormattingRootIfNeeded(layoutBox);
     // Swich over to the new formatting context (the one that the root creates).
-    auto formattingContext = layoutState().createFormattingStateForFormattingRootIfNeeded(layoutBox).formattingContext(layoutBox);
+    auto formattingContext = layoutState().createFormattingStateForFormattingRootIfNeeded(layoutBox).createFormattingContext(layoutBox);
     formattingContext->layout();
 
     // Come back and finalize the root's geometry.
@@ -358,7 +358,7 @@ void BlockFormattingContext::computeHeightAndMargin(const Box& layoutBox) const
             auto maxHeightAndMargin = compute(maxHeight);
             // Used height should remain the same.
             ASSERT((layoutState.inQuirksMode() && (layoutBox.isBodyBox() || layoutBox.isDocumentBox())) || maxHeightAndMargin.height == *maxHeight);
-            heightAndMargin = { *maxHeight, maxHeightAndMargin.margin, maxHeightAndMargin.collapsedMargin };
+            heightAndMargin = { *maxHeight, maxHeightAndMargin.nonCollapsedMargin, maxHeightAndMargin.collapsedMargin };
         }
     }
 
@@ -367,18 +367,18 @@ void BlockFormattingContext::computeHeightAndMargin(const Box& layoutBox) const
             auto minHeightAndMargin = compute(minHeight);
             // Used height should remain the same.
             ASSERT((layoutState.inQuirksMode() && (layoutBox.isBodyBox() || layoutBox.isDocumentBox())) || minHeightAndMargin.height == *minHeight);
-            heightAndMargin = { *minHeight, minHeightAndMargin.margin, minHeightAndMargin.collapsedMargin };
+            heightAndMargin = { *minHeight, minHeightAndMargin.nonCollapsedMargin, minHeightAndMargin.collapsedMargin };
         }
     }
 
     auto& displayBox = layoutState.displayBoxForLayoutBox(layoutBox);
     displayBox.setContentBoxHeight(heightAndMargin.height);
-    displayBox.setVerticalNonCollapsedMargin(heightAndMargin.margin);
-    displayBox.setVerticalMargin(heightAndMargin.collapsedMargin.value_or(heightAndMargin.margin));
+    displayBox.setVerticalNonCollapsedMargin(heightAndMargin.nonCollapsedMargin);
+    displayBox.setVerticalMargin(heightAndMargin.usedMarginValues());
 
     // If this box has already been moved by the estimated vertical margin, no need to move it again.
     if (layoutBox.isFloatingPositioned() || !displayBox.estimatedMarginTop())
-        displayBox.moveVertically(heightAndMargin.collapsedMargin.value_or(heightAndMargin.margin).top);
+        displayBox.moveVertically(heightAndMargin.usedMarginValues().top);
 }
 
 FormattingContext::InstrinsicWidthConstraints BlockFormattingContext::instrinsicWidthConstraints() const
@@ -417,7 +417,7 @@ FormattingContext::InstrinsicWidthConstraints BlockFormattingContext::instrinsic
                 if (!Geometry::instrinsicWidthConstraintsNeedChildrenWidth(childBox))
                     instrinsicWidthConstraints = Geometry::instrinsicWidthConstraints(layoutState, childBox);
                 else if (childBox.establishesFormattingContext())
-                    instrinsicWidthConstraints = layoutState.createFormattingStateForFormattingRootIfNeeded(childBox).formattingContext(childBox)->instrinsicWidthConstraints();
+                    instrinsicWidthConstraints = layoutState.createFormattingStateForFormattingRootIfNeeded(childBox).createFormattingContext(childBox)->instrinsicWidthConstraints();
                 formattingState.setInstrinsicWidthConstraints(childBox, instrinsicWidthConstraints);
 
                 queue.removeLast();

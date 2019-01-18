@@ -247,7 +247,7 @@ public:
     void setDefersLoading(bool);
     void setMainResourceDataBufferingPolicy(DataBufferingPolicy);
 
-    void startLoadingMainResource(ShouldContinue);
+    void startLoadingMainResource();
     WEBCORE_EXPORT void cancelMainResourceLoad(const ResourceError&);
     void willContinueMainResourceLoadAfterRedirect(const ResourceRequest&);
 
@@ -263,6 +263,9 @@ public:
 
     AutoplayPolicy autoplayPolicy() const { return m_autoplayPolicy; }
     void setAutoplayPolicy(AutoplayPolicy policy) { m_autoplayPolicy = policy; }
+
+    void setCustomUserAgent(const String& customUserAgent) { m_customUserAgent = customUserAgent; }
+    const String& customUserAgent() const { return m_customUserAgent; }
 
     OptionSet<AutoplayQuirk> allowedAutoplayQuirks() const { return m_allowedAutoplayQuirks; }
     void setAllowedAutoplayQuirks(OptionSet<AutoplayQuirk> allowedQuirks) { m_allowedAutoplayQuirks = allowedQuirks; }
@@ -364,7 +367,7 @@ private:
     void clearArchiveResources();
 #endif
 
-    void willSendRequest(ResourceRequest&&, const ResourceResponse&, ShouldContinue, CompletionHandler<void(ResourceRequest&&)>&&);
+    void willSendRequest(ResourceRequest&&, const ResourceResponse&, CompletionHandler<void(ResourceRequest&&)>&&);
     void finishedLoading();
     void mainReceivedError(const ResourceError&);
     WEBCORE_EXPORT void redirectReceived(CachedResource&, ResourceRequest&&, const ResourceResponse&, CompletionHandler<void(ResourceRequest&&)>&&) override;
@@ -532,6 +535,7 @@ private:
     HashMap<String, RefPtr<StyleSheetContents>> m_pendingNamedContentExtensionStyleSheets;
     HashMap<String, Vector<std::pair<String, uint32_t>>> m_pendingContentExtensionDisplayNoneSelectors;
 #endif
+    String m_customUserAgent;
     bool m_userContentExtensionsEnabled { true };
     AutoplayPolicy m_autoplayPolicy { AutoplayPolicy::Default };
     OptionSet<AutoplayQuirk> m_allowedAutoplayQuirks;

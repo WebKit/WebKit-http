@@ -120,6 +120,18 @@ ResourceResponse ResourceResponseBase::fromCrossThreadData(CrossThreadData&& dat
     return response;
 }
 
+ResourceResponse ResourceResponseBase::syntheticRedirectResponse(const URL& fromURL, const URL& toURL)
+{
+    ResourceResponse redirectResponse;
+    redirectResponse.setURL(fromURL);
+    redirectResponse.setHTTPStatusCode(302);
+    redirectResponse.setHTTPVersion("HTTP/1.1"_s);
+    redirectResponse.setHTTPHeaderField(HTTPHeaderName::Location, toURL.string());
+    redirectResponse.setHTTPHeaderField(HTTPHeaderName::CacheControl, "no-store"_s);
+
+    return redirectResponse;
+}
+
 ResourceResponse ResourceResponseBase::filter(const ResourceResponse& response)
 {
     if (response.tainting() == Tainting::Opaque) {
@@ -152,7 +164,7 @@ ResourceResponse ResourceResponseBase::filter(const ResourceResponse& response)
     filteredResponse.setType(Type::Cors);
 
     HTTPHeaderSet accessControlExposeHeaderSet;
-    parseAccessControlExposeHeadersAllowList(response.httpHeaderField(HTTPHeaderName::AccessControlExposeHeaders), accessControlExposeHeaderSet);
+    parseAccessControlAllowList(response.httpHeaderField(HTTPHeaderName::AccessControlExposeHeaders), accessControlExposeHeaderSet);
     filteredResponse.m_httpHeaderFields.uncommonHeaders().removeAllMatching([&](auto& entry) {
         return !isCrossOriginSafeHeader(entry.key, accessControlExposeHeaderSet);
     });
@@ -419,13 +431,13 @@ void ResourceResponseBase::sanitizeHTTPHeaderFieldsAccordingToTainting()
             if (isSafeCrossOriginResponseHeader(header.key))
                 filteredHeaders.add(header.key, WTFMove(header.value));
         }
-        if (auto corsSafeHeaderSet = parseAccessControlAllowList(httpHeaderField(HTTPHeaderName::AccessControlExposeHeaders))) {
-            for (auto& headerName : *corsSafeHeaderSet) {
-                if (!filteredHeaders.contains(headerName)) {
-                    auto value = m_httpHeaderFields.get(headerName);
-                    if (!value.isNull())
-                        filteredHeaders.add(headerName, value);
-                }
+        HTTPHeaderSet corsSafeHeaderSet;
+        parseAccessControlAllowList(httpHeaderField(HTTPHeaderName::AccessControlExposeHeaders), corsSafeHeaderSet);
+        for (auto& headerName : corsSafeHeaderSet) {
+            if (!filteredHeaders.contains(headerName)) {
+                auto value = m_httpHeaderFields.get(headerName);
+                if (!value.isNull())
+                    filteredHeaders.add(headerName, value);
             }
         }
         m_httpHeaderFields = WTFMove(filteredHeaders);

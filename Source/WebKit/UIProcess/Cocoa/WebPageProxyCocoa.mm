@@ -78,7 +78,7 @@ void WebPageProxy::beginSafeBrowsingCheck(const URL& url, WebFramePolicyListener
     SSBLookupContext *context = [SSBLookupContext sharedLookupContext];
     if (!context)
         return listener.didReceiveSafeBrowsingResults({ });
-    [context lookUpURL:url completionHandler:BlockPtr<void(SSBLookupResult *, NSError *)>::fromCallable([listener = makeRef(listener), url = url] (SSBLookupResult *result, NSError *error) mutable {
+    [context lookUpURL:url completionHandler:makeBlockPtr([listener = makeRef(listener), url = url] (SSBLookupResult *result, NSError *error) mutable {
         RunLoop::main().dispatch([listener = WTFMove(listener), result = retainPtr(result), error = retainPtr(error), url = WTFMove(url)] {
             if (error) {
                 listener->didReceiveSafeBrowsingResults({ });
@@ -121,7 +121,7 @@ void WebPageProxy::createSandboxExtensionsIfNeeded(const Vector<String>& files, 
         BOOL isDirectory;
         if ([[NSFileManager defaultManager] fileExistsAtPath:files[0] isDirectory:&isDirectory] && !isDirectory) {
             SandboxExtension::createHandle("/", SandboxExtension::Type::ReadOnly, fileReadHandle);
-            process().willAcquireUniversalFileReadSandboxExtension();
+            willAcquireUniversalFileReadSandboxExtension();
         }
     }
 

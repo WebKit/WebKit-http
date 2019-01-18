@@ -32,14 +32,14 @@
 
 namespace WebCore {
 
-class Blob;
 class MediaStreamTrackPrivate;
 
-class MediaRecorderPrivateMock final : public MediaRecorderPrivate {
+class WEBCORE_EXPORT MediaRecorderPrivateMock final : public MediaRecorderPrivate {
 private:
     void sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample&) final;
     void audioSamplesAvailable(MediaStreamTrackPrivate&, const WTF::MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) final;
-    Ref<Blob> fetchData() final;
+    RefPtr<SharedBuffer> fetchData() final;
+    const String& mimeType() final;
     
     void generateMockString(MediaStreamTrackPrivate&);
 

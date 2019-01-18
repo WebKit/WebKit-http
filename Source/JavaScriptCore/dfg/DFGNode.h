@@ -761,6 +761,8 @@ public:
         m_opInfo = structure;
         m_opInfo2 = OpInfoWrapper();
     }
+
+    void convertToNewArrayBuffer(FrozenValue* immutableButterfly);
     
     void convertToDirectCall(FrozenValue*);
 
@@ -1124,12 +1126,12 @@ public:
     PromotedLocationDescriptor promotedLocationDescriptor();
     
     // This corrects the arithmetic node flags, so that irrelevant bits are
-    // ignored. In particular, anything other than ArithMul does not need
+    // ignored. In particular, anything other than ArithMul or ValueMul does not need
     // to know if it can speculate on negative zero.
     NodeFlags arithNodeFlags()
     {
         NodeFlags result = m_flags & NodeArithFlagsMask;
-        if (op() == ArithMul || op() == ArithDiv || op() == ArithMod || op() == ArithNegate || op() == ArithPow || op() == ArithRound || op() == ArithFloor || op() == ArithCeil || op() == ArithTrunc || op() == DoubleAsInt32 || op() == ValueNegate)
+        if (op() == ArithMul || op() == ArithDiv || op() == ValueDiv || op() == ArithMod || op() == ArithNegate || op() == ArithPow || op() == ArithRound || op() == ArithFloor || op() == ArithCeil || op() == ArithTrunc || op() == DoubleAsInt32 || op() == ValueNegate || op() == ValueMul || op() == ValueDiv)
             return result;
         return result & ~NodeBytecodeNeedsNegZero;
     }
@@ -1371,6 +1373,21 @@ public:
         return result() == NodeResultNumber;
     }
     
+    bool hasNumericResult()
+    {
+        switch (op()) {
+        case ValueSub:
+        case ValueMul:
+        case ValueBitAnd:
+        case ValueBitOr:
+        case ValueBitXor:
+        case ValueNegate:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     bool hasDoubleResult()
     {
         return result() == NodeResultDouble;

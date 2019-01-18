@@ -548,7 +548,7 @@ void Page::updateStyleAfterChangeInEnvironment()
 
         if (StyleResolver* styleResolver = document->styleScope().resolverIfExists())
             styleResolver->invalidateMatchedPropertiesCache();
-        document->scheduleForcedStyleRecalc();
+        document->scheduleFullStyleRebuild();
         document->styleScope().didChangeStyleSheetEnvironment();
     }
 }
@@ -2564,8 +2564,6 @@ void Page::setCaptionUserPreferencesStyleSheet(const String& styleSheet)
         return;
 
     m_captionUserPreferencesStyleSheet = styleSheet;
-    
-    invalidateInjectedStyleSheetCacheInAllFrames();
 }
 
 void Page::accessibilitySettingsDidChange()

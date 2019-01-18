@@ -45,11 +45,11 @@
 #include "HTMLNames.h"
 #include "HitTestResult.h"
 #include "InlineElementBox.h"
-#include "LayoutState.h"
 #include "Page.h"
 #include "PaintInfo.h"
 #include "RenderFragmentedFlow.h"
 #include "RenderImageResourceStyleImage.h"
+#include "RenderLayoutState.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "RuntimeEnabledFeatures.h"
@@ -592,7 +592,7 @@ void RenderImage::paintAreaElementFocusRing(PaintInfo& paintInfo, const LayoutPo
 
 #if PLATFORM(MAC)
     bool needsRepaint;
-    paintInfo.context().drawFocusRing(path, page().focusController().timeSinceFocusWasSet().seconds(), needsRepaint, RenderTheme::focusRingColor(styleColorOptions()));
+    paintInfo.context().drawFocusRing(path, page().focusController().timeSinceFocusWasSet().seconds(), needsRepaint, RenderTheme::singleton().focusRingColor(styleColorOptions()));
     if (needsRepaint)
         page().focusController().setFocusedElementNeedsRepaint();
 #else

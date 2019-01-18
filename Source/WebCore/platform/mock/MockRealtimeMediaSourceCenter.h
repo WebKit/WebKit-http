@@ -36,14 +36,20 @@
 
 namespace WebCore {
 
-class MockRealtimeMediaSourceCenter final : public RealtimeMediaSourceCenter {
+class MockRealtimeMediaSourceCenter {
 public:
+    WEBCORE_EXPORT static MockRealtimeMediaSourceCenter& singleton();
+
     WEBCORE_EXPORT static void setMockRealtimeMediaSourceCenterEnabled(bool);
 
     WEBCORE_EXPORT static void setDevices(Vector<MockMediaDevice>&&);
     WEBCORE_EXPORT static void addDevice(const MockMediaDevice&);
     WEBCORE_EXPORT static void removeDevice(const String& persistentId);
     WEBCORE_EXPORT static void resetDevices();
+
+    void setMockAudioCaptureEnabled(bool isEnabled) { m_isMockAudioCaptureEnabled = isEnabled; }
+    void setMockVideoCaptureEnabled(bool isEnabled) { m_isMockVideoCaptureEnabled = isEnabled; }
+    void setMockDisplayCaptureEnabled(bool isEnabled) { m_isMockDisplayCaptureEnabled = isEnabled; }
 
     static Vector<CaptureDevice>& audioDevices();
     static Vector<CaptureDevice>& videoDevices();
@@ -52,19 +58,17 @@ public:
     static std::optional<MockMediaDevice> mockDeviceWithPersistentID(const String&);
     static std::optional<CaptureDevice> captureDeviceWithPersistentID(CaptureDevice::DeviceType, const String&);
 
+    CaptureDeviceManager& audioCaptureDeviceManager() { return m_audioCaptureDeviceManager; }
+    CaptureDeviceManager& videoCaptureDeviceManager() { return m_videoCaptureDeviceManager; }
+    CaptureDeviceManager& displayCaptureDeviceManager() { return m_displayCaptureDeviceManager; }
+
 private:
     MockRealtimeMediaSourceCenter() = default;
     friend NeverDestroyed<MockRealtimeMediaSourceCenter>;
 
-    static MockRealtimeMediaSourceCenter& singleton();
-
-    AudioCaptureFactory& audioFactoryPrivate() final;
-    VideoCaptureFactory& videoFactoryPrivate() final;
-    DisplayCaptureFactory& displayCaptureFactoryPrivate() final;
-
-    CaptureDeviceManager& audioCaptureDeviceManager() final { return m_audioCaptureDeviceManager; }
-    CaptureDeviceManager& videoCaptureDeviceManager() final { return m_videoCaptureDeviceManager; }
-    CaptureDeviceManager& displayCaptureDeviceManager() final { return m_displayCaptureDeviceManager; }
+    AudioCaptureFactory& audioCaptureFactory();
+    VideoCaptureFactory& videoCaptureFactory();
+    DisplayCaptureFactory& displayCaptureFactory();
 
     class MockAudioCaptureDeviceManager final : public CaptureDeviceManager {
     private:
@@ -85,6 +89,10 @@ private:
     MockAudioCaptureDeviceManager m_audioCaptureDeviceManager;
     MockVideoCaptureDeviceManager m_videoCaptureDeviceManager;
     MockDisplayCaptureDeviceManager m_displayCaptureDeviceManager;
+
+    bool m_isMockAudioCaptureEnabled { true };
+    bool m_isMockVideoCaptureEnabled { true };
+    bool m_isMockDisplayCaptureEnabled { true };
 };
 
 }

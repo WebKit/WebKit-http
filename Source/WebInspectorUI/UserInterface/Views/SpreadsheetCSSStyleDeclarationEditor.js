@@ -56,7 +56,7 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
 
     initialLayout()
     {
-        if (!this._style || !this._style.editable)
+        if (!this._style)
             return;
 
         this.element.addEventListener("focus", () => { this.focused = true; }, true);
@@ -101,7 +101,7 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
         }
 
         if (propertyViewPendingStartEditing) {
-            propertyViewPendingStartEditing.nameTextField.startEditing();
+            propertyViewPendingStartEditing.startEditingName();
             this._propertyPendingStartEditing = null;
         }
 
@@ -110,6 +110,10 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
 
         if (!isNaN(this._pendingAddBlankPropertyIndexOffset))
             this.addBlankProperty(this._propertyViews.length - 1 - this._pendingAddBlankPropertyIndexOffset);
+        else if (this.hasSelectedProperties())
+            this.selectProperties(this._anchorIndex, this._focusIndex);
+
+        this._updateDebugLockStatus();
     }
 
     detached()
@@ -247,7 +251,7 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
     {
         let firstEditableProperty = this._editablePropertyAfter(-1);
         if (firstEditableProperty)
-            firstEditableProperty.nameTextField.startEditing();
+            firstEditableProperty.startEditingName();
         else {
             const appendAfterLast = -1;
             this.addBlankProperty(appendAfterLast);
@@ -258,7 +262,7 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
     {
         let lastEditableProperty = this._editablePropertyBefore(this._propertyViews.length);
         if (lastEditableProperty)
-            lastEditableProperty.valueTextField.startEditing();
+            lastEditableProperty.startEditingValue();
         else {
             const appendAfterLast = -1;
             this.addBlankProperty(appendAfterLast);
@@ -389,12 +393,14 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
         if (this._suppressBlur)
             return;
 
-        this._delegate.spreadsheetCSSStyleDeclarationEditorPropertyBlur(event, property);
+        if (this._delegate.spreadsheetCSSStyleDeclarationEditorPropertyBlur)
+            this._delegate.spreadsheetCSSStyleDeclarationEditorPropertyBlur(event, property);
     }
 
     spreadsheetStylePropertyMouseEnter(event, property)
     {
-        this._delegate.spreadsheetCSSStyleDeclarationEditorPropertyMouseEnter(event, property);
+        if (this._delegate.spreadsheetCSSStyleDeclarationEditorPropertyMouseEnter)
+            this._delegate.spreadsheetCSSStyleDeclarationEditorPropertyMouseEnter(event, property);
     }
 
     spreadsheetStylePropertyFocusMoved(propertyView, {direction, willRemoveProperty})
@@ -417,7 +423,7 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
             // Move from the value to the next enabled property's name.
             let propertyView = this._editablePropertyAfter(movedFromIndex);
             if (propertyView)
-                propertyView.nameTextField.startEditing();
+                propertyView.startEditingName();
             else {
                 if (willRemoveProperty) {
                     const delta = 1;
@@ -431,7 +437,7 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
             let propertyView = this._editablePropertyBefore(movedFromIndex);
             if (propertyView) {
                 // Move from the property's name to the previous enabled property's value.
-                propertyView.valueTextField.startEditing();
+                propertyView.startEditingValue();
             } else {
                 // Move from the first property's name to the rule's selector.
                 if (this._style.selectorEditable)
@@ -511,10 +517,13 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
 
             event.stop();
         } else if (event.key === "Tab" || event.key === "Enter") {
+            if (!this.style.editable)
+                return;
+
             let property = this._propertyViews[this._focusIndex];
             if (property && property.enabled) {
                 event.stop();
-                property.nameTextField.startEditing();
+                property.startEditingName();
             }
         } else if (event.key === "Backspace") {
             let [startIndex, endIndex] = this.selectionRange;
@@ -536,6 +545,9 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
             event.stop();
 
         } else if ((event.code === "Space" && !event.shiftKey && !event.metaKey && !event.ctrlKey) || (event.key === "/" && event.commandOrControlKey && !event.shiftKey)) {
+            if (!this.style.editable)
+                return;
+
             let [startIndex, endIndex] = this.selectionRange;
 
             // Toggle the first selected property and set this state to all selected properties.
@@ -600,6 +612,15 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
             return;
 
         this._style.locked = this._focused || this._inlineSwatchActive;
+        this._updateDebugLockStatus();
+    }
+
+    _updateDebugLockStatus()
+    {
+        if (!this._style || !WI.settings.enableStyleEditingDebugMode.value)
+            return;
+
+        this.element.classList.toggle("debug-style-locked", this._style.locked);
     }
 };
 

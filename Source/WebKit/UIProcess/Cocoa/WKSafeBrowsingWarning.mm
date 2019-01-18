@@ -34,15 +34,17 @@
 #import <wtf/Language.h>
 
 constexpr CGFloat exclamationPointSize = 30;
-constexpr CGFloat titleSize = 26;
 constexpr CGFloat boxCornerRadius = 6;
 #if HAVE(SAFE_BROWSING)
+#if PLATFORM(WATCHOS)
+constexpr CGFloat marginSize = 10;
+#else
 constexpr CGFloat marginSize = 20;
+#endif
 constexpr CGFloat maxWidth = 675;
 #endif
 
 #if PLATFORM(MAC)
-constexpr CGFloat textSize = 14;
 using ColorType = NSColor;
 using FontType = NSFont;
 using TextViewType = NSTextView;
@@ -51,7 +53,6 @@ using AlignmentType = NSLayoutAttribute;
 using ViewType = NSView;
 using SizeType = NSSize;
 #else
-constexpr CGFloat textSize = 20;
 using ColorType = UIColor;
 using FontType = UIFont;
 using TextViewType = UITextView;
@@ -70,6 +71,36 @@ enum class WarningItem : uint8_t {
     ShowDetailsButton,
     GoBackButton
 };
+
+enum class WarningTextSize : uint8_t {
+    Title,
+    Body
+};
+
+static FontType *fontOfSize(WarningTextSize size)
+{
+#if PLATFORM(MAC)
+    switch (size) {
+    case WarningTextSize::Title:
+        return [NSFont boldSystemFontOfSize:26];
+    case WarningTextSize::Body:
+        return [NSFont systemFontOfSize:14];
+    }
+#elif HAVE(SAFE_BROWSING)
+    switch (size) {
+    case WarningTextSize::Title:
+#if PLATFORM(WATCHOS)
+        return [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
+#else
+        return [UIFont preferredFontForTextStyle:UIFontTextStyleLargeTitle];
+#endif
+    case WarningTextSize::Body:
+        return [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+    }
+#else
+    return nil;
+#endif
+}
 
 static ColorType *colorForItem(WarningItem item, ViewType *warning)
 {
@@ -177,10 +208,9 @@ static ButtonType *makeButton(WarningItem item, WKSafeBrowsingWarning *warning, 
 {
     NSString *title = nil;
     if (item == WarningItem::ShowDetailsButton)
-        title = WEB_UI_NSSTRING(@"Show details", "Action from safe browsing warning");
+        title = WEB_UI_NSSTRING(@"Show Details", "Action from safe browsing warning");
     else
-        title = WEB_UI_NSSTRING(@"Go back", "Action from safe browsing warning");
-    title = [title capitalizedString];
+        title = WEB_UI_NSSTRING(@"Go Back", "Action from safe browsing warning");
 #if PLATFORM(MAC)
     return [NSButton buttonWithTitle:title target:warning action:action];
 #else
@@ -189,13 +219,24 @@ static ButtonType *makeButton(WarningItem item, WKSafeBrowsingWarning *warning, 
         NSUnderlineStyleAttributeName:@(NSUnderlineStyleSingle),
         NSUnderlineColorAttributeName:[UIColor whiteColor],
         NSForegroundColorAttributeName:colorForItem(item, warning),
-        NSFontAttributeName:[FontType systemFontOfSize:textSize]
+        NSFontAttributeName:fontOfSize(WarningTextSize::Body)
     }] autorelease];
     [button setAttributedTitle:attributedTitle forState:UIControlStateNormal];
     [button addTarget:warning action:action forControlEvents:UIControlEventTouchUpInside];
     return button;
 #endif
 }
+
+#if HAVE(SAFE_BROWSING)
+static CGSize buttonSize(ButtonType *button)
+{
+#if PLATFORM(MAC)
+    return button.frame.size;
+#else
+    return button.titleLabel.intrinsicContentSize;
+#endif
+}
+#endif
 
 static ViewType *makeLabel(NSAttributedString *attributedString)
 {
@@ -248,11 +289,11 @@ static void setBackground(ViewType *view, ColorType *color)
 {
     auto exclamationPoint = [[WKSafeBrowsingExclamationPoint new] autorelease];
     auto title = makeLabel([[[NSAttributedString alloc] initWithString:_warning->title() attributes:@{
-        NSFontAttributeName:[FontType boldSystemFontOfSize:titleSize],
+        NSFontAttributeName:fontOfSize(WarningTextSize::Title),
         NSForegroundColorAttributeName:colorForItem(WarningItem::TitleText, self)
     }] autorelease]);
     auto warning = makeLabel([[[NSAttributedString alloc] initWithString:_warning->warning() attributes:@{
-        NSFontAttributeName:[FontType systemFontOfSize:textSize],
+        NSFontAttributeName:fontOfSize(WarningTextSize::Body),
         NSForegroundColorAttributeName:colorForItem(WarningItem::MessageText, self)
     }] autorelease]);
     auto showDetails = makeButton(WarningItem::ShowDetailsButton, self, @selector(showDetailsClicked));
@@ -268,32 +309,59 @@ static void setBackground(ViewType *view, ColorType *color)
     box.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:box];
 
+#if PLATFORM(WATCHOS)
+    [NSLayoutConstraint activateConstraints:@[
+        [[box.leadingAnchor anchorWithOffsetToAnchor:exclamationPoint.leadingAnchor] constraintEqualToAnchor:[exclamationPoint.trailingAnchor anchorWithOffsetToAnchor:box.trailingAnchor]],
+        [[box.leadingAnchor anchorWithOffsetToAnchor:title.leadingAnchor] constraintEqualToConstant:marginSize],
+        [[title.bottomAnchor anchorWithOffsetToAnchor:warning.topAnchor] constraintEqualToConstant:marginSize],
+        [[exclamationPoint.bottomAnchor anchorWithOffsetToAnchor:title.topAnchor] constraintEqualToConstant:marginSize],
+        [[box.topAnchor anchorWithOffsetToAnchor:exclamationPoint.topAnchor] constraintEqualToConstant:marginSize + self.frame.size.height / 2],
+        [[self.topAnchor anchorWithOffsetToAnchor:box.topAnchor] constraintEqualToAnchor:[box.bottomAnchor anchorWithOffsetToAnchor:self.bottomAnchor] multiplier:0.2],
+    ]];
+#elif HAVE(SAFE_BROWSING)
+    [NSLayoutConstraint activateConstraints:@[
+        [[box.leadingAnchor anchorWithOffsetToAnchor:exclamationPoint.leadingAnchor] constraintEqualToConstant:marginSize],
+        [[box.leadingAnchor anchorWithOffsetToAnchor:title.leadingAnchor] constraintEqualToConstant:marginSize * 1.5 + exclamationPointSize],
+        [[title.topAnchor anchorWithOffsetToAnchor:exclamationPoint.topAnchor] constraintEqualToAnchor:[exclamationPoint.bottomAnchor anchorWithOffsetToAnchor:title.bottomAnchor]],
+        [[title.bottomAnchor anchorWithOffsetToAnchor:warning.topAnchor] constraintEqualToConstant:marginSize],
+        [[box.topAnchor anchorWithOffsetToAnchor:title.topAnchor] constraintEqualToConstant:marginSize],
+        [[self.topAnchor anchorWithOffsetToAnchor:box.topAnchor] constraintEqualToAnchor:[box.bottomAnchor anchorWithOffsetToAnchor:self.bottomAnchor] multiplier:0.5],
+    ]];
+#endif
+
 #if HAVE(SAFE_BROWSING)
     [NSLayoutConstraint activateConstraints:@[
-        [[self.topAnchor anchorWithOffsetToAnchor:box.topAnchor] constraintEqualToAnchor:[box.bottomAnchor anchorWithOffsetToAnchor:self.bottomAnchor] multiplier:0.5],
         [[self.leftAnchor anchorWithOffsetToAnchor:box.leftAnchor] constraintEqualToAnchor:[box.rightAnchor anchorWithOffsetToAnchor:self.rightAnchor]],
 
         [box.widthAnchor constraintLessThanOrEqualToConstant:maxWidth],
         [box.widthAnchor constraintLessThanOrEqualToAnchor:self.widthAnchor],
 
-        [[box.leadingAnchor anchorWithOffsetToAnchor:exclamationPoint.leadingAnchor] constraintEqualToConstant:marginSize],
-        [[box.leadingAnchor anchorWithOffsetToAnchor:title.leadingAnchor] constraintEqualToConstant:marginSize * 1.5 + exclamationPointSize],
         [[box.leadingAnchor anchorWithOffsetToAnchor:warning.leadingAnchor] constraintEqualToConstant:marginSize],
 
         [[title.trailingAnchor anchorWithOffsetToAnchor:box.trailingAnchor] constraintGreaterThanOrEqualToConstant:marginSize],
         [[warning.trailingAnchor anchorWithOffsetToAnchor:box.trailingAnchor] constraintGreaterThanOrEqualToConstant:marginSize],
         [[goBack.trailingAnchor anchorWithOffsetToAnchor:box.trailingAnchor] constraintEqualToConstant:marginSize],
 
-        [[title.topAnchor anchorWithOffsetToAnchor:exclamationPoint.topAnchor] constraintEqualToAnchor:[exclamationPoint.bottomAnchor anchorWithOffsetToAnchor:title.bottomAnchor]],
-
-        [goBack.topAnchor constraintEqualToAnchor:showDetails.topAnchor],
-        [[showDetails.trailingAnchor anchorWithOffsetToAnchor:goBack.leadingAnchor] constraintEqualToConstant:marginSize],
-
-        [[box.topAnchor anchorWithOffsetToAnchor:title.topAnchor] constraintEqualToConstant:marginSize],
-        [[title.bottomAnchor anchorWithOffsetToAnchor:warning.topAnchor] constraintEqualToConstant:marginSize],
         [[warning.bottomAnchor anchorWithOffsetToAnchor:goBack.topAnchor] constraintEqualToConstant:marginSize],
-        [[goBack.bottomAnchor anchorWithOffsetToAnchor:box.bottomAnchor] constraintEqualToConstant:marginSize]
     ]];
+    
+    bool needsVerticalButtonLayout = buttonSize(showDetails).width + buttonSize(goBack).width + 3 * marginSize > self.frame.size.width;
+    if (needsVerticalButtonLayout) {
+        [NSLayoutConstraint activateConstraints:@[
+            [[showDetails.trailingAnchor anchorWithOffsetToAnchor:box.trailingAnchor] constraintEqualToConstant:marginSize],
+            [[goBack.bottomAnchor anchorWithOffsetToAnchor:showDetails.topAnchor] constraintEqualToConstant:marginSize],
+            [[goBack.bottomAnchor anchorWithOffsetToAnchor:box.bottomAnchor] constraintEqualToConstant:marginSize * 2 + buttonSize(showDetails).height],
+        ]];
+    } else {
+        [NSLayoutConstraint activateConstraints:@[
+            [[showDetails.trailingAnchor anchorWithOffsetToAnchor:goBack.leadingAnchor] constraintEqualToConstant:marginSize],
+            [goBack.topAnchor constraintEqualToAnchor:showDetails.topAnchor],
+            [[goBack.bottomAnchor anchorWithOffsetToAnchor:box.bottomAnchor] constraintEqualToConstant:marginSize],
+        ]];
+    }
+#if !PLATFORM(MAC)
+    [self updateContentSize];
+#endif
 #endif
 }
 
@@ -304,7 +372,7 @@ static void setBackground(ViewType *view, ColorType *color)
     [showDetails removeFromSuperview];
 
     NSMutableAttributedString *text = [[_warning->details() mutableCopy] autorelease];
-    [text addAttributes:@{ NSFontAttributeName:[FontType systemFontOfSize:textSize] } range:NSMakeRange(0, text.length)];
+    [text addAttributes:@{ NSFontAttributeName:fontOfSize(WarningTextSize::Body) } range:NSMakeRange(0, text.length)];
     WKSafeBrowsingTextView *details = [[[WKSafeBrowsingTextView alloc] initWithAttributedString:text forWarning:self] autorelease];
     _details = details;
     ViewType *bottom = [[ViewType new] autorelease];
@@ -348,13 +416,20 @@ static void setBackground(ViewType *view, ColorType *color)
 #endif
     [self layoutText];
 #if !PLATFORM(MAC)
+    [self updateContentSize];
+#endif
+}
+
+#if !PLATFORM(MAC)
+- (void)updateContentSize
+{
     [self layoutIfNeeded];
     CGFloat height = 0;
     for (ViewType *subview in self.subviews)
         height += subview.frame.size.height;
     [self setContentSize: { self.frame.size.width, self.frame.size.height / 2 + height }];
-#endif
 }
+#endif
 
 - (void)layoutText
 {
@@ -420,7 +495,7 @@ static void setBackground(ViewType *view, ColorType *color)
         [alert setInformativeText:WEB_UI_NSSTRING(@"Merely visiting a site is sufficient for malware to install itself and harm your computer.", "Malware confirmation dialog")];
         [alert addButtonWithTitle:WEB_UI_NSSTRING(@"Cancel", "Cancel")];
         [alert addButtonWithTitle:WEB_UI_NSSTRING(@"Continue", "Continue")];
-        [alert beginSheetModalForWindow:self.window completionHandler:BlockPtr<void(NSModalResponse)>::fromCallable([weakSelf = WeakObjCPtr<WKSafeBrowsingWarning>(self), alert](NSModalResponse returnCode) {
+        [alert beginSheetModalForWindow:self.window completionHandler:makeBlockPtr([weakSelf = WeakObjCPtr<WKSafeBrowsingWarning>(self), alert](NSModalResponse returnCode) {
             if (auto strongSelf = weakSelf.get()) {
                 if (returnCode == NSAlertSecondButtonReturn && strongSelf->_completionHandler)
                     strongSelf->_completionHandler(WebKit::ContinueUnsafeLoad::Yes);

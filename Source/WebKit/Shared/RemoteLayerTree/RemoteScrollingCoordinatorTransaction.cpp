@@ -38,11 +38,10 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/TextStream.h>
 
-using namespace WebCore;
-
 #if ENABLE(ASYNC_SCROLLING)
 
 namespace IPC {
+using namespace WebCore;
 
 template<> struct ArgumentCoder<ScrollingStateNode> {
     static void encode(Encoder&, const ScrollingStateNode&);
@@ -413,7 +412,7 @@ bool RemoteScrollingCoordinatorTransaction::decode(IPC::Decoder& decoder)
         if (!decoder.decode(parentNodeID))
             return false;
 
-        m_scrollingStateTree->attachNode(nodeType, nodeID, parentNodeID);
+        m_scrollingStateTree->attachNode(nodeType, nodeID, parentNodeID, notFound); // Append new node.
         ScrollingStateNode* newNode = m_scrollingStateTree->stateNodeForID(nodeID);
         ASSERT(newNode);
         ASSERT(!parentNodeID || newNode->parent());

@@ -807,7 +807,7 @@
 		2D8B92FE203D13E1009C868F /* UnifiedSource529.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DE5F85CF1FA23850006DB63B /* UnifiedSource529.cpp */; };
 		2D8B92FF203D13E1009C868F /* UnifiedSource530.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DE5F85D31FA23859006DB63B /* UnifiedSource530.cpp */; };
 		2D8FEBDD143E3EF70072502B /* CSSCrossfadeValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D8FEBDB143E3EF70072502B /* CSSCrossfadeValue.h */; };
-		2D9066070BE141D400956998 /* LayoutState.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D9066050BE141D400956998 /* LayoutState.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		2D9066070BE141D400956998 /* RenderLayoutState.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D9066050BE141D400956998 /* RenderLayoutState.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		2D92A79A2134AD7900F493FD /* QuickLookSoftLink.mm in Sources */ = {isa = PBXBuildFile; fileRef = 443917FD1A91B2F8006E04F2 /* QuickLookSoftLink.mm */; };
 		2D92A79D2134AF9500F493FD /* UserAgentIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = A3AF9D8320325691006CAD06 /* UserAgentIOS.mm */; };
 		2D93AEE319DF5641002A86C3 /* ServicesOverlayController.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D93AEE119DF5641002A86C3 /* ServicesOverlayController.h */; };
@@ -963,6 +963,7 @@
 		31741AAD16636609008A5B7E /* SimulatedClickOptions.h in Headers */ = {isa = PBXBuildFile; fileRef = 31741AAB16635E45008A5B7E /* SimulatedClickOptions.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		317D3FF3215599F40034E3B9 /* PointerEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 317D3FF2215599E30034E3B9 /* PointerEvent.h */; };
 		31815A311F9A6C8F00FCBF89 /* ImageBitmap.h in Headers */ = {isa = PBXBuildFile; fileRef = 31D26BBF1F86D189008FF255 /* ImageBitmap.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		318436DE21B9DAAF00ED383E /* WebGPULayer.h in Headers */ = {isa = PBXBuildFile; fileRef = 318436DB21B9DAA000ED383E /* WebGPULayer.h */; };
 		318891611AB7EEA100EA627B /* missingImage@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = CDF419991AB0DA14004E64E1 /* missingImage@3x.png */; };
 		318EAD4D1FA91380008CEF86 /* ImageBitmapRenderingContextSettings.h in Headers */ = {isa = PBXBuildFile; fileRef = 318EAD4A1FA91157008CEF86 /* ImageBitmapRenderingContextSettings.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		31955A88160D199200858025 /* RenderSnapshottedPlugIn.h in Headers */ = {isa = PBXBuildFile; fileRef = 31E8D8BB160BC94C004CE8F5 /* RenderSnapshottedPlugIn.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1349,7 +1350,6 @@
 		4A0DA2FF129B241900AB61E1 /* FormAssociatedElement.h in Headers */ = {isa = PBXBuildFile; fileRef = 4A0DA2FD129B241900AB61E1 /* FormAssociatedElement.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		4A0FFA9E1AAF5E7E0062803B /* MockRealtimeMediaSourceCenter.h in Headers */ = {isa = PBXBuildFile; fileRef = 4A0FFA9C1AAF5E6C0062803B /* MockRealtimeMediaSourceCenter.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		4A0FFAA21AAF5EA20062803B /* RealtimeMediaSourceCenter.h in Headers */ = {isa = PBXBuildFile; fileRef = 4A0FFAA01AAF5EA20062803B /* RealtimeMediaSourceCenter.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		4A0FFAA61AAF5EF60062803B /* RealtimeMediaSourceCenterMac.h in Headers */ = {isa = PBXBuildFile; fileRef = 4A0FFAA41AAF5EF60062803B /* RealtimeMediaSourceCenterMac.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		4A38BF5114FE1C0900612512 /* WebSocketDeflateFramer.h in Headers */ = {isa = PBXBuildFile; fileRef = 4A38BF4F14FE1C0900612512 /* WebSocketDeflateFramer.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		4A4F48AA16B0DFC000EDBB29 /* DocumentRuleSets.h in Headers */ = {isa = PBXBuildFile; fileRef = 4A4F48A816B0DFC000EDBB29 /* DocumentRuleSets.h */; };
 		4A4F65711AA997F100E38CDD /* RealtimeMediaSource.h in Headers */ = {isa = PBXBuildFile; fileRef = 4A4F656C1AA997F100E38CDD /* RealtimeMediaSource.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1367,6 +1367,7 @@
 		4B2708C70AF19EE40065127F /* Pasteboard.h in Headers */ = {isa = PBXBuildFile; fileRef = 4B2708C50AF19EE40065127F /* Pasteboard.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		4B3043CD0AE0373B00A82647 /* Editor.h in Headers */ = {isa = PBXBuildFile; fileRef = 4B3043CB0AE0373B00A82647 /* Editor.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		4B3480940EEF50D400AC1B41 /* ImageSourceCG.h in Headers */ = {isa = PBXBuildFile; fileRef = 4B3480920EEF50D400AC1B41 /* ImageSourceCG.h */; };
+		4B438650219CD56100F8D3C5 /* TypedOMCSSImageValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 4B43864F219CD56100F8D3C5 /* TypedOMCSSImageValue.h */; };
 		4B5BDD9B21658A1500DD4262 /* CSSPaintCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 4B5BDD9A21658A1500DD4262 /* CSSPaintCallback.h */; };
 		4B6B5CBD21640EFF00603817 /* DOMCSSPaintWorklet.h in Headers */ = {isa = PBXBuildFile; fileRef = 4B6B5CB82163EC0700603817 /* DOMCSSPaintWorklet.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		4B6B5CC02164386400603817 /* PaintWorkletGlobalScope.h in Headers */ = {isa = PBXBuildFile; fileRef = 4B6B5CBF2164386400603817 /* PaintWorkletGlobalScope.h */; };
@@ -1377,10 +1378,10 @@
 		4BAE95B10B2FA9CE00AED8A0 /* EditorDeleteAction.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BAE95B00B2FA9CE00AED8A0 /* EditorDeleteAction.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		4BAFD0CB2190EBD600C0AB64 /* CSSPaintSize.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BAFD0CA2190EBD600C0AB64 /* CSSPaintSize.h */; };
 		4BAFD0CF2190F9B500C0AB64 /* StylePropertyMapReadOnly.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BAFD0CE2190F9B400C0AB64 /* StylePropertyMapReadOnly.h */; };
-		4BAFD0D62192146B00C0AB64 /* CSSStyleValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BAFD0D52192146B00C0AB64 /* CSSStyleValue.h */; };
-		4BAFD0D921921EA000C0AB64 /* CSSUnparsedValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BAFD0D821921EA000C0AB64 /* CSSUnparsedValue.h */; };
-		4BAFD0E0219220AB00C0AB64 /* CSSNumericValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BAFD0DF219220AB00C0AB64 /* CSSNumericValue.h */; };
-		4BAFD0E1219242A000C0AB64 /* CSSUnitValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BAFD0DD2192209200C0AB64 /* CSSUnitValue.h */; };
+		4BAFD0D62192146B00C0AB64 /* TypedOMCSSStyleValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BAFD0D52192146B00C0AB64 /* TypedOMCSSStyleValue.h */; };
+		4BAFD0D921921EA000C0AB64 /* TypedOMCSSUnparsedValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BAFD0D821921EA000C0AB64 /* TypedOMCSSUnparsedValue.h */; };
+		4BAFD0E0219220AB00C0AB64 /* TypedOMCSSNumericValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BAFD0DF219220AB00C0AB64 /* TypedOMCSSNumericValue.h */; };
+		4BAFD0E1219242A000C0AB64 /* TypedOMCSSUnitValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BAFD0DD2192209200C0AB64 /* TypedOMCSSUnitValue.h */; };
 		4BDA3FFE2151B6F500FD6604 /* DOMCSSCustomPropertyDescriptor.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BDA3FF82151B6F200FD6604 /* DOMCSSCustomPropertyDescriptor.h */; };
 		4BDA3FFF2151B6F500FD6604 /* DOMCSSRegisterCustomProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BDA3FF92151B6F300FD6604 /* DOMCSSRegisterCustomProperty.h */; };
 		4BDA40012151B6F500FD6604 /* CSSRegisteredCustomProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = 4BDA3FFB2151B6F400FD6604 /* CSSRegisteredCustomProperty.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1391,6 +1392,8 @@
 		4D3B00AB215D69A70076B983 /* MediaRecorder.h in Headers */ = {isa = PBXBuildFile; fileRef = 4D3B00A9215D69A70076B983 /* MediaRecorder.h */; };
 		4D3B00AF215D6A690076B983 /* BlobEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 4D3B00AD215D6A690076B983 /* BlobEvent.h */; };
 		4D3B5016217E58B700665DB1 /* MediaRecorderPrivate.h in Headers */ = {isa = PBXBuildFile; fileRef = 4D3B5014217E58B700665DB1 /* MediaRecorderPrivate.h */; };
+		4D73F946218BC5FA003A3ED6 /* MediaRecorderPrivateAVFImpl.h in Headers */ = {isa = PBXBuildFile; fileRef = 4D73F944218BC5FA003A3ED6 /* MediaRecorderPrivateAVFImpl.h */; };
+		4D73F94E218C4A87003A3ED6 /* MediaRecorderPrivateWriterCocoa.h in Headers */ = {isa = PBXBuildFile; fileRef = 4D73F94C218C4A87003A3ED6 /* MediaRecorderPrivateWriterCocoa.h */; };
 		4DB7130D216ECB4D0096A4DD /* MediaRecorderErrorEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 4DB7130C216EC2BD0096A4DD /* MediaRecorderErrorEvent.h */; };
 		4E1959220A39DABA00220FE5 /* MediaFeatureNames.h in Headers */ = {isa = PBXBuildFile; fileRef = 4E1959200A39DABA00220FE5 /* MediaFeatureNames.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		4E19592A0A39DACC00220FE5 /* MediaQuery.h in Headers */ = {isa = PBXBuildFile; fileRef = 4E1959240A39DACC00220FE5 /* MediaQuery.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -2026,7 +2029,7 @@
 		6F222B761AB52D8A0094651A /* WebGLVertexArrayObjectBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6F222B751AB52D8A0094651A /* WebGLVertexArrayObjectBase.cpp */; };
 		6F3E1F622136142000A65A08 /* FloatBox.h in Headers */ = {isa = PBXBuildFile; fileRef = 6F3E1F612136141700A65A08 /* FloatBox.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		6F5217C72177F5A7006583BB /* InlineRunProvider.h in Headers */ = {isa = PBXBuildFile; fileRef = 6F5217C42177F5A6006583BB /* InlineRunProvider.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		6F7CA3C6208C2957002F29AB /* LayoutFormattingState.h in Headers */ = {isa = PBXBuildFile; fileRef = 6F7CA3C4208C2956002F29AB /* LayoutFormattingState.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		6F7CA3C6208C2957002F29AB /* LayoutState.h in Headers */ = {isa = PBXBuildFile; fileRef = 6F7CA3C4208C2956002F29AB /* LayoutState.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		6F7CA3CA208C2B2E002F29AB /* InlineFormattingContext.h in Headers */ = {isa = PBXBuildFile; fileRef = 6F7CA3C8208C2B2E002F29AB /* InlineFormattingContext.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		6F995A151A70756200A735F4 /* WebGLSync.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6F995A131A70756200A735F4 /* WebGLSync.cpp */; };
 		6F995A161A70756200A735F4 /* WebGLSync.h in Headers */ = {isa = PBXBuildFile; fileRef = 6F995A141A70756200A735F4 /* WebGLSync.h */; };
@@ -4226,6 +4229,7 @@
 		D0B0556809C6700100307E43 /* CreateLinkCommand.h in Headers */ = {isa = PBXBuildFile; fileRef = D0B0556609C6700100307E43 /* CreateLinkCommand.h */; };
 		D0BC54491443AC4A00E105DA /* CachedStyleSheetClient.h in Headers */ = {isa = PBXBuildFile; fileRef = D0BC54481443AC4A00E105DA /* CachedStyleSheetClient.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		D0BD4F5D1408850F006839B6 /* DictationCommandIOS.h in Headers */ = {isa = PBXBuildFile; fileRef = D0BD4F5B1408850F006839B6 /* DictationCommandIOS.h */; };
+		D0D8648421B61727003C983C /* WebGPUBufferDescriptor.h in Headers */ = {isa = PBXBuildFile; fileRef = D0D8648221B61727003C983C /* WebGPUBufferDescriptor.h */; };
 		D0EDA775143E303C0028E383 /* CachedRawResource.h in Headers */ = {isa = PBXBuildFile; fileRef = D0EDA773143E303C0028E383 /* CachedRawResource.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		D0FF2A5E11F8C45A007E74E0 /* PingLoader.h in Headers */ = {isa = PBXBuildFile; fileRef = D0FF2A5C11F8C45A007E74E0 /* PingLoader.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		D302754A12A5FE84004BD828 /* RenderDetailsMarker.h in Headers */ = {isa = PBXBuildFile; fileRef = D302754612A5FE84004BD828 /* RenderDetailsMarker.h */; };
@@ -6651,8 +6655,8 @@
 		2D8287F516E4A0380086BD00 /* HitTestLocation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HitTestLocation.h; sourceTree = "<group>"; };
 		2D8FEBDA143E3EF70072502B /* CSSCrossfadeValue.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CSSCrossfadeValue.cpp; sourceTree = "<group>"; };
 		2D8FEBDB143E3EF70072502B /* CSSCrossfadeValue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CSSCrossfadeValue.h; sourceTree = "<group>"; };
-		2D9066040BE141D400956998 /* LayoutState.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = LayoutState.cpp; sourceTree = "<group>"; };
-		2D9066050BE141D400956998 /* LayoutState.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = LayoutState.h; sourceTree = "<group>"; };
+		2D9066040BE141D400956998 /* RenderLayoutState.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = RenderLayoutState.cpp; sourceTree = "<group>"; };
+		2D9066050BE141D400956998 /* RenderLayoutState.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = RenderLayoutState.h; sourceTree = "<group>"; };
 		2D90660C0665D937006B6F1A /* DataTransferMac.mm */ = {isa = PBXFileReference; fileEncoding = 30; indentWidth = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DataTransferMac.mm; sourceTree = "<group>"; tabWidth = 8; usesTabs = 0; };
 		2D93AEE119DF5641002A86C3 /* ServicesOverlayController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ServicesOverlayController.h; sourceTree = "<group>"; };
 		2D93AEE219DF5641002A86C3 /* ServicesOverlayController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ServicesOverlayController.mm; sourceTree = "<group>"; };
@@ -7020,6 +7024,8 @@
 		317D3FEF215599E10034E3B9 /* PointerEvent.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = PointerEvent.idl; sourceTree = "<group>"; };
 		317D3FF1215599E20034E3B9 /* PointerEvent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PointerEvent.cpp; sourceTree = "<group>"; };
 		317D3FF2215599E30034E3B9 /* PointerEvent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PointerEvent.h; sourceTree = "<group>"; };
+		318436DB21B9DAA000ED383E /* WebGPULayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebGPULayer.h; sourceTree = "<group>"; };
+		318436DD21B9DAA000ED383E /* WebGPULayer.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebGPULayer.mm; sourceTree = "<group>"; };
 		3189E6DB16B2103500386EA3 /* plugIns.css */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.css; path = plugIns.css; sourceTree = "<group>"; };
 		318EAD4A1FA91157008CEF86 /* ImageBitmapRenderingContextSettings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ImageBitmapRenderingContextSettings.h; sourceTree = "<group>"; };
 		318EAD4C1FA91352008CEF86 /* ImageBitmapRenderingContextSettings.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = ImageBitmapRenderingContextSettings.idl; sourceTree = "<group>"; };
@@ -7842,7 +7848,6 @@
 		4A0FFA9F1AAF5EA20062803B /* RealtimeMediaSourceCenter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RealtimeMediaSourceCenter.cpp; sourceTree = "<group>"; };
 		4A0FFAA01AAF5EA20062803B /* RealtimeMediaSourceCenter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RealtimeMediaSourceCenter.h; sourceTree = "<group>"; };
 		4A0FFAA31AAF5EF60062803B /* RealtimeMediaSourceCenterMac.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RealtimeMediaSourceCenterMac.cpp; sourceTree = "<group>"; };
-		4A0FFAA41AAF5EF60062803B /* RealtimeMediaSourceCenterMac.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RealtimeMediaSourceCenterMac.h; sourceTree = "<group>"; };
 		4A38BF4E14FE1C0900612512 /* WebSocketDeflateFramer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WebSocketDeflateFramer.cpp; sourceTree = "<group>"; };
 		4A38BF4F14FE1C0900612512 /* WebSocketDeflateFramer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebSocketDeflateFramer.h; sourceTree = "<group>"; };
 		4A4F48A716B0DFC000EDBB29 /* DocumentRuleSets.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DocumentRuleSets.cpp; sourceTree = "<group>"; };
@@ -7881,6 +7886,8 @@
 		4B3043CB0AE0373B00A82647 /* Editor.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = Editor.h; sourceTree = "<group>"; };
 		4B3480910EEF50D400AC1B41 /* ImageSourceCGMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ImageSourceCGMac.mm; sourceTree = "<group>"; };
 		4B3480920EEF50D400AC1B41 /* ImageSourceCG.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ImageSourceCG.h; sourceTree = "<group>"; };
+		4B43864D219CD52D00F8D3C5 /* TypedOMCSSImageValue.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = TypedOMCSSImageValue.idl; sourceTree = "<group>"; };
+		4B43864F219CD56100F8D3C5 /* TypedOMCSSImageValue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TypedOMCSSImageValue.h; sourceTree = "<group>"; };
 		4B5BDD99216588E500DD4262 /* CSSPaintCallback.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = CSSPaintCallback.idl; sourceTree = "<group>"; };
 		4B5BDD9A21658A1500DD4262 /* CSSPaintCallback.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CSSPaintCallback.h; sourceTree = "<group>"; };
 		4B6B5CB62163DC1A00603817 /* DOMCSSPaintWorklet.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = DOMCSSPaintWorklet.idl; sourceTree = "<group>"; };
@@ -7903,15 +7910,15 @@
 		4BAFD0CD2190EBE900C0AB64 /* CSSPaintSize.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = CSSPaintSize.idl; sourceTree = "<group>"; };
 		4BAFD0CE2190F9B400C0AB64 /* StylePropertyMapReadOnly.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = StylePropertyMapReadOnly.h; sourceTree = "<group>"; };
 		4BAFD0D02190F9C200C0AB64 /* StylePropertyMapReadOnly.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = StylePropertyMapReadOnly.idl; sourceTree = "<group>"; };
-		4BAFD0D32192145600C0AB64 /* CSSStyleValue.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = CSSStyleValue.idl; sourceTree = "<group>"; };
-		4BAFD0D52192146B00C0AB64 /* CSSStyleValue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CSSStyleValue.h; sourceTree = "<group>"; };
-		4BAFD0D721921E7900C0AB64 /* CSSUnparsedValue.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = CSSUnparsedValue.idl; sourceTree = "<group>"; };
-		4BAFD0D821921EA000C0AB64 /* CSSUnparsedValue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CSSUnparsedValue.h; sourceTree = "<group>"; };
-		4BAFD0DB2192202200C0AB64 /* CSSNumericValue.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = CSSNumericValue.idl; sourceTree = "<group>"; };
-		4BAFD0DC2192204A00C0AB64 /* CSSUnitValue.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = CSSUnitValue.idl; sourceTree = "<group>"; };
-		4BAFD0DD2192209200C0AB64 /* CSSUnitValue.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; path = CSSUnitValue.h; sourceTree = "<group>"; };
-		4BAFD0DF219220AB00C0AB64 /* CSSNumericValue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CSSNumericValue.h; sourceTree = "<group>"; };
-		4BAFD0E22192604D00C0AB64 /* JSCSSStyleValueCustom.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = JSCSSStyleValueCustom.cpp; sourceTree = "<group>"; };
+		4BAFD0D32192145600C0AB64 /* TypedOMCSSStyleValue.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = TypedOMCSSStyleValue.idl; sourceTree = "<group>"; };
+		4BAFD0D52192146B00C0AB64 /* TypedOMCSSStyleValue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TypedOMCSSStyleValue.h; sourceTree = "<group>"; };
+		4BAFD0D721921E7900C0AB64 /* TypedOMCSSUnparsedValue.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = TypedOMCSSUnparsedValue.idl; sourceTree = "<group>"; };
+		4BAFD0D821921EA000C0AB64 /* TypedOMCSSUnparsedValue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TypedOMCSSUnparsedValue.h; sourceTree = "<group>"; };
+		4BAFD0DB2192202200C0AB64 /* TypedOMCSSNumericValue.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = TypedOMCSSNumericValue.idl; sourceTree = "<group>"; };
+		4BAFD0DC2192204A00C0AB64 /* TypedOMCSSUnitValue.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = TypedOMCSSUnitValue.idl; sourceTree = "<group>"; };
+		4BAFD0DD2192209200C0AB64 /* TypedOMCSSUnitValue.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; path = TypedOMCSSUnitValue.h; sourceTree = "<group>"; };
+		4BAFD0DF219220AB00C0AB64 /* TypedOMCSSNumericValue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TypedOMCSSNumericValue.h; sourceTree = "<group>"; };
+		4BAFD0E22192604D00C0AB64 /* JSTypedOMCSSStyleValueCustom.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = JSTypedOMCSSStyleValueCustom.cpp; sourceTree = "<group>"; };
 		4BDA3FF52151B6F000FD6604 /* DOMCSSRegisterCustomProperty.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = DOMCSSRegisterCustomProperty.idl; sourceTree = "<group>"; };
 		4BDA3FF72151B6F100FD6604 /* DOMCSSRegisterCustomProperty.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DOMCSSRegisterCustomProperty.cpp; sourceTree = "<group>"; };
 		4BDA3FF82151B6F200FD6604 /* DOMCSSCustomPropertyDescriptor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DOMCSSCustomPropertyDescriptor.h; sourceTree = "<group>"; };
@@ -7934,6 +7941,10 @@
 		4D3B00A9215D69A70076B983 /* MediaRecorder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MediaRecorder.h; sourceTree = "<group>"; };
 		4D3B00AD215D6A690076B983 /* BlobEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BlobEvent.h; sourceTree = "<group>"; };
 		4D3B5014217E58B700665DB1 /* MediaRecorderPrivate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MediaRecorderPrivate.h; sourceTree = "<group>"; };
+		4D73F944218BC5FA003A3ED6 /* MediaRecorderPrivateAVFImpl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MediaRecorderPrivateAVFImpl.h; sourceTree = "<group>"; };
+		4D73F945218BC5FA003A3ED6 /* MediaRecorderPrivateAVFImpl.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MediaRecorderPrivateAVFImpl.cpp; sourceTree = "<group>"; };
+		4D73F94C218C4A87003A3ED6 /* MediaRecorderPrivateWriterCocoa.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MediaRecorderPrivateWriterCocoa.h; sourceTree = "<group>"; };
+		4D73F94D218C4A87003A3ED6 /* MediaRecorderPrivateWriterCocoa.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; path = MediaRecorderPrivateWriterCocoa.mm; sourceTree = "<group>"; wrapsLines = 0; };
 		4D7EB3F4217C6AE600D64888 /* BlobEvent.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = BlobEvent.cpp; sourceTree = "<group>"; };
 		4D9F6B642182532B0092A9C5 /* MediaRecorderPrivateMock.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MediaRecorderPrivateMock.h; sourceTree = "<group>"; };
 		4D9F6B652182532B0092A9C5 /* MediaRecorderPrivateMock.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MediaRecorderPrivateMock.cpp; sourceTree = "<group>"; };
@@ -9102,8 +9113,8 @@
 		6F5217C42177F5A6006583BB /* InlineRunProvider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InlineRunProvider.h; sourceTree = "<group>"; };
 		6F5217C62177F5A6006583BB /* InlineRunProvider.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InlineRunProvider.cpp; sourceTree = "<group>"; };
 		6F73918C2106CEDD006AF262 /* LayoutUnits.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LayoutUnits.h; sourceTree = "<group>"; };
-		6F7CA3C4208C2956002F29AB /* LayoutFormattingState.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LayoutFormattingState.h; sourceTree = "<group>"; };
-		6F7CA3C5208C2956002F29AB /* LayoutFormattingState.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = LayoutFormattingState.cpp; sourceTree = "<group>"; };
+		6F7CA3C4208C2956002F29AB /* LayoutState.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LayoutState.h; sourceTree = "<group>"; };
+		6F7CA3C5208C2956002F29AB /* LayoutState.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = LayoutState.cpp; sourceTree = "<group>"; };
 		6F7CA3C8208C2B2E002F29AB /* InlineFormattingContext.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = InlineFormattingContext.h; sourceTree = "<group>"; };
 		6F7CA3C9208C2B2E002F29AB /* InlineFormattingContext.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = InlineFormattingContext.cpp; sourceTree = "<group>"; };
 		6F8F460121B03BB40041AC3A /* FormattingContextQuirks.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = FormattingContextQuirks.cpp; sourceTree = "<group>"; };
@@ -9440,6 +9451,8 @@
 		7A29BA67187B732200F29CEB /* TemporaryOpenGLSetting.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TemporaryOpenGLSetting.h; sourceTree = "<group>"; };
 		7A29BA69187B781C00F29CEB /* TemporaryOpenGLSetting.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TemporaryOpenGLSetting.cpp; sourceTree = "<group>"; };
 		7A29F57118C69514004D0F81 /* OutOfBandTextTrackPrivateAVF.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OutOfBandTextTrackPrivateAVF.h; sourceTree = "<group>"; };
+		7A3EBEAA21BF054C000D043D /* JSSVGViewSpecCustom.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = JSSVGViewSpecCustom.cpp; sourceTree = "<group>"; };
+		7A3EBEAC21BF0921000D043D /* SVGAttributeOwnerProxy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = SVGAttributeOwnerProxy.cpp; sourceTree = "<group>"; };
 		7A45032D18DB717200377B34 /* BufferedLineReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BufferedLineReader.cpp; sourceTree = "<group>"; };
 		7A45032E18DB717200377B34 /* BufferedLineReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BufferedLineReader.h; sourceTree = "<group>"; };
 		7A54857D14E02D51006AE05A /* InspectorHistory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InspectorHistory.cpp; sourceTree = "<group>"; };
@@ -13791,6 +13804,14 @@
 		D0615FCC217FE5C6008A48A8 /* WebGPUShaderModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUShaderModule.h; sourceTree = "<group>"; };
 		D0615FCD217FE5C6008A48A8 /* WebGPUShaderModule.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = WebGPUShaderModule.cpp; sourceTree = "<group>"; };
 		D0615FCE217FE5C6008A48A8 /* WebGPUShaderModule.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUShaderModule.idl; sourceTree = "<group>"; };
+		D063AE3F21C05DDD000E6A35 /* WebGPUBufferUsage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUBufferUsage.h; sourceTree = "<group>"; };
+		D063AE4021C05DDD000E6A35 /* WebGPUBufferUsage.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUBufferUsage.idl; sourceTree = "<group>"; };
+		D063AE4421C0617D000E6A35 /* WebGPUVertexFormat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUVertexFormat.h; sourceTree = "<group>"; };
+		D063AE4521C0617D000E6A35 /* WebGPUVertexFormat.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUVertexFormat.idl; sourceTree = "<group>"; };
+		D063AE4621C06626000E6A35 /* WebGPUInputStepMode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUInputStepMode.h; sourceTree = "<group>"; };
+		D063AE4721C06626000E6A35 /* WebGPUInputStepMode.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUInputStepMode.idl; sourceTree = "<group>"; };
+		D063AE4821C066DB000E6A35 /* WebGPUIndexFormat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUIndexFormat.h; sourceTree = "<group>"; };
+		D063AE4921C066DB000E6A35 /* WebGPUIndexFormat.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUIndexFormat.idl; sourceTree = "<group>"; };
 		D06C0D8D0CFD11460065F43F /* RemoveFormatCommand.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RemoveFormatCommand.h; sourceTree = "<group>"; };
 		D06C0D8E0CFD11460065F43F /* RemoveFormatCommand.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RemoveFormatCommand.cpp; sourceTree = "<group>"; };
 		D07DEAB70A36554A00CA30F8 /* InsertListCommand.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = InsertListCommand.cpp; sourceTree = "<group>"; };
@@ -13821,8 +13842,6 @@
 		D0BD4F5B1408850F006839B6 /* DictationCommandIOS.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DictationCommandIOS.h; sourceTree = "<group>"; };
 		D0C419EB2183CFA2009EC1DE /* WebGPUPipelineStageDescriptor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUPipelineStageDescriptor.h; sourceTree = "<group>"; };
 		D0C419EC2183CFA2009EC1DE /* WebGPUPipelineStageDescriptor.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUPipelineStageDescriptor.idl; sourceTree = "<group>"; };
-		D0C419EE2183D9C8009EC1DE /* WebGPUShaderStage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUShaderStage.h; sourceTree = "<group>"; };
-		D0C419EF2183D9C8009EC1DE /* WebGPUShaderStage.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUShaderStage.idl; sourceTree = "<group>"; };
 		D0C419F02183EB31009EC1DE /* WebGPUPipelineDescriptorBase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUPipelineDescriptorBase.h; sourceTree = "<group>"; };
 		D0C419F12183EB31009EC1DE /* WebGPUPipelineDescriptorBase.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUPipelineDescriptorBase.idl; sourceTree = "<group>"; };
 		D0C419F22183EFEC009EC1DE /* WebGPURenderPipelineDescriptor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPURenderPipelineDescriptor.h; sourceTree = "<group>"; };
@@ -13836,6 +13855,23 @@
 		D0CAAE9C216824A7001C91C7 /* WebMetalComputeCommandEncoder.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = WebMetalComputeCommandEncoder.cpp; sourceTree = "<group>"; };
 		D0CAAE9D216824A7001C91C7 /* WebMetalBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebMetalBuffer.h; sourceTree = "<group>"; };
 		D0CAAE9E216824A8001C91C7 /* WebMetalCommandBuffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = WebMetalCommandBuffer.cpp; sourceTree = "<group>"; };
+		D0D8648221B61727003C983C /* WebGPUBufferDescriptor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUBufferDescriptor.h; sourceTree = "<group>"; };
+		D0D8648321B61727003C983C /* WebGPUBufferDescriptor.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUBufferDescriptor.idl; sourceTree = "<group>"; };
+		D0D8648721B64CAA003C983C /* GPUBufferDescriptor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GPUBufferDescriptor.h; sourceTree = "<group>"; };
+		D0D8648C21B70676003C983C /* WebGPUBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUBuffer.h; sourceTree = "<group>"; };
+		D0D8648D21B70676003C983C /* WebGPUBuffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = WebGPUBuffer.cpp; sourceTree = "<group>"; };
+		D0D8648E21B70676003C983C /* WebGPUBuffer.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUBuffer.idl; sourceTree = "<group>"; };
+		D0D8649121B760C4003C983C /* GPUBufferMetal.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = GPUBufferMetal.mm; sourceTree = "<group>"; };
+		D0D8649221B760F2003C983C /* GPUBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GPUBuffer.h; sourceTree = "<group>"; };
+		D0D8649321BA173D003C983C /* WebGPUInputStateDescriptor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUInputStateDescriptor.h; sourceTree = "<group>"; };
+		D0D8649421BA173D003C983C /* WebGPUInputStateDescriptor.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUInputStateDescriptor.idl; sourceTree = "<group>"; };
+		D0D8649521BA18F4003C983C /* WebGPUVertexAttributeDescriptor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUVertexAttributeDescriptor.h; sourceTree = "<group>"; };
+		D0D8649621BA18F4003C983C /* WebGPUVertexAttributeDescriptor.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUVertexAttributeDescriptor.idl; sourceTree = "<group>"; };
+		D0D8649721BA19A7003C983C /* WebGPUVertexInputDescriptor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUVertexInputDescriptor.h; sourceTree = "<group>"; };
+		D0D8649821BA19A7003C983C /* WebGPUVertexInputDescriptor.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUVertexInputDescriptor.idl; sourceTree = "<group>"; };
+		D0D8649921BA1B1F003C983C /* GPUInputStateDescriptor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GPUInputStateDescriptor.h; sourceTree = "<group>"; };
+		D0D8649B21BA1C2D003C983C /* GPUVertexAttributeDescriptor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GPUVertexAttributeDescriptor.h; sourceTree = "<group>"; };
+		D0D8649C21BA1CE8003C983C /* GPUVertexInputDescriptor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GPUVertexInputDescriptor.h; sourceTree = "<group>"; };
 		D0DA0BE4217930E2007FE2AC /* WebGPUSwapChain.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WebGPUSwapChain.h; sourceTree = "<group>"; };
 		D0DA0BE5217930E2007FE2AC /* WebGPUSwapChain.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = WebGPUSwapChain.cpp; sourceTree = "<group>"; };
 		D0DA0BE6217930E2007FE2AC /* WebGPUSwapChain.idl */ = {isa = PBXFileReference; lastKnownFileType = text; path = WebGPUSwapChain.idl; sourceTree = "<group>"; };
@@ -15663,7 +15699,6 @@
 				5CDD833A1E4324BB00621E83 /* RealtimeIncomingVideoSourceCocoa.h */,
 				5CDD83391E4324BB00621E83 /* RealtimeIncomingVideoSourceCocoa.mm */,
 				4A0FFAA31AAF5EF60062803B /* RealtimeMediaSourceCenterMac.cpp */,
-				4A0FFAA41AAF5EF60062803B /* RealtimeMediaSourceCenterMac.h */,
 				41103AA71E39790A00769F14 /* RealtimeOutgoingAudioSourceCocoa.cpp */,
 				41103AA81E39790A00769F14 /* RealtimeOutgoingAudioSourceCocoa.h */,
 				5CDD833B1E4324BB00621B83 /* RealtimeOutgoingVideoSourceCocoa.cpp */,
@@ -15826,6 +15861,7 @@
 				085A15921289A8DD002710E3 /* SVGAnimatedTransformListPropertyTearOff.h */,
 				55FA7FEF210FA386005AEFE7 /* SVGAttribute.h */,
 				55FA7FF4210FB688005AEFE7 /* SVGAttributeAccessor.h */,
+				7A3EBEAC21BF0921000D043D /* SVGAttributeOwnerProxy.cpp */,
 				55346AF021150FAF0059BCDD /* SVGAttributeOwnerProxy.h */,
 				55346AFA2117FFAF0059BCDD /* SVGAttributeOwnerProxyImpl.h */,
 				55FA7FF6210FBE3E005AEFE7 /* SVGAttributeRegistry.h */,
@@ -16096,8 +16132,8 @@
 				115CFA75208AFE30001E6991 /* FormattingState.cpp */,
 				115CFA74208AFE30001E6991 /* FormattingState.h */,
 				115F7805209CBCBD00739C13 /* Invalidation.h */,
-				6F7CA3C5208C2956002F29AB /* LayoutFormattingState.cpp */,
-				6F7CA3C4208C2956002F29AB /* LayoutFormattingState.h */,
+				6F7CA3C5208C2956002F29AB /* LayoutState.cpp */,
+				6F7CA3C4208C2956002F29AB /* LayoutState.h */,
 				6F73918C2106CEDD006AF262 /* LayoutUnits.h */,
 				11FF02D520BA3C810083F25B /* Verification.cpp */,
 			);
@@ -18001,10 +18037,13 @@
 			children = (
 				D087CE3721ACA94200BDE174 /* cocoa */,
 				312FF8CE21A4C33F00EB199D /* legacy */,
+				D0D8649221B760F2003C983C /* GPUBuffer.h */,
+				D0D8648721B64CAA003C983C /* GPUBufferDescriptor.h */,
 				D001D9AB21B0C7BF0023B9BC /* GPUColor.h */,
 				312FF8BD21A4C2F100EB199D /* GPUCommandBuffer.h */,
 				312FF8BF21A4C2F100EB199D /* GPUDevice.cpp */,
 				312FF8BE21A4C2F100EB199D /* GPUDevice.h */,
+				D0D8649921BA1B1F003C983C /* GPUInputStateDescriptor.h */,
 				312FF8C421A4C2F400EB199D /* GPUPipelineDescriptorBase.h */,
 				312FF8C221A4C2F300EB199D /* GPUPipelineStageDescriptor.h */,
 				D03211CF21AC954E00763CF2 /* GPUProgrammablePassEncoder.h */,
@@ -18019,6 +18058,8 @@
 				312FF8BA21A4C2EF00EB199D /* GPUSwapChain.h */,
 				312FF8C521A4C2F400EB199D /* GPUTexture.h */,
 				312FF8C321A4C2F300EB199D /* GPUTextureFormatEnum.h */,
+				D0D8649B21BA1C2D003C983C /* GPUVertexAttributeDescriptor.h */,
+				D0D8649C21BA1CE8003C983C /* GPUVertexInputDescriptor.h */,
 				498770D71242C535002226BA /* Texture.cpp */,
 				498770D81242C535002226BA /* Texture.h */,
 				498770D91242C535002226BA /* TilingData.cpp */,
@@ -18101,16 +18142,18 @@
 		4BAFD0DA21921EAD00C0AB64 /* typedom */ = {
 			isa = PBXGroup;
 			children = (
-				4BAFD0DF219220AB00C0AB64 /* CSSNumericValue.h */,
-				4BAFD0DB2192202200C0AB64 /* CSSNumericValue.idl */,
-				4BAFD0D52192146B00C0AB64 /* CSSStyleValue.h */,
-				4BAFD0D32192145600C0AB64 /* CSSStyleValue.idl */,
-				4BAFD0DD2192209200C0AB64 /* CSSUnitValue.h */,
-				4BAFD0DC2192204A00C0AB64 /* CSSUnitValue.idl */,
-				4BAFD0D821921EA000C0AB64 /* CSSUnparsedValue.h */,
-				4BAFD0D721921E7900C0AB64 /* CSSUnparsedValue.idl */,
 				4BAFD0CE2190F9B400C0AB64 /* StylePropertyMapReadOnly.h */,
 				4BAFD0D02190F9C200C0AB64 /* StylePropertyMapReadOnly.idl */,
+				4B43864F219CD56100F8D3C5 /* TypedOMCSSImageValue.h */,
+				4B43864D219CD52D00F8D3C5 /* TypedOMCSSImageValue.idl */,
+				4BAFD0DF219220AB00C0AB64 /* TypedOMCSSNumericValue.h */,
+				4BAFD0DB2192202200C0AB64 /* TypedOMCSSNumericValue.idl */,
+				4BAFD0D52192146B00C0AB64 /* TypedOMCSSStyleValue.h */,
+				4BAFD0D32192145600C0AB64 /* TypedOMCSSStyleValue.idl */,
+				4BAFD0DD2192209200C0AB64 /* TypedOMCSSUnitValue.h */,
+				4BAFD0DC2192204A00C0AB64 /* TypedOMCSSUnitValue.idl */,
+				4BAFD0D821921EA000C0AB64 /* TypedOMCSSUnparsedValue.h */,
+				4BAFD0D721921E7900C0AB64 /* TypedOMCSSUnparsedValue.idl */,
 			);
 			path = typedom;
 			sourceTree = "<group>";
@@ -18154,11 +18197,23 @@
 		4D3B5012217E58A300665DB1 /* mediarecorder */ = {
 			isa = PBXGroup;
 			children = (
+				4D3C05D421AF480900F2890A /* cocoa */,
 				4D3B5014217E58B700665DB1 /* MediaRecorderPrivate.h */,
+				4D73F945218BC5FA003A3ED6 /* MediaRecorderPrivateAVFImpl.cpp */,
+				4D73F944218BC5FA003A3ED6 /* MediaRecorderPrivateAVFImpl.h */,
 				4D9F6B652182532B0092A9C5 /* MediaRecorderPrivateMock.cpp */,
 				4D9F6B642182532B0092A9C5 /* MediaRecorderPrivateMock.h */,
 			);
 			path = mediarecorder;
+			sourceTree = "<group>";
+		};
+		4D3C05D421AF480900F2890A /* cocoa */ = {
+			isa = PBXGroup;
+			children = (
+				4D73F94C218C4A87003A3ED6 /* MediaRecorderPrivateWriterCocoa.h */,
+				4D73F94D218C4A87003A3ED6 /* MediaRecorderPrivateWriterCocoa.mm */,
+			);
+			path = cocoa;
 			sourceTree = "<group>";
 		};
 		510310421BA8C64C003329C0 /* client */ = {
@@ -20305,7 +20360,6 @@
 				9392262E10321084006E7D5D /* JSCSSRuleListCustom.cpp */,
 				BC5825F20C0B89380053F1B5 /* JSCSSStyleDeclarationCustom.cpp */,
 				AD726FEA16D9F40B003A4E6D /* JSCSSStyleDeclarationCustom.h */,
-				4BAFD0E22192604D00C0AB64 /* JSCSSStyleValueCustom.cpp */,
 				BC20FB7E0C0E8E6C00D1447F /* JSDeprecatedCSSOMValueCustom.cpp */,
 				49C7BA8C1042F5B10009D447 /* JSDocumentCustom.cpp */,
 				ADDA94BF19686F8000453029 /* JSDocumentCustom.h */,
@@ -20358,6 +20412,7 @@
 				070334E8145A1F35008D8D45 /* JSTrackCustom.cpp */,
 				07846384145B1B8E00A58DF1 /* JSTrackCustom.h */,
 				516BB7920CE91E6800512F79 /* JSTreeWalkerCustom.cpp */,
+				4BAFD0E22192604D00C0AB64 /* JSTypedOMCSSStyleValueCustom.cpp */,
 				BE6DF708171CA2C500DD52B8 /* JSVideoTrackCustom.cpp */,
 				BE6DF70A171CA2C500DD52B8 /* JSVideoTrackListCustom.cpp */,
 				715DA5D3201BB902002EF2B0 /* JSWebAnimationCustom.cpp */,
@@ -24414,6 +24469,8 @@
 				CD5D27751E8318E000D80A3D /* WebCoreDecompressionSession.mm */,
 				49FFBF3D11C93EE3006A7118 /* WebGLLayer.h */,
 				49FFBF3E11C93EE3006A7118 /* WebGLLayer.mm */,
+				318436DB21B9DAA000ED383E /* WebGPULayer.h */,
+				318436DD21B9DAA000ED383E /* WebGPULayer.mm */,
 				316BDB8A1E6E153000DE0D5A /* WebMetalLayer.h */,
 				D045AD1D2168230B000A6E9B /* WebMetalLayer.mm */,
 			);
@@ -24563,6 +24620,7 @@
 				4B6B5CBE216434FB00603817 /* JSPaintWorkletGlobalScopeCustom.cpp */,
 				418C395D1C8F0AAB0051C8A3 /* JSReadableStreamSourceCustom.cpp */,
 				46BCBBBE2085005B00710638 /* JSRemoteDOMWindowCustom.cpp */,
+				7A3EBEAA21BF054C000D043D /* JSSVGViewSpecCustom.cpp */,
 			);
 			name = Custom;
 			sourceTree = "<group>";
@@ -25486,6 +25544,15 @@
 				D00F5951216FFAC2000D71DB /* WebGPUAdapter.idl */,
 				D02C26912181416D00D818E4 /* WebGPUAdapterDescriptor.h */,
 				D02C26922181416D00D818E4 /* WebGPUAdapterDescriptor.idl */,
+				D0D8648D21B70676003C983C /* WebGPUBuffer.cpp */,
+				D0D8648C21B70676003C983C /* WebGPUBuffer.h */,
+				D0D8648E21B70676003C983C /* WebGPUBuffer.idl */,
+				D0D8648221B61727003C983C /* WebGPUBufferDescriptor.h */,
+				D0D8648321B61727003C983C /* WebGPUBufferDescriptor.idl */,
+				D063AE4E21C0810A000E6A35 /* WebGPUBufferUsage.h */,
+				D063AE3F21C05DDD000E6A35 /* WebGPUBufferUsage.h */,
+				D063AE4C21C07AB5000E6A35 /* WebGPUBufferUsage.idl */,
+				D063AE4021C05DDD000E6A35 /* WebGPUBufferUsage.idl */,
 				D001D9AC21B0C81A0023B9BC /* WebGPUColor.h */,
 				D001D9AD21B0C81A0023B9BC /* WebGPUColor.idl */,
 				D0EACF7721937228000FA75C /* WebGPUCommandBuffer.cpp */,
@@ -25494,6 +25561,12 @@
 				D00F595321701D8C000D71DB /* WebGPUDevice.cpp */,
 				D00F595221701D8C000D71DB /* WebGPUDevice.h */,
 				D00F595421701D8C000D71DB /* WebGPUDevice.idl */,
+				D063AE4821C066DB000E6A35 /* WebGPUIndexFormat.h */,
+				D063AE4921C066DB000E6A35 /* WebGPUIndexFormat.idl */,
+				D0D8649321BA173D003C983C /* WebGPUInputStateDescriptor.h */,
+				D0D8649421BA173D003C983C /* WebGPUInputStateDescriptor.idl */,
+				D063AE4621C06626000E6A35 /* WebGPUInputStepMode.h */,
+				D063AE4721C06626000E6A35 /* WebGPUInputStepMode.idl */,
 				D0C419F02183EB31009EC1DE /* WebGPUPipelineDescriptorBase.h */,
 				D0C419F12183EB31009EC1DE /* WebGPUPipelineDescriptorBase.idl */,
 				D0C419EB2183CFA2009EC1DE /* WebGPUPipelineStageDescriptor.h */,
@@ -25524,8 +25597,6 @@
 				D0615FCE217FE5C6008A48A8 /* WebGPUShaderModule.idl */,
 				D060D8872182697000339318 /* WebGPUShaderModuleDescriptor.h */,
 				D060D88421825D5F00339318 /* WebGPUShaderModuleDescriptor.idl */,
-				D0C419EE2183D9C8009EC1DE /* WebGPUShaderStage.h */,
-				D0C419EF2183D9C8009EC1DE /* WebGPUShaderStage.idl */,
 				D0DA0BE5217930E2007FE2AC /* WebGPUSwapChain.cpp */,
 				D0DA0BE4217930E2007FE2AC /* WebGPUSwapChain.h */,
 				D0DA0BE6217930E2007FE2AC /* WebGPUSwapChain.idl */,
@@ -25537,6 +25608,12 @@
 				D0EACF882193EE4E000FA75C /* WebGPUTextureView.cpp */,
 				D0EACF872193EE4E000FA75C /* WebGPUTextureView.h */,
 				D0EACF892193EE4E000FA75C /* WebGPUTextureView.idl */,
+				D0D8649521BA18F4003C983C /* WebGPUVertexAttributeDescriptor.h */,
+				D0D8649621BA18F4003C983C /* WebGPUVertexAttributeDescriptor.idl */,
+				D063AE4421C0617D000E6A35 /* WebGPUVertexFormat.h */,
+				D063AE4521C0617D000E6A35 /* WebGPUVertexFormat.idl */,
+				D0D8649721BA19A7003C983C /* WebGPUVertexInputDescriptor.h */,
+				D0D8649821BA19A7003C983C /* WebGPUVertexInputDescriptor.idl */,
 			);
 			path = webgpu;
 			sourceTree = "<group>";
@@ -25544,6 +25621,7 @@
 		D087CE3721ACA94200BDE174 /* cocoa */ = {
 			isa = PBXGroup;
 			children = (
+				D0D8649121B760C4003C983C /* GPUBufferMetal.mm */,
 				D087CE3821ACA94200BDE174 /* GPUCommandBufferMetal.mm */,
 				D087CE3C21ACA94200BDE174 /* GPUDeviceMetal.mm */,
 				D087CE3B21ACA94200BDE174 /* GPUProgrammablePassEncoderMetal.mm */,
@@ -26502,8 +26580,6 @@
 				9BD1F6801F0462B8001C9CDD /* LayoutDisallowedScope.h */,
 				A120ACA113F9984600FE4AC7 /* LayoutRepainter.cpp */,
 				A120ACA013F9983700FE4AC7 /* LayoutRepainter.h */,
-				2D9066040BE141D400956998 /* LayoutState.cpp */,
-				2D9066050BE141D400956998 /* LayoutState.h */,
 				9BA273F3172206BB0097CE47 /* LogicalSelectionOffsetCaches.h */,
 				CE1866421F72E5B400A0CAB6 /* MarkedText.cpp */,
 				CE1866431F72E5B400A0CAB6 /* MarkedText.h */,
@@ -26590,6 +26666,8 @@
 				0F53FB89213B768400C40D34 /* RenderLayerFilters.h */,
 				3C244FE5A375AC633F88BE6F /* RenderLayerModelObject.cpp */,
 				3C244FE4A375AC633F88BE6F /* RenderLayerModelObject.h */,
+				2D9066040BE141D400956998 /* RenderLayoutState.cpp */,
+				2D9066050BE141D400956998 /* RenderLayoutState.h */,
 				BC33FB1A0F30EE85002CDD7C /* RenderLineBoxList.cpp */,
 				0BE030A10F3112FB003C1A46 /* RenderLineBoxList.h */,
 				BCEA4824097D93020094C9E4 /* RenderLineBreak.cpp */,
@@ -27988,8 +28066,8 @@
 				CD318623199F1E2A0030A0F7 /* CDMPrivateMediaSourceAVFObjC.h in Headers */,
 				CDE595971BF26E2100A1CBE8 /* CDMSessionMediaSourceAVFObjC.h in Headers */,
 				5FA904CA178E61F5004C8A2D /* CertificateInfo.h in Headers */,
-                                91B8F0B521953D65000C2B00 /* CertificateInfoBase.h in Headers */,
-                                FE36FD1516C7826500F887C1 /* ChangeVersionData.h in Headers */,
+				91B8F0B521953D65000C2B00 /* CertificateInfoBase.h in Headers */,
+				FE36FD1516C7826500F887C1 /* ChangeVersionData.h in Headers */,
 				97BC69DD1505F076001B74AC /* ChangeVersionWrapper.h in Headers */,
 				FD315FFF12B0267600C1A359 /* ChannelMergerNode.h in Headers */,
 				FD31600212B0267600C1A359 /* ChannelSplitterNode.h in Headers */,
@@ -28218,7 +28296,6 @@
 				A80E6D030A1989CA007FB8C5 /* CSSMediaRule.h in Headers */,
 				314BE3A11B30F6B700141982 /* CSSNamedImageValue.h in Headers */,
 				94E839511DFB2A0E007BC6A7 /* CSSNamespaceRule.h in Headers */,
-				4BAFD0E0219220AB00C0AB64 /* CSSNumericValue.h in Headers */,
 				A80E6D000A1989CA007FB8C5 /* CSSPageRule.h in Headers */,
 				4B5BDD9B21658A1500DD4262 /* CSSPaintCallback.h in Headers */,
 				4B6E87692176D69200420E5E /* CSSPaintImageValue.h in Headers */,
@@ -28260,7 +28337,6 @@
 				A80E6E0F0A19911C007FB8C5 /* CSSStyleDeclaration.h in Headers */,
 				A80E6D0C0A1989CA007FB8C5 /* CSSStyleRule.h in Headers */,
 				A8EA80070A19516E00A8EF5F /* CSSStyleSheet.h in Headers */,
-				4BAFD0D62192146B00C0AB64 /* CSSStyleValue.h in Headers */,
 				94DE5C921D83011D00164F2A /* CSSSupportsParser.h in Headers */,
 				FC54D05716A7673100575E4D /* CSSSupportsRule.h in Headers */,
 				BC80C9880CD294EE00A0B7B3 /* CSSTimingFunctionValue.h in Headers */,
@@ -28270,9 +28346,7 @@
 				A882DA231593848D000115ED /* CSSToStyleMap.h in Headers */,
 				715AD7212050513F00D592DC /* CSSTransition.h in Headers */,
 				371F53E90D2704F900ECE0D5 /* CSSUnicodeRangeValue.h in Headers */,
-				4BAFD0E1219242A000C0AB64 /* CSSUnitValue.h in Headers */,
 				DD7CDF250A23CF9800069928 /* CSSUnknownRule.h in Headers */,
-				4BAFD0D921921EA000C0AB64 /* CSSUnparsedValue.h in Headers */,
 				BC7D8FF01BD03B6400FFE540 /* CSSUnsetValue.h in Headers */,
 				A80E6CEE0A1989CA007FB8C5 /* CSSValue.h in Headers */,
 				6565815109D13043000E61D7 /* CSSValueKeywords.h in Headers */,
@@ -29983,7 +30057,6 @@
 				11310CF620BA4A560065A8D0 /* LayoutChildIterator.h in Headers */,
 				1199FA46208E35A3002358CC /* LayoutContainer.h in Headers */,
 				11310CF520BA4A4C0065A8D0 /* LayoutDescendantIterator.h in Headers */,
-				6F7CA3C6208C2957002F29AB /* LayoutFormattingState.h in Headers */,
 				1199FA53208E38D3002358CC /* LayoutInlineBox.h in Headers */,
 				1199FA4F208E3899002358CC /* LayoutInlineContainer.h in Headers */,
 				11310CF420BA4A3D0065A8D0 /* LayoutIterator.h in Headers */,
@@ -29994,7 +30067,7 @@
 				A12538D413F9B60A00024754 /* LayoutRepainter.h in Headers */,
 				11310CF320BA4A370065A8D0 /* LayoutReplaced.h in Headers */,
 				141DC054164834B900371E5A /* LayoutSize.h in Headers */,
-				2D9066070BE141D400956998 /* LayoutState.h in Headers */,
+				6F7CA3C6208C2957002F29AB /* LayoutState.h in Headers */,
 				11310CF220BA4A320065A8D0 /* LayoutTreeBuilder.h in Headers */,
 				141DC0481648348F00371E5A /* LayoutUnit.h in Headers */,
 				CDE8B5ED1A69777300B4B66A /* LegacyCDMPrivateClearKey.h in Headers */,
@@ -30132,6 +30205,8 @@
 				4D3B00AB215D69A70076B983 /* MediaRecorder.h in Headers */,
 				4DB7130D216ECB4D0096A4DD /* MediaRecorderErrorEvent.h in Headers */,
 				4D3B5016217E58B700665DB1 /* MediaRecorderPrivate.h in Headers */,
+				4D73F946218BC5FA003A3ED6 /* MediaRecorderPrivateAVFImpl.h in Headers */,
+				4D73F94E218C4A87003A3ED6 /* MediaRecorderPrivateWriterCocoa.h in Headers */,
 				C90843D01B18E47D00B68564 /* MediaRemoteControls.h in Headers */,
 				CD8ACA8F1D23971900ECC59E /* MediaRemoteSoftLink.h in Headers */,
 				CEEFCD7A19DB31F7003876D7 /* MediaResourceLoader.h in Headers */,
@@ -30530,7 +30605,6 @@
 				4A4F65711AA997F100E38CDD /* RealtimeMediaSource.h in Headers */,
 				4A4F65721AA997F100E38CDD /* RealtimeMediaSourceCapabilities.h in Headers */,
 				4A0FFAA21AAF5EA20062803B /* RealtimeMediaSourceCenter.h in Headers */,
-				4A0FFAA61AAF5EF60062803B /* RealtimeMediaSourceCenterMac.h in Headers */,
 				0754A5EA215EA3B8002D3A99 /* RealtimeMediaSourceFactory.h in Headers */,
 				4A4F65741AA997F100E38CDD /* RealtimeMediaSourceSettings.h in Headers */,
 				07C1C0E51BFB60ED00BD2256 /* RealtimeMediaSourceSupportedConstraints.h in Headers */,
@@ -30596,6 +30670,7 @@
 				0F580CFF0F12DE9B0051D689 /* RenderLayerBacking.h in Headers */,
 				0F580CFD0F12DE9B0051D689 /* RenderLayerCompositor.h in Headers */,
 				3C244FEAA375AC633F88BE6F /* RenderLayerModelObject.h in Headers */,
+				2D9066070BE141D400956998 /* RenderLayoutState.h in Headers */,
 				0BE030A20F3112FB003C1A46 /* RenderLineBoxList.h in Headers */,
 				BCEA4864097D93020094C9E4 /* RenderLineBreak.h in Headers */,
 				ABB5419F0ACDDFE4002820EB /* RenderListBox.h in Headers */,
@@ -31473,6 +31548,11 @@
 				854FE7390A2297BE0058D7AD /* TreeWalker.h in Headers */,
 				C375D7FE16639519006184AB /* TypeAhead.h in Headers */,
 				E46A2B1C17CA65B9000DBCD8 /* TypedElementDescendantIterator.h in Headers */,
+				4B438650219CD56100F8D3C5 /* TypedOMCSSImageValue.h in Headers */,
+				4BAFD0E0219220AB00C0AB64 /* TypedOMCSSNumericValue.h in Headers */,
+				4BAFD0D62192146B00C0AB64 /* TypedOMCSSStyleValue.h in Headers */,
+				4BAFD0E1219242A000C0AB64 /* TypedOMCSSUnitValue.h in Headers */,
+				4BAFD0D921921EA000C0AB64 /* TypedOMCSSUnparsedValue.h in Headers */,
 				93309E1A099E64920056E581 /* TypingCommand.h in Headers */,
 				85031B4E0A44EFC700F992E0 /* UIEvent.h in Headers */,
 				83FE7CA71DA9F1A70037237C /* UIEventInit.h in Headers */,
@@ -31653,6 +31733,8 @@
 				0C3F1F5B10C8871200D72CE1 /* WebGLUniformLocation.h in Headers */,
 				6F995A261A7078B100A735F4 /* WebGLVertexArrayObject.h in Headers */,
 				77A17A7812F28642004E02F6 /* WebGLVertexArrayObjectOES.h in Headers */,
+				D0D8648421B61727003C983C /* WebGPUBufferDescriptor.h in Headers */,
+				318436DE21B9DAAF00ED383E /* WebGPULayer.h in Headers */,
 				A5B81CB71FAA44620037D1E6 /* WebHeapAgent.h in Headers */,
 				A5840E25187B8AC200843B10 /* WebInjectedScriptHost.h in Headers */,
 				A584FE301864CB8400843B10 /* WebInjectedScriptManager.h in Headers */,

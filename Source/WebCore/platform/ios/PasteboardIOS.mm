@@ -181,7 +181,7 @@ static bool isTypeAllowedByReadingPolicy(NSString *type, WebContentReadingPolicy
         || [type isEqualToString:(__bridge NSString *)kUTTypeFlatRTFD];
 }
 
-Pasteboard::ReaderResult Pasteboard::readPasteboardWebContentDataForType(PasteboardWebContentReader& reader, PasteboardStrategy& strategy, NSString *type, int itemIndex)
+Pasteboard::ReaderResult Pasteboard::readPasteboardWebContentDataForType(PasteboardWebContentReader& reader, PasteboardStrategy& strategy, NSString *type, int itemIndex, const PasteboardItemInfo& info)
 {
     if ([type isEqualToString:WebArchivePboardType] || [type isEqualToString:(__bridge NSString *)kUTTypeWebArchive]) {
         auto buffer = strategy.readBufferFromPasteboard(itemIndex, type, m_pasteboardName);
@@ -195,6 +195,28 @@ Pasteboard::ReaderResult Pasteboard::readPasteboardWebContentDataForType(Pastebo
         if (m_changeCount != changeCount())
             return ReaderResult::PasteboardWasChangedExternally;
         return !htmlString.isNull() && reader.readHTML(htmlString) ? ReaderResult::ReadType : ReaderResult::DidNotReadType;
+    }
+
+    if ([type isEqualToString:(__bridge NSString *)kUTTypeVCard]) {
+        bool canCreateAttachments = false;
+#if ENABLE(ATTACHMENT_ELEMENT)
+        if (RuntimeEnabledFeatures::sharedFeatures().attachmentElementEnabled())
+            canCreateAttachments = true;
+#endif
+        if (canCreateAttachments) {
+            auto path = info.pathForContentType(kUTTypeVCard);
+            if (path.isEmpty())
+                return ReaderResult::DidNotReadType;
+
+            String title;
+            auto url = strategy.readURLFromPasteboard(itemIndex, m_pasteboardName, title);
+            if (m_changeCount != changeCount())
+                return ReaderResult::PasteboardWasChangedExternally;
+
+            if (reader.readVirtualContactFile(path, url, title))
+                return ReaderResult::ReadType;
+        }
+        return ReaderResult::DidNotReadType;
     }
 
 #if !PLATFORM(IOSMAC)
@@ -269,7 +291,7 @@ void Pasteboard::read(PasteboardWebContentReader& reader, WebContentReadingPolic
             if (!isTypeAllowedByReadingPolicy(type, policy))
                 continue;
 
-            auto itemResult = readPasteboardWebContentDataForType(reader, strategy, type, i);
+            auto itemResult = readPasteboardWebContentDataForType(reader, strategy, type, i, strategy.informationForItemAtIndex(i, m_pasteboardName));
             if (itemResult == ReaderResult::PasteboardWasChangedExternally)
                 return;
 
@@ -294,9 +316,10 @@ void Pasteboard::readRespectingUTIFidelities(PasteboardWebContentReader& reader,
     for (NSUInteger index = 0, numberOfItems = strategy.getPasteboardItemsCount(m_pasteboardName); index < numberOfItems; ++index) {
 #if ENABLE(ATTACHMENT_ELEMENT)
         auto info = strategy.informationForItemAtIndex(index, m_pasteboardName);
-        bool canReadAttachment = policy == WebContentReadingPolicy::AnyType && RuntimeEnabledFeatures::sharedFeatures().attachmentElementEnabled() && !info.pathForFileUpload.isEmpty();
+        auto attachmentFilePath = info.pathForHighestFidelityItem();
+        bool canReadAttachment = policy == WebContentReadingPolicy::AnyType && RuntimeEnabledFeatures::sharedFeatures().attachmentElementEnabled() && !attachmentFilePath.isEmpty();
         if (canReadAttachment && info.preferredPresentationStyle == PasteboardItemPresentationStyle::Attachment) {
-            reader.readFilePaths({ info.pathForFileUpload });
+            reader.readFilePaths({ WTFMove(attachmentFilePath) });
             continue;
         }
 #endif
@@ -309,7 +332,7 @@ void Pasteboard::readRespectingUTIFidelities(PasteboardWebContentReader& reader,
             if (!isTypeAllowedByReadingPolicy(type, policy))
                 continue;
 
-            result = readPasteboardWebContentDataForType(reader, strategy, type, index);
+            result = readPasteboardWebContentDataForType(reader, strategy, type, index, info);
             if (result == ReaderResult::PasteboardWasChangedExternally)
                 return;
             if (result == ReaderResult::ReadType)
@@ -317,7 +340,7 @@ void Pasteboard::readRespectingUTIFidelities(PasteboardWebContentReader& reader,
         }
 #if ENABLE(ATTACHMENT_ELEMENT)
         if (canReadAttachment && result == ReaderResult::DidNotReadType)
-            reader.readFilePaths({ info.pathForFileUpload });
+            reader.readFilePaths({ WTFMove(attachmentFilePath) });
 #endif
     }
 }
@@ -345,7 +368,7 @@ NSArray *Pasteboard::supportedWebContentPasteboardTypes()
 
 NSArray *Pasteboard::supportedFileUploadPasteboardTypes()
 {
-    return @[ (NSString *)kUTTypeContent, (NSString *)kUTTypeZipArchive, (NSString *)kUTTypeFolder ];
+    return @[ (__bridge NSString *)kUTTypeItem, (__bridge NSString *)kUTTypeContent, (__bridge NSString *)kUTTypeZipArchive ];
 }
 
 bool Pasteboard::hasData()
@@ -459,7 +482,7 @@ Vector<String> Pasteboard::readFilePaths()
     auto& strategy = *platformStrategies()->pasteboardStrategy();
     for (NSUInteger index = 0, numberOfItems = strategy.getPasteboardItemsCount(m_pasteboardName); index < numberOfItems; ++index) {
         // Currently, drag and drop is the only case on iOS where the "pasteboard" may contain file paths.
-        auto filePath = strategy.informationForItemAtIndex(index, m_pasteboardName).pathForFileUpload;
+        auto filePath = strategy.informationForItemAtIndex(index, m_pasteboardName).pathForHighestFidelityItem();
         if (!filePath.isEmpty())
             filePaths.append(WTFMove(filePath));
     }

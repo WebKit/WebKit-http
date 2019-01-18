@@ -97,15 +97,15 @@ private:
 
     WEBCORE_EXPORT bool requestScrollPositionUpdate(FrameView&, const IntPoint&) override;
 
-    WEBCORE_EXPORT ScrollingNodeID attachToStateTree(ScrollingNodeType, ScrollingNodeID newNodeID, ScrollingNodeID parentID) override;
+    WEBCORE_EXPORT ScrollingNodeID attachToStateTree(ScrollingNodeType, ScrollingNodeID newNodeID, ScrollingNodeID parentID, size_t childIndex) override;
     WEBCORE_EXPORT void detachFromStateTree(ScrollingNodeID) override;
     WEBCORE_EXPORT void clearStateTree() override;
     
     WEBCORE_EXPORT void updateNodeLayer(ScrollingNodeID, GraphicsLayer*) override;
     WEBCORE_EXPORT void updateNodeViewportConstraints(ScrollingNodeID, const ViewportConstraints&) override;
     
-    WEBCORE_EXPORT void updateFrameScrollingNode(ScrollingNodeID, GraphicsLayer* scrollLayer, GraphicsLayer* scrolledContentsLayer, GraphicsLayer* counterScrollingLayer, GraphicsLayer* insetClipLayer, const ScrollingGeometry* = nullptr) override;
-    WEBCORE_EXPORT void updateOverflowScrollingNode(ScrollingNodeID, GraphicsLayer* scrollLayer, GraphicsLayer* scrolledContentsLayer, const ScrollingGeometry* = nullptr) override;
+    WEBCORE_EXPORT void updateFrameScrollingNode(ScrollingNodeID, GraphicsLayer* scrollLayer, GraphicsLayer* scrolledContentsLayer, GraphicsLayer* counterScrollingLayer, GraphicsLayer* insetClipLayer, const ScrollingGeometry&) override;
+    WEBCORE_EXPORT void updateOverflowScrollingNode(ScrollingNodeID, GraphicsLayer* scrollLayer, GraphicsLayer* scrolledContentsLayer, const ScrollingGeometry&) override;
     
     WEBCORE_EXPORT void reconcileScrollingState(FrameView&, const FloatPoint&, const LayoutViewportOriginOrOverrideRect&, bool programmaticScroll, ViewportRectStability, ScrollingLayerPositionAction) override;
 

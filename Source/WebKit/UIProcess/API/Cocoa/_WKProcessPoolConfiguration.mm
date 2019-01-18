@@ -74,12 +74,11 @@
 
 - (NSInteger)diskCacheSizeOverride
 {
-    return _processPoolConfiguration->diskCacheSizeOverride();
+    return 0;
 }
 
 - (void)setDiskCacheSizeOverride:(NSInteger)size
 {
-    _processPoolConfiguration->setDiskCacheSizeOverride(size);
 }
 
 - (BOOL)diskCacheSpeculativeValidationEnabled
@@ -202,22 +201,20 @@
 
 - (NSString *)sourceApplicationBundleIdentifier
 {
-    return _processPoolConfiguration->sourceApplicationBundleIdentifier();
+    return nil;
 }
 
 - (void)setSourceApplicationBundleIdentifier:(NSString *)sourceApplicationBundleIdentifier
 {
-    _processPoolConfiguration->setSourceApplicationBundleIdentifier(sourceApplicationBundleIdentifier);
 }
 
 - (NSString *)sourceApplicationSecondaryIdentifier
 {
-    return _processPoolConfiguration->sourceApplicationSecondaryIdentifier();
+    return nil;
 }
 
 - (void)setSourceApplicationSecondaryIdentifier:(NSString *)sourceApplicationSecondaryIdentifier
 {
-    _processPoolConfiguration->setSourceApplicationSecondaryIdentifier(sourceApplicationSecondaryIdentifier);
 }
 
 - (BOOL)shouldCaptureAudioInUIProcess

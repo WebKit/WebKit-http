@@ -236,6 +236,9 @@ public:
     Vector<RefPtr<ScrollingStateNode>>* children() const { return m_children.get(); }
 
     void appendChild(Ref<ScrollingStateNode>&&);
+    void insertChild(Ref<ScrollingStateNode>&&, size_t index);
+
+    size_t indexOfChild(ScrollingStateNode&) const;
 
     String scrollingStateTreeAsText(ScrollingStateTreeAsTextBehavior = ScrollingStateTreeAsTextBehaviorNormal) const;
 
@@ -248,12 +251,12 @@ private:
     void dump(WTF::TextStream&, ScrollingStateTreeAsTextBehavior) const;
 
     const ScrollingNodeType m_nodeType;
-    ScrollingNodeID m_nodeID;
-    ChangedProperties m_changedProperties;
+    const ScrollingNodeID m_nodeID;
+    ChangedProperties m_changedProperties { 0 };
 
     ScrollingStateTree& m_scrollingStateTree;
 
-    ScrollingStateNode* m_parent;
+    ScrollingStateNode* m_parent { nullptr };
     std::unique_ptr<Vector<RefPtr<ScrollingStateNode>>> m_children;
 
     LayerRepresentation m_layer;
