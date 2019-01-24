@@ -149,7 +149,12 @@ static void initializeSupportedImageMIMETypes()
     supportedImageMIMETypes->add("image/webp");
     supportedImageResourceMIMETypes->add("image/webp");
 #endif
-
+#if USE(OPENJPEG)
+    supportedImageMIMETypes->add("image/jp2");
+    supportedImageResourceMIMETypes->add("image/jp2");
+    supportedImageMIMETypes->add("image/jpeg2000");
+    supportedImageResourceMIMETypes->add("image/jpeg2000");
+#endif
 #endif // USE(CG)
 }
 
