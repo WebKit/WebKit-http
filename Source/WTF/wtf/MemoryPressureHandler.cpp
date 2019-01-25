@@ -95,7 +95,8 @@ static size_t thresholdForMemoryKillWithProcessState(WebsamProcessState processS
     if ((tabCount > 1) || (processState == WebsamProcessState::Active))
         baseThreshold = 3 * GB;
 #endif
-    return std::min(baseThreshold, static_cast<size_t>(ramSize() * 0.9));
+
+    return std::min(baseThreshold, static_cast<size_t>(realRamSize() * 0.9));
 }
 
 void MemoryPressureHandler::setPageCount(unsigned pageCount)

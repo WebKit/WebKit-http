@@ -29,6 +29,7 @@
 namespace WTF {
 
 WTF_EXPORT_PRIVATE size_t ramSize();
+WTF_EXPORT_PRIVATE size_t realRamSize();
 
 }
 

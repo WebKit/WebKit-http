@@ -70,7 +70,7 @@ static size_t customRAMSize()
     return 0;
 }
 
-static size_t computeRAMSize()
+static size_t computeRAMSize(bool real)
 {
 #if OS(WINDOWS)
     MEMORYSTATUSEX status;
@@ -88,10 +88,11 @@ static size_t computeRAMSize()
 #error "Missing a platform specific way of determining the available RAM"
 #endif // OS(UNIX)
 #else
-    size_t custom = customRAMSize();
-    if (custom)
-        return custom;
-
+    if (!real) {
+        size_t custom = customRAMSize();
+        if (custom)
+            return custom;
+    }
     return bmalloc::api::availableMemory();
 #endif
 }
@@ -101,7 +102,17 @@ size_t ramSize()
     static size_t ramSize;
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
-        ramSize = computeRAMSize();
+        ramSize = computeRAMSize(false);
+    });
+    return ramSize;
+}
+
+size_t realRamSize()
+{
+    static size_t ramSize;
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        ramSize = computeRAMSize(true);
     });
     return ramSize;
 }
