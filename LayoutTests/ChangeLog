@@ -1,3 +1,257 @@
+2019-01-07  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTests/http/wpt/fetch/csp-reports-bypass-csp-checks.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=193178
+
+        Reviewed by Chris Dumez.
+
+        Test was flaky as the ping load CSP report request might be sent after the
+        fetch that grabs the report.
+        To overcome that issue, fetch the report several times until receiving a report.
+
+        * http/wpt/fetch/csp-reports-bypass-csp-checks.html:
+        * http/wpt/fetch/resources/store-csp-report.py:
+        (main):
+
+2019-01-07  Dean Jackson  <dino@apple.com>
+
+        Turn on Pointer Events by default for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=193214
+        <rdar://problem/46974878>
+
+        Reviewed by Wenson Hsieh.
+
+        Skip the pointer events tests everywhere but iOS.
+
+        * TestExpectations:
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2019-01-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: extend XHR breakpoints to work with fetch
+        https://bugs.webkit.org/show_bug.cgi?id=185843
+        <rdar://problem/40431027>
+
+        Reviewed by Matt Baker.
+
+        * inspector/dom-debugger/url-breakpoints.html: Copied from LayoutTests/inspector/dom-debugger/xhr-breakpoints.html.
+        * inspector/dom-debugger/url-breakpoints-expected.txt: Copied from LayoutTests/inspector/dom-debugger/xhr-breakpoints-expected.txt.
+
+        * inspector/dom-debugger/xhr-breakpoints.html: Deleted.
+        * inspector/dom-debugger/xhr-breakpoints-expected.txt: Deleted.
+
+        * inspector/dom-debugger/resources/dataFetch.json: Added.
+
+2019-01-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: show secure connection details per-request
+        https://bugs.webkit.org/show_bug.cgi?id=191539
+        <rdar://problem/45979891>
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/network/resource-security-connection-expected.txt: Added.
+        * http/tests/inspector/network/resource-security-connection.html: Added.
+
+        * http/tests/inspector/network/resource-security-certificate-expected.txt: Added.
+        * http/tests/inspector/network/resource-security-certificate.html: Added.
+        * http/tests/inspector/network/resource-response-security-expected.txt: Deleted.
+        * http/tests/inspector/network/resource-response-security.html: Deleted.
+
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wincairo/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2019-01-07  Truitt Savell  <tsavell@apple.com>
+
+        Update test expectations for platform/mac/media/audio-session-category-video-paused.html
+        https://bugs.webkit.org/show_bug.cgi?id=189680
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2019-01-07  Eric Carlson  <eric.carlson@apple.com>
+
+        Deactivate audio session whenever possible
+        https://bugs.webkit.org/show_bug.cgi?id=193188
+        <rdar://problem/42678977>
+
+        Reviewed by Jer Noble.
+
+        * TestExpectations: Skip the new test.
+        * media/deactivate-audio-session-expected.txt: Added.
+        * media/deactivate-audio-session.html: Added.
+        * platform/ios/TestExpectations: Run the new test.
+        * platform/mac-wk2/TestExpectations: Ditto.
+
+2019-01-07  Youenn Fablet  <youenn@apple.com>
+
+        Resync WPT fetch tests to 834eac4
+        https://bugs.webkit.org/show_bug.cgi?id=193125
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/fetch/content-type/response.window-expected.txt: Added.
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/abort/serviceworker-intercepted.https-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/request/request-init-stream.any-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/request/request-reset-attributes.https-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/content-type/script.window-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/http-cache/304-update-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/http-cache/cc-request-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/http-cache/heuristic-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/http-cache/invalidate-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/http-cache/status-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/sec-metadata/embed.tentative.https.sub-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/sec-metadata/object.tentative.https.sub-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/sec-metadata/serviceworker.tentative.https.sub-expected.txt: Added.
+        * platform/mac/TestExpectations:
+        * tests-options.json:
+
+2019-01-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Native caret shows up alongside the page's caret when requesting desktop site on jsfiddle.net
+        https://bugs.webkit.org/show_bug.cgi?id=193180
+        <rdar://problem/45971041>
+
+        Reviewed by Tim Horton.
+
+        * editing/selection/ios/hide-selection-in-empty-overflow-hidden-container-expected.txt: Added.
+        * editing/selection/ios/hide-selection-in-empty-overflow-hidden-container.html: Added.
+
+        Add a layout test to verify that focusing a hidden editable element underneath an empty container with
+        `overflow: hidden` doesn't cause platform selection UI to appear.
+
+        * editing/selection/ios/show-selection-in-empty-overflow-hidden-document-expected.txt: Added.
+        * editing/selection/ios/show-selection-in-empty-overflow-hidden-document.html: Added.
+
+        Add a layout test to verify that native selection UI shows up when the document element is made empty with
+        `overflow: hidden`, but the focused elements are still visible.
+
+2019-01-07  Truitt Savell  <tsavell@apple.com>
+
+        Mark compositing/masks/compositing-clip-path-change-no-repaint.html flakey for Mojave WK1
+        https://bugs.webkit.org/show_bug.cgi?id=189753
+
+        Unreviewed Test Gardening
+
+        * platform/mac-wk1/TestExpectations:
+
+2019-01-07  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE][GTK] Skip css-painting-api tests
+
+        Unreviewed gardening. CSS_PAINTING_API is disabled by default.
+        Also remove a few tests that were individually marked as failing
+        for css-typedom since we already skipped the whole directory.
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2019-01-07  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE][GTK] Skip css-typedom tests
+
+        Unreviewed gardening. CSS_TYPED_OM is disabled by default.
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2019-01-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Import U2F command/response converters from Chromium
+        https://bugs.webkit.org/show_bug.cgi?id=193150
+        <rdar://problem/47054028>
+
+        Reviewed by Brent Fulgham.
+
+        Fixes Bug 183534:
+        7) Change little endian bytes (ARM and x86 default) to big endian as requested by the spec.
+
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https.html:
+        * http/wpt/webauthn/resources/util.js:
+
+2019-01-05  Zalan Bujtas  <zalan@apple.com>
+
+        Incorrect clipping across compositing boundary.
+        https://bugs.webkit.org/show_bug.cgi?id=193172
+        <rdar://problem/44693008>
+
+        Reviewed by Simon Fraser.
+
+        * compositing/clipping/cached-cliprect-with-compositing-boundary-expected.html: Added.
+        * compositing/clipping/cached-cliprect-with-compositing-boundary.html: Added.
+
+2019-01-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239607.
+        https://bugs.webkit.org/show_bug.cgi?id=193169
+
+        This change makes the test even more flaky (Requested by fredw
+        on #webkit).
+
+        Reverted changeset:
+
+        "Flaky Test: http/wpt/css/css-animations/start-
+        animation-001.html"
+        https://bugs.webkit.org/show_bug.cgi?id=190903
+        https://trac.webkit.org/changeset/239607
+
+2019-01-04  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r238522): Erratic scrolling on Google flights search result page and vrbo.com
+        https://bugs.webkit.org/show_bug.cgi?id=192996
+        <rdar://problem/46573552>
+
+        Reviewed by Simon Fraser.
+
+        Add a test to ensure that we do not scroll the page when we lay out an unfocused text field.
+
+        * fast/scrolling/page-should-not-scroll-on-unfocused-text-field-layout-expected.txt: Added.
+        * fast/scrolling/page-should-not-scroll-on-unfocused-text-field-layout.html: Added.
+
+2019-01-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: disable breakpoints when running Audit
+        https://bugs.webkit.org/show_bug.cgi?id=193158
+        <rdar://problem/47057083>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/audit/basic.html:
+        * inspector/audit/basic-expected.txt:
+
+        * inspector/audit/resources/audit-utilities.js:
+        (TestPage.registerInitializer.InspectorTest.Audit.addTest):
+
+2019-01-04  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Implement abortable fetch
+        https://bugs.webkit.org/show_bug.cgi?id=174980
+        <rdar://problem/46861402>
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations: Enable abort tests.
+
+2019-01-04  Brent Fulgham  <bfulgham@apple.com>
+
+        Parsed protocol of javascript URLs with embedded newlines and carriage returns do not match parsed protocol in Chrome and Firefox
+        https://bugs.webkit.org/show_bug.cgi?id=193155
+        <rdar://problem/40230982>
+
+        Reviewed by Chris Dumez.
+
+        * fast/loader/comment-only-javascript-url-expected.txt: Added.
+        * fast/loader/comment-only-javascript-url.html: Added.
+
 2019-01-04  Jer Noble  <jer.noble@apple.com>
 
         Web Content process main thread blocked beneath ImageDecoderAVFObjC::readSamples for many seconds on imgur.com

@@ -1,3 +1,861 @@
+2019-01-07  Youenn Fablet  <youenn@apple.com>
+
+        Crash in SWServer::Connection::resolveRegistrationReadyRequests
+        https://bugs.webkit.org/show_bug.cgi?id=193217
+
+        Reviewed by Chris Dumez.
+
+        As can be seen from the traces, SWServer might clear its connections HashMap in its destructor.
+        This might then trigger calling SWServer::resolveRegistrationReadyRequests.
+        This method is iterating on the connections HashMap which is being cleared.
+        To remove this problem, move the HashMap in a temporary variable and clear the temporary variable.
+
+        * workers/service/server/SWServer.cpp:
+        (WebCore::SWServer::~SWServer):
+
+2019-01-07  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (r239519): ASSERTION FAILED: !m_adoptionIsRequired in com.apple.WebCore: void WTF::refIfNotNull<WebCore::CDMSessionMediaSourceAVFObjC> + 53
+        https://bugs.webkit.org/show_bug.cgi?id=193211
+        <rdar://problem/46937412>
+
+        Reviewed by Eric Carlson.
+
+        Make CDMSessionMediaSourceAVFObjC a CanMakeWeakPtr rather than RefCounted, as CDMSessions are stored in
+        std::unique_ptrs, and not in Ref or RefPtr.
+
+        * platform/graphics/avfoundation/objc/CDMSessionMediaSourceAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::setCDMSession):
+
+2019-01-07  David Kilzer  <ddkilzer@apple.com>
+
+        Prefer RetainPtr<NSObject> to RetainPtr<NSObject *>
+        <https://webkit.org/b/193056>
+
+        Reviewed by Alex Christensen.
+
+        * platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm:
+        (-[WebAVStreamDataParserListener streamDataParser:didParseStreamDataAsAsset:]):
+        (-[WebAVStreamDataParserListener streamDataParser:didParseStreamDataAsAsset:withDiscontinuity:]):
+        * platform/network/cf/AuthenticationChallenge.h:
+        - Remove '*' from RetainPtr<> type.
+
+        * platform/network/cocoa/NetworkStorageSessionCocoa.mm:
+        (WebCore::cookiesForURL):
+        - Once retainPtr() was changed to return RetainPtr<NSArray>
+          instead of RetainPtr<NSArray *> here, that forced the type of
+          `cookiesPtr` to change as well since
+          Optional<RetainPtr<NSArray>> is not assignable to
+          Optional<RetainPtr<NSArray *>> without further template
+          specialization, which didn't seem useful since
+          Optional<RetainPtr<>> variable types are rarely used.
+
+2019-01-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: extend XHR breakpoints to work with fetch
+        https://bugs.webkit.org/show_bug.cgi?id=185843
+        <rdar://problem/40431027>
+
+        Reviewed by Matt Baker.
+
+        Test: inspector/dom-debugger/url-breakpoints.html
+
+        * Modules/fetch/FetchResponse.cpp:
+        (WebCore::FetchResponse::fetch):
+
+        * inspector/InspectorInstrumentation.h:
+        (WebCore::InspectorInstrumentation::willFetch): Added.
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::willFetchImpl): Added.
+
+        * inspector/agents/InspectorDOMDebuggerAgent.h:
+        * inspector/agents/InspectorDOMDebuggerAgent.cpp:
+        (WebCore::InspectorDOMDebuggerAgent::disable):
+        (WebCore::InspectorDOMDebuggerAgent::discardBindings):
+        (WebCore::InspectorDOMDebuggerAgent::setURLBreakpoint): Added.
+        (WebCore::InspectorDOMDebuggerAgent::removeURLBreakpoint): Added.
+        (WebCore::InspectorDOMDebuggerAgent::breakOnURLIfNeeded): Added.
+        (WebCore::InspectorDOMDebuggerAgent::willSendXMLHttpRequest):
+        (WebCore::InspectorDOMDebuggerAgent::willFetch): Added.
+        (WebCore::InspectorDOMDebuggerAgent::setXHRBreakpoint): Deleted.
+        (WebCore::InspectorDOMDebuggerAgent::removeXHRBreakpoint): Deleted.
+
+2019-01-07  Eric Carlson  <eric.carlson@apple.com>
+
+        Cleanup AudioTrackPrivateMediaStreamCocoa
+        https://bugs.webkit.org/show_bug.cgi?id=193208
+        <rdar://problem/42225870>
+
+        Reviewed by Youenn Fablet.
+
+        * platform/mediastream/mac/AudioTrackPrivateMediaStreamCocoa.cpp:
+        (WebCore::AudioTrackPrivateMediaStreamCocoa::audioSamplesAvailable): Clear input and
+        output format descriptions after stopping the audio unit.
+
+2019-01-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: show secure connection details per-request
+        https://bugs.webkit.org/show_bug.cgi?id=191539
+        <rdar://problem/45979891>
+
+        Reviewed by Joseph Pecoraro.
+
+        Test: http/tests/inspector/network/resource-security-connection.html
+
+        * platform/network/NetworkLoadMetrics.h:
+        (WebCore::NetworkLoadMetrics:isolatedCopy):
+        (WebCore::NetworkLoadMetrics:clearNonTimingData):
+        (WebCore::NetworkLoadMetrics:operator==):
+        (WebCore::NetworkLoadMetrics:encode):
+        (WebCore::NetworkLoadMetrics:decode):
+
+        * inspector/agents/InspectorNetworkAgent.cpp:
+        (WebCore::InspectorNetworkAgent::buildObjectForMetrics):
+
+2019-01-07  Eric Carlson  <eric.carlson@apple.com>
+
+        Deactivate audio session whenever possible
+        https://bugs.webkit.org/show_bug.cgi?id=193188
+        <rdar://problem/42678977>
+
+        Reviewed by Jer Noble.
+
+        Test: media/deactivate-audio-session.html
+
+        * platform/audio/AudioSession.cpp:
+        (WebCore::AudioSession::tryToSetActive):
+        (WebCore::AudioSession::tryToSetActiveInternal):
+        * platform/audio/AudioSession.h:
+        (WebCore::AudioSession::isActive const):
+
+        * platform/audio/PlatformMediaSessionManager.cpp:
+        (WebCore::PlatformMediaSessionManager::removeSession):
+        (WebCore::deactivateAudioSession):
+        (WebCore::PlatformMediaSessionManager::shouldDeactivateAudioSession):
+        (WebCore::PlatformMediaSessionManager::setShouldDeactivateAudioSession):
+        * platform/audio/PlatformMediaSessionManager.h:
+
+        * platform/audio/ios/AudioSessionIOS.mm:
+        (WebCore::AudioSession::tryToSetActiveInternal):
+        (WebCore::AudioSession::tryToSetActive): Deleted.
+
+        * platform/audio/mac/AudioSessionMac.cpp:
+        (WebCore::AudioSession::tryToSetActiveInternal):
+        (WebCore::AudioSession::tryToSetActive): Deleted.
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::audioSessionActive const):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2019-01-07  David Kilzer  <ddkilzer@apple.com>
+
+        PlatformECKey should use a std::unique_ptr
+        <https://webkit.org/b/193170>
+
+        Reviewed by Brent Fulgham.
+
+        Broadly:
+        - Switch from using raw pointers to using std::unique_ptr<> to
+          hold PlatformECKey.
+        - Introduce PlatformECKeyContainer type to handle different
+          std::unique_ptr<> types on each platform.
+        - Get rid of custom CryptoKeyEC destructors since the
+          std::unique_ptr<> handles that with a Deleter.
+        - Initialize stack variables to nullptr.
+
+        * crypto/gcrypt/CryptoKeyECGCrypt.cpp:
+        (WebCore::CryptoKeyEC::keySizeInBits const):
+        (WebCore::CryptoKeyEC::platformGeneratePair):
+        (WebCore::CryptoKeyEC::platformImportRaw):
+        (WebCore::CryptoKeyEC::platformImportJWKPublic):
+        (WebCore::CryptoKeyEC::platformImportJWKPrivate):
+        (WebCore::CryptoKeyEC::platformImportSpki):
+        (WebCore::CryptoKeyEC::platformImportPkcs8):
+        (WebCore::CryptoKeyEC::platformExportRaw const):
+        (WebCore::CryptoKeyEC::platformAddFieldElements const):
+        (WebCore::CryptoKeyEC::platformExportSpki const):
+        (WebCore::CryptoKeyEC::platformExportPkcs8 const):
+        (WebCore::CryptoKeyEC::~CryptoKeyEC): Deleted.
+        * crypto/keys/CryptoKeyEC.cpp:
+        (WebCore::CryptoKeyEC::CryptoKeyEC):
+        * crypto/keys/CryptoKeyEC.h:
+        (WebCore::CCECCryptorRefDeleter::operator() const):
+        * crypto/mac/CryptoKeyECMac.cpp:
+        (WebCore::CryptoKeyEC::keySizeInBits const):
+        (WebCore::CryptoKeyEC::platformGeneratePair):
+        (WebCore::CryptoKeyEC::platformImportRaw):
+        (WebCore::CryptoKeyEC::platformExportRaw const):
+        (WebCore::CryptoKeyEC::platformImportJWKPublic):
+        (WebCore::CryptoKeyEC::platformImportJWKPrivate):
+        (WebCore::CryptoKeyEC::platformAddFieldElements const):
+        (WebCore::CryptoKeyEC::platformImportSpki):
+        (WebCore::CryptoKeyEC::platformExportSpki const):
+        (WebCore::CryptoKeyEC::platformImportPkcs8):
+        (WebCore::CryptoKeyEC::platformExportPkcs8 const):
+        (WebCore::CryptoKeyEC::~CryptoKeyEC): Deleted.
+
+2019-01-07  Antti Koivisto  <antti@apple.com>
+
+        UI process side scrollbars for UI side compositing on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=193106
+
+        Reviewed by Tim Horton.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::paintScrollCorner):
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::frameViewLayoutUpdated):
+
+        Pass scrollbar host layers and the dark appearance bit to the scrolling tree.
+
+        * page/scrolling/ScrollingCoordinator.cpp:
+        (WebCore::ScrollingCoordinator::verticalScrollbarLayerForFrameView):
+        (WebCore::ScrollingCoordinator::horizontalScrollbarLayerForFrameView):
+        * page/scrolling/ScrollingCoordinator.h:
+        (WebCore::ScrollableAreaParameters::ScrollableAreaParameters):
+        (WebCore::ScrollableAreaParameters::operator== const):
+        * page/scrolling/ScrollingStateFrameScrollingNode.cpp:
+        (WebCore::ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode):
+        (WebCore::ScrollingStateFrameScrollingNode::setScrollbarLayers):
+        * page/scrolling/ScrollingStateFrameScrollingNode.h:
+        * page/scrolling/ScrollingTreeFrameScrollingNode.h:
+        * page/scrolling/ScrollingTreeScrollingNode.h:
+        (WebCore::ScrollingTreeScrollingNode::scrollableAreaSize const):
+        (WebCore::ScrollingTreeScrollingNode::totalContentsSize const):
+        (WebCore::ScrollingTreeScrollingNode::useDarkAppearanceForScrollbars const):
+        (WebCore::ScrollingTreeScrollingNode::lastCommittedScrollPosition const):
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.h:
+        * platform/ScrollableArea.cpp:
+        (WebCore::ScrollableArea::useDarkAppearanceForScrollbars const):
+
+        Factor into a function as this is used in several places.
+
+        * platform/ScrollableArea.h:
+        * platform/mac/NSScrollerImpDetails.h:
+        * platform/mac/ScrollAnimatorMac.mm:
+        (-[WebScrollerImpDelegate effectiveAppearanceForScrollerImp:]):
+        * platform/mac/ScrollbarThemeMac.h:
+
+2019-01-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Native caret shows up alongside the page's caret when requesting desktop site on jsfiddle.net
+        https://bugs.webkit.org/show_bug.cgi?id=193180
+        <rdar://problem/45971041>
+
+        Reviewed by Tim Horton.
+
+        Adjust a method on RenderObject to additionally detect when the RenderObject is inside of an `overflow: hidden`
+        container that is also empty. See WebKit ChangeLog for more details.
+
+        Test:   editing/selection/ios/hide-selection-in-empty-overflow-hidden-container.html
+                editing/selection/ios/show-selection-in-empty-overflow-hidden-document.html
+
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::isTransparentOrFullyClippedRespectingParentFrames const):
+        (WebCore::RenderObject::isTransparentRespectingParentFrames const): Deleted.
+        * rendering/RenderObject.h:
+
+2019-01-07  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Margin collapsing should not be limited to in-flow non-replaced boxes.
+        https://bugs.webkit.org/show_bug.cgi?id=193183
+
+        Reviewed by Antti Koivisto.
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::computeOutOfFlowVerticalGeometry const):
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::complicatedCases):
+        (WebCore::Layout::FormattingContext::Geometry::floatingNonReplacedWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::inlineReplacedHeightAndMargin):
+        * layout/LayoutUnits.h:
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::computeHeightAndMargin const):
+        * layout/blockformatting/BlockFormattingContextGeometry.cpp:
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowNonReplacedHeightAndMargin):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowHeightAndMargin):
+        * layout/blockformatting/BlockFormattingContextQuirks.cpp:
+        (WebCore::Layout::BlockFormattingContext::Quirks::stretchedHeight):
+        * layout/inlineformatting/InlineFormattingContext.cpp:
+        (WebCore::Layout::InlineFormattingContext::computeHeightAndMargin const):
+
+2019-01-07  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Move MarginCollapse from BlockFormattingContext::Geometry to BlockFormattingContext
+        https://bugs.webkit.org/show_bug.cgi?id=193181
+
+        Reviewed by Antti Koivisto.
+
+        This is in preparation to share margin collapsing across all boxes in block formatting context.
+
+        * layout/blockformatting/BlockFormattingContext.h:
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowNonReplacedHeightAndMargin):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowNonReplacedWidthAndMargin):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowReplacedWidthAndMargin):
+        * layout/blockformatting/BlockMarginCollapse.cpp:
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::computedNonCollapsedMarginBefore):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::computedNonCollapsedMarginAfter):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::nonCollapsedMarginBefore):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::nonCollapsedMarginAfter):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::collapsedMarginBeforeFromFirstChild):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::collapsedMarginAfterFromLastChild):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginBeforeCollapsesWithParentMarginAfter):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginBeforeCollapsesWithParentMarginBefore):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginAfterCollapsesWithSiblingMarginBeforeWithClearance):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginAfterCollapsesWithParentMarginBefore):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginAfterCollapsesWithParentMarginAfter):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginBeforeCollapsesWithPreviousSibling):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginAfterCollapsesWithNextSibling):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginsCollapseThrough):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginBefore):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginAfter):
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::computedNonCollapsedMarginBefore): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::computedNonCollapsedMarginAfter): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::nonCollapsedMarginBefore): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::nonCollapsedMarginAfter): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::collapsedMarginBeforeFromFirstChild): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::collapsedMarginAfterFromLastChild): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::marginBeforeCollapsesWithParentMarginAfter): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::marginBeforeCollapsesWithParentMarginBefore): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::marginAfterCollapsesWithSiblingMarginBeforeWithClearance): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::marginAfterCollapsesWithParentMarginBefore): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::marginAfterCollapsesWithParentMarginAfter): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::marginBeforeCollapsesWithPreviousSibling): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::marginAfterCollapsesWithNextSibling): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::marginsCollapseThrough): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::marginBefore): Deleted.
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::marginAfter): Deleted.
+
+2019-01-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Use Widget bounds for PlatformScreen rectangle information
+        https://bugs.webkit.org/show_bug.cgi?id=193190
+
+        Reviewed by Philippe Normand.
+
+        Provide a better screen area estimate in screenRect() and
+        screenAvailableRect() return values than the current 1240x640 value by
+        using the Widget's bounds rectangle.
+
+        This approach is only factually correct when the Widget-associated view
+        is displayed in fullscreen, but it provides a better estimate even when
+        displayed in any other case as well. WPE doesn't provide specific API
+        that could enable the embedding environment to provide this information.
+
+        * platform/wpe/PlatformScreenWPE.cpp:
+        (WebCore::screenRect): Return bounds of the Widget object.
+        (WebCore::screenAvailableRect): Relay the call to screenRect().
+
+2019-01-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        Make Gradient::gradientSpaceTransform(), Pattern::patternSpaceTransform() methods const
+        https://bugs.webkit.org/show_bug.cgi?id=193189
+
+        Reviewed by Philippe Normand.
+
+        The transform getter methods on the Gradient and Pattern classes both
+        return const references to the transform objects, and don't modify any
+        internal state. They should be marked const accordingly, allowing
+        invocations of these two methods through const references to Gradient
+        and Pattern objects.
+
+        * platform/graphics/Gradient.h:
+        (WebCore::Gradient::gradientSpaceTransform): Now const.
+        * platform/graphics/Pattern.h:
+        (WebCore::Pattern::patternSpaceTransform): Now const.
+
+2019-01-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        REGRESSION(r239636): ImageDecoder::setEncodedDataStatusChangeCallback() can be called on a null decoder
+        https://bugs.webkit.org/show_bug.cgi?id=193187
+
+        Reviewed by Philippe Normand.
+
+        * platform/graphics/ImageSource.cpp:
+        (WebCore::ImageSource::ensureDecoderAvailable): Bail before calling the
+        setEncodedDataStatusChangeCallback() method when the returned
+        ImageDecoder object is null.
+
+2019-01-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Nicosia] Take over CoordinatedGraphics-named implementation of async scrolling classes
+        https://bugs.webkit.org/show_bug.cgi?id=193133
+
+        Reviewed by Michael Catanzaro.
+
+        Move the CoordinatedGraphics-specific files under
+        page/scrolling/coordinatedgraphics/ to page/scrolling/nicosia/, along
+        with renaming the files and classes accordingly. Implementation will
+        only depend on the Nicosia-specific layer structure and is not specific
+        to the CoordinatedGraphics system.
+
+        * PlatformPlayStation.cmake:
+        * SourcesGTK.txt:
+        * SourcesWPE.txt:
+        * page/scrolling/nicosia/ScrollingCoordinatorNicosia.cpp: Renamed from Source/WebCore/page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp.
+        * page/scrolling/nicosia/ScrollingCoordinatorNicosia.h: Renamed from Source/WebCore/page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.h.
+        * page/scrolling/nicosia/ScrollingStateNodeNicosia.cpp: Renamed from Source/WebCore/page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp.
+        * page/scrolling/nicosia/ScrollingTreeFixedNode.cpp: Renamed from Source/WebCore/page/scrolling/coordinatedgraphics/ScrollingTreeFixedNode.cpp.
+        * page/scrolling/nicosia/ScrollingTreeFixedNode.h: Renamed from Source/WebCore/page/scrolling/coordinatedgraphics/ScrollingTreeFixedNode.h.
+        * page/scrolling/nicosia/ScrollingTreeFrameScrollingNodeNicosia.cpp: Renamed from Source/WebCore/page/scrolling/coordinatedgraphics/ScrollingTreeFrameScrollingNodeCoordinatedGraphics.cpp.
+        * page/scrolling/nicosia/ScrollingTreeFrameScrollingNodeNicosia.h: Renamed from Source/WebCore/page/scrolling/coordinatedgraphics/ScrollingTreeFrameScrollingNodeCoordinatedGraphics.h.
+        * page/scrolling/nicosia/ScrollingTreeNicosia.cpp: Renamed from Source/WebCore/page/scrolling/coordinatedgraphics/ScrollingTreeCoordinatedGraphics.cpp.
+        * page/scrolling/nicosia/ScrollingTreeNicosia.h: Renamed from Source/WebCore/page/scrolling/coordinatedgraphics/ScrollingTreeCoordinatedGraphics.h.
+        * page/scrolling/nicosia/ScrollingTreeStickyNode.cpp: Renamed from Source/WebCore/page/scrolling/coordinatedgraphics/ScrollingTreeStickyNode.cpp.
+        * page/scrolling/nicosia/ScrollingTreeStickyNode.h: Renamed from Source/WebCore/page/scrolling/coordinatedgraphics/ScrollingTreeStickyNode.h.
+        * platform/TextureMapper.cmake:
+
+2019-01-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Import U2F command/response converters from Chromium
+        https://bugs.webkit.org/show_bug.cgi?id=193150
+        <rdar://problem/47054028>
+
+        Reviewed by Brent Fulgham.
+
+        This patch imports Chromium's U2F command/response converters:
+        https://fidoalliance.org/specs/fido-v2.0-id-20180227/fido-client-to-authenticator-protocol-v2.0-id-20180227.html#u2f-interoperability
+        1. It directly imports the following files and suit them to WebKit's coding style:
+        https://cs.chromium.org/chromium/src/device/fido/u2f_command_constructor.cc?l=1&rcl=db624110317d01efa78cd32e7be1524190e1beb0
+        https://cs.chromium.org/chromium/src/device/fido/u2f_command_constructor.h?rcl=db624110317d01efa78cd32e7be1524190e1beb0
+        https://cs.chromium.org/chromium/src/device/fido/u2f_command_constructor_unittest.cc?rcl=db624110317d01efa78cd32e7be1524190e1beb0
+        2. It gathers the following methods into U2fResponseConverter:
+        AuthenticatorMakeCredentialResponse::CreateFromU2fRegisterResponse()
+        AuthenticatorGetAssertionResponse::CreateFromU2fSignResponse()
+        3. It also updates FidoConstants.h, FidoTestData.h and CtapResponseTest.cpp accordingly.
+
+        Besides importing stuff from Chroimum, it also gathers a bunch of constants and helper functions into WebAuthenticationConstants.h
+        and WebAuthenticationUtils.h. It also fixes Bug 183534: 2) and 7).
+
+        Covered by API tests.
+
+        * Modules/webauthn/AuthenticatorCoordinator.cpp:
+        (WebCore::AuthenticatorCoordinatorInternal::produceClientDataJsonHash):
+        * Modules/webauthn/WebAuthenticationConstants.h: Copied from Source/WebCore/Modules/webauthn/COSEConstants.h.
+        * Modules/webauthn/WebAuthenticationUtils.cpp: Added.
+        (WebCore::convertBytesToVector):
+        (WebCore::produceRpIdHash):
+        (WebCore::encodeES256PublicKeyAsCBOR):
+        (WebCore::buildAttestedCredentialData):
+        (WebCore::buildAuthData):
+        (WebCore::buildAttestationObject):
+        * Modules/webauthn/WebAuthenticationUtils.h: Renamed from Source/WebCore/Modules/webauthn/COSEConstants.h.
+        * Modules/webauthn/fido/DeviceResponseConverter.cpp:
+        (fido::getCredentialId):
+        (fido::readCTAPGetInfoResponse):
+        * Modules/webauthn/fido/FidoConstants.h:
+        * Modules/webauthn/fido/U2fCommandConstructor.cpp: Added.
+        (fido::WebCore::constructU2fRegisterCommand):
+        (fido::WebCore::constructU2fSignCommand):
+        (fido::isConvertibleToU2fRegisterCommand):
+        (fido::isConvertibleToU2fSignCommand):
+        (fido::convertToU2fRegisterCommand):
+        (fido::convertToU2fCheckOnlySignCommand):
+        (fido::convertToU2fSignCommand):
+        (fido::constructBogusU2fRegistrationCommand):
+        * Modules/webauthn/fido/U2fCommandConstructor.h: Added.
+        * Modules/webauthn/fido/U2fResponseConverter.cpp: Added.
+        (fido::WebCore::extractECPublicKeyFromU2fRegistrationResponse):
+        (fido::WebCore::extractCredentialIdFromU2fRegistrationResponse):
+        (fido::WebCore::createAttestedCredentialDataFromU2fRegisterResponse):
+        (fido::WebCore::parseX509Length):
+        (fido::WebCore::createFidoAttestationStatementFromU2fRegisterResponse):
+        (fido::readU2fRegisterResponse):
+        (fido::readFromU2fSignResponse):
+        * Modules/webauthn/fido/U2fResponseConverter.h: Added.
+        * Modules/webgpu/WebGPUCommandBuffer.cpp:
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+
+2019-01-06  David Kilzer  <ddkilzer@apple.com>
+
+        Leak of WTF::Function objects in WebCore::CryptoKeyRSA::generatePair() (64-80 bytes each) in com.apple.WebKit.WebContent running WebKit layout tests
+        <https://webkit.org/b/193177>
+        <rdar://problem/47072196>
+
+        Reviewed by Saam Barati.
+
+        * crypto/mac/CryptoKeyRSAMac.cpp:
+        (WebCore::CryptoKeyRSA::generatePair): Fix the leak by changing
+        raw pointers to heap-allocated __block variables to hold the
+        WTF::Function objects until they are consumed within the block
+        passed to dispatch_async().  The __block variables act like
+        captured variables in a C++ lambda and have the same lifetime as
+        the block that they are captured in.  Note that we would have to
+        convert the source file from C++ to Objective-C++ to use a C++
+        lambda functor with dispatch_async(), which creates its own
+        issue because the comipiler requires a copy constructor to
+        convert the C++ lambda to a block functor, but the copy
+        constructor for the C++ lambda is implicitly deleted because the
+        WTF::Function copy constructor is explicitly deleted.  Whew!
+
+2019-01-06  Pablo Saavedra  <psaavedra@igalia.com>
+
+        [WPE][GTK] Building with ENABLE_VIDEO=OFF fails trying to use Document MediaPlayback functions.
+        https://bugs.webkit.org/show_bug.cgi?id=193174
+
+        Reviewed by Michael Catanzaro.
+
+        * page/Page.cpp:
+        (WebCore::Page::stopAllMediaPlayback):
+        (WebCore::Page::suspendAllMediaPlayback):
+        (WebCore::Page::resumeAllMediaPlayback):
+
+2019-01-05  David Kilzer  <ddkilzer@apple.com>
+
+        Leak of two CCRSACryptorRef (4.0 Kbytes/1 page each) in com.apple.WebKit.WebContent running WebKit layout tests
+        <https://webkit.org/b/193154>
+        <rdar://problem/47052993>
+
+        Reviewed by Brent Fulgham.
+
+        Broadly:
+        - Fix leaks by switching from using raw pointers to using
+          std::unique_ptr<>.
+        - Introduce PlatformRSAKeyContainer type to handle different
+          std::unique_ptr<> on each platform.
+        - Get rid of custom CryptoKeyRSA destructors since the
+          std::unique_ptr<> handles that with a Deleter.
+        - Initialize stack variables to nullptr.
+
+        * crypto/gcrypt/CryptoKeyRSAGCrypt.cpp:
+        (WebCore::CryptoKeyRSA::create):
+        (WebCore::CryptoKeyRSA::CryptoKeyRSA):
+        (WebCore::CryptoKeyRSA::keySizeInBits const):
+        (WebCore::CryptoKeyRSA::generatePair):
+        (WebCore::CryptoKeyRSA::importSpki):
+        (WebCore::CryptoKeyRSA::importPkcs8):
+        (WebCore::CryptoKeyRSA::exportSpki const):
+        (WebCore::CryptoKeyRSA::exportPkcs8 const):
+        (WebCore::CryptoKeyRSA::algorithm const):
+        (WebCore::CryptoKeyRSA::exportData const):
+        (WebCore::CryptoKeyRSA::~CryptoKeyRSA): Deleted.
+        * crypto/keys/CryptoKeyRSA.h:
+        (WebCore::CCRSACryptorRefDeleter::operator() const):
+        * crypto/mac/CryptoKeyRSAMac.cpp:
+        (WebCore::getPublicKeyComponents):
+        (WebCore::getPrivateKeyComponents):
+        (WebCore::CryptoKeyRSA::CryptoKeyRSA):
+        (WebCore::CryptoKeyRSA::create):
+        (WebCore::CryptoKeyRSA::exportData const):
+        (WebCore::CryptoKeyRSA::generatePair):
+        (WebCore::CryptoKeyRSA::importSpki):
+        (WebCore::CryptoKeyRSA::importPkcs8):
+        (WebCore::CryptoKeyRSA::~CryptoKeyRSA): Deleted.
+
+2019-01-05  Zalan Bujtas  <zalan@apple.com>
+
+        Incorrect clipping across compositing boundary.
+        https://bugs.webkit.org/show_bug.cgi?id=193172
+        <rdar://problem/44693008>
+
+        Reviewed by Simon Fraser.
+
+        Use temporary cliprect type when crossing compositing boundary to prevent cliprect caching.
+
+        The issue here is that RenderLayer::backgroundClipRect() could cross compositing boundary by calling parentClipRects() which triggers
+        clip rect update using the wrong painting root. This happens when the layer hierarchy and the compositing context do not match.
+        For clip rect computation, we need to climb up on the layer hierarchy (calling parent layer's cliprect functions)
+        but we also need to make sure that the computed cliprects on any given layer are cached only when the painting root is correct.
+        It ensures that when we paint a layer (with the painting root as entry point), the cached cliprects are always based on its onw painting root. 
+
+        Test: compositing/clipping/cached-cliprect-with-compositing-boundary.html
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::calculateClipRects const):
+
+2019-01-05  Youenn Fablet  <youenn@apple.com>
+
+        Service Worker fetch should obey its referrer policy
+        https://bugs.webkit.org/show_bug.cgi?id=193152
+
+        Reviewed by Chris Dumez.
+
+        Pass referrer policy retrieved when fetching the service worker script to the SWServer.
+        The SWServer then stores it persistently and sends it to the manager creating service workers.
+        This manager will then set the referrer policy on the dummy Document of the corresponding service worker.
+
+        Covered by rebased test.
+
+        * workers/WorkerScriptLoader.cpp:
+        (WebCore::WorkerScriptLoader::didReceiveResponse):
+        * workers/WorkerScriptLoader.h:
+        (WebCore::WorkerScriptLoader::referrerPolicy const):
+        * workers/service/SWClientConnection.cpp:
+        (WebCore::SWClientConnection::failedFetchingScript):
+        * workers/service/ServiceWorkerContainer.cpp:
+        (WebCore::ServiceWorkerContainer::jobFinishedLoadingScript):
+        * workers/service/ServiceWorkerContainer.h:
+        * workers/service/ServiceWorkerContextData.cpp:
+        (WebCore::ServiceWorkerContextData::isolatedCopy const):
+        * workers/service/ServiceWorkerContextData.h:
+        (WebCore::ServiceWorkerContextData::encode const):
+        (WebCore::ServiceWorkerContextData::decode):
+        * workers/service/ServiceWorkerFetchResult.h:
+        (WebCore::ServiceWorkerFetchResult::encode const):
+        (WebCore::ServiceWorkerFetchResult::decode):
+        * workers/service/ServiceWorkerJob.cpp:
+        (WebCore::ServiceWorkerJob::notifyFinished):
+        * workers/service/ServiceWorkerJobClient.h:
+        * workers/service/context/ServiceWorkerThreadProxy.cpp:
+        (WebCore::createPageForServiceWorker):
+        * workers/service/server/RegistrationDatabase.cpp:
+        (WebCore::recordsTableSchema):
+        (WebCore::RegistrationDatabase::doPushChanges):
+        (WebCore::RegistrationDatabase::importRecords):
+        * workers/service/server/SWServer.cpp:
+        (WebCore::SWServer::addRegistrationFromStore):
+        (WebCore::SWServer::updateWorker):
+        (WebCore::SWServer::installContextData):
+        * workers/service/server/SWServer.h:
+        * workers/service/server/SWServerJobQueue.cpp:
+        (WebCore::SWServerJobQueue::scriptFetchFinished):
+        * workers/service/server/SWServerWorker.cpp:
+        (WebCore::SWServerWorker::SWServerWorker):
+        (WebCore::SWServerWorker::contextData const):
+        * workers/service/server/SWServerWorker.h:
+
+2019-01-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Factor legacy WK1 code for fixed and scrolling layers into their own helper class
+        https://bugs.webkit.org/show_bug.cgi?id=193165
+
+        Reviewed by Frédéric Wang.
+
+        RenderLayerCompositor has some code to handle registration of viewport-constrained
+        and scrolling layers which is specific to iOS WK1. To reduce pollution, move this
+        into its own helper class called LegacyWebKitScrollingLayerCoordinator, which is only
+        allocated for iOS WK1.
+        
+        iOS WK1 never has a ScrollingCoordinator, so rather than the check for scrollingCoordinator(),
+        we know that we only made a LegacyWebKitScrollingLayerCoordinator when there's a platform widget
+        (i.e. WK1).
+        
+        * page/ChromeClient.h:
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::RenderLayerCompositor):
+        (WebCore::RenderLayerCompositor::updateCustomLayersAfterFlush):
+        (WebCore::RenderLayerCompositor::didFlushChangesForLayer):
+        (WebCore::RenderLayerCompositor::setIsInWindow):
+        (WebCore::RenderLayerCompositor::willRemoveScrollingLayerWithBacking): No longer check the page cache state; now we
+        destroy the render tree of pages in the page cache, so we should never hit this code path.
+        (WebCore::RenderLayerCompositor::didAddScrollingLayer):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::registerAllViewportConstrainedLayers):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::unregisterAllViewportConstrainedLayers):
+        (WebCore::scrollbarHasDisplayNone):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::updateScrollingLayer):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::registerAllScrollingLayers):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::registerScrollingLayersNeedingUpdate):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::unregisterAllScrollingLayers):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::addScrollingLayer):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::removeScrollingLayer):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::didFlushChangesForLayer):
+        (WebCore::updateScrollingLayerWithClient): Deleted.
+        (WebCore::RenderLayerCompositor::registerAllViewportConstrainedLayers): Deleted.
+        (WebCore::RenderLayerCompositor::unregisterAllViewportConstrainedLayers): Deleted.
+        (WebCore::RenderLayerCompositor::registerAllScrollingLayers): Deleted.
+        (WebCore::RenderLayerCompositor::unregisterAllScrollingLayers): Deleted.
+        * rendering/RenderLayerCompositor.h:
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::LegacyWebKitScrollingLayerCoordinator):
+        * workers/service/ServiceWorkerContainer.cpp:
+        (WebCore::ServiceWorkerContainer::~ServiceWorkerContainer):
+
+2019-01-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] VerticalMargin should only have the used values.
+        https://bugs.webkit.org/show_bug.cgi?id=193168
+
+        Reviewed by Antti Koivisto.
+
+        Split VerticalMargin into ComputedVerticalMargin and UsedVerticalMargin.
+        ComputedVerticalMargin holds the computed (optional) values while UsedVerticalMargin holds both the
+        collapsed (optional) and the non-collapsed values.
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::computeOutOfFlowVerticalGeometry const):
+        * layout/FormattingContext.h:
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::complicatedCases):
+        (WebCore::Layout::FormattingContext::Geometry::inlineReplacedHeightAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::inlineReplacedWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::computedVerticalMargin):
+        (WebCore::Layout::FormattingContext::Geometry::computedNonCollapsedVerticalMarginValue): Deleted.
+        * layout/FormattingContextQuirks.cpp:
+        (WebCore::Layout::FormattingContext::Quirks::heightValueOfNearestContainingBlockWithFixedHeight):
+        * layout/LayoutUnits.h:
+        * layout/MarginTypes.h:
+        (WebCore::Layout::UsedVerticalMargin::before const):
+        (WebCore::Layout::UsedVerticalMargin::after const):
+        (WebCore::Layout::UsedVerticalMargin::nonCollapsedValues const):
+        (WebCore::Layout::UsedVerticalMargin::collapsedValues const):
+        (WebCore::Layout::UsedVerticalMargin::hasCollapsedValues const):
+        (WebCore::Layout::UsedVerticalMargin::setCollapsedValues):
+        (WebCore::Layout::UsedVerticalMargin::UsedVerticalMargin):
+        (WebCore::Layout::VerticalMargin::nonCollapsedValues const): Deleted.
+        (WebCore::Layout::VerticalMargin::collapsedValues const): Deleted.
+        (WebCore::Layout::VerticalMargin::setCollapsedValues): Deleted.
+        (WebCore::Layout::VerticalMargin::VerticalMargin): Deleted.
+        (WebCore::Layout::VerticalMargin::usedValues const): Deleted.
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::computeHeightAndMargin const):
+        * layout/blockformatting/BlockFormattingContextGeometry.cpp:
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowNonReplacedHeightAndMargin):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowHeightAndMargin):
+        * layout/blockformatting/BlockFormattingContextQuirks.cpp:
+        (WebCore::Layout::BlockFormattingContext::Quirks::stretchedHeight):
+        * layout/blockformatting/BlockMarginCollapse.cpp:
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::computedNonCollapsedMarginBefore):
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::computedNonCollapsedMarginAfter):
+        * layout/displaytree/DisplayBox.h:
+        (WebCore::Display::Box::setVerticalMargin):
+        (WebCore::Display::Box::verticalMargin const):
+        (WebCore::Display::Box::marginBefore const):
+        (WebCore::Display::Box::marginAfter const):
+        * layout/floats/FloatingContext.cpp:
+        (WebCore::Layout::FloatingContext::verticalPositionWithClearance const):
+        * layout/inlineformatting/InlineFormattingContext.cpp:
+        (WebCore::Layout::InlineFormattingContext::computeHeightAndMargin const):
+
+2019-01-04  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r238522): Erratic scrolling on Google flights search result page and vrbo.com
+        https://bugs.webkit.org/show_bug.cgi?id=192996
+        <rdar://problem/46573552>
+
+        Reviewed by Simon Fraser.
+
+        Only scroll a text field if its inner text size changes and it is the currently active and
+        focused element on the page.
+
+        Test: fast/scrolling/page-should-not-scroll-on-unfocused-text-field-layout.html
+
+        * rendering/RenderTextControlSingleLine.cpp:
+        (WebCore::RenderTextControlSingleLine::layout):
+
+2019-01-04  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards fixing Mac CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=193105
+
+        Reviewed by Don Olmstead.
+
+        * PlatformMac.cmake:
+        * Sources.txt:
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/gpu/GPURenderPassEncoder.h:
+
+2019-01-04  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] ERROR: post-layout: dirty renderer(s) in WebCore::RenderTreeNeedsLayoutChecker::~RenderTreeNeedsLayoutChecker()
+        https://bugs.webkit.org/show_bug.cgi?id=189608
+        <rdar://problem/44473299>
+
+        Reviewed by Simon Fraser.
+
+        When a frameset/iframe is hidden and we skip layout, clear the dirty flag on its subtree as well.
+
+        Covered by fast/frames/invalid-frameset.html.
+
+        * rendering/RenderFrameSet.cpp:
+        (WebCore::clearSiblingSubtrees):
+        (WebCore::RenderFrameSet::positionFrames):
+        (WebCore::RenderFrameSet::positionFramesWithFlattening):
+
+2019-01-04  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Implement abortable fetch
+        https://bugs.webkit.org/show_bug.cgi?id=174980
+        <rdar://problem/46861402>
+
+        Reviewed by Chris Dumez.
+
+        Add an AbortSignal to FetchRequest.
+
+        Add support for AbortSignal algorithm.
+        The fetch request signal is added an algorithm to abort the fetch.
+        Update clone algorithm to let signal of the cloned request be following the origin request.
+
+        Update ReadableStream error handling to return an exception instead of a string.
+        This allows passing an AbortError instead of a TypeError as previously done.
+
+        Update FetchBodyOwner to store a loading error either as an exception or as a resource error.
+        The latter is used for passing the error from service worker back to the page.
+        The former is used to pass it to ReadableStream or body accessors.
+
+        Covered by enabled tests.
+
+        * Modules/cache/DOMCache.cpp:
+        (WebCore::DOMCache::put):
+        * Modules/fetch/FetchBody.cpp:
+        (WebCore::FetchBody::consumeAsStream):
+        (WebCore::FetchBody::loadingFailed):
+        * Modules/fetch/FetchBody.h:
+        * Modules/fetch/FetchBodyConsumer.cpp:
+        (WebCore::FetchBodyConsumer::loadingFailed):
+        * Modules/fetch/FetchBodyConsumer.h:
+        * Modules/fetch/FetchBodyOwner.cpp:
+        (WebCore::FetchBodyOwner::arrayBuffer):
+        (WebCore::FetchBodyOwner::blob):
+        (WebCore::FetchBodyOwner::cloneBody):
+        (WebCore::FetchBodyOwner::formData):
+        (WebCore::FetchBodyOwner::json):
+        (WebCore::FetchBodyOwner::text):
+        (WebCore::FetchBodyOwner::loadBlob):
+        (WebCore::FetchBodyOwner::blobLoadingFailed):
+        (WebCore::FetchBodyOwner::consumeBodyAsStream):
+        (WebCore::FetchBodyOwner::setLoadingError):
+        * Modules/fetch/FetchBodyOwner.h:
+        (WebCore::FetchBodyOwner::loadingError const):
+        (WebCore::FetchBodyOwner::loadingException const):
+        * Modules/fetch/FetchBodySource.cpp:
+        (WebCore::FetchBodySource::error):
+        * Modules/fetch/FetchBodySource.h:
+        * Modules/fetch/FetchRequest.cpp:
+        (WebCore::FetchRequest::initializeWith):
+        (WebCore::FetchRequest::clone):
+        * Modules/fetch/FetchRequest.h:
+        (WebCore::FetchRequest::FetchRequest):
+        * Modules/fetch/FetchRequest.idl:
+        * Modules/fetch/FetchRequestInit.h:
+        (WebCore::FetchRequestInit::hasMembers const):
+        * Modules/fetch/FetchRequestInit.idl:
+        * Modules/fetch/FetchResponse.cpp:
+        (WebCore::FetchResponse::clone):
+        (WebCore::FetchResponse::fetch):
+        (WebCore::FetchResponse::BodyLoader::didFail):
+        * Modules/fetch/FetchResponse.h:
+        * bindings/js/ReadableStreamDefaultController.h:
+        (WebCore::ReadableStreamDefaultController::error):
+        * dom/AbortSignal.cpp:
+        (WebCore::AbortSignal::abort):
+        (WebCore::AbortSignal::follow):
+        * dom/AbortSignal.h:
+
+2019-01-04  Brent Fulgham  <bfulgham@apple.com>
+
+        Parsed protocol of javascript URLs with embedded newlines and carriage returns do not match parsed protocol in Chrome and Firefox
+        https://bugs.webkit.org/show_bug.cgi?id=193155
+        <rdar://problem/40230982>
+
+        Reviewed by Chris Dumez.
+
+        Test: fast/loader/comment-only-javascript-url.html
+
+        Make a special case for URLs beginning with 'javascript:'. We should always
+        treat these as JS URLs, even if the content contained within the URL
+        string might match other parts of the URL parsing spec.
+
+        * html/URLUtils.h:
+        (WebCore::URLUtils<T>::protocol const):
+
 2019-01-04  Jer Noble  <jer.noble@apple.com>
 
         [WebKitLegacy] Media playback pauses on scroll

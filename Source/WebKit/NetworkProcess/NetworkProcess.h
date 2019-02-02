@@ -84,19 +84,22 @@ struct WebsiteDataStoreParameters;
 class WebSWOriginStore;
 #endif
 
+namespace CacheStorage {
+class Engine;
+}
+
 namespace NetworkCache {
 class Cache;
 }
 
-class NetworkProcess : public ChildProcess, private DownloadManager::Client
+class NetworkProcess : public ChildProcess, private DownloadManager::Client, public ThreadSafeRefCounted<NetworkProcess>
 #if ENABLE(INDEXED_DATABASE)
     , public WebCore::IDBServer::IDBBackingStoreTemporaryFileHandler
 #endif
 {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
-    friend NeverDestroyed<NetworkProcess>;
-    friend NeverDestroyed<DownloadManager>;
 public:
+    ~NetworkProcess();
     static NetworkProcess& singleton();
     static constexpr ProcessType processType = ProcessType::Network;
 
@@ -209,9 +212,17 @@ public:
     NetworkHTTPSUpgradeChecker& networkHTTPSUpgradeChecker() { return m_networkHTTPSUpgradeChecker; }
 #endif
 
+    const String& uiProcessBundleIdentifier() const { return m_uiProcessBundleIdentifier; }
+
+    void ref() const override { ThreadSafeRefCounted<NetworkProcess>::ref(); }
+    void deref() const override { ThreadSafeRefCounted<NetworkProcess>::deref(); }
+    
+    CacheStorage::Engine* findCacheEngine(const PAL::SessionID&);
+    CacheStorage::Engine& ensureCacheEngine(const PAL::SessionID&, Function<Ref<CacheStorage::Engine>()>&&);
+    void removeCacheEngine(const PAL::SessionID&);
+    
 private:
     NetworkProcess();
-    ~NetworkProcess();
 
     void platformInitializeNetworkProcess(const NetworkProcessCreationParameters&);
 
@@ -246,6 +257,7 @@ private:
     void didCreateDownload() override;
     void didDestroyDownload() override;
     IPC::Connection* downloadProxyConnection() override;
+    IPC::Connection* parentProcessConnectionForDownloads() override { return parentProcessConnection(); }
     AuthenticationManager& downloadsAuthenticationManager() override;
     void pendingDownloadCanceled(DownloadID) override;
 
@@ -264,7 +276,7 @@ private:
     void setCacheStorageParameters(PAL::SessionID, uint64_t quota, String&& cacheStorageDirectory, SandboxExtension::Handle&&);
 
     // FIXME: This should take a session ID so we can identify which disk cache to delete.
-    void clearDiskCache(WallTime modifiedSince, Function<void ()>&& completionHandler);
+    void clearDiskCache(WallTime modifiedSince, CompletionHandler<void()>&&);
 
     void downloadRequest(PAL::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedFilename);
     void resumeDownload(PAL::SessionID, DownloadID, const IPC::DataReference& resumeData, const String& path, SandboxExtension::Handle&&);
@@ -275,7 +287,7 @@ private:
     void continueWillSendRequest(DownloadID, WebCore::ResourceRequest&&);
     void continueDecidePendingDownloadDestination(DownloadID, String destination, SandboxExtension::Handle&&, bool allowOverwrite);
 
-    void setCacheModel(uint32_t);
+    void setCacheModel(CacheModel);
     void allowSpecificHTTPSCertificateForHost(const WebCore::CertificateInfo&, const String& host);
     void setCanHandleHTTPSServerTrustEvaluation(bool);
     void getNetworkProcessStatistics(uint64_t callbackID);
@@ -352,6 +364,10 @@ private:
     bool m_suppressMemoryPressureHandler { false };
     bool m_diskCacheIsDisabledForTesting;
     bool m_canHandleHTTPSServerTrustEvaluation;
+    String m_uiProcessBundleIdentifier;
+    DownloadManager m_downloadManager;
+
+    HashMap<PAL::SessionID, Ref<CacheStorage::Engine>> m_cacheEngines;
 
     RefPtr<NetworkCache::Cache> m_cache;
 

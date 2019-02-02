@@ -166,10 +166,6 @@ webrtc/datachannel [ Pass ]
 webrtc/datachannel/mdns-ice-candidates.html [ Skip ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription-offer.html [ Failure ]
 
-# Skip pointerevents on WK1
-pointerevents [ Skip ]
-imported/w3c/web-platform-tests/pointerevents [ Skip ]
-
 # Datalist is unsupported in WK1
 fast/forms/datalist [ WontFix ]
 imported/w3c/web-platform-tests/html/semantics/forms/the-datalist-element [ WontFix ]
@@ -650,8 +646,6 @@ webkit.org/b/189756 [ Mojave+ ] compositing/filters/opacity-change-on-filtered-p
 # WebGPU is not supported on WK1.
 webgpu [ Skip ]
 
-webkit.org/b/189680 platform/mac/media/audio-session-category-video-paused.html [ Pass Timeout ]
-
 webkit.org/b/189723 http/tests/security/cross-origin-xsl-redirect-BLOCKED.html [ Pass Failure ]
 
 webkit.org/b/190350 [ Mojave ] storage/indexeddb/database-odd-names.html [ Failure ]
@@ -670,3 +664,5 @@ webkit.org/b/190383 fast/images/animated-image-loop-count.html [ Pass ImageOnlyF
 webkit.org/b/190383 fast/images/animated-image-different-dest-size.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/191639 imported/blink/compositing/squashing/squashing-into-ancestor-painted-layer.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/190627  [ Mojave+ ] compositing/masks/compositing-clip-path-change-no-repaint.html  [ Pass Failure ]

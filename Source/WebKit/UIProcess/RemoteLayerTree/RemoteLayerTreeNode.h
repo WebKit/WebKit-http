@@ -35,6 +35,8 @@ OBJC_CLASS UIView;
 
 namespace WebKit {
 
+class RemoteLayerTreeScrollbars;
+
 class RemoteLayerTreeNode {
     WTF_MAKE_FAST_ALLOCATED;
 public:

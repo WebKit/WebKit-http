@@ -1,3 +1,56 @@
+2019-01-07  Dean Jackson  <dino@apple.com>
+
+        Turn on Pointer Events by default for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=193214
+        <rdar://problem/46974878>
+
+        Reviewed by Wenson Hsieh.
+
+        Update expected results.
+
+        * web-platform-tests/pointerevents/extension/pointerevent_touch-action-verification-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_touch-action-illegal-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_touch-action-verification-expected.txt:
+
+2019-01-07  Youenn Fablet  <youenn@apple.com>
+
+        Resync WPT fetch tests to 834eac4
+        https://bugs.webkit.org/show_bug.cgi?id=193125
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/fetch: Resynced.
+        * web-platform-tests/html/webappapis/atob/base64-expected.txt:
+
+2019-01-05  Youenn Fablet  <youenn@apple.com>
+
+        Service Worker fetch should obey its referrer policy
+        https://bugs.webkit.org/show_bug.cgi?id=193152
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/referrer-policy-header.https-expected.txt:
+
+2019-01-04  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Implement abortable fetch
+        https://bugs.webkit.org/show_bug.cgi?id=174980
+        <rdar://problem/46861402>
+
+        Reviewed by Chris Dumez.
+
+        Fixed tests to run in WebKit CI.
+        Also fixed a bug in a test where the fetch response body is not actually empty.
+
+        * web-platform-tests/fetch/api/abort/cache.https-expected.txt:
+        * web-platform-tests/fetch/api/abort/general-serviceworker.https-expected.txt:
+        * web-platform-tests/fetch/api/abort/general.any-expected.txt:
+        * web-platform-tests/fetch/api/abort/general.any.js:
+        * web-platform-tests/fetch/api/abort/general.any.worker-expected.txt:
+        * web-platform-tests/fetch/api/abort/serviceworker-intercepted.https-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume-stream-expected.txt:
+
 2019-01-02  Simon Fraser  <simon.fraser@apple.com>
 
         Support css-color-4 rgb functions

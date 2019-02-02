@@ -161,6 +161,7 @@ fast/media/mq-prefers-reduced-motion-live-update.html [ Skip ]
 http/tests/loading/basic-auth-remove-credentials.html [ Skip ]
 http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Skip ]
 http/tests/security/strip-referrer-to-origin-for-third-party-requests-in-private-mode.html [ Skip ]
+media/deactivate-audio-session.html [ Skip ]
 
 # ApplePay is only available on iOS (greater than iOS 10) and macOS (greater than macOS 10.12) and only for WebKit2.
 http/tests/ssl/applepay/ [ Skip ]
@@ -211,7 +212,6 @@ imported/w3c/web-platform-tests/service-workers/service-worker/worker-client-id.
 imported/w3c/web-platform-tests/cors/remote-origin.htm [ Skip ]
 
 # Skip service worker tests that are timing out.
-imported/w3c/web-platform-tests/fetch/api/abort/general-serviceworker.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/performance-timeline.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/respond-with-body-accessed-response.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/sandboxed-iframe-fetch-event.https.html [ Skip ]
@@ -262,8 +262,6 @@ http/tests/security/frame-loading-via-document-write-async-delegates.html [ Dump
 imported/w3c/web-platform-tests/fetch/api/basic/mode-same-origin.any.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/fetch/api/basic/scheme-about.any.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/fetch/api/basic/scheme-about.any.worker.html [ DumpJSConsoleLogInStdErr ]
-imported/w3c/web-platform-tests/fetch/api/redirect/redirect-mode-worker.html [ DumpJSConsoleLogInStdErr ]
-imported/w3c/web-platform-tests/fetch/api/redirect/redirect-to-dataurl.html [ DumpJSConsoleLogInStdErr ]
 
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-response-taint.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html [ DumpJSConsoleLogInStdErr ]
@@ -303,7 +301,6 @@ imported/w3c/web-platform-tests/workers/constructors/SharedWorker [ Skip ]
 imported/w3c/web-platform-tests/workers/SharedWorker_blobUrl.html [ Skip ]
 
 imported/w3c/web-platform-tests/beacon/beacon-basic-blob.html [ DumpJSConsoleLogInStdErr ]
-imported/w3c/web-platform-tests/fetch/api/redirect/redirect-mode.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-redirect.any.worker.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/xhr/access-control-and-redirects.htm [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/xhr/access-control-basic-cors-safelisted-request-headers.htm [ DumpJSConsoleLogInStdErr ]
@@ -383,13 +380,23 @@ webkit.org/b/189905 imported/w3c/web-platform-tests/resource-timing/resource_ini
 webkit.org/b/189910 imported/w3c/web-platform-tests/resource-timing/resource_timing_store_and_clear_during_callback.html [ Pass Failure ]
 webkit.org/b/190523 imported/w3c/web-platform-tests/resource-timing/resource_timing_cross_origin_redirect_chain.html [ Pass Failure ]
 
-# The follow two tests change their output each run
-imported/w3c/web-platform-tests/fetch/api/abort/general.any.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/abort/general.any.worker.html [ Skip ]
+# These fetch tests are flaky or fail.
+imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.any.html [ Pass Failure ]
+imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.any.worker.html [ Pass Failure ]
+imported/w3c/web-platform-tests/fetch/content-encoding/bad-gzip-body.any.html [ Pass Failure ]
+imported/w3c/web-platform-tests/fetch/http-cache/basic-auth-cache-test.html [ ImageOnlyFailure ]
 
-# These tests time out
+# Fetch fetatures that are not implemented.
+imported/w3c/web-platform-tests/fetch/corb [ Skip ]
+imported/w3c/web-platform-tests/fetch/sec-metadata [ Skip ]
+
+# These fetch tests time out
 imported/w3c/web-platform-tests/fetch/api/request/destination/fetch-destination-no-load-event.https.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/request/destination/fetch-destination.https.html [ Skip ]
+imported/w3c/web-platform-tests/fetch/range/sw.https.window.html [ Skip ]
+imported/w3c/web-platform-tests/fetch/content-encoding/bad-gzip-body.any.worker.html [ Skip ]
+imported/w3c/web-platform-tests/fetch/api/request/destination/fetch-destination-prefetch.https.html [ Skip ]
+imported/w3c/web-platform-tests/fetch/content-type/response.window.html [ Skip ]
 
 # Not supported
 imported/w3c/web-platform-tests/background-fetch [ Skip ]
@@ -438,6 +445,10 @@ fast/web-share [ Skip ]
 
 # This test was created to test a mac-wk2 bugfix
 fast/animation/request-animation-frame-in-two-pages.html [ Skip ]
+
+# Only supported on iOS
+imported/w3c/web-platform-tests/pointerevents [ Skip ]
+pointerevents [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -755,6 +766,9 @@ imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-status.any.html [ 
 imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight.any.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-preflight.any.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/fetch/content-type/script.window.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/fetch/api/request/request-init-stream.any.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/fetch/api/response/response-error-from-stream.html [ DumpJSConsoleLogInStdErr ]
 
 webkit.org/b/161088 imported/w3c/web-platform-tests/resource-timing/resource-timing.html [ Pass Failure ]
 imported/w3c/web-platform-tests/resource-timing/test_resource_timing.html [ Pass Failure ]

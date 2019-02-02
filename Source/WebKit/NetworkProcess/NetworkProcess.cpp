@@ -115,15 +115,16 @@ static void callExitSoon(IPC::Connection*)
 
 NetworkProcess& NetworkProcess::singleton()
 {
-    static NeverDestroyed<NetworkProcess> networkProcess;
-    return networkProcess;
+    static NeverDestroyed<Ref<NetworkProcess>> networkProcess(adoptRef(*new NetworkProcess));
+    return networkProcess.get();
 }
 
 NetworkProcess::NetworkProcess()
     : m_hasSetCacheModel(false)
-    , m_cacheModel(CacheModelDocumentViewer)
+    , m_cacheModel(CacheModel::DocumentViewer)
     , m_diskCacheIsDisabledForTesting(false)
     , m_canHandleHTTPSServerTrustEvaluation(true)
+    , m_downloadManager(*this)
 #if PLATFORM(COCOA)
     , m_clearCacheDispatchGroup(0)
 #endif
@@ -165,8 +166,7 @@ AuthenticationManager& NetworkProcess::authenticationManager()
 
 DownloadManager& NetworkProcess::downloadManager()
 {
-    static NeverDestroyed<DownloadManager> downloadManager(*this);
-    return downloadManager;
+    return m_downloadManager;
 }
 
 #if ENABLE(PROXIMITY_NETWORKING)
@@ -291,7 +291,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 
     m_diskCacheIsDisabledForTesting = parameters.shouldUseTestingNetworkSession;
 
-    setCacheModel(static_cast<uint32_t>(parameters.cacheModel));
+    setCacheModel(parameters.cacheModel);
 
     setCanHandleHTTPSServerTrustEvaluation(parameters.canHandleHTTPSServerTrustEvaluation);
 
@@ -299,7 +299,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
         NetworkStorageSession::switchToNewTestingSession();
 
     auto sessionID = parameters.defaultDataStoreParameters.networkSessionParameters.sessionID;
-    SessionTracker::setSession(sessionID, NetworkSession::create(WTFMove(parameters.defaultDataStoreParameters.networkSessionParameters)));
+    SessionTracker::setSession(sessionID, NetworkSession::create(*this, WTFMove(parameters.defaultDataStoreParameters.networkSessionParameters)));
 
 #if ENABLE(INDEXED_DATABASE)
     addIndexedDatabaseSession(sessionID, parameters.defaultDataStoreParameters.indexedDatabaseDirectory, parameters.defaultDataStoreParameters.indexedDatabaseDirectoryExtensionHandle);
@@ -364,7 +364,7 @@ void NetworkProcess::createNetworkConnectionToWebProcess(bool isServiceWorkerPro
 #if USE(UNIX_DOMAIN_SOCKETS)
     IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
 
-    auto connection = NetworkConnectionToWebProcess::create(socketPair.server);
+    auto connection = NetworkConnectionToWebProcess::create(*this, socketPair.server);
     m_webProcessConnections.append(WTFMove(connection));
 
     IPC::Attachment clientSocket(socketPair.client);
@@ -383,7 +383,7 @@ void NetworkProcess::createNetworkConnectionToWebProcess(bool isServiceWorkerPro
     }
 
     // Create a listening connection.
-    auto connection = NetworkConnectionToWebProcess::create(IPC::Connection::Identifier(listeningPort));
+    auto connection = NetworkConnectionToWebProcess::create(*this, IPC::Connection::Identifier(listeningPort));
     m_webProcessConnections.append(WTFMove(connection));
 
     IPC::Attachment clientPort(listeningPort, MACH_MSG_TYPE_MAKE_SEND);
@@ -395,7 +395,7 @@ void NetworkProcess::createNetworkConnectionToWebProcess(bool isServiceWorkerPro
         CRASH();
     }
 
-    auto connection = NetworkConnectionToWebProcess::create(serverIdentifier);
+    auto connection = NetworkConnectionToWebProcess::create(*this, serverIdentifier);
     m_webProcessConnections.append(WTFMove(connection));
 
     IPC::Attachment clientSocket(clientIdentifier);
@@ -446,14 +446,14 @@ void NetworkProcess::addWebsiteDataStore(WebsiteDataStoreParameters&& parameters
         addServiceWorkerSession(parameters.networkSessionParameters.sessionID, parameters.serviceWorkerRegistrationDirectory, parameters.serviceWorkerRegistrationDirectoryExtensionHandle);
 #endif
 
-    RemoteNetworkingContext::ensureWebsiteDataStoreSession(WTFMove(parameters));
+    RemoteNetworkingContext::ensureWebsiteDataStoreSession(*this, WTFMove(parameters));
 }
 
 void NetworkProcess::destroySession(PAL::SessionID sessionID)
 {
     SessionTracker::destroySession(sessionID);
     m_sessionsControlledByAutomation.remove(sessionID);
-    CacheStorage::Engine::destroyEngine(sessionID);
+    CacheStorage::Engine::destroyEngine(*this, sessionID);
 
 #if ENABLE(SERVICE_WORKER)
     m_swServers.remove(sessionID);
@@ -567,36 +567,35 @@ void NetworkProcess::setSessionIsControlledByAutomation(PAL::SessionID sessionID
         m_sessionsControlledByAutomation.remove(sessionID);
 }
 
-static void fetchDiskCacheEntries(PAL::SessionID sessionID, OptionSet<WebsiteDataFetchOption> fetchOptions, Function<void (Vector<WebsiteData::Entry>)>&& completionHandler)
+static void fetchDiskCacheEntries(NetworkCache::Cache* cache, PAL::SessionID sessionID, OptionSet<WebsiteDataFetchOption> fetchOptions, CompletionHandler<void(Vector<WebsiteData::Entry>)>&& completionHandler)
 {
-    if (auto* cache = NetworkProcess::singleton().cache()) {
-        HashMap<SecurityOriginData, uint64_t> originsAndSizes;
-        cache->traverse([fetchOptions, completionHandler = WTFMove(completionHandler), originsAndSizes = WTFMove(originsAndSizes)](auto* traversalEntry) mutable {
-            if (!traversalEntry) {
-                Vector<WebsiteData::Entry> entries;
-
-                for (auto& originAndSize : originsAndSizes)
-                    entries.append(WebsiteData::Entry { originAndSize.key, WebsiteDataType::DiskCache, originAndSize.value });
-
-                RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), entries = WTFMove(entries)] {
-                    completionHandler(entries);
-                });
-
-                return;
-            }
-
-            auto url = traversalEntry->entry.response().url();
-            auto result = originsAndSizes.add({url.protocol().toString(), url.host().toString(), url.port()}, 0);
-
-            if (fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes))
-                result.iterator->value += traversalEntry->entry.sourceStorageRecord().header.size() + traversalEntry->recordInfo.bodySize;
+    if (!cache) {
+        RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] () mutable {
+            completionHandler({ });
         });
-
         return;
     }
+    
+    HashMap<SecurityOriginData, uint64_t> originsAndSizes;
+    cache->traverse([fetchOptions, completionHandler = WTFMove(completionHandler), originsAndSizes = WTFMove(originsAndSizes)](auto* traversalEntry) mutable {
+        if (!traversalEntry) {
+            Vector<WebsiteData::Entry> entries;
 
-    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] {
-        completionHandler({ });
+            for (auto& originAndSize : originsAndSizes)
+                entries.append(WebsiteData::Entry { originAndSize.key, WebsiteDataType::DiskCache, originAndSize.value });
+
+            RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), entries = WTFMove(entries)] () mutable {
+                completionHandler(entries);
+            });
+
+            return;
+        }
+
+        auto url = traversalEntry->entry.response().url();
+        auto result = originsAndSizes.add({url.protocol().toString(), url.host().toString(), url.port()}, 0);
+
+        if (fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes))
+            result.iterator->value += traversalEntry->entry.sourceStorageRecord().header.size() + traversalEntry->recordInfo.bodySize;
     });
 }
 
@@ -612,12 +611,12 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
         {
             ASSERT(RunLoop::isMain());
 
-            RunLoop::main().dispatch([completionHandler = WTFMove(m_completionHandler), websiteData = WTFMove(m_websiteData)] {
+            RunLoop::main().dispatch([completionHandler = WTFMove(m_completionHandler), websiteData = WTFMove(m_websiteData)] () mutable {
                 completionHandler(websiteData);
             });
         }
 
-        Function<void (WebsiteData)> m_completionHandler;
+        CompletionHandler<void(WebsiteData)> m_completionHandler;
         WebsiteData m_websiteData;
     };
 
@@ -636,7 +635,7 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
     }
 
     if (websiteDataTypes.contains(WebsiteDataType::DOMCache)) {
-        CacheStorage::Engine::fetchEntries(sessionID, fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes), [callbackAggregator = callbackAggregator.copyRef()](auto entries) mutable {
+        CacheStorage::Engine::fetchEntries(*this, sessionID, fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes), [callbackAggregator = callbackAggregator.copyRef()](auto entries) mutable {
             callbackAggregator->m_websiteData.entries.appendVector(entries);
         });
     }
@@ -672,7 +671,7 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
 #endif
 
     if (websiteDataTypes.contains(WebsiteDataType::DiskCache)) {
-        fetchDiskCacheEntries(sessionID, fetchOptions, [callbackAggregator = WTFMove(callbackAggregator)](auto entries) mutable {
+        fetchDiskCacheEntries(cache(), sessionID, fetchOptions, [callbackAggregator = WTFMove(callbackAggregator)](auto entries) mutable {
             callbackAggregator->m_websiteData.entries.appendVector(entries);
         });
     }
@@ -702,7 +701,7 @@ void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<Websi
     });
 
     if (websiteDataTypes.contains(WebsiteDataType::DOMCache))
-        CacheStorage::Engine::clearAllCaches(sessionID, [clearTasksHandler = clearTasksHandler.copyRef()] { });
+        CacheStorage::Engine::clearAllCaches(*this, sessionID, [clearTasksHandler = clearTasksHandler.copyRef()] { });
 
 #if ENABLE(INDEXED_DATABASE)
     if (websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases) && !sessionID.isEphemeral())
@@ -718,29 +717,28 @@ void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<Websi
         clearDiskCache(modifiedSince, [clearTasksHandler = WTFMove(clearTasksHandler)] { });
 }
 
-static void clearDiskCacheEntries(const Vector<SecurityOriginData>& origins, Function<void ()>&& completionHandler)
+static void clearDiskCacheEntries(NetworkCache::Cache* cache, const Vector<SecurityOriginData>& origins, CompletionHandler<void()>&& completionHandler)
 {
-    if (auto* cache = NetworkProcess::singleton().cache()) {
-        HashSet<RefPtr<SecurityOrigin>> originsToDelete;
-        for (auto& origin : origins)
-            originsToDelete.add(origin.securityOrigin());
-
-        Vector<NetworkCache::Key> cacheKeysToDelete;
-        cache->traverse([cache, completionHandler = WTFMove(completionHandler), originsToDelete = WTFMove(originsToDelete), cacheKeysToDelete = WTFMove(cacheKeysToDelete)](auto* traversalEntry) mutable {
-            if (traversalEntry) {
-                if (originsToDelete.contains(SecurityOrigin::create(traversalEntry->entry.response().url())))
-                    cacheKeysToDelete.append(traversalEntry->entry.key());
-                return;
-            }
-
-            cache->remove(cacheKeysToDelete, WTFMove(completionHandler));
-            return;
-        });
-
+    if (!cache) {
+        RunLoop::main().dispatch(WTFMove(completionHandler));
         return;
     }
 
-    RunLoop::main().dispatch(WTFMove(completionHandler));
+    HashSet<RefPtr<SecurityOrigin>> originsToDelete;
+    for (auto& origin : origins)
+        originsToDelete.add(origin.securityOrigin());
+
+    Vector<NetworkCache::Key> cacheKeysToDelete;
+    cache->traverse([cache, completionHandler = WTFMove(completionHandler), originsToDelete = WTFMove(originsToDelete), cacheKeysToDelete = WTFMove(cacheKeysToDelete)](auto* traversalEntry) mutable {
+        if (traversalEntry) {
+            if (originsToDelete.contains(SecurityOrigin::create(traversalEntry->entry.response().url())))
+                cacheKeysToDelete.append(traversalEntry->entry.key());
+            return;
+        }
+
+        cache->remove(cacheKeysToDelete, WTFMove(completionHandler));
+        return;
+    });
 }
 
 void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, const Vector<SecurityOriginData>& originDatas, const Vector<String>& cookieHostNames, const Vector<String>& HSTSCacheHostNames, uint64_t callbackID)
@@ -763,7 +761,7 @@ void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, Optio
 
     if (websiteDataTypes.contains(WebsiteDataType::DOMCache)) {
         for (auto& originData : originDatas)
-            CacheStorage::Engine::clearCachesForOrigin(sessionID, SecurityOriginData { originData }, [clearTasksHandler = clearTasksHandler.copyRef()] { });
+            CacheStorage::Engine::clearCachesForOrigin(*this, sessionID, SecurityOriginData { originData }, [clearTasksHandler = clearTasksHandler.copyRef()] { });
     }
 
 #if ENABLE(INDEXED_DATABASE)
@@ -780,7 +778,22 @@ void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, Optio
 #endif
 
     if (websiteDataTypes.contains(WebsiteDataType::DiskCache) && !sessionID.isEphemeral())
-        clearDiskCacheEntries(originDatas, [clearTasksHandler = WTFMove(clearTasksHandler)] { });
+        clearDiskCacheEntries(cache(), originDatas, [clearTasksHandler = WTFMove(clearTasksHandler)] { });
+}
+
+CacheStorage::Engine* NetworkProcess::findCacheEngine(const PAL::SessionID& sessionID)
+{
+    return m_cacheEngines.get(sessionID);
+}
+
+CacheStorage::Engine& NetworkProcess::ensureCacheEngine(const PAL::SessionID& sessionID, Function<Ref<CacheStorage::Engine>()>&& functor)
+{
+    return m_cacheEngines.ensure(sessionID, WTFMove(functor)).iterator->value;
+}
+
+void NetworkProcess::removeCacheEngine(const PAL::SessionID& sessionID)
+{
+    m_cacheEngines.remove(sessionID);
 }
 
 void NetworkProcess::downloadRequest(PAL::SessionID sessionID, DownloadID downloadID, const ResourceRequest& request, const String& suggestedFilename)
@@ -838,10 +851,8 @@ void NetworkProcess::continueDecidePendingDownloadDestination(DownloadID downloa
         downloadManager().continueDecidePendingDownloadDestination(downloadID, destination, WTFMove(sandboxExtensionHandle), allowOverwrite);
 }
 
-void NetworkProcess::setCacheModel(uint32_t cm)
+void NetworkProcess::setCacheModel(CacheModel cacheModel)
 {
-    CacheModel cacheModel = static_cast<CacheModel>(cm);
-
     if (m_hasSetCacheModel && (cacheModel == m_cacheModel))
         return;
 
@@ -871,9 +882,8 @@ void NetworkProcess::getNetworkProcessStatistics(uint64_t callbackID)
 {
     StatisticsData data;
 
-    auto& networkProcess = NetworkProcess::singleton();
-    data.statisticsNumbers.set("DownloadsActiveCount", networkProcess.downloadManager().activeDownloadCount());
-    data.statisticsNumbers.set("OutstandingAuthenticationChallengesCount", networkProcess.authenticationManager().outstandingAuthenticationChallengeCount());
+    data.statisticsNumbers.set("DownloadsActiveCount", downloadManager().activeDownloadCount());
+    data.statisticsNumbers.set("OutstandingAuthenticationChallengesCount", authenticationManager().outstandingAuthenticationChallengeCount());
 
     parentProcessConnection()->send(Messages::WebProcessPool::DidGetStatistics(data, callbackID), 0);
 }
@@ -1081,7 +1091,7 @@ IDBServer::IDBServer& NetworkProcess::idbServer(PAL::SessionID sessionID)
     // If there's not, then where did this PAL::SessionID come from?
     ASSERT(!path.isEmpty());
     
-    addResult.iterator->value = IDBServer::IDBServer::create(path, NetworkProcess::singleton());
+    addResult.iterator->value = IDBServer::IDBServer::create(path, *this);
     addResult.iterator->value->setPerOriginQuota(m_idbPerOriginQuota);
     return *addResult.iterator->value;
 }

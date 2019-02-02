@@ -85,7 +85,7 @@ WebPageProxy* RemoteWebInspectorProxy::platformCreateFrontendPageAndWindow()
 {
     m_objCAdapter = adoptNS([[WKRemoteWebInspectorProxyObjCAdapter alloc] initWithRemoteWebInspectorProxy:this]);
 
-    m_inspectorView = adoptNS([[WKInspectorViewController alloc] initWithInspectedPage:nil]);
+    m_inspectorView = adoptNS([[WKInspectorViewController alloc] initWithInspectedPage:nullptr]);
     [m_inspectorView.get() setDelegate:m_objCAdapter.get()];
 
     m_window = WebInspectorProxy::createFrontendWindow(NSZeroRect);
@@ -180,8 +180,9 @@ void RemoteWebInspectorProxy::platformSave(const String& suggestedURL, const Str
         saveToURL(panel.URL);
     };
 
-    if (m_window)
-        [panel beginSheetModalForWindow:m_window.get() completionHandler:completionHandler];
+    NSWindow *window = m_window ? m_window.get() : [NSApp keyWindow];
+    if (window)
+        [panel beginSheetModalForWindow:window completionHandler:completionHandler];
     else
         completionHandler([panel runModal]);
 }

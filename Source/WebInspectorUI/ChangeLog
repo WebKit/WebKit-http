@@ -1,3 +1,184 @@
+2019-01-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: run arrow shouldn't be visible when running tests
+        https://bugs.webkit.org/show_bug.cgi?id=192209
+        <rdar://problem/46423615>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/AuditTreeElement.js:
+        (WI.AuditTreeElement.prototype.onattach):
+        (WI.AuditTreeElement.prototype.ondetach):
+        (WI.AuditTreeElement.prototype._updateLevel):
+        (WI.AuditTreeElement.prototype._handleAuditManagerTestScheduled): Added.
+        (WI.AuditTreeElement.prototype._handleAuditManagerTestCompleted): Added.
+        * UserInterface/Views/AuditTreeElement.css: Added.
+        (.tree-outline .item.audit:matches(.test-case, .test-group):not(.manager-active) > .status:hover > img): Added.
+        (.tree-outline .item.audit.manager-active > .status > img.show-on-hover, .tree-outline .item.audit.test-group.expanded > .status:hover > :not(img), .tree-outline .item.audit.test-group-result.expanded > .status): Added.
+        (.tree-outline .item.audit:matches(.test-case, .test-group) > .status:hover > img): Deleted.
+        (.tree-outline .item.audit.test-group.expanded > .status:hover > :not(img), .tree-outline .item.audit.test-group-result.expanded > .status): Deleted.
+
+2019-01-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: extend XHR breakpoints to work with fetch
+        https://bugs.webkit.org/show_bug.cgi?id=185843
+        <rdar://problem/40431027>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager):
+        (WI.DOMDebuggerManager.supportsURLBreakpoints): Added.
+        (WI.DOMDebuggerManager.prototype.get urlBreakpoints): Added.
+        (WI.DOMDebuggerManager.prototype.urlBreakpointForURL): Added.
+        (WI.DOMDebuggerManager.prototype.addURLBreakpoint): Added.
+        (WI.DOMDebuggerManager.prototype.removeURLBreakpoint): Added.
+        (WI.DOMDebuggerManager.prototype._speculativelyResolveBreakpoints):
+        (WI.DOMDebuggerManager.prototype._updateURLBreakpoint): Added.
+        (WI.DOMDebuggerManager.prototype._resolveURLBreakpoint): Added.
+        (WI.DOMDebuggerManager.prototype._saveURLBreakpoints): Added.
+        (WI.DOMDebuggerManager.prototype._urlBreakpointDisabledStateDidChange): Added.
+        (WI.DOMDebuggerManager.prototype.get xhrBreakpoints): Deleted.
+        (WI.DOMDebuggerManager.prototype.xhrBreakpointForURL): Deleted.
+        (WI.DOMDebuggerManager.prototype.addXHRBreakpoint): Deleted.
+        (WI.DOMDebuggerManager.prototype.removeXHRBreakpoint): Deleted.
+        (WI.DOMDebuggerManager.prototype._updateXHRBreakpoint.breakpointUpdated): Deleted.
+        (WI.DOMDebuggerManager.prototype._updateXHRBreakpoint): Deleted.
+        (WI.DOMDebuggerManager.prototype._resolveXHRBreakpoint): Deleted.
+        (WI.DOMDebuggerManager.prototype._saveXHRBreakpoints): Deleted.
+        (WI.DOMDebuggerManager.prototype._xhrBreakpointDisabledStateDidChange): Deleted.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype._pauseReasonFromPayload):
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+        (WI.DebuggerSidebarPanel.prototype.willDismissPopover):
+        (WI.DebuggerSidebarPanel.prototype._addBreakpoint):
+        (WI.DebuggerSidebarPanel.prototype._treeSelectionDidChange):
+        (WI.DebuggerSidebarPanel.prototype._addTreeElement):
+        (WI.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        (WI.DebuggerSidebarPanel.prototype._handleCreateBreakpointClicked):
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WI.NavigationSidebarPanel.prototype._isTreeElementWithoutRepresentedObject):
+
+        * UserInterface/Models/URLBreakpoint.js: Renamed from Source/WebInspectorUI/UserInterface/Models/XHRBreakpoint.js.
+        * UserInterface/Views/URLBreakpointPopover.css: Renamed from Source/WebInspectorUI/UserInterface/Views/XHRBreakpointPopover.css.
+        * UserInterface/Views/URLBreakpointPopover.js: Renamed from Source/WebInspectorUI/UserInterface/Views/XHRBreakpointPopover.js.
+        * UserInterface/Views/URLBreakpointTreeElement.css: Renamed from Source/WebInspectorUI/UserInterface/Views/XHRBreakpointTreeElement.css.
+        * UserInterface/Views/URLBreakpointTreeElement.js: Renamed from Source/WebInspectorUI/UserInterface/Views/XHRBreakpointTreeElement.js.
+
+        * UserInterface/Base/Setting.js:
+        (WI.Setting.migrateValue): Added.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-01-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: show secure connection details per-request
+        https://bugs.webkit.org/show_bug.cgi?id=191539
+        <rdar://problem/45979891>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource):
+        (WI.Resource.prototype.get security): Added.
+        (WI.Resource.prototype.updateForResponse):
+        (WI.Resource.prototype.updateWithMetrics):
+        (WI.Resource.prototype.get responseSecurity): Deleted.
+
+        * UserInterface/Views/ResourceSecurityContentView.js:
+        (WI.ResourceSecurityContentView):
+        (WI.ResourceSecurityContentView.prototype.initialLayout):
+        (WI.ResourceSecurityContentView.prototype.layout):
+        (WI.ResourceSecurityContentView.prototype._refreshConnectionSection): Added.
+        (WI.ResourceSecurityContentView.prototype._refreshCetificateSection):
+        (WI.ResourceSecurityContentView.prototype._handleResourceMetricsDidChange): Added.
+        * UserInterface/Views/ResourceSecurityContentView.css:
+        (body[dir] .resource-security > section:matches(.connection, .certificate) > .details): Added.
+        (@media (prefers-dark-interface) body[dir] .resource-security > section:matches(.connection, .certificate) > .details): Added.
+        (body[dir] .resource-security > section.certificate > .details): Deleted.
+        (@media (prefers-dark-interface) body[dir] .resource-security > section.certificate > .details): Deleted.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-01-07  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: "white" isn't recognized as a color keyword
+        https://bugs.webkit.org/show_bug.cgi?id=193173
+        <rdar://problem/47068595>
+
+        Reviewed by Joseph Pecoraro.
+
+        Attempt to parse "atom" token types as colors.
+
+        Display color picker only for color-aware properties. For instance,
+        display it for "color: white" but not for "-apple-pay-button-style: white".
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (addKeywordsForName):
+        (WI.CSSKeywordCompletions.forProperty):
+        (WI.CSSKeywordCompletions.isColorAwareProperty):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._renderValue):
+        (WI.SpreadsheetStyleProperty.prototype._addColorTokens):
+
+2019-01-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: subclasses of WI.ClusterContentView don't save/restore content views after the initial view
+        https://bugs.webkit.org/show_bug.cgi?id=192451
+        <rdar://problem/46800958>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/BackForwardEntry.js:
+        (WI.BackForwardEntry.prototype.prepareToHide):
+        * UserInterface/Views/ClusterContentView.js:
+        (WI.ClusterContentView.prototype.get shouldSaveStateOnHide):
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.prototype.get shouldSaveStateOnHide):
+        Allow ClusterContentViews to save its state whenever its hidden,
+        this means it can be properly restored to the last state it had
+        instead of the initial state it was shown with.
+
+2019-01-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: disable breakpoints when running Audit
+        https://bugs.webkit.org/show_bug.cgi?id=193158
+        <rdar://problem/47057083>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager):
+        (WI.DebuggerManager.prototype._startDisablingBreakpointsTemporarily):
+        (WI.DebuggerManager.prototype._stopDisablingBreakpointsTemporarily):
+        (WI.DebuggerManager.prototype._handleAuditManagerTestScheduled): Added.
+        (WI.DebuggerManager.prototype._handleAuditManagerTestCompleted): Added.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._timelineCapturingWillStart):
+        (WI.DebuggerSidebarPanel.prototype._timelineCapturingStopped):
+        (WI.DebuggerSidebarPanel.prototype._handleAuditManagerTestScheduled): Added.
+        (WI.DebuggerSidebarPanel.prototype._handleAuditManagerTestCompleted): Added.
+        (WI.DebuggerSidebarPanel.prototype._updateBreakpointsDisabledBanner):
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger .warning-banner + .warning-banner): Added.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        Move `WI.auditManager` higher in the managers list so that it can be used in
+        `WI.DebuggerManager`'s constructor.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
 2019-01-04  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Add a Setting Toggle for Source Maps
