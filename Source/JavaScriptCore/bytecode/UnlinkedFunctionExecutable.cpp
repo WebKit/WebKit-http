@@ -194,6 +194,18 @@ UnlinkedFunctionExecutable* UnlinkedFunctionExecutable::fromGlobalCode(
     return executable;
 }
 
+UnlinkedFunctionCodeBlock* UnlinkedFunctionExecutable::unlinkedCodeBlockFor(CodeSpecializationKind specializationKind)
+{
+    switch (specializationKind) {
+    case CodeForCall:
+        return m_unlinkedCodeBlockForCall.get();
+    case CodeForConstruct:
+        return m_unlinkedCodeBlockForConstruct.get();
+    }
+    ASSERT_NOT_REACHED();
+    return nullptr;
+}
+
 UnlinkedFunctionCodeBlock* UnlinkedFunctionExecutable::unlinkedCodeBlockFor(
     VM& vm, const SourceCode& source, CodeSpecializationKind specializationKind, 
     DebuggerMode debuggerMode, ParserError& error, SourceParseMode parseMode)

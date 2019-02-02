@@ -37,6 +37,7 @@
 #import "AuthenticationChallengeDisposition.h"
 #import "AuthenticationDecisionListener.h"
 #import "CompletionHandlerCallChecker.h"
+#import "LoadOptimizer.h"
 #import "Logging.h"
 #import "NavigationActionData.h"
 #import "PageLoadState.h"
@@ -464,37 +465,40 @@ bool NavigationState::NavigationClient::willGoToBackForwardListItem(WebPageProxy
 }
 #endif
 
-static void tryAppLink(Ref<API::NavigationAction>&& navigationAction, const String& currentMainFrameURL, WTF::Function<void(bool)>&& completionHandler)
+static void tryInterceptNavigation(Ref<API::NavigationAction>&& navigationAction, WebPageProxy& page, WTF::Function<void(bool)>&& completionHandler)
 {
 #if HAVE(APP_LINKS)
-    if (!navigationAction->shouldOpenAppLinks()) {
-        completionHandler(false);
+    if (navigationAction->shouldOpenAppLinks()) {
+        auto* localCompletionHandler = new WTF::Function<void (bool)>(WTFMove(completionHandler));
+        [LSAppLink openWithURL:navigationAction->request().url() completionHandler:[localCompletionHandler](BOOL success, NSError *) {
+            dispatch_async(dispatch_get_main_queue(), [localCompletionHandler, success] {
+                (*localCompletionHandler)(success);
+                delete localCompletionHandler;
+            });
+        }];
         return;
     }
-
-    auto* localCompletionHandler = new WTF::Function<void (bool)>(WTFMove(completionHandler));
-    [LSAppLink openWithURL:navigationAction->request().url() completionHandler:[localCompletionHandler](BOOL success, NSError *) {
-        dispatch_async(dispatch_get_main_queue(), [localCompletionHandler, success] {
-            (*localCompletionHandler)(success);
-            delete localCompletionHandler;
-        });
-    }];
-#else
-    completionHandler(false);
 #endif
+
+#if HAVE(LOAD_OPTIMIZER)
+    if (LoadOptimizer::canOptimizeLoad(navigationAction->request().url())) {
+        page.websiteDataStore().loadOptimizer().optimizeLoad(navigationAction->request(), page, WTFMove(completionHandler));
+        return;
+    }
+#endif
+
+    completionHandler(false);
 }
 
 void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageProxy& webPageProxy, Ref<API::NavigationAction>&& navigationAction, Ref<WebFramePolicyListenerProxy>&& listener, API::Object* userInfo)
 {
-    ASSERT(webPageProxy.mainFrame());
-    String mainFrameURLString = webPageProxy.mainFrame()->url();
     bool subframeNavigation = navigationAction->targetFrame() && !navigationAction->targetFrame()->isMainFrame();
 
     if (!m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandler
         && !m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandlerWebsitePolicies
         && !m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionUserInfoDecisionHandlerWebsitePolicies) {
-        auto completionHandler = [webPage = makeRef(webPageProxy), listener = WTFMove(listener), navigationAction = navigationAction.copyRef()] (bool followedLinkToApp) {
-            if (followedLinkToApp) {
+        auto completionHandler = [webPage = makeRef(webPageProxy), listener = WTFMove(listener), navigationAction = navigationAction.copyRef()] (bool interceptedNavigation) {
+            if (interceptedNavigation) {
                 listener->ignore();
                 return;
             }
@@ -521,7 +525,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
 #endif
             listener->ignore();
         };
-        tryAppLink(WTFMove(navigationAction), mainFrameURLString, WTFMove(completionHandler));
+        tryInterceptNavigation(WTFMove(navigationAction), webPageProxy, WTFMove(completionHandler));
         return;
     }
 
@@ -533,7 +537,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
     
     auto checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), delegateHasWebsitePolicies ? @selector(_webView:decidePolicyForNavigationAction:decisionHandler:) : @selector(webView:decidePolicyForNavigationAction:decisionHandler:));
     
-    auto decisionHandlerWithPolicies = [localListener = WTFMove(listener), navigationAction = navigationAction.copyRef(), checker = WTFMove(checker), mainFrameURLString, webPageProxy = makeRef(webPageProxy), subframeNavigation](WKNavigationActionPolicy actionPolicy, _WKWebsitePolicies *websitePolicies) mutable {
+    auto decisionHandlerWithPolicies = [localListener = WTFMove(listener), navigationAction = navigationAction.copyRef(), checker = WTFMove(checker), webPageProxy = makeRef(webPageProxy), subframeNavigation](WKNavigationActionPolicy actionPolicy, _WKWebsitePolicies *websitePolicies) mutable {
         if (checker->completionHandlerHasBeenCalled())
             return;
         checker->didCallCompletionHandler();
@@ -556,8 +560,8 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
         switch (actionPolicy) {
         case WKNavigationActionPolicyAllow:
         case _WKNavigationActionPolicyAllowInNewProcess:
-            tryAppLink(WTFMove(navigationAction), mainFrameURLString, [actionPolicy, localListener = WTFMove(localListener), websitePolicies = WTFMove(apiWebsitePolicies)](bool followedLinkToApp) mutable {
-                if (followedLinkToApp) {
+            tryInterceptNavigation(WTFMove(navigationAction), webPageProxy, [actionPolicy, localListener = WTFMove(localListener), websitePolicies = WTFMove(apiWebsitePolicies)](bool interceptedNavigation) mutable {
+                if (interceptedNavigation) {
                     localListener->ignore();
                     return;
                 }

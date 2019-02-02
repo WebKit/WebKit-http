@@ -95,6 +95,7 @@ void ScrollingStateNode::appendChild(Ref<ScrollingStateNode>&& childNode)
     if (!m_children)
         m_children = std::make_unique<Vector<RefPtr<ScrollingStateNode>>>();
     m_children->append(WTFMove(childNode));
+    setPropertyChanged(ChildNodes);
 }
 
 void ScrollingStateNode::insertChild(Ref<ScrollingStateNode>&& childNode, size_t index)
@@ -107,6 +108,32 @@ void ScrollingStateNode::insertChild(Ref<ScrollingStateNode>&& childNode, size_t
     }
 
     m_children->insert(index, WTFMove(childNode));
+    setPropertyChanged(ChildNodes);
+}
+
+void ScrollingStateNode::removeFromParent()
+{
+    if (!m_parent)
+        return;
+
+    m_parent->removeChild(*this);
+    m_parent = nullptr;
+}
+
+void ScrollingStateNode::removeChild(ScrollingStateNode& childNode)
+{
+    auto childIndex = indexOfChild(childNode);
+    if (childIndex != notFound)
+        removeChildAtIndex(childIndex);
+}
+
+void ScrollingStateNode::removeChildAtIndex(size_t index)
+{
+    ASSERT(m_children && index < m_children->size());
+    if (m_children && index < m_children->size()) {
+        m_children->remove(index);
+        setPropertyChanged(ChildNodes);
+    }
 }
 
 size_t ScrollingStateNode::indexOfChild(ScrollingStateNode& childNode) const

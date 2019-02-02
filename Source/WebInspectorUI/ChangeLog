@@ -1,3 +1,838 @@
+2019-01-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r240351.
+        https://bugs.webkit.org/show_bug.cgi?id=193918
+
+        Causes overlapping Timeline records, as some record types
+        don't have an endTime (Requested by drousso on #webkit).
+
+        Reverted changeset:
+
+        "WebInspector: Confusingly nested events in the timeline for
+        Mutation Observers"
+        https://bugs.webkit.org/show_bug.cgi?id=192884
+        https://trac.webkit.org/changeset/240351
+
+2019-01-28  Matt Baker  <mattbaker@apple.com>
+
+        REGRESSION(?): Web Inspector: Can have multiple Timelines selected after edit mode
+        https://bugs.webkit.org/show_bug.cgi?id=193808
+        <rdar://problem/47537734>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/SelectionController.js:
+        (WI.SelectionController.prototype.didRemoveItems):
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype._indexesForSubtree):
+        Fix a bug where no IndexSet was returned when passed a TreeElement with
+        no children. This caused the Timelines tree selection to be corrupted when
+        entering and exiting edit mode, as TreeElements are inserted and removed.
+
+2019-01-28  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Add Changes panel to Elements tab
+        https://bugs.webkit.org/show_bug.cgi?id=193803
+
+        Reviewed by Devin Rousso.
+
+        Introduce the new experimental Changes Panel. It shows a list of CSS changes
+        made via Web Inspector, so the changes could be copied to the source files.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Base/Utilities.js:
+        (Array.diffArrays): Added.
+
+        * UserInterface/Controllers/CSSManager.js:
+        (WI.CSSManager):
+        (WI.CSSManager.prototype.get modifiedCSSRules):
+        (WI.CSSManager.prototype.addModifiedCSSRule):
+        (WI.CSSManager.prototype.removeModifiedCSSRule):
+        (WI.CSSManager.prototype._mainResourceDidChange):
+
+        * UserInterface/Main.html:
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty):
+        (WI.CSSProperty.prototype.remove):
+        (WI.CSSProperty.prototype.replaceWithText):
+        (WI.CSSProperty.prototype.commentOut):
+        (WI.CSSProperty.prototype.set text):
+        (WI.CSSProperty.prototype.get modified):
+        (WI.CSSProperty.prototype.set name):
+        (WI.CSSProperty.prototype.set rawValue):
+        (WI.CSSProperty.prototype.get initialState):
+        (WI.CSSProperty.prototype._updateOwnerStyleText):
+        (WI.CSSProperty.prototype._markModified):
+        Mark CSSProperty modified *before* making any changes to copy its initial state.
+
+        * UserInterface/Models/CSSRule.js:
+        (WI.CSSRule):
+        (WI.CSSRule.prototype.get id):
+        (WI.CSSRule.prototype.get initialState):
+        (WI.CSSRule.prototype.get stringId):
+        (WI.CSSRule.prototype.markModified):
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration):
+        (WI.CSSStyleDeclaration.prototype.get initialState):
+        (WI.CSSStyleDeclaration.prototype.get enabledProperties):
+        (WI.CSSStyleDeclaration.prototype.get properties):
+        (WI.CSSStyleDeclaration.prototype.set properties):
+        (WI.CSSStyleDeclaration.prototype.propertyForName):
+        (WI.CSSStyleDeclaration.prototype.newBlankProperty):
+        (WI.CSSStyleDeclaration.prototype.markModified):
+
+        * UserInterface/Views/ChangesDetailsSidebarPanel.css: Added.
+        (.sidebar > .panel.changes-panel):
+        (.sidebar > .panel.changes-panel:not(.empty)):
+        (.sidebar > .panel.changes-panel.empty):
+        (.changes-panel ins):
+        (.changes-panel del):
+        (.changes-panel del.css-property::before):
+        (.changes-panel ins.css-property::before):
+        (@media (prefers-color-scheme: dark)):
+
+        * UserInterface/Views/ChangesDetailsSidebarPanel.js: Added.
+        (WI.ChangesDetailsSidebarPanel):
+        (WI.ChangesDetailsSidebarPanel.prototype.inspect):
+        (WI.ChangesDetailsSidebarPanel.prototype.supportsDOMNode):
+        (WI.ChangesDetailsSidebarPanel.prototype.shown):
+        (WI.ChangesDetailsSidebarPanel.prototype.detached):
+        (WI.ChangesDetailsSidebarPanel.prototype.layout):
+        (WI.ChangesDetailsSidebarPanel.prototype._mainResourceDidChange):
+
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WI.ElementsTabContentView):
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .property):
+        (.spreadsheet-style-declaration-editor .property.modified):
+        (.spreadsheet-style-declaration-editor .property.modified:not(.selected)):
+        (@media (prefers-color-scheme: dark)):
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.updateStatus):
+
+2019-01-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: handle CSS Color 4 color syntaxes
+        https://bugs.webkit.org/show_bug.cgi?id=193166
+        <rdar://problem/47062403>
+
+        Reviewed by Simon Fraser.
+
+        * UserInterface/Models/Color.js:
+        (WI.Color.fromString):
+        (WI.Color.fromString.splitFunctionString): Added.
+        (WI.Color.fromString.parseFunctionAlpha): Added.
+        (WI.Color.fromString.parseFunctionComponent): Added.
+        (WI.Color.fromString.parseHueComponent): Added.
+        (WI.Color.fromString.parsePercentageComponent): Added.
+
+2019-01-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to edit the user agent of a remote target
+        https://bugs.webkit.org/show_bug.cgi?id=193862
+        <rdar://problem/47359292>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        (WI.contentLoaded):
+        (WI.initializeTarget):
+        (WI._handleDeviceSettingsToolbarButtonClicked):
+        (WI._handleDeviceSettingsToolbarButtonClicked.updateActivatedState):
+        (WI._handleDeviceSettingsToolbarButtonClicked.applyOverriddenUserAgent):
+        (WI._handleDeviceSettingsToolbarButtonClicked.applyOverriddenSetting):
+        (WI._handleDeviceSettingsToolbarButtonClicked.createContainer):
+        (WI._handleDeviceSettingsToolbarButtonClicked.createColumns):
+        (WI._handleDeviceSettingsToolbarButtonClicked.calculateTargetFrame):
+        (WI._handleDeviceSettingsToolbarButtonClicked.showUserAgentInput):
+
+        * UserInterface/Views/Main.css:
+        (.device-settings-content):
+        (.device-settings-content .user-agent-value): Added.
+        (.device-settings-content .user-agent-value > select): Added.
+        (.device-settings-content .user-agent-value > input): Added.
+        (body[dir=ltr] .device-settings-content .user-agent-value > input): Added.
+        (body[dir=rtl] .device-settings-content .user-agent-value > input): Added.
+        (.device-settings-content label > input): Added.
+        (body[dir=ltr] .device-settings-content label > input): Deleted.
+        (body[dir=rtl] .device-settings-content label > input): Deleted.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-01-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to edit page settings on a remote target
+        https://bugs.webkit.org/show_bug.cgi?id=193813
+        <rdar://problem/47359510>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add toolbar button that shows a popover with the target's (page's) settings when clicked.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        (WI.contentLoaded):
+        (WI.initializeTarget): Added.
+        (WI._handleDeviceSettingsToolbarButtonClicked): Added.
+        (WI.didDismissPopover): Added.
+        * UserInterface/Views/Main.css:
+        (.device-settings-content): Added.
+        (.device-settings-content .columns): Added.
+        (.device-settings-content .columns > .column): Added.
+        (.device-settings-content .columns > .column + .column): Added.
+        (body[dir=ltr] .device-settings-content label > input): Added.
+        (body[dir=rtl] .device-settings-content label > input): Added.
+
+        * UserInterface/Views/Popover.js:
+        (WI.Popover.prototype._update.area):
+        (WI.Popover.prototype._update):
+        (WI.Popover.prototype._drawBackground):
+        (WI.Popover.prototype._bestMetricsForEdge):
+        (WI.Popover.prototype._drawFrame):
+        If the best area is negative, treat it as the worst area.
+        Allow areas to be clamped so long as the clamped edge is not the preferred edge.
+
+        * UserInterface/Base/Test.js:
+        (WI.initializeTarget): Added.
+
+        * UserInterface/Images/Device.svg: Added.
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-01-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: unable to import audits
+        https://bugs.webkit.org/show_bug.cgi?id=193861
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.async processJSON):
+
+2019-01-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: No node with given id found
+        https://bugs.webkit.org/show_bug.cgi?id=193833
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView):
+        (WI.CanvasContentView.prototype.initialLayout):
+        (WI.CanvasContentView.prototype.layout):
+        (WI.CanvasContentView.prototype._refreshPixelSize):
+        Drive-by: show the refresh button when viewing a specific canvas.
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView.prototype._removeCanvas):
+        Reset to the overview if the canvas is removed.
+
+2019-01-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve Dark Mode appearance within Memory timeline
+        https://bugs.webkit.org/show_bug.cgi?id=193804
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (.timeline-overview.edit-instruments > .tree-outline.timelines .item.selected):
+        (.timeline-overview > .tree-outline.timelines .item.selected + .item,):
+        (@media (prefers-color-scheme: dark)):
+        (.timeline-overview > .tree-outline.timelines .item.selected + .item): Deleted.
+        (body.window-inactive .timeline-overview > .tree-outline.timelines .item.selected + .item): Deleted.
+        Fix some colors for Timelines edit mode.
+
+        * UserInterface/Views/CPUTimelineOverviewGraph.css:
+        (.timeline-overview-graph.cpu:nth-child(even) > .legend):
+        (@media (prefers-color-scheme: dark)):
+        (.timeline-overview-graph.cpu > .legend):
+        (.timeline-overview-graph:nth-child(even) > .legend): Deleted.
+        * UserInterface/Views/MemoryTimelineOverviewGraph.css:
+        (.timeline-overview-graph.memory:nth-child(even) > .legend):
+        (@media (prefers-color-scheme: dark)):
+        (.timeline-overview-graph.memory > .legend):
+        (.timeline-overview-graph:nth-child(even) > .legend): Deleted.
+        Improved colors in CPU / Memory overview graph legends.
+
+        * UserInterface/Views/CPUUsageView.css:
+        (.cpu-usage-view > .details):
+        * UserInterface/Views/CircleChart.css:
+        (.circle-chart > svg > path.background):
+        * UserInterface/Views/MemoryCategoryView.css:
+        (.memory-category-view > .details):
+        (.memory-category-view > .details > .name):
+        * UserInterface/Views/MemoryTimelineView.css:
+        (.timeline-view.memory > .content > .overview .total-usage,):
+        (.timeline-view.memory .legend > .row > .size):
+        Improved colors in CPU / Memory detail views.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Add a default --text-secondary-color which will end up slightly
+        lighter in dark mode where it was already implemented.
+
+        (@media (prefers-color-scheme: dark)):
+        Improved max-comparison colors.
+
+2019-01-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: DOMContentLoaded and load event lines need to be more obvious
+        https://bugs.webkit.org/show_bug.cgi?id=193186
+        <rdar://problem/45100694>
+
+        Reviewed by Joseph Pecoraro.
+
+        Shift around z-index values to make Timelines markers appear behind record bars. Widen the
+        marker hit region to make it easier to see the tooltip.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler):
+        (.timeline-ruler > .markers):
+        (.timeline-ruler > .markers > .marker):
+        (body[dir=ltr] .timeline-ruler > .markers > .marker):
+        (body[dir=rtl] .timeline-ruler > .markers > .marker):
+        (.timeline-ruler > .markers > .marker::before):
+        (body[dir=ltr] .timeline-ruler > .markers > .marker::before):
+        (body[dir=rtl] .timeline-ruler > .markers > .marker::before):
+        (.timeline-ruler > .markers > .marker::after): Added.
+        (body[dir=ltr] .timeline-ruler > .markers > .marker::after): Added.
+        (body[dir=rtl] .timeline-ruler > .markers > .marker::after): Added.
+        (.timeline-ruler > .markers > .marker.current-time):
+        (.timeline-ruler > .markers > .marker.current-time::after): Added.
+        (.timeline-ruler > .markers > .marker.load-event):
+        (.timeline-ruler > .markers > .marker.dom-content-event):
+        (.timeline-ruler > .markers > .marker.timestamp):
+        (.timeline-ruler > .selection-handle):
+        (.timeline-ruler.both-handles-clamped > .selection-handle):
+        (.timeline-ruler > .shaded-area):
+        (.timeline-ruler > .markers > .marker.current-time::before): Deleted.
+
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar):
+        (.timeline-record-bar > .segment):
+
+        * UserInterface/Views/CPUTimelineOverviewGraph.css:
+        (.timeline-overview-graph.cpu > .legend):
+        * UserInterface/Views/MemoryTimelineOverviewGraph.css:
+        (.timeline-overview-graph.memory > .legend):
+
+2019-01-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: remove experimental setting
+        https://bugs.webkit.org/show_bug.cgi?id=193743
+        <rdar://problem/28234022>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Setting.js:
+        (WI.Setting):
+        (WI.Setting.localStorageKey): Added.
+        (WI.Setting.migrateValue):
+        Drive-by: add the localStorage key prefix to the key passed into `WI.Setting.migrateValue`.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+
+        * UserInterface/Views/AuditTabContentView.js:
+        (WI.AuditTabContentView.isTabAllowed):
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-01-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: show uncaught exception view for unhandled promise rejections
+        https://bugs.webkit.org/show_bug.cgi?id=193832
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Debug/UncaughtExceptionReporter.js:
+        (handleUnhandledPromiseRejection): Added.
+
+2019-01-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION (r237808): offscreen path warning doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=193830
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction.prototype.process):
+
+2019-01-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add another Protocol Version (iOS 12.2)
+        https://bugs.webkit.org/show_bug.cgi?id=193810
+        <rdar://problem/42981838>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Protocol/Legacy/12.2/InspectorBackendCommands.js: Added.
+        * Versions/Inspector-iOS-12.2.json: Added.
+
+2019-01-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: `WI.Setting.migrateValue` doesn't take into account the key prefix
+        https://bugs.webkit.org/show_bug.cgi?id=193814
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Setting.js:
+        (WI.Setting):
+        (WI.Setting.migrateValue):
+        (WI.Setting._localStorageKey): Added.
+
+2019-01-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: improve invalid Audit/Recording JSON error messages
+        https://bugs.webkit.org/show_bug.cgi?id=193476
+        <rdar://problem/47303659>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/AuditTestBase.js:
+        (WI.AuditTestBase):
+        * UserInterface/Models/AuditTestCase.js:
+        (WI.AuditTestCase.async fromPayload):
+        * UserInterface/Models/AuditTestGroup.js:
+        (WI.AuditTestGroup.async fromPayload):
+        * UserInterface/Models/AuditTestCaseResult.js:
+        (WI.AuditTestCaseResult.async fromPayload.checkArray):
+        (WI.AuditTestCaseResult.async fromPayload):
+        * UserInterface/Models/AuditTestGroupResult.js:
+        (WI.AuditTestGroupResult.async fromPayload):
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.synthesizeWarning): Added.
+        (WI.AuditManager.synthesizeError):
+        (WI.AuditManager.prototype.async processJSON):
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording.fromPayload):
+        (WI.Recording.synthesizeWarning): Added.
+        (WI.Recording.synthesizeError):
+        * UserInterface/Models/RecordingFrame.js:
+        (WI.RecordingFrame.fromPayload):
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction.fromPayload):
+        (WI.RecordingAction.prototype.async swizzle):
+        (WI.RecordingAction.prototype.apply):
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype.processJSON):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-01-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: add supports key to test/group for compatibility
+        https://bugs.webkit.org/show_bug.cgi?id=193686
+        <rdar://problem/47460872>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/AuditTestBase.js:
+        (WI.AuditTestBase):
+        (WI.AuditTestBase.prototype.get supported): Added.
+        (WI.AuditTestBase.prototype.set supported): Added.
+        (WI.AuditTestBase.prototype.set disabled):
+        (WI.AuditTestBase.prototype.async start):
+        (WI.AuditTestBase.prototype.stop):
+        (WI.AuditTestBase.toJSON):
+        * UserInterface/Models/AuditTestCase.js:
+        (WI.AuditTestCase.async fromPayload):
+        * UserInterface/Models/AuditTestGroup.js:
+        (WI.AuditTestGroup):
+        (WI.AuditTestGroup.async fromPayload):
+        (WI.AuditTestGroup.prototype.get supported): Added.
+        (WI.AuditTestGroup.prototype.set supported): Added.
+        Add support for a "supports" key in the test JSON that prevents the test from being run if
+        it's value is lower than the frontend/backend version.
+
+        * UserInterface/Views/AuditTreeElement.js:
+        (WI.AuditTreeElement.prototype.onattach):
+        (WI.AuditTreeElement.prototype.ondelete):
+        (WI.AuditTreeElement.prototype.populateContextMenu):
+        (WI.AuditTreeElement.prototype._updateStatus): Added.
+        (WI.AuditTreeElement.prototype._showRunningSpinner):
+        (WI.AuditTreeElement.prototype._showRunningProgress):
+        (WI.AuditTreeElement.prototype._updateTestGroupDisabled):
+        (WI.AuditTreeElement.prototype._handleTestCaseCompleted):
+        (WI.AuditTreeElement.prototype._handleTestResultCleared):
+        (WI.AuditTreeElement.prototype._handleTestGroupCompleted):
+        (WI.AuditTreeElement.prototype._handleManagerEditingChanged):
+        (WI.AuditTreeElement.prototype.canSelectOnMouseDown): Deleted.
+        (WI.AuditTreeElement.prototype._updateLevel): Deleted.
+        * UserInterface/Views/AuditTreeElement.css:
+        (.tree-outline .item.audit:matches(.test-case, .test-group):not(.unsupported, .manager-active) > .status:hover > img): Added.
+        (.tree-outline .item.audit > .status:not(:hover) > img.show-on-hover, .tree-outline .item.audit.test-group.expanded:not(.unsupported, .editing-audits) > .status:not(:hover)): Added.
+        (.tree-outline .item.audit.manager-active > .status > img.show-on-hover, .tree-outline .item.audit.test-group.expanded:not(.editing-audits) > .status:hover > :not(img), .tree-outline .item.audit.test-group-result.expanded > .status, .tree-outline .item.audit.unsupported + .children .item.audit.unsupported  > .status > img): Added.
+        (.tree-outline .item.audit.unsupported:not(.selected) > :matches(.icon, .titles)): Added.
+        (.tree-outline .item.audit.unsupported > .status > img): Added.
+        (.tree-outline .item.audit:matches(.test-case, .test-group):not(.manager-active) > .status:hover > img): Deleted.
+        (.tree-outline .item.audit > .status:not(:hover) > img.show-on-hover, .tree-outline .item.audit.test-group.expanded:not(.editing-audits) > .status:not(:hover)): Deleted.
+        (.tree-outline .item.audit.manager-active > .status > img.show-on-hover, .tree-outline .item.audit.test-group.expanded:not(.editing-audits) > .status:hover > :not(img), .tree-outline .item.audit.test-group-result.expanded > .status): Deleted.
+        Hide unsupported tests unless in edit mode, where they are greyed out and cannot be enabled.
+        Drive-by: only allow tests to be deleted when in edit mode.
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel.prototype._treeSelectionDidChange):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-01-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline
+        https://bugs.webkit.org/show_bug.cgi?id=193730
+        <rdar://problem/46797201>
+
+        Reviewed by Devin Rousso.
+
+        CPU Usage is gathered in the backend twice a second, the frequency of the
+        ResourceUsageThread in WebCore. The frontend displays cpu usage in a few
+        ways in the Timeline.
+
+        We use a column chart in the timeline overview to display the frequency and
+        relative distance of samples. This helps show if the samples were close
+        together or far apart, which indicates how meaningful they will be at a
+        particular scale.
+
+        We use a line chart in the timeline detail view which will be easier to see
+        the changes over a particular time range selection.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New strings.
+
+        * UserInterface/Main.html:
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        * UserInterface/Protocol/CPUProfilerObserver.js:
+        (WI.CPUProfilerObserver.prototype.trackingStart):
+        (WI.CPUProfilerObserver.prototype.trackingUpdate):
+        (WI.CPUProfilerObserver.prototype.trackingComplete):
+        (WI.CPUProfilerObserver):
+        New files and default registration.
+
+        * UserInterface/Protocol/Target.js:
+        (WI.Target.prototype.get CPUProfilerAgent):
+        New Agent.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.availableTimelineTypes):
+        (WI.TimelineManager.prototype.cpuProfilerTrackingStarted):
+        (WI.TimelineManager.prototype.cpuProfilerTrackingUpdated):
+        (WI.TimelineManager.prototype.cpuProfilerTrackingCompleted):
+        (WI.TimelineManager.prototype._updateAutoCaptureInstruments):
+        (WI.TimelineManager.prototype.memoryTrackingStart): Renamed.
+        (WI.TimelineManager.prototype.memoryTrackingUpdate): Renamed.
+        (WI.TimelineManager.prototype.memoryTrackingComplete): Renamed.
+        * UserInterface/Models/CPUInstrument.js:
+        (WI.CPUInstrument):
+        (WI.CPUInstrument.supported):
+        (WI.CPUInstrument.prototype.get timelineRecordType):
+        (WI.CPUInstrument.prototype.startInstrumentation):
+        (WI.CPUInstrument.prototype.stopInstrumentation):
+        * UserInterface/Models/CPUTimelineRecord.js:
+        (WI.CPUTimelineRecord):
+        (WI.CPUTimelineRecord.prototype.get timestamp):
+        (WI.CPUTimelineRecord.prototype.get usage):
+        * UserInterface/Models/Instrument.js:
+        (WI.Instrument.createForTimelineType):
+        * UserInterface/Models/TimelineRecord.js:
+        * UserInterface/Models/TimelineRecording.js:
+        (WI.TimelineRecording.prototype.addRecord):
+        Expose a new CPU instrument and timeline.
+
+        * UserInterface/Views/ColumnChart.js: Added.
+        (WI.ColumnChart):
+        (WI.ColumnChart.prototype.get element):
+        (WI.ColumnChart.prototype.get bars):
+        (WI.ColumnChart.prototype.get size):
+        (WI.ColumnChart.prototype.set size):
+        (WI.ColumnChart.prototype.addBar):
+        (WI.ColumnChart.prototype.clear):
+        (WI.ColumnChart.prototype.needsLayout):
+        (WI.ColumnChart.prototype.updateLayout):
+        View that will draw vertical bars with independent widths.
+        This is meant to be used similiar to WI.LineChart.
+
+        * UserInterface/Images/CPUInstrument.svg: Added.
+        * UserInterface/Views/Variables.css:
+        (:root):
+        CPU timeline colors and icon.
+
+        * UserInterface/Views/CPUTimelineOverviewGraph.css:
+        (body .sidebar > .panel.navigation.timeline > .timelines-content li.item.cpu,):
+        (.timeline-overview-graph.cpu):
+        (.timeline-overview-graph.cpu > .legend):
+        (body[dir=ltr] .timeline-overview-graph.cpu > .legend):
+        (body[dir=rtl] .timeline-overview-graph.cpu > .legend):
+        (.timeline-overview-graph:nth-child(even) > .legend):
+        (body[dir=rtl] .timeline-overview-graph.cpu > .bar-chart):
+        (.timeline-overview-graph.cpu > .bar-chart > svg > g > rect):
+        * UserInterface/Views/CPUTimelineOverviewGraph.js: Added.
+        (WI.CPUTimelineOverviewGraph):
+        (WI.CPUTimelineOverviewGraph.prototype.get height):
+        (WI.CPUTimelineOverviewGraph.prototype.reset):
+        (WI.CPUTimelineOverviewGraph.prototype.layout.xScale):
+        (WI.CPUTimelineOverviewGraph.prototype.layout.yScale):
+        (WI.CPUTimelineOverviewGraph.prototype.layout.yScaleForRecord):
+        (WI.CPUTimelineOverviewGraph.prototype.layout):
+        (WI.CPUTimelineOverviewGraph.prototype._updateLegend):
+        (WI.CPUTimelineOverviewGraph.prototype._cpuTimelineRecordAdded):
+        * UserInterface/Views/CPUTimelineView.css:
+        (.timeline-view.cpu):
+        (.timeline-view.cpu > .content):
+        (.timeline-view.cpu > .content .subtitle):
+        (.timeline-view.cpu > .content > .details):
+        (.timeline-view.cpu > .content > .details > .timeline-ruler):
+        (body[dir=ltr] .timeline-view.cpu > .content > .details > .timeline-ruler):
+        (body[dir=rtl] .timeline-view.cpu > .content > .details > .timeline-ruler):
+        (.timeline-view.cpu > .content > .details > .subtitle):
+        (.cpu-usage-view .line-chart > svg > path):
+        (.timeline-view.cpu .legend > .row > .swatch.current):
+        * UserInterface/Views/CPUTimelineView.js: Added.
+        (WI.CPUTimelineView):
+        (WI.CPUTimelineView.prototype.shown):
+        (WI.CPUTimelineView.prototype.hidden):
+        (WI.CPUTimelineView.prototype.closed):
+        (WI.CPUTimelineView.prototype.reset):
+        (WI.CPUTimelineView.prototype.get scrollableElements):
+        (WI.CPUTimelineView.prototype.get showsFilterBar):
+        (WI.CPUTimelineView.prototype.layout.layoutView):
+        (WI.CPUTimelineView.prototype.layout.xScale):
+        (WI.CPUTimelineView.prototype.layout.yScale):
+        (WI.CPUTimelineView.prototype.layout):
+        (WI.CPUTimelineView.prototype._cpuTimelineRecordAdded):
+        * UserInterface/Views/CPUUsageView.css:
+        (.cpu-usage-view):
+        (.cpu-usage-view > .details):
+        (body[dir=ltr] .cpu-usage-view > .details):
+        (body[dir=rtl] .cpu-usage-view > .details):
+        (.cpu-usage-view > .graph):
+        (body[dir=rtl] .cpu-usage-view > .graph):
+        * UserInterface/Views/CPUUsageView.js:
+        (WI.CPUUsageView):
+        (WI.CPUUsageView.prototype.get element):
+        (WI.CPUUsageView.prototype.clear):
+        (WI.CPUUsageView.prototype.layoutWithDataPoints):
+        (WI.CPUUsageView.prototype._updateDetails):
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.createFromRepresentedObject):
+        * UserInterface/Views/TimelineIcons.css:
+        (.cpu-icon .icon):
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WI.TimelineOverviewGraph.createForTimeline):
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView.displayNameForTimelineType):
+        (WI.TimelineTabContentView.iconClassNameForTimelineType):
+        (WI.TimelineTabContentView.genericClassNameForTimelineType):
+        (WI.TimelineTabContentView.iconClassNameForRecord):
+        (WI.TimelineTabContentView.displayNameForRecord):
+        Timeline views for CPU usage.
+
+        * UserInterface/Views/MemoryCategoryView.js:
+        (WI.MemoryCategoryView):
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WI.MemoryTimelineView.createChartContainer):
+        (WI.MemoryTimelineView):
+        (WI.MemoryTimelineView.prototype._clearMaxComparisonLegend):
+        Minor updates to style and comments.
+
+2019-01-23  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Refactor WI.CSSStyleDeclaration.prototype.update
+        https://bugs.webkit.org/show_bug.cgi?id=193737
+
+        Reviewed by Matt Baker.
+
+        Remove unused event data from the WI.CSSStyleDeclaration.Event.PropertiesChanged event.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration.prototype.update):
+
+2019-01-23  Devin Rousso  <drousso@apple.com>
+
+        WebInspector: Confusingly nested events in the timeline for Mutation Observers
+        https://bugs.webkit.org/show_bug.cgi?id=192884
+        <rdar://problem/46854178>
+
+        Reviewed by Joseph Pecoraro.
+
+        If a microtask event (e.g. `ObserverCallback`) is contained within a `EvaluatedScript`
+        event, move that microtask event to be a sibling of the `EvaluateScript`, subtracting the
+        microtask's time taken from the `EvaluateScript`'s time. If there are no other children
+        after this move, then remove the `EvaluateScript` altogether.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype.eventRecorded.fixMicrotaskPlacement): Added.
+        (WI.TimelineManager.prototype.eventRecorded):
+        (WI.TimelineManager.prototype._mergeScriptProfileRecords):
+
+2019-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Waterfall column should redraw when adding/removing new columns
+        https://bugs.webkit.org/show_bug.cgi?id=193696
+        <rdar://problem/47464149>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/TableColumn.js:
+        (WI.TableColumn.prototype.get needsReloadOnResize):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.initialLayout):
+        Mark the waterfall column as sensitive to any resizes.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype.showColumn):
+        (WI.Table.prototype.hideColumn):
+        Update column widths and reload any columns that may be sensitive to resizes.
+
+2019-01-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: InspectorInstrumentation::willEvaluateScript should include column number
+        https://bugs.webkit.org/show_bug.cgi?id=116191
+        <rdar://problem/13905910>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype._processRecord):
+
+2019-01-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: expose Audit and Recording versions to the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=193262
+        <rdar://problem/47130684>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass.prototype.registerVersion): Added.
+
+        * UserInterface/Models/AuditTestCase.js:
+        * UserInterface/Models/Recording.js:
+        (WI.Recording.fromPayload):
+        Add Interface version values.
+
+2019-01-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: refactor properties/allProperties/visibleProperties/allVisibleProperties
+        https://bugs.webkit.org/show_bug.cgi?id=193615
+
+        Reviewed by Devin Rousso.
+
+        Remove unused visibleProperties.
+
+        Rename:
+        - properties to enabledProperties;
+        - allProperties to properties;
+        - allVisibleProperties to visibleProperties.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype._prependSemicolonIfNeeded):
+        (WI.CSSProperty):
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration):
+        (WI.CSSStyleDeclaration.prototype.get enabledProperties):
+        (WI.CSSStyleDeclaration.prototype.get properties):
+        (WI.CSSStyleDeclaration.prototype.propertyForName):
+        (WI.CSSStyleDeclaration.prototype.newBlankProperty):
+        (WI.CSSStyleDeclaration.prototype.shiftPropertiesAfter):
+        (WI.CSSStyleDeclaration.prototype._rangeAfterPropertyAtIndex):
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype._parseStylePropertyPayload):
+        (WI.DOMNodeStyles.prototype._markOverriddenProperties):
+        (WI.DOMNodeStyles.prototype._associateRelatedProperties):
+        (WI.DOMNodeStyles.prototype._isPropertyFoundInMatchingRules):
+        (WI.DOMNodeStyles):
+        * UserInterface/Views/BoxModelDetailsSectionRow.js:
+        (WI.BoxModelDetailsSectionRow.prototype._updateMetrics):
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WI.ComputedStyleDetailsPanel.prototype._computePropertyTraces):
+        * UserInterface/Views/ComputedStyleSection.js:
+        (WI.ComputedStyleSection.prototype.get propertiesToRender):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get propertiesToRender):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.layout):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.updateStatus):
+
+2019-01-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Table appears broken after filter - rows look collapsed
+        https://bugs.webkit.org/show_bug.cgi?id=192730
+        <rdar://problem/46853158>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype._applyColumnWidthsToColumnsIfNeeded):
+        Affect the filler row like the other applyColumnWidths calls since this
+        now may be the initial call to size visible columns.
+
+2019-01-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: use plural strings for Passed, Failed, and Unsupported
+        https://bugs.webkit.org/show_bug.cgi?id=193675
+        <rdar://problem/46628680>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/AuditTestGroupContentView.js:
+        (WI.AuditTestGroupContentView.prototype.layout):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-01-18  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/SDKVariant.xcconfig: Added.
+
+2019-01-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: TypeError: undefined is not an object (evaluating 'resource.finished')
+        https://bugs.webkit.org/show_bug.cgi?id=193589
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.get supportsSave):
+        (WI.NetworkTableContentView.prototype._HARResources):
+
+2019-01-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r240124.
+
+        This commit broke an internal build.
+
+        Reverted changeset:
+
+        "SDK_VARIANT build destinations should be separate from non-
+        SDK_VARIANT builds"
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+        https://trac.webkit.org/changeset/240124
+
 2019-01-17  Jer Noble  <jer.noble@apple.com>
 
         SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds

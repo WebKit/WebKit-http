@@ -30,6 +30,7 @@
 #import "WebPreferencesPrivate.h"
 #import "WebPreferenceKeysPrivate.h"
 
+#import "NetworkStorageSessionMap.h"
 #import "WebApplicationCache.h"
 #import "WebFrameNetworkingContext.h"
 #import "WebKitLogging.h"
@@ -668,6 +669,8 @@ public:
         [NSNumber numberWithBool:YES], WebKitPeerConnectionEnabledPreferenceKey,
 #endif
         [NSNumber numberWithBool:YES], WebKitSelectionAcrossShadowBoundariesEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitCSSLogicalEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitAdClickAttributionEnabledPreferenceKey,
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
 #endif
@@ -1876,18 +1879,18 @@ static NSString *classIBCreatorID = nil;
 #if PLATFORM(IOS_FAMILY)
     WebThreadLock();
 #endif
-    NetworkStorageSession::switchToNewTestingSession();
+    NetworkStorageSessionMap::switchToNewTestingSession();
 }
 
 + (void)_clearNetworkLoaderSession
 {
-    NetworkStorageSession::defaultStorageSession().deleteAllCookies();
+    NetworkStorageSessionMap::defaultStorageSession().deleteAllCookies();
 }
 
 + (void)_setCurrentNetworkLoaderSessionCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy
 {
-    RetainPtr<CFHTTPCookieStorageRef> cookieStorage = NetworkStorageSession::defaultStorageSession().cookieStorage();
-    ASSERT(cookieStorage); // Will fail when NetworkStorageSession::switchToNewTestingSession() was not called beforehand.
+    RetainPtr<CFHTTPCookieStorageRef> cookieStorage = NetworkStorageSessionMap::defaultStorageSession().cookieStorage();
+    ASSERT(cookieStorage); // Will fail when NetworkStorageSessionMap::switchToNewTestingSession() was not called beforehand.
     CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage.get(), policy);
 }
 
@@ -3376,6 +3379,26 @@ static NSString *classIBCreatorID = nil;
 - (void)setSelectionAcrossShadowBoundariesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitSelectionAcrossShadowBoundariesEnabledPreferenceKey];
+}
+
+- (BOOL)cssLogicalEnabled
+{
+    return [self _boolValueForKey:WebKitCSSLogicalEnabledPreferenceKey];
+}
+
+- (void)setCSSLogicalEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCSSLogicalEnabledPreferenceKey];
+}
+
+- (BOOL)adClickAttributionEnabled
+{
+    return [self _boolValueForKey:WebKitAdClickAttributionEnabledPreferenceKey];
+}
+
+- (void)setAdClickAttributionEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAdClickAttributionEnabledPreferenceKey];
 }
 
 @end

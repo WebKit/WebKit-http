@@ -346,6 +346,7 @@ void WebPage::restorePageState(const HistoryItem& historyItem)
         Optional<FloatPoint> scrollPosition;
         if (historyItem.shouldRestoreScrollPosition()) {
             m_drawingArea->setExposedContentRect(historyItem.exposedContentRect());
+            m_hasRestoredExposedContentRectAfterDidCommitLoad = true;
             scrollPosition = FloatPoint(historyItem.scrollPosition());
         }
         send(Messages::WebPageProxy::RestorePageState(scrollPosition, frameView.scrollOrigin(), historyItem.obscuredInsets(), boundedScale));
@@ -655,10 +656,10 @@ void WebPage::requestFocusedElementInformation(WebKit::CallbackID callbackID)
 }
 
 #if ENABLE(DATA_INTERACTION)
-void WebPage::requestStartDataInteraction(const IntPoint& clientPosition, const IntPoint& globalPosition)
+void WebPage::requestDragStart(const IntPoint& clientPosition, const IntPoint& globalPosition)
 {
-    bool didStart = m_page->mainFrame().eventHandler().tryToBeginDataInteractionAtPoint(clientPosition, globalPosition);
-    send(Messages::WebPageProxy::DidHandleStartDataInteractionRequest(didStart));
+    bool didStart = m_page->mainFrame().eventHandler().tryToBeginDragAtPoint(clientPosition, globalPosition);
+    send(Messages::WebPageProxy::DidHandleDragStartRequest(didStart));
 }
 
 void WebPage::requestAdditionalItemsForDragSession(const IntPoint& clientPosition, const IntPoint& globalPosition)
@@ -670,22 +671,22 @@ void WebPage::requestAdditionalItemsForDragSession(const IntPoint& clientPositio
     m_page->dragController().dragEnded();
     m_page->mainFrame().eventHandler().dragSourceEndedAt(event, DragOperationNone, MayExtendDragSession::Yes);
 
-    bool didHandleDrag = m_page->mainFrame().eventHandler().tryToBeginDataInteractionAtPoint(clientPosition, globalPosition);
+    bool didHandleDrag = m_page->mainFrame().eventHandler().tryToBeginDragAtPoint(clientPosition, globalPosition);
     send(Messages::WebPageProxy::DidHandleAdditionalDragItemsRequest(didHandleDrag));
 }
 
-void WebPage::didConcludeEditDataInteraction()
+void WebPage::didConcludeEditDrag()
 {
     Optional<TextIndicatorData> textIndicatorData;
 
-    static auto defaultEditDataInteractionTextIndicatorOptions = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionExpandClipBeyondVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionComputeEstimatedBackgroundColor| TextIndicatorOptionUseSelectionRectForSizing | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
+    static auto defaultTextIndicatorOptionsForEditDrag = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionExpandClipBeyondVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionComputeEstimatedBackgroundColor| TextIndicatorOptionUseSelectionRectForSizing | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
     auto& frame = m_page->focusController().focusedOrMainFrame();
     if (auto range = frame.selection().selection().toNormalizedRange()) {
-        if (auto textIndicator = TextIndicator::createWithRange(*range, defaultEditDataInteractionTextIndicatorOptions, TextIndicatorPresentationTransition::None, FloatSize()))
+        if (auto textIndicator = TextIndicator::createWithRange(*range, defaultTextIndicatorOptionsForEditDrag, TextIndicatorPresentationTransition::None, FloatSize()))
             textIndicatorData = textIndicator->data();
     }
 
-    send(Messages::WebPageProxy::DidConcludeEditDataInteraction(textIndicatorData));
+    send(Messages::WebPageProxy::DidConcludeEditDrag(WTFMove(textIndicatorData)));
 }
 #endif
 
@@ -2528,10 +2529,10 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
     } else if (m_focusedElement->hasEditableStyle()) {
         information.elementType = InputType::ContentEditable;
         if (is<HTMLElement>(*m_focusedElement)) {
-            auto& assistedElement = downcast<HTMLElement>(*m_focusedElement);
-            information.isAutocorrect = assistedElement.shouldAutocorrect();
-            information.autocapitalizeType = assistedElement.autocapitalizeType();
-            information.inputMode = assistedElement.canonicalInputMode();
+            auto& focusedElement = downcast<HTMLElement>(*m_focusedElement);
+            information.isAutocorrect = focusedElement.shouldAutocorrect();
+            information.autocapitalizeType = focusedElement.autocapitalizeType();
+            information.inputMode = focusedElement.canonicalInputMode();
         } else {
             information.isAutocorrect = true;
             information.autocapitalizeType = AutocapitalizeTypeDefault;
@@ -2840,7 +2841,8 @@ void WebPage::viewportConfigurationChanged(ZoomToInitialScale zoomToInitialScale
 
         // FIXME: We could send down the obscured margins to find a better exposed rect and unobscured rect.
         // It is not a big deal at the moment because the tile coverage will always extend past the obscured bottom inset.
-        m_drawingArea->setExposedContentRect(FloatRect(scrollPosition, minimumLayoutSizeInDocumentCoordinates));
+        if (!m_hasRestoredExposedContentRectAfterDidCommitLoad)
+            m_drawingArea->setExposedContentRect(FloatRect(scrollPosition, minimumLayoutSizeInDocumentCoordinates));
     }
     scalePage(scale, scrollPosition);
     
@@ -3016,6 +3018,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
         viewportConfigurationChanged();
 
     frameView.setUnobscuredContentSize(visibleContentRectUpdateInfo.unobscuredContentRect().size());
+    m_page->setContentInsets(visibleContentRectUpdateInfo.contentInsets());
     m_page->setObscuredInsets(visibleContentRectUpdateInfo.obscuredInsets());
     m_page->setUnobscuredSafeAreaInsets(visibleContentRectUpdateInfo.unobscuredSafeAreaInsets());
     m_page->setEnclosedInScrollableAncestorView(visibleContentRectUpdateInfo.enclosedInScrollableAncestorView());

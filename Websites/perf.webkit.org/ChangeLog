@@ -1,3 +1,48 @@
+2019-01-17  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Analyzing a chart that does not exist should not halt whole run-analysis script.
+        https://bugs.webkit.org/show_bug.cgi?id=193563
+
+        Reviewed by Ryosuke Niwa.
+
+        Halting whole run-analysis script while there is any invalid chart specified in Manifest makes the script fragile.
+        Run-analysis is also responsible for adding retry and sending notification which should not be block by this error.
+        Skipping analyzing the corresponding configuration seems reasonable.
+
+        * public/v3/models/measurement-set.js:
+        (MeasurementSet.prototype._ensureClusterPromise): Only add callback when callback is specified.
+        This will help to fix 'UnhandledPromiseRejectionWarning' while running the test.
+        * tools/js/measurement-set-analyzer.js:
+        (MeasurementSetAnalyzer.prototype.async._analyzeMeasurementSet): Catch the exception while failing to fetch a measurement set and skip the analysis for this config.
+        * unit-tests/measurement-set-analyzer-tests.js: Added unit tests for this.
+
+2019-01-17  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Updating commit in OSBuildFetcher should respect revision range in config.
+        https://bugs.webkit.org/show_bug.cgi?id=193558
+
+        Reviewed by Ryosuke Niwa.
+
+        OSBuildFetcher._fetchAvailableBuilds should filter out commits those are not in
+        revision range specified by cofnig.
+
+        * server-tests/tools-os-build-fetcher-tests.js: Added a unit test for this change.
+        * tools/js/os-build-fetcher.js:
+        (prototype.async._fetchAvailableBuilds): Filter out commits from update list if commit
+        revision is out of range.
+
+2018-12-31  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Test group results notification should not say a build request to build had failed even when it had successfully completed.
+        https://bugs.webkit.org/show_bug.cgi?id=193064
+
+        Reviewed by Ryosuke Niwa.
+
+        Should show 'Build completed' or 'Build failed' for build type build requests.
+
+        * browser-tests/test-group-result-page-tests.js: Added a unit test to guard this bug.
+        * tools/js/test-group-result-page.js: Show 'Build completed' or 'Build failed' for build type build requests.
+
 2018-12-21  Dewei Zhu  <dewei_zhu@apple.com>
 
         Add UI in analysis task page to show commit testability information.

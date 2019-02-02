@@ -247,7 +247,7 @@ void FetchResponse::fetch(ScriptExecutionContext& context, FetchRequest& request
 const String& FetchResponse::url() const
 {
     if (m_responseURL.isNull()) {
-        URL url = m_internalResponse.url();
+        URL url = filteredResponse().url();
         url.removeFragmentIdentifier();
         m_responseURL = url.string();
     }
@@ -314,12 +314,12 @@ FetchResponse::BodyLoader::BodyLoader(FetchResponse& response, NotificationCallb
     : m_response(response)
     , m_responseCallback(WTFMove(responseCallback))
 {
-    m_response.setPendingActivity(&m_response);
+    m_response.setPendingActivity(m_response);
 }
 
 FetchResponse::BodyLoader::~BodyLoader()
 {
-    m_response.unsetPendingActivity(&m_response);
+    m_response.unsetPendingActivity(m_response);
 }
 
 static uint64_t nextOpaqueLoadIdentifier { 0 };

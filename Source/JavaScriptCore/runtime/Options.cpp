@@ -376,6 +376,13 @@ static void overrideDefaults()
 #endif
 }
 
+static void correctOptions()
+{
+    unsigned thresholdForGlobalLexicalBindingEpoch = Options::thresholdForGlobalLexicalBindingEpoch();
+    if (thresholdForGlobalLexicalBindingEpoch == 0 || thresholdForGlobalLexicalBindingEpoch == 1)
+        Options::thresholdForGlobalLexicalBindingEpoch() = UINT_MAX;
+}
+
 static void recomputeDependentOptions()
 {
 #if !defined(NDEBUG)
@@ -517,6 +524,9 @@ static void recomputeDependentOptions()
     // https://bugs.webkit.org/show_bug.cgi?id=177956
     Options::useProbeOSRExit() = false;
 #endif
+
+    if (!Options::useCodeCache())
+        Options::diskCachePath() = nullptr;
 }
 
 void Options::initialize()
@@ -566,6 +576,8 @@ void Options::initialize()
 #if 0
                 ; // Deconfuse editors that do auto indentation
 #endif
+
+            correctOptions();
     
             recomputeDependentOptions();
 
@@ -699,6 +711,8 @@ bool Options::setOptions(const char* optionsStr)
         }
     }
 
+    correctOptions();
+
     recomputeDependentOptions();
 
     dumpOptionsIfNeeded();
@@ -735,6 +749,7 @@ bool Options::setOptionWithoutAlias(const char* arg)
         bool success = parse(valueStr, value);                     \
         if (success) {                                             \
             name_() = value;                                       \
+            correctOptions();                                      \
             recomputeDependentOptions();                           \
             return true;                                           \
         }                                                          \

@@ -713,6 +713,7 @@ runtime/BooleanConstructor.cpp
 runtime/BooleanObject.cpp
 runtime/BooleanPrototype.cpp
 runtime/CallData.cpp
+runtime/CachedTypes.cpp
 runtime/CatchScope.cpp
 runtime/ClassInfo.cpp
 runtime/ClonedArguments.cpp
@@ -747,6 +748,7 @@ runtime/ErrorConstructor.cpp
 runtime/ErrorHandlingScope.cpp
 runtime/ErrorInstance.cpp
 runtime/ErrorPrototype.cpp
+runtime/ErrorType.cpp
 runtime/EvalExecutable.cpp
 runtime/Exception.cpp
 runtime/ExceptionEventLocation.cpp
@@ -900,6 +902,7 @@ runtime/RegExp.cpp
 runtime/RegExpCache.cpp
 runtime/RegExpCachedResult.cpp
 runtime/RegExpConstructor.cpp
+runtime/RegExpGlobalData.cpp
 runtime/RegExpMatchesArray.cpp
 runtime/RegExpObject.cpp
 runtime/RegExpPrototype.cpp

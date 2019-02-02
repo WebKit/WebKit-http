@@ -97,7 +97,6 @@
 #include <WebCore/Editor.h>
 #include <WebCore/EventHandler.h>
 #include <WebCore/EventNames.h>
-#include <WebCore/FileSystem.h>
 #include <WebCore/FloatQuad.h>
 #include <WebCore/FocusController.h>
 #include <WebCore/Font.h>
@@ -172,6 +171,7 @@
 #include <WebCore/WindowsTouch.h>
 #include <comdef.h>
 #include <d2d1.h>
+#include <wtf/FileSystem.h>
 #include <wtf/MainThread.h>
 #include <wtf/ProcessPrivilege.h>
 #include <wtf/RAMSize.h>
@@ -514,7 +514,7 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         if (preference && (CFStringGetTypeID() == CFGetTypeID(preference.get())))
             cfurlCacheDirectory = adoptCF(static_cast<CFStringRef>(preference.leakRef()));
         else
-            cfurlCacheDirectory = WebCore::FileSystem::localUserSpecificStorageDirectory().createCFString();
+            cfurlCacheDirectory = FileSystem::localUserSpecificStorageDirectory().createCFString();
     }
     cacheDirectory = String(cfurlCacheDirectory.get());
     CFIndex cacheMemoryCapacity = 0;
@@ -7565,13 +7565,13 @@ void WebView::fullScreenClientSetParentWindow(HWND hostWindow)
 void WebView::fullScreenClientWillEnterFullScreen()
 {
     ASSERT(m_fullScreenElement);
-    m_fullScreenElement->document().webkitWillEnterFullScreenForElement(m_fullScreenElement.get());
+    m_fullScreenElement->document().webkitWillEnterFullScreen(*m_fullScreenElement);
 }
 
 void WebView::fullScreenClientDidEnterFullScreen()
 {
     ASSERT(m_fullScreenElement);
-    m_fullScreenElement->document().webkitDidEnterFullScreenForElement(m_fullScreenElement.get());
+    m_fullScreenElement->document().webkitDidEnterFullScreen();
 }
 
 void WebView::fullScreenClientWillExitFullScreen()
@@ -7583,7 +7583,7 @@ void WebView::fullScreenClientWillExitFullScreen()
 void WebView::fullScreenClientDidExitFullScreen()
 {
     ASSERT(m_fullScreenElement);
-    m_fullScreenElement->document().webkitDidExitFullScreenForElement(m_fullScreenElement.get());
+    m_fullScreenElement->document().webkitDidExitFullScreen();
     m_fullScreenElement = nullptr;
 }
 

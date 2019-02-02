@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,16 +46,18 @@
 #import "VisiblePosition.h"
 #import "VisibleSelection.h"
 #import "VisibleUnits.h"
+#import <pal/ios/UIKitSoftLink.h>
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/RevealSPI.h>
 #import <pal/spi/ios/UIKitSPI.h>
-#import <pal/spi/mac/LookupSPI.h>
 #import <wtf/BlockObjCExceptions.h>
 #import <wtf/RefPtr.h>
 
-#if !PLATFORM(WATCH)
+#if PLATFORM(MAC)
+#import <Quartz/Quartz.h>
+#else
 #import <PDFKit/PDFKit.h>
-#endif // !PLATFORM(WATCH)
+#endif
 
 #if PLATFORM(IOSMAC)
 extern "C" {
@@ -63,10 +65,6 @@ extern "C" {
 }
 SOFT_LINK_PRIVATE_FRAMEWORK(UIKitMacHelper)
 SOFT_LINK(UIKitMacHelper, UINSSharedRevealController, id<UINSRevealController>, (void), ())
-
-SOFT_LINK_FRAMEWORK(UIKit)
-SOFT_LINK_CLASS(UIKit, UIApplication)
-
 
 #endif // PLATFORM(IOSMAC)
 
@@ -242,7 +240,7 @@ SOFT_LINK_CLASS(UIKit, UIApplication)
     WebCore::CGContextStateSaver saveState(context);
     CGAffineTransform contextTransform = CGContextGetCTM(context);
     CGFloat backingScale = contextTransform.a;
-    CGFloat iOSMacScaleFactor = [getUIApplicationClass() sharedApplication]._iOSMacScale;
+    CGFloat iOSMacScaleFactor = [PAL::getUIApplicationClass() sharedApplication]._iOSMacScale;
     CGAffineTransform transform = CGAffineTransformMakeScale(iOSMacScaleFactor * backingScale, iOSMacScaleFactor * backingScale);
     CGContextSetCTM(context, transform);
     
@@ -374,8 +372,6 @@ std::tuple<RefPtr<Range>, NSDictionary *> DictionaryLookup::rangeAtHitTestResult
     return { nullptr, nil };
     
 }
-    
-#if !PLATFORM(WATCH)
 
 static void expandSelectionByCharacters(PDFSelection *selection, NSInteger numberOfCharactersToExpand, NSInteger& charactersAddedBeforeStart, NSInteger& charactersAddedAfterEnd)
 {
@@ -433,8 +429,6 @@ std::tuple<NSString *, NSDictionary *> DictionaryLookup::stringForPDFSelection(P
 
     return { @"", nil };
 }
-    
-#endif // !PLATFORM(WATCH)
 
 static WKRevealController showPopupOrCreateAnimationController(bool createAnimationController, const DictionaryPopupInfo& dictionaryPopupInfo, RevealView *view, const WTF::Function<void(TextIndicator&)>& textIndicatorInstallationCallback, const WTF::Function<FloatRect(FloatRect)>& rootViewToViewConversionCallback, WTF::Function<void()>&& clearTextIndicator)
 {

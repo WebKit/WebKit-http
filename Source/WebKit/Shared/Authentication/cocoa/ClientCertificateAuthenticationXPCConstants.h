@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,12 +29,16 @@
 
 namespace WebKit {
 
-const char clientCertificateAuthenticationXPCMessageNameKey[] = "message-name";
-const char clientCertificateAuthenticationXPCMessageNameValue[] = "client-certificate-credential";
-const char clientCertificateAuthenticationXPCChallengeIDKey[] = "challenge-id";
-const char clientCertificateAuthenticationXPCSecKeyProxyEndpointKey[] = "sec-key-proxy-endpoint";
-const char clientCertificateAuthenticationXPCCertificatesKey[] = "certificates";
-const char clientCertificateAuthenticationXPCPersistenceKey[] = "persistence";
+namespace ClientCertificateAuthentication {
+
+extern const char* const XPCCertificatesKey;
+extern const char* const XPCChallengeIDKey;
+extern const char* const XPCMessageNameKey;
+extern const char* const XPCMessageNameValue;
+extern const char* const XPCPersistenceKey;
+extern const char* const XPCSecKeyProxyEndpointKey;
+
+} // namespace ClientCertificateAuthentication
 
 } // namespace WebKit
 

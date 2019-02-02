@@ -103,6 +103,7 @@
 #import <CoreImage/CoreImage.h>
 #import <UIKit/UIDevice.h>
 #import <mach/mach_port.h>
+#import <pal/ios/UIKitSoftLink.h>
 #else
 #import <Foundation/NSGeometry.h>
 #import <QuartzCore/CoreImage.h>
@@ -304,7 +305,6 @@ SOFT_LINK_OPTIONAL(MediaToolbox, MTEnableCaption2015Behavior, Boolean, (), ())
 #if PLATFORM(IOS_FAMILY)
 
 #if HAVE(CELESTIAL)
-
 SOFT_LINK_PRIVATE_FRAMEWORK(Celestial)
 SOFT_LINK_CONSTANT(Celestial, AVController_RouteDescriptionKey_RouteCurrentlyPicked, NSString *)
 SOFT_LINK_CONSTANT(Celestial, AVController_RouteDescriptionKey_RouteName, NSString *)
@@ -312,12 +312,7 @@ SOFT_LINK_CONSTANT(Celestial, AVController_RouteDescriptionKey_AVAudioRouteName,
 #define AVController_RouteDescriptionKey_RouteCurrentlyPicked getAVController_RouteDescriptionKey_RouteCurrentlyPicked()
 #define AVController_RouteDescriptionKey_RouteName getAVController_RouteDescriptionKey_RouteName()
 #define AVController_RouteDescriptionKey_AVAudioRouteName getAVController_RouteDescriptionKey_AVAudioRouteName()
-
 #endif // HAVE(CELESTIAL)
-
-SOFT_LINK_FRAMEWORK(UIKit)
-SOFT_LINK_CLASS(UIKit, UIDevice)
-#define UIDevice getUIDeviceClass()
 
 #endif // PLATFORM(IOS_FAMILY)
 
@@ -1385,14 +1380,14 @@ void MediaPlayerPrivateAVFoundationObjC::seekToTime(const MediaTime& time, const
 void MediaPlayerPrivateAVFoundationObjC::setVolume(float volume)
 {
 #if PLATFORM(IOS_FAMILY)
-    UNUSED_PARAM(volume);
-    return;
-#else
+    if ([[PAL::getUIDeviceClass() currentDevice] userInterfaceIdiom] != UIUserInterfaceIdiomPad)
+        return;
+#endif
+
     if (!m_avPlayer)
         return;
 
     [m_avPlayer.get() setVolume:volume];
-#endif
 }
 
 void MediaPlayerPrivateAVFoundationObjC::setMuted(bool muted)
@@ -2889,7 +2884,7 @@ ALLOW_DEPRECATED_DECLARATIONS_END
             break;
 
         // The route is a speaker or HDMI out, override the name to be the localized device model.
-        NSString *localizedDeviceModel = [[UIDevice currentDevice] localizedModel];
+        NSString *localizedDeviceModel = [[PAL::getUIDeviceClass() currentDevice] localizedModel];
 
         // In cases where a route with that name already exists, prefix the name with the model.
         BOOL includeLocalizedDeviceModelName = NO;

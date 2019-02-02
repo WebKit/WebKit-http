@@ -41,6 +41,7 @@ template<> struct WrapperTraits<API::WebsiteDataStore> {
 @interface WKWebsiteDataStore () <WKObject> {
 @package
     API::ObjectStorage<API::WebsiteDataStore> _websiteDataStore;
+    RetainPtr<id <_WKWebsiteDataStoreDelegate> > _delegate;
 }
 @end
 

@@ -31,6 +31,7 @@
 #include "KeyframeAnimationOptions.h"
 #include "ScrollToOptions.h"
 #include "ScrollTypes.h"
+#include "ScrollingCoordinator.h"
 #include "ShadowRootMode.h"
 #include "SimulatedClickOptions.h"
 #include "StyleChange.h"
@@ -74,6 +75,10 @@ enum class SelectionRevealMode {
     RevealUpToMainFrame, // Scroll overflow and iframes, but not the main frame.
     DoNotReveal
 };
+
+#if ENABLE(POINTER_EVENTS)
+enum class TouchAction : uint8_t;
+#endif
 
 class Element : public ContainerNode {
     WTF_MAKE_ISO_ALLOCATED(Element);
@@ -278,7 +283,7 @@ public:
 
     virtual void didMoveToNewDocument(Document& oldDocument, Document& newDocument);
 
-    bool hasEquivalentAttributes(const Element* other) const;
+    bool hasEquivalentAttributes(const Element& other) const;
 
     virtual void copyNonAttributePropertiesFromElement(const Element&) { }
 
@@ -305,7 +310,7 @@ public:
     // FIXME: this should not be virtual, do not override this.
     virtual const AtomicString& shadowPseudoId() const;
 
-    bool inActiveChain() const { return isUserActionElement() && isUserActionElementInActiveChain(); }
+    bool isInActiveChain() const { return isUserActionElement() && isUserActionElementInActiveChain(); }
     bool active() const { return isUserActionElement() && isUserActionElementActive(); }
     bool hovered() const { return isUserActionElement() && isUserActionElementHovered(); }
     bool focused() const { return isUserActionElement() && isUserActionElementFocused(); }
@@ -588,6 +593,13 @@ public:
     ExceptionOr<Ref<WebAnimation>> animate(JSC::ExecState&, JSC::Strong<JSC::JSObject>&&, Optional<Variant<double, KeyframeAnimationOptions>>&&);
     Vector<RefPtr<WebAnimation>> getAnimations();
 
+#if ENABLE(POINTER_EVENTS)
+    OptionSet<TouchAction> computedTouchActions() const;
+#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
+    ScrollingNodeID nearestScrollingNodeIDUsingTouchOverflowScrolling() const;
+#endif
+#endif
+
 protected:
     Element(const QualifiedName&, Document&, ConstructionType);
 
@@ -626,11 +638,6 @@ private:
 
     virtual void didAddUserAgentShadowRoot(ShadowRoot&) { }
 
-    // FIXME: Remove the need for Attr to call willModifyAttribute/didModifyAttribute.
-    friend class Attr;
-
-    enum SynchronizationOfLazyAttribute { NotInSynchronizationOfLazyAttribute = 0, InSynchronizationOfLazyAttribute };
-
     void didAddAttribute(const QualifiedName&, const AtomicString&);
     void willModifyAttribute(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue);
     void didModifyAttribute(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue);
@@ -658,6 +665,7 @@ private:
     NodeType nodeType() const final;
     bool childTypeAllowed(NodeType) const final;
 
+    enum SynchronizationOfLazyAttribute { NotInSynchronizationOfLazyAttribute, InSynchronizationOfLazyAttribute };
     void setAttributeInternal(unsigned index, const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
     void addAttributeInternal(const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
     void removeAttributeInternal(unsigned index, SynchronizationOfLazyAttribute);

@@ -23,6 +23,7 @@
 #pragma once
 
 #include "ErrorInstance.h"
+#include "ErrorType.h"
 #include "InternalFunction.h"
 #include "JSObject.h"
 #include "ThrowScope.h"
@@ -37,16 +38,6 @@ class JSGlobalObject;
 class JSObject;
 class SourceCode;
 class Structure;
-
-enum class ErrorType : uint8_t {
-    Error,
-    EvalError,
-    RangeError,
-    ReferenceError,
-    SyntaxError,
-    TypeError,
-    URIError,
-};
 
 // ExecState wrappers.
 JSObject* createError(ExecState*, const String&, ErrorInstance::SourceAppender);
@@ -104,65 +95,4 @@ inline EncodedJSValue throwVMTypeError(ExecState* exec, ThrowScope& scope, const
 inline EncodedJSValue throwVMRangeError(ExecState* state, ThrowScope& scope, const String& errorMessage) { return JSValue::encode(throwRangeError(state, scope, errorMessage)); }
 inline EncodedJSValue throwVMDOMAttributeGetterTypeError(ExecState* state, ThrowScope& scope, const ClassInfo* classInfo, PropertyName propertyName) { return JSValue::encode(throwDOMAttributeGetterTypeError(state, scope, classInfo, propertyName)); }
 
-class StrictModeTypeErrorFunction final : public InternalFunction {
-private:
-    StrictModeTypeErrorFunction(VM& vm, Structure* structure, const String& message)
-        : InternalFunction(vm, structure, callThrowTypeError, constructThrowTypeError)
-        , m_message(message)
-    {
-    }
-
-    static void destroy(JSCell*);
-
-public:
-    typedef InternalFunction Base;
-    
-    template<typename CellType>
-    static IsoSubspace* subspaceFor(VM& vm)
-    {
-        return &vm.strictModeTypeErrorFunctionSpace;
-    }
-
-    static StrictModeTypeErrorFunction* create(VM& vm, Structure* structure, const String& message)
-    {
-        StrictModeTypeErrorFunction* function = new (NotNull, allocateCell<StrictModeTypeErrorFunction>(vm.heap)) StrictModeTypeErrorFunction(vm, structure, message);
-        function->finishCreation(vm, String());
-        return function;
-    }
-
-    static EncodedJSValue JSC_HOST_CALL constructThrowTypeError(ExecState* exec)
-    {
-        VM& vm = exec->vm();
-        auto scope = DECLARE_THROW_SCOPE(vm);
-        throwTypeError(exec, scope, static_cast<StrictModeTypeErrorFunction*>(exec->jsCallee())->m_message);
-        return JSValue::encode(jsNull());
-    }
-
-    static EncodedJSValue JSC_HOST_CALL callThrowTypeError(ExecState* exec)
-    {
-        VM& vm = exec->vm();
-        auto scope = DECLARE_THROW_SCOPE(vm);
-        throwTypeError(exec, scope, static_cast<StrictModeTypeErrorFunction*>(exec->jsCallee())->m_message);
-        return JSValue::encode(jsNull());
-    }
-
-    DECLARE_INFO;
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype) 
-    { 
-        return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info()); 
-    }
-
-private:
-    String m_message;
-};
-
 } // namespace JSC
-
-namespace WTF {
-
-class PrintStream;
-
-void printInternal(PrintStream&, JSC::ErrorType);
-
-} // namespace WTF

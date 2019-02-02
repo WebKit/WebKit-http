@@ -58,7 +58,6 @@ static bool finishedNavigation = false;
 TEST(ResourceLoadStatistics, GrandfatherCallback)
 {
     auto *dataStore = [WKWebsiteDataStore defaultDataStore];
-    [dataStore _setResourceLoadStatisticsEnabled:NO];
 
     NSURL *statisticsDirectoryURL = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/WebsiteData/ResourceLoadStatistics" stringByExpandingTildeInPath] isDirectory:YES];
     NSURL *fileURL = [statisticsDirectoryURL URLByAppendingPathComponent:@"full_browsing_session_resourceLog.plist"];
@@ -73,6 +72,10 @@ TEST(ResourceLoadStatistics, GrandfatherCallback)
         ASSERT_TRUE([message isEqualToString:@"Grandfathered"]);
         grandfatheredFlag = true;
     }];
+
+    // We need an active NetworkProcess to perform ResourceLoadStatistics operations.
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [dataStore _setResourceLoadStatisticsEnabled:YES];
 
     TestWebKitAPI::Util::run(&grandfatheredFlag);
 
@@ -119,7 +122,6 @@ TEST(ResourceLoadStatistics, GrandfatherCallback)
 TEST(ResourceLoadStatistics, ShouldNotGrandfatherOnStartup)
 {
     auto *dataStore = [WKWebsiteDataStore defaultDataStore];
-    [dataStore _setResourceLoadStatisticsEnabled:NO];
 
     NSURL *statisticsDirectoryURL = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/WebsiteData/ResourceLoadStatistics" stringByExpandingTildeInPath] isDirectory:YES];
     NSURL *targetURL = [statisticsDirectoryURL URLByAppendingPathComponent:@"full_browsing_session_resourceLog.plist"];
@@ -136,6 +138,10 @@ TEST(ResourceLoadStatistics, ShouldNotGrandfatherOnStartup)
         callbackFlag = true;
     }];
 
+    // We need an active NetworkProcess to perform ResourceLoadStatistics operations.
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [dataStore _setResourceLoadStatisticsEnabled:YES];
+
     TestWebKitAPI::Util::run(&callbackFlag);
 }
 
@@ -147,7 +153,6 @@ TEST(ResourceLoadStatistics, ChildProcessesNotLaunched)
     EXPECT_EQ((size_t)0, [sharedProcessPool _pluginProcessCount]);
 
     auto *dataStore = [WKWebsiteDataStore defaultDataStore];
-    [dataStore _setResourceLoadStatisticsEnabled:NO];
 
     NSURL *statisticsDirectoryURL = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/WebsiteData/ResourceLoadStatistics" stringByExpandingTildeInPath] isDirectory:YES];
     NSURL *targetURL = [statisticsDirectoryURL URLByAppendingPathComponent:@"full_browsing_session_resourceLog.plist"];
@@ -164,9 +169,15 @@ TEST(ResourceLoadStatistics, ChildProcessesNotLaunched)
         doneFlag = true;
     }];
 
+    // We need an active NetworkProcess to perform ResourceLoadStatistics operations.
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
+    [dataStore _setResourceLoadStatisticsEnabled:YES];
+
     TestWebKitAPI::Util::run(&doneFlag);
 
     EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:targetURL.path]);
+
+    webView.clear();
 
     EXPECT_EQ((size_t)0, [sharedProcessPool _pluginProcessCount]);
 }

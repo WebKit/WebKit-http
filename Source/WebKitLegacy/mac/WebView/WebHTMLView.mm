@@ -6092,8 +6092,12 @@ static BOOL writingDirectionKeyBindingsEnabled()
         if (!webView.isEditable && event.isTabKey)
             return NO;
 
+        bool isCharEvent = platformEvent->type() == PlatformKeyboardEvent::Char;
+
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000
-        if (event.type == WebEventKeyDown && [webView._UIKitDelegateForwarder handleKeyCommandForCurrentEvent])
+        if (!isCharEvent && [webView._UIKitDelegateForwarder handleKeyTextCommandForCurrentEvent])
+            return YES;
+        if (isCharEvent && [webView._UIKitDelegateForwarder handleKeyAppCommandForCurrentEvent])
             return YES;
 #endif
 
@@ -6107,14 +6111,14 @@ static BOOL writingDirectionKeyBindingsEnabled()
             return YES;
         case kWebEnterKey:
         case kWebReturnKey:
-            if (platformEvent->type() == PlatformKeyboardEvent::Char) {
+            if (isCharEvent) {
                 // Map \r from HW keyboard to \n to match the behavior of the soft keyboard.
                 [[webView _UIKitDelegateForwarder] addInputString:@"\n" withFlags:0];
                 return YES;
             }
             break;
         default:
-            if (platformEvent->type() == PlatformKeyboardEvent::Char) {
+            if (isCharEvent) {
                 [[webView _UIKitDelegateForwarder] addInputString:event.characters withFlags:event.keyboardFlags];
                 return YES;
             }
@@ -6712,13 +6716,11 @@ IGNORE_WARNINGS_END
         return;
 
     BOOL needToRemoveSoftSpace = NO;
-#if HAVE(ADVANCED_SPELL_CHECKING)
+#if PLATFORM(MAC)
     if (_private->softSpaceRange.location != NSNotFound && (replacementRange.location == NSMaxRange(_private->softSpaceRange) || replacementRange.location == NSNotFound) && !replacementRange.length && [[NSSpellChecker sharedSpellChecker] deletesAutospaceBeforeString:text language:nil]) {
         replacementRange = _private->softSpaceRange;
         needToRemoveSoftSpace = YES;
     }
-#endif
-#if PLATFORM(MAC)
     _private->softSpaceRange = NSMakeRange(NSNotFound, 0);
 #endif
 

@@ -1,3 +1,238 @@
+2019-01-28  Mark Lam  <mark.lam@apple.com>
+
+        ToString node actually does GC.
+        https://bugs.webkit.org/show_bug.cgi?id=193920
+        <rdar://problem/46695900>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/dfg-to-string-on-int-does-gc.js: Added.
+        * stress/dfg-to-string-on-string-object-does-not-gc.js: Added.
+        * stress/dfg-to-string-on-string-or-string-object-does-not-gc.js: Added.
+
+2019-01-25  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] NativeErrorConstructor should not have own IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=193713
+
+        Reviewed by Saam Barati.
+
+        Remove @Error use.
+
+        * stress/try-get-by-id-should-spill-registers-dfg.js:
+        (let.f.createBuiltin):
+
+2019-01-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        stress/const-semantics.js fails a dfg-eager / ftl-eager run with an ASAN release build.
+        https://bugs.webkit.org/show_bug.cgi?id=190693
+
+        Reviewed by Michael Saboff.
+
+        * stress/regress-190693.js: Added.
+        (truth):
+        (assert):
+        (shouldThrowInvalidConstAssignment):
+        (taz):
+
+2019-01-24  Saam Barati  <sbarati@apple.com>
+
+        Object Allocation Sinking phase can move a node that walks the stack into a place where the InlineCallFrame is no longer valid
+        https://bugs.webkit.org/show_bug.cgi?id=193751
+        <rdar://problem/47280215>
+
+        Reviewed by Michael Saboff.
+
+        * stress/object-allocation-sinking-phase-must-only-move-allocations-if-stack-trace-is-still-valid.js: Added.
+        (let.thing):
+        (foo.let.hello):
+        (foo):
+
+2019-01-24  Guillaume Emont  <guijemont@igalia.com>
+
+        [JSC] Reenable baseline JIT on mips
+        https://bugs.webkit.org/show_bug.cgi?id=192983
+
+        Reviewed by Mark Lam.
+
+        Added a new test for a case that was triggering a RELEASE_ASSERT when
+        testing.
+        Disable some slow tests that were already disabled for arm and x86.
+
+        * stress/json-parse-big-object.js: Added.
+        * stress/new-largeish-contiguous-array-with-size.js:
+        * stress/op_add.js:
+        * stress/op_bitand.js:
+        * stress/op_bitor.js:
+        * stress/op_bitxor.js:
+        * stress/op_lshift-ConstVar.js:
+        * stress/op_lshift-VarConst.js:
+        * stress/op_lshift-VarVar.js:
+        * stress/op_mod-ConstVar.js:
+        * stress/op_mod-VarConst.js:
+        * stress/op_mod-VarVar.js:
+        * stress/op_mul-ConstVar.js:
+        * stress/op_mul-VarConst.js:
+        * stress/op_mul-VarVar.js:
+        * stress/op_rshift-ConstVar.js:
+        * stress/op_rshift-VarConst.js:
+        * stress/op_rshift-VarVar.js:
+        * stress/op_sub-ConstVar.js:
+        * stress/op_sub-VarConst.js:
+        * stress/op_sub-VarVar.js:
+        * stress/op_urshift-ConstVar.js:
+        * stress/op_urshift-VarConst.js:
+        * stress/op_urshift-VarVar.js:
+        * stress/sampling-profiler-richards.js:
+        * stress/spread-forward-call-varargs-stack-overflow.js:
+
+2019-01-23  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [DFG] AvailabilityMap::pruneByLiveness should make non-live operands Availability::unavailable instead of Availability()
+        https://bugs.webkit.org/show_bug.cgi?id=193711
+        <rdar://problem/47250262>
+
+        Reviewed by Saam Barati.
+
+        * stress/availability-was-cleared-when-locals-are-not-live.js: Added.
+        (shouldBe):
+        (foo):
+        (bar):
+        (baz):
+
+2019-01-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix initial global lexical binding epoch
+        https://bugs.webkit.org/show_bug.cgi?id=193603
+        <rdar://problem/47380869>
+
+        * stress/global-lexical-binding-epoch-should-be-correct-one.js: Added.
+        (f1.f2.f3.f4):
+        (f1.f2.f3):
+        (f1.f2):
+        (f1):
+
+2019-01-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        REGRESSION(r239612) Crash at runtime due to broken DFG assumption
+        https://bugs.webkit.org/show_bug.cgi?id=193709
+        <rdar://problem/47363838>
+
+        Unreviewed, rollout to watch the tests.
+
+        * stress/object-tostring-changed-proto.js: Removed.
+        * stress/object-tostring-changed.js: Removed.
+        * stress/object-tostring-misc.js: Removed.
+        * stress/object-tostring-other.js: Removed.
+        * stress/object-tostring-untyped.js: Removed.
+
+2019-01-22  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Rollout r240223. It regressed JetStream2 by 1%.
+
+        * stress/arith-abs-to-arith-negate-range-optimizaton.js:
+        (testUncheckedBetweenIntMinInclusiveAndZeroExclusive):
+        (testUncheckedLessThanZero):
+        (testUncheckedLessThanOrEqualZero):
+        * stress/movhint-backwards-propagation-must-merge-use-as-value-add.js: Removed.
+        * stress/movhint-backwards-propagation-must-merge-use-as-value.js: Removed.
+
+2019-01-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Invalidate old scope operations using global lexical binding epoch
+        https://bugs.webkit.org/show_bug.cgi?id=193603
+        <rdar://problem/47380869>
+
+        Reviewed by Saam Barati.
+
+        * stress/let-lexical-binding-shadow-existing-global-property-ftl.js:
+        * stress/scope-operation-cache-global-property-before-deleting.js: Added.
+        (shouldThrow):
+        (bar):
+        * stress/scope-operation-cache-global-property-bump-counter.js: Added.
+        (shouldBe):
+        (get1):
+        (get2):
+        (get1If):
+        (get2If):
+        * stress/scope-operation-cache-global-property-even-if-it-fails.js: Added.
+        (shouldThrow):
+        (foo):
+
+2019-01-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, roll out r240220 due to date-format-xparb regression
+        https://bugs.webkit.org/show_bug.cgi?id=193603
+
+        * stress/let-lexical-binding-shadow-existing-global-property-ftl.js:
+        * stress/scope-operation-cache-global-property-before-deleting.js: Removed.
+        * stress/scope-operation-cache-global-property-bump-counter.js: Removed.
+        * stress/scope-operation-cache-global-property-even-if-it-fails.js: Removed.
+
+2019-01-21  Caio Lima  <ticaiolima@gmail.com>
+
+        DoesGC rule is wrong for nodes with BigIntUse
+        https://bugs.webkit.org/show_bug.cgi?id=193652
+
+        Reviewed by Saam Barati.
+
+        * stress/big-int-value-op-update-gc-rules.js: Added.
+        (assert):
+        (doesGCAdd):
+        (doesGCSub):
+        (doesGCDiv):
+        (doesGCMul):
+        (doesGCBitAnd):
+        (doesGCBitOr):
+        (doesGCBitXor):
+
+2019-01-20  Saam Barati  <sbarati@apple.com>
+
+        DFG: When inlining DataView set* intrinsics we need to set undefined as our result
+        https://bugs.webkit.org/show_bug.cgi?id=193644
+        <rdar://problem/46209745>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/data-view-set-intrinsic-undefined-result-2.js: Added.
+        (foo):
+        * stress/data-view-set-intrinsic-undefined-result.js: Added.
+        (foo):
+        (bar):
+
+2019-01-20  Saam Barati  <sbarati@apple.com>
+
+        MovHint must merge NodeBytecodeUsesAsValue for its child
+        https://bugs.webkit.org/show_bug.cgi?id=186916
+        <rdar://problem/41396612>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/arith-abs-to-arith-negate-range-optimizaton.js:
+        * stress/movhint-backwards-propagation-must-merge-use-as-value.js: Added.
+
+2019-01-20  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Invalidate old scope operations using global lexical binding epoch
+        https://bugs.webkit.org/show_bug.cgi?id=193603
+        <rdar://problem/47380869>
+
+        Reviewed by Saam Barati.
+
+        * stress/let-lexical-binding-shadow-existing-global-property-ftl.js:
+        * stress/scope-operation-cache-global-property-before-deleting.js: Added.
+        (shouldThrow):
+        (bar):
+        * stress/scope-operation-cache-global-property-bump-counter.js: Added.
+        (shouldBe):
+        (get1):
+        (get2):
+        (get1If):
+        (get2If):
+        * stress/scope-operation-cache-global-property-even-if-it-fails.js: Added.
+        (shouldThrow):
+        (foo):
+
 2019-01-17  Saam barati  <sbarati@apple.com>
 
         StringObjectUse should not be a structure check for the original string object structure

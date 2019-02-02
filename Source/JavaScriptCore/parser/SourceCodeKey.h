@@ -37,6 +37,8 @@ enum class TypeProfilerEnabled { No, Yes };
 enum class ControlFlowProfilerEnabled { No, Yes };
 
 class SourceCodeFlags {
+    friend class CachedSourceCodeKey;
+
 public:
     SourceCodeFlags() = default;
 
@@ -70,6 +72,8 @@ private:
 };
 
 class SourceCodeKey {
+    friend class CachedSourceCodeKey;
+
 public:
     SourceCodeKey()
     {
@@ -96,6 +100,8 @@ public:
 
     unsigned hash() const { return m_hash; }
 
+    const UnlinkedSourceCode& source() const { return m_sourceCode; }
+
     size_t length() const { return m_sourceCode.length(); }
 
     bool isNull() const { return m_sourceCode.isNull(); }
@@ -112,6 +118,11 @@ public:
             && m_functionConstructorParametersEndPosition == other.m_functionConstructorParametersEndPosition
             && m_name == other.m_name
             && string() == other.string();
+    }
+
+    bool operator!=(const SourceCodeKey& other) const
+    {
+        return !(*this == other);
     }
 
     struct Hash {

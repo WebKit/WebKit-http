@@ -32,12 +32,12 @@
 #include "ResourceCachesToClear.h"
 #include "WebCookieManager.h"
 #include <WebCore/CertificateInfo.h>
-#include <WebCore/FileSystem.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/SoupNetworkSession.h>
 #include <libsoup/soup.h>
+#include <wtf/FileSystem.h>
 #include <wtf/RAMSize.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
@@ -95,9 +95,8 @@ void NetworkProcess::userPreferredLanguagesChanged(const Vector<String>& languag
 {
     auto acceptLanguages = buildAcceptLanguages(languages);
     SoupNetworkSession::setInitialAcceptLanguages(acceptLanguages);
-    NetworkStorageSession::forEach([&acceptLanguages](const WebCore::NetworkStorageSession& session) {
-        if (auto* soupSession = session.soupNetworkSession())
-            soupSession->setAcceptLanguages(acceptLanguages);
+    forEachNetworkStorageSession([&acceptLanguages](const auto& session) {
+        session.soupNetworkSession().setAcceptLanguages(acceptLanguages);
     });
 }
 
@@ -109,7 +108,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
     ASSERT(!parameters.diskCacheDirectory.isEmpty());
     m_diskCacheDirectory = parameters.diskCacheDirectory;
 
-    SoupNetworkSession::clearOldSoupCache(WebCore::FileSystem::directoryName(m_diskCacheDirectory));
+    SoupNetworkSession::clearOldSoupCache(FileSystem::directoryName(m_diskCacheDirectory));
 
     OptionSet<NetworkCache::Cache::Option> cacheOptions { NetworkCache::Cache::Option::RegisterNotify };
     if (parameters.shouldEnableNetworkCacheEfficacyLogging)
@@ -131,6 +130,11 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
         userPreferredLanguagesChanged(parameters.languages);
 
     setIgnoreTLSErrors(parameters.ignoreTLSErrors);
+}
+
+std::unique_ptr<WebCore::NetworkStorageSession> NetworkProcess::platformCreateDefaultStorageSession() const
+{
+    return std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID(), std::make_unique<SoupNetworkSession>(PAL::SessionID::defaultSessionID()));
 }
 
 void NetworkProcess::setIgnoreTLSErrors(bool ignoreTLSErrors)
@@ -168,9 +172,8 @@ void NetworkProcess::platformTerminate()
 void NetworkProcess::setNetworkProxySettings(const SoupNetworkProxySettings& settings)
 {
     SoupNetworkSession::setProxySettings(settings);
-    NetworkStorageSession::forEach([](const NetworkStorageSession& session) {
-        if (auto* soupSession = session.soupNetworkSession())
-            soupSession->setupProxy();
+    forEachNetworkStorageSession([](const auto& session) {
+        session.soupNetworkSession().setupProxy();
     });
 }
 

@@ -40,17 +40,21 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
         this._node = node || null;
         this._inherited = inherited || false;
 
+        this._initialState = null;
         this._locked = false;
         this._pendingProperties = [];
         this._propertyNameMap = {};
 
-        this._allProperties = [];
-        this._allVisibleProperties = null;
+        this._properties = [];
+        this._enabledProperties = null;
+        this._visibleProperties = null;
 
         this.update(text, properties, styleSheetTextRange, {dontFireEvents: true});
     }
 
     // Public
+
+    get initialState() { return this._initialState; }
 
     get id()
     {
@@ -110,22 +114,21 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
         text = text || "";
         properties = properties || [];
 
-        var oldProperties = this._properties || [];
-        var oldText = this._text;
+        let oldProperties = this._properties || [];
+        let oldText = this._text;
 
         this._text = text;
-        this._properties = properties.filter((property) => property.enabled);
-        this._allProperties = properties;
+        this._properties = properties;
 
         this._styleSheetTextRange = styleSheetTextRange;
         this._propertyNameMap = {};
 
-        delete this._visibleProperties;
-        this._allVisibleProperties = null;
+        this._enabledProperties = null;
+        this._visibleProperties = null;
 
-        var editable = this.editable;
+        let editable = this.editable;
 
-        for (let property of this._allProperties) {
+        for (let property of this._properties) {
             property.ownerStyle = this;
 
             // Store the property in a map if we aren't editable. This
@@ -140,46 +143,29 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
             }
         }
 
-        var removedProperties = [];
-        for (var i = 0; i < oldProperties.length; ++i) {
-            var oldProperty = oldProperties[i];
+        for (let oldProperty of oldProperties) {
+            if (this.enabledProperties.includes(oldProperty))
+                continue;
 
-            if (!this._properties.includes(oldProperty)) {
-                // Clear the index, since it is no longer valid.
-                oldProperty.index = NaN;
+            // Clear the index, since it is no longer valid.
+            oldProperty.index = NaN;
 
-                removedProperties.push(oldProperty);
-
-                // Keep around old properties in pending in case they
-                // are needed again during editing.
-                if (editable)
-                    this._pendingProperties.push(oldProperty);
-            }
+            // Keep around old properties in pending in case they
+            // are needed again during editing.
+            if (editable)
+                this._pendingProperties.push(oldProperty);
         }
 
         if (dontFireEvents)
             return;
 
-        var addedProperties = [];
-        for (var i = 0; i < this._properties.length; ++i) {
-            if (!oldProperties.includes(this._properties[i]))
-                addedProperties.push(this._properties[i]);
-        }
-
         // Don't fire the event if there is text and it hasn't changed.
-        if (oldText && this._text && oldText === this._text) {
-            if (!this._locked || suppressLock) {
-                // We shouldn't have any added or removed properties in this case.
-                console.assert(!addedProperties.length && !removedProperties.length);
-            }
-
-            if (!addedProperties.length && !removedProperties.length)
-                return;
-        }
+        if (oldText && this._text && oldText === this._text)
+            return;
 
         function delayed()
         {
-            this.dispatchEventToListeners(WI.CSSStyleDeclaration.Event.PropertiesChanged, {addedProperties, removedProperties});
+            this.dispatchEventToListeners(WI.CSSStyleDeclaration.Event.PropertiesChanged);
         }
 
         // Delay firing the PropertiesChanged event so DOMNodeStyles has a chance to mark overridden and associated properties.
@@ -220,19 +206,27 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
         this._nodeStyles.changeStyleText(this, text);
     }
 
+    get enabledProperties()
+    {
+        if (!this._enabledProperties)
+            this._enabledProperties = this._properties.filter((property) => property.enabled);
+
+        return this._enabledProperties;
+    }
+
     get properties()
     {
         return this._properties;
     }
 
-    get allProperties() { return this._allProperties; }
-
-    get allVisibleProperties()
+    set properties(properties)
     {
-        if (!this._allVisibleProperties)
-            this._allVisibleProperties = this._allProperties.filter((property) => !!property.styleDeclarationTextRange);
+        if (properties === this._properties)
+            return;
 
-        return this._allVisibleProperties;
+        this._properties = properties;
+        this._enabledProperties = null;
+        this._visibleProperties = null;
     }
 
     get visibleProperties()
@@ -293,7 +287,7 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
 
         var bestMatchProperty = null;
 
-        findMatch(this._properties);
+        findMatch(this.enabledProperties);
 
         if (bestMatchProperty)
             return bestMatchProperty;
@@ -314,11 +308,6 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
         return newProperty;
     }
 
-    hasProperties()
-    {
-        return !!this._properties.length;
-    }
-
     newBlankProperty(propertyIndex)
     {
         let text, name, value, priority, overridden, implicit, anonymous;
@@ -326,28 +315,52 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
         let valid = false;
         let styleSheetTextRange = this._rangeAfterPropertyAtIndex(propertyIndex - 1);
 
+        this.markModified();
         let property = new WI.CSSProperty(propertyIndex, text, name, value, priority, enabled, overridden, implicit, anonymous, valid, styleSheetTextRange);
 
-        this._allProperties.insertAtIndex(property, propertyIndex);
-        for (let index = propertyIndex + 1; index < this._allProperties.length; index++)
-            this._allProperties[index].index = index;
+        this._properties.insertAtIndex(property, propertyIndex);
+        for (let index = propertyIndex + 1; index < this._properties.length; index++)
+            this._properties[index].index = index;
 
-        this.update(this._text, this._allProperties, this._styleSheetTextRange, {dontFireEvents: true, suppressLock: true});
+        this.update(this._text, this._properties, this._styleSheetTextRange, {dontFireEvents: true, suppressLock: true});
 
         return property;
+    }
+
+    markModified()
+    {
+        let properties = this._initialState ? this._initialState.properties : this._properties;
+
+        if (!this._initialState) {
+            this._initialState = new WI.CSSStyleDeclaration(
+                    this._nodeStyles,
+                    this._ownerStyleSheet,
+                    this._id,
+                    this._type,
+                    this._node,
+                    this._inherited,
+                    this._text,
+                    [], // Passing CSS properties here would change their ownerStyle.
+                    this._styleSheetTextRange);
+        }
+
+        this._initialState.properties = properties.map((property) => { return property.initialState || property });
+
+        if (this._ownerRule)
+            this._ownerRule.markModified();
     }
 
     shiftPropertiesAfter(cssProperty, lineDelta, columnDelta, propertyWasRemoved)
     {
         // cssProperty.index could be set to NaN by WI.CSSStyleDeclaration.prototype.update.
-        let realIndex = this._allProperties.indexOf(cssProperty);
+        let realIndex = this._properties.indexOf(cssProperty);
         if (realIndex === -1)
             return;
 
         let endLine = cssProperty.styleSheetTextRange.endLine;
 
-        for (let i = realIndex + 1; i < this._allProperties.length; i++) {
-            let property = this._allProperties[i];
+        for (let i = realIndex + 1; i < this._properties.length; i++) {
+            let property = this._properties[i];
 
             if (property._styleSheetTextRange) {
                 if (property.styleSheetTextRange.startLine === endLine) {
@@ -362,10 +375,10 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
         }
 
         if (propertyWasRemoved)
-            this._allProperties.splice(realIndex, 1);
+            this._properties.splice(realIndex, 1);
 
         // Invalidate cached properties.
-        this._allVisibleProperties = null;
+        this._visibleProperties = null;
     }
 
     // Protected
@@ -382,10 +395,10 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
         if (index < 0)
             return this._styleSheetTextRange.collapseToStart();
 
-        if (index >= this.allVisibleProperties.length)
+        if (index >= this.visibleProperties.length)
             return this._styleSheetTextRange.collapseToEnd();
 
-        let property = this.allVisibleProperties[index];
+        let property = this.visibleProperties[index];
         return property.styleSheetTextRange.collapseToEnd();
     }
 };

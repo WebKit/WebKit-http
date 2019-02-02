@@ -1,3 +1,113 @@
+2019-01-26  Darin Adler  <darin@apple.com>
+  
+        Replace many uses of String::format with more type-safe alternatives
+        https://bugs.webkit.org/show_bug.cgi?id=192742
+
+        Reviewed by Mark Lam.
+
+        * Shared/WebMemorySampler.cpp:
+        (WebKit::WebMemorySampler::writeHeaders): Use makeString.
+
+        * UIProcess/WebAuthentication/Cocoa/LocalAuthenticator.mm:
+        (WebKit::LocalAuthenticator::makeCredential): Use string concatentation.
+
+        * UIProcess/WebInspectorUtilities.cpp:
+        (WebKit::inspectorPageGroupIdentifierForPage): Use makeString.
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::processDidFinishLaunching): Ditto.
+        (WebKit::WebProcessPool::startMemorySampler): Ditto.
+
+2019-01-24  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Move FileSystem to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=193602
+
+        Reviewed by Yusuke Suzuki.
+
+        * Storage/StorageAreaSync.cpp:
+        * Storage/StorageSyncManager.cpp:
+        * Storage/StorageTracker.cpp:
+
+2019-01-23  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Curl] Unreviewed build fix for r240292 and friends.
+
+        WinCairo test stability must be restored in subsequent patch.
+
+        * WebCoreSupport/NetworkStorageSessionMap.cpp:
+        (NetworkStorageSessionMap::defaultStorageSession):
+        (NetworkStorageSessionMap::switchToNewTestingSession):
+        (NetworkStorageSessionMap::ensureSession):
+
+2019-01-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r240403.
+        https://bugs.webkit.org/show_bug.cgi?id=193757
+
+        "Causes multiple crashes on macOS port (probably used wrong
+        ENABLE macro)" (Requested by ddkilzer on #webkit).
+
+        Reverted changeset:
+
+        "[Curl] Unreviewed build fix for r240292 and friends."
+        https://trac.webkit.org/changeset/240403
+
+2019-01-23  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Curl] Unreviewed build fix for r240292 and friends.
+
+        WinCairo test stability must be restored in subsequent patch.
+
+        * WebCoreSupport/NetworkStorageSessionMap.cpp:
+        (NetworkStorageSessionMap::defaultStorageSession):
+        (NetworkStorageSessionMap::switchToNewTestingSession):
+        (NetworkStorageSessionMap::ensureSession):
+
+2019-01-22  Alex Christensen  <achristensen@webkit.org>
+
+        Fix some builds after r240292
+        https://bugs.webkit.org/show_bug.cgi?id=193580
+
+        * WebCoreSupport/NetworkStorageSessionMap.cpp:
+
+2019-01-22  Alex Christensen  <achristensen@webkit.org>
+
+        Move NetworkStorageSession ownership to NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=193580
+
+        Reviewed by Geoff Garen.
+
+        * WebCoreSupport/NetworkStorageSessionMap.cpp: Added.
+        (defaultNetworkStorageSession):
+        (globalSessionMap):
+        (NetworkStorageSessionMap::storageSession):
+        (NetworkStorageSessionMap::defaultStorageSession):
+        (NetworkStorageSessionMap::switchToNewTestingSession):
+        (NetworkStorageSessionMap::ensureSession):
+        (NetworkStorageSessionMap::destroySession):
+        * WebCoreSupport/NetworkStorageSessionMap.h: Added.
+        * WebCoreSupport/PageStorageSessionProvider.h:
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2019-01-15  Darin Adler  <darin@apple.com>
+
+        Use references rather than pointers for register/unregister functions, and more
+        https://bugs.webkit.org/show_bug.cgi?id=175028
+
+        Reviewed by Daniel Bates.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: Let Xcode update this project.
+
+2019-01-18  Eric Carlson  <eric.carlson@apple.com>
+
+        Revert r238815, it broke WK1 video fullscreen on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=193586
+        <rdar://problem/47358941>
+
+        Reviewed by Jer Noble.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
 2019-01-17  Alex Christensen  <achristensen@webkit.org>
 
         Stop using NetworkStorageSession::storageSession in WebCore

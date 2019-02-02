@@ -1,3 +1,57 @@
+2019-01-24  Guillaume Emont  <guijemont@igalia.com>
+
+        [JSC] Reenable baseline JIT on mips
+        https://bugs.webkit.org/show_bug.cgi?id=192983
+
+        Reviewed by Mark Lam.
+
+        Use baseline JIT by default on MIPS.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2019-01-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Support JPEG 2000 images
+        https://bugs.webkit.org/show_bug.cgi?id=186272
+
+        Reviewed by Žan Doberšek.
+
+        Add USE_OPENJPEG build option.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2019-01-18  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * Makefile.shared:
+
+2019-01-18  Philippe Normand  <pnormand@igalia.com>
+
+        [WPE] Add Qt extension
+        https://bugs.webkit.org/show_bug.cgi?id=191464
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsWPE.cmake: Add ENABLE_WPE_QT_API CMake option. Disabled by default.
+
+2019-01-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r240124.
+
+        This commit broke an internal build.
+
+        Reverted changeset:
+
+        "SDK_VARIANT build destinations should be separate from non-
+        SDK_VARIANT builds"
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+        https://trac.webkit.org/changeset/240124
+
 2019-01-17  Jer Noble  <jer.noble@apple.com>
 
         SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds

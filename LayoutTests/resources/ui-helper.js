@@ -554,4 +554,25 @@ window.UIHelper = class UIHelper {
         const escapedIdentifier = identifier.replace(/`/g, "\\`");
         return new Promise(resolve => testRunner.runUIScript(`uiController.setKeyboardInputModeIdentifier(\`${escapedIdentifier}\`)`, resolve));
     }
+
+    static contentOffset()
+    {
+        if (!this.isIOS())
+            return Promise.resolve();
+
+        const uiScript = "JSON.stringify([uiController.contentOffsetX, uiController.contentOffsetY])";
+        return new Promise(resolve => testRunner.runUIScript(uiScript, result => {
+            const [offsetX, offsetY] = JSON.parse(result)
+            resolve({ x: offsetX, y: offsetY });
+        }));
+    }
+
+    static undoAndRedoLabels()
+    {
+        if (!this.isWebKit2())
+            return Promise.resolve();
+
+        const script = "JSON.stringify([uiController.lastUndoLabel, uiController.firstRedoLabel])";
+        return new Promise(resolve => testRunner.runUIScript(script, result => resolve(JSON.parse(result))));
+    }
 }

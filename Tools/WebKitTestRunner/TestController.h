@@ -242,12 +242,15 @@ public:
 
     void removeAllSessionCredentials();
 
+    void ClearIndexedDatabases();
+
     void clearServiceWorkerRegistrations();
 
     void clearDOMCache(WKStringRef origin);
     void clearDOMCaches();
     bool hasDOMCache(WKStringRef origin);
     uint64_t domCacheSize(WKStringRef origin);
+    void allowCacheStorageQuotaIncrease();
 
     void setIDBPerOriginQuota(uint64_t);
 

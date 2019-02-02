@@ -1,3 +1,2500 @@
+2019-01-28  Mark Lam  <mark.lam@apple.com>
+
+        ToString node actually does GC.
+        https://bugs.webkit.org/show_bug.cgi?id=193920
+        <rdar://problem/46695900>
+
+        Reviewed by Yusuke Suzuki.
+
+        Other than for StringObjectUse and StringOrStringObjectUse, ToString and
+        CallStringConstructor can allocate new JSStrings, and hence, can GC.
+
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+
+2019-01-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] RegExpConstructor should not have own IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=193801
+
+        Reviewed by Mark Lam.
+
+        This patch finally removes RegExpConstructor's cached data to JSGlobalObject and remove IsoSubspace for RegExpConstructor.
+        sizeof(RegExpConstructor) != sizeof(InternalFunction), so that we have 16KB memory just for RegExpConstructor. But cached
+        regexp matching data (e.g. `RegExp.$1`) is per-JSGlobalObject one, and we can move this data to JSGlobalObject and remove
+        it from RegExpConstructor members.
+
+        We introduce RegExpGlobalData, which holds the per-global RegExp matching data. And we perform `performMatch` etc. with
+        JSGlobalObject instead of RegExpConstructor. This change requires small changes in DFG / FTL's RecordRegExpCachedResult
+        node since its 1st argument is changed from RegExpConstructor to JSGlobalObject.
+
+        We also move emptyRegExp from RegExpPrototype to VM's RegExpCache because it is more natural place to put it.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileRecordRegExpCachedResult):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * ftl/FTLAbstractHeapRepository.cpp:
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileRecordRegExpCachedResult):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::regExpGlobalData):
+        (JSC::JSGlobalObject::regExpGlobalDataOffset):
+        (JSC::JSGlobalObject::regExpConstructor const): Deleted.
+        * runtime/RegExpCache.cpp:
+        (JSC::RegExpCache::initialize):
+        * runtime/RegExpCache.h:
+        (JSC::RegExpCache::emptyRegExp const):
+        * runtime/RegExpCachedResult.cpp:
+        (JSC::RegExpCachedResult::visitAggregate):
+        (JSC::RegExpCachedResult::visitChildren): Deleted.
+        * runtime/RegExpCachedResult.h:
+        (JSC::RegExpCachedResult::RegExpCachedResult): Deleted.
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::RegExpConstructor):
+        (JSC::regExpConstructorDollar):
+        (JSC::regExpConstructorInput):
+        (JSC::regExpConstructorMultiline):
+        (JSC::regExpConstructorLastMatch):
+        (JSC::regExpConstructorLastParen):
+        (JSC::regExpConstructorLeftContext):
+        (JSC::regExpConstructorRightContext):
+        (JSC::setRegExpConstructorInput):
+        (JSC::setRegExpConstructorMultiline):
+        (JSC::RegExpConstructor::destroy): Deleted.
+        (JSC::RegExpConstructor::visitChildren): Deleted.
+        (JSC::RegExpConstructor::getBackref): Deleted.
+        (JSC::RegExpConstructor::getLastParen): Deleted.
+        (JSC::RegExpConstructor::getLeftContext): Deleted.
+        (JSC::RegExpConstructor::getRightContext): Deleted.
+        * runtime/RegExpConstructor.h:
+        (JSC::RegExpConstructor::performMatch): Deleted.
+        (JSC::RegExpConstructor::recordMatch): Deleted.
+        * runtime/RegExpGlobalData.cpp: Added.
+        (JSC::RegExpGlobalData::visitAggregate):
+        (JSC::RegExpGlobalData::getBackref):
+        (JSC::RegExpGlobalData::getLastParen):
+        (JSC::RegExpGlobalData::getLeftContext):
+        (JSC::RegExpGlobalData::getRightContext):
+        * runtime/RegExpGlobalData.h: Added.
+        (JSC::RegExpGlobalData::cachedResult):
+        (JSC::RegExpGlobalData::setMultiline):
+        (JSC::RegExpGlobalData::multiline const):
+        (JSC::RegExpGlobalData::input):
+        (JSC::RegExpGlobalData::offsetOfCachedResult):
+        * runtime/RegExpGlobalDataInlines.h: Added.
+        (JSC::RegExpGlobalData::setInput):
+        (JSC::RegExpGlobalData::performMatch):
+        (JSC::RegExpGlobalData::recordMatch):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::matchGlobal):
+        * runtime/RegExpObjectInlines.h:
+        (JSC::RegExpObject::execInline):
+        (JSC::RegExpObject::matchInline):
+        (JSC::collectMatches):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        (JSC::regExpProtoFuncSearchFast):
+        (JSC::RegExpPrototype::visitChildren): Deleted.
+        * runtime/RegExpPrototype.h:
+        * runtime/StringPrototype.cpp:
+        (JSC::removeUsingRegExpSearch):
+        (JSC::replaceUsingRegExpSearch):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2018-12-15  Darin Adler  <darin@apple.com>
+
+        Replace many uses of String::format with more type-safe alternatives
+        https://bugs.webkit.org/show_bug.cgi?id=192742
+
+        Reviewed by Mark Lam.
+
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::makeCall): Use makeString.
+        (Inspector::InjectedScriptBase::makeAsyncCall): Ditto.
+        * inspector/InspectorBackendDispatcher.cpp:
+        (Inspector::BackendDispatcher::getPropertyValue): Ditto.
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        (Inspector::InspectorConsoleAgent::enable): Ditto.
+        * jsc.cpp:
+        (FunctionJSCStackFunctor::operator() const): Ditto.
+
+        * runtime/CodeCache.cpp:
+        (JSC::writeCodeBlock): Use makeString's numeric capabilities instead of
+        using String::number.
+
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::IntlDateTimeFormat::initializeDateTimeFormat): Use string concatenation.
+        * runtime/IntlObject.cpp:
+        (JSC::canonicalizeLocaleList): Ditto.
+
+2019-01-27  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Introduce a static accessibility tree
+        https://bugs.webkit.org/show_bug.cgi?id=193348
+        <rdar://problem/47203295>
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-01-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to edit the user agent of a remote target
+        https://bugs.webkit.org/show_bug.cgi?id=193862
+        <rdar://problem/47359292>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Page.json:
+        Add `overrideUserAgent` command.
+
+2019-01-25  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] NativeErrorConstructor should not have own IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=193713
+
+        Reviewed by Saam Barati.
+
+        This removes an additional member in NativeErrorConstructor, and make sizeof(NativeErrorConstructor) == sizeof(InternalFunction).
+        We also make error constructors lazily allocated by using LazyClassStructure. Since error structures are not accessed from DFG / FTL
+        threads, this is OK. While TypeError constructor is eagerly allocated because it is touched from our builtin JS as @TypeError, we should
+        offer some function instead of exposing TypeError constructor in the future, and remove this @TypeError reference. This change removes
+        IsoSubspace for NativeErrorConstructor in VM. We also remove @Error and @RangeError references for builtins since they are no longer
+        referenced.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * builtins/BuiltinNames.h:
+        * interpreter/Interpreter.h:
+        * runtime/Error.cpp:
+        (JSC::createEvalError):
+        (JSC::createRangeError):
+        (JSC::createReferenceError):
+        (JSC::createSyntaxError):
+        (JSC::createTypeError):
+        (JSC::createURIError):
+        (WTF::printInternal): Deleted.
+        * runtime/Error.h:
+        * runtime/ErrorPrototype.cpp:
+        (JSC::ErrorPrototype::create):
+        (JSC::ErrorPrototype::finishCreation):
+        * runtime/ErrorPrototype.h:
+        (JSC::ErrorPrototype::create): Deleted.
+        * runtime/ErrorType.cpp: Added.
+        (JSC::errorTypeName):
+        (WTF::printInternal):
+        * runtime/ErrorType.h: Added.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::initializeErrorConstructor):
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::internalPromiseConstructor const):
+        (JSC::JSGlobalObject::errorStructure const):
+        (JSC::JSGlobalObject::evalErrorConstructor const): Deleted.
+        (JSC::JSGlobalObject::rangeErrorConstructor const): Deleted.
+        (JSC::JSGlobalObject::referenceErrorConstructor const): Deleted.
+        (JSC::JSGlobalObject::syntaxErrorConstructor const): Deleted.
+        (JSC::JSGlobalObject::typeErrorConstructor const): Deleted.
+        (JSC::JSGlobalObject::URIErrorConstructor const): Deleted.
+        * runtime/NativeErrorConstructor.cpp:
+        (JSC::NativeErrorConstructor<errorType>::NativeErrorConstructor):
+        (JSC::NativeErrorConstructorBase::finishCreation):
+        (JSC::NativeErrorConstructor<errorType>::constructNativeErrorConstructor):
+        (JSC::NativeErrorConstructor<errorType>::callNativeErrorConstructor):
+        (JSC::NativeErrorConstructor::NativeErrorConstructor): Deleted.
+        (JSC::NativeErrorConstructor::finishCreation): Deleted.
+        (JSC::NativeErrorConstructor::visitChildren): Deleted.
+        (JSC::Interpreter::constructWithNativeErrorConstructor): Deleted.
+        (JSC::Interpreter::callNativeErrorConstructor): Deleted.
+        * runtime/NativeErrorConstructor.h:
+        (JSC::NativeErrorConstructorBase::createStructure):
+        (JSC::NativeErrorConstructorBase::NativeErrorConstructorBase):
+        * runtime/NativeErrorPrototype.cpp:
+        (JSC::NativeErrorPrototype::finishCreation): Deleted.
+        * runtime/NativeErrorPrototype.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * wasm/js/WasmToJS.cpp:
+        (JSC::Wasm::handleBadI64Use):
+
+2019-01-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to edit page settings on a remote target
+        https://bugs.webkit.org/show_bug.cgi?id=193813
+        <rdar://problem/47359510>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Page.json:
+        Add `overrideSetting` command with supporting `Setting` enum type.
+
+2019-01-25  Keith Rollin  <krollin@apple.com>
+
+        Update Xcode projects with "Check .xcfilelists" build phase
+        https://bugs.webkit.org/show_bug.cgi?id=193790
+        <rdar://problem/47201374>
+
+        Reviewed by Alex Christensen.
+
+        Support for XCBuild includes specifying inputs and outputs to various
+        Run Script build phases. These inputs and outputs are specified as
+        .xcfilelist files. Once created, these .xcfilelist files need to be
+        kept up-to-date. In order to check that they are up-to-date or not,
+        add an Xcode build step that invokes an external script that performs
+        the checking. If the .xcfilelists are found to be out-of-date, update
+        them, halt the build, and instruct the developer to restart the build
+        with up-to-date files.
+
+        At this time, the checking and regenerating is performed only if the
+        WK_ENABLE_CHECK_XCFILELISTS environment variable is set to 1. People
+        who want to use this facility can set this variable and test out the
+        checking/regenerating. Once it seems like there are no egregious
+        issues that upset a developer's workflow, we'll unconditionally enable
+        this facility.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Scripts/check-xcfilelists.sh: Added.
+
+2019-01-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Exclude Debugger Threads from CPU Usage values in Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=193796
+        <rdar://problem/47532910>
+
+        Reviewed by Devin Rousso.
+
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::machThread):
+        * runtime/SamplingProfiler.h:
+        Expose the mach_port_t of the SamplingProfiler thread
+        so it can be tested against later.
+
+2019-01-25  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build after r240511
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::unlinkedCodeBlockFor):
+
+2019-01-25  Keith Rollin  <krollin@apple.com>
+
+        Update Xcode projects with "Apply Configuration to XCFileLists" build target
+        https://bugs.webkit.org/show_bug.cgi?id=193781
+        <rdar://problem/47201153>
+
+        Reviewed by Alex Christensen.
+
+        Part of generating the .xcfilelists used as part of adopting XCBuild
+        includes running `make DerivedSources.make` from a standalone script.
+        It’s important for this invocation to have the same environment as
+        when the actual build invokes `make DerivedSources.make`. If the
+        environments are different, then the two invocations will provide
+        different results. In order to get the same environment in the
+        standalone script, have the script launch xcodebuild targeting the
+        "Apply Configuration to XCFileLists" build target, which will then
+        re-invoke our standalone script. The script is now running again, this
+        time in an environment with all workspace, project, target, xcconfig
+        and other environment variables established.
+
+        The "Apply Configuration to XCFileLists" build target accomplishes
+        this task via a small embedded shell script that consists only of:
+
+            eval "${WK_SUBLAUNCH_SCRIPT_PARAMETERS[@]}"
+
+        The process that invokes "Apply Configuration to XCFileLists" first
+        sets WK_SUBLAUNCH_SCRIPT_PARAMETERS to an array of commands to be
+        evaluated and exports it into the shell environment. When xcodebuild
+        is invoked, it inherits the value of this variable and can `eval` the
+        contents of that variable. Our external standalone script can then set
+        WK_SUBLAUNCH_SCRIPT_PARAMETERS to the path to itself, along with a set
+        of command-line parameters needed to restart itself in the appropriate
+        state.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2019-01-25  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Add API to generate and consume cached bytecode
+        https://bugs.webkit.org/show_bug.cgi?id=193401
+        <rdar://problem/47514099>
+
+        Reviewed by Keith Miller.
+
+        Add the `generateBytecode` and `generateModuleBytecode` functions to
+        generate serialized bytecode for a given `SourceCode`. These functions
+        will eagerly generate code for all the nested functions.
+
+        Additionally, update the API methods in JSScript to generate and use the
+        bytecode when the bytecodeCache path is provided.
+
+        * API/JSAPIGlobalObject.mm:
+        (JSC::JSAPIGlobalObject::moduleLoaderFetch):
+        * API/JSContext.mm:
+        (-[JSContext wrapperMap]):
+        * API/JSContextInternal.h:
+        * API/JSScript.mm:
+        (+[JSScript scriptWithSource:inVirtualMachine:]):
+        (+[JSScript scriptFromASCIIFile:inVirtualMachine:withCodeSigning:andBytecodeCache:]):
+        (-[JSScript dealloc]):
+        (-[JSScript readCache]):
+        (-[JSScript writeCache]):
+        (-[JSScript hash]):
+        (-[JSScript source]):
+        (-[JSScript cachedBytecode]):
+        (-[JSScript jsSourceCode:]):
+        * API/JSScriptInternal.h:
+        * API/JSScriptSourceProvider.h: Copied from Source/JavaScriptCore/API/JSScriptInternal.h.
+        (JSScriptSourceProvider::create):
+        (JSScriptSourceProvider::JSScriptSourceProvider):
+        * API/JSScriptSourceProvider.mm: Copied from Source/JavaScriptCore/API/JSScriptInternal.h.
+        (JSScriptSourceProvider::hash const):
+        (JSScriptSourceProvider::source const):
+        (JSScriptSourceProvider::cachedBytecode const):
+        * API/JSVirtualMachine.mm:
+        (-[JSVirtualMachine vm]):
+        * API/JSVirtualMachineInternal.h:
+        * API/tests/testapi.mm:
+        (testBytecodeCache):
+        (-[JSContextFileLoaderDelegate context:fetchModuleForIdentifier:withResolveHandler:andRejectHandler:]):
+        (testObjectiveCAPI):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * SourcesCocoa.txt:
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::unlinkedCodeBlockFor):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * parser/SourceCodeKey.h:
+        (JSC::SourceCodeKey::source const):
+        * parser/SourceProvider.h:
+        (JSC::CachedBytecode::CachedBytecode):
+        (JSC::CachedBytecode::operator=):
+        (JSC::CachedBytecode::data const):
+        (JSC::CachedBytecode::size const):
+        (JSC::CachedBytecode::owned const):
+        (JSC::CachedBytecode::~CachedBytecode):
+        (JSC::CachedBytecode::freeDataIfOwned):
+        (JSC::SourceProvider::cachedBytecode const):
+        * parser/UnlinkedSourceCode.h:
+        (JSC::UnlinkedSourceCode::provider const):
+        * runtime/CodeCache.cpp:
+        (JSC::generateUnlinkedCodeBlockForFunctions):
+        (JSC::writeCodeBlock):
+        (JSC::serializeBytecode):
+        * runtime/CodeCache.h:
+        (JSC::CodeCacheMap::fetchFromDiskImpl):
+        (JSC::CodeCacheMap::findCacheAndUpdateAge):
+        (JSC::generateUnlinkedCodeBlockImpl):
+        (JSC::generateUnlinkedCodeBlock):
+        * runtime/Completion.cpp:
+        (JSC::generateBytecode):
+        (JSC::generateModuleBytecode):
+        * runtime/Completion.h:
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2019-01-25  Keith Rollin  <krollin@apple.com>
+
+        Update WebKitAdditions.xcconfig with correct order of variable definitions
+        https://bugs.webkit.org/show_bug.cgi?id=193793
+        <rdar://problem/47532439>
+
+        Reviewed by Alex Christensen.
+
+        XCBuild changes the way xcconfig variables are evaluated. In short,
+        all config file assignments are now considered in part of the
+        evaluation. When using the new build system and an .xcconfig file
+        contains multiple assignments of the same build setting:
+
+        - Later assignments using $(inherited) will inherit from earlier
+          assignments in the xcconfig file.
+        - Later assignments not using $(inherited) will take precedence over
+          earlier assignments. An assignment to a more general setting will
+          mask an earlier assignment to a less general setting. For example,
+          an assignment without a condition ('FOO = bar') will completely mask
+          an earlier assignment with a condition ('FOO[sdk=macos*] = quux').
+
+        This affects some of our .xcconfig files, in that sometimes platform-
+        or sdk-specific definitions appear before the general definitions.
+        Under the new evaluations rules, the general definitions alway take
+        effect because they always overwrite the more-specific definitions. The
+        solution is to swap the order, so that the general definitions are
+        established first, and then conditionally overwritten by the
+        more-specific definitions.
+
+        * Configurations/Version.xcconfig:
+
+2019-01-25  Keith Rollin  <krollin@apple.com>
+
+        Update existing .xcfilelists
+        https://bugs.webkit.org/show_bug.cgi?id=193791
+        <rdar://problem/47201706>
+
+        Reviewed by Alex Christensen.
+
+        Many .xcfilelist files were added in r238824 in order to support
+        XCBuild. Update these with recent changes to the set of build files
+        and with the current generate-xcfilelist script.
+
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * UnifiedSources-input.xcfilelist:
+        * UnifiedSources-output.xcfilelist:
+
+2019-01-25  Jon Davis  <jond@apple.com>
+
+        Update JavaScriptCore feature status entries.
+        https://bugs.webkit.org/show_bug.cgi?id=193797
+
+        Reviewed by Mark Lam.
+        
+        Updated feature status for Async Iteration, and Object rest/spread.
+
+        * features.json:
+
+2019-01-24  Keith Miller  <keith_miller@apple.com>
+
+        Remove usage of internal macro from private header
+        https://bugs.webkit.org/show_bug.cgi?id=193809
+
+        Reviewed by Saam Barati.
+
+        Also, add a new file to include all of our API headers to make sure
+        they don't accidentally include C++ or internal values.
+
+        * API/JSScript.h:
+        * API/tests/testIncludes.m: Added.
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2019-01-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] ErrorConstructor should not have own IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=193800
+
+        Reviewed by Saam Barati.
+
+        Similar to r240456, sizeof(ErrorConstructor) != sizeof(InternalFunction), and that is why we have
+        IsoSubspace errorConstructorSpace in VM. But it is allocated only one-per-JSGlobalObject, and it is
+        too costly to have IsoSubspace which allocates 16KB. Since stackTraceLimit information is per
+        JSGlobalObject information, we should have m_stackTraceLimit in JSGlobalObject instead and put
+        ErrorConstructor in InternalFunction's IsoSubspace. As r230813 (moving InternalFunction and subclasses
+        into IsoSubspaces) described,
+
+            "subclasses that are the same size as InternalFunction share its subspace. I did this because the subclasses
+            appear to just override methods, which are called dynamically via the structure or class of the object.
+            So, I don't see a type confusion risk if UAF is used to allocate one kind of InternalFunction over another."
+
+        Then, putting ErrorConstructor in InternalFunction IsoSubspace is fine since it meets the above condition.
+        This patch removes m_stackTraceLimit in ErrorConstructor, and drops IsoSubspace for errorConstructorSpace.
+        This reduces the memory usage.
+
+        * interpreter/Interpreter.h:
+        * runtime/Error.cpp:
+        (JSC::getStackTrace):
+        * runtime/ErrorConstructor.cpp:
+        (JSC::ErrorConstructor::ErrorConstructor):
+        (JSC::ErrorConstructor::finishCreation):
+        (JSC::constructErrorConstructor):
+        (JSC::callErrorConstructor):
+        (JSC::ErrorConstructor::put):
+        (JSC::ErrorConstructor::deleteProperty):
+        (JSC::Interpreter::constructWithErrorConstructor): Deleted.
+        (JSC::Interpreter::callErrorConstructor): Deleted.
+        * runtime/ErrorConstructor.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::JSGlobalObject):
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::stackTraceLimit const):
+        (JSC::JSGlobalObject::setStackTraceLimit):
+        (JSC::JSGlobalObject::errorConstructor const): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-01-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline
+        https://bugs.webkit.org/show_bug.cgi?id=193730
+        <rdar://problem/46797201>
+
+        Reviewed by Devin Rousso.
+
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources.make:
+        New files.
+
+        * inspector/protocol/CPUProfiler.json: Added.
+        New domain that follows the pattern of Memory/ScriptProfiler.
+
+        * inspector/protocol/Timeline.json:
+        New enum to auto-start a CPU instrument in the backend.
+
+2019-01-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] SharedArrayBufferConstructor and ArrayBufferConstructor should not have their own IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=193774
+
+        Reviewed by Mark Lam.
+
+        We put all the instances of InternalFunction and its subclasses in IsoSubspace to make safer from UAF.
+        But since IsoSubspace requires the memory layout of instances is the same, we created different IsoSubspace
+        for subclasses of InternalFunction if sizeof(subclass) != sizeof(InternalFunction). One example is
+        ArrayBufferConstructor and SharedArrayBufferConstructor. But it is too costly to allocate 16KB page just
+        for these two constructor instances. They are only two instances per JSGlobalObject.
+
+        This patch makes sizeof(ArrayBufferConstructor) == sizeof(InternalFunction) so that they can use IsoSubspace
+        of InternalFunction. We introduce JSGenericArrayBufferConstructor, and it takes ArrayBufferSharingMode as
+        its template parameter. We define JSArrayBufferConstructor as JSGenericArrayBufferConstructor<ArrayBufferSharingMode::Default>
+        and JSSharedArrayBufferConstructor as JSGenericArrayBufferConstructor<ArrayBufferSharingMode::Shared> so that
+        we do not need to hold ArrayBufferSharingMode in the field of the constructor. This change removes IsoSubspace
+        for ArrayBufferConstructors, and reduces the memory usage.
+
+        * runtime/JSArrayBufferConstructor.cpp:
+        (JSC::JSGenericArrayBufferConstructor<sharingMode>::JSGenericArrayBufferConstructor):
+        (JSC::JSGenericArrayBufferConstructor<sharingMode>::finishCreation):
+        (JSC::JSGenericArrayBufferConstructor<sharingMode>::constructArrayBuffer):
+        (JSC::JSGenericArrayBufferConstructor<sharingMode>::createStructure):
+        (JSC::JSGenericArrayBufferConstructor<sharingMode>::info):
+        (JSC::JSArrayBufferConstructor::JSArrayBufferConstructor): Deleted.
+        (JSC::JSArrayBufferConstructor::finishCreation): Deleted.
+        (JSC::JSArrayBufferConstructor::create): Deleted.
+        (JSC::JSArrayBufferConstructor::createStructure): Deleted.
+        (JSC::constructArrayBuffer): Deleted.
+        * runtime/JSArrayBufferConstructor.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-01-24  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        stress/const-semantics.js fails a dfg-eager / ftl-eager run with an ASAN release build.
+        https://bugs.webkit.org/show_bug.cgi?id=190693
+
+        Reviewed by Michael Saboff.
+
+        JITStubRoutine's fields are marked only when JITStubRoutine::m_mayBeExecuting is true.
+        This becomes true when we find the executable address in our conservative roots, which
+        means that we could be executing it right now. This means that object liveness in
+        JITStubRoutine depends on the information gathered in ConservativeRoots. However, our
+        constraints are separated, "Conservative Scan" and "JIT Stub Routines". They can even
+        be executed concurrently, so that "JIT Stub Routines" may miss to mark the actually
+        executing JITStubRoutine because "Conservative Scan" finds it later.
+        When finalizing the GC, we delete the dead JITStubRoutines. At that time, since
+        "Conservative Scan" already finishes, we do not delete some JITStubRoutines which do not
+        mark the depending objects. Then, in the next cycle, we find JITStubRoutines still live,
+        attempt to mark the depending objects, and encounter the dead objects which are collected
+        in the previous cycles.
+
+        This patch removes "JIT Stub Routines" and merge it to "Conservative Scan". Since
+        "Conservative Scan" and "JIT Stub Routines" need to be executed only when the execution
+        happens (ensured by GreyedByExecution and CollectionPhase check), this change is OK for
+        GC stop time.
+
+        * heap/ConservativeRoots.h:
+        (JSC::ConservativeRoots::roots const):
+        (JSC::ConservativeRoots::roots): Deleted.
+        * heap/Heap.cpp:
+        (JSC::Heap::addCoreConstraints):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::append):
+        * heap/SlotVisitor.h:
+        * jit/GCAwareJITStubRoutine.cpp:
+        (JSC::GCAwareJITStubRoutine::GCAwareJITStubRoutine):
+        * jit/GCAwareJITStubRoutine.h:
+
+2019-01-24  Saam Barati  <sbarati@apple.com>
+
+        Update ARM64EHash
+        https://bugs.webkit.org/show_bug.cgi?id=193776
+        <rdar://problem/47526457>
+
+        Reviewed by Mark Lam.
+
+        See radar for details.
+
+        * assembler/AssemblerBuffer.h:
+        (JSC::ARM64EHash::update):
+        (JSC::ARM64EHash::finalHash const):
+
+2019-01-24  Saam Barati  <sbarati@apple.com>
+
+        Object Allocation Sinking phase can move a node that walks the stack into a place where the InlineCallFrame is no longer valid
+        https://bugs.webkit.org/show_bug.cgi?id=193751
+        <rdar://problem/47280215>
+
+        Reviewed by Michael Saboff.
+
+        The Object Allocation Sinking phase may move allocations around inside
+        of the program. However, it was not ensuring that it's still possible 
+        to walk the stack at the point in the program that it moved the allocation to.
+        Certain InlineCallFrames rely on data in the stack when taking a stack trace.
+        All allocation sites can do a stack walk (we do a stack walk when we GC).
+        Conservatively, this patch says we're ok to move this allocation if we are
+        moving within the same InlineCallFrame. We could be more precise and do an
+        analysis of stack writes. However, this scenario is so rare that we just
+        take the conservative-and-straight-forward approach of checking that the place
+        we're moving to is the same InlineCallFrame as the allocation site.
+        
+        In general, this issue arises anytime we do any kind of code motion.
+        Interestingly, LICM gets this right. It gets it right because the only
+        InlineCallFrames we can't move out of are the InlineCallFrames that
+        have metadata stored on the stack (callee for closure calls and argument
+        count for varargs calls). LICM doesn't have this issue because it relies
+        on Clobberize for doing its effects analysis. In clobberize, we model every
+        node within an InlineCallFrame that meets the above criteria as reading
+        from those stack fields. Consequently, LICM won't hoist any node in that
+        InlineCallFrame past the beginning of the InlineCallFrame since the IR
+        we generate to set up such an InlineCallFrame contains writes to that
+        stack location.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2019-01-24  Guillaume Emont  <guijemont@igalia.com>
+
+        [JSC] Reenable baseline JIT on mips
+        https://bugs.webkit.org/show_bug.cgi?id=192983
+
+        Reviewed by Mark Lam.
+
+        Use $s0 as metadata register and make sure it's properly saved and
+        restored.
+
+        * jit/GPRInfo.h:
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::vmCalleeSaveRegisters):
+        (JSC::RegisterSet::llintBaselineCalleeSaveRegisters):
+        * llint/LowLevelInterpreter.asm:
+        * offlineasm/mips.rb:
+
+2019-01-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Expose JavaScriptCore options in GLib public API
+        https://bugs.webkit.org/show_bug.cgi?id=188742
+
+        Reviewed by Michael Catanzaro.
+
+        Add new API to set, get and iterate JSC options.
+
+        * API/glib/JSCOptions.cpp: Added.
+        (valueFromGValue):
+        (valueToGValue):
+        (jscOptionsSetValue):
+        (jscOptionsGetValue):
+        (jsc_options_set_boolean):
+        (jsc_options_get_boolean):
+        (jsc_options_set_int):
+        (jsc_options_get_int):
+        (jsc_options_set_uint):
+        (jsc_options_get_uint):
+        (jsc_options_set_size):
+        (jsc_options_get_size):
+        (jsc_options_set_double):
+        (jsc_options_get_double):
+        (jsc_options_set_string):
+        (jsc_options_get_string):
+        (jsc_options_set_range_string):
+        (jsc_options_get_range_string):
+        (jscOptionsType):
+        (jsc_options_foreach):
+        (setOptionEntry):
+        (jsc_options_get_option_group):
+        * API/glib/JSCOptions.h: Added.
+        * API/glib/docs/jsc-glib-4.0-sections.txt:
+        * API/glib/docs/jsc-glib-docs.sgml:
+        * API/glib/jsc.h:
+        * GLib.cmake:
+
+2019-01-23  Mark Lam  <mark.lam@apple.com>
+
+        ARM64E should not ENABLE(SEPARATED_WX_HEAP).
+        https://bugs.webkit.org/show_bug.cgi?id=193744
+        <rdar://problem/46262952>
+
+        Reviewed by Saam Barati.
+
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::copyCompactAndLinkCode):
+
+2019-01-23  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [DFG] AvailabilityMap::pruneByLiveness should make non-live operands Availability::unavailable instead of Availability()
+        https://bugs.webkit.org/show_bug.cgi?id=193711
+        <rdar://problem/47250262>
+
+        Reviewed by Saam Barati.
+
+        When pruning OSR Availability based on bytecode liveness, we accidentally clear the Availability (making it DeadFlush) instead of
+        making it Availability::unavailable() (Making it ConflictingFlush). In OSRAvailabilityAnalysisPhase, we perform forward analysis.
+        We first clear all the availability of basic blocks DeadFlush, which is an empty set. And then, we set operands in the root block
+        ConflictingFlush. In this forward analysis, DeadFlush is BOTTOM, and ConflictingFlush is TOP. Then, we propagate information by
+        merging availability until we reach to the fixed-point. As an optimization, we perform "pruning" of the availability in the head
+        of the basic blocks. We remove availabilities of operands which are not live in the bytecode liveness at the head of the basic block.
+        The problem is, when removing availabilities, we set DeadFlush for them instead of ConflictingFlush. Basically, it means that we set
+        BOTTOM (an empty set) instead of TOP. Let's consider the following simple example. We have 6 basic blocks, and they are connected
+        as follows.
+
+            BB0 -> BB1 -> BB2 -> BB4
+             |        \        ^
+             v          > BB3 /
+            BB5
+
+        And consider about loc1 in FTL, which is required to be recovered in BB4's OSR exit.
+
+            BB0 does nothing
+                head: loc1 is dead
+                tail: loc1 is dead
+
+            BB1 has MovHint @1, loc1
+                head: loc1 is dead
+                tail: loc1 is live
+
+            BB2 does nothing
+                head: loc1 is live
+                tail: loc1 is live
+
+            BB3 has PutStack @1, loc1
+                head: loc1 is live
+                tail: loc1 is live
+
+            BB4 has OSR exit using loc1
+                head: loc1 is live
+                tail: loc1 is live (in bytecode)
+
+            BB5 does nothing
+                head: loc1 is dead
+                tail: loc1 is dead
+
+        In our OSR Availability analysis, we always prune loc1 result in BB1's head since its head says "loc1 is dead".
+        But at that time, we clear the availability for loc1, which makes it DeadFlush, instead of making it ConflictingFlush.
+
+        So, the flush format of loc1 in each tail of BB is like this.
+
+            BB0
+                ConflictingFlush (because all the local operands are initialized with ConflictingFlush)
+            BB1
+                DeadFlush+@1 (pruning clears it)
+            BB2
+                DeadFlush+@1 (since it is propagated from BB1)
+            BB3
+                FlushedJSValue+@1 with loc1 (since it has PutStack)
+            BB4
+                FlushedJSValue+@1 with loc1 (since MERGE(DeadFlush, FlushedJSValue) = FlushedJSValue)
+            BB5
+                DeadFlush (pruning clears it)
+
+        Then, if we go the path BB0->BB1->BB2->BB4, we read the value from the stack while it is not flushed.
+        The correct fix is making availability "unavailable" when pruning based on bytecode liveness.
+
+        * dfg/DFGAvailabilityMap.cpp:
+        (JSC::DFG::AvailabilityMap::pruneByLiveness): When pruning availability, we first set all the operands Availability::unavailable(),
+        and copy the calculated value from the current availability map.
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::OSRAvailabilityAnalysisPhase::run): Add logging things for debugging.
+
+2019-01-23  David Kilzer  <ddkilzer@apple.com>
+
+        [JSC] Duplicate global variables: JSC::opcodeLengths
+        <https://webkit.org/b/193714>
+        <rdar://problem/47340200>
+
+        Reviewed by Mark Lam.
+
+        * bytecode/Opcode.cpp:
+        (JSC::opcodeLengths): Move array implementation here and mark
+        const.
+        * bytecode/Opcode.h:
+        (JSC::opcodeLengths): Change to extern declaration.
+
+2019-01-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Remote Inspector: no data displayed
+        https://bugs.webkit.org/show_bug.cgi?id=193569
+
+        Reviewed by Michael Catanzaro.
+
+        Release the remote inspector mutex before using RemoteConnectionToTarget in RemoteInspector::setup() to avoid a
+        deadlock.
+
+        * inspector/remote/glib/RemoteInspectorGlib.cpp:
+        (Inspector::RemoteInspector::receivedSetupMessage):
+        (Inspector::RemoteInspector::setup):
+
+2019-01-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix initial global lexical binding epoch
+        https://bugs.webkit.org/show_bug.cgi?id=193603
+        <rdar://problem/47380869>
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+
+2019-01-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        REGRESSION(r239612) Crash at runtime due to broken DFG assumption
+        https://bugs.webkit.org/show_bug.cgi?id=193709
+        <rdar://problem/47363838>
+
+        Unreviewed, rollout to watch the tests.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::fixupObjectToString): Deleted.
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileObjectToString): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileToStringOrCallStringConstructorOrStringValueOf):
+        (JSC::FTL::DFG::LowerDFGToB3::compileObjectToString): Deleted.
+        * runtime/Intrinsic.cpp:
+        (JSC::intrinsicName):
+        * runtime/Intrinsic.h:
+        * runtime/ObjectPrototype.cpp:
+        (JSC::ObjectPrototype::finishCreation):
+        (JSC::objectProtoFuncToString):
+        * runtime/ObjectPrototype.h:
+        * runtime/ObjectPrototypeInlines.h: Removed.
+        * runtime/StructureRareData.h:
+
+2019-01-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: expose Audit and Recording versions to the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=193262
+        <rdar://problem/47130684>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Audit.json:
+        * inspector/protocol/Recording.json:
+        Add `version` values.
+
+        * inspector/scripts/codegen/models.py:
+        (Protocol.parse_domain):
+        (Domain.__init__):
+        (Domain.version): Added.
+        (Domains):
+
+        * inspector/scripts/codegen/generator.py:
+        (Generator.version_for_domain): Added.
+
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        (CppProtocolTypesHeaderGenerator.generate_output):
+        (CppProtocolTypesHeaderGenerator._generate_versions): Added.
+
+        * inspector/scripts/codegen/generate_js_backend_commands.py:
+        (JSBackendCommandsGenerator.should_generate_domain):
+        (JSBackendCommandsGenerator.generate_domain):
+
+        * inspector/scripts/tests/generic/version.json: Added.
+        * inspector/scripts/tests/generic/expected/version.json-result: Added.
+
+        * inspector/scripts/tests/all/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/domain-availability.json-result:
+        * inspector/scripts/tests/generic/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/generic/expected/enum-values.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/generic/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/generic/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-requiring-runtime-casts.json-result:
+        * inspector/scripts/tests/generic/expected/type-with-open-parameters.json-result:
+        * inspector/scripts/tests/ios/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/mac/expected/definitions-with-mac-platform.json-result:
+
+2019-01-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Intl constructors should fit in sizeof(InternalFunction)
+        https://bugs.webkit.org/show_bug.cgi?id=193661
+
+        Reviewed by Mark Lam.
+
+        Previously all the Intl constructors have their own subspace. This is because these constructors have different size from InternalFunction.
+        But it is too costly approach in terms of the memory usage since these constructors are only one per JSGlobalObject. This patch attempts to
+        reduce the memory size consumed by these Intl objects by holding instance structures in IntlObject instead of in each Intl constructors.
+        So that we can make sizeof(Intl constructors) == sizeof(InternalFunction) and drop costly subspaces. Since this patch drops subspaces in VM,
+        it also significantly reduces the sizeof(VM), from 76696 to 74680.
+
+        This patch also includes the preparation for making Intl properties lazy. But currently it is not possible since @Collator reference exists
+        in builtin code.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * runtime/IntlCollatorConstructor.cpp:
+        (JSC::IntlCollatorConstructor::create):
+        (JSC::IntlCollatorConstructor::finishCreation):
+        (JSC::constructIntlCollator):
+        (JSC::callIntlCollator):
+        (JSC::IntlCollatorConstructor::visitChildren): Deleted.
+        * runtime/IntlCollatorConstructor.h:
+        * runtime/IntlDateTimeFormatConstructor.cpp:
+        (JSC::IntlDateTimeFormatConstructor::create):
+        (JSC::IntlDateTimeFormatConstructor::finishCreation):
+        (JSC::constructIntlDateTimeFormat):
+        (JSC::callIntlDateTimeFormat):
+        (JSC::IntlDateTimeFormatConstructor::visitChildren): Deleted.
+        * runtime/IntlDateTimeFormatConstructor.h:
+        * runtime/IntlNumberFormatConstructor.cpp:
+        (JSC::IntlNumberFormatConstructor::create):
+        (JSC::IntlNumberFormatConstructor::finishCreation):
+        (JSC::constructIntlNumberFormat):
+        (JSC::callIntlNumberFormat):
+        (JSC::IntlNumberFormatConstructor::visitChildren): Deleted.
+        * runtime/IntlNumberFormatConstructor.h:
+        * runtime/IntlObject.cpp:
+        (JSC::createCollatorConstructor):
+        (JSC::createNumberFormatConstructor):
+        (JSC::createDateTimeFormatConstructor):
+        (JSC::createPluralRulesConstructor):
+        (JSC::IntlObject::create):
+        (JSC::IntlObject::finishCreation):
+        (JSC::IntlObject::visitChildren):
+        * runtime/IntlObject.h:
+        * runtime/IntlPluralRulesConstructor.cpp:
+        (JSC::IntlPluralRulesConstructor::create):
+        (JSC::IntlPluralRulesConstructor::finishCreation):
+        (JSC::constructIntlPluralRules):
+        (JSC::IntlPluralRulesConstructor::visitChildren): Deleted.
+        * runtime/IntlPluralRulesConstructor.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::intlObject const):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-01-22  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Rollout r240223. It regressed JetStream2 by 1%.
+
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+
+2019-01-22  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Unreviewed, restore bytecode cache-related JSC options deleted in r240254
+        https://bugs.webkit.org/show_bug.cgi?id=192782
+
+        The JSC options were committed as part of r240210, which got rolled out in
+        r240224. However, the options got re-landed in r240248  and then deleted
+        again in 240254 (immediately before the caching code code landed in 240255)
+
+        * runtime/Options.h:
+
+2019-01-22  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Cache bytecode to disk
+        https://bugs.webkit.org/show_bug.cgi?id=192782
+        <rdar://problem/46084932>
+
+        Reviewed by Keith Miller.
+
+        Add the logic to serialize and deserialize the new JSC bytecode. For now,
+        the cache is only used for tests.
+
+        Each class that can be serialized has a counterpart in CachedTypes, which
+        handles the decoding and encoding. When decoding, the cached objects are
+        mmap'd from disk, but only used for creating instances of the respective
+        in-memory version of each object. Ideally, the mmap'd objects should be
+        used at runtime in the future.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * builtins/BuiltinNames.cpp:
+        (JSC::BuiltinNames::BuiltinNames):
+        * builtins/BuiltinNames.h:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::setConstantIdentifierSetRegisters):
+        * bytecode/CodeBlock.h:
+        * bytecode/HandlerInfo.h:
+        (JSC::UnlinkedHandlerInfo::UnlinkedHandlerInfo):
+        * bytecode/InstructionStream.h:
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addSetConstant):
+        (JSC::UnlinkedCodeBlock::constantIdentifierSets):
+        * bytecode/UnlinkedEvalCodeBlock.h:
+        * bytecode/UnlinkedFunctionCodeBlock.h:
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * bytecode/UnlinkedGlobalCodeBlock.h:
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock):
+        * bytecode/UnlinkedMetadataTable.h:
+        * bytecode/UnlinkedModuleProgramCodeBlock.h:
+        * bytecode/UnlinkedProgramCodeBlock.h:
+        * interpreter/Interpreter.cpp:
+        * jsc.cpp:
+        (functionQuit):
+        (runJSC):
+        * parser/SourceCode.h:
+        * parser/SourceCodeKey.h:
+        (JSC::SourceCodeKey::operator!= const):
+        * parser/UnlinkedSourceCode.h:
+        * parser/VariableEnvironment.h:
+        * runtime/CachedTypes.cpp: Added.
+        (JSC::Encoder::Allocation::buffer const):
+        (JSC::Encoder::Allocation::offset const):
+        (JSC::Encoder::Allocation::Allocation):
+        (JSC::Encoder::Encoder):
+        (JSC::Encoder::vm):
+        (JSC::Encoder::malloc):
+        (JSC::Encoder::offsetOf):
+        (JSC::Encoder::cachePtr):
+        (JSC::Encoder::offsetForPtr):
+        (JSC::Encoder::release):
+        (JSC::Encoder::Page::Page):
+        (JSC::Encoder::Page::malloc):
+        (JSC::Encoder::Page::buffer const):
+        (JSC::Encoder::Page::size const):
+        (JSC::Encoder::Page::getOffset const):
+        (JSC::Encoder::allocateNewPage):
+        (JSC::Decoder::Decoder):
+        (JSC::Decoder::~Decoder):
+        (JSC::Decoder::vm):
+        (JSC::Decoder::offsetOf):
+        (JSC::Decoder::cacheOffset):
+        (JSC::Decoder::addFinalizer):
+        (JSC::encode):
+        (JSC::decode):
+        (JSC::VariableLengthObject::buffer const):
+        (JSC::VariableLengthObject::allocate):
+        (JSC::CachedPtr::encode):
+        (JSC::CachedPtr::decode const):
+        (JSC::CachedPtr::operator-> const):
+        (JSC::CachedPtr::get const):
+        (JSC::CachedRefPtr::encode):
+        (JSC::CachedRefPtr::decode const):
+        (JSC::CachedWriteBarrier::encode):
+        (JSC::CachedWriteBarrier::decode const):
+        (JSC::CachedVector::encode):
+        (JSC::CachedVector::decode const):
+        (JSC::CachedPair::encode):
+        (JSC::CachedPair::decode const):
+        (JSC::CachedHashMap::encode):
+        (JSC::CachedHashMap::decode const):
+        (JSC::CachedUniquedStringImpl::encode):
+        (JSC::CachedUniquedStringImpl::decode const):
+        (JSC::CachedStringImpl::encode):
+        (JSC::CachedStringImpl::decode const):
+        (JSC::CachedString::encode):
+        (JSC::CachedString::decode const):
+        (JSC::CachedIdentifier::encode):
+        (JSC::CachedIdentifier::decode const):
+        (JSC::CachedOptional::encode):
+        (JSC::CachedOptional::decode const):
+        (JSC::CachedOptional::decodeAsPtr const):
+        (JSC::CachedSimpleJumpTable::encode):
+        (JSC::CachedSimpleJumpTable::decode const):
+        (JSC::CachedStringJumpTable::encode):
+        (JSC::CachedStringJumpTable::decode const):
+        (JSC::CachedCodeBlockRareData::encode):
+        (JSC::CachedCodeBlockRareData::decode const):
+        (JSC::CachedBitVector::encode):
+        (JSC::CachedBitVector::decode const):
+        (JSC::CachedHashSet::encode):
+        (JSC::CachedHashSet::decode const):
+        (JSC::CachedConstantIdentifierSetEntry::encode):
+        (JSC::CachedConstantIdentifierSetEntry::decode const):
+        (JSC::CachedVariableEnvironment::encode):
+        (JSC::CachedVariableEnvironment::decode const):
+        (JSC::CachedArray::encode):
+        (JSC::CachedArray::decode const):
+        (JSC::CachedScopedArgumentsTable::encode):
+        (JSC::CachedScopedArgumentsTable::decode const):
+        (JSC::CachedSymbolTableEntry::encode):
+        (JSC::CachedSymbolTableEntry::decode const):
+        (JSC::CachedSymbolTable::encode):
+        (JSC::CachedSymbolTable::decode const):
+        (JSC::CachedImmutableButterfly::encode):
+        (JSC::CachedImmutableButterfly::decode const):
+        (JSC::CachedRegExp::encode):
+        (JSC::CachedRegExp::decode const):
+        (JSC::CachedTemplateObjectDescriptor::encode):
+        (JSC::CachedTemplateObjectDescriptor::decode const):
+        (JSC::CachedBigInt::encode):
+        (JSC::CachedBigInt::decode const):
+        (JSC::CachedJSValue::encode):
+        (JSC::CachedJSValue::decode const):
+        (JSC::CachedInstructionStream::encode):
+        (JSC::CachedInstructionStream::decode const):
+        (JSC::CachedMetadataTable::encode):
+        (JSC::CachedMetadataTable::decode const):
+        (JSC::CachedSourceOrigin::encode):
+        (JSC::CachedSourceOrigin::decode const):
+        (JSC::CachedTextPosition::encode):
+        (JSC::CachedTextPosition::decode const):
+        (JSC::CachedSourceProviderShape::encode):
+        (JSC::CachedSourceProviderShape::decode const):
+        (JSC::CachedStringSourceProvider::encode):
+        (JSC::CachedStringSourceProvider::decode const):
+        (JSC::CachedWebAssemblySourceProvider::encode):
+        (JSC::CachedWebAssemblySourceProvider::decode const):
+        (JSC::CachedSourceProvider::encode):
+        (JSC::CachedSourceProvider::decode const):
+        (JSC::CachedUnlinkedSourceCodeShape::encode):
+        (JSC::CachedUnlinkedSourceCodeShape::decode const):
+        (JSC::CachedSourceCode::encode):
+        (JSC::CachedSourceCode::decode const):
+        (JSC::CachedFunctionExecutable::firstLineOffset const):
+        (JSC::CachedFunctionExecutable::lineCount const):
+        (JSC::CachedFunctionExecutable::unlinkedFunctionNameStart const):
+        (JSC::CachedFunctionExecutable::unlinkedBodyStartColumn const):
+        (JSC::CachedFunctionExecutable::unlinkedBodyEndColumn const):
+        (JSC::CachedFunctionExecutable::startOffset const):
+        (JSC::CachedFunctionExecutable::sourceLength const):
+        (JSC::CachedFunctionExecutable::parametersStartOffset const):
+        (JSC::CachedFunctionExecutable::typeProfilingStartOffset const):
+        (JSC::CachedFunctionExecutable::typeProfilingEndOffset const):
+        (JSC::CachedFunctionExecutable::parameterCount const):
+        (JSC::CachedFunctionExecutable::features const):
+        (JSC::CachedFunctionExecutable::sourceParseMode const):
+        (JSC::CachedFunctionExecutable::isInStrictContext const):
+        (JSC::CachedFunctionExecutable::hasCapturedVariables const):
+        (JSC::CachedFunctionExecutable::isBuiltinFunction const):
+        (JSC::CachedFunctionExecutable::isBuiltinDefaultClassConstructor const):
+        (JSC::CachedFunctionExecutable::constructAbility const):
+        (JSC::CachedFunctionExecutable::constructorKind const):
+        (JSC::CachedFunctionExecutable::functionMode const):
+        (JSC::CachedFunctionExecutable::scriptMode const):
+        (JSC::CachedFunctionExecutable::superBinding const):
+        (JSC::CachedFunctionExecutable::derivedContextType const):
+        (JSC::CachedFunctionExecutable::name const):
+        (JSC::CachedFunctionExecutable::ecmaName const):
+        (JSC::CachedFunctionExecutable::inferredName const):
+        (JSC::CachedCodeBlock::instructions const):
+        (JSC::CachedCodeBlock::thisRegister const):
+        (JSC::CachedCodeBlock::scopeRegister const):
+        (JSC::CachedCodeBlock::globalObjectRegister const):
+        (JSC::CachedCodeBlock::sourceURLDirective const):
+        (JSC::CachedCodeBlock::sourceMappingURLDirective const):
+        (JSC::CachedCodeBlock::usesEval const):
+        (JSC::CachedCodeBlock::isStrictMode const):
+        (JSC::CachedCodeBlock::isConstructor const):
+        (JSC::CachedCodeBlock::hasCapturedVariables const):
+        (JSC::CachedCodeBlock::isBuiltinFunction const):
+        (JSC::CachedCodeBlock::superBinding const):
+        (JSC::CachedCodeBlock::scriptMode const):
+        (JSC::CachedCodeBlock::isArrowFunctionContext const):
+        (JSC::CachedCodeBlock::isClassContext const):
+        (JSC::CachedCodeBlock::wasCompiledWithDebuggingOpcodes const):
+        (JSC::CachedCodeBlock::constructorKind const):
+        (JSC::CachedCodeBlock::derivedContextType const):
+        (JSC::CachedCodeBlock::evalContextType const):
+        (JSC::CachedCodeBlock::hasTailCalls const):
+        (JSC::CachedCodeBlock::lineCount const):
+        (JSC::CachedCodeBlock::endColumn const):
+        (JSC::CachedCodeBlock::numVars const):
+        (JSC::CachedCodeBlock::numCalleeLocals const):
+        (JSC::CachedCodeBlock::numParameters const):
+        (JSC::CachedCodeBlock::features const):
+        (JSC::CachedCodeBlock::parseMode const):
+        (JSC::CachedCodeBlock::codeType const):
+        (JSC::CachedCodeBlock::rareData const):
+        (JSC::CachedProgramCodeBlock::encode):
+        (JSC::CachedProgramCodeBlock::decode const):
+        (JSC::CachedModuleCodeBlock::encode):
+        (JSC::CachedModuleCodeBlock::decode const):
+        (JSC::CachedEvalCodeBlock::encode):
+        (JSC::CachedEvalCodeBlock::decode const):
+        (JSC::CachedFunctionCodeBlock::encode):
+        (JSC::CachedFunctionCodeBlock::decode const):
+        (JSC::UnlinkedFunctionCodeBlock::UnlinkedFunctionCodeBlock):
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock):
+        (JSC::CachedCodeBlock<CodeBlockType>::decode const):
+        (JSC::UnlinkedProgramCodeBlock::UnlinkedProgramCodeBlock):
+        (JSC::UnlinkedModuleProgramCodeBlock::UnlinkedModuleProgramCodeBlock):
+        (JSC::UnlinkedEvalCodeBlock::UnlinkedEvalCodeBlock):
+        (JSC::CachedFunctionExecutable::encode):
+        (JSC::CachedFunctionExecutable::decode const):
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        (JSC::CachedCodeBlock<CodeBlockType>::encode):
+        (JSC::CachedSourceCodeKey::encode):
+        (JSC::CachedSourceCodeKey::decode const):
+        (JSC::CacheEntry::encode):
+        (JSC::CacheEntry:: const):
+        (JSC:: const):
+        (JSC::encodeCodeBlock):
+        (JSC::decodeCodeBlockImpl):
+        * runtime/CachedTypes.h: Copied from Source/JavaScriptCore/bytecode/UnlinkedGlobalCodeBlock.h.
+        (JSC::decodeCodeBlock):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCacheMap::pruneSlowCase):
+        (JSC::CodeCache::getUnlinkedGlobalCodeBlock):
+        (JSC::CodeCache::getUnlinkedGlobalFunctionExecutable):
+        (JSC::CodeCache::write):
+        * runtime/CodeCache.h:
+        (JSC::CodeCacheMap::begin):
+        (JSC::CodeCacheMap::end):
+        (JSC::CodeCacheMap::fetchFromDiskImpl):
+        (JSC::CodeCacheMap::findCacheAndUpdateAge):
+        (JSC::writeCodeBlock):
+        * runtime/JSBigInt.cpp:
+        * runtime/JSBigInt.h:
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/RegExp.h:
+        * runtime/ScopedArgumentsTable.h:
+        * runtime/StackFrame.h:
+        * runtime/StructureInlines.h:
+        * runtime/SymbolTable.h:
+
+2019-01-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Invalidate old scope operations using global lexical binding epoch
+        https://bugs.webkit.org/show_bug.cgi?id=193603
+        <rdar://problem/47380869>
+
+        Reviewed by Saam Barati.
+
+        Even if the global lexical binding does not shadow the global property at that time, we need to clear the cached information in
+        scope related operations since we may have a global property previously. Consider the following example,
+
+            foo = 0;
+            function get() { return foo; }
+            print(get()); // 0
+            print(get()); // 0
+            delete globalThis.foo;
+            $.evalScript(`const foo = 42;`);
+            print(get()); // Should be 42, but it returns 0 if the cached information in get() is not cleared.
+
+        To invalidate the cache easily, we introduce global lexical binding epoch. It is bumped every time we introduce a new lexical binding
+        into JSGlobalLexicalEnvironment, since that name could shadow the global property name previously. In op_resolve_scope, we first check
+        the epoch stored in the metadata, and go to slow path if it is not equal to the current epoch. Our slow path code convert the scope
+        operation to the appropriate one even if the resolve type is not UnresolvedProperty type. After updating the resolve type of the bytecode,
+        we update the cached epoch to the current one, so that we can use the cached information as long as we stay in the same epoch.
+
+        In op_get_from_scope and op_put_to_scope, we do not use this epoch since Structure check can do the same thing instead. If op_resolve_type
+        is updated by the epoch, and if it starts returning JSGlobalLexicalEnvironment instead JSGlobalObject, obviously the structure check fails.
+        And in the slow path, we update op_get_from_scope and op_put_to_scope appropriately.
+
+        So, the metadata for scope related bytecodes are eventually updated to the appropriate one. In DFG and FTL, we use the watchpoint based approach.
+        In DFG and FTL, we concurrently attempt to get the watchpoint for the lexical binding and look into it by using `isStillValid()` to avoid
+        infinite compile-and-fail loop.
+
+        When the global lexical binding epoch overflows we iterate all the live CodeBlock and update the op_resolve_scope's epoch. Even if the shadowing
+        happens, it is OK if we bump the epoch, since op_resolve_scope will return JSGlobalLexicalEnvironment instead of JSGlobalObject, and following
+        structure check in op_put_to_scope and op_get_from_scope fail. We do not need to update op_get_from_scope and op_put_to_scope because of the same
+        reason.
+
+        * bytecode/BytecodeList.rb:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::notifyLexicalBindingUpdate):
+        (JSC::CodeBlock::notifyLexicalBindingShadowing): Deleted.
+        * bytecode/CodeBlock.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGDesiredGlobalProperties.cpp:
+        (JSC::DFG::DesiredGlobalProperties::isStillValidOnMainThread):
+        * dfg/DFGDesiredGlobalProperties.h:
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::watchGlobalProperty):
+        * dfg/DFGGraph.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::isStillValidOnMainThread):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_resolve_scope):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_resolve_scope):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::tryCachePutToScopeGlobal):
+        (JSC::CommonSlowPaths::tryCacheGetFromScopeGlobal):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::bumpGlobalLexicalBindingEpoch):
+        (JSC::JSGlobalObject::getReferencedPropertyWatchpointSet):
+        (JSC::JSGlobalObject::ensureReferencedPropertyWatchpointSet):
+        (JSC::JSGlobalObject::notifyLexicalBindingShadowing): Deleted.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::globalLexicalBindingEpoch const):
+        (JSC::JSGlobalObject::globalLexicalBindingEpochOffset):
+        (JSC::JSGlobalObject::addressOfGlobalLexicalBindingEpoch):
+        * runtime/Options.cpp:
+        (JSC::correctOptions):
+        (JSC::Options::initialize):
+        (JSC::Options::setOptions):
+        (JSC::Options::setOptionWithoutAlias):
+        * runtime/Options.h:
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+
+2019-01-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, roll out r240220 due to date-format-xparb regression
+        https://bugs.webkit.org/show_bug.cgi?id=193603
+
+        * bytecode/BytecodeList.rb:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::notifyLexicalBindingShadowing):
+        (JSC::CodeBlock::notifyLexicalBindingUpdate): Deleted.
+        * bytecode/CodeBlock.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGDesiredGlobalProperties.cpp:
+        (JSC::DFG::DesiredGlobalProperties::isStillValidOnMainThread):
+        * dfg/DFGDesiredGlobalProperties.h:
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::watchGlobalProperty): Deleted.
+        * dfg/DFGGraph.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::isStillValidOnMainThread):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_resolve_scope):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_resolve_scope):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::tryCachePutToScopeGlobal):
+        (JSC::CommonSlowPaths::tryCacheGetFromScopeGlobal):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::notifyLexicalBindingShadowing):
+        (JSC::JSGlobalObject::getReferencedPropertyWatchpointSet):
+        (JSC::JSGlobalObject::ensureReferencedPropertyWatchpointSet):
+        (JSC::JSGlobalObject::bumpGlobalLexicalBindingEpoch): Deleted.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::globalLexicalBindingEpoch const): Deleted.
+        (JSC::JSGlobalObject::globalLexicalBindingEpochOffset): Deleted.
+        (JSC::JSGlobalObject::addressOfGlobalLexicalBindingEpoch): Deleted.
+        * runtime/Options.cpp:
+        (JSC::Options::initialize):
+        (JSC::Options::setOptions):
+        (JSC::Options::setOptionWithoutAlias):
+        (JSC::correctOptions): Deleted.
+        * runtime/Options.h:
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+
+2019-01-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] StrictModeTypeErrorFunction is no longer used
+        https://bugs.webkit.org/show_bug.cgi?id=193662
+
+        Reviewed by Mark Lam.
+
+        StrictModeTypeErrorFunction is no longer used. This patch drops it. Furthermore, it also allows us to drop
+        strictModeTypeErrorFunctionSpace from VM.
+
+        * runtime/Error.cpp:
+        (JSC::StrictModeTypeErrorFunction::destroy): Deleted.
+        * runtime/Error.h:
+        (): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-01-21  Caio Lima  <ticaiolima@gmail.com>
+
+        DoesGC rule is wrong for nodes with BigIntUse
+        https://bugs.webkit.org/show_bug.cgi?id=193652
+
+        Reviewed by Saam Barati.
+
+        Former rule was that ValueOp does not GC. However this is wrong, since
+        these operations can trigger GC and mess up memory management. In the end, this
+        will generate wrong code because we will have wrong GC epoch value during 
+        Store Barrier Insertion phase.
+        We changed this to consider BigIntUse for such nodes and properly return true when
+        they are BigIntUse.
+
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+
+2019-01-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Lazily initialize JSModuleLoader
+        https://bugs.webkit.org/show_bug.cgi?id=193646
+
+        Reviewed by Keith Miller and Saam Barati.
+
+        Lazily initialize JSModuleLoader so that we do not need to initialize it until we need modules.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::moduleLoader const):
+
+2019-01-20  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] sub op with 0 should be optimized
+        https://bugs.webkit.org/show_bug.cgi?id=190751
+
+        Reviewed by Mark Lam.
+
+        LLInt sometimes emit `subp 0, %rxx`. For example, `maxFrameExtentForSlowPathCall` is 0 in X86_64, ARM64, and ARM64E.
+        So `subp maxFrameExtentForSlowPathCall sp` becomes `subp 0, %rsp`. While `addp 0, %rsp` is removed in offlineasm,
+        sub operation does not have such an optimization. This patch applies the same optimization to sub operation already
+        done in add operation. Since the CPU flags changed in offlineasm's these operations are not considered (if these flags
+        are required, we use special branch operations instead), this optimization is sane.
+
+        One problem is that zero-extension of the 32bit register in 64bit architecture. If the instruction emission is skipped,
+        this won't be happen. Currently, we align our sub to add operation: we skip emission in this case.
+
+        * offlineasm/arm64.rb:
+        * offlineasm/x86.rb:
+
+2019-01-20  Saam Barati  <sbarati@apple.com>
+
+        DFG: When inlining DataView set* intrinsics we need to set undefined as our result
+        https://bugs.webkit.org/show_bug.cgi?id=193644
+        <rdar://problem/46209745>
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch also makes it so we fail fast when we make this mistake.
+        I've made this mistake more than once.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+
+2019-01-20  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Reduce size of SourceProvider
+        https://bugs.webkit.org/show_bug.cgi?id=193544
+
+        Reviewed by Saam Barati.
+
+        This patch attempts to reduce the dirty memory footprint by the following 3 optimizations.
+
+        1. Reordering the members of SourceProvider to reduce the size. This affects on JSC, and CachedScriptSourceProvider used in WebCore.
+
+        2. Create one SourceProvider for all the builtin code and use substring to create builtin JS functions.
+           This reduces # of SourceProvider created for builtins.
+
+        3. Drop m_validated flag in SourceProvider since nobody uses it. It also deletes dead code in Parser.cpp.
+
+        Unfortunately, MSVC does not accept super long C string literal. So instead, we construct combined string in a form of C array.
+
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-InternalClashingNames-Combined.js-result:
+        * Scripts/wkbuiltins/builtins_generate_combined_header.py:
+        (BuiltinsCombinedHeaderGenerator.generate_output):
+        * Scripts/wkbuiltins/builtins_generate_combined_implementation.py:
+        (BuiltinsCombinedImplementationGenerator.generate_output):
+        * Scripts/wkbuiltins/builtins_generate_separate_implementation.py:
+        (BuiltinsSeparateImplementationGenerator.generate_output):
+        * Scripts/wkbuiltins/builtins_generator.py:
+        (BuiltinsGenerator.generate_embedded_code_data_for_function):
+        (BuiltinsGenerator.generate_embedded_code_string_section_for_data):
+        (BuiltinsGenerator.generate_embedded_code_string_section_for_function): Deleted.
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::BuiltinExecutables):
+        (JSC::JSC_FOREACH_BUILTIN_CODE):
+        (JSC::BuiltinExecutables::createExecutable):
+        * builtins/BuiltinExecutables.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        (JSC::Parser<LexerType>::parseExpressionOrLabelStatement):
+        (JSC::Parser<LexerType>::shouldCheckPropertyForUnderscoreProtoDuplicate):
+        (JSC::Parser<LexerType>::parseObjectLiteral):
+        (JSC::Parser<LexerType>::parseUnaryExpression):
+        * parser/Parser.h:
+        * parser/SourceCode.h:
+        * parser/SourceProvider.cpp:
+        (JSC::SourceProvider::SourceProvider):
+        * parser/SourceProvider.h:
+        (JSC::SourceProvider::isValid const): Deleted.
+        (JSC::SourceProvider::setValid): Deleted.
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedSourceProviderShape::encode):
+        (JSC::CachedSourceProviderShape::decode const):
+
+2019-01-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix -Wint-in-bool-context warning
+        https://bugs.webkit.org/show_bug.cgi?id=193483
+        <rdar://problem/47280522>
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::addCheckStructureForOriginalStringObjectUse):
+
+2019-01-20  Saam Barati  <sbarati@apple.com>
+
+        Rollout r240210: It broke tests on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=193640
+
+        Unreviewed. ~2650 tests are failing on iOS.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * builtins/BuiltinNames.cpp:
+        (JSC::BuiltinNames::BuiltinNames):
+        * builtins/BuiltinNames.h:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::setConstantIdentifierSetRegisters):
+        * bytecode/CodeBlock.h:
+        * bytecode/HandlerInfo.h:
+        * bytecode/InstructionStream.h:
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addSetConstant):
+        (JSC::UnlinkedCodeBlock::constantIdentifierSets):
+        * bytecode/UnlinkedEvalCodeBlock.h:
+        * bytecode/UnlinkedFunctionCodeBlock.h:
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * bytecode/UnlinkedGlobalCodeBlock.h:
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock):
+        * bytecode/UnlinkedMetadataTable.h:
+        * bytecode/UnlinkedModuleProgramCodeBlock.h:
+        * bytecode/UnlinkedProgramCodeBlock.h:
+        * interpreter/Interpreter.cpp:
+        * jsc.cpp:
+        (functionQuit):
+        (runJSC):
+        * parser/SourceCode.h:
+        * parser/SourceCodeKey.h:
+        (JSC::SourceCodeKey::operator!= const): Deleted.
+        * parser/UnlinkedSourceCode.h:
+        * parser/VariableEnvironment.h:
+        * runtime/CachedTypes.cpp:
+        (): Deleted.
+        (JSC::Encoder::Allocation::buffer const): Deleted.
+        (JSC::Encoder::Allocation::offset const): Deleted.
+        (JSC::Encoder::Allocation::Allocation): Deleted.
+        (JSC::Encoder::Encoder): Deleted.
+        (JSC::Encoder::vm): Deleted.
+        (JSC::Encoder::malloc): Deleted.
+        (JSC::Encoder::offsetOf): Deleted.
+        (JSC::Encoder::cachePtr): Deleted.
+        (JSC::Encoder::offsetForPtr): Deleted.
+        (JSC::Encoder::release): Deleted.
+        (JSC::Encoder::Page::Page): Deleted.
+        (JSC::Encoder::Page::malloc): Deleted.
+        (JSC::Encoder::Page::buffer const): Deleted.
+        (JSC::Encoder::Page::size const): Deleted.
+        (JSC::Encoder::Page::getOffset const): Deleted.
+        (JSC::Encoder::allocateNewPage): Deleted.
+        (JSC::Decoder::Decoder): Deleted.
+        (JSC::Decoder::~Decoder): Deleted.
+        (JSC::Decoder::vm): Deleted.
+        (JSC::Decoder::offsetOf): Deleted.
+        (JSC::Decoder::cacheOffset): Deleted.
+        (JSC::Decoder::addFinalizer): Deleted.
+        (JSC::encode): Deleted.
+        (JSC::decode): Deleted.
+        (JSC::VariableLengthObject::buffer const): Deleted.
+        (JSC::VariableLengthObject::allocate): Deleted.
+        (JSC::CachedPtr::encode): Deleted.
+        (JSC::CachedPtr::decode const): Deleted.
+        (JSC::CachedPtr::operator-> const): Deleted.
+        (JSC::CachedPtr::get const): Deleted.
+        (JSC::CachedRefPtr::encode): Deleted.
+        (JSC::CachedRefPtr::decode const): Deleted.
+        (JSC::CachedWriteBarrier::encode): Deleted.
+        (JSC::CachedWriteBarrier::decode const): Deleted.
+        (JSC::CachedVector::encode): Deleted.
+        (JSC::CachedVector::decode const): Deleted.
+        (JSC::CachedPair::encode): Deleted.
+        (JSC::CachedPair::decode const): Deleted.
+        (JSC::CachedHashMap::encode): Deleted.
+        (JSC::CachedHashMap::decode const): Deleted.
+        (JSC::CachedUniquedStringImpl::encode): Deleted.
+        (JSC::CachedUniquedStringImpl::decode const): Deleted.
+        (JSC::CachedStringImpl::encode): Deleted.
+        (JSC::CachedStringImpl::decode const): Deleted.
+        (JSC::CachedString::encode): Deleted.
+        (JSC::CachedString::decode const): Deleted.
+        (JSC::CachedIdentifier::encode): Deleted.
+        (JSC::CachedIdentifier::decode const): Deleted.
+        (JSC::CachedOptional::encode): Deleted.
+        (JSC::CachedOptional::decode const): Deleted.
+        (JSC::CachedOptional::decodeAsPtr const): Deleted.
+        (JSC::CachedSimpleJumpTable::encode): Deleted.
+        (JSC::CachedSimpleJumpTable::decode const): Deleted.
+        (JSC::CachedStringJumpTable::encode): Deleted.
+        (JSC::CachedStringJumpTable::decode const): Deleted.
+        (JSC::CachedCodeBlockRareData::encode): Deleted.
+        (JSC::CachedCodeBlockRareData::decode const): Deleted.
+        (JSC::CachedBitVector::encode): Deleted.
+        (JSC::CachedBitVector::decode const): Deleted.
+        (JSC::CachedHashSet::encode): Deleted.
+        (JSC::CachedHashSet::decode const): Deleted.
+        (JSC::CachedConstantIdentifierSetEntry::encode): Deleted.
+        (JSC::CachedConstantIdentifierSetEntry::decode const): Deleted.
+        (JSC::CachedVariableEnvironment::encode): Deleted.
+        (JSC::CachedVariableEnvironment::decode const): Deleted.
+        (JSC::CachedArray::encode): Deleted.
+        (JSC::CachedArray::decode const): Deleted.
+        (JSC::CachedScopedArgumentsTable::encode): Deleted.
+        (JSC::CachedScopedArgumentsTable::decode const): Deleted.
+        (JSC::CachedSymbolTableEntry::encode): Deleted.
+        (JSC::CachedSymbolTableEntry::decode const): Deleted.
+        (JSC::CachedSymbolTable::encode): Deleted.
+        (JSC::CachedSymbolTable::decode const): Deleted.
+        (JSC::CachedImmutableButterfly::encode): Deleted.
+        (JSC::CachedImmutableButterfly::decode const): Deleted.
+        (JSC::CachedRegExp::encode): Deleted.
+        (JSC::CachedRegExp::decode const): Deleted.
+        (JSC::CachedTemplateObjectDescriptor::encode): Deleted.
+        (JSC::CachedTemplateObjectDescriptor::decode const): Deleted.
+        (JSC::CachedBigInt::encode): Deleted.
+        (JSC::CachedBigInt::decode const): Deleted.
+        (JSC::CachedJSValue::encode): Deleted.
+        (JSC::CachedJSValue::decode const): Deleted.
+        (JSC::CachedInstructionStream::encode): Deleted.
+        (JSC::CachedInstructionStream::decode const): Deleted.
+        (JSC::CachedMetadataTable::encode): Deleted.
+        (JSC::CachedMetadataTable::decode const): Deleted.
+        (JSC::CachedSourceOrigin::encode): Deleted.
+        (JSC::CachedSourceOrigin::decode const): Deleted.
+        (JSC::CachedTextPosition::encode): Deleted.
+        (JSC::CachedTextPosition::decode const): Deleted.
+        (JSC::CachedSourceProviderShape::encode): Deleted.
+        (JSC::CachedSourceProviderShape::decode const): Deleted.
+        (JSC::CachedStringSourceProvider::encode): Deleted.
+        (JSC::CachedStringSourceProvider::decode const): Deleted.
+        (JSC::CachedWebAssemblySourceProvider::encode): Deleted.
+        (JSC::CachedWebAssemblySourceProvider::decode const): Deleted.
+        (JSC::CachedSourceProvider::encode): Deleted.
+        (JSC::CachedSourceProvider::decode const): Deleted.
+        (JSC::CachedUnlinkedSourceCodeShape::encode): Deleted.
+        (JSC::CachedUnlinkedSourceCodeShape::decode const): Deleted.
+        (JSC::CachedSourceCode::encode): Deleted.
+        (JSC::CachedSourceCode::decode const): Deleted.
+        (JSC::CachedFunctionExecutable::firstLineOffset const): Deleted.
+        (JSC::CachedFunctionExecutable::lineCount const): Deleted.
+        (JSC::CachedFunctionExecutable::unlinkedFunctionNameStart const): Deleted.
+        (JSC::CachedFunctionExecutable::unlinkedBodyStartColumn const): Deleted.
+        (JSC::CachedFunctionExecutable::unlinkedBodyEndColumn const): Deleted.
+        (JSC::CachedFunctionExecutable::startOffset const): Deleted.
+        (JSC::CachedFunctionExecutable::sourceLength const): Deleted.
+        (JSC::CachedFunctionExecutable::parametersStartOffset const): Deleted.
+        (JSC::CachedFunctionExecutable::typeProfilingStartOffset const): Deleted.
+        (JSC::CachedFunctionExecutable::typeProfilingEndOffset const): Deleted.
+        (JSC::CachedFunctionExecutable::parameterCount const): Deleted.
+        (JSC::CachedFunctionExecutable::features const): Deleted.
+        (JSC::CachedFunctionExecutable::sourceParseMode const): Deleted.
+        (JSC::CachedFunctionExecutable::isInStrictContext const): Deleted.
+        (JSC::CachedFunctionExecutable::hasCapturedVariables const): Deleted.
+        (JSC::CachedFunctionExecutable::isBuiltinFunction const): Deleted.
+        (JSC::CachedFunctionExecutable::isBuiltinDefaultClassConstructor const): Deleted.
+        (JSC::CachedFunctionExecutable::constructAbility const): Deleted.
+        (JSC::CachedFunctionExecutable::constructorKind const): Deleted.
+        (JSC::CachedFunctionExecutable::functionMode const): Deleted.
+        (JSC::CachedFunctionExecutable::scriptMode const): Deleted.
+        (JSC::CachedFunctionExecutable::superBinding const): Deleted.
+        (JSC::CachedFunctionExecutable::derivedContextType const): Deleted.
+        (JSC::CachedFunctionExecutable::name const): Deleted.
+        (JSC::CachedFunctionExecutable::ecmaName const): Deleted.
+        (JSC::CachedFunctionExecutable::inferredName const): Deleted.
+        (JSC::CachedCodeBlock::instructions const): Deleted.
+        (JSC::CachedCodeBlock::thisRegister const): Deleted.
+        (JSC::CachedCodeBlock::scopeRegister const): Deleted.
+        (JSC::CachedCodeBlock::globalObjectRegister const): Deleted.
+        (JSC::CachedCodeBlock::sourceURLDirective const): Deleted.
+        (JSC::CachedCodeBlock::sourceMappingURLDirective const): Deleted.
+        (JSC::CachedCodeBlock::usesEval const): Deleted.
+        (JSC::CachedCodeBlock::isStrictMode const): Deleted.
+        (JSC::CachedCodeBlock::isConstructor const): Deleted.
+        (JSC::CachedCodeBlock::hasCapturedVariables const): Deleted.
+        (JSC::CachedCodeBlock::isBuiltinFunction const): Deleted.
+        (JSC::CachedCodeBlock::superBinding const): Deleted.
+        (JSC::CachedCodeBlock::scriptMode const): Deleted.
+        (JSC::CachedCodeBlock::isArrowFunctionContext const): Deleted.
+        (JSC::CachedCodeBlock::isClassContext const): Deleted.
+        (JSC::CachedCodeBlock::wasCompiledWithDebuggingOpcodes const): Deleted.
+        (JSC::CachedCodeBlock::constructorKind const): Deleted.
+        (JSC::CachedCodeBlock::derivedContextType const): Deleted.
+        (JSC::CachedCodeBlock::evalContextType const): Deleted.
+        (JSC::CachedCodeBlock::hasTailCalls const): Deleted.
+        (JSC::CachedCodeBlock::lineCount const): Deleted.
+        (JSC::CachedCodeBlock::endColumn const): Deleted.
+        (JSC::CachedCodeBlock::numVars const): Deleted.
+        (JSC::CachedCodeBlock::numCalleeLocals const): Deleted.
+        (JSC::CachedCodeBlock::numParameters const): Deleted.
+        (JSC::CachedCodeBlock::features const): Deleted.
+        (JSC::CachedCodeBlock::parseMode const): Deleted.
+        (JSC::CachedCodeBlock::codeType const): Deleted.
+        (JSC::CachedCodeBlock::rareData const): Deleted.
+        (JSC::CachedProgramCodeBlock::encode): Deleted.
+        (JSC::CachedProgramCodeBlock::decode const): Deleted.
+        (JSC::CachedModuleCodeBlock::encode): Deleted.
+        (JSC::CachedModuleCodeBlock::decode const): Deleted.
+        (JSC::CachedEvalCodeBlock::encode): Deleted.
+        (JSC::CachedEvalCodeBlock::decode const): Deleted.
+        (JSC::CachedFunctionCodeBlock::encode): Deleted.
+        (JSC::CachedFunctionCodeBlock::decode const): Deleted.
+        (JSC::UnlinkedFunctionCodeBlock::UnlinkedFunctionCodeBlock): Deleted.
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock): Deleted.
+        (JSC::CachedCodeBlock<CodeBlockType>::decode const): Deleted.
+        (JSC::UnlinkedProgramCodeBlock::UnlinkedProgramCodeBlock): Deleted.
+        (JSC::UnlinkedModuleProgramCodeBlock::UnlinkedModuleProgramCodeBlock): Deleted.
+        (JSC::UnlinkedEvalCodeBlock::UnlinkedEvalCodeBlock): Deleted.
+        (JSC::CachedFunctionExecutable::encode): Deleted.
+        (JSC::CachedFunctionExecutable::decode const): Deleted.
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable): Deleted.
+        (JSC::CachedCodeBlock<CodeBlockType>::encode): Deleted.
+        (JSC::CachedSourceCodeKey::encode): Deleted.
+        (JSC::CachedSourceCodeKey::decode const): Deleted.
+        (JSC::CacheEntry::encode): Deleted.
+        (JSC::CacheEntry:: const): Deleted.
+        (JSC:: const): Deleted.
+        (JSC::encodeCodeBlock): Deleted.
+        (JSC::decodeCodeBlockImpl): Deleted.
+        * runtime/CachedTypes.h:
+        (JSC::decodeCodeBlock): Deleted.
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCacheMap::pruneSlowCase):
+        (JSC::CodeCache::getUnlinkedGlobalCodeBlock):
+        (JSC::CodeCache::getUnlinkedGlobalFunctionExecutable):
+        (JSC::CodeCache::write): Deleted.
+        * runtime/CodeCache.h:
+        (JSC::CodeCacheMap::findCacheAndUpdateAge):
+        (JSC::CodeCache::clear):
+        (JSC::CodeCacheMap::begin): Deleted.
+        (JSC::CodeCacheMap::end): Deleted.
+        (JSC::CodeCacheMap::fetchFromDiskImpl): Deleted.
+        (): Deleted.
+        (JSC::writeCodeBlock): Deleted.
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::offsetOfData):
+        (JSC::JSBigInt::dataStorage):
+        * runtime/JSBigInt.h:
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+        * runtime/RegExp.h:
+        * runtime/ScopedArgumentsTable.h:
+        * runtime/StackFrame.h:
+        * runtime/StructureInlines.h:
+        * runtime/SymbolTable.h:
+
+2019-01-20  Saam Barati  <sbarati@apple.com>
+
+        MovHint must merge NodeBytecodeUsesAsValue for its child in backwards propagation
+        https://bugs.webkit.org/show_bug.cgi?id=186916
+        <rdar://problem/41396612>
+
+        Reviewed by Yusuke Suzuki.
+
+        Otherwise, we may not think we care about the non-integral part in
+        a division (or perhaps overflow in an add, etc). Consider a program
+        like this:
+        
+        ```return a / b```
+        
+        That gets compiled to:
+        ```
+        a: ArithDiv // We don't check that the remainder is zero here.
+        b: MovHint(@a)
+        c: ForceOSRExit
+        d: Unreachable
+        ```
+        
+        If we don't inform @a that we care about its result in full number
+        accuracy, it will choose to ignore its non-integral remainder. This
+        makes sense if *everybody* that all uses of the Div only cared about
+        the integral part. However, OSR exit is not one of those users. OSR
+        exit cares about the fractional bits in such a Div.
+
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+
+2019-01-20  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Invalidate old scope operations using global lexical binding epoch
+        https://bugs.webkit.org/show_bug.cgi?id=193603
+        <rdar://problem/47380869>
+
+        Reviewed by Saam Barati.
+
+        Even if the global lexical binding does not shadow the global property at that time, we need to clear the cached information in
+        scope related operations since we may have a global property previously. Consider the following example,
+
+            foo = 0;
+            function get() { return foo; }
+            print(get()); // 0
+            print(get()); // 0
+            delete globalThis.foo;
+            $.evalScript(`const foo = 42;`);
+            print(get()); // Should be 42, but it returns 0 if the cached information in get() is not cleared.
+
+        To invalidate the cache easily, we introduce global lexical binding epoch. It is bumped every time we introduce a new lexical binding
+        into JSGlobalLexicalEnvironment, since that name could shadow the global property name previously. In op_resolve_scope, we first check
+        the epoch stored in the metadata, and go to slow path if it is not equal to the current epoch. Our slow path code convert the scope
+        operation to the appropriate one even if the resolve type is not UnresolvedProperty type. After updating the resolve type of the bytecode,
+        we update the cached epoch to the current one, so that we can use the cached information as long as we stay in the same epoch.
+
+        In op_get_from_scope and op_put_to_scope, we do not use this epoch since Structure check can do the same thing instead. If op_resolve_type
+        is updated by the epoch, and if it starts returning JSGlobalLexicalEnvironment instead JSGlobalObject, obviously the structure check fails.
+        And in the slow path, we update op_get_from_scope and op_put_to_scope appropriately.
+
+        So, the metadata for scope related bytecodes are eventually updated to the appropriate one. In DFG and FTL, we use the watchpoint based approach.
+        In DFG and FTL, we concurrently attempt to get the watchpoint for the lexical binding and look into it by using `isStillValid()` to avoid
+        infinite compile-and-fail loop.
+
+        When the global lexical binding epoch overflows we iterate all the live CodeBlock and update the op_resolve_scope's epoch. Even if the shadowing
+        happens, it is OK if we bump the epoch, since op_resolve_scope will return JSGlobalLexicalEnvironment instead of JSGlobalObject, and following
+        structure check in op_put_to_scope and op_get_from_scope fail. We do not need to update op_get_from_scope and op_put_to_scope because of the same
+        reason.
+
+        * bytecode/BytecodeList.rb:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::notifyLexicalBindingUpdate):
+        (JSC::CodeBlock::notifyLexicalBindingShadowing): Deleted.
+        * bytecode/CodeBlock.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGDesiredGlobalProperties.cpp:
+        (JSC::DFG::DesiredGlobalProperties::isStillValidOnMainThread):
+        * dfg/DFGDesiredGlobalProperties.h:
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::watchGlobalProperty):
+        * dfg/DFGGraph.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::isStillValidOnMainThread):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_resolve_scope):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_resolve_scope):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::tryCachePutToScopeGlobal):
+        (JSC::CommonSlowPaths::tryCacheGetFromScopeGlobal):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::bumpGlobalLexicalBindingEpoch):
+        (JSC::JSGlobalObject::getReferencedPropertyWatchpointSet):
+        (JSC::JSGlobalObject::ensureReferencedPropertyWatchpointSet):
+        (JSC::JSGlobalObject::notifyLexicalBindingShadowing): Deleted.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::globalLexicalBindingEpoch const):
+        (JSC::JSGlobalObject::globalLexicalBindingEpochOffset):
+        (JSC::JSGlobalObject::addressOfGlobalLexicalBindingEpoch):
+        * runtime/Options.cpp:
+        (JSC::correctOptions):
+        (JSC::Options::initialize):
+        (JSC::Options::setOptions):
+        (JSC::Options::setOptionWithoutAlias):
+        * runtime/Options.h:
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+
+2019-01-20  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Shrink data structure size in JSC/heap
+        https://bugs.webkit.org/show_bug.cgi?id=193612
+
+        Reviewed by Saam Barati.
+
+        This patch reduces the size of data structures in JSC/heap. Basically, we reorder the members to remove paddings.
+
+        For Subspace, we drop CellAttributes `m_attributes`. Instead, we use `heapCellType->attributes()`. And we use
+        FreeList::cellSize() instead of holding m_cellSize in LocalAllocator.
+
+        This change reduces the size of JSC::VM too since it includes JSC::Heap. The size of VM becomes from 78208 to 76696.
+
+        * heap/BlockDirectory.cpp:
+        * heap/BlockDirectory.h:
+        * heap/CollectionScope.h:
+        * heap/CompleteSubspace.cpp:
+        (JSC::CompleteSubspace::allocatorForSlow):
+        * heap/FreeList.h:
+        (JSC::FreeList::offsetOfCellSize):
+        (JSC::FreeList::cellSize const):
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::updateObjectCounts):
+        (JSC::Heap::addToRememberedSet):
+        (JSC::Heap::runBeginPhase):
+        (JSC::Heap::willStartCollection):
+        (JSC::Heap::pruneStaleEntriesFromWeakGCMaps):
+        (JSC::Heap::deleteSourceProviderCaches):
+        (JSC::Heap::notifyIncrementalSweeper):
+        (JSC::Heap::updateAllocationLimits):
+        * heap/Heap.h:
+        * heap/IsoAlignedMemoryAllocator.h:
+        * heap/LargeAllocation.cpp:
+        * heap/LocalAllocator.cpp:
+        (JSC::LocalAllocator::LocalAllocator):
+        * heap/LocalAllocator.h:
+        (JSC::LocalAllocator::cellSize const):
+        (JSC::LocalAllocator::offsetOfCellSize):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::MarkedSpace):
+        * heap/MarkedSpace.h:
+        * heap/MarkingConstraint.h:
+        * heap/Subspace.cpp:
+        (JSC::Subspace::initialize):
+        * heap/Subspace.h:
+        (JSC::Subspace::attributes const): Deleted.
+        * heap/SubspaceInlines.h:
+        (JSC::Subspace::forEachMarkedCell):
+        (JSC::Subspace::forEachMarkedCellInParallel):
+        (JSC::Subspace::forEachLiveCell):
+        (JSC::Subspace::attributes const):
+
+2019-01-20  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Cache bytecode to disk
+        https://bugs.webkit.org/show_bug.cgi?id=192782
+        <rdar://problem/46084932>
+
+        Reviewed by Keith Miller.
+
+        Add the logic to serialize and deserialize the new JSC bytecode. For now,
+        the cache is only used for tests.
+
+        Each class that can be serialized has a counterpart in CachedTypes, which
+        handles the decoding and encoding. When decoding, the cached objects are
+        mmap'd from disk, but only used for creating instances of the respective
+        in-memory version of each object. Ideally, the mmap'd objects should be
+        used at runtime in the future.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * builtins/BuiltinNames.cpp:
+        (JSC::BuiltinNames::BuiltinNames):
+        * builtins/BuiltinNames.h:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::setConstantIdentifierSetRegisters):
+        * bytecode/CodeBlock.h:
+        * bytecode/HandlerInfo.h:
+        (JSC::UnlinkedHandlerInfo::UnlinkedHandlerInfo):
+        * bytecode/InstructionStream.h:
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addSetConstant):
+        (JSC::UnlinkedCodeBlock::constantIdentifierSets):
+        * bytecode/UnlinkedEvalCodeBlock.h:
+        * bytecode/UnlinkedFunctionCodeBlock.h:
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * bytecode/UnlinkedGlobalCodeBlock.h:
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock):
+        * bytecode/UnlinkedMetadataTable.h:
+        * bytecode/UnlinkedModuleProgramCodeBlock.h:
+        * bytecode/UnlinkedProgramCodeBlock.h:
+        * interpreter/Interpreter.cpp:
+        * jsc.cpp:
+        (functionQuit):
+        (runJSC):
+        * parser/SourceCode.h:
+        * parser/SourceCodeKey.h:
+        (JSC::SourceCodeKey::operator!= const):
+        * parser/UnlinkedSourceCode.h:
+        * parser/VariableEnvironment.h:
+        * runtime/CachedTypes.cpp: Added.
+        (JSC::Encoder::Allocation::buffer const):
+        (JSC::Encoder::Allocation::offset const):
+        (JSC::Encoder::Allocation::Allocation):
+        (JSC::Encoder::Encoder):
+        (JSC::Encoder::vm):
+        (JSC::Encoder::malloc):
+        (JSC::Encoder::offsetOf):
+        (JSC::Encoder::cachePtr):
+        (JSC::Encoder::offsetForPtr):
+        (JSC::Encoder::release):
+        (JSC::Encoder::Page::Page):
+        (JSC::Encoder::Page::malloc):
+        (JSC::Encoder::Page::buffer const):
+        (JSC::Encoder::Page::size const):
+        (JSC::Encoder::Page::getOffset const):
+        (JSC::Encoder::allocateNewPage):
+        (JSC::Decoder::Decoder):
+        (JSC::Decoder::~Decoder):
+        (JSC::Decoder::vm):
+        (JSC::Decoder::offsetOf):
+        (JSC::Decoder::cacheOffset):
+        (JSC::Decoder::addFinalizer):
+        (JSC::encode):
+        (JSC::decode):
+        (JSC::VariableLengthObject::buffer const):
+        (JSC::VariableLengthObject::allocate):
+        (JSC::CachedPtr::encode):
+        (JSC::CachedPtr::decode const):
+        (JSC::CachedPtr::operator-> const):
+        (JSC::CachedPtr::get const):
+        (JSC::CachedRefPtr::encode):
+        (JSC::CachedRefPtr::decode const):
+        (JSC::CachedWriteBarrier::encode):
+        (JSC::CachedWriteBarrier::decode const):
+        (JSC::CachedVector::encode):
+        (JSC::CachedVector::decode const):
+        (JSC::CachedPair::encode):
+        (JSC::CachedPair::decode const):
+        (JSC::CachedHashMap::encode):
+        (JSC::CachedHashMap::decode const):
+        (JSC::CachedUniquedStringImpl::encode):
+        (JSC::CachedUniquedStringImpl::decode const):
+        (JSC::CachedStringImpl::encode):
+        (JSC::CachedStringImpl::decode const):
+        (JSC::CachedString::encode):
+        (JSC::CachedString::decode const):
+        (JSC::CachedIdentifier::encode):
+        (JSC::CachedIdentifier::decode const):
+        (JSC::CachedOptional::encode):
+        (JSC::CachedOptional::decode const):
+        (JSC::CachedOptional::decodeAsPtr const):
+        (JSC::CachedSimpleJumpTable::encode):
+        (JSC::CachedSimpleJumpTable::decode const):
+        (JSC::CachedStringJumpTable::encode):
+        (JSC::CachedStringJumpTable::decode const):
+        (JSC::CachedCodeBlockRareData::encode):
+        (JSC::CachedCodeBlockRareData::decode const):
+        (JSC::CachedBitVector::encode):
+        (JSC::CachedBitVector::decode const):
+        (JSC::CachedHashSet::encode):
+        (JSC::CachedHashSet::decode const):
+        (JSC::CachedConstantIdentifierSetEntry::encode):
+        (JSC::CachedConstantIdentifierSetEntry::decode const):
+        (JSC::CachedVariableEnvironment::encode):
+        (JSC::CachedVariableEnvironment::decode const):
+        (JSC::CachedArray::encode):
+        (JSC::CachedArray::decode const):
+        (JSC::CachedScopedArgumentsTable::encode):
+        (JSC::CachedScopedArgumentsTable::decode const):
+        (JSC::CachedSymbolTableEntry::encode):
+        (JSC::CachedSymbolTableEntry::decode const):
+        (JSC::CachedSymbolTable::encode):
+        (JSC::CachedSymbolTable::decode const):
+        (JSC::CachedImmutableButterfly::encode):
+        (JSC::CachedImmutableButterfly::decode const):
+        (JSC::CachedRegExp::encode):
+        (JSC::CachedRegExp::decode const):
+        (JSC::CachedTemplateObjectDescriptor::encode):
+        (JSC::CachedTemplateObjectDescriptor::decode const):
+        (JSC::CachedBigInt::encode):
+        (JSC::CachedBigInt::decode const):
+        (JSC::CachedJSValue::encode):
+        (JSC::CachedJSValue::decode const):
+        (JSC::CachedInstructionStream::encode):
+        (JSC::CachedInstructionStream::decode const):
+        (JSC::CachedMetadataTable::encode):
+        (JSC::CachedMetadataTable::decode const):
+        (JSC::CachedSourceOrigin::encode):
+        (JSC::CachedSourceOrigin::decode const):
+        (JSC::CachedTextPosition::encode):
+        (JSC::CachedTextPosition::decode const):
+        (JSC::CachedSourceProviderShape::encode):
+        (JSC::CachedSourceProviderShape::decode const):
+        (JSC::CachedStringSourceProvider::encode):
+        (JSC::CachedStringSourceProvider::decode const):
+        (JSC::CachedWebAssemblySourceProvider::encode):
+        (JSC::CachedWebAssemblySourceProvider::decode const):
+        (JSC::CachedSourceProvider::encode):
+        (JSC::CachedSourceProvider::decode const):
+        (JSC::CachedUnlinkedSourceCodeShape::encode):
+        (JSC::CachedUnlinkedSourceCodeShape::decode const):
+        (JSC::CachedSourceCode::encode):
+        (JSC::CachedSourceCode::decode const):
+        (JSC::CachedFunctionExecutable::firstLineOffset const):
+        (JSC::CachedFunctionExecutable::lineCount const):
+        (JSC::CachedFunctionExecutable::unlinkedFunctionNameStart const):
+        (JSC::CachedFunctionExecutable::unlinkedBodyStartColumn const):
+        (JSC::CachedFunctionExecutable::unlinkedBodyEndColumn const):
+        (JSC::CachedFunctionExecutable::startOffset const):
+        (JSC::CachedFunctionExecutable::sourceLength const):
+        (JSC::CachedFunctionExecutable::parametersStartOffset const):
+        (JSC::CachedFunctionExecutable::typeProfilingStartOffset const):
+        (JSC::CachedFunctionExecutable::typeProfilingEndOffset const):
+        (JSC::CachedFunctionExecutable::parameterCount const):
+        (JSC::CachedFunctionExecutable::features const):
+        (JSC::CachedFunctionExecutable::sourceParseMode const):
+        (JSC::CachedFunctionExecutable::isInStrictContext const):
+        (JSC::CachedFunctionExecutable::hasCapturedVariables const):
+        (JSC::CachedFunctionExecutable::isBuiltinFunction const):
+        (JSC::CachedFunctionExecutable::isBuiltinDefaultClassConstructor const):
+        (JSC::CachedFunctionExecutable::constructAbility const):
+        (JSC::CachedFunctionExecutable::constructorKind const):
+        (JSC::CachedFunctionExecutable::functionMode const):
+        (JSC::CachedFunctionExecutable::scriptMode const):
+        (JSC::CachedFunctionExecutable::superBinding const):
+        (JSC::CachedFunctionExecutable::derivedContextType const):
+        (JSC::CachedFunctionExecutable::name const):
+        (JSC::CachedFunctionExecutable::ecmaName const):
+        (JSC::CachedFunctionExecutable::inferredName const):
+        (JSC::CachedCodeBlock::instructions const):
+        (JSC::CachedCodeBlock::thisRegister const):
+        (JSC::CachedCodeBlock::scopeRegister const):
+        (JSC::CachedCodeBlock::globalObjectRegister const):
+        (JSC::CachedCodeBlock::sourceURLDirective const):
+        (JSC::CachedCodeBlock::sourceMappingURLDirective const):
+        (JSC::CachedCodeBlock::usesEval const):
+        (JSC::CachedCodeBlock::isStrictMode const):
+        (JSC::CachedCodeBlock::isConstructor const):
+        (JSC::CachedCodeBlock::hasCapturedVariables const):
+        (JSC::CachedCodeBlock::isBuiltinFunction const):
+        (JSC::CachedCodeBlock::superBinding const):
+        (JSC::CachedCodeBlock::scriptMode const):
+        (JSC::CachedCodeBlock::isArrowFunctionContext const):
+        (JSC::CachedCodeBlock::isClassContext const):
+        (JSC::CachedCodeBlock::wasCompiledWithDebuggingOpcodes const):
+        (JSC::CachedCodeBlock::constructorKind const):
+        (JSC::CachedCodeBlock::derivedContextType const):
+        (JSC::CachedCodeBlock::evalContextType const):
+        (JSC::CachedCodeBlock::hasTailCalls const):
+        (JSC::CachedCodeBlock::lineCount const):
+        (JSC::CachedCodeBlock::endColumn const):
+        (JSC::CachedCodeBlock::numVars const):
+        (JSC::CachedCodeBlock::numCalleeLocals const):
+        (JSC::CachedCodeBlock::numParameters const):
+        (JSC::CachedCodeBlock::features const):
+        (JSC::CachedCodeBlock::parseMode const):
+        (JSC::CachedCodeBlock::codeType const):
+        (JSC::CachedCodeBlock::rareData const):
+        (JSC::CachedProgramCodeBlock::encode):
+        (JSC::CachedProgramCodeBlock::decode const):
+        (JSC::CachedModuleCodeBlock::encode):
+        (JSC::CachedModuleCodeBlock::decode const):
+        (JSC::CachedEvalCodeBlock::encode):
+        (JSC::CachedEvalCodeBlock::decode const):
+        (JSC::CachedFunctionCodeBlock::encode):
+        (JSC::CachedFunctionCodeBlock::decode const):
+        (JSC::UnlinkedFunctionCodeBlock::UnlinkedFunctionCodeBlock):
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock):
+        (JSC::CachedCodeBlock<CodeBlockType>::decode const):
+        (JSC::UnlinkedProgramCodeBlock::UnlinkedProgramCodeBlock):
+        (JSC::UnlinkedModuleProgramCodeBlock::UnlinkedModuleProgramCodeBlock):
+        (JSC::UnlinkedEvalCodeBlock::UnlinkedEvalCodeBlock):
+        (JSC::CachedFunctionExecutable::encode):
+        (JSC::CachedFunctionExecutable::decode const):
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        (JSC::CachedCodeBlock<CodeBlockType>::encode):
+        (JSC::CachedSourceCodeKey::encode):
+        (JSC::CachedSourceCodeKey::decode const):
+        (JSC::CacheEntry::encode):
+        (JSC::CacheEntry:: const):
+        (JSC:: const):
+        (JSC::encodeCodeBlock):
+        (JSC::decodeCodeBlockImpl):
+        * runtime/CachedTypes.h: Copied from Source/JavaScriptCore/bytecode/UnlinkedGlobalCodeBlock.h.
+        (JSC::decodeCodeBlock):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCacheMap::pruneSlowCase):
+        (JSC::CodeCache::getUnlinkedGlobalCodeBlock):
+        (JSC::CodeCache::getUnlinkedGlobalFunctionExecutable):
+        (JSC::CodeCache::write):
+        * runtime/CodeCache.h:
+        (JSC::CodeCacheMap::begin):
+        (JSC::CodeCacheMap::end):
+        (JSC::CodeCacheMap::fetchFromDiskImpl):
+        (JSC::CodeCacheMap::findCacheAndUpdateAge):
+        (JSC::writeCodeBlock):
+        * runtime/JSBigInt.cpp:
+        * runtime/JSBigInt.h:
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+        * runtime/RegExp.h:
+        * runtime/ScopedArgumentsTable.h:
+        * runtime/StackFrame.h:
+        * runtime/StructureInlines.h:
+        * runtime/SymbolTable.h:
+
+2019-01-20  Antoine Quint  <graouts@apple.com>
+
+        Add a POINTER_EVENTS feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=193577
+        <rdar://problem/47408511>
+
+        Unreviewed. Also enable Pointer Events for iosmac.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-01-19  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Reorder JSSegmentedVariableObject member for preparation of JSGlobalObject memory reduction
+        https://bugs.webkit.org/show_bug.cgi?id=193609
+
+        Reviewed by Sam Weinig.
+
+        Basically, we should order the members in large => small order not to add paddings.
+
+        * runtime/JSSegmentedVariableObject.h:
+
+2019-01-19  Antoine Quint  <graouts@apple.com>
+
+        Add a POINTER_EVENTS feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=193577
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-01-18  Keith Miller  <keith_miller@apple.com>
+
+        JSScript API should only take ascii files.
+        https://bugs.webkit.org/show_bug.cgi?id=193420
+
+        Reviewed by Saam Barati.
+
+        This patch leaves the UTF8 method for binary compatablity, which
+        will be removed later.
+
+        * API/JSScript.h:
+        * API/JSScript.mm:
+        (fillBufferWithContentsOfFile):
+        (+[JSScript scriptFromASCIIFile:inVirtualMachine:withCodeSigning:andBytecodeCache:]):
+        (+[JSScript scriptFromUTF8File:inVirtualMachine:withCodeSigning:andBytecodeCache:]):
+        * API/tests/testapi.mm:
+        (-[JSContextFileLoaderDelegate context:fetchModuleForIdentifier:withResolveHandler:andRejectHandler:]):
+
+2019-01-18  David Kilzer  <ddkilzer@apple.com>
+
+        Follow-up: Gigacages should start allocations from a slide
+        <https://bugs.webkit.org/show_bug.cgi?id=193523>
+        <rdar://problem/44958707>
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::caged): Add UNUSED_PARAM(kind) to
+        fix the build.
+
+2019-01-18  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/SDKVariant.xcconfig: Added.
+
+2019-01-18  Keith Miller  <keith_miller@apple.com>
+
+        Gigacages should start allocations from a slide
+        https://bugs.webkit.org/show_bug.cgi?id=193523
+
+        Reviewed by Mark Lam.
+
+        This patch changes some macros into constants since macros are the
+        devil.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::caged):
+        * llint/LowLevelInterpreter64.asm:
+
+2019-01-18  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r240160.
+
+        This broke multiple internal builds.
+
+        Reverted changeset:
+
+        "Gigacages should start allocations from a slide"
+        https://bugs.webkit.org/show_bug.cgi?id=193523
+        https://trac.webkit.org/changeset/240160
+
+2019-01-18  Keith Miller  <keith_miller@apple.com>
+
+        Gigacages should start allocations from a slide
+        https://bugs.webkit.org/show_bug.cgi?id=193523
+
+        Reviewed by Mark Lam.
+
+        This patch changes some macros into constants since macros are the
+        devil.
+
+        * llint/LowLevelInterpreter64.asm:
+
+2019-01-17  Mark Lam  <mark.lam@apple.com>
+
+        Audit bytecode fields and ensure that LLInt instructions for accessing them are appropriate.
+        https://bugs.webkit.org/show_bug.cgi?id=193557
+        <rdar://problem/47369125>
+
+        Reviewed by Yusuke Suzuki.
+
+        1. Rename some bytecode fields so that it's easier to discern whether the LLInt
+           is accessing them the right way:
+           - distinguish between targetVirtualRegister and targetLabel.
+           - name all StructureID fields as structureID (oldStructureID, newStructureID)
+             instead of structure (oldStructure, newStructure).
+
+        2. Use bitwise_cast in struct Fits when sizeof(T) == size.
+           This prevents potential undefined behavior issues arising from doing
+           assignments with reinterpret_cast'ed pointers.
+
+        3. Make Special::Pointer an unsigned type (previously int).
+           Make ResolveType an unsigned type (previously int).
+
+        4. In LowLevelInterpreter*.asm:
+
+           - rename the op macro argument to opcodeName or opcodeStruct respectively.
+             This makes it clearer which argument type the macro is working with.
+
+           - rename the name macro argument to opcodeName.
+
+           - fix operator types to match the field type being accessed.  The following
+             may have resulted in bugs before:
+
+             1. The following should be read with getu() instead of get() because they
+                are unsigned ints:
+                    OpSwitchImm::m_tableIndex
+                    OpSwitchChar::m_tableIndex
+                    OpGetFromArguments::m_index
+                    OpPutToArguments::m_index
+                    OpGetRestLength::m_numParametersToSkip
+
+                OpJneqPtr::m_specialPointer should also be read with getu() though this
+                wasn't a bug because it was previously an int by default, and is only
+                changed to an unsigned int in this patch.
+
+             2.The following should be read with loadi (not loadp) because they are of
+               unsigned type (not a pointer):
+                    OpResolveScope::Metadata::m_resolveType
+                    CodeBlock::m_numParameters (see prepareForTailCall)
+
+             3. OpPutToScope::Metadata::m_operand should be read with loadp (not loadis)
+                because it is a uintptr_t.
+
+             4. The following should be read with loadi (not loadis) because they are
+                unsigned ints:
+                    OpNegate::Metadata::m_arithProfile + ArithProfile::m_bits
+                    OpPutById::Metadata::m_oldStructureID
+                    OpPutToScope::Metadata::m_getPutInfo + GetPutInfo::m_operand
+
+                These may not have manifested in bugs because the operations that follow
+                the load are 32-bit instructions which ignore the high word.
+
+        5. Give class GetPutInfo a default constructor so that we can use bitwise_cast
+           on it.  Also befriend LLIntOffsetsExtractor so that we can take the offset of
+           m_operand in it.
+
+        * bytecode/ArithProfile.h:
+        * bytecode/BytecodeList.rb:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::propagateTransitions):
+        (JSC::CodeBlock::finalizeLLIntInlineCaches):
+        * bytecode/Fits.h:
+        * bytecode/GetByIdMetadata.h:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFromLLInt):
+        * bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp:
+        (JSC::LLIntPrototypeLoadAdaptiveStructureWatchpoint::clearLLIntGetByIdCache):
+        * bytecode/PreciseJumpTargetsInlines.h:
+        (JSC::jumpTargetForInstruction):
+        (JSC::updateStoredJumpTargetsForInstruction):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFromLLInt):
+        * bytecode/SpecialPointer.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::Label::setLocation):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_compareAndJump):
+        (JSC::JIT::emit_compareUnsignedAndJump):
+        (JSC::JIT::emit_compareAndJumpSlow):
+        * jit/JITArithmetic32_64.cpp:
+        (JSC::JIT::emit_compareAndJump):
+        (JSC::JIT::emit_compareUnsignedAndJump):
+        (JSC::JIT::emit_compareAndJumpSlow):
+        (JSC::JIT::emitBinaryDoubleOp):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_jmp):
+        (JSC::JIT::emit_op_jfalse):
+        (JSC::JIT::emit_op_jeq_null):
+        (JSC::JIT::emit_op_jneq_null):
+        (JSC::JIT::emit_op_jneq_ptr):
+        (JSC::JIT::emit_op_jeq):
+        (JSC::JIT::emit_op_jtrue):
+        (JSC::JIT::emit_op_jneq):
+        (JSC::JIT::compileOpStrictEqJump):
+        (JSC::JIT::emitSlow_op_jstricteq):
+        (JSC::JIT::emitSlow_op_jnstricteq):
+        (JSC::JIT::emit_op_check_tdz):
+        (JSC::JIT::emitSlow_op_jeq):
+        (JSC::JIT::emitSlow_op_jneq):
+        (JSC::JIT::emit_op_profile_type):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_jmp):
+        (JSC::JIT::emit_op_jfalse):
+        (JSC::JIT::emit_op_jtrue):
+        (JSC::JIT::emit_op_jeq_null):
+        (JSC::JIT::emit_op_jneq_null):
+        (JSC::JIT::emit_op_jneq_ptr):
+        (JSC::JIT::emit_op_jeq):
+        (JSC::JIT::emitSlow_op_jeq):
+        (JSC::JIT::emit_op_jneq):
+        (JSC::JIT::emitSlow_op_jneq):
+        (JSC::JIT::compileOpStrictEqJump):
+        (JSC::JIT::emitSlow_op_jstricteq):
+        (JSC::JIT::emitSlow_op_jnstricteq):
+        (JSC::JIT::emit_op_check_tdz):
+        (JSC::JIT::emit_op_profile_type):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        (JSC::LLInt::setupGetByIdPrototypeCache):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        * runtime/GetPutInfo.h:
+
+2019-01-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r240124.
+
+        This commit broke an internal build.
+
+        Reverted changeset:
+
+        "SDK_VARIANT build destinations should be separate from non-
+        SDK_VARIANT builds"
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+        https://trac.webkit.org/changeset/240124
+
 2019-01-17  Jer Noble  <jer.noble@apple.com>
 
         SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds

@@ -149,6 +149,7 @@
 #include "ProxyObject.h"
 #include "ProxyRevoke.h"
 #include "ReflectObject.h"
+#include "RegExpCache.h"
 #include "RegExpConstructor.h"
 #include "RegExpMatchesArray.h"
 #include "RegExpObject.h"
@@ -303,11 +304,13 @@ const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = {
   decodeURIComponent    globalFuncDecodeURIComponent                 DontEnum|Function 1
   encodeURI             globalFuncEncodeURI                          DontEnum|Function 1
   encodeURIComponent    globalFuncEncodeURIComponent                 DontEnum|Function 1
-  EvalError             JSGlobalObject::m_evalErrorConstructor       DontEnum|CellProperty
   globalThis            JSGlobalObject::m_globalThis                 DontEnum|CellProperty
-  ReferenceError        JSGlobalObject::m_referenceErrorConstructor  DontEnum|CellProperty
-  SyntaxError           JSGlobalObject::m_syntaxErrorConstructor     DontEnum|CellProperty
-  URIError              JSGlobalObject::m_URIErrorConstructor        DontEnum|CellProperty
+  EvalError             JSGlobalObject::m_evalErrorStructure         DontEnum|ClassStructure
+  RangeError            JSGlobalObject::m_rangeErrorStructure        DontEnum|ClassStructure
+  ReferenceError        JSGlobalObject::m_referenceErrorStructure    DontEnum|ClassStructure
+  SyntaxError           JSGlobalObject::m_syntaxErrorStructure       DontEnum|ClassStructure
+  TypeError             JSGlobalObject::m_typeErrorStructure         DontEnum|ClassStructure
+  URIError              JSGlobalObject::m_URIErrorStructure          DontEnum|ClassStructure
   Proxy                 createProxyProperty                          DontEnum|PropertyCallback
   JSON                  createJSONProperty                           DontEnum|PropertyCallback
   Math                  createMathProperty                           DontEnum|PropertyCallback
@@ -360,6 +363,7 @@ JSGlobalObject::JSGlobalObject(VM& vm, Structure* structure, const GlobalObjectM
     , m_arraySpeciesWatchpoint(ClearWatchpoint)
     , m_numberToStringWatchpoint(IsWatched)
     , m_runtimeFlags()
+    , m_stackTraceLimit(Options::defaultErrorStackTraceLimit())
     , m_globalObjectMethodTable(globalObjectMethodTable ? globalObjectMethodTable : &s_globalObjectMethodTable)
 {
 }
@@ -390,6 +394,14 @@ static JSObject* getGetterById(ExecState* exec, JSObject* base, const Identifier
     PropertySlot slot(baseValue, PropertySlot::InternalMethodType::VMInquiry);
     baseValue.getPropertySlot(exec, ident, slot);
     return slot.getPureResult().toObject(exec);
+}
+
+template<ErrorType errorType>
+void JSGlobalObject::initializeErrorConstructor(LazyClassStructure::Initializer& init)
+{
+    init.setPrototype(NativeErrorPrototype::create(init.vm, NativeErrorPrototype::createStructure(init.vm, this, m_errorPrototype.get()), errorTypeName(errorType)));
+    init.setStructure(ErrorInstance::createStructure(init.vm, this, init.prototype));
+    init.setConstructor(NativeErrorConstructor<errorType>::create(init.vm, NativeErrorConstructor<errorType>::createStructure(init.vm, this, m_errorConstructor.get()), jsCast<NativeErrorPrototype*>(init.prototype)));
 }
 
 void JSGlobalObject::init(VM& vm)
@@ -674,14 +686,15 @@ void JSGlobalObject::init(VM& vm)
     ArrayConstructor* arrayConstructor = ArrayConstructor::create(vm, this, ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_arrayPrototype.get(), m_speciesGetterSetter.get());
     m_arrayConstructor.set(vm, this, arrayConstructor);
     
-    m_regExpConstructor.set(vm, this, RegExpConstructor::create(vm, RegExpConstructor::createStructure(vm, this, m_functionPrototype.get()), m_regExpPrototype.get(), m_speciesGetterSetter.get()));
+    RegExpConstructor* regExpConstructor = RegExpConstructor::create(vm, RegExpConstructor::createStructure(vm, this, m_functionPrototype.get()), m_regExpPrototype.get(), m_speciesGetterSetter.get());
+    m_regExpGlobalData.cachedResult().record(vm, this, vm.regExpCache()->emptyRegExp(), jsEmptyString(&vm), MatchResult(0, 0));
     
-    JSArrayBufferConstructor* arrayBufferConstructor = JSArrayBufferConstructor::create(vm, JSArrayBufferConstructor::createStructure(vm, this, m_functionPrototype.get()), m_arrayBufferPrototype.get(), m_speciesGetterSetter.get(), ArrayBufferSharingMode::Default);
+    JSArrayBufferConstructor* arrayBufferConstructor = JSArrayBufferConstructor::create(vm, JSArrayBufferConstructor::createStructure(vm, this, m_functionPrototype.get()), m_arrayBufferPrototype.get(), m_speciesGetterSetter.get());
     m_arrayBufferPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, arrayBufferConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
 
 #if ENABLE(SHARED_ARRAY_BUFFER)
-    JSArrayBufferConstructor* sharedArrayBufferConstructor = nullptr;
-    sharedArrayBufferConstructor = JSArrayBufferConstructor::create(vm, JSArrayBufferConstructor::createStructure(vm, this, m_functionPrototype.get()), m_sharedArrayBufferPrototype.get(), m_speciesGetterSetter.get(), ArrayBufferSharingMode::Shared);
+    JSSharedArrayBufferConstructor* sharedArrayBufferConstructor = nullptr;
+    sharedArrayBufferConstructor = JSSharedArrayBufferConstructor::create(vm, JSSharedArrayBufferConstructor::createStructure(vm, this, m_functionPrototype.get()), m_sharedArrayBufferPrototype.get(), m_speciesGetterSetter.get());
     m_sharedArrayBufferPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, sharedArrayBufferConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
 
     AtomicsObject* atomicsObject = AtomicsObject::create(vm, this, AtomicsObject::createStructure(vm, this, m_objectPrototype.get()));
@@ -700,29 +713,33 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
     
 #undef CREATE_CONSTRUCTOR_FOR_SIMPLE_TYPE
 
-    m_errorConstructor.set(vm, this, errorConstructor);
     m_promiseConstructor.set(vm, this, promiseConstructor);
     m_internalPromiseConstructor.set(vm, this, internalPromiseConstructor);
     
-    m_nativeErrorPrototypeStructure.set(vm, this, NativeErrorPrototype::createStructure(vm, this, m_errorPrototype.get()));
-    m_nativeErrorStructure.set(vm, this, NativeErrorConstructor::createStructure(vm, this, errorConstructor));
-    m_evalErrorConstructor.initLater(
-        [] (const Initializer<NativeErrorConstructor>& init) {
-            init.set(NativeErrorConstructor::create(init.vm, init.owner, init.owner->m_nativeErrorStructure.get(), init.owner->m_nativeErrorPrototypeStructure.get(), "EvalError"_s));
+    m_errorConstructor.set(vm, this, errorConstructor);
+    m_evalErrorStructure.initLater(
+        [] (LazyClassStructure::Initializer& init) {
+            init.global->initializeErrorConstructor<ErrorType::EvalError>(init);
         });
-    m_rangeErrorConstructor.set(vm, this, NativeErrorConstructor::create(vm, this, m_nativeErrorStructure.get(), m_nativeErrorPrototypeStructure.get(), "RangeError"_s));
-    m_referenceErrorConstructor.initLater(
-        [] (const Initializer<NativeErrorConstructor>& init) {
-            init.set(NativeErrorConstructor::create(init.vm, init.owner, init.owner->m_nativeErrorStructure.get(), init.owner->m_nativeErrorPrototypeStructure.get(), "ReferenceError"_s));
+    m_rangeErrorStructure.initLater(
+        [] (LazyClassStructure::Initializer& init) {
+            init.global->initializeErrorConstructor<ErrorType::RangeError>(init);
         });
-    m_syntaxErrorConstructor.initLater(
-        [] (const Initializer<NativeErrorConstructor>& init) {
-            init.set(NativeErrorConstructor::create(init.vm, init.owner, init.owner->m_nativeErrorStructure.get(), init.owner->m_nativeErrorPrototypeStructure.get(), "SyntaxError"_s));
+    m_referenceErrorStructure.initLater(
+        [] (LazyClassStructure::Initializer& init) {
+            init.global->initializeErrorConstructor<ErrorType::ReferenceError>(init);
         });
-    m_typeErrorConstructor.set(vm, this, NativeErrorConstructor::create(vm, this, m_nativeErrorStructure.get(), m_nativeErrorPrototypeStructure.get(), "TypeError"_s));
-    m_URIErrorConstructor.initLater(
-        [] (const Initializer<NativeErrorConstructor>& init) {
-            init.set(NativeErrorConstructor::create(init.vm, init.owner, init.owner->m_nativeErrorStructure.get(), init.owner->m_nativeErrorPrototypeStructure.get(), "URIError"_s));
+    m_syntaxErrorStructure.initLater(
+        [] (LazyClassStructure::Initializer& init) {
+            init.global->initializeErrorConstructor<ErrorType::SyntaxError>(init);
+        });
+    m_typeErrorStructure.initLater(
+        [] (LazyClassStructure::Initializer& init) {
+            init.global->initializeErrorConstructor<ErrorType::TypeError>(init);
+        });
+    m_URIErrorStructure.initLater(
+        [] (LazyClassStructure::Initializer& init) {
+            init.global->initializeErrorConstructor<ErrorType::URIError>(init);
         });
 
     m_generatorFunctionPrototype.set(vm, this, GeneratorFunctionPrototype::create(vm, GeneratorFunctionPrototype::createStructure(vm, this, m_functionPrototype.get())));
@@ -750,14 +767,12 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
     m_objectPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, objectConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
     m_functionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, functionConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
     m_arrayPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, arrayConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
-    m_regExpPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, m_regExpConstructor.get(), static_cast<unsigned>(PropertyAttribute::DontEnum));
+    m_regExpPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, regExpConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
     
     putDirectWithoutTransition(vm, vm.propertyNames->Object, objectConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
     putDirectWithoutTransition(vm, vm.propertyNames->Function, functionConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
     putDirectWithoutTransition(vm, vm.propertyNames->Array, arrayConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
-    putDirectWithoutTransition(vm, vm.propertyNames->RegExp, m_regExpConstructor.get(), static_cast<unsigned>(PropertyAttribute::DontEnum));
-    putDirectWithoutTransition(vm, vm.propertyNames->RangeError, m_rangeErrorConstructor.get(), static_cast<unsigned>(PropertyAttribute::DontEnum));
-    putDirectWithoutTransition(vm, vm.propertyNames->TypeError, m_typeErrorConstructor.get(), static_cast<unsigned>(PropertyAttribute::DontEnum));
+    putDirectWithoutTransition(vm, vm.propertyNames->RegExp, regExpConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
 
     putDirectWithoutTransition(vm, vm.propertyNames->builtinNames().ObjectPrivateName(), objectConstructor, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->builtinNames().ArrayPrivateName(), arrayConstructor, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
@@ -782,15 +797,21 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     putDirectWithoutTransition(vm, vm.propertyNames->eval, m_evalFunction.get(), static_cast<unsigned>(PropertyAttribute::DontEnum));
     
 #if ENABLE(INTL)
-    IntlObject* intl = IntlObject::create(vm, this, IntlObject::createStructure(vm, this, m_objectPrototype.get()));
+    IntlObject* intl = IntlObject::create(vm, IntlObject::createStructure(vm, this, m_objectPrototype.get()));
     putDirectWithoutTransition(vm, vm.propertyNames->Intl, intl, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    m_intlObject.set(vm, this, intl);
 #endif // ENABLE(INTL)
     ReflectObject* reflectObject = ReflectObject::create(vm, this, ReflectObject::createStructure(vm, this, m_objectPrototype.get()));
     putDirectWithoutTransition(vm, vm.propertyNames->Reflect, reflectObject, static_cast<unsigned>(PropertyAttribute::DontEnum));
 
-    m_moduleLoader.set(vm, this, JSModuleLoader::create(globalExec(), vm, this, JSModuleLoader::createStructure(vm, this, jsNull())));
+    m_moduleLoader.initLater(
+        [] (const Initializer<JSModuleLoader>& init) {
+            auto catchScope = DECLARE_CATCH_SCOPE(init.vm);
+            init.set(JSModuleLoader::create(init.owner->globalExec(), init.vm, init.owner, JSModuleLoader::createStructure(init.vm, init.owner, jsNull())));
+            catchScope.releaseAssertNoException();
+        });
     if (Options::exposeInternalModuleLoader())
-        putDirectWithoutTransition(vm, vm.propertyNames->Loader, m_moduleLoader.get(), static_cast<unsigned>(PropertyAttribute::DontEnum));
+        putDirectWithoutTransition(vm, vm.propertyNames->Loader, moduleLoader(), static_cast<unsigned>(PropertyAttribute::DontEnum));
 
     JSFunction* builtinLog = JSFunction::create(vm, this, 1, vm.propertyNames->emptyIdentifier.string(), globalFuncBuiltinLog);
     JSFunction* builtinDescribe = JSFunction::create(vm, this, 1, vm.propertyNames->emptyIdentifier.string(), globalFuncBuiltinDescribe);
@@ -872,9 +893,9 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->builtinNames().propertyIsEnumerablePrivateName(), privateFuncPropertyIsEnumerable, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().importModulePrivateName(), privateFuncImportModule, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().enqueueJobPrivateName(), JSFunction::create(vm, this, 0, String(), enqueueJob), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().ErrorPrivateName(), m_errorConstructor.get(), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().RangeErrorPrivateName(), m_rangeErrorConstructor.get(), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().TypeErrorPrivateName(), m_typeErrorConstructor.get(), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+        // FIXME: Offer @makeTypeError function instead of exposing @TypeError here.
+        // https://bugs.webkit.org/show_bug.cgi?id=193858
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().TypeErrorPrivateName(), m_typeErrorStructure.constructor(this), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().typedArrayLengthPrivateName(), privateFuncTypedArrayLength, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().typedArrayGetOriginalConstructorPrivateName(), privateFuncTypedArrayGetOriginalConstructor, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().typedArraySortPrivateName(), privateFuncTypedArraySort, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
@@ -886,7 +907,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->builtinNames().BuiltinLogPrivateName(), builtinLog, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().BuiltinDescribePrivateName(), builtinDescribe, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().NumberPrivateName(), numberConstructor, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().RegExpPrivateName(), m_regExpConstructor.get(), PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().RegExpPrivateName(), regExpConstructor, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().StringPrivateName(), stringConstructor, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().absPrivateName(), privateFuncAbs, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().floorPrivateName(), privateFuncFloor, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly),
@@ -1541,19 +1562,19 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(thisObject->m_globalScopeExtension);
     visitor.append(thisObject->m_globalCallee);
     visitor.append(thisObject->m_stackOverflowFrameCallee);
-    visitor.append(thisObject->m_regExpConstructor);
     visitor.append(thisObject->m_errorConstructor);
-    visitor.append(thisObject->m_nativeErrorPrototypeStructure);
-    visitor.append(thisObject->m_nativeErrorStructure);
-    thisObject->m_evalErrorConstructor.visit(visitor);
-    visitor.append(thisObject->m_rangeErrorConstructor);
-    thisObject->m_referenceErrorConstructor.visit(visitor);
-    thisObject->m_syntaxErrorConstructor.visit(visitor);
-    visitor.append(thisObject->m_typeErrorConstructor);
-    thisObject->m_URIErrorConstructor.visit(visitor);
+    thisObject->m_evalErrorStructure.visit(visitor);
+    thisObject->m_rangeErrorStructure.visit(visitor);
+    thisObject->m_referenceErrorStructure.visit(visitor);
+    thisObject->m_syntaxErrorStructure.visit(visitor);
+    thisObject->m_typeErrorStructure.visit(visitor);
+    thisObject->m_URIErrorStructure.visit(visitor);
     visitor.append(thisObject->m_objectConstructor);
     visitor.append(thisObject->m_promiseConstructor);
 
+#if ENABLE(INTL)
+    visitor.append(thisObject->m_intlObject);
+#endif
     visitor.append(thisObject->m_nullGetterFunction);
     visitor.append(thisObject->m_nullSetterFunction);
 
@@ -1574,7 +1595,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(thisObject->m_functionProtoHasInstanceSymbolFunction);
     thisObject->m_throwTypeErrorGetterSetter.visit(visitor);
     visitor.append(thisObject->m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter);
-    visitor.append(thisObject->m_moduleLoader);
+    thisObject->m_moduleLoader.visit(visitor);
 
     visitor.append(thisObject->m_objectPrototype);
     visitor.append(thisObject->m_functionPrototype);
@@ -1685,6 +1706,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(thisObject->m_speciesGetterSetter);
     thisObject->m_typedArrayProto.visit(visitor);
     thisObject->m_typedArraySuperConstructor.visit(visitor);
+    thisObject->m_regExpGlobalData.visitAggregate(visitor);
 }
 
 ExecState* JSGlobalObject::globalExec()
@@ -1852,20 +1874,17 @@ const HashSet<String>& JSGlobalObject::intlPluralRulesAvailableLocales()
 }
 #endif // ENABLE(INTL)
 
-void JSGlobalObject::notifyLexicalBindingShadowing(VM& vm, const IdentifierSet& set)
+void JSGlobalObject::bumpGlobalLexicalBindingEpoch(VM& vm)
 {
-    auto scope = DECLARE_THROW_SCOPE(vm);
-#if ENABLE(DFG_JIT)
-    for (const auto& key : set)
-        ensureReferencedPropertyWatchpointSet(key.get()).fireAll(vm, "Lexical binding shadows the existing global properties");
-#endif
-    vm.heap.codeBlockSet().iterate([&] (CodeBlock* codeBlock) {
-        if (codeBlock->globalObject() != this)
-            return;
-        codeBlock->notifyLexicalBindingShadowing(vm, set);
-        scope.assertNoException();
-    });
-    scope.release();
+    if (++m_globalLexicalBindingEpoch == Options::thresholdForGlobalLexicalBindingEpoch()) {
+        // Since the epoch overflows, we should rewrite all the CodeBlock to adjust to the newly started generation.
+        m_globalLexicalBindingEpoch = 1;
+        vm.heap.codeBlockSet().iterate([&] (CodeBlock* codeBlock) {
+            if (codeBlock->globalObject() != this)
+                return;
+            codeBlock->notifyLexicalBindingUpdate();
+        });
+    }
 }
 
 void JSGlobalObject::queueMicrotask(Ref<Microtask>&& task)
@@ -1891,11 +1910,13 @@ bool JSGlobalObject::hasInteractiveDebugger() const
 #if ENABLE(DFG_JIT)
 WatchpointSet* JSGlobalObject::getReferencedPropertyWatchpointSet(UniquedStringImpl* uid)
 {
+    ConcurrentJSLocker locker(m_referencedGlobalPropertyWatchpointSetsLock);
     return m_referencedGlobalPropertyWatchpointSets.get(uid);
 }
 
 WatchpointSet& JSGlobalObject::ensureReferencedPropertyWatchpointSet(UniquedStringImpl* uid)
 {
+    ConcurrentJSLocker locker(m_referencedGlobalPropertyWatchpointSetsLock);
     return m_referencedGlobalPropertyWatchpointSets.ensure(uid, [] {
         return WatchpointSet::create(IsWatched);
     }).iterator->value.get();

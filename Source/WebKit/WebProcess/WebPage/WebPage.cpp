@@ -111,7 +111,6 @@
 #include "WebPerformanceLoggingClient.h"
 #include "WebPlugInClient.h"
 #include "WebPluginInfoProvider.h"
-#include "WebPolicyAction.h"
 #include "WebPopupMenu.h"
 #include "WebPreferencesDefinitions.h"
 #include "WebPreferencesKeys.h"
@@ -172,6 +171,7 @@
 #include <WebCore/HTMLOListElement.h>
 #include <WebCore/HTMLPlugInElement.h>
 #include <WebCore/HTMLPlugInImageElement.h>
+#include <WebCore/HTMLTextAreaElement.h>
 #include <WebCore/HTMLUListElement.h>
 #include <WebCore/HistoryController.h>
 #include <WebCore/HistoryItem.h>
@@ -1339,7 +1339,6 @@ void WebPage::sendClose()
 void WebPage::suspendForProcessSwap()
 {
     auto failedToSuspend = [this, protectedThis = makeRef(*this)] {
-        close();
         send(Messages::WebPageProxy::DidFailToSuspendAfterProcessSwap());
     };
 
@@ -3050,7 +3049,7 @@ void WebPage::setSessionID(PAL::SessionID sessionID)
     m_page->setSessionID(sessionID);
 }
 
-void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, WebPolicyAction policyAction, uint64_t navigationID, const DownloadID& downloadID, Optional<WebsitePoliciesData>&& websitePolicies)
+void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, PolicyAction policyAction, uint64_t navigationID, const DownloadID& downloadID, Optional<WebsitePoliciesData>&& websitePolicies)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame)
@@ -3791,12 +3790,14 @@ WebUndoStep* WebPage::webUndoStep(WebUndoStepID stepID)
 
 void WebPage::addWebUndoStep(WebUndoStepID stepID, Ref<WebUndoStep>&& entry)
 {
-    m_undoStepMap.set(stepID, WTFMove(entry));
+    auto addResult = m_undoStepMap.set(stepID, WTFMove(entry));
+    ASSERT_UNUSED(addResult, addResult.isNewEntry);
 }
 
 void WebPage::removeWebEditCommand(WebUndoStepID stepID)
 {
-    m_undoStepMap.remove(stepID);
+    if (auto undoStep = m_undoStepMap.take(stepID))
+        undoStep->didRemoveFromUndoManager();
 }
 
 bool WebPage::isAlwaysOnLoggingAllowed() const
@@ -5360,6 +5361,23 @@ void WebPage::elementDidBlur(WebCore::Element& element)
     }
 }
 
+void WebPage::focusedElementDidChangeInputMode(WebCore::Element& element, WebCore::InputMode mode)
+{
+#if PLATFORM(IOS_FAMILY)
+    ASSERT(m_focusedElement == &element);
+    ASSERT(is<HTMLElement>(element));
+    ASSERT(downcast<HTMLElement>(element).canonicalInputMode() == mode);
+
+    if (!is<HTMLTextAreaElement>(*m_focusedElement) && !is<HTMLInputElement>(*m_focusedElement) && !m_focusedElement->hasEditableStyle())
+        return;
+
+    send(Messages::WebPageProxy::FocusedElementDidChangeInputMode(mode));
+#else
+    UNUSED_PARAM(element);
+    UNUSED_PARAM(mode);
+#endif
+}
+
 void WebPage::didUpdateComposition()
 {
     sendEditorStateUpdate();
@@ -5586,6 +5604,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
     }
 #if PLATFORM(IOS_FAMILY)
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = false;
+    m_hasRestoredExposedContentRectAfterDidCommitLoad = false;
     m_scaleWasSetByUIProcess = false;
     m_userHasChangedPageScaleFactor = false;
     m_estimatedLatency = Seconds(1.0 / 60);

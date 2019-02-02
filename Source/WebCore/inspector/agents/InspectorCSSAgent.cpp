@@ -62,8 +62,7 @@
 #include <wtf/Ref.h>
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
-#include <wtf/text/StringConcatenate.h>
-
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
 
@@ -157,7 +156,7 @@ private:
 
     String mergeId() final
     {
-        return String::format("SetStyleSheetText %s", m_styleSheet->id().utf8().data());
+        return "SetStyleSheetText " + m_styleSheet->id();
     }
 
     void merge(std::unique_ptr<Action> action) override
@@ -198,7 +197,7 @@ public:
     String mergeId() override
     {
         ASSERT(m_styleSheet->id() == m_cssId.styleSheetId());
-        return String::format("SetStyleText %s:%u", m_styleSheet->id().utf8().data(), m_cssId.ordinal());
+        return makeString("SetStyleText ", m_styleSheet->id(), ':', m_cssId.ordinal());
     }
 
     void merge(std::unique_ptr<Action> action) override
@@ -719,7 +718,7 @@ void InspectorCSSAgent::getSupportedCSSProperties(ErrorString&, RefPtr<JSON::Arr
     auto properties = JSON::ArrayOf<Inspector::Protocol::CSS::CSSPropertyInfo>::create();
     for (int i = firstCSSProperty; i <= lastCSSProperty; ++i) {
         CSSPropertyID propertyID = convertToCSSPropertyID(i);
-        if (isInternalCSSProperty(propertyID))
+        if (isInternalCSSProperty(propertyID) || !isEnabledCSSProperty(propertyID))
             continue;
 
         auto property = Inspector::Protocol::CSS::CSSPropertyInfo::create()
@@ -739,7 +738,8 @@ void InspectorCSSAgent::getSupportedCSSProperties(ErrorString&, RefPtr<JSON::Arr
             auto longhands = JSON::ArrayOf<String>::create();
             for (unsigned j = 0; j < shorthand.length(); ++j) {
                 CSSPropertyID longhandID = shorthand.properties()[j];
-                longhands->addItem(getPropertyNameString(longhandID));
+                if (isEnabledCSSProperty(longhandID))
+                    longhands->addItem(getPropertyNameString(longhandID));
             }
             property->setLonghands(WTFMove(longhands));
         }

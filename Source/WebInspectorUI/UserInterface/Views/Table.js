@@ -483,12 +483,21 @@ WI.Table = class Table extends WI.View
         }
 
         // Re-layout all columns to make space.
+        this._widthGeneration++;
         this._columnWidths = null;
         this._resizeColumnsAndFiller();
 
         // Now populate only the new cells for this column.
         for (let cell of cellsToPopulate)
             this._delegate.tablePopulateCell(this, cell, column, cell.parentElement.__index);
+
+        // Now populate columns that may be sensitive to resizes.
+        for (let visibleColumn of this._visibleColumns) {
+            if (visibleColumn !== column) {
+                if (visibleColumn.needsReloadOnResize)
+                    this.reloadVisibleColumnCells(visibleColumn);
+            }
+        }
     }
 
     hideColumn(column)
@@ -533,14 +542,21 @@ WI.Table = class Table extends WI.View
         if (!this._columnWidths)
             return;
 
-        this._columnWidths.splice(columnIndex, 1);
-
         for (let row of this._listElement.children) {
             if (row !== this._fillerRow)
                 row.removeChild(row.children[columnIndex]);
         }
 
-        this.needsLayout();
+        // Re-layout all columns to make space.
+        this._widthGeneration++;
+        this._columnWidths = null;
+        this._resizeColumnsAndFiller();
+
+        // Now populate columns that may be sensitive to resizes.
+        for (let visibleColumn of this._visibleColumns) {
+            if (visibleColumn.needsReloadOnResize)
+                this.reloadVisibleColumnCells(visibleColumn);
+        }
     }
 
     restoreScrollPosition()
@@ -1153,11 +1169,13 @@ WI.Table = class Table extends WI.View
     {
         // Apply and create missing cells only if row needs a width update.
         for (let row of this._listElement.children) {
-            if (row.__widthGeneration !== this._widthGeneration && row !== this._fillerRow) {
+            if (row.__widthGeneration !== this._widthGeneration) {
                 for (let i = 0; i < row.children.length; ++i)
                     row.children[i].style.width = this._columnWidths[i] + "px";
-                if (row.children.length !== this._visibleColumns.length)
-                    this._populateRow(row);
+                if (row !== this._fillerRow) {
+                    if (row.children.length !== this._visibleColumns.length)
+                        this._populateRow(row);
+                }
                 row.__widthGeneration = this._widthGeneration;
             }
         }

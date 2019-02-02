@@ -368,11 +368,11 @@ void InspectorInstrumentation::didDispatchPostMessageImpl(InstrumentingAgents& i
         pageDebuggerAgent->didDispatchPostMessage(timer);
 }
 
-InspectorInstrumentationCookie InspectorInstrumentation::willCallFunctionImpl(InstrumentingAgents& instrumentingAgents, const String& scriptName, int scriptLine, ScriptExecutionContext* context)
+InspectorInstrumentationCookie InspectorInstrumentation::willCallFunctionImpl(InstrumentingAgents& instrumentingAgents, const String& scriptName, int scriptLine, int scriptColumn, ScriptExecutionContext* context)
 {
     int timelineAgentId = 0;
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent()) {
-        timelineAgent->willCallFunction(scriptName, scriptLine, frameForScriptExecutionContext(context));
+        timelineAgent->willCallFunction(scriptName, scriptLine, scriptColumn, frameForScriptExecutionContext(context));
         timelineAgentId = timelineAgent->id();
     }
     return InspectorInstrumentationCookie(instrumentingAgents, timelineAgentId);
@@ -441,11 +441,11 @@ void InspectorInstrumentation::eventDidResetAfterDispatchImpl(InstrumentingAgent
         domAgent->eventDidResetAfterDispatch(event);
 }
 
-InspectorInstrumentationCookie InspectorInstrumentation::willEvaluateScriptImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, const String& url, int lineNumber)
+InspectorInstrumentationCookie InspectorInstrumentation::willEvaluateScriptImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, const String& url, int lineNumber, int columnNumber)
 {
     int timelineAgentId = 0;
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent()) {
-        timelineAgent->willEvaluateScript(url, lineNumber, frame);
+        timelineAgent->willEvaluateScript(url, lineNumber, columnNumber, frame);
         timelineAgentId = timelineAgent->id();
     }
     return InspectorInstrumentationCookie(instrumentingAgents, timelineAgentId);
@@ -566,6 +566,12 @@ void InspectorInstrumentation::didScheduleStyleRecalculationImpl(InstrumentingAg
         timelineAgent->didScheduleStyleRecalculation(document.frame());
     if (InspectorNetworkAgent* networkAgent = instrumentingAgents.inspectorNetworkAgent())
         networkAgent->didScheduleStyleRecalculation(document);
+}
+
+void InspectorInstrumentation::applyUserAgentOverrideImpl(InstrumentingAgents& instrumentingAgents, String& userAgent)
+{
+    if (InspectorPageAgent* pageAgent = instrumentingAgents.inspectorPageAgent())
+        pageAgent->applyUserAgentOverride(userAgent);
 }
 
 void InspectorInstrumentation::applyEmulatedMediaImpl(InstrumentingAgents& instrumentingAgents, String& media)

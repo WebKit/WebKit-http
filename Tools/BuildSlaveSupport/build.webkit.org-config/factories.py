@@ -39,7 +39,7 @@ class Factory(factory.BuildFactory):
         self.addStep(DeleteStaleBuildFiles())
         if platform == "win":
             self.addStep(InstallWin32Dependencies())
-        if platform == "gtk" and additionalArguments != ["--no-experimental-features"]:
+        if platform == "gtk" and "--no-experimental-features" not in (additionalArguments or []):
             self.addStep(InstallGtkDependencies())
         if platform == "wpe":
             self.addStep(InstallWpeDependencies())
@@ -90,7 +90,7 @@ class TestFactory(Factory):
             self.addStep(self.LayoutTestClass())
 
         if platform.startswith('win') or platform.startswith('mac') or platform.startswith('ios-simulator'):
-            self.addStep(RunUnitTests())
+            self.addStep(RunAPITests())
         self.addStep(RunPythonTests())
         self.addStep(RunPerlTests())
         self.addStep(RunBindingsTests())

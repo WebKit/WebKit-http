@@ -17,6 +17,7 @@ finish-args:
   - --share=network
   - --socket=pulseaudio
   - --system-talk-name=org.freedesktop.GeoClue2
+  - --system-talk-name=org.a11y.Bus
   - --filesystem=host
   - --socket=system-bus
   - --talk-name=org.freedesktop.Flatpak

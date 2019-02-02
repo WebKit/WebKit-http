@@ -240,7 +240,6 @@ class RemoteLayerTreeTransaction;
 
 enum FindOptions : uint16_t;
 enum class DragControllerAction : uint8_t;
-enum class WebPolicyAction : uint8_t;
 
 struct AttributedString;
 struct DataDetectionResult;
@@ -589,6 +588,7 @@ public:
     void elementDidFocus(WebCore::Element&);
     void elementDidRefocus(WebCore::Element&);
     void elementDidBlur(WebCore::Element&);
+    void focusedElementDidChangeInputMode(WebCore::Element&, WebCore::InputMode);
     void resetFocusedElementForFrame(WebFrame*);
 
     void disabledAdaptationsDidChange(const OptionSet<WebCore::DisabledAdaptations>&);
@@ -1095,7 +1095,7 @@ public:
     void setUseIconLoadingClient(bool);
 
 #if ENABLE(DATA_INTERACTION)
-    void didConcludeEditDataInteraction();
+    void didConcludeEditDrag();
 #endif
 
     WebURLSchemeHandlerProxy* urlSchemeHandlerForScheme(const String&);
@@ -1181,7 +1181,7 @@ private:
 #endif
 
 #if PLATFORM(IOS_FAMILY) && ENABLE(DATA_INTERACTION)
-    void requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
+    void requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
     void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
 #endif
 
@@ -1300,7 +1300,7 @@ private:
     bool parentProcessHasServiceWorkerEntitlement() const { return true; }
 #endif
 
-    void didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, WebPolicyAction, uint64_t navigationID, const DownloadID&, Optional<WebsitePoliciesData>&&);
+    void didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, WebCore::PolicyAction, uint64_t navigationID, const DownloadID&, Optional<WebsitePoliciesData>&&);
     void continueWillSubmitForm(uint64_t frameID, uint64_t listenerID);
     void setUserAgent(const String&);
     void setCustomTextEncodingName(const String&);
@@ -1709,7 +1709,9 @@ private:
     RefPtr<WebCore::SecurityOrigin> m_potentialTapSecurityOrigin;
 
     WebCore::ViewportConfiguration m_viewportConfiguration;
+
     bool m_hasReceivedVisibleContentRectsAfterDidCommitLoad { false };
+    bool m_hasRestoredExposedContentRectAfterDidCommitLoad { false };
     bool m_scaleWasSetByUIProcess { false };
     bool m_userHasChangedPageScaleFactor { false };
     bool m_hasStablePageScaleFactor { true };

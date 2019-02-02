@@ -41,9 +41,6 @@
 #include "DownloadProxyMessages.h"
 #include "GamepadData.h"
 #include "HighPerformanceGraphicsUsageSampler.h"
-#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
-#include "LegacyCustomProtocolManagerMessages.h"
-#endif
 #include "LogInitialization.h"
 #include "Logging.h"
 #include "NetworkProcessCreationParameters.h"
@@ -98,6 +95,11 @@
 #include <wtf/URLParser.h>
 #include <wtf/WallTime.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/StringConcatenateNumbers.h>
+
+#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
+#include "LegacyCustomProtocolManagerMessages.h"
+#endif
 
 #if ENABLE(SERVICE_CONTROLS)
 #include "ServicesController.h"
@@ -404,11 +406,6 @@ void WebProcessPool::setLegacyCustomProtocolManagerClient(std::unique_ptr<API::C
 #endif
 }
 
-void WebProcessPool::setMaximumNumberOfProcesses(unsigned maximumNumberOfProcesses)
-{
-    m_configuration->setMaximumProcessCount(maximumNumberOfProcesses);
-}
-
 void WebProcessPool::setCustomWebContentServiceBundleIdentifier(const String& customWebContentServiceBundleIdentifier)
 {
     // Guard against API misuse.
@@ -560,7 +557,13 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
 
     SandboxExtension::createHandleForReadWriteDirectory(parameters.defaultDataStoreParameters.networkSessionParameters.resourceLoadStatisticsDirectory, parameters.defaultDataStoreParameters.networkSessionParameters.resourceLoadStatisticsDirectoryExtensionHandle);
 
-    parameters.defaultDataStoreParameters.networkSessionParameters.enableResourceLoadStatistics = false; // FIXME(193297): Turn on when the feature is on.
+    bool enableResourceLoadStatistics = false;
+    if (withWebsiteDataStore)
+        enableResourceLoadStatistics = withWebsiteDataStore->resourceLoadStatisticsEnabled();
+    else if (m_websiteDataStore)
+        enableResourceLoadStatistics = m_websiteDataStore->resourceLoadStatisticsEnabled();
+
+    parameters.defaultDataStoreParameters.networkSessionParameters.enableResourceLoadStatistics = enableResourceLoadStatistics;
 
     // Add any platform specific parameters
     platformInitializeNetworkProcess(parameters);
@@ -590,9 +593,6 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
         if (auto* websiteDataStore = WebsiteDataStore::existingNonDefaultDataStoreForSessionID(sessionID))
             m_networkProcess->addSession(*websiteDataStore);
     }
-
-    if (m_websiteDataStore)
-        m_websiteDataStore->websiteDataStore().didCreateNetworkProcess();
 
     return *m_networkProcess;
 }
@@ -1021,7 +1021,7 @@ void WebProcessPool::processDidFinishLaunching(WebProcessProxy* process)
     if (m_memorySamplerEnabled) {
         SandboxExtension::Handle sampleLogSandboxHandle;        
         WallTime now = WallTime::now();
-        String sampleLogFilePath = String::format("WebProcess%llupid%d", static_cast<unsigned long long>(now.secondsSinceEpoch().seconds()), process->processIdentifier());
+        String sampleLogFilePath = makeString("WebProcess", static_cast<unsigned long long>(now.secondsSinceEpoch().seconds()), "pid", process->processIdentifier());
         sampleLogFilePath = SandboxExtension::createHandleForTemporaryFile(sampleLogFilePath, SandboxExtension::Type::ReadWrite, sampleLogSandboxHandle);
         
         process->send(Messages::WebProcess::StartMemorySampler(sampleLogSandboxHandle, sampleLogFilePath, m_memorySamplerInterval), 0);
@@ -1034,6 +1034,9 @@ void WebProcessPool::processDidFinishLaunching(WebProcessProxy* process)
         process->connection()->ignoreTimeoutsForTesting();
 
     m_connectionClient.didCreateConnection(this, process->webConnection());
+
+    if (m_websiteDataStore)
+        m_websiteDataStore->websiteDataStore().didCreateNetworkProcess();
 }
 
 void WebProcessPool::disconnectProcess(WebProcessProxy* process)
@@ -1086,8 +1089,8 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
 
 WebProcessProxy& WebProcessPool::createNewWebProcessRespectingProcessCountLimit(WebsiteDataStore& websiteDataStore)
 {
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=168676
-    // Once WebsiteDataStores are truly per-view instead of per-process, remove this nonsense.
+    if (!usesSingleWebProcess())
+        return createNewWebProcess(websiteDataStore);
 
 #if PLATFORM(COCOA)
     bool mustMatchDataStore = API::WebsiteDataStore::defaultDataStoreExists() && &websiteDataStore != &API::WebsiteDataStore::defaultDataStore()->websiteDataStore();
@@ -1095,10 +1098,6 @@ WebProcessProxy& WebProcessPool::createNewWebProcessRespectingProcessCountLimit(
     bool mustMatchDataStore = false;
 #endif
 
-    if (m_processes.size() < maximumNumberOfProcesses())
-        return createNewWebProcess(websiteDataStore);
-
-    WebProcessProxy* processToReuse = nullptr;
     for (auto& process : m_processes) {
         if (mustMatchDataStore && &process->websiteDataStore() != &websiteDataStore)
             continue;
@@ -1106,11 +1105,9 @@ WebProcessProxy& WebProcessPool::createNewWebProcessRespectingProcessCountLimit(
         if (is<ServiceWorkerProcessProxy>(*process))
             continue;
 #endif
-        // Choose the process with fewest pages.
-        if (!processToReuse || processToReuse->pageCount() > process->pageCount())
-            processToReuse = process.get();
+        return *process;
     }
-    return processToReuse ? *processToReuse : createNewWebProcess(websiteDataStore);
+    return createNewWebProcess(websiteDataStore);
 }
 
 Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API::PageConfiguration>&& pageConfiguration)
@@ -1296,7 +1293,7 @@ void WebProcessPool::postMessageToInjectedBundle(const String& messageName, API:
 
 void WebProcessPool::didReachGoodTimeToPrewarm()
 {
-    if (!configuration().isAutomaticProcessWarmingEnabled() || !configuration().processSwapsOnNavigation())
+    if (!configuration().isAutomaticProcessWarmingEnabled() || !configuration().processSwapsOnNavigation() || usesSingleWebProcess())
         return;
 
     if (MemoryPressureHandler::singleton().isUnderMemoryPressure()) {
@@ -1582,7 +1579,7 @@ void WebProcessPool::startMemorySampler(const double interval)
     // For WebProcess
     SandboxExtension::Handle sampleLogSandboxHandle;    
     WallTime now = WallTime::now();
-    String sampleLogFilePath = String::format("WebProcess%llu", static_cast<unsigned long long>(now.secondsSinceEpoch().seconds()));
+    String sampleLogFilePath = makeString("WebProcess", static_cast<unsigned long long>(now.secondsSinceEpoch().seconds()));
     sampleLogFilePath = SandboxExtension::createHandleForTemporaryFile(sampleLogFilePath, SandboxExtension::Type::ReadWrite, sampleLogSandboxHandle);
     
     sendToAllProcesses(Messages::WebProcess::StartMemorySampler(sampleLogSandboxHandle, sampleLogFilePath, interval));
@@ -1629,7 +1626,6 @@ void WebProcessPool::setAllowsAnySSLCertificateForWebSocket(bool allows)
 
 void WebProcessPool::clearCachedCredentials()
 {
-    sendToAllProcesses(Messages::WebProcess::ClearCachedCredentials());
     if (m_networkProcess)
         m_networkProcess->send(Messages::NetworkProcess::ClearCachedCredentials(), 0);
 }
@@ -2158,6 +2154,9 @@ void WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API:
         return createNewWebProcess(page.websiteDataStore());
     };
 
+    if (usesSingleWebProcess())
+        return completionHandler(page.process(), nullptr, "Single WebProcess mode is enabled"_s);
+
     if (processSwapRequestedByClient == ProcessSwapRequestedByClient::Yes)
         return completionHandler(createNewProcess(), nullptr, "Process swap was requested by the client"_s);
 
@@ -2269,6 +2268,14 @@ void WebProcessPool::removeAllSuspendedPagesForPage(WebPageProxy& page)
     m_suspendedPages.removeAllMatching([&page](auto& suspendedPage) {
         return &suspendedPage->page() == &page;
     });
+}
+
+void WebProcessPool::closeFailedSuspendedPagesForPage(WebPageProxy& page)
+{
+    for (auto& suspendedPage : m_suspendedPages) {
+        if (&suspendedPage->page() == &page && suspendedPage->failedToSuspend())
+            suspendedPage->close();
+    }
 }
 
 std::unique_ptr<SuspendedPageProxy> WebProcessPool::takeSuspendedPage(SuspendedPageProxy& suspendedPage)

@@ -117,6 +117,9 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         if (WI.sharedApp.debuggableType === WI.DebuggableType.JavaScript || WI.sharedApp.debuggableType === WI.DebuggableType.ServiceWorker)
             return types;
 
+        if (WI.CPUInstrument.supported())
+            types.push(WI.TimelineRecord.Type.CPU);
+
         if (WI.MemoryInstrument.supported())
             types.push(WI.TimelineRecord.Type.Memory);
 
@@ -427,14 +430,36 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         this._stopAutoRecordingSoon();
     }
 
-    memoryTrackingStart(timestamp)
+    cpuProfilerTrackingStarted(timestamp)
+    {
+        // Called from WI.CPUProfilerObserver.
+
+        this.capturingStarted(timestamp);
+    }
+
+    cpuProfilerTrackingUpdated(event)
+    {
+        // Called from WI.CPUProfilerObserver.
+
+        if (!this._isCapturing)
+            return;
+
+        this._addRecord(new WI.CPUTimelineRecord(event.timestamp, event.usage));
+    }
+
+    cpuProfilerTrackingCompleted()
+    {
+        // Called from WI.CPUProfilerObserver.
+    }
+
+    memoryTrackingStarted(timestamp)
     {
         // Called from WI.MemoryObserver.
 
         this.capturingStarted(timestamp);
     }
 
-    memoryTrackingUpdate(event)
+    memoryTrackingUpdated(event)
     {
         // Called from WI.MemoryObserver.
 
@@ -444,7 +469,7 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         this._addRecord(new WI.MemoryTimelineRecord(event.timestamp, event.categories));
     }
 
-    memoryTrackingComplete()
+    memoryTrackingCompleted()
     {
         // Called from WI.MemoryObserver.
     }
@@ -532,10 +557,9 @@ WI.TimelineManager = class TimelineManager extends WI.Object
                 var scriptResource = mainFrame.url === recordPayload.data.url ? mainFrame.mainResource : mainFrame.resourceForURL(recordPayload.data.url, true);
                 if (scriptResource) {
                     // The lineNumber is 1-based, but we expect 0-based.
-                    var lineNumber = recordPayload.data.lineNumber - 1;
-
-                    // FIXME: No column number is provided.
-                    sourceCodeLocation = scriptResource.createSourceCodeLocation(lineNumber, 0);
+                    let lineNumber = recordPayload.data.lineNumber - 1;
+                    let columnNumber = "columnNumber" in recordPayload.data ? recordPayload.data.columnNumber - 1 : 0;
+                    sourceCodeLocation = scriptResource.createSourceCodeLocation(lineNumber, columnNumber);
                 }
             }
 
@@ -586,10 +610,9 @@ WI.TimelineManager = class TimelineManager extends WI.Object
                 var scriptResource = mainFrame.url === recordPayload.data.scriptName ? mainFrame.mainResource : mainFrame.resourceForURL(recordPayload.data.scriptName, true);
                 if (scriptResource) {
                     // The lineNumber is 1-based, but we expect 0-based.
-                    var lineNumber = recordPayload.data.scriptLine - 1;
-
-                    // FIXME: No column number is provided.
-                    sourceCodeLocation = scriptResource.createSourceCodeLocation(lineNumber, 0);
+                    let lineNumber = recordPayload.data.scriptLine - 1;
+                    let columnNumber = "scriptColumn" in recordPayload.data ? recordPayload.data.scriptColumn - 1 : 0;
+                    sourceCodeLocation = scriptResource.createSourceCodeLocation(lineNumber, columnNumber);
                 }
             }
 
@@ -1112,6 +1135,9 @@ WI.TimelineManager = class TimelineManager extends WI.Object
                 case WI.TimelineRecord.Type.Layout:
                 case WI.TimelineRecord.Type.Media:
                     instrumentSet.add(target.TimelineAgent.Instrument.Timeline);
+                    break;
+                case WI.TimelineRecord.Type.CPU:
+                    instrumentSet.add(target.TimelineAgent.Instrument.CPU);
                     break;
                 case WI.TimelineRecord.Type.Memory:
                     instrumentSet.add(target.TimelineAgent.Instrument.Memory);

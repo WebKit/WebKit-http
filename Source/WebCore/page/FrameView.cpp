@@ -50,7 +50,6 @@
 #include "FrameTree.h"
 #include "GraphicsContext.h"
 #include "HTMLBodyElement.h"
-#include "HTMLDocument.h"
 #include "HTMLEmbedElement.h"
 #include "HTMLFrameElement.h"
 #include "HTMLFrameSetElement.h"
@@ -294,8 +293,7 @@ void FrameView::resetLayoutMilestones()
 {
     m_firstLayoutCallbackPending = false;
     m_isVisuallyNonEmpty = false;
-    m_firstVisuallyNonEmptyLayoutCallbackPending = true;
-    m_significantRenderedTextMilestonePending = true;
+    m_hasReachedSignificantRenderedTextThreshold = false;
     m_renderedSignificantAmountOfText = false;
     m_visuallyNonEmptyCharacterCount = 0;
     m_visuallyNonEmptyPixelCount = 0;
@@ -2014,6 +2012,14 @@ void FrameView::viewportContentsChanged()
 #endif
 }
 
+IntRect FrameView::unobscuredContentRectExpandedByContentInsets() const
+{
+    FloatRect unobscuredContentRect = this->unobscuredContentRect();
+    if (auto* page = frame().page())
+        unobscuredContentRect.expand(page->contentInsets());
+    return IntRect(unobscuredContentRect);
+}
+
 bool FrameView::fixedElementsLayoutRelativeToFrame() const
 {
     return frame().settings().fixedElementsLayoutRelativeToFrame();
@@ -2844,6 +2850,8 @@ void FrameView::disableLayerFlushThrottlingTemporarilyForInteraction()
 
 void FrameView::loadProgressingStatusChanged()
 {
+    if (!m_isVisuallyNonEmpty && frame().loader().isComplete())
+        fireLayoutRelatedMilestonesIfNeeded();
     updateLayerFlushThrottling();
     adjustTiledBackingCoverage();
 }
@@ -3299,8 +3307,7 @@ void FrameView::performPostLayoutTasks()
 {
     // FIXME: We should not run any JavaScript code in this function.
     LOG(Layout, "FrameView %p performPostLayoutTasks", this);
-
-    frame().document()->updateMainArticleElementAfterLayout();
+    updateHasReachedSignificantRenderedTextThreshold();
     frame().selection().updateAppearanceAfterLayout();
 
     flushPostLayoutTasksQueue();
@@ -4379,10 +4386,8 @@ void FrameView::updateLayoutAndStyleIfNeededRecursive()
 
 void FrameView::incrementVisuallyNonEmptyCharacterCount(const String& inlineText)
 {
-    if (m_isVisuallyNonEmpty && m_renderedSignificantAmountOfText)
+    if (m_visuallyNonEmptyCharacterCount > visualCharacterThreshold && m_hasReachedSignificantRenderedTextThreshold)
         return;
-
-    ++m_textRendererCountForVisuallyNonEmptyCharacters;
 
     auto nonWhitespaceLength = [](auto& inlineText) {
         auto length = inlineText.length();
@@ -4394,12 +4399,7 @@ void FrameView::incrementVisuallyNonEmptyCharacterCount(const String& inlineText
         return length;
     };
     m_visuallyNonEmptyCharacterCount += nonWhitespaceLength(inlineText);
-
-    if (!m_isVisuallyNonEmpty && m_visuallyNonEmptyCharacterCount > visualCharacterThreshold)
-        updateIsVisuallyNonEmpty();
-
-    if (!m_renderedSignificantAmountOfText)
-        updateSignificantRenderedTextMilestoneIfNeeded();
+    ++m_textRendererCountForVisuallyNonEmptyCharacters;
 }
 
 static bool elementOverflowRectIsLargerThanThreshold(const Element& element)
@@ -4411,6 +4411,46 @@ static bool elementOverflowRectIsLargerThanThreshold(const Element& element)
         return snappedIntRect(elementRenderBox->layoutOverflowRect()).height() >= documentHeightThreshold;
 
     return false;
+}
+
+void FrameView::updateHasReachedSignificantRenderedTextThreshold()
+{
+    if (m_hasReachedSignificantRenderedTextThreshold)
+        return;
+
+    auto* page = frame().page();
+    if (!page || !page->requestedLayoutMilestones().contains(DidRenderSignificantAmountOfText))
+        return;
+
+    auto* document = frame().document();
+    if (!document)
+        return;
+
+    document->updateMainArticleElementAfterLayout();
+    auto hasMainArticleElement = document->hasMainArticleElement();
+    auto characterThreshold = hasMainArticleElement ? mainArticleSignificantRenderedTextCharacterThreshold : defaultSignificantRenderedTextCharacterThreshold;
+    if (m_visuallyNonEmptyCharacterCount < characterThreshold)
+        return;
+
+    auto meanLength = hasMainArticleElement ? mainArticleSignificantRenderedTextMeanLength : defaultSignificantRenderedTextMeanLength;
+    if (!m_textRendererCountForVisuallyNonEmptyCharacters || m_visuallyNonEmptyCharacterCount / static_cast<float>(m_textRendererCountForVisuallyNonEmptyCharacters) < meanLength)
+        return;
+
+    m_hasReachedSignificantRenderedTextThreshold = true;
+}
+
+bool FrameView::qualifiesAsSignificantRenderedText() const
+{
+    ASSERT(!m_renderedSignificantAmountOfText);
+    auto* document = frame().document();
+    if (!document || document->styleScope().hasPendingSheetsBeforeBody())
+        return false;
+
+    auto* documentElement = document->documentElement();
+    if (!documentElement || !elementOverflowRectIsLargerThanThreshold(*documentElement))
+        return false;
+
+    return m_hasReachedSignificantRenderedTextThreshold;
 }
 
 bool FrameView::qualifiesAsVisuallyNonEmpty() const
@@ -4456,7 +4496,7 @@ bool FrameView::qualifiesAsVisuallyNonEmpty() const
 
     auto isMoreContentExpected = [&]() {
         // Pending css/javascript/font loading/processing means we should wait a little longer.
-        auto hasPendingScriptExecution = frame().document()->scriptRunner() && frame().document()->scriptRunner()->hasPendingScripts();
+        auto hasPendingScriptExecution = frame().document()->scriptRunner().hasPendingScripts();
         if (hasPendingScriptExecution)
             return true;
 
@@ -4483,41 +4523,6 @@ bool FrameView::qualifiesAsVisuallyNonEmpty() const
         return !isMoreContentExpected();
 
     return false;
-}
-
-void FrameView::updateSignificantRenderedTextMilestoneIfNeeded()
-{
-    if (m_renderedSignificantAmountOfText)
-        return;
-
-    auto* document = frame().document();
-    if (!document || document->styleScope().hasPendingSheetsBeforeBody())
-        return;
-
-    auto* documentElement = document->documentElement();
-    if (!documentElement || !elementOverflowRectIsLargerThanThreshold(*documentElement))
-        return;
-
-    auto characterThreshold = document->hasMainArticleElement() ? mainArticleSignificantRenderedTextCharacterThreshold : defaultSignificantRenderedTextCharacterThreshold;
-    auto meanLength = document->hasMainArticleElement() ? mainArticleSignificantRenderedTextMeanLength : defaultSignificantRenderedTextMeanLength;
-
-    if (m_visuallyNonEmptyCharacterCount < characterThreshold)
-        return;
-
-    if (!m_textRendererCountForVisuallyNonEmptyCharacters || m_visuallyNonEmptyCharacterCount / static_cast<float>(m_textRendererCountForVisuallyNonEmptyCharacters) < meanLength)
-        return;
-
-    m_renderedSignificantAmountOfText = true;
-}
-
-void FrameView::updateIsVisuallyNonEmpty()
-{
-    if (m_isVisuallyNonEmpty)
-        return;
-    if (!qualifiesAsVisuallyNonEmpty())
-        return;
-    m_isVisuallyNonEmpty = true;
-    adjustTiledBackingCoverage();
 }
 
 bool FrameView::isViewForDocumentInFrame() const
@@ -4646,19 +4651,12 @@ IntRect FrameView::convertFromRendererToContainingView(const RenderElement* rend
 {
     IntRect rect = snappedIntRect(enclosingLayoutRect(renderer->localToAbsoluteQuad(FloatRect(rendererRect)).boundingBox()));
 
-    if (!delegatesScrolling())
-        rect = contentsToView(rect);
-
-    return rect;
+    return contentsToView(rect);
 }
 
 IntRect FrameView::convertFromContainingViewToRenderer(const RenderElement* renderer, const IntRect& viewRect) const
 {
-    IntRect rect = viewRect;
-    
-    // Convert from FrameView coords into page ("absolute") coordinates.
-    if (!delegatesScrolling())
-        rect = viewToContents(rect);
+    IntRect rect = viewToContents(viewRect);
 
     // FIXME: we don't have a way to map an absolute rect down to a local quad, so just
     // move the rect for now.
@@ -4668,11 +4666,7 @@ IntRect FrameView::convertFromContainingViewToRenderer(const RenderElement* rend
 
 FloatRect FrameView::convertFromContainingViewToRenderer(const RenderElement* renderer, const FloatRect& viewRect) const
 {
-    FloatRect rect = viewRect;
-
-    // Convert from FrameView coords into page ("absolute") coordinates.
-    if (!delegatesScrolling())
-        rect = viewToContents(rect);
+    FloatRect rect = viewToContents(viewRect);
 
     return (renderer->absoluteToLocalQuad(rect)).boundingBox();
 }
@@ -4681,11 +4675,7 @@ IntPoint FrameView::convertFromRendererToContainingView(const RenderElement* ren
 {
     IntPoint point = roundedIntPoint(renderer->localToAbsolute(rendererPoint, UseTransforms));
 
-    // Convert from page ("absolute") to FrameView coordinates.
-    if (!delegatesScrolling())
-        point = contentsToView(point);
-
-    return point;
+    return contentsToView(point);
 }
 
 IntPoint FrameView::convertFromContainingViewToRenderer(const RenderElement* renderer, const IntPoint& viewPoint) const
@@ -4873,6 +4863,13 @@ FloatPoint FrameView::layoutViewportToAbsolutePoint(FloatPoint p) const
     ASSERT(frame().settings().visualViewportEnabled());
     p.moveBy(layoutViewportRect().location());
     return p.scaled(frame().frameScaleFactor());
+}
+
+FloatRect FrameView::clientToLayoutViewportRect(FloatRect rect) const
+{
+    ASSERT(frame().settings().visualViewportEnabled());
+    rect.scale(frame().pageZoomFactor());
+    return rect;
 }
 
 FloatPoint FrameView::clientToLayoutViewportPoint(FloatPoint p) const
@@ -5149,26 +5146,25 @@ void FrameView::fireLayoutRelatedMilestonesIfNeeded()
         if (frame().isMainFrame())
             page->startCountingRelevantRepaintedObjects();
     }
-    updateIsVisuallyNonEmpty();
-    updateSignificantRenderedTextMilestoneIfNeeded();
 
-    // If the layout was done with pending sheets, we are not in fact visually non-empty yet.
-    if (m_isVisuallyNonEmpty && m_firstVisuallyNonEmptyLayoutCallbackPending) {
-        m_firstVisuallyNonEmptyLayoutCallbackPending = false;
+    if (!m_isVisuallyNonEmpty && qualifiesAsVisuallyNonEmpty()) {
+        m_isVisuallyNonEmpty = true;
         addPaintPendingMilestones(DidFirstMeaningfulPaint);
-
         if (requestedMilestones & DidFirstVisuallyNonEmptyLayout)
             milestonesAchieved.add(DidFirstVisuallyNonEmptyLayout);
     }
 
-    if (m_renderedSignificantAmountOfText && m_significantRenderedTextMilestonePending) {
-        m_significantRenderedTextMilestonePending = false;
+    if (!m_renderedSignificantAmountOfText && qualifiesAsSignificantRenderedText()) {
+        m_renderedSignificantAmountOfText = true;
         if (requestedMilestones & DidRenderSignificantAmountOfText)
             milestonesAchieved.add(DidRenderSignificantAmountOfText);
     }
 
-    if (milestonesAchieved && frame().isMainFrame())
+    if (milestonesAchieved && frame().isMainFrame()) {
+        if (milestonesAchieved.contains(DidFirstVisuallyNonEmptyLayout))
+            RELEASE_LOG_IF_ALLOWED("fireLayoutRelatedMilestonesIfNeeded() - firing first visually non-empty layout milestone on the main frame");
         frame().loader().didReachLayoutMilestone(milestonesAchieved);
+    }
 }
 
 void FrameView::firePaintRelatedMilestonesIfNeeded()

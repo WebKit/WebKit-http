@@ -18,8 +18,6 @@ fast/forms/search/search-results-hidden-crash.html [ Pass ]
 fast/url/user-visible [ Pass ]
 fast/images/eps-as-image.html [ Pass ]
 
-fast/text-autosizing/ios/ipad/programmatic-text-size-adjust.html [ Skip ]
-fast/text-autosizing/ios/ipad/text-size-adjust-inline-style.html [ Skip ]
 fast/text-autosizing/ios/programmatic-text-size-adjust.html [ Skip ]
 fast/text-autosizing/ios/text-size-adjust-inline-style.html [ Skip ]
 fast/text-autosizing [ Pass ]
@@ -1038,7 +1036,6 @@ webkit.org/b/160048 [ Debug ] inspector/codemirror/prettyprinting-javascript.htm
 webkit.org/b/152025 [ Debug ] inspector/console/messagesCleared.html [ Pass Timeout ]
 webkit.org/b/152452 [ Debug ] inspector/console/messageRepeatCountUpdated.html [ Pass Timeout ]
 webkit.org/b/168926 inspector/controller/runtime-controller-import.html [ Pass Timeout ]
-webkit.org/b/148636 inspector/css/createStyleSheet.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/get-system-fonts.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/getAllStyleSheets.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/matched-style-properties.html [ Pass Timeout ]
@@ -1395,8 +1392,6 @@ webkit.org/b/178127 media/modern-media-controls/media-controller/media-controlle
 # the image is dumped after the video is loaded and the control overlay is displayed. It seems the test still works
 # on iOS, and the bug it was created to regression-test was iOS-only, so there is no hurry to make it work on Mac.
 media/modern-media-controls/media-documents/background-color-and-centering.html [ Pass ImageOnlyFailure ]
-
-media/modern-media-controls/pip-support/ipad [ Skip ]
 
 webkit.org/b/169158 media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html [ Skip ]
 

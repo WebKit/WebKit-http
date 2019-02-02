@@ -123,6 +123,7 @@ Shared/cf/CookieStorageUtilsCF.mm
 Shared/cg/ShareableBitmapCG.cpp
 
 Shared/Authentication/cocoa/AuthenticationManagerCocoa.mm
+Shared/Authentication/cocoa/ClientCertificateAuthenticationXPCConstants.cpp
 
 Shared/Cocoa/APIDataCocoa.mm
 Shared/Cocoa/APIObject.mm
@@ -254,6 +255,7 @@ UIProcess/API/Cocoa/_WKWebsiteDataStoreConfiguration.mm
 UIProcess/API/Cocoa/_WKWebsitePolicies.mm
 UIProcess/API/Cocoa/APIAttachmentCocoa.mm
 UIProcess/API/Cocoa/APIContentRuleListStoreCocoa.mm
+UIProcess/API/Cocoa/APIHTTPCookieStoreCocoa.mm
 UIProcess/API/Cocoa/APISerializedScriptValueCocoa.mm
 UIProcess/API/Cocoa/APIWebsiteDataStoreCocoa.mm
 UIProcess/API/Cocoa/LegacyBundleForClass.mm
@@ -321,6 +323,7 @@ UIProcess/Cocoa/FullscreenClient.mm
 UIProcess/Cocoa/GlobalFindInPageState.mm
 UIProcess/Cocoa/IconLoadingDelegate.mm
 UIProcess/Cocoa/LegacyCustomProtocolManagerClient.mm
+UIProcess/Cocoa/LoadOptimizer.mm
 UIProcess/Cocoa/MediaCaptureUtilities.mm
 UIProcess/Cocoa/NavigationState.mm
 UIProcess/Cocoa/PageClientImplCocoa.mm
@@ -404,6 +407,7 @@ UIProcess/ios/WKPDFPageNumberIndicator.mm
 UIProcess/ios/WKPDFView.mm
 UIProcess/ios/WKScrollView.mm
 UIProcess/ios/WKSyntheticClickTapGestureRecognizer.m
+UIProcess/ios/WKSyntheticFlagsChangedWebEvent.mm
 UIProcess/ios/WKSystemPreviewView.mm
 UIProcess/ios/WKWebEvent.mm
 
@@ -454,6 +458,7 @@ UIProcess/RemoteLayerTree/mac/ScrollingTreeFrameScrollingNodeRemoteMac.cpp
 
 UIProcess/RemoteLayerTree/ios/RemoteLayerTreeHostIOS.mm
 UIProcess/RemoteLayerTree/ios/RemoteScrollingCoordinatorProxyIOS.mm
+UIProcess/RemoteLayerTree/ios/ScrollingTreeFrameScrollingNodeRemoteIOS.mm
 UIProcess/RemoteLayerTree/ios/ScrollingTreeOverflowScrollingNodeIOS.mm
 UIProcess/RemoteLayerTree/ios/ScrollingTreeScrollingNodeDelegateIOS.mm
 

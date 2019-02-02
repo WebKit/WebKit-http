@@ -1,3 +1,227 @@
+2019-01-28  Rob Buis  <rbuis@igalia.com>
+
+        Update MIME type parser
+        https://bugs.webkit.org/show_bug.cgi?id=180526
+
+        Reviewed by Frédéric Wang.
+
+        Update improved test expectations.
+
+        * web-platform-tests/xhr/overridemimetype-blob-expected.txt:
+
+2019-01-28  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-logical] Reject unitless length quirk in 'inset' shorthand
+        https://bugs.webkit.org/show_bug.cgi?id=193773
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Import WPT tests that check that the unitless length quirk is not
+        allowed in the 'inset' shorthand.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/quirks/support/test-ref-iframe.js: Added.
+        (setupIframe):
+        * web-platform-tests/quirks/support/w3c-import.log: Added.
+        * web-platform-tests/quirks/unitless-length/excluded-properties-001-expected.txt: Added.
+        * web-platform-tests/quirks/unitless-length/excluded-properties-001.html: Added.
+        * web-platform-tests/quirks/unitless-length/excluded-properties-002-expected.txt: Added.
+        * web-platform-tests/quirks/unitless-length/excluded-properties-002.html: Added.
+        * web-platform-tests/quirks/unitless-length/excluded-properties-003-expected.txt: Added.
+        * web-platform-tests/quirks/unitless-length/excluded-properties-003.html: Added.
+        * web-platform-tests/quirks/unitless-length/limited-quirks-expected.txt: Added.
+        * web-platform-tests/quirks/unitless-length/limited-quirks.html: Added.
+        * web-platform-tests/quirks/unitless-length/no-quirks-expected.txt: Added.
+        * web-platform-tests/quirks/unitless-length/no-quirks.html: Added.
+        * web-platform-tests/quirks/unitless-length/quirks-expected.txt: Added.
+        * web-platform-tests/quirks/unitless-length/quirks.html: Added.
+        * web-platform-tests/quirks/unitless-length/support/common.js: Added.
+        (onload):
+        * web-platform-tests/quirks/unitless-length/support/w3c-import.log: Added.
+        * web-platform-tests/quirks/unitless-length/w3c-import.log: Added.
+
+2019-01-24  Charles Vazac  <cvazac@akamai.com>
+
+        Implement PerformanceObserver.supportedEntryTypes
+        https://bugs.webkit.org/show_bug.cgi?id=193428
+
+        Reviewed by Joseph Pecoraro.
+
+        * web-platform-tests/resource-timing/supported_resource_type.any-expected.txt:
+        * web-platform-tests/resource-timing/supported_resource_type.any.worker-expected.txt:
+
+2019-01-23  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-logical] Implement flow-relative inset properties
+        https://bugs.webkit.org/show_bug.cgi?id=189441
+
+        Reviewed by Dean Jackson.
+
+        Enable the CSSLogicalEnabled flag in the test for logical insets, and
+        update its expectations. It still has some failures because sideways
+        writing modes have not been implemented yet
+        (https://bugs.webkit.org/show_bug.cgi?id=166941).
+
+        * web-platform-tests/css/css-logical/logical-box-inset-expected.txt:
+        * web-platform-tests/css/css-logical/logical-box-inset.html:
+
+2019-01-23  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-grid] Properly handle static positions of abspos inside grid items
+        https://bugs.webkit.org/show_bug.cgi?id=193657
+
+        Reviewed by Javier Fernandez.
+
+        Import test changes from WPT.
+        Various orthogonal tests still fail because of https://bugs.webkit.org/show_bug.cgi?id=189513
+        Some other tests also fail because of https://bugs.webkit.org/show_bug.cgi?id=193656
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-001.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-002.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-003-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-003.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-004-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-004.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-005-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-005.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-006-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-006.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-007-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-007.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-008-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-008.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-009-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-009.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-010-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-010.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-011-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-011.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-012-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-012.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-013-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-013.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-014-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-014.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-015-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-015.html: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-016-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/orthogonal-positioned-grid-descendants-016.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-001.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-002.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-003-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-003.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-004-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-004.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-005-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-005.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-006-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-006.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-007-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-007.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-008-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-008.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-009-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-009.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-010-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-010.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-011-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-011.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-012-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-012.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-013-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-013.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-014-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-014.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-015-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-015.html: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-016-expected.txt: Added.
+        * web-platform-tests/css/css-grid/abspos/positioned-grid-descendants-016.html: Added.
+        * web-platform-tests/css/css-grid/abspos/support/positioned-grid-descendants.css: Added.
+        (.grid):
+        (.abspos):
+        (.orthogonal):
+        (.grid > :nth-child(1) > .abspos):
+        (.grid > :nth-child(2) > .abspos):
+        * web-platform-tests/css/css-grid/abspos/support/positioned-grid-descendants.js: Added.
+        (export.runTests):
+        * web-platform-tests/css/css-grid/abspos/support/w3c-import.log:
+        * web-platform-tests/css/css-grid/abspos/w3c-import.log:
+
+2019-01-23  Rob Buis  <rbuis@igalia.com>
+
+        Update MIME type parser
+        https://bugs.webkit.org/show_bug.cgi?id=180526
+
+        Reviewed by Frédéric Wang.
+
+        Update improved test expectations.
+
+        * web-platform-tests/xhr/overridemimetype-blob-expected.txt:
+
+2019-01-22  Youenn Fablet  <youenn@apple.com>
+
+        Resync libwebrtc with latest M72 branch
+        https://bugs.webkit.org/show_bug.cgi?id=193693
+        <rdar://problem/47463803>
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCRtpTransceiver.https-expected.txt:
+
+2019-01-22  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-logical] Implement flow-relative margin, padding and border shorthands
+        https://bugs.webkit.org/show_bug.cgi?id=188697
+
+        Reviewed by Simon Fraser and Antti Koivisto.
+
+        Import tests from the WPT test suite for CSS Logical Properties and Values,
+        and enable the CSSLogicalEnabled runtime flag for them.
+
+        They still have some failures because sideways writing modes have not been
+        implemented yet (https://bugs.webkit.org/show_bug.cgi?id=166941).
+
+        * web-platform-tests/css/css-logical/logical-box-border-color-expected.txt:
+        * web-platform-tests/css/css-logical/logical-box-border-color.html:
+        * web-platform-tests/css/css-logical/logical-box-border-shorthands-expected.txt:
+        * web-platform-tests/css/css-logical/logical-box-border-shorthands.html:
+        * web-platform-tests/css/css-logical/logical-box-border-style-expected.txt:
+        * web-platform-tests/css/css-logical/logical-box-border-style.html:
+        * web-platform-tests/css/css-logical/logical-box-border-width-expected.txt:
+        * web-platform-tests/css/css-logical/logical-box-border-width.html:
+        * web-platform-tests/css/css-logical/logical-box-inset-expected.txt:
+        * web-platform-tests/css/css-logical/logical-box-inset.html:
+        * web-platform-tests/css/css-logical/logical-box-margin-expected.txt:
+        * web-platform-tests/css/css-logical/logical-box-margin.html:
+        * web-platform-tests/css/css-logical/logical-box-padding-expected.txt:
+        * web-platform-tests/css/css-logical/logical-box-padding.html:
+        * web-platform-tests/css/css-logical/logical-box-size.html:
+        * web-platform-tests/css/css-logical/resources/test-box-properties.js:
+        (export.createBoxPropertyGroup):
+        (export.createSizingPropertyGroup):
+        (export.runTests.set test):
+        (export.runTests):
+        * web-platform-tests/css/css-logical/resources/test-shared.js: Added.
+        (export.testCSSValues):
+        (export.testComputedValues):
+        (export.makeDeclaration):
+        * web-platform-tests/css/css-logical/resources/w3c-import.log:
+
+2019-01-18  Ali Juma  <ajuma@chromium.org>
+
+        FetchResponse::url should return the empty string for tainted responses
+        https://bugs.webkit.org/show_bug.cgi?id=193553
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/fetch/api/basic/mode-no-cors.sub.any.js:
+        (fetchNoCors):
+
 2019-01-14  Charles Vazac  <cvazac@akamai.com>
 
         Import current Resource-Timing WPTs

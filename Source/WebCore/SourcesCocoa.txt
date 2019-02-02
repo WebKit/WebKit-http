@@ -181,7 +181,6 @@ platform/audio/mac/AudioSessionMac.cpp
 platform/audio/mac/CARingBuffer.cpp
 platform/audio/mac/FFTFrameMac.cpp
 
-platform/cf/FileSystemCF.cpp
 platform/cf/KeyedDecoderCF.cpp
 platform/cf/KeyedEncoderCF.cpp
 platform/cf/MainThreadSharedTimerCF.cpp
@@ -193,7 +192,6 @@ platform/cocoa/ContentFilterUnblockHandlerCocoa.mm @no-unify
 platform/cocoa/CoreVideoSoftLink.cpp
 platform/cocoa/DataDetectorsCoreSoftLink.mm
 platform/cocoa/FileMonitorCocoa.mm
-platform/cocoa/FileSystemCocoa.mm
 platform/cocoa/KeyEventCocoa.mm
 platform/cocoa/LocalizedStringsCocoa.mm
 platform/cocoa/MIMETypeRegistryCocoa.mm
@@ -389,6 +387,7 @@ platform/graphics/opengl/TemporaryOpenGLSetting.cpp
 
 platform/graphics/opentype/OpenTypeCG.cpp
 
+platform/ios/ColorIOS.mm
 platform/ios/CursorIOS.cpp
 platform/ios/Device.cpp
 platform/ios/DeviceMotionClientIOS.mm
@@ -409,17 +408,16 @@ platform/ios/PlatformScreenIOS.mm
 platform/ios/PlatformSpeechSynthesizerIOS.mm @no-unify
 platform/ios/PlaybackSessionInterfaceAVKit.mm @no-unify
 platform/ios/QuickLook.mm
-platform/ios/QuickLookSoftLink.mm @no-unify
 platform/ios/RemoteCommandListenerIOS.mm
 platform/ios/ScrollAnimatorIOS.mm
 platform/ios/ScrollbarThemeIOS.mm
 platform/ios/ScrollViewIOS.mm
 platform/ios/SelectionRect.cpp
 platform/ios/SystemMemoryIOS.cpp
-platform/ios/ThemeIOS.mm @no-unify
+platform/ios/ThemeIOS.mm
 platform/ios/TileControllerMemoryHandlerIOS.cpp
-platform/ios/UserAgentIOS.mm @no-unify
-platform/ios/ValidationBubbleIOS.mm @no-unify
+platform/ios/UserAgentIOS.mm
+platform/ios/ValidationBubbleIOS.mm
 platform/ios/VideoFullscreenInterfaceAVKit.mm @no-unify
 platform/ios/WebAVPlayerController.mm
 platform/ios/WebBackgroundTaskController.mm
@@ -427,7 +425,7 @@ platform/ios/WebCoreMotionManager.mm
 platform/ios/WebEvent.mm @no-unify
 platform/ios/WebItemProviderPasteboard.mm @no-unify
 platform/ios/WebSQLiteDatabaseTrackerClient.mm
-platform/ios/WebVideoFullscreenControllerAVKit.mm
+platform/ios/WebVideoFullscreenControllerAVKit.mm @no-unify
 platform/ios/WidgetIOS.mm
 
 platform/ios/wak/FloatingPointEnvironment.cpp
@@ -446,7 +444,6 @@ platform/mac/CursorMac.mm
 platform/mac/DragDataMac.mm
 platform/mac/DragImageMac.mm
 platform/mac/EventLoopMac.mm
-platform/mac/FileSystemMac.mm
 platform/mac/KeyEventMac.mm @no-unify
 platform/mac/PlaybackSessionInterfaceMac.mm @no-unify
 platform/mac/LocalCurrentGraphicsContext.mm
@@ -540,8 +537,6 @@ platform/network/mac/SynchronousLoaderClient.mm
 platform/network/mac/UTIUtilities.mm
 platform/network/mac/WebCoreResourceHandleAsOperationQueueDelegate.mm
 platform/network/mac/WebCoreURLResponse.mm
-
-platform/posix/FileSystemPOSIX.cpp
 
 platform/text/cf/HyphenationCF.cpp
 

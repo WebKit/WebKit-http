@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -76,7 +76,7 @@
 #import "WebProcessProxy.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKThumbnailViewInternal.h"
-#import <HIToolbox/CarbonEventsCore.h>
+#import <Carbon/Carbon.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/ActivityState.h>
 #import <WebCore/ColorMac.h>
@@ -84,7 +84,6 @@
 #import <WebCore/DragData.h>
 #import <WebCore/DragItem.h>
 #import <WebCore/Editor.h>
-#import <WebCore/FileSystem.h>
 #import <WebCore/FontAttributeChanges.h>
 #import <WebCore/FontAttributes.h>
 #import <WebCore/KeypressCommand.h>
@@ -115,6 +114,7 @@
 #import <pal/spi/mac/NSViewSPI.h>
 #import <pal/spi/mac/NSWindowSPI.h>
 #import <sys/stat.h>
+#import <wtf/FileSystem.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/ProcessPrivilege.h>
 #import <wtf/SetForScope.h>
@@ -134,10 +134,6 @@ SOFT_LINK_CLASS(AVKit, AVFunctionBarScrubber)
 
 static NSString * const WKMediaExitFullScreenItem = @"WKMediaExitFullScreenItem";
 #endif // HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
-
-#if PLATFORM(MAC) && !ENABLE(REVEAL)
-SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUNotificationPopoverWillClose, NSString *)
-#endif // ENABLE(REVEAL)
 
 WTF_DECLARE_CF_TYPE_TRAIT(CGImage);
 
@@ -233,8 +229,8 @@ WTF_DECLARE_CF_TYPE_TRAIT(CGImage);
 - (void)dealloc
 {
 #if !ENABLE(REVEAL)
-    if (_didRegisterForLookupPopoverCloseNotifications && canLoadLUNotificationPopoverWillClose())
-        [[NSNotificationCenter defaultCenter] removeObserver:self name:getLUNotificationPopoverWillClose() object:nil];
+    if (_didRegisterForLookupPopoverCloseNotifications && PAL::canLoad_Lookup_LUNotificationPopoverWillClose())
+        [[NSNotificationCenter defaultCenter] removeObserver:self name:PAL::get_Lookup_LUNotificationPopoverWillClose() object:nil];
 #endif // !ENABLE(REVEAL)
 
     NSNotificationCenter *workspaceNotificationCenter = [[NSWorkspace sharedWorkspace] notificationCenter];
@@ -310,8 +306,8 @@ static void* keyValueObservingContext = &keyValueObservingContext;
 
     _didRegisterForLookupPopoverCloseNotifications = YES;
 #if !ENABLE(REVEAL)
-    if (canLoadLUNotificationPopoverWillClose())
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
+    if (PAL::canLoad_Lookup_LUNotificationPopoverWillClose())
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:PAL::get_Lookup_LUNotificationPopoverWillClose() object:nil];
 #endif
 }
 
@@ -2692,7 +2688,7 @@ void WebViewImpl::executeEditCommandForSelector(SEL selector, const String& argu
 
 void WebViewImpl::registerEditCommand(Ref<WebEditCommandProxy>&& command, UndoOrRedo undoOrRedo)
 {
-    auto actionName = WebCore::nameForUndoRedo(command->editAction());
+    auto actionName = command->label();
     auto commandObjC = adoptNS([[WKEditCommand alloc] initWithWebEditCommandProxy:WTFMove(command)]);
 
     NSUndoManager *undoManager = [m_view undoManager];
@@ -3229,7 +3225,6 @@ void WebViewImpl::requestCandidatesForSelectionIfNeeded()
     auto& postLayoutData = editorState.postLayoutData();
     m_lastStringForCandidateRequest = postLayoutData.stringForCandidateRequest;
 
-#if HAVE(ADVANCED_SPELL_CHECKING)
     NSRange selectedRange = NSMakeRange(postLayoutData.candidateRequestStartPosition, postLayoutData.selectedTextLength);
     NSTextCheckingTypes checkingTypes = NSTextCheckingTypeSpelling | NSTextCheckingTypeReplacement | NSTextCheckingTypeCorrection;
     auto weakThis = makeWeakPtr(*this);
@@ -3240,7 +3235,6 @@ void WebViewImpl::requestCandidatesForSelectionIfNeeded()
             weakThis->handleRequestedCandidates(sequenceNumber, candidates);
         });
     }];
-#endif // HAVE(ADVANCED_SPELL_CHECKING)
 }
 
 void WebViewImpl::handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates)
@@ -3591,7 +3585,7 @@ void WebViewImpl::enableAccessibilityIfNecessary()
     updateWindowAndViewFrames();
 }
 
-id WebViewImpl::accessibilityAttributeValue(NSString *attribute)
+id WebViewImpl::accessibilityAttributeValue(NSString *attribute, id parameter)
 {
     enableAccessibilityIfNecessary();
 
@@ -3613,6 +3607,13 @@ id WebViewImpl::accessibilityAttributeValue(NSString *attribute)
             return NSAccessibilityUnignoredAncestor([m_view superview]);
             if ([attribute isEqualToString:NSAccessibilityEnabledAttribute])
                 return @YES;
+    
+    if ([attribute isEqualToString:@"AXConvertRelativeFrame"]) {
+        if ([parameter isKindOfClass:[NSValue class]]) {
+            NSRect rect = [(NSValue *)parameter rectValue];
+            return [NSValue valueWithRect:m_pageClient->rootViewToScreen(IntRect(rect))];
+        }
+    }
     
     return [m_view _web_superAccessibilityAttributeValue:attribute];
 }
@@ -3964,7 +3965,7 @@ bool WebViewImpl::performDragOperation(id <NSDraggingInfo> draggingInfo)
             return false;
         }
 
-        NSString *dropDestinationPath = WebCore::FileSystem::createTemporaryDirectory(@"WebKitDropDestination");
+        NSString *dropDestinationPath = FileSystem::createTemporaryDirectory(@"WebKitDropDestination");
         if (!dropDestinationPath) {
             delete dragData;
             return false;
@@ -4286,7 +4287,7 @@ NSArray *WebViewImpl::namesOfPromisedFilesDroppedAtDestination(NSURL *dropDestin
         LOG_ERROR("Failed to create image file via -[NSFileWrapper writeToURL:options:originalContentsURL:error:]");
 
     if (!m_promisedURL.isEmpty())
-        WebCore::FileSystem::setMetadataURL(String(path), m_promisedURL);
+        FileSystem::setMetadataURL(String(path), m_promisedURL);
     
     return [NSArray arrayWithObject:[path lastPathComponent]];
 }
@@ -4756,12 +4757,10 @@ void WebViewImpl::insertText(id string, NSRange replacementRange)
         text = string;
 
     m_isTextInsertionReplacingSoftSpace = false;
-#if HAVE(ADVANCED_SPELL_CHECKING)
     if (m_softSpaceRange.location != NSNotFound && (replacementRange.location == NSMaxRange(m_softSpaceRange) || replacementRange.location == NSNotFound) && replacementRange.length == 0 && [[NSSpellChecker sharedSpellChecker] deletesAutospaceBeforeString:text language:nil]) {
         replacementRange = m_softSpaceRange;
         m_isTextInsertionReplacingSoftSpace = true;
     }
-#endif
     m_softSpaceRange = NSMakeRange(NSNotFound, 0);
 
     // insertText can be called for several reasons:

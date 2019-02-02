@@ -35,6 +35,9 @@
 namespace JSC {
 
     class UnlinkedSourceCode {
+        template<typename SourceType>
+        friend class CachedUnlinkedSourceCodeShape;
+
     public:
         UnlinkedSourceCode()
             : m_provider(0)
@@ -77,6 +80,11 @@ namespace JSC {
         }
 
         bool isHashTableDeletedValue() const { return m_provider.isHashTableDeletedValue(); }
+
+        const SourceProvider& provider() const
+        {
+            return *m_provider;
+        }
 
         unsigned hash() const
         {

@@ -758,6 +758,11 @@
       ],
       "status" : "reviewer"
    },
+   "Apple Bot Watchers" : {
+      "emails" : [
+         "webkit-bot-watchers-bugzilla@group.apple.com"
+      ]
+   },
    "Ariya Hidayat" : {
       "emails" : [
          "ariya.hidayat@gmail.com",
@@ -3791,6 +3796,12 @@
          "liachen@rim.com"
       ]
    },
+   "Ling Ho" : {
+      "emails" : [
+         "lingho@apple.com"
+      ],
+      "expertise" : "webkit.org admin"
+   },
    "Lorenzo Tilve" : {
       "emails" : [
          "ltilve@igalia.com"
@@ -6030,7 +6041,8 @@
    "Yusuke Suzuki" : {
       "emails" : [
          "yusukesuzuki@slowstart.org",
-         "utatane.tea@gmail.com"
+         "utatane.tea@gmail.com",
+         "ysuzuki@apple.com"
       ],
       "expertise" : "JIT Compilers, CSS JIT, JavaScript/ECMAScript",
       "nicks" : [

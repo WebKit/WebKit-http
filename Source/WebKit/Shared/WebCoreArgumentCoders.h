@@ -32,6 +32,7 @@
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/IndexedDB.h>
+#include <WebCore/InputMode.h>
 #include <WebCore/MediaSelectionOption.h>
 #include <WebCore/NetworkLoadMetrics.h>
 #include <WebCore/NotificationDirection.h>
@@ -120,6 +121,9 @@ struct ResourceLoadStatistics;
 struct ScrollableAreaParameters;
 struct TextCheckingResult;
 struct TextIndicatorData;
+#if ENABLE(POINTER_EVENTS)
+struct TouchActionData;
+#endif
 struct ViewportAttributes;
 struct WindowFeatures;
     
@@ -197,6 +201,13 @@ template<> struct ArgumentCoder<WebCore::DOMCacheEngine::Record> {
     static void encode(Encoder&, const WebCore::DOMCacheEngine::Record&);
     static Optional<WebCore::DOMCacheEngine::Record> decode(Decoder&);
 };
+
+#if ENABLE(POINTER_EVENTS)
+template<> struct ArgumentCoder<WebCore::TouchActionData> {
+    static void encode(Encoder&, const WebCore::TouchActionData&);
+    static Optional<WebCore::TouchActionData> decode(Decoder&);
+};
+#endif
 
 template<> struct ArgumentCoder<WebCore::EventTrackingRegions> {
     static void encode(Encoder&, const WebCore::EventTrackingRegions&);
@@ -315,6 +326,7 @@ template<> struct ArgumentCoder<WebCore::Path> {
 template<> struct ArgumentCoder<WebCore::Region> {
     static void encode(Encoder&, const WebCore::Region&);
     static bool decode(Decoder&, WebCore::Region&);
+    static Optional<WebCore::Region> decode(Decoder&);
 };
 
 template<> struct ArgumentCoder<WebCore::Length> {
@@ -763,6 +775,21 @@ template<> struct EnumTraits<WebCore::AutoplayEvent> {
         WebCore::AutoplayEvent::DidPlayMediaWithUserGesture,
         WebCore::AutoplayEvent::DidAutoplayMediaPastThresholdWithoutUserInterference,
         WebCore::AutoplayEvent::UserDidInterfereWithPlayback
+    >;
+};
+
+template<> struct EnumTraits<WebCore::InputMode> {
+    using values = EnumValues<
+        WebCore::InputMode,
+        WebCore::InputMode::Unspecified,
+        WebCore::InputMode::None,
+        WebCore::InputMode::Text,
+        WebCore::InputMode::Telephone,
+        WebCore::InputMode::Url,
+        WebCore::InputMode::Email,
+        WebCore::InputMode::Numeric,
+        WebCore::InputMode::Decimal,
+        WebCore::InputMode::Search
     >;
 };
 

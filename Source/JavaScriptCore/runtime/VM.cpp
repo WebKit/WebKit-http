@@ -124,7 +124,6 @@
 #include "PropertyMapHashTable.h"
 #include "ProxyRevoke.h"
 #include "RegExpCache.h"
-#include "RegExpConstructor.h"
 #include "RegExpObject.h"
 #include "RegisterAtOffsetList.h"
 #include "RuntimeType.h"
@@ -292,25 +291,16 @@ VM::VM(VMType vmType, HeapType heapType)
     , destructibleObjectSpace("JSDestructibleObject", heap, destructibleObjectHeapCellType.get(), fastMallocAllocator.get())
     , eagerlySweptDestructibleObjectSpace("Eagerly Swept JSDestructibleObject", heap, destructibleObjectHeapCellType.get(), fastMallocAllocator.get())
     , segmentedVariableObjectSpace("JSSegmentedVariableObjectSpace", heap, segmentedVariableObjectHeapCellType.get(), fastMallocAllocator.get())
-    , arrayBufferConstructorSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), JSArrayBufferConstructor)
     , asyncFunctionSpace ISO_SUBSPACE_INIT(heap, cellJSValueOOBHeapCellType.get(), JSAsyncFunction)
     , asyncGeneratorFunctionSpace ISO_SUBSPACE_INIT(heap, cellJSValueOOBHeapCellType.get(), JSAsyncGeneratorFunction)
     , boundFunctionSpace ISO_SUBSPACE_INIT(heap, cellJSValueOOBHeapCellType.get(), JSBoundFunction)
     , callbackFunctionSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), JSCallbackFunction)
     , customGetterSetterFunctionSpace ISO_SUBSPACE_INIT(heap, cellJSValueOOBHeapCellType.get(), JSCustomGetterSetterFunction)
-    , errorConstructorSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), ErrorConstructor)
     , executableToCodeBlockEdgeSpace ISO_SUBSPACE_INIT(heap, cellDangerousBitsHeapCellType.get(), ExecutableToCodeBlockEdge)
     , functionSpace ISO_SUBSPACE_INIT(heap, cellJSValueOOBHeapCellType.get(), JSFunction)
     , generatorFunctionSpace ISO_SUBSPACE_INIT(heap, cellJSValueOOBHeapCellType.get(), JSGeneratorFunction)
     , inferredValueSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), InferredValue)
     , internalFunctionSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), InternalFunction)
-#if ENABLE(INTL)
-    , intlCollatorConstructorSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), IntlCollatorConstructor)
-    , intlDateTimeFormatConstructorSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), IntlDateTimeFormatConstructor)
-    , intlNumberFormatConstructorSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), IntlNumberFormatConstructor)
-    , intlPluralRulesConstructorSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), IntlPluralRulesConstructor)
-#endif
-    , nativeErrorConstructorSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), NativeErrorConstructor)
     , nativeExecutableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), NativeExecutable)
     , nativeStdFunctionSpace ISO_SUBSPACE_INIT(heap, cellJSValueOOBHeapCellType.get(), JSNativeStdFunction)
 #if JSC_OBJC_API_ENABLED
@@ -318,8 +308,6 @@ VM::VM(VMType vmType, HeapType heapType)
 #endif
     , propertyTableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), PropertyTable)
     , proxyRevokeSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), ProxyRevoke)
-    , regExpConstructorSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), RegExpConstructor)
-    , strictModeTypeErrorFunctionSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), StrictModeTypeErrorFunction)
     , structureRareDataSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), StructureRareData)
     , structureSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), Structure)
     , weakSetSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), JSWeakSet)
@@ -444,6 +432,7 @@ VM::VM(VMType vmType, HeapType heapType)
     sentinelSetBucket.set(*this, JSSet::BucketType::createSentinel(*this));
     sentinelMapBucket.set(*this, JSMap::BucketType::createSentinel(*this));
 
+    m_regExpCache->initialize(*this);
     smallStrings.initializeCommonStrings(*this);
 
     Thread::current().setCurrentAtomicStringTable(existingEntryAtomicStringTable);

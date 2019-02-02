@@ -5,6 +5,8 @@ list(APPEND PAL_PUBLIC_HEADERS
 
     cocoa/PassKitSoftLink.h
 
+    mac/LookupSoftLink.h
+
     spi/cf/CFLocaleSPI.h
     spi/cf/CFNetworkConnectionCacheSPI.h
     spi/cf/CFNetworkSPI.h
@@ -58,7 +60,6 @@ list(APPEND PAL_PUBLIC_HEADERS
     spi/mac/HIToolboxSPI.h
     spi/mac/LookupSPI.h
     spi/mac/MediaRemoteSPI.h
-    spi/mac/MetadataSPI.h
     spi/mac/NSAccessibilitySPI.h
     spi/mac/NSAppearanceSPI.h
     spi/mac/NSApplicationSPI.h
@@ -107,6 +108,8 @@ list(APPEND PAL_SOURCES
     cocoa/PassKitSoftLink.mm
 
     crypto/commoncrypto/CryptoDigestCommonCrypto.cpp
+
+    mac/LookupSoftLink.mm
 
     system/cocoa/SleepDisablerCocoa.cpp
 

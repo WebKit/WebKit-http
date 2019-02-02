@@ -145,12 +145,20 @@ bool ViewGestureController::canSwipeInDirection(SwipeDirection direction) const
     return !!backForwardList.forwardItem();
 }
 
-void ViewGestureController::didStartProvisionalLoadForMainFrame()
+void ViewGestureController::didStartProvisionalOrSameDocumentLoadForMainFrame()
 {
     m_snapshotRemovalTracker.resume();
+#if PLATFORM(MAC)
+    requestRenderTreeSizeNotificationIfNeeded();
+#endif
 
-    if (auto provisionalLoadCallback = WTFMove(m_provisionalLoadCallback))
-        provisionalLoadCallback();
+    if (auto loadCallback = WTFMove(m_loadCallback))
+        loadCallback();
+}
+
+void ViewGestureController::didStartProvisionalLoadForMainFrame()
+{
+    didStartProvisionalOrSameDocumentLoadForMainFrame();
 }
 
 void ViewGestureController::didFirstVisuallyNonEmptyLayoutForMainFrame()
@@ -193,23 +201,12 @@ void ViewGestureController::didReachMainFrameLoadTerminalState()
     // enough for us too.
     m_snapshotRemovalTracker.cancelOutstandingEvent(SnapshotRemovalTracker::VisuallyNonEmptyLayout);
 
-    // With Web-process scrolling, we check if the scroll position restoration succeeded by comparing the
-    // requested and actual scroll position. It's possible that we will never succeed in restoring
-    // the exact scroll position we wanted, in the case of a dynamic page, but we know that by
-    // main frame load time that we've gotten as close as we're going to get, so stop waiting.
-    // We don't want to do this with UI-side scrolling because scroll position restoration is baked into the transaction.
-    // FIXME: It seems fairly dirty to type-check the DrawingArea like this.
-    if (auto drawingArea = m_webPageProxy.drawingArea()) {
-        if (is<RemoteLayerTreeDrawingAreaProxy>(drawingArea))
-            m_snapshotRemovalTracker.cancelOutstandingEvent(SnapshotRemovalTracker::ScrollPositionRestoration);
-    }
-
     checkForActiveLoads();
 }
 
 void ViewGestureController::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType type)
 {
-    m_snapshotRemovalTracker.resume();
+    didStartProvisionalOrSameDocumentLoadForMainFrame();
 
     bool cancelledOutstandingEvent = false;
 
@@ -334,6 +331,11 @@ bool ViewGestureController::SnapshotRemovalTracker::eventOccurred(Events event)
 bool ViewGestureController::SnapshotRemovalTracker::cancelOutstandingEvent(Events event)
 {
     return stopWaitingForEvent(event, "wait for event cancelled: ");
+}
+
+bool ViewGestureController::SnapshotRemovalTracker::hasOutstandingEvent(Event event)
+{
+    return m_outstandingEvents & event;
 }
 
 void ViewGestureController::SnapshotRemovalTracker::fireRemovalCallbackIfPossible()

@@ -256,6 +256,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         if (window.CSSAgent) {
             let group = experimentalSettingsView.addGroup(WI.UIString("Styles Sidebar:"));
             group.addSetting(WI.settings.experimentalEnableComputedStyleCascades, WI.UIString("Enable Computed Style Cascades"));
+            group.addSetting(WI.settings.experimentalEnableChangesPanel, WI.UIString("Enable Changes Panel"));
             experimentalSettingsView.addSeparator();
         }
 
@@ -263,9 +264,6 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             experimentalSettingsView.addSetting(WI.UIString("Layers:"), WI.settings.experimentalEnableLayersTab, WI.UIString("Enable Layers Tab"));
             experimentalSettingsView.addSeparator();
         }
-
-        experimentalSettingsView.addSetting(WI.UIString("Audit:"), WI.settings.experimentalEnableAuditTab, WI.UIString("Enable Audit Tab"));
-        experimentalSettingsView.addSeparator();
 
         experimentalSettingsView.addSetting(WI.UIString("User Interface:"), WI.settings.experimentalEnableNewTabBar, WI.UIString("Enable New Tab Bar"));
         experimentalSettingsView.addSeparator();
@@ -277,8 +275,6 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             let newTabs = WI._openTabsSetting.value.slice();
             if (!initialValues.get(WI.settings.experimentalEnableLayersTab) && window.LayerTreeAgent && WI.settings.experimentalEnableLayersTab.value)
                 newTabs.push(WI.LayersTabContentView.Type);
-            if (!initialValues.get(WI.settings.experimentalEnableAuditTab) && WI.settings.experimentalEnableAuditTab.value)
-                newTabs.push(WI.AuditTabContentView.Type);
             WI._openTabsSetting.value = newTabs;
 
             InspectorFrontendHost.reopen();
@@ -295,8 +291,8 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         }
 
         listenForChange(WI.settings.experimentalEnableComputedStyleCascades);
+        listenForChange(WI.settings.experimentalEnableChangesPanel);
         listenForChange(WI.settings.experimentalEnableLayersTab);
-        listenForChange(WI.settings.experimentalEnableAuditTab);
         listenForChange(WI.settings.experimentalEnableNewTabBar);
 
         this.addSettingsView(experimentalSettingsView);

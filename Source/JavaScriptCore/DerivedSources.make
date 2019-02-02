@@ -151,6 +151,7 @@ OBJECT_LUT_HEADERS = \
     IntlDateTimeFormatPrototype.lut.h \
     IntlNumberFormatConstructor.lut.h \
     IntlNumberFormatPrototype.lut.h \
+    IntlObject.lut.h \
     IntlPluralRulesConstructor.lut.h \
     IntlPluralRulesPrototype.lut.h \
     JSDataViewPrototype.lut.h \
@@ -257,6 +258,7 @@ ifeq ($(findstring ENABLE_INDEXED_DATABASE,$(FEATURE_DEFINES)), ENABLE_INDEXED_D
 endif
 
 ifeq ($(findstring ENABLE_RESOURCE_USAGE,$(FEATURE_DEFINES)), ENABLE_RESOURCE_USAGE)
+    INSPECTOR_DOMAINS := $(INSPECTOR_DOMAINS) $(JavaScriptCore)/inspector/protocol/CPUProfiler.json
     INSPECTOR_DOMAINS := $(INSPECTOR_DOMAINS) $(JavaScriptCore)/inspector/protocol/Memory.json
 endif
 

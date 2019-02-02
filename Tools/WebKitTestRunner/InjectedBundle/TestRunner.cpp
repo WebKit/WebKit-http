@@ -55,6 +55,7 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WTR {
 
@@ -813,7 +814,7 @@ static void cacheTestRunnerCallback(unsigned index, JSValueRef callback)
         return;
 
     if (callbackMap().contains(index)) {
-        InjectedBundle::singleton().outputText(String::format("FAIL: Tried to install a second TestRunner callback for the same event (id %d)\n\n", index));
+        InjectedBundle::singleton().outputText(makeString("FAIL: Tried to install a second TestRunner callback for the same event (id ", index, ")\n\n"));
         return;
     }
 
@@ -1860,6 +1861,13 @@ void TestRunner::statisticsDidModifyDataRecordsCallback()
 void TestRunner::installStatisticsDidScanDataRecordsCallback(JSValueRef callback)
 {
     cacheTestRunnerCallback(StatisticsDidScanDataRecordsCallbackID, callback);
+
+    bool notifyPagesWhenDataRecordsWereScanned = !!callback;
+
+    // Setting a callback implies we expect to receive callbacks. So register for them.
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("StatisticsNotifyPagesWhenDataRecordsWereScanned"));
+    WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(notifyPagesWhenDataRecordsWereScanned));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
 }
 
 void TestRunner::statisticsDidScanDataRecordsCallback()
@@ -2365,6 +2373,12 @@ uint64_t TestRunner::domCacheSize(JSStringRef origin)
     WKTypeRef returnData = nullptr;
     WKBundlePagePostSynchronousMessageForTesting(InjectedBundle::singleton().page()->page(), messageName.get(), messageBody.get(), &returnData);
     return WKUInt64GetValue(static_cast<WKUInt64Ref>(returnData));
+}
+
+void TestRunner::allowCacheStorageQuotaIncrease()
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("AllowCacheStorageQuotaIncrease"));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), nullptr, nullptr);
 }
 
 void TestRunner::getApplicationManifestThen(JSValueRef callback)

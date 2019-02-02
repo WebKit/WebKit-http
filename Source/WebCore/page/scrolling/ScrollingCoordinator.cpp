@@ -38,6 +38,7 @@
 #include "Region.h"
 #include "RenderLayerCompositor.h"
 #include "RenderView.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScrollAnimator.h"
 #include "Settings.h"
 #include <wtf/MainThread.h>
@@ -107,7 +108,25 @@ EventTrackingRegions ScrollingCoordinator::absoluteEventTrackingRegionsForFrame(
     auto* document = frame.document();
     if (!document)
         return EventTrackingRegions();
-    return document->eventTrackingRegions();
+    auto eventTrackingRegions = document->eventTrackingRegions();
+
+#if ENABLE(POINTER_EVENTS)
+    if (RuntimeEnabledFeatures::sharedFeatures().pointerEventsEnabled()) {
+        if (auto* touchActionElements = frame.document()->touchActionElements()) {
+            auto& touchActionData = eventTrackingRegions.touchActionData;
+            for (const auto& element : *touchActionElements) {
+                ASSERT(element);
+                touchActionData.append({
+                    element->computedTouchActions(),
+                    element->nearestScrollingNodeIDUsingTouchOverflowScrolling(),
+                    element->document().absoluteEventRegionForNode(*element).first
+                });
+            }
+        }
+    }
+#endif
+
+    return eventTrackingRegions;
 #else
     auto* frameView = frame.view();
     if (!frameView)
@@ -430,6 +449,9 @@ TextStream& operator<<(TextStream& ts, ScrollingNodeType nodeType)
         break;
     case ScrollingNodeType::Subframe:
         ts << "subframe-scrolling";
+        break;
+    case ScrollingNodeType::FrameHosting:
+        ts << "frame-hosting";
         break;
     case ScrollingNodeType::Overflow:
         ts << "overflow-scrolling";

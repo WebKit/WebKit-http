@@ -28,9 +28,9 @@
 
 #include "SessionState.h"
 #include <WebCore/BlobData.h>
-#include <WebCore/FileSystem.h>
 #include <WebCore/FormData.h>
 #include <WebCore/HistoryItem.h>
+#include <wtf/FileSystem.h>
 
 namespace WebKit {
 using namespace WebCore;
@@ -96,6 +96,7 @@ static FrameState toFrameState(const HistoryItem& historyItem)
     frameState.minimumLayoutSizeInScrollViewCoordinates = historyItem.minimumLayoutSizeInScrollViewCoordinates();
     frameState.contentSize = historyItem.contentSize();
     frameState.scaleIsInitial = historyItem.scaleIsInitial();
+    frameState.obscuredInsets = historyItem.obscuredInsets();
 #endif
 
     for (auto& childHistoryItem : historyItem.children()) {
@@ -173,10 +174,11 @@ static void applyFrameState(HistoryItem& historyItem, const FrameState& frameSta
     historyItem.setMinimumLayoutSizeInScrollViewCoordinates(frameState.minimumLayoutSizeInScrollViewCoordinates);
     historyItem.setContentSize(frameState.contentSize);
     historyItem.setScaleIsInitial(frameState.scaleIsInitial);
+    historyItem.setObscuredInsets(frameState.obscuredInsets);
 #endif
 
     for (const auto& childFrameState : frameState.children) {
-        Ref<HistoryItem> childHistoryItem = HistoryItem::create(childFrameState.urlString, { }, { }, { Process::identifier(), generateObjectIdentifier<BackForwardItemIdentifier::ItemIdentifierType>() });
+        Ref<HistoryItem> childHistoryItem = HistoryItem::create(childFrameState.urlString, { }, { });
         applyFrameState(childHistoryItem, childFrameState);
 
         historyItem.addChildItem(WTFMove(childHistoryItem));

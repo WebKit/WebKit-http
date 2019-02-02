@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2011 Google Inc. All rights reserved.
 # Copyright (C) 2009 Torch Mobile Inc.
-# Copyright (C) 2009, 2013 Apple Inc. All rights reserved.
+# Copyright (C) 2009-2019 Apple Inc. All rights reserved.
 # Copyright (C) 2010 Chris Jerdonek (cjerdonek@webkit.org)
 #
 # Redistribution and use in source and binary forms, with or without
@@ -1687,6 +1687,97 @@ class CppStyleTest(CppStyleTestBase):
             'RetainPtr<> should never contain a type with \'*\'. Correct: RetainPtr<NSString>, RetainPtr<CFStringRef>.'
             '  [runtime/retainptr] [5]')
         self.assert_lint('''RetainPtr<NSDictionary<NSString *, NSArray<NSString *>>> dictionary;''', '')
+
+    def test_softlink_framework(self):
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK(Foundation)''',
+            '')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_OPTIONAL(Foundation)''',
+            '')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_OPTIONAL_PREFLIGHT(Foundation)''',
+            '')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_FOR_HEADER(Foundation)''',
+            '',
+             file_name='foo.h')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_FOR_SOURCE(Foundation)''',
+            '')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_FOR_SOURCE_WITH_EXPORT(Foundation)''',
+            '')
+        self.assert_lint(
+            '''SOFT_LINK_PRIVATE_FRAMEWORK_FOR_HEADER(Foundation)''',
+            '',
+             file_name='foo.h')
+        self.assert_lint(
+            '''SOFT_LINK_PRIVATE_FRAMEWORK_FOR_SOURCE(Foundation)''',
+            '')
+        self.assert_lint(
+            '''SOFT_LINK_PRIVATE_FRAMEWORK_FOR_SOURCE_WITH_EXPORT(Foundation)''',
+            '')
+
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK(UIKit)''',
+            'Use UIKitSoftLink.{cpp,h,mm} to soft-link to UIKit.framework.'
+            '  [softlink/framework] [5]')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_OPTIONAL(UIKit)''',
+            'Use UIKitSoftLink.{cpp,h,mm} to soft-link to UIKit.framework.'
+            '  [softlink/framework] [5]')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_OPTIONAL_PREFLIGHT(UIKit)''',
+            'Use UIKitSoftLink.{cpp,h,mm} to soft-link to UIKit.framework.'
+            '  [softlink/framework] [5]')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_FOR_HEADER(UIKit)''',
+            '',
+             file_name='foo.h')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_FOR_SOURCE(UIKit)''',
+            '')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_FOR_SOURCE_WITH_EXPORT(UIKit)''',
+            '')
+
+    def test_softlink_header(self):
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK(MyFramework)''',
+            'Never soft-link frameworks in headers. Put the soft-link macros in a source file, or create MyFrameworkSoftLink.{cpp,mm} instead.'
+            '  [softlink/header] [5]',
+            file_name='foo.h')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_OPTIONAL(MyFramework)''',
+            'Never soft-link frameworks in headers. Put the soft-link macros in a source file, or create MyFrameworkSoftLink.{cpp,mm} instead.'
+            '  [softlink/header] [5]',
+            file_name='foo.h')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_OPTIONAL_PREFLIGHT(MyFramework)''',
+            'Never soft-link frameworks in headers. Put the soft-link macros in a source file, or create MyFrameworkSoftLink.{cpp,mm} instead.'
+            '  [softlink/header] [5]',
+            file_name='foo.h')
+        self.assert_lint(
+            '''SOFT_LINK_PRIVATE_FRAMEWORK(MyPrivateFramework)''',
+            'Never soft-link frameworks in headers. Put the soft-link macros in a source file, or create MyPrivateFrameworkSoftLink.{cpp,mm} instead.'
+            '  [softlink/header] [5]',
+            file_name='foo.h')
+
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_FOR_HEADER(MyFramework)''',
+            '',
+            file_name='foo.h')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_FOR_SOURCE(MyFramework)''',
+            'Never soft-link frameworks in headers. Put the soft-link macros in a source file, or create MyFrameworkSoftLink.{cpp,mm} instead.'
+            '  [softlink/header] [5]',
+            file_name='foo.h')
+        self.assert_lint(
+            '''SOFT_LINK_FRAMEWORK_FOR_SOURCE_WITH_EXPORT(MyFramework)''',
+            'Never soft-link frameworks in headers. Put the soft-link macros in a source file, or create MyFrameworkSoftLink.{cpp,mm} instead.'
+            '  [softlink/header] [5]',
+            file_name='foo.h')
 
     # Variable-length arrays are not permitted.
     def test_variable_length_array_detection(self):
@@ -5461,26 +5552,31 @@ class WebKitStyleTest(CppStyleTestBase):
         self.assert_lint('explicit MyClass(Document* doc) : MySuperClass() { }',
         'Should be indented on a separate line, with the colon or comma first on that line.'
         '  [whitespace/indent] [4]')
+
         self.assert_lint('MyClass::MyClass(Document* doc) : MySuperClass() { }',
         'Should be indented on a separate line, with the colon or comma first on that line.'
         '  [whitespace/indent] [4]')
+
         self.assert_multi_line_lint((
             'MyClass::MyClass(Document* doc)\n'
             '    : m_myMember(b ? bar() : baz())\n'
             '    , MySuperClass()\n'
             '    , m_doc(0)\n'
             '{ }'), '')
+
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc) : MySuperClass()
         { }''',
         'Should be indented on a separate line, with the colon or comma first on that line.'
         '  [whitespace/indent] [4]')
+
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc)
         : MySuperClass()
         { }''',
         'Wrong number of spaces before statement. (expected: 12)'
         '  [whitespace/indent] [4]')
+
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc) :
             MySuperClass(),
@@ -5490,18 +5586,27 @@ class WebKitStyleTest(CppStyleTestBase):
          '  [whitespace/indent] [4]',
          'Comma should be at the beginning of the line in a member initialization list.'
          '  [whitespace/init] [4]'])
+
+        self.assert_multi_line_lint('''\
+            MyClass::MyClass(Document* doc): MySuperClass()
+            { }''',
+            'Should be indented on a separate line, with the colon or comma first on that line.'
+            '  [whitespace/indent] [4]')
+
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc) :MySuperClass()
         { }''',
         ['Missing spaces around :  [whitespace/init] [4]',
          'Should be indented on a separate line, with the colon or comma first on that line.'
          '  [whitespace/indent] [4]'])
+
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc):MySuperClass()
         { }''',
         ['Missing spaces around :  [whitespace/init] [4]',
          'Should be indented on a separate line, with the colon or comma first on that line.'
          '  [whitespace/indent] [4]'])
+
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc) : MySuperClass()
         ,MySuperClass()
@@ -5540,6 +5645,7 @@ class WebKitStyleTest(CppStyleTestBase):
             :MySuperClass()
         { }''',
         'Missing spaces around :  [whitespace/init] [4]')
+
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc)
             : MySuperClass() ,
@@ -5547,23 +5653,35 @@ class WebKitStyleTest(CppStyleTestBase):
         { }''',
         'Comma should be at the beginning of the line in a member initialization list.'
         '  [whitespace/init] [4]')
+
         self.assert_multi_line_lint('''\
         class MyClass : public Goo {
         };''',
         '')
+
         self.assert_multi_line_lint('''\
         class MyClass
         : public Goo
         , public foo {
         };''',
         '')
+
         self.assert_multi_line_lint('''\
         MyClass::MyClass(Document* doc)
             : MySuperClass(doc, doc)
         { }''',
         '')
+
+        self.assert_multi_line_lint('''\
+            PreviewConverter::PreviewConverter(NSData *data, const String& uti, const String& password)
+                : m_platformConverter { adoptNS([allocQLPreviewConverterInstance() initWithData:data name:nil uti:uti options:optionsWithPassword(password)]) }
+            { }''',
+            '')
+
         self.assert_lint('::ShowWindow(m_overlay);', '')
+
         self.assert_lint('o = foo(b ? bar() : baz());', '')
+
         self.assert_lint('MYMACRO(a ? b() : c);', '')
 
     def test_min_versions_of_wk_api_available(self):

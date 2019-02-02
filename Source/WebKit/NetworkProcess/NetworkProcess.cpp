@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2018 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,7 +49,9 @@
 #include "NetworkSessionCreationParameters.h"
 #include "PreconnectTask.h"
 #include "RemoteNetworkingContext.h"
+#include "ShouldGrandfatherStatistics.h"
 #include "StatisticsData.h"
+#include "StorageAccessStatus.h"
 #include "WebCookieManager.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcessPoolMessages.h"
@@ -91,6 +93,15 @@
 #include "NetworkSessionCocoa.h"
 #endif
 
+#if USE(SOUP)
+#include <WebCore/DNSResolveQueueSoup.h>
+#include <WebCore/SoupNetworkSession.h>
+#endif
+
+#if USE(CURL)
+#include <WebCore/CurlContext.h>
+#endif
+
 #if ENABLE(SERVICE_WORKER)
 #include "WebSWServerToContextConnectionMessages.h"
 #endif
@@ -113,27 +124,10 @@ static void callExitSoon(IPC::Connection*)
     });
 }
 
-NetworkProcess& NetworkProcess::singleton()
-{
-    static NeverDestroyed<Ref<NetworkProcess>> networkProcess(adoptRef(*new NetworkProcess));
-    return networkProcess.get();
-}
-
-NetworkProcess::NetworkProcess()
-    : m_hasSetCacheModel(false)
-    , m_cacheModel(CacheModel::DocumentViewer)
-    , m_diskCacheIsDisabledForTesting(false)
-    , m_canHandleHTTPSServerTrustEvaluation(true)
-    , m_downloadManager(*this)
-#if PLATFORM(COCOA)
-    , m_clearCacheDispatchGroup(0)
-#endif
+NetworkProcess::NetworkProcess(ChildProcessInitializationParameters&& parameters)
+    : m_downloadManager(*this)
 #if ENABLE(CONTENT_EXTENSIONS)
     , m_networkContentRuleListManager(*this)
-#endif
-    , m_storageTaskQueue(WorkQueue::create("com.apple.WebKit.StorageTask"))
-#if ENABLE(INDEXED_DATABASE)
-    , m_idbPerOriginQuota(IDBServer::defaultPerOriginQuota)
 #endif
 {
     NetworkProcessPlatformStrategies::initialize();
@@ -142,12 +136,18 @@ NetworkProcess::NetworkProcess()
     addSupplement<WebCookieManager>();
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     addSupplement<LegacyCustomProtocolManager>();
-#if PLATFORM(COCOA)
-    LegacyCustomProtocolManager::networkProcessCreated(*this);
 #endif
+#if PLATFORM(COCOA) || USE(SOUP)
+    LegacyCustomProtocolManager::networkProcessCreated(*this);
 #endif
 #if ENABLE(PROXIMITY_NETWORKING)
     addSupplement<NetworkProximityManager>();
+#endif
+
+#if USE(SOUP)
+    DNSResolveQueueSoup::setGlobalDefaultNetworkStorageSessionAccessor([this]() -> NetworkStorageSession& {
+        return defaultStorageSession();
+    });
 #endif
 
     NetworkStateNotifier::singleton().addListener([this](bool isOnLine) {
@@ -155,6 +155,8 @@ NetworkProcess::NetworkProcess()
         for (auto& webProcessConnection : webProcessConnections)
             webProcessConnection->setOnLineState(isOnLine);
     });
+
+    initialize(WTFMove(parameters));
 }
 
 NetworkProcess::~NetworkProcess()
@@ -302,7 +304,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     setCanHandleHTTPSServerTrustEvaluation(parameters.canHandleHTTPSServerTrustEvaluation);
 
     if (parameters.shouldUseTestingNetworkSession)
-        NetworkStorageSession::switchToNewTestingSession();
+        switchToNewTestingSession();
 
     SandboxExtension::consumePermanently(parameters.defaultDataStoreParameters.networkSessionParameters.resourceLoadStatisticsDirectoryExtensionHandle);
 
@@ -436,7 +438,7 @@ void NetworkProcess::createNetworkConnectionToWebProcess(bool isServiceWorkerPro
 
 void NetworkProcess::clearCachedCredentials()
 {
-    NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
+    defaultStorageSession().credentialStorage().clearCredentials();
     if (auto* networkSession = this->networkSession(PAL::SessionID::defaultSessionID()))
         networkSession->clearCredentials();
     else
@@ -457,6 +459,80 @@ void NetworkProcess::addWebsiteDataStore(WebsiteDataStoreParameters&& parameters
     RemoteNetworkingContext::ensureWebsiteDataStoreSession(*this, WTFMove(parameters));
 }
 
+void NetworkProcess::switchToNewTestingSession()
+{
+#if PLATFORM(COCOA)
+    // Session name should be short enough for shared memory region name to be under the limit, otherwise sandbox rules won't work (see <rdar://problem/13642852>).
+    String sessionName = String::format("WebKit Test-%u", static_cast<uint32_t>(getCurrentProcessID()));
+
+    auto session = adoptCF(WebCore::createPrivateStorageSession(sessionName.createCFString().get()));
+
+    RetainPtr<CFHTTPCookieStorageRef> cookieStorage;
+    if (WebCore::NetworkStorageSession::processMayUseCookieAPI()) {
+        ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
+        if (session)
+            cookieStorage = adoptCF(_CFURLStorageSessionCopyCookieStorage(kCFAllocatorDefault, session.get()));
+    }
+
+    m_defaultNetworkStorageSession = std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID(), WTFMove(session), WTFMove(cookieStorage));
+#elif USE(SOUP)
+    m_defaultNetworkStorageSession = std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID(), std::make_unique<WebCore::SoupNetworkSession>());
+#endif
+}
+
+#if PLATFORM(COCOA)
+void NetworkProcess::ensureSession(const PAL::SessionID& sessionID, const String& identifierBase, RetainPtr<CFHTTPCookieStorageRef>&& cookieStorage)
+#else
+void NetworkProcess::ensureSession(const PAL::SessionID& sessionID, const String& identifierBase)
+#endif
+{
+    ASSERT(sessionID != PAL::SessionID::defaultSessionID());
+
+    auto addResult = m_networkStorageSessions.add(sessionID, nullptr);
+    if (!addResult.isNewEntry)
+        return;
+
+#if PLATFORM(COCOA)
+    RetainPtr<CFURLStorageSessionRef> storageSession;
+    RetainPtr<CFStringRef> cfIdentifier = String(identifierBase + ".PrivateBrowsing").createCFString();
+    if (sessionID.isEphemeral())
+        storageSession = adoptCF(createPrivateStorageSession(cfIdentifier.get()));
+    else
+        storageSession = WebCore::NetworkStorageSession::createCFStorageSessionForIdentifier(cfIdentifier.get());
+
+    if (NetworkStorageSession::processMayUseCookieAPI()) {
+        ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
+        if (!cookieStorage && storageSession)
+            cookieStorage = adoptCF(_CFURLStorageSessionCopyCookieStorage(kCFAllocatorDefault, storageSession.get()));
+    }
+
+    addResult.iterator->value = std::make_unique<NetworkStorageSession>(sessionID, WTFMove(storageSession), WTFMove(cookieStorage));
+#elif USE(SOUP)
+    addResult.iterator->value = std::make_unique<NetworkStorageSession>(sessionID, std::make_unique<SoupNetworkSession>(sessionID));
+#endif
+}
+
+WebCore::NetworkStorageSession* NetworkProcess::storageSession(const PAL::SessionID& sessionID) const
+{
+    if (sessionID == PAL::SessionID::defaultSessionID())
+        return &defaultStorageSession();
+    return m_networkStorageSessions.get(sessionID);
+}
+
+WebCore::NetworkStorageSession& NetworkProcess::defaultStorageSession() const
+{
+    if (!m_defaultNetworkStorageSession)
+        m_defaultNetworkStorageSession = platformCreateDefaultStorageSession();
+    return *m_defaultNetworkStorageSession;
+}
+
+void NetworkProcess::forEachNetworkStorageSession(const Function<void(WebCore::NetworkStorageSession&)>& functor)
+{
+    functor(defaultStorageSession());
+    for (auto& storageSession : m_networkStorageSessions.values())
+        functor(*storageSession);
+}
+
 NetworkSession* NetworkProcess::networkSession(const PAL::SessionID& sessionID) const
 {
     return m_networkSessions.get(sessionID);
@@ -469,9 +545,11 @@ void NetworkProcess::setSession(const PAL::SessionID& sessionID, Ref<NetworkSess
 
 void NetworkProcess::destroySession(const PAL::SessionID& sessionID)
 {
+    ASSERT(sessionID != PAL::SessionID::defaultSessionID());
+
     if (auto session = m_networkSessions.take(sessionID))
         session->get().invalidateAndCancel();
-    NetworkStorageSession::destroySession(sessionID);
+    m_networkStorageSessions.remove(sessionID);
     m_sessionsControlledByAutomation.remove(sessionID);
     CacheStorage::Engine::destroyEngine(*this, sessionID);
 
@@ -497,47 +575,420 @@ void NetworkProcess::writeBlobToFilePath(const URL& url, const String& path, San
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-void NetworkProcess::updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID sessionID, const Vector<String>& domainsToBlock, uint64_t contextId)
+void NetworkProcess::dumpResourceLoadStatistics(PAL::SessionID sessionID, CompletionHandler<void(String)>&& completionHandler)
 {
-    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->dumpResourceLoadStatistics(WTFMove(completionHandler));
+        else
+            completionHandler({ });
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler({ });
+    }
+}
+
+void NetworkProcess::updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID sessionID, const Vector<String>& domainsToBlock, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkStorageSession = storageSession(sessionID))
         networkStorageSession->setPrevalentDomainsToBlockCookiesFor(domainsToBlock);
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidUpdateBlockCookies(contextId), 0);
+    completionHandler();
 }
 
-void NetworkProcess::setAgeCapForClientSideCookies(PAL::SessionID sessionID, Optional<Seconds> seconds, uint64_t contextId)
+void NetworkProcess::isGrandfathered(PAL::SessionID sessionID, const String& targetPrimaryDomain, CompletionHandler<void(bool)>&& completionHandler)
 {
-    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->isGrandfathered(targetPrimaryDomain, WTFMove(completionHandler));
+        else
+            completionHandler(false);
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler(false);
+    }
+}
+
+void NetworkProcess::isPrevalentResource(PAL::SessionID sessionID, const String& resourceDomain, CompletionHandler<void(bool)>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->isPrevalentResource(resourceDomain, WTFMove(completionHandler));
+        else
+            completionHandler(false);
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler(false);
+    }
+}
+
+void NetworkProcess::isVeryPrevalentResource(PAL::SessionID sessionID, const String& resourceDomain, CompletionHandler<void(bool)>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->isVeryPrevalentResource(resourceDomain, WTFMove(completionHandler));
+        else
+            completionHandler(false);
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler(false);
+    }
+}
+
+void NetworkProcess::setAgeCapForClientSideCookies(PAL::SessionID sessionID, Optional<Seconds> seconds, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkStorageSession = storageSession(sessionID))
         networkStorageSession->setAgeCapForClientSideCookies(seconds);
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidSetAgeCapForClientSideCookies(contextId), 0);
+    completionHandler();
 }
 
-void NetworkProcess::hasStorageAccessForFrame(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, uint64_t contextId)
+void NetworkProcess::setGrandfathered(PAL::SessionID sessionID, const String& resourceDomain, bool isGrandfathered, CompletionHandler<void()>&& completionHandler)
 {
-    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
-        parentProcessConnection()->send(Messages::NetworkProcessProxy::StorageAccessRequestResult(networkStorageSession->hasStorageAccess(resourceDomain, firstPartyDomain, frameID, pageID), contextId), 0);
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setGrandfathered(resourceDomain, isGrandfathered, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setPrevalentResource(PAL::SessionID sessionID, const String& resourceDomain, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setPrevalentResource(resourceDomain, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setPrevalentResourceForDebugMode(PAL::SessionID sessionID, String resourceDomain, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setPrevalentResourceForDebugMode(resourceDomain, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setVeryPrevalentResource(PAL::SessionID sessionID, const String& resourceDomain, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setVeryPrevalentResource(resourceDomain, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::clearPrevalentResource(PAL::SessionID sessionID, const String& resourceDomain, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->clearPrevalentResource(resourceDomain, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::submitTelemetry(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->submitTelemetry(WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::scheduleCookieBlockingUpdate(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->scheduleCookieBlockingUpdate(WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::scheduleClearInMemoryAndPersistent(PAL::SessionID sessionID, Optional<WallTime> modifiedSince, ShouldGrandfatherStatistics shouldGrandfather, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics()) {
+            if (modifiedSince)
+                resourceLoadStatistics->scheduleClearInMemoryAndPersistent(modifiedSince.value(), shouldGrandfather, WTFMove(completionHandler));
+            else
+                resourceLoadStatistics->scheduleClearInMemoryAndPersistent(shouldGrandfather, WTFMove(completionHandler));
+        } else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::resetParametersToDefaultValues(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->resetParametersToDefaultValues(WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::scheduleStatisticsAndDataRecordsProcessing(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->scheduleStatisticsAndDataRecordsProcessing(WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setNotifyPagesWhenDataRecordsWereScanned(PAL::SessionID sessionID, bool value, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setNotifyPagesWhenDataRecordsWereScanned(value, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setNotifyPagesWhenTelemetryWasCaptured(PAL::SessionID sessionID, bool value, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setNotifyPagesWhenTelemetryWasCaptured(value, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setSubframeUnderTopFrameOrigin(PAL::SessionID sessionID, String subframe, String topFrame, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setSubframeUnderTopFrameOrigin(subframe, topFrame, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::isRegisteredAsRedirectingTo(PAL::SessionID sessionID, const String& redirectedFrom, const String& redirectedTo, CompletionHandler<void(bool)>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->isRegisteredAsRedirectingTo(redirectedFrom, redirectedTo, WTFMove(completionHandler));
+        else
+            completionHandler(false);
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler(false);
+    }
+}
+
+void NetworkProcess::isRegisteredAsSubFrameUnder(PAL::SessionID sessionID, const String& subframe, const String& topFrame, CompletionHandler<void(bool)>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->isRegisteredAsSubFrameUnder(subframe, topFrame, WTFMove(completionHandler));
+        else
+            completionHandler(false);
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler(false);
+    }
+}
+
+void NetworkProcess::setSubresourceUnderTopFrameOrigin(PAL::SessionID sessionID, String subresource, String topFrame, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setSubresourceUnderTopFrameOrigin(subresource, topFrame, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setSubresourceUniqueRedirectTo(PAL::SessionID sessionID, String subresource, String hostNameRedirectedTo, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setSubresourceUniqueRedirectTo(subresource, hostNameRedirectedTo, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setSubresourceUniqueRedirectFrom(PAL::SessionID sessionID, String subresource, String hostNameRedirectedFrom, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setSubresourceUniqueRedirectFrom(subresource, hostNameRedirectedFrom, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::isRegisteredAsSubresourceUnder(PAL::SessionID sessionID, const String& subresource, const String& topFrame, CompletionHandler<void(bool)>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->isRegisteredAsSubresourceUnder(subresource, topFrame, WTFMove(completionHandler));
+        else
+            completionHandler(false);
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler(false);
+    }
+}
+
+void NetworkProcess::setTopFrameUniqueRedirectTo(PAL::SessionID sessionID, String topFrameHostName, String hostNameRedirectedTo, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setTopFrameUniqueRedirectTo(topFrameHostName, hostNameRedirectedTo, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setTopFrameUniqueRedirectFrom(PAL::SessionID sessionID, String topFrameHostName, String hostNameRedirectedFrom, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setTopFrameUniqueRedirectFrom(topFrameHostName, hostNameRedirectedFrom, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+    
+    
+void NetworkProcess::setLastSeen(PAL::SessionID sessionID, const String& resourceDomain, Seconds seconds, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setLastSeen(resourceDomain, seconds, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::hasStorageAccessForFrame(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&& completionHandler)
+{
+    bool hasStorageAccess = false;
+    if (auto* networkStorageSession = storageSession(sessionID))
+        hasStorageAccess = networkStorageSession->hasStorageAccess(resourceDomain, firstPartyDomain, frameID, pageID);
     else
         ASSERT_NOT_REACHED();
+
+    completionHandler(hasStorageAccess);
 }
 
-void NetworkProcess::getAllStorageAccessEntries(PAL::SessionID sessionID, uint64_t contextId)
+void NetworkProcess::getAllStorageAccessEntries(PAL::SessionID sessionID, CompletionHandler<void(Vector<String> domains)>&& completionHandler)
 {
-    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
-        parentProcessConnection()->send(Messages::NetworkProcessProxy::AllStorageAccessEntriesResult(networkStorageSession->getAllStorageAccessEntries(), contextId), 0);
-    else
+    if (auto* networkStorageSession = storageSession(sessionID))
+        completionHandler(networkStorageSession->getAllStorageAccessEntries());
+    else {
         ASSERT_NOT_REACHED();
+        completionHandler({ });
+    }
 }
 
-void NetworkProcess::grantStorageAccess(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, uint64_t contextId)
+void NetworkProcess::hasStorageAccess(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, CompletionHandler<void(bool)>&& completionHandler)
 {
-    bool isStorageGranted = false;
-    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID)) {
-        networkStorageSession->grantStorageAccess(resourceDomain, firstPartyDomain, frameID, pageID);
-        ASSERT(networkStorageSession->hasStorageAccess(resourceDomain, firstPartyDomain, frameID, pageID));
-        isStorageGranted = true;
-    } else
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->hasStorageAccess(resourceDomain, firstPartyDomain, frameID, pageID, WTFMove(completionHandler));
+        else
+            completionHandler(false);
+    } else {
         ASSERT_NOT_REACHED();
+        completionHandler(false);
+    }
+}
 
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::StorageAccessRequestResult(isStorageGranted, contextId), 0);
+void NetworkProcess::requestStorageAccess(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->requestStorageAccess(resourceDomain, firstPartyDomain, frameID, pageID, promptEnabled, WTFMove(completionHandler));
+        else
+            completionHandler(StorageAccessStatus::CannotRequestAccess);
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler(StorageAccessStatus::CannotRequestAccess);
+    }
+}
+
+void NetworkProcess::grantStorageAccess(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, bool userWasPrompted, CompletionHandler<void(bool)>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->grantStorageAccess(resourceDomain, firstPartyDomain, frameID.value(), pageID, userWasPrompted, WTFMove(completionHandler));
+        else
+            completionHandler(false);
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler(false);
+    }
 }
 
 void NetworkProcess::logFrameNavigation(PAL::SessionID sessionID, const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, const String& sourcePrimaryDomain, const String& targetHost, const String& mainFrameHost, bool isRedirect, bool isMainFrame)
@@ -549,49 +1000,173 @@ void NetworkProcess::logFrameNavigation(PAL::SessionID sessionID, const String& 
         ASSERT_NOT_REACHED();
 }
 
-void NetworkProcess::logUserInteraction(PAL::SessionID sessionID, const String& targetPrimaryDomain, uint64_t contextId)
+void NetworkProcess::logUserInteraction(PAL::SessionID sessionID, const String& targetPrimaryDomain, CompletionHandler<void()>&& completionHandler)
 {
     if (auto* networkSession = this->networkSession(sessionID)) {
-        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics()) {
-            resourceLoadStatistics->logUserInteraction(targetPrimaryDomain, [this, contextId] {
-                parentProcessConnection()->send(Messages::NetworkProcessProxy::DidLogUserInteraction(contextId), 0);
-            });        
-        }
-    } else
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->logUserInteraction(targetPrimaryDomain, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
         ASSERT_NOT_REACHED();
+        completionHandler();
+    }
 }
 
-void NetworkProcess::removeAllStorageAccess(PAL::SessionID sessionID, uint64_t contextId)
+void NetworkProcess::hadUserInteraction(PAL::SessionID sessionID, const String& resourceDomain, CompletionHandler<void(bool)>&& completionHandler)
 {
-    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->hasHadUserInteraction(resourceDomain, WTFMove(completionHandler));
+        else
+            completionHandler(false);
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler(false);
+    }
+}
+
+void NetworkProcess::clearUserInteraction(PAL::SessionID sessionID, const String& resourceDomain, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->clearUserInteraction(resourceDomain, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::removeAllStorageAccess(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkStorageSession = storageSession(sessionID))
         networkStorageSession->removeAllStorageAccess();
     else
         ASSERT_NOT_REACHED();
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidRemoveAllStorageAccess(contextId), 0);
+    completionHandler();
 }
 
 void NetworkProcess::removePrevalentDomains(PAL::SessionID sessionID, const Vector<String>& domains)
 {
-    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+    if (auto* networkStorageSession = storageSession(sessionID))
         networkStorageSession->removePrevalentDomains(domains);
 }
 
-void NetworkProcess::setCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID, Seconds seconds, uint64_t contextId)
+void NetworkProcess::setCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID, Seconds seconds, CompletionHandler<void()>&& completionHandler)
 {
-    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+    if (auto* networkStorageSession = storageSession(sessionID))
         networkStorageSession->setCacheMaxAgeCapForPrevalentResources(Seconds { seconds });
     else
         ASSERT_NOT_REACHED();
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidSetCacheMaxAgeCapForPrevalentResources(contextId), 0);
+    completionHandler();
 }
 
-void NetworkProcess::resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID, uint64_t contextId)
+void NetworkProcess::setGrandfatheringTime(PAL::SessionID sessionID, Seconds seconds, CompletionHandler<void()>&& completionHandler)
 {
-    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setGrandfatheringTime(seconds, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setMaxStatisticsEntries(PAL::SessionID sessionID, uint64_t maximumEntryCount, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setMaxStatisticsEntries(maximumEntryCount, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setMinimumTimeBetweenDataRecordsRemoval(PAL::SessionID sessionID, Seconds seconds, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setMinimumTimeBetweenDataRecordsRemoval(seconds, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setPruneEntriesDownTo(PAL::SessionID sessionID, uint64_t pruneTargetCount, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setPruneEntriesDownTo(pruneTargetCount, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setTimeToLiveUserInteraction(PAL::SessionID sessionID, Seconds seconds, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setTimeToLiveUserInteraction(seconds, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setShouldClassifyResourcesBeforeDataRecordsRemoval(PAL::SessionID sessionID, bool value, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setShouldClassifyResourcesBeforeDataRecordsRemoval(value, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::setResourceLoadStatisticsEnabled(bool enabled)
+{
+    for (auto& networkSession : m_networkSessions.values())
+        networkSession.get().setResourceLoadStatisticsEnabled(enabled);
+}
+
+void NetworkProcess::setResourceLoadStatisticsDebugMode(PAL::SessionID sessionID, bool debugMode, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setResourceLoadStatisticsDebugMode(debugMode, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
+void NetworkProcess::resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkStorageSession = storageSession(sessionID))
         networkStorageSession->resetCacheMaxAgeCapForPrevalentResources();
     else
         ASSERT_NOT_REACHED();
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidResetCacheMaxAgeCapForPrevalentResources(contextId), 0);
+    completionHandler();
 }
 #endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 
@@ -650,8 +1225,6 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
 
         ~CallbackAggregator()
         {
-            ASSERT(RunLoop::isMain());
-
             RunLoop::main().dispatch([completionHandler = WTFMove(m_completionHandler), websiteData = WTFMove(m_websiteData)] () mutable {
                 completionHandler(websiteData);
             });
@@ -666,13 +1239,13 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
     }));
 
     if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
-        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+        if (auto* networkStorageSession = storageSession(sessionID))
             networkStorageSession->getHostnamesWithCookies(callbackAggregator->m_websiteData.hostNamesWithCookies);
     }
 
     if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
-        if (NetworkStorageSession::storageSession(sessionID))
-            callbackAggregator->m_websiteData.originsWithCredentials = NetworkStorageSession::storageSession(sessionID)->credentialStorage().originsWithCredentials();
+        if (storageSession(sessionID))
+            callbackAggregator->m_websiteData.originsWithCredentials = storageSession(sessionID)->credentialStorage().originsWithCredentials();
     }
 
     if (websiteDataTypes.contains(WebsiteDataType::DOMCache)) {
@@ -683,7 +1256,7 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
 
 #if PLATFORM(COCOA)
     if (websiteDataTypes.contains(WebsiteDataType::HSTSCache)) {
-        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+        if (auto* networkStorageSession = storageSession(sessionID))
             getHostNamesWithHSTSCache(*networkStorageSession, callbackAggregator->m_websiteData.hostNamesWithHSTSCache);
     }
 #endif
@@ -722,19 +1295,19 @@ void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<Websi
 {
 #if PLATFORM(COCOA)
     if (websiteDataTypes.contains(WebsiteDataType::HSTSCache)) {
-        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+        if (auto* networkStorageSession = storageSession(sessionID))
             clearHSTSCache(*networkStorageSession, modifiedSince);
     }
 #endif
 
     if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
-        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+        if (auto* networkStorageSession = storageSession(sessionID))
             networkStorageSession->deleteAllCookiesModifiedSince(modifiedSince);
     }
 
     if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
-        if (NetworkStorageSession::storageSession(sessionID))
-            NetworkStorageSession::storageSession(sessionID)->credentialStorage().clearCredentials();
+        if (auto* session = storageSession(sessionID))
+            session->credentialStorage().clearCredentials();
     }
 
     auto clearTasksHandler = WTF::CallbackAggregator::create([this, callbackID] {
@@ -752,6 +1325,23 @@ void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<Websi
 #if ENABLE(SERVICE_WORKER)
     if (websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations) && !sessionID.isEphemeral())
         swServerForSession(sessionID).clearAll([clearTasksHandler = clearTasksHandler.copyRef()] { });
+#endif
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    if (websiteDataTypes.contains(WebsiteDataType::ResourceLoadStatistics)) {
+        if (auto* networkSession = this->networkSession(sessionID)) {
+            if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics()) {
+                auto deletedTypesRaw = websiteDataTypes.toRaw();
+                auto monitoredTypesRaw = WebResourceLoadStatisticsStore::monitoredDataTypes().toRaw();
+                
+                // If we are deleting all of the data types that the resource load statistics store monitors
+                // we do not need to re-grandfather old data.
+                auto shouldGrandfather = ((monitoredTypesRaw & deletedTypesRaw) == monitoredTypesRaw) ? ShouldGrandfatherStatistics::No : ShouldGrandfatherStatistics::Yes;
+                
+                resourceLoadStatistics->scheduleClearInMemoryAndPersistent(modifiedSince, shouldGrandfather, [clearTasksHandler = clearTasksHandler.copyRef()] { });
+            }
+        }
+    }
 #endif
 
     if (websiteDataTypes.contains(WebsiteDataType::DiskCache) && !sessionID.isEphemeral())
@@ -785,13 +1375,13 @@ static void clearDiskCacheEntries(NetworkCache::Cache* cache, const Vector<Secur
 void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, const Vector<SecurityOriginData>& originDatas, const Vector<String>& cookieHostNames, const Vector<String>& HSTSCacheHostNames, uint64_t callbackID)
 {
     if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
-        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+        if (auto* networkStorageSession = storageSession(sessionID))
             networkStorageSession->deleteCookiesForHostnames(cookieHostNames);
     }
 
 #if PLATFORM(COCOA)
     if (websiteDataTypes.contains(WebsiteDataType::HSTSCache)) {
-        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
+        if (auto* networkStorageSession = storageSession(sessionID))
             deleteHSTSCacheForHostNames(*networkStorageSession, HSTSCacheHostNames);
     }
 #endif
@@ -821,6 +1411,259 @@ void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, Optio
     if (websiteDataTypes.contains(WebsiteDataType::DiskCache) && !sessionID.isEphemeral())
         clearDiskCacheEntries(cache(), originDatas, [clearTasksHandler = WTFMove(clearTasksHandler)] { });
 }
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+static Vector<String> filterForTopLevelDomains(const Vector<String>& topLevelDomains, const HashSet<String>& foundValues)
+{
+    Vector<String> result;
+    for (const auto& hostname : topLevelDomains) {
+        if (foundValues.contains(hostname))
+            result.append(hostname);
+    }
+    
+    return result;
+}
+
+static Vector<WebsiteData::Entry> filterForTopLevelDomains(const Vector<String>& topLevelDomains, const Vector<WebsiteData::Entry>& foundValues)
+{
+    Vector<WebsiteData::Entry> result;
+    for (const auto& value : foundValues) {
+        if (topLevelDomains.contains(value.origin.host))
+            result.append(value);
+    }
+    
+    return result;
+}
+
+void NetworkProcess::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, Vector<String>&& topPrivatelyControlledDomains, bool shouldNotifyPage, CompletionHandler<void(const HashSet<String>&)>&& completionHandler)
+{
+    OptionSet<WebsiteDataFetchOption> fetchOptions = WebsiteDataFetchOption::DoNotCreateProcesses;
+
+    struct CallbackAggregator final : public RefCounted<CallbackAggregator> {
+        explicit CallbackAggregator(CompletionHandler<void(const HashSet<String>&)>&& completionHandler)
+            : m_completionHandler(WTFMove(completionHandler))
+        {
+        }
+        
+        ~CallbackAggregator()
+        {
+            RunLoop::main().dispatch([completionHandler = WTFMove(m_completionHandler), websiteData = WTFMove(m_websiteData)] () mutable {
+                HashSet<String> origins;
+                for (const auto& hostnameWithCookies : websiteData.hostNamesWithCookies)
+                    origins.add(hostnameWithCookies);
+
+                for (const auto& hostnameWithHSTS : websiteData.hostNamesWithHSTSCache)
+                    origins.add(hostnameWithHSTS);
+
+                for (const auto& entry : websiteData.entries)
+                    origins.add(entry.origin.host);
+
+                completionHandler(origins);
+            });
+        }
+        
+        CompletionHandler<void(const HashSet<String>&)> m_completionHandler;
+        WebsiteData m_websiteData;
+    };
+    
+    auto callbackAggregator = adoptRef(*new CallbackAggregator([this, completionHandler = WTFMove(completionHandler), shouldNotifyPage] (const HashSet<String>& originsWithData) mutable {
+        if (shouldNotifyPage)
+            parentProcessConnection()->send(Messages::NetworkProcessProxy::NotifyWebsiteDataDeletionForTopPrivatelyOwnedDomainsFinished(), 0);
+        
+        RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), originsWithData = crossThreadCopy(originsWithData)] () mutable {
+            completionHandler(originsWithData);
+        });
+    }));
+
+    auto& websiteDataStore = callbackAggregator->m_websiteData;
+
+    Vector<String> hostnamesWithCookiesToDelete;
+    if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
+        if (auto* networkStorageSession = storageSession(sessionID)) {
+            networkStorageSession->getHostnamesWithCookies(websiteDataStore.hostNamesWithCookies);
+            hostnamesWithCookiesToDelete = filterForTopLevelDomains(topPrivatelyControlledDomains, websiteDataStore.hostNamesWithCookies);
+            networkStorageSession->deleteCookiesForHostnames(hostnamesWithCookiesToDelete);
+        }
+    }
+
+    Vector<String> hostnamesWithHSTSToDelete;
+#if PLATFORM(COCOA)
+    if (websiteDataTypes.contains(WebsiteDataType::HSTSCache)) {
+        if (auto* networkStorageSession = storageSession(sessionID)) {
+            getHostNamesWithHSTSCache(*networkStorageSession, websiteDataStore.hostNamesWithHSTSCache);
+            hostnamesWithHSTSToDelete = filterForTopLevelDomains(topPrivatelyControlledDomains, websiteDataStore.hostNamesWithHSTSCache);
+            deleteHSTSCacheForHostNames(*networkStorageSession, hostnamesWithHSTSToDelete);
+        }
+    }
+#endif
+
+    /*
+    // FIXME: No API to delete credentials by origin
+    if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
+        if (storageSession(sessionID))
+            websiteDataStore.originsWithCredentials = storageSession(sessionID)->credentialStorage().originsWithCredentials();
+    }
+    */
+    
+    if (websiteDataTypes.contains(WebsiteDataType::DOMCache)) {
+        CacheStorage::Engine::fetchEntries(*this, sessionID, fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes), [this, topPrivatelyControlledDomains, sessionID, callbackAggregator = callbackAggregator.copyRef()](auto entries) mutable {
+            
+            auto entriesToDelete = filterForTopLevelDomains(topPrivatelyControlledDomains, entries);
+
+            callbackAggregator->m_websiteData.entries.appendVector(entriesToDelete);
+            
+            for (auto& entry : entriesToDelete)
+                CacheStorage::Engine::clearCachesForOrigin(*this, sessionID, SecurityOriginData { entry.origin }, [callbackAggregator = callbackAggregator.copyRef()] { });
+        });
+    }
+    
+#if ENABLE(INDEXED_DATABASE)
+    auto path = m_idbDatabasePaths.get(sessionID);
+    if (!path.isEmpty() && websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases)) {
+        // FIXME: Pick the right database store based on the session ID.
+        postStorageTask(CrossThreadTask([this, sessionID, callbackAggregator = callbackAggregator.copyRef(), path = WTFMove(path), topPrivatelyControlledDomains]() mutable {
+            RunLoop::main().dispatch([this, sessionID, topPrivatelyControlledDomains = crossThreadCopy(topPrivatelyControlledDomains), callbackAggregator = callbackAggregator.copyRef(), securityOrigins = indexedDatabaseOrigins(path)] {
+                Vector<SecurityOriginData> entriesToDelete;
+                for (const auto& securityOrigin : securityOrigins) {
+                    if (!topPrivatelyControlledDomains.contains(securityOrigin.host))
+                        continue;
+
+                    entriesToDelete.append(securityOrigin);
+                    callbackAggregator->m_websiteData.entries.append({ securityOrigin, WebsiteDataType::IndexedDBDatabases, 0 });
+                }
+
+                idbServer(sessionID).closeAndDeleteDatabasesForOrigins(entriesToDelete, [callbackAggregator = callbackAggregator.copyRef()] { });
+            });
+        }));
+    }
+#endif
+    
+#if ENABLE(SERVICE_WORKER)
+    path = m_swDatabasePaths.get(sessionID);
+    if (!path.isEmpty() && websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)) {
+        swServerForSession(sessionID).getOriginsWithRegistrations([this, sessionID, topPrivatelyControlledDomains, callbackAggregator = callbackAggregator.copyRef()](const HashSet<SecurityOriginData>& securityOrigins) mutable {
+            for (auto& securityOrigin : securityOrigins) {
+                if (!topPrivatelyControlledDomains.contains(securityOrigin.host))
+                    continue;
+                callbackAggregator->m_websiteData.entries.append({ securityOrigin, WebsiteDataType::ServiceWorkerRegistrations, 0 });
+                swServerForSession(sessionID).clear(securityOrigin, [callbackAggregator = callbackAggregator.copyRef()] { });
+            }
+        });
+    }
+#endif
+    
+    if (websiteDataTypes.contains(WebsiteDataType::DiskCache)) {
+        fetchDiskCacheEntries(cache(), sessionID, fetchOptions, [this, topPrivatelyControlledDomains, callbackAggregator = callbackAggregator.copyRef()](auto entries) mutable {
+
+            Vector<SecurityOriginData> entriesToDelete;
+            for (auto& entry : entries) {
+                if (!topPrivatelyControlledDomains.contains(entry.origin.host))
+                    continue;
+                entriesToDelete.append(entry.origin);
+                callbackAggregator->m_websiteData.entries.append(entry);
+            }
+            clearDiskCacheEntries(cache(), entriesToDelete, [callbackAggregator = callbackAggregator.copyRef()] { });
+        });
+    }
+}
+
+void NetworkProcess::topPrivatelyControlledDomainsWithWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, bool shouldNotifyPage, CompletionHandler<void(HashSet<String>&&)>&& completionHandler)
+{
+    OptionSet<WebsiteDataFetchOption> fetchOptions = WebsiteDataFetchOption::DoNotCreateProcesses;
+    
+    struct CallbackAggregator final : public RefCounted<CallbackAggregator> {
+        explicit CallbackAggregator(CompletionHandler<void(HashSet<String>&&)>&& completionHandler)
+            : m_completionHandler(WTFMove(completionHandler))
+        {
+        }
+        
+        ~CallbackAggregator()
+        {
+            RunLoop::main().dispatch([completionHandler = WTFMove(m_completionHandler), websiteData = WTFMove(m_websiteData)] () mutable {
+                HashSet<String> origins;
+                for (const auto& hostnameWithCookies : websiteData.hostNamesWithCookies)
+                    origins.add(hostnameWithCookies);
+                
+                for (const auto& hostnameWithHSTS : websiteData.hostNamesWithHSTSCache)
+                    origins.add(hostnameWithHSTS);
+                
+                for (const auto& entry : websiteData.entries)
+                    origins.add(entry.origin.host);
+                
+                completionHandler(WTFMove(origins));
+            });
+        }
+        
+        CompletionHandler<void(HashSet<String>&&)> m_completionHandler;
+        WebsiteData m_websiteData;
+    };
+    
+    auto callbackAggregator = adoptRef(*new CallbackAggregator([this, completionHandler = WTFMove(completionHandler), shouldNotifyPage] (HashSet<String>&& originsWithData) mutable {
+        if (shouldNotifyPage)
+            parentProcessConnection()->send(Messages::NetworkProcessProxy::NotifyWebsiteDataScanForTopPrivatelyControlledDomainsFinished(), 0);
+
+        RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), originsWithData = crossThreadCopy(originsWithData)] () mutable {
+            completionHandler(WTFMove(originsWithData));
+        });
+    }));
+    
+    auto& websiteDataStore = callbackAggregator->m_websiteData;
+    
+    Vector<String> hostnamesWithCookiesToDelete;
+    if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
+        if (auto* networkStorageSession = storageSession(sessionID))
+            networkStorageSession->getHostnamesWithCookies(websiteDataStore.hostNamesWithCookies);
+    }
+    
+    Vector<String> hostnamesWithHSTSToDelete;
+#if PLATFORM(COCOA)
+    if (websiteDataTypes.contains(WebsiteDataType::HSTSCache)) {
+        if (auto* networkStorageSession = storageSession(sessionID))
+            getHostNamesWithHSTSCache(*networkStorageSession, websiteDataStore.hostNamesWithHSTSCache);
+    }
+#endif
+
+    if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
+        if (auto* networkStorageSession = storageSession(sessionID))
+            websiteDataStore.originsWithCredentials = networkStorageSession->credentialStorage().originsWithCredentials();
+    }
+    
+    if (websiteDataTypes.contains(WebsiteDataType::DOMCache)) {
+        CacheStorage::Engine::fetchEntries(*this, sessionID, fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes), [callbackAggregator = callbackAggregator.copyRef()](auto entries) mutable {
+            callbackAggregator->m_websiteData.entries.appendVector(entries);
+        });
+    }
+    
+#if ENABLE(INDEXED_DATABASE)
+    auto path = m_idbDatabasePaths.get(sessionID);
+    if (!path.isEmpty() && websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases)) {
+        // FIXME: Pick the right database store based on the session ID.
+        postStorageTask(CrossThreadTask([this, callbackAggregator = callbackAggregator.copyRef(), path = WTFMove(path)]() mutable {
+            RunLoop::main().dispatch([callbackAggregator = callbackAggregator.copyRef(), securityOrigins = indexedDatabaseOrigins(path)] {
+                for (const auto& securityOrigin : securityOrigins)
+                    callbackAggregator->m_websiteData.entries.append({ securityOrigin, WebsiteDataType::IndexedDBDatabases, 0 });
+            });
+        }));
+    }
+#endif
+    
+#if ENABLE(SERVICE_WORKER)
+    path = m_swDatabasePaths.get(sessionID);
+    if (!path.isEmpty() && websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)) {
+        swServerForSession(sessionID).getOriginsWithRegistrations([callbackAggregator = callbackAggregator.copyRef()](const HashSet<SecurityOriginData>& securityOrigins) mutable {
+            for (auto& securityOrigin : securityOrigins)
+                callbackAggregator->m_websiteData.entries.append({ securityOrigin, WebsiteDataType::ServiceWorkerRegistrations, 0 });
+        });
+    }
+#endif
+    
+    if (websiteDataTypes.contains(WebsiteDataType::DiskCache)) {
+        fetchDiskCacheEntries(cache(), sessionID, fetchOptions, [callbackAggregator = callbackAggregator.copyRef()](auto entries) mutable {
+            callbackAggregator->m_websiteData.entries.appendVector(entries);
+        });
+    }
+}
+#endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 
 CacheStorage::Engine* NetworkProcess::findCacheEngine(const PAL::SessionID& sessionID)
 {
@@ -903,7 +1746,7 @@ void NetworkProcess::setCacheModel(CacheModel cacheModel)
     unsigned urlCacheMemoryCapacity = 0;
     uint64_t urlCacheDiskCapacity = 0;
     uint64_t diskFreeSize = 0;
-    if (WebCore::FileSystem::getVolumeFreeSpace(m_diskCacheDirectory, diskFreeSize)) {
+    if (FileSystem::getVolumeFreeSpace(m_diskCacheDirectory, diskFreeSize)) {
         // As a fudge factor, use 1000 instead of 1024, in case the reported byte
         // count doesn't align exactly to a megabyte boundary.
         diskFreeSize /= KB * 1000;

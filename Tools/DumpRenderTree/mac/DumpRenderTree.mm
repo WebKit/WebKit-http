@@ -1010,6 +1010,8 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     preferences.colorFilterEnabled = options.enableColorFilter;
     preferences.selectionAcrossShadowBoundariesEnabled = options.enableSelectionAcrossShadowBoundaries;
     preferences.webGPUEnabled = options.enableWebGPU;
+    preferences.CSSLogicalEnabled = options.enableCSSLogical;
+    preferences.adClickAttributionEnabled = options.adClickAttributionEnabled;
 }
 
 // Called once on DumpRenderTree startup.
@@ -2011,6 +2013,9 @@ static void runTest(const string& inputLine)
     sizeWebViewForCurrentTest();
     gTestRunner->setIconDatabaseEnabled(false);
     gTestRunner->clearAllApplicationCaches();
+
+    gTestRunner->clearAllDatabases();
+    gTestRunner->setIDBPerOriginQuota(50 * MB);
 
     if (disallowedURLs)
         CFSetRemoveAllValues(disallowedURLs);

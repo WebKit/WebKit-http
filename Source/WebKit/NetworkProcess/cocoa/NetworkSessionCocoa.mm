@@ -377,7 +377,7 @@ static String stringForSSLCipher(SSLCipherSuite cipher)
     completionHandler(WebCore::createHTTPBodyNSInputStream(*body).get());
 }
 
-#if HAVE(CFNETWORK_WITH_IGNORE_HSTS)
+#if HAVE(CFNETWORK_WITH_IGNORE_HSTS) && ENABLE(RESOURCE_LOAD_STATISTICS)
 static NSURLRequest* downgradeRequest(NSURLRequest *request)
 {
     NSMutableURLRequest *nsMutableRequest = [[request mutableCopy] autorelease];
@@ -398,7 +398,9 @@ static bool schemeWasUpgradedDueToDynamicHSTS(NSURLRequest *request)
     return [request respondsToSelector:@selector(_schemeWasUpgradedDueToDynamicHSTS)]
         && [request _schemeWasUpgradedDueToDynamicHSTS];
 }
+#endif
 
+#if HAVE(CFNETWORK_WITH_IGNORE_HSTS)
 static void setIgnoreHSTS(NSMutableURLRequest *request, bool ignoreHSTS)
 {
     if ([request respondsToSelector:@selector(_setIgnoreHSTS:)])
@@ -444,8 +446,8 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
         auto completionHandlerCopy = Block_copy(completionHandler);
 
         bool shouldIgnoreHSTS = false;
-#if HAVE(CFNETWORK_WITH_IGNORE_HSTS)
-        shouldIgnoreHSTS = schemeWasUpgradedDueToDynamicHSTS(request) && WebCore::NetworkStorageSession::storageSession(_session->sessionID())->shouldBlockCookies(request, networkDataTask->frameID(), networkDataTask->pageID());
+#if HAVE(CFNETWORK_WITH_IGNORE_HSTS) && ENABLE(RESOURCE_LOAD_STATISTICS)        
+        shouldIgnoreHSTS = schemeWasUpgradedDueToDynamicHSTS(request) && _session->networkProcess().storageSession(_session->sessionID())->shouldBlockCookies(request, networkDataTask->frameID(), networkDataTask->pageID());
         if (shouldIgnoreHSTS) {
             request = downgradeRequest(request);
             ASSERT([request.URL.scheme isEqualToString:@"http"]);
@@ -477,8 +479,8 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
 
     if (auto* networkDataTask = [self existingTask:task]) {
         bool shouldIgnoreHSTS = false;
-#if HAVE(CFNETWORK_WITH_IGNORE_HSTS)
-        shouldIgnoreHSTS = schemeWasUpgradedDueToDynamicHSTS(request) && WebCore::NetworkStorageSession::storageSession(_session->sessionID())->shouldBlockCookies(request, networkDataTask->frameID(), networkDataTask->pageID());
+#if HAVE(CFNETWORK_WITH_IGNORE_HSTS) && ENABLE(RESOURCE_LOAD_STATISTICS)
+        shouldIgnoreHSTS = schemeWasUpgradedDueToDynamicHSTS(request) && _session->networkProcess().storageSession(_session->sessionID())->shouldBlockCookies(request, networkDataTask->frameID(), networkDataTask->pageID());
         if (shouldIgnoreHSTS) {
             request = downgradeRequest(request);
             ASSERT([request.URL.scheme isEqualToString:@"http"]);
@@ -549,7 +551,7 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
         WebCore::AuthenticationChallenge authenticationChallenge(challenge);
         auto completionHandlerCopy = Block_copy(completionHandler);
         auto sessionID = _session->sessionID();
-        auto challengeCompletionHandler = [completionHandlerCopy, sessionID, authenticationChallenge, taskIdentifier, partition = networkDataTask->partition()](WebKit::AuthenticationChallengeDisposition disposition, const WebCore::Credential& credential)
+        auto challengeCompletionHandler = [networkProcess = makeRef(_session->networkProcess()), completionHandlerCopy, sessionID, authenticationChallenge, taskIdentifier, partition = networkDataTask->partition()](WebKit::AuthenticationChallengeDisposition disposition, const WebCore::Credential& credential)
         {
 #if !LOG_DISABLED
             LOG(NetworkSession, "%llu didReceiveChallenge completionHandler %d", taskIdentifier, disposition);
@@ -566,7 +568,7 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
                 URL urlToStore;
                 if (authenticationChallenge.failureResponse().httpStatusCode() == 401)
                     urlToStore = authenticationChallenge.failureResponse().url();
-                if (auto storageSession = WebCore::NetworkStorageSession::storageSession(sessionID))
+                if (auto storageSession = networkProcess->storageSession(sessionID))
                     storageSession->credentialStorage().set(partition, nonPersistentCredential, authenticationChallenge.protectionSpace(), urlToStore);
                 else
                     ASSERT_NOT_REACHED();
@@ -777,7 +779,7 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
         auto& downloadManager = _session->networkProcess().downloadManager();
         auto download = std::make_unique<WebKit::Download>(downloadManager, downloadID, downloadTask, _session->sessionID(), networkDataTask->suggestedFilename());
         networkDataTask->transferSandboxExtensionToDownload(*download);
-        ASSERT(WebCore::FileSystem::fileExists(networkDataTask->pendingDownloadLocation()));
+        ASSERT(FileSystem::fileExists(networkDataTask->pendingDownloadLocation()));
         download->didCreateDestination(networkDataTask->pendingDownloadLocation());
         downloadManager.dataTaskBecameDownloadTask(downloadID, WTFMove(download));
 
@@ -914,7 +916,7 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
     configuration._companionProxyPreference = NSURLSessionCompanionProxyPreferencePreferDirectToCloud;
 #endif
 
-    auto* storageSession = WebCore::NetworkStorageSession::storageSession(parameters.sessionID);
+    auto* storageSession = networkProcess.storageSession(parameters.sessionID);
     RELEASE_ASSERT(storageSession);
 
     NSHTTPCookieStorage* cookieStorage;
@@ -944,9 +946,10 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
     m_statelessSessionDelegate = adoptNS([[WKNetworkSessionDelegate alloc] initWithNetworkSession:*this withCredentials:false]);
     m_statelessSession = [NSURLSession sessionWithConfiguration:configuration delegate:static_cast<id>(m_statelessSessionDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     m_resourceLoadStatisticsDirectory = parameters.resourceLoadStatisticsDirectory;
-    if (parameters.enableResourceLoadStatistics)
-        enableResourceLoadStatistics();
+    setResourceLoadStatisticsEnabled(parameters.enableResourceLoadStatistics);
+#endif
 }
 
 NetworkSessionCocoa::~NetworkSessionCocoa()

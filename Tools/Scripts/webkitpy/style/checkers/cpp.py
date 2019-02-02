@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2009, 2010, 2012 Google Inc. All rights reserved.
 # Copyright (C) 2009 Torch Mobile Inc.
-# Copyright (C) 2009, 2013 Apple Inc. All rights reserved.
+# Copyright (C) 2009-2019 Apple Inc. All rights reserved.
 # Copyright (C) 2010 Chris Jerdonek (cjerdonek@webkit.org)
 #
 # Redistribution and use in source and binary forms, with or without
@@ -2104,7 +2104,7 @@ def check_member_initialization_list(clean_lines, line_number, error):
     begin_line = line
     # match the start of initialization list
     if search(r'^(?P<indentation>\s*)((explicit\s+)?[^(\s|\?)]+\([^\?]*\)\s?\:|^(\s|\?)*\:)([^\:]|\Z)[^;]*$', line):
-        if search(r'[^:]\:[^\:\s]+', line):
+        if search(r'[^:]\:[^\:\s]+', line) and not search(r'^\s*:\s\S+', line):
             error(line_number, 'whitespace/init', 4,
                 'Missing spaces around :')
         if (not line.lstrip().startswith(':')) and search(r'[^\s]\(.*\)\s?\:.*[^;]*$', line):
@@ -3332,6 +3332,18 @@ def check_language(filename, clean_lines, line_number, file_extension, include_s
                           'RetainPtr<> should never contain a type with \'*\'. Correct: RetainPtr<NSString>, RetainPtr<CFStringRef>.')
                 break
 
+    matched = re.compile('^\s*SOFT_LINK_(PRIVATE_)?FRAMEWORK.*\((\S+)\)').search(line)
+    if matched:
+        framework_name = matched.group(2)
+        if file_extension == 'h' and not search(r'^\s*SOFT_LINK_(PRIVATE_)?FRAMEWORK_FOR_HEADER.*\(', line):
+            error(line_number, 'softlink/header', 5,
+                  'Never soft-link frameworks in headers. Put the soft-link macros in a source file, or create {framework}SoftLink.{{cpp,mm}} instead.'.format(framework=framework_name))
+
+        frameworks_with_soft_links = ['CoreMedia', 'CoreVideo', 'DataDetectorsCore', 'MediaAccessibility', 'MediaRemote', 'PassKit', 'QuickLook', 'UIKit', 'VideoToolbox']
+        if framework_name in frameworks_with_soft_links and not re.compile('^\s*SOFT_LINK_(PRIVATE_)?FRAMEWORK_FOR_(HEADER|SOURCE)(_WITH_EXPORT)?\({}\)'.format(framework_name)).search(line):
+            error(line_number, 'softlink/framework', 5,
+                  'Use {framework}SoftLink.{{cpp,h,mm}} to soft-link to {framework}.framework.'.format(framework=framework_name))
+
     # Check for suspicious usage of "if" like
     # } if (a == b) {
     if search(r'\}\s*if\s*\(', line):
@@ -4084,6 +4096,8 @@ class CppChecker(object):
         'security/assertion',
         'security/printf',
         'security/temp_file',
+        'softlink/framework',
+        'softlink/header',
         'whitespace/blank_line',
         'whitespace/braces',
         'whitespace/brackets',

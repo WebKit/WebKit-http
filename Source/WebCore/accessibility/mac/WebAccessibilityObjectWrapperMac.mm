@@ -412,6 +412,12 @@ using namespace HTMLNames;
 #define NSAccessibilityLinkRelationshipTypeAttribute @"AXLinkRelationshipType"
 #endif
 
+#ifndef NSAccessibilityRelativeFrameAttribute
+#define NSAccessibilityRelativeFrameAttribute @"AXRelativeFrame"
+#endif
+
+#define _axBackingObject self.axBackingObject
+
 extern "C" AXUIElementRef NSAccessibilityCreateAXUIElementRef(id element);
 
 @implementation WebAccessibilityObjectWrapper
@@ -1320,6 +1326,7 @@ IGNORE_WARNINGS_END
             NSAccessibilityFocusableAncestorAttribute,
             NSAccessibilityEditableAncestorAttribute,
             NSAccessibilityHighestEditableAncestorAttribute,
+            NSAccessibilityRelativeFrameAttribute,
             nil];
     }
     if (commonMenuAttrs == nil) {
@@ -1746,50 +1753,6 @@ static NSMutableArray *convertStringsToNSArray(const Vector<String>& vector)
     return static_cast<PluginViewBase*>(pluginWidget)->accessibilityAssociatedPluginParentForElement(m_object->element());
 }
 
-- (CGPoint)convertPointToScreenSpace:(FloatPoint &)point
-{
-    FrameView* frameView = m_object->documentFrameView();
-    
-    // WebKit1 code path... platformWidget() exists.
-    if (frameView && frameView->platformWidget()) {
-        NSPoint nsPoint = (NSPoint)point;
-        NSView* view = frameView->documentView();
-        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
-        nsPoint = [[view window] convertBaseToScreen:[view convertPoint:nsPoint toView:nil]];
-        ALLOW_DEPRECATED_DECLARATIONS_END
-        return CGPointMake(nsPoint.x, nsPoint.y);
-    } else {
-        
-        // Find the appropriate scroll view to use to convert the contents to the window.
-        ScrollView* scrollView = nullptr;
-        AccessibilityObject* parent = nullptr;
-        for (parent = m_object->parentObject(); parent; parent = parent->parentObject()) {
-            if (is<AccessibilityScrollView>(*parent)) {
-                scrollView = downcast<AccessibilityScrollView>(*parent).scrollView();
-                break;
-            }
-        }
-        
-        IntPoint intPoint = flooredIntPoint(point);
-        if (scrollView)
-            intPoint = scrollView->contentsToRootView(intPoint);
-        
-        Page* page = m_object->page();
-        
-        // If we have an empty chrome client (like SVG) then we should use the page
-        // of the scroll view parent to help us get to the screen rect.
-        if (parent && page && page->chrome().client().isEmptyChromeClient())
-            page = parent->page();
-        
-        if (page) {
-            IntRect rect = IntRect(intPoint, IntSize(0, 0));            
-            intPoint = page->chrome().rootViewToScreen(rect).location();
-        }
-        
-        return intPoint;
-    }
-}
-
 static void WebTransformCGPathToNSBezierPath(void* info, const CGPathElement *element)
 {
     NSBezierPath *bezierPath = (__bridge NSBezierPath *)info;
@@ -1836,14 +1799,14 @@ static void WebTransformCGPathToNSBezierPath(void* info, const CGPathElement *el
 
 - (NSValue *)position
 {
-    IntRect rect = snappedIntRect(m_object->elementRect());
+    auto rect = snappedIntRect(m_object->elementRect());
     
     // The Cocoa accessibility API wants the lower-left corner.
-    FloatPoint floatPoint = FloatPoint(rect.x(), rect.maxY());
+    auto floatPoint = FloatPoint(rect.x(), rect.maxY());
 
-    CGPoint cgPoint = [self convertPointToScreenSpace:floatPoint];
-    
-    return [NSValue valueWithPoint:NSMakePoint(cgPoint.x, cgPoint.y)];
+    auto floatRect = FloatRect(floatPoint, FloatSize());
+    CGPoint cgPoint = [self convertRectToSpace:floatRect space:ScreenSpace].origin;
+    return [NSValue valueWithPoint:NSPointFromCGPoint(cgPoint)];
 }
 
 using AccessibilityRoleMap = HashMap<int, CFStringRef>;
@@ -2009,10 +1972,10 @@ static NSString *roleValueToNSString(AccessibilityRole value)
 - (NSString*)role
 {
     ALLOW_DEPRECATED_DECLARATIONS_BEGIN
-    if (m_object->isAttachment())
+    if (_axBackingObject->isAttachment())
         return [[self attachmentView] accessibilityAttributeValue:NSAccessibilityRoleAttribute];
     ALLOW_DEPRECATED_DECLARATIONS_END
-    AccessibilityRole role = m_object->roleValue();
+    AccessibilityRole role = _axBackingObject->roleValue();
 
     if (role == AccessibilityRole::Label && is<AccessibilityLabel>(*m_object) && downcast<AccessibilityLabel>(*m_object).containsOnlyStaticText())
         role = AccessibilityRole::StaticText;
@@ -2039,7 +2002,7 @@ ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if (m_object->isSearchField())
         return NSAccessibilitySearchFieldSubrole;
     
-    if (m_object->isAttachment()) {
+    if (_axBackingObject->isAttachment()) {
         NSView* attachView = [self attachmentView];
         if ([[attachView accessibilityAttributeNames] containsObject:NSAccessibilitySubroleAttribute])
             return [attachView accessibilityAttributeValue:NSAccessibilitySubroleAttribute];
@@ -2250,7 +2213,7 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 
     ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     // attachments have the AXImage role, but a different subrole
-    if (m_object->isAttachment())
+    if (_axBackingObject->isAttachment())
         return [[self attachmentView] accessibilityAttributeValue:NSAccessibilityRoleDescriptionAttribute];
     ALLOW_DEPRECATED_DECLARATIONS_END
 
@@ -2607,7 +2570,7 @@ IGNORE_WARNINGS_END
         return [NSNumber numberWithBool: m_object->isVisited()];
     
     if ([attributeName isEqualToString: NSAccessibilityTitleAttribute]) {
-        if (m_object->isAttachment()) {
+        if (_axBackingObject->isAttachment()) {
             if ([[[self attachmentView] accessibilityAttributeNames] containsObject:NSAccessibilityTitleAttribute])
                 return [[self attachmentView] accessibilityAttributeValue:NSAccessibilityTitleAttribute];
         }
@@ -2624,7 +2587,7 @@ IGNORE_WARNINGS_END
     }
     
     if ([attributeName isEqualToString: NSAccessibilityDescriptionAttribute]) {
-        if (m_object->isAttachment()) {
+        if (_axBackingObject->isAttachment()) {
             if ([[[self attachmentView] accessibilityAttributeNames] containsObject:NSAccessibilityDescriptionAttribute])
                 return [[self attachmentView] accessibilityAttributeValue:NSAccessibilityDescriptionAttribute];
         }
@@ -2632,7 +2595,7 @@ IGNORE_WARNINGS_END
     }
     
     if ([attributeName isEqualToString: NSAccessibilityValueAttribute]) {
-        if (m_object->isAttachment()) {
+        if (_axBackingObject->isAttachment()) {
             if ([[[self attachmentView] accessibilityAttributeNames] containsObject:NSAccessibilityValueAttribute])
                 return [[self attachmentView] accessibilityAttributeValue:NSAccessibilityValueAttribute];
         }
@@ -3223,6 +3186,11 @@ IGNORE_WARNINGS_END
         return convertToNSArray(details);
     }
 
+    if ([attributeName isEqualToString:NSAccessibilityRelativeFrameAttribute]) {
+        auto rect = FloatRect(snappedIntRect(m_object->elementRect()));
+        return [NSValue valueWithRect:NSRectFromCGRect([self convertRectToSpace:rect space:PageSpace])];
+    }
+    
     if ([attributeName isEqualToString:@"AXErrorMessageElements"]) {
         AccessibilityObject::AccessibilityChildrenVector errorMessages;
         m_object->ariaErrorMessageElements(errorMessages);

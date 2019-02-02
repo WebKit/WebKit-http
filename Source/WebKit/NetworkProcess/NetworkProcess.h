@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,6 +46,10 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
 
+#if PLATFORM(COCOA)
+typedef struct OpaqueCFHTTPCookieStorage*  CFHTTPCookieStorageRef;
+#endif
+
 namespace IPC {
 class FormDataReference;
 }
@@ -77,6 +81,8 @@ class NetworkProcessSupplement;
 class NetworkProximityManager;
 class WebSWServerConnection;
 class WebSWServerToContextConnection;
+enum class ShouldGrandfatherStatistics : bool;
+enum class StorageAccessStatus : uint8_t;
 enum class WebsiteDataFetchOption;
 enum class WebsiteDataType;
 struct NetworkProcessCreationParameters;
@@ -102,8 +108,8 @@ class NetworkProcess : public ChildProcess, private DownloadManager::Client, pub
 {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
 public:
+    NetworkProcess(ChildProcessInitializationParameters&&);
     ~NetworkProcess();
-    static NetworkProcess& singleton();
     static constexpr ProcessType processType = ProcessType::Network;
 
     template <typename T>
@@ -131,7 +137,20 @@ public:
     void setSession(const PAL::SessionID&, Ref<NetworkSession>&&);
     NetworkSession* networkSession(const PAL::SessionID&) const override;
     void destroySession(const PAL::SessionID&);
-    
+
+    // Needed for test infrastructure
+    HashMap<PAL::SessionID, Ref<NetworkSession>>& networkSessions() { return m_networkSessions; }
+
+    void forEachNetworkStorageSession(const Function<void(WebCore::NetworkStorageSession&)>&);
+    WebCore::NetworkStorageSession* storageSession(const PAL::SessionID&) const;
+    WebCore::NetworkStorageSession& defaultStorageSession() const;
+    void switchToNewTestingSession();
+#if PLATFORM(COCOA)
+    void ensureSession(const PAL::SessionID&, const String& identifier, RetainPtr<CFHTTPCookieStorageRef>&&);
+#else
+    void ensureSession(const PAL::SessionID&, const String& identifier);
+#endif
+
     bool canHandleHTTPSServerTrustEvaluation() const { return m_canHandleHTTPSServerTrustEvaluation; }
 
     void processWillSuspendImminently(bool& handled);
@@ -159,17 +178,57 @@ public:
     void addWebsiteDataStore(WebsiteDataStoreParameters&&);
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    void updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID, const Vector<String>& domainsToBlock, uint64_t contextId);
-    void setAgeCapForClientSideCookies(PAL::SessionID, Optional<Seconds>, uint64_t contextId);
-    void hasStorageAccessForFrame(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, uint64_t contextId);
-    void getAllStorageAccessEntries(PAL::SessionID, uint64_t contextId);
-    void grantStorageAccess(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, uint64_t contextId);
+    void clearPrevalentResource(PAL::SessionID, const String& resourceDomain, CompletionHandler<void()>&&);
+    void clearUserInteraction(PAL::SessionID, const String& resourceDomain, CompletionHandler<void()>&&);
+    void deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(PAL::SessionID, OptionSet<WebsiteDataType>, Vector<String>&& topPrivatelyControlledDomains, bool shouldNotifyPage, CompletionHandler<void(const HashSet<String>&)>&&);
+    void dumpResourceLoadStatistics(PAL::SessionID, CompletionHandler<void(String)>&&);
+    void updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID, const Vector<String>& domainsToBlock, CompletionHandler<void()>&&);
+    void isGrandfathered(PAL::SessionID, const String& targetPrimaryDomain, CompletionHandler<void(bool)>&&);
+    void isPrevalentResource(PAL::SessionID, const String& resourceDomain, CompletionHandler<void(bool)>&&);
+    void isVeryPrevalentResource(PAL::SessionID, const String& resourceDomain, CompletionHandler<void(bool)>&&);
+    void setAgeCapForClientSideCookies(PAL::SessionID, Optional<Seconds>, CompletionHandler<void()>&&);
+    void isRegisteredAsRedirectingTo(PAL::SessionID, const String& redirectedFrom, const String& redirectedTo, CompletionHandler<void(bool)>&&);
+    void isRegisteredAsSubFrameUnder(PAL::SessionID, const String& subframe, const String& topFrame, CompletionHandler<void(bool)>&&);
+    void isRegisteredAsSubresourceUnder(PAL::SessionID, const String& subresource, const String& topFrame, CompletionHandler<void(bool)>&&);
+    void setGrandfathered(PAL::SessionID, const String& resourceDomain, bool isGrandfathered, CompletionHandler<void()>&&);
+    void setMaxStatisticsEntries(PAL::SessionID, uint64_t maximumEntryCount, CompletionHandler<void()>&&);
+    void setPrevalentResource(PAL::SessionID, const String& resourceDomain, CompletionHandler<void()>&&);
+    void setPrevalentResourceForDebugMode(PAL::SessionID, String resourceDomain, CompletionHandler<void()>&&);
+    void setVeryPrevalentResource(PAL::SessionID, const String& resourceDomain, CompletionHandler<void()>&&);
+    void setPruneEntriesDownTo(PAL::SessionID, uint64_t pruneTargetCount, CompletionHandler<void()>&&);
+    void hadUserInteraction(PAL::SessionID, const String& resourceDomain, CompletionHandler<void(bool)>&&);
+    void hasStorageAccessForFrame(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&&);
+    void getAllStorageAccessEntries(PAL::SessionID, CompletionHandler<void(Vector<String> domains)>&&);
+    void grantStorageAccess(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, bool userWasPrompted, CompletionHandler<void(bool)>&&);
+    void hasStorageAccess(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, CompletionHandler<void(bool)>&&);
     void logFrameNavigation(PAL::SessionID, const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, const String& sourcePrimaryDomain, const String& targetHost, const String& mainFrameHost, bool isRedirect, bool isMainFrame);
-    void logUserInteraction(PAL::SessionID, const String& targetPrimaryDomain, uint64_t contextId);
-    void removeAllStorageAccess(PAL::SessionID, uint64_t contextId);
+    void logUserInteraction(PAL::SessionID, const String& targetPrimaryDomain, CompletionHandler<void()>&&);
+    void removeAllStorageAccess(PAL::SessionID, CompletionHandler<void()>&&);
     void removePrevalentDomains(PAL::SessionID, const Vector<String>& domains);
-    void setCacheMaxAgeCapForPrevalentResources(PAL::SessionID, Seconds, uint64_t contextId);
-    void resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID, uint64_t contextId);
+    void requestStorageAccess(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&&);
+    void resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID, CompletionHandler<void()>&&);
+    void resetParametersToDefaultValues(PAL::SessionID, CompletionHandler<void()>&&);
+    void scheduleClearInMemoryAndPersistent(PAL::SessionID, Optional<WallTime> modifiedSince, ShouldGrandfatherStatistics, CompletionHandler<void()>&&);
+    void scheduleCookieBlockingUpdate(PAL::SessionID, CompletionHandler<void()>&&);
+    void scheduleStatisticsAndDataRecordsProcessing(PAL::SessionID, CompletionHandler<void()>&&);
+    void submitTelemetry(PAL::SessionID, CompletionHandler<void()>&&);
+    void setCacheMaxAgeCapForPrevalentResources(PAL::SessionID, Seconds, CompletionHandler<void()>&&);
+    void setGrandfatheringTime(PAL::SessionID, Seconds, CompletionHandler<void()>&&);
+    void setLastSeen(PAL::SessionID, const String& resourceDomain, Seconds, CompletionHandler<void()>&&);
+    void setMinimumTimeBetweenDataRecordsRemoval(PAL::SessionID, Seconds, CompletionHandler<void()>&&);
+    void setNotifyPagesWhenDataRecordsWereScanned(PAL::SessionID, bool value, CompletionHandler<void()>&&);
+    void setNotifyPagesWhenTelemetryWasCaptured(PAL::SessionID, bool value, CompletionHandler<void()>&&);
+    void setResourceLoadStatisticsEnabled(bool);
+    void setResourceLoadStatisticsDebugMode(PAL::SessionID, bool debugMode, CompletionHandler<void()>&&d);
+    void setShouldClassifyResourcesBeforeDataRecordsRemoval(PAL::SessionID, bool value, CompletionHandler<void()>&&);
+    void setSubframeUnderTopFrameOrigin(PAL::SessionID, String subframe, String topFrame, CompletionHandler<void()>&&);
+    void setSubresourceUnderTopFrameOrigin(PAL::SessionID, String subresource, String topFrame, CompletionHandler<void()>&&);
+    void setSubresourceUniqueRedirectTo(PAL::SessionID, String subresource, String hostNameRedirectedTo, CompletionHandler<void()>&&);
+    void setSubresourceUniqueRedirectFrom(PAL::SessionID, String subresource, String hostNameRedirectedFrom, CompletionHandler<void()>&&);
+    void setTimeToLiveUserInteraction(PAL::SessionID, Seconds, CompletionHandler<void()>&&);
+    void setTopFrameUniqueRedirectTo(PAL::SessionID, String topFrameHostName, String hostNameRedirectedTo, CompletionHandler<void()>&&);
+    void setTopFrameUniqueRedirectFrom(PAL::SessionID, String topFrameHostName, String hostNameRedirectedFrom, CompletionHandler<void()>&&);
+    void topPrivatelyControlledDomainsWithWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, bool shouldNotifyPage, CompletionHandler<void(HashSet<String>&&)>&&);
 #endif
 
     using CacheStorageParametersCallback = CompletionHandler<void(const String&, uint64_t quota)>;
@@ -232,9 +291,8 @@ public:
     void requestCacheStorageSpace(PAL::SessionID, const WebCore::ClientOrigin&, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t>)>&&);
 
 private:
-    NetworkProcess();
-
     void platformInitializeNetworkProcess(const NetworkProcessCreationParameters&);
+    std::unique_ptr<WebCore::NetworkStorageSession> platformCreateDefaultStorageSession() const;
 
     void terminate() override;
     void platformTerminate();
@@ -368,11 +426,11 @@ private:
     Vector<RefPtr<NetworkConnectionToWebProcess>> m_webProcessConnections;
 
     String m_diskCacheDirectory;
-    bool m_hasSetCacheModel;
-    CacheModel m_cacheModel;
+    bool m_hasSetCacheModel { false };
+    CacheModel m_cacheModel { CacheModel::DocumentViewer };
     bool m_suppressMemoryPressureHandler { false };
-    bool m_diskCacheIsDisabledForTesting;
-    bool m_canHandleHTTPSServerTrustEvaluation;
+    bool m_diskCacheIsDisabledForTesting { false };
+    bool m_canHandleHTTPSServerTrustEvaluation { true };
     String m_uiProcessBundleIdentifier;
     DownloadManager m_downloadManager;
 
@@ -386,6 +444,8 @@ private:
     HashSet<PAL::SessionID> m_sessionsControlledByAutomation;
     HashMap<PAL::SessionID, Vector<CacheStorageParametersCallback>> m_cacheStorageParametersCallbacks;
     HashMap<PAL::SessionID, Ref<NetworkSession>> m_networkSessions;
+    HashMap<PAL::SessionID, std::unique_ptr<WebCore::NetworkStorageSession>> m_networkStorageSessions;
+    mutable std::unique_ptr<WebCore::NetworkStorageSession> m_defaultNetworkStorageSession;
 
 #if PLATFORM(COCOA)
     void platformInitializeNetworkProcessCocoa(const NetworkProcessCreationParameters&);
@@ -394,7 +454,7 @@ private:
     // FIXME: We'd like to be able to do this without the #ifdef, but WorkQueue + BinarySemaphore isn't good enough since
     // multiple requests to clear the cache can come in before previous requests complete, and we need to wait for all of them.
     // In the future using WorkQueue and a counting semaphore would work, as would WorkQueue supporting the libdispatch concept of "work groups".
-    dispatch_group_t m_clearCacheDispatchGroup;
+    dispatch_group_t m_clearCacheDispatchGroup { nullptr };
 
     bool m_suppressesConnectionTerminationOnSystemChange { false };
 #endif
@@ -403,12 +463,12 @@ private:
     NetworkContentRuleListManager m_networkContentRuleListManager;
 #endif
 
-    Ref<WorkQueue> m_storageTaskQueue;
+    Ref<WorkQueue> m_storageTaskQueue { WorkQueue::create("com.apple.WebKit.StorageTask") };
 
 #if ENABLE(INDEXED_DATABASE)
     HashMap<PAL::SessionID, String> m_idbDatabasePaths;
     HashMap<PAL::SessionID, RefPtr<WebCore::IDBServer::IDBServer>> m_idbServers;
-    uint64_t m_idbPerOriginQuota;
+    uint64_t m_idbPerOriginQuota { WebCore::IDBServer::defaultPerOriginQuota };
 #endif
 
     Deque<CrossThreadTask> m_storageTasks;

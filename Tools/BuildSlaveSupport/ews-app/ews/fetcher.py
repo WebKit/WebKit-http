@@ -40,7 +40,10 @@ class FetchLoop():
 
     def run(self):
         while True:
-            BugzillaPatchFetcher().fetch()
+            try:
+                BugzillaPatchFetcher().fetch()
+            except Exception as e:
+                _log.error('Exception in BugzillaPatchFetcher: {}'.format(e))
             time.sleep(self.interval)
 
 
@@ -62,7 +65,8 @@ class BugzillaPatchFetcher():
                 _log.warn('Patch is obsolete, skipping')
                 Patch.set_obsolete(patch_id)
                 continue
-            rc = Buildbot.send_patch_to_buildbot(bz_patch['path'], properties=['patch_id={}'.format(patch_id), 'bug_id={}'.format(bz_patch['bug_id'])])
+            rc = Buildbot.send_patch_to_buildbot(bz_patch['path'],
+                     properties=['patch_id={}'.format(patch_id), 'bug_id={}'.format(bz_patch['bug_id']), 'owner={}'.format(bz_patch.get('creator', ''))])
             if rc == 0:
                 Patch.set_bug_id(patch_id, bz_patch['bug_id'])
                 Patch.set_sent_to_buildbot(patch_id)

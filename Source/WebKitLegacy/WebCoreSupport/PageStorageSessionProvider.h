@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "NetworkStorageSessionMap.h"
 #include <NetworkStorageSession.h>
 #include <Page.h>
 #include <StorageSessionProvider.h>
@@ -37,7 +38,7 @@ public:
     WebCore::NetworkStorageSession* storageSession() const
     {
         if (m_page)
-            return WebCore::NetworkStorageSession::storageSession(m_page->sessionID());
+            return NetworkStorageSessionMap::storageSession(m_page->sessionID());
         return nullptr;
     }
 

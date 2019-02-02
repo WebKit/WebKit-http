@@ -211,6 +211,16 @@ static CGPoint contentOffsetBoundedInValidRange(UIScrollView *scrollView, CGPoin
     return contentOffset;
 }
 
+double UIScriptController::contentOffsetX() const
+{
+    return [gWebScrollView contentOffset].x;
+}
+
+double UIScriptController::contentOffsetY() const
+{
+    return [gWebScrollView contentOffset].y;
+}
+
 void UIScriptController::scrollToOffset(long x, long y)
 {
     [gWebScrollView setContentOffset:contentOffsetBoundedInValidRange(gWebScrollView, CGPointMake(x, y)) animated:YES];
@@ -438,6 +448,21 @@ JSObjectRef UIScriptController::attachmentInfo(JSStringRef)
 
 void UIScriptController::setKeyboardInputModeIdentifier(JSStringRef)
 {
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::lastUndoLabel() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::firstRedoLabel() const
+{
+    return nullptr;
+}
+
+NSUndoManager *UIScriptController::platformUndoManager() const
+{
+    return nil;
 }
 
 }

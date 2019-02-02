@@ -25,6 +25,8 @@
 
 #pragma once
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+
 #include "ResourceLoadStatisticsClassifier.h"
 #include "WebResourceLoadStatisticsStore.h"
 #include <wtf/CompletionHandler.h>
@@ -116,12 +118,14 @@ public:
     bool isDebugModeEnabled() const { return m_debugModeEnabled; };
     void setPrevalentResourceForDebugMode(const String& domain);
 
-    void hasStorageAccess(const String& subFramePrimaryDomain, const String& topFramePrimaryDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&&);
+    void hasStorageAccess(const String& subFramePrimaryDomain, const String& topFramePrimaryDomain, Optional<uint64_t> frameID, uint64_t pageID, CompletionHandler<void(bool)>&&);
     void requestStorageAccess(String&& subFramePrimaryDomain, String&& topFramePrimaryDomain, uint64_t frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&&);
     void grantStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, bool userWasPromptedNow, CompletionHandler<void(bool)>&&);
 
     void logFrameNavigation(const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, const String& sourcePrimaryDomain, const String& targetHost, const String& mainFrameHost, bool isRedirect, bool isMainFrame);
     void logUserInteraction(const String& primaryDomain);
+    void logSubresourceLoading(const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, WallTime lastSeen);
+    void logSubresourceRedirect(const String& sourcePrimaryDomain, const String& targetPrimaryDomain);
 
     void clearUserInteraction(const String& primaryDomain);
     bool hasHadUserInteraction(const String& primaryDomain);
@@ -129,6 +133,8 @@ public:
     void setLastSeen(const String& primaryDomain, Seconds);
 
     void didCreateNetworkProcess();
+
+    const WebResourceLoadStatisticsStore& store() const { return m_store; }
 
 private:
     static bool shouldBlockAndKeepCookies(const WebCore::ResourceLoadStatistics&);
@@ -201,3 +207,5 @@ private:
 };
 
 } // namespace WebKit
+
+#endif

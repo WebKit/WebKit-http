@@ -38,6 +38,12 @@ protected:
         : Base(vm, structure, codeType, info, debuggerMode)
     {
     }
+
+    template<typename CodeBlockType>
+    UnlinkedGlobalCodeBlock(Decoder& decoder, Structure* structure, const CachedCodeBlock<CodeBlockType>& cachedCodeBlock)
+        : Base(decoder, structure, cachedCodeBlock)
+    {
+    }
 };
 
 }

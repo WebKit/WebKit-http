@@ -85,7 +85,8 @@ enum class CompositingReason {
 
 enum class ScrollCoordinationRole {
     ViewportConstrained = 1 << 0,
-    Scrolling           = 1 << 1
+    Scrolling           = 1 << 1,
+    FrameHosting        = 1 << 2,
 };
 
 #if PLATFORM(IOS_FAMILY)
@@ -236,6 +237,7 @@ public:
     GraphicsLayer* clipLayer() const { return m_clipLayer.get(); }
     GraphicsLayer* rootContentLayer() const { return m_rootContentLayer.get(); }
 
+    GraphicsLayer* layerForClipping() const {  return m_clipLayer ? m_clipLayer.get() : m_scrollLayer.get();  }
 
 #if ENABLE(RUBBER_BANDING)
     GraphicsLayer* headerLayer() const { return m_layerForHeader.get(); }
@@ -268,9 +270,9 @@ public:
     // to know if there is non-affine content, e.g. for drawing into an image.
     bool has3DContent() const;
     
-    static RenderLayerCompositor* frameContentsCompositor(RenderWidget*);
+    static RenderLayerCompositor* frameContentsCompositor(RenderWidget&);
     // Return true if the layers changed.
-    static bool parentFrameContentLayers(RenderWidget*);
+    bool parentFrameContentLayers(RenderWidget&);
 
     // Update the geometry of the layers used for clipping and scrolling in frames.
     void frameViewDidChangeLocation(const IntPoint& contentsOffset);
@@ -280,7 +282,6 @@ public:
     void frameViewDidLayout();
     void rootLayerConfigurationChanged();
 
-    void scrollingLayerDidChange(RenderLayer&);
     void fixedRootBackgroundLayerChanged();
 
     String layerTreeAsText(LayerTreeFlags);
@@ -325,6 +326,7 @@ public:
     void removeFromScrollCoordinatedLayers(RenderLayer&);
 
     bool useCoordinatedScrollingForLayer(const RenderLayer&) const;
+    bool isLayerForIFrameWithScrollCoordinatedContents(const RenderLayer&) const;
 
     void willRemoveScrollingLayerWithBacking(RenderLayer&, RenderLayerBacking&);
     void didAddScrollingLayer(RenderLayer&);
@@ -433,6 +435,7 @@ private:
     void updateOverflowControlsLayers();
 
     void updateScrollLayerPosition();
+    void updateScrollLayerClipping();
 
     FloatPoint positionForClipLayer() const;
 
@@ -474,10 +477,11 @@ private:
 
     void updateCustomLayersAfterFlush();
 
-    void updateScrollCoordinationForThisFrame(ScrollingNodeID, OptionSet<ScrollingNodeChangeFlags>);
-    ScrollingNodeID attachScrollingNode(RenderLayer&, ScrollingNodeType, ScrollingNodeID parentNodeID);
+    void updateScrollCoordinationForThisFrame(Optional<ScrollingNodeID>, OptionSet<ScrollingNodeChangeFlags>);
+    ScrollingNodeID attachScrollingNode(RenderLayer&, ScrollingNodeType, Optional<ScrollingNodeID> parentNodeID);
     void updateScrollCoordinatedLayer(RenderLayer&, OptionSet<ScrollCoordinationRole>, OptionSet<ScrollingNodeChangeFlags>);
     void detachScrollCoordinatedLayer(RenderLayer&, OptionSet<ScrollCoordinationRole>);
+    void detachScrollCoordinatedLayerWithRole(RenderLayer&, ScrollingCoordinator&, ScrollCoordinationRole);
     void reattachSubframeScrollLayers();
     
     FixedPositionViewportConstraints computeFixedViewportConstraints(RenderLayer&) const;

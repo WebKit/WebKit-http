@@ -36,6 +36,7 @@
 #include "DOMWindow.h"
 #include "Event.h"
 #include "Frame.h"
+#include "InspectorCPUProfilerAgent.h"
 #include "InspectorMemoryAgent.h"
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
@@ -293,9 +294,9 @@ void InspectorTimelineAgent::stopFromConsole(JSC::ExecState*, const String& titl
     }
 }
 
-void InspectorTimelineAgent::willCallFunction(const String& scriptName, int scriptLine, Frame* frame)
+void InspectorTimelineAgent::willCallFunction(const String& scriptName, int scriptLine, int scriptColumn, Frame* frame)
 {
-    pushCurrentRecord(TimelineRecordFactory::createFunctionCallData(scriptName, scriptLine), TimelineRecordType::FunctionCall, true, frame);
+    pushCurrentRecord(TimelineRecordFactory::createFunctionCallData(scriptName, scriptLine, scriptColumn), TimelineRecordType::FunctionCall, true, frame);
 }
 
 void InspectorTimelineAgent::didCallFunction(Frame*)
@@ -402,9 +403,9 @@ void InspectorTimelineAgent::didFireTimer()
     didCompleteCurrentRecord(TimelineRecordType::TimerFire);
 }
 
-void InspectorTimelineAgent::willEvaluateScript(const String& url, int lineNumber, Frame& frame)
+void InspectorTimelineAgent::willEvaluateScript(const String& url, int lineNumber, int columnNumber, Frame& frame)
 {
-    pushCurrentRecord(TimelineRecordFactory::createEvaluateScriptData(url, lineNumber), TimelineRecordType::EvaluateScript, true, &frame);
+    pushCurrentRecord(TimelineRecordFactory::createEvaluateScriptData(url, lineNumber, columnNumber), TimelineRecordType::EvaluateScript, true, &frame);
 }
 
 void InspectorTimelineAgent::didEvaluateScript(Frame&)
@@ -514,6 +515,10 @@ void InspectorTimelineAgent::toggleInstruments(InstrumentState state)
             toggleHeapInstrument(state);
             break;
         }
+        case Inspector::Protocol::Timeline::Instrument::CPU: {
+            toggleCPUInstrument(state);
+            break;
+        }
         case Inspector::Protocol::Timeline::Instrument::Memory: {
             toggleMemoryInstrument(state);
             break;
@@ -547,6 +552,21 @@ void InspectorTimelineAgent::toggleHeapInstrument(InstrumentState state)
         } else
             m_heapAgent->stopTracking(unused);
     }
+}
+
+void InspectorTimelineAgent::toggleCPUInstrument(InstrumentState state)
+{
+#if ENABLE(RESOURCE_USAGE)
+    if (InspectorCPUProfilerAgent* cpuProfilerAgent = m_instrumentingAgents.inspectorCPUProfilerAgent()) {
+        ErrorString unused;
+        if (state == InstrumentState::Start)
+            cpuProfilerAgent->startTracking(unused);
+        else
+            cpuProfilerAgent->stopTracking(unused);
+    }
+#else
+    UNUSED_PARAM(state);
+#endif
 }
 
 void InspectorTimelineAgent::toggleMemoryInstrument(InstrumentState state)

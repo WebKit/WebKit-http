@@ -34,6 +34,8 @@
 [
     EnabledAtRuntime=UndoManagerAPI,
     ImplementationLacksVTable,
+    JSCustomMarkFunction,
+    CustomIsReachable,
     Constructor(UndoItemInit initDict),
 ] interface UndoItem {
     readonly attribute DOMString label;

@@ -29,6 +29,7 @@
 #include "BulkDecommit.h"
 #include "BumpAllocator.h"
 #include "Chunk.h"
+#include "CryptoRandom.h"
 #include "Environment.h"
 #include "Gigacage.h"
 #include "DebugHeap.h"
@@ -61,7 +62,12 @@ Heap::Heap(HeapKind kind, std::lock_guard<Mutex>&)
 #if GIGACAGE_ENABLED
         if (usingGigacage()) {
             RELEASE_BASSERT(gigacageBasePtr());
-            m_largeFree.add(LargeRange(gigacageBasePtr(), gigacageSize(), 0, 0));
+            uint64_t random[2];
+            cryptoRandom(reinterpret_cast<unsigned char*>(random), sizeof(random));
+            size_t size = roundDownToMultipleOf(vmPageSize(), gigacageSize() - (random[0] % Gigacage::maximumCageSizeReductionForSlide));
+            ptrdiff_t offset = roundDownToMultipleOf(vmPageSize(), random[1] % (gigacageSize() - size));
+            void* base = reinterpret_cast<unsigned char*>(gigacageBasePtr()) + offset;
+            m_largeFree.add(LargeRange(base, size, 0, 0));
         }
 #endif
     }

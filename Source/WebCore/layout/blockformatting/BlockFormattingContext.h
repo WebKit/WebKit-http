@@ -58,18 +58,17 @@ private:
     void computeWidthAndMargin(const Box&) const;
     void computeHeightAndMargin(const Box&) const;
 
-    void computeStaticPosition(const Box&) const;
+    void computeStaticPosition(const FloatingContext&, const Box&) const;
     void computeFloatingPosition(const FloatingContext&, const Box&) const;
     void computePositionToAvoidFloats(const FloatingContext&, const Box&) const;
-    void computeVerticalPositionForFloatClear(const FloatingContext&, const Box&) const;
 
-    void computeEstimatedMarginBeforeForAncestors(const Box&) const;
-    void computeEstimatedMarginBefore(const Box&) const;
-
-    void precomputeVerticalPositionForFormattingRootIfNeeded(const Box&) const;
+    void computeEstimatedVerticalPosition(const Box&) const;
+    void computeEstimatedVerticalPositionForAncestors(const Box&) const;
+    void computeEstimatedVerticalPositionForFormattingRoot(const Box&) const;
+    void computeEstimatedVerticalPositionForFloatClear(const FloatingContext&, const Box&) const;
 
     InstrinsicWidthConstraints instrinsicWidthConstraints() const override;
-    LayoutUnit adjustedVerticalPositionAfterMarginCollapsing(const Box&, const UsedVerticalMargin&) const;
+    LayoutUnit verticalPositionWithMargin(const Box&, const UsedVerticalMargin&) const;
 
     // This class implements positioning and sizing for boxes participating in a block formatting context.
     class Geometry : public FormattingContext::Geometry {
@@ -96,7 +95,8 @@ private:
 
         static EstimatedMarginBefore estimatedMarginBefore(const LayoutState&, const Box&);
         static LayoutUnit marginBeforeIgnoringCollapsingThrough(const LayoutState&, const Box&, const UsedVerticalMargin::NonCollapsedValues&);
-        static void updateCollapsedMarginAfter(const LayoutState&, const Box&, const UsedVerticalMargin& nextSiblingVerticalMargin);
+        static void updateMarginAfterForPreviousSibling(const LayoutState&, const Box&);
+        static void updatePositiveNegativeMarginValues(const LayoutState&, const Box&);
 
         static bool marginBeforeCollapsesWithParentMarginBefore(const LayoutState&, const Box&);
         static bool marginBeforeCollapsesWithFirstInFlowChildMarginBefore(const LayoutState&, const Box&);
@@ -123,6 +123,7 @@ private:
         static bool needsStretching(const LayoutState&, const Box&);
         static HeightAndMargin stretchedInFlowHeight(const LayoutState&, const Box&, HeightAndMargin);
 
+        static bool shouldIgnoreCollapsedQuirkMargin(const LayoutState&, const Box&);
         static bool shouldIgnoreMarginBefore(const LayoutState&, const Box&);
         static bool shouldIgnoreMarginAfter(const LayoutState&, const Box&);
     };

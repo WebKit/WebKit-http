@@ -1,3 +1,89 @@
+2019-01-25  Keith Rollin  <krollin@apple.com>
+
+        Update WebKitAdditions.xcconfig with correct order of variable definitions
+        https://bugs.webkit.org/show_bug.cgi?id=193793
+        <rdar://problem/47532439>
+
+        Reviewed by Alex Christensen.
+
+        XCBuild changes the way xcconfig variables are evaluated. In short,
+        all config file assignments are now considered in part of the
+        evaluation. When using the new build system and an .xcconfig file
+        contains multiple assignments of the same build setting:
+
+        - Later assignments using $(inherited) will inherit from earlier
+          assignments in the xcconfig file.
+        - Later assignments not using $(inherited) will take precedence over
+          earlier assignments. An assignment to a more general setting will
+          mask an earlier assignment to a less general setting. For example,
+          an assignment without a condition ('FOO = bar') will completely mask
+          an earlier assignment with a condition ('FOO[sdk=macos*] = quux').
+
+        This affects some of our .xcconfig files, in that sometimes platform-
+        or sdk-specific definitions appear before the general definitions.
+        Under the new evaluations rules, the general definitions alway take
+        effect because they always overwrite the more-specific definitions. The
+        solution is to swap the order, so that the general definitions are
+        established first, and then conditionally overwritten by the
+        more-specific definitions.
+
+        * Configurations/Version.xcconfig:
+
+2019-01-22  Youenn Fablet  <youenn@apple.com>
+
+        Resync libwebrtc with latest M72 branch
+        https://bugs.webkit.org/show_bug.cgi?id=193693
+
+        Reviewed by Eric Carlson.
+
+        Update libwebrtc up to latest M72 branch to fix some identified issues:
+        - Bad bandwidth estimation in case of multiple transceivers
+        - mid handling for legacy endpoints
+        - msid handling for updating mediastreams accordingly.
+
+        * Source/webrtc/modules/congestion_controller/goog_cc/delay_based_bwe.cc:
+        * Source/webrtc/modules/congestion_controller/goog_cc/delay_based_bwe.h:
+        * Source/webrtc/modules/congestion_controller/goog_cc/goog_cc_network_control.cc:
+        * Source/webrtc/modules/congestion_controller/goog_cc/goog_cc_network_control_unittest.cc:
+        * Source/webrtc/modules/congestion_controller/send_side_congestion_controller_unittest.cc:
+        * Source/webrtc/pc/jsepsessiondescription_unittest.cc:
+        * Source/webrtc/pc/mediasession.cc:
+        * Source/webrtc/pc/mediasession_unittest.cc:
+        * Source/webrtc/pc/peerconnection.cc:
+        * Source/webrtc/pc/peerconnection.h:
+        * Source/webrtc/pc/peerconnection_jsep_unittest.cc:
+        * Source/webrtc/pc/peerconnection_media_unittest.cc:
+        * Source/webrtc/pc/peerconnection_rtp_unittest.cc:
+        * Source/webrtc/pc/sessiondescription.cc:
+        * Source/webrtc/pc/sessiondescription.h:
+        * Source/webrtc/pc/webrtcsdp.cc:
+        * Source/webrtc/pc/webrtcsdp_unittest.cc:
+        * Source/webrtc/system_wrappers/include/metrics.h:
+        * Source/webrtc/video/BUILD.gn:
+
+2019-01-18  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/SDKVariant.xcconfig: Added.
+
+2019-01-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r240124.
+
+        This commit broke an internal build.
+
+        Reverted changeset:
+
+        "SDK_VARIANT build destinations should be separate from non-
+        SDK_VARIANT builds"
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+        https://trac.webkit.org/changeset/240124
+
 2019-01-17  Jer Noble  <jer.noble@apple.com>
 
         SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds

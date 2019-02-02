@@ -153,9 +153,6 @@ public:
     void setAutomationClient(std::unique_ptr<API::AutomationClient>&&);
     void setLegacyCustomProtocolManagerClient(std::unique_ptr<API::CustomProtocolManagerClient>&&);
 
-    void setMaximumNumberOfProcesses(unsigned); // Can only be called when there are no processes running.
-    unsigned maximumNumberOfProcesses() const { return !m_configuration->maximumProcessCount() ? UINT_MAX : m_configuration->maximumProcessCount(); }
-
     void setCustomWebContentServiceBundleIdentifier(const String&);
     const String& customWebContentServiceBundleIdentifier() { return m_configuration->customWebContentServiceBundleIdentifier(); }
 
@@ -450,6 +447,7 @@ public:
     // SuspendedPageProxy management.
     void addSuspendedPage(std::unique_ptr<SuspendedPageProxy>&&);
     void removeAllSuspendedPagesForPage(WebPageProxy&);
+    void closeFailedSuspendedPagesForPage(WebPageProxy&);
     std::unique_ptr<SuspendedPageProxy> takeSuspendedPage(SuspendedPageProxy&);
     void removeSuspendedPage(SuspendedPageProxy&);
     bool hasSuspendedPageFor(WebProcessProxy&) const;
@@ -471,6 +469,8 @@ public:
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
     void setSandboxEnabled(bool enabled) { m_sandboxEnabled = enabled; };
+    void addSandboxPath(const CString& path, SandboxPermission permission) { m_extraSandboxPaths.add(path, permission); };
+    const HashMap<CString, SandboxPermission>& sandboxPaths() const { return m_extraSandboxPaths; };
     bool sandboxEnabled() const { return m_sandboxEnabled; };
 #endif
 
@@ -514,6 +514,8 @@ private:
 
     static void languageChanged(void* context);
     void languageChanged();
+
+    bool usesSingleWebProcess() const { return m_configuration->usesSingleWebProcess(); }
 
 #if PLATFORM(IOS_FAMILY)
     String cookieStorageDirectory() const;
@@ -728,6 +730,7 @@ private:
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
     bool m_sandboxEnabled { false };
+    HashMap<CString, SandboxPermission> m_extraSandboxPaths;
 #endif
 };
 

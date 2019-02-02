@@ -83,7 +83,30 @@ void FloatingState::append(const Box& layoutBox)
     ASSERT(belongsToThisFloatingContext(layoutBox, *m_formattingContextRoot));
     ASSERT(is<Container>(*m_formattingContextRoot));
 
-    m_floats.append({ layoutBox, *this });
+    auto newFloatItem = FloatItem { layoutBox, *this };
+    if (m_floats.isEmpty())
+        return m_floats.append(newFloatItem);
+
+    auto& displayBox = m_layoutState.displayBoxForLayoutBox(layoutBox);
+    auto isLeftPositioned = layoutBox.isLeftFloatingPositioned();
+    // When adding a new float item to the list, we have to ensure that it is definitely the left(right)-most item.
+    // Normally it is, but negative horizontal margins can push the float box beyond another float box.
+    // Float items in m_floats list should stay in horizontal position order (left/right edge) on the same vertical position.
+    auto hasNegativeHorizontalMargin = (isLeftPositioned && displayBox.marginStart() < 0) || (!isLeftPositioned && displayBox.marginEnd() < 0);
+    if (!hasNegativeHorizontalMargin)
+        return m_floats.append(newFloatItem);
+
+    for (int i = m_floats.size() - 1; i >= 0; --i) {
+        auto& floatItem = m_floats[i];
+        if (isLeftPositioned != floatItem.isLeftPositioned())
+            continue;
+        if (newFloatItem.rectWithMargin().top() < floatItem.rectWithMargin().bottom())
+            continue;
+        if ((isLeftPositioned && newFloatItem.rectWithMargin().right() >= floatItem.rectWithMargin().right())
+            || (!isLeftPositioned && newFloatItem.rectWithMargin().left() <= floatItem.rectWithMargin().left()))
+            return m_floats.insert(i + 1, newFloatItem);
+    }
+    return m_floats.insert(0, newFloatItem);
 }
 
 FloatingState::Constraints FloatingState::constraints(PositionInContextRoot verticalPosition, const Box& formattingContextRoot) const
@@ -143,8 +166,8 @@ Optional<PositionInContextRoot> FloatingState::bottom(const Box& formattingConte
     // Cache the value if we end up calling it more frequently (and update it at append/remove).
     Optional<PositionInContextRoot> bottom;
     for (auto& floatItem : m_floats) {
-        // Ignore floats from other formatting contexts when the floating state is inherited.
-        if (!floatItem.inFormattingContext(formattingContextRoot))
+        // Ignore floats from ancestor formatting contexts when the floating state is inherited.
+        if (!floatItem.isDescendantOfFormattingRoot(formattingContextRoot))
             continue;
 
         if ((type == Clear::Left && !floatItem.isLeftPositioned())
@@ -159,6 +182,27 @@ Optional<PositionInContextRoot> FloatingState::bottom(const Box& formattingConte
         bottom = PositionInContextRoot { floatsBottom };
     }
     return bottom;
+}
+
+Optional<PositionInContextRoot> FloatingState::top(const Box& formattingContextRoot) const
+{
+    if (m_floats.isEmpty())
+        return { };
+
+    Optional<PositionInContextRoot> top;
+    for (auto& floatItem : m_floats) {
+        // Ignore floats from ancestor formatting contexts when the floating state is inherited.
+        if (!floatItem.isDescendantOfFormattingRoot(formattingContextRoot))
+            continue;
+
+        auto floatTop = floatItem.rectWithMargin().top();
+        if (top) {
+            top = std::max<PositionInContextRoot>(*top, { floatTop });
+            continue;
+        }
+        top = PositionInContextRoot { floatTop };
+    }
+    return top;
 }
 
 }

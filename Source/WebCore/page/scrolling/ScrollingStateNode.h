@@ -200,6 +200,7 @@ public:
     bool isStickyNode() const { return m_nodeType == ScrollingNodeType::Sticky; }
     bool isScrollingNode() const { return isFrameScrollingNode() || isOverflowScrollingNode(); }
     bool isFrameScrollingNode() const { return m_nodeType == ScrollingNodeType::MainFrame || m_nodeType == ScrollingNodeType::Subframe; }
+    bool isFrameHostingNode() const { return m_nodeType == ScrollingNodeType::FrameHosting; }
     bool isOverflowScrollingNode() const { return m_nodeType == ScrollingNodeType::Overflow; }
 
     virtual Ref<ScrollingStateNode> clone(ScrollingStateTree& adoptiveTree) = 0;
@@ -208,6 +209,7 @@ public:
 
     enum {
         ScrollLayer = 0,
+        ChildNodes,
         NumStateNodeBits // This must remain at the last position.
     };
     typedef uint64_t ChangedProperties;
@@ -234,9 +236,15 @@ public:
     ScrollingNodeID parentNodeID() const { return m_parent ? m_parent->scrollingNodeID() : 0; }
 
     Vector<RefPtr<ScrollingStateNode>>* children() const { return m_children.get(); }
+    std::unique_ptr<Vector<RefPtr<ScrollingStateNode>>> takeChildren() { return WTFMove(m_children); }
 
     void appendChild(Ref<ScrollingStateNode>&&);
     void insertChild(Ref<ScrollingStateNode>&&, size_t index);
+
+    // Note that node ownership is via the parent, so these functions can trigger node deletion.
+    void removeFromParent();
+    void removeChildAtIndex(size_t index);
+    void removeChild(ScrollingStateNode&);
 
     size_t indexOfChild(ScrollingStateNode&) const;
 

@@ -336,6 +336,16 @@ JSRetainPtr<JSStringRef> UIScriptController::formInputLabel() const
     return nullptr;
 }
 
+double UIScriptController::contentOffsetX() const
+{
+    return 0;
+}
+
+double UIScriptController::contentOffsetY() const
+{
+    return 0;
+}
+
 void UIScriptController::scrollToOffset(long x, long y)
 {
 }
@@ -557,6 +567,16 @@ bool UIScriptController::isShowingDataListSuggestions() const
 
 void UIScriptController::overridePreference(JSStringRef, JSStringRef)
 {
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::lastUndoLabel() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::firstRedoLabel() const
+{
+    return nullptr;
 }
 
 #endif // !PLATFORM(COCOA)

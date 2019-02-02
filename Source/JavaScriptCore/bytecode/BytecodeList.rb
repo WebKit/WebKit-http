@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Apple Inc. All rights reserved.
+# Copyright (C) 2018-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -142,7 +142,7 @@ op :to_this,
 
 op :check_tdz,
     args: {
-        target: VirtualRegister,
+        targetVirtualRegister: VirtualRegister,
     }
 
 op :new_object,
@@ -449,7 +449,7 @@ op :get_by_id_direct,
     },
     metadata: {
         profile: ValueProfile, # not used in llint
-        structure: StructureID,
+        structureID: StructureID,
         offset: unsigned,
     }
 
@@ -471,9 +471,9 @@ op :put_by_id,
         flags: PutByIdFlags,
     },
     metadata: {
-        oldStructure: StructureID,
+        oldStructureID: StructureID,
         offset: unsigned,
-        newStructure: StructureID,
+        newStructureID: StructureID,
         structureChain: WriteBarrierBase[StructureChain],
     }
 
@@ -598,38 +598,38 @@ op :define_accessor_property,
 
 op :jmp,
     args: {
-        target: BoundLabel,
+        targetLabel: BoundLabel,
     }
 
 op :jtrue,
     args: {
         condition: VirtualRegister,
-        target: BoundLabel,
+        targetLabel: BoundLabel,
     }
 
 op :jfalse,
     args: {
         condition: VirtualRegister,
-        target: BoundLabel,
+        targetLabel: BoundLabel,
     }
 
 op :jeq_null,
     args: {
         value: VirtualRegister,
-        target: BoundLabel,
+        targetLabel: BoundLabel,
     }
 
 op :jneq_null,
     args: {
         value: VirtualRegister,
-        target: BoundLabel,
+        targetLabel: BoundLabel,
     }
 
 op :jneq_ptr,
     args: {
         value: VirtualRegister,
         specialPointer: Special::Pointer,
-        target: BoundLabel,
+        targetLabel: BoundLabel,
     },
     metadata: {
         hasJumped: bool,
@@ -655,7 +655,7 @@ op_group :BinaryJmp,
     args: {
         lhs: VirtualRegister,
         rhs: VirtualRegister,
-        target: BoundLabel,
+        targetLabel: BoundLabel,
     }
 
 op :loop_hint
@@ -833,8 +833,11 @@ op :resolve_scope,
     },
     metadata: {
         resolveType: ResolveType, # offset 4
-        localScopeDepth: unsigned, # offset 5
-        _: { # offset 6
+        _0: { # offset 5
+            localScopeDepth: unsigned,
+            globalLexicalBindingEpoch: unsigned,
+        },
+        _1: { # offset 6
              # written during linking
              lexicalEnvironment: WriteBarrierBase[JSCell], # lexicalEnvironment && type == ModuleVar
              symbolTable: WriteBarrierBase[SymbolTable], # lexicalEnvironment && type != ModuleVar
@@ -965,7 +968,7 @@ op :end,
 
 op :profile_type,
     args: {
-        target: VirtualRegister,
+        targetVirtualRegister: VirtualRegister,
         symbolTableOrScopeDepth: int,
         flag: ProfileTypeBytecodeFlag,
         identifier?: unsigned,

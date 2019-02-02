@@ -26,10 +26,9 @@
 #import "config.h"
 #import "CDMSessionAVStreamSession.h"
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(MEDIA_SOURCE)
+#if HAVE(AVSTREAMSESSION) && ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(MEDIA_SOURCE)
 
 #import "CDMPrivateMediaSourceAVFObjC.h"
-#import "FileSystem.h"
 #import "LegacyCDM.h"
 #import "Logging.h"
 #import "MediaPlayer.h"
@@ -40,6 +39,7 @@
 #import <JavaScriptCore/TypedArrayInlines.h>
 #import <objc/objc-runtime.h>
 #import <pal/spi/mac/AVFoundationSPI.h>
+#import <wtf/FileSystem.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/UUID.h>
 

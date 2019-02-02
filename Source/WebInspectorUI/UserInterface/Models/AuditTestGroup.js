@@ -38,14 +38,25 @@ WI.AuditTestGroup = class AuditTestGroup extends WI.AuditTestBase
         this._tests = tests;
         this._preventDisabledPropagation = false;
 
-        if (disabled)
-            this.disabled = disabled;
+        if (disabled || !this.supported)
+            this.disabled = true;
+
+        let hasSupportedTest = false;
 
         for (let test of this._tests) {
+            if (!this.supported)
+                test.supported = false;
+            else if (test.supported)
+                hasSupportedTest = true;
+
             test.addEventListener(WI.AuditTestBase.Event.Completed, this._handleTestCompleted, this);
             test.addEventListener(WI.AuditTestBase.Event.DisabledChanged, this._handleTestDisabledChanged, this);
             test.addEventListener(WI.AuditTestBase.Event.Progress, this._handleTestProgress, this);
+
         }
+
+        if (!hasSupportedTest)
+            this.supported = false;
     }
 
     // Static
@@ -55,18 +66,20 @@ WI.AuditTestGroup = class AuditTestGroup extends WI.AuditTestBase
         if (typeof payload !== "object" || payload === null)
             return null;
 
-        let {type, name, tests, description, disabled} = payload;
-
-        if (type !== WI.AuditTestGroup.TypeIdentifier)
+        if (payload.type !== WI.AuditTestGroup.TypeIdentifier)
             return null;
 
-        if (typeof name !== "string")
+        if (typeof payload.name !== "string") {
+            WI.AuditManager.synthesizeError(WI.UIString("\u0022%s\u0022 has a non-string \u0022%s\u0022 value").format(payload.name, WI.unlocalizedString("name")));
             return null;
+        }
 
-        if (!Array.isArray(tests))
+        if (!Array.isArray(payload.tests)) {
+            WI.AuditManager.synthesizeError(WI.UIString("\u0022%s\u0022 has a non-array \u0022%s\u0022 value").format(payload.name, WI.unlocalizedString("tests")));
             return null;
+        }
 
-        tests = await Promise.all(tests.map(async (test) => {
+        let tests = await Promise.all(payload.tests.map(async (test) => {
             let testCase = await WI.AuditTestCase.fromPayload(test);
             if (testCase)
                 return testCase;
@@ -82,17 +95,39 @@ WI.AuditTestGroup = class AuditTestGroup extends WI.AuditTestBase
             return null;
 
         let options = {};
-        if (typeof description === "string")
-            options.description = description;
-        if (typeof disabled === "boolean")
-            options.disabled = disabled;
 
-        return new WI.AuditTestGroup(name, tests, options);
+        if (typeof payload.description === "string")
+            options.description = payload.description;
+        else if ("description" in payload)
+            WI.AuditManager.synthesizeWarning(WI.UIString("\u0022%s\u0022 has a non-string \u0022%s\u0022 value").format(payload.name, WI.unlocalizedString("description")));
+
+        if (typeof payload.supports === "number")
+            options.supports = payload.supports;
+        else if ("supports" in payload)
+            WI.AuditManager.synthesizeWarning(WI.UIString("\u0022%s\u0022 has a non-number \u0022%s\u0022 value").format(payload.name, WI.unlocalizedString("supports")));
+
+        if (typeof payload.disabled === "boolean")
+            options.disabled = payload.disabled;
+
+        return new WI.AuditTestGroup(payload.name, tests, options);
     }
 
     // Public
 
     get tests() { return this._tests; }
+
+    get supported()
+    {
+        return super.supported;
+    }
+
+    set supported(supported)
+    {
+        for (let test of this._tests)
+            test.supported = supported;
+
+        super.supported = supported;
+    }
 
     get disabled()
     {

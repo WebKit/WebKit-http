@@ -25,6 +25,7 @@
 #include "ArrayBufferSharingMode.h"
 #include "BigIntPrototype.h"
 #include "BooleanPrototype.h"
+#include "ErrorType.h"
 #include "ExceptionHelpers.h"
 #include "InternalFunction.h"
 #include "JSArray.h"
@@ -38,6 +39,7 @@
 #include "LazyProperty.h"
 #include "LazyClassStructure.h"
 #include "NumberPrototype.h"
+#include "RegExpGlobalData.h"
 #include "RuntimeFlags.h"
 #include "SpecialPointer.h"
 #include "StringPrototype.h"
@@ -80,8 +82,8 @@ class GetterSetter;
 class GlobalCodeBlock;
 class IndirectEvalExecutable;
 class InputCursor;
+class IntlObject;
 class JSArrayBuffer;
-class JSArrayBufferConstructor;
 class JSArrayBufferPrototype;
 class JSCallee;
 class JSGlobalObjectDebuggable;
@@ -92,7 +94,6 @@ class JSPromise;
 class JSPromiseConstructor;
 class JSPromisePrototype;
 class JSSharedArrayBuffer;
-class JSSharedArrayBufferConstructor;
 class JSSharedArrayBufferPrototype;
 class JSTypedArrayViewConstructor;
 class JSTypedArrayViewPrototype;
@@ -102,7 +103,7 @@ class MapPrototype;
 class Microtask;
 class ModuleLoader;
 class ModuleProgramExecutable;
-class NativeErrorConstructor;
+class NativeErrorConstructorBase;
 class NullGetterFunction;
 class NullSetterFunction;
 class ObjectConstructor;
@@ -259,21 +260,23 @@ public:
     WriteBarrier<JSScope> m_globalScopeExtension;
     WriteBarrier<JSCallee> m_globalCallee;
     WriteBarrier<JSCallee> m_stackOverflowFrameCallee;
-    WriteBarrier<RegExpConstructor> m_regExpConstructor;
+
     WriteBarrier<ErrorConstructor> m_errorConstructor;
-    WriteBarrier<Structure> m_nativeErrorPrototypeStructure;
-    WriteBarrier<Structure> m_nativeErrorStructure;
-    LazyProperty<JSGlobalObject, NativeErrorConstructor> m_evalErrorConstructor;
-    WriteBarrier<NativeErrorConstructor> m_rangeErrorConstructor;
-    LazyProperty<JSGlobalObject, NativeErrorConstructor> m_referenceErrorConstructor;
-    LazyProperty<JSGlobalObject, NativeErrorConstructor> m_syntaxErrorConstructor;
-    WriteBarrier<NativeErrorConstructor> m_typeErrorConstructor;
-    LazyProperty<JSGlobalObject, NativeErrorConstructor> m_URIErrorConstructor;
+    LazyClassStructure m_evalErrorStructure;
+    LazyClassStructure m_rangeErrorStructure;
+    LazyClassStructure m_referenceErrorStructure;
+    LazyClassStructure m_syntaxErrorStructure;
+    LazyClassStructure m_typeErrorStructure;
+    LazyClassStructure m_URIErrorStructure;
+
     WriteBarrier<ObjectConstructor> m_objectConstructor;
     WriteBarrier<ArrayConstructor> m_arrayConstructor;
     WriteBarrier<JSPromiseConstructor> m_promiseConstructor;
     WriteBarrier<JSInternalPromiseConstructor> m_internalPromiseConstructor;
 
+#if ENABLE(INTL)
+    WriteBarrier<IntlObject> m_intlObject;
+#endif
     WriteBarrier<NullGetterFunction> m_nullGetterFunction;
     WriteBarrier<NullSetterFunction> m_nullSetterFunction;
 
@@ -300,7 +303,7 @@ public:
     WriteBarrier<JSObject> m_regExpProtoUnicodeGetter;
     WriteBarrier<GetterSetter> m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter;
 
-    WriteBarrier<JSModuleLoader> m_moduleLoader;
+    LazyProperty<JSGlobalObject, JSModuleLoader> m_moduleLoader;
 
     WriteBarrier<ObjectPrototype> m_objectPrototype;
     WriteBarrier<FunctionPrototype> m_functionPrototype;
@@ -443,6 +446,7 @@ public:
     std::unique_ptr<JSGlobalObjectRareData> m_rareData;
 
     WeakRandom m_weakRandom;
+    RegExpGlobalData m_regExpGlobalData;
 
     JSCallee* stackOverflowFrameCallee() const { return m_stackOverflowFrameCallee.get(); }
 
@@ -486,14 +490,17 @@ public:
 #if ENABLE(DFG_JIT)
     using ReferencedGlobalPropertyWatchpointSets = HashMap<RefPtr<UniquedStringImpl>, Ref<WatchpointSet>, IdentifierRepHash>;
     ReferencedGlobalPropertyWatchpointSets m_referencedGlobalPropertyWatchpointSets;
+    ConcurrentJSLock m_referencedGlobalPropertyWatchpointSetsLock;
 #endif
 
     bool m_evalEnabled { true };
     bool m_webAssemblyEnabled { true };
+    unsigned m_globalLexicalBindingEpoch { 1 };
     String m_evalDisabledErrorMessage;
     String m_webAssemblyDisabledErrorMessage;
     RuntimeFlags m_runtimeFlags;
     ConsoleClient* m_consoleClient { nullptr };
+    Optional<unsigned> m_stackTraceLimit;
 
 #if !ASSERT_DISABLED
     const ExecState* m_callFrameAtDebuggerEntry { nullptr };
@@ -525,6 +532,9 @@ public:
     WatchpointSet* getReferencedPropertyWatchpointSet(UniquedStringImpl*);
     WatchpointSet& ensureReferencedPropertyWatchpointSet(UniquedStringImpl*);
 #endif
+
+    Optional<unsigned> stackTraceLimit() const { return m_stackTraceLimit; }
+    void setStackTraceLimit(Optional<unsigned> value) { m_stackTraceLimit = value; }
 
 protected:
     JS_EXPORT_PRIVATE explicit JSGlobalObject(VM&, Structure*, const GlobalObjectMethodTable* = nullptr);
@@ -567,19 +577,14 @@ public:
 
     GetterSetter* speciesGetterSetter() const { return m_speciesGetterSetter.get(); }
 
-    RegExpConstructor* regExpConstructor() const { return m_regExpConstructor.get(); }
-
-    ErrorConstructor* errorConstructor() const { return m_errorConstructor.get(); }
     ArrayConstructor* arrayConstructor() const { return m_arrayConstructor.get(); }
     ObjectConstructor* objectConstructor() const { return m_objectConstructor.get(); }
     JSPromiseConstructor* promiseConstructor() const { return m_promiseConstructor.get(); }
     JSInternalPromiseConstructor* internalPromiseConstructor() const { return m_internalPromiseConstructor.get(); }
-    NativeErrorConstructor* evalErrorConstructor() const { return m_evalErrorConstructor.get(this); }
-    NativeErrorConstructor* rangeErrorConstructor() const { return m_rangeErrorConstructor.get(); }
-    NativeErrorConstructor* referenceErrorConstructor() const { return m_referenceErrorConstructor.get(this); }
-    NativeErrorConstructor* syntaxErrorConstructor() const { return m_syntaxErrorConstructor.get(this); }
-    NativeErrorConstructor* typeErrorConstructor() const { return m_typeErrorConstructor.get(); }
-    NativeErrorConstructor* URIErrorConstructor() const { return m_URIErrorConstructor.get(this); }
+
+#if ENABLE(INTL)
+    IntlObject* intlObject() const { return m_intlObject.get(); }
+#endif
 
     NullGetterFunction* nullGetterFunction() const { return m_nullGetterFunction.get(); }
     NullSetterFunction* nullSetterFunction() const { return m_nullSetterFunction.get(); }
@@ -609,7 +614,7 @@ public:
         return m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter.get();
     }
     
-    JSModuleLoader* moduleLoader() const { return m_moduleLoader.get(); }
+    JSModuleLoader* moduleLoader() const { return m_moduleLoader.get(this); }
 
     ObjectPrototype* objectPrototype() const { return m_objectPrototype.get(); }
     FunctionPrototype* functionPrototype() const { return m_functionPrototype.get(); }
@@ -683,6 +688,27 @@ public:
     Structure* dateStructure() const { return m_dateStructure.get(this); }
     Structure* nullPrototypeObjectStructure() const { return m_nullPrototypeObjectStructure.get(); }
     Structure* errorStructure() const { return m_errorStructure.get(); }
+    Structure* errorStructure(ErrorType errorType) const
+    {
+        switch (errorType) {
+        case ErrorType::Error:
+            return errorStructure();
+        case ErrorType::EvalError:
+            return m_evalErrorStructure.get(this);
+        case ErrorType::RangeError:
+            return m_rangeErrorStructure.get(this);
+        case ErrorType::ReferenceError:
+            return m_referenceErrorStructure.get(this);
+        case ErrorType::SyntaxError:
+            return m_syntaxErrorStructure.get(this);
+        case ErrorType::TypeError:
+            return m_typeErrorStructure.get(this);
+        case ErrorType::URIError:
+            return m_URIErrorStructure.get(this);
+        }
+        ASSERT_NOT_REACHED();
+        return nullptr;
+    }
     Structure* calleeStructure() const { return m_calleeStructure.get(); }
     Structure* hostFunctionStructure() const { return m_hostFunctionStructure.get(); }
 
@@ -739,6 +765,9 @@ public:
     JS_EXPORT_PRIVATE void setRemoteDebuggingEnabled(bool);
     JS_EXPORT_PRIVATE bool remoteDebuggingEnabled() const;
 
+    RegExpGlobalData& regExpGlobalData() { return m_regExpGlobalData; }
+    static ptrdiff_t regExpGlobalDataOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_regExpGlobalData); }
+
 #if ENABLE(REMOTE_INSPECTOR)
     Inspector::JSGlobalObjectInspectorController& inspectorController() const { return *m_inspectorController.get(); }
     JSGlobalObjectDebuggable& inspectorDebuggable() { return *m_inspectorDebuggable.get(); }
@@ -751,7 +780,10 @@ public:
     const HashSet<String>& intlPluralRulesAvailableLocales();
 #endif // ENABLE(INTL)
 
-    void notifyLexicalBindingShadowing(VM&, const IdentifierSet&);
+    void bumpGlobalLexicalBindingEpoch(VM&);
+    unsigned globalLexicalBindingEpoch() const { return m_globalLexicalBindingEpoch; }
+    static ptrdiff_t globalLexicalBindingEpochOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_globalLexicalBindingEpoch); }
+    unsigned* addressOfGlobalLexicalBindingEpoch() { return &m_globalLexicalBindingEpoch; }
 
     void setConsoleClient(ConsoleClient* consoleClient) { m_consoleClient = consoleClient; }
     ConsoleClient* consoleClient() const { return m_consoleClient; }
@@ -986,6 +1018,9 @@ private:
 
     void fireWatchpointAndMakeAllArrayStructuresSlowPut(VM&);
     void setGlobalThis(VM&, JSObject* globalThis);
+
+    template<ErrorType errorType>
+    void initializeErrorConstructor(LazyClassStructure::Initializer&);
 
     JS_EXPORT_PRIVATE void init(VM&);
 

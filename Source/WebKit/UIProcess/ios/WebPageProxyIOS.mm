@@ -920,6 +920,11 @@ void WebPageProxy::elementDidBlur()
     pageClient().elementDidBlur();
 }
 
+void WebPageProxy::focusedElementDidChangeInputMode(WebCore::InputMode mode)
+{
+    pageClient().focusedElementDidChangeInputMode(mode);
+}
+
 void WebPageProxy::autofillLoginCredentials(const String& username, const String& password)
 {
     m_process->send(Messages::WebPage::AutofillLoginCredentials(username, password), m_pageID);
@@ -1112,9 +1117,9 @@ void WebPageProxy::hardwareKeyboardAvailabilityChanged()
 
 #if ENABLE(DATA_INTERACTION)
 
-void WebPageProxy::didHandleStartDataInteractionRequest(bool started)
+void WebPageProxy::didHandleDragStartRequest(bool started)
 {
-    pageClient().didHandleStartDataInteractionRequest(started);
+    pageClient().didHandleDragStartRequest(started);
 }
 
 void WebPageProxy::didHandleAdditionalDragItemsRequest(bool added)
@@ -1122,10 +1127,10 @@ void WebPageProxy::didHandleAdditionalDragItemsRequest(bool added)
     pageClient().didHandleAdditionalDragItemsRequest(added);
 }
 
-void WebPageProxy::requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition)
+void WebPageProxy::requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition)
 {
     if (isValid())
-        m_process->send(Messages::WebPage::RequestStartDataInteraction(clientPosition, globalPosition), m_pageID);
+        m_process->send(Messages::WebPage::RequestDragStart(clientPosition, globalPosition), m_pageID);
 }
 
 void WebPageProxy::requestAdditionalItemsForDragSession(const IntPoint& clientPosition, const IntPoint& globalPosition)
@@ -1134,9 +1139,9 @@ void WebPageProxy::requestAdditionalItemsForDragSession(const IntPoint& clientPo
         m_process->send(Messages::WebPage::RequestAdditionalItemsForDragSession(clientPosition, globalPosition), m_pageID);
 }
 
-void WebPageProxy::didConcludeEditDataInteraction(Optional<TextIndicatorData> data)
+void WebPageProxy::didConcludeEditDrag(Optional<TextIndicatorData> data)
 {
-    pageClient().didConcludeEditDataInteraction(data);
+    pageClient().didConcludeEditDrag(data);
 }
 
 #endif

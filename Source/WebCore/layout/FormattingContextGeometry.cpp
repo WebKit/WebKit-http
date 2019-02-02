@@ -103,8 +103,10 @@ static LayoutUnit contentHeightForFormattingContextRoot(const LayoutState& layou
     if (!is<Container>(layoutBox) || !downcast<Container>(layoutBox).hasInFlowOrFloatingChild())
         return 0;
 
-    LayoutUnit top;
-    LayoutUnit bottom;
+    auto& displayBox = layoutState.displayBoxForLayoutBox(layoutBox);
+    auto borderAndPaddingTop = displayBox.borderTop() + displayBox.paddingTop().valueOr(0);
+    auto top = borderAndPaddingTop;
+    auto bottom = borderAndPaddingTop;
     auto& formattingRootContainer = downcast<Container>(layoutBox);
     if (formattingRootContainer.establishesInlineFormattingContext()) {
         // This is temp and will be replaced by the correct display box once inline runs move over to the display tree.
@@ -114,10 +116,12 @@ static LayoutUnit contentHeightForFormattingContextRoot(const LayoutState& layou
             bottom =  inlineRuns.last().logicalBottom();
         }
     } else if (formattingRootContainer.establishesBlockFormattingContext() || layoutBox.isDocumentBox()) {
-        auto& firstDisplayBox = layoutState.displayBoxForLayoutBox(*formattingRootContainer.firstInFlowChild());
-        auto& lastDisplayBox = layoutState.displayBoxForLayoutBox(*formattingRootContainer.lastInFlowChild());
-        top = firstDisplayBox.rectWithMargin().top();
-        bottom = lastDisplayBox.rectWithMargin().bottom();
+        if (formattingRootContainer.hasInFlowChild()) {
+            auto& firstDisplayBox = layoutState.displayBoxForLayoutBox(*formattingRootContainer.firstInFlowChild());
+            auto& lastDisplayBox = layoutState.displayBoxForLayoutBox(*formattingRootContainer.lastInFlowChild());
+            top = firstDisplayBox.rectWithMargin().top();
+            bottom = lastDisplayBox.rectWithMargin().bottom();
+        }
     }
 
     auto* formattingContextRoot = &layoutBox;
@@ -127,9 +131,14 @@ static LayoutUnit contentHeightForFormattingContextRoot(const LayoutState& layou
         formattingContextRoot = &layoutBox.formattingContextRoot();
     }
 
-    auto floatsBottom = layoutState.establishedFormattingState(*formattingContextRoot).floatingState().bottom(*formattingContextRoot);
-    if (floatsBottom)
-        bottom = std::max<LayoutUnit>(*floatsBottom, bottom);
+    auto& floatingState = layoutState.establishedFormattingState(*formattingContextRoot).floatingState();
+    auto floatBottom = floatingState.bottom(*formattingContextRoot);
+    if (floatBottom) {
+        bottom = std::max<LayoutUnit>(*floatBottom, bottom);
+        auto floatTop = floatingState.top(*formattingContextRoot);
+        ASSERT(floatTop);
+        top = std::min<LayoutUnit>(*floatTop, top);
+    }
 
     auto computedHeight = bottom - top;
     LOG_WITH_STREAM(FormattingContextLayout, stream << "[Height] -> content height for formatting context root -> height(" << computedHeight << "px) layoutBox("<< &layoutBox << ")");

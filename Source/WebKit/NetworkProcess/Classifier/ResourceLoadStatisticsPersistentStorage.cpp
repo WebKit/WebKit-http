@@ -26,14 +26,16 @@
 #include "config.h"
 #include "ResourceLoadStatisticsPersistentStorage.h"
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+
 #include "Logging.h"
 #include "PersistencyUtils.h"
 #include "ResourceLoadStatisticsMemoryStore.h"
 #include "WebResourceLoadStatisticsStore.h"
 #include <WebCore/FileMonitor.h>
-#include <WebCore/FileSystem.h>
 #include <WebCore/KeyedCoding.h>
 #include <WebCore/SharedBuffer.h>
+#include <wtf/FileSystem.h>
 #include <wtf/RunLoop.h>
 #include <wtf/WorkQueue.h>
 
@@ -270,3 +272,5 @@ void ResourceLoadStatisticsPersistentStorage::excludeFromBackup() const
 #endif
 
 } // namespace WebKit
+
+#endif

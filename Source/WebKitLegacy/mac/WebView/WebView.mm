@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2006 David Smith (catfish.man@gmail.com)
  * Copyright (C) 2010 Igalia S.L
  *
@@ -148,7 +148,6 @@
 #import <WebCore/Editor.h>
 #import <WebCore/Event.h>
 #import <WebCore/EventHandler.h>
-#import <WebCore/FileSystem.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/FontAttributes.h>
 #import <WebCore/FontCache.h>
@@ -231,6 +230,7 @@
 #import <pal/spi/mac/NSSpellCheckerSPI.h>
 #import <pal/spi/mac/NSWindowSPI.h>
 #import <wtf/Assertions.h>
+#import <wtf/FileSystem.h>
 #import <wtf/HashTraits.h>
 #import <wtf/MainThread.h>
 #import <wtf/ObjCRuntimeExtras.h>
@@ -255,6 +255,7 @@
 #import "WebNSPrintOperationExtras.h"
 #import "WebPDFView.h"
 #import "WebSwitchingGPUClient.h"
+#import "WebVideoFullscreenController.h"
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIndicatorWindow.h>
 #import <pal/spi/cocoa/AVKitSPI.h>
@@ -335,17 +336,9 @@
 #endif
 
 #if ENABLE(DATA_INTERACTION)
-#import <UIKit/UIBezierPath.h>
 #import <UIKit/UIColor.h>
 #import <UIKit/UIImage.h>
-SOFT_LINK_FRAMEWORK(UIKit)
-SOFT_LINK_CLASS(UIKit, UIBezierPath)
-SOFT_LINK_CLASS(UIKit, UIColor)
-SOFT_LINK_CLASS(UIKit, UIImage)
-SOFT_LINK(UIKit, UIGraphicsBeginImageContextWithOptions, void, (CGSize size, BOOL opaque, CGFloat scale), (size, opaque, scale))
-SOFT_LINK(UIKit, UIGraphicsGetCurrentContext, CGContextRef, (void), ())
-SOFT_LINK(UIKit, UIGraphicsGetImageFromCurrentImageContext, UIImage *, (void), ())
-SOFT_LINK(UIKit, UIGraphicsEndImageContext, void, (void), ())
+#import <pal/ios/UIKitSoftLink.h>
 #endif
 
 #if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
@@ -358,10 +351,6 @@ SOFT_LINK_CLASS(AVKit, AVFunctionBarPlaybackControlsProvider)
 SOFT_LINK_CLASS(AVKit, AVFunctionBarScrubber)
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 #endif // HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
-
-#if PLATFORM(MAC) && !ENABLE(REVEAL)
-SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUNotificationPopoverWillClose, NSString *)
-#endif
 
 #if !PLATFORM(IOS_FAMILY)
 
@@ -701,7 +690,7 @@ private:
     if (!(self = [super init]))
         return nil;
     
-    _dataInteractionImage = [allocUIImageInstance() initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
+    _dataInteractionImage = [PAL::allocUIImageInstance() initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
     _selectionRectInRootViewCoordinates = indicatorData.selectionRectInRootViewCoordinates;
     _textBoundingRectInRootViewCoordinates = indicatorData.textBoundingRectInRootViewCoordinates;
     
@@ -711,20 +700,20 @@ private:
     _textRectsInBoundingRectCoordinates = [[NSArray arrayWithArray:textRectsInBoundingRectCoordinates] retain];
     _contentImageScaleFactor = indicatorData.contentImageScaleFactor;
     if (indicatorData.contentImageWithHighlight)
-        _contentImageWithHighlight = [allocUIImageInstance() initWithCGImage:indicatorData.contentImageWithHighlight.get()->nativeImage().get() scale:scale orientation:UIImageOrientationDownMirrored];
+        _contentImageWithHighlight = [PAL::allocUIImageInstance() initWithCGImage:indicatorData.contentImageWithHighlight.get()->nativeImage().get() scale:scale orientation:UIImageOrientationDownMirrored];
     if (indicatorData.contentImage)
-        _contentImage = [allocUIImageInstance() initWithCGImage:indicatorData.contentImage.get()->nativeImage().get() scale:scale orientation:UIImageOrientationUp];
+        _contentImage = [PAL::allocUIImageInstance() initWithCGImage:indicatorData.contentImage.get()->nativeImage().get() scale:scale orientation:UIImageOrientationUp];
 
     if (indicatorData.contentImageWithoutSelection) {
         auto nativeImage = indicatorData.contentImageWithoutSelection.get()->nativeImage();
         if (nativeImage) {
-            _contentImageWithoutSelection = [allocUIImageInstance() initWithCGImage:nativeImage.get() scale:scale orientation:UIImageOrientationUp];
+            _contentImageWithoutSelection = [PAL::allocUIImageInstance() initWithCGImage:nativeImage.get() scale:scale orientation:UIImageOrientationUp];
             _contentImageWithoutSelectionRectInRootViewCoordinates = indicatorData.contentImageWithoutSelectionRectInRootViewCoordinates;
         }
     }
 
     if (indicatorData.options & TextIndicatorOptionComputeEstimatedBackgroundColor)
-        _estimatedBackgroundColor = [allocUIColorInstance() initWithCGColor:cachedCGColor(indicatorData.estimatedBackgroundColor)];
+        _estimatedBackgroundColor = [PAL::allocUIColorInstance() initWithCGColor:cachedCGColor(indicatorData.estimatedBackgroundColor)];
 
     return self;
 }
@@ -734,7 +723,7 @@ private:
     if (!(self = [super init]))
         return nil;
     
-    _dataInteractionImage = [allocUIImageInstance() initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
+    _dataInteractionImage = [PAL::allocUIImageInstance() initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
     
     return self;
 }
@@ -1489,10 +1478,8 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #if ENABLE(NOTIFICATIONS)
     WebCore::provideNotification(_private->page, new WebNotificationClient(self));
 #endif
-#if ENABLE(DEVICE_ORIENTATION)
-#if !PLATFORM(IOS_FAMILY)
-    WebCore::provideDeviceOrientationTo(_private->page, new WebDeviceOrientationClient(self));
-#endif
+#if ENABLE(DEVICE_ORIENTATION) && !PLATFORM(IOS_FAMILY)
+    WebCore::provideDeviceOrientationTo(*_private->page, *new WebDeviceOrientationClient(self));
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -1836,7 +1823,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 - (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
 {
     WebThreadLock();
-    return _private->page->mainFrame().eventHandler().tryToBeginDataInteractionAtPoint(IntPoint(clientPosition), IntPoint(globalPosition));
+    return _private->page->mainFrame().eventHandler().tryToBeginDragAtPoint(IntPoint(clientPosition), IntPoint(globalPosition));
 }
 
 - (void)_startDrag:(const DragItem&)dragItem
@@ -1948,7 +1935,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->draggedLinkURL = nil;
 }
 
-- (void)_didConcludeEditDataInteraction
+- (void)_didConcludeEditDrag
 {
     _private->dataOperationTextIndicator = nullptr;
     auto* page = _private->page;
@@ -3085,6 +3072,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #if ENABLE(FULLSCREEN_API)
     settings.setFullScreenEnabled([preferences fullScreenEnabled]);
 #endif
+
+    RuntimeEnabledFeatures::sharedFeatures().setCSSLogicalEnabled([preferences cssLogicalEnabled]);
+
+    RuntimeEnabledFeatures::sharedFeatures().setAdClickAttributionEnabled([preferences adClickAttributionEnabled]);
 
     settings.setHiddenPageDOMTimerThrottlingEnabled([preferences hiddenPageDOMTimerThrottlingEnabled]);
 
@@ -6892,7 +6883,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
             return false;
         }
 
-        NSString *dropDestinationPath = WebCore::FileSystem::createTemporaryDirectory(@"WebKitDropDestination");
+        NSString *dropDestinationPath = FileSystem::createTemporaryDirectory(@"WebKitDropDestination");
         if (!dropDestinationPath) {
             delete dragData;
             return false;
@@ -9387,7 +9378,6 @@ bool LayerFlushController::flushLayers()
 #if ENABLE(VIDEO)
 - (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement mode:(WebCore::HTMLMediaElementEnums::VideoFullscreenMode)mode
 {
-#if PLATFORM(IOS_FAMILY)
     if (_private->fullscreenController) {
         if ([_private->fullscreenController videoElement] == videoElement) {
             // The backend may just warn us that the underlaying plaftormMovie()
@@ -9405,22 +9395,23 @@ bool LayerFlushController::flushLayers()
     if (!_private->fullscreenController) {
         _private->fullscreenController = [[WebVideoFullscreenController alloc] init];
         [_private->fullscreenController setVideoElement:videoElement];
+#if PLATFORM(IOS_FAMILY)
         [_private->fullscreenController enterFullscreen:(UIView *)[[[self window] hostLayer] delegate] mode:mode];
+#else
+        [_private->fullscreenController enterFullscreen:[[self window] screen]];
+#endif
     }
     else
         [_private->fullscreenController setVideoElement:videoElement];
-#endif
 }
 
 - (void)_exitVideoFullscreen
 {
-#if PLATFORM(IOS_FAMILY)
     if (!_private->fullscreenController)
         return;
     [_private->fullscreenController exitFullscreen];
     [_private->fullscreenController release];
     _private->fullscreenController = nil;
-#endif
 }
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
@@ -9623,8 +9614,8 @@ bool LayerFlushController::flushLayers()
     _private->hasInitializedLookupObserver = YES;
     
 #if !ENABLE(REVEAL)
-    if (canLoadLUNotificationPopoverWillClose())
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
+    if (PAL::canLoad_Lookup_LUNotificationPopoverWillClose())
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:PAL::get_Lookup_LUNotificationPopoverWillClose() object:nil];
 #endif // !ENABLE(REVEAL)
     
 }

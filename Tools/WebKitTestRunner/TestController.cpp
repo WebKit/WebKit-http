@@ -78,7 +78,7 @@
 #include <wtf/SetForScope.h>
 #include <wtf/UUID.h>
 #include <wtf/text/CString.h>
-#include <wtf/text/WTFString.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 #if PLATFORM(COCOA)
 #include <WebKit/WKContextPrivateMac.h>
@@ -868,6 +868,9 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
 
     WKContextClearCachedCredentials(TestController::singleton().context());
 
+    ClearIndexedDatabases();
+    setIDBPerOriginQuota(50 * MB);
+
     clearServiceWorkerRegistrations();
     clearDOMCaches();
 
@@ -1266,6 +1269,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.editable = parseBooleanTestHeaderValue(value);
         else if (key == "enableUndoManagerAPI")
             testOptions.enableUndoManagerAPI = parseBooleanTestHeaderValue(value);
+        else if (key == "contentInset.top")
+            testOptions.contentInsetTop = std::stod(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -2068,11 +2073,11 @@ void TestController::didReceiveAuthenticationChallenge(WKPageRef page, WKAuthent
 
     std::string host = toSTD(adoptWK(WKProtectionSpaceCopyHost(protectionSpace)).get());
     int port = WKProtectionSpaceGetPort(protectionSpace);
-    String message = String::format("%s:%d - didReceiveAuthenticationChallenge - %s - ", host.c_str(), port, toString(authenticationScheme));
+    String message = makeString(host.c_str(), ':', port, " - didReceiveAuthenticationChallenge - ", toString(authenticationScheme), " - ");
     if (!m_handlesAuthenticationChallenges)
         message.append("Simulating cancelled authentication sheet\n");
     else
-        message.append(String::format("Responding with %s:%s\n", m_authenticationUsername.utf8().data(), m_authenticationPassword.utf8().data()));
+        message.append("Responding with " + m_authenticationUsername + ":" + m_authenticationPassword + "\n");
     m_currentInvocation->outputText(message);
 
     if (!m_handlesAuthenticationChallenges) {
@@ -2170,8 +2175,7 @@ void TestController::downloadDidReceiveServerRedirectToURL(WKContextRef, WKDownl
 void TestController::downloadDidFail(WKContextRef, WKDownloadRef, WKErrorRef error)
 {
     if (m_shouldLogDownloadCallbacks) {
-        String message = String::format("Download failed.\n");
-        m_currentInvocation->outputText(message);
+        m_currentInvocation->outputText("Download failed.\n"_s);
 
         WKRetainPtr<WKStringRef> errorDomain = adoptWK(WKErrorCopyDomain(error));
         WKRetainPtr<WKStringRef> errorDescription = adoptWK(WKErrorCopyLocalizedDescription(error));
@@ -2764,6 +2768,31 @@ void TestController::setIDBPerOriginQuota(uint64_t quota)
     WKContextSetIDBPerOriginQuota(platformContext(), quota);
 }
 
+struct RemoveAllIndexedDatabasesCallbackContext {
+    explicit RemoveAllIndexedDatabasesCallbackContext(TestController& controller)
+        : testController(controller)
+    {
+    }
+
+    TestController& testController;
+    bool done { false };
+};
+
+static void RemoveAllIndexedDatabasesCallback(void* userData)
+{
+    auto* context = static_cast<RemoveAllIndexedDatabasesCallbackContext*>(userData);
+    context->done = true;
+    context->testController.notifyDone();
+}
+
+void TestController::ClearIndexedDatabases()
+{
+    auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
+    RemoveAllIndexedDatabasesCallbackContext context(*this);
+    WKWebsiteDataStoreRemoveAllIndexedDatabases(websiteDataStore, &context, RemoveAllIndexedDatabasesCallback);
+    runUntil(context.done, noTimeout);
+}
+
 struct FetchCacheOriginsCallbackContext {
     FetchCacheOriginsCallbackContext(TestController& controller, WKStringRef origin)
         : testController(controller)
@@ -2829,6 +2858,13 @@ uint64_t TestController::domCacheSize(WKStringRef origin)
     runUntil(context.done, noTimeout);
     return context.result;
 }
+
+#if !PLATFORM(COCOA)
+void TestController::allowCacheStorageQuotaIncrease()
+{
+    // FIXME: To implement.
+}
+#endif
 
 struct ResourceStatisticsCallbackContext {
     explicit ResourceStatisticsCallbackContext(TestController& controller)

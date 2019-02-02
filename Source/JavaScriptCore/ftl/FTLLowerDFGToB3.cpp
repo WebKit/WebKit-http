@@ -937,9 +937,6 @@ private:
         case StringFromCharCode:
             compileStringFromCharCode();
             break;
-        case ObjectToString:
-            compileObjectToString();
-            break;
         case GetByOffset:
         case GetGetterSetterByOffset:
             compileGetByOffset();
@@ -6425,61 +6422,6 @@ private:
             break;
         }
     }
-
-    void compileObjectToString()
-    {
-        switch (m_node->child1().useKind()) {
-        case OtherUse: {
-            speculate(m_node->child1());
-            LValue source = lowJSValue(m_node->child1(), ManualOperandSpeculation);
-            LValue result = m_out.select(m_out.equal(source, m_out.constInt64(ValueUndefined)),
-                weakPointer(vm().smallStrings.undefinedObjectString()), weakPointer(vm().smallStrings.nullObjectString()));
-            setJSValue(result);
-            return;
-        }
-        case UntypedUse: {
-            LBasicBlock cellCase = m_out.newBlock();
-            LBasicBlock objectCase = m_out.newBlock();
-            LBasicBlock notNullCase = m_out.newBlock();
-            LBasicBlock rareDataCase = m_out.newBlock();
-            LBasicBlock slowCase = m_out.newBlock();
-            LBasicBlock continuation = m_out.newBlock();
-
-            LValue source = lowJSValue(m_node->child1());
-            m_out.branch(isCell(source, provenType(m_node->child1())), unsure(cellCase), unsure(slowCase));
-
-            LBasicBlock lastNext = m_out.appendTo(cellCase, objectCase);
-            m_out.branch(isObject(source, provenType(m_node->child1()) & SpecCell), unsure(objectCase), unsure(slowCase));
-
-            m_out.appendTo(objectCase, notNullCase);
-            LValue structure = loadStructure(source);
-            LValue previousOrRareData = m_out.loadPtr(structure, m_heaps.Structure_previousOrRareData);
-            m_out.branch(m_out.notNull(previousOrRareData), unsure(notNullCase), unsure(slowCase));
-
-            m_out.appendTo(notNullCase, rareDataCase);
-            m_out.branch(
-                m_out.notEqual(m_out.load32(previousOrRareData, m_heaps.JSCell_structureID), m_out.constInt32(m_graph.m_vm.structureStructure->structureID())),
-                unsure(rareDataCase), unsure(slowCase));
-
-            m_out.appendTo(rareDataCase, slowCase);
-            LValue objectToStringValue = m_out.loadPtr(previousOrRareData, m_heaps.StructureRareData_objectToStringValue);
-            ValueFromBlock fastResult = m_out.anchor(objectToStringValue);
-            m_out.branch(m_out.isNull(objectToStringValue), unsure(slowCase), unsure(continuation));
-
-            m_out.appendTo(slowCase, continuation);
-            LValue slowResultValue = vmCall(pointerType(), m_out.operation(operationObjectToString), m_callFrame, source);
-            ValueFromBlock slowResult = m_out.anchor(slowResultValue);
-            m_out.jump(continuation);
-
-            m_out.appendTo(continuation, lastNext);
-            setJSValue(m_out.phi(pointerType(), fastResult, slowResult));
-            return;
-        }
-        default:
-            DFG_CRASH(m_graph, m_node, "Bad use kind");
-            return;
-        }
-    }
     
     void compileToPrimitive()
     {
@@ -11361,25 +11303,25 @@ private:
 
     void compileRecordRegExpCachedResult()
     {
-        Edge constructorEdge = m_graph.varArgChild(m_node, 0);
+        Edge globalObjectEdge = m_graph.varArgChild(m_node, 0);
         Edge regExpEdge = m_graph.varArgChild(m_node, 1);
         Edge stringEdge = m_graph.varArgChild(m_node, 2);
         Edge startEdge = m_graph.varArgChild(m_node, 3);
         Edge endEdge = m_graph.varArgChild(m_node, 4);
         
-        LValue constructor = lowCell(constructorEdge);
+        LValue globalObject = lowCell(globalObjectEdge);
         LValue regExp = lowCell(regExpEdge);
         LValue string = lowCell(stringEdge);
         LValue start = lowInt32(startEdge);
         LValue end = lowInt32(endEdge);
 
-        m_out.storePtr(regExp, constructor, m_heaps.RegExpConstructor_cachedResult_lastRegExp);
-        m_out.storePtr(string, constructor, m_heaps.RegExpConstructor_cachedResult_lastInput);
-        m_out.store32(start, constructor, m_heaps.RegExpConstructor_cachedResult_result_start);
-        m_out.store32(end, constructor, m_heaps.RegExpConstructor_cachedResult_result_end);
+        m_out.storePtr(regExp, globalObject, m_heaps.JSGlobalObject_regExpGlobalData_cachedResult_lastRegExp);
+        m_out.storePtr(string, globalObject, m_heaps.JSGlobalObject_regExpGlobalData_cachedResult_lastInput);
+        m_out.store32(start, globalObject, m_heaps.JSGlobalObject_regExpGlobalData_cachedResult_result_start);
+        m_out.store32(end, globalObject, m_heaps.JSGlobalObject_regExpGlobalData_cachedResult_result_end);
         m_out.store32As8(
             m_out.constInt32(0),
-            m_out.address(constructor, m_heaps.RegExpConstructor_cachedResult_reified));
+            m_out.address(globalObject, m_heaps.JSGlobalObject_regExpGlobalData_cachedResult_reified));
     }
     
     struct ArgumentsLength {
@@ -13852,6 +13794,7 @@ private:
     
     LValue caged(Gigacage::Kind kind, LValue ptr)
     {
+#if GIGACAGE_ENABLED
         if (!Gigacage::isEnabled(kind))
             return ptr;
         
@@ -13880,6 +13823,10 @@ private:
         // and possibly other smart things if we want to be able to remove this opaque.
         // https://bugs.webkit.org/show_bug.cgi?id=175493
         return m_out.opaque(result);
+#else
+        UNUSED_PARAM(kind);
+        return ptr;
+#endif
     }
     
     void buildSwitch(SwitchData* data, LType type, LValue switchValue)

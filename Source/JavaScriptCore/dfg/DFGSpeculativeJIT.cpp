@@ -58,7 +58,7 @@
 #include "JSLexicalEnvironment.h"
 #include "JSPropertyNameEnumerator.h"
 #include "LinkBuffer.h"
-#include "RegExpConstructor.h"
+#include "RegExpObject.h"
 #include "ScopedArguments.h"
 #include "ScratchRegisterAllocator.h"
 #include "SuperSampler.h"
@@ -11491,45 +11491,45 @@ void SpeculativeJIT::compileMaterializeNewObject(Node* node)
 
 void SpeculativeJIT::compileRecordRegExpCachedResult(Node* node)
 {
-    Edge constructorEdge = m_jit.graph().varArgChild(node, 0);
+    Edge globalObjectEdge = m_jit.graph().varArgChild(node, 0);
     Edge regExpEdge = m_jit.graph().varArgChild(node, 1);
     Edge stringEdge = m_jit.graph().varArgChild(node, 2);
     Edge startEdge = m_jit.graph().varArgChild(node, 3);
     Edge endEdge = m_jit.graph().varArgChild(node, 4);
 
-    SpeculateCellOperand constructor(this, constructorEdge);
+    SpeculateCellOperand globalObject(this, globalObjectEdge);
     SpeculateCellOperand regExp(this, regExpEdge);
     SpeculateCellOperand string(this, stringEdge);
     SpeculateInt32Operand start(this, startEdge);
     SpeculateInt32Operand end(this, endEdge);
 
-    GPRReg constructorGPR = constructor.gpr();
+    GPRReg globalObjectGPR = globalObject.gpr();
     GPRReg regExpGPR = regExp.gpr();
     GPRReg stringGPR = string.gpr();
     GPRReg startGPR = start.gpr();
     GPRReg endGPR = end.gpr();
 
-    ptrdiff_t offset = RegExpConstructor::offsetOfCachedResult();
+    ptrdiff_t offset = JSGlobalObject::regExpGlobalDataOffset() + RegExpGlobalData::offsetOfCachedResult();
 
     m_jit.storePtr(
         regExpGPR,
-        JITCompiler::Address(constructorGPR, offset + RegExpCachedResult::offsetOfLastRegExp()));
+        JITCompiler::Address(globalObjectGPR, offset + RegExpCachedResult::offsetOfLastRegExp()));
     m_jit.storePtr(
         stringGPR,
-        JITCompiler::Address(constructorGPR, offset + RegExpCachedResult::offsetOfLastInput()));
+        JITCompiler::Address(globalObjectGPR, offset + RegExpCachedResult::offsetOfLastInput()));
     m_jit.store32(
         startGPR,
         JITCompiler::Address(
-            constructorGPR,
+            globalObjectGPR,
             offset + RegExpCachedResult::offsetOfResult() + OBJECT_OFFSETOF(MatchResult, start)));
     m_jit.store32(
         endGPR,
         JITCompiler::Address(
-            constructorGPR,
+            globalObjectGPR,
             offset + RegExpCachedResult::offsetOfResult() + OBJECT_OFFSETOF(MatchResult, end)));
     m_jit.store8(
         TrustedImm32(0),
-        JITCompiler::Address(constructorGPR, offset + RegExpCachedResult::offsetOfReified()));
+        JITCompiler::Address(globalObjectGPR, offset + RegExpCachedResult::offsetOfReified()));
 
     noResult(node);
 }
@@ -12437,63 +12437,6 @@ void SpeculativeJIT::compileObjectKeys(Node* node)
     default:
         RELEASE_ASSERT_NOT_REACHED();
         break;
-    }
-}
-
-void SpeculativeJIT::compileObjectToString(Node* node)
-{
-    switch (node->child1().useKind()) {
-    case OtherUse: {
-        JSValueOperand source(this, node->child1(), ManualOperandSpeculation);
-        GPRTemporary result(this);
-
-        JSValueRegs sourceRegs = source.jsValueRegs();
-        GPRReg resultGPR = result.gpr();
-
-        speculateOther(node->child1(), sourceRegs);
-
-        auto isUndefined = m_jit.branchIfUndefined(sourceRegs);
-        m_jit.move(TrustedImmPtr::weakPointer(m_jit.graph(), m_jit.vm()->smallStrings.nullObjectString()), resultGPR);
-        auto done = m_jit.jump();
-        isUndefined.link(&m_jit);
-        m_jit.move(TrustedImmPtr::weakPointer(m_jit.graph(), m_jit.vm()->smallStrings.undefinedObjectString()), resultGPR);
-        done.link(&m_jit);
-
-        cellResult(resultGPR, node);
-        return;
-    }
-    case UntypedUse: {
-        JSValueOperand source(this, node->child1());
-
-        JSValueRegs sourceRegs = source.jsValueRegs();
-
-        GPRTemporary structure(this);
-        GPRTemporary scratch(this);
-
-        GPRReg structureGPR = structure.gpr();
-        GPRReg scratchGPR = scratch.gpr();
-
-        CCallHelpers::JumpList slowCases;
-        slowCases.append(m_jit.branchIfNotCell(sourceRegs));
-        slowCases.append(m_jit.branchIfNotObject(sourceRegs.payloadGPR()));
-
-        m_jit.emitLoadStructure(*m_jit.vm(), sourceRegs.payloadGPR(), structureGPR, scratchGPR);
-        m_jit.loadPtr(CCallHelpers::Address(structureGPR, Structure::previousOrRareDataOffset()), scratchGPR);
-
-        slowCases.append(m_jit.branchTestPtr(CCallHelpers::Zero, scratchGPR));
-        slowCases.append(m_jit.branch32(CCallHelpers::Equal, CCallHelpers::Address(scratchGPR, JSCell::structureIDOffset()), TrustedImm32(bitwise_cast<int32_t>(m_jit.vm()->structureStructure->structureID()))));
-
-        m_jit.loadPtr(CCallHelpers::Address(scratchGPR, StructureRareData::offsetOfObjectToStringValue()), scratchGPR);
-        slowCases.append(m_jit.branchTestPtr(CCallHelpers::Zero, scratchGPR));
-
-        addSlowPathGenerator(slowPathCall(slowCases, this, operationObjectToString, scratchGPR, sourceRegs));
-
-        cellResult(scratchGPR, node);
-        return;
-    }
-    default:
-        DFG_CRASH(m_graph, node, "Bad use kind");
-        return;
     }
 }
 

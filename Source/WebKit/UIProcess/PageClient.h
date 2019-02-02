@@ -34,6 +34,7 @@
 #include <WebCore/AlternativeTextClient.h>
 #include <WebCore/EditorClient.h>
 #include <WebCore/FocusDirection.h>
+#include <WebCore/InputMode.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
 #include <WebCore/ValidationBubble.h>
 #include <wtf/CompletionHandler.h>
@@ -371,6 +372,7 @@ public:
 
     virtual void elementDidFocus(const FocusedElementInformation&, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, API::Object* userData) = 0;
     virtual void elementDidBlur() = 0;
+    virtual void focusedElementDidChangeInputMode(WebCore::InputMode) = 0;
     virtual void didReceiveEditorStateUpdateAfterFocus() = 0;
     virtual bool isFocusingElement() = 0;
     virtual bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) = 0;
@@ -422,6 +424,8 @@ public:
     virtual void pinnedStateWillChange() { }
     virtual void pinnedStateDidChange() { }
 
+    virtual bool hasSafeBrowsingWarning() const { return false; }
+    
 #if PLATFORM(MAC)
     virtual void didPerformImmediateActionHitTest(const WebHitTestResultData&, bool contentPreventsDefault, API::Object*) = 0;
     virtual NSObject *immediateActionAnimationControllerForHitTestResult(RefPtr<API::HitTestResult>, uint64_t, RefPtr<API::Object>) = 0;
@@ -454,10 +458,10 @@ public:
 #endif
 
 #if ENABLE(DATA_INTERACTION)
-    virtual void didHandleStartDataInteractionRequest(bool started) = 0;
+    virtual void didHandleDragStartRequest(bool started) = 0;
     virtual void didHandleAdditionalDragItemsRequest(bool added) = 0;
-    virtual void didConcludeEditDataInteraction(Optional<WebCore::TextIndicatorData>) = 0;
-    virtual void didChangeDataInteractionCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) = 0;
+    virtual void didConcludeEditDrag(Optional<WebCore::TextIndicatorData>) = 0;
+    virtual void didChangeDragCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) = 0;
 #endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)

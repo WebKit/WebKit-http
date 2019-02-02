@@ -32,6 +32,7 @@
 #import "CSSPrimitiveValue.h"
 #import "CSSToLengthConversionData.h"
 #import "CSSValueKeywords.h"
+#import "ColorIOS.h"
 #import "DateComponents.h"
 #import "Document.h"
 #import "File.h"
@@ -70,20 +71,12 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <CoreImage/CoreImage.h>
 #import <objc/runtime.h>
+#import <pal/ios/UIKitSoftLink.h>
 #import <pal/spi/cocoa/CoreTextSPI.h>
 #import <pal/spi/ios/UIKitSPI.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/RefPtr.h>
-#import <wtf/SoftLinking.h>
 #import <wtf/StdLibExtras.h>
-
-SOFT_LINK_FRAMEWORK(UIKit)
-SOFT_LINK_CLASS(UIKit, UIApplication)
-SOFT_LINK_CLASS(UIKit, UIColor)
-SOFT_LINK_CLASS(UIKit, UIDocumentInteractionController)
-SOFT_LINK_CLASS(UIKit, UIImage)
-SOFT_LINK_CONSTANT(UIKit, UIContentSizeCategoryDidChangeNotification, CFStringRef)
-#define UIContentSizeCategoryDidChangeNotification getUIContentSizeCategoryDidChangeNotification()
 
 @interface WebCoreRenderThemeBundle : NSObject
 @end
@@ -286,7 +279,7 @@ static IOSGradientRef gradientWithName(IOSGradientType gradientType)
 
 static void contentSizeCategoryDidChange(CFNotificationCenterRef, void*, CFStringRef name, const void*, CFDictionaryRef)
 {
-    ASSERT_UNUSED(name, CFEqual(name, UIContentSizeCategoryDidChangeNotification));
+    ASSERT_UNUSED(name, CFEqual(name, PAL::get_UIKit_UIContentSizeCategoryDidChangeNotification()));
     WebThreadRun(^{
         Page::updateStyleForAllPagesAfterGlobalChangeInEnvironment();
     });
@@ -294,7 +287,7 @@ static void contentSizeCategoryDidChange(CFNotificationCenterRef, void*, CFStrin
 
 RenderThemeIOS::RenderThemeIOS()
 {
-    CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, contentSizeCategoryDidChange, UIContentSizeCategoryDidChangeNotification, 0, CFNotificationSuspensionBehaviorDeliverImmediately);
+    CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, contentSizeCategoryDidChange, (__bridge CFStringRef)PAL::get_UIKit_UIContentSizeCategoryDidChangeNotification(), 0, CFNotificationSuspensionBehaviorDeliverImmediately);
 }
 
 RenderTheme& RenderTheme::singleton()
@@ -313,7 +306,7 @@ CFStringRef RenderThemeIOS::contentSizeCategory()
 {
     if (!_contentSizeCategory().isNull())
         return (__bridge CFStringRef)static_cast<NSString*>(_contentSizeCategory());
-    return (CFStringRef)[[getUIApplicationClass() sharedApplication] preferredContentSizeCategory];
+    return (CFStringRef)[[PAL::getUIApplicationClass() sharedApplication] preferredContentSizeCategory];
 }
 
 void RenderThemeIOS::setContentSizeCategory(const String& contentSizeCategory)
@@ -1130,7 +1123,19 @@ Color RenderThemeIOS::platformInactiveSelectionBackgroundColor(OptionSet<StyleCo
     return Color::transparent;
 }
 
+#if ENABLE(FULL_KEYBOARD_ACCESS)
+Color RenderThemeIOS::platformFocusRingColor(OptionSet<StyleColor::Options>) const
+{
+    return colorFromUIColor([PAL::getUIColorClass() keyboardFocusIndicatorColor]);
+}
+#endif
+
 bool RenderThemeIOS::shouldHaveSpinButton(const HTMLInputElement&) const
+{
+    return false;
+}
+
+bool RenderThemeIOS::supportsFocusRing(const RenderStyle&) const
 {
     return false;
 }
@@ -1436,28 +1441,28 @@ Color RenderThemeIOS::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
     Color color;
     switch (cssValueID) {
     case CSSValueAppleWirelessPlaybackTargetActive:
-        color = [getUIColorClass() systemBlueColor].CGColor;
+        color = [PAL::getUIColorClass() systemBlueColor].CGColor;
         break;
     case CSSValueAppleSystemBlue:
-        color = [getUIColorClass() systemBlueColor].CGColor;
+        color = [PAL::getUIColorClass() systemBlueColor].CGColor;
         break;
     case CSSValueAppleSystemGray:
-        color = [getUIColorClass() systemGrayColor].CGColor;
+        color = [PAL::getUIColorClass() systemGrayColor].CGColor;
         break;
     case CSSValueAppleSystemGreen:
-        color = [getUIColorClass() systemGreenColor].CGColor;
+        color = [PAL::getUIColorClass() systemGreenColor].CGColor;
         break;
     case CSSValueAppleSystemOrange:
-        color = [getUIColorClass() systemOrangeColor].CGColor;
+        color = [PAL::getUIColorClass() systemOrangeColor].CGColor;
         break;
     case CSSValueAppleSystemPink:
-        color = [getUIColorClass() systemPinkColor].CGColor;
+        color = [PAL::getUIColorClass() systemPinkColor].CGColor;
         break;
     case CSSValueAppleSystemRed:
-        color = [getUIColorClass() systemRedColor].CGColor;
+        color = [PAL::getUIColorClass() systemRedColor].CGColor;
         break;
     case CSSValueAppleSystemYellow:
-        color = [getUIColorClass() systemYellowColor].CGColor;
+        color = [PAL::getUIColorClass() systemYellowColor].CGColor;
         break;
     default:
         break;
@@ -1501,7 +1506,7 @@ static RetainPtr<CTFontRef> attachmentActionFont()
 
 static UIColor *attachmentActionColor(const RenderAttachment& attachment)
 {
-    return [getUIColorClass() colorWithCGColor:cachedCGColor(attachment.style().visitedDependentColor(CSSPropertyColor))];
+    return [PAL::getUIColorClass() colorWithCGColor:cachedCGColor(attachment.style().visitedDependentColor(CSSPropertyColor))];
 }
 
 static RetainPtr<CTFontRef> attachmentTitleFont()
@@ -1510,10 +1515,10 @@ static RetainPtr<CTFontRef> attachmentTitleFont()
     return adoptCF(CTFontCreateWithFontDescriptor(fontDescriptor.get(), 0, nullptr));
 }
 
-static UIColor *attachmentTitleColor() { return [getUIColorClass() systemGrayColor]; }
+static UIColor *attachmentTitleColor() { return [PAL::getUIColorClass() systemGrayColor]; }
 
 static RetainPtr<CTFontRef> attachmentSubtitleFont() { return attachmentTitleFont(); }
-static UIColor *attachmentSubtitleColor() { return [getUIColorClass() systemGrayColor]; }
+static UIColor *attachmentSubtitleColor() { return [PAL::getUIColorClass() systemGrayColor]; }
 
 struct RenderAttachmentInfo {
     explicit RenderAttachmentInfo(const RenderAttachment&);
@@ -1635,7 +1640,7 @@ static BOOL getAttachmentProgress(const RenderAttachment& attachment, float& pro
 
 static RetainPtr<UIImage> iconForAttachment(const RenderAttachment& attachment, FloatSize& size)
 {
-    auto documentInteractionController = adoptNS([allocUIDocumentInteractionControllerInstance() init]);
+    auto documentInteractionController = adoptNS([PAL::allocUIDocumentInteractionControllerInstance() init]);
 
     String fileName;
     if (File* file = attachment.attachmentElement().file())

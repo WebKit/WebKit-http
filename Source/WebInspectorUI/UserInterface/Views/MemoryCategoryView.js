@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WI.MemoryCategoryView = class MemoryCategoryView extends WI.Object
+WI.MemoryCategoryView = class MemoryCategoryView
 {
     constructor(category, displayName)
     {
-        super();
-
         console.assert(typeof category === "string");
 
         this._category = category;
@@ -51,7 +49,7 @@ WI.MemoryCategoryView = class MemoryCategoryView extends WI.Object
         this._graphElement = this._element.appendChild(document.createElement("div"));
         this._graphElement.classList.add("graph");
 
-        // FIXME: <https://webkit.org/b/153758> Web Inspector: Memory Timeline View should be responsive / resizable
+        // FIXME: <https://webkit.org/b/153758> Web Inspector: Memory / CPU Timeline Views should be responsive / resizable
         let size = new WI.Size(800, 75);
         this._chart = new WI.LineChart(size);
         this._graphElement.appendChild(this._chart.element);
@@ -66,6 +64,7 @@ WI.MemoryCategoryView = class MemoryCategoryView extends WI.Object
     {
         this._cachedMinSize = undefined;
         this._cachedMaxSize = undefined;
+        this._updateDetails(NaN, NaN);
 
         this._chart.clear();
         this._chart.needsLayout();

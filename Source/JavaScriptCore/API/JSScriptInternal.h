@@ -28,6 +28,29 @@
 #import "JSScript.h"
 #import "SourceCode.h"
 
-OBJC_CLASS JSScript;
+#if JSC_OBJC_API_ENABLED
 
-const String& getJSScriptSourceCode(JSScript *);
+NS_ASSUME_NONNULL_BEGIN
+
+namespace JSC {
+class CachedBytecode;
+class Identifier;
+class JSSourceCode;
+};
+
+namespace WTF {
+class String;
+};
+
+@interface JSScript(Internal)
+
+- (unsigned)hash;
+- (const WTF::String&)source;
+- (const JSC::CachedBytecode*)cachedBytecode;
+- (JSC::JSSourceCode*)jsSourceCode:(const JSC::Identifier&)moduleKey;
+
+@end
+
+NS_ASSUME_NONNULL_END
+
+#endif // JSC_OBJC_API_ENABLED

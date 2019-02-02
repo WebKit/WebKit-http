@@ -36,11 +36,11 @@
 #import "NetworkSessionCocoa.h"
 #import "WebCoreArgumentCoders.h"
 #import <WebCore/AuthenticationChallenge.h>
-#import <WebCore/FileSystem.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/ResourceRequest.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
+#import <wtf/FileSystem.h>
 #import <wtf/MainThread.h>
 #import <wtf/ProcessPrivilege.h>
 #import <wtf/text/Base64.h>
@@ -348,9 +348,8 @@ void NetworkDataTaskCocoa::willPerformHTTPRedirection(WebCore::ResourceResponse&
     if (isTopLevelNavigation())
         request.setFirstPartyForCookies(request.url());
 
-    bool shouldBlockCookies = false;
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    shouldBlockCookies = m_session->networkStorageSession().shouldBlockCookies(request, m_frameID, m_pageID);
+    bool shouldBlockCookies = m_session->networkStorageSession().shouldBlockCookies(request, m_frameID, m_pageID);
 #if !RELEASE_LOG_DISABLED
     if (m_session->shouldLogCookieInformation())
         RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), Network, "%p - NetworkDataTaskCocoa::willPerformHTTPRedirection::logCookieInformation: pageID = %llu, frameID = %llu, taskID = %lu: %s cookies for redirect URL %s", this, m_pageID, m_frameID, (unsigned long)[m_task taskIdentifier], (shouldBlockCookies ? "Blocking" : "Not blocking"), request.url().string().utf8().data());
@@ -378,7 +377,11 @@ void NetworkDataTaskCocoa::willPerformHTTPRedirection(WebCore::ResourceResponse&
     if (m_client)
         m_client->willPerformHTTPRedirection(WTFMove(redirectResponse), WTFMove(request), [completionHandler = WTFMove(completionHandler), this, protectedThis = makeRef(*this)] (auto&& request) mutable {
             if (!request.isNull()) {
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
                 bool shouldBlockCookies = m_session->networkStorageSession().shouldBlockCookies(request, m_frameID, m_pageID);
+#else
+                bool shouldBlockCookies = false;
+#endif
                 restrictRequestReferrerToOriginIfNeeded(request, shouldBlockCookies);
             }
             completionHandler(WTFMove(request));
@@ -400,8 +403,8 @@ void NetworkDataTaskCocoa::setPendingDownloadLocation(const WTF::String& filenam
 
     m_task.get()._pathToDownloadTaskFile = m_pendingDownloadLocation;
 
-    if (allowOverwrite && WebCore::FileSystem::fileExists(m_pendingDownloadLocation))
-        WebCore::FileSystem::deleteFile(filename);
+    if (allowOverwrite && FileSystem::fileExists(m_pendingDownloadLocation))
+        FileSystem::deleteFile(filename);
 }
 
 bool NetworkDataTaskCocoa::tryPasswordBasedAuthentication(const WebCore::AuthenticationChallenge& challenge, ChallengeCompletionHandler& completionHandler)

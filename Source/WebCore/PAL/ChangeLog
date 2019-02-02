@@ -1,3 +1,238 @@
+2019-01-27  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Introduce isolated accessibility tree
+        https://bugs.webkit.org/show_bug.cgi?id=193348
+        <rdar://problem/47203295>
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-01-25  Alex Christensen  <achristensen@webkit.org>
+
+        Move logic from ChildProcess::setApplicationIsDaemon to NetworkProcess::initializeProcess
+        https://bugs.webkit.org/show_bug.cgi?id=193844
+
+        Reviewed by Andy Estes.
+
+        * pal/spi/mac/HIServicesSPI.h:
+
+2019-01-25  David Kilzer  <ddkilzer@apple.com>
+
+        Move soft-linking of Lookup.framework out of LookupSPI.h
+        <https://webkit.org/b/193815>
+
+        Reviewed by Tim Horton.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/PlatformMac.cmake:
+        - Add LookupSoftLink.{h,mm} files to the project.
+
+        * pal/ios/UIKitSoftLink.h:
+        * pal/ios/UIKitSoftLink.mm:
+        - Change SOFT_LINK_VARIABLE_FOR_HEADER() to
+          SOFT_LINK_CONSTANT_FOR_HEADER() for
+          UIAccessibilityAnnouncementNotification constant.
+
+        * pal/mac/LookupSoftLink.h: Copied from Source/WebCore/PAL/pal/spi/mac/LookupSPI.h.
+        * pal/mac/LookupSoftLink.mm: Copied from Source/WebCore/PAL/pal/spi/mac/LookupSPI.h.
+        - Migrate soft-linking from LookupSPI.h to here.
+
+        * pal/spi/mac/LookupSPI.h:
+        - Replace soft-linking of Lookup.framework with
+          LookupSoftLink.h.
+
+2019-01-24  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] Silence MediaPlayer compile warnings
+        https://bugs.webkit.org/show_bug.cgi?id=193780
+        <rdar://problem/47518428>
+
+        Reviewed by Jer Noble.
+
+        * pal/spi/ios/MediaPlayerSPI.h:
+
+2019-01-24  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Move FileSystem to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=193602
+
+        Reviewed by Yusuke Suzuki.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/PlatformMac.cmake:
+
+2019-01-24  David Kilzer  <ddkilzer@apple.com>
+
+        Follow-up #2: Override the session configuration for cookieAcceptPolicy
+        <https://bugs.webkit.org/show_bug.cgi?id=190925>
+        <rdar://problem/45497382>
+
+        * pal/spi/cf/CFNetworkSPI.h: Protect Objective-C code using
+        defined(__OBJC__) macro.
+
+2019-01-23  David Kilzer  <ddkilzer@apple.com>
+
+        Switch remaining CoreMedia soft-linking in WebKit over to CoreMediaSoftLink.{cpp,h}
+        <https://webkit.org/b/193694>
+        <rdar://problem/47464025>
+
+        Reviewed by Tim Horton.
+
+        * pal/cf/CoreMediaSoftLink.cpp:
+        - Export kCMTimeZero soft-link.
+        * pal/cf/CoreMediaSoftLink.h:
+        - Update kCMTimeZero macro to use PAL namespace for use in
+          WebKit.framework.
+
+2019-01-22  David Kilzer  <ddkilzer@apple.com>
+
+        Switch remaining QuickLook soft-linking in WebCore, WebKit over to QuickLookSoftLink.{cpp,h}
+        <https://webkit.org/b/193654>
+        <rdar://problem/47430290>
+
+        Reviewed by Alex Christensen.
+
+        - Moves QuickLookSoftLink.{h,mm} to PAL.
+        - Adds soft-link to 3 classes to consolidate QuickLook.framework
+          soft-linking.
+        - Updates existing source to work with above changes.
+
+        * PAL.xcodeproj/project.pbxproj:
+        - Add QuickLookSoftLink.{h,mm} due to move from WebCore.
+
+        * pal/ios/QuickLookSoftLink.h: Renamed from Source/WebCore/platform/ios/QuickLookSoftLink.h.
+        * pal/ios/QuickLookSoftLink.mm: Renamed from Source/WebCore/platform/ios/QuickLookSoftLink.mm.
+        - Add 3 classes for soft-linking.
+        - Change namespace from WebCore to PAL.
+
+2019-01-21  David Kilzer  <ddkilzer@apple.com>
+
+        Sort PAL Xcode project file
+
+        * PAL.xcodeproj/project.pbxproj:
+
+2019-01-12  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Avoid importing directly from subumbrella frameworks
+        https://bugs.webkit.org/show_bug.cgi?id=186016
+        <rdar://problem/40591038>
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/PAL.xcconfig: Removed -iframework options from OTHER_CFLAGS and
+          OTHER_CPLUSPLUSFLAGS.
+        * pal/spi/cg/CoreGraphicsSPI.h: Import ApplicationServices.h instead of ColorSync.h
+          when using SDKs earlier than 10.13.
+        * pal/spi/mac/HIToolboxSPI.h: Import CarbonPriv.h instead of HIToolboxPriv.h.
+        * pal/spi/mac/QuickLookMacSPI.h: Import Quartz.h instead of a QuickLookUI header.
+
+2019-01-20  Antoine Quint  <graouts@apple.com>
+
+        Add a POINTER_EVENTS feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=193577
+        <rdar://problem/47408511>
+
+        Unreviewed. Also enable Pointer Events for iosmac.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-01-19  Antoine Quint  <graouts@apple.com>
+
+        Add a POINTER_EVENTS feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=193577
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-01-18  David Kilzer  <ddkilzer@apple.com>
+
+        [PAL] Change Xcode folders to map to folders on disk
+
+        Found by tidy-Xcode-project-file script (see Bug 188754).
+
+        * PAL.xcodeproj/project.pbxproj: Update these folders:
+        - pal/avfoundation
+        - pal/crypto/commoncrypto
+        - pal/ios
+
+2019-01-18  David Kilzer  <ddkilzer@apple.com>
+
+        Follow-up: Override the session configuration for cookieAcceptPolicy
+        <https://bugs.webkit.org/show_bug.cgi?id=190925>
+        <rdar://problem/45497382>
+
+        Discussed with John Wilander.
+
+        * pal/spi/cf/CFNetworkSPI.h: Declare new SPI for the internal
+        macOS 10.12 Sierra SDK since it will never appear in those
+        headers.  This fixes the build for trunk WebKit on Sierra.
+
+2019-01-18  Tim Horton  <timothy_horton@apple.com>
+
+        Get rid of ADVANCED_SPELL_CHECKING
+        https://bugs.webkit.org/show_bug.cgi?id=193592
+
+        Reviewed by Wenson Hsieh.
+
+        * pal/spi/mac/NSSpellCheckerSPI.h:
+        It's always true on macOS, and all but one use of it is already inside PLATFORM(MAC)
+
+2019-01-18  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/PAL.xcconfig:
+        * Configurations/SDKVariant.xcconfig: Added.
+
+2019-01-18  Daniel Bates  <dabates@apple.com>
+
+        CSS auto focus-ring outlines don't render on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=193583
+        <rdar://problem/6508697>
+
+        Reviewed by Simon Fraser.
+
+        Forward declare some IPI.
+
+        * pal/spi/ios/UIKitSPI.h:
+
+2019-01-18  David Kilzer  <ddkilzer@apple.com>
+
+        Switch remaining UIKit soft-linking in WebCore, WebKitLegacy over to UIKitSoftLink.{cpp,h}
+        <https://webkit.org/b/193568>
+        <rdar://problem/47381130>
+
+        Reviewed by Alex Christensen.
+
+        * pal/ios/UIKitSoftLink.h:
+        * pal/ios/UIKitSoftLink.mm:
+        - Add constants, classes and functions that were previously
+          soft-linked in separate source files.
+        - UIAccessibilityAnnouncementNotification is declared as a
+          variable because this constant is not marked as `const` in
+          UIKit.
+        * pal/spi/ios/UIKitSPI.h:
+        - Move SPI declarations from HTMLConverter.mm to here.
+
+2019-01-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r240124.
+
+        This commit broke an internal build.
+
+        Reverted changeset:
+
+        "SDK_VARIANT build destinations should be separate from non-
+        SDK_VARIANT builds"
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+        https://trac.webkit.org/changeset/240124
+
 2019-01-17  Tim Horton  <timothy_horton@apple.com>
 
         Adopt NSTextCheckingSuppressInitialCapitalizationKey

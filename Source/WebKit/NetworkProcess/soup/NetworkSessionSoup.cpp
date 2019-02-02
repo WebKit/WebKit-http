@@ -46,13 +46,13 @@ NetworkSessionSoup::NetworkSessionSoup(NetworkProcess& networkProcess, NetworkSe
 
 NetworkSessionSoup::~NetworkSessionSoup()
 {
-    if (auto* storageSession = NetworkStorageSession::storageSession(m_sessionID))
+    if (auto* storageSession = networkProcess().storageSession(m_sessionID))
         storageSession->setCookieObserverHandler(nullptr);
 }
 
 SoupSession* NetworkSessionSoup::soupSession() const
 {
-    return networkStorageSession().getOrCreateSoupNetworkSession().soupSession();
+    return networkStorageSession().soupNetworkSession().soupSession();
 }
 
 void NetworkSessionSoup::clearCredentials()

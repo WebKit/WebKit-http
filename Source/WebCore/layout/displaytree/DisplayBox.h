@@ -143,6 +143,7 @@ public:
     LayoutUnit marginStart() const;
     LayoutUnit marginAfter() const;
     LayoutUnit marginEnd() const;
+    bool hasCollapsedThroughMargin() const { return m_verticalMargin.isCollapsedThrough(); }
     bool hasClearance() const { return m_hasClearance; }
 
     LayoutUnit nonCollapsedMarginBefore() const;
@@ -242,7 +243,7 @@ private:
     Layout::UsedHorizontalMargin m_horizontalMargin;
     Layout::UsedVerticalMargin m_verticalMargin;
     Layout::ComputedHorizontalMargin m_horizontalComputedMargin;
-    bool m_hasClearance;
+    bool m_hasClearance { false };
 
     Layout::Edges m_border;
     Optional<Layout::Edges> m_padding;

@@ -129,6 +129,7 @@ class JSWebAssemblyInstance;
 class LLIntOffsetsExtractor;
 class NativeExecutable;
 class PromiseDeferredTimer;
+class RegExp;
 class RegExpCache;
 class Register;
 class RegisterAtOffsetList;
@@ -367,25 +368,16 @@ public:
     CompleteSubspace eagerlySweptDestructibleObjectSpace;
     CompleteSubspace segmentedVariableObjectSpace;
     
-    IsoSubspace arrayBufferConstructorSpace;
     IsoSubspace asyncFunctionSpace;
     IsoSubspace asyncGeneratorFunctionSpace;
     IsoSubspace boundFunctionSpace;
     IsoSubspace callbackFunctionSpace;
     IsoSubspace customGetterSetterFunctionSpace;
-    IsoSubspace errorConstructorSpace;
     IsoSubspace executableToCodeBlockEdgeSpace;
     IsoSubspace functionSpace;
     IsoSubspace generatorFunctionSpace;
     IsoSubspace inferredValueSpace;
     IsoSubspace internalFunctionSpace;
-#if ENABLE(INTL)
-    IsoSubspace intlCollatorConstructorSpace;
-    IsoSubspace intlDateTimeFormatConstructorSpace;
-    IsoSubspace intlNumberFormatConstructorSpace;
-    IsoSubspace intlPluralRulesConstructorSpace;
-#endif
-    IsoSubspace nativeErrorConstructorSpace;
     IsoSubspace nativeExecutableSpace;
     IsoSubspace nativeStdFunctionSpace;
 #if JSC_OBJC_API_ENABLED
@@ -393,8 +385,6 @@ public:
 #endif
     IsoSubspace propertyTableSpace;
     IsoSubspace proxyRevokeSpace;
-    IsoSubspace regExpConstructorSpace;
-    IsoSubspace strictModeTypeErrorFunctionSpace;
     IsoSubspace structureRareDataSpace;
     IsoSubspace structureSpace;
     IsoSubspace weakSetSpace;

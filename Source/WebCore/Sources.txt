@@ -318,6 +318,7 @@ Modules/webgpu/WHLSL/WHLSLSynthesizeConstructors.cpp
 Modules/webgpu/WHLSL/WHLSLSynthesizeEnumerationFunctions.cpp
 Modules/webgpu/WHLSL/WHLSLSynthesizeStructureAccessors.cpp
 Modules/webgpu/WHLSL/WHLSLIntrinsics.cpp
+Modules/webgpu/WHLSL/WHLSLStatementBehaviorChecker.cpp
 Modules/webgpu/WHLSL/WHLSLNameContext.cpp
 Modules/webgpu/WHLSL/WHLSLNameResolver.cpp
 Modules/webgpu/WHLSL/WHLSLResolveOverloadImpl.cpp
@@ -325,7 +326,12 @@ Modules/webgpu/WHLSL/WHLSLRecursionChecker.cpp
 Modules/webgpu/WHLSL/WHLSLVisitor.cpp
 Modules/webgpu/WHLSL/WHLSLLiteralTypeChecker.cpp
 Modules/webgpu/WHLSL/WHLSLHighZombieFinder.cpp
-Modules/webgpu/WHLSL/WHLSLLoopChecker.cpp
+Modules/webgpu/WHLSL/Metal/WHLSLTypeNamer.cpp
+Modules/webgpu/WHLSL/Metal/WHLSLFunctionWriter.cpp
+Modules/webgpu/WHLSL/Metal/WHLSLMetalCodeGenerator.cpp
+Modules/webgpu/WHLSL/Metal/WHLSLNativeFunctionWriter.cpp
+Modules/webgpu/WHLSL/Metal/WHLSLEntryPointScaffolding.cpp
+Modules/webgpu/WHLSL/Metal/WHLSLNativeTypeWriter.cpp
 Modules/webgpu/WHLSL/WHLSLFunctionStageChecker.cpp
 Modules/webgpu/WHLSL/AST/WHLSLTypeArgument.cpp
 Modules/webgpu/WHLSL/AST/WHLSLBuiltInSemantic.cpp
@@ -399,6 +405,8 @@ accessibility/AccessibilityTableRow.cpp
 accessibility/AccessibilityTree.cpp
 accessibility/AccessibilityTreeItem.cpp
 accessibility/AccessibleSetValueEvent.cpp
+accessibility/isolatedtree/AXIsolatedTree.cpp
+accessibility/isolatedtree/AXIsolatedTreeNode.cpp
 
 animation/AnimationEffect.cpp
 animation/AnimationPlaybackEvent.cpp
@@ -520,6 +528,7 @@ bindings/js/JSTextTrackListCustom.cpp
 bindings/js/JSTrackCustom.cpp
 bindings/js/JSTreeWalkerCustom.cpp
 bindings/js/JSTypedOMCSSStyleValueCustom.cpp
+bindings/js/JSUndoItemCustom.cpp
 bindings/js/JSVideoTrackCustom.cpp
 bindings/js/JSVideoTrackListCustom.cpp
 bindings/js/JSWebAnimationCustom.cpp
@@ -945,6 +954,7 @@ editing/BreakBlockquoteCommand.cpp
 editing/ChangeListTypeCommand.cpp
 editing/CompositeEditCommand.cpp
 editing/CreateLinkCommand.cpp
+editing/CustomUndoStep.cpp
 editing/DeleteFromTextNodeCommand.cpp
 editing/DeleteSelectionCommand.cpp
 editing/DictationAlternative.cpp
@@ -1278,6 +1288,7 @@ inspector/WorkerInspectorController.cpp
 inspector/WorkerScriptDebugServer.cpp
 
 inspector/agents/InspectorApplicationCacheAgent.cpp
+inspector/agents/InspectorCPUProfilerAgent.cpp
 inspector/agents/InspectorCSSAgent.cpp
 inspector/agents/InspectorCanvasAgent.cpp
 inspector/agents/InspectorDOMAgent.cpp
@@ -1530,6 +1541,7 @@ page/SocketProvider.cpp
 page/SpatialNavigation.cpp
 page/SuspendableTimer.cpp
 page/TextIndicator.cpp
+page/UndoItem.cpp
 page/UndoManager.cpp
 page/UserContentProvider.cpp
 page/UserContentController.cpp
@@ -1566,6 +1578,7 @@ page/scrolling/ScrollLatchingState.cpp
 page/scrolling/ScrollingConstraints.cpp
 page/scrolling/ScrollingCoordinator.cpp
 page/scrolling/ScrollingStateFixedNode.cpp
+page/scrolling/ScrollingStateFrameHostingNode.cpp
 page/scrolling/ScrollingStateFrameScrollingNode.cpp
 page/scrolling/ScrollingStateNode.cpp
 page/scrolling/ScrollingStateOverflowScrollingNode.cpp
@@ -1574,6 +1587,7 @@ page/scrolling/ScrollingStateStickyNode.cpp
 page/scrolling/ScrollingStateTree.cpp
 page/scrolling/ScrollingThread.cpp
 page/scrolling/ScrollingTree.cpp
+page/scrolling/ScrollingTreeFrameHostingNode.cpp
 page/scrolling/ScrollingTreeFrameScrollingNode.cpp
 page/scrolling/ScrollingTreeNode.cpp
 page/scrolling/ScrollingTreeOverflowScrollingNode.cpp
@@ -1594,7 +1608,6 @@ platform/FileChooser.cpp
 platform/FileHandle.cpp
 platform/FileMonitor.cpp
 platform/FileStream.cpp
-platform/FileSystem.cpp
 platform/GenericTaskQueue.cpp
 platform/LayoutUnit.cpp
 platform/Length.cpp

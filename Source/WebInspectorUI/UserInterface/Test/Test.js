@@ -38,6 +38,7 @@ WI.loaded = function()
     InspectorBackend.registerMemoryDispatcher(new WI.MemoryObserver);
     InspectorBackend.registerDOMStorageDispatcher(new WI.DOMStorageObserver);
     InspectorBackend.registerScriptProfilerDispatcher(new WI.ScriptProfilerObserver);
+    InspectorBackend.registerCPUProfilerDispatcher(new WI.CPUProfilerObserver);
     InspectorBackend.registerTimelineDispatcher(new WI.TimelineObserver);
     InspectorBackend.registerCSSDispatcher(new WI.CSSObserver);
     InspectorBackend.registerLayerTreeDispatcher(new WI.LayerTreeObserver);
@@ -148,6 +149,10 @@ WI.performOneTimeFrontendInitializationsUsingTarget = function(target)
         WI.__didPerformCSSInitialization = true;
         WI.CSSCompletions.initializeCSSCompletions(target);
     }
+};
+
+WI.initializeTarget = function(target)
+{
 };
 
 Object.defineProperty(WI, "mainTarget",

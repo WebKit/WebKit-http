@@ -27,6 +27,7 @@
 #include "WebKitDLL.h"
 #include "WebPreferences.h"
 
+#include "NetworkStorageSessionMap.h"
 #include "WebNotificationCenter.h"
 #include "WebPreferenceKeysPrivate.h"
 
@@ -37,13 +38,13 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <WebCore/COMPtr.h>
-#include <WebCore/FileSystem.h>
 #include <WebCore/FontCascade.h>
 #include <WebCore/LocalizedStrings.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <limits>
 #include <shlobj.h>
 #include <wchar.h>
+#include <wtf/FileSystem.h>
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
@@ -2118,13 +2119,13 @@ HRESULT WebPreferences::mediaPreloadingEnabled(_Out_ BOOL* enabled)
 
 HRESULT WebPreferences::clearNetworkLoaderSession()
 {
-    NetworkStorageSession::defaultStorageSession().deleteAllCookies();
+    NetworkStorageSessionMap::defaultStorageSession().deleteAllCookies();
     return S_OK;
 }
 
 HRESULT WebPreferences::switchNetworkLoaderToNewTestingSession()
 {
-    NetworkStorageSession::switchToNewTestingSession();
+    NetworkStorageSessionMap::switchToNewTestingSession();
     return S_OK;
 }
 

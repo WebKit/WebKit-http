@@ -63,16 +63,14 @@
 #include "JSWeakSet.h"
 #include "NumberConstructor.h"
 #include "ObjectConstructor.h"
-#include "ObjectPrototypeInlines.h"
 #include "Operations.h"
 #include "ParseInt.h"
-#include "RegExpConstructor.h"
+#include "RegExpGlobalDataInlines.h"
 #include "RegExpMatchesArray.h"
 #include "RegExpObjectInlines.h"
 #include "Repatch.h"
 #include "ScopedArguments.h"
 #include "StringConstructor.h"
-#include "StructureRareDataInlines.h"
 #include "SuperSampler.h"
 #include "Symbol.h"
 #include "TypeProfilerLog.h"
@@ -1176,7 +1174,6 @@ EncodedJSValue JIT_OPERATION operationRegExpExecNonGlobalOrSticky(ExecState* exe
 
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    RegExpConstructor* regExpConstructor = globalObject->regExpConstructor();
     String input = string->value(exec);
     RETURN_IF_EXCEPTION(scope, { });
 
@@ -1189,7 +1186,7 @@ EncodedJSValue JIT_OPERATION operationRegExpExecNonGlobalOrSticky(ExecState* exe
     }
 
     RETURN_IF_EXCEPTION(scope, { });
-    regExpConstructor->recordMatch(vm, regExp, string, result);
+    globalObject->regExpGlobalData().recordMatch(vm, globalObject, regExp, string, result);
     return JSValue::encode(array);
 }
 
@@ -1219,19 +1216,17 @@ EncodedJSValue JIT_OPERATION operationRegExpMatchFastGlobalString(ExecState* exe
     String s = string->value(exec);
     RETURN_IF_EXCEPTION(scope, { });
 
-    RegExpConstructor* regExpConstructor = globalObject->regExpConstructor();
-
     if (regExp->unicode()) {
         unsigned stringLength = s.length();
         RELEASE_AND_RETURN(scope, JSValue::encode(collectMatches(
-            vm, exec, string, s, regExpConstructor, regExp,
+            vm, exec, string, s, globalObject, regExp,
             [&] (size_t end) -> size_t {
                 return advanceStringUnicode(s, stringLength, end);
             })));
     }
 
     RELEASE_AND_RETURN(scope, JSValue::encode(collectMatches(
-        vm, exec, string, s, regExpConstructor, regExp,
+        vm, exec, string, s, globalObject, regExp,
         [&] (size_t end) -> size_t {
             return end + 1;
         })));
@@ -2154,13 +2149,6 @@ JSString* JIT_OPERATION operationStringValueOf(ExecState* exec, EncodedJSValue e
 
     throwVMTypeError(exec, scope);
     return nullptr;
-}
-
-JSString* JIT_OPERATION operationObjectToString(ExecState* exec, EncodedJSValue source)
-{
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-    return objectToString(exec, JSValue::decode(source));
 }
 
 JSCell* JIT_OPERATION operationStringSubstr(ExecState* exec, JSCell* cell, int32_t from, int32_t span)

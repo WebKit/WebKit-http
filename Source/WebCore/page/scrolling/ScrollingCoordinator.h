@@ -30,6 +30,7 @@
 #include "PlatformWheelEvent.h"
 #include "ScrollSnapOffsetsInfo.h"
 #include "ScrollTypes.h"
+#include "ScrollingCoordinatorTypes.h"
 #include <wtf/Forward.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/TypeCasts.h>
@@ -51,26 +52,6 @@ class TextStream;
 
 namespace WebCore {
 
-typedef unsigned SynchronousScrollingReasons;
-typedef uint64_t ScrollingNodeID;
-
-enum class ScrollingNodeType : uint8_t {
-    MainFrame,
-    Subframe,
-    Overflow,
-    Fixed,
-    Sticky
-};
-
-enum ScrollingStateTreeAsTextBehaviorFlags {
-    ScrollingStateTreeAsTextBehaviorNormal                  = 0,
-    ScrollingStateTreeAsTextBehaviorIncludeLayerIDs         = 1 << 0,
-    ScrollingStateTreeAsTextBehaviorIncludeNodeIDs          = 1 << 1,
-    ScrollingStateTreeAsTextBehaviorIncludeLayerPositions   = 1 << 2,
-    ScrollingStateTreeAsTextBehaviorDebug                   = ScrollingStateTreeAsTextBehaviorIncludeLayerIDs | ScrollingStateTreeAsTextBehaviorIncludeNodeIDs | ScrollingStateTreeAsTextBehaviorIncludeLayerPositions
-};
-typedef unsigned ScrollingStateTreeAsTextBehavior;
-
 class Document;
 class Frame;
 class FrameView;
@@ -84,42 +65,6 @@ class ViewportConstraints;
 #if ENABLE(ASYNC_SCROLLING)
 class ScrollingTree;
 #endif
-
-enum class ScrollingLayerPositionAction {
-    Set,
-    SetApproximate,
-    Sync
-};
-
-struct ScrollableAreaParameters {
-    ScrollElasticity horizontalScrollElasticity { ScrollElasticityNone };
-    ScrollElasticity verticalScrollElasticity { ScrollElasticityNone };
-
-    ScrollbarMode horizontalScrollbarMode { ScrollbarAuto };
-    ScrollbarMode verticalScrollbarMode { ScrollbarAuto };
-
-    bool hasEnabledHorizontalScrollbar { false };
-    bool hasEnabledVerticalScrollbar { false };
-
-    bool useDarkAppearanceForScrollbars { false };
-
-    bool operator==(const ScrollableAreaParameters& other) const
-    {
-        return horizontalScrollElasticity == other.horizontalScrollElasticity
-            && verticalScrollElasticity == other.verticalScrollElasticity
-            && horizontalScrollbarMode == other.horizontalScrollbarMode
-            && verticalScrollbarMode == other.verticalScrollbarMode
-            && hasEnabledHorizontalScrollbar == other.hasEnabledHorizontalScrollbar
-            && hasEnabledVerticalScrollbar == other.hasEnabledVerticalScrollbar
-            && useDarkAppearanceForScrollbars == other.useDarkAppearanceForScrollbars;
-    }
-};
-
-enum class ViewportRectStability {
-    Stable,
-    Unstable,
-    ChangingObscuredInsetsInteractively // This implies Unstable.
-};
 
 class ScrollingCoordinator : public ThreadSafeRefCounted<ScrollingCoordinator> {
 public:
@@ -167,10 +112,22 @@ public:
     virtual void commitTreeStateIfNeeded() { }
     virtual bool requestScrollPositionUpdate(FrameView&, const IntPoint&) { return false; }
     virtual bool handleWheelEvent(FrameView&, const PlatformWheelEvent&) { return true; }
-    virtual ScrollingNodeID attachToStateTree(ScrollingNodeType, ScrollingNodeID newNodeID, ScrollingNodeID /*parentID*/, size_t /*childIndex*/ = notFound) { return newNodeID; }
 
-    virtual void detachFromStateTree(ScrollingNodeID) { }
-    virtual void clearStateTree() { }
+    // Create an unparented node.
+    virtual ScrollingNodeID createNode(ScrollingNodeType, ScrollingNodeID newNodeID) { return newNodeID; }
+    // Parent a node in the scrolling tree. This may return a new nodeID if the node type changed. parentID = 0 sets the root node.
+    virtual ScrollingNodeID insertNode(ScrollingNodeType, ScrollingNodeID newNodeID, ScrollingNodeID /*parentID*/, size_t /*childIndex*/ = notFound) { return newNodeID; }
+    // Node will be unparented, but not destroyed. It's the client's responsibility to either re-parent or destroy this node.
+    virtual void unparentNode(ScrollingNodeID) { }
+    // Node will be destroyed, and its children left unparented.
+    virtual void unparentChildrenAndDestroyNode(ScrollingNodeID) { }
+    // Node will be unparented, and it and its children destroyed.
+    virtual void detachAndDestroySubtree(ScrollingNodeID) { }
+    // Destroy the tree, including both parented and unparented nodes.
+    virtual void clearAllNodes() { }
+
+    virtual ScrollingNodeID parentOfNode(ScrollingNodeID) const { return 0; }
+    virtual Vector<ScrollingNodeID> childrenOfNode(ScrollingNodeID) const { return { }; }
 
     virtual void setNodeLayers(ScrollingNodeID, GraphicsLayer* /*layer*/, GraphicsLayer* /*scrolledContentsLayer*/ = nullptr, GraphicsLayer* /*counterScrollingLayer*/ = nullptr, GraphicsLayer* /*insetClipLayer*/ = nullptr) { }
 
@@ -216,7 +173,6 @@ public:
     bool shouldUpdateScrollLayerPositionSynchronously(const FrameView&) const;
 
     virtual void willDestroyScrollableArea(ScrollableArea&) { }
-    virtual void scrollableAreaScrollLayerDidChange(ScrollableArea&) { }
     virtual void scrollableAreaScrollbarLayerDidChange(ScrollableArea&, ScrollbarOrientation) { }
 
     static String synchronousScrollingReasonsAsText(SynchronousScrollingReasons);

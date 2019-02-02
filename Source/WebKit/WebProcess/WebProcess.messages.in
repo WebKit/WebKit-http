@@ -51,8 +51,6 @@ messages -> WebProcess LegacyReceiver {
     UserPreferredLanguagesChanged(Vector<String> languages)
     FullKeyboardAccessModeChanged(bool fullKeyboardAccessEnabled)
 
-    ClearCachedCredentials()
-
     # Plug-ins.
     DidAddPlugInAutoStartOriginHash(uint32_t hash, WallTime expirationTime, PAL::SessionID sessionID)
     ResetPlugInAutoStartOriginDefaultHashes(HashMap<uint32_t,WallTime> hashes)
@@ -109,10 +107,6 @@ messages -> WebProcess LegacyReceiver {
     SetInitialGamepads(Vector<WebKit::GamepadData> gamepadDatas)
     GamepadConnected(WebKit::GamepadData gamepadData)
     GamepadDisconnected(unsigned index)
-#endif
-
-#if USE(SOUP)
-    SetNetworkProxySettings(struct WebCore::SoupNetworkProxySettings settings)
 #endif
 
 #if ENABLE(SERVICE_WORKER)

@@ -109,8 +109,13 @@ protected:
     void adjustSearchFieldStyle(StyleResolver&, RenderStyle&, const Element*) const override;
     bool paintSearchFieldDecorations(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
+    bool supportsFocusRing(const RenderStyle&) const final;
+
     Color platformActiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const override;
     Color platformInactiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const override;
+#if ENABLE(FULL_KEYBOARD_ACCESS)
+    Color platformFocusRingColor(OptionSet<StyleColor::Options>) const final;
+#endif
 
 #if ENABLE(TOUCH_EVENTS)
     Color platformTapHighlightColor() const override { return 0x4D1A1A1A; }

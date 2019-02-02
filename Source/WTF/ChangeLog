@@ -1,3 +1,280 @@
+2019-01-28  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSCOnly][WTF] Expose FileSystem.
+        https://bugs.webkit.org/show_bug.cgi?id=193789
+
+        Reviewed by Don Olmstead.
+
+        * wtf/FileSystem.h:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/posix/FileSystemPOSIX.cpp:
+        (WTF::FileSystemImpl::getVolumeFreeSpace):
+        * wtf/win/FileSystemWin.cpp:
+        (WTF::FileSystemImpl::fileSystemRepresentation):
+
+2019-01-28  Eric Carlson  <eric.carlson@apple.com>
+
+        AVStreamSession isn't always available, make a HAVE compile flag for it
+        https://bugs.webkit.org/show_bug.cgi?id=193889
+        <rdar://problem/47452863>
+
+        Reviewed by Jer Noble.
+
+        * wtf/FeatureDefines.h:
+
+2018-12-15  Darin Adler  <darin@apple.com>
+
+        Replace many uses of String::format with more type-safe alternatives
+        https://bugs.webkit.org/show_bug.cgi?id=192742
+
+        Reviewed by Mark Lam.
+
+        * wtf/WorkQueue.cpp:
+        (WTF::WorkQueue::concurrentApply): Use makeString.
+
+        * wtf/dtoa.cpp:
+        (WTF::dtoa): Use sprintf instead of String::format in the comments,
+        since these functions have nothing to do with WTF::String.
+
+2019-01-25  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Add support for the download attribute
+        https://bugs.webkit.org/show_bug.cgi?id=167341
+        <rdar://problem/30296281>
+
+        Reviewed by Geoffrey Garen.
+
+        Turn on HTML download attribute support on iOS.
+
+        * wtf/FeatureDefines.h:
+
+2019-01-25  David Kilzer  <ddkilzer@apple.com>
+
+        Move soft-linking of Lookup.framework out of LookupSPI.h
+        <https://webkit.org/b/193815>
+
+        Reviewed by Tim Horton.
+
+        * wtf/cocoa/SoftLinking.h:
+        (SOFT_LINK_CONSTANT_FOR_HEADER):
+        (SOFT_LINK_CONSTANT_FOR_SOURCE_WITH_EXPORT):
+        (SOFT_LINK_CONSTANT_MAY_FAIL_FOR_HEADER):
+        - Remove local declaration of constant.  This should be handled
+          by including *SPI.h or "real" headers.
+        (SOFT_LINK_CONSTANT_MAY_FAIL_FOR_SOURCE_WITH_EXPORT):
+        - Remove local declaration of constant.
+        - Rename from SOFT_LINK_CONSTANT_MAY_FAIL_FOR_SOURCE() and add
+          `export` argument to support exporting of functions.
+        (SOFT_LINK_CONSTANT_MAY_FAIL_FOR_SOURCE):
+        - Redefine in terms of
+          SOFT_LINK_CONSTANT_MAY_FAIL_FOR_SOURCE_WITH_EXPORT().
+
+2019-01-24  Youenn Fablet  <youenn@apple.com>
+
+        Use MonotonicTime in WorkerRunLoop
+        https://bugs.webkit.org/show_bug.cgi?id=193417
+
+        Reviewed by Saam Barati.
+
+        * wtf/MessageQueue.h:
+        (WTF::MessageQueue<DataType>::waitForMessage):
+        (WTF::MessageQueue<DataType>::waitForMessageFilteredWithTimeout):
+
+2019-01-24  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Move FileSystem to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=193602
+
+        Reviewed by Yusuke Suzuki.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/FileMetadata.h: Renamed from Source/WebCore/platform/FileMetadata.h.
+        * wtf/FileSystem.cpp: Renamed from Source/WebCore/platform/FileSystem.cpp.
+        * wtf/FileSystem.h: Renamed from Source/WebCore/platform/FileSystem.h.
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformPlayStation.cmake:
+        * wtf/PlatformWPE.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/cf/FileSystemCF.cpp: Renamed from Source/WebCore/platform/cf/FileSystemCF.cpp.
+        * wtf/cocoa/FileSystemCocoa.mm: Renamed from Source/WebCore/platform/cocoa/FileSystemCocoa.mm.
+        * wtf/glib/FileSystemGlib.cpp: Renamed from Source/WebCore/platform/glib/FileSystemGlib.cpp.
+        * wtf/mac/FileSystemMac.mm: Renamed from Source/WebCore/platform/mac/FileSystemMac.mm.
+        * wtf/posix/FileSystemPOSIX.cpp: Renamed from Source/WebCore/platform/posix/FileSystemPOSIX.cpp.
+        * wtf/spi/mac/MetadataSPI.h: Renamed from Source/WebCore/PAL/pal/spi/mac/MetadataSPI.h.
+        * wtf/win/FileSystemWin.cpp: Renamed from Source/WebCore/platform/win/FileSystemWin.cpp.
+        * wtf/win/PathWalker.cpp: Renamed from Source/WebCore/platform/win/PathWalker.cpp.
+        * wtf/win/PathWalker.h: Renamed from Source/WebCore/platform/win/PathWalker.h.
+
+2019-01-24  Guillaume Emont  <guijemont@igalia.com>
+
+        [JSC] Reenable baseline JIT on mips
+        https://bugs.webkit.org/show_bug.cgi?id=192983
+
+        Reviewed by Mark Lam.
+
+        Use baseline JIT by default on MIPS.
+
+        * wtf/Platform.h:
+
+2019-01-24  David Kilzer  <ddkilzer@apple.com>
+
+        Duplicate global variables: WTF::asciiCaseFoldTable
+        <https://webkit.org/b/193726>
+        <rdar://problem/47334622>
+
+        Reviewed by Michael Catanzaro.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        - Add ASCIICType.cpp to build systems.
+
+        * wtf/ASCIICType.cpp: Added.
+        (WTF::asciiCaseFoldTable): Move table to here so there is only
+        one copy.  Mark as exported for other frameworks to use.
+        * wtf/ASCIICType.h:
+        (WTF::asciiCaseFoldTable): Change to extern declaration, and
+        mark as exported for other frameworks to use.
+
+2019-01-23  Mark Lam  <mark.lam@apple.com>
+
+        ARM64E should not ENABLE(SEPARATED_WX_HEAP).
+        https://bugs.webkit.org/show_bug.cgi?id=193744
+        <rdar://problem/46262952>
+
+        Reviewed by Saam Barati.
+
+        * wtf/Platform.h:
+
+2019-01-23  David Kilzer  <ddkilzer@apple.com>
+
+        Switch remaining CoreMedia soft-linking in WebKit over to CoreMediaSoftLink.{cpp,h}
+        <https://webkit.org/b/193694>
+        <rdar://problem/47464025>
+
+        Reviewed by Tim Horton.
+
+        * wtf/win/SoftLinking.h:
+        (SOFT_LINK_CONSTANT_FOR_SOURCE_WITH_EXPORT):
+        - Implement for Windows.
+        (SOFT_LINK_CONSTANT_FOR_SOURCE):
+        - Define using SOFT_LINK_CONSTANT_FOR_SOURCE_WITH_EXPORT().
+
+2019-01-22  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Cache bytecode to disk
+        https://bugs.webkit.org/show_bug.cgi?id=192782
+        <rdar://problem/46084932>
+
+        Reviewed by Keith Miller.
+
+        BitVectors have to be friends with JSC::CacheBitVector to allow
+        serializing its buffer as part of the bytecode cache encoding.
+
+        * wtf/BitVector.h:
+
+2019-01-21  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Speculative build fix for Ubuntu LTS
+        https://bugs.webkit.org/show_bug.cgi?id=193651
+
+        Unreviewed build fix.
+
+        * wtf/Assertions.h: Add missing <cstdlib> include.
+
+2019-01-20  Saam Barati  <sbarati@apple.com>
+
+        Rollout r240210: It broke tests on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=193640
+
+        Unreviewed.
+
+        * wtf/BitVector.h:
+
+2019-01-20  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Cache bytecode to disk
+        https://bugs.webkit.org/show_bug.cgi?id=192782
+        <rdar://problem/46084932>
+
+        Reviewed by Keith Miller.
+
+        BitVectors have to be friends with JSC::CacheBitVector to allow
+        serializing its buffer as part of the bytecode cache encoding.
+
+        * wtf/BitVector.h:
+
+2019-01-18  Tim Horton  <timothy_horton@apple.com>
+
+        Get rid of ADVANCED_SPELL_CHECKING
+        https://bugs.webkit.org/show_bug.cgi?id=193592
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/Platform.h:
+
+2019-01-18  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/SDKVariant.xcconfig: Added.
+
+2019-01-18  Keith Miller  <keith_miller@apple.com>
+
+        Gigacages should start allocations from a slide
+        https://bugs.webkit.org/show_bug.cgi?id=193523
+
+        Reviewed by Mark Lam.
+
+        This patch changes some macros into constants since macros are the
+        devil.
+
+        * wtf/Gigacage.cpp:
+        * wtf/Gigacage.h:
+
+2019-01-18  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r240160.
+
+        This broke multiple internal builds.
+
+        Reverted changeset:
+
+        "Gigacages should start allocations from a slide"
+        https://bugs.webkit.org/show_bug.cgi?id=193523
+        https://trac.webkit.org/changeset/240160
+
+2019-01-18  Keith Miller  <keith_miller@apple.com>
+
+        Gigacages should start allocations from a slide
+        https://bugs.webkit.org/show_bug.cgi?id=193523
+
+        Reviewed by Mark Lam.
+
+        This patch changes some macros into constants since macros are the
+        devil.
+
+        * wtf/Gigacage.cpp:
+        * wtf/Gigacage.h:
+
+2019-01-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r240124.
+
+        This commit broke an internal build.
+
+        Reverted changeset:
+
+        "SDK_VARIANT build destinations should be separate from non-
+        SDK_VARIANT builds"
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+        https://trac.webkit.org/changeset/240124
+
 2019-01-17  Jer Noble  <jer.noble@apple.com>
 
         SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds

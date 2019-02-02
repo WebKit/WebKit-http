@@ -29,9 +29,7 @@
 
 #if USE(APPLE_INTERNAL_SDK)
 
-#include <HIServices/AXTextMarker.h>
-#include <HIServices/CoreCursor.h>
-#include <HIServices/CoreDrag.h>
+#include <ApplicationServices/ApplicationServicesPriv.h>
 
 #else
 
@@ -125,5 +123,6 @@ CFTypeID AXTextMarkerRangeGetTypeID();
 CoreDragRef CoreDragGetCurrentDrag();
 OSStatus CoreDragSetImage(CoreDragRef, CGPoint imageOffset, CoreDragImageSpec*, CGSRegionObj imageShape, float overallAlpha);
 const UInt8* AXTextMarkerGetBytePtr(AXTextMarkerRef);
+OSStatus SetApplicationIsDaemon(Boolean);
 
 WTF_EXTERN_C_END

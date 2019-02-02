@@ -284,146 +284,32 @@ WebPageProxy* WebProcessProxy::webPage(uint64_t pageID)
     return globalPageMap().get(pageID);
 }
 
-void WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType> dataTypes, Vector<String>&& topPrivatelyControlledDomains, bool shouldNotifyPage, CompletionHandler<void (const HashSet<String>&)>&& completionHandler)
-{
-    // We expect this to be called on the main thread so we get the default website data store.
-    ASSERT(isMainThreadOrCheckDisabled());
-    
-    struct CallbackAggregator : ThreadSafeRefCounted<CallbackAggregator> {
-        explicit CallbackAggregator(CompletionHandler<void(HashSet<String>)>&& completionHandler)
-            : completionHandler(WTFMove(completionHandler))
-        {
-        }
-        void addDomainsWithDeletedWebsiteData(const HashSet<String>& domains)
-        {
-            domainsWithDeletedWebsiteData.add(domains.begin(), domains.end());
-        }
-        
-        void addPendingCallback()
-        {
-            ++pendingCallbacks;
-        }
-        
-        void removePendingCallback()
-        {
-            ASSERT(pendingCallbacks);
-            --pendingCallbacks;
-            
-            callIfNeeded();
-        }
-        
-        void callIfNeeded()
-        {
-            if (!pendingCallbacks)
-                completionHandler(domainsWithDeletedWebsiteData);
-        }
-        
-        unsigned pendingCallbacks = 0;
-        CompletionHandler<void(HashSet<String>)> completionHandler;
-        HashSet<String> domainsWithDeletedWebsiteData;
-    };
-    
-    RefPtr<CallbackAggregator> callbackAggregator = adoptRef(new CallbackAggregator(WTFMove(completionHandler)));
-    OptionSet<WebsiteDataFetchOption> fetchOptions = WebsiteDataFetchOption::DoNotCreateProcesses;
-
-    HashSet<PAL::SessionID> visitedSessionIDs;
-    for (auto& page : globalPageMap()) {
-        auto& dataStore = page.value->websiteDataStore();
-        if (!dataStore.isPersistent() || visitedSessionIDs.contains(dataStore.sessionID()))
-            continue;
-        visitedSessionIDs.add(dataStore.sessionID());
-        callbackAggregator->addPendingCallback();
-        dataStore.removeDataForTopPrivatelyControlledDomains(dataTypes, fetchOptions, topPrivatelyControlledDomains, [callbackAggregator, shouldNotifyPage, page](HashSet<String>&& domainsWithDeletedWebsiteData) {
-            // When completing the task, we should be getting called on the main thread.
-            ASSERT(isMainThreadOrCheckDisabled());
-            
-            if (shouldNotifyPage)
-                page.value->postMessageToInjectedBundle("WebsiteDataDeletionForTopPrivatelyOwnedDomainsFinished", nullptr);
-            
-            callbackAggregator->addDomainsWithDeletedWebsiteData(WTFMove(domainsWithDeletedWebsiteData));
-            callbackAggregator->removePendingCallback();
-        });
-    }
-}
-
-void WebProcessProxy::topPrivatelyControlledDomainsWithWebsiteData(OptionSet<WebsiteDataType> dataTypes, bool shouldNotifyPage, CompletionHandler<void(HashSet<String>&&)>&& completionHandler)
-{
-    // We expect this to be called on the main thread so we get the default website data store.
-    ASSERT(isMainThreadOrCheckDisabled());
-    
-    struct CallbackAggregator : ThreadSafeRefCounted<CallbackAggregator> {
-        explicit CallbackAggregator(CompletionHandler<void(HashSet<String>&&)>&& completionHandler)
-            : completionHandler(WTFMove(completionHandler))
-        {
-        }
-        
-        void addDomainsWithDeletedWebsiteData(HashSet<String>&& domains)
-        {
-            domainsWithDeletedWebsiteData.add(domains.begin(), domains.end());
-        }
-        
-        void addPendingCallback()
-        {
-            ++pendingCallbacks;
-        }
-        
-        void removePendingCallback()
-        {
-            ASSERT(pendingCallbacks);
-            --pendingCallbacks;
-            
-            callIfNeeded();
-        }
-        
-        void callIfNeeded()
-        {
-            if (!pendingCallbacks)
-                completionHandler(WTFMove(domainsWithDeletedWebsiteData));
-        }
-        
-        unsigned pendingCallbacks = 0;
-        CompletionHandler<void(HashSet<String>&&)> completionHandler;
-        HashSet<String> domainsWithDeletedWebsiteData;
-    };
-    
-    RefPtr<CallbackAggregator> callbackAggregator = adoptRef(new CallbackAggregator(WTFMove(completionHandler)));
-    
-    HashSet<PAL::SessionID> visitedSessionIDs;
-    for (auto& page : globalPageMap().values()) {
-        auto& dataStore = page->websiteDataStore();
-        if (!dataStore.isPersistent() || visitedSessionIDs.contains(dataStore.sessionID()))
-            continue;
-        visitedSessionIDs.add(dataStore.sessionID());
-        callbackAggregator->addPendingCallback();
-        dataStore.topPrivatelyControlledDomainsWithWebsiteData(dataTypes, { }, [callbackAggregator, shouldNotifyPage, page = makeRef(*page)](HashSet<String>&& domainsWithDataRecords) {
-            // When completing the task, we should be getting called on the main thread.
-            ASSERT(isMainThreadOrCheckDisabled());
-            
-            if (shouldNotifyPage)
-                page->postMessageToInjectedBundle("WebsiteDataScanForTopPrivatelyControlledDomainsFinished", nullptr);
-            
-            callbackAggregator->addDomainsWithDeletedWebsiteData(WTFMove(domainsWithDataRecords));
-            callbackAggregator->removePendingCallback();
-        });
-    }
-
-    // FIXME: It's bizarre that this call is on WebProcessProxy and that it doesn't work if there are no visited pages.
-    // This should actually be a function of WebsiteDataStore and it should work even if there are no WebViews instances.
-    callbackAggregator->callIfNeeded();
-}
-    
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
 void WebProcessProxy::notifyPageStatisticsAndDataRecordsProcessed()
 {
     for (auto& page : globalPageMap())
         page.value->postMessageToInjectedBundle("WebsiteDataScanForTopPrivatelyControlledDomainsFinished", nullptr);
 }
-    
+
+void WebProcessProxy::notifyWebsiteDataScanForTopPrivatelyControlledDomainsFinished()
+{
+    for (auto& page : globalPageMap())
+        page.value->postMessageToInjectedBundle("WebsiteDataScanForTopPrivatelyControlledDomainsFinished", nullptr);
+}
+
+void WebProcessProxy::notifyWebsiteDataDeletionForTopPrivatelyOwnedDomainsFinished()
+{
+    for (auto& page : globalPageMap())
+        page.value->postMessageToInjectedBundle("WebsiteDataDeletionForTopPrivatelyOwnedDomainsFinished", nullptr);
+}
+
 void WebProcessProxy::notifyPageStatisticsTelemetryFinished(API::Object* messageBody)
 {
     for (auto& page : globalPageMap())
         page.value->postMessageToInjectedBundle("ResourceLoadStatisticsTelemetryFinished", messageBody);
 }
-    
+#endif
+
 Ref<WebPageProxy> WebProcessProxy::createWebPage(PageClient& pageClient, Ref<API::PageConfiguration>&& pageConfiguration)
 {
     uint64_t pageID = generatePageID();
@@ -585,25 +471,10 @@ bool WebProcessProxy::fullKeyboardAccessEnabled()
 }
 #endif
 
-bool WebProcessProxy::hasProvisionalPageWithID(uint64_t pageID) const
-{
-    for (auto* provisionalPage : m_provisionalPages) {
-        if (provisionalPage->page().pageID() == pageID)
-            return true;
-    }
-    return false;
-}
-
 void WebProcessProxy::updateBackForwardItem(const BackForwardListItemState& itemState)
 {
-    if (auto* item = WebBackForwardListItem::itemForID(itemState.identifier)) {
-        // This update could be coming from a web process that is not the active process for
-        // the back/forward items page.
-        // e.g. The old web process is navigating to about:blank for suspension.
-        // We ignore these updates.
-        if (m_pageMap.contains(item->pageID()) || hasProvisionalPageWithID(item->pageID()))
-            item->setPageState(itemState.pageState);
-    }
+    if (auto* item = WebBackForwardListItem::itemForID(itemState.identifier))
+        item->setPageState(itemState.pageState);
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

@@ -30,10 +30,10 @@
 #import "StorageManager.h"
 #import "WebResourceLoadStatisticsStore.h"
 #import "WebsiteDataStoreParameters.h"
-#import <WebCore/FileSystem.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SearchPopupMenuCocoa.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
+#import <wtf/FileSystem.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/ProcessPrivilege.h>
 
@@ -102,7 +102,7 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
         WTFMove(httpsProxy),
         WTFMove(resourceLoadStatisticsDirectory),
         WTFMove(resourceLoadStatisticsDirectoryHandle),
-        false // FIXME(193297): Switch to m_configuration->resourceLoadStatisticsEnabled()
+        false
     };
 
     auto cookieFile = resolvedCookieStorageFile();
@@ -121,7 +121,7 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
     parameters.pendingCookies = copyToVector(m_pendingCookies);
 
     if (!cookieFile.isEmpty())
-        SandboxExtension::createHandleForReadWriteDirectory(WebCore::FileSystem::directoryName(cookieFile), parameters.cookieStoragePathExtensionHandle);
+        SandboxExtension::createHandleForReadWriteDirectory(FileSystem::directoryName(cookieFile), parameters.cookieStoragePathExtensionHandle);
 
 #if ENABLE(INDEXED_DATABASE)
     parameters.indexedDatabaseDirectory = resolvedIndexedDatabaseDirectory();
@@ -154,8 +154,10 @@ void WebsiteDataStore::platformInitialize()
         terminationObserver = [[NSNotificationCenter defaultCenter] addObserverForName:notificationName object:nil queue:nil usingBlock:^(NSNotification *note) {
             for (auto& dataStore : dataStoresWithStorageManagers()) {
                 dataStore->m_storageManager->applicationWillTerminate();
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
                 if (dataStore->m_resourceLoadStatistics)
                     dataStore->m_resourceLoadStatistics->applicationWillTerminate();
+#endif
             }
         }];
     }
@@ -166,8 +168,10 @@ void WebsiteDataStore::platformInitialize()
 
 void WebsiteDataStore::platformDestroy()
 {
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (m_resourceLoadStatistics)
         m_resourceLoadStatistics->applicationWillTerminate();
+#endif
 
     if (!m_storageManager)
         return;

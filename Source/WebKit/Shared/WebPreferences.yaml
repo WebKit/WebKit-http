@@ -1255,10 +1255,10 @@ PointerEventsEnabled:
 
 CSSOMViewScrollingAPIEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   humanReadableName: "CSSOM View Scrolling API"
   humanReadableDescription: "Implement standard behavior for scrollLeft, scrollTop, scrollWidth, scrollHeight, scrollTo, scrollBy and scrollingElement."
-  category: experimental
+  category: internal
 
 WebAnimationsEnabled:
   type: bool
@@ -1535,3 +1535,19 @@ UndoManagerAPIEnabled:
   humanReadableDescription: "Enable the UndoManager DOM API"
   category: internal
   webcoreBinding: RuntimeEnabledFeatures
+
+CSSLogicalEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "CSS Logical Properties and Values"
+  humanReadableDescription: "Enable CSS Logical Properties and Values"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: internal
+
+AdClickAttributionEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Ad Click Attribution"
+  humanReadableDescription: "Enable Ad Click Attribution for Cross-Site Link Navigations"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: internal

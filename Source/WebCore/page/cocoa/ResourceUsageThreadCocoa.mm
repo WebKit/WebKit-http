@@ -30,11 +30,13 @@
 
 #include <JavaScriptCore/GCActivityCallback.h>
 #include <JavaScriptCore/Heap.h>
+#include <JavaScriptCore/SamplingProfiler.h>
 #include <JavaScriptCore/VM.h>
 #include <mach/mach.h>
 #include <mach/vm_statistics.h>
 #include <pal/spi/cocoa/MachVMSPI.h>
 #include <wtf/MachSendRight.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
 
@@ -62,7 +64,7 @@ void logFootprintComparison(const std::array<TagInfo, 256>& before, const std::a
             continue;
         String tagName = displayNameForVMTag(i);
         if (!tagName)
-            tagName = String::format("Tag %u", i);
+            tagName = makeString("Tag ", i);
         WTFLogAlways("  %02X %16s %10ld %10ld %10ld",
             i,
             tagName.ascii().data(),
@@ -157,10 +159,8 @@ static Vector<MachSendRight> threadSendRights()
     return machThreads;
 }
 
-static float cpuUsage()
+static float cpuUsage(Vector<MachSendRight>& machThreads)
 {
-    auto machThreads = threadSendRights();
-
     float usage = 0;
 
     for (auto& machThread : machThreads) {
@@ -205,10 +205,36 @@ static unsigned categoryForVMTag(unsigned tag)
     }
 }
 
-void ResourceUsageThread::platformThreadBody(JSC::VM* vm, ResourceUsageData& data)
+void ResourceUsageThread::platformSaveStateBeforeStarting()
 {
-    data.cpu = cpuUsage();
+#if ENABLE(SAMPLING_PROFILER)
+    m_samplingProfilerMachThread = m_vm->samplingProfiler() ? m_vm->samplingProfiler()->machThread() : MACH_PORT_NULL;
+#endif
+}
 
+void ResourceUsageThread::platformCollectCPUData(JSC::VM*, ResourceUsageData& data)
+{
+    Vector<MachSendRight> threads = threadSendRights();
+    data.cpu = cpuUsage(threads);
+
+    // Remove debugger threads.
+    mach_port_t resourceUsageMachThread = mach_thread_self();
+    threads.removeAllMatching([&] (MachSendRight& thread) {
+        mach_port_t machThread = thread.sendRight();
+        if (machThread == resourceUsageMachThread)
+            return true;
+#if ENABLE(SAMPLING_PROFILER)
+        if (machThread == m_samplingProfilerMachThread)
+            return true;
+#endif
+        return false;
+    });
+
+    data.cpuExcludingDebuggerThreads = cpuUsage(threads);
+}
+
+void ResourceUsageThread::platformCollectMemoryData(JSC::VM* vm, ResourceUsageData& data)
+{
     auto tags = pagesPerVMTag();
     std::array<TagInfo, MemoryCategory::NumberOfCategories> pagesPerCategory;
     size_t totalDirtyPages = 0;
@@ -248,9 +274,8 @@ void ResourceUsageThread::platformThreadBody(JSC::VM* vm, ResourceUsageData& dat
 
     data.totalExternalSize = currentGCOwnedExternal;
 
-    auto now = MonotonicTime::now();
-    data.timeOfNextEdenCollection = now + vm->heap.edenActivityCallback()->timeUntilFire().valueOr(Seconds(std::numeric_limits<double>::infinity()));
-    data.timeOfNextFullCollection = now + vm->heap.fullActivityCallback()->timeUntilFire().valueOr(Seconds(std::numeric_limits<double>::infinity()));
+    data.timeOfNextEdenCollection = data.timestamp + vm->heap.edenActivityCallback()->timeUntilFire().valueOr(Seconds(std::numeric_limits<double>::infinity()));
+    data.timeOfNextFullCollection = data.timestamp + vm->heap.fullActivityCallback()->timeUntilFire().valueOr(Seconds(std::numeric_limits<double>::infinity()));
 }
 
 }

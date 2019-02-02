@@ -76,15 +76,8 @@ enum class IncludeSecureCookies : bool;
 class NetworkStorageSession {
     WTF_MAKE_NONCOPYABLE(NetworkStorageSession); WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT static NetworkStorageSession& defaultStorageSession();
-    WEBCORE_EXPORT static NetworkStorageSession* storageSession(PAL::SessionID);
-    WEBCORE_EXPORT static void ensureSession(PAL::SessionID, const String& identifierBase = String());
-    WEBCORE_EXPORT static void destroySession(PAL::SessionID);
-    WEBCORE_EXPORT static void forEach(const WTF::Function<void(const WebCore::NetworkStorageSession&)>&);
     WEBCORE_EXPORT static void permitProcessToUseCookieAPI(bool);
     WEBCORE_EXPORT static bool processMayUseCookieAPI();
-
-    WEBCORE_EXPORT static void switchToNewTestingSession();
 
     PAL::SessionID sessionID() const { return m_sessionID; }
     CredentialStorage& credentialStorage() { return m_credentialStorage; }
@@ -94,21 +87,20 @@ public:
 #endif
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
-    WEBCORE_EXPORT static void ensureSession(PAL::SessionID, const String& identifierBase, RetainPtr<CFHTTPCookieStorageRef>&&);
-    NetworkStorageSession(PAL::SessionID, RetainPtr<CFURLStorageSessionRef>&&, RetainPtr<CFHTTPCookieStorageRef>&&);
-    explicit NetworkStorageSession(PAL::SessionID);
+    WEBCORE_EXPORT static RetainPtr<CFURLStorageSessionRef> createCFStorageSessionForIdentifier(CFStringRef identifier);
+    WEBCORE_EXPORT NetworkStorageSession(PAL::SessionID, RetainPtr<CFURLStorageSessionRef>&&, RetainPtr<CFHTTPCookieStorageRef>&&);
+    WEBCORE_EXPORT explicit NetworkStorageSession(PAL::SessionID);
 
     // May be null, in which case a Foundation default should be used.
     CFURLStorageSessionRef platformSession() { return m_platformSession.get(); }
     WEBCORE_EXPORT RetainPtr<CFHTTPCookieStorageRef> cookieStorage() const;
     WEBCORE_EXPORT static void setStorageAccessAPIEnabled(bool);
 #elif USE(SOUP)
-    NetworkStorageSession(PAL::SessionID, std::unique_ptr<SoupNetworkSession>&&);
+    WEBCORE_EXPORT NetworkStorageSession(PAL::SessionID, std::unique_ptr<SoupNetworkSession>&&);
     ~NetworkStorageSession();
 
-    SoupNetworkSession* soupNetworkSession() const { return m_session.get(); };
-    SoupNetworkSession& getOrCreateSoupNetworkSession() const;
-    void clearSoupNetworkSessionAndCookieStorage();
+    SoupNetworkSession& soupNetworkSession() const;
+    void clearSoupNetworkSession();
     SoupCookieJar* cookieStorage() const;
     void setCookieStorage(SoupCookieJar*);
     void setCookieObserverHandler(Function<void ()>&&);
@@ -121,7 +113,7 @@ public:
     BUrlContext& platformSession() const;
     void setPlatformSession(BUrlContext*);
 #elif USE(CURL)
-    NetworkStorageSession(PAL::SessionID, NetworkingContext*);
+    WEBCORE_EXPORT NetworkStorageSession(PAL::SessionID, NetworkingContext*);
     ~NetworkStorageSession();
 
     const CookieJarCurl& cookieStorage() const { return m_cookieStorage; };
@@ -132,7 +124,7 @@ public:
 
     NetworkingContext* context() const;
 #else
-    NetworkStorageSession(PAL::SessionID, NetworkingContext*);
+    WEBCORE_EXPORT NetworkStorageSession(PAL::SessionID, NetworkingContext*);
     ~NetworkStorageSession();
 
     NetworkingContext* context() const;
@@ -174,7 +166,6 @@ public:
 #endif
 
 private:
-    static HashMap<PAL::SessionID, std::unique_ptr<NetworkStorageSession>>& globalSessionMap();
     PAL::SessionID m_sessionID;
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
@@ -184,7 +175,6 @@ private:
     static void cookiesDidChange(NetworkStorageSession*);
 
     mutable std::unique_ptr<SoupNetworkSession> m_session;
-    GRefPtr<SoupCookieJar> m_cookieStorage;
     Function<void ()> m_cookieObserverHandler;
 #elif USE(HAIKU)
     BUrlContext* m_context;

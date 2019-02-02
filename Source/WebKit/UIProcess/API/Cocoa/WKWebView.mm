@@ -1008,6 +1008,8 @@ static void validate(WKWebViewConfiguration *configuration)
 
 - (WKNavigation *)goBack
 {
+    if (self._safeBrowsingWarning)
+        return [self reload];
     return wrapper(_page->goBack());
 }
 
@@ -1734,7 +1736,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     if (_haveSetObscuredInsets)
         return _obscuredInsets;
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if PLATFORM(IOS)
     if (self._safeAreaShouldAffectObscuredInsets)
         return UIEdgeInsetsAdd(UIEdgeInsetsZero, self._scrollViewSystemContentInset, self._effectiveObscuredInsetEdgesAffectedBySafeArea);
 #endif
@@ -1749,7 +1751,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 
     UIEdgeInsets insets = [_scrollView contentInset];
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if PLATFORM(IOS)
     if (self._safeAreaShouldAffectObscuredInsets)
         insets = UIEdgeInsetsAdd(insets, self._scrollViewSystemContentInset, self._effectiveObscuredInsetEdgesAffectedBySafeArea);
 #endif
@@ -1762,7 +1764,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     if (_haveSetUnobscuredSafeAreaInsets)
         return _unobscuredSafeAreaInsets;
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if PLATFORM(IOS)
     if (!self._safeAreaShouldAffectObscuredInsets)
         return self.safeAreaInsets;
 #endif
@@ -2581,6 +2583,14 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     // zooming. We'll animate to the right place once the zoom finishes.
     if ([scrollView isZooming])
         *targetContentOffset = [scrollView contentOffset];
+#if ENABLE(POINTER_EVENTS)
+    else {
+        if ([_contentView preventsPanningInXAxis])
+            targetContentOffset->x = scrollView.contentOffset.x;
+        if ([_contentView preventsPanningInYAxis])
+            targetContentOffset->y = scrollView.contentOffset.y;
+    }
+#endif
 #if ENABLE(CSS_SCROLL_SNAP) && ENABLE(ASYNC_SCROLLING)
     if (WebKit::RemoteScrollingCoordinatorProxy* coordinator = _page->scrollingCoordinatorProxy()) {
         // FIXME: Here, I'm finding the maximum horizontal/vertical scroll offsets. There's probably a better way to do this.
@@ -2617,6 +2627,22 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 {
     [self _didFinishScrolling];
 }
+
+#if ENABLE(POINTER_EVENTS)
+- (CGPoint)_scrollView:(UIScrollView *)scrollView adjustedOffsetForOffset:(CGPoint)offset translation:(CGPoint)translation startPoint:(CGPoint)start locationInView:(CGPoint)locationInView horizontalVelocity:(inout double *)hv verticalVelocity:(inout double *)vv
+{
+    if (![_contentView preventsPanningInXAxis] && ![_contentView preventsPanningInYAxis])
+        return offset;
+
+    CGPoint adjustedContentOffset = CGPointMake(offset.x, offset.y);
+    if ([_contentView preventsPanningInXAxis])
+        adjustedContentOffset.x = start.x;
+    if ([_contentView preventsPanningInYAxis])
+        adjustedContentOffset.y = start.y;
+
+    return adjustedContentOffset;
+}
+#endif
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
@@ -2974,6 +3000,26 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
     CGRect unobscuredRectInContentCoordinates = _frozenUnobscuredContentRect ? _frozenUnobscuredContentRect.value() : [self convertRect:unobscuredRect toView:_contentView.get()];
     unobscuredRectInContentCoordinates = CGRectIntersection(unobscuredRectInContentCoordinates, [self _contentBoundsExtendedForRubberbandingWithScale:scaleFactor]);
 
+    // The following logic computes the extent to which the bottom, top, left and right content insets are visible.
+    auto scrollViewInsets = [_scrollView contentInset];
+    auto scrollViewBounds = [_scrollView bounds];
+    auto scrollViewContentSize = [_scrollView contentSize];
+    auto scrollViewOriginIncludingInset = UIEdgeInsetsInsetRect(scrollViewBounds, computedContentInsetUnadjustedForKeyboard).origin;
+    auto maximumVerticalScrollExtentWithoutRevealingBottomContentInset = scrollViewContentSize.height - CGRectGetHeight(scrollViewBounds);
+    auto maximumHorizontalScrollExtentWithoutRevealingRightContentInset = scrollViewContentSize.width - CGRectGetWidth(scrollViewBounds);
+    auto contentInsets = UIEdgeInsetsZero;
+    if (scrollViewInsets.left > 0 && scrollViewOriginIncludingInset.x < 0)
+        contentInsets.left = std::min(-scrollViewOriginIncludingInset.x, scrollViewInsets.left) / scaleFactor;
+
+    if (scrollViewInsets.top > 0 && scrollViewOriginIncludingInset.y < 0)
+        contentInsets.top = std::min(-scrollViewOriginIncludingInset.y, scrollViewInsets.top) / scaleFactor;
+
+    if (scrollViewInsets.right > 0 && scrollViewOriginIncludingInset.x > maximumHorizontalScrollExtentWithoutRevealingRightContentInset)
+        contentInsets.right = std::min(scrollViewOriginIncludingInset.x - maximumHorizontalScrollExtentWithoutRevealingRightContentInset, scrollViewInsets.right) / scaleFactor;
+
+    if (scrollViewInsets.bottom > 0 && scrollViewOriginIncludingInset.y > maximumVerticalScrollExtentWithoutRevealingBottomContentInset)
+        contentInsets.bottom = std::min(scrollViewOriginIncludingInset.y - maximumVerticalScrollExtentWithoutRevealingBottomContentInset, scrollViewInsets.bottom) / scaleFactor;
+
 #if ENABLE(CSS_SCROLL_SNAP) && ENABLE(ASYNC_SCROLLING)
     if (inStableState) {
         WebKit::RemoteScrollingCoordinatorProxy* coordinator = _page->scrollingCoordinatorProxy();
@@ -2993,6 +3039,7 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
 
     [_contentView didUpdateVisibleRect:visibleRectInContentCoordinates
         unobscuredRect:unobscuredRectInContentCoordinates
+        contentInsets:contentInsets
         unobscuredRectInScrollViewCoordinates:unobscuredRect
         obscuredInsets:_obscuredInsets
         unobscuredSafeAreaInsets:[self _computedUnobscuredSafeAreaInset]
@@ -3153,6 +3200,9 @@ static int32_t activeOrientation(WKWebView *webView)
         _inputViewBounds = [self.window convertRect:[endFrameValue CGRectValue] fromWindow:nil];
     else
         _inputViewBounds = [self.window convertRect:CGRectIntersection([endFrameValue CGRectValue], self.window.screen.bounds) fromWindow:nil];
+
+    if ([[UIPeripheralHost sharedInstance] isUndocked])
+        _inputViewBounds = CGRectZero;
 
     if (adjustScrollView) {
         CGFloat bottomInsetBeforeAdjustment = [_scrollView contentInset].bottom;
@@ -4018,6 +4068,21 @@ IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 IGNORE_WARNINGS_END
 {
     return _impl->accessibilityAttributeValue(attribute);
+}
+
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+- (id)accessibilityAttributeValue:(NSString *)attribute forParameter:(id)parameter
+IGNORE_WARNINGS_END
+{
+    return _impl->accessibilityAttributeValue(attribute, parameter);
+}
+
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+- (NSArray<NSString *> *)accessibilityParameterizedAttributeNames
+IGNORE_WARNINGS_END
+{
+    NSArray<NSString *> *names = [super accessibilityParameterizedAttributeNames];
+    return [names arrayByAddingObject:@"AXConvertRelativeFrame"];
 }
 
 - (NSView *)hitTest:(NSPoint)point

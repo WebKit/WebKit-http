@@ -152,10 +152,9 @@ public:
 
     WEBCORE_EXPORT TiledBacking* tiledBacking() const final;
 
-    // In the future when any ScrollableArea can have a node in th ScrollingTree, this should
-    // become a virtual function on ScrollableArea.
     uint64_t scrollLayerID() const override;
     ScrollableArea* scrollableAreaForScrollLayerID(uint64_t) const;
+    bool usesAsyncScrolling() const final;
 
     WEBCORE_EXPORT void enterCompositingMode();
     WEBCORE_EXPORT bool isEnclosedInCompositingLayer() const;
@@ -326,6 +325,8 @@ public:
     // Static function can be called from another thread.
     WEBCORE_EXPORT static LayoutRect rectForViewportConstrainedObjects(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements);
 #endif
+
+    IntRect unobscuredContentRectExpandedByContentInsets() const;
     
     bool fixedElementsLayoutRelativeToFrame() const;
 
@@ -484,7 +485,8 @@ public:
     FloatPoint layoutViewportToAbsolutePoint(FloatPoint) const;
 
     // Unlike client coordinates, layout viewport coordinates are affected by page zoom.
-    FloatPoint clientToLayoutViewportPoint(FloatPoint) const;
+    WEBCORE_EXPORT FloatRect clientToLayoutViewportRect(FloatRect) const;
+    WEBCORE_EXPORT FloatPoint clientToLayoutViewportPoint(FloatPoint) const;
 
     bool isFrameViewScrollCorner(const RenderScrollbarPart& scrollCorner) const { return m_scrollCorner.get() == &scrollCorner; }
 
@@ -743,7 +745,6 @@ private:
 #endif
 
     bool usesCompositedScrolling() const final;
-    bool usesAsyncScrolling() const final;
     bool usesMockScrollAnimator() const final;
     void logMockScrollAnimatorMessage(const String&) const final;
 
@@ -790,6 +791,9 @@ private:
     void markRootOrBodyRendererDirty() const;
 
     bool qualifiesAsVisuallyNonEmpty() const;
+    bool qualifiesAsSignificantRenderedText() const;
+    void updateHasReachedSignificantRenderedTextThreshold();
+
     bool isViewForDocumentInFrame() const;
 
     AXObjectCache* axObjectCache() const;
@@ -875,14 +879,13 @@ private:
     OptionSet<PaintBehavior> m_paintBehavior;
     bool m_isPainting;
 
-    unsigned m_visuallyNonEmptyCharacterCount;
-    unsigned m_visuallyNonEmptyPixelCount;
-    bool m_isVisuallyNonEmpty;
-    bool m_firstVisuallyNonEmptyLayoutCallbackPending;
+    bool m_isVisuallyNonEmpty { false };
+    unsigned m_visuallyNonEmptyCharacterCount { 0 };
+    unsigned m_visuallyNonEmptyPixelCount { 0 };
 
     unsigned m_textRendererCountForVisuallyNonEmptyCharacters { 0 };
-    bool m_renderedSignificantAmountOfText;
-    bool m_significantRenderedTextMilestonePending;
+    bool m_renderedSignificantAmountOfText { false };
+    bool m_hasReachedSignificantRenderedTextThreshold { false };
 
     bool m_needsDeferredScrollbarsUpdate { false };
 
@@ -949,12 +952,9 @@ private:
 
 inline void FrameView::incrementVisuallyNonEmptyPixelCount(const IntSize& size)
 {
-    if (m_isVisuallyNonEmpty)
+    if (m_visuallyNonEmptyPixelCount > visualPixelThreshold)
         return;
     m_visuallyNonEmptyPixelCount += size.width() * size.height();
-    if (m_visuallyNonEmptyPixelCount <= visualPixelThreshold)
-        return;
-    updateIsVisuallyNonEmpty();
 }
 
 } // namespace WebCore

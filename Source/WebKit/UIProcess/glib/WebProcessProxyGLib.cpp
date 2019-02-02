@@ -31,8 +31,8 @@
 #endif
 #include "WebProcessPool.h"
 #include "WebsiteDataStore.h"
-#include <WebCore/FileSystem.h>
 #include <WebCore/PlatformDisplay.h>
+#include <wtf/FileSystem.h>
 
 namespace WebKit {
 using namespace WebCore;
@@ -43,6 +43,8 @@ void WebProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& l
 
     websiteDataStore().resolveDirectoriesIfNecessary();
     launchOptions.extraInitializationData.set("applicationCacheDirectory", websiteDataStore().resolvedApplicationCacheDirectory());
+
+    launchOptions.extraWebProcessSandboxPaths = m_processPool->sandboxPaths();
 
 #if PLATFORM(WAYLAND) && USE(EGL)
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland) {

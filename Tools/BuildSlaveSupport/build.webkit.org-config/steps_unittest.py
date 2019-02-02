@@ -260,20 +260,20 @@ class Run32bitJSCTestsTest(unittest.TestCase):
         self.assertResults(SUCCESS, ['webkit-32bit-jsc-test'], 0,  '    0 failures found.')
 
 
-class RunUnitTestsTest(unittest.TestCase):
+class RunAPITestsTest(unittest.TestCase):
     def assertFailures(self, expected_failure_count, stdio):
         if expected_failure_count:
             rc = 1
             expected_results = FAILURE
             plural_suffix = "" if expected_failure_count == 1 else "s"
-            expected_text = '%d unit test%s failed or timed out' % (expected_failure_count, plural_suffix)
+            expected_text = '%d api test%s failed or timed out' % (expected_failure_count, plural_suffix)
         else:
             rc = 0
             expected_results = SUCCESS
             expected_text = 'run-api-tests'
 
         cmd = StubRemoteCommand(rc, stdio)
-        step = RunUnitTests()
+        step = RunAPITests()
         step.commandComplete(cmd)
         actual_results = step.evaluateCommand(cmd)
         actual_failure_count = step.failedTestCount
@@ -523,7 +523,6 @@ expected_build_steps = {
     'Apple Mojave Release WK1 (Tests)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
     'Apple Mojave Release WK2 (Tests)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'layout-test', 'run-api-tests', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand'],
 
-    'Apple High Sierra 32-bit JSC (BuildAndTest)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'webkit-32bit-jsc-test'],
     'Apple High Sierra Debug (Build)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'archive-built-product', 'upload', 'archive-built-product', 'upload', 'transfer-to-s3', 'trigger'],
     'Apple High Sierra Debug JSC (Tests)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'jscore-test'],
     'Apple High Sierra Debug Test262 (Tests)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'download-built-product', 'extract-built-product', 'test262-test'],
@@ -551,7 +550,6 @@ expected_build_steps = {
     'JSCOnly Linux AArch64 Release': ['configure build', 'svn', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'jscore-test'],
     'JSCOnly Linux MIPS32el Release': ['configure build', 'svn', 'delete WebKitBuild directory', 'delete stale build files', 'compile-webkit', 'jscore-test'],
 
-    'GTK Linux 32-bit Release': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'jscore-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'generate-jsc-bundle', 'API tests', 'webdriver-test'],
     'GTK Linux 64-bit Debug (Build)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'archive-built-product', 'upload', 'transfer-to-s3', 'trigger'],
     'GTK Linux 64-bit Debug (Tests)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'download-built-product', 'extract-built-product', 'jscore-test', 'layout-test', 'webkitpy-test', 'webkitperl-test', 'bindings-generation-tests', 'builtins-generator-tests', 'dashboard-tests', 'archive-test-results', 'upload', 'MasterShellCommand', 'API tests', 'webdriver-test'],
     'GTK Linux 64-bit Release (Build)': ['configure build', 'svn', 'kill old processes', 'delete WebKitBuild directory', 'delete stale build files', 'jhbuild', 'compile-webkit', 'archive-built-product', 'upload', 'generate-jsc-bundle', 'transfer-to-s3', 'trigger'],

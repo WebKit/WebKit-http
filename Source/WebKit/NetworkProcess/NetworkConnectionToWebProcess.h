@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -194,6 +194,11 @@ private:
 
     void removeStorageAccessForFrame(PAL::SessionID, uint64_t frameID, uint64_t pageID);
     void removeStorageAccessForAllFramesOnPage(PAL::SessionID, uint64_t pageID);
+    void logUserInteraction(PAL::SessionID, const String& topLevelOrigin);
+    void logWebSocketLoading(PAL::SessionID, const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, WallTime lastSeen);
+    void logSubresourceLoading(PAL::SessionID, const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, WallTime lastSeen);
+    void logSubresourceRedirect(PAL::SessionID, const String& sourcePrimaryDomain, const String& targetPrimaryDomain);
+    void requestResourceLoadStatisticsUpdate();
 
     void addOriginAccessWhitelistEntry(const String& sourceOrigin, const String& destinationProtocol, const String& destinationHost, bool allowDestinationSubdomains);
     void removeOriginAccessWhitelistEntry(const String& sourceOrigin, const String& destinationProtocol, const String& destinationHost, bool allowDestinationSubdomains);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -69,6 +69,30 @@ void ResourceLoadObserver::setRequestStorageAccessUnderOpenerCallback(WTF::Funct
     m_requestStorageAccessUnderOpenerCallback = WTFMove(callback);
 }
 
+void ResourceLoadObserver::setLogUserInteractionNotificationCallback(Function<void(PAL::SessionID, const String&)>&& callback)
+{
+    ASSERT(!m_logUserInteractionNotificationCallback);
+    m_logUserInteractionNotificationCallback = WTFMove(callback);
+}
+
+void ResourceLoadObserver::setLogWebSocketLoadingNotificationCallback(Function<void(PAL::SessionID, const String&, const String&, WallTime)>&& callback)
+{
+    ASSERT(!m_logWebSocketLoadingNotificationCallback);
+    m_logWebSocketLoadingNotificationCallback = WTFMove(callback);
+}
+
+void ResourceLoadObserver::setLogSubresourceLoadingNotificationCallback(Function<void(PAL::SessionID, const String&, const String&, WallTime)>&& callback)
+{
+    ASSERT(!m_logSubresourceLoadingNotificationCallback);
+    m_logSubresourceLoadingNotificationCallback = WTFMove(callback);
+}
+
+void ResourceLoadObserver::setLogSubresourceRedirectNotificationCallback(Function<void(PAL::SessionID, const String&, const String&)>&& callback)
+{
+    ASSERT(!m_logSubresourceRedirectNotificationCallback);
+    m_logSubresourceRedirectNotificationCallback = WTFMove(callback);
+}
+    
 ResourceLoadObserver::ResourceLoadObserver()
     : m_notificationTimer(*this, &ResourceLoadObserver::notifyObserver)
 {
@@ -116,9 +140,12 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
     bool shouldCallNotificationCallback = false;
     {
         auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
-        targetStatistics.lastSeen = ResourceLoadStatistics::reduceTimeResolution(WallTime::now());
+        auto lastSeen = ResourceLoadStatistics::reduceTimeResolution(WallTime::now());
+        targetStatistics.lastSeen = lastSeen;
         if (targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain).isNewEntry)
             shouldCallNotificationCallback = true;
+
+        m_logSubresourceLoadingNotificationCallback(page->sessionID(), targetPrimaryDomain, mainFramePrimaryDomain, lastSeen);
     }
 
     if (isRedirect) {
@@ -129,15 +156,17 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
 
         if (isNewRedirectToEntry || isNewRedirectFromEntry)
             shouldCallNotificationCallback = true;
+
+        m_logSubresourceRedirectNotificationCallback(page->sessionID(), sourcePrimaryDomain, targetPrimaryDomain);
     }
 
     if (shouldCallNotificationCallback)
         scheduleNotificationIfNeeded();
 }
 
-void ResourceLoadObserver::logWebSocketLoading(const URL& targetURL, const URL& mainFrameURL, bool usesEphemeralSession)
+void ResourceLoadObserver::logWebSocketLoading(const URL& targetURL, const URL& mainFrameURL, PAL::SessionID sessionID)
 {
-    if (!shouldLog(usesEphemeralSession))
+    if (!shouldLog(sessionID.isEphemeral()))
         return;
 
     auto targetHost = targetURL.host();
@@ -152,10 +181,14 @@ void ResourceLoadObserver::logWebSocketLoading(const URL& targetURL, const URL& 
     if (targetPrimaryDomain == mainFramePrimaryDomain)
         return;
 
+    auto lastSeen = ResourceLoadStatistics::reduceTimeResolution(WallTime::now());
+
     auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
-    targetStatistics.lastSeen = ResourceLoadStatistics::reduceTimeResolution(WallTime::now());
+    targetStatistics.lastSeen = lastSeen;
     if (targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain).isNewEntry)
         scheduleNotificationIfNeeded();
+
+    m_logWebSocketLoadingNotificationCallback(sessionID, targetPrimaryDomain, mainFramePrimaryDomain, lastSeen);
 }
 
 void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Document& document)
@@ -190,6 +223,8 @@ void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Doc
             }
         }
     }
+
+    m_logUserInteractionNotificationCallback(document.sessionID(), domain);
 #endif
 
     m_notificationTimer.stop();

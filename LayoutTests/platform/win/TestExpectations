@@ -110,6 +110,7 @@ webkit.org/b/173281 editing/selection/selection-across-shadow-boundaries-readonl
 webkit.org/b/173281 editing/selection/selection-across-shadow-boundaries-readonly-2.html [ Skip ]
 webkit.org/b/173281 editing/selection/selection-across-shadow-boundaries-readonly-3.html [ Skip ]
 webkit.org/b/173281 editing/selection/selection-across-shadow-boundaries-user-select-all-1.html [ Skip ]
+webkit.org/b/193748 http/tests/adClickAttribution [ Skip ]
 
 # TODO HW filters not yet supported on Windows
 webkit.org/b/74716 css3/filters/effect-blur-hw.html [ Skip ]
@@ -1455,6 +1456,7 @@ webkit.org/b/140798 [ Release ] accessibility/aria-switch-checked.html [ Skip ]
 webkit.org/b/140798 [ Debug ] accessibility/aria-switch-checked.html [ Skip ]
 webkit.org/b/140798 [ Release ] accessibility/aria-switch-text.html [ Skip ]
 webkit.org/b/140798 [ Debug ] accessibility/aria-switch-text.html [ Skip ]
+webkit.org/b/193371 accessibility/set-selected-editable.html [ Skip ]
 
 # The following timeouts are caused by the same problem: [ Failure ]
 webkit.org/b/126066 accessibility/loading-iframe-updates-axtree.html [ Skip ]
@@ -2396,6 +2398,7 @@ webkit.org/b/137157 http/tests/inspector [ Skip ]
 
 # Requires ENABLE(RESOURCE_USAGE).
 inspector/memory [ Skip ]
+inspector/cpu-profiler [ Skip ]
 
 # webkit.org/b/143548 inspector/console [ Skip ]
 # webkit.org/b/137157 inspector/css [ Skip ]
@@ -3533,7 +3536,6 @@ fast/multicol/newmulticol/client-rects.html [ Failure ]
 fast/multicol/table-vertical-align.html [ Failure ]
 fast/parser/xml-error-unload-iframe.html [ Failure ]
 fast/replaced/table-percent-height.html [ Failure ]
-fast/scrolling/scrolling-tree-includes-frame.html [ Failure ]
 fast/table/giantRowspan.html [ Failure ]
 fast/table/giantRowspan2.html [ Failure ]
 fast/text/emoji.html [ Failure ]

@@ -297,6 +297,7 @@ typedef enum {
 + (UIPeripheralHost *)activeInstance;
 + (CGRect)visiblePeripheralFrame;
 - (BOOL)isOnScreen;
+- (BOOL)isUndocked;
 - (UIKeyboardRotationState *)rotationState;
 @end
 
@@ -393,6 +394,9 @@ typedef enum {
 - (void)insertDictationResult:(NSArray *)dictationResult withCorrectionIdentifier:(id)correctionIdentifier;
 - (void)replaceRangeWithTextWithoutClosingTyping:(UITextRange *)range replacementText:(NSString *)text;
 - (void)setBottomBufferHeight:(CGFloat)bottomBuffer;
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+- (void)modifierFlagsDidChangeFrom:(UIKeyModifierFlags)oldFlags to:(UIKeyModifierFlags)newFlags;
+#endif
 @property (nonatomic) UITextGranularity selectionGranularity;
 @required
 - (BOOL)hasContent;
@@ -755,6 +759,7 @@ struct _UIWebTouchEvent {
 
 @interface UIWebTouchEventsGestureRecognizer ()
 - (id)initWithTarget:(id)target action:(SEL)action touchDelegate:(id <UIWebTouchEventsGestureRecognizerDelegate>)delegate;
+- (void)cancel;
 @property (nonatomic, getter=isDefaultPrevented) BOOL defaultPrevented;
 @property (nonatomic, readonly) BOOL inJavaScriptGesture;
 @property (nonatomic, readonly) CGPoint locationInWindow;
@@ -1072,6 +1077,8 @@ typedef NSInteger UICompositingMode;
 @interface UIKeyboardImpl (IPI)
 - (void)setInitialDirection;
 - (void)prepareKeyboardInputModeFromPreferences:(UIKeyboardInputMode *)lastUsedMode;
+- (BOOL)handleKeyTextCommandForCurrentEvent;
+- (BOOL)handleKeyAppCommandForCurrentEvent;
 @property (nonatomic, readonly) UIKeyboardInputMode *currentInputModeInPreference;
 @end
 

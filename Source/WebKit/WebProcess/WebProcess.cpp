@@ -204,13 +204,17 @@ WebProcess::WebProcess()
 
     m_plugInAutoStartOriginHashes.add(PAL::SessionID::defaultSessionID(), HashMap<unsigned, WallTime>());
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     ResourceLoadObserver::shared().setNotificationCallback([this] (Vector<ResourceLoadStatistics>&& statistics) {
         parentProcessConnection()->send(Messages::WebResourceLoadStatisticsStore::ResourceLoadStatisticsUpdated(WTFMove(statistics)), 0);
+
+        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::RequestResourceLoadStatisticsUpdate(), 0);
     });
 
     ResourceLoadObserver::shared().setRequestStorageAccessUnderOpenerCallback([this] (const String& domainInNeedOfStorageAccess, uint64_t openerPageID, const String& openerDomain) {
         parentProcessConnection()->send(Messages::WebResourceLoadStatisticsStore::RequestStorageAccessUnderOpener(domainInNeedOfStorageAccess, openerPageID, openerDomain), 0);
     });
+#endif
     
     Gigacage::disableDisablingPrimitiveGigacageIfShouldBeEnabled();
 }
@@ -381,6 +385,24 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     setShouldUseFontSmoothing(parameters.shouldUseFontSmoothing);
 
     ensureNetworkProcessConnection();
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    ResourceLoadObserver::shared().setLogUserInteractionNotificationCallback([this] (PAL::SessionID sessionID, const String& topLevelOrigin) {
+        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::LogUserInteraction(sessionID, topLevelOrigin), 0);
+    });
+
+    ResourceLoadObserver::shared().setLogWebSocketLoadingNotificationCallback([this] (PAL::SessionID sessionID, const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, WallTime lastSeen) {
+        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::LogWebSocketLoading(sessionID, targetPrimaryDomain, mainFramePrimaryDomain, lastSeen), 0);
+    });
+    
+    ResourceLoadObserver::shared().setLogSubresourceLoadingNotificationCallback([this] (PAL::SessionID sessionID, const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, WallTime lastSeen) {
+        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::LogSubresourceLoading(sessionID, targetPrimaryDomain, mainFramePrimaryDomain, lastSeen), 0);
+    });
+
+    ResourceLoadObserver::shared().setLogSubresourceRedirectNotificationCallback([this] (PAL::SessionID sessionID, const String& sourcePrimaryDomain, const String& targetPrimaryDomain) {
+        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::LogSubresourceRedirect(sessionID, sourcePrimaryDomain, targetPrimaryDomain), 0);
+    });
+#endif
 
     setTerminationTimeout(parameters.terminationTimeout);
 
@@ -568,11 +590,6 @@ void WebProcess::setCacheModel(CacheModel cacheModel)
     PageCache::singleton().setMaxSize(pageCacheSize);
 
     platformSetCacheModel(cacheModel);
-}
-
-void WebProcess::clearCachedCredentials()
-{
-    NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
 }
 
 WebPage* WebProcess::focusedWebPage() const
@@ -1290,11 +1307,6 @@ void WebProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDa
         MemoryCache::singleton().evictResources(sessionID);
 
         CrossOriginPreflightResultCache::singleton().clear();
-    }
-
-    if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
-        if (WebCore::NetworkStorageSession::storageSession(sessionID))
-            NetworkStorageSession::storageSession(sessionID)->credentialStorage().clearCredentials();
     }
 }
 

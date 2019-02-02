@@ -911,7 +911,7 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
     }
     
     if (WKStringIsEqualToUTF8CString(messageName, "DeleteAllIndexedDatabases")) {
-        WKWebsiteDataStoreRemoveAllIndexedDatabases(WKContextGetWebsiteDataStore(TestController::singleton().context()));
+        WKWebsiteDataStoreRemoveAllIndexedDatabases(WKContextGetWebsiteDataStore(TestController::singleton().context()), nullptr, { });
         return nullptr;
     }
 
@@ -1426,6 +1426,11 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
         auto domCacheSize = TestController::singleton().domCacheSize(origin);
         WKRetainPtr<WKTypeRef> result(AdoptWK, WKUInt64Create(domCacheSize));
         return result;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "AllowCacheStorageQuotaIncrease")) {
+        TestController::singleton().allowCacheStorageQuotaIncrease();
+        return nullptr;
     }
 
     if (WKStringIsEqualToUTF8CString(messageName, "SetIDBPerOriginQuota")) {

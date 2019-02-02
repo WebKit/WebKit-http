@@ -25,6 +25,8 @@
 
 #pragma once
 
+#import "WKFoundation.h"
+
 #if WK_API_ENABLED
 
 #import "WKWebViewPrivate.h"

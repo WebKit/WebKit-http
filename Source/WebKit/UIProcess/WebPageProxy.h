@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -75,6 +75,7 @@
 #include <WebCore/FontAttributes.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/FrameView.h> // FIXME: Move LayoutViewportConstraint to its own file and stop including this.
+#include <WebCore/InputMode.h>
 #include <WebCore/LayoutPoint.h>
 #include <WebCore/LayoutSize.h>
 #include <WebCore/MediaPlaybackTargetContext.h>
@@ -677,12 +678,13 @@ public:
     void startAutoscrollAtPosition(const WebCore::FloatPoint& positionInWindow);
     void cancelAutoscroll();
     void hardwareKeyboardAvailabilityChanged();
+    bool isScrollingOrZooming() const { return m_isScrollingOrZooming; }
 #if ENABLE(DATA_INTERACTION)
-    void didHandleStartDataInteractionRequest(bool started);
+    void didHandleDragStartRequest(bool started);
     void didHandleAdditionalDragItemsRequest(bool added);
-    void requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
+    void requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
     void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
-    void didConcludeEditDataInteraction(Optional<WebCore::TextIndicatorData>);
+    void didConcludeEditDrag(Optional<WebCore::TextIndicatorData>);
 #endif
 #endif
 #if ENABLE(DATA_DETECTION)
@@ -969,8 +971,8 @@ public:
 #endif
 
     class PolicyDecisionSender;
-    void receivedPolicyDecision(WebPolicyAction, API::Navigation*, Optional<WebsitePoliciesData>&&, Ref<PolicyDecisionSender>&&);
-    void receivedNavigationPolicyDecision(WebPolicyAction, API::Navigation*, ProcessSwapRequestedByClient, WebFrameProxy&, API::WebsitePolicies*, Ref<PolicyDecisionSender>&&);
+    void receivedPolicyDecision(WebCore::PolicyAction, API::Navigation*, Optional<WebsitePoliciesData>&&, Ref<PolicyDecisionSender>&&);
+    void receivedNavigationPolicyDecision(WebCore::PolicyAction, API::Navigation*, ProcessSwapRequestedByClient, WebFrameProxy&, API::WebsitePolicies*, Ref<PolicyDecisionSender>&&);
 
     void backForwardRemovedItem(const WebCore::BackForwardItemIdentifier&);
 
@@ -1382,6 +1384,8 @@ public:
     void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t webProcessContextId, bool prompt);
 #endif
 
+    static WebPageProxy* nonEphemeralWebPageProxy();
+
 #if ENABLE(ATTACHMENT_ELEMENT)
     RefPtr<API::Attachment> attachmentForIdentifier(const String& identifier) const;
     void insertAttachment(Ref<API::Attachment>&&, Function<void(CallbackBase::Error)>&&);
@@ -1641,7 +1645,7 @@ private:
     void backForwardClear();
 
     // Undo management
-    void registerEditCommandForUndo(WebUndoStepID commandID, uint32_t editAction);
+    void registerEditCommandForUndo(WebUndoStepID commandID, const String& label);
     void registerInsertionUndoGrouping();
     void clearAllEditCommands();
     void canUndoRedo(UndoOrRedo, bool& result);
@@ -1803,6 +1807,7 @@ private:
 
     void elementDidFocus(const FocusedElementInformation&, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, const UserData&);
     void elementDidBlur();
+    void focusedElementDidChangeInputMode(WebCore::InputMode);
     void didReceiveEditorStateUpdateAfterFocus();
 
     void showInspectorHighlight(const WebCore::Highlight&);

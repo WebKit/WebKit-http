@@ -160,7 +160,7 @@ void AudioContext::constructCommon()
 {
     // According to spec AudioContext must die only after page navigate.
     // Lets mark it as ActiveDOMObject with pending activity and unmark it in clear method.
-    setPendingActivity(this);
+    setPendingActivity(*this);
 
     FFTFrame::initialize();
     
@@ -207,8 +207,8 @@ void AudioContext::lazyInitialize()
         m_destinationNode->initialize();
 
         if (!isOfflineContext()) {
-            document()->addAudioProducer(this);
-            document()->registerForVisibilityStateChangedCallbacks(this);
+            document()->addAudioProducer(*this);
+            document()->registerForVisibilityStateChangedCallbacks(*this);
 
             // This starts the audio thread. The destination node's provideInput() method will now be called repeatedly to render audio.
             // Each time provideInput() is called, a portion of the audio stream is rendered. Let's call this time period a "render quantum".
@@ -235,7 +235,7 @@ void AudioContext::clear()
     } while (m_nodesToDelete.size());
 
     // It was set in constructCommon.
-    unsetPendingActivity(this);
+    unsetPendingActivity(*this);
 }
 
 void AudioContext::uninitialize()
@@ -252,8 +252,8 @@ void AudioContext::uninitialize()
     m_isAudioThreadFinished = true;
 
     if (!isOfflineContext()) {
-        document()->removeAudioProducer(this);
-        document()->unregisterForVisibilityStateChangedCallbacks(this);
+        document()->removeAudioProducer(*this);
+        document()->unregisterForVisibilityStateChangedCallbacks(*this);
 
         ASSERT(s_hardwareContextCount);
         --s_hardwareContextCount;
@@ -314,16 +314,8 @@ void AudioContext::stop()
 
     m_eventQueue->close();
 
-    // Don't call uninitialize() immediately here because the ScriptExecutionContext is in the middle
-    // of dealing with all of its ActiveDOMObjects at this point. uninitialize() can de-reference other
-    // ActiveDOMObjects so let's schedule uninitialize() to be called later.
-    // FIXME: see if there's a more direct way to handle this issue.
-    // FIXME: This sounds very wrong. The whole idea of stop() is that it stops everything, and if we
-    // schedule some observable work for later, the work likely happens at an inappropriate time.
-    callOnMainThread([this] {
-        uninitialize();
-        clear();
-    });
+    uninitialize();
+    clear();
 }
 
 bool AudioContext::canSuspendForDocumentSuspension() const
@@ -824,14 +816,14 @@ void AudioContext::handleDeferredFinishDerefs()
     m_deferredFinishDerefList.clear();
 }
 
-void AudioContext::markForDeletion(AudioNode* node)
+void AudioContext::markForDeletion(AudioNode& node)
 {
     ASSERT(isGraphOwner());
 
     if (isAudioThreadFinished())
-        m_nodesToDelete.append(node);
+        m_nodesToDelete.append(&node);
     else
-        m_nodesMarkedForDeletion.append(node);
+        m_nodesMarkedForDeletion.append(&node);
 
     // This is probably the best time for us to remove the node from automatic pull list,
     // since all connections are gone and we hold the graph lock. Then when handlePostRenderTasks()
@@ -928,19 +920,19 @@ void AudioContext::handleDirtyAudioNodeOutputs()
     m_dirtyAudioNodeOutputs.clear();
 }
 
-void AudioContext::addAutomaticPullNode(AudioNode* node)
+void AudioContext::addAutomaticPullNode(AudioNode& node)
 {
     ASSERT(isGraphOwner());
 
-    if (m_automaticPullNodes.add(node).isNewEntry)
+    if (m_automaticPullNodes.add(&node).isNewEntry)
         m_automaticPullNodesNeedUpdating = true;
 }
 
-void AudioContext::removeAutomaticPullNode(AudioNode* node)
+void AudioContext::removeAutomaticPullNode(AudioNode& node)
 {
     ASSERT(isGraphOwner());
 
-    if (m_automaticPullNodes.remove(node))
+    if (m_automaticPullNodes.remove(&node))
         m_automaticPullNodesNeedUpdating = true;
 }
 
@@ -997,7 +989,7 @@ bool AudioContext::willBeginPlayback()
     if (pageConsentRequiredForAudioStart()) {
         Page* page = document()->page();
         if (page && !page->canStartMedia()) {
-            document()->addMediaCanStartListener(this);
+            document()->addMediaCanStartListener(*this);
             return false;
         }
         removeBehaviorRestriction(AudioContext::RequirePageConsentForAudioStartRestriction);
@@ -1017,7 +1009,7 @@ bool AudioContext::willPausePlayback()
     if (pageConsentRequiredForAudioStart()) {
         Page* page = document()->page();
         if (page && !page->canStartMedia()) {
-            document()->addMediaCanStartListener(this);
+            document()->addMediaCanStartListener(*this);
             return false;
         }
         removeBehaviorRestriction(AudioContext::RequirePageConsentForAudioStartRestriction);

@@ -31,6 +31,7 @@
 #include "ScrollTypes.h"
 #include "ScrollingCoordinator.h"
 #include "ScrollingStateNode.h"
+#include "TouchAction.h"
 #include <wtf/RefCounted.h>
 #include <wtf/TypeCasts.h>
 
@@ -51,6 +52,7 @@ public:
     bool isStickyNode() const { return nodeType() == ScrollingNodeType::Sticky; }
     bool isScrollingNode() const { return isFrameScrollingNode() || isOverflowScrollingNode(); }
     bool isFrameScrollingNode() const { return nodeType() == ScrollingNodeType::MainFrame || nodeType() == ScrollingNodeType::Subframe; }
+    bool isFrameHostingNode() const { return nodeType() == ScrollingNodeType::FrameHosting; }
     bool isOverflowScrollingNode() const { return nodeType() == ScrollingNodeType::Overflow; }
 
     virtual void commitStateBeforeChildren(const ScrollingStateNode&) = 0;

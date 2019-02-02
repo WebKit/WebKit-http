@@ -178,6 +178,7 @@ public:
     void clearDOMCaches();
     bool hasDOMCache(JSStringRef origin);
     uint64_t domCacheSize(JSStringRef origin);
+    void allowCacheStorageQuotaIncrease();
 
     // IndexedDB
     void setIDBPerOriginQuota(uint64_t);

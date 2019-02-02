@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -97,14 +97,7 @@ bool doesGC(Graph& graph, Node* node)
     case ArithTrunc:
     case ArithFRound:
     case ArithUnary:
-    case ValueBitAnd:
-    case ValueBitOr:
-    case ValueBitXor:
-    case ValueAdd:
-    case ValueSub:
-    case ValueMul:
     case ValueNegate:
-    case ValueDiv:
     case TryGetById:
     case GetById:
     case GetByIdFlush:
@@ -198,8 +191,6 @@ bool doesGC(Graph& graph, Node* node)
     case LogicalNot:
     case ToPrimitive:
     case ToNumber:
-    case ToString:
-    case CallStringConstructor:
     case NumberToStringWithRadix:
     case NumberToStringWithValidRadixConstant:
     case InByVal:
@@ -373,7 +364,6 @@ bool doesGC(Graph& graph, Node* node)
     case StringReplaceRegExp:
     case StringSlice:
     case StringValueOf:
-    case ObjectToString:
     case CreateRest:
     case ToLowerCase:
     case CallDOMGetter:
@@ -383,6 +373,24 @@ bool doesGC(Graph& graph, Node* node)
     case ParseInt: // We might resolve a rope even though we don't clobber anything.
     case SetAdd:
     case MapSet:
+    case ValueBitAnd:
+    case ValueBitOr:
+    case ValueBitXor:
+    case ValueAdd:
+    case ValueSub:
+    case ValueMul:
+    case ValueDiv:
+        return true;
+
+    case CallStringConstructor:
+    case ToString:
+        switch (node->child1().useKind()) {
+        case StringObjectUse:
+        case StringOrStringObjectUse:
+            return false;
+        default:
+            break;
+        }
         return true;
 
     case GetIndexedPropertyStorage:

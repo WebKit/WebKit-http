@@ -68,6 +68,9 @@ void RemoteScrollingCoordinatorProxy::connectStateNodeLayers(ScrollingStateTree&
             if (scrollingStateNode.hasChangedProperty(ScrollingStateNode::ScrollLayer))
                 scrollingStateNode.setLayer(layerTreeHost.layerForID(scrollingStateNode.layer()));
 
+            if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrolledContentsLayer))
+                scrollingStateNode.setScrolledContentsLayer(layerTreeHost.layerForID(scrollingStateNode.scrolledContentsLayer()));
+
             if (scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::CounterScrollingLayer))
                 scrollingStateNode.setCounterScrollingLayer(layerTreeHost.layerForID(scrollingStateNode.counterScrollingLayer()));
 
@@ -83,6 +86,8 @@ void RemoteScrollingCoordinatorProxy::connectStateNodeLayers(ScrollingStateTree&
         case ScrollingNodeType::Sticky:
             if (currNode->hasChangedProperty(ScrollingStateNode::ScrollLayer))
                 currNode->setLayer(layerTreeHost.layerForID(currNode->layer()));
+            break;
+        case ScrollingNodeType::FrameHosting:
             break;
         }
     }

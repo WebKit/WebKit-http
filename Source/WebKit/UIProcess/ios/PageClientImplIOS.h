@@ -143,6 +143,7 @@ private:
 
     void elementDidFocus(const FocusedElementInformation&, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, API::Object* userData) override;
     void elementDidBlur() override;
+    void focusedElementDidChangeInputMode(WebCore::InputMode) override;
     void didReceiveEditorStateUpdateAfterFocus() override;
     bool isFocusingElement() override;
     void selectionDidChange() override;
@@ -221,11 +222,11 @@ private:
 
 #if ENABLE(DATA_INTERACTION)
     void didPerformDragOperation(bool handled) override;
-    void didHandleStartDataInteractionRequest(bool started) override;
+    void didHandleDragStartRequest(bool started) override;
     void didHandleAdditionalDragItemsRequest(bool added) override;
     void startDrag(const WebCore::DragItem&, const ShareableBitmap::Handle& image) override;
-    void didConcludeEditDataInteraction(Optional<WebCore::TextIndicatorData>) override;
-    void didChangeDataInteractionCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) override;
+    void didConcludeEditDrag(Optional<WebCore::TextIndicatorData>) override;
+    void didChangeDragCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) override;
 #endif
 
     void didFinishProcessingAllPendingMouseEvents() final { }

@@ -26,6 +26,7 @@
 #pragma once
 
 #include "BytecodeGenerator.h"
+#include "CachedTypes.h"
 #include "ExecutableInfo.h"
 #include "JSCInlines.h"
 #include "Parser.h"
@@ -35,8 +36,10 @@
 #include "StrongInlines.h"
 #include "UnlinkedCodeBlock.h"
 #include "UnlinkedEvalCodeBlock.h"
+#include "UnlinkedFunctionCodeBlock.h"
 #include "UnlinkedModuleProgramCodeBlock.h"
 #include "UnlinkedProgramCodeBlock.h"
+#include <sys/stat.h>
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
 
@@ -57,6 +60,15 @@ class UnlinkedModuleProgramCodeBlock;
 class UnlinkedProgramCodeBlock;
 class VM;
 class VariableEnvironment;
+
+namespace CodeCacheInternal {
+static const bool verbose = false;
+} // namespace CodeCacheInternal
+
+#define VERBOSE_LOG(...) do { \
+    if (CodeCacheInternal::verbose) \
+        dataLogLn("(JSC::CodeCache) ", __VA_ARGS__); \
+} while (false)
 
 struct SourceCodeValue {
     SourceCodeValue()
@@ -89,13 +101,91 @@ public:
     {
     }
 
-    SourceCodeValue* findCacheAndUpdateAge(const SourceCodeKey& key)
+    iterator begin() { return m_map.begin(); }
+    iterator end() { return m_map.end(); }
+
+    template<typename UnlinkedCodeBlockType>
+    UnlinkedCodeBlockType* fetchFromDiskImpl(VM& vm, const SourceCodeKey& key)
+    {
+        {
+            const auto* cachedBytecode = key.source().provider().cachedBytecode();
+            if (cachedBytecode && cachedBytecode->size()) {
+                VERBOSE_LOG("Found cached CodeBlock in the SourceProvider");
+                UnlinkedCodeBlockType* unlinkedCodeBlock = decodeCodeBlock<UnlinkedCodeBlockType>(vm, key, cachedBytecode->data(), cachedBytecode->size());
+                if (unlinkedCodeBlock)
+                    return unlinkedCodeBlock;
+            }
+        }
+
+#if OS(DARWIN)
+        const char* cachePath = Options::diskCachePath();
+        if (!cachePath)
+            return nullptr;
+
+        unsigned hash = key.hash();
+        char filename[512];
+        int count = snprintf(filename, 512, "%s/%u.cache", cachePath, hash);
+        if (count < 0 || count > 512)
+            return nullptr;
+
+        int fd = open(filename, O_RDONLY);
+        if (fd == -1)
+            return nullptr;
+
+        int rc = flock(fd, LOCK_SH | LOCK_NB);
+        if (rc) {
+            close(fd);
+            return nullptr;
+        }
+
+        struct stat sb;
+        int res = fstat(fd, &sb);
+        size_t size = static_cast<size_t>(sb.st_size);
+        if (res || !size) {
+            close(fd);
+            return nullptr;
+        }
+
+        void* buffer = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
+        UnlinkedCodeBlockType* unlinkedCodeBlock = decodeCodeBlock<UnlinkedCodeBlockType>(vm, key, buffer, size);
+        munmap(buffer, size);
+
+        if (!unlinkedCodeBlock)
+            return nullptr;
+
+        VERBOSE_LOG("Found cached CodeBlock on disk");
+        addCache(key, SourceCodeValue(vm, unlinkedCodeBlock, m_age));
+        return unlinkedCodeBlock;
+#else
+        UNUSED_PARAM(vm);
+        UNUSED_PARAM(key);
+        return nullptr;
+#endif
+    }
+
+    template<typename UnlinkedCodeBlockType>
+    std::enable_if_t<std::is_base_of<UnlinkedCodeBlock, UnlinkedCodeBlockType>::value && !std::is_same<UnlinkedCodeBlockType, UnlinkedEvalCodeBlock>::value, UnlinkedCodeBlockType*>
+    fetchFromDisk(VM& vm, const SourceCodeKey& key)
+    {
+        UnlinkedCodeBlockType* codeBlock = fetchFromDiskImpl<UnlinkedCodeBlockType>(vm, key);
+        if (UNLIKELY(Options::forceDiskCache()))
+            RELEASE_ASSERT(codeBlock);
+        return codeBlock;
+    }
+
+    template<typename T>
+    std::enable_if_t<!std::is_base_of<UnlinkedCodeBlock, T>::value || std::is_same<T, UnlinkedEvalCodeBlock>::value, T*>
+    fetchFromDisk(VM&, const SourceCodeKey&) { return nullptr; }
+
+    template<typename UnlinkedCodeBlockType>
+    UnlinkedCodeBlockType* findCacheAndUpdateAge(VM& vm, const SourceCodeKey& key)
     {
         prune();
 
+        VERBOSE_LOG("Trying to find cached CodeBlock for ", key.source().provider().url().string());
         iterator findResult = m_map.find(key);
         if (findResult == m_map.end())
-            return nullptr;
+            return fetchFromDisk<UnlinkedCodeBlockType>(vm, key);
 
         int64_t age = m_age - findResult->value.age;
         if (age > m_capacity) {
@@ -115,7 +205,8 @@ public:
         findResult->value.age = m_age;
         m_age += key.length();
 
-        return &findResult->value;
+        VERBOSE_LOG("Found cached CodeBlock in memory");
+        return jsCast<UnlinkedCodeBlockType*>(findResult->value.cell.get());
     }
 
     AddResult addCache(const SourceCodeKey& key, const SourceCodeValue& value)
@@ -197,6 +288,7 @@ public:
     UnlinkedFunctionExecutable* getUnlinkedGlobalFunctionExecutable(VM&, const Identifier&, const SourceCode&, DebuggerMode, Optional<int> functionConstructorParametersEndPosition, ParserError&);
 
     void clear() { m_sourceCode.clear(); }
+    JS_EXPORT_PRIVATE void write(VM&);
 
 private:
     template <class UnlinkedCodeBlockType, class ExecutableType> 
@@ -225,11 +317,10 @@ template <> struct CacheTypes<UnlinkedModuleProgramCodeBlock> {
     static const SourceParseMode parseMode = SourceParseMode::ModuleEvaluateMode;
 };
 
-template <class UnlinkedCodeBlockType, class ExecutableType>
-UnlinkedCodeBlockType* generateUnlinkedCodeBlock(VM& vm, ExecutableType* executable, const SourceCode& source, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, DebuggerMode debuggerMode, ParserError& error, EvalContextType evalContextType, const VariableEnvironment* variablesUnderTDZ)
+template <class UnlinkedCodeBlockType, class ExecutableType = ScriptExecutable>
+UnlinkedCodeBlockType* generateUnlinkedCodeBlockImpl(VM& vm, const SourceCode& source, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, DebuggerMode debuggerMode, ParserError& error, EvalContextType evalContextType, DerivedContextType derivedContextType, bool isArrowFunctionContext, const VariableEnvironment* variablesUnderTDZ, ExecutableType* executable = nullptr)
 {
     typedef typename CacheTypes<UnlinkedCodeBlockType>::RootNode RootNode;
-    DerivedContextType derivedContextType = executable->derivedContextType();
     std::unique_ptr<RootNode> rootNode = parse<RootNode>(
         &vm, source, Identifier(), JSParserBuiltinMode::NotBuiltin, strictMode, scriptMode, CacheTypes<UnlinkedCodeBlockType>::parseMode, SuperBinding::NotNeeded, error, nullptr, ConstructorKind::None, derivedContextType, evalContextType);
     if (!rootNode)
@@ -240,10 +331,15 @@ UnlinkedCodeBlockType* generateUnlinkedCodeBlock(VM& vm, ExecutableType* executa
     bool endColumnIsOnStartLine = !lineCount;
     unsigned unlinkedEndColumn = rootNode->endColumn();
     unsigned endColumn = unlinkedEndColumn + (endColumnIsOnStartLine ? startColumn : 1);
-    unsigned arrowContextFeature = executable->isArrowFunctionContext() ? ArrowFunctionContextFeature : 0;
-    executable->recordParse(rootNode->features() | arrowContextFeature, rootNode->hasCapturedVariables(), rootNode->lastLine(), endColumn);
+    unsigned arrowContextFeature = isArrowFunctionContext ? ArrowFunctionContextFeature : 0;
+    if (executable)
+        executable->recordParse(rootNode->features() | arrowContextFeature, rootNode->hasCapturedVariables(), rootNode->lastLine(), endColumn);
 
-    UnlinkedCodeBlockType* unlinkedCodeBlock = UnlinkedCodeBlockType::create(&vm, executable->executableInfo(), debuggerMode);
+    bool usesEval = rootNode->features() & EvalFeature;
+    bool isStrictMode = rootNode->features() & StrictModeFeature;
+    ExecutableInfo executableInfo(usesEval, isStrictMode, false, false, ConstructorKind::None, scriptMode, SuperBinding::NotNeeded, CacheTypes<UnlinkedCodeBlockType>::parseMode, derivedContextType, isArrowFunctionContext, false, evalContextType);
+
+    UnlinkedCodeBlockType* unlinkedCodeBlock = UnlinkedCodeBlockType::create(&vm, executableInfo, debuggerMode);
     unlinkedCodeBlock->recordParse(rootNode->features(), rootNode->hasCapturedVariables(), lineCount, unlinkedEndColumn);
     unlinkedCodeBlock->setSourceURLDirective(source.provider()->sourceURL());
     unlinkedCodeBlock->setSourceMappingURLDirective(source.provider()->sourceMappingURL());
@@ -255,5 +351,29 @@ UnlinkedCodeBlockType* generateUnlinkedCodeBlock(VM& vm, ExecutableType* executa
 
     return unlinkedCodeBlock;
 }
+
+template <class UnlinkedCodeBlockType, class ExecutableType>
+UnlinkedCodeBlockType* generateUnlinkedCodeBlock(VM& vm, ExecutableType* executable, const SourceCode& source, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, DebuggerMode debuggerMode, ParserError& error, EvalContextType evalContextType, const VariableEnvironment* variablesUnderTDZ)
+{
+    return generateUnlinkedCodeBlockImpl<UnlinkedCodeBlockType, ExecutableType>(vm, source, strictMode, scriptMode, debuggerMode, error, evalContextType, executable->derivedContextType(), executable->isArrowFunctionContext(), variablesUnderTDZ, executable);
+}
+
+void generateUnlinkedCodeBlockForFunctions(VM&, UnlinkedCodeBlock*, const SourceCode&, DebuggerMode, ParserError&);
+
+template <class UnlinkedCodeBlockType>
+std::enable_if_t<!std::is_same<UnlinkedCodeBlockType, UnlinkedEvalCodeBlock>::value, UnlinkedCodeBlockType*>
+recursivelyGenerateUnlinkedCodeBlock(VM& vm, const SourceCode& source, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, DebuggerMode debuggerMode, ParserError& error, EvalContextType evalContextType, const VariableEnvironment* variablesUnderTDZ)
+{
+    bool isArrowFunctionContext = false;
+    UnlinkedCodeBlockType* unlinkedCodeBlock = generateUnlinkedCodeBlockImpl<UnlinkedCodeBlockType>(vm, source, strictMode, scriptMode, debuggerMode, error, evalContextType, DerivedContextType::None, isArrowFunctionContext, variablesUnderTDZ);
+    if (!unlinkedCodeBlock)
+        return nullptr;
+
+    generateUnlinkedCodeBlockForFunctions(vm, unlinkedCodeBlock, source, debuggerMode, error);
+    return unlinkedCodeBlock;
+}
+
+void writeCodeBlock(VM&, const SourceCodeKey&, const SourceCodeValue&);
+CachedBytecode serializeBytecode(VM&, UnlinkedCodeBlock*, const SourceCode&, SourceCodeType, JSParserStrictMode, JSParserScriptMode, DebuggerMode);
 
 } // namespace JSC

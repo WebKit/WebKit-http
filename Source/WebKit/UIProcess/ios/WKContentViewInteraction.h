@@ -196,6 +196,10 @@ struct WKAutoCorrectionData {
     RetainPtr<UIWebTouchEventsGestureRecognizer> _touchEventGestureRecognizer;
 
     BOOL _canSendTouchEventsAsynchronously;
+#if ENABLE(POINTER_EVENTS)
+    BOOL _preventsPanningInXAxis;
+    BOOL _preventsPanningInYAxis;
+#endif
 
     RetainPtr<WKSyntheticClickTapGestureRecognizer> _singleTapGestureRecognizer;
     RetainPtr<_UIWebHighlightLongPressGestureRecognizer> _highlightLongPressGestureRecognizer;
@@ -349,6 +353,10 @@ struct WKAutoCorrectionData {
 @property (nonatomic, readonly) const WebKit::FocusedElementInformation& focusedElementInformation;
 @property (nonatomic, readonly) UIWebFormAccessory *formAccessoryView;
 @property (nonatomic, readonly) UITextInputAssistantItem *inputAssistantItemForWebView;
+#if ENABLE(POINTER_EVENTS)
+@property (nonatomic, readonly) BOOL preventsPanningInXAxis;
+@property (nonatomic, readonly) BOOL preventsPanningInYAxis;
+#endif
 
 #if ENABLE(DATALIST_ELEMENT)
 @property (nonatomic, strong) UIView <WKFormControl> *dataListTextSuggestionsInputView;
@@ -388,6 +396,7 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_disableDoubleTapGesturesDuringTapIfNecessary:(uint64_t)requestID;
 - (void)_elementDidFocus:(const WebKit::FocusedElementInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode changingActivityState:(BOOL)changingActivityState userObject:(NSObject <NSSecureCoding> *)userObject;
 - (void)_elementDidBlur;
+- (void)_didUpdateInputMode:(WebCore::InputMode)mode;
 - (void)_didReceiveEditorStateUpdateAfterFocus;
 - (void)_selectionChanged;
 - (void)_updateChangedSelection;
@@ -428,11 +437,11 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 #if ENABLE(DATA_INTERACTION)
 - (void)_didChangeDragInteractionPolicy;
 - (void)_didPerformDragOperation:(BOOL)handled;
-- (void)_didHandleStartDataInteractionRequest:(BOOL)started;
+- (void)_didHandleDragStartRequest:(BOOL)started;
 - (void)_didHandleAdditionalDragItemsRequest:(BOOL)added;
 - (void)_startDrag:(RetainPtr<CGImageRef>)image item:(const WebCore::DragItem&)item;
-- (void)_didConcludeEditDataInteraction:(Optional<WebCore::TextIndicatorData>)data;
-- (void)_didChangeDataInteractionCaretRect:(CGRect)previousRect currentRect:(CGRect)rect;
+- (void)_didConcludeEditDrag:(Optional<WebCore::TextIndicatorData>)data;
+- (void)_didChangeDragCaretRect:(CGRect)previousRect currentRect:(CGRect)rect;
 #endif
 
 - (void)reloadContextViewForPresentedListViewController;
