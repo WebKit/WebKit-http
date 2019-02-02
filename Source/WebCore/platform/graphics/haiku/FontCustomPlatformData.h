@@ -37,7 +37,7 @@ namespace WebCore {
         FontCustomPlatformData() { }
         ~FontCustomPlatformData();
 
-        FontPlatformData fontPlatformData(const FontDescription& description, bool& bold, bool& italic);
+        FontPlatformData fontPlatformData(const FontDescription& description, bool& bold, bool& italic, const FontFeatureSettings&, const WebCore::FontVariantSettings&, WebCore::FontSelectionSpecifiedCapabilities);
 	    static bool supportsFormat(const String&);
     };
 

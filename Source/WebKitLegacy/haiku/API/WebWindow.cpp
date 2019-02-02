@@ -31,6 +31,7 @@
 #include "config.h"
 #include "WebWindow.h"
 
+#include "wtf/CompletionHandler.h"
 #include "WebSettings.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
@@ -144,6 +145,11 @@ void BWebWindow::MessageReceived(BMessage* message)
         if (message->FindString("url", &url) == B_OK) {
             LoadNegotiating(url, _WebViewForMessage(message));
         }
+
+		WTF::CompletionHandler<void()>* handler;
+		if (message->FindPointer("completionHandler", (void**)&handler) == B_OK) {
+			(*handler)();
+		}
         break;
     }
     case LOAD_COMMITTED: {

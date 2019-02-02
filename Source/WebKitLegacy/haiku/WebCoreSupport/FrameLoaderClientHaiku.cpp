@@ -70,6 +70,7 @@
 #include "WebViewConstants.h"
 
 #include <JavaScriptCore/APICast.h>
+#include <wtf/CompletionHandler.h>
 
 #include <Alert.h>
 #include <Bitmap.h>
@@ -364,7 +365,7 @@ void FrameLoaderClientHaiku::dispatchDidReceiveIcon()
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
+void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad(WTF::CompletionHandler<void()>&& handler)
 {
     CALLED();
     if (m_loadingErrorPage) {
@@ -374,6 +375,7 @@ void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
 
     BMessage message(LOAD_NEGOTIATING);
     message.AddString("url", m_webFrame->Frame()->loader().provisionalDocumentLoader()->request().url().string());
+	message.AddPointer("completionHandler", &handler);
     dispatchMessage(message);
 }
 
