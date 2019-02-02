@@ -38,7 +38,9 @@ function checkInstaller {
     fi
 
     if [ `uname` = "Darwin" ]; then
-       installDependenciesWithBrew
+       username=$(stat -f '%Su' /usr/local/Cellar)
+       FUNC=$(declare -f installDependenciesWithBrew)
+       sudo -u $username bash -c "$FUNC;installDependenciesWithBrew"
        exit 0
     fi
 
