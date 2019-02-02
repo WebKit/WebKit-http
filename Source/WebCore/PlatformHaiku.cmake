@@ -26,9 +26,6 @@ list(APPEND WebCore_SOURCES
   page/haiku/DragControllerHaiku.cpp
   page/haiku/EventHandlerHaiku.cpp
 
-  page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
-  page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
-
   page/PointerLockController.cpp
 
   platform/audio/FFTFrameStub.cpp
