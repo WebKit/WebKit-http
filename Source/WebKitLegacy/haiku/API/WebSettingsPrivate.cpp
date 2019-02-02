@@ -94,11 +94,12 @@ void WebSettingsPrivate::apply()
         settings->setNeedsSiteSpecificQuirks(true);
 
         char path[256];
-        status_t result = find_path(B_CURRENT_IMAGE_SYMBOL,
+        status_t result = find_path((void*)&WebSettingsPrivate::apply,
             B_FIND_PATH_DATA_DIRECTORY,
             "/WebKit/Directory Listing Template.html", path, 256);
         if (result != B_OK) {
-            find_directory(B_SYSTEM_NONPACKAGED_DATA_DIRECTORY, 0, false, path, 256);
+            find_directory(B_SYSTEM_NONPACKAGED_DATA_DIRECTORY, 0, false, path,
+				256);
             strcat(path, "/WebKit/Directory Listing Template.html");
         }
         settings->setFTPDirectoryTemplatePath(path);
