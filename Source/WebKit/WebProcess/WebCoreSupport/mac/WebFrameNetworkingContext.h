@@ -40,7 +40,7 @@ public:
         return adoptRef(*new WebFrameNetworkingContext(frame));
     }
 
-    // FIXME: remove platform-specific code and use SessionTracker
+    // FIXME: remove platform-specific code.
     static void ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&&);
 
     WebFrameLoaderClient* webFrameLoaderClient() const;
@@ -56,7 +56,7 @@ private:
     RetainPtr<CFDataRef> sourceApplicationAuditData() const override;
     String sourceApplicationIdentifier() const override;
     WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const override;
-    WebCore::NetworkStorageSession& storageSession() const override;
+    WebCore::NetworkStorageSession* storageSession() const override { return nullptr; }
 };
 
 }

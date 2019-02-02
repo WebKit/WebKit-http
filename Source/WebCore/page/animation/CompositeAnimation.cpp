@@ -286,7 +286,7 @@ AnimationUpdate CompositeAnimation::animate(Element& element, const RenderStyle*
     updateKeyframeAnimations(element, currentStyle, targetStyle);
     m_keyframeAnimations.checkConsistency();
 
-    bool animationStateChanged = false;
+    bool animationChangeRequiresRecomposite = false;
     bool forceStackingContext = false;
 
     std::unique_ptr<RenderStyle> animatedStyle;
@@ -296,12 +296,11 @@ AnimationUpdate CompositeAnimation::animate(Element& element, const RenderStyle*
         // to fill in a RenderStyle*& only if needed.
         bool checkForStackingContext = false;
         for (auto& transition : m_transitions.values()) {
-            bool didBlendStyle = false;
-            if (transition->animate(*this, targetStyle, animatedStyle, didBlendStyle))
-                animationStateChanged = true;
-
-            if (didBlendStyle)
+            auto changes = transition->animate(*this, targetStyle, animatedStyle);
+            if (changes.contains(AnimateChange::StyleBlended))
                 checkForStackingContext |= WillChangeData::propertyCreatesStackingContext(transition->animatingProperty());
+
+            animationChangeRequiresRecomposite = changes.contains(AnimateChange::RunningStateChange) && transition->affectsAcceleratedProperty();
         }
 
         if (animatedStyle && checkForStackingContext) {
@@ -326,11 +325,9 @@ AnimationUpdate CompositeAnimation::animate(Element& element, const RenderStyle*
     for (auto& name : m_keyframeAnimationOrderMap) {
         RefPtr<KeyframeAnimation> keyframeAnim = m_keyframeAnimations.get(name);
         if (keyframeAnim) {
-            bool didBlendStyle = false;
-            if (keyframeAnim->animate(*this, targetStyle, animatedStyle, didBlendStyle))
-                animationStateChanged = true;
-
-            forceStackingContext |= didBlendStyle && keyframeAnim->triggersStackingContext();
+            auto changes = keyframeAnim->animate(*this, targetStyle, animatedStyle);
+            animationChangeRequiresRecomposite = changes.contains(AnimateChange::RunningStateChange) && keyframeAnim->affectsAcceleratedProperty();
+            forceStackingContext |= changes.contains(AnimateChange::StyleBlended) && keyframeAnim->triggersStackingContext();
             m_hasAnimationThatDependsOnLayout |= keyframeAnim->dependsOnLayout();
         }
     }
@@ -344,7 +341,7 @@ AnimationUpdate CompositeAnimation::animate(Element& element, const RenderStyle*
             animatedStyle->setZIndex(0);
     }
 
-    return { WTFMove(animatedStyle), animationStateChanged };
+    return { WTFMove(animatedStyle), animationChangeRequiresRecomposite };
 }
 
 std::unique_ptr<RenderStyle> CompositeAnimation::getAnimatedStyle() const
@@ -510,19 +507,19 @@ void CompositeAnimation::resumeOverriddenImplicitAnimations(CSSPropertyID proper
     }
 }
 
-bool CompositeAnimation::isAnimatingProperty(CSSPropertyID property, bool acceleratedOnly, AnimationBase::RunningState runningState) const
+bool CompositeAnimation::isAnimatingProperty(CSSPropertyID property, bool acceleratedOnly) const
 {
     if (!m_keyframeAnimations.isEmpty()) {
         m_keyframeAnimations.checkConsistency();
         for (auto& animation : m_keyframeAnimations.values()) {
-            if (animation->isAnimatingProperty(property, acceleratedOnly, runningState))
+            if (animation->isAnimatingProperty(property, acceleratedOnly))
                 return true;
         }
     }
 
     if (!m_transitions.isEmpty()) {
         for (auto& transition : m_transitions.values()) {
-            if (transition->isAnimatingProperty(property, acceleratedOnly, runningState))
+            if (transition->isAnimatingProperty(property, acceleratedOnly))
                 return true;
         }
     }

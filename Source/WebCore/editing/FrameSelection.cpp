@@ -114,6 +114,30 @@ IntRect DragCaretController::caretRectInRootViewCoordinates() const
     return { };
 }
 
+IntRect DragCaretController::editableElementRectInRootViewCoordinates() const
+{
+    if (!hasCaret())
+        return { };
+
+    RefPtr<ContainerNode> editableContainer;
+    if (auto* formControl = enclosingTextFormControl(m_position.deepEquivalent()))
+        editableContainer = formControl;
+    else
+        editableContainer = highestEditableRoot(m_position.deepEquivalent());
+
+    if (!editableContainer)
+        return { };
+
+    auto* renderer = editableContainer->renderer();
+    if (!renderer)
+        return { };
+
+    if (auto* view = editableContainer->document().view())
+        return view->contentsToRootView(renderer->absoluteBoundingBoxRect());
+
+    return { };
+}
+
 static inline bool shouldAlwaysUseDirectionalSelection(Frame* frame)
 {
     return !frame || frame->editor().behavior().shouldConsiderSelectionAsDirectional();
@@ -513,16 +537,18 @@ void FrameSelection::respondToNodeModification(Node& node, bool baseRemoved, boo
             m_selection.setWithoutValidation(m_selection.start(), m_selection.end());
         else
             m_selection.setWithoutValidation(m_selection.end(), m_selection.start());
-    } else if (RefPtr<Range> range = m_selection.firstRange()) {
-        auto compareNodeResult = range->compareNode(node);
-        if (!compareNodeResult.hasException()) {
-            auto compareResult = compareNodeResult.releaseReturnValue();
-            if (compareResult == Range::NODE_BEFORE_AND_AFTER || compareResult == Range::NODE_INSIDE) {
-                // If we did nothing here, when this node's renderer was destroyed, the rect that it 
-                // occupied would be invalidated, but, selection gaps that change as a result of 
-                // the removal wouldn't be invalidated.
-                // FIXME: Don't do so much unnecessary invalidation.
-                clearRenderTreeSelection = true;
+    } else if (isRange()) {
+        if (RefPtr<Range> range = m_selection.firstRange()) {
+            auto compareNodeResult = range->compareNode(node);
+            if (!compareNodeResult.hasException()) {
+                auto compareResult = compareNodeResult.releaseReturnValue();
+                if (compareResult == Range::NODE_BEFORE_AND_AFTER || compareResult == Range::NODE_INSIDE) {
+                    // If we did nothing here, when this node's renderer was destroyed, the rect that it
+                    // occupied would be invalidated, but, selection gaps that change as a result of
+                    // the removal wouldn't be invalidated.
+                    // FIXME: Don't do so much unnecessary invalidation.
+                    clearRenderTreeSelection = true;
+                }
             }
         }
     }

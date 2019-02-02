@@ -361,7 +361,7 @@ namespace JSC {
         template<typename Metadata> void emitValueProfilingSite(Metadata&);
         void emitValueProfilingSiteIfProfiledOpcode(...);
         template<typename Op>
-        std::enable_if_t<std::is_same<decltype(Op::Metadata::profile), ValueProfile>::value, void>
+        std::enable_if_t<std::is_same<decltype(Op::Metadata::m_profile), ValueProfile>::value, void>
         emitValueProfilingSiteIfProfiledOpcode(Op bytecode);
 
         void emitArrayProfilingSiteWithCell(RegisterID cell, RegisterID indexingType, ArrayProfile*);
@@ -545,6 +545,7 @@ namespace JSC {
         void emit_op_instanceof_custom(const Instruction*);
         void emit_op_is_empty(const Instruction*);
         void emit_op_is_undefined(const Instruction*);
+        void emit_op_is_undefined_or_null(const Instruction*);
         void emit_op_is_boolean(const Instruction*);
         void emit_op_is_number(const Instruction*);
         void emit_op_is_object(const Instruction*);

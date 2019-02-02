@@ -31,6 +31,7 @@
 #import "CtapHidAuthenticator.h"
 #import "CtapHidDriver.h"
 #import "HidConnection.h"
+#import "U2fHidAuthenticator.h"
 #import <WebCore/DeviceRequestConverter.h>
 #import <WebCore/DeviceResponseConverter.h>
 #import <WebCore/FidoConstants.h>
@@ -93,8 +94,6 @@ void HidService::deviceAdded(IOHIDDeviceRef device)
 {
     auto driver = std::make_unique<CtapHidDriver>(createHidConnection(device));
     // Get authenticator info from the device.
-    // FIXME(192061)
-    LOG_ERROR("Start asking device info.");
     driver->transact(encodeEmptyAuthenticatorRequest(CtapRequestCommand::kAuthenticatorGetInfo), [weakThis = makeWeakPtr(*this), ptr = driver.get()](Vector<uint8_t>&& response) {
         ASSERT(RunLoop::isMain());
         if (!weakThis)
@@ -108,7 +107,7 @@ void HidService::deviceAdded(IOHIDDeviceRef device)
 void HidService::continueAddDeviceAfterGetInfo(CtapHidDriver* ptr, Vector<uint8_t>&& response)
 {
     std::unique_ptr<CtapHidDriver> driver = m_drivers.take(ptr);
-    if (!driver || !observer())
+    if (!driver || !observer() || response.isEmpty())
         return;
 
     auto info = readCTAPGetInfoResponse(response);
@@ -116,8 +115,9 @@ void HidService::continueAddDeviceAfterGetInfo(CtapHidDriver* ptr, Vector<uint8_
         observer()->authenticatorAdded(CtapHidAuthenticator::create(WTFMove(driver), WTFMove(*info)));
         return;
     }
-    // FIXME(191535): Support U2F authenticators.
     LOG_ERROR("Couldn't parse a ctap get info response.");
+    driver->setProtocol(ProtocolVersion::kU2f);
+    observer()->authenticatorAdded(U2fHidAuthenticator::create(WTFMove(driver)));
 }
 
 } // namespace WebKit

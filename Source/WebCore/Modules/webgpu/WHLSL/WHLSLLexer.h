@@ -29,6 +29,8 @@
 
 #include <wtf/Optional.h>
 #include <wtf/Vector.h>
+#include <wtf/text/StringConcatenate.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/text/StringView.h>
 #include <wtf/text/WTFString.h>
 
@@ -217,7 +219,7 @@ public:
 
     String errorString(const Token& token, const String& message)
     {
-        return String::format("Parse error at line %u: %s", token.lineNumber, message.utf8().data());
+        return makeString("Parse error at line ", token.lineNumber, ": ", message);
     }
 
 private:
@@ -276,8 +278,8 @@ template<unsigned length> Optional<unsigned> Lexer::anyCharacter(const char (&st
     return WTF::nullopt;
 }
 
-}
+} // namespace WHLSL
 
-}
+} // namespace WebCore
 
-#endif
+#endif // ENABLE(WEBGPU)

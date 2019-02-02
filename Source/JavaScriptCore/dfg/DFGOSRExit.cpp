@@ -75,8 +75,6 @@ static JSValue jsValueFor(CPUState& cpu, JSValueSource source)
 
 #if NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
 
-static_assert(is64Bit(), "we only support callee save registers on 64-bit");
-
 // Based on AssemblyHelpers::emitRestoreCalleeSavesFor().
 static void restoreCalleeSavesFor(Context& context, CodeBlock* codeBlock)
 {
@@ -137,8 +135,14 @@ static void restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(Context& context
         size_t uintptrOffset = entry.offset() / sizeof(UCPURegister);
         if (entry.reg().isGPR())
             context.gpr(entry.reg().gpr()) = calleeSaveBuffer[uintptrOffset];
-        else
+        else {
+#if USE(JSVALUE64)
             context.fpr(entry.reg().fpr()) = bitwise_cast<double>(calleeSaveBuffer[uintptrOffset]);
+#else
+            // FIXME: <https://webkit.org/b/193275> support callee-saved floating point registers on 32-bit architectures
+            RELEASE_ASSERT_NOT_REACHED();
+#endif
+        }
     }
 }
 
@@ -161,8 +165,14 @@ static void copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(Context& context)
             continue;
         if (entry.reg().isGPR())
             stack.set(calleeSaveBuffer, entry.offset(), context.gpr<UCPURegister>(entry.reg().gpr()));
-        else
+        else {
+#if USE(JSVALUE64)
             stack.set(calleeSaveBuffer, entry.offset(), context.fpr<UCPURegister>(entry.reg().fpr()));
+#else
+            // FIXME: <https://webkit.org/b/193275> support callee-saved floating point registers on 32-bit architectures
+            RELEASE_ASSERT_NOT_REACHED();
+#endif
+        }
     }
 }
 
@@ -497,7 +507,7 @@ void OSRExit::executeOSRExit(Context& context)
             ASSERT(exit.m_kind == BadCache || exit.m_kind == BadIndexingType);
             Structure* structure = profiledValue.asCell()->structure(vm);
             arrayProfile->observeStructure(structure);
-            arrayProfile->observeArrayMode(asArrayModes(structure->indexingMode()));
+            arrayProfile->observeArrayMode(arrayModesFromStructure(structure));
         }
         if (extraInitializationLevel <= ExtraInitializationLevel::ArrayProfileUpdate)
             break;
@@ -1175,6 +1185,15 @@ void OSRExit::compileExit(CCallHelpers& jit, VM& vm, const OSRExit& exit, const 
 
                 jit.load32(AssemblyHelpers::Address(value, JSCell::structureIDOffset()), scratch1);
                 jit.store32(scratch1, arrayProfile->addressOfLastSeenStructureID());
+
+                jit.load8(AssemblyHelpers::Address(value, JSCell::typeInfoTypeOffset()), scratch2);
+                jit.sub32(AssemblyHelpers::TrustedImm32(FirstTypedArrayType), scratch2);
+                auto notTypedArray = jit.branch32(MacroAssembler::AboveOrEqual, scratch2, AssemblyHelpers::TrustedImm32(NumberOfTypedArrayTypesExcludingDataView));
+                jit.move(AssemblyHelpers::TrustedImmPtr(typedArrayModes), scratch1);
+                jit.load32(AssemblyHelpers::BaseIndex(scratch1, scratch2, AssemblyHelpers::TimesFour), scratch2);
+                auto storeArrayModes = jit.jump();
+
+                notTypedArray.link(&jit);
 #if USE(JSVALUE64)
                 jit.load8(AssemblyHelpers::Address(value, JSCell::indexingTypeAndMiscOffset()), scratch1);
 #else
@@ -1183,6 +1202,7 @@ void OSRExit::compileExit(CCallHelpers& jit, VM& vm, const OSRExit& exit, const 
                 jit.and32(AssemblyHelpers::TrustedImm32(IndexingModeMask), scratch1);
                 jit.move(AssemblyHelpers::TrustedImm32(1), scratch2);
                 jit.lshift32(scratch1, scratch2);
+                storeArrayModes.link(&jit);
                 jit.or32(scratch2, AssemblyHelpers::AbsoluteAddress(arrayProfile->addressOfArrayModes()));
 
                 if (isARM64()) {

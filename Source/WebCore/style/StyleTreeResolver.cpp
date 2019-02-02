@@ -67,6 +67,7 @@ TreeResolver::Scope::Scope(Document& document)
     : styleResolver(document.styleScope().resolver())
     , sharingResolver(document, styleResolver.ruleSets(), selectorFilter)
 {
+    document.setIsResolvingTreeStyle(true);
 }
 
 TreeResolver::Scope::Scope(ShadowRoot& shadowRoot, Scope& enclosingScope)
@@ -80,6 +81,9 @@ TreeResolver::Scope::Scope(ShadowRoot& shadowRoot, Scope& enclosingScope)
 
 TreeResolver::Scope::~Scope()
 {
+    if (!shadowRoot)
+        styleResolver.document().setIsResolvingTreeStyle(false);
+
     styleResolver.setOverrideDocumentElementStyle(nullptr);
 }
 
@@ -306,7 +310,7 @@ ElementUpdate TreeResolver::createAnimatedElementUpdate(std::unique_ptr<RenderSt
         auto& animationController = m_document.frame()->animation();
 
         auto animationUpdate = animationController.updateAnimations(element, *newStyle, oldStyle);
-        shouldRecompositeLayer = animationUpdate.stateChanged;
+        shouldRecompositeLayer = animationUpdate.animationChangeRequiresRecomposite;
 
         if (animationUpdate.style)
             newStyle = WTFMove(animationUpdate.style);

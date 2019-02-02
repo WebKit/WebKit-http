@@ -80,10 +80,12 @@
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/HTMLImageElement.h>
 #import <WebCore/HTMLInputElement.h>
+#import <WebCore/HTMLLabelElement.h>
 #import <WebCore/HTMLOptGroupElement.h>
 #import <WebCore/HTMLOptionElement.h>
 #import <WebCore/HTMLParserIdioms.h>
 #import <WebCore/HTMLSelectElement.h>
+#import <WebCore/HTMLSummaryElement.h>
 #import <WebCore/HTMLTextAreaElement.h>
 #import <WebCore/HTMLTextFormControlElement.h>
 #import <WebCore/HistoryItem.h>
@@ -238,6 +240,7 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
         // FIXME: We should disallow replace when the string contains only CJ characters.
         postLayoutData.isReplaceAllowed = result.isContentEditable && !result.isInPasswordField && !selectedText.isAllSpecialCharacters<isHTMLSpace>();
     }
+    postLayoutData.atStartOfSentence = frame.selection().selectionAtSentenceStart();
     postLayoutData.insideFixedPosition = startNodeIsInsideFixedPosition || endNodeIsInsideFixedPosition;
     if (!selection.isNone()) {
         if (m_focusedElement && m_focusedElement->renderer()) {
@@ -725,7 +728,8 @@ void WebPage::sendTapHighlightForNodeIfNecessary(uint64_t requestID, Node* node)
         if (is<RenderBox>(*renderer))
             borderRadii = downcast<RenderBox>(*renderer).borderRadii();
 
-        send(Messages::WebPageProxy::DidGetTapHighlightGeometries(requestID, highlightColor, quads, roundedIntSize(borderRadii.topLeft()), roundedIntSize(borderRadii.topRight()), roundedIntSize(borderRadii.bottomLeft()), roundedIntSize(borderRadii.bottomRight())));
+        bool nodeHasBuiltInClickHandling = is<HTMLFormControlElement>(*node) || is<HTMLAnchorElement>(*node) || is<HTMLLabelElement>(*node) || is<HTMLSummaryElement>(*node) || node->isLink();
+        send(Messages::WebPageProxy::DidGetTapHighlightGeometries(requestID, highlightColor, quads, roundedIntSize(borderRadii.topLeft()), roundedIntSize(borderRadii.topRight()), roundedIntSize(borderRadii.bottomLeft()), roundedIntSize(borderRadii.bottomRight()), nodeHasBuiltInClickHandling));
     }
 #else
     UNUSED_PARAM(requestID);
@@ -3037,6 +3041,8 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
                 frameView.frame().selection().setCaretRectNeedsUpdate();
                 sendPartialEditorStateAndSchedulePostLayoutUpdate();
             }
+
+            frameView.didUpdateViewportOverrideRects();
         } else
             frameView.setCustomFixedPositionLayoutRect(enclosingIntRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
     }

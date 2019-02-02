@@ -2032,10 +2032,10 @@ void FrameLoader::commitProvisionalLoad()
 
         Optional<HasInsecureContent> hasInsecureContent = cachedPage->cachedMainFrame()->hasInsecureContent();
 
+        dispatchDidCommitLoad(hasInsecureContent);
+
         // FIXME: This API should be turned around so that we ground CachedPage into the Page.
         cachedPage->restore(*m_frame.page());
-
-        dispatchDidCommitLoad(hasInsecureContent);
 
 #if PLATFORM(IOS_FAMILY)
         m_frame.page()->chrome().setDispatchViewportDataDidChangeSuppressed(false);
@@ -3134,6 +3134,7 @@ bool FrameLoader::shouldPerformFragmentNavigation(bool isFormSubmission, const S
     return (!isFormSubmission || equalLettersIgnoringASCIICase(httpMethod, "get"))
         && !isReload(loadType)
         && loadType != FrameLoadType::Same
+        && m_frame.document()->pageCacheState() != Document::InPageCache
         && !shouldReload(m_frame.document()->url(), url)
         // We don't want to just scroll if a link from within a
         // frameset is trying to reload the frameset into _top.

@@ -123,9 +123,9 @@ void PageClientImpl::setImpl(WebViewImpl& impl)
     m_impl = makeWeakPtr(impl);
 }
 
-std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy()
+std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy(WebProcessProxy& process)
 {
-    return m_impl->createDrawingAreaProxy();
+    return m_impl->createDrawingAreaProxy(process);
 }
 
 void PageClientImpl::setViewNeedsDisplay(const WebCore::Region&)
@@ -955,6 +955,11 @@ WebCore::UserInterfaceLayoutDirection PageClientImpl::userInterfaceLayoutDirecti
 bool PageClientImpl::effectiveAppearanceIsDark() const
 {
     return m_impl->effectiveAppearanceIsDark();
+}
+
+void PageClientImpl::takeFocus(WebCore::FocusDirection direction)
+{
+    m_impl->takeFocus(direction);
 }
 
 } // namespace WebKit

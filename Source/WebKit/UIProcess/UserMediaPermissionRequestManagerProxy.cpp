@@ -29,7 +29,9 @@
 #include "WebPageMessages.h"
 #include "WebPageProxy.h"
 #include "WebProcess.h"
+#include "WebProcessPool.h"
 #include "WebProcessProxy.h"
+#include "WebsiteDataStore.h"
 #include <WebCore/MediaConstraints.h>
 #include <WebCore/MockRealtimeMediaSourceCenter.h>
 #include <WebCore/RealtimeMediaSource.h>
@@ -176,7 +178,7 @@ void UserMediaPermissionRequestManagerProxy::userMediaAccessWasGranted(uint64_t 
 {
     ASSERT(audioDevice || videoDevice);
 
-    if (!m_page.isValid() || !m_page.websiteDataStore().deviceIdHashSaltStorage())
+    if (!m_page.isValid())
         return;
 
 #if ENABLE(MEDIA_STREAM)
@@ -184,7 +186,7 @@ void UserMediaPermissionRequestManagerProxy::userMediaAccessWasGranted(uint64_t 
     if (!request)
         return;
 
-    m_page.websiteDataStore().deviceIdHashSaltStorage()->deviceIdHashSaltForOrigin(request->userMediaDocumentSecurityOrigin(), request->topLevelDocumentSecurityOrigin(), [this, weakThis = makeWeakPtr(*this), userMediaID, audioDevice = WTFMove(audioDevice), videoDevice = WTFMove(videoDevice), localRequest = request.copyRef()] (String&& deviceIDHashSalt) mutable {
+    m_page.websiteDataStore().deviceIdHashSaltStorage().deviceIdHashSaltForOrigin(request->userMediaDocumentSecurityOrigin(), request->topLevelDocumentSecurityOrigin(), [this, weakThis = makeWeakPtr(*this), userMediaID, audioDevice = WTFMove(audioDevice), videoDevice = WTFMove(videoDevice), localRequest = request.copyRef()] (String&& deviceIDHashSalt) mutable {
         if (!weakThis)
             return;
         if (grantAccess(userMediaID, WTFMove(audioDevice), WTFMove(videoDevice), WTFMove(deviceIDHashSalt))) {
@@ -376,8 +378,16 @@ void UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame(
             return;
         }
 
-        if (!m_page.uiClient().decidePolicyForUserMediaPermissionRequest(m_page, *m_page.process().webFrame(frameID), WTFMove(userMediaOrigin), WTFMove(topLevelOrigin), pendingRequest.get()))
-            userMediaAccessWasDenied(userMediaID, UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::UserMediaDisabled);
+        // If page navigated, there is no need to call the page client for authorization.
+        auto* webFrame = m_page.process().webFrame(frameID);
+
+        if (!webFrame || !SecurityOrigin::createFromString(m_page.pageLoadState().activeURL())->isSameSchemeHostPort(topLevelOrigin->securityOrigin())) {
+            denyRequest(userMediaID, UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::NoConstraints, emptyString());
+            return;
+        }
+
+        // FIXME: Remove webFrame, userMediaOrigin and topLevelOrigin from this uiClient API call.
+        m_page.uiClient().decidePolicyForUserMediaPermissionRequest(m_page, *webFrame, WTFMove(userMediaOrigin), WTFMove(topLevelOrigin), pendingRequest.get());
     };
 
     auto requestID = generateRequestID();
@@ -387,12 +397,12 @@ void UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame(
         if (!pendingRequest)
             return;
 
-        if (!m_page.isValid() || !m_page.websiteDataStore().deviceIdHashSaltStorage())
+        if (!m_page.isValid())
             return;
 
         syncWithWebCorePrefs();
 
-        m_page.websiteDataStore().deviceIdHashSaltStorage()->deviceIdHashSaltForOrigin(pendingRequest.value()->userMediaDocumentSecurityOrigin(), pendingRequest.value()->topLevelDocumentSecurityOrigin(), [validHandler = WTFMove(validHandler), invalidHandler = WTFMove(invalidHandler), localUserRequest = localUserRequest] (String&& deviceIDHashSalt) mutable {
+        m_page.websiteDataStore().deviceIdHashSaltStorage().deviceIdHashSaltForOrigin(pendingRequest.value()->userMediaDocumentSecurityOrigin(), pendingRequest.value()->topLevelDocumentSecurityOrigin(), [validHandler = WTFMove(validHandler), invalidHandler = WTFMove(invalidHandler), localUserRequest = localUserRequest] (String&& deviceIDHashSalt) mutable {
             RealtimeMediaSourceCenter::singleton().validateRequestConstraints(WTFMove(validHandler), WTFMove(invalidHandler), WTFMove(localUserRequest), WTFMove(deviceIDHashSalt));
         });
     };
@@ -410,7 +420,8 @@ void UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame(
 #if ENABLE(MEDIA_STREAM)
 void UserMediaPermissionRequestManagerProxy::getUserMediaPermissionInfo(uint64_t requestID, uint64_t frameID, UserMediaPermissionCheckProxy::CompletionHandler&& handler, Ref<SecurityOrigin>&& userMediaDocumentOrigin, Ref<SecurityOrigin>&& topLevelDocumentOrigin)
 {
-    if (!m_page.websiteDataStore().deviceIdHashSaltStorage()) {
+    auto* webFrame = m_page.process().webFrame(frameID);
+    if (!webFrame || !SecurityOrigin::createFromString(m_page.pageLoadState().activeURL())->isSameSchemeHostPort(topLevelDocumentOrigin.get())) {
         handler(false);
         return;
     }
@@ -420,10 +431,8 @@ void UserMediaPermissionRequestManagerProxy::getUserMediaPermissionInfo(uint64_t
     auto request = UserMediaPermissionCheckProxy::create(frameID, WTFMove(handler), WTFMove(userMediaDocumentOrigin), WTFMove(topLevelDocumentOrigin));
 
     m_pendingDeviceRequests.add(requestID, request.copyRef());
-    if (!m_page.uiClient().checkUserMediaPermissionForOrigin(m_page, *m_page.process().webFrame(frameID), userMediaOrigin.get(), topLevelOrigin.get(), request.get())) {
-        m_pendingDeviceRequests.take(requestID);
-        handler(false);
-    }
+    // FIXME: Remove webFrame, userMediaOrigin and topLevelOrigin from this uiClient API call.
+    m_page.uiClient().checkUserMediaPermissionForOrigin(m_page, *webFrame, userMediaOrigin.get(), topLevelOrigin.get(), request.get());
 }
 
 bool UserMediaPermissionRequestManagerProxy::wasGrantedVideoOrAudioAccess(uint64_t frameID, const SecurityOrigin& userMediaDocumentOrigin, const SecurityOrigin& topLevelDocumentOrigin)
@@ -459,14 +468,18 @@ void UserMediaPermissionRequestManagerProxy::enumerateMediaDevicesForFrame(uint6
 
     auto requestID = generateRequestID();
     auto completionHandler = [this, requestID, userMediaID, requestOrigin = userMediaDocumentOrigin.copyRef(), topOrigin = topLevelDocumentOrigin.copyRef()](bool originHasPersistentAccess) {
-        m_page.websiteDataStore().deviceIdHashSaltStorage()->deviceIdHashSaltForOrigin(requestOrigin.get(), topOrigin.get(), [this, weakThis = makeWeakPtr(*this), requestID, userMediaID, &originHasPersistentAccess] (String&& deviceIDHashSalt) {
+
+        if (!m_page.isValid())
+            return;
+
+        m_page.websiteDataStore().deviceIdHashSaltStorage().deviceIdHashSaltForOrigin(requestOrigin.get(), topOrigin.get(), [this, weakThis = makeWeakPtr(*this), requestID, userMediaID, &originHasPersistentAccess] (String&& deviceIDHashSalt) {
             if (!weakThis)
                 return;
             auto pendingRequest = m_pendingDeviceRequests.take(requestID);
             if (!pendingRequest)
                 return;
 
-            if (!m_page.isValid() || !m_page.websiteDataStore().deviceIdHashSaltStorage())
+            if (!m_page.isValid())
                 return;
 
             syncWithWebCorePrefs();

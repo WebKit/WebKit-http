@@ -589,6 +589,21 @@ void WKBundlePageConfirmCompositionWithText(WKBundlePageRef pageRef, WKStringRef
     WebKit::toImpl(pageRef)->confirmCompositionForTesting(WebKit::toWTFString(text));
 }
 
+void WKBundlePageSetUseDarkAppearance(WKBundlePageRef pageRef, bool useDarkAppearance)
+{
+    WebKit::WebPage* webPage = WebKit::toImpl(pageRef);
+    if (WebCore::Page* page = webPage ? webPage->corePage() : nullptr)
+        page->setUseDarkAppearance(useDarkAppearance);
+}
+
+bool WKBundlePageIsUsingDarkAppearance(WKBundlePageRef pageRef)
+{
+    WebKit::WebPage* webPage = WebKit::toImpl(pageRef);
+    if (WebCore::Page* page = webPage ? webPage->corePage() : nullptr)
+        return page->useDarkAppearance();
+    return false;
+}
+
 bool WKBundlePageCanShowMIMEType(WKBundlePageRef pageRef, WKStringRef mimeTypeRef)
 {
     return WebKit::toImpl(pageRef)->canShowMIMEType(WebKit::toWTFString(mimeTypeRef));
@@ -632,19 +647,20 @@ void WKBundlePageStartMonitoringScrollOperations(WKBundlePageRef pageRef)
     page->ensureTestTrigger();
 }
 
-void WKBundlePageRegisterScrollOperationCompletionCallback(WKBundlePageRef pageRef, WKBundlePageTestNotificationCallback callback, void* context)
+bool WKBundlePageRegisterScrollOperationCompletionCallback(WKBundlePageRef pageRef, WKBundlePageTestNotificationCallback callback, void* context)
 {
     if (!callback)
-        return;
+        return false;
     
     WebKit::WebPage* webPage = WebKit::toImpl(pageRef);
     WebCore::Page* page = webPage ? webPage->corePage() : nullptr;
     if (!page || !page->expectsWheelEventTriggers())
-        return;
+        return false;
     
     page->ensureTestTrigger().setTestCallbackAndStartNotificationTimer([=]() {
         callback(context);
     });
+    return true;
 }
 
 void WKBundlePageCallAfterTasksAndTimers(WKBundlePageRef pageRef, WKBundlePageTestNotificationCallback callback, void* context)

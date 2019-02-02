@@ -23,6 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if PLATFORM(IOS_FAMILY)
+
 WTF_EXTERN_C_BEGIN
 typedef struct __GSKeyboard* GSKeyboardRef;
 WTF_EXTERN_C_END
@@ -47,9 +49,10 @@ WTF_EXTERN_C_END
 @interface UIApplication ()
 + (UIApplicationSceneClassicMode)_classicMode;
 - (GSKeyboardRef)_hardwareKeyboard;
+- (CGFloat)_iOSMacScale;
 @end
 
-#else
+#else // USE(APPLE_INTERNAL_SDK)
 
 #import <UIKit/UIKit.h>
 
@@ -116,3 +119,5 @@ NS_ASSUME_NONNULL_END
 #endif
 
 #endif
+
+#endif // PLATFORM(IOS_FAMILY)

@@ -118,7 +118,7 @@ static void getFontPropertiesFromPattern(FcPattern* pattern, const FontDescripti
     }
 }
 
-RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description, const Font*, bool, const UChar* characters, unsigned length)
+RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description, const Font*, IsForPlatformFont, PreferColoredFont preferColoredFont, const UChar* characters, unsigned length)
 {
     FcUniquePtr<FcCharSet> fontConfigCharSet(FcCharSetCreate());
     UTF16UChar32Iterator iterator(characters, length);
@@ -132,6 +132,8 @@ RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& descr
     FcPatternAddCharSet(pattern.get(), FC_CHARSET, fontConfigCharSet.get());
 
     FcPatternAddBool(pattern.get(), FC_SCALABLE, FcTrue);
+    if (preferColoredFont == PreferColoredFont::Yes)
+        FcPatternAddBool(pattern.get(), FC_COLOR, FcTrue);
 
     if (!configurePatternForFontDescription(pattern.get(), description))
         return nullptr;
@@ -429,7 +431,7 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
         return nullptr;
 
     bool fixedWidth, syntheticBold, syntheticOblique;
-    getFontPropertiesFromPattern(pattern.get(), fontDescription, fixedWidth, syntheticBold, syntheticOblique);
+    getFontPropertiesFromPattern(resultPattern.get(), fontDescription, fixedWidth, syntheticBold, syntheticOblique);
 
     RefPtr<cairo_font_face_t> fontFace = adoptRef(cairo_ft_font_face_create_for_pattern(resultPattern.get()));
 #if ENABLE(VARIATION_FONTS)

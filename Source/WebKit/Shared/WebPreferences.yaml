@@ -42,6 +42,13 @@ HTTPSUpgradeEnabled:
    humanReadableDescription: "Automatic HTTPS upgrade for known supported sites"
    category: experimental
 
+ThirdPartyIframeRedirectBlockingEnabled:
+   type: bool
+   defaultValue: true
+   humanReadableName: "Block top-level redirects by third-party iframes"
+   humanReadableDescription: "Block top-level redirects by third-party iframes"
+   category: experimental
+
 JavaEnabled:
   type: bool
   defaultValue: false
@@ -550,7 +557,7 @@ WebRTCH264SimulcastEnabled:
 
 WebRTCMDNSICECandidatesEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   humanReadableName: "WebRTC mDNS ICE candidates"
   humanReadableDescription: "Enable WebRTC mDNS ICE candidates"
   webcoreBinding: RuntimeEnabledFeatures
@@ -1233,7 +1240,7 @@ IntersectionObserverEnabled:
 
 VisualViewportAPIEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  defaultValue: true
   humanReadableName: "Visual Viewport API"
   humanReadableDescription: "Enable Visual Viewport API"
   category: experimental
@@ -1359,7 +1366,7 @@ CSSTypedOMEnabled:
 
 WebSQLDisabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   humanReadableName: "Disable Web SQL"
   humanReadableDescription: "Disable Web SQL"
   webcoreBinding: RuntimeEnabledFeatures
@@ -1387,12 +1394,11 @@ ExperimentalPlugInSandboxProfilesEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   webcoreName: experimentalPlugInSandboxProfilesEnabled
 
-ResourceLoadStatisticsDebugMode:
+ItpDebugModeEnabled:
   type: bool
   defaultValue: false
   humanReadableName: "ITP Debug Mode"
   humanReadableDescription: "Intelligent Tracking Prevention Debug Mode"
-  category: internal
   webcoreBinding: RuntimeEnabledFeatures
 
 ServiceWorkersEnabled:
@@ -1519,5 +1525,13 @@ RestrictedHTTPResponseAccess:
   defaultValue: true
   humanReadableName: "Filter HTTP Response for WebProcesses"
   humanReadableDescription: "Enable HTTP Response filtering for WebProcesses"
+  category: internal
+  webcoreBinding: RuntimeEnabledFeatures
+
+UndoManagerAPIEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "UndoManager DOM API"
+  humanReadableDescription: "Enable the UndoManager DOM API"
   category: internal
   webcoreBinding: RuntimeEnabledFeatures

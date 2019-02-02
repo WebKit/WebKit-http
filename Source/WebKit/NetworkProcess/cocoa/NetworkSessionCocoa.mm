@@ -35,7 +35,6 @@
 #import "NetworkLoad.h"
 #import "NetworkProcess.h"
 #import "NetworkSessionCreationParameters.h"
-#import "SessionTracker.h"
 #import <Foundation/NSURLSession.h>
 #import <WebCore/Credential.h>
 #import <WebCore/FormDataStreamMac.h>
@@ -94,7 +93,7 @@ static WebCore::NetworkLoadPriority toNetworkLoadPriority(float priority)
     return WebCore::NetworkLoadPriority::Medium;
 }
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000)
+#if HAVE(CFNETWORK_NEGOTIATED_SSL_PROTOCOL_CIPHER)
 static String stringForSSLProtocol(SSLProtocol protocol)
 {
     switch (protocol) {
@@ -661,7 +660,7 @@ static NSURLRequest* updateIgnoreStrictTransportSecuritySettingIfNecessary(NSURL
             networkLoadMetrics.connectionIdentifier = String([m._connectionIdentifier UUIDString]);
 #endif
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000)
+#if HAVE(CFNETWORK_NEGOTIATED_SSL_PROTOCOL_CIPHER)
             networkLoadMetrics.tlsProtocol = stringForSSLProtocol(m._negotiatedTLSProtocol);
             networkLoadMetrics.tlsCipher = stringForSSLCipher(m._negotiatedTLSCipher);
 #endif
@@ -917,8 +916,20 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
 
     auto* storageSession = WebCore::NetworkStorageSession::storageSession(parameters.sessionID);
     RELEASE_ASSERT(storageSession);
-    if (CFHTTPCookieStorageRef storage = storageSession->cookieStorage().get())
-        configuration.HTTPCookieStorage = [[[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:storage] autorelease];
+
+    NSHTTPCookieStorage* cookieStorage;
+    if (CFHTTPCookieStorageRef storage = storageSession->cookieStorage().get()) {
+        cookieStorage = [[[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:storage] autorelease];
+        configuration.HTTPCookieStorage = cookieStorage;
+    } else
+        cookieStorage = storageSession->nsCookieStorage();
+
+#if HAVE(CFNETWORK_OVERRIDE_SESSION_COOKIE_ACCEPT_POLICY)
+    // We still need to check the selector since CFNetwork updates and WebKit updates are separate
+    // on older macOS.
+    if ([cookieStorage respondsToSelector:@selector(_overrideSessionCookieAcceptPolicy)])
+        cookieStorage._overrideSessionCookieAcceptPolicy = YES;
+#endif
 
     m_sessionWithCredentialStorageDelegate = adoptNS([[WKNetworkSessionDelegate alloc] initWithNetworkSession:*this withCredentials:true]);
     m_sessionWithCredentialStorage = [NSURLSession sessionWithConfiguration:configuration delegate:static_cast<id>(m_sessionWithCredentialStorageDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
@@ -932,6 +943,10 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
 
     m_statelessSessionDelegate = adoptNS([[WKNetworkSessionDelegate alloc] initWithNetworkSession:*this withCredentials:false]);
     m_statelessSession = [NSURLSession sessionWithConfiguration:configuration delegate:static_cast<id>(m_statelessSessionDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
+
+    m_resourceLoadStatisticsDirectory = parameters.resourceLoadStatisticsDirectory;
+    if (parameters.enableResourceLoadStatistics)
+        enableResourceLoadStatistics();
 }
 
 NetworkSessionCocoa::~NetworkSessionCocoa()

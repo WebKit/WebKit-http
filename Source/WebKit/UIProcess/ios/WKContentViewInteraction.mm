@@ -1274,6 +1274,9 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         UNUSED_PARAM(rect);
         return NO;
 #else
+        if (_tapHighlightInformation.nodeHasBuiltInClickHandling)
+            return true;
+
         static const float highlightPaintThreshold = 0.3; // 30%
         float highlightArea = 0;
         for (auto highlightQuad : _tapHighlightInformation.quads) {
@@ -1300,7 +1303,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     [self _updateTapHighlight];
 }
 
-- (void)_didGetTapHighlightForRequest:(uint64_t)requestID color:(const WebCore::Color&)color quads:(const Vector<WebCore::FloatQuad>&)highlightedQuads topLeftRadius:(const WebCore::IntSize&)topLeftRadius topRightRadius:(const WebCore::IntSize&)topRightRadius bottomLeftRadius:(const WebCore::IntSize&)bottomLeftRadius bottomRightRadius:(const WebCore::IntSize&)bottomRightRadius
+- (void)_didGetTapHighlightForRequest:(uint64_t)requestID color:(const WebCore::Color&)color quads:(const Vector<WebCore::FloatQuad>&)highlightedQuads topLeftRadius:(const WebCore::IntSize&)topLeftRadius topRightRadius:(const WebCore::IntSize&)topRightRadius bottomLeftRadius:(const WebCore::IntSize&)bottomLeftRadius bottomRightRadius:(const WebCore::IntSize&)bottomRightRadius nodeHasBuiltInClickHandling:(BOOL)nodeHasBuiltInClickHandling
 {
     if (!_isTapHighlightIDValid || _latestTapID != requestID)
         return;
@@ -1315,6 +1318,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     _tapHighlightInformation.topRightRadius = topRightRadius;
     _tapHighlightInformation.bottomLeftRadius = bottomLeftRadius;
     _tapHighlightInformation.bottomRightRadius = bottomRightRadius;
+    _tapHighlightInformation.nodeHasBuiltInClickHandling = nodeHasBuiltInClickHandling;
     if (_showDebugTapHighlightsForFastClicking)
         _tapHighlightInformation.color = [self _tapHighlightColorForFastClick:![_doubleTapGestureRecognizer isEnabled]];
     else
@@ -5985,7 +5989,16 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 
     auto proposal = adoptNS([[UIDropProposal alloc] initWithDropOperation:static_cast<UIDropOperation>(operation)]);
     auto dragHandlingMethod = _page->currentDragHandlingMethod();
-    [proposal setPrecise:dragHandlingMethod == WebCore::DragHandlingMethod::EditPlainText || dragHandlingMethod == WebCore::DragHandlingMethod::EditRichText];
+    if (dragHandlingMethod == WebCore::DragHandlingMethod::EditPlainText || dragHandlingMethod == WebCore::DragHandlingMethod::EditRichText) {
+        // When dragging near the top or bottom edges of an editable element, enabling precision drop mode may result in the drag session hit-testing outside of the editable
+        // element, causing the drag to no longer be accepted. This in turn disables precision drop mode, which causes the drag session to hit-test inside of the editable
+        // element again, which enables precision mode, thus continuing the cycle. To avoid precision mode thrashing, we forbid precision mode when dragging near the top or
+        // bottom of the editable element.
+        auto minimumDistanceFromVerticalEdgeForPreciseDrop = 25 / _webView.scrollView.zoomScale;
+        [proposal setPrecise:CGRectContainsPoint(CGRectInset(_page->currentDragCaretEditableElementRect(), 0, minimumDistanceFromVerticalEdgeForPreciseDrop), [session locationInView:self])];
+    } else
+        [proposal setPrecise:NO];
+
     if ([delegate respondsToSelector:@selector(_webView:willUpdateDropProposalToProposal:forSession:)])
         proposal = [delegate _webView:_webView willUpdateDropProposalToProposal:proposal.get() forSession:session];
 

@@ -333,9 +333,6 @@ public:
     bool speculativeTilingEnabled() const { return m_speculativeTilingEnabled; }
     void loadProgressingStatusChanged();
 
-#if ENABLE(DASHBOARD_SUPPORT)
-    void updateAnnotatedRegions();
-#endif
     WEBCORE_EXPORT void updateControlTints();
 
     WEBCORE_EXPORT bool wasScrolledByUser() const;
@@ -592,6 +589,10 @@ public:
 
     void updateTiledBackingAdaptiveSizing();
     TiledBacking::Scrollability computeScrollability() const;
+
+#if PLATFORM(IOS_FAMILY)
+    WEBCORE_EXPORT void didUpdateViewportOverrideRects();
+#endif
 
     void addPaintPendingMilestones(OptionSet<LayoutMilestone>);
     void firePaintRelatedMilestonesIfNeeded();

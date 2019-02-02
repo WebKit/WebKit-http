@@ -65,7 +65,7 @@ public:
     Ref<Storage> storage;
 
     const Key key;
-    const RetrieveCompletionHandler completionHandler;
+    RetrieveCompletionHandler completionHandler;
     
     std::unique_ptr<Record> resultRecord;
     SHA1::Digest expectedBodyHash;
@@ -112,6 +112,7 @@ public:
         , mappedBodyHandler(WTFMove(mappedBodyHandler))
         , completionHandler(WTFMove(completionHandler))
     { }
+
     Ref<Storage> storage;
 
     const Record record;
@@ -763,7 +764,7 @@ template <class T> bool retrieveFromMemory(const T& operations, const Key& key, 
     for (auto& operation : operations) {
         if (operation->record.key == key) {
             LOG(NetworkCacheStorage, "(NetworkProcess) found write operation in progress");
-            RunLoop::main().dispatch([record = operation->record, completionHandler = WTFMove(completionHandler)] {
+            RunLoop::main().dispatch([record = operation->record, completionHandler = WTFMove(completionHandler)] () mutable {
                 completionHandler(std::make_unique<Storage::Record>(record), { });
             });
             return true;

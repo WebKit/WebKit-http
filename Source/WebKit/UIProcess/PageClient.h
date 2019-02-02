@@ -33,6 +33,7 @@
 #include "WebPopupMenuProxy.h"
 #include <WebCore/AlternativeTextClient.h>
 #include <WebCore/EditorClient.h>
+#include <WebCore/FocusDirection.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
 #include <WebCore/ValidationBubble.h>
 #include <wtf/CompletionHandler.h>
@@ -48,6 +49,7 @@
 
 OBJC_CLASS CALayer;
 OBJC_CLASS NSFileWrapper;
+OBJC_CLASS NSMenu;
 OBJC_CLASS NSSet;
 OBJC_CLASS WKDrawingView;
 OBJC_CLASS _WKRemoteObjectRegistry;
@@ -121,6 +123,7 @@ class WebFrameProxy;
 class WebOpenPanelResultListenerProxy;
 class WebPageProxy;
 class WebPopupMenuProxy;
+class WebProcessProxy;
 
 enum class ContinueUnsafeLoad : bool { No, Yes };
 
@@ -157,7 +160,7 @@ public:
     virtual ~PageClient() { }
 
     // Create a new drawing area proxy for the given page.
-    virtual std::unique_ptr<DrawingAreaProxy> createDrawingAreaProxy() = 0;
+    virtual std::unique_ptr<DrawingAreaProxy> createDrawingAreaProxy(WebProcessProxy&) = 0;
 
     // Tell the view to invalidate the given region. The region is in view coordinates.
     virtual void setViewNeedsDisplay(const WebCore::Region&) = 0;
@@ -303,16 +306,19 @@ public:
     virtual void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorWindowLifetime) = 0;
     virtual void clearTextIndicator(WebCore::TextIndicatorWindowDismissalAnimation) = 0;
     virtual void setTextIndicatorAnimationProgress(float) = 0;
+    
+    virtual void didPerformDictionaryLookup(const WebCore::DictionaryPopupInfo&) = 0;
 #endif
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) = 0;
     virtual void exitAcceleratedCompositingMode() = 0;
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) = 0;
 
+    virtual void takeFocus(WebCore::FocusDirection) { }
+
 #if PLATFORM(MAC)
     virtual void pluginFocusOrWindowFocusChanged(uint64_t pluginComplexTextInputIdentifier, bool pluginHasFocusAndWindowHasFocus) = 0;
     virtual void setPluginComplexTextInputState(uint64_t pluginComplexTextInputIdentifier, PluginComplexTextInputState) = 0;
-    virtual void didPerformDictionaryLookup(const WebCore::DictionaryPopupInfo&) = 0;
     virtual void showCorrectionPanel(WebCore::AlternativeTextType, const WebCore::FloatRect& boundingBoxOfReplacedString, const String& replacedString, const String& replacementString, const Vector<String>& alternativeReplacementStrings) = 0;
     virtual void dismissCorrectionPanel(WebCore::ReasonForDismissingAlternativeText) = 0;
     virtual String dismissCorrectionPanelSoon(WebCore::ReasonForDismissingAlternativeText) = 0;
@@ -354,7 +360,7 @@ public:
 
 #if PLATFORM(IOS_FAMILY)
     virtual void commitPotentialTapFailed() = 0;
-    virtual void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color&, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius) = 0;
+    virtual void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color&, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius, bool nodeHasBuiltInClickHandling) = 0;
 
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) = 0;
     virtual void layerTreeCommitComplete() = 0;

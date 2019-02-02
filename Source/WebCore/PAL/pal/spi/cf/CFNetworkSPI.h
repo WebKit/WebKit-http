@@ -126,6 +126,9 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 #if HAVE(FOUNDATION_WITH_SAVE_COOKIES_WITH_COMPLETION_HANDLER)
 - (void)_saveCookies:(dispatch_block_t) completionHandler;
 #endif
+#if HAVE(CFNETWORK_OVERRIDE_SESSION_COOKIE_ACCEPT_POLICY)
+@property (nonatomic, readwrite) BOOL _overrideSessionCookieAcceptPolicy;
+#endif
 @end
 
 @interface NSURLConnection ()
@@ -212,7 +215,7 @@ typedef NS_ENUM(NSInteger, NSURLSessionCompanionProxyPreference) {
 @end
 #endif
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000)
+#if HAVE(CFNETWORK_NEGOTIATED_SSL_PROTOCOL_CIPHER)
 @interface NSURLSessionTaskTransactionMetrics ()
 @property (assign) SSLProtocol _negotiatedTLSProtocol;
 @property (assign) SSLCipherSuite _negotiatedTLSCipher;

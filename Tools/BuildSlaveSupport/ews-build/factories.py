@@ -79,7 +79,8 @@ class BuildFactory(Factory):
 
     def propertiesToPassToTriggers(self):
         return {
-            "ewspatchid": Property("ewspatchid"),
+            "patch_id": Property("patch_id"),
+            "bug_id": Property("bug_id"),
             "configuration": Property("configuration"),
             "platform": Property("platform"),
             "fullPlatform": Property("fullPlatform"),

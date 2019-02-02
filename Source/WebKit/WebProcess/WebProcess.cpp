@@ -41,7 +41,6 @@
 #include "NetworkSession.h"
 #include "NetworkSessionCreationParameters.h"
 #include "PluginProcessConnectionManager.h"
-#include "SessionTracker.h"
 #include "StatisticsData.h"
 #include "UserData.h"
 #include "WebAutomationSessionProxy.h"
@@ -381,9 +380,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
     setShouldUseFontSmoothing(parameters.shouldUseFontSmoothing);
 
-    if (parameters.shouldUseTestingNetworkSession)
-        NetworkStorageSession::switchToNewTestingSession();
-
     ensureNetworkProcessConnection();
 
     setTerminationTimeout(parameters.terminationTimeout);
@@ -401,9 +397,8 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR) && PLATFORM(COCOA)
-    audit_token_t auditToken;
-    if (parentProcessConnection()->getAuditToken(auditToken)) {
-        RetainPtr<CFDataRef> auditData = adoptCF(CFDataCreate(nullptr, (const UInt8*)&auditToken, sizeof(auditToken)));
+    if (Optional<audit_token_t> auditToken = parentProcessConnection()->getAuditToken()) {
+        RetainPtr<CFDataRef> auditData = adoptCF(CFDataCreate(nullptr, (const UInt8*)&*auditToken, sizeof(*auditToken)));
         Inspector::RemoteInspector::singleton().setParentProcessInformation(WebCore::presentingApplicationPID(), auditData);
     }
 #endif
@@ -538,16 +533,6 @@ void WebProcess::userPreferredLanguagesChanged(const Vector<String>& languages) 
 void WebProcess::fullKeyboardAccessModeChanged(bool fullKeyboardAccessEnabled)
 {
     m_fullKeyboardAccessEnabled = fullKeyboardAccessEnabled;
-}
-
-void WebProcess::addWebsiteDataStore(WebsiteDataStoreParameters&& parameters)
-{
-    WebFrameNetworkingContext::ensureWebsiteDataStoreSession(WTFMove(parameters));
-}
-
-void WebProcess::destroySession(PAL::SessionID sessionID)
-{
-    SessionTracker::destroySession(sessionID);
 }
 
 void WebProcess::ensureLegacyPrivateBrowsingSessionInNetworkProcess()
@@ -1293,11 +1278,6 @@ void WebProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDat
     if (websiteDataTypes.contains(WebsiteDataType::MemoryCache)) {
         for (auto& origin : MemoryCache::singleton().originsWithCache(sessionID))
             websiteData.entries.append(WebsiteData::Entry { origin->data(), WebsiteDataType::MemoryCache, 0 });
-    }
-
-    if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
-        if (NetworkStorageSession::storageSession(sessionID))
-            websiteData.originsWithCredentials = NetworkStorageSession::storageSession(sessionID)->credentialStorage().originsWithCredentials();
     }
 }
 

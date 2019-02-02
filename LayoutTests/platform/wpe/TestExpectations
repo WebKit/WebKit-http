@@ -298,9 +298,6 @@ Bug(WPE) js/stringimpl-to-jsstring-on-large-strings-3.html [ Skip ]
 fast/canvas/webmetal [ Skip ]
 webgpu [ Skip ]
 
-# This test relies on Mac-specific quirks
-media/document-level-media-user-gesture-quirk.html [ Skip ]
-
 # Skipped due to untestable DRM key system. ClearKey counterparts are tested instead.
 imported/w3c/web-platform-tests/encrypted-media/drm-check-initdata-type.https.html [ Skip ]
 imported/w3c/web-platform-tests/encrypted-media/drm-events.https.html [ Skip ]
@@ -745,23 +742,14 @@ webkit.org/b/192903 imported/w3c/web-platform-tests/service-workers/service-work
 webkit.org/b/178705 webkit.org/b/169917 webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Pass Failure Timeout ]
 webkit.org/b/178705 webgl/2.0.0/conformance/rendering/multisample-corruption.html [ Pass Failure Timeout ]
 
+webkit.org/b/89153 http/tests/websocket/tests/hybi/workers/close.html [ Pass Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # 7. SLOW TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # This test is so slow that a Slow expectation is not enough to avoid flakiness.
 webkit.org/b/159754 workers/bomb.html [ Skip ]
-
-webkit.org/b/111647 [ Debug ] sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A1.1_T2.html [ Slow ]
-webkit.org/b/111647 [ Debug ] sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A1.4_T2.html [ Slow ]
-webkit.org/b/111647 [ Debug ] sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A2.1_T2.html [ Slow ]
-webkit.org/b/111647 [ Debug ] sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A2.4_T2.html [ Slow ]
-webkit.org/b/111647 [ Debug ] sputnik/Conformance/10_Execution_Contexts/10.1_Definitions/10.1.8_Arguments_Object/S10.1.8_A3_T2.html [ Slow ]
-webkit.org/b/111647 [ Debug ] sputnik/Conformance/07_Lexical_Conventions/7.4_Comments/S7.4_A5.html [ Slow ]
-webkit.org/b/111647 [ Debug ] sputnik/Conformance/07_Lexical_Conventions/7.4_Comments/S7.4_A6.html [ Slow ]
-webkit.org/b/111647 [ Debug ] sputnik/Conformance/12_Statement/12.6_Iteration_Statements/12.6.2_The_while_statement/S12.6.2_A6_T2.html [ Slow ]
-webkit.org/b/111647 [ Debug ] sputnik/Conformance/13_Function_Definition/S13_A4_T4.html [ Slow ]
-webkit.org/b/111647 [ Debug ] sputnik/Unicode/Unicode_218/S7.6_A5.3_T2.html [ Slow ]
 
 webkit.org/b/169917 webgl/1.0.2/conformance/uniforms/gl-uniform-arrays.html [ Slow ]
 
@@ -994,7 +982,7 @@ webkit.org/b/180967 imported/w3c/web-platform-tests/html/browsers/the-window-obj
 webkit.org/b/180967 imported/w3c/web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/open-features-tokenization-screenx-screeny.html [ Failure ]
 webkit.org/b/180967 imported/w3c/web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/open-features-tokenization-top-left.html [ Failure ]
 webkit.org/b/180967 imported/w3c/web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/open-features-tokenization-width-height.html [ Failure ]
-webkit.org/b/177322 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing.html [ Pass Failure ]
+webkit.org/b/177322 [ Debug ] imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing.html [ Pass Failure ]
 webkit.org/b/180933 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrack/activeCues.html [ Failure ]
 webkit.org/b/180933 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/track/track-element/track-api-texttracks.html [ Failure ]
 webkit.org/b/180352 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-canvas-element/toBlob.jpeg.html [ Failure ]
@@ -1549,6 +1537,14 @@ webkit.org/b/192891 fast/writing-mode/vertical-align-table-baseline.html [ Failu
 webkit.org/b/192900 imported/w3c/web-platform-tests/eventsource/format-mime-bogus.htm [ Failure ]
 
 webkit.org/b/192902 js/dom/modules/import-mjs-module.html [ Failure ]
+
+webkit.org/b/193491 fast/flexbox/missing-repaint-when-flext-item-never-had-layout.html [ Failure ]
+
+webkit.org/b/193511 http/tests/images/mp4-partial-load.html [ Failure ]
+
+webkit.org/b/193517 imported/w3c/web-platform-tests/css/css-properties-values-api/typedom.tentative.html [ Failure ]
+
+webkit.org/b/193518 imported/w3c/web-platform-tests/fetch/range/general.window.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 #  >> NOTICE <<

@@ -26,6 +26,7 @@
 #pragma once
 
 #include "AnimationEffect.h"
+#include "AnimationEffectPhase.h"
 #include "GenericEventQueue.h"
 #include "WebAnimation.h"
 #include <wtf/Ref.h>
@@ -74,7 +75,7 @@ protected:
 private:
     void disassociateFromOwningElement();
     void flushPendingStyleChanges() const;
-    AnimationEffect::Phase phaseWithoutEffect() const;
+    AnimationEffectPhase phaseWithoutEffect() const;
     void enqueueDOMEvent(const AtomicString&, Seconds);
     void remove() final;
 
@@ -83,12 +84,14 @@ private:
     void resume() final;
     void stop() final;
 
+    bool m_wasPending { false };
+    AnimationEffectPhase m_previousPhase { AnimationEffectPhase::Idle };
+
+    GenericEventQueue m_eventQueue;
+
     Element* m_owningElement;
     Ref<Animation> m_backingAnimation;
-    bool m_wasPending { false };
-    AnimationEffect::Phase m_previousPhase { AnimationEffect::Phase::Idle };
     double m_previousIteration;
-    GenericEventQueue m_eventQueue;
 };
 
 } // namespace WebCore

@@ -32,10 +32,13 @@
 #import "WebViewInternal.h"
 #import <JavaScriptCore/InitializeThreading.h>
 #import <WebCore/ApplicationCacheStorage.h>
+#import <WebCore/CookieJar.h>
 #import <WebCore/CredentialStorage.h>
 #import <WebCore/CrossOriginPreflightResultCache.h>
 #import <WebCore/Document.h>
 #import <WebCore/MemoryCache.h>
+#import <WebCore/NetworkStorageSession.h>
+#import <WebCore/StorageSessionProvider.h>
 #import <wtf/MainThread.h>
 #import <wtf/RunLoop.h>
 
@@ -47,6 +50,13 @@
 #import <WebCore/PageCache.h>
 #import <WebCore/WebCoreThreadRun.h>
 #endif
+
+class DefaultStorageSessionProvider : public WebCore::StorageSessionProvider {
+    WebCore::NetworkStorageSession* storageSession() const final
+    {
+        return &WebCore::NetworkStorageSession::defaultStorageSession();
+    }
+};
 
 @implementation WebCache
 
@@ -163,7 +173,8 @@
     if (!image || !url || ![[url absoluteString] length])
         return false;
 
-    return WebCore::MemoryCache::singleton().addImageToCache(RetainPtr<CGImageRef>(image), url, frame ? core(frame)->document()->domainForCachePartition() : emptyString());
+    auto provider = adoptRef(*new DefaultStorageSessionProvider);
+    return WebCore::MemoryCache::singleton().addImageToCache(RetainPtr<CGImageRef>(image), url, frame ? core(frame)->document()->domainForCachePartition() : emptyString(), PAL::SessionID::defaultSessionID(), WebCore::CookieJar::create(WTFMove(provider)).ptr());
 }
 
 + (void)removeImageFromCacheForURL:(NSURL *)url
@@ -212,7 +223,7 @@
 + (void)clearCachedCredentials
 {
     [WebView _makeAllWebViewsPerformSelector:@selector(_clearCredentials)];
-    WebCore::CredentialStorage::defaultCredentialStorage().clearCredentials();
+    WebCore::NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
 }
 
 @end

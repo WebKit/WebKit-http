@@ -375,10 +375,14 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/WebGPU.idl \
     $(WebCore)/Modules/webgpu/WebGPUAdapter.idl \
     $(WebCore)/Modules/webgpu/WebGPUAdapterDescriptor.idl \
+    $(WebCore)/Modules/webgpu/WebGPUBindGroup.idl \
+    $(WebCore)/Modules/webgpu/WebGPUBindGroupBinding.idl \
+    $(WebCore)/Modules/webgpu/WebGPUBindGroupDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUBindGroupLayout.idl \
     $(WebCore)/Modules/webgpu/WebGPUBindGroupLayoutBinding.idl \
     $(WebCore)/Modules/webgpu/WebGPUBindGroupLayoutDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUBuffer.idl \
+	$(WebCore)/Modules/webgpu/WebGPUBufferBinding.idl \
     $(WebCore)/Modules/webgpu/WebGPUBufferDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUBufferUsage.idl \
     $(WebCore)/Modules/webgpu/WebGPUColor.idl \
@@ -835,6 +839,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/html/track/VideoTrack.idl \
     $(WebCore)/html/track/VideoTrackList.idl \
     $(WebCore)/inspector/CommandLineAPIHost.idl \
+    $(WebCore)/inspector/InspectorAuditAccessibilityObject.idl \
+    $(WebCore)/inspector/InspectorAuditDOMObject.idl \
     $(WebCore)/inspector/InspectorFrontendHost.idl \
     $(WebCore)/loader/appcache/DOMApplicationCache.idl \
     $(WebCore)/page/BarProp.idl \
@@ -872,6 +878,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/page/ScrollLogicalPosition.idl \
     $(WebCore)/page/ScrollToOptions.idl \
     $(WebCore)/page/ShareData.idl \
+    $(WebCore)/page/UndoItem.idl \
+    $(WebCore)/page/UndoManager.idl \
     $(WebCore)/page/UserMessageHandler.idl \
     $(WebCore)/page/UserMessageHandlersNamespace.idl \
     $(WebCore)/page/VisualViewport.idl \
@@ -1595,6 +1603,15 @@ GENERATE_SETTINGS_PATTERNS = $(subst .,%,$(GENERATE_SETTINGS_FILES))
 all : $(GENERATE_SETTINGS_FILES)
 $(GENERATE_SETTINGS_PATTERNS) : $(WebCore)/Scripts/GenerateSettings.rb $(GENERATE_SETTINGS_TEMPLATES) page/Settings.yaml
 	$(RUBY) $< --input $(WebCore)/page/Settings.yaml
+
+# --------
+
+# WHLSL Standard Library
+
+all : WHLSLStandardLibrary.cpp
+
+WHLSLStandardLibrary.cpp : $(JavaScriptCore_SCRIPTS_DIR)/xxd.pl $(WebCore)/Modules/webgpu/WHLSL/WHLSLStandardLibrary.txt
+	$(PERL) $(JavaScriptCore_SCRIPTS_DIR)/xxd.pl WHLSLStandardLibrary $(WebCore)/Modules/webgpu/WHLSL/WHLSLStandardLibrary.txt WHLSLStandardLibrary.h
 
 # --------
 

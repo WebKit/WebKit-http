@@ -1,4 +1,32 @@
 =================
+WebKitGTK+ 2.23.3
+=================
+
+What's new in WebKitGTK+ 2.23.3?
+
+  - Fix rendering of emoji sequences containing zero with joiner.
+  - Fallback to a colored font when rendering emojis.
+  - Fix rendering artifacts on Youtube while scrolling under X11.
+  - Remove DConf permissions from sandbox.
+  - Fix build from release tarball with gtkdoc enabled.
+  - Fix several crashes and rendering issues.
+  - Translation updates: Swedish
+
+=================
+WebKitGTK+ 2.23.2
+=================
+
+What's new in WebKitGTK+ 2.23.2?
+
+  - Fix rendering artifacts in some websites with accelerated compositing enabled.
+  - Add initial support for variation fonts.
+  - Add new API to convert a URI to a format for display.
+  - Make scrollbars follow gtk-primary-button-warps-slider setting.
+  - Fix crashes when closing the WebDriver session.
+  - Fix the build with OpenGL disabled.
+  - Fix several crashes and rendering issues.
+
+=================
 WebKitGTK+ 2.23.1
 =================
 

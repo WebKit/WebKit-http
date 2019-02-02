@@ -34,9 +34,9 @@
 #elif defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC
 #if OS(HAIKU)
 #include <OS.h>
-#elif OS(UNIX)
+#elif OS(LINUX)
 #include <sys/sysinfo.h>
-#endif // OS(UNIX)
+#endif // OS(LINUX)
 #else
 #include <bmalloc/bmalloc.h>
 #endif
@@ -57,17 +57,17 @@ static size_t computeRAMSize()
         return ramSizeGuess;
     return status.ullTotalPhys;
 #elif defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC
-#if OS(HAIKU)
-	system_info si;
-	get_system_info(&si);
-	return si.max_pages * B_PAGE_SIZE;
-#elif OS(UNIX)
+#if OS(LINUX)
     struct sysinfo si;
     sysinfo(&si);
     return si.totalram * si.mem_unit;
+#elif OS(HAIKU)
+	system_info si;
+	get_system_info(&si);
+	return si.max_pages * B_PAGE_SIZE;
 #else
 #error "Missing a platform specific way of determining the available RAM"
-#endif // OS(UNIX)
+#endif // OS(LINUX)
 #else
     return bmalloc::api::availableMemory();
 #endif

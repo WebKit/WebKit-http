@@ -186,6 +186,7 @@ class StyleSheetList;
 class Text;
 class TextResourceDecoder;
 class TreeWalker;
+class UndoManager;
 class VisibilityChangeClient;
 class VisitedLinkState;
 class WebAnimation;
@@ -706,7 +707,7 @@ public:
 #endif
     SocketProvider* socketProvider() final;
 
-    bool canNavigate(Frame* targetFrame);
+    bool canNavigate(Frame* targetFrame, const URL& destinationURL = URL());
 
     bool usesStyleBasedEditability() const;
     void setHasElementUsingStyleBasedEditability();
@@ -1004,6 +1005,8 @@ public:
     WEBCORE_EXPORT bool queryCommandSupported(const String& command);
     WEBCORE_EXPORT String queryCommandValue(const String& command);
 
+    UndoManager& undoManager() const { return m_undoManager.get(); }
+
     // designMode support
     enum InheritedBool { off = false, on = true, inherit };    
     void setDesignMode(InheritedBool value);
@@ -1134,13 +1137,14 @@ public:
     WEBCORE_EXPORT String displayStringModifiedByEncoding(const String&) const;
 
 #if ENABLE(DASHBOARD_SUPPORT)
-    void setAnnotatedRegionsDirty(bool f) { m_annotatedRegionsDirty = f; }
-    bool annotatedRegionsDirty() const { return m_annotatedRegionsDirty; }
-    bool hasAnnotatedRegions () const { return m_hasAnnotatedRegions; }
     void setHasAnnotatedRegions(bool f) { m_hasAnnotatedRegions = f; }
     WEBCORE_EXPORT const Vector<AnnotatedRegionValue>& annotatedRegions() const;
-    void setAnnotatedRegions(const Vector<AnnotatedRegionValue>&);
 #endif
+
+    enum class AnnotationsAction { Invalidate, Update };
+    void invalidateRenderingDependentRegions(AnnotationsAction = AnnotationsAction::Invalidate);
+    void invalidateScrollbarDependentRegions();
+    void updateZOrderDependentRegions();
 
     void removeAllEventListeners() final;
 
@@ -1330,6 +1334,8 @@ public:
 
     bool inStyleRecalc() const { return m_inStyleRecalc; }
     bool inRenderTreeUpdate() const { return m_inRenderTreeUpdate; }
+    bool isResolvingTreeStyle() const { return m_isResolvingTreeStyle; }
+    void setIsResolvingTreeStyle(bool);
 
     void updateTextRenderer(Text&, unsigned offsetOfReplacedText, unsigned lengthOfReplacedText);
 
@@ -1631,6 +1637,14 @@ private:
 
     void wheelEventHandlersChanged();
 
+#if ENABLE(DASHBOARD_SUPPORT)
+    void setAnnotatedRegionsDirty(bool f = true) { m_annotatedRegionsDirty = f; }
+    bool annotatedRegionsDirty() const { return m_annotatedRegionsDirty; }
+    bool hasAnnotatedRegions () const { return m_hasAnnotatedRegions; }
+    void setAnnotatedRegions(const Vector<AnnotatedRegionValue>&);
+    void updateAnnotatedRegions();
+#endif
+
     HttpEquivPolicy httpEquivPolicy() const;
     AXObjectCache* existingAXObjectCacheSlow() const;
 
@@ -1643,6 +1657,9 @@ private:
 
     void checkViewportDependentPictures();
     void checkAppearanceDependentPictures();
+
+    bool canNavigateInternal(Frame& targetFrame);
+    bool isNavigationBlockedByThirdPartyIFrameRedirectBlocking(Frame& targetFrame, const URL& destinationURL);
 
 #if ENABLE(INTERSECTION_OBSERVER)
     void notifyIntersectionObserversTimerFired();
@@ -2002,6 +2019,7 @@ private:
     bool m_inStyleRecalc { false };
     bool m_closeAfterStyleRecalc { false };
     bool m_inRenderTreeUpdate { false };
+    bool m_isResolvingTreeStyle { false };
 
     bool m_gotoAnchorNeededAfterStylesheetsLoad { false };
     bool m_isDNSPrefetchEnabled { false };
@@ -2083,6 +2101,8 @@ private:
     bool m_isRunningUserScripts { false };
 
     bool m_alwaysAllowLocalWebarchive { false };
+
+    Ref<UndoManager> m_undoManager;
 };
 
 Element* eventTargetElementForDocument(Document*);

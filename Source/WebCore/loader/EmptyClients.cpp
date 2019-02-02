@@ -33,6 +33,7 @@
 #include "CacheStorageProvider.h"
 #include "ColorChooser.h"
 #include "ContextMenuClient.h"
+#include "CookieJar.h"
 #include "DataListSuggestionPicker.h"
 #include "DatabaseProvider.h"
 #include "DiagnosticLoggingClient.h"
@@ -287,7 +288,7 @@ private:
     EmptyFrameNetworkingContext();
 
     bool shouldClearReferrerOnHTTPSToHTTPRedirect() const { return true; }
-    NetworkStorageSession& storageSession() const final { return NetworkStorageSession::defaultStorageSession(); }
+    NetworkStorageSession* storageSession() const final { return nullptr; }
 
 #if PLATFORM(COCOA)
     bool localFileContentSniffingEnabled() const { return false; }
@@ -534,6 +535,10 @@ Ref<StorageNamespace> EmptyStorageNamespaceProvider::createTransientLocalStorage
     return adoptRef(*new EmptyStorageNamespace);
 }
 
+class EmptyStorageSessionProvider : public StorageSessionProvider {
+    NetworkStorageSession* storageSession() const final { return nullptr; }
+};
+
 PageConfiguration pageConfigurationWithEmptyClients()
 {
     PageConfiguration pageConfiguration {
@@ -541,7 +546,8 @@ PageConfiguration pageConfigurationWithEmptyClients()
         SocketProvider::create(),
         LibWebRTCProvider::create(),
         CacheStorageProvider::create(),
-        adoptRef(*new EmptyBackForwardClient)
+        adoptRef(*new EmptyBackForwardClient),
+        CookieJar::create(adoptRef(*new EmptyStorageSessionProvider))
     };
 
     static NeverDestroyed<EmptyChromeClient> dummyChromeClient;

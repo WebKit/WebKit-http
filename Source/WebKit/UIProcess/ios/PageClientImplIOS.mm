@@ -54,6 +54,7 @@
 #import "WebEditCommandProxy.h"
 #import "WebProcessProxy.h"
 #import "_WKDownloadInternal.h"
+#import <WebCore/DictionaryLookup.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/PromisedAttachmentInfo.h>
@@ -80,9 +81,9 @@ PageClientImpl::~PageClientImpl()
 {
 }
 
-std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy()
+std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy(WebProcessProxy& process)
 {
-    return [m_contentView _createDrawingAreaProxy];
+    return [m_contentView _createDrawingAreaProxy:process];
 }
 
 void PageClientImpl::setViewNeedsDisplay(const Region&)
@@ -453,6 +454,15 @@ void PageClientImpl::updateAcceleratedCompositingMode(const LayerTreeContext&)
 {
 }
 
+void PageClientImpl::didPerformDictionaryLookup(const DictionaryPopupInfo& dictionaryPopupInfo)
+{
+#if ENABLE(REVEAL)
+    DictionaryLookup::showPopup(dictionaryPopupInfo, m_contentView, nullptr);
+#else
+    UNUSED_PARAM(dictionaryPopupInfo);
+#endif // ENABLE(REVEAL)
+}
+
 void PageClientImpl::setRemoteLayerTreeRootNode(RemoteLayerTreeNode* rootNode)
 {
     [m_contentView _setAcceleratedCompositingRootView:rootNode ? rootNode->uiView() : nil];
@@ -479,9 +489,9 @@ void PageClientImpl::commitPotentialTapFailed()
     [m_contentView _commitPotentialTapFailed];
 }
 
-void PageClientImpl::didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius)
+void PageClientImpl::didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color& color, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius, bool nodeHasBuiltInClickHandling)
 {
-    [m_contentView _didGetTapHighlightForRequest:requestID color:color quads:highlightedQuads topLeftRadius:topLeftRadius topRightRadius:topRightRadius bottomLeftRadius:bottomLeftRadius bottomRightRadius:bottomRightRadius];
+    [m_contentView _didGetTapHighlightForRequest:requestID color:color quads:highlightedQuads topLeftRadius:topLeftRadius topRightRadius:topRightRadius bottomLeftRadius:bottomLeftRadius bottomRightRadius:bottomRightRadius nodeHasBuiltInClickHandling:nodeHasBuiltInClickHandling];
 }
 
 void PageClientImpl::didCommitLayerTree(const RemoteLayerTreeTransaction& layerTreeTransaction)

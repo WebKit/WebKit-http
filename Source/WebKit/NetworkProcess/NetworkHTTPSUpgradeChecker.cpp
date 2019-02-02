@@ -46,7 +46,9 @@ static const String& networkHTTPSUpgradeCheckerDatabasePath()
 #if PLATFORM(COCOA)
     if (networkHTTPSUpgradeCheckerDatabasePath.get().isNull()) {
         CFBundleRef webKitBundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.WebKit"));
-        networkHTTPSUpgradeCheckerDatabasePath.get() = CFURLGetString(adoptCF(CFBundleCopyResourceURL(webKitBundle, CFSTR("HTTPSUpgradeList"), CFSTR("db"), nullptr)).get());
+        auto resourceURL = adoptCF(CFBundleCopyResourceURL(webKitBundle, CFSTR("HTTPSUpgradeList"), CFSTR("db"), nullptr));
+        if (resourceURL)
+            networkHTTPSUpgradeCheckerDatabasePath.get() = CFURLGetString(resourceURL.get());
     }
 #endif // PLATFORM(COCOA)
     return networkHTTPSUpgradeCheckerDatabasePath;
@@ -61,11 +63,16 @@ NetworkHTTPSUpgradeChecker::NetworkHTTPSUpgradeChecker()
 
     m_workQueue->dispatch([this] {
         auto path = networkHTTPSUpgradeCheckerDatabasePath();
-        ASSERT(path);
+        if (path.isEmpty()) {
+            RELEASE_LOG_ERROR(Network, "%p - NetworkHTTPSUpgradeChecker failed to initialize because the database path is empty", this);
+            return;
+        }
 
         bool isDatabaseOpen = m_database->open(path);
         if (!isDatabaseOpen) {
+#if PLATFORM(COCOA)
             RELEASE_LOG_ERROR(Network, "%p - NetworkHTTPSUpgradeChecker::open failed, error message: %{public}s, database path: %{public}s", this, m_database->lastErrorMsg(), path.utf8().data());
+#endif
             ASSERT_NOT_REACHED();
             return;
         }
@@ -100,7 +107,9 @@ void NetworkHTTPSUpgradeChecker::query(String&& host, PAL::SessionID sessionID, 
 
         int stepResult = m_statement->step();
         if (stepResult != SQLITE_ROW && stepResult != SQLITE_DONE) {
+#if PLATFORM(COCOA)
             RELEASE_LOG_ERROR_IF_ALLOWED(sessionID, "step failed with error code %d, error message: %{public}s, database path: %{public}s", stepResult, m_database->lastErrorMsg(), networkHTTPSUpgradeCheckerDatabasePath().utf8().data());
+#endif
             ASSERT_NOT_REACHED();
             RunLoop::main().dispatch([callback = WTFMove(callback)] () mutable {
                 callback(false);

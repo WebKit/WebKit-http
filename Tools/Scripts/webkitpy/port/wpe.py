@@ -102,10 +102,10 @@ class WPEPort(Port):
     def _search_paths(self):
         return [self.port_name, 'wk2'] + self.get_option("additional_platform_directory", [])
 
-    def default_baseline_search_path(self):
+    def default_baseline_search_path(self, **kwargs):
         return map(self._webkit_baseline_path, self._search_paths())
 
-    def _port_specific_expectations_files(self):
+    def _port_specific_expectations_files(self, **kwargs):
         return map(lambda x: self._filesystem.join(self._webkit_baseline_path(x), 'TestExpectations'), reversed(self._search_paths()))
 
     def test_expectations_file_position(self):

@@ -1,3 +1,230 @@
+2019-01-17  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/SDKVariant.xcconfig: Added.
+
+2019-01-16  Keith Miller  <keith_miller@apple.com>
+
+        bmalloc should use JSC VM tag for gigacage
+        https://bugs.webkit.org/show_bug.cgi?id=193496
+
+        Reviewed by Mark Lam.
+
+        Move most of the macros for vm tagging to bmalloc.
+
+        * wtf/VMTags.h:
+
+2019-01-16  Alberto Garcia  <berto@igalia.com>
+
+        [WTF] Compilation fails with system malloc
+        https://bugs.webkit.org/show_bug.cgi?id=172445
+
+        Reviewed by Michael Catanzaro.
+
+        Follow-up to r217270. The sysinfo() system call is specific to
+        Linux so update the #ifdef checks accordingly.
+
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize):
+
+2019-01-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, revert part of r239997 as it is not needed to fix the build.
+
+        * wtf/RefCounter.h:
+
+2019-01-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS build after r239993
+        https://bugs.webkit.org/show_bug.cgi?id=193361
+
+        * wtf/RefCounter.h:
+
+2019-01-14  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Use unorm2_normalize instead of precomposedStringWithCanonicalMapping in userVisibleString
+        https://bugs.webkit.org/show_bug.cgi?id=192945
+
+        Reviewed by Alex Christensen.
+
+        Replace use of the nice NSString function precomposedStringWithCanonicalMapping with the ICU
+        API unorm2_normalize. This is to prep the code for translation to cross-platform C++. Of
+        course this is much worse than the preexisting code, but this is just a transitional
+        measure and not the final state of the code. It wouldn't make sense to do this if the code
+        were to remain Objective C++.
+
+        * wtf/cocoa/NSURLExtras.mm:
+        (WTF::toNormalizationFormC):
+        (WTF::userVisibleString):
+
+2019-01-14  Alex Christensen  <achristensen@webkit.org>
+
+        Bulgarian TLD should not punycode-encode URLs with Bulgarian Cyrillic characters
+        https://bugs.webkit.org/show_bug.cgi?id=193411
+        <rdar://problem/47215929>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/cocoa/NSURLExtras.mm:
+        (WTF::allCharactersAllowedByTLDRules):
+
+2019-01-12  Timothy Hatcher  <timothy@apple.com>
+
+        Have prefers-color-scheme: light always match on macOS versions before Mojave.
+        https://bugs.webkit.org/show_bug.cgi?id=191655
+        rdar://problem/46074680
+
+        Reviewed by Megan Gardner.
+
+        * wtf/Platform.h: Define HAVE_OS_DARK_MODE_SUPPORT on macOS 10.14.
+
+2019-01-11  David Kilzer  <ddkilzer@apple.com>
+
+        Follow-up: WorkQueue::concurrentApply() passes a raw pointer to a temporary String to Thread::create().
+        https://bugs.webkit.org/show_bug.cgi?id=191350
+
+        * wtf/WorkQueue.cpp:
+        (WTF::WorkQueue::concurrentApply): Fix whitespace.
+
+2019-01-11  Devin Rousso  <drousso@apple.com>
+
+        Fix style CFNetworkSPI style checker warnings from r239698
+        https://bugs.webkit.org/show_bug.cgi?id=193369
+
+        Reviewed by Joseph Pecoraro.
+
+        * wtf/Platform.h:
+
+2019-01-11  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        WorkQueue::concurrentApply() passes a raw pointer to a temporary String to Thread::create().
+        https://bugs.webkit.org/show_bug.cgi?id=191350
+
+        Reviewed by Brent Fulgham.
+
+        The non COCOA version of WorkQueue::concurrentApply() creates a temporary
+        String for the threadName and passes the raw pointer of this String to
+        Thread::create(). After freeing this String, Thread::entryPoint() uses
+        the raw char pointer to internally initialize the thread.
+
+        The fix is to use a single literal string for all the threads' names since
+        they are created for a thread-pool.
+
+        * wtf/WorkQueue.cpp:
+        (WTF::WorkQueue::concurrentApply):
+
+2019-01-11  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable DFG on ARM/Linux again
+        https://bugs.webkit.org/show_bug.cgi?id=192496
+
+        Reviewed by Yusuke Suzuki.
+
+        After changing the bytecode format DFG was disabled on all 32-bit
+        architectures. Enable DFG now again on ARM/Linux.
+
+        * wtf/Platform.h:
+
+2019-01-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239825.
+        https://bugs.webkit.org/show_bug.cgi?id=193330
+
+        Broke tests on armv7/linux bots (Requested by guijemont on
+        #webkit).
+
+        Reverted changeset:
+
+        "Enable DFG on ARM/Linux again"
+        https://bugs.webkit.org/show_bug.cgi?id=192496
+        https://trac.webkit.org/changeset/239825
+
+2019-01-10  John Wilander  <wilander@apple.com>
+
+        Override the session configuration for cookieAcceptPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=190925
+        <rdar://problem/45497382>
+
+        Reviewed by Alexey Proskuryakov and Alex Christensen.
+
+        * wtf/Platform.h:
+            Definition of HAVE_CFNETWORK_OVERRIDE_SESSION_COOKIE_ACCEPT_POLICY.
+
+2019-01-10  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable DFG on ARM/Linux again
+        https://bugs.webkit.org/show_bug.cgi?id=192496
+
+        Reviewed by Yusuke Suzuki.
+
+        After changing the bytecode format DFG was disabled on all 32-bit
+        architectures. Enable DFG now again on ARM/Linux.
+
+        * wtf/Platform.h:
+
+2019-01-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [FreeType] Color emoji not properly supported
+        https://bugs.webkit.org/show_bug.cgi?id=191976
+
+        Reviewed by Michael Catanzaro.
+
+        Add a name for combining enclosing keycap character.
+
+        * wtf/unicode/CharacterNames.h:
+
+2019-01-09  Carlos Eduardo Ramalho  <cadubentzen@gmail.com> and Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Use directory local sequential numbers for Unified Sources filenames instead of global sequential numbers for CMake
+        https://bugs.webkit.org/show_bug.cgi?id=192391
+
+        Reviewed by Don Olmstead.
+
+        Unified Source Builds are using global sequential numbers for
+        bundle filenames UnifiedSource{sequential-number}.cpp. As the
+        result, every new source file added would shift the next ones and
+        prevent compiler caches from speeding up consecutive builds e.g.
+        in git-bisect sessions.
+
+        Changed it to directory local sequential numbers,
+        UnifiedSource-{hash-of-dir-name}-{sequential-number-within-the-dir}.cpp.
+
+        This is affecting only CMake builds which is where no
+        '--max-cpp-bundle-count' nor '--max-obj-c-bundle-count' options
+        are set. Xcode builds still use the old convention.
+
+        * Scripts/generate-unified-source-bundles.rb: Add new instance
+        variables @currentDirectory and @extraFiles to BundleManager.
+        Still use global sequential numbers if --max-cpp-bundle-count or
+        --max-obj-c-bundle-count is given.
+
+2019-01-09  Alex Christensen  <achristensen@webkit.org>
+
+        Expand use of sourceApplicationAuditData
+        https://bugs.webkit.org/show_bug.cgi?id=192995
+        <rdar://problem/46627875>
+
+        Reviewed by Brady Eidson.
+
+        * wtf/Platform.h:
+
+2019-01-09  Mark Lam  <mark.lam@apple.com>
+
+        Gigacage disabling checks should handle the GIGACAGE_ALLOCATION_CAN_FAIL case properly.
+        https://bugs.webkit.org/show_bug.cgi?id=193292
+        <rdar://problem/46485450>
+
+        Reviewed by Yusuke Suzuki.
+
+        Update the USE_SYSTEM_MALLOC version of Gigacage.h to match the bmalloc version.
+
+        * wtf/Gigacage.h:
+
 2019-01-07  David Kilzer  <ddkilzer@apple.com>
 
         Prefer RetainPtr<NSObject> to RetainPtr<NSObject *>

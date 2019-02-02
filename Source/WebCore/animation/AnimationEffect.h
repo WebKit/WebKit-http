@@ -26,6 +26,8 @@
 #pragma once
 
 #include "AnimationEffect.h"
+#include "AnimationEffectPhase.h"
+#include "BasicEffectTiming.h"
 #include "ComputedEffectTiming.h"
 #include "ExceptionOr.h"
 #include "FillMode.h"
@@ -51,8 +53,9 @@ public:
 
     virtual bool isKeyframeEffect() const { return false; }
 
-    EffectTiming getTiming();
-    ComputedEffectTiming getComputedTiming();
+    EffectTiming getTiming() const;
+    BasicEffectTiming getBasicTiming() const;
+    ComputedEffectTiming getComputedTiming() const;
     ExceptionOr<void> updateTiming(Optional<OptionalEffectTiming>);
 
     virtual void apply(RenderStyle&) = 0;
@@ -87,37 +90,24 @@ public:
     TimingFunction* timingFunction() const { return m_timingFunction.get(); }
     void setTimingFunction(const RefPtr<TimingFunction>&);
 
-    Optional<Seconds> localTime() const;
-    Optional<Seconds> activeTime() const;
-    Seconds endTime() const;
-    Optional<double> simpleIterationProgress() const;
-    Optional<double> iterationProgress() const;
-    Optional<double> currentIteration() const;
-    Seconds activeDuration() const;
-
-    enum class Phase { Before, Active, After, Idle };
-    Phase phase() const;
-
 protected:
     explicit AnimationEffect();
 
 private:
-    enum class ComputedDirection { Forwards, Reverse };
+    enum class ComputedDirection : uint8_t { Forwards, Reverse };
 
-    Optional<double> overallProgress() const;
-    AnimationEffect::ComputedDirection currentDirection() const;
-    Optional<double> directedProgress() const;
-    Optional<double> transformedProgress() const;
-    
-    Seconds m_delay { 0_s };
-    Seconds m_endDelay { 0_s };
     FillMode m_fill { FillMode::Auto };
+    PlaybackDirection m_direction { PlaybackDirection::Normal };
+
+    WeakPtr<WebAnimation> m_animation;
+    RefPtr<TimingFunction> m_timingFunction;
+
     double m_iterationStart { 0 };
     double m_iterations { 1 };
+
+    Seconds m_delay { 0_s };
+    Seconds m_endDelay { 0_s };
     Seconds m_iterationDuration { 0_s };
-    PlaybackDirection m_direction { PlaybackDirection::Normal };
-    RefPtr<TimingFunction> m_timingFunction;
-    WeakPtr<WebAnimation> m_animation;
 };
 
 } // namespace WebCore

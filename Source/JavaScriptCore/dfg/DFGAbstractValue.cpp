@@ -40,8 +40,8 @@ void AbstractValue::observeTransitions(const TransitionVector& vector)
         m_structure.observeTransitions(vector);
         ArrayModes newModes = 0;
         for (unsigned i = vector.size(); i--;) {
-            if (m_arrayModes & asArrayModes(vector[i].previous->indexingType()))
-                newModes |= asArrayModes(vector[i].next->indexingType());
+            if (m_arrayModes & arrayModesFromStructure(vector[i].previous.get()))
+                newModes |= arrayModesFromStructure(vector[i].next.get());
         }
         m_arrayModes |= newModes;
     }
@@ -60,7 +60,7 @@ void AbstractValue::set(Graph& graph, const FrozenValue& value, StructureClobber
                 m_arrayModes = ALL_ARRAY_MODES;
                 m_structure.clobber();
             } else
-                m_arrayModes = asArrayModes(structure->indexingMode());
+                m_arrayModes = arrayModesFromStructure(structure);
         } else {
             m_structure.makeTop();
             m_arrayModes = ALL_ARRAY_MODES;
@@ -87,7 +87,7 @@ void AbstractValue::set(Graph& graph, RegisteredStructure structure)
     RELEASE_ASSERT(structure);
     
     m_structure = structure;
-    m_arrayModes = asArrayModes(structure->indexingMode());
+    m_arrayModes = arrayModesFromStructure(structure.get());
     m_type = speculationFromStructure(structure.get());
     m_value = JSValue();
     
@@ -126,67 +126,11 @@ void AbstractValue::setType(Graph& graph, SpeculatedType type)
     checkConsistency();
 }
 
-void AbstractValue::set(Graph& graph, const InferredType::Descriptor& descriptor)
-{
-    switch (descriptor.kind()) {
-    case InferredType::Bottom:
-        clear();
-        return;
-    case InferredType::Boolean:
-        setNonCellType(SpecBoolean);
-        return;
-    case InferredType::Other:
-        setNonCellType(SpecOther);
-        return;
-    case InferredType::Int32:
-        setNonCellType(SpecInt32Only);
-        return;
-    case InferredType::Number:
-        setNonCellType(SpecBytecodeNumber);
-        return;
-    case InferredType::String:
-        set(graph, graph.m_vm.stringStructure.get());
-        return;
-    case InferredType::Symbol:
-        set(graph, graph.m_vm.symbolStructure.get());
-        return;
-    case InferredType::BigInt:
-        set(graph, graph.m_vm.bigIntStructure.get());
-        return;
-    case InferredType::ObjectWithStructure:
-        set(graph, descriptor.structure());
-        return;
-    case InferredType::ObjectWithStructureOrOther:
-        set(graph, descriptor.structure());
-        merge(SpecOther);
-        return;
-    case InferredType::Object:
-        setType(graph, SpecObject);
-        return;
-    case InferredType::ObjectOrOther:
-        setType(graph, SpecObject | SpecOther);
-        return;
-    case InferredType::Top:
-        makeHeapTop();
-        return;
-    }
-
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
-void AbstractValue::set(
-    Graph& graph, const InferredType::Descriptor& descriptor, StructureClobberState clobberState)
-{
-    set(graph, descriptor);
-    if (clobberState == StructuresAreClobbered)
-        clobberStructures();
-}
-
 void AbstractValue::fixTypeForRepresentation(Graph& graph, NodeFlags representation, Node* node)
 {
     if (representation == NodeResultDouble) {
         if (m_value) {
-            ASSERT(m_value.isNumber());
+            DFG_ASSERT(graph, node, m_value.isNumber());
             if (m_value.isInt32())
                 m_value = jsDoubleNumber(m_value.asNumber());
         }
@@ -228,7 +172,7 @@ bool AbstractValue::mergeOSREntryValue(Graph& graph, JSValue value)
         FrozenValue* frozenValue = graph.freeze(value);
         if (frozenValue->pointsToHeap()) {
             m_structure = graph.registerStructure(frozenValue->structure());
-            m_arrayModes = asArrayModes(frozenValue->structure()->indexingMode());
+            m_arrayModes = arrayModesFromStructure(frozenValue->structure());
         } else {
             m_structure.clear();
             m_arrayModes = 0;
@@ -240,7 +184,7 @@ bool AbstractValue::mergeOSREntryValue(Graph& graph, JSValue value)
         mergeSpeculation(m_type, speculationFromValue(value));
         if (!!value && value.isCell()) {
             RegisteredStructure structure = graph.registerStructure(value.asCell()->structure(graph.m_vm));
-            mergeArrayModes(m_arrayModes, asArrayModes(structure->indexingMode()));
+            mergeArrayModes(m_arrayModes, arrayModesFromStructure(structure.get()));
             m_structure.merge(RegisteredStructureSet(structure));
         }
         if (m_value != value)
@@ -251,17 +195,6 @@ bool AbstractValue::mergeOSREntryValue(Graph& graph, JSValue value)
     assertIsRegistered(graph);
     
     return oldMe != *this;
-}
-
-bool AbstractValue::isType(Graph& graph, const InferredType::Descriptor& inferredType) const
-{
-    AbstractValue typeValue;
-    typeValue.set(graph, inferredType);
-
-    AbstractValue mergedValue = *this;
-    mergedValue.merge(typeValue);
-
-    return mergedValue == typeValue;
 }
 
 FiltrationResult AbstractValue::filter(
@@ -365,7 +298,7 @@ FiltrationResult AbstractValue::filterByValue(const FrozenValue& value)
 bool AbstractValue::contains(RegisteredStructure structure) const
 {
     return couldBeType(speculationFromStructure(structure.get()))
-        && (m_arrayModes & arrayModeFromStructure(structure.get()))
+        && (m_arrayModes & arrayModesFromStructure(structure.get()))
         && m_structure.contains(structure);
 }
 
@@ -400,13 +333,6 @@ FiltrationResult AbstractValue::filter(const AbstractValue& other)
     // We both proved there to be a specific value but they are different.
     clear();
     return Contradiction;
-}
-
-FiltrationResult AbstractValue::filter(Graph& graph, const InferredType::Descriptor& descriptor)
-{
-    AbstractValue filterValue;
-    filterValue.set(graph, descriptor);
-    return filter(filterValue);
 }
 
 void AbstractValue::filterValueByType()

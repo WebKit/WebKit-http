@@ -1,3 +1,452 @@
+2019-01-17  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/SDKVariant.xcconfig: Added.
+
+2019-01-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Fix TreeOutline TypeError:​ this._indexesForSubtree is not a function
+        https://bugs.webkit.org/show_bug.cgi?id=193501
+        <rdar://problem/47323967>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.removeChildAtIndex):
+
+2019-01-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: create new IDL type for exposing special functionality in test context
+        https://bugs.webkit.org/show_bug.cgi?id=193149
+        <rdar://problem/46801218>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add `AuditAgent` getters and plumbing.
+
+        * UserInterface/Protocol/Target.js:
+        (WI.Target.prototype.get AuditAgent): Added.
+
+        * UserInterface/Models/AuditTestCase.js:
+        (WI.AuditTestCase.prototype.async run):
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.async start):
+
+        * .eslintrc:
+
+2019-01-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Event breakpoints: typing uppercase "DOM" doesn't show completions for events that start with "DOM"
+        https://bugs.webkit.org/show_bug.cgi?id=193384
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/EventBreakpointPopover.js:
+        (WI.EventBreakpointPopover.prototype.show):
+
+2019-01-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Event breakpoints: text field and completion popover fonts should match
+        https://bugs.webkit.org/show_bug.cgi?id=193249
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/EventBreakpointPopover.css:
+        (.popover .event-breakpoint-content > .event-type > input): Added.
+        (.popover .event-breakpoint-content > .event-type > input::placeholder): Added.
+        * UserInterface/Views/EventBreakpointPopover.js:
+        (WI.EventBreakpointPopover.prototype.show):
+        (WI.EventBreakpointPopover.prototype._showSuggestionsView):
+        Subtract the <input> border and padding from the bounds position so the <input> text lines
+        up with the `WI.CompletionSuggestionsView` text.
+
+        * UserInterface/Views/CompletionSuggestionsView.js:
+        (WI.CompletionSuggestionsView):
+        Drive-by: force `dir=ltr` to match the `text-align: left;` CSS styling.
+
+2019-01-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: pressing Down key on empty value field shouldn't discard completion popover
+        https://bugs.webkit.org/show_bug.cgi?id=193098
+        <rdar://problem/47016036>
+
+        Reviewed by Devin Rousso.
+
+        Hide CompletionSuggestionsView when SpreadsheetTextField moves, e.g. by scrolling or resizing the sidebar.
+        Update CompletionSuggestionsView position after pressing Up or Down key, because SpreadsheetTextField may
+        move from wrapping text.
+
+        * UserInterface/Views/CompletionSuggestionsView.js:
+        (WI.CompletionSuggestionsView.prototype.hide):
+        (WI.CompletionSuggestionsView.prototype.show):
+        (WI.CompletionSuggestionsView.prototype.showUntilAnchorMoves): Removed.
+        (WI.CompletionSuggestionsView.prototype.hideWhenElementMoves): Added.
+        (WI.CompletionSuggestionsView.prototype._stopMoveTimer): Added.
+        (WI.CompletionSuggestionsView):
+
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField.prototype.set suggestionHint):
+        (WI.SpreadsheetTextField.prototype.completionSuggestionsSelectedCompletion):
+        (WI.SpreadsheetTextField.prototype._handleKeyDownForSuggestionView):
+        (WI.SpreadsheetTextField.prototype._updateCompletions):
+        (WI.SpreadsheetTextField.prototype._showSuggestionsView): Added.
+
+        (WI.SpreadsheetTextField.prototype._reAttachSuggestionHint):
+        Drive-by: abstract out repeating code into a private method.
+
+2019-01-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Settings: group titles should vertically align with the first editor
+        https://bugs.webkit.org/show_bug.cgi?id=193391
+
+        Reviewed by Dean Jackson.
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings > .settings-view > .container):
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor): Added.
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor:first-child > *): Added.
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor select):
+        (.content-view.settings > .settings-view > .container > .editor-group > .editor input[type="number"]):
+
+2019-01-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION: deleting an audit puts selection in a selected but invisible state
+        https://bugs.webkit.org/show_bug.cgi?id=192917
+        <rdar://problem/46875285>
+
+        Reviewed by Devin Rousso.
+
+        SelectionController should not be notified of removed children until the
+        child items have been removed from the TreeOutline. Doing so at this stage
+        is unsafe, since this method checks `this.selectedTreeElement`, which could
+        return the adjusted index from the SelectionController before anything has
+        actually been removed from the TreeOutline.
+
+        The number of calls to SelectionController.prototype.didRemoveItems is also
+        reduced somewhat, since we're no longer calling it for every TreeElement.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.removeChildAtIndex):
+        (WI.TreeOutline.prototype.removeChildren):
+        (WI.TreeOutline.prototype._forgetTreeElement):
+        (WI.TreeOutline.prototype._indexesForSubtree): Added.        
+
+2019-01-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: allow audits to be enabled/disabled
+        https://bugs.webkit.org/show_bug.cgi?id=192210
+        <rdar://problem/46423583>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.get editing): Added.
+        (WI.AuditManager.prototype.set editing): Added.
+        (WI.AuditManager.prototype.stop):
+        (WI.AuditManager.prototype.addDefaultTestsIfNeeded):
+        Since default audits aren't stored, keep a list of disabled default tests in a `WI.Setting`.
+
+        * UserInterface/Models/AuditTestBase.js:
+        (WI.AuditTestBase):
+        (WI.AuditTestBase.prototype.get disabled): Added.
+        (WI.AuditTestBase.prototype.set disabled): Added.
+        (WI.AuditTestBase.prototype.async start):
+        (WI.AuditTestBase.prototype.stop):
+        (WI.AuditTestBase.toJSON):
+
+        * UserInterface/Models/AuditTestCase.js:
+        (WI.AuditTestCase):
+        (WI.AuditTestCase.async fromPayload):
+        (WI.AuditTestCase.prototype.toJSON):
+
+        * UserInterface/Models/AuditTestGroup.js:
+        (WI.AuditTestGroup):
+        (WI.AuditTestGroup.async fromPayload):
+        (WI.AuditTestGroup.prototype.get disabled): Added.
+        (WI.AuditTestGroup.prototype.set disabled): Added.
+        (WI.AuditTestGroup.prototype.toJSON):
+        (WI.AuditTestGroup.prototype.async run):
+        (WI.AuditTestGroup.prototype._handleTestDisabledChanged): Added.
+        (WI.AuditTestGroup.prototype._handleTestProgress):
+        Propagate `disabled` changes to all sub-tests, unless the change was caused by one of the
+        sub-tests, in which case we are now in an intermediate state.
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel):
+        (WI.AuditNavigationSidebarPanel.prototype.showDefaultContentView):
+        (WI.AuditNavigationSidebarPanel.prototype.initialLayout):
+        (WI.AuditNavigationSidebarPanel.prototype.hasCustomFilters): Added.
+        (WI.AuditNavigationSidebarPanel.prototype.matchTreeElementAgainstCustomFilters): Added.
+        (WI.AuditNavigationSidebarPanel.prototype._addTest):
+        (WI.AuditNavigationSidebarPanel.prototype._addResult):
+        (WI.AuditNavigationSidebarPanel.prototype._updateStartStopButtonNavigationItemState):
+        (WI.AuditNavigationSidebarPanel.prototype._updateEditButtonNavigationItemState): Added.
+        (WI.AuditNavigationSidebarPanel.prototype._handleAuditManagerEditingChanged): Added.
+        (WI.AuditNavigationSidebarPanel.prototype._handleAuditTestRemoved):
+        (WI.AuditNavigationSidebarPanel.prototype._handleAuditTestScheduled):
+        (WI.AuditNavigationSidebarPanel.prototype._treeSelectionDidChange):
+        (WI.AuditNavigationSidebarPanel.prototype._handleEditButtonNavigationItemClicked): Added.
+        * UserInterface/Views/AuditNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.audit > .content):
+        (.sidebar > .panel.navigation.audit > .content > .tree-outline): Added.
+        (.sidebar > .panel.navigation.audit > .content .edit-audits:not(.disabled):active): Added.
+        (.sidebar > .panel.navigation.audit > .content .edit-audits:not(.disabled).activated): Added.
+        (.sidebar > .panel.navigation.audit > .content .edit-audits:not(.disabled).activated:active): Added.
+        (.sidebar > .panel.navigation.audit > .content .edit-audits.disabled): Added.
+        (.finish-editing-audits-placeholder.message-text-view .navigation-item-help .navigation-bar): Added.
+        Leverage custom filters to ensure that disabled audits arent shown when not editing and that
+        result tree elements aren't shown while editing.
+
+        * UserInterface/Views/AuditTestGroupContentView.js:
+        (WI.AuditTestGroupContentView.prototype.shown):
+
+        * UserInterface/Views/AuditTreeElement.js:
+        (WI.AuditTreeElement.prototype.onattach):
+        (WI.AuditTreeElement.prototype.canSelectOnMouseDown): Added.
+        (WI.AuditTreeElement.prototype._updateTestGroupDisabled): Added.
+        (WI.AuditTreeElement.prototype._handleTestDisabledChanged): Added.
+        (WI.AuditTreeElement.prototype._handleManagerEditingChanged): Added.
+        * UserInterface/Views/AuditTreeElement.css:
+        (.tree-outline .item.audit > .status:not(:hover) > img.show-on-hover, .tree-outline .item.audit.test-group.expanded:not(.editing-audits) > .status:not(:hover)): Added.
+        (.tree-outline .item.audit.manager-active > .status > img.show-on-hover, .tree-outline .item.audit.test-group.expanded:not(.editing-audits) > .status:hover > :not(img), .tree-outline .item.audit.test-group-result.expanded > .status): Added.
+        (.tree-outline .item.audit > .status:not(:hover) > img.show-on-hover, .tree-outline .item.audit.test-group.expanded > .status:not(:hover)): Deleted.
+        (.tree-outline .item.audit.manager-active > .status > img.show-on-hover, .tree-outline .item.audit.test-group.expanded > .status:hover > :not(img), .tree-outline .item.audit.test-group-result.expanded > .status): Deleted.
+        Prevent selection and running when editing.
+
+        * UserInterface/Views/TreeOutline.css:
+        (.tree-outline .children.expanded:not([hidden])): Added.
+        (.tree-outline .children.expanded): Deleted.
+
+        * UserInterface/Base/ObjectStore.js:
+        (WI.ObjectStore._open):
+        Batch operations together to help avoid multiple simultaneous `indexedDB.open` calls. This
+        should also help preserve the order of operations, as once the database is open, operations
+        are executed in the order they were enqueued.
+
+        (WI.ObjectStore.prototype.async.addObject):
+        Pass a unique `Symbol` to the `toJSON` call on the given object so that the object can save
+        additional values that wouldn't normally be saved. This doesn't conflict with normal usage
+        of `toJSON` (e.g. `JSON.stringify`) because that case also passes in a value:
+         - `undefined`, if it was called directly on the object
+         - the key for this object in the containing object
+         - the index of this object in the containing array
+        In any case, the value can never equal the unique `Symbol`, so it's guaranteed that the code
+        will only run for `WI.ObjectStore` operations.
+
+        (WI.ObjectStore.prototype.async.clear): Added.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-01-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Protocol Logging: log messages as objects if inspector^2 is open
+        https://bugs.webkit.org/show_bug.cgi?id=193284
+
+        Reviewed by Joseph Pecoraro.
+
+        If inspector^2 is closed, stringify all messages.
+        If inspector^2 is open, log each message JSON object without modifying it.
+
+        * UserInterface/Protocol/LoggingProtocolTracer.js:
+        (WI.LoggingProtocolTracer.prototype._processEntry):
+
+2019-01-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: clicking on property that soon to be discarded shouldn't start selection
+        https://bugs.webkit.org/show_bug.cgi?id=193218
+        <rdar://problem/47098303>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleMouseDown):
+        A style property may get removed on blur event, so propertyElement may get removed from the DOM right when mousedown event happens.
+
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleWindowClick):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleClick):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._stopSelection):
+
+2019-01-08  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Undo reverts all changes at once
+        https://bugs.webkit.org/show_bug.cgi?id=177676
+        <rdar://problem/34745031>
+
+        Reviewed by Devin Rousso.
+
+        Command-Z used to revert all changes at once because Web Inspector never
+        set any history checkpoints in the style editor.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidBlur):
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField.prototype._handleBlur):
+
+2019-01-08  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Use prefers-color-scheme instead of prefers-dark-interface
+        https://bugs.webkit.org/show_bug.cgi?id=193265
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/AuditTestContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/AuditTestGroupContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/BezierEditor.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/BoxModelDetailsSectionRow.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/BreakpointActionView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/BreakpointPopoverController.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ButtonNavigationItem.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ButtonToolbarItem.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/CallFrameView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/CanvasContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/CanvasOverviewContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/CanvasSidebarPanel.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/CanvasTabContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/CompletionSuggestionsView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ComputedStyleDetailsPanel.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ComputedStyleSection.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ConsoleMessageView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ConsolePrompt.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/DOMTreeOutline.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/DataGrid.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/DebuggerDashboardView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/DefaultDashboardView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/DetailsSection.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/DividerNavigationItem.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/Editing.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/FindBanner.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/FontResourceContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/FormattedValue.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/HoverMenu.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ImageResourceContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/IndexedDatabaseObjectStoreContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/LogContentView.css:
+        (@media (prefers-color-scheme: dark)):
+
+        * UserInterface/Views/Main.css:
+        (:root):
+
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/NetworkDetailView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/NetworkTableContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/NewTabContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ObjectPreviewView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/OpenResourceDialog.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ProgressView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/QuickConsole.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/RecordingActionTreeElement.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/RecordingContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/RecordingStateDetailsSidebarPanel.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ResourceSecurityContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ResourceSizesContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ResourceTimingBreakdownView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ScopeBar.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/SearchBar.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/SearchSidebarPanel.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/SettingsTabContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ShaderProgramContentView.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ShaderProgramTreeElement.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/TabBar.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/Table.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/TextEditor.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/TimelineDataGrid.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/TimelineIcons.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/TimelineOverview.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/Toolbar.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/TreeOutline.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/URLBreakpointPopover.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/Variables.css:
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/WebSocketContentView.css:
+        (@media (prefers-color-scheme: dark)):
+
 2019-01-07  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Audit: run arrow shouldn't be visible when running tests

@@ -97,7 +97,7 @@ TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea(WebPage& webPage, c
     updateLayerHostingContext();
     setColorSpace(parameters.colorSpace);
 
-    if (!parameters.shouldDelayAttachingDrawingArea)
+    if (!parameters.isProcessSwap)
         attach();
 }
 
@@ -315,6 +315,9 @@ void TiledCoreAnimationDrawingArea::scaleViewToFitDocumentIfNeeded()
     LOG(Resize, "TiledCoreAnimationDrawingArea %p scaleViewToFitDocumentIfNeeded", this);
     m_webPage.layoutIfNeeded();
 
+    if (!m_webPage.mainFrameView() || !m_webPage.mainFrameView()->renderView())
+        return;
+
     int viewWidth = m_webPage.size().width();
     int documentWidth = m_webPage.mainFrameView()->renderView()->unscaledDocumentRect().width();
 
@@ -360,6 +363,9 @@ void TiledCoreAnimationDrawingArea::scaleViewToFitDocumentIfNeeded()
     // Lay out at the view size.
     m_webPage.setUseFixedLayout(false);
     m_webPage.layoutIfNeeded();
+
+    if (!m_webPage.mainFrameView() || !m_webPage.mainFrameView()->renderView())
+        return;
 
     IntSize documentSize = m_webPage.mainFrameView()->renderView()->unscaledDocumentRect().size();
     m_lastViewSizeForScaleToFit = m_webPage.size();

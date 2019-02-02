@@ -35,6 +35,8 @@ WI.AuditManager = class AuditManager extends WI.Object
         this._runningState = WI.AuditManager.RunningState.Inactive;
         this._runningTests = [];
 
+        this._disabledDefaultTestsSetting = new WI.Setting("audit-disabled-default-tests", []);
+
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._handleFrameMainResourceDidChange, this);
     }
 
@@ -52,6 +54,51 @@ WI.AuditManager = class AuditManager extends WI.Object
     get results() { return this._results; }
     get runningState() { return this._runningState; }
 
+    get editing()
+    {
+        return this._runningState === WI.AuditManager.RunningState.Disabled;
+    }
+
+    set editing(editing)
+    {
+        console.assert(this._runningState === WI.AuditManager.RunningState.Disabled || this._runningState === WI.AuditManager.RunningState.Inactive);
+        if (this._runningState !== WI.AuditManager.RunningState.Disabled && this._runningState !== WI.AuditManager.RunningState.Inactive)
+            return;
+
+        let runningState = editing ? WI.AuditManager.RunningState.Disabled : WI.AuditManager.RunningState.Inactive;
+        console.assert(runningState !== this._runningState);
+        if (runningState === this._runningState)
+            return;
+
+        this._runningState = runningState;
+
+        this.dispatchEventToListeners(WI.AuditManager.Event.EditingChanged);
+
+        if (!this.editing) {
+            WI.objectStores.audits.clear();
+
+            let disabledDefaultTests = [];
+            let saveDisabledDefaultTest = (test) => {
+                if (test.disabled)
+                    disabledDefaultTests.push(test.name);
+
+                if (test instanceof WI.AuditTestGroup) {
+                    for (let child of test.tests)
+                        saveDisabledDefaultTest(child);
+                }
+            };
+
+            for (let test of this._tests) {
+                if (test.__default)
+                    saveDisabledDefaultTest(test);
+                else
+                    WI.objectStores.audits.addObject(test);
+            }
+
+            this._disabledDefaultTestsSetting.value = disabledDefaultTests;
+        }
+    }
+
     async start(tests)
     {
         console.assert(this._runningState === WI.AuditManager.RunningState.Inactive);
@@ -63,6 +110,7 @@ WI.AuditManager = class AuditManager extends WI.Object
         else
             tests = this._tests;
 
+        console.assert(tests.length);
         if (!tests.length)
             return;
 
@@ -75,7 +123,18 @@ WI.AuditManager = class AuditManager extends WI.Object
 
         this.dispatchEventToListeners(WI.AuditManager.Event.TestScheduled);
 
-        await Promise.chain(this._runningTests.map((test) => () => this._runningState === WI.AuditManager.RunningState.Active ? test.start() : null));
+        await Promise.chain(this._runningTests.map((test) => async () => {
+            if (this._runningState !== WI.AuditManager.RunningState.Active)
+                return;
+
+            if (InspectorBackend.domains.Audit)
+                await AuditAgent.setup();
+
+            await test.start();
+
+            if (InspectorBackend.domains.Audit)
+                await AuditAgent.teardown();
+        }));
 
         let result = this._runningTests.map((test) => test.result).filter((result) => !!result);
 
@@ -97,10 +156,10 @@ WI.AuditManager = class AuditManager extends WI.Object
         if (this._runningState !== WI.AuditManager.RunningState.Active)
             return;
 
+        this._runningState = WI.AuditManager.RunningState.Stopping;
+
         for (let test of this._runningTests)
             test.stop();
-
-        this._runningState = WI.AuditManager.RunningState.Stopping;
     }
 
     async processJSON({json, error})
@@ -253,7 +312,19 @@ WI.AuditManager = class AuditManager extends WI.Object
             ], {description: WI.UIString("Tests for ways to improve accessibility.")}),
         ];
 
+        let checkDisabledDefaultTest = (test) => {
+            if (this._disabledDefaultTestsSetting.value.includes(test.name))
+                test.disabled = true;
+
+            if (test instanceof WI.AuditTestGroup) {
+                for (let child of test.tests)
+                    checkDisabledDefaultTest(child);
+            }
+        };
+
         for (let test of defaultTests) {
+            checkDisabledDefaultTest(test);
+
             test.__default = true;
             this._addTest(test);
         }
@@ -261,12 +332,14 @@ WI.AuditManager = class AuditManager extends WI.Object
 };
 
 WI.AuditManager.RunningState = {
+    Disabled: "disabled",
     Inactive: "inactive",
     Active: "active",
     Stopping: "stopping",
 };
 
 WI.AuditManager.Event = {
+    EditingChanged: "audit-manager-editing-changed",
     TestAdded: "audit-manager-test-added",
     TestCompleted: "audit-manager-test-completed",
     TestRemoved: "audit-manager-test-removed",

@@ -74,10 +74,9 @@ WI.SpreadsheetTextField = class SpreadsheetTextField
     {
         this._suggestionHintElement.textContent = value;
 
-        if (value) {
-            if (this._suggestionHintElement.parentElement !== this._element)
-                this._element.append(this._suggestionHintElement);
-        } else
+        if (value)
+            this._reAttachSuggestionHint();
+        else
             this._suggestionHintElement.remove();
     }
 
@@ -144,8 +143,7 @@ WI.SpreadsheetTextField = class SpreadsheetTextField
 
         this.suggestionHint = selectedText.slice(completionPrefix.length);
 
-        if (this._suggestionHintElement.parentElement !== this._element)
-            this._element.append(this._suggestionHintElement);
+        this._reAttachSuggestionHint();
 
         if (this._delegate && typeof this._delegate.spreadsheetTextFieldDidChange === "function")
             this._delegate.spreadsheetTextFieldDidChange(this);
@@ -220,7 +218,8 @@ WI.SpreadsheetTextField = class SpreadsheetTextField
         this._applyCompletionHint();
         this.discardCompletion();
 
-        this._delegate.spreadsheetTextFieldDidBlur(this, event);
+        let changed = this._valueBeforeEditing !== this.value;
+        this._delegate.spreadsheetTextFieldDidBlur(this, event, changed);
         this.stopEditing();
     }
 
@@ -301,6 +300,9 @@ WI.SpreadsheetTextField = class SpreadsheetTextField
                 this._suggestionsView.selectNext();
             else
                 this._suggestionsView.selectPrevious();
+
+            // Update popover position in case text moved, e.g. started or stopped wrapping.
+            this._showSuggestionsView();
 
             if (this._delegate && typeof this._delegate.spreadsheetTextFieldDidChange === "function")
                 this._delegate.spreadsheetTextFieldDidChange(this);
@@ -390,12 +392,8 @@ WI.SpreadsheetTextField = class SpreadsheetTextField
         if (completions.length === 1) {
             // No need to show the completion popover that matches the suggestion hint.
             this._suggestionsView.hide();
-        } else {
-            let startOffset = prefix.length - completionPrefix.length;
-            this._suggestionsView.showUntilAnchorMoves(() => {
-                return this._getCaretRect(startOffset);
-            });
-        }
+        } else
+            this._showSuggestionsView();
 
         this._suggestionsView.selectedIndex = NaN;
         if (completionPrefix) {
@@ -403,6 +401,22 @@ WI.SpreadsheetTextField = class SpreadsheetTextField
             this._suggestionsView.selectNext();
         } else
             this.suggestionHint = "";
+    }
+
+    _showSuggestionsView()
+    {
+        let prefix = this.valueWithoutSuggestion();
+        let completionPrefix = this._getCompletionPrefix(prefix);
+        let startOffset = prefix.length - completionPrefix.length;
+        let caretRect = this._getCaretRect(startOffset);
+
+        // Hide completion popover when the anchor element is removed from the DOM.
+        if (!caretRect)
+            this._suggestionsView.hide();
+        else {
+            this._suggestionsView.show(caretRect);
+            this._suggestionsView.hideWhenElementMoves(this._element);
+        }
     }
 
     _getCaretRect(startOffset)
@@ -449,5 +463,13 @@ WI.SpreadsheetTextField = class SpreadsheetTextField
             return;
 
         this._element.textContent = this._element.textContent;
+    }
+
+    _reAttachSuggestionHint()
+    {
+        if (this._suggestionHintElement.parentElement === this._element)
+            return;
+
+        this._element.append(this._suggestionHintElement);
     }
 };

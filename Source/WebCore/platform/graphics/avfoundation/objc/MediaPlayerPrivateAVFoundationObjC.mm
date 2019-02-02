@@ -587,7 +587,12 @@ void MediaPlayerPrivateAVFoundationObjC::cancelLoad()
         for (NSString *keyName in playerKVOProperties())
             [m_avPlayer.get() removeObserver:m_objcObserver.get() forKeyPath:keyName];
 
+        setShouldObserveTimeControlStatus(false);
+
         [m_avPlayer replaceCurrentItemWithPlayerItem:nil];
+#if !PLATFORM(IOS_FAMILY)
+        [m_avPlayer setOutputContext:nil];
+#endif
         m_avPlayer = nil;
     }
 
@@ -1011,6 +1016,8 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayer()
     for (NSString *keyName in playerKVOProperties())
         [m_avPlayer.get() addObserver:m_objcObserver.get() forKeyPath:keyName options:NSKeyValueObservingOptionNew context:(void *)MediaPlayerAVFoundationObservationContextPlayer];
 
+    setShouldObserveTimeControlStatus(true);
+
 #if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP) && HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
     [m_avPlayer.get() setAppliesMediaSelectionCriteriaAutomatically:NO];
 #endif
@@ -1265,6 +1272,12 @@ String MediaPlayerPrivateAVFoundationObjC::errorLog() const
 }
 #endif
 
+void MediaPlayerPrivateAVFoundationObjC::didEnd()
+{
+    m_requestedPlaying = false;
+    MediaPlayerPrivateAVFoundation::didEnd();
+}
+
 void MediaPlayerPrivateAVFoundationObjC::platformSetVisible(bool isVisible)
 {
     [CATransaction begin];
@@ -1280,10 +1293,8 @@ void MediaPlayerPrivateAVFoundationObjC::platformPlay()
     if (!metaDataAvailable())
         return;
 
-    setDelayCallbacks(true);
-    m_cachedRate = requestedRate();
-    [m_avPlayer.get() setRate:requestedRate()];
-    setDelayCallbacks(false);
+    m_requestedPlaying = true;
+    setPlayerRate(m_requestedRate);
 }
 
 void MediaPlayerPrivateAVFoundationObjC::platformPause()
@@ -1292,10 +1303,13 @@ void MediaPlayerPrivateAVFoundationObjC::platformPause()
     if (!metaDataAvailable())
         return;
 
-    setDelayCallbacks(true);
-    m_cachedRate = 0;
-    [m_avPlayer.get() setRate:0];
-    setDelayCallbacks(false);
+    m_requestedPlaying = false;
+    setPlayerRate(0);
+}
+
+bool MediaPlayerPrivateAVFoundationObjC::platformPaused() const
+{
+    return m_cachedTimeControlStatus == AVPlayerTimeControlStatusPaused;
 }
 
 MediaTime MediaPlayerPrivateAVFoundationObjC::platformDuration() const
@@ -1353,12 +1367,14 @@ void MediaPlayerPrivateAVFoundationObjC::seekToTime(const MediaTime& time, const
     
     auto weakThis = makeWeakPtr(*this);
 
+    setShouldObserveTimeControlStatus(false);
     [m_avPlayerItem.get() seekToTime:cmTime toleranceBefore:cmBefore toleranceAfter:cmAfter completionHandler:^(BOOL finished) {
         callOnMainThread([weakThis, finished] {
             auto _this = weakThis.get();
             if (!_this)
                 return;
 
+            _this->setShouldObserveTimeControlStatus(true);
             _this->seekCompleted(finished);
         });
     }];
@@ -1406,9 +1422,19 @@ void MediaPlayerPrivateAVFoundationObjC::setClosedCaptionsVisible(bool closedCap
 
 void MediaPlayerPrivateAVFoundationObjC::setRateDouble(double rate)
 {
+    m_requestedRate = rate;
+    if (m_requestedPlaying)
+        setPlayerRate(rate);
+}
+
+void MediaPlayerPrivateAVFoundationObjC::setPlayerRate(double rate)
+{
     setDelayCallbacks(true);
     m_cachedRate = rate;
-    [m_avPlayer.get() setRate:rate];
+    setShouldObserveTimeControlStatus(false);
+    [m_avPlayer setRate:rate];
+    m_cachedTimeControlStatus = [m_avPlayer timeControlStatus];
+    setShouldObserveTimeControlStatus(true);
     setDelayCallbacks(false);
 }
 
@@ -3234,6 +3260,28 @@ void MediaPlayerPrivateAVFoundationObjC::rateDidChange(double rate)
     rateChanged();
 }
 
+void MediaPlayerPrivateAVFoundationObjC::timeControlStatusDidChange(int timeControlStatus)
+{
+    if (m_cachedTimeControlStatus == timeControlStatus)
+        return;
+
+    if (!m_shouldObserveTimeControlStatus)
+        return;
+
+    m_cachedTimeControlStatus = timeControlStatus;
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    if (!isCurrentPlaybackTargetWireless())
+        return;
+
+    bool playerIsPlaying = m_cachedTimeControlStatus != AVPlayerTimeControlStatusPaused;
+    if (playerIsPlaying != m_requestedPlaying) {
+        m_requestedPlaying = playerIsPlaying;
+        player()->playbackStateChanged();
+    }
+#endif
+}
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 
 void MediaPlayerPrivateAVFoundationObjC::playbackTargetIsWirelessDidChange()
@@ -3308,6 +3356,19 @@ bool MediaPlayerPrivateAVFoundationObjC::performTaskAtMediaTime(WTF::Function<vo
         taskIn();
     }];
     return true;
+}
+
+void MediaPlayerPrivateAVFoundationObjC::setShouldObserveTimeControlStatus(bool shouldObserve)
+{
+    if (shouldObserve == m_shouldObserveTimeControlStatus)
+        return;
+
+    m_shouldObserveTimeControlStatus = shouldObserve;
+    if (shouldObserve) {
+        [m_avPlayer addObserver:m_objcObserver.get() forKeyPath:@"timeControlStatus" options:NSKeyValueObservingOptionNew context:(void *)MediaPlayerAVFoundationObservationContextPlayer];
+        timeControlStatusDidChange(m_avPlayer.get().timeControlStatus);
+    } else
+        [m_avPlayer removeObserver:m_objcObserver.get() forKeyPath:@"timeControlStatus"];
 }
 
 NSArray* assetMetadataKeyNames()
@@ -3473,6 +3534,8 @@ NSArray* playerKVOProperties()
             // A value changed for an AVPlayer.
             if ([keyPath isEqualToString:@"rate"])
                 player->rateDidChange([newValue doubleValue]);
+            else if ([keyPath isEqualToString:@"timeControlStatus"])
+                player->timeControlStatusDidChange([newValue intValue]);
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
             else if ([keyPath isEqualToString:@"externalPlaybackActive"] || [keyPath isEqualToString:@"allowsExternalPlayback"])
                 player->playbackTargetIsWirelessDidChange();

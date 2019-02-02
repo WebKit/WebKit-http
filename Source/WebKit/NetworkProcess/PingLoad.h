@@ -36,10 +36,11 @@
 namespace WebKit {
 
 class NetworkLoadChecker;
+class NetworkProcess;
 
 class PingLoad final : public CanMakeWeakPtr<PingLoad>, private NetworkDataTaskClient {
 public:
-    PingLoad(NetworkResourceLoadParameters&&, CompletionHandler<void(const WebCore::ResourceError&, const WebCore::ResourceResponse&)>&&);
+    PingLoad(NetworkProcess&, NetworkResourceLoadParameters&&, CompletionHandler<void(const WebCore::ResourceError&, const WebCore::ResourceResponse&)>&&);
     
 private:
     ~PingLoad();
@@ -56,7 +57,7 @@ private:
     void cannotShowURL() final;
     void timeoutTimerFired();
 
-    void loadRequest(WebCore::ResourceRequest&&);
+    void loadRequest(NetworkProcess&, WebCore::ResourceRequest&&);
 
     void didFinish(const WebCore::ResourceError& = { }, const WebCore::ResourceResponse& response = { });
     

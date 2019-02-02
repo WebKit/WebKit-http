@@ -419,6 +419,12 @@ void NetworkProcessProxy::didUpdateBlockCookies(uint64_t callbackId)
     m_updateBlockCookiesCallbackMap.take(callbackId)();
 }
 
+void NetworkProcessProxy::didLogUserInteraction(uint64_t contextId)
+{
+    // FIXME(193297): Implement when activating automated test cases.
+    UNUSED_PARAM(contextId);
+}
+
 void NetworkProcessProxy::setAgeCapForClientSideCookies(PAL::SessionID sessionID, Optional<Seconds> seconds, CompletionHandler<void()>&& completionHandler)
 {
     if (!canSendMessage()) {
@@ -727,6 +733,19 @@ void NetworkProcessProxy::establishWorkerContextConnectionToNetworkProcessForExp
     m_processPool.establishWorkerContextConnectionToNetworkProcess(*this, WTFMove(origin), sessionID);
 }
 #endif
+
+void NetworkProcessProxy::requestCacheStorageSpace(PAL::SessionID sessionID, const WebCore::ClientOrigin& origin, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t> quota)>&& completionHandler)
+{
+    auto* store = websiteDataStoreFromSessionID(sessionID);
+
+    if (!store) {
+        completionHandler({ });
+        return;
+    }
+
+    // FIXME: Ask WebsiteDataStore about updating the quota for this origin.
+    completionHandler(quota);
+}
 
 } // namespace WebKit
 

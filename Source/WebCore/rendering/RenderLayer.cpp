@@ -1205,7 +1205,7 @@ TransformationMatrix RenderLayer::currentTransform(RenderStyle::ApplyTransformOr
             }
         }
     } else {
-        if (renderer().animation().isRunningAcceleratedAnimationOnRenderer(renderer(), CSSPropertyTransform, AnimationBase::Running | AnimationBase::Paused)) {
+        if (renderer().animation().isRunningAcceleratedAnimationOnRenderer(renderer(), CSSPropertyTransform)) {
             TransformationMatrix currTransform;
             FloatRect pixelSnappedBorderRect = snapRectToDevicePixels(box->borderBoxRect(), box->document().deviceScaleFactor());
             std::unique_ptr<RenderStyle> style = renderer().animation().animatedStyleForRenderer(renderer());
@@ -2223,7 +2223,7 @@ bool RenderLayer::usesCompositedScrolling() const
 // FIXME: this is only valid after we've made layers.
 bool RenderLayer::usesAsyncScrolling() const
 {
-    return usesCompositedScrolling();
+    return compositor().useCoordinatedScrollingForLayer(*this);
 }
 
 static inline int adjustedScrollDelta(int beginningDelta)
@@ -2392,10 +2392,7 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
     if (!view.frameView().layoutContext().isInRenderTreeLayout()) {
         // If we're in the middle of layout, we'll just update layers once layout has finished.
         updateLayerPositionsAfterOverflowScroll();
-        // Update regions, scrolling may change the clip of a particular region.
-#if ENABLE(DASHBOARD_SUPPORT)
-        view.frameView().updateAnnotatedRegions();
-#endif
+
         view.frameView().scheduleUpdateWidgetPositions();
 
         if (!m_updatingMarqueePosition) {
@@ -2411,9 +2408,8 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
             updateCompositingLayersAfterScroll();
         }
 
-#if PLATFORM(IOS_FAMILY) && ENABLE(TOUCH_EVENTS)
-        renderer().document().setTouchEventRegionsNeedUpdate();
-#endif
+        // Update regions, scrolling may change the clip of a particular region.
+        renderer().document().invalidateRenderingDependentRegions(Document::AnnotationsAction::Update);
         DebugPageOverlays::didLayout(renderer().frame());
     }
 
@@ -3193,11 +3189,7 @@ void RenderLayer::setHasHorizontalScrollbar(bool hasScrollbar)
     if (m_vBar)
         m_vBar->styleChanged();
 
-    // Force an update since we know the scrollbars have changed things.
-#if ENABLE(DASHBOARD_SUPPORT)
-    if (renderer().document().hasAnnotatedRegions())
-        renderer().document().setAnnotatedRegionsDirty(true);
-#endif
+    renderer().document().invalidateScrollbarDependentRegions();
 }
 
 void RenderLayer::setHasVerticalScrollbar(bool hasScrollbar)
@@ -3224,11 +3216,7 @@ void RenderLayer::setHasVerticalScrollbar(bool hasScrollbar)
     if (m_vBar)
         m_vBar->styleChanged();
 
-    // Force an update since we know the scrollbars have changed things.
-#if ENABLE(DASHBOARD_SUPPORT)
-    if (renderer().document().hasAnnotatedRegions())
-        renderer().document().setAnnotatedRegionsDirty(true);
-#endif
+    renderer().document().invalidateScrollbarDependentRegions();
 }
 
 ScrollableArea* RenderLayer::enclosingScrollableArea() const
@@ -3494,12 +3482,7 @@ void RenderLayer::updateScrollbarsAfterLayout()
 
         updateSelfPaintingLayer();
 
-        // Force an update since we know the scrollbars have changed things.
-#if ENABLE(DASHBOARD_SUPPORT)
-        if (renderer().document().hasAnnotatedRegions())
-            renderer().document().setAnnotatedRegionsDirty(true);
-#endif
-
+        renderer().document().invalidateScrollbarDependentRegions();
         renderer().repaint();
 
         if (renderer().style().overflowX() == Overflow::Auto || renderer().style().overflowY() == Overflow::Auto) {
@@ -6379,7 +6362,7 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
 
 #if PLATFORM(IOS_FAMILY) && ENABLE(TOUCH_EVENTS)
     if (diff == StyleDifference::RecompositeLayer || diff >= StyleDifference::LayoutPositionedMovementOnly)
-        renderer().document().setTouchEventRegionsNeedUpdate();
+        renderer().document().invalidateRenderingDependentRegions();
 #else
     UNUSED_PARAM(diff);
 #endif
@@ -6599,8 +6582,10 @@ void RenderLayer::updateFilterPaintingStrategy()
 void RenderLayer::filterNeedsRepaint()
 {
     // We use the enclosing element so that we recalculate style for the ancestor of an anonymous object.
-    if (Element* element = enclosingElement())
+    if (Element* element = enclosingElement()) {
+        // FIXME: This really shouldn't have to invalidate layer composition, but tests like css3/filters/effect-reference-delete.html fail if that doesn't happen.
         element->invalidateStyleAndLayerComposition();
+    }
     renderer().repaint();
 }
 

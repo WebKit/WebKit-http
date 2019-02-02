@@ -3,35 +3,22 @@
 <html>
 <meta name="viewport" content="initial-scale=5, width=device-width">
 <head>
-    <script id="ui-script" type="text/plain">
-        (function() {
-            uiController.didEndZoomingCallback = function() {
-                uiController.uiScriptComplete(uiController.zoomScale);
-            };
-            uiController.doubleTapAtPoint(15, 15, function() {});
-        })();
-    </script>
+    <script src="../../../resources/ui-helper.js"></script>
     <script>
         if (window.testRunner) {
             testRunner.dumpAsText();
             testRunner.waitUntilDone();
         }
 
-        function getUIScript()
+        async function runTest()
         {
-            return document.getElementById("ui-script").text;
-        }
-
-        function runTest()
-        {
-            if (!window.eventSender || !testRunner.runUIScript)
+            if (!window.testRunner)
                 return;
 
-            eventSender.scalePageBy(1.6, 1.6);
-            testRunner.runUIScript(getUIScript(), function(result) {
-                document.getElementById("target").innerText = "The viewport zoomed to scale: " + Number(result);
-                testRunner.notifyDone();
-            });
+            await UIHelper.zoomToScale(1.6);
+            let result = await UIHelper.zoomByDoubleTappingAt(15, 15);
+            document.getElementById("target").innerText = "The viewport zoomed to scale: " + Number(result);
+            testRunner.notifyDone();
         }
     </script>
     <style>

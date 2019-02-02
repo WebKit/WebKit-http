@@ -1,3 +1,280 @@
+2019-01-17  Saam barati  <sbarati@apple.com>
+
+        StringObjectUse should not be a structure check for the original string object structure
+        https://bugs.webkit.org/show_bug.cgi?id=193483
+        <rdar://problem/47280522>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/cant-eliminate-string-object-structure-check-when-string-object-is-proven.js: Added.
+        (foo):
+        (a.valueOf.0):
+
+2019-01-17  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] ToThis omission in DFGByteCodeParser is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=193513
+        <rdar://problem/45842236>
+
+        Reviewed by Saam Barati.
+
+        * stress/to-this-omission-with-different-strict-modes.js: Added.
+        (thisA):
+        (thisAStrictWrapper):
+
+2019-01-15  Mark Lam  <mark.lam@apple.com>
+
+        JSFunction::canUseAllocationProfile() should account for builtin functions with no own prototypes.
+        https://bugs.webkit.org/show_bug.cgi?id=193423
+        <rdar://problem/46209355>
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/sinkable-new-object-with-builtin-constructor.js: Added.
+        * stress/constructing-builtin-functions-with-getter-prototype-should-only-call-getter-once-per-new-1.js: Added.
+        * stress/constructing-builtin-functions-with-getter-prototype-should-only-call-getter-once-per-new-2.js: Added.
+        * stress/jsfunction-cannot-use-allocation-profile-with-builtin-functions-with-no-prototype.js: Added.
+
+2019-01-15  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Use KnownStringUse for GetByVal(Array::String) since AI would offer wider type information and offer non-string type after removing Check(String)
+        https://bugs.webkit.org/show_bug.cgi?id=193438
+        <rdar://problem/45581249>
+
+        Reviewed by Saam Barati and Keith Miller.
+
+        Under the heavy load (like, compiling WebKit), AI in this code can broaden type information after the 1st run.
+        Then, GetByVal(String) crashed.
+
+        * stress/string-get-by-val-lowering.js: Added.
+        (shouldBe):
+        (test):
+        * stress/type-for-get-by-val-can-be-widen-after-ai.js: Added.
+        (Hello):
+        (foo):
+
+2019-01-15  Tomas Popela  <tpopela@redhat.com>
+
+        Unreviewed, skip JIT tests if it's not enabled
+
+        * stress/bit-op-with-object-returning-int32.js:
+
+2019-01-15  Caio Lima  <ticaiolima@gmail.com>
+
+        DFGByteCodeParser rules for bitwise operations should consider type of their operands
+        https://bugs.webkit.org/show_bug.cgi?id=192966
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/bit-op-with-object-returning-int32.js: Added.
+
+2019-01-15  Guillaume Emont  <guijemont@igalia.com>
+
+        Skip a slow test and a flakey test on arm
+
+        Unreviewed gardening.
+
+        * typeProfiler/getter-richards.js:
+        this test always times out, it used to be always skipped on arm and
+        mips, but got accidentally enabled by r237919 now that we have DFG on
+        arm. Also skipping on mips as we plan to soon enable DFG for it too.
+
+2019-01-14  Keith Miller  <keith_miller@apple.com>
+
+        Skip type-check-hoisting-phase-hoist... with no jit
+        https://bugs.webkit.org/show_bug.cgi?id=193421
+
+        Reviewed by Mark Lam.
+
+        It's timing out the 32-bit bots and takes 330 seconds
+        on my machine when run by itself.
+
+        * stress/type-check-hoisting-phase-hoist-check-structure-on-tdz-this-value.js:
+
+2019-01-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] AI should check the given constant's array type when folding GetByVal into constant
+        https://bugs.webkit.org/show_bug.cgi?id=193413
+        <rdar://problem/46092389>
+
+        Reviewed by Keith Miller.
+
+        This test is super flaky. It causes crash in r238109, but it does not crash with `--useConcurrentJIT=false`.
+        It does not cause any crashes on the latest revision too. Basically, it highly depends on the timing, and
+        without this patch, the root cause is not fixed yet. If GetLocal is turned into JSConstant in AI,
+        but GetByVal does not have appropriate ArrayModes, JSC crashes.
+
+        * stress/ai-should-perform-array-check-on-get-by-val-constant-folding.js: Added.
+        (compareArray):
+
+2019-01-14  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Literal parsing is crashing when used inside a Object Literal
+        https://bugs.webkit.org/show_bug.cgi?id=193404
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/big-int-literal-inside-literal-object.js: Added.
+
+2019-01-14  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Do not use asArrayModes() with Structures because it discards TypedArray information
+        https://bugs.webkit.org/show_bug.cgi?id=193372
+
+        Reviewed by Saam Barati.
+
+        * stress/typed-array-array-modes-profile.js: Added.
+        (foo):
+
+2019-01-14  Mark Lam  <mark.lam@apple.com>
+
+        Fix all CLoop JSC test failures (including some LLInt bugs due to recent bytecode format change).
+        https://bugs.webkit.org/show_bug.cgi?id=193402
+        <rdar://problem/46012309>
+
+        Reviewed by Keith Miller.
+
+        * stress/regexp-compile-oom.js:
+        - Skip this test for !$jitTests because it is tuned for stack usage when the JIT
+          is enabled.  As a result, it will fail on cloop builds though there is no bug.
+
+2019-01-11  Saam barati  <sbarati@apple.com>
+
+        DFG combined liveness can be wrong for terminal basic blocks
+        https://bugs.webkit.org/show_bug.cgi?id=193304
+        <rdar://problem/45268632>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/dfg-combined-liveness-consider-terminal-blocks-bytecode-liveness.js: Added.
+
+2019-01-11  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Global lexical bindings can shadow global variables if it is `configurable = true`
+        https://bugs.webkit.org/show_bug.cgi?id=193308
+        <rdar://problem/45546542>
+
+        Reviewed by Saam Barati.
+
+        * stress/const-lexical-binding-shadow-existing-global-property-ftl.js: Added.
+        (shouldThrow):
+        (shouldBe):
+        (foo):
+        (get shouldThrow):
+        * stress/const-lexical-binding-shadow-existing-global-property-tdz-ftl.js: Added.
+        (shouldThrow):
+        (shouldBe):
+        (foo):
+        (get shouldBe):
+        (get shouldThrow):
+        (get return):
+        * stress/const-lexical-binding-shadow-existing-global-property-tdz.js: Added.
+        (shouldThrow):
+        (shouldBe):
+        (foo):
+        (get shouldBe):
+        (get shouldThrow):
+        * stress/const-lexical-binding-shadow-existing-global-property.js: Added.
+        (shouldThrow):
+        (shouldBe):
+        (foo):
+        * stress/const-lexical-binding-shadowing-global-properties-and-eval-injection.js: Added.
+        (shouldThrow):
+        (shouldBe):
+        (foo):
+        * stress/global-add-function-should-not-be-shadowed-by-lexical-bindings.js: Added.
+        (shouldThrow):
+        * stress/global-static-variables-should-not-be-shadowed-by-lexical-bindings.js: Added.
+        (shouldThrow):
+        * stress/let-lexical-binding-shadow-existing-global-property-ftl.js: Added.
+        (shouldThrow):
+        (shouldBe):
+        (foo):
+        * stress/let-lexical-binding-shadow-existing-global-property-tdz-ftl.js: Added.
+        (shouldThrow):
+        (shouldBe):
+        (foo):
+        (get shouldBe):
+        (get shouldThrow):
+        (get return):
+        * stress/let-lexical-binding-shadow-existing-global-property-tdz.js: Added.
+        (shouldThrow):
+        (shouldBe):
+        (foo):
+        (get shouldBe):
+        (get shouldThrow):
+        * stress/let-lexical-binding-shadow-existing-global-property.js: Added.
+        (shouldThrow):
+        (shouldBe):
+        (foo):
+        * stress/let-lexical-binding-shadowing-global-properties-and-eval-injection.js: Added.
+        (shouldThrow):
+        (shouldBe):
+        (foo):
+
+2019-01-11  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable DFG on ARM/Linux again
+        https://bugs.webkit.org/show_bug.cgi?id=192496
+
+        Reviewed by Yusuke Suzuki.
+
+        Test wasn't really skipped before moving the line with skip
+        to the top.
+
+        * stress/regress-192717.js:
+
+2019-01-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239825.
+        https://bugs.webkit.org/show_bug.cgi?id=193330
+
+        Broke tests on armv7/linux bots (Requested by guijemont on
+        #webkit).
+
+        Reverted changeset:
+
+        "Enable DFG on ARM/Linux again"
+        https://bugs.webkit.org/show_bug.cgi?id=192496
+        https://trac.webkit.org/changeset/239825
+
+2019-01-10  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable DFG on ARM/Linux again
+        https://bugs.webkit.org/show_bug.cgi?id=192496
+
+        Reviewed by Yusuke Suzuki.
+
+        Test wasn't really skipped before moving the line with skip
+        to the top.
+
+        * stress/regress-192717.js:
+
+2019-01-08  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Array.prototype.flat/flatMap have a minor bug in ArraySpeciesCreate
+        https://bugs.webkit.org/show_bug.cgi?id=193127
+
+        Reviewed by Saam Barati.
+
+        * stress/array-species-create-should-handle-masquerader.js: Added.
+        (shouldThrow):
+        * stress/is-undefined-or-null-builtin.js: Added.
+        (shouldBe):
+        (isUndefinedOrNull.vm.createBuiltin):
+
+2019-01-08  Tadeu Zagallo  <tzagallo@apple.com>
+
+        LLInt put_by_id uses the wrong load instruction for loading flags from the metadata
+        https://bugs.webkit.org/show_bug.cgi?id=193221
+
+        Reviewed by Mark Lam.
+
+        * stress/put-by-id-flags.js: Added.
+        (f):
+        (g):
+        (numberOfDFGCompiles):
+
 2019-01-04  Tadeu Zagallo  <tzagallo@apple.com>
 
         Baseline version of get_by_id may corrupt metadata

@@ -39,6 +39,7 @@
 #import "RemoteScrollingCoordinatorProxy.h"
 #import "SmartMagnificationController.h"
 #import "UIKitSPI.h"
+#import "VersionChecks.h"
 #import "WKBrowsingContextControllerInternal.h"
 #import "WKBrowsingContextGroupPrivate.h"
 #import "WKInspectorHighlightView.h"
@@ -219,6 +220,8 @@ private:
     [self addSubview:_fixedClippingView.get()];
     [_fixedClippingView addSubview:_rootContentView.get()];
 
+    if (!linkedOnOrAfter(WebKit::SDKVersion::FirstWithLazyGestureRecognizerInstallation))
+        [self setupInteraction];
     [self setUserInteractionEnabled:YES];
 
     self.layer.hitTestsAsOpaque = YES;
@@ -517,9 +520,9 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
 
 #pragma mark PageClientImpl methods
 
-- (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy
+- (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy:(WebKit::WebProcessProxy&)process
 {
-    return std::make_unique<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page);
+    return std::make_unique<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page, process);
 }
 
 - (void)_processDidExit

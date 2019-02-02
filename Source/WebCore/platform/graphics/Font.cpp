@@ -263,6 +263,50 @@ static Optional<size_t> codePointSupportIndex(UChar32 codePoint)
     return result;
 }
 
+#if !USE(FREETYPE)
+static void overrideControlCharacters(Vector<UChar>& buffer, unsigned start, unsigned end)
+{
+    auto overwriteCodePoints = [&](unsigned minimum, unsigned maximum, UChar newCodePoint) {
+        unsigned begin = std::max(start, minimum);
+        unsigned complete = std::min(end, maximum);
+        for (unsigned i = begin; i < complete; ++i) {
+            ASSERT(codePointSupportIndex(i));
+            buffer[i - start] = newCodePoint;
+        }
+    };
+
+    auto overwriteCodePoint = [&](UChar codePoint, UChar newCodePoint) {
+        ASSERT(codePointSupportIndex(codePoint));
+        if (codePoint >= start && codePoint < end)
+            buffer[codePoint - start] = newCodePoint;
+    };
+
+    // Code points 0x0 - 0x20 and 0x7F - 0xA0 are control character and shouldn't render. Map them to ZERO WIDTH SPACE.
+    overwriteCodePoints(0x0, 0x20, zeroWidthSpace);
+    overwriteCodePoints(0x7F, 0xA0, zeroWidthSpace);
+    overwriteCodePoint(softHyphen, zeroWidthSpace);
+    overwriteCodePoint('\n', space);
+    overwriteCodePoint('\t', space);
+    overwriteCodePoint(noBreakSpace, space);
+    overwriteCodePoint(narrowNoBreakSpace, zeroWidthSpace);
+    overwriteCodePoint(leftToRightMark, zeroWidthSpace);
+    overwriteCodePoint(rightToLeftMark, zeroWidthSpace);
+    overwriteCodePoint(leftToRightEmbed, zeroWidthSpace);
+    overwriteCodePoint(rightToLeftEmbed, zeroWidthSpace);
+    overwriteCodePoint(leftToRightOverride, zeroWidthSpace);
+    overwriteCodePoint(rightToLeftOverride, zeroWidthSpace);
+    overwriteCodePoint(leftToRightIsolate, zeroWidthSpace);
+    overwriteCodePoint(rightToLeftIsolate, zeroWidthSpace);
+    overwriteCodePoint(zeroWidthNonJoiner, zeroWidthSpace);
+    overwriteCodePoint(zeroWidthJoiner, zeroWidthSpace);
+    overwriteCodePoint(popDirectionalFormatting, zeroWidthSpace);
+    overwriteCodePoint(popDirectionalIsolate, zeroWidthSpace);
+    overwriteCodePoint(firstStrongIsolate, zeroWidthSpace);
+    overwriteCodePoint(objectReplacementCharacter, zeroWidthSpace);
+    overwriteCodePoint(zeroWidthNoBreakSpace, zeroWidthSpace);
+}
+#endif
+
 static RefPtr<GlyphPage> createAndFillGlyphPage(unsigned pageNumber, const Font& font)
 {
 #if PLATFORM(IOS_FAMILY)
@@ -276,7 +320,6 @@ static RefPtr<GlyphPage> createAndFillGlyphPage(unsigned pageNumber, const Font&
     unsigned glyphPageSize = GlyphPage::sizeForPageNumber(pageNumber);
 
     unsigned start = GlyphPage::startingCodePointInPageNumber(pageNumber);
-    unsigned end = start + glyphPageSize;
     Vector<UChar> buffer(glyphPageSize * 2 + 2);
     unsigned bufferLength;
     // Fill in a buffer with the entire "page" of characters that we want to look up glyphs for.
@@ -285,44 +328,9 @@ static RefPtr<GlyphPage> createAndFillGlyphPage(unsigned pageNumber, const Font&
         for (unsigned i = 0; i < bufferLength; i++)
             buffer[i] = start + i;
 
-        // Code points 0x0 - 0x20 and 0x7F - 0xA0 are control character and shouldn't render. Map them to ZERO WIDTH SPACE.
-        auto overwriteCodePoints = [&](unsigned minimum, unsigned maximum, UChar newCodePoint) {
-            unsigned begin = std::max(start, minimum);
-            unsigned complete = std::min(end, maximum);
-            for (unsigned i = begin; i < complete; ++i) {
-                ASSERT(codePointSupportIndex(i));
-                buffer[i - start] = newCodePoint;
-            }
-        };
-
-        auto overwriteCodePoint = [&](UChar codePoint, UChar newCodePoint) {
-            ASSERT(codePointSupportIndex(codePoint));
-            if (codePoint >= start && codePoint < end)
-                buffer[codePoint - start] = newCodePoint;
-        };
-
-        overwriteCodePoints(0x0, 0x20, zeroWidthSpace);
-        overwriteCodePoints(0x7F, 0xA0, zeroWidthSpace);
-        overwriteCodePoint(softHyphen, zeroWidthSpace);
-        overwriteCodePoint('\n', space);
-        overwriteCodePoint('\t', space);
-        overwriteCodePoint(noBreakSpace, space);
-        overwriteCodePoint(narrowNoBreakSpace, zeroWidthSpace);
-        overwriteCodePoint(leftToRightMark, zeroWidthSpace);
-        overwriteCodePoint(rightToLeftMark, zeroWidthSpace);
-        overwriteCodePoint(leftToRightEmbed, zeroWidthSpace);
-        overwriteCodePoint(rightToLeftEmbed, zeroWidthSpace);
-        overwriteCodePoint(leftToRightOverride, zeroWidthSpace);
-        overwriteCodePoint(rightToLeftOverride, zeroWidthSpace);
-        overwriteCodePoint(leftToRightIsolate, zeroWidthSpace);
-        overwriteCodePoint(rightToLeftIsolate, zeroWidthSpace);
-        overwriteCodePoint(zeroWidthNonJoiner, zeroWidthSpace);
-        overwriteCodePoint(zeroWidthJoiner, zeroWidthSpace);
-        overwriteCodePoint(popDirectionalFormatting, zeroWidthSpace);
-        overwriteCodePoint(popDirectionalIsolate, zeroWidthSpace);
-        overwriteCodePoint(firstStrongIsolate, zeroWidthSpace);
-        overwriteCodePoint(objectReplacementCharacter, zeroWidthSpace);
-        overwriteCodePoint(zeroWidthNoBreakSpace, zeroWidthSpace);
+#if !USE(FREETYPE)
+        overrideControlCharacters(buffer, start, start + glyphPageSize);
+#endif
     } else {
         bufferLength = glyphPageSize * 2;
         for (unsigned i = 0; i < glyphPageSize; i++) {
@@ -502,10 +510,10 @@ public:
     {
     }
 
-    CharacterFallbackMapKey(const AtomicString& locale, UChar32 character, bool isForPlatformFont)
+    CharacterFallbackMapKey(const AtomicString& locale, UChar32 character, IsForPlatformFont isForPlatformFont)
         : locale(locale)
         , character(character)
-        , isForPlatformFont(isForPlatformFont)
+        , isForPlatformFont(isForPlatformFont == IsForPlatformFont::Yes)
     {
     }
 
@@ -560,13 +568,13 @@ static SystemFallbackCache& systemFallbackCache()
     return map.get();
 }
 
-RefPtr<Font> Font::systemFallbackFontForCharacter(UChar32 character, const FontDescription& description, bool isForPlatformFont) const
+RefPtr<Font> Font::systemFallbackFontForCharacter(UChar32 character, const FontDescription& description, IsForPlatformFont isForPlatformFont) const
 {
     auto fontAddResult = systemFallbackCache().add(this, CharacterFallbackMap());
 
     if (!character) {
         UChar codeUnit = 0;
-        return FontCache::singleton().systemFallbackForCharacters(description, this, isForPlatformFont, &codeUnit, 1);
+        return FontCache::singleton().systemFallbackForCharacters(description, this, isForPlatformFont, FontCache::PreferColoredFont::No, &codeUnit, 1);
     }
 
     auto key = CharacterFallbackMapKey(description.locale(), character, isForPlatformFont);
@@ -586,7 +594,7 @@ RefPtr<Font> Font::systemFallbackFontForCharacter(UChar32 character, const FontD
             codeUnitsLength = 2;
         }
 
-        fallbackFont = FontCache::singleton().systemFallbackForCharacters(description, this, isForPlatformFont, codeUnits, codeUnitsLength).get();
+        fallbackFont = FontCache::singleton().systemFallbackForCharacters(description, this, isForPlatformFont, FontCache::PreferColoredFont::No, codeUnits, codeUnitsLength).get();
         if (fallbackFont)
             fallbackFont->m_isUsedInSystemFallbackCache = true;
     }
@@ -612,7 +620,7 @@ void Font::removeFromSystemFallbackCache()
     }
 }
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(COCOA) && !USE(FREETYPE)
 bool Font::variantCapsSupportsCharacterForSynthesis(FontVariantCaps fontVariantCaps, UChar32) const
 {
     switch (fontVariantCaps) {

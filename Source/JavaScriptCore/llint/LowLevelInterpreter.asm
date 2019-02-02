@@ -1,4 +1,4 @@
-# Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+# Copyright (C) 2011-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -204,23 +204,6 @@ else
     const LowestTag = constexpr JSValue::LowestTag
 end
 
-# PutByIdFlags data
-const PutByIdPrimaryTypeMask = constexpr PutByIdPrimaryTypeMask
-const PutByIdPrimaryTypeSecondary = constexpr PutByIdPrimaryTypeSecondary
-const PutByIdPrimaryTypeObjectWithStructure = constexpr PutByIdPrimaryTypeObjectWithStructure
-const PutByIdPrimaryTypeObjectWithStructureOrOther = constexpr PutByIdPrimaryTypeObjectWithStructureOrOther
-const PutByIdSecondaryTypeMask = constexpr PutByIdSecondaryTypeMask
-const PutByIdSecondaryTypeBottom = constexpr PutByIdSecondaryTypeBottom
-const PutByIdSecondaryTypeBoolean = constexpr PutByIdSecondaryTypeBoolean
-const PutByIdSecondaryTypeOther = constexpr PutByIdSecondaryTypeOther
-const PutByIdSecondaryTypeInt32 = constexpr PutByIdSecondaryTypeInt32
-const PutByIdSecondaryTypeNumber = constexpr PutByIdSecondaryTypeNumber
-const PutByIdSecondaryTypeString = constexpr PutByIdSecondaryTypeString
-const PutByIdSecondaryTypeSymbol = constexpr PutByIdSecondaryTypeSymbol
-const PutByIdSecondaryTypeObject = constexpr PutByIdSecondaryTypeObject
-const PutByIdSecondaryTypeObjectOrOther = constexpr PutByIdSecondaryTypeObjectOrOther
-const PutByIdSecondaryTypeTop = constexpr PutByIdSecondaryTypeTop
-
 const CallOpCodeSize = constexpr op_call_length
 
 const maxFrameExtentForSlowPathCall = constexpr maxFrameExtentForSlowPathCall
@@ -323,15 +306,15 @@ macro dispatchOp(size, op)
     size(dispatchNarrow, dispatchWide, macro (dispatch) dispatch() end)
 end
 
-macro getu(size, op, field, dst)
+macro getu(size, op, fieldName, dst)
     size(getuOperandNarrow, getuOperandWide, macro (getu)
-        getu(op, field, dst)
+        getu(op, fieldName, dst)
     end)
 end
 
-macro get(size, op, field, dst)
+macro get(size, op, fieldName, dst)
     size(getOperandNarrow, getOperandWide, macro (get)
-        get(op, field, dst)
+        get(op, fieldName, dst)
     end)
 end
 
@@ -344,8 +327,8 @@ macro wide(narrowFn, wideFn, k)
 end
 
 macro metadata(size, opcode, dst, scratch)
-    loadp constexpr %opcode%::opcodeID * 4[metadataTable], dst # offset = metadataTable<unsigned*>[opcodeID]
-    getu(size, opcode, metadataID, scratch) # scratch = bytecode.metadataID
+    loadi constexpr %opcode%::opcodeID * 4[metadataTable], dst # offset = metadataTable<unsigned*>[opcodeID]
+    getu(size, opcode, m_metadataID, scratch) # scratch = bytecode.m_metadataID
     muli sizeof %opcode%::Metadata, scratch # scratch *= sizeof(Op::Metadata)
     addi scratch, dst # offset += scratch
     addp metadataTable, dst # return &metadataTable[offset]
@@ -377,8 +360,8 @@ end
 
 macro llintOp(name, op, fn)
     commonOp(llint_%name%, traceExecution, macro(size)
-        macro getImpl(field, dst)
-            get(size, op, field, dst)
+        macro getImpl(fieldName, dst)
+            get(size, op, fieldName, dst)
         end
 
         macro dispatchImpl()
@@ -408,8 +391,8 @@ end
 
 macro llintOpWithJump(name, op, impl)
     llintOpWithMetadata(name, op, macro(size, get, dispatch, metadata, return)
-        macro jump(field)
-            get(field, t0)
+        macro jump(fieldName)
+            get(fieldName, t0)
             jumpImpl(t0)
         end
 
@@ -854,10 +837,10 @@ macro preserveReturnAddressAfterCall(destinationRegister)
     end
 end
 
-macro unpoison(poison, field, scratch)
+macro unpoison(poison, fieldReg, scratch)
     if POISON
         loadp poison, scratch
-        xorp scratch, field
+        xorp scratch, fieldReg
     end
 end
 
@@ -1555,7 +1538,7 @@ compareUnsignedOp(beloweq, OpBeloweq,
 
 
 llintOpWithJump(op_jmp, OpJmp, macro (size, get, jump, dispatch)
-    jump(target)
+    jump(m_target)
 end)
 
 

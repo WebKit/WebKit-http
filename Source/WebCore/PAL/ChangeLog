@@ -1,3 +1,176 @@
+2019-01-17  Tim Horton  <timothy_horton@apple.com>
+
+        Adopt NSTextCheckingSuppressInitialCapitalizationKey
+        https://bugs.webkit.org/show_bug.cgi?id=193545
+
+        Reviewed by Dean Jackson.
+
+        * pal/spi/mac/NSSpellCheckerSPI.h:
+
+2019-01-17  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/PAL.xcconfig:
+        * Configurations/SDKVariant.xcconfig: Added.
+
+2019-01-16  Tim Horton  <timothy_horton@apple.com>
+
+        Unreviewed build fix.
+
+        * pal/spi/ios/UIKitSPI.h:
+        I don't even.
+
+2019-01-16  Megan Gardner  <megan_gardner@apple.com>
+
+        Build fix for iOSMac Reveal
+        https://bugs.webkit.org/show_bug.cgi?id=193503
+
+        Unreviewed build fix.
+
+        * pal/spi/ios/UIKitSPI.h:
+
+2019-01-15  Megan Gardner  <megan_gardner@apple.com>
+
+        Add Reveal support in iOSMac
+        https://bugs.webkit.org/show_bug.cgi?id=193408
+        <rdar://problem/47300699>
+
+        Reviewed by Tim Horton.
+
+        Add additional needed SPI.
+
+        * pal/spi/cocoa/RevealSPI.h:
+
+2019-01-15  Tim Horton  <timothy_horton@apple.com>
+
+        Cannot tab out of WKWebView on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=161448
+        <rdar://problem/28100085>
+
+        Reviewed by Dean Jackson.
+
+        * pal/spi/mac/NSViewSPI.h:
+        * pal/spi/mac/NSWindowSPI.h:
+        Move some SPI declarations in here from WebKitLegacy.
+
+2019-01-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239901, r239909, r239910, r239912,
+        r239913, and r239914.
+        https://bugs.webkit.org/show_bug.cgi?id=193407
+
+        These revisions caused an internal failure (Requested by
+        Truitt on #webkit).
+
+        Reverted changesets:
+
+        "[Cocoa] Avoid importing directly from subumbrella frameworks"
+        https://bugs.webkit.org/show_bug.cgi?id=186016
+        https://trac.webkit.org/changeset/239901
+
+        "Tried to fix USE(APPLE_INTERNAL_SDK) builds after r239901."
+        https://trac.webkit.org/changeset/239909
+
+        "Tried to fix the build."
+        https://trac.webkit.org/changeset/239910
+
+        "Fixed iOS builds after r239910."
+        https://trac.webkit.org/changeset/239912
+
+        "More build fixing."
+        https://trac.webkit.org/changeset/239913
+
+        "Tried to fix USE(APPLE_INTERNAL_SDK) 32-bit builds."
+        https://trac.webkit.org/changeset/239914
+
+2019-01-14  Mark Lam  <mark.lam@apple.com>
+
+        Re-enable ability to build --cloop builds.
+        https://bugs.webkit.org/show_bug.cgi?id=192955
+        <rdar://problem/46882363>
+
+        Reviewed by Saam barati and Keith Miller.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-01-13  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix USE(APPLE_INTERNAL_SDK) 32-bit builds.
+
+        * pal/spi/mac/QuickDrawSPI.h:
+
+2019-01-13  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix USE(APPLE_INTERNAL_SDK) builds after r239901.
+
+        Patch by Keith Rollin.
+
+        * pal/spi/cocoa/LaunchServicesSPI.h:
+        * pal/spi/mac/HIServicesSPI.h:
+        * pal/spi/mac/MetadataSPI.h:
+        * pal/spi/mac/SpeechSynthesisSPI.h:
+
+2019-01-12  Timothy Hatcher  <timothy@apple.com>
+
+        Have prefers-color-scheme: light always match on macOS versions before Mojave.
+        https://bugs.webkit.org/show_bug.cgi?id=191655
+        rdar://problem/46074680
+
+        Reviewed by Megan Gardner.
+
+        * Configurations/FeatureDefines.xcconfig: ENABLE_DARK_MODE_CSS_macosx for all OS versions.
+
+2019-01-12  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Avoid importing directly from subumbrella frameworks
+        https://bugs.webkit.org/show_bug.cgi?id=186016
+        <rdar://problem/40591038>
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/PAL.xcconfig: Removed -iframework options from OTHER_CFLAGS and
+          OTHER_CPLUSPLUSFLAGS.
+        * pal/spi/cg/CoreGraphicsSPI.h: Import ApplicationServices.h instead of ColorSync.h
+          when using SDKs earlier than 10.13.
+        * pal/spi/mac/HIToolboxSPI.h: Import CarbonPriv.h instead of HIToolboxPriv.h.
+        * pal/spi/mac/QuickLookMacSPI.h: Import Quartz.h instead of a QuickLookUI header.
+
+2019-01-11  John Wilander  <wilander@apple.com>
+
+        Compile out Web API Statistics Collection
+        https://bugs.webkit.org/show_bug.cgi?id=193370
+        <rdar://problem/45388584>
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/FeatureDefines.xcconfig:
+            Defined ENABLE_WEB_API_STATISTICS, off by default.
+
+2019-01-11  Devin Rousso  <drousso@apple.com>
+
+        Fix style CFNetworkSPI style checker warnings from r239698
+        https://bugs.webkit.org/show_bug.cgi?id=193369
+
+        Reviewed by Joseph Pecoraro.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2019-01-10  John Wilander  <wilander@apple.com>
+
+        Override the session configuration for cookieAcceptPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=190925
+        <rdar://problem/45497382>
+
+        Reviewed by Alexey Proskuryakov and Alex Christensen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+            Declaration of _overrideSessionCookieAcceptPolicy on NSHTTPCookieStorage.
+
 2019-01-07  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Network: show secure connection details per-request

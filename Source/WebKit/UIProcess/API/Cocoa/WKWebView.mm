@@ -41,9 +41,11 @@
 #import "IconLoadingDelegate.h"
 #import "LegacySessionStateCoding.h"
 #import "Logging.h"
+#import "MediaCaptureUtilities.h"
 #import "NavigationState.h"
 #import "ObjCObjectGraph.h"
 #import "PageClient.h"
+#import "ProvisionalPageProxy.h"
 #import "RemoteLayerTreeScrollingPerformanceData.h"
 #import "RemoteLayerTreeTransaction.h"
 #import "RemoteObjectRegistry.h"
@@ -377,6 +379,7 @@ static Optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOverlayS
     std::unique_ptr<WebKit::WebViewImpl> _impl;
     RetainPtr<WKTextFinderClient> _textFinderClient;
 #endif
+    _WKSelectionAttributes _selectionAttributes;
     CGFloat _minimumEffectiveDeviceWidth;
 }
 
@@ -645,6 +648,7 @@ static void validate(WKWebViewConfiguration *configuration)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::colorFilterEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _colorFilterEnabled]));
 
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::editableImagesEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _editableImagesEnabled]));
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::undoManagerAPIEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _undoManagerAPIEnabled]));
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::legacyEncryptedMediaAPIEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _legacyEncryptedMediaAPIEnabled]));
@@ -1266,15 +1270,49 @@ static NSDictionary *dictionaryRepresentationForEditorState(const WebKit::Editor
     };
 }
 
+static _WKSelectionAttributes selectionAttributes(const WebKit::EditorState& editorState, _WKSelectionAttributes previousAttributes)
+{
+    _WKSelectionAttributes attributes = _WKSelectionAttributeNoSelection;
+    if (editorState.selectionIsNone)
+        return attributes;
+
+    if (editorState.selectionIsRange)
+        attributes |= _WKSelectionAttributeIsRange;
+    else
+        attributes |= _WKSelectionAttributeIsCaret;
+
+    if (!editorState.isMissingPostLayoutData) {
+#if PLATFORM(IOS_FAMILY)
+        if (editorState.postLayoutData().atStartOfSentence)
+            attributes |= _WKSelectionAttributeAtStartOfSentence;
+#endif
+    } else if (previousAttributes & _WKSelectionAttributeAtStartOfSentence)
+        attributes |= _WKSelectionAttributeAtStartOfSentence;
+
+    return attributes;
+}
+
 - (void)_didChangeEditorState
 {
-    id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)self.UIDelegate;
+    auto newSelectionAttributes = selectionAttributes(_page->editorState(), _selectionAttributes);
+    if (_selectionAttributes != newSelectionAttributes) {
+        NSString *selectionAttributesKey = NSStringFromSelector(@selector(_selectionAttributes));
+        [self willChangeValueForKey:selectionAttributesKey];
+        _selectionAttributes = newSelectionAttributes;
+        [self didChangeValueForKey:selectionAttributesKey];
+    }
 
     // FIXME: We should either rename -_webView:editorStateDidChange: to clarify that it's only intended for use when testing,
     // or remove it entirely and use -_webView:didChangeFontAttributes: instead once text alignment is supported in the set of
     // font attributes.
+    id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)self.UIDelegate;
     if ([uiDelegate respondsToSelector:@selector(_webView:editorStateDidChange:)])
         [uiDelegate _webView:self editorStateDidChange:dictionaryRepresentationForEditorState(_page->editorState())];
+}
+
+- (_WKSelectionAttributes)_selectionAttributes
+{
+    return _selectionAttributes;
 }
 
 - (void)_showSafeBrowsingWarning:(const WebKit::SafeBrowsingWarning&)warning completionHandler:(CompletionHandler<void(Variant<WebKit::ContinueUnsafeLoad, URL>&&)>&&)completionHandler
@@ -2467,9 +2505,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     // At this point, we have a page that asked for width = device-width. However,
     // if the content's width and height were large, we might have had to shrink it.
-    // Since we'll enable double tap zoom whenever we're not at the actual
-    // initial scale, this simply becomes a test of the current scale against 1.
-    return !areEssentiallyEqualAsFloat(contentZoomScale(self), 1);
+    // We'll enable double tap zoom whenever we're not at the actual initial scale.
+    return !areEssentiallyEqualAsFloat(contentZoomScale(self), _initialScaleFactor);
 }
 
 - (BOOL)_stylusTapGestureShouldCreateEditableImage
@@ -4664,6 +4701,11 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 {
     Ref<WebKit::WebProcessProxy> protectedProcessProxy(_page->process());
     protectedProcessProxy->requestTermination(WebKit::ProcessTerminationReason::RequestedByClient);
+
+    if (auto* provisionalPageProxy = _page->provisionalPageProxy()) {
+        Ref<WebKit::WebProcessProxy> protectedProcessProxy(provisionalPageProxy->process());
+        protectedProcessProxy->requestTermination(WebKit::ProcessTerminationReason::RequestedByClient);
+    }
 }
 
 #if PLATFORM(MAC)
@@ -5512,6 +5554,16 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 #else
     return false;
 #endif
+}
+
+- (_WKMediaCaptureState)_mediaCaptureState
+{
+    return WebKit::toWKMediaCaptureState(_page->mediaStateFlags());
+}
+
+- (void)_setMediaCaptureMuted:(BOOL)muted
+{
+    _page->setMediaStreamCaptureMuted(muted);
 }
 
 - (void)_muteMediaCapture

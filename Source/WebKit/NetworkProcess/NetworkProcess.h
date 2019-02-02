@@ -44,6 +44,7 @@
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/WeakPtr.h>
 
 namespace IPC {
 class FormDataReference;
@@ -61,6 +62,7 @@ class NetworkStorageSession;
 class ResourceError;
 class SWServer;
 enum class StoredCredentialsPolicy : bool;
+struct ClientOrigin;
 struct MessageWithMessagePorts;
 struct SecurityOriginData;
 struct SoupNetworkProxySettings;
@@ -96,6 +98,7 @@ class NetworkProcess : public ChildProcess, private DownloadManager::Client, pub
 #if ENABLE(INDEXED_DATABASE)
     , public WebCore::IDBServer::IDBBackingStoreTemporaryFileHandler
 #endif
+    , public CanMakeWeakPtr<NetworkProcess>
 {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
 public:
@@ -125,6 +128,10 @@ public:
 
     NetworkCache::Cache* cache() { return m_cache.get(); }
 
+    void setSession(const PAL::SessionID&, Ref<NetworkSession>&&);
+    NetworkSession* networkSession(const PAL::SessionID&) const override;
+    void destroySession(const PAL::SessionID&);
+    
     bool canHandleHTTPSServerTrustEvaluation() const { return m_canHandleHTTPSServerTrustEvaluation; }
 
     void processWillSuspendImminently(bool& handled);
@@ -157,6 +164,8 @@ public:
     void hasStorageAccessForFrame(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, uint64_t contextId);
     void getAllStorageAccessEntries(PAL::SessionID, uint64_t contextId);
     void grantStorageAccess(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, uint64_t contextId);
+    void logFrameNavigation(PAL::SessionID, const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, const String& sourcePrimaryDomain, const String& targetHost, const String& mainFrameHost, bool isRedirect, bool isMainFrame);
+    void logUserInteraction(PAL::SessionID, const String& targetPrimaryDomain, uint64_t contextId);
     void removeAllStorageAccess(PAL::SessionID, uint64_t contextId);
     void removePrevalentDomains(PAL::SessionID, const Vector<String>& domains);
     void setCacheMaxAgeCapForPrevalentResources(PAL::SessionID, Seconds, uint64_t contextId);
@@ -172,7 +181,7 @@ public:
     bool sessionIsControlledByAutomation(PAL::SessionID) const;
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    NetworkContentRuleListManager& networkContentRuleListManager() { return m_NetworkContentRuleListManager; }
+    NetworkContentRuleListManager& networkContentRuleListManager() { return m_networkContentRuleListManager; }
 #endif
 
 #if ENABLE(INDEXED_DATABASE)
@@ -216,11 +225,12 @@ public:
 
     void ref() const override { ThreadSafeRefCounted<NetworkProcess>::ref(); }
     void deref() const override { ThreadSafeRefCounted<NetworkProcess>::deref(); }
-    
+
     CacheStorage::Engine* findCacheEngine(const PAL::SessionID&);
     CacheStorage::Engine& ensureCacheEngine(const PAL::SessionID&, Function<Ref<CacheStorage::Engine>()>&&);
     void removeCacheEngine(const PAL::SessionID&);
-    
+    void requestCacheStorageSpace(PAL::SessionID, const WebCore::ClientOrigin&, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t>)>&&);
+
 private:
     NetworkProcess();
 
@@ -265,7 +275,6 @@ private:
     void didReceiveSyncNetworkProcessMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
     void initializeNetworkProcess(NetworkProcessCreationParameters&&);
     void createNetworkConnectionToWebProcess(bool isServiceWorkerProcess, WebCore::SecurityOriginData&&);
-    void destroySession(PAL::SessionID);
 
     void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, uint64_t callbackID);
     void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, WallTime modifiedSince, uint64_t callbackID);
@@ -375,8 +384,8 @@ private:
     NetworkProcessSupplementMap m_supplements;
 
     HashSet<PAL::SessionID> m_sessionsControlledByAutomation;
-
     HashMap<PAL::SessionID, Vector<CacheStorageParametersCallback>> m_cacheStorageParametersCallbacks;
+    HashMap<PAL::SessionID, Ref<NetworkSession>> m_networkSessions;
 
 #if PLATFORM(COCOA)
     void platformInitializeNetworkProcessCocoa(const NetworkProcessCreationParameters&);
@@ -391,7 +400,7 @@ private:
 #endif
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    NetworkContentRuleListManager m_NetworkContentRuleListManager;
+    NetworkContentRuleListManager m_networkContentRuleListManager;
 #endif
 
     Ref<WorkQueue> m_storageTaskQueue;

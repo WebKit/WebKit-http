@@ -135,9 +135,9 @@ static const int testFooterBannerHeight = 58;
 
 - (IBAction)fetch:(id)sender
 {
-    [urlText setStringValue:[self addProtocolIfNecessary:[urlText stringValue]]];
-
-    [_webView loadRequest:[NSURLRequest requestWithURL:[NSURL _webkit_URLWithUserTypedString:[urlText stringValue]]]];
+    [urlText setStringValue:[self addProtocolIfNecessary:urlText.stringValue]];
+    NSURL *url = [NSURL _webkit_URLWithUserTypedString:urlText.stringValue];
+    [_webView loadRequest:[NSURLRequest requestWithURL:url]];
 }
 
 - (IBAction)setPageScale:(id)sender
@@ -791,14 +791,14 @@ static NSSet *dataTypes()
 {
 }
 
-- (void)_webView:(WKWebView *)webView requestUserMediaAuthorizationForDevices:(_WKCaptureDevices)devices url:(NSURL *)url mainFrameURL:(NSURL *)mainFrameURL decisionHandler:(void (^)(BOOL authorized))decisionHandler
+- (void)_webView:(WKWebView *)webView requestMediaCaptureAuthorization: (_WKCaptureDevices)devices decisionHandler:(void (^)(BOOL authorized))decisionHandler
 {
     decisionHandler(true);
 }
 
-- (void)_webView:(WKWebView *)webView checkUserMediaPermissionForURL:(NSURL *)url mainFrameURL:(NSURL *)mainFrameURL frameIdentifier:(NSUInteger)frameIdentifier decisionHandler:(void (^)(NSString *salt, BOOL authorized))decisionHandler
+- (void)_webView:(WKWebView *)webView includeSensitiveMediaDeviceDetails:(void (^)(BOOL includeSensitiveDetails))decisionHandler
 {
-    decisionHandler(@"", false);
+    decisionHandler(false);
 }
 
 @end

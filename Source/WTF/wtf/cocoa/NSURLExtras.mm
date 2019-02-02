@@ -32,6 +32,7 @@
 
 #import <unicode/uchar.h>
 #import <unicode/uidna.h>
+#import <unicode/unorm.h>
 #import <unicode/uscript.h>
 #import <wtf/Function.h>
 #import <wtf/HexNumber.h>
@@ -538,6 +539,16 @@ static BOOL allCharactersAllowedByTLDRules(const UChar* buffer, int32_t length)
     CHECK_RULES_IF_SUFFIX_MATCHES(cyrillicMON, [](UChar ch) {
         // Mongolian letters, digits and dashes are allowed.
         return (ch >= 0x0430 && ch <= 0x044f) || ch == 0x0451 || ch == 0x04E9 || ch == 0x04AF || isASCIIDigit(ch) || ch == '-';
+    });
+
+    // https://www.icann.org/sites/default/files/packages/lgr/lgr-second-level-bulgarian-30aug16-en.html
+    static const UChar cyrillicBG[] = {
+        '.',
+        0x0431, // CYRILLIC SMALL LETTER BE
+        0x0433 // CYRILLIC SMALL LETTER GHE
+    };
+    CHECK_RULES_IF_SUFFIX_MATCHES(cyrillicBG, [](UChar ch) {
+        return (ch >= 0x0430 && ch <= 0x044A) || ch == 0x044C || (ch >= 0x044E && ch <= 0x0450) || ch == 0x045D || isASCIIDigit(ch) || ch == '-';
     });
 
     // Not a known top level domain with special rules.
@@ -1095,6 +1106,31 @@ static CFStringRef createStringWithEscapedUnsafeCharacters(CFStringRef string)
     return CFStringCreateWithCharacters(nullptr, outBuffer.data(), outBuffer.size());
 }
 
+static String toNormalizationFormC(const String& string)
+{
+    auto sourceBuffer = string.charactersWithNullTermination();
+    ASSERT(sourceBuffer.last() == '\0');
+    sourceBuffer.removeLast();
+
+    String result;
+    Vector<UChar, URL_BYTES_BUFFER_LENGTH> normalizedCharacters(sourceBuffer.size());
+    UErrorCode uerror = U_ZERO_ERROR;
+    int32_t normalizedLength = 0;
+    const UNormalizer2 *normalizer = unorm2_getNFCInstance(&uerror);
+    if (!U_FAILURE(uerror)) {
+        normalizedLength = unorm2_normalize(normalizer, sourceBuffer.data(), sourceBuffer.size(), normalizedCharacters.data(), normalizedCharacters.size(), &uerror);
+        if (uerror == U_BUFFER_OVERFLOW_ERROR) {
+            uerror = U_ZERO_ERROR;
+            normalizedCharacters.resize(normalizedLength);
+            normalizedLength = unorm2_normalize(normalizer, sourceBuffer.data(), sourceBuffer.size(), normalizedCharacters.data(), normalizedLength, &uerror);
+        }
+        if (!U_FAILURE(uerror))
+            result = String(normalizedCharacters.data(), normalizedLength);
+    }
+
+    return result;
+}
+
 NSString *userVisibleString(NSURL *URL)
 {
     NSData *data = originalURLData(URL);
@@ -1165,7 +1201,9 @@ NSString *userVisibleString(NSURL *URL)
             result = mappedResult;
     }
 
-    result = [result precomposedStringWithCanonicalMapping];
+    auto wtfString = String(result.get());
+    auto normalized = toNormalizationFormC(wtfString);
+    result = static_cast<NSString *>(normalized);
     return CFBridgingRelease(createStringWithEscapedUnsafeCharacters((__bridge CFStringRef)result.get()));
 }
 

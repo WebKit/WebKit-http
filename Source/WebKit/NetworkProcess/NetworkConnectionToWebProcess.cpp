@@ -45,7 +45,6 @@
 #include "NetworkSocketStreamMessages.h"
 #include "PingLoad.h"
 #include "PreconnectTask.h"
-#include "SessionTracker.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
 #include "WebIDBConnectionToClient.h"
@@ -282,7 +281,7 @@ void NetworkConnectionToWebProcess::createSocketStream(URL&& url, PAL::SessionID
 #if PLATFORM(COCOA)
     token = { m_networkProcess->sourceApplicationAuditData() };
 #endif
-    m_networkSocketStreams.set(identifier, NetworkSocketStream::create(WTFMove(url), sessionID, cachePartition, identifier, m_connection, WTFMove(token)));
+    m_networkSocketStreams.set(identifier, NetworkSocketStream::create(m_networkProcess.get(), WTFMove(url), sessionID, cachePartition, identifier, m_connection, WTFMove(token)));
 }
 
 void NetworkConnectionToWebProcess::destroySocketStream(uint64_t identifier)
@@ -341,7 +340,7 @@ void NetworkConnectionToWebProcess::loadPing(NetworkResourceLoadParameters&& loa
     };
 
     // PingLoad manages its own lifetime, deleting itself when its purpose has been fulfilled.
-    new PingLoad(WTFMove(loadParameters), WTFMove(completionHandler));
+    new PingLoad(networkProcess(), WTFMove(loadParameters), WTFMove(completionHandler));
 }
 
 void NetworkConnectionToWebProcess::setOnLineState(bool isOnLine)
@@ -391,7 +390,7 @@ void NetworkConnectionToWebProcess::prefetchDNS(const String& hostname)
 void NetworkConnectionToWebProcess::preconnectTo(uint64_t preconnectionIdentifier, NetworkResourceLoadParameters&& parameters)
 {
 #if ENABLE(SERVER_PRECONNECT)
-    new PreconnectTask(WTFMove(parameters), [this, protectedThis = makeRef(*this), identifier = preconnectionIdentifier] (const ResourceError& error) {
+    new PreconnectTask(networkProcess(), WTFMove(parameters), [this, protectedThis = makeRef(*this), identifier = preconnectionIdentifier] (const ResourceError& error) {
         didFinishPreconnection(identifier, error);
     });
 #else
@@ -451,9 +450,9 @@ void NetworkConnectionToWebProcess::cookiesForDOM(PAL::SessionID sessionID, cons
     auto& networkStorageSession = storageSession(sessionID);
     std::tie(cookieString, secureCookiesAccessed) = networkStorageSession.cookiesForDOM(firstParty, sameSiteInfo, url, frameID, pageID, includeSecureCookies);
 #if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
-    if (auto session = SessionTracker::networkSession(sessionID)) {
+    if (auto session = networkProcess().networkSession(sessionID)) {
         if (session->shouldLogCookieInformation())
-            NetworkResourceLoader::logCookieInformation("NetworkConnectionToWebProcess::cookiesForDOM", reinterpret_cast<const void*>(this), networkStorageSession, firstParty, sameSiteInfo, url, emptyString(), frameID, pageID, WTF::nullopt);
+            NetworkResourceLoader::logCookieInformation(*this, "NetworkConnectionToWebProcess::cookiesForDOM", reinterpret_cast<const void*>(this), networkStorageSession, firstParty, sameSiteInfo, url, emptyString(), frameID, pageID, WTF::nullopt);
     }
 #endif
 }
@@ -463,9 +462,9 @@ void NetworkConnectionToWebProcess::setCookiesFromDOM(PAL::SessionID sessionID, 
     auto& networkStorageSession = storageSession(sessionID);
     networkStorageSession.setCookiesFromDOM(firstParty, sameSiteInfo, url, frameID, pageID, cookieString);
 #if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
-    if (auto session = SessionTracker::networkSession(sessionID)) {
+    if (auto session = networkProcess().networkSession(sessionID)) {
         if (session->shouldLogCookieInformation())
-            NetworkResourceLoader::logCookieInformation("NetworkConnectionToWebProcess::setCookiesFromDOM", reinterpret_cast<const void*>(this), networkStorageSession, firstParty, sameSiteInfo, url, emptyString(), frameID, pageID, WTF::nullopt);
+            NetworkResourceLoader::logCookieInformation(*this, "NetworkConnectionToWebProcess::setCookiesFromDOM", reinterpret_cast<const void*>(this), networkStorageSession, firstParty, sameSiteInfo, url, emptyString(), frameID, pageID, WTF::nullopt);
     }
 #endif
 }
@@ -546,8 +545,12 @@ void NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles(const Vector<Stri
 void NetworkConnectionToWebProcess::setCaptureExtraNetworkLoadMetricsEnabled(bool enabled)
 {
     m_captureExtraNetworkLoadMetricsEnabled = enabled;
-    if (!m_captureExtraNetworkLoadMetricsEnabled)
-        m_networkLoadInformationByID.clear();
+    if (m_captureExtraNetworkLoadMetricsEnabled)
+        return;
+
+    m_networkLoadInformationByID.clear();
+    for (auto& loader : m_networkResourceLoaders.values())
+        loader->disableExtraNetworkLoadMetricsCapture();
 }
 
 void NetworkConnectionToWebProcess::ensureLegacyPrivateBrowsingSession()
@@ -702,7 +705,7 @@ void NetworkConnectionToWebProcess::establishIDBConnectionToServer(PAL::SessionI
     LOG(IndexedDB, "NetworkConnectionToWebProcess::establishIDBConnectionToServer - %" PRIu64, serverConnectionIdentifier);
     ASSERT(!m_webIDBConnections.contains(serverConnectionIdentifier));
     
-    m_webIDBConnections.set(serverConnectionIdentifier, WebIDBConnectionToClient::create(m_networkProcess, *this, serverConnectionIdentifier, sessionID));
+    m_webIDBConnections.set(serverConnectionIdentifier, WebIDBConnectionToClient::create(m_networkProcess, m_connection.get(), serverConnectionIdentifier, sessionID));
 }
 
 void NetworkConnectionToWebProcess::removeIDBConnectionToServer(uint64_t serverConnectionIdentifier)

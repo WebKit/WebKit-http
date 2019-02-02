@@ -34,7 +34,6 @@
 #import "NetworkResourceLoader.h"
 #import "NetworkSessionCocoa.h"
 #import "SandboxExtension.h"
-#import "SessionTracker.h"
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/PublicSuffix.h>
 #import <WebCore/ResourceRequestCFNet.h>
@@ -122,7 +121,7 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
         cacheOptions.add(NetworkCache::Cache::Option::SpeculativeRevalidation);
 #endif
 
-    m_cache = NetworkCache::Cache::open(m_diskCacheDirectory, cacheOptions);
+    m_cache = NetworkCache::Cache::open(*this, m_diskCacheDirectory, cacheOptions);
     if (!m_cache)
         RELEASE_LOG_ERROR(NetworkCache, "Failed to initialize the WebKit network disk cache");
 
@@ -133,12 +132,14 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
 
 RetainPtr<CFDataRef> NetworkProcess::sourceApplicationAuditData() const
 {
-#if PLATFORM(IOS_FAMILY) && !PLATFORM(IOSMAC)
-    audit_token_t auditToken;
+#if USE(SOURCE_APPLICATION_AUDIT_DATA)
     ASSERT(parentProcessConnection());
-    if (!parentProcessConnection() || !parentProcessConnection()->getAuditToken(auditToken))
+    if (!parentProcessConnection())
         return nullptr;
-    return adoptCF(CFDataCreate(nullptr, (const UInt8*)&auditToken, sizeof(auditToken)));
+    Optional<audit_token_t> auditToken = parentProcessConnection()->getAuditToken();
+    if (!auditToken)
+        return nullptr;
+    return adoptCF(CFDataCreate(nullptr, (const UInt8*)&*auditToken, sizeof(*auditToken)));
 #else
     return nullptr;
 #endif

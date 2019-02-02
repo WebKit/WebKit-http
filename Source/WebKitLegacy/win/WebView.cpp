@@ -33,6 +33,7 @@
 #include "DOMCoreClasses.h"
 #include "FullscreenVideoController.h"
 #include "MarshallingHelpers.h"
+#include "PageStorageSessionProvider.h"
 #include "PluginDatabase.h"
 #include "PluginView.h"
 #include "WebApplicationCache.h"
@@ -85,6 +86,7 @@
 #include <WebCore/Chrome.h>
 #include <WebCore/ContextMenu.h>
 #include <WebCore/ContextMenuController.h>
+#include <WebCore/CookieJar.h>
 #include <WebCore/Cursor.h>
 #include <WebCore/DatabaseManager.h>
 #include <WebCore/DeprecatedGlobalSettings.h>
@@ -952,6 +954,19 @@ void WebView::addToDirtyRegion(GDIObject<HRGN> newRegion)
 
 void WebView::scrollBackingStore(FrameView* frameView, int logicalDx, int logicalDy, const IntRect& logicalScrollViewRect, const IntRect& logicalClipRect)
 {
+    if (deviceScaleFactor() != static_cast<int>(deviceScaleFactor())) {
+        // Non-integral device scale factors are causing repaint glitches, because the computation of the scroll
+        // delta in pixel coordinates from the scroll delta in logical coordinates will not always be correct.
+        // Instead of blitting the scroll rectangle, repaint the entire region affected by scrolling.
+        // FIXME: This is inefficient, we should be able to blit the scroll rectangle in this case as well,
+        // see https://bugs.webkit.org/show_bug.cgi?id=193542.
+        IntRect repaintRect = logicalScrollViewRect;
+        repaintRect.move(logicalDx, logicalDy);
+        repaintRect.unite(logicalScrollViewRect);
+        repaint(repaintRect, true);
+        return;
+    }
+
     m_needsDisplay = true;
 
     // Dimensions passed to us from WebCore are in logical units. We must convert to pixels:
@@ -3106,12 +3121,14 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
 
     m_inspectorClient = new WebInspectorClient(this);
 
+    auto storageProvider = PageStorageSessionProvider::create();
     PageConfiguration configuration(
         makeUniqueRef<WebEditorClient>(this),
         SocketProvider::create(),
         makeUniqueRef<LibWebRTCProvider>(),
         WebCore::CacheStorageProvider::create(),
-        BackForwardList::create()
+        BackForwardList::create(),
+        CookieJar::create(storageProvider.copyRef())
     );
     configuration.chromeClient = new WebChromeClient(this);
     configuration.contextMenuClient = new WebContextMenuClient(this);
@@ -3127,6 +3144,7 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
     configuration.pluginInfoProvider = &WebPluginInfoProvider::singleton();
 
     m_page = new Page(WTFMove(configuration));
+    storageProvider->setPage(*m_page);
     provideGeolocationTo(m_page, *new WebGeolocationClient(this));
 
     m_page->addLayoutMilestones({ DidFirstLayout, DidFirstVisuallyNonEmptyLayout });

@@ -279,7 +279,8 @@ String Parser<LexerType>::parseInner(const Identifier& calleeName, SourceParseMo
         VariableEnvironment& lexicalVariables = scope->lexicalVariables();
         const HashSet<UniquedStringImpl*>& closedVariableCandidates = scope->closedVariableCandidates();
         for (UniquedStringImpl* candidate : closedVariableCandidates) {
-            if (!lexicalVariables.contains(candidate) && !varDeclarations.contains(candidate) && !candidate->isSymbol()) {
+            // FIXME: We allow async to leak because it appearing as a closed variable is a side effect of trying to parse async arrow functions.
+            if (!lexicalVariables.contains(candidate) && !varDeclarations.contains(candidate) && !candidate->isSymbol() && candidate != m_vm->propertyNames->async.impl()) {
                 dataLog("Bad global capture in builtin: '", candidate, "'\n");
                 dataLog(m_source->view());
                 CRASH();
@@ -4518,9 +4519,10 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
     }
     case BIGINT: {
         const Identifier* ident = m_token.m_data.bigIntString;
+        uint8_t radix = m_token.m_data.radix;
         JSTokenLocation location(tokenLocation());
         next();
-        return context.createBigInt(location, ident, m_token.m_data.radix);
+        return context.createBigInt(location, ident, radix);
     }
     case STRING: {
         const Identifier* ident = m_token.m_data.ident;

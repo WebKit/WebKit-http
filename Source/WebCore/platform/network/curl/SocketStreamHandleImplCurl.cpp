@@ -39,6 +39,7 @@
 #include "Logging.h"
 #include "SocketStreamError.h"
 #include "SocketStreamHandleClient.h"
+#include "StorageSessionProvider.h"
 #include <wtf/Lock.h>
 #include <wtf/MainThread.h>
 #include <wtf/URL.h>
@@ -46,8 +47,9 @@
 
 namespace WebCore {
 
-SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client)
+SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client, const StorageSessionProvider* provider)
     : SocketStreamHandle(url, client)
+    , m_storageSessionProvider(provider)
 {
     LOG(Network, "SocketStreamHandle %p new client %p", this, &m_client);
     ASSERT(isMainThread());

@@ -58,7 +58,6 @@
 #include "RemoteWebInspectorUIMessages.h"
 #include "SessionState.h"
 #include "SessionStateConversion.h"
-#include "SessionTracker.h"
 #include "ShareSheetCallbackID.h"
 #include "ShareableBitmap.h"
 #include "SharedBufferDataReference.h"
@@ -76,6 +75,7 @@
 #include "WebColorChooser.h"
 #include "WebContextMenu.h"
 #include "WebContextMenuClient.h"
+#include "WebCookieJar.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebDataListSuggestionPicker.h"
 #include "WebDatabaseProvider.h"
@@ -402,7 +402,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_overrideContentSecurityPolicy { parameters.overrideContentSecurityPolicy }
     , m_cpuLimit(parameters.cpuLimit)
 #if PLATFORM(MAC)
-    , m_shouldAttachDrawingAreaOnPageTransition(parameters.shouldDelayAttachingDrawingArea)
+    , m_shouldAttachDrawingAreaOnPageTransition(parameters.isProcessSwap)
 #endif
 {
     ASSERT(m_pageID);
@@ -418,7 +418,8 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
         WebSocketProvider::create(),
         makeUniqueRef<WebKit::LibWebRTCProvider>(),
         WebProcess::singleton().cacheStorageProvider(),
-        WebBackForwardListProxy::create(*this)
+        WebBackForwardListProxy::create(*this),
+        WebCookieJar::create()
     );
     pageConfiguration.chromeClient = new WebChromeClient(*this);
 #if ENABLE(CONTEXT_MENUS)
@@ -471,6 +472,9 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     m_drawingArea = DrawingArea::create(*this, parameters);
     m_drawingArea->setPaintingEnabled(false);
     m_drawingArea->setShouldScaleViewToFitDocument(parameters.shouldScaleViewToFitDocument);
+
+    if (parameters.isProcessSwap)
+        freezeLayerTree(LayerTreeFreezeReason::ProcessSwap);
 
 #if ENABLE(ASYNC_SCROLLING)
     m_useAsyncScrolling = parameters.store.getBoolValueForKey(WebPreferencesKey::threadedScrollingEnabledKey());
@@ -694,7 +698,7 @@ void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
         m_drawingArea->updatePreferences(parameters.store);
         m_drawingArea->setPaintingEnabled(true);
 #if PLATFORM(MAC)
-        m_shouldAttachDrawingAreaOnPageTransition = parameters.shouldDelayAttachingDrawingArea;
+        m_shouldAttachDrawingAreaOnPageTransition = parameters.isProcessSwap;
 #endif
         unfreezeLayerTree(LayerTreeFreezeReason::PageSuspended);
     }
@@ -3043,8 +3047,6 @@ void WebPage::setLayerHostingMode(LayerHostingMode layerHostingMode)
 
 void WebPage::setSessionID(PAL::SessionID sessionID)
 {
-    if (sessionID.isEphemeral())
-        WebProcess::singleton().addWebsiteDataStore(WebsiteDataStoreParameters::privateSessionParameters(sessionID));
     m_page->setSessionID(sessionID);
 }
 
@@ -3053,12 +3055,6 @@ void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, We
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame)
         return;
-    if (policyAction == WebPolicyAction::Suspend) {
-        ASSERT(frame == m_mainFrame);
-        setIsSuspended(true);
-
-        WebProcess::singleton().sendPrewarmInformation(mainWebFrame()->url());
-    }
     frame->didReceivePolicyDecision(listenerID, policyAction, navigationID, downloadID, WTFMove(websitePolicies));
 }
 
@@ -3098,8 +3094,11 @@ void WebPage::didCompletePageTransition()
 {
     unfreezeLayerTree(LayerTreeFreezeReason::PageTransition);
 
-#if PLATFORM(MAC)
     bool isInitialEmptyDocument = !m_mainFrame;
+    if (!isInitialEmptyDocument)
+        unfreezeLayerTree(LayerTreeFreezeReason::ProcessSwap);
+
+#if PLATFORM(MAC)
     if (m_shouldAttachDrawingAreaOnPageTransition && !isInitialEmptyDocument) {
         m_shouldAttachDrawingAreaOnPageTransition = false;
         // Unfreezing the layer tree above schedules a layer flush so we delay attaching the drawing area
@@ -3668,7 +3667,7 @@ NotificationPermissionRequestManager* WebPage::notificationPermissionRequestMana
 void WebPage::performDragControllerAction(DragControllerAction action, const IntPoint& clientPosition, const IntPoint& globalPosition, uint64_t draggingSourceOperationMask, WebSelectionData&& selection, uint32_t flags)
 {
     if (!m_page) {
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }, { }));
         return;
     }
 
@@ -3676,12 +3675,12 @@ void WebPage::performDragControllerAction(DragControllerAction action, const Int
     switch (action) {
     case DragControllerAction::Entered: {
         DragOperation resolvedDragOperation = m_page->dragController().dragEntered(dragData);
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), { }, { }));
         return;
     }
     case DragControllerAction::Updated: {
         DragOperation resolvedDragOperation = m_page->dragController().dragEntered(dragData);
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), { }, { }));
         return;
     }
     case DragControllerAction::Exited:
@@ -3699,24 +3698,24 @@ void WebPage::performDragControllerAction(DragControllerAction action, const Int
 void WebPage::performDragControllerAction(DragControllerAction action, const WebCore::DragData& dragData, SandboxExtension::Handle&& sandboxExtensionHandle, SandboxExtension::HandleArray&& sandboxExtensionsHandleArray)
 {
     if (!m_page) {
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }, { }));
         return;
     }
 
     switch (action) {
     case DragControllerAction::Entered: {
         DragOperation resolvedDragOperation = m_page->dragController().dragEntered(dragData);
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), m_page->dragCaretController().caretRectInRootViewCoordinates()));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), m_page->dragCaretController().caretRectInRootViewCoordinates(), m_page->dragCaretController().editableElementRectInRootViewCoordinates()));
         return;
     }
     case DragControllerAction::Updated: {
         DragOperation resolvedDragOperation = m_page->dragController().dragUpdated(dragData);
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), m_page->dragCaretController().caretRectInRootViewCoordinates()));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(resolvedDragOperation, m_page->dragController().dragHandlingMethod(), m_page->dragController().mouseIsOverFileInput(), m_page->dragController().numberOfItemsToBeAccepted(), m_page->dragCaretController().caretRectInRootViewCoordinates(), m_page->dragCaretController().editableElementRectInRootViewCoordinates()));
         return;
     }
     case DragControllerAction::Exited:
         m_page->dragController().dragExited(dragData);
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }));
+        send(Messages::WebPageProxy::DidPerformDragControllerAction(DragOperationNone, DragHandlingMethod::None, false, 0, { }, { }));
         return;
         
     case DragControllerAction::PerformDragOperation: {
@@ -6309,6 +6308,10 @@ void WebPage::setIsSuspended(bool suspended)
     if (m_isSuspended) {
         // Unfrozen on drawing area reset.
         freezeLayerTree(LayerTreeFreezeReason::PageSuspended);
+
+        WebProcess::singleton().sendPrewarmInformation(mainWebFrame()->url());
+
+        suspendForProcessSwap();
     } else
         m_shouldResetDrawingAreaAfterSuspend = true;
 }

@@ -178,6 +178,8 @@ namespace WebCore {
     macro(StaticRange) \
     macro(StylePropertyMapReadOnly) \
     macro(StylePropertyMap) \
+    macro(UndoItem) \
+    macro(UndoManager) \
     macro(VRDisplay) \
     macro(VRDisplayCapabilities) \
     macro(VRDisplayEvent) \
@@ -190,6 +192,7 @@ namespace WebCore {
     macro(WebGLVertexArrayObject) \
     macro(WebGPU) \
     macro(WebGPUAdapter) \
+    macro(WebGPUBindGroup) \
     macro(WebGPUBindGroupLayout) \
     macro(WebGPUBuffer) \
     macro(WebGPUBufferUsage) \

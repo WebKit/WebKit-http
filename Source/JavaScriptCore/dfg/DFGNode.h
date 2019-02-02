@@ -81,11 +81,6 @@ struct BasicBlock;
 struct StorageAccessData {
     PropertyOffset offset;
     unsigned identifierNumber;
-
-    // This needs to know the inferred type. For puts, this is necessary because we need to remember
-    // what check is needed. For gets, this is necessary because otherwise AI might forget what type is
-    // guaranteed.
-    InferredType::Descriptor inferredType;
 };
 
 struct MultiPutByOffsetData {
@@ -1363,6 +1358,11 @@ public:
         return !!result();
     }
     
+    bool hasInt32Result()
+    {
+        return result() == NodeResultInt32;
+    }
+
     bool hasInt52Result()
     {
         return result() == NodeResultInt52;
@@ -1371,6 +1371,11 @@ public:
     bool hasNumberResult()
     {
         return result() == NodeResultNumber;
+    }
+
+    bool hasNumberOrAnyIntResult()
+    {
+        return hasNumberResult() || hasInt32Result() || hasInt52Result();
     }
     
     bool hasNumericResult()
@@ -1685,6 +1690,9 @@ public:
         case StringReplaceRegExp:
         case ToNumber:
         case ToObject:
+        case ValueBitAnd:
+        case ValueBitOr:
+        case ValueBitXor:
         case CallObjectConstructor:
         case LoadKeyFromMapBucket:
         case LoadValueFromMapBucket:

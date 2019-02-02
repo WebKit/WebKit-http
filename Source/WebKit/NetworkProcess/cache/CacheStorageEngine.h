@@ -59,7 +59,7 @@ class Engine : public RefCounted<Engine>, public CanMakeWeakPtr<Engine> {
 public:
     ~Engine();
 
-    static void from(NetworkProcess&, PAL::SessionID, CompletionHandler<void(Engine&)>&&);
+    static void from(NetworkProcess&, PAL::SessionID, Function<void(Engine&)>&&);
     static void destroyEngine(NetworkProcess&, PAL::SessionID);
     static void fetchEntries(NetworkProcess&, PAL::SessionID, bool shouldComputeSize, CompletionHandler<void(Vector<WebsiteData::Entry>)>&&);
 
@@ -90,8 +90,11 @@ public:
     const NetworkCache::Salt& salt() const { return m_salt.value(); }
     uint64_t nextCacheIdentifier() { return ++m_nextCacheIdentifier; }
 
+    using RequestSpaceCallback = CompletionHandler<void(Optional<uint64_t>)>;
+    void requestSpace(const WebCore::ClientOrigin&, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, RequestSpaceCallback&&);
+
 private:
-    Engine(String&& rootPath, uint64_t quota);
+    Engine(PAL::SessionID, NetworkProcess&, String&& rootPath, uint64_t quota);
 
     void open(const WebCore::ClientOrigin&, const String& cacheName, WebCore::DOMCacheEngine::CacheIdentifierCallback&&);
     void remove(uint64_t cacheIdentifier, WebCore::DOMCacheEngine::CacheIdentifierCallback&&);
@@ -120,15 +123,17 @@ private:
     void initialize(WebCore::DOMCacheEngine::CompletionCallback&&);
 
     using CachesOrError = Expected<std::reference_wrapper<Caches>, WebCore::DOMCacheEngine::Error>;
-    using CachesCallback = CompletionHandler<void(CachesOrError&&)>;
+    using CachesCallback = Function<void(CachesOrError&&)>;
     void readCachesFromDisk(const WebCore::ClientOrigin&, CachesCallback&&);
 
     using CacheOrError = Expected<std::reference_wrapper<Cache>, WebCore::DOMCacheEngine::Error>;
-    using CacheCallback = CompletionHandler<void(CacheOrError&&)>;
+    using CacheCallback = Function<void(CacheOrError&&)>;
     void readCache(uint64_t cacheIdentifier, CacheCallback&&);
 
     Cache* cache(uint64_t cacheIdentifier);
 
+    PAL::SessionID m_sessionID;
+    WeakPtr<NetworkProcess> m_networkProcess;
     HashMap<WebCore::ClientOrigin, RefPtr<Caches>> m_caches;
     uint64_t m_nextCacheIdentifier { 0 };
     String m_rootPath;

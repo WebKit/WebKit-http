@@ -1281,6 +1281,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
 
     case IsEmpty:
     case IsUndefined:
+    case IsUndefinedOrNull:
     case IsBoolean:
     case IsNumber:
     case NumberIsInteger:
@@ -1301,6 +1302,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     child.value().isCell()
                     ? child.value().asCell()->structure(m_vm)->masqueradesAsUndefined(m_codeBlock->globalObjectFor(node->origin.semantic))
                     : child.value().isUndefined()));
+                break;
+            case IsUndefinedOrNull:
+                setConstant(node, jsBoolean(child.value().isUndefinedOrNull()));
                 break;
             case IsBoolean:
                 setConstant(node, jsBoolean(child.value().isBoolean()));
@@ -1389,6 +1393,19 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 break;
             }
             
+            break;
+        case IsUndefinedOrNull:
+            if (!(child.m_type & ~SpecOther)) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+
+            if (!(child.m_type & SpecOther)) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
             break;
         case IsBoolean:
             if (!(child.m_type & ~SpecBoolean)) {
@@ -1917,9 +1934,17 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                         return false;
 
                     Structure* structure = m_vm.getStructure(structureIDLate);
-
-                    if (!isCopyOnWrite(structure->indexingMode()))
+                    switch (node->arrayMode().type()) {
+                    case Array::Int32:
+                    case Array::Contiguous:
+                    case Array::Double:
+                        if (structure->indexingMode() != (toIndexingShape(node->arrayMode().type()) | CopyOnWrite | IsArray))
+                            return false;
+                        break;
+                    default:
                         return false;
+                    }
+                    ASSERT(isCopyOnWrite(structure->indexingMode()));
 
                     JSImmutableButterfly* immutableButterfly = JSImmutableButterfly::fromButterfly(butterfly);
                     if (index < immutableButterfly->length()) {
@@ -2396,12 +2421,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case CallStringConstructor: {
         switch (node->child1().useKind()) {
         case StringObjectUse:
-            // This also filters that the StringObject has the primordial StringObject
-            // structure.
-            filter(
-                node->child1(),
-                m_graph.registerStructure(m_graph.globalObjectFor(node->origin.semantic)->stringObjectStructure()));
-            break;
         case StringOrStringObjectUse:
         case Int32Use:
         case Int52RepUse:
@@ -2524,30 +2543,26 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         bool strictMode = m_graph.executableFor(node->origin.semantic)->isStrictMode();
 
         ToThisResult result = isToThisAnIdentity(m_vm, strictMode, source);
-        if (result != ToThisResult::Dynamic) {
-            switch (result) {
-            case ToThisResult::Identity:
-                m_state.setFoundConstants(true);
+        switch (result) {
+        case ToThisResult::Identity:
+            m_state.setFoundConstants(true);
+            destination = source;
+            break;
+        case ToThisResult::Undefined:
+            setConstant(node, jsUndefined());
+            break;
+        case ToThisResult::GlobalThis:
+            m_state.setFoundConstants(true);
+            destination.setType(m_graph, SpecObject);
+            break;
+        case ToThisResult::Dynamic:
+            if (strictMode)
+                destination.makeHeapTop();
+            else {
                 destination = source;
-                break;
-            case ToThisResult::Undefined:
-                setConstant(node, jsUndefined());
-                break;
-            case ToThisResult::GlobalThis:
-                m_state.setFoundConstants(true);
-                destination.setType(m_graph, SpecObject);
-                break;
-            case ToThisResult::Dynamic:
-                RELEASE_ASSERT_NOT_REACHED();
+                destination.merge(SpecObject);
             }
             break;
-        }
-
-        if (strictMode)
-            destination.makeHeapTop();
-        else {
-            destination = source;
-            destination.merge(SpecObject);
         }
         break;
     }
@@ -2893,8 +2908,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
 
                     result.merge(
                         m_graph.inferredValueForProperty(
-                            value, uid, status[i].offset(), m_state.structureClobberState()));
+                            value, status[i].offset(), m_state.structureClobberState()));
                 }
+            
                 m_state.setFoundConstants(true);
                 didFoldClobberWorld();
                 forNode(node) = result;
@@ -3267,7 +3283,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
     case GetByOffset: {
         StorageAccessData& data = node->storageAccessData();
-        UniquedStringImpl* uid = m_graph.identifiers()[data.identifierNumber];
 
         // FIXME: The part of this that handles inferred property types relies on AI knowing the structure
         // right now. That's probably not optimal. In some cases, we may perform an optimization (usually
@@ -3275,12 +3290,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         // at the point where GetByOffset runs. Currently, when that happens, we'll have to rely entirely
         // on the type that ByteCodeParser was able to prove.
         AbstractValue value = m_graph.inferredValueForProperty(
-            forNode(node->child2()), uid, data.offset, m_state.structureClobberState());
-
-        // It's possible that the type that ByteCodeParser came up with is better.
-        AbstractValue typeFromParsing;
-        typeFromParsing.set(m_graph, data.inferredType, m_state.structureClobberState());
-        value.filter(typeFromParsing);
+            forNode(node->child2()), data.offset, m_state.structureClobberState());
 
         // If we decide that there does not exist any value that this can return, then it's probably
         // because the compilation was already invalidated.
@@ -3319,8 +3329,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         // because of the effect on compile times, but this node is FTL-only.
         m_state.setFoundConstants(true);
         
-        UniquedStringImpl* uid = m_graph.identifiers()[node->multiGetByOffsetData().identifierNumber];
-
         AbstractValue base = forNode(node->child1());
         RegisteredStructureSet baseSet;
         AbstractValue result;
@@ -3339,13 +3347,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     *getCase.method().constant(),
                     m_state.structureClobberState());
                 result.merge(thisResult);
-                break;
-            }
-
-            case GetByOffsetMethod::Load: {
-                result.merge(
-                    m_graph.inferredValueForProperty(
-                        set, uid, m_state.structureClobberState()));
                 break;
             }
 
@@ -3389,7 +3390,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 continue;
 
             AbstractValue thisValue = originalValue;
-            thisValue.filter(m_graph, variant.requiredType());
             resultingValue.merge(thisValue);
             
             if (variant.kind() == PutByIdVariant::Transition) {

@@ -37,6 +37,7 @@
 #import "DOMInternal.h"
 #import "DOMNodeInternal.h"
 #import "DOMRangeInternal.h"
+#import "PageStorageSessionProvider.h"
 #import "StorageThread.h"
 #import "WebAlternativeTextClient.h"
 #import "WebApplicationCacheInternal.h"
@@ -134,6 +135,7 @@
 #import <WebCore/CacheStorageProvider.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/ColorMac.h>
+#import <WebCore/CookieJar.h>
 #import <WebCore/DatabaseManager.h>
 #import <WebCore/DeprecatedGlobalSettings.h>
 #import <WebCore/DictionaryLookup.h>
@@ -375,7 +377,6 @@ SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUNotificationPopoverWillClose, NSString *)
 @end
 
 @interface NSWindow (WebNSWindowDetails)
-- (id)_oldFirstResponderBeforeBecoming;
 - (void)_enableScreenUpdatesIfNeeded;
 - (BOOL)_wrapsCarbonWindow;
 - (BOOL)_hasKeyAppearance;
@@ -1440,12 +1441,14 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->group = WebViewGroup::getOrCreate(groupName, _private->preferences._localStorageDatabasePath);
     _private->group->addWebView(self);
 
+    auto storageProvider = PageStorageSessionProvider::create();
     PageConfiguration pageConfiguration(
         makeUniqueRef<WebEditorClient>(self),
         SocketProvider::create(),
         LibWebRTCProvider::create(),
         WebCore::CacheStorageProvider::create(),
-        BackForwardList::create(self)
+        BackForwardList::create(self),
+        CookieJar::create(storageProvider.copyRef())
     );
 #if !PLATFORM(IOS_FAMILY)
     pageConfiguration.chromeClient = new WebChromeClient(self);
@@ -1476,6 +1479,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.userContentProvider = &_private->group->userContentController();
     pageConfiguration.visitedLinkStore = &_private->group->visitedLinkStore();
     _private->page = new Page(WTFMove(pageConfiguration));
+    storageProvider->setPage(*_private->page);
 
     _private->page->setGroupName(groupName);
 
@@ -1705,12 +1709,14 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->group = WebViewGroup::getOrCreate(groupName, _private->preferences._localStorageDatabasePath);
     _private->group->addWebView(self);
 
+    auto storageProvider = PageStorageSessionProvider::create();
     PageConfiguration pageConfiguration(
         makeUniqueRef<WebEditorClient>(self),
         SocketProvider::create(),
         LibWebRTCProvider::create(),
         WebCore::CacheStorageProvider::create(),
-        BackForwardList::create(self)
+        BackForwardList::create(self),
+        CookieJar::create(storageProvider.copyRef())
     );
     pageConfiguration.chromeClient = new WebChromeClientIOS(self);
 #if ENABLE(DRAG_SUPPORT)
@@ -1732,6 +1738,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.pluginInfoProvider = &WebPluginInfoProvider::singleton();
 
     _private->page = new Page(WTFMove(pageConfiguration));
+    storageProvider->setPage(*_private->page);
     
     [self setSmartInsertDeleteEnabled:YES];
     
@@ -3668,7 +3675,7 @@ IGNORE_WARNINGS_END
     if (!_private->page)
         return nil;
 
-    if (CFURLStorageSessionRef storageSession = _private->page->mainFrame().loader().networkingContext()->storageSession().platformSession())
+    if (auto storageSession = _private->page->mainFrame().loader().networkingContext()->storageSession()->platformSession())
         cachedResponse = cachedResponseForRequest(storageSession, request.get());
     else
         cachedResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:request.get()];
@@ -5297,7 +5304,7 @@ static Vector<String> toStringVector(NSArray* patterns)
 
 - (bool)_effectiveAppearanceIsDark
 {
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if HAVE(OS_DARK_MODE_SUPPORT)
     NSAppearanceName appearance = [[self effectiveAppearance] bestMatchFromAppearancesWithNames:@[ NSAppearanceNameAqua, NSAppearanceNameDarkAqua ]];
     return [appearance isEqualToString:NSAppearanceNameDarkAqua];
 #else
@@ -9251,7 +9258,7 @@ FORWARD(toggleUnderline)
     if (!networkingContext)
         return;
 
-    networkingContext->storageSession().credentialStorage().clearCredentials();
+    networkingContext->storageSession()->credentialStorage().clearCredentials();
 }
 
 - (BOOL)_needsOneShotDrawingSynchronization

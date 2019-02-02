@@ -1117,6 +1117,9 @@ private:
         case IsUndefined:
             compileIsUndefined();
             break;
+        case IsUndefinedOrNull:
+            compileIsUndefinedOrNull();
+            break;
         case IsBoolean:
             compileIsBoolean();
             break;
@@ -6323,26 +6326,26 @@ private:
         case StringObjectUse: {
             LValue cell = lowCell(m_node->child1());
             speculateStringObjectForCell(m_node->child1(), cell);
-            m_interpreter.filter(m_node->child1(), SpecStringObject);
-            
             setJSValue(m_out.loadPtr(cell, m_heaps.JSWrapperObject_internalValue));
             return;
         }
             
         case StringOrStringObjectUse: {
             LValue cell = lowCell(m_node->child1());
-            LValue structureID = m_out.load32(cell, m_heaps.JSCell_structureID);
+            LValue type = m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType);
             
             LBasicBlock notString = m_out.newBlock();
             LBasicBlock continuation = m_out.newBlock();
             
             ValueFromBlock simpleResult = m_out.anchor(cell);
             m_out.branch(
-                m_out.equal(structureID, m_out.constInt32(vm().stringStructure->id())),
+                m_out.equal(type, m_out.constInt32(StringType)),
                 unsure(continuation), unsure(notString));
             
             LBasicBlock lastNext = m_out.appendTo(notString, continuation);
-            speculateStringObjectForStructureID(m_node->child1(), structureID);
+            speculate(
+                BadType, jsValueValue(cell), m_node->child1().node(),
+                m_out.notEqual(type, m_out.constInt32(StringObjectType)));
             ValueFromBlock unboxedResult = m_out.anchor(
                 m_out.loadPtr(cell, m_heaps.JSWrapperObject_internalValue));
             m_out.jump(continuation);
@@ -6587,7 +6590,7 @@ private:
     
     void compileStringCharAt()
     {
-        LValue base = lowCell(m_graph.child(m_node, 0));
+        LValue base = lowString(m_graph.child(m_node, 0));
         LValue index = lowInt32(m_graph.child(m_node, 1));
         LValue storage = lowStorage(m_graph.child(m_node, 2));
             
@@ -6701,7 +6704,7 @@ private:
         LBasicBlock is16Bit = m_out.newBlock();
         LBasicBlock continuation = m_out.newBlock();
 
-        LValue base = lowCell(m_node->child1());
+        LValue base = lowString(m_node->child1());
         LValue index = lowInt32(m_node->child2());
         LValue storage = lowStorage(m_node->child3());
         
@@ -6917,8 +6920,6 @@ private:
             
             PutByIdVariant variant = data.variants[i];
 
-            checkInferredType(m_node->child2(), value, variant.requiredType());
-            
             LValue storage;
             if (variant.kind() == PutByIdVariant::Replace) {
                 if (isInlineOffset(variant.offset()))
@@ -9323,6 +9324,11 @@ private:
     {
         setBoolean(equalNullOrUndefined(m_node->child1(), AllCellsAreFalse, EqualUndefined));
     }
+
+    void compileIsUndefinedOrNull()
+    {
+        setBoolean(isOther(lowJSValue(m_node->child1()), provenType(m_node->child1())));
+    }
     
     void compileIsBoolean()
     {
@@ -11522,148 +11528,6 @@ private:
         return m_out.phi(Int32, results);
     }
 
-    void checkInferredType(Edge edge, LValue value, const InferredType::Descriptor& type)
-    {
-        // This cannot use FTL_TYPE_CHECK or typeCheck() because it is called partially, as in a node like:
-        //
-        //     MultiPutByOffset(...)
-        //
-        // may be lowered to:
-        //
-        //     switch (object->structure) {
-        //     case 42:
-        //         checkInferredType(..., type1);
-        //         ...
-        //         break;
-        //     case 43:
-        //         checkInferredType(..., type2);
-        //         ...
-        //         break;
-        //     }
-        //
-        // where type1 and type2 are different. Using typeCheck() would mean that the edge would be
-        // filtered by type1 & type2, instead of type1 | type2.
-        
-        switch (type.kind()) {
-        case InferredType::Bottom:
-            speculate(BadType, jsValueValue(value), edge.node(), m_out.booleanTrue);
-            return;
-
-        case InferredType::Boolean:
-            speculate(BadType, jsValueValue(value), edge.node(), isNotBoolean(value, provenType(edge)));
-            return;
-
-        case InferredType::Other:
-            speculate(BadType, jsValueValue(value), edge.node(), isNotOther(value, provenType(edge)));
-            return;
-
-        case InferredType::Int32:
-            speculate(BadType, jsValueValue(value), edge.node(), isNotInt32(value, provenType(edge)));
-            return;
-
-        case InferredType::Number:
-            speculate(BadType, jsValueValue(value), edge.node(), isNotNumber(value, provenType(edge)));
-            return;
-
-        case InferredType::String:
-            speculate(BadType, jsValueValue(value), edge.node(), isNotCell(value, provenType(edge)));
-            speculate(BadType, jsValueValue(value), edge.node(), isNotString(value, provenType(edge)));
-            return;
-
-        case InferredType::Symbol:
-            speculate(BadType, jsValueValue(value), edge.node(), isNotCell(value, provenType(edge)));
-            speculate(BadType, jsValueValue(value), edge.node(), isNotSymbol(value, provenType(edge)));
-            return;
-
-        case InferredType::BigInt:
-            speculate(BadType, jsValueValue(value), edge.node(), isNotCell(value, provenType(edge)));
-            speculate(BadType, jsValueValue(value), edge.node(), isNotBigInt(value, provenType(edge)));
-            return;
-
-        case InferredType::ObjectWithStructure: {
-            RegisteredStructure structure = m_graph.registerStructure(type.structure());
-            speculate(BadType, jsValueValue(value), edge.node(), isNotCell(value, provenType(edge)));
-            if (!abstractValue(edge).m_structure.isSubsetOf(RegisteredStructureSet(structure))) {
-                speculate(
-                    BadType, jsValueValue(value), edge.node(),
-                    m_out.notEqual(
-                        m_out.load32(value, m_heaps.JSCell_structureID),
-                        weakStructureID(structure)));
-            }
-            return;
-        }
-
-        case InferredType::ObjectWithStructureOrOther: {
-            LBasicBlock cellCase = m_out.newBlock();
-            LBasicBlock notCellCase = m_out.newBlock();
-            LBasicBlock continuation = m_out.newBlock();
-
-            m_out.branch(isCell(value, provenType(edge)), unsure(cellCase), unsure(notCellCase));
-
-            LBasicBlock lastNext = m_out.appendTo(cellCase, notCellCase);
-
-            RegisteredStructure structure = m_graph.registerStructure(type.structure());
-            if (!abstractValue(edge).m_structure.isSubsetOf(RegisteredStructureSet(structure))) {
-                speculate(
-                    BadType, jsValueValue(value), edge.node(),
-                    m_out.notEqual(
-                        m_out.load32(value, m_heaps.JSCell_structureID),
-                        weakStructureID(structure)));
-            }
-
-            m_out.jump(continuation);
-
-            m_out.appendTo(notCellCase, continuation);
-
-            speculate(
-                BadType, jsValueValue(value), edge.node(),
-                isNotOther(value, provenType(edge) & ~SpecCell));
-
-            m_out.jump(continuation);
-
-            m_out.appendTo(continuation, lastNext);
-            return;
-        }
-
-        case InferredType::Object:
-            speculate(BadType, jsValueValue(value), edge.node(), isNotCell(value, provenType(edge)));
-            speculate(BadType, jsValueValue(value), edge.node(), isNotObject(value, provenType(edge)));
-            return;
-
-        case InferredType::ObjectOrOther: {
-            LBasicBlock cellCase = m_out.newBlock();
-            LBasicBlock notCellCase = m_out.newBlock();
-            LBasicBlock continuation = m_out.newBlock();
-
-            m_out.branch(isCell(value, provenType(edge)), unsure(cellCase), unsure(notCellCase));
-
-            LBasicBlock lastNext = m_out.appendTo(cellCase, notCellCase);
-
-            speculate(
-                BadType, jsValueValue(value), edge.node(),
-                isNotObject(value, provenType(edge) & SpecCell));
-
-            m_out.jump(continuation);
-
-            m_out.appendTo(notCellCase, continuation);
-
-            speculate(
-                BadType, jsValueValue(value), edge.node(),
-                isNotOther(value, provenType(edge) & ~SpecCell));
-
-            m_out.jump(continuation);
-
-            m_out.appendTo(continuation, lastNext);
-            return;
-        }
-
-        case InferredType::Top:
-            return;
-        }
-
-        DFG_CRASH(m_graph, m_node, "Bad inferred type");
-    }
-    
     LValue loadProperty(LValue storage, unsigned identifierNumber, PropertyOffset offset)
     {
         return m_out.load64(addressOfProperty(storage, identifierNumber, offset));
@@ -16187,49 +16051,44 @@ private:
             return;
         
         speculateStringObjectForCell(edge, lowCell(edge));
-        m_interpreter.filter(edge, SpecStringObject);
     }
     
     void speculateStringOrStringObject(Edge edge)
     {
         if (!m_interpreter.needsTypeCheck(edge, SpecString | SpecStringObject))
             return;
+
+        LValue cellBase = lowCell(edge);
+        if (!m_interpreter.needsTypeCheck(edge, SpecString | SpecStringObject))
+            return;
         
         LBasicBlock notString = m_out.newBlock();
         LBasicBlock continuation = m_out.newBlock();
         
-        LValue structureID = m_out.load32(lowCell(edge), m_heaps.JSCell_structureID);
+        LValue type = m_out.load8ZeroExt32(cellBase, m_heaps.JSCell_typeInfoType);
         m_out.branch(
-            m_out.equal(structureID, m_out.constInt32(vm().stringStructure->id())),
+            m_out.equal(type, m_out.constInt32(StringType)),
             unsure(continuation), unsure(notString));
         
         LBasicBlock lastNext = m_out.appendTo(notString, continuation);
-        speculateStringObjectForStructureID(edge, structureID);
+        speculate(
+            BadType, jsValueValue(cellBase), edge.node(),
+            m_out.notEqual(type, m_out.constInt32(StringObjectType)));
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
-        
         m_interpreter.filter(edge, SpecString | SpecStringObject);
     }
     
     void speculateStringObjectForCell(Edge edge, LValue cell)
     {
-        speculateStringObjectForStructureID(edge, m_out.load32(cell, m_heaps.JSCell_structureID));
+        if (!m_interpreter.needsTypeCheck(edge, SpecStringObject))
+            return;
+
+        LValue type = m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType);
+        FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecStringObject, m_out.notEqual(type, m_out.constInt32(StringObjectType)));
     }
     
-    void speculateStringObjectForStructureID(Edge edge, LValue structureID)
-    {
-        RegisteredStructure stringObjectStructure =
-            m_graph.registerStructure(m_graph.globalObjectFor(m_node->origin.semantic)->stringObjectStructure());
-
-        if (abstractStructure(edge).isSubsetOf(RegisteredStructureSet(stringObjectStructure)))
-            return;
-        
-        speculate(
-            NotStringObject, noValue(), 0,
-            m_out.notEqual(structureID, weakStructureID(stringObjectStructure)));
-    }
-
     void speculateSymbol(Edge edge, LValue cell)
     {
         FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecSymbol, isNotSymbol(cell));

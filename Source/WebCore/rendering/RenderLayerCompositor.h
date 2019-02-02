@@ -107,7 +107,7 @@ public:
     void addScrollingLayer(RenderLayer&);
     void removeScrollingLayer(RenderLayer&, RenderLayerBacking&);
 
-    void didFlushChangesForLayer(RenderLayer&);
+    void didChangePlatformLayerForLayer(RenderLayer&);
 
 private:
     void updateScrollingLayer(RenderLayer&);
@@ -159,9 +159,9 @@ public:
     // at specific times.
     void scheduleLayerFlush(bool canThrottle);
     void flushPendingLayerChanges(bool isFlushRoot = true);
-    
+
     // Called when the GraphicsLayer for the given RenderLayer has flushed changes inside of flushPendingLayerChanges().
-    void didFlushChangesForLayer(RenderLayer&, const GraphicsLayer*);
+    void didChangePlatformLayerForLayer(RenderLayer&, const GraphicsLayer*);
 
     // Called when something outside WebKit affects the visible rect (e.g. delegated scrolling). Might schedule a layer flush.
     void didChangeVisibleRect();
@@ -289,8 +289,7 @@ public:
     float contentsScaleMultiplierForNewTiles(const GraphicsLayer*) const override;
     float pageScaleFactor() const override;
     float zoomedOutPageScaleFactor() const override;
-
-    void didCommitChangesForLayer(const GraphicsLayer*) const override;
+    void didChangePlatformLayerForLayer(const GraphicsLayer*) override { }
     void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) override;
 
     void layerTiledBackingUsageChanged(const GraphicsLayer*, bool /*usingTiledBacking*/);
@@ -324,6 +323,8 @@ public:
 
     void updateScrollCoordinatedStatus(RenderLayer&, OptionSet<ScrollingNodeChangeFlags>);
     void removeFromScrollCoordinatedLayers(RenderLayer&);
+
+    bool useCoordinatedScrollingForLayer(const RenderLayer&) const;
 
     void willRemoveScrollingLayerWithBacking(RenderLayer&, RenderLayerBacking&);
     void didAddScrollingLayer(RenderLayer&);
@@ -473,7 +474,7 @@ private:
 
     void updateCustomLayersAfterFlush();
 
-    void updateScrollCoordinationForThisFrame(ScrollingNodeID);
+    void updateScrollCoordinationForThisFrame(ScrollingNodeID, OptionSet<ScrollingNodeChangeFlags>);
     ScrollingNodeID attachScrollingNode(RenderLayer&, ScrollingNodeType, ScrollingNodeID parentNodeID);
     void updateScrollCoordinatedLayer(RenderLayer&, OptionSet<ScrollCoordinationRole>, OptionSet<ScrollingNodeChangeFlags>);
     void detachScrollCoordinatedLayer(RenderLayer&, OptionSet<ScrollCoordinationRole>);
@@ -493,7 +494,6 @@ private:
 
     // True if the FrameView uses a ScrollingCoordinator.
     bool hasCoordinatedScrolling() const;
-    bool useCoordinatedScrollingForLayer(const RenderLayer&) const;
 
     // FIXME: make the coordinated/async terminology consistent.
     bool isAsyncScrollableStickyLayer(const RenderLayer&, const RenderLayer** enclosingAcceleratedOverflowLayer = nullptr) const;

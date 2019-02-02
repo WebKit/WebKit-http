@@ -1,3 +1,908 @@
+2019-01-17  John Wilander  <wilander@apple.com>
+
+        Add infrastructure to enable/disable ITP Debug Mode through Preferences
+        https://bugs.webkit.org/show_bug.cgi?id=193510
+        <rdar://problem/47330969>
+
+        Reviewed by Dean Jackson.
+
+        * http/tests/resourceLoadStatistics/set-custom-prevalent-resource-in-debug-mode.html:
+            Changed the order of function calls since testRunner.setStatisticsPrevalentResourceForDebugMode()
+            now has to be called before testRunner.setStatisticsDebugMode().
+
+2019-01-16  Dean Jackson  <dino@apple.com>
+
+        (iPad) Link tapping is sluggish on many sites
+        https://bugs.webkit.org/show_bug.cgi?id=193522
+        <rdar://problem/47102987>
+
+        Reviewed by Wenson Hsieh.
+
+        Add a test that checks a double tap will trigger a click
+        event on a page that is at initial scale.
+
+        Extra bonus: for some reason adding this test, or making this code
+        change, uncovered a couple of bugs in existing tests. The
+        viewport-zooms-from-element-to-initial-scale test was completely wrong
+        because it was expecting the incorrect result, which was triggered by
+        the zoom callback firing early at a forced scale value. The
+        viewport-no-width-value-allows-double-tap test was triggering a JS
+        error in its UI script. I modernised both of these to use UIHelper instead.
+
+        * fast/events/ios/fast-click-double-tap-sends-click-when-initial-scale-expected.txt: Added.
+        * fast/events/ios/fast-click-double-tap-sends-click-when-initial-scale.html: Added.
+        * fast/events/ios/viewport-no-width-value-allows-double-tap.html:
+        * fast/events/ios/viewport-zooms-from-element-to-initial-scale-expected.txt:
+        * fast/events/ios/viewport-zooms-from-element-to-initial-scale.html:
+        * resources/ui-helper.js: Add doubleTapAt and zoomByDoubleTapAt helpers. Remove the
+        unnecessary "Done" return value from many of the callbacks. Give zoomToScale a return
+        value.
+        (window.UIHelper.tapAt.return.new.Promise):
+        (window.UIHelper.tapAt):
+        (window.UIHelper.doubleTapAt.return.new.Promise):
+        (window.UIHelper.doubleTapAt):
+        (window.UIHelper.zoomByDoubleTappingAt):
+        (window.UIHelper.activateAt.return.new.Promise):
+        (window.UIHelper.activateAt):
+        (window.UIHelper.toggleCapsLock):
+        (window.UIHelper.ensurePresentationUpdate.return.new.Promise):
+        (window.UIHelper.ensurePresentationUpdate):
+        (window.UIHelper.activateAndWaitForInputSessionAt.return.new.Promise.):
+        (window.UIHelper.activateFormControl.return.new.Promise.):
+        (window.UIHelper.replaceTextAtRange):
+        (window.UIHelper.zoomToScale):
+        (window.UIHelper.stylusTapAt.return.new.Promise):
+        (window.UIHelper.stylusTapAt):
+
+2019-01-17  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test js/dfg-int-overflow-in-loop.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=193540
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-01-17  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Get rid of Sputnik tests.
+        https://bugs.webkit.org/show_bug.cgi?id=193464
+
+        Rubber stamped by Saam Barati.
+
+        * sputnik/: Removed.
+        * platform/gtk/sputnik/: Removed.
+        * platform/ios/sputnik/: Removed.
+        * platform/mac/sputnik/: Removed.
+        * platform/wpe/sputnik/: Removed.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+        * platform/wpe/TestExpectations:
+        Remove all sputnik/ lines.
+
+2019-01-16  Alicia Boya García  <aboya@igalia.com>
+
+        Unreviewed GTK and WPE test gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=193521
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/security/dangling-markup-mitigation-data-url.tentative.sub-expected.txt: Added.
+        * platform/gtk/inspector/canvas/recording-bitmaprenderer-expected.txt:
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/security/dangling-markup-mitigation-data-url.tentative.sub-expected.txt: Added.
+
+2019-01-16  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Update vertex-buffer-triangle-strip.html to actually use vertex buffer
+        https://bugs.webkit.org/show_bug.cgi?id=193473
+
+        Reviewed by Dean Jackson and Myles Maxfield.
+
+        Refactor the vertex shader to use the vertex stage input, rather than buffer resources. 
+
+        * webgpu/vertex-buffer-triangle-strip.html:
+
+2019-01-16  Chris Dumez  <cdumez@apple.com>
+
+        Regression(PSON) View becomes blank after click a cross-site download link
+        https://bugs.webkit.org/show_bug.cgi?id=193361
+        <rdar://problem/47099573>
+
+        Reviewed by Geoffrey Garen.
+
+        Skip test testing the cross-process DOMWindow API as I broke it with this patch.
+        The feature is far from ready and off by default anyway. I will add support back
+        in a follow-up.
+
+        * platform/wk2/TestExpectations:
+
+2019-01-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Out-of-flow] Set used vertical margin values when top/height/bottom are non-auto.
+        https://bugs.webkit.org/show_bug.cgi?id=193470
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/non-auto-top-bottom-height-with-margins-expected.txt: Added.
+        * fast/block/block-only/non-auto-top-bottom-height-with-margins.html: Added.
+
+2019-01-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Adjust margin box verification.
+        https://bugs.webkit.org/show_bug.cgi?id=193482
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/non-auto-top-bottom-height-with-auto-margins-expected.txt: Added.
+        * fast/block/block-only/non-auto-top-bottom-height-with-auto-margins.html: Added.
+
+2019-01-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        VisualViewport API should be updated upon opening of keyboard
+        https://bugs.webkit.org/show_bug.cgi?id=193475
+
+        Reviewed by Simon Fraser.
+
+        Added a regression test.
+
+        * fast/visual-viewport/ios/resize-event-for-keyboard-expected.txt: Added.
+        * fast/visual-viewport/ios/resize-event-for-keyboard.html: Added.
+
+2019-01-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r239993, r239995, r239997, and
+        r239999.
+
+        Caused assertions under
+        ViewGestureController::disconnectFromProcess()
+
+        Reverted changesets:
+
+        "Regression(PSON) View becomes blank after click a cross-site
+        download link"
+        https://bugs.webkit.org/show_bug.cgi?id=193361
+        https://trac.webkit.org/changeset/239993
+
+        "Unreviewed iOS build fix after r239993."
+        https://trac.webkit.org/changeset/239995
+
+        "Fix iOS build after r239993"
+        https://bugs.webkit.org/show_bug.cgi?id=193361
+        https://trac.webkit.org/changeset/239997
+
+        "Unreviewed, revert part of r239997 as it is not needed to fix
+        the build."
+        https://trac.webkit.org/changeset/239999
+
+2019-01-15  Chris Dumez  <cdumez@apple.com>
+
+        Regression(PSON) View becomes blank after click a cross-site download link
+        https://bugs.webkit.org/show_bug.cgi?id=193361
+        <rdar://problem/47099573>
+
+        Reviewed by Geoff Garen.
+
+        Skip test testing the cross-process DOMWindow API as I broke it with this patch.
+        The feature is far from ready and off by default anyway. I will add support back
+        in a follow-up.
+
+        * platform/wk2/TestExpectations:
+
+2019-01-15  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Out-of-flow] Ignore bottom when the vertical values are over-constrained
+        https://bugs.webkit.org/show_bug.cgi?id=193448
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/non-auto-top-bottom-left-right-widht-height-out-of-flow-expected.txt: Added.
+        * fast/block/block-only/non-auto-top-bottom-left-right-widht-height-out-of-flow.html: Added.
+
+2019-01-15  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, test fix after r239976.
+
+        * inspector/model/remote-object-expected.txt:
+
+2019-01-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: provide a way to determine whether a give node has event listeners
+        https://bugs.webkit.org/show_bug.cgi?id=193226
+        <rdar://problem/46800005>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/audit/run-dom.html: Added.
+        * inspector/audit/run-dom-expected.txt: Added.
+
+2019-01-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: provide a way to query for all nodes with a given computed Accessibility role
+        https://bugs.webkit.org/show_bug.cgi?id=193228
+        <rdar://problem/46787787>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/audit/run-accessibility.html: Added.
+        * inspector/audit/run-accessibility-expected.txt: Added.
+
+2019-01-15  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Use the containing block's padding box to position out-of-flow elements.
+        https://bugs.webkit.org/show_bug.cgi?id=193431
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/out-of-flow-with-containing-block-border-padding-expected.txt: Added.
+        * fast/block/block-only/out-of-flow-with-containing-block-border-padding.html: Added.
+
+2019-01-15  Guillaume Emont  <guijemont@igalia.com>
+
+        Skip a slow test and a flakey test on arm
+
+        Unreviewed gardening.
+
+        * js/script-tests/stack-overflow-regexp.js: flakey on arm.
+
+2019-01-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: create new IDL type for exposing special functionality in test context
+        https://bugs.webkit.org/show_bug.cgi?id=193149
+        <rdar://problem/46801218>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/audit/resources/audit-utilities.js:
+        (TestPage.registerInitializer.InspectorTest.Audit.setupAudit): Added.
+        (TestPage.registerInitializer.InspectorTest.Audit.teardownAudit): Added.
+
+        * inspector/audit/run.html: Added.
+        * inspector/audit/run-expected.txt: Added.
+        * inspector/audit/setup.html: Added.
+        * inspector/audit/setup-expected.txt: Added.
+        * inspector/audit/teardown.html: Added.
+        * inspector/audit/teardown-expected.txt: Added.
+
+        * inspector/canvas/create-context-2d-expected.txt:
+        * inspector/canvas/create-context-bitmaprenderer-expected.txt:
+        * inspector/canvas/create-context-webgl-expected.txt:
+        * inspector/canvas/create-context-webgl2-expected.txt:
+        * inspector/canvas/create-context-webmetal-expected.txt:
+        * inspector/canvas/recording-2d-expected.txt:
+        * inspector/canvas/recording-webgl-expected.txt:
+        * inspector/canvas/recording-webgl-snapshots-expected.txt:
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/stack-trace-expected.txt:
+
+2019-01-14  Alex Christensen  <achristensen@webkit.org>
+
+        Bulgarian TLD should not punycode-encode URLs with Bulgarian Cyrillic characters
+        https://bugs.webkit.org/show_bug.cgi?id=193411
+        <rdar://problem/47215929>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/url/user-visible/cyrillic-NFD-expected.txt:
+        * fast/url/user-visible/cyrillic-NFD.html:
+
+2019-01-14  John Wilander  <wilander@apple.com>
+
+        Restructure http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html to address flakiness
+        https://bugs.webkit.org/show_bug.cgi?id=191211
+        <rdar://problem/45818606>
+
+        Unreviewed test gardening.
+
+        This test is flaky on the MacOS WK2 bot. The patch avoids a page navigation and
+        redirect which may avoid the code that changed in
+        https://trac.webkit.org/changeset/237735/webkit and made the test more flaky.
+
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html:
+
+2019-01-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Animation and other code is too aggressive about invalidating layer composition
+        https://bugs.webkit.org/show_bug.cgi?id=193343
+
+        Reviewed by Antoine Quint.
+        
+        This test was clobbering the 'box' class on the animating element and therefore making it disappear.
+
+        * legacy-animation-engine/compositing/animation/animation-compositing.html:
+
+2019-01-14  Charles Vazac  <cvazac@akamai.com>
+
+        Import current Resource-Timing WPTs
+        https://bugs.webkit.org/show_bug.cgi?id=193302
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        * tests-options.json:
+
+2019-01-14  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, test fixes after r239852.
+
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-create-success-u2f.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-u2f.https.html:
+
+2019-01-14  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Map WebGPUBindGroupLayoutBindings from the BindGroupLayoutDescriptor for error checking and later referencing
+        https://bugs.webkit.org/show_bug.cgi?id=193405
+
+        Reviewed by Dean Jackson.
+
+        Small fixes that do not alter behavior.
+
+        * webgpu/bind-groups.html:
+        * webgpu/pipeline-layouts.html:
+
+2019-01-14  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Add basic box-sizing support.
+        https://bugs.webkit.org/show_bug.cgi?id=193392
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/box-sizing-inflow-out-of-flow-simple-expected.txt: Added.
+        * fast/block/block-only/box-sizing-inflow-out-of-flow-simple.html: Added.
+
+2019-01-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening. Updating baselines for failures that in
+        majority of cases can be tracked down to the test fonts bump in r239436.
+
+        * platform/wpe/animations/lineheight-animation-expected.txt:
+        * platform/wpe/animations/simultaneous-start-transform-expected.txt:
+        * platform/wpe/animations/width-using-ems-expected.txt:
+        * platform/wpe/css1/font_properties/font-expected.txt:
+        * platform/wpe/css3/unicode-bidi-isolate-basic-expected.txt:
+        * platform/wpe/fast/css/line-height-determined-by-primary-font-expected.txt:
+        * platform/wpe/fast/css/rtl-ordering-expected.txt:
+        * platform/wpe/fast/css/text-overflow-ellipsis-bidi-expected.txt:
+        * platform/wpe/fast/css/text-overflow-ellipsis-expected.txt:
+        * platform/wpe/fast/css/text-overflow-ellipsis-strict-expected.txt:
+        * platform/wpe/fast/css/word-space-extra-expected.txt:
+        * platform/wpe/fast/dom/34176-expected.txt:
+        * platform/wpe/fast/dom/52776-expected.txt:
+        * platform/wpe/fast/inline/inline-box-background-expected.txt:
+        * platform/wpe/fast/inline/inline-box-background-long-image-expected.txt:
+        * platform/wpe/fast/inline/inline-box-background-repeat-x-expected.txt:
+        * platform/wpe/fast/inline/inline-box-background-repeat-y-expected.txt:
+        * platform/wpe/fast/inline/inline-content-with-float-and-margin-expected.txt: Added.
+        * platform/wpe/fast/inline/simple-inline-inflow-positioned-expected.txt: Added.
+        * platform/wpe/fast/inline/simple-inline-with-out-of-flow-descendant-expected.txt: Added.
+        * platform/wpe/fast/inline/simple-inline-with-out-of-flow-descendant2-expected.txt: Added.
+        * platform/wpe/svg/W3C-I18N/text-anchor-dirLTR-anchorEnd-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-dirLTR-anchorMiddle-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-dirLTR-anchorStart-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-dirNone-anchorEnd-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-dirNone-anchorMiddle-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-dirNone-anchorStart-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-dirRTL-anchorEnd-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-dirRTL-anchorMiddle-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-dirRTL-anchorStart-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-inherited-dirLTR-anchorEnd-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-inherited-dirLTR-anchorMiddle-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-inherited-dirLTR-anchorStart-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-inherited-dirRTL-anchorEnd-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-inherited-dirRTL-anchorMiddle-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-inherited-dirRTL-anchorStart-expected.txt:
+        * platform/wpe/svg/W3C-I18N/text-anchor-no-markup-expected.txt:
+        * platform/wpe/svg/W3C-SVG-1.1-SE/svgdom-over-01-f-expected.txt:
+        * platform/wpe/svg/W3C-SVG-1.1-SE/text-intro-02-b-expected.txt:
+        * platform/wpe/svg/W3C-SVG-1.1-SE/text-intro-09-b-expected.txt:
+        * platform/wpe/svg/W3C-SVG-1.1/text-tselect-02-f-expected.txt:
+        * platform/wpe/svg/custom/glyph-selection-bidi-mirror-expected.txt:
+        * platform/wpe/svg/custom/svg-fonts-fallback-expected.txt:
+        * platform/wpe/svg/hixie/perf/007-expected.txt:
+        * platform/wpe/svg/text/bidi-embedded-direction-expected.txt:
+        * platform/wpe/svg/text/bidi-reorder-value-lists-expected.txt: Added.
+        * platform/wpe/svg/text/bidi-text-anchor-direction-expected.txt:
+        * platform/wpe/svg/text/text-tselect-02-f-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/backgr_layers-opacity-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/backgr_position-table-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/backgr_simple-table-cell-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/backgr_simple-table-column-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/backgr_simple-table-column-group-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/backgr_simple-table-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/backgr_simple-table-row-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/backgr_simple-table-row-group-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_border-table-cell-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_border-table-column-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_border-table-column-group-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_border-table-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_border-table-quirks-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_border-table-row-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_border-table-row-group-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_fixed-bg-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_layers-hide-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_layers-show-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_position-table-cell-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_position-table-column-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_position-table-column-group-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_position-table-row-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_position-table-row-group-expected.txt:
+
+2019-01-14  Karl Leplat  <karl.leplat_ext@softathome.com>
+
+        [GTK][WPE] Graphic issue with invalidations on composited layers with subpixel positions
+        https://bugs.webkit.org/show_bug.cgi?id=193239
+
+        Reviewed by Žan Doberšek.
+
+        * compositing/repaint/invalidations-on-composited-layers-with-subpixel-positions.html: Added.
+        * platform/gtk/compositing/repaint/invalidations-on-composited-layers-with-subpixel-positions-expected.png: Added.
+        * platform/gtk/compositing/repaint/invalidations-on-composited-layers-with-subpixel-positions-expected.txt: Added.
+        * platform/ios/compositing/repaint/invalidations-on-composited-layers-with-subpixel-positions-expected.png: Added.
+        * platform/ios/compositing/repaint/invalidations-on-composited-layers-with-subpixel-positions-expected.txt: Added.
+        * platform/mac/compositing/repaint/invalidations-on-composited-layers-with-subpixel-positions-expected.png: Added.
+        * platform/mac/compositing/repaint/invalidations-on-composited-layers-with-subpixel-positions-expected.txt: Added.
+        * platform/wpe/compositing/repaint/invalidations-on-composited-layers-with-subpixel-positions-expected.png: Added.
+        * platform/wpe/compositing/repaint/invalidations-on-composited-layers-with-subpixel-positions-expected.txt: Added.
+
+2019-01-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [FreeType] Support emoji modifiers
+        https://bugs.webkit.org/show_bug.cgi?id=177040
+
+        Reviewed by Myles C. Maxfield.
+
+        Mark several emoji tests as passing now.
+
+        * platform/gtk/TestExpectations:
+
+2019-01-13  Antti Koivisto  <antti@apple.com>
+
+        Release assert with <img usemap> in shadow tree
+        https://bugs.webkit.org/show_bug.cgi?id=193378
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/image-map-tree-scope.html:
+
+2019-01-12  Timothy Hatcher  <timothy@apple.com>
+
+        Have prefers-color-scheme: light always match on macOS versions before Mojave.
+        https://bugs.webkit.org/show_bug.cgi?id=191655
+        rdar://problem/46074680
+
+        Reviewed by Megan Gardner.
+
+        * css-dark-mode/older-systems/prefers-color-scheme-expected.txt: Added.
+        * css-dark-mode/older-systems/prefers-color-scheme.html: Added.
+        * css-dark-mode/older-systems/supported-color-schemes-css-expected.txt: Added.
+        * css-dark-mode/older-systems/supported-color-schemes-css.html: Added.
+        * css-dark-mode/older-systems/supported-color-schemes-expected.txt: Added.
+        * css-dark-mode/older-systems/supported-color-schemes.html: Added.
+        * platform/mac/TestExpectations:
+
+2019-01-11  John Wilander  <wilander@apple.com>
+
+        Compile out Web API Statistics Collection
+        https://bugs.webkit.org/show_bug.cgi?id=193370
+        <rdar://problem/45388584>
+
+        Reviewed by Brent Fulgham.
+
+        * platform/ios-wk2/TestExpectations:
+            http/tests/webAPIStatistics skipped.
+        * platform/mac-wk2/TestExpectations:
+            http/tests/webAPIStatistics skipped.
+
+2019-01-11  Antti Koivisto  <antti@apple.com>
+
+        Release assert when removing element with a map element in the shadow tree
+        https://bugs.webkit.org/show_bug.cgi?id=193351
+        <rdar://problem/47208807>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/image-map-tree-scope-expected.txt: Added.
+        * fast/shadow-dom/image-map-tree-scope.html: Added.
+
+2019-01-11  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable DFG on ARM/Linux again
+        https://bugs.webkit.org/show_bug.cgi?id=192496
+
+        Reviewed by Yusuke Suzuki.
+
+        After changing the bytecode format DFG was disabled on all 32-bit
+        architectures. Enable DFG now again on ARM/Linux. Disable tests that
+        run out of executable memory with LLInt disabled.
+
+        * js/script-tests/dfg-float32array.js:
+        * js/script-tests/dfg-float64array.js:
+        * js/script-tests/dfg-int16array.js:
+        * js/script-tests/dfg-int32array-overflow-values.js:
+        * js/script-tests/dfg-int32array.js:
+        * js/script-tests/dfg-int8array.js:
+        * js/script-tests/dfg-uint16array.js:
+        * js/script-tests/dfg-uint32array.js:
+        * js/script-tests/dfg-uint8array.js:
+
+2019-01-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Introduce IDL files for runtime-enabled UndoManager and UndoItem JavaScript API
+        https://bugs.webkit.org/show_bug.cgi?id=193109
+        <rdar://problem/44807048>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add UndoManager tests to exercise new bindings, and verify that the JS wrapper for Document's UndoManager
+        survives garbage collection.
+
+        * TestExpectations:
+        * editing/undo-manager/undo-manager-interfaces-expected.txt: Added.
+        * editing/undo-manager/undo-manager-interfaces.html: Added.
+        * editing/undo-manager/undo-manager-keeps-wrapper-alive-expected.txt: Added.
+        * editing/undo-manager/undo-manager-keeps-wrapper-alive.html: Added.
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2019-01-11  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC][MarginCollapsing] Adjust vertical position when box margin collapses through.
+        https://bugs.webkit.org/show_bug.cgi?id=193346
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/collapsed-through-with-parent-expected.txt: Added.
+        * fast/block/block-only/collapsed-through-with-parent.html: Added.
+
+2019-01-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK gardening. Rebaseline several tests after r239822.
+
+        * platform/gtk/css2.1/t1202-counter-04-b-expected.png:
+        * platform/gtk/css2.1/t1202-counter-04-b-expected.txt:
+        * platform/gtk/css2.1/t1202-counters-04-b-expected.png:
+        * platform/gtk/css2.1/t1202-counters-04-b-expected.txt:
+        * platform/gtk/fast/text/combining-enclosing-keycap-expected.txt:
+        * platform/gtk/fast/text/fallback-traits-fixup-expected.png:
+        * platform/gtk/fast/text/fallback-traits-fixup-expected.txt:
+
+2019-01-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: allow audits to be enabled/disabled
+        https://bugs.webkit.org/show_bug.cgi?id=192210
+        <rdar://problem/46423583>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/unit-tests/objectStore/clear.html: Added.
+        * inspector/unit-tests/objectStore/clear-expected.txt: Added.
+
+2019-01-10  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] WebGPUBindGroup and device::createBindGroup prototype
+        https://bugs.webkit.org/show_bug.cgi?id=193341
+
+        Reviewed by Myles C. Maxfield.
+
+        Small test that creates a WebGPUBindGroup.
+
+        * webgpu/bind-groups-expected.txt: Added.
+        * webgpu/bind-groups.html: Added.
+
+2019-01-10  Eric Carlson  <eric.carlson@apple.com>
+
+        Define page media state flags for display capture.
+        https://bugs.webkit.org/show_bug.cgi?id=193230
+        <rdar://problem/47095142>
+
+        Reviewed by Youenn Fablet.
+
+        * fast/mediastream/get-display-media-muted-expected.txt: Added.
+        * fast/mediastream/get-display-media-muted.html: Added.
+
+2019-01-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239825.
+        https://bugs.webkit.org/show_bug.cgi?id=193330
+
+        Broke tests on armv7/linux bots (Requested by guijemont on
+        #webkit).
+
+        Reverted changeset:
+
+        "Enable DFG on ARM/Linux again"
+        https://bugs.webkit.org/show_bug.cgi?id=192496
+        https://trac.webkit.org/changeset/239825
+
+2019-01-10  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Fix vertex-buffer-triangle-strip test and small update to GPURenderPipeline
+        https://bugs.webkit.org/show_bug.cgi?id=193289
+
+        Reviewed by Dean Jackson.
+
+        Fix broken test after pipeline layouts were added.
+
+        * webgpu/js/webgpu-functions.js: 
+        (createBasicPipeline): Ensure pipeline layout is actually optional.
+        * webgpu/vertex-buffer-triangle-strip.html: 
+
+2019-01-10  John Wilander  <wilander@apple.com>
+
+        Override the session configuration for cookieAcceptPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=190925
+        <rdar://problem/45497382>
+
+        Reviewed by Alexey Proskuryakov and Alex Christensen.
+
+        * TestExpectations:
+            Skipped since this cookie policy is only supported on Cocoa platforms.
+        * http/tests/cookies/only-accept-first-party-cookies-expected.txt: Added.
+        * http/tests/cookies/only-accept-first-party-cookies.html: Added.
+        * http/tests/cookies/resources/reset-cookies.html: Added.
+            To support reset of third-party cookies in an iframe.
+        * http/tests/cookies/resources/set-cookie-and-redirect-back.php: Added.
+            A simple bounce to set a cookie.
+        * platform/ios/TestExpectations:
+            Skipped for now. Will be fixed in <rdar://problem/47165939>.
+        * platform/mac/TestExpectations:
+            Skipped for now. Will be fixed in <rdar://problem/47165939>.
+
+2019-01-10  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r239824.
+
+        * platform/gtk/TestExpectations:
+
+2019-01-10  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC][MarginCollapsing] Take collapsed through siblings into account when computing vertical position
+        https://bugs.webkit.org/show_bug.cgi?id=193310
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/margin-collapse/collapsed-through-siblings-expected.txt: Added.
+        * fast/block/margin-collapse/collapsed-through-siblings.html: Added.
+
+2019-01-10  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Enable DFG on ARM/Linux again
+        https://bugs.webkit.org/show_bug.cgi?id=192496
+
+        Reviewed by Yusuke Suzuki.
+
+        After changing the bytecode format DFG was disabled on all 32-bit
+        architectures. Enable DFG now again on ARM/Linux. Disable tests that
+        run out of executable memory with LLInt disabled.
+
+        * js/script-tests/dfg-float32array.js:
+        * js/script-tests/dfg-float64array.js:
+        * js/script-tests/dfg-int16array.js:
+        * js/script-tests/dfg-int32array-overflow-values.js:
+        * js/script-tests/dfg-int32array.js:
+        * js/script-tests/dfg-int8array.js:
+        * js/script-tests/dfg-uint16array.js:
+        * js/script-tests/dfg-uint32array.js:
+        * js/script-tests/dfg-uint8array.js:
+
+2019-01-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline two css tests.
+
+        I think I missed these in previous rebaselines.
+
+        * platform/gtk/css1/font_properties/font-expected.png:
+        * platform/gtk/css1/font_properties/font-expected.txt:
+        * platform/gtk/css2.1/t1508-c527-font-06-b-expected.png:
+        * platform/gtk/css2.1/t1508-c527-font-06-b-expected.txt:
+
+2019-01-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [FreeType] Color emoji not properly supported
+        https://bugs.webkit.org/show_bug.cgi?id=191976
+
+        Reviewed by Michael Catanzaro.
+
+        Add new test to ensure we fallback to noto color emoji for emojis.
+
+        * platform/gtk/fonts/font-emoji-system-fallback-expected.html: Added.
+        * platform/gtk/fonts/font-emoji-system-fallback.html: Added.
+
+2019-01-10  cathie chen  <cathiechen@igalia.com>
+
+        Import css-lists testcases from WPT.
+        https://bugs.webkit.org/show_bug.cgi?id=193273
+
+        Reviewed by Daniel Bates.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/css/css-lists/list-and-writing-mode-001-expected.txt: Added.
+
+2019-01-09  Zalan Bujtas  <zalan@apple.com>
+
+        [Datalist] Crash when input with datalist is dynamically added.
+        https://bugs.webkit.org/show_bug.cgi?id=193012
+        <rdar://problem/45923457>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/forms/datalist/datalist-crash-when-dynamic-expected.txt: Added.
+        * fast/forms/datalist/datalist-crash-when-dynamic.html: Added.
+
+2019-01-09  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Fix vertex-buffer-triangle-strip test and small update to GPURenderPipeline
+        https://bugs.webkit.org/show_bug.cgi?id=193289
+
+        Reviewed by Dean Jackson.
+
+        Fix broken test after pipeline layouts were added.
+
+        * webgpu/js/webgpu-functions.js: 
+        (createBasicPipeline): Ensure pipeline layout is actually optional.
+        * webgpu/vertex-buffer-triangle-strip.html: 
+
+2019-01-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] editing/selection/ios/show-selection-in-empty-overflow-hidden-document.html often times out in internal automation
+        https://bugs.webkit.org/show_bug.cgi?id=193238
+
+        Reviewed by Megan Gardner.
+
+        Fix a flaky layout test that currently attempts to run the main logic of the test twice (once after the child
+        frame finishes loading, and another time after the main document finishes loading). This leads to a race
+        condition in the test where the incorrect text field is focused, causing the caret rect to deviate from the
+        expected value.
+
+        * editing/selection/ios/show-selection-in-empty-overflow-hidden-document.html:
+
+2019-01-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed, rolling out r239565.
+
+        Rebaseline was not correct, changes were due to
+        webkit.org/b/193276
+
+        Reverted changeset:
+
+        "Unreviewed GTK+ gardening. Rebaseline several tests after
+        r239156."
+        https://trac.webkit.org/changeset/239565
+
+2019-01-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ASSERT when paused in debugger and console evaluation causes exception
+        https://bugs.webkit.org/show_bug.cgi?id=193246
+
+        Reviewed by Mark Lam.
+
+        * inspector/debugger/evaluateOnCallFrame-CommandLineAPI.html:
+        Correct a typo.
+
+        * inspector/debugger/evaluateOnCallFrame-exception-expected.txt: Added.
+        * inspector/debugger/evaluateOnCallFrame-exception.html: Added.
+        New test that would have asserted before.
+
+2019-01-08  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Support U2F HID Authenticators on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=191535
+        <rdar://problem/47102027>
+
+        Reviewed by Brent Fulgham.
+
+        Besiding adding tests for U2F authenticators, it also changes payloadBase64 from
+        a string to a vector of strings. New tests are skipped for iOS.
+
+        * http/wpt/webauthn/ctap-hid-failure.https.html:
+        * http/wpt/webauthn/ctap-hid-success.https.html:
+        * http/wpt/webauthn/public-key-credential-create-failure-hid-silent.https.html:
+        * http/wpt/webauthn/public-key-credential-create-failure-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-create-failure-u2f-silent.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure-u2f-silent.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure-u2f.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure-u2f.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-create-success-u2f.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-create-success-u2f.https.html: Copied from LayoutTests/http/wpt/webauthn/public-key-credential-create-success-hid.https.html.
+        * http/wpt/webauthn/public-key-credential-get-failure-hid-silent.https.html:
+        * http/wpt/webauthn/public-key-credential-get-failure-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-get-failure-u2f-silent.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-get-failure-u2f-silent.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-get-failure-u2f.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-get-failure-u2f.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-u2f.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-get-success-u2f.https.html: Added.
+        * http/wpt/webauthn/resources/util.js:
+        * platform/ios-wk2/TestExpectations:
+
+2019-01-08  Youenn Fablet  <youenn@apple.com>
+
+        service worker fetch handler results in bad referrer
+        https://bugs.webkit.org/show_bug.cgi?id=188248
+        <rdar://problem/47050478>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/security/referrer-policy-redirect-link-downgrade-expected.txt: Added.
+        * http/tests/security/referrer-policy-redirect-link-downgrade.html: Added.
+        * http/tests/security/resources/referrer-policy-redirect-link-downgrade.html: Added.
+        * http/tests/security/resources/referrer-policy-redirect-link.html:
+        * platform/ios-wk2/TestExpectations: Skip referrer-policy-redirect-link-downgrade.html
+        as it is very similar to already skipped referrer-policy-redirect-link.html.
+
+2019-01-08  Youenn Fablet  <youenn@apple.com>
+
+        IDB storage of Crypto keys does not work in private browsing mode
+        https://bugs.webkit.org/show_bug.cgi?id=193219
+
+        Reviewed by Brady Eidson.
+
+        Activate private browsing mode for these two tests.
+
+        * crypto/subtle/rsa-indexeddb-non-exportable-private.html:
+        * crypto/subtle/rsa-indexeddb-private.html:
+
+2019-01-08  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Update createRenderPipeline for WebGPUPipelineLayout
+        https://bugs.webkit.org/show_bug.cgi?id=193247
+
+        Reviewed by Dean Jackson.
+
+        Update render-pipelines.html to WPT form and to accomodate WebGPUPipelineLayouts.
+
+        * webgpu/js/webgpu-functions.js:
+        (createBasicPipeline): Added option to include a WebGPUPipelineLayout.
+        * webgpu/render-pipelines-expected.txt:
+        * webgpu/render-pipelines.html:
+
+2019-01-08  Chris Dumez  <cdumez@apple.com>
+
+        Prevent cross-site top-level navigations from third-party iframes
+        https://bugs.webkit.org/show_bug.cgi?id=193076
+        <rdar://problem/36074736>
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * http/tests/security/allow-top-level-navigations-by-third-party-iframes-to-same-origin-expected.txt: Added.
+        * http/tests/security/allow-top-level-navigations-by-third-party-iframes-to-same-origin.html: Added.
+        * http/tests/security/allow-top-level-navigations-by-third-party-iframes-with-previous-user-activation-expected.txt: Added.
+        * http/tests/security/allow-top-level-navigations-by-third-party-iframes-with-previous-user-activation.html: Added.
+        * http/tests/security/allow-top-level-navigations-by-third-party-iframes-with-user-activation-expected.txt: Added.
+        * http/tests/security/allow-top-level-navigations-by-third-party-iframes-with-user-activation.html: Added.
+        * http/tests/security/block-top-level-navigations-by-third-party-iframes-expected.txt: Added.
+        * http/tests/security/block-top-level-navigations-by-third-party-iframes.html: Added.
+        * http/tests/security/resources/navigate-top-level-frame-to-failure-page.html: Added.
+        * http/tests/security/resources/navigate-top-level-frame-to-success-page-same-origin.html: Added.
+        * http/tests/security/resources/navigate-top-level-frame-to-success-page-with-previous-user-gesture.html: Added.
+        * http/tests/security/resources/navigate-top-level-frame-to-success-page-with-user-gesture.html: Added.
+        * http/tests/security/resources/should-have-loaded.html: Added.
+        * http/tests/security/resources/should-not-have-loaded.html: Added.
+
+2019-01-08  Truitt Savell  <tsavell@apple.com>
+
+        Revert expectation changes to pointerevents in iOS after https://trac.webkit.org/changeset/239704/webkit
+        https://bugs.webkit.org/show_bug.cgi?id=193214
+
+        Unreviewed Test Gardening
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+
 2019-01-07  Youenn Fablet  <youenn@apple.com>
 
         LayoutTests/http/wpt/fetch/csp-reports-bypass-csp-checks.html is flaky

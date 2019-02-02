@@ -31,6 +31,7 @@
 #include "EditableImageReference.h"
 #include "Editor.h"
 #include "ElementIterator.h"
+#include "EventNames.h"
 #include "FrameView.h"
 #include "HTMLAnchorElement.h"
 #include "HTMLAttachmentElement.h"
@@ -46,6 +47,7 @@
 #include "MediaList.h"
 #include "MediaQueryEvaluator.h"
 #include "NodeTraversal.h"
+#include "PlatformMouseEvent.h"
 #include "RenderImage.h"
 #include "RenderView.h"
 #include "RuntimeEnabledFeatures.h"
@@ -112,7 +114,7 @@ Ref<HTMLImageElement> HTMLImageElement::createForJSConstructor(Document& documen
 
 bool HTMLImageElement::isPresentationAttribute(const QualifiedName& name) const
 {
-    if (name == widthAttr || name == heightAttr || name == borderAttr || name == vspaceAttr || name == hspaceAttr || name == alignAttr || name == valignAttr)
+    if (name == widthAttr || name == heightAttr || name == borderAttr || name == vspaceAttr || name == hspaceAttr || name == valignAttr)
         return true;
     return HTMLElement::isPresentationAttribute(name);
 }
@@ -225,12 +227,12 @@ void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicStr
     } else if (name == srcAttr || name == srcsetAttr || name == sizesAttr)
         selectImageSource();
     else if (name == usemapAttr) {
-        if (isConnected() && !m_parsedUsemap.isNull())
+        if (isInTreeScope() && !m_parsedUsemap.isNull())
             treeScope().removeImageElementByUsemap(*m_parsedUsemap.impl(), *this);
 
         m_parsedUsemap = parseHTMLHashNameReference(value);
 
-        if (isConnected() && !m_parsedUsemap.isNull())
+        if (isInTreeScope() && !m_parsedUsemap.isNull())
             treeScope().addImageElementByUsemap(*m_parsedUsemap.impl(), *this);
     } else if (name == compositeAttr) {
         // FIXME: images don't support blend modes in their compositing attribute.
@@ -354,7 +356,7 @@ Node::InsertedIntoAncestorResult HTMLImageElement::insertedIntoAncestor(Insertio
     if (insertionType.connectedToDocument && hasEditableImageAttribute())
         insertNotificationRequest = InsertedIntoAncestorResult::NeedsPostInsertionCallback;
 
-    if (insertionType.connectedToDocument && !m_parsedUsemap.isNull())
+    if (insertionType.treeScopeChanged && !m_parsedUsemap.isNull())
         treeScope().addImageElementByUsemap(*m_parsedUsemap.impl(), *this);
 
     if (is<HTMLPictureElement>(parentNode())) {
@@ -381,7 +383,7 @@ void HTMLImageElement::removedFromAncestor(RemovalType removalType, ContainerNod
     if (m_form)
         m_form->removeImgElement(this);
 
-    if (removalType.disconnectedFromDocument && !m_parsedUsemap.isNull())
+    if (removalType.treeScopeChanged && !m_parsedUsemap.isNull())
         oldParentOfRemovedTree.treeScope().removeImageElementByUsemap(*m_parsedUsemap.impl(), *this);
 
     if (is<HTMLPictureElement>(parentNode()))
@@ -837,6 +839,16 @@ void HTMLImageElement::copyNonAttributePropertiesFromElement(const Element& sour
 #endif
     m_editableImage = sourceImage.m_editableImage;
     Element::copyNonAttributePropertiesFromElement(source);
+}
+
+void HTMLImageElement::defaultEventHandler(Event& event)
+{
+    if (hasEditableImageAttribute() && event.type() == eventNames().mousedownEvent && is<MouseEvent>(event) && downcast<MouseEvent>(event).button() == LeftButton) {
+        focus();
+        event.setDefaultHandled();
+        return;
+    }
+    HTMLElement::defaultEventHandler(event);
 }
 
 }

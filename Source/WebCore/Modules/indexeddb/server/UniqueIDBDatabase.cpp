@@ -28,7 +28,6 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "DOMWrapperWorld.h"
 #include "IDBBindingUtilities.h"
 #include "IDBCursorInfo.h"
 #include "IDBGetAllRecordsData.h"
@@ -43,7 +42,6 @@
 #include "Logging.h"
 #include "SerializedScriptValue.h"
 #include "UniqueIDBDatabaseConnection.h"
-#include "WebCoreJSClientData.h"
 #include <JavaScriptCore/AuxiliaryBarrierInlines.h>
 #include <JavaScriptCore/HeapInlines.h>
 #include <JavaScriptCore/StrongInlines.h>
@@ -294,7 +292,10 @@ void UniqueIDBDatabase::shutdownForClose()
     m_backingStoreSupportsSimultaneousTransactions = false;
     m_backingStoreIsEphemeral = false;
 
-    ASSERT(m_databaseQueue.isEmpty());
+    if (!m_databaseQueue.isEmpty()) {
+        postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::shutdownForClose));
+        return;
+    }
     m_databaseQueue.kill();
 
     postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didShutdownForClose));
@@ -940,11 +941,6 @@ VM& UniqueIDBDatabase::databaseThreadVM()
 {
     ASSERT(!isMainThread());
     static VM* vm = &VM::create().leakRef();
-    if (!vm->heap.hasAccess()) {
-        vm->heap.acquireAccess();
-        JSVMClientData::initNormalWorld(vm);
-    }
-
     return *vm;
 }
 
@@ -952,10 +948,10 @@ ExecState& UniqueIDBDatabase::databaseThreadExecState()
 {
     ASSERT(!isMainThread());
 
-    static NeverDestroyed<Strong<JSDOMGlobalObject>> domGlobalObject(databaseThreadVM(), JSDOMGlobalObject::create(databaseThreadVM(), JSDOMGlobalObject::createStructure(databaseThreadVM(), jsNull()), normalWorld(databaseThreadVM())));
+    static NeverDestroyed<Strong<JSGlobalObject>> globalObject(databaseThreadVM(), JSGlobalObject::create(databaseThreadVM(), JSGlobalObject::createStructure(databaseThreadVM(), jsNull())));
 
-    RELEASE_ASSERT(domGlobalObject.get()->globalExec());
-    return *domGlobalObject.get()->globalExec();
+    RELEASE_ASSERT(globalObject.get()->globalExec());
+    return *globalObject.get()->globalExec();
 }
 
 void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, const IDBValue& originalRecordValue, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
@@ -1278,10 +1274,10 @@ void UniqueIDBDatabase::performPrefetchCursor(const IDBResourceIdentifier& trans
     ASSERT(m_cursorPrefetches.contains(cursorIdentifier));
     LOG(IndexedDB, "(db) UniqueIDBDatabase::performPrefetchCursor");
 
-    if (m_backingStore->prefetchCursor(transactionIdentifier, cursorIdentifier))
-        postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performPrefetchCursor, transactionIdentifier, cursorIdentifier));
-    else
+    if (m_hardClosedForUserDelete || !m_backingStore->prefetchCursor(transactionIdentifier, cursorIdentifier))
         m_cursorPrefetches.remove(cursorIdentifier);
+    else
+        postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performPrefetchCursor, transactionIdentifier, cursorIdentifier));
 }
 
 void UniqueIDBDatabase::didPerformIterateCursor(uint64_t callbackIdentifier, const IDBError& error, const IDBGetResult& result)
@@ -1580,7 +1576,7 @@ void UniqueIDBDatabase::operationAndTransactionTimerFired()
             m_objectStoreTransactionCounts.add(objectStore);
             if (!transaction->isReadOnly()) {
                 m_objectStoreWriteTransactions.add(objectStore);
-                ASSERT(m_objectStoreTransactionCounts.count(objectStore) == 1);
+                ASSERT(m_objectStoreTransactionCounts.count(objectStore) == 1 || m_hardClosedForUserDelete);
             }
         }
 
@@ -1791,7 +1787,7 @@ void UniqueIDBDatabase::maybeFinishHardClose()
 
 bool UniqueIDBDatabase::isDoneWithHardClose()
 {
-    return m_databaseQueue.isKilled() && m_clientClosePendingDatabaseConnections.isEmpty() && m_serverClosePendingDatabaseConnections.isEmpty();
+    return m_databaseReplyQueue.isKilled() && m_clientClosePendingDatabaseConnections.isEmpty() && m_serverClosePendingDatabaseConnections.isEmpty();
 }
 
 static void errorOpenDBRequestForUserDelete(ServerOpenDBRequest& request)

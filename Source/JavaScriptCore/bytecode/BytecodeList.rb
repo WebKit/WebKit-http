@@ -286,6 +286,7 @@ op_group :UnaryOp,
         :unsigned,
         :is_empty,
         :is_undefined,
+        :is_undefined_or_null,
         :is_boolean,
         :is_number,
         :is_object,
@@ -473,11 +474,7 @@ op :put_by_id,
         oldStructure: StructureID,
         offset: unsigned,
         newStructure: StructureID,
-        flags: PutByIdFlags,
         structureChain: WriteBarrierBase[StructureChain],
-    },
-    metadata_initializers: {
-        flags: :flags
     }
 
 op :put_by_id_with_this,

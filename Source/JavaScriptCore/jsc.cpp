@@ -328,6 +328,7 @@ static EncodedJSValue JSC_HOST_CALL functionIs32BitPlatform(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionCheckModuleSyntax(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionPlatformSupportsSamplingProfiler(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionGenerateHeapSnapshot(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionGenerateHeapSnapshotForGCDebugging(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionResetSuperSamplerState(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionEnsureArrayStorage(ExecState*);
 #if ENABLE(SAMPLING_PROFILER)
@@ -420,6 +421,7 @@ public:
     String m_uncaughtExceptionName;
     bool m_treatWatchdogExceptionAsSuccess { false };
     bool m_alwaysDumpUncaughtException { false };
+    bool m_dumpMemoryFootprint { false };
     bool m_dumpSamplingProfilerData { false };
     bool m_enableRemoteDebugging { false };
 
@@ -561,6 +563,7 @@ protected:
 
         addFunction(vm, "platformSupportsSamplingProfiler", functionPlatformSupportsSamplingProfiler, 0);
         addFunction(vm, "generateHeapSnapshot", functionGenerateHeapSnapshot, 0);
+        addFunction(vm, "generateHeapSnapshotForGCDebugging", functionGenerateHeapSnapshotForGCDebugging, 0);
         addFunction(vm, "resetSuperSamplerState", functionResetSuperSamplerState, 0);
         addFunction(vm, "ensureArrayStorage", functionEnsureArrayStorage, 0);
 #if ENABLE(SAMPLING_PROFILER)
@@ -2118,6 +2121,24 @@ EncodedJSValue JSC_HOST_CALL functionGenerateHeapSnapshot(ExecState* exec)
     return result;
 }
 
+EncodedJSValue JSC_HOST_CALL functionGenerateHeapSnapshotForGCDebugging(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    String jsonString;
+    {
+        DeferGCForAWhile deferGC(vm.heap); // Prevent concurrent GC from interfering with the full GC that the snapshot does.
+
+        HeapSnapshotBuilder snapshotBuilder(vm.ensureHeapProfiler(), HeapSnapshotBuilder::SnapshotType::GCDebuggingSnapshot);
+        snapshotBuilder.buildSnapshot();
+
+        jsonString = snapshotBuilder.json();
+    }
+    scope.releaseAssertNoException();
+    return JSValue::encode(jsString(&vm, jsonString));
+}
+
 EncodedJSValue JSC_HOST_CALL functionResetSuperSamplerState(ExecState*)
 {
     resetSuperSamplerState();
@@ -2572,6 +2593,7 @@ static NO_RETURN void printUsageStatement(bool help = false)
     fprintf(stderr, "  --exception=<name>         Check the last script exits with an uncaught exception with the specified name\n");
     fprintf(stderr, "  --watchdog-exception-ok    Uncaught watchdog exceptions exit with success\n");
     fprintf(stderr, "  --dumpException            Dump uncaught exception text\n");
+    fprintf(stderr, "  --footprint                Dump memory footprint after done executing\n");
     fprintf(stderr, "  --options                  Dumps all JSC VM options and exits\n");
     fprintf(stderr, "  --dumpOptions              Dumps all non-default JSC VM options before continuing\n");
     fprintf(stderr, "  --<jsc VM option>=<value>  Sets the specified JSC VM option\n");
@@ -2717,6 +2739,11 @@ void CommandLine::parseArguments(int argc, char** argv)
 
         if (!strcmp(arg, "--dumpException")) {
             m_alwaysDumpUncaughtException = true;
+            continue;
+        }
+
+        if (!strcmp(arg, "--footprint")) {
+            m_dumpMemoryFootprint = true;
             continue;
         }
 
@@ -2927,6 +2954,12 @@ int jscmain(int argc, char** argv)
         });
 
     printSuperSamplerState();
+
+    if (options.m_dumpMemoryFootprint) {
+        MemoryFootprint footprint = MemoryFootprint::now();
+
+        printf("Memory Footprint:\n    Current Footprint: %" PRIu64 "\n    Peak Footprint: %" PRIu64 "\n", footprint.current, footprint.peak);
+    }
 
     return result;
 }

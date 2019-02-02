@@ -142,6 +142,7 @@ private:
     void logDiagnosticMessageWithResult(uint64_t pageID, const String& message, const String& description, uint32_t result, WebCore::ShouldSample);
     void logDiagnosticMessageWithValue(uint64_t pageID, const String& message, const String& description, double value, unsigned significantFigures, WebCore::ShouldSample);
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
+    void didLogUserInteraction(uint64_t contextId);
     void didUpdateBlockCookies(uint64_t contextId);
     void didSetAgeCapForClientSideCookies(uint64_t contextId);
     void storageAccessRequestResult(bool wasGranted, uint64_t contextId);
@@ -164,6 +165,8 @@ private:
     void establishWorkerContextConnectionToNetworkProcess(WebCore::SecurityOriginData&&);
     void establishWorkerContextConnectionToNetworkProcessForExplicitSession(WebCore::SecurityOriginData&&, PAL::SessionID);
 #endif
+
+    void requestCacheStorageSpace(PAL::SessionID, const WebCore::ClientOrigin&, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t> quota)>&&);
 
     WebsiteDataStore* websiteDataStoreFromSessionID(PAL::SessionID);
 

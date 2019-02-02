@@ -77,6 +77,7 @@ class FrameView;
 class GraphicsLayer;
 class Page;
 class Region;
+class RenderLayer;
 class ScrollableArea;
 class ViewportConstraints;
 
@@ -131,7 +132,10 @@ public:
     virtual bool isRemoteScrollingCoordinator() const { return false; }
 
     // Return whether this scrolling coordinator handles scrolling for the given frame view.
-    virtual bool coordinatesScrollingForFrameView(const FrameView&) const;
+    WEBCORE_EXPORT virtual bool coordinatesScrollingForFrameView(const FrameView&) const;
+
+    // Return whether this scrolling coordinator handles scrolling for the given overflow scroll layer.
+    WEBCORE_EXPORT virtual bool coordinatesScrollingForOverflowLayer(const RenderLayer&) const;
 
     // Should be called whenever the given frame view has been laid out.
     virtual void frameViewLayoutUpdated(FrameView&) { }
@@ -168,8 +172,7 @@ public:
     virtual void detachFromStateTree(ScrollingNodeID) { }
     virtual void clearStateTree() { }
 
-    virtual void updateNodeLayer(ScrollingNodeID, GraphicsLayer*) { }
-    virtual void updateNodeViewportConstraints(ScrollingNodeID, const ViewportConstraints&) { }
+    virtual void setNodeLayers(ScrollingNodeID, GraphicsLayer* /*layer*/, GraphicsLayer* /*scrolledContentsLayer*/ = nullptr, GraphicsLayer* /*counterScrollingLayer*/ = nullptr, GraphicsLayer* /*insetClipLayer*/ = nullptr) { }
 
     struct ScrollingGeometry {
         LayoutRect parentRelativeScrollableRect;
@@ -188,8 +191,9 @@ public:
 #endif
     };
 
-    virtual void updateFrameScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, GraphicsLayer* /*counterScrollingLayer*/, GraphicsLayer* /*insetClipLayer*/, const ScrollingGeometry&) { }
-    virtual void updateOverflowScrollingNode(ScrollingNodeID, GraphicsLayer* /*scrollLayer*/, GraphicsLayer* /*scrolledContentsLayer*/, const ScrollingGeometry&) { }
+    virtual void setScrollingNodeGeometry(ScrollingNodeID, const ScrollingGeometry&) { }
+    virtual void setViewportConstraintedNodeGeometry(ScrollingNodeID, const ViewportConstraints&) { }
+
     virtual void reconcileViewportConstrainedLayerPositions(ScrollingNodeID, const LayoutRect&, ScrollingLayerPositionAction) { }
     virtual String scrollingStateTreeAsText(ScrollingStateTreeAsTextBehavior = ScrollingStateTreeAsTextBehaviorNormal) const;
     virtual bool isRubberBandInProgress() const { return false; }

@@ -12,17 +12,24 @@ const shaderCode = `
     
 using namespace metal;
 
-struct Vertex
+struct VertexIn
+{
+    float4 position [[attribute(0)]];
+};
+
+struct VertexOut
 {
     float4 position [[position]];
 };
 
-vertex Vertex vertex_main(const device Vertex* vertex_array [[buffer(0)]], uint vid [[vertex_id]])
+vertex VertexOut vertex_main(VertexIn vertexIn [[stage_in]])
 {
-    return vertex_array[vid];
+    VertexOut vOut;
+    vOut.position = vertexIn.position;
+    return vOut;
 }
 
-fragment float4 fragment_main(Vertex vertexIn [[stage_in]])
+fragment float4 fragment_main()
 {
     return float4(0.0, 1.0, 0.0, 1.0);
 }
@@ -82,7 +89,7 @@ async function test() {
     const shaderModule = device.createShaderModule({ code: shaderCode });
     const vertexBuffer = createVertexBuffer(device);
     const inputStateDescriptor = createInputStateDescriptor();
-    const pipeline = createBasicPipeline(shaderModule, device, inputStateDescriptor);
+    const pipeline = createBasicPipeline(shaderModule, device, null, inputStateDescriptor);
     const commandBuffer = device.createCommandBuffer();
     const passEncoder = beginBasicRenderPass(context, commandBuffer);
     const endCommandBuffer = encodeBasicCommands(passEncoder, pipeline, vertexBuffer);

@@ -1,3 +1,228 @@
+2019-01-17  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/SDKVariant.xcconfig: Added.
+        * Configurations/WebKitLegacy.xcconfig:
+
+2019-01-17  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using NetworkStorageSession::storageSession in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=193529
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebCache.mm:
+        (+[WebCache addImageToCache:forURL:forFrame:]):
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2019-01-15  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce use of NetworkStorageSession::defaultStorageSession in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=193368
+
+        Reviewed by Geoff Garen.
+
+        * Misc/WebCache.mm:
+        (+[WebCache clearCachedCredentials]):
+        * Misc/WebDownload.mm:
+        (-[WebDownloadInternal download:didReceiveAuthenticationChallenge:]):
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (WebKit::getAuthenticationInfo):
+
+2019-01-15  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using CookiesStrategy
+        https://bugs.webkit.org/show_bug.cgi?id=161106
+
+        Reviewed by Don Olmstead and Antti Koivisto.
+
+        * Misc/WebCache.mm:
+        (+[WebCache addImageToCache:forURL:forFrame:]):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::getCookies):
+        (WebKit::NetscapePluginInstanceProxy::setCookies):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView getVariable:forURL:value:length:]):
+        (-[WebNetscapePluginView setVariable:forURL:value:length:]):
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::createCookiesStrategy): Deleted.
+        (WebPlatformStrategies::cookiesForDOM): Deleted.
+        (WebPlatformStrategies::setCookiesFromDOM): Deleted.
+        (WebPlatformStrategies::cookiesEnabled): Deleted.
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue): Deleted.
+        (WebPlatformStrategies::getRawCookies): Deleted.
+        (WebPlatformStrategies::deleteCookie): Deleted.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2019-01-15  Tim Horton  <timothy_horton@apple.com>
+
+        Cannot tab out of WKWebView on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=161448
+        <rdar://problem/28100085>
+
+        Reviewed by Dean Jackson.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        * WebView/WebView.mm:
+        Make use of SPI headers.
+
+2019-01-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239901, r239909, r239910, r239912,
+        r239913, and r239914.
+        https://bugs.webkit.org/show_bug.cgi?id=193407
+
+        These revisions caused an internal failure (Requested by
+        Truitt on #webkit).
+
+        Reverted changesets:
+
+        "[Cocoa] Avoid importing directly from subumbrella frameworks"
+        https://bugs.webkit.org/show_bug.cgi?id=186016
+        https://trac.webkit.org/changeset/239901
+
+        "Tried to fix USE(APPLE_INTERNAL_SDK) builds after r239901."
+        https://trac.webkit.org/changeset/239909
+
+        "Tried to fix the build."
+        https://trac.webkit.org/changeset/239910
+
+        "Fixed iOS builds after r239910."
+        https://trac.webkit.org/changeset/239912
+
+        "More build fixing."
+        https://trac.webkit.org/changeset/239913
+
+        "Tried to fix USE(APPLE_INTERNAL_SDK) 32-bit builds."
+        https://trac.webkit.org/changeset/239914
+
+2019-01-14  Mark Lam  <mark.lam@apple.com>
+
+        Re-enable ability to build --cloop builds.
+        https://bugs.webkit.org/show_bug.cgi?id=192955
+        <rdar://problem/46882363>
+
+        Reviewed by Saam barati and Keith Miller.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-01-13  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix USE(APPLE_INTERNAL_SDK) builds after r239901.
+
+        Patch by Keith Rollin.
+
+        * WebView/PDFViewSPI.h:
+
+2019-01-12  Timothy Hatcher  <timothy@apple.com>
+
+        Have prefers-color-scheme: light always match on macOS versions before Mojave.
+        https://bugs.webkit.org/show_bug.cgi?id=191655
+        rdar://problem/46074680
+
+        Reviewed by Megan Gardner.
+
+        * Configurations/FeatureDefines.xcconfig: ENABLE_DARK_MODE_CSS_macosx for all OS versions.
+        * WebView/WebView.mm:
+        (-[WebView _effectiveAppearanceIsDark]):
+
+2019-01-12  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Avoid importing directly from subumbrella frameworks
+        https://bugs.webkit.org/show_bug.cgi?id=186016
+        <rdar://problem/40591038>
+
+        Reviewed by Sam Weinig.
+
+        * Carbon/CarbonWindowAdapter.h: Import Carbon.h instead of HIToolbox headers.
+        * Carbon/CarbonWindowAdapter.mm: Ditto.
+        * Carbon/CarbonWindowFrame.m: Ditto.
+        * Carbon/HIViewAdapter.h: Ditto.
+        * Configurations/WebKitLegacy.xcconfig: Removed -iframework options from
+          OTHER_CFLAGS_COCOA_TOUCH_NO.
+        * Plugins/WebNetscapePluginEventHandlerCarbon.mm: Import Carbon.h instead of CarbonEvents.h.
+        * WebView/WebPDFDocumentExtras.mm: Import Quartz.h instead of a PDFKit header.
+        * WebView/WebPDFView.h: Ditto.
+
+2019-01-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable visual viewport API by default
+        https://bugs.webkit.org/show_bug.cgi?id=193376
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2019-01-11  John Wilander  <wilander@apple.com>
+
+        Compile out Web API Statistics Collection
+        https://bugs.webkit.org/show_bug.cgi?id=193370
+        <rdar://problem/45388584>
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/FeatureDefines.xcconfig:
+            Defined ENABLE_WEB_API_STATISTICS, off by default.
+
+2019-01-08  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using NetworkStorageSession in WebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=193236
+
+        Reviewed by Don Olmstead.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::storageSession const):
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::cookiesForDOM):
+        (WebPlatformStrategies::setCookiesFromDOM):
+        (WebPlatformStrategies::cookiesEnabled):
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue):
+        (WebPlatformStrategies::getRawCookies):
+        (WebPlatformStrategies::deleteCookie):
+        * WebView/WebView.mm:
+        (-[WebView _cachedResponseForURL:]):
+        (-[WebView _clearCredentials]):
+
+2019-01-08  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r239727.
+
+        Broke API tests
+
+        Reverted changeset:
+
+        "Stop using NetworkStorageSession in WebProcess"
+        https://bugs.webkit.org/show_bug.cgi?id=193236
+        https://trac.webkit.org/changeset/239727
+
+2019-01-08  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using NetworkStorageSession in WebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=193236
+
+        Reviewed by Don Olmstead.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::storageSession const):
+        * WebView/WebView.mm:
+        (-[WebView _cachedResponseForURL:]):
+        (-[WebView _clearCredentials]):
+
 2019-01-07  David Kilzer  <ddkilzer@apple.com>
 
         Prefer RetainPtr<NSObject> to RetainPtr<NSObject *>

@@ -527,7 +527,7 @@ enum FeatureToAnimate {
     return _scrollbar->supportsUpdateOnSecondaryThread();
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if HAVE(OS_DARK_MODE_SUPPORT)
 - (NSAppearance *)effectiveAppearanceForScrollerImp:(NSScrollerImp *)scrollerImp
 {
     UNUSED_PARAM(scrollerImp);
@@ -1123,9 +1123,6 @@ bool ScrollAnimatorMac::shouldScrollbarParticipateInHitTesting(Scrollbar* scroll
 {
     // Non-overlay scrollbars should always participate in hit testing.
     if (ScrollerStyle::recommendedScrollerStyle() != NSScrollerStyleOverlay)
-        return true;
-
-    if (scrollbar->isAlphaLocked())
         return true;
 
     // Overlay scrollbars should participate in hit testing whenever they are at all visible.

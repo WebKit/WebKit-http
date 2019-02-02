@@ -112,6 +112,7 @@
 #import <pal/spi/mac/NSScrollerImpSPI.h>
 #import <pal/spi/mac/NSSpellCheckerSPI.h>
 #import <pal/spi/mac/NSTextFinderSPI.h>
+#import <pal/spi/mac/NSViewSPI.h>
 #import <pal/spi/mac/NSWindowSPI.h>
 #import <sys/stat.h>
 #import <wtf/NeverDestroyed.h>
@@ -1570,6 +1571,20 @@ bool WebViewImpl::resignFirstResponder()
     return true;
 }
 
+void WebViewImpl::takeFocus(WebCore::FocusDirection direction)
+{
+    NSView *webView = m_view.getAutoreleased();
+
+    if (direction == FocusDirectionForward) {
+        // Since we're trying to move focus out of m_webView, and because
+        // m_webView may contain subviews within it, we ask it for the next key
+        // view of the last view in its key view loop. This makes m_webView
+        // behave as if it had no subviews, which is the behavior we want.
+        [webView.window selectKeyViewFollowingView:[webView _findLastViewInKeyViewLoop]];
+    } else
+        [webView.window selectKeyViewPrecedingView:webView];
+}
+
 void WebViewImpl::showSafeBrowsingWarning(const SafeBrowsingWarning& warning, CompletionHandler<void(Variant<ContinueUnsafeLoad, URL>&&)>&& completionHandler)
 {
     if (!m_view)
@@ -1710,12 +1725,12 @@ CGSize WebViewImpl::fixedLayoutSize() const
     return m_page->fixedLayoutSize();
 }
 
-std::unique_ptr<WebKit::DrawingAreaProxy> WebViewImpl::createDrawingAreaProxy()
+std::unique_ptr<WebKit::DrawingAreaProxy> WebViewImpl::createDrawingAreaProxy(WebProcessProxy& process)
 {
     if ([[[NSUserDefaults standardUserDefaults] objectForKey:@"WebKit2UseRemoteLayerTreeDrawingArea"] boolValue])
-        return std::make_unique<RemoteLayerTreeDrawingAreaProxy>(m_page);
+        return std::make_unique<RemoteLayerTreeDrawingAreaProxy>(m_page, process);
 
-    return std::make_unique<TiledCoreAnimationDrawingAreaProxy>(m_page);
+    return std::make_unique<TiledCoreAnimationDrawingAreaProxy>(m_page, process);
 }
 
 bool WebViewImpl::isUsingUISideCompositing() const
@@ -5328,7 +5343,7 @@ void WebViewImpl::effectiveAppearanceDidChange()
 
 bool WebViewImpl::effectiveAppearanceIsDark()
 {
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if HAVE(OS_DARK_MODE_SUPPORT)
     NSAppearanceName appearance = [[m_view effectiveAppearance] bestMatchFromAppearancesWithNames:@[ NSAppearanceNameAqua, NSAppearanceNameDarkAqua ]];
     return [appearance isEqualToString:NSAppearanceNameDarkAqua];
 #else

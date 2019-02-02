@@ -27,11 +27,13 @@
 #pragma once
 
 #include "CSSValue.h"
+#include "ComputedEffectTiming.h"
 #include "RenderStyle.h"
 #include "WebAnimation.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/ListHashSet.h>
+#include <wtf/Markable.h>
 #include <wtf/Optional.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
@@ -46,7 +48,7 @@ class Element;
 
 class AnimationTimeline : public RefCounted<AnimationTimeline> {
 public:
-    bool isDocumentTimeline() const { return m_classType == DocumentTimelineClass; }
+    virtual bool isDocumentTimeline() const { return false; }
 
     void forgetAnimation(WebAnimation*);
     virtual void animationTimingDidChange(WebAnimation&);
@@ -55,7 +57,7 @@ public:
     Optional<double> bindingsCurrentTime();
     virtual Optional<Seconds> currentTime() { return m_currentTime; }
 
-    enum class Ordering { Sorted, Unsorted };
+    enum class Ordering : uint8_t { Sorted, Unsorted };
     Vector<RefPtr<WebAnimation>> animationsForElement(Element&, Ordering ordering = Ordering::Unsorted) const;
     void elementWasRemoved(Element&);
     void removeAnimationsForElement(Element&);
@@ -73,13 +75,7 @@ public:
     virtual ~AnimationTimeline();
 
 protected:
-    enum ClassType {
-        DocumentTimelineClass
-    };
-
-    ClassType classType() const { return m_classType; }
-
-    explicit AnimationTimeline(ClassType);
+    explicit AnimationTimeline();
 
     ListHashSet<WebAnimation*> m_allAnimations;
     ListHashSet<RefPtr<WebAnimation>> m_animations;
@@ -90,13 +86,13 @@ private:
     PropertyToTransitionMap& ensureRunningTransitionsByProperty(Element&);
     void cancelDeclarativeAnimation(DeclarativeAnimation&);
 
-    ClassType m_classType;
-    Optional<Seconds> m_currentTime;
     ElementToAnimationsMap m_elementToAnimationsMap;
     ElementToAnimationsMap m_elementToCSSAnimationsMap;
     ElementToAnimationsMap m_elementToCSSTransitionsMap;
     HashMap<Element*, HashMap<String, RefPtr<CSSAnimation>>> m_elementToCSSAnimationByName;
     HashMap<Element*, PropertyToTransitionMap> m_elementToRunningCSSTransitionByCSSPropertyID;
+
+    Markable<Seconds, Seconds::MarkableTraits> m_currentTime;
 };
 
 } // namespace WebCore

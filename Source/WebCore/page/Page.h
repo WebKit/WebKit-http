@@ -47,6 +47,7 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/Ref.h>
 #include <wtf/UniqueRef.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
@@ -86,6 +87,7 @@ class ChromeClient;
 class Color;
 class ContextMenuClient;
 class ContextMenuController;
+class CookieJar;
 class DOMRect;
 class DOMRectList;
 class DatabaseProvider;
@@ -165,7 +167,7 @@ enum class DidWrap : bool;
 enum class RouteSharingPolicy : uint8_t;
 enum class ShouldTreatAsContinuingLoad : bool;
 
-class Page : public Supplementable<Page> {
+class Page : public Supplementable<Page>, public CanMakeWeakPtr<Page> {
     WTF_MAKE_NONCOPYABLE(Page);
     WTF_MAKE_FAST_ALLOCATED;
     friend class SettingsBase;
@@ -574,6 +576,7 @@ public:
     DatabaseProvider& databaseProvider() { return m_databaseProvider; }
     CacheStorageProvider& cacheStorageProvider() { return m_cacheStorageProvider; }
     SocketProvider& socketProvider() { return m_socketProvider; }
+    CookieJar& cookieJar() { return m_cookieJar.get(); }
 
     StorageNamespaceProvider& storageNamespaceProvider() { return m_storageNamespaceProvider.get(); }
     void setStorageNamespaceProvider(Ref<StorageNamespaceProvider>&&);
@@ -873,6 +876,7 @@ private:
     unsigned m_forbidPromptsDepth { 0 };
 
     Ref<SocketProvider> m_socketProvider;
+    Ref<CookieJar> m_cookieJar;
     Ref<ApplicationCacheStorage> m_applicationCacheStorage;
     Ref<CacheStorageProvider> m_cacheStorageProvider;
     Ref<DatabaseProvider> m_databaseProvider;

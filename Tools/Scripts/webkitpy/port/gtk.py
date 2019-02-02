@@ -210,10 +210,10 @@ class GtkPort(Port):
         search_paths.extend(self.get_option("additional_platform_directory", []))
         return search_paths
 
-    def default_baseline_search_path(self):
+    def default_baseline_search_path(self, **kwargs):
         return map(self._webkit_baseline_path, self._search_paths())
 
-    def _port_specific_expectations_files(self):
+    def _port_specific_expectations_files(self, **kwargs):
         return [self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in reversed(self._search_paths())]
 
     def print_leaks_summary(self):

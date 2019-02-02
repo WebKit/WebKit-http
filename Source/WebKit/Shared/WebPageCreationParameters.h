@@ -129,12 +129,12 @@ struct WebPageCreationParameters {
     Vector<String> mimeTypesWithCustomContentProviders;
 
     bool controlledByAutomation;
+    bool isProcessSwap { false };
 
 #if PLATFORM(MAC)
     ColorSpaceData colorSpace;
     bool useSystemAppearance;
     bool useDarkAppearance;
-    bool shouldDelayAttachingDrawingArea { false };
 #endif
 #if PLATFORM(IOS_FAMILY)
     WebCore::FloatSize screenSize;

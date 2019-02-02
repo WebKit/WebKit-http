@@ -28,13 +28,21 @@
 
 #if ENABLE(WEBGPU)
 
+#include "GPUBindGroup.h"
+#include "GPUBindGroupBinding.h"
+#include "GPUBindGroupDescriptor.h"
+#include "GPUBufferBinding.h"
 #include "GPUCommandBuffer.h"
 #include "GPUPipelineStageDescriptor.h"
 #include "GPURenderPipelineDescriptor.h"
 #include "GPUShaderModuleDescriptor.h"
 #include "Logging.h"
+#include "WebGPUBindGroup.h"
+#include "WebGPUBindGroupBinding.h"
+#include "WebGPUBindGroupDescriptor.h"
 #include "WebGPUBindGroupLayout.h"
 #include "WebGPUBuffer.h"
+#include "WebGPUBufferBinding.h"
 #include "WebGPUCommandBuffer.h"
 #include "WebGPUPipelineLayout.h"
 #include "WebGPUPipelineLayoutDescriptor.h"
@@ -44,6 +52,7 @@
 #include "WebGPURenderPipelineDescriptor.h"
 #include "WebGPUShaderModule.h"
 #include "WebGPUShaderModuleDescriptor.h"
+#include <wtf/Variant.h>
 
 namespace WebCore {
 
@@ -85,6 +94,49 @@ Ref<WebGPUPipelineLayout> WebGPUDevice::createPipelineLayout(WebGPUPipelineLayou
     return WebGPUPipelineLayout::create(WTFMove(layout));
 }
 
+Ref<WebGPUBindGroup> WebGPUDevice::createBindGroup(WebGPUBindGroupDescriptor&& descriptor) const
+{
+    if (!descriptor.layout || !descriptor.layout->bindGroupLayout()) {
+        LOG(WebGPU, "WebGPUDevice::createBindGroup(): Invalid WebGPUBindGroupLayout!");
+        return WebGPUBindGroup::create(nullptr);
+    }
+
+    if (descriptor.bindings.size() != descriptor.layout->bindGroupLayout()->bindingsMap().size()) {
+        LOG(WebGPU, "WebGPUDevice::createBindGroup(): Mismatched number of WebGPUBindGroupLayoutBindings and WebGPUBindGroupBindings!");
+        return WebGPUBindGroup::create(nullptr);
+    }
+
+    auto bindingResourceVisitor = WTF::makeVisitor([] (RefPtr<WebGPUTextureView> view) -> Optional<GPUBindingResource> {
+        if (view)
+            return static_cast<GPUBindingResource>(view->texture());
+        return WTF::nullopt;
+    }, [] (const WebGPUBufferBinding& binding) -> Optional<GPUBindingResource> {
+        if (binding.buffer)
+            return static_cast<GPUBindingResource>(GPUBufferBinding { binding.buffer->buffer(), binding.offset, binding.size });
+        return WTF::nullopt;
+    });
+
+    Vector<GPUBindGroupBinding> bindGroupBindings;
+    bindGroupBindings.reserveCapacity(descriptor.bindings.size());
+
+    for (const auto& binding : descriptor.bindings) {
+        if (!descriptor.layout->bindGroupLayout()->bindingsMap().contains(binding.binding)) {
+            LOG(WebGPU, "WebGPUDevice::createBindGroup(): WebGPUBindGroupBinding %lu not found in WebGPUBindGroupLayout!", binding.binding);
+            return WebGPUBindGroup::create(nullptr);
+        }
+
+        auto bindingResource = WTF::visit(bindingResourceVisitor, binding.resource);
+        if (bindingResource)
+            bindGroupBindings.uncheckedAppend(GPUBindGroupBinding { binding.binding, WTFMove(bindingResource.value()) });
+        else {
+            LOG(WebGPU, "WebGPUDevice::createBindGroup(): Invalid WebGPUBindingResource for binding %lu in WebGPUBindGroupBindings!", binding.binding);
+            return WebGPUBindGroup::create(nullptr);
+        }
+    }
+    auto bindGroup = GPUBindGroup::create(GPUBindGroupDescriptor { descriptor.layout->bindGroupLayout().releaseNonNull(), WTFMove(bindGroupBindings) });
+    return WebGPUBindGroup::create(WTFMove(bindGroup));
+}
+
 RefPtr<WebGPUShaderModule> WebGPUDevice::createShaderModule(WebGPUShaderModuleDescriptor&& descriptor) const
 {
     // FIXME: What can be validated here?
@@ -103,6 +155,8 @@ static Optional<GPUPipelineStageDescriptor> validateAndConvertPipelineStage(cons
 
 RefPtr<WebGPURenderPipeline> WebGPUDevice::createRenderPipeline(WebGPURenderPipelineDescriptor&& descriptor) const
 {
+    auto pipelineLayout = descriptor.layout ? descriptor.layout->pipelineLayout() : nullptr;
+
     auto vertexStage = validateAndConvertPipelineStage(descriptor.vertexStage);
     auto fragmentStage = validateAndConvertPipelineStage(descriptor.fragmentStage);
 
@@ -111,7 +165,7 @@ RefPtr<WebGPURenderPipeline> WebGPUDevice::createRenderPipeline(WebGPURenderPipe
         return nullptr;
     }
 
-    if (auto pipeline = m_device->createRenderPipeline(GPURenderPipelineDescriptor { WTFMove(*vertexStage), WTFMove(*fragmentStage), descriptor.primitiveTopology, descriptor.inputState }))
+    if (auto pipeline = m_device->createRenderPipeline(GPURenderPipelineDescriptor { WTFMove(pipelineLayout), WTFMove(*vertexStage), WTFMove(*fragmentStage), descriptor.primitiveTopology, WTFMove(descriptor.inputState) }))
         return WebGPURenderPipeline::create(pipeline.releaseNonNull());
     return nullptr;
 }

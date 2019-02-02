@@ -1,4 +1,4 @@
-# Copyright (C) 2017 Apple Inc. All rights reserved.
+# Copyright (C) 2017-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -77,7 +77,7 @@ class SimulatedDeviceManager(object):
     def _create_runtimes(runtimes):
         result = []
         for runtime in runtimes:
-            if runtime.get('availability') != '(available)' and runtime.get('isAvailable') != 'YES':
+            if runtime.get('availability') != '(available)' and runtime.get('isAvailable') != 'YES' and runtime.get('isAvailable') != True:
                 continue
             try:
                 result.append(SimulatedDeviceManager.Runtime(runtime))
@@ -87,7 +87,7 @@ class SimulatedDeviceManager(object):
 
     @staticmethod
     def _create_device_with_runtime(host, runtime, device_info):
-        if device_info.get('availability') != '(available)' and device_info.get('isAvailable') != 'YES':
+        if device_info.get('availability') != '(available)' and device_info.get('isAvailable') != 'YES' and device_info.get('isAvailable') != True:
             return None
 
         # Check existing devices.
@@ -131,7 +131,17 @@ class SimulatedDeviceManager(object):
         SimulatedDeviceManager.AVAILABLE_RUNTIMES = SimulatedDeviceManager._create_runtimes(simctl_json['runtimes'])
 
         for runtime in SimulatedDeviceManager.AVAILABLE_RUNTIMES:
-            for device_json in simctl_json['devices'][runtime.name]:
+            # Needed for <rdar://problem/47122965>
+            devices = []
+            if isinstance(simctl_json['devices'], list):
+                for devices_for_runtime in simctl_json['devices']:
+                    if devices_for_runtime['name'] == runtime.name:
+                        devices = devices_for_runtime['devices']
+                        break
+            else:
+                devices = simctl_json['devices'].get(runtime.name, None) or simctl_json['devices'].get(runtime.identifier, [])
+
+            for device_json in devices:
                 device = SimulatedDeviceManager._create_device_with_runtime(host, runtime, device_json)
                 if not device:
                     continue
@@ -165,7 +175,7 @@ class SimulatedDeviceManager(object):
                 if isinstance(initialized_device, Device) and device == initialized_device:
                     device = None
                     break
-            if device and request.device_type == device.platform_device.device_type:
+            if device and request.device_type == device.device_type:
                 return device
         return None
 
@@ -211,8 +221,8 @@ class SimulatedDeviceManager(object):
         if full_device_type.hardware_family is None:
             # We use the existing devices to determine a legal family if no family is specified
             for device in SimulatedDeviceManager.AVAILABLE_DEVICES:
-                if device.platform_device.device_type == full_device_type:
-                    full_device_type.hardware_family = device.platform_device.device_type.hardware_family
+                if device.device_type == full_device_type:
+                    full_device_type.hardware_family = device.device_type.hardware_family
                     break
 
         if full_device_type.hardware_type is None:
@@ -274,7 +284,7 @@ class SimulatedDeviceManager(object):
         for request in requests:
             if not request.use_booted_simulator:
                 continue
-            if request.device_type == device.platform_device.device_type:
+            if request.device_type == device.device_type:
                 _log.debug("The request for '{}' matched {} exactly".format(request.device_type, device))
                 return request
 
@@ -282,7 +292,7 @@ class SimulatedDeviceManager(object):
         for request in requests:
             if not request.use_booted_simulator:
                 continue
-            if device.platform_device.device_type in request.device_type:
+            if device.device_type in request.device_type:
                 _log.debug("The request for '{}' fuzzy-matched {}".format(request.device_type, device))
                 return request
 
@@ -295,7 +305,7 @@ class SimulatedDeviceManager(object):
         for request in requests_copy:
             if not request.use_booted_simulator or not request.allow_incomplete_match:
                 continue
-            if request.device_type.software_variant == device.platform_device.device_type.software_variant:
+            if request.device_type.software_variant == device.device_type.software_variant:
                 _log.warn("The request for '{}' incomplete-matched {}".format(request.device_type, device))
                 _log.warn("This may cause unexpected behavior in code that expected the device type {}".format(request.device_type))
                 return request
@@ -330,7 +340,7 @@ class SimulatedDeviceManager(object):
             return 0
 
         if SimulatedDeviceManager.device_by_filter(lambda device: device.platform_device.is_booted_or_booting(), host=host) and use_booted_simulator:
-            filter = lambda device: device.platform_device.is_booted_or_booting() and device.platform_device.device_type in device_type
+            filter = lambda device: device.platform_device.is_booted_or_booting() and device.device_type in device_type
             return len(SimulatedDeviceManager.device_by_filter(filter, host=host))
 
         for name in SimulatedDeviceManager._device_identifier_to_name.itervalues():
@@ -372,9 +382,9 @@ class SimulatedDeviceManager(object):
                     continue
                 if not request.use_booted_simulator:
                     continue
-                if request.device_type != device.platform_device.device_type and not request.allow_incomplete_match:
+                if request.device_type != device.device_type and not request.allow_incomplete_match:
                     continue
-                if request.device_type.software_variant != device.platform_device.device_type.software_variant:
+                if request.device_type.software_variant != device.device_type.software_variant:
                     continue
                 requests.remove(request)
 

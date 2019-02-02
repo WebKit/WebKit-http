@@ -483,12 +483,21 @@ public:
     bool isMapPrototypeSetFastAndNonObservable();
     bool isSetPrototypeAddFastAndNonObservable();
 
+#if ENABLE(DFG_JIT)
+    using ReferencedGlobalPropertyWatchpointSets = HashMap<RefPtr<UniquedStringImpl>, Ref<WatchpointSet>, IdentifierRepHash>;
+    ReferencedGlobalPropertyWatchpointSets m_referencedGlobalPropertyWatchpointSets;
+#endif
+
     bool m_evalEnabled { true };
     bool m_webAssemblyEnabled { true };
     String m_evalDisabledErrorMessage;
     String m_webAssemblyDisabledErrorMessage;
     RuntimeFlags m_runtimeFlags;
     ConsoleClient* m_consoleClient { nullptr };
+
+#if !ASSERT_DISABLED
+    const ExecState* m_callFrameAtDebuggerEntry { nullptr };
+#endif
 
     static JS_EXPORT_PRIVATE const GlobalObjectMethodTable s_globalObjectMethodTable;
     const GlobalObjectMethodTable* m_globalObjectMethodTable;
@@ -511,6 +520,11 @@ public:
     bool hasDebugger() const;
     bool hasInteractiveDebugger() const;
     const RuntimeFlags& runtimeFlags() const { return m_runtimeFlags; }
+
+#if ENABLE(DFG_JIT)
+    WatchpointSet* getReferencedPropertyWatchpointSet(UniquedStringImpl*);
+    WatchpointSet& ensureReferencedPropertyWatchpointSet(UniquedStringImpl*);
+#endif
 
 protected:
     JS_EXPORT_PRIVATE explicit JSGlobalObject(VM&, Structure*, const GlobalObjectMethodTable* = nullptr);
@@ -737,6 +751,8 @@ public:
     const HashSet<String>& intlPluralRulesAvailableLocales();
 #endif // ENABLE(INTL)
 
+    void notifyLexicalBindingShadowing(VM&, const IdentifierSet&);
+
     void setConsoleClient(ConsoleClient* consoleClient) { m_consoleClient = consoleClient; }
     ConsoleClient* consoleClient() const { return m_consoleClient; }
 
@@ -894,6 +910,11 @@ public:
         m_webAssemblyEnabled = enabled;
         m_webAssemblyDisabledErrorMessage = errorMessage;
     }
+
+#if !ASSERT_DISABLED
+    const ExecState* callFrameAtDebuggerEntry() const { return m_callFrameAtDebuggerEntry; }
+    void setCallFrameAtDebuggerEntry(const ExecState* callFrame) { m_callFrameAtDebuggerEntry = callFrame; }
+#endif
 
     void resetPrototype(VM&, JSValue prototype);
 

@@ -634,6 +634,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     inspector/ScriptDebugServer.h
 
     inspector/agents/InspectorAgent.h
+    inspector/agents/InspectorAuditAgent.h
     inspector/agents/InspectorConsoleAgent.h
     inspector/agents/InspectorDebuggerAgent.h
     inspector/agents/InspectorHeapAgent.h
@@ -793,10 +794,6 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/IndexingHeader.h
     runtime/IndexingHeaderInlines.h
     runtime/IndexingType.h
-    runtime/InferredStructure.h
-    runtime/InferredStructureWatchpoint.h
-    runtime/InferredType.h
-    runtime/InferredTypeTable.h
     runtime/InferredValue.h
     runtime/InitializeThreading.h
     runtime/Int16Array.h
@@ -1063,6 +1060,7 @@ set(JavaScriptCore_INSPECTOR_PROTOCOL_SCRIPTS
 
 set(JavaScriptCore_INSPECTOR_DOMAINS
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/ApplicationCache.json
+    ${JAVASCRIPTCORE_DIR}/inspector/protocol/Audit.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/CSS.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Canvas.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Console.json

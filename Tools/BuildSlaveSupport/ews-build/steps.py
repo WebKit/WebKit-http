@@ -31,7 +31,7 @@ import re
 import requests
 
 BUG_SERVER_URL = 'https://bugs.webkit.org/'
-EWS_URL = 'http://ews-build.webkit-uat.org/'
+EWS_URL = 'https://ews-build.webkit-uat.org/'
 WithProperties = properties.WithProperties
 Interpolate = properties.Interpolate
 
@@ -67,7 +67,6 @@ class ConfigureBuild(buildstep.BuildStep):
             self.setProperty("additionalArguments", self.additionalArguments, 'config.json')
 
         self.add_patch_id_url()
-        self.add_bug_id_url()
         self.finished(SUCCESS)
         return defer.succeed(None)
 
@@ -76,20 +75,10 @@ class ConfigureBuild(buildstep.BuildStep):
         if patch_id:
             self.addURL('Patch {}'.format(patch_id), self.getPatchURL(patch_id))
 
-    def add_bug_id_url(self):
-        bug_id = self.getProperty('bug_id', '')
-        if bug_id:
-            self.addURL('Bug {}'.format(bug_id), self.getBugURL(bug_id))
-
     def getPatchURL(self, patch_id):
         if not patch_id:
             return None
         return '{}attachment.cgi?id={}'.format(BUG_SERVER_URL, patch_id)
-
-    def getBugURL(self, bug_id):
-        if not bug_id:
-            return None
-        return '{}show_bug.cgi?id={}'.format(BUG_SERVER_URL, bug_id)
 
 
 class CheckOutSource(git.Git):
@@ -104,6 +93,15 @@ class CheckOutSource(git.Git):
                                                 alwaysUseLatest=True,
                                                 progress=True,
                                                 **kwargs)
+
+
+class CleanWorkingDirectory(shell.ShellCommand):
+    name = 'clean-working-directory'
+    description = ['clean-working-directory running']
+    descriptionDone = ['clean-working-directory']
+    flunkOnFailure = True
+    haltOnFailure = True
+    command = ['Tools/Scripts/clean-webkit']
 
 
 class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
@@ -291,6 +289,8 @@ class ValidatePatch(buildstep.BuildStep):
             self._addToLog('stdio', 'Fetched patch id {} does not match with requested patch id {}. Unable to validate.\n'.format(patch_json.get('id'), self.getProperty('patch_id', '')))
             return -1
 
+        patch_author = patch_json.get('creator')
+        self.addURL('Patch by: {}'.format(patch_author), 'mailto:{}'.format(patch_author))
         return patch_json.get('is_obsolete')
 
     def _is_patch_review_denied(self, patch_id):
@@ -305,11 +305,17 @@ class ValidatePatch(buildstep.BuildStep):
         return 0
 
     def _is_bug_closed(self, bug_id):
+        if not bug_id:
+            self._addToLog('stdio', 'Skipping bug status validation since bug id is None.\n')
+            return -1
+
         bug_json = self.get_bug_json(bug_id)
         if not bug_json or not bug_json.get('status'):
             self._addToLog('stdio', 'Unable to fetch bug {}.\n'.format(bug_id))
             return -1
 
+        bug_title = bug_json.get('summary')
+        self.addURL('Bug {} {}'.format(bug_id, bug_title), '{}show_bug.cgi?id={}'.format(BUG_SERVER_URL, bug_id))
         if bug_json.get('status') in self.bug_closed_statuses:
             return 1
         return 0
@@ -327,7 +333,7 @@ class ValidatePatch(buildstep.BuildStep):
             self.finished(FAILURE)
             return None
 
-        bug_id = self.getProperty('bug_id', self.get_bug_id_from_patch(patch_id))
+        bug_id = self.getProperty('bug_id', '') or self.get_bug_id_from_patch(patch_id)
 
         bug_closed = self._is_bug_closed(bug_id)
         if bug_closed == 1:
@@ -353,7 +359,7 @@ class ValidatePatch(buildstep.BuildStep):
         return None
 
 
-class UnApplyPatchIfRequired(CheckOutSource):
+class UnApplyPatchIfRequired(CleanWorkingDirectory):
     name = 'unapply-patch'
 
     def doStepIf(self, step):
@@ -361,14 +367,6 @@ class UnApplyPatchIfRequired(CheckOutSource):
 
     def hideStepIf(self, results, step):
         return not self.doStepIf(step)
-
-
-class CheckStyle(shell.ShellCommand):
-    name = 'check-webkit-style'
-    description = ['check-webkit-style running']
-    descriptionDone = ['check-webkit-style']
-    flunkOnFailure = True
-    command = ['Tools/Scripts/check-webkit-style']
 
 
 class TestWithFailureCount(shell.Test):
@@ -407,6 +405,23 @@ class TestWithFailureCount(shell.Test):
             status += u' ({})'.format(Results[self.results])
 
         return {u'step': status}
+
+
+class CheckStyle(TestWithFailureCount):
+    name = 'check-webkit-style'
+    description = ['check-webkit-style running']
+    descriptionDone = ['check-webkit-style']
+    flunkOnFailure = True
+    failedTestsFormatString = '%d style error%s'
+    command = ['Tools/Scripts/check-webkit-style']
+
+    def countFailures(self, cmd):
+        log_text = self.log_observer.getStdout() + self.log_observer.getStderr()
+
+        match = re.search(r'Total errors found: (?P<errors>\d+) in (?P<files>\d+) files', log_text)
+        if not match:
+            return 0
+        return int(match.group('errors'))
 
 
 class RunBindingsTests(shell.ShellCommand):
@@ -627,7 +642,7 @@ class ArchiveBuiltProduct(shell.ShellCommand):
 class UploadBuiltProduct(transfer.FileUpload):
     name = 'upload-built-product'
     workersrc = WithProperties('WebKitBuild/%(configuration)s.zip')
-    masterdest = WithProperties('public_html/archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(ewspatchid)s.zip')
+    masterdest = WithProperties('public_html/archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(patch_id)s.zip')
     haltOnFailure = True
 
     def __init__(self, **kwargs):
@@ -641,7 +656,7 @@ class UploadBuiltProduct(transfer.FileUpload):
 class DownloadBuiltProduct(shell.ShellCommand):
     command = ['python', 'Tools/BuildSlaveSupport/download-built-product',
         WithProperties('--platform=%(platform)s'), WithProperties('--%(configuration)s'),
-        WithProperties(EWS_URL + 'archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(ewspatchid)s.zip')]
+        WithProperties(EWS_URL + 'archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(patch_id)s.zip')]
     name = 'download-built-product'
     description = ['downloading built product']
     descriptionDone = ['downloaded built product']
@@ -694,7 +709,7 @@ class ArchiveTestResults(shell.ShellCommand):
 class UploadTestResults(transfer.FileUpload):
     name = 'upload-test-results'
     workersrc = 'layout-test-results.zip'
-    masterdest = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:ewspatchid)s-%(prop:buildnumber)s.zip')
+    masterdest = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:patch_id)s-%(prop:buildnumber)s.zip')
     haltOnFailure = True
 
     def __init__(self, **kwargs):
@@ -707,8 +722,8 @@ class UploadTestResults(transfer.FileUpload):
 
 class ExtractTestResults(master.MasterShellCommand):
     name = 'extract-test-results'
-    zipFile = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:ewspatchid)s-%(prop:buildnumber)s.zip')
-    resultDirectory = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:ewspatchid)s-%(prop:buildnumber)s')
+    zipFile = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:patch_id)s-%(prop:buildnumber)s.zip')
+    resultDirectory = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:patch_id)s-%(prop:buildnumber)s')
 
     descriptionDone = ['uploaded results']
     command = ['unzip', zipFile, '-d', resultDirectory]
