@@ -77,7 +77,7 @@ SocketStreamHandleImpl::~SocketStreamHandleImpl()
 }
 
 
-std::optional<size_t> SocketStreamHandleImpl::platformSendInternal(const uint8_t* buffer, size_t length)
+WTF::Optional<size_t> SocketStreamHandleImpl::platformSendInternal(const uint8_t* buffer, size_t length)
 {
 	int32 writtenLength = 0;
 	bool flagForPending = false;

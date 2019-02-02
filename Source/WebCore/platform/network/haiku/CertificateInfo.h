@@ -28,6 +28,7 @@
 
 #include "CertificateInfoBase.h"
 #include "NotImplemented.h"
+#include <optional>
 #include <support/Locker.h>
 #include <wtf/persistence/PersistentCoders.h>
 #include <wtf/persistence/PersistentDecoder.h>
@@ -47,7 +48,7 @@ public:
         : m_certificate(&certificate)
     { }
 
-    std::optional<SummaryInfo> summaryInfo() const { notImplemented(); return std::nullopt; }
+    Optional<SummaryInfo> summaryInfo() const { notImplemented(); return WTF::nullopt; }
 
     const BCertificate& certificate() const { return *m_certificate; }
 

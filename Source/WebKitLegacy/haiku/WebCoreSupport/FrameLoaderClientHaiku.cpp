@@ -126,12 +126,12 @@ void FrameLoaderClientHaiku::frameLoaderDestroyed()
         // frame loader object is gone!
 }
 
-std::optional<uint64_t> FrameLoaderClientHaiku::pageID() const
+WTF::Optional<uint64_t> FrameLoaderClientHaiku::pageID() const
 {
     return {};
 }
 
-std::optional<uint64_t> FrameLoaderClientHaiku::frameID() const
+WTF::Optional<uint64_t> FrameLoaderClientHaiku::frameID() const
 {
     return {};
 }
@@ -395,7 +395,7 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const StringWithDirection& 
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchDidCommitLoad(std::optional<WebCore::HasInsecureContent>)
+void FrameLoaderClientHaiku::dispatchDidCommitLoad(WTF::Optional<WebCore::HasInsecureContent>)
 {
     CALLED();
     if (m_loadingErrorPage) {
@@ -550,7 +550,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
     bool switchTab = false;
 
     // Switch to the new tab, when shift is pressed.
-    if (action.mouseEventData().has_value()) {
+    if (action.mouseEventData().hasValue()) {
         switchTab = action.mouseEventData()->shiftKey;
     }
 
@@ -1032,7 +1032,7 @@ Ref<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingContext()
 
 bool FrameLoaderClientHaiku::isTertiaryMouseButton(const NavigationAction& action) const
 {
-    if (action.mouseEventData().has_value()) {
+    if (action.mouseEventData().hasValue()) {
         return (action.mouseEventData()->button == 1);
     }
     return false;

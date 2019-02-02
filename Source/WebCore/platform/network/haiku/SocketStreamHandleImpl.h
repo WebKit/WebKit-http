@@ -57,9 +57,9 @@ namespace WebCore {
 
     protected:
         void			platformSend(const uint8_t* data, size_t length, Function<void(bool)>&&) final;
-        std::optional<size_t>	platformSendInternal(const uint8_t* data, size_t length);
+		WTF::Optional<size_t>	platformSendInternal(const uint8_t* data, size_t length);
         void 			platformClose() final;
-		void			platformSendHandshake(const uint8_t* data, size_t length, const std::optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
+		void			platformSendHandshake(const uint8_t* data, size_t length, const WTF::Optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
 		size_t 			bufferedAmount() final;
 		bool			sendPendingData();
 

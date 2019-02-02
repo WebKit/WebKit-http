@@ -428,7 +428,7 @@ void ImageBuffer::putByteArray(const Uint8ClampedArray& source, AlphaPremultipli
 }
 
 // TODO: PreserveResolution
-String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, PreserveResolution) const
+String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, PreserveResolution) const
 {
     if (!MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType))
         return "data:,";
@@ -447,7 +447,7 @@ String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> qual
 
 
 // TODO: quality
-Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> /*quality*/) const
+Vector<uint8_t> ImageBuffer::toData(const String& mimeType, Optional<double> /*quality*/) const
 {
     BString mimeTypeString(mimeType);
 
